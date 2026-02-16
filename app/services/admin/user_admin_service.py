@@ -469,7 +469,7 @@ class UserAdminService:
         return UserPasswordReset(
             success=True,
             temporary_password=temp_password,
-            message="Passwort wurde zurueckgesetzt. Der Benutzer muss es bei der naechsten Anmeldung aendern.",
+            message="Passwort wurde zurückgesetzt. Der Benutzer muss es bei der nächsten Anmeldung ändern.",
         )
 
     @staticmethod

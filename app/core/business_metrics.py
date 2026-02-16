@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Business Metriken fuer Ablage-System OCR.
+Business Metriken für Ablage-System OCR.
 
-Erweiterte Prometheus-Metriken fuer:
+Erweiterte Prometheus-Metriken für:
 - OCR-Verarbeitung (Zeichen, Konfidenz, Backend-Nutzung)
 - Dokumenten-Workflow (Upload, Status, Typen)
 - Backpressure und Queue-Status
@@ -117,10 +117,10 @@ documents_uploaded_total = Counter(
     ["file_type", "source"]  # source: api, web, batch
 )
 
-# Dokumenten-Groesse
+# Dokumenten-Größe
 document_size_bytes = Histogram(
     "ablage_document_size_bytes",
-    "Dokumentengroesse in Bytes",
+    "Dokumentengröße in Bytes",
     ["file_type"],
     buckets=[10000, 100000, 1000000, 5000000, 10000000, 50000000, 100000000]
 )
@@ -133,10 +133,10 @@ document_page_count = Histogram(
     buckets=[1, 2, 5, 10, 20, 50, 100, 200, 500]
 )
 
-# Dokumenten-Status-Uebergaenge
+# Dokumenten-Status-Übergaenge
 document_status_transitions_total = Counter(
     "ablage_document_status_transitions_total",
-    "Dokumenten-Status-Uebergaenge",
+    "Dokumenten-Status-Übergaenge",
     ["from_status", "to_status"]
 )
 
@@ -165,16 +165,16 @@ backpressure_status = Gauge(
     "Backpressure-Status (0=normal, 1=warning, 2=critical, 3=overloaded)"
 )
 
-# Queue-Laenge gesamt
+# Queue-Länge gesamt
 backpressure_queue_length = Gauge(
     "ablage_backpressure_queue_length_total",
-    "Gesamte Queue-Laenge ueber alle Queues"
+    "Gesamte Queue-Länge über alle Queues"
 )
 
 # Abgelehnte Anfragen
 backpressure_rejected_total = Counter(
     "ablage_backpressure_rejected_total",
-    "Abgelehnte Anfragen wegen Ueberlast",
+    "Abgelehnte Anfragen wegen Überlast",
     ["priority", "reason"]
 )
 
@@ -216,10 +216,10 @@ models_preloaded_total = Gauge(
 # GPU-EFFIZIENZ METRIKEN
 # =============================================================================
 
-# GPU Batch Groesse
+# GPU Batch Größe
 gpu_batch_size = Histogram(
     "ablage_gpu_batch_size",
-    "GPU Batch-Groesse bei Verarbeitung",
+    "GPU Batch-Größe bei Verarbeitung",
     ["task_type"],
     buckets=[1, 2, 4, 8, 16, 32, 64]
 )
@@ -289,7 +289,7 @@ def record_api_cache_latency(operation: str, latency_seconds: float) -> None:
 # Database Query Dauer
 db_query_duration_seconds = Histogram(
     "ablage_db_query_duration_seconds",
-    "Datenbank-Query Ausfuehrungszeit in Sekunden",
+    "Datenbank-Query Ausführungszeit in Sekunden",
     ["operation", "table"],  # operation: select/insert/update/delete, table: table name
     buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0]
 )
@@ -304,7 +304,7 @@ db_query_total = Counter(
 # Database Connection Pool
 db_pool_size = Gauge(
     "ablage_db_pool_size",
-    "Aktuelle Groesse des Connection Pools"
+    "Aktuelle Größe des Connection Pools"
 )
 
 db_pool_checked_out = Gauge(
@@ -337,7 +337,7 @@ def record_db_query(
     Args:
         operation: Query-Typ (select, insert, update, delete)
         table: Tabellenname
-        duration_seconds: Ausfuehrungszeit
+        duration_seconds: Ausführungszeit
         status: success oder error
     """
     db_query_duration_seconds.labels(
@@ -360,7 +360,7 @@ def update_db_pool_metrics(pool_size: int, checked_out: int, overflow: int) -> N
     Aktualisiere Connection Pool Metriken.
 
     Args:
-        pool_size: Pool-Groesse
+        pool_size: Pool-Größe
         checked_out: Ausgecheckte Connections
         overflow: Overflow-Connections
     """
@@ -395,10 +395,10 @@ webhook_circuit_breaker_state = Gauge(
     ["url_hash"]  # Hashed URL for privacy
 )
 
-# Circuit Breaker Zustandsaenderungen
+# Circuit Breaker Zustandsänderungen
 webhook_circuit_breaker_transitions = Counter(
     "ablage_webhook_circuit_breaker_transitions_total",
-    "Circuit Breaker Zustandsaenderungen",
+    "Circuit Breaker Zustandsänderungen",
     ["from_state", "to_state"]
 )
 
@@ -433,7 +433,7 @@ def record_webhook_delivery(
 
 def record_circuit_breaker_transition(from_state: str, to_state: str) -> None:
     """
-    Zeichne Circuit Breaker Zustandsaenderung auf.
+    Zeichne Circuit Breaker Zustandsänderung auf.
 
     Args:
         from_state: Ausgangszustand (closed, half_open, open)
@@ -548,7 +548,7 @@ def record_document_upload(
     Args:
         file_type: Dateityp (pdf, png, jpg, tiff)
         source: Upload-Quelle (api, web, batch)
-        size_bytes: Dateigroesse
+        size_bytes: Dateigröße
         page_count: Seitenanzahl
     """
     documents_uploaded_total.labels(file_type=file_type, source=source).inc()
@@ -558,7 +558,7 @@ def record_document_upload(
 
 def record_status_transition(from_status: str, to_status: str) -> None:
     """
-    Zeichne Status-Uebergang auf.
+    Zeichne Status-Übergang auf.
 
     Args:
         from_status: Alter Status
@@ -592,7 +592,7 @@ def update_backpressure_metrics(
 
     Args:
         status_value: Status (0=normal, 1=warning, 2=critical, 3=overloaded)
-        queue_length: Aktuelle Queue-Laenge
+        queue_length: Aktuelle Queue-Länge
         rejected_count: Abgelehnte Anfragen (falls vorhanden)
         degraded_count: Degradierte Anfragen (falls vorhanden)
     """
@@ -701,7 +701,7 @@ def track_ocr_processing(
 # SECURITY METRIKEN (CWE-113, CWE-208, CWE-400)
 # =============================================================================
 
-# Security Event Counter fuer Header-Angriffe und Timing-Attacken
+# Security Event Counter für Header-Angriffe und Timing-Attacken
 security_header_violations_total = Counter(
     "ablage_security_header_violations_total",
     "Security-Verletzungen bei HTTP-Header-Validierung",
@@ -732,8 +732,8 @@ def record_security_header_violation(violation_type: str) -> None:
     Args:
         violation_type: Art der Verletzung
             - crlf_injection: CRLF-Injection-Versuch erkannt
-            - header_too_long: Header ueberschreitet maximale Laenge
-            - invalid_uuid: Ungueltige UUID im Header
+            - header_too_long: Header überschreitet maximale Länge
+            - invalid_uuid: Ungültige UUID im Header
     """
     security_header_violations_total.labels(violation_type=violation_type).inc()
 
@@ -770,7 +770,7 @@ def get_metrics_summary() -> Dict[str, Any]:
     Hole Zusammenfassung aller Business-Metriken.
 
     Returns:
-        Dict mit Metriken-Uebersicht
+        Dict mit Metriken-Übersicht
     """
     return {
         "ocr": {

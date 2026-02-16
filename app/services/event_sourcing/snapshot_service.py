@@ -1,4 +1,4 @@
-"""Snapshot Service - Snapshot-Verwaltung fuer Event-Sourcing Performance."""
+"""Snapshot Service - Snapshot-Verwaltung für Event-Sourcing Performance."""
 
 import structlog
 from dataclasses import dataclass
@@ -26,7 +26,7 @@ class SnapshotData:
 
 
 class SnapshotService:
-    """Service fuer Snapshot-Verwaltung.
+    """Service für Snapshot-Verwaltung.
 
     Snapshots verbessern die Performance beim Event-Replay,
     indem der Zustand nicht jedes Mal von Grund auf neu berechnet wird.
@@ -66,13 +66,13 @@ class SnapshotService:
         allowed_types = {"document", "invoice", "payment", "entity", "alert", "workflow"}
         if aggregate_type not in allowed_types:
             logger.warning(
-                "ungueltige_aggregate_type_snapshot",
+                "ungültige_aggregate_type_snapshot",
                 aggregate_type=aggregate_type,
                 allowed=list(allowed_types)
             )
-            raise ValueError(f"Ungueltiger Aggregat-Typ: {aggregate_type}")
+            raise ValueError(f"Ungültiger Aggregat-Typ: {aggregate_type}")
 
-        # Letzten Snapshot holen fuer Versionierung
+        # Letzten Snapshot holen für Versionierung
         latest = await self.get_latest_snapshot(
             aggregate_type=aggregate_type,
             aggregate_id=aggregate_id,
@@ -119,12 +119,12 @@ class SnapshotService:
         company_id: UUID,
         db: AsyncSession = None,
     ) -> Optional[SnapshotData]:
-        """Holt den neuesten Snapshot fuer ein Aggregat.
+        """Holt den neuesten Snapshot für ein Aggregat.
 
         Args:
             aggregate_type: Typ des Aggregats
             aggregate_id: ID des Aggregats
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Datenbank-Session
 
         Returns:
@@ -173,13 +173,13 @@ class SnapshotService:
         company_id: UUID,
         db: AsyncSession = None,
     ) -> bool:
-        """Prueft ob ein Snapshot erstellt werden sollte.
+        """Prüft ob ein Snapshot erstellt werden sollte.
 
         Args:
             aggregate_type: Typ des Aggregats
             aggregate_id: ID des Aggregats
             current_sequence: Aktuelle Sequenznummer
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Datenbank-Session
 
         Returns:
@@ -210,17 +210,17 @@ class SnapshotService:
         keep_count: int = 5,
         db: AsyncSession = None,
     ) -> int:
-        """Loescht alte Snapshots und behaelt nur die neuesten.
+        """Löscht alte Snapshots und behält nur die neuesten.
 
         Args:
             aggregate_type: Typ des Aggregats
             aggregate_id: ID des Aggregats
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             keep_count: Anzahl zu behaltender Snapshots
             db: Datenbank-Session
 
         Returns:
-            Anzahl geloeschter Snapshots
+            Anzahl gelöschter Snapshots
         """
         from app.db.models import EventSnapshot
 
@@ -247,7 +247,7 @@ class SnapshotService:
         if len(snapshots) <= keep_count:
             return 0
 
-        # Alte Snapshots loeschen
+        # Alte Snapshots löschen
         to_delete = snapshots[keep_count:]
         deleted_count = 0
 

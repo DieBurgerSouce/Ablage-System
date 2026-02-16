@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Document Versioning & Digital Signatures Models fuer Ablage-System (Vision 2026).
+Document Versioning & Digital Signatures Models für Ablage-System (Vision 2026).
 
 Dokumenten-Versionierung & Digitale Signaturen mit:
-- DocumentVersion: Datei-Aenderungen mit Hash-Verifikation
+- DocumentVersion: Datei-Änderungen mit Hash-Verifikation
 - DocumentSignature: Elektronische und qualifizierte Signaturen
 - SignatureRequest: Signatur-Workflow-Management
 
-GoBD-konform: Unveraenderbarkeit durch Hash-Chain
+GoBD-konform: Unveränderbarkeit durch Hash-Chain
 
 Phase 1 der Vision 2026 Feature-Roadmap (Q1 2026).
 """
@@ -44,7 +44,7 @@ from app.db.models import Base, CrossDBJSON
 
 
 class VersionChangeType(str, Enum):
-    """Typ der Dokumentenaenderung."""
+    """Typ der Dokumentenänderung."""
     INITIAL = "initial"         # Erste Version
     EDIT = "edit"               # Manuelle Bearbeitung
     CORRECTION = "correction"   # Korrektur
@@ -67,8 +67,8 @@ class SignatureType(str, Enum):
 class VerificationStatus(str, Enum):
     """Status der Signaturverifikation."""
     PENDING = "pending"     # Noch nicht verifiziert
-    VALID = "valid"         # Gueltig
-    INVALID = "invalid"     # Ungueltig
+    VALID = "valid"         # Gültig
+    INVALID = "invalid"     # Ungültig
     EXPIRED = "expired"     # Abgelaufen
     REVOKED = "revoked"     # Widerrufen
 
@@ -90,12 +90,12 @@ class SignatureRequestStatus(str, Enum):
 
 
 class DocumentVersion(Base):
-    """Dokumentenversion - Trackt Datei-Aenderungen mit Hash-Verifikation.
+    """Dokumentenversion - Trackt Datei-Änderungen mit Hash-Verifikation.
 
     GoBD-Konformitaet:
-    - Unveraenderbarkeit: SHA-256 Hash fuer jede Version
-    - Nachvollziehbarkeit: Vollstaendige Versions-Kette
-    - Hash-Chain: previous_version_id fuer Integritaetsnachweis
+    - Unveränderbarkeit: SHA-256 Hash für jede Version
+    - Nachvollziehbarkeit: Vollständige Versions-Kette
+    - Hash-Chain: previous_version_id für Integritätsnachweis
 
     Unterschied zu OCRResultVersion:
     - OCRResultVersion: Trackt OCR-Ergebnisse
@@ -204,14 +204,14 @@ class DocumentVersion(Base):
 class DocumentSignature(Base):
     """Digitale Signatur eines Dokuments.
 
-    Unterstuetzt:
+    Unterstützt:
     - Elektronische Signaturen (SES): Einfach, schnell
     - Fortgeschrittene Signaturen (AES): Mit Zertifikat
     - Qualifizierte Signaturen (QES): Rechtlich bindend (eIDAS)
 
     GoBD-Konformitaet:
-    - Unveraenderbarkeit: Signatur bestaetigt Inhalt zum Zeitpunkt
-    - Zeitstempel: TSA-Integration fuer rechtssichere Zeitnachweise
+    - Unveränderbarkeit: Signatur bestätigt Inhalt zum Zeitpunkt
+    - Zeitstempel: TSA-Integration für rechtssichere Zeitnachweise
     """
     __tablename__ = "document_signatures"
 
@@ -347,9 +347,9 @@ class DocumentSignature(Base):
 
 
 class SignatureRequest(Base):
-    """Signaturanfrage - Workflow fuer Mehrfach-Signaturen.
+    """Signaturanfrage - Workflow für Mehrfach-Signaturen.
 
-    Unterstuetzt:
+    Unterstützt:
     - Sequentielle Signaturen (Order)
     - Parallele Signaturen
     - Externe Unterzeichner (via Token)

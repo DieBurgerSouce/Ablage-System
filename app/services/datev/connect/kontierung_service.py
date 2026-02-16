@@ -2,9 +2,9 @@
 """
 Intelligenter Kontierungsvorschlag-Service.
 
-ML-gestuetzte Kontierungsvorschlaege fuer DATEV:
-- Regelbasierte Vorschlaege (Lieferant-Historie)
-- ML-basierte Vorschlaege (Text-Analyse, Betragsklassen)
+ML-gestuetzte Kontierungsvorschläge für DATEV:
+- Regelbasierte Vorschläge (Lieferant-Historie)
+- ML-basierte Vorschläge (Text-Analyse, Betragsklassen)
 - DATEV-Kontenplan-Validierung
 - Lern-Feedback-Loop
 
@@ -35,7 +35,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class KontierungsInput:
-    """Eingabedaten fuer Kontierungsvorschlag."""
+    """Eingabedaten für Kontierungsvorschlag."""
 
     # Lieferant/Kunde
     entity_name: str = ""
@@ -76,11 +76,11 @@ class KontierungsSuggestion:
     confidence: float = 0.0
     source: str = "manual"  # rule, ml, history, manual
 
-    # Erklaerung
+    # Erklärung
     explanation: str = ""
     similar_buchungen: List[Dict[str, Any]] = field(default_factory=list)
 
-    # Alternative Vorschlaege
+    # Alternative Vorschläge
     alternatives: List["KontierungsSuggestion"] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -106,16 +106,16 @@ class KontierungsvorschlagService:
     """
     Intelligenter Kontierungsvorschlag-Service.
 
-    Kombiniert mehrere Strategien fuer optimale Vorschlaege:
+    Kombiniert mehrere Strategien für optimale Vorschläge:
     1. Exakter Match: Lieferant + Dokumenttyp aus Historie
-    2. Pattern Match: Aehnliche Buchungen nach Text-Keywords
+    2. Pattern Match: Ähnliche Buchungen nach Text-Keywords
     3. Betrags-Klassen: Standard-Konten nach Betragsbereich
     4. ML-basiert: Feature-Vektor-Matching (optional)
 
     Die Konfidenz wird aus mehreren Faktoren berechnet:
     - Historische Erfolgsquote des Patterns
-    - Anzahl aehnlicher Buchungen
-    - Match-Qualitaet (exakt vs. fuzzy)
+    - Anzahl ähnlicher Buchungen
+    - Match-Qualität (exakt vs. fuzzy)
 
     Usage:
         service = KontierungsvorschlagService()
@@ -210,7 +210,7 @@ class KontierungsvorschlagService:
         default_suggestion = self._get_default_suggestion(input_data)
         suggestions.append(default_suggestion)
 
-        # Beste Suggestion waehlen
+        # Beste Suggestion wählen
         suggestions.sort(key=lambda s: s.confidence, reverse=True)
         best = suggestions[0]
 
@@ -254,7 +254,7 @@ class KontierungsvorschlagService:
             corrected_konto: Korrigiertes Konto
             corrected_gegenkonto: Korrigiertes Gegenkonto
             corrected_bu_schluessel: Korrigierter Steuerschluessel
-            input_data: Urspruengliche Eingabedaten (fuer Pattern-Lernen)
+            input_data: Urspruengliche Eingabedaten (für Pattern-Lernen)
 
         Returns:
             True wenn erfolgreich
@@ -321,7 +321,7 @@ class KontierungsvorschlagService:
         limit: int = 5,
     ) -> List[Dict[str, Any]]:
         """
-        Findet aehnliche Buchungen zur Orientierung.
+        Findet ähnliche Buchungen zur Orientierung.
 
         Args:
             db: Datenbank-Session
@@ -331,7 +331,7 @@ class KontierungsvorschlagService:
             limit: Maximale Anzahl
 
         Returns:
-            Liste aehnlicher Buchungen
+            Liste ähnlicher Buchungen
         """
         from app.db import models
 
@@ -375,7 +375,7 @@ class KontierungsvorschlagService:
         connection_id: UUID,
     ) -> Dict[str, Any]:
         """
-        Liefert Statistiken ueber Kontierungs-Patterns.
+        Liefert Statistiken über Kontierungs-Patterns.
 
         Args:
             db: Datenbank-Session
@@ -450,7 +450,7 @@ class KontierungsvorschlagService:
         if not input_data.entity_name:
             return None
 
-        # Suche nach aehnlichen Buchungen mit gleichem Lieferanten
+        # Suche nach ähnlichen Buchungen mit gleichem Lieferanten
         # Fuzzy-Match via LIKE
         name_pattern = f"%{input_data.entity_name[:20].lower()}%"
 
@@ -478,7 +478,7 @@ class KontierungsvorschlagService:
 
         if row:
             count = row[3]
-            # Konfidenz basierend auf Anzahl aehnlicher Buchungen
+            # Konfidenz basierend auf Anzahl ähnlicher Buchungen
             confidence = min(0.95, 0.5 + (count * 0.1))
 
             return KontierungsSuggestion(
@@ -487,7 +487,7 @@ class KontierungsvorschlagService:
                 bu_schluessel=row[2] or "",
                 confidence=confidence,
                 source="history",
-                explanation=f"Basierend auf {count} aehnlichen Buchungen fuer diesen Lieferanten",
+                explanation=f"Basierend auf {count} ähnlichen Buchungen für diesen Lieferanten",
             )
 
         return None
@@ -610,7 +610,7 @@ class KontierungsvorschlagService:
             bu_schluessel=self._get_tax_code(input_data.mwst_satz),
             confidence=0.3,
             source="manual",
-            explanation="Standard-Kontierung (bitte pruefen)",
+            explanation="Standard-Kontierung (bitte prüfen)",
         )
 
     def _get_tax_code(self, mwst_satz: Optional[Decimal]) -> str:
@@ -648,7 +648,7 @@ class KontierungsvorschlagService:
             pattern.success_count += 1  # Korrektur = erfolgreiche Verwendung
             pattern.last_used_at = utc_now()
 
-            # Konten nur aktualisieren wenn sie sich geaendert haben
+            # Konten nur aktualisieren wenn sie sich geändert haben
             if pattern.konto != konto or pattern.gegenkonto != gegenkonto:
                 pattern.konto = konto
                 pattern.gegenkonto = gegenkonto
@@ -685,7 +685,7 @@ _service_lock = threading.Lock()
 
 def get_kontierung_service() -> KontierungsvorschlagService:
     """
-    Factory fuer KontierungsvorschlagService (Thread-Safe Singleton).
+    Factory für KontierungsvorschlagService (Thread-Safe Singleton).
     """
     global _kontierung_service
     if _kontierung_service is None:

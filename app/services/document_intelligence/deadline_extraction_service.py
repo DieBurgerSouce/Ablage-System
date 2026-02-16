@@ -1,7 +1,7 @@
 """Deadline Extraction Service.
 
 Automatische Extraktion von Fristen aus OCR-Text und Erstellung
-von PrivatDeadline-Eintraegen. Nutzt LLM-NER fuer intelligente
+von PrivatDeadline-Einträgen. Nutzt LLM-NER für intelligente
 Deadline-Erkennung und Klassifizierung.
 """
 
@@ -75,7 +75,7 @@ class DeadlineExtractionResult:
 
 
 class GermanDateParser:
-    """Parser fuer deutsche Datumsformate."""
+    """Parser für deutsche Datumsformate."""
 
     # Monatsnamen Deutsch -> Monatszahl
     MONTHS_DE = {
@@ -111,7 +111,7 @@ class GermanDateParser:
 
         Args:
             text: Text mit Datumsangabe
-            reference_date: Referenzdatum fuer relative Angaben
+            reference_date: Referenzdatum für relative Angaben
 
         Returns:
             Geparstes Datum oder None
@@ -165,7 +165,7 @@ class GermanDateParser:
                         year += 2000
                 else:
                     year = reference.year
-                    # Wenn Datum in Vergangenheit, naechstes Jahr
+                    # Wenn Datum in Vergangenheit, nächstes Jahr
                     if date(year, month, day) < reference:
                         year += 1
                 return date(year, month, day)
@@ -226,28 +226,28 @@ class GermanDateParser:
 class DeadlineTypeClassifier:
     """Klassifiziert Fristen basierend auf Kontext."""
 
-    # Keywords fuer Deadline-Typen
+    # Keywords für Deadline-Typen
     TYPE_KEYWORDS = {
         PrivatDeadlineType.CANCELLATION: [
-            "kuendigung",
-            "kuendig",
+            "kündigung",
+            "kündig",
             "widerspruch",
             "widerruf",
-            "kuendigungsfrist",
+            "kündigungsfrist",
             "vertragsende",
         ],
         PrivatDeadlineType.PAYMENT: [
             "zahlung",
-            "faellig",
+            "fällig",
             "zahlungsziel",
             "rechnung",
             "beitrag",
             "rate",
-            "ueberweis",
+            "überweis",
             "einzug",
         ],
         PrivatDeadlineType.RENEWAL: [
-            "verlaenger",
+            "verlänger",
             "erneuer",
             "aktualisier",
             "update",
@@ -255,7 +255,7 @@ class DeadlineTypeClassifier:
         ],
         PrivatDeadlineType.EXPIRY: [
             "ablauf",
-            "gueltig",
+            "gültig",
             "verfallen",
             "auslauf",
             "ende",
@@ -263,10 +263,10 @@ class DeadlineTypeClassifier:
             "befristet",
         ],
         PrivatDeadlineType.REVIEW: [
-            "pruef",
+            "prüf",
             "check",
             "kontroll",
-            "ueberpruef",
+            "überprüf",
             "besichtig",
             "wartung",
             "inspektion",
@@ -335,10 +335,10 @@ class DeadlineTypeClassifier:
 
 
 class DeadlineExtractionService:
-    """Service fuer automatische Deadline-Extraktion aus Dokumenten.
+    """Service für automatische Deadline-Extraktion aus Dokumenten.
 
     Extrahiert Fristen aus OCR-Text mittels LLM-NER und erstellt
-    automatisch PrivatDeadline-Eintraege.
+    automatisch PrivatDeadline-Einträge.
     """
 
     def __init__(
@@ -359,7 +359,7 @@ class DeadlineExtractionService:
         entity: ExtractedEntity,
         deadline_type: PrivatDeadlineType,
     ) -> str:
-        """Generiert einen Titel fuer die Deadline.
+        """Generiert einen Titel für die Deadline.
 
         Args:
             entity: Extrahierte Entity
@@ -370,11 +370,11 @@ class DeadlineExtractionService:
         """
         # Basis-Praefixe pro Typ
         prefixes = {
-            PrivatDeadlineType.CANCELLATION: "Kuendigungsfrist",
+            PrivatDeadlineType.CANCELLATION: "Kündigungsfrist",
             PrivatDeadlineType.PAYMENT: "Zahlungsfrist",
-            PrivatDeadlineType.RENEWAL: "Verlaengerungsfrist",
+            PrivatDeadlineType.RENEWAL: "Verlängerungsfrist",
             PrivatDeadlineType.EXPIRY: "Ablaufdatum",
-            PrivatDeadlineType.REVIEW: "Ueberpruefungstermin",
+            PrivatDeadlineType.REVIEW: "Überprüfungstermin",
             PrivatDeadlineType.CUSTOM: "Frist",
         }
 
@@ -382,7 +382,7 @@ class DeadlineExtractionService:
 
         # Versuche Kontext hinzuzufuegen
         if entity.context:
-            # Kuerze Kontext auf max 50 Zeichen
+            # Kürze Kontext auf max 50 Zeichen
             short_context = entity.context[:50].strip()
             if len(entity.context) > 50:
                 short_context = short_context.rsplit(" ", 1)[0] + "..."
@@ -399,18 +399,18 @@ class DeadlineExtractionService:
 
         Args:
             deadline_type: Typ der Deadline
-            due_date: Faelligkeitsdatum
+            due_date: Fälligkeitsdatum
 
         Returns:
-            Liste von Tagen vor Frist fuer Erinnerungen
+            Liste von Tagen vor Frist für Erinnerungen
         """
         days_until = (due_date - date.today()).days
 
         # Basis-Erinnerungen pro Typ
         type_reminders = {
-            PrivatDeadlineType.CANCELLATION: [90, 30, 14, 7],  # Wichtig: Frueh erinnern
+            PrivatDeadlineType.CANCELLATION: [90, 30, 14, 7],  # Wichtig: Früh erinnern
             PrivatDeadlineType.PAYMENT: [14, 7, 3, 1],  # Zahlungsfristen: Naeher dran
-            PrivatDeadlineType.RENEWAL: [60, 30, 7],  # Verlaengerungen: Mittelfristig
+            PrivatDeadlineType.RENEWAL: [60, 30, 7],  # Verlängerungen: Mittelfristig
             PrivatDeadlineType.EXPIRY: [30, 14, 7, 1],  # Ablauf: Standard
             PrivatDeadlineType.REVIEW: [14, 7, 1],  # Reviews: Kurz vorher
             PrivatDeadlineType.CUSTOM: [30, 7, 1],  # Standard
@@ -432,7 +432,7 @@ class DeadlineExtractionService:
         Args:
             text: Zu analysierender Text
             document_id: Optionale Dokument-ID
-            reference_date: Referenzdatum fuer relative Angaben
+            reference_date: Referenzdatum für relative Angaben
 
         Returns:
             Liste von ParsedDeadline-Objekten
@@ -470,7 +470,7 @@ class DeadlineExtractionService:
                 )
                 continue
 
-            # Nur zukuenftige Deadlines (oder heute)
+            # Nur zukünftige Deadlines (oder heute)
             if due_date < reference:
                 logger.debug(
                     "past_deadline_skipped",
@@ -531,7 +531,7 @@ class DeadlineExtractionService:
         reference_date: Optional[date] = None,
         min_confidence: float = 0.6,
     ) -> DeadlineExtractionResult:
-        """Extrahiert Deadlines und erstellt PrivatDeadline-Eintraege.
+        """Extrahiert Deadlines und erstellt PrivatDeadline-Einträge.
 
         Args:
             db: Datenbank-Session
@@ -543,8 +543,8 @@ class DeadlineExtractionService:
             insurance_id: Optionale Insurance-ID
             loan_id: Optionale Loan-ID
             created_by_id: Optionale User-ID des Erstellers
-            reference_date: Referenzdatum fuer relative Angaben
-            min_confidence: Minimale Confidence fuer Erstellung
+            reference_date: Referenzdatum für relative Angaben
+            min_confidence: Minimale Confidence für Erstellung
 
         Returns:
             DeadlineExtractionResult mit erstellten Deadline-IDs
@@ -640,7 +640,7 @@ _deadline_extraction_service_lock = threading.Lock()
 
 
 def get_deadline_extraction_service() -> DeadlineExtractionService:
-    """Gibt die Singleton-Instanz des Deadline Extraction Service zurueck.
+    """Gibt die Singleton-Instanz des Deadline Extraction Service zurück.
 
     Returns:
         DeadlineExtractionService Singleton-Instanz

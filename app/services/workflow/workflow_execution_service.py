@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Workflow Execution Service.
 
-Verwaltet die Ausfuehrung von Workflows.
+Verwaltet die Ausführung von Workflows.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ExecutionStatus(str, Enum):
-    """Status einer Workflow-Ausfuehrung."""
+    """Status einer Workflow-Ausführung."""
 
     PENDING = "pending"
     RUNNING = "running"
@@ -48,9 +48,9 @@ class ExecutionStatus(str, Enum):
 
 @dataclass
 class ExecutionContext:
-    """Kontext fuer Workflow-Ausfuehrung.
+    """Kontext für Workflow-Ausführung.
 
-    Enthaelt alle Daten, die waehrend der Ausfuehrung verfuegbar sind.
+    Enthält alle Daten, die während der Ausführung verfügbar sind.
     """
 
     execution_id: UUID
@@ -69,7 +69,7 @@ class ExecutionContext:
 
 
 class WorkflowExecutionService:
-    """Service fuer Workflow-Ausfuehrung.
+    """Service für Workflow-Ausführung.
 
     Verwaltet:
     - Workflow starten/stoppen
@@ -87,15 +87,15 @@ class WorkflowExecutionService:
         """Initialisiert den WorkflowExecutionService.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
-            step_executor: WorkflowStepExecutor fuer Step-Ausfuehrung
+            db: AsyncSession für Datenbankoperationen
+            step_executor: WorkflowStepExecutor für Step-Ausführung
         """
         self.db = db
         self.step_executor = step_executor
         self.condition_evaluator = ConditionEvaluator()
 
     def set_step_executor(self, executor: "WorkflowStepExecutor") -> None:
-        """Setzt den Step-Executor (fuer zirkulaere Abhaengigkeiten).
+        """Setzt den Step-Executor (für zirkuläre Abhängigkeiten).
 
         Args:
             executor: WorkflowStepExecutor
@@ -115,7 +115,7 @@ class WorkflowExecutionService:
         trigger_data: Optional[Dict[str, Any]] = None,
         initial_variables: Optional[Dict[str, Any]] = None,
     ) -> WorkflowExecution:
-        """Startet eine Workflow-Ausfuehrung.
+        """Startet eine Workflow-Ausführung.
 
         SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
         Company gehoeren (Multi-Tenant Isolation).
@@ -123,7 +123,7 @@ class WorkflowExecutionService:
         Args:
             workflow_id: Workflow-ID
             user_id: User-ID
-            company_id: Company-ID fuer Multi-Tenant Validierung (empfohlen)
+            company_id: Company-ID für Multi-Tenant Validierung (empfohlen)
             document_id: Optionale Dokument-ID
             trigger_data: Trigger-Daten
             initial_variables: Initiale Variablen
@@ -161,11 +161,11 @@ class WorkflowExecutionService:
         if not workflow.is_active:
             raise ValueError(f"Workflow {workflow_id} ist nicht aktiv")
 
-        # Concurrent Executions pruefen
+        # Concurrent Executions prüfen
         running_count = await self._count_running_executions(workflow_id)
         if running_count >= workflow.max_concurrent_executions:
             raise ValueError(
-                f"Max parallele Ausfuehrungen erreicht ({workflow.max_concurrent_executions})"
+                f"Max parallele Ausführungen erreicht ({workflow.max_concurrent_executions})"
             )
 
         # Dokument-Daten laden falls vorhanden
@@ -204,7 +204,7 @@ class WorkflowExecutionService:
             document_id=str(document_id) if document_id else None,
         )
 
-        # Context erstellen - SECURITY: company_id fuer Multi-Tenant Isolation im StepExecutor
+        # Context erstellen - SECURITY: company_id für Multi-Tenant Isolation im StepExecutor
         context = ExecutionContext(
             execution_id=execution.id,
             workflow_id=workflow_id,
@@ -216,7 +216,7 @@ class WorkflowExecutionService:
             variables=execution.variables or {},
         )
 
-        # Ausfuehrung starten (async)
+        # Ausführung starten (async)
         asyncio.create_task(
             self._execute_workflow(workflow, execution, context)
         )
@@ -229,7 +229,7 @@ class WorkflowExecutionService:
         execution: WorkflowExecution,
         context: ExecutionContext,
     ) -> None:
-        """Fuehrt den Workflow aus.
+        """Führt den Workflow aus.
 
         Args:
             workflow: Workflow
@@ -241,23 +241,23 @@ class WorkflowExecutionService:
             steps = sorted(workflow.steps, key=lambda s: s.step_order)
 
             if not steps:
-                # Keine Steps - direkt abschliessen
+                # Keine Steps - direkt abschließen
                 await self._complete_execution(execution, context)
                 return
 
             total_steps = len(steps)
 
-            # While-Loop fuer Branch-Navigation
+            # While-Loop für Branch-Navigation
             current_index = 0
             while current_index < total_steps:
                 step = steps[current_index]
 
-                # Abbruch pruefen
+                # Abbruch prüfen
                 if context.is_paused:
                     await self._pause_execution(execution, context, step.id)
                     return
 
-                # Execution-Status pruefen
+                # Execution-Status prüfen
                 execution = await self._refresh_execution(execution.id)
                 if execution.status in (
                     ExecutionStatus.CANCELLED.value,
@@ -274,7 +274,7 @@ class WorkflowExecutionService:
                 progress = int((current_index / total_steps) * 100)
                 await self._update_progress(execution.id, progress, step.id)
 
-                # Step ausfuehren
+                # Step ausführen
                 step_result = await self._execute_step(step, context)
 
                 if not step_result.success:
@@ -284,7 +284,7 @@ class WorkflowExecutionService:
                         step_result = await self._retry_step(step, context, step_result.retry_count + 1)
 
                     if not step_result.success:
-                        # Endgueltig fehlgeschlagen
+                        # Endgültig fehlgeschlagen
                         await self._fail_execution(execution, context, step_result.error)
                         return
 
@@ -361,7 +361,7 @@ class WorkflowExecutionService:
         step: WorkflowStep,
         context: ExecutionContext,
     ) -> "StepResult":
-        """Fuehrt einen einzelnen Step aus.
+        """Führt einen einzelnen Step aus.
 
         Args:
             step: WorkflowStep
@@ -386,11 +386,11 @@ class WorkflowExecutionService:
         await self.db.commit()
 
         try:
-            # Step via Executor ausfuehren
+            # Step via Executor ausführen
             if self.step_executor:
                 result = await self.step_executor.execute_step(step, context)
             else:
-                # Fallback: Einfache Ausfuehrung
+                # Fallback: Einfache Ausführung
                 result = StepResult(
                     success=True,
                     output={},
@@ -469,7 +469,7 @@ class WorkflowExecutionService:
         execution: WorkflowExecution,
         context: ExecutionContext,
     ) -> None:
-        """Schliesst eine Ausfuehrung erfolgreich ab.
+        """Schließt eine Ausführung erfolgreich ab.
 
         Args:
             execution: WorkflowExecution
@@ -501,7 +501,7 @@ class WorkflowExecutionService:
         context: ExecutionContext,
         error: str,
     ) -> None:
-        """Markiert eine Ausfuehrung als fehlgeschlagen.
+        """Markiert eine Ausführung als fehlgeschlagen.
 
         Args:
             execution: WorkflowExecution
@@ -535,7 +535,7 @@ class WorkflowExecutionService:
         context: ExecutionContext,
         current_step_id: UUID,
     ) -> None:
-        """Pausiert eine Ausfuehrung.
+        """Pausiert eine Ausführung.
 
         Args:
             execution: WorkflowExecution
@@ -565,7 +565,7 @@ class WorkflowExecutionService:
         self,
         execution: WorkflowExecution,
     ) -> None:
-        """Bricht eine Ausfuehrung ab.
+        """Bricht eine Ausführung ab.
 
         Args:
             execution: WorkflowExecution
@@ -634,7 +634,7 @@ class WorkflowExecutionService:
         user_id: UUID,
         company_id: Optional[UUID] = None,
     ) -> bool:
-        """Pausiert eine laufende Ausfuehrung.
+        """Pausiert eine laufende Ausführung.
 
         SECURITY: Wenn company_id angegeben wird, MUSS die Execution zu einem
         Workflow dieser Company gehoeren (Multi-Tenant Isolation).
@@ -642,7 +642,7 @@ class WorkflowExecutionService:
         Args:
             execution_id: Execution-ID
             user_id: User-ID
-            company_id: Company-ID fuer Multi-Tenant Isolation (EMPFOHLEN)
+            company_id: Company-ID für Multi-Tenant Isolation (EMPFOHLEN)
 
         Returns:
             True wenn erfolgreich
@@ -674,7 +674,7 @@ class WorkflowExecutionService:
         user_id: UUID,
         company_id: Optional[UUID] = None,
     ) -> bool:
-        """Setzt eine pausierte Ausfuehrung fort.
+        """Setzt eine pausierte Ausführung fort.
 
         SECURITY: Wenn company_id angegeben wird, MUSS die Execution zu einem
         Workflow dieser Company gehoeren (Multi-Tenant Isolation).
@@ -682,7 +682,7 @@ class WorkflowExecutionService:
         Args:
             execution_id: Execution-ID
             user_id: User-ID
-            company_id: Company-ID fuer Multi-Tenant Isolation (EMPFOHLEN)
+            company_id: Company-ID für Multi-Tenant Isolation (EMPFOHLEN)
 
         Returns:
             True wenn erfolgreich
@@ -713,7 +713,7 @@ class WorkflowExecutionService:
         await self.db.execute(stmt)
         await self.db.commit()
 
-        # Context wiederherstellen - SECURITY: company_id fuer Multi-Tenant Isolation
+        # Context wiederherstellen - SECURITY: company_id für Multi-Tenant Isolation
         document_data = None
         if execution.document_id:
             document_data = await self._load_document_data(execution.document_id)
@@ -729,7 +729,7 @@ class WorkflowExecutionService:
             variables=execution.variables or {},
         )
 
-        # Ausfuehrung fortsetzen
+        # Ausführung fortsetzen
         asyncio.create_task(
             self._execute_workflow(workflow, execution, context)
         )
@@ -747,7 +747,7 @@ class WorkflowExecutionService:
         user_id: UUID,
         company_id: Optional[UUID] = None,
     ) -> bool:
-        """Bricht eine Ausfuehrung ab.
+        """Bricht eine Ausführung ab.
 
         SECURITY: Wenn company_id angegeben wird, MUSS die Execution zu einem
         Workflow dieser Company gehoeren (Multi-Tenant Isolation).
@@ -755,7 +755,7 @@ class WorkflowExecutionService:
         Args:
             execution_id: Execution-ID
             user_id: User-ID
-            company_id: Company-ID fuer Multi-Tenant Isolation (EMPFOHLEN)
+            company_id: Company-ID für Multi-Tenant Isolation (EMPFOHLEN)
 
         Returns:
             True wenn erfolgreich
@@ -794,7 +794,7 @@ class WorkflowExecutionService:
         user_id: UUID,
         company_id: Optional[UUID] = None,
     ) -> Optional[WorkflowExecution]:
-        """Wiederholt eine fehlgeschlagene Ausfuehrung.
+        """Wiederholt eine fehlgeschlagene Ausführung.
 
         SECURITY: Wenn company_id angegeben wird, MUSS die Execution zu einem
         Workflow dieser Company gehoeren (Multi-Tenant Isolation).
@@ -802,7 +802,7 @@ class WorkflowExecutionService:
         Args:
             execution_id: Original Execution-ID
             user_id: User-ID
-            company_id: Company-ID fuer Multi-Tenant Isolation (EMPFOHLEN)
+            company_id: Company-ID für Multi-Tenant Isolation (EMPFOHLEN)
 
         Returns:
             Neue WorkflowExecution oder None
@@ -811,7 +811,7 @@ class WorkflowExecutionService:
         if not execution or execution.status != ExecutionStatus.FAILED.value:
             return None
 
-        # Neue Ausfuehrung starten (company_id weitergeben)
+        # Neue Ausführung starten (company_id weitergeben)
         return await self.start_execution(
             workflow_id=execution.workflow_id,
             user_id=user_id,
@@ -831,15 +831,15 @@ class WorkflowExecutionService:
         user_id: Optional[UUID] = None,
         company_id: Optional[UUID] = None,
     ) -> Optional[WorkflowExecution]:
-        """Holt eine Ausfuehrung mit Multi-Tenant Isolation.
+        """Holt eine Ausführung mit Multi-Tenant Isolation.
 
         SECURITY: Wenn company_id angegeben wird, MUSS die Execution zu einem
         Workflow dieser Company gehoeren (Multi-Tenant Isolation).
 
         Args:
             execution_id: Execution-ID
-            user_id: Optionale User-ID fuer Berechtigungspruefung
-            company_id: Company-ID fuer Multi-Tenant Isolation (EMPFOHLEN)
+            user_id: Optionale User-ID für Berechtigungsprüfung
+            company_id: Company-ID für Multi-Tenant Isolation (EMPFOHLEN)
 
         Returns:
             WorkflowExecution oder None
@@ -856,13 +856,13 @@ class WorkflowExecutionService:
         offset: int = 0,
         limit: int = 50,
     ) -> tuple[List[WorkflowExecution], int]:
-        """Listet Ausfuehrungen mit Multi-Tenant Isolation.
+        """Listet Ausführungen mit Multi-Tenant Isolation.
 
         SECURITY: Wenn company_id angegeben wird, werden NUR Executions von
-        Workflows dieser Company zurueckgegeben (Multi-Tenant Isolation).
+        Workflows dieser Company zurückgegeben (Multi-Tenant Isolation).
 
         Args:
-            company_id: Company-ID fuer Multi-Tenant Isolation (EMPFOHLEN)
+            company_id: Company-ID für Multi-Tenant Isolation (EMPFOHLEN)
             workflow_id: Filter nach Workflow
             user_id: Filter nach User
             status: Filter nach Status
@@ -875,8 +875,8 @@ class WorkflowExecutionService:
         """
         conditions = []
 
-        # SECURITY: company_id Filter fuer Multi-Tenant Isolation
-        # Filtert ueber Join mit Workflow-Tabelle
+        # SECURITY: company_id Filter für Multi-Tenant Isolation
+        # Filtert über Join mit Workflow-Tabelle
         if company_id:
             # Subquery: Workflow-IDs dieser Company
             workflow_subquery = (
@@ -923,15 +923,15 @@ class WorkflowExecutionService:
         user_id: Optional[UUID] = None,
         company_id: Optional[UUID] = None,
     ) -> List[WorkflowStepExecution]:
-        """Holt Step-Ausfuehrungen mit Multi-Tenant Isolation.
+        """Holt Step-Ausführungen mit Multi-Tenant Isolation.
 
         SECURITY: Wenn company_id angegeben wird, wird validiert dass die
         Execution zu einem Workflow dieser Company gehoert.
 
         Args:
             execution_id: Execution-ID
-            user_id: User-ID fuer Berechtigungspruefung
-            company_id: Company-ID fuer Multi-Tenant Isolation (EMPFOHLEN)
+            user_id: User-ID für Berechtigungsprüfung
+            company_id: Company-ID für Multi-Tenant Isolation (EMPFOHLEN)
 
         Returns:
             Liste der Step-Executions (leer bei fehlendem Zugriff)
@@ -975,7 +975,7 @@ class WorkflowExecutionService:
         Args:
             execution_id: Execution-ID
             user_id: Optionale User-ID
-            company_id: Company-ID fuer Multi-Tenant Isolation (EMPFOHLEN)
+            company_id: Company-ID für Multi-Tenant Isolation (EMPFOHLEN)
 
         Returns:
             WorkflowExecution oder None
@@ -990,7 +990,7 @@ class WorkflowExecutionService:
         result = await self.db.execute(query)
         execution = result.scalar_one_or_none()
 
-        # SECURITY: company_id Validierung ueber Workflow (Multi-Tenant Isolation)
+        # SECURITY: company_id Validierung über Workflow (Multi-Tenant Isolation)
         if execution and company_id:
             workflow_query = select(Workflow.company_id).where(
                 Workflow.id == execution.workflow_id
@@ -1014,7 +1014,7 @@ class WorkflowExecutionService:
         self,
         workflow_id: UUID,
     ) -> int:
-        """Zaehlt laufende Ausfuehrungen.
+        """Zaehlt laufende Ausführungen.
 
         Args:
             workflow_id: Workflow-ID

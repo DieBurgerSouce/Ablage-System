@@ -13,14 +13,14 @@ from ...models import ImportFormat
 
 @ParserRegistry.register
 class VolksbankCSVParser(GenericCSVParser):
-    """Parser fuer Volksbank/Raiffeisenbank CSV-Kontoauszuege."""
+    """Parser für Volksbank/Raiffeisenbank CSV-Kontoauszuege."""
 
     FORMAT = ImportFormat.CSV_VOLKSBANK
     FORMAT_VARIANT = "volksbank"
 
     @classmethod
     def can_parse(cls, content: Union[str, bytes], filename: Optional[str] = None) -> float:
-        """Pruefe auf Volksbank-Format."""
+        """Prüfe auf Volksbank-Format."""
         text = cls._decode_content(content)
         if not text:
             return 0.0
@@ -36,7 +36,7 @@ class VolksbankCSVParser(GenericCSVParser):
         ]
 
         # VR verwendet oft "Empfänger/Zahlungspflichtiger" statt "Begünstigter"
-        if "empfänger/zahlungspflichtiger" in header or "empfaenger/zahlungspflichtiger" in header:
+        if "empfänger/zahlungspflichtiger" in header or "empfänger/zahlungspflichtiger" in header:
             return 0.9
 
         matches = sum(1 for m in vr_markers if m in header)
@@ -61,9 +61,9 @@ class VolksbankCSVParser(GenericCSVParser):
                 mapping["value_date"] = field
             elif "betrag" in field_lower or "umsatz" in field_lower:
                 mapping["amount"] = field
-            elif "waehrung" in field_lower or "währung" in field_lower:
+            elif "währung" in field_lower or "währung" in field_lower:
                 mapping["currency"] = field
-            elif "empfänger" in field_lower or "empfaenger" in field_lower:
+            elif "empfänger" in field_lower or "empfänger" in field_lower:
                 mapping["counterparty_name"] = field
             elif "iban" in field_lower or "kontonummer" in field_lower:
                 mapping["counterparty_iban"] = field

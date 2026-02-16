@@ -3,7 +3,7 @@
 Consent Management database models for Ablage-System.
 
 Vision 2.0 Feature: Datenschutz-by-Design
-Unterstuetzt:
+Unterstützt:
 - Einwilligungsverwaltung (DSGVO Art. 6, 7)
 - Auftragsverarbeitung (DSGVO Art. 28)
 - Automatisierte Entscheidungen (DSGVO Art. 22)
@@ -45,12 +45,12 @@ class ConsentType(str, Enum):
     PROFILING = "profiling"                       # Profilerstellung
     AUTOMATED_DECISIONS = "automated_decisions"   # Automatisierte Entscheidungen (Art. 22)
 
-    # Geschaeftsbezogen
+    # Geschäftsbezogen
     ORDER_PROCESSING = "order_processing"         # Auftragsverarbeitung (AVV Art. 28)
     THIRD_PARTY_SHARING = "third_party_sharing"  # Weitergabe an Dritte
     TAX_ADVISOR_ACCESS = "tax_advisor_access"    # Steuerberater-Zugang
     BANK_DATA_ACCESS = "bank_data_access"        # Bankdaten-Zugang
-    CREDIT_CHECK = "credit_check"                 # Bonitaetspruefung
+    CREDIT_CHECK = "credit_check"                 # Bonitaetsprüfung
 
     # Technisch
     COOKIE_ESSENTIAL = "cookie_essential"         # Notwendige Cookies
@@ -85,20 +85,20 @@ class LegalBasis(str, Enum):
     CONTRACT = "contract"         # Art. 6(1)(b) - Vertragserfuellung
     LEGAL_OBLIGATION = "legal_obligation"  # Art. 6(1)(c) - Rechtliche Verpflichtung
     VITAL_INTERESTS = "vital_interests"    # Art. 6(1)(d) - Lebenswichtige Interessen
-    PUBLIC_INTEREST = "public_interest"    # Art. 6(1)(e) - Oeffentliches Interesse
+    PUBLIC_INTEREST = "public_interest"    # Art. 6(1)(e) - Öffentliches Interesse
     LEGITIMATE_INTEREST = "legitimate_interest"  # Art. 6(1)(f) - Berechtigtes Interesse
 
 
 class AuditAction(str, Enum):
-    """Aktionen fuer Audit-Trail."""
+    """Aktionen für Audit-Trail."""
     REQUESTED = "requested"       # Einwilligung angefragt
     GRANTED = "granted"           # Einwilligung erteilt
     DENIED = "denied"             # Einwilligung verweigert
     WITHDRAWN = "withdrawn"       # Einwilligung widerrufen
     RENEWED = "renewed"           # Einwilligung erneuert
     EXPIRED = "expired"           # Einwilligung abgelaufen
-    MODIFIED = "modified"         # Einwilligung geaendert
-    ACCESSED = "accessed"         # Einwilligung geprueft
+    MODIFIED = "modified"         # Einwilligung geändert
+    ACCESSED = "accessed"         # Einwilligung geprüft
     EXPORTED = "exported"         # Einwilligung exportiert
 
 
@@ -106,7 +106,7 @@ class ConsentRecord(Base):
     """
     Einwilligungs-Datensatz.
 
-    Speichert alle Einwilligungen mit vollstaendiger Historie.
+    Speichert alle Einwilligungen mit vollständiger Historie.
     """
     __tablename__ = "consent_records"
 
@@ -139,7 +139,7 @@ class ConsentRecord(Base):
     # Wer hat eingewilligt
     grantor_name = Column(String(200), nullable=True)  # Name der Person
     grantor_role = Column(String(100), nullable=True)  # Rolle/Position
-    grantor_email = Column(String(254), nullable=True)  # E-Mail fuer Kommunikation
+    grantor_email = Column(String(254), nullable=True)  # E-Mail für Kommunikation
 
     # Zeitstempel
     requested_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -165,11 +165,11 @@ class ConsentRecord(Base):
     scope = Column(CrossDBJSON, default=dict)
     # Beispiel: {"data_categories": ["invoices", "payments"], "purposes": ["accounting", "tax"]}
 
-    # Bedingungen und Einschraenkungen
+    # Bedingungen und Einschränkungen
     conditions = Column(Text, nullable=True)  # Textuelle Bedingungen
-    restrictions = Column(CrossDBJSON, default=list)  # Strukturierte Einschraenkungen
+    restrictions = Column(CrossDBJSON, default=list)  # Strukturierte Einschränkungen
 
-    # Version (fuer Aenderungsnachverfolgung)
+    # Version (für Änderungsnachverfolgung)
     version = Column(Integer, default=1)
     previous_version_id = Column(
         UUID(as_uuid=True),
@@ -211,7 +211,7 @@ class ConsentRecord(Base):
 
     @property
     def is_valid(self) -> bool:
-        """Pruefe ob Einwilligung aktuell gueltig ist."""
+        """Prüfe ob Einwilligung aktuell gültig ist."""
         if self.status != ConsentStatus.GRANTED.value:
             return False
         if self.expires_at and datetime.utcnow() > self.expires_at:
@@ -306,7 +306,7 @@ class DataProcessingAgreement(Base):
     subprocessors = Column(CrossDBJSON, default=list)
     # Beispiel: [{"name": "AWS", "country": "DE", "purpose": "Hosting"}]
 
-    # Internationale Uebermittlung
+    # Internationale Übermittlung
     international_transfer = Column(Boolean, default=False)
     transfer_mechanisms = Column(CrossDBJSON, default=list)
     # Beispiel: ["EU-US DPF", "SCCs"]
@@ -326,7 +326,7 @@ class DataProcessingAgreement(Base):
         nullable=True,
     )
 
-    # Kuendigungsdetails
+    # Kündigungsdetails
     terminated_at = Column(DateTime(timezone=True), nullable=True)
     termination_reason = Column(Text, nullable=True)
 
@@ -357,7 +357,7 @@ class DataProcessingAgreement(Base):
 
     @property
     def is_active(self) -> bool:
-        """Pruefe ob AVV aktiv ist."""
+        """Prüfe ob AVV aktiv ist."""
         if self.status != "active":
             return False
         if self.expiration_date and date.today() > self.expiration_date:
@@ -406,9 +406,9 @@ class DataProcessingAgreement(Base):
 
 class ConsentAuditLog(Base):
     """
-    Audit-Trail fuer Einwilligungen.
+    Audit-Trail für Einwilligungen.
 
-    Dokumentiert alle Aktionen an Einwilligungen fuer Compliance.
+    Dokumentiert alle Aktionen an Einwilligungen für Compliance.
     """
     __tablename__ = "consent_audit_logs"
 
@@ -425,13 +425,13 @@ class ConsentAuditLog(Base):
     # Aktion
     action = Column(String(30), nullable=False, index=True)
 
-    # Wer hat die Aktion ausgefuehrt
+    # Wer hat die Aktion ausgeführt
     performed_by_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    performed_by_name = Column(String(200), nullable=True)  # Fallback wenn User geloescht
+    performed_by_name = Column(String(200), nullable=True)  # Fallback wenn User gelöscht
     performed_by_role = Column(String(100), nullable=True)
 
     # Zeitstempel
@@ -440,7 +440,7 @@ class ConsentAuditLog(Base):
     # Details zur Aktion
     old_value = Column(CrossDBJSON, default=dict)  # Vorheriger Zustand
     new_value = Column(CrossDBJSON, default=dict)  # Neuer Zustand
-    changes = Column(CrossDBJSON, default=dict)    # Was wurde geaendert
+    changes = Column(CrossDBJSON, default=dict)    # Was wurde geändert
 
     # Technische Details
     ip_address = Column(String(45), nullable=True)
@@ -486,9 +486,9 @@ class ConsentAuditLog(Base):
 
 class RetentionPolicy(Base):
     """
-    Aufbewahrungsrichtlinie fuer Datenminimierung.
+    Aufbewahrungsrichtlinie für Datenminimierung.
 
-    Definiert Loeschfristen nach Dokumenttyp und Kategorie.
+    Definiert Löschfristen nach Dokumenttyp und Kategorie.
     """
     __tablename__ = "retention_policies"
 
@@ -504,7 +504,7 @@ class RetentionPolicy(Base):
 
     # Aufbewahrungsdauer
     retention_days = Column(Integer, nullable=False)
-    # Beispiel: 3650 (10 Jahre fuer Buchhaltung)
+    # Beispiel: 3650 (10 Jahre für Buchhaltung)
 
     # Rechtsgrundlage
     legal_basis = Column(String(255), nullable=True)
@@ -518,7 +518,7 @@ class RetentionPolicy(Base):
     exceptions = Column(CrossDBJSON, default=list)
     # Beispiel: ["ongoing_legal_dispute", "tax_audit"]
 
-    # Benachrichtigung vor Loeschung
+    # Benachrichtigung vor Löschung
     notify_days_before = Column(Integer, default=30)
     notify_emails = Column(CrossDBJSON, default=list)
 

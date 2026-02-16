@@ -2,7 +2,7 @@
 """
 OCR Template Auto-Generation API.
 
-Endpunkte fuer automatische Template-Erkennung und -Generierung.
+Endpunkte für automatische Template-Erkennung und -Generierung.
 """
 
 from typing import List, Optional
@@ -37,7 +37,7 @@ class TemplateCandidateResponse(BaseModel):
 
 class AutoGenerateRequest(BaseModel):
     entity_id: str = Field(..., description="Lieferanten-Entity-ID")
-    document_ids: List[str] = Field(..., min_length=3, description="Dokument-IDs fuer Template-Generierung")
+    document_ids: List[str] = Field(..., min_length=3, description="Dokument-IDs für Template-Generierung")
     name: Optional[str] = Field(None, description="Optionaler Template-Name")
 
 
@@ -62,7 +62,7 @@ async def list_template_candidates(
     company_id: UUID = Depends(get_company_id),
     current_user: User = Depends(get_current_user),
 ):
-    """Liste aller Template-Kandidaten (Lieferanten mit genug aehnlichen Dokumenten)."""
+    """Liste aller Template-Kandidaten (Lieferanten mit genug ähnlichen Dokumenten)."""
     service = get_auto_template_service()
     candidates = await service.list_candidates(db, company_id)
     return [
@@ -86,13 +86,13 @@ async def detect_template_candidate(
     company_id: UUID = Depends(get_company_id),
     current_user: User = Depends(get_current_user),
 ):
-    """Pruefe ob ein Lieferant ein Template-Kandidat ist."""
+    """Prüfe ob ein Lieferant ein Template-Kandidat ist."""
     service = get_auto_template_service()
     candidate = await service.detect_template_candidate(db, entity_id, company_id)
     if not candidate:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Nicht genug Dokumente fuer Template-Erkennung",
+            detail="Nicht genug Dokumente für Template-Erkennung",
         )
     return TemplateCandidateResponse(
         entity_id=str(candidate.entity_id),
@@ -112,7 +112,7 @@ async def auto_generate_template(
     company_id: UUID = Depends(get_company_id),
     current_user: User = Depends(get_current_user),
 ):
-    """Generiere automatisch ein Template aus aehnlichen Dokumenten."""
+    """Generiere automatisch ein Template aus ähnlichen Dokumenten."""
     service = get_auto_template_service()
     try:
         template = await service.generate_template(

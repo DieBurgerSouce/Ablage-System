@@ -1,11 +1,11 @@
 """
 Predictive Cash-Flow API Endpoints.
 
-API fuer ML-basierte Cashflow-Vorhersagen.
+API für ML-basierte Cashflow-Vorhersagen.
 
 Endpoints:
 - GET /cashflow/forecast - Liquiditaetsprognose
-- GET /cashflow/predict/{invoice_id} - Zahlungsvorhersage fuer Rechnung
+- GET /cashflow/predict/{invoice_id} - Zahlungsvorhersage für Rechnung
 - GET /cashflow/recommendations - Zahlungsempfehlungen
 - POST /cashflow/scenario - What-If Szenario-Analyse
 
@@ -33,7 +33,7 @@ router = APIRouter(prefix="/cashflow", tags=["Predictive Cash-Flow"])
 
 
 class PaymentPredictionResponse(BaseModel):
-    """Zahlungsvorhersage fuer eine Rechnung."""
+    """Zahlungsvorhersage für eine Rechnung."""
     invoice_id: str
     predicted_date: str
     predicted_days: int
@@ -43,7 +43,7 @@ class PaymentPredictionResponse(BaseModel):
 
 
 class ForecastDayResponse(BaseModel):
-    """Prognose fuer einen Tag."""
+    """Prognose für einen Tag."""
     date: str
     inflows: float
     outflows: float
@@ -89,7 +89,7 @@ class PaymentRecommendationResponse(BaseModel):
 
 
 class ScenarioRequest(BaseModel):
-    """Request fuer Szenario-Analyse."""
+    """Request für Szenario-Analyse."""
     scenario_type: str = Field(
         ...,
         pattern="^(delayed_payments|large_expense|revenue_drop)$",
@@ -118,7 +118,7 @@ class ScenarioResponse(BaseModel):
     "/forecast",
     response_model=LiquidityForecastResponse,
     summary="Liquiditaetsprognose",
-    description="Erstellt eine Liquiditaetsprognose fuer die naechsten X Tage.",
+    description="Erstellt eine Liquiditaetsprognose für die nächsten X Tage.",
 )
 async def get_liquidity_forecast(
     days: int = Query(30, ge=7, le=90, description="Prognosezeitraum in Tagen"),
@@ -156,14 +156,14 @@ async def get_liquidity_forecast(
     "/predict/{invoice_id}",
     response_model=PaymentPredictionResponse,
     summary="Zahlungsvorhersage",
-    description="Vorhersage des Zahlungseingangs fuer eine Rechnung.",
+    description="Vorhersage des Zahlungseingangs für eine Rechnung.",
 )
 async def predict_payment(
     invoice_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Vorhersage fuer eine einzelne Rechnung."""
+    """Vorhersage für eine einzelne Rechnung."""
     service = PredictiveCashFlowService(db)
     prediction = await service.predict_payment_date(invoice_id)
 
@@ -180,7 +180,7 @@ async def predict_payment(
     "/recommendations",
     response_model=List[PaymentRecommendationResponse],
     summary="Zahlungsempfehlungen",
-    description="Empfehlungen fuer optimale Zahlungszeitpunkte.",
+    description="Empfehlungen für optimale Zahlungszeitpunkte.",
 )
 async def get_payment_recommendations(
     current_user: User = Depends(get_current_user),
@@ -205,14 +205,14 @@ async def get_payment_recommendations(
     "/scenario",
     response_model=ScenarioResponse,
     summary="Szenario-Analyse",
-    description="What-If Szenario-Analyse fuer Liquiditaetsplanung.",
+    description="What-If Szenario-Analyse für Liquiditaetsplanung.",
 )
 async def run_scenario(
     request: ScenarioRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Fuehre What-If Szenario aus."""
+    """Führe What-If Szenario aus."""
     if not current_user.current_company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

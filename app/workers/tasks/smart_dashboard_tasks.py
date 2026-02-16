@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Celery Tasks fuer Smart Dashboard.
+Celery Tasks für Smart Dashboard.
 
-Periodische Tasks fuer:
+Periodische Tasks für:
 - KPI-Aktualisierung (alle 30 Sekunden)
-- Taegliche Trend-Berechnung
+- Tägliche Trend-Berechnung
 - Bereinigung alter Progress-Tracker
 
 Feinpoliert und durchdacht - Enterprise Dashboard Background Tasks.
@@ -30,9 +30,9 @@ logger = structlog.get_logger(__name__)
     time_limit=30,
 )
 def refresh_kpis_task(self) -> dict:
-    """KPIs fuer alle Firmen aktualisieren.
+    """KPIs für alle Firmen aktualisieren.
 
-    Laeuft alle 30 Sekunden und berechnet aktuelle KPI-Werte
+    Läuft alle 30 Sekunden und berechnet aktuelle KPI-Werte
     aus den Datenbank-Tabellen.
 
     Returns:
@@ -131,9 +131,9 @@ def refresh_kpis_task(self) -> dict:
     time_limit=180,
 )
 def calculate_daily_trends_task(self) -> dict:
-    """Taegliche KPI-Trend-Berechnung.
+    """Tägliche KPI-Trend-Berechnung.
 
-    Laeuft einmal taeglich und berechnet KPI-Trends
+    Läuft einmal täglich und berechnet KPI-Trends
     im Vergleich zur Vorperiode.
 
     Returns:
@@ -204,7 +204,7 @@ def calculate_daily_trends_task(self) -> dict:
 def cleanup_completed_trackers_task(self, older_than_days: int = 7) -> dict:
     """Alte abgeschlossene Progress-Tracker bereinigen.
 
-    Laeuft taeglich und entfernt Tracker fuer Dokumente
+    Läuft täglich und entfernt Tracker für Dokumente
     die vor mehr als X Tagen fertig verarbeitet wurden.
 
     Args:
@@ -265,7 +265,7 @@ async def _calculate_company_kpis(
     company_id: "UUID",
     now: "datetime",
 ) -> dict:
-    """KPIs fuer eine einzelne Firma berechnen.
+    """KPIs für eine einzelne Firma berechnen.
 
     Args:
         db: Async Datenbank-Session
@@ -280,7 +280,7 @@ async def _calculate_company_kpis(
     kpis: dict = {}
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Offene Rechnungen zaehlen
+    # Offene Rechnungen zählen
     try:
         inv_count_result = await db.execute(text(
             "SELECT COUNT(*), COALESCE(SUM(total_amount), 0) "
@@ -296,7 +296,7 @@ async def _calculate_company_kpis(
         kpis["open_invoices_total"] = {"value": 0.0, "unit": "count"}
         kpis["open_invoices_amount"] = {"value": 0.0, "unit": "EUR"}
 
-    # Ueberfaellige Rechnungen
+    # Überfällige Rechnungen
     try:
         overdue_result = await db.execute(text(
             "SELECT COUNT(*), COALESCE(SUM(total_amount), 0) "
@@ -332,7 +332,7 @@ async def _calculate_company_kpis(
         queue_result = await db.execute(text(
             "SELECT COUNT(*) FROM document_progress_trackers "
             "WHERE company_id = :cid "
-            "AND current_step IN ('ocr_warteschlange', 'ocr_laeuft')"
+            "AND current_step IN ('ocr_warteschlange', 'ocr_läuft')"
         ), {"cid": company_id})
         row = queue_result.fetchone()
         kpis["ocr_queue_length"] = {

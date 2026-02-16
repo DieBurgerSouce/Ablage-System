@@ -1,4 +1,4 @@
-"""Scanner API - Geraeteverwaltung und Scan-Auftraege."""
+"""Scanner API - Geraeteverwaltung und Scan-Aufträge."""
 
 from typing import Optional, List
 from uuid import UUID
@@ -135,7 +135,7 @@ async def list_scan_jobs(
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Listet Scan-Auftraege."""
+    """Listet Scan-Aufträge."""
     jobs = _scanner_service.list_jobs(str(current_user.company_id), limit=limit)
     return [_job_to_response(j) for j in jobs]
 

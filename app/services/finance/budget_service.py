@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-BudgetService - Budgetierung & Controlling fuer Ablage-System.
+BudgetService - Budgetierung & Controlling für Ablage-System.
 
 Implementiert:
-- CRUD fuer Budgets, Budget-Positionen, Kostenstellen
+- CRUD für Budgets, Budget-Positionen, Kostenstellen
 - Automatische Kategorisierung aus OCR-extrahierten Daten
 - Soll/Ist-Vergleiche mit Abweichungsanalysen
-- Alert-System bei Budget-Ueberschreitung
+- Alert-System bei Budget-Überschreitung
 - Drill-Down Berichte
 
 Phase 2.1 der Feature-Roadmap (Januar 2026).
@@ -52,7 +52,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class KostenstelleCreateRequest:
-    """Request fuer Kostenstellen-Erstellung."""
+    """Request für Kostenstellen-Erstellung."""
     code: str
     name: str
     company_id: uuid.UUID
@@ -67,7 +67,7 @@ class KostenstelleCreateRequest:
 
 @dataclass
 class BudgetCreateRequest:
-    """Request fuer Budget-Erstellung."""
+    """Request für Budget-Erstellung."""
     name: str
     company_id: uuid.UUID
     period_type: BudgetPeriodType
@@ -88,7 +88,7 @@ class BudgetCreateRequest:
 
 @dataclass
 class BudgetLineCreateRequest:
-    """Request fuer Budget-Position-Erstellung."""
+    """Request für Budget-Position-Erstellung."""
     budget_id: uuid.UUID
     name: str
     category: str
@@ -103,7 +103,7 @@ class BudgetLineCreateRequest:
 
 @dataclass
 class AllocationCreateRequest:
-    """Request fuer Budget-Zuordnung."""
+    """Request für Budget-Zuordnung."""
     budget_id: uuid.UUID
     budget_line_id: uuid.UUID
     amount: Decimal
@@ -123,7 +123,7 @@ class AllocationCreateRequest:
 
 @dataclass
 class BudgetFilter:
-    """Filter fuer Budget-Abfragen."""
+    """Filter für Budget-Abfragen."""
     company_id: uuid.UUID
     year: Optional[int] = None
     quarter: Optional[int] = None
@@ -189,7 +189,7 @@ class CategoryMatchResult:
 
 
 class BudgetService:
-    """Service fuer Budget-Verwaltung und Controlling."""
+    """Service für Budget-Verwaltung und Controlling."""
 
     def __init__(self):
         self._category_cache: Dict[str, BudgetCategory] = {}
@@ -206,7 +206,7 @@ class BudgetService:
         request: KostenstelleCreateRequest,
     ) -> Kostenstelle:
         """Erstellt eine neue Kostenstelle."""
-        # Pruefe auf doppelten Code
+        # Prüfe auf doppelten Code
         existing = await db.execute(
             select(Kostenstelle).where(
                 and_(
@@ -286,7 +286,7 @@ class BudgetService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[Dict[str, Any]]:
-        """Gibt hierarchische Kostenstellenstruktur zurueck."""
+        """Gibt hierarchische Kostenstellenstruktur zurück."""
         kostenstellen = await db.execute(
             select(Kostenstelle)
             .where(
@@ -424,7 +424,7 @@ class BudgetService:
         db: AsyncSession,
         budget_id: uuid.UUID,
     ) -> Optional[BudgetSummary]:
-        """Gibt Zusammenfassung eines Budgets zurueck."""
+        """Gibt Zusammenfassung eines Budgets zurück."""
         budget = await self.get_budget(db, budget_id, include_lines=True)
         if not budget:
             return None
@@ -491,7 +491,7 @@ class BudgetService:
         db: AsyncSession,
         budget_id: uuid.UUID,
     ) -> Budget:
-        """Schliesst ein Budget ab."""
+        """Schließt ein Budget ab."""
         budget = await db.get(Budget, budget_id)
         if not budget:
             raise ValueError(f"Budget {budget_id} nicht gefunden")
@@ -758,7 +758,7 @@ class BudgetService:
         user_id: Optional[uuid.UUID] = None,
     ) -> Optional[BudgetAllocation]:
         """Ordnet ein Dokument automatisch einem Budget zu."""
-        # Finde aktives Budget fuer die Periode
+        # Finde aktives Budget für die Periode
         doc_date = extracted_data.get("document_date") or date.today()
         if isinstance(doc_date, str):
             doc_date = datetime.fromisoformat(doc_date).date()
@@ -839,7 +839,7 @@ class BudgetService:
         db: AsyncSession,
         budget_id: uuid.UUID,
     ) -> BudgetVarianceReport:
-        """Generiert Abweichungsbericht fuer ein Budget."""
+        """Generiert Abweichungsbericht für ein Budget."""
         budget = await self.get_budget(db, budget_id, include_lines=True)
         if not budget:
             raise ValueError(f"Budget {budget_id} nicht gefunden")
@@ -902,16 +902,16 @@ class BudgetService:
             # Generiere Empfehlungen
             if variance_percent > 20:
                 recommendations.append(
-                    f"Position '{line.name}' liegt {variance_percent:.1f}% ueber Budget. "
-                    f"Pruefung empfohlen."
+                    f"Position '{line.name}' liegt {variance_percent:.1f}% über Budget. "
+                    f"Prüfung empfohlen."
                 )
             elif variance_percent < -30 and budget.status == BudgetStatus.ACTIVE:
                 recommendations.append(
                     f"Position '{line.name}' ist nur zu {100 + variance_percent:.1f}% ausgeschoepft. "
-                    f"Budget-Umverteilung moeglich."
+                    f"Budget-Umverteilung möglich."
                 )
 
-        # Konvertiere Decimals zu floats fuer JSON
+        # Konvertiere Decimals zu floats für JSON
         for cat_data in by_category.values():
             cat_data["planned"] = float(cat_data["planned"])
             cat_data["actual"] = float(cat_data["actual"])
@@ -950,7 +950,7 @@ class BudgetService:
         budget: Budget,
         line: BudgetLine,
     ) -> Optional[BudgetAlert]:
-        """Prueft auf Budget-Ueberschreitungen und erstellt Alerts."""
+        """Prüft auf Budget-Überschreitungen und erstellt Alerts."""
         utilization = line.utilization_percent
 
         # Bestimme Severity
@@ -970,7 +970,7 @@ class BudgetService:
         if not severity:
             return None
 
-        # Pruefe ob Alert bereits existiert
+        # Prüfe ob Alert bereits existiert
         existing = await db.execute(
             select(BudgetAlert).where(
                 and_(
@@ -1022,20 +1022,20 @@ class BudgetService:
         """Generiert Alert-Nachricht."""
         if severity == AlertSeverity.EXCEEDED:
             return (
-                f"Budget fuer '{line.name}' wurde ueberschritten. "
+                f"Budget für '{line.name}' wurde überschritten. "
                 f"Ist: {line.actual_amount:.2f} EUR, "
                 f"Soll: {line.planned_amount:.2f} EUR "
                 f"({utilization:.1f}% Auslastung)"
             )
         elif severity == AlertSeverity.CRITICAL:
             return (
-                f"Budget fuer '{line.name}' ist kritisch. "
+                f"Budget für '{line.name}' ist kritisch. "
                 f"Aktuelle Auslastung: {utilization:.1f}%. "
                 f"Verbleibend: {line.remaining_amount:.2f} EUR"
             )
         else:
             return (
-                f"Budget fuer '{line.name}' naehert sich der Grenze. "
+                f"Budget für '{line.name}' naehert sich der Grenze. "
                 f"Aktuelle Auslastung: {utilization:.1f}%. "
                 f"Verbleibend: {line.remaining_amount:.2f} EUR"
             )
@@ -1046,7 +1046,7 @@ class BudgetService:
         alert_id: uuid.UUID,
         user_id: uuid.UUID,
     ) -> BudgetAlert:
-        """Bestaetigt einen Budget-Alert."""
+        """Bestätigt einen Budget-Alert."""
         alert = await db.get(BudgetAlert, alert_id)
         if not alert:
             raise ValueError(f"Alert {alert_id} nicht gefunden")
@@ -1072,7 +1072,7 @@ class BudgetService:
         company_id: uuid.UUID,
         severity: Optional[AlertSeverity] = None,
     ) -> List[BudgetAlert]:
-        """Listet unbestaetigte Alerts."""
+        """Listet unbestätigte Alerts."""
         query = (
             select(BudgetAlert)
             .join(Budget)
@@ -1122,7 +1122,7 @@ class BudgetService:
         company_id: uuid.UUID,
         target_date: date,
     ) -> Optional[Budget]:
-        """Findet aktives Budget fuer ein Datum."""
+        """Findet aktives Budget für ein Datum."""
         result = await db.execute(
             select(Budget).where(
                 and_(

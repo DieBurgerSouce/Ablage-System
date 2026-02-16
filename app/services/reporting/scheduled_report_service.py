@@ -2,8 +2,8 @@
 """
 Scheduled Report Service.
 
-Verwaltet geplante Ausfuehrungen von Ad-Hoc Reports.
-Unterstuetzt taegliche, woechentliche und monatliche Zeitplaene.
+Verwaltet geplante Ausführungen von Ad-Hoc Reports.
+Unterstützt tägliche, woechentliche und monatliche Zeitplaene.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ScheduledReportService:
-    """Service fuer geplante Report-Ausfuehrungen."""
+    """Service für geplante Report-Ausführungen."""
 
     # ------------------------------------------------------------------
     # CRUD
@@ -45,18 +45,18 @@ class ScheduledReportService:
         day_of_week: Optional[int] = None,
         day_of_month: Optional[int] = None,
     ) -> ScheduledReport:
-        """Erstellt einen neuen Zeitplan fuer einen Report.
+        """Erstellt einen neuen Zeitplan für einen Report.
 
         Args:
             report_id: ID des Ad-Hoc Reports
             company_id: Mandanten-ID
             user_id: Ersteller-ID
             frequency: daily|weekly|monthly
-            recipients: Liste der E-Mail-Empfaenger
+            recipients: Liste der E-Mail-Empfänger
             export_format: pdf|excel|csv
             time_of_day: Uhrzeit im Format "HH:MM"
-            day_of_week: 0=Montag bis 6=Sonntag (nur fuer weekly)
-            day_of_month: 1-28 (nur fuer monthly)
+            day_of_week: 0=Montag bis 6=Sonntag (nur für weekly)
+            day_of_month: 1-28 (nur für monthly)
 
         Returns:
             Erstellter ScheduledReport
@@ -64,16 +64,16 @@ class ScheduledReportService:
         # Validate frequency
         valid_frequencies = {f.value for f in ScheduleFrequency}
         if frequency not in valid_frequencies:
-            raise ValueError(f"Ungueltige Frequenz: {frequency}. Erlaubt: {valid_frequencies}")
+            raise ValueError(f"Ungültige Frequenz: {frequency}. Erlaubt: {valid_frequencies}")
 
         # Validate export format
         valid_formats = {f.value for f in ExportFormat}
         if export_format not in valid_formats:
-            raise ValueError(f"Ungueltiges Format: {export_format}. Erlaubt: {valid_formats}")
+            raise ValueError(f"Ungültiges Format: {export_format}. Erlaubt: {valid_formats}")
 
         # Validate time_of_day format
         if not self._validate_time_format(time_of_day):
-            raise ValueError(f"Ungueltiges Zeitformat: {time_of_day}. Erwartet: HH:MM")
+            raise ValueError(f"Ungültiges Zeitformat: {time_of_day}. Erwartet: HH:MM")
 
         # Validate day_of_week for weekly
         if frequency == ScheduleFrequency.WEEKLY.value:
@@ -91,7 +91,7 @@ class ScheduledReportService:
 
         # Validate recipients
         if not recipients:
-            raise ValueError("Mindestens ein Empfaenger ist erforderlich")
+            raise ValueError("Mindestens ein Empfänger ist erforderlich")
 
         # Calculate next execution time
         next_send_at = self.calculate_next_send_at(
@@ -178,7 +178,7 @@ class ScheduledReportService:
         schedule_id: uuid.UUID,
         company_id: uuid.UUID,
     ) -> bool:
-        """Loescht einen Zeitplan."""
+        """Löscht einen Zeitplan."""
         result = await db.execute(
             select(ScheduledReport).where(
                 and_(
@@ -221,7 +221,7 @@ class ScheduledReportService:
         report_id: Optional[uuid.UUID] = None,
         limit: int = 100,
     ) -> List[ScheduledReport]:
-        """Listet Zeitplaene fuer ein Unternehmen auf."""
+        """Listet Zeitplaene für ein Unternehmen auf."""
         stmt = select(ScheduledReport).where(
             ScheduledReport.company_id == company_id,
         )
@@ -237,7 +237,7 @@ class ScheduledReportService:
     # ------------------------------------------------------------------
 
     async def get_due_schedules(self, db: AsyncSession) -> List[ScheduledReport]:
-        """Findet alle faelligen Zeitplaene.
+        """Findet alle fälligen Zeitplaene.
 
         Returns:
             Liste der ScheduledReports, deren next_send_at <= jetzt ist.
@@ -259,7 +259,7 @@ class ScheduledReportService:
         db: AsyncSession,
         schedule: ScheduledReport,
     ) -> None:
-        """Markiert einen Zeitplan als gesendet und berechnet den naechsten Zeitpunkt."""
+        """Markiert einen Zeitplan als gesendet und berechnet den nächsten Zeitpunkt."""
         now = datetime.now(timezone.utc)
         schedule.last_sent_at = now
         schedule.next_send_at = self.calculate_next_send_at(
@@ -277,16 +277,16 @@ class ScheduledReportService:
         day_of_week: Optional[int] = None,
         day_of_month: Optional[int] = None,
     ) -> datetime:
-        """Berechnet den naechsten Ausfuehrungszeitpunkt.
+        """Berechnet den nächsten Ausführungszeitpunkt.
 
         Args:
             frequency: daily|weekly|monthly
             time_of_day: "HH:MM"
-            day_of_week: 0-6 (nur fuer weekly)
-            day_of_month: 1-28 (nur fuer monthly)
+            day_of_week: 0-6 (nur für weekly)
+            day_of_month: 1-28 (nur für monthly)
 
         Returns:
-            datetime (UTC) des naechsten Ausfuehrungszeitpunkts
+            datetime (UTC) des nächsten Ausführungszeitpunkts
         """
         now = datetime.now(timezone.utc)
         hour, minute = self._parse_time(time_of_day)

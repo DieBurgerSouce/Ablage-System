@@ -18,7 +18,7 @@ from app.db.models import Base, CrossDBJSON
 
 
 class WorkflowType(str, Enum):
-    """Verfuegbare Workflow-Typen."""
+    """Verfügbare Workflow-Typen."""
     DOCUMENT = "document"       # Standard-Dokumentenworkflow
     INVOICE = "invoice"         # Rechnungsworkflow
     CONTRACT = "contract"       # Vertragsworkflow
@@ -26,7 +26,7 @@ class WorkflowType(str, Enum):
 
 
 class ItemPriority(str, Enum):
-    """Prioritaetsstufen."""
+    """Prioritätsstufen."""
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -35,20 +35,20 @@ class ItemPriority(str, Enum):
 
 class WorkflowStage(Base):
     """
-    Workflow-Stage fuer Kanban-Board.
+    Workflow-Stage für Kanban-Board.
 
-    Stages sind die Spalten auf einem Kanban-Board (z.B. "Eingang", "Pruefung", "Archiv").
-    Pro Company und Workflow-Type koennen unterschiedliche Stage-Konfigurationen existieren.
+    Stages sind die Spalten auf einem Kanban-Board (z.B. "Eingang", "Prüfung", "Archiv").
+    Pro Company und Workflow-Type können unterschiedliche Stage-Konfigurationen existieren.
     """
     __tablename__ = "workflow_stages"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
     workflow_type = Column(String(30), nullable=False)
-    stage_key = Column(String(50), nullable=False, comment="Eindeutiger Key (z.B. 'eingang', 'pruefung')")
+    stage_key = Column(String(50), nullable=False, comment="Eindeutiger Key (z.B. 'eingang', 'prüfung')")
     stage_name = Column(String(100), nullable=False, comment="Deutsche Anzeige-Bezeichnung")
     stage_order = Column(Integer, nullable=False, comment="Reihenfolge der Stage (1, 2, 3, ...)")
-    color = Column(String(20), default="#6B7280", comment="Hex-Farbe fuer UI")
+    color = Column(String(20), default="#6B7280", comment="Hex-Farbe für UI")
     icon = Column(String(50), nullable=True, comment="Lucide Icon-Name")
     is_final = Column(Boolean, default=False, comment="Ist dies die finale Stage?")
     auto_transition_after_hours = Column(Integer, nullable=True, comment="Auto-Weiterleitung nach N Stunden")
@@ -70,8 +70,8 @@ class DocumentWorkflowItem(Base):
     """
     Dokument-Position auf einem Kanban-Board.
 
-    Verknuepft ein Dokument mit einer Workflow-Stage und trackt
-    Prioritaet, Zuweisung und Notizen.
+    Verknüpft ein Dokument mit einer Workflow-Stage und trackt
+    Priorität, Zuweisung und Notizen.
     """
     __tablename__ = "document_workflow_items"
 
@@ -83,9 +83,9 @@ class DocumentWorkflowItem(Base):
     previous_stage_id = Column(UUID(as_uuid=True), ForeignKey("workflow_stages.id", ondelete="SET NULL"), nullable=True)
     entered_stage_at = Column(DateTime(timezone=True), server_default=func.now(), comment="Wann in aktuelle Stage gewechselt")
     assigned_to = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, comment="Zugewiesener Bearbeiter")
-    priority = Column(String(20), default="normal", comment="Prioritaet (low, normal, high, urgent)")
+    priority = Column(String(20), default="normal", comment="Priorität (low, normal, high, urgent)")
     notes = Column(Text, nullable=True, comment="Notizen zum Workflow-Item")
-    metadata_json = Column(CrossDBJSON, nullable=True, comment="Zusaetzliche Metadaten")
+    metadata_json = Column(CrossDBJSON, nullable=True, comment="Zusätzliche Metadaten")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

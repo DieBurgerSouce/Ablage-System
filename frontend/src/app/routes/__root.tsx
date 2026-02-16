@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createRootRoute, Outlet, useLocation, Navigate } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -26,6 +26,9 @@ import { SkipLinks } from '@/components/SkipLinks'
 // Phase 6: Session resume tracking + page transitions
 import { pageTransition } from '@/lib/animations'
 import { useSessionResume } from '@/hooks/use-session-resume'
+// Phase 7.1: KI-Chat Assistent (RAG slide-out panel)
+import { ChatPanel } from '@/features/ki-chat'
+import { Bot } from 'lucide-react'
 
 export const Route = createRootRoute({
     component: RootComponent,
@@ -35,6 +38,7 @@ function RootComponent() {
     const { isAuthenticated, isLoading } = useAuth()
     const location = useLocation()
     const { recordVisit } = useSessionResume()
+    const [kiChatOpen, setKiChatOpen] = useState(false)
 
     // Feature 9: WebSocket-Verbindung automatisch bei Auth herstellen
     useWebSocketInit()
@@ -97,9 +101,24 @@ function RootComponent() {
                         <SessionExpiredModal />
                         <Toaster />
                         <NotificationToastProvider />
+                        {/* Phase 7.1: KI-Chat Assistent (RAG slide-out) */}
+                        <KiChatFab onClick={() => setKiChatOpen(true)} />
+                        <ChatPanel open={kiChatOpen} onOpenChange={setKiChatOpen} />
                     </GlobalShortcutsProvider>
                 </TourProvider>
             </UndoProvider>
         </ErrorBoundary>
+    )
+}
+
+function KiChatFab({ onClick }: { onClick: () => void }) {
+    return (
+        <button
+            onClick={onClick}
+            className="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 flex items-center justify-center transition-transform hover:scale-105"
+            aria-label="KI-Assistent oeffnen"
+        >
+            <Bot className="h-5 w-5" />
+        </button>
     )
 }

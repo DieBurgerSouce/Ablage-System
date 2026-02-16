@@ -2,7 +2,7 @@
 Hardware Monitoring API Endpoints.
 
 Stellt Hardware-Metriken und Health-Status bereit:
-- GET /api/v1/hardware/status - Vollstaendiger Hardware-Bericht
+- GET /api/v1/hardware/status - Vollständiger Hardware-Bericht
 - GET /api/v1/hardware/health - Schneller Health-Check
 - GET /api/v1/hardware/cpu - CPU-Metriken
 - GET /api/v1/hardware/memory - Speicher-Metriken
@@ -50,7 +50,7 @@ class MemoryMetricsResponse(BaseModel):
     """Speicher-Metriken Antwort."""
 
     total_gb: float = Field(..., description="Gesamtspeicher in GB")
-    available_gb: float = Field(..., description="Verfuegbarer Speicher in GB")
+    available_gb: float = Field(..., description="Verfügbarer Speicher in GB")
     used_gb: float = Field(..., description="Belegter Speicher in GB")
     used_percent: float = Field(..., description="Speicherbelegung in Prozent")
     swap_total_gb: float = Field(..., description="Swap-Speicher gesamt in GB")
@@ -119,7 +119,7 @@ class HardwareAlertResponse(BaseModel):
 
 
 class HardwareStatusResponse(BaseModel):
-    """Vollstaendiger Hardware-Status Antwort."""
+    """Vollständiger Hardware-Status Antwort."""
 
     timestamp: datetime = Field(..., description="Zeitstempel der Messung")
     hostname: str = Field(..., description="Hostname")
@@ -169,13 +169,13 @@ def bytes_to_mb(bytes_val: int) -> float:
 @router.get(
     "/status",
     response_model=HardwareStatusResponse,
-    summary="Vollstaendiger Hardware-Status",
+    summary="Vollständiger Hardware-Status",
     description="Liefert detaillierte Hardware-Metriken inklusive CPU, Memory, Disk, GPU und Alerts.",
 )
 async def get_hardware_status(
     current_user: User = Depends(get_current_superuser),
 ) -> HardwareStatusResponse:
-    """Erfasst vollstaendigen Hardware-Status."""
+    """Erfasst vollständigen Hardware-Status."""
     service = get_hardware_monitoring_service()
     report = await service.get_full_hardware_status()
 
@@ -268,7 +268,7 @@ async def get_hardware_status(
     "/health",
     response_model=HealthCheckResponse,
     summary="Schneller Health-Check",
-    description="Schnelle Ueberpruefung der wichtigsten Hardware-Metriken.",
+    description="Schnelle Überprüfung der wichtigsten Hardware-Metriken.",
 )
 async def get_hardware_health(
     current_user: User = Depends(get_current_superuser),

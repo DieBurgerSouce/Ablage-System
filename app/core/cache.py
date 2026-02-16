@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Redis Cache Decorator fuer API Endpoints.
+Redis Cache Decorator für API Endpoints.
 
-Ermoeglicht einfaches Caching von API-Responses:
+Ermöglicht einfaches Caching von API-Responses:
 - L1: In-process LRU Cache (sub-ms latency)
 - L2: Redis Cache (distributed)
 - TTL-basiertes Caching
@@ -32,7 +32,7 @@ from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)
 
-# Type variable fuer generische Decorator
+# Type variable für generische Decorator
 T = TypeVar("T")
 
 
@@ -223,15 +223,15 @@ def get_l1_cache() -> LRUCache:
 
 
 # =============================================================================
-# Pydantic Validierungsmodelle fuer sichere JSON-Deserialisierung
+# Pydantic Validierungsmodelle für sichere JSON-Deserialisierung
 # =============================================================================
 
-# Erlaubte primitive Typen fuer Cache-Werte
+# Erlaubte primitive Typen für Cache-Werte
 CacheValueType = Union[str, int, float, bool, None, List[object], Dict[str, object]]
 
 
 class DatetimeCacheValue(BaseModel):
-    """Validierungsschema fuer serialisierte datetime-Objekte."""
+    """Validierungsschema für serialisierte datetime-Objekte."""
     datetime_value: str = Field(..., alias="__datetime__", min_length=1)
 
     model_config = {"populate_by_name": True}
@@ -244,11 +244,11 @@ class DatetimeCacheValue(BaseModel):
             datetime.fromisoformat(v)
             return v
         except ValueError:
-            raise ValueError(f"Ungueltiges Datumsformat: {v}")
+            raise ValueError(f"Ungültiges Datumsformat: {v}")
 
 
 class CacheValueSchema(BaseModel):
-    """Validierungsschema fuer Cache-Werte.
+    """Validierungsschema für Cache-Werte.
 
     Validiert die Struktur von gecachten Daten:
     - Primitive Typen (str, int, float, bool, None)
@@ -265,12 +265,12 @@ class CacheValueSchema(BaseModel):
 
 
 def _validate_cache_depth(data: object, current_depth: int = 0, max_depth: int = 20) -> bool:
-    """Pruefe maximale Verschachtelungstiefe von Cache-Daten.
+    """Prüfe maximale Verschachtelungstiefe von Cache-Daten.
 
     Verhindert DoS-Angriffe durch extrem tief verschachtelte JSON-Strukturen.
 
     Args:
-        data: Zu pruefende Daten
+        data: Zu prüfende Daten
         current_depth: Aktuelle Tiefe
         max_depth: Maximale erlaubte Tiefe
 
@@ -305,9 +305,9 @@ def _validate_cached_value(data: object) -> CacheValueType:
     Raises:
         ValidationError: Bei Validierungsfehlern
     """
-    # Pruefe Verschachtelungstiefe
+    # Prüfe Verschachtelungstiefe
     if not _validate_cache_depth(data):
-        raise ValueError("Cache-Daten ueberschreiten maximale Verschachtelungstiefe")
+        raise ValueError("Cache-Daten überschreiten maximale Verschachtelungstiefe")
 
     # Spezialfall: datetime-Objekte
     if isinstance(data, dict) and "__datetime__" in data and len(data) == 1:
@@ -355,7 +355,7 @@ class CacheConfig:
 
 
 def _serialize_value(value: object) -> str:
-    """Serialisiere Wert fuer Redis."""
+    """Serialisiere Wert für Redis."""
     if isinstance(value, datetime):
         return json.dumps({"__datetime__": value.isoformat()})
 
@@ -369,8 +369,8 @@ def _serialize_value(value: object) -> str:
 def _deserialize_value(value: str) -> CacheValueType:
     """Deserialisiere und validiere Wert aus Redis.
 
-    Verwendet Pydantic-Validierung fuer sichere Deserialisierung:
-    - Prueft Datentypen
+    Verwendet Pydantic-Validierung für sichere Deserialisierung:
+    - Prüft Datentypen
     - Validiert datetime-Format
     - Begrenzt Verschachtelungstiefe (DoS-Schutz)
 
@@ -426,7 +426,7 @@ def _generate_cache_key(
         prefix: Key Prefix
         args: Positionsargumente
         kwargs: Keyword-Argumente
-        user_id: Optional User-ID fuer user-spezifisches Caching
+        user_id: Optional User-ID für user-spezifisches Caching
 
     Returns:
         Cache Key String
@@ -451,7 +451,7 @@ def _generate_cache_key(
             except Exception:
                 key_parts.append(f"arg{i}:obj")
 
-    # Keyword-Argumente (sortiert fuer Konsistenz)
+    # Keyword-Argumente (sortiert für Konsistenz)
     for k, v in sorted(kwargs.items()):
         # Skip db und user dependencies
         if k in ("db", "current_user", "request"):
@@ -478,7 +478,7 @@ def redis_cache(
     user_id_kwarg: str = "current_user"
 ):
     """
-    Redis Cache Decorator fuer async Funktionen.
+    Redis Cache Decorator für async Funktionen.
 
     Features:
     - Automatisches Caching mit TTL
@@ -490,7 +490,7 @@ def redis_cache(
         ttl: Time-to-Live in Sekunden
         prefix: Cache Key Prefix
         user_specific: Separater Cache pro User
-        user_id_kwarg: Name des User-Kwargs (fuer user_specific)
+        user_id_kwarg: Name des User-Kwargs (für user_specific)
 
     Usage:
         @redis_cache(ttl=300, prefix="stats")
@@ -578,14 +578,14 @@ def redis_cache(
                     )
 
             except Exception as e:
-                # Redis nicht verfuegbar - continue without cache
+                # Redis nicht verfügbar - continue without cache
                 logger.warning(
                     "cache_read_failed",
                     **safe_error_log(e),
                     function=func.__name__
                 )
 
-            # Cache Miss oder Redis nicht verfuegbar - Funktion ausfuehren
+            # Cache Miss oder Redis nicht verfügbar - Funktion ausführen
             result = await func(*args, **kwargs)
 
             # Ergebnis cachen
@@ -796,7 +796,7 @@ def cache_multi_tier(
                         return _return_l2_hit()
 
             except Exception as e:
-                # Redis nicht verfuegbar - continue to source
+                # Redis nicht verfügbar - continue to source
                 logger.debug(
                     "cache_l2_miss_error",
                     **safe_error_log(e),
@@ -912,7 +912,7 @@ async def cache_set(key: str, value: Dict[str, object], ttl: int = 300) -> None:
 
 async def invalidate_cache(pattern: str) -> int:
     """
-    Invalidiere Cache-Eintraege nach Pattern in L1 und L2.
+    Invalidiere Cache-Einträge nach Pattern in L1 und L2.
 
     Invalidiert beide Cache-Tiers:
     - L1 (in-process): Pattern-based removal
@@ -922,7 +922,7 @@ async def invalidate_cache(pattern: str) -> int:
         pattern: Redis Key Pattern (z.B. "cache:stats:*")
 
     Returns:
-        Anzahl geloeschter Keys (L2)
+        Anzahl gelöschter Keys (L2)
     """
     # Invalidate L1 (in-process)
     l1_deleted = _l1_cache.invalidate_pattern(pattern)
@@ -962,20 +962,20 @@ async def invalidate_cache(pattern: str) -> int:
 
 async def invalidate_user_cache(user_id: str, cascade: bool = True) -> dict:
     """
-    Invalidiere alle Cache-Eintraege eines Users mit optionaler Cascade.
+    Invalidiere alle Cache-Einträge eines Users mit optionaler Cascade.
 
-    Mit cascade=True werden auch abhaengige Caches invalidiert:
+    Mit cascade=True werden auch abhängige Caches invalidiert:
     - User-spezifische Caches (user:{user_id})
     - User's Dokument-Caches (owner_id)
-    - Search/Facets Caches (koennten User-Daten enthalten)
+    - Search/Facets Caches (könnten User-Daten enthalten)
     - Stats Caches (User-spezifische Statistiken)
 
     Args:
         user_id: User ID
-        cascade: Ob abhaengige Caches auch invalidiert werden (default: True)
+        cascade: Ob abhängige Caches auch invalidiert werden (default: True)
 
     Returns:
-        Dict mit Anzahl geloeschter Keys pro Kategorie
+        Dict mit Anzahl gelöschter Keys pro Kategorie
     """
     result = {
         "user": 0,
@@ -986,7 +986,7 @@ async def invalidate_user_cache(user_id: str, cascade: bool = True) -> dict:
         "total": 0
     }
 
-    # User-spezifische Cache-Eintraege
+    # User-spezifische Cache-Einträge
     user_patterns = [
         f"cache:*:user:{user_id}:*",
         f"cache:user:{user_id}:*",
@@ -1000,7 +1000,7 @@ async def invalidate_user_cache(user_id: str, cascade: bool = True) -> dict:
         # User's Dokument-Caches (besitzte Dokumente)
         result["documents"] += await invalidate_cache(f"cache:doc:*:owner:{user_id}:*")
 
-        # Search-Caches (koennten User-spezifische Ergebnisse enthalten)
+        # Search-Caches (könnten User-spezifische Ergebnisse enthalten)
         result["search"] += await invalidate_cache(f"cache:search:*:user:{user_id}:*")
 
         # Facets-Caches (User-spezifische Facetten)
@@ -1023,20 +1023,20 @@ async def invalidate_user_cache(user_id: str, cascade: bool = True) -> dict:
 
 async def invalidate_document_cache(document_id: str, cascade: bool = True) -> dict:
     """
-    Invalidiere alle Cache-Eintraege fuer ein Dokument.
+    Invalidiere alle Cache-Einträge für ein Dokument.
 
-    Mit cascade=True werden auch abhaengige Caches invalidiert:
+    Mit cascade=True werden auch abhängige Caches invalidiert:
     - Document cache
     - Search cache (weil Dokument in Suchergebnissen)
-    - Facets cache (weil Facetten sich aendern koennten)
-    - Stats cache (weil Statistiken sich aendern)
+    - Facets cache (weil Facetten sich ändern könnten)
+    - Stats cache (weil Statistiken sich ändern)
 
     Args:
         document_id: Document ID
-        cascade: Ob abhaengige Caches auch invalidiert werden (default: True)
+        cascade: Ob abhängige Caches auch invalidiert werden (default: True)
 
     Returns:
-        Dict mit Anzahl geloeschter Keys pro Kategorie
+        Dict mit Anzahl gelöschter Keys pro Kategorie
     """
     result = {
         "document": 0,
@@ -1084,12 +1084,12 @@ async def invalidate_search_cache() -> int:
 
     Sollte aufgerufen werden nach:
     - Dokument-Upload
-    - Dokument-Loeschung
+    - Dokument-Löschung
     - Embedding-Regeneration
     - Index-Rebuild
 
     Returns:
-        Anzahl geloeschter Keys
+        Anzahl gelöschter Keys
     """
     total = 0
     total += await invalidate_cache("cache:search:*")
@@ -1106,7 +1106,7 @@ async def invalidate_all_caches() -> dict:
     Sollte nur bei kritischen Fehlern oder nach Migrationen verwendet werden.
 
     Returns:
-        Dict mit Anzahl geloeschter Keys pro Kategorie
+        Dict mit Anzahl gelöschter Keys pro Kategorie
     """
     result = {
         "document": await invalidate_cache("cache:doc:*"),
@@ -1126,7 +1126,7 @@ async def invalidate_on_document_change(
     change_type: str = "update"
 ) -> dict:
     """
-    Zentrale Invalidation-Funktion fuer Dokument-Aenderungen.
+    Zentrale Invalidation-Funktion für Dokument-Änderungen.
 
     Rufe diese Funktion auf nach:
     - document.save() / update
@@ -1136,12 +1136,12 @@ async def invalidate_on_document_change(
 
     Args:
         document_id: Document ID
-        change_type: Art der Aenderung (create, update, delete, ocr, embedding)
+        change_type: Art der Änderung (create, update, delete, ocr, embedding)
 
     Returns:
         Dict mit Invalidation-Statistiken
     """
-    # Alle Aenderungstypen erfordern vollstaendige Cascade-Invalidation
+    # Alle Änderungstypen erfordern vollständige Cascade-Invalidation
     result = await invalidate_document_cache(document_id, cascade=True)
 
     logger.info(

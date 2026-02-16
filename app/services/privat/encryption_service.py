@@ -1,7 +1,7 @@
-"""Service fuer Extra-Verschluesselung von Privat-Dokumenten.
+"""Service für Extra-Verschlüsselung von Privat-Dokumenten.
 
 Enterprise-Grade Encryption mit:
-- AES-256-GCM Verschluesselung
+- AES-256-GCM Verschlüsselung
 - PBKDF2-SHA256 Key-Derivation (100k Iterationen)
 - Brute-Force-Protection mit Lockout
 - Timing-Attack-Mitigation
@@ -40,20 +40,20 @@ PASSWORD_REQUIREMENTS_DE = (
 
 
 class WeakPasswordError(ValueError):
-    """Ausnahme bei zu schwachem Passwort fuer Verschluesselung."""
+    """Ausnahme bei zu schwachem Passwort für Verschlüsselung."""
     pass
 
 
 class BruteForceProtectionError(Exception):
-    """Ausnahme bei zu vielen fehlgeschlagenen Entschluesselungsversuchen."""
+    """Ausnahme bei zu vielen fehlgeschlagenen Entschlüsselungsversuchen."""
     pass
 
 
 def validate_password_strength(password: str) -> bool:
-    """Validiert die Passwort-Staerke fuer Enterprise-Verschluesselung.
+    """Validiert die Passwort-Stärke für Enterprise-Verschlüsselung.
 
     Args:
-        password: Zu pruefendes Passwort
+        password: Zu prüfendes Passwort
 
     Returns:
         True wenn Passwort stark genug ist
@@ -75,10 +75,10 @@ def validate_password_strength(password: str) -> bool:
 
 
 # ============================================================================
-# HMAC-basierte Identifier fuer Brute-Force-Tracking (Iteration 19 Security Fix)
+# HMAC-basierte Identifier für Brute-Force-Tracking (Iteration 19 Security Fix)
 # ============================================================================
 
-# SECURITY: Geheimer Schluessel fuer HMAC-basierte Identifier
+# SECURITY: Geheimer Schluessel für HMAC-basierte Identifier
 # Wird beim ersten Aufruf generiert und im Speicher gehalten
 # In Produktion: Sollte aus SECRET_KEY oder separater Konfiguration kommen
 _HMAC_SECRET_KEY: Optional[bytes] = None
@@ -92,7 +92,7 @@ def _get_hmac_secret_key() -> bytes:
     gezielt Identifier erraten.
 
     In Produktion sollte dieser Key aus SECRET_KEY oder separater
-    Umgebungsvariable kommen fuer Konsistenz ueber Restarts.
+    Umgebungsvariable kommen für Konsistenz über Restarts.
     """
     global _HMAC_SECRET_KEY
     if _HMAC_SECRET_KEY is None:
@@ -102,9 +102,9 @@ def _get_hmac_secret_key() -> bytes:
         if secret_env:
             _HMAC_SECRET_KEY = secret_env.encode("utf-8")
         else:
-            # Fallback: Generiere neuen Key (nur fuer Development/Tests)
+            # Fallback: Generiere neuen Key (nur für Development/Tests)
             # WARNUNG: Bei Multi-Worker-Deployment mit Restarts werden
-            # Lockouts zurueckgesetzt wenn kein persistenter Key konfiguriert ist!
+            # Lockouts zurückgesetzt wenn kein persistenter Key konfiguriert ist!
             import secrets as secrets_module
             _HMAC_SECRET_KEY = secrets_module.token_bytes(32)
             logger.warning(
@@ -126,13 +126,13 @@ def generate_brute_force_identifier(
 
     Vorteile:
     - Angreifer kann Identifier nicht erraten
-    - Kein Information Disclosure ueber Document/User-IDs
-    - Konsistent fuer gleiche Inputs
+    - Kein Information Disclosure über Document/User-IDs
+    - Konsistent für gleiche Inputs
 
     Args:
         document_id: Die Dokument-ID
         user_id: Die User-ID
-        additional_context: Optionaler zusaetzlicher Kontext
+        additional_context: Optionaler zusätzlicher Kontext
 
     Returns:
         HMAC-basierter Identifier (hex-encoded, 64 Zeichen)
@@ -144,22 +144,22 @@ def generate_brute_force_identifier(
     if additional_context:
         message = f"{message}:{additional_context}"
 
-    # HMAC-SHA256 fuer nicht erratbaren Identifier
+    # HMAC-SHA256 für nicht erratbaren Identifier
     h = hmac.new(key, message.encode("utf-8"), hashlib.sha256)
     return h.hexdigest()
 
 
 # ============================================================================
-# Brute-Force Protection (Redis-basiert fuer Multi-Worker-Support)
+# Brute-Force Protection (Redis-basiert für Multi-Worker-Support)
 # ============================================================================
 
 class DecryptAttemptTracker:
-    """Trackt fehlgeschlagene Entschluesselungsversuche fuer Brute-Force-Schutz.
+    """Trackt fehlgeschlagene Entschlüsselungsversuche für Brute-Force-Schutz.
 
     Enterprise Security Feature:
     - Max 5 Versuche pro 15 Minuten pro Identifier (Document-ID + User-ID)
-    - Automatischer Lockout bei Ueberschreitung
-    - Redis-basiert fuer Multi-Worker-Deployment
+    - Automatischer Lockout bei Überschreitung
+    - Redis-basiert für Multi-Worker-Deployment
     - Fallback zu In-Memory bei Redis-Ausfall
 
     SECURITY: Bei Multi-Worker-Deployment (z.B. Gunicorn) MUSS Redis
@@ -174,7 +174,7 @@ class DecryptAttemptTracker:
     REDIS_KEY_LOCKOUT = "privat:decrypt_lockout:"
 
     def __init__(self) -> None:
-        # Fallback In-Memory Storage (nur fuer Tests oder Redis-Ausfall)
+        # Fallback In-Memory Storage (nur für Tests oder Redis-Ausfall)
         self._attempts: Dict[str, List[datetime]] = defaultdict(list)
         self._lockouts: Dict[str, datetime] = {}
         self._redis = None
@@ -201,9 +201,9 @@ class DecryptAttemptTracker:
         return self._redis if self._redis_available else None
 
     def is_locked(self, identifier: str) -> bool:
-        """Prueft ob ein Identifier gesperrt ist (synchrone Version fuer Kompatibilitaet).
+        """Prüft ob ein Identifier gesperrt ist (synchrone Version für Kompatibilität).
 
-        HINWEIS: Verwendet In-Memory-Fallback. Fuer Redis nutze is_locked_async().
+        HINWEIS: Verwendet In-Memory-Fallback. Für Redis nutze is_locked_async().
 
         Args:
             identifier: Eindeutiger Identifier (z.B. "doc_id:user_id")
@@ -220,10 +220,10 @@ class DecryptAttemptTracker:
         return False
 
     def _check_lockout_in_memory(self, identifier: str) -> bool:
-        """SECURITY FIX 20-6: In-Memory Fallback fuer Redis-Ausfall.
+        """SECURITY FIX 20-6: In-Memory Fallback für Redis-Ausfall.
 
-        Diese Methode wird nur verwendet wenn Redis nicht verfuegbar ist.
-        WARNUNG: In Multi-Worker-Deployments bietet dies keinen vollstaendigen
+        Diese Methode wird nur verwendet wenn Redis nicht verfügbar ist.
+        WARNUNG: In Multi-Worker-Deployments bietet dies keinen vollständigen
         Schutz gegen Brute-Force-Angriffe!
 
         Args:
@@ -245,10 +245,10 @@ class DecryptAttemptTracker:
         return False
 
     async def is_locked_async(self, identifier: str) -> bool:
-        """Prueft ob ein Identifier gesperrt ist (Redis-Version).
+        """Prüft ob ein Identifier gesperrt ist (Redis-Version).
 
         SECURITY: Diese Methode sollte bevorzugt verwendet werden
-        fuer Multi-Worker-Support.
+        für Multi-Worker-Support.
 
         Args:
             identifier: Eindeutiger Identifier (z.B. "doc_id:user_id")
@@ -266,7 +266,7 @@ class DecryptAttemptTracker:
                 return False
             except Exception as e:
                 # SECURITY FIX (Iteration 19): Bei Redis-Fehler NICHT zu In-Memory fallen
-                # da sonst Multi-Worker Brute-Force moeglich ist
+                # da sonst Multi-Worker Brute-Force möglich ist
                 logger.error(
                     "privat_brute_force_redis_check_failed_critical",
                     **safe_error_log(e),
@@ -275,37 +275,37 @@ class DecryptAttemptTracker:
                 # SICHERHEIT: Im Zweifel blockieren - besser DoS als Brute-Force
                 return True
 
-        # SECURITY FIX 20-6: Graceful Degradation statt vollstaendigem Block
-        # Bei Redis-Nichtverfuegbarkeit nutzen wir In-Memory mit erhoetem Alert-Level
+        # SECURITY FIX 20-6: Graceful Degradation statt vollständigem Block
+        # Bei Redis-Nichtverfügbarkeit nutzen wir In-Memory mit erhoetem Alert-Level
         # Trade-off: Brute-Force-Risiko in Multi-Worker-Setup vs Availability
         logger.critical(
             "privat_brute_force_redis_unavailable_graceful_degradation",
             action="falling_back_to_in_memory",
-            warning="Multi-Worker Brute-Force moeglich! Alert erforderlich!",
+            warning="Multi-Worker Brute-Force möglich! Alert erforderlich!",
             severity="CRITICAL",
         )
 
-        # In-Memory Fallback mit lokaler Pruefung
+        # In-Memory Fallback mit lokaler Prüfung
         # WICHTIG: Dies ist nur sicher in Single-Worker-Deployments!
         return self._check_lockout_in_memory(identifier)
 
     def record_failure(self, identifier: str) -> None:
         """Zeichnet einen fehlgeschlagenen Versuch auf (synchrone Version).
 
-        HINWEIS: Verwendet In-Memory-Fallback. Fuer Redis nutze record_failure_async().
+        HINWEIS: Verwendet In-Memory-Fallback. Für Redis nutze record_failure_async().
 
         Args:
             identifier: Eindeutiger Identifier
         """
         now = utc_now()
-        # Alte Eintraege entfernen (aelter als Lockout-Zeitraum)
+        # Alte Einträge entfernen (aelter als Lockout-Zeitraum)
         cutoff = now - timedelta(minutes=self.LOCKOUT_MINUTES)
         self._attempts[identifier] = [
             t for t in self._attempts[identifier] if t > cutoff
         ]
         self._attempts[identifier].append(now)
 
-        # Pruefen ob Lockout noetig
+        # Prüfen ob Lockout noetig
         if len(self._attempts[identifier]) >= self.MAX_ATTEMPTS:
             self._lockouts[identifier] = now + timedelta(minutes=self.LOCKOUT_MINUTES)
             logger.warning(
@@ -319,10 +319,10 @@ class DecryptAttemptTracker:
         """Zeichnet einen fehlgeschlagenen Versuch auf (Redis-Version).
 
         SECURITY: Diese Methode sollte bevorzugt verwendet werden
-        fuer Multi-Worker-Support.
+        für Multi-Worker-Support.
 
         SECURITY FIX (Iteration 19): Verwendet atomare Pipeline mit WATCH
-        fuer pessimistische Lockout-Setzung. Setzt Lockout IMMER wenn
+        für pessimistische Lockout-Setzung. Setzt Lockout IMMER wenn
         MAX_ATTEMPTS-1 erreicht ist (pessimistisch), um Race Conditions
         zu verhindern.
 
@@ -341,19 +341,19 @@ class DecryptAttemptTracker:
                 pipe = redis.pipeline()
                 pipe.incr(attempts_key)
                 pipe.expire(attempts_key, ttl_seconds)
-                # PESSIMISTISCH: Setze Lockout immer mit (ueberschreibt wenn bereits existiert)
+                # PESSIMISTISCH: Setze Lockout immer mit (überschreibt wenn bereits existiert)
                 # Das Lockout-Key existiert nur wenn tatsaechlich >= MAX_ATTEMPTS
-                pipe.get(attempts_key)  # Hole aktuellen Wert fuer Logging
+                pipe.get(attempts_key)  # Hole aktuellen Wert für Logging
                 results = await pipe.execute()
 
                 # Nach INCR ist results[0] der neue Wert
                 attempt_count = results[0]
 
-                # Pruefen ob Lockout noetig - jetzt in separater atomarer Operation
-                # aber mit sofortiger Ausfuehrung (kein Delay zwischen Check und Set)
+                # Prüfen ob Lockout noetig - jetzt in separater atomarer Operation
+                # aber mit sofortiger Ausführung (kein Delay zwischen Check und Set)
                 if attempt_count >= self.MAX_ATTEMPTS:
                     # Setze Lockout sofort - SETNX verhindert Race Condition bei parallelen Requests
-                    # Wenn bereits gesetzt, wird einfach ueberschrieben (idempotent)
+                    # Wenn bereits gesetzt, wird einfach überschrieben (idempotent)
                     await redis.setex(
                         lockout_key,
                         ttl_seconds,
@@ -378,7 +378,7 @@ class DecryptAttemptTracker:
         self.record_failure(identifier)
 
     def clear(self, identifier: str) -> None:
-        """Loescht alle Versuche fuer einen Identifier (synchrone Version).
+        """Löscht alle Versuche für einen Identifier (synchrone Version).
 
         Args:
             identifier: Eindeutiger Identifier
@@ -387,7 +387,7 @@ class DecryptAttemptTracker:
         self._lockouts.pop(identifier, None)
 
     async def clear_async(self, identifier: str) -> None:
-        """Loescht alle Versuche fuer einen Identifier (Redis-Version).
+        """Löscht alle Versuche für einen Identifier (Redis-Version).
 
         Args:
             identifier: Eindeutiger Identifier
@@ -409,7 +409,7 @@ class DecryptAttemptTracker:
         self.clear(identifier)
 
     def get_remaining_attempts(self, identifier: str) -> int:
-        """Gibt die verbleibenden Versuche zurueck (synchrone Version).
+        """Gibt die verbleibenden Versuche zurück (synchrone Version).
 
         Args:
             identifier: Eindeutiger Identifier
@@ -427,7 +427,7 @@ class DecryptAttemptTracker:
         return max(0, self.MAX_ATTEMPTS - len(recent_attempts))
 
     async def get_remaining_attempts_async(self, identifier: str) -> int:
-        """Gibt die verbleibenden Versuche zurueck (Redis-Version).
+        """Gibt die verbleibenden Versuche zurück (Redis-Version).
 
         Args:
             identifier: Eindeutiger Identifier
@@ -456,9 +456,9 @@ class DecryptAttemptTracker:
         return self.get_remaining_attempts(identifier)
 
     async def get_current_attempts_async(self, identifier: str) -> int:
-        """Gibt die aktuelle Anzahl fehlgeschlagener Versuche zurueck (Redis-Version).
+        """Gibt die aktuelle Anzahl fehlgeschlagener Versuche zurück (Redis-Version).
 
-        SECURITY FIX (Iteration 19): Fuer progressive Verzoegerungsberechnung.
+        SECURITY FIX (Iteration 19): Für progressive Verzögerungsberechnung.
 
         Args:
             identifier: Eindeutiger Identifier
@@ -489,12 +489,12 @@ class DecryptAttemptTracker:
         return len(recent_attempts)
 
     def calculate_progressive_delay(self, attempt_count: int) -> float:
-        """Berechnet die progressive Verzoegerung basierend auf Fehlversuchen.
+        """Berechnet die progressive Verzögerung basierend auf Fehlversuchen.
 
         SECURITY FIX (Iteration 19): Progressive delay macht Brute-Force-Angriffe
         exponentiell langsamer mit jedem Fehlversuch.
 
-        Verzoegerungs-Schema (in Millisekunden):
+        Verzögerungs-Schema (in Millisekunden):
         - 0 Fehlversuche: 500ms (Basis)
         - 1 Fehlversuch:  1000ms (2x)
         - 2 Fehlversuche: 2000ms (4x)
@@ -506,40 +506,40 @@ class DecryptAttemptTracker:
             attempt_count: Anzahl bisheriger Fehlversuche
 
         Returns:
-            Verzoegerung in Sekunden (als float)
+            Verzögerung in Sekunden (als float)
         """
-        # Basis-Verzoegerung: 500ms
+        # Basis-Verzögerung: 500ms
         BASE_DELAY_MS = 500
         # Exponentieller Faktor: 2^attempt_count
-        # Cap bei MAX_ATTEMPTS um ueberlauf zu vermeiden
+        # Cap bei MAX_ATTEMPTS um überlauf zu vermeiden
         capped_attempts = min(attempt_count, self.MAX_ATTEMPTS)
         delay_ms = BASE_DELAY_MS * (2 ** capped_attempts)
 
-        # Max-Cap: 30 Sekunden (um extreme Verzoegerungen zu vermeiden)
+        # Max-Cap: 30 Sekunden (um extreme Verzögerungen zu vermeiden)
         MAX_DELAY_MS = 30000
         delay_ms = min(delay_ms, MAX_DELAY_MS)
 
         return delay_ms / 1000.0  # Konvertiere zu Sekunden
 
 
-# Singleton fuer Brute-Force-Tracking
+# Singleton für Brute-Force-Tracking
 _attempt_tracker = DecryptAttemptTracker()
 
 
 def get_attempt_tracker() -> DecryptAttemptTracker:
-    """Gibt den globalen Attempt-Tracker zurueck."""
+    """Gibt den globalen Attempt-Tracker zurück."""
     return _attempt_tracker
 
 
 class PrivatEncryptionService:
-    """Service fuer Extra-Verschluesselung mit Benutzer-Passwort.
+    """Service für Extra-Verschlüsselung mit Benutzer-Passwort.
 
-    Verwendet PBKDF2 fuer Key-Derivation und AES-256-GCM fuer Verschluesselung.
+    Verwendet PBKDF2 für Key-Derivation und AES-256-GCM für Verschlüsselung.
     """
 
     PBKDF2_ITERATIONS = 100_000
     SALT_SIZE = 32  # 256 bit
-    NONCE_SIZE = 12  # 96 bit fuer AES-GCM
+    NONCE_SIZE = 12  # 96 bit für AES-GCM
     KEY_SIZE = 32  # 256 bit
 
     def derive_key(
@@ -551,7 +551,7 @@ class PrivatEncryptionService:
 
         Args:
             password: Benutzer-Passwort
-            salt: Zufaelliger Salt
+            salt: Zufälliger Salt
 
         Returns:
             Abgeleiteter Schluessel (32 Bytes)
@@ -570,10 +570,10 @@ class PrivatEncryptionService:
         data: bytes,
         password: str,
     ) -> Tuple[bytes, bytes, bytes]:
-        """Verschluesselt Daten mit einem Passwort.
+        """Verschlüsselt Daten mit einem Passwort.
 
         Args:
-            data: Zu verschluesselnde Daten
+            data: Zu verschlüsselnde Daten
             password: Benutzer-Passwort (muss Enterprise-Anforderungen erfuellen)
 
         Returns:
@@ -586,7 +586,7 @@ class PrivatEncryptionService:
         if not validate_password_strength(password):
             raise WeakPasswordError(PASSWORD_REQUIREMENTS_DE)
 
-        # Generiere zufaelligen Salt und Nonce
+        # Generiere zufälligen Salt und Nonce
         salt = secrets.token_bytes(self.SALT_SIZE)
         nonce = secrets.token_bytes(self.NONCE_SIZE)
 
@@ -605,7 +605,7 @@ class PrivatEncryptionService:
 
         return salt, nonce, ciphertext
 
-    # Konstante Zeit fuer Timing-Attack-Mitigation (500ms)
+    # Konstante Zeit für Timing-Attack-Mitigation (500ms)
     DECRYPT_MIN_TIME_MS = 500
 
     async def decrypt_async(
@@ -616,25 +616,25 @@ class PrivatEncryptionService:
         nonce: bytes,
         identifier: str = "unknown",
     ) -> Optional[bytes]:
-        """Entschluesselt Daten mit einem Passwort (async, Redis-basiert).
+        """Entschlüsselt Daten mit einem Passwort (async, Redis-basiert).
 
-        SECURITY: Diese Methode sollte bevorzugt verwendet werden fuer
-        Multi-Worker-Deployments, da sie Redis fuer Brute-Force-Tracking nutzt.
+        SECURITY: Diese Methode sollte bevorzugt verwendet werden für
+        Multi-Worker-Deployments, da sie Redis für Brute-Force-Tracking nutzt.
 
-        SECURITY FIX (Iteration 19): Progressive Verzoegerung
-        - Verzoegerung verdoppelt sich mit jedem Fehlversuch
+        SECURITY FIX (Iteration 19): Progressive Verzögerung
+        - Verzögerung verdoppelt sich mit jedem Fehlversuch
         - Macht Brute-Force-Angriffe exponentiell langsamer
 
         Args:
-            ciphertext: Verschluesselte Daten
+            ciphertext: Verschlüsselte Daten
             password: Benutzer-Passwort
-            salt: Salt der Verschluesselung
-            nonce: Nonce der Verschluesselung
-            identifier: Eindeutiger Identifier fuer Brute-Force-Tracking
+            salt: Salt der Verschlüsselung
+            nonce: Nonce der Verschlüsselung
+            identifier: Eindeutiger Identifier für Brute-Force-Tracking
                         (z.B. "doc_123:user_456")
 
         Returns:
-            Entschluesselte Daten oder None bei falschem Passwort
+            Entschlüsselte Daten oder None bei falschem Passwort
 
         Raises:
             BruteForceProtectionError: Bei zu vielen fehlgeschlagenen Versuchen
@@ -642,14 +642,14 @@ class PrivatEncryptionService:
         import asyncio
         start_time = time.monotonic()
 
-        # SECURITY FIX (Iteration 19): Hole aktuelle Fehlversuche fuer progressive Verzoegerung
+        # SECURITY FIX (Iteration 19): Hole aktuelle Fehlversuche für progressive Verzögerung
         current_attempts = await _attempt_tracker.get_current_attempts_async(identifier)
         progressive_delay = _attempt_tracker.calculate_progressive_delay(current_attempts)
 
-        # SECURITY: Brute-Force-Schutz pruefen (Redis-basiert)
+        # SECURITY: Brute-Force-Schutz prüfen (Redis-basiert)
         if await _attempt_tracker.is_locked_async(identifier):
-            # SECURITY: Progressive Verzoegerung auch bei Lockout!
-            # Verhindert Timing-Side-Channel ueber Lockout-Status
+            # SECURITY: Progressive Verzögerung auch bei Lockout!
+            # Verhindert Timing-Side-Channel über Lockout-Status
             await asyncio.sleep(progressive_delay)
             logger.warning(
                 "privat_decrypt_blocked_brute_force",
@@ -667,7 +667,7 @@ class PrivatEncryptionService:
             aesgcm = AESGCM(key)
             plaintext = aesgcm.decrypt(nonce, ciphertext, None)
 
-            # Erfolg - Versuche zuruecksetzen (Redis)
+            # Erfolg - Versuche zurücksetzen (Redis)
             await _attempt_tracker.clear_async(identifier)
 
             logger.debug(
@@ -677,8 +677,8 @@ class PrivatEncryptionService:
                 storage="redis",
             )
 
-            # SECURITY FIX (Iteration 19): Progressive Verzoegerung statt fester Zeit
-            # Bei Erfolg nach Fehlversuchen: Kurze Basis-Verzoegerung
+            # SECURITY FIX (Iteration 19): Progressive Verzögerung statt fester Zeit
+            # Bei Erfolg nach Fehlversuchen: Kurze Basis-Verzögerung
             await self._ensure_progressive_delay_async(start_time, progressive_delay)
 
             return plaintext
@@ -687,8 +687,8 @@ class PrivatEncryptionService:
             await _attempt_tracker.record_failure_async(identifier)
             remaining = await _attempt_tracker.get_remaining_attempts_async(identifier)
 
-            # SECURITY FIX (Iteration 19): Neu berechnete Verzoegerung nach Fehlversuch
-            # (um einen Versuch hoeher als vor dem Fehlversuch)
+            # SECURITY FIX (Iteration 19): Neu berechnete Verzögerung nach Fehlversuch
+            # (um einen Versuch höher als vor dem Fehlversuch)
             new_delay = _attempt_tracker.calculate_progressive_delay(current_attempts + 1)
 
             logger.warning(
@@ -701,7 +701,7 @@ class PrivatEncryptionService:
                 attempt_count=current_attempts + 1,
             )
 
-            # SECURITY FIX (Iteration 19): Progressive Verzoegerung
+            # SECURITY FIX (Iteration 19): Progressive Verzögerung
             await self._ensure_progressive_delay_async(start_time, new_delay)
 
             return None
@@ -709,14 +709,14 @@ class PrivatEncryptionService:
     async def _ensure_progressive_delay_async(
         self, start_time: float, target_delay: float
     ) -> None:
-        """Stellt sicher, dass mindestens die progressive Verzoegerung vergangen ist.
+        """Stellt sicher, dass mindestens die progressive Verzögerung vergangen ist.
 
         SECURITY FIX (Iteration 19): Ersetzt die alte _ensure_min_time_async
-        mit dynamischer progressiver Verzoegerung.
+        mit dynamischer progressiver Verzögerung.
 
         Args:
             start_time: Startzeit der Operation (time.monotonic())
-            target_delay: Ziel-Verzoegerung in Sekunden
+            target_delay: Ziel-Verzögerung in Sekunden
         """
         import asyncio
         elapsed = time.monotonic() - start_time
@@ -743,28 +743,28 @@ class PrivatEncryptionService:
         nonce: bytes,
         identifier: str = "unknown",
     ) -> Optional[bytes]:
-        """Entschluesselt Daten mit einem Passwort (synchrone Fallback-Version).
+        """Entschlüsselt Daten mit einem Passwort (synchrone Fallback-Version).
 
-        HINWEIS: Fuer Multi-Worker-Deployments bevorzuge decrypt_async()
-        welche Redis fuer Brute-Force-Tracking nutzt.
+        HINWEIS: Für Multi-Worker-Deployments bevorzuge decrypt_async()
+        welche Redis für Brute-Force-Tracking nutzt.
 
         Args:
-            ciphertext: Verschluesselte Daten
+            ciphertext: Verschlüsselte Daten
             password: Benutzer-Passwort
-            salt: Salt der Verschluesselung
-            nonce: Nonce der Verschluesselung
-            identifier: Eindeutiger Identifier fuer Brute-Force-Tracking
+            salt: Salt der Verschlüsselung
+            nonce: Nonce der Verschlüsselung
+            identifier: Eindeutiger Identifier für Brute-Force-Tracking
                         (z.B. "doc_123:user_456")
 
         Returns:
-            Entschluesselte Daten oder None bei falschem Passwort
+            Entschlüsselte Daten oder None bei falschem Passwort
 
         Raises:
             BruteForceProtectionError: Bei zu vielen fehlgeschlagenen Versuchen
         """
         start_time = time.monotonic()
 
-        # SECURITY: Brute-Force-Schutz pruefen
+        # SECURITY: Brute-Force-Schutz prüfen
         if _attempt_tracker.is_locked(identifier):
             # SECURITY: Timing-Attack-Mitigation auch bei Lockout!
             # Sonst kann Angreifer Lockout-Status aus Antwortzeit ableiten
@@ -784,7 +784,7 @@ class PrivatEncryptionService:
             aesgcm = AESGCM(key)
             plaintext = aesgcm.decrypt(nonce, ciphertext, None)
 
-            # Erfolg - Versuche zuruecksetzen
+            # Erfolg - Versuche zurücksetzen
             _attempt_tracker.clear(identifier)
 
             logger.debug(
@@ -821,7 +821,7 @@ class PrivatEncryptionService:
         """Stellt sicher, dass mindestens DECRYPT_MIN_TIME_MS vergangen sind.
 
         Dies verhindert Timing-Attacken, bei denen ein Angreifer aus der
-        Antwortzeit auf die Korrektheit des Passworts schliessen koennte.
+        Antwortzeit auf die Korrektheit des Passworts schließen könnte.
 
         Args:
             start_time: Startzeit der Operation (time.monotonic())
@@ -836,7 +836,7 @@ class PrivatEncryptionService:
         password: str,
         output_path: Optional[str] = None,
     ) -> str:
-        """Verschluesselt eine Datei.
+        """Verschlüsselt eine Datei.
 
         Args:
             file_path: Pfad zur Quelldatei
@@ -844,7 +844,7 @@ class PrivatEncryptionService:
             output_path: Optionaler Ausgabepfad
 
         Returns:
-            Pfad zur verschluesselten Datei
+            Pfad zur verschlüsselten Datei
 
         Format: [salt (32 bytes)][nonce (12 bytes)][ciphertext]
         """
@@ -876,15 +876,15 @@ class PrivatEncryptionService:
         password: str,
         output_path: Optional[str] = None,
     ) -> Optional[str]:
-        """Entschluesselt eine Datei.
+        """Entschlüsselt eine Datei.
 
         Args:
-            file_path: Pfad zur verschluesselten Datei
+            file_path: Pfad zur verschlüsselten Datei
             password: Benutzer-Passwort
             output_path: Optionaler Ausgabepfad
 
         Returns:
-            Pfad zur entschluesselten Datei oder None bei Fehler
+            Pfad zur entschlüsselten Datei oder None bei Fehler
         """
         if output_path is None:
             if file_path.endswith(".encrypted"):
@@ -918,13 +918,13 @@ class PrivatEncryptionService:
         encrypted_data: bytes,
         password: str,
     ) -> bool:
-        """Prueft ob ein Passwort korrekt ist (ohne volle Entschluesselung).
+        """Prüft ob ein Passwort korrekt ist (ohne volle Entschlüsselung).
 
         SECURITY: Diese Methode hat konstante Antwortzeit (Timing-Attack Mitigation).
 
         Args:
-            encrypted_data: Verschluesselte Daten (salt + nonce + ciphertext)
-            password: Zu pruefendes Passwort
+            encrypted_data: Verschlüsselte Daten (salt + nonce + ciphertext)
+            password: Zu prüfendes Passwort
 
         Returns:
             True wenn Passwort korrekt
@@ -932,7 +932,7 @@ class PrivatEncryptionService:
         start_time = time.monotonic()
 
         if len(encrypted_data) < self.SALT_SIZE + self.NONCE_SIZE + 16:
-            # SECURITY: Auch bei falscher Laenge konstante Zeit warten
+            # SECURITY: Auch bei falscher Länge konstante Zeit warten
             self._ensure_min_time(start_time)
             return False
 
@@ -940,22 +940,22 @@ class PrivatEncryptionService:
         nonce = encrypted_data[self.SALT_SIZE:self.SALT_SIZE + self.NONCE_SIZE]
         ciphertext = encrypted_data[self.SALT_SIZE + self.NONCE_SIZE:]
 
-        # Versuche Entschluesselung (decrypt() hat bereits konstante Zeit)
+        # Versuche Entschlüsselung (decrypt() hat bereits konstante Zeit)
         result = self.decrypt(ciphertext, password, salt, nonce)
-        # Keine zusaetzliche Wartezeit noetig - decrypt() macht das bereits
+        # Keine zusätzliche Wartezeit noetig - decrypt() macht das bereits
         return result is not None
 
     def get_encrypted_metadata(
         self,
         encrypted_data: bytes,
     ) -> dict:
-        """Extrahiert Metadaten aus verschluesselten Daten.
+        """Extrahiert Metadaten aus verschlüsselten Daten.
 
         Args:
-            encrypted_data: Verschluesselte Daten
+            encrypted_data: Verschlüsselte Daten
 
         Returns:
-            Dict mit Salt-Hash und Groesse
+            Dict mit Salt-Hash und Größe
         """
         if len(encrypted_data) < self.SALT_SIZE:
             return {"valid": False}

@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Document Intelligence Tasks fuer Celery.
+Document Intelligence Tasks für Celery.
 
-Dieses Modul enthaelt Tasks fuer intelligente Dokumentenverarbeitung:
+Dieses Modul enthält Tasks für intelligente Dokumentenverarbeitung:
 - Automatische Dokumentengruppierung (Geheftete/mehrseitige Dokumente)
-- Entity Extraction (Geschaeftspartner-Erkennung)
-- Batch-Verarbeitung fuer bestehende Dokumente
+- Entity Extraction (Geschäftspartner-Erkennung)
+- Batch-Verarbeitung für bestehende Dokumente
 
-99%+ Praezision ist das Ziel - lieber konservativ als falsche Positives.
+99%+ Präzision ist das Ziel - lieber konservativ als falsche Positives.
 """
 
 from datetime import datetime, timezone
@@ -80,13 +80,13 @@ def detect_document_groups(
 
     Analysiert Dokumente nach:
     - Dateinamen-Sequenzen (Hex-Pattern)
-    - Zeitstempel-Naehe (Scan-Batch)
-    - Inhaltsaehnlichkeit (Seitennummerierung)
+    - Zeitstempel-Nähe (Scan-Batch)
+    - Inhaltsähnlichkeit (Seitennummerierung)
 
     Args:
-        folder_path: Optional - nur Dokumente aus diesem Ordner pruefen
-        batch_id: Optional - nur Dokumente aus diesem Scan-Batch pruefen
-        auto_confirm_threshold: Konfidenz-Schwelle fuer automatische Bestaetigung
+        folder_path: Optional - nur Dokumente aus diesem Ordner prüfen
+        batch_id: Optional - nur Dokumente aus diesem Scan-Batch prüfen
+        auto_confirm_threshold: Konfidenz-Schwelle für automatische Bestätigung
 
     Returns:
         Dict mit erkannten Gruppen und Statistiken
@@ -113,7 +113,7 @@ def detect_document_groups(
         logger.warning("document_grouping_task_timeout", task_id=task_id)
         return {
             "success": False,
-            "error": "Task-Zeitlimit ueberschritten",
+            "error": "Task-Zeitlimit überschritten",
             "task_id": task_id,
         }
     except Exception as e:
@@ -244,7 +244,7 @@ def batch_detect_groups_by_folder(
         logger.warning("batch_group_detection_timeout", task_id=task_id)
         return {
             "success": False,
-            "error": "Task-Zeitlimit ueberschritten",
+            "error": "Task-Zeitlimit überschritten",
         }
     except Exception as e:
         logger.error(
@@ -341,11 +341,11 @@ def extract_entities_from_document(
     match_to_existing: bool = True,
 ) -> Dict[str, Any]:
     """
-    Extrahiere Geschaeftspartner-Entitaeten aus einem Dokument.
+    Extrahiere Geschäftspartner-Entitaeten aus einem Dokument.
 
     Erkennt:
     - USt-IdNr (DE123456789)
-    - IBAN mit Pruefziffer-Validierung
+    - IBAN mit Prüfziffer-Validierung
     - Firmennamen mit Rechtsform
     - Deutsche Adressen
 
@@ -376,7 +376,7 @@ def extract_entities_from_document(
         )
         return {
             "success": False,
-            "error": "Task-Zeitlimit ueberschritten",
+            "error": "Task-Zeitlimit überschritten",
             "document_id": document_id,
         }
     except Exception as e:
@@ -418,7 +418,7 @@ async def _extract_entities_async(
         if not document.extracted_text:
             return {
                 "success": False,
-                "error": "Kein OCR-Text verfuegbar",
+                "error": "Kein OCR-Text verfügbar",
                 "document_id": document_id,
             }
 
@@ -520,7 +520,7 @@ def batch_extract_entities(
 
     Args:
         limit: Maximale Anzahl Dokumente pro Durchlauf
-        skip_already_extracted: Bereits verarbeitete Dokumente ueberspringen
+        skip_already_extracted: Bereits verarbeitete Dokumente überspringen
 
     Returns:
         Dict mit Verarbeitungsstatistiken
@@ -539,7 +539,7 @@ def batch_extract_entities(
         return result
     except SoftTimeLimitExceeded:
         logger.warning("batch_entity_extraction_timeout", task_id=task_id)
-        return {"success": False, "error": "Task-Zeitlimit ueberschritten"}
+        return {"success": False, "error": "Task-Zeitlimit überschritten"}
     except Exception as e:
         logger.error(
             "batch_entity_extraction_failed",
@@ -640,14 +640,14 @@ async def _batch_extract_entities_async(
 )
 def run_document_intelligence_pipeline(self) -> Dict[str, Any]:
     """
-    Vollstaendige Document Intelligence Pipeline.
+    Vollständige Document Intelligence Pipeline.
 
-    Fuehrt nacheinander aus:
-    1. Entity Extraction fuer neue Dokumente
-    2. Gruppenerkennung fuer neue Dokumente
+    Führt nacheinander aus:
+    1. Entity Extraction für neue Dokumente
+    2. Gruppenerkennung für neue Dokumente
     3. Statistik-Update
 
-    Wird taeglich via Celery Beat ausgefuehrt.
+    Wird täglich via Celery Beat ausgeführt.
     """
     task_id = self.request.id
     logger.info("document_intelligence_pipeline_started", task_id=task_id)
@@ -728,9 +728,9 @@ def update_intelligence_metrics(self) -> Dict[str, Any]:
     """
     Aktualisiere Document Intelligence Metriken.
 
-    Sammelt Statistiken ueber:
+    Sammelt Statistiken über:
     - Anzahl erkannter Gruppen
-    - Anzahl verknuepfter Entitaeten
+    - Anzahl verknüpfter Entitaeten
     - Extraktions-Genauigkeit
     """
     task_id = self.request.id

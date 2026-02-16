@@ -76,13 +76,13 @@ class InsightResponse(BaseModel):
     priority: str = Field(..., description="Prioritaet (critical, high, medium, low)")
     title: str = Field(..., description="Titel des Insights")
     message: str = Field(..., description="Hauptnachricht")
-    detail: str = Field(default="", description="Zusaetzliche Details")
+    detail: str = Field(default="", description="Zusätzliche Details")
     related_entities: List[RelatedEntityResponse] = Field(
         default=[], description="Verbundene Entitaeten"
     )
     potential_value: Optional[float] = Field(None, description="Potenzieller Wert in EUR")
-    action_url: Optional[str] = Field(None, description="URL fuer Aktion")
-    action_label: Optional[str] = Field(None, description="Label fuer Aktion")
+    action_url: Optional[str] = Field(None, description="URL für Aktion")
+    action_label: Optional[str] = Field(None, description="Label für Aktion")
     expires_at: Optional[str] = Field(None, description="Ablaufzeitpunkt")
     source_rule: Optional[str] = Field(None, description="Quellregel")
     confidence: float = Field(default=1.0, description="Konfidenz des Insights")
@@ -147,7 +147,7 @@ class FeedbackRequest(BaseModel):
 class FeedbackResponse(BaseModel):
     """Antwort auf Feedback."""
     success: bool = Field(..., description="Feedback erfolgreich gespeichert")
-    message: str = Field(..., description="Bestaetigung")
+    message: str = Field(..., description="Bestätigung")
 
 
 class DataQualitySummaryResponse(BaseModel):
@@ -221,7 +221,7 @@ def _count_by_type(insights: List[ProactiveInsight]) -> Dict[str, int]:
     "/all",
     response_model=InsightListResponse,
     summary="Alle proaktiven Insights",
-    description="Ruft alle proaktiven Insights fuer den aktuellen Benutzer ab.",
+    description="Ruft alle proaktiven Insights für den aktuellen Benutzer ab.",
 )
 @limiter.limit("30/minute")
 async def get_all_insights(
@@ -236,7 +236,7 @@ async def get_all_insights(
     Ruft alle proaktiven Insights ab.
 
     Kombiniert Insights aus allen Kategorien:
-    - Deadlines (Skonto, Vertraege, Zahlungen)
+    - Deadlines (Skonto, Verträge, Zahlungen)
     - Anomalien (Preise, Volumen, Muster)
     - Workflow (Genehmigungen, Bottlenecks)
     - Datenqualitaet (Fehlende Daten, Duplikate)
@@ -329,7 +329,7 @@ async def get_deadline_insights(
 
     Kategorien:
     - Skonto-Fristen
-    - Vertrags-Kuendigungsfristen
+    - Vertrags-Kündigungsfristen
     - Zahlungsfristen
     - Aufbewahrungsfristen
     """
@@ -394,7 +394,7 @@ async def get_anomaly_insights(
     "/workflow",
     response_model=InsightListResponse,
     summary="Workflow-Optimierungen",
-    description="Ruft Workflow-Optimierungsvorschlaege ab.",
+    description="Ruft Workflow-Optimierungsvorschläge ab.",
 )
 @limiter.limit("30/minute")
 async def get_workflow_insights(
@@ -406,9 +406,9 @@ async def get_workflow_insights(
     Ruft Workflow-Optimierungen ab.
 
     Kategorien:
-    - Batch-Genehmigungsvorschlaege
+    - Batch-Genehmigungsvorschläge
     - Bottleneck-Erkennung
-    - Automatisierungsvorschlaege
+    - Automatisierungsvorschläge
     - Veraltete Elemente
     """
     company_id = current_user.company_id
@@ -451,7 +451,7 @@ async def get_data_quality_insights(
     - Potenzielle Duplikate
     - Inkonsistenzen
     - Veraltete Daten
-    - Nicht verknuepfte Dokumente
+    - Nicht verknüpfte Dokumente
     """
     company_id = current_user.company_id
     if not company_id:
@@ -486,7 +486,7 @@ async def get_data_quality_summary(
     """
     Ruft die Zusammenfassung der Datenqualitaet ab.
 
-    Enthaelt:
+    Enthält:
     - Qualitaets-Score (0-100)
     - Note (A-F)
     - Anzahl Issues nach Typ und Schweregrad
@@ -525,7 +525,7 @@ async def get_insights_summary(
     """
     Ruft eine Zusammenfassung aller Insights ab.
 
-    Enthaelt:
+    Enthält:
     - Gesamtanzahl
     - Anzahl nach Prioritaet
     - Gesamtes Einsparpotenzial
@@ -632,5 +632,5 @@ async def post_insight_feedback(
 
     return FeedbackResponse(
         success=True,
-        message="Vielen Dank fuer Ihr Feedback! Es hilft uns die Insights zu verbessern.",
+        message="Vielen Dank für Ihr Feedback! Es hilft uns die Insights zu verbessern.",
     )

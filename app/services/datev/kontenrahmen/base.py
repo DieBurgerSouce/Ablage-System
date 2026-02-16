@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Abstrakte Basis fuer Kontenrahmen.
+Abstrakte Basis für Kontenrahmen.
 
-Definiert die Schnittstelle fuer SKR03 und SKR04 Implementierungen.
+Definiert die Schnittstelle für SKR03 und SKR04 Implementierungen.
 """
 
 from abc import ABC, abstractmethod
@@ -11,11 +11,11 @@ from typing import Dict, Optional
 
 class BaseKontenrahmen(ABC):
     """
-    Abstrakte Basis fuer Kontenrahmen.
+    Abstrakte Basis für Kontenrahmen.
 
-    Jeder Kontenrahmen definiert Standard-Konten fuer verschiedene
+    Jeder Kontenrahmen definiert Standard-Konten für verschiedene
     Buchungstypen (Wareneingang, Erloese, etc.) sowie die Mapping-
-    Logik fuer automatische Kontozuordnung.
+    Logik für automatische Kontozuordnung.
     """
 
     @property
@@ -38,7 +38,7 @@ class BaseKontenrahmen(ABC):
     @abstractmethod
     def expense_accounts(self) -> Dict[str, str]:
         """
-        Alle verfuegbaren Aufwandskonten.
+        Alle verfügbaren Aufwandskonten.
 
         Returns:
             Dict mit {expense_type: kontonummer}
@@ -53,7 +53,7 @@ class BaseKontenrahmen(ABC):
     @abstractmethod
     def revenue_accounts(self) -> Dict[str, str]:
         """
-        Alle verfuegbaren Erloeskonten.
+        Alle verfügbaren Erloeskonten.
 
         Returns:
             Dict mit {revenue_type: kontonummer}
@@ -139,7 +139,7 @@ class BaseKontenrahmen(ABC):
         }
 
     def is_creditor_account(self, account: str) -> bool:
-        """Prueft ob Kontonummer im Kreditoren-Bereich liegt."""
+        """Prüft ob Kontonummer im Kreditoren-Bereich liegt."""
         try:
             num = int(account)
             start = int(self.creditor_range_start)
@@ -149,7 +149,7 @@ class BaseKontenrahmen(ABC):
             return False
 
     def is_debtor_account(self, account: str) -> bool:
-        """Prueft ob Kontonummer im Debitoren-Bereich liegt."""
+        """Prüft ob Kontonummer im Debitoren-Bereich liegt."""
         try:
             num = int(account)
             start = int(self.debtor_range_start)
@@ -172,7 +172,7 @@ class BaseKontenrahmen(ABC):
 
         Args:
             expense_type: Typ des Aufwands (waren, dienstleistung, miete, etc.)
-            vat_rate: MwSt-Satz (7 oder 19), optional fuer differenzierte Konten
+            vat_rate: MwSt-Satz (7 oder 19), optional für differenzierte Konten
 
         Returns:
             Kontonummer als String
@@ -213,35 +213,35 @@ class BaseKontenrahmen(ABC):
         return self.revenue_accounts.get(revenue_type, self._erloese_19)
 
     # =========================================================================
-    # ABSTRAKTE KONTO-PROPERTIES (muessen in Subklassen definiert werden)
+    # ABSTRAKTE KONTO-PROPERTIES (müssen in Subklassen definiert werden)
     # =========================================================================
 
     @property
     @abstractmethod
     def _wareneingang_19(self) -> str:
-        """Wareneingang 19% - fuer get_expense_account."""
+        """Wareneingang 19% - für get_expense_account."""
         pass
 
     @property
     @abstractmethod
     def _wareneingang_7(self) -> str:
-        """Wareneingang 7% - fuer get_expense_account."""
+        """Wareneingang 7% - für get_expense_account."""
         pass
 
     @property
     @abstractmethod
     def _erloese_19(self) -> str:
-        """Erloese 19% - fuer get_revenue_account."""
+        """Erloese 19% - für get_revenue_account."""
         pass
 
     @property
     @abstractmethod
     def _erloese_7(self) -> str:
-        """Erloese 7% - fuer get_revenue_account."""
+        """Erloese 7% - für get_revenue_account."""
         pass
 
     # =========================================================================
-    # GEMEINSAME PERSONENKONTEN-DEFAULTS (identisch fuer SKR03 und SKR04)
+    # GEMEINSAME PERSONENKONTEN-DEFAULTS (identisch für SKR03 und SKR04)
     # =========================================================================
 
     @property

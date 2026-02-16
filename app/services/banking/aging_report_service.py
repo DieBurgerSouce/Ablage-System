@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """Aging Report Service.
 
-Erstellt Alterungsberichte fuer:
+Erstellt Alterungsberichte für:
 - Forderungen (Accounts Receivable)
 - Verbindlichkeiten (Accounts Payable)
 
 Altersklassen:
-- Aktuell (nicht faellig)
-- 1-30 Tage ueberfaellig
-- 31-60 Tage ueberfaellig
-- 61-90 Tage ueberfaellig
-- 90+ Tage ueberfaellig
+- Aktuell (nicht fällig)
+- 1-30 Tage überfällig
+- 31-60 Tage überfällig
+- 61-90 Tage überfällig
+- 90+ Tage überfällig
 """
 
 from dataclasses import dataclass, field
@@ -36,10 +36,10 @@ logger = structlog.get_logger(__name__)
 
 class AgingBucket(str, Enum):
     """Altersklassen."""
-    CURRENT = "current"      # Nicht faellig
-    DAYS_1_30 = "1-30"       # 1-30 Tage ueberfaellig
-    DAYS_31_60 = "31-60"     # 31-60 Tage ueberfaellig
-    DAYS_61_90 = "61-90"     # 61-90 Tage ueberfaellig
+    CURRENT = "current"      # Nicht fällig
+    DAYS_1_30 = "1-30"       # 1-30 Tage überfällig
+    DAYS_31_60 = "31-60"     # 31-60 Tage überfällig
+    DAYS_61_90 = "61-90"     # 61-90 Tage überfällig
     DAYS_90_PLUS = "90+"     # Mehr als 90 Tage
 
 
@@ -74,7 +74,7 @@ class AgingBucketSummary:
 
 @dataclass
 class AgingReport:
-    """Vollstaendiger Aging Report."""
+    """Vollständiger Aging Report."""
     report_type: ReportType
     generated_at: datetime
     as_of_date: date
@@ -97,9 +97,9 @@ class AgingReport:
 
 
 class AgingReportService:
-    """Service fuer Aging Reports."""
+    """Service für Aging Reports."""
 
-    # Bucket-Grenzen (Tage ueberfaellig)
+    # Bucket-Grenzen (Tage überfällig)
     BUCKET_RANGES = {
         AgingBucket.CURRENT: (None, 0),
         AgingBucket.DAYS_1_30: (1, 30),
@@ -123,7 +123,7 @@ class AgingReportService:
             user_id: Benutzer-ID
             as_of_date: Stichtag (Standard: heute)
             include_details: Einzelpositionen einbeziehen?
-            counterparty: Optional - nur fuer bestimmten Debitor
+            counterparty: Optional - nur für bestimmten Debitor
 
         Returns:
             AgingReport
@@ -153,7 +153,7 @@ class AgingReportService:
             user_id: Benutzer-ID
             as_of_date: Stichtag (Standard: heute)
             include_details: Einzelpositionen einbeziehen?
-            counterparty: Optional - nur fuer bestimmten Kreditor
+            counterparty: Optional - nur für bestimmten Kreditor
 
         Returns:
             AgingReport
@@ -209,7 +209,7 @@ class AgingReportService:
             limit: Max. Anzahl
 
         Returns:
-            Liste der groessten Schuldner
+            Liste der größten Schuldner
         """
         report = await self.get_receivables_aging(
             db, user_id, include_details=True
@@ -272,7 +272,7 @@ class AgingReportService:
             limit: Max. Anzahl
 
         Returns:
-            Liste der groessten Glaeubiger
+            Liste der größten Glaeubiger
         """
         report = await self.get_payables_aging(
             db, user_id, include_details=True
@@ -427,7 +427,7 @@ class AgingReportService:
         for doc in documents:
             extracted = doc.extracted_data or {}
 
-            # Bezahlte ueberspringen
+            # Bezahlte überspringen
             if extracted.get("payment_status") == "paid":
                 continue
 
@@ -447,7 +447,7 @@ class AgingReportService:
             if counterparty and cp != counterparty:
                 continue
 
-            # Faelligkeitsdatum
+            # Fälligkeitsdatum
             due_date_str = extracted.get("due_date")
             if due_date_str:
                 try:
@@ -475,7 +475,7 @@ class AgingReportService:
             else:
                 invoice_date = None
 
-            # Tage ueberfaellig
+            # Tage überfällig
             if due_date:
                 days_overdue = (as_of_date - due_date).days
             else:
@@ -513,11 +513,11 @@ class AgingReportService:
             if days_overdue > 0:
                 report.total_overdue += amount
 
-            # Fuer gewichteten Durchschnitt
+            # Für gewichteten Durchschnitt
             if days_overdue > 0:
                 total_weighted_days += amount * Decimal(str(days_overdue))
 
-        # Prozentsaetze berechnen
+        # Prozentsätze berechnen
         if report.total_amount > 0:
             for bucket_summary in report.buckets:
                 bucket_summary.percentage = float(
@@ -546,7 +546,7 @@ class AgingReportService:
         return report
 
     def _get_bucket(self, days_overdue: int) -> AgingBucket:
-        """Bestimme Bucket fuer Tage ueberfaellig."""
+        """Bestimme Bucket für Tage überfällig."""
         if days_overdue <= 0:
             return AgingBucket.CURRENT
         elif days_overdue <= 30:
@@ -584,11 +584,11 @@ class AgingReportService:
         elif dso < 45:
             return "Gut: Zahlungseingaenge im normalen Bereich"
         elif dso < 60:
-            return "Akzeptabel: Raum fuer Verbesserung"
+            return "Akzeptabel: Raum für Verbesserung"
         elif dso < 90:
             return "Verbesserungsbedarf: Zahlungseingaenge zu langsam"
         else:
-            return "Kritisch: Erhebliche Verzoegerungen bei Zahlungseingaengen"
+            return "Kritisch: Erhebliche Verzögerungen bei Zahlungseingaengen"
 
 
 # Singleton

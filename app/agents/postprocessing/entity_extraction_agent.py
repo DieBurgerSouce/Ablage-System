@@ -1116,15 +1116,15 @@ class EntityExtractionAgent(PostprocessingAgent):
         }
 
     # =========================================================================
-    # PUBLIC NER API (fuer externe Nutzung ohne full process())
+    # PUBLIC NER API (für externe Nutzung ohne full process())
     # =========================================================================
 
     def extract_named_entities(self, text: str) -> List[Dict[str, Any]]:
         """
         Extrahiert Named Entities (Personen, Organisationen) aus Text.
 
-        Oeffentliche API fuer NER-Extraktion ohne vollstaendige process()-Pipeline.
-        Nutzt spaCy wenn verfuegbar, sonst Pattern-Matching Fallback.
+        Öffentliche API für NER-Extraktion ohne vollständige process()-Pipeline.
+        Nutzt spaCy wenn verfügbar, sonst Pattern-Matching Fallback.
 
         Args:
             text: Text zur Analyse (max. 100.000 Zeichen)
@@ -1138,11 +1138,11 @@ class EntityExtractionAgent(PostprocessingAgent):
         """
         entities: List[Dict[str, Any]] = []
 
-        # spaCy NER (wenn verfuegbar)
+        # spaCy NER (wenn verfügbar)
         spacy_entities = self._extract_named_entities_spacy(text)
         entities.extend(spacy_entities)
 
-        # Pattern-Matching Fallback fuer Personen (wenn spaCy keine fand)
+        # Pattern-Matching Fallback für Personen (wenn spaCy keine fand)
         if not any(e["type"] == "PERSON" for e in entities):
             person_entities = self._extract_persons_fallback(text)
             entities.extend(person_entities)

@@ -2,10 +2,10 @@
 """
 KI-Pipeline Celery Tasks.
 
-Asynchrone Verarbeitung fuer die KI-Pipeline:
+Asynchrone Verarbeitung für die KI-Pipeline:
 - Confidence-Berechnung nach OCR-Abschluss
 - Lernprofil-Aktualisierung nach Korrekturen
-- Cross-Document-Matching fuer neue Dokumente
+- Cross-Document-Matching für neue Dokumente
 - Zusammenfassungs-Generierung
 - Batch-Aufgaben (naechtlich)
 - Confidence-Neuberechnung mit Lernfortschritt
@@ -50,7 +50,7 @@ def process_extraction_confidence_task(
     supplier_name: Optional[str] = None,
     document_type: Optional[str] = None,
 ) -> Dict[str, object]:
-    """Confidence-Scores fuer ein Dokument berechnen.
+    """Confidence-Scores für ein Dokument berechnen.
 
     Wird nach OCR-Abschluss automatisch aufgerufen.
 
@@ -59,8 +59,8 @@ def process_extraction_confidence_task(
         company_id: Firma-ID
         extracted_fields: Extrahierte Felder {field_name: value}
         extraction_method: Extraktionsmethode (ocr, llm, regex, template)
-        supplier_name: Lieferantenname fuer Lernprofil
-        document_type: Dokumenttyp fuer Lernprofil
+        supplier_name: Lieferantenname für Lernprofil
+        document_type: Dokumenttyp für Lernprofil
 
     Returns:
         Dict mit Verarbeitungsstatistiken
@@ -229,7 +229,7 @@ def run_cross_document_matching_task(
     document_id: str,
     candidate_doc_ids: Optional[List[str]] = None,
 ) -> Dict[str, object]:
-    """Cross-Document-Matching fuer ein neues Dokument ausfuehren.
+    """Cross-Document-Matching für ein neues Dokument ausführen.
 
     Vergleicht das Dokument mit potenziell verwandten Dokumenten.
 
@@ -325,7 +325,7 @@ def generate_document_summary_task(
     company_id: str,
     document_type: Optional[str] = None,
 ) -> Dict[str, object]:
-    """Zusammenfassung fuer ein Dokument generieren.
+    """Zusammenfassung für ein Dokument generieren.
 
     Wird nach Extraktion automatisch aufgerufen.
 
@@ -493,8 +493,8 @@ def recalculate_confidence_with_learning_task(
 ) -> Dict[str, object]:
     """Periodische Neuberechnung der Confidence-Scores mit neuen Lernprofilen.
 
-    Aktualisiert Confidence-Scores fuer Dokumente, bei denen sich
-    die Lernprofile seit der letzten Berechnung geaendert haben.
+    Aktualisiert Confidence-Scores für Dokumente, bei denen sich
+    die Lernprofile seit der letzten Berechnung geändert haben.
 
     Args:
         company_id: Optionale Firma-ID
@@ -507,8 +507,8 @@ def recalculate_confidence_with_learning_task(
 
     async def _recalculate() -> Dict[str, object]:
         async with get_async_session_context() as db:
-            # Finde Dokumente die Neuberechnung benoetigen:
-            # Confidence-Records die aelter sind als die letzte Lernprofil-Aenderung
+            # Finde Dokumente die Neuberechnung benötigen:
+            # Confidence-Records die älter sind als die letzte Lernprofil-Änderung
             # Vereinfacht: Alle nicht-korrigierten Records mit medium/low Confidence
             query = (
                 select(
@@ -576,7 +576,7 @@ def extract_with_confidence_task(
     self,
     document_id: str,
 ) -> Dict[str, object]:
-    """Fuehrt Confidence-Extraktion fuer ein neues Dokument durch.
+    """Führt Confidence-Extraktion für ein neues Dokument durch.
 
     Laedt das Dokument, extrahiert Felder und berechnet Confidence-Scores.
     Wird typischerweise nach OCR-Abschluss aufgerufen.
@@ -648,9 +648,9 @@ def learn_from_corrections_batch_task(
     self,
     company_id: Optional[str] = None,
 ) -> Dict[str, object]:
-    """Taeglich: Verarbeitet akkumulierte Korrekturen und aktualisiert Lernprofile.
+    """Täglich: Verarbeitet akkumulierte Korrekturen und aktualisiert Lernprofile.
 
-    Iteriert ueber alle Firmen und fuehrt retrain_profiles aus.
+    Iteriert über alle Firmen und führt retrain_profiles aus.
 
     Args:
         company_id: Optionale Firma-ID (None = alle Firmen)
@@ -743,7 +743,7 @@ def detect_cross_doc_discrepancies_task(
     document_id: str,
     company_id: str,
 ) -> Dict[str, object]:
-    """Prueft ein neues Dokument auf Abweichungen zu verwandten Dokumenten.
+    """Prüft ein neues Dokument auf Abweichungen zu verwandten Dokumenten.
 
     Wird nach OCR-Abschluss aufgerufen um z.B. Rechnung vs. Lieferschein
     automatisch zu vergleichen.
@@ -773,7 +773,7 @@ def detect_cross_doc_discrepancies_task(
                 "status": "completed",
                 "document_id": document_id,
                 "anomaly_count": len(anomalies),
-                "anomalies": anomalies[:10],  # Erste 10 fuer Zusammenfassung
+                "anomalies": anomalies[:10],  # Erste 10 für Zusammenfassung
             }
 
     try:
@@ -809,7 +809,7 @@ def retrain_learning_profiles_task(
     self,
     company_id: Optional[str] = None,
 ) -> Dict[str, object]:
-    """Woechentlich: Retrain aller Lernprofile.
+    """Wöchentlich: Retrain aller Lernprofile.
 
     Aktualisiert Confidence-Boosts basierend auf akkumulierten Korrekturen.
 
@@ -912,14 +912,14 @@ def check_price_deviations_task(
     company_id: Optional[str] = None,
     months_lookback: int = 12,
 ) -> Dict[str, object]:
-    """Taeglich: Prueft auf Preisabweichungen bei Lieferanten.
+    """Täglich: Prüft auf Preisabweichungen bei Lieferanten.
 
     Vergleicht aktuelle Rechnungsbetraege mit dem 12-Monats-Durchschnitt
     des jeweiligen Lieferanten und meldet signifikante Abweichungen.
 
     Args:
         company_id: Optionale Firma-ID
-        months_lookback: Anzahl Monate fuer Durchschnittsberechnung
+        months_lookback: Anzahl Monate für Durchschnittsberechnung
 
     Returns:
         Dict mit erkannten Preisabweichungen
@@ -941,7 +941,7 @@ def check_price_deviations_task(
                 )
 
             # Durchschnittliche Betraege pro Lieferant berechnen
-            # Ueber Document -> BusinessEntity
+            # Über Document -> BusinessEntity
             avg_query = (
                 select(
                     Document.business_entity_id,
@@ -965,7 +965,7 @@ def check_price_deviations_task(
 
             deviations: List[Dict[str, object]] = []
 
-            # Letzte Rechnungen pruefen
+            # Letzte Rechnungen prüfen
             recent_cutoff = datetime.now(timezone.utc) - timedelta(days=30)
             for entity_id, avg_amount, stddev_amount, count in entity_stats:
                 if avg_amount is None or avg_amount == 0:

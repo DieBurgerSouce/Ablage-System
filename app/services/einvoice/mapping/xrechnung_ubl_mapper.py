@@ -4,16 +4,16 @@ XRechnung UBL Mapper.
 
 Konvertiert ExtractedInvoiceData zu XRechnung 3.0.2 im UBL 2.1 Format.
 UBL (Universal Business Language) ist neben CII eines der beiden
-unterstuetzten Formate fuer XRechnung.
+unterstützten Formate für XRechnung.
 
 Unterschiede zu CII:
 - Andere XML-Struktur und Namespaces
 - Andere Element-Namen (z.B. cac:AccountingSupplierParty statt ram:SellerTradeParty)
-- Wird von manchen Empfaengern bevorzugt
+- Wird von manchen Empfängern bevorzugt
 
 Standards:
 - UBL 2.1: ISO 19845
-- XRechnung 3.0.2: EN 16931 Profil fuer DE
+- XRechnung 3.0.2: EN 16931 Profil für DE
 - BR-DE: Deutsche Business Rules
 """
 
@@ -66,7 +66,7 @@ PAYMENT_MEANS_CODES = {
 
 class XRechnungUBLMapper:
     """
-    Mapper fuer XRechnung 3.0.2 im UBL 2.1 Format.
+    Mapper für XRechnung 3.0.2 im UBL 2.1 Format.
 
     Konvertiert ExtractedInvoiceData zu konformem UBL-XML.
 
@@ -94,7 +94,7 @@ class XRechnungUBLMapper:
 
         Args:
             invoice: Extrahierte Rechnungsdaten
-            leitweg_id: Leitweg-ID (BT-10) - PFLICHT fuer XRechnung
+            leitweg_id: Leitweg-ID (BT-10) - PFLICHT für XRechnung
             invoice_type: Rechnungstyp (commercial_invoice, credit_note, etc.)
 
         Returns:
@@ -104,7 +104,7 @@ class XRechnungUBLMapper:
             ValueError: Bei fehlenden Pflichtfeldern
         """
         if not leitweg_id:
-            raise ValueError("Leitweg-ID (BT-10) ist Pflichtfeld fuer XRechnung")
+            raise ValueError("Leitweg-ID (BT-10) ist Pflichtfeld für XRechnung")
 
         # Root Element
         root = etree.Element(
@@ -128,7 +128,7 @@ class XRechnungUBLMapper:
             issue_date = issue_date.date()
         self._add_element(root, "cbc:IssueDate", issue_date.isoformat())
 
-        # Faelligkeitsdatum (BT-9)
+        # Fälligkeitsdatum (BT-9)
         if invoice.payment_due_date:
             due_date = invoice.payment_due_date
             if isinstance(due_date, datetime):
@@ -139,7 +139,7 @@ class XRechnungUBLMapper:
         type_code = INVOICE_TYPE_CODES.get(invoice_type, "380")
         self._add_element(root, "cbc:InvoiceTypeCode", type_code)
 
-        # Waehrung (BT-5)
+        # Währung (BT-5)
         currency = invoice.currency or "EUR"
         self._add_element(root, "cbc:DocumentCurrencyCode", currency)
 
@@ -610,7 +610,7 @@ _ubl_mapper: Optional[XRechnungUBLMapper] = None
 
 
 def get_ubl_mapper() -> XRechnungUBLMapper:
-    """Gibt Singleton-Instanz des UBL Mappers zurueck."""
+    """Gibt Singleton-Instanz des UBL Mappers zurück."""
     global _ubl_mapper
     if _ubl_mapper is None:
         _ubl_mapper = XRechnungUBLMapper()

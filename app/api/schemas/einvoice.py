@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Pydantic-Modelle fuer E-Invoice API Endpoints.
+Pydantic-Modelle für E-Invoice API Endpoints.
 
-Definiert Request/Response Schemas fuer:
+Definiert Request/Response Schemas für:
 - /api/v1/einvoice/parse
 - /api/v1/einvoice/generate/zugferd
 - /api/v1/einvoice/generate/xrechnung
@@ -42,7 +42,7 @@ class XRechnungSyntax(str, Enum):
 
 
 class ValidatorType(str, Enum):
-    """Verfuegbare Validatoren."""
+    """Verfügbare Validatoren."""
     KOSIT = "kosit"
     MUSTANG = "mustang"
     FACTURX = "facturx"
@@ -89,7 +89,7 @@ class ValidationWarning(BaseModel):
 # =============================================================================
 
 class EInvoiceParseRequest(BaseModel):
-    """Request fuer E-Invoice Parsing (optional, meist via multipart/form-data)."""
+    """Request für E-Invoice Parsing (optional, meist via multipart/form-data)."""
     extract_to_document: bool = Field(
         False,
         description="Sofort als Dokument in DB speichern"
@@ -157,7 +157,7 @@ class EInvoiceParseResponse(BaseModel):
 # =============================================================================
 
 class ZUGFeRDGenerateRequest(BaseModel):
-    """Request fuer ZUGFeRD PDF-Generierung."""
+    """Request für ZUGFeRD PDF-Generierung."""
     document_id: UUID = Field(..., description="Dokument-ID als Basis")
     profile: ZUGFeRDProfile = Field(
         ZUGFeRDProfile.EN16931,
@@ -174,7 +174,7 @@ class ZUGFeRDGenerateRequest(BaseModel):
 
 
 class XRechnungGenerateRequest(BaseModel):
-    """Request fuer XRechnung XML-Generierung."""
+    """Request für XRechnung XML-Generierung."""
     document_id: UUID = Field(..., description="Dokument-ID als Basis")
     syntax: XRechnungSyntax = Field(
         XRechnungSyntax.CII,
@@ -182,7 +182,7 @@ class XRechnungGenerateRequest(BaseModel):
     )
     validate_before_return: bool = Field(
         True,
-        description="Mit KoSIT validieren vor Rueckgabe"
+        description="Mit KoSIT validieren vor Rückgabe"
     )
 
 
@@ -192,9 +192,9 @@ class EInvoiceGenerateResponse(BaseModel):
     format: str = Field(..., description="Generiertes Format")
     profile: Optional[str] = Field(None, description="Verwendetes Profil")
     einvoice_id: UUID = Field(..., description="E-Invoice Datensatz ID")
-    document_id: UUID = Field(..., description="Zugehoeriges Dokument")
+    document_id: UUID = Field(..., description="Zugehöriges Dokument")
     download_url: str = Field(..., description="URL zum Download")
-    file_size_bytes: int = Field(..., description="Dateigroesse")
+    file_size_bytes: int = Field(..., description="Dateigröße")
     validation_result: Optional["EInvoiceValidationResponse"] = Field(
         None,
         description="Validierungsergebnis (wenn validate=True)"
@@ -211,7 +211,7 @@ class EInvoiceGenerateResponse(BaseModel):
 # =============================================================================
 
 class EInvoiceValidateRequest(BaseModel):
-    """Request fuer E-Invoice Validierung."""
+    """Request für E-Invoice Validierung."""
     document_id: Optional[UUID] = Field(
         None,
         description="Dokument-ID (wenn bereits in DB)"
@@ -224,7 +224,7 @@ class EInvoiceValidateRequest(BaseModel):
 
 class EInvoiceValidationResponse(BaseModel):
     """Response nach E-Invoice Validierung."""
-    valid: bool = Field(..., description="Gesamtergebnis: Gueltig")
+    valid: bool = Field(..., description="Gesamtergebnis: Gültig")
     validator_used: str = Field(..., description="Verwendeter Validator")
     validated_at: datetime = Field(..., description="Validierungszeitpunkt")
 
@@ -233,7 +233,7 @@ class EInvoiceValidationResponse(BaseModel):
     schematron_valid: bool = Field(..., description="Schematron Business Rules bestanden")
     pdf_a_compliant: Optional[bool] = Field(
         None,
-        description="PDF/A-3 Konformitaet (nur bei ZUGFeRD)"
+        description="PDF/A-3 Konformität (nur bei ZUGFeRD)"
     )
 
     # Fehler und Warnungen
@@ -275,22 +275,22 @@ class EInvoiceValidationResponse(BaseModel):
 # =============================================================================
 
 class SupportedFormat(BaseModel):
-    """Beschreibung eines unterstuetzten Formats."""
+    """Beschreibung eines unterstützten Formats."""
     id: str = Field(..., description="Format-ID")
     name: str = Field(..., description="Anzeigename")
     description: str = Field(..., description="Beschreibung")
     supported_profiles: Optional[List[str]] = Field(
         None,
-        description="Unterstuetzte Profile (bei ZUGFeRD)"
+        description="Unterstützte Profile (bei ZUGFeRD)"
     )
-    b2g_compatible: bool = Field(..., description="Fuer Behoerden geeignet (B2G)")
+    b2g_compatible: bool = Field(..., description="Für Behörden geeignet (B2G)")
 
 
 class EInvoiceFormatsResponse(BaseModel):
-    """Response mit allen unterstuetzten Formaten."""
+    """Response mit allen unterstützten Formaten."""
     formats: List[SupportedFormat] = Field(
         default_factory=list,
-        description="Liste unterstuetzter Formate"
+        description="Liste unterstützter Formate"
     )
     default_format: str = Field(
         "zugferd",
@@ -307,7 +307,7 @@ class EInvoiceFormatsResponse(BaseModel):
 # =============================================================================
 
 class EInvoiceConvertRequest(BaseModel):
-    """Request fuer Format-Konvertierung."""
+    """Request für Format-Konvertierung."""
     source_document_id: Optional[UUID] = Field(
         None,
         description="Quell-Dokument ID"

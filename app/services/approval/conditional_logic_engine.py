@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-ConditionalLogicEngine - Bedingte Logik fuer Genehmigungsworkflows.
+ConditionalLogicEngine - Bedingte Logik für Genehmigungsworkflows.
 
 Feature #3: Approval Workflow Depth
-Evaluiert bedingte Regeln und fuegt bei Bedarf zusaetzliche
+Evaluiert bedingte Regeln und fuegt bei Bedarf zusätzliche
 Genehmiger zur Approval-Chain hinzu.
 
 Regeln wie:
-- Betrag > 5.000 EUR -> zusaetzlicher Genehmiger (Geschaeftsfuehrung)
-- Risiko-Score > 70 -> Compliance-Pruefung erforderlich
-- Dokumenttyp = 'Vertrag' -> Rechtsabteilung muss pruefen
+- Betrag > 5.000 EUR -> zusätzlicher Genehmiger (Geschäftsführung)
+- Risiko-Score > 70 -> Compliance-Prüfung erforderlich
+- Dokumenttyp = 'Vertrag' -> Rechtsabteilung muss prüfen
 
-Nutzt models_approval_extended fuer ConditionalApprovalRule.
+Nutzt models_approval_extended für ConditionalApprovalRule.
 """
 
 from __future__ import annotations
@@ -33,10 +33,10 @@ logger = structlog.get_logger(__name__)
 
 
 class ConditionalLogicEngine:
-    """Bedingte Logik fuer Genehmigungsworkflows.
+    """Bedingte Logik für Genehmigungsworkflows.
 
     Evaluiert ConditionalApprovalRules gegen Dokumentdaten
-    und fuegt bei Match zusaetzliche Genehmiger hinzu.
+    und fuegt bei Match zusätzliche Genehmiger hinzu.
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -53,12 +53,12 @@ class ConditionalLogicEngine:
         company_id: UUID,
         document_data: Dict[str, object],
     ) -> List[ConditionalApprovalRule]:
-        """Prueft alle aktiven bedingten Regeln und gibt zutreffende zurueck.
+        """Prüft alle aktiven bedingten Regeln und gibt zutreffende zurück.
 
         Args:
             db: Async Database Session
             company_id: ID der Firma
-            document_data: Dokumentdaten fuer Bedingungspruefung
+            document_data: Dokumentdaten für Bedingungsprüfung
                 z.B. {"amount": 7500, "supplier_risk_score": 80, "document_type": "invoice"}
 
         Returns:
@@ -118,7 +118,7 @@ class ConditionalLogicEngine:
         request_id: UUID,
         matching_rules: List[ConditionalApprovalRule],
     ) -> int:
-        """Fuegt zusaetzliche Genehmiger basierend auf zutreffenden Regeln hinzu.
+        """Fuegt zusätzliche Genehmiger basierend auf zutreffenden Regeln hinzu.
 
         Args:
             db: Async Database Session
@@ -156,7 +156,7 @@ class ConditionalLogicEngine:
                 if not approver_value:
                     continue
 
-                # Neuen Step am Ende der Chain einfuegen
+                # Neuen Step am Ende der Chain einfügen
                 new_step_number = request.total_steps + 1
 
                 step = ApprovalStep(
@@ -178,7 +178,7 @@ class ConditionalLogicEngine:
                 request.total_steps = new_step_number
                 added_count += 1
 
-            # Prioritaet ueberschreiben falls definiert
+            # Priorität überschreiben falls definiert
             if rule.priority_override:
                 try:
                     request.priority = ApprovalPriority(rule.priority_override)
@@ -208,7 +208,7 @@ class ConditionalLogicEngine:
     ) -> bool:
         """Einzelne Bedingung gegen einen Feldwert auswerten.
 
-        Unterstuetzte Operatoren: gt, lt, eq, neq, in, not_in, between, contains
+        Unterstützte Operatoren: gt, lt, eq, neq, in, not_in, between, contains
 
         Args:
             operator: Vergleichsoperator

@@ -1,8 +1,8 @@
 """
 Executive Dashboard Service
 
-Service fuer Geschaeftsfuehrung Dashboard - KPIs, Trends, Abteilungsstatistiken.
-Alle Abfragen sind read-only und optimiert fuer Reporting.
+Service für Geschäftsführung Dashboard - KPIs, Trends, Abteilungsstatistiken.
+Alle Abfragen sind read-only und optimiert für Reporting.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -25,7 +25,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ExecutiveDashboardService:
-    """Service fuer Executive Dashboard Reporting."""
+    """Service für Executive Dashboard Reporting."""
 
     def __init__(self, db: AsyncSession, company_id: UUID):
         """
@@ -33,7 +33,7 @@ class ExecutiveDashboardService:
 
         Args:
             db: Database session
-            company_id: Company ID fuer Multi-Tenant Isolation
+            company_id: Company ID für Multi-Tenant Isolation
         """
         self.db = db
         self.company_id = company_id
@@ -152,7 +152,7 @@ class ExecutiveDashboardService:
             else:
                 ocr_trend = 0.0
 
-            # Geschaetzte Kosten pro Dokument (0.10 EUR pro Sekunde Verarbeitungszeit)
+            # Geschätzte Kosten pro Dokument (0.10 EUR pro Sekunde Verarbeitungszeit)
             cost_per_doc = (proc_current / 1000.0) * 0.10 if proc_current > 0 else 0.0
 
             # Aktive Benutzer (mindestens 1 Dokument hochgeladen im aktuellen Monat)
@@ -167,7 +167,7 @@ class ExecutiveDashboardService:
             result = await self.db.execute(stmt_users)
             active_users = result.scalar() or 0
 
-            # Ausstehende Pruefungen (Status = PENDING oder PROCESSING)
+            # Ausstehende Prüfungen (Status = PENDING oder PROCESSING)
             stmt_pending = select(func.count(Document.id)).where(
                 and_(
                     Document.company_id == self.company_id,
@@ -199,7 +199,7 @@ class ExecutiveDashboardService:
         """
         Hole Statistiken nach Abteilungen/Bereichen.
 
-        Verwendet document_type als Proxy fuer Abteilung/Bereich.
+        Verwendet document_type als Proxy für Abteilung/Bereich.
 
         Returns:
             Liste von DepartmentBreakdown
@@ -208,7 +208,7 @@ class ExecutiveDashboardService:
             Exception: Bei Datenbankfehlern
         """
         try:
-            # Gruppiere nach document_type (als Proxy fuer Abteilung)
+            # Gruppiere nach document_type (als Proxy für Abteilung)
             stmt = select(
                 Document.document_type,
                 func.count(Document.id).label("doc_count"),
@@ -255,17 +255,17 @@ class ExecutiveDashboardService:
 
     async def get_trend(self, metric: str, days: int = 30) -> TrendResponse:
         """
-        Hole Trend-Daten fuer eine bestimmte Metrik.
+        Hole Trend-Daten für eine bestimmte Metrik.
 
         Args:
             metric: Metrik-Name (documents, processing_time, accuracy)
-            days: Anzahl Tage zurueck
+            days: Anzahl Tage zurück
 
         Returns:
-            TrendResponse mit taeglichen Datenpunkten
+            TrendResponse mit täglichen Datenpunkten
 
         Raises:
-            ValueError: Bei ungueltiger Metrik
+            ValueError: Bei ungültiger Metrik
             Exception: Bei Datenbankfehlern
         """
         try:
@@ -360,7 +360,7 @@ class ExecutiveDashboardService:
 
 async def get_kpis(company_id: UUID, db: AsyncSession) -> KPIResponse:
     """
-    Hole KPIs fuer eine Company.
+    Hole KPIs für eine Company.
 
     Args:
         company_id: Company ID
@@ -375,7 +375,7 @@ async def get_kpis(company_id: UUID, db: AsyncSession) -> KPIResponse:
 
 async def get_department_breakdown(company_id: UUID, db: AsyncSession) -> List[DepartmentBreakdown]:
     """
-    Hole Abteilungsstatistiken fuer eine Company.
+    Hole Abteilungsstatistiken für eine Company.
 
     Args:
         company_id: Company ID
@@ -395,7 +395,7 @@ async def get_trend(
     db: AsyncSession
 ) -> TrendResponse:
     """
-    Hole Trend-Daten fuer eine Company.
+    Hole Trend-Daten für eine Company.
 
     Args:
         company_id: Company ID

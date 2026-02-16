@@ -55,6 +55,18 @@ export interface Notification {
   created_at: string;
   link?: string;
   metadata?: NotificationMetadata;
+  snoozed_until?: string;
+  group_key?: string;
+}
+
+/**
+ * Gruppierte Benachrichtigungen
+ */
+export interface NotificationGroup {
+  group_key: string;
+  count: number;
+  latest: Notification;
+  notifications: Notification[];
 }
 
 /**

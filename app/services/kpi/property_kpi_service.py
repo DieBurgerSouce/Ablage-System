@@ -1,4 +1,4 @@
-"""Property KPI Service fuer Immobilien-Berechnungen.
+"""Property KPI Service für Immobilien-Berechnungen.
 
 Berechnet alle Immobilien-bezogenen KPIs:
 - Bruttomietrendite
@@ -59,14 +59,14 @@ class PropertyKPIResult:
 
 
 class PropertyKPIService:
-    """Service fuer Immobilien-KPI-Berechnungen.
+    """Service für Immobilien-KPI-Berechnungen.
 
-    Berechnet automatisch alle relevanten KPIs fuer Immobilien
+    Berechnet automatisch alle relevanten KPIs für Immobilien
     basierend auf Kaufpreis, aktuellem Wert, Mieteinnahmen und Kosten.
 
     WICHTIG: Multi-Tenant Isolation
     - Alle Abfragen filtern nach space_id
-    - space_id MUSS bei calculate_all_kpis uebergeben werden
+    - space_id MUSS bei calculate_all_kpis übergeben werden
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -83,7 +83,7 @@ class PropertyKPIService:
         space_id: UUID,
         persist: bool = True
     ) -> PropertyKPIResult:
-        """Berechnet alle KPIs fuer eine Immobilie.
+        """Berechnet alle KPIs für eine Immobilie.
 
         Args:
             property_id: UUID der Immobilie
@@ -118,7 +118,7 @@ class PropertyKPIService:
             maintenance_reserve=self._calc_maintenance_reserve(property_data),
         )
 
-        # Persistiere KPIs in der DB wenn gewuenscht
+        # Persistiere KPIs in der DB wenn gewünscht
         if persist:
             await self._persist_kpis(property_data, result)
 
@@ -141,7 +141,7 @@ class PropertyKPIService:
         """Speichert berechnete KPIs in der Datenbank.
 
         Args:
-            property_data: Die Property-Entitaet
+            property_data: Die Property-Entität
             result: Die berechneten KPIs
         """
         property_data.calculated_yield = result.gross_yield
@@ -240,11 +240,11 @@ class PropertyKPIService:
     ) -> Decimal:
         """Berechnet den Cash-on-Cash Return.
 
-        Cash-on-Cash = Jaehrlicher Cashflow / Eingesetztes Eigenkapital * 100
+        Cash-on-Cash = Jährlicher Cashflow / Eingesetztes Eigenkapital * 100
         """
         purchase_price = property_data.purchase_price or Decimal("0")
 
-        # Hole Kreditbetrag aus verknuepftem Loan falls vorhanden
+        # Hole Kreditbetrag aus verknüpftem Loan falls vorhanden
         loan_amount = Decimal("0")
         monthly_payment = Decimal("0")
         if property_data.loan:
@@ -264,7 +264,7 @@ class PropertyKPIService:
         return result.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def _calc_appreciation_rate(self, property_data: PrivatProperty) -> Decimal:
-        """Berechnet die jaehrliche Wertsteigerungsrate."""
+        """Berechnet die jährliche Wertsteigerungsrate."""
         purchase_price = property_data.purchase_price or Decimal("0")
         current_value = property_data.current_value or Decimal("0")
 
@@ -284,7 +284,7 @@ class PropertyKPIService:
         return annual_rate.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def _calc_ltv_ratio(self, property_data: PrivatProperty) -> Decimal:
-        """Berechnet das Loan-to-Value Verhaeltnis.
+        """Berechnet das Loan-to-Value Verhältnis.
 
         LTV = Restschuld / Aktueller Wert * 100
         """
@@ -292,7 +292,7 @@ class PropertyKPIService:
         if current_value <= 0:
             return Decimal("100")  # Maximales Risiko
 
-        # Hole Restschuld aus verknuepftem Loan
+        # Hole Restschuld aus verknüpftem Loan
         remaining_loan = Decimal("0")
         if property_data.loan:
             remaining_loan = property_data.loan.current_balance or Decimal("0")
@@ -303,10 +303,10 @@ class PropertyKPIService:
     def _calc_dscr(self, monthly_income: Decimal, property_data: PrivatProperty) -> Decimal:
         """Berechnet die Debt Service Coverage Ratio.
 
-        DSCR = NOI / Jaehrlicher Schuldendienst
+        DSCR = NOI / Jährlicher Schuldendienst
         Ein Wert > 1.25 wird als gesund angesehen.
         """
-        # Hole monatliche Zahlung aus verknuepftem Loan
+        # Hole monatliche Zahlung aus verknüpftem Loan
         monthly_payment = Decimal("0")
         if property_data.loan:
             monthly_payment = property_data.loan.monthly_payment or Decimal("0")
@@ -321,7 +321,7 @@ class PropertyKPIService:
         return result.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def _calc_expense_ratio(self, monthly_expenses: Decimal, monthly_income: Decimal) -> Decimal:
-        """Berechnet das Kosten-zu-Einnahmen-Verhaeltnis."""
+        """Berechnet das Kosten-zu-Einnahmen-Verhältnis."""
         if monthly_income <= 0:
             return Decimal("100")
 
@@ -329,7 +329,7 @@ class PropertyKPIService:
         return result.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def _calc_maintenance_reserve(self, property_data: PrivatProperty) -> Decimal:
-        """Empfohlene Instandhaltungsruecklage pro Jahr.
+        """Empfohlene Instandhaltungsrücklage pro Jahr.
 
         Typisch: 1-2% des Immobilienwerts pro Jahr
         """
@@ -344,14 +344,14 @@ class PropertyKPIService:
         return delta.days / 365.25
 
     async def _get_property(self, property_id: UUID, space_id: UUID) -> PrivatProperty:
-        """Laedt Property aus der Datenbank mit Multi-Tenant-Pruefung.
+        """Laedt Property aus der Datenbank mit Multi-Tenant-Prüfung.
 
         Args:
             property_id: UUID der Immobilie
             space_id: UUID des Space (Multi-Tenant Isolation!)
 
         Returns:
-            PrivatProperty Entitaet
+            PrivatProperty Entität
 
         Raises:
             ValueError: Wenn Property nicht existiert oder nicht zum Space gehoert
@@ -385,7 +385,7 @@ class PropertyKPIService:
 
         Args:
             property_id: UUID der Immobilie
-            space_id: UUID des Space (fuer Audit-Log)
+            space_id: UUID des Space (für Audit-Log)
 
         Returns:
             Durchschnittliche monatliche Mieteinnahmen als Decimal
@@ -400,7 +400,7 @@ class PropertyKPIService:
             .join(PrivatProperty, PrivatRentalIncome.property_id == PrivatProperty.id)
             .where(
                 PrivatRentalIncome.property_id == property_id,
-                PrivatProperty.space_id == space_id,  # Multi-Tenant Join-Pruefung
+                PrivatProperty.space_id == space_id,  # Multi-Tenant Join-Prüfung
                 PrivatRentalIncome.payment_date >= twelve_months_ago,
                 PrivatRentalIncome.payment_type == "rent"
             )
@@ -418,7 +418,7 @@ class PropertyKPIService:
 
         Args:
             property_id: UUID der Immobilie
-            space_id: UUID des Space (fuer Audit-Log)
+            space_id: UUID des Space (für Audit-Log)
 
         Returns:
             Durchschnittliche monatliche Kosten als Decimal
@@ -429,7 +429,7 @@ class PropertyKPIService:
             .join(PrivatProperty, PrivatUtilityStatement.property_id == PrivatProperty.id)
             .where(
                 PrivatUtilityStatement.property_id == property_id,
-                PrivatProperty.space_id == space_id  # Multi-Tenant Join-Pruefung
+                PrivatProperty.space_id == space_id  # Multi-Tenant Join-Prüfung
             )
             .order_by(PrivatUtilityStatement.period_end.desc())
             .limit(1)
@@ -457,7 +457,7 @@ class PropertyKPIService:
         space_id: UUID,
         persist: bool = True
     ) -> dict[UUID, PropertyKPIResult]:
-        """Berechnet KPIs fuer alle Properties eines Space.
+        """Berechnet KPIs für alle Properties eines Space.
 
         Args:
             space_id: UUID des Space

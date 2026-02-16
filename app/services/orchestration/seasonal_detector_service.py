@@ -62,7 +62,7 @@ class SeasonalPhase(str, Enum):
 
 
 class AlertPriority(str, Enum):
-    """Prioritaet von Warnungen."""
+    """Priorität von Warnungen."""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -76,7 +76,7 @@ class AlertPriority(str, Enum):
 
 @dataclass
 class MonthlyStats:
-    """Statistiken fuer einen Monat."""
+    """Statistiken für einen Monat."""
     month: int  # 1-12
     year: int
     total_revenue: Decimal = Decimal("0")
@@ -99,7 +99,7 @@ class SeasonalPattern:
     low_months: List[int] = field(default_factory=list)
 
     # Metriken
-    peak_factor: float = 1.0  # Multiplikator gegenueber Durchschnitt
+    peak_factor: float = 1.0  # Multiplikator gegenüber Durchschnitt
     low_factor: float = 1.0
     variability_coefficient: float = 0.0
 
@@ -125,7 +125,7 @@ class YearComparison:
     # Monatliche Unterschiede (month -> change_percent)
     monthly_differences: Dict[int, float] = field(default_factory=dict)
 
-    # Auffaelligkeiten
+    # Auffälligkeiten
     anomalies: List[str] = field(default_factory=list)
 
 
@@ -186,7 +186,7 @@ class LiquidityAdjustment:
 
 @dataclass
 class SeasonalAnalysis:
-    """Vollstaendige saisonale Analyse."""
+    """Vollständige saisonale Analyse."""
     id: UUID = field(default_factory=uuid4)
     company_id: UUID = field(default_factory=uuid4)
     analysis_date: date = field(default_factory=date.today)
@@ -200,7 +200,7 @@ class SeasonalAnalysis:
     # Warnungen
     warnings: List[SeasonalWarning] = field(default_factory=list)
 
-    # Anpassungsvorschlaege
+    # Anpassungsvorschläge
     liquidity_adjustments: List[LiquidityAdjustment] = field(default_factory=list)
 
     # Metriken
@@ -227,7 +227,7 @@ class SeasonalAnalysis:
 
 class SeasonalDetectorService:
     """
-    Service fuer saisonale Mustererkennung und proaktive Warnungen.
+    Service für saisonale Mustererkennung und proaktive Warnungen.
 
     Analysiert historische Daten um saisonale Muster zu erkennen
     und generiert proaktive Warnungen und Liquiditaetsempfehlungen.
@@ -249,12 +249,12 @@ class SeasonalDetectorService:
             return
         self._initialized = True
 
-        # Cache fuer Muster
+        # Cache für Muster
         self._pattern_cache: Dict[UUID, List[SeasonalPattern]] = {}
         self._cache_lock = asyncio.Lock()
 
         # Konfiguration
-        self._lookback_years = 3  # Jahre fuer Analyse
+        self._lookback_years = 3  # Jahre für Analyse
         self._min_data_months = 12  # Mindest-Datenpunkte
 
         # Deutsche Monatsnamen
@@ -276,7 +276,7 @@ class SeasonalDetectorService:
         company_id: UUID,
     ) -> SeasonalAnalysis:
         """
-        Fuehrt eine vollstaendige saisonale Analyse fuer eine Company durch.
+        Führt eine vollständige saisonale Analyse für eine Company durch.
 
         Args:
             db: Database Session
@@ -318,7 +318,7 @@ class SeasonalDetectorService:
             company_id, patterns, warnings
         )
 
-        # 6. Alerts erstellen fuer kritische Warnungen
+        # 6. Alerts erstellen für kritische Warnungen
         for warning in warnings:
             if warning.priority in [AlertPriority.HIGH, AlertPriority.CRITICAL]:
                 await self._create_warning_alert(db, warning)
@@ -412,7 +412,7 @@ class SeasonalDetectorService:
         result = await db.execute(expense_query)
         expense_data = {(int(r[0]), int(r[1])): r for r in result.all()}
 
-        # Statistiken zusammenfuehren
+        # Statistiken zusammenführen
         all_months = set(revenue_data.keys()) | set(expense_data.keys())
 
         for year, month in sorted(all_months):
@@ -443,7 +443,7 @@ class SeasonalDetectorService:
         """Erkennt saisonale Muster in den Daten."""
         patterns: List[SeasonalPattern] = []
 
-        # Gruppiere nach Monat (ueber alle Jahre)
+        # Gruppiere nach Monat (über alle Jahre)
         by_month: Dict[int, List[Decimal]] = {m: [] for m in range(1, 13)}
         for stat in monthly_stats:
             by_month[stat.month].append(stat.total_revenue)
@@ -465,11 +465,11 @@ class SeasonalDetectorService:
 
         # Q4-Spitze erkennen
         q4_avg = mean([monthly_averages[m] for m in [10, 11, 12] if monthly_averages[m] > 0] or [0])
-        if q4_avg > overall_avg * 1.2:  # 20% ueber Durchschnitt
+        if q4_avg > overall_avg * 1.2:  # 20% über Durchschnitt
             patterns.append(SeasonalPattern(
                 company_id=company_id,
                 pattern_type="q4_peak",
-                description="Erhoehte Umsaetze im vierten Quartal (Oktober-Dezember)",
+                description="Erhöhte Umsätze im vierten Quartal (Oktober-Dezember)",
                 peak_months=[10, 11, 12],
                 low_months=[],
                 peak_factor=q4_avg / overall_avg if overall_avg > 0 else 1.0,
@@ -483,7 +483,7 @@ class SeasonalDetectorService:
             patterns.append(SeasonalPattern(
                 company_id=company_id,
                 pattern_type="summer_dip",
-                description="Umsatzrueckgang in den Sommermonaten (Juni-August)",
+                description="Umsatzrückgang in den Sommermonaten (Juni-August)",
                 peak_months=[],
                 low_months=[6, 7, 8],
                 low_factor=summer_avg / overall_avg if overall_avg > 0 else 1.0,
@@ -493,7 +493,7 @@ class SeasonalDetectorService:
 
         # Jahresende-Spitze (November-Dezember)
         year_end_avg = mean([monthly_averages[m] for m in [11, 12] if monthly_averages[m] > 0] or [0])
-        if year_end_avg > overall_avg * 1.3:  # 30% ueber Durchschnitt
+        if year_end_avg > overall_avg * 1.3:  # 30% über Durchschnitt
             patterns.append(SeasonalPattern(
                 company_id=company_id,
                 pattern_type="year_end_peak",
@@ -512,7 +512,7 @@ class SeasonalDetectorService:
             patterns.append(SeasonalPattern(
                 company_id=company_id,
                 pattern_type="january_dip",
-                description="Umsatzrueckgang im Januar nach Weihnachtsgeschaeft",
+                description="Umsatzrückgang im Januar nach Weihnachtsgeschäft",
                 peak_months=[],
                 low_months=[1],
                 low_factor=jan_avg / overall_avg if overall_avg > 0 else 1.0,
@@ -595,11 +595,11 @@ class SeasonalDetectorService:
                 # Anomalien erkennen
                 if diff < -30:
                     anomalies.append(
-                        f"{self._month_names[month]}: Umsatzrueckgang von {abs(diff):.0f}% gegenueber Vorjahr"
+                        f"{self._month_names[month]}: Umsatzrückgang von {abs(diff):.0f}% gegenüber Vorjahr"
                     )
                 elif diff > 50:
                     anomalies.append(
-                        f"{self._month_names[month]}: Umsatzsteigerung von {diff:.0f}% gegenueber Vorjahr"
+                        f"{self._month_names[month]}: Umsatzsteigerung von {diff:.0f}% gegenüber Vorjahr"
                     )
 
         return YearComparison(
@@ -645,9 +645,9 @@ class SeasonalDetectorService:
                 expected_impact_amount=recent_revenue * Decimal(str(q4_pattern.peak_factor - 1)),
                 historical_pattern=q4_pattern,
                 recommendations=[
-                    "Lagerbestaende fruehzeitig aufstocken",
-                    "Personalplanung fuer Q4 vorbereiten",
-                    "Liquiditaet fuer erhoehte Einkaufskosten sicherstellen",
+                    "Lagerbestände frühzeitig aufstocken",
+                    "Personalplanung für Q4 vorbereiten",
+                    "Liquiditaet für erhöhte Einkaufskosten sicherstellen",
                 ],
             ))
 
@@ -661,7 +661,7 @@ class SeasonalDetectorService:
                 company_id=company_id,
                 title="Sommer-Einbruch erwartet",
                 description=(
-                    f"Historische Daten zeigen einen typischen Umsatzrueckgang "
+                    f"Historische Daten zeigen einen typischen Umsatzrückgang "
                     f"von ca. {expected_decrease:.0f}% in den Sommermonaten."
                 ),
                 priority=AlertPriority.HIGH,
@@ -671,7 +671,7 @@ class SeasonalDetectorService:
                 recommendations=[
                     "Fixkosten auf Minimum reduzieren",
                     "Zahlungsziele mit Lieferanten verhandeln",
-                    "Marketing fuer Sommerangebote vorbereiten",
+                    "Marketing für Sommerangebote vorbereiten",
                     "Liquiditaetsreserve aufbauen",
                 ],
             ))
@@ -680,7 +680,7 @@ class SeasonalDetectorService:
         if year_comparison and year_comparison.revenue_change_percent < -20:
             warnings.append(SeasonalWarning(
                 company_id=company_id,
-                title="Deutlicher Umsatzrueckgang",
+                title="Deutlicher Umsatzrückgang",
                 description=(
                     f"Der Umsatz liegt {abs(year_comparison.revenue_change_percent):.0f}% "
                     f"unter dem Vorjahresniveau."
@@ -688,10 +688,10 @@ class SeasonalDetectorService:
                 priority=AlertPriority.CRITICAL,
                 affected_period=f"{year_comparison.current_year}",
                 recommendations=[
-                    "Ursachenanalyse durchfuehren",
+                    "Ursachenanalyse durchführen",
                     "Kostensenkungspotenziale identifizieren",
-                    "Vertriebsaktivitaeten intensivieren",
-                    "Bankgespraeche zur Liquiditaetssicherung fuehren",
+                    "Vertriebsaktivitäten intensivieren",
+                    "Bankgespraeche zur Liquiditaetssicherung führen",
                 ],
             ))
 
@@ -702,17 +702,17 @@ class SeasonalDetectorService:
                 company_id=company_id,
                 title="Hohe Umsatzschwankungen",
                 description=(
-                    f"Die monatlichen Umsaetze schwanken stark "
+                    f"Die monatlichen Umsätze schwanken stark "
                     f"(Variationskoeffizient: {var_pattern.variability_coefficient:.2f})."
                 ),
                 priority=AlertPriority.MEDIUM,
                 affected_period="Ganzjaehrig",
                 historical_pattern=var_pattern,
                 recommendations=[
-                    "Liquiditaetsreserve erhoehen",
+                    "Liquiditaetsreserve erhöhen",
                     "Fixkosten flexibilisieren",
-                    "Umsatzdiversifikation pruefen",
-                    "Rahmenvertraege mit Kunden abschliessen",
+                    "Umsatzdiversifikation prüfen",
+                    "Rahmenverträge mit Kunden abschließen",
                 ],
             ))
 
@@ -749,7 +749,7 @@ class SeasonalDetectorService:
         patterns: List[SeasonalPattern],
         warnings: List[SeasonalWarning],
     ) -> List[LiquidityAdjustment]:
-        """Generiert Liquiditaetsanpassungsvorschlaege."""
+        """Generiert Liquiditaetsanpassungsvorschläge."""
         adjustments: List[LiquidityAdjustment] = []
         today = date.today()
 
@@ -764,14 +764,14 @@ class SeasonalDetectorService:
                 adjustments.append(LiquidityAdjustment(
                     company_id=company_id,
                     adjustment_type="reserve",
-                    description="Liquiditaetsreserve fuer Sommereinbruch aufbauen",
+                    description="Liquiditaetsreserve für Sommereinbruch aufbauen",
                     amount=summer_warning.expected_impact_amount * Decimal("1.2"),  # 20% Puffer
                     effective_from=today,
                     effective_until=summer_start,
-                    reason="Erwarteter Umsatzrueckgang in den Sommermonaten",
+                    reason="Erwarteter Umsatzrückgang in den Sommermonaten",
                 ))
 
-        # Bei Q4-Spitze: Kreditlinie erhoehen
+        # Bei Q4-Spitze: Kreditlinie erhöhen
         q4_warning = next(
             (w for w in warnings if "Q4" in w.title),
             None,
@@ -782,11 +782,11 @@ class SeasonalDetectorService:
                 adjustments.append(LiquidityAdjustment(
                     company_id=company_id,
                     adjustment_type="credit_line",
-                    description="Kreditlinie fuer Q4-Wareneinkauf erhoehen",
+                    description="Kreditlinie für Q4-Wareneinkauf erhöhen",
                     amount=q4_warning.expected_impact_amount * Decimal("0.5"),
                     effective_from=date(today.year, 9, 15),
                     effective_until=date(today.year, 12, 31),
-                    reason="Erhoehter Kapitalbedarf fuer Q4-Hochsaison",
+                    reason="Erhöhter Kapitalbedarf für Q4-Hochsaison",
                 ))
 
         # Bei hoher Variabilitaet: Generelle Reserve
@@ -798,7 +798,7 @@ class SeasonalDetectorService:
             adjustments.append(LiquidityAdjustment(
                 company_id=company_id,
                 adjustment_type="reserve",
-                description="Erhoehte Liquiditaetsreserve aufgrund hoher Umsatzschwankungen",
+                description="Erhöhte Liquiditaetsreserve aufgrund hoher Umsatzschwankungen",
                 amount=Decimal("0"),  # Wird individuell berechnet
                 effective_from=today,
                 effective_until=date(today.year, 12, 31),
@@ -817,7 +817,7 @@ class SeasonalDetectorService:
         db: AsyncSession,
         warning: SeasonalWarning,
     ) -> UUID:
-        """Erstellt einen Alert fuer eine Warnung."""
+        """Erstellt einen Alert für eine Warnung."""
         severity_map = {
             AlertPriority.LOW: AlertSeverity.LOW,
             AlertPriority.MEDIUM: AlertSeverity.MEDIUM,
@@ -857,7 +857,7 @@ class SeasonalDetectorService:
         self,
         company_id: UUID,
     ) -> List[SeasonalPattern]:
-        """Gibt gecachte Muster zurueck."""
+        """Gibt gecachte Muster zurück."""
         async with self._cache_lock:
             return self._pattern_cache.get(company_id, [])
 
@@ -866,7 +866,7 @@ class SeasonalDetectorService:
         company_id: UUID,
         horizon_days: int = 90,
     ) -> List[Dict[str, Any]]:
-        """Gibt bevorstehende saisonale Events zurueck."""
+        """Gibt bevorstehende saisonale Events zurück."""
         events: List[Dict[str, Any]] = []
         today = date.today()
 
@@ -923,7 +923,7 @@ _service_lock = threading.Lock()
 
 
 def get_seasonal_detector_service() -> SeasonalDetectorService:
-    """Factory-Funktion fuer SeasonalDetectorService Singleton."""
+    """Factory-Funktion für SeasonalDetectorService Singleton."""
     global _service_instance
     if _service_instance is None:
         with _service_lock:

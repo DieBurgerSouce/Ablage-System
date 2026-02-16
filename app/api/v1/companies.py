@@ -2,7 +2,7 @@
 Company API Endpoints.
 
 Verwaltet Firmen im Multi-Mandanten-System:
-- Firmen-CRUD fuer autorisierte Benutzer
+- Firmen-CRUD für autorisierte Benutzer
 - Firmenwechsel (aktuelle Firma setzen)
 - Benutzer-Firmen-Zuordnung
 
@@ -58,7 +58,7 @@ router = APIRouter(prefix="/companies", tags=["Firmen"])
     "",
     response_model=CompanyListResponse,
     summary="Firmen des Benutzers auflisten",
-    description="Gibt alle Firmen zurueck, auf die der aktuelle Benutzer Zugriff hat."
+    description="Gibt alle Firmen zurück, auf die der aktuelle Benutzer Zugriff hat."
 )
 async def list_companies(
     request: Request,
@@ -125,7 +125,7 @@ async def create_company(
 ) -> CompanyResponse:
     """Erstellt eine neue Firma."""
 
-    # Pruefe ob Firmenname bereits existiert
+    # Prüfe ob Firmenname bereits existiert
     existing = await db.execute(
         select(Company)
         .where(Company.name == data.name)
@@ -209,7 +209,7 @@ async def create_company(
     "/current",
     response_model=CompanyResponse,
     summary="Aktuelle Firma abrufen",
-    description="Gibt die aktuell ausgewaehlte Firma des Benutzers zurueck.",
+    description="Gibt die aktuell ausgewaehlte Firma des Benutzers zurück.",
     responses={404: {"description": "Keine aktuelle Firma ausgewaehlt"}}
 )
 async def get_current_company_endpoint(
@@ -217,14 +217,14 @@ async def get_current_company_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> CompanyResponse:
-    """Gibt die aktuelle Firma zurueck."""
+    """Gibt die aktuelle Firma zurück."""
 
     company = await get_current_company(request, db, current_user)
 
     if not company:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine aktuelle Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus."
+            detail="Keine aktuelle Firma ausgewaehlt. Bitte wählen Sie eine Firma aus."
         )
 
     return CompanyResponse.model_validate(company)
@@ -273,16 +273,16 @@ async def switch_current_company(
     "/{company_id}",
     response_model=CompanyResponse,
     summary="Firma abrufen",
-    description="Gibt Details einer spezifischen Firma zurueck."
+    description="Gibt Details einer spezifischen Firma zurück."
 )
 async def get_company(
     company_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> CompanyResponse:
-    """Gibt eine spezifische Firma zurueck."""
+    """Gibt eine spezifische Firma zurück."""
 
-    # Pruefe Zugriff
+    # Prüfe Zugriff
     access_result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == current_user.id)
@@ -325,7 +325,7 @@ async def update_company(
 ) -> CompanyResponse:
     """Aktualisiert eine Firma."""
 
-    # Pruefe Berechtigung (Owner oder Admin)
+    # Prüfe Berechtigung (Owner oder Admin)
     access_result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == current_user.id)
@@ -383,17 +383,17 @@ async def update_company(
     "/{company_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Firma loeschen (Soft-Delete)",
-    description="Setzt deleted_at fuer die Firma. Nur Owner."
+    summary="Firma löschen (Soft-Delete)",
+    description="Setzt deleted_at für die Firma. Nur Owner."
 )
 async def delete_company(
     company_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Response:
-    """Loescht eine Firma (Soft-Delete)."""
+    """Löscht eine Firma (Soft-Delete)."""
 
-    # Pruefe Berechtigung (nur Owner)
+    # Prüfe Berechtigung (nur Owner)
     access_result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == current_user.id)
@@ -404,7 +404,7 @@ async def delete_company(
     if not user_company or user_company.role != "owner":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur der Firmen-Owner kann die Firma loeschen."
+            detail="Nur der Firmen-Owner kann die Firma löschen."
         )
 
     # Lade Firma
@@ -442,7 +442,7 @@ async def delete_company(
 @router.get(
     "/dashboard",
     summary="Multi-Firma Dashboard abrufen",
-    description="Gibt eine Uebersicht aller Firmen-Metriken zurueck, auf die der Benutzer Zugriff hat."
+    description="Gibt eine Übersicht aller Firmen-Metriken zurück, auf die der Benutzer Zugriff hat."
 )
 async def get_dashboard(
     include_inactive: bool = False,
@@ -463,7 +463,7 @@ async def get_dashboard(
     Returns:
         Dashboard-Daten mit Summary und Company-Metrics
     """
-    # Pruefe welche Firmen der Benutzer sehen darf
+    # Prüfe welche Firmen der Benutzer sehen darf
     user_companies_query = (
         select(UserCompany.company_id)
         .where(UserCompany.user_id == current_user.id)
@@ -478,10 +478,10 @@ async def get_dashboard(
             "alerts": [],
         }
 
-    # Hole Summary (nur fuer erlaubte Firmen)
+    # Hole Summary (nur für erlaubte Firmen)
     summary = await company_metrics_service.get_dashboard_summary(db)
 
-    # Hole Metriken fuer alle Firmen
+    # Hole Metriken für alle Firmen
     all_metrics = await company_metrics_service.get_all_company_metrics(
         db, include_inactive=include_inactive
     )
@@ -526,14 +526,14 @@ async def get_comparison(
         company_ids: Komma-separierte Liste von Company-IDs (optional)
 
     Returns:
-        Vergleichsdaten fuer Charts
+        Vergleichsdaten für Charts
     """
     # Validiere Metrik
     valid_metrics = ["invoices", "documents", "entities", "dunning", "outstanding", "overdue", "health"]
     if metric not in valid_metrics:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltige Metrik. Erlaubt: {', '.join(valid_metrics)}"
+            detail=f"Ungültige Metrik. Erlaubt: {', '.join(valid_metrics)}"
         )
 
     # Parse Company-IDs
@@ -544,10 +544,10 @@ async def get_comparison(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ungueltige Company-ID im Format"
+                detail="Ungültige Company-ID im Format"
             )
 
-    # Pruefe Zugriff
+    # Prüfe Zugriff
     user_companies_query = (
         select(UserCompany.company_id)
         .where(UserCompany.user_id == current_user.id)
@@ -561,7 +561,7 @@ async def get_comparison(
         if not filtered_ids:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Keine Berechtigung fuer die angegebenen Firmen"
+                detail="Keine Berechtigung für die angegebenen Firmen"
             )
         parsed_company_ids = filtered_ids
     else:
@@ -591,7 +591,7 @@ async def get_comparison(
 @router.get(
     "/{company_id}/metrics",
     summary="Einzelne Firmen-Metriken abrufen",
-    description="Gibt detaillierte Metriken fuer eine spezifische Firma zurueck."
+    description="Gibt detaillierte Metriken für eine spezifische Firma zurück."
 )
 async def get_company_metrics(
     company_id: UUID,
@@ -599,7 +599,7 @@ async def get_company_metrics(
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
     """
-    Holt detaillierte Metriken fuer eine Firma.
+    Holt detaillierte Metriken für eine Firma.
 
     Args:
         company_id: ID der Firma
@@ -607,7 +607,7 @@ async def get_company_metrics(
     Returns:
         CompanyMetrics-Daten
     """
-    # Pruefe Zugriff
+    # Prüfe Zugriff
     access_result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == current_user.id)
@@ -653,13 +653,13 @@ def _generate_dashboard_alerts(metrics_list: List[CompanyMetrics]) -> List[dict]
                 "action": "company_review",
             })
 
-        # Hohe ueberfaellige Betraege
+        # Hohe überfällige Betraege
         if m.invoices.overdue_amount > 10000:
             alerts.append({
                 "type": "critical",
                 "company_id": str(m.company_id),
                 "company_name": m.company_name,
-                "message": f"Ueberfaellige Rechnungen: {float(m.invoices.overdue_amount):,.2f} EUR",
+                "message": f"Überfällige Rechnungen: {float(m.invoices.overdue_amount):,.2f} EUR",
                 "action": "dunning_review",
             })
 
@@ -680,7 +680,7 @@ def _generate_dashboard_alerts(metrics_list: List[CompanyMetrics]) -> List[dict]
                 "type": "warning",
                 "company_id": str(m.company_id),
                 "company_name": m.company_name,
-                "message": f"{m.entities.high_risk_entities} High-Risk Geschaeftspartner",
+                "message": f"{m.entities.high_risk_entities} High-Risk Geschäftspartner",
                 "action": "entity_review",
             })
 
@@ -691,14 +691,14 @@ def _generate_dashboard_alerts(metrics_list: List[CompanyMetrics]) -> List[dict]
 
 
 def _get_metric_label(metric: str) -> str:
-    """Gibt das deutsche Label fuer eine Metrik zurueck."""
+    """Gibt das deutsche Label für eine Metrik zurück."""
     labels = {
         "invoices": "Rechnungsvolumen",
         "documents": "Dokumente",
-        "entities": "Geschaeftspartner",
+        "entities": "Geschäftspartner",
         "dunning": "Mahnbetraege",
         "outstanding": "Offene Forderungen",
-        "overdue": "Ueberfaellige Forderungen",
+        "overdue": "Überfällige Forderungen",
         "health": "Health Score",
     }
     return labels.get(metric, metric)
@@ -710,7 +710,7 @@ def _get_metric_label(metric: str) -> str:
     "/{company_id}/users",
     response_model=List[UserCompanyResponse],
     summary="Benutzer der Firma auflisten",
-    description="Gibt alle Benutzer zurueck, die Zugriff auf die Firma haben."
+    description="Gibt alle Benutzer zurück, die Zugriff auf die Firma haben."
 )
 async def list_company_users(
     company_id: UUID,
@@ -719,7 +719,7 @@ async def list_company_users(
 ) -> List[UserCompanyResponse]:
     """Liste der Benutzer einer Firma."""
 
-    # Pruefe Zugriff
+    # Prüfe Zugriff
     access_result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == current_user.id)
@@ -740,7 +740,7 @@ async def list_company_users(
             detail="Nur Owner und Admins können Benutzer verwalten."
         )
 
-    # Lade alle UserCompany-Eintraege
+    # Lade alle UserCompany-Einträge
     result = await db.execute(
         select(UserCompany)
         .options(selectinload(UserCompany.user))
@@ -780,7 +780,7 @@ async def add_user_to_company(
 ) -> UserCompanyResponse:
     """Fuegt einen Benutzer zur Firma hinzu."""
 
-    # Pruefe Berechtigung
+    # Prüfe Berechtigung
     access_result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == current_user.id)
@@ -794,7 +794,7 @@ async def add_user_to_company(
             detail="Nur Owner und Admins können Benutzer hinzufügen."
         )
 
-    # Pruefe ob Benutzer existiert
+    # Prüfe ob Benutzer existiert
     user_result = await db.execute(
         select(User).where(User.id == data.user_id)
     )
@@ -806,7 +806,7 @@ async def add_user_to_company(
             detail="Benutzer nicht gefunden."
         )
 
-    # Pruefe ob bereits zugeordnet
+    # Prüfe ob bereits zugeordnet
     existing_result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == data.user_id)
@@ -868,7 +868,7 @@ async def update_company_user(
 ) -> UserCompanyResponse:
     """Aktualisiert die Benutzerrolle in einer Firma."""
 
-    # Pruefe Berechtigung
+    # Prüfe Berechtigung
     access_result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == current_user.id)
@@ -899,7 +899,7 @@ async def update_company_user(
 
     # Verhindere Selbst-Degradierung des Owners
     if target_uc.role == "owner" and data.role and data.role != "owner":
-        # Pruefe ob es noch einen anderen Owner gibt
+        # Prüfe ob es noch einen anderen Owner gibt
         other_owner = await db.execute(
             select(UserCompany)
             .where(UserCompany.company_id == company_id)
@@ -958,7 +958,7 @@ async def remove_user_from_company(
 ) -> Response:
     """Entfernt einen Benutzer aus der Firma."""
 
-    # Pruefe Berechtigung
+    # Prüfe Berechtigung
     access_result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == current_user.id)
@@ -998,7 +998,7 @@ async def remove_user_from_company(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Kann den letzten Owner nicht entfernen. "
-                       "Loeschen Sie stattdessen die Firma."
+                       "Löschen Sie stattdessen die Firma."
             )
 
     await db.delete(target_uc)

@@ -1,7 +1,7 @@
 """
 Reranker Service.
 
-BGE-Reranker Cross-Encoder fuer Top-K Re-Ranking.
+BGE-Reranker Cross-Encoder für Top-K Re-Ranking.
 Verbessert Suchrelevanz signifikant durch paarweises Scoring.
 
 Features:
@@ -39,8 +39,8 @@ class RerankerService:
     """
     BGE-Reranker Service via HuggingFace TEI.
 
-    Nutzt BAAI/bge-reranker-v2-m3 fuer Cross-Encoder Re-Ranking.
-    CPU-only (GPU reserviert fuer OCR).
+    Nutzt BAAI/bge-reranker-v2-m3 für Cross-Encoder Re-Ranking.
+    CPU-only (GPU reserviert für OCR).
     """
 
     _instance: Optional["RerankerService"] = None
@@ -59,7 +59,7 @@ class RerankerService:
 
     @property
     def is_enabled(self) -> bool:
-        """Prueft ob Reranker aktiviert ist."""
+        """Prüft ob Reranker aktiviert ist."""
         return settings.RAG_RERANK_ENABLED and bool(settings.RERANKER_SERVICE_URL)
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -73,7 +73,7 @@ class RerankerService:
 
     async def health_check(self) -> bool:
         """
-        Pruefe Reranker-Service Verfuegbarkeit.
+        Prüfe Reranker-Service Verfügbarkeit.
 
         Returns:
             True wenn Service erreichbar
@@ -115,15 +115,15 @@ class RerankerService:
             query: Suchanfrage
             documents: Liste von Dokumenten mit Text und Score
             top_k: Maximale Anzahl Ergebnisse (default: settings.RAG_RERANK_TOP_K)
-            text_key: Schluessel fuer Dokument-Text
-            id_key: Schluessel fuer Dokument-ID
-            score_key: Schluessel fuer Original-Score
+            text_key: Schluessel für Dokument-Text
+            id_key: Schluessel für Dokument-ID
+            score_key: Schluessel für Original-Score
 
         Returns:
             Liste von RerankedResult sortiert nach rerank_score
         """
         if not self.is_enabled:
-            # Reranker deaktiviert - gib Original zurueck
+            # Reranker deaktiviert - gib Original zurück
             return [
                 RerankedResult(
                     id=str(doc.get(id_key, i)),
@@ -217,7 +217,7 @@ class RerankerService:
         top_k: int,
     ) -> List[RerankedResult]:
         """
-        Fallback: Original-Ranking zurueckgeben.
+        Fallback: Original-Ranking zurückgeben.
 
         Args:
             documents: Originale Dokumente
@@ -303,7 +303,7 @@ class RerankerService:
             top_k=top_k,
         )
 
-        # Original-Objekte in neuer Reihenfolge zurueckgeben
+        # Original-Objekte in neuer Reihenfolge zurückgeben
         return [r.payload["original"] for r in reranked]
 
     async def close(self) -> None:
@@ -318,7 +318,7 @@ _reranker_service: Optional[RerankerService] = None
 
 
 def get_reranker_service() -> RerankerService:
-    """Factory Function fuer RerankerService."""
+    """Factory Function für RerankerService."""
     global _reranker_service
     if _reranker_service is None:
         _reranker_service = RerankerService.get_instance()

@@ -85,10 +85,10 @@ def verify_webhook_signature(
         payload: Roher Request Body
         signature: Signatur aus Header
         timestamp: Timestamp aus Header
-        webhook_secret: Webhook Secret fuer diese Verbindung
+        webhook_secret: Webhook Secret für diese Verbindung
 
     Returns:
-        True wenn Signatur gueltig
+        True wenn Signatur gültig
     """
     try:
         # Baue die zu signierende Nachricht
@@ -129,7 +129,7 @@ def validate_timestamp(timestamp_str: str) -> bool:
 
 def sanitize_payload_for_preview(data: dict) -> dict:
     """
-    Entfernt PII aus Payload fuer sichere Speicherung.
+    Entfernt PII aus Payload für sichere Speicherung.
 
     SECURITY: Entfernt Namen, Adressen, IBANs, etc.
     """
@@ -156,7 +156,7 @@ def sanitize_payload_for_preview(data: dict) -> dict:
 
 async def get_webhook_secret(db: AsyncSession, connection_id: UUID) -> Optional[str]:
     """
-    Holt das Webhook-Secret fuer eine ERP-Verbindung.
+    Holt das Webhook-Secret für eine ERP-Verbindung.
 
     Das Secret wird aus dem encrypted_api_key abgeleitet
     (in Produktion separat gespeichert).
@@ -201,7 +201,7 @@ async def check_event_processed(
     event_id: str,
 ) -> bool:
     """
-    Prueft ob ein Event bereits verarbeitet wurde (Idempotenz).
+    Prüft ob ein Event bereits verarbeitet wurde (Idempotenz).
 
     Returns:
         True wenn bereits verarbeitet
@@ -235,7 +235,7 @@ async def store_webhook_event(
     odoo_record_id: Optional[str] = None,
 ) -> UUID:
     """
-    Speichert Webhook-Event fuer Tracking und Idempotenz.
+    Speichert Webhook-Event für Tracking und Idempotenz.
 
     Returns:
         ID des erstellten Events
@@ -271,7 +271,7 @@ async def store_webhook_event(
     "/{connection_id}/customer",
     response_model=OdooWebhookResponse,
     summary="Kunden-Webhook empfangen",
-    description="Empfaengt Kunden-Events von Odoo (create/update/delete).",
+    description="Empfängt Kunden-Events von Odoo (create/update/delete).",
 )
 async def receive_customer_webhook(
     connection_id: UUID,
@@ -408,12 +408,12 @@ async def _process_webhook(
     db: AsyncSession,
 ) -> OdooWebhookResponse:
     """
-    Kern-Logik fuer Webhook-Verarbeitung.
+    Kern-Logik für Webhook-Verarbeitung.
 
-    1. Validiert Payload-Groesse
+    1. Validiert Payload-Größe
     2. Verifiziert Signatur (HMAC-SHA256)
-    3. Prueft Timestamp (Replay-Schutz)
-    4. Prueft Idempotenz (bereits verarbeitet?)
+    3. Prüft Timestamp (Replay-Schutz)
+    4. Prüft Idempotenz (bereits verarbeitet?)
     5. Speichert Event
     6. Queued Celery Task zur Verarbeitung
 
@@ -456,7 +456,7 @@ async def _process_webhook(
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltige Webhook-Signatur",
+            detail="Ungültige Webhook-Signatur",
         )
 
     # 4. Validate timestamp (replay protection)
@@ -468,7 +468,7 @@ async def _process_webhook(
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Webhook-Timestamp abgelaufen oder ungueltig",
+            detail="Webhook-Timestamp abgelaufen oder ungültig",
         )
 
     # 5. Parse payload
@@ -484,7 +484,7 @@ async def _process_webhook(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltiges Payload-Format",
+            detail="Ungültiges Payload-Format",
         )
 
     # 6. Check idempotency
@@ -565,7 +565,7 @@ async def _process_webhook(
         return OdooWebhookResponse(
             success=True,
             event_id=webhook_payload.event_id,
-            message="Webhook empfangen, wird spaeter verarbeitet",
+            message="Webhook empfangen, wird später verarbeitet",
         )
 
 
@@ -577,7 +577,7 @@ async def _process_webhook(
 @router.get(
     "/{connection_id}/events",
     summary="Webhook-Events auflisten",
-    description="Listet die letzten Webhook-Events fuer eine Verbindung auf.",
+    description="Listet die letzten Webhook-Events für eine Verbindung auf.",
 )
 async def list_webhook_events(
     connection_id: UUID,

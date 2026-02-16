@@ -1,4 +1,4 @@
-"""Service fuer die Verwaltung privater Bereiche (Spaces)."""
+"""Service für die Verwaltung privater Bereiche (Spaces)."""
 
 import uuid
 from datetime import datetime
@@ -31,7 +31,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PrivatSpaceService:
-    """Service fuer Privat-Space CRUD und Statistiken."""
+    """Service für Privat-Space CRUD und Statistiken."""
 
     async def create_personal_space(
         self,
@@ -39,7 +39,7 @@ class PrivatSpaceService:
         user_id: uuid.UUID,
         data: PrivatSpaceCreate,
     ) -> PrivatSpace:
-        """Erstellt einen persoenlichen Space fuer einen Benutzer.
+        """Erstellt einen persoenlichen Space für einen Benutzer.
 
         Args:
             db: Datenbank-Session
@@ -81,7 +81,7 @@ class PrivatSpaceService:
         created_by: uuid.UUID,
         data: PrivatSpaceCreate,
     ) -> PrivatSpace:
-        """Erstellt einen geteilten Space fuer eine Firma.
+        """Erstellt einen geteilten Space für eine Firma.
 
         Args:
             db: Datenbank-Session
@@ -149,12 +149,12 @@ class PrivatSpaceService:
         in einer atomaren Operation, um TOCTOU Race Conditions zu verhindern.
 
         CWE-367 Prevention: Kein separater get_by_id() nach check_access() mehr
-        noetig - diese Methode gibt den Space direkt zurueck wenn Zugriff erlaubt.
+        noetig - diese Methode gibt den Space direkt zurück wenn Zugriff erlaubt.
 
         Args:
             db: Datenbank-Session
             space_id: Space-ID
-            user_id: Benutzer-ID die Zugriff benoetigt
+            user_id: Benutzer-ID die Zugriff benötigt
             required_level: Erforderliche Zugriffsebene (read, write, manage, admin)
 
         Returns:
@@ -162,7 +162,7 @@ class PrivatSpaceService:
             oder kein Zugriff
 
         Raises:
-            Keine - gibt None zurueck bei fehlendem Zugriff (Caller entscheidet
+            Keine - gibt None zurück bei fehlendem Zugriff (Caller entscheidet
             ob 403 oder 404)
         """
         # Hole Space in einer atomaren Query
@@ -174,7 +174,7 @@ class PrivatSpaceService:
         if space.owner_id == user_id:
             return space
 
-        # Pruefe explizite Berechtigung mit expires_at Validierung
+        # Prüfe explizite Berechtigung mit expires_at Validierung
         from datetime import timezone
         now = datetime.now(timezone.utc)
 
@@ -196,7 +196,7 @@ class PrivatSpaceService:
         if not access:
             return None
 
-        # Pruefe Zugriffsebene
+        # Prüfe Zugriffsebene
         level_hierarchy = {
             "read": 1,
             "write": 2,
@@ -234,7 +234,7 @@ class PrivatSpaceService:
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            include_shared: Geteilte Spaces einschliessen?
+            include_shared: Geteilte Spaces einschließen?
             page: Seitennummer
             page_size: Elemente pro Seite
 
@@ -252,12 +252,12 @@ class PrivatSpaceService:
 
         if include_shared:
             # Auch Spaces, auf die der User Zugriff hat
-            # SECURITY: Nur nicht-abgelaufene Access-Eintraege zaehlen!
+            # SECURITY: Nur nicht-abgelaufene Access-Einträge zaehlen!
             access_subquery = (
                 select(PrivatSpaceAccess.space_id)
                 .where(
                     PrivatSpaceAccess.user_id == user_id,
-                    # SECURITY: expires_at check - None = kein Ablauf, sonst Datum pruefen
+                    # SECURITY: expires_at check - None = kein Ablauf, sonst Datum prüfen
                     or_(
                         PrivatSpaceAccess.expires_at == None,
                         PrivatSpaceAccess.expires_at > now
@@ -288,7 +288,7 @@ class PrivatSpaceService:
         result = await db.execute(query)
         spaces = result.scalars().all()
 
-        # Sammle Statistiken fuer jeden Space
+        # Sammle Statistiken für jeden Space
         items = []
         for space in spaces:
             stats = await self.get_space_stats(db, space.id)
@@ -320,7 +320,7 @@ class PrivatSpaceService:
         db: AsyncSession,
         space_id: uuid.UUID,
     ) -> dict:
-        """Holt Statistiken fuer einen Space.
+        """Holt Statistiken für einen Space.
 
         Args:
             db: Datenbank-Session
@@ -336,7 +336,7 @@ class PrivatSpaceService:
         )
         folder_count = folder_count_result.scalar() or 0
 
-        # Dokumente zaehlen und Groesse summieren
+        # Dokumente zaehlen und Größe summieren
         doc_result = await db.execute(
             select(
                 func.count(PrivatDocument.id),
@@ -376,8 +376,8 @@ class PrivatSpaceService:
         """Aktualisiert einen Space.
 
         SECURITY FIX 23-3: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Updates zu verhindern. Ohne Row Lock koennte:
-        - Lost Updates bei gleichzeitigen Aenderungen auftreten
+        bei parallelen Updates zu verhindern. Ohne Row Lock könnte:
+        - Lost Updates bei gleichzeitigen Änderungen auftreten
         - Inkonsistente Space-Konfiguration entstehen
 
         Args:
@@ -392,7 +392,7 @@ class PrivatSpaceService:
         result = await db.execute(
             select(PrivatSpace)
             .where(PrivatSpace.id == space_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Space-Daten!
+            .with_for_update()  # ROW LOCK - kritisch für Space-Daten!
         )
         space = result.scalar_one_or_none()
         if not space:
@@ -420,10 +420,10 @@ class PrivatSpaceService:
         space_id: uuid.UUID,
         soft_delete: bool = True,
     ) -> bool:
-        """Loescht einen Space.
+        """Löscht einen Space.
 
         SECURITY FIX 23-4: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelem Delete zu verhindern. Ohne Row Lock koennte:
+        bei parallelem Delete zu verhindern. Ohne Row Lock könnte:
         - Double-Delete auftreten
         - Inkonsistente Zustaende entstehen
 
@@ -439,7 +439,7 @@ class PrivatSpaceService:
         result = await db.execute(
             select(PrivatSpace)
             .where(PrivatSpace.id == space_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Datenintegritaet!
+            .with_for_update()  # ROW LOCK - kritisch für Datenintegrität!
         )
         space = result.scalar_one_or_none()
         if not space:
@@ -469,7 +469,7 @@ class PrivatSpaceService:
         user_id: uuid.UUID,
         required_level: str = "read",
     ) -> bool:
-        """Prueft ob ein Benutzer Zugriff auf einen Space hat.
+        """Prüft ob ein Benutzer Zugriff auf einen Space hat.
 
         Args:
             db: Datenbank-Session
@@ -488,7 +488,7 @@ class PrivatSpaceService:
         if space.owner_id == user_id:
             return True
 
-        # Pruefe explizite Berechtigung
+        # Prüfe explizite Berechtigung
         # SECURITY: expires_at Validierung - abgelaufene Zugriffe ignorieren!
         from datetime import timezone
         now = datetime.now(timezone.utc)
@@ -498,7 +498,7 @@ class PrivatSpaceService:
             .where(
                 PrivatSpaceAccess.space_id == space_id,
                 PrivatSpaceAccess.user_id == user_id,
-                # SECURITY: expires_at check - None = kein Ablauf, sonst Datum pruefen
+                # SECURITY: expires_at check - None = kein Ablauf, sonst Datum prüfen
                 or_(
                     PrivatSpaceAccess.expires_at == None,
                     PrivatSpaceAccess.expires_at > now

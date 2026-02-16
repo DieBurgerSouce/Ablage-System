@@ -4,9 +4,9 @@ Seasonality Detection Service.
 
 Enterprise Feature: Erkennung saisonaler Muster in finanziellen Daten.
 
-Das System erkennt und beruecksichtigt:
+Das System erkennt und berücksichtigt:
 - Monatliche Muster (Heizkosten im Winter, Urlaub im Sommer)
-- Jaehrliche Zyklen (Weihnachten, Versicherungspraemien, Steuern)
+- Jährliche Zyklen (Weihnachten, Versicherungspraemien, Steuern)
 - Wochentags-Muster (Wochenend-Ausgaben, Arbeitstage)
 - Individuelle Muster (Geburtstage, Jubilaeen)
 
@@ -14,7 +14,7 @@ Vorteile:
 - Heizkosten im Dezember sind keine Anomalie
 - Urlaubsausgaben im August werden erwartet
 - Weihnachtsgeschenke sind eingeplant
-- Steuerrueckzahlung im Maerz ist bekannt
+- Steuerrückzahlung im Maerz ist bekannt
 
 TRUE Enterprise: Das System versteht KONTEXT, nicht nur Zahlen.
 """
@@ -42,14 +42,14 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 def safe_stdev(data: List[float], default: float = 0.0) -> float:
-    """Sichere Standardabweichung - gibt default zurueck bei weniger als 2 Datenpunkten.
+    """Sichere Standardabweichung - gibt default zurück bei weniger als 2 Datenpunkten.
 
     statistics.stdev() wirft StatisticsError bei weniger als 2 Werten.
     Diese Funktion vermeidet das Problem.
 
     Args:
         data: Liste von Float-Werten
-        default: Rueckgabewert wenn nicht genug Daten (default: 0.0)
+        default: Rückgabewert wenn nicht genug Daten (default: 0.0)
 
     Returns:
         Standardabweichung oder default
@@ -67,14 +67,14 @@ class SeasonType(str, Enum):
     """Arten von saisonalen Mustern."""
     MONTHLY = "monthly"  # Monatliche Wiederholung
     QUARTERLY = "quarterly"  # Quartalsweise
-    SEMI_ANNUAL = "semi_annual"  # Halbjaehrlich
-    ANNUAL = "annual"  # Jaehrlich
+    SEMI_ANNUAL = "semi_annual"  # Halbjährlich
+    ANNUAL = "annual"  # Jährlich
     WEEKLY = "weekly"  # Woechentlich
     CUSTOM = "custom"  # Benutzerdefiniert
 
 
 class PatternStrength(str, Enum):
-    """Staerke eines erkannten Musters."""
+    """Stärke eines erkannten Musters."""
     VERY_STRONG = "very_strong"  # Konfidenz > 90%
     STRONG = "strong"  # Konfidenz 75-90%
     MODERATE = "moderate"  # Konfidenz 60-75%
@@ -101,9 +101,9 @@ class CategoryType(str, Enum):
 
 
 class AnomalyContext(str, Enum):
-    """Kontext fuer Anomalie-Bewertung."""
+    """Kontext für Anomalie-Bewertung."""
     EXPECTED_SEASONAL = "expected_seasonal"  # Erwartet wegen Saison
-    UNEXPECTED_SEASONAL = "unexpected_seasonal"  # Unerwartet fuer Saison
+    UNEXPECTED_SEASONAL = "unexpected_seasonal"  # Unerwartet für Saison
     EXPECTED_EVENT = "expected_event"  # Erwartet wegen Event
     TRUE_ANOMALY = "true_anomaly"  # Echte Anomalie
 
@@ -139,7 +139,7 @@ class SeasonalPattern:
 
 @dataclass
 class MonthlyExpectation:
-    """Erwartete Ausgaben fuer einen bestimmten Monat."""
+    """Erwartete Ausgaben für einen bestimmten Monat."""
     month: int  # 1-12
     year: int
     category: CategoryType
@@ -194,14 +194,14 @@ class SeasonalAnomalyAnalysis:
     deviation_percentage: float
     is_true_anomaly: bool
     confidence: float
-    # Erklaerung
+    # Erklärung
     explanation: str
     similar_historical: List[Dict[str, Any]]
 
 
 @dataclass
 class SeasonalForecast:
-    """Saisonale Prognose fuer zukuenftige Perioden."""
+    """Saisonale Prognose für zukünftige Perioden."""
     id: UUID
     forecast_date: date
     horizon_months: int
@@ -252,14 +252,14 @@ KNOWN_PATTERNS = {
         "description": "Weihnachtsgeschenke und Feiertage",
     },
     CategoryType.INSURANCE: {
-        "peak_months": [1, 7],  # Viele Versicherungen sind jaehrlich
+        "peak_months": [1, 7],  # Viele Versicherungen sind jährlich
         "low_months": [],
         "peak_factor": 12.0,  # Jahreszahlung
         "low_factor": 0.0,
-        "description": "Jaehrliche Versicherungspraemien",
+        "description": "Jährliche Versicherungspraemien",
     },
     CategoryType.TAX: {
-        "peak_months": [3, 5, 6],  # Steuererklaerung, Nachzahlungen
+        "peak_months": [3, 5, 6],  # Steuererklärung, Nachzahlungen
         "low_months": [],
         "peak_factor": 1.0,  # Nicht multipliziert
         "low_factor": 0.0,
@@ -344,17 +344,17 @@ KNOWN_EVENTS = [
     SeasonalEvent(
         id=uuid4(),
         name="Nebenkostenabrechnung",
-        description="Jaehrliche Nebenkostenabrechnung",
+        description="Jährliche Nebenkostenabrechnung",
         typical_month=5,
         flexible_date=True,
         categories_affected=[CategoryType.HEATING, CategoryType.ELECTRICITY],
         typical_impact=Decimal("500"),
-        impact_range=(Decimal("-500"), Decimal("1500")),  # Kann Rueckzahlung sein
+        impact_range=(Decimal("-500"), Decimal("1500")),  # Kann Rückzahlung sein
     ),
     SeasonalEvent(
         id=uuid4(),
-        name="Steuererklaerung",
-        description="Abgabe Steuererklaerung, Nachzahlung/Erstattung",
+        name="Steuererklärung",
+        description="Abgabe Steuererklärung, Nachzahlung/Erstattung",
         typical_month=6,
         flexible_date=True,
         categories_affected=[CategoryType.TAX],
@@ -364,7 +364,7 @@ KNOWN_EVENTS = [
     SeasonalEvent(
         id=uuid4(),
         name="KFZ-Versicherung",
-        description="Jaehrliche KFZ-Versicherungspraemie",
+        description="Jährliche KFZ-Versicherungspraemie",
         typical_month=1,
         typical_day=1,
         flexible_date=False,
@@ -381,7 +381,7 @@ KNOWN_EVENTS = [
 
 class SeasonalityDetectionService:
     """
-    Service fuer Saisonalitaets-Erkennung.
+    Service für Saisonalitaets-Erkennung.
 
     Features:
     - Erkennung saisonaler Muster aus historischen Daten
@@ -528,7 +528,7 @@ class SeasonalityDetectionService:
             if f > 1.3
         ]
 
-        # Berechne Staerke des Musters
+        # Berechne Stärke des Musters
         variance = sum((f - 1.0) ** 2 for f in seasonal_factors.values()) / 12
         coefficient_of_variation = math.sqrt(variance)
 
@@ -595,7 +595,7 @@ class SeasonalityDetectionService:
         categories: Optional[List[CategoryType]] = None,
     ) -> List[MonthlyExpectation]:
         """
-        Berechnet erwartete Ausgaben fuer einen Monat.
+        Berechnet erwartete Ausgaben für einen Monat.
 
         Args:
             user_id: User-ID
@@ -638,7 +638,7 @@ class SeasonalityDetectionService:
             range_min = expected * Decimal("0.7")
             range_max = expected * Decimal("1.5")
 
-            # Events fuer diesen Monat
+            # Events für diesen Monat
             events = [
                 e.name for e in self._known_events.values()
                 if e.typical_month == month and category in e.categories_affected
@@ -728,17 +728,17 @@ class SeasonalityDetectionService:
                 is_anomaly = False
                 explanation = (
                     f"Betrag von {amount:.2f} EUR liegt im erwarteten Bereich "
-                    f"fuer {category.value} im {self._month_name(month)}. "
+                    f"für {category.value} im {self._month_name(month)}. "
                     f"Dies ist eine typische Peak-Saison."
                 )
             else:
                 context = AnomalyContext.EXPECTED_SEASONAL
                 is_anomaly = False
                 explanation = (
-                    f"Betrag liegt im normalen Bereich fuer diese Kategorie."
+                    f"Betrag liegt im normalen Bereich für diese Kategorie."
                 )
         else:
-            # Pruefe auf bekannte Events
+            # Prüfe auf bekannte Events
             events = [
                 e for e in self._known_events.values()
                 if e.typical_month == month and category in e.categories_affected
@@ -748,23 +748,23 @@ class SeasonalityDetectionService:
                 is_anomaly = False
                 event_names = ", ".join(e.name for e in events)
                 explanation = (
-                    f"Erhoehte Ausgaben wahrscheinlich durch: {event_names}. "
-                    f"Typisch fuer diese Jahreszeit."
+                    f"Erhöhte Ausgaben wahrscheinlich durch: {event_names}. "
+                    f"Typisch für diese Jahreszeit."
                 )
             elif is_peak and amount > range_max:
                 context = AnomalyContext.UNEXPECTED_SEASONAL
                 is_anomaly = True
                 explanation = (
                     f"Obwohl {self._month_name(month)} eine Peak-Saison ist, "
-                    f"liegt der Betrag {deviation:.1f}% ueber dem erwarteten Maximum. "
-                    f"Dies koennte auf aussergewoehnliche Umstaende hindeuten."
+                    f"liegt der Betrag {deviation:.1f}% über dem erwarteten Maximum. "
+                    f"Dies könnte auf aussergewoehnliche Umstaende hindeuten."
                 )
             else:
                 context = AnomalyContext.TRUE_ANOMALY
                 is_anomaly = True
                 explanation = (
                     f"Der Betrag weicht {deviation:.1f}% vom saisonalen Durchschnitt ab. "
-                    f"{self._month_name(month)} ist keine typische Peak-Saison fuer {category.value}."
+                    f"{self._month_name(month)} ist keine typische Peak-Saison für {category.value}."
                 )
 
         return SeasonalAnomalyAnalysis(
@@ -780,7 +780,7 @@ class SeasonalityDetectionService:
             is_true_anomaly=is_anomaly,
             confidence=confidence,
             explanation=explanation,
-            similar_historical=[],  # Koennte mit echten Daten gefuellt werden
+            similar_historical=[],  # Könnte mit echten Daten gefuellt werden
         )
 
     # -------------------------------------------------------------------------
@@ -793,7 +793,7 @@ class SeasonalityDetectionService:
         horizon_months: int = 12,
     ) -> SeasonalForecast:
         """
-        Generiert saisonale Prognose fuer zukuenftige Monate.
+        Generiert saisonale Prognose für zukünftige Monate.
 
         Args:
             user_id: User-ID
@@ -901,7 +901,7 @@ class SeasonalityDetectionService:
         user_id: UUID,
         month: int,
     ) -> List[SeasonalEvent]:
-        """Holt alle Events (bekannt + user-spezifisch) fuer einen Monat."""
+        """Holt alle Events (bekannt + user-spezifisch) für einen Monat."""
         events = [
             e for e in self._known_events.values()
             if e.typical_month == month
@@ -950,7 +950,7 @@ class SeasonalityDetectionService:
     # -------------------------------------------------------------------------
 
     def _month_name(self, month: int) -> str:
-        """Gibt deutschen Monatsnamen zurueck."""
+        """Gibt deutschen Monatsnamen zurück."""
         names = {
             1: "Januar", 2: "Februar", 3: "Maerz", 4: "April",
             5: "Mai", 6: "Juni", 7: "Juli", 8: "August",
@@ -968,7 +968,7 @@ _service_lock = threading.Lock()
 
 
 def get_seasonality_detection_service() -> SeasonalityDetectionService:
-    """Gibt die Singleton-Instanz des Service zurueck."""
+    """Gibt die Singleton-Instanz des Service zurück."""
     global _service_instance
 
     if _service_instance is None:

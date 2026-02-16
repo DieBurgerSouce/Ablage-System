@@ -2,10 +2,10 @@
 """
 Prediction Feedback Model (Satellite).
 
-Persistiert ML-Vorhersage-Feedback fuer Retraining der
+Persistiert ML-Vorhersage-Feedback für Retraining der
 Predictive Payment AI Pipeline.
 
-Pattern: OCRCorrectionFeedback-aehnliche Tabelle.
+Pattern: OCRCorrectionFeedback-ähnliche Tabelle.
 """
 
 from __future__ import annotations
@@ -30,10 +30,10 @@ from app.db.models import Base
 
 class PredictionFeedbackRecord(Base):
     """
-    Persistiertes Feedback fuer ML-Vorhersagen.
+    Persistiertes Feedback für ML-Vorhersagen.
 
-    Speichert vorhergesagte vs. tatsaechliche Werte fuer:
-    - Zahlungsverzoegerung (delay)
+    Speichert vorhergesagte vs. tatsaechliche Werte für:
+    - Zahlungsverzögerung (delay)
     - Ausfallwahrscheinlichkeit (default)
     - Zahlungsbedingungen (terms)
 

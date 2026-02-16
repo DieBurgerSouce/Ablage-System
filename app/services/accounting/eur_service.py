@@ -2,7 +2,7 @@
 """
 Einnahmen-Überschuss-Rechnung (EÜR) Service.
 
-Berechnet die EÜR fuer Kleinunternehmer und Freiberufler:
+Berechnet die EÜR für Kleinunternehmer und Freiberufler:
 - Einnahmen nach Kategorien
 - Ausgaben nach Kategorien (Betriebsausgaben)
 - Abschreibungen
@@ -38,7 +38,7 @@ class IncomeCategory(str, Enum):
     SALES_SERVICES = "sales_services"          # Dienstleistungen
     INNER_EU_SALES = "inner_eu_sales"          # Innergemeinschaftliche Lieferungen
     EXPORT_SALES = "export_sales"              # Ausfuhrlieferungen
-    INTEREST_INCOME = "interest_income"        # Zinsertraege
+    INTEREST_INCOME = "interest_income"        # Zinserträge
     OTHER_INCOME = "other_income"              # Sonstige Einnahmen
 
 
@@ -56,7 +56,7 @@ class ExpenseCategory(str, Enum):
     PROFESSIONAL_SERVICES = "professional"      # Beratung/Fremdleistungen
     DEPRECIATION = "depreciation"               # Abschreibungen
     INTEREST_EXPENSE = "interest_expense"       # Zinsaufwand
-    BANK_FEES = "bank_fees"                     # Bankgebuehren
+    BANK_FEES = "bank_fees"                     # Bankgebühren
     SOFTWARE = "software"                       # Software/Lizenzen
     TRAINING = "training"                       # Fortbildung
     OTHER_EXPENSE = "other_expense"             # Sonstige Betriebsausgaben
@@ -82,7 +82,7 @@ CATEGORY_MAPPING = {
     "beratung": ExpenseCategory.PROFESSIONAL_SERVICES,
     "software": ExpenseCategory.SOFTWARE,
     "fortbildung": ExpenseCategory.TRAINING,
-    "bankgebuehr": ExpenseCategory.BANK_FEES,
+    "bankgebühr": ExpenseCategory.BANK_FEES,
 }
 
 
@@ -184,7 +184,7 @@ class EURReport:
 
     def to_anlage_eur(self) -> Dict[str, Any]:
         """
-        Generiert Daten fuer Anlage EÜR.
+        Generiert Daten für Anlage EÜR.
 
         Zeilen nach BMF-Vorgabe.
         """
@@ -192,7 +192,7 @@ class EURReport:
             "Jahr": self.fiscal_year,
             "Zeile_11": float(self._get_category_amount(IncomeCategory.SALES_GOODS)),  # Betriebseinnahmen Waren
             "Zeile_12": float(self._get_category_amount(IncomeCategory.SALES_SERVICES)),  # Betriebseinnahmen DL
-            "Zeile_14": float(self._get_category_amount(IncomeCategory.INTEREST_INCOME)),  # Zinsertraege
+            "Zeile_14": float(self._get_category_amount(IncomeCategory.INTEREST_INCOME)),  # Zinserträge
             "Zeile_16": float(self._get_category_amount(IncomeCategory.OTHER_INCOME)),  # Sonstige Einnahmen
             "Zeile_18": float(self.total_income),  # Summe Einnahmen
 
@@ -213,25 +213,25 @@ class EURReport:
         Generiert eine druckbare HTML-Darstellung der Anlage EUeR.
 
         Returns:
-            HTML-String fuer Browser-Rendering und Druckausgabe
+            HTML-String für Browser-Rendering und Druckausgabe
         """
         anlage = self.to_anlage_eur()
 
         zeilen_einnahmen = [
             ("11", "Betriebseinnahmen als umsatzsteuerpflichtiger Unternehmer (Waren)", anlage.get("Zeile_11", 0)),
             ("12", "Betriebseinnahmen als umsatzsteuerpflichtiger Unternehmer (Dienstleistungen)", anlage.get("Zeile_12", 0)),
-            ("14", "Vereinnahmte Umsatzsteuer / Zinsertraege", anlage.get("Zeile_14", 0)),
+            ("14", "Vereinnahmte Umsatzsteuer / Zinserträge", anlage.get("Zeile_14", 0)),
             ("16", "Sonstige Betriebseinnahmen", anlage.get("Zeile_16", 0)),
             ("18", "Summe Betriebseinnahmen", anlage.get("Zeile_18", 0)),
         ]
 
         zeilen_ausgaben = [
             ("20", "Waren, Rohstoffe und Hilfsstoffe", anlage.get("Zeile_20", 0)),
-            ("22", "Personalkosten (Loehne und Gehaelter)", anlage.get("Zeile_22", 0)),
-            ("27", "Miete/Pacht fuer Geschaeftsraeume", anlage.get("Zeile_27", 0)),
+            ("22", "Personalkosten (Loehne und Gehälter)", anlage.get("Zeile_22", 0)),
+            ("27", "Miete/Pacht für Geschäftsraeume", anlage.get("Zeile_27", 0)),
             ("30", "Fahrzeugkosten", anlage.get("Zeile_30", 0)),
             ("35", "Buerokosten", anlage.get("Zeile_35", 0)),
-            ("36", "Absetzung fuer Abnutzung (AfA)", anlage.get("Zeile_36", 0)),
+            ("36", "Absetzung für Abnutzung (AfA)", anlage.get("Zeile_36", 0)),
             ("40", "Sonstige Betriebsausgaben", anlage.get("Zeile_40", 0)),
             ("42", "Summe Betriebsausgaben", anlage.get("Zeile_42", 0)),
         ]
@@ -337,7 +337,7 @@ class EURReport:
         return html
 
     def _get_category_amount(self, category: str) -> Decimal:
-        """Holt Betrag fuer Kategorie."""
+        """Holt Betrag für Kategorie."""
         for c in self.income_categories + self.expense_categories:
             if c.category == category.value if hasattr(category, 'value') else category:
                 return c.amount
@@ -351,7 +351,7 @@ class EURReport:
 
 class EURService:
     """
-    Service fuer Einnahmen-Überschuss-Rechnung.
+    Service für Einnahmen-Überschuss-Rechnung.
 
     Features:
     - Automatische Kategorisierung
@@ -362,13 +362,13 @@ class EURService:
     GoBD-konform.
     """
 
-    # Label fuer Kategorien
+    # Label für Kategorien
     INCOME_LABELS = {
         IncomeCategory.SALES_GOODS: "Warenverkauf",
         IncomeCategory.SALES_SERVICES: "Dienstleistungen",
         IncomeCategory.INNER_EU_SALES: "Innergemeinschaftliche Lieferungen",
         IncomeCategory.EXPORT_SALES: "Ausfuhrlieferungen",
-        IncomeCategory.INTEREST_INCOME: "Zinsertraege",
+        IncomeCategory.INTEREST_INCOME: "Zinserträge",
         IncomeCategory.OTHER_INCOME: "Sonstige Einnahmen",
     }
 
@@ -385,7 +385,7 @@ class EURService:
         ExpenseCategory.PROFESSIONAL_SERVICES: "Beratung/Fremdleistungen",
         ExpenseCategory.DEPRECIATION: "Abschreibungen",
         ExpenseCategory.INTEREST_EXPENSE: "Zinsaufwand",
-        ExpenseCategory.BANK_FEES: "Bankgebuehren",
+        ExpenseCategory.BANK_FEES: "Bankgebühren",
         ExpenseCategory.SOFTWARE: "Software/Lizenzen",
         ExpenseCategory.TRAINING: "Fortbildung",
         ExpenseCategory.OTHER_EXPENSE: "Sonstige Betriebsausgaben",
@@ -406,11 +406,11 @@ class EURService:
         include_details: bool = True,
     ) -> EURReport:
         """
-        Generiert EÜR fuer ein Geschaeftsjahr.
+        Generiert EÜR für ein Geschäftsjahr.
 
         Args:
             company_id: Firma
-            fiscal_year: Geschaeftsjahr
+            fiscal_year: Geschäftsjahr
             include_details: Einzelpositionen einbeziehen
 
         Returns:
@@ -506,7 +506,7 @@ class EURService:
         else:
             period_end = date(year, month + 1, 1) - timedelta(days=1)
 
-        # Vereinfachte Version fuer Monatsstand
+        # Vereinfachte Version für Monatsstand
         report = EURReport(
             company_id=company_id,
             fiscal_year=year,
@@ -753,7 +753,7 @@ class EURService:
                 (["beratung", "rechtsanwalt", "steuerberater", "consulting"], ExpenseCategory.PROFESSIONAL_SERVICES),
                 (["software", "lizenz", "abo"], ExpenseCategory.SOFTWARE),
                 (["fortbildung", "seminar", "schulung", "training"], ExpenseCategory.TRAINING),
-                (["bank", "kontogebuehr"], ExpenseCategory.BANK_FEES),
+                (["bank", "kontogebühr"], ExpenseCategory.BANK_FEES),
                 (["ware", "material", "einkauf"], ExpenseCategory.GOODS_PURCHASE),
                 (["personal", "lohn", "gehalt"], ExpenseCategory.PERSONNEL),
                 (["zins", "kredit"], ExpenseCategory.INTEREST_EXPENSE),
@@ -788,9 +788,9 @@ class EURService:
 
 
 def get_eur_service(db: AsyncSession) -> EURService:
-    """Factory-Funktion fuer Dependency Injection."""
+    """Factory-Funktion für Dependency Injection."""
     return EURService(db)
 
 
-# Import fuer timedelta
+# Import für timedelta
 from datetime import timedelta

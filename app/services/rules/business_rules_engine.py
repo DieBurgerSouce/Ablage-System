@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Business Rules Engine fuer Ablage-System.
+Business Rules Engine für Ablage-System.
 
-Ermoeglicht flexible, konfigurierbare Geschaeftsregeln:
+Ermöglicht flexible, konfigurierbare Geschäftsregeln:
 - Einfache Bedingungen (field > value)
 - Komplexe AND/OR Logik
 - Zeitbasierte Regeln (Monatsende, Quartalsende)
-- ML-unterstuetzte Regeln (Fraud Score, Confidence)
+- ML-unterstützte Regeln (Fraud Score, Confidence)
 - Aktionen: Genehmigung, Flags, Benachrichtigungen, Workflows
 
 Phase 4 der Strategischen Roadmap (Januar 2026).
@@ -79,7 +79,7 @@ def _is_regex_safe(pattern: str) -> tuple[bool, str]:
     try:
         re.compile(pattern)
     except re.error as e:
-        return False, f"Ungueltiges Regex-Pattern: {e}"
+        return False, f"Ungültiges Regex-Pattern: {e}"
 
     return True, ""
 
@@ -126,7 +126,7 @@ def _safe_regex_match(
 
 
 class ConditionOperator(str, Enum):
-    """Operatoren fuer Regel-Bedingungen."""
+    """Operatoren für Regel-Bedingungen."""
     # Vergleich
     EQUALS = "=="
     NOT_EQUALS = "!="
@@ -207,7 +207,7 @@ class ActionType(str, Enum):
 
 
 class RulePriority(int, Enum):
-    """Prioritaet fuer Regeln."""
+    """Priorität für Regeln."""
     CRITICAL = 100
     HIGH = 75
     NORMAL = 50
@@ -216,7 +216,7 @@ class RulePriority(int, Enum):
 
 
 class RuleCategory(str, Enum):
-    """Kategorien fuer Regeln."""
+    """Kategorien für Regeln."""
     APPROVAL = "approval"
     COMPLIANCE = "compliance"
     FRAUD = "fraud"
@@ -246,7 +246,7 @@ class RuleCondition(BaseModel):
     def validate_field(cls, v: str) -> str:
         """Validiert Feldname gegen Injection."""
         if not re.match(r"^[a-zA-Z][a-zA-Z0-9_\.]*$", v):
-            raise ValueError("Ungueltiger Feldname")
+            raise ValueError("Ungültiger Feldname")
         if len(v) > 100:
             raise ValueError("Feldname zu lang")
         return v
@@ -269,7 +269,7 @@ class CompositeCondition(BaseModel):
 
 
 class RuleAction(BaseModel):
-    """Eine Aktion die bei Regelerfuellung ausgefuehrt wird."""
+    """Eine Aktion die bei Regelerfuellung ausgeführt wird."""
     type: ActionType = Field(..., description="Aktions-Typ")
     params: Dict[str, NestedValue] = Field(default_factory=dict, description="Parameter")
 
@@ -281,7 +281,7 @@ class RuleAction(BaseModel):
 
 
 class BusinessRule(BaseModel):
-    """Eine vollstaendige Geschaeftsregel."""
+    """Eine vollständige Geschäftsregel."""
     id: UUID = Field(default_factory=uuid4)
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(default=None, max_length=2000)
@@ -311,13 +311,13 @@ class BusinessRule(BaseModel):
 
     # Anwendungsbereich
     applies_to_document_types: Optional[List[str]] = Field(
-        default=None, description="Nur fuer bestimmte Dokumenttypen"
+        default=None, description="Nur für bestimmte Dokumenttypen"
     )
     applies_to_sources: Optional[List[str]] = Field(
-        default=None, description="Nur fuer bestimmte Quellen"
+        default=None, description="Nur für bestimmte Quellen"
     )
 
-    # Zeitliche Einschraenkung
+    # Zeitliche Einschränkung
     valid_from: Optional[datetime] = None
     valid_until: Optional[datetime] = None
 
@@ -358,7 +358,7 @@ class RuleSetEvaluationResult(BaseModel):
 
 
 class BusinessRulesEngine:
-    """Engine fuer Auswertung und Ausfuehrung von Geschaeftsregeln.
+    """Engine für Auswertung und Ausführung von Geschäftsregeln.
 
     Features:
     - Flexible Bedingungen mit Operatoren
@@ -366,7 +366,7 @@ class BusinessRulesEngine:
     - Zeitbasierte Regeln
     - Priorisierung
     - Trockenlaeufe (Dry-Run)
-    - Ausfuehrliche Ergebnisse
+    - Ausführliche Ergebnisse
     """
 
     # Operatoren-Map
@@ -385,7 +385,7 @@ class BusinessRulesEngine:
         self._action_handlers: Dict[ActionType, Callable[..., object]] = {}
 
     def register_function(self, name: str, func: Callable[..., object]) -> None:
-        """Registriert eine benutzerdefinierte Funktion fuer Bedingungen."""
+        """Registriert eine benutzerdefinierte Funktion für Bedingungen."""
         self._custom_functions[name] = func
 
     def register_action_handler(
@@ -393,7 +393,7 @@ class BusinessRulesEngine:
         action_type: ActionType,
         handler: Callable[..., object],
     ) -> None:
-        """Registriert einen Handler fuer einen Aktionstyp."""
+        """Registriert einen Handler für einen Aktionstyp."""
         self._action_handlers[action_type] = handler
 
     # =========================================================================
@@ -410,10 +410,10 @@ class BusinessRulesEngine:
         """Wertet alle Regeln gegen einen Kontext aus.
 
         Args:
-            context: Daten gegen die geprueft wird (Dokument-Felder, etc.)
-            rules: Liste der zu pruefenden Regeln
-            dry_run: Wenn True, werden Aktionen nicht ausgefuehrt
-            document_id: Optional Dokument-ID fuer Logging
+            context: Daten gegen die geprüft wird (Dokument-Felder, etc.)
+            rules: Liste der zu prüfenden Regeln
+            dry_run: Wenn True, werden Aktionen nicht ausgeführt
+            document_id: Optional Dokument-ID für Logging
 
         Returns:
             RuleSetEvaluationResult mit allen Ergebnissen
@@ -423,7 +423,7 @@ class BusinessRulesEngine:
             context_snapshot=self._sanitize_context_for_logging(context),
         )
 
-        # Regeln nach Prioritaet sortieren
+        # Regeln nach Priorität sortieren
         sorted_rules = sorted(
             [r for r in rules if r.is_active and self._is_rule_valid(r)],
             key=lambda r: r.priority.value,
@@ -450,7 +450,7 @@ class BusinessRulesEngine:
         rule: BusinessRule,
         dry_run: bool = True,
     ) -> RuleEvaluationResult:
-        """Wertet eine einzelne Regel aus (fuer Tests)."""
+        """Wertet eine einzelne Regel aus (für Tests)."""
         return await self._evaluate_rule(context, rule, dry_run)
 
     async def _evaluate_rule(
@@ -478,7 +478,7 @@ class BusinessRulesEngine:
             elif rule.else_actions:
                 result.triggered_actions = rule.else_actions
 
-            # Aktionen ausfuehren (wenn nicht dry_run)
+            # Aktionen ausführen (wenn nicht dry_run)
             if not dry_run and result.triggered_actions:
                 errors = await self._execute_actions(
                     context, result.triggered_actions
@@ -502,7 +502,7 @@ class BusinessRulesEngine:
         elif isinstance(condition, CompositeCondition):
             return self._evaluate_composite_condition(context, condition)
         else:
-            # Fallback fuer dict-Struktur
+            # Fallback für dict-Struktur
             if isinstance(condition, dict):
                 if "and" in condition:
                     return self._evaluate_composite_condition(
@@ -545,7 +545,7 @@ class BusinessRulesEngine:
             condition.case_sensitive,
         )
 
-        # Negieren falls gewuenscht
+        # Negieren falls gewünscht
         if condition.negate:
             result = not result
 
@@ -568,7 +568,7 @@ class BusinessRulesEngine:
                 details["sub_conditions"].append(sub_details)
                 if not matched:
                     all_matched = False
-                    # Bei AND: Fruehzeitiger Abbruch moeglich
+                    # Bei AND: Frühzeitiger Abbruch möglich
             details["matched"] = all_matched
             return all_matched, details
 
@@ -580,7 +580,7 @@ class BusinessRulesEngine:
                 details["sub_conditions"].append(sub_details)
                 if matched:
                     any_matched = True
-                    # Bei OR: Fruehzeitiger Abbruch moeglich
+                    # Bei OR: Frühzeitiger Abbruch möglich
             details["matched"] = any_matched
             return any_matched, details
 
@@ -718,7 +718,7 @@ class BusinessRulesEngine:
         return False
 
     def _check_time_period(self, actual: NestedValue, period: str) -> bool:
-        """Prueft ob Datum in einer Zeitperiode liegt."""
+        """Prüft ob Datum in einer Zeitperiode liegt."""
         try:
             if isinstance(actual, str):
                 actual = datetime.fromisoformat(actual.replace("Z", "+00:00"))
@@ -777,7 +777,7 @@ class BusinessRulesEngine:
         return False
 
     def _check_between(self, actual: NestedValue, expected: NestedValue) -> bool:
-        """Prueft ob Wert zwischen zwei Grenzen liegt."""
+        """Prüft ob Wert zwischen zwei Grenzen liegt."""
         try:
             if isinstance(expected, (list, tuple)) and len(expected) == 2:
                 lower, upper = expected
@@ -796,7 +796,7 @@ class BusinessRulesEngine:
         context: Dict[str, NestedValue],
         actions: List[RuleAction],
     ) -> List[str]:
-        """Fuehrt Aktionen aus und sammelt Fehler."""
+        """Führt Aktionen aus und sammelt Fehler."""
         errors = []
 
         for action in actions:
@@ -806,7 +806,7 @@ class BusinessRulesEngine:
                     await handler(context, action.params)
                 else:
                     logger.warning(
-                        f"Kein Handler fuer Aktionstyp '{action.type}' registriert"
+                        f"Kein Handler für Aktionstyp '{action.type}' registriert"
                     )
             except Exception as e:
                 error_msg = f"Fehler bei Aktion '{action.type}': {e}"
@@ -820,7 +820,7 @@ class BusinessRulesEngine:
     # =========================================================================
 
     def _get_nested_value(self, data: Dict[str, NestedValue], path: str) -> NestedValue:
-        """Holt verschachtelten Wert ueber Punkt-Notation.
+        """Holt verschachtelten Wert über Punkt-Notation.
 
         Beispiel: 'supplier.is_new' -> data['supplier']['is_new']
         """
@@ -854,7 +854,7 @@ class BusinessRulesEngine:
         raise ValueError(f"Kann '{value}' nicht in Zahl konvertieren")
 
     def _is_rule_valid(self, rule: BusinessRule) -> bool:
-        """Prueft ob Regel zeitlich gueltig ist."""
+        """Prüft ob Regel zeitlich gültig ist."""
         now = datetime.utcnow()
 
         if rule.valid_from and now < rule.valid_from:
@@ -865,7 +865,7 @@ class BusinessRulesEngine:
         return True
 
     def _sanitize_context_for_logging(self, context: Dict[str, NestedValue]) -> Dict[str, NestedValue]:
-        """Entfernt sensible Daten aus Kontext fuer Logging."""
+        """Entfernt sensible Daten aus Kontext für Logging."""
         sanitized = {}
         sensitive_keys = {"password", "token", "secret", "api_key", "iban", "credit_card"}
 
@@ -890,21 +890,21 @@ class BusinessRulesEngine:
         additional_context: Optional[Dict[str, NestedValue]] = None,
         dry_run: bool = False,
     ) -> RuleSetEvaluationResult:
-        """Wertet Regeln fuer ein Dokument aus.
+        """Wertet Regeln für ein Dokument aus.
 
         Laedt automatisch Dokument-Daten als Kontext.
 
         Args:
             document_id: Dokument-ID
             rules: Regeln
-            additional_context: Zusaetzliche Kontext-Daten
+            additional_context: Zusätzliche Kontext-Daten
             dry_run: Trocknenlauf
 
         Returns:
             Auswertungs-Ergebnis
         """
         if not self.db:
-            raise ValueError("Database session erforderlich fuer Dokument-Auswertung")
+            raise ValueError("Database session erforderlich für Dokument-Auswertung")
 
         # Dokument laden
         result = await self.db.execute(
@@ -964,7 +964,7 @@ class BusinessRulesEngine:
         rule: BusinessRule,
         document: Document,
     ) -> bool:
-        """Prueft ob Regel auf Dokument anwendbar ist."""
+        """Prüft ob Regel auf Dokument anwendbar ist."""
         # Dokumenttyp-Filter
         if rule.applies_to_document_types:
             if document.document_type not in rule.applies_to_document_types:
@@ -978,5 +978,5 @@ class BusinessRulesEngine:
         return True
 
 
-# Import fuer timedelta (wurde oben vergessen)
+# Import für timedelta (wurde oben vergessen)
 from datetime import timedelta

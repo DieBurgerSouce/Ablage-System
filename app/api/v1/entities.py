@@ -1,15 +1,15 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 Business Entity API Endpoints.
 
-REST API fuer Geschaeftspartner (Kunden/Lieferanten):
+REST API für Geschäftspartner (Kunden/Lieferanten):
 - CRUD Operationen
 - Automatische Erkennung aus OCR-Text
-- Dokument-Verknuepfung
-- Duplikat-Zusammenfuehrung
+- Dokument-Verknüpfung
+- Duplikat-Zusammenführung
 - Suggestions basierend auf OCR
 
-Feinpoliert und durchdacht - Deutsche Geschaeftsdokumente.
+Feinpoliert und durchdacht - Deutsche Geschäftsdokumente.
 """
 
 from typing import Optional, List
@@ -58,12 +58,12 @@ router = APIRouter(prefix="/entities", tags=["Business Entities"])
 @router.get(
     "",
     response_model=BusinessEntityListResponse,
-    summary="Geschaeftspartner auflisten",
-    description="Listet alle Geschaeftspartner mit Filter- und Paginierungsoptionen"
+    summary="Geschäftspartner auflisten",
+    description="Listet alle Geschäftspartner mit Filter- und Paginierungsoptionen"
 )
 async def list_entities(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     search: Optional[str] = Query(
         None, min_length=1, max_length=100,
         description="Suche in Name, USt-IdNr, IBAN"
@@ -81,7 +81,7 @@ async def list_entities(
     db: AsyncSession = Depends(get_db),
 ) -> BusinessEntityListResponse:
     """
-    Listet alle Geschaeftspartner auf.
+    Listet alle Geschäftspartner auf.
 
     **Filter:**
     - **search**: Sucht in Name, USt-IdNr, IBAN
@@ -160,21 +160,21 @@ async def list_entities(
 
 @router.get(
     "/customers",
-    summary="Kunden fuer Frontend",
+    summary="Kunden für Frontend",
     description="Kunden-Liste mit displayName = Kundennummer_Matchcode (paginiert)"
 )
 async def list_customers_for_frontend(
     search: Optional[str] = Query(None, description="Suche in Name/Matchcode"),
     is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
     page: int = Query(1, ge=1, description="Seitennummer"),
-    page_size: int = Query(50, ge=10, le=200, description="Eintraege pro Seite"),
+    page_size: int = Query(50, ge=10, le=200, description="Einträge pro Seite"),
     sort_by: str = Query("name", description="Sortierfeld: name, customer_number, last_activity"),
     sort_order: str = Query("asc", description="Sortierrichtung: asc oder desc"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Kunden-Liste fuer hierarchisches Frontend (paginiert).
+    Kunden-Liste für hierarchisches Frontend (paginiert).
 
     **Display-Format**: Kundennummer_Matchcode (z.B. "12345_Mueller")
 
@@ -206,7 +206,7 @@ async def list_customers_for_frontend(
     if is_active is not None:
         base_filter.append(BusinessEntity.is_active == is_active)
 
-    # Count-Query fuer Gesamtanzahl
+    # Count-Query für Gesamtanzahl
     count_query = select(func.count(BusinessEntity.id)).where(*base_filter)
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
@@ -261,7 +261,7 @@ async def list_customers_for_frontend(
             "fullName": entity.display_name or "",
             "isActive": entity.is_active,
             "companyPresence": company_presence,
-            # Risk Score fuer Frontend-Anzeige (0-100, hoeher = riskanter)
+            # Risk Score für Frontend-Anzeige (0-100, höher = riskanter)
             "riskScore": entity.risk_score,
             # folderStats und lastActivityDate werden on-demand geladen
             "folderStats": {},
@@ -279,21 +279,21 @@ async def list_customers_for_frontend(
 
 @router.get(
     "/suppliers",
-    summary="Lieferanten fuer Frontend",
+    summary="Lieferanten für Frontend",
     description="Lieferanten-Liste mit displayName = Name (ohne Nummer, paginiert)"
 )
 async def list_suppliers_for_frontend(
     search: Optional[str] = Query(None, description="Suche in Name"),
     is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
     page: int = Query(1, ge=1, description="Seitennummer"),
-    page_size: int = Query(50, ge=10, le=200, description="Eintraege pro Seite"),
+    page_size: int = Query(50, ge=10, le=200, description="Einträge pro Seite"),
     sort_by: str = Query("name", description="Sortierfeld: name, last_activity"),
     sort_order: str = Query("asc", description="Sortierrichtung: asc oder desc"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Lieferanten-Liste fuer hierarchisches Frontend (paginiert).
+    Lieferanten-Liste für hierarchisches Frontend (paginiert).
 
     **Display-Format**: Nur Name (ohne Lieferanten-Nummer, da chaotisch)
 
@@ -318,7 +318,7 @@ async def list_suppliers_for_frontend(
     if is_active is not None:
         base_filter.append(BusinessEntity.is_active == is_active)
 
-    # Count-Query fuer Gesamtanzahl
+    # Count-Query für Gesamtanzahl
     count_query = select(func.count(BusinessEntity.id)).where(*base_filter)
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
@@ -347,8 +347,8 @@ async def list_suppliers_for_frontend(
     # Stats werden erst beim Klick auf einen Lieferanten geladen (via /{entity_id}/folders)
     suppliers = []
     for entity in entities:
-        # Display-Name: Nutze entity.display_name wenn vorhanden und gueltig
-        # (nicht "nan" oder leer - das sind ungueltige Altdaten)
+        # Display-Name: Nutze entity.display_name wenn vorhanden und gültig
+        # (nicht "nan" oder leer - das sind ungültige Altdaten)
         if entity.display_name and entity.display_name.lower() not in ("nan", "none", ""):
             display_name = entity.display_name
         else:
@@ -371,7 +371,7 @@ async def list_suppliers_for_frontend(
             "fullName": entity.name,
             "isActive": entity.is_active,
             "companyPresence": company_presence,
-            # Risk Score fuer Frontend-Anzeige (0-100, hoeher = riskanter)
+            # Risk Score für Frontend-Anzeige (0-100, höher = riskanter)
             "riskScore": entity.risk_score,
             # folderStats und lastActivityDate werden on-demand geladen
             "folderStats": {},
@@ -389,8 +389,8 @@ async def list_suppliers_for_frontend(
 
 @router.get(
     "/suggestions",
-    summary="Entity-Vorschlaege",
-    description="Gibt Vorschlaege fuer neue Entities basierend auf unverknuepften Dokumenten"
+    summary="Entity-Vorschläge",
+    description="Gibt Vorschläge für neue Entities basierend auf unverknüpften Dokumenten"
 )
 async def get_entity_suggestions(
     limit: int = Query(10, ge=1, le=50),
@@ -398,13 +398,13 @@ async def get_entity_suggestions(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Gibt Vorschlaege fuer neue Geschaeftspartner basierend auf:
-    - Dokumenten ohne Entity-Verknuepfung
+    Gibt Vorschläge für neue Geschäftspartner basierend auf:
+    - Dokumenten ohne Entity-Verknüpfung
     - Extrahierten aber nicht zugeordneten Identifiern
 
-    Nuetzlich fuer das schrittweise Aufbauen der Entity-Datenbank.
+    Nuetzlich für das schrittweise Aufbauen der Entity-Datenbank.
     """
-    # Dokumente ohne Entity-Verknuepfung mit extracted_data
+    # Dokumente ohne Entity-Verknüpfung mit extracted_data
     query = (
         select(Document)
         .where(
@@ -414,7 +414,7 @@ async def get_entity_suggestions(
             Document.owner_id == current_user.id,
         )
         .order_by(Document.created_at.desc())
-        .limit(limit * 2)  # Mehr laden fuer bessere Auswahl
+        .limit(limit * 2)  # Mehr laden für bessere Auswahl
     )
 
     result = await db.execute(query)
@@ -461,12 +461,12 @@ async def get_entity_suggestions(
 
 @router.get(
     "/cross-company",
-    summary="Cross-Company Uebersicht",
+    summary="Cross-Company Übersicht",
     description="Zeigt Entities mit Praesenz in mehreren Firmen und Statistiken"
 )
 async def get_cross_company_entities(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(50, ge=1, le=100, description="Einträge pro Seite"),
     search: Optional[str] = Query(None, min_length=1, description="Suche in Name"),
     entity_type: Optional[EntityType] = Query(None, description="Nach Typ filtern"),
     company_filter: Optional[str] = Query(
@@ -479,14 +479,14 @@ async def get_cross_company_entities(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Gibt eine Uebersicht der Geschaeftspartner mit Firmen-Statistiken.
+    Gibt eine Übersicht der Geschäftspartner mit Firmen-Statistiken.
 
-    Zeigt fuer jede Entity:
+    Zeigt für jede Entity:
     - In welchen Firmen sie existiert (Folie, Messer)
     - Anzahl Dokumente pro Firma
     - Letzte Aktivitaet pro Firma
 
-    **Ideal fuer:**
+    **Ideal für:**
     - Vergleich der Kundenaktivitaet zwischen Firmen
     - Erkennen von nur einseitig gepflegten Kunden/Lieferanten
     """
@@ -576,7 +576,7 @@ async def get_cross_company_entities(
         company_stats = {}
         for company in all_companies:
             company_data = lexware_ids.get(company, {})
-            # Finde passende Category-IDs fuer diese Firma (basierend auf Name-Pattern)
+            # Finde passende Category-IDs für diese Firma (basierend auf Name-Pattern)
             company_doc_count = 0
             company_last_activity = None
 
@@ -644,7 +644,7 @@ async def get_cross_company_entities(
 @router.get(
     "/dashboard/stats",
     summary="Relationship Dashboard Statistiken",
-    description="Aggregierte Statistiken fuer das Relationship-Dashboard"
+    description="Aggregierte Statistiken für das Relationship-Dashboard"
 )
 async def get_relationship_dashboard(
     period: str = Query("30d", description="Zeitraum: 7d, 30d, 90d, 365d"),
@@ -652,12 +652,12 @@ async def get_relationship_dashboard(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Gibt aggregierte Statistiken fuer das Relationship-Dashboard zurueck.
+    Gibt aggregierte Statistiken für das Relationship-Dashboard zurück.
 
-    Enthaelt:
+    Enthält:
     - Top-Kunden nach Dokumentanzahl
     - Top-Lieferanten nach Dokumentanzahl
-    - Trend-Daten fuer neue Dokumente
+    - Trend-Daten für neue Dokumente
     - Verteilung nach Entity-Type
     """
     from datetime import timedelta
@@ -799,7 +799,7 @@ async def get_relationship_dashboard(
     total_suppliers_result = await db.execute(total_suppliers_query)
     total_suppliers = total_suppliers_result.scalar() or 0
 
-    # Dokumente mit Entity-Verknuepfung im Zeitraum
+    # Dokumente mit Entity-Verknüpfung im Zeitraum
     linked_docs_query = select(func.count()).where(
         Document.deleted_at.is_(None),
         Document.created_at >= start_date,
@@ -838,14 +838,14 @@ async def get_relationship_dashboard(
 @router.get(
     "/graph/data",
     summary="Entity-Graph-Daten",
-    description="Liefert Nodes und Edges fuer die Entity-Graph-Visualisierung"
+    description="Liefert Nodes und Edges für die Entity-Graph-Visualisierung"
 )
 async def get_entity_graph_data(
     entity_type: Optional[EntityType] = Query(
         None, description="Filter nach Entity-Typ"
     ),
     min_documents: int = Query(
-        1, ge=0, description="Minimum Dokumente fuer Anzeige"
+        1, ge=0, description="Minimum Dokumente für Anzeige"
     ),
     include_documents: bool = Query(
         False, description="Dokument-Nodes einbeziehen"
@@ -857,7 +857,7 @@ async def get_entity_graph_data(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Gibt Graph-Daten fuer React Flow zurueck.
+    Gibt Graph-Daten für React Flow zurück.
 
     **Nodes:**
     - Entity-Nodes (Kunden/Lieferanten)
@@ -868,7 +868,7 @@ async def get_entity_graph_data(
     - Entity-zu-Entity (wenn gemeinsame Dokumente)
 
     **Verwendung:**
-    Fuer die Visualisierung mit @xyflow/react.
+    Für die Visualisierung mit @xyflow/react.
     """
     # Basis-Query: Entities mit Dokument-Anzahl
     entity_query = (
@@ -934,10 +934,10 @@ async def get_entity_graph_data(
             },
         })
 
-    # Finde gemeinsame Dokumente zwischen Entities (fuer Edges)
+    # Finde gemeinsame Dokumente zwischen Entities (für Edges)
     if len(entity_ids) > 1:
-        # Suche Dokumente die mit mehreren Entities verknuepft sind
-        # (ueber manuelle Verknuepfung oder gleiche Kategorie)
+        # Suche Dokumente die mit mehreren Entities verknüpft sind
+        # (über manuelle Verknüpfung oder gleiche Kategorie)
         shared_docs_query = (
             select(
                 Document.id.label("doc_id"),
@@ -967,7 +967,7 @@ async def get_entity_graph_data(
                 Document.business_entity_id.in_([UUID(eid) for eid in entity_ids]),
             )
             .order_by(Document.created_at.desc())
-            .limit(100)  # Begrenzen um Graph nicht zu ueberladen
+            .limit(100)  # Begrenzen um Graph nicht zu überladen
         )
         doc_result = await db.execute(doc_query)
         documents = doc_result.scalars().all()
@@ -1057,7 +1057,7 @@ async def get_entity_graph_data(
 @router.get(
     "/{entity_id}/timeline",
     summary="Entity-Timeline abrufen",
-    description="Chronologische Aktivitaeten eines Geschaeftspartners"
+    description="Chronologische Aktivitaeten eines Geschäftspartners"
 )
 async def get_entity_timeline(
     entity_id: UUID,
@@ -1070,17 +1070,17 @@ async def get_entity_timeline(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Gibt chronologische Events fuer einen Geschaeftspartner zurueck.
+    Gibt chronologische Events für einen Geschäftspartner zurück.
 
     **Event-Typen:**
-    - **document_linked**: Dokument wurde verknuepft
-    - **entity_created**: Geschaeftspartner wurde erstellt
-    - **entity_updated**: Geschaeftspartner wurde aktualisiert
+    - **document_linked**: Dokument wurde verknüpft
+    - **entity_created**: Geschäftspartner wurde erstellt
+    - **entity_updated**: Geschäftspartner wurde aktualisiert
 
     **Response:**
     Sortiert nach Datum (neueste zuerst), mit Event-Typ, Beschreibung und Metadaten.
     """
-    # Pruefe ob Entity existiert
+    # Prüfe ob Entity existiert
     entity_result = await db.execute(
         select(BusinessEntity).where(
             BusinessEntity.id == entity_id,
@@ -1092,7 +1092,7 @@ async def get_entity_timeline(
     if not entity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden"
+            detail="Geschäftspartner nicht gefunden"
         )
 
     events = []
@@ -1102,7 +1102,7 @@ async def get_entity_timeline(
         events.append({
             "id": f"created-{entity.id}",
             "eventType": "entity_created",
-            "title": "Geschaeftspartner erstellt",
+            "title": "Geschäftspartner erstellt",
             "description": f"{entity.name} wurde angelegt",
             "timestamp": entity.created_at.isoformat() if entity.created_at else None,
             "icon": "plus-circle",
@@ -1118,7 +1118,7 @@ async def get_entity_timeline(
                 events.append({
                     "id": f"updated-{entity.id}",
                     "eventType": "entity_updated",
-                    "title": "Geschaeftspartner aktualisiert",
+                    "title": "Geschäftspartner aktualisiert",
                     "description": f"{entity.name} wurde bearbeitet",
                     "timestamp": entity.updated_at.isoformat(),
                     "icon": "edit",
@@ -1140,7 +1140,7 @@ async def get_entity_timeline(
         documents = doc_result.scalars().all()
 
         for doc in documents:
-            # Bestimme Dokument-Typ fuer Icon
+            # Bestimme Dokument-Typ für Icon
             doc_type = doc.status or "document"
             icon_map = {
                 "invoice": "receipt",
@@ -1154,7 +1154,7 @@ async def get_entity_timeline(
             events.append({
                 "id": f"doc-{doc.id}",
                 "eventType": "document_linked",
-                "title": f"Dokument verknuepft",
+                "title": f"Dokument verknüpft",
                 "description": doc.original_filename or doc.filename,
                 "timestamp": doc.created_at.isoformat() if doc.created_at else None,
                 "icon": icon,
@@ -1190,8 +1190,8 @@ async def get_entity_timeline(
 @router.get(
     "/{entity_id}",
     response_model=BusinessEntityDetailResponse,
-    summary="Geschaeftspartner abrufen",
-    description="Ruft detaillierte Informationen zu einem Geschaeftspartner ab"
+    summary="Geschäftspartner abrufen",
+    description="Ruft detaillierte Informationen zu einem Geschäftspartner ab"
 )
 async def get_entity(
     entity_id: UUID,
@@ -1200,9 +1200,9 @@ async def get_entity(
     db: AsyncSession = Depends(get_db),
 ) -> BusinessEntityDetailResponse:
     """
-    Ruft einen Geschaeftspartner mit allen Details ab.
+    Ruft einen Geschäftspartner mit allen Details ab.
 
-    Optional koennen verknuepfte Dokumente mitgeladen werden.
+    Optional können verknüpfte Dokumente mitgeladen werden.
     """
     query = select(BusinessEntity).where(
         BusinessEntity.id == entity_id,
@@ -1218,7 +1218,7 @@ async def get_entity(
     if not entity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden"
+            detail="Geschäftspartner nicht gefunden"
         )
 
     response = BusinessEntityDetailResponse.model_validate(entity)
@@ -1244,8 +1244,8 @@ async def get_entity(
     "",
     response_model=BusinessEntityResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Geschaeftspartner erstellen",
-    description="Erstellt einen neuen Geschaeftspartner"
+    summary="Geschäftspartner erstellen",
+    description="Erstellt einen neuen Geschäftspartner"
 )
 async def create_entity(
     data: BusinessEntityCreate,
@@ -1253,18 +1253,18 @@ async def create_entity(
     db: AsyncSession = Depends(get_db),
 ) -> BusinessEntityResponse:
     """
-    Erstellt einen neuen Geschaeftspartner.
+    Erstellt einen neuen Geschäftspartner.
 
     **Pflichtfelder:**
     - **name**: Firmenname
     - **entity_type**: customer, supplier, both
 
     **Optionale Felder:**
-    - vat_id: USt-IdNr (wird auf Duplikate geprueft)
+    - vat_id: USt-IdNr (wird auf Duplikate geprüft)
     - iban: Bankverbindung
     - Adresse, Kontakt, etc.
     """
-    # Pruefen auf Duplikate
+    # Prüfen auf Duplikate
     if data.vat_id:
         existing = await db.execute(
             select(BusinessEntity).where(
@@ -1275,7 +1275,7 @@ async def create_entity(
         if existing.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Geschaeftspartner mit USt-IdNr {data.vat_id} existiert bereits"
+                detail=f"Geschäftspartner mit USt-IdNr {data.vat_id} existiert bereits"
             )
 
     if data.iban:
@@ -1288,7 +1288,7 @@ async def create_entity(
         if existing.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail="Geschaeftspartner mit dieser IBAN existiert bereits"
+                detail="Geschäftspartner mit dieser IBAN existiert bereits"
             )
 
     entity = BusinessEntity(
@@ -1317,8 +1317,8 @@ async def create_entity(
 @router.put(
     "/{entity_id}",
     response_model=BusinessEntityResponse,
-    summary="Geschaeftspartner aktualisieren",
-    description="Aktualisiert einen bestehenden Geschaeftspartner"
+    summary="Geschäftspartner aktualisieren",
+    description="Aktualisiert einen bestehenden Geschäftspartner"
 )
 async def update_entity(
     entity_id: UUID,
@@ -1327,9 +1327,9 @@ async def update_entity(
     db: AsyncSession = Depends(get_db),
 ) -> BusinessEntityResponse:
     """
-    Aktualisiert einen Geschaeftspartner.
+    Aktualisiert einen Geschäftspartner.
 
-    Nur geaenderte Felder werden aktualisiert.
+    Nur geänderte Felder werden aktualisiert.
     """
     result = await db.execute(
         select(BusinessEntity).where(
@@ -1342,10 +1342,10 @@ async def update_entity(
     if not entity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden"
+            detail="Geschäftspartner nicht gefunden"
         )
 
-    # Duplikat-Pruefung bei Aenderung von vat_id oder iban
+    # Duplikat-Prüfung bei Änderung von vat_id oder iban
     update_data = data.model_dump(exclude_unset=True)
 
     if "vat_id" in update_data and update_data["vat_id"] != entity.vat_id:
@@ -1398,8 +1398,8 @@ async def update_entity(
 @router.delete(
     "/{entity_id}",
     response_model=MessageResponse,
-    summary="Geschaeftspartner loeschen",
-    description="Loescht einen Geschaeftspartner (Soft-Delete)"
+    summary="Geschäftspartner löschen",
+    description="Löscht einen Geschäftspartner (Soft-Delete)"
 )
 async def delete_entity(
     entity_id: UUID,
@@ -1407,9 +1407,9 @@ async def delete_entity(
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
     """
-    Loescht einen Geschaeftspartner (Soft-Delete).
+    Löscht einen Geschäftspartner (Soft-Delete).
 
-    Verknuepfte Dokumente werden NICHT geloescht, nur die Verknuepfung.
+    Verknüpfte Dokumente werden NICHT gelöscht, nur die Verknüpfung.
     """
     result = await db.execute(
         select(BusinessEntity).where(
@@ -1422,13 +1422,13 @@ async def delete_entity(
     if not entity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden"
+            detail="Geschäftspartner nicht gefunden"
         )
 
     # Soft-Delete
     entity.deleted_at = datetime.now(timezone.utc)
 
-    # Dokument-Verknuepfungen aufheben
+    # Dokument-Verknüpfungen aufheben
     await db.execute(
         select(Document)
         .where(Document.business_entity_id == entity_id)
@@ -1443,7 +1443,7 @@ async def delete_entity(
         user_id=str(current_user.id),
     )
 
-    return MessageResponse(message="Geschaeftspartner erfolgreich geloescht")
+    return MessageResponse(message="Geschäftspartner erfolgreich gelöscht")
 
 
 # =============================================================================
@@ -1452,8 +1452,8 @@ async def delete_entity(
 
 @router.get(
     "/{entity_id}/documents",
-    summary="Verknuepfte Dokumente",
-    description="Listet alle Dokumente eines Geschaeftspartners"
+    summary="Verknüpfte Dokumente",
+    description="Listet alle Dokumente eines Geschäftspartners"
 )
 async def get_entity_documents(
     entity_id: UUID,
@@ -1463,9 +1463,9 @@ async def get_entity_documents(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Listet alle Dokumente die mit diesem Geschaeftspartner verknuepft sind.
+    Listet alle Dokumente die mit diesem Geschäftspartner verknüpft sind.
     """
-    # Entity pruefen
+    # Entity prüfen
     entity_result = await db.execute(
         select(BusinessEntity).where(
             BusinessEntity.id == entity_id,
@@ -1475,7 +1475,7 @@ async def get_entity_documents(
     if not entity_result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden"
+            detail="Geschäftspartner nicht gefunden"
         )
 
     # Dokumente zaehlen
@@ -1528,7 +1528,7 @@ async def get_entity_documents(
     "/extract",
     response_model=EntityExtractionResponse,
     summary="Entitaeten aus Text extrahieren",
-    description="Extrahiert Geschaeftspartner-Informationen aus OCR-Text"
+    description="Extrahiert Geschäftspartner-Informationen aus OCR-Text"
 )
 async def extract_entities(
     data: EntityExtractionRequest,
@@ -1536,7 +1536,7 @@ async def extract_entities(
     db: AsyncSession = Depends(get_db),
 ) -> EntityExtractionResponse:
     """
-    Extrahiert Geschaeftspartner-Informationen aus OCR-Text.
+    Extrahiert Geschäftspartner-Informationen aus OCR-Text.
 
     Erkannte Elemente:
     - USt-IdNr (DE123456789)
@@ -1610,8 +1610,8 @@ async def extract_entities(
 @router.post(
     "/merge",
     response_model=BusinessEntityResponse,
-    summary="Duplikate zusammenfuehren",
-    description="Fuehrt mehrere Entity-Eintraege zu einem zusammen"
+    summary="Duplikate zusammenführen",
+    description="Führt mehrere Entity-Einträge zu einem zusammen"
 )
 async def merge_entities(
     data: EntityMergeRequest,
@@ -1619,13 +1619,13 @@ async def merge_entities(
     db: AsyncSession = Depends(get_db),
 ) -> BusinessEntityResponse:
     """
-    Fuehrt mehrere Geschaeftspartner-Eintraege zu einem zusammen.
+    Führt mehrere Geschäftspartner-Einträge zu einem zusammen.
 
     - **target_id**: Entity die erhalten bleibt
-    - **source_ids**: Entities die zusammengefuehrt werden
+    - **source_ids**: Entities die zusammengeführt werden
 
     Alle Dokumente der source_ids werden auf target_id umgehaengt.
-    Source-Entities werden als geloescht markiert.
+    Source-Entities werden als gelöscht markiert.
     """
     # Target laden
     target_result = await db.execute(
@@ -1639,7 +1639,7 @@ async def merge_entities(
     if not target:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ziel-Geschaeftspartner nicht gefunden"
+            detail="Ziel-Geschäftspartner nicht gefunden"
         )
 
     merged_count = 0
@@ -1666,7 +1666,7 @@ async def merge_entities(
             .execution_options(synchronize_session="fetch")
         )
 
-        # Name-Aliase uebernehmen
+        # Name-Aliase übernehmen
         if target.name_aliases is None:
             target.name_aliases = []
         if source.name not in target.name_aliases and source.name != target.name:
@@ -1680,7 +1680,7 @@ async def merge_entities(
         # Statistiken aktualisieren
         target.document_count = (target.document_count or 0) + (source.document_count or 0)
 
-        # Source als geloescht markieren
+        # Source als gelöscht markieren
         source.deleted_at = datetime.now(timezone.utc)
         merged_count += 1
 
@@ -1705,7 +1705,7 @@ async def merge_entities(
     "/{entity_id}/verify",
     response_model=BusinessEntityResponse,
     summary="Entity verifizieren",
-    description="Markiert einen Geschaeftspartner als manuell verifiziert"
+    description="Markiert einen Geschäftspartner als manuell verifiziert"
 )
 async def verify_entity(
     entity_id: UUID,
@@ -1713,9 +1713,9 @@ async def verify_entity(
     db: AsyncSession = Depends(get_db),
 ) -> BusinessEntityResponse:
     """
-    Markiert einen Geschaeftspartner als manuell verifiziert.
+    Markiert einen Geschäftspartner als manuell verifiziert.
 
-    Verifizierte Entities haben hoeheres Vertrauen bei Auto-Matching.
+    Verifizierte Entities haben höheres Vertrauen bei Auto-Matching.
     """
     result = await db.execute(
         select(BusinessEntity).where(
@@ -1728,7 +1728,7 @@ async def verify_entity(
     if not entity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden"
+            detail="Geschäftspartner nicht gefunden"
         )
 
     entity.verified = True
@@ -1753,7 +1753,7 @@ async def verify_entity(
 @router.get(
     "/{entity_id}/folders",
     summary="Ordner (Firmen) einer Entity",
-    description="Gibt die Firmen-Ordner (Folie, Spargelmesser) zurueck"
+    description="Gibt die Firmen-Ordner (Folie, Spargelmesser) zurück"
 )
 async def get_entity_folders_view(
     entity_id: UUID,
@@ -1781,7 +1781,7 @@ async def get_entity_folders_view(
     if not entity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden"
+            detail="Geschäftspartner nicht gefunden"
         )
 
     # Company presence aus Entity oder lexware_ids
@@ -1789,7 +1789,7 @@ async def get_entity_folders_view(
     if not company_presence and entity.lexware_ids:
         company_presence = list(entity.lexware_ids.keys())
 
-    # Lade Company Service fuer dynamische Namen
+    # Lade Company Service für dynamische Namen
     company_service = get_company_service()
 
     # Falls leer, default alle aktiven Firmen (MULTI-TENANT)
@@ -1805,7 +1805,7 @@ async def get_entity_folders_view(
         # Normalize ID via Company Service (Legacy-Alias-Support)
         normalized_id = company_service.normalize_company_short_name(company_id)
 
-        # Dokumente fuer diese Entity + Firma zaehlen
+        # Dokumente für diese Entity + Firma zaehlen
         doc_counts = await _count_documents_by_category(db, entity_id, normalized_id)
 
         # Letztes Dokument-Datum
@@ -1845,7 +1845,7 @@ async def get_folder_documents(
     **folder_id**: "folie" oder "messer"
     **category**: z.B. "angebote", "rechnungen", "lieferscheine"
     """
-    # Entity pruefen
+    # Entity prüfen
     entity_result = await db.execute(
         select(BusinessEntity).where(
             BusinessEntity.id == entity_id,
@@ -1855,7 +1855,7 @@ async def get_folder_documents(
     if not entity_result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden"
+            detail="Geschäftspartner nicht gefunden"
         )
 
     # Normalize folder_id
@@ -1912,11 +1912,11 @@ async def get_folder_documents(
 @router.get(
     "/risk",
     summary="Alle Entities mit Risiko-Scores",
-    description="Listet alle Geschaeftspartner mit ihren Risiko-Scores auf"
+    description="Listet alle Geschäftspartner mit ihren Risiko-Scores auf"
 )
 async def get_all_entities_with_risk(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     entity_type: Optional[EntityType] = Query(None, description="Nach Typ filtern"),
     min_score: Optional[float] = Query(None, ge=0, le=100, description="Minimum Risk Score"),
     max_score: Optional[float] = Query(None, ge=0, le=100, description="Maximum Risk Score"),
@@ -1930,7 +1930,7 @@ async def get_all_entities_with_risk(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Listet alle Geschaeftspartner mit Risiko-Scores auf.
+    Listet alle Geschäftspartner mit Risiko-Scores auf.
 
     **Filter:**
     - **entity_type**: customer, supplier, both
@@ -2032,11 +2032,11 @@ async def get_all_entities_with_risk(
 @router.get(
     "/risk/high-risk",
     summary="High-Risk Entities",
-    description="Listet Geschaeftspartner mit hohem Risiko (Score >= 50)"
+    description="Listet Geschäftspartner mit hohem Risiko (Score >= 50)"
 )
 async def get_high_risk_entities(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     entity_type: Optional[EntityType] = Query(None, description="Nach Typ filtern"),
     min_score: float = Query(50, ge=0, le=100, description="Minimum Risk Score (default: 50)"),
     sort_by: str = Query("risk_score", description="Sortierfeld"),
@@ -2045,7 +2045,7 @@ async def get_high_risk_entities(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Listet alle Geschaeftspartner mit hohem Risiko auf.
+    Listet alle Geschäftspartner mit hohem Risiko auf.
 
     Standard: Score >= 50 (HIGH und CRITICAL Level)
 
@@ -2121,7 +2121,7 @@ async def get_high_risk_entities(
 @router.get(
     "/risk/statistics",
     summary="Risiko-Statistiken",
-    description="Aggregierte Risiko-Statistiken ueber alle Geschaeftspartner"
+    description="Aggregierte Risiko-Statistiken über alle Geschäftspartner"
 )
 async def get_risk_statistics(
     entity_type: Optional[EntityType] = Query(None, description="Nach Typ filtern"),
@@ -2129,7 +2129,7 @@ async def get_risk_statistics(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Gibt aggregierte Risiko-Statistiken zurueck.
+    Gibt aggregierte Risiko-Statistiken zurück.
 
     **Response:**
     - **totalEntities**: Anzahl aller Entities mit Risk Score
@@ -2137,7 +2137,7 @@ async def get_risk_statistics(
     - **criticalRiskCount**: Anzahl mit Score >= 75
     - **averageRiskScore**: Durchschnittlicher Risk Score
     - **riskDistribution**: Verteilung nach Level
-    - **topRiskFactors**: Haeufigste Risiko-Faktoren
+    - **topRiskFactors**: Häufigste Risiko-Faktoren
     """
     base_filter = [
         BusinessEntity.deleted_at.is_(None),
@@ -2204,7 +2204,7 @@ async def get_risk_statistics(
     # Top risk factors (aggregate from risk_factors JSONB)
     # This is a simplified version - in production you'd want more sophisticated aggregation
     top_factors = [
-        {"name": "payment_delay", "label": "Zahlungsverzoegerung", "weight": 0.35},
+        {"name": "payment_delay", "label": "Zahlungsverzögerung", "weight": 0.35},
         {"name": "default_rate", "label": "Ausfallrate", "weight": 0.25},
         {"name": "invoice_volume", "label": "Rechnungsvolumen", "weight": 0.15},
         {"name": "document_frequency", "label": "Dokumentenfrequenz", "weight": 0.10},
@@ -2229,7 +2229,7 @@ async def get_risk_statistics(
 @router.get(
     "/{entity_id}/risk",
     summary="Risiko-Score abrufen",
-    description="Liefert den aktuellen Risiko-Score und Faktoren eines Geschaeftspartners"
+    description="Liefert den aktuellen Risiko-Score und Faktoren eines Geschäftspartners"
 )
 async def get_entity_risk_score(
     entity_id: UUID,
@@ -2237,11 +2237,11 @@ async def get_entity_risk_score(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Ruft den Risiko-Score eines Geschaeftspartners ab.
+    Ruft den Risiko-Score eines Geschäftspartners ab.
 
     **Response:**
-    - **riskScore**: Gesamt-Risiko (0-100, hoeher = riskanter)
-    - **paymentBehaviorScore**: Zahlungsverhalten (0-100, hoeher = besser)
+    - **riskScore**: Gesamt-Risiko (0-100, höher = riskanter)
+    - **paymentBehaviorScore**: Zahlungsverhalten (0-100, höher = besser)
     - **riskFactors**: Detaillierte Faktor-Aufschluesselung
     - **calculatedAt**: Zeitpunkt der letzten Berechnung
     """
@@ -2256,7 +2256,7 @@ async def get_entity_risk_score(
     if not entity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden"
+            detail="Geschäftspartner nicht gefunden"
         )
 
     return {
@@ -2272,7 +2272,7 @@ async def get_entity_risk_score(
 @router.post(
     "/{entity_id}/risk/calculate",
     summary="Risiko-Score berechnen",
-    description="Berechnet den Risiko-Score fuer einen Geschaeftspartner neu"
+    description="Berechnet den Risiko-Score für einen Geschäftspartner neu"
 )
 async def calculate_entity_risk_score(
     entity_id: UUID,
@@ -2280,10 +2280,10 @@ async def calculate_entity_risk_score(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Berechnet den Risiko-Score eines Geschaeftspartners neu.
+    Berechnet den Risiko-Score eines Geschäftspartners neu.
 
-    Die Berechnung beruecksichtigt:
-    - Zahlungsverzoegerungen
+    Die Berechnung berücksichtigt:
+    - Zahlungsverzögerungen
     - Ausfallraten
     - Rechnungsvolumen
     - Dokumentenfrequenz
@@ -2297,7 +2297,7 @@ async def calculate_entity_risk_score(
     if not entity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden"
+            detail="Geschäftspartner nicht gefunden"
         )
 
     return {
@@ -2313,33 +2313,33 @@ async def calculate_entity_risk_score(
 @router.get(
     "/{entity_id}/risk/trend",
     summary="Risiko-Score Trend",
-    description="Gibt die historische Entwicklung des Risiko-Scores zurueck"
+    description="Gibt die historische Entwicklung des Risiko-Scores zurück"
 )
 async def get_entity_risk_trend(
     entity_id: UUID,
-    days: int = Query(30, ge=7, le=365, description="Anzahl Tage fuer Trend"),
+    days: int = Query(30, ge=7, le=365, description="Anzahl Tage für Trend"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Gibt die historische Entwicklung des Risiko-Scores zurueck.
+    Gibt die historische Entwicklung des Risiko-Scores zurück.
 
     **Hinweis:** Da Risk Scores aktuell nicht historisch gespeichert werden,
     generiert diese Funktion eine simulierte Trend-Linie basierend auf
     dem aktuellen Score mit leichter Variation.
 
-    In einer vollstaendigen Implementierung wuerde hier eine
+    In einer vollständigen Implementierung wuerde hier eine
     RiskScoreHistory-Tabelle abgefragt werden.
 
     **Response:**
     - **trend**: Array mit {date, riskScore} Objekten
     - **currentScore**: Aktueller Risk Score
-    - **changePercent**: Veraenderung in Prozent (simuliert)
+    - **changePercent**: Veränderung in Prozent (simuliert)
     """
     from datetime import timedelta
     import random
 
-    # Entity pruefen
+    # Entity prüfen
     entity_result = await db.execute(
         select(BusinessEntity).where(
             BusinessEntity.id == entity_id,
@@ -2351,7 +2351,7 @@ async def get_entity_risk_trend(
     if not entity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden"
+            detail="Geschäftspartner nicht gefunden"
         )
 
     current_score = entity.risk_score or 0
@@ -2361,7 +2361,7 @@ async def get_entity_risk_trend(
     trend = []
     today = datetime.now(timezone.utc).date()
 
-    # Seed basierend auf Entity-ID fuer konsistente Ergebnisse
+    # Seed basierend auf Entity-ID für konsistente Ergebnisse
     random.seed(str(entity_id))
 
     # Startpunkt: Score vor 'days' Tagen (leicht unterschiedlich)
@@ -2401,7 +2401,7 @@ async def get_entity_risk_trend(
 @router.post(
     "/risk/calculate-all",
     summary="Alle Risiko-Scores berechnen",
-    description="Berechnet Risiko-Scores fuer alle aktiven Geschaeftspartner"
+    description="Berechnet Risiko-Scores für alle aktiven Geschäftspartner"
 )
 async def calculate_all_risk_scores(
     entity_type: Optional[EntityType] = Query(None, description="Nur bestimmten Typ berechnen"),
@@ -2410,7 +2410,7 @@ async def calculate_all_risk_scores(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Berechnet Risiko-Scores fuer alle (oder gefilterte) Geschaeftspartner.
+    Berechnet Risiko-Scores für alle (oder gefilterte) Geschäftspartner.
 
     **Filter:**
     - **entity_type**: Nur customer, supplier, oder both berechnen
@@ -2426,7 +2426,7 @@ async def calculate_all_risk_scores(
     )
 
     return {
-        "message": f"Risiko-Scores berechnet fuer {updated_count} Geschaeftspartner",
+        "message": f"Risiko-Scores berechnet für {updated_count} Geschäftspartner",
         "updatedCount": updated_count,
     }
 
@@ -2443,7 +2443,7 @@ def _extract_matchcode(name: str) -> str:
     - "Mueller GmbH & Co. KG" -> "Mueller"
     - "Agrimpex International Trading GmbH" -> "Agrimpex"
     - "Hans Meier Spargel- und Erdbeerhof" -> "Meier"
-    - "25223_Agrargenossenschaft NÃ¶bdenitz eG" -> "Agrargenossenschaft" (Altdaten-Format)
+    - "25223_Agrargenossenschaft Nöbdenitz eG" -> "Agrargenossenschaft" (Altdaten-Format)
     """
     if not name:
         return ""
@@ -2472,7 +2472,7 @@ def _extract_matchcode(name: str) -> str:
     # Bei mehreren Woertern, erstes sinnvolles nehmen
     words = result.split()
     if len(words) >= 2:
-        # Wenn erstes Wort ein Vorname sein koennte, zweites nehmen
+        # Wenn erstes Wort ein Vorname sein könnte, zweites nehmen
         first_word = words[0]
         if len(first_word) < 5 and first_word.lower() in ["hans", "franz", "karl", "maria", "anna"]:
             result = words[1]
@@ -2497,7 +2497,7 @@ async def _calculate_folder_stats(
         if normalized_id == "spargelmesser":
             normalized_id = "messer"
 
-        # Gesamtzahl Dokumente fuer diese Entity
+        # Gesamtzahl Dokumente für diese Entity
         doc_count_query = select(func.count()).select_from(
             select(Document).where(
                 Document.business_entity_id == entity_id,
@@ -2554,8 +2554,8 @@ async def _count_documents_by_category(
     entity_id: UUID,
     folder_id: str
 ) -> dict:
-    """Zaehlt Dokumente pro Kategorie fuer eine Entity/Firma."""
-    # Basis-Kategorien fÃ¼r alle Ordner
+    """Zählt Dokumente pro Kategorie für eine Entity/Firma."""
+    # Basis-Kategorien für alle Ordner
     categories = [
         "anfragen", "angebote", "auftragsbestaetigung", "lieferscheine",
         "rechnungen", "storno", "mahnungen", "offene_rechnungen",
@@ -2563,7 +2563,7 @@ async def _count_documents_by_category(
         "kommunikation", "archiv"
     ]
 
-    # Druckdaten nur fÃ¼r Spargelmesser-Ordner
+    # Druckdaten nur für Spargelmesser-Ordner
     if folder_id == "messer":
         categories.append("druckdaten")
 
@@ -2592,7 +2592,7 @@ def _get_category_to_doctype_mapping() -> dict:
         "anfragen": "anfrage",
         "angebote": "angebot",
         "auftragsbestaetigung": "auftragsbestaetigung",
-        "auftragsbestÃ¤tigung": "auftragsbestaetigung",  # Mit Umlaut
+        "auftragsbestätigung": "auftragsbestaetigung",  # Mit Umlaut (Fallback)
         "lieferscheine": "lieferschein",
         "rechnungen": "rechnung",
         "storno": "storno",
@@ -2604,5 +2604,5 @@ def _get_category_to_doctype_mapping() -> dict:
         "kommunikation": "kommunikation",
         "archiv": "archiv",
         "bestellungen": "bestellung",
-        "druckdaten": "druckdaten",  # NUR fÃ¼r Spargelmesser-Kunden!
+        "druckdaten": "druckdaten",  # NUR für Spargelmesser-Kunden!
     }

@@ -4,7 +4,7 @@ Cashflow Prediction API Endpoints.
 
 Phase 2.2: Predictive Cash Flow AI Service
 
-API fuer Entity-basierte Cashflow-Vorhersagen:
+API für Entity-basierte Cashflow-Vorhersagen:
 - GET /api/v1/cashflow/forecast - 30/60/90 Tage Prognose
 - GET /api/v1/cashflow/invoice/{id}/prediction - Einzelne Rechnung
 - GET /api/v1/cashflow/entity/{id}/profile - Entity Zahlungsprofil
@@ -46,7 +46,7 @@ router = APIRouter(prefix="/cashflow", tags=["Cashflow Prediction"])
 
 
 class ConfidenceIntervalResponse(BaseModel):
-    """Konfidenzintervall fuer Prognosen."""
+    """Konfidenzintervall für Prognosen."""
 
     low: float = Field(..., description="Pessimistisches Szenario (10. Perzentil)")
     mid: float = Field(..., description="Realistisches Szenario (Median)")
@@ -68,7 +68,7 @@ class CashFlowPredictionResponse(BaseModel):
 
 
 class CashFlowForecastResponse(BaseModel):
-    """Antwort fuer Cashflow-Prognose."""
+    """Antwort für Cashflow-Prognose."""
 
     company_id: str
     forecast_days: int
@@ -93,7 +93,7 @@ class SeasonalPatternResponse(BaseModel):
 
 
 class EntityPaymentProfileResponse(BaseModel):
-    """Zahlungsprofil eines Geschaeftspartners."""
+    """Zahlungsprofil eines Geschäftspartners."""
 
     entity_id: str
     avg_payment_delay_days: int
@@ -109,14 +109,14 @@ class EntityPaymentProfileResponse(BaseModel):
 
 
 class PaymentProbabilityConfidenceResponse(BaseModel):
-    """Konfidenzintervall fuer Zahlungsdatum."""
+    """Konfidenzintervall für Zahlungsdatum."""
 
     optimistic: str
     pessimistic: str
 
 
 class PaymentProbabilityResponse(BaseModel):
-    """Zahlungswahrscheinlichkeit fuer eine Rechnung."""
+    """Zahlungswahrscheinlichkeit für eine Rechnung."""
 
     invoice_id: str
     entity_id: Optional[str] = None
@@ -144,7 +144,7 @@ class LiquidityAlertResponse(BaseModel):
 
 
 class LiquidityAlertsResponse(BaseModel):
-    """Antwort fuer Liquiditaetswarnungen."""
+    """Antwort für Liquiditaetswarnungen."""
 
     company_id: str
     alert_count: int
@@ -163,7 +163,7 @@ class LiquidityAlertsResponse(BaseModel):
     "/forecast",
     response_model=CashFlowForecastResponse,
     summary="Cashflow-Prognose",
-    description="Erstellt eine Cashflow-Prognose fuer 30, 60 oder 90 Tage.",
+    description="Erstellt eine Cashflow-Prognose für 30, 60 oder 90 Tage.",
 )
 async def get_cashflow_forecast(
     days: int = Query(
@@ -178,8 +178,8 @@ async def get_cashflow_forecast(
     """
     Erstellt eine Entity-basierte Cashflow-Prognose.
 
-    Verwendet historische Zahlungsmuster und Risk Scores fuer praezise
-    Vorhersagen. Beruecksichtigt saisonale Faktoren und Zahlungskonsistenz.
+    Verwendet historische Zahlungsmuster und Risk Scores für praezise
+    Vorhersagen. Berücksichtigt saisonale Faktoren und Zahlungskonsistenz.
 
     Returns:
         Tagesweise Prognose mit Konfidenzintervallen
@@ -201,7 +201,7 @@ async def get_cashflow_forecast(
     if not predictions:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine Prognosedaten verfuegbar",
+            detail="Keine Prognosedaten verfügbar",
         )
 
     # Aktueller Kontostand
@@ -255,8 +255,8 @@ async def get_cashflow_forecast(
 @router.get(
     "/invoice/{invoice_id}/prediction",
     response_model=PaymentProbabilityResponse,
-    summary="Zahlungsvorhersage fuer Rechnung",
-    description="Berechnet die Zahlungswahrscheinlichkeit fuer eine einzelne Rechnung.",
+    summary="Zahlungsvorhersage für Rechnung",
+    description="Berechnet die Zahlungswahrscheinlichkeit für eine einzelne Rechnung.",
 )
 async def get_invoice_payment_prediction(
     invoice_id: UUID,
@@ -264,11 +264,11 @@ async def get_invoice_payment_prediction(
     db: AsyncSession = Depends(get_db),
 ) -> PaymentProbabilityResponse:
     """
-    Berechnet die Zahlungswahrscheinlichkeit fuer eine einzelne Rechnung.
+    Berechnet die Zahlungswahrscheinlichkeit für eine einzelne Rechnung.
 
     Basiert auf:
     - Historischem Zahlungsverhalten der Entity
-    - Rechnungsbetrag und Faelligkeitsdatum
+    - Rechnungsbetrag und Fälligkeitsdatum
     - Saisonalen Faktoren
     - Risk Score der Entity
 
@@ -314,7 +314,7 @@ async def get_invoice_payment_prediction(
     "/entity/{entity_id}/profile",
     response_model=EntityPaymentProfileResponse,
     summary="Entity Zahlungsprofil",
-    description="Ruft das vollstaendige Zahlungsprofil eines Geschaeftspartners ab.",
+    description="Ruft das vollständige Zahlungsprofil eines Geschäftspartners ab.",
 )
 async def get_entity_payment_profile(
     entity_id: UUID,
@@ -326,16 +326,16 @@ async def get_entity_payment_profile(
     db: AsyncSession = Depends(get_db),
 ) -> EntityPaymentProfileResponse:
     """
-    Ruft das Zahlungsprofil eines Geschaeftspartners ab.
+    Ruft das Zahlungsprofil eines Geschäftspartners ab.
 
     Beinhaltet:
-    - Durchschnittliche Zahlungsverzoegerung
-    - Zahlungskonsistenz (puenktlich, verspaetet, variabel)
+    - Durchschnittliche Zahlungsverzögerung
+    - Zahlungskonsistenz (puenktlich, verspätet, variabel)
     - Saisonale Muster
     - Risiko-adjustierte Zahlungswahrscheinlichkeit
 
     Returns:
-        Vollstaendiges EntityPaymentProfile
+        Vollständiges EntityPaymentProfile
     """
     if not current_user.current_company_id:
         raise HTTPException(
@@ -354,7 +354,7 @@ async def get_entity_payment_profile(
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine Zahlungshistorie fuer diese Entity vorhanden",
+            detail="Keine Zahlungshistorie für diese Entity vorhanden",
         )
 
     seasonal_pattern = None
@@ -386,7 +386,7 @@ async def get_entity_payment_profile(
     "/alerts",
     response_model=LiquidityAlertsResponse,
     summary="Liquiditaetswarnungen",
-    description="Generiert Warnungen fuer bevorstehende Liquiditaetsprobleme.",
+    description="Generiert Warnungen für bevorstehende Liquiditaetsprobleme.",
 )
 async def get_liquidity_alerts(
     days: int = Query(
@@ -403,7 +403,7 @@ async def get_liquidity_alerts(
 
     Warnt bei:
     - Kritischen Liquiditaetsengpaessen (Balance < 0)
-    - Cashflow-Luecken (Ausgaenge >> Eingaenge)
+    - Cashflow-Lücken (Ausgaenge >> Eingaenge)
     - Negativem Trend
     - Hoher Konzentration von High-Risk Entities
 
@@ -470,7 +470,7 @@ async def refresh_entity_profile(
     """
     Erzwingt die Neuberechnung des Zahlungsprofils.
 
-    Nuetzlich nach signifikanten Aenderungen im Zahlungsverhalten
+    Nuetzlich nach signifikanten Änderungen im Zahlungsverhalten
     oder nach manuellen Korrekturen.
 
     Returns:
@@ -493,7 +493,7 @@ async def refresh_entity_profile(
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine Zahlungshistorie fuer diese Entity vorhanden",
+            detail="Keine Zahlungshistorie für diese Entity vorhanden",
         )
 
     seasonal_pattern = None
@@ -533,7 +533,7 @@ async def get_cashflow_summary(
     """
     Liefert eine kompakte Zusammenfassung der Liquiditaetssituation.
 
-    Ideal fuer Dashboard-Widgets.
+    Ideal für Dashboard-Widgets.
 
     Returns:
         Dictionary mit Kennzahlen

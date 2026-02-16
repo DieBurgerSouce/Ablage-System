@@ -1,7 +1,7 @@
 """Ablage Service - Kategorie-basierte Dokumentenverwaltung.
 
-Enthaelt:
-- get_category_documents: Gefilterte Dokumentenliste fuer Kategorie-Ansicht
+Enthält:
+- get_category_documents: Gefilterte Dokumentenliste für Kategorie-Ansicht
 - get_category_aggregations: Aggregierte Statistiken (Summen, Anzahlen)
 - bulk_download_zip: Mehrere Dokumente als ZIP herunterladen
 - bulk_export_csv: Metadaten als CSV exportieren
@@ -10,7 +10,7 @@ Enthaelt:
 - bulk_move_category: Dokumente in andere Kategorie verschieben
 - bulk_set_tags: Tags setzen/entfernen
 
-JSONB-Filterung auf extracted_data fuer:
+JSONB-Filterung auf extracted_data für:
 - document_number, document_date, total_amount
 - payment_status, paid_amount, due_date
 """
@@ -85,7 +85,7 @@ def jsonb_numeric(column_name: str, key: str) -> cast:
     """Helper: Extrahiert numerischen Wert aus JSONB und castet zu NUMERIC.
 
     Verwendet ->> Operator (Text) und castet dann zu NUMERIC.
-    Gibt NULL zurueck wenn der Wert nicht numerisch ist.
+    Gibt NULL zurück wenn der Wert nicht numerisch ist.
 
     Security: Validates column_name and key against whitelist.
     """
@@ -97,7 +97,7 @@ def jsonb_numeric(column_name: str, key: str) -> cast:
         if not _SAFE_IDENTIFIER_PATTERN.match(key):
             raise ValueError(f"Invalid JSONB key: {key}")
 
-    # ->> gibt Text zurueck, dann casten zu NUMERIC
+    # ->> gibt Text zurück, dann casten zu NUMERIC
     # NULLIF verhindert Fehler bei leeren Strings
     return cast(
         func.nullif(literal_column(f"{column_name}->>'{key}'"), ''),
@@ -106,9 +106,9 @@ def jsonb_numeric(column_name: str, key: str) -> cast:
 
 
 def jsonb_exists(column_name: str, key: str) -> literal_column:
-    """Helper: Prueft ob ein Key in JSONB existiert und nicht null ist.
+    """Helper: Prüft ob ein Key in JSONB existiert und nicht null ist.
 
-    Verwendet PostgreSQL ? Operator fuer Existenz-Pruefung.
+    Verwendet PostgreSQL ? Operator für Existenz-Prüfung.
     """
     if column_name not in _ALLOWED_JSONB_COLUMNS:
         if not _SAFE_IDENTIFIER_PATTERN.match(column_name):
@@ -118,7 +118,7 @@ def jsonb_exists(column_name: str, key: str) -> literal_column:
         if not _SAFE_IDENTIFIER_PATTERN.match(key):
             raise ValueError(f"Invalid JSONB key: {key}")
 
-    # Prueft ob Key existiert UND nicht null ist
+    # Prüft ob Key existiert UND nicht null ist
     return literal_column(f"({column_name}->'{key}') IS NOT NULL")
 
 
@@ -127,7 +127,7 @@ CATEGORY_TO_DOCTYPE: Dict[str, DocumentType] = {
     "rechnungen": DocumentType.INVOICE,
     "angebote": DocumentType.OFFER,
     "bestellungen": DocumentType.ORDER,
-    "vertraege": DocumentType.CONTRACT,
+    "verträge": DocumentType.CONTRACT,
     "lieferscheine": DocumentType.DELIVERY_NOTE,
     "quittungen": DocumentType.RECEIPT,
     "briefe": DocumentType.LETTER,
@@ -138,10 +138,10 @@ CATEGORY_TO_DOCTYPE: Dict[str, DocumentType] = {
 
 
 class AblageService(DocumentServiceBase):
-    """Service fuer Kategorie-basierte Dokumentenverwaltung.
+    """Service für Kategorie-basierte Dokumentenverwaltung.
 
-    Ermoeglicht gefilterte Dokumentenlisten, Aggregationen und
-    Bulk-Operationen fuer die Ablage-Ansicht im Frontend.
+    Ermöglicht gefilterte Dokumentenlisten, Aggregationen und
+    Bulk-Operationen für die Ablage-Ansicht im Frontend.
     """
 
     def __init__(self):
@@ -150,7 +150,7 @@ class AblageService(DocumentServiceBase):
 
     @property
     def storage_service(self):
-        """Lazy-Loading fuer Storage-Service."""
+        """Lazy-Loading für Storage-Service."""
         if self._storage_service is None:
             self._storage_service = get_storage_service()
         return self._storage_service
@@ -165,11 +165,11 @@ class AblageService(DocumentServiceBase):
         user_id: UUID,
         filter_params: CategoryDocumentFilter,
     ) -> CategoryDocumentListResponse:
-        """Dokumente fuer eine Kategorie mit umfangreicher Filterung abrufen.
+        """Dokumente für eine Kategorie mit umfangreicher Filterung abrufen.
 
         Args:
             db: Datenbank-Session
-            user_id: ID des Benutzers (fuer Zugriffskontrolle)
+            user_id: ID des Benutzers (für Zugriffskontrolle)
             filter_params: Filterparameter (Kategorie, Datum, Betrag, etc.)
 
         Returns:
@@ -211,7 +211,7 @@ class AblageService(DocumentServiceBase):
         # Tags eager-loaden
         query = query.options(selectinload(Document.tags))
 
-        # Ausfuehren
+        # Ausführen
         result = await db.execute(query)
         documents = result.scalars().all()
 
@@ -235,12 +235,12 @@ class AblageService(DocumentServiceBase):
         category: str,
         entity_type: EntityType = EntityType.CUSTOMER,
     ) -> CategoryAggregations:
-        """Aggregierte Statistiken fuer eine Kategorie berechnen.
+        """Aggregierte Statistiken für eine Kategorie berechnen.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            business_entity_id: Geschaeftspartner-ID
+            business_entity_id: Geschäftspartner-ID
             folder_id: Ordner-ID
             category: Kategorie-Slug
             entity_type: Kunde oder Lieferant
@@ -248,7 +248,7 @@ class AblageService(DocumentServiceBase):
         Returns:
             CategoryAggregations mit Summen und Anzahlen
         """
-        # Basis-Query fuer die Kategorie
+        # Basis-Query für die Kategorie
         base_conditions = [
             Document.owner_id == user_id,
             Document.deleted_at.is_(None),
@@ -295,7 +295,7 @@ class AblageService(DocumentServiceBase):
         payment_result = await db.execute(payment_status_query)
         documents_by_payment_status = {row[0]: row[1] for row in payment_result.all()}
 
-        # Betrags-Aggregationen (verwende jsonb_numeric fuer korrekte Typisierung)
+        # Betrags-Aggregationen (verwende jsonb_numeric für korrekte Typisierung)
         total_amount_numeric = jsonb_numeric("extracted_data", "total_amount")
         paid_amount_numeric = jsonb_numeric("extracted_data", "paid_amount")
         amounts_query = (
@@ -306,7 +306,7 @@ class AblageService(DocumentServiceBase):
             .where(and_(*base_conditions))
         )
 
-        # Separate Query fuer ueberfaellige Betraege
+        # Separate Query für überfällige Betraege
         today = datetime.now(timezone.utc).date().isoformat()
         due_date_col = jsonb_text("extracted_data", "due_date")
         overdue_conditions = base_conditions + [
@@ -384,7 +384,7 @@ class AblageService(DocumentServiceBase):
             db: Datenbank-Session
             user_id: Benutzer-ID
             document_ids: Liste der Dokument-IDs
-            filename: Optionaler Dateiname fuer das ZIP
+            filename: Optionaler Dateiname für das ZIP
 
         Returns:
             Tuple aus (ZIP-Bytes, Dateiname)
@@ -489,15 +489,15 @@ class AblageService(DocumentServiceBase):
         ]
         if include_amounts:
             default_columns.extend([
-                "dokumentnummer", "gesamtbetrag", "waehrung",
+                "dokumentnummer", "gesamtbetrag", "währung",
                 "zahlungsstatus", "bezahlt_am"
             ])
         if include_dates:
-            default_columns.extend(["dokumentdatum", "faelligkeitsdatum"])
+            default_columns.extend(["dokumentdatum", "fälligkeitsdatum"])
 
         default_columns.append("tags")
 
-        # Spalten ueberschreiben falls spezifiziert
+        # Spalten überschreiben falls spezifiziert
         csv_columns = columns if columns else default_columns
 
         # CSV erstellen
@@ -519,7 +519,7 @@ class AblageService(DocumentServiceBase):
             writer.writerow(row)
 
         csv_content = output.getvalue()
-        csv_bytes = csv_content.encode("utf-8-sig")  # BOM fuer Excel
+        csv_bytes = csv_content.encode("utf-8-sig")  # BOM für Excel
 
         # Dateiname
         date_str = datetime.now().strftime("%Y-%m-%d")
@@ -619,7 +619,7 @@ class AblageService(DocumentServiceBase):
             new_status=status,
             paid_amount=paid_amount,
             payment_date=payment_date,
-            message=f"Zahlungsstatus von '{old_status.value}' auf '{status.value}' geaendert"
+            message=f"Zahlungsstatus von '{old_status.value}' auf '{status.value}' geändert"
         )
 
     async def bulk_mark_as_paid(
@@ -686,13 +686,13 @@ class AblageService(DocumentServiceBase):
         document_ids: List[UUID],
         reason: Optional[str] = None,
     ) -> BulkOperationResultAblage:
-        """Mehrere Dokumente soft-loeschen.
+        """Mehrere Dokumente soft-löschen.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
             document_ids: Dokument-IDs
-            reason: Optionaler Loeschgrund
+            reason: Optionaler Löschgrund
 
         Returns:
             BulkOperationResultAblage
@@ -746,7 +746,7 @@ class AblageService(DocumentServiceBase):
             failed_count=failed_count,
             failed_ids=failed_ids,
             errors=errors,
-            message=f"{success_count} Dokumente geloescht"
+            message=f"{success_count} Dokumente gelöscht"
             + (f", {failed_count} fehlgeschlagen" if failed_count > 0 else "")
         )
 
@@ -831,7 +831,7 @@ class AblageService(DocumentServiceBase):
         tags: List[str],
         mode: TagOperation = TagOperation.ADD,
     ) -> BulkOperationResultAblage:
-        """Tags fuer mehrere Dokumente setzen/entfernen.
+        """Tags für mehrere Dokumente setzen/entfernen.
 
         Args:
             db: Datenbank-Session
@@ -899,7 +899,7 @@ class AblageService(DocumentServiceBase):
             failed_count=failed_count,
             failed_ids=failed_ids,
             errors=errors,
-            message=f"Tags fuer {success_count} Dokumente aktualisiert"
+            message=f"Tags für {success_count} Dokumente aktualisiert"
         )
 
     # =========================================================================
@@ -910,7 +910,7 @@ class AblageService(DocumentServiceBase):
         self,
         filter_params: CategoryDocumentFilter
     ) -> List:
-        """Filter-Bedingungen fuer Kategorie-Query aufbauen."""
+        """Filter-Bedingungen für Kategorie-Query aufbauen."""
         conditions = []
 
         # Kategorie zu DocumentType mappen
@@ -955,7 +955,7 @@ class AblageService(DocumentServiceBase):
                 document_date_col <= filter_params.date_to.isoformat()
             )
 
-        # Betragsfilter (verwende jsonb_numeric fuer korrekte numerische Vergleiche)
+        # Betragsfilter (verwende jsonb_numeric für korrekte numerische Vergleiche)
         total_amount_numeric = jsonb_numeric("extracted_data", "total_amount")
         if filter_params.amount_min is not None:
             conditions.append(
@@ -989,7 +989,7 @@ class AblageService(DocumentServiceBase):
         return conditions
 
     def _get_sort_column_for_category(self, sort_by: str):
-        """Spalte fuer Sortierung ermitteln."""
+        """Spalte für Sortierung ermitteln."""
         sort_map = {
             "document_date": jsonb_text("extracted_data", "document_date"),
             "created_at": Document.created_at,
@@ -1084,7 +1084,7 @@ class AblageService(DocumentServiceBase):
         extracted: Dict[str, Any],
         column: str
     ) -> str:
-        """Wert fuer CSV-Spalte ermitteln."""
+        """Wert für CSV-Spalte ermitteln."""
         column_map = {
             "id": str(doc.id),
             "dateiname": doc.original_filename or doc.filename,
@@ -1093,11 +1093,11 @@ class AblageService(DocumentServiceBase):
             "erstellt_am": doc.created_at.isoformat() if doc.created_at else "",
             "dokumentnummer": extracted.get("document_number", ""),
             "gesamtbetrag": str(extracted.get("total_amount", "")),
-            "waehrung": extracted.get("currency", "EUR"),
+            "währung": extracted.get("currency", "EUR"),
             "zahlungsstatus": extracted.get("payment_status", "offen"),
             "bezahlt_am": extracted.get("payment_date", ""),
             "dokumentdatum": extracted.get("document_date", ""),
-            "faelligkeitsdatum": extracted.get("due_date", ""),
+            "fälligkeitsdatum": extracted.get("due_date", ""),
             "tags": ", ".join([t.name for t in doc.tags]) if doc.tags else "",
         }
         return column_map.get(column, "")

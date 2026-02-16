@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Tenant Onboarding Wizard API - Gefuehrter Setup-Prozess.
+"""Tenant Onboarding Wizard API - Geführter Setup-Prozess.
 
-Stellt Endpoints bereit fuer:
-- 7-Schritt Onboarding-Wizard fuer neue Firmen
+Stellt Endpoints bereit für:
+- 7-Schritt Onboarding-Wizard für neue Firmen
 - Fortschrittsverfolgung
 - Post-Setup Checkliste
-- Onboarding ueberspringen/zuruecksetzen
+- Onboarding überspringen/zurücksetzen
 
 Vision 2.0 - Feature #11 (Januar 2026)
 """
@@ -48,8 +48,8 @@ ONBOARDING_STEPS = [
     {
         "id": "industry",
         "order": 2,
-        "title": "Branche & Groesse",
-        "description": "Branche und Unternehmensgroesse fuer passende Benchmarks",
+        "title": "Branche & Größe",
+        "description": "Branche und Unternehmensgröße für passende Benchmarks",
         "icon": "factory",
         "required": False,
         "help_url": "/help/articles/industry-selection",
@@ -67,7 +67,7 @@ ONBOARDING_STEPS = [
         "id": "datasources",
         "order": 4,
         "title": "Datenquellen",
-        "description": "Email-Import, Ordner-Ueberwachung oder Lexware-Import einrichten",
+        "description": "Email-Import, Ordner-Überwachung oder Lexware-Import einrichten",
         "icon": "database",
         "required": False,
         "help_url": "/help/articles/data-sources",
@@ -76,7 +76,7 @@ ONBOARDING_STEPS = [
         "id": "ocr",
         "order": 5,
         "title": "OCR-Backend",
-        "description": "OCR-Engine waehlen (GPU-beschleunigt oder CPU)",
+        "description": "OCR-Engine wählen (GPU-beschleunigt oder CPU)",
         "icon": "scan",
         "required": False,
         "help_url": "/help/articles/ocr-backends",
@@ -94,7 +94,7 @@ ONBOARDING_STEPS = [
         "id": "complete",
         "order": 7,
         "title": "Abschluss",
-        "description": "Setup abschliessen und Checkliste anzeigen",
+        "description": "Setup abschließen und Checkliste anzeigen",
         "icon": "check-circle",
         "required": True,
         "help_url": "/help/articles/onboarding-complete",
@@ -111,13 +111,13 @@ POST_SETUP_CHECKLIST = [
     },
     {
         "id": "first_ocr",
-        "title": "Erste OCR durchgefuehrt",
+        "title": "Erste OCR durchgeführt",
         "description": "Lassen Sie ein Dokument mit OCR verarbeiten",
         "category": "ocr",
     },
     {
         "id": "first_entity",
-        "title": "Erster Geschaeftspartner angelegt",
+        "title": "Erster Geschäftspartner angelegt",
         "description": "Legen Sie Ihren ersten Kunden oder Lieferanten an",
         "category": "entities",
     },
@@ -130,7 +130,7 @@ POST_SETUP_CHECKLIST = [
     {
         "id": "bank_connected",
         "title": "Bank verbunden",
-        "description": "Verbinden Sie Ihr Bankkonto fuer automatischen Abgleich",
+        "description": "Verbinden Sie Ihr Bankkonto für automatischen Abgleich",
         "category": "banking",
     },
     {
@@ -164,12 +164,12 @@ class OnboardingStatus(BaseModel):
 
     started_at: Optional[str] = Field(None, description="Startzeitpunkt (ISO)")
     completed_at: Optional[str] = Field(None, description="Abschlusszeitpunkt (ISO)")
-    skipped: bool = Field(False, description="Wurde uebersprungen")
+    skipped: bool = Field(False, description="Wurde übersprungen")
     current_step: int = Field(1, description="Aktueller Schritt (1-7)")
     total_steps: int = Field(7, description="Gesamtzahl Schritte")
     completed_steps: List[str] = Field(default_factory=list, description="Abgeschlossene Schritt-IDs")
     progress_percent: int = Field(0, description="Fortschritt in Prozent")
-    is_complete: bool = Field(False, description="Vollstaendig abgeschlossen")
+    is_complete: bool = Field(False, description="Vollständig abgeschlossen")
     steps: List[OnboardingStep] = Field(default_factory=list, description="Alle Schritte mit Status")
 
 
@@ -208,7 +208,7 @@ class UpdateStepRequest(BaseModel):
         if v is None:
             return v
 
-        # Max Groesse: 10KB
+        # Max Größe: 10KB
         import json
         json_str = json.dumps(v)
         if len(json_str) > 10240:
@@ -241,7 +241,7 @@ class UpdateStepRequest(BaseModel):
             if isinstance(obj, dict):
                 for k, v in obj.items():
                     if not isinstance(k, str) or len(k) > 100:
-                        raise ValueError("Dict-Keys muessen Strings sein (max 100 Zeichen)")
+                        raise ValueError("Dict-Keys müssen Strings sein (max 100 Zeichen)")
                     check_types(v)
                 return
             if isinstance(obj, list):
@@ -386,7 +386,7 @@ async def get_onboarding_status(
 @router.patch(
     "/step/{step_id}",
     response_model=OnboardingStatus,
-    summary="Schritt abschliessen",
+    summary="Schritt abschließen",
     description="Markiert einen Onboarding-Schritt als abgeschlossen.",
 )
 async def complete_step(
@@ -401,13 +401,13 @@ async def complete_step(
     if step_id not in valid_step_ids:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltiger Schritt: {step_id}. Gueltig: {valid_step_ids}",
+            detail=f"Ungültiger Schritt: {step_id}. Gültig: {valid_step_ids}",
         )
 
     preferences = current_user.preferences or {}
     onboarding_data = _get_onboarding_status_from_preferences(preferences)
 
-    # Initialisieren falls noetig
+    # Initialisieren falls nötig
     if "completed_steps" not in onboarding_data:
         onboarding_data["completed_steps"] = []
     if "step_completed_at" not in onboarding_data:
@@ -424,7 +424,7 @@ async def complete_step(
     if request and request.step_data:
         onboarding_data["step_data"][step_id] = request.step_data
 
-    # Pruefen ob komplett
+    # Prüfen ob komplett
     if len(onboarding_data["completed_steps"]) == len(ONBOARDING_STEPS):
         onboarding_data["completed_at"] = utc_now().isoformat()
 
@@ -444,14 +444,14 @@ async def complete_step(
 @router.post(
     "/skip",
     response_model=OnboardingStatus,
-    summary="Onboarding ueberspringen",
-    description="Ueberspringt das Onboarding fuer erfahrene Benutzer.",
+    summary="Onboarding überspringen",
+    description="Überspringt das Onboarding für erfahrene Benutzer.",
 )
 async def skip_onboarding(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> OnboardingStatus:
-    """Ueberspringt das Onboarding."""
+    """Überspringt das Onboarding."""
     preferences = current_user.preferences or {}
     onboarding_data = _get_onboarding_status_from_preferences(preferences)
 
@@ -473,17 +473,17 @@ async def skip_onboarding(
 @router.post(
     "/reset",
     response_model=OnboardingStatus,
-    summary="Onboarding zuruecksetzen",
-    description="Setzt das Onboarding zurueck, um es erneut zu durchlaufen.",
+    summary="Onboarding zurücksetzen",
+    description="Setzt das Onboarding zurück, um es erneut zu durchlaufen.",
 )
 async def reset_onboarding(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> OnboardingStatus:
-    """Setzt das Onboarding zurueck."""
+    """Setzt das Onboarding zurück."""
     preferences = current_user.preferences or {}
 
-    # Onboarding-Daten zuruecksetzen
+    # Onboarding-Daten zurücksetzen
     preferences["onboarding"] = {
         "started_at": utc_now().isoformat(),
         "completed_at": None,
@@ -508,7 +508,7 @@ async def reset_onboarding(
     "/checklist",
     response_model=ChecklistStatus,
     summary="Post-Setup Checkliste",
-    description="Holt die Checkliste fuer Aufgaben nach dem Onboarding.",
+    description="Holt die Checkliste für Aufgaben nach dem Onboarding.",
 )
 async def get_checklist(
     db: AsyncSession = Depends(get_db),
@@ -538,7 +538,7 @@ async def complete_checklist_item(
     if item_id not in valid_item_ids:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltiges Item: {item_id}",
+            detail=f"Ungültiges Item: {item_id}",
         )
 
     preferences = current_user.preferences or {}
@@ -618,7 +618,7 @@ async def get_step(
     "/progress",
     response_model=JSONDict,
     summary="Fortschritts-Zusammenfassung",
-    description="Kompakte Fortschrittsanzeige fuer Dashboard-Widgets.",
+    description="Kompakte Fortschrittsanzeige für Dashboard-Widgets.",
 )
 async def get_progress_summary(
     db: AsyncSession = Depends(get_db),

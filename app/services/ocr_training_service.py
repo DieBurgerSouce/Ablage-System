@@ -195,7 +195,7 @@ class OCRTrainingService:
             sort_by: Sortierfeld (created_at, document_type, status, etc.)
             sort_order: Sortierreihenfolge (asc, desc)
             limit: Maximale Anzahl
-            offset: Offset fuer Paginierung
+            offset: Offset für Paginierung
 
         Returns:
             Tuple von (Samples, Total Count)
@@ -631,7 +631,7 @@ class OCRTrainingService:
         all_samples = list(result.scalars().all())
 
         # Stratifizierte Zufallsauswahl mit deterministischem Seed
-        # Seed basiert auf batch.id fuer Reproduzierbarkeit
+        # Seed basiert auf batch.id für Reproduzierbarkeit
         random.seed(str(batch.id))
         if len(all_samples) > target_size:
             selected_samples = random.sample(all_samples, target_size)

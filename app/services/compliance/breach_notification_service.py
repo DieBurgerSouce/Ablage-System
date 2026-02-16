@@ -86,43 +86,43 @@ INTERNAL_ESCALATION_HOURS = 24              # Interne Eskalation
 # Landesdatenschutzbeauftragte (exemplarisch)
 SUPERVISORY_AUTHORITIES: Dict[str, Dict[str, str]] = {
     "DE-BW": {
-        "name": "Landesbeauftragter fuer den Datenschutz Baden-Wuerttemberg",
+        "name": "Landesbeauftragter für den Datenschutz Baden-Wuerttemberg",
         "email": "poststelle@lfdi.bwl.de",
         "phone": "+49 711 615541-0",
         "address": "Koenigstrasse 10a, 70173 Stuttgart",
         "form_url": "https://www.baden-wuerttemberg.datenschutz.de/online-beschwerde/",
     },
     "DE-BY": {
-        "name": "Bayerisches Landesamt fuer Datenschutzaufsicht",
+        "name": "Bayerisches Landesamt für Datenschutzaufsicht",
         "email": "poststelle@lda.bayern.de",
         "phone": "+49 981 180093-0",
         "address": "Promenade 18, 91522 Ansbach",
         "form_url": "https://www.lda.bayern.de/de/beschwerde.html",
     },
     "DE-BE": {
-        "name": "Berliner Beauftragte fuer Datenschutz und Informationsfreiheit",
+        "name": "Berliner Beauftragte für Datenschutz und Informationsfreiheit",
         "email": "mailbox@datenschutz-berlin.de",
         "phone": "+49 30 13889-0",
         "address": "Friedrichstrasse 219, 10969 Berlin",
         "form_url": "https://www.datenschutz-berlin.de/kontakt",
     },
     "DE-HE": {
-        "name": "Hessischer Beauftragter fuer Datenschutz und Informationsfreiheit",
+        "name": "Hessischer Beauftragter für Datenschutz und Informationsfreiheit",
         "email": "poststelle@datenschutz.hessen.de",
         "phone": "+49 611 1408-0",
         "address": "Gustav-Stresemann-Ring 1, 65189 Wiesbaden",
         "form_url": "https://datenschutz.hessen.de/kontakt",
     },
     "DE-NW": {
-        "name": "Landesbeauftragte fuer Datenschutz und Informationsfreiheit NRW",
+        "name": "Landesbeauftragte für Datenschutz und Informationsfreiheit NRW",
         "email": "poststelle@ldi.nrw.de",
         "phone": "+49 211 38424-0",
         "address": "Kavalleriestrasse 2-4, 40213 Duesseldorf",
         "form_url": "https://www.ldi.nrw.de/kontakt",
     },
-    # Fallback fuer nicht gelistete Bundeslaender
+    # Fallback für nicht gelistete Bundesländer
     "DE-DEFAULT": {
-        "name": "Bundesbeauftragter fuer den Datenschutz und die Informationsfreiheit",
+        "name": "Bundesbeauftragter für den Datenschutz und die Informationsfreiheit",
         "email": "poststelle@bfdi.bund.de",
         "phone": "+49 228 997799-0",
         "address": "Graurheindorfer Strasse 153, 53117 Bonn",
@@ -146,7 +146,7 @@ class AffectedDataCategory:
 
 @dataclass
 class BreachReport:
-    """Vollstaendiger Bericht einer Datenschutzverletzung."""
+    """Vollständiger Bericht einer Datenschutzverletzung."""
     id: str
     breach_type: BreachType
     severity: BreachSeverity
@@ -165,7 +165,7 @@ class BreachReport:
     # Betroffene Daten
     affected_data_categories: List[AffectedDataCategory]
     affected_subjects_count: int
-    affected_subjects_estimate: bool  # True wenn geschaetzt
+    affected_subjects_estimate: bool  # True wenn geschätzt
 
     # Massnahmen
     containment_measures: List[str]
@@ -190,7 +190,7 @@ class BreachReport:
         """Berechne 72-Stunden-Deadline."""
         self.deadline_72h = self.detected_at + timedelta(hours=AUTHORITY_NOTIFICATION_DEADLINE_HOURS)
 
-        # Pruefen ob Deadline eingehalten
+        # Prüfen ob Deadline eingehalten
         if self.authority_notification == NotificationStatus.SENT:
             self.is_deadline_met = (
                 self.authority_notified_at is not None
@@ -202,7 +202,7 @@ class BreachReport:
 
 @dataclass
 class AuthorityNotificationTemplate:
-    """Template fuer Behoerdenbenachrichtigung nach Art. 33 Abs. 3 DSGVO."""
+    """Template für Behoerdenbenachrichtigung nach Art. 33 Abs. 3 DSGVO."""
     breach_id: str
     company_name: str
     company_address: str
@@ -224,7 +224,7 @@ class AuthorityNotificationTemplate:
     generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_text(self) -> str:
-        """Generiert Text fuer die Behoerdenbenachrichtigung."""
+        """Generiert Text für die Behoerdenbenachrichtigung."""
         return f"""MELDUNG EINER VERLETZUNG DES SCHUTZES PERSONENBEZOGENER DATEN
 gemäß Art. 33 DSGVO
 
@@ -283,7 +283,7 @@ Datenschutzbeauftragter
 """
 
     def to_html(self) -> str:
-        """Generiert HTML fuer die Behoerdenbenachrichtigung."""
+        """Generiert HTML für die Behoerdenbenachrichtigung."""
         return f"""<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -341,7 +341,7 @@ Datenschutzbeauftragter
 
 @dataclass
 class SubjectNotificationTemplate:
-    """Template fuer Betroffenenbenachrichtigung nach Art. 34 DSGVO."""
+    """Template für Betroffenenbenachrichtigung nach Art. 34 DSGVO."""
     breach_id: str
     company_name: str
     dpo_name: str
@@ -351,12 +351,12 @@ class SubjectNotificationTemplate:
     nature_of_breach: str           # Art der Verletzung in klarer Sprache
     consequences: str               # Wahrscheinliche Folgen
     measures_taken: str             # Ergriffene Massnahmen
-    recommendations: str            # Empfehlungen fuer Betroffene
+    recommendations: str            # Empfehlungen für Betroffene
 
     generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_text(self) -> str:
-        """Generiert Text fuer die Betroffenenbenachrichtigung."""
+        """Generiert Text für die Betroffenenbenachrichtigung."""
         return f"""WICHTIGE MITTEILUNG: Verletzung des Schutzes Ihrer personenbezogenen Daten
 
 Sehr geehrte Damen und Herren,
@@ -395,7 +395,7 @@ Datum: {self.generated_at.strftime('%d.%m.%Y')}
 
 @dataclass
 class BreachTimeline:
-    """Timeline-Eintrag fuer ein Breach."""
+    """Timeline-Eintrag für ein Breach."""
     timestamp: datetime
     action: str
     actor: str
@@ -419,13 +419,13 @@ class CreateBreachResult:
 
 class BreachNotificationService:
     """
-    Service fuer DSGVO-konforme Datenschutzverletzungs-Meldungen.
+    Service für DSGVO-konforme Datenschutzverletzungs-Meldungen.
 
     Implementiert Art. 33-34 DSGVO:
-    - 72-Stunden-Frist fuer Behoerdenbenachrichtigung
-    - Risikobasierte Bewertung fuer Betroffenenbenachrichtigung
-    - Templates fuer alle Landesdatenschutzbehoerden
-    - Vollstaendiges Audit-Trail
+    - 72-Stunden-Frist für Behoerdenbenachrichtigung
+    - Risikobasierte Bewertung für Betroffenenbenachrichtigung
+    - Templates für alle Landesdatenschutzbehoerden
+    - Vollständiges Audit-Trail
 
     Usage:
         service = get_breach_notification_service()
@@ -443,7 +443,7 @@ class BreachNotificationService:
         )
     """
 
-    # Storage Key fuer AppConfig JSONB
+    # Storage Key für AppConfig JSONB
     BREACHES_KEY = "gdpr_breach_reports"
 
     def __init__(self) -> None:
@@ -475,9 +475,9 @@ class BreachNotificationService:
             affected_subjects_count: Anzahl betroffener Personen
             affected_data_categories: Betroffene Datenkategorien
             reported_by: Melder (User-ID oder E-Mail)
-            company_id: Optional Company-ID fuer Multi-Tenant
+            company_id: Optional Company-ID für Multi-Tenant
             occurred_at: Zeitpunkt des Vorfalls (falls bekannt)
-            is_estimate: True wenn Anzahl geschaetzt ist
+            is_estimate: True wenn Anzahl geschätzt ist
 
         Returns:
             CreateBreachResult mit Breach-ID und Deadlines
@@ -613,12 +613,12 @@ class BreachNotificationService:
         # Timeline-Eintrag
         self._add_timeline_entry(
             breach_id,
-            f"Status geaendert: {old_status.value} -> {new_status.value}",
+            f"Status geändert: {old_status.value} -> {new_status.value}",
             updated_by,
             notes
         )
 
-        # Speichere Aenderungen
+        # Speichere Änderungen
         self._breaches[breach_id] = breach
         await self._persist_breach(db, breach)
 
@@ -737,7 +737,7 @@ class BreachNotificationService:
 
         # Formatiere Datenkategorien
         categories = "\n".join([
-            f"- {cat.category}: {cat.description} ({cat.count} Datensaetze)"
+            f"- {cat.category}: {cat.description} ({cat.count} Datensätze)"
             + (" [Besondere Kategorie Art. 9]" if cat.is_sensitive else "")
             for cat in breach.affected_data_categories
         ])
@@ -773,7 +773,7 @@ class BreachNotificationService:
 
         self._add_timeline_entry(
             breach_id,
-            f"Behoerdenbenachrichtigung generiert fuer {authority['name']}",
+            f"Behoerdenbenachrichtigung generiert für {authority['name']}",
             "system"
         )
 
@@ -804,7 +804,7 @@ class BreachNotificationService:
         if not breach:
             return None
 
-        # Klare Beschreibung fuer Betroffene
+        # Klare Beschreibung für Betroffene
         nature = self._translate_breach_type_for_subjects(breach)
         consequences = self._assess_consequences_for_subjects(breach)
         recommendations = self._get_recommendations(breach)
@@ -843,7 +843,7 @@ class BreachNotificationService:
         breach_id: str,
     ) -> Optional[BreachReport]:
         """Holt einen Breach-Report."""
-        # Erst Cache pruefen
+        # Erst Cache prüfen
         if breach_id in self._breaches:
             return self._breaches[breach_id]
 
@@ -889,7 +889,7 @@ class BreachNotificationService:
         company_id: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Gibt Breaches mit anstehenden Deadlines zurueck.
+        Gibt Breaches mit anstehenden Deadlines zurück.
 
         Returns:
             Liste mit Breach-ID, Deadline und verbleibender Zeit
@@ -924,7 +924,7 @@ class BreachNotificationService:
         self,
         breach_id: str,
     ) -> List[Dict[str, Any]]:
-        """Gibt die Timeline eines Breach zurueck."""
+        """Gibt die Timeline eines Breach zurück."""
         entries = self._timelines.get(breach_id, [])
         return [
             {
@@ -941,12 +941,12 @@ class BreachNotificationService:
         db: AsyncSession,
     ) -> List[Dict[str, Any]]:
         """
-        Prueft alle Deadlines und gibt Alerts zurueck.
+        Prüft alle Deadlines und gibt Alerts zurück.
 
         Wird von Celery Task periodisch aufgerufen.
 
         Returns:
-            Liste von Alerts fuer kritische Deadlines
+            Liste von Alerts für kritische Deadlines
         """
         alerts = []
         now = datetime.now(timezone.utc)
@@ -963,21 +963,21 @@ class BreachNotificationService:
                 alerts.append({
                     "breach_id": breach_id,
                     "severity": "critical",
-                    "message": f"UEBERFAELLIG: 72-Stunden-Frist fuer Breach {breach_id} ist abgelaufen!",
+                    "message": f"UEBERFAELLIG: 72-Stunden-Frist für Breach {breach_id} ist abgelaufen!",
                     "hours_overdue": abs(hours_remaining),
                 })
             elif hours_remaining <= 12:
                 alerts.append({
                     "breach_id": breach_id,
                     "severity": "high",
-                    "message": f"DRINGEND: Nur noch {round(hours_remaining, 1)} Stunden fuer Breach {breach_id}!",
+                    "message": f"DRINGEND: Nur noch {round(hours_remaining, 1)} Stunden für Breach {breach_id}!",
                     "hours_remaining": hours_remaining,
                 })
             elif hours_remaining <= 24:
                 alerts.append({
                     "breach_id": breach_id,
                     "severity": "medium",
-                    "message": f"WARNUNG: Noch {round(hours_remaining, 1)} Stunden fuer Breach {breach_id}.",
+                    "message": f"WARNUNG: Noch {round(hours_remaining, 1)} Stunden für Breach {breach_id}.",
                     "hours_remaining": hours_remaining,
                 })
 
@@ -1014,16 +1014,16 @@ class BreachNotificationService:
         )
 
     def _assess_consequences(self, breach: BreachReport) -> str:
-        """Bewertet wahrscheinliche Folgen fuer Behoerdenmeldung."""
+        """Bewertet wahrscheinliche Folgen für Behoerdenmeldung."""
         consequences = []
 
         # Basierend auf Schweregrad
         if breach.severity == BreachSeverity.CRITICAL:
-            consequences.append("Erhebliches Risiko fuer Rechte und Freiheiten der betroffenen Personen.")
+            consequences.append("Erhebliches Risiko für Rechte und Freiheiten der betroffenen Personen.")
         elif breach.severity == BreachSeverity.HIGH:
-            consequences.append("Hohes Risiko fuer betroffene Personen.")
+            consequences.append("Hohes Risiko für betroffene Personen.")
         elif breach.severity == BreachSeverity.MEDIUM:
-            consequences.append("Moderates Risiko fuer betroffene Personen.")
+            consequences.append("Moderates Risiko für betroffene Personen.")
 
         # Basierend auf Datentypen
         has_sensitive = any(cat.is_sensitive for cat in breach.affected_data_categories)
@@ -1032,36 +1032,36 @@ class BreachNotificationService:
 
         # Basierend auf Breach-Typ
         if breach.breach_type == BreachType.DATA_THEFT:
-            consequences.append("Moeglicherweise Identitaetsdiebstahl oder Betrug.")
+            consequences.append("Möglicherweise Identitätsdiebstahl oder Betrug.")
         elif breach.breach_type == BreachType.UNAUTHORIZED_ACCESS:
-            consequences.append("Unbefugte koennten auf persoenliche Daten zugreifen.")
+            consequences.append("Unbefugte könnten auf persoenliche Daten zugreifen.")
         elif breach.breach_type == BreachType.DATA_LOSS:
-            consequences.append("Datenverlust kann zu eingeschraenkten Diensten fuehren.")
+            consequences.append("Datenverlust kann zu eingeschraenkten Diensten führen.")
 
-        return "\n".join(consequences) if consequences else "Risikobewertung wird durchgefuehrt."
+        return "\n".join(consequences) if consequences else "Risikobewertung wird durchgeführt."
 
     def _assess_consequences_for_subjects(self, breach: BreachReport) -> str:
-        """Bewertet Folgen in klarer Sprache fuer Betroffene."""
+        """Bewertet Folgen in klarer Sprache für Betroffene."""
         consequences = []
 
         if breach.breach_type == BreachType.DATA_THEFT:
-            consequences.append("Es besteht die Moeglichkeit, dass Ihre Daten missbraucht werden koennten.")
+            consequences.append("Es besteht die Möglichkeit, dass Ihre Daten missbraucht werden könnten.")
         elif breach.breach_type == BreachType.UNAUTHORIZED_ACCESS:
-            consequences.append("Unbefugte Personen koennten Zugang zu Ihren Daten erhalten haben.")
+            consequences.append("Unbefugte Personen könnten Zugang zu Ihren Daten erhalten haben.")
         elif breach.breach_type == BreachType.ACCIDENTAL_DISCLOSURE:
-            consequences.append("Ihre Daten koennten versehentlich an Dritte gelangt sein.")
+            consequences.append("Ihre Daten könnten versehentlich an Dritte gelangt sein.")
 
         # Kategorie-spezifisch
         categories = [cat.category.lower() for cat in breach.affected_data_categories]
         if "email" in categories:
-            consequences.append("Sie koennten unerwuenschte E-Mails (Spam/Phishing) erhalten.")
+            consequences.append("Sie könnten unerwünschte E-Mails (Spam/Phishing) erhalten.")
         if "iban" in categories or "bankdaten" in categories:
-            consequences.append("Ueberwachen Sie bitte Ihre Kontoauszuege auf ungewoehnliche Aktivitaeten.")
+            consequences.append("Überwachen Sie bitte Ihre Kontoauszuege auf ungewoehnliche Aktivitäten.")
 
-        return "\n".join(consequences) if consequences else "Wir analysieren moegliche Auswirkungen."
+        return "\n".join(consequences) if consequences else "Wir analysieren mögliche Auswirkungen."
 
     def _translate_breach_type_for_subjects(self, breach: BreachReport) -> str:
-        """Uebersetzt Breach-Typ in verstaendliche Sprache."""
+        """Übersetzt Breach-Typ in verstaendliche Sprache."""
         translations = {
             BreachType.UNAUTHORIZED_ACCESS: "Es gab einen unbefugten Zugriff auf unsere Systeme, bei dem möglicherweise Ihre Daten eingesehen wurden.",
             BreachType.DATA_THEFT: "Wir haben festgestellt, dass Daten unrechtmäßig kopiert wurden.",
@@ -1077,22 +1077,22 @@ class BreachNotificationService:
         return f"{base}\n\n{breach.description}"
 
     def _get_recommendations(self, breach: BreachReport) -> str:
-        """Generiert Empfehlungen fuer Betroffene."""
+        """Generiert Empfehlungen für Betroffene."""
         recommendations = ["Seien Sie aufmerksam bei ungewoehnlichen Kontaktversuchen."]
 
         categories = [cat.category.lower() for cat in breach.affected_data_categories]
 
         if "passwort" in categories or "password" in categories:
-            recommendations.insert(0, "Aendern Sie umgehend Ihr Passwort bei unserem Dienst und bei anderen Diensten, falls Sie das gleiche Passwort verwendet haben.")
+            recommendations.insert(0, "Ändern Sie umgehend Ihr Passwort bei unserem Dienst und bei anderen Diensten, falls Sie das gleiche Passwort verwendet haben.")
 
         if "email" in categories:
-            recommendations.append("Seien Sie besonders vorsichtig bei E-Mails, die vorgeben von uns zu sein. Pruefen Sie Links sorgfaeltig.")
+            recommendations.append("Seien Sie besonders vorsichtig bei E-Mails, die vorgeben von uns zu sein. Prüfen Sie Links sorgfältig.")
 
         if "iban" in categories or "bankdaten" in categories or "kreditkarte" in categories:
-            recommendations.append("Ueberwachen Sie Ihre Kontoauszuege regelmaessig und melden Sie verdaechtige Transaktionen sofort Ihrer Bank.")
+            recommendations.append("Überwachen Sie Ihre Kontoauszuege regelmäßig und melden Sie verdaechtige Transaktionen sofort Ihrer Bank.")
 
         if "ausweis" in categories or "personalausweis" in categories:
-            recommendations.append("Erwaegen Sie eine Auskunftssperre beim Einwohnermeldeamt und pruefen Sie regelmaessig Ihre Schufa-Auskunft.")
+            recommendations.append("Erwaegen Sie eine Auskunftssperre beim Einwohnermeldeamt und prüfen Sie regelmäßig Ihre Schufa-Auskunft.")
 
         return "\n".join([f"• {r}" for r in recommendations])
 
@@ -1119,7 +1119,7 @@ Schweregrad: {breach.severity.value}
 Betroffene: ca. {breach.affected_subjects_count} Personen
 72h-Deadline: {breach.deadline_72h.strftime('%d.%m.%Y %H:%M')} Uhr
 
-Bitte pruefen Sie den Vorfall und leiten Sie die erforderlichen Massnahmen ein.
+Bitte prüfen Sie den Vorfall und leiten Sie die erforderlichen Massnahmen ein.
 """,
                 priority="critical" if breach.severity == BreachSeverity.CRITICAL else "high",
             )
@@ -1133,7 +1133,7 @@ Bitte pruefen Sie den Vorfall und leiten Sie die erforderlichen Massnahmen ein.
         breach: BreachReport,
     ) -> None:
         """Persistiert Breach in der Datenbank."""
-        # Serialisiere Breach fuer JSONB
+        # Serialisiere Breach für JSONB
         breach_data = {
             "id": breach.id,
             "breach_type": breach.breach_type.value,
@@ -1251,12 +1251,12 @@ _breach_notification_service: Optional[BreachNotificationService] = None
 
 
 def get_breach_notification_service() -> BreachNotificationService:
-    """Gibt BreachNotificationService-Singleton zurueck."""
+    """Gibt BreachNotificationService-Singleton zurück."""
     global _breach_notification_service
     if _breach_notification_service is None:
         _breach_notification_service = BreachNotificationService()
     return _breach_notification_service
 
 
-# Alias fuer Convenience
+# Alias für Convenience
 breach_notification_service = get_breach_notification_service

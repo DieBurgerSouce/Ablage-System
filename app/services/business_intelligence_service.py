@@ -172,15 +172,15 @@ class BusinessIntelligenceService:
         return {
             QueryType.DOCUMENT_SEARCH: [
                 "finde", "suche", "zeige", "dokumente", "rechnungen von",
-                "vertraege", "alle dokumente", "liste",
+                "verträge", "alle dokumente", "liste",
             ],
             QueryType.INVOICE_ANALYSIS: [
                 "rechnungen", "umsatz", "einnahmen", "ausgaben",
-                "offene posten", "bezahlt", "unbezahlt", "faellig",
+                "offene posten", "bezahlt", "unbezahlt", "fällig",
             ],
             QueryType.ENTITY_STATISTICS: [
                 "kunde", "lieferant", "kunden", "lieferanten",
-                "statistik", "uebersicht", "details zu",
+                "statistik", "übersicht", "details zu",
             ],
             QueryType.PAYMENT_PREDICTION: [
                 "wann zahlt", "zahlung erwartet", "prognose",
@@ -188,7 +188,7 @@ class BusinessIntelligenceService:
             ],
             QueryType.TREND_ANALYSIS: [
                 "entwicklung", "trend", "verlauf", "im vergleich",
-                "monatlich", "quartalsweise", "jaehrlich",
+                "monatlich", "quartalsweise", "jährlich",
             ],
         }
 
@@ -253,7 +253,7 @@ class BusinessIntelligenceService:
 
         Examples:
         - "Finde alle Rechnungen von Mueller GmbH aus Q3"
-        - "Zeige Vertraege aus den letzten 30 Tagen"
+        - "Zeige Verträge aus den letzten 30 Tagen"
         """
         import time
         start_time = time.time()
@@ -316,7 +316,7 @@ class BusinessIntelligenceService:
         # Generate summary
         summary = f"{len(results)} Dokumente gefunden"
         if entity_name:
-            summary += f" fuer '{entity_name}'"
+            summary += f" für '{entity_name}'"
         if time_range != TimeRange.ALL_TIME:
             summary += f" im Zeitraum {start_date} bis {end_date}"
 
@@ -457,7 +457,7 @@ class BusinessIntelligenceService:
             f"Rechnungsanalyse: {analysis.total_count} Rechnungen mit "
             f"Gesamtvolumen {analysis.total_amount:,.2f} EUR. "
             f"Davon {analysis.open_count} offen ({analysis.open_amount:,.2f} EUR), "
-            f"{analysis.overdue_count} ueberfaellig ({analysis.overdue_amount:,.2f} EUR)."
+            f"{analysis.overdue_count} überfällig ({analysis.overdue_amount:,.2f} EUR)."
         )
 
         return BusinessIntelligenceResponse(
@@ -476,7 +476,7 @@ class BusinessIntelligenceService:
                 "by_entity": by_entity,
             },
             suggestions=[
-                "Zeige die ueberfaelligen Rechnungen",
+                "Zeige die überfälligen Rechnungen",
                 "Welcher Kunde hat die meisten offenen Posten?",
                 "Wie hat sich der Umsatz im Vergleich zum Vorjahr entwickelt?",
             ],
@@ -522,7 +522,7 @@ class BusinessIntelligenceService:
         if not entities:
             return BusinessIntelligenceResponse(
                 query_type=QueryType.ENTITY_STATISTICS,
-                summary=f"Keine Entitaet gefunden fuer '{entity_name or entity_id}'",
+                summary=f"Keine Entität gefunden für '{entity_name or entity_id}'",
                 data=[],
                 suggestions=[
                     "Suche mit einem anderen Namen",
@@ -585,7 +585,7 @@ class BusinessIntelligenceService:
             if s.risk_score:
                 summary += f", Risiko-Score {s.risk_score}"
         else:
-            summary = f"{len(stats_list)} Entitaeten gefunden"
+            summary = f"{len(stats_list)} Entitäten gefunden"
 
         return BusinessIntelligenceResponse(
             query_type=QueryType.ENTITY_STATISTICS,
@@ -644,7 +644,7 @@ class BusinessIntelligenceService:
         if not entity:
             return BusinessIntelligenceResponse(
                 query_type=QueryType.PAYMENT_PREDICTION,
-                summary=f"Keine Entitaet gefunden fuer '{entity_name or entity_id}'",
+                summary=f"Keine Entität gefunden für '{entity_name or entity_id}'",
                 data=None,
                 suggestions=["Suche mit einem anderen Namen"],
                 query_time_ms=int((time.time() - start_time) * 1000),
@@ -724,7 +724,7 @@ class BusinessIntelligenceService:
         }
 
         summary = (
-            f"Zahlungsprognose fuer {entity.name}: "
+            f"Zahlungsprognose für {entity.name}: "
             f"Erwartete Zahlung in {prediction.predicted_days} Tagen "
             f"(Konfidenz: {prediction.confidence*100:.0f}%). "
             f"Trend: {trend_text[prediction.recent_trend]}."
@@ -744,7 +744,7 @@ class BusinessIntelligenceService:
             },
             suggestions=[
                 f"Zeige offene Rechnungen von {entity.name}",
-                "Mahnstufe erhoehen?",
+                "Mahnstufe erhöhen?",
             ],
             query_time_ms=query_time_ms,
         )
@@ -897,7 +897,7 @@ class BusinessIntelligenceService:
 
         # Extract potential entity names (simple heuristic)
         entity_name = None
-        for pattern in ["von ", "fuer ", "zu ", "kunde "]:
+        for pattern in ["von ", "für ", "zu ", "kunde "]:
             if pattern in query.lower():
                 idx = query.lower().find(pattern)
                 remaining = query[idx + len(pattern):].strip()

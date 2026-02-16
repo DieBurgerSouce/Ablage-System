@@ -3,8 +3,8 @@
 Differential Privacy Service.
 
 Implementiert privacy-preserving Analytics mit:
-- Laplace Mechanism fuer COUNT queries
-- Gaussian Mechanism fuer SUM/AVG queries
+- Laplace Mechanism für COUNT queries
+- Gaussian Mechanism für SUM/AVG queries
 - Privacy Budget Tracking pro Tenant
 - K-Anonymitaet Enforcement
 
@@ -68,7 +68,7 @@ class QueryType(str, Enum):
 
 
 class SensitivityLevel(str, Enum):
-    """Sensitivitaetsstufen fuer Analytics-Daten."""
+    """Sensitivitaetsstufen für Analytics-Daten."""
     LOW = "low"           # Epsilon: 2.0-5.0
     MEDIUM = "medium"     # Epsilon: 1.0-2.0
     HIGH = "high"         # Epsilon: 0.5-1.0
@@ -89,7 +89,7 @@ class DPResult:
     metadata: MetadataDict = field(default_factory=dict)
 
     def to_dict(self) -> DPResultDict:
-        """Konvertiert zu Dictionary (ohne original_value fuer Sicherheit)."""
+        """Konvertiert zu Dictionary (ohne original_value für Sicherheit)."""
         return DPResultDict(
             value=self.noisy_value,
             epsilon_used=self.epsilon_used,
@@ -102,7 +102,7 @@ class DPResult:
 
 @dataclass
 class DPConfig:
-    """Konfiguration fuer Differential Privacy."""
+    """Konfiguration für Differential Privacy."""
     default_epsilon: float = 1.0
     min_epsilon: float = 0.1
     max_epsilon: float = 5.0
@@ -123,7 +123,7 @@ class DifferentialPrivacyService:
     """
     Core Differential Privacy Service.
 
-    Bietet privacy-preserving Mechanismen fuer sensible Aggregationen.
+    Bietet privacy-preserving Mechanismen für sensible Aggregationen.
     """
 
     def __init__(self, config: Optional[DPConfig] = None) -> None:
@@ -143,7 +143,7 @@ class DifferentialPrivacyService:
         epsilon: float
     ) -> Tuple[float, float]:
         """
-        Fuegt Laplace-Rauschen hinzu (fuer COUNT/SUM queries).
+        Fuegt Laplace-Rauschen hinzu (für COUNT/SUM queries).
 
         Args:
             value: Original-Wert
@@ -175,7 +175,7 @@ class DifferentialPrivacyService:
         delta: Optional[float] = None
     ) -> Tuple[float, float]:
         """
-        Fuegt Gaussian-Rauschen hinzu (fuer SUM/AVG mit (epsilon, delta)-DP).
+        Fuegt Gaussian-Rauschen hinzu (für SUM/AVG mit (epsilon, delta)-DP).
 
         Args:
             value: Original-Wert
@@ -211,12 +211,12 @@ class DifferentialPrivacyService:
         """
         Privacy-preserving COUNT mit Laplace-Mechanismus.
 
-        Sensitivitaet = 1 (Hinzufuegen/Entfernen einer Zeile aendert COUNT um 1)
+        Sensitivitaet = 1 (Hinzufuegen/Entfernen einer Zeile ändert COUNT um 1)
 
         Args:
             count: Original COUNT-Wert
             epsilon: Privacy-Parameter (default: config)
-            min_count: Minimaler Rueckgabewert (default: 0)
+            min_count: Minimaler Rückgabewert (default: 0)
 
         Returns:
             DPResult mit noisy count
@@ -229,11 +229,11 @@ class DifferentialPrivacyService:
         # Runde auf ganze Zahl und setze Minimum
         noisy_count = max(min_count, int(round(noisy_value)))
 
-        # 95% Konfidenzintervall fuer Laplace: +-ln(0.05) * scale
+        # 95% Konfidenzintervall für Laplace: +-ln(0.05) * scale
         scale = sensitivity / eps
         ci_half = math.log(20) * scale  # ln(1/0.05) = ln(20)
 
-        # K-Anonymitaet pruefen
+        # K-Anonymitaet prüfen
         k_satisfied = count >= self.config.k_anonymity_threshold
 
         return DPResult(
@@ -298,7 +298,7 @@ class DifferentialPrivacyService:
         """
         Privacy-preserving AVERAGE mit Laplace-Mechanismus.
 
-        Verwendet noisy sum / noisy count fuer Durchschnitt.
+        Verwendet noisy sum / noisy count für Durchschnitt.
 
         Args:
             values: Liste der Werte
@@ -326,11 +326,11 @@ class DifferentialPrivacyService:
         value_sum = sum(values)
         original_avg = value_sum / n
 
-        # Teile Epsilon: 50% fuer Summe, 50% fuer Count
+        # Teile Epsilon: 50% für Summe, 50% für Count
         eps_sum = eps / 2
         eps_count = eps / 2
 
-        # Sensitivitaet fuer Summe: max_value - min_value
+        # Sensitivitaet für Summe: max_value - min_value
         sensitivity_sum = value_bounds[1] - value_bounds[0]
 
         noisy_sum, _ = self.add_laplace_noise(value_sum, sensitivity_sum, eps_sum)
@@ -376,7 +376,7 @@ class DifferentialPrivacyService:
         Args:
             counts: Dict von Kategorie -> Count
             epsilon: Privacy-Parameter (wird aufgeteilt)
-            suppress_below_k: Unterdruecke Kategorien unter K-Schwelle
+            suppress_below_k: Unterdrücke Kategorien unter K-Schwelle
 
         Returns:
             Dict von Kategorie -> DPResult
@@ -393,9 +393,9 @@ class DifferentialPrivacyService:
         results: Dict[str, DPResult] = {}
 
         for category, count in counts.items():
-            # K-Anonymitaet pruefen
+            # K-Anonymitaet prüfen
             if suppress_below_k and count < self.config.k_anonymity_threshold:
-                # Unterdruecke kleine Gruppen
+                # Unterdrücke kleine Gruppen
                 results[category] = DPResult(
                     original_value=float(count),
                     noisy_value=0.0,
@@ -418,11 +418,11 @@ class DifferentialPrivacyService:
         use_min: bool = False
     ) -> float:
         """
-        Gibt empfohlenes Epsilon fuer Sensitivitaetsstufe zurueck.
+        Gibt empfohlenes Epsilon für Sensitivitaetsstufe zurück.
 
         Args:
             level: Sensitivitaetsstufe
-            use_min: True fuer minimales (strengeres) Epsilon
+            use_min: True für minimales (strengeres) Epsilon
 
         Returns:
             Epsilon-Wert
@@ -441,7 +441,7 @@ class DifferentialPrivacyService:
         mechanism: DPMechanism = DPMechanism.LAPLACE
     ) -> NoiseImpactDict:
         """
-        Schaetzt den erwarteten Rausch-Impact.
+        Schätzt den erwarteten Rausch-Impact.
 
         Args:
             original_value: Original-Wert
@@ -471,7 +471,7 @@ class DifferentialPrivacyService:
         )
 
     def validate_epsilon(self, epsilon: float) -> bool:
-        """Prueft ob Epsilon im erlaubten Bereich liegt."""
+        """Prüft ob Epsilon im erlaubten Bereich liegt."""
         return self.config.min_epsilon <= epsilon <= self.config.max_epsilon
 
 
@@ -480,7 +480,7 @@ _dp_service: Optional[DifferentialPrivacyService] = None
 
 
 def get_dp_service() -> DifferentialPrivacyService:
-    """Gibt Singleton-Instanz des DP-Service zurueck."""
+    """Gibt Singleton-Instanz des DP-Service zurück."""
     global _dp_service
     if _dp_service is None:
         _dp_service = DifferentialPrivacyService()

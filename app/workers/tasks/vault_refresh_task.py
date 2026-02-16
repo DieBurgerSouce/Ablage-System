@@ -1,7 +1,7 @@
 """
 Periodischer Vault Secret Refresh Task.
 
-Aktualisiert Secrets aus Vault regelmaessig basierend auf VAULT_SECRET_REFRESH_INTERVAL.
+Aktualisiert Secrets aus Vault regelmäßig basierend auf VAULT_SECRET_REFRESH_INTERVAL.
 
 Feinpoliert und durchdacht - Enterprise Secrets Management.
 """
@@ -28,12 +28,12 @@ def refresh_vault_secrets(self) -> Dict[str, Any]:
         self.retry: Bei Fehlern wird Task mit Countdown retried
     """
     try:
-        # Vault deaktiviert - kein Refresh noetig
+        # Vault deaktiviert - kein Refresh nötig
         if not settings.VAULT_ENABLED:
             logger.debug("vault_refresh_skipped", reason="Vault deaktiviert")
             return {"status": "skipped", "reason": "Vault deaktiviert"}
 
-        # Vault aktiviert - pruefe ob refresh_secrets Methode existiert
+        # Vault aktiviert - prüfe ob refresh_secrets Methode existiert
         if not hasattr(settings, "refresh_secrets"):
             logger.warning(
                 "vault_refresh_not_supported",
@@ -41,10 +41,10 @@ def refresh_vault_secrets(self) -> Dict[str, Any]:
             )
             return {
                 "status": "skipped",
-                "reason": "refresh_secrets Methode nicht verfuegbar",
+                "reason": "refresh_secrets Methode nicht verfügbar",
             }
 
-        # Fuehre Refresh aus
+        # Führe Refresh aus
         success = settings.refresh_secrets()
 
         if success:

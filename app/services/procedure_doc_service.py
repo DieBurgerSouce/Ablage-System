@@ -11,8 +11,8 @@ Die Verfahrensdokumentation beschreibt:
 
 Erfuellt GoBD-Anforderungen:
 - Automatische Versionierung bei Systemupdates
-- Hash-Signatur fuer Unveraenderbarkeit
-- Vollstaendige Aenderungshistorie
+- Hash-Signatur für Unveränderbarkeit
+- Vollständige Änderungshistorie
 """
 
 import hashlib
@@ -37,7 +37,7 @@ CURRENT_SYSTEM_VERSION = "1.0.0"
 
 
 class ProcedureDocService:
-    """Service fuer die Generierung der GoBD-Verfahrensdokumentation."""
+    """Service für die Generierung der GoBD-Verfahrensdokumentation."""
 
     async def generate_documentation(
         self,
@@ -49,8 +49,8 @@ class ProcedureDocService:
 
         Args:
             db: Datenbank-Session
-            company_id: Optional - fuer firmenspezifische Dokumentation
-            change_summary: Zusammenfassung der Aenderungen
+            company_id: Optional - für firmenspezifische Dokumentation
+            change_summary: Zusammenfassung der Änderungen
 
         Returns:
             ProcedureDocumentationVersion: Neue Dokumentationsversion
@@ -70,7 +70,7 @@ class ProcedureDocService:
         # Hash berechnen
         content_hash = self._compute_hash(content)
 
-        # Aenderungen ermitteln
+        # Änderungen ermitteln
         change_details = None
         if previous_version:
             change_details = self._compute_changes(
@@ -112,7 +112,7 @@ class ProcedureDocService:
 
         Args:
             db: Datenbank-Session
-            company_id: Optional - fuer firmenspezifische Dokumentation
+            company_id: Optional - für firmenspezifische Dokumentation
 
         Returns:
             Neueste Version oder None
@@ -139,7 +139,7 @@ class ProcedureDocService:
 
         Args:
             db: Datenbank-Session
-            company_id: Optional - fuer firmenspezifische Dokumentation
+            company_id: Optional - für firmenspezifische Dokumentation
             limit: Maximale Anzahl Versionen
 
         Returns:
@@ -249,23 +249,23 @@ class ProcedureDocService:
                 "zweck": (
                     "Das Ablage-System OCR ist eine Enterprise-Plattform zur "
                     "automatisierten Verarbeitung, Archivierung und Verwaltung von "
-                    "Geschaeftsdokumenten. Das System erfuellt die Anforderungen der "
-                    "GoBD (Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung "
+                    "Geschäftsdokumenten. Das System erfuellt die Anforderungen der "
+                    "GoBD (Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung "
                     "von Buechern, Aufzeichnungen und Unterlagen in elektronischer Form)."
                 ),
                 "funktionen": [
                     "Automatische Texterkennung (OCR) mit mehreren GPU-beschleunigten Backends",
                     "Revisionssichere Archivierung mit SHA-256 Signaturen",
                     "Automatische Aufbewahrungsfristen-Verwaltung",
-                    "Multi-Mandanten-Faehigkeit mit strenger Datentrennung",
-                    "Vollstaendiger Audit-Trail aller Dokumentenoperationen",
+                    "Multi-Mandanten-Fähigkeit mit strenger Datentrennung",
+                    "Vollständiger Audit-Trail aller Dokumentenoperationen",
                     "DSGVO-konforme Datenverarbeitung",
                 ],
                 "rechtliche_grundlagen": [
-                    "§147 AO (Abgabenordnung) - Ordnungsvorschriften fuer die Aufbewahrung von Unterlagen",
+                    "§147 AO (Abgabenordnung) - Ordnungsvorschriften für die Aufbewahrung von Unterlagen",
                     "§257 HGB (Handelsgesetzbuch) - Aufbewahrung von Unterlagen",
                     "§14b UStG (Umsatzsteuergesetz) - Aufbewahrung von Rechnungen",
-                    "GoBD - Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung",
+                    "GoBD - Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung",
                 ],
             }
         }
@@ -302,12 +302,12 @@ class ProcedureDocService:
                         ]
                     },
                 ],
-                "arbeitsablaeufe": [
+                "arbeitsabläufe": [
                     {
                         "name": "Dokument-Upload",
                         "schritte": [
-                            "Dokument ueber Web-Oberflaeche hochladen",
-                            "System validiert Dateiformat und -groesse",
+                            "Dokument über Web-Oberflaeche hochladen",
+                            "System validiert Dateiformat und -größe",
                             "Automatische OCR-Verarbeitung startet",
                             "Dokument wird klassifiziert und kategorisiert",
                         ]
@@ -315,10 +315,10 @@ class ProcedureDocService:
                     {
                         "name": "Archivierung",
                         "schritte": [
-                            "Dokument zur Archivierung auswaehlen",
-                            "Aufbewahrungskategorie waehlen",
+                            "Dokument zur Archivierung auswählen",
+                            "Aufbewahrungskategorie wählen",
                             "System berechnet SHA-256 Hash",
-                            "Dokument wird als unveraenderbar markiert",
+                            "Dokument wird als unveränderbar markiert",
                             "Aufbewahrungsfrist wird automatisch gesetzt",
                         ]
                     },
@@ -343,32 +343,32 @@ class ProcedureDocService:
                         "name": "DeepSeek-Janus-Pro",
                         "typ": "Multimodal Vision-Language Model",
                         "vram": "12GB",
-                        "staerken": "Beste Umlaut-Genauigkeit, Fraktur, komplexe Layouts",
+                        "stärken": "Beste Umlaut-Genauigkeit, Fraktur, komplexe Layouts",
                     },
                     {
                         "name": "GOT-OCR 2.0",
                         "typ": "Transformer-basiert",
                         "vram": "10GB",
-                        "staerken": "Tabellen, Formeln, schnelle Verarbeitung",
+                        "stärken": "Tabellen, Formeln, schnelle Verarbeitung",
                     },
                     {
                         "name": "Surya + Docling",
                         "typ": "Layout-Analyse Pipeline",
                         "vram": "0GB (CPU)",
-                        "staerken": "CPU-Fallback, Layout-Erkennung",
+                        "stärken": "CPU-Fallback, Layout-Erkennung",
                     },
                 ],
                 "sicherheit": {
                     "authentifizierung": "JWT mit httpOnly Cookies",
                     "passwort_hashing": "bcrypt (Cost Factor 12)",
-                    "verschluesselung": "TLS 1.3 (in transit), MinIO SSE (at rest)",
+                    "verschlüsselung": "TLS 1.3 (in transit), MinIO SSE (at rest)",
                     "rate_limiting": "Pro Benutzer und IP-Adresse",
                 },
                 "datenschutz": {
-                    "dsgvo_konformitaet": True,
+                    "dsgvo_konformität": True,
                     "datenspeicherung": "On-Premises (keine Cloud)",
                     "audit_logging": "Alle Zugriffe werden protokolliert",
-                    "recht_auf_loeschung": "Art. 17 DSGVO implementiert",
+                    "recht_auf_löschung": "Art. 17 DSGVO implementiert",
                 },
             }
         }
@@ -379,7 +379,7 @@ class ProcedureDocService:
             "title": "4. Betriebsdokumentation",
             "content": {
                 "backup": {
-                    "strategie": "Taegliche vollstaendige Backups",
+                    "strategie": "Tägliche vollständige Backups",
                     "aufbewahrung": "30 Tage lokal, 90 Tage remote",
                     "komponenten": ["PostgreSQL", "Redis", "MinIO", "Konfiguration"],
                 },
@@ -392,7 +392,7 @@ class ProcedureDocService:
                 "wartung": {
                     "updates": "Geplante Wartungsfenster",
                     "patches": "Sicherheitspatches zeitnah",
-                    "pruefungen": "Woechentliche Integritaetspruefung",
+                    "prüfungen": "Woechentliche Integritätsprüfung",
                 },
             }
         }
@@ -405,17 +405,17 @@ class ProcedureDocService:
                 "zugriffskontrollen": [
                     "Rollenbasierte Zugriffskontrolle (RBAC)",
                     "Mandantentrennung durch Row-Level Security",
-                    "Authentifizierung ueber JWT-Token",
-                    "Sitzungs-Timeout nach 15 Minuten Inaktivitaet",
+                    "Authentifizierung über JWT-Token",
+                    "Sitzungs-Timeout nach 15 Minuten Inaktivität",
                 ],
-                "integritaetskontrollen": [
+                "integritätskontrollen": [
                     "SHA-256 Hash-Signatur bei Archivierung",
                     "Woechentliche automatische Verifikation",
-                    "Unveraenderbarkeit archivierter Dokumente",
-                    "Audit-Trail fuer alle Aenderungen",
+                    "Unveränderbarkeit archivierter Dokumente",
+                    "Audit-Trail für alle Änderungen",
                 ],
-                "verfuegbarkeitskontrollen": [
-                    "Taegliche automatische Backups",
+                "verfügbarkeitskontrollen": [
+                    "Tägliche automatische Backups",
                     "GPU-Fallback auf CPU bei Ausfall",
                     "Health-Checks alle 60 Sekunden",
                     "Automatischer Neustart bei Ausfall",
@@ -428,30 +428,30 @@ class ProcedureDocService:
         return {
             "title": "6. Archivierungskonzept",
             "content": {
-                "grundsaetze": {
+                "grundsätze": {
                     "nachvollziehbarkeit": (
                         "Jede Dokumentenaktion wird im Audit-Trail protokolliert "
-                        "mit Zeitstempel, Benutzer und Aenderungsdetails."
+                        "mit Zeitstempel, Benutzer und Änderungsdetails."
                     ),
-                    "unveraenderbarkeit": (
+                    "unveränderbarkeit": (
                         "Archivierte Dokumente erhalten eine SHA-256 Hash-Signatur. "
-                        "Aenderungen sind technisch gesperrt und werden bei Versuchen "
+                        "Änderungen sind technisch gesperrt und werden bei Versuchen "
                         "mit HTTP 403 abgelehnt."
                     ),
-                    "vollstaendigkeit": (
-                        "Aufbewahrungsfristen werden automatisch ueberwacht. "
+                    "vollständigkeit": (
+                        "Aufbewahrungsfristen werden automatisch überwacht. "
                         "90 Tage vor Ablauf erfolgt eine Warnung an Administratoren."
                     ),
                     "ordnung": (
                         "Dokumente werden nach Kategorien klassifiziert "
-                        "(Rechnung, Vertrag, Geschaeftsbrief, etc.) mit "
+                        "(Rechnung, Vertrag, Geschäftsbrief, etc.) mit "
                         "entsprechenden gesetzlichen Aufbewahrungsfristen."
                     ),
                 },
                 "hash_algorithmus": {
                     "algorithmus": "SHA-256",
                     "input": "Dateiinhalt + Metadaten + extrahierter Text",
-                    "verifizierung": "Woechentliche automatische Pruefung",
+                    "verifizierung": "Woechentliche automatische Prüfung",
                 },
             }
         }
@@ -468,12 +468,12 @@ class ProcedureDocService:
                         "rechtsgrundlage": "§147 AO, §14b UStG",
                     },
                     {
-                        "kategorie": "Vertraege",
+                        "kategorie": "Verträge",
                         "frist_jahre": 10,
                         "rechtsgrundlage": "§147 AO, §257 HGB",
                     },
                     {
-                        "kategorie": "Geschaeftsbriefe",
+                        "kategorie": "Geschäftsbriefe",
                         "frist_jahre": 6,
                         "rechtsgrundlage": "§257 HGB",
                     },
@@ -500,8 +500,8 @@ class ProcedureDocService:
                 ],
                 "automatisierung": {
                     "erinnerung": "90 Tage vor Ablauf",
-                    "pruefung": "Taeglich um 08:00 Uhr",
-                    "loeschung": "Nur mit Admin-Genehmigung (Standard)",
+                    "prüfung": "Täglich um 08:00 Uhr",
+                    "löschung": "Nur mit Admin-Genehmigung (Standard)",
                 },
             }
         }
@@ -525,7 +525,7 @@ class ProcedureDocService:
         old_content: dict,
         new_content: dict,
     ) -> dict:
-        """Ermittelt die Aenderungen zwischen zwei Versionen."""
+        """Ermittelt die Änderungen zwischen zwei Versionen."""
         changes = {
             "added_sections": [],
             "modified_sections": [],
@@ -609,19 +609,19 @@ _procedure_doc_service_lock = threading.Lock()
 
 
 def get_procedure_doc_service() -> ProcedureDocService:
-    """Factory fuer ProcedureDocService Singleton mit Thread-Safety."""
+    """Factory für ProcedureDocService Singleton mit Thread-Safety."""
     global _procedure_doc_service
     if _procedure_doc_service is None:
         with _procedure_doc_service_lock:
-            # Double-Check Locking: Erneut pruefen nach Lock-Erwerb
+            # Double-Check Locking: Erneut prüfen nach Lock-Erwerb
             if _procedure_doc_service is None:
                 _procedure_doc_service = ProcedureDocService()
     return _procedure_doc_service
 
 
-# Rueckwaertskompatibilitaet: Lazy Property fuer direkten Import
+# Rückwärtskompatibilität: Lazy Property für direkten Import
 class _LazyProcedureDocService:
-    """Lazy Wrapper fuer Rueckwaertskompatibilitaet."""
+    """Lazy Wrapper für Rückwärtskompatibilität."""
 
     def __getattr__(self, name: str):
         return getattr(get_procedure_doc_service(), name)

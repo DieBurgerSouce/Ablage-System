@@ -4,7 +4,7 @@ Bindet alle RAG-Submodule zusammen:
 - /search - RAG-basierte Suche
 - /chunks - Document Chunking
 - /chat - Chat Sessions
-- /ws - WebSocket fuer Real-time Chat
+- /ws - WebSocket für Real-time Chat
 - /customers - Customer Cards (Phase 5)
 - /jobs - Batch Jobs
 """

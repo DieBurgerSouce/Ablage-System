@@ -2,11 +2,11 @@
 Learning Autonomy satellite model.
 
 Lernende Autonomie: Pro User + Pro Aktionstyp ein Autonomie-Level,
-das mit Bestaetigungen waechst.
+das mit Bestätigungen waechst.
 
 Mechanik:
-- Start: Alles auf "suggest" (Vorschlagen & Bestaetigen)
-- Nach N Bestaetigungen desselben Musters: auto_with_undo
+- Start: Alles auf "suggest" (Vorschlagen & Bestätigen)
+- Nach N Bestätigungen desselben Musters: auto_with_undo
 - User kann pro Aktion das Level manuell setzen
 - Levels: manual → suggest → auto_with_undo → full_auto
 
@@ -42,15 +42,15 @@ from app.db.models import Base, CrossDBJSON
 
 
 class LearningAutonomyLevel(str, Enum):
-    """Autonomie-Stufen fuer lernende Automatisierung."""
+    """Autonomie-Stufen für lernende Automatisierung."""
     MANUAL = "manual"                   # User macht alles manuell
-    SUGGEST = "suggest"                 # System schlaegt vor, User bestaetigt
-    AUTO_WITH_UNDO = "auto_with_undo"   # System fuehrt aus, User kann zuruecknehmen
+    SUGGEST = "suggest"                 # System schlaegt vor, User bestätigt
+    AUTO_WITH_UNDO = "auto_with_undo"   # System führt aus, User kann zurücknehmen
     FULL_AUTO = "full_auto"             # Vollautomatisch, kein Eingriff noetig
 
 
 class ActionType(str, Enum):
-    """Aktionstypen fuer die lernende Autonomie."""
+    """Aktionstypen für die lernende Autonomie."""
     KATEGORISIERUNG = "kategorisierung"
     ORDNER_ZUWEISUNG = "ordner_zuweisung"
     BUCHUNGSVORSCHLAG = "buchungsvorschlag"
@@ -62,7 +62,7 @@ class ActionType(str, Enum):
     DUPLIKAT_ERKENNUNG = "duplikat_erkennung"
     ARCHIVIERUNG = "archivierung"
     EXPORT_FORMAT = "export_format"
-    PRIORITAET_SETZEN = "prioritaet_setzen"
+    PRIORITAET_SETZEN = "priorität_setzen"
 
 
 # ============================================================================
@@ -74,7 +74,7 @@ class UserActionAutonomy(Base):
     """Autonomie-Level pro User und Aktionstyp.
 
     Speichert das aktuelle Level und die Lernhistorie.
-    Das Level steigt automatisch mit erfolgreichen Bestaetigungen
+    Das Level steigt automatisch mit erfolgreichen Bestätigungen
     und sinkt bei Ablehnungen/Korrekturen.
     """
     __tablename__ = "user_action_autonomy"
@@ -113,31 +113,31 @@ class UserActionAutonomy(Base):
     )
 
     # Lern-Metriken
-    total_suggestions = Column(Integer, default=0, comment="Gesamtzahl Vorschlaege")
-    total_confirmations = Column(Integer, default=0, comment="Bestaetigte Vorschlaege")
-    total_rejections = Column(Integer, default=0, comment="Abgelehnte Vorschlaege")
-    total_corrections = Column(Integer, default=0, comment="Korrigierte Vorschlaege")
-    total_auto_executed = Column(Integer, default=0, comment="Automatisch ausgefuehrte Aktionen")
-    total_undone = Column(Integer, default=0, comment="Zurueckgenommene Auto-Aktionen")
+    total_suggestions = Column(Integer, default=0, comment="Gesamtzahl Vorschläge")
+    total_confirmations = Column(Integer, default=0, comment="Bestätigte Vorschläge")
+    total_rejections = Column(Integer, default=0, comment="Abgelehnte Vorschläge")
+    total_corrections = Column(Integer, default=0, comment="Korrigierte Vorschläge")
+    total_auto_executed = Column(Integer, default=0, comment="Automatisch ausgeführte Aktionen")
+    total_undone = Column(Integer, default=0, comment="Zurückgenommene Auto-Aktionen")
 
-    # Streak: Aufeinanderfolgende Bestaetigungen ohne Ablehnung
-    current_streak = Column(Integer, default=0, comment="Aktuelle Bestaetigungs-Serie")
-    best_streak = Column(Integer, default=0, comment="Beste Bestaetigungs-Serie")
+    # Streak: Aufeinanderfolgende Bestätigungen ohne Ablehnung
+    current_streak = Column(Integer, default=0, comment="Aktuelle Bestätigungs-Serie")
+    best_streak = Column(Integer, default=0, comment="Beste Bestätigungs-Serie")
 
-    # Schwellenwerte fuer Level-Upgrade
+    # Schwellenwerte für Level-Upgrade
     confirmations_for_auto_undo = Column(
         Integer,
         default=10,
-        comment="Bestaetigungen noetig fuer Upgrade zu auto_with_undo",
+        comment="Bestätigungen noetig für Upgrade zu auto_with_undo",
     )
     confirmations_for_full_auto = Column(
         Integer,
         default=50,
-        comment="Bestaetigungen noetig fuer Upgrade zu full_auto",
+        comment="Bestätigungen noetig für Upgrade zu full_auto",
     )
 
     # Confidence-Tracking
-    avg_confidence = Column(Float, default=0.0, comment="Durchschnittliche Confidence der Vorschlaege")
+    avg_confidence = Column(Float, default=0.0, comment="Durchschnittliche Confidence der Vorschläge")
     last_confidence = Column(Float, default=0.0, comment="Letzte Confidence")
 
     # Audit
@@ -166,10 +166,10 @@ class UserActionAutonomy(Base):
 
 
 class AutonomyDecisionLog(Base):
-    """Log fuer jede einzelne Autonomie-Entscheidung.
+    """Log für jede einzelne Autonomie-Entscheidung.
 
     Speichert was vorgeschlagen wurde, was der User getan hat,
-    und wie die Confidence war. Basis fuer das Lernen.
+    und wie die Confidence war. Basis für das Lernen.
     """
     __tablename__ = "autonomy_decision_logs"
 
@@ -235,14 +235,14 @@ class AutonomyDecisionLog(Base):
 
 
 # ============================================================================
-# Autonomy Level History (Level-Aenderungen)
+# Autonomy Level History (Level-Änderungen)
 # ============================================================================
 
 
 class AutonomyLevelHistory(Base):
-    """Historie der Level-Aenderungen.
+    """Historie der Level-Änderungen.
 
-    Protokolliert jeden Level-Wechsel fuer die Vertrauenskurve.
+    Protokolliert jeden Level-Wechsel für die Vertrauenskurve.
     """
     __tablename__ = "autonomy_level_history"
 

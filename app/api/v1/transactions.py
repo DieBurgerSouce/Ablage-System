@@ -1,7 +1,7 @@
-"""Transactions API - Vorgangsverknuepfung von Dokumenten.
+"""Transactions API - Vorgangsverknüpfung von Dokumenten.
 
 Basiert auf dem bestehenden DocumentGroup-Model mit group_type='transaction'.
-Ermoeglicht die Verfolgung von Dokumentenketten:
+Ermöglicht die Verfolgung von Dokumentenketten:
   Anfrage -> Angebot -> Auftrag -> Lieferschein -> Rechnung -> Zahlung
 
 Feinpoliert und durchdacht - Enterprise Transaction Tracking.
@@ -52,7 +52,7 @@ class TransactionStepResponse(BaseModel):
 
 
 class TransactionResponse(BaseModel):
-    """Vollstaendige Transaktionsantwort."""
+    """Vollständige Transaktionsantwort."""
     id: str
     transaction_number: str
     name: str
@@ -290,7 +290,7 @@ async def list_transactions(
     - sort_by: created_at, updated_at, name, reference_number
     - sort_order: asc, desc
     """
-    # Base Query fuer DocumentGroups vom Typ "transaction"
+    # Base Query für DocumentGroups vom Typ "transaction"
     query = (
         select(DocumentGroup)
         .where(
@@ -415,7 +415,7 @@ async def get_transaction(
     """
     Ruft eine einzelne Transaktion ab.
 
-    Beinhaltet alle Schritte mit verknuepften Dokumenten.
+    Beinhaltet alle Schritte mit verknüpften Dokumenten.
     """
     # Gruppe laden
     result = await db.execute(
@@ -477,7 +477,7 @@ async def create_transaction(
     """
     Erstellt eine neue Transaktion.
 
-    Erstellt eine DocumentGroup vom Typ 'transaction' und verknuepft optional Dokumente.
+    Erstellt eine DocumentGroup vom Typ 'transaction' und verknüpft optional Dokumente.
     """
     # Neue DocumentGroup erstellen
     group = DocumentGroup(
@@ -498,12 +498,12 @@ async def create_transaction(
 
     db.add(group)
 
-    # Dokumente verknuepfen
+    # Dokumente verknüpfen
     for doc_id in request.document_ids:
         relationship = DocumentRelationship(
             id=uuid.uuid4(),
             source_document_id=doc_id,
-            target_document_id=doc_id,  # Self-reference fuer Gruppenmitgliedschaft
+            target_document_id=doc_id,  # Self-reference für Gruppenmitgliedschaft
             relationship_type="transaction_member",
             chain_id=str(group.id),
             confidence=1.0,
@@ -589,7 +589,7 @@ async def update_transaction(
         user_id=str(current_user.id),
     )
 
-    # Fuer Response transformieren
+    # Für Response transformieren
     return await get_transaction(transaction_id, current_user, db)
 
 
@@ -604,12 +604,12 @@ async def update_transaction_step(
     """
     Aktualisiert einen Schritt in der Transaktion.
 
-    Kann ein Dokument mit einem Schritt verknuepfen und den Status setzen.
+    Kann ein Dokument mit einem Schritt verknüpfen und den Status setzen.
     """
     if step_type not in STEP_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Schritt-Typ: {step_type}. Erlaubt: {', '.join(STEP_TYPES)}"
+            detail=f"Ungültiger Schritt-Typ: {step_type}. Erlaubt: {', '.join(STEP_TYPES)}"
         )
 
     # Transaktion laden
@@ -630,9 +630,9 @@ async def update_transaction_step(
             detail="Transaktion nicht gefunden"
         )
 
-    # Dokument verknuepfen falls angegeben
+    # Dokument verknüpfen falls angegeben
     if request.document_id:
-        # Pruefen ob Dokument existiert
+        # Prüfen ob Dokument existiert
         doc_result = await db.execute(
             select(Document).where(
                 and_(
@@ -696,9 +696,9 @@ async def delete_transaction(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Loescht eine Transaktion (Soft-Delete).
+    Löscht eine Transaktion (Soft-Delete).
 
-    Die verknuepften Dokumente werden NICHT geloescht.
+    Die verknüpften Dokumente werden NICHT gelöscht.
     """
     result = await db.execute(
         select(DocumentGroup).where(

@@ -1,6 +1,6 @@
 """RAG Intelligence Layer API Endpoints.
 
-Endpoints fuer:
+Endpoints für:
 - Semantische Suche
 - Chat mit Dokumenten
 - Customer Cards
@@ -33,7 +33,7 @@ from app.db.models import (
     Company,
 )
 from app.api.dependencies import get_current_user, get_current_superuser
-# S.3-S.5 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
+# S.3-S.5 SECURITY FIX: Company Context für Multi-Tenancy IDOR Protection
 from app.middleware.company_context import require_company
 from app.api.schemas.rag import (
     # Enums
@@ -104,12 +104,12 @@ async def search_documents(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ) -> RAGSearchResponse:
-    """Fuehrt semantische Suche auf Dokument-Chunks durch.
+    """Führt semantische Suche auf Dokument-Chunks durch.
 
-    Unterstuetzt:
+    Unterstützt:
     - Semantische Suche (Embedding-basiert)
     - Hybrid Search (Semantic + Keyword)
-    - Optionales Reranking fuer bessere Praezision
+    - Optionales Reranking für bessere Präzision
     """
     search_service = get_rag_search_service()
 
@@ -224,7 +224,7 @@ async def chat_with_documents(
                 search_threshold = 0.0
                 logger.info(f"Chat mit Dokument-Kontext: {request.context_id} (threshold=0)")
             except ValueError:
-                logger.warning(f"Ungueltige Document-ID: {request.context_id}")
+                logger.warning(f"Ungültige Document-ID: {request.context_id}")
 
         # 1. Relevante Chunks finden
         search_response = await search_service.semantic_search(
@@ -293,11 +293,11 @@ async def chat_with_documents(
             doc = doc_result.scalar_one_or_none()
 
             if doc and doc.extracted_text:
-                # Text ggf. kuerzen (LLM-Context-Limit beachten)
+                # Text ggf. kürzen (LLM-Context-Limit beachten)
                 max_chars = 15000  # ~4000 Tokens
                 text = doc.extracted_text[:max_chars]
                 if len(doc.extracted_text) > max_chars:
-                    text += "\n\n[... Text gekuerzt, Dokument hat mehr Inhalt ...]"
+                    text += "\n\n[... Text gekürzt, Dokument hat mehr Inhalt ...]"
 
                 context = text
                 fallback_used = True
@@ -331,7 +331,7 @@ Antworte auf Deutsch.
 DOKUMENTINHALT:
 {context}"""
         else:
-            system_content = f"""Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
+            system_content = f"""Du bist ein hilfreicher Assistent für ein Dokumentenmanagementsystem.
 Beantworte Fragen basierend auf dem folgenden Kontext aus den Dokumenten.
 Wenn du etwas nicht weisst, sage es ehrlich.
 Antworte auf Deutsch.
@@ -462,7 +462,7 @@ async def chat_with_documents_stream(
                     search_threshold = 0.0
                     logger.info(f"Streaming Chat mit Dokument-Kontext: {request.context_id} (threshold=0)")
                 except ValueError:
-                    logger.warning(f"Ungueltige Document-ID: {request.context_id}")
+                    logger.warning(f"Ungültige Document-ID: {request.context_id}")
 
             # 1. Relevante Chunks finden
             search_response = await search_service.semantic_search(
@@ -522,7 +522,7 @@ async def chat_with_documents_stream(
                     max_chars = 15000  # ~4000 Tokens
                     text = doc.extracted_text[:max_chars]
                     if len(doc.extracted_text) > max_chars:
-                        text += "\n\n[... Text gekuerzt, Dokument hat mehr Inhalt ...]"
+                        text += "\n\n[... Text gekürzt, Dokument hat mehr Inhalt ...]"
 
                     fallback_context = text
                     fallback_doc_name = doc.original_filename
@@ -554,14 +554,14 @@ async def chat_with_documents_stream(
     # ===================================================================
 
     async def generate_stream():
-        """Generator fuer SSE-Events."""
+        """Generator für SSE-Events."""
         try:
             # 7. Kontext aufbauen - Normal oder Fallback
             if fallback_context:
                 # Fallback-Modus: Direkter Dokumenttext
                 context = fallback_context
 
-                # 8. System-Prompt fuer Fallback
+                # 8. System-Prompt für Fallback
                 system_content = f"""Du bist ein hilfreicher Assistent.
 Der Benutzer hat das Dokument '{fallback_doc_name}' hochgeladen.
 Analysiere den Inhalt und beantworte Fragen dazu.
@@ -578,8 +578,8 @@ DOKUMENTINHALT:
                 ]
                 context = "\n\n---\n\n".join(context_chunks)
 
-                # 8. System-Prompt fuer RAG
-                system_content = f"""Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
+                # 8. System-Prompt für RAG
+                system_content = f"""Du bist ein hilfreicher Assistent für ein Dokumentenmanagementsystem.
 Beantworte Fragen basierend auf dem folgenden Kontext aus den Dokumenten.
 Wenn du etwas nicht weisst, sage es ehrlich.
 Antworte auf Deutsch.
@@ -678,7 +678,7 @@ async def delete_chat_session(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    """Loescht eine Chat-Session (soft delete)."""
+    """Löscht eine Chat-Session (soft delete)."""
     session = await db.get(RAGChatSession, session_id)
     if not session or session.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Session nicht gefunden")
@@ -809,14 +809,14 @@ async def list_customer_cards(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
-    # S.4 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
+    # S.4 SECURITY FIX: Company Context für Multi-Tenancy IDOR Protection
     company_ctx: Company = Depends(require_company),
 ) -> List[RAGCustomerCardSummary]:
     """Listet Customer Cards auf, optional mit Suche.
 
-    SECURITY: Nur Customer Cards der eigenen Company werden zurueckgegeben.
+    SECURITY: Nur Customer Cards der eigenen Company werden zurückgegeben.
     """
-    # S.4 SECURITY FIX: Nur Cards der eigenen Company zurueckgeben
+    # S.4 SECURITY FIX: Nur Cards der eigenen Company zurückgeben
     query = select(RAGCustomerCard).where(
         RAGCustomerCard.company_id == company_ctx.company_id
     ).order_by(RAGCustomerCard.priority_level.desc())
@@ -846,12 +846,12 @@ async def get_customer_card(
     customer_id: str,
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
-    # S.3 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
+    # S.3 SECURITY FIX: Company Context für Multi-Tenancy IDOR Protection
     company_ctx: Company = Depends(require_company),
 ) -> RAGCustomerCardResponse:
     """Laedt eine einzelne Customer Card.
 
-    SECURITY: Nur Customer Cards der eigenen Company koennen geladen werden.
+    SECURITY: Nur Customer Cards der eigenen Company können geladen werden.
     """
     # S.3 SECURITY FIX: Nur Cards der eigenen Company laden
     query = select(RAGCustomerCard).where(
@@ -873,16 +873,16 @@ async def refresh_customer_card(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
-    # S.5 SECURITY FIX: Company Context fuer Multi-Tenancy IDOR Protection
+    # S.5 SECURITY FIX: Company Context für Multi-Tenancy IDOR Protection
     company_ctx: Company = Depends(require_company),
 ) -> dict:
     """Aktualisiert eine Customer Card asynchron.
 
-    SECURITY: Nur Customer Cards der eigenen Company koennen aktualisiert werden.
+    SECURITY: Nur Customer Cards der eigenen Company können aktualisiert werden.
     """
     card_service = get_customer_card_service()
 
-    # S.5 SECURITY FIX: Pruefe ob Customer Card existiert UND zur Company gehoert
+    # S.5 SECURITY FIX: Prüfe ob Customer Card existiert UND zur Company gehoert
     query = select(RAGCustomerCard).where(
         RAGCustomerCard.customer_id == customer_id,
         RAGCustomerCard.company_id == company_ctx.company_id,
@@ -917,9 +917,9 @@ async def chunk_document(
 ) -> RAGChunkDocumentResponse:
     """Chunked ein Dokument und generiert Embeddings.
 
-    SECURITY: Nur eigene Dokumente koennen gechunkt werden.
+    SECURITY: Nur eigene Dokumente können gechunkt werden.
     """
-    # SECURITY: Pruefen ob User das Dokument besitzt
+    # SECURITY: Prüfen ob User das Dokument besitzt
     doc = await db.get(Document, request.document_id)
     if not doc:
         raise HTTPException(status_code=404, detail="Dokument nicht gefunden")
@@ -976,9 +976,9 @@ async def bulk_chunk_documents(
 ) -> dict:
     """Startet Bulk-Chunking als Background Task.
 
-    SECURITY: Nur eigene Dokumente koennen gechunkt werden.
+    SECURITY: Nur eigene Dokumente können gechunkt werden.
     """
-    # SECURITY: Wenn document_ids angegeben, pruefen ob alle dem User gehoeren
+    # SECURITY: Wenn document_ids angegeben, prüfen ob alle dem User gehoeren
     if request.document_ids:
         query = select(func.count()).select_from(Document).where(
             Document.id.in_(request.document_ids),
@@ -1000,14 +1000,14 @@ async def bulk_chunk_documents(
                 detail="Nicht alle angegebenen Dokumente gehoeren Ihnen"
             )
 
-    # Batch Job erstellen - immer mit user_id fuer Filter im Background Task
+    # Batch Job erstellen - immer mit user_id für Filter im Background Task
     job = RAGBatchJob(
         job_type="chunk_documents",
         job_name=f"Bulk Chunking - {datetime.now(timezone.utc).isoformat()}",
         created_by_id=current_user.id,
         parameters={
             "document_ids": [str(d) for d in request.document_ids] if request.document_ids else None,
-            "user_id": str(current_user.id),  # SECURITY: User-ID fuer Filter im Background Task
+            "user_id": str(current_user.id),  # SECURITY: User-ID für Filter im Background Task
             "force": request.force,
             "strategy": request.strategy,
         },
@@ -1033,7 +1033,7 @@ async def list_llm_models(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ) -> List[RAGLLMModelResponse]:
-    """Listet verfuegbare LLM-Modelle auf."""
+    """Listet verfügbare LLM-Modelle auf."""
     query = select(RAGLLMModel)
     if active_only:
         query = query.where(RAGLLMModel.is_active == True)
@@ -1126,7 +1126,7 @@ async def rag_health_check(
     current_user: User = Depends(get_current_superuser),  # AA.1 SECURITY FIX: Admin required
     db: AsyncSession = Depends(get_async_session),
 ) -> dict:
-    """Health Check fuer RAG Services.
+    """Health Check für RAG Services.
 
     **REQUIRES ADMIN AUTHENTICATION**
 
@@ -1186,9 +1186,9 @@ async def business_intelligence_query(
     company: Company = Depends(require_company),
 ):
     """
-    Fuehrt eine Business Intelligence Abfrage durch.
+    Führt eine Business Intelligence Abfrage durch.
 
-    Unterstuetzt natuerlichsprachige Anfragen wie:
+    Unterstützt natürlichsprachige Anfragen wie:
     - "Finde alle Rechnungen von Mueller GmbH aus Q3"
     - "Wie haben sich die Marketing-Ausgaben entwickelt?"
     - "Wann zahlt Kunde X?"
@@ -1246,7 +1246,7 @@ async def business_intelligence_query(
 
 @router.post("/bi/invoices", response_model=None)
 async def analyze_invoices(
-    time_range: Optional[str] = Query("this_year", description="Zeitraum fuer Analyse"),
+    time_range: Optional[str] = Query("this_year", description="Zeitraum für Analyse"),
     entity_id: Optional[UUID] = Query(None, description="Filter auf Entitaet"),
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
@@ -1258,7 +1258,7 @@ async def analyze_invoices(
     Liefert:
     - Gesamtanzahl und -betrag
     - Bezahlte vs. offene Rechnungen
-    - Ueberfaellige Rechnungen
+    - Überfällige Rechnungen
     - Aufschluesselung nach Monat
     - Top-Entitaeten nach Umsatz
     """
@@ -1294,7 +1294,7 @@ async def get_entity_statistics(
     company: Company = Depends(require_company),
 ):
     """
-    Holt Statistiken fuer eine spezifische Geschaeftsentitaet.
+    Holt Statistiken für eine spezifische Geschäftsentitaet.
 
     Liefert:
     - Dokumenten-Anzahl
@@ -1335,7 +1335,7 @@ async def search_entity_statistics(
     """
     Sucht Entitaet nach Name und liefert Statistiken.
 
-    Unterstuetzt Teilsuche (z.B. "Mueller" findet "Mueller GmbH").
+    Unterstützt Teilsuche (z.B. "Mueller" findet "Mueller GmbH").
     """
     from app.services.business_intelligence_service import get_bi_service
     from app.api.schemas.rag import BIQueryResponse, BIQueryType
@@ -1372,7 +1372,7 @@ async def predict_payment(
     - Erwartete Zahlungsdauer in Tagen
     - Konfidenz der Prognose
     - Trend (verbessert sich, stabil, verschlechtert sich)
-    - Erklaerende Faktoren
+    - Erklärende Faktoren
     """
     from app.services.business_intelligence_service import get_bi_service
     from app.api.schemas.rag import BIQueryResponse, BIQueryType
@@ -1405,16 +1405,16 @@ async def analyze_trends(
     company: Company = Depends(require_company),
 ):
     """
-    Analysiert Trends fuer eine gegebene Metrik.
+    Analysiert Trends für eine gegebene Metrik.
 
-    Unterstuetzte Metriken:
+    Unterstützte Metriken:
     - revenue: Umsatzentwicklung
     - invoice_count: Anzahl Rechnungen
 
     Gruppierungen:
     - month: Monatlich
     - quarter: Quartalweise
-    - year: Jaehrlich
+    - year: Jährlich
     """
     from app.services.business_intelligence_service import get_bi_service, TimeRange
     from app.api.schemas.rag import BIQueryResponse, BIQueryType
@@ -1453,7 +1453,7 @@ async def bi_enhanced_chat(
 
     Dieser Endpoint:
     1. Erkennt ob die Anfrage eine BI-Frage ist
-    2. Fuehrt ggf. BI-Analyse durch
+    2. Führt ggf. BI-Analyse durch
     3. Kombiniert BI-Ergebnisse mit RAG-Dokumentkontext
     4. Generiert eine umfassende Antwort
 
@@ -1495,7 +1495,7 @@ async def bi_enhanced_chat(
                     query_time_ms=bi_result.query_time_ms,
                 )
 
-                # BI-Kontext fuer LLM aufbauen
+                # BI-Kontext für LLM aufbauen
                 bi_context = f"""
 BUSINESS INTELLIGENCE ERGEBNISSE:
 {bi_result.summary}
@@ -1504,7 +1504,7 @@ STRUKTURIERTE DATEN:
 {bi_result.data}
 """
 
-        # 2. RAG-Suche durchfuehren
+        # 2. RAG-Suche durchführen
         document_ids = None
         search_threshold = settings.RAG_SEMANTIC_THRESHOLD
 
@@ -1566,13 +1566,13 @@ STRUKTURIERTE DATEN:
         rag_context = "\n\n---\n\n".join(context_chunks) if context_chunks else ""
 
         # 6. System-Prompt mit beiden Kontexten
-        system_content = f"""Du bist ein intelligenter Geschaeftsassistent fuer ein Dokumentenmanagementsystem.
+        system_content = f"""Du bist ein intelligenter Geschäftsassistent für ein Dokumentenmanagementsystem.
 Du hast Zugriff auf:
-1. Strukturierte Geschaeftsdaten (Rechnungen, Kunden, Statistiken)
-2. Dokumenteninhalte (Vertraege, Korrespondenz, etc.)
+1. Strukturierte Geschäftsdaten (Rechnungen, Kunden, Statistiken)
+2. Dokumenteninhalte (Verträge, Korrespondenz, etc.)
 
 Beantworte Fragen praezise und hilfreich.
-Nutze die verfuegbaren Daten um fundierte Antworten zu geben.
+Nutze die verfügbaren Daten um fundierte Antworten zu geben.
 Antworte immer auf Deutsch.
 
 {bi_context}
@@ -1664,12 +1664,12 @@ async def list_ai_actions(
     context_type: Optional[str] = Query(None, description="Kontext-Typ (document, entity)"),
     current_user: User = Depends(get_current_user),
 ) -> "AIActionListResponse":
-    """Listet verfuegbare AI-Aktionen basierend auf Benutzerrolle auf.
+    """Listet verfügbare AI-Aktionen basierend auf Benutzerrolle auf.
 
     Autonomie-Level:
     - Viewer: Nur Lese-Aktionen (Suche, Analyse, Berichte)
-    - Editor: Supervised Actions (Vorschlag + Bestaetigung erforderlich)
-    - Admin: Autonome Aktionen (selbststaendig ausfuehrbar)
+    - Editor: Supervised Actions (Vorschlag + Bestätigung erforderlich)
+    - Admin: Autonome Aktionen (selbststaendig ausführbar)
     """
     from app.api.schemas.rag import AIActionListResponse
     from app.services.rag.ai_action_service import get_ai_action_service
@@ -1684,14 +1684,14 @@ async def execute_ai_action(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ) -> "AIActionResult":
-    """Fuehrt eine AI-Aktion aus.
+    """Führt eine AI-Aktion aus.
 
-    Bei Aktionen die Bestaetigung erfordern (Editor-Level):
+    Bei Aktionen die Bestätigung erfordern (Editor-Level):
     - Status wird auf 'suggested' gesetzt
-    - User muss ueber /ai/actions/confirm bestaetigen
+    - User muss über /ai/actions/confirm bestätigen
 
     Bei Admin-Level oder auto_execute=True:
-    - Aktion wird direkt ausgefuehrt
+    - Aktion wird direkt ausgeführt
     """
     from app.api.schemas.rag import AIActionRequest, AIActionResult
     from app.services.rag.ai_action_service import get_ai_action_service
@@ -1706,12 +1706,12 @@ async def confirm_ai_action(
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ) -> "AIActionResult":
-    """Bestaetigt oder lehnt eine vorgeschlagene AI-Aktion ab.
+    """Bestätigt oder lehnt eine vorgeschlagene AI-Aktion ab.
 
     Args:
         request.action_id: ID der vorgeschlagenen Aktion
-        request.confirmed: True = ausfuehren, False = ablehnen
-        request.modified_parameters: Optional geaenderte Parameter
+        request.confirmed: True = ausführen, False = ablehnen
+        request.modified_parameters: Optional geänderte Parameter
     """
     from app.api.schemas.rag import AIActionConfirmRequest, AIActionResult
     from app.services.rag.ai_action_service import get_ai_action_service
@@ -1733,10 +1733,10 @@ async def get_ai_context(
     entity_id: Optional[UUID] = Query(None, description="Aktuelle Entity-ID"),
     current_user: User = Depends(get_current_user),
 ) -> "AIContextInfo":
-    """Gibt kontextspezifische Informationen fuer den AI-Assistenten zurueck.
+    """Gibt kontextspezifische Informationen für den AI-Assistenten zurück.
 
     Liefert:
-    - Verfuegbare Aktionen fuer den aktuellen Kontext
+    - Verfügbare Aktionen für den aktuellen Kontext
     - Vorgeschlagene Fragen/Befehle
     - Autonomie-Level des Benutzers
     """

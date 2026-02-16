@@ -2,7 +2,7 @@
 """
 Report Scheduler Service.
 
-Verwaltet geplante Report-Ausfuehrungen und E-Mail-Versand.
+Verwaltet geplante Report-Ausführungen und E-Mail-Versand.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ except ImportError:
 
 
 class ReportSchedulerService:
-    """Service fuer geplante Report-Ausfuehrungen."""
+    """Service für geplante Report-Ausführungen."""
 
     _instance: Optional["ReportSchedulerService"] = None
 
@@ -57,7 +57,7 @@ class ReportSchedulerService:
         cron_expression: str,
         timezone_str: str = "Europe/Berlin",
     ) -> Optional[datetime]:
-        """Berechnet die naechste Ausfuehrungszeit."""
+        """Berechnet die nächste Ausführungszeit."""
         if not CRONITER_AVAILABLE:
             return None
 
@@ -81,7 +81,7 @@ class ReportSchedulerService:
         recipients: Optional[List[str]] = None,
         format: str = "excel",
     ) -> Optional[ReportTemplate]:
-        """Aktiviert einen Zeitplan fuer einen Report."""
+        """Aktiviert einen Zeitplan für einen Report."""
         # Validiere Cron-Ausdruck
         if not self.validate_cron_expression(cron_expression):
             logger.warning(
@@ -157,7 +157,7 @@ class ReportSchedulerService:
         db: AsyncSession,
         limit: int = 100,
     ) -> List[ReportTemplate]:
-        """Holt alle faelligen Reports."""
+        """Holt alle fälligen Reports."""
         now = datetime.now(timezone.utc)
 
         # Reports die scheduled sind und deren next_run in der Vergangenheit liegt
@@ -282,7 +282,7 @@ class ReportSchedulerService:
         db: AsyncSession,
         template: ReportTemplate,
     ) -> None:
-        """Aktualisiert den Zeitplan nach einer Ausfuehrung."""
+        """Aktualisiert den Zeitplan nach einer Ausführung."""
         if not template.schedule_config:
             return
 
@@ -343,7 +343,7 @@ class ReportSchedulerService:
         db: AsyncSession,
         days: int = 90,
     ) -> int:
-        """Loescht alte Executions."""
+        """Löscht alte Executions."""
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
         from sqlalchemy import delete
@@ -366,10 +366,10 @@ class ReportSchedulerService:
         return deleted_count
 
     def get_schedule_presets(self) -> List[Dict[str, Any]]:
-        """Gibt vordefinierte Zeitplan-Optionen zurueck."""
+        """Gibt vordefinierte Zeitplan-Optionen zurück."""
         return [
-            {"id": "daily_morning", "name": "Taeglich 08:00", "cron": "0 8 * * *"},
-            {"id": "daily_evening", "name": "Taeglich 18:00", "cron": "0 18 * * *"},
+            {"id": "daily_morning", "name": "Täglich 08:00", "cron": "0 8 * * *"},
+            {"id": "daily_evening", "name": "Täglich 18:00", "cron": "0 18 * * *"},
             {"id": "weekly_monday", "name": "Woechentlich Montag 08:00", "cron": "0 8 * * 1"},
             {"id": "weekly_friday", "name": "Woechentlich Freitag 16:00", "cron": "0 16 * * 5"},
             {"id": "monthly_first", "name": "Monatlich 1. Tag 08:00", "cron": "0 8 1 * *"},

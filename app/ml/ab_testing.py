@@ -27,11 +27,11 @@ from pydantic import BaseModel, Field, field_validator
 
 
 # =============================================================================
-# Pydantic Validierungsmodelle fuer sichere JSON-Deserialisierung
+# Pydantic Validierungsmodelle für sichere JSON-Deserialisierung
 # =============================================================================
 
 class QualityMetricsSchema(BaseModel):
-    """Validierungsschema fuer Quality Metrics aus JSON."""
+    """Validierungsschema für Quality Metrics aus JSON."""
     benchmark_samples: int = 0
     avg_cer: float = Field(default=0.0, ge=0.0, le=1.0)
     avg_wer: float = Field(default=0.0, ge=0.0, le=1.0)
@@ -39,13 +39,13 @@ class QualityMetricsSchema(BaseModel):
 
 
 class VariantMetricsSchema(BaseModel):
-    """Validierungsschema fuer Variant Metrics."""
+    """Validierungsschema für Variant Metrics."""
     samples: int = 0
     conversions: int = 0
 
 
 class VariantSchema(BaseModel):
-    """Validierungsschema fuer Experiment-Varianten."""
+    """Validierungsschema für Experiment-Varianten."""
     name: str = Field(..., min_length=1, max_length=100)
     description: str = ""
     weight: float = Field(..., ge=0.0, le=1.0)
@@ -55,7 +55,7 @@ class VariantSchema(BaseModel):
 
 
 class ExperimentSchema(BaseModel):
-    """Validierungsschema fuer Experiment-JSON-Dateien.
+    """Validierungsschema für Experiment-JSON-Dateien.
 
     Validiert:
     - Pflichtfelder (experiment_id, name, status)
@@ -82,7 +82,7 @@ class ExperimentSchema(BaseModel):
             datetime.fromisoformat(v)
             return v
         except ValueError:
-            raise ValueError(f"Ungueltiges Datumsformat: {v}")
+            raise ValueError(f"Ungültiges Datumsformat: {v}")
 
 
 def validate_experiment_json(data: Dict[str, Any]) -> ExperimentSchema:
@@ -667,7 +667,7 @@ class ABTestManager:
             return False
 
         if experiment.status != ExperimentStatus.DRAFT:
-            logger.warning("experiment_start_nicht_moeglich", status=experiment.status.value)
+            logger.warning("experiment_start_nicht_möglich", status=experiment.status.value)
             return False
 
         experiment.status = ExperimentStatus.RUNNING
@@ -877,7 +877,7 @@ class ABTestManager:
                 # Überspringe leere Dateien (bekannter Bug, der jetzt gefixt ist)
                 if filepath.stat().st_size == 0:
                     logger.warning(
-                        "experiment_datei_leer_uebersprungen",
+                        "experiment_datei_leer_übersprungen",
                         filepath=str(filepath),
                     )
                     skipped_count += 1
@@ -889,7 +889,7 @@ class ABTestManager:
                 # Überspringe leeren Inhalt
                 if not content or content.strip() == "":
                     logger.warning(
-                        "experiment_inhalt_leer_uebersprungen",
+                        "experiment_inhalt_leer_übersprungen",
                         filepath=str(filepath),
                     )
                     skipped_count += 1
@@ -897,7 +897,7 @@ class ABTestManager:
 
                 data = json.loads(content)
 
-                # Pydantic-Validierung fuer sichere JSON-Deserialisierung
+                # Pydantic-Validierung für sichere JSON-Deserialisierung
                 from pydantic import ValidationError as PydanticValidationError
 
                 try:
@@ -950,7 +950,7 @@ class ABTestManager:
 
             except json.JSONDecodeError as e:
                 logger.warning(
-                    "experiment_laden_fehlgeschlagen_json_ungueltig",
+                    "experiment_laden_fehlgeschlagen_json_ungültig",
                     filepath=str(filepath),
                     **safe_error_log(e),
                 )

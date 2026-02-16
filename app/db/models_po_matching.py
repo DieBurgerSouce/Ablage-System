@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-PO-Matching Models fuer Ablage-System.
+PO-Matching Models für Ablage-System.
 
 3-Way Purchase Order Matching:
 - Bestellung (Purchase Order) <-> Lieferschein (Delivery Note) <-> Rechnung (Invoice)
 - Automatisches Matching nach Bestellnummer, Lieferant und Betraegen
 - Abweichungserkennung mit konfigurierbaren Toleranzen
-- Freigabe-Workflow fuer Abweichungen
+- Freigabe-Workflow für Abweichungen
 
 Phase 2.2 der Feature-Roadmap (Februar 2026).
 """
@@ -46,7 +46,7 @@ class MatchStatus(str, Enum):
     """Status eines 3-Way Matches."""
     PENDING = "pending"          # Noch nicht gematcht
     PARTIAL = "partial"          # Teilweise gematcht (z.B. nur 2 von 3)
-    FULL = "full"                # Vollstaendig gematcht (3-Way)
+    FULL = "full"                # Vollständig gematcht (3-Way)
     DISCREPANCY = "discrepancy"  # Abweichungen gefunden
     REJECTED = "rejected"        # Manuell abgelehnt
     APPROVED = "approved"        # Trotz Abweichung freigegeben
@@ -56,7 +56,7 @@ class DiscrepancyCategory(str, Enum):
     """Kategorie einer Abweichung."""
     AMOUNT = "amount"            # Betragabweichung
     QUANTITY = "quantity"        # Mengenabweichung
-    ITEM = "item"                # Fehlende/zusaetzliche Position
+    ITEM = "item"                # Fehlende/zusätzliche Position
     DATE = "date"                # Datumsabweichung
     PRICE = "price"              # Preisabweichung pro Einheit
 
@@ -155,7 +155,7 @@ class PurchaseOrderMatch(Base):
     amount_tolerance_percent = Column(Float, default=2.0)
     quantity_tolerance_percent = Column(Float, default=1.0)
 
-    # Positionsvergleich (detaillierter Zeile-fuer-Zeile Vergleich)
+    # Positionsvergleich (detaillierter Zeile-für-Zeile Vergleich)
     line_items_comparison = Column(CrossDBJSON, default=list)
 
     # Freigabe
@@ -206,7 +206,7 @@ class PurchaseOrderMatch(Base):
 
     @property
     def document_count(self) -> int:
-        """Anzahl verknuepfter Dokumente."""
+        """Anzahl verknüpfter Dokumente."""
         count = 0
         if self.purchase_order_id:
             count += 1
@@ -218,7 +218,7 @@ class PurchaseOrderMatch(Base):
 
     @property
     def is_complete(self) -> bool:
-        """Prueft ob alle 3 Dokumente vorhanden sind."""
+        """Prüft ob alle 3 Dokumente vorhanden sind."""
         return self.document_count == 3
 
 
@@ -257,11 +257,11 @@ class MatchDiscrepancy(Base):
     # Betroffenes Feld
     field_name = Column(String(100), nullable=False)
 
-    # Werte (als String fuer Anzeige)
+    # Werte (als String für Anzeige)
     expected_value = Column(String(500), nullable=True)
     actual_value = Column(String(500), nullable=True)
 
-    # Betraege (fuer Betrags-Abweichungen)
+    # Betraege (für Betrags-Abweichungen)
     expected_amount = Column(Numeric(15, 2), nullable=True)
     actual_amount = Column(Numeric(15, 2), nullable=True)
 

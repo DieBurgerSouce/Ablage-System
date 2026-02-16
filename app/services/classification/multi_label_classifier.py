@@ -46,7 +46,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class MultiLabelClassificationResult:
-    """Vollstaendiges Multi-Label Klassifikationsergebnis."""
+    """Vollständiges Multi-Label Klassifikationsergebnis."""
 
     # Dokumenttyp
     document_type: ExtractedDocumentType
@@ -79,7 +79,7 @@ class MultiLabelClassificationResult:
     processing_time_ms: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API-Response."""
+        """Konvertiere zu Dictionary für API-Response."""
         return {
             "document_type": {
                 "type": self.document_type.value,
@@ -114,7 +114,7 @@ class MultiLabelClassificationResult:
         }
 
     def to_metadata(self) -> Dict[str, Any]:
-        """Konvertiere zu kompaktem Metadata-Format fuer Dokument-Speicherung."""
+        """Konvertiere zu kompaktem Metadata-Format für Dokument-Speicherung."""
         return {
             "document_type": self.document_type.value,
             "document_type_confidence": self.document_type_confidence,
@@ -162,13 +162,13 @@ class MultiLabelClassifier:
         is_incoming: bool = True,
     ) -> MultiLabelClassificationResult:
         """
-        Fuehre vollstaendige Multi-Label Klassifikation durch.
+        Führe vollständige Multi-Label Klassifikation durch.
 
         Args:
             text: OCR-Text des Dokuments
             document_date: Optionales Dokumentdatum
-            amount: Optionaler Betrag (fuer CFO-Approval und Department-Routing)
-            is_incoming: True fuer eingehende, False fuer ausgehende Dokumente
+            amount: Optionaler Betrag (für CFO-Approval und Department-Routing)
+            is_incoming: True für eingehende, False für ausgehende Dokumente
 
         Returns:
             MultiLabelClassificationResult mit allen Dimensionen
@@ -235,7 +235,7 @@ class MultiLabelClassifier:
             "confidentiality": confidentiality_result.matched_indicators[:5],
         }
 
-        # Alternatives fuer Dokumenttyp
+        # Alternatives für Dokumenttyp
         alternatives = []
         if doc_type_result.alternative_type:
             alternatives.append(doc_type_result.alternative_type.value)
@@ -323,17 +323,17 @@ class MultiLabelClassifier:
             Department.EINKAUF: "Einkauf",
             Department.VERTRIEB: "Vertrieb",
             Department.HR: "Personal",
-            Department.GESCHAEFTSFUEHRUNG: "Geschaeftsfuehrung",
+            Department.GESCHAEFTSFUEHRUNG: "Geschäftsführung",
             Department.IT: "IT",
             Department.RECHT: "Rechtsabteilung",
             Department.ALLGEMEIN: "Allgemein",
         }
         dept_name = dept_names.get(department_result.primary_department, "")
-        parts.append(f"fuer {dept_name}")
+        parts.append(f"für {dept_name}")
 
         # Vertraulichkeit
         conf_names = {
-            ConfidentialityLevel.PUBLIC: "oeffentlich",
+            ConfidentialityLevel.PUBLIC: "öffentlich",
             ConfidentialityLevel.INTERNAL: "intern",
             ConfidentialityLevel.CONFIDENTIAL: "vertraulich",
             ConfidentialityLevel.STRICTLY_CONFIDENTIAL: "streng vertraulich",
@@ -368,7 +368,7 @@ class MultiLabelClassifier:
         return results
 
     def get_stats(self) -> Dict[str, Any]:
-        """Gibt kombinierte Statistiken zurueck."""
+        """Gibt kombinierte Statistiken zurück."""
         return {
             "multi_label": self._stats.copy(),
             "document_type": self.doc_type_classifier.get_stats(),
@@ -378,7 +378,7 @@ class MultiLabelClassifier:
         }
 
     def reset_stats(self) -> None:
-        """Setzt alle Statistiken zurueck."""
+        """Setzt alle Statistiken zurück."""
         self._stats = {
             "total_classifications": 0,
             "avg_processing_time_ms": 0.0,
@@ -397,7 +397,7 @@ _multi_label_classifier: Optional[MultiLabelClassifier] = None
 
 
 def get_multi_label_classifier() -> MultiLabelClassifier:
-    """Gibt die Singleton-Instanz des Multi-Label Classifier zurueck."""
+    """Gibt die Singleton-Instanz des Multi-Label Classifier zurück."""
     global _multi_label_classifier
     if _multi_label_classifier is None:
         _multi_label_classifier = MultiLabelClassifier()

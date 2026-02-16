@@ -1,7 +1,7 @@
 """
 AI Ethics API Endpoints
 
-REST API fuer KI-Ethik-Layer:
+REST API für KI-Ethik-Layer:
 - Bias-Detection
 - Explainability
 - Fairness-Metriken
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/ai-ethics", tags=["AI Ethics"])
 
 
 class GuardrailCheckRequest(BaseModel):
-    """Request-Schema fuer Guardrail-Check."""
+    """Request-Schema für Guardrail-Check."""
 
     action_type: str = Field(..., min_length=3, max_length=100, description="Aktionstyp")
     parameters: JSONDict = Field(..., description="Aktionsparameter")
@@ -53,7 +53,7 @@ class GuardrailCheckRequest(BaseModel):
     "/dashboard",
     response_model=JSONDict,
     summary="AI Ethics Dashboard",
-    description="Uebersicht ueber AI Ethics Metriken"
+    description="Übersicht über AI Ethics Metriken"
 )
 async def get_dashboard(
     current_user: User = Depends(get_current_active_user),
@@ -63,7 +63,7 @@ async def get_dashboard(
     """
     Holt AI Ethics Dashboard.
 
-    **Enthaelt:**
+    **Enthält:**
     - Bias-Report Summary
     - Explainability Coverage
     - Guardrail Stats
@@ -111,7 +111,7 @@ async def get_dashboard(
     "/bias-report",
     response_model=JSONDict,
     summary="Bias-Report",
-    description="Vollstaendiger Bias-Report fuer Unternehmen"
+    description="Vollständiger Bias-Report für Unternehmen"
 )
 async def get_bias_report(
     current_user: User = Depends(get_current_active_user),
@@ -121,7 +121,7 @@ async def get_bias_report(
     """
     Holt Bias-Report.
 
-    **Prueft Bias in:**
+    **Prüft Bias in:**
     - Entity-Typ (customer vs. supplier)
     - Risk-Score-Verteilung
     - Beziehungsdauer (neu vs. etabliert)
@@ -161,8 +161,8 @@ async def get_bias_report(
 @router.get(
     "/explain/{decision_type}/{decision_id}",
     response_model=JSONDict,
-    summary="Erklaerung",
-    description="Erklaert KI-Entscheidung"
+    summary="Erklärung",
+    description="Erklärt KI-Entscheidung"
 )
 async def explain_decision(
     decision_type: str,
@@ -171,19 +171,19 @@ async def explain_decision(
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
-    Erklaert KI-Entscheidung.
+    Erklärt KI-Entscheidung.
 
-    **Unterstuetzte Decision-Types:**
-    - **risk_score**: Risk Score Berechnung fuer Entity
+    **Unterstützte Decision-Types:**
+    - **risk_score**: Risk Score Berechnung für Entity
     - **document_classification**: Dokument-Klassifikation
     - **auto_approval**: Automatische Freigabe-Entscheidung
 
-    **Erklaerung enthaelt:**
+    **Erklärung enthält:**
     - Zusammenfassung in Deutsch
     - Einzelne Faktoren mit Gewichtung
     - Impact (positive/negative/neutral)
     - Konfidenz der Entscheidung
-    - Alternative Ansaetze
+    - Alternative Ansätze
 
     **Rollen:** Alle authentifizierten Benutzer
     """
@@ -233,7 +233,7 @@ async def explain_decision(
     "/fairness-metrics",
     response_model=JSONDict,
     summary="Fairness-Metriken",
-    description="Allgemeine Fairness-Metriken fuer AI-Systeme"
+    description="Allgemeine Fairness-Metriken für AI-Systeme"
 )
 async def get_fairness_metrics(
     current_user: User = Depends(get_current_active_user),
@@ -330,7 +330,7 @@ async def get_fairness_metrics(
     "/guardrail-check",
     response_model=JSONDict,
     summary="Guardrail-Check",
-    description="Prueft ob Aktion ethisch vertretbar ist"
+    description="Prüft ob Aktion ethisch vertretbar ist"
 )
 async def guardrail_check(
     request: GuardrailCheckRequest,
@@ -339,14 +339,14 @@ async def guardrail_check(
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
-    Prueft Aktion mit Ethical Guardrails.
+    Prüft Aktion mit Ethical Guardrails.
 
-    **Unterstuetzte Actions:**
-    - **delete_documents**: Dokument-Loeschung
+    **Unterstützte Actions:**
+    - **delete_documents**: Dokument-Löschung
     - **approve_payment**: Zahlungs-Freigabe
     - **bulk_export**: Daten-Export
     - **auto_approve_invoices**: Auto-Freigabe Rechnungen
-    - **change_risk_score**: Risk-Score-Aenderung
+    - **change_risk_score**: Risk-Score-Änderung
 
     **Request Body:**
     ```json
@@ -364,7 +364,7 @@ async def guardrail_check(
     - **allowed**: Aktion erlaubt (bool)
     - **reason**: Begruendung (German)
     - **risk_level**: low/medium/high
-    - **requires_human_review**: Manuelle Pruefung erforderlich (bool)
+    - **requires_human_review**: Manuelle Prüfung erforderlich (bool)
 
     **Rollen:** Alle authentifizierten Benutzer
     """

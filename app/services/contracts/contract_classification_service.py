@@ -25,9 +25,9 @@ logger = logging.getLogger(__name__)
 
 class ContractClassificationService:
     """
-    Service fuer die Klassifikation von Vertragstypen.
+    Service für die Klassifikation von Vertragstypen.
 
-    Kombiniert mehrere Klassifikationsansaetze fuer
+    Kombiniert mehrere Klassifikationsansätze für
     robuste Typenerkennung.
     """
 
@@ -62,11 +62,11 @@ class ContractClassificationService:
         ContractType.CUSTOMER_SLA: {
             "high": [
                 "service level agreement", "sla", "dienstguete",
-                "servicevereinbarung", "verfuegbarkeitsgarantie",
+                "servicevereinbarung", "verfügbarkeitsgarantie",
             ],
             "medium": [
-                "reaktionszeit", "verfuegbarkeit", "uptime",
-                "servicezeit", "entstoerung",
+                "reaktionszeit", "verfügbarkeit", "uptime",
+                "servicezeit", "entstörung",
             ],
             "low": [
                 "service", "support", "wartung",
@@ -74,11 +74,11 @@ class ContractClassificationService:
         },
         ContractType.CUSTOMER_WARRANTY: {
             "high": [
-                "gewaehrleistungsvertrag", "garantievertrag",
-                "maengelgewaehrleistung", "garantievereinbarung",
+                "gewährleistungsvertrag", "garantievertrag",
+                "maengelgewährleistung", "garantievereinbarung",
             ],
             "medium": [
-                "gewaehrleistung", "garantie", "maengelhaftung",
+                "gewährleistung", "garantie", "maengelhaftung",
                 "nachbesserung", "ersatzlieferung",
             ],
             "low": [
@@ -91,7 +91,7 @@ class ContractClassificationService:
                 "absatzvertrag",
             ],
             "medium": [
-                "verkaeufer", "kaeufer", "kaufpreis",
+                "verkäufer", "käufer", "kaufpreis",
                 "verkaufspreis", "absatz",
             ],
             "low": [
@@ -127,7 +127,7 @@ class ContractClassificationService:
         ContractType.LEASE_EQUIPMENT: {
             "high": [
                 "maschinenleasing", "anlagenleasing", "equipment-leasing",
-                "geraeteleasin", "it-leasing",
+                "geräteleasin", "it-leasing",
             ],
             "medium": [
                 "leasingobjekt", "investitionsgueter", "betriebsmittel",
@@ -144,10 +144,10 @@ class ContractClassificationService:
             ],
             "medium": [
                 "arbeitsvertrag", "arbeitnehmer", "arbeitgeber",
-                "gehalt", "verguetung", "kuendigungsschutz",
+                "gehalt", "vergütung", "kündigungsschutz",
             ],
             "low": [
-                "arbeit", "beschaeftigung", "anstellung",
+                "arbeit", "beschäftigung", "anstellung",
             ],
         },
         ContractType.EMPLOYMENT_FIXED: {
@@ -209,7 +209,7 @@ class ContractClassificationService:
             ],
             "medium": [
                 "lizenz", "nutzungsrecht", "lizenzgeber",
-                "lizenznehmer", "lizenzgebuehr",
+                "lizenznehmer", "lizenzgebühr",
             ],
             "low": [
                 "software", "patent", "marke",
@@ -234,15 +234,15 @@ class ContractClassificationService:
     STRUCTURAL_INDICATORS = {
         ContractType.LEASE_PROPERTY: [
             "kaltmiete", "warmmiete", "betriebskosten",
-            "hausordnung", "uebergabeprotokoll",
+            "hausordnung", "übergabeprotokoll",
         ],
         ContractType.EMPLOYMENT_PERMANENT: [
-            "arbeitszeit", "urlaub", "kuendigungsfrist",
+            "arbeitszeit", "urlaub", "kündigungsfrist",
             "probezeit", "sozialversicherung",
         ],
         ContractType.NDA: [
             "vertrauliche informationen", "offenlegung",
-            "rueckgabe", "vernichtung",
+            "rückgabe", "vernichtung",
         ],
         ContractType.LICENSE: [
             "nutzungsumfang", "lizenzgebiet", "unterlizenz",
@@ -264,7 +264,7 @@ class ContractClassificationService:
 
         Args:
             text: Zu klassifizierender Text
-            return_scores: Ob alle Scores zurueckgegeben werden sollen
+            return_scores: Ob alle Scores zurückgegeben werden sollen
 
         Returns:
             Tuple aus (ContractType, Confidence) oder
@@ -278,7 +278,7 @@ class ContractClassificationService:
         # Normalisiere Text
         text_lower = self._normalize_for_classification(text)
 
-        # Berechne Scores fuer alle Typen
+        # Berechne Scores für alle Typen
         scores = {}
         for contract_type in ContractType:
             if contract_type == ContractType.OTHER:
@@ -290,7 +290,7 @@ class ContractClassificationService:
             best_type = max(scores, key=scores.get)
             best_score = scores[best_type]
 
-            # Schwellenwert fuer Confidence
+            # Schwellenwert für Confidence
             if best_score < 0.1:
                 best_type = ContractType.OTHER
                 best_score = 0.0
@@ -328,7 +328,7 @@ class ContractClassificationService:
         return results
 
     def _normalize_for_classification(self, text: str) -> str:
-        """Normalisiere Text fuer Klassifikation."""
+        """Normalisiere Text für Klassifikation."""
         # Kleinschreibung
         result = text.lower()
 
@@ -344,7 +344,7 @@ class ContractClassificationService:
 
     def _calculate_type_score(self, text: str, contract_type: ContractType) -> float:
         """
-        Berechne Score fuer einen Vertragstyp.
+        Berechne Score für einen Vertragstyp.
 
         Kombiniert Keyword-Matching mit Gewichtung.
         """
@@ -357,7 +357,7 @@ class ContractClassificationService:
             keyword_normalized = self._normalize_for_classification(keyword)
             if keyword_normalized in text:
                 score += 1.0
-                # Bonus fuer mehrfaches Vorkommen
+                # Bonus für mehrfaches Vorkommen
                 count = text.count(keyword_normalized)
                 if count > 1:
                     score += min(count - 1, 3) * 0.2  # Max 0.6 Bonus
@@ -389,7 +389,7 @@ class ContractClassificationService:
         contract_type: ContractType,
     ) -> Dict[str, List[str]]:
         """
-        Erklaere warum ein Text als bestimmter Typ klassifiziert wurde.
+        Erkläre warum ein Text als bestimmter Typ klassifiziert wurde.
 
         Args:
             text: Der klassifizierte Text
@@ -432,12 +432,12 @@ class ContractClassificationService:
 
     @staticmethod
     def get_type_description(contract_type: ContractType) -> str:
-        """Gibt deutsche Beschreibung fuer Vertragstyp zurueck."""
+        """Gibt deutsche Beschreibung für Vertragstyp zurück."""
         descriptions = {
             ContractType.SUPPLIER_FRAMEWORK: "Rahmenvertrag mit Lieferanten",
             ContractType.SUPPLIER_PURCHASE: "Einkaufs-/Liefervertrag",
             ContractType.CUSTOMER_SLA: "Service Level Agreement (SLA)",
-            ContractType.CUSTOMER_WARRANTY: "Gewaehrleistungsvertrag",
+            ContractType.CUSTOMER_WARRANTY: "Gewährleistungsvertrag",
             ContractType.CUSTOMER_SALES: "Verkaufsvertrag",
             ContractType.LEASE_PROPERTY: "Miet-/Pachtvertrag (Immobilie)",
             ContractType.LEASE_VEHICLE: "Fahrzeugleasing",
@@ -455,7 +455,7 @@ class ContractClassificationService:
 
     @staticmethod
     def get_all_types_with_descriptions() -> List[Dict[str, str]]:
-        """Gibt alle Vertragstypen mit Beschreibungen zurueck."""
+        """Gibt alle Vertragstypen mit Beschreibungen zurück."""
         return [
             {
                 "value": ct.value,

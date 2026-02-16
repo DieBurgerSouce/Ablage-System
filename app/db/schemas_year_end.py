@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Pydantic Schemas fuer Jahresabschluss-Assistent.
+Pydantic Schemas für Jahresabschluss-Assistent.
 
-Request- und Response-Modelle fuer die Jahresabschluss-API.
+Request- und Response-Modelle für die Jahresabschluss-API.
 """
 
 from datetime import datetime
@@ -24,7 +24,7 @@ class YearEndStatusEnum(str, Enum):
 
 
 class CheckItemStatusEnum(str, Enum):
-    """Status eines Pruefpunkts."""
+    """Status eines Prüfpunkts."""
     PENDING = "pending"
     PASSED = "passed"
     WARNING = "warning"
@@ -33,7 +33,7 @@ class CheckItemStatusEnum(str, Enum):
 
 
 class GapCategoryEnum(str, Enum):
-    """Kategorie einer Luecke."""
+    """Kategorie einer Lücke."""
     MISSING_RECEIPT = "missing_receipt"
     UNMATCHED_TRANSACTION = "unmatched_transaction"
     MISSING_INVOICE = "missing_invoice"
@@ -52,12 +52,12 @@ class YearEndSessionCreate(BaseModel):
         ...,
         ge=2000,
         le=2099,
-        description="Geschaeftsjahr (z.B. 2025)",
+        description="Geschäftsjahr (z.B. 2025)",
     )
 
 
 class ResolveGapRequest(BaseModel):
-    """Anfrage zum Beheben einer Luecke."""
+    """Anfrage zum Beheben einer Lücke."""
     notes: str = Field(
         ...,
         min_length=1,
@@ -66,7 +66,7 @@ class ResolveGapRequest(BaseModel):
 
 
 class UpdateCheckItemRequest(BaseModel):
-    """Anfrage zum Aktualisieren eines Pruefpunkts."""
+    """Anfrage zum Aktualisieren eines Prüfpunkts."""
     status: CheckItemStatusEnum
     notes: Optional[str] = Field(
         None,
@@ -80,7 +80,7 @@ class UpdateCheckItemRequest(BaseModel):
 
 
 class YearEndCheckItemResponse(BaseModel):
-    """Antwort mit einem einzelnen Pruefpunkt."""
+    """Antwort mit einem einzelnen Prüfpunkt."""
     id: UUID
     category: str
     check_name: str
@@ -95,7 +95,7 @@ class YearEndCheckItemResponse(BaseModel):
 
 
 class YearEndGapResponse(BaseModel):
-    """Antwort mit einer einzelnen Luecke."""
+    """Antwort mit einer einzelnen Lücke."""
     id: UUID
     category: GapCategoryEnum
     month: Optional[int] = None
@@ -112,7 +112,7 @@ class YearEndGapResponse(BaseModel):
 
 
 class YearEndSessionResponse(BaseModel):
-    """Antwort mit einer Jahresabschluss-Session (Uebersicht)."""
+    """Antwort mit einer Jahresabschluss-Session (Übersicht)."""
     id: UUID
     fiscal_year: int
     status: YearEndStatusEnum
@@ -130,7 +130,7 @@ class YearEndSessionResponse(BaseModel):
 
 
 class YearEndSessionDetailResponse(BaseModel):
-    """Antwort mit einer Jahresabschluss-Session inkl. Pruefpunkten und Luecken."""
+    """Antwort mit einer Jahresabschluss-Session inkl. Prüfpunkten und Lücken."""
     id: UUID
     fiscal_year: int
     status: YearEndStatusEnum

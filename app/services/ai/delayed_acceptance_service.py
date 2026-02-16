@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-DelayedAcceptanceService - Queue fuer verzoegerte Auto-Akzeptanz.
+DelayedAcceptanceService - Queue für verzögerte Auto-Akzeptanz.
 
-Verwaltet eine Queue fuer Aktionen, die nicht sofort ausgefuehrt werden:
+Verwaltet eine Queue für Aktionen, die nicht sofort ausgeführt werden:
 - Level 2: 24h Wartezeit bei >90% Confidence
 - Level 3: 4h Wartezeit bei 80-95% Confidence
 
 Features:
-- Timeout-Handling mit automatischer Ausfuehrung
+- Timeout-Handling mit automatischer Ausführung
 - User-Intervention (vorzeitige Genehmigung/Ablehnung)
-- Rollback-Faehigkeit fuer 7 Tage
+- Rollback-Fähigkeit für 7 Tage
 - Audit-Trail aller Aktionen
 """
 
@@ -48,7 +48,7 @@ class ProposalStatus(str, Enum):
     REJECTED = "rejected"         # Manuell abgelehnt
     AUTO_ACCEPTED = "auto_accepted"  # Automatisch nach Timeout
     EXPIRED = "expired"           # Abgelaufen ohne Aktion
-    ROLLED_BACK = "rolled_back"   # Rueckgaengig gemacht
+    ROLLED_BACK = "rolled_back"   # Rückgängig gemacht
     CANCELLED = "cancelled"       # Abgebrochen
 
 
@@ -81,7 +81,7 @@ class ProposalQueueItem:
     delay_hours: int
     status: ProposalStatus
     created_at: datetime
-    scheduled_at: datetime  # Wann wird automatisch ausgefuehrt
+    scheduled_at: datetime  # Wann wird automatisch ausgeführt
     executed_at: Optional[datetime]
     executed_by: Optional[str]  # "system" oder User-ID
     rollback_until: Optional[datetime]
@@ -108,7 +108,7 @@ class ProposalResult:
 
 
 class DelayedAcceptanceService:
-    """Service fuer verzoegerte Auto-Akzeptanz.
+    """Service für verzögerte Auto-Akzeptanz.
 
     Verwaltet Proposals mit Timeout und User-Intervention.
     """
@@ -144,10 +144,10 @@ class DelayedAcceptanceService:
             target_id: ID des Ziel-Objekts
             proposed_value: Vorgeschlagener Wert
             confidence: Confidence-Score
-            delay_hours: Verzoegerung in Stunden
+            delay_hours: Verzögerung in Stunden
             ai_decision_id: Optional AI-Decision Referenz
             reasoning: Begruendung
-            metadata: Zusaetzliche Metadaten
+            metadata: Zusätzliche Metadaten
 
         Returns:
             ProposalQueueItem
@@ -279,8 +279,8 @@ class DelayedAcceptanceService:
         Args:
             proposal_id: ID des Proposals
             user_id: ID des genehmigenden Users
-            company_id: Company-ID fuer Multi-Tenant Check
-            executor: Optional Callback fuer Ausfuehrung
+            company_id: Company-ID für Multi-Tenant Check
+            executor: Optional Callback für Ausführung
 
         Returns:
             ProposalResult
@@ -308,7 +308,7 @@ class DelayedAcceptanceService:
 
         now = utc_now()
 
-        # Fuehre Aktion aus wenn Executor vorhanden
+        # Führe Aktion aus wenn Executor vorhanden
         execution_success = True
         if executor:
             try:
@@ -338,7 +338,7 @@ class DelayedAcceptanceService:
                 success=True,
                 proposal_id=proposal_id,
                 status=ProposalStatus.APPROVED,
-                message="Vorschlag genehmigt und ausgefuehrt.",
+                message="Vorschlag genehmigt und ausgeführt.",
                 executed_value=proposal.proposed_value,
                 can_rollback=True,
             )
@@ -352,7 +352,7 @@ class DelayedAcceptanceService:
                 success=False,
                 proposal_id=proposal_id,
                 status=ProposalStatus.REJECTED,
-                message="Ausfuehrung fehlgeschlagen.",
+                message="Ausführung fehlgeschlagen.",
             )
 
     async def reject_proposal(
@@ -367,7 +367,7 @@ class DelayedAcceptanceService:
         Args:
             proposal_id: ID des Proposals
             user_id: ID des ablehnenden Users
-            company_id: Company-ID fuer Multi-Tenant Check
+            company_id: Company-ID für Multi-Tenant Check
             reason: Optional Ablehnungsgrund
 
         Returns:
@@ -426,7 +426,7 @@ class DelayedAcceptanceService:
         self,
         executor_map: Dict[ProposalType, Callable[[uuid.UUID, JSONDict], Awaitable[bool]]],
     ) -> Dict[str, int]:
-        """Verarbeitet faellige Proposals (Celery Task).
+        """Verarbeitet fällige Proposals (Celery Task).
 
         Args:
             executor_map: Map von ProposalType zu Executor-Callback
@@ -444,7 +444,7 @@ class DelayedAcceptanceService:
             "skipped": 0,
         }
 
-        # Hole alle faelligen PENDING Proposals
+        # Hole alle fälligen PENDING Proposals
         result = await self.db.execute(
             select(AutonomousProposalQueue).where(
                 and_(
@@ -470,7 +470,7 @@ class DelayedAcceptanceService:
                     stats["skipped"] += 1
                     continue
 
-                # Fuehre aus
+                # Führe aus
                 success = await executor(proposal.target_id, proposal.proposed_value)
 
                 if success:
@@ -521,13 +521,13 @@ class DelayedAcceptanceService:
         company_id: uuid.UUID,
         rollback_executor: Optional[Callable[[JSONDict], Awaitable[bool]]] = None,
     ) -> ProposalResult:
-        """Macht einen ausgefuehrten Proposal rueckgaengig.
+        """Macht einen ausgeführten Proposal rückgängig.
 
         Args:
             proposal_id: ID des Proposals
             user_id: ID des Users
             company_id: Company-ID
-            rollback_executor: Callback fuer Rollback-Aktion
+            rollback_executor: Callback für Rollback-Aktion
 
         Returns:
             ProposalResult
@@ -556,10 +556,10 @@ class DelayedAcceptanceService:
                 success=False,
                 proposal_id=proposal_id,
                 status=ProposalStatus.PENDING,
-                message="Vorschlag nicht gefunden, nicht ausgefuehrt oder Rollback-Zeitraum abgelaufen.",
+                message="Vorschlag nicht gefunden, nicht ausgeführt oder Rollback-Zeitraum abgelaufen.",
             )
 
-        # Fuehre Rollback aus
+        # Führe Rollback aus
         if rollback_executor:
             try:
                 success = await rollback_executor(proposal.proposed_value)
@@ -605,7 +605,7 @@ class DelayedAcceptanceService:
             success=True,
             proposal_id=proposal_id,
             status=ProposalStatus.ROLLED_BACK,
-            message="Vorschlag rueckgaengig gemacht.",
+            message="Vorschlag rückgängig gemacht.",
         )
 
     async def get_proposal_history(
@@ -681,7 +681,7 @@ class DelayedAcceptanceService:
         proposal,
         user_id: uuid.UUID,
     ) -> None:
-        """Zeichnet Ablehnung als Feedback fuer Learning auf.
+        """Zeichnet Ablehnung als Feedback für Learning auf.
 
         Args:
             proposal: Das abgelehnte Proposal
@@ -721,7 +721,7 @@ class DelayedAcceptanceService:
 
 
 def get_delayed_acceptance_service(db: AsyncSession) -> DelayedAcceptanceService:
-    """Factory-Funktion fuer DelayedAcceptanceService.
+    """Factory-Funktion für DelayedAcceptanceService.
 
     Args:
         db: Async Database Session

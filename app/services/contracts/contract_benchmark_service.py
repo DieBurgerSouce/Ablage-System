@@ -2,14 +2,14 @@
 """
 Contract Benchmark Service for Contract Management V2.
 
-Vergleicht Vertraege mit Marktdurchschnitten:
+Vergleicht Verträge mit Marktdurchschnitten:
 - Preisvergleich nach Branche/Kategorie
 - Laufzeitvergleich
-- Risikobewertung im Vergleich zu Standardvertraegen
-- Verhandlungsvorschlaege
+- Risikobewertung im Vergleich zu Standardverträgen
+- Verhandlungsvorschläge
 
 SECURITY:
-- NIEMALS Vertragswerte in Logs (Geschaeftsgeheimnisse)
+- NIEMALS Vertragswerte in Logs (Geschäftsgeheimnisse)
 - Benchmark-Daten sind anonymisiert
 
 Feinpoliert und durchdacht - Enterprise Contract Management V2.
@@ -375,7 +375,7 @@ class ContractBenchmarkService:
             return {
                 "category": category,
                 "sample_size": len(contracts),
-                "error": "Zu wenige Vertraege fuer Benchmark (min. 5)",
+                "error": "Zu wenige Verträge für Benchmark (min. 5)",
             }
 
         # Calculate statistics
@@ -504,7 +504,7 @@ class ContractBenchmarkService:
                     benchmark=term_bm,
                 )
                 if term_months > term_bm.get("value", 0) * 1.5:
-                    metric.recommendation = "Vertragslaufzeit ist laenger als ueblich"
+                    metric.recommendation = "Vertragslaufzeit ist länger als ueblich"
                 metrics.append(metric)
 
         # Compare notice period
@@ -513,14 +513,14 @@ class ContractBenchmarkService:
             if notice_bm:
                 metric = self._create_metric(
                     metric_name="notice_days",
-                    display_name="Kuendigungsfrist (Tage)",
+                    display_name="Kündigungsfrist (Tage)",
                     contract_value=float(contract.notice_period_days),
                     benchmark=notice_bm,
                 )
                 if contract.notice_period_days < notice_bm.get("value", 30):
-                    metric.recommendation = "Kuendigungsfrist ist kuerzer als ueblich (positiv)"
+                    metric.recommendation = "Kündigungsfrist ist kürzer als ueblich (positiv)"
                 elif contract.notice_period_days > notice_bm.get("value", 30) * 2:
-                    metric.recommendation = "Kuendigungsfrist ist deutlich laenger als ueblich"
+                    metric.recommendation = "Kündigungsfrist ist deutlich länger als ueblich"
                 metrics.append(metric)
 
         # Compare total value if available
@@ -631,21 +631,21 @@ class ContractBenchmarkService:
             if metric.comparison == "above_average":
                 if "cost" in metric.metric_name or "value" in metric.metric_name:
                     recommendations.append(
-                        f"{metric.metric_display_name} liegt ueber dem Durchschnitt. "
+                        f"{metric.metric_display_name} liegt über dem Durchschnitt. "
                         f"Neuverhandlung empfohlen."
                     )
                 elif "term" in metric.metric_name:
                     recommendations.append(
-                        f"{metric.metric_display_name} ist laenger als ueblich. "
-                        f"Kuerzere Laufzeit bei Verlaengerung verhandeln."
+                        f"{metric.metric_display_name} ist länger als ueblich. "
+                        f"Kürzere Laufzeit bei Verlängerung verhandeln."
                     )
 
         # Auto-renewal warning
         if contract.auto_renewal:
             if contract.renewal_notice_days and contract.renewal_notice_days > 60:
                 recommendations.append(
-                    "Automatische Verlaengerung mit langer Kuendigungsfrist - "
-                    "Erinnerung fruehzeitig setzen."
+                    "Automatische Verlängerung mit langer Kündigungsfrist - "
+                    "Erinnerung frühzeitig setzen."
                 )
 
         # Price adjustment warning
@@ -702,7 +702,7 @@ class ContractBenchmarkService:
 
         if above_avg:
             names = [m.metric_display_name for m in above_avg[:2]]
-            summary += f"Ueber dem Durchschnitt: {', '.join(names)}. "
+            summary += f"Über dem Durchschnitt: {', '.join(names)}. "
 
         if below_avg:
             names = [m.metric_display_name for m in below_avg[:2]]
@@ -762,10 +762,10 @@ class ContractBenchmarkService:
             if term_months > 24:
                 suggestions.append(NegotiationSuggestion(
                     category="term",
-                    title="Kuerzere Laufzeit",
+                    title="Kürzere Laufzeit",
                     description=(
                         f"Die Laufzeit von {int(term_months)} Monaten ist lang. "
-                        f"Bei Verlaengerung kuerzere Laufzeit oder Sonderkuendigungsrecht verhandeln."
+                        f"Bei Verlängerung kürzere Laufzeit oder Sonderkündigungsrecht verhandeln."
                     ),
                     potential_impact="medium",
                     priority=2,
@@ -775,10 +775,10 @@ class ContractBenchmarkService:
         if contract.auto_renewal:
             suggestions.append(NegotiationSuggestion(
                 category="term",
-                title="Automatische Verlaengerung ueberpruefen",
+                title="Automatische Verlängerung überprüfen",
                 description=(
-                    "Automatische Verlaengerung ist aktiv. Pruefen Sie, ob diese "
-                    "gewuenscht ist oder ob eine explizite Verlaengerung besser waere."
+                    "Automatische Verlängerung ist aktiv. Prüfen Sie, ob diese "
+                    "gewünscht ist oder ob eine explizite Verlängerung besser waere."
                 ),
                 potential_impact="medium",
                 priority=2,
@@ -788,10 +788,10 @@ class ContractBenchmarkService:
         if contract.notice_period_days and contract.notice_period_days > 90:
             suggestions.append(NegotiationSuggestion(
                 category="term",
-                title="Kuendigungsfrist verkuerzen",
+                title="Kündigungsfrist verkürzen",
                 description=(
-                    f"Die Kuendigungsfrist von {contract.notice_period_days} Tagen ist lang. "
-                    f"Verhandeln Sie eine Verkuerzung auf 30-60 Tage."
+                    f"Die Kündigungsfrist von {contract.notice_period_days} Tagen ist lang. "
+                    f"Verhandeln Sie eine Verkürzung auf 30-60 Tage."
                 ),
                 potential_impact="high",
                 priority=3,
@@ -814,7 +814,7 @@ class ContractBenchmarkService:
                 category="clause",
                 title="Preisanpassung begrenzen",
                 description=(
-                    "Verhandeln Sie eine Obergrenze fuer Preisanpassungen "
+                    "Verhandeln Sie eine Obergrenze für Preisanpassungen "
                     "(z.B. max. 5% pro Jahr oder Kopplung an VPI)."
                 ),
                 potential_impact="high",

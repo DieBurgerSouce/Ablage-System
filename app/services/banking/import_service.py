@@ -50,9 +50,9 @@ logger = structlog.get_logger(__name__)
 
 
 class ImportService:
-    """Service fuer Bank Statement Import."""
+    """Service für Bank Statement Import."""
 
-    # Alle verfuegbaren Parser
+    # Alle verfügbaren Parser
     PARSERS = [
         MT940Parser,
         CAMT053Parser,
@@ -67,7 +67,7 @@ class ImportService:
     ]
 
     async def get_supported_formats(self) -> SupportedFormatsResponse:
-        """Hole Liste unterstuetzter Formate."""
+        """Hole Liste unterstützter Formate."""
         formats = []
 
         for parser_cls in self.PARSERS:
@@ -83,7 +83,7 @@ class ImportService:
         return SupportedFormatsResponse(formats=formats)
 
     def _get_format_display_name(self, format: ImportFormat, variant: Optional[str]) -> str:
-        """Hole Anzeigename fuer Format."""
+        """Hole Anzeigename für Format."""
         names = {
             ImportFormat.MT940: "MT940 (SWIFT)",
             ImportFormat.CAMT053: "CAMT.053 (ISO 20022)",
@@ -99,9 +99,9 @@ class ImportService:
         return names.get(format, format.value if format else "Unbekannt")
 
     def _get_format_description(self, format: ImportFormat, variant: Optional[str]) -> str:
-        """Hole Beschreibung fuer Format."""
+        """Hole Beschreibung für Format."""
         descriptions = {
-            ImportFormat.MT940: "Universelles Bankformat (SWIFT), unterstuetzt von fast allen Banken",
+            ImportFormat.MT940: "Universelles Bankformat (SWIFT), unterstützt von fast allen Banken",
             ImportFormat.CAMT053: "Modernes XML-Format nach ISO 20022 Standard",
             ImportFormat.CSV_SPARKASSE: "CSV-Export aus Sparkassen-Online-Banking",
             ImportFormat.CSV_VOLKSBANK: "CSV-Export aus VR-Banken Online-Banking",
@@ -124,11 +124,11 @@ class ImportService:
 
         Args:
             content: Dateiinhalt
-            filename: Dateiname (fuer Format-Erkennung)
+            filename: Dateiname (für Format-Erkennung)
             format_hint: Optional vorgegebenes Format
 
         Returns:
-            Vorschau mit erkanntem Format und Transaktions-Uebersicht
+            Vorschau mit erkanntem Format und Transaktions-Übersicht
         """
         # Format erkennen
         detected_format, confidence, parser_cls = self._detect_format(
@@ -155,7 +155,7 @@ class ImportService:
         if confidence < 0.7:
             warnings.append(
                 f"Format-Erkennung unsicher (Konfidenz: {confidence:.0%}). "
-                "Bitte Daten nach Import pruefen."
+                "Bitte Daten nach Import prüfen."
             )
 
         if result.error_count > 0:
@@ -199,14 +199,14 @@ class ImportService:
 
         start_time = utc_now()
 
-        # File-Hash fuer Duplikat-Erkennung
+        # File-Hash für Duplikat-Erkennung
         if isinstance(content, str):
             content_bytes = content.encode("utf-8")
         else:
             content_bytes = content
         file_hash = hashlib.sha256(content_bytes).hexdigest()
 
-        # Pruefe auf Duplikat-Import (nicht-atomare Vorpruefung fuer Early-Return)
+        # Prüfe auf Duplikat-Import (nicht-atomare Vorprüfung für Early-Return)
         # HINWEIS: Die eigentliche Race-Condition wird durch Try/Except bei db.flush() behandelt
         existing_import = await db.execute(
             select(BankImport).where(
@@ -368,7 +368,7 @@ class ImportService:
         filename: Optional[str],
         format_hint: Optional[ImportFormat],
     ) -> Tuple[ImportFormat, float, type]:
-        """Erkenne Format und waehle Parser.
+        """Erkenne Format und wähle Parser.
 
         Returns:
             (Format, Konfidenz, Parser-Klasse)
@@ -396,7 +396,7 @@ class ImportService:
         bank_account_id: Optional[UUID],
         tx: ParsedTransaction,
     ) -> bool:
-        """Pruefe ob Transaktion bereits existiert."""
+        """Prüfe ob Transaktion bereits existiert."""
         from app.db.models import BankTransaction
 
         if not bank_account_id:

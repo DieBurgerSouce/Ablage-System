@@ -5,11 +5,11 @@ Insights Services - Proaktive Warnungen und Analysen.
 Vision 2026 Q4: Proactive Insights System.
 
 Module:
-- daily_insights_engine: Batch-generierte taegliche Insights
+- daily_insights_engine: Batch-generierte tägliche Insights
 - cashflow_predictor: ML-basierte Cashflow-Prognose (7-90 Tage)
 - fraud_early_warning: Proaktive Betrugserkennung
 - skonto_optimizer: KI-basierte Skonto-Zahlungsempfehlungen
-- supplier_risk_monitor: Lieferanten-Risikoueberwachung
+- supplier_risk_monitor: Lieferanten-Risikoüberwachung
 """
 
 from app.services.insights.daily_insights_engine import (

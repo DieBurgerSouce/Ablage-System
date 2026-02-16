@@ -1,14 +1,14 @@
 """
 Event Broadcaster Service.
 
-Bruecke zwischen Event Bus und WebSocket fuer Echtzeit-Updates.
+Brücke zwischen Event Bus und WebSocket für Echtzeit-Updates.
 Filtert Events nach User/Company und broadcastet an verbundene Clients.
 
 Features:
 - User-spezifische Event-Filterung
 - Company-Isolation (Multi-Tenant)
-- Rate Limiting fuer Event-Flooding
-- Event-Aggregation fuer High-Volume Events
+- Rate Limiting für Event-Flooding
+- Event-Aggregation für High-Volume Events
 - Reconnection-Support mit Event-History
 """
 
@@ -31,7 +31,7 @@ logger = structlog.get_logger(__name__)
 
 
 class RealtimeEventType(str, Enum):
-    """Echtzeit-Event-Typen fuer Frontend."""
+    """Echtzeit-Event-Typen für Frontend."""
 
     # Document Events
     DOCUMENT_UPLOADED = "document.uploaded"
@@ -116,7 +116,7 @@ class RealtimeEventType(str, Enum):
 
 @dataclass
 class RealtimeEvent:
-    """Ein Echtzeit-Event fuer WebSocket-Broadcast."""
+    """Ein Echtzeit-Event für WebSocket-Broadcast."""
 
     event_type: RealtimeEventType
     payload: Dict[str, object]
@@ -127,7 +127,7 @@ class RealtimeEvent:
     priority: str = "normal"  # low, normal, high, critical
 
     def to_dict(self) -> Dict[str, object]:
-        """Konvertiert zu Dictionary fuer JSON-Serialisierung."""
+        """Konvertiert zu Dictionary für JSON-Serialisierung."""
         return {
             "event_type": self.event_type.value,
             "payload": self.payload,
@@ -139,7 +139,7 @@ class RealtimeEvent:
 
 @dataclass
 class RateLimitState:
-    """Rate Limit State fuer einen Event-Typ."""
+    """Rate Limit State für einen Event-Typ."""
 
     count: int = 0
     window_start: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -148,14 +148,14 @@ class RateLimitState:
 
 class EventBroadcaster:
     """
-    Event Broadcaster - Bruecke zwischen Event Bus und WebSocket.
+    Event Broadcaster - Brücke zwischen Event Bus und WebSocket.
 
     Features:
     - Abonniert relevante Events vom Event Bus
     - Filtert nach User/Company
     - Rate Limiting (max N events pro Zeitfenster)
     - Event-Aggregation bei High-Volume
-    - Callback-Registration fuer WebSocket Manager
+    - Callback-Registration für WebSocket Manager
     """
 
     # Rate Limiting Configuration
@@ -199,7 +199,7 @@ class EventBroadcaster:
         callback: Callable[[RealtimeEvent], asyncio.Future],
     ) -> Callable[[], None]:
         """
-        Registriert einen Callback fuer neue Events.
+        Registriert einen Callback für neue Events.
 
         Args:
             callback: Async-Funktion die bei neuen Events aufgerufen wird
@@ -474,7 +474,7 @@ class EventBroadcaster:
                 )
 
     def _store_in_history(self, event: RealtimeEvent) -> None:
-        """Speichert Event in der History fuer Reconnection-Support."""
+        """Speichert Event in der History für Reconnection-Support."""
         self._event_history.append(event)
         if len(self._event_history) > self._history_max_size:
             self._event_history = self._event_history[-self._history_max_size:]
@@ -487,7 +487,7 @@ class EventBroadcaster:
         limit: int = 50,
     ) -> List[RealtimeEvent]:
         """
-        Holt kuerzliche Events (fuer Reconnection).
+        Holt kürzliche Events (für Reconnection).
 
         Args:
             since: Nur Events nach diesem Zeitpunkt
@@ -514,7 +514,7 @@ class EventBroadcaster:
 
         return events[-limit:]
 
-    # Convenience Methods fuer direkte Event-Emission
+    # Convenience Methods für direkte Event-Emission
 
     async def emit_document_uploaded(
         self,
@@ -791,18 +791,18 @@ class EventBroadcaster:
         Args:
             widget_type: Typ des Widgets (cashflow, dunning, etc.)
             update_type: Art des Updates (full, partial, refresh_hint)
-            data: Optional Daten fuer das Update
-            changed_fields: Liste der geaenderten Felder
-            company_id: Optional Company-ID fuer Multi-Tenant
-            user_id: Optional User-ID fuer User-spezifische Updates
+            data: Optional Daten für das Update
+            changed_fields: Liste der geänderten Felder
+            company_id: Optional Company-ID für Multi-Tenant
+            user_id: Optional User-ID für User-spezifische Updates
 
         Widget Types:
             - cashflow: Cash-Flow Prognose
             - recent_documents: Letzte Dokumente
-            - finance_status: Finanz-Uebersicht
+            - finance_status: Finanz-Übersicht
             - dunning: Mahnwesen
             - ocr_performance: OCR Leistung
-            - aging_report: Faelligkeitsanalyse
+            - aging_report: Fälligkeitsanalyse
             - skonto: Skonto-Tracking
             - system_status: System-Status
             - today: Heute-Widget
@@ -832,13 +832,13 @@ class EventBroadcaster:
         company_id: Optional[str] = None,
     ) -> None:
         """
-        Signalisiert dass sich die Daten eines Widgets geaendert haben.
+        Signalisiert dass sich die Daten eines Widgets geändert haben.
 
-        Wird typischerweise von Services gesendet, wenn sich relevante Daten aendern.
+        Wird typischerweise von Services gesendet, wenn sich relevante Daten ändern.
 
         Args:
             widget_type: Typ des Widgets
-            source: Quelle der Aenderung (z.B. "invoice.paid", "transaction.imported")
+            source: Quelle der Änderung (z.B. "invoice.paid", "transaction.imported")
             data: Optional Kontext-Daten
             company_id: Optional Company-ID
         """
@@ -867,13 +867,13 @@ class EventBroadcaster:
         """
         Fordert ein sofortiges Refresh eines Widgets an.
 
-        Wird bei kritischen Aenderungen verwendet, die sofort sichtbar sein muessen.
+        Wird bei kritischen Änderungen verwendet, die sofort sichtbar sein müssen.
 
         Args:
             widget_type: Typ des Widgets
-            reason: Grund fuer das Refresh
+            reason: Grund für das Refresh
             company_id: Optional Company-ID
-            user_id: Optional User-ID fuer User-spezifische Updates
+            user_id: Optional User-ID für User-spezifische Updates
         """
         await self._broadcast_event(
             event_type=RealtimeEventType.WIDGET_REFRESH_REQUIRED,
@@ -1066,7 +1066,7 @@ class EventBroadcaster:
         notification_id: Optional[str] = None,
         company_id: Optional[str] = None,
     ) -> None:
-        """Emittiert Notification Received Event fuer Echtzeit-Benachrichtigungen."""
+        """Emittiert Notification Received Event für Echtzeit-Benachrichtigungen."""
         await self._broadcast_event(
             event_type=RealtimeEventType.NOTIFICATION_RECEIVED,
             payload={
@@ -1088,7 +1088,7 @@ _broadcaster_instance: Optional[EventBroadcaster] = None
 
 
 def get_event_broadcaster() -> EventBroadcaster:
-    """Factory-Funktion fuer EventBroadcaster Singleton."""
+    """Factory-Funktion für EventBroadcaster Singleton."""
     global _broadcaster_instance
     if _broadcaster_instance is None:
         _broadcaster_instance = EventBroadcaster()
@@ -1096,7 +1096,7 @@ def get_event_broadcaster() -> EventBroadcaster:
 
 
 async def reset_event_broadcaster() -> None:
-    """Setzt den EventBroadcaster zurueck (fuer Tests)."""
+    """Setzt den EventBroadcaster zurück (für Tests)."""
     global _broadcaster_instance
     if _broadcaster_instance:
         await _broadcaster_instance.stop()

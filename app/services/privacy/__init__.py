@@ -3,7 +3,7 @@
 Privacy Services for Ablage-System.
 
 Vision 2.0 Feature: Datenschutz-by-Design
-Unterstuetzt:
+Unterstützt:
 - Automatische PII-Erkennung (IBAN, Namen, Steuer-IDs)
 - Maskierung sensitiver Daten
 - Pseudonymisierung

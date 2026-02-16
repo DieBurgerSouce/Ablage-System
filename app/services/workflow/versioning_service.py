@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Workflow Versioning Service fuer Ablage-System.
+"""Workflow Versioning Service für Ablage-System.
 
 Verwaltet Workflow-Versionen mit:
 - Semantische Versionierung (major.minor.patch)
@@ -40,23 +40,23 @@ logger = structlog.get_logger(__name__)
 
 
 class WorkflowVersioningService:
-    """Service fuer Workflow-Versionierung.
+    """Service für Workflow-Versionierung.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Erstellen neuer Versionen
     - Diff-Berechnung zwischen Versionen
     - Rollback auf vorherige Versionen
     - A/B Testing
     - Migration laufender Instanzen
 
-    SECURITY: Alle Operationen validieren company_id fuer Multi-Tenant Isolation.
+    SECURITY: Alle Operationen validieren company_id für Multi-Tenant Isolation.
     """
 
     def __init__(self, db: AsyncSession) -> None:
         """Initialisiert den WorkflowVersioningService.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
         """
         self.db = db
 
@@ -81,20 +81,20 @@ class WorkflowVersioningService:
 
         Args:
             workflow_id: Workflow-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
             user_id: Ersteller
-            change_description: Beschreibung der Aenderungen
-            change_type: Art der Aenderung (major, minor, patch)
+            change_description: Beschreibung der Änderungen
+            change_type: Art der Änderung (major, minor, patch)
             definition: Optionale explizite Definition (sonst aus Workflow)
 
         Returns:
             WorkflowVersion oder None wenn Workflow nicht gefunden
 
         Raises:
-            ValueError: Bei ungueltigem change_type
+            ValueError: Bei ungültigem change_type
         """
         if change_type not in ("major", "minor", "patch"):
-            raise ValueError(f"Ungueltiger change_type: {change_type}")
+            raise ValueError(f"Ungültiger change_type: {change_type}")
 
         # Workflow laden
         workflow = await self._get_workflow(workflow_id, company_id)
@@ -198,15 +198,15 @@ class WorkflowVersioningService:
         company_id: UUID,
         user_id: UUID,
     ) -> Optional[WorkflowVersion]:
-        """Veroeffentlicht eine Draft-Version.
+        """Veröffentlicht eine Draft-Version.
 
         Setzt den Status auf ACTIVE und deaktiviert optionale vorherige
         aktive Versionen.
 
         Args:
             version_id: Version-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
-            user_id: Ausfuehrender User
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
+            user_id: Ausführender User
 
         Returns:
             Aktualisierte WorkflowVersion oder None
@@ -268,12 +268,12 @@ class WorkflowVersioningService:
     ) -> Optional[WorkflowVersion]:
         """Markiert eine Version als veraltet.
 
-        Veraltete Versionen werden nicht mehr fuer neue Executions verwendet.
+        Veraltete Versionen werden nicht mehr für neue Executions verwendet.
 
         Args:
             version_id: Version-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
-            user_id: Ausfuehrender User
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
+            user_id: Ausführender User
 
         Returns:
             Aktualisierte WorkflowVersion oder None
@@ -307,8 +307,8 @@ class WorkflowVersioningService:
 
         Args:
             version_id: Version-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
-            user_id: Ausfuehrender User
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
+            user_id: Ausführender User
 
         Returns:
             Aktualisierte WorkflowVersion oder None
@@ -345,7 +345,7 @@ class WorkflowVersioningService:
 
         Args:
             version_id: Version-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
 
         Returns:
             WorkflowVersion oder None
@@ -364,7 +364,7 @@ class WorkflowVersioningService:
 
         Args:
             workflow_id: Workflow-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
             status: Optionaler Status-Filter
             offset: Pagination Offset
             limit: Pagination Limit
@@ -412,7 +412,7 @@ class WorkflowVersioningService:
 
         Args:
             workflow_id: Workflow-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
 
         Returns:
             Aktive WorkflowVersion oder None
@@ -443,7 +443,7 @@ class WorkflowVersioningService:
         Args:
             version_id: Aktuelle Version
             compare_to_id: Zu vergleichende Version (None = vorherige)
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
 
         Returns:
             Diff-Dictionary oder None
@@ -592,15 +592,15 @@ class WorkflowVersioningService:
         user_id: UUID,
         create_backup: bool = True,
     ) -> Optional[WorkflowVersion]:
-        """Rollt einen Workflow auf eine vorherige Version zurueck.
+        """Rollt einen Workflow auf eine vorherige Version zurück.
 
         Erstellt optional eine Backup-Version des aktuellen Zustands.
 
         Args:
             workflow_id: Workflow-ID
             target_version_id: Ziel-Version
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
-            user_id: Ausfuehrender User
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
+            user_id: Ausführender User
             create_backup: Backup erstellen (default: True)
 
         Returns:
@@ -673,12 +673,12 @@ class WorkflowVersioningService:
 
         Args:
             workflow_id: Workflow-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
             user_id: Ersteller
             name: Test-Name
             control_version_id: Control-Version (Baseline)
             treatment_version_id: Treatment-Version (zu testen)
-            treatment_percentage: Traffic-Anteil fuer Treatment (0-100)
+            treatment_percentage: Traffic-Anteil für Treatment (0-100)
             description: Optionale Beschreibung
             end_at: Optionales End-Datum
 
@@ -745,8 +745,8 @@ class WorkflowVersioningService:
 
         Args:
             test_id: Test-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
-            user_id: Ausfuehrender User
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
+            user_id: Ausführender User
 
         Returns:
             Aktualisierter WorkflowABTest oder None
@@ -787,8 +787,8 @@ class WorkflowVersioningService:
 
         Args:
             test_id: Test-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
-            user_id: Ausfuehrender User
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
+            user_id: Ausführender User
             winner: Optionaler Gewinner (control, treatment, inconclusive)
 
         Returns:
@@ -833,12 +833,12 @@ class WorkflowVersioningService:
     ) -> Optional[WorkflowVersion]:
         """Waehlt eine Version basierend auf aktiven A/B Tests.
 
-        Falls ein A/B Test laeuft, wird zufaellig basierend auf dem
+        Falls ein A/B Test laeuft, wird zufällig basierend auf dem
         Treatment-Prozentsatz eine Version gewaehlt.
 
         Args:
             workflow_id: Workflow-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
 
         Returns:
             Ausgewaehlte WorkflowVersion oder None
@@ -856,7 +856,7 @@ class WorkflowVersioningService:
         ab_test = result.scalar_one_or_none()
 
         if not ab_test:
-            # Kein A/B Test, aktive Version zurueckgeben
+            # Kein A/B Test, aktive Version zurückgeben
             return await self.get_active_version(workflow_id, company_id)
 
         # Zufallsauswahl basierend auf Treatment-Prozentsatz
@@ -875,14 +875,14 @@ class WorkflowVersioningService:
         success: bool,
         execution_time_ms: int,
     ) -> None:
-        """Zeichnet eine Execution fuer A/B Test-Statistiken auf.
+        """Zeichnet eine Execution für A/B Test-Statistiken auf.
 
         Args:
             test_id: Test-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
             version_id: Verwendete Version
             success: War erfolgreich
-            execution_time_ms: Ausfuehrungszeit
+            execution_time_ms: Ausführungszeit
         """
         ab_test = await self._get_ab_test(test_id, company_id)
         if not ab_test or ab_test.status != ABTestStatus.RUNNING.value:
@@ -923,7 +923,7 @@ class WorkflowVersioningService:
         """Berechnet den Gewinner eines A/B Tests.
 
         Verwendet einfachen Vergleich der Erfolgsraten.
-        Fuer statistische Signifikanz waere ein Chi-Quadrat-Test noetig.
+        Für statistische Signifikanz waere ein Chi-Quadrat-Test noetig.
 
         Args:
             ab_test: A/B Test
@@ -961,14 +961,14 @@ class WorkflowVersioningService:
         """Migriert laufende Workflow-Instanzen auf eine neue Version.
 
         ACHTUNG: Dies ist eine komplexe Operation und sollte nur
-        mit Vorsicht durchgefuehrt werden.
+        mit Vorsicht durchgeführt werden.
 
         Args:
             workflow_id: Workflow-ID
             from_version_id: Quell-Version
             to_version_id: Ziel-Version
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
-            user_id: Ausfuehrender User
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
+            user_id: Ausführender User
 
         Returns:
             Migration-Ergebnis mit Statistiken
@@ -1006,7 +1006,7 @@ class WorkflowVersioningService:
                 "message": "Keine laufenden Instanzen gefunden",
             }
 
-        # Migration durchfuehren (hier nur Logging, echte Migration ist komplex)
+        # Migration durchführen (hier nur Logging, echte Migration ist komplex)
         logger.info(
             "workflow_instance_migration_started",
             workflow_id=str(workflow_id),
@@ -1016,7 +1016,7 @@ class WorkflowVersioningService:
             user_id=str(user_id),
         )
 
-        # In der Praxis muesste hier:
+        # In der Praxis müsste hier:
         # 1. Checkpoint der laufenden Instanz speichern
         # 2. Definition aktualisieren
         # 3. Von Checkpoint fortsetzen
@@ -1043,9 +1043,9 @@ class WorkflowVersioningService:
 
         Args:
             version_id: Version-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
             success: War erfolgreich
-            execution_time_ms: Ausfuehrungszeit
+            execution_time_ms: Ausführungszeit
         """
         version = await self._get_version(version_id, company_id)
         if not version:
@@ -1077,7 +1077,7 @@ class WorkflowVersioningService:
 
         Args:
             workflow_id: Workflow-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
             version_ids: Optionale Liste von Version-IDs (sonst alle)
 
         Returns:

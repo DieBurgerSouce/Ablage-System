@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Deutsche Terminologie API Router.
 
-Endpoints fuer das zentrale deutsche Terminologie-Woerterbuch.
+Endpoints für das zentrale deutsche Terminologie-Woerterbuch.
 DATEV-konforme Fachbegriffe, Fehlermeldungen, Statusmeldungen und Tooltips.
 """
 from __future__ import annotations
@@ -26,7 +26,7 @@ router = APIRouter(
 
 
 class TerminologyValidateRequest(BaseModel):
-    """Schema fuer Terminologie-Validierung."""
+    """Schema für Terminologie-Validierung."""
     text: str = Field(..., min_length=1, max_length=10000)
 
 
@@ -53,7 +53,7 @@ class TerminologyValidateResponse(BaseModel):
     summary="Alle deutschen Fachbegriffe",
 )
 async def get_all_terms() -> Dict[str, str]:
-    """Komplettes Terminologie-Woerterbuch fuer Frontend-i18n."""
+    """Komplettes Terminologie-Woerterbuch für Frontend-i18n."""
     from app.services.german_terminology_service import get_german_terminology_service
 
     service = get_german_terminology_service()
@@ -90,10 +90,10 @@ async def get_all_errors() -> Dict[str, str]:
 
 @router.get(
     "/translate/{key}",
-    summary="Fachbegriff uebersetzen",
+    summary="Fachbegriff übersetzen",
 )
 async def translate_term(key: str) -> dict:
-    """Englischen Fachbegriff ins Deutsche uebersetzen."""
+    """Englischen Fachbegriff ins Deutsche übersetzen."""
     from app.services.german_terminology_service import get_german_terminology_service
 
     service = get_german_terminology_service()
@@ -111,7 +111,7 @@ async def translate_term(key: str) -> dict:
     summary="Deutsche Fehlermeldung abrufen",
 )
 async def get_error_message(key: str) -> dict:
-    """Deutsche Fehlermeldung fuer einen Fehler-Schluessel abrufen."""
+    """Deutsche Fehlermeldung für einen Fehler-Schluessel abrufen."""
     from app.services.german_terminology_service import get_german_terminology_service
 
     service = get_german_terminology_service()
@@ -128,7 +128,7 @@ async def get_error_message(key: str) -> dict:
     summary="Deutsche Statusmeldung abrufen",
 )
 async def get_status_message(key: str) -> dict:
-    """Deutsche Statusmeldung fuer einen Status-Schluessel abrufen."""
+    """Deutsche Statusmeldung für einen Status-Schluessel abrufen."""
     from app.services.german_terminology_service import get_german_terminology_service
 
     service = get_german_terminology_service()
@@ -145,7 +145,7 @@ async def get_status_message(key: str) -> dict:
     summary="Alle Tooltips abrufen",
 )
 async def get_all_tooltips() -> Dict[str, str]:
-    """Alle deutschen Tooltips fuer UI-Elemente abrufen."""
+    """Alle deutschen Tooltips für UI-Elemente abrufen."""
     from app.services.german_terminology_service import get_german_terminology_service
 
     service = get_german_terminology_service()
@@ -155,10 +155,10 @@ async def get_all_tooltips() -> Dict[str, str]:
 @router.post(
     "/validate",
     response_model=TerminologyValidateResponse,
-    summary="Text auf englische Begriffe pruefen",
+    summary="Text auf englische Begriffe prüfen",
 )
 async def validate_terminology(data: TerminologyValidateRequest) -> TerminologyValidateResponse:
-    """Pruefen ob englische Fachbegriffe im Text vorkommen die deutsch sein sollten."""
+    """Prüfen ob englische Fachbegriffe im Text vorkommen die deutsch sein sollten."""
     from app.services.german_terminology_service import get_german_terminology_service
 
     service = get_german_terminology_service()

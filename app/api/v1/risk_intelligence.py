@@ -25,7 +25,7 @@ router = APIRouter(prefix="/risk-intelligence", tags=["Risk Intelligence"])
 
 
 class TrendAnalysisSchema(BaseModel):
-    """Schema fuer Trend-Analyse."""
+    """Schema für Trend-Analyse."""
     direction: str
     change_percentage: float
     quarters: list[dict]
@@ -33,7 +33,7 @@ class TrendAnalysisSchema(BaseModel):
 
 
 class BenchmarkComparisonSchema(BaseModel):
-    """Schema fuer Benchmark-Vergleich."""
+    """Schema für Benchmark-Vergleich."""
     industry: str
     benchmark: dict
     actual_payment_delay: float
@@ -45,7 +45,7 @@ class BenchmarkComparisonSchema(BaseModel):
 
 
 class NetworkAnalysisSchema(BaseModel):
-    """Schema fuer Netzwerk-Analyse."""
+    """Schema für Netzwerk-Analyse."""
     connections: list[dict]
     connection_count: int
     network_risk_score: float
@@ -53,7 +53,7 @@ class NetworkAnalysisSchema(BaseModel):
 
 
 class RecommendationSchema(BaseModel):
-    """Schema fuer Handlungsempfehlung."""
+    """Schema für Handlungsempfehlung."""
     priority: str
     category: str
     title: str
@@ -62,7 +62,7 @@ class RecommendationSchema(BaseModel):
 
 
 class RiskProfileResponse(BaseModel):
-    """Response fuer umfassendes Risikoprofil."""
+    """Response für umfassendes Risikoprofil."""
     entity_id: str
     entity_name: str
     entity_type: str
@@ -75,7 +75,7 @@ class RiskProfileResponse(BaseModel):
 
 
 class PortfolioRiskOverviewResponse(BaseModel):
-    """Response fuer Portfolio-Risikouebersicht."""
+    """Response für Portfolio-Risikoübersicht."""
     total_entities: int
     risk_distribution: dict
     high_risk_entities: list[dict]
@@ -85,7 +85,7 @@ class PortfolioRiskOverviewResponse(BaseModel):
 
 
 class ExternalSourceCheckResponse(BaseModel):
-    """Response fuer externe Quellenprüfung."""
+    """Response für externe Quellenprüfung."""
     entity_id: str
     entity_name: str
     sources_checked: list[dict]
@@ -94,7 +94,7 @@ class ExternalSourceCheckResponse(BaseModel):
 
 
 class IndustryBenchmarkSchema(BaseModel):
-    """Schema fuer Branchen-Benchmark."""
+    """Schema für Branchen-Benchmark."""
     industry: str
     avg_payment_delay: int
     default_rate: float
@@ -111,7 +111,7 @@ async def get_risk_profile(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Liefert umfassendes Risikoprofil fuer eine Entity.
+    Liefert umfassendes Risikoprofil für eine Entity.
 
     Kombiniert:
     - Interne Zahlungsdaten-Analyse
@@ -142,7 +142,7 @@ async def get_entity_trend(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Liefert detaillierte Trend-Analyse fuer eine Entity.
+    Liefert detaillierte Trend-Analyse für eine Entity.
     """
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
@@ -159,7 +159,7 @@ async def get_entity_trend(
 @router.get("/entity/{entity_id}/benchmark")
 async def get_entity_benchmark(
     entity_id: UUID,
-    industry: Optional[str] = Query(None, description="Branche fuer Vergleich"),
+    industry: Optional[str] = Query(None, description="Branche für Vergleich"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -212,9 +212,9 @@ async def check_external_sources(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Prueft externe Datenquellen fuer Entity.
+    Prüft externe Datenquellen für Entity.
 
-    Unterstuetzte Quellen:
+    Unterstützte Quellen:
     - Handelsregister
     - Insolvenzregister
     - Creditreform (wenn konfiguriert)
@@ -239,7 +239,7 @@ async def get_portfolio_risk(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Liefert Portfolio-Risikouebersicht fuer alle Entities.
+    Liefert Portfolio-Risikoübersicht für alle Entities.
 
     Zeigt:
     - Risikoverteilung
@@ -262,7 +262,7 @@ async def get_portfolio_risk(
 @router.get("/benchmarks", response_model=list[IndustryBenchmarkSchema])
 async def get_industry_benchmarks():
     """
-    Liefert verfuegbare Branchen-Benchmarks.
+    Liefert verfügbare Branchen-Benchmarks.
     """
     # Statische Benchmarks aus Service
     benchmarks = [
@@ -303,7 +303,7 @@ async def get_industry_benchmarks():
 @router.get("/trend-directions")
 async def get_trend_directions():
     """
-    Liefert alle moeglichen Trend-Richtungen mit Beschreibung.
+    Liefert alle möglichen Trend-Richtungen mit Beschreibung.
     """
     return [
         {
@@ -315,7 +315,7 @@ async def get_trend_directions():
         {
             "direction": TrendDirection.STABLE,
             "name": "Stabil",
-            "description": "Keine signifikante Aenderung",
+            "description": "Keine signifikante Änderung",
             "color": "#3b82f6",
         },
         {
@@ -336,7 +336,7 @@ async def get_trend_directions():
 @router.get("/external-sources")
 async def get_external_sources():
     """
-    Liefert verfuegbare externe Datenquellen.
+    Liefert verfügbare externe Datenquellen.
     """
     return [
         {
@@ -348,7 +348,7 @@ async def get_external_sources():
         {
             "source": "schufa",
             "name": "SCHUFA",
-            "description": "Kreditwuerdigkeitspruefung",
+            "description": "Kreditwuerdigkeitsprüfung",
             "status": "not_configured",
         },
         {

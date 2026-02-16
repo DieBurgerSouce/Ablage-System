@@ -3,7 +3,7 @@
 Presence Service - Echtzeit-Dokument-Praesenz-Tracking.
 
 Redis-basiertes Tracking wer gerade welches Dokument betrachtet/bearbeitet:
-- Join/Leave fuer Dokumente
+- Join/Leave für Dokumente
 - Heartbeat mit automatischem Timeout (TTL 120s)
 - Editing-State Tracking
 - Deterministische Avatar-Farben pro User
@@ -55,7 +55,7 @@ def _avatar_color_for_user(user_id: UUID) -> str:
 
 @dataclass
 class PresenceEntry:
-    """Ein Praesenz-Eintrag fuer einen Benutzer auf einem Dokument."""
+    """Ein Praesenz-Eintrag für einen Benutzer auf einem Dokument."""
 
     user_id: str
     user_name: str
@@ -130,7 +130,7 @@ class PresenceService:
             user_name: Anzeigename des Benutzers
 
         Returns:
-            Aktuelle Liste aller Praesenz-Eintraege fuer das Dokument
+            Aktuelle Liste aller Praesenz-Einträge für das Dokument
         """
         r = await self._ensure_connection()
         key = self._key(document_id)
@@ -200,7 +200,7 @@ class PresenceService:
         user_id: UUID,
     ) -> None:
         """
-        Heartbeat fuer Praesenz-Aktualisierung.
+        Heartbeat für Praesenz-Aktualisierung.
 
         Aktualisiert last_heartbeat und erneuert TTL.
 
@@ -237,13 +237,13 @@ class PresenceService:
         document_id: UUID,
     ) -> List[PresenceEntry]:
         """
-        Gibt alle Praesenz-Eintraege fuer ein Dokument zurueck.
+        Gibt alle Praesenz-Einträge für ein Dokument zurück.
 
         Args:
             document_id: Dokument-ID
 
         Returns:
-            Liste aller aktuellen Praesenz-Eintraege
+            Liste aller aktuellen Praesenz-Einträge
         """
         r = await self._ensure_connection()
         key = self._key(document_id)
@@ -289,7 +289,7 @@ class PresenceService:
         document_id: UUID,
     ) -> List[PresenceEntry]:
         """
-        Gibt nur die aktiv bearbeitenden Benutzer zurueck.
+        Gibt nur die aktiv bearbeitenden Benutzer zurück.
 
         Args:
             document_id: Dokument-ID

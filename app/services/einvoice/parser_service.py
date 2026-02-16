@@ -6,7 +6,7 @@ Parst eingehende E-Rechnungen:
 - ZUGFeRD-PDFs (Factur-X) via factur-x library
 - XRechnung-XML (standalone)
 
-Unterstuetzt:
+Unterstützt:
 - ZUGFeRD 1.0, 2.0, 2.1, 2.2, 2.3
 - Factur-X 1.0
 - XRechnung 2.x, 3.x (CII und UBL)
@@ -64,7 +64,7 @@ class EInvoiceParserService:
         self._facturx_available = self._check_facturx()
 
     def _check_facturx(self) -> bool:
-        """Prueft ob factur-x verfuegbar ist."""
+        """Prüft ob factur-x verfügbar ist."""
         try:
             import facturx
             return True
@@ -86,14 +86,14 @@ class EInvoiceParserService:
 
         Args:
             pdf_content: PDF als Bytes
-            filename: Optionaler Dateiname fuer Logging
+            filename: Optionaler Dateiname für Logging
 
         Returns:
             EInvoiceParseResponse mit extrahierten Daten
 
         Raises:
             ValueError: Wenn kein XML im PDF gefunden
-            ImportError: Wenn factur-x nicht verfuegbar
+            ImportError: Wenn factur-x nicht verfügbar
         """
         if not self._facturx_available:
             raise ImportError(
@@ -162,7 +162,7 @@ class EInvoiceParserService:
 
         Args:
             xml_content: XML als String oder Bytes
-            filename: Optionaler Dateiname fuer Logging
+            filename: Optionaler Dateiname für Logging
 
         Returns:
             EInvoiceParseResponse mit extrahierten Daten
@@ -236,7 +236,7 @@ class EInvoiceParserService:
 
             raise ValueError(
                 f"Unbekanntes Dateiformat: {filename}. "
-                "Unterstuetzt: PDF, XML"
+                "Unterstützt: PDF, XML"
             )
 
     async def parse_and_store(
@@ -375,7 +375,7 @@ _parser_service: Optional[EInvoiceParserService] = None
 
 
 def get_parser_service() -> EInvoiceParserService:
-    """Gibt Singleton Parser Service zurueck."""
+    """Gibt Singleton Parser Service zurück."""
     global _parser_service
     if _parser_service is None:
         _parser_service = EInvoiceParserService()

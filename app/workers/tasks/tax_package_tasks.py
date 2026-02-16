@@ -1,5 +1,5 @@
 """
-Celery Tasks fuer Steuerberater-Pakete.
+Celery Tasks für Steuerberater-Pakete.
 
 Automatische Erstellung und Versand von Buchhaltungspaketen.
 """
@@ -34,9 +34,9 @@ def generate_monthly_packages(
     company_ids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
-    Generiert monatliche Pakete fuer alle Firmen.
+    Generiert monatliche Pakete für alle Firmen.
 
-    Wird am 5. jeden Monats fuer den Vormonat ausgefuehrt.
+    Wird am 5. jeden Monats für den Vormonat ausgeführt.
 
     Args:
         company_ids: Optional - nur bestimmte Firmen
@@ -106,7 +106,7 @@ async def _async_generate_monthly_packages(
 
         for company in companies:
             try:
-                # Pruefen ob Firma Konfiguration hat
+                # Prüfen ob Firma Konfiguration hat
                 configs = await service.get_configurations_for_company(company.id)
                 monthly_configs = [
                     c for c in configs
@@ -172,9 +172,9 @@ def generate_quarterly_packages(
     company_ids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
-    Generiert Quartalspakete fuer alle Firmen.
+    Generiert Quartalspakete für alle Firmen.
 
-    Wird am 10. nach Quartalsende ausgefuehrt.
+    Wird am 10. nach Quartalsende ausgeführt.
 
     Args:
         company_ids: Optional - nur bestimmte Firmen
@@ -308,7 +308,7 @@ def auto_send_ready_packages(self) -> Dict[str, Any]:
     """
     Versendet alle fertigen Pakete mit auto_send=True.
 
-    Wird taeglich um 09:00 ausgefuehrt.
+    Wird täglich um 09:00 ausgeführt.
 
     Returns:
         Anzahl versendeter Pakete
@@ -379,9 +379,9 @@ def send_missing_documents_reminders(
     days_before_deadline: int = 3,
 ) -> Dict[str, Any]:
     """
-    Sendet Erinnerungen fuer fehlende Dokumente.
+    Sendet Erinnerungen für fehlende Dokumente.
 
-    Wird taeglich um 08:00 ausgefuehrt.
+    Wird täglich um 08:00 ausgeführt.
 
     Args:
         days_before_deadline: Tage vor Deadline
@@ -460,7 +460,7 @@ def cleanup_expired_packages(
     """
     Bereinigt abgelaufene Pakete.
 
-    Wird woechentlich (Sonntag 04:00) ausgefuehrt.
+    Wird wöchentlich (Sonntag 04:00) ausgeführt.
 
     Args:
         retention_days: Aufbewahrungszeit in Tagen
@@ -499,7 +499,7 @@ async def _async_cleanup_packages(retention_days: int) -> Dict[str, Any]:
         # Cutoff-Datum
         cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
-        # In Praxis: Pakete aus DB loeschen
+        # In Praxis: Pakete aus DB löschen
         # deren expires_at < cutoff und Status in (SENT, DOWNLOADED, EXPIRED)
         cleaned_count = 0
 
@@ -533,7 +533,7 @@ def generate_datev_for_package(
     package_id: str,
 ) -> Dict[str, Any]:
     """
-    Generiert DATEV-Export fuer ein Paket.
+    Generiert DATEV-Export für ein Paket.
 
     Wird nach Paket-Erstellung oder manuell getriggert.
 
@@ -584,5 +584,5 @@ async def _async_generate_datev(package_id: str) -> Dict[str, Any]:
         return {
             "success": True,
             "package_id": package_id,
-            "datev_path": None,  # Wuerde den tatsaechlichen Pfad enthalten
+            "datev_path": None,  # Würde den tatsächlichen Pfad enthalten
         }

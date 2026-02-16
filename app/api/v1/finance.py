@@ -2,16 +2,16 @@
 """
 Finance API Endpoints.
 
-REST API fuer Jahr-basierte Finanz-Dokumentenverwaltung:
+REST API für Jahr-basierte Finanz-Dokumentenverwaltung:
 - GET /years - Alle Finanz-Jahre mit Dokument-Counts
-- GET /years/{year} - Details fuer ein Jahr
+- GET /years/{year} - Details für ein Jahr
 - GET /aggregations - Gesamt-Aggregationen
 - GET /years/{year}/aggregations - Jahr-Aggregationen
 - GET /years/{year}/categories/{category}/documents - Kategorie-Dokumente
 - GET /years/{year}/categories/{category}/aggregations - Kategorie-Aggregationen
 - POST /years/{year}/categories/{category}/documents - Dokument hochladen
 - PATCH /documents/{document_id} - Finanz-Dokument bearbeiten
-- DELETE /documents/{document_id} - Finanz-Dokument loeschen
+- DELETE /documents/{document_id} - Finanz-Dokument löschen
 
 Feinpoliert und durchdacht - Deutsche Finanzdokumente.
 """
@@ -93,7 +93,7 @@ async def list_finance_years(
     """
     Listet alle Finanz-Jahre auf.
 
-    Jedes Jahr enthaelt:
+    Jedes Jahr enthält:
     - Dokument-Counts pro Kategorie
     - Gesamt-Nachzahlung und -Erstattung
     - Anzahl offener Fristen
@@ -124,7 +124,7 @@ async def list_finance_years(
     "/years/{year}",
     response_model=FinanceYearResponse,
     summary="Finanz-Jahr abrufen",
-    description="Ruft Details fuer ein spezifisches Finanz-Jahr ab"
+    description="Ruft Details für ein spezifisches Finanz-Jahr ab"
 )
 async def get_finance_year(
     year: int = Path(..., ge=2000, le=2100, description="Das Jahr (z.B. 2024)"),
@@ -132,9 +132,9 @@ async def get_finance_year(
     db: AsyncSession = Depends(get_db),
 ) -> FinanceYearResponse:
     """
-    Ruft Details fuer ein Finanz-Jahr ab.
+    Ruft Details für ein Finanz-Jahr ab.
 
-    Enthaelt:
+    Enthält:
     - Dokument-Counts pro Kategorie (18 Kategorien in 4 Paketen)
     - Nachzahlung/Erstattung-Summen
     - Offene Fristen
@@ -148,7 +148,7 @@ async def get_finance_year(
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Keine Finanz-Dokumente fuer Jahr {year} gefunden"
+                detail=f"Keine Finanz-Dokumente für Jahr {year} gefunden"
             )
 
         logger.info(
@@ -178,20 +178,20 @@ async def get_finance_year(
     "/aggregations",
     response_model=FinanceAggregationsResponse,
     summary="Gesamt-Aggregationen",
-    description="Gesamt-Statistiken ueber alle Finanz-Jahre"
+    description="Gesamt-Statistiken über alle Finanz-Jahre"
 )
 async def get_overall_aggregations(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> FinanceAggregationsResponse:
     """
-    Ruft Gesamt-Aggregationen ueber alle Jahre ab.
+    Ruft Gesamt-Aggregationen über alle Jahre ab.
 
-    Enthaelt:
+    Enthält:
     - Gesamt-Dokumente
     - Gesamt-Nachzahlung und -Erstattung
     - Saldo (Erstattung - Nachzahlung)
-    - Offene und ueberfaellige Fristen
+    - Offene und überfällige Fristen
     - Dokumente nach Kategorie und Paket
     """
     service = get_finance_service()
@@ -220,7 +220,7 @@ async def get_overall_aggregations(
     "/years/{year}/aggregations",
     response_model=FinanceAggregationsResponse,
     summary="Jahr-Aggregationen",
-    description="Statistiken fuer ein spezifisches Finanz-Jahr"
+    description="Statistiken für ein spezifisches Finanz-Jahr"
 )
 async def get_year_aggregations(
     year: int = Path(..., ge=2000, le=2100, description="Das Jahr"),
@@ -228,13 +228,13 @@ async def get_year_aggregations(
     db: AsyncSession = Depends(get_db),
 ) -> FinanceAggregationsResponse:
     """
-    Ruft Aggregationen fuer ein Jahr ab.
+    Ruft Aggregationen für ein Jahr ab.
 
-    Enthaelt:
+    Enthält:
     - Jahres-Dokumente
     - Nachzahlung/Erstattung-Summen
     - Saldo
-    - Fristen fuer dieses Jahr
+    - Fristen für dieses Jahr
     - Dokumente nach Kategorie und Paket
     """
     service = get_finance_service()
@@ -279,7 +279,7 @@ async def get_category_documents(
     amount_max: Optional[float] = Query(None, ge=0, description="Maximalbetrag"),
     steuerart: Optional[str] = Query(None, description="Steuerart-Filter"),
     page: int = Query(0, ge=0, description="Seite (0-basiert)"),
-    page_size: int = Query(25, ge=1, le=100, description="Eintraege pro Seite"),
+    page_size: int = Query(25, ge=1, le=100, description="Einträge pro Seite"),
     sort_by: str = Query("document_date", description="Sortierfeld"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
     current_user: User = Depends(get_current_active_user),
@@ -294,14 +294,14 @@ async def get_category_documents(
     - grundabgabenbescheid
     - steuerbescheide
     - vorauszahlungen
-    - steuererklaerungen
+    - steuererklärungen
     - finanzamt_korrespondenz
 
     *Personal:*
     - lohn_gehalt
     - sozialversicherung
     - berufsgenossenschaft
-    - arbeitsvertraege
+    - arbeitsverträge
 
     *Versicherung:*
     - betriebshaftpflicht
@@ -311,7 +311,7 @@ async def get_category_documents(
 
     *Bank:*
     - kontoauszuege
-    - kreditvertraege
+    - kreditverträge
     - buergschaften
     - darlehen
 
@@ -329,7 +329,7 @@ async def get_category_documents(
     if category not in valid_categories:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Unbekannte Kategorie '{category}'. Gueltige Kategorien: {', '.join(valid_categories)}"
+            detail=f"Unbekannte Kategorie '{category}'. Gültige Kategorien: {', '.join(valid_categories)}"
         )
 
     service = get_finance_service()
@@ -381,7 +381,7 @@ async def get_category_documents(
     "/years/{year}/categories/{category}/aggregations",
     response_model=FinanceCategoryAggregations,
     summary="Kategorie-Aggregationen",
-    description="Statistiken fuer eine spezifische Finanz-Kategorie"
+    description="Statistiken für eine spezifische Finanz-Kategorie"
 )
 async def get_category_aggregations(
     year: int = Path(..., ge=2000, le=2100, description="Das Jahr"),
@@ -390,12 +390,12 @@ async def get_category_aggregations(
     db: AsyncSession = Depends(get_db),
 ) -> FinanceCategoryAggregations:
     """
-    Ruft Aggregationen fuer eine Finanz-Kategorie ab.
+    Ruft Aggregationen für eine Finanz-Kategorie ab.
 
-    Enthaelt:
+    Enthält:
     - Dokument-Anzahl in dieser Kategorie
     - Nachzahlung/Erstattung (nur bei relevanten Kategorien)
-    - Offene/ueberfaellige Fristen (nur bei relevanten Kategorien)
+    - Offene/überfällige Fristen (nur bei relevanten Kategorien)
     - Datum des aeltesten und neuesten Dokuments
     """
     # Validiere Kategorie
@@ -458,7 +458,7 @@ async def upload_finance_document(
     Laedt ein Finanz-Dokument hoch.
 
     **Workflow:**
-    1. Datei-Validierung (Typ, Groesse)
+    1. Datei-Validierung (Typ, Größe)
     2. Upload zu MinIO Object Storage
     3. Datenbank-Eintrag mit Finanz-Kategorie
     4. Optional: OCR-Job starten
@@ -507,7 +507,7 @@ async def upload_finance_document(
     # 4. Magic-Byte Validierung
     is_valid, magic_error, detected_type = verify_magic_bytes(file_content, file.filename)
     if not is_valid:
-        raise HTTPException(status_code=400, detail=magic_error or "Ungueltige Datei")
+        raise HTTPException(status_code=400, detail=magic_error or "Ungültige Datei")
 
     # MIME-Type
     mime_map = {
@@ -647,7 +647,7 @@ async def update_finance_document(
     Bearbeitet Finanz-Felder eines Dokuments.
 
     **Bearbeitbare Felder:**
-    - category: Kategorie aendern
+    - category: Kategorie ändern
     - einspruchsfrist, aktenzeichen, steuernummer, etc.
     - nachzahlung, erstattung
     - document_date, document_number, total_amount
@@ -698,8 +698,8 @@ async def update_finance_document(
 @router.delete(
     "/documents/{document_id}",
     response_model=FinanceDocumentDeleteResponse,
-    summary="Finanz-Dokument loeschen",
-    description="Loescht ein Finanz-Dokument (Soft-Delete)"
+    summary="Finanz-Dokument löschen",
+    description="Löscht ein Finanz-Dokument (Soft-Delete)"
 )
 async def delete_finance_document(
     document_id: UUID = Path(..., description="Dokument-ID"),
@@ -707,10 +707,10 @@ async def delete_finance_document(
     db: AsyncSession = Depends(get_db),
 ) -> FinanceDocumentDeleteResponse:
     """
-    Loescht ein Finanz-Dokument.
+    Löscht ein Finanz-Dokument.
 
     Implementiert Soft-Delete gemaess GDPR-Compliance.
-    Das Dokument wird als geloescht markiert, aber nicht sofort physisch entfernt.
+    Das Dokument wird als gelöscht markiert, aber nicht sofort physisch entfernt.
     """
     service = get_finance_service()
 
@@ -727,7 +727,7 @@ async def delete_finance_document(
             id=document_id,
             deleted=True,
             deleted_at=document.deleted_at or datetime.now(timezone.utc),
-            message="Finanz-Dokument erfolgreich geloescht"
+            message="Finanz-Dokument erfolgreich gelöscht"
         )
 
     except HTTPException:
@@ -740,7 +740,7 @@ async def delete_finance_document(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Loeschen des Dokuments"
+            detail="Fehler beim Löschen des Dokuments"
         )
 
 
@@ -758,7 +758,7 @@ async def get_finance_document(
     """
     Ruft ein einzelnes Finanz-Dokument ab.
 
-    Enthaelt alle Finanz-spezifischen Felder wie
+    Enthält alle Finanz-spezifischen Felder wie
     Einspruchsfrist, Aktenzeichen, Nachzahlung, etc.
     """
     service = get_finance_service()
@@ -796,8 +796,8 @@ async def get_finance_document(
 @router.post(
     "/documents/bulk-delete",
     response_model=FinanceBulkDeleteResponse,
-    summary="Finanz-Dokumente massenhaft loeschen",
-    description="Loescht mehrere Finanz-Dokumente auf einmal (Soft-Delete)"
+    summary="Finanz-Dokumente massenhaft löschen",
+    description="Löscht mehrere Finanz-Dokumente auf einmal (Soft-Delete)"
 )
 async def bulk_delete_finance_documents(
     request: FinanceBulkDeleteRequest,
@@ -805,16 +805,16 @@ async def bulk_delete_finance_documents(
     db: AsyncSession = Depends(get_db),
 ) -> FinanceBulkDeleteResponse:
     """
-    Loescht mehrere Finanz-Dokumente massenhaft.
+    Löscht mehrere Finanz-Dokumente massenhaft.
 
     **Limits:**
     - Maximal 100 Dokumente pro Request
-    - Nur eigene Dokumente koennen geloescht werden
+    - Nur eigene Dokumente können gelöscht werden
 
     **Verhalten:**
     - Soft-Delete gemaess GDPR-Compliance
-    - Teilerfolge moeglich (einige geloescht, einige fehlgeschlagen)
-    - Detaillierte Rueckmeldung pro Dokument
+    - Teilerfolge möglich (einige gelöscht, einige fehlgeschlagen)
+    - Detaillierte Rückmeldung pro Dokument
     """
     service = get_finance_service()
     deleted_ids: list[UUID] = []
@@ -831,7 +831,7 @@ async def bulk_delete_finance_documents(
                 errors.append(f"{doc_id}: Nicht gefunden oder keine Berechtigung")
         except Exception as e:
             failed_ids.append(doc_id)
-            errors.append(f"{doc_id}: {safe_error_detail(e, 'Loeschen')}")
+            errors.append(f"{doc_id}: {safe_error_detail(e, 'Löschen')}")
             logger.warning(
                 "bulk_delete_document_failed",
                 document_id=str(doc_id),
@@ -851,7 +851,7 @@ async def bulk_delete_finance_documents(
         deleted_ids=deleted_ids,
         failed_ids=failed_ids,
         errors=errors,
-        message=f"{len(deleted_ids)} Dokumente geloescht, {len(failed_ids)} fehlgeschlagen"
+        message=f"{len(deleted_ids)} Dokumente gelöscht, {len(failed_ids)} fehlgeschlagen"
     )
 
 
@@ -859,7 +859,7 @@ async def bulk_delete_finance_documents(
     "/documents/bulk-update",
     response_model=FinanceBulkUpdateResponse,
     summary="Finanz-Dokumente massenhaft aktualisieren",
-    description="Aktualisiert Kategorie/Jahr fuer mehrere Dokumente"
+    description="Aktualisiert Kategorie/Jahr für mehrere Dokumente"
 )
 async def bulk_update_finance_documents(
     request: FinanceBulkUpdateRequest,
@@ -870,13 +870,13 @@ async def bulk_update_finance_documents(
     Aktualisiert mehrere Finanz-Dokumente massenhaft.
 
     **Anwendungsfaelle:**
-    - Kategorie aendern (z.B. falsch zugeordnete Dokumente korrigieren)
-    - Jahr aendern (z.B. bei Import-Fehlern)
+    - Kategorie ändern (z.B. falsch zugeordnete Dokumente korrigieren)
+    - Jahr ändern (z.B. bei Import-Fehlern)
     - Steuerart setzen
 
     **Limits:**
     - Maximal 100 Dokumente pro Request
-    - Nur eigene Dokumente koennen aktualisiert werden
+    - Nur eigene Dokumente können aktualisiert werden
     """
     # Validiere Kategorie
     if request.category:
@@ -919,7 +919,7 @@ async def bulk_update_finance_documents(
                 errors.append(f"{doc_id}: Nicht gefunden oder keine Berechtigung")
         except Exception as e:
             failed_ids.append(doc_id)
-            errors.append(f"{doc_id}: {safe_error_detail(e, 'Loeschen')}")
+            errors.append(f"{doc_id}: {safe_error_detail(e, 'Löschen')}")
             logger.warning(
                 "bulk_update_document_failed",
                 document_id=str(doc_id),
@@ -947,7 +947,7 @@ async def bulk_update_finance_documents(
     "/documents/export",
     response_model=FinanceExportResponse,
     summary="Finanz-Dokumente exportieren",
-    description="Startet einen Export-Job fuer Finanz-Dokumente"
+    description="Startet einen Export-Job für Finanz-Dokumente"
 )
 async def export_finance_documents(
     request: FinanceExportRequest,
@@ -955,7 +955,7 @@ async def export_finance_documents(
     db: AsyncSession = Depends(get_db),
 ) -> FinanceExportResponse:
     """
-    Startet einen Export-Job fuer Finanz-Dokumente.
+    Startet einen Export-Job für Finanz-Dokumente.
 
     **Export-Formate:**
     - JSON: Metadaten als JSON-Datei
@@ -969,7 +969,7 @@ async def export_finance_documents(
 
     **Hinweis:**
     Der Export wird asynchron verarbeitet. Bei grossen Exports
-    kann die download_url erst nach kurzer Zeit verfuegbar sein.
+    kann die download_url erst nach kurzer Zeit verfügbar sein.
     """
     from uuid import uuid4 as generate_uuid
     from datetime import timedelta
@@ -985,7 +985,7 @@ async def export_finance_documents(
                 detail=f"Unbekannte Kategorie '{request.category}'"
             )
 
-    # Zaehle Dokumente fuer Export
+    # Zaehle Dokumente für Export
     try:
         # Wenn spezifische IDs angegeben, zaehle diese
         if request.document_ids:
@@ -1003,14 +1003,14 @@ async def export_finance_documents(
         if doc_count == 0:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Keine Dokumente fuer Export gefunden"
+                detail="Keine Dokumente für Export gefunden"
             )
 
         # Generiere Export-ID
         export_id = str(generate_uuid())
 
         # In Produktion: Celery Task starten
-        # Hier: Synchrone Response (fuer kleine Exports)
+        # Hier: Synchrone Response (für kleine Exports)
         logger.info(
             "finance_export_started",
             user_id=str(current_user.id),
@@ -1019,18 +1019,18 @@ async def export_finance_documents(
             document_count=doc_count,
         )
 
-        # Fuer grosse Exports: Celery Task
+        # Für grosse Exports: Celery Task
         # task = export_finance_documents_task.delay(export_id, ...)
         # return FinanceExportResponse(export_id=export_id, status="pending", ...)
 
-        # Fuer kleine Exports (< 50 Dokumente): Direkt-URL
+        # Für kleine Exports (< 50 Dokumente): Direkt-URL
         # In Produktion wuerde hier der tatsaechliche Export stattfinden
         expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
 
         return FinanceExportResponse(
             export_id=export_id,
             status="processing",
-            download_url=None,  # Wird spaeter via WebSocket/Polling bereitgestellt
+            download_url=None,  # Wird später via WebSocket/Polling bereitgestellt
             document_count=doc_count,
             file_size_bytes=None,
             expires_at=expires_at,
@@ -1054,18 +1054,18 @@ async def export_finance_documents(
 # DEADLINE ENDPOINTS
 # =============================================================================
 
-# Kategorie-Labels fuer Fristen
+# Kategorie-Labels für Fristen
 CATEGORY_LABELS = {
     "steuerbescheide": "Steuerbescheide",
     "vorauszahlungen": "Vorauszahlungen",
-    "steuererklaerungen": "Steuererklaerungen",
+    "steuererklärungen": "Steuererklärungen",
     "lohn_gehalt": "Lohn/Gehalt",
     "rente_pension": "Rente/Pension",
     "sozialversicherung": "Sozialversicherung",
     "versicherungen_privat": "Versicherungen (Privat)",
     "versicherungen_kfz": "KFZ-Versicherungen",
     "versicherungen_sonstige": "Sonstige Versicherungen",
-    "vertraege_abos": "Vertraege & Abos",
+    "verträge_abos": "Verträge & Abos",
     "rechnungen_belege": "Rechnungen & Belege",
     "bankunterlagen": "Bankunterlagen",
     "immobilien": "Immobilien",
@@ -1077,12 +1077,12 @@ CATEGORY_LABELS = {
     "/deadlines",
     response_model=FinanceDeadlineListResponse,
     summary="Finanz-Fristen auflisten",
-    description="Listet alle anstehenden und ueberfaelligen Fristen"
+    description="Listet alle anstehenden und überfälligen Fristen"
 )
 async def list_finance_deadlines(
-    year: Optional[str] = Query(None, description="Nur Fristen fuer dieses Jahr"),
-    category: Optional[str] = Query(None, description="Nur Fristen fuer diese Kategorie"),
-    include_past: bool = Query(True, description="Ueberfaellige Fristen einschliessen"),
+    year: Optional[str] = Query(None, description="Nur Fristen für dieses Jahr"),
+    category: Optional[str] = Query(None, description="Nur Fristen für diese Kategorie"),
+    include_past: bool = Query(True, description="Überfällige Fristen einschließen"),
     days_ahead: int = Query(90, ge=1, le=365, description="Tage in die Zukunft"),
     current_user: User = Depends(require_finance_read),
     db: AsyncSession = Depends(get_db),
@@ -1091,13 +1091,13 @@ async def list_finance_deadlines(
     Listet alle Finanz-Fristen auf.
 
     **Filter:**
-    - year: Nur Fristen fuer ein bestimmtes Jahr
-    - category: Nur Fristen fuer eine bestimmte Kategorie
-    - include_past: Ueberfaellige Fristen einschliessen (Standard: ja)
+    - year: Nur Fristen für ein bestimmtes Jahr
+    - category: Nur Fristen für eine bestimmte Kategorie
+    - include_past: Überfällige Fristen einschließen (Standard: ja)
     - days_ahead: Wie viele Tage in die Zukunft schauen (Standard: 90)
 
     **Sortierung:**
-    Fristen werden nach Dringlichkeit sortiert (ueberfaellig zuerst, dann nach Datum).
+    Fristen werden nach Dringlichkeit sortiert (überfällig zuerst, dann nach Datum).
     """
     from datetime import timedelta
     from sqlalchemy import select, and_, or_
@@ -1146,7 +1146,7 @@ async def list_finance_deadlines(
             if not doc.extracted_data:
                 continue
 
-            # Einspruchsfrist pruefen
+            # Einspruchsfrist prüfen
             einspruchsfrist = doc.extracted_data.get("einspruchsfrist")
             if einspruchsfrist:
                 try:
@@ -1184,7 +1184,7 @@ async def list_finance_deadlines(
                 except (ValueError, TypeError) as e:
                     logger.debug("invalid_einspruchsfrist_date_skipped", document_id=str(doc.id), error_type=type(e).__name__)
 
-            # Zahlungsfrist pruefen (falls vorhanden)
+            # Zahlungsfrist prüfen (falls vorhanden)
             zahlungsfrist = doc.extracted_data.get("zahlungsfrist")
             if zahlungsfrist:
                 try:
@@ -1220,7 +1220,7 @@ async def list_finance_deadlines(
                 except (ValueError, TypeError) as e:
                     logger.debug("invalid_zahlungsfrist_date_skipped", document_id=str(doc.id), error_type=type(e).__name__)
 
-        # Sortieren: Ueberfaellig zuerst, dann nach Datum
+        # Sortieren: Überfällig zuerst, dann nach Datum
         deadline_items.sort(key=lambda x: (x.days_until >= 0, x.days_until))
 
         # Zaehlen
@@ -1263,38 +1263,38 @@ async def list_finance_deadlines(
     "/documents/{document_id}/history",
     response_model=FinanceDocumentHistoryResponse,
     summary="Dokument-History abrufen",
-    description="Ruft die vollstaendige Aenderungs-History eines Finanz-Dokuments ab"
+    description="Ruft die vollständige Änderungs-History eines Finanz-Dokuments ab"
 )
 async def get_document_history(
     document_id: UUID = Path(..., description="Dokument-ID"),
-    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl Eintraege"),
+    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl Einträge"),
     current_user: User = Depends(require_finance_read),
     db: AsyncSession = Depends(get_db),
 ) -> FinanceDocumentHistoryResponse:
     """
-    Ruft die vollstaendige Aenderungs-History eines Finanz-Dokuments ab.
+    Ruft die vollständige Änderungs-History eines Finanz-Dokuments ab.
 
     **Aktionstypen:**
     - created: Dokument erstellt
     - updated: Dokument bearbeitet
-    - deleted: Dokument geloescht
+    - deleted: Dokument gelöscht
     - restored: Dokument wiederhergestellt
-    - category_changed: Kategorie geaendert
-    - year_changed: Jahr geaendert
+    - category_changed: Kategorie geändert
+    - year_changed: Jahr geändert
     - ocr_completed: OCR-Verarbeitung abgeschlossen
     - deadline_set: Frist gesetzt
     - deadline_removed: Frist entfernt
     - bulk_update: Massenaktualisierung
 
     **Sortierung:**
-    Neueste Eintraege zuerst.
+    Neueste Einträge zuerst.
     """
     from sqlalchemy import select, and_
 
     service = get_finance_service()
 
     try:
-        # Dokument abrufen und Berechtigung pruefen
+        # Dokument abrufen und Berechtigung prüfen
         document = await service.get_finance_document(db, current_user.id, document_id)
 
         if not document:
@@ -1303,7 +1303,7 @@ async def get_document_history(
                 detail=f"Dokument {document_id} nicht gefunden"
             )
 
-        # History-Eintraege abrufen
+        # History-Einträge abrufen
         query = (
             select(FinanceDocumentHistory)
             .where(FinanceDocumentHistory.document_id == document_id)
@@ -1314,7 +1314,7 @@ async def get_document_history(
         result = await db.execute(query)
         history_entries = result.scalars().all()
 
-        # Benutzer-Infos laden (Join waere effizienter, aber fuer Einfachheit)
+        # Benutzer-Infos laden (Join waere effizienter, aber für Einfachheit)
         from app.db.models import User as UserModel
 
         items: list[FinanceDocumentHistoryItem] = []
@@ -1389,26 +1389,26 @@ class AnomalyItem(BaseModel):
     severity: str = Field(..., description="Schweregrad (low/medium/high/critical)")
     description: str = Field(..., description="Beschreibung der Anomalie")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Konfidenz 0-1")
-    details: dict = Field(default_factory=dict, description="Zusaetzliche Details")
+    details: dict = Field(default_factory=dict, description="Zusätzliche Details")
 
 
 class AnomalyCheckResponse(BaseModel):
-    """Response fuer Anomalie-Check eines Dokuments."""
+    """Response für Anomalie-Check eines Dokuments."""
     document_id: UUID
     document_name: str
     is_suspicious: bool = Field(..., description="Verdaechtig ja/nein")
     overall_risk_score: float = Field(..., ge=0.0, le=1.0, description="Gesamt-Risikoscore")
     anomaly_count: int = Field(..., description="Anzahl erkannter Anomalien")
     anomalies: List[AnomalyItem] = Field(default_factory=list, description="Liste der Anomalien")
-    checked_at: datetime = Field(..., description="Zeitpunkt der Pruefung")
+    checked_at: datetime = Field(..., description="Zeitpunkt der Prüfung")
     message: str = Field(..., description="Status-Nachricht")
 
 
 class AnomalyDashboardStats(BaseModel):
-    """Statistiken fuer Anomalie-Dashboard."""
-    total_documents_checked: int = Field(..., description="Gesamtzahl gepruefter Dokumente")
+    """Statistiken für Anomalie-Dashboard."""
+    total_documents_checked: int = Field(..., description="Gesamtzahl geprüfter Dokumente")
     suspicious_documents: int = Field(..., description="Anzahl verdaechtiger Dokumente")
-    pending_review: int = Field(..., description="Zur Pruefung ausstehend")
+    pending_review: int = Field(..., description="Zur Prüfung ausstehend")
     resolved: int = Field(..., description="Bereits bearbeitet")
     average_risk_score: float = Field(..., description="Durchschnittlicher Risikoscore")
     anomaly_type_distribution: dict = Field(default_factory=dict, description="Verteilung nach Typ")
@@ -1428,7 +1428,7 @@ class AnomalyDocumentSummary(BaseModel):
 
 
 class AnomalyDashboardResponse(BaseModel):
-    """Response fuer Anomalie-Dashboard."""
+    """Response für Anomalie-Dashboard."""
     stats: AnomalyDashboardStats
     recent_anomalies: List[AnomalyDocumentSummary] = Field(
         default_factory=list, description="Neueste verdaechtige Dokumente"
@@ -1439,8 +1439,8 @@ class AnomalyDashboardResponse(BaseModel):
 @router.post(
     "/anomalies/check/{document_id}",
     response_model=AnomalyCheckResponse,
-    summary="Dokument auf Anomalien pruefen",
-    description="Prueft ein Finanz-Dokument manuell auf Anomalien"
+    summary="Dokument auf Anomalien prüfen",
+    description="Prüft ein Finanz-Dokument manuell auf Anomalien"
 )
 async def check_document_anomalies(
     document_id: UUID = Path(..., description="Dokument-ID"),
@@ -1448,7 +1448,7 @@ async def check_document_anomalies(
     db: AsyncSession = Depends(get_db),
 ) -> AnomalyCheckResponse:
     """
-    Prueft ein Finanz-Dokument manuell auf Anomalien.
+    Prüft ein Finanz-Dokument manuell auf Anomalien.
 
     **Erkannte Anomalie-Typen:**
     - HIGH_AMOUNT: Ungewoehnlich hoher Betrag
@@ -1458,7 +1458,7 @@ async def check_document_anomalies(
     - ROUND_AMOUNT: Verdaechtiger runder Betrag
     - WEEKEND_INVOICE: Rechnung am Wochenende
     - MISSING_VAT: Fehlende Umsatzsteuer
-    - AMOUNT_MISMATCH: Betrag stimmt nicht ueberein
+    - AMOUNT_MISMATCH: Betrag stimmt nicht überein
     - FUTURE_DATE: Datum in der Zukunft
 
     **Risikoscore:**
@@ -1469,7 +1469,7 @@ async def check_document_anomalies(
     """
     from app.services.ai.anomaly_detection_service import get_anomaly_detection_service
 
-    # Dokument abrufen und Berechtigung pruefen
+    # Dokument abrufen und Berechtigung prüfen
     service = get_finance_service()
     document = await service.get_finance_document(db, current_user.id, document_id)
 
@@ -1526,7 +1526,7 @@ async def check_document_anomalies(
             anomaly_count=len(result.anomalies),
             anomalies=anomaly_items,
             checked_at=datetime.now(timezone.utc),
-            message="Anomalie-Pruefung abgeschlossen" if not result.is_suspicious
+            message="Anomalie-Prüfung abgeschlossen" if not result.is_suspicious
                     else f"ACHTUNG: {len(result.anomalies)} Anomalie(n) erkannt!"
         )
 
@@ -1540,7 +1540,7 @@ async def check_document_anomalies(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler bei der Anomalie-Pruefung"
+            detail="Fehler bei der Anomalie-Prüfung"
         )
 
 
@@ -1548,7 +1548,7 @@ async def check_document_anomalies(
     "/anomalies/dashboard",
     response_model=AnomalyDashboardResponse,
     summary="Anomalie-Dashboard",
-    description="Zeigt Uebersicht aller erkannten Anomalien"
+    description="Zeigt Übersicht aller erkannten Anomalien"
 )
 async def get_anomaly_dashboard(
     year: Optional[int] = Query(None, ge=2000, le=2100, description="Filter nach Jahr"),
@@ -1557,7 +1557,7 @@ async def get_anomaly_dashboard(
     db: AsyncSession = Depends(get_db),
 ) -> AnomalyDashboardResponse:
     """
-    Zeigt eine Uebersicht aller erkannten Anomalien.
+    Zeigt eine Übersicht aller erkannten Anomalien.
 
     **Dashboard enthält:**
     - Gesamtstatistiken (geprüft, verdächtig, ausstehend, gelöst)
@@ -1588,7 +1588,7 @@ async def get_anomaly_dashboard(
         result = await db.execute(base_query)
         documents = result.scalars().all()
 
-        # Sammle alle Document-IDs fuer AIDecision Pre-Fetch
+        # Sammle alle Document-IDs für AIDecision Pre-Fetch
         doc_ids_with_anomalies: list[UUID] = []
         for doc in documents:
             if doc.extracted_data:
@@ -1596,7 +1596,7 @@ async def get_anomaly_dashboard(
                 if anomalies and anomalies.get("is_suspicious"):
                     doc_ids_with_anomalies.append(doc.id)
 
-        # Pre-Fetch AIDecisions fuer alle verdaechtigen Dokumente
+        # Pre-Fetch AIDecisions für alle verdaechtigen Dokumente
         ai_decision_status_map: dict[UUID, str] = {}
         if doc_ids_with_anomalies:
             try:
@@ -1611,7 +1611,7 @@ async def get_anomaly_dashboard(
                 for row in ai_decisions_result:
                     ai_decision_status_map[row.document_id] = row.status
             except Exception:
-                # AIDecision Tabelle existiert moeglicherweise nicht
+                # AIDecision Tabelle existiert möglicherweise nicht
                 pass
 
         # Statistiken berechnen
@@ -1664,7 +1664,7 @@ async def get_anomaly_dashboard(
         # Durchschnittlicher Risikoscore
         avg_risk = sum(risk_scores) / len(risk_scores) if risk_scores else 0.0
 
-        # AIDecisions fuer Status zaehlen
+        # AIDecisions für Status zaehlen
         pending_count = 0
         resolved_count = 0
         try:
@@ -1690,7 +1690,7 @@ async def get_anomaly_dashboard(
             )
             resolved_count = resolved_result.scalar() or 0
         except Exception:
-            # AIDecision Tabelle existiert moeglicherweise nicht
+            # AIDecision Tabelle existiert möglicherweise nicht
             pass
 
         logger.info(
@@ -1711,7 +1711,7 @@ async def get_anomaly_dashboard(
                 anomaly_type_distribution=type_distribution,
             ),
             recent_anomalies=recent_anomalies,
-            message=f"{suspicious_docs} verdaechtige Dokumente von {total_checked} geprueften"
+            message=f"{suspicious_docs} verdaechtige Dokumente von {total_checked} geprüften"
         )
 
     except Exception as e:
@@ -1756,8 +1756,8 @@ class PaymentAnomalySchema(BaseModel):
     expected_amount: Optional[float] = Field(None, description="Erwarteter Betrag")
     description: str = Field("", description="Beschreibung")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Konfidenz")
-    related_entity_id: Optional[str] = Field(None, description="Verknuepfte Entity-ID")
-    related_document_id: Optional[str] = Field(None, description="Verknuepftes Dokument-ID")
+    related_entity_id: Optional[str] = Field(None, description="Verknüpfte Entity-ID")
+    related_document_id: Optional[str] = Field(None, description="Verknüpftes Dokument-ID")
 
 
 class WaterfallChartDataSchema(BaseModel):
@@ -1793,8 +1793,8 @@ class RollingForecastSchema(BaseModel):
 
     # Details
     bottlenecks: List[LiquidityBottleneckSchema] = Field(default_factory=list)
-    major_inflows: List[dict] = Field(default_factory=list, description="Groesste Eingaenge")
-    major_outflows: List[dict] = Field(default_factory=list, description="Groesste Ausgaben")
+    major_inflows: List[dict] = Field(default_factory=list, description="Größte Eingaenge")
+    major_outflows: List[dict] = Field(default_factory=list, description="Größte Ausgaben")
 
     # Vertrauensniveau
     forecast_confidence: str = Field(..., description="Prognose-Vertrauen (high/medium/low)")
@@ -1864,10 +1864,10 @@ async def get_liquidity_forecast(
 
     **Features:**
     - Rolling-Window Forecasts (30/60/90 Tage)
-    - Konfidenzintervalle fuer alle Prognosen
+    - Konfidenzintervalle für alle Prognosen
     - Risiko-Bewertung und Engpass-Vorhersage
     - Anomalie-Erkennung in Zahlungsmustern
-    - Wasserfall-Chart Daten fuer Visualisierung
+    - Wasserfall-Chart Daten für Visualisierung
     - Handlungsempfehlungen
 
     **Risikostufen:**
@@ -2056,7 +2056,7 @@ async def predict_bottlenecks(
         )
 
         if not bottlenecks:
-            message = f"Keine Liquiditaetsengpaesse in den naechsten {days_ahead} Tagen erwartet"
+            message = f"Keine Liquiditaetsengpaesse in den nächsten {days_ahead} Tagen erwartet"
         elif critical_count > 0:
             message = f"ACHTUNG: {critical_count} kritische Engpaesse erkannt!"
         else:
@@ -2085,7 +2085,7 @@ async def predict_bottlenecks(
     "/liquidity/waterfall",
     response_model=WaterfallChartResponse,
     summary="Wasserfall-Chart Daten abrufen",
-    description="Daten fuer Cashflow-Wasserfall-Visualisierung"
+    description="Daten für Cashflow-Wasserfall-Visualisierung"
 )
 async def get_waterfall_data(
     bank_account_id: Optional[UUID] = Query(None, description="Bankkonto-ID (optional)"),
@@ -2095,7 +2095,7 @@ async def get_waterfall_data(
     db: AsyncSession = Depends(get_db),
 ) -> WaterfallChartResponse:
     """
-    Erstellt Daten fuer Wasserfall-Chart Visualisierung.
+    Erstellt Daten für Wasserfall-Chart Visualisierung.
 
     **Chart-Struktur:**
     - Anfangssaldo (starting)
@@ -2188,7 +2188,7 @@ async def detect_payment_anomalies(
     - pattern_break: Musterbruch im Zahlungsverhalten
 
     **Konfidenz:**
-    - > 0.8: Hohe Konfidenz - sollte geprueft werden
+    - > 0.8: Hohe Konfidenz - sollte geprüft werden
     - 0.5-0.8: Mittlere Konfidenz
     - < 0.5: Niedrige Konfidenz
     """
@@ -2234,7 +2234,7 @@ async def detect_payment_anomalies(
         elif high_confidence_count > 0:
             message = f"{high_confidence_count} Anomalien mit hoher Konfidenz gefunden"
         else:
-            message = f"{len(anomalies)} potenzielle Anomalien zur Pruefung"
+            message = f"{len(anomalies)} potenzielle Anomalien zur Prüfung"
 
         return AnomalyDetectionResponse(
             anomalies=anomaly_schemas,

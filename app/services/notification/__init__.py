@@ -3,7 +3,7 @@
 Beinhaltet:
 - NotificationRuleEngine: Event-basierte Regel-Auswertung
 - SkontoNotificationService: Multi-Channel Skonto-Deadline-Alerts
-- UnifiedNotificationHub: Zentraler Orchestrator fuer alle Kanaele
+- UnifiedNotificationHub: Zentraler Orchestrator für alle Kanaele
 - NotificationEscalationService: Zeitbasierte Eskalationsketten
 - NotificationDeduplicationService: Duplikat-Praevention
 """

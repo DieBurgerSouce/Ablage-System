@@ -1,7 +1,7 @@
 """
-Admin-API fuer Mandanten-Verwaltung.
+Admin-API für Mandanten-Verwaltung.
 
-Nur fuer System-Administratoren zugaenglich.
+Nur für System-Administratoren zugaenglich.
 """
 
 import structlog
@@ -72,7 +72,7 @@ router = APIRouter(prefix="/admin/tenants", tags=["tenant-admin"])
 
 
 class TenantConfigResponse(BaseModel):
-    """Response-Schema fuer Mandanten-Konfiguration."""
+    """Response-Schema für Mandanten-Konfiguration."""
 
     id: UUID
     company_id: UUID
@@ -88,7 +88,7 @@ class TenantConfigResponse(BaseModel):
 
 
 class TenantConfigUpdate(BaseModel):
-    """Request-Schema fuer Konfiguration-Update."""
+    """Request-Schema für Konfiguration-Update."""
 
     features: Optional[Dict[str, object]] = None
     quotas: Optional[Dict[str, object]] = None
@@ -96,14 +96,14 @@ class TenantConfigUpdate(BaseModel):
 
 
 class TenantFeaturesResponse(BaseModel):
-    """Response-Schema fuer Feature-Flags."""
+    """Response-Schema für Feature-Flags."""
 
     company_id: UUID
     features: Dict[str, bool]
 
 
 class TenantUsageResponse(BaseModel):
-    """Response-Schema fuer Quota-Nutzung."""
+    """Response-Schema für Quota-Nutzung."""
 
     company_id: UUID
     quotas: Dict[str, object]
@@ -117,7 +117,7 @@ class TenantUsageResponse(BaseModel):
     "/{company_id}/config",
     response_model=TenantConfigResponse,
     summary="Mandanten-Konfiguration abrufen",
-    description="Holt die Konfiguration eines Mandanten (nur fuer Superuser)",
+    description="Holt die Konfiguration eines Mandanten (nur für Superuser)",
 )
 async def get_tenant_config(
     company_id: UUID,
@@ -179,7 +179,7 @@ async def get_tenant_config(
     "/{company_id}/config",
     response_model=TenantConfigResponse,
     summary="Mandanten-Konfiguration aktualisieren",
-    description="Aktualisiert Features, Quotas oder Branding eines Mandanten (nur fuer Superuser)",
+    description="Aktualisiert Features, Quotas oder Branding eines Mandanten (nur für Superuser)",
 )
 async def update_tenant_config(
     company_id: UUID,
@@ -248,7 +248,7 @@ async def update_tenant_config(
     "/{company_id}/features",
     response_model=TenantFeaturesResponse,
     summary="Feature-Flags abrufen",
-    description="Holt die Feature-Flags eines Mandanten (nur fuer Superuser)",
+    description="Holt die Feature-Flags eines Mandanten (nur für Superuser)",
 )
 async def get_tenant_features(
     company_id: UUID,
@@ -298,7 +298,7 @@ async def get_tenant_features(
     "/{company_id}/usage",
     response_model=TenantUsageResponse,
     summary="Quota-Nutzung abrufen",
-    description="Holt eine Uebersicht der Quota-Nutzung eines Mandanten (nur fuer Superuser)",
+    description="Holt eine Übersicht der Quota-Nutzung eines Mandanten (nur für Superuser)",
 )
 async def get_tenant_usage(
     company_id: UUID,
@@ -379,7 +379,7 @@ async def get_tenant_usage(
     "/{company_id}/deactivate",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Mandant deaktivieren",
-    description="Deaktiviert einen Mandanten (nur fuer Superuser)",
+    description="Deaktiviert einen Mandanten (nur für Superuser)",
 )
 async def deactivate_tenant(
     company_id: UUID,
@@ -431,7 +431,7 @@ async def deactivate_tenant(
     "/{company_id}/activate",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Mandant aktivieren",
-    description="Aktiviert einen deaktivierten Mandanten (nur fuer Superuser)",
+    description="Aktiviert einen deaktivierten Mandanten (nur für Superuser)",
 )
 async def activate_tenant(
     company_id: UUID,

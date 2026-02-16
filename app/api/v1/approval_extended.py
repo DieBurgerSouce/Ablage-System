@@ -45,7 +45,7 @@ router = APIRouter(
 
 
 class ConditionSchema(BaseModel):
-    """Schema fuer eine einzelne Bedingung."""
+    """Schema für eine einzelne Bedingung."""
 
     field: str = Field(
         ...,
@@ -67,14 +67,14 @@ class ConditionSchema(BaseModel):
         allowed = {"gt", "gte", "lt", "lte", "eq", "neq", "in", "not_in"}
         if v not in allowed:
             raise ValueError(
-                f"Ungueltiger Operator: {v}. "
+                f"Ungültiger Operator: {v}. "
                 f"Erlaubt: {', '.join(sorted(allowed))}"
             )
         return v
 
 
 class ApproverSchema(BaseModel):
-    """Schema fuer einen zusaetzlichen Genehmiger."""
+    """Schema für einen zusätzlichen Genehmiger."""
 
     type: str = Field(
         ...,
@@ -108,11 +108,11 @@ class ConditionalRuleCreateRequest(BaseModel):
     additional_approvers: List[ApproverSchema] = Field(
         ...,
         min_length=1,
-        description="Zusaetzliche Genehmiger",
+        description="Zusätzliche Genehmiger",
     )
     priority_override: Optional[str] = Field(
         None,
-        description="Optionale Prioritaets-Ueberschreibung",
+        description="Optionale Prioritaets-Überschreibung",
     )
     is_active: bool = Field(
         True,
@@ -121,7 +121,7 @@ class ConditionalRuleCreateRequest(BaseModel):
 
 
 class ConditionalRuleResponse(BaseModel):
-    """Response fuer eine bedingte Genehmigungsregel."""
+    """Response für eine bedingte Genehmigungsregel."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -179,7 +179,7 @@ class EscalationRuleCreateRequest(BaseModel):
 
 
 class EscalationRuleResponse(BaseModel):
-    """Response fuer eine Eskalationsregel."""
+    """Response für eine Eskalationsregel."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -228,7 +228,7 @@ class SubstitutionCreateRequest(BaseModel):
 
 
 class SubstitutionResponse(BaseModel):
-    """Response fuer eine Stellvertretung."""
+    """Response für eine Stellvertretung."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -251,7 +251,7 @@ class SubstitutionResponse(BaseModel):
 
 
 class SLADashboardResponse(BaseModel):
-    """Response fuer SLA-Dashboard."""
+    """Response für SLA-Dashboard."""
 
     avg_approval_hours: float
     median_approval_hours: float
@@ -264,7 +264,7 @@ class SLADashboardResponse(BaseModel):
 
 
 class SLABreachResponse(BaseModel):
-    """Response fuer eine SLA-Verletzung."""
+    """Response für eine SLA-Verletzung."""
 
     request_id: str
     title: Optional[str]
@@ -351,14 +351,14 @@ async def create_conditional_rule(
 @router.delete(
     "/conditional-rules/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Bedingte Regel loeschen",
+    summary="Bedingte Regel löschen",
 )
 async def delete_conditional_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loescht eine bedingte Genehmigungsregel."""
+    """Löscht eine bedingte Genehmigungsregel."""
     from sqlalchemy import and_, select
 
     stmt = select(ConditionalApprovalRule).where(
@@ -462,14 +462,14 @@ async def create_escalation_rule(
 @router.delete(
     "/escalation-rules/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Eskalationsregel loeschen",
+    summary="Eskalationsregel löschen",
 )
 async def delete_escalation_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loescht eine Eskalationsregel."""
+    """Löscht eine Eskalationsregel."""
     from sqlalchemy import and_, select
 
     stmt = select(EscalationRule).where(
@@ -555,14 +555,14 @@ async def create_substitution(
 @router.delete(
     "/substitutions/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Stellvertretung loeschen",
+    summary="Stellvertretung löschen",
 )
 async def delete_substitution(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loescht eine Stellvertretung."""
+    """Löscht eine Stellvertretung."""
     service = EscalationService(db)
     deleted = await service.delete_substitution(
         rule_id, current_user.company_id
@@ -577,14 +577,14 @@ async def delete_substitution(
 
 @router.get(
     "/substitutions/active/{user_id}",
-    summary="Aktive Stellvertretung fuer User",
+    summary="Aktive Stellvertretung für User",
 )
 async def get_active_substitution(
     user_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, object]:
-    """Findet die aktive Stellvertretung fuer einen User."""
+    """Findet die aktive Stellvertretung für einen User."""
     service = EscalationService(db)
     sub = await service.find_substitute(
         db, user_id, current_user.company_id

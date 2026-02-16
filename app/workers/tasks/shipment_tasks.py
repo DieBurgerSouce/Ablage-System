@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Celery Tasks fuer Sendungsverfolgung.
+"""Celery Tasks für Sendungsverfolgung.
 
 Automatische Tracking-Updates:
-- Stuendlich: Aktive Sendungen aktualisieren
-- Bei Aenderung: Benachrichtigung senden
-- Taeglich: Statistik-Generierung
+- Stündlich: Aktive Sendungen aktualisieren
+- Bei Änderung: Benachrichtigung senden
+- Täglich: Statistik-Generierung
 
 Carrier:
 - DHL, DPD, Hermes, UPS, GLS, FedEx, Deutsche Post
@@ -30,7 +30,7 @@ logger = structlog.get_logger(__name__)
 
 
 def run_async(coro):
-    """Helper um async Code in Celery auszufuehren."""
+    """Helper um async Code in Celery auszuführen."""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -49,7 +49,7 @@ def run_async(coro):
 def refresh_active_shipments(self, company_id: Optional[str] = None) -> dict:
     """Aktualisiert alle aktiven Sendungen.
 
-    Wird stuendlich ausgefuehrt (via Celery Beat).
+    Wird stündlich ausgeführt (via Celery Beat).
 
     Args:
         company_id: Optional Company ID. Wenn None, alle Companies.
@@ -61,7 +61,7 @@ def refresh_active_shipments(self, company_id: Optional[str] = None) -> dict:
 
 
 async def _refresh_active_shipments(company_id_str: Optional[str] = None) -> dict:
-    """Async Implementation fuer refresh_active_shipments."""
+    """Async Implementation für refresh_active_shipments."""
     service = CarrierService()
     total_updated = 0
     total_failed = 0
@@ -80,7 +80,7 @@ async def _refresh_active_shipments(company_id_str: Optional[str] = None) -> dic
 
             for company_id in company_ids:
                 try:
-                    # Hole aktive Sendungen (nicht zugestellt/zurueck)
+                    # Hole aktive Sendungen (nicht zugestellt/zurück)
                     query = select(Shipment).where(
                         and_(
                             Shipment.company_id == company_id,
@@ -108,12 +108,12 @@ async def _refresh_active_shipments(company_id_str: Optional[str] = None) -> dic
                                 save_to_db=True,
                             )
 
-                            # Pruefen ob Status sich geaendert hat
+                            # Prüfen ob Status sich geändert hat
                             new_status = tracking_result["current_status"].value
                             if old_status != new_status:
                                 status_changes += 1
 
-                                # Benachrichtigung bei wichtigen Status-Aenderungen
+                                # Benachrichtigung bei wichtigen Status-Änderungen
                                 await _notify_status_change(
                                     db, shipment, old_status, new_status
                                 )
@@ -179,7 +179,7 @@ def refresh_single_shipment(
 
 
 async def _refresh_single_shipment(shipment_id: str, company_id: str) -> dict:
-    """Async Implementation fuer refresh_single_shipment."""
+    """Async Implementation für refresh_single_shipment."""
     service = CarrierService()
 
     try:
@@ -190,7 +190,7 @@ async def _refresh_single_shipment(shipment_id: str, company_id: str) -> dict:
                 return {"success": False, "error": "Sendung nicht gefunden"}
 
             if shipment.deleted_at:
-                return {"success": False, "error": "Sendung geloescht"}
+                return {"success": False, "error": "Sendung gelöscht"}
 
             old_status = shipment.status
 
@@ -233,11 +233,11 @@ async def _refresh_single_shipment(shipment_id: str, company_id: str) -> dict:
     queue="maintenance",
 )
 def check_delayed_shipments(self) -> dict:
-    """Prueft auf verspaetete Sendungen.
+    """Prüft auf verspätete Sendungen.
 
-    Wird taeglich ausgefuehrt (via Celery Beat).
+    Wird täglich ausgeführt (via Celery Beat).
     Benachrichtigt bei:
-    - Sendungen die laenger als 5 Tage unterwegs sind
+    - Sendungen die länger als 5 Tage unterwegs sind
     - Sendungen mit Exception-Status
 
     Returns:
@@ -247,7 +247,7 @@ def check_delayed_shipments(self) -> dict:
 
 
 async def _check_delayed_shipments() -> dict:
-    """Async Implementation fuer check_delayed_shipments."""
+    """Async Implementation für check_delayed_shipments."""
     delayed_count = 0
     exception_count = 0
     notifications_sent = 0
@@ -260,7 +260,7 @@ async def _check_delayed_shipments() -> dict:
         company_ids = [row[0] for row in result.all()]
 
         for company_id in company_ids:
-            # Verspaetete Sendungen (>5 Tage in Transit)
+            # Verspätete Sendungen (>5 Tage in Transit)
             cutoff = datetime.now(timezone.utc) - timedelta(days=5)
             delayed_query = select(Shipment).where(
                 and_(
@@ -312,9 +312,9 @@ async def _check_delayed_shipments() -> dict:
     queue="maintenance",
 )
 def generate_shipment_statistics(self, company_id: str) -> dict:
-    """Generiert Sendungsstatistiken fuer eine Company.
+    """Generiert Sendungsstatistiken für eine Company.
 
-    Wird woechentlich ausgefuehrt (via Celery Beat).
+    Wird wöchentlich ausgeführt (via Celery Beat).
 
     Args:
         company_id: Company ID
@@ -326,7 +326,7 @@ def generate_shipment_statistics(self, company_id: str) -> dict:
 
 
 async def _generate_statistics(company_id_str: str) -> dict:
-    """Async Implementation fuer generate_shipment_statistics."""
+    """Async Implementation für generate_shipment_statistics."""
     company_id = UUID(company_id_str)
     service = CarrierService()
 
@@ -359,8 +359,8 @@ async def _notify_status_change(
     old_status: str,
     new_status: str,
 ) -> None:
-    """Sendet Benachrichtigung bei Status-Aenderung."""
-    # Wichtige Status-Aenderungen
+    """Sendet Benachrichtigung bei Status-Änderung."""
+    # Wichtige Status-Änderungen
     important_transitions = [
         (ShipmentStatusEnum.IN_TRANSIT.value, ShipmentStatusEnum.OUT_FOR_DELIVERY.value),
         (None, ShipmentStatusEnum.DELIVERED.value),  # Any -> Delivered
@@ -396,8 +396,8 @@ async def _notify_status_change(
             message = f"Bei Sendung {shipment.tracking_number} ({shipment.carrier.upper()}) ist ein Problem aufgetreten."
         elif new_status == ShipmentStatusEnum.RETURNED.value:
             notification_type = "SHIPMENT_RETURNED"
-            title = "Sendung zurueckgeschickt"
-            message = f"Sendung {shipment.tracking_number} ({shipment.carrier.upper()}) wurde zurueckgeschickt."
+            title = "Sendung zurückgeschickt"
+            message = f"Sendung {shipment.tracking_number} ({shipment.carrier.upper()}) wurde zurückgeschickt."
         else:
             return
 
@@ -437,7 +437,7 @@ async def _send_delay_notification(
     db: AsyncSession,
     shipment: Shipment,
 ) -> None:
-    """Sendet Benachrichtigung bei verspaeteter Sendung."""
+    """Sendet Benachrichtigung bei verspäteter Sendung."""
     try:
         notification_service = NotificationService()
 
@@ -447,7 +447,7 @@ async def _send_delay_notification(
             db=db,
             company_id=shipment.company_id,
             notification_type="SHIPMENT_DELAYED",
-            title="Verspaetete Sendung",
+            title="Verspätete Sendung",
             message=f"Sendung {shipment.tracking_number} ({shipment.carrier.upper()}) ist seit {days_in_transit} Tagen unterwegs.",
             reference_type="shipment",
             reference_id=shipment.id,

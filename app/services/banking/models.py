@@ -1,6 +1,6 @@
 """Pydantic schemas for Banking Integration.
 
-Definiert alle Request/Response-Modelle fuer die Banking-API.
+Definiert alle Request/Response-Modelle für die Banking-API.
 """
 
 from datetime import date, datetime
@@ -20,12 +20,12 @@ class BankAccountType(str, Enum):
     """Kontotyp."""
     CHECKING = "checking"  # Girokonto
     SAVINGS = "savings"  # Sparkonto
-    BUSINESS = "business"  # Geschaeftskonto
+    BUSINESS = "business"  # Geschäftskonto
     CREDIT = "credit"  # Kreditkarte
 
 
 class ImportFormat(str, Enum):
-    """Unterstuetzte Import-Formate."""
+    """Unterstützte Import-Formate."""
     MT940 = "mt940"  # SWIFT Standard
     CAMT053 = "camt053"  # ISO 20022 XML
     CSV_GENERIC = "csv_generic"  # Generisches CSV
@@ -41,11 +41,11 @@ class ImportFormat(str, Enum):
 
 class TransactionType(str, Enum):
     """Transaktionstyp."""
-    TRANSFER = "transfer"  # Ueberweisung
+    TRANSFER = "transfer"  # Überweisung
     DIRECT_DEBIT = "direct_debit"  # Lastschrift
     CARD = "card"  # Kartenzahlung
     CASH = "cash"  # Bargeld
-    FEE = "fee"  # Gebuehr
+    FEE = "fee"  # Gebühr
     INTEREST = "interest"  # Zinsen
     OTHER = "other"
 
@@ -66,7 +66,7 @@ class PaymentStatus(str, Enum):
     APPROVED = "approved"  # Freigegeben
     PENDING_TAN = "pending_tan"  # Warten auf TAN
     SUBMITTED = "submitted"  # An Bank gesendet
-    CONFIRMED = "confirmed"  # Bestaetigt
+    CONFIRMED = "confirmed"  # Bestätigt
     REJECTED = "rejected"  # Abgelehnt
     FAILED = "failed"  # Fehlgeschlagen
     CANCELLED = "cancelled"  # Storniert
@@ -74,7 +74,7 @@ class PaymentStatus(str, Enum):
 
 class PaymentType(str, Enum):
     """Zahlungsart."""
-    TRANSFER = "transfer"  # Einzelueberweisung
+    TRANSFER = "transfer"  # Einzelüberweisung
     DIRECT_DEBIT = "direct_debit"  # Lastschrift
     BATCH = "batch"  # Sammelzahlung
 
@@ -116,7 +116,7 @@ class MahnTaskType(str, Enum):
     REMINDER = "reminder"  # Mahnung versenden
     ESCALATE = "escalate"  # Eskalieren
     PHONE_CALL = "phone_call"  # Telefonkontakt
-    REVIEW = "review"  # Pruefung
+    REVIEW = "review"  # Prüfung
     COLLECTION = "collection"  # Inkasso
 
 
@@ -125,7 +125,7 @@ class MahnTaskStatus(str, Enum):
     PENDING = "pending"  # Ausstehend
     IN_PROGRESS = "in_progress"  # In Bearbeitung
     COMPLETED = "completed"  # Erledigt
-    SNOOZED = "snoozed"  # Zurueckgestellt
+    SNOOZED = "snoozed"  # Zurückgestellt
     CANCELLED = "cancelled"  # Abgebrochen
 
 
@@ -134,13 +134,13 @@ class PhoneCallOutcome(str, Enum):
     REACHED = "reached"  # Erreicht
     NOT_REACHED = "not_reached"  # Nicht erreicht
     VOICEMAIL = "voicemail"  # Mailbox
-    CALLBACK_REQUESTED = "callback_requested"  # Rueckruf erbeten
+    CALLBACK_REQUESTED = "callback_requested"  # Rückruf erbeten
     PAYMENT_PROMISED = "payment_promised"  # Zahlung zugesagt
     DISPUTE_RAISED = "dispute_raised"  # Reklamation
 
 
 class DunningActionType(str, Enum):
-    """Aktionstyp fuer Mahnstufen."""
+    """Aktionstyp für Mahnstufen."""
     EMAIL = "email"  # E-Mail
     LETTER = "letter"  # Brief
     PHONE = "phone"  # Telefon
@@ -148,7 +148,7 @@ class DunningActionType(str, Enum):
 
 
 class MahnungHistoryActionType(str, Enum):
-    """Aktionstypen fuer Mahnung-History."""
+    """Aktionstypen für Mahnung-History."""
     REMINDER_SENT = "reminder_sent"
     ESCALATED = "escalated"
     PHONE_CALL = "phone_call"
@@ -173,7 +173,7 @@ class ContactMethod(str, Enum):
 class CashFlowStatus(str, Enum):
     """Cash-Flow-Status."""
     EXPECTED = "expected"  # Erwartet
-    CONFIRMED = "confirmed"  # Bestaetigt
+    CONFIRMED = "confirmed"  # Bestätigt
     COMPLETED = "completed"  # Abgeschlossen
 
 
@@ -187,7 +187,7 @@ class CashFlowEntryType(str, Enum):
 
 
 class TransactionSortField(str, Enum):
-    """SECURITY: Erlaubte Sortierfelder fuer Transaktionen.
+    """SECURITY: Erlaubte Sortierfelder für Transaktionen.
 
     Whitelist zur Verhinderung von SQL-Injection durch
     validierte Feldnamen.
@@ -206,7 +206,7 @@ class TransactionSortField(str, Enum):
 # =============================================================================
 
 class BankAccountBase(BaseModel):
-    """Basis-Schema fuer Bankkonten."""
+    """Basis-Schema für Bankkonten."""
     account_name: str = Field(..., min_length=1, max_length=255)
     iban: str = Field(..., min_length=15, max_length=34)
     bic: Optional[str] = Field(None, max_length=11)
@@ -223,11 +223,11 @@ class BankAccountBase(BaseModel):
         iban = v.replace(" ", "").upper()
         if len(iban) < 15 or len(iban) > 34:
             raise ValueError("IBAN muss zwischen 15 und 34 Zeichen lang sein")
-        # Basis-Validierung (Laendercode + Pruefsumme)
+        # Basis-Validierung (Ländercode + Prüfsumme)
         if not iban[:2].isalpha():
-            raise ValueError("IBAN muss mit Laendercode beginnen")
+            raise ValueError("IBAN muss mit Ländercode beginnen")
         if not iban[2:4].isdigit():
-            raise ValueError("IBAN muss Pruefsumme nach Laendercode haben")
+            raise ValueError("IBAN muss Prüfsumme nach Ländercode haben")
         return iban
 
 
@@ -251,7 +251,7 @@ class BankAccountUpdate(BaseModel):
 
 
 class BankAccountResponse(BankAccountBase):
-    """Response-Schema fuer Bankkonto."""
+    """Response-Schema für Bankkonto."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -280,7 +280,7 @@ class BankAccountWithStats(BankAccountResponse):
 # =============================================================================
 
 class BankImportCreate(BaseModel):
-    """Schema fuer Import-Anfrage."""
+    """Schema für Import-Anfrage."""
     bank_account_id: Optional[UUID] = None
     format: Optional[ImportFormat] = None  # Auto-detect wenn nicht angegeben
     format_variant: Optional[str] = None
@@ -319,7 +319,7 @@ class BankImportResponse(BaseModel):
 
 
 class SupportedFormatsResponse(BaseModel):
-    """Liste unterstuetzter Formate."""
+    """Liste unterstützter Formate."""
     formats: List[Dict[str, Any]]
 
 
@@ -328,7 +328,7 @@ class SupportedFormatsResponse(BaseModel):
 # =============================================================================
 
 class BankTransactionResponse(BaseModel):
-    """Response-Schema fuer Transaktion."""
+    """Response-Schema für Transaktion."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -371,7 +371,7 @@ class TransactionListResponse(BaseModel):
 
 
 class TransactionFilter(BaseModel):
-    """Filter fuer Transaktionen."""
+    """Filter für Transaktionen."""
     bank_account_id: Optional[UUID] = None
     date_from: Optional[date] = None
     date_to: Optional[date] = None
@@ -398,7 +398,7 @@ class TransactionMatch(BaseModel):
 
 
 class ReconciliationSuggestions(BaseModel):
-    """Match-Vorschlaege fuer eine Transaktion."""
+    """Match-Vorschläge für eine Transaktion."""
     transaction_id: UUID
     transaction_amount: Decimal
     suggestions: List[TransactionMatch]
@@ -406,7 +406,7 @@ class ReconciliationSuggestions(BaseModel):
 
 
 class MatchConfirmRequest(BaseModel):
-    """Anfrage zur Bestaetigung eines Matches."""
+    """Anfrage zur Bestätigung eines Matches."""
     document_id: UUID
     is_partial: bool = False
     allocated_amount: Optional[Decimal] = None
@@ -445,7 +445,7 @@ class PaymentOrderCreate(BaseModel):
     document_id: Optional[UUID] = None
     payment_type: PaymentType = PaymentType.TRANSFER
 
-    # Empfaenger
+    # Empfänger
     beneficiary_name: str = Field(..., min_length=1, max_length=140)
     beneficiary_iban: str = Field(..., min_length=15, max_length=34)
     beneficiary_bic: Optional[str] = Field(None, max_length=11)
@@ -473,7 +473,7 @@ class PaymentOrderUpdate(BaseModel):
 
 
 class PaymentOrderResponse(BaseModel):
-    """Response-Schema fuer Zahlungsauftrag."""
+    """Response-Schema für Zahlungsauftrag."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -484,7 +484,7 @@ class PaymentOrderResponse(BaseModel):
     payment_type: PaymentType
     sepa_type: Optional[SEPAType]
 
-    # Empfaenger
+    # Empfänger
     beneficiary_name: str
     beneficiary_iban: str
     beneficiary_bic: Optional[str]
@@ -515,7 +515,7 @@ class PaymentOrderResponse(BaseModel):
 
 
 class PaymentSuggestion(BaseModel):
-    """Zahlungsvorschlag fuer faellige Rechnung."""
+    """Zahlungsvorschlag für fällige Rechnung."""
     document_id: UUID
     invoice_number: Optional[str]
     invoice_date: Optional[date]
@@ -545,7 +545,7 @@ class TANChallenge(BaseModel):
 
 
 class TANConfirmRequest(BaseModel):
-    """TAN-Bestaetigung."""
+    """TAN-Bestätigung."""
     tan: str = Field(..., min_length=4, max_length=10)
 
 
@@ -558,7 +558,7 @@ class PaymentBatchCreate(BaseModel):
 
 
 class PaymentBatchResponse(BaseModel):
-    """Response-Schema fuer Sammelzahlung."""
+    """Response-Schema für Sammelzahlung."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -583,7 +583,7 @@ class PaymentBatchResponse(BaseModel):
 # =============================================================================
 
 class DunningRecordResponse(BaseModel):
-    """Response-Schema fuer Mahnfall."""
+    """Response-Schema für Mahnfall."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -603,7 +603,7 @@ class DunningRecordResponse(BaseModel):
     dunning_level: DunningLevel
     status: DunningStatus
 
-    # Gebuehren
+    # Gebühren
     reminder_fee: Decimal
     late_interest_rate: Optional[Decimal]
     accrued_interest: Decimal
@@ -635,7 +635,7 @@ class DunningEscalateRequest(BaseModel):
 
 
 class AgingReportEntry(BaseModel):
-    """Eintrag im Faelligkeitsbericht."""
+    """Eintrag im Fälligkeitsbericht."""
     document_id: UUID
     invoice_number: Optional[str]
     debtor_name: Optional[str]
@@ -649,13 +649,13 @@ class AgingReportEntry(BaseModel):
 
 
 class AgingReport(BaseModel):
-    """Faelligkeitsbericht (Altersstruktur)."""
+    """Fälligkeitsbericht (Altersstruktur)."""
     as_of_date: date
     total_outstanding: Decimal
     currency: str
 
     # Altersgruppen
-    current: Decimal  # Nicht faellig
+    current: Decimal  # Nicht fällig
     days_1_30: Decimal  # 1-30 Tage
     days_31_60: Decimal  # 31-60 Tage
     days_61_90: Decimal  # 61-90 Tage
@@ -679,7 +679,7 @@ class MahnTaskCreate(BaseModel):
 
 
 class MahnTaskResponse(BaseModel):
-    """Response-Schema fuer Mahnaufgabe."""
+    """Response-Schema für Mahnaufgabe."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -711,12 +711,12 @@ class MahnTaskResponse(BaseModel):
 
 
 class MahnTaskWithDunning(MahnTaskResponse):
-    """Mahnaufgabe mit vollstaendigen Dunning-Details."""
+    """Mahnaufgabe mit vollständigen Dunning-Details."""
     dunning_record: Optional[DunningRecordResponse] = None
 
 
 class MahnTaskFilter(BaseModel):
-    """Filter fuer Mahnaufgaben."""
+    """Filter für Mahnaufgaben."""
     task_type: Optional[MahnTaskType] = None
     status: Optional[MahnTaskStatus] = None
     assigned_user_id: Optional[UUID] = None
@@ -727,13 +727,13 @@ class MahnTaskFilter(BaseModel):
 
 
 class MahnTaskSnoozeRequest(BaseModel):
-    """Anfrage zum Zurueckstellen einer Aufgabe."""
+    """Anfrage zum Zurückstellen einer Aufgabe."""
     snooze_until: date
     reason: Optional[str] = Field(None, max_length=255)
 
 
 class MahnTaskCompleteRequest(BaseModel):
-    """Anfrage zum Abschliessen einer Aufgabe."""
+    """Anfrage zum Abschließen einer Aufgabe."""
     notes: Optional[str] = None
 
 
@@ -770,7 +770,7 @@ class PhoneCallLogCreate(BaseModel):
 
 
 class PhoneCallLogResponse(BaseModel):
-    """Response-Schema fuer Telefonprotokoll."""
+    """Response-Schema für Telefonprotokoll."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -818,7 +818,7 @@ class DunningStageConfigUpdate(BaseModel):
 
 
 class DunningStageConfigResponse(BaseModel):
-    """Response-Schema fuer Mahnstufe."""
+    """Response-Schema für Mahnstufe."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -874,7 +874,7 @@ class CustomerDunningOverrideUpdate(BaseModel):
 
 
 class CustomerDunningOverrideResponse(BaseModel):
-    """Response-Schema fuer kundenspezifische Mahneinstellungen."""
+    """Response-Schema für kundenspezifische Mahneinstellungen."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -895,7 +895,7 @@ class CustomerDunningOverrideResponse(BaseModel):
 # =============================================================================
 
 class MahnungHistoryResponse(BaseModel):
-    """Response-Schema fuer Mahnung-History-Eintrag."""
+    """Response-Schema für Mahnung-History-Eintrag."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -912,7 +912,7 @@ class MahnungHistoryResponse(BaseModel):
 
 
 class MahnungHistoryListResponse(BaseModel):
-    """Liste von Mahnung-History-Eintraegen."""
+    """Liste von Mahnung-History-Einträgen."""
     items: List[MahnungHistoryResponse]
     total: int
 
@@ -988,7 +988,7 @@ class VerzugszinsenCalculation(BaseModel):
     due_date: date
     as_of_date: date
     is_b2b: bool
-    interest_rate: Decimal  # Z.B. 11.27 fuer B2B
+    interest_rate: Decimal  # Z.B. 11.27 für B2B
     days_overdue: int
     interest_amount: Decimal
     total_with_interest: Decimal
@@ -999,7 +999,7 @@ class VerzugszinsenCalculation(BaseModel):
 # =============================================================================
 
 class MahnlaufResult(BaseModel):
-    """Ergebnis des taeglichen Mahnlaufs."""
+    """Ergebnis des täglichen Mahnlaufs."""
     run_date: date
     is_business_day: bool
     skipped_reason: Optional[str] = None
@@ -1048,21 +1048,21 @@ class LevelIntervals(BaseModel):
 
 
 class AutoDunningSettingsResponse(BaseModel):
-    """Response-Schema fuer Auto-Mahnlauf-Einstellungen."""
+    """Response-Schema für Auto-Mahnlauf-Einstellungen."""
     enabled: bool = Field(default=False, description="Automatische Eskalation aktiviert")
-    run_time: str = Field(default="08:00", description="Uhrzeit fuer taeglichen Mahnlauf (HH:MM)")
-    exclude_weekends: bool = Field(default=True, description="Wochenenden ausschliessen")
-    exclude_holidays: bool = Field(default=True, description="Feiertage ausschliessen")
+    run_time: str = Field(default="08:00", description="Uhrzeit für täglichen Mahnlauf (HH:MM)")
+    exclude_weekends: bool = Field(default=True, description="Wochenenden ausschließen")
+    exclude_holidays: bool = Field(default=True, description="Feiertage ausschließen")
     auto_send_email: bool = Field(default=False, description="Automatischer Email-Versand")
-    min_amount: Decimal = Field(default=Decimal("10.00"), ge=0, description="Mindestbetrag fuer automatische Mahnung")
-    max_auto_level: int = Field(default=2, ge=1, le=3, description="Maximale Mahnstufe fuer Automatik")
+    min_amount: Decimal = Field(default=Decimal("10.00"), ge=0, description="Mindestbetrag für automatische Mahnung")
+    max_auto_level: int = Field(default=2, ge=1, le=3, description="Maximale Mahnstufe für Automatik")
     level_intervals: LevelIntervals = Field(default_factory=LevelIntervals)
-    last_run_at: Optional[datetime] = Field(default=None, description="Letzte Ausfuehrung")
-    next_run_at: Optional[datetime] = Field(default=None, description="Naechste geplante Ausfuehrung")
+    last_run_at: Optional[datetime] = Field(default=None, description="Letzte Ausführung")
+    next_run_at: Optional[datetime] = Field(default=None, description="Nächste geplante Ausführung")
 
 
 class AutoDunningSettingsUpdate(BaseModel):
-    """Request-Schema fuer Auto-Mahnlauf-Einstellungen Update."""
+    """Request-Schema für Auto-Mahnlauf-Einstellungen Update."""
     enabled: Optional[bool] = None
     run_time: Optional[str] = Field(default=None, pattern=r"^([01]\d|2[0-3]):([0-5]\d)$")
     exclude_weekends: Optional[bool] = None
@@ -1078,7 +1078,7 @@ class AutoDunningSettingsUpdate(BaseModel):
 # =============================================================================
 
 class CashFlowEntryResponse(BaseModel):
-    """Response-Schema fuer Cash-Flow-Eintrag."""
+    """Response-Schema für Cash-Flow-Eintrag."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -1139,8 +1139,8 @@ class PaymentBehaviorAnalysis(BaseModel):
     invoice_count: int
     avg_payment_days: float
     on_time_rate: float  # Anteil puenktlicher Zahlungen
-    payment_pattern: str  # "puenktlich", "verzoegert", "problematisch"
-    recommended_probability: float  # Fuer Cash-Flow-Prognose
+    payment_pattern: str  # "puenktlich", "verzögert", "problematisch"
+    recommended_probability: float  # Für Cash-Flow-Prognose
 
 
 # =============================================================================
@@ -1148,7 +1148,7 @@ class PaymentBehaviorAnalysis(BaseModel):
 # =============================================================================
 
 class BankingKPIs(BaseModel):
-    """Banking-KPIs fuer Dashboard."""
+    """Banking-KPIs für Dashboard."""
     # Kontostand
     total_balance: Decimal
     balance_by_account: Dict[str, Decimal]
@@ -1186,7 +1186,7 @@ class BankingKPIs(BaseModel):
 # =============================================================================
 
 class TransactionFilter(BaseModel):
-    """Filter fuer Transaktions-Abfragen."""
+    """Filter für Transaktions-Abfragen."""
     date_from: Optional[date] = None
     date_to: Optional[date] = None
     amount_min: Optional[Decimal] = None

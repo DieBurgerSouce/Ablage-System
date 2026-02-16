@@ -1,7 +1,7 @@
 """
 Portal-Reklamationsservice.
 
-Kunden koennen Reklamationen einreichen und verfolgen.
+Kunden können Reklamationen einreichen und verfolgen.
 """
 
 from datetime import datetime, timezone
@@ -29,7 +29,7 @@ def generate_reference_number() -> str:
 
 class PortalComplaintService:
     """
-    Service fuer Reklamationen im Kundenportal.
+    Service für Reklamationen im Kundenportal.
     """
 
     def __init__(self, db: AsyncSession):
@@ -52,7 +52,7 @@ class PortalComplaintService:
         # Validiere complaint_type
         valid_types = [t.value for t in ComplaintType]
         if complaint_type not in valid_types:
-            raise ValueError(f"Ungueltiger Reklamationstyp. Erlaubt: {valid_types}")
+            raise ValueError(f"Ungültiger Reklamationstyp. Erlaubt: {valid_types}")
 
         # Validiere priority
         valid_priorities = ["low", "normal", "high", "urgent"]
@@ -98,7 +98,7 @@ class PortalComplaintService:
         offset: int = 0,
     ) -> tuple[List[dict], int]:
         """
-        Hole alle Reklamationen fuer einen Entity.
+        Hole alle Reklamationen für einen Entity.
         """
         query = select(PortalComplaint).where(
             and_(
@@ -191,9 +191,9 @@ class PortalComplaintService:
         attachment_ids: Optional[List[str]] = None,
     ) -> bool:
         """
-        Fuege zusaetzliche Informationen zu einer Reklamation hinzu.
+        Fuege zusätzliche Informationen zu einer Reklamation hinzu.
 
-        Nur moeglich wenn nicht abgeschlossen.
+        Nur möglich wenn nicht abgeschlossen.
         """
         result = await self.db.execute(
             select(PortalComplaint).where(
@@ -283,7 +283,7 @@ class PortalComplaintService:
 
     @staticmethod
     def get_complaint_types() -> List[dict]:
-        """Gebe verfuegbare Reklamationstypen zurueck."""
+        """Gebe verfügbare Reklamationstypen zurück."""
         return [
             {
                 "value": ComplaintType.INVOICE_ERROR.value,
@@ -293,12 +293,12 @@ class PortalComplaintService:
             {
                 "value": ComplaintType.DELIVERY_ISSUE.value,
                 "label": "Lieferproblem",
-                "description": "Problem mit der Lieferung (Verzoegerung, Beschaedigung, etc.)",
+                "description": "Problem mit der Lieferung (Verzögerung, Beschaedigung, etc.)",
             },
             {
                 "value": ComplaintType.QUALITY_ISSUE.value,
-                "label": "Qualitaetsmangel",
-                "description": "Mangel an Produkt- oder Servicequalitaet",
+                "label": "Qualitätsmangel",
+                "description": "Mangel an Produkt- oder Servicequalität",
             },
             {
                 "value": ComplaintType.PAYMENT_DISPUTE.value,
@@ -314,5 +314,5 @@ class PortalComplaintService:
 
 
 def get_portal_complaint_service(db: AsyncSession) -> PortalComplaintService:
-    """Factory-Funktion fuer PortalComplaintService."""
+    """Factory-Funktion für PortalComplaintService."""
     return PortalComplaintService(db)

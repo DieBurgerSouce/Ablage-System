@@ -48,7 +48,7 @@ router = APIRouter(prefix="/users", tags=["Admin - Benutzerverwaltung"])
 )
 async def list_users(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     search: Optional[str] = Query(
         None,
         min_length=1,
@@ -58,7 +58,7 @@ async def list_users(
     role: Optional[UserRole] = Query(None, description="Nach Rolle filtern"),
     status_filter: Optional[UserStatus] = Query(None, alias="status", description="Nach Status filtern"),
     tier: Optional[UserTier] = Query(None, description="Nach Tier filtern"),
-    include_workload: bool = Query(False, description="Workload-Statistiken einschliessen"),
+    include_workload: bool = Query(False, description="Workload-Statistiken einschließen"),
     sort_by: UserSortField = Query(UserSortField.CREATED_AT, description="Sortierfeld"),
     sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierrichtung"),
     admin: User = Depends(get_current_superuser),
@@ -67,16 +67,16 @@ async def list_users(
     """
     Listet alle Benutzer im System auf.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
 
     **Filter:**
-    - **search**: Sucht in E-Mail, Benutzername und vollstaendigem Namen
+    - **search**: Sucht in E-Mail, Benutzername und vollständigem Namen
     - **role**: Filtert nach Benutzerrolle (superuser, admin, user)
     - **status**: Filtert nach Status (active, inactive, deactivated)
     - **tier**: Filtert nach Tier (free, premium, admin)
 
     **Sortierung:**
-    - Standardmaessig nach Erstellungsdatum absteigend
+    - Standardmäßig nach Erstellungsdatum absteigend
     - Sortierbare Felder: created_at, email, username, last_login
     """
     filters = UserListFilters(
@@ -112,7 +112,7 @@ async def get_user(
     """
     Ruft detaillierte Informationen zu einem bestimmten Benutzer ab.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
     """
     user = await UserAdminService.get_user(db, user_id)
 
@@ -143,7 +143,7 @@ async def create_user(
     """
     Erstellt einen neuen Benutzer.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
 
     **Pflichtfelder:**
     - **email**: Eindeutige E-Mail-Adresse
@@ -151,10 +151,10 @@ async def create_user(
     - **password**: Passwort (min. 8 Zeichen)
 
     **Optionale Felder:**
-    - **full_name**: Vollstaendiger Name
+    - **full_name**: Vollständiger Name
     - **tier**: Benutzer-Tier (free, premium, admin)
     - **is_superuser**: Superuser-Status
-    - **daily_quota**: Taegliches Dokumentenlimit
+    - **daily_quota**: Tägliches Dokumentenlimit
     - **notes**: Interne Notizen
     """
     # Get client IP
@@ -173,7 +173,7 @@ async def create_user(
         logger.warning("user_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen.",
         )
 
 
@@ -195,7 +195,7 @@ async def update_user(
     """
     Aktualisiert Benutzerinformationen.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
     Alle Felder sind optional - nur angegebene Felder werden aktualisiert.
     """
     ip_address = request.client.host if request.client else None
@@ -236,7 +236,7 @@ async def deactivate_user(
     Deaktiviert ein Benutzerkonto.
 
     Der Benutzer kann sich nach der Deaktivierung nicht mehr anmelden.
-    Diese Aktion kann rueckgaengig gemacht werden.
+    Diese Aktion kann rückgängig gemacht werden.
     """
     ip_address = request.client.host if request.client else None
 
@@ -262,7 +262,7 @@ async def deactivate_user(
         logger.warning("user_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen.",
         )
 
 
@@ -308,8 +308,8 @@ async def activate_user(
 @router.post(
     "/{user_id}/reset-password",
     response_model=UserPasswordReset,
-    summary="Passwort zuruecksetzen",
-    description="Setzt das Passwort eines Benutzers zurueck"
+    summary="Passwort zurücksetzen",
+    description="Setzt das Passwort eines Benutzers zurück"
 )
 async def reset_password(
     user_id: UUID,
@@ -318,12 +318,12 @@ async def reset_password(
     db: AsyncSession = Depends(get_db),
 ) -> UserPasswordReset:
     """
-    Setzt das Passwort eines Benutzers zurueck.
+    Setzt das Passwort eines Benutzers zurück.
 
-    Generiert ein temporaeres Passwort, das der Benutzer
-    bei der naechsten Anmeldung aendern muss.
+    Generiert ein temporäres Passwort, das der Benutzer
+    bei der nächsten Anmeldung ändern muss.
 
-    **Wichtig:** Das temporaere Passwort wird nur einmal angezeigt!
+    **Wichtig:** Das temporäre Passwort wird nur einmal angezeigt!
     """
     ip_address = request.client.host if request.client else None
 
@@ -348,8 +348,8 @@ async def reset_password(
 @router.post(
     "/{user_id}/change-role",
     response_model=UserAdminView,
-    summary="Rolle aendern",
-    description="Aendert den Superuser-Status eines Benutzers"
+    summary="Rolle ändern",
+    description="Ändert den Superuser-Status eines Benutzers"
 )
 async def change_role(
     user_id: UUID,
@@ -359,12 +359,12 @@ async def change_role(
     db: AsyncSession = Depends(get_db),
 ) -> UserAdminView:
     """
-    Aendert den Superuser-Status eines Benutzers.
+    Ändert den Superuser-Status eines Benutzers.
 
     - **is_superuser=true**: Macht den Benutzer zum Administrator
     - **is_superuser=false**: Entfernt Administratorrechte
 
-    **Hinweis:** Sie koennen sich nicht selbst herabstufen.
+    **Hinweis:** Sie können sich nicht selbst herabstufen.
     """
     ip_address = request.client.host if request.client else None
 
@@ -390,7 +390,7 @@ async def change_role(
         logger.warning("user_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen.",
         )
 
 
@@ -399,19 +399,19 @@ async def change_role(
 @router.get(
     "/{user_id}/activity",
     response_model=UserActivityResponse,
-    summary="Benutzeraktivitaet abrufen",
-    description="Ruft die letzten Aktivitaeten eines Benutzers ab"
+    summary="Benutzeraktivität abrufen",
+    description="Ruft die letzten Aktivitäten eines Benutzers ab"
 )
 async def get_user_activity(
     user_id: UUID,
-    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl Eintraege"),
+    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl Einträge"),
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> UserActivityResponse:
     """
-    Ruft die letzten Aktivitaeten eines Benutzers ab.
+    Ruft die letzten Aktivitäten eines Benutzers ab.
 
-    Zeigt Audit-Log-Eintraege fuer den angegebenen Benutzer.
+    Zeigt Audit-Log-Einträge für den angegebenen Benutzer.
     """
     return await UserAdminService.get_user_activity(
         db=db,
@@ -425,8 +425,8 @@ async def get_user_activity(
 @router.delete(
     "/{user_id}",
     response_model=MessageResponse,
-    summary="Benutzer loeschen",
-    description="Loescht einen Benutzer dauerhaft"
+    summary="Benutzer löschen",
+    description="Löscht einen Benutzer dauerhaft"
 )
 async def delete_user(
     user_id: UUID,
@@ -435,12 +435,12 @@ async def delete_user(
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
     """
-    Loescht einen Benutzer dauerhaft aus dem System.
+    Löscht einen Benutzer dauerhaft aus dem System.
 
-    **WARNUNG:** Diese Aktion kann nicht rueckgaengig gemacht werden!
+    **WARNUNG:** Diese Aktion kann nicht rückgängig gemacht werden!
 
     Es wird empfohlen, Benutzer stattdessen zu deaktivieren,
-    um die Nachverfolgbarkeit zu gewaehrleisten.
+    um die Nachverfolgbarkeit zu gewährleisten.
     """
     ip_address = request.client.host if request.client else None
 
@@ -459,8 +459,8 @@ async def delete_user(
             )
 
         return MessageResponse(
-            message="Benutzer wurde dauerhaft geloescht",
-            detail="Diese Aktion kann nicht rueckgaengig gemacht werden",
+            message="Benutzer wurde dauerhaft gelöscht",
+            detail="Diese Aktion kann nicht rückgängig gemacht werden",
         )
 
     except ValueError as e:
@@ -468,7 +468,7 @@ async def delete_user(
         logger.warning("user_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen.",
         )
 
 
@@ -510,7 +510,7 @@ async def unlock_account(
     if not status_info["is_locked"] and status_info["failed_attempts"] == 0:
         return MessageResponse(
             message="Konto ist nicht gesperrt",
-            detail=f"Keine Sperre fuer {email or ip} gefunden",
+            detail=f"Keine Sperre für {email or ip} gefunden",
         )
 
     # Unlock the account
@@ -523,7 +523,7 @@ async def unlock_account(
     if success:
         return MessageResponse(
             message="Konto erfolgreich entsperrt",
-            detail=f"Sperre fuer {email or ip} wurde aufgehoben. "
+            detail=f"Sperre für {email or ip} wurde aufgehoben. "
                    f"(Vorherige Fehlversuche: {status_info['failed_attempts']})",
         )
     else:
@@ -536,7 +536,7 @@ async def unlock_account(
 @router.get(
     "/lockout-status",
     summary="Lockout-Status abrufen",
-    description="Zeigt den Lockout-Status fuer eine E-Mail oder IP"
+    description="Zeigt den Lockout-Status für eine E-Mail oder IP"
 )
 async def get_account_lockout_status(
     email: Optional[str] = Query(None, description="E-Mail des Benutzers"),
@@ -544,11 +544,11 @@ async def get_account_lockout_status(
     admin: User = Depends(get_current_superuser),
 ) -> dict:
     """
-    Zeigt den aktuellen Lockout-Status fuer eine E-Mail-Adresse oder IP.
+    Zeigt den aktuellen Lockout-Status für eine E-Mail-Adresse oder IP.
 
     **Hinweis:** Mindestens ein Parameter erforderlich.
 
-    Gibt Details zurueck:
+    Gibt Details zurück:
     - Anzahl fehlgeschlagener Versuche
     - Ob derzeit gesperrt
     - Verbleibende Sperrzeit
@@ -599,10 +599,10 @@ class UserQuotasResponse(BaseModel):
 
 class UserQuotasUpdate(BaseModel):
     """Request model for updating user quotas."""
-    daily_quota: Optional[int] = Field(None, ge=1, le=10000, description="Taegliches Dokumentenlimit")
-    rate_limit_hourly: Optional[int] = Field(None, ge=1, le=1000, description="Stuendliches Rate-Limit")
-    rate_limit_daily: Optional[int] = Field(None, ge=1, le=10000, description="Taegliches Rate-Limit")
-    reset_daily_usage: bool = Field(False, description="Tagesnutzung zuruecksetzen")
+    daily_quota: Optional[int] = Field(None, ge=1, le=10000, description="Tägliches Dokumentenlimit")
+    rate_limit_hourly: Optional[int] = Field(None, ge=1, le=1000, description="Stündliches Rate-Limit")
+    rate_limit_daily: Optional[int] = Field(None, ge=1, le=10000, description="Tägliches Rate-Limit")
+    reset_daily_usage: bool = Field(False, description="Tagesnutzung zurücksetzen")
 
     # Override settings (set to create/update RateLimitOverride)
     ocr_hourly: Optional[int] = Field(None, ge=1, le=1000, description="Max OCR-Anfragen pro Stunde")
@@ -615,7 +615,7 @@ class UserQuotasUpdate(BaseModel):
     "/{user_id}/quotas",
     response_model=UserQuotasResponse,
     summary="Benutzer-Quotas abrufen",
-    description="Ruft alle Quota-Einstellungen und Nutzung fuer einen Benutzer ab"
+    description="Ruft alle Quota-Einstellungen und Nutzung für einen Benutzer ab"
 )
 async def get_user_quotas(
     user_id: UUID,
@@ -623,10 +623,10 @@ async def get_user_quotas(
     db: AsyncSession = Depends(get_db),
 ) -> UserQuotasResponse:
     """
-    Ruft alle Quota-Einstellungen fuer einen Benutzer ab.
+    Ruft alle Quota-Einstellungen für einen Benutzer ab.
 
     Zeigt:
-    - **Basis-Quotas**: Taegliches Dokumentenlimit und aktuelle Nutzung
+    - **Basis-Quotas**: Tägliches Dokumentenlimit und aktuelle Nutzung
     - **Rate-Limits**: Individuelle Overrides (falls vorhanden)
     - **Effektive Limits**: Kombination aus Tier-Defaults und Overrides
 
@@ -695,7 +695,7 @@ async def get_user_quotas(
     "/{user_id}/quotas",
     response_model=UserQuotasResponse,
     summary="Benutzer-Quotas aktualisieren",
-    description="Aktualisiert Quota-Einstellungen fuer einen Benutzer"
+    description="Aktualisiert Quota-Einstellungen für einen Benutzer"
 )
 async def update_user_quotas(
     user_id: UUID,
@@ -705,13 +705,13 @@ async def update_user_quotas(
     db: AsyncSession = Depends(get_db),
 ) -> UserQuotasResponse:
     """
-    Aktualisiert Quota-Einstellungen fuer einen Benutzer.
+    Aktualisiert Quota-Einstellungen für einen Benutzer.
 
     **Aktualisierbare Felder:**
     - **daily_quota**: Maximale Dokumente pro Tag
-    - **rate_limit_hourly**: Stuendliches Rate-Limit (Override)
-    - **rate_limit_daily**: Taegliches Rate-Limit (Override)
-    - **reset_daily_usage**: Setzt Tagesnutzung auf 0 zurueck
+    - **rate_limit_hourly**: Stündliches Rate-Limit (Override)
+    - **rate_limit_daily**: Tägliches Rate-Limit (Override)
+    - **reset_daily_usage**: Setzt Tagesnutzung auf 0 zurück
 
     **OCR-spezifische Overrides:**
     - **ocr_hourly**: Max OCR-Anfragen pro Stunde

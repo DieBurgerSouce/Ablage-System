@@ -18,7 +18,7 @@ import { EmlDropZone } from './EmlDropZone'
 import { EmlPreviewDialog } from './EmlPreviewDialog'
 import { ImportMonitoringPanel } from './ImportMonitoringPanel'
 import { EmailConfigWizard } from './EmailConfigWizard'
-import { ImportRuleBuilder } from './ImportRuleBuilder'
+import { EmailImportRuleBuilder as ImportRuleBuilder } from './ImportRuleBuilder'
 import { uploadEmlFile, importEmlAttachments, emailImportKeys } from '../api/email-import-api'
 import type { EmlParseResponse, EmlImportRequest, ImportRule } from '../types/email-types'
 

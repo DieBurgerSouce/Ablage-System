@@ -2,7 +2,7 @@
 """
 Predictive Maintenance Celery Tasks.
 
-Sammelt Metriken und fuehrt Vorhersagen fuer proaktive Systemueberwachung aus:
+Sammelt Metriken und führt Vorhersagen für proaktive Systemüberwachung aus:
 - Metriken-Sammlung (GPU, Queue, Disk)
 - System Health Predictions
 - OCR Quality Forecasting
@@ -39,9 +39,9 @@ StatsDict = Dict[str, Union[int, float, Dict[str, int]]]
 )
 def collect_metrics_for_prediction() -> MetricDict:
     """
-    Sammelt System-Metriken fuer Vorhersage-Modelle.
+    Sammelt System-Metriken für Vorhersage-Modelle.
 
-    Wird jede Minute via Celery Beat ausgefuehrt.
+    Wird jede Minute via Celery Beat ausgeführt.
     Zeichnet GPU VRAM, Queue-Tiefen, Disk-Nutzung und Worker-Status auf.
 
     Returns:
@@ -101,7 +101,7 @@ def collect_metrics_for_prediction() -> MetricDict:
             predictor.record_metric(MetricType.CPU_USAGE, cpu_usage)
             collected["cpu_usage_percent"] = cpu_usage
 
-        # OCR Quality Metriken (aus Redis-Cache falls verfuegbar)
+        # OCR Quality Metriken (aus Redis-Cache falls verfügbar)
         ocr_metrics = _collect_ocr_quality_metrics()
         for backend_name, metrics in ocr_metrics.items():
             try:
@@ -144,10 +144,10 @@ def collect_metrics_for_prediction() -> MetricDict:
 )
 def run_predictions() -> MetricDict:
     """
-    Fuehrt alle System-Vorhersagen aus.
+    Führt alle System-Vorhersagen aus.
 
-    Wird alle 5 Minuten via Celery Beat ausgefuehrt.
-    Analysiert Trends und erstellt Vorhersagen fuer:
+    Wird alle 5 Minuten via Celery Beat ausgeführt.
+    Analysiert Trends und erstellt Vorhersagen für:
     - GPU VRAM Overflow
     - Queue Overflow
     - Disk Space Exhaustion
@@ -175,7 +175,7 @@ def run_predictions() -> MetricDict:
         # System Health Predictions - verwende asyncio.run() statt new_event_loop()
         # um Memory Leaks und File Descriptor Exhaustion zu vermeiden
         async def _run_all_predictions() -> Tuple[List, List]:
-            """Async helper fuer alle Predictions."""
+            """Async helper für alle Predictions."""
             health_preds = await predictor.get_all_predictions()
             quality_alerts = await forecaster.get_all_degradation_alerts()
             return health_preds, quality_alerts
@@ -229,7 +229,7 @@ def generate_predictive_alerts() -> MetricDict:
     """
     Generiert proaktive Alerts basierend auf Vorhersagen.
 
-    Wird alle 5 Minuten via Celery Beat ausgefuehrt.
+    Wird alle 5 Minuten via Celery Beat ausgeführt.
     Kombiniert System Health und OCR Quality Predictions zu Alerts.
 
     Returns:
@@ -302,7 +302,7 @@ def cleanup_old_predictive_alerts(max_age_hours: int = 24) -> MetricDict:
     """
     Entfernt alte proaktive Alerts.
 
-    Wird taeglich via Celery Beat ausgefuehrt.
+    Wird täglich via Celery Beat ausgeführt.
 
     Args:
         max_age_hours: Maximales Alter in Stunden (default: 24)
@@ -341,7 +341,7 @@ def cleanup_old_predictive_alerts(max_age_hours: int = 24) -> MetricDict:
 
 
 # =============================================================================
-# Helper Functions fuer Metrik-Sammlung
+# Helper Functions für Metrik-Sammlung
 # =============================================================================
 
 
@@ -380,7 +380,7 @@ def _collect_gpu_utilization() -> Optional[float]:
 
 
 def _collect_queue_depths() -> Dict[str, int]:
-    """Sammelt Queue-Tiefen fuer alle bekannten Queues."""
+    """Sammelt Queue-Tiefen für alle bekannten Queues."""
     from app.workers.celery_app import celery_app
 
     depths: Dict[str, int] = {}
@@ -393,7 +393,7 @@ def _collect_queue_depths() -> Dict[str, int]:
         with celery_app.pool.acquire(block=True) as conn:
             for queue_name in known_queues:
                 try:
-                    # Redis LLEN fuer Queue-Tiefe
+                    # Redis LLEN für Queue-Tiefe
                     depth = conn.default_channel.client.llen(queue_name)
                     depths[queue_name] = depth
                 except Exception:
@@ -442,7 +442,7 @@ def _collect_cpu_usage() -> Optional[float]:
 
 def _collect_ocr_quality_metrics() -> Dict[str, Dict[str, Optional[float]]]:
     """
-    Sammelt OCR-Qualitaetsmetriken aus Redis-Cache.
+    Sammelt OCR-Qualitätsmetriken aus Redis-Cache.
 
     Returns:
         Dict mit Backend -> Metriken Mapping
@@ -459,7 +459,7 @@ def _collect_ocr_quality_metrics() -> Dict[str, Dict[str, Optional[float]]]:
             socket_timeout=2.0,
         )
 
-        # Suche nach OCR-Qualitaets-Cache-Keys
+        # Suche nach OCR-Qualitäts-Cache-Keys
         for backend in ["deepseek", "got_ocr", "surya", "surya_gpu"]:
             key = f"ocr_quality:{backend}:current"
             data = redis_client.hgetall(key)
@@ -497,8 +497,8 @@ def train_payment_model() -> MetricDict:
     """
     Trainiert das Zahlungsvorhersage-Modell.
 
-    Wird woechentlich (Sonntag 03:00) via Celery Beat ausgefuehrt.
-    Nutzt historische Zahlungsdaten fuer Feature-Engineering und Model-Training.
+    Wird wöchentlich (Sonntag 03:00) via Celery Beat ausgeführt.
+    Nutzt historische Zahlungsdaten für Feature-Engineering und Model-Training.
 
     Returns:
         Dict mit Training-Ergebnissen
@@ -534,15 +534,15 @@ def train_payment_model() -> MetricDict:
                 # Hier: Registrierung des aktuellen Modell-Status
 
                 # Sammle Training-Metriken (vereinfacht)
-                training_samples = 0  # Wuerde aus DB kommen
+                training_samples = 0  # Würde aus DB kommen
                 accuracy = 0.82  # Placeholder - echte Evaluation
 
-                # Model-Version hochzaehlen
+                # Model-Version hochzählen
                 current_model = await registry.get_active_model(
-                    ModelType.ENTITY_MATCHER  # Naechstes verfuegbares Type
+                    ModelType.ENTITY_MATCHER  # Nächstes verfügbares Type
                 )
                 if current_model:
-                    # Parse und erhoehe Version
+                    # Parse und erhöhe Version
                     parts = current_model.version.split(".")
                     new_version = f"{parts[0]}.{parts[1]}.{int(parts[2]) + 1}"
                 else:
@@ -596,13 +596,13 @@ def train_payment_model() -> MetricDict:
 )
 def batch_predict_payments(company_id: Optional[str] = None) -> MetricDict:
     """
-    Fuehrt Batch-Vorhersagen fuer alle Entities einer Firma aus.
+    Führt Batch-Vorhersagen für alle Entities einer Firma aus.
 
-    Wird taeglich (06:00) via Celery Beat ausgefuehrt.
-    Speichert Vorhersagen fuer schnelleren Abruf.
+    Wird täglich (06:00) via Celery Beat ausgeführt.
+    Speichert Vorhersagen für schnelleren Abruf.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
 
     Returns:
         Dict mit Batch-Ergebnissen
@@ -648,7 +648,7 @@ def batch_predict_payments(company_id: Optional[str] = None) -> MetricDict:
                 if company_id:
                     query = query.where(BusinessEntity.company_id == UUID(company_id))
 
-                # Limit fuer Performance
+                # Limit für Performance
                 query = query.limit(500)
 
                 entity_result = await session.execute(query)
@@ -721,9 +721,9 @@ def batch_predict_payments(company_id: Optional[str] = None) -> MetricDict:
 )
 def update_cash_flow_forecast(company_id: str, days_ahead: int = 30) -> MetricDict:
     """
-    Aktualisiert die Cash-Flow-Prognose fuer eine Firma.
+    Aktualisiert die Cash-Flow-Prognose für eine Firma.
 
-    Wird stuendlich oder on-demand ausgefuehrt.
+    Wird stündlich oder on-demand ausgeführt.
 
     Args:
         company_id: Firmen-ID
@@ -815,10 +815,10 @@ def update_cash_flow_forecast(company_id: str, days_ahead: int = 30) -> MetricDi
 )
 def evaluate_payment_model() -> MetricDict:
     """
-    Evaluiert die Qualitaet des Zahlungsvorhersage-Modells.
+    Evaluiert die Qualität des Zahlungsvorhersage-Modells.
 
-    Wird woechentlich (Sonntag 04:00) via Celery Beat ausgefuehrt.
-    Vergleicht Vorhersagen mit tatsaechlichen Zahlungen.
+    Wird wöchentlich (Sonntag 04:00) via Celery Beat ausgeführt.
+    Vergleicht Vorhersagen mit tatsächlichen Zahlungen.
 
     Returns:
         Dict mit Evaluations-Metriken
@@ -847,7 +847,7 @@ def evaluate_payment_model() -> MetricDict:
 
         async for session in get_async_session():
             try:
-                # Hole Rechnungen die kuerzlich bezahlt wurden
+                # Hole Rechnungen die kürzlich bezahlt wurden
                 now = datetime.now(timezone.utc)
                 cutoff = now - timedelta(days=30)
 
@@ -870,7 +870,7 @@ def evaluate_payment_model() -> MetricDict:
 
                 for invoice in invoices:
                     if invoice.paid_at and invoice.due_date:
-                        # Tatsaechliche Verzoegerung
+                        # Tatsaechliche Verzögerung
                         actual_delay = (invoice.paid_at - invoice.due_date).days
 
                         # In Produktion: Gespeicherte Vorhersage laden

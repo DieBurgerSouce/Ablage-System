@@ -2,11 +2,11 @@
 """
 Dokument-Integritaet (Hash-Chain) API Endpoints.
 
-REST API fuer kryptographische Dokumenten-Verifizierung:
+REST API für kryptographische Dokumenten-Verifizierung:
 - SHA-256 Hash-Status pro Dokument
 - Dokumenten-Verifizierung gegen gespeicherte Hashes
-- Taegliche Merkle-Baeume mit kryptographischen Beweisen
-- Integritaetsberichte fuer Compliance und Audits
+- Tägliche Merkle-Baeume mit kryptographischen Beweisen
+- Integritaetsberichte für Compliance und Audits
 
 Feinpoliert und durchdacht - Enterprise Document Integrity.
 """
@@ -37,7 +37,7 @@ from app.services.integrity.document_integrity_service import DocumentIntegrityS
 
 logger = structlog.get_logger(__name__)
 
-router = APIRouter(prefix="/integrity", tags=["Dokument-Integritaet"])
+router = APIRouter(prefix="/integrity", tags=["Dokument-Integrität"])
 
 # Service-Instanz
 _integrity_service = DocumentIntegrityService()
@@ -52,7 +52,7 @@ _integrity_service = DocumentIntegrityService()
     "/documents/{document_id}/hash",
     response_model=IntegrityStatusResponse,
     summary="Integritaetsstatus eines Dokuments abrufen",
-    description="Gibt den SHA-256 Hash und Verifizierungsstatus eines Dokuments zurueck.",
+    description="Gibt den SHA-256 Hash und Verifizierungsstatus eines Dokuments zurück.",
 )
 async def get_document_hash_status(
     document_id: UUID,
@@ -68,10 +68,10 @@ async def get_document_hash_status(
         if doc_hash is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Kein Integritaets-Hash fuer dieses Dokument vorhanden",
+                detail="Kein Integritaets-Hash für dieses Dokument vorhanden",
             )
 
-        # Multi-Tenant-Pruefung
+        # Multi-Tenant-Prüfung
         if doc_hash.company_id != current_user.company_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -122,17 +122,17 @@ async def verify_document(
     try:
         file_content = await file.read()
 
-        # Gespeicherten Hash laden fuer Response
+        # Gespeicherten Hash laden für Response
         doc_hash = await _integrity_service.get_document_integrity_status(
             db, document_id
         )
         if doc_hash is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Kein Integritaets-Hash fuer dieses Dokument vorhanden",
+                detail="Kein Integritaets-Hash für dieses Dokument vorhanden",
             )
 
-        # Multi-Tenant-Pruefung
+        # Multi-Tenant-Prüfung
         if doc_hash.company_id != current_user.company_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -177,15 +177,15 @@ async def verify_document(
 @router.post(
     "/merkle/build",
     response_model=MerkleBuildResponse,
-    summary="Taeglichen Merkle-Baum erstellen",
-    description="Erstellt den Merkle-Baum fuer alle Dokument-Hashes eines Tages.",
+    summary="Täglichen Merkle-Baum erstellen",
+    description="Erstellt den Merkle-Baum für alle Dokument-Hashes eines Tages.",
 )
 async def build_merkle_tree(
     request: MerkleBuildRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> MerkleBuildResponse:
-    """Taeglichen Merkle-Baum erstellen."""
+    """Täglichen Merkle-Baum erstellen."""
     try:
         company_id = current_user.company_id
         if not company_id:
@@ -217,7 +217,7 @@ async def build_merkle_tree(
             tree_date=request.tree_date,
             merkle_root=merkle_root,
             document_count=doc_count,
-            message=f"Merkle-Baum fuer {request.tree_date.isoformat()} mit {doc_count} Dokumenten erstellt",
+            message=f"Merkle-Baum für {request.tree_date.isoformat()} mit {doc_count} Dokumenten erstellt",
         )
 
     except HTTPException:
@@ -236,15 +236,15 @@ async def build_merkle_tree(
 @router.get(
     "/merkle/proof/{document_id}",
     response_model=MerkleProofResponse,
-    summary="Merkle-Beweis fuer Dokument abrufen",
-    description="Gibt den kryptographischen Beweis fuer die Aufnahme eines Dokuments im Merkle-Baum zurueck.",
+    summary="Merkle-Beweis für Dokument abrufen",
+    description="Gibt den kryptographischen Beweis für die Aufnahme eines Dokuments im Merkle-Baum zurück.",
 )
 async def get_merkle_proof(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> MerkleProofResponse:
-    """Merkle-Beweis fuer ein Dokument abrufen."""
+    """Merkle-Beweis für ein Dokument abrufen."""
     try:
         # DocumentHash laden
         doc_hash = await _integrity_service.get_document_integrity_status(
@@ -253,10 +253,10 @@ async def get_merkle_proof(
         if doc_hash is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Kein Integritaets-Hash fuer dieses Dokument vorhanden",
+                detail="Kein Integritaets-Hash für dieses Dokument vorhanden",
             )
 
-        # Multi-Tenant-Pruefung
+        # Multi-Tenant-Prüfung
         if doc_hash.company_id != current_user.company_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -295,11 +295,11 @@ async def get_merkle_proof(
             merkle_root = root_result.scalar_one_or_none() or ""
 
         if is_included:
-            message = "Dokument ist im Merkle-Baum enthalten - Integritaet bestaetigt"
+            message = "Dokument ist im Merkle-Baum enthalten - Integritaet bestätigt"
         else:
             message = (
                 "Dokument ist nicht im Merkle-Baum enthalten - "
-                "kein kryptographischer Beweis verfuegbar"
+                "kein kryptographischer Beweis verfügbar"
             )
 
         return MerkleProofResponse(
@@ -388,7 +388,7 @@ async def generate_report(
     "/reports/{report_id}",
     response_model=IntegrityReportResponse,
     summary="Integritaetsbericht abrufen",
-    description="Gibt einen bestimmten Integritaetsbericht zurueck.",
+    description="Gibt einen bestimmten Integritaetsbericht zurück.",
 )
 async def get_report(
     report_id: UUID,
@@ -441,11 +441,11 @@ async def get_report(
     "/reports",
     response_model=List[IntegrityReportResponse],
     summary="Integritaetsberichte auflisten",
-    description="Gibt eine paginierte Liste aller Integritaetsberichte zurueck.",
+    description="Gibt eine paginierte Liste aller Integritaetsberichte zurück.",
 )
 async def list_reports(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[IntegrityReportResponse]:

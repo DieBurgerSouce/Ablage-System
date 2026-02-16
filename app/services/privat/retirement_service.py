@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-RetirementService - Altersvorsorge-Planung fuer das Privat-Modul.
+RetirementService - Altersvorsorge-Planung für das Privat-Modul.
 
-Bietet umfassende Funktionen fuer:
-1. Rentenluecken-Berechnung (gesetzlich + privat + betrieblich)
+Bietet umfassende Funktionen für:
+1. Rentenlücken-Berechnung (gesetzlich + privat + betrieblich)
 2. Entnahmestrategien (4%-Regel, dynamisch, Floor-and-Ceiling)
-3. Monte-Carlo-Simulation fuer Portfolio-Langlebigkeit
+3. Monte-Carlo-Simulation für Portfolio-Langlebigkeit
 4. Rentenoptimierungsempfehlungen
 5. Integration des deutschen Rentensystems (DRV, Riester, Ruerup, bAV)
 
@@ -77,13 +77,13 @@ class WithdrawalStrategy(str, Enum):
 
 
 class RiskProfile(str, Enum):
-    """Risikoprofil fuer Simulationen."""
+    """Risikoprofil für Simulationen."""
     KONSERVATIV = "konservativ"
     AUSGEWOGEN = "ausgewogen"
     WACHSTUM = "wachstum"
 
 
-# Aktueller Rentenwert (West, Stand 2026 geschaetzt)
+# Aktueller Rentenwert (West, Stand 2026 geschätzt)
 RENTENWERT_AKTUELL = Decimal("39.32")  # EUR pro Entgeltpunkt
 
 # Regelaltersgrenze (nach Geburtsjahr)
@@ -97,11 +97,11 @@ REGELALTERSGRENZE = {
     1964: 67,  # Ab 1964 geboren: 67 Jahre
 }
 
-# Beitragsbemessungsgrenze (BBG) West 2026 geschaetzt
+# Beitragsbemessungsgrenze (BBG) West 2026 geschätzt
 BBG_WEST_JAEHRLICH = Decimal("96600")
 BBG_WEST_MONATLICH = Decimal("8050")
 
-# Durchschnittsentgelt 2026 geschaetzt (fuer Entgeltpunkte)
+# Durchschnittsentgelt 2026 geschätzt (für Entgeltpunkte)
 DURCHSCHNITTSENTGELT = Decimal("47950")
 
 # Riester-Zulagen
@@ -115,7 +115,7 @@ RUERUP_HOECHSTBETRAG_SINGLE = Decimal("27566")
 RUERUP_HOECHSTBETRAG_VERHEIRATET = Decimal("55132")
 
 # bAV-Grenzen
-BAV_STEUERFREIER_BEITRAG = Decimal("3864")  # 4% BBG (geschaetzt)
+BAV_STEUERFREIER_BEITRAG = Decimal("3864")  # 4% BBG (geschätzt)
 BAV_PAUSCHALVERSTEUERUNGSGRENZE = Decimal("2040")
 
 # Monte-Carlo Parameter
@@ -135,7 +135,7 @@ MC_INFLATION_STD = Decimal("0.01")
 
 @dataclass
 class PensionSource:
-    """Eine Quelle fuer Renteneinkommen."""
+    """Eine Quelle für Renteneinkommen."""
     pension_type: PensionType
     name: str
     current_value: Decimal  # Aktueller Wert / angesammeltes Kapital
@@ -159,7 +159,7 @@ class PensionPoint:
 
 @dataclass
 class RentenlueckeResult:
-    """Ergebnis der Rentenluecken-Analyse."""
+    """Ergebnis der Rentenlücken-Analyse."""
     space_id: UUID
     current_age: int
     retirement_age: int
@@ -181,7 +181,7 @@ class RentenlueckeResult:
     pension_gap: Decimal
     pension_gap_yearly: Decimal
 
-    # Kapitalluecke
+    # Kapitallücke
     capital_needed_for_gap: Decimal
     current_savings: Decimal
     additional_savings_needed: Decimal
@@ -197,7 +197,7 @@ class RentenlueckeResult:
 
 @dataclass
 class WithdrawalPlan:
-    """Entnahmeplan fuer den Ruhestand."""
+    """Entnahmeplan für den Ruhestand."""
     strategy: WithdrawalStrategy
     initial_portfolio: Decimal
     annual_withdrawal_rate: Decimal
@@ -235,7 +235,7 @@ class MonteCarloResult:
     std_dev: Decimal
 
     # Detaillierte Verteilung
-    portfolio_paths: List[List[Decimal]]  # Fuer Visualisierung
+    portfolio_paths: List[List[Decimal]]  # Für Visualisierung
 
     recommendations: List[str]
 
@@ -280,12 +280,12 @@ class BAVAnalysis:
 
 @dataclass
 class RetirementSummary:
-    """Vollstaendige Altersvorsorge-Zusammenfassung."""
+    """Vollständige Altersvorsorge-Zusammenfassung."""
     space_id: UUID
     current_age: int
     target_retirement_age: int
 
-    # Rentenluecke
+    # Rentenlücke
     pension_gap_analysis: RentenlueckeResult
 
     # Entnahmeplanung
@@ -312,9 +312,9 @@ class RetirementSummary:
 
 class RetirementService:
     """
-    Singleton Service fuer Altersvorsorge-Planung.
+    Singleton Service für Altersvorsorge-Planung.
 
-    Berechnet Rentenluecken, fuehrt Monte-Carlo-Simulationen durch
+    Berechnet Rentenlücken, führt Monte-Carlo-Simulationen durch
     und optimiert die Altersvorsorge-Strategie.
 
     SECURITY: NIEMALS persoenliche Daten oder Betraege loggen!
@@ -347,7 +347,7 @@ class RetirementService:
         year: int = 2026,
     ) -> Decimal:
         """
-        Berechnet Entgeltpunkte fuer ein Jahr.
+        Berechnet Entgeltpunkte für ein Jahr.
 
         Formel: Bruttoeinkommen / Durchschnittsentgelt
         Max: Einkommen bis BBG.
@@ -373,7 +373,7 @@ class RetirementService:
 
         Rentenformel: EP x ZF x RAF x aRW
         - EP: Entgeltpunkte
-        - ZF: Zugangsfaktor (1.0 = Regelalter, <1 = Fruehrente)
+        - ZF: Zugangsfaktor (1.0 = Regelalter, <1 = Frührente)
         - RAF: Rentenartfaktor (Altersrente = 1.0)
         - aRW: Aktueller Rentenwert
         """
@@ -390,7 +390,7 @@ class RetirementService:
         self,
         months_early: int,
     ) -> Decimal:
-        """Berechnet den Abschlag bei Fruehverrentung."""
+        """Berechnet den Abschlag bei Frühverrentung."""
         # 0.3% Abschlag pro Monat, max. 14.4% (48 Monate)
         max_months = 48
         effective_months = min(months_early, max_months)
@@ -414,7 +414,7 @@ class RetirementService:
         return current_points + future_points
 
     # =========================================================================
-    # Rentenluecken-Analyse
+    # Rentenlücken-Analyse
     # =========================================================================
 
     async def analyze_pension_gap(
@@ -429,7 +429,7 @@ class RetirementService:
         retirement_age: Optional[int] = None,
     ) -> RentenlueckeResult:
         """
-        Analysiert die Rentenluecke und gibt Handlungsempfehlungen.
+        Analysiert die Rentenlücke und gibt Handlungsempfehlungen.
 
         Args:
             space_id: Space-ID
@@ -463,7 +463,7 @@ class RetirementService:
 
         years_until_retirement = max(0, retirement_age - current_age)
 
-        # Nettoeinkommen schaetzen (vereinfacht: 60% des Brutto)
+        # Nettoeinkommen schätzen (vereinfacht: 60% des Brutto)
         current_net_monthly = (current_gross_annual_income * Decimal("0.6") / 12).quantize(
             Decimal("0.01")
         )
@@ -501,14 +501,14 @@ class RetirementService:
             p.current_value for p in pension_sources
             if p.pension_type == PensionType.DEPOT
         )
-        # Projektion: 6% jaehrliche Rendite bis Rente
+        # Projektion: 6% jährliche Rendite bis Rente
         if years_until_retirement > 0 and depot_value > 0:
             projected_depot = depot_value * (Decimal("1.06") ** years_until_retirement)
         else:
             projected_depot = depot_value
         expected_investment = (projected_depot * Decimal("0.04") / 12).quantize(Decimal("0.01"))
 
-        # Gesamt und Luecke
+        # Gesamt und Lücke
         total_expected = (
             expected_statutory +
             expected_riester +
@@ -521,7 +521,7 @@ class RetirementService:
         pension_gap = max(Decimal("0"), target_monthly_income - total_expected)
         pension_gap_yearly = pension_gap * 12
 
-        # Kapitalluecke berechnen (25x Regel fuer 4% Entnahme)
+        # Kapitallücke berechnen (25x Regel für 4% Entnahme)
         capital_needed = pension_gap * 12 * 25
 
         # Aktuelle Ersparnisse
@@ -600,7 +600,7 @@ class RetirementService:
 
         if gap <= 0:
             recommendations.append(
-                "Glueckwunsch! Ihre prognostizierte Rente deckt Ihren Zielbedarf."
+                "Glückwunsch! Ihre prognostizierte Rente deckt Ihren Zielbedarf."
             )
             return recommendations
 
@@ -608,8 +608,8 @@ class RetirementService:
         has_riester = any(s.pension_type == PensionType.RIESTER for s in sources)
         if not has_riester and age < 55:
             recommendations.append(
-                "Riester-Rente pruefen: Staatliche Zulagen und Steuervorteile "
-                "koennen die Rendite deutlich erhoehen."
+                "Riester-Rente prüfen: Staatliche Zulagen und Steuervorteile "
+                "können die Rendite deutlich erhöhen."
             )
 
         # bAV-Empfehlung
@@ -628,11 +628,11 @@ class RetirementService:
                 "breit gestreute ETFs attraktive Renditechancen."
             )
 
-        # Zusaetzliche Entgeltpunkte
+        # Zusätzliche Entgeltpunkte
         if statutory_pension < Decimal("1500"):
             recommendations.append(
                 "Gesetzliche Rente steigern: Freiwillige Beitraege oder "
-                "Ausgleichszahlungen fuer Abschlaege pruefen."
+                "Ausgleichszahlungen für Abschlaege prüfen."
             )
 
         # Immobilie
@@ -641,11 +641,11 @@ class RetirementService:
             "um 500-1.000 EUR monatlich reduzieren."
         )
 
-        # Sparrate erhoehen
+        # Sparrate erhöhen
         if years_remaining > 5:
             recommendations.append(
-                f"Sparquote erhoehen: Jeder zusaetzliche Euro bringt durch "
-                f"den Zinseszins-Effekt ueber {years_remaining} Jahre erheblichen Mehrwert."
+                f"Sparquote erhöhen: Jeder zusätzliche Euro bringt durch "
+                f"den Zinseszins-Effekt über {years_remaining} Jahre erheblichen Mehrwert."
             )
 
         return recommendations[:5]
@@ -666,17 +666,17 @@ class RetirementService:
         ceiling_rate: Optional[Decimal] = None,
     ) -> WithdrawalPlan:
         """
-        Erstellt einen Entnahmeplan fuer den Ruhestand.
+        Erstellt einen Entnahmeplan für den Ruhestand.
 
         Args:
             initial_portfolio: Startvermoegen
-            annual_withdrawal_rate: Jaehrliche Entnahmerate (z.B. 0.04 = 4%)
+            annual_withdrawal_rate: Jährliche Entnahmerate (z.B. 0.04 = 4%)
             time_horizon_years: Planungshorizont in Jahren
             strategy: Entnahmestrategie
-            inflation_adjusted: Inflation beruecksichtigen
+            inflation_adjusted: Inflation berücksichtigen
             risk_profile: Risikoprofil
-            floor_rate: Minimale Entnahmerate (fuer Floor-Ceiling)
-            ceiling_rate: Maximale Entnahmerate (fuer Floor-Ceiling)
+            floor_rate: Minimale Entnahmerate (für Floor-Ceiling)
+            ceiling_rate: Maximale Entnahmerate (für Floor-Ceiling)
         """
         RETIREMENT_CALCULATIONS.labels(calculation_type="withdrawal_plan").inc()
 
@@ -696,7 +696,7 @@ class RetirementService:
             ceiling_rate,
         )
 
-        # Monte-Carlo fuer Erfolgswahrscheinlichkeit
+        # Monte-Carlo für Erfolgswahrscheinlichkeit
         mc_result = self.run_monte_carlo(
             initial_portfolio,
             initial_withdrawal,
@@ -722,13 +722,13 @@ class RetirementService:
 
         if strategy == WithdrawalStrategy.FIXED_PERCENTAGE:
             recommendations.append(
-                "Tipp: Dynamische Strategien koennen bei Markteinbruechen "
-                "das Portfolio-Ueberleben verbessern."
+                "Tipp: Dynamische Strategien können bei Markteinbruechen "
+                "das Portfolio-Überleben verbessern."
             )
 
         if time_horizon_years > 35:
             recommendations.append(
-                "Langer Planungshorizont: Beruecksichtigen Sie Langlebigkeitsrisiko. "
+                "Langer Planungshorizont: Berücksichtigen Sie Langlebigkeitsrisiko. "
                 "Konservativere Entnahme empfohlen."
             )
 
@@ -758,7 +758,7 @@ class RetirementService:
         floor_rate: Optional[Decimal],
         ceiling_rate: Optional[Decimal],
     ) -> List[Dict[str, Any]]:
-        """Projiziert Entnahmen Jahr fuer Jahr (deterministische Berechnung)."""
+        """Projiziert Entnahmen Jahr für Jahr (deterministische Berechnung)."""
         projections = []
         current_portfolio = portfolio
         current_withdrawal = initial_withdrawal
@@ -806,7 +806,7 @@ class RetirementService:
 
             current_portfolio = portfolio_end
 
-            # Inflation-Anpassung fuer naechstes Jahr
+            # Inflation-Anpassung für nächstes Jahr
             if inflation_adjusted:
                 current_withdrawal = (current_withdrawal * (1 + inflation)).quantize(
                     Decimal("0.01")
@@ -820,7 +820,7 @@ class RetirementService:
         years: int,
         risk_profile: RiskProfile,
     ) -> Decimal:
-        """Berechnet die sichere Entnahmerate fuer 95% Erfolg."""
+        """Berechnet die sichere Entnahmerate für 95% Erfolg."""
         # Binaeere Suche nach Rate mit 95% Erfolg
         low = Decimal("0.02")
         high = Decimal("0.08")
@@ -854,7 +854,7 @@ class RetirementService:
         inflation_adjusted: bool = True,
     ) -> MonteCarloResult:
         """
-        Fuehrt Monte-Carlo-Simulation fuer Portfolio-Langlebigkeit durch.
+        Führt Monte-Carlo-Simulation für Portfolio-Langlebigkeit durch.
 
         Simuliert verschiedene Marktszenarien basierend auf historischen
         Renditeverteilungen.
@@ -889,7 +889,7 @@ class RetirementService:
                     path.append(Decimal("0"))
                     continue
 
-                # Zufaellige Rendite (normalverteilt)
+                # Zufällige Rendite (normalverteilt)
                 annual_return = random.gauss(mean_return, std_return)
                 portfolio *= (1 + annual_return)
 
@@ -906,7 +906,7 @@ class RetirementService:
             if portfolio > 0:
                 success_count += 1
 
-            # Sample-Pfade fuer Visualisierung (max 50)
+            # Sample-Pfade für Visualisierung (max 50)
             if i < 50:
                 sample_paths.append(path)
 
@@ -975,10 +975,10 @@ class RetirementService:
         children_born_before_2008: int = 0,
         current_riester_contribution: Decimal = Decimal("0"),
     ) -> RiesterOptimization:
-        """Optimiert die Riester-Beitraege fuer maximale Foerderung."""
+        """Optimiert die Riester-Beitraege für maximale Foerderung."""
         RETIREMENT_CALCULATIONS.labels(calculation_type="riester_optimization").inc()
 
-        # Mindestbeitrag fuer volle Zulage: 4% des Vorjahres-Brutto, min. 60 EUR
+        # Mindestbeitrag für volle Zulage: 4% des Vorjahres-Brutto, min. 60 EUR
         min_eigenbeitrag_fuer_volle_zulage = max(
             Decimal("60"),
             (gross_annual_income * Decimal("0.04")).quantize(Decimal("0.01"))
@@ -1001,7 +1001,7 @@ class RetirementService:
         # Begrenzung auf Hoechstbetrag
         optimal_eigenbeitrag = min(optimal_eigenbeitrag, RIESTER_MAX_EIGENBEITRAG - total_zulagen)
 
-        # Sonderausgabenabzug pruefen
+        # Sonderausgabenabzug prüfen
         gesamt_altersvorsorgeaufwendungen = optimal_eigenbeitrag + total_zulagen
 
         # Steuerersparnis (vereinfacht)
@@ -1023,8 +1023,8 @@ class RetirementService:
 
         if current_riester_contribution < optimal_eigenbeitrag:
             recommendations.append(
-                f"Optimierung: Erhoehen Sie Ihren Riester-Beitrag auf "
-                f"{optimal_eigenbeitrag:.2f} EUR/Jahr fuer volle Zulagen."
+                f"Optimierung: Erhöhen Sie Ihren Riester-Beitrag auf "
+                f"{optimal_eigenbeitrag:.2f} EUR/Jahr für volle Zulagen."
             )
 
         if kinderzulage > 0:
@@ -1034,7 +1034,7 @@ class RetirementService:
 
         if tax_benefit > total_zulagen:
             recommendations.append(
-                "Steuerersparnis uebersteigt Zulagen - Sonderausgabenabzug vorteilhafter."
+                "Steuerersparnis übersteigt Zulagen - Sonderausgabenabzug vorteilhafter."
             )
 
         return RiesterOptimization(
@@ -1101,13 +1101,13 @@ class RetirementService:
 
         if current_contribution < BAV_STEUERFREIER_BEITRAG:
             recommendations.append(
-                f"Empfehlung: Erhoehen Sie auf {BAV_STEUERFREIER_BEITRAG:.2f} EUR/Jahr "
-                "fuer maximale Steuerersparnis."
+                f"Empfehlung: Erhöhen Sie auf {BAV_STEUERFREIER_BEITRAG:.2f} EUR/Jahr "
+                "für maximale Steuerersparnis."
             )
 
         if additional_match_available:
             recommendations.append(
-                "Arbeitgeber-Match nicht ausgeschoepft - Beitrag erhoehen lohnt sich!"
+                "Arbeitgeber-Match nicht ausgeschoepft - Beitrag erhöhen lohnt sich!"
             )
 
         if employer_match_percent == 0:
@@ -1132,7 +1132,7 @@ class RetirementService:
         )
 
     # =========================================================================
-    # Vollstaendige Analyse
+    # Vollständige Analyse
     # =========================================================================
 
     async def generate_retirement_summary(
@@ -1148,7 +1148,7 @@ class RetirementService:
         children_born_before_2008: int = 0,
     ) -> RetirementSummary:
         """
-        Generiert eine vollstaendige Altersvorsorge-Zusammenfassung.
+        Generiert eine vollständige Altersvorsorge-Zusammenfassung.
 
         SECURITY: Keine persoenlichen Daten oder Betraege loggen!
         """
@@ -1162,7 +1162,7 @@ class RetirementService:
 
         current_age = (date.today() - birth_date).days // 365
 
-        # 1. Rentenluecke analysieren
+        # 1. Rentenlücke analysieren
         gap_analysis = await self.analyze_pension_gap(
             db, space_id, birth_date,
             current_gross_annual_income,
@@ -1194,7 +1194,7 @@ class RetirementService:
             )
 
         # 3. Riester-Analyse
-        marginal_rate = Decimal("0.35")  # Geschaetzt
+        marginal_rate = Decimal("0.35")  # Geschätzt
         riester_analysis = self.optimize_riester(
             current_gross_annual_income,
             marginal_rate,
@@ -1208,7 +1208,7 @@ class RetirementService:
             None
         )
         bav_contribution = current_bav.annual_contribution if current_bav else Decimal("0")
-        bav_match = Decimal("15")  # Standard-Zuschuss geschaetzt
+        bav_match = Decimal("15")  # Standard-Zuschuss geschätzt
 
         bav_analysis = self.analyze_bav(
             bav_contribution,
@@ -1229,7 +1229,7 @@ class RetirementService:
         else:
             rating = "kritisch"
 
-        # 7. Prioritaetsaktionen
+        # 7. Prioritätsaktionen
         priority_actions = self._generate_priority_actions(
             gap_analysis, readiness_score, pension_sources
         )
@@ -1270,7 +1270,7 @@ class RetirementService:
         """Berechnet den Retirement Readiness Score (0-100)."""
         score = Decimal("50")  # Basis
 
-        # Rentenluecke (max 40 Punkte)
+        # Rentenlücke (max 40 Punkte)
         if gap_analysis.pension_gap <= 0:
             score += Decimal("40")
         elif gap_analysis.target_monthly_income > 0:
@@ -1307,25 +1307,25 @@ class RetirementService:
 
         if score < 50:
             actions.append(
-                "DRINGEND: Altersvorsorge stark ausbaufaehig. "
-                "Erhoehen Sie Ihre Sparquote sofort."
+                "DRINGEND: Altersvorsorge stark ausbaufähig. "
+                "Erhöhen Sie Ihre Sparquote sofort."
             )
 
         if gap_analysis.pension_gap > Decimal("500"):
             actions.append(
-                f"Rentenluecke von {gap_analysis.pension_gap:.0f} EUR/Monat schliessen: "
-                "Zusaetzliche Vorsorge aufbauen."
+                f"Rentenlücke von {gap_analysis.pension_gap:.0f} EUR/Monat schließen: "
+                "Zusätzliche Vorsorge aufbauen."
             )
 
         if gap_analysis.monthly_savings_required > Decimal("500"):
             actions.append(
-                f"Sparrate um {gap_analysis.monthly_savings_required:.0f} EUR/Monat erhoehen "
+                f"Sparrate um {gap_analysis.monthly_savings_required:.0f} EUR/Monat erhöhen "
                 "oder Renteneintritt verschieben."
             )
 
         has_riester = any(s.pension_type == PensionType.RIESTER for s in sources)
         if not has_riester:
-            actions.append("Riester-Vertrag abschliessen fuer staatliche Zulagen.")
+            actions.append("Riester-Vertrag abschließen für staatliche Zulagen.")
 
         has_bav = any(s.pension_type == PensionType.BAV for s in sources)
         if not has_bav:
@@ -1334,7 +1334,7 @@ class RetirementService:
         if gap_analysis.years_until_retirement > 20:
             has_etf = any(s.pension_type == PensionType.DEPOT for s in sources)
             if not has_etf:
-                actions.append("ETF-Sparplan starten fuer langfristigen Vermoegensaufbau.")
+                actions.append("ETF-Sparplan starten für langfristigen Vermoegensaufbau.")
 
         return actions[:5]
 
@@ -1344,5 +1344,5 @@ class RetirementService:
 # =============================================================================
 
 def get_retirement_service() -> RetirementService:
-    """Gibt die Singleton-Instanz des Retirement Service zurueck."""
+    """Gibt die Singleton-Instanz des Retirement Service zurück."""
     return RetirementService()

@@ -118,7 +118,7 @@ class SecurityEventType(str, Enum):
     ADMIN_USER_DELETED = "admin_user_deleted"
     ADMIN_FORCE_LOGOUT = "admin_force_logout"
 
-    # Admin Job Queue Actions (GDPR Art. 30 - Verzeichnis der Verarbeitungstaetigkeiten)
+    # Admin Job Queue Actions (GDPR Art. 30 - Verzeichnis der Verarbeitungstätigkeiten)
     ADMIN_JOBS_LISTED = "admin_jobs_listed"
     ADMIN_JOB_ACCESSED = "admin_job_accessed"
     ADMIN_JOB_CANCELLED = "admin_job_cancelled"
@@ -131,7 +131,7 @@ class SecurityEventType(str, Enum):
     DOCUMENT_TAG_MANUAL_CHANGED = "document_tag_manual_changed"
     DOCUMENT_RENAMED = "document_renamed"
 
-    # Privat Module Events (GDPR Art. 30 - Verzeichnis der Verarbeitungstaetigkeiten)
+    # Privat Module Events (GDPR Art. 30 - Verzeichnis der Verarbeitungstätigkeiten)
     PRIVAT_DOCUMENT_CREATED = "privat_document_created"
     PRIVAT_DOCUMENT_ACCESSED = "privat_document_accessed"
     PRIVAT_DOCUMENT_UPDATED = "privat_document_updated"
@@ -144,7 +144,7 @@ class SecurityEventType(str, Enum):
     PRIVAT_SPACE_ACCESS_REVOKED = "privat_space_access_revoked"
     PRIVAT_EMERGENCY_ACCESS_USED = "privat_emergency_access_used"
 
-    # Personal/HR Module Events (GDPR Art. 30 - Verzeichnis der Verarbeitungstaetigkeiten)
+    # Personal/HR Module Events (GDPR Art. 30 - Verzeichnis der Verarbeitungstätigkeiten)
     # Employee Events
     EMPLOYEE_CREATED = "employee_created"
     EMPLOYEE_ACCESSED = "employee_accessed"
@@ -166,8 +166,8 @@ class SecurityEventType(str, Enum):
     POSITION_DELETED = "position_deleted"
     POSITION_SALARY_ACCESSED = "position_salary_accessed"
 
-    # List Operations (GDPR Art. 30 - Verzeichnis der Verarbeitungstaetigkeiten)
-    # CRITICAL: Diese Events sind fuer Massenexfiltrations-Erkennung erforderlich!
+    # List Operations (GDPR Art. 30 - Verzeichnis der Verarbeitungstätigkeiten)
+    # CRITICAL: Diese Events sind für Massenexfiltrations-Erkennung erforderlich!
     EMPLOYEES_LISTED = "employees_listed"
     DEPARTMENTS_LISTED = "departments_listed"
     POSITIONS_LISTED = "positions_listed"

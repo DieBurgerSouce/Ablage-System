@@ -7,7 +7,7 @@ Enterprise-Level Template-Automatisierung:
 - Temporaere generierte Dokumente aufraemen
 - Template-Cache Management
 
-Feinpoliert und durchdacht - Zuverlaessige Template-Verarbeitung.
+Feinpoliert und durchdacht - Zuverlässige Template-Verarbeitung.
 """
 
 import structlog
@@ -48,17 +48,17 @@ def render_template_batch(
     """Rendert mehrere Dokumente aus einem Template (Batch-Verarbeitung).
 
     Typische Anwendungsfaelle:
-    - Monats-Rechnungen fuer alle Kunden generieren
+    - Monats-Rechnungen für alle Kunden generieren
     - Serienbrief-Erstellung
-    - Massenhafte Vertraege generieren
-    - Quartals-Reports fuer alle Projekte
+    - Massenhafte Verträge generieren
+    - Quartals-Reports für alle Projekte
 
     Args:
         template_id: UUID des Document Templates
         data_items: Liste von Daten-Dictionaries (eines pro Dokument)
         user_id: UUID des initiierenden Benutzers
         company_id: UUID der Company (Multi-Tenant)
-        batch_name: Optionaler Name fuer den Batch-Job
+        batch_name: Optionaler Name für den Batch-Job
 
     Returns:
         Dict mit Batch-Ergebnis:
@@ -69,7 +69,7 @@ def render_template_batch(
             - errors: Liste von Fehlern
 
     Raises:
-        Retry bei temporaeren Fehlern
+        Retry bei temporären Fehlern
     """
     import asyncio
 
@@ -122,7 +122,7 @@ def render_template_batch(
                     error_detail = {
                         "index": index,
                         "error": safe_error_detail(e, "Vorgang"),
-                        "data_preview": str(data)[:200],  # Gekuerzter Preview
+                        "data_preview": str(data)[:200],  # Gekürzter Preview
                     }
                     result["errors"].append(error_detail)
 
@@ -175,8 +175,8 @@ def render_template_single(
 ) -> Dict[str, Any]:
     """Rendert ein einzelnes Dokument aus einem Template.
 
-    Fuer asynchrone Template-Rendering Jobs die nicht sofort
-    ausgefuehrt werden muessen.
+    Für asynchrone Template-Rendering Jobs die nicht sofort
+    ausgeführt werden müssen.
 
     Args:
         template_id: UUID des Document Templates
@@ -192,7 +192,7 @@ def render_template_single(
             - error: Fehlermeldung falls failed
 
     Raises:
-        Retry bei temporaeren Fehlern
+        Retry bei temporären Fehlern
     """
     import asyncio
 
@@ -264,13 +264,13 @@ def cleanup_temp_files(
     self,
     max_age_hours: int = 24,
 ) -> Dict[str, Any]:
-    """Raeumt temporaere generierte Dokumente auf.
+    """Räumt temporäre generierte Dokumente auf.
 
-    Loescht generierte Dokumente die als temporaer markiert sind
-    und aelter als max_age_hours sind. Dies verhindert Speicher-Muell
+    Löscht generierte Dokumente die als temporaer markiert sind
+    und älter als max_age_hours sind. Dies verhindert Speicher-Müll
     von einmalig generierten Preview-Dokumenten.
 
-    Typisches Schedule: Taeglich um 02:00.
+    Typisches Schedule: Täglich um 02:00.
 
     Args:
         max_age_hours: Maximales Alter in Stunden (default: 24h)
@@ -282,7 +282,7 @@ def cleanup_temp_files(
             - max_age_hours: Verwendeter Schwellwert
 
     Raises:
-        Retry bei temporaeren Fehlern
+        Retry bei temporären Fehlern
     """
     import asyncio
 
@@ -308,7 +308,7 @@ def cleanup_temp_files(
         async with get_async_session_context() as db:
             storage = StorageService()
 
-            # Query temporaere Dokumente aelter als cutoff
+            # Query temporäre Dokumente älter als cutoff
             query = select(Document).where(
                 and_(
                     Document.metadata["is_temporary"].astext.cast(bool) == True,
@@ -380,12 +380,12 @@ def cleanup_old_template_versions(
     self,
     keep_versions: int = 10,
 ) -> Dict[str, Any]:
-    """Raeumt alte Template-Versionen auf.
+    """Räumt alte Template-Versionen auf.
 
     Behaelt nur die neuesten N Versionen pro Template.
     Aktive Templates und deren Parent-Version werden immer behalten.
 
-    Typisches Schedule: Woechentlich Sonntag 03:00.
+    Typisches Schedule: Wöchentlich Sonntag 03:00.
 
     Args:
         keep_versions: Anzahl Versionen die behalten werden (default: 10)
@@ -393,11 +393,11 @@ def cleanup_old_template_versions(
     Returns:
         Dict mit Cleanup-Statistiken:
             - templates_processed: Anzahl verarbeiteter Templates
-            - versions_deleted: Geloeschte Versionen
+            - versions_deleted: Gelöschte Versionen
             - keep_versions: Verwendeter Schwellwert
 
     Raises:
-        Retry bei temporaeren Fehlern
+        Retry bei temporären Fehlern
     """
     import asyncio
 
@@ -460,7 +460,7 @@ def cleanup_old_template_versions(
                     to_keep = set(v.version for v in versions[:keep_versions])
                     to_keep.update(protected_versions)
 
-                    # Loesche alte Versionen
+                    # Lösche alte Versionen
                     for version in versions:
                         if version.version not in to_keep:
                             version.is_deleted = True
@@ -507,11 +507,11 @@ def cleanup_old_template_versions(
     queue="metadata",
 )
 def collect_template_stats(self) -> Dict[str, Any]:
-    """Sammelt Statistiken ueber Template-Nutzung.
+    """Sammelt Statistiken über Template-Nutzung.
 
-    Erstellt aggregierte Nutzungs-Statistiken fuer Analytics.
+    Erstellt aggregierte Nutzungs-Statistiken für Analytics.
 
-    Typisches Schedule: Taeglich um 04:00.
+    Typisches Schedule: Täglich um 04:00.
 
     Returns:
         Dict mit Template-Statistiken:
@@ -522,7 +522,7 @@ def collect_template_stats(self) -> Dict[str, Any]:
             - error_rate: Fehlerrate beim Rendering
 
     Raises:
-        Retry bei temporaeren Fehlern
+        Retry bei temporären Fehlern
     """
     import asyncio
 

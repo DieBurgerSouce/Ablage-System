@@ -2,10 +2,10 @@
 """
 USt-Voranmeldung Service (VAT Pre-Registration).
 
-Berechnet und erstellt USt-Voranmeldungen fuer:
+Berechnet und erstellt USt-Voranmeldungen für:
 - Monatliche Meldung
 - Quartalsweise Meldung
-- Jaehrliche Zusammenfassung
+- Jährliche Zusammenfassung
 
 GoBD-konform mit ELSTER-Export-Format.
 """
@@ -32,7 +32,7 @@ logger = structlog.get_logger(__name__)
 
 
 class VATRate(str, Enum):
-    """Deutsche USt-Saetze."""
+    """Deutsche USt-Sätze."""
     STANDARD = "19"        # 19% Regelsatz
     REDUCED = "7"          # 7% Ermaessigt
     ZERO = "0"             # 0% Steuerbefreit
@@ -48,11 +48,11 @@ class VATReportPeriod(str, Enum):
 
 # Deutsche USt-Kennziffern (Elster)
 VAT_KENNZIFFERN = {
-    # Umsaetze
-    "81": "Steuerpflichtige Umsaetze 19%",
-    "86": "Steuerpflichtige Umsaetze 7%",
-    "35": "Steuerpflichtige Umsaetze andere Steuersaetze",
-    "36": "Steuer auf Umsaetze zu Kennziffer 35",
+    # Umsätze
+    "81": "Steuerpflichtige Umsätze 19%",
+    "86": "Steuerpflichtige Umsätze 7%",
+    "35": "Steuerpflichtige Umsätze andere Steuersätze",
+    "36": "Steuer auf Umsätze zu Kennziffer 35",
 
     # Innergemeinschaftliche Erwerbe
     "89": "Innergemeinschaftliche Erwerbe 19%",
@@ -61,7 +61,7 @@ VAT_KENNZIFFERN = {
     # Steuerfrei
     "41": "Innergemeinschaftliche Lieferungen",
     "43": "Ausfuhrlieferungen",
-    "44": "Steuerfreie Umsaetze Drittland",
+    "44": "Steuerfreie Umsätze Drittland",
 
     # Vorsteuer
     "66": "Vorsteuer aus Rechnungen",
@@ -81,7 +81,7 @@ VAT_KENNZIFFERN = {
 
 @dataclass
 class VATLineItem:
-    """Einzelposition fuer USt-Berechnung."""
+    """Einzelposition für USt-Berechnung."""
     document_id: uuid.UUID
     invoice_number: Optional[str]
     invoice_date: Optional[date]
@@ -119,7 +119,7 @@ class VATReport:
     generated_at: datetime
     status: str = "draft"  # draft, submitted, accepted
 
-    # Umsaetze (Output VAT)
+    # Umsätze (Output VAT)
     output_vat_19: VATSummary = field(default_factory=lambda: VATSummary("81", VAT_KENNZIFFERN["81"]))
     output_vat_7: VATSummary = field(default_factory=lambda: VATSummary("86", VAT_KENNZIFFERN["86"]))
     inner_eu_deliveries: VATSummary = field(default_factory=lambda: VATSummary("41", VAT_KENNZIFFERN["41"]))
@@ -143,7 +143,7 @@ class VATReport:
     line_items: List[VATLineItem] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert zu Dictionary fuer JSON/API."""
+        """Konvertiert zu Dictionary für JSON/API."""
         return {
             "company_id": str(self.company_id),
             "period_type": self.period_type.value,
@@ -212,9 +212,9 @@ class VATReport:
         steuernummer: Optional[str] = None,
     ) -> str:
         """
-        Generiert ELSTER-kompatibles XML fuer UStVA.
+        Generiert ELSTER-kompatibles XML für UStVA.
 
-        Erzeugt XML gemaess dem ELSTER-Schema v11 mit:
+        Erzeugt XML gemäß dem ELSTER-Schema v11 mit:
         - TransferHeader (Verfahren, DatenArt, Vorgang)
         - DatenTeil mit Nutzdatenblock
         - Anmeldungssteuern mit allen relevanten Kennziffern
@@ -227,7 +227,7 @@ class VATReport:
         Returns:
             ELSTER-konformes XML als String (UTF-8).
 
-        Hinweis: In Produktion ERiC-Library fuer Zertifikat/Signatur verwenden.
+        Hinweis: In Produktion ERiC-Library für Zertifikat/Signatur verwenden.
         """
         from xml.etree.ElementTree import Element, SubElement, tostring
         from xml.dom.minidom import parseString
@@ -254,7 +254,7 @@ class VATReport:
         # NutzdatenHeader
         nd_header = SubElement(nutzdatenblock, "NutzdatenHeader")
         SubElement(nd_header, "NutzdatenTicket").text = "1"
-        empfaenger = SubElement(nd_header, "Empfaenger", id="F")
+        empfaenger = SubElement(nd_header, "Empfänger", id="F")
         empfaenger.text = ""
 
         # Nutzdaten
@@ -296,14 +296,14 @@ class VATReport:
         return pretty.decode("UTF-8")
 
     def _get_elster_period(self) -> str:
-        """Gibt ELSTER-Zeitraumcode zurueck."""
+        """Gibt ELSTER-Zeitraumcode zurück."""
         if self.period_type == VATReportPeriod.MONTHLY:
             return f"{self.period_start.month:02d}"
         elif self.period_type == VATReportPeriod.QUARTERLY:
             quarter = (self.period_start.month - 1) // 3 + 1
             return f"Q{quarter}"
         else:
-            return "00"  # Jaehrlich
+            return "00"  # Jährlich
 
 
 # ============================================================================
@@ -313,11 +313,11 @@ class VATReport:
 
 class VATService:
     """
-    Service fuer USt-Voranmeldung.
+    Service für USt-Voranmeldung.
 
     Features:
     - Automatische Berechnung aus Dokumenten
-    - USt-Saetze Erkennung
+    - USt-Sätze Erkennung
     - ELSTER-Export
     - Historische Berichte
 
@@ -344,7 +344,7 @@ class VATService:
         include_details: bool = True,
     ) -> VATReport:
         """
-        Generiert USt-Voranmeldung fuer einen Zeitraum.
+        Generiert USt-Voranmeldung für einen Zeitraum.
 
         Args:
             company_id: Firma
@@ -505,7 +505,7 @@ class VATService:
             quarter = (start.month - 1) // 3 + 1
             return VATReportPeriod.QUARTERLY, f"Q{quarter}/{start.year}"
         else:
-            # Jaehrlich
+            # Jährlich
             return VATReportPeriod.YEARLY, str(start.year)
 
     async def _get_output_vat_items(
@@ -514,7 +514,7 @@ class VATService:
         period_start: date,
         period_end: date,
     ) -> List[VATLineItem]:
-        """Holt Ausgangsrechnungen fuer Output VAT."""
+        """Holt Ausgangsrechnungen für Output VAT."""
         query = select(Document).where(
             and_(
                 Document.company_id == company_id,
@@ -572,7 +572,7 @@ class VATService:
         period_start: date,
         period_end: date,
     ) -> List[VATLineItem]:
-        """Holt Eingangsrechnungen fuer Input VAT (Vorsteuer)."""
+        """Holt Eingangsrechnungen für Input VAT (Vorsteuer)."""
         query = select(Document).where(
             and_(
                 Document.company_id == company_id,
@@ -710,11 +710,11 @@ class VATService:
             elif is_export:
                 return "43"  # Ausfuhrlieferungen
             elif vat_rate == "19":
-                return "81"  # Umsaetze 19%
+                return "81"  # Umsätze 19%
             elif vat_rate == "7":
-                return "86"  # Umsaetze 7%
+                return "86"  # Umsätze 7%
             else:
-                return "35"  # Andere Steuersaetze
+                return "35"  # Andere Steuersätze
 
     def _add_output_item(self, report: VATReport, item: VATLineItem) -> None:
         """Fuegt Ausgangsrechnung zum Report hinzu."""
@@ -753,5 +753,5 @@ class VATService:
 
 
 def get_vat_service(db: AsyncSession) -> VATService:
-    """Factory-Funktion fuer Dependency Injection."""
+    """Factory-Funktion für Dependency Injection."""
     return VATService(db)

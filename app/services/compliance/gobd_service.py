@@ -1,14 +1,14 @@
 """
 GoBD Compliance Service - Vision 2026
 
-Prueft und dokumentiert GoBD-Konformitaet mit:
+Prüft und dokumentiert GoBD-Konformität mit:
 - Automatisierte Compliance-Checks nach GoBD-Kriterien
 - Audit-Trail Verifikation
-- Integritaets-Hash-Pruefung
+- Integritäts-Hash-Prüfung
 - Aufbewahrungsfrist-Tracking
 - Dashboard-Daten und Reporting
 
-GoBD = Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung von
+GoBD = Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung von
 Buechern, Aufzeichnungen und Unterlagen in elektronischer Form sowie
 zum Datenzugriff
 """
@@ -53,7 +53,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class CheckResult:
-    """Ergebnis einer einzelnen Compliance-Pruefung."""
+    """Ergebnis einer einzelnen Compliance-Prüfung."""
     check_type: str
     status: str
     score: int  # 0-100
@@ -66,7 +66,7 @@ class CheckResult:
 
 @dataclass
 class ComplianceDashboard:
-    """Dashboard-Daten fuer Compliance-Uebersicht."""
+    """Dashboard-Daten für Compliance-Übersicht."""
     overall_score: int
     overall_status: str
     checks_passed: int
@@ -95,20 +95,20 @@ class RemediationAction:
 
 class GoBDComplianceService:
     """
-    Service fuer GoBD-Compliance-Pruefungen und -Reporting.
+    Service für GoBD-Compliance-Prüfungen und -Reporting.
 
     Features:
     - Automatisierte Compliance-Checks
     - Dashboard-Daten
     - Audit-Trail Verifikation
-    - Integritaets-Pruefung
+    - Integritäts-Prüfung
     - Report-Generierung
     """
 
-    # Default-Pruefintervalle (Stunden)
+    # Default-Prüfintervalle (Stunden)
     CHECK_INTERVALS = {
-        GoBDCheckType.NACHVOLLZIEHBARKEIT.value: 24,      # Taeglich
-        GoBDCheckType.UNVERAENDERBARKEIT.value: 24,       # Taeglich
+        GoBDCheckType.NACHVOLLZIEHBARKEIT.value: 24,      # Täglich
+        GoBDCheckType.UNVERAENDERBARKEIT.value: 24,       # Täglich
         GoBDCheckType.VOLLSTAENDIGKEIT.value: 168,        # Woechentlich
         GoBDCheckType.AUFBEWAHRUNG.value: 168,            # Woechentlich
         GoBDCheckType.VERFAHRENSDOKUMENTATION.value: 720,  # Monatlich
@@ -126,7 +126,7 @@ class GoBDComplianceService:
         triggered_by: str = "scheduled",
         executed_by_id: Optional[UUID] = None,
     ) -> List[CheckResult]:
-        """Alle GoBD-Compliance-Checks durchfuehren."""
+        """Alle GoBD-Compliance-Checks durchführen."""
         logger.info("Starte alle GoBD-Compliance-Checks", company_id=str(company_id))
 
         results = []
@@ -158,7 +158,7 @@ class GoBDComplianceService:
         triggered_by: str = "manual",
         executed_by_id: Optional[UUID] = None,
     ) -> CheckResult:
-        """Einzelnen GoBD-Compliance-Check durchfuehren."""
+        """Einzelnen GoBD-Compliance-Check durchführen."""
         start_time = datetime.now()
 
         # Run specific check
@@ -186,7 +186,7 @@ class GoBDComplianceService:
                 status=ComplianceStatus.NOT_APPLICABLE.value,
                 score=100,
                 issues_found=0,
-                details={"message": "Pruefungstyp nicht implementiert"},
+                details={"message": "Prüfungstyp nicht implementiert"},
                 affected_documents=[],
                 remediation_steps=[],
                 execution_time_ms=0,
@@ -214,12 +214,12 @@ class GoBDComplianceService:
         company_id: UUID,
     ) -> CheckResult:
         """
-        Nachvollziehbarkeit - Audit-Trail Pruefung.
+        Nachvollziehbarkeit - Audit-Trail Prüfung.
 
-        Prueft:
+        Prüft:
         - Sind Audit-Logs vorhanden?
         - Sind alle relevanten Aktionen protokolliert?
-        - Gibt es Luecken in der Sequenz?
+        - Gibt es Lücken in der Sequenz?
         """
         issues = []
         affected_docs: List[str] = []
@@ -268,9 +268,9 @@ class GoBDComplianceService:
 
         remediation = []
         if coverage < 100:
-            remediation.append("Fehlende Audit-Logs fuer aeltere Dokumente generieren")
+            remediation.append("Fehlende Audit-Logs für aeltere Dokumente generieren")
         if gap_count > 0:
-            remediation.append("Sequenz-Luecken im Audit-Log untersuchen")
+            remediation.append("Sequenz-Lücken im Audit-Log untersuchen")
 
         return CheckResult(
             check_type=GoBDCheckType.NACHVOLLZIEHBARKEIT.value,
@@ -294,9 +294,9 @@ class GoBDComplianceService:
         company_id: UUID,
     ) -> CheckResult:
         """
-        Unveraenderbarkeit - Hash-Verifikation.
+        Unveränderbarkeit - Hash-Verifikation.
 
-        Prueft:
+        Prüft:
         - Sind alle archivierten Dokumente mit Hash gesichert?
         - Stimmen die Hashes noch?
         """
@@ -328,7 +328,7 @@ class GoBDComplianceService:
         if hash_mismatches > 0:
             issues.append({
                 "type": "hash_mismatch",
-                "message": f"{hash_mismatches} Dokument(e) mit ungueltigem Hash",
+                "message": f"{hash_mismatches} Dokument(e) mit ungültigem Hash",
                 "severity": "critical",
             })
 
@@ -369,7 +369,7 @@ class GoBDComplianceService:
 
         remediation = []
         if hash_mismatches > 0:
-            remediation.append("KRITISCH: Dokumente mit ungueltigem Hash aus Backup wiederherstellen")
+            remediation.append("KRITISCH: Dokumente mit ungültigem Hash aus Backup wiederherstellen")
         if unarchived > 0:
             remediation.append(f"{unarchived} Dokument(e) archivieren")
 
@@ -396,10 +396,10 @@ class GoBDComplianceService:
         company_id: UUID,
     ) -> CheckResult:
         """
-        Vollstaendigkeit - Lueckenlose Belegnummern.
+        Vollständigkeit - Lückenlose Belegnummern.
 
-        Prueft:
-        - Sind Rechnungsnummern lueckenlos?
+        Prüft:
+        - Sind Rechnungsnummern lückenlos?
         - Gibt es fehlende Belege in Sequenzen?
         """
         issues = []
@@ -440,10 +440,10 @@ class GoBDComplianceService:
         """
         Aufbewahrung - Aufbewahrungsfristen.
 
-        Prueft:
+        Prüft:
         - Werden 10-Jahres-Fristen eingehalten?
         - Sind Dokumente vor Ablauf geschuetzt?
-        - Gibt es Dokumente zum Loeschen?
+        - Gibt es Dokumente zum Löschen?
         """
         issues = []
         affected_docs: List[str] = []
@@ -484,7 +484,7 @@ class GoBDComplianceService:
         if expired_count > 0:
             issues.append({
                 "type": "retention_expired",
-                "message": f"{expired_count} Dokument(e) haben Aufbewahrungsfrist ueberschritten",
+                "message": f"{expired_count} Dokument(e) haben Aufbewahrungsfrist überschritten",
                 "severity": "warning",
             })
 
@@ -497,9 +497,9 @@ class GoBDComplianceService:
 
         remediation = []
         if expired_count > 0:
-            remediation.append(f"{expired_count} abgelaufene Dokumente zur Loeschung freigeben")
+            remediation.append(f"{expired_count} abgelaufene Dokumente zur Löschung freigeben")
         if expiring_count > 0:
-            remediation.append(f"Aufbewahrungsfristen fuer {expiring_count} Dokumente ueberpruefen")
+            remediation.append(f"Aufbewahrungsfristen für {expiring_count} Dokumente überprüfen")
 
         return CheckResult(
             check_type=GoBDCheckType.AUFBEWAHRUNG.value,
@@ -584,7 +584,7 @@ class GoBDComplianceService:
         db: AsyncSession,
         company_id: UUID,
     ) -> CheckResult:
-        """Maschinelle Auswertbarkeit - Export-Faehigkeit."""
+        """Maschinelle Auswertbarkeit - Export-Fähigkeit."""
         # Verify export functionality is available
         score = 100
         status = ComplianceStatus.PASSED.value
@@ -596,7 +596,7 @@ class GoBDComplianceService:
             issues_found=0,
             details={
                 "export_formats": ["GDPdU", "DATEV", "CSV", "PDF"],
-                "message": "Export-Funktionen verfuegbar",
+                "message": "Export-Funktionen verfügbar",
             },
             affected_documents=[],
             remediation_steps=[],
@@ -630,7 +630,7 @@ class GoBDComplianceService:
         db: AsyncSession,
         company_id: UUID,
     ) -> CheckResult:
-        """Datensicherung - Backup-Pruefung."""
+        """Datensicherung - Backup-Prüfung."""
         # Verify backup status
         # This would check actual backup system status
         score = 100
@@ -737,7 +737,7 @@ class GoBDComplianceService:
         db: AsyncSession,
         company_id: UUID,
     ) -> ComplianceDashboard:
-        """Dashboard-Daten fuer Compliance-Uebersicht abrufen."""
+        """Dashboard-Daten für Compliance-Übersicht abrufen."""
         # Get latest check results
         checks = await db.execute(
             select(GoBDComplianceCheck)

@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """Workflow-Automation Services.
 
-Dieses Modul stellt Services fuer die Workflow-Automatisierung bereit:
-- WorkflowService: CRUD fuer Workflows + Templates
-- WorkflowExecutionService: Workflow-Ausfuehrung + Lifecycle
-- WorkflowStepExecutor: Einzelschritt-Ausfuehrung (20+ Actions)
+Dieses Modul stellt Services für die Workflow-Automatisierung bereit:
+- WorkflowService: CRUD für Workflows + Templates
+- WorkflowExecutionService: Workflow-Ausführung + Lifecycle
+- WorkflowStepExecutor: Einzelschritt-Ausführung (20+ Actions)
 - WorkflowTriggerService: Trigger-Handling (Events, Schedule, Webhook)
 - WorkflowEngineService: Regel-basierte Entity-Evaluation
 - ConditionEvaluator: Wiederverwendet ImportRuleService-Logik
 - BPMNConverter: BPMN 2.0 Import/Export
 - PREBUILT_TEMPLATES: Vordefinierte Workflow-Templates
 - WorkflowVersioningService: Semantische Versionierung + A/B Testing
-- SagaService: Saga-Pattern fuer verteilte Transaktionen + Compensation
+- SagaService: Saga-Pattern für verteilte Transaktionen + Compensation
 """
 
 from app.services.workflow.workflow_service import WorkflowService

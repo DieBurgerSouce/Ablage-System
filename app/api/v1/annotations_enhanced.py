@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Erweiterte Annotationen & Kommentare API Router.
 
-Endpoints fuer:
+Endpoints für:
 - Erweiterte Annotationen (Bounding Box, Pfeile, Stempel)
 - Verschachtelte Kommentar-Antworten mit @mentions
 - Aufgaben aus Kommentaren
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/annotations", tags=["Annotationen & Kommentare"])
 
 
 class AnnotationCreateRequest(BaseModel):
-    """Schema fuer neue erweiterte Annotation."""
+    """Schema für neue erweiterte Annotation."""
     annotation_type: str = Field(
         ...,
         description="Typ: comment, highlight, bounding_box, arrow, stamp",
@@ -45,25 +45,25 @@ class AnnotationCreateRequest(BaseModel):
 
 
 class AnnotationUpdateRequest(BaseModel):
-    """Schema fuer Annotation-Update."""
+    """Schema für Annotation-Update."""
     content: Optional[str] = Field(None, max_length=5000)
     color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
 
 
 class ReplyCreateRequest(BaseModel):
-    """Schema fuer neue Kommentar-Antwort."""
+    """Schema für neue Kommentar-Antwort."""
     content: str = Field(..., min_length=1, max_length=5000)
     parent_reply_id: Optional[UUID] = None
     mentions: Optional[List[UUID]] = None
 
 
 class ReplyEditRequest(BaseModel):
-    """Schema fuer Antwort-Bearbeitung."""
+    """Schema für Antwort-Bearbeitung."""
     content: str = Field(..., min_length=1, max_length=5000)
 
 
 class TaskCreateRequest(BaseModel):
-    """Schema fuer Aufgabe aus Kommentar."""
+    """Schema für Aufgabe aus Kommentar."""
     title: str = Field(..., min_length=1, max_length=300)
     description: Optional[str] = Field(None, max_length=2000)
     thread_id: Optional[UUID] = None
@@ -73,7 +73,7 @@ class TaskCreateRequest(BaseModel):
 
 
 class TaskStatusUpdateRequest(BaseModel):
-    """Schema fuer Aufgaben-Status-Update."""
+    """Schema für Aufgaben-Status-Update."""
     status: str = Field(
         ...,
         description="offen, in_bearbeitung, erledigt",
@@ -106,7 +106,7 @@ async def create_annotation(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Annotationstyp: {data.annotation_type}",
+            detail=f"Ungültiger Annotationstyp: {data.annotation_type}",
         )
 
     annotation = await service.create_annotation(
@@ -147,7 +147,7 @@ async def get_annotations(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ) -> List[dict]:
-    """Alle Annotationen fuer ein Dokument abrufen (optional nach Seite filtern)."""
+    """Alle Annotationen für ein Dokument abrufen (optional nach Seite filtern)."""
     from app.services.annotation_service import get_enhanced_annotation_service
 
     service = get_enhanced_annotation_service()
@@ -252,14 +252,14 @@ async def resolve_annotation(
 @router.delete(
     "/{annotation_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Annotation loeschen",
+    summary="Annotation löschen",
 )
 async def delete_annotation(
     annotation_id: UUID,
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
-    """Annotation loeschen (nur Autor)."""
+    """Annotation löschen (nur Autor)."""
     from app.services.annotation_service import get_enhanced_annotation_service
 
     service = get_enhanced_annotation_service()
@@ -482,7 +482,7 @@ async def update_task_status(
     if data.status not in valid_statuses:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Status. Erlaubt: {', '.join(valid_statuses)}",
+            detail=f"Ungültiger Status. Erlaubt: {', '.join(valid_statuses)}",
         )
 
     service = get_comment_reply_service()
@@ -521,7 +521,7 @@ async def get_mentions(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ) -> List[dict]:
-    """@mention-Benachrichtigungen fuer den aktuellen Benutzer abrufen."""
+    """@mention-Benachrichtigungen für den aktuellen Benutzer abrufen."""
     from app.services.comment_reply_service import get_comment_reply_service
 
     service = get_comment_reply_service()

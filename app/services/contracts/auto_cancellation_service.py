@@ -2,17 +2,17 @@
 """
 Auto-Cancellation Service for Contract Management V2.
 
-Automatisiert den Kuendigungsprozess:
-- Kuendigungsschreiben generieren (Deutsche Vorlage)
-- Versand planen und durchfuehren
-- Bestaetigungsverfolgung
+Automatisiert den Kündigungsprozess:
+- Kündigungsschreiben generieren (Deutsche Vorlage)
+- Versand planen und durchführen
+- Bestätigungsverfolgung
 - Vertragsstatus aktualisieren
-- Archivierung mit Bestaetigung
+- Archivierung mit Bestätigung
 
 SECURITY:
-- NIEMALS Vertragsdaten in Logs (Geschaeftsgeheimnisse)
-- E-Mail-Versand ueber sicheren Service
-- Audit-Trail fuer alle Aktionen
+- NIEMALS Vertragsdaten in Logs (Geschäftsgeheimnisse)
+- E-Mail-Versand über sicheren Service
+- Audit-Trail für alle Aktionen
 
 Feinpoliert und durchdacht - Enterprise Contract Management V2.
 """
@@ -44,7 +44,7 @@ logger = structlog.get_logger(__name__)
 
 
 CANCELLATION_TEMPLATES: Dict[str, str] = {
-    # Standard-Kuendigung
+    # Standard-Kündigung
     "standard": """
 {company_name}
 {company_address}
@@ -54,14 +54,14 @@ CANCELLATION_TEMPLATES: Dict[str, str] = {
 
 {city}, den {date}
 
-Kuendigung des Vertrags {contract_number}
+Kündigung des Vertrags {contract_number}
 
 Sehr geehrte Damen und Herren,
 
-hiermit kuendigen wir den zwischen uns bestehenden Vertrag "{contract_title}"
+hiermit kündigen wir den zwischen uns bestehenden Vertrag "{contract_title}"
 (Vertragsnummer: {contract_number}) fristgerecht zum {effective_date}.
 
-Bitte bestaetigen Sie uns den Eingang dieser Kuendigung sowie das Vertragsende
+Bitte bestätigen Sie uns den Eingang dieser Kündigung sowie das Vertragsende
 zum genannten Termin schriftlich.
 
 Bis zum Vertragsende werden wir unseren vertraglichen Verpflichtungen
@@ -73,7 +73,7 @@ Mit freundlichen Gruessen
 {company_name}
 """,
 
-    # Ausserordentliche Kuendigung
+    # Ausserordentliche Kündigung
     "extraordinary": """
 {company_name}
 {company_address}
@@ -83,19 +83,19 @@ Mit freundlichen Gruessen
 
 {city}, den {date}
 
-Ausserordentliche Kuendigung des Vertrags {contract_number}
+Ausserordentliche Kündigung des Vertrags {contract_number}
 
 Sehr geehrte Damen und Herren,
 
-hiermit kuendigen wir den zwischen uns bestehenden Vertrag "{contract_title}"
+hiermit kündigen wir den zwischen uns bestehenden Vertrag "{contract_title}"
 (Vertragsnummer: {contract_number}) aus wichtigem Grund fristlos,
-hilfsweise fristgerecht zum naechstmoeglichen Termin.
+hilfsweise fristgerecht zum nächstmöglichen Termin.
 
-Grund fuer die ausserordentliche Kuendigung:
+Grund für die ausserordentliche Kündigung:
 {reason}
 
-Wir fordern Sie auf, den Eingang dieser Kuendigung sowie die Beendigung
-des Vertragsverhaeltnisses umgehend schriftlich zu bestaetigen.
+Wir fordern Sie auf, den Eingang dieser Kündigung sowie die Beendigung
+des Vertragsverhältnisses umgehend schriftlich zu bestätigen.
 
 Mit freundlichen Gruessen
 
@@ -122,10 +122,10 @@ wir moechten den zwischen uns bestehenden Vertrag "{contract_title}"
 
 {reason}
 
-Bitte bestaetigen Sie Ihr Einverstaendnis mit dieser einvernehmlichen
+Bitte bestätigen Sie Ihr Einverstaendnis mit dieser einvernehmlichen
 Vertragsaufhebung schriftlich.
 
-Wir bedanken uns fuer die bisherige Zusammenarbeit.
+Wir bedanken uns für die bisherige Zusammenarbeit.
 
 Mit freundlichen Gruessen
 
@@ -133,7 +133,7 @@ Mit freundlichen Gruessen
 {company_name}
 """,
 
-    # Nicht-Verlaengerung bei Auto-Renewal
+    # Nicht-Verlängerung bei Auto-Renewal
     "non_renewal": """
 {company_name}
 {company_address}
@@ -143,17 +143,17 @@ Mit freundlichen Gruessen
 
 {city}, den {date}
 
-Mitteilung der Nicht-Verlaengerung - Vertrag {contract_number}
+Mitteilung der Nicht-Verlängerung - Vertrag {contract_number}
 
 Sehr geehrte Damen und Herren,
 
 hiermit teilen wir Ihnen mit, dass wir den zwischen uns bestehenden Vertrag
-"{contract_title}" (Vertragsnummer: {contract_number}) nicht verlaengern werden.
+"{contract_title}" (Vertragsnummer: {contract_number}) nicht verlängern werden.
 
-Gemaess den vertraglichen Bestimmungen endet der Vertrag damit ordnungsgemaess
+Gemäß den vertraglichen Bestimmungen endet der Vertrag damit ordnungsgemäß
 zum {effective_date}.
 
-Bitte bestaetigen Sie den Erhalt dieser Mitteilung sowie das Vertragsende
+Bitte bestätigen Sie den Erhalt dieser Mitteilung sowie das Vertragsende
 zum genannten Termin schriftlich.
 
 Mit freundlichen Gruessen
@@ -166,11 +166,11 @@ Mit freundlichen Gruessen
 
 # Reason codes with descriptions
 REASON_CODES: Dict[str, str] = {
-    "non_renewal": "Keine Verlaengerung gewuenscht",
+    "non_renewal": "Keine Verlängerung gewünscht",
     "cost_reduction": "Kosteneinsparung",
     "service_issue": "Serviceprobleme",
     "contract_breach": "Vertragsbruch durch Vertragspartner",
-    "consolidation": "Konsolidierung von Vertraegen",
+    "consolidation": "Konsolidierung von Verträgen",
     "provider_change": "Anbieterwechsel",
     "project_end": "Projektende",
     "restructuring": "Unternehmensrestrukturierung",
@@ -346,7 +346,7 @@ class AutoCancellationService:
 
         if cancellation.status != CancellationStatus.PENDING.value:
             raise ValueError(
-                f"Kuendigung kann nicht genehmigt werden (Status: {cancellation.status})"
+                f"Kündigung kann nicht genehmigt werden (Status: {cancellation.status})"
             )
 
         cancellation.status = CancellationStatus.SCHEDULED.value
@@ -391,7 +391,7 @@ class AutoCancellationService:
 
         if cancellation.status != CancellationStatus.DRAFT.value:
             raise ValueError(
-                f"Nur Entwuerfe koennen zur Genehmigung eingereicht werden"
+                f"Nur Entwuerfe können zur Genehmigung eingereicht werden"
             )
 
         cancellation.status = CancellationStatus.PENDING.value
@@ -433,7 +433,7 @@ class AutoCancellationService:
             CancellationStatus.DRAFT.value,  # Allow direct send if approved
         ]:
             raise ValueError(
-                f"Kuendigung kann nicht gesendet werden (Status: {cancellation.status})"
+                f"Kündigung kann nicht gesendet werden (Status: {cancellation.status})"
             )
 
         # Check if scheduled date is in the future and not forcing
@@ -443,8 +443,8 @@ class AutoCancellationService:
             and cancellation.scheduled_send_date > date.today()
         ):
             raise ValueError(
-                f"Versand ist fuer {cancellation.scheduled_send_date} geplant. "
-                f"Nutzen Sie 'sofort senden' zum Ueberschreiben."
+                f"Versand ist für {cancellation.scheduled_send_date} geplant. "
+                f"Nutzen Sie 'sofort senden' zum Überschreiben."
             )
 
         # Send based on method
@@ -631,7 +631,7 @@ class AutoCancellationService:
             CancellationStatus.ACKNOWLEDGED.value,
         ]:
             raise ValueError(
-                f"Kuendigung kann nicht abgeschlossen werden (Status: {cancellation.status})"
+                f"Kündigung kann nicht abgeschlossen werden (Status: {cancellation.status})"
             )
 
         cancellation.status = CancellationStatus.COMPLETED.value
@@ -793,8 +793,8 @@ class AutoCancellationService:
                     return {
                         "valid": False,
                         "error": (
-                            f"Kuendigungsfrist von {contract.notice_period_days} Tagen "
-                            f"nicht eingehalten. Fruehestes Wirksamkeitsdatum: "
+                            f"Kündigungsfrist von {contract.notice_period_days} Tagen "
+                            f"nicht eingehalten. Frühestes Wirksamkeitsdatum: "
                             f"{min_effective_date.isoformat()}"
                         ),
                     }
@@ -887,7 +887,7 @@ class AutoCancellationService:
         company_name = "Firma"
         company_address = ""
         city = ""
-        sender_name = "Geschaeftsfuehrung"
+        sender_name = "Geschäftsführung"
 
         if contract.company:
             company_name = contract.company.name
@@ -926,7 +926,7 @@ class AutoCancellationService:
         from app.services.email_service import get_email_service
 
         if not cancellation.recipient_email:
-            raise ValueError("Keine E-Mail-Adresse fuer Empfaenger")
+            raise ValueError("Keine E-Mail-Adresse für Empfänger")
 
         email_service = get_email_service()
 
@@ -934,7 +934,7 @@ class AutoCancellationService:
         contract = await self.db.get(Contract, cancellation.contract_id)
         contract_ref = contract.contract_number if contract else str(cancellation.contract_id)[:8]
 
-        subject = f"Kuendigung Vertrag {contract_ref}"
+        subject = f"Kündigung Vertrag {contract_ref}"
 
         # Send email
         message_id = await email_service.send_email(
@@ -982,7 +982,7 @@ class AutoCancellationService:
             CancellationStatus.SCHEDULED.value,
         ]:
             raise ValueError(
-                f"Kuendigung kann nicht mehr abgebrochen werden (Status: {cancellation.status})"
+                f"Kündigung kann nicht mehr abgebrochen werden (Status: {cancellation.status})"
             )
 
         cancellation.status = CancellationStatus.CANCELLED.value

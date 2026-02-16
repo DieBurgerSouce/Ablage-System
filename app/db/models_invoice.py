@@ -36,9 +36,9 @@ class InvoiceStatus(str, Enum):
 
 # Invoice Model
 class Invoice(Base):
-    """Rechnungsverwaltung fuer Finanzen.
+    """Rechnungsverwaltung für Finanzen.
 
-    Verknuepft Dokumente mit Geschaeftskontakten und verfolgt Zahlungsstatus.
+    Verknüpft Dokumente mit Geschäftskontakten und verfolgt Zahlungsstatus.
     """
     __tablename__ = "invoices"
 

@@ -81,7 +81,7 @@ def _validate_company(company: Optional[str]) -> Optional[str]:
             reason="Company not in whitelist",
         )
         raise InvalidCompanyError(
-            f"Ungueltige Firma: {company}. Erlaubt: {', '.join(sorted(VALID_COMPANIES))}"
+            f"Ungültige Firma: {company}. Erlaubt: {', '.join(sorted(VALID_COMPANIES))}"
         )
     return company_lower
 
@@ -106,7 +106,7 @@ def _validate_lexware_field(field: str) -> str:
             reason="Field not in whitelist",
         )
         raise InvalidLexwareFieldError(
-            f"Ungueltiges Lexware-Feld: {field}. Erlaubt: {', '.join(sorted(VALID_LEXWARE_FIELDS))}"
+            f"Ungültiges Lexware-Feld: {field}. Erlaubt: {', '.join(sorted(VALID_LEXWARE_FIELDS))}"
         )
     return field_lower
 

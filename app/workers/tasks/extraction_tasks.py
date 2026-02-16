@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Strukturierte Extraktion Tasks fuer Celery.
+Strukturierte Extraktion Tasks für Celery.
 
-Tasks fuer:
-- Batch-Reprocessing aller Dokumente fuer strukturierte Extraktion
+Tasks für:
+- Batch-Reprocessing aller Dokumente für strukturierte Extraktion
 - Einzeldokument-Reprocessing
 - Statistik-Generierung
 
@@ -29,7 +29,7 @@ from app.db.models import Document
 
 logger = structlog.get_logger(__name__)
 
-# Database session factory fuer Worker
+# Database session factory für Worker
 engine = create_async_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,
@@ -60,12 +60,12 @@ def reprocess_all_documents_structured_extraction(
     owner_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Verarbeitet alle Dokumente fuer strukturierte Extraktion.
+    Verarbeitet alle Dokumente für strukturierte Extraktion.
 
     Args:
         batch_size: Dokumente pro Batch (default 100)
         document_type_filter: Nur bestimmte Typen verarbeiten (optional)
-        skip_already_processed: Bereits verarbeitete ueberspringen
+        skip_already_processed: Bereits verarbeitete überspringen
         owner_id: Nur Dokumente eines bestimmten Users (optional)
 
     Returns:
@@ -120,7 +120,7 @@ async def _async_reprocess_all(
         # Daher muss deleted_at.is_(None) verwendet werden.
         query = select(Document).where(
             and_(
-                Document.deleted_at.is_(None),  # Nicht geloescht
+                Document.deleted_at.is_(None),  # Nicht gelöscht
                 Document.extracted_text.isnot(None),
                 Document.extracted_text != "",
             )
@@ -130,7 +130,7 @@ async def _async_reprocess_all(
         if owner_id:
             query = query.where(Document.owner_id == UUID(owner_id))
 
-        # Optional: Bereits verarbeitete ueberspringen
+        # Optional: Bereits verarbeitete überspringen
         if skip_already_processed:
             query = query.where(
                 or_(
@@ -146,7 +146,7 @@ async def _async_reprocess_all(
                 == document_type_filter
             )
 
-        # Zaehlen fuer Progress
+        # Zaehlen für Progress
         count_query = select(func.count()).select_from(query.subquery())
         count_result = await db.execute(count_query)
         total_count = count_result.scalar() or 0
@@ -198,8 +198,8 @@ async def _async_reprocess_all(
                     # Sprache aus vorhandenem OCR-Ergebnis oder Dokument holen
                     detected_language = getattr(doc, "detected_language", None)
 
-                    # Strukturierte Extraktion durchfuehren (mit Sprache fuer Uebersetzung)
-                    # db wird fuer Eingangs-/Ausgangsrechnung-Erkennung benoetigt
+                    # Strukturierte Extraktion durchführen (mit Sprache für Übersetzung)
+                    # db wird für Eingangs-/Ausgangsrechnung-Erkennung benötigt
                     extraction_result = await extraction_service.extract(
                         doc.extracted_text,
                         document_id=str(doc.id),
@@ -210,7 +210,7 @@ async def _async_reprocess_all(
 
                     if extraction_result:
                         # In DB speichern
-                        # WICHTIG: exclude_none=False um Uebersetzungs-Metadaten zu behalten
+                        # WICHTIG: exclude_none=False um Übersetzungs-Metadaten zu behalten
                         # (original_language, was_translated, translation_confidence)
                         doc.extracted_data = extraction_result.model_dump(
                             mode="json", exclude_none=False
@@ -242,7 +242,7 @@ async def _async_reprocess_all(
                                     "anomaly_count": len(anomaly_result.anomalies),
                                     "types": [a.anomaly_type.value for a in anomaly_result.anomalies],
                                 }
-                                # AI Decision erstellen fuer Review-Queue
+                                # AI Decision erstellen für Review-Queue
                                 await anomaly_service.create_anomaly_decision(
                                     db, doc.id, anomaly_result, getattr(doc, 'company_id', None)
                                 )
@@ -266,7 +266,7 @@ async def _async_reprocess_all(
                             )
                             categorization_service = get_auto_categorization_service()
 
-                            # Kategorisierung durchfuehren (mit auto_apply_tags=True)
+                            # Kategorisierung durchführen (mit auto_apply_tags=True)
                             categorization_result = await categorization_service.categorize_document(
                                 db=db,
                                 document_id=doc.id,
@@ -300,14 +300,14 @@ async def _async_reprocess_all(
                                 **safe_error_log(cat_error),
                             )
 
-                        # ENTERPRISE: LLM-NER fuer erweiterte Entitaetsextraktion
+                        # ENTERPRISE: LLM-NER für erweiterte Entitaetsextraktion
                         try:
                             from app.services.document_intelligence import (
                                 get_llm_ner_service,
                             )
                             ner_service = get_llm_ner_service()
 
-                            # NER durchfuehren
+                            # NER durchführen
                             ner_result = await ner_service.extract_entities(
                                 doc.extracted_text
                             )
@@ -349,7 +349,7 @@ async def _async_reprocess_all(
                             )
                             deadline_service = get_deadline_extraction_service()
 
-                            # Pruefe ob Dokument einem Privat-Space zugeordnet ist
+                            # Prüfe ob Dokument einem Privat-Space zugeordnet ist
                             privat_space_id = getattr(doc, 'privat_space_id', None)
 
                             if privat_space_id:
@@ -449,7 +449,7 @@ def reprocess_single_document(
     document_id: str,
 ) -> Dict[str, Any]:
     """
-    Einzelnes Dokument fuer strukturierte Extraktion reprocessen.
+    Einzelnes Dokument für strukturierte Extraktion reprocessen.
 
     Args:
         document_id: UUID des Dokuments
@@ -468,7 +468,7 @@ def reprocess_single_document(
 
 
 async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
-    """Async Implementation fuer Einzeldokument-Reprocessing."""
+    """Async Implementation für Einzeldokument-Reprocessing."""
     from app.services.structured_extraction_service import (
         get_structured_extraction_service,
     )
@@ -502,8 +502,8 @@ async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
             # Sprache aus vorhandenem OCR-Ergebnis oder Dokument holen
             detected_language = getattr(document, "detected_language", None)
 
-            # Strukturierte Extraktion (mit Sprache fuer Uebersetzung)
-            # db wird fuer Eingangs-/Ausgangsrechnung-Erkennung benoetigt
+            # Strukturierte Extraktion (mit Sprache für Übersetzung)
+            # db wird für Eingangs-/Ausgangsrechnung-Erkennung benötigt
             extraction_result = await extraction_service.extract(
                 document.extracted_text,
                 document_id=document_id,
@@ -514,7 +514,7 @@ async def _async_reprocess_single(document_id: str) -> Dict[str, Any]:
 
             if extraction_result:
                 # In DB speichern
-                # WICHTIG: exclude_none=False um Uebersetzungs-Metadaten zu behalten
+                # WICHTIG: exclude_none=False um Übersetzungs-Metadaten zu behalten
                 document.extracted_data = extraction_result.model_dump(
                     mode="json", exclude_none=False
                 )
@@ -607,7 +607,7 @@ def _count_extracted_fields(extraction_result) -> int:
 )
 def generate_extraction_stats() -> Dict[str, Any]:
     """
-    Generiert Statistiken ueber die strukturierte Extraktion.
+    Generiert Statistiken über die strukturierte Extraktion.
 
     Returns:
         {
@@ -624,7 +624,7 @@ def generate_extraction_stats() -> Dict[str, Any]:
 
 
 async def _async_generate_stats() -> Dict[str, Any]:
-    """Async Implementation fuer Stats-Generierung."""
+    """Async Implementation für Stats-Generierung."""
     from app.db.session import get_async_session_context
     async with get_async_session_context() as db:
         # Gesamt-Dokumente
@@ -648,7 +648,7 @@ async def _async_generate_stats() -> Dict[str, Any]:
         )
         with_extraction = extracted_result.scalar() or 0
 
-        # Dokumente laden fuer detaillierte Stats
+        # Dokumente laden für detaillierte Stats
         docs_result = await db.execute(
             select(Document).where(
                 and_(
@@ -737,7 +737,7 @@ def quick_classify_document(
     document_id: str,
 ) -> Dict[str, Any]:
     """
-    Schnelle Dokumenten-Klassifizierung - laeuft PARALLEL zum vollstaendigen OCR.
+    Schnelle Dokumenten-Klassifizierung - läuft PARALLEL zum vollständigen OCR.
 
     Ziel: Innerhalb von 2-5 Sekunden erkennen ob Eingangs- oder Ausgangsrechnung
     und automatisch den passenden Tag zuweisen.
@@ -757,7 +757,7 @@ def quick_classify_document(
             "document_id": "...",
             "direction": "incoming" | "outgoing" | "unknown",
             "confidence": 0.95,
-            "reason": "Firmen-USt-IdNr im Empfaengerbereich gefunden",
+            "reason": "Firmen-USt-IdNr im Empfängerbereich gefunden",
             "tag_assigned": true,
             "tag_name": "Eingangsrechnung",
             "processing_time_ms": 2500
@@ -770,14 +770,14 @@ async def _async_quick_classify(task, document_id: str) -> Dict[str, Any]:
     """
     Quick Classification - wartet auf OCR und nutzt vorhandenen OCR-Text.
 
-    Da Surya auf CPU 3+ Minuten braucht, laeuft Quick Classification NACH dem
+    Da Surya auf CPU 3+ Minuten braucht, läuft Quick Classification NACH dem
     regulaeren OCR und nutzt dessen Text. Kein eigenes OCR mehr!
 
     Workflow:
     1. Document laden
     2. Warten bis OCR fertig ist (max 5 Minuten)
     3. Vorhandenen OCR-Text nutzen
-    4. Classification durchfuehren (schnell, nur Text-Analyse)
+    4. Classification durchführen (schnell, nur Text-Analyse)
     5. Tag automatisch zuweisen
     """
     from app.services.quick_classification_service import (
@@ -812,7 +812,7 @@ async def _async_quick_classify(task, document_id: str) -> Dict[str, Any]:
             doc.quick_classification_status = "processing"
             await db.commit()
 
-            # 2. Pruefen ob OCR fertig ist (Task wird jetzt nach OCR getriggert)
+            # 2. Prüfen ob OCR fertig ist (Task wird jetzt nach OCR getriggert)
             if doc.status == ProcessingStatus.FAILED:
                 doc.quick_classification_status = "failed"
                 doc.quick_classification_result = {"error": "OCR fehlgeschlagen"}
@@ -960,14 +960,14 @@ def reprocess_quick_classification(
     owner_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Reprocessed Quick-Classification fuer alle Dokumente.
+    Reprocessed Quick-Classification für alle Dokumente.
 
     Aktualisiert rename_suggestion und quick_classification_result
     basierend auf dem bereits vorhandenen OCR-Text.
 
     Args:
         batch_size: Dokumente pro Batch (default 50)
-        skip_correct: Dokumente mit korrekter Extraktion ueberspringen
+        skip_correct: Dokumente mit korrekter Extraktion überspringen
         owner_id: Nur Dokumente eines bestimmten Users (optional)
 
     Returns:
@@ -1016,7 +1016,7 @@ async def _async_reprocess_quick_classification(
         # WICHTIG: is_deleted ist eine Property, nicht Column! Filter via deleted_at
         query = select(Document).where(
             and_(
-                Document.deleted_at.is_(None),  # Nicht geloescht (is_deleted property)
+                Document.deleted_at.is_(None),  # Nicht gelöscht (is_deleted property)
                 Document.extracted_text.isnot(None),
             )
         )
@@ -1024,7 +1024,7 @@ async def _async_reprocess_quick_classification(
         if owner_id:
             query = query.where(Document.owner_id == UUID(owner_id))
 
-        # Sortieren nach created_at fuer konsistente Verarbeitung
+        # Sortieren nach created_at für konsistente Verarbeitung
         query = query.order_by(Document.created_at.desc())
 
         result = await db.execute(query)
@@ -1057,7 +1057,7 @@ async def _async_reprocess_quick_classification(
                 old_suggestion = old_qc.get("rename_suggestion")
                 old_invoice = old_qc.get("invoice_number")
 
-                # Quick-Classification ausfuehren
+                # Quick-Classification ausführen
                 # classify_document generiert intern auch die Rename-Suggestion
                 qc_result_obj = await qc_service.classify_document(
                     document_id=doc.id,
@@ -1069,7 +1069,7 @@ async def _async_reprocess_quick_classification(
                 # Result zu Dict konvertieren
                 qc_result = qc_service.to_dict(qc_result_obj)
 
-                # Pruefen ob sich etwas geaendert hat
+                # Prüfen ob sich etwas geändert hat
                 new_invoice = qc_result.get("invoice_number")
                 new_suggestion = qc_result.get("rename_suggestion")
                 changed = (

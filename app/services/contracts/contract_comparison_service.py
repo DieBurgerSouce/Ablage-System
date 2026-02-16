@@ -3,10 +3,10 @@
 Contract Comparison Service.
 
 Vergleicht Vertragsversionen und identifiziert:
-- Geaenderte Klauseln
+- Geänderte Klauseln
 - Hinzugefuegte/Entfernte Abschnitte
-- Finanzielle Aenderungen
-- Risiko-Impact der Aenderungen
+- Finanzielle Änderungen
+- Risiko-Impact der Änderungen
 
 Feinpoliert und durchdacht.
 """
@@ -31,10 +31,10 @@ logger = logging.getLogger(__name__)
 
 class ContractComparisonService:
     """
-    Service fuer Vertragsvergleiche.
+    Service für Vertragsvergleiche.
 
-    Ermoeglicht den detaillierten Vergleich von
-    Vertragsversionen oder unterschiedlichen Vertraegen.
+    Ermöglicht den detaillierten Vergleich von
+    Vertragsversionen oder unterschiedlichen Verträgen.
     """
 
     # Felder die verglichen werden
@@ -78,7 +78,7 @@ class ContractComparisonService:
         save_comparison: bool = True,
     ) -> Dict[str, object]:
         """
-        Vergleiche zwei Vertraege.
+        Vergleiche zwei Verträge.
 
         Args:
             contract_a_id: ID des ersten Vertrags (alt)
@@ -90,17 +90,17 @@ class ContractComparisonService:
         Returns:
             Dictionary mit Vergleichsergebnis
         """
-        # Lade Vertraege
+        # Lade Verträge
         contract_a = await self.db.get(Contract, contract_a_id)
         contract_b = await self.db.get(Contract, contract_b_id)
 
         if not contract_a or not contract_b:
-            raise ValueError("Einer oder beide Vertraege nicht gefunden")
+            raise ValueError("Einer oder beide Verträge nicht gefunden")
 
         # Berechne Unterschiede
         differences = self._calculate_differences(contract_a, contract_b)
 
-        # Berechne Aehnlichkeit
+        # Berechne Ähnlichkeit
         similarity = self._calculate_similarity(contract_a, contract_b)
 
         # Analysiere Klauseln
@@ -152,7 +152,7 @@ class ContractComparisonService:
 
         logger.info(
             f"Vertragsvergleich: {contract_a_id} vs {contract_b_id}, "
-            f"Aehnlichkeit: {similarity:.2%}, Risiko-Impact: {risk_impact['total']}"
+            f"Ähnlichkeit: {similarity:.2%}, Risiko-Impact: {risk_impact['total']}"
         )
 
         return result
@@ -168,7 +168,7 @@ class ContractComparisonService:
         self,
         contract_id: UUID,
     ) -> List[ContractComparison]:
-        """Hole alle Vergleiche fuer einen Vertrag."""
+        """Hole alle Vergleiche für einen Vertrag."""
         query = select(ContractComparison).where(
             (ContractComparison.contract_a_id == contract_id) |
             (ContractComparison.contract_b_id == contract_id)
@@ -210,14 +210,14 @@ class ContractComparisonService:
         contract_a: Contract,
         contract_b: Contract,
     ) -> List[Dict[str, object]]:
-        """Berechne Unterschiede zwischen Vertraegen."""
+        """Berechne Unterschiede zwischen Verträgen."""
         differences = []
 
         for field in self.COMPARABLE_FIELDS:
             value_a = getattr(contract_a, field, None)
             value_b = getattr(contract_b, field, None)
 
-            # Konvertiere fuer Vergleich
+            # Konvertiere für Vergleich
             value_a_str = self._normalize_value(value_a)
             value_b_str = self._normalize_value(value_b)
 
@@ -231,7 +231,7 @@ class ContractComparisonService:
                     "change_type": change_type,
                 }
 
-                # Berechne prozentuale Aenderung fuer numerische Felder
+                # Berechne prozentuale Änderung für numerische Felder
                 if field == "total_value" and value_a and value_b:
                     try:
                         old_val = float(value_a)
@@ -251,7 +251,7 @@ class ContractComparisonService:
         contract_a: Contract,
         contract_b: Contract,
     ) -> float:
-        """Berechne Aehnlichkeit zwischen Vertraegen (0-1)."""
+        """Berechne Ähnlichkeit zwischen Verträgen (0-1)."""
         # Kombiniere relevante Textfelder
         text_a_parts = []
         text_b_parts = []
@@ -271,7 +271,7 @@ class ContractComparisonService:
         text_a = " ".join(text_a_parts)
         text_b = " ".join(text_b_parts)
 
-        # Berechne Aehnlichkeit mit SequenceMatcher
+        # Berechne Ähnlichkeit mit SequenceMatcher
         matcher = SequenceMatcher(None, text_a.lower(), text_b.lower())
         return matcher.ratio()
 
@@ -280,7 +280,7 @@ class ContractComparisonService:
         clauses_a: Dict[str, object],
         clauses_b: Dict[str, object],
     ) -> Dict[str, List[Dict[str, object]]]:
-        """Analysiere Klausel-Aenderungen."""
+        """Analysiere Klausel-Änderungen."""
         added = []
         removed = []
         modified = []
@@ -306,7 +306,7 @@ class ContractComparisonService:
                     "old_value": clauses_a[key],
                 })
             elif in_a and in_b:
-                # Pruefen ob geaendert
+                # Prüfen ob geändert
                 if clauses_a[key] != clauses_b[key]:
                     modified.append({
                         "clause": key,
@@ -327,17 +327,17 @@ class ContractComparisonService:
         differences: List[Dict[str, object]],
         clause_analysis: Dict[str, List[Dict[str, object]]],
     ) -> Dict[str, Union[int, str, Dict[str, int]]]:
-        """Berechne Risiko-Impact der Aenderungen."""
+        """Berechne Risiko-Impact der Änderungen."""
         total_impact = 0
         factor_impacts = {}
 
-        # Feld-Aenderungen
+        # Feld-Änderungen
         for diff in differences:
             field = diff["field"]
             weight = self.FIELD_RISK_WEIGHTS.get(field, 1.0)
             change_type = diff["change_type"]
 
-            # Basiswert je nach Aenderungstyp
+            # Basiswert je nach Änderungstyp
             base_impact = {
                 "added": 5,
                 "removed": 10,
@@ -350,7 +350,7 @@ class ContractComparisonService:
             factor_impacts[field] = impact
             total_impact += impact
 
-        # Klausel-Aenderungen
+        # Klausel-Änderungen
         clause_impact = 0
         for _ in clause_analysis["added"]:
             clause_impact += 5
@@ -392,7 +392,7 @@ class ContractComparisonService:
         """Generiere Zusammenfassung des Vergleichs."""
         parts = []
 
-        # Anzahl Aenderungen
+        # Anzahl Änderungen
         num_changes = len(differences)
         num_clause_changes = (
             len(clause_analysis["added"]) +
@@ -400,26 +400,26 @@ class ContractComparisonService:
             len(clause_analysis["modified"])
         )
 
-        parts.append(f"{num_changes} Feldaenderungen und {num_clause_changes} Klauselaenderungen gefunden.")
+        parts.append(f"{num_changes} Feldänderungen und {num_clause_changes} Klauseländerungen gefunden.")
 
-        # Wichtige Aenderungen hervorheben
+        # Wichtige Änderungen hervorheben
         for diff in differences:
             if diff["field"] == "total_value":
                 pct = diff.get("percentage_change")
                 if pct:
-                    direction = "erhoeht" if pct > 0 else "verringert"
+                    direction = "erhöht" if pct > 0 else "verringert"
                     parts.append(f"Vertragswert um {abs(pct):.1f}% {direction}.")
 
             elif diff["field"] == "notice_period_days":
                 parts.append(
-                    f"Kuendigungsfrist geaendert: {diff['old_value']} → {diff['new_value']} Tage."
+                    f"Kündigungsfrist geändert: {diff['old_value']} → {diff['new_value']} Tage."
                 )
 
             elif diff["field"] == "auto_renewal":
                 if diff["new_value"] == "True":
-                    parts.append("Automatische Verlaengerung aktiviert.")
+                    parts.append("Automatische Verlängerung aktiviert.")
                 else:
-                    parts.append("Automatische Verlaengerung deaktiviert.")
+                    parts.append("Automatische Verlängerung deaktiviert.")
 
         # Klausel-Zusammenfassung
         if clause_analysis["removed"]:
@@ -437,7 +437,7 @@ class ContractComparisonService:
         return " ".join(parts)
 
     def _normalize_value(self, value: object) -> str:
-        """Normalisiere Wert fuer Vergleich."""
+        """Normalisiere Wert für Vergleich."""
         if value is None:
             return ""
         if isinstance(value, (dict, list)):
@@ -449,7 +449,7 @@ class ContractComparisonService:
         return str(value)
 
     def _determine_change_type(self, old_val: object, new_val: object) -> str:
-        """Bestimme Art der Aenderung."""
+        """Bestimme Art der Änderung."""
         if old_val is None and new_val is not None:
             return "added"
         if old_val is not None and new_val is None:
@@ -473,7 +473,7 @@ class ContractComparisonService:
         old_val: object,
         new_val: object,
     ) -> List[Dict[str, object]]:
-        """Berechne Detailaenderungen in einer Klausel."""
+        """Berechne Detailänderungen in einer Klausel."""
         changes = []
 
         if isinstance(old_val, dict) and isinstance(new_val, dict):
@@ -497,18 +497,18 @@ class ContractComparisonService:
         return changes
 
     def _get_field_label(self, field: str) -> str:
-        """Hole deutschen Label fuer Feld."""
+        """Hole deutschen Label für Feld."""
         labels = {
             "title": "Titel",
             "contract_type": "Vertragstyp",
             "total_value": "Vertragswert",
-            "currency": "Waehrung",
+            "currency": "Währung",
             "effective_date": "Beginn",
             "expiration_date": "Ablauf",
-            "notice_period_days": "Kuendigungsfrist (Tage)",
-            "auto_renewal": "Automatische Verlaengerung",
-            "renewal_period_months": "Verlaengerungszeitraum (Monate)",
-            "renewal_notice_days": "Verlaengerungs-Kuendigungsfrist (Tage)",
+            "notice_period_days": "Kündigungsfrist (Tage)",
+            "auto_renewal": "Automatische Verlängerung",
+            "renewal_period_months": "Verlängerungszeitraum (Monate)",
+            "renewal_notice_days": "Verlängerungs-Kündigungsfrist (Tage)",
             "payment_terms": "Zahlungsbedingungen",
             "clauses": "Klauseln",
             "parties": "Vertragsparteien",
@@ -516,10 +516,10 @@ class ContractComparisonService:
         return labels.get(field, field)
 
     def _get_clause_label(self, clause: str) -> str:
-        """Hole deutschen Label fuer Klausel."""
+        """Hole deutschen Label für Klausel."""
         labels = {
             "liability": "Haftung",
-            "warranty": "Gewaehrleistung",
+            "warranty": "Gewährleistung",
             "jurisdiction": "Gerichtsstand",
             "incoterms": "Lieferbedingungen",
             "price_adjustment": "Preisanpassung",

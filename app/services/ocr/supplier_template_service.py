@@ -3,7 +3,7 @@
 Supplier OCR Template Service.
 
 Vision 2026+ Feature #2: Dokumenten-Template-System (Lieferanten-spezifisch)
-OCR-Genauigkeit von 95% auf 99%+ fuer wiederkehrende Lieferanten.
+OCR-Genauigkeit von 95% auf 99%+ für wiederkehrende Lieferanten.
 
 Features:
 - Template pro Lieferant definieren
@@ -111,7 +111,7 @@ class TemplateMatchResult:
 
 @dataclass
 class TemplateExtractionResult:
-    """Vollstaendiges Ergebnis einer Template-basierten Extraktion."""
+    """Vollständiges Ergebnis einer Template-basierten Extraktion."""
     template_id: Optional[uuid.UUID]
     template_name: Optional[str]
     match_confidence: float
@@ -125,7 +125,7 @@ class TemplateExtractionResult:
 
 class SupplierTemplateService:
     """
-    Service fuer Lieferanten-spezifische OCR-Templates.
+    Service für Lieferanten-spezifische OCR-Templates.
 
     Verwaltet Templates und wendet sie bei der OCR-Verarbeitung an.
     """
@@ -151,7 +151,7 @@ class SupplierTemplateService:
         description: Optional[str] = None,
     ) -> SupplierOCRTemplate:
         """
-        Erstellt ein neues OCR-Template fuer einen Lieferanten.
+        Erstellt ein neues OCR-Template für einen Lieferanten.
 
         Args:
             entity_id: ID des Lieferanten
@@ -160,8 +160,8 @@ class SupplierTemplateService:
             name: Name des Templates
             document_type: Dokumenttyp (invoice_incoming, delivery_note, etc.)
             field_definitions: Liste der Feld-Definitionen
-            text_anchors: Text-Anker fuer Matching
-            matching_strategy: Strategie fuer Template-Erkennung
+            text_anchors: Text-Anker für Matching
+            matching_strategy: Strategie für Template-Erkennung
             description: Beschreibung
 
         Returns:
@@ -212,7 +212,7 @@ class SupplierTemplateService:
         company_id: uuid.UUID,
         active_only: bool = True,
     ) -> List[SupplierOCRTemplate]:
-        """Holt alle Templates fuer einen Lieferanten."""
+        """Holt alle Templates für einen Lieferanten."""
         query = select(SupplierOCRTemplate).where(
             SupplierOCRTemplate.entity_id == entity_id,
             SupplierOCRTemplate.company_id == company_id,
@@ -247,7 +247,7 @@ class SupplierTemplateService:
             if key in allowed_fields and value is not None:
                 setattr(template, key, value)
 
-        # Version erhoehen bei Feld-Aenderungen
+        # Version erhöhen bei Feld-Änderungen
         if "field_definitions" in kwargs:
             template.version += 1
 
@@ -261,7 +261,7 @@ class SupplierTemplateService:
         template_id: uuid.UUID,
         company_id: uuid.UUID,
     ) -> bool:
-        """Loescht ein Template (soft-delete via is_active)."""
+        """Löscht ein Template (soft-delete via is_active)."""
         template = await self.get_template(template_id, company_id)
         if not template:
             return False
@@ -284,13 +284,13 @@ class SupplierTemplateService:
         ocr_text: Optional[str] = None,
     ) -> TemplateMatchResult:
         """
-        Findet das passende Template fuer ein Dokument.
+        Findet das passende Template für ein Dokument.
 
         Args:
             document_id: Dokument-ID
             company_id: Company-ID
             entity_id: Optionale Entity-ID (falls bekannt)
-            ocr_text: OCR-Text des Dokuments (fuer Text-Anchor-Matching)
+            ocr_text: OCR-Text des Dokuments (für Text-Anchor-Matching)
 
         Returns:
             TemplateMatchResult mit gematchtem Template oder leer
@@ -342,7 +342,7 @@ class SupplierTemplateService:
                 best_match = template
                 best_strategy = strategy
 
-        # Minimum-Threshold fuer Match
+        # Minimum-Threshold für Match
         MATCH_THRESHOLD = 0.7
 
         duration_ms = int((time.perf_counter() - start_time) * 1000)
@@ -385,7 +385,7 @@ class SupplierTemplateService:
         entity_id: Optional[uuid.UUID],
     ) -> Tuple[float, str, Dict[str, Any]]:
         """
-        Berechnet den Match-Score fuer ein Template.
+        Berechnet den Match-Score für ein Template.
 
         Returns:
             (score, strategy_used, details)
@@ -393,7 +393,7 @@ class SupplierTemplateService:
         scores: Dict[str, float] = {}
         details: Dict[str, Any] = {}
 
-        # 1. Entity-Match (hoechste Prioritaet)
+        # 1. Entity-Match (hoechste Priorität)
         if entity_id and template.entity_id == entity_id:
             scores["entity"] = 0.5
             details["entity_match"] = True
@@ -542,7 +542,7 @@ class SupplierTemplateService:
 
         template.last_used_at = datetime.now(timezone.utc)
 
-        # Running Average fuer Confidence
+        # Running Average für Confidence
         if template.average_confidence is None:
             template.average_confidence = overall_confidence
         else:
@@ -645,7 +645,7 @@ class SupplierTemplateService:
         width, height = coords.get("width", 100), coords.get("height", 30)
 
         # Suche nach Text-Bloecken die in der Box liegen
-        # (Vereinfachte Implementierung - echte wuerde OCR-Blöcke pruefen)
+        # (Vereinfachte Implementierung - echte wuerde OCR-Blöcke prüfen)
         blocks = ocr_result.get("blocks", [])
         matching_text = []
         total_confidence = 0.0
@@ -655,7 +655,7 @@ class SupplierTemplateService:
             block_coords = block.get("coordinates", {})
             bx, by = block_coords.get("x", 0), block_coords.get("y", 0)
 
-            # Pruefen ob Block in der Zielbox liegt
+            # Prüfen ob Block in der Zielbox liegt
             if (x <= bx <= x + width and y <= by <= y + height):
                 matching_text.append(block.get("text", ""))
                 total_confidence += block.get("confidence", 0.8)
@@ -688,14 +688,14 @@ class SupplierTemplateService:
         # Extrahiere Text nach dem Anker
         start_pos = anchor_pos + len(anchor_text)
 
-        # Finde das Ende (naechster Zeilenumbruch oder festes Offset)
+        # Finde das Ende (nächster Zeilenumbruch oder festes Offset)
         end_pos = full_text.find("\n", start_pos)
         if end_pos == -1:
             end_pos = start_pos + 100  # Max 100 Zeichen
 
         value = full_text[start_pos:end_pos].strip()
 
-        # Entferne fuehrende Trennzeichen
+        # Entferne führende Trennzeichen
         value = re.sub(r'^[:\s]+', '', value)
 
         return value, 0.85 if value else 0.0
@@ -774,7 +774,7 @@ class SupplierTemplateService:
         company_id: uuid.UUID,
     ) -> TemplateExtractionResult:
         """
-        Finde und wende das beste Template fuer ein Dokument an.
+        Finde und wende das beste Template für ein Dokument an.
 
         Sucht das passende Template basierend auf Entity des Dokuments,
         extrahiert Felder und loggt das Ergebnis in OCRTemplateMatchLog.
@@ -824,7 +824,7 @@ class SupplierTemplateService:
                 processing_time_ms=0,
             )
 
-        # Baue OCR-Ergebnis Dict aus verfuegbaren Daten
+        # Baue OCR-Ergebnis Dict aus verfügbaren Daten
         ocr_data: Dict[str, Any] = {}
         if ocr_result_row.bounding_boxes:
             ocr_data["blocks"] = ocr_result_row.bounding_boxes
@@ -935,7 +935,7 @@ class SupplierTemplateService:
             entity_id = document.business_entity_id
 
         if not entity_id:
-            raise ValueError("Keine Entity fuer Template-Training vorhanden")
+            raise ValueError("Keine Entity für Template-Training vorhanden")
 
         # Existierendes Template laden oder neues erstellen
         if template_id:
@@ -943,7 +943,7 @@ class SupplierTemplateService:
             if not template:
                 raise ValueError("Template nicht gefunden")
         else:
-            # Suche existierendes Template fuer diese Entity
+            # Suche existierendes Template für diese Entity
             templates = await self.get_templates_for_entity(
                 entity_id, company_id, active_only=True
             )
@@ -995,7 +995,7 @@ class SupplierTemplateService:
         self,
         company_id: uuid.UUID,
     ) -> Dict[str, Any]:
-        """Holt Statistiken ueber alle Templates."""
+        """Holt Statistiken über alle Templates."""
         # Anzahl Templates
         count_result = await self.db.execute(
             select(func.count(SupplierOCRTemplate.id)).where(

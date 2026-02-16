@@ -72,7 +72,7 @@ class SmartSearchDocumentResponse(BaseModel):
 
 
 class SmartSearchFacetsResponse(BaseModel):
-    """Verfuegbare Facetten/Filter."""
+    """Verfügbare Facetten/Filter."""
     document_types: Dict[str, int] = Field(default_factory=dict)
     statuses: Dict[str, int] = Field(default_factory=dict)
     date_ranges: Dict[str, int] = Field(default_factory=dict)
@@ -104,7 +104,7 @@ class SmartSearchResponse(BaseModel):
 
 
 class SmartSearchRequest(BaseModel):
-    """Anfrage fuer Smart Search."""
+    """Anfrage für Smart Search."""
     query: str = Field(..., min_length=1, max_length=500, description="Suchanfrage")
     filters: Optional[SearchFilters] = Field(None, description="Optional Filter")
     limit: int = Field(20, ge=1, le=100, description="Maximale Anzahl Ergebnisse")
@@ -116,7 +116,7 @@ class SmartSearchRequest(BaseModel):
 
 
 class AutocompleteResponse(BaseModel):
-    """Autocomplete-Vorschlaege."""
+    """Autocomplete-Vorschläge."""
     suggestions: List[str]
 
     model_config = ConfigDict(from_attributes=True)
@@ -138,17 +138,17 @@ async def smart_search(
     """
     Intelligente Suche mit automatischer Erkennung.
 
-    Erkennt automatisch ob die Anfrage eine natuerlichsprachliche Frage
+    Erkennt automatisch ob die Anfrage eine natürlichsprachliche Frage
     ("Zeige mir alle Rechnungen von Mueller") oder eine Keyword-Suche
     ("Mueller Rechnung 2025") ist und routet entsprechend.
 
     Kombiniert:
-    - NLQ-Verarbeitung fuer natuerliche Fragen
-    - Unified Search fuer Keywords (FTS + Semantic)
-    - Entity-Suche fuer Kunden/Lieferanten
+    - NLQ-Verarbeitung für natürliche Fragen
+    - Unified Search für Keywords (FTS + Semantic)
+    - Entity-Suche für Kunden/Lieferanten
 
     Args:
-        request: FastAPI Request (fuer Rate Limiting)
+        request: FastAPI Request (für Rate Limiting)
         search_request: Suchanfrage mit Parametern
         db: Datenbank-Session
         current_user: Aktuell angemeldeter Benutzer
@@ -170,11 +170,11 @@ async def smart_search(
             except ValueError:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Ungueltiger force_mode: {search_request.force_mode}. "
+                    detail=f"Ungültiger force_mode: {search_request.force_mode}. "
                            f"Erlaubt: 'nlq', 'keyword'",
                 )
 
-        # Suche durchfuehren
+        # Suche durchführen
         result = await service.search(
             db=db,
             query=search_request.query,
@@ -256,25 +256,25 @@ async def smart_search(
 async def autocomplete(
     request: Request,
     q: str = Query(..., min_length=1, max_length=100, description="Teilweise eingegebene Query"),
-    limit: int = Query(10, ge=1, le=20, description="Maximale Anzahl Vorschlaege"),
+    limit: int = Query(10, ge=1, le=20, description="Maximale Anzahl Vorschläge"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> AutocompleteResponse:
     """
-    Autocomplete-Vorschlaege fuer Smart Search.
+    Autocomplete-Vorschläge für Smart Search.
 
-    Generiert Vorschlaege basierend auf haeufigen NLQ-Patterns und
+    Generiert Vorschläge basierend auf häufigen NLQ-Patterns und
     bereits bekannten Queries.
 
     Args:
-        request: FastAPI Request (fuer Rate Limiting)
+        request: FastAPI Request (für Rate Limiting)
         q: Teilweise eingegebene Query
-        limit: Maximale Anzahl Vorschlaege
+        limit: Maximale Anzahl Vorschläge
         db: Datenbank-Session
         current_user: Aktuell angemeldeter Benutzer
 
     Returns:
-        Liste von Autocomplete-Vorschlaegen
+        Liste von Autocomplete-Vorschlägen
 
     Raises:
         HTTPException: Bei Fehler in der Verarbeitung
@@ -300,7 +300,7 @@ async def autocomplete(
 @router.get("/health", status_code=status.HTTP_200_OK)
 async def health_check() -> Dict[str, str]:
     """
-    Health-Check fuer Smart Search Service.
+    Health-Check für Smart Search Service.
 
     Returns:
         Status-Information

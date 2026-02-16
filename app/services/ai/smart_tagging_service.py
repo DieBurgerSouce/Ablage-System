@@ -55,7 +55,7 @@ SMART_TAGGING_DURATION = Histogram(
 # =============================================================================
 
 class TagCategory:
-    """Tag-Kategorien fuer Smart Tagging."""
+    """Tag-Kategorien für Smart Tagging."""
     URGENCY = "urgency"
     FINANCIAL = "financial"
     QUALITY = "quality"
@@ -70,10 +70,10 @@ class SmartTag:
     display_name: str  # Deutscher Name
     category: str
     confidence: float
-    reason: str  # Deutscher Erklaerungstext
+    reason: str  # Deutscher Erklärungstext
     icon: str = "Tag"  # Lucide icon name
     color: str = "gray"  # Tailwind color class (ohne Praefix)
-    priority: int = 0  # Hoeher = wichtiger fuer Anzeige
+    priority: int = 0  # Höher = wichtiger für Anzeige
 
 
 @dataclass
@@ -106,7 +106,7 @@ SMART_TAG_DEFINITIONS: List[Dict[str, Any]] = [
         "priority": 90,
     },
     {
-        "name": "ueberfaellig",
+        "name": "überfällig",
         "display_name": "Überfällig",
         "category": TagCategory.URGENCY,
         "icon": "AlertOctagon",
@@ -115,7 +115,7 @@ SMART_TAG_DEFINITIONS: List[Dict[str, Any]] = [
     },
     # Financial Tags
     {
-        "name": "skonto-moeglich",
+        "name": "skonto-möglich",
         "display_name": "Skonto möglich",
         "category": TagCategory.FINANCIAL,
         "icon": "Percent",
@@ -148,7 +148,7 @@ SMART_TAG_DEFINITIONS: List[Dict[str, Any]] = [
         "priority": 85,
     },
     {
-        "name": "duplikat-moeglich",
+        "name": "duplikat-möglich",
         "display_name": "Duplikat möglich",
         "category": TagCategory.QUALITY,
         "icon": "Copy",
@@ -156,7 +156,7 @@ SMART_TAG_DEFINITIONS: List[Dict[str, Any]] = [
         "priority": 75,
     },
     {
-        "name": "unvollstaendig",
+        "name": "unvollständig",
         "display_name": "Unvollständig",
         "category": TagCategory.QUALITY,
         "icon": "FileQuestion",
@@ -173,7 +173,7 @@ SMART_TAG_DEFINITIONS: List[Dict[str, Any]] = [
         "priority": 95,
     },
     {
-        "name": "mahnung-faellig",
+        "name": "mahnung-fällig",
         "display_name": "Mahnung fällig",
         "category": TagCategory.ACTION,
         "icon": "Mail",
@@ -181,7 +181,7 @@ SMART_TAG_DEFINITIONS: List[Dict[str, Any]] = [
         "priority": 88,
     },
     {
-        "name": "rueckfrage-noetig",
+        "name": "rückfrage-noetig",
         "display_name": "Rückfrage nötig",
         "category": TagCategory.ACTION,
         "icon": "HelpCircle",
@@ -226,10 +226,10 @@ class SmartTaggingService:
 
     # Konfigurations-Schwellwerte
     HIGH_AMOUNT_THRESHOLD = Decimal("5000.00")  # Ab diesem Betrag: hoher-betrag
-    URGENT_DAYS_THRESHOLD = 7  # Tage bis Frist fuer: dringend
+    URGENT_DAYS_THRESHOLD = 7  # Tage bis Frist für: dringend
     OCR_CONFIDENCE_THRESHOLD = 0.75  # Unter diesem Wert: ocr-unsicher
     HIGH_RISK_THRESHOLD = 75  # Entity Risk Score ab dem: risiko-partner
-    NEW_ENTITY_DAYS = 90  # Tage seit erstem Dokument fuer: neuer-lieferant
+    NEW_ENTITY_DAYS = 90  # Tage seit erstem Dokument für: neuer-lieferant
     AUTO_APPLY_CONFIDENCE = 0.85  # Ab dieser Konfidenz: Auto-Apply
 
     def __init__(self) -> None:
@@ -252,7 +252,7 @@ class SmartTaggingService:
             document: Das zu analysierende Dokument
             text: OCR-Text (optional, wird aus Dokument gelesen wenn nicht angegeben)
             auto_apply: Ob Tags automatisch angewendet werden sollen
-            min_confidence: Minimale Konfidenz fuer Vorschlaege
+            min_confidence: Minimale Konfidenz für Vorschläge
 
         Returns:
             SmartTaggingResult mit allen vorgeschlagenen und angewendeten Tags
@@ -321,7 +321,7 @@ class SmartTaggingService:
             t for t in detected_tags if t.confidence >= min_confidence
         ]
 
-        # Sortiere nach Prioritaet
+        # Sortiere nach Priorität
         result.suggested_tags.sort(key=lambda t: t.priority, reverse=True)
 
         # Auto-Apply wenn aktiviert
@@ -366,7 +366,7 @@ class SmartTaggingService:
         tags: List[SmartTag] = []
         now = datetime.now(timezone.utc)
 
-        # Pruefe auf explizite Dringlichkeits-Keywords
+        # Prüfe auf explizite Dringlichkeits-Keywords
         urgency_keywords = [
             "dringend", "urgent", "sofort", "umgehend", "eilig",
             "fristablauf", "letzte mahnung", "zahlungsaufforderung",
@@ -386,15 +386,15 @@ class SmartTaggingService:
                 priority=100,
             ))
 
-        # Pruefe Invoice-Tracking Fristen
+        # Prüfe Invoice-Tracking Fristen
         if invoice_tracking:
-            # Ueberfaellig?
+            # Überfällig?
             if invoice_tracking.due_date:
                 days_overdue = (now.date() - invoice_tracking.due_date).days
 
                 if days_overdue > 0:
                     tags.append(SmartTag(
-                        name="ueberfaellig",
+                        name="überfällig",
                         display_name="Überfällig",
                         category=TagCategory.URGENCY,
                         confidence=0.95,
@@ -477,7 +477,7 @@ class SmartTaggingService:
                 # Prüfe ob Skonto noch nicht genutzt
                 if not invoice_tracking or not invoice_tracking.skonto_used:
                     tags.append(SmartTag(
-                        name="skonto-moeglich",
+                        name="skonto-möglich",
                         display_name="Skonto möglich",
                         category=TagCategory.FINANCIAL,
                         confidence=0.88,
@@ -555,10 +555,10 @@ class SmartTaggingService:
         document: Document,
         text: str,
     ) -> List[SmartTag]:
-        """Analysiert Qualitaets-Aspekte des Dokuments."""
+        """Analysiert Qualitäts-Aspekte des Dokuments."""
         tags: List[SmartTag] = []
 
-        # OCR-Konfidenz pruefen
+        # OCR-Konfidenz prüfen
         ocr_confidence = document.ocr_confidence
         if ocr_confidence is not None and ocr_confidence < self.OCR_CONFIDENCE_THRESHOLD:
             tags.append(SmartTag(
@@ -572,7 +572,7 @@ class SmartTaggingService:
                 priority=85,
             ))
 
-        # Duplikat-Pruefung basierend auf Checksum
+        # Duplikat-Prüfung basierend auf Checksum
         if document.checksum:
             dup_result = await db.execute(
                 select(func.count(Document.id))
@@ -586,7 +586,7 @@ class SmartTaggingService:
 
             if dup_count > 0:
                 tags.append(SmartTag(
-                    name="duplikat-moeglich",
+                    name="duplikat-möglich",
                     display_name="Duplikat möglich",
                     category=TagCategory.QUALITY,
                     confidence=0.95,
@@ -596,11 +596,11 @@ class SmartTaggingService:
                     priority=75,
                 ))
 
-        # Unvollstaendigkeit pruefen
+        # Unvollständigkeit prüfen
         if text:
             text_lower = text.lower()
 
-            # Pruefe auf typische Pflichtfelder bei Rechnungen
+            # Prüfe auf typische Pflichtfelder bei Rechnungen
             missing_fields: List[str] = []
 
             if "rechnung" in text_lower or "invoice" in text_lower:
@@ -613,7 +613,7 @@ class SmartTaggingService:
 
             if missing_fields:
                 tags.append(SmartTag(
-                    name="unvollstaendig",
+                    name="unvollständig",
                     display_name="Unvollständig",
                     category=TagCategory.QUALITY,
                     confidence=0.70,
@@ -651,7 +651,7 @@ class SmartTaggingService:
                     priority=95,
                 ))
 
-        # Mahnung faellig
+        # Mahnung fällig
         if invoice_tracking:
             if invoice_tracking.status == "overdue" and invoice_tracking.dunning_level < 3:
                 days_overdue = 0
@@ -660,7 +660,7 @@ class SmartTaggingService:
 
                 if days_overdue > 14:
                     tags.append(SmartTag(
-                        name="mahnung-faellig",
+                        name="mahnung-fällig",
                         display_name="Mahnung fällig",
                         category=TagCategory.ACTION,
                         confidence=0.90,
@@ -670,7 +670,7 @@ class SmartTaggingService:
                         priority=88,
                     ))
 
-        # Rueckfrage noetig (erkannt an Qualitaets-Problemen)
+        # Rückfrage noetig (erkannt an Qualitäts-Problemen)
         question_indicators = [
             "unleserlich", "unvollständig", "fehlt", "unklar",
             "bitte prüfen", "zur kenntnisnahme", "klärung",
@@ -679,7 +679,7 @@ class SmartTaggingService:
 
         if matched_questions:
             tags.append(SmartTag(
-                name="rueckfrage-noetig",
+                name="rückfrage-noetig",
                 display_name="Rückfrage nötig",
                 category=TagCategory.ACTION,
                 confidence=0.70,
@@ -779,7 +779,7 @@ class SmartTaggingService:
                 skipped.append(smart_tag.name)
                 continue
 
-            # Skip wenn Konfidenz zu niedrig fuer Auto-Apply
+            # Skip wenn Konfidenz zu niedrig für Auto-Apply
             if smart_tag.confidence < self.AUTO_APPLY_CONFIDENCE:
                 skipped.append(smart_tag.name)
                 continue
@@ -831,7 +831,7 @@ class SmartTaggingService:
         min_confidence: float = 0.5,
     ) -> List[Dict[str, Any]]:
         """
-        Gibt Tag-Vorschlaege fuer ein Dokument zurueck ohne sie anzuwenden.
+        Gibt Tag-Vorschläge für ein Dokument zurück ohne sie anzuwenden.
 
         Args:
             db: Database Session
@@ -839,7 +839,7 @@ class SmartTaggingService:
             min_confidence: Minimale Konfidenz
 
         Returns:
-            Liste von Tag-Vorschlaegen
+            Liste von Tag-Vorschlägen
         """
         # Lade Dokument
         doc_result = await db.execute(
@@ -873,7 +873,7 @@ class SmartTaggingService:
         ]
 
     def get_available_smart_tags(self) -> List[Dict[str, Any]]:
-        """Gibt alle verfuegbaren Smart Tag-Definitionen zurueck."""
+        """Gibt alle verfügbaren Smart Tag-Definitionen zurück."""
         return SMART_TAG_DEFINITIONS
 
 
@@ -886,7 +886,7 @@ _service_lock = threading.Lock()
 
 
 def get_smart_tagging_service() -> SmartTaggingService:
-    """Factory fuer SmartTaggingService Singleton (Thread-safe)."""
+    """Factory für SmartTaggingService Singleton (Thread-safe)."""
     global _smart_tagging_service
     if _smart_tagging_service is None:
         with _service_lock:

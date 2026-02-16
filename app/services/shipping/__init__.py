@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Shipping/Paketdienst Integration Module.
 
-Unterstuetzte Carrier:
-- DHL (Marktfuehrer Deutschland)
+Unterstützte Carrier:
+- DHL (Marktführer Deutschland)
 - DPD (sehr verbreitet B2B)
 - Hermes (B2C stark)
 - UPS (International)

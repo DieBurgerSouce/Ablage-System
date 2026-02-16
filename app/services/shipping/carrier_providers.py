@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Carrier Provider Implementations.
 
-Jeder Provider implementiert die API-Anbindung fuer einen Paketdienst.
+Jeder Provider implementiert die API-Anbindung für einen Paketdienst.
 Die APIs sind entweder REST oder SOAP-basiert.
 
 SECURITY:
@@ -43,7 +43,7 @@ def validate_tracking_number(tracking_number: str) -> str:
     SECURITY: Verhindert Injection-Angriffe durch:
     1. Whitespace-Normalisierung
     2. Whitelist-Validierung (nur alphanumerisch)
-    3. Laengen-Pruefung (6-30 Zeichen)
+    3. Längen-Prüfung (6-30 Zeichen)
 
     Args:
         tracking_number: Rohe Tracking-Nummer
@@ -52,7 +52,7 @@ def validate_tracking_number(tracking_number: str) -> str:
         Normalisierte, sichere Tracking-Nummer
 
     Raises:
-        ValueError: Bei ungueltiger Tracking-Nummer
+        ValueError: Bei ungültiger Tracking-Nummer
     """
     if not tracking_number:
         raise ValueError("Tracking-Nummer darf nicht leer sein")
@@ -65,10 +65,10 @@ def validate_tracking_number(tracking_number: str) -> str:
         logger.warning(
             "tracking_number_validation_failed",
             reason="Invalid characters or length",
-            # SECURITY: Keine PII loggen, nur Laenge
+            # SECURITY: Keine PII loggen, nur Länge
             length=len(tracking_number),
         )
-        raise ValueError("Ungueltige Tracking-Nummer: Nur Buchstaben und Ziffern erlaubt (6-30 Zeichen)")
+        raise ValueError("Ungültige Tracking-Nummer: Nur Buchstaben und Ziffern erlaubt (6-30 Zeichen)")
 
     return normalized
 
@@ -88,7 +88,7 @@ def safe_url_encode(value: str) -> str:
 
 
 class ShipmentStatus(str, Enum):
-    """Standardisierte Sendungsstatus (carrier-uebergreifend)."""
+    """Standardisierte Sendungsstatus (carrier-übergreifend)."""
     UNKNOWN = "unknown"
     LABEL_CREATED = "label_created"          # Label erstellt, noch nicht abgeholt
     PICKED_UP = "picked_up"                  # Vom Carrier abgeholt
@@ -97,7 +97,7 @@ class ShipmentStatus(str, Enum):
     DELIVERED = "delivered"                  # Zugestellt
     DELIVERY_ATTEMPT = "delivery_attempt"    # Zustellversuch (nicht angetroffen)
     HELD_AT_LOCATION = "held_at_location"    # Liegt zur Abholung bereit
-    RETURNED = "returned"                    # Zurueck an Absender
+    RETURNED = "returned"                    # Zurück an Absender
     EXCEPTION = "exception"                  # Problem/Ausnahme
     CUSTOMS = "customs"                      # Im Zoll
 
@@ -131,7 +131,7 @@ class TrackingResult(TypedDict):
 
 
 class BaseCarrierProvider(ABC):
-    """Basisklasse fuer alle Carrier Provider."""
+    """Basisklasse für alle Carrier Provider."""
 
     carrier_name: str = "unknown"
     tracking_url_template: str = ""
@@ -144,11 +144,11 @@ class BaseCarrierProvider(ABC):
         self.client = httpx.AsyncClient(timeout=30.0)
 
     async def close(self) -> None:
-        """Schliesst HTTP Client."""
+        """Schließt HTTP Client."""
         await self.client.aclose()
 
     def matches_tracking_number(self, tracking_number: str) -> bool:
-        """Prueft ob die Tracking-Nummer zu diesem Carrier passt.
+        """Prüft ob die Tracking-Nummer zu diesem Carrier passt.
 
         SECURITY: Verwendet validierte Tracking-Nummer.
         """
@@ -163,7 +163,7 @@ class BaseCarrierProvider(ABC):
         return False
 
     def get_tracking_url(self, tracking_number: str) -> str:
-        """Gibt die oeffentliche Tracking-URL zurueck.
+        """Gibt die öffentliche Tracking-URL zurück.
 
         SECURITY: URL-encodiert die Tracking-Nummer (CWE-116).
         """
@@ -181,7 +181,7 @@ class BaseCarrierProvider(ABC):
 
     def _normalize_status(self, raw_status: str) -> ShipmentStatus:
         """Mappt carrier-spezifische Status auf Standard-Status."""
-        # Subklassen ueberschreiben dies mit carrier-spezifischem Mapping
+        # Subklassen überschreiben dies mit carrier-spezifischem Mapping
         return ShipmentStatus.UNKNOWN
 
     def _parse_datetime(self, date_str: str, format_str: str = "%Y-%m-%dT%H:%M:%S") -> Optional[datetime]:
@@ -208,7 +208,7 @@ class DHLProvider(BaseCarrierProvider):
     tracking_patterns = [
         r"^00340\d{17}$",        # DHL Paket DE (22 Stellen, beginnt mit 00340)
         r"^JJD\d{18,20}$",       # DHL Express (JJD + 18-20 Ziffern)
-        r"^\d{12,14}$",          # Kuerzere DHL Nummern
+        r"^\d{12,14}$",          # Kürzere DHL Nummern
         r"^[0-9]{20}$",          # 20-stellige Nummern
     ]
 
@@ -235,7 +235,7 @@ class DHLProvider(BaseCarrierProvider):
         api_key = getattr(settings, "DHL_API_KEY", None)
 
         if not api_key:
-            # Fallback: Scraping oder Mock fuer Entwicklung
+            # Fallback: Scraping oder Mock für Entwicklung
             logger.warning("dhl_api_key_missing", msg="DHL API Key nicht konfiguriert")
             return self._create_mock_result(validated_number)
 
@@ -302,7 +302,7 @@ class DHLProvider(BaseCarrierProvider):
         return self.STATUS_MAP.get(raw_status.lower(), ShipmentStatus.UNKNOWN)
 
     def _create_mock_result(self, tracking_number: str) -> TrackingResult:
-        """Erstellt Mock-Ergebnis fuer Entwicklung."""
+        """Erstellt Mock-Ergebnis für Entwicklung."""
         return {
             "tracking_number": tracking_number,
             "carrier": self.carrier_name,
@@ -350,7 +350,7 @@ class DPDProvider(BaseCarrierProvider):
     # DPD Tracking-Nummer Patterns
     tracking_patterns = [
         r"^\d{14}$",            # 14-stellige Nummer
-        r"^0\d{13}$",           # Mit fuehrender 0
+        r"^0\d{13}$",           # Mit führender 0
         r"^[A-Z]{2}\d{9}[A-Z]{2}$",  # International
     ]
 
@@ -956,7 +956,7 @@ class FedExProvider(BaseCarrierProvider):
 class DeutschePostProvider(BaseCarrierProvider):
     """Deutsche Post Sendungsverfolgung.
 
-    Nutzt gleiche API wie DHL fuer Pakete.
+    Nutzt gleiche API wie DHL für Pakete.
     """
 
     carrier_name = "deutsche_post"
@@ -1041,7 +1041,7 @@ class DeutschePostProvider(BaseCarrierProvider):
             "actual_delivery": self._parse_datetime(shipment.get("actualTimeOfDelivery", "")),
             "origin": shipment.get("origin", {}).get("address", {}).get("addressLocality"),
             "destination": shipment.get("destination", {}).get("address", {}).get("addressLocality"),
-            "weight_kg": None,  # Deutsche Post gibt kein Gewicht zurueck
+            "weight_kg": None,  # Deutsche Post gibt kein Gewicht zurück
             "service_type": shipment.get("service"),
             "events": events,
             "raw_response": data,

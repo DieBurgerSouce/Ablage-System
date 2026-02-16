@@ -38,13 +38,13 @@ class InkassoProvider(str, Enum):
 
 class CollectionStatus(str, Enum):
     """Status of collection case."""
-    PENDING = "pending"              # Uebermittelt, noch nicht bearbeitet
+    PENDING = "pending"              # Übermittelt, noch nicht bearbeitet
     IN_PROGRESS = "in_progress"      # Aktiv bearbeitet
     PAYMENT_PLAN = "payment_plan"    # Ratenzahlung vereinbart
     PARTIAL_PAYMENT = "partial"      # Teilzahlung erhalten
-    COLLECTED = "collected"          # Vollstaendig eingetrieben
+    COLLECTED = "collected"          # Vollständig eingetrieben
     UNCOLLECTABLE = "uncollectable"  # Uneinbringlich
-    RETURNED = "returned"            # Zurueck an Auftraggeber
+    RETURNED = "returned"            # Zurück an Auftraggeber
     LEGAL = "legal"                  # Gerichtliches Mahnverfahren
 
 
@@ -73,7 +73,7 @@ class CollectionCaseUpdate(BaseModel):
 
 class InkassoService:
     """
-    Service fuer Inkasso-Uebergaben.
+    Service für Inkasso-Übergaben.
 
     Features:
     - Multi-Provider Support (EOS, Creditreform, Atriga, Intrum)
@@ -185,7 +185,7 @@ class InkassoService:
         if not invoice:
             raise ValueError(f"Rechnung {invoice_id} nicht gefunden")
         if not entity:
-            raise ValueError(f"Geschaeftspartner {entity_id} nicht gefunden")
+            raise ValueError(f"Geschäftspartner {entity_id} nicht gefunden")
 
         # Select provider
         selected_provider = provider or self.default_provider
@@ -495,7 +495,7 @@ class InkassoService:
                 collection_reference=reference,
                 provider=provider.value,
                 transferred_at=datetime.now(timezone.utc),
-                error_message=safe_error_detail(e, "Inkasso-Uebertragung"),
+                error_message=safe_error_detail(e, "Inkasso-Übertragung"),
             )
 
     async def _api_get_status(

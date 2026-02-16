@@ -20,7 +20,7 @@ from app.services.accounting.booking_suggestion_service import (
     get_booking_suggestion_service,
 )
 
-router = APIRouter(prefix="/booking-suggestions", tags=["Buchungsvorschlaege"])
+router = APIRouter(prefix="/booking-suggestions", tags=["Buchungsvorschläge"])
 
 
 # ============================================================================
@@ -41,9 +41,9 @@ class BookingSuggestionResponse(BaseModel):
     confidence: float = Field(
         ..., ge=0.0, le=1.0, description="Konfidenz des Vorschlags (0-1)"
     )
-    reason: str = Field(..., description="Begruendung fuer den Vorschlag")
+    reason: str = Field(..., description="Begruendung für den Vorschlag")
     based_on_count: int = Field(
-        ..., ge=0, description="Anzahl aehnlicher historischer Buchungen"
+        ..., ge=0, description="Anzahl ähnlicher historischer Buchungen"
     )
 
 
@@ -54,12 +54,12 @@ class BookingResultResponse(BaseModel):
 
     document_id: str = Field(..., description="Dokument-ID")
     suggestions: List[BookingSuggestionResponse] = Field(
-        ..., description="Liste der Buchungsvorschlaege"
+        ..., description="Liste der Buchungsvorschläge"
     )
     document_type: str = Field(..., description="Dokumenttyp")
     vendor_name: Optional[str] = Field(None, description="Lieferantenname")
     total_amount: Optional[float] = Field(None, description="Gesamtbetrag")
-    currency: str = Field(default="EUR", description="Waehrung")
+    currency: str = Field(default="EUR", description="Währung")
     chart_of_accounts: str = Field(..., description="Kontenrahmen (z.B. SKR03)")
 
 
@@ -96,8 +96,8 @@ class BookingFeedbackResponse(BaseModel):
 @router.get(
     "/document/{document_id}",
     response_model=BookingResultResponse,
-    summary="Buchungsvorschlaege abrufen",
-    description="Ruft automatische Buchungsvorschlaege fuer ein Dokument ab",
+    summary="Buchungsvorschläge abrufen",
+    description="Ruft automatische Buchungsvorschläge für ein Dokument ab",
 )
 async def get_booking_suggestions(
     document_id: UUID,
@@ -110,7 +110,7 @@ async def get_booking_suggestions(
     current_user: User = Depends(get_current_active_user),
 ) -> BookingResultResponse:
     """
-    Ruft Buchungsvorschlaege fuer ein Dokument ab.
+    Ruft Buchungsvorschläge für ein Dokument ab.
 
     Args:
         document_id: UUID des Dokuments
@@ -119,7 +119,7 @@ async def get_booking_suggestions(
         current_user: Aktueller Benutzer
 
     Returns:
-        BookingResultResponse mit Vorschlaegen
+        BookingResultResponse mit Vorschlägen
 
     Raises:
         HTTPException: Bei fehlenden Berechtigungen oder Fehlern
@@ -129,7 +129,7 @@ async def get_booking_suggestions(
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma im Kontext verfuegbar",
+            detail="Keine Firma im Kontext verfügbar",
         )
 
     service = get_booking_suggestion_service()
@@ -172,7 +172,7 @@ async def get_booking_suggestions(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Fehler beim Abrufen der Buchungsvorschlaege: {str(e)}",
+            detail=f"Fehler beim Abrufen der Buchungsvorschläge: {str(e)}",
         )
 
 
@@ -191,7 +191,7 @@ async def submit_booking_feedback(
     """
     Speichert Benutzer-Feedback zu einem Buchungsvorschlag.
 
-    Das Feedback wird verwendet, um zukuenftige Vorschlaege zu verbessern.
+    Das Feedback wird verwendet, um zukuenftige Vorschläge zu verbessern.
 
     Args:
         feedback: Feedback-Daten
@@ -209,7 +209,7 @@ async def submit_booking_feedback(
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firma im Kontext verfuegbar",
+            detail="Keine Firma im Kontext verfügbar",
         )
 
     service = get_booking_suggestion_service()

@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Bulk Operations API - Massenaktionen fuer Dokumente.
+Bulk Operations API - Massenaktionen für Dokumente.
 
-Endpunkte fuer:
-- POST /api/v1/documents/bulk/delete - Mehrere Dokumente loeschen
+Endpunkte für:
+- POST /api/v1/documents/bulk/delete - Mehrere Dokumente löschen
 - POST /api/v1/documents/bulk/move - Mehrere Dokumente verschieben
-- POST /api/v1/documents/bulk/tag - Tags fuer mehrere Dokumente setzen
+- POST /api/v1/documents/bulk/tag - Tags für mehrere Dokumente setzen
 - POST /api/v1/documents/bulk/export - Mehrere Dokumente exportieren
 - POST /api/v1/documents/bulk/update - Mehrere Dokumente aktualisieren
 
-Alle Operationen sind transaktionssicher und unterstuetzen dry_run Modus.
+Alle Operationen sind transaktionssicher und unterstützen dry_run Modus.
 """
 
 import logging
@@ -43,22 +43,22 @@ router = APIRouter(prefix="/documents/bulk", tags=["Bulk Operations"])
 # =============================================================================
 
 class BulkDeleteRequest(BaseModel):
-    """Request fuer Bulk-Loeschung."""
+    """Request für Bulk-Löschung."""
     document_ids: List[UUID] = Field(
         ...,
         min_length=1,
         max_length=100,
-        description="Liste der zu loeschenden Dokument-IDs (max. 100)"
+        description="Liste der zu löschenden Dokument-IDs (max. 100)"
     )
     soft_delete: bool = Field(
         True,
-        description="True fuer Soft-Delete (30 Tage wiederherstellbar), "
-                   "False fuer permanente Loeschung"
+        description="True für Soft-Delete (30 Tage wiederherstellbar), "
+                   "False für permanente Löschung"
     )
 
 
 class BulkMoveRequest(BaseModel):
-    """Request fuer Bulk-Verschiebung."""
+    """Request für Bulk-Verschiebung."""
     document_ids: List[UUID] = Field(
         ...,
         min_length=1,
@@ -72,7 +72,7 @@ class BulkMoveRequest(BaseModel):
 
 
 class BulkTagRequest(BaseModel):
-    """Request fuer Bulk-Tag-Operation."""
+    """Request für Bulk-Tag-Operation."""
     document_ids: List[UUID] = Field(
         ...,
         min_length=1,
@@ -92,7 +92,7 @@ class BulkTagRequest(BaseModel):
 
 
 class BulkExportRequest(BaseModel):
-    """Request fuer Bulk-Export."""
+    """Request für Bulk-Export."""
     document_ids: List[UUID] = Field(
         ...,
         min_length=1,
@@ -111,14 +111,14 @@ class BulkExportRequest(BaseModel):
 
 
 class BulkUpdateRequest(BaseModel):
-    """Request fuer Bulk-Update."""
+    """Request für Bulk-Update."""
     filter: DocumentFilterForBulkUpdate = Field(
         ...,
-        description="Filter fuer zu aktualisierende Dokumente"
+        description="Filter für zu aktualisierende Dokumente"
     )
     updates: DocumentPartialUpdateRequest = Field(
         ...,
-        description="Anzuwendende Aenderungen"
+        description="Anzuwendende Änderungen"
     )
 
 
@@ -129,19 +129,19 @@ class BulkUpdateRequest(BaseModel):
 @router.post(
     "/delete",
     response_model=BatchOperationResult,
-    summary="Mehrere Dokumente loeschen",
+    summary="Mehrere Dokumente löschen",
     description="""
-    Loescht mehrere Dokumente in einer atomaren Operation.
+    Löscht mehrere Dokumente in einer atomaren Operation.
 
     **Soft-Delete (Standard):**
-    - Dokumente werden als geloescht markiert
+    - Dokumente werden als gelöscht markiert
     - 30 Tage lang wiederherstellbar
     - DSGVO-konform
 
     **Hard-Delete:**
-    - Permanente Loeschung
+    - Permanente Löschung
     - Nicht wiederherstellbar
-    - Nur mit expliziter Bestaetigung
+    - Nur mit expliziter Bestätigung
 
     **Limits:**
     - Maximal 100 Dokumente pro Request
@@ -151,12 +151,12 @@ async def bulk_delete(
     request: BulkDeleteRequest,
     dry_run: bool = Query(
         False,
-        description="Nur simulieren, keine echte Loeschung"
+        description="Nur simulieren, keine echte Löschung"
     ),
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
 ) -> BatchOperationResult:
-    """Loescht mehrere Dokumente."""
+    """Löscht mehrere Dokumente."""
     batch_service = get_batch_service()
 
     try:
@@ -182,7 +182,7 @@ async def bulk_delete(
         logger.error("bulk_delete_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=500,
-            detail="Bulk-Loeschung fehlgeschlagen"
+            detail="Bulk-Löschung fehlgeschlagen"
         )
 
 
@@ -257,7 +257,7 @@ async def bulk_move(
                 dry_run=True,
             )
 
-        # Bulk-Move ausfuehren
+        # Bulk-Move ausführen
         update_stmt = update(Document).where(
             and_(
                 Document.id.in_(request.document_ids),
@@ -300,7 +300,7 @@ async def bulk_move(
 @router.post(
     "/tag",
     response_model=BatchOperationResult,
-    summary="Tags fuer mehrere Dokumente setzen",
+    summary="Tags für mehrere Dokumente setzen",
     description="""
     Fuegt Tags hinzu, entfernt sie oder ersetzt alle Tags.
 
@@ -319,7 +319,7 @@ async def bulk_tag(
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
 ) -> BatchOperationResult:
-    """Setzt Tags fuer mehrere Dokumente."""
+    """Setzt Tags für mehrere Dokumente."""
     batch_service = get_batch_service()
 
     try:
@@ -359,8 +359,8 @@ async def bulk_tag(
     **Limits:**
     - Maximal 50 Dokumente pro Request
 
-    **Rueckgabe:**
-    - Task-ID fuer asynchronen Export
+    **Rückgabe:**
+    - Task-ID für asynchronen Export
     """
 )
 async def bulk_export(
@@ -453,19 +453,19 @@ async def bulk_update(
 
 
 # =============================================================================
-# BULK RESTORE (Soft-Delete rueckgaengig machen)
+# BULK RESTORE (Soft-Delete rückgängig machen)
 # =============================================================================
 
 @router.post(
     "/restore",
     response_model=BatchOperationResult,
-    summary="Geloeschte Dokumente wiederherstellen",
+    summary="Gelöschte Dokumente wiederherstellen",
     description="""
-    Stellt soft-geloeschte Dokumente wieder her.
+    Stellt soft-gelöschte Dokumente wieder her.
 
     **Hinweise:**
-    - Nur fuer Dokumente im Soft-Delete-Status
-    - Maximal 30 Tage nach Loeschung
+    - Nur für Dokumente im Soft-Delete-Status
+    - Maximal 30 Tage nach Löschung
 
     **Limits:**
     - Maximal 100 Dokumente pro Request
@@ -481,12 +481,12 @@ async def bulk_restore(
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
 ) -> BatchOperationResult:
-    """Stellt geloeschte Dokumente wieder her."""
+    """Stellt gelöschte Dokumente wieder her."""
     from sqlalchemy import select, update, and_
     from app.db.models import Document
 
     try:
-        # Nur soft-geloeschte Dokumente aktualisieren
+        # Nur soft-gelöschte Dokumente aktualisieren
         update_stmt = update(Document).where(
             and_(
                 Document.id.in_(document_ids),

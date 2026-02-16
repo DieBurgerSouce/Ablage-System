@@ -96,7 +96,7 @@ CERTIFICATION_TYPES = {
 
 class CertificationTracker:
     """
-    Service fuer Zertifizierungs-Tracking.
+    Service für Zertifizierungs-Tracking.
     """
 
     def __init__(self, db: AsyncSession):
@@ -104,7 +104,7 @@ class CertificationTracker:
 
     @staticmethod
     def get_certification_types() -> Dict[str, Dict[str, Any]]:
-        """Gebe bekannte Zertifizierungstypen zurueck."""
+        """Gebe bekannte Zertifizierungstypen zurück."""
         return CERTIFICATION_TYPES
 
     async def add_certification(
@@ -130,7 +130,7 @@ class CertificationTracker:
         # Validiere Kategorie
         valid_categories = [c.value for c in ESGCategory]
         if category not in valid_categories:
-            raise ValueError(f"Ungueltige Kategorie. Erlaubt: {valid_categories}")
+            raise ValueError(f"Ungültige Kategorie. Erlaubt: {valid_categories}")
 
         # Bestimme Status
         status = CertificationStatus.ACTIVE
@@ -336,7 +336,7 @@ class CertificationTracker:
         next_audit_date: Optional[date] = None,
     ) -> bool:
         """
-        Erfasse ein durchgefuehrtes Audit.
+        Erfasse ein durchgeführtes Audit.
         """
         result = await self.db.execute(
             select(ESGCertification).where(
@@ -392,7 +392,7 @@ class CertificationTracker:
         # Validiere Status
         valid_statuses = [s.value for s in CertificationStatus]
         if new_status not in valid_statuses:
-            raise ValueError(f"Ungueltiger Status: {new_status}")
+            raise ValueError(f"Ungültiger Status: {new_status}")
 
         cert.status = new_status
         await self.db.commit()
@@ -404,7 +404,7 @@ class CertificationTracker:
         company_id: UUID,
     ) -> int:
         """
-        Pruefe und aktualisiere abgelaufene Zertifizierungen.
+        Prüfe und aktualisiere abgelaufene Zertifizierungen.
 
         Returns:
             Anzahl der aktualisierten Zertifizierungen.
@@ -482,5 +482,5 @@ class CertificationTracker:
 
 
 def get_certification_tracker(db: AsyncSession) -> CertificationTracker:
-    """Factory-Funktion fuer CertificationTracker."""
+    """Factory-Funktion für CertificationTracker."""
     return CertificationTracker(db)

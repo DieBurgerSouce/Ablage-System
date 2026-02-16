@@ -4,12 +4,12 @@ Implementiert die GoBD-konforme Archivierung mit:
 - SHA-256 Hash-Signaturen
 - RFC 3161 Zeitstempel (optional)
 - WORM-Semantik (Write Once Read Many)
-- Integritaetspruefungen
+- Integritätsprüfungen
 
 Die Archivierung erfuellt die GoBD-Kriterien:
-- Nachvollziehbarkeit: Audit-Trail fuer jeden Zugriff
-- Unveraenderbarkeit: Hash-Signatur und WORM
-- Vollstaendigkeit: Aufbewahrungsfristen-Management
+- Nachvollziehbarkeit: Audit-Trail für jeden Zugriff
+- Unveränderbarkeit: Hash-Signatur und WORM
+- Vollständigkeit: Aufbewahrungsfristen-Management
 - Ordnung: Kategorisierung nach Dokumenttyp
 """
 
@@ -50,7 +50,7 @@ class ArchiveError(Exception):
 
 
 class IntegrityError(Exception):
-    """Integritaetsfehler bei der Verifikation."""
+    """Integritätsfehler bei der Verifikation."""
     pass
 
 
@@ -67,7 +67,7 @@ class ArchiveResult:
 
 @dataclass
 class IntegrityCheckResult:
-    """Ergebnis einer Integritaetspruefung."""
+    """Ergebnis einer Integritätsprüfung."""
     archive_id: uuid.UUID
     status: IntegrityCheckStatus
     expected_hash: str
@@ -79,13 +79,13 @@ class IntegrityCheckResult:
 
 
 class GoBDArchiveService:
-    """Service fuer GoBD-konforme Dokumenten-Archivierung.
+    """Service für GoBD-konforme Dokumenten-Archivierung.
 
     Hauptfunktionen:
     - Dokumente revisionssicher archivieren
-    - Hash-Signaturen erstellen und pruefen
+    - Hash-Signaturen erstellen und prüfen
     - RFC 3161 Zeitstempel (optional)
-    - Integritaetspruefungen durchfuehren
+    - Integritätsprüfungen durchführen
     """
 
     HASH_ALGORITHM = HashAlgorithm.SHA256
@@ -108,9 +108,9 @@ class GoBDArchiveService:
             db: Datenbank-Session
             document_id: ID des zu archivierenden Dokuments
             company_id: Firmen-ID
-            category: Dokumentkategorie (fuer Aufbewahrungsfrist)
+            category: Dokumentkategorie (für Aufbewahrungsfrist)
             document_content: Binaerer Inhalt des Dokuments
-            document_date: Datum des Dokuments (fuer Fristberechnung)
+            document_date: Datum des Dokuments (für Fristberechnung)
             archived_by_id: User der archiviert
             metadata: Optionale Metadaten
             use_tsa: RFC 3161 Zeitstempel anfordern
@@ -121,12 +121,12 @@ class GoBDArchiveService:
         Raises:
             ArchiveError: Bei Fehlern
         """
-        # 1. Pruefe ob Dokument existiert
+        # 1. Prüfe ob Dokument existiert
         document = await db.get(Document, document_id)
         if not document or document.company_id != company_id:
             raise ArchiveError("Dokument nicht gefunden oder keine Berechtigung")
 
-        # 2. Pruefe ob bereits archiviert
+        # 2. Prüfe ob bereits archiviert
         existing = await self._get_existing_archive(db, document_id)
         if existing:
             raise ArchiveError(
@@ -220,7 +220,7 @@ class GoBDArchiveService:
         triggered_by_id: Optional[uuid.UUID] = None,
         check_type: str = "manual",
     ) -> IntegrityCheckResult:
-        """Verifiziert die Integritaet eines archivierten Dokuments.
+        """Verifiziert die Integrität eines archivierten Dokuments.
 
         Vergleicht den gespeicherten Hash mit dem aktuellen Hash
         des Dokument-Inhalts.
@@ -230,8 +230,8 @@ class GoBDArchiveService:
             archive_id: Archiv-ID
             company_id: Firmen-ID
             document_content: Aktueller Dokument-Inhalt
-            triggered_by_id: User der die Pruefung ausloest
-            check_type: Art der Pruefung (manual, scheduled)
+            triggered_by_id: User der die Prüfung ausloest
+            check_type: Art der Prüfung (manual, scheduled)
 
         Returns:
             IntegrityCheckResult mit Verifikationsstatus
@@ -274,7 +274,7 @@ class GoBDArchiveService:
                 check.tsa_verified = tsa_verified
 
                 if tsa_verified is False:
-                    # TSA-Token ungueltig - warnen aber Hash-Match bleibt bestanden
+                    # TSA-Token ungültig - warnen aber Hash-Match bleibt bestanden
                     logger.warning(
                         "tsa_token_verification_failed",
                         archive_id=str(archive_id),
@@ -299,7 +299,7 @@ class GoBDArchiveService:
             )
         else:
             check.status = IntegrityCheckStatus.FAILED.value
-            check.error_message = "Hash-Werte stimmen nicht ueberein - moegliche Manipulation!"
+            check.error_message = "Hash-Werte stimmen nicht überein - mögliche Manipulation!"
 
             # Aktualisiere Archiv-Status
             archive.is_verified = False
@@ -353,15 +353,15 @@ class GoBDArchiveService:
         verify_older_than_days: int = 90,
         triggered_by_id: Optional[uuid.UUID] = None,
     ) -> Dict[str, Any]:
-        """Batch-Verifikation aller Archive die laenger nicht geprueft wurden.
+        """Batch-Verifikation aller Archive die länger nicht geprüft wurden.
 
-        Laedt Dokument-Inhalte aus MinIO Storage und verifiziert Hash-Integritaet.
+        Laedt Dokument-Inhalte aus MinIO Storage und verifiziert Hash-Integrität.
 
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
-            limit: Maximale Anzahl zu pruefender Archive
-            verify_older_than_days: Nur Archive pruefen die aelter sind
+            limit: Maximale Anzahl zu prüfender Archive
+            verify_older_than_days: Nur Archive prüfen die aelter sind
             triggered_by_id: User-ID der die Verifikation ausgeloest hat
 
         Returns:
@@ -369,7 +369,7 @@ class GoBDArchiveService:
         """
         cutoff = datetime.utcnow() - timedelta(days=verify_older_than_days)
 
-        # Finde Archive die geprueft werden muessen
+        # Finde Archive die geprüft werden müssen
         result = await db.execute(
             select(DocumentArchive)
             .where(
@@ -404,14 +404,14 @@ class GoBDArchiveService:
         # Initialisiere Storage-Service
         storage = StorageService()
         if not storage.available:
-            stats["message"] = "Storage-Service nicht verfuegbar"
+            stats["message"] = "Storage-Service nicht verfügbar"
             logger.warning(
                 "batch_verification_storage_unavailable",
                 company_id=str(company_id),
             )
             return stats
 
-        # Lade alle Dokumente fuer die Archive (fuer file_path)
+        # Lade alle Dokumente für die Archive (für file_path)
         archive_doc_ids = [archive.document_id for archive in archives]
         doc_result = await db.execute(
             select(Document).where(
@@ -436,7 +436,7 @@ class GoBDArchiveService:
                 # Lade Dokument-Inhalt aus Storage
                 document_content = await storage.download_document(document.file_path)
 
-                # Verifiziere Integritaet
+                # Verifiziere Integrität
                 check_result = await self.verify_archive_integrity(
                     db=db,
                     archive_id=archive.id,
@@ -453,7 +453,7 @@ class GoBDArchiveService:
                     stats["failed"] += 1
                     stats["errors"].append({
                         "archive_id": str(archive.id),
-                        "reason": "Hash-Mismatch - moegliche Manipulation!",
+                        "reason": "Hash-Mismatch - mögliche Manipulation!",
                         "expected_hash": check_result.expected_hash[:16] + "...",
                         "actual_hash": check_result.actual_hash[:16] + "..." if check_result.actual_hash else None,
                     })
@@ -487,7 +487,7 @@ class GoBDArchiveService:
         document_id: uuid.UUID,
         company_id: uuid.UUID,
     ) -> Optional[DocumentArchive]:
-        """Holt das Archiv fuer ein Dokument.
+        """Holt das Archiv für ein Dokument.
 
         Args:
             db: Datenbank-Session
@@ -622,7 +622,7 @@ class GoBDArchiveService:
         db: AsyncSession,
         document_id: uuid.UUID,
     ) -> Optional[DocumentArchive]:
-        """Prueft ob ein Dokument bereits archiviert ist."""
+        """Prüft ob ein Dokument bereits archiviert ist."""
         result = await db.execute(
             select(DocumentArchive)
             .where(DocumentArchive.document_id == document_id)
@@ -637,7 +637,7 @@ class GoBDArchiveService:
     ) -> Optional[Dict[str, Any]]:
         """Holt einen RFC 3161 Zeitstempel von einem TSA.
 
-        Implementiert echten RFC 3161 Request ueber tsa_service.
+        Implementiert echten RFC 3161 Request über tsa_service.
 
         Args:
             db: Datenbank-Session
@@ -738,14 +738,14 @@ class GoBDArchiveService:
     ) -> Optional[bool]:
         """Verifiziert einen RFC 3161 TSA-Token gegen den Dokumenteninhalt.
 
-        Nutzt tsa_service.verify_timestamp() fuer die Validierung.
+        Nutzt tsa_service.verify_timestamp() für die Validierung.
 
         Args:
             token_base64: Base64-encoded TSA Response Token
             document_content: Originaler Dokumenteninhalt
 
         Returns:
-            True wenn Token gueltig, False wenn ungueltig, None bei Fehler
+            True wenn Token gültig, False wenn ungültig, None bei Fehler
         """
         from app.services.compliance.tsa_service import TimestampAuthorityService
 
@@ -776,7 +776,7 @@ class GoBDArchiveService:
             return None
 
 
-# Import fuer timedelta
+# Import für timedelta
 from datetime import timedelta
 
 # Singleton-Instanz

@@ -18,7 +18,7 @@ Performance:
 - Pre-loaded German dictionary (~2M words)
 - Memory-efficient prefix trie
 
-Feinpoliert und durchdacht - Deutsche Rechtschreibqualitaet.
+Feinpoliert und durchdacht - Deutsche Rechtschreibqualität.
 """
 
 import os

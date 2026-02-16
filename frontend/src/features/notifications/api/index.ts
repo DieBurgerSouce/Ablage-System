@@ -107,6 +107,20 @@ export async function getUnreadCount(): Promise<number> {
 }
 
 /**
+ * Benachrichtigung snoozen
+ */
+export async function snoozeNotification(
+  id: string,
+  until: string
+): Promise<Notification> {
+  const response = await apiClient.patch<Notification>(
+    `${BASE_PATH}/${id}/snooze`,
+    { snoozed_until: until }
+  );
+  return response.data;
+}
+
+/**
  * Benachrichtigungseinstellungen abrufen
  */
 export async function getSettings(): Promise<NotificationSettings> {

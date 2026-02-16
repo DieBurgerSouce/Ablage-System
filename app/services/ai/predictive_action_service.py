@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-PredictiveActionService - Proaktive Handlungsvorschlaege.
+PredictiveActionService - Proaktive Handlungsvorschläge.
 
-Analysiert Geschaeftsdaten und generiert intelligente Vorschlaege:
-1. Mahnung faellig → Vorschlag: "Mahnung senden"
+Analysiert Geschäftsdaten und generiert intelligente Vorschläge:
+1. Mahnung fällig → Vorschlag: "Mahnung senden"
 2. Skonto-Frist naht → Vorschlag: "Skonto nutzen, spart X EUR"
-3. Vertrag endet → Vorschlag: "Kuendigen oder verlaengern?"
-4. Budget-Ueberschreitung → Vorschlag: "Budget anpassen"
+3. Vertrag endet → Vorschlag: "Kündigen oder verlängern?"
+4. Budget-Überschreitung → Vorschlag: "Budget anpassen"
 5. Wiederkehrende Rechnung → Vorschlag: "Dauerauftrag einrichten"
 
 Features:
 - Multi-Channel Benachrichtigung (In-App, Email, Slack)
-- Akzeptanz-Tracking fuer ML-Verbesserung
+- Akzeptanz-Tracking für ML-Verbesserung
 - Konfidenz-basierte Priorisierung
 - Benutzer-Praeferenzen respektieren
 
@@ -59,7 +59,7 @@ class ActionType(str, Enum):
     PAY_INVOICE = "pay_invoice"
     SCHEDULE_PAYMENT = "schedule_payment"
 
-    # Vertraege
+    # Verträge
     RENEW_CONTRACT = "renew_contract"
     CANCEL_CONTRACT = "cancel_contract"
     REVIEW_CONTRACT = "review_contract"
@@ -78,7 +78,7 @@ class ActionType(str, Enum):
 
 
 class ActionPriority(str, Enum):
-    """Prioritaet einer Aktion."""
+    """Priorität einer Aktion."""
 
     CRITICAL = "critical"  # Sofortige Aufmerksamkeit erforderlich
     HIGH = "high"  # Innerhalb 24h bearbeiten
@@ -93,13 +93,13 @@ class ActionStatus(str, Enum):
     SHOWN = "shown"  # Dem Benutzer angezeigt
     ACCEPTED = "accepted"  # Vom Benutzer akzeptiert
     REJECTED = "rejected"  # Vom Benutzer abgelehnt
-    SNOOZED = "snoozed"  # Auf spaeter verschoben
+    SNOOZED = "snoozed"  # Auf später verschoben
     EXPIRED = "expired"  # Nicht mehr relevant
-    EXECUTED = "executed"  # Automatisch ausgefuehrt
+    EXECUTED = "executed"  # Automatisch ausgeführt
 
 
 class TriggerType(str, Enum):
-    """Ausloeser fuer Aktionsvorschlaege."""
+    """Ausloeser für Aktionsvorschläge."""
 
     DUNNING_DUE = "dunning_due"
     SKONTO_EXPIRING = "skonto_expiring"
@@ -141,7 +141,7 @@ class PredictiveAction:
     deadline: Optional[datetime]  # Wann wird Aktion irrelevant?
     suggested_action_time: Optional[datetime]  # Optimaler Zeitpunkt
 
-    # Zusaetzliche Daten
+    # Zusätzliche Daten
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     # Status
@@ -154,7 +154,7 @@ class PredictiveAction:
 
 @dataclass
 class ActionFeedback:
-    """Feedback zu einer ausgefuehrten Aktion."""
+    """Feedback zu einer ausgeführten Aktion."""
 
     action_id: uuid.UUID
     user_id: uuid.UUID
@@ -166,7 +166,7 @@ class ActionFeedback:
 
 @dataclass
 class ActionStatistics:
-    """Statistiken zu Aktionsvorschlaegen."""
+    """Statistiken zu Aktionsvorschlägen."""
 
     period_start: datetime
     period_end: datetime
@@ -187,14 +187,14 @@ class ActionStatistics:
     by_action_type: Dict[str, Dict[str, int]]
     by_trigger_type: Dict[str, Dict[str, int]]
 
-    # Geschaetzter Nutzen
+    # Geschätzter Nutzen
     estimated_savings: Decimal
     realized_savings: Decimal
 
 
 @dataclass
 class UserPreferences:
-    """Benutzer-Praeferenzen fuer Aktionsvorschlaege."""
+    """Benutzer-Praeferenzen für Aktionsvorschläge."""
 
     user_id: uuid.UUID
 
@@ -222,13 +222,13 @@ class UserPreferences:
 
 
 class PredictiveActionService:
-    """Service fuer proaktive Handlungsvorschlaege.
+    """Service für proaktive Handlungsvorschläge.
 
-    Analysiert kontinuierlich Geschaeftsdaten und generiert
-    kontextbezogene Vorschlaege zur Optimierung von Prozessen.
+    Analysiert kontinuierlich Geschäftsdaten und generiert
+    kontextbezogene Vorschläge zur Optimierung von Prozessen.
 
     Features:
-    - Multi-Trigger-System (Mahnungen, Skonto, Vertraege, etc.)
+    - Multi-Trigger-System (Mahnungen, Skonto, Verträge, etc.)
     - Konfidenz-basierte Priorisierung
     - Benutzer-Praeferenzen
     - Lern-Feedback-Loop
@@ -242,8 +242,8 @@ class PredictiveActionService:
         """Initialisiere PredictiveActionService.
 
         Args:
-            notification_service: Optional NotificationService fuer Benachrichtigungen
-            slack_service: Optional SlackService fuer Slack-Integration
+            notification_service: Optional NotificationService für Benachrichtigungen
+            slack_service: Optional SlackService für Slack-Integration
         """
         self._notification_service = notification_service
         self._slack_service = slack_service
@@ -277,39 +277,39 @@ class PredictiveActionService:
         company_id: uuid.UUID,
         user_id: Optional[uuid.UUID] = None,
     ) -> List[PredictiveAction]:
-        """Generiere alle relevanten Aktionsvorschlaege fuer eine Firma.
+        """Generiere alle relevanten Aktionsvorschläge für eine Firma.
 
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
-            user_id: Optional Benutzer-ID fuer personalisierte Vorschlaege
+            user_id: Optional Benutzer-ID für personalisierte Vorschläge
 
         Returns:
-            Liste von PredictiveActions sortiert nach Prioritaet
+            Liste von PredictiveActions sortiert nach Priorität
         """
         actions: List[PredictiveAction] = []
 
-        # 1. Mahnungs-Vorschlaege
+        # 1. Mahnungs-Vorschläge
         dunning_actions = await self._generate_dunning_actions(db, company_id)
         actions.extend(dunning_actions)
 
-        # 2. Skonto-Vorschlaege
+        # 2. Skonto-Vorschläge
         skonto_actions = await self._generate_skonto_actions(db, company_id)
         actions.extend(skonto_actions)
 
-        # 3. Vertrags-Vorschlaege
+        # 3. Vertrags-Vorschläge
         contract_actions = await self._generate_contract_actions(db, company_id)
         actions.extend(contract_actions)
 
-        # 4. Budget-Vorschlaege
+        # 4. Budget-Vorschläge
         budget_actions = await self._generate_budget_actions(db, company_id)
         actions.extend(budget_actions)
 
-        # 5. Zahlungs-Vorschlaege
+        # 5. Zahlungs-Vorschläge
         payment_actions = await self._generate_payment_actions(db, company_id)
         actions.extend(payment_actions)
 
-        # Sortiere nach Prioritaet und Konfidenz
+        # Sortiere nach Priorität und Konfidenz
         priority_order = {
             ActionPriority.CRITICAL: 0,
             ActionPriority.HIGH: 1,
@@ -337,7 +337,7 @@ class PredictiveActionService:
         action_types: Optional[List[ActionType]] = None,
         min_priority: Optional[ActionPriority] = None,
     ) -> List[PredictiveAction]:
-        """Hole ausstehende Aktionsvorschlaege.
+        """Hole ausstehende Aktionsvorschläge.
 
         Args:
             db: Datenbank-Session
@@ -345,12 +345,12 @@ class PredictiveActionService:
             user_id: Optional Benutzer-ID
             limit: Maximale Anzahl
             action_types: Filter nach Aktionstypen
-            min_priority: Minimale Prioritaet
+            min_priority: Minimale Priorität
 
         Returns:
             Liste von PredictiveActions
         """
-        # Generiere frische Vorschlaege
+        # Generiere frische Vorschläge
         all_actions = await self.generate_actions_for_company(db, company_id, user_id)
 
         # Filter anwenden
@@ -384,7 +384,7 @@ class PredictiveActionService:
             db: Datenbank-Session
             action: Der Aktionsvorschlag
             user_id: Benutzer-ID
-            execute_action: Soll die Aktion direkt ausgefuehrt werden?
+            execute_action: Soll die Aktion direkt ausgeführt werden?
 
         Returns:
             Tuple: (success, message)
@@ -398,7 +398,7 @@ class PredictiveActionService:
                 action.status = ActionStatus.EXECUTED
             return success, message
 
-        # Feedback speichern fuer ML-Training
+        # Feedback speichern für ML-Training
         await self._record_feedback(
             db=db,
             action_id=action.id,
@@ -438,7 +438,7 @@ class PredictiveActionService:
         action.resolved_at = utc_now()
         action.resolution_feedback = reason
 
-        # Feedback speichern fuer ML-Training
+        # Feedback speichern für ML-Training
         await self._record_feedback(
             db=db,
             action_id=action.id,
@@ -474,7 +474,7 @@ class PredictiveActionService:
             snooze_hours: Stunden bis zur erneuten Anzeige
 
         Returns:
-            Zeitpunkt der naechsten Anzeige
+            Zeitpunkt der nächsten Anzeige
         """
         action.status = ActionStatus.SNOOZED
         snooze_until = utc_now() + timedelta(hours=snooze_hours)
@@ -498,13 +498,13 @@ class PredictiveActionService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[PredictiveAction]:
-        """Generiere Mahnungs-Vorschlaege."""
+        """Generiere Mahnungs-Vorschläge."""
         from app.db.models import InvoiceTracking
 
         actions: List[PredictiveAction] = []
         now = utc_now()
 
-        # Finde ueberfaellige Rechnungen
+        # Finde überfällige Rechnungen
         stmt = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
@@ -523,7 +523,7 @@ class PredictiveActionService:
             days_overdue = (now.date() - invoice.due_date).days
             current_level = invoice.dunning_level or 0
 
-            # Bestimme Prioritaet basierend auf Ueberfaelligkeit
+            # Bestimme Priorität basierend auf Überfälligkeit
             if days_overdue > 60 or current_level >= 3:
                 priority = ActionPriority.CRITICAL
             elif days_overdue > 30 or current_level >= 2:
@@ -537,13 +537,13 @@ class PredictiveActionService:
             if current_level >= 3:
                 action_type = ActionType.CALL_CUSTOMER
                 title = "Telefonische Nachverfolgung empfohlen"
-                description = f"Rechnung {invoice.invoice_number} ist {days_overdue} Tage ueberfaellig (Mahnstufe {current_level}). Telefonischer Kontakt empfohlen."
-                benefit = "Hoeherer Zahlungseingang"
+                description = f"Rechnung {invoice.invoice_number} ist {days_overdue} Tage überfällig (Mahnstufe {current_level}). Telefonischer Kontakt empfohlen."
+                benefit = "Höherer Zahlungseingang"
             else:
                 action_type = ActionType.SEND_DUNNING
                 next_level = current_level + 1
                 title = f"Mahnung Stufe {next_level} senden"
-                description = f"Rechnung {invoice.invoice_number} ist {days_overdue} Tage ueberfaellig. Naechste Mahnstufe empfohlen."
+                description = f"Rechnung {invoice.invoice_number} ist {days_overdue} Tage überfällig. Nächste Mahnstufe empfohlen."
                 benefit = "Beschleunigter Zahlungseingang"
 
             # Konfidenz basierend auf Daten
@@ -579,14 +579,14 @@ class PredictiveActionService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[PredictiveAction]:
-        """Generiere Skonto-Vorschlaege."""
+        """Generiere Skonto-Vorschläge."""
         from app.db.models import InvoiceTracking
 
         actions: List[PredictiveAction] = []
         now = utc_now()
 
         # Finde Rechnungen mit anstehenden Skonto-Fristen
-        # Nur incoming Rechnungen (die wir bezahlen muessen)
+        # Nur incoming Rechnungen (die wir bezahlen müssen)
         stmt = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
@@ -612,7 +612,7 @@ class PredictiveActionService:
             skonto_amount = Decimal(str(invoice.amount)) * Decimal(str(invoice.skonto_percentage)) / Decimal("100")
             skonto_amount = skonto_amount.quantize(Decimal("0.01"))
 
-            # Prioritaet basierend auf verbleibender Zeit
+            # Priorität basierend auf verbleibender Zeit
             if days_remaining <= 1:
                 priority = ActionPriority.CRITICAL
             elif days_remaining <= 3:
@@ -657,7 +657,7 @@ class PredictiveActionService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[PredictiveAction]:
-        """Generiere Vertrags-Vorschlaege.
+        """Generiere Vertrags-Vorschläge.
 
         Hinweis: Erfordert Contract-Tracking Modell (nicht in allen Installationen).
         """
@@ -667,12 +667,12 @@ class PredictiveActionService:
         try:
             from app.db.models import ContractTracking
         except ImportError:
-            # Contract-Tracking nicht verfuegbar
+            # Contract-Tracking nicht verfügbar
             return actions
 
         now = utc_now()
 
-        # Finde Vertraege die in 30 Tagen auslaufen
+        # Finde Verträge die in 30 Tagen auslaufen
         warning_date = now + timedelta(days=30)
 
         stmt = select(ContractTracking).where(
@@ -695,7 +695,7 @@ class PredictiveActionService:
         for contract in contracts:
             days_remaining = (contract.end_date - now).days
 
-            # Prioritaet basierend auf verbleibender Zeit
+            # Priorität basierend auf verbleibender Zeit
             if days_remaining <= 7:
                 priority = ActionPriority.CRITICAL
             elif days_remaining <= 14:
@@ -703,14 +703,14 @@ class PredictiveActionService:
             else:
                 priority = ActionPriority.MEDIUM
 
-            # Entscheide ob Verlaengerung oder Kuendigung
+            # Entscheide ob Verlängerung oder Kündigung
             if getattr(contract, 'auto_renewal', False):
                 action_type = ActionType.REVIEW_CONTRACT
-                title = "Vertrag vor Auto-Verlaengerung pruefen"
-                description = f"Vertrag '{contract.name}' verlaengert sich automatisch am {contract.end_date.strftime('%d.%m.%Y')}. Jetzt pruefen."
+                title = "Vertrag vor Auto-Verlängerung prüfen"
+                description = f"Vertrag '{contract.name}' verlängert sich automatisch am {contract.end_date.strftime('%d.%m.%Y')}. Jetzt prüfen."
             else:
                 action_type = ActionType.RENEW_CONTRACT
-                title = "Vertragsverlaengerung pruefen"
+                title = "Vertragsverlängerung prüfen"
                 description = f"Vertrag '{contract.name}' endet am {contract.end_date.strftime('%d.%m.%Y')}. Entscheidung erforderlich."
 
             actions.append(PredictiveAction(
@@ -743,7 +743,7 @@ class PredictiveActionService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[PredictiveAction]:
-        """Generiere Budget-Vorschlaege."""
+        """Generiere Budget-Vorschläge."""
         actions: List[PredictiveAction] = []
 
         # Versuche Budget-Model zu laden
@@ -752,7 +752,7 @@ class PredictiveActionService:
         except ImportError:
             return actions
 
-        # Finde aktive Budgets mit Ueberschreitungsrisiko
+        # Finde aktive Budgets mit Überschreitungsrisiko
         stmt = select(Budget).where(
             and_(
                 Budget.company_id == company_id,
@@ -775,11 +775,11 @@ class PredictiveActionService:
                 priority = ActionPriority.HIGH if utilization >= 100 else ActionPriority.MEDIUM
 
                 if utilization >= 100:
-                    title = "Budget ueberschritten"
+                    title = "Budget überschritten"
                     description = f"Budget '{budget.name}' ist zu {utilization:.1f}% ausgeschoepft. Anpassung empfohlen."
                 else:
                     title = "Budget-Warnung"
-                    description = f"Budget '{budget.name}' ist zu {utilization:.1f}% ausgeschoepft. Ueberpruefung empfohlen."
+                    description = f"Budget '{budget.name}' ist zu {utilization:.1f}% ausgeschoepft. Überprüfung empfohlen."
 
                 actions.append(PredictiveAction(
                     id=uuid.uuid4(),
@@ -788,7 +788,7 @@ class PredictiveActionService:
                     priority=priority,
                     title=title,
                     description=description,
-                    benefit_text="Kostenueberblick behalten",
+                    benefit_text="Kostenüberblick behalten",
                     target_id=budget.id,
                     target_type="budget",
                     company_id=company_id,
@@ -811,13 +811,13 @@ class PredictiveActionService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[PredictiveAction]:
-        """Generiere Zahlungs-Vorschlaege."""
+        """Generiere Zahlungs-Vorschläge."""
         from app.db.models import InvoiceTracking
 
         actions: List[PredictiveAction] = []
         now = utc_now()
 
-        # Finde bald faellige Rechnungen (incoming)
+        # Finde bald fällige Rechnungen (incoming)
         warning_date = now + timedelta(days=7)
 
         stmt = select(InvoiceTracking).where(
@@ -841,7 +841,7 @@ class PredictiveActionService:
 
             days_remaining = (invoice.due_date - now.date()).days
 
-            # Prioritaet basierend auf Faelligkeit
+            # Priorität basierend auf Fälligkeit
             if days_remaining <= 1:
                 priority = ActionPriority.HIGH
             elif days_remaining <= 3:
@@ -855,7 +855,7 @@ class PredictiveActionService:
                 trigger_type=TriggerType.PAYMENT_DUE,
                 priority=priority,
                 title="Zahlung vorbereiten",
-                description=f"Rechnung {invoice.invoice_number} ist in {days_remaining} Tag(en) faellig.",
+                description=f"Rechnung {invoice.invoice_number} ist in {days_remaining} Tag(en) fällig.",
                 benefit_text="Zahlungsverzug vermeiden",
                 target_id=invoice.id,
                 target_type="invoice",
@@ -884,11 +884,11 @@ class PredictiveActionService:
         action: PredictiveAction,
         user_id: uuid.UUID,
     ) -> Tuple[bool, str]:
-        """Fuehre eine Aktion aus.
+        """Führe eine Aktion aus.
 
         Args:
             db: Datenbank-Session
-            action: Die auszufuehrende Aktion
+            action: Die auszuführende Aktion
             user_id: Benutzer-ID
 
         Returns:
@@ -900,7 +900,7 @@ class PredictiveActionService:
         elif action.action_type == ActionType.USE_SKONTO:
             return await self._execute_skonto_action(db, action, user_id)
 
-        # Andere Aktionen sind nicht automatisch ausfuehrbar
+        # Andere Aktionen sind nicht automatisch ausführbar
         return False, "Aktion erfordert manuelle Bearbeitung"
 
     async def _execute_dunning_action(
@@ -909,7 +909,7 @@ class PredictiveActionService:
         action: PredictiveAction,
         user_id: uuid.UUID,
     ) -> Tuple[bool, str]:
-        """Fuehre Mahnungs-Aktion aus."""
+        """Führe Mahnungs-Aktion aus."""
         from app.db.models import InvoiceTracking
 
 
@@ -922,7 +922,7 @@ class PredictiveActionService:
         if not invoice:
             return False, "Rechnung nicht gefunden"
 
-        # Erhoehe Mahnstufe
+        # Erhöhe Mahnstufe
         old_level = invoice.dunning_level or 0
         new_level = min(old_level + 1, 4)
 
@@ -940,7 +940,7 @@ class PredictiveActionService:
             user_id=str(user_id),
         )
 
-        return True, f"Mahnstufe auf {new_level} erhoeht"
+        return True, f"Mahnstufe auf {new_level} erhöht"
 
     async def _execute_skonto_action(
         self,
@@ -950,7 +950,7 @@ class PredictiveActionService:
     ) -> Tuple[bool, str]:
         """Markiere Skonto als angewendet (Zahlungsplanung)."""
         # Dies ist eher ein Hinweis - Zahlung muss manuell erfolgen
-        return False, "Skonto-Zahlung muss manuell durchgefuehrt werden"
+        return False, "Skonto-Zahlung muss manuell durchgeführt werden"
 
     # ========================================================================
     # Feedback and Learning
@@ -965,12 +965,12 @@ class PredictiveActionService:
         feedback_type: str,
         feedback_text: Optional[str] = None,
     ) -> None:
-        """Speichere Feedback fuer ML-Training.
+        """Speichere Feedback für ML-Training.
 
         Hinweis: In Produktion wuerde dies in einer separaten Tabelle
-        gespeichert und fuer Model-Training verwendet.
+        gespeichert und für Model-Training verwendet.
         """
-        # Feedback wird in strukturierten Logs gespeichert fuer ML-Training
+        # Feedback wird in strukturierten Logs gespeichert für ML-Training
         # FUTURE: Wenn ActionFeedback-Tabelle erstellt, hier persistieren:
         #   await db.execute(insert(ActionFeedback).values(
         #       action_id=action_id, user_id=user_id, accepted=accepted,
@@ -983,7 +983,7 @@ class PredictiveActionService:
             accepted=accepted,
             feedback_type=feedback_type,
             feedback_text=feedback_text,
-            # Strukturierte Daten fuer spaeteren Log-Export zu ML-Pipeline
+            # Strukturierte Daten für späteren Log-Export zu ML-Pipeline
             ml_training_data={
                 "action_id": str(action_id),
                 "accepted": accepted,
@@ -999,7 +999,7 @@ class PredictiveActionService:
         start_date: datetime,
         end_date: datetime,
     ) -> ActionStatistics:
-        """Hole Statistiken zu Aktionsvorschlaegen.
+        """Hole Statistiken zu Aktionsvorschlägen.
 
         Args:
             db: Datenbank-Session
@@ -1038,7 +1038,7 @@ class PredictiveActionService:
         actions: List[PredictiveAction],
         user_preferences: Optional[UserPreferences] = None,
     ) -> Dict[str, int]:
-        """Sende Benachrichtigungen fuer Aktionsvorschlaege.
+        """Sende Benachrichtigungen für Aktionsvorschläge.
 
         Args:
             db: Datenbank-Session
@@ -1051,7 +1051,7 @@ class PredictiveActionService:
         channels = user_preferences.notification_channels if user_preferences else ["in_app"]
         sent_counts = {channel: 0 for channel in channels}
 
-        # Nur kritische und hohe Prioritaet benachrichtigen
+        # Nur kritische und hohe Priorität benachrichtigen
         important_actions = [
             a for a in actions
             if a.priority in [ActionPriority.CRITICAL, ActionPriority.HIGH]
@@ -1116,7 +1116,7 @@ _predictive_action_service: Optional[PredictiveActionService] = None
 
 
 def get_predictive_action_service() -> PredictiveActionService:
-    """Factory-Funktion fuer PredictiveActionService Singleton.
+    """Factory-Funktion für PredictiveActionService Singleton.
 
     Returns:
         PredictiveActionService Instanz

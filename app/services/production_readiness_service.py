@@ -2,12 +2,12 @@
 """
 Production Readiness Service.
 
-Kombiniert alle Monitoring- und Audit-Funktionen fuer einen
+Kombiniert alle Monitoring- und Audit-Funktionen für einen
 umfassenden Production Readiness Check:
 - Security Score
 - Performance Metriken
 - System Health
-- Konfigurationspruefung
+- Konfigurationsprüfung
 - Ressourcen-Check
 
 Feinpoliert und durchdacht - Enterprise Production Readiness.
@@ -74,7 +74,7 @@ class ReadinessCheck:
 
 @dataclass
 class ReadinessReport:
-    """Vollstaendiger Readiness Report."""
+    """Vollständiger Readiness Report."""
 
     timestamp: datetime
     overall_status: ReadinessStatus
@@ -103,7 +103,7 @@ class ReadinessReport:
 
 class ProductionReadinessService:
     """
-    Service fuer Production Readiness Checks.
+    Service für Production Readiness Checks.
 
     Kombiniert:
     - Security Audit
@@ -119,7 +119,7 @@ class ProductionReadinessService:
 
     async def run_readiness_check(self) -> ReadinessReport:
         """
-        Fuehrt vollstaendigen Production Readiness Check durch.
+        Führt vollständigen Production Readiness Check durch.
 
         Returns:
             ReadinessReport mit allen Checks
@@ -164,7 +164,7 @@ class ProductionReadinessService:
         return report
 
     async def _run_security_checks(self) -> List[ReadinessCheck]:
-        """Fuehrt Security Checks durch."""
+        """Führt Security Checks durch."""
         checks = []
 
         try:
@@ -228,7 +228,7 @@ class ProductionReadinessService:
         return checks
 
     async def _run_performance_checks(self) -> List[ReadinessCheck]:
-        """Fuehrt Performance Checks durch."""
+        """Führt Performance Checks durch."""
         checks = []
 
         try:
@@ -276,7 +276,7 @@ class ProductionReadinessService:
                 status=status,
                 message=message,
                 details={"error_rate_percent": error_rate},
-                recommendation="Untersuche und behebe haeufige Fehler" if status != ReadinessStatus.READY else None,
+                recommendation="Untersuche und behebe häufige Fehler" if status != ReadinessStatus.READY else None,
             ))
 
         except Exception as e:
@@ -285,7 +285,7 @@ class ProductionReadinessService:
         return checks
 
     async def _run_health_checks(self) -> List[ReadinessCheck]:
-        """Fuehrt Health Checks durch."""
+        """Führt Health Checks durch."""
         checks = []
 
         # Database Check
@@ -308,7 +308,7 @@ class ProductionReadinessService:
                 category=CheckCategory.HEALTH,
                 status=ReadinessStatus.CRITICAL,
                 message=safe_error_detail(e, "PostgreSQL"),
-                recommendation="Pruefe DATABASE_URL und PostgreSQL-Status",
+                recommendation="Prüfe DATABASE_URL und PostgreSQL-Status",
             ))
 
         # Redis Check
@@ -331,7 +331,7 @@ class ProductionReadinessService:
                 category=CheckCategory.HEALTH,
                 status=ReadinessStatus.CRITICAL,
                 message=safe_error_detail(e, "Redis"),
-                recommendation="Pruefe REDIS_URL und Redis-Status",
+                recommendation="Prüfe REDIS_URL und Redis-Status",
             ))
 
         # GPU Check
@@ -346,7 +346,7 @@ class ProductionReadinessService:
 
                 if vram_percent < 85:
                     status = ReadinessStatus.READY
-                    message = f"GPU verfuegbar: {gpu_name} ({vram_percent:.0f}% VRAM)"
+                    message = f"GPU verfügbar: {gpu_name} ({vram_percent:.0f}% VRAM)"
                 else:
                     status = ReadinessStatus.WARNINGS
                     message = f"GPU VRAM hoch: {vram_percent:.0f}%"
@@ -368,8 +368,8 @@ class ProductionReadinessService:
                     name="GPU Status",
                     category=CheckCategory.HEALTH,
                     status=ReadinessStatus.WARNINGS,
-                    message="Keine GPU verfuegbar - CPU-Fallback aktiv",
-                    recommendation="GPU wird fuer optimale OCR-Performance empfohlen",
+                    message="Keine GPU verfügbar - CPU-Fallback aktiv",
+                    recommendation="GPU wird für optimale OCR-Performance empfohlen",
                 ))
         except ImportError:
             checks.append(ReadinessCheck(
@@ -382,7 +382,7 @@ class ProductionReadinessService:
         return checks
 
     async def _run_configuration_checks(self) -> List[ReadinessCheck]:
-        """Fuehrt Konfiguration Checks durch."""
+        """Führt Konfiguration Checks durch."""
         checks = []
 
         try:
@@ -403,7 +403,7 @@ class ProductionReadinessService:
                     category=CheckCategory.CONFIGURATION,
                     status=ReadinessStatus.CRITICAL,
                     message="Debug-Modus aktiviert!",
-                    recommendation="Setze DEBUG=false fuer Production",
+                    recommendation="Setze DEBUG=false für Production",
                 ))
 
             # Rate Limiting
@@ -420,7 +420,7 @@ class ProductionReadinessService:
                     category=CheckCategory.CONFIGURATION,
                     status=ReadinessStatus.NOT_READY,
                     message="Rate Limiting deaktiviert",
-                    recommendation="Aktiviere Rate Limiting fuer Production",
+                    recommendation="Aktiviere Rate Limiting für Production",
                 ))
 
             # CSRF
@@ -437,7 +437,7 @@ class ProductionReadinessService:
                     category=CheckCategory.CONFIGURATION,
                     status=ReadinessStatus.NOT_READY,
                     message="CSRF-Schutz deaktiviert",
-                    recommendation="Aktiviere CSRF fuer Web-Clients",
+                    recommendation="Aktiviere CSRF für Web-Clients",
                 ))
 
         except Exception as e:
@@ -446,7 +446,7 @@ class ProductionReadinessService:
         return checks
 
     async def _run_resource_checks(self) -> List[ReadinessCheck]:
-        """Fuehrt Ressourcen Checks durch."""
+        """Führt Ressourcen Checks durch."""
         checks = []
 
         try:
@@ -585,7 +585,7 @@ _production_readiness_service: Optional[ProductionReadinessService] = None
 
 
 def get_production_readiness_service() -> ProductionReadinessService:
-    """Gibt ProductionReadinessService-Instanz zurueck."""
+    """Gibt ProductionReadinessService-Instanz zurück."""
     global _production_readiness_service
     if _production_readiness_service is None:
         _production_readiness_service = ProductionReadinessService()

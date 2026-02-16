@@ -44,7 +44,7 @@ class GraphNode:
     id: str  # UUID als String
     label: str  # Anzeigename
     type: str  # entity, document, invoice, bank_account, transaction
-    properties: Dict[str, str]  # Zusaetzliche Metadaten
+    properties: Dict[str, str]  # Zusätzliche Metadaten
 
     def to_dict(self) -> Dict[str, any]:
         """Konvertiert zu Dictionary."""
@@ -63,7 +63,7 @@ class GraphEdge:
     source: str  # Source Node ID
     target: str  # Target Node ID
     label: str  # Relationship Type
-    properties: Dict[str, str]  # Zusaetzliche Metadaten
+    properties: Dict[str, str]  # Zusätzliche Metadaten
 
     def to_dict(self) -> Dict[str, any]:
         """Konvertiert zu Dictionary."""
@@ -94,10 +94,10 @@ class GraphData:
 
 @dataclass
 class PathData:
-    """Kuerzester Pfad zwischen zwei Nodes."""
+    """Kürzester Pfad zwischen zwei Nodes."""
 
     path: List[str]  # Liste von Node IDs
-    length: int  # Pfad-Laenge
+    length: int  # Pfad-Länge
     nodes: List[GraphNode]  # Nodes im Pfad
     edges: List[GraphEdge]  # Edges im Pfad
 
@@ -203,7 +203,7 @@ class KnowledgeGraphService:
             },
         )
 
-        # BFS (Breadth-First Search) fuer Graph-Expansion
+        # BFS (Breadth-First Search) für Graph-Expansion
         queue: deque[Tuple[str, int]] = deque([(start_node_id, 0)])
         visited.add(start_node_id)
 
@@ -267,7 +267,7 @@ class KnowledgeGraphService:
         node_uuid = UUID(node_uuid_str)
 
         if node_type == "entity":
-            # Finde verknuepfte Dokumente
+            # Finde verknüpfte Dokumente
             doc_links_query = select(DocumentEntityLink).where(
                 DocumentEntityLink.entity_id == node_uuid
             )
@@ -302,7 +302,7 @@ class KnowledgeGraphService:
                             )
                         )
 
-            # Finde verknuepfte Rechnungen
+            # Finde verknüpfte Rechnungen
             invoices_query = select(InvoiceTracking).where(
                 and_(
                     InvoiceTracking.entity_id == node_uuid,
@@ -371,7 +371,7 @@ class KnowledgeGraphService:
                     )
 
         elif node_type == "document":
-            # Finde verknuepfte Entities
+            # Finde verknüpfte Entities
             doc_links_query = select(DocumentEntityLink).where(
                 DocumentEntityLink.document_id == node_uuid
             )
@@ -404,7 +404,7 @@ class KnowledgeGraphService:
                         )
 
         elif node_type == "invoice":
-            # Finde verknuepftes Dokument
+            # Finde verknüpftes Dokument
             invoice = await db.get(InvoiceTracking, node_uuid)
             if invoice and invoice.document_id:
                 doc_id = f"document_{invoice.document_id}"
@@ -482,7 +482,7 @@ class KnowledgeGraphService:
                 },
             )
 
-            # Finde verknuepfte Dokumente
+            # Finde verknüpfte Dokumente
             doc_links_query = select(DocumentEntityLink).where(
                 DocumentEntityLink.entity_id == entity.id
             ).limit(5)
@@ -532,7 +532,7 @@ class KnowledgeGraphService:
         db: AsyncSession,
     ) -> Optional[PathData]:
         """
-        Findet kuerzesten Pfad zwischen zwei Nodes.
+        Findet kürzesten Pfad zwischen zwei Nodes.
 
         Nutzt BFS (Breadth-First Search).
 
@@ -552,7 +552,7 @@ class KnowledgeGraphService:
             company_id=str(company_id),
         )
 
-        # Pruefe ob beide Entities existieren
+        # Prüfe ob beide Entities existieren
         from_entity = await db.get(BusinessEntity, from_id)
         to_entity = await db.get(BusinessEntity, to_id)
 
@@ -575,7 +575,7 @@ class KnowledgeGraphService:
         if path_result:
             return path_result
 
-        # Fallback: Direkte Verbindung pruefen
+        # Fallback: Direkte Verbindung prüfen
         from_docs_query = select(DocumentEntityLink.document_id).where(
             DocumentEntityLink.entity_id == from_id
         )
@@ -649,9 +649,9 @@ class KnowledgeGraphService:
         db: AsyncSession,
     ) -> Optional[PathData]:
         """
-        BFS-Algorithmus fuer kuerzesten Pfad zwischen Entities.
+        BFS-Algorithmus für kürzesten Pfad zwischen Entities.
 
-        Findet Pfade ueber Dokumente und andere Entities.
+        Findet Pfade über Dokumente und andere Entities.
 
         Args:
             from_id: Start-Entity UUID
@@ -712,7 +712,7 @@ class KnowledgeGraphService:
                     if entity_key in visited:
                         continue
 
-                    # Pruefe ob Entity zur gleichen Company gehoert
+                    # Prüfe ob Entity zur gleichen Company gehoert
                     entity = await db.get(BusinessEntity, entity_id)
                     if entity and entity.company_id == company_id:
                         visited.add(entity_key)
@@ -787,7 +787,7 @@ class KnowledgeGraphService:
         """
         Findet Communities/Cluster von zusammenhaengenden Nodes.
 
-        Nutzt Union-Find fuer Connected Components.
+        Nutzt Union-Find für Connected Components.
 
         Args:
             company_id: Company UUID
@@ -848,7 +848,7 @@ class KnowledgeGraphService:
         db: AsyncSession,
     ) -> List[Community]:
         """
-        Union-Find Algorithmus fuer Connected Components.
+        Union-Find Algorithmus für Connected Components.
 
         Args:
             company_id: Company UUID
@@ -890,7 +890,7 @@ class KnowledgeGraphService:
                     parent[root_y] = root_x
                     rank[root_x] += 1
 
-        # 3. Finde Verbindungen ueber Dokumente
+        # 3. Finde Verbindungen über Dokumente
         doc_links_query = select(
             DocumentEntityLink.document_id,
             DocumentEntityLink.entity_id
@@ -965,7 +965,7 @@ class KnowledgeGraphService:
                     )
                 )
 
-        # Sortiere nach Groesse (groesste zuerst)
+        # Sortiere nach Größe (größte zuerst)
         communities.sort(key=lambda c: c.node_count, reverse=True)
 
         return communities

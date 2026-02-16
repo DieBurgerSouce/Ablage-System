@@ -177,7 +177,7 @@ class LexwareImportService:
             messer_file: Pfad zur Messer-Kundenliste (Excel)
             skip_conflicts: Kritische Konflikte überspringen
             conflict_analysis_file: Optional vorberechnete Konfliktanalyse
-            dry_run: Nur simulieren, keine Daten aendern
+            dry_run: Nur simulieren, keine Daten ändern
 
         Returns:
             ImportResult mit Statistiken
@@ -191,10 +191,10 @@ class LexwareImportService:
         result = ImportResult()
 
         try:
-            # 1. Pandas-Operationen direkt ausfuehren (NICHT asyncio.to_thread)
+            # 1. Pandas-Operationen direkt ausführen (NICHT asyncio.to_thread)
             # asyncio.to_thread() bricht den Greenlet-Kontext der AsyncSession,
-            # was zu MissingGreenlet-Fehlern beim pool_pre_ping fuehrt.
-            # Diese Operationen sind CPU-bound und fuer einen Admin-Import akzeptabel.
+            # was zu MissingGreenlet-Fehlern beim pool_pre_ping führt.
+            # Diese Operationen sind CPU-bound und für einen Admin-Import akzeptabel.
             entities_data, result = self._prepare_customer_entities_sync(
                 folie_file,
                 messer_file,
@@ -208,7 +208,7 @@ class LexwareImportService:
                 skipped=result.skipped_count,
             )
 
-            # 2. Entities in DB erstellen (batch add fuer bessere Performance)
+            # 2. Entities in DB erstellen (batch add für bessere Performance)
             entities_to_add = []
             for entity_data in entities_data:
                 try:
@@ -262,8 +262,8 @@ class LexwareImportService:
         """
         Synchrone Vorbereitung aller Kundendaten (keine DB-Operationen).
 
-        Fuehrt alle pandas-Operationen durch, ohne die async DB-Session
-        zu beruehren. Die Daten werden als Dictionaries zurueckgegeben,
+        Führt alle pandas-Operationen durch, ohne die async DB-Session
+        zu beruehren. Die Daten werden als Dictionaries zurückgegeben,
         die dann im async Kontext zu BusinessEntity-Objekten werden.
 
         Returns:
@@ -460,7 +460,7 @@ class LexwareImportService:
             messer_file: Pfad zur Messer-Lieferantenliste (Excel)
             skip_conflicts: Kritische Konflikte überspringen
             conflict_analysis_file: Optional vorberechnete Konfliktanalyse
-            dry_run: Nur simulieren, keine Daten aendern
+            dry_run: Nur simulieren, keine Daten ändern
 
         Returns:
             ImportResult mit Statistiken
@@ -474,10 +474,10 @@ class LexwareImportService:
         result = ImportResult()
 
         try:
-            # 1. Pandas-Operationen direkt ausfuehren (NICHT asyncio.to_thread)
+            # 1. Pandas-Operationen direkt ausführen (NICHT asyncio.to_thread)
             # asyncio.to_thread() bricht den Greenlet-Kontext der AsyncSession,
-            # was zu MissingGreenlet-Fehlern beim pool_pre_ping fuehrt.
-            # Diese Operationen sind CPU-bound und fuer einen Admin-Import akzeptabel.
+            # was zu MissingGreenlet-Fehlern beim pool_pre_ping führt.
+            # Diese Operationen sind CPU-bound und für einen Admin-Import akzeptabel.
             entities_data, result = self._prepare_supplier_entities_sync(
                 folie_file,
                 messer_file,
@@ -491,7 +491,7 @@ class LexwareImportService:
                 merged=result.merged_count,
             )
 
-            # 2. Entities in DB erstellen (batch add fuer bessere Performance)
+            # 2. Entities in DB erstellen (batch add für bessere Performance)
             entities_to_add = []
             for entity_data in entities_data:
                 try:
@@ -547,8 +547,8 @@ class LexwareImportService:
         """
         Synchrone Vorbereitung aller Lieferantendaten (keine DB-Operationen).
 
-        Fuehrt alle pandas-Operationen durch, ohne die async DB-Session
-        zu beruehren. Die Daten werden als Dictionaries zurueckgegeben,
+        Führt alle pandas-Operationen durch, ohne die async DB-Session
+        zu beruehren. Die Daten werden als Dictionaries zurückgegeben,
         die dann im async Kontext zu BusinessEntity-Objekten werden.
 
         Returns:

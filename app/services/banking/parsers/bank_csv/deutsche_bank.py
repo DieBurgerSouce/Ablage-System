@@ -13,14 +13,14 @@ from ...models import ImportFormat
 
 @ParserRegistry.register
 class DeutscheBankCSVParser(GenericCSVParser):
-    """Parser fuer Deutsche Bank CSV-Kontoauszuege."""
+    """Parser für Deutsche Bank CSV-Kontoauszuege."""
 
     FORMAT = ImportFormat.CSV_DEUTSCHE_BANK
     FORMAT_VARIANT = "deutsche_bank"
 
     @classmethod
     def can_parse(cls, content: Union[str, bytes], filename: Optional[str] = None) -> float:
-        """Pruefe auf Deutsche Bank-Format."""
+        """Prüfe auf Deutsche Bank-Format."""
         text = cls._decode_content(content)
         if not text:
             return 0.0
@@ -61,7 +61,7 @@ class DeutscheBankCSVParser(GenericCSVParser):
                 mapping["value_date"] = field
             elif "amount" in field_lower or "betrag" in field_lower:
                 mapping["amount"] = field
-            elif "currency" in field_lower or "waehrung" in field_lower:
+            elif "currency" in field_lower or "währung" in field_lower:
                 mapping["currency"] = field
             elif "beneficiary" in field_lower or "originator" in field_lower:
                 mapping["counterparty_name"] = field

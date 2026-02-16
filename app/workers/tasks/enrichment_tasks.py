@@ -27,7 +27,7 @@ def enrich_entity(entity_id: str) -> dict:
     Quellen:
     - Handelsregister (common-register.de)
     - Bundesanzeiger
-    - USt-IdNr Pruefung (BZSt)
+    - USt-IdNr Prüfung (BZSt)
     """
     logger.info("enrichment_entity_start", entity_id=entity_id)
     try:
@@ -46,7 +46,7 @@ def enrich_entity(entity_id: str) -> dict:
 
 
 async def _enrich_entity(entity_id: str) -> Dict[str, Any]:
-    """Async Implementation fuer Entity Enrichment."""
+    """Async Implementation für Entity Enrichment."""
     from app.services.external.supplier_verification_service import SupplierVerificationService
 
     async with async_session_maker() as db:
@@ -105,7 +105,7 @@ async def _enrich_entity(entity_id: str) -> Dict[str, Any]:
 
 @celery_app.task(name="app.workers.tasks.enrichment_tasks.cleanup_expired_cache")
 def cleanup_expired_cache() -> dict:
-    """Bereinige abgelaufene Enrichment-Cache-Eintraege."""
+    """Bereinige abgelaufene Enrichment-Cache-Einträge."""
     logger.info("enrichment_cleanup_start")
     try:
         result = asyncio.get_event_loop().run_until_complete(_cleanup_expired_cache())
@@ -120,9 +120,9 @@ def cleanup_expired_cache() -> dict:
 
 
 async def _cleanup_expired_cache() -> Dict[str, Any]:
-    """Async Implementation fuer Cache Cleanup."""
+    """Async Implementation für Cache Cleanup."""
     entries_cleaned = 0
-    # Cache-Eintraege aelter als 7 Tage loeschen
+    # Cache-Einträge älter als 7 Tage löschen
     cutoff = datetime.now(timezone.utc) - timedelta(days=7)
 
     async with async_session_maker() as db:

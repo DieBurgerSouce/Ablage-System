@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Celery Tasks fuer das Autonomous Trust System.
+"""Celery Tasks für das Autonomous Trust System.
 
-Phase 2.1: Multi-Level Trust fuer autonome KI-Aktionen:
-- Verarbeitung faelliger Proposals
+Phase 2.1: Multi-Level Trust für autonome KI-Aktionen:
+- Verarbeitung fälliger Proposals
 - Trust-Level Metriken Aktualisierung
 - Rollback-Bereinigung
 """
@@ -44,11 +44,11 @@ def process_due_proposals(
     self,
     batch_size: int = 100,
 ) -> Dict[str, Any]:
-    """Verarbeitet faellige Proposals.
+    """Verarbeitet fällige Proposals.
 
-    Wird alle 15 Minuten via Celery Beat ausgefuehrt.
+    Wird alle 15 Minuten via Celery Beat ausgeführt.
     Sucht nach PENDING Proposals deren scheduled_at erreicht ist
-    und fuehrt sie automatisch aus.
+    und führt sie automatisch aus.
 
     Args:
         batch_size: Maximale Anzahl pro Durchlauf
@@ -58,7 +58,7 @@ def process_due_proposals(
     """
     import asyncio
 
-    logger.info("Starte Verarbeitung faelliger Proposals...")
+    logger.info("Starte Verarbeitung fälliger Proposals...")
 
     async def _process():
         from app.services.ai.delayed_acceptance_service import (
@@ -73,9 +73,9 @@ def process_due_proposals(
         async with get_async_session() as db:
             delayed_service = DelayedAcceptanceService(db)
 
-            # Executor-Map fuer verschiedene Proposal-Typen
+            # Executor-Map für verschiedene Proposal-Typen
             async def execute_payment_approval(target_id: UUID, value: Dict) -> bool:
-                """Fuehrt Payment-Approval aus."""
+                """Führt Payment-Approval aus."""
                 try:
                     service = await get_autonomous_actions_service(db)
                     result = await service.execute_payment_approval(
@@ -88,7 +88,7 @@ def process_due_proposals(
                     return False
 
             async def execute_dunning(target_id: UUID, value: Dict) -> bool:
-                """Fuehrt Mahnungsstufen-Erhoehung aus."""
+                """Führt Mahnungsstufen-Erhöhung aus."""
                 try:
                     service = await get_autonomous_actions_service(db)
                     result = await service.execute_dunning(
@@ -101,7 +101,7 @@ def process_due_proposals(
                     return False
 
             async def execute_master_data_update(target_id: UUID, value: Dict) -> bool:
-                """Fuehrt Stammdaten-Update aus."""
+                """Führt Stammdaten-Update aus."""
                 try:
                     service = await get_autonomous_actions_service(db)
                     result = await service.execute_master_data_update(
@@ -116,9 +116,9 @@ def process_due_proposals(
                     return False
 
             async def execute_generic(target_id: UUID, value: Dict) -> bool:
-                """Generische Ausfuehrung (Logging)."""
+                """Generische Ausführung (Logging)."""
                 logger.info(
-                    f"Generische Ausfuehrung fuer {target_id}",
+                    f"Generische Ausführung für {target_id}",
                     extra={"value": value},
                 )
                 return True
@@ -161,10 +161,10 @@ def process_due_proposals(
     queue="maintenance",
 )
 def update_trust_metrics(self) -> Dict[str, Any]:
-    """Aktualisiert Trust-Metriken fuer alle Companies.
+    """Aktualisiert Trust-Metriken für alle Companies.
 
-    Wird taeglich via Celery Beat ausgefuehrt.
-    Berechnet und speichert Metriken-Snapshot fuer jede Company.
+    Wird täglich via Celery Beat ausgeführt.
+    Berechnet und speichert Metriken-Snapshot für jede Company.
 
     Returns:
         Dict mit Statistiken
@@ -213,7 +213,7 @@ def update_trust_metrics(self) -> Dict[str, Any]:
 
                 except Exception as e:
                     logger.warning(
-                        f"Fehler bei Metriken-Update fuer {config.company_id}: {e}"
+                        f"Fehler bei Metriken-Update für {config.company_id}: {e}"
                     )
 
             await db.commit()
@@ -243,10 +243,10 @@ def update_trust_metrics(self) -> Dict[str, Any]:
     queue="maintenance",
 )
 def evaluate_trust_upgrades(self) -> Dict[str, Any]:
-    """Evaluiert moegliche Trust-Level Upgrades.
+    """Evaluiert mögliche Trust-Level Upgrades.
 
-    Wird woechentlich via Celery Beat ausgefuehrt.
-    Prueft ob Companies fuer Upgrade bereit sind und erstellt Vorschlaege.
+    Wird wöchentlich via Celery Beat ausgeführt.
+    Prüft ob Companies für Upgrade bereit sind und erstellt Vorschläge.
 
     Returns:
         Dict mit Upgrade-Kandidaten
@@ -292,7 +292,7 @@ def evaluate_trust_upgrades(self) -> Dict[str, Any]:
 
                 except Exception as e:
                     logger.warning(
-                        f"Fehler bei Upgrade-Evaluierung fuer {config.company_id}: {e}"
+                        f"Fehler bei Upgrade-Evaluierung für {config.company_id}: {e}"
                     )
 
             return {
@@ -330,8 +330,8 @@ def cleanup_expired_proposals(
 ) -> Dict[str, Any]:
     """Bereinigt abgelaufene Proposals.
 
-    Wird taeglich via Celery Beat ausgefuehrt.
-    Loescht alte Proposals deren Rollback-Zeitraum abgelaufen ist.
+    Wird täglich via Celery Beat ausgeführt.
+    Löscht alte Proposals deren Rollback-Zeitraum abgelaufen ist.
 
     Args:
         retention_days: Aufbewahrungszeitraum nach Rollback-Ende
@@ -344,7 +344,7 @@ def cleanup_expired_proposals(
     with get_sync_session() as db:
         cutoff = utc_now() - timedelta(days=retention_days)
 
-        # Zaehle zu loeschende Proposals
+        # Zaehle zu löschende Proposals
         count_query = (
             select(func.count(AutonomousProposalQueue.id))
             .where(
@@ -361,7 +361,7 @@ def cleanup_expired_proposals(
         to_delete = result.scalar() or 0
 
         if to_delete > 0:
-            # Loesche alte Proposals (in Batches)
+            # Lösche alte Proposals (in Batches)
             from sqlalchemy import delete
 
             delete_stmt = (
@@ -379,7 +379,7 @@ def cleanup_expired_proposals(
             db.execute(delete_stmt)
             db.commit()
 
-    logger.info(f"Proposal-Bereinigung abgeschlossen: {to_delete} geloescht")
+    logger.info(f"Proposal-Bereinigung abgeschlossen: {to_delete} gelöscht")
 
     return {"deleted": to_delete, "retention_days": retention_days}
 
@@ -397,10 +397,10 @@ def cleanup_expired_proposals(
     queue="notifications",
 )
 def notify_pending_proposals(self) -> Dict[str, Any]:
-    """Sendet Benachrichtigungen fuer ausstehende Proposals.
+    """Sendet Benachrichtigungen für ausstehende Proposals.
 
-    Wird stuendlich via Celery Beat ausgefuehrt.
-    Benachrichtigt Admins ueber Proposals die bald ausgefuehrt werden.
+    Wird stündlich via Celery Beat ausgeführt.
+    Benachrichtigt Admins über Proposals die bald ausgeführt werden.
 
     Returns:
         Dict mit Statistiken
@@ -416,7 +416,7 @@ def notify_pending_proposals(self) -> Dict[str, Any]:
             now = utc_now()
             warning_threshold = now + timedelta(hours=2)
 
-            # Hole Proposals die in den naechsten 2 Stunden faellig sind
+            # Hole Proposals die in den nächsten 2 Stunden fällig sind
             result = await db.execute(
                 select(AutonomousProposalQueue)
                 .where(
@@ -466,11 +466,11 @@ def notify_pending_proposals(self) -> Dict[str, Any]:
                             recipient_user_id=admin.id,
                             recipient_email=admin.email or "",
                             notification_type="pending_proposals",
-                            title=f"{len(company_proposals)} ausstehende KI-Vorschlaege",
+                            title=f"{len(company_proposals)} ausstehende KI-Vorschläge",
                             message=(
                                 f"Es stehen {len(company_proposals)} automatische Aktionen "
-                                f"zur Ausfuehrung an: {types_summary}. "
-                                f"Pruefen oder ablehnen Sie diese rechtzeitig."
+                                f"zur Ausführung an: {types_summary}. "
+                                f"Prüfen oder ablehnen Sie diese rechtzeitig."
                             ),
                             category=NotificationCategory.SYSTEM,
                             severity=NotificationSeverity.HIGH,

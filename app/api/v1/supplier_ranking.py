@@ -2,9 +2,9 @@
 """
 Supplier Ranking API Endpoints.
 
-Endpoints fuer Lieferanten-Bewertung und -Vergleich:
+Endpoints für Lieferanten-Bewertung und -Vergleich:
 - Einzelbewertung eines Lieferanten
-- Ranking-Report ueber alle Lieferanten
+- Ranking-Report über alle Lieferanten
 - Lieferanten-Vergleich
 """
 
@@ -41,7 +41,7 @@ class CategoryScoreResponse(BaseModel):
     weight: float = Field(..., description="Gewichtung im Gesamtscore")
     data_points: int = Field(..., description="Anzahl ausgewerteter Datenpunkte")
     trend: str = Field(..., description="Trend (up, down, stable)")
-    details: dict = Field(default_factory=dict, description="Zusaetzliche Details")
+    details: dict = Field(default_factory=dict, description="Zusätzliche Details")
 
     class Config:
         json_schema_extra = {
@@ -107,7 +107,7 @@ class TierDistributionResponse(BaseModel):
 
 
 class SupplierRankingReportResponse(BaseModel):
-    """Report ueber alle Lieferanten-Rankings."""
+    """Report über alle Lieferanten-Rankings."""
     company_id: str = Field(..., description="Firmen-ID")
     total_suppliers: int = Field(..., description="Gesamtanzahl Lieferanten")
     ranked_suppliers: int = Field(..., description="Bewertete Lieferanten")
@@ -125,7 +125,7 @@ class SupplierRankingReportResponse(BaseModel):
 
 
 class SupplierComparisonRequest(BaseModel):
-    """Anfrage fuer Lieferanten-Vergleich."""
+    """Anfrage für Lieferanten-Vergleich."""
     entity_ids: List[str] = Field(..., min_length=2, max_length=10, description="Lieferanten-IDs zum Vergleich")
     period_days: int = Field(365, ge=30, le=730, description="Auswertungszeitraum in Tagen")
 
@@ -201,7 +201,7 @@ async def get_supplier_ranking(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Ruft Ranking fuer einen Lieferanten ab.
+    Ruft Ranking für einen Lieferanten ab.
 
     - **entity_id**: ID des Lieferanten
     - **period_days**: Auswertungszeitraum (30-730 Tage)
@@ -235,7 +235,7 @@ async def get_supplier_ranking(
     "",
     response_model=SupplierRankingReportResponse,
     summary="Lieferanten-Ranking-Report",
-    description="Erstellt einen Report ueber alle Lieferanten-Bewertungen.",
+    description="Erstellt einen Report über alle Lieferanten-Bewertungen.",
 )
 async def get_supplier_ranking_report(
     period_days: int = Query(365, ge=30, le=730, description="Auswertungszeitraum in Tagen"),
@@ -244,16 +244,16 @@ async def get_supplier_ranking_report(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Erstellt Gesamt-Report ueber alle Lieferanten.
+    Erstellt Gesamt-Report über alle Lieferanten.
 
-    Der Report enthaelt:
+    Der Report enthält:
     - Tier-Verteilung (Platinum/Gold/Silver/Bronze/Critical)
     - Top-Lieferanten
     - Kritische Lieferanten
     - Sich verbessernde/verschlechternde Lieferanten
     - Durchschnittswerte
 
-    Wird fuer strategische Lieferanten-Entscheidungen verwendet.
+    Wird für strategische Lieferanten-Entscheidungen verwendet.
     """
     service = get_supplier_ranking_service()
 
@@ -308,7 +308,7 @@ async def compare_suppliers(
     - **entity_ids**: 2-10 Lieferanten-IDs zum Vergleich
     - **period_days**: Auswertungszeitraum
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Lieferantenauswahl bei neuen Produkten
     - Konsolidierung der Lieferantenbasis
     - Preisverhandlungen
@@ -321,7 +321,7 @@ async def compare_suppliers(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Lieferanten-IDs"
+            detail="Ungültige Lieferanten-IDs"
         )
 
     rankings = await service.get_supplier_comparison(
@@ -352,7 +352,7 @@ async def get_tier_distribution(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Schnelle Uebersicht ueber Tier-Verteilung.
+    Schnelle Übersicht über Tier-Verteilung.
 
     Tiers:
     - **Platinum** (90-100): Top-Lieferanten, strategische Partner

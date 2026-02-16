@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Communication Hub API - 360° Geschaeftspartner-Ansicht.
+Communication Hub API - 360° Geschäftspartner-Ansicht.
 
 Vision 2026+ Feature #1: Kommunikations-Hub
-Zentrale Ansicht ALLER Interaktionen mit einem Geschaeftspartner.
+Zentrale Ansicht ALLER Interaktionen mit einem Geschäftspartner.
 """
 
 from __future__ import annotations
@@ -71,7 +71,7 @@ class InvoiceSummaryResponse(BaseModel):
 
 
 class RiskTrendResponse(BaseModel):
-    """Risiko-Trend fuer einen Partner."""
+    """Risiko-Trend für einen Partner."""
     current_score: Optional[float] = None
     previous_score: Optional[float] = None
     trend_direction: str = "stable"
@@ -81,7 +81,7 @@ class RiskTrendResponse(BaseModel):
 
 
 class CommunicationHubResponse(BaseModel):
-    """Vollstaendige 360°-Ansicht eines Geschaeftspartners."""
+    """Vollständige 360°-Ansicht eines Geschäftspartners."""
     entity: JSONDict
     timeline: List[TimelineItemResponse]
     invoice_summary: InvoiceSummaryResponse
@@ -93,7 +93,7 @@ class CommunicationHubResponse(BaseModel):
 
 
 class PhoneNoteCreate(BaseModel):
-    """Schema fuer neue Telefon-Notiz."""
+    """Schema für neue Telefon-Notiz."""
     subject: str = Field(..., min_length=1, max_length=255, description="Betreff des Anrufs")
     notes: Optional[str] = Field(None, max_length=10000, description="Gespraechsnotizen")
     call_type: str = Field(
@@ -116,7 +116,7 @@ class PhoneNoteCreate(BaseModel):
 
 
 class PhoneNoteUpdate(BaseModel):
-    """Schema fuer Aktualisierung einer Telefon-Notiz."""
+    """Schema für Aktualisierung einer Telefon-Notiz."""
     subject: Optional[str] = Field(None, min_length=1, max_length=255)
     notes: Optional[str] = Field(None, max_length=10000)
     summary: Optional[str] = Field(None, max_length=500)
@@ -134,7 +134,7 @@ class PhoneNoteUpdate(BaseModel):
 
 
 class PhoneNoteResponse(BaseModel):
-    """Response fuer eine Telefon-Notiz."""
+    """Response für eine Telefon-Notiz."""
     id: str
     entity_id: str
     company_id: str
@@ -169,26 +169,26 @@ class PhoneNoteResponse(BaseModel):
 @router.get(
     "/{entity_id}/communication-hub",
     response_model=CommunicationHubResponse,
-    summary="360° Geschaeftspartner-Ansicht",
-    description="Holt alle Kommunikationsdaten zu einem Geschaeftspartner.",
+    summary="360° Geschäftspartner-Ansicht",
+    description="Holt alle Kommunikationsdaten zu einem Geschäftspartner.",
 )
 async def get_communication_hub(
     entity_id: uuid.UUID,
-    timeline_limit: int = Query(default=50, ge=1, le=200, description="Max. Timeline-Eintraege"),
+    timeline_limit: int = Query(default=50, ge=1, le=200, description="Max. Timeline-Einträge"),
     documents_limit: int = Query(default=10, ge=1, le=50, description="Max. Dokumente"),
     sections: Optional[str] = Query(
         default=None,
-        description="Komma-getrennte Liste der gewuenschten Sektionen (entity,timeline,invoices,risk,stats,documents,tasks,phone_notes)"
+        description="Komma-getrennte Liste der gewünschten Sektionen (entity,timeline,invoices,risk,stats,documents,tasks,phone_notes)"
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     company_id: Optional[UUID] = Depends(get_current_company_id),
 ) -> CommunicationHubResponse:
     """
-    Holt die vollstaendige 360°-Ansicht eines Geschaeftspartners.
+    Holt die vollständige 360°-Ansicht eines Geschäftspartners.
 
-    Aggregiert alle verfuegbaren Daten:
-    - Basisdaten des Geschaeftspartners
+    Aggregiert alle verfügbaren Daten:
+    - Basisdaten des Geschäftspartners
     - Kommunikations-Timeline (Telefonate, Emails, Dokumente, Mahnungen)
     - Rechnungs-Zusammenfassung
     - Risiko-Trend
@@ -201,7 +201,7 @@ async def get_communication_hub(
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus.",
+            detail="Keine Firma ausgewaehlt. Bitte wählen Sie eine Firma aus.",
         )
 
     include_sections = None
@@ -276,7 +276,7 @@ async def get_communication_hub(
     "/{entity_id}/phone-notes",
     response_model=List[PhoneNoteResponse],
     summary="Telefon-Notizen auflisten",
-    description="Listet alle Telefon-Notizen eines Geschaeftspartners auf.",
+    description="Listet alle Telefon-Notizen eines Geschäftspartners auf.",
 )
 async def list_phone_notes(
     entity_id: uuid.UUID,
@@ -285,12 +285,12 @@ async def list_phone_notes(
     current_user: User = Depends(get_current_user),
     company_id: Optional[UUID] = Depends(get_current_company_id),
 ) -> List[PhoneNoteResponse]:
-    """Listet alle Telefon-Notizen eines Geschaeftspartners auf."""
+    """Listet alle Telefon-Notizen eines Geschäftspartners auf."""
     # SECURITY FIX: Multi-Tenant Check
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus.",
+            detail="Keine Firma ausgewaehlt. Bitte wählen Sie eine Firma aus.",
         )
 
     service = CommunicationHubService(db)
@@ -308,7 +308,7 @@ async def list_phone_notes(
     response_model=PhoneNoteResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Telefon-Notiz erstellen",
-    description="Erstellt eine neue Telefon-Notiz fuer einen Geschaeftspartner.",
+    description="Erstellt eine neue Telefon-Notiz für einen Geschäftspartner.",
 )
 async def create_phone_note(
     entity_id: uuid.UUID,
@@ -322,7 +322,7 @@ async def create_phone_note(
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus.",
+            detail="Keine Firma ausgewaehlt. Bitte wählen Sie eine Firma aus.",
         )
 
     # Validiere call_type
@@ -330,7 +330,7 @@ async def create_phone_note(
     if data.call_type not in valid_call_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger call_type. Erlaubt: {valid_call_types}"
+            detail=f"Ungültiger call_type. Erlaubt: {valid_call_types}"
         )
 
     # Validiere direction
@@ -338,7 +338,7 @@ async def create_phone_note(
     if data.direction not in valid_directions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltige direction. Erlaubt: {valid_directions}"
+            detail=f"Ungültige direction. Erlaubt: {valid_directions}"
         )
 
     # Validiere sentiment falls vorhanden
@@ -347,7 +347,7 @@ async def create_phone_note(
         if data.sentiment not in valid_sentiments:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger sentiment. Erlaubt: {valid_sentiments}"
+                detail=f"Ungültiger sentiment. Erlaubt: {valid_sentiments}"
             )
 
     service = CommunicationHubService(db)
@@ -390,7 +390,7 @@ async def get_phone_note(
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus.",
+            detail="Keine Firma ausgewaehlt. Bitte wählen Sie eine Firma aus.",
         )
 
     from sqlalchemy import select
@@ -433,7 +433,7 @@ async def update_phone_note(
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus.",
+            detail="Keine Firma ausgewaehlt. Bitte wählen Sie eine Firma aus.",
         )
 
     # Validierungen
@@ -442,7 +442,7 @@ async def update_phone_note(
         if data.call_type not in valid_call_types:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger call_type. Erlaubt: {valid_call_types}"
+                detail=f"Ungültiger call_type. Erlaubt: {valid_call_types}"
             )
 
     if data.direction:
@@ -450,7 +450,7 @@ async def update_phone_note(
         if data.direction not in valid_directions:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltige direction. Erlaubt: {valid_directions}"
+                detail=f"Ungültige direction. Erlaubt: {valid_directions}"
             )
 
     if data.sentiment:
@@ -458,7 +458,7 @@ async def update_phone_note(
         if data.sentiment not in valid_sentiments:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger sentiment. Erlaubt: {valid_sentiments}"
+                detail=f"Ungültiger sentiment. Erlaubt: {valid_sentiments}"
             )
 
     service = CommunicationHubService(db)
@@ -481,8 +481,8 @@ async def update_phone_note(
     "/{entity_id}/phone-notes/{note_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_model=None,
-    summary="Telefon-Notiz loeschen",
-    description="Loescht eine Telefon-Notiz.",
+    summary="Telefon-Notiz löschen",
+    description="Löscht eine Telefon-Notiz.",
 )
 async def delete_phone_note(
     entity_id: uuid.UUID,
@@ -491,12 +491,12 @@ async def delete_phone_note(
     current_user: User = Depends(get_current_user),
     company_id: Optional[UUID] = Depends(get_current_company_id),
 ):
-    """Loescht eine Telefon-Notiz."""
+    """Löscht eine Telefon-Notiz."""
     # SECURITY FIX: Multi-Tenant Check
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus.",
+            detail="Keine Firma ausgewaehlt. Bitte wählen Sie eine Firma aus.",
         )
 
     service = CommunicationHubService(db)
@@ -515,7 +515,7 @@ async def delete_phone_note(
 @router.post(
     "/{entity_id}/phone-notes/{note_id}/complete-follow-up",
     response_model=PhoneNoteResponse,
-    summary="Follow-up abschliessen",
+    summary="Follow-up abschließen",
     description="Markiert ein Follow-up als abgeschlossen.",
 )
 async def complete_follow_up(
@@ -530,7 +530,7 @@ async def complete_follow_up(
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus.",
+            detail="Keine Firma ausgewaehlt. Bitte wählen Sie eine Firma aus.",
         )
 
     service = CommunicationHubService(db)
@@ -556,7 +556,7 @@ async def complete_follow_up(
 @router.get(
     "/{entity_id}/communication-hub/quick-stats",
     summary="Schnelle Kommunikations-Statistiken",
-    description="Holt nur die wichtigsten Statistiken fuer schnelle Anzeige.",
+    description="Holt nur die wichtigsten Statistiken für schnelle Anzeige.",
 )
 async def get_quick_stats(
     entity_id: uuid.UUID,
@@ -564,12 +564,12 @@ async def get_quick_stats(
     current_user: User = Depends(get_current_user),
     company_id: Optional[UUID] = Depends(get_current_company_id),
 ) -> JSONDict:
-    """Holt schnelle Statistiken fuer Badge-Anzeigen etc."""
+    """Holt schnelle Statistiken für Badge-Anzeigen etc."""
     # SECURITY FIX: Multi-Tenant Check
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus.",
+            detail="Keine Firma ausgewaehlt. Bitte wählen Sie eine Firma aus.",
         )
 
     service = CommunicationHubService(db)
@@ -613,7 +613,7 @@ async def get_timeline_only(
     if not company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus.",
+            detail="Keine Firma ausgewaehlt. Bitte wählen Sie eine Firma aus.",
         )
 
     service = CommunicationHubService(db)

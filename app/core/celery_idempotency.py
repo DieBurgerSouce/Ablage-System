@@ -2,14 +2,14 @@
 """
 Celery Task Idempotency Service.
 
-PHASE 0.6 CRITICAL FIX: Stellt sicher, dass Beat-Tasks nicht mehrfach ausgefuehrt werden.
+PHASE 0.6 CRITICAL FIX: Stellt sicher, dass Beat-Tasks nicht mehrfach ausgeführt werden.
 
 Verhindert:
-- Doppelte KPI-History-Eintraege wenn Task erneut getriggert wird
-- Doppelte Alerts wenn Task waehrend Ausfuehrung erneut gestartet wird
+- Doppelte KPI-History-Einträge wenn Task erneut getriggert wird
+- Doppelte Alerts wenn Task während Ausführung erneut gestartet wird
 - Inkonsistente Daten durch Race Conditions
 
-Verwendet Redis fuer verteilte Idempotency-Pruefung.
+Verwendet Redis für verteilte Idempotency-Prüfung.
 """
 
 import hashlib
@@ -27,7 +27,7 @@ from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
-# Redis Client fuer Idempotency
+# Redis Client für Idempotency
 _redis_client: Optional[Redis] = None
 _IDEMPOTENCY_PREFIX = "celery:idempotent:"
 _DEFAULT_TTL = 86400  # 24 Stunden
@@ -48,7 +48,7 @@ def _get_redis_client() -> Redis:
 
 class IdempotencyKey:
     """
-    Idempotency Key Manager fuer Celery Tasks.
+    Idempotency Key Manager für Celery Tasks.
 
     Verwendung:
         # In Task-Funktion
@@ -56,7 +56,7 @@ class IdempotencyKey:
         if IdempotencyKey.exists(key):
             return IdempotencyKey.get_result(key)
 
-        # ... Task ausfuehren ...
+        # ... Task ausführen ...
 
         IdempotencyKey.set_result(key, result)
     """
@@ -95,7 +95,7 @@ class IdempotencyKey:
             if arg is not None:
                 key_parts.append(str(arg))
 
-        # Erstelle Hash fuer kompakten Key
+        # Erstelle Hash für kompakten Key
         content = ":".join(key_parts)
         hash_value = hashlib.sha256(content.encode()).hexdigest()[:16]
 
@@ -104,13 +104,13 @@ class IdempotencyKey:
     @staticmethod
     def exists(key: str) -> bool:
         """
-        Prueft ob ein Idempotency Key bereits existiert.
+        Prüft ob ein Idempotency Key bereits existiert.
 
         Args:
-            key: Der zu pruefende Key
+            key: Der zu prüfende Key
 
         Returns:
-            True wenn Key existiert (Task wurde bereits ausgefuehrt)
+            True wenn Key existiert (Task wurde bereits ausgeführt)
         """
         try:
             redis = _get_redis_client()
@@ -121,13 +121,13 @@ class IdempotencyKey:
                 key=key,
                 **safe_error_log(e),
             )
-            # Bei Redis-Fehler: Erlaube Task-Ausfuehrung
+            # Bei Redis-Fehler: Erlaube Task-Ausführung
             return False
 
     @staticmethod
     def get_result(key: str) -> Optional[Dict[str, object]]:
         """
-        Holt das gespeicherte Ergebnis eines bereits ausgefuehrten Tasks.
+        Holt das gespeicherte Ergebnis eines bereits ausgeführten Tasks.
 
         Args:
             key: Der Idempotency Key
@@ -196,7 +196,7 @@ class IdempotencyKey:
     @staticmethod
     def acquire_lock(key: str, lock_ttl: int = 600) -> bool:
         """
-        Erwirbt einen Lock fuer einen Task um Race Conditions zu verhindern.
+        Erwirbt einen Lock für einen Task um Race Conditions zu verhindern.
 
         Args:
             key: Der Idempotency Key
@@ -223,13 +223,13 @@ class IdempotencyKey:
                 key=key,
                 **safe_error_log(e),
             )
-            # Bei Fehler: Erlaube Task-Ausfuehrung
+            # Bei Fehler: Erlaube Task-Ausführung
             return True
 
     @staticmethod
     def release_lock(key: str) -> None:
         """
-        Gibt den Lock fuer einen Task frei.
+        Gibt den Lock für einen Task frei.
 
         Args:
             key: Der Idempotency Key
@@ -259,13 +259,13 @@ def idempotent_task(
         @celery_app.task(bind=True, base=CPUTask)
         @idempotent_task("space_id", date_scoped=True)
         def record_kpi_history(self, space_id: str = None):
-            # Task wird nur einmal pro Tag pro space_id ausgefuehrt
+            # Task wird nur einmal pro Tag pro space_id ausgeführt
             ...
 
     Args:
         *key_args: Namen der Argumente die den Key eindeutig machen
         date_scoped: Ob Key auf heutigen Tag beschraenkt ist (default: True)
-        ttl: Time-to-Live fuer Cache in Sekunden (default: 24 Stunden)
+        ttl: Time-to-Live für Cache in Sekunden (default: 24 Stunden)
     """
     def decorator(func):
         @wraps(func)
@@ -293,7 +293,7 @@ def idempotent_task(
                     date_scope=None,
                 )
 
-            # Pruefe ob bereits ausgefuehrt
+            # Prüfe ob bereits ausgeführt
             if IdempotencyKey.exists(idempotency_key):
                 cached_result = IdempotencyKey.get_result(idempotency_key)
                 logger.info(
@@ -328,7 +328,7 @@ def idempotent_task(
                 }
 
             try:
-                # Fuehre Task aus
+                # Führe Task aus
                 result = func(self, *args, **kwargs)
 
                 # Speichere Ergebnis
@@ -345,7 +345,7 @@ def idempotent_task(
 
 
 # ============================================================================
-# Hilfsfunktionen fuer manuelle Idempotency-Pruefung
+# Hilfsfunktionen für manuelle Idempotency-Prüfung
 # ============================================================================
 
 def check_task_idempotency(
@@ -354,12 +354,12 @@ def check_task_idempotency(
     date_scope: Optional[date] = None,
 ) -> Optional[Dict[str, object]]:
     """
-    Prueft ob ein Task mit diesen Argumenten heute bereits ausgefuehrt wurde.
+    Prüft ob ein Task mit diesen Argumenten heute bereits ausgeführt wurde.
 
     Args:
         task_name: Name des Celery Tasks
         *args: Task-Argumente
-        date_scope: Optional - Tag fuer den geprueft werden soll
+        date_scope: Optional - Tag für den geprüft werden soll
 
     Returns:
         Gecachtes Ergebnis wenn vorhanden, sonst None
@@ -378,13 +378,13 @@ def mark_task_executed(
     ttl: int = _DEFAULT_TTL,
 ) -> str:
     """
-    Markiert einen Task als ausgefuehrt.
+    Markiert einen Task als ausgeführt.
 
     Args:
         task_name: Name des Celery Tasks
         result: Das Ergebnis des Tasks
         *args: Task-Argumente
-        date_scope: Optional - Tag fuer den markiert werden soll
+        date_scope: Optional - Tag für den markiert werden soll
         ttl: Time-to-Live in Sekunden
 
     Returns:
@@ -401,15 +401,15 @@ def clear_task_idempotency(
     date_scope: Optional[date] = None,
 ) -> bool:
     """
-    Loescht den Idempotency-Cache fuer einen Task (fuer erneute Ausfuehrung).
+    Löscht den Idempotency-Cache für einen Task (für erneute Ausführung).
 
     Args:
         task_name: Name des Celery Tasks
         *args: Task-Argumente
-        date_scope: Optional - Tag fuer den geloescht werden soll
+        date_scope: Optional - Tag für den gelöscht werden soll
 
     Returns:
-        True wenn erfolgreich geloescht
+        True wenn erfolgreich gelöscht
     """
     key = IdempotencyKey.generate(task_name, *args, date_scope=date_scope)
     try:

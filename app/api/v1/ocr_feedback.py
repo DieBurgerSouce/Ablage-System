@@ -2,15 +2,15 @@
 """
 Enhanced OCR Feedback API Endpoints.
 
-REST API fuer erweitertes OCR-Korrektur-System mit Gamification:
+REST API für erweitertes OCR-Korrektur-System mit Gamification:
 - Inline-Korrekturen auf Feld-Ebene
-- Korrektur-Queue fuer niedrig-konfidente Extraktionen
+- Korrektur-Queue für niedrig-konfidente Extraktionen
 - Punkte-System mit Leaderboard
 - Batch-Korrektur-Verarbeitung
 - Benutzer-Statistiken und Achievements
 
-Phase 6.3: OCR Feedback UX Improvements fuer Enterprise-Dokumentenmanagement.
-Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Praezision.
+Phase 6.3: OCR Feedback UX Improvements für Enterprise-Dokumentenmanagement.
+Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Präzision.
 """
 
 from typing import Optional, List
@@ -45,7 +45,7 @@ router = APIRouter(prefix="/ocr-feedback", tags=["OCR Feedback"])
 
 
 class CorrectionRequest(BaseModel):
-    """Anfrage fuer eine Korrektur."""
+    """Anfrage für eine Korrektur."""
     document_id: UUID
     field_name: str = Field(..., max_length=100)
     original_value: str
@@ -59,12 +59,12 @@ class CorrectionRequest(BaseModel):
 
 
 class BatchCorrectionRequest(BaseModel):
-    """Anfrage fuer Batch-Korrekturen."""
+    """Anfrage für Batch-Korrekturen."""
     corrections: List[CorrectionRequest] = Field(..., min_length=1, max_length=100)
 
 
 class CorrectionResultResponse(BaseModel):
-    """Antwort fuer eine einzelne Korrektur."""
+    """Antwort für eine einzelne Korrektur."""
     correction_id: str
     document_id: str
     field_name: str
@@ -79,7 +79,7 @@ class CorrectionResultResponse(BaseModel):
 
 
 class BatchCorrectionResponse(BaseModel):
-    """Antwort fuer Batch-Korrekturen."""
+    """Antwort für Batch-Korrekturen."""
     batch_id: str
     total_corrections: int
     applied_count: int
@@ -90,7 +90,7 @@ class BatchCorrectionResponse(BaseModel):
 
 
 class QueueItemResponse(BaseModel):
-    """Antwort fuer ein Queue-Item."""
+    """Antwort für ein Queue-Item."""
     id: str
     document_id: str
     document_filename: str
@@ -108,7 +108,7 @@ class QueueItemResponse(BaseModel):
 
 
 class LeaderboardEntryResponse(BaseModel):
-    """Antwort fuer einen Leaderboard-Eintrag."""
+    """Antwort für einen Leaderboard-Eintrag."""
     rank: int
     user_id: str
     username: str
@@ -123,7 +123,7 @@ class LeaderboardEntryResponse(BaseModel):
 
 
 class UserStatsResponse(BaseModel):
-    """Antwort fuer Benutzer-Statistiken."""
+    """Antwort für Benutzer-Statistiken."""
     user_id: str
     total_corrections: int
     total_points: int
@@ -163,8 +163,8 @@ async def submit_correction(
 
     **Punkte-System:**
     - Basis-Punkte je nach Korrektur-Typ (10-25)
-    - Bonus fuer grosse Korrekturen (+5)
-    - Bonus fuer niedrige Konfidenz (+10)
+    - Bonus für grosse Korrekturen (+5)
+    - Bonus für niedrige Konfidenz (+10)
     - Streak-Bonus (+3 pro Tag)
     - Erste Korrektur des Tages (+5)
     - Konsekutive Korrekturen (+2 pro Korrektur, max +20)
@@ -185,7 +185,7 @@ async def submit_correction(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # Dokument pruefen
+    # Dokument prüfen
     result = await db.execute(
         select(Document).where(
             Document.id == request.document_id,
@@ -267,8 +267,8 @@ async def submit_batch_corrections(
     """
     Reicht mehrere Korrekturen als Batch ein.
 
-    Effizientere Verarbeitung fuer groessere Korrektur-Sessions.
-    Punkte werden fuer jede Korrektur einzeln berechnet.
+    Effizientere Verarbeitung für größere Korrektur-Sessions.
+    Punkte werden für jede Korrektur einzeln berechnet.
     """
     company_id = current_user.company_id
     if not company_id:
@@ -277,7 +277,7 @@ async def submit_batch_corrections(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # Alle Dokumente pruefen
+    # Alle Dokumente prüfen
     doc_ids = {c.document_id for c in request.corrections}
     for doc_id in doc_ids:
         result = await db.execute(
@@ -413,7 +413,7 @@ async def get_correction_queue(
 @router.post(
     "/queue/{item_id}/claim",
     summary="Queue-Item reservieren",
-    description="Reserviert ein Queue-Item fuer den aktuellen Benutzer"
+    description="Reserviert ein Queue-Item für den aktuellen Benutzer"
 )
 async def claim_queue_item(
     item_id: UUID,
@@ -479,7 +479,7 @@ async def get_leaderboard(
     - monthly: Letzte 30 Tage
     - all_time: Alle Zeit
 
-    Mindestens 5 Korrekturen erforderlich fuer Ranking.
+    Mindestens 5 Korrekturen erforderlich für Ranking.
     """
     company_id = current_user.company_id
     if not company_id:
@@ -586,7 +586,7 @@ async def get_user_stats_by_id(
     """
     Ruft die Statistiken eines bestimmten Benutzers ab.
 
-    Nur fuer Admins oder den Benutzer selbst.
+    Nur für Admins oder den Benutzer selbst.
     """
     company_id = current_user.company_id
     if not company_id:
@@ -599,7 +599,7 @@ async def get_user_stats_by_id(
     if user_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Statistiken"
+            detail="Keine Berechtigung für diese Statistiken"
         )
 
     service = get_feedback_service(db)
@@ -635,7 +635,7 @@ async def get_user_stats_by_id(
 @router.get(
     "/achievements",
     summary="Achievements abrufen",
-    description="Liefert alle verfuegbaren und erreichten Achievements"
+    description="Liefert alle verfügbaren und erreichten Achievements"
 )
 async def get_achievements(
     current_user: User = Depends(get_current_active_user),

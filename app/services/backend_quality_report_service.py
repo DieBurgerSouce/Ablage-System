@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Backend Quality Report Service fuer Ablage-System OCR.
+Backend Quality Report Service für Ablage-System OCR.
 
-Generiert detaillierte Qualitaetsberichte pro OCR-Backend mit:
+Generiert detaillierte Qualitätsberichte pro OCR-Backend mit:
 - Per-Backend Fehleranalyse und Schwachstellen-Erkennung
 - Dokumenttyp-spezifische Performance-Metriken
 - Umlaut-Genauigkeits-Tracking
@@ -53,7 +53,7 @@ class WeaknessCategory(str, Enum):
 
 
 class RetrainingPriority(str, Enum):
-    """Prioritaet fuer Retraining."""
+    """Priorität für Retraining."""
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -112,7 +112,7 @@ class DocumentTypePerformance:
 
 @dataclass
 class RetrainingRecommendation:
-    """Empfehlung fuer Retraining."""
+    """Empfehlung für Retraining."""
     priority: RetrainingPriority
     focus_area: str
     description: str
@@ -123,7 +123,7 @@ class RetrainingRecommendation:
 
 @dataclass
 class BackendQualityReport:
-    """Vollstaendiger Qualitaetsbericht fuer ein Backend."""
+    """Vollständiger Qualitätsbericht für ein Backend."""
     backend_name: str
     report_date: datetime
     performance: PerformanceMetrics
@@ -155,10 +155,10 @@ class BackendComparisonReport:
 
 class BackendQualityReportService:
     """
-    Service fuer Backend-Qualitaetsberichte.
+    Service für Backend-Qualitätsberichte.
 
     Features:
-    - Per-Backend Qualitaetsanalyse
+    - Per-Backend Qualitätsanalyse
     - Schwachstellen-Erkennung
     - Retraining-Empfehlungen
     - Backend-Vergleich
@@ -179,14 +179,14 @@ class BackendQualityReportService:
         days: int = 30,
     ) -> BackendQualityReport:
         """
-        Generiert einen vollstaendigen Qualitaetsbericht fuer ein Backend.
+        Generiert einen vollständigen Qualitätsbericht für ein Backend.
 
         Args:
             backend_name: Name des Backends
             days: Zeitraum in Tagen
 
         Returns:
-            Vollstaendiger Qualitaetsbericht
+            Vollständiger Qualitätsbericht
         """
         since = datetime.now(timezone.utc) - timedelta(days=days)
 
@@ -272,7 +272,7 @@ class BackendQualityReportService:
             scores, umlaut_scores, speed_scores
         )
 
-        # Bestimme besten Backend fuer Tabellen (falls Daten vorhanden)
+        # Bestimme besten Backend für Tabellen (falls Daten vorhanden)
         best_for_tables = await self._get_best_backend_for_tables(backends, since)
         if not best_for_tables:
             best_for_tables = best_overall  # Fallback auf Overall
@@ -293,7 +293,7 @@ class BackendQualityReportService:
         backends: List[str],
         since: datetime,
     ) -> Optional[str]:
-        """Ermittelt das beste Backend fuer Tabellen-Erkennung."""
+        """Ermittelt das beste Backend für Tabellen-Erkennung."""
         best_backend = None
         best_score = -1.0
 
@@ -329,7 +329,7 @@ class BackendQualityReportService:
         backend_name: str,
         since: datetime,
     ) -> PerformanceMetrics:
-        """Berechnet Performance-Metriken fuer ein Backend."""
+        """Berechnet Performance-Metriken für ein Backend."""
         # Aggregierte Statistiken
         stats_query = select(
             func.count(OCRBackendBenchmark.id).label("total"),
@@ -415,26 +415,26 @@ class BackendQualityReportService:
         """Identifiziert Schwaechen eines Backends."""
         weaknesses: List[WeaknessPattern] = []
 
-        # 1. Umlaut-Schwaeche pruefen
+        # 1. Umlaut-Schwaeche prüfen
         umlaut_weakness = await self._check_umlaut_weakness(backend_name, since)
         if umlaut_weakness:
             weaknesses.append(umlaut_weakness)
 
-        # 2. Fraktur-Schwaeche pruefen
+        # 2. Fraktur-Schwaeche prüfen
         fraktur_weakness = await self._check_feature_weakness(
             backend_name, since, "has_fraktur", WeaknessCategory.FRAKTUR
         )
         if fraktur_weakness:
             weaknesses.append(fraktur_weakness)
 
-        # 3. Tabellen-Schwaeche pruefen
+        # 3. Tabellen-Schwaeche prüfen
         table_weakness = await self._check_feature_weakness(
             backend_name, since, "has_tables", WeaknessCategory.TABLES
         )
         if table_weakness:
             weaknesses.append(table_weakness)
 
-        # 4. Handschrift-Schwaeche pruefen
+        # 4. Handschrift-Schwaeche prüfen
         hw_weakness = await self._check_feature_weakness(
             backend_name, since, "has_handwriting", WeaknessCategory.HANDWRITING
         )
@@ -448,7 +448,7 @@ class BackendQualityReportService:
         backend_name: str,
         since: datetime,
     ) -> Optional[WeaknessPattern]:
-        """Prueft auf Umlaut-Schwaeche."""
+        """Prüft auf Umlaut-Schwaeche."""
         # Samples mit Umlauten
         query = select(
             func.count(OCRBackendBenchmark.id).label("total"),
@@ -477,7 +477,7 @@ class BackendQualityReportService:
 
         # Schwaeche wenn Umlaut-Accuracy < 95% oder > 10% Low-Accuracy Samples
         if avg_acc < 0.95 or low_acc_pct > 10:
-            severity = 1.0 - avg_acc  # Je niedriger Accuracy, desto hoeher Severity
+            severity = 1.0 - avg_acc  # Je niedriger Accuracy, desto höher Severity
 
             return WeaknessPattern(
                 category=WeaknessCategory.UMLAUT,
@@ -497,7 +497,7 @@ class BackendQualityReportService:
         feature_column: str,
         category: WeaknessCategory,
     ) -> Optional[WeaknessPattern]:
-        """Prueft auf Feature-spezifische Schwaeche."""
+        """Prüft auf Feature-spezifische Schwaeche."""
         # Dynamischer Spaltenname
         feature_attr = getattr(OCRTrainingSample, feature_column, None)
         if feature_attr is None:
@@ -543,7 +543,7 @@ class BackendQualityReportService:
         with_cer = float(with_stats.avg_cer or 0)
         without_cer = float(without_stats.avg_cer or 0) if without_stats else 0
 
-        # Schwaeche wenn CER mit Feature >50% hoeher als ohne
+        # Schwaeche wenn CER mit Feature >50% höher als ohne
         if without_cer > 0 and with_cer > without_cer * 1.5:
             severity = min(1.0, (with_cer - without_cer) / without_cer)
 
@@ -589,7 +589,7 @@ class BackendQualityReportService:
         """Analysiert Fehlermuster aus Korrekturen."""
         patterns: List[ErrorPattern] = []
 
-        # Lade Korrekturen fuer dieses Backend
+        # Lade Korrekturen für dieses Backend
         correction_query = select(OCRCorrection).where(
             and_(
                 OCRCorrection.backend_used == backend_name,
@@ -755,7 +755,7 @@ class BackendQualityReportService:
         performance: PerformanceMetrics,
         weaknesses: List[WeaknessPattern],
     ) -> float:
-        """Berechnet einen Gesamt-Qualitaetsscore (0-100)."""
+        """Berechnet einen Gesamt-Qualitätsscore (0-100)."""
         # Basis-Score aus CER (invertiert)
         cer_score = max(0, 100 - performance.avg_cer * 200)
 
@@ -773,7 +773,7 @@ class BackendQualityReportService:
         backend_name: str,
         days: int,
     ) -> str:
-        """Ermittelt den Qualitaetstrend."""
+        """Ermittelt den Qualitätstrend."""
         # Vergleiche aktuelle Woche mit vorheriger
         now = datetime.now(timezone.utc)
         current_week_start = now - timedelta(days=7)
@@ -819,7 +819,7 @@ class BackendQualityReportService:
         backends = ["deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"]
         comparison: Dict[str, float] = {}
 
-        # Lade CER fuer alle Backends
+        # Lade CER für alle Backends
         for backend in backends:
             query = select(func.avg(OCRBackendBenchmark.cer)).where(
                 OCRBackendBenchmark.backend_name == backend
@@ -844,12 +844,12 @@ class BackendQualityReportService:
 
         if best_overall:
             recommendations.append(
-                f"Verwenden Sie {best_overall} als Standard-Backend fuer beste Gesamtqualitaet"
+                f"Verwenden Sie {best_overall} als Standard-Backend für beste Gesamtqualität"
             )
 
         if best_umlauts and best_umlauts != best_overall:
             recommendations.append(
-                f"Fuer deutsche Dokumente mit Umlauten: {best_umlauts} bevorzugen"
+                f"Für deutsche Dokumente mit Umlauten: {best_umlauts} bevorzugen"
             )
 
         # Check for significant gaps
@@ -869,5 +869,5 @@ class BackendQualityReportService:
 # =============================================================================
 
 async def get_backend_quality_report_service(db: AsyncSession) -> BackendQualityReportService:
-    """Factory-Funktion fuer den Service."""
+    """Factory-Funktion für den Service."""
     return BackendQualityReportService(db)

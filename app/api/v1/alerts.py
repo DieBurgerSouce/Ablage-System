@@ -2,7 +2,7 @@
 """
 Alert Center API endpoints for Ablage-System.
 
-Zentrale API fuer Alert-Management:
+Zentrale API für Alert-Management:
 - Alert-Liste mit Filterung
 - Acknowledge/Dismiss/Resolve/Escalate Actions
 - Dashboard-Statistiken
@@ -228,7 +228,7 @@ async def get_alert_stats(
     session: AsyncSession = Depends(get_db),
 ) -> AlertStatsResponse:
     """
-    Alert-Statistiken fuer Dashboard.
+    Alert-Statistiken für Dashboard.
 
     Liefert Zaehler nach Kategorie, Schweregrad und Status.
     """
@@ -307,7 +307,7 @@ async def create_alert(
     Neuen Alert erstellen.
 
     Normalerweise werden Alerts automatisch vom System erstellt,
-    aber manuelle Erstellung ist fuer spezielle Faelle moeglich.
+    aber manuelle Erstellung ist für spezielle Faelle möglich.
     """
     service = get_alert_center_service(session)
 
@@ -622,9 +622,9 @@ async def bulk_action(
     session: AsyncSession = Depends(get_db),
 ) -> BulkActionResponse:
     """
-    Massenaktion auf mehrere Alerts ausfuehren.
+    Massenaktion auf mehrere Alerts ausführen.
 
-    Unterstuetzte Aktionen:
+    Unterstützte Aktionen:
     - acknowledge: Als gelesen markieren
     - dismiss: Verwerfen
     - resolve: Als geloest markieren

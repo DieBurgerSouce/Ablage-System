@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Business Rules Models fuer Ablage-System.
+Business Rules Models für Ablage-System.
 
-Persistierung von Geschaeftsregeln in der Datenbank.
+Persistierung von Geschäftsregeln in der Datenbank.
 
 Phase 4 der Strategischen Roadmap (Januar 2026).
 """
@@ -30,7 +30,7 @@ from app.db.models import Base, CrossDBJSON
 
 
 class BusinessRuleModel(Base):
-    """Persistierte Geschaeftsregel.
+    """Persistierte Geschäftsregel.
 
     Speichert Regeln mit Bedingungen und Aktionen.
     """
@@ -78,7 +78,7 @@ class BusinessRuleModel(Base):
 
     # Konfiguration
     priority = Column(Integer, nullable=False, default=50,
-                      comment="Ausfuehrungsprioritaet (hoeher = frueher)")
+                      comment="Ausführungspriorität (höher = früher)")
     category = Column(String(50), nullable=False, default="custom",
                       comment="approval, compliance, fraud, workflow, etc.")
 
@@ -91,22 +91,22 @@ class BusinessRuleModel(Base):
         CrossDBJSON,
         nullable=True,
         default=list,
-        comment="Nur fuer bestimmte Dokumenttypen"
+        comment="Nur für bestimmte Dokumenttypen"
     )
     applies_to_sources = Column(
         CrossDBJSON,
         nullable=True,
         default=list,
-        comment="Nur fuer bestimmte Quellen"
+        comment="Nur für bestimmte Quellen"
     )
 
-    # Zeitliche Einschraenkung
+    # Zeitliche Einschränkung
     valid_from = Column(DateTime(timezone=True), nullable=True)
     valid_until = Column(DateTime(timezone=True), nullable=True)
 
     # Statistiken
     execution_count = Column(Integer, nullable=False, default=0,
-                             comment="Wie oft ausgefuehrt")
+                             comment="Wie oft ausgeführt")
     match_count = Column(Integer, nullable=False, default=0,
                          comment="Wie oft gematcht")
     last_executed_at = Column(DateTime(timezone=True), nullable=True)
@@ -149,9 +149,9 @@ class BusinessRuleModel(Base):
 
 
 class RuleExecutionLog(Base):
-    """Log fuer Regel-Ausfuehrungen.
+    """Log für Regel-Ausführungen.
 
-    Protokolliert jede Ausfuehrung einer Regel fuer Audit und Debugging.
+    Protokolliert jede Ausführung einer Regel für Audit und Debugging.
     """
     __tablename__ = "rule_execution_logs"
 
@@ -179,15 +179,15 @@ class RuleExecutionLog(Base):
     triggered_actions = Column(CrossDBJSON, default=list)
     execution_errors = Column(CrossDBJSON, default=list)
 
-    # Kontext-Snapshot (fuer Debugging)
+    # Kontext-Snapshot (für Debugging)
     context_snapshot = Column(CrossDBJSON, default=dict)
 
-    # Ausfuehrung
+    # Ausführung
     dry_run = Column(Boolean, nullable=False, default=False)
     executed_at = Column(DateTime(timezone=True), server_default=func.now(),
                          nullable=False, index=True)
     execution_time_ms = Column(Integer, nullable=True,
-                               comment="Ausfuehrungszeit in Millisekunden")
+                               comment="Ausführungszeit in Millisekunden")
 
     # Relationships
     rule = relationship("BusinessRuleModel", back_populates="execution_logs")
@@ -202,7 +202,7 @@ class RuleExecutionLog(Base):
 class RuleSet(Base):
     """Gruppierung von Regeln zu Sets.
 
-    Ermoeglicht logische Gruppierung und Versionierung.
+    Ermöglicht logische Gruppierung und Versionierung.
     """
     __tablename__ = "rule_sets"
 
@@ -224,7 +224,7 @@ class RuleSet(Base):
     # Konfiguration
     is_active = Column(Boolean, nullable=False, default=True)
     is_default = Column(Boolean, nullable=False, default=False,
-                        comment="Standard-Set fuer Company")
+                        comment="Standard-Set für Company")
 
     # Regeln (IDs)
     rule_ids = Column(CrossDBJSON, nullable=False, default=list,

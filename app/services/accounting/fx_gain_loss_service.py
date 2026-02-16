@@ -3,10 +3,10 @@
 FX Gain/Loss Service - Kursgewinne und -verluste.
 
 Berechnet realisierte und unrealisierte Kursdifferenzen
-und erstellt Buchungssaetze im GL-System.
+und erstellt Buchungssätze im GL-System.
 
 SKR03 Konten:
-- 2650: Sonstige Ertraege, unregelmaessig (Kursgewinne)
+- 2650: Sonstige Erträge, unregelmäßig (Kursgewinne)
 - 2150: Sonstige Aufwendungen (Kursverluste)
 """
 
@@ -49,7 +49,7 @@ class FXGainLossResult:
 
 
 class FXGainLossService:
-    """Service fuer Kursgewinne und -verluste."""
+    """Service für Kursgewinne und -verluste."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -113,7 +113,7 @@ class FXGainLossService:
         reference_document_id: Optional[UUID] = None,
     ) -> FXGainLossEntry:
         """
-        Erstellt GL-Buchungssatz fuer Kursgewinn/-verlust.
+        Erstellt GL-Buchungssatz für Kursgewinn/-verlust.
 
         Kursgewinn: Debit Bank/Forderung, Credit 2650
         Kursverlust: Debit 2150, Credit Bank/Forderung
@@ -206,7 +206,7 @@ class FXGainLossService:
         realized: Optional[bool] = None,
         currency: Optional[str] = None,
     ) -> List[FXGainLossEntry]:
-        """Laedt FX-Eintraege mit optionalen Filtern."""
+        """Laedt FX-Einträge mit optionalen Filtern."""
         conditions = [FXGainLossEntry.company_id == company_id]
         if realized is not None:
             conditions.append(FXGainLossEntry.realized == realized)

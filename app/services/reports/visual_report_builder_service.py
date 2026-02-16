@@ -7,11 +7,11 @@ Vision 2026 Q3: Visueller Report-Builder mit Templates und Drag-Drop UI Support.
 Features:
 - Vordefinierte Report-Templates
 - Konfigurierbare Spalten, Filter, Gruppierungen
-- Chart-Typ Unterstuetzung (Bar, Line, Pie, Table)
+- Chart-Typ Unterstützung (Bar, Line, Pie, Table)
 - Live-Preview
 - Export in verschiedene Formate
 
-Feinpoliert und durchdacht - Deutsche Qualitaet.
+Feinpoliert und durchdacht - Deutsche Qualität.
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ REPORT_GENERATION_DURATION = Histogram(
 # =============================================================================
 
 class ChartType(str, Enum):
-    """Verfuegbare Chart-Typen."""
+    """Verfügbare Chart-Typen."""
     TABLE = "table"
     BAR = "bar"
     LINE = "line"
@@ -71,7 +71,7 @@ class ChartType(str, Enum):
 
 
 class AggregationType(str, Enum):
-    """Verfuegbare Aggregationen."""
+    """Verfügbare Aggregationen."""
     SUM = "sum"
     AVG = "avg"
     COUNT = "count"
@@ -80,7 +80,7 @@ class AggregationType(str, Enum):
 
 
 class FilterOperator(str, Enum):
-    """Verfuegbare Filter-Operatoren."""
+    """Verfügbare Filter-Operatoren."""
     EQUALS = "eq"
     NOT_EQUALS = "ne"
     GREATER_THAN = "gt"
@@ -132,7 +132,7 @@ class ReportFilter:
     operator: FilterOperator
     value: Any
     display_name: Optional[str] = None
-    is_dynamic: bool = False  # Fuer Runtime-Parameter
+    is_dynamic: bool = False  # Für Runtime-Parameter
 
 
 @dataclass
@@ -145,7 +145,7 @@ class ReportGrouping:
 
 @dataclass
 class ReportTemplateDefinition:
-    """Vollstaendige Template-Definition."""
+    """Vollständige Template-Definition."""
     id: str
     name: str
     description: str
@@ -179,7 +179,7 @@ class ReportAggregation:
 
 @dataclass
 class ChartDataPoint:
-    """Datenpunkt fuer Charts."""
+    """Datenpunkt für Charts."""
     label: str
     value: float
     color: Optional[str] = None
@@ -188,7 +188,7 @@ class ChartDataPoint:
 
 @dataclass
 class ChartData:
-    """Daten fuer Chart-Darstellung."""
+    """Daten für Chart-Darstellung."""
     chart_type: ChartType
     labels: List[str]
     datasets: List[Dict[str, Any]]
@@ -219,7 +219,7 @@ SYSTEM_TEMPLATES: List[ReportTemplateDefinition] = [
     ReportTemplateDefinition(
         id="offene_posten",
         name="Offene Posten nach Alter",
-        description="Zeigt alle offenen Rechnungen nach Faelligkeitsdatum gruppiert",
+        description="Zeigt alle offenen Rechnungen nach Fälligkeitsdatum gruppiert",
         category=ReportCategory.FINANCE,
         icon="clock",
         data_source="invoices",
@@ -227,9 +227,9 @@ SYSTEM_TEMPLATES: List[ReportTemplateDefinition] = [
             ReportColumn("invoice_number", "invoice_number", "Rechnungsnr.", "string"),
             ReportColumn("entity_name", "entity_name", "Kunde/Lieferant", "string"),
             ReportColumn("invoice_date", "invoice_date", "Rechnungsdatum", "date"),
-            ReportColumn("due_date", "due_date", "Faelligkeit", "date"),
+            ReportColumn("due_date", "due_date", "Fälligkeit", "date"),
             ReportColumn("total_gross", "total_gross", "Betrag", "currency"),
-            ReportColumn("days_overdue", "days_overdue", "Tage ueberfaellig", "number"),
+            ReportColumn("days_overdue", "days_overdue", "Tage überfällig", "number"),
         ],
         default_filters=[
             ReportFilter("status", "status", FilterOperator.IN, ["open", "overdue"]),
@@ -285,7 +285,7 @@ SYSTEM_TEMPLATES: List[ReportTemplateDefinition] = [
     ReportTemplateDefinition(
         id="dokument_statistik",
         name="Dokument-Statistik",
-        description="Statistiken ueber verarbeitete Dokumente",
+        description="Statistiken über verarbeitete Dokumente",
         category=ReportCategory.DOCUMENTS,
         icon="file-text",
         data_source="documents",
@@ -304,7 +304,7 @@ SYSTEM_TEMPLATES: List[ReportTemplateDefinition] = [
     ReportTemplateDefinition(
         id="ust_vorbereitung",
         name="USt-Voranmeldung Vorbereitung",
-        description="Daten fuer die USt-Voranmeldung",
+        description="Daten für die USt-Voranmeldung",
         category=ReportCategory.TAX,
         icon="calculator",
         data_source="invoices",
@@ -350,7 +350,7 @@ SYSTEM_TEMPLATES: List[ReportTemplateDefinition] = [
 
 class VisualReportBuilderService:
     """
-    Service fuer den visuellen Report-Builder.
+    Service für den visuellen Report-Builder.
 
     Bietet:
     - Vordefinierte Templates
@@ -370,7 +370,7 @@ class VisualReportBuilderService:
         category: Optional[ReportCategory] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Gibt verfuegbare Templates zurueck.
+        Gibt verfügbare Templates zurück.
 
         Args:
             category: Optionale Kategorie-Filterung
@@ -403,7 +403,7 @@ class VisualReportBuilderService:
         template_id: str,
     ) -> Optional[Dict[str, Any]]:
         """
-        Gibt das vollstaendige Schema eines Templates zurueck.
+        Gibt das vollständige Schema eines Templates zurück.
 
         Args:
             template_id: Template-ID
@@ -463,7 +463,7 @@ class VisualReportBuilderService:
         data_source: str,
     ) -> List[Dict[str, Any]]:
         """
-        Gibt verfuegbare Felder fuer eine Datenquelle zurueck.
+        Gibt verfügbare Felder für eine Datenquelle zurück.
 
         Args:
             data_source: Datenquellen-ID
@@ -483,12 +483,12 @@ class VisualReportBuilderService:
             "invoices": [
                 {"path": "invoice_number", "name": "Rechnungsnummer", "type": "string"},
                 {"path": "invoice_date", "name": "Rechnungsdatum", "type": "date"},
-                {"path": "due_date", "name": "Faelligkeitsdatum", "type": "date"},
+                {"path": "due_date", "name": "Fälligkeitsdatum", "type": "date"},
                 {"path": "total_net", "name": "Nettobetrag", "type": "currency"},
                 {"path": "total_gross", "name": "Bruttobetrag", "type": "currency"},
                 {"path": "vat_amount", "name": "MwSt-Betrag", "type": "currency"},
                 {"path": "vat_rate", "name": "MwSt-Satz", "type": "number"},
-                {"path": "entity_name", "name": "Geschaeftspartner", "type": "string"},
+                {"path": "entity_name", "name": "Geschäftspartner", "type": "string"},
                 {"path": "entity_type", "name": "Partner-Typ", "type": "string"},
                 {"path": "status", "name": "Status", "type": "string"},
             ],
@@ -508,7 +508,7 @@ class VisualReportBuilderService:
         data_type: str,
     ) -> List[Dict[str, str]]:
         """
-        Gibt verfuegbare Operatoren fuer einen Datentyp zurueck.
+        Gibt verfügbare Operatoren für einen Datentyp zurück.
 
         Args:
             data_type: Datentyp (string, number, date, etc.)
@@ -525,21 +525,21 @@ class VisualReportBuilderService:
 
         type_ops: Dict[str, List[Dict[str, str]]] = {
             "string": [
-                {"id": "contains", "name": "enthaelt"},
+                {"id": "contains", "name": "enthält"},
                 {"id": "starts_with", "name": "beginnt mit"},
                 {"id": "ends_with", "name": "endet mit"},
                 {"id": "in", "name": "in Liste"},
             ],
             "number": [
-                {"id": "gt", "name": "groesser als"},
-                {"id": "gte", "name": "groesser oder gleich"},
+                {"id": "gt", "name": "größer als"},
+                {"id": "gte", "name": "größer oder gleich"},
                 {"id": "lt", "name": "kleiner als"},
                 {"id": "lte", "name": "kleiner oder gleich"},
                 {"id": "between", "name": "zwischen"},
             ],
             "currency": [
-                {"id": "gt", "name": "groesser als"},
-                {"id": "gte", "name": "groesser oder gleich"},
+                {"id": "gt", "name": "größer als"},
+                {"id": "gte", "name": "größer oder gleich"},
                 {"id": "lt", "name": "kleiner als"},
                 {"id": "lte", "name": "kleiner oder gleich"},
                 {"id": "between", "name": "zwischen"},
@@ -579,7 +579,7 @@ class VisualReportBuilderService:
             groupings: Optionale Gruppierungen
             chart_type: Optionaler Chart-Typ
             limit: Maximale Zeilenzahl
-            offset: Offset fuer Paginierung
+            offset: Offset für Paginierung
 
         Returns:
             VisualReportResult
@@ -684,7 +684,7 @@ class VisualReportBuilderService:
         limit: int,
         offset: int,
     ) -> Tuple[List[ReportDataRow], int]:
-        """Ruft Daten fuer den Report ab."""
+        """Ruft Daten für den Report ab."""
         rows: List[ReportDataRow] = []
 
         if template.data_source == "invoices":
@@ -772,14 +772,14 @@ class VisualReportBuilderService:
         company_id: uuid.UUID,
         filters: Optional[List[Dict[str, Any]]],
     ) -> List[ReportAggregation]:
-        """Berechnet Aggregationen fuer den Report."""
+        """Berechnet Aggregationen für den Report."""
         aggregations: List[ReportAggregation] = []
 
         for col in template.columns:
             if not col.aggregation:
                 continue
 
-            # Vereinfachte Implementierung fuer Invoice-Daten
+            # Vereinfachte Implementierung für Invoice-Daten
             if template.data_source == "invoices":
                 if col.aggregation == AggregationType.SUM:
                     if "total" in col.field_path or "amount" in col.field_path:
@@ -820,7 +820,7 @@ class VisualReportBuilderService:
         chart_type: ChartType,
         groupings: Optional[List[str]],
     ) -> ChartData:
-        """Generiert Daten fuer die Chart-Darstellung."""
+        """Generiert Daten für die Chart-Darstellung."""
         # Vereinfachte Implementierung
         labels: List[str] = []
         values: List[float] = []
@@ -874,7 +874,7 @@ class VisualReportBuilderService:
         count: int,
         border: bool = False,
     ) -> List[str]:
-        """Generiert Farben fuer Charts."""
+        """Generiert Farben für Charts."""
         base_colors = [
             "rgba(59, 130, 246, 0.8)",   # Blue
             "rgba(16, 185, 129, 0.8)",   # Green
@@ -907,7 +907,7 @@ _visual_report_builder_service: Optional[VisualReportBuilderService] = None
 
 
 def get_visual_report_builder_service() -> VisualReportBuilderService:
-    """Factory fuer VisualReportBuilderService Singleton."""
+    """Factory für VisualReportBuilderService Singleton."""
     global _visual_report_builder_service
     if _visual_report_builder_service is None:
         _visual_report_builder_service = VisualReportBuilderService()

@@ -1,7 +1,7 @@
 """
 Knowledge Graph API Endpoints
 
-REST API fuer Entity-Relationship Explorer:
+REST API für Entity-Relationship Explorer:
 - Entity-Graph mit konfigurierbarer Tiefe
 - Graph-Exploration via Suche
 - Shortest-Path zwischen Nodes
@@ -114,7 +114,7 @@ async def explore_graph(
     - Rechnungsnummern
     - Dokument-Titeln
 
-    **Gibt zurueck:** Gefundene Nodes mit direkten Verbindungen
+    **Gibt zurück:** Gefundene Nodes mit direkten Verbindungen
 
     **Rollen:** Alle authentifizierten Benutzer
     """
@@ -145,8 +145,8 @@ async def explore_graph(
 @router.get(
     "/shortest-path",
     response_model=JSONDict,
-    summary="Kuerzester Pfad",
-    description="Findet kuerzesten Pfad zwischen zwei Entities"
+    summary="Kürzester Pfad",
+    description="Findet kürzesten Pfad zwischen zwei Entities"
 )
 async def get_shortest_path(
     from_id: UUID = Query(..., alias="from", description="Start-Entity UUID"),
@@ -156,13 +156,13 @@ async def get_shortest_path(
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
-    Findet kuerzesten Pfad.
+    Findet kürzesten Pfad.
 
     **Nutzt:** Breadth-First Search (BFS)
 
-    **Gibt zurueck:**
+    **Gibt zurück:**
     - path: Liste von Node-IDs
-    - length: Pfad-Laenge
+    - length: Pfad-Länge
     - nodes: Node-Details
     - edges: Edge-Details
 
@@ -199,7 +199,7 @@ async def get_shortest_path(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Berechnen des kuerzesten Pfads",
+            detail="Fehler beim Berechnen des kürzesten Pfads",
         )
 
 
@@ -219,7 +219,7 @@ async def get_communities(
 
     **Community:** Gruppe von stark verbundenen Entities (z.B. via gemeinsame Dokumente)
 
-    **Nutzt:** Union-Find fuer Connected Components
+    **Nutzt:** Union-Find für Connected Components
 
     **Rollen:** Alle authentifizierten Benutzer
     """

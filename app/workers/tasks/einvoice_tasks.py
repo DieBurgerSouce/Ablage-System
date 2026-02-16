@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-E-Invoice Tasks - Celery Tasks fuer E-Rechnungsverarbeitung.
+E-Invoice Tasks - Celery Tasks für E-Rechnungsverarbeitung.
 
 Tasks:
 - zugferd_batch_convert_task: Batch-Konvertierung zu ZUGFeRD
@@ -54,10 +54,10 @@ def zugferd_batch_convert_task(
     Konvertiert mehrere Dokumente zu ZUGFeRD-PDFs.
 
     Args:
-        document_ids: Liste der Dokument-UUIDs (muessen PDFs sein)
-        user_id: User-UUID fuer Berechtigungspruefung
+        document_ids: Liste der Dokument-UUIDs (müssen PDFs sein)
+        user_id: User-UUID für Berechtigungsprüfung
         profile: ZUGFeRD-Profil (MINIMUM, BASIC, EN16931, EXTENDED, XRECHNUNG)
-        overwrite_existing: Bestehende ZUGFeRD-Daten ueberschreiben
+        overwrite_existing: Bestehende ZUGFeRD-Daten überschreiben
 
     Returns:
         dict mit:
@@ -107,7 +107,7 @@ async def _execute_batch_convert(
     overwrite_existing: bool,
     task,
 ) -> dict:
-    """Fuehrt die Batch-Konvertierung aus."""
+    """Führt die Batch-Konvertierung aus."""
     from app.services.einvoice import get_zugferd_embedder, ZUGFeRDProfile
     from app.services.storage_service import get_storage_service
     from uuid import uuid4
@@ -119,7 +119,7 @@ async def _execute_batch_convert(
     if not embedder.available:
         return {
             "success": False,
-            "error": "PDF-Backend (PyMuPDF/pikepdf) nicht verfuegbar",
+            "error": "PDF-Backend (PyMuPDF/pikepdf) nicht verfügbar",
             "converted": 0,
             "failed": len(document_ids),
             "errors": [],
@@ -132,7 +132,7 @@ async def _execute_batch_convert(
     except ValueError:
         return {
             "success": False,
-            "error": f"Ungueltiges Profil: {profile}",
+            "error": f"Ungültiges Profil: {profile}",
             "converted": 0,
             "failed": len(document_ids),
             "errors": [],
@@ -195,7 +195,7 @@ async def _execute_batch_convert(
                 results.append(doc_result)
                 continue
 
-            # Pruefen ob bereits E-Invoice existiert
+            # Prüfen ob bereits E-Invoice existiert
             existing_query = select(EInvoiceDocument).where(
                 EInvoiceDocument.document_id == doc.id
             )
@@ -232,7 +232,7 @@ async def _execute_batch_convert(
                 failed += 1
                 errors.append({
                     "document_id": str(doc.id),
-                    "error": "Keine Rechnungsdaten fuer XML-Generierung"
+                    "error": "Keine Rechnungsdaten für XML-Generierung"
                 })
                 results.append(doc_result)
                 continue
@@ -338,16 +338,16 @@ def _generate_zugferd_xml(doc: Document, profile) -> Optional[str]:
     """
     Generiert ZUGFeRD XML aus Dokument-Daten.
 
-    Verwendet factur-x wenn verfuegbar, sonst manuelles Template.
+    Verwendet factur-x wenn verfügbar, sonst manuelles Template.
     """
     extracted = doc.extracted_data or {}
 
-    # Minimal erforderliche Daten pruefen
+    # Minimal erforderliche Daten prüfen
     invoice_number = extracted.get("invoice_number") or extracted.get("rechnungsnummer")
     if not invoice_number:
         return None
 
-    # Betraege extrahieren
+    # Beträge extrahieren
     total_amount = extracted.get("total_amount") or extracted.get("gesamtbetrag") or "0.00"
     tax_amount = extracted.get("tax_amount") or extracted.get("mwst_betrag") or "0.00"
     net_amount = extracted.get("net_amount") or extracted.get("nettobetrag") or str(
@@ -458,7 +458,7 @@ def zugferd_embed_task(
             storage = get_storage_service()
 
             if not embedder.available:
-                return {"success": False, "error": "PDF-Backend nicht verfuegbar"}
+                return {"success": False, "error": "PDF-Backend nicht verfügbar"}
 
             # Dokument laden
             query = select(Document).where(Document.id == UUID(document_id))
@@ -477,7 +477,7 @@ def zugferd_embed_task(
             try:
                 zugferd_profile = ZUGFeRDProfile(profile)
             except ValueError:
-                return {"success": False, "error": f"Ungueltiges Profil: {profile}"}
+                return {"success": False, "error": f"Ungültiges Profil: {profile}"}
 
             embedded_pdf, metadata = embedder.embed_xml_in_pdf(
                 pdf_content=pdf_content,
@@ -638,11 +638,11 @@ def einvoice_send_peppol_task(
     fallback_email: Optional[str] = None,
 ) -> dict:
     """
-    Sendet E-Rechnung ueber Peppol oder Email-Fallback.
+    Sendet E-Rechnung über Peppol oder Email-Fallback.
 
     Args:
         einvoice_id: EInvoiceDocument UUID
-        fallback_email: Email fuer Fallback wenn Peppol nicht moeglich
+        fallback_email: Email für Fallback wenn Peppol nicht möglich
 
     Returns:
         dict mit Transmissionsergebnis
@@ -676,7 +676,7 @@ def einvoice_send_peppol_task(
         loop.close()
 
         if not result["success"] and result.get("error_code") != "NO_CHANNEL_AVAILABLE":
-            # Retry bei temporaeren Fehlern
+            # Retry bei temporären Fehlern
             raise self.retry(countdown=60 * (self.request.retries + 1))
 
         return result
@@ -698,7 +698,7 @@ def einvoice_check_transmission_status_task(
     transmission_id: str,
 ) -> dict:
     """
-    Prueft Status einer Peppol-Uebertragung.
+    Prüft Status einer Peppol-Übertragung.
 
     Args:
         transmission_id: EInvoiceTransmission UUID
@@ -729,7 +729,7 @@ def einvoice_check_transmission_status_task(
             sender = get_peppol_sender()
             status = await sender.check_transmission_status(transmission.peppol_message_id)
 
-            # Status aktualisieren wenn moeglich
+            # Status aktualisieren wenn möglich
             if status.get("status") == "delivered":
                 transmission.mark_delivered()
             elif status.get("status") == "acknowledged":
@@ -769,7 +769,7 @@ def einvoice_send_pending_task(self) -> dict:
     """
     Sendet alle ausstehenden E-Rechnungen (Status: queued).
 
-    Wird periodisch ausgefuehrt (alle 15 Minuten).
+    Wird periodisch ausgeführt (alle 15 Minuten).
     """
     import asyncio
 
@@ -919,9 +919,9 @@ def einvoice_validate_incoming_task(
 )
 def einvoice_check_all_transmissions_task(self) -> dict:
     """
-    Prueft Status aller aktiven Transmissions (Status: sent).
+    Prüft Status aller aktiven Transmissions (Status: sent).
 
-    Wird stuendlich ausgefuehrt.
+    Wird stündlich ausgeführt.
     """
     import asyncio
 

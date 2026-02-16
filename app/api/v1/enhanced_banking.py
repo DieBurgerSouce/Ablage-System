@@ -343,7 +343,7 @@ async def get_connection(
     service = get_enhanced_fints_service()
 
     try:
-        # SECURITY: Uebergebe company_id fuer Ownership-Validierung
+        # SECURITY: Übergebe company_id für Ownership-Validierung
         connection = await service.get_connection(
             connection_id=connection_id,
             company_id=company_id,  # Verhindert Cross-Company Access
@@ -358,7 +358,7 @@ async def get_connection(
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Verbindung.",
+            detail="Keine Berechtigung für diese Verbindung.",
         )
 
     if not connection:
@@ -394,7 +394,7 @@ async def update_connection(
 
     service = get_enhanced_fints_service()
 
-    # SECURITY: Uebergebe company_id fuer Ownership-Validierung
+    # SECURITY: Übergebe company_id für Ownership-Validierung
     connection, error = await service.update_connection(
         db=db,
         connection_id=connection_id,
@@ -450,7 +450,7 @@ async def delete_connection(
     service = get_enhanced_fints_service()
 
     try:
-        # SECURITY: Uebergebe company_id fuer Ownership-Validierung
+        # SECURITY: Übergebe company_id für Ownership-Validierung
         success = await service.delete_connection(
             db=db,
             connection_id=connection_id,
@@ -467,7 +467,7 @@ async def delete_connection(
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Verbindung.",
+            detail="Keine Berechtigung für diese Verbindung.",
         )
 
     if not success:
@@ -516,7 +516,7 @@ async def sync_connection(
 
     service = get_enhanced_fints_service()
 
-    # SECURITY: Uebergebe company_id fuer Ownership-Validierung
+    # SECURITY: Übergebe company_id für Ownership-Validierung
     result = await service.sync_connection(
         connection_id=connection_id,
         company_id=company_id,  # Verhindert Cross-Company Access
@@ -524,7 +524,7 @@ async def sync_connection(
         date_to=date_to,
     )
 
-    # Pruefe auf Authorization-Fehler
+    # Prüfe auf Authorization-Fehler
     if not result.success and result.error and "Berechtigung" in result.error:
         logger.warning(
             "unauthorized_sync_attempt",

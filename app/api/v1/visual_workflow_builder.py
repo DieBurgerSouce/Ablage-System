@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """Visual Workflow Builder API Endpoints.
 
-API fuer den No-Code Workflow-Editor.
+API für den No-Code Workflow-Editor.
 
 Endpoints:
-- GET /visual-builder/blocks - Verfuegbare Blocks
+- GET /visual-builder/blocks - Verfügbare Blocks
 - GET /visual-builder/categories - Block-Kategorien
 - GET /visual-builder/templates - Workflow-Templates
 - POST /visual-builder/create - Workflow aus visuellem Editor erstellen
@@ -44,7 +44,7 @@ router = APIRouter(prefix="/visual-builder", tags=["visual-workflow-builder"])
 
 
 class BlockDefinitionResponse(BaseModel):
-    """Block-Definition fuer Frontend."""
+    """Block-Definition für Frontend."""
 
     id: str
     type: str
@@ -95,7 +95,7 @@ class VisualBlockCreate(BaseModel):
         import json
         json_str = json.dumps(v)
 
-        # Max Groesse: 50KB pro Block-Config
+        # Max Größe: 50KB pro Block-Config
         if len(json_str) > 51200:
             raise ValueError("config darf maximal 50KB gross sein")
 
@@ -103,7 +103,7 @@ class VisualBlockCreate(BaseModel):
         if len(v) > 100:
             raise ValueError("config darf maximal 100 Keys haben")
 
-        # Max Tiefe: 5 Ebenen (Workflows koennen komplex sein)
+        # Max Tiefe: 5 Ebenen (Workflows können komplex sein)
         def check_depth(obj: JSONValue, depth: int = 0) -> int:
             if depth > 5:
                 raise ValueError("config darf maximal 5 Ebenen tief sein")
@@ -126,7 +126,7 @@ class VisualBlockCreate(BaseModel):
             if isinstance(obj, dict):
                 for k, val in obj.items():
                     if not isinstance(k, str) or len(k) > 100:
-                        raise ValueError("Dict-Keys muessen Strings sein (max 100 Zeichen)")
+                        raise ValueError("Dict-Keys müssen Strings sein (max 100 Zeichen)")
                     check_types(val)
                 return
             if isinstance(obj, list):
@@ -170,7 +170,7 @@ class VisualWorkflowCreate(BaseModel):
         # Block-IDs sammeln
         block_ids = {b.id for b in self.blocks}
 
-        # Edges pruefen
+        # Edges prüfen
         for edge in self.edges:
             if edge.source_id not in block_ids:
                 raise ValueError(f"Unbekannter Quell-Block: {edge.source_id}")
@@ -190,7 +190,7 @@ class VisualWorkflowUpdate(BaseModel):
 
 
 class SimulationRequest(BaseModel):
-    """Anfrage fuer Workflow-Simulation."""
+    """Anfrage für Workflow-Simulation."""
 
     blocks: List[VisualBlockCreate]
     edges: List[VisualEdgeCreate]
@@ -232,16 +232,16 @@ class WorkflowCreatedResponse(BaseModel):
 @router.get(
     "/blocks",
     response_model=List[BlockDefinitionResponse],
-    summary="Verfuegbare Blocks abrufen",
+    summary="Verfügbare Blocks abrufen",
 )
 async def get_available_blocks(
     category: Optional[str] = Query(None, description="Filter nach Kategorie"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[BlockDefinitionResponse]:
-    """Gibt alle verfuegbaren Workflow-Blocks zurueck.
+    """Gibt alle verfügbaren Workflow-Blocks zurück.
 
-    Diese Blocks koennen im visuellen Editor per Drag&Drop verwendet werden.
+    Diese Blocks können im visuellen Editor per Drag&Drop verwendet werden.
     """
     service = VisualWorkflowBuilderService(db)
     blocks = service.get_available_blocks(category=category)
@@ -258,7 +258,7 @@ async def get_block_categories(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[CategoryResponse]:
-    """Gibt alle Block-Kategorien zurueck."""
+    """Gibt alle Block-Kategorien zurück."""
     service = VisualWorkflowBuilderService(db)
     categories = service.get_block_categories()
 
@@ -274,9 +274,9 @@ async def get_workflow_templates(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[TemplateResponse]:
-    """Gibt vordefinierte Workflow-Templates zurueck.
+    """Gibt vordefinierte Workflow-Templates zurück.
 
-    Diese Templates koennen als Startpunkt fuer eigene Workflows verwendet werden.
+    Diese Templates können als Startpunkt für eigene Workflows verwendet werden.
     """
     service = VisualWorkflowBuilderService(db)
     templates = service.get_workflow_templates()
@@ -298,7 +298,7 @@ async def create_visual_workflow(
     """Erstellt einen Workflow aus der visuellen Editor-Definition.
 
     Der Workflow wird validiert und bei Erfolg erstellt.
-    Validierungsfehler werden in der Antwort zurueckgegeben.
+    Validierungsfehler werden in der Antwort zurückgegeben.
     """
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
@@ -446,7 +446,7 @@ async def simulate_workflow(
 ) -> SimulationResponse:
     """Simuliert einen Workflow ohne ihn zu erstellen.
 
-    Nuetzlich um den Ausfuehrungspfad zu visualisieren
+    Nuetzlich um den Ausführungspfad zu visualisieren
     und potenzielle Probleme zu erkennen.
     """
     service = VisualWorkflowBuilderService(db)

@@ -3,7 +3,7 @@
 Supplier OCR Template Models.
 
 Vision 2026+ Feature #2: Dokumenten-Template-System (Lieferanten-spezifisch)
-OCR-Genauigkeit von 95% auf 99%+ fuer wiederkehrende Lieferanten.
+OCR-Genauigkeit von 95% auf 99%+ für wiederkehrende Lieferanten.
 """
 
 from __future__ import annotations
@@ -51,9 +51,9 @@ class TemplateMatchingStrategy(str, Enum):
 
 class SupplierOCRTemplate(Base):
     """
-    OCR-Template fuer einen spezifischen Lieferanten.
+    OCR-Template für einen spezifischen Lieferanten.
 
-    Definiert Feldpositionen und Extraktionsregeln fuer
+    Definiert Feldpositionen und Extraktionsregeln für
     wiederkehrende Dokumente eines Lieferanten.
     """
     __tablename__ = "supplier_ocr_templates"
@@ -93,7 +93,7 @@ class SupplierOCRTemplate(Base):
     logo_fingerprint = Column(String(500), nullable=True)  # Hash des Logos
     layout_fingerprint = Column(String(500), nullable=True)  # Layout-Hash
     text_anchors = Column(CrossDBJSON, default=list)  # ["Rechnungsnummer", "Amazon.de"]
-    header_patterns = Column(CrossDBJSON, default=list)  # Regex-Patterns fuer Header
+    header_patterns = Column(CrossDBJSON, default=list)  # Regex-Patterns für Header
 
     # Thumbnail des Templates (Base64 encoded, optional)
     thumbnail_base64 = Column(Text, nullable=True)
@@ -141,7 +141,7 @@ class SupplierOCRTemplate(Base):
 
     # Status
     is_active = Column(Boolean, nullable=False, default=True)
-    is_verified = Column(Boolean, nullable=False, default=False)  # Manuell geprueft
+    is_verified = Column(Boolean, nullable=False, default=False)  # Manuell geprüft
     auto_apply = Column(Boolean, nullable=False, default=True)  # Automatisch anwenden
 
     # Auto-Generation
@@ -215,7 +215,7 @@ class SupplierOCRTemplate(Base):
 
 class OCRTemplateSample(Base):
     """
-    Trainings-Dokument fuer ein OCR-Template.
+    Trainings-Dokument für ein OCR-Template.
 
     Speichert korrigierte Extraktionen als Trainings-Daten.
     """
@@ -288,7 +288,7 @@ class OCRTemplateSample(Base):
 
 class OCRTemplateMatchLog(Base):
     """
-    Log fuer Template-Matching-Versuche.
+    Log für Template-Matching-Versuche.
 
     Hilft bei der Analyse welche Templates wann matched wurden.
     """
@@ -325,7 +325,7 @@ class OCRTemplateMatchLog(Base):
     match_strategy_used = Column(String(30), nullable=True)
     match_details = Column(CrossDBJSON, default=dict)  # Details zum Matching
 
-    # Kandidaten (andere Templates die geprueft wurden)
+    # Kandidaten (andere Templates die geprüft wurden)
     candidates_checked = Column(CrossDBJSON, default=list)
     # Format: [{"template_id": "...", "score": 0.75, "reason": "logo mismatch"}]
 

@@ -2,13 +2,13 @@
 """
 OCR Quality Metrics Service.
 
-Erfasst und aggregiert OCR-Qualitaetsmetriken:
+Erfasst und aggregiert OCR-Qualitätsmetriken:
 - Character Error Rate (CER)
 - Word Error Rate (WER)
 - Umlaut-Genauigkeit
 - Backend-spezifische Metriken
 
-Schreibt Metriken in Redis fuer das /api/v1/metrics/ocr-quality Endpoint.
+Schreibt Metriken in Redis für das /api/v1/metrics/ocr-quality Endpoint.
 
 Feinpoliert und durchdacht - Production-ready Metriken-Erfassung.
 """
@@ -87,10 +87,10 @@ class RunningStats:
 
 class OCRQualityMetricsService:
     """
-    Service fuer OCR-Qualitaetsmetriken.
+    Service für OCR-Qualitätsmetriken.
 
-    Erfasst Metriken waehrend OCR-Verarbeitung und schreibt
-    aggregierte Werte in Redis fuer Monitoring-Endpoints.
+    Erfasst Metriken während OCR-Verarbeitung und schreibt
+    aggregierte Werte in Redis für Monitoring-Endpoints.
     """
 
     _instance: Optional["OCRQualityMetricsService"] = None
@@ -132,7 +132,7 @@ class OCRQualityMetricsService:
 
     def estimate_cer_from_confidence(self, confidence: float) -> float:
         """
-        Schaetze CER aus Konfidenzwert.
+        Schätze CER aus Konfidenzwert.
 
         Heuristik: CER korreliert invers mit Konfidenz.
         Bei 100% Konfidenz: CER ~0
@@ -143,7 +143,7 @@ class OCRQualityMetricsService:
             confidence: OCR-Konfidenz (0-1)
 
         Returns:
-            Geschaetzte CER (0-1)
+            Geschätzte CER (0-1)
         """
         # Inverse relationship with some floor
         if confidence >= 0.95:
@@ -159,16 +159,16 @@ class OCRQualityMetricsService:
 
     def estimate_wer_from_confidence(self, confidence: float) -> float:
         """
-        Schaetze WER aus Konfidenzwert.
+        Schätze WER aus Konfidenzwert.
 
-        WER ist typischerweise hoeher als CER da ganze Woerter
-        betroffen sein koennen.
+        WER ist typischerweise höher als CER da ganze Woerter
+        betroffen sein können.
 
         Args:
             confidence: OCR-Konfidenz (0-1)
 
         Returns:
-            Geschaetzte WER (0-1)
+            Geschätzte WER (0-1)
         """
         # WER typically 1.5-2x CER
         cer = self.estimate_cer_from_confidence(confidence)
@@ -181,7 +181,7 @@ class OCRQualityMetricsService:
         confidence: float,
     ) -> float:
         """
-        Schaetze Umlaut-Genauigkeit.
+        Schätze Umlaut-Genauigkeit.
 
         Args:
             has_umlauts: Wurden Umlaute erkannt?
@@ -189,7 +189,7 @@ class OCRQualityMetricsService:
             confidence: OCR-Konfidenz
 
         Returns:
-            Geschaetzte Umlaut-Genauigkeit (0-1)
+            Geschätzte Umlaut-Genauigkeit (0-1)
         """
         if not has_umlauts:
             # No umlauts detected - could be correct or missing
@@ -211,7 +211,7 @@ class OCRQualityMetricsService:
         document_type: str = "unknown",
     ) -> None:
         """
-        Erfasse OCR-Ergebnis fuer Qualitaetsmetriken.
+        Erfasse OCR-Ergebnis für Qualitätsmetriken.
 
         Wird nach jeder erfolgreichen OCR-Verarbeitung aufgerufen.
 
@@ -221,8 +221,8 @@ class OCRQualityMetricsService:
             processing_time_ms: Verarbeitungszeit
             has_umlauts: Wurden Umlaute erkannt?
             german_quality_score: Deutsche Validierungs-Score (0-1)
-            cer: Character Error Rate (wenn Ground Truth verfuegbar)
-            wer: Word Error Rate (wenn Ground Truth verfuegbar)
+            cer: Character Error Rate (wenn Ground Truth verfügbar)
+            wer: Word Error Rate (wenn Ground Truth verfügbar)
             document_type: Dokumenttyp
         """
         # Normalize backend name
@@ -276,9 +276,9 @@ class OCRQualityMetricsService:
         document_type: str = "benchmark",
     ) -> None:
         """
-        Erfasse Ground-Truth-basierte Qualitaetsmetriken.
+        Erfasse Ground-Truth-basierte Qualitätsmetriken.
 
-        Fuer Benchmark-Tests mit bekanntem Referenztext.
+        Für Benchmark-Tests mit bekanntem Referenztext.
 
         Args:
             backend: Verwendetes OCR-Backend

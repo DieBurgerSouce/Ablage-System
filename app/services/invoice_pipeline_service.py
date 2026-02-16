@@ -2,14 +2,14 @@
 Invoice Pipeline Service.
 
 Vollautomatischer Rechnungsworkflow (Feature #3):
-1. OCR-Qualitaet pruefen
-2. Entity-Linking durchfuehren
+1. OCR-Qualität prüfen
+2. Entity-Linking durchführen
 3. Dokument kategorisieren
-4. Auto-Approval pruefen
+4. Auto-Approval prüfen
 5. Bei Genehmigung: Als zahlungsbereit markieren
 6. Bei Ablehnung: Eskalation mit Details
 
-Pipeline-Status wird fuer Audit-Trail protokolliert.
+Pipeline-Status wird für Audit-Trail protokolliert.
 Nutzt bestehende Services:
 - auto_approval_service.py
 - document_entity_linker_service.py
@@ -81,7 +81,7 @@ class PipelineStatus(str, Enum):
     ESCALATED = "escalated"
 
 
-# OCR-Konfidenz-Schwelle fuer automatische Verarbeitung
+# OCR-Konfidenz-Schwelle für automatische Verarbeitung
 DEFAULT_OCR_CONFIDENCE_THRESHOLD = 0.85
 
 
@@ -92,14 +92,14 @@ DEFAULT_OCR_CONFIDENCE_THRESHOLD = 0.85
 
 @dataclass
 class PipelineResult:
-    """Ergebnis einer Pipeline-Ausfuehrung."""
+    """Ergebnis einer Pipeline-Ausführung."""
 
     document_id: uuid.UUID
     stage: PipelineStage
     status: PipelineStatus
     confidence: float  # 0-1
     actions_taken: List[str]  # Deutsche Beschreibungen
-    next_action: Optional[str] = None  # Was als naechstes passieren muss
+    next_action: Optional[str] = None  # Was als nächstes passieren muss
     processing_time_ms: int = 0
     error_message: Optional[str] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -107,7 +107,7 @@ class PipelineResult:
 
 @dataclass
 class PipelineStats:
-    """Statistiken fuer die Pipeline."""
+    """Statistiken für die Pipeline."""
 
     total_processed: int
     successful: int
@@ -129,13 +129,13 @@ class InvoicePipelineService:
     """Vollautomatischer Rechnungsworkflow.
 
     Orchestriert alle Schritte von OCR bis Zahlungsfreigabe:
-    1. OCR-Qualitaet validieren
-    2. Entity automatisch verknuepfen
+    1. OCR-Qualität validieren
+    2. Entity automatisch verknüpfen
     3. Dokument kategorisieren
-    4. Auto-Approval pruefen
+    4. Auto-Approval prüfen
     5. Status setzen (zahlungsbereit oder Review)
 
-    Alle Schritte werden fuer Audit-Trail protokolliert.
+    Alle Schritte werden für Audit-Trail protokolliert.
     """
 
     def __init__(
@@ -149,7 +149,7 @@ class InvoicePipelineService:
 
         Args:
             db: Async Database Session
-            company_id: Mandanten-ID fuer Multi-Tenancy
+            company_id: Mandanten-ID für Multi-Tenancy
             auto_approval_config: Optionale Auto-Approval-Konfiguration
             autonomy_config: Optionale Autonomie-Konfiguration
         """
@@ -172,11 +172,11 @@ class InvoicePipelineService:
         document_id: uuid.UUID,
         user_id: Optional[uuid.UUID] = None,
     ) -> PipelineResult:
-        """Fuehrt die vollstaendige Pipeline fuer eine Rechnung aus.
+        """Führt die vollständige Pipeline für eine Rechnung aus.
 
         Args:
             document_id: ID des zu verarbeitenden Dokuments
-            user_id: Optionale User-ID fuer Audit-Trail
+            user_id: Optionale User-ID für Audit-Trail
 
         Returns:
             PipelineResult mit Status und Details
@@ -197,7 +197,7 @@ class InvoicePipelineService:
                     error_message="Dokument nicht gefunden",
                 )
 
-            # Multi-Tenancy: Company-ID pruefen
+            # Multi-Tenancy: Company-ID prüfen
             if doc.company_id != self.company_id:
                 return PipelineResult(
                     document_id=document_id,
@@ -205,14 +205,14 @@ class InvoicePipelineService:
                     status=PipelineStatus.FAILED,
                     confidence=0.0,
                     actions_taken=actions_taken,
-                    error_message="Keine Berechtigung fuer dieses Dokument",
+                    error_message="Keine Berechtigung für dieses Dokument",
                 )
 
-            # 2. OCR-Qualitaet pruefen
+            # 2. OCR-Qualität prüfen
             ocr_confidence = await self._check_ocr_quality(doc)
             if ocr_confidence < DEFAULT_OCR_CONFIDENCE_THRESHOLD:
                 actions_taken.append(
-                    f"OCR-Qualitaet zu niedrig ({ocr_confidence:.1%})"
+                    f"OCR-Qualität zu niedrig ({ocr_confidence:.1%})"
                 )
                 return PipelineResult(
                     document_id=document_id,
@@ -223,14 +223,14 @@ class InvoicePipelineService:
                     next_action="Manuelle OCR-Korrektur erforderlich",
                 )
 
-            actions_taken.append(f"OCR-Qualitaet validiert ({ocr_confidence:.1%})")
+            actions_taken.append(f"OCR-Qualität validiert ({ocr_confidence:.1%})")
 
-            # 3. Entity-Linking durchfuehren (falls noch nicht verknuepft)
+            # 3. Entity-Linking durchführen (falls noch nicht verknüpft)
             if not doc.entity_id:
                 linking_result = await self._perform_entity_linking(doc)
                 if linking_result and linking_result.linked_count > 0:
                     actions_taken.append(
-                        f"Entity automatisch verknuepft (Confidence: {linking_result.details[0].get('confidence', 0):.1%})"
+                        f"Entity automatisch verknüpft (Confidence: {linking_result.details[0].get('confidence', 0):.1%})"
                     )
                     # Dokument neu laden nach Linking
                     doc = await self._load_document(document_id)
@@ -247,7 +247,7 @@ class InvoicePipelineService:
                 else:
                     actions_taken.append("Automatische Kategorisierung fehlgeschlagen")
 
-            # 5. Auto-Approval pruefen
+            # 5. Auto-Approval prüfen
             approval_result = await self._check_auto_approval(doc)
 
             if approval_result.decision == AutoApprovalDecision.AUTO_APPROVED:
@@ -272,7 +272,7 @@ class InvoicePipelineService:
                     status=PipelineStatus.SUCCESS,
                     confidence=approval_result.confidence,
                     actions_taken=actions_taken,
-                    next_action="Zahlung kann durchgefuehrt werden",
+                    next_action="Zahlung kann durchgeführt werden",
                     processing_time_ms=processing_time,
                     metadata={
                         "approval_reasons": approval_result.reasons,
@@ -283,7 +283,7 @@ class InvoicePipelineService:
             elif approval_result.decision == AutoApprovalDecision.REQUIRES_REVIEW:
                 # Manueller Review erforderlich
                 actions_taken.append(
-                    f"Manuelle Pruefung erforderlich: {approval_result.explanation}"
+                    f"Manuelle Prüfung erforderlich: {approval_result.explanation}"
                 )
 
                 processing_time = int(
@@ -380,7 +380,7 @@ class InvoicePipelineService:
         # Entity Status
         if doc.entity_id:
             stage = PipelineStage.ENTITY_LINKED
-            actions_taken.append("Entity verknuepft")
+            actions_taken.append("Entity verknüpft")
 
         # Kategorie Status
         if doc.category and doc.category != "uncategorized":
@@ -401,13 +401,13 @@ class InvoicePipelineService:
         # Status bestimmen
         if stage == PipelineStage.PAYMENT_READY:
             status = PipelineStatus.SUCCESS
-            next_action = "Zahlung kann durchgefuehrt werden"
+            next_action = "Zahlung kann durchgeführt werden"
         elif stage in (PipelineStage.APPROVED, PipelineStage.CATEGORIZED):
             status = PipelineStatus.NEEDS_REVIEW
             next_action = "Manuelle Genehmigung erforderlich"
         else:
             status = PipelineStatus.NEEDS_REVIEW
-            next_action = "Pipeline weiterfuehren"
+            next_action = "Pipeline weiterführen"
 
         return PipelineResult(
             document_id=document_id,
@@ -447,7 +447,7 @@ class InvoicePipelineService:
                     error_message="Dokument nicht gefunden",
                 )
 
-            # Multi-Tenancy pruefen
+            # Multi-Tenancy prüfen
             if doc.company_id != self.company_id:
                 return PipelineResult(
                     document_id=document_id,
@@ -455,10 +455,10 @@ class InvoicePipelineService:
                     status=PipelineStatus.FAILED,
                     confidence=0.0,
                     actions_taken=actions_taken,
-                    error_message="Keine Berechtigung fuer dieses Dokument",
+                    error_message="Keine Berechtigung für dieses Dokument",
                 )
 
-            # Genehmigung durchfuehren
+            # Genehmigung durchführen
             approval_result = await self._manual_approval(doc, user_id)
             actions_taken.append("Dokument genehmigt")
 
@@ -474,7 +474,7 @@ class InvoicePipelineService:
                 status=PipelineStatus.SUCCESS,
                 confidence=1.0,  # Manuelle Genehmigung = volle Confidence
                 actions_taken=actions_taken,
-                next_action="Zahlung kann durchgefuehrt werden",
+                next_action="Zahlung kann durchgeführt werden",
                 processing_time_ms=processing_time,
             )
 
@@ -505,7 +505,7 @@ class InvoicePipelineService:
         """Ruft Pipeline-Statistiken ab.
 
         Args:
-            days: Anzahl Tage fuer Statistik-Zeitraum
+            days: Anzahl Tage für Statistik-Zeitraum
 
         Returns:
             PipelineStats mit Metriken
@@ -562,7 +562,7 @@ class InvoicePipelineService:
             if doc.entity_id:
                 entity_linked += 1
 
-            # Invoice-Tracking fuer Status
+            # Invoice-Tracking für Status
             invoice = await self._get_invoice_tracking(doc.id)
             if invoice:
                 if invoice.approval_status == "approved":
@@ -612,13 +612,13 @@ class InvoicePipelineService:
     async def _get_invoice_tracking(
         self, document_id: uuid.UUID
     ) -> Optional[InvoiceTracking]:
-        """Laedt InvoiceTracking fuer ein Dokument."""
+        """Laedt InvoiceTracking für ein Dokument."""
         query = select(InvoiceTracking).where(InvoiceTracking.document_id == document_id)
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
 
     async def _check_ocr_quality(self, doc: Document) -> float:
-        """Prueft die OCR-Qualitaet eines Dokuments.
+        """Prüft die OCR-Qualität eines Dokuments.
 
         Returns:
             Confidence-Score (0.0 - 1.0)
@@ -637,7 +637,7 @@ class InvoicePipelineService:
         return 0.80
 
     async def _perform_entity_linking(self, doc: Document) -> Optional[LinkingResult]:
-        """Fuehrt Entity-Linking durch.
+        """Führt Entity-Linking durch.
 
         Returns:
             LinkingResult oder None bei Fehler
@@ -659,7 +659,7 @@ class InvoicePipelineService:
         Returns:
             Kategorie-Name oder None
         """
-        # Nutzt autonomous_actions_service fuer Kategorisierung
+        # Nutzt autonomous_actions_service für Kategorisierung
         try:
             # Vereinfachte Logik - in Praxis: KI-basiert
             extracted = doc.extracted_data or {}
@@ -696,7 +696,7 @@ class InvoicePipelineService:
             return None
 
     async def _check_auto_approval(self, doc: Document) -> Any:
-        """Prueft Auto-Approval fuer ein Dokument.
+        """Prüft Auto-Approval für ein Dokument.
 
         Returns:
             AutoApprovalResult
@@ -741,7 +741,7 @@ class InvoicePipelineService:
         await self.db.commit()
 
     async def _manual_approval(self, doc: Document, user_id: uuid.UUID) -> None:
-        """Fuehrt manuelle Genehmigung durch."""
+        """Führt manuelle Genehmigung durch."""
         invoice = await self._get_invoice_tracking(doc.id)
 
         if not invoice:
@@ -804,7 +804,7 @@ def get_invoice_pipeline_service(
     db: AsyncSession,
     company_id: uuid.UUID,
 ) -> InvoicePipelineService:
-    """Factory-Funktion fuer InvoicePipelineService.
+    """Factory-Funktion für InvoicePipelineService.
 
     Args:
         db: Async Database Session

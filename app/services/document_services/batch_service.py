@@ -1,8 +1,8 @@
 """Document Batch Service - Bulk-Operationen.
 
-Enthaelt optimierte Operationen fuer mehrere Dokumente:
-- batch_delete: Mehrere Dokumente loeschen
-- batch_tag: Tags fuer mehrere Dokumente setzen/hinzufuegen/entfernen
+Enthält optimierte Operationen für mehrere Dokumente:
+- batch_delete: Mehrere Dokumente löschen
+- batch_tag: Tags für mehrere Dokumente setzen/hinzufuegen/entfernen
 - bulk_update: Mehrere Dokumente aktualisieren
 """
 
@@ -31,9 +31,9 @@ logger = structlog.get_logger(__name__)
 
 
 class DocumentBatchService(DocumentServiceBase):
-    """Service fuer Bulk-Operationen auf mehreren Dokumenten.
+    """Service für Bulk-Operationen auf mehreren Dokumenten.
 
-    Optimiert fuer effiziente Verarbeitung grosser Dokumentmengen
+    Optimiert für effiziente Verarbeitung grosser Dokumentmengen
     mit minimalen Datenbankabfragen (vermeidet N+1).
     """
 
@@ -45,18 +45,18 @@ class DocumentBatchService(DocumentServiceBase):
         dry_run: bool = False,
         soft_delete: bool = True
     ) -> BatchOperationResult:
-        """Mehrere Dokumente loeschen (optimierte Bulk-Operation).
+        """Mehrere Dokumente löschen (optimierte Bulk-Operation).
 
-        Verwendet eine einzige Abfrage fuer effiziente Batch-Loeschung
+        Verwendet eine einzige Abfrage für effiziente Batch-Löschung
         anstatt N+1 Einzelabfragen.
 
         Args:
             db: Datenbank-Session
-            document_ids: Liste der zu loeschenden Dokument-IDs
-            user_id: ID des ausfuehrenden Benutzers
-            dry_run: Wenn True, wird nur simuliert (keine Loeschung)
-            soft_delete: Wenn True (Standard), Soft-Delete fuer GDPR-Konformitaet.
-                        Nach 30 Tagen erfolgt permanente Loeschung via Scheduled Task.
+            document_ids: Liste der zu löschenden Dokument-IDs
+            user_id: ID des ausführenden Benutzers
+            dry_run: Wenn True, wird nur simuliert (keine Löschung)
+            soft_delete: Wenn True (Standard), Soft-Delete für GDPR-Konformität.
+                        Nach 30 Tagen erfolgt permanente Löschung via Scheduled Task.
 
         Returns:
             BatchOperationResult mit Statistiken und ggf. betroffenen Dokumenten
@@ -71,7 +71,7 @@ class DocumentBatchService(DocumentServiceBase):
                 processed=0,
                 failed=0,
                 errors=[],
-                message="Keine Dokumente zum Loeschen angegeben",
+                message="Keine Dokumente zum Löschen angegeben",
                 dry_run=dry_run
             )
 
@@ -95,7 +95,7 @@ class DocumentBatchService(DocumentServiceBase):
                     error_code="NOT_FOUND"
                 ))
 
-            # Bei dry_run: Nur zeigen was geloescht wuerde
+            # Bei dry_run: Nur zeigen was gelöscht wuerde
             if dry_run:
                 logger.info(
                     "batch_delete_dry_run",
@@ -110,7 +110,7 @@ class DocumentBatchService(DocumentServiceBase):
                     processed=len(found_ids),
                     failed=len(not_found_ids),
                     errors=errors,
-                    message=f"[DRY RUN] {len(found_ids)} Dokument(e) wuerden geloescht",
+                    message=f"[DRY RUN] {len(found_ids)} Dokument(e) wuerden gelöscht",
                     dry_run=True,
                     affected_documents=list(found_ids) if found_ids else None
                 )
@@ -119,8 +119,8 @@ class DocumentBatchService(DocumentServiceBase):
             processed = 0
             if found_ids:
                 if soft_delete:
-                    # GDPR-konformes Soft-Delete: Markiere als geloescht
-                    # Status bleibt unveraendert - deleted_at ist das Kriterium fuer Soft-Delete
+                    # GDPR-konformes Soft-Delete: Markiere als gelöscht
+                    # Status bleibt unverändert - deleted_at ist das Kriterium für Soft-Delete
                     now = datetime.now(timezone.utc)
                     update_stmt = update(Document).where(
                         and_(
@@ -134,7 +134,7 @@ class DocumentBatchService(DocumentServiceBase):
                     update_result = await db.execute(update_stmt)
                     processed = update_result.rowcount
                 else:
-                    # Hard-Delete (nur fuer Admin oder nach Ablauf der Aufbewahrungsfrist)
+                    # Hard-Delete (nur für Admin oder nach Ablauf der Aufbewahrungsfrist)
                     delete_stmt = delete(Document).where(
                         and_(
                             Document.id.in_(list(found_ids)),
@@ -169,15 +169,15 @@ class DocumentBatchService(DocumentServiceBase):
                 failed=len(document_ids),
                 errors=[BatchOperationError(
                     document_id=document_ids[0],
-                    error=safe_error_detail(e, "Batch-Loeschung"),
+                    error=safe_error_detail(e, "Batch-Löschung"),
                     error_code="DELETE_ERROR"
                 )],
-                message="Batch-Loeschung fehlgeschlagen",
+                message="Batch-Löschung fehlgeschlagen",
                 dry_run=dry_run
             )
 
         success = failed == 0
-        delete_type = "soft-geloescht (wiederherstellbar 30 Tage)" if soft_delete else "permanent geloescht"
+        delete_type = "soft-gelöscht (wiederherstellbar 30 Tage)" if soft_delete else "permanent gelöscht"
         message = (
             f"{processed} Dokument(e) erfolgreich {delete_type}"
             if success else
@@ -212,9 +212,9 @@ class DocumentBatchService(DocumentServiceBase):
         user_id: UUID,
         operation: TagOperation = TagOperation.ADD
     ) -> BatchOperationResult:
-        """Tags fuer mehrere Dokumente setzen - optimiert mit Bulk-Loading.
+        """Tags für mehrere Dokumente setzen - optimiert mit Bulk-Loading.
 
-        TRANSAKTIONSSICHER: Bei Fehlern wird Rollback durchgefuehrt.
+        TRANSAKTIONSSICHER: Bei Fehlern wird Rollback durchgeführt.
 
         Args:
             db: Datenbank-Session
@@ -302,7 +302,7 @@ class DocumentBatchService(DocumentServiceBase):
                     error=safe_error_detail(e, "Batch-Tags"),
                     error_code="TAG_TRANSACTION_ERROR"
                 )],
-                message="Batch-Tag-Operation fehlgeschlagen - Rollback durchgefuehrt"
+                message="Batch-Tag-Operation fehlgeschlagen - Rollback durchgeführt"
             )
 
         # Such-Caches invalidieren (Tags beeinflussen Suchergebnisse)
@@ -312,9 +312,9 @@ class DocumentBatchService(DocumentServiceBase):
         success = failed == 0
         op_name = {"add": "hinzugefuegt", "remove": "entfernt", "set": "gesetzt"}
         message = (
-            f"Tags erfolgreich fuer {processed} Dokument(e) {op_name.get(operation.value, 'aktualisiert')}"
+            f"Tags erfolgreich für {processed} Dokument(e) {op_name.get(operation.value, 'aktualisiert')}"
             if success else
-            f"Tags fuer {processed} von {len(document_ids)} Dokument(en) aktualisiert, {failed} fehlgeschlagen"
+            f"Tags für {processed} von {len(document_ids)} Dokument(en) aktualisiert, {failed} fehlgeschlagen"
         )
 
         logger.info(
@@ -343,16 +343,16 @@ class DocumentBatchService(DocumentServiceBase):
         updates: DocumentPartialUpdateRequest,
         dry_run: bool = False
     ) -> BulkUpdateResult:
-        """Bulk-Update fuer mehrere Dokumente.
+        """Bulk-Update für mehrere Dokumente.
 
         Aktualisiert Dokumente basierend auf Filterkriterien.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            filter_criteria: Filter fuer zu aktualisierende Dokumente
-            updates: Anzuwendende Aenderungen
-            dry_run: Nur simulieren, nicht ausfuehren
+            filter_criteria: Filter für zu aktualisierende Dokumente
+            updates: Anzuwendende Änderungen
+            dry_run: Nur simulieren, nicht ausführen
 
         Returns:
             BulkUpdateResult mit Statistiken

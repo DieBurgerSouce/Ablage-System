@@ -1,4 +1,4 @@
-"""Action Dispatcher fuer RAG Agent Tool-Calls.
+"""Action Dispatcher für RAG Agent Tool-Calls.
 
 Parst LLM-Antworten auf Tool-Call JSON-Bloecke,
 validiert Parameter und dispatcht an AIActionService.
@@ -116,7 +116,7 @@ class ActionDispatcher:
                     action_id=uuid4(),
                     action_type=TOOL_TO_ACTION_MAP.get(tool_call.tool_name, AIActionType.SEARCH_DOCUMENTS),
                     status=AIActionStatus.FAILED,
-                    message="Keine Berechtigung fuer diese Aktion.",
+                    message="Keine Berechtigung für diese Aktion.",
                     execution_time_ms=self._elapsed_ms(start_time)
                 )
 
@@ -127,7 +127,7 @@ class ActionDispatcher:
                     action_id=uuid4(),
                     action_type=TOOL_TO_ACTION_MAP.get(tool_call.tool_name, AIActionType.SEARCH_DOCUMENTS),
                     status=AIActionStatus.FAILED,
-                    message=f"Ungueltige Parameter: {validation_error}",
+                    message=f"Ungültige Parameter: {validation_error}",
                     execution_time_ms=self._elapsed_ms(start_time)
                 )
 
@@ -138,7 +138,7 @@ class ActionDispatcher:
                     action_id=uuid4(),
                     action_type=AIActionType.SEARCH_DOCUMENTS,
                     status=AIActionStatus.FAILED,
-                    message=f"Kein Action-Mapping fuer Tool: {tool_call.tool_name}",
+                    message=f"Kein Action-Mapping für Tool: {tool_call.tool_name}",
                     execution_time_ms=self._elapsed_ms(start_time)
                 )
 
@@ -183,7 +183,7 @@ class ActionDispatcher:
                     AIActionType.SEARCH_DOCUMENTS
                 ),
                 status=AIActionStatus.FAILED,
-                message=safe_error_detail(e, "Tool-Ausfuehrung"),
+                message=safe_error_detail(e, "Tool-Ausführung"),
                 execution_time_ms=self._elapsed_ms(start_time)
             )
 
@@ -193,7 +193,7 @@ class ActionDispatcher:
         user: User,
         db: AsyncSession
     ) -> AIActionResult:
-        """Bestaetigt eine ausstehende Aktion.
+        """Bestätigt eine ausstehende Aktion.
 
         Args:
             action_id: ID der Aktion
@@ -256,7 +256,7 @@ class ActionDispatcher:
             return "viewer"
 
     def _check_permission(self, required_level: str, user_level: str) -> bool:
-        """Prueft ob User-Level ausreicht.
+        """Prüft ob User-Level ausreicht.
 
         Args:
             required_level: Erforderliches Level
@@ -285,7 +285,7 @@ class ActionDispatcher:
 
         Args:
             tool_def: Tool-Definition
-            parameters: Uebergebene Parameter
+            parameters: Übergebene Parameter
 
         Returns:
             Fehlermeldung oder None
@@ -344,7 +344,7 @@ _action_dispatcher: Optional[ActionDispatcher] = None
 
 
 def get_action_dispatcher() -> ActionDispatcher:
-    """Gibt Action Dispatcher Singleton zurueck.
+    """Gibt Action Dispatcher Singleton zurück.
 
     Returns:
         ActionDispatcher Instanz

@@ -2,7 +2,7 @@
 """
 Document Hints API Endpoints
 
-Proaktive Dokument-Hinweise fuer bessere Benutzernavigation.
+Proaktive Dokument-Hinweise für bessere Benutzernavigation.
 """
 
 from typing import List, Dict, Any
@@ -29,37 +29,37 @@ router = APIRouter(prefix="/documents", tags=["Document Hints"])
 
 
 class DocumentHintSchema(BaseModel):
-    """Schema fuer einen einzelnen Hint."""
+    """Schema für einen einzelnen Hint."""
     category: str = Field(..., description="Hint-Kategorie")
     severity: str = Field(..., description="Schweregrad (info, warning, critical)")
     title: str = Field(..., description="Kurzer Titel")
     message: str = Field(..., description="Beschreibung")
-    action_label: str | None = Field(None, description="Label fuer Aktion")
+    action_label: str | None = Field(None, description="Label für Aktion")
     action_type: str | None = Field(None, description="Typ der Aktion")
-    action_data: Dict[str, str] | None = Field(None, description="Daten fuer Aktion")
+    action_data: Dict[str, str] | None = Field(None, description="Daten für Aktion")
     confidence: float = Field(..., description="Konfidenz 0-1")
     expires_at: str | None = Field(None, description="Ablaufzeit (ISO)")
 
 
 class DocumentHintsResponse(BaseModel):
-    """Response fuer Dokument-Hints."""
+    """Response für Dokument-Hints."""
     hints: List[DocumentHintSchema]
     total: int
 
 
 class BatchHintsRequest(BaseModel):
-    """Request fuer Batch-Hints."""
+    """Request für Batch-Hints."""
     document_ids: List[UUID] = Field(..., description="Liste von Dokument-IDs")
 
 
 class BatchHintsResponse(BaseModel):
-    """Response fuer Batch-Hints."""
+    """Response für Batch-Hints."""
     hints: Dict[str, List[DocumentHintSchema]]
     total: int
 
 
 class HintSummarySchema(BaseModel):
-    """Schema fuer Hint-Zusammenfassung."""
+    """Schema für Hint-Zusammenfassung."""
     by_category: Dict[str, int] = Field(..., description="Anzahl pro Kategorie")
     by_severity: Dict[str, int] = Field(..., description="Anzahl pro Schweregrad")
     total: int = Field(..., description="Gesamt-Anzahl")
@@ -72,8 +72,8 @@ class HintSummarySchema(BaseModel):
 @router.get(
     "/{document_id}/hints",
     response_model=DocumentHintsResponse,
-    summary="Hole Hints fuer Dokument",
-    description="Gibt alle proaktiven Hinweise fuer ein Dokument zurueck",
+    summary="Hole Hints für Dokument",
+    description="Gibt alle proaktiven Hinweise für ein Dokument zurück",
 )
 async def get_document_hints(
     document_id: UUID,
@@ -81,7 +81,7 @@ async def get_document_hints(
     current_user: User = Depends(get_current_user),
 ) -> DocumentHintsResponse:
     """
-    Holt alle Hints fuer ein einzelnes Dokument.
+    Holt alle Hints für ein einzelnes Dokument.
 
     Args:
         document_id: Dokument-ID
@@ -134,8 +134,8 @@ async def get_document_hints(
 @router.post(
     "/hints/batch",
     response_model=BatchHintsResponse,
-    summary="Hole Hints fuer mehrere Dokumente",
-    description="Gibt Hints fuer mehrere Dokumente in einer Batch-Operation zurueck",
+    summary="Hole Hints für mehrere Dokumente",
+    description="Gibt Hints für mehrere Dokumente in einer Batch-Operation zurück",
 )
 async def get_batch_document_hints(
     request: BatchHintsRequest,
@@ -143,7 +143,7 @@ async def get_batch_document_hints(
     current_user: User = Depends(get_current_user),
 ) -> BatchHintsResponse:
     """
-    Holt Hints fuer mehrere Dokumente (Batch).
+    Holt Hints für mehrere Dokumente (Batch).
 
     Args:
         request: Batch-Request mit document_ids
@@ -204,14 +204,14 @@ async def get_batch_document_hints(
     "/hints/summary",
     response_model=HintSummarySchema,
     summary="Hole Hint-Zusammenfassung",
-    description="Gibt eine Zusammenfassung aller Hints fuer das Dashboard zurueck",
+    description="Gibt eine Zusammenfassung aller Hints für das Dashboard zurück",
 )
 async def get_hints_summary(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> HintSummarySchema:
     """
-    Holt Zusammenfassung aller Hints fuer Dashboard.
+    Holt Zusammenfassung aller Hints für Dashboard.
 
     Args:
         db: Datenbank-Session

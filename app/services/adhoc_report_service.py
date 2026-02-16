@@ -7,7 +7,7 @@ Self-Service Reporting ohne IT-Hilfe:
 - Filter, Gruppierung, Aggregation
 - Export: PDF, Excel, CSV
 - Gespeicherte Reports teilen mit Kollegen
-- Geplante Report-Ausfuehrungen
+- Geplante Report-Ausführungen
 
 SICHERHEIT:
 - Alle Feldnamen werden gegen Whitelists validiert (SQL-Injection-Schutz)
@@ -101,7 +101,7 @@ class AdHocReportService:
     }
 
     # =========================================================================
-    # Erlaubte Felder pro Datenquelle (Whitelist fuer SQL-Injection-Schutz!)
+    # Erlaubte Felder pro Datenquelle (Whitelist für SQL-Injection-Schutz!)
     # =========================================================================
 
     AVAILABLE_FIELDS: Dict[str, List[str]] = {
@@ -144,7 +144,7 @@ class AdHocReportService:
             "gross_amount": {"label": "Bruttobetrag", "type": "currency"},
             "tax_amount": {"label": "Steuerbetrag", "type": "currency"},
             "status": {"label": "Status", "type": "string"},
-            "due_date": {"label": "Faelligkeitsdatum", "type": "date"},
+            "due_date": {"label": "Fälligkeitsdatum", "type": "date"},
             "paid_date": {"label": "Bezahldatum", "type": "date"},
             "payment_method": {"label": "Zahlungsart", "type": "string"},
             "created_at": {"label": "Erstellt am", "type": "datetime"},
@@ -156,7 +156,7 @@ class AdHocReportService:
             "status": {"label": "Status", "type": "string"},
             "ocr_status": {"label": "OCR-Status", "type": "string"},
             "page_count": {"label": "Seitenzahl", "type": "number"},
-            "file_size": {"label": "Dateigroesse", "type": "number"},
+            "file_size": {"label": "Dateigröße", "type": "number"},
             "created_at": {"label": "Erstellt am", "type": "datetime"},
             "updated_at": {"label": "Aktualisiert am", "type": "datetime"},
         },
@@ -179,7 +179,7 @@ class AdHocReportService:
         },
         "transactions": {
             "amount": {"label": "Betrag", "type": "currency"},
-            "currency": {"label": "Waehrung", "type": "string"},
+            "currency": {"label": "Währung", "type": "string"},
             "booking_date": {"label": "Buchungsdatum", "type": "date"},
             "value_date": {"label": "Wertstellungsdatum", "type": "date"},
             "purpose": {"label": "Verwendungszweck", "type": "string"},
@@ -187,7 +187,7 @@ class AdHocReportService:
         },
         "approvals": {
             "status": {"label": "Status", "type": "string"},
-            "priority": {"label": "Prioritaet", "type": "string"},
+            "priority": {"label": "Priorität", "type": "string"},
             "requested_at": {"label": "Angefragt am", "type": "datetime"},
             "decided_at": {"label": "Entschieden am", "type": "datetime"},
             "approver_name": {"label": "Genehmiger", "type": "string"},
@@ -250,13 +250,13 @@ class AdHocReportService:
             Erstellter AdHocReport
 
         Raises:
-            ValueError: Bei ungueltigen Datenquellen oder Feldern
+            ValueError: Bei ungültigen Datenquellen oder Feldern
         """
         # Datenquellen validieren
         for source in data_sources:
             if source not in self.DATA_SOURCES:
                 raise ValueError(
-                    f"Ungueltige Datenquelle: {source}. "
+                    f"Ungültige Datenquelle: {source}. "
                     f"Erlaubt: {', '.join(self.DATA_SOURCES.keys())}"
                 )
 
@@ -277,14 +277,14 @@ class AdHocReportService:
                 # Operator validieren
                 operator = str(f.get("operator", ""))
                 if operator and operator not in self.ALLOWED_OPERATORS:
-                    raise ValueError(f"Ungueltiger Operator: {operator}")
+                    raise ValueError(f"Ungültiger Operator: {operator}")
 
         # Aggregations-Felder validieren
         if aggregations:
             for agg in aggregations:
                 agg_type = str(agg.get("type", ""))
                 if agg_type and agg_type not in {e.value for e in AggregationType}:
-                    raise ValueError(f"Ungueltiger Aggregationstyp: {agg_type}")
+                    raise ValueError(f"Ungültiger Aggregationstyp: {agg_type}")
 
         report = AdHocReport(
             company_id=company_id,
@@ -316,7 +316,7 @@ class AdHocReportService:
         report_id: "uuid.UUID",
         company_id: "uuid.UUID",
     ) -> Optional[AdHocReport]:
-        """Report nach ID laden (mit company_id-Pruefung)."""
+        """Report nach ID laden (mit company_id-Prüfung)."""
         result = await db.execute(
             select(AdHocReport).where(
                 and_(
@@ -340,7 +340,7 @@ class AdHocReportService:
         if not report:
             return None
 
-        # Berechtigung pruefen
+        # Berechtigung prüfen
         if report.created_by != user_id:
             has_edit = await self._user_can_edit(db, report_id, user_id)
             if not has_edit:
@@ -350,7 +350,7 @@ class AdHocReportService:
         if "data_sources" in kwargs:
             for source in kwargs["data_sources"]:  # type: ignore[union-attr]
                 if source not in self.DATA_SOURCES:
-                    raise ValueError(f"Ungueltige Datenquelle: {source}")
+                    raise ValueError(f"Ungültige Datenquelle: {source}")
 
         if "columns" in kwargs:
             for col in kwargs["columns"]:  # type: ignore[union-attr]
@@ -383,7 +383,7 @@ class AdHocReportService:
         company_id: "uuid.UUID",
         user_id: "uuid.UUID",
     ) -> bool:
-        """Report loeschen (nur Besitzer)."""
+        """Report löschen (nur Besitzer)."""
         report = await self.get_report(db, report_id, company_id)
         if not report or report.created_by != user_id:
             return False
@@ -406,12 +406,12 @@ class AdHocReportService:
         limit: int = 100,
         offset: int = 0,
     ) -> List[AdHocReport]:
-        """Verfuegbare Reports auflisten (eigene + geteilte + oeffentliche)."""
+        """Verfügbare Reports auflisten (eigene + geteilte + öffentliche)."""
         conditions = [
             AdHocReport.company_id == company_id,
         ]
 
-        # Eigene Reports + oeffentliche Reports
+        # Eigene Reports + öffentliche Reports
         own_or_public = or_(
             AdHocReport.created_by == user_id,
             AdHocReport.is_public == True,  # noqa: E712
@@ -440,7 +440,7 @@ class AdHocReportService:
         return list(result.scalars().all())
 
     # =========================================================================
-    # Report-Ausfuehrung
+    # Report-Ausführung
     # =========================================================================
 
     async def execute_report(
@@ -451,20 +451,20 @@ class AdHocReportService:
         user_id: "uuid.UUID",
         parameter_overrides: Optional[Dict[str, FilterValue]] = None,
     ) -> Dict[str, object]:
-        """Report ausfuehren und Ergebnisse zurueckgeben.
+        """Report ausführen und Ergebnisse zurückgeben.
 
         Args:
             db: Datenbank-Session
             report_id: Report-ID
             company_id: Mandanten-ID
-            user_id: Ausfuehrer-ID
+            user_id: Ausführer-ID
             parameter_overrides: Laufzeit-Parameter (optional)
 
         Returns:
             Dict mit columns, rows, total_rows, execution_time_ms
 
         Raises:
-            ValueError: Bei ungueltigem Report oder fehlender Berechtigung
+            ValueError: Bei ungültigem Report oder fehlender Berechtigung
         """
         report = await self.get_report(db, report_id, company_id)
         if not report:
@@ -477,7 +477,7 @@ class AdHocReportService:
             report, company_id, parameter_overrides
         )
 
-        # Ausfuehren mit Timeout (30 Sekunden)
+        # Ausführen mit Timeout (30 Sekunden)
         try:
             result = await db.execute(
                 text(f"SET LOCAL statement_timeout = '30000'")
@@ -580,7 +580,7 @@ class AdHocReportService:
             else:
                 select_parts.append(col_ref)
 
-        # Aggregationen hinzufuegen
+        # Aggregationen hinzufügen
         for agg in aggregations:
             field = str(agg.get("field", ""))
             agg_type = str(agg.get("type", "count"))
@@ -622,7 +622,7 @@ class AdHocReportService:
         primary_alias = self._table_alias(primary_source)
         from_clause = f"{primary_table} AS {primary_alias}"
 
-        # JOINs fuer zusaetzliche Datenquellen
+        # JOINs für zusätzliche Datenquellen
         join_clauses: List[str] = []
         for i, source in enumerate(data_sources[1:], start=1):
             source_config = self.DATA_SOURCES[source]
@@ -630,7 +630,7 @@ class AdHocReportService:
             alias = self._table_alias(source)
             join_key = str(source_config["key"])
 
-            # Standard-Join ueber company_id
+            # Standard-Join über company_id
             join_clauses.append(
                 f"LEFT JOIN {table} AS {alias} "
                 f"ON {alias}.company_id = {primary_alias}.company_id"
@@ -641,7 +641,7 @@ class AdHocReportService:
             f"{primary_alias}.company_id = :company_id"
         ]
 
-        # Datenquellen-spezifische Filter (z.B. entity_type fuer suppliers)
+        # Datenquellen-spezifische Filter (z.B. entity_type für suppliers)
         for source in data_sources:
             source_config = self.DATA_SOURCES[source]
             static_filter = source_config.get("filter")
@@ -792,18 +792,18 @@ class AdHocReportService:
         """Feldnamen gegen Whitelist validieren (SQL-Injection-Schutz).
 
         Raises:
-            ValueError: Bei ungueltigem Feld
+            ValueError: Bei ungültigem Feld
         """
         if not source or source not in self.AVAILABLE_FIELDS:
-            raise ValueError(f"Ungueltige Datenquelle: {source}")
+            raise ValueError(f"Ungültige Datenquelle: {source}")
 
         if not field or not self._FIELD_NAME_PATTERN.match(field):
-            raise ValueError(f"Ungueltiger Feldname: {field}")
+            raise ValueError(f"Ungültiger Feldname: {field}")
 
         allowed = self.AVAILABLE_FIELDS[source]
         if field not in allowed:
             raise ValueError(
-                f"Feld '{field}' nicht erlaubt fuer Datenquelle '{source}'. "
+                f"Feld '{field}' nicht erlaubt für Datenquelle '{source}'. "
                 f"Erlaubt: {', '.join(allowed)}"
             )
 
@@ -811,15 +811,15 @@ class AdHocReportService:
         """Aggregationsfunktion validieren."""
         allowed = {"sum": "SUM", "count": "COUNT", "avg": "AVG", "min": "MIN", "max": "MAX"}
         if agg_type.lower() not in allowed:
-            raise ValueError(f"Ungueltige Aggregation: {agg_type}")
+            raise ValueError(f"Ungültige Aggregation: {agg_type}")
         return allowed[agg_type.lower()]
 
     def _table_alias(self, source: str) -> str:
-        """Tabellenalias fuer eine Datenquelle generieren."""
+        """Tabellenalias für eine Datenquelle generieren."""
         return f"t_{source}"
 
     def _extract_column_info(self, report: AdHocReport) -> List[Dict[str, str]]:
-        """Spalten-Metadaten fuer die Antwort extrahieren."""
+        """Spalten-Metadaten für die Antwort extrahieren."""
         columns = report.columns or []
         data_sources = report.data_sources or []
         result: List[Dict[str, str]] = []
@@ -861,7 +861,7 @@ class AdHocReportService:
         Returns:
             Tuple von (file_bytes, content_type)
         """
-        # Report ausfuehren
+        # Report ausführen
         result = await self.execute_report(
             db, report_id, company_id, user_id
         )
@@ -956,7 +956,7 @@ class AdHocReportService:
         columns: List[Dict[str, str]],
         rows: List[Dict[str, object]],
     ) -> bytes:
-        """PDF-Export (Fallback auf CSV wenn reportlab nicht verfuegbar)."""
+        """PDF-Export (Fallback auf CSV wenn reportlab nicht verfügbar)."""
         try:
             from app.services.reports.pdf_export_service import PdfExportService
             from app.services.reports.report_templates import ReportColumn
@@ -1018,7 +1018,7 @@ class AdHocReportService:
         can_edit: bool = False,
     ) -> Optional[AdHocReportShare]:
         """Report mit einem Kollegen teilen."""
-        # Besitzer pruefen
+        # Besitzer prüfen
         result = await db.execute(
             select(AdHocReport).where(
                 and_(
@@ -1031,7 +1031,7 @@ class AdHocReportService:
         if not report:
             return None
 
-        # Existierende Freigabe pruefen
+        # Existierende Freigabe prüfen
         existing = await db.execute(
             select(AdHocReportShare).where(
                 and_(
@@ -1067,7 +1067,7 @@ class AdHocReportService:
         share_id: "uuid.UUID",
     ) -> bool:
         """Freigabe entfernen."""
-        # Besitzer pruefen
+        # Besitzer prüfen
         result = await db.execute(
             select(AdHocReport).where(
                 and_(
@@ -1096,7 +1096,7 @@ class AdHocReportService:
         report_id: "uuid.UUID",
         user_id: "uuid.UUID",
     ) -> bool:
-        """Pruefen ob ein Benutzer den Report bearbeiten darf."""
+        """Prüfen ob ein Benutzer den Report bearbeiten darf."""
         result = await db.execute(
             select(AdHocReportShare).where(
                 and_(
@@ -1115,9 +1115,9 @@ class AdHocReportService:
     async def get_available_fields(
         self, data_source: str
     ) -> List[Dict[str, str]]:
-        """Verfuegbare Felder fuer eine Datenquelle zurueckgeben."""
+        """Verfügbare Felder für eine Datenquelle zurückgeben."""
         if data_source not in self.AVAILABLE_FIELDS:
-            raise ValueError(f"Ungueltige Datenquelle: {data_source}")
+            raise ValueError(f"Ungültige Datenquelle: {data_source}")
 
         fields = self.AVAILABLE_FIELDS[data_source]
         metadata = self.FIELD_METADATA.get(data_source, {})
@@ -1133,7 +1133,7 @@ class AdHocReportService:
         ]
 
     def get_data_sources(self) -> List[Dict[str, str]]:
-        """Verfuegbare Datenquellen zurueckgeben."""
+        """Verfügbare Datenquellen zurückgeben."""
         return [
             {
                 "key": key,
@@ -1166,28 +1166,28 @@ class AdHocReportService:
             company_id: Mandanten-ID
             frequency: Frequenz (daily/weekly/monthly/quarterly)
             export_format: Export-Format
-            recipients: E-Mail-Empfaenger
+            recipients: E-Mail-Empfänger
             time_of_day: Uhrzeit im Format HH:MM
-            day_of_week: Wochentag (0=Montag) fuer WEEKLY
-            day_of_month: Monatstag (1-28) fuer MONTHLY/QUARTERLY
+            day_of_week: Wochentag (0=Montag) für WEEKLY
+            day_of_month: Monatstag (1-28) für MONTHLY/QUARTERLY
 
         Returns:
             Erstellter ReportSchedule
         """
-        # Report pruefen
+        # Report prüfen
         report = await self.get_report(db, report_id, company_id)
         if not report:
             raise ValueError("Report nicht gefunden")
 
         # Zeitformat validieren
         if not re.match(r"^\d{2}:\d{2}$", time_of_day):
-            raise ValueError("Ungueltige Uhrzeit. Format: HH:MM")
+            raise ValueError("Ungültige Uhrzeit. Format: HH:MM")
 
         hour, minute = map(int, time_of_day.split(":"))
         if not (0 <= hour <= 23 and 0 <= minute <= 59):
-            raise ValueError("Ungueltige Uhrzeit")
+            raise ValueError("Ungültige Uhrzeit")
 
-        # Naechste Ausfuehrung berechnen
+        # Nächste Ausführung berechnen
         next_run = self._calculate_next_run(
             frequency, time_of_day, day_of_week, day_of_month
         )
@@ -1242,7 +1242,7 @@ class AdHocReportService:
             if key in allowed:
                 setattr(schedule, key, value)
 
-        # Naechste Ausfuehrung neu berechnen wenn aktiv
+        # Nächste Ausführung neu berechnen wenn aktiv
         if schedule.is_active:
             schedule.next_run_at = self._calculate_next_run(
                 ReportScheduleFrequency(schedule.frequency),
@@ -1260,7 +1260,7 @@ class AdHocReportService:
         schedule_id: "uuid.UUID",
         company_id: "uuid.UUID",
     ) -> bool:
-        """Zeitplan loeschen."""
+        """Zeitplan löschen."""
         result = await db.execute(
             delete(ReportSchedule).where(
                 and_(
@@ -1277,7 +1277,7 @@ class AdHocReportService:
         db: AsyncSession,
         company_id: "uuid.UUID",
     ) -> List[ReportSchedule]:
-        """Alle Zeitplaene eines Mandanten auflisten."""
+        """Alle Zeitpläne eines Mandanten auflisten."""
         result = await db.execute(
             select(ReportSchedule)
             .where(ReportSchedule.company_id == company_id)
@@ -1290,7 +1290,7 @@ class AdHocReportService:
         db: AsyncSession,
         limit: int = 50,
     ) -> List[ReportSchedule]:
-        """Faellige Zeitplaene laden (fuer Celery Beat)."""
+        """Fällige Zeitpläne laden (für Celery Beat)."""
         now = datetime.now(timezone.utc)
         result = await db.execute(
             select(ReportSchedule)
@@ -1310,7 +1310,7 @@ class AdHocReportService:
         db: AsyncSession,
         schedule: ReportSchedule,
     ) -> None:
-        """Markiert einen Zeitplan als gesendet und berechnet den naechsten Zeitpunkt."""
+        """Markiert einen Zeitplan als gesendet und berechnet den nächsten Zeitpunkt."""
         now = datetime.now(timezone.utc)
         schedule.last_run_at = now
         schedule.next_run_at = self._calculate_next_run(
@@ -1328,7 +1328,7 @@ class AdHocReportService:
         day_of_week: Optional[int] = None,
         day_of_month: Optional[int] = None,
     ) -> datetime:
-        """Naechsten Ausfuehrungszeitpunkt berechnen."""
+        """Nächsten Ausführungszeitpunkt berechnen."""
         now = datetime.now(timezone.utc)
         hour, minute = map(int, time_of_day.split(":"))
 

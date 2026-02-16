@@ -1,9 +1,9 @@
 """Lexware Export Service.
 
-Exportiert Daten zurueck an Lexware:
+Exportiert Daten zurück an Lexware:
 - Kunden/Lieferanten-Stammdaten
 - Rechnungsstatus-Updates
-- Zahlungs-Bestaetigungen
+- Zahlungs-Bestätigungen
 """
 
 import structlog
@@ -36,7 +36,7 @@ class LexwareExportStatus(str, Enum):
 
 @dataclass
 class LexwareExportJob:
-    """Export-Auftrag fuer Lexware."""
+    """Export-Auftrag für Lexware."""
     id: str
     company_id: str
     export_type: LexwareExportType
@@ -57,7 +57,7 @@ class LexwareExportService:
         self.db = db
 
     async def export_customers(self, company_id: UUID) -> LexwareExportJob:
-        """Exportiert Kunden fuer Lexware-Import."""
+        """Exportiert Kunden für Lexware-Import."""
         from app.db.models import BusinessEntity
         stmt = (
             select(BusinessEntity)
@@ -110,7 +110,7 @@ class LexwareExportService:
         return job
 
     async def export_suppliers(self, company_id: UUID) -> LexwareExportJob:
-        """Exportiert Lieferanten fuer Lexware-Import."""
+        """Exportiert Lieferanten für Lexware-Import."""
         from app.db.models import BusinessEntity
         stmt = (
             select(BusinessEntity)
@@ -165,7 +165,7 @@ class LexwareExportService:
         return job
 
     async def export_payment_status(self, company_id: UUID) -> LexwareExportJob:
-        """Exportiert Zahlungsstatus-Updates fuer Lexware."""
+        """Exportiert Zahlungsstatus-Updates für Lexware."""
         from app.db.models import InvoiceTracking
         stmt = (
             select(InvoiceTracking)

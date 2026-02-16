@@ -70,7 +70,7 @@ ODOO_CUSTOM_FIELDS = {
 
 class OdooFeedbackService:
     """
-    Service fuer das Pushen von AI-Insights zu Odoo.
+    Service für das Pushen von AI-Insights zu Odoo.
 
     Features:
     - Risk Score Push: Aktualisiert Risiko-Bewertungen in Odoo
@@ -126,12 +126,12 @@ class OdooFeedbackService:
                 db, connection_id, entity_id
             )
             if not odoo_partner_id:
-                return False, "Keine Odoo-Verknuepfung gefunden"
+                return False, "Keine Odoo-Verknüpfung gefunden"
 
             # Create connector
             connector = await self._create_connector(db, connection_id)
             if not connector:
-                return False, "Verbindung nicht verfuegbar"
+                return False, "Verbindung nicht verfügbar"
 
             # Prepare data for Odoo (sanitize factors)
             sanitized_factors = self._sanitize_factors(factors)
@@ -229,11 +229,11 @@ class OdooFeedbackService:
                 db, connection_id, entity_id
             )
             if not odoo_partner_id:
-                return False, "Keine Odoo-Verknuepfung gefunden"
+                return False, "Keine Odoo-Verknüpfung gefunden"
 
             connector = await self._create_connector(db, connection_id)
             if not connector:
-                return False, "Verbindung nicht verfuegbar"
+                return False, "Verbindung nicht verfügbar"
 
             # Sanitize reason (remove potential PII)
             sanitized_reason = self._sanitize_text(reason)
@@ -332,11 +332,11 @@ class OdooFeedbackService:
                 db, connection_id, entity_id
             )
             if not odoo_partner_id:
-                return False, "Keine Odoo-Verknuepfung gefunden"
+                return False, "Keine Odoo-Verknüpfung gefunden"
 
             connector = await self._create_connector(db, connection_id)
             if not connector:
-                return False, "Verbindung nicht verfuegbar"
+                return False, "Verbindung nicht verfügbar"
 
             sanitized_recommendation = self._sanitize_text(recommendation)
 
@@ -472,9 +472,9 @@ class OdooFeedbackService:
         entity_id: UUID,
     ) -> Optional[int]:
         """
-        Holt die Odoo Partner-ID fuer eine lokale Entity.
+        Holt die Odoo Partner-ID für eine lokale Entity.
 
-        Sucht in der ERPEntityMapping-Tabelle nach der Verknuepfung.
+        Sucht in der ERPEntityMapping-Tabelle nach der Verknüpfung.
         """
         result = await db.execute(
             select(ERPEntityMapping).where(
@@ -500,7 +500,7 @@ class OdooFeedbackService:
         db: AsyncSession,
         connection_id: UUID,
     ) -> Optional[OdooConnector]:
-        """Erstellt einen OdooConnector fuer die Verbindung."""
+        """Erstellt einen OdooConnector für die Verbindung."""
         from app.workers.tasks.erp_sync_tasks import get_connection_config
 
         config = await get_connection_config(db, connection_id)
@@ -520,7 +520,7 @@ class OdooFeedbackService:
         status: OdooFeedbackStatus,
         error_message: Optional[str] = None,
     ) -> None:
-        """Speichert ein Feedback-Record fuer Tracking."""
+        """Speichert ein Feedback-Record für Tracking."""
         from app.db.models import OdooAIFeedback
         import uuid
 
@@ -573,17 +573,17 @@ class OdooFeedbackService:
 
     def _sanitize_text(self, text: str, max_length: int = 500) -> str:
         """
-        Sanitisiert Text fuer sichere Speicherung.
+        Sanitisiert Text für sichere Speicherung.
 
-        Entfernt potentiell sensitive Daten und begrenzt Laenge.
+        Entfernt potentiell sensitive Daten und begrenzt Länge.
         """
         import re
 
-        # Entferne potentielle Kundennamen und Zahlen die IBANs sein koennten
+        # Entferne potentielle Kundennamen und Zahlen die IBANs sein könnten
         sanitized = re.sub(r"\b[A-Z]{2}\d{2}[A-Z0-9]{10,30}\b", "[IBAN]", text)
         sanitized = re.sub(r"\b\d{6,}\b", "[NUMMER]", sanitized)
 
-        # Begrenze Laenge
+        # Begrenze Länge
         if len(sanitized) > max_length:
             sanitized = sanitized[:max_length - 3] + "..."
 

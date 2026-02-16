@@ -1,9 +1,9 @@
 """
 Entity Linking Celery Tasks.
 
-Automatische Verknuepfung von Dokumenten mit BusinessEntities:
-- Batch-Verknuepfung aller unverknuepften Dokumente
-- Einzeldokument-Verknuepfung nach OCR
+Automatische Verknüpfung von Dokumenten mit BusinessEntities:
+- Batch-Verknüpfung aller unverknüpften Dokumente
+- Einzeldokument-Verknüpfung nach OCR
 - Automatischer Lauf nach Lexware-Import
 - Statistik-Generierung
 
@@ -43,13 +43,13 @@ def link_all_documents_task(
     batch_size: int = 100,
     only_unlinked: bool = True,
 ) -> Dict[str, Any]:
-    """Verknuepft alle Dokumente mit BusinessEntities.
+    """Verknüpft alle Dokumente mit BusinessEntities.
 
     Wird nach Lexware-Import automatisch getriggert.
-    Kann auch manuell fuer Re-Linking gestartet werden.
+    Kann auch manuell für Re-Linking gestartet werden.
 
     Args:
-        min_confidence: Minimale Confidence fuer automatische Verknuepfung
+        min_confidence: Minimale Confidence für automatische Verknüpfung
         batch_size: Anzahl Dokumente pro Batch
         only_unlinked: Nur Dokumente ohne business_entity_id
 
@@ -102,7 +102,7 @@ def link_single_document_task(
     document_id: str,
     min_confidence: float = 0.75,
 ) -> Dict[str, Any]:
-    """Verknuepft ein einzelnes Dokument mit der besten Entity.
+    """Verknüpft ein einzelnes Dokument mit der besten Entity.
 
     Wird nach OCR-Completion automatisch getriggert.
 
@@ -179,13 +179,13 @@ def link_single_document_task(
     max_retries=1,
 )
 def post_lexware_import_linking_task(self) -> Dict[str, Any]:
-    """Startet automatische Verknuepfung nach Lexware-Import.
+    """Startet automatische Verknüpfung nach Lexware-Import.
 
     Wird nach erfolgreichem LexwareImportService.import_customers()
     oder import_suppliers() aufgerufen.
 
     Orchestriert:
-    1. Batch-Linking aller unverknuepften Dokumente
+    1. Batch-Linking aller unverknüpften Dokumente
     2. Statistik-Generierung
     3. Benachrichtigung
 
@@ -206,7 +206,7 @@ def post_lexware_import_linking_task(self) -> Dict[str, Any]:
         }
 
         async with get_async_session_context() as db:
-            # Zaehle unverknuepfte Dokumente mit OCR-Text
+            # Zaehle unverknüpfte Dokumente mit OCR-Text
             count_stmt = select(func.count()).select_from(
                 select(Document).where(
                     and_(
@@ -226,7 +226,7 @@ def post_lexware_import_linking_task(self) -> Dict[str, Any]:
 
             stats["documents_to_process"] = unlinked_count
 
-            # Linking durchfuehren
+            # Linking durchführen
             service = DocumentEntityLinkerService(db)
             result = await service.link_all_documents(
                 min_confidence=0.75,
@@ -271,9 +271,9 @@ def post_lexware_import_linking_task(self) -> Dict[str, Any]:
 
 @celery_app.task(name="app.workers.tasks.entity_linking_tasks.generate_linking_statistics_task")
 def generate_linking_statistics_task() -> Dict[str, Any]:
-    """Generiert Statistiken ueber Entity-Linking.
+    """Generiert Statistiken über Entity-Linking.
 
-    Typisches Schedule: Taeglich um 01:00.
+    Typisches Schedule: Täglich um 01:00.
 
     Returns:
         Dict mit Statistiken
@@ -290,7 +290,7 @@ def generate_linking_statistics_task() -> Dict[str, Any]:
             )
             stats["total_documents"] = total_docs
 
-            # Verknuepfte Dokumente
+            # Verknüpfte Dokumente
             linked_docs = await db.scalar(
                 select(func.count()).where(
                     and_(
@@ -301,7 +301,7 @@ def generate_linking_statistics_task() -> Dict[str, Any]:
             )
             stats["linked_documents"] = linked_docs
 
-            # Unverknuepfte mit OCR-Text (koennten verknuepft werden)
+            # Unverknüpfte mit OCR-Text (könnten verknüpft werden)
             unlinked_with_text = await db.scalar(
                 select(func.count()).where(
                     and_(
@@ -314,7 +314,7 @@ def generate_linking_statistics_task() -> Dict[str, Any]:
             )
             stats["unlinked_with_text"] = unlinked_with_text
 
-            # Unverknuepfte ohne OCR-Text (brauchen erst OCR)
+            # Unverknüpfte ohne OCR-Text (brauchen erst OCR)
             unlinked_without_text = await db.scalar(
                 select(func.count()).where(
                     and_(
@@ -404,9 +404,9 @@ def reprocess_low_confidence_documents_task(
         async with get_async_session_context() as db:
             # Dokumente mit niedriger Confidence finden
             # Hinweis: Wir speichern aktuell keine Confidence im Document-Model
-            # Dies ist ein Placeholder fuer zukuenftige Erweiterung
+            # Dies ist ein Placeholder für zukuenftige Erweiterung
 
-            # Alternativ: Alle unverknuepften mit OCR-Text nochmal versuchen
+            # Alternativ: Alle unverknüpften mit OCR-Text nochmal versuchen
             service = DocumentEntityLinkerService(db)
             result = await service.link_all_documents(
                 min_confidence=confidence_threshold,
@@ -435,16 +435,16 @@ def reprocess_low_confidence_documents_task(
 
 
 # =============================================================================
-# Event Handlers (fuer Integration mit anderen Tasks)
+# Event Handlers (für Integration mit anderen Tasks)
 # =============================================================================
 
 
 @celery_app.task(name="app.workers.tasks.entity_linking_tasks.on_ocr_completed_link_entity")
 def on_ocr_completed_link_entity(document_id: str) -> Dict[str, Any]:
-    """Handler fuer OCR-Completion Events.
+    """Handler für OCR-Completion Events.
 
     Wird von OCR-Tasks aufgerufen nachdem Text extrahiert wurde.
-    Versucht automatisch, das Dokument mit einer Entity zu verknuepfen.
+    Versucht automatisch, das Dokument mit einer Entity zu verknüpfen.
 
     Args:
         document_id: UUID des Dokuments
@@ -461,10 +461,10 @@ def on_ocr_completed_link_entity(document_id: str) -> Dict[str, Any]:
 
 @celery_app.task(name="app.workers.tasks.entity_linking_tasks.on_entity_imported_check_documents")
 def on_entity_imported_check_documents(entity_id: str) -> Dict[str, Any]:
-    """Handler fuer Entity-Import Events.
+    """Handler für Entity-Import Events.
 
     Wird nach Import einer neuen Entity aufgerufen.
-    Sucht Dokumente die zu dieser Entity passen koennten.
+    Sucht Dokumente die zu dieser Entity passen könnten.
 
     Args:
         entity_id: UUID der neuen Entity
@@ -513,7 +513,7 @@ def on_entity_imported_check_documents(entity_id: str) -> Dict[str, Any]:
                         if company_data.get("kd_nr"):
                             search_terms.append(company_data["kd_nr"])
 
-            # Unverknuepfte Dokumente durchsuchen
+            # Unverknüpfte Dokumente durchsuchen
             linked_count = 0
             service = DocumentEntityLinkerService(db)
 
@@ -533,7 +533,7 @@ def on_entity_imported_check_documents(entity_id: str) -> Dict[str, Any]:
                 text_lower = doc.extracted_text.lower()
                 for term in search_terms:
                     if term.lower() in text_lower:
-                        # Vollstaendiges Linking versuchen
+                        # Vollständiges Linking versuchen
                         match = await service.link_document(doc.id)
                         if match and match.entity.id == entity.id:
                             linked_count += 1

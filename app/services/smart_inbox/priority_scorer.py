@@ -283,10 +283,10 @@ class PriorityScorer:
                 # High risk entities get priority boost (risk_score is 0-100, higher = more risk)
                 if risk_score >= 75:
                     score += max_score * 0.5
-                    reasons.append(f"Hochrisiko-Geschaeftspartner (Score: {risk_score:.0f})")
+                    reasons.append(f"Hochrisiko-Geschäftspartner (Score: {risk_score:.0f})")
                 elif risk_score >= 50:
                     score += max_score * 0.3
-                    reasons.append(f"Erhoehtes Risiko beim Geschaeftspartner (Score: {risk_score:.0f})")
+                    reasons.append(f"Erhöhtes Risiko beim Geschäftspartner (Score: {risk_score:.0f})")
 
         # Alert Severity
         if item.source_type == "alert":

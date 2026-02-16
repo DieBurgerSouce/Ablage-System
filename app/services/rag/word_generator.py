@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
 
 
 class WordReportGenerator:
-    """Generator fuer Word-Reports."""
+    """Generator für Word-Reports."""
 
     def __init__(self):
         if not DOCX_AVAILABLE:
@@ -122,12 +122,12 @@ class WordReportGenerator:
 
     def _add_section(self, doc: "Document", section: Dict[str, Any]):
         """Fuegt eine Sektion hinzu."""
-        # Ueberschrift
+        # Überschrift
         if section.get("heading"):
             level = section.get("level", 1)
             doc.add_heading(section["heading"], level=level)
 
-        # Text-Absaetze
+        # Text-Absätze
         for paragraph in section.get("paragraphs", []):
             if isinstance(paragraph, str):
                 doc.add_paragraph(paragraph)
@@ -224,7 +224,7 @@ class WordReportGenerator:
                     ]
                 },
                 {
-                    "heading": "Dokumentenuebersicht",
+                    "heading": "Dokumentenübersicht",
                     "level": 1,
                     "paragraphs": [
                         f"Insgesamt {len(documents)} Dokumente im System."
@@ -403,7 +403,7 @@ _word_generator: Optional[WordReportGenerator] = None
 
 
 def get_word_generator() -> WordReportGenerator:
-    """Gibt WordReportGenerator Singleton zurueck."""
+    """Gibt WordReportGenerator Singleton zurück."""
     global _word_generator
     if _word_generator is None:
         _word_generator = WordReportGenerator()

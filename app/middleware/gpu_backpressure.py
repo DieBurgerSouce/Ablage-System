@@ -1,7 +1,7 @@
 """GPU Backpressure Middleware.
 
-Implementiert VRAM-basiertes Throttling um GPU-Ueberlastung zu vermeiden.
-Verzoegert oder blockt GPU-intensive Requests wenn VRAM knapp wird.
+Implementiert VRAM-basiertes Throttling um GPU-Überlastung zu vermeiden.
+Verzögert oder blockt GPU-intensive Requests wenn VRAM knapp wird.
 """
 
 import time
@@ -31,14 +31,14 @@ VRAM_THRESHOLD_REJECT = 0.90   # 90% - Neue Requests ablehnen
 # Maximale Wartezeit beim Queueing (Sekunden)
 MAX_QUEUE_WAIT = 30.0
 
-# Pruefintervall fuer VRAM (Sekunden)
+# Prüfintervall für VRAM (Sekunden)
 VRAM_CHECK_INTERVAL = 1.0
 
 
 class GPUMetrics:
     """Sammelt GPU-Metriken.
 
-    Wrapper fuer nvidia-smi / pynvml.
+    Wrapper für nvidia-smi / pynvml.
     """
 
     def __init__(self):
@@ -65,16 +65,16 @@ class GPUMetrics:
     def get_vram_usage(self) -> float:
         """Hole aktuelle VRAM-Auslastung als Prozent (0-1).
 
-        Cached fuer VRAM_CHECK_INTERVAL Sekunden.
+        Cached für VRAM_CHECK_INTERVAL Sekunden.
         """
         now = time.time()
 
-        # Cache verwenden wenn noch gueltig
+        # Cache verwenden wenn noch gültig
         if now - self._last_check < VRAM_CHECK_INTERVAL:
             return self._cached_usage / self._cached_total if self._cached_total > 0 else 0.0
 
         if not self._nvml_available:
-            # Fallback: Verwende PyTorch wenn verfuegbar
+            # Fallback: Verwende PyTorch wenn verfügbar
             try:
                 import torch
                 if torch.cuda.is_available():
@@ -126,14 +126,14 @@ def get_gpu_metrics() -> GPUMetrics:
 
 
 class GPUBackpressureMiddleware(BaseHTTPMiddleware):
-    """Middleware fuer GPU-basiertes Backpressure.
+    """Middleware für GPU-basiertes Backpressure.
 
     Features:
     - VRAM-Monitoring mit konfigurierbaren Schwellenwerten
     - Request-Queueing bei hoher Last
     - Request-Ablehnung bei kritischer Last
-    - Retry-After Header fuer Clients
-    - Metriken-Export fuer Monitoring
+    - Retry-After Header für Clients
+    - Metriken-Export für Monitoring
     """
 
     def __init__(
@@ -176,11 +176,11 @@ class GPUBackpressureMiddleware(BaseHTTPMiddleware):
         """Verarbeite Request mit GPU Backpressure."""
         path = request.url.path
 
-        # Nur GPU-Endpoints pruefen
+        # Nur GPU-Endpoints prüfen
         if not any(path.startswith(ep) for ep in self.gpu_endpoints):
             return await call_next(request)
 
-        # VRAM pruefen
+        # VRAM prüfen
         vram_usage = self.metrics.get_vram_usage()
 
         # Kritisch: Ablehnen
@@ -198,7 +198,7 @@ class GPUBackpressureMiddleware(BaseHTTPMiddleware):
             return JSONResponse(
                 status_code=503,
                 content={
-                    "error": "GPU-Ressourcen ueberlastet",
+                    "error": "GPU-Ressourcen überlastet",
                     "error_code": "GPU_OVERLOADED",
                     "detail": f"VRAM-Auslastung bei {vram_info['usage_percent']}%",
                     "vram_info": vram_info,
@@ -226,12 +226,12 @@ class GPUBackpressureMiddleware(BaseHTTPMiddleware):
             # Warte bis VRAM sinkt oder Timeout
             while vram_usage >= self.queue_threshold:
                 if waited >= self.max_queue_wait:
-                    # Timeout - als ueberlastet behandeln
+                    # Timeout - als überlastet behandeln
                     vram_info = self.metrics.get_vram_info()
                     return JSONResponse(
                         status_code=503,
                         content={
-                            "error": "GPU-Wartezeit ueberschritten",
+                            "error": "GPU-Wartezeit überschritten",
                             "error_code": "GPU_QUEUE_TIMEOUT",
                             "detail": f"VRAM blieb {waited:.0f}s bei {vram_info['usage_percent']}%",
                             "waited_seconds": round(waited, 1),
@@ -243,7 +243,7 @@ class GPUBackpressureMiddleware(BaseHTTPMiddleware):
                         }
                     )
 
-                # Kurz warten und erneut pruefen
+                # Kurz warten und erneut prüfen
                 import asyncio
 
                 await asyncio.sleep(VRAM_CHECK_INTERVAL)
@@ -258,7 +258,7 @@ class GPUBackpressureMiddleware(BaseHTTPMiddleware):
                     vram_percent=round(vram_usage * 100, 1)
                 )
 
-        # Warnung loggen wenn ueber Schwelle
+        # Warnung loggen wenn über Schwelle
         if vram_usage >= self.warn_threshold:
             logger.debug(
                 "gpu_vram_warning",
@@ -291,7 +291,7 @@ def create_gpu_backpressure_middleware(
     reject_threshold: float = VRAM_THRESHOLD_REJECT,
     queue_threshold: float = VRAM_THRESHOLD_QUEUE
 ) -> type:
-    """Factory fuer GPU Backpressure Middleware."""
+    """Factory für GPU Backpressure Middleware."""
     class ConfiguredGPUBackpressureMiddleware(GPUBackpressureMiddleware):
         def __init__(self, app: ASGIApp):
             super().__init__(

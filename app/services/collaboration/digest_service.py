@@ -32,13 +32,13 @@ logger = structlog.get_logger(__name__)
 
 
 class DigestService:
-    """Service fuer Benachrichtigungs-Digests."""
+    """Service für Benachrichtigungs-Digests."""
 
     def __init__(self, db: AsyncSession):
         """Initialisiert den DigestService.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
         """
         self.db = db
 

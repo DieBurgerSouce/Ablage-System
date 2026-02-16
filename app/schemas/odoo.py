@@ -1,5 +1,5 @@
 """
-Pydantic Schemas fuer Odoo Integration.
+Pydantic Schemas für Odoo Integration.
 
 Phase 6: Odoo Integration Deepening
 - Webhook Payloads
@@ -43,7 +43,7 @@ class OdooWebhookAction(str, Enum):
 
 
 class OdooFeedbackType(str, Enum):
-    """Typen von AI-Feedback fuer Odoo."""
+    """Typen von AI-Feedback für Odoo."""
     RISK_SCORE = "risk_score"
     PAYMENT_SUGGESTION = "payment_suggestion"
     SKONTO_PREDICTION = "skonto_prediction"
@@ -72,7 +72,7 @@ class OdooFeedbackStatus(str, Enum):
 # Webhook Validation Patterns
 # =============================================================================
 
-# Regex fuer sichere Event-IDs (alphanumerisch + Bindestriche)
+# Regex für sichere Event-IDs (alphanumerisch + Bindestriche)
 EVENT_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9_-]{0,253}[a-zA-Z0-9]$|^[a-zA-Z0-9]$")
 
 
@@ -92,7 +92,7 @@ class OdooWebhookPayload(BaseModel):
     """Basis-Payload eines Odoo Webhooks."""
     model_config = ConfigDict(extra="forbid")
 
-    event_id: str = Field(..., min_length=1, max_length=255, description="Eindeutige Event-ID fuer Idempotenz")
+    event_id: str = Field(..., min_length=1, max_length=255, description="Eindeutige Event-ID für Idempotenz")
     event_type: OdooWebhookEventType = Field(..., description="Typ des Events")
     action: OdooWebhookAction = Field(..., description="Aktion (create/update/delete)")
     timestamp: datetime = Field(..., description="Zeitpunkt des Events in Odoo")
@@ -104,7 +104,7 @@ class OdooWebhookPayload(BaseModel):
     def validate_event_id(cls, v: str) -> str:
         """Validiert Event-ID gegen Injection."""
         if not EVENT_ID_PATTERN.match(v):
-            raise ValueError("Ungueltige Event-ID Format")
+            raise ValueError("Ungültiges Event-ID Format")
         return v
 
 
@@ -114,7 +114,7 @@ class OdooWebhookPayload(BaseModel):
 
 
 class OdooCustomerWebhook(BaseModel):
-    """Webhook-Payload fuer Kunden-Events."""
+    """Webhook-Payload für Kunden-Events."""
     model_config = ConfigDict(extra="forbid")
 
     id: int = Field(..., gt=0)
@@ -134,7 +134,7 @@ class OdooCustomerWebhook(BaseModel):
 
 
 class OdooSupplierWebhook(BaseModel):
-    """Webhook-Payload fuer Lieferanten-Events."""
+    """Webhook-Payload für Lieferanten-Events."""
     model_config = ConfigDict(extra="forbid")
 
     id: int = Field(..., gt=0)
@@ -151,7 +151,7 @@ class OdooSupplierWebhook(BaseModel):
 
 
 class OdooInvoiceWebhook(BaseModel):
-    """Webhook-Payload fuer Rechnungs-Events."""
+    """Webhook-Payload für Rechnungs-Events."""
     model_config = ConfigDict(extra="forbid")
 
     id: int = Field(..., gt=0)
@@ -170,7 +170,7 @@ class OdooInvoiceWebhook(BaseModel):
 
 
 class OdooPaymentWebhook(BaseModel):
-    """Webhook-Payload fuer Zahlungs-Events."""
+    """Webhook-Payload für Zahlungs-Events."""
     model_config = ConfigDict(extra="forbid")
 
     id: int = Field(..., gt=0)
@@ -186,7 +186,7 @@ class OdooPaymentWebhook(BaseModel):
 
 
 class OdooProductWebhook(BaseModel):
-    """Webhook-Payload fuer Produkt-Events."""
+    """Webhook-Payload für Produkt-Events."""
     model_config = ConfigDict(extra="forbid")
 
     id: int = Field(..., gt=0)
@@ -281,7 +281,7 @@ class OdooProductCatalog(BaseModel):
 
 
 class RiskScoreFeedback(BaseModel):
-    """Risk Score Feedback fuer Odoo."""
+    """Risk Score Feedback für Odoo."""
     score: float = Field(..., ge=0, le=100, description="Risiko-Score 0-100")
     payment_behavior_score: float = Field(..., ge=0, le=100, description="Zahlungsverhalten-Score")
     risk_level: str = Field(..., pattern="^(low|medium|high|critical)$")
@@ -290,16 +290,16 @@ class RiskScoreFeedback(BaseModel):
 
 
 class PaymentSuggestionFeedback(BaseModel):
-    """Zahlungsvorschlag Feedback fuer Odoo."""
+    """Zahlungsvorschlag Feedback für Odoo."""
     suggested_payment_term: str = Field(..., max_length=100, description="Empfohlene Zahlungsbedingung")
     suggested_credit_limit: Optional[float] = Field(None, ge=0, description="Empfohlenes Kreditlimit")
-    reason: str = Field(..., max_length=500, description="Begruendung")
+    reason: str = Field(..., max_length=500, description="Begründung")
     confidence: float = Field(..., ge=0, le=1, description="Konfidenz der Empfehlung")
     based_on_invoices: int = Field(..., ge=0, description="Anzahl analysierter Rechnungen")
 
 
 class SkontoPredictionFeedback(BaseModel):
-    """Skonto-Vorhersage Feedback fuer Odoo."""
+    """Skonto-Vorhersage Feedback für Odoo."""
     skonto_usage_probability: float = Field(..., ge=0, le=1, description="Wahrscheinlichkeit der Skonto-Nutzung")
     average_payment_days: float = Field(..., ge=0, description="Durchschnittliche Zahlungstage")
     recommended_skonto_percent: Optional[float] = Field(None, ge=0, le=10, description="Empfohlener Skonto-Prozentsatz")
@@ -307,7 +307,7 @@ class SkontoPredictionFeedback(BaseModel):
 
 
 class OdooFeedbackPayload(BaseModel):
-    """Payload fuer AI-Feedback Push zu Odoo."""
+    """Payload für AI-Feedback Push zu Odoo."""
     model_config = ConfigDict(extra="forbid")
 
     entity_id: UUID = Field(..., description="Lokale Entity-ID")
@@ -333,7 +333,7 @@ class OdooWebhookResponse(BaseModel):
 
 
 class OdooWebhookEventResponse(BaseModel):
-    """Response fuer Webhook Event Status."""
+    """Response für Webhook Event Status."""
     id: str
     event_id: str
     event_type: str
@@ -347,7 +347,7 @@ class OdooWebhookEventResponse(BaseModel):
 
 
 class OdooFeedbackResponse(BaseModel):
-    """Response fuer AI-Feedback Push."""
+    """Response für AI-Feedback Push."""
     id: str
     entity_id: str
     feedback_type: str
@@ -359,7 +359,7 @@ class OdooFeedbackResponse(BaseModel):
 
 
 class OdooSyncStatusResponse(BaseModel):
-    """Response fuer Sync-Status eines Datentyps."""
+    """Response für Sync-Status eines Datentyps."""
     data_type: str
     last_sync_at: Optional[datetime]
     last_successful_sync_at: Optional[datetime]
@@ -378,19 +378,19 @@ class OdooSyncStatusResponse(BaseModel):
 
 
 class OdooBatchFeedbackRequest(BaseModel):
-    """Batch-Request fuer mehrere AI-Feedbacks."""
+    """Batch-Request für mehrere AI-Feedbacks."""
     feedbacks: List[OdooFeedbackPayload] = Field(..., min_length=1, max_length=100)
     priority: str = Field(default="normal", pattern="^(low|normal|high)$")
 
 
 class OdooExtendedSyncRequest(BaseModel):
-    """Request fuer erweiterte Datentyp-Synchronisation."""
+    """Request für erweiterte Datentyp-Synchronisation."""
     data_types: List[str] = Field(
         ...,
         min_length=1,
         description="Zu synchronisierende Datentypen"
     )
-    since: Optional[datetime] = Field(None, description="Nur Aenderungen seit")
+    since: Optional[datetime] = Field(None, description="Nur Änderungen seit")
     batch_size: int = Field(default=100, ge=10, le=500)
 
     @field_validator("data_types")

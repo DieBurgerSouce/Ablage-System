@@ -2,9 +2,9 @@
 """
 Google Calendar API v3 Client.
 
-Verwendet httpx.AsyncClient fuer asynchrone API-Aufrufe.
-Implementiert Erstellung, Aktualisierung und Loeschung von
-Kalender-Ereignissen ueber die Google Calendar REST API.
+Verwendet httpx.AsyncClient für asynchrone API-Aufrufe.
+Implementiert Erstellung, Aktualisierung und Löschung von
+Kalender-Ereignissen über die Google Calendar REST API.
 
 Feinpoliert und durchdacht - Google Calendar Integration.
 """
@@ -25,9 +25,9 @@ BASE_URL = "https://www.googleapis.com/calendar/v3"
 
 class GoogleCalendarClient:
     """
-    Asynchroner Client fuer die Google Calendar API v3.
+    Asynchroner Client für die Google Calendar API v3.
 
-    Verwendet Context-Manager-Pattern fuer sicheres Ressourcen-Management.
+    Verwendet Context-Manager-Pattern für sicheres Ressourcen-Management.
 
     Usage:
         async with GoogleCalendarClient(access_token="...") as client:
@@ -40,7 +40,7 @@ class GoogleCalendarClient:
         Initialisiert den Google Calendar Client.
 
         Args:
-            access_token: OAuth2 Access Token fuer Google Calendar API
+            access_token: OAuth2 Access Token für Google Calendar API
         """
         self._token = access_token
         self._client = httpx.AsyncClient(
@@ -50,7 +50,7 @@ class GoogleCalendarClient:
         )
 
     async def close(self) -> None:
-        """Schliesst den HTTP-Client."""
+        """Schließt den HTTP-Client."""
         await self._client.aclose()
 
     async def __aenter__(self) -> "GoogleCalendarClient":
@@ -63,7 +63,7 @@ class GoogleCalendarClient:
         exc_val: Optional[BaseException],
         exc_tb: Optional[object],
     ) -> None:
-        """Context-Manager Exit - schliesst HTTP-Client."""
+        """Context-Manager Exit - schließt HTTP-Client."""
         await self.close()
 
     # =========================================================================
@@ -72,7 +72,7 @@ class GoogleCalendarClient:
 
     async def list_calendars(self) -> List[CalendarInfo]:
         """
-        Listet alle verfuegbaren Kalender des Benutzers auf.
+        Listet alle verfügbaren Kalender des Benutzers auf.
 
         Returns:
             Liste von CalendarInfo-Objekten
@@ -225,7 +225,7 @@ class GoogleCalendarClient:
         event_id: str,
     ) -> bool:
         """
-        Loescht ein Ereignis aus dem Kalender.
+        Löscht ein Ereignis aus dem Kalender.
 
         Args:
             calendar_id: Kalender-ID
@@ -251,7 +251,7 @@ class GoogleCalendarClient:
                 )
                 return True
 
-            # 404 = bereits geloescht, auch als Erfolg werten
+            # 404 = bereits gelöscht, auch als Erfolg werten
             if response.status_code == 404:
                 logger.info(
                     "google_event_already_deleted",

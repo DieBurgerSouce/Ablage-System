@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Customer Lifetime Value Service.
 
-Liefert Daten fuer das Customer LTV Widget:
+Liefert Daten für das Customer LTV Widget:
 - Kumulativer Umsatz pro Kunde
-- Trend-Analyse (wachsend/ruecklaeufig)
+- Trend-Analyse (wachsend/rücklaeufig)
 - Churn-Risiko-Indikator
 - Top-Kunden-Ranking
 
@@ -48,7 +48,7 @@ class RevenueTrend(str, Enum):
 
 @dataclass
 class CustomerMetrics:
-    """Metriken fuer einen einzelnen Kunden."""
+    """Metriken für einen einzelnen Kunden."""
     entity_id: str
     entity_name: str
     lifetime_value: Decimal = Decimal("0.00")
@@ -67,7 +67,7 @@ class CustomerMetrics:
 
 @dataclass
 class TrendDataPoint:
-    """Datenpunkt fuer Trend-Analyse."""
+    """Datenpunkt für Trend-Analyse."""
     period: str  # YYYY-MM
     total_revenue: Decimal
     customer_count: int
@@ -100,7 +100,7 @@ class CustomerLTVResult:
 
 
 class CustomerLTVService:
-    """Service fuer Customer Lifetime Value Metriken."""
+    """Service für Customer Lifetime Value Metriken."""
 
     # Churn-Risiko Schwellenwerte (Tage ohne Bestellung)
     CHURN_LOW = 30
@@ -208,10 +208,10 @@ class CustomerLTVService:
         company_id: Optional[UUID] = None,
         period_days: int = 365,
     ) -> Dict[str, Any]:
-        """Liefert Widget-Daten fuer Frontend.
+        """Liefert Widget-Daten für Frontend.
 
         Returns:
-            Dict mit Metriken fuer Widget-Anzeige
+            Dict mit Metriken für Widget-Anzeige
         """
         result = await self.get_customer_ltv(
             db, user_id, company_id, period_days
@@ -240,7 +240,7 @@ class CustomerLTVService:
                     "churnScore": round(c.churn_risk_score, 1),
                     "daysSinceOrder": c.days_since_last_order,
                 }
-                for c in result.top_customers[:5]  # Top 5 fuer Widget
+                for c in result.top_customers[:5]  # Top 5 für Widget
             ],
             "atRiskCustomers": [
                 {
@@ -289,7 +289,7 @@ class CustomerLTVService:
         today: date,
         company_id: Optional[UUID],
     ) -> CustomerMetrics:
-        """Berechne Metriken fuer einen Kunden."""
+        """Berechne Metriken für einen Kunden."""
         # Hole alle ausgehenden Rechnungen (Umsatz)
         query = select(InvoiceTracking).where(
             and_(
@@ -382,10 +382,10 @@ class CustomerLTVService:
         else:
             base_score = 95.0
 
-        # Modifikator: Bestellhaeufigkeit
+        # Modifikator: Bestellhäufigkeit
         avg_orders_per_month = total_orders / max(1, relationship_months)
         if avg_orders_per_month >= 2:
-            frequency_mod = -15  # Haeufige Besteller = weniger Risiko
+            frequency_mod = -15  # Häufige Besteller = weniger Risiko
         elif avg_orders_per_month >= 1:
             frequency_mod = -5
         elif avg_orders_per_month >= 0.5:
@@ -421,7 +421,7 @@ class CustomerLTVService:
         invoices: List[InvoiceTracking],
         today: date,
     ) -> tuple[RevenueTrend, float]:
-        """Berechne Umsatz-Trend fuer einen Kunden."""
+        """Berechne Umsatz-Trend für einen Kunden."""
         if len(invoices) < 2:
             return RevenueTrend.STABLE, 0.0
 

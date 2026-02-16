@@ -2,7 +2,7 @@
 """
 Privacy Analytics API.
 
-Bietet differentially-private Aggregationen fuer sensible Daten.
+Bietet differentially-private Aggregationen für sensible Daten.
 Schuetzt Privacy durch mathematische Garantien (Epsilon-Differential-Privacy).
 
 Vision 2.0 Feature: Anonymized Analytics (Phase 5)
@@ -50,32 +50,32 @@ FilterDict = Dict[str, FilterValue]
 
 
 class DPCountRequest(BaseModel):
-    """Request fuer DP-geschuetzten COUNT."""
+    """Request für DP-geschuetzten COUNT."""
     table: str = Field(..., description="Tabelle (documents, invoices, entities)")
     filters: FilterDict = Field(default_factory=dict, description="Filter-Bedingungen")
     epsilon: Optional[float] = Field(None, ge=0.1, le=5.0, description="Privacy-Parameter")
 
 
 class DPSumRequest(BaseModel):
-    """Request fuer DP-geschuetzte SUM."""
+    """Request für DP-geschuetzte SUM."""
     table: str = Field(..., description="Tabelle")
-    column: str = Field(..., description="Spalte fuer SUM")
+    column: str = Field(..., description="Spalte für SUM")
     max_contribution: float = Field(..., gt=0, description="Max Beitrag pro Zeile")
     filters: FilterDict = Field(default_factory=dict)
     epsilon: Optional[float] = Field(None, ge=0.1, le=5.0)
 
 
 class DPHistogramRequest(BaseModel):
-    """Request fuer DP-geschuetztes Histogram."""
+    """Request für DP-geschuetztes Histogram."""
     table: str = Field(..., description="Tabelle")
     group_by: str = Field(..., description="Gruppierungs-Spalte")
     filters: FilterDict = Field(default_factory=dict)
     epsilon: Optional[float] = Field(None, ge=0.1, le=5.0)
-    suppress_below_k: bool = Field(True, description="Gruppen unter K-Schwelle unterdruecken")
+    suppress_below_k: bool = Field(True, description="Gruppen unter K-Schwelle unterdrücken")
 
 
 class DPResultResponse(BaseModel):
-    """Response fuer DP-geschuetzte Ergebnisse."""
+    """Response für DP-geschuetzte Ergebnisse."""
     value: float
     epsilon_used: float
     mechanism: str
@@ -86,14 +86,14 @@ class DPResultResponse(BaseModel):
 
 
 class DPHistogramResponse(BaseModel):
-    """Response fuer DP-geschuetztes Histogram."""
+    """Response für DP-geschuetztes Histogram."""
     categories: Dict[str, DPResultResponse]
     total_epsilon: float
     budget_remaining: float
 
 
 class BudgetStatusResponse(BaseModel):
-    """Response fuer Budget-Status."""
+    """Response für Budget-Status."""
     company_id: str
     date: str
     total_budget: float
@@ -105,7 +105,7 @@ class BudgetStatusResponse(BaseModel):
 
 
 class SensitivityInfoResponse(BaseModel):
-    """Response fuer Sensitivitaets-Info."""
+    """Response für Sensitivitaets-Info."""
     level: str
     epsilon_range: List[float]
     description: str
@@ -185,9 +185,9 @@ async def get_privacy_budget(
     current_user: User = Depends(get_current_active_user),
 ) -> BudgetStatusResponse:
     """
-    Gibt aktuellen Privacy-Budget-Status zurueck.
+    Gibt aktuellen Privacy-Budget-Status zurück.
 
-    Das Budget wird taeglich um Mitternacht zurueckgesetzt.
+    Das Budget wird täglich um Mitternacht zurückgesetzt.
     """
     company_id = await get_company_id(current_user)
     tracker = await get_budget_tracker()
@@ -212,7 +212,7 @@ async def dp_count_query(
     current_user: User = Depends(get_current_active_user),
 ) -> DPResultResponse:
     """
-    Fuehrt einen privacy-geschuetzten COUNT aus.
+    Führt einen privacy-geschuetzten COUNT aus.
 
     Verwendet Laplace-Mechanismus mit Sensitivitaet 1.
     Gruppen unter K-Schwelle (default: 5) werden als 0 gemeldet.
@@ -228,20 +228,20 @@ async def dp_count_query(
 
     epsilon = request.epsilon or dp_service.config.default_epsilon
 
-    # Pruefe Budget
+    # Prüfe Budget
     if not await tracker.check_budget_available(company_id, epsilon):
         status_obj = await tracker.get_status(company_id)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Privacy-Budget erschoepft. Verbleibend: {status_obj.remaining:.4f}, "
-                   f"Benoetigt: {epsilon:.4f}. Reset um {status_obj.reset_at.isoformat()}."
+                   f"Benötigt: {epsilon:.4f}. Reset um {status_obj.reset_at.isoformat()}."
         )
 
-    # Fuehre echten COUNT aus
+    # Führe echten COUNT aus
     model = ALLOWED_TABLES[request.table]["model"]
     query = select(func.count(model.id)).where(model.company_id == company_id)
 
-    # Wende Filter an (sichere Implementierung noetig)
+    # Wende Filter an (sichere Implementierung nötig)
     # Hier vereinfacht - in Produktion mit SQLAlchemy Filter Builder
 
     result = await db.execute(query)
@@ -266,7 +266,7 @@ async def dp_count_query(
 
     remaining = await tracker.get_remaining_budget(company_id)
 
-    # SECURITY: Keine Original-Werte loggen (Geschaeftsgeheimnis/PII)
+    # SECURITY: Keine Original-Werte loggen (Geschäftsgeheimnis/PII)
     # Nur Metadata ohne sensible Informationen
     logger.info(
         "dp_count_executed",
@@ -292,9 +292,9 @@ async def dp_sum_query(
     current_user: User = Depends(get_current_active_user),
 ) -> DPResultResponse:
     """
-    Fuehrt eine privacy-geschuetzte SUM aus.
+    Führt eine privacy-geschuetzte SUM aus.
 
-    Benoetigt max_contribution um Sensitivitaet zu begrenzen.
+    Benötigt max_contribution um Sensitivitaet zu begrenzen.
     """
     company_id = await get_company_id(current_user)
 
@@ -306,14 +306,14 @@ async def dp_sum_query(
 
     epsilon = request.epsilon or dp_service.config.default_epsilon
 
-    # Pruefe Budget
+    # Prüfe Budget
     if not await tracker.check_budget_available(company_id, epsilon):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Privacy-Budget erschoepft."
         )
 
-    # Fuehre echten SUM aus
+    # Führe echten SUM aus
     model = ALLOWED_TABLES[request.table]["model"]
     column = getattr(model, request.column)
     query = select(func.sum(column)).where(model.company_id == company_id)
@@ -348,7 +348,7 @@ async def get_sensitivity_levels(
     current_user: User = Depends(get_current_active_user),
 ) -> List[SensitivityInfoResponse]:
     """
-    Gibt verfuegbare Sensitivitaetsstufen mit empfohlenen Epsilon-Werten zurueck.
+    Gibt verfügbare Sensitivitaetsstufen mit empfohlenen Epsilon-Werten zurück.
     """
     dp_service = get_dp_service()
 
@@ -371,13 +371,13 @@ async def get_sensitivity_levels(
 
 @router.get("/estimate-noise")
 async def estimate_noise_impact(
-    value: float = Query(..., description="Geschaetzter Wert"),
+    value: float = Query(..., description="Geschätzter Wert"),
     sensitivity: float = Query(1.0, description="Query-Sensitivitaet"),
     epsilon: float = Query(1.0, ge=0.1, le=5.0, description="Privacy-Parameter"),
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Union[int, float]]:
     """
-    Schaetzt den erwarteten Rausch-Impact vor Ausfuehrung einer Query.
+    Schätzt den erwarteten Rausch-Impact vor Ausführung einer Query.
 
     Hilft bei der Wahl des richtigen Epsilon-Werts.
     """
@@ -390,12 +390,12 @@ async def reset_privacy_budget(
     current_user: User = Depends(get_current_active_user),
 ) -> None:
     """
-    Setzt Privacy-Budget zurueck (nur fuer Admins).
+    Setzt Privacy-Budget zurück (nur für Admins).
     """
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen das Budget zuruecksetzen."
+            detail="Nur Administratoren können das Budget zurücksetzen."
         )
 
     company_id = await get_company_id(current_user)

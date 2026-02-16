@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Celery Tasks fuer automatische Dokumentenablage und Matching.
+Celery Tasks für automatische Dokumentenablage und Matching.
 
 Feature #7: Automation 2.0
 - auto_file_new_documents_task: Neue Dokumente automatisch ablegen
-- train_filing_model_task: Woechentlich Filing-Modelle trainieren
+- train_filing_model_task: Wöchentlich Filing-Modelle trainieren
 - auto_match_documents_task: Einzelnes Dokument matchen
-- batch_match_documents_task: Taeglich Batch-Matching durchfuehren
+- batch_match_documents_task: Täglich Batch-Matching durchführen
 """
 
 from __future__ import annotations
@@ -40,11 +40,11 @@ def auto_file_new_documents_task(
 ) -> Dict[str, object]:
     """Legt neue/unklassifizierte Dokumente automatisch ab.
 
-    Wird regelmaessig via Celery Beat ausgefuehrt.
+    Wird regelmäßig via Celery Beat ausgeführt.
     Sucht Dokumente ohne Kategorie und versucht sie automatisch abzulegen.
 
     Args:
-        company_id: Optional: Nur fuer diese Firma
+        company_id: Optional: Nur für diese Firma
         limit: Max. Anzahl Dokumente pro Durchlauf
 
     Returns:
@@ -108,7 +108,7 @@ def auto_file_new_documents_task(
 
                 except Exception as exc:
                     error_msg = (
-                        f"Fehler bei Auto-Filing fuer "
+                        f"Fehler bei Auto-Filing für "
                         f"Company {cid}: {exc}"
                     )
                     errors.append(error_msg)
@@ -126,7 +126,7 @@ def auto_file_new_documents_task(
 
     logger.info(
         "Auto-Filing abgeschlossen: %d verarbeitet, %d abgelegt, "
-        "%d uebersprungen",
+        "%d übersprungen",
         result.get("processed", 0),
         result.get("filed", 0),
         result.get("skipped", 0),
@@ -147,11 +147,11 @@ def train_filing_model_task(
 ) -> Dict[str, object]:
     """Trainiert Filing-Modelle basierend auf historischen Daten.
 
-    Wird woechentlich via Celery Beat ausgefuehrt.
+    Wird wöchentlich via Celery Beat ausgeführt.
     Aktualisiert Accuracy-Werte und Trainingsstatistiken.
 
     Args:
-        company_id: Optional: Nur fuer diese Firma
+        company_id: Optional: Nur für diese Firma
 
     Returns:
         Dict mit Trainings-Statistiken
@@ -207,7 +207,7 @@ def train_filing_model_task(
 
                 except Exception as exc:
                     error_msg = (
-                        f"Fehler beim Training fuer "
+                        f"Fehler beim Training für "
                         f"Company {cid}: {exc}"
                     )
                     errors.append(error_msg)
@@ -255,7 +255,7 @@ def auto_match_documents_task(
         Dict mit Match-Ergebnissen
     """
     logger.info(
-        "Starte Auto-Matching fuer Dokument %s...", document_id
+        "Starte Auto-Matching für Dokument %s...", document_id
     )
 
     async def _match() -> Dict[str, object]:
@@ -295,7 +295,7 @@ def auto_match_documents_task(
     result = asyncio.run(_match())
 
     logger.info(
-        "Auto-Matching abgeschlossen fuer %s: %d Matches",
+        "Auto-Matching abgeschlossen für %s: %d Matches",
         document_id,
         result.get("matches_found", 0),
     )
@@ -315,13 +315,13 @@ def batch_match_documents_task(
     confidence_threshold: float = 0.8,
     limit: int = 200,
 ) -> Dict[str, object]:
-    """Batch-Matching: Sucht Matches fuer ungematchte Dokumente.
+    """Batch-Matching: Sucht Matches für ungematchte Dokumente.
 
-    Wird taeglich via Celery Beat ausgefuehrt.
+    Wird täglich via Celery Beat ausgeführt.
     Verarbeitet Dokumente die noch keine Matching-Partner haben.
 
     Args:
-        company_id: Optional: Nur fuer diese Firma
+        company_id: Optional: Nur für diese Firma
         confidence_threshold: Mindest-Confidence
         limit: Max. Anzahl Dokumente pro Durchlauf
 
@@ -374,7 +374,7 @@ def batch_match_documents_task(
                             total_matches += len(saved)
                         except Exception as exc:
                             logger.warning(
-                                "Match-Fehler fuer Dokument %s: %s",
+                                "Match-Fehler für Dokument %s: %s",
                                 doc_id_str,
                                 str(exc),
                             )
@@ -383,7 +383,7 @@ def batch_match_documents_task(
 
                 except Exception as exc:
                     error_msg = (
-                        f"Fehler beim Batch-Matching fuer "
+                        f"Fehler beim Batch-Matching für "
                         f"Company {cid}: {exc}"
                     )
                     errors.append(error_msg)

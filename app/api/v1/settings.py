@@ -73,13 +73,13 @@ class PrivacySettings(BaseModel):
 # ==================== Widget Config Schemas ====================
 
 class WidgetPosition(BaseModel):
-    """Position und Groesse eines Widgets im Grid."""
+    """Position und Größe eines Widgets im Grid."""
     id: str = Field(..., description="Eindeutige Widget-ID")
     type: str = Field(..., description="Widget-Typ")
     x: int = Field(..., ge=0, le=11, description="X-Position im Grid (0-11)")
     y: int = Field(..., ge=0, description="Y-Position im Grid")
     w: int = Field(..., ge=1, le=12, description="Breite in Grid-Spalten (1-12)")
-    h: int = Field(..., ge=1, le=6, description="Hoehe in Grid-Zeilen (1-6)")
+    h: int = Field(..., ge=1, le=6, description="Höhe in Grid-Zeilen (1-6)")
 
 
 class WidgetSettings(BaseModel):
@@ -92,7 +92,7 @@ class WidgetSettings(BaseModel):
 
 
 class WidgetConfigResponse(BaseModel):
-    """Vollstaendige Widget-Konfiguration."""
+    """Vollständige Widget-Konfiguration."""
     widgets: list[WidgetPosition]
     active_preset: Optional[str] = Field(None, description="Aktives Preset")
     compact_mode: bool = Field(False, description="Kompakter Modus")
@@ -485,7 +485,7 @@ async def reset_settings(
 # ==================== Widget Config Endpoints ====================
 
 def get_widget_config(user: User) -> JSONDict:
-    """Laedt Widget-Konfiguration aus User.preferences oder gibt Defaults zurueck."""
+    """Laedt Widget-Konfiguration aus User.preferences oder gibt Defaults zurück."""
     config = dict(DEFAULT_WIDGET_CONFIG)
 
     if user.preferences and "widget_config" in user.preferences:
@@ -510,7 +510,7 @@ async def get_widget_configuration(
 ):
     """Widget-Konfiguration abrufen.
 
-    Gibt die gespeicherte Dashboard-Widget-Konfiguration zurueck:
+    Gibt die gespeicherte Dashboard-Widget-Konfiguration zurück:
     - Widget-Positionen (x, y, w, h)
     - Aktives Preset
     - Kompakter Modus
@@ -617,7 +617,7 @@ async def update_single_widget_settings(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Einstellungen fuer ein einzelnes Widget aktualisieren.
+    """Einstellungen für ein einzelnes Widget aktualisieren.
 
     Aktualisiert nur die individuellen Einstellungen eines Widgets
     (z.B. Zeitraum, Filter, Diagrammtyp).
@@ -634,7 +634,7 @@ async def update_single_widget_settings(
     # Aktuelle Konfiguration laden
     current_config = get_widget_config(current_user)
 
-    # Pruefen ob Widget existiert
+    # Prüfen ob Widget existiert
     widget_exists = any(w["id"] == widget_id for w in current_config["widgets"])
     if not widget_exists:
         raise HTTPException(
@@ -675,7 +675,7 @@ async def reset_widget_configuration(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Widget-Konfiguration auf Standardwerte zuruecksetzen."""
+    """Widget-Konfiguration auf Standardwerte zurücksetzen."""
     reset_config = dict(DEFAULT_WIDGET_CONFIG)
     reset_config["last_synced"] = datetime.now(timezone.utc).isoformat()
 
@@ -691,6 +691,6 @@ async def reset_widget_configuration(
     )
 
     return {
-        "message": "Widget-Konfiguration wurde auf Standardwerte zurueckgesetzt",
+        "message": "Widget-Konfiguration wurde auf Standardwerte zurückgesetzt",
         "reset_at": reset_config["last_synced"]
     }

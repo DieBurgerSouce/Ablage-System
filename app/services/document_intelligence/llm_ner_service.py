@@ -1,6 +1,6 @@
 """LLM-basierter Named Entity Recognition Service.
 
-Verwendet Qwen3-14B via Ollama fuer intelligente Entity-Extraktion
+Verwendet Qwen3-14B via Ollama für intelligente Entity-Extraktion
 aus deutschen Dokumenten. Extrahiert:
 - Fristen/Deadlines
 - Geldbetraege
@@ -102,7 +102,7 @@ class NERResult:
         return [e for e in self.entities if e.entity_type == EntityType.CONTRACT_NUMBER]
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert zu Dictionary fuer JSON-Serialisierung."""
+        """Konvertiert zu Dictionary für JSON-Serialisierung."""
         return {
             "document_id": str(self.document_id) if self.document_id else None,
             "entities": [
@@ -130,18 +130,18 @@ class NERResult:
         }
 
 
-# System-Prompt fuer NER-Extraktion
-NER_SYSTEM_PROMPT = """Du bist ein spezialisierter NER-Extraktions-Assistent fuer deutsche Geschaeftsdokumente.
+# System-Prompt für NER-Extraktion
+NER_SYSTEM_PROMPT = """Du bist ein spezialisierter NER-Extraktions-Assistent für deutsche Geschäftsdokumente.
 
-Deine Aufgabe ist es, wichtige Entitaeten aus dem gegebenen Dokumenttext zu extrahieren und als strukturiertes JSON zurueckzugeben.
+Deine Aufgabe ist es, wichtige Entitäten aus dem gegebenen Dokumenttext zu extrahieren und als strukturiertes JSON zurückzugeben.
 
-## Zu extrahierende Entitaeten:
+## Zu extrahierende Entitäten:
 
-1. **deadline**: Fristen, Termine, Stichtage, Kuendigungsfristen
-   - Beispiele: "bis zum 31.12.2024", "innerhalb von 14 Tagen", "Kuendigungsfrist: 3 Monate"
-   - normalized_value: ISO-Datum wenn moeglich (YYYY-MM-DD)
+1. **deadline**: Fristen, Termine, Stichtage, Kündigungsfristen
+   - Beispiele: "bis zum 31.12.2024", "innerhalb von 14 Tagen", "Kündigungsfrist: 3 Monate"
+   - normalized_value: ISO-Datum wenn möglich (YYYY-MM-DD)
 
-2. **amount**: Geldbetraege mit Waehrung
+2. **amount**: Geldbetraege mit Währung
    - Beispiele: "1.234,56 EUR", "5.000 Euro", "15,99 Euro monatlich"
    - normalized_value: Numerischer Wert ohne Formatierung
 
@@ -160,7 +160,7 @@ Deine Aufgabe ist es, wichtige Entitaeten aus dem gegebenen Dokumenttext zu extr
 6. **reference**: Aktenzeichen, Vorgangsnummern
    - Beispiele: "Az.: 123/24", "Ihr Zeichen: ABC-2024"
 
-7. **address**: Vollstaendige Adressen
+7. **address**: Vollständige Adressen
    - Beispiele: "Musterstrasse 123, 12345 Berlin"
 
 8. **date**: Allgemeine Datumsangaben (keine Fristen)
@@ -188,7 +188,7 @@ Antworte NUR mit validem JSON in diesem Format:
       "value": "bis zum 31.12.2024",
       "normalized_value": "2024-12-31",
       "confidence": 0.95,
-      "context": "Die Kuendigungsfrist endet bis zum 31.12.2024."
+      "context": "Die Kündigungsfrist endet bis zum 31.12.2024."
     }
   ]
 }
@@ -200,15 +200,15 @@ Antworte NUR mit validem JSON in diesem Format:
 2. Setze confidence zwischen 0.0 und 1.0 basierend auf Klarheit
 3. Liefere context: ca. 50-100 Zeichen um die Entity herum
 4. Bei Unsicherheit lieber weglassen als raten
-5. Antworte NUR mit JSON, keine Erklaerungen
+5. Antworte NUR mit JSON, keine Erklärungen
 6. Wenn keine Entities gefunden: {"entities": []}
 """
 
 
 class LLMNERService:
-    """Service fuer LLM-basierte Named Entity Recognition.
+    """Service für LLM-basierte Named Entity Recognition.
 
-    Verwendet Qwen3-14B via Ollama fuer praezise Entity-Extraktion
+    Verwendet Qwen3-14B via Ollama für praezise Entity-Extraktion
     aus deutschen Dokumenten mit strukturierter JSON-Ausgabe.
     """
 
@@ -227,8 +227,8 @@ class LLMNERService:
         self._model = model or getattr(
             settings, "DEFAULT_LLM_ANALYSIS", "qwen3:14b"
         )
-        self._max_text_length = 8000  # Maximale Textlaenge pro Anfrage
-        self._chunk_overlap = 200  # Ueberlappung bei Chunking
+        self._max_text_length = 8000  # Maximale Textlänge pro Anfrage
+        self._chunk_overlap = 200  # Überlappung bei Chunking
 
     def _chunk_text(self, text: str) -> List[str]:
         """Teilt langen Text in Chunks.
@@ -311,7 +311,7 @@ class LLMNERService:
 
         Args:
             entity_data: Dictionary aus LLM-Antwort
-            text: Originaltext fuer Position
+            text: Originaltext für Position
 
         Returns:
             ExtractedEntity oder None bei Fehlern
@@ -374,7 +374,7 @@ class LLMNERService:
             key = (entity.entity_type, entity.normalized_value or entity.value)
 
             if key in seen:
-                # Behalte Entity mit hoeherer Confidence
+                # Behalte Entity mit höherer Confidence
                 if entity.confidence > seen[key].confidence:
                     seen[key] = entity
             else:
@@ -427,7 +427,7 @@ class LLMNERService:
                     LLMMessage(role="system", content=NER_SYSTEM_PROMPT),
                     LLMMessage(
                         role="user",
-                        content=f"Extrahiere alle relevanten Entitaeten aus diesem Text:\n\n{chunk}",
+                        content=f"Extrahiere alle relevanten Entitäten aus diesem Text:\n\n{chunk}",
                     ),
                 ]
 
@@ -436,8 +436,8 @@ class LLMNERService:
                     messages=messages,
                     model=self._model,
                     context_type=LLMContextType.EXTRACTION,
-                    enable_thinking=False,  # Kein Thinking fuer strukturierte Ausgabe
-                    temperature=0.1,  # Niedrig fuer konsistente Extraktion
+                    enable_thinking=False,  # Kein Thinking für strukturierte Ausgabe
+                    temperature=0.1,  # Niedrig für konsistente Extraktion
                 )
 
                 # Response parsen
@@ -528,7 +528,7 @@ class LLMNERService:
     ) -> List[ExtractedEntity]:
         """Extrahiert nur Fristen/Deadlines aus Text.
 
-        Convenience-Methode fuer Deadline-fokussierte Extraktion.
+        Convenience-Methode für Deadline-fokussierte Extraktion.
 
         Args:
             text: Zu analysierender Text
@@ -624,7 +624,7 @@ _llm_ner_service_lock = threading.Lock()
 
 
 def get_llm_ner_service() -> LLMNERService:
-    """Gibt die Singleton-Instanz des LLM NER Service zurueck.
+    """Gibt die Singleton-Instanz des LLM NER Service zurück.
 
     Returns:
         LLMNERService Singleton-Instanz

@@ -71,7 +71,7 @@ except ImportError:
     # PyTorch not available - GPU agents won't be loaded
     pass
 
-# PaddleOCR PP-OCRv5 - CPU-optimiert, immer verfuegbar
+# PaddleOCR PP-OCRv5 - CPU-optimiert, immer verfügbar
 try:
     from .paddle_ocr_agent import PaddleOCRAgent
     __all__.append("PaddleOCRAgent")

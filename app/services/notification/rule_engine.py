@@ -1,12 +1,12 @@
 """Notification Rule Engine.
 
-Event-basierte Regel-Auswertung fuer das Enterprise Notification System.
-Wertet Regeln gegen Events aus und fuehrt Aktionen ueber BESTEHENDE Services aus.
+Event-basierte Regel-Auswertung für das Enterprise Notification System.
+Wertet Regeln gegen Events aus und führt Aktionen über BESTEHENDE Services aus.
 
 Features:
 - Komplexe Bedingungs-Auswertung (AND, OR, NOT)
 - Multiple Aktions-Typen (in_app, push, email, webhook)
-- Quiet Hours mit Zeitzonenunterstuetzung
+- Quiet Hours mit Zeitzonenunterstützung
 - Rate Limiting pro Regel
 - Event Bus Integration
 """
@@ -61,18 +61,18 @@ RULES_TRIGGERED = Counter(
 
 RULE_EVALUATION_TIME = Histogram(
     "notification_rule_evaluation_seconds",
-    "Zeit fuer Regel-Auswertung",
+    "Zeit für Regel-Auswertung",
     buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0]
 )
 
 RULES_SKIPPED_QUIET_HOURS = Counter(
     "notification_rules_skipped_quiet_hours_total",
-    "Regeln wegen Quiet Hours uebersprungen"
+    "Regeln wegen Quiet Hours übersprungen"
 )
 
 RULES_SKIPPED_RATE_LIMIT = Counter(
     "notification_rules_skipped_rate_limit_total",
-    "Regeln wegen Rate Limit uebersprungen"
+    "Regeln wegen Rate Limit übersprungen"
 )
 
 ACTIONS_FILTERED_SMART = Counter(
@@ -87,7 +87,7 @@ ACTIONS_FILTERED_SMART = Counter(
 # =============================================================================
 
 class ActionType(str, Enum):
-    """Aktionstypen fuer Notifications."""
+    """Aktionstypen für Notifications."""
     IN_APP = "in_app"
     PUSH = "push"
     EMAIL = "email"
@@ -96,7 +96,7 @@ class ActionType(str, Enum):
 
 @dataclass
 class NotificationAction:
-    """Eine auszufuehrende Notification-Aktion."""
+    """Eine auszuführende Notification-Aktion."""
     action_type: ActionType
     rule_id: UUID
     user_id: UUID
@@ -104,19 +104,19 @@ class NotificationAction:
     payload: Dict[str, Any]
     priority: str = "normal"
 
-    # Fuer in_app
+    # Für in_app
     title: Optional[str] = None
     message: Optional[str] = None
     action_url: Optional[str] = None
 
-    # Fuer email
+    # Für email
     email_template: Optional[str] = None
     email_subject: Optional[str] = None
 
-    # Fuer webhook
+    # Für webhook
     webhook_url: Optional[str] = None
 
-    # Fuer push
+    # Für push
     push_data: Optional[Dict[str, Any]] = None
 
 
@@ -151,7 +151,7 @@ class EventEvaluationResult:
 class RuleConditionMatcher:
     """Evaluiert komplexe Bedingungen gegen Event-Daten.
 
-    Unterstuetzt:
+    Unterstützt:
     - Vergleichsoperatoren: eq, ne, gt, gte, lt, lte
     - String-Operatoren: contains, startswith, endswith, regex
     - List-Operatoren: in, not_in
@@ -171,7 +171,7 @@ class RuleConditionMatcher:
         "startswith": lambda a, b: str(a).startswith(b) if a else False,
         "endswith": lambda a, b: str(a).endswith(b) if a else False,
         "in": lambda a, b: a in b if isinstance(b, (list, tuple, set)) else False,
-        # BUG FIX: Bei ungueltigem Input False zurueckgeben (fail-safe, nicht fail-open!)
+        # BUG FIX: Bei ungültigem Input False zurückgeben (fail-safe, nicht fail-open!)
         "not_in": lambda a, b: a not in b if isinstance(b, (list, tuple, set)) else False,
         "is_null": lambda a, _: a is None,
         "is_not_null": lambda a, _: a is not None,
@@ -183,7 +183,7 @@ class RuleConditionMatcher:
 
         Args:
             conditions: Bedingungs-Definition (JSON)
-            data: Event-Payload zur Pruefung
+            data: Event-Payload zur Prüfung
 
         Returns:
             True wenn Bedingungen erfuellt
@@ -352,7 +352,7 @@ class NotificationRuleEngine:
             event_type=event.event_type.value,
         )
 
-        # Lade aktive Regeln fuer diesen Event-Typ
+        # Lade aktive Regeln für diesen Event-Typ
         rules = await self._get_active_rules(db, event.event_type.value, event.user_id)
         result.rules_checked = len(rules)
 
@@ -396,7 +396,7 @@ class NotificationRuleEngine:
         event_type: str,
         user_id: Optional[UUID] = None
     ) -> List[NotificationRule]:
-        """Laedt aktive Regeln fuer einen Event-Typ.
+        """Laedt aktive Regeln für einen Event-Typ.
 
         Args:
             db: Database Session
@@ -427,7 +427,7 @@ class NotificationRuleEngine:
         """Evaluiert eine einzelne Regel gegen ein Event.
 
         Args:
-            rule: Die zu pruefende Regel
+            rule: Die zu prüfende Regel
             event: Das Event
 
         Returns:
@@ -439,24 +439,24 @@ class NotificationRuleEngine:
             matched=False,
         )
 
-        # 1. Quiet Hours pruefen
+        # 1. Quiet Hours prüfen
         if self._is_quiet_hours(rule):
             result.skipped_reason = "quiet_hours"
             RULES_SKIPPED_QUIET_HOURS.inc()
             return result
 
-        # 2. Rate Limit pruefen
+        # 2. Rate Limit prüfen
         if self._is_rate_limited(rule):
             result.skipped_reason = "rate_limited"
             RULES_SKIPPED_RATE_LIMIT.inc()
             return result
 
-        # 3. Bedingungen pruefen
+        # 3. Bedingungen prüfen
         event_data = self._build_event_data(event)
         conditions = rule.conditions or {}
 
         if not self._matcher.match(conditions, event_data):
-            return result  # Keine Uebereinstimmung
+            return result  # Keine Übereinstimmung
 
         # 4. Match! Aktionen generieren
         result.matched = True
@@ -468,7 +468,7 @@ class NotificationRuleEngine:
         return result
 
     def _is_quiet_hours(self, rule: NotificationRule) -> bool:
-        """Prueft ob gerade Quiet Hours aktiv sind.
+        """Prüft ob gerade Quiet Hours aktiv sind.
 
         Args:
             rule: Die Regel mit Quiet Hours Einstellungen
@@ -486,12 +486,12 @@ class NotificationRuleEngine:
             start = rule.quiet_hours_start
             end = rule.quiet_hours_end
 
-            # Beruecksichtige Mitternachts-Uebergang (22:00 - 08:00)
+            # Berücksichtige Mitternachts-Übergang (22:00 - 08:00)
             if start <= end:
                 # Normaler Bereich (z.B. 09:00 - 17:00)
                 return start <= now <= end
             else:
-                # Ueber Mitternacht (z.B. 22:00 - 08:00)
+                # Über Mitternacht (z.B. 22:00 - 08:00)
                 return now >= start or now <= end
 
         except Exception as e:
@@ -499,7 +499,7 @@ class NotificationRuleEngine:
             return False
 
     def _is_rate_limited(self, rule: NotificationRule) -> bool:
-        """Prueft Rate Limits (cooldown + max_per_day).
+        """Prüft Rate Limits (cooldown + max_per_day).
 
         Args:
             rule: Die Regel mit Rate Limit Einstellungen
@@ -509,7 +509,7 @@ class NotificationRuleEngine:
         """
         now = datetime.now(timezone.utc)
 
-        # Cooldown pruefen
+        # Cooldown prüfen
         if rule.cooldown_minutes and rule.cooldown_minutes > 0:
             last_trigger = self._trigger_timestamps.get(rule.id)
             if last_trigger:
@@ -517,7 +517,7 @@ class NotificationRuleEngine:
                 if elapsed < rule.cooldown_minutes:
                     return True
 
-        # Max per day pruefen
+        # Max per day prüfen
         if rule.max_per_day:
             today = now.date().isoformat()
             key = (rule.id, today)
@@ -528,18 +528,18 @@ class NotificationRuleEngine:
         return False
 
     def _record_trigger(self, rule: NotificationRule) -> None:
-        """Zeichnet einen Trigger fuer Rate Limiting auf."""
+        """Zeichnet einen Trigger für Rate Limiting auf."""
         now = datetime.now(timezone.utc)
 
         # Timestamp aktualisieren
         self._trigger_timestamps[rule.id] = now
 
-        # Daily Count erhoehen
+        # Daily Count erhöhen
         today = now.date().isoformat()
         key = (rule.id, today)
         self._daily_counts[key] = self._daily_counts.get(key, 0) + 1
 
-        # Alte Eintraege bereinigen (aelter als gestern)
+        # Alte Einträge bereinigen (aelter als gestern)
         yesterday = (now - timedelta(days=1)).date().isoformat()
         self._daily_counts = {
             k: v for k, v in self._daily_counts.items()
@@ -563,7 +563,7 @@ class NotificationRuleEngine:
             "user_id": str(event.user_id) if event.user_id else None,
             "space_id": str(event.space_id) if event.space_id else None,
             "payload": event.payload or {},
-            **event.payload,  # Flatten payload fuer einfachen Zugriff
+            **event.payload,  # Flatten payload für einfachen Zugriff
         }
 
     def _build_actions(
@@ -626,11 +626,11 @@ class NotificationRuleEngine:
     ) -> Dict[str, Any]:
         """Ersetzt Template-Variablen in Aktion.
 
-        Unterstuetzt: {{event.payload.field}}, {{event.timestamp}}, etc.
+        Unterstützt: {{event.payload.field}}, {{event.timestamp}}, etc.
 
         Args:
             action_def: Aktions-Definition
-            event: Das Event fuer Variablen
+            event: Das Event für Variablen
 
         Returns:
             Gerenderte Aktion
@@ -658,14 +658,14 @@ class NotificationRuleEngine:
         db: AsyncSession,
         actions: List[NotificationAction]
     ) -> Dict[str, int]:
-        """Fuehrt Aktionen ueber bestehende Services aus.
+        """Führt Aktionen über bestehende Services aus.
 
         Args:
             db: Database Session
             actions: Liste von Aktionen
 
         Returns:
-            Dict mit Zaehler pro Aktionstyp
+            Dict mit Zähler pro Aktionstyp
         """
         # Lazy Import um Circular Dependencies zu vermeiden
         from app.services.notification_service import NotificationService
@@ -675,18 +675,18 @@ class NotificationRuleEngine:
         results = {t.value: 0 for t in ActionType}
 
         for action in actions:
-            # Smart Engine Filter: Pruefen ob Benachrichtigung gesendet werden soll
+            # Smart Engine Filter: Prüfen ob Benachrichtigung gesendet werden soll
             try:
                 smart_engine = SmartNotificationEngine()
                 smart_event = NotificationEvent(
                     event_id=str(action.rule_id),
                     event_type=action.event_type,
-                    category=EventCategory.DOCUMENT,  # Default, kann spaeter verfeinert werden
+                    category=EventCategory.DOCUMENT,  # Default, kann später verfeinert werden
                     title=action.title or "Benachrichtigung",
                     message=action.message or "",
                     priority=NotificationPriority.MEDIUM,  # Map from action priority
                     user_id=action.user_id,
-                    company_id=action.user_id,  # Placeholder - wird spaeter verfeinert
+                    company_id=action.user_id,  # Placeholder - wird später verfeinert
                 )
                 decision = await smart_engine.should_notify(smart_event)
                 if not decision.should_notify:
@@ -864,7 +864,7 @@ class NotificationRuleEngine:
         await db.commit()
 
     # =========================================================================
-    # CRUD Operations fuer Regeln
+    # CRUD Operations für Regeln
     # =========================================================================
 
     async def create_rule(
@@ -981,7 +981,7 @@ class NotificationRuleEngine:
         rule_id: UUID,
         user_id: UUID
     ) -> bool:
-        """Loescht eine Regel.
+        """Löscht eine Regel.
 
         Args:
             db: Database Session
@@ -989,7 +989,7 @@ class NotificationRuleEngine:
             user_id: Benutzer-ID (zur Validierung)
 
         Returns:
-            True wenn geloescht
+            True wenn gelöscht
         """
         rule = await db.get(NotificationRule, rule_id)
 
@@ -1016,7 +1016,7 @@ _rule_engine_instance: Optional[NotificationRuleEngine] = None
 
 
 def get_notification_rule_engine() -> NotificationRuleEngine:
-    """Factory-Funktion fuer NotificationRuleEngine Singleton.
+    """Factory-Funktion für NotificationRuleEngine Singleton.
 
     Returns:
         Die globale NotificationRuleEngine-Instanz

@@ -1,9 +1,9 @@
 """GoBD Archive Service - Revisionssichere Dokumentenarchivierung.
 
 Implementiert die gesetzlichen Anforderungen nach GoBD:
-- Nachvollziehbarkeit: Vollstaendiger Audit-Trail
-- Unveraenderbarkeit: SHA-256 Hash-Signatur
-- Vollstaendigkeit: Aufbewahrungsfristen-Management
+- Nachvollziehbarkeit: Vollständiger Audit-Trail
+- Unveränderbarkeit: SHA-256 Hash-Signatur
+- Vollständigkeit: Aufbewahrungsfristen-Management
 - Ordnung: Kategorisierung nach Dokumenttyp
 
 Basiert auf:
@@ -54,7 +54,7 @@ DEFAULT_RETENTION_YEARS: dict[str, int] = {
 
 
 class ArchiveService:
-    """Service fuer GoBD-konforme Dokumentenarchivierung."""
+    """Service für GoBD-konforme Dokumentenarchivierung."""
 
     async def archive_document(
         self,
@@ -73,7 +73,7 @@ class ArchiveService:
             user_id: ID des archivierenden Benutzers
             retention_category: Aufbewahrungskategorie
             signature_certificate: Optionales TSA-Zertifikat
-            metadata: Zusaetzliche Metadaten
+            metadata: Zusätzliche Metadaten
 
         Returns:
             DocumentArchive: Das erstellte Archiv-Objekt
@@ -151,7 +151,7 @@ class ArchiveService:
         db: AsyncSession,
         document_id: uuid.UUID,
     ) -> bool:
-        """Verifiziert die Integritaet eines archivierten Dokuments.
+        """Verifiziert die Integrität eines archivierten Dokuments.
 
         Vergleicht den aktuellen Hash mit dem archivierten Hash.
 
@@ -160,7 +160,7 @@ class ArchiveService:
             document_id: ID des zu verifizierenden Dokuments
 
         Returns:
-            bool: True wenn Integritaet gewaehrleistet, False wenn kompromittiert
+            bool: True wenn Integrität gewährleistet, False wenn kompromittiert
 
         Raises:
             DocumentNotFoundError: Wenn das Dokument nicht existiert
@@ -221,7 +221,7 @@ class ArchiveService:
         db: AsyncSession,
         document_id: uuid.UUID,
     ) -> Optional[DocumentArchive]:
-        """Holt die Archiv-Informationen fuer ein Dokument.
+        """Holt die Archiv-Informationen für ein Dokument.
 
         Args:
             db: Datenbank-Session
@@ -294,14 +294,14 @@ class ArchiveService:
         db: AsyncSession,
         document_id: uuid.UUID,
     ) -> bool:
-        """Prueft, ob ein Dokument unveraenderbar ist (archiviert).
+        """Prüft, ob ein Dokument unveränderbar ist (archiviert).
 
         Args:
             db: Datenbank-Session
             document_id: ID des Dokuments
 
         Returns:
-            bool: True wenn unveraenderbar
+            bool: True wenn unveränderbar
         """
         result = await db.execute(
             select(Document.is_archived)
@@ -327,7 +327,7 @@ class ArchiveService:
         if await self.check_immutability(db, document_id):
             raise ImmutabilityViolationError(
                 f"Dokument {document_id} ist archiviert und darf nicht "
-                "veraendert werden (GoBD: Unveraenderbarkeit)"
+                "verändert werden (GoBD: Unveränderbarkeit)"
             )
 
     async def get_retention_settings(
@@ -363,9 +363,9 @@ class ArchiveService:
             db: Datenbank-Session
             category: Kategorie-Name
             retention_years: Aufbewahrungsdauer in Jahren
-            reminder_days_before: Tage vor Ablauf fuer Warnung
-            auto_delete_enabled: Auto-Loeschung aktiviert
-            updated_by_id: ID des aendernden Benutzers
+            reminder_days_before: Tage vor Ablauf für Warnung
+            auto_delete_enabled: Auto-Löschung aktiviert
+            updated_by_id: ID des ändernden Benutzers
 
         Returns:
             Aktualisierte RetentionSetting
@@ -401,14 +401,14 @@ class ArchiveService:
         db: AsyncSession,
         document_id: uuid.UUID,
     ) -> bool:
-        """Prueft ob Aufbewahrungsfrist einer Loeschung entgegensteht.
+        """Prüft ob Aufbewahrungsfrist einer Löschung entgegensteht.
 
         Args:
             db: Datenbank-Session
-            document_id: ID des zu loeschenden Dokuments
+            document_id: ID des zu löschenden Dokuments
 
         Returns:
-            True wenn Loeschung erlaubt, False wenn blockiert
+            True wenn Löschung erlaubt, False wenn blockiert
 
         Raises:
             ValueError: Wenn Aufbewahrungsfrist aktiv ist
@@ -429,7 +429,7 @@ class ArchiveService:
                 retention_expires_at=str(check_result.retention_expires_at),
             )
             raise ValueError(
-                f"Loeschung nicht erlaubt: {check_result.reason}"
+                f"Löschung nicht erlaubt: {check_result.reason}"
             )
 
         return True
@@ -439,7 +439,7 @@ class ArchiveService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> dict:
-        """Holt Statistiken zur Archivierung fuer eine Firma.
+        """Holt Statistiken zur Archivierung für eine Firma.
 
         Args:
             db: Datenbank-Session
@@ -468,7 +468,7 @@ class ArchiveService:
         )
         by_category = dict(category_result.all())
 
-        # Bald ablaufend (naechste 90 Tage)
+        # Bald ablaufend (nächste 90 Tage)
         expiring_soon = await db.execute(
             select(func.count(DocumentArchive.id))
             .where(
@@ -522,7 +522,7 @@ class ArchiveService:
         Returns:
             Hex-String des Hashes
         """
-        # Hash-Algorithmus waehlen
+        # Hash-Algorithmus wählen
         if algorithm == HashAlgorithm.SHA256.value:
             hasher = hashlib.sha256()
         elif algorithm == HashAlgorithm.SHA384.value:
@@ -533,7 +533,7 @@ class ArchiveService:
             hasher = hashlib.sha256()
 
         # Dokument-Attribute in den Hash einbeziehen
-        # (unveraenderliche Eigenschaften des Dokuments)
+        # (unveränderliche Eigenschaften des Dokuments)
         hasher.update(document.filename.encode("utf-8"))
         hasher.update(document.original_filename.encode("utf-8"))
         if document.mime_type:
@@ -552,7 +552,7 @@ class ArchiveService:
         db: AsyncSession,
         category: str,
     ) -> int:
-        """Ermittelt die Aufbewahrungsdauer fuer eine Kategorie.
+        """Ermittelt die Aufbewahrungsdauer für eine Kategorie.
 
         Args:
             db: Datenbank-Session

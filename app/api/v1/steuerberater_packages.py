@@ -624,7 +624,7 @@ async def export_package(
     - Buchungsstapel.csv (DATEV-Format)
     - Belegbilder/ (PDF-Ordner)
     - Index.xml (Verzeichnis)
-    - Pruefsummen.txt (MD5)
+    - Prüfsummen.txt (MD5)
 
     **Nur genehmigte Pakete können exportiert werden.**
     """

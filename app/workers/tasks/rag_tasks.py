@@ -1,6 +1,6 @@
-"""RAG Intelligence Layer Tasks fuer Celery.
+"""RAG Intelligence Layer Tasks für Celery.
 
-Dieses Modul enthaelt Tasks fuer:
+Dieses Modul enthält Tasks für:
 - Document Chunking
 - Customer Card Synchronisation
 - RAG Batch Jobs
@@ -79,7 +79,7 @@ def chunk_document(
     Args:
         document_id: Dokument-UUID als String
         strategy: Chunking-Strategie (semantic, fixed, document_type)
-        generate_embeddings: Embeddings fuer Chunks generieren
+        generate_embeddings: Embeddings für Chunks generieren
 
     Returns:
         Dictionary mit Chunking-Ergebnis
@@ -118,7 +118,7 @@ def chunk_document(
 
                 update_task_progress(task_id, 20, 100, "Chunke Dokument...")
 
-                # Chunking durchfuehren
+                # Chunking durchführen
                 chunks = await chunking_service.chunk_document(
                     db=session,
                     document_id=doc_uuid,
@@ -187,8 +187,8 @@ def batch_chunk_documents(
     Args:
         document_ids: Liste von Dokument-IDs (None = alle ohne Chunks)
         strategy: Chunking-Strategie
-        force: Existierende Chunks ueberschreiben
-        batch_size: Batch-Groesse
+        force: Existierende Chunks überschreiben
+        batch_size: Batch-Größe
 
     Returns:
         Dictionary mit Batch-Ergebnis
@@ -258,7 +258,7 @@ def batch_chunk_documents(
 
                 try:
                     if force:
-                        # Existierende Chunks loeschen
+                        # Existierende Chunks löschen
                         await chunking_service.delete_document_chunks(session, doc.id)
 
                     chunks = await chunking_service.chunk_document(
@@ -330,10 +330,10 @@ def regenerate_chunk_embeddings(
     self,
     document_id: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Regeneriert Embeddings fuer existierende Chunks.
+    """Regeneriert Embeddings für existierende Chunks.
 
     Args:
-        document_id: Optional - nur fuer dieses Dokument
+        document_id: Optional - nur für dieses Dokument
 
     Returns:
         Dictionary mit Ergebnis
@@ -438,7 +438,7 @@ def run_rag_batch_job(
     self,
     job_id: str
 ) -> Dict[str, Any]:
-    """Fuehrt einen RAG Batch Job aus.
+    """Führt einen RAG Batch Job aus.
 
     Args:
         job_id: Batch Job UUID
@@ -657,7 +657,7 @@ async def _run_customer_card_sync_job(
 ) -> Dict[str, Any]:
     """Verarbeitet einen Customer Card Sync Job.
 
-    Hinweis: Diese Funktion wird in Phase 5 (Customer Cards) vollstaendig implementiert.
+    Hinweis: Diese Funktion wird in Phase 5 (Customer Cards) vollständig implementiert.
     """
     logger.info("customer_card_sync_job_placeholder", job_id=str(job.id))
 
@@ -674,7 +674,7 @@ async def _run_report_generation_job(
 ) -> Dict[str, Any]:
     """Verarbeitet einen Report Generation Job.
 
-    Hinweis: Diese Funktion wird in Phase 7 (Report Generation) vollstaendig implementiert.
+    Hinweis: Diese Funktion wird in Phase 7 (Report Generation) vollständig implementiert.
     """
     logger.info("report_generation_job_placeholder", job_id=str(job.id))
 
@@ -791,7 +791,7 @@ def get_rag_statistics(self) -> Dict[str, Any]:
 def scheduled_chunk_new_documents(self) -> Dict[str, Any]:
     """Scheduled Task: Chunked neue Dokumente ohne Chunks.
 
-    Wird regelmaessig via Celery Beat ausgefuehrt.
+    Wird regelmäßig via Celery Beat ausgeführt.
     """
     task_id = self.request.id
 
@@ -849,8 +849,8 @@ def scheduled_chunk_new_documents(self) -> Dict[str, Any]:
 def sync_customer_cards_scheduled(self) -> Dict[str, Any]:
     """Scheduled Task: Synchronisiert alle Customer Cards.
 
-    Wird taeglich um 03:30 via Celery Beat ausgefuehrt.
-    Erstellt einen RAG Batch Job fuer den Customer Card Sync.
+    Wird täglich um 03:30 via Celery Beat ausgeführt.
+    Erstellt einen RAG Batch Job für den Customer Card Sync.
     """
     task_id = self.request.id
 

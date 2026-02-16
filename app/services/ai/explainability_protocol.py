@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-AI Explainability Protocol - Einheitliches Erklaerungsformat.
+AI Explainability Protocol - Einheitliches Erklärungsformat.
 
-Definiert das standardisierte Format fuer KI-Erklaerungen
-ueber alle AI-Services hinweg (Tagging, Risk Scoring, OCR,
-Buchungsvorschlaege, Mahnwesen, etc.).
+Definiert das standardisierte Format für KI-Erklärungen
+über alle AI-Services hinweg (Tagging, Risk Scoring, OCR,
+Buchungsvorschläge, Mahnwesen, etc.).
 
 Feinpoliert und durchdacht - Enterprise-grade XAI Protocol.
 """
@@ -57,7 +57,7 @@ class ExplanationFactor:
 
 @dataclass
 class ExplanationResult:
-    """Ergebnis einer KI-Erklaerung fuer eine einzelne Entscheidung."""
+    """Ergebnis einer KI-Erklärung für eine einzelne Entscheidung."""
 
     decision_type: DecisionType
     service_name: str

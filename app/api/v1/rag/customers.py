@@ -88,7 +88,7 @@ class CustomerCardCreateRequest(BaseModel):
 # =============================================================================
 
 def get_card_service() -> CustomerCardService:
-    """Dependency fuer CustomerCardService."""
+    """Dependency für CustomerCardService."""
     return get_customer_card_service()
 
 
@@ -100,7 +100,7 @@ def get_card_service() -> CustomerCardService:
     "/{customer_id}",
     response_model=CustomerCardResponse,
     summary="Customer Card abrufen",
-    description="Ruft die Customer Card fuer einen Kunden ab."
+    description="Ruft die Customer Card für einen Kunden ab."
 )
 async def get_customer_card(
     customer_id: str,
@@ -115,11 +115,11 @@ async def get_customer_card(
     - Schneller Abruf aus Cache/DB (< 100ms Ziel)
     - Optional: Neu-Generierung mit force_refresh=true
 
-    Die Card enthaelt:
+    Die Card enthält:
     - **summary_text**: LLM-generierte Zusammenfassung
     - **quick_facts**: Dokumentanzahl, Typen, Zeitraum
-    - **open_invoices**: Offene Rechnungen (falls verfuegbar)
-    - **active_contracts**: Aktive Vertraege (falls verfuegbar)
+    - **open_invoices**: Offene Rechnungen (falls verfügbar)
+    - **active_contracts**: Aktive Verträge (falls verfügbar)
     """
     logger.info(
         "get_customer_card_request",
@@ -137,7 +137,7 @@ async def get_customer_card(
     if not result.card:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Customer Card fuer '{customer_id}' nicht gefunden"
+            detail=f"Customer Card für '{customer_id}' nicht gefunden"
         )
 
     card = result.card
@@ -176,8 +176,8 @@ async def search_customers(
     """
     Fuzzy-Suche nach Kunden.
 
-    Verwendet pg_trgm fuer aehnlichkeitsbasierte Suche.
-    Gibt Kunden sortiert nach Aehnlichkeit zurueck.
+    Verwendet pg_trgm für ähnlichkeitsbasierte Suche.
+    Gibt Kunden sortiert nach Ähnlichkeit zurück.
     """
     results = await card_service.search_customers(
         db=db,
@@ -205,7 +205,7 @@ async def search_customers(
 )
 async def list_customer_cards(
     page: int = Query(1, ge=1, description="Seite"),
-    page_size: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    page_size: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     card_service: CustomerCardService = Depends(get_card_service)
@@ -289,7 +289,7 @@ async def refresh_customer_card(
     if not result.card:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Customer Card fuer '{customer_id}' konnte nicht generiert werden"
+            detail=f"Customer Card für '{customer_id}' konnte nicht generiert werden"
         )
 
     card = result.card
@@ -337,7 +337,7 @@ async def create_customer_card(
         user_id=str(current_user.id)
     )
 
-    # Pruefen ob Card bereits existiert
+    # Prüfen ob Card bereits existiert
     from sqlalchemy import select
     existing = await db.execute(
         select(RAGCustomerCard).where(
@@ -347,7 +347,7 @@ async def create_customer_card(
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Customer Card fuer '{request.customer_id}' existiert bereits"
+            detail=f"Customer Card für '{request.customer_id}' existiert bereits"
         )
 
     try:
@@ -389,8 +389,8 @@ async def create_customer_card(
 
 @router.delete(
     "/{customer_id}",
-    summary="Customer Card loeschen",
-    description="Loescht eine Customer Card.",
+    summary="Customer Card löschen",
+    description="Löscht eine Customer Card.",
     dependencies=[Depends(require_admin)]
 )
 async def delete_customer_card(
@@ -400,7 +400,7 @@ async def delete_customer_card(
     card_service: CustomerCardService = Depends(get_card_service)
 ) -> dict:
     """
-    Loescht eine Customer Card.
+    Löscht eine Customer Card.
 
     Die Card kann jederzeit neu generiert werden.
     """
@@ -416,7 +416,7 @@ async def delete_customer_card(
     if not card:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Customer Card fuer '{customer_id}' nicht gefunden"
+            detail=f"Customer Card für '{customer_id}' nicht gefunden"
         )
 
     await db.delete(card)
@@ -434,7 +434,7 @@ async def delete_customer_card(
     return {
         "success": True,
         "customer_id": customer_id,
-        "message": "Customer Card geloescht"
+        "message": "Customer Card gelöscht"
     }
 
 
@@ -451,7 +451,7 @@ async def sync_all_customer_cards(
     """
     Startet Batch-Synchronisation aller Customer Cards.
 
-    Wird als Celery Task im Hintergrund ausgefuehrt.
+    Wird als Celery Task im Hintergrund ausgeführt.
     """
     from app.workers.tasks.rag_tasks import run_rag_batch_job
     from app.db.models import RAGBatchJob, RAGBatchJobType, RAGBatchJobStatus

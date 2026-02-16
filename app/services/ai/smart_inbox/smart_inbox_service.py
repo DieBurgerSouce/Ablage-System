@@ -1,4 +1,4 @@
-"""Smart Inbox Service - Facade fuer KI-priorisierte Aufgabenliste.
+"""Smart Inbox Service - Facade für KI-priorisierte Aufgabenliste.
 
 Vereint alle Sub-Services:
 - InboxAggregator: Sammelt Items aus verschiedenen Quellen
@@ -42,9 +42,9 @@ class ActionResult:
 
 
 class SmartInboxService:
-    """Facade Service fuer Smart Inbox.
+    """Facade Service für Smart Inbox.
 
-    Orchestriert alle Sub-Services fuer KI-priorisierte Aufgabenliste.
+    Orchestriert alle Sub-Services für KI-priorisierte Aufgabenliste.
     """
 
     def __init__(self, db: AsyncSession, user_id: UUID) -> None:
@@ -69,9 +69,9 @@ class SmartInboxService:
         """Holt priorisierte Inbox Items.
 
         Args:
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            company_id: Company-ID für Multi-Tenant Isolation
             limit: Max. Anzahl Items
-            offset: Offset fuer Pagination
+            offset: Offset für Pagination
             status: Optional Status-Filter
             category: Optional Kategorie-Filter
 
@@ -149,12 +149,12 @@ class SmartInboxService:
         action_data: Optional[Dict[str, Any]],
         company_id: UUID,
     ) -> ActionResult:
-        """Fuehrt eine Aktion auf einem Inbox Item aus.
+        """Führt eine Aktion auf einem Inbox Item aus.
 
         Args:
             item_id: Item-ID
             action: Aktionstyp (complete, approve, reject, etc.)
-            action_data: Optionale zusaetzliche Daten
+            action_data: Optionale zusätzliche Daten
             company_id: Company-ID
 
         Returns:
@@ -199,7 +199,7 @@ class SmartInboxService:
 
         elif action == "review":
             item.status = SmartInboxItemStatus.IN_PROGRESS.value
-            message = "Item zur Pruefung markiert"
+            message = "Item zur Prüfung markiert"
 
         elif action == "pay":
             item.status = SmartInboxItemStatus.COMPLETED.value
@@ -287,7 +287,7 @@ class SmartInboxService:
         self,
         company_id: UUID,
     ) -> List[Dict[str, Any]]:
-        """Generiert KI-Insights ueber Benutzerverhalten.
+        """Generiert KI-Insights über Benutzerverhalten.
 
         Args:
             company_id: Company-ID
@@ -388,13 +388,13 @@ class SmartInboxService:
         """
         self.logger.info("triggering_aggregation", company_id=str(company_id))
 
-        # Celery Task starten fuer asynchrone Aggregation
+        # Celery Task starten für asynchrone Aggregation
         try:
             from app.workers.tasks.smart_inbox_tasks import aggregate_inbox_items
             task = aggregate_inbox_items.delay(str(company_id), str(self.user_id))
             return UUID(task.id)
         except ImportError:
-            # Fallback wenn Celery nicht verfuegbar (Dev-Modus)
+            # Fallback wenn Celery nicht verfügbar (Dev-Modus)
             self.logger.warning("celery_not_available_for_aggregation")
             import uuid
             return uuid.uuid4()
@@ -407,7 +407,7 @@ class SmartInboxService:
         self,
         company_id: UUID,
     ) -> Dict[str, Any]:
-        """Holt Statistiken ueber den Smart Inbox.
+        """Holt Statistiken über den Smart Inbox.
 
         Args:
             company_id: Company-ID
@@ -561,9 +561,9 @@ class SmartInboxService:
 
         # Check permissions (Multi-Tenant + User)
         if item.company_id != company_id:
-            raise PermissionError("Keine Berechtigung fuer dieses Item")
+            raise PermissionError("Keine Berechtigung für dieses Item")
 
         if item.user_id != self.user_id:
-            raise PermissionError("Keine Berechtigung fuer dieses Item")
+            raise PermissionError("Keine Berechtigung für dieses Item")
 
         return item

@@ -6,9 +6,9 @@ Enterprise Feature: Februar 2026
 
 Funktionen:
 - 30/60/90-Tage Liquiditaetsprognose mit Unsicherheitsbereichen
-- Monte Carlo Simulation fuer probabilistische Vorhersagen
+- Monte Carlo Simulation für probabilistische Vorhersagen
 - Payment Delay Analyse basierend auf historischem Kundenverhalten
-- Fruehwarnsystem fuer Liquiditaetsengpaesse
+- Frühwarnsystem für Liquiditaetsengpaesse
 - What-If Szenario-Simulation
 - Integration mit InvoiceTracking, RiskScoring, Banking
 
@@ -56,7 +56,7 @@ logger = structlog.get_logger(__name__)
 
 
 class WarningSeverity(str, Enum):
-    """Schweregrade fuer Cashflow-Warnungen."""
+    """Schweregrade für Cashflow-Warnungen."""
 
     INFO = "info"  # Informativ, keine Aktion erforderlich
     WARNING = "warning"  # Aufmerksamkeit erforderlich
@@ -76,7 +76,7 @@ class WarningType(str, Enum):
 class ScenarioType(str, Enum):
     """Typen von What-If Szenarien."""
 
-    CUSTOMER_LATE_PAYMENT = "customer_late_payment"  # Kunde zahlt spaet
+    CUSTOMER_LATE_PAYMENT = "customer_late_payment"  # Kunde zahlt spät
     DELAY_OUTGOING = "delay_outgoing"  # Eigene Zahlung verschieben
     NEW_ORDER = "new_order"  # Neuer Auftrag
     CUSTOMER_DEFAULT = "customer_default"  # Kundenausfall
@@ -86,7 +86,7 @@ class ScenarioType(str, Enum):
 # Konfigurationskonstanten
 MONTE_CARLO_ITERATIONS = 1000  # Anzahl Simulationen
 DEFAULT_CONFIDENCE_LEVEL = 0.9  # 90% Konfidenzintervall
-LOW_BALANCE_THRESHOLD_DAYS = 30  # Liquiditaet fuer X Tage
+LOW_BALANCE_THRESHOLD_DAYS = 30  # Liquiditaet für X Tage
 CRITICAL_BALANCE_EUR = Decimal("0")  # Kritische Schwelle
 WARNING_BALANCE_EUR = Decimal("5000")  # Warnschwelle
 
@@ -114,8 +114,8 @@ class PaymentDelayStats:
     average_delay_days: float
     std_deviation: float
     sample_count: int
-    payment_behavior_score: float  # 0-100 (hoeher = besser)
-    risk_score: float  # 0-100 (hoeher = riskanter)
+    payment_behavior_score: float  # 0-100 (höher = besser)
+    risk_score: float  # 0-100 (höher = riskanter)
     last_payment_date: Optional[datetime] = None
 
 
@@ -191,12 +191,12 @@ class RecurringPattern:
 
 class CashflowPredictionService:
     """
-    Service fuer ML-basierte Cashflow-Vorhersagen.
+    Service für ML-basierte Cashflow-Vorhersagen.
 
     Kombiniert:
     - Historische Zahlungsmuster-Analyse
-    - Monte Carlo Simulation fuer Unsicherheitsquantifizierung
-    - Integration mit RiskScoring fuer Kundenrisiko-Bewertung
+    - Monte Carlo Simulation für Unsicherheitsquantifizierung
+    - Integration mit RiskScoring für Kundenrisiko-Bewertung
     - What-If Szenario-Analyse
 
     SECURITY:
@@ -210,7 +210,7 @@ class CashflowPredictionService:
         Initialisiere Service mit Datenbankverbindung.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
         """
         self.db = db
         self._delay_stats_cache: Dict[UUID, PaymentDelayStats] = {}
@@ -228,9 +228,9 @@ class CashflowPredictionService:
         include_recurring: bool = True,
     ) -> List[CashflowForecast]:
         """
-        Erstellt eine Cashflow-Prognose fuer die naechsten X Tage.
+        Erstellt eine Cashflow-Prognose für die nächsten X Tage.
 
-        Verwendet Monte Carlo Simulation fuer Unsicherheitsbereiche.
+        Verwendet Monte Carlo Simulation für Unsicherheitsbereiche.
 
         Args:
             company_id: Mandanten-ID (Multi-Tenant Filter)
@@ -242,7 +242,7 @@ class CashflowPredictionService:
             Liste von tagesweisen Prognosen mit Unsicherheitsbereichen
 
         Raises:
-            ValueError: Bei ungueltigen Parametern
+            ValueError: Bei ungültigen Parametern
         """
         # Validierung
         days = max(7, min(90, days))
@@ -269,7 +269,7 @@ class CashflowPredictionService:
         if include_recurring:
             recurring = await self._detect_recurring_patterns(company_id, days)
 
-        # 5. Monte Carlo Simulation durchfuehren
+        # 5. Monte Carlo Simulation durchführen
         forecasts = await self._run_monte_carlo_simulation(
             current_balance=current_balance,
             receivables=receivables,
@@ -295,7 +295,7 @@ class CashflowPredictionService:
         days: int = 30,
     ) -> List[CashflowWarning]:
         """
-        Generiert Warnungen fuer bevorstehende Cashflow-Probleme.
+        Generiert Warnungen für bevorstehende Cashflow-Probleme.
 
         Args:
             company_id: Mandanten-ID
@@ -316,7 +316,7 @@ class CashflowPredictionService:
         warnings: List[CashflowWarning] = []
         today = date.today()
 
-        # Durchschnittlichen taeglichen Abfluss berechnen
+        # Durchschnittlichen täglichen Abfluss berechnen
         avg_daily_outflow = Decimal("0")
         if forecasts:
             total_outflow = sum(f.outgoing for f in forecasts)
@@ -352,11 +352,11 @@ class CashflowPredictionService:
                     date=forecast.date,
                     predicted_balance=forecast.predicted_balance,
                     message=f"Niedriger Kontostand am {forecast.date.strftime('%d.%m.%Y')}: "
-                            f"Nur {float(forecast.predicted_balance):,.2f} EUR verfuegbar",
+                            f"Nur {float(forecast.predicted_balance):,.2f} EUR verfügbar",
                     suggested_actions=[
                         "Forderungsmanagement intensivieren",
-                        "Zahlungsziele bei Lieferanten verlaengern",
-                        "Liquiditaetsreserve pruefen",
+                        "Zahlungsziele bei Lieferanten verlängern",
+                        "Liquiditaetsreserve prüfen",
                     ],
                     days_until_trigger=days_until,
                 ))
@@ -373,7 +373,7 @@ class CashflowPredictionService:
                     message=f"Grosse Zahlung am {forecast.date.strftime('%d.%m.%Y')}: "
                             f"{float(forecast.outgoing):,.2f} EUR",
                     suggested_actions=[
-                        "Liquiditaet fuer diesen Tag sicherstellen",
+                        "Liquiditaet für diesen Tag sicherstellen",
                         "Ggf. Zahlung in Teilen leisten",
                     ],
                     days_until_trigger=days_until,
@@ -387,34 +387,34 @@ class CashflowPredictionService:
                     severity=WarningSeverity.INFO,
                     date=forecast.date,
                     predicted_balance=forecast.predicted_balance,
-                    message=f"Hohe Unsicherheit fuer {forecast.date.strftime('%d.%m.%Y')}: "
+                    message=f"Hohe Unsicherheit für {forecast.date.strftime('%d.%m.%Y')}: "
                             f"Spanne {float(forecast.lower_bound):,.2f} bis {float(forecast.upper_bound):,.2f} EUR",
                     suggested_actions=[
-                        "Zahlungsstatus bei offenen Forderungen pruefen",
-                        "Ruecksprache mit Kunden halten",
+                        "Zahlungsstatus bei offenen Forderungen prüfen",
+                        "Rücksprache mit Kunden halten",
                     ],
                     days_until_trigger=days_until,
                 ))
 
-        # Trend-basierte Warnung (fallender Trend ueber 7 Tage)
+        # Trend-basierte Warnung (fallender Trend über 7 Tage)
         if len(forecasts) >= 7:
             first_week_avg = sum(f.predicted_balance for f in forecasts[:7]) / 7
             last_week_start = len(forecasts) - 7
             last_week_avg = sum(f.predicted_balance for f in forecasts[last_week_start:]) / 7
 
             trend_decline = first_week_avg - last_week_avg
-            if trend_decline > first_week_avg * Decimal("0.3"):  # >30% Rueckgang
+            if trend_decline > first_week_avg * Decimal("0.3"):  # >30% Rückgang
                 warnings.append(CashflowWarning(
                     type=WarningType.TREND_NEGATIVE,
                     severity=WarningSeverity.WARNING,
                     date=today,
                     predicted_balance=first_week_avg,
-                    message=f"Negativer Liquiditaetstrend: Rueckgang um {float(trend_decline):,.2f} EUR "
+                    message=f"Negativer Liquiditaetstrend: Rückgang um {float(trend_decline):,.2f} EUR "
                             f"im Prognosezeitraum",
                     suggested_actions=[
-                        "Ursachen fuer Rueckgang analysieren",
+                        "Ursachen für Rückgang analysieren",
                         "Einnahmequellen diversifizieren",
-                        "Kostensenkungsmassnahmen pruefen",
+                        "Kostensenkungsmassnahmen prüfen",
                     ],
                     days_until_trigger=0,
                     affected_amount=trend_decline,
@@ -453,7 +453,7 @@ class CashflowPredictionService:
         parameters: JSONDict,
     ) -> ScenarioResult:
         """
-        Fuehrt eine What-If Szenario-Simulation durch.
+        Führt eine What-If Szenario-Simulation durch.
 
         Args:
             company_id: Mandanten-ID
@@ -482,12 +482,12 @@ class CashflowPredictionService:
         if not base_forecasts:
             return ScenarioResult(
                 scenario_type=scenario_type,
-                description="Keine Basisdaten verfuegbar",
+                description="Keine Basisdaten verfügbar",
                 impact_on_min_balance=Decimal("0"),
                 impact_on_avg_balance=Decimal("0"),
                 new_forecasts=[],
                 risk_assessment="Nicht bewertbar - keine Daten",
-                recommendations=["Kontodaten und offene Rechnungen pruefen"],
+                recommendations=["Kontodaten und offene Rechnungen prüfen"],
             )
 
         base_min = min(f.predicted_balance for f in base_forecasts)
@@ -526,7 +526,7 @@ class CashflowPredictionService:
                 impact_on_min_balance=Decimal("0"),
                 impact_on_avg_balance=Decimal("0"),
                 new_forecasts=base_forecasts,
-                risk_assessment="Nicht unterstuetzt",
+                risk_assessment="Nicht unterstützt",
                 recommendations=[],
             )
 
@@ -586,11 +586,11 @@ class CashflowPredictionService:
 
         for inv in paid_invoices:
             if inv.paid_at and inv.due_date:
-                # Tatsaechliche Verzoegerung
+                # Tatsaechliche Verzögerung
                 actual_delay = (inv.paid_at - inv.due_date).days
 
                 # In Produktion: Gespeicherte Vorhersage laden
-                # Hier: Vereinfachte Schaetzung basierend auf Entity-Historie
+                # Hier: Vereinfachte Schätzung basierend auf Entity-Historie
                 entity_stats = await self._get_payment_delay_stats(
                     inv.entity_id, company_id
                 ) if inv.entity_id else None
@@ -625,7 +625,7 @@ class CashflowPredictionService:
 
         Args:
             company_id: Mandanten-ID
-            entity_id: Optional - nur fuer bestimmten Kunden
+            entity_id: Optional - nur für bestimmten Kunden
 
         Returns:
             Liste von Zahlungsverhaltens-Statistiken
@@ -707,12 +707,12 @@ class CashflowPredictionService:
 
         receivables = []
         for inv in invoices:
-            # Faelligkeitsdatum oder Schaetzung
+            # Fälligkeitsdatum oder Schätzung
             due = inv.due_date or (inv.invoice_date + timedelta(days=30) if inv.invoice_date else now + timedelta(days=30))
 
             # Nur innerhalb des Prognosezeitraums
             if due.date() <= end_date.date():
-                # Payment Delay Stats fuer Entity
+                # Payment Delay Stats für Entity
                 delay_stats = None
                 if inv.entity_id:
                     delay_stats = await self._get_payment_delay_stats(inv.entity_id, company_id)
@@ -734,7 +734,7 @@ class CashflowPredictionService:
         days: int,
     ) -> List[JSONDict]:
         """
-        Holt offene Verbindlichkeiten (Eingangsrechnungen - wir muessen zahlen).
+        Holt offene Verbindlichkeiten (Eingangsrechnungen - wir müssen zahlen).
 
         Returns:
             Liste mit {amount, due_date, skonto_deadline, skonto_amount}
@@ -764,7 +764,7 @@ class CashflowPredictionService:
                 amount = Decimal(str(inv.amount or 0))
                 effective_amount = amount
 
-                # Skonto-Deadline pruefen
+                # Skonto-Deadline prüfen
                 skonto_deadline = None
                 skonto_amount = Decimal("0")
                 if inv.skonto_deadline and inv.skonto_percentage:
@@ -773,7 +773,7 @@ class CashflowPredictionService:
                         skonto_amount = amount * Decimal(str(inv.skonto_percentage)) / 100
                         effective_amount = amount - skonto_amount
 
-                # Zahlungsdatum: Skonto-Deadline wenn moeglich, sonst Due Date
+                # Zahlungsdatum: Skonto-Deadline wenn möglich, sonst Due Date
                 payment_date = due.date() if isinstance(due, datetime) else due
                 if skonto_deadline and skonto_deadline >= date.today():
                     payment_date = skonto_deadline
@@ -799,7 +799,7 @@ class CashflowPredictionService:
         Erkennt wiederkehrende Zahlungsmuster aus historischen Transaktionen.
 
         Returns:
-            Liste von erkannten Mustern (Miete, Gehaelter, etc.)
+            Liste von erkannten Mustern (Miete, Gehälter, etc.)
         """
         if self._recurring_patterns_cache is not None:
             return self._recurring_patterns_cache
@@ -821,11 +821,11 @@ class CashflowPredictionService:
         )
         transactions = result.scalars().all()
 
-        # Gruppiere nach Empfaenger/Auftraggeber und Betrag
+        # Gruppiere nach Empfänger/Auftraggeber und Betrag
         patterns: List[RecurringPattern] = []
 
         # Vereinfachte Pattern-Erkennung
-        # Gruppiere aehnliche Betraege (+-5%)
+        # Gruppiere ähnliche Betraege (+-5%)
         amount_groups: Dict[str, List[Dict]] = {}
 
         for tx in transactions:
@@ -848,7 +848,7 @@ class CashflowPredictionService:
                     avg_interval = sum(intervals) / len(intervals)
                     stddev = statistics.stdev(intervals) if len(intervals) > 1 else avg_interval
 
-                    # Nur regelmaessige Muster (CV < 0.3)
+                    # Nur regelmäßige Muster (CV < 0.3)
                     cv = stddev / avg_interval if avg_interval > 0 else 1.0
 
                     if cv < 0.3 and 7 <= avg_interval <= 35:  # Woche bis Monat
@@ -856,7 +856,7 @@ class CashflowPredictionService:
                         last_date = max(dates)
                         next_date = last_date + timedelta(days=int(avg_interval))
 
-                        # Nur zukuenftige Muster
+                        # Nur zukünftige Muster
                         if next_date > date.today() and next_date <= date.today() + timedelta(days=days):
                             pattern_type = "expense" if avg_amount < 0 else "income"
 
@@ -878,11 +878,11 @@ class CashflowPredictionService:
         company_id: UUID,
     ) -> Optional[PaymentDelayStats]:
         """
-        Berechnet Zahlungsverzoegerungs-Statistiken fuer einen Kunden.
+        Berechnet Zahlungsverzögerungs-Statistiken für einen Kunden.
 
-        Uses caching fuer Performance.
+        Uses caching für Performance.
         """
-        # Cache pruefen
+        # Cache prüfen
         if entity_id in self._delay_stats_cache:
             return self._delay_stats_cache[entity_id]
 
@@ -905,7 +905,7 @@ class CashflowPredictionService:
         if not invoices:
             return None
 
-        # Berechne Verzoegerungen
+        # Berechne Verzögerungen
         delays: List[float] = []
         last_payment: Optional[datetime] = None
 
@@ -922,12 +922,12 @@ class CashflowPredictionService:
         avg_delay = sum(delays) / len(delays)
         stddev = statistics.stdev(delays) if len(delays) > 1 else 10.0
 
-        # Payment Behavior Score: 100 = immer puenktlich, 0 = immer >60 Tage spaet
+        # Payment Behavior Score: 100 = immer puenktlich, 0 = immer >60 Tage spät
         # Formel: 100 - min(100, avg_delay * 1.5)
         payment_behavior_score = max(0, 100 - min(100, avg_delay * 1.5))
 
         # Risk Score aus RiskScoringService (vereinfacht)
-        # Hoehere Verzoegerung = hoeheres Risiko
+        # Höhere Verzögerung = höheres Risiko
         risk_score = min(100, max(0, avg_delay * 2))
 
         stats = PaymentDelayStats(
@@ -955,18 +955,18 @@ class CashflowPredictionService:
         company_id: UUID,
     ) -> List[CashflowForecast]:
         """
-        Fuehrt Monte Carlo Simulation fuer Cashflow-Prognose durch.
+        Führt Monte Carlo Simulation für Cashflow-Prognose durch.
 
         Simuliert N Szenarien mit stochastischen Zahlungseingaengen.
         """
         today = date.today()
         num_days = days + 1  # Inklusive heute
 
-        # Initialisiere Ergebnis-Arrays fuer alle Simulationen
+        # Initialisiere Ergebnis-Arrays für alle Simulationen
         balance_simulations: List[List[Decimal]] = []
 
         for _ in range(MONTE_CARLO_ITERATIONS):
-            # Eine Simulation durchfuehren
+            # Eine Simulation durchführen
             daily_balances: List[Decimal] = []
             running_balance = current_balance
 
@@ -985,7 +985,7 @@ class CashflowPredictionService:
                         mean_delay = delay_stats.average_delay_days
                         std_delay = delay_stats.std_deviation
                     else:
-                        # Default fuer unbekannte Kunden
+                        # Default für unbekannte Kunden
                         mean_delay = PAYMENT_DELAY_WEIGHTS["unknown"]["mean_days"]
                         std_delay = PAYMENT_DELAY_WEIGHTS["unknown"]["stddev"]
 
@@ -994,7 +994,7 @@ class CashflowPredictionService:
                     simulated_payment_date = due_date + timedelta(days=int(simulated_delay))
 
                     if simulated_payment_date == current_date:
-                        # Zusaetzliche Unsicherheit fuer den Betrag (95-105%)
+                        # Zusätzliche Unsicherheit für den Betrag (95-105%)
                         amount_factor = random.uniform(0.95, 1.05)
                         day_inflow += recv["amount"] * Decimal(str(amount_factor))
 
@@ -1029,14 +1029,14 @@ class CashflowPredictionService:
         for day_offset in range(num_days):
             current_date = today + timedelta(days=day_offset)
 
-            # Sammle alle simulierten Werte fuer diesen Tag
+            # Sammle alle simulierten Werte für diesen Tag
             day_balances = [sim[day_offset] for sim in balance_simulations]
 
             predicted = Decimal(str(statistics.median([float(b) for b in day_balances])))
             lower = Decimal(str(self._percentile([float(b) for b in day_balances], lower_percentile)))
             upper = Decimal(str(self._percentile([float(b) for b in day_balances], upper_percentile)))
 
-            # Berechne tatsaechliche Ein-/Ausgaenge fuer diesen Tag (Erwartungswert)
+            # Berechne tatsaechliche Ein-/Ausgaenge für diesen Tag (Erwartungswert)
             day_incoming = sum(
                 recv["amount"] for recv in receivables
                 if recv["due_date"] == current_date
@@ -1092,7 +1092,7 @@ class CashflowPredictionService:
         base_forecasts: List[CashflowForecast],
         parameters: JSONDict,
     ) -> ScenarioResult:
-        """Simuliert: Was wenn Kunde X spaeter zahlt?"""
+        """Simuliert: Was wenn Kunde X später zahlt?"""
         entity_id = parameters.get("entity_id")
         delay_days = parameters.get("delay_days", 14)
 
@@ -1103,7 +1103,7 @@ class CashflowPredictionService:
                 impact_on_min_balance=Decimal("0"),
                 impact_on_avg_balance=Decimal("0"),
                 new_forecasts=base_forecasts,
-                risk_assessment="Parameter unvollstaendig",
+                risk_assessment="Parameter unvollständig",
                 recommendations=[],
             )
 
@@ -1114,7 +1114,7 @@ class CashflowPredictionService:
         if not customer_receivables:
             return ScenarioResult(
                 scenario_type=ScenarioType.CUSTOMER_LATE_PAYMENT,
-                description="Keine offenen Forderungen fuer diesen Kunden gefunden",
+                description="Keine offenen Forderungen für diesen Kunden gefunden",
                 impact_on_min_balance=Decimal("0"),
                 impact_on_avg_balance=Decimal("0"),
                 new_forecasts=base_forecasts,
@@ -1127,7 +1127,7 @@ class CashflowPredictionService:
         # Neue Prognose mit verschobenen Eingaengen
         new_forecasts = []
         for f in base_forecasts:
-            # Pruefen ob an diesem Tag eine Zahlung erwartet wurde
+            # Prüfen ob an diesem Tag eine Zahlung erwartet wurde
             original_incoming = f.incoming
             delayed_incoming = Decimal("0")
 
@@ -1138,7 +1138,7 @@ class CashflowPredictionService:
             new_incoming = original_incoming - delayed_incoming
             new_balance = f.predicted_balance - delayed_incoming
 
-            # Verzoegerte Zahlungen kommen spaeter
+            # Verzögerte Zahlungen kommen später
             incoming_from_delay = Decimal("0")
             for recv in customer_receivables:
                 delayed_date = recv["due_date"] + timedelta(days=delay_days)
@@ -1164,16 +1164,16 @@ class CashflowPredictionService:
 
         return ScenarioResult(
             scenario_type=ScenarioType.CUSTOMER_LATE_PAYMENT,
-            description=f"Szenario: Kunde zahlt {delay_days} Tage spaeter "
+            description=f"Szenario: Kunde zahlt {delay_days} Tage später "
                         f"(betroffen: {float(affected_amount):,.2f} EUR)",
-            impact_on_min_balance=Decimal("0"),  # Wird spaeter berechnet
+            impact_on_min_balance=Decimal("0"),  # Wird später berechnet
             impact_on_avg_balance=Decimal("0"),
             new_forecasts=new_forecasts,
             risk_assessment=risk,
             recommendations=[
                 "Zahlungserinnerung rechtzeitig versenden",
-                f"Skonto anbieten fuer fruehzeitige Zahlung",
-                "Alternative Zahlungsquellen pruefen",
+                f"Skonto anbieten für frühzeitige Zahlung",
+                "Alternative Zahlungsquellen prüfen",
             ],
         )
 
@@ -1206,7 +1206,7 @@ class CashflowPredictionService:
                 impact_on_min_balance=Decimal("0"),
                 impact_on_avg_balance=Decimal("0"),
                 new_forecasts=base_forecasts,
-                risk_assessment="Parameter ungueltig",
+                risk_assessment="Parameter ungültig",
                 recommendations=[],
             )
 
@@ -1246,7 +1246,7 @@ class CashflowPredictionService:
             skonto_date = invoice.skonto_deadline.date() if isinstance(invoice.skonto_deadline, datetime) else invoice.skonto_deadline
             if new_due > skonto_date and invoice.skonto_percentage:
                 lost_skonto = payment_amount * Decimal(str(invoice.skonto_percentage)) / 100
-                warnings.append(f"Achtung: Skonto-Verlust von {float(lost_skonto):,.2f} EUR moeglich")
+                warnings.append(f"Achtung: Skonto-Verlust von {float(lost_skonto):,.2f} EUR möglich")
 
         return ScenarioResult(
             scenario_type=ScenarioType.DELAY_OUTGOING,
@@ -1255,11 +1255,11 @@ class CashflowPredictionService:
             impact_on_min_balance=Decimal("0"),
             impact_on_avg_balance=Decimal("0"),
             new_forecasts=new_forecasts,
-            risk_assessment="Positiv fuer Liquiditaet" if not warnings else "Mit Skonto-Verlust",
+            risk_assessment="Positiv für Liquiditaet" if not warnings else "Mit Skonto-Verlust",
             recommendations=[
-                "Lieferanten ueber Verzoegerung informieren",
+                "Lieferanten über Verzögerung informieren",
                 *warnings,
-                "Sicherstellen, dass Zahlung nicht ueberfaellig wird",
+                "Sicherstellen, dass Zahlung nicht überfällig wird",
             ],
         )
 
@@ -1275,13 +1275,13 @@ class CashflowPredictionService:
 
         expected_payment_date = date.today() + timedelta(days=payment_due_days)
 
-        # Neue Prognose mit zusaetzlichem Eingang
+        # Neue Prognose mit zusätzlichem Eingang
         new_forecasts = []
         for f in base_forecasts:
             adjustment = Decimal("0")
             new_incoming = f.incoming
 
-            # Ab dem Zahlungsdatum: Balance erhoehen
+            # Ab dem Zahlungsdatum: Balance erhöhen
             if f.date >= expected_payment_date:
                 adjustment = order_amount
             if f.date == expected_payment_date:
@@ -1299,16 +1299,16 @@ class CashflowPredictionService:
 
         return ScenarioResult(
             scenario_type=ScenarioType.NEW_ORDER,
-            description=f"Szenario: Neuer Auftrag ueber {float(order_amount):,.2f} EUR "
+            description=f"Szenario: Neuer Auftrag über {float(order_amount):,.2f} EUR "
                         f"mit Zahlung in {payment_due_days} Tagen",
             impact_on_min_balance=Decimal("0"),
             impact_on_avg_balance=Decimal("0"),
             new_forecasts=new_forecasts,
             risk_assessment="Positiv",
             recommendations=[
-                "Ressourcen fuer Auftragsabwicklung planen",
+                "Ressourcen für Auftragsabwicklung planen",
                 "Rechnung zeitnah stellen",
-                "Zahlungsverhalten des Kunden pruefen",
+                "Zahlungsverhalten des Kunden prüfen",
             ],
         )
 
@@ -1328,7 +1328,7 @@ class CashflowPredictionService:
                 impact_on_min_balance=Decimal("0"),
                 impact_on_avg_balance=Decimal("0"),
                 new_forecasts=base_forecasts,
-                risk_assessment="Parameter unvollstaendig",
+                risk_assessment="Parameter unvollständig",
                 recommendations=[],
             )
 
@@ -1373,7 +1373,7 @@ class CashflowPredictionService:
             new_forecasts=new_forecasts,
             risk_assessment=risk,
             recommendations=[
-                "Forderungsausfallversicherung pruefen",
+                "Forderungsausfallversicherung prüfen",
                 "Mahnwesen intensivieren",
                 "Rechtliche Schritte erwaegen",
                 "Kundenportfolio diversifizieren",
@@ -1391,7 +1391,7 @@ class CashflowPredictionService:
 
         receivables = await self._get_open_receivables(company_id, 90)
 
-        # Berechne Auswirkung der frueheren Zahlungen
+        # Berechne Auswirkung der früheren Zahlungen
         new_forecasts = []
 
         for f in base_forecasts:
@@ -1402,7 +1402,7 @@ class CashflowPredictionService:
                 original_date = recv["due_date"]
                 new_date = original_date - timedelta(days=days_improvement)
 
-                # Eingang kommt frueher
+                # Eingang kommt früher
                 if new_date == f.date:
                     additional_income += recv["amount"]
 
@@ -1433,9 +1433,9 @@ class CashflowPredictionService:
             new_forecasts=new_forecasts,
             risk_assessment="Positiv",
             recommendations=[
-                "Skonto-Anreize fuer fruehzeitige Zahlung anbieten",
+                "Skonto-Anreize für frühzeitige Zahlung anbieten",
                 "Automatische Zahlungserinnerungen einrichten",
-                "Telefonisches Nachfassen bei ueberfaelligen Rechnungen",
+                "Telefonisches Nachfassen bei überfälligen Rechnungen",
             ],
         )
 
@@ -1446,5 +1446,5 @@ class CashflowPredictionService:
 
 
 def get_cashflow_prediction_service(db: AsyncSession) -> CashflowPredictionService:
-    """Factory-Funktion fuer CashflowPredictionService."""
+    """Factory-Funktion für CashflowPredictionService."""
     return CashflowPredictionService(db)

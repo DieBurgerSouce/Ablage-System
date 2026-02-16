@@ -5,9 +5,9 @@ Cashflow Predictor Service - Entity-basierte Zahlungsprognose.
 Phase 2.2: Predictive Cash Flow AI Service
 
 Features:
-- Entity Payment Pattern Analysis (historische Zahlungsverzoegerungen)
-- Seasonal Pattern Detection (Weihnachtsgeschaeft, Sommerloch)
-- Payment Consistency Tracking (puenktlich, verspaetet, variabel)
+- Entity Payment Pattern Analysis (historische Zahlungsverzögerungen)
+- Seasonal Pattern Detection (Weihnachtsgeschäft, Sommerloch)
+- Payment Consistency Tracking (puenktlich, verspätet, variabel)
 - 30/60/90-Tage Forecasts mit Confidence Intervals
 - Individual Invoice Payment Probability
 - Liquidity Alert Integration mit Alert Center
@@ -53,20 +53,20 @@ logger = structlog.get_logger(__name__)
 class PaymentConsistency(str, Enum):
     """Zahlungskonsistenz-Klassifikation."""
 
-    ALWAYS_EARLY = "always_early"      # Immer vor Faelligkeit
+    ALWAYS_EARLY = "always_early"      # Immer vor Fälligkeit
     ALWAYS_ON_TIME = "always_on_time"  # Immer puenktlich (+/- 3 Tage)
     MOSTLY_ON_TIME = "mostly_on_time"  # Meist puenktlich (>70%)
     VARIABLE = "variable"              # Unvorhersehbar
-    ALWAYS_LATE = "always_late"        # Immer verspaetet
+    ALWAYS_LATE = "always_late"        # Immer verspätet
     HIGH_RISK = "high_risk"            # Sehr unzuverlaessig/Ausfaelle
 
 
 class SeasonalPatternType(str, Enum):
     """Saisonale Zahlungsmuster."""
 
-    Q4_DELAY = "q4_delay"           # Verzoegerungen im Q4 (Weihnachtsgeschaeft)
+    Q4_DELAY = "q4_delay"           # Verzögerungen im Q4 (Weihnachtsgeschäft)
     SUMMER_SLOW = "summer_slow"      # Sommerloch (Jul/Aug)
-    SUMMER_EARLY = "summer_early"    # Fruehzahler im Sommer
+    SUMMER_EARLY = "summer_early"    # Frühzahler im Sommer
     MONTH_END_RUSH = "month_end_rush"  # Zahlung zum Monatsende
     QUARTER_END = "quarter_end"      # Quartalszahler
     NO_PATTERN = "no_pattern"        # Kein erkennbares Muster
@@ -101,14 +101,14 @@ class SeasonalPattern:
 
     pattern_type: SeasonalPatternType
     affected_months: List[int]
-    avg_delay_adjustment: float  # Tage (+/-) zur normalen Verzoegerung
+    avg_delay_adjustment: float  # Tage (+/-) zur normalen Verzögerung
     confidence: float  # 0-1
     description: str  # German
 
 
 @dataclass
 class EntityPaymentProfile:
-    """Zahlungsprofil eines Geschaeftspartners."""
+    """Zahlungsprofil eines Geschäftspartners."""
 
     entity_id: UUID
     avg_payment_delay_days: int
@@ -117,7 +117,7 @@ class EntityPaymentProfile:
     seasonal_pattern: Optional[SeasonalPattern]
     risk_adjusted_probability: float  # Zahlungswahrscheinlichkeit 0-1
 
-    # Zusaetzliche Metriken
+    # Zusätzliche Metriken
     sample_count: int = 0
     stddev_days: float = 0.0
     min_delay_days: int = 0
@@ -156,7 +156,7 @@ class EntityPaymentProfile:
 
 @dataclass
 class PaymentProbability:
-    """Zahlungswahrscheinlichkeit fuer eine einzelne Rechnung."""
+    """Zahlungswahrscheinlichkeit für eine einzelne Rechnung."""
 
     invoice_id: UUID
     entity_id: Optional[UUID]
@@ -166,7 +166,7 @@ class PaymentProbability:
     # Vorhersage
     predicted_payment_date: date
     probability: float  # 0-1
-    delay_days: int  # Erwartete Verzoegerung
+    delay_days: int  # Erwartete Verzögerung
 
     # Confidence Interval
     optimistic_date: date  # 10. Perzentil
@@ -270,13 +270,13 @@ class LiquidityAlert:
 
 class CashflowPredictorService:
     """
-    Service fuer Entity-basierte Cashflow-Vorhersagen.
+    Service für Entity-basierte Cashflow-Vorhersagen.
 
     Kombiniert:
     - Historische Zahlungsmuster-Analyse pro Entity
     - Saisonale Pattern-Erkennung
     - Risk-Score-gewichtete Wahrscheinlichkeiten
-    - Monte Carlo Simulation fuer Confidence Intervals
+    - Monte Carlo Simulation für Confidence Intervals
 
     SECURITY:
     - Alle Abfragen mit company_id Filter (Multi-Tenant)
@@ -284,8 +284,8 @@ class CashflowPredictorService:
     """
 
     # Konfiguration
-    MIN_SAMPLES_FOR_PATTERN = 5  # Mindestanzahl Zahlungen fuer Muster-Erkennung
-    SEASONAL_SIGNIFICANCE_THRESHOLD = 0.15  # 15% Abweichung fuer saisonales Muster
+    MIN_SAMPLES_FOR_PATTERN = 5  # Mindestanzahl Zahlungen für Muster-Erkennung
+    SEASONAL_SIGNIFICANCE_THRESHOLD = 0.15  # 15% Abweichung für saisonales Muster
     WARNING_BALANCE_THRESHOLD = Decimal("5000")
     CRITICAL_BALANCE_THRESHOLD = Decimal("0")
     HIGH_RISK_ENTITY_THRESHOLD = 75  # Risk Score > 75 = High Risk
@@ -295,7 +295,7 @@ class CashflowPredictorService:
         Initialisiere Service mit Datenbankverbindung.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
         """
         self.db = db
         self._profile_cache: Dict[UUID, EntityPaymentProfile] = {}
@@ -311,20 +311,20 @@ class CashflowPredictorService:
         force_refresh: bool = False,
     ) -> Optional[EntityPaymentProfile]:
         """
-        Berechnet das vollstaendige Zahlungsprofil einer Entity.
+        Berechnet das vollständige Zahlungsprofil einer Entity.
 
         Args:
-            entity_id: Geschaeftspartner-ID
+            entity_id: Geschäftspartner-ID
             company_id: Mandanten-ID (Multi-Tenant)
             force_refresh: Cache ignorieren
 
         Returns:
             EntityPaymentProfile oder None wenn keine Daten
         """
-        # Cache pruefen
+        # Cache prüfen
         if not force_refresh and entity_id in self._profile_cache:
             cached = self._profile_cache[entity_id]
-            # Cache ist 1 Stunde gueltig
+            # Cache ist 1 Stunde gültig
             if (utc_now() - cached.profile_updated_at).total_seconds() < 3600:
                 return cached
 
@@ -404,7 +404,7 @@ class CashflowPredictorService:
         company_id: UUID,
     ) -> Optional[PaymentProbability]:
         """
-        Berechnet die Zahlungswahrscheinlichkeit fuer eine einzelne Rechnung.
+        Berechnet die Zahlungswahrscheinlichkeit für eine einzelne Rechnung.
 
         Args:
             invoice_id: Rechnungs-ID
@@ -467,12 +467,12 @@ class CashflowPredictorService:
                 if current_month in profile.seasonal_pattern.affected_months:
                     avg_delay += int(profile.seasonal_pattern.avg_delay_adjustment)
         else:
-            # Default-Werte fuer unbekannte Entities
+            # Default-Werte für unbekannte Entities
             avg_delay = 25
             stddev = 15.0
             probability = 0.7
 
-        # Betragsabhaengige Anpassung (groessere Betraege = laengere Zahlung)
+        # Betragsabhängige Anpassung (größere Betraege = längere Zahlung)
         amount_factor = self._get_amount_delay_factor(amount)
         avg_delay = int(avg_delay * amount_factor)
 
@@ -505,7 +505,7 @@ class CashflowPredictorService:
             risk_factors.append("unreliable_payer")
             probability *= 0.7
 
-        # Ueberfaellig?
+        # Überfällig?
         if due_date < date.today():
             days_overdue = (date.today() - due_date).days
             risk_factors.append(f"overdue_{days_overdue}_days")
@@ -530,9 +530,9 @@ class CashflowPredictorService:
         days: int = 30,
     ) -> List[CashFlowPrediction]:
         """
-        Erstellt eine Cashflow-Prognose fuer die naechsten X Tage.
+        Erstellt eine Cashflow-Prognose für die nächsten X Tage.
 
-        Verwendet Entity-Profile fuer praezise Vorhersagen.
+        Verwendet Entity-Profile für praezise Vorhersagen.
 
         Args:
             company_id: Mandanten-ID
@@ -567,13 +567,13 @@ class CashflowPredictorService:
         for day_offset in range(days + 1):
             current_date = today + timedelta(days=day_offset)
 
-            # Eingaenge fuer diesen Tag
+            # Eingaenge für diesen Tag
             day_inflows_data = [
                 r for r in receivables
                 if r["predicted_date"] == current_date
             ]
 
-            # Ausgaenge fuer diesen Tag
+            # Ausgaenge für diesen Tag
             day_outflows_data = [
                 p for p in payables
                 if p["payment_date"] == current_date
@@ -605,11 +605,11 @@ class CashflowPredictorService:
             net_flow = expected_inflow - expected_outflow
             running_balance += net_flow
 
-            # Confidence Intervals fuer Balance
+            # Confidence Intervals für Balance
             optimistic_balance = running_balance + (optimistic_inflow - expected_inflow)
             pessimistic_balance = running_balance + (pessimistic_inflow - expected_inflow)
 
-            # Risikofaktoren fuer den Tag
+            # Risikofaktoren für den Tag
             if running_balance < self.CRITICAL_BALANCE_THRESHOLD:
                 risk_factors.append("critical_balance")
             elif running_balance < self.WARNING_BALANCE_THRESHOLD:
@@ -682,7 +682,7 @@ class CashflowPredictorService:
                     recommendations=[
                         "Zahlungseingaenge beschleunigen (Skonto anbieten)",
                         "Nicht-kritische Zahlungen verschieben",
-                        "Kontokorrent-Kredit pruefen",
+                        "Kontokorrent-Kredit prüfen",
                         "Grosskunden zu schnellerer Zahlung auffordern",
                     ],
                     days_until_trigger=days_until,
@@ -699,12 +699,12 @@ class CashflowPredictorService:
                         expected_inflows=prediction.expected_inflows,
                         expected_outflows=prediction.expected_outflows,
                         message=(
-                            f"Cashflow-Luecke am {prediction.prediction_date.strftime('%d.%m.%Y')}: "
+                            f"Cashflow-Lücke am {prediction.prediction_date.strftime('%d.%m.%Y')}: "
                             f"Ausgaenge ({float(prediction.expected_outflows):,.2f} EUR) "
-                            f"uebersteigen Eingaenge ({float(prediction.expected_inflows):,.2f} EUR)"
+                            f"übersteigen Eingaenge ({float(prediction.expected_inflows):,.2f} EUR)"
                         ),
                         recommendations=[
-                            "Zahlungseingaenge fuer diesen Tag pruefen",
+                            "Zahlungseingaenge für diesen Tag prüfen",
                             "Ausgaben-Verschiebung erwaegen",
                         ],
                         days_until_trigger=days_until,
@@ -726,11 +726,11 @@ class CashflowPredictorService:
                     expected_outflows=prediction.expected_outflows,
                     message=(
                         f"Niedriger Kontostand am {prediction.prediction_date.strftime('%d.%m.%Y')}: "
-                        f"Nur {float(prediction.confidence_mid):,.2f} EUR verfuegbar"
+                        f"Nur {float(prediction.confidence_mid):,.2f} EUR verfügbar"
                     ),
                     recommendations=[
                         "Forderungsmanagement intensivieren",
-                        "Liquiditaetsreserve pruefen",
+                        "Liquiditaetsreserve prüfen",
                     ],
                     days_until_trigger=days_until,
                 ))
@@ -750,13 +750,13 @@ class CashflowPredictorService:
                     expected_inflows=Decimal("0"),
                     expected_outflows=Decimal("0"),
                     message=(
-                        f"Negativer Liquiditaetstrend: Rueckgang um "
+                        f"Negativer Liquiditaetstrend: Rückgang um "
                         f"{float(trend_decline):,.2f} EUR im Prognosezeitraum"
                     ),
                     recommendations=[
-                        "Ursachen fuer Rueckgang analysieren",
+                        "Ursachen für Rückgang analysieren",
                         "Einnahmequellen diversifizieren",
-                        "Kostensenkungsmassnahmen pruefen",
+                        "Kostensenkungsmassnahmen prüfen",
                     ],
                     days_until_trigger=0,
                 ))
@@ -776,13 +776,13 @@ class CashflowPredictorService:
                     expected_inflows=Decimal("0"),
                     expected_outflows=Decimal("0"),
                     message=(
-                        f"Hohe Konzentration von High-Risk Geschaeftspartnern: "
+                        f"Hohe Konzentration von High-Risk Geschäftspartnern: "
                         f"{high_risk_count} von {total_entities} ({high_risk_ratio*100:.0f}%)"
                     ),
                     recommendations=[
                         "Portfolio-Diversifikation verbessern",
-                        "Kreditlimits fuer High-Risk Entities pruefen",
-                        "Vorkasse-Optionen fuer High-Risk Entities einfordern",
+                        "Kreditlimits für High-Risk Entities prüfen",
+                        "Vorkasse-Optionen für High-Risk Entities einfordern",
                     ],
                     days_until_trigger=0,
                 ))
@@ -812,9 +812,9 @@ class CashflowPredictorService:
         limit: int = 100,
     ) -> int:
         """
-        Aktualisiert alle Entity-Profile fuer ein Unternehmen.
+        Aktualisiert alle Entity-Profile für ein Unternehmen.
 
-        Wird woechentlich via Celery Task ausgefuehrt.
+        Wird woechentlich via Celery Task ausgeführt.
 
         Args:
             company_id: Mandanten-ID
@@ -1004,7 +1004,7 @@ class CashflowPredictorService:
                 affected_months=affected,
                 avg_delay_adjustment=avg_adjustment,
                 confidence=0.7,
-                description="Laengere Zahlungsdauer im Sommer (Urlaubszeit)",
+                description="Längere Zahlungsdauer im Sommer (Urlaubszeit)",
             )
 
         if 11 in high_delay_months or 12 in high_delay_months:
@@ -1017,7 +1017,7 @@ class CashflowPredictorService:
                 affected_months=affected,
                 avg_delay_adjustment=avg_adjustment,
                 confidence=0.7,
-                description="Verzoegerungen im Q4 (Jahresendgeschaeft)",
+                description="Verzögerungen im Q4 (Jahresendgeschäft)",
             )
 
         if 7 in low_delay_months or 8 in low_delay_months:
@@ -1030,10 +1030,10 @@ class CashflowPredictorService:
                 affected_months=affected,
                 avg_delay_adjustment=avg_adjustment,
                 confidence=0.6,
-                description="Fruehzahlung im Sommer",
+                description="Frühzahlung im Sommer",
             )
 
-        # Quartals-Muster pruefen
+        # Quartals-Muster prüfen
         q_ends = [3, 6, 9, 12]
         q_end_in_high = [m for m in q_ends if m in high_delay_months]
         if len(q_end_in_high) >= 2:
@@ -1045,7 +1045,7 @@ class CashflowPredictorService:
                 affected_months=q_end_in_high,
                 avg_delay_adjustment=avg_adjustment,
                 confidence=0.65,
-                description="Verzoegerte Zahlungen zum Quartalsende",
+                description="Verzögerte Zahlungen zum Quartalsende",
             )
 
         return None
@@ -1088,7 +1088,7 @@ class CashflowPredictorService:
     ) -> float:
         """Berechnet die Zahlungswahrscheinlichkeit."""
         # Basis-Wahrscheinlichkeit aus Delay
-        # Je kuerzer der Delay, desto hoeher die Wahrscheinlichkeit
+        # Je kürzer der Delay, desto höher die Wahrscheinlichkeit
         delay_factor = 1.0 - min(1.0, avg_delay / 60)  # 0-60 Tage -> 1-0
 
         # Konsistenz-Faktor
@@ -1097,7 +1097,7 @@ class CashflowPredictorService:
         # Risk-Faktor (100 = max Risiko)
         risk_factor = 1.0 - (risk_score / 200)  # 0-100 -> 1-0.5
 
-        # Sample-Count Faktor (mehr Daten = hoehere Konfidenz)
+        # Sample-Count Faktor (mehr Daten = höhere Konfidenz)
         sample_factor = min(1.0, 0.5 + sample_count * 0.05)
 
         # Kombinierte Wahrscheinlichkeit
@@ -1111,7 +1111,7 @@ class CashflowPredictorService:
         return max(0.1, min(0.95, probability))
 
     def _get_amount_delay_factor(self, amount: Decimal) -> float:
-        """Betragsabhaengiger Verzoegerungsfaktor."""
+        """Betragsabhängiger Verzögerungsfaktor."""
         if amount < 500:
             return 0.9
         elif amount < 2000:
@@ -1145,7 +1145,7 @@ class CashflowPredictorService:
     ) -> List[Dict[str, Any]]:
         """Holt offene Forderungen mit Zahlungswahrscheinlichkeiten."""
         now = utc_now()
-        end_date = now + timedelta(days=days * 2)  # Extra Puffer fuer verzoegerte Zahlungen
+        end_date = now + timedelta(days=days * 2)  # Extra Puffer für verzögerte Zahlungen
 
         result = await self.db.execute(
             select(InvoiceTracking)
@@ -1204,7 +1204,7 @@ class CashflowPredictorService:
             due_date = due.date() if isinstance(due, datetime) else due
 
             if due_date <= date.today() + timedelta(days=days):
-                # Skonto-Deadline pruefen
+                # Skonto-Deadline prüfen
                 payment_date = due_date
                 amount = float(inv.amount or 0)
 
@@ -1261,5 +1261,5 @@ _service_instance: Optional[CashflowPredictorService] = None
 
 
 def get_cashflow_predictor_service(db: AsyncSession) -> CashflowPredictorService:
-    """Factory-Funktion fuer CashflowPredictorService."""
+    """Factory-Funktion für CashflowPredictorService."""
     return CashflowPredictorService(db)

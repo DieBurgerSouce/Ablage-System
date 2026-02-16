@@ -4,8 +4,8 @@ AmountTierService - Betragsbasierte Freigabestufen.
 
 Drei konfigurierbare Stufen pro Firma:
 - Auto (<500 EUR): Automatische Freigabe bei ausreichendem Trust-Level
-- One-Click (500-5000 EUR): Ein-Klick-Bestaetigung
-- Explicit (>5000 EUR): Explizite Pruefung erforderlich
+- One-Click (500-5000 EUR): Ein-Klick-Bestätigung
+- Explicit (>5000 EUR): Explizite Prüfung erforderlich
 """
 
 from __future__ import annotations
@@ -80,8 +80,8 @@ class AmountTierService:
         self.db = db
 
     async def get_tiers(self, company_id: UUID) -> List[AmountTier]:
-        """Laedt Tier-Konfiguration fuer eine Firma (aus filing_rules JSONB).
-        Falls keine Custom-Config existiert, werden Default-Tiers zurueckgegeben."""
+        """Laedt Tier-Konfiguration für eine Firma (aus filing_rules JSONB).
+        Falls keine Custom-Config existiert, werden Default-Tiers zurückgegeben."""
         try:
             stmt = select(Company).where(Company.id == company_id)
             result = await self.db.execute(stmt)
@@ -114,7 +114,7 @@ class AmountTierService:
             return DEFAULT_TIERS
 
     async def update_tiers(self, company_id: UUID, tiers: List[AmountTier]) -> List[AmountTier]:
-        """Aktualisiert Tier-Konfiguration fuer eine Firma.
+        """Aktualisiert Tier-Konfiguration für eine Firma.
         Validiert: mindestens 2 Stufen, aufsteigende max_amounts, letzte Stufe ist EXPLICIT."""
         try:
             # Validation: at least 2 tiers
@@ -172,8 +172,8 @@ class AmountTierService:
 
         Logik:
         1. Finde passende Stufe (erste wo amount <= max_amount)
-        2. Pruefe ob trust_level >= min_trust_level der Stufe
-        3. Falls Trust-Level nicht ausreicht -> naechsthoehere Stufe
+        2. Prüfe ob trust_level >= min_trust_level der Stufe
+        3. Falls Trust-Level nicht ausreicht -> nächsthöhere Stufe
         """
         tiers = await self.get_tiers(company_id)
 

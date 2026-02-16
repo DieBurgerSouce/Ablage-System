@@ -1,10 +1,10 @@
 """
 Ethical Guardrails
 
-Guardrails fuer KI-Aktionen:
-- Prueft ob Aktion ethisch vertretbar ist
+Guardrails für KI-Aktionen:
+- Prüft ob Aktion ethisch vertretbar ist
 - Verhindert riskante Bulk-Aktionen
-- Erfordert manuelle Bestaetigung bei kritischen Entscheidungen
+- Erfordert manuelle Bestätigung bei kritischen Entscheidungen
 
 Feinpoliert und durchdacht - Enterprise AI Safety.
 """
@@ -29,13 +29,13 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class GuardrailResult:
-    """Ergebnis einer Guardrail-Pruefung."""
+    """Ergebnis einer Guardrail-Prüfung."""
 
     allowed: bool  # Aktion erlaubt?
     reason: str  # German Begruendung
     risk_level: str  # low, medium, high
-    requires_human_review: bool  # Manuelle Pruefung erforderlich?
-    metadata: Dict[str, any]  # Zusaetzliche Infos
+    requires_human_review: bool  # Manuelle Prüfung erforderlich?
+    metadata: Dict[str, any]  # Zusätzliche Infos
 
     def to_dict(self) -> Dict[str, any]:
         """Konvertiert zu Dictionary."""
@@ -55,10 +55,10 @@ class GuardrailResult:
 
 class EthicalGuardrails:
     """
-    Ethical Guardrails fuer KI-Aktionen.
+    Ethical Guardrails für KI-Aktionen.
 
-    Prueft:
-    - Bulk-Aktionen (z.B. Massen-Loeschung)
+    Prüft:
+    - Bulk-Aktionen (z.B. Massen-Löschung)
     - Kritische Entscheidungen (z.B. hohe Zahlungen)
     - Sensitive Daten-Zugriffe
     """
@@ -78,12 +78,12 @@ class EthicalGuardrails:
         db: AsyncSession,
     ) -> GuardrailResult:
         """
-        Prueft ob Aktion erlaubt ist.
+        Prüft ob Aktion erlaubt ist.
 
         Args:
             action_type: Aktionstyp (z.B. delete_documents, approve_payment)
             parameters: Aktionsparameter
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Database session
 
         Returns:
@@ -119,16 +119,16 @@ class EthicalGuardrails:
         db: AsyncSession,
     ) -> GuardrailResult:
         """
-        Prueft Dokument-Loeschung.
+        Prüft Dokument-Löschung.
 
         Kritisch bei:
         - Mehr als 10 Dokumente (Bulk)
-        - Dokumente mit verknuepften Entities
+        - Dokumente mit verknüpften Entities
         - Dokumente mit Invoices
 
         Args:
             parameters: {document_ids: List[UUID]}
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Database session
 
         Returns:
@@ -155,7 +155,7 @@ class EthicalGuardrails:
                 metadata={"document_count": len(document_ids)},
             )
 
-        # 2. Pruefe auf verknuepfte Invoices
+        # 2. Prüfe auf verknüpfte Invoices
         # SECURITY FIX: company_id Filter für Multi-Tenant Isolation
         from sqlalchemy import and_
         invoices_query = select(InvoiceTracking).where(
@@ -195,16 +195,16 @@ class EthicalGuardrails:
         db: AsyncSession,
     ) -> GuardrailResult:
         """
-        Prueft Zahlungs-Freigabe.
+        Prüft Zahlungs-Freigabe.
 
         Kritisch bei:
         - Hohen Betraegen (> 10.000 EUR)
-        - Neuen/unbekannten Empfaengern
+        - Neuen/unbekannten Empfängern
         - High-Risk Entities
 
         Args:
             parameters: {invoice_id: UUID, amount: float, entity_id: UUID}
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Database session
 
         Returns:
@@ -223,7 +223,7 @@ class EthicalGuardrails:
                 metadata={"amount": amount},
             )
 
-        # 2. Pruefe Entity Risk Score
+        # 2. Prüfe Entity Risk Score
         # SECURITY FIX: Validate entity belongs to user's company
         if entity_id:
             from sqlalchemy import and_
@@ -264,7 +264,7 @@ class EthicalGuardrails:
         db: AsyncSession,
     ) -> GuardrailResult:
         """
-        Prueft Bulk-Datenexport.
+        Prüft Bulk-Datenexport.
 
         Kritisch bei:
         - Mehr als 100 Dokumente
@@ -319,7 +319,7 @@ class EthicalGuardrails:
         db: AsyncSession,
     ) -> GuardrailResult:
         """
-        Prueft automatische Rechnungs-Freigabe.
+        Prüft automatische Rechnungs-Freigabe.
 
         Kritisch bei:
         - Vielen Rechnungen gleichzeitig
@@ -381,7 +381,7 @@ class EthicalGuardrails:
         db: AsyncSession,
     ) -> GuardrailResult:
         """
-        Prueft manuelle Risk-Score-Aenderung.
+        Prüft manuelle Risk-Score-Änderung.
 
         Kritisch bei:
         - Grossen Spruengen (> 30 Punkte)
@@ -389,7 +389,7 @@ class EthicalGuardrails:
 
         Args:
             parameters: {entity_id: UUID, old_score: float, new_score: float, reason: str}
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Database session
 
         Returns:

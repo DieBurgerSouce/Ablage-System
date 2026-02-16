@@ -261,7 +261,7 @@ async def create_role(
         logger.warning("role_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     # Audit-Log
@@ -349,7 +349,7 @@ async def update_role(
         logger.warning("role_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     # Audit-Log
@@ -429,7 +429,7 @@ async def delete_role(
         logger.warning("role_admin_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     # Audit-Log

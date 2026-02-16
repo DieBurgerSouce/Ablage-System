@@ -2,13 +2,13 @@
 """
 Lexware Import API Endpoints.
 
-REST API fuer Lexware-Integration:
+REST API für Lexware-Integration:
 - Kunden-Import (Excel-Dateien von Folie/Messer)
 - Lieferanten-Import (Excel-Dateien von Folie/Messer)
-- Entity-Linking (Dokumente mit importierten Entities verknuepfen)
+- Entity-Linking (Dokumente mit importierten Entities verknüpfen)
 - Import-Status und Statistiken
 
-Feinpoliert und durchdacht - Deutsche Geschaeftsdokumente.
+Feinpoliert und durchdacht - Deutsche Geschäftsdokumente.
 """
 
 from typing import Optional, List, Dict
@@ -48,7 +48,7 @@ router = APIRouter(prefix="/lexware", tags=["Lexware Integration"])
 
 
 class LexwareImportRequest(BaseModel):
-    """Request fuer Lexware-Import."""
+    """Request für Lexware-Import."""
 
     company: str = Field(
         ...,
@@ -57,62 +57,62 @@ class LexwareImportRequest(BaseModel):
     )
     skip_conflicts: bool = Field(
         default=True,
-        description="Kritische Konflikte ueberspringen (empfohlen)"
+        description="Kritische Konflikte überspringen (empfohlen)"
     )
     dry_run: bool = Field(
         default=False,
-        description="Nur simulieren, keine Daten aendern"
+        description="Nur simulieren, keine Daten ändern"
     )
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class ConflictInfo(BaseModel):
-    """Info ueber einen Import-Konflikt."""
+    """Info über einen Import-Konflikt."""
 
     identifier: str = Field(..., description="Kundennummer oder Name")
     conflict_type: str = Field(..., description="critical, harmless, or duplicate")
-    reason: str = Field(..., description="Grund fuer Konflikt")
+    reason: str = Field(..., description="Grund für Konflikt")
     folie_value: Optional[str] = None
     messer_value: Optional[str] = None
 
 
 class LexwareImportResponse(BaseModel):
-    """Response fuer Lexware-Import."""
+    """Response für Lexware-Import."""
 
     success: bool
     imported_count: int = Field(..., description="Erfolgreich importierte Entities")
     updated_count: int = Field(..., description="Aktualisierte Entities")
-    skipped_count: int = Field(..., description="Uebersprungene Konflikte")
+    skipped_count: int = Field(..., description="Übersprungene Konflikte")
     error_count: int = Field(..., description="Fehler beim Import")
     conflicts: List[ConflictInfo] = Field(default_factory=list)
     message: str
     task_id: Optional[str] = Field(
         None,
-        description="Celery Task ID fuer asynchronen Import"
+        description="Celery Task ID für asynchronen Import"
     )
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class EntityLinkingRequest(BaseModel):
-    """Request fuer Entity-Linking."""
+    """Request für Entity-Linking."""
 
     min_confidence: float = Field(
         default=0.75,
         ge=0.0,
         le=1.0,
-        description="Minimale Confidence fuer automatische Verknuepfung"
+        description="Minimale Confidence für automatische Verknüpfung"
     )
     only_unlinked: bool = Field(
         default=True,
-        description="Nur Dokumente ohne BusinessEntity verknuepfen"
+        description="Nur Dokumente ohne BusinessEntity verknüpfen"
     )
     batch_size: int = Field(
         default=100,
         ge=1,
         le=1000,
-        description="Batch-Groesse fuer Verarbeitung"
+        description="Batch-Größe für Verarbeitung"
     )
     async_mode: bool = Field(
         default=True,
@@ -123,24 +123,24 @@ class EntityLinkingRequest(BaseModel):
 
 
 class EntityLinkingResponse(BaseModel):
-    """Response fuer Entity-Linking."""
+    """Response für Entity-Linking."""
 
     success: bool
-    linked_count: int = Field(..., description="Erfolgreich verknuepfte Dokumente")
+    linked_count: int = Field(..., description="Erfolgreich verknüpfte Dokumente")
     unlinked_count: int = Field(..., description="Dokumente ohne Match")
     low_confidence_count: int = Field(
         ...,
         description="Dokumente mit Confidence unter Schwelle"
     )
-    error_count: int = Field(..., description="Fehler bei Verknuepfung")
+    error_count: int = Field(..., description="Fehler bei Verknüpfung")
     already_linked_count: int = Field(
         default=0,
-        description="Bereits verknuepfte Dokumente (uebersprungen)"
+        description="Bereits verknüpfte Dokumente (übersprungen)"
     )
     message: str
     task_id: Optional[str] = Field(
         None,
-        description="Celery Task ID fuer asynchrone Verarbeitung"
+        description="Celery Task ID für asynchrone Verarbeitung"
     )
 
     model_config = ConfigDict(from_attributes=True)
@@ -155,7 +155,7 @@ class LinkingStatistics(BaseModel):
     linked_percentage: float
     by_match_type: dict = Field(
         default_factory=dict,
-        description="Verknuepfungen nach Match-Typ"
+        description="Verknüpfungen nach Match-Typ"
     )
     by_confidence: dict = Field(
         default_factory=dict,
@@ -163,14 +163,14 @@ class LinkingStatistics(BaseModel):
     )
     by_entity_type: dict = Field(
         default_factory=dict,
-        description="Verknuepfungen nach Entity-Typ"
+        description="Verknüpfungen nach Entity-Typ"
     )
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class EntitySearchRequest(BaseModel):
-    """Request fuer Entity-Suche."""
+    """Request für Entity-Suche."""
 
     query: str = Field(..., min_length=1, max_length=255)
     entity_type: Optional[str] = Field(
@@ -189,7 +189,7 @@ class EntitySearchRequest(BaseModel):
 
 
 class EntitySearchResult(BaseModel):
-    """Suchergebnis fuer Entity-Suche."""
+    """Suchergebnis für Entity-Suche."""
 
     id: UUID
     name: str
@@ -198,7 +198,7 @@ class EntitySearchResult(BaseModel):
     primary_customer_number: Optional[str]
     primary_supplier_number: Optional[str]
     company_presence: List[str] = Field(default_factory=list)
-    similarity: float = Field(..., description="Aehnlichkeit (0.0-1.0)")
+    similarity: float = Field(..., description="Ähnlichkeit (0.0-1.0)")
     match_type: str = Field(..., description="Art des Matches")
 
     model_config = ConfigDict(from_attributes=True)
@@ -227,11 +227,11 @@ async def import_customers(
     ),
     skip_conflicts: bool = Query(
         True,
-        description="Kritische Konflikte ueberspringen"
+        description="Kritische Konflikte überspringen"
     ),
     dry_run: bool = Query(
         False,
-        description="Nur simulieren, keine Daten aendern"
+        description="Nur simulieren, keine Daten ändern"
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -242,8 +242,8 @@ async def import_customers(
     **Ablauf:**
     1. Beide Excel-Dateien werden geladen
     2. Kunden werden nach Kundennummer gemerged
-    3. Kritische Konflikte werden uebersprungen (optional)
-    4. Harmlose Varianten werden zu name_aliases zusammengefuehrt
+    3. Kritische Konflikte werden übersprungen (optional)
+    4. Harmlose Varianten werden zu name_aliases zusammengeführt
     5. BusinessEntity wird pro Kunde erstellt
 
     **Schema:**
@@ -253,18 +253,18 @@ async def import_customers(
 
     **Konflikte:**
     - Kritische Konflikte (unterschiedliche Daten) werden ausgelassen
-    - Harmlose Varianten (gleiche Daten) werden zusammengefuehrt
+    - Harmlose Varianten (gleiche Daten) werden zusammengeführt
     """
     # Check admin permission
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Lexware-Daten importieren"
+            detail="Nur Administratoren können Lexware-Daten importieren"
         )
 
     # WICHTIG: User-ID sofort erfassen, BEVOR DB-Operationen stattfinden!
     # Nach db.commit() kann der Zugriff auf current_user.id einen Lazy-Load
-    # ausloesen, der MissingGreenlet verursacht.
+    # auslösen, der MissingGreenlet verursacht.
     user_id_str = str(current_user.id)
 
     # Validate file types
@@ -335,7 +335,7 @@ async def import_customers(
             ] if hasattr(result, 'conflicts') else [],
             message=f"Import abgeschlossen: "
                     f"{result.imported_count} importiert, {result.merged_count} gemerged, "
-                    f"{result.skipped_count} uebersprungen",
+                    f"{result.skipped_count} übersprungen",
             task_id=task_id,
         )
 
@@ -376,11 +376,11 @@ async def import_suppliers(
     ),
     skip_conflicts: bool = Query(
         True,
-        description="Kritische Konflikte ueberspringen"
+        description="Kritische Konflikte überspringen"
     ),
     dry_run: bool = Query(
         False,
-        description="Nur simulieren, keine Daten aendern"
+        description="Nur simulieren, keine Daten ändern"
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -391,8 +391,8 @@ async def import_suppliers(
     **Ablauf:**
     1. Beide Excel-Dateien werden geladen
     2. Lieferanten werden nach normalisiertem Namen gemerged
-    3. Kritische Konflikte werden uebersprungen (optional)
-    4. Namensvarianten werden zusammengefuehrt
+    3. Kritische Konflikte werden übersprungen (optional)
+    4. Namensvarianten werden zusammengeführt
 
     **Schema:**
     - name = Lieferantenname (ohne Nummer, wegen Nummern-Chaos)
@@ -402,12 +402,12 @@ async def import_suppliers(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Lexware-Daten importieren"
+            detail="Nur Administratoren können Lexware-Daten importieren"
         )
 
     # WICHTIG: User-ID sofort erfassen, BEVOR DB-Operationen stattfinden!
     # Nach db.commit() kann der Zugriff auf current_user.id einen Lazy-Load
-    # ausloesen, der MissingGreenlet verursacht.
+    # auslösen, der MissingGreenlet verursacht.
     user_id_str = str(current_user.id)
 
     # Validate file types
@@ -478,7 +478,7 @@ async def import_suppliers(
             ] if hasattr(result, 'conflicts') else [],
             message=f"Import abgeschlossen: "
                     f"{result.imported_count} importiert, {result.merged_count} gemerged, "
-                    f"{result.skipped_count} uebersprungen",
+                    f"{result.skipped_count} übersprungen",
             task_id=task_id,
         )
 
@@ -509,8 +509,8 @@ async def import_suppliers(
 @router.post(
     "/link-documents",
     response_model=EntityLinkingResponse,
-    summary="Dokumente mit Entities verknuepfen",
-    description="Verknuepft bestehende Dokumente automatisch mit BusinessEntities"
+    summary="Dokumente mit Entities verknüpfen",
+    description="Verknüpft bestehende Dokumente automatisch mit BusinessEntities"
 )
 async def link_documents(
     request: EntityLinkingRequest,
@@ -519,9 +519,9 @@ async def link_documents(
     db: AsyncSession = Depends(get_db),
 ) -> EntityLinkingResponse:
     """
-    Verknuepft bestehende Dokumente mit BusinessEntities.
+    Verknüpft bestehende Dokumente mit BusinessEntities.
 
-    **Matching-Strategien (nach Prioritaet):**
+    **Matching-Strategien (nach Priorität):**
     1. Exakte Kundennummer im OCR-Text (99% Confidence)
     2. Exakter Matchcode im OCR-Text (95% Confidence)
     3. IBAN/VAT-ID Match (90% Confidence)
@@ -536,7 +536,7 @@ async def link_documents(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Entity-Linking durchfuehren"
+            detail="Nur Administratoren können Entity-Linking durchführen"
         )
 
     if request.async_mode:
@@ -562,7 +562,7 @@ async def link_documents(
             unlinked_count=0,
             low_confidence_count=0,
             error_count=0,
-            message="Entity-Linking gestartet. Task-ID fuer Status-Abfrage.",
+            message="Entity-Linking gestartet. Task-ID für Status-Abfrage.",
             task_id=task.id,
         )
 
@@ -597,7 +597,7 @@ async def link_documents(
                 low_confidence_count=result.low_confidence_count,
                 error_count=result.error_count,
                 already_linked_count=result.already_linked_count,
-                message=f"Entity-Linking abgeschlossen: {result.linked_count} Dokumente verknuepft",
+                message=f"Entity-Linking abgeschlossen: {result.linked_count} Dokumente verknüpft",
                 task_id=None,
             )
 
@@ -616,8 +616,8 @@ async def link_documents(
 @router.post(
     "/link-document/{document_id}",
     response_model=EntityLinkingResponse,
-    summary="Einzelnes Dokument verknuepfen",
-    description="Verknuepft ein einzelnes Dokument mit der besten BusinessEntity"
+    summary="Einzelnes Dokument verknüpfen",
+    description="Verknüpft ein einzelnes Dokument mit der besten BusinessEntity"
 )
 async def link_single_document(
     document_id: UUID,
@@ -625,15 +625,15 @@ async def link_single_document(
         0.75,
         ge=0.0,
         le=1.0,
-        description="Minimale Confidence fuer Verknuepfung"
+        description="Minimale Confidence für Verknüpfung"
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> EntityLinkingResponse:
     """
-    Verknuepft ein einzelnes Dokument mit der besten BusinessEntity.
+    Verknüpft ein einzelnes Dokument mit der besten BusinessEntity.
 
-    Gibt Match-Details zurueck (Entity, Confidence, Match-Typ).
+    Gibt Match-Details zurück (Entity, Confidence, Match-Typ).
     """
     from app.services.document_entity_linker_service import (
         get_document_entity_linker_service,
@@ -653,7 +653,7 @@ async def link_single_document(
                 unlinked_count=0,
                 low_confidence_count=0,
                 error_count=0,
-                message=f"Dokument verknuepft mit '{match.entity.name}' "
+                message=f"Dokument verknüpft mit '{match.entity.name}' "
                         f"({match.match_type}, {match.confidence:.0%})",
                 task_id=None,
             )
@@ -664,7 +664,7 @@ async def link_single_document(
                 unlinked_count=1,
                 low_confidence_count=0,
                 error_count=0,
-                message="Kein passender Geschaeftspartner gefunden",
+                message="Kein passender Geschäftspartner gefunden",
                 task_id=None,
             )
 
@@ -676,7 +676,7 @@ async def link_single_document(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail(e, "Verknuepfen")
+            detail=safe_error_detail(e, "Verknüpfen")
         )
 
 
@@ -684,7 +684,7 @@ async def link_single_document(
     "/linking-statistics",
     response_model=LinkingStatistics,
     summary="Entity-Linking Statistiken",
-    description="Statistiken zur Dokument-Entity-Verknuepfung"
+    description="Statistiken zur Dokument-Entity-Verknüpfung"
 )
 async def get_linking_statistics(
     current_user: User = Depends(get_current_active_user),
@@ -692,7 +692,7 @@ async def get_linking_statistics(
 ) -> LinkingStatistics:
     """
     Liefert Statistiken zum Entity-Linking:
-    - Anzahl verknuepfter/unverknuepfter Dokumente
+    - Anzahl verknüpfter/unverknüpfter Dokumente
     - Verteilung nach Match-Typ
     - Verteilung nach Confidence-Level
     """
@@ -754,7 +754,7 @@ async def get_linking_statistics(
                 Document.extracted_data.isnot(None),
                 Document.deleted_at.is_(None),
             )
-            .limit(1000)  # Limit fuer Performance
+            .limit(1000)  # Limit für Performance
         )
         linked_docs_result = await db.execute(linked_docs_stmt)
 
@@ -811,11 +811,11 @@ async def search_entities(
     db: AsyncSession = Depends(get_db),
 ) -> List[EntitySearchResult]:
     """
-    Intelligente Suche ueber alle Entity-Felder.
+    Intelligente Suche über alle Entity-Felder.
 
     Erkennt automatisch:
     - Kundennummer (nur Ziffern)
-    - IBAN (beginnt mit Laendercode)
+    - IBAN (beginnt mit Ländercode)
     - VAT-ID (DE + 9 Ziffern)
     - Name/Matchcode (alles andere)
     """

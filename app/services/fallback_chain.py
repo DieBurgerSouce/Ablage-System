@@ -60,7 +60,7 @@ class FallbackResult:
     total_time_ms: int
     confidence_metrics: Optional[ConfidenceMetrics] = None
     error: Optional[str] = None
-    # Docling-Tabellen (fuer strukturierte Extraktion)
+    # Docling-Tabellen (für strukturierte Extraktion)
     tables: Optional[List[Any]] = None
 
     def to_dict(self) -> Dict[str, Any]:

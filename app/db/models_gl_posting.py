@@ -3,12 +3,12 @@
 Database models for GL-Posting System (General Ledger).
 
 Feature 2.1: GL-Posting Service
-- Journal Entries (Buchungssaetze)
+- Journal Entries (Buchungssätze)
 - Journal Entry Lines (Buchungszeilen)
 - Tax Periods (Steuerperioden/USt-VA)
 - GL Accounts (Sachkonten SKR03/SKR04)
 
-GoBD-konform: Keine Loeschungen, nur Stornierungen.
+GoBD-konform: Keine Löschungen, nur Stornierungen.
 
 SECURITY NOTES:
 - NEVER log journal entry details in production (GoBD confidential)
@@ -55,7 +55,7 @@ class JournalEntrySource(str, Enum):
 
 class TaxPeriodStatus(str, Enum):
     """Tax period status."""
-    OPEN = "open"                 # Offen fuer Buchungen
+    OPEN = "open"                 # Offen für Buchungen
     FILED = "filed"               # USt-VA eingereicht
     ACCEPTED = "accepted"         # Vom Finanzamt akzeptiert
     CORRECTED = "corrected"       # Korrigiert
@@ -75,7 +75,7 @@ class GLAccount(Base):
     """
     General Ledger Account (Sachkonto).
 
-    Unterstuetzt SKR03 und SKR04.
+    Unterstützt SKR03 und SKR04.
     Standard-Konten werden vorgeladen, Custom-Konten per Company.
     """
     __tablename__ = "gl_accounts"
@@ -141,7 +141,7 @@ class JournalEntry(Base):
     Ein Buchungssatz besteht aus mindestens 2 Zeilen (Soll/Haben).
     Die Summe der Soll-Betraege muss gleich der Summe der Haben-Betraege sein.
 
-    GoBD-konform: Keine Loeschung, nur Stornierung via reversed_by_entry_id.
+    GoBD-konform: Keine Löschung, nur Stornierung via reversed_by_entry_id.
     """
     __tablename__ = "journal_entries"
 
@@ -156,12 +156,12 @@ class JournalEntry(Base):
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
         nullable=True,
-        comment="Verknuepftes Dokument (optional)"
+        comment="Verknüpftes Dokument (optional)"
     )
 
     # Period Assignment
     posting_date = Column(Date, nullable=False, comment="Buchungsdatum")
-    fiscal_year = Column(Integer, nullable=False, comment="Geschaeftsjahr")
+    fiscal_year = Column(Integer, nullable=False, comment="Geschäftsjahr")
     fiscal_period = Column(
         Integer,
         nullable=False,
@@ -190,7 +190,7 @@ class JournalEntry(Base):
     exchange_rate = Column(
         Numeric(18, 8),
         nullable=True,
-        comment="Wechselkurs (wenn Fremdwaehrung)"
+        comment="Wechselkurs (wenn Fremdwährung)"
     )
 
     # Status
@@ -209,7 +209,7 @@ class JournalEntry(Base):
     confidence = Column(
         Numeric(3, 2),
         nullable=True,
-        comment="Confidence fuer Auto-Bookings (0.00-1.00)"
+        comment="Confidence für Auto-Bookings (0.00-1.00)"
     )
 
     # Posting Audit
@@ -237,7 +237,7 @@ class JournalEntry(Base):
     metadata_json = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Zusaetzliche Metadaten (flexible Erweiterung)"
+        comment="Zusätzliche Metadaten (flexible Erweiterung)"
     )
 
     # Timestamps
@@ -305,7 +305,7 @@ class JournalEntryLine(Base):
     account_name = Column(
         String(100),
         nullable=True,
-        comment="Kontobezeichnung (redundant fuer Performance)"
+        comment="Kontobezeichnung (redundant für Performance)"
     )
 
     # Amounts (one must be > 0, not both)
@@ -326,7 +326,7 @@ class JournalEntryLine(Base):
     tax_code = Column(
         String(10),
         nullable=True,
-        comment="DATEV BU-Schluessel (z.B. 40 fuer 19% Vorsteuer)"
+        comment="DATEV BU-Schluessel (z.B. 40 für 19% Vorsteuer)"
     )
     tax_rate = Column(
         Numeric(5, 2),

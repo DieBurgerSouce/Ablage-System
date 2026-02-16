@@ -51,7 +51,7 @@ class CustomerSearchResult:
 
 
 class CustomerCardService:
-    """Service fuer Customer Card Management."""
+    """Service für Customer Card Management."""
 
     def __init__(
         self,
@@ -81,10 +81,10 @@ class CustomerCardService:
         """
         start_time = datetime.now(timezone.utc)
 
-        # 1. Cache pruefen (In-Memory)
+        # 1. Cache prüfen (In-Memory)
         if not force_refresh and customer_id in self._cache:
             card = self._cache[customer_id]
-            # Pruefen ob Card noch aktuell (max 1h alt)
+            # Prüfen ob Card noch aktuell (max 1h alt)
             if card.last_sync_at:
                 age_hours = (datetime.now(timezone.utc) - card.last_sync_at).total_seconds() / 3600
                 if age_hours < 1:
@@ -120,7 +120,7 @@ class CustomerCardService:
                 card = await self.generate_card(
                     db=db,
                     customer_id=customer_id,
-                    customer_name=customer_id  # Wird spaeter aus Dokumenten ermittelt
+                    customer_name=customer_id  # Wird später aus Dokumenten ermittelt
                 )
 
                 generation_time = int(
@@ -154,7 +154,7 @@ class CustomerCardService:
         Args:
             db: Database Session
             customer_id: Eindeutige Kunden-ID
-            customer_name: Kundenname fuer Suche
+            customer_name: Kundenname für Suche
 
         Returns:
             Generierte RAGCustomerCard
@@ -187,7 +187,7 @@ class CustomerCardService:
         # 3. Quick Facts aus Dokumenten extrahieren
         quick_facts = await self._extract_quick_facts(db, source_document_ids)
 
-        # 4. LLM fuer Zusammenfassung aufrufen
+        # 4. LLM für Zusammenfassung aufrufen
         messages = build_customer_card_prompt(
             customer_name=customer_name,
             context=context
@@ -262,7 +262,7 @@ class CustomerCardService:
         """
         Fuzzy-Suche nach Kunden.
 
-        Verwendet pg_trgm fuer aehnlichkeitsbasierte Suche.
+        Verwendet pg_trgm für ähnlichkeitsbasierte Suche.
 
         Args:
             db: Database Session
@@ -273,7 +273,7 @@ class CustomerCardService:
             Liste von CustomerSearchResult
         """
         # Fuzzy Search mit pg_trgm similarity
-        # Fallback auf ILIKE wenn pg_trgm nicht verfuegbar
+        # Fallback auf ILIKE wenn pg_trgm nicht verfügbar
         try:
             result = await db.execute(
                 text("""
@@ -342,7 +342,7 @@ class CustomerCardService:
         Args:
             db: Database Session
             limit: Max Ergebnisse
-            offset: Offset fuer Pagination
+            offset: Offset für Pagination
 
         Returns:
             Liste von RAGCustomerCard
@@ -363,14 +363,14 @@ class CustomerCardService:
         """
         Synchronisiert alle Customer Cards.
 
-        Wird typischerweise als Nightly Job ausgefuehrt.
+        Wird typischerweise als Nightly Job ausgeführt.
 
         Args:
             db: Database Session
-            batch_size: Verarbeitungsgroesse
+            batch_size: Verarbeitungsgröße
 
         Returns:
-            Statistiken ueber Sync
+            Statistiken über Sync
         """
         logger.info("customer_card_sync_started")
 
@@ -393,7 +393,7 @@ class CustomerCardService:
 
             for customer_id, customer_name in batch:
                 try:
-                    # Pruefen ob Card existiert
+                    # Prüfen ob Card existiert
                     existing = await db.execute(
                         select(RAGCustomerCard).where(
                             RAGCustomerCard.customer_id == customer_id
@@ -479,10 +479,10 @@ class CustomerCardService:
         """
         Ermittelt Kunden aus Dokumenten.
 
-        In einer vollstaendigen Implementierung wuerde dies:
+        In einer vollständigen Implementierung wuerde dies:
         - Extracted Data nach Kundennamen durchsuchen
-        - NER fuer Kundenextraktion verwenden
-        - Existierende Customer Cards beruecksichtigen
+        - NER für Kundenextraktion verwenden
+        - Existierende Customer Cards berücksichtigen
         """
         # Vereinfachte Implementierung: Existierende Cards + neue aus Extracted Data
         customers = []
@@ -543,7 +543,7 @@ _customer_card_service: Optional[CustomerCardService] = None
 
 
 def get_customer_card_service() -> CustomerCardService:
-    """Gibt CustomerCardService Singleton zurueck."""
+    """Gibt CustomerCardService Singleton zurück."""
     global _customer_card_service
     if _customer_card_service is None:
         _customer_card_service = CustomerCardService()

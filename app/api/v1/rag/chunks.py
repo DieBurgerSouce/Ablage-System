@@ -3,7 +3,7 @@
 Document Chunking Management:
 - Dokumente chunken
 - Chunks abrufen
-- Chunks loeschen
+- Chunks löschen
 - Bulk-Chunking
 """
 
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/chunks", tags=["rag-chunks"])
 
 
 def get_chunking_service_dep() -> DocumentChunkingService:
-    """Dependency fuer DocumentChunkingService."""
+    """Dependency für DocumentChunkingService."""
     return get_chunking_service()
 
 
@@ -39,7 +39,7 @@ def get_chunking_service_dep() -> DocumentChunkingService:
     "/document/{document_id}",
     response_model=RAGChunkDocumentResponse,
     summary="Dokument chunken",
-    description="Erstellt Chunks fuer ein Dokument und generiert Embeddings."
+    description="Erstellt Chunks für ein Dokument und generiert Embeddings."
 )
 async def chunk_document(
     document_id: UUID,
@@ -53,12 +53,12 @@ async def chunk_document(
 
     - Laedt den OCR-Text des Dokuments
     - Teilt in semantische Chunks
-    - Generiert Embeddings fuer jeden Chunk
+    - Generiert Embeddings für jeden Chunk
     - Speichert in rag_document_chunks
 
     **Strategien:**
     - `semantic`: Respektiert Absatz- und Satzgrenzen (Standard)
-    - `fixed`: Feste Chunk-Groesse
+    - `fixed`: Feste Chunk-Größe
     - `document_type`: Dokumenttyp-spezifische Strategie
     """
     strategy = request.strategy if request else "semantic"
@@ -119,7 +119,7 @@ async def chunk_document(
     "/document/{document_id}",
     response_model=List[RAGChunkResponse],
     summary="Chunks eines Dokuments abrufen",
-    description="Gibt alle Chunks eines Dokuments zurueck."
+    description="Gibt alle Chunks eines Dokuments zurück."
 )
 async def get_document_chunks(
     document_id: UUID,
@@ -166,8 +166,8 @@ async def get_document_chunks(
 
 @router.delete(
     "/document/{document_id}",
-    summary="Chunks eines Dokuments loeschen",
-    description="Loescht alle Chunks eines Dokuments."
+    summary="Chunks eines Dokuments löschen",
+    description="Löscht alle Chunks eines Dokuments."
 )
 async def delete_document_chunks(
     document_id: UUID,
@@ -176,9 +176,9 @@ async def delete_document_chunks(
     chunking_service: DocumentChunkingService = Depends(get_chunking_service_dep)
 ) -> dict:
     """
-    Loescht alle Chunks eines Dokuments.
+    Löscht alle Chunks eines Dokuments.
 
-    Nuetzlich vor dem erneuten Chunken oder beim Loeschen eines Dokuments.
+    Nuetzlich vor dem erneuten Chunken oder beim Löschen eines Dokuments.
     """
     logger.info(
         "delete_document_chunks_request",
@@ -204,7 +204,7 @@ async def delete_document_chunks(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Loeschen fehlgeschlagen. Bitte versuchen Sie es erneut."
+            detail="Löschen fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
 
@@ -212,7 +212,7 @@ async def delete_document_chunks(
     "/document/{document_id}/rechunk",
     response_model=RAGChunkDocumentResponse,
     summary="Dokument neu chunken",
-    description="Loescht existierende Chunks und erstellt neue."
+    description="Löscht existierende Chunks und erstellt neue."
 )
 async def rechunk_document(
     document_id: UUID,
@@ -224,7 +224,7 @@ async def rechunk_document(
     """
     Chunked ein Dokument neu.
 
-    - Loescht alle existierenden Chunks
+    - Löscht alle existierenden Chunks
     - Erstellt neue Chunks mit der angegebenen Strategie
     - Generiert neue Embeddings
     """
@@ -281,7 +281,7 @@ async def rechunk_document(
 @router.post(
     "/bulk",
     summary="Bulk-Chunking starten",
-    description="Startet einen Batch-Job fuer Bulk-Chunking.",
+    description="Startet einen Batch-Job für Bulk-Chunking.",
     dependencies=[Depends(require_admin)]
 )
 async def bulk_chunk_documents(
@@ -294,10 +294,10 @@ async def bulk_chunk_documents(
     Startet Bulk-Chunking als Hintergrund-Task.
 
     - **document_ids**: Spezifische Dokumente (oder alle ohne Chunks)
-    - **force**: Existierende Chunks ueberschreiben
+    - **force**: Existierende Chunks überschreiben
     - **strategy**: Chunking-Strategie
 
-    Gibt eine Task-ID zurueck fuer Status-Abfragen.
+    Gibt eine Task-ID zurück für Status-Abfragen.
     """
     from app.workers.tasks.rag_tasks import batch_chunk_documents
 
@@ -330,14 +330,14 @@ async def bulk_chunk_documents(
 @router.get(
     "/stats",
     summary="Chunk-Statistiken abrufen",
-    description="Gibt Statistiken ueber alle Chunks zurueck."
+    description="Gibt Statistiken über alle Chunks zurück."
 )
 async def get_chunk_stats(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
-    Statistiken ueber Document Chunks.
+    Statistiken über Document Chunks.
 
     - Gesamtanzahl Chunks
     - Chunks mit/ohne Embeddings

@@ -13,14 +13,14 @@ from ...models import ImportFormat
 
 @ParserRegistry.register
 class INGCSVParser(GenericCSVParser):
-    """Parser fuer ING CSV-Kontoauszuege."""
+    """Parser für ING CSV-Kontoauszuege."""
 
     FORMAT = ImportFormat.CSV_ING
     FORMAT_VARIANT = "ing"
 
     @classmethod
     def can_parse(cls, content: Union[str, bytes], filename: Optional[str] = None) -> float:
-        """Pruefe auf ING-Format."""
+        """Prüfe auf ING-Format."""
         text = cls._decode_content(content)
         if not text:
             return 0.0
@@ -37,7 +37,7 @@ class INGCSVParser(GenericCSVParser):
         ]
 
         # ING verwendet charakteristische Spaltenbezeichnung
-        if "auftraggeber/empfänger" in header or "auftraggeber/empfaenger" in header:
+        if "auftraggeber/empfänger" in header or "auftraggeber/empfänger" in header:
             return 0.95
 
         matches = sum(1 for m in ing_markers if m in header)
@@ -62,7 +62,7 @@ class INGCSVParser(GenericCSVParser):
                 mapping["value_date"] = field
             elif "betrag" in field_lower:
                 mapping["amount"] = field
-            elif "waehrung" in field_lower or "währung" in field_lower:
+            elif "währung" in field_lower or "währung" in field_lower:
                 mapping["currency"] = field
             elif "auftraggeber" in field_lower or "empfänger" in field_lower:
                 mapping["counterparty_name"] = field

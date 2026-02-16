@@ -4,8 +4,8 @@ Supplier Ranking Service.
 
 Bewertet Lieferanten basierend auf:
 - Puenktlichkeit (Liefertreue)
-- Preis-Leistungs-Verhaeltnis
-- Zuverlaessigkeit (Reklamationsquote, Qualitaet)
+- Preis-Leistungs-Verhältnis
+- Zuverlaessigkeit (Reklamationsquote, Qualität)
 - Kommunikation
 - Zahlungsbedingungen
 
@@ -38,7 +38,7 @@ logger = structlog.get_logger(__name__)
 
 
 class SupplierRankingCategory(str, Enum):
-    """Ranking-Kategorien fuer Lieferanten."""
+    """Ranking-Kategorien für Lieferanten."""
     PUNCTUALITY = "punctuality"        # Puenktlichkeit
     PRICE = "price"                    # Preis-Leistung
     RELIABILITY = "reliability"        # Zuverlaessigkeit
@@ -99,10 +99,10 @@ class SupplierRanking:
 
 @dataclass
 class SupplierRankingReport:
-    """Report ueber alle Lieferanten-Rankings."""
+    """Report über alle Lieferanten-Rankings."""
     company_id: UUID
 
-    # Uebersicht
+    # Übersicht
     total_suppliers: int
     ranked_suppliers: int
 
@@ -163,7 +163,7 @@ class SupplierRankingService:
         company_id: UUID,
         period_days: int = 365,
     ) -> Optional[SupplierRanking]:
-        """Berechnet Ranking fuer einen Lieferanten.
+        """Berechnet Ranking für einen Lieferanten.
 
         Args:
             db: Datenbank-Session
@@ -277,8 +277,8 @@ class SupplierRankingService:
         # Trend berechnen (Vergleich mit vorherigem Zeitraum)
         previous_score = supplier.risk_score  # Vorheriger Score (falls vorhanden)
         if previous_score is not None:
-            # Risk score ist invers (hoeher = schlechter)
-            # Konvertieren zu Supplier Score (hoeher = besser)
+            # Risk score ist invers (höher = schlechter)
+            # Konvertieren zu Supplier Score (höher = besser)
             prev_supplier_score = 100 - previous_score
             if overall_score > prev_supplier_score + 5:
                 score_trend = "improving"
@@ -349,16 +349,16 @@ class SupplierRankingService:
                         delay_days = (actual - expected).days
 
                         if delay_days <= 0:
-                            # Puenktlich oder frueh: 100
+                            # Puenktlich oder früh: 100
                             delivery_scores.append(100)
                         elif delay_days <= 2:
-                            # 1-2 Tage spaet: 80
+                            # 1-2 Tage spät: 80
                             delivery_scores.append(80)
                         elif delay_days <= 5:
-                            # 3-5 Tage spaet: 60
+                            # 3-5 Tage spät: 60
                             delivery_scores.append(60)
                         elif delay_days <= 10:
-                            # 6-10 Tage spaet: 40
+                            # 6-10 Tage spät: 40
                             delivery_scores.append(40)
                         else:
                             # Mehr als 10 Tage: 20
@@ -432,14 +432,14 @@ class SupplierRankingService:
         Basiert auf:
         - Preiskonsistenz (Abweichungen von Angeboten)
         - Skonto-Angebote
-        - Preisaenderungen ueber Zeit
+        - Preisänderungen über Zeit
         """
         data_points = 0
         scores = []
 
         # Preiskonsistenz aus Dokumenten
         for inv in invoices:
-            # Pruefen ob Rechnung zu Bestellung passt
+            # Prüfen ob Rechnung zu Bestellung passt
             if inv.total_amount and inv.total_amount > 0:
                 # Vereinfachte Bewertung: Konsistente Rechnungen = gut
                 scores.append(75)  # Baseline
@@ -452,7 +452,7 @@ class SupplierRankingService:
         )
         if invoices:
             skonto_ratio = skonto_offered / len(invoices)
-            skonto_score = 50 + (skonto_ratio * 50)  # 50-100 basierend auf Skonto-Haeufigkeit
+            skonto_score = 50 + (skonto_ratio * 50)  # 50-100 basierend auf Skonto-Häufigkeit
             scores.append(skonto_score)
             data_points += 1
 
@@ -480,15 +480,15 @@ class SupplierRankingService:
 
         Basiert auf:
         - Reklamationsquote
-        - Vollstaendigkeit der Lieferungen
-        - Qualitaetsprobleme
+        - Vollständigkeit der Lieferungen
+        - Qualitätsprobleme
         """
         data_points = len(invoices)
 
         # Vereinfachte Bewertung basierend auf Dokumentstatus
-        # In Realitaet wuerden hier Reklamationen, Ruecksendungen etc. ausgewertet
+        # In Realitaet wuerden hier Reklamationen, Rücksendungen etc. ausgewertet
 
-        # Pruefen ob Rechnungen bezahlt wurden (indikator fuer keine Probleme)
+        # Prüfen ob Rechnungen bezahlt wurden (indikator für keine Probleme)
         paid_invoices = sum(1 for inv in invoices if inv.status == "paid")
         disputed_invoices = sum(1 for inv in invoices if inv.status == "disputed")
 
@@ -517,12 +517,12 @@ class SupplierRankingService:
         """Berechnet Kommunikations-Score.
 
         Basiert auf:
-        - Dokumentqualitaet (OCR-Confidence)
-        - Vollstaendigkeit der Informationen
+        - Dokumentqualität (OCR-Confidence)
+        - Vollständigkeit der Informationen
         """
         data_points = len(documents)
 
-        # OCR Confidence als Indikator fuer Dokumentqualitaet
+        # OCR Confidence als Indikator für Dokumentqualität
         confidences = []
         for doc in documents:
             if doc.ocr_confidence:
@@ -531,7 +531,7 @@ class SupplierRankingService:
         if confidences:
             # Hohe OCR Confidence = gut lesbare, professionelle Dokumente
             avg_confidence = sum(confidences) / len(confidences)
-            score = min(100, avg_confidence + 10)  # Bonus fuer gute Dokumente
+            score = min(100, avg_confidence + 10)  # Bonus für gute Dokumente
         else:
             score = 70.0  # Default
 
@@ -554,7 +554,7 @@ class SupplierRankingService:
         """Berechnet Zahlungsbedingungen-Score.
 
         Basiert auf:
-        - Zahlungsziel-Laenge
+        - Zahlungsziel-Länge
         - Skonto-Konditionen
         - Flexibilitaet
         """
@@ -564,7 +564,7 @@ class SupplierRankingService:
         for inv in invoices:
             inv_score = 70  # Baseline
 
-            # Laengeres Zahlungsziel = besser fuer uns
+            # Längeres Zahlungsziel = besser für uns
             if inv.payment_terms_days:
                 if inv.payment_terms_days >= 30:
                     inv_score += 15
@@ -636,7 +636,7 @@ class SupplierRankingService:
 
         diff = current_score - previous_score
 
-        # Signifikante Aenderung: mehr als 5 Punkte
+        # Signifikante Änderung: mehr als 5 Punkte
         if diff >= 5.0:
             return "improving"
         elif diff <= -5.0:
@@ -697,19 +697,19 @@ class SupplierRankingService:
             if score.score < 60:
                 if score.category == SupplierRankingCategory.PUNCTUALITY:
                     recommendations.append(
-                        "Liefertermine ueberpruefen - haeufige Verspaetungen"
+                        "Liefertermine überprüfen - häufige Verspätungen"
                     )
                 elif score.category == SupplierRankingCategory.PRICE:
                     recommendations.append(
-                        "Preisverhandlungen fuehren - Konditionen verbessern"
+                        "Preisverhandlungen führen - Konditionen verbessern"
                     )
                 elif score.category == SupplierRankingCategory.RELIABILITY:
                     recommendations.append(
-                        "Qualitaetsprobleme ansprechen - Alternative suchen"
+                        "Qualitätsprobleme ansprechen - Alternative suchen"
                     )
                 elif score.category == SupplierRankingCategory.COMMUNICATION:
                     recommendations.append(
-                        "Kommunikation verbessern - Dokumentenqualitaet niedrig"
+                        "Kommunikation verbessern - Dokumentenqualität niedrig"
                     )
                 elif score.category == SupplierRankingCategory.PAYMENT_TERMS:
                     recommendations.append(
@@ -742,7 +742,7 @@ class SupplierRankingService:
         period_days: int = 365,
         top_n: int = 10,
     ) -> SupplierRankingReport:
-        """Erstellt Report ueber alle Lieferanten-Rankings.
+        """Erstellt Report über alle Lieferanten-Rankings.
 
         Args:
             db: Datenbank-Session
@@ -751,7 +751,7 @@ class SupplierRankingService:
             top_n: Anzahl Top/Bottom Lieferanten
 
         Returns:
-            SupplierRankingReport mit Uebersicht
+            SupplierRankingReport mit Übersicht
         """
         end_date = date.today()
         start_date = end_date - timedelta(days=period_days)
@@ -890,7 +890,7 @@ _supplier_ranking_service: Optional[SupplierRankingService] = None
 
 
 def get_supplier_ranking_service() -> SupplierRankingService:
-    """Gibt Supplier-Ranking-Service-Instanz zurueck."""
+    """Gibt Supplier-Ranking-Service-Instanz zurück."""
     global _supplier_ranking_service
     if _supplier_ranking_service is None:
         _supplier_ranking_service = SupplierRankingService()

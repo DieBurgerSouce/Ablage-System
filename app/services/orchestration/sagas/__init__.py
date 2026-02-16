@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Saga-Implementierungen fuer Ablage-System.
+"""Saga-Implementierungen für Ablage-System.
 
 Stellt konkrete Saga-Implementierungen bereit:
 - InvoiceProcessingSaga: Rechnung -> DATEV -> Buchung
 - PaymentSaga: Freigabe -> SEPA -> Bank -> Status
 
-Alle Handler werden ueber register_all_saga_handlers() beim
+Alle Handler werden über register_all_saga_handlers() beim
 SagaService registriert.
 """
 

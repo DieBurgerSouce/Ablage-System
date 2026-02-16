@@ -79,7 +79,7 @@ class CashflowForecastItem(BaseModel):
 
 
 class CashflowForecastResponse(BaseModel):
-    """Response fuer Cashflow-Prognose."""
+    """Response für Cashflow-Prognose."""
 
     company_id: str = Field(..., description="Mandanten-ID")
     forecast_days: int = Field(..., description="Prognosezeitraum in Tagen")
@@ -92,7 +92,7 @@ class CashflowForecastResponse(BaseModel):
     total_expected_outflows: float = Field(..., description="Summe erwarteter Ausgaenge")
     forecast: List[CashflowForecastItem] = Field(..., description="Tagesweise Prognose")
     generated_at: datetime = Field(..., description="Zeitpunkt der Generierung")
-    currency: str = Field("EUR", description="Waehrung")
+    currency: str = Field("EUR", description="Währung")
 
 
 class CashflowWarningItem(BaseModel):
@@ -126,7 +126,7 @@ class CashflowWarningItem(BaseModel):
 
 
 class CashflowWarningsResponse(BaseModel):
-    """Response fuer Cashflow-Warnungen."""
+    """Response für Cashflow-Warnungen."""
 
     company_id: str = Field(..., description="Mandanten-ID")
     warning_count: int = Field(..., description="Anzahl Warnungen")
@@ -136,7 +136,7 @@ class CashflowWarningsResponse(BaseModel):
 
 
 class ScenarioRequest(BaseModel):
-    """Request fuer Szenario-Simulation."""
+    """Request für Szenario-Simulation."""
 
     scenario_type: str = Field(
         ...,
@@ -152,7 +152,7 @@ class ScenarioRequest(BaseModel):
     def validate_scenario_type(cls, v: str) -> str:
         valid_types = [st.value for st in ScenarioType]
         if v not in valid_types:
-            raise ValueError(f"Ungueltiger Szenario-Typ. Erlaubt: {valid_types}")
+            raise ValueError(f"Ungültiger Szenario-Typ. Erlaubt: {valid_types}")
         return v
 
     class Config:
@@ -168,7 +168,7 @@ class ScenarioRequest(BaseModel):
 
 
 class ScenarioResponse(BaseModel):
-    """Response fuer Szenario-Simulation."""
+    """Response für Szenario-Simulation."""
 
     scenario_type: str = Field(..., description="Art des Szenarios")
     description: str = Field(..., description="Beschreibung des Szenarios (Deutsch)")
@@ -180,7 +180,7 @@ class ScenarioResponse(BaseModel):
 
 
 class PredictionMetricsResponse(BaseModel):
-    """Response fuer Vorhersage-Metriken."""
+    """Response für Vorhersage-Metriken."""
 
     total_predictions: int = Field(..., description="Gesamtzahl ausgewerteter Vorhersagen")
     correct_predictions: int = Field(..., description="Anzahl korrekter Vorhersagen")
@@ -190,19 +190,19 @@ class PredictionMetricsResponse(BaseModel):
 
 
 class PaymentDelayStatsItem(BaseModel):
-    """Zahlungsverhaltens-Statistiken fuer einen Kunden."""
+    """Zahlungsverhaltens-Statistiken für einen Kunden."""
 
     entity_id: str = Field(..., description="Entity-ID (anonymisiert)")
-    average_delay_days: float = Field(..., description="Durchschnittliche Zahlungsverzoegerung in Tagen")
+    average_delay_days: float = Field(..., description="Durchschnittliche Zahlungsverzögerung in Tagen")
     std_deviation: float = Field(..., description="Standardabweichung in Tagen")
     sample_count: int = Field(..., description="Anzahl ausgewerteter Zahlungen")
-    payment_behavior_score: float = Field(..., ge=0, le=100, description="Zahlungsverhalten-Score (0-100, hoeher=besser)")
-    risk_score: float = Field(..., ge=0, le=100, description="Risiko-Score (0-100, hoeher=riskanter)")
+    payment_behavior_score: float = Field(..., ge=0, le=100, description="Zahlungsverhalten-Score (0-100, höher=besser)")
+    risk_score: float = Field(..., ge=0, le=100, description="Risiko-Score (0-100, höher=riskanter)")
     last_payment_date: Optional[datetime] = Field(None, description="Datum der letzten Zahlung")
 
 
 class PaymentDelayAnalysisResponse(BaseModel):
-    """Response fuer Zahlungsverhaltens-Analyse."""
+    """Response für Zahlungsverhaltens-Analyse."""
 
     company_id: str = Field(..., description="Mandanten-ID")
     entity_count: int = Field(..., description="Anzahl analysierter Kunden")
@@ -221,10 +221,10 @@ class PaymentDelayAnalysisResponse(BaseModel):
     response_model=CashflowForecastResponse,
     summary="Liquiditaetsprognose",
     description="""
-    Erstellt eine detaillierte Cashflow-Prognose fuer die naechsten 7-90 Tage.
+    Erstellt eine detaillierte Cashflow-Prognose für die nächsten 7-90 Tage.
 
-    Verwendet Monte Carlo Simulation fuer probabilistische Vorhersagen mit
-    Konfidenzintervallen. Beruecksichtigt:
+    Verwendet Monte Carlo Simulation für probabilistische Vorhersagen mit
+    Konfidenzintervallen. Berücksichtigt:
     - Offene Forderungen mit kundenspezifischen Zahlungswahrscheinlichkeiten
     - Offene Verbindlichkeiten inkl. Skonto-Optimierung
     - Wiederkehrende Zahlungsmuster
@@ -236,7 +236,7 @@ class PaymentDelayAnalysisResponse(BaseModel):
     """,
     responses={
         200: {"description": "Prognose erfolgreich erstellt"},
-        400: {"description": "Ungueltige Parameter"},
+        400: {"description": "Ungültige Parameter"},
         401: {"description": "Nicht authentifiziert"},
     },
 )
@@ -261,7 +261,7 @@ async def get_cashflow_forecast(
     db: AsyncSession = Depends(get_db),
     company_id: UUID = Depends(get_company_id),
 ):
-    """Hole Cashflow-Prognose fuer die naechsten X Tage."""
+    """Hole Cashflow-Prognose für die nächsten X Tage."""
     service = get_cashflow_prediction_service(db)
 
     forecasts = await service.get_cashflow_forecast(
@@ -274,10 +274,10 @@ async def get_cashflow_forecast(
     if not forecasts:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine Daten fuer Prognose verfuegbar"
+            detail="Keine Daten für Prognose verfügbar"
         )
 
-    # Berechnungen fuer Response
+    # Berechnungen für Response
     min_forecast = min(forecasts, key=lambda f: f.predicted_balance)
     total_inflows = sum(f.incoming for f in forecasts)
     total_outflows = sum(f.outgoing for f in forecasts)
@@ -317,7 +317,7 @@ async def get_cashflow_forecast(
     response_model=CashflowWarningsResponse,
     summary="Cashflow-Warnungen",
     description="""
-    Generiert Warnungen fuer bevorstehende Cashflow-Probleme.
+    Generiert Warnungen für bevorstehende Cashflow-Probleme.
 
     **Warnungstypen:**
     - `shortfall`: Liquiditaetsengpass (negatives Konto)
@@ -383,11 +383,11 @@ async def get_cashflow_warnings(
     response_model=ScenarioResponse,
     summary="Szenario-Simulation",
     description="""
-    Fuehrt eine What-If Szenario-Simulation durch.
+    Führt eine What-If Szenario-Simulation durch.
 
-    **Verfuegbare Szenarien:**
+    **Verfügbare Szenarien:**
 
-    1. `customer_late_payment` - Was wenn ein Kunde spaeter zahlt?
+    1. `customer_late_payment` - Was wenn ein Kunde später zahlt?
        - Parameter: `entity_id` (UUID), `delay_days` (int)
 
     2. `delay_outgoing` - Was wenn wir eine Zahlung verschieben?
@@ -403,8 +403,8 @@ async def get_cashflow_warnings(
        - Parameter: `days_improvement` (int)
     """,
     responses={
-        200: {"description": "Simulation erfolgreich durchgefuehrt"},
-        400: {"description": "Ungueltige Parameter"},
+        200: {"description": "Simulation erfolgreich durchgeführt"},
+        400: {"description": "Ungültige Parameter"},
         401: {"description": "Nicht authentifiziert"},
     },
 )
@@ -414,7 +414,7 @@ async def simulate_scenario(
     db: AsyncSession = Depends(get_db),
     company_id: UUID = Depends(get_company_id),
 ):
-    """Fuehre What-If Szenario-Simulation durch."""
+    """Führe What-If Szenario-Simulation durch."""
     service = get_cashflow_prediction_service(db)
 
     try:
@@ -422,7 +422,7 @@ async def simulate_scenario(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Szenario-Typ: {request.scenario_type}"
+            detail=f"Ungültiger Szenario-Typ: {request.scenario_type}"
         )
 
     # UUID-Parameter konvertieren falls vorhanden
@@ -434,7 +434,7 @@ async def simulate_scenario(
             except ValueError:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Ungueltige UUID fuer {key}: {parameters[key]}"
+                    detail=f"Ungültige UUID für {key}: {parameters[key]}"
                 )
 
     result = await service.simulate_scenario(
@@ -512,22 +512,22 @@ async def get_prediction_metrics(
     description="""
     Analysiert das Zahlungsverhalten von Kunden.
 
-    Berechnet fuer jeden Kunden:
-    - Durchschnittliche Zahlungsverzoegerung
-    - Payment Behavior Score (0-100, hoeher = besser)
-    - Risk Score (0-100, hoeher = riskanter)
+    Berechnet für jeden Kunden:
+    - Durchschnittliche Zahlungsverzögerung
+    - Payment Behavior Score (0-100, höher = besser)
+    - Risk Score (0-100, höher = riskanter)
 
     Optional kann ein einzelner Kunde analysiert werden.
     """,
     responses={
-        200: {"description": "Analyse erfolgreich durchgefuehrt"},
+        200: {"description": "Analyse erfolgreich durchgeführt"},
         401: {"description": "Nicht authentifiziert"},
     },
 )
 async def get_payment_delay_analysis(
     entity_id: Optional[UUID] = Query(
         default=None,
-        description="Optional: Nur fuer bestimmten Kunden"
+        description="Optional: Nur für bestimmten Kunden"
     ),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

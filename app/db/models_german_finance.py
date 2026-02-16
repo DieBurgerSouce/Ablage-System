@@ -2,7 +2,7 @@
 """
 Deutsche Finanz-Feature Datenbankmodelle.
 
-Modelle fuer:
+Modelle für:
 - USt-Voranmeldung (Umsatzsteuer-Voranmeldung)
 - BWA (Betriebswirtschaftliche Auswertung)
 - Cashflow-Prognose mit Szenarien
@@ -40,13 +40,13 @@ from app.db.models import Base, CrossDBJSON
 
 
 class VATReportPeriod(str, Enum):
-    """Meldezeitraum fuer USt-Voranmeldung."""
+    """Meldezeitraum für USt-Voranmeldung."""
     MONTHLY = "monthly"
     QUARTERLY = "quarterly"
 
 
 class BWAPeriod(str, Enum):
-    """Auswertungszeitraum fuer BWA."""
+    """Auswertungszeitraum für BWA."""
     MONTHLY = "monthly"
     QUARTERLY = "quarterly"
     YEARLY = "yearly"
@@ -114,10 +114,10 @@ class UStVoranmeldung(Base):
         comment="Zahllast (USt - VSt), positiv = Zahlung ans Finanzamt",
     )
 
-    # Steuerfreie Umsaetze
+    # Steuerfreie Umsätze
     steuerfrei_inland = Column(
         Float, nullable=False, default=0.0,
-        comment="Steuerfreie Umsaetze Inland (z.B. Aerzte, Versicherungen)",
+        comment="Steuerfreie Umsätze Inland (z.B. Aerzte, Versicherungen)",
     )
     steuerfrei_export = Column(
         Float, nullable=False, default=0.0,
@@ -138,10 +138,10 @@ class UStVoranmeldung(Base):
         comment="Umsatzsteuer je Steuersatz: {'19': ..., '7': ...}",
     )
 
-    # Status: entwurf -> geprueft -> uebermittelt
+    # Status: entwurf -> geprüft -> übermittelt
     status = Column(
         String(50), nullable=False, default="entwurf",
-        comment="entwurf, geprueft, uebermittelt",
+        comment="entwurf, geprüft, übermittelt",
     )
 
     # ELSTER-XML
@@ -175,7 +175,7 @@ class UStVoranmeldung(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertierung fuer API-Responses."""
+        """Konvertierung für API-Responses."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),
@@ -289,7 +289,7 @@ class BWAReport(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertierung fuer API-Responses."""
+        """Konvertierung für API-Responses."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),
@@ -306,7 +306,7 @@ class BWAReport(Base):
             "finanzergebnis": self.finanzergebnis,
             "ergebnis_vor_steuern": self.ergebnis_vor_steuern,
             "steuern": self.steuern,
-            "jahresueberschuss": self.jahresueberschuss,
+            "jahresüberschuss": self.jahresueberschuss,
             "vorjahresvergleich": self.vorjahresvergleich,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -329,7 +329,7 @@ class CashflowForecast(Base):
     - Saisonale Muster der letzten 12 Monate
     - Was-waere-wenn Szenarien (z.B. 'wenn_kunde_nicht_zahlt')
 
-    Wird taeglich automatisch regeneriert.
+    Wird täglich automatisch regeneriert.
     """
     __tablename__ = "cashflow_forecasts"
 
@@ -343,10 +343,10 @@ class CashflowForecast(Base):
         index=True,
     )
 
-    # Prognosedatum (fuer welchen Tag gilt die Prognose?)
+    # Prognosedatum (für welchen Tag gilt die Prognose?)
     forecast_date = Column(
         Date, nullable=False,
-        comment="Datum, fuer das die Prognose gilt",
+        comment="Datum, für das die Prognose gilt",
     )
     forecast_generated_at = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now(),
@@ -423,7 +423,7 @@ class CashflowForecast(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertierung fuer API-Responses."""
+        """Konvertierung für API-Responses."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),

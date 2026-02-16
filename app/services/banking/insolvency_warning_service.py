@@ -217,7 +217,7 @@ class InsolvencyWarningService:
         """
         from app.db.models import BusinessEntity
 
-        # Entity laden (BusinessEntity hat kein company_id - Isolation ueber Documents)
+        # Entity laden (BusinessEntity hat kein company_id - Isolation über Documents)
         result = await db.execute(
             select(BusinessEntity).where(
                 and_(
@@ -300,7 +300,7 @@ class InsolvencyWarningService:
         now = datetime.now(timezone.utc)
 
         # Rechnungen der letzten 12 Monate
-        # InvoiceTracking hat kein entity_id - wir muessen ueber Document joinen
+        # InvoiceTracking hat kein entity_id - wir müssen über Document joinen
         twelve_months_ago = now - timedelta(days=365)
 
         result = await db.execute(
@@ -335,7 +335,7 @@ class InsolvencyWarningService:
                 avg_delay = sum(delays) / len(delays)
 
                 # Trend der letzten 3 Monate vs. vorherige 3 Monate
-                # Konvertieren zu date fuer Vergleiche (paid_date kann date oder datetime sein)
+                # Konvertieren zu date für Vergleiche (paid_date kann date oder datetime sein)
                 three_months_ago_date = (now - timedelta(days=90)).date()
                 six_months_ago_date = (now - timedelta(days=180)).date()
 
@@ -547,7 +547,7 @@ class InsolvencyWarningService:
         from app.db.models import Document, InvoiceTracking
 
         # Jahresumsatz der letzten 12 Monate
-        # InvoiceTracking hat kein entity_id - wir muessen ueber Document joinen
+        # InvoiceTracking hat kein entity_id - wir müssen über Document joinen
         twelve_months_ago = datetime.now(timezone.utc) - timedelta(days=365)
 
         result = await db.execute(
@@ -606,7 +606,7 @@ class InsolvencyWarningService:
         )
 
         # Offene Rechnungen
-        # InvoiceTracking hat kein entity_id - wir muessen ueber Document joinen
+        # InvoiceTracking hat kein entity_id - wir müssen über Document joinen
         from app.db.models import Document, InvoiceTracking
 
         result = await db.execute(
@@ -672,7 +672,7 @@ class InsolvencyWarningService:
         """Ruft alle Geschäftspartner mit hohem Risiko ab."""
         from app.db.models import BusinessEntity, Document
 
-        # BusinessEntity hat kein company_id - wir finden Entities ueber Dokumente
+        # BusinessEntity hat kein company_id - wir finden Entities über Dokumente
         # Distinct Entities die Dokumente in dieser Company haben
         result = await db.execute(
             select(BusinessEntity)
@@ -741,7 +741,7 @@ class InsolvencyWarningService:
         period_end = now.date()
 
         # Alle Entities zählen die Dokumente in dieser Company haben
-        # BusinessEntity hat kein company_id - wir muessen ueber Document joinen
+        # BusinessEntity hat kein company_id - wir müssen über Document joinen
         result = await db.execute(
             select(func.count(func.distinct(BusinessEntity.id)))
             .join(Document, BusinessEntity.id == Document.business_entity_id)

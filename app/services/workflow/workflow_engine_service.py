@@ -1,10 +1,10 @@
-"""Workflow Engine Service fuer Regel-basierte Automation.
+"""Workflow Engine Service für Regel-basierte Automation.
 
-Enterprise Feature: Automatische Regel-Evaluation und Aktions-Ausfuehrung.
+Enterprise Feature: Automatische Regel-Evaluation und Aktions-Ausführung.
 
 Features:
 - Entity-basierte Regel-Evaluation mit Multi-Tenant Security
-- Bedingungspruefung (Amount, Category, Risk, etc.)
+- Bedingungsprüfung (Amount, Category, Risk, etc.)
 - Multi-Action Execution
 - Approval Request Creation
 - Eskalation Management
@@ -35,7 +35,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class WorkflowCondition:
-    """Eine Workflow-Bedingung fuer typsichere Pruefung."""
+    """Eine Workflow-Bedingung für typsichere Prüfung."""
 
     field: str
     operator: str  # gt, lt, eq, in, not_in
@@ -55,9 +55,9 @@ class WorkflowAction:
 
 
 class WorkflowEngineService:
-    """Engine fuer Regel-basierte Workflow-Ausfuehrung.
+    """Engine für Regel-basierte Workflow-Ausführung.
 
-    Evaluiert Entities gegen definierte Regeln und fuehrt
+    Evaluiert Entities gegen definierte Regeln und führt
     entsprechende Aktionen aus (Approvals, Notifications, etc.).
 
     Multi-Tenant Security: Alle Operationen erfordern company_id!
@@ -78,7 +78,7 @@ class WorkflowEngineService:
         entity_id: UUID,
         event: str,
     ) -> list[UUID]:
-        """Evaluiert alle Regeln fuer eine Entity.
+        """Evaluiert alle Regeln für eine Entity.
 
         Args:
             company_id: UUID des Unternehmens (Multi-Tenant Security!)
@@ -160,7 +160,7 @@ class WorkflowEngineService:
             conditions: Bedingungen als Dict
             approval_chain: Genehmiger-Chain
             description: Optionale Beschreibung
-            priority: Prioritaet (niedriger = hoeher)
+            priority: Priorität (niedriger = höher)
             sla_hours: Max. Bearbeitungszeit in Stunden
             escalation_after_hours: Stunden bis zur Eskalation
             escalation_to_role: Eskalations-Ziel-Rolle
@@ -205,10 +205,10 @@ class WorkflowEngineService:
         entity: object,
         conditions: dict[str, Decimal | str | list[str]],
     ) -> bool:
-        """Prueft ob eine Entity die Bedingungen erfuellt.
+        """Prüft ob eine Entity die Bedingungen erfuellt.
 
-        Unterstuetzte Bedingungen:
-        - amount_greater_than: Betrag groesser als
+        Unterstützte Bedingungen:
+        - amount_greater_than: Betrag größer als
         - amount_less_than: Betrag kleiner als
         - category: Kategorie gleich
         - category_in: Kategorie in Liste
@@ -216,7 +216,7 @@ class WorkflowEngineService:
         - cost_center_id: Kostenstelle gleich
 
         Args:
-            entity: Die zu pruefende Entity
+            entity: Die zu prüfende Entity
             conditions: Dict mit Bedingungen
 
         Returns:
@@ -270,7 +270,7 @@ class WorkflowEngineService:
         entity_id: UUID,
         rule: ApprovalRule,
     ) -> list[UUID]:
-        """Fuehrt alle Aktionen einer Regel aus.
+        """Führt alle Aktionen einer Regel aus.
 
         Args:
             company_id: Company-ID (Multi-Tenant Security)
@@ -358,7 +358,7 @@ class WorkflowEngineService:
         self.db.add(approval_request)
         await self.db.flush()  # Um die ID zu bekommen
 
-        # Erstelle ApprovalSteps fuer jeden Schritt in der Chain
+        # Erstelle ApprovalSteps für jeden Schritt in der Chain
         for step_data in rule.approval_chain:
             step_number = step_data.get("step", 1)
             approver_type = step_data.get("type", "role")
@@ -429,7 +429,7 @@ class WorkflowEngineService:
             current_step.decision_date = datetime.now(timezone.utc)
             current_step.decision_notes = notes
 
-        # Pruefe ob alle Schritte abgeschlossen
+        # Prüfe ob alle Schritte abgeschlossen
         if request.current_step >= request.total_steps:
             request.status = ApprovalStatus.APPROVED
             request.resolved_at = datetime.now(timezone.utc)
@@ -437,7 +437,7 @@ class WorkflowEngineService:
             request.resolution_notes = notes
             await self._on_request_approved(request)
         else:
-            # Naechster Schritt
+            # Nächster Schritt
             request.current_step += 1
 
         await self.db.commit()
@@ -540,7 +540,7 @@ class WorkflowEngineService:
         self,
         request: ApprovalRequest,
     ) -> None:
-        """Sendet Eskalations-Benachrichtigung an zustaendige Personen.
+        """Sendet Eskalations-Benachrichtigung an zuständige Personen.
 
         Args:
             request: Die eskalierte ApprovalRequest
@@ -668,15 +668,15 @@ class WorkflowEngineService:
         entity_type: str,
         event: str,
     ) -> list[ApprovalRule]:
-        """Laedt passende Regeln fuer Entity-Type und Event.
+        """Laedt passende Regeln für Entity-Type und Event.
 
         Args:
             company_id: Company-ID (Multi-Tenant Security!)
             entity_type: Art der Entity
-            event: Ausgeloestes Event (wird fuer spaetere Erweiterung benoetigt)
+            event: Ausgeloestes Event (wird für spätere Erweiterung benötigt)
 
         Returns:
-            Liste passender aktiver Regeln, sortiert nach Prioritaet
+            Liste passender aktiver Regeln, sortiert nach Priorität
         """
         from sqlalchemy.dialects.postgresql import JSONB
         from sqlalchemy import cast
@@ -749,7 +749,7 @@ class WorkflowEngineService:
             )
             return None
 
-        # Pruefe ob Model company_id hat (Multi-Tenant)
+        # Prüfe ob Model company_id hat (Multi-Tenant)
         has_company_id = hasattr(model_class, "company_id")
 
         if has_company_id:
@@ -758,7 +758,7 @@ class WorkflowEngineService:
                 model_class.company_id == company_id,  # Multi-Tenant Security!
             )
         else:
-            # Fallback fuer Models ohne company_id (sollte selten sein)
+            # Fallback für Models ohne company_id (sollte selten sein)
             stmt = select(model_class).where(model_class.id == entity_id)
 
         result = await self.db.execute(stmt)
@@ -846,7 +846,7 @@ class WorkflowEngineService:
         company_id: UUID,
         user_id: UUID,
     ) -> list[ApprovalRequest]:
-        """Holt alle offenen Anfragen fuer einen User.
+        """Holt alle offenen Anfragen für einen User.
 
         Args:
             company_id: Company-ID (Multi-Tenant Security!)
@@ -898,9 +898,9 @@ class WorkflowEngineService:
         self,
         company_id: UUID,
     ) -> int:
-        """Prueft und eskaliert ueberfaellige Requests.
+        """Prüft und eskaliert überfällige Requests.
 
-        Batch-Methode fuer Celery Tasks.
+        Batch-Methode für Celery Tasks.
 
         Args:
             company_id: Company-ID (Multi-Tenant Security!)

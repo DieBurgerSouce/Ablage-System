@@ -1,7 +1,7 @@
 """
 Vector Search Orchestrator.
 
-Unified Interface fuer Vector Search mit A/B Testing.
+Unified Interface für Vector Search mit A/B Testing.
 Routet Anfragen zu pgvector oder Qdrant basierend auf Konfiguration.
 
 Features:
@@ -32,7 +32,7 @@ logger = structlog.get_logger(__name__)
 
 
 class VectorBackend:
-    """Enum-like fuer Vector Backends."""
+    """Enum-like für Vector Backends."""
     PGVECTOR = "pgvector"
     QDRANT = "qdrant"
 
@@ -42,7 +42,7 @@ class VectorSearchOrchestrator:
     Vector Search Orchestrator mit A/B Testing.
 
     Routet Suchanfragen zu verschiedenen Backends und
-    sammelt Metriken fuer Vergleiche.
+    sammelt Metriken für Vergleiche.
     """
 
     _instance: Optional["VectorSearchOrchestrator"] = None
@@ -81,12 +81,12 @@ class VectorSearchOrchestrator:
         user_id: Optional[UUID] = None,
     ) -> Tuple[str, str]:
         """
-        Waehle Backend basierend auf A/B Testing Konfiguration.
+        Wähle Backend basierend auf A/B Testing Konfiguration.
 
         Deterministisches Routing: User bekommt immer dasselbe Backend.
 
         Args:
-            user_id: User UUID fuer deterministisches Routing
+            user_id: User UUID für deterministisches Routing
 
         Returns:
             Tuple von (backend_name, embedding_model)
@@ -105,8 +105,8 @@ class VectorSearchOrchestrator:
             user_hash = hashlib.sha256(str(user_id).encode()).hexdigest()
             bucket = int(user_hash[:8], 16) % 100
         else:
-            # Deterministischer Bucket fuer anonyme Requests basierend auf Timestamp
-            # Verwendet time_ns fuer Nanosekunden-Praezision
+            # Deterministischer Bucket für anonyme Requests basierend auf Timestamp
+            # Verwendet time_ns für Nanosekunden-Praezision
             import time
             ts_seed = f"anon:{time.time_ns()}"
             ts_hash = hashlib.sha256(ts_seed.encode()).hexdigest()
@@ -161,7 +161,7 @@ class VectorSearchOrchestrator:
 
         Args:
             query: Suchanfrage
-            user_id: User UUID fuer A/B Routing
+            user_id: User UUID für A/B Routing
             limit: Max Ergebnisse
             collection: "documents" oder "chunks"
             filter_conditions: Filter (owner_id, document_type, etc.)
@@ -172,7 +172,7 @@ class VectorSearchOrchestrator:
         """
         start_time = time.time()
 
-        # Backend und Modell waehlen
+        # Backend und Modell wählen
         backend, embedding_model = self.select_backend(user_id)
 
         # Embedding generieren
@@ -187,7 +187,7 @@ class VectorSearchOrchestrator:
 
         embedding_time = time.time()
 
-        # Suche ausfuehren
+        # Suche ausführen
         results = []
         search_error = None
 
@@ -196,7 +196,7 @@ class VectorSearchOrchestrator:
                 qdrant_results = await self._qdrant.search(
                     query_vector=query_embedding,
                     collection=collection,
-                    limit=limit * 3 if apply_reranking else limit,  # Mehr holen fuer Reranking
+                    limit=limit * 3 if apply_reranking else limit,  # Mehr holen für Reranking
                     score_threshold=settings.SEMANTIC_SIMILARITY_THRESHOLD,
                     filter_conditions=filter_conditions,
                 )
@@ -216,7 +216,7 @@ class VectorSearchOrchestrator:
                 # Fallback zu pgvector
                 backend = VectorBackend.PGVECTOR
 
-        # pgvector Suche (wenn Qdrant nicht verfuegbar oder als Primary)
+        # pgvector Suche (wenn Qdrant nicht verfügbar oder als Primary)
         if backend == VectorBackend.PGVECTOR or not results:
             # pgvector-Suche wird vom SearchService gehandhabt
             # Hier nur Placeholder - Integration erfolgt im SearchService
@@ -277,14 +277,14 @@ class VectorSearchOrchestrator:
         user_id: Optional[UUID],
     ) -> None:
         """
-        Zeichne Metriken fuer A/B Analyse auf.
+        Zeichne Metriken für A/B Analyse auf.
 
         Args:
             backend: Verwendetes Backend
             embedding_model: Verwendetes Modell
             latency: Latenz-Metriken
             results_count: Anzahl Ergebnisse
-            query_length: Query-Laenge
+            query_length: Query-Länge
             user_id: User UUID
         """
         metric = {
@@ -304,7 +304,7 @@ class VectorSearchOrchestrator:
         if backend in self._metrics:
             self._metrics[backend].append(metric)
 
-            # FIFO wenn ueber Limit
+            # FIFO wenn über Limit
             if len(self._metrics[backend]) > self._max_metrics_per_backend:
                 self._metrics[backend] = self._metrics[backend][-self._max_metrics_per_backend:]
 
@@ -339,7 +339,7 @@ class VectorSearchOrchestrator:
 
     async def health_check(self) -> Dict[str, bool]:
         """
-        Pruefe Gesundheit aller Backends.
+        Prüfe Gesundheit aller Backends.
 
         Returns:
             Dict mit Health-Status pro Backend
@@ -364,7 +364,7 @@ _vector_orchestrator: Optional[VectorSearchOrchestrator] = None
 
 
 async def get_vector_orchestrator() -> VectorSearchOrchestrator:
-    """Factory Function fuer VectorSearchOrchestrator."""
+    """Factory Function für VectorSearchOrchestrator."""
     global _vector_orchestrator
     if _vector_orchestrator is None:
         _vector_orchestrator = VectorSearchOrchestrator.get_instance()

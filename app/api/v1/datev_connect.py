@@ -2,11 +2,11 @@
 """
 DATEV Connect API Endpoints.
 
-Vollstaendige REST API fuer DATEVconnect Integration:
+Vollständige REST API für DATEVconnect Integration:
 - Verbindungs-Management (OAuth2)
 - Stammdaten Sync
 - Buchungsstapel
-- Kontierungsvorschlaege
+- Kontierungsvorschläge
 - GoBD Compliance
 
 Feinpoliert und durchdacht - Enterprise-Ready DATEV Integration.
@@ -40,7 +40,7 @@ router = APIRouter(prefix="/datev-connect", tags=["DATEV Connect"])
 # =============================================================================
 
 class DATEVConnectionCreate(BaseModel):
-    """Schema fuer neue DATEV-Verbindung."""
+    """Schema für neue DATEV-Verbindung."""
 
     name: str = Field(..., min_length=1, max_length=100)
     beraternummer: str = Field(..., min_length=5, max_length=10)
@@ -86,7 +86,7 @@ class DATEVConnectionCreate(BaseModel):
 
 
 class DATEVConnectionUpdate(BaseModel):
-    """Schema fuer Verbindungs-Update."""
+    """Schema für Verbindungs-Update."""
 
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     client_id: Optional[str] = None
@@ -100,7 +100,7 @@ class DATEVConnectionUpdate(BaseModel):
 
 
 class DATEVConnectionResponse(BaseModel):
-    """Response-Schema fuer DATEV-Verbindung."""
+    """Response-Schema für DATEV-Verbindung."""
 
     id: str
     name: str
@@ -125,14 +125,14 @@ class DATEVConnectionResponse(BaseModel):
 
 
 class OAuthStartResponse(BaseModel):
-    """Response fuer OAuth-Start."""
+    """Response für OAuth-Start."""
 
     authorization_url: str
     state: str
 
 
 class KontierungInput(BaseModel):
-    """Eingabe fuer Kontierungsvorschlag."""
+    """Eingabe für Kontierungsvorschlag."""
 
     entity_name: Optional[str] = None
     entity_vat_id: Optional[str] = None
@@ -145,7 +145,7 @@ class KontierungInput(BaseModel):
 
 
 class KontierungResponse(BaseModel):
-    """Response fuer Kontierungsvorschlag."""
+    """Response für Kontierungsvorschlag."""
 
     konto: str
     gegenkonto: str
@@ -158,7 +158,7 @@ class KontierungResponse(BaseModel):
 
 
 class BuchungCreate(BaseModel):
-    """Schema fuer neue Buchung."""
+    """Schema für neue Buchung."""
 
     document_id: Optional[str] = None
     umsatz: Decimal
@@ -173,7 +173,7 @@ class BuchungCreate(BaseModel):
 
 
 class BuchungResponse(BaseModel):
-    """Response fuer Buchung."""
+    """Response für Buchung."""
 
     id: str
     buchungs_guid: str
@@ -191,13 +191,13 @@ class BuchungResponse(BaseModel):
 
 
 class FestschreibungRequest(BaseModel):
-    """Request fuer Festschreibung."""
+    """Request für Festschreibung."""
 
     bis_datum: date
 
 
 class FestschreibungResponse(BaseModel):
-    """Response fuer Festschreibung."""
+    """Response für Festschreibung."""
 
     success: bool
     festschreibung_datum: Optional[str]
@@ -206,7 +206,7 @@ class FestschreibungResponse(BaseModel):
 
 
 class GoBDValidationResponse(BaseModel):
-    """Response fuer GoBD-Pruefung."""
+    """Response für GoBD-Prüfung."""
 
     is_compliant: bool
     pruefung_datum: str
@@ -215,7 +215,7 @@ class GoBDValidationResponse(BaseModel):
 
 
 class SyncTriggerResponse(BaseModel):
-    """Response fuer Sync-Trigger."""
+    """Response für Sync-Trigger."""
 
     task_id: str
     message: str
@@ -238,11 +238,11 @@ async def create_connection(
     """
     Erstellt eine neue DATEV-Verbindung.
 
-    Erfordert Client ID und Secret fuer OAuth2-Flow.
+    Erfordert Client ID und Secret für OAuth2-Flow.
     """
     from app.core.encryption import encrypt_value
 
-    # Pruefen ob Mandant bereits existiert
+    # Prüfen ob Mandant bereits existiert
     existing = await db.execute(
         select(models.DATEVConnection).where(
             and_(
@@ -475,7 +475,7 @@ async def delete_connection(
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ) -> None:
-    """Loescht eine DATEV-Verbindung (Soft-Delete)."""
+    """Löscht eine DATEV-Verbindung (Soft-Delete)."""
     result = await db.execute(
         select(models.DATEVConnection).where(
             and_(
@@ -511,9 +511,9 @@ async def start_oauth_flow(
     current_user: models.User = Depends(get_current_user),
 ) -> OAuthStartResponse:
     """
-    Startet OAuth2-Flow fuer DATEV-Verbindung.
+    Startet OAuth2-Flow für DATEV-Verbindung.
 
-    Gibt Authorization URL zurueck, zu der der User weitergeleitet werden muss.
+    Gibt Authorization URL zurück, zu der der User weitergeleitet werden muss.
     """
     from app.services.datev.connect import get_datev_auth_service
 
@@ -536,7 +536,7 @@ async def start_oauth_flow(
     if not connection.client_id or not connection.redirect_uri:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Client ID und Redirect URI muessen konfiguriert sein",
+            detail="Client ID und Redirect URI müssen konfiguriert sein",
         )
 
     auth_service = get_datev_auth_service()
@@ -594,7 +594,7 @@ async def oauth_callback(
     if not state_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltiger oder abgelaufener State",
+            detail="Ungültiger oder abgelaufener State",
         )
 
     # Code austauschen
@@ -693,9 +693,9 @@ async def suggest_kontierung(
     current_user: models.User = Depends(get_current_user),
 ) -> KontierungResponse:
     """
-    Generiert Kontierungsvorschlag fuer ein Dokument.
+    Generiert Kontierungsvorschlag für ein Dokument.
 
-    Kombiniert regelbasierte und ML-gestuetzte Vorschlaege.
+    Kombiniert regelbasierte und ML-gestuetzte Vorschläge.
     """
     from app.services.datev.connect import get_kontierung_service
     from app.services.datev.connect.kontierung_service import KontierungsInput as KInput
@@ -931,7 +931,7 @@ async def trigger_stammdaten_sync(
 
     return SyncTriggerResponse(
         task_id=task.id,
-        message=f"Stammdaten-Sync fuer {entity_type} gestartet",
+        message=f"Stammdaten-Sync für {entity_type} gestartet",
     )
 
 
@@ -988,7 +988,7 @@ async def festschreiben_buchungen(
     """
     Schreibt Buchungen bis zum angegebenen Datum fest.
 
-    ACHTUNG: Festgeschriebene Buchungen koennen nicht mehr geaendert werden!
+    ACHTUNG: Festgeschriebene Buchungen können nicht mehr geändert werden!
     """
     from app.services.datev.connect import get_gobd_service
 
@@ -1012,10 +1012,10 @@ async def festschreiben_buchungen(
     if not connection.gobd_enabled:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="GoBD ist fuer diese Verbindung nicht aktiviert",
+            detail="GoBD ist für diese Verbindung nicht aktiviert",
         )
 
-    # Festschreibung durchfuehren
+    # Festschreibung durchführen
     gobd_service = get_gobd_service()
     result = await gobd_service.festschreiben_buchungen(
         db=db,
@@ -1044,9 +1044,9 @@ async def check_gobd_compliance(
     current_user: models.User = Depends(get_current_user),
 ) -> GoBDValidationResponse:
     """
-    Prueft GoBD-Compliance fuer eine Verbindung.
+    Prüft GoBD-Compliance für eine Verbindung.
 
-    Prueft Hash-Integritaet, Lueckenlosigkeit und Belegverknuepfungen.
+    Prüft Hash-Integritaet, Lückenlosigkeit und Belegverknüpfungen.
     """
     from app.services.datev.connect import get_gobd_service
 
@@ -1067,7 +1067,7 @@ async def check_gobd_compliance(
             detail="Verbindung nicht gefunden",
         )
 
-    # Compliance pruefen
+    # Compliance prüfen
     gobd_service = get_gobd_service()
     validation = await gobd_service.validate_gobd_compliance(
         db=db,
@@ -1095,7 +1095,7 @@ async def export_verfahrensdokumentation(
     """
     Exportiert Verfahrensdokumentation gemaess GoBD.
 
-    Gibt JSON-Dokument mit Systembeschreibung zurueck.
+    Gibt JSON-Dokument mit Systembeschreibung zurück.
     """
     from fastapi.responses import Response
     from app.services.datev.connect import get_gobd_service

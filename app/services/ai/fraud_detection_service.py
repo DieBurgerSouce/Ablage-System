@@ -55,17 +55,17 @@ logger = structlog.get_logger(__name__)
 
 GERMAN_URGENCY_KEYWORDS = frozenset({
     # High urgency
-    "dringend", "sofort", "umgehend", "unverzueglich", "schnellstmoeglich",
+    "dringend", "sofort", "umgehend", "unverzueglich", "schnellstmöglich",
     "eilig", "asap", "sofortige", "dringende", "schnellstens",
     # Confidentiality
-    "vertraulich", "geheim", "streng vertraulich", "nur fuer sie",
+    "vertraulich", "geheim", "streng vertraulich", "nur für sie",
     "persoenlich", "nicht weiterleiten", "diskret", "unter uns",
     # Authority pressure
-    "geschaeftsfuehrer", "ceo", "vorstand", "chef", "direktor",
+    "geschäftsführer", "ceo", "vorstand", "chef", "direktor",
     "anweisung", "auftrag", "anordnung", "befehl",
     # Payment pressure
-    "zahlung", "ueberweisung", "bankverbindung", "neue iban",
-    "konto geaendert", "kontoaenderung", "bankwechsel",
+    "zahlung", "überweisung", "bankverbindung", "neue iban",
+    "konto geändert", "kontoänderung", "bankwechsel",
 })
 
 CEO_FRAUD_INDICATORS = {
@@ -182,7 +182,7 @@ class EnhancedFraudDetectionService:
             ))
 
         # 2. Check confidentiality request
-        confidentiality_words = {"vertraulich", "geheim", "nur fuer sie", "persoenlich", "diskret"}
+        confidentiality_words = {"vertraulich", "geheim", "nur für sie", "persoenlich", "diskret"}
         conf_matches = [w for w in confidentiality_words if w in text_content]
         if conf_matches:
             indicators.append(FraudIndicator(
@@ -222,7 +222,7 @@ class EnhancedFraudDetectionService:
             indicators.append(FraudIndicator(
                 name="unusual_bank_details",
                 weight=CEO_FRAUD_INDICATORS["unusual_bank_details"],
-                description="Bankverbindungsaenderung erwaehnt",
+                description="Bankverbindungsänderung erwaehnt",
                 details={},
             ))
 
@@ -320,7 +320,7 @@ class EnhancedFraudDetectionService:
                 indicators.append(FraudIndicator(
                     name="fuzzy_duplicate",
                     weight=0.6,
-                    description=f"Aehnliche Rechnung erkannt ({len(fuzzy_duplicates)} Treffer)",
+                    description=f"Ähnliche Rechnung erkannt ({len(fuzzy_duplicates)} Treffer)",
                     details={"similar_count": len(fuzzy_duplicates)},
                 ))
 
@@ -364,8 +364,8 @@ class EnhancedFraudDetectionService:
             await self._create_fraud_alert(
                 company_id=company_id,
                 alert_code=AlertCodes.FRAUD_DUPLICATE_PAYMENT,
-                title="Moegliche Duplikat-Zahlung erkannt",
-                message="Rechnung koennte ein Duplikat sein. Manuelle Pruefung erforderlich.",
+                title="Mögliche Duplikat-Zahlung erkannt",
+                message="Rechnung könnte ein Duplikat sein. Manuelle Prüfung erforderlich.",
                 document_id=invoice.document_id,
                 entity_id=invoice.entity_id,
                 severity=AlertSeverity.HIGH,
@@ -415,7 +415,7 @@ class EnhancedFraudDetectionService:
                 indicators.append(FraudIndicator(
                     name="foreign_iban",
                     weight=0.3,
-                    description="Auslaendische IBAN fuer ersten Eintrag",
+                    description="Auslaendische IBAN für ersten Eintrag",
                     details={"country": new_iban_normalized[:2]},
                 ))
         else:
@@ -438,7 +438,7 @@ class EnhancedFraudDetectionService:
                     indicators.append(FraudIndicator(
                         name="country_change",
                         weight=0.4,
-                        description="IBAN-Land hat sich geaendert",
+                        description="IBAN-Land hat sich geändert",
                         details={"country_changed": True},
                     ))
 
@@ -450,7 +450,7 @@ class EnhancedFraudDetectionService:
                     indicators.append(FraudIndicator(
                         name="frequent_changes",
                         weight=0.3,
-                        description="Haeufige IBAN-Aenderungen in letzten 90 Tagen",
+                        description="Häufige IBAN-Änderungen in letzten 90 Tagen",
                         details={"change_count": recent_changes},
                     ))
 
@@ -492,8 +492,8 @@ class EnhancedFraudDetectionService:
             await self._create_fraud_alert(
                 company_id=company_id,
                 alert_code=AlertCodes.FRAUD_IBAN_MANIPULATION,
-                title="IBAN-Aenderung erfordert Verifizierung",
-                message="Eine IBAN-Aenderung wurde erkannt. Bitte verifizieren Sie die neuen Bankdaten.",
+                title="IBAN-Änderung erfordert Verifizierung",
+                message="Eine IBAN-Änderung wurde erkannt. Bitte verifizieren Sie die neuen Bankdaten.",
                 entity_id=entity_id,
                 document_id=source_document_id,
                 severity=AlertSeverity.HIGH if risk_level == FraudRiskLevel.CRITICAL else AlertSeverity.MEDIUM,
@@ -696,9 +696,9 @@ class EnhancedFraudDetectionService:
         """Check if text mentions bank/IBAN change."""
         bank_change_patterns = [
             r"neue[rn]?\s+(?:iban|bank|konto)",
-            r"(?:iban|bank|konto)\s*(?:ge)?aender",
-            r"bankverbindung\s*(?:ge)?aender",
-            r"bitte\s+(?:ueberweisen|zahlen)\s+auf",
+            r"(?:iban|bank|konto)\s*(?:ge)?änder",
+            r"bankverbindung\s*(?:ge)?änder",
+            r"bitte\s+(?:überweisen|zahlen)\s+auf",
         ]
         for pattern in bank_change_patterns:
             if re.search(pattern, text, re.IGNORECASE):

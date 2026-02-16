@@ -7,7 +7,7 @@ from app.services.reranker_service import (
     get_reranker_service,
 )
 
-# RAG subpackage verfuegbar machen
+# RAG subpackage verfügbar machen
 from app.services import rag as rag  # noqa: F401
 
 # MLOps Pipeline Services

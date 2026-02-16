@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 """
-TaxOptimizationService - Intelligente Steueroptimierung fuer das Privat-Modul.
+TaxOptimizationService - Intelligente Steueroptimierung für das Privat-Modul.
 
-Enterprise-Feature fuer umfassende Steueroptimierung mit:
+Enterprise-Feature für umfassende Steueroptimierung mit:
 1. Automatische Dokumenten-Klassifizierung nach Steuer-Kategorien
 2. Deutsche Einkommensteuer-Berechnung (2024-2026)
 3. ELSTER XML Export-Vorbereitung (Anlage N, V, EUER)
 4. Steuer-Prognose und "Was-waere-wenn" Szenarien
-5. Intelligente Optimierungsvorschlaege
-6. AfA-Berechnung fuer Abschreibungen
+5. Intelligente Optimierungsvorschläge
+6. AfA-Berechnung für Abschreibungen
 7. Vorauszahlungs-Tracking
 
-Unterstuetzte Steuer-Kategorien:
+Unterstützte Steuer-Kategorien:
 - Werbungskosten (berufsbedingte Aufwendungen)
 - Sonderausgaben (Versicherungen, Vorsorge, Spenden)
 - Aussergewoehnliche Belastungen (Krankheit, Behinderung)
 - Haushaltsnahe Dienstleistungen (20% bis max. 4.000 EUR)
 - Handwerkerleistungen (20% bis max. 1.200 EUR)
-- AfA (Abschreibungen fuer Vermietung/Verpachtung)
+- AfA (Abschreibungen für Vermietung/Verpachtung)
 
 SECURITY: NIEMALS persoenliche Finanzdaten loggen!
 Enterprise Feature - KEINE externen APIs, alles lokal berechnet.
@@ -49,11 +49,11 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 class ElsterAnlage(str, Enum):
-    """ELSTER Formular-Anlagen fuer Steuererklaerung."""
+    """ELSTER Formular-Anlagen für Steuererklärung."""
     MANTELBOGEN = "mantelbogen"  # Hauptformular
     ANLAGE_N = "anlage_n"  # Einkuenfte aus nichtselbstaendiger Arbeit
     ANLAGE_V = "anlage_v"  # Einkuenfte aus Vermietung und Verpachtung
-    ANLAGE_EUER = "anlage_euer"  # Einnahmen-Ueberschuss-Rechnung
+    ANLAGE_EUER = "anlage_euer"  # Einnahmen-Überschuss-Rechnung
     ANLAGE_KAP = "anlage_kap"  # Einkuenfte aus Kapitalvermoegen
     ANLAGE_R = "anlage_r"  # Renten
     ANLAGE_SO = "anlage_so"  # Sonstige Einkuenfte
@@ -65,7 +65,7 @@ class ElsterAnlage(str, Enum):
 
 
 class ElsterFieldMapping(str, Enum):
-    """ELSTER Kennzahlen fuer die wichtigsten Felder."""
+    """ELSTER Kennzahlen für die wichtigsten Felder."""
     # Anlage N (Arbeitnehmereinkuenfte)
     BRUTTOARBEITSLOHN = "210"
     WERBUNGSKOSTEN_GESAMT = "220"
@@ -120,7 +120,7 @@ TAX_OPTIMIZATION_DURATION = Histogram(
 # =============================================================================
 
 class TaxCategory(str, Enum):
-    """Deutsche Steuer-Kategorien fuer Abzuege."""
+    """Deutsche Steuer-Kategorien für Abzuege."""
     WERBUNGSKOSTEN = "werbungskosten"
     SONDERAUSGABEN = "sonderausgaben"
     AUSSERGEWOEHNLICHE_BELASTUNGEN = "aussergewoehnliche_belastungen"
@@ -142,7 +142,7 @@ class TaxDeadlineType(str, Enum):
     GRUNDSTEUER = "grundsteuer"
     KOERPERSCHAFTSTEUER = "koerperschaftsteuer"
     LOHNSTEUER = "lohnsteuer"
-    FRISTVERLÄNGERUNG = "fristverlaengerung"
+    FRISTVERLAENGERUNG = "fristverlaengerung"
 
 
 class TaxRating(str, Enum):
@@ -155,14 +155,14 @@ class TaxRating(str, Enum):
 
 # =============================================================================
 # Steuerliche Grenzwerte (2024-2026)
-# Jahr-spezifische Werte fuer praezise Berechnungen
+# Jahr-spezifische Werte für praezise Berechnungen
 # =============================================================================
 
 # Grundfreibetraege nach Jahr (Single)
 GRUNDFREIBETRAG_BY_YEAR = {
     2024: Decimal("11604"),
     2025: Decimal("12084"),
-    2026: Decimal("12096"),  # geschaetzt
+    2026: Decimal("12096"),  # geschätzt
 }
 
 # Grundfreibetraege verheiratet (Splittingtarif = 2x Single)
@@ -179,7 +179,7 @@ WERBUNGSKOSTEN_PAUSCHALE = Decimal("1230")
 SONDERAUSGABEN_PAUSCHALE_SINGLE = Decimal("36")
 SONDERAUSGABEN_PAUSCHALE_VERHEIRATET = Decimal("72")
 
-# Sparerfreibetrag (Kapitalertraege)
+# Sparerfreibetrag (Kapitalerträge)
 SPARERFREIBETRAG_SINGLE = Decimal("1000")
 SPARERFREIBETRAG_VERHEIRATET = Decimal("2000")
 
@@ -200,7 +200,7 @@ HOMEOFFICE_MAX_ABZUG = Decimal("1260")  # 210 x 6 EUR
 
 # Pendlerpauschale (Entfernungspauschale)
 PENDLER_PAUSCHALE_PRO_KM_BIS_20 = Decimal("0.30")  # Erste 20 km
-PENDLER_PAUSCHALE_PRO_KM_AB_21 = Decimal("0.38")  # Ab 21 km (erhoehte Pauschale)
+PENDLER_PAUSCHALE_PRO_KM_AB_21 = Decimal("0.38")  # Ab 21 km (erhöhte Pauschale)
 PENDLER_MAX_ARBEITSTAGE = 230  # Standardwert
 
 # Kinderbetreuungskosten
@@ -212,7 +212,7 @@ KINDERBETREUUNG_MAX_ABSETZBAR = Decimal("4000")  # Pro Kind
 SPENDEN_MAX_PROZENT_EINKOMMEN = Decimal("0.20")  # 20% des Gesamtbetrags
 
 # Aussergewoehnliche Belastungen - Zumutbare Belastung
-# Prozentsaetze basierend auf Einkommen und Familienstand
+# Prozentsätze basierend auf Einkommen und Familienstand
 ZUMUTBARE_BELASTUNG_PROZENT = {
     # (bis_einkommen, ohne_kinder, mit_1_2_kindern, ab_3_kindern)
     "stufe1": (Decimal("15340"), Decimal("0.05"), Decimal("0.02"), Decimal("0.01")),
@@ -220,7 +220,7 @@ ZUMUTBARE_BELASTUNG_PROZENT = {
     "stufe3": (None, Decimal("0.07"), Decimal("0.04"), Decimal("0.02")),  # unbegrenzt
 }
 
-# AfA-Saetze fuer Gebaeude (Abschreibung fuer Abnutzung)
+# AfA-Sätze für Gebaeude (Abschreibung für Abnutzung)
 AFA_SAETZE_GEBAEUDE = {
     "neubau_ab_2023": Decimal("0.03"),  # 3% (33 1/3 Jahre)
     "neubau_1925_2022": Decimal("0.02"),  # 2% (50 Jahre)
@@ -258,15 +258,15 @@ SOLI_SATZ = Decimal("0.055")  # 5.5%
 KIRCHENSTEUER_SAETZE = {
     "BW": Decimal("0.08"),  # Baden-Wuerttemberg
     "BY": Decimal("0.08"),  # Bayern
-    "default": Decimal("0.09"),  # Alle anderen Bundeslaender
+    "default": Decimal("0.09"),  # Alle anderen Bundesländer
 }
 
-# Dokument-Kategorien fuer automatische Erkennung
+# Dokument-Kategorien für automatische Erkennung
 TAX_DOCUMENT_KEYWORDS = {
     TaxCategory.WERBUNGSKOSTEN: [
         "fahrtkosten", "arbeitsweg", "fortbildung", "fachliteratur",
         "arbeitsmittel", "berufskleidung", "bewerbung", "umzug",
-        "arbeitszimmer", "doppelte haushaltsfuehrung", "reisekosten",
+        "arbeitszimmer", "doppelte haushaltsführung", "reisekosten",
     ],
     TaxCategory.SONDERAUSGABEN: [
         "versicherung", "altersvorsorge", "riester", "ruerup",
@@ -292,7 +292,7 @@ TAX_DOCUMENT_KEYWORDS = {
         "kinderbetreuung", "babysitter", "au-pair",
     ],
     TaxCategory.SPENDEN: [
-        "spende", "zuwendung", "gemeinnuetzig", "stiftung",
+        "spende", "zuwendung", "gemeinnützig", "stiftung",
         "kirche", "partei", "spendenquittung",
     ],
 }
@@ -345,11 +345,11 @@ class TaxDeadline:
 
 @dataclass
 class TaxOptimizationResult:
-    """Vollstaendiges Ergebnis der Steueroptimierung."""
+    """Vollständiges Ergebnis der Steueroptimierung."""
     space_id: UUID
     tax_year: int
 
-    # Gesamtuebersicht
+    # Gesamtübersicht
     total_deductible: Decimal
     estimated_tax_savings: Decimal
     optimization_rating: TaxRating
@@ -361,7 +361,7 @@ class TaxOptimizationResult:
     upcoming_deadlines: List[TaxDeadline]
     overdue_deadlines: List[TaxDeadline]
 
-    # Optimierungsvorschlaege
+    # Optimierungsvorschläge
     optimization_suggestions: List[str]
     missing_deductions: List[str]
 
@@ -374,7 +374,7 @@ class TaxOptimizationResult:
 
 @dataclass
 class TaxSavingsEstimate:
-    """Schaetzung der Steuerersparnis."""
+    """Schätzung der Steuerersparnis."""
     estimated_gross_income: Decimal
     total_deductions: Decimal
     taxable_income: Decimal
@@ -387,14 +387,14 @@ class TaxSavingsEstimate:
 
 @dataclass
 class TaxProjection:
-    """Vollstaendige Steuer-Prognose fuer ein Jahr."""
+    """Vollständige Steuer-Prognose für ein Jahr."""
     tax_year: int
 
     # Einkuenfte
     total_income: Decimal
     income_from_employment: Decimal  # Arbeitseinkuenfte
     income_from_rental: Decimal  # Vermietung
-    income_from_capital: Decimal  # Kapitalertraege
+    income_from_capital: Decimal  # Kapitalerträge
     other_income: Decimal  # Sonstige
 
     # Abzuege
@@ -417,19 +417,19 @@ class TaxProjection:
     expected_refund: Decimal  # Positiv = Erstattung, Negativ = Nachzahlung
 
     # Optimierung
-    optimization_potential: Decimal  # Geschaetztes Sparpotenzial
+    optimization_potential: Decimal  # Geschätztes Sparpotenzial
     unused_allowances: List[str]  # Nicht genutzte Freibetraege
 
     # Metadata
     is_married: bool
     number_of_children: int
-    federal_state: str  # Bundesland fuer Kirchensteuer
+    federal_state: str  # Bundesland für Kirchensteuer
     calculated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass
 class WhatIfScenario:
-    """Was-waere-wenn Szenario fuer Steuer-Simulation."""
+    """Was-waere-wenn Szenario für Steuer-Simulation."""
     scenario_name: str
     description: str
 
@@ -448,7 +448,7 @@ class WhatIfScenario:
 
 @dataclass
 class AfACalculation:
-    """Abschreibungsberechnung fuer ein Wirtschaftsgut."""
+    """Abschreibungsberechnung für ein Wirtschaftsgut."""
     asset_id: Optional[UUID]
     asset_name: str
     asset_type: str  # gebaeude, beweglich, etc.
@@ -470,9 +470,9 @@ class AfACalculation:
 
 @dataclass
 class ElsterExportData:
-    """Struktur fuer ELSTER-Export eines Steuerjahres."""
+    """Struktur für ELSTER-Export eines Steuerjahres."""
     tax_year: int
-    steuernummer: Optional[str]  # Wird nicht gespeichert, nur fuer Export
+    steuernummer: Optional[str]  # Wird nicht gespeichert, nur für Export
 
     # Anlagen-Status
     anlagen: Dict[ElsterAnlage, bool]  # Welche Anlagen relevant sind
@@ -516,7 +516,7 @@ class DocumentTaxAnalysis:
 
     # Empfehlungen
     suggestions: List[str]
-    missing_info: List[str]  # Fehlende Informationen fuer optimale Absetzung
+    missing_info: List[str]  # Fehlende Informationen für optimale Absetzung
 
 
 @dataclass
@@ -542,10 +542,10 @@ class TaxAdvancedPayment:
 
 class TaxOptimizationService:
     """
-    Singleton Service fuer Steueroptimierung.
+    Singleton Service für Steueroptimierung.
 
     Erkennt automatisch steuerlich relevante Dokumente,
-    berechnet Abzuege und gibt Optimierungsvorschlaege.
+    berechnet Abzuege und gibt Optimierungsvorschläge.
 
     SECURITY: Alle finanziellen Daten werden NIE geloggt!
     """
@@ -573,7 +573,7 @@ class TaxOptimizationService:
             TaxCategory.AUSSERGEWOEHNLICHE_BELASTUNGEN: "Aussergewoehnliche Belastungen",
             TaxCategory.HAUSHALTSNAHE_DIENSTLEISTUNGEN: "Haushaltsnahe Dienstleistungen",
             TaxCategory.HANDWERKERLEISTUNGEN: "Handwerkerleistungen",
-            TaxCategory.DOPPELTE_HAUSHALTSFUEHRUNG: "Doppelte Haushaltsfuehrung",
+            TaxCategory.DOPPELTE_HAUSHALTSFUEHRUNG: "Doppelte Haushaltsführung",
             TaxCategory.HOMEOFFICE: "Homeoffice-Pauschale",
             TaxCategory.KINDERBETREUUNG: "Kinderbetreuungskosten",
             TaxCategory.SPENDEN: "Spenden und Mitgliedsbeitraege",
@@ -601,8 +601,8 @@ class TaxOptimizationService:
             db: Datenbank-Session
             space_id: ID des Privat-Space
             tax_year: Steuerjahr (Default: aktuelles Jahr)
-            estimated_gross_income: Geschaetztes Bruttoeinkommen (fuer Ersparnis-Berechnung)
-            is_married: Verheiratet (fuer Splitting-Tarif)
+            estimated_gross_income: Geschätztes Bruttoeinkommen (für Ersparnis-Berechnung)
+            is_married: Verheiratet (für Splitting-Tarif)
 
         Returns:
             TaxOptimizationResult mit allen Abzuegen und Empfehlungen
@@ -640,7 +640,7 @@ class TaxOptimizationService:
         # 5. Gesamtabzug berechnen
         total_deductible = sum(s.total_deductible for s in summaries)
 
-        # 6. Steuerersparnis schaetzen
+        # 6. Steuerersparnis schätzen
         estimated_savings = Decimal("0")
         if estimated_gross_income and estimated_gross_income > 0:
             savings_estimate = self._estimate_tax_savings(
@@ -653,7 +653,7 @@ class TaxOptimizationService:
         # 7. Fristen ermitteln
         upcoming_deadlines, overdue_deadlines = self._get_tax_deadlines(tax_year)
 
-        # 8. Optimierungsvorschlaege generieren
+        # 8. Optimierungsvorschläge generieren
         optimization_suggestions = self._generate_optimization_suggestions(
             summaries, estimated_gross_income
         )
@@ -664,7 +664,7 @@ class TaxOptimizationService:
         # 10. Rating berechnen
         rating = self._calculate_optimization_rating(summaries, missing_deductions)
 
-        # 11. DATEV-Export-Status pruefen
+        # 11. DATEV-Export-Status prüfen
         datev_ready, datev_notes = self._check_datev_export_readiness(summaries)
 
         duration = time.time() - start_time
@@ -824,7 +824,7 @@ class TaxOptimizationService:
         category: TaxCategory,
         gross_amount: Decimal,
     ) -> Decimal:
-        """Berechnet den abzugsfaehigen Betrag je nach Kategorie."""
+        """Berechnet den abzugsfähigen Betrag je nach Kategorie."""
         if category == TaxCategory.HAUSHALTSNAHE_DIENSTLEISTUNGEN:
             # 20% bis max 4.000 EUR
             return min(
@@ -854,7 +854,7 @@ class TaxOptimizationService:
             TaxCategory.AUSSERGEWOEHNLICHE_BELASTUNGEN,
             TaxCategory.SPENDEN,
         ):
-            # Voller Betrag abzugsfaehig (Hoechstgrenzen werden bei Summierung geprueft)
+            # Voller Betrag abzugsfähig (Hoechstgrenzen werden bei Summierung geprüft)
             return gross_amount
 
         else:
@@ -885,7 +885,7 @@ class TaxOptimizationService:
         insurances = result.scalars().all()
 
         for insurance in insurances:
-            # Jaehrlichen Beitrag berechnen
+            # Jährlichen Beitrag berechnen
             if not insurance.premium_amount:
                 continue
 
@@ -908,21 +908,21 @@ class TaxOptimizationService:
             elif any(t in ins_type for t in ["haftpflicht", "liability"]):
                 category = TaxCategory.SONDERAUSGABEN
                 description = f"Haftpflichtversicherung: {insurance.name}"
-            elif any(t in ins_type for t in ["berufsunfaehigkeit", "disability"]):
+            elif any(t in ins_type for t in ["berufsunfähigkeit", "disability"]):
                 category = TaxCategory.SONDERAUSGABEN
-                description = f"Berufsunfaehigkeitsversicherung: {insurance.name}"
+                description = f"Berufsunfähigkeitsversicherung: {insurance.name}"
             elif any(t in ins_type for t in ["unfall", "accident"]):
                 category = TaxCategory.SONDERAUSGABEN
                 description = f"Unfallversicherung: {insurance.name}"
             else:
-                # Andere Versicherungen nur teilweise abzugsfaehig
+                # Andere Versicherungen nur teilweise abzugsfähig
                 continue
 
             items.append(TaxDeductionItem(
                 category=category,
                 description=description,
                 gross_amount=annual_premium,
-                deductible_amount=annual_premium,  # Versicherungen voll abzugsfaehig
+                deductible_amount=annual_premium,  # Versicherungen voll abzugsfähig
                 confidence=Decimal("0.95"),
                 is_verified=True,  # Aus strukturierten Daten
             ))
@@ -968,7 +968,7 @@ class TaxOptimizationService:
                 ))
 
             # Nebenkosten aus Utility Statements
-            # (Nur Vermieter-Anteil, nicht umlagefaehig)
+            # (Nur Vermieter-Anteil, nicht umlagefähig)
             # Dies ist komplex und erfordert detailliertere Daten
 
         return items
@@ -1004,7 +1004,7 @@ class TaxOptimizationService:
                 if total_deductible > max_deductible:
                     total_deductible = max_deductible
                     recommendations.append(
-                        "Hoechstbetrag fuer haushaltsnahe Dienstleistungen erreicht (4.000 EUR)."
+                        "Hoechstbetrag für haushaltsnahe Dienstleistungen erreicht (4.000 EUR)."
                     )
                 utilization = (total_deductible / max_deductible * 100).quantize(Decimal("0.1"))
 
@@ -1013,12 +1013,12 @@ class TaxOptimizationService:
                 if total_deductible > max_deductible:
                     total_deductible = max_deductible
                     recommendations.append(
-                        "Hoechstbetrag fuer Handwerkerleistungen erreicht (1.200 EUR)."
+                        "Hoechstbetrag für Handwerkerleistungen erreicht (1.200 EUR)."
                     )
                 utilization = (total_deductible / max_deductible * 100).quantize(Decimal("0.1"))
 
             elif category == TaxCategory.WERBUNGSKOSTEN:
-                # Nur ueber Pauschale absetzbar
+                # Nur über Pauschale absetzbar
                 if total_deductible < WERBUNGSKOSTEN_PAUSCHALE:
                     recommendations.append(
                         f"Werbungskosten unter Pauschale ({WERBUNGSKOSTEN_PAUSCHALE} EUR). "
@@ -1026,7 +1026,7 @@ class TaxOptimizationService:
                     )
                 else:
                     recommendations.append(
-                        f"Werbungskosten ueber Pauschale! "
+                        f"Werbungskosten über Pauschale! "
                         f"Ersparnis durch Einzelnachweis: {total_deductible - WERBUNGSKOSTEN_PAUSCHALE:.2f} EUR"
                     )
 
@@ -1049,7 +1049,7 @@ class TaxOptimizationService:
         total_deductions: Decimal,
         is_married: bool = False,
     ) -> TaxSavingsEstimate:
-        """Schaetzt die Steuerersparnis durch Abzuege."""
+        """Schätzt die Steuerersparnis durch Abzuege."""
         # Grundfreibetrag
         grundfreibetrag = (
             GRUNDFREIBETRAG_VERHEIRATET_2026 if is_married
@@ -1103,7 +1103,7 @@ class TaxOptimizationService:
         return self._calculate_single_tax(taxable_income)
 
     def _calculate_single_tax(self, income: Decimal) -> Decimal:
-        """Berechnet ESt fuer Einzelveranlagung (Tarif 2026 geschaetzt)."""
+        """Berechnet ESt für Einzelveranlagung (Tarif 2026 geschätzt)."""
         if income <= 0:
             return Decimal("0")
 
@@ -1146,23 +1146,23 @@ class TaxOptimizationService:
         self,
         tax_year: int,
     ) -> Tuple[List[TaxDeadline], List[TaxDeadline]]:
-        """Ermittelt kommende und ueberfaellige Steuerfristen."""
+        """Ermittelt kommende und überfällige Steuerfristen."""
         today = date.today()
 
         all_deadlines = [
             TaxDeadline(
                 deadline_type=TaxDeadlineType.EINKOMMENSTEUER,
-                title=f"Einkommensteuererklaerung {tax_year}",
+                title=f"Einkommensteuererklärung {tax_year}",
                 due_date=date(tax_year + 1, 7, 31),  # 31. Juli des Folgejahres
-                description="Abgabe der Einkommensteuererklaerung",
+                description="Abgabe der Einkommensteuererklärung",
                 is_recurring=True,
                 recurrence_pattern="yearly",
             ),
             TaxDeadline(
-                deadline_type=TaxDeadlineType.FRISTVERLÄNGERUNG,
-                title=f"Fristverlaengerung ESt {tax_year} (mit Steuerberater)",
-                due_date=date(tax_year + 2, 2, 28),  # Ende Februar uebernachstes Jahr
-                description="Verlaengerte Frist bei Steuerberater-Vertretung",
+                deadline_type=TaxDeadlineType.FRISTVERLAENGERUNG,
+                title=f"Fristverlängerung ESt {tax_year} (mit Steuerberater)",
+                due_date=date(tax_year + 2, 2, 28),  # Ende Februar übernachstes Jahr
+                description="Verlängerte Frist bei Steuerberater-Vertretung",
                 is_recurring=True,
                 recurrence_pattern="yearly",
             ),
@@ -1178,7 +1178,7 @@ class TaxOptimizationService:
                 deadline_type=TaxDeadlineType.UMSATZSTEUER_VORANMELDUNG,
                 title=f"USt-Voranmeldung {month:02d}/{tax_year}",
                 due_date=vat_date,
-                description=f"Umsatzsteuer-Voranmeldung fuer {month:02d}/{tax_year}",
+                description=f"Umsatzsteuer-Voranmeldung für {month:02d}/{tax_year}",
                 is_recurring=True,
                 recurrence_pattern="monthly",
             ))
@@ -1205,7 +1205,7 @@ class TaxOptimizationService:
 
             if deadline.is_overdue:
                 overdue.append(deadline)
-            elif deadline.days_until_due <= 90:  # Naechste 90 Tage
+            elif deadline.days_until_due <= 90:  # Nächste 90 Tage
                 upcoming.append(deadline)
 
         # Sortieren nach Datum
@@ -1215,7 +1215,7 @@ class TaxOptimizationService:
         return upcoming, overdue
 
     # =========================================================================
-    # Optimierungsvorschlaege
+    # Optimierungsvorschläge
     # =========================================================================
 
     def _generate_optimization_suggestions(
@@ -1223,10 +1223,10 @@ class TaxOptimizationService:
         summaries: List[TaxDeductionSummary],
         estimated_income: Optional[Decimal],
     ) -> List[str]:
-        """Generiert Optimierungsvorschlaege."""
+        """Generiert Optimierungsvorschläge."""
         suggestions: List[str] = []
 
-        # Auslastung von Hoechstbetraegen pruefen
+        # Auslastung von Hoechstbetraegen prüfen
         for summary in summaries:
             if summary.max_deductible and summary.utilization_percent:
                 if summary.utilization_percent < Decimal("50"):
@@ -1250,7 +1250,7 @@ class TaxOptimizationService:
         else:
             suggestions.append(
                 f"Keine Werbungskosten erfasst. "
-                f"Sie koennen mindestens die Pauschale von {WERBUNGSKOSTEN_PAUSCHALE} EUR nutzen."
+                f"Sie können mindestens die Pauschale von {WERBUNGSKOSTEN_PAUSCHALE} EUR nutzen."
             )
 
         # Homeoffice-Pauschale hinweisen
@@ -1261,7 +1261,7 @@ class TaxOptimizationService:
         if not homeoffice:
             suggestions.append(
                 f"Homeoffice-Pauschale: Bis zu {HOMEOFFICE_MAX_ABZUG} EUR/Jahr "
-                "fuer Arbeiten von zu Hause absetzbar."
+                "für Arbeiten von zu Hause absetzbar."
             )
 
         # Handwerkerleistungen
@@ -1272,10 +1272,10 @@ class TaxOptimizationService:
         if not handwerker:
             suggestions.append(
                 "Handwerkerleistungen: Bis zu 1.200 EUR Steuerermassigung "
-                "fuer Reparaturen und Renovierungen im Haushalt."
+                "für Reparaturen und Renovierungen im Haushalt."
             )
 
-        return suggestions[:5]  # Max 5 Vorschlaege
+        return suggestions[:5]  # Max 5 Vorschläge
 
     def _identify_missing_deductions(
         self,
@@ -1348,11 +1348,11 @@ class TaxOptimizationService:
         self,
         summaries: List[TaxDeductionSummary],
     ) -> Tuple[bool, Optional[str]]:
-        """Prueft ob die Daten fuer DATEV-Export bereit sind."""
+        """Prüft ob die Daten für DATEV-Export bereit sind."""
         if not summaries:
             return False, "Keine Abzuege erfasst"
 
-        # Pruefen ob alle Items verifiziert sind
+        # Prüfen ob alle Items verifiziert sind
         unverified_count = 0
         for summary in summaries:
             for item in summary.items:
@@ -1411,7 +1411,7 @@ class TaxOptimizationService:
         return export_data
 
     def _get_skr03_accounts(self, category: TaxCategory) -> List[Dict[str, str]]:
-        """Gibt SKR03-Kontenempfehlungen fuer eine Kategorie zurueck."""
+        """Gibt SKR03-Kontenempfehlungen für eine Kategorie zurück."""
         skr03_mapping = {
             TaxCategory.WERBUNGSKOSTEN: [
                 {"konto": "4900", "bezeichnung": "Sonstige betriebliche Aufwendungen"},
@@ -1432,7 +1432,7 @@ class TaxOptimizationService:
         return skr03_mapping.get(category, [])
 
     # =========================================================================
-    # Abzugsfaehigkeits-Check
+    # Abzugsfähigkeits-Check
     # =========================================================================
 
     async def check_deductibility(
@@ -1442,7 +1442,7 @@ class TaxOptimizationService:
         amount: Optional[Decimal] = None,
     ) -> Dict[str, Any]:
         """
-        Prueft ob ein Dokument steuerlich absetzbar ist.
+        Prüft ob ein Dokument steuerlich absetzbar ist.
 
         Args:
             document_text: OCR-Text des Dokuments
@@ -1450,7 +1450,7 @@ class TaxOptimizationService:
             amount: Betrag falls bekannt
 
         Returns:
-            Dict mit Abzugsfaehigkeits-Informationen
+            Dict mit Abzugsfähigkeits-Informationen
         """
         TAX_OPTIMIZATION_CALCULATIONS.labels(calculation_type="deductibility_check").inc()
 
@@ -1476,11 +1476,11 @@ class TaxOptimizationService:
                 "category": None,
                 "recommendations": [
                     "Dokument scheint nicht steuerlich relevant zu sein.",
-                    "Falls es sich um einen Beleg handelt, pruefen Sie die Kategorie manuell.",
+                    "Falls es sich um einen Beleg handelt, prüfen Sie die Kategorie manuell.",
                 ],
             }
 
-        # Abzugsfaehigkeit berechnen
+        # Abzugsfähigkeit berechnen
         deductible_amount = Decimal("0")
         max_amount: Optional[Decimal] = None
         deduction_rules: List[str] = []
@@ -1500,7 +1500,7 @@ class TaxOptimizationService:
 
             elif best_category == TaxCategory.WERBUNGSKOSTEN:
                 deductible_amount = amount
-                deduction_rules.append(f"Vollstaendig absetzbar ueber Pauschale ({WERBUNGSKOSTEN_PAUSCHALE} EUR)")
+                deduction_rules.append(f"Vollständig absetzbar über Pauschale ({WERBUNGSKOSTEN_PAUSCHALE} EUR)")
 
             elif best_category == TaxCategory.SONDERAUSGABEN:
                 deductible_amount = amount
@@ -1522,7 +1522,7 @@ class TaxOptimizationService:
             "max_deductible": str(max_amount) if max_amount else None,
             "deduction_rules": deduction_rules,
             "recommendations": [
-                "Beleg aufbewahren fuer die Steuererklaerung",
+                "Beleg aufbewahren für die Steuererklärung",
                 f"Kategorie: {self._category_names.get(best_category, '')}",
             ],
         }
@@ -1543,7 +1543,7 @@ class TaxOptimizationService:
         already_paid: Decimal = Decimal("0"),
     ) -> TaxProjection:
         """
-        Berechnet eine vollstaendige Steuer-Prognose fuer ein Jahr.
+        Berechnet eine vollständige Steuer-Prognose für ein Jahr.
 
         Args:
             db: Datenbank-Session
@@ -1551,12 +1551,12 @@ class TaxOptimizationService:
             tax_year: Steuerjahr (Default: aktuelles Jahr)
             gross_income: Bruttoeinkommen (falls nicht aus Dokumenten bekannt)
             is_married: Verheiratet (Splittingtarif)
-            number_of_children: Anzahl Kinder (fuer Freibetraege)
-            federal_state: Bundesland (fuer Kirchensteuer)
+            number_of_children: Anzahl Kinder (für Freibetraege)
+            federal_state: Bundesland (für Kirchensteuer)
             already_paid: Bereits gezahlte Vorauszahlungen
 
         Returns:
-            TaxProjection mit vollstaendiger Prognose
+            TaxProjection mit vollständiger Prognose
 
         SECURITY: Niemals Betraege oder persoenliche Daten loggen!
         """
@@ -1744,9 +1744,9 @@ class TaxOptimizationService:
         space_id: UUID,
         tax_year: int,
     ) -> Decimal:
-        """Berechnet Kapitalertraege (vereinfacht)."""
-        # Hier koennten Dividenden, Zinsen etc. aus Investments summiert werden
-        # Fuer MVP: Placeholder
+        """Berechnet Kapitalerträge (vereinfacht)."""
+        # Hier könnten Dividenden, Zinsen etc. aus Investments summiert werden
+        # Für MVP: Placeholder
         return Decimal("0")
 
     # =========================================================================
@@ -1782,7 +1782,7 @@ class TaxOptimizationService:
         modified_income = base_projection.total_income + scenario.additional_income
         modified_deductions = base_projection.total_deductions + scenario.additional_deductions
 
-        # Familienstand aendern?
+        # Familienstand ändern?
         is_married = base_projection.is_married
         if scenario.change_marital_status is not None:
             is_married = scenario.change_marital_status
@@ -1819,7 +1819,7 @@ class TaxOptimizationService:
                 f"{abs(scenario.tax_difference):.2f} EUR bedeuten."
             )
         else:
-            scenario.recommendation = "Keine Aenderung der Steuerbelastung."
+            scenario.recommendation = "Keine Änderung der Steuerbelastung."
 
         logger.info(
             "what_if_scenario_calculated",
@@ -1852,17 +1852,17 @@ class TaxOptimizationService:
         if not base_projection.is_married:
             marriage_scenario = WhatIfScenario(
                 scenario_name="Heirat",
-                description="Steuerliche Auswirkung bei Eheschliessung (Splittingtarif)",
+                description="Steuerliche Auswirkung bei Eheschließung (Splittingtarif)",
                 change_marital_status=True,
             )
             scenarios.append(
                 await self.calculate_what_if_scenario(db, space_id, marriage_scenario, base_projection)
             )
 
-        # Szenario 2: Zusaetzliche Werbungskosten
+        # Szenario 2: Zusätzliche Werbungskosten
         werbungskosten_scenario = WhatIfScenario(
             scenario_name="Mehr Werbungskosten",
-            description="Bei 2.000 EUR zusaetzlichen Werbungskosten",
+            description="Bei 2.000 EUR zusätzlichen Werbungskosten",
             additional_deductions=Decimal("2000"),
         )
         scenarios.append(
@@ -1893,10 +1893,10 @@ class TaxOptimizationService:
                 await self.calculate_what_if_scenario(db, space_id, handwerker_scenario, base_projection)
             )
 
-        # Szenario 5: Gehaltserhoehung
+        # Szenario 5: Gehaltserhöhung
         raise_scenario = WhatIfScenario(
-            scenario_name="Gehaltserhoehung 10%",
-            description="Auswirkung einer 10% Gehaltserhoehung",
+            scenario_name="Gehaltserhöhung 10%",
+            description="Auswirkung einer 10% Gehaltserhöhung",
             additional_income=base_projection.income_from_employment * Decimal("0.10"),
         )
         scenarios.append(
@@ -1917,15 +1917,15 @@ class TaxOptimizationService:
         taxpayer_info: Optional[Dict[str, Any]] = None,
     ) -> ElsterExportData:
         """
-        Bereitet Daten fuer ELSTER-Export vor.
+        Bereitet Daten für ELSTER-Export vor.
 
-        Erzeugt strukturierte Daten die fuer:
+        Erzeugt strukturierte Daten die für:
         - Anlage N (Arbeitnehmereinkuenfte)
         - Anlage V (Vermietung und Verpachtung)
         - Anlage Vorsorge (Vorsorgeaufwendungen)
         - Haushaltsnahe Dienstleistungen
 
-        validiert und exportiert werden koennen.
+        validiert und exportiert werden können.
 
         SECURITY: Steuernummer wird NICHT gespeichert!
 
@@ -1984,7 +1984,7 @@ class TaxOptimizationService:
             anlagen[ElsterAnlage.ANLAGE_V] = True
             anlage_v["mieteinnahmen"] = str(rental_income)
 
-            # AfA fuer vermietete Immobilien
+            # AfA für vermietete Immobilien
             afa_items = await self._collect_property_deductions(db, space_id, tax_year)
             total_afa = sum(item.deductible_amount for item in afa_items)
             if total_afa > 0:
@@ -2035,7 +2035,7 @@ class TaxOptimizationService:
         missing_fields: List[str] = []
         validation_warnings: List[str] = []
 
-        # Pflichtfelder pruefen
+        # Pflichtfelder prüfen
         if anlagen[ElsterAnlage.ANLAGE_N] and "werbungskosten_gesamt" not in anlage_n:
             missing_fields.append("Anlage N: Werbungskosten-Summe fehlt")
 
@@ -2045,8 +2045,8 @@ class TaxOptimizationService:
         # Warnungen generieren
         if optimization.optimization_rating in (TaxRating.VERBESSERBAR, TaxRating.OPTIMIERUNGSBEDARF):
             validation_warnings.append(
-                "Ihre Steuerabzuege sind moeglicherweise nicht optimal. "
-                "Pruefen Sie die Optimierungsvorschlaege."
+                "Ihre Steuerabzuege sind möglicherweise nicht optimal. "
+                "Prüfen Sie die Optimierungsvorschläge."
             )
 
         unverified_count = sum(
@@ -2056,7 +2056,7 @@ class TaxOptimizationService:
         if unverified_count > 0:
             validation_warnings.append(
                 f"{unverified_count} Belege sind noch nicht verifiziert. "
-                "Bitte pruefen und bestaetigen Sie diese."
+                "Bitte prüfen und bestätigen Sie diese."
             )
 
         is_complete = len(missing_fields) == 0
@@ -2091,7 +2091,7 @@ class TaxOptimizationService:
         Generiert ELSTER-kompatibles XML.
 
         HINWEIS: Dies ist ein vereinfachtes Format.
-        Fuer echte ELSTER-Uebertragung ist die offizielle
+        Für echte ELSTER-Übertragung ist die offizielle
         ERiC-Bibliothek erforderlich.
 
         Args:
@@ -2099,7 +2099,7 @@ class TaxOptimizationService:
             taxpayer_info: Steuerzahler-Infos (Name, Steuernummer)
 
         Returns:
-            XML-String fuer ELSTER-Upload
+            XML-String für ELSTER-Upload
         """
         TAX_OPTIMIZATION_CALCULATIONS.labels(calculation_type="elster_xml").inc()
 
@@ -2223,7 +2223,7 @@ class TaxOptimizationService:
         amount = self._extract_amount_from_document(doc) or Decimal("0")
         deductible = self._calculate_deductible_amount(category, amount)
 
-        # Grenzsteuersatz schaetzen (vereinfacht 35%)
+        # Grenzsteuersatz schätzen (vereinfacht 35%)
         marginal_rate = Decimal("0.35")
         potential_savings = deductible * marginal_rate
 
@@ -2240,7 +2240,7 @@ class TaxOptimizationService:
         if confidence < Decimal("0.7"):
             suggestions.append(
                 f"Die Kategorie '{self._category_names.get(category, '')}' wurde mit "
-                f"niedriger Konfidenz ({confidence:.0%}) erkannt. Bitte pruefen."
+                f"niedriger Konfidenz ({confidence:.0%}) erkannt. Bitte prüfen."
             )
 
         if category == TaxCategory.HANDWERKERLEISTUNGEN:
@@ -2274,7 +2274,7 @@ class TaxOptimizationService:
         self,
         category: TaxCategory,
     ) -> Tuple[ElsterAnlage, str]:
-        """Ermittelt die ELSTER-Anlage und Kennzahl fuer eine Kategorie."""
+        """Ermittelt die ELSTER-Anlage und Kennzahl für eine Kategorie."""
         mapping = {
             TaxCategory.WERBUNGSKOSTEN: (ElsterAnlage.ANLAGE_N, ElsterFieldMapping.WERBUNGSKOSTEN_GESAMT.value),
             TaxCategory.SONDERAUSGABEN: (ElsterAnlage.ANLAGE_VORSORGE, "vorsorgeaufwendungen"),
@@ -2299,7 +2299,7 @@ class TaxOptimizationService:
         quarterly_amount: Decimal,
     ) -> List[TaxAdvancedPayment]:
         """
-        Erstellt einen Vorauszahlungs-Plan fuer ein Steuerjahr.
+        Erstellt einen Vorauszahlungs-Plan für ein Steuerjahr.
 
         Args:
             tax_year: Steuerjahr
@@ -2341,7 +2341,7 @@ class TaxOptimizationService:
         tax_year: int,
     ) -> List[AfACalculation]:
         """
-        Berechnet AfA fuer alle vermieteten Immobilien.
+        Berechnet AfA für alle vermieteten Immobilien.
 
         Args:
             db: Datenbank-Session
@@ -2382,7 +2382,7 @@ class TaxOptimizationService:
                 afa_rate = AFA_SAETZE_GEBAEUDE["altbau_vor_1925"]
                 useful_life = 40
 
-            # Jaehrliche AfA
+            # Jährliche AfA
             annual_depreciation = prop.purchase_price * afa_rate
 
             # Bisherige Abschreibung berechnen
@@ -2410,7 +2410,7 @@ class TaxOptimizationService:
         return calculations
 
     # =========================================================================
-    # Optimierungsvorschlaege (erweitert)
+    # Optimierungsvorschläge (erweitert)
     # =========================================================================
 
     async def get_personalized_suggestions(
@@ -2420,10 +2420,10 @@ class TaxOptimizationService:
         tax_year: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Generiert personalisierte Steuer-Optimierungsvorschlaege.
+        Generiert personalisierte Steuer-Optimierungsvorschläge.
 
         Analysiert die vorhandenen Daten und generiert spezifische
-        Empfehlungen mit geschaetztem Sparpotenzial.
+        Empfehlungen mit geschätztem Sparpotenzial.
 
         Args:
             db: Datenbank-Session
@@ -2431,7 +2431,7 @@ class TaxOptimizationService:
             tax_year: Optionales Steuerjahr
 
         Returns:
-            Liste von Optimierungsvorschlaegen mit Sparpotenzial
+            Liste von Optimierungsvorschlägen mit Sparpotenzial
         """
         if tax_year is None:
             tax_year = datetime.now(timezone.utc).year
@@ -2473,7 +2473,7 @@ class TaxOptimizationService:
             suggestions.append({
                 "title": "Haushaltsnahe Dienstleistungen nutzen",
                 "description": (
-                    f"Sie koennten noch {unused:.2f} EUR Steuerermassigung erhalten. "
+                    f"Sie könnten noch {unused:.2f} EUR Steuerermassigung erhalten. "
                     "20% der Aufwendungen (max. 4.000 EUR) sind direkt absetzbar!"
                 ),
                 "potential_savings": unused,
@@ -2492,7 +2492,7 @@ class TaxOptimizationService:
             suggestions.append({
                 "title": "Handwerkerleistungen nutzen",
                 "description": (
-                    f"Sie koennten noch {unused:.2f} EUR Steuerermassigung erhalten. "
+                    f"Sie könnten noch {unused:.2f} EUR Steuerermassigung erhalten. "
                     "20% der Lohnkosten (max. 1.200 EUR) sind direkt absetzbar!"
                 ),
                 "potential_savings": unused,
@@ -2500,7 +2500,7 @@ class TaxOptimizationService:
                 "category": "handwerker",
                 "actions": [
                     "Renovierungsarbeiten planen",
-                    "Wartung von Heizung/Sanitaer durchfuehren lassen",
+                    "Wartung von Heizung/Sanitaer durchführen lassen",
                     "Rechnungen mit Lohnkostenausweis anfordern",
                 ],
             })
@@ -2514,7 +2514,7 @@ class TaxOptimizationService:
             suggestions.append({
                 "title": "Spenden als Sonderausgaben",
                 "description": (
-                    "Spenden an gemeinnuetzige Organisationen sind als "
+                    "Spenden an gemeinnützige Organisationen sind als "
                     "Sonderausgaben absetzbar (bis 20% des Einkommens)."
                 ),
                 "potential_savings": None,  # Variabel
@@ -2526,7 +2526,7 @@ class TaxOptimizationService:
                 ],
             })
 
-        # Sortieren nach Prioritaet
+        # Sortieren nach Priorität
         priority_order = {"hoch": 0, "mittel": 1, "niedrig": 2}
         suggestions.sort(key=lambda x: priority_order.get(x["priority"], 3))
 
@@ -2538,5 +2538,5 @@ class TaxOptimizationService:
 # =============================================================================
 
 def get_tax_optimization_service() -> TaxOptimizationService:
-    """Gibt die Singleton-Instanz des Tax Optimization Service zurueck."""
+    """Gibt die Singleton-Instanz des Tax Optimization Service zurück."""
     return TaxOptimizationService()

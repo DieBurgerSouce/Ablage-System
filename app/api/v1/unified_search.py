@@ -33,7 +33,7 @@ router = APIRouter(prefix="/unified-search", tags=["Unified Search"])
 # ==================== Pydantic Schemas ====================
 
 class UnifiedChunkResultSchema(BaseModel):
-    """Schema fuer Chunk-Ergebnis."""
+    """Schema für Chunk-Ergebnis."""
     chunk_id: str
     document_id: str
     content: str
@@ -45,7 +45,7 @@ class UnifiedChunkResultSchema(BaseModel):
 
 
 class UnifiedDocumentResultSchema(BaseModel):
-    """Schema fuer Dokument-Ergebnis."""
+    """Schema für Dokument-Ergebnis."""
     document_id: str
     filename: str
     original_filename: Optional[str] = None
@@ -65,7 +65,7 @@ class UnifiedDocumentResultSchema(BaseModel):
 
 
 class UnifiedSearchResponseSchema(BaseModel):
-    """Schema fuer Unified Search Response."""
+    """Schema für Unified Search Response."""
     query: str
     mode: str
     documents: List[UnifiedDocumentResultSchema]
@@ -81,7 +81,7 @@ class UnifiedSearchResponseSchema(BaseModel):
 
 
 class UnifiedSearchRequest(BaseModel):
-    """Request-Body fuer Unified Search."""
+    """Request-Body für Unified Search."""
     query: str = Field(..., min_length=1, max_length=500, description="Suchbegriff")
     mode: UnifiedSearchMode = Field(
         default=UnifiedSearchMode.COMBINED,
@@ -111,7 +111,7 @@ class UnifiedSearchRequest(BaseModel):
 # ==================== Dependency ====================
 
 def get_unified_service() -> UnifiedSearchService:
-    """Dependency fuer UnifiedSearchService."""
+    """Dependency für UnifiedSearchService."""
     return get_unified_search_service()
 
 
@@ -120,7 +120,7 @@ def get_unified_service() -> UnifiedSearchService:
 @router.post(
     "",
     response_model=UnifiedSearchResponseSchema,
-    summary="Unified Search durchfuehren",
+    summary="Unified Search durchführen",
     description="Kombinierte Dokument- und Chunk-basierte Suche"
 )
 async def unified_search(
@@ -130,16 +130,16 @@ async def unified_search(
     service: UnifiedSearchService = Depends(get_unified_service),
 ) -> UnifiedSearchResponseSchema:
     """
-    Fuehrt eine vereinheitlichte Suche durch.
+    Führt eine vereinheitlichte Suche durch.
 
     **Modi:**
     - **document**: Nur Dokument-basierte Suche (Volltext + Semantic)
     - **chunk**: Nur Chunk-basierte RAG-Suche
     - **combined**: Beide kombiniert mit Chunk-Zuordnung zu Dokumenten
 
-    **Suchtypen (fuer Document-Mode):**
+    **Suchtypen (für Document-Mode):**
     - **fts**: PostgreSQL Full-Text Search
-    - **semantic**: Embedding-basierte Aehnlichkeitssuche
+    - **semantic**: Embedding-basierte Ähnlichkeitssuche
     - **hybrid**: Kombination beider via Reciprocal Rank Fusion
     """
     # Parse document_ids
@@ -150,7 +150,7 @@ async def unified_search(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ungueltige Dokument-ID(s)"
+                detail="Ungültige Dokument-ID(s)"
             )
 
     # Build filters
@@ -234,11 +234,11 @@ async def unified_search(
 
 @router.get(
     "/modes",
-    summary="Verfuegbare Suchmodi",
-    description="Gibt die verfuegbaren Suchmodi zurueck"
+    summary="Verfügbare Suchmodi",
+    description="Gibt die verfügbaren Suchmodi zurück"
 )
 async def get_search_modes() -> JSONDict:
-    """Gibt die verfuegbaren Suchmodi mit Beschreibungen zurueck."""
+    """Gibt die verfügbaren Suchmodi mit Beschreibungen zurück."""
     return {
         "modes": [
             {
@@ -251,7 +251,7 @@ async def get_search_modes() -> JSONDict:
             {
                 "id": UnifiedSearchMode.CHUNK.value,
                 "name": "Chunk-Suche",
-                "description": "Sucht in Dokumenten-Abschnitten fuer praezise Treffer",
+                "description": "Sucht in Dokumenten-Abschnitten für praezise Treffer",
                 "supports_pagination": False,
                 "supports_filters": False,
             },
@@ -272,7 +272,7 @@ async def get_search_modes() -> JSONDict:
             {
                 "id": SearchType.SEMANTIC.value,
                 "name": "Semantisch",
-                "description": "Embedding-basierte Aehnlichkeitssuche",
+                "description": "Embedding-basierte Ähnlichkeitssuche",
             },
             {
                 "id": SearchType.HYBRID.value,

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-OlmOCR-2 Agent fuer Ablage-System.
+OlmOCR-2 Agent für Ablage-System.
 
 State-of-the-Art OCR von Allen Institute for AI (Ai2).
 Basiert auf Qwen2.5-VL-7B, trainiert auf olmOCR-mix-1025 (270k PDF-Seiten).
 
 VRAM: ~14GB (FP16)
-Staerken: Akademische Paper, historische Scans, komplexe Layouts, Tabellen, LaTeX
+Stärken: Akademische Paper, historische Scans, komplexe Layouts, Tabellen, LaTeX
 Benchmark: 82.4 Score (besser als DeepSeek 75.4)
 """
 
@@ -26,9 +26,9 @@ from app.core.safe_errors import safe_error_log
 logger = structlog.get_logger(__name__)
 
 
-# OCR Prompt optimiert fuer deutsche Geschaeftsdokumente
+# OCR Prompt optimiert für deutsche Geschäftsdokumente
 OCR_PROMPT = """Extrahiere den gesamten sichtbaren Text aus diesem Dokument.
-Gib NUR den extrahierten Text zurueck, ohne Erklaerungen.
+Gib NUR den extrahierten Text zurück, ohne Erklärungen.
 Achte besonders auf:
 - Deutsche Umlaute (ae, oe, ue, ss)
 - IBAN und BIC Nummern
@@ -43,8 +43,8 @@ class OlmOCRAgent(OCRAgent):
     """
     OlmOCR-2 Agent - State-of-the-Art OCR von Allen AI.
 
-    Verwendet das allenai/olmOCR-2-7B-1025 Modell fuer hochpraezise
-    Textextraktion mit besonderer Staerke bei:
+    Verwendet das allenai/olmOCR-2-7B-1025 Modell für hochpräzise
+    Textextraktion mit besonderer Stärke bei:
     - Akademischen Papers
     - Historischen Scans
     - Komplexen Layouts
@@ -54,9 +54,9 @@ class OlmOCRAgent(OCRAgent):
 
     MODEL_NAME = "allenai/olmOCR-2-7B-1025"
     VRAM_REQUIRED_GB = 14
-    MODEL_LOADING_TIMEOUT = 600.0  # 10 Minuten fuer grosses Modell
+    MODEL_LOADING_TIMEOUT = 600.0  # 10 Minuten für großes Modell
 
-    # Class-level Lock fuer Thread-Safe Model Loading
+    # Class-level Lock für Thread-Safe Model Loading
     _model_lock: Optional[asyncio.Lock] = None
 
     def __init__(self):
@@ -65,7 +65,7 @@ class OlmOCRAgent(OCRAgent):
         if OlmOCRAgent._model_lock is None:
             OlmOCRAgent._model_lock = asyncio.Lock()
 
-        # GPU-Verfuegbarkeit pruefen
+        # GPU-Verfügbarkeit prüfen
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
@@ -86,7 +86,7 @@ class OlmOCRAgent(OCRAgent):
 
         # GPU-Optimierungen aktivieren
         if torch.cuda.is_available():
-            # TensorFloat-32 fuer RTX 40xx Serie
+            # TensorFloat-32 für RTX 40xx Serie
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.allow_tf32 = True
             torch.backends.cudnn.benchmark = True
@@ -112,10 +112,10 @@ class OlmOCRAgent(OCRAgent):
         Lade OlmOCR-2 Modell mit Thread-Safe Locking und Timeout.
 
         Args:
-            timeout_seconds: Maximale Wartezeit fuer Model-Loading
+            timeout_seconds: Maximale Wartezeit für Model-Loading
 
         Raises:
-            asyncio.TimeoutError: Bei Timeout-Ueberschreitung
+            asyncio.TimeoutError: Bei Timeout-Überschreitung
         """
         async with OlmOCRAgent._model_lock:
             # Double-Check Pattern
@@ -133,7 +133,7 @@ class OlmOCRAgent(OCRAgent):
                     "olmocr_model_loading_timeout",
                     timeout_seconds=timeout_seconds,
                     device=str(self.device),
-                    message="Model-Loading hat Timeout ueberschritten"
+                    message="Model-Loading hat Timeout überschritten"
                 )
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
@@ -165,7 +165,7 @@ class OlmOCRAgent(OCRAgent):
                 trust_remote_code=True
             )
 
-            # Lade Model mit FP16 fuer VRAM-Effizienz
+            # Lade Model mit FP16 für VRAM-Effizienz
             logger.info("olmocr_loading_model", dtype=str(self.dtype))
             self._model = Qwen2VLForConditionalGeneration.from_pretrained(
                 self.MODEL_NAME,
@@ -188,7 +188,7 @@ class OlmOCRAgent(OCRAgent):
             self._models_loaded = True
             logger.info("olmocr_models_loaded_successfully")
 
-            # Warmup fuer CUDA Kernel Compilation
+            # Warmup für CUDA Kernel Compilation
             self._warmup_model()
 
         except Exception as e:
@@ -204,7 +204,7 @@ class OlmOCRAgent(OCRAgent):
             start = time.perf_counter()
             logger.info("olmocr_warmup_starting")
 
-            # Kleines Dummy-Bild fuer Warmup
+            # Kleines Dummy-Bild für Warmup
             dummy_image = Image.new('RGB', (224, 224), color='white')
 
             # Minimale Inference
@@ -219,7 +219,7 @@ class OlmOCRAgent(OCRAgent):
                     }
                 ]
 
-                # Nur Text-Teil fuer Warmup
+                # Nur Text-Teil für Warmup
                 text = self._processor.apply_chat_template(
                     messages,
                     tokenize=False,
@@ -240,7 +240,7 @@ class OlmOCRAgent(OCRAgent):
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
         """
-        Lade Bild(er) aus Datei - unterstuetzt PDFs und Bildformate.
+        Lade Bild(er) aus Datei - unterstützt PDFs und Bildformate.
 
         Args:
             image_path: Pfad zur Bild- oder PDF-Datei
@@ -261,7 +261,7 @@ class OlmOCRAgent(OCRAgent):
                 pdf = pdfium.PdfDocument(image_path)
                 for page_num in range(len(pdf)):
                     page = pdf[page_num]
-                    # 300 DPI fuer gute Qualitaet
+                    # 300 DPI für gute Qualität
                     pil_image = page.render(scale=300/72).to_pil()
                     images.append(pil_image)
                     logger.debug(
@@ -306,7 +306,7 @@ class OlmOCRAgent(OCRAgent):
             torch.cuda.empty_cache()
 
         try:
-            # Nachricht fuer Qwen-basiertes Vision-Language Model
+            # Nachricht für Qwen-basiertes Vision-Language Model
             messages = [
                 {
                     "role": "user",
@@ -332,7 +332,7 @@ class OlmOCRAgent(OCRAgent):
                 return_tensors="pt"
             )
 
-            # Auf GPU verschieben wenn verfuegbar
+            # Auf GPU verschieben wenn verfügbar
             if torch.cuda.is_available():
                 inputs = inputs.to("cuda")
 
@@ -340,9 +340,9 @@ class OlmOCRAgent(OCRAgent):
             with torch.no_grad():
                 generated_ids = self._model.generate(
                     **inputs,
-                    max_new_tokens=4096,  # Viel Text fuer Dokumente
-                    do_sample=False,      # Deterministische Ausgabe fuer OCR
-                    num_beams=1,          # Greedy fuer Geschwindigkeit
+                    max_new_tokens=4096,  # Viel Text für Dokumente
+                    do_sample=False,      # Deterministische Ausgabe für OCR
+                    num_beams=1,          # Greedy für Geschwindigkeit
                     pad_token_id=self._processor.tokenizer.pad_token_id,
                 )
 
@@ -361,7 +361,7 @@ class OlmOCRAgent(OCRAgent):
             # Text bereinigen
             extracted_text = output_text.strip()
 
-            # Deutsche Zeichen pruefen
+            # Deutsche Zeichen prüfen
             german_chars = ['ae', 'oe', 'ue', 'Ae', 'Oe', 'Ue', 'ss']
             found_german = [c for c in german_chars if c in extracted_text]
 
@@ -416,7 +416,7 @@ class OlmOCRAgent(OCRAgent):
         Args:
             input_data: Pfad zur Datei oder Dict mit image_path
             language: Sprache (Standard: "de")
-            **kwargs: Zusaetzliche Parameter
+            **kwargs: Zusätzliche Parameter
 
         Returns:
             Standardisiertes OCRResult als Dict
@@ -579,7 +579,7 @@ class OlmOCRAgent(OCRAgent):
         """Ressourcen freigeben und GPU-Speicher leeren."""
         logger.info("olmocr_cleanup_starting")
 
-        # Model-Referenzen loeschen
+        # Model-Referenzen löschen
         self._model = None
         self._processor = None
         self._models_loaded = False

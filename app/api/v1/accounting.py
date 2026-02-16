@@ -2,10 +2,10 @@
 """
 Accounting API Endpoints.
 
-REST API fuer integrierte Buchhaltung:
+REST API für integrierte Buchhaltung:
 - Offene Posten (Debitoren/Kreditoren)
 - USt-Voranmeldung
-- Einnahmen-Ueberschuss-Rechnung (EUER)
+- Einnahmen-Überschuss-Rechnung (EUER)
 
 GoBD-konform und Enterprise-Ready.
 """
@@ -70,7 +70,7 @@ router = APIRouter(prefix="/accounting", tags=["Buchhaltung"])
 
 
 class OpenItemSchema(BaseModel):
-    """Schema fuer einen offenen Posten."""
+    """Schema für einen offenen Posten."""
 
     id: UUID
     document_id: UUID
@@ -95,7 +95,7 @@ class OpenItemSchema(BaseModel):
 
 
 class EntityBalanceSchema(BaseModel):
-    """Schema fuer Entity-Saldo."""
+    """Schema für Entity-Saldo."""
 
     entity_id: UUID
     entity_name: str
@@ -113,7 +113,7 @@ class EntityBalanceSchema(BaseModel):
 
 
 class OpenItemsReportSchema(BaseModel):
-    """Schema fuer Offene-Posten-Bericht."""
+    """Schema für Offene-Posten-Bericht."""
 
     report_date: date
     generated_at: datetime
@@ -135,7 +135,7 @@ class OpenItemsReportSchema(BaseModel):
 
 
 class PaymentSuggestionSchema(BaseModel):
-    """Schema fuer Zahlungsvorschlag."""
+    """Schema für Zahlungsvorschlag."""
 
     entity_id: UUID
     entity_name: str
@@ -148,7 +148,7 @@ class PaymentSuggestionSchema(BaseModel):
 
 
 class VATSummarySchema(BaseModel):
-    """Schema fuer USt-Kennziffer-Zusammenfassung."""
+    """Schema für USt-Kennziffer-Zusammenfassung."""
 
     kennziffer: str
     label: str
@@ -158,7 +158,7 @@ class VATSummarySchema(BaseModel):
 
 
 class VATReportSchema(BaseModel):
-    """Schema fuer USt-Voranmeldung."""
+    """Schema für USt-Voranmeldung."""
 
     company_id: UUID
     period_type: str  # monthly, quarterly, annual
@@ -168,7 +168,7 @@ class VATReportSchema(BaseModel):
     generated_at: datetime
     status: str = "draft"
 
-    # Umsaetze (Output VAT)
+    # Umsätze (Output VAT)
     output_vat_19: VATSummarySchema
     output_vat_7: VATSummarySchema
     inner_eu_deliveries: VATSummarySchema
@@ -190,7 +190,7 @@ class VATReportSchema(BaseModel):
 
 
 class EURCategorySummarySchema(BaseModel):
-    """Schema fuer EUER-Kategorie-Zusammenfassung."""
+    """Schema für EUER-Kategorie-Zusammenfassung."""
 
     category: str
     label: str
@@ -199,7 +199,7 @@ class EURCategorySummarySchema(BaseModel):
 
 
 class EURReportSchema(BaseModel):
-    """Schema fuer Einnahmen-Ueberschuss-Rechnung."""
+    """Schema für Einnahmen-Überschuss-Rechnung."""
 
     company_id: UUID
     fiscal_year: int
@@ -225,7 +225,7 @@ class EURReportSchema(BaseModel):
 
 
 class YTDSummarySchema(BaseModel):
-    """Schema fuer Year-to-Date Zusammenfassung."""
+    """Schema für Year-to-Date Zusammenfassung."""
 
     year: int
     months_completed: int
@@ -238,7 +238,7 @@ class YTDSummarySchema(BaseModel):
 
 
 class OptimizeForEnum(str, Enum):
-    """Optimierungsziel fuer Zahlungsvorschlaege."""
+    """Optimierungsziel für Zahlungsvorschläge."""
 
     SKONTO = "skonto"
     CASHFLOW = "cashflow"
@@ -325,7 +325,7 @@ def _map_eur_report(report: EURReport) -> EURReportSchema:
     "/open-items/report",
     response_model=OpenItemsReportSchema,
     summary="Offene-Posten-Bericht",
-    description="Generiert einen Bericht ueber alle offenen Posten (Debitoren/Kreditoren)",
+    description="Generiert einen Bericht über alle offenen Posten (Debitoren/Kreditoren)",
 )
 async def get_open_items_report(
     company_id: UUID = Query(..., description="Firmen-ID"),
@@ -337,7 +337,7 @@ async def get_open_items_report(
     """
     Erstellt einen Offene-Posten-Bericht zum Stichtag.
 
-    **Enthaelt:**
+    **Enthält:**
     - Summe Forderungen (Debitoren)
     - Summe Verbindlichkeiten (Kreditoren)
     - Netto-Position
@@ -383,20 +383,20 @@ async def get_open_items_report(
 )
 async def get_open_receivables(
     company_id: UUID = Query(..., description="Firmen-ID"),
-    entity_id: Optional[UUID] = Query(None, description="Nur fuer bestimmten Debitor"),
-    overdue_only: bool = Query(False, description="Nur ueberfaellige"),
-    priority: Optional[PaymentPriority] = Query(None, description="Nach Prioritaet filtern"),
+    entity_id: Optional[UUID] = Query(None, description="Nur für bestimmten Debitor"),
+    overdue_only: bool = Query(False, description="Nur überfällige"),
+    priority: Optional[PaymentPriority] = Query(None, description="Nach Priorität filtern"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[OpenItemSchema]:
     """
     Listet alle offenen Forderungen auf.
 
-    **Prioritaeten:**
-    - **normal**: Faellig in >14 Tagen
+    **Prioritäten:**
+    - **normal**: Fällig in >14 Tagen
     - **high**: Skonto-Frist naht
-    - **urgent**: Ueberfaellig
-    - **critical**: Stark ueberfaellig (90+ Tage)
+    - **urgent**: Überfällig
+    - **critical**: Stark überfällig (90+ Tage)
     """
     validate_company_access(company_id, current_user)
     service = get_open_items_service(db)
@@ -440,9 +440,9 @@ async def get_open_receivables(
 )
 async def get_open_payables(
     company_id: UUID = Query(..., description="Firmen-ID"),
-    entity_id: Optional[UUID] = Query(None, description="Nur fuer bestimmten Kreditor"),
+    entity_id: Optional[UUID] = Query(None, description="Nur für bestimmten Kreditor"),
     due_within_days: Optional[int] = Query(
-        None, description="Nur faellig innerhalb X Tagen"
+        None, description="Nur fällig innerhalb X Tagen"
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -450,10 +450,10 @@ async def get_open_payables(
     """
     Listet alle offenen Verbindlichkeiten auf.
 
-    Nuetzlich fuer:
+    Nützlich für:
     - Zahlungsplanung
     - Skonto-Optimierung
-    - Liquiditaetsmanagement
+    - Liquiditätsmanagement
     """
     validate_company_access(company_id, current_user)
     service = get_open_items_service(db)
@@ -505,7 +505,7 @@ async def get_debtor_balances(
     """
     Zeigt aggregierte Salden pro Debitor.
 
-    Sortiert nach Ausstand (hoechster zuerst).
+    Sortiert nach Ausstand (höchster zuerst).
     """
     validate_company_access(company_id, current_user)
     service = get_open_items_service(db)
@@ -551,7 +551,7 @@ async def get_creditor_balances(
     """
     Zeigt aggregierte Salden pro Kreditor.
 
-    Sortiert nach Ausstand (hoechster zuerst).
+    Sortiert nach Ausstand (höchster zuerst).
     """
     validate_company_access(company_id, current_user)
     service = get_open_items_service(db)
@@ -583,12 +583,12 @@ async def get_creditor_balances(
 @router.get(
     "/open-items/payment-suggestions",
     response_model=List[PaymentSuggestionSchema],
-    summary="Zahlungsvorschlaege",
-    description="Generiert optimierte Zahlungsvorschlaege",
+    summary="Zahlungsvorschläge",
+    description="Generiert optimierte Zahlungsvorschläge",
 )
 async def get_payment_suggestions(
     company_id: UUID = Query(..., description="Firmen-ID"),
-    available_funds: Decimal = Query(..., description="Verfuegbare Mittel in EUR"),
+    available_funds: Decimal = Query(..., description="Verfügbare Mittel in EUR"),
     optimize_for: OptimizeForEnum = Query(
         OptimizeForEnum.SKONTO, description="Optimierungsziel"
     ),
@@ -596,7 +596,7 @@ async def get_payment_suggestions(
     db: AsyncSession = Depends(get_db),
 ) -> List[PaymentSuggestionSchema]:
     """
-    Generiert optimierte Zahlungsvorschlaege.
+    Generiert optimierte Zahlungsvorschläge.
 
     **Optimierungsziele:**
     - **skonto**: Maximiere Skonto-Ersparnis
@@ -635,7 +635,7 @@ async def get_payment_suggestions(
     "/vat/monthly",
     response_model=VATReportSchema,
     summary="Monatliche USt-Voranmeldung",
-    description="Generiert USt-VA fuer einen Monat",
+    description="Generiert USt-VA für einen Monat",
 )
 async def get_monthly_vat_report(
     company_id: UUID = Query(..., description="Firmen-ID"),
@@ -648,8 +648,8 @@ async def get_monthly_vat_report(
     """
     Erstellt eine monatliche USt-Voranmeldung.
 
-    **Enthaelt:**
-    - Steuerpflichtige Umsaetze (19%, 7%)
+    **Enthält:**
+    - Steuerpflichtige Umsätze (19%, 7%)
     - Vorsteuer aus Eingangsrechnungen
     - Zahllast / Erstattungsanspruch
     - Kennziffern nach ELSTER-Format
@@ -678,7 +678,7 @@ async def get_monthly_vat_report(
     "/vat/quarterly",
     response_model=VATReportSchema,
     summary="Quartals-USt-Voranmeldung",
-    description="Generiert USt-VA fuer ein Quartal",
+    description="Generiert USt-VA für ein Quartal",
 )
 async def get_quarterly_vat_report(
     company_id: UUID = Query(..., description="Firmen-ID"),
@@ -691,7 +691,7 @@ async def get_quarterly_vat_report(
     """
     Erstellt eine quartalsweise USt-Voranmeldung.
 
-    Fuer Unternehmen mit quartalsweiser Abgabepflicht.
+    Für Unternehmen mit quartalsweiser Abgabepflicht.
     """
     validate_company_access(company_id, current_user)
     logger.info(
@@ -747,7 +747,7 @@ async def export_vat_elster_xml(
         include_details=False,
     )
 
-    # Steuernummer der Firma laden fuer ELSTER XML
+    # Steuernummer der Firma laden für ELSTER XML
     from app.db.models import Company
     company_stmt = select(Company).where(Company.id == company_id)
     company_result = await db.execute(company_stmt)
@@ -775,22 +775,22 @@ async def export_vat_elster_xml(
     "/eur/annual",
     response_model=EURReportSchema,
     summary="Jahres-EUER",
-    description="Generiert Einnahmen-Ueberschuss-Rechnung fuer ein Geschaeftsjahr",
+    description="Generiert Einnahmen-Überschuss-Rechnung für ein Geschäftsjahr",
 )
 async def get_annual_eur_report(
     company_id: UUID = Query(..., description="Firmen-ID"),
-    fiscal_year: int = Query(..., description="Geschaeftsjahr"),
+    fiscal_year: int = Query(..., description="Geschäftsjahr"),
     include_details: bool = Query(False, description="Einzelposten einbeziehen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> EURReportSchema:
     """
-    Erstellt eine Einnahmen-Ueberschuss-Rechnung (EUER) fuer ein Geschaeftsjahr.
+    Erstellt eine Einnahmen-Überschuss-Rechnung (EUER) für ein Geschäftsjahr.
 
     **Einnahmen-Kategorien:**
-    - Warenverkaeufe
+    - Warenverkäufe
     - Dienstleistungen
-    - Zinsertraege
+    - Zinserträge
     - Sonstige Einnahmen
 
     **Ausgaben-Kategorien:**
@@ -823,7 +823,7 @@ async def get_annual_eur_report(
     "/eur/monthly",
     response_model=EURReportSchema,
     summary="Monats-EUER",
-    description="Generiert EUER fuer einen einzelnen Monat",
+    description="Generiert EUER für einen einzelnen Monat",
 )
 async def get_monthly_eur_report(
     company_id: UUID = Query(..., description="Firmen-ID"),
@@ -833,11 +833,11 @@ async def get_monthly_eur_report(
     db: AsyncSession = Depends(get_db),
 ) -> EURReportSchema:
     """
-    Erstellt eine monatliche Einnahmen-Ueberschuss-Rechnung.
+    Erstellt eine monatliche Einnahmen-Überschuss-Rechnung.
 
-    Nuetzlich fuer:
+    Nützlich für:
     - Monatliches Controlling
-    - Liquiditaetsplanung
+    - Liquiditätsplanung
     - Trend-Analyse
     """
     validate_company_access(company_id, current_user)
@@ -863,7 +863,7 @@ async def get_monthly_eur_report(
     "/eur/ytd",
     response_model=YTDSummarySchema,
     summary="Year-to-Date Zusammenfassung",
-    description="Kumulierte EUER-Daten fuer das laufende Jahr",
+    description="Kumulierte EUER-Daten für das laufende Jahr",
 )
 async def get_ytd_summary(
     company_id: UUID = Query(..., description="Firmen-ID"),
@@ -872,12 +872,12 @@ async def get_ytd_summary(
     db: AsyncSession = Depends(get_db),
 ) -> YTDSummarySchema:
     """
-    Zeigt Year-to-Date Zusammenfassung mit monatlicher Aufschluesselung.
+    Zeigt Year-to-Date Zusammenfassung mit monatlicher Aufschlüsselung.
 
-    **Enthaelt:**
+    **Enthält:**
     - Kumulierte Einnahmen/Ausgaben
     - Durchschnittliche monatliche Werte
-    - Monat-fuer-Monat Entwicklung
+    - Monat-für-Monat Entwicklung
     """
     validate_company_access(company_id, current_user)
     logger.info(
@@ -912,12 +912,12 @@ async def get_ytd_summary(
 )
 async def export_anlage_eur(
     company_id: UUID = Query(..., description="Firmen-ID"),
-    fiscal_year: int = Query(..., description="Geschaeftsjahr"),
+    fiscal_year: int = Query(..., description="Geschäftsjahr"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, object]:
     """
-    Exportiert die EUER als Anlage EUER fuer die Steuererklaerung.
+    Exportiert die EUER als Anlage EUER für die Steuererklärung.
 
     Die Daten sind nach den offiziellen Zeilen der Anlage EUER strukturiert.
     """
@@ -953,14 +953,14 @@ async def export_anlage_eur(
 )
 async def export_anlage_eur_html(
     company_id: UUID = Query(..., description="Firmen-ID"),
-    fiscal_year: int = Query(..., description="Geschaeftsjahr"),
+    fiscal_year: int = Query(..., description="Geschäftsjahr"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """
     Generiert eine druckbare HTML-Darstellung der Anlage EUER.
 
-    Kann im Browser geoeffnet und als PDF gedruckt werden.
+    Kann im Browser geöffnet und als PDF gedruckt werden.
     """
     validate_company_access(company_id, current_user)
     logger.info(
@@ -993,7 +993,7 @@ async def export_anlage_eur_html(
 @router.get(
     "/statistics",
     summary="Buchhaltungs-Statistiken",
-    description="Aggregierte Kennzahlen fuer Dashboard",
+    description="Aggregierte Kennzahlen für Dashboard",
 )
 async def get_accounting_statistics(
     company_id: UUID = Query(..., description="Firmen-ID"),
@@ -1002,9 +1002,9 @@ async def get_accounting_statistics(
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, object]:
     """
-    Liefert aggregierte Buchhaltungs-Kennzahlen fuer das Dashboard.
+    Liefert aggregierte Buchhaltungs-Kennzahlen für das Dashboard.
 
-    **Enthaelt:**
+    **Enthält:**
     - Offene Posten Zusammenfassung
     - USt-Status
     - EUER Year-to-Date
@@ -1047,26 +1047,26 @@ async def get_accounting_statistics(
 
 
 class BookingSuggestionSchema(BaseModel):
-    """Schema fuer einen Buchungsvorschlag."""
+    """Schema für einen Buchungsvorschlag."""
 
     debit_account: str = Field(..., description="Soll-Konto (SKR03/04)")
     debit_account_name: str = Field(..., description="Name des Soll-Kontos")
     credit_account: str = Field(..., description="Haben-Konto (SKR03/04)")
     credit_account_name: str = Field(..., description="Name des Haben-Kontos")
     amount: Decimal = Field(..., description="Buchungsbetrag")
-    tax_code: Optional[str] = Field(None, description="DATEV-Steuerschluessel")
+    tax_code: Optional[str] = Field(None, description="DATEV-Steuerschlüssel")
     tax_rate: Optional[float] = Field(None, description="Steuersatz in Prozent")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Konfidenz (0-1)")
     confidence_level: str = Field(..., description="Konfidenz-Stufe")
-    explanation: str = Field(..., description="Erklaerung fuer den Vorschlag")
-    similar_bookings_count: int = Field(0, description="Anzahl aehnlicher Buchungen")
+    explanation: str = Field(..., description="Erklärung für den Vorschlag")
+    similar_bookings_count: int = Field(0, description="Anzahl ähnlicher Buchungen")
     booking_text: Optional[str] = Field(None, description="Buchungstext")
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class AlternativeSuggestionSchema(BaseModel):
-    """Schema fuer alternative Buchungsvorschlaege."""
+    """Schema für alternative Buchungsvorschläge."""
 
     debit_account: str
     debit_account_name: str
@@ -1077,7 +1077,7 @@ class AlternativeSuggestionSchema(BaseModel):
 
 
 class AutoBookingResultSchema(BaseModel):
-    """Schema fuer das Auto-Booking Ergebnis."""
+    """Schema für das Auto-Booking Ergebnis."""
 
     document_id: UUID
     document_type: Optional[str] = None
@@ -1092,7 +1092,7 @@ class AutoBookingResultSchema(BaseModel):
 
 
 class BookingPatternSchema(BaseModel):
-    """Schema fuer ein Buchungsmuster."""
+    """Schema für ein Buchungsmuster."""
 
     supplier_name: Optional[str] = None
     entity_id: Optional[UUID] = None
@@ -1106,12 +1106,12 @@ class BookingPatternSchema(BaseModel):
 
 
 class LearnBookingRequest(BaseModel):
-    """Request fuer Booking-Feedback."""
+    """Request für Booking-Feedback."""
 
     document_id: UUID = Field(..., description="Dokument-ID")
     debit_account: str = Field(..., description="Gewaehltes Soll-Konto")
     credit_account: str = Field(..., description="Gewaehltes Haben-Konto")
-    tax_code: Optional[str] = Field(None, description="DATEV-Steuerschluessel")
+    tax_code: Optional[str] = Field(None, description="DATEV-Steuerschlüssel")
     booking_text: Optional[str] = Field(None, description="Buchungstext")
 
 
@@ -1122,7 +1122,7 @@ class ApplyBookingRequest(BaseModel):
     debit_account: str = Field(..., description="Soll-Konto")
     credit_account: str = Field(..., description="Haben-Konto")
     amount: Decimal = Field(..., description="Buchungsbetrag")
-    tax_code: Optional[str] = Field(None, description="DATEV-Steuerschluessel")
+    tax_code: Optional[str] = Field(None, description="DATEV-Steuerschlüssel")
     booking_date: Optional[date] = Field(None, description="Buchungsdatum")
     booking_text: Optional[str] = Field(None, description="Buchungstext")
     auto_export_datev: bool = Field(False, description="Direkt nach DATEV exportieren")
@@ -1141,7 +1141,7 @@ class ApplyBookingResponse(BaseModel):
     "/auto-booking/suggest/{document_id}",
     response_model=AutoBookingResultSchema,
     summary="Buchungsvorschlag generieren",
-    description="Generiert ML-basierte Buchungsvorschlaege fuer ein Dokument",
+    description="Generiert ML-basierte Buchungsvorschläge für ein Dokument",
 )
 async def suggest_booking(
     document_id: UUID,
@@ -1151,17 +1151,17 @@ async def suggest_booking(
     db: AsyncSession = Depends(get_db),
 ) -> AutoBookingResultSchema:
     """
-    Generiert automatische Buchungsvorschlaege basierend auf:
+    Generiert automatische Buchungsvorschläge basierend auf:
 
     **Analyse-Faktoren:**
     - **Lieferanten-Historie**: Wie wurde dieser Lieferant bisher gebucht?
     - **Dokumenttyp**: Rechnung → Aufwand, Gutschrift → Ertrag
-    - **Betragsanalyse**: Kleine Betraege oft Bueromaterial
+    - **Betragsanalyse**: Kleine Beträge oft Büromaterial
     - **Text-Analyse**: Keywords wie "Telefon", "Miete", "Personal"
 
     **Konfidenz-Stufen:**
-    - **HIGH** (>90%): Auto-Booking moeglich
-    - **MEDIUM** (70-90%): Vorschlag mit Bestaetigung
+    - **HIGH** (>90%): Auto-Booking möglich
+    - **MEDIUM** (70-90%): Vorschlag mit Bestätigung
     - **LOW** (50-70%): Vorschlag mit Warnung
     - **UNCERTAIN** (<50%): Manuelle Kontierung
     """
@@ -1178,7 +1178,7 @@ async def suggest_booking(
     if kontenrahmen not in ("SKR03", "SKR04"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltiger Kontenrahmen. Erlaubt: SKR03, SKR04",
+            detail="Ungültiger Kontenrahmen. Erlaubt: SKR03, SKR04",
         )
 
     service = get_auto_booking_service(db)
@@ -1234,7 +1234,7 @@ async def suggest_booking(
     "/auto-booking/learn",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Buchung lernen",
-    description="Meldet eine tatsaechliche Buchung zum Lernen",
+    description="Meldet eine tatsächliche Buchung zum Lernen",
 )
 async def learn_booking(
     request: LearnBookingRequest,
@@ -1243,15 +1243,15 @@ async def learn_booking(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """
-    Meldet eine vom User bestaetigte/korrigierte Buchung zurueck.
+    Meldet eine vom User bestätigte/korrigierte Buchung zurück.
 
     Das System lernt aus diesen Korrekturen und verbessert zukuenftige
-    Vorschlaege fuer diesen Lieferanten/Dokumenttyp.
+    Vorschläge für diesen Lieferanten/Dokumenttyp.
 
     **Verwendung:**
     - Nach manueller Kontierung
     - Nach Korrektur eines Vorschlags
-    - Nach Bestaetigung eines Auto-Bookings
+    - Nach Bestätigung eines Auto-Bookings
     """
     validate_company_access(company_id, current_user)
     logger.info(
@@ -1278,7 +1278,7 @@ async def learn_booking(
     "/auto-booking/patterns",
     response_model=List[BookingPatternSchema],
     summary="Buchungsmuster abrufen",
-    description="Zeigt gelernte Buchungsmuster fuer einen Lieferanten",
+    description="Zeigt gelernte Buchungsmuster für einen Lieferanten",
 )
 async def get_booking_patterns(
     company_id: UUID = Query(..., description="Firmen-ID"),
@@ -1289,9 +1289,9 @@ async def get_booking_patterns(
     db: AsyncSession = Depends(get_db),
 ) -> List[BookingPatternSchema]:
     """
-    Zeigt die gelernten Buchungsmuster fuer einen Lieferanten.
+    Zeigt die gelernten Buchungsmuster für einen Lieferanten.
 
-    **Nuetzlich fuer:**
+    **Nützlich für:**
     - Analyse der Buchungshistorie
     - Erkennung von Anomalien
     - Optimierung der Kontierung
@@ -1355,10 +1355,10 @@ async def apply_booking(
     1. Buchung in der Datenbank speichern
     2. Dokument als "gebucht" markieren
     3. Optional: DATEV-Export vorbereiten
-    4. Lernen aus der Buchung (fuer zukuenftige Vorschlaege)
+    4. Lernen aus der Buchung (für zukuenftige Vorschläge)
 
     **Hinweis:** Bei auto_export_datev=true wird die Buchung direkt
-    in den naechsten DATEV-Buchungsstapel aufgenommen.
+    in den nächsten DATEV-Buchungsstapel aufgenommen.
     """
     validate_company_access(company_id, current_user)
     logger.info(
@@ -1438,10 +1438,10 @@ async def get_auto_booking_statistics(
     Zeigt Statistiken zur Auto-Booking Performance.
 
     **Metriken:**
-    - Anzahl Vorschlaege (gesamt, akzeptiert, korrigiert)
+    - Anzahl Vorschläge (gesamt, akzeptiert, korrigiert)
     - Durchschnittliche Konfidenz
-    - Top-Konten nach Haeufigkeit
-    - Lernfortschritt ueber Zeit
+    - Top-Konten nach Häufigkeit
+    - Lernfortschritt über Zeit
     """
     validate_company_access(company_id, current_user)
     logger.info(
@@ -1475,7 +1475,7 @@ async def get_auto_booking_statistics(
 @router.get(
     "/auto-booking/kontenrahmen/{kontenrahmen}",
     summary="Kontenrahmen abrufen",
-    description="Gibt die verfuegbaren Konten des Kontenrahmens zurueck",
+    description="Gibt die verfügbaren Konten des Kontenrahmens zurück",
 )
 async def get_kontenrahmen(
     kontenrahmen: str,
@@ -1484,7 +1484,7 @@ async def get_kontenrahmen(
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, object]:
     """
-    Gibt die Konten eines Kontenrahmens zurueck.
+    Gibt die Konten eines Kontenrahmens zurück.
 
     **Kontenklassen (SKR03):**
     - **0**: Anlage- und Kapitalkonten
@@ -1494,14 +1494,14 @@ async def get_kontenrahmen(
     - **4**: Betriebliche Aufwendungen
     - **5**: Sonstige Aufwendungen
     - **6**: (Reserviert)
-    - **7**: Bestandsveraenderungen
-    - **8**: Erloese
+    - **7**: Bestandsveränderungen
+    - **8**: Erlöse
     - **9**: Vortragskonten
     """
     if kontenrahmen not in ("SKR03", "SKR04"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltiger Kontenrahmen. Erlaubt: SKR03, SKR04",
+            detail="Ungültiger Kontenrahmen. Erlaubt: SKR03, SKR04",
         )
 
     # Kontenrahmen-Daten laden
@@ -1551,12 +1551,12 @@ async def get_kontenrahmen(
 
 
 class JournalEntryLineSchema(BaseModel):
-    """Schema fuer Buchungszeile."""
+    """Schema für Buchungszeile."""
     account_number: str = Field(..., max_length=5, description="Kontonummer")
     account_name: str = Field(..., max_length=100, description="Kontobezeichnung")
     debit_amount: Decimal = Field(default=Decimal("0"), description="Soll-Betrag")
     credit_amount: Decimal = Field(default=Decimal("0"), description="Haben-Betrag")
-    tax_code: Optional[str] = Field(None, max_length=10, description="BU-Schluessel")
+    tax_code: Optional[str] = Field(None, max_length=10, description="BU-Schlüssel")
     tax_rate: Optional[Decimal] = Field(None, description="Steuersatz")
     cost_center: Optional[str] = Field(None, max_length=20, description="Kostenstelle")
     text: str = Field(default="", max_length=60, description="Buchungstext")
@@ -1565,7 +1565,7 @@ class JournalEntryLineSchema(BaseModel):
 
 
 class JournalEntrySchema(BaseModel):
-    """Schema fuer Buchungssatz."""
+    """Schema für Buchungssatz."""
     id: UUID
     company_id: UUID
     document_id: Optional[UUID] = None
@@ -1590,11 +1590,11 @@ class JournalEntryCreateRequest(BaseModel):
     lines: List[JournalEntryLineSchema] = Field(..., min_length=2, description="Buchungszeilen (min. 2)")
     posting_date: date = Field(..., description="Buchungsdatum")
     description: Optional[str] = Field(None, max_length=60, description="Beschreibung")
-    document_id: Optional[UUID] = Field(None, description="Verknuepftes Dokument")
+    document_id: Optional[UUID] = Field(None, description="Verknüpftes Dokument")
 
 
 class TrialBalanceRowSchema(BaseModel):
-    """Schema fuer Summen-Saldenliste Zeile."""
+    """Schema für Summen-Saldenliste Zeile."""
     account_number: str
     account_name: str
     total_debit: Decimal
@@ -1603,7 +1603,7 @@ class TrialBalanceRowSchema(BaseModel):
 
 
 class LedgerEntrySchema(BaseModel):
-    """Schema fuer Kontoblatt-Zeile."""
+    """Schema für Kontoblatt-Zeile."""
     entry_id: UUID
     posting_date: date
     entry_number: str
@@ -1614,7 +1614,7 @@ class LedgerEntrySchema(BaseModel):
 
 
 class TaxPeriodSchema(BaseModel):
-    """Schema fuer Steuerperiode."""
+    """Schema für Steuerperiode."""
     id: UUID
     company_id: UUID
     fiscal_year: int
@@ -1632,7 +1632,7 @@ class TaxPeriodSchema(BaseModel):
 
 
 class UStVAReportSchema(BaseModel):
-    """Schema fuer USt-VA Report."""
+    """Schema für USt-VA Report."""
     company_id: UUID
     fiscal_year: int
     period_type: str
@@ -1645,7 +1645,7 @@ class UStVAReportSchema(BaseModel):
 
 
 class EUeRReportSchema(BaseModel):
-    """Schema fuer EUeR Report."""
+    """Schema für EÜR Report."""
     company_id: UUID
     fiscal_year: int
     period_start: date
@@ -1709,19 +1709,19 @@ async def create_journal_entry(
 @router.get(
     "/journal-entries",
     response_model=List[JournalEntrySchema],
-    summary="Buchungssaetze auflisten",
-    description="Listet Buchungssaetze mit Filtern",
+    summary="Buchungssätze auflisten",
+    description="Listet Buchungssätze mit Filtern",
 )
 async def list_journal_entries(
     company_id: UUID = Query(..., description="Firmen-ID"),
-    fiscal_year: Optional[int] = Query(None, description="Geschaeftsjahr"),
+    fiscal_year: Optional[int] = Query(None, description="Geschäftsjahr"),
     fiscal_period: Optional[int] = Query(None, ge=1, le=12, description="Periode 1-12"),
     status_filter: Optional[str] = Query(None, description="Status-Filter"),
     limit: int = Query(50, ge=1, le=100, description="Max Anzahl"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[JournalEntrySchema]:
-    """Listet Buchungssaetze."""
+    """Listet Buchungssätze."""
     validate_company_access(company_id, current_user)
 
     from app.db.models_gl_posting import JournalEntry
@@ -1857,7 +1857,7 @@ async def create_entry_from_document(
 )
 async def get_trial_balance(
     company_id: UUID = Query(..., description="Firmen-ID"),
-    fiscal_year: int = Query(..., description="Geschaeftsjahr"),
+    fiscal_year: int = Query(..., description="Geschäftsjahr"),
     period: Optional[int] = Query(None, ge=1, le=12, description="Periode (optional)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -1877,12 +1877,12 @@ async def get_trial_balance(
     "/account-ledger/{account_number}",
     response_model=List[LedgerEntrySchema],
     summary="Kontoblatt",
-    description="Erstellt Kontoblatt fuer ein Konto",
+    description="Erstellt Kontoblatt für ein Konto",
 )
 async def get_account_ledger(
     account_number: str,
     company_id: UUID = Query(..., description="Firmen-ID"),
-    fiscal_year: int = Query(..., description="Geschaeftsjahr"),
+    fiscal_year: int = Query(..., description="Geschäftsjahr"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[LedgerEntrySchema]:
@@ -1905,7 +1905,7 @@ async def get_account_ledger(
 )
 async def list_tax_periods(
     company_id: UUID = Query(..., description="Firmen-ID"),
-    fiscal_year: Optional[int] = Query(None, description="Geschaeftsjahr"),
+    fiscal_year: Optional[int] = Query(None, description="Geschäftsjahr"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[TaxPeriodSchema]:
@@ -1995,16 +1995,16 @@ async def file_tax_period(
 @router.get(
     "/euer",
     response_model=EUeRReportSchema,
-    summary="EUeR Report",
-    description="Generiert Einnahmen-Ueberschuss-Rechnung",
+    summary="EÜR Report",
+    description="Generiert Einnahmen-Überschuss-Rechnung",
 )
 async def get_euer_report(
     company_id: UUID = Query(..., description="Firmen-ID"),
-    fiscal_year: int = Query(..., description="Geschaeftsjahr"),
+    fiscal_year: int = Query(..., description="Geschäftsjahr"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> EUeRReportSchema:
-    """Generiert EUeR."""
+    """Generiert EÜR."""
     validate_company_access(company_id, current_user)
 
     from app.services.accounting.euer_report_service import EUeRReportService
@@ -2021,7 +2021,7 @@ async def get_euer_report(
 
 
 class ExchangeRateSchema(BaseModel):
-    """Schema fuer Wechselkurs."""
+    """Schema für Wechselkurs."""
     base_currency: str = "EUR"
     target_currency: str
     rate: Decimal
@@ -2032,15 +2032,15 @@ class ExchangeRateSchema(BaseModel):
 
 
 class ConversionRequest(BaseModel):
-    """Anfrage zur Waehrungsumrechnung."""
+    """Anfrage zur Währungsumrechnung."""
     amount: Decimal = Field(..., gt=0, description="Betrag")
-    from_currency: str = Field(..., min_length=3, max_length=3, description="Von Waehrung")
-    to_currency: str = Field(default="EUR", min_length=3, max_length=3, description="Zu Waehrung")
+    from_currency: str = Field(..., min_length=3, max_length=3, description="Von Währung")
+    to_currency: str = Field(default="EUR", min_length=3, max_length=3, description="Zu Währung")
     rate_date: Optional[date] = Field(None, description="Stichtag (optional)")
 
 
 class ConversionResultSchema(BaseModel):
-    """Ergebnis einer Waehrungsumrechnung."""
+    """Ergebnis einer Währungsumrechnung."""
     original_amount: Decimal
     original_currency: str
     converted_amount: Decimal
@@ -2051,7 +2051,7 @@ class ConversionResultSchema(BaseModel):
 
 
 class FXGainLossSchema(BaseModel):
-    """Schema fuer Kursgewinn/-verlust."""
+    """Schema für Kursgewinn/-verlust."""
     id: UUID
     original_currency: str
     original_amount: Decimal
@@ -2068,7 +2068,7 @@ class FXGainLossSchema(BaseModel):
 class FXGainLossCalculateRequest(BaseModel):
     """Anfrage zur Berechnung von Kursgewinn/-verlust."""
     original_amount: Decimal = Field(..., gt=0, description="Ursprungsbetrag")
-    original_currency: str = Field(..., min_length=3, max_length=3, description="Waehrung")
+    original_currency: str = Field(..., min_length=3, max_length=3, description="Währung")
     booking_rate: Decimal = Field(..., gt=0, description="Buchungskurs")
     settlement_rate: Decimal = Field(..., gt=0, description="Zahlungskurs")
 
@@ -2090,19 +2090,19 @@ class FXGainLossCalculateResponse(BaseModel):
     "/fx-rates",
     response_model=ExchangeRateSchema,
     summary="Wechselkurs abfragen",
-    description="Holt ECB-Referenzkurs fuer eine Waehrung",
+    description="Holt ECB-Referenzkurs für eine Währung",
 )
 async def get_exchange_rate(
-    currency: str = Query(..., description="Waehrung (z.B. USD, GBP)"),
+    currency: str = Query(..., description="Währung (z.B. USD, GBP)"),
     rate_date: Optional[date] = Query(None, description="Stichtag (optional)"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> ExchangeRateSchema:
     """
-    Gibt den ECB-Wechselkurs fuer eine Waehrung zurueck.
+    Gibt den ECB-Wechselkurs für eine Währung zurück.
 
-    Falls kein exakter Kurs vorhanden, wird auf den naechsten verfuegbaren
-    Kurs innerhalb von 7 Tagen zurueckgegriffen.
+    Falls kein exakter Kurs vorhanden, wird auf den nächsten verfügbaren
+    Kurs innerhalb von 7 Tagen zurückgegriffen.
     """
     logger.info(
         "fx_rate_requested",
@@ -2117,7 +2117,7 @@ async def get_exchange_rate(
     if rate is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Kein Wechselkurs verfuegbar fuer {currency}",
+            detail=f"Kein Wechselkurs verfügbar für {currency}",
         )
 
     lookup_date = rate_date or date.today()
@@ -2145,7 +2145,7 @@ async def fetch_ecb_rates(
     """
     Triggert den Abruf von ECB-Referenzkursen.
 
-    **Nur fuer Administratoren.**
+    **Nur für Administratoren.**
 
     - historical=False: Aktuelle Tageskurse
     - historical=True: Letzte 90 Tage
@@ -2153,7 +2153,7 @@ async def fetch_ecb_rates(
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Kurse abrufen",
+            detail="Nur Administratoren können Kurse abrufen",
         )
 
     logger.info(
@@ -2182,8 +2182,8 @@ async def fetch_ecb_rates(
 @router.post(
     "/fx-rates/convert",
     response_model=ConversionResultSchema,
-    summary="Waehrungsumrechnung",
-    description="Rechnet Betrag in andere Waehrung um",
+    summary="Währungsumrechnung",
+    description="Rechnet Betrag in andere Währung um",
 )
 async def convert_currency(
     request: ConversionRequest,
@@ -2191,9 +2191,9 @@ async def convert_currency(
     db: AsyncSession = Depends(get_db),
 ) -> ConversionResultSchema:
     """
-    Rechnet einen Betrag von einer Waehrung in eine andere um.
+    Rechnet einen Betrag von einer Währung in eine andere um.
 
-    Verwendet ECB-Referenzkurse. Bei Cross-Rates wird ueber EUR gerechnet.
+    Verwendet ECB-Referenzkurse. Bei Cross-Rates wird über EUR gerechnet.
     """
     logger.info(
         "fx_conversion_requested",
@@ -2232,8 +2232,8 @@ async def convert_currency(
 @router.get(
     "/fx-rates/currencies",
     response_model=List[str],
-    summary="Verfuegbare Waehrungen",
-    description="Listet alle Waehrungen mit verfuegbaren ECB-Kursen",
+    summary="Verfügbare Währungen",
+    description="Listet alle Währungen mit verfügbaren ECB-Kursen",
 )
 async def get_available_currencies(
     for_date: Optional[date] = Query(None, description="Stichtag (optional)"),
@@ -2241,7 +2241,7 @@ async def get_available_currencies(
     db: AsyncSession = Depends(get_db),
 ) -> List[str]:
     """
-    Gibt Liste aller Waehrungen zurueck, fuer die ECB-Kurse verfuegbar sind.
+    Gibt Liste aller Währungen zurück, für die ECB-Kurse verfügbar sind.
     """
     service = get_fx_rate_service(db)
     currencies = await service.get_available_currencies(for_date)
@@ -2258,16 +2258,16 @@ async def get_available_currencies(
 async def get_fx_gain_loss_entries(
     company_id: UUID = Query(..., description="Firmen-ID"),
     realized: Optional[bool] = Query(None, description="Nur realisierte (True) oder unrealisierte (False)"),
-    currency: Optional[str] = Query(None, description="Waehrung filtern"),
+    currency: Optional[str] = Query(None, description="Währung filtern"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[FXGainLossSchema]:
     """
-    Listet alle Kursgewinn-/verlust-Eintraege fuer eine Firma.
+    Listet alle Kursgewinn-/verlust-Einträge für eine Firma.
 
     **Filter:**
     - realized: True (realisiert), False (unrealisiert), None (alle)
-    - currency: Waehrung (z.B. USD)
+    - currency: Währung (z.B. USD)
     """
     validate_company_access(company_id, current_user)
 
@@ -2342,13 +2342,13 @@ async def calculate_fx_gain_loss(
 
 
 class FXRevaluationRequest(BaseModel):
-    """Anfrage fuer manuelle Stichtagsbewertung."""
+    """Anfrage für manuelle Stichtagsbewertung."""
     company_id: UUID = Field(..., description="Firmen-ID")
     revaluation_date: date = Field(..., description="Bewertungsstichtag")
 
 
 class CurrencyBreakdownSchema(BaseModel):
-    """Waehrungs-Aufschluesselung."""
+    """Währungs-Aufschlüsselung."""
     gain: str = Field(..., description="Kursgewinne in EUR")
     loss: str = Field(..., description="Kursverluste in EUR")
     positions: str = Field(..., description="Anzahl Positionen")
@@ -2360,7 +2360,7 @@ class FXRevaluationResponse(BaseModel):
     total_gain: str = Field(..., description="Gesamte Kursgewinne in EUR")
     total_loss: str = Field(..., description="Gesamte Kursverluste in EUR")
     currency_breakdown: Dict[str, CurrencyBreakdownSchema] = Field(
-        default_factory=dict, description="Aufschluesselung nach Waehrung"
+        default_factory=dict, description="Aufschlüsselung nach Währung"
     )
 
 
@@ -2382,23 +2382,23 @@ class FXRevaluationHistoryEntry(BaseModel):
 
 class FXExposureEntry(BaseModel):
     """Einzelne FX-Exposure-Position."""
-    currency: str = Field(..., description="Waehrung")
-    amount: str = Field(..., description="Ausstehender Betrag in Fremdwaehrung")
+    currency: str = Field(..., description="Währung")
+    amount: str = Field(..., description="Ausstehender Betrag in Fremdwährung")
     eur_equivalent: str = Field(..., description="EUR-Gegenwert zum aktuellen Kurs")
 
 
 class FXExposureResponse(BaseModel):
-    """FX-Exposure-Uebersicht."""
+    """FX-Exposure-Übersicht."""
     exposures: List[FXExposureEntry] = Field(
-        default_factory=list, description="Offene Waehrungs-Exposures"
+        default_factory=list, description="Offene Währungs-Exposures"
     )
 
 
 @router.post(
     "/fx/revaluation",
     response_model=FXRevaluationResponse,
-    summary="Stichtagsbewertung ausloesen",
-    description="Fuehrt eine manuelle Monatsabschluss-Stichtagsbewertung aller offenen Fremdwaehrungspositionen durch",
+    summary="Stichtagsbewertung auslösen",
+    description="Führt eine manuelle Monatsabschluss-Stichtagsbewertung aller offenen Fremdwährungspositionen durch",
 )
 async def trigger_fx_revaluation(
     request: FXRevaluationRequest,
@@ -2408,7 +2408,7 @@ async def trigger_fx_revaluation(
     """
     Manuelle Monatsabschluss-Bewertung aller offenen FX-Positionen.
 
-    Bewertet offene Forderungen und Verbindlichkeiten in Fremdwaehrungen
+    Bewertet offene Forderungen und Verbindlichkeiten in Fremdwährungen
     zum Stichtagskurs und bucht unrealisierte Kursgewinne/-verluste.
 
     **Achtung:** Diese Aktion erstellt Buchungen im Hauptbuch!
@@ -2456,20 +2456,20 @@ async def trigger_fx_revaluation(
     "/fx/revaluation/history",
     response_model=List[FXRevaluationHistoryEntry],
     summary="Bewertungshistorie abrufen",
-    description="Zeigt vergangene FX-Bewertungslaeufe und ihre Ergebnisse",
+    description="Zeigt vergangene FX-Bewertungsläufe und ihre Ergebnisse",
 )
 async def get_fx_revaluation_history(
     company_id: UUID = Query(..., description="Firmen-ID"),
     from_date: Optional[date] = Query(None, description="Startdatum"),
     to_date: Optional[date] = Query(None, description="Enddatum"),
-    limit: int = Query(50, ge=1, le=500, description="Max. Eintraege"),
+    limit: int = Query(50, ge=1, le=500, description="Max. Einträge"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[FXRevaluationHistoryEntry]:
     """
-    Gibt die Historie der FX-Bewertungen zurueck.
+    Gibt die Historie der FX-Bewertungen zurück.
 
-    Zeigt alle unrealisierten Kursgewinne/-verluste fuer die angegebene Firma
+    Zeigt alle unrealisierten Kursgewinne/-verluste für die angegebene Firma
     im angegebenen Zeitraum.
     """
     validate_company_access(company_id, current_user)
@@ -2517,7 +2517,7 @@ async def get_fx_revaluation_history(
     "/fx/exposure",
     response_model=FXExposureResponse,
     summary="Aktuelle FX-Exposure anzeigen",
-    description="Zeigt offene Waehrungs-Exposure aller Nicht-EUR-Positionen",
+    description="Zeigt offene Währungs-Exposure aller Nicht-EUR-Positionen",
 )
 async def get_fx_exposure(
     company_id: UUID = Query(..., description="Firmen-ID"),
@@ -2525,9 +2525,9 @@ async def get_fx_exposure(
     db: AsyncSession = Depends(get_db),
 ) -> FXExposureResponse:
     """
-    Aktuelle Fremdwaehrungs-Exposure.
+    Aktuelle Fremdwährungs-Exposure.
 
-    Zeigt alle offenen Positionen in Nicht-EUR-Waehrungen
+    Zeigt alle offenen Positionen in Nicht-EUR-Währungen
     mit dem aktuellen EUR-Gegenwert.
     """
     validate_company_access(company_id, current_user)

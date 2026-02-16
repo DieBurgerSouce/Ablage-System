@@ -2,7 +2,7 @@
 """
 Presence API Endpoints.
 
-Echtzeit-Praesenz-Tracking fuer Dokumente:
+Echtzeit-Praesenz-Tracking für Dokumente:
 - GET /presence/{document_id} - Wer betrachtet dieses Dokument
 - POST /presence/{document_id}/join - Dokument betreten
 - POST /presence/{document_id}/leave - Dokument verlassen
@@ -32,7 +32,7 @@ from app.services.realtime.realtime_websocket_manager import WSMessage
 
 logger = structlog.get_logger(__name__)
 
-router = APIRouter(prefix="/presence", tags=["Praesenz"])
+router = APIRouter(prefix="/presence", tags=["Präsenz"])
 
 
 # =============================================================================
@@ -41,12 +41,12 @@ router = APIRouter(prefix="/presence", tags=["Praesenz"])
 
 
 class EditingRequest(BaseModel):
-    """Request-Model fuer Editing-Status."""
+    """Request-Model für Editing-Status."""
     is_editing: bool
 
 
 class PresenceEntryResponse(BaseModel):
-    """Response-Model fuer einen Praesenz-Eintrag."""
+    """Response-Model für einen Praesenz-Eintrag."""
     user_id: str
     user_name: str
     joined_at: str
@@ -56,7 +56,7 @@ class PresenceEntryResponse(BaseModel):
 
 
 class PresenceResponse(BaseModel):
-    """Response-Model fuer Dokument-Praesenz."""
+    """Response-Model für Dokument-Praesenz."""
     document_id: str
     viewers: List[PresenceEntryResponse]
     viewer_count: int
@@ -109,13 +109,13 @@ async def _broadcast_presence_event(
     "/{document_id}",
     response_model=PresenceResponse,
     summary="Dokument-Praesenz abrufen",
-    description="Gibt alle Benutzer zurueck die dieses Dokument gerade betrachten.",
+    description="Gibt alle Benutzer zurück die dieses Dokument gerade betrachten.",
 )
 async def get_document_presence(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
 ) -> PresenceResponse:
-    """Ruft aktuelle Praesenz fuer ein Dokument ab."""
+    """Ruft aktuelle Praesenz für ein Dokument ab."""
     try:
         service = get_presence_service()
         entries = await service.get_presence(document_id)
@@ -271,7 +271,7 @@ async def heartbeat(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
 ) -> None:
-    """Heartbeat fuer Praesenz-Aufrechterhaltung."""
+    """Heartbeat für Praesenz-Aufrechterhaltung."""
     try:
         service = get_presence_service()
         await service.heartbeat(
@@ -302,7 +302,7 @@ async def set_editing_state(
     request: EditingRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> None:
-    """Setzt Bearbeitungsstatus fuer Benutzer auf Dokument."""
+    """Setzt Bearbeitungsstatus für Benutzer auf Dokument."""
     try:
         service = get_presence_service()
         user_name = current_user.full_name or current_user.email or str(current_user.id)

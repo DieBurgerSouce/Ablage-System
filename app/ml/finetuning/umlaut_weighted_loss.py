@@ -63,14 +63,18 @@ class UmlautLossConfig:
 # =============================================================================
 
 # Typische OCR-Verwechslungen bei Umlauten
+# HINWEIS: Die Latin-1-Doppelkodierungen (z.B. "Ã¤", "Ã¶") sind ABSICHTLICH hier —
+# sie repräsentieren reale OCR-Korruptionsmuster, die erkannt werden müssen.
 UMLAUT_CONFUSIONS: Dict[str, List[str]] = {
     # Kleinbuchstaben
+    # Intentional Latin-1 double-encoding — represents common OCR corruption of each character
     "ä": ["a", "ae", "Ã¤", "ã¤"],
     "ö": ["o", "oe", "Ã¶", "ã¶"],
     "ü": ["u", "ue", "Ã¼", "ã¼"],
     "ß": ["ss", "sz", "B", "Ã", "ÃŸ"],
 
     # Großbuchstaben
+    # Intentional Latin-1 double-encoding — represents common OCR corruption of each character
     "Ä": ["A", "Ae", "AE", "Ã„"],
     "Ö": ["O", "Oe", "OE", "Ã–"],
     "Ü": ["U", "Ue", "UE", "Ãœ"],

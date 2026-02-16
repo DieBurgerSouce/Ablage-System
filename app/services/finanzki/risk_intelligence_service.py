@@ -45,7 +45,7 @@ class ExternalDataSource(str, Enum):
 
 class RiskIntelligenceService:
     """
-    Erweiterte Risk Intelligence fuer Geschaeftspartner.
+    Erweiterte Risk Intelligence für Geschäftspartner.
 
     Kombiniert interne Daten mit externen Quellen und
     bietet Trend- und Netzwerk-Analysen.
@@ -93,7 +93,7 @@ class RiskIntelligenceService:
         company_id: UUID,
     ) -> dict[str, Any]:
         """
-        Erstellt umfassendes Risikoprofil fuer eine Entity.
+        Erstellt umfassendes Risikoprofil für eine Entity.
 
         Kombiniert:
         - Interne Analyse (Zahlungsverhalten, Volumen)
@@ -154,7 +154,7 @@ class RiskIntelligenceService:
         entity_id: UUID,
         company_id: UUID,
     ) -> dict[str, Any]:
-        """Analysiert interne Zahlungs- und Geschaeftsdaten."""
+        """Analysiert interne Zahlungs- und Geschäftsdaten."""
         # Rechnungen der letzten 12 Monate
         one_year_ago = datetime.utcnow() - timedelta(days=365)
 
@@ -195,7 +195,7 @@ class RiskIntelligenceService:
 
         # Score berechnen (0-100, niedriger = besser)
         internal_score = 0
-        internal_score += min(40, max(0, (row.avg_payment_days or 0) - 14) * 1.5)  # Zahlungsverzoegerung
+        internal_score += min(40, max(0, (row.avg_payment_days or 0) - 14) * 1.5)  # Zahlungsverzögerung
         internal_score += dunning_rate * 100 * 0.3  # Mahnungen
         internal_score += (1 - payment_rate) * 100 * 0.2  # Nicht bezahlt
 
@@ -213,7 +213,7 @@ class RiskIntelligenceService:
         entity_id: UUID,
         company_id: UUID,
     ) -> dict[str, Any]:
-        """Analysiert Trends im Zahlungsverhalten ueber Zeit."""
+        """Analysiert Trends im Zahlungsverhalten über Zeit."""
         # Quartalsweise Analyse
         quarters = []
         now = datetime.utcnow()
@@ -367,7 +367,7 @@ class RiskIntelligenceService:
         company_id: UUID,
     ) -> dict[str, Any]:
         """Analysiert Netzwerk-Verbindungen der Entity."""
-        # Entitaeten mit gleicher IBAN oder Adresse finden
+        # Entitäten mit gleicher IBAN oder Adresse finden
         entity_query = select(BusinessEntity).where(BusinessEntity.id == entity_id)
         result = await self.db.execute(entity_query)
         entity = result.scalar_one_or_none()
@@ -496,7 +496,7 @@ class RiskIntelligenceService:
                 "category": "trend",
                 "title": "Verschlechterung des Zahlungsverhaltens",
                 "description": "Das Zahlungsverhalten hat sich im Vergleich zum Vorquartal verschlechtert. "
-                               "Kontaktieren Sie den Geschaeftspartner proaktiv.",
+                               "Kontaktieren Sie den Geschäftspartner proaktiv.",
                 "action": "contact_partner",
             })
         elif trend["direction"] == TrendDirection.CRITICAL:
@@ -527,7 +527,7 @@ class RiskIntelligenceService:
                 "priority": "critical",
                 "category": "overall",
                 "title": "Kritisches Risiko",
-                "description": "Sofortige Massnahmen erforderlich. Pruefen Sie alle offenen Positionen "
+                "description": "Sofortige Massnahmen erforderlich. Prüfen Sie alle offenen Positionen "
                                "und erwägen Sie Factoring oder Kreditversicherung.",
                 "action": "immediate_review",
             })
@@ -536,8 +536,8 @@ class RiskIntelligenceService:
                 "priority": "high",
                 "category": "overall",
                 "title": "Hohes Risiko",
-                "description": "Erhoehte Ueberwachung empfohlen. Setzen Sie Zahlungsziele und "
-                               "fuehren Sie regelmaessige Reviews durch.",
+                "description": "Erhöhte Überwachung empfohlen. Setzen Sie Zahlungsziele und "
+                               "führen Sie regelmäßige Reviews durch.",
                 "action": "enhanced_monitoring",
             })
 
@@ -548,7 +548,7 @@ class RiskIntelligenceService:
                 "category": "overall",
                 "title": "Normales Risikoprofil",
                 "description": "Keine besonderen Massnahmen erforderlich. "
-                               "Regelmaessige Ueberpruefung empfohlen.",
+                               "Regelmäßige Überprüfung empfohlen.",
                 "action": "standard_monitoring",
             })
 
@@ -560,7 +560,7 @@ class RiskIntelligenceService:
         entity_type: Optional[str] = None,
     ) -> dict[str, Any]:
         """
-        Liefert Portfolio-Risikouebersicht fuer alle Entities.
+        Liefert Portfolio-Risikoübersicht für alle Entities.
         """
         # Alle Entities der Firma
         query = select(BusinessEntity).where(BusinessEntity.company_id == company_id)
@@ -653,7 +653,7 @@ class RiskIntelligenceService:
         company_id: UUID,
     ) -> dict[str, Any]:
         """
-        Prueft externe Datenquellen (Mock-Implementierung).
+        Prüft externe Datenquellen (Mock-Implementierung).
 
         In Produktion wuerden hier echte API-Calls zu:
         - Creditreform
@@ -683,7 +683,7 @@ class RiskIntelligenceService:
             "last_checked": datetime.utcnow().isoformat(),
         }
 
-        # Handelsregister (immer verfuegbar)
+        # Handelsregister (immer verfügbar)
         external_data["sources_checked"].append({
             "source": ExternalDataSource.HANDELSREGISTER,
             "status": "available",
@@ -722,5 +722,5 @@ class RiskIntelligenceService:
 
 
 async def get_risk_intelligence_service(db: AsyncSession) -> RiskIntelligenceService:
-    """Factory fuer RiskIntelligenceService."""
+    """Factory für RiskIntelligenceService."""
     return RiskIntelligenceService(db)

@@ -62,7 +62,7 @@ class ComponentType(str, Enum):
     CALIBRATION = "calibration"           # Kalibrierungsanpassung
     HISTORICAL = "historical"             # Historische Genauigkeit
     ENSEMBLE = "ensemble"                 # Ensemble-Beitrag
-    FEATURE_QUALITY = "feature_quality"   # Feature-Qualitaet
+    FEATURE_QUALITY = "feature_quality"   # Feature-Qualität
     DATA_COVERAGE = "data_coverage"       # Datenabdeckung
 
 
@@ -96,7 +96,7 @@ class HistoricalDataPointDict(TypedDict):
 
 
 class ConfidenceBreakdownDict(TypedDict):
-    """Vollstaendige Confidence-Aufschluesselung."""
+    """Vollständige Confidence-Aufschluesselung."""
     id: str
     decision_id: Optional[str]
     decision_type: str
@@ -158,7 +158,7 @@ class HistoricalDataPoint:
 
 @dataclass
 class ConfidenceBreakdown:
-    """Vollstaendige Aufschluesselung einer Confidence."""
+    """Vollständige Aufschluesselung einer Confidence."""
     id: UUID = field(default_factory=uuid4)
     decision_id: Optional[UUID] = None
     decision_type: str = ""
@@ -214,7 +214,7 @@ class ConfidenceVisualizer:
     und wie zuverlaessig er historisch war.
     """
 
-    # Standard-Gewichte fuer Komponenten
+    # Standard-Gewichte für Komponenten
     DEFAULT_WEIGHTS = {
         ComponentType.MODEL_OUTPUT: 0.50,
         ComponentType.FEATURE_QUALITY: 0.20,
@@ -240,7 +240,7 @@ class ConfidenceVisualizer:
             db: Database Session
             decision_id: ID der Entscheidung
             include_history: Historische Daten einbeziehen
-            history_days: Zeitraum fuer Historie
+            history_days: Zeitraum für Historie
 
         Returns:
             ConfidenceBreakdown mit allen Details
@@ -312,7 +312,7 @@ class ConfidenceVisualizer:
         days: int = 30,
     ) -> ConfidenceBreakdown:
         """
-        Erstellt aggregierte Confidence-Aufschluesselung fuer einen Typ.
+        Erstellt aggregierte Confidence-Aufschluesselung für einen Typ.
 
         Args:
             db: Database Session
@@ -406,7 +406,7 @@ class ConfidenceVisualizer:
 
         components.append(ConfidenceComponent(
             component_type=ComponentType.FEATURE_QUALITY,
-            name="Feature-Qualitaet",
+            name="Feature-Qualität",
             contribution=feature_quality * self.DEFAULT_WEIGHTS[ComponentType.FEATURE_QUALITY],
             raw_value=feature_quality,
             weight=self.DEFAULT_WEIGHTS[ComponentType.FEATURE_QUALITY],
@@ -445,7 +445,7 @@ class ConfidenceVisualizer:
         self,
         decisions: List[AIDecision],
     ) -> List[ConfidenceComponent]:
-        """Aggregiert Komponenten ueber mehrere Entscheidungen."""
+        """Aggregiert Komponenten über mehrere Entscheidungen."""
         if not decisions:
             return []
 
@@ -522,7 +522,7 @@ class ConfidenceVisualizer:
         company_id: Optional[UUID],
         days: int,
     ) -> List[HistoricalDataPoint]:
-        """Laedt historische Daten fuer Trend-Analyse."""
+        """Laedt historische Daten für Trend-Analyse."""
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
         query = select(
@@ -551,7 +551,7 @@ class ConfidenceVisualizer:
             historical_data.append(HistoricalDataPoint(
                 date=datetime.combine(row.date, datetime.min.time()).replace(tzinfo=timezone.utc),
                 confidence=float(row.avg_confidence) if row.avg_confidence else 0,
-                accuracy=0.0,  # Muesste separat berechnet werden
+                accuracy=0.0,  # Müsste separat berechnet werden
                 sample_size=row.count,
             ))
 
@@ -645,7 +645,7 @@ _confidence_visualizer: Optional[ConfidenceVisualizer] = None
 
 
 def get_confidence_visualizer() -> ConfidenceVisualizer:
-    """Gibt die Singleton-Instanz zurueck."""
+    """Gibt die Singleton-Instanz zurück."""
     global _confidence_visualizer
     if _confidence_visualizer is None:
         _confidence_visualizer = ConfidenceVisualizer()

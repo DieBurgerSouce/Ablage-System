@@ -1,5 +1,5 @@
 """
-SQLAlchemy Models fuer ESG-Reporting (Phase 7.4).
+SQLAlchemy Models für ESG-Reporting (Phase 7.4).
 
 Environmental, Social, Governance Nachhaltigkeitsberichterstattung.
 """
@@ -53,7 +53,7 @@ class ReportStatus(str, Enum):
 
 class ESGCarbonFootprint(Base):
     """
-    CO2-Fussabdruck-Eintraege.
+    CO2-Fussabdruck-Einträge.
 
     Erfasst Emissionen nach GHG Protocol Scopes.
     """
@@ -88,7 +88,7 @@ class ESGCarbonFootprint(Base):
     emission_factor = Column(Float)  # Verwendeter Emissionsfaktor
     emission_factor_source = Column(String(255))  # Quelle des Faktors
 
-    # Optionale Verknuepfung mit Dokument (z.B. Rechnung)
+    # Optionale Verknüpfung mit Dokument (z.B. Rechnung)
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
@@ -132,7 +132,7 @@ class ESGSupplierRating(Base):
     """
     Nachhaltigkeitsbewertung von Lieferanten.
 
-    Ermoeglicht Tracking und Vergleich der Lieferketten-Nachhaltigkeit.
+    Ermöglicht Tracking und Vergleich der Lieferketten-Nachhaltigkeit.
     """
     __tablename__ = "esg_supplier_ratings"
 
@@ -145,7 +145,7 @@ class ESGSupplierRating(Base):
         index=True
     )
 
-    # Verknuepfung mit Lieferant (Entity)
+    # Verknüpfung mit Lieferant (Entity)
     entity_id = Column(
         UUID(as_uuid=True),
         ForeignKey("business_entities.id", ondelete="CASCADE"),
@@ -170,7 +170,7 @@ class ESGSupplierRating(Base):
     social_details = Column(CrossDBJSON, default=dict)  # Arbeitsbedingungen, Menschenrechte
     governance_details = Column(CrossDBJSON, default=dict)  # Compliance, Transparenz
 
-    # Risiko-Einschaetzung
+    # Risiko-Einschätzung
     risk_level = Column(String(20))  # low, medium, high, critical
     risk_factors = Column(CrossDBJSON, default=list)  # Liste von Risikofaktoren
 
@@ -230,7 +230,7 @@ class ESGCertification(Base):
     # Kategorie
     category = Column(String(20), nullable=False)  # environmental, social, governance
 
-    # Gueltigkeit
+    # Gültigkeit
     issue_date = Column(Date, nullable=False)
     expiry_date = Column(Date)
     status = Column(String(20), default=CertificationStatus.ACTIVE, nullable=False)
@@ -239,7 +239,7 @@ class ESGCertification(Base):
     scope_description = Column(Text)
     applicable_sites = Column(CrossDBJSON, default=list)  # Liste von Standorten
 
-    # Verknuepfung mit Zertifikat-Dokument
+    # Verknüpfung mit Zertifikat-Dokument
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL")
@@ -274,7 +274,7 @@ class ESGReport(Base):
     """
     Nachhaltigkeitsberichte.
 
-    Generierte Berichte fuer interne/externe Zwecke.
+    Generierte Berichte für interne/externe Zwecke.
     """
     __tablename__ = "esg_reports"
 
@@ -388,7 +388,7 @@ class ESGGoal(Base):
     progress_percentage = Column(Float)  # 0-100%
     on_track = Column(Boolean)
 
-    # SDG-Verknuepfung (UN Sustainable Development Goals)
+    # SDG-Verknüpfung (UN Sustainable Development Goals)
     sdg_goals = Column(CrossDBJSON, default=list)  # z.B. [7, 12, 13]
 
     # Status

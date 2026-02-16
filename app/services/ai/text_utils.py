@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Zentrale Text-Utilities fuer AI-Services.
+Zentrale Text-Utilities für AI-Services.
 
-Stellt wiederverwendbare Funktionen fuer:
+Stellt wiederverwendbare Funktionen für:
 - Deutsche Text-Normalisierung (mit Umlaut-Support)
-- Feld-Aehnlichkeitsberechnung
+- Feld-Ähnlichkeitsberechnung
 - Text-Hashing
 
 Vermeidet Code-Duplikation zwischen:
@@ -26,16 +26,16 @@ def normalize_german_text(
     max_length: Optional[int] = None,
 ) -> str:
     """
-    Normalisiert deutschen Text fuer Vergleiche und Matching.
+    Normalisiert deutschen Text für Vergleiche und Matching.
 
-    WICHTIG: Erhaelt standardmaessig deutsche Umlaute (ä, ö, ü, ß)
-    fuer korrekten Vergleich deutscher Dokumente.
+    WICHTIG: Erhält standardmaessig deutsche Umlaute (ä, ö, ü, ß)
+    für korrekten Vergleich deutscher Dokumente.
 
     Args:
         text: Der zu normalisierende Text
         remove_punctuation: Ob Satzzeichen entfernt werden sollen
         preserve_umlauts: Ob Umlaute erhalten bleiben sollen (Standard: True)
-        max_length: Optionale maximale Textlaenge
+        max_length: Optionale maximale Textlänge
 
     Returns:
         Normalisierter Text als String
@@ -58,7 +58,7 @@ def normalize_german_text(
             # Nur ASCII-Buchstaben behalten
             text = re.sub(r'[^a-z0-9\s]', '', text)
 
-    # Laenge begrenzen
+    # Länge begrenzen
     if max_length and len(text) > max_length:
         text = text[:max_length]
 
@@ -88,16 +88,16 @@ def calculate_text_similarity(
     max_length: int = 10000,
 ) -> float:
     """
-    Berechnet Text-Aehnlichkeit mit SequenceMatcher.
+    Berechnet Text-Ähnlichkeit mit SequenceMatcher.
 
     Args:
         text1: Erster Text
         text2: Zweiter Text
         normalize: Ob Texte vorher normalisiert werden sollen
-        max_length: Maximale Textlaenge fuer Performance
+        max_length: Maximale Textlänge für Performance
 
     Returns:
-        Aehnlichkeitswert zwischen 0.0 und 1.0
+        Ähnlichkeitswert zwischen 0.0 und 1.0
     """
     if normalize:
         t1 = normalize_german_text(text1, max_length=max_length)
@@ -118,11 +118,11 @@ def calculate_field_similarity(
     field_type: str = "string",
 ) -> float:
     """
-    Berechnet Aehnlichkeit zwischen zwei Feldwerten.
+    Berechnet Ähnlichkeit zwischen zwei Feldwerten.
 
-    Unterstuetzt verschiedene Feldtypen:
-    - string: Text-Aehnlichkeit
-    - number: Numerische Aehnlichkeit
+    Unterstützt verschiedene Feldtypen:
+    - string: Text-Ähnlichkeit
+    - number: Numerische Ähnlichkeit
     - date: Datums-Match
     - exact: Exakter Match
 
@@ -132,7 +132,7 @@ def calculate_field_similarity(
         field_type: Typ des Felds
 
     Returns:
-        Aehnlichkeitswert zwischen 0.0 und 1.0
+        Ähnlichkeitswert zwischen 0.0 und 1.0
     """
     # Null-Checks
     if value1 is None and value2 is None:
@@ -157,10 +157,10 @@ def calculate_field_similarity(
             return 0.0
 
     if field_type == "date":
-        # Exakter Match fuer Daten
+        # Exakter Match für Daten
         return 1.0 if str(value1) == str(value2) else 0.0
 
-    # Default: String-Aehnlichkeit
+    # Default: String-Ähnlichkeit
     s1 = str(value1)
     s2 = str(value2)
     return calculate_text_similarity(s1, s2)
@@ -176,7 +176,7 @@ def extract_keywords(
 
     Args:
         text: Der zu analysierende Text
-        min_length: Minimale Wortlaenge
+        min_length: Minimale Wortlänge
         max_keywords: Maximale Anzahl Keywords
 
     Returns:
@@ -211,16 +211,16 @@ def fuzzy_match_strings(
     normalize: bool = True,
 ) -> List[Tuple[str, float]]:
     """
-    Findet aehnliche Strings in einer Liste.
+    Findet ähnliche Strings in einer Liste.
 
     Args:
         query: Suchstring
         candidates: Liste von Kandidaten
-        threshold: Mindest-Aehnlichkeit (0.0 - 1.0)
+        threshold: Mindest-Ähnlichkeit (0.0 - 1.0)
         normalize: Ob Strings normalisiert werden sollen
 
     Returns:
-        Liste von (Kandidat, Aehnlichkeit) Tupeln, sortiert nach Aehnlichkeit
+        Liste von (Kandidat, Ähnlichkeit) Tupeln, sortiert nach Ähnlichkeit
     """
     results = []
     query_norm = normalize_german_text(query) if normalize else query
@@ -231,7 +231,7 @@ def fuzzy_match_strings(
         if similarity >= threshold:
             results.append((candidate, similarity))
 
-    # Nach Aehnlichkeit sortieren
+    # Nach Ähnlichkeit sortieren
     return sorted(results, key=lambda x: x[1], reverse=True)
 
 

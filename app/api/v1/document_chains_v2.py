@@ -2,15 +2,15 @@
 """
 Extended Document Chain API Endpoints V2.
 
-REST API fuer erweitertes Auftragsketten-Tracking:
+REST API für erweitertes Auftragsketten-Tracking:
 - Vertragserfuellung (Vertrag -> Lieferung -> Mahnung)
 - Beschaffungsketten (Bestellung -> Wareneingang -> QC)
 - Projekt-basierte Dokumentengruppierung
 - ML-basiertes Auto-Matching
 - Visualisierungs-API
 
-Phase 6.2: Extended Document Chains fuer Enterprise-Dokumentenmanagement.
-Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Praezision.
+Phase 6.2: Extended Document Chains für Enterprise-Dokumentenmanagement.
+Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Präzision.
 """
 
 from typing import Optional, List
@@ -78,14 +78,14 @@ class AddQualityControlRequest(BaseModel):
 
 
 class MLAutoLinkRequest(BaseModel):
-    """Anfrage fuer ML-basiertes Auto-Linking."""
+    """Anfrage für ML-basiertes Auto-Linking."""
     document_id: UUID
     min_confidence: float = Field(0.80, ge=0.0, le=1.0)
     chain_types: Optional[List[ChainType]] = None
 
 
 class ChainDocumentResponse(BaseModel):
-    """Antwort fuer ein Dokument in der Kette."""
+    """Antwort für ein Dokument in der Kette."""
     id: str
     document_type: str
     chain_position: int
@@ -101,7 +101,7 @@ class ChainDocumentResponse(BaseModel):
 
 
 class ExtendedChainResponse(BaseModel):
-    """Antwort fuer eine erweiterte Kette."""
+    """Antwort für eine erweiterte Kette."""
     chain_id: str
     chain_type: str
     document_count: int
@@ -121,7 +121,7 @@ class ExtendedChainResponse(BaseModel):
 
 
 class MLMatchResponse(BaseModel):
-    """Antwort fuer ML-Matching."""
+    """Antwort für ML-Matching."""
     matched: bool
     chain_id: Optional[str]
     chain_type: str
@@ -134,7 +134,7 @@ class MLMatchResponse(BaseModel):
 
 
 class VisualizationResponse(BaseModel):
-    """Antwort fuer Visualisierung."""
+    """Antwort für Visualisierung."""
     chain_id: str
     chain_type: str
     nodes: List[dict]
@@ -165,7 +165,7 @@ async def create_extended_chain(
     """
     Erstellt eine erweiterte Auftragskette.
 
-    **Unterstuetzte Chain-Typen:**
+    **Unterstützte Chain-Typen:**
     - quote_to_order: Standard Angebots-zu-Auftrag Kette
     - contract_fulfillment: Vertragserfuellung
     - procurement: Beschaffungskette
@@ -174,7 +174,7 @@ async def create_extended_chain(
     **Response:**
     - chain_id: Die ID der erstellten Kette
     - chain_type: Typ der Kette
-    - document_count: Anzahl der verknuepften Dokumente
+    - document_count: Anzahl der verknüpften Dokumente
     """
     company_id = current_user.company_id
     if not company_id:
@@ -183,7 +183,7 @@ async def create_extended_chain(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # SECURITY: Alle Dokumente pruefen
+    # SECURITY: Alle Dokumente prüfen
     for doc_id in request.document_ids:
         result = await db.execute(
             select(Document).where(
@@ -239,7 +239,7 @@ async def create_extended_chain(
     "/contract",
     status_code=status.HTTP_201_CREATED,
     summary="Vertragserfuellungskette erstellen",
-    description="Erstellt eine Kette fuer Vertragserfuellung mit Mahnungsverfolgung"
+    description="Erstellt eine Kette für Vertragserfuellung mit Mahnungsverfolgung"
 )
 async def create_contract_chain(
     request: CreateContractChainRequest,
@@ -249,7 +249,7 @@ async def create_contract_chain(
     """
     Erstellt eine Vertragserfuellungskette.
 
-    Diese Kette ermoeglicht das Tracking von:
+    Diese Kette ermöglicht das Tracking von:
     - Vertrag -> Lieferungen -> Rechnung -> Mahnungen
     """
     company_id = current_user.company_id
@@ -259,7 +259,7 @@ async def create_contract_chain(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # Dokument pruefen
+    # Dokument prüfen
     result = await db.execute(
         select(Document).where(
             Document.id == request.contract_document_id,
@@ -297,7 +297,7 @@ async def create_contract_chain(
     "/procurement",
     status_code=status.HTTP_201_CREATED,
     summary="Beschaffungskette erstellen",
-    description="Erstellt eine Kette fuer Beschaffungsprozess mit QC-Verfolgung"
+    description="Erstellt eine Kette für Beschaffungsprozess mit QC-Verfolgung"
 )
 async def create_procurement_chain(
     request: CreateProcurementChainRequest,
@@ -307,8 +307,8 @@ async def create_procurement_chain(
     """
     Erstellt eine Beschaffungskette.
 
-    Diese Kette ermoeglicht das Tracking von:
-    - Bestellung -> Auftragsbestaetigung -> Lieferschein -> Wareneingang -> QC -> Rechnung
+    Diese Kette ermöglicht das Tracking von:
+    - Bestellung -> Auftragsbestätigung -> Lieferschein -> Wareneingang -> QC -> Rechnung
     """
     company_id = current_user.company_id
     if not company_id:
@@ -317,7 +317,7 @@ async def create_procurement_chain(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # Dokument pruefen
+    # Dokument prüfen
     result = await db.execute(
         select(Document).where(
             Document.id == request.purchase_order_id,
@@ -358,7 +358,7 @@ async def create_procurement_chain(
 
 
 class ChainGapResponse(BaseModel):
-    """Antwort fuer eine Kettenluecke."""
+    """Antwort für eine Kettenlücke."""
     chain_id: str
     chain_name: str
     expected_type: str
@@ -369,7 +369,7 @@ class ChainGapResponse(BaseModel):
 
 
 class OrphanDocumentResponse(BaseModel):
-    """Antwort fuer ein verwaistes Dokument."""
+    """Antwort für ein verwaistes Dokument."""
     document_id: str
     filename: str
     document_type: str
@@ -380,7 +380,7 @@ class OrphanDocumentResponse(BaseModel):
 
 
 class ChainIntelligenceReportResponse(BaseModel):
-    """Antwort fuer den Ketten-Intelligenz-Bericht."""
+    """Antwort für den Ketten-Intelligenz-Bericht."""
     total_chains: int
     complete_chains: int
     chains_with_gaps: int
@@ -394,15 +394,15 @@ class ChainIntelligenceReportResponse(BaseModel):
 @router.get(
     "/intelligence/gaps",
     response_model=ChainIntelligenceReportResponse,
-    summary="Kettenluecken analysieren",
-    description="Scannt alle Ketten auf fehlende Glieder und generiert Vorschlaege"
+    summary="Kettenlücken analysieren",
+    description="Scannt alle Ketten auf fehlende Glieder und generiert Vorschläge"
 )
 async def get_chain_gaps(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> ChainIntelligenceReportResponse:
     """
-    Analysiert alle Auftragsketten auf Luecken.
+    Analysiert alle Auftragsketten auf Lücken.
 
     Erkennt fehlende Dokumente in bestehenden Ketten:
     - Bestellung vorhanden, aber kein Lieferschein
@@ -410,9 +410,9 @@ async def get_chain_gaps(
     - Vertrag vorhanden, aber keine Lieferung
 
     **Severity-Stufen:**
-    - info: Luecke erkannt
-    - warning: Ueber 14 Tage ueberfaellig
-    - critical: Ueber 30 Tage ueberfaellig
+    - info: Lücke erkannt
+    - warning: Über 14 Tage überfällig
+    - critical: Über 30 Tage überfällig
     """
     from app.services.document_chain_intelligence_service import (
         get_chain_intelligence_service,
@@ -468,17 +468,17 @@ async def get_chain_gaps(
 @router.get(
     "/intelligence/orphans",
     summary="Verwaiste Dokumente erkennen",
-    description="Findet Dokumente ohne Kettenverknuepfung die zu bestehenden Ketten passen koennten"
+    description="Findet Dokumente ohne Kettenverknüpfung die zu bestehenden Ketten passen könnten"
 )
 async def get_orphan_documents(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Erkennt Dokumente ohne Kettenverknuepfung.
+    Erkennt Dokumente ohne Kettenverknüpfung.
 
     Sucht nach Dokumenten die aufgrund von Referenznummern,
-    Dokumenttyp und Geschaeftspartner zu bestehenden Ketten passen koennten.
+    Dokumenttyp und Geschäftspartner zu bestehenden Ketten passen könnten.
     """
     from app.services.document_chain_intelligence_service import (
         get_chain_intelligence_service,
@@ -527,8 +527,8 @@ async def get_orphan_documents(
 
 @router.get(
     "/intelligence/{chain_id}/suggestions",
-    summary="Vervollstaendigungs-Vorschlaege",
-    description="Generiert Vorschlaege zur Vervollstaendigung einer spezifischen Kette"
+    summary="Vervollständigungs-Vorschläge",
+    description="Generiert Vorschläge zur Vervollständigung einer spezifischen Kette"
 )
 async def get_chain_suggestions(
     chain_id: str,
@@ -536,10 +536,10 @@ async def get_chain_suggestions(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Generiert Vorschlaege fuer eine spezifische Kette.
+    Generiert Vorschläge für eine spezifische Kette.
 
     Analysiert welche Dokumenttypen in der Kette fehlen und sucht
-    nach passenden unchained Dokumenten die die Luecken fuellen koennten.
+    nach passenden unchained Dokumenten die die Lücken fuellen könnten.
     """
     from app.services.document_chain_intelligence_service import (
         get_chain_intelligence_service,
@@ -568,7 +568,7 @@ async def get_chain_suggestions(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail(e, "Kettenvorschlaege")
+            detail=safe_error_detail(e, "Kettenvorschläge")
         )
 
     return {
@@ -602,7 +602,7 @@ async def get_chain_suggestions(
 )
 async def get_extended_chain(
     chain_id: str,
-    include_visualization: bool = Query(False, description="Visualisierungsdaten einschliessen"),
+    include_visualization: bool = Query(False, description="Visualisierungsdaten einschließen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> ExtendedChainResponse:
@@ -610,7 +610,7 @@ async def get_extended_chain(
     Ruft eine erweiterte Auftragskette ab.
 
     Liefert alle Dokumente mit erweiterten Metadaten und optional
-    Visualisierungsdaten fuer das Frontend.
+    Visualisierungsdaten für das Frontend.
     """
     company_id = current_user.company_id
     if not company_id:
@@ -719,7 +719,7 @@ async def get_chains_by_project(
 
 @router.get(
     "/ml-match/{document_id}",
-    summary="ML-basierte Matching-Vorschlaege",
+    summary="ML-basierte Matching-Vorschläge",
     description="Sucht automatisch nach verwandten Dokumenten mit ML-Konfidenz"
 )
 async def ml_auto_match(
@@ -731,9 +731,9 @@ async def ml_auto_match(
     """
     ML-basierte Suche nach verwandten Dokumenten.
 
-    Verwendet mehrere Features fuer praezises Matching:
+    Verwendet mehrere Features für praezises Matching:
     - Referenznummern (hoechste Gewichtung)
-    - Betragsaehnlichkeit
+    - Betragsähnlichkeit
     - Datumsnaehe
     - Entity-Match
     - Dokumenttyp-Sequenz
@@ -745,7 +745,7 @@ async def ml_auto_match(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # Dokument pruefen
+    # Dokument prüfen
     result = await db.execute(
         select(Document).where(
             Document.id == document_id,
@@ -767,7 +767,7 @@ async def ml_auto_match(
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Chain-Typ: {e}"
+                detail=f"Ungültiger Chain-Typ: {e}"
             )
 
     service = get_extended_chain_service()
@@ -802,7 +802,7 @@ async def ml_auto_match(
     "/ml-auto-link",
     status_code=status.HTTP_201_CREATED,
     summary="ML-basiertes Auto-Linking",
-    description="Verknuepft Dokument automatisch basierend auf ML-Matching"
+    description="Verknüpft Dokument automatisch basierend auf ML-Matching"
 )
 async def ml_auto_link(
     request: MLAutoLinkRequest,
@@ -812,7 +812,7 @@ async def ml_auto_link(
     """
     Automatisches Linking basierend auf ML-Matching.
 
-    Fuehrt Auto-Linking nur durch wenn Konfidenz ueber Schwellenwert.
+    Führt Auto-Linking nur durch wenn Konfidenz über Schwellenwert.
     """
     company_id = current_user.company_id
     if not company_id:
@@ -821,7 +821,7 @@ async def ml_auto_link(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # Dokument pruefen
+    # Dokument prüfen
     result = await db.execute(
         select(Document).where(
             Document.id == request.document_id,
@@ -857,7 +857,7 @@ async def ml_auto_link(
         "linked": True,
         "document_id": str(request.document_id),
         "chain_id": chain_id,
-        "message": "Dokument erfolgreich verknuepft",
+        "message": "Dokument erfolgreich verknüpft",
     }
 
 
@@ -893,7 +893,7 @@ async def add_dunning(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # Mahnungsdokument pruefen
+    # Mahnungsdokument prüfen
     result = await db.execute(
         select(Document).where(
             Document.id == request.dunning_document_id,
@@ -969,7 +969,7 @@ async def add_quality_control(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # QC-Dokument pruefen
+    # QC-Dokument prüfen
     result = await db.execute(
         select(Document).where(
             Document.id == request.qc_document_id,
@@ -1021,7 +1021,7 @@ async def add_quality_control(
     "/{chain_id}/visualization",
     response_model=VisualizationResponse,
     summary="Visualisierungsdaten abrufen",
-    description="Liefert Daten fuer die Chain-Visualisierung im Frontend"
+    description="Liefert Daten für die Chain-Visualisierung im Frontend"
 )
 async def get_visualization(
     chain_id: str,
@@ -1030,7 +1030,7 @@ async def get_visualization(
     db: AsyncSession = Depends(get_db),
 ) -> VisualizationResponse:
     """
-    Ruft Visualisierungsdaten fuer eine Kette ab.
+    Ruft Visualisierungsdaten für eine Kette ab.
 
     **Layouts:**
     - horizontal: Links-nach-rechts Fluss

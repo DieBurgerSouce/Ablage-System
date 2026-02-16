@@ -1,8 +1,8 @@
 """
-API-Endpunkte fuer Feature-Flag Verwaltung.
+API-Endpunkte für Feature-Flag Verwaltung.
 
 Admin-Endpunkte (nur Superuser):
-- CRUD-Operationen fuer Feature-Flags
+- CRUD-Operationen für Feature-Flags
 - Kill-Switch-Funktion
 
 User-Endpunkte (authentifizierte Benutzer):
@@ -43,7 +43,7 @@ user_router = APIRouter(
 
 
 class FeatureFlagResponse(BaseModel):
-    """Response-Schema fuer Feature-Flag."""
+    """Response-Schema für Feature-Flag."""
 
     id: UUID
     key: str
@@ -64,7 +64,7 @@ class FeatureFlagResponse(BaseModel):
 
 
 class FeatureFlagCreate(BaseModel):
-    """Request-Schema fuer Feature-Flag Erstellung."""
+    """Request-Schema für Feature-Flag Erstellung."""
 
     key: str = Field(
         ...,
@@ -114,12 +114,12 @@ class FeatureFlagCreate(BaseModel):
     )
     config: Optional[Dict[str, object]] = Field(
         None,
-        description="Zusaetzliche Konfiguration",
+        description="Zusätzliche Konfiguration",
     )
 
 
 class FeatureFlagUpdate(BaseModel):
-    """Request-Schema fuer Feature-Flag Aktualisierung."""
+    """Request-Schema für Feature-Flag Aktualisierung."""
 
     name: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
@@ -134,7 +134,7 @@ class FeatureFlagUpdate(BaseModel):
 
 
 class FeatureFlagEvalResponse(BaseModel):
-    """Response-Schema fuer Feature-Flag Evaluation."""
+    """Response-Schema für Feature-Flag Evaluation."""
 
     flag_key: str
     enabled: bool
@@ -143,7 +143,7 @@ class FeatureFlagEvalResponse(BaseModel):
 
 
 class FeatureFlagListResponse(BaseModel):
-    """Response-Schema fuer Feature-Flag Liste."""
+    """Response-Schema für Feature-Flag Liste."""
 
     flags: List[FeatureFlagResponse]
     total: int
@@ -156,14 +156,14 @@ class FeatureFlagListResponse(BaseModel):
     "/",
     response_model=FeatureFlagListResponse,
     summary="Alle Feature-Flags auflisten",
-    description="Listet alle Feature-Flags auf (nur fuer Superuser)",
+    description="Listet alle Feature-Flags auf (nur für Superuser)",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def list_feature_flags(
     request: Request,
     enabled_only: bool = Query(False, description="Nur aktivierte Flags"),
     limit: int = Query(100, ge=1, le=500, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset fuer Paginierung"),
+    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
 ) -> FeatureFlagListResponse:
@@ -205,7 +205,7 @@ async def list_feature_flags(
     response_model=FeatureFlagResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Feature-Flag erstellen",
-    description="Erstellt ein neues Feature-Flag (nur fuer Superuser)",
+    description="Erstellt ein neues Feature-Flag (nur für Superuser)",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def create_feature_flag(
@@ -218,7 +218,7 @@ async def create_feature_flag(
     try:
         service = get_feature_flag_service(db)
 
-        # Pruefen ob Key bereits existiert
+        # Prüfen ob Key bereits existiert
         existing = await service.get_by_key(data.key)
         if existing is not None:
             raise HTTPException(
@@ -275,7 +275,7 @@ async def create_feature_flag(
     "/{flag_id}",
     response_model=FeatureFlagResponse,
     summary="Feature-Flag abrufen",
-    description="Holt ein Feature-Flag anhand der ID (nur fuer Superuser)",
+    description="Holt ein Feature-Flag anhand der ID (nur für Superuser)",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_feature_flag(
@@ -321,7 +321,7 @@ async def get_feature_flag(
     "/{flag_id}",
     response_model=FeatureFlagResponse,
     summary="Feature-Flag aktualisieren",
-    description="Aktualisiert ein Feature-Flag (nur fuer Superuser)",
+    description="Aktualisiert ein Feature-Flag (nur für Superuser)",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def update_feature_flag(
@@ -335,7 +335,7 @@ async def update_feature_flag(
     try:
         service = get_feature_flag_service(db)
 
-        # Nur gesetzte Felder als Updates uebergeben
+        # Nur gesetzte Felder als Updates übergeben
         updates: Dict[str, object] = {}
         for field_name, value in data.model_dump(exclude_unset=True).items():
             updates[field_name] = value
@@ -393,8 +393,8 @@ async def update_feature_flag(
 @admin_router.delete(
     "/{flag_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Feature-Flag loeschen",
-    description="Loescht ein Feature-Flag (nur fuer Superuser)",
+    summary="Feature-Flag löschen",
+    description="Löscht ein Feature-Flag (nur für Superuser)",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def delete_feature_flag(
@@ -403,7 +403,7 @@ async def delete_feature_flag(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
 ) -> None:
-    """Feature-Flag loeschen."""
+    """Feature-Flag löschen."""
     try:
         service = get_feature_flag_service(db)
         success = await service.delete_flag(flag_id)
@@ -430,7 +430,7 @@ async def delete_feature_flag(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Loeschen des Feature-Flags",
+            detail="Fehler beim Löschen des Feature-Flags",
         )
 
 
@@ -438,7 +438,7 @@ async def delete_feature_flag(
     "/{key}/kill-switch",
     status_code=status.HTTP_200_OK,
     summary="Kill-Switch aktivieren",
-    description="Deaktiviert ein Feature-Flag sofort (Kill-Switch, nur fuer Superuser)",
+    description="Deaktiviert ein Feature-Flag sofort (Kill-Switch, nur für Superuser)",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def activate_kill_switch(
@@ -447,7 +447,7 @@ async def activate_kill_switch(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
 ) -> Dict[str, object]:
-    """Kill-Switch fuer ein Feature-Flag aktivieren."""
+    """Kill-Switch für ein Feature-Flag aktivieren."""
     try:
         service = get_feature_flag_service(db)
         success = await service.kill_switch(key)
@@ -491,7 +491,7 @@ async def activate_kill_switch(
     "/evaluate/{key}",
     response_model=FeatureFlagEvalResponse,
     summary="Feature-Flag evaluieren",
-    description="Evaluiert ein Feature-Flag fuer den aktuellen Benutzer",
+    description="Evaluiert ein Feature-Flag für den aktuellen Benutzer",
 )
 @limiter.limit("100/minute", key_func=get_user_identifier)
 async def evaluate_feature_flag(
@@ -500,7 +500,7 @@ async def evaluate_feature_flag(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FeatureFlagEvalResponse:
-    """Feature-Flag fuer aktuellen Benutzer evaluieren."""
+    """Feature-Flag für aktuellen Benutzer evaluieren."""
     try:
         service = get_feature_flag_service(db)
         user_tier = getattr(current_user, "tier", None)
@@ -524,7 +524,7 @@ async def evaluate_feature_flag(
             **safe_error_log(e),
             key=key,
         )
-        # Fail-safe: Bei Fehlern immer disabled zurueckgeben
+        # Fail-safe: Bei Fehlern immer disabled zurückgeben
         return FeatureFlagEvalResponse(
             flag_key=key,
             enabled=False,
@@ -536,7 +536,7 @@ async def evaluate_feature_flag(
 @user_router.get(
     "/evaluate-all",
     summary="Alle Feature-Flags evaluieren",
-    description="Evaluiert alle aktiven Feature-Flags fuer den aktuellen Benutzer",
+    description="Evaluiert alle aktiven Feature-Flags für den aktuellen Benutzer",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def evaluate_all_feature_flags(
@@ -544,7 +544,7 @@ async def evaluate_all_feature_flags(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, Dict[str, object]]:
-    """Alle Feature-Flags fuer aktuellen Benutzer evaluieren."""
+    """Alle Feature-Flags für aktuellen Benutzer evaluieren."""
     try:
         service = get_feature_flag_service(db)
         user_tier = getattr(current_user, "tier", None)
@@ -561,5 +561,5 @@ async def evaluate_all_feature_flags(
             "evaluate_all_feature_flags_failed",
             **safe_error_log(e),
         )
-        # Fail-safe: Bei Fehlern leeres Dict zurueckgeben
+        # Fail-safe: Bei Fehlern leeres Dict zurückgeben
         return {}

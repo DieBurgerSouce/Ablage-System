@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Monitoring Tasks fuer Worker Health Checks.
+Monitoring Tasks für Worker Health Checks.
 
-Periodische Tasks zur Ueberwachung der Worker-Gesundheit:
+Periodische Tasks zur Überwachung der Worker-Gesundheit:
 - Health Status Checks
 - Stuck Task Detection
 - GPU Memory Monitoring
@@ -31,9 +31,9 @@ logger = structlog.get_logger(__name__)
 )
 def worker_health_check_task() -> Dict[str, Any]:
     """
-    Periodischer Health Check fuer alle Celery Worker.
+    Periodischer Health Check für alle Celery Worker.
 
-    Wird jede Minute via Celery Beat ausgefuehrt.
+    Wird jede Minute via Celery Beat ausgeführt.
 
     Returns:
         Dict mit Health-Status
@@ -56,7 +56,7 @@ def worker_health_check_task() -> Dict[str, Any]:
             stale_tasks=len(health.get("stale_tasks", [])),
         )
 
-        # Metriken aktualisieren (fuer Prometheus)
+        # Metriken aktualisieren (für Prometheus)
         _update_health_metrics(health)
 
         return {
@@ -89,9 +89,9 @@ def worker_health_check_task() -> Dict[str, Any]:
 )
 def cleanup_stuck_tasks() -> Dict[str, Any]:
     """
-    Pruefe und bereinige stuck Tasks.
+    Prüfe und bereinige stuck Tasks.
 
-    Wird alle 5 Minuten ausgefuehrt. Bei kritischen stuck Tasks
+    Wird alle 5 Minuten ausgeführt. Bei kritischen stuck Tasks
     (>30 Minuten) wird automatisch revoked.
 
     Returns:
@@ -125,7 +125,7 @@ def cleanup_stuck_tasks() -> Dict[str, Any]:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
-        # Log Warnungen fuer alle stuck Tasks
+        # Log Warnungen für alle stuck Tasks
         for task in stale_tasks:
             logger.warning(
                 "stuck_task_detected",
@@ -171,7 +171,7 @@ def cleanup_stuck_tasks() -> Dict[str, Any]:
 )
 def check_queue_backpressure() -> Dict[str, Any]:
     """
-    Pruefe Queue-Laengen fuer Backpressure-Detection.
+    Prüfe Queue-Längen für Backpressure-Detection.
 
     Returns:
         Dict mit Queue-Status und Backpressure-Indikatoren
@@ -180,7 +180,7 @@ def check_queue_backpressure() -> Dict[str, Any]:
     from redis import Redis
 
     try:
-        # Redis-Verbindung fuer Queue-Laengen
+        # Redis-Verbindung für Queue-Längen
         redis_url = current_app.conf.broker_url
         redis_client = Redis.from_url(redis_url)
 
@@ -281,7 +281,7 @@ def _update_health_metrics(health: Dict[str, Any]) -> None:
         STALE_TASKS_GAUGE.set(len(health.get("stale_tasks", [])))
 
     except ImportError:
-        # Prometheus Metriken nicht verfuegbar
+        # Prometheus Metriken nicht verfügbar
         pass
     except Exception as e:
         logger.debug("health_metrics_update_failed", **safe_error_log(e))

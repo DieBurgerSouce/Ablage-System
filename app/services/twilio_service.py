@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Twilio SMS/WhatsApp Integration Service fuer Ablage-System.
+Twilio SMS/WhatsApp Integration Service für Ablage-System.
 
-Enterprise-grade Benachrichtigungen ueber:
-- SMS fuer kritische Alerts (High/Critical Severity)
-- WhatsApp Business fuer reichhaltige Nachrichten
+Enterprise-grade Benachrichtigungen über:
+- SMS für kritische Alerts (High/Critical Severity)
+- WhatsApp Business für reichhaltige Nachrichten
 - Rate Limiting und Budget-Schutz
 - GDPR-konformes Opt-in pro Benutzer
 - Eskalationsketten: Email -> Slack -> Teams -> SMS
@@ -56,7 +56,7 @@ class TwilioMessageType(str, Enum):
 
 
 class TwilioMessagePriority(str, Enum):
-    """Prioritaet einer Twilio-Nachricht."""
+    """Priorität einer Twilio-Nachricht."""
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -91,7 +91,7 @@ class TwilioDeliveryStatus(str, Enum):
 # =============================================================================
 
 class TwilioUserPreferences(BaseModel):
-    """Benutzer-Praeferenzen fuer Twilio-Benachrichtigungen (GDPR-konform)."""
+    """Benutzer-Praeferenzen für Twilio-Benachrichtigungen (GDPR-konform)."""
 
     # Opt-in Status (GDPR: explizite Zustimmung erforderlich)
     sms_opt_in: bool = Field(
@@ -106,7 +106,7 @@ class TwilioUserPreferences(BaseModel):
     # Telefonnummern (E.164 Format: +49...)
     phone_number: Optional[str] = Field(
         default=None,
-        description="Primaere Telefonnummer fuer SMS (E.164 Format)"
+        description="Primäre Telefonnummer für SMS (E.164 Format)"
     )
     whatsapp_number: Optional[str] = Field(
         default=None,
@@ -123,7 +123,7 @@ class TwilioUserPreferences(BaseModel):
         description="Erlaubte Notification-Typen (GDPR: granulare Kontrolle)"
     )
 
-    # Ruhezeiten (keine Nachrichten waehrend dieser Zeit)
+    # Ruhezeiten (keine Nachrichten während dieser Zeit)
     quiet_hours_enabled: bool = Field(
         default=True,
         description="Ruhezeiten aktivieren"
@@ -141,7 +141,7 @@ class TwilioUserPreferences(BaseModel):
         description="Ende der Ruhezeit (Stunde, 0-23)"
     )
 
-    # Zeitzone fuer Ruhezeiten
+    # Zeitzone für Ruhezeiten
     timezone: str = Field(
         default="Europe/Berlin",
         description="Zeitzone des Benutzers"
@@ -176,7 +176,7 @@ class TwilioUserPreferences(BaseModel):
 class TwilioMessage(BaseModel):
     """Twilio-Nachricht mit Metadaten."""
 
-    to: str = Field(..., description="Empfaenger-Telefonnummer (E.164)")
+    to: str = Field(..., description="Empfänger-Telefonnummer (E.164)")
     body: str = Field(..., max_length=1600, description="Nachrichtentext")
     message_type: TwilioMessageType = Field(
         default=TwilioMessageType.SMS,
@@ -184,19 +184,19 @@ class TwilioMessage(BaseModel):
     )
     notification_type: Optional[str] = Field(
         default=None,
-        description="Notification-Typ fuer Tracking"
+        description="Notification-Typ für Tracking"
     )
     priority: TwilioMessagePriority = Field(
         default=TwilioMessagePriority.HIGH,
-        description="Prioritaet der Nachricht"
+        description="Priorität der Nachricht"
     )
     company_id: Optional[UUID] = Field(
         default=None,
-        description="Mandanten-ID fuer Tracking"
+        description="Mandanten-ID für Tracking"
     )
     user_id: Optional[UUID] = Field(
         default=None,
-        description="Benutzer-ID fuer Tracking"
+        description="Benutzer-ID für Tracking"
     )
     reference_id: Optional[str] = Field(
         default=None,
@@ -226,7 +226,7 @@ class TwilioSendResult(BaseModel):
     )
     cost_eur: Optional[Decimal] = Field(
         default=None,
-        description="Geschaetzte Kosten in EUR"
+        description="Geschätzte Kosten in EUR"
     )
     segments: int = Field(
         default=1,
@@ -235,7 +235,7 @@ class TwilioSendResult(BaseModel):
 
 
 class TwilioCostTracking(BaseModel):
-    """Kostentracking fuer Twilio-Nutzung."""
+    """Kostentracking für Twilio-Nutzung."""
 
     daily_sms_count: int = Field(default=0)
     daily_whatsapp_count: int = Field(default=0)
@@ -253,7 +253,7 @@ class TwilioCostTracking(BaseModel):
 # =============================================================================
 
 class TwilioServiceError(Exception):
-    """Basis-Fehler fuer Twilio-Operationen."""
+    """Basis-Fehler für Twilio-Operationen."""
     pass
 
 
@@ -263,17 +263,17 @@ class TwilioRateLimitError(TwilioServiceError):
 
 
 class TwilioBudgetExceededError(TwilioServiceError):
-    """Budget-Limit ueberschritten."""
+    """Budget-Limit überschritten."""
     pass
 
 
 class TwilioOptInRequiredError(TwilioServiceError):
-    """Benutzer hat kein Opt-in fuer diesen Kanal."""
+    """Benutzer hat kein Opt-in für diesen Kanal."""
     pass
 
 
 class TwilioQuietHoursError(TwilioServiceError):
-    """Nachricht waehrend Ruhezeiten nicht erlaubt."""
+    """Nachricht während Ruhezeiten nicht erlaubt."""
     pass
 
 
@@ -291,8 +291,8 @@ class TwilioService:
     Twilio SMS/WhatsApp Integration Service.
 
     Features:
-    - SMS fuer kritische Alerts (nur High/Critical Severity)
-    - WhatsApp Business fuer reichhaltige Nachrichten
+    - SMS für kritische Alerts (nur High/Critical Severity)
+    - WhatsApp Business für reichhaltige Nachrichten
     - Rate Limiting mit Sliding Window (Budget-Schutz)
     - GDPR-konformes Opt-in pro Benutzer
     - Ruhezeiten-Respektierung
@@ -317,7 +317,7 @@ class TwilioService:
     _rate_limit_per_day: int  # Max SMS pro Tag
 
     def __new__(cls) -> "TwilioService":
-        """Singleton-Pattern fuer Thread-Safety."""
+        """Singleton-Pattern für Thread-Safety."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
@@ -422,11 +422,11 @@ class TwilioService:
 
     def _check_rate_limit(self) -> bool:
         """
-        Prueft ob taegliches Rate Limit erreicht ist.
+        Prüft ob tägliches Rate Limit erreicht ist.
 
         Sliding Window Algorithmus:
         - Entfernt Timestamps aelter als 24 Stunden
-        - Prueft ob Limit erreicht
+        - Prüft ob Limit erreicht
         """
         now = time.time()
         window_start = now - (24 * 60 * 60)  # 24 Stunden
@@ -438,10 +438,10 @@ class TwilioService:
         return len(self._rate_limit_window) < self._rate_limit_per_day
 
     def _record_message(self, cost: Decimal, message_type: TwilioMessageType) -> None:
-        """Zeichnet eine gesendete Nachricht fuer Rate Limiting und Kosten auf."""
+        """Zeichnet eine gesendete Nachricht für Rate Limiting und Kosten auf."""
         self._rate_limit_window.append(time.time())
 
-        # Reset taeglich
+        # Reset täglich
         now = datetime.now(timezone.utc)
         if now.date() > self._cost_tracking.last_reset_date.date():
             self._cost_tracking.daily_sms_count = 0
@@ -467,7 +467,7 @@ class TwilioService:
         self._cost_tracking.monthly_cost_eur += cost
 
     def _check_budget(self) -> bool:
-        """Prueft ob monatliches Budget ueberschritten wuerde."""
+        """Prüft ob monatliches Budget überschritten wuerde."""
         return self._cost_tracking.monthly_cost_eur < self._max_monthly_budget_eur
 
     def _calculate_sms_segments(self, text: str) -> int:
@@ -477,7 +477,7 @@ class TwilioService:
         GSM-7: 160 Zeichen pro Segment (153 wenn mehrere Segmente)
         UCS-2: 70 Zeichen pro Segment (67 wenn mehrere Segmente)
         """
-        # Pruefen ob Text nur GSM-7 Zeichen enthaelt
+        # Prüfen ob Text nur GSM-7 Zeichen enthält
         gsm7_chars = (
             "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞ\x1bÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?"
             "¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà"
@@ -497,7 +497,7 @@ class TwilioService:
         self,
         preferences: TwilioUserPreferences,
     ) -> bool:
-        """Prueft ob aktuelle Zeit in Ruhezeiten faellt."""
+        """Prüft ob aktuelle Zeit in Ruhezeiten faellt."""
         if not preferences.quiet_hours_enabled:
             return False
 
@@ -511,12 +511,12 @@ class TwilioService:
             start = preferences.quiet_hours_start
             end = preferences.quiet_hours_end
 
-            # Ruhezeiten koennen Mitternacht ueberspannen
+            # Ruhezeiten können Mitternacht überspannen
             if start <= end:
-                # z.B. 22:00 - 07:00 -> nicht ueber Mitternacht
+                # z.B. 22:00 - 07:00 -> nicht über Mitternacht
                 return start <= current_hour < end
             else:
-                # z.B. 22:00 - 07:00 -> ueber Mitternacht
+                # z.B. 22:00 - 07:00 -> über Mitternacht
                 return current_hour >= start or current_hour < end
 
         except Exception as e:
@@ -528,7 +528,7 @@ class TwilioService:
 
     @property
     def is_enabled(self) -> bool:
-        """Gibt zurueck ob Twilio-Integration aktiv ist."""
+        """Gibt zurück ob Twilio-Integration aktiv ist."""
         return self._enabled and bool(self._account_sid) and bool(self._auth_token)
 
     def validate_user_opt_in(
@@ -538,7 +538,7 @@ class TwilioService:
         notification_type: str,
     ) -> tuple[bool, Optional[str]]:
         """
-        Validiert Benutzer-Opt-in fuer den Nachrichtentyp.
+        Validiert Benutzer-Opt-in für den Nachrichtentyp.
 
         Args:
             preferences: Benutzer-Praeferenzen
@@ -548,7 +548,7 @@ class TwilioService:
         Returns:
             Tuple (ist_erlaubt, fehlermeldung)
         """
-        # Opt-in pruefen
+        # Opt-in prüfen
         if message_type == TwilioMessageType.SMS:
             if not preferences.sms_opt_in:
                 return False, "SMS-Benachrichtigungen nicht aktiviert"
@@ -560,7 +560,7 @@ class TwilioService:
             if not preferences.whatsapp_number:
                 return False, "Keine WhatsApp-Nummer hinterlegt"
 
-        # Notification-Typ pruefen
+        # Notification-Typ prüfen
         if notification_type not in preferences.allowed_notification_types:
             return False, f"Benachrichtigungstyp '{notification_type}' nicht erlaubt"
 
@@ -578,9 +578,9 @@ class TwilioService:
 
         Args:
             message: Die zu sendende Nachricht
-            preferences: Benutzer-Praeferenzen (optional fuer System-Nachrichten)
-            override_quiet_hours: Ruhezeiten ignorieren (nur fuer kritische Alerts)
-            override_opt_in: Opt-in ignorieren (nur fuer System-Nachrichten)
+            preferences: Benutzer-Praeferenzen (optional für System-Nachrichten)
+            override_quiet_hours: Ruhezeiten ignorieren (nur für kritische Alerts)
+            override_opt_in: Opt-in ignorieren (nur für System-Nachrichten)
 
         Returns:
             Ergebnis des Sendevorgangs
@@ -614,21 +614,21 @@ class TwilioService:
                         error_message="Ruhezeiten aktiv"
                     )
 
-        # Rate Limit pruefen
+        # Rate Limit prüfen
         if not self._check_rate_limit():
             logger.warning("twilio_rate_limit_reached")
             return TwilioSendResult(
                 success=False,
                 error_code=429,
-                error_message="Taegliches SMS-Limit erreicht"
+                error_message="Tägliches SMS-Limit erreicht"
             )
 
-        # Budget pruefen
+        # Budget prüfen
         if not self._check_budget():
             logger.warning("twilio_budget_exceeded")
             return TwilioSendResult(
                 success=False,
-                error_message="Monatliches Budget ueberschritten"
+                error_message="Monatliches Budget überschritten"
             )
 
         # SMS-Segmente berechnen
@@ -756,19 +756,19 @@ class TwilioService:
                         error_message="Ruhezeiten aktiv"
                     )
 
-        # Rate Limit pruefen
+        # Rate Limit prüfen
         if not self._check_rate_limit():
             return TwilioSendResult(
                 success=False,
                 error_code=429,
-                error_message="Taegliches Nachrichtenlimit erreicht"
+                error_message="Tägliches Nachrichtenlimit erreicht"
             )
 
-        # Budget pruefen
+        # Budget prüfen
         if not self._check_budget():
             return TwilioSendResult(
                 success=False,
-                error_message="Monatliches Budget ueberschritten"
+                error_message="Monatliches Budget überschritten"
             )
 
         # WhatsApp-Nummer formatieren
@@ -856,10 +856,10 @@ class TwilioService:
         """
         Sendet einen kritischen Alert (SMS oder WhatsApp).
 
-        Diese Methode umgeht Ruhezeiten und ist fuer dringende Alerts gedacht.
+        Diese Methode umgeht Ruhezeiten und ist für dringende Alerts gedacht.
 
         Args:
-            phone_number: Empfaenger-Telefonnummer (E.164)
+            phone_number: Empfänger-Telefonnummer (E.164)
             title: Alert-Titel
             message: Alert-Nachricht
             alert_code: Alert-Code (z.B. FRAUD_001)
@@ -916,7 +916,7 @@ class TwilioService:
         Wird aufgerufen wenn vorherige Kanaele (Email, Slack, Teams) nicht reagiert haben.
 
         Args:
-            phone_number: Empfaenger-Telefonnummer
+            phone_number: Empfänger-Telefonnummer
             escalation_level: Eskalationsstufe (1-5)
             original_channel: Urspruenglicher Kanal
             title: Alert-Titel
@@ -952,7 +952,7 @@ class TwilioService:
 
     def get_cost_statistics(self) -> dict[str, Any]:
         """
-        Gibt aktuelle Kostenstatistiken zurueck.
+        Gibt aktuelle Kostenstatistiken zurück.
 
         Returns:
             Dictionary mit Kostenstatistiken
@@ -1029,7 +1029,7 @@ class TwilioService:
         return result
 
     async def close(self) -> None:
-        """Schliesst den HTTP-Client."""
+        """Schließt den HTTP-Client."""
         if self._client:
             await self._client.aclose()
             self._client = None
@@ -1043,7 +1043,7 @@ _twilio_service: Optional[TwilioService] = None
 
 
 def get_twilio_service() -> TwilioService:
-    """Factory-Funktion fuer Twilio-Service Dependency Injection."""
+    """Factory-Funktion für Twilio-Service Dependency Injection."""
     global _twilio_service
     if _twilio_service is None:
         _twilio_service = TwilioService()
@@ -1058,12 +1058,12 @@ async def send_critical_sms(
     company_id: Optional[UUID] = None,
 ) -> TwilioSendResult:
     """
-    Convenience-Funktion fuer kritische SMS.
+    Convenience-Funktion für kritische SMS.
 
     Kann aus jedem Teil der Anwendung aufgerufen werden.
 
     Args:
-        phone_number: Empfaenger-Telefonnummer (E.164)
+        phone_number: Empfänger-Telefonnummer (E.164)
         title: Alert-Titel
         message: Alert-Nachricht
         alert_code: Alert-Code

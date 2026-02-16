@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 class HeaderMapping:
     """Mapping von Tabellenkoepfen zu LineItem-Feldern."""
 
-    # Feldname -> Liste von moeglichen Header-Varianten (lowercase)
+    # Feldname -> Liste von möglichen Header-Varianten (lowercase)
     PATTERNS: Dict[str, List[str]] = None
 
     def __post_init__(self) -> None:
@@ -56,7 +56,7 @@ class HeaderMapping:
                     "product description", "benennung", "bez"
                 ],
                 "quantity": [
-                    "menge", "anzahl", "stk", "stueck", "stck",
+                    "menge", "anzahl", "stk", "stück", "stck",
                     "qty", "quantity", "anz", "me", "m"
                 ],
                 "unit": [
@@ -65,7 +65,7 @@ class HeaderMapping:
                 ],
                 "unit_price": [
                     "einzelpreis", "e-preis", "ep", "preis/eh", "preis",
-                    "stueckpreis", "stk-preis", "unit price", "einzelpr",
+                    "stückpreis", "stk-preis", "unit price", "einzelpr",
                     "ek", "vk", "netto-ep", "preis netto"
                 ],
                 "total_price": [
@@ -111,7 +111,7 @@ def parse_german_decimal(value: str) -> Optional[Decimal]:
     # Bereinigen
     cleaned = value.strip()
 
-    # Entferne Waehrungssymbole und Text
+    # Entferne Währungssymbole und Text
     cleaned = re.sub(r'[€$£\s]', '', cleaned)
     cleaned = re.sub(r'(EUR|USD|GBP|CHF)', '', cleaned, flags=re.IGNORECASE)
     cleaned = cleaned.strip()
@@ -133,7 +133,7 @@ def parse_german_decimal(value: str) -> Optional[Decimal]:
             # Nur Komma: "1234,56" oder "50,00"
             cleaned = cleaned.replace(',', '.')
         elif has_dot:
-            # Nur Punkt - koennte Tausendertrenner oder Dezimaltrenner sein
+            # Nur Punkt - könnte Tausendertrenner oder Dezimaltrenner sein
             # Wenn genau 3 Ziffern nach dem Punkt -> Tausendertrenner
             parts = cleaned.split('.')
             if len(parts) == 2 and len(parts[1]) == 3 and parts[1].isdigit():
@@ -155,7 +155,7 @@ class LineItemExtractionService:
     """
     Service zum Extrahieren von Positionen aus Dokumenten.
 
-    Primaere Methode: Docling-Tabellen analysieren
+    Primäre Methode: Docling-Tabellen analysieren
     Fallback: Regex-basierte Extraktion aus OCR-Text
     """
 
@@ -173,7 +173,7 @@ class LineItemExtractionService:
 
         Args:
             tables: Liste von TableStructure-Objekten von Docling
-            document_type: Dokumenttyp fuer Kontextoptimierung
+            document_type: Dokumenttyp für Kontextoptimierung
 
         Returns:
             Liste von ExtractedLineItem-Objekten
@@ -223,7 +223,7 @@ class LineItemExtractionService:
         column_mapping = self._create_column_mapping(header_cells)
 
         if not column_mapping:
-            logger.debug(f"Kein Spalten-Mapping moeglich fuer Tabelle {table_idx}")
+            logger.debug(f"Kein Spalten-Mapping möglich für Tabelle {table_idx}")
             return []
 
         # Mindestens Beschreibung oder Preis muss vorhanden sein
@@ -252,8 +252,8 @@ class LineItemExtractionService:
         Returns:
             Zeilenindex (0-basiert) oder -1 wenn nicht gefunden
         """
-        # Strategie 1: is_header Flag pruefen
-        for row_idx in range(min(table.num_rows, 3)):  # Erste 3 Zeilen pruefen
+        # Strategie 1: is_header Flag prüfen
+        for row_idx in range(min(table.num_rows, 3)):  # Erste 3 Zeilen prüfen
             row_cells = table.get_row(row_idx)
             if any(cell.is_header for cell in row_cells):
                 return row_idx
@@ -262,7 +262,7 @@ class LineItemExtractionService:
         best_row = -1
         best_score = 0
 
-        for row_idx in range(min(table.num_rows, 3)):  # Erste 3 Zeilen pruefen
+        for row_idx in range(min(table.num_rows, 3)):  # Erste 3 Zeilen prüfen
             row_cells = table.get_row(row_idx)
             score = 0
 
@@ -329,8 +329,8 @@ class LineItemExtractionService:
             if not matched:
                 unmatched_cells.append(cell)
 
-        # Pass 2: Teilmatches (nur fuer noch nicht gematchte Zellen)
-        # Mindestens 3 Zeichen fuer Teilmatch, um zu kurze Patterns zu vermeiden
+        # Pass 2: Teilmatches (nur für noch nicht gematchte Zellen)
+        # Mindestens 3 Zeichen für Teilmatch, um zu kurze Patterns zu vermeiden
         for cell in unmatched_cells:
             cell_text = cell.text.strip().lower()
             col_idx = cell.col
@@ -367,7 +367,7 @@ class LineItemExtractionService:
             column_mapping: Spalte -> Feldname Mapping
 
         Returns:
-            ExtractedLineItem oder None wenn ungueltig
+            ExtractedLineItem oder None wenn ungültig
         """
         row_cells = table.get_row(row_idx)
         if not row_cells:
@@ -384,14 +384,14 @@ class LineItemExtractionService:
         if not values.get("description") and not values.get("total_price"):
             return None
 
-        # Leere Zeilen ueberspringen
+        # Leere Zeilen überspringen
         if all(not v for v in values.values()):
             return None
 
         # ExtractedLineItem erstellen
         try:
             item = ExtractedLineItem(
-                position=row_idx,  # Wird spaeter renummeriert
+                position=row_idx,  # Wird später renummeriert
                 article_number=values.get("article_number") or None,
                 description=values.get("description", "Unbekannte Position"),
                 quantity=parse_german_decimal(values.get("quantity", "")),
@@ -401,7 +401,7 @@ class LineItemExtractionService:
                 vat_rate=parse_german_decimal(values.get("vat_rate", ""))
             )
 
-            # Plausibilitaetspruefung: Zeile muss sinnvollen Inhalt haben
+            # Plausibilitaetsprüfung: Zeile muss sinnvollen Inhalt haben
             if self._is_valid_line_item(item):
                 return item
 
@@ -412,19 +412,19 @@ class LineItemExtractionService:
 
     def _is_valid_line_item(self, item: ExtractedLineItem) -> bool:
         """
-        Prueft ob ein LineItem gueltig ist.
+        Prüft ob ein LineItem gültig ist.
 
         Kriterien:
         - Beschreibung nicht leer (oder nur Zahlen)
         - Mindestens ein Preisfeld vorhanden
         - Keine reinen Summenzeilen
         """
-        # Beschreibung pruefen
+        # Beschreibung prüfen
         desc = item.description.strip()
         if not desc or desc.lower() in [
             "summe", "gesamt", "total", "zwischensumme",
             "netto", "brutto", "mwst", "ust", "endbetrag",
-            "uebertrag", "saldo", "---"
+            "übertrag", "saldo", "---"
         ]:
             return False
 
@@ -465,7 +465,7 @@ class LineItemExtractionService:
             r'(\d+(?:[,\.]\d+)?)\s*'  # Menge
             r'(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit)?\s*'  # Einheit
             r'(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?)\s*'  # Preis (auch 3,40)
-            r'(?:€|EUR)?\s*'  # Waehrung (optional)
+            r'(?:€|EUR)?\s*'  # Währung (optional)
             r'(\d{1,3}(?:\.\d{3})*(?:,\d{2}))?',  # Gesamtpreis (optional)
             re.IGNORECASE | re.MULTILINE
         )
@@ -476,9 +476,9 @@ class LineItemExtractionService:
         pattern_article_nr = re.compile(
             r'^\s*'
             r'([A-Z0-9]{1,4}[-]?[A-Z0-9]{1,10}(?:[-\.][A-Z0-9]+)*)\s+'  # Artikelnummer (flexibler)
-            r'(.+?)\s+'  # Beschreibung (bis zur naechsten Zahl)
+            r'(.+?)\s+'  # Beschreibung (bis zur nächsten Zahl)
             r'(\d+)\s*'  # Menge (ganze Zahl)
-            r'(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stueck)?\s+'  # Einheit (mit Whitespace danach)
+            r'(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stück)?\s+'  # Einheit (mit Whitespace danach)
             r'(\d{1,3}(?:\.\d{3})*(?:,\d{1,2}))\s*'  # E-Preis
             r'(?:€|EUR)?\s*'
             r'(\d{1,3}(?:\.\d{3})*(?:,\d{2}))',  # Gesamtpreis (erforderlich)
@@ -491,7 +491,7 @@ class LineItemExtractionService:
             r'^\s*'
             r'([A-Za-zäöüÄÖÜß][A-Za-zäöüÄÖÜß0-9\s,.\-/]{5,60}?)\s+'  # Beschreibung
             r'(\d+(?:[,\.]\d+)?)\s*'  # Menge
-            r'(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stueck)?\s*'  # Einheit
+            r'(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stück)?\s*'  # Einheit
             r'(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?)\s*'  # E-Preis
             r'(?:€|EUR)?\s*'
             r'(\d{1,3}(?:\.\d{3})*(?:,\d{2}))',  # Gesamtpreis (erforderlich)
@@ -619,7 +619,7 @@ class LineItemExtractionService:
 
         # Pattern für Menge + Einheit (z.B. "384 Pieces", "10 Stk")
         qty_unit_pattern = re.compile(
-            r'^(\d+(?:[,\.]\d+)?)\s*(pieces?|pcs?|stk|st|stck|kg|l|m|h|std|psch|unit|stueck)$',
+            r'^(\d+(?:[,\.]\d+)?)\s*(pieces?|pcs?|stk|st|stck|kg|l|m|h|std|psch|unit|stück)$',
             re.IGNORECASE
         )
 
@@ -753,7 +753,7 @@ _line_item_service: Optional[LineItemExtractionService] = None
 
 
 def get_line_item_extraction_service() -> LineItemExtractionService:
-    """Gibt die Singleton-Instanz des LineItemExtractionService zurueck."""
+    """Gibt die Singleton-Instanz des LineItemExtractionService zurück."""
     global _line_item_service
     if _line_item_service is None:
         _line_item_service = LineItemExtractionService()

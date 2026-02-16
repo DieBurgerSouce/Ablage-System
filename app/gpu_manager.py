@@ -620,7 +620,7 @@ class GPUManager:
             page_count=page_count
         )
 
-        # Aktuellen Status pruefen
+        # Aktuellen Status prüfen
         status = self.check_availability()
 
         if not status.get("available"):

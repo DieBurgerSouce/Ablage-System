@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-LoanScenarioService - What-If Analysen fuer Kredite.
+LoanScenarioService - What-If Analysen für Kredite.
 
-Ermoeglicht Simulationen:
+Ermöglicht Simulationen:
 1. Sondertilgung: Was passiert bei Extra-Zahlungen?
 2. Umschuldung: Lohnt sich ein neuer Kredit?
 3. Ratenänderung: Auswirkung auf Laufzeit/Zinsen
@@ -50,15 +50,15 @@ LOAN_SCENARIO_DURATION = Histogram(
 # Konstanten
 # =============================================================================
 
-# Typische Vorfaelligkeitsentschaedigungsregelung (vereinfacht)
+# Typische Vorfälligkeitsentschaedigungsregelung (vereinfacht)
 PREPAYMENT_PENALTY_RATE = Decimal("0.01")  # 1% des Restbetrags
 PREPAYMENT_PENALTY_MAX_MONTHS = 6  # oder 6 Monats-Zinsen
 
-# Umschuldungskosten (geschaetzt)
+# Umschuldungskosten (geschätzt)
 REFINANCING_COSTS = {
     "notar": Decimal("0.015"),           # 1.5% vom Kreditbetrag
     "grundbuch": Decimal("0.005"),       # 0.5% vom Kreditbetrag
-    "bearbeitungsgebuehr": Decimal("0"),  # seit 2014 nicht mehr erlaubt
+    "bearbeitungsgebühr": Decimal("0"),  # seit 2014 nicht mehr erlaubt
 }
 
 
@@ -181,7 +181,7 @@ class LoanComparison:
 
 @dataclass
 class TilgungsPlanResponse:
-    """Vollstaendiger Tilgungsplan."""
+    """Vollständiger Tilgungsplan."""
     loan_id: UUID
     loan_name: str
 
@@ -207,13 +207,13 @@ class TilgungsPlanResponse:
 
 class LoanScenarioService:
     """
-    Singleton Service fuer Kredit-Szenarien und What-If Analysen.
+    Singleton Service für Kredit-Szenarien und What-If Analysen.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Sondertilgungs-Simulationen
     - Umschuldungs-Analysen
     - Ratenänderungs-Szenarien
-    - Vollstaendige Tilgungsplaene
+    - Vollständige Tilgungsplaene
     """
 
     _instance: Optional["LoanScenarioService"] = None
@@ -380,7 +380,7 @@ class LoanScenarioService:
         if current_balance <= 0 or current_payment <= 0:
             return None
 
-        # Monatliche Zinssaetze
+        # Monatliche Zinssätze
         current_monthly_rate = current_rate / Decimal("100") / Decimal("12")
         new_monthly_rate = new_interest_rate / Decimal("100") / Decimal("12")
 
@@ -405,7 +405,7 @@ class LoanScenarioService:
             current_balance, new_payment, new_monthly_rate, new_term
         )
 
-        # Vorfaelligkeitsentschaedigung berechnen
+        # Vorfälligkeitsentschaedigung berechnen
         prepayment_penalty = self._calculate_prepayment_penalty(
             current_balance, current_monthly_rate
         )
@@ -434,9 +434,9 @@ class LoanScenarioService:
         is_recommended = net_savings > Decimal("1000") and (break_even_months is None or break_even_months <= 24)
 
         if net_savings <= 0:
-            recommendation_reason = "Die Umschuldung lohnt sich nicht - Kosten uebersteigen die Ersparnis."
+            recommendation_reason = "Die Umschuldung lohnt sich nicht - Kosten übersteigen die Ersparnis."
         elif break_even_months and break_even_months > 36:
-            recommendation_reason = f"Break-Even erst nach {break_even_months} Monaten - pruefe Alternative."
+            recommendation_reason = f"Break-Even erst nach {break_even_months} Monaten - prüfe Alternative."
             is_recommended = False
         elif is_recommended:
             recommendation_reason = f"Empfohlen! Netto-Ersparnis von {net_savings} EUR nach Kosten."
@@ -484,7 +484,7 @@ class LoanScenarioService:
         loan_id: UUID,
         new_monthly_payment: Decimal,
     ) -> Optional[PaymentChangeScenario]:
-        """Simuliert eine Aenderung der monatlichen Rate."""
+        """Simuliert eine Änderung der monatlichen Rate."""
         from app.db.models import PrivatLoan
 
         LOAN_SCENARIO_CALCULATIONS.labels(scenario_type="payment_change").inc()
@@ -556,7 +556,7 @@ class LoanScenarioService:
         )
 
     # =========================================================================
-    # Vollstaendiger Tilgungsplan
+    # Vollständiger Tilgungsplan
     # =========================================================================
 
     async def generate_full_amortization(
@@ -564,7 +564,7 @@ class LoanScenarioService:
         db: AsyncSession,
         loan_id: UUID,
     ) -> Optional[TilgungsPlanResponse]:
-        """Generiert einen vollstaendigen Tilgungsplan."""
+        """Generiert einen vollständigen Tilgungsplan."""
         from app.db.models import PrivatLoan
 
         LOAN_SCENARIO_CALCULATIONS.labels(scenario_type="amortization").inc()
@@ -623,7 +623,7 @@ class LoanScenarioService:
         extra_payments: List[Decimal] = None,
         new_rates: List[Decimal] = None,
     ) -> Optional[LoanComparison]:
-        """Vergleicht mehrere Szenarien fuer einen Kredit."""
+        """Vergleicht mehrere Szenarien für einen Kredit."""
         from app.db.models import PrivatLoan
 
         LOAN_SCENARIO_CALCULATIONS.labels(scenario_type="comparison").inc()
@@ -655,7 +655,7 @@ class LoanScenarioService:
 
         scenarios.append({
             "name": "baseline",
-            "description": "Aktueller Stand ohne Aenderung",
+            "description": "Aktueller Stand ohne Änderung",
             "remaining_months": baseline_months,
             "total_interest": str(baseline_interest),
             "net_savings": "0",
@@ -678,7 +678,7 @@ class LoanScenarioService:
                 if net_savings > best_net_savings:
                     best_net_savings = net_savings
                     best_scenario = f"Sondertilgung {extra} EUR"
-                    best_reason = f"Spart {net_savings} EUR Zinsen und verkuerzt um {scenario.months_saved} Monate"
+                    best_reason = f"Spart {net_savings} EUR Zinsen und verkürzt um {scenario.months_saved} Monate"
 
         # Refinancing Szenarien
         for new_rate in new_rates:
@@ -732,7 +732,7 @@ class LoanScenarioService:
             balance_float = float(balance)
             payment_float = float(payment)
 
-            # Pruefe ob Rate ueberhaupt tilgt
+            # Prüfe ob Rate überhaupt tilgt
             if payment_float <= balance_float * rate_float:
                 return 9999  # "unendlich"
 
@@ -748,7 +748,7 @@ class LoanScenarioService:
         monthly_rate: Decimal,
         months: int,
     ) -> Decimal:
-        """Berechnet die Gesamtzinsen ueber die Laufzeit."""
+        """Berechnet die Gesamtzinsen über die Laufzeit."""
         if months <= 0 or months >= 9999:
             return Decimal("0")
 
@@ -767,7 +767,7 @@ class LoanScenarioService:
         monthly_rate: Decimal,
         term_months: int,
     ) -> Decimal:
-        """Berechnet die monatliche Rate fuer einen Kredit."""
+        """Berechnet die monatliche Rate für einen Kredit."""
         if term_months <= 0 or principal <= 0:
             return Decimal("0")
 
@@ -791,7 +791,7 @@ class LoanScenarioService:
         remaining_balance: Decimal,
         monthly_rate: Decimal,
     ) -> Decimal:
-        """Berechnet die geschaetzte Vorfaelligkeitsentschaedigung."""
+        """Berechnet die geschätzte Vorfälligkeitsentschaedigung."""
         # Methode 1: 1% vom Restbetrag
         penalty_percentage = remaining_balance * PREPAYMENT_PENALTY_RATE
 
@@ -855,5 +855,5 @@ class LoanScenarioService:
 # =============================================================================
 
 def get_loan_scenario_service() -> LoanScenarioService:
-    """Gibt die Singleton-Instanz des Loan Scenario Service zurueck."""
+    """Gibt die Singleton-Instanz des Loan Scenario Service zurück."""
     return LoanScenarioService()

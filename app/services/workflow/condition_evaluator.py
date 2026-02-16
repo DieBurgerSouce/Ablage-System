@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Condition Evaluator fuer Workflows.
+"""Condition Evaluator für Workflows.
 
 Wiederverwendbare Bedingungsauswertung.
-Erweitert ImportRuleService-Logik fuer Workflows.
+Erweitert ImportRuleService-Logik für Workflows.
 """
 
 from __future__ import annotations
@@ -26,8 +26,8 @@ logger = structlog.get_logger(__name__)
 class ConditionEvaluator:
     """Wiederverwendbare Bedingungsauswertung.
 
-    Erweitert ImportRuleService-Logik fuer Workflows.
-    Unterstuetzt AND/OR-Verschachtelung und 20+ Operatoren.
+    Erweitert ImportRuleService-Logik für Workflows.
+    Unterstützt AND/OR-Verschachtelung und 20+ Operatoren.
     """
 
     # Operatoren (wiederverwendet von ImportRuleService + Erweiterungen)
@@ -63,19 +63,19 @@ class ConditionEvaluator:
         "is_true": lambda a, b: a is True or str(a).lower() in ("true", "1", "yes", "ja"),
         "is_false": lambda a, b: a is False or str(a).lower() in ("false", "0", "no", "nein"),
 
-        # Workflow-spezifische Operatoren (fuer Feldaenderungen)
+        # Workflow-spezifische Operatoren (für Feldänderungen)
         "changed": lambda context, field: _check_changed(context, field),
         "changed_to": lambda a, b: a == b,  # Aktueller Wert == Zielwert
         "changed_from": lambda context, field_old_value: _check_changed_from(context, field_old_value),
     }
 
-    # Verfuegbare Felder fuer Workflows
+    # Verfügbare Felder für Workflows
     AVAILABLE_FIELDS = {
         # Dokument-Felder
         "document.id": "Dokument-ID",
         "document.filename": "Dateiname",
         "document.file_extension": "Dateiendung",
-        "document.file_size": "Dateigroesse (Bytes)",
+        "document.file_size": "Dateigröße (Bytes)",
         "document.mime_type": "MIME-Type",
         "document.status": "Status",
         "document.document_type": "Dokumenttyp",
@@ -92,12 +92,12 @@ class ConditionEvaluator:
         "extracted_data.vendor_name": "Lieferant",
         "extracted_data.customer_name": "Kunde",
         "extracted_data.invoice_date": "Rechnungsdatum",
-        "extracted_data.due_date": "Faelligkeitsdatum",
+        "extracted_data.due_date": "Fälligkeitsdatum",
 
         # OCR-Felder
         "ocr.backend": "OCR-Backend",
         "ocr.confidence": "OCR-Konfidenz",
-        "ocr.text_length": "Textlaenge",
+        "ocr.text_length": "Textlänge",
 
         # AI-Felder
         "ai.confidence": "KI-Konfidenz",
@@ -122,11 +122,11 @@ class ConditionEvaluator:
         conditions: Dict[str, Any],
         context: "ExecutionContext",
     ) -> bool:
-        """Evaluiert Bedingungen gegen den Ausfuehrungskontext.
+        """Evaluiert Bedingungen gegen den Ausführungskontext.
 
         Args:
             conditions: Bedingungs-Struktur (AND/OR mit rules)
-            context: Ausfuehrungskontext mit Dokument, Variablen, etc.
+            context: Ausführungskontext mit Dokument, Variablen, etc.
 
         Returns:
             True wenn alle Bedingungen erfuellt sind
@@ -167,7 +167,7 @@ class ConditionEvaluator:
 
         Args:
             rule: Regel mit field, operator, value
-            context: Ausfuehrungskontext
+            context: Ausführungskontext
 
         Returns:
             True wenn Regel erfuellt
@@ -218,7 +218,7 @@ class ConditionEvaluator:
 
         Args:
             field: Feldpfad (z.B. "document.filename", "extracted_data.total_gross")
-            context: Ausfuehrungskontext
+            context: Ausführungskontext
 
         Returns:
             Feldwert oder None
@@ -330,7 +330,7 @@ class ConditionEvaluator:
         return _get_nested_value(step_output, remaining)
 
     def get_available_operators(self) -> List[Dict[str, str]]:
-        """Gibt verfuegbare Operatoren zurueck.
+        """Gibt verfügbare Operatoren zurück.
 
         Returns:
             Liste von Operatoren mit Name und Beschreibung
@@ -338,13 +338,13 @@ class ConditionEvaluator:
         return [
             {"id": "equals", "name": "Gleich", "description": "Wert ist gleich"},
             {"id": "not_equals", "name": "Ungleich", "description": "Wert ist ungleich"},
-            {"id": "contains", "name": "Enthaelt", "description": "Text enthaelt Wert"},
-            {"id": "not_contains", "name": "Enthaelt nicht", "description": "Text enthaelt Wert nicht"},
+            {"id": "contains", "name": "Enthält", "description": "Text enthält Wert"},
+            {"id": "not_contains", "name": "Enthält nicht", "description": "Text enthält Wert nicht"},
             {"id": "starts_with", "name": "Beginnt mit", "description": "Text beginnt mit Wert"},
             {"id": "ends_with", "name": "Endet mit", "description": "Text endet mit Wert"},
             {"id": "regex", "name": "Regex", "description": "Regulaerer Ausdruck"},
-            {"id": "greater_than", "name": "Groesser als", "description": "Zahl ist groesser"},
-            {"id": "greater_equal", "name": "Groesser gleich", "description": "Zahl ist groesser oder gleich"},
+            {"id": "greater_than", "name": "Größer als", "description": "Zahl ist größer"},
+            {"id": "greater_equal", "name": "Größer gleich", "description": "Zahl ist größer oder gleich"},
             {"id": "less_than", "name": "Kleiner als", "description": "Zahl ist kleiner"},
             {"id": "less_equal", "name": "Kleiner gleich", "description": "Zahl ist kleiner oder gleich"},
             {"id": "in_list", "name": "In Liste", "description": "Wert ist in Liste enthalten"},
@@ -358,7 +358,7 @@ class ConditionEvaluator:
         ]
 
     def get_available_fields(self) -> Dict[str, str]:
-        """Gibt verfuegbare Felder zurueck.
+        """Gibt verfügbare Felder zurück.
 
         Returns:
             Dictionary mit Feldpfad -> Beschreibung
@@ -407,14 +407,14 @@ def _get_nested_value(data: Dict[str, FieldValue], path: List[str]) -> FieldValu
 
 
 def _check_changed(context: "ExecutionContext", field: str) -> bool:
-    """Prueft ob ein Feld geaendert wurde."""
+    """Prüft ob ein Feld geändert wurde."""
     old_value = context.data.get("_old_values", {}).get(field)
     new_value = context.data.get(field)
     return old_value != new_value
 
 
 def _check_changed_from(context: "ExecutionContext", field_old_value: tuple) -> bool:
-    """Prueft ob ein Feld von einem bestimmten Wert geaendert wurde."""
+    """Prüft ob ein Feld von einem bestimmten Wert geändert wurde."""
     if not isinstance(field_old_value, (list, tuple)) or len(field_old_value) < 2:
         return False
     field, old_value = field_old_value[0], field_old_value[1]

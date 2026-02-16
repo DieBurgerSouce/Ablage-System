@@ -2,8 +2,8 @@
 """
 Budget API Endpoints.
 
-REST API fuer Budgetierung & Controlling:
-- CRUD fuer Budgets, Budget-Positionen, Kostenstellen
+REST API für Budgetierung & Controlling:
+- CRUD für Budgets, Budget-Positionen, Kostenstellen
 - Abweichungsberichte (Variance Reports)
 - Budget-Alerts
 - Auto-Kategorisierung aus OCR
@@ -51,11 +51,11 @@ router = APIRouter(prefix="/budgets", tags=["Budgets"])
 
 
 class KostenstelleCreateSchema(BaseModel):
-    """Schema fuer Kostenstellen-Erstellung."""
+    """Schema für Kostenstellen-Erstellung."""
     code: str = Field(..., min_length=1, max_length=50, description="Eindeutiger Code")
     name: str = Field(..., min_length=1, max_length=255, description="Name der Kostenstelle")
     description: Optional[str] = Field(None, max_length=1000)
-    parent_id: Optional[UUID] = Field(None, description="Uebergeordnete Kostenstelle")
+    parent_id: Optional[UUID] = Field(None, description="Übergeordnete Kostenstelle")
     responsible_user_id: Optional[UUID] = Field(None, description="Verantwortlicher User")
     category: Optional[str] = Field(None, max_length=100)
     valid_from: Optional[date] = None
@@ -64,7 +64,7 @@ class KostenstelleCreateSchema(BaseModel):
 
 
 class KostenstelleResponse(BaseModel):
-    """Response-Schema fuer Kostenstelle."""
+    """Response-Schema für Kostenstelle."""
     id: UUID
     code: str
     name: str
@@ -94,7 +94,7 @@ class KostenstelleTreeNode(BaseModel):
 
 
 class BudgetCreateSchema(BaseModel):
-    """Schema fuer Budget-Erstellung."""
+    """Schema für Budget-Erstellung."""
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=2000)
     period_type: BudgetPeriodType = Field(default=BudgetPeriodType.YEARLY)
@@ -112,7 +112,7 @@ class BudgetCreateSchema(BaseModel):
 
 
 class BudgetResponse(BaseModel):
-    """Response-Schema fuer Budget."""
+    """Response-Schema für Budget."""
     id: UUID
     name: str
     description: Optional[str]
@@ -169,7 +169,7 @@ class BudgetListResponse(BaseModel):
 
 
 class BudgetLineCreateSchema(BaseModel):
-    """Schema fuer Budget-Position-Erstellung."""
+    """Schema für Budget-Position-Erstellung."""
     name: str = Field(..., min_length=1, max_length=255)
     category: str = Field(..., min_length=1, max_length=100)
     subcategory: Optional[str] = Field(None, max_length=100)
@@ -182,7 +182,7 @@ class BudgetLineCreateSchema(BaseModel):
 
 
 class BudgetLineResponse(BaseModel):
-    """Response-Schema fuer Budget-Position."""
+    """Response-Schema für Budget-Position."""
     id: UUID
     budget_id: UUID
     kostenstelle_id: Optional[UUID]
@@ -206,7 +206,7 @@ class BudgetLineResponse(BaseModel):
 
 
 class AllocationCreateSchema(BaseModel):
-    """Schema fuer Budget-Zuordnung."""
+    """Schema für Budget-Zuordnung."""
     budget_line_id: UUID
     amount: float = Field(..., gt=0)
     booking_date: date
@@ -222,7 +222,7 @@ class AllocationCreateSchema(BaseModel):
 
 
 class AllocationResponse(BaseModel):
-    """Response-Schema fuer Budget-Zuordnung."""
+    """Response-Schema für Budget-Zuordnung."""
     id: UUID
     budget_id: UUID
     budget_line_id: UUID
@@ -255,7 +255,7 @@ class AllocationListResponse(BaseModel):
 
 
 class BudgetAlertResponse(BaseModel):
-    """Response-Schema fuer Budget-Alert."""
+    """Response-Schema für Budget-Alert."""
     id: UUID
     budget_id: UUID
     budget_line_id: Optional[UUID]
@@ -362,7 +362,7 @@ async def create_kostenstelle(
     description="Listet alle Kostenstellen der Firma"
 )
 async def list_kostenstellen(
-    include_inactive: bool = Query(False, description="Inaktive einschliessen"),
+    include_inactive: bool = Query(False, description="Inaktive einschließen"),
     parent_id: Optional[UUID] = Query(None, description="Nur Kinder dieser Kostenstelle"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -384,13 +384,13 @@ async def list_kostenstellen(
     "/kostenstellen/tree",
     response_model=List[KostenstelleTreeNode],
     summary="Kostenstellen-Baum",
-    description="Gibt hierarchische Kostenstellenstruktur zurueck"
+    description="Gibt hierarchische Kostenstellenstruktur zurück"
 )
 async def get_kostenstellen_tree(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[KostenstelleTreeNode]:
-    """Gibt Kostenstellen als Baum zurueck."""
+    """Gibt Kostenstellen als Baum zurück."""
     service = get_budget_service()
 
     tree = await service.get_kostenstelle_tree(db, current_user.company_id)
@@ -485,7 +485,7 @@ async def list_budgets(
     period_type: Optional[BudgetPeriodType] = Query(None, description="Perioden-Typ"),
     status: Optional[BudgetStatus] = Query(None, description="Status"),
     page: int = Query(0, ge=0, description="Seite (0-basiert)"),
-    page_size: int = Query(25, ge=1, le=100, description="Eintraege pro Seite"),
+    page_size: int = Query(25, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> BudgetListResponse:
@@ -555,7 +555,7 @@ async def get_budget(
     if not budget:
         raise HTTPException(status_code=404, detail="Budget nicht gefunden")
 
-    # Pruefe Zugriff
+    # Prüfe Zugriff
     if budget.company_id != current_user.company_id:
         raise HTTPException(status_code=403, detail="Kein Zugriff auf dieses Budget")
 
@@ -588,14 +588,14 @@ async def get_budget(
     "/{budget_id}/summary",
     response_model=BudgetSummaryResponse,
     summary="Budget-Zusammenfassung",
-    description="Gibt eine Zusammenfassung des Budgets zurueck"
+    description="Gibt eine Zusammenfassung des Budgets zurück"
 )
 async def get_budget_summary(
     budget_id: UUID = Path(..., description="Budget-ID"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> BudgetSummaryResponse:
-    """Gibt Budget-Zusammenfassung zurueck."""
+    """Gibt Budget-Zusammenfassung zurück."""
     service = get_budget_service()
 
     summary = await service.get_budget_summary(db, budget_id)
@@ -672,15 +672,15 @@ async def activate_budget(
 @router.post(
     "/{budget_id}/close",
     response_model=BudgetResponse,
-    summary="Budget schliessen",
-    description="Schliesst ein Budget ab"
+    summary="Budget schließen",
+    description="Schließt ein Budget ab"
 )
 async def close_budget(
     budget_id: UUID = Path(..., description="Budget-ID"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> BudgetResponse:
-    """Schliesst ein Budget."""
+    """Schließt ein Budget."""
     service = get_budget_service()
 
     try:
@@ -903,7 +903,7 @@ async def list_allocations(
     date_from: Optional[date] = Query(None, description="Ab Datum"),
     date_to: Optional[date] = Query(None, description="Bis Datum"),
     page: int = Query(0, ge=0, description="Seite"),
-    page_size: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
+    page_size: int = Query(50, ge=1, le=200, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> AllocationListResponse:
@@ -998,14 +998,14 @@ async def get_variance_report(
     "/alerts",
     response_model=List[BudgetAlertResponse],
     summary="Alerts auflisten",
-    description="Listet unbestaetigte Budget-Alerts"
+    description="Listet unbestätigte Budget-Alerts"
 )
 async def list_alerts(
     severity: Optional[AlertSeverity] = Query(None, description="Schweregrad-Filter"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[BudgetAlertResponse]:
-    """Listet unbestaetigte Alerts."""
+    """Listet unbestätigte Alerts."""
     service = get_budget_service()
 
     alerts = await service.list_unacknowledged_alerts(
@@ -1037,15 +1037,15 @@ async def list_alerts(
 @router.post(
     "/alerts/{alert_id}/acknowledge",
     response_model=BudgetAlertResponse,
-    summary="Alert bestaetigen",
-    description="Bestaetigt einen Budget-Alert"
+    summary="Alert bestätigen",
+    description="Bestätigt einen Budget-Alert"
 )
 async def acknowledge_alert(
     alert_id: UUID = Path(..., description="Alert-ID"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> BudgetAlertResponse:
-    """Bestaetigt einen Alert."""
+    """Bestätigt einen Alert."""
     service = get_budget_service()
 
     try:

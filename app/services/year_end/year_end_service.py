@@ -2,12 +2,12 @@
 """
 Jahresabschluss-Assistent Service.
 
-Vollstaendigkeitspruefung und Lueckenanalyse fuer den Jahresabschluss:
-- Belegvollstaendigkeit pro Monat
+Vollständigkeitsprüfung und Lückenanalyse für den Jahresabschluss:
+- Belegvollständigkeit pro Monat
 - Bankabgleich (unzugeordnete Transaktionen)
 - Offene Posten
 - Umsatzsteuer-Abstimmung
-- AfA-Vollstaendigkeit
+- AfA-Vollständigkeit
 - Reisekostenbelege
 
 Feinpoliert und durchdacht - Enterprise-grade Jahresabschluss.
@@ -49,13 +49,13 @@ _MONTH_NAMES = [
 
 
 class YearEndService:
-    """Service fuer Jahresabschluss-Assistenten."""
+    """Service für Jahresabschluss-Assistenten."""
 
     def _build_standard_checklist(self) -> List[Dict[str, str]]:
-        """Erstellt die Standard-Checkliste fuer den Jahresabschluss.
+        """Erstellt die Standard-Checkliste für den Jahresabschluss.
 
         Returns:
-            Liste von Pruefpunkten mit category und check_name.
+            Liste von Prüfpunkten mit category und check_name.
         """
         items: List[Dict[str, str]] = []
 
@@ -63,28 +63,28 @@ class YearEndService:
         for i, month_name in enumerate(_MONTH_NAMES, start=1):
             items.append({
                 "category": "Eingangsrechnungen",
-                "check_name": f"Eingangsrechnungen {month_name} vollstaendig",
+                "check_name": f"Eingangsrechnungen {month_name} vollständig",
             })
 
         # Ausgangsrechnungen pro Monat (12 Items)
         for i, month_name in enumerate(_MONTH_NAMES, start=1):
             items.append({
                 "category": "Ausgangsrechnungen",
-                "check_name": f"Ausgangsrechnungen {month_name} vollstaendig",
+                "check_name": f"Ausgangsrechnungen {month_name} vollständig",
             })
 
-        # Einzelne Pruefpunkte
+        # Einzelne Prüfpunkte
         single_checks = [
-            ("Bankabgleich", "Bankabgleich durchgefuehrt"),
+            ("Bankabgleich", "Bankabgleich durchgeführt"),
             ("Offene Posten", "Offene Posten bereinigt"),
             ("Umsatzsteuer", "Umsatzsteuer-Voranmeldungen abgeglichen"),
-            ("Umsatzsteuer", "Jahres-Umsatzsteuererklaerung vorbereitet"),
+            ("Umsatzsteuer", "Jahres-Umsatzsteuererklärung vorbereitet"),
             ("Anlagevermoegen", "Anlageverzeichnis aktualisiert"),
-            ("Reisekosten", "Reisekosten vollstaendig"),
-            ("Bewirtung", "Bewirtungsbelege geprueft"),
-            ("Kasse", "Kassenabschluss durchgefuehrt"),
+            ("Reisekosten", "Reisekosten vollständig"),
+            ("Bewirtung", "Bewirtungsbelege geprüft"),
+            ("Kasse", "Kassenabschluss durchgeführt"),
             ("Lohn", "Lohnkonten abgestimmt"),
-            ("Rueckstellungen", "Rueckstellungen gebildet"),
+            ("Rückstellungen", "Rückstellungen gebildet"),
         ]
         for category, check_name in single_checks:
             items.append({
@@ -106,7 +106,7 @@ class YearEndService:
         Args:
             db: Datenbank-Session.
             company_id: Unternehmens-ID.
-            fiscal_year: Geschaeftsjahr (z.B. 2025).
+            fiscal_year: Geschäftsjahr (z.B. 2025).
             user_id: ID des Benutzers, der den Abschluss startet.
 
         Returns:
@@ -155,7 +155,7 @@ class YearEndService:
         session_id: UUID,
         company_id: UUID,
     ) -> Optional[YearEndSession]:
-        """Laedt eine Session mit Pruefpunkten und Luecken.
+        """Laedt eine Session mit Prüfpunkten und Lücken.
 
         Args:
             db: Datenbank-Session.
@@ -195,7 +195,7 @@ class YearEndService:
             db: Datenbank-Session.
             company_id: Unternehmens-ID (RLS).
             page: Seitennummer (1-basiert).
-            per_page: Eintraege pro Seite.
+            per_page: Einträge pro Seite.
 
         Returns:
             Tuple aus (Sessions-Liste, Gesamtanzahl).
@@ -234,14 +234,14 @@ class YearEndService:
         session_id: UUID,
         company_id: UUID,
     ) -> YearEndSession:
-        """Fuehrt die automatische Vollstaendigkeitspruefung durch.
+        """Führt die automatische Vollständigkeitsprüfung durch.
 
-        Prueft:
-        1. Belegvollstaendigkeit pro Monat
+        Prüft:
+        1. Belegvollständigkeit pro Monat
         2. Bankabgleich (unzugeordnete Transaktionen)
         3. Offene Posten
         4. Umsatzsteuer-Abstimmung
-        5. AfA-Vollstaendigkeit
+        5. AfA-Vollständigkeit
         6. Reisekostenbelege
 
         Args:
@@ -276,7 +276,7 @@ class YearEndService:
                 item.checked_at = utc_now()
                 item.details_json = {
                     "monat": month_index,
-                    "luecken": gap_count,
+                    "lücken": gap_count,
                 }
 
                 if status_str == CheckItemStatus.PASSED.value:
@@ -286,7 +286,7 @@ class YearEndService:
                 else:
                     failed += 1
 
-                # Luecken als Gaps erfassen
+                # Lücken als Gaps erfassen
                 if gap_count > 0:
                     gap = YearEndGap(
                         session_id=session_id,
@@ -330,8 +330,8 @@ class YearEndService:
                     db.add(gap)
 
             else:
-                # Andere Pruefpunkte als PENDING belassen
-                # (manuelle Pruefung erforderlich)
+                # Andere Prüfpunkte als PENDING belassen
+                # (manuelle Prüfung erforderlich)
                 pass
 
         # Fortschritt berechnen
@@ -346,7 +346,7 @@ class YearEndService:
         await db.refresh(session)
 
         logger.info(
-            "Vollstaendigkeitspruefung abgeschlossen",
+            "Vollständigkeitsprüfung abgeschlossen",
             session_id=str(session_id),
             passed=passed,
             warnings=warnings,
@@ -364,7 +364,7 @@ class YearEndService:
         month: Optional[int] = None,
         resolved: Optional[bool] = None,
     ) -> List[YearEndGap]:
-        """Listet Luecken einer Session mit optionalen Filtern.
+        """Listet Lücken einer Session mit optionalen Filtern.
 
         Args:
             db: Datenbank-Session.
@@ -375,7 +375,7 @@ class YearEndService:
             resolved: Optional - nach Loesungsstatus filtern.
 
         Returns:
-            Liste der Luecken.
+            Liste der Lücken.
         """
         conditions = [
             YearEndGap.session_id == session_id,
@@ -404,20 +404,20 @@ class YearEndService:
         user_id: UUID,
         notes: str,
     ) -> YearEndGap:
-        """Markiert eine Luecke als behoben.
+        """Markiert eine Lücke als behoben.
 
         Args:
             db: Datenbank-Session.
-            gap_id: Luecken-ID.
+            gap_id: Lücken-ID.
             company_id: Unternehmens-ID (RLS).
             user_id: ID des Benutzers.
             notes: Loesungsbeschreibung.
 
         Returns:
-            Die aktualisierte Luecke.
+            Die aktualisierte Lücke.
 
         Raises:
-            ValueError: Wenn die Luecke nicht gefunden wurde.
+            ValueError: Wenn die Lücke nicht gefunden wurde.
         """
         stmt = select(YearEndGap).where(
             and_(
@@ -429,7 +429,7 @@ class YearEndService:
         gap = result.scalar_one_or_none()
 
         if gap is None:
-            raise ValueError("Luecke nicht gefunden")
+            raise ValueError("Lücke nicht gefunden")
 
         gap.is_resolved = True
         gap.resolved_by = user_id
@@ -440,7 +440,7 @@ class YearEndService:
         await db.refresh(gap)
 
         logger.info(
-            "Luecke behoben",
+            "Lücke behoben",
             gap_id=str(gap_id),
             category=gap.category,
         )
@@ -455,21 +455,21 @@ class YearEndService:
         user_id: UUID,
         notes: Optional[str] = None,
     ) -> YearEndCheckItem:
-        """Aktualisiert den Status eines Pruefpunkts.
+        """Aktualisiert den Status eines Prüfpunkts.
 
         Args:
             db: Datenbank-Session.
-            item_id: Pruefpunkt-ID.
+            item_id: Prüfpunkt-ID.
             company_id: Unternehmens-ID (RLS).
             status: Neuer Status.
             user_id: ID des Benutzers.
             notes: Optionale Anmerkungen.
 
         Returns:
-            Der aktualisierte Pruefpunkt.
+            Der aktualisierte Prüfpunkt.
 
         Raises:
-            ValueError: Wenn der Pruefpunkt nicht gefunden wurde.
+            ValueError: Wenn der Prüfpunkt nicht gefunden wurde.
         """
         stmt = select(YearEndCheckItem).where(
             and_(
@@ -481,7 +481,7 @@ class YearEndService:
         item = result.scalar_one_or_none()
 
         if item is None:
-            raise ValueError("Pruefpunkt nicht gefunden")
+            raise ValueError("Prüfpunkt nicht gefunden")
 
         item.status = status
         item.checked_at = utc_now()
@@ -495,7 +495,7 @@ class YearEndService:
         await db.refresh(item)
 
         logger.info(
-            "Pruefpunkt aktualisiert",
+            "Prüfpunkt aktualisiert",
             item_id=str(item_id),
             status=status,
         )
@@ -507,7 +507,7 @@ class YearEndService:
         session_id: UUID,
         company_id: UUID,
     ) -> Dict[str, object]:
-        """Generiert umfassende Berichtsdaten fuer den Steuerberater.
+        """Generiert umfassende Berichtsdaten für den Steuerberater.
 
         Args:
             db: Datenbank-Session.
@@ -526,31 +526,31 @@ class YearEndService:
 
         # Zusammenfassung
         summary: Dict[str, object] = {
-            "geschaeftsjahr": session.fiscal_year,
+            "geschäftsjahr": session.fiscal_year,
             "status": session.status,
             "fortschritt_prozent": session.progress_percent,
-            "gesamt_pruefpunkte": session.total_checks,
+            "gesamt_prüfpunkte": session.total_checks,
             "bestanden": session.passed_checks,
             "warnungen": session.warning_checks,
             "fehlgeschlagen": session.failed_checks,
         }
 
-        # Pruefpunkte nach Kategorie gruppiert
+        # Prüfpunkte nach Kategorie gruppiert
         categories: Dict[str, List[Dict[str, object]]] = {}
         for item in session.check_items:
             cat = item.category
             if cat not in categories:
                 categories[cat] = []
             categories[cat].append({
-                "pruefpunkt": item.check_name,
+                "prüfpunkt": item.check_name,
                 "status": item.status,
                 "details": item.details_json,
-                "geprueft_am": (
+                "geprüft_am": (
                     item.checked_at.isoformat() if item.checked_at else None
                 ),
             })
 
-        # Luecken nach Kategorie
+        # Lücken nach Kategorie
         gap_analysis: Dict[str, List[Dict[str, object]]] = {}
         total_gap_amount = Decimal("0.00")
         for gap in session.gaps:
@@ -578,9 +578,9 @@ class YearEndService:
             month_breakdown.append({
                 "monat": month_idx,
                 "name": _MONTH_NAMES[month_idx - 1],
-                "luecken_gesamt": len(month_gaps),
-                "luecken_behoben": sum(1 for g in month_gaps if g.is_resolved),
-                "pruefpunkte_bestanden": sum(
+                "lücken_gesamt": len(month_gaps),
+                "lücken_behoben": sum(1 for g in month_gaps if g.is_resolved),
+                "prüfpunkte_bestanden": sum(
                     1 for c in month_checks
                     if c.status == CheckItemStatus.PASSED.value
                 ),
@@ -590,7 +590,7 @@ class YearEndService:
         total_gaps = len(session.gaps)
         resolved_gaps = sum(1 for g in session.gaps if g.is_resolved)
         resolution_progress: Dict[str, object] = {
-            "gesamt_luecken": total_gaps,
+            "gesamt_lücken": total_gaps,
             "behoben": resolved_gaps,
             "offen": total_gaps - resolved_gaps,
             "fortschritt_prozent": (
@@ -603,30 +603,30 @@ class YearEndService:
         empfehlungen: List[str] = []
         if session.failed_checks > 0:
             empfehlungen.append(
-                f"{session.failed_checks} Pruefpunkte fehlgeschlagen - "
+                f"{session.failed_checks} Prüfpunkte fehlgeschlagen - "
                 "bitte vor Abschluss korrigieren."
             )
         if total_gaps - resolved_gaps > 0:
             empfehlungen.append(
-                f"{total_gaps - resolved_gaps} offene Luecken muessen "
+                f"{total_gaps - resolved_gaps} offene Lücken müssen "
                 "noch behoben werden."
             )
         if session.warning_checks > 0:
             empfehlungen.append(
                 f"{session.warning_checks} Warnungen sollten "
-                "geprueft werden."
+                "geprüft werden."
             )
         if not empfehlungen:
             empfehlungen.append(
-                "Alle Pruefungen bestanden. "
+                "Alle Prüfungen bestanden. "
                 "Der Jahresabschluss kann abgeschlossen werden."
             )
 
         report_data: Dict[str, object] = {
             "zusammenfassung": summary,
-            "pruefpunkte_nach_kategorie": categories,
-            "luecken_analyse": gap_analysis,
-            "monats_uebersicht": month_breakdown,
+            "prüfpunkte_nach_kategorie": categories,
+            "lücken_analyse": gap_analysis,
+            "monats_übersicht": month_breakdown,
             "loesungsfortschritt": resolution_progress,
             "empfehlungen": empfehlungen,
         }
@@ -649,9 +649,9 @@ class YearEndService:
         company_id: UUID,
         user_id: UUID,
     ) -> YearEndSession:
-        """Schliesst eine Jahresabschluss-Session ab.
+        """Schließt eine Jahresabschluss-Session ab.
 
-        Validiert, dass alle kritischen Pruefpunkte bestanden sind.
+        Validiert, dass alle kritischen Prüfpunkte bestanden sind.
 
         Args:
             db: Datenbank-Session.
@@ -669,7 +669,7 @@ class YearEndService:
         if session is None:
             raise ValueError("Jahresabschluss-Session nicht gefunden")
 
-        # Pruefen, ob kritische Checks fehlgeschlagen sind
+        # Prüfen, ob kritische Checks fehlgeschlagen sind
         failed_items = [
             item for item in session.check_items
             if item.status == CheckItemStatus.FAILED.value
@@ -678,7 +678,7 @@ class YearEndService:
             failed_names = [item.check_name for item in failed_items[:5]]
             raise ValueError(
                 f"Jahresabschluss kann nicht abgeschlossen werden. "
-                f"{len(failed_items)} fehlgeschlagene Pruefpunkte: "
+                f"{len(failed_items)} fehlgeschlagene Prüfpunkte: "
                 f"{', '.join(failed_names)}"
             )
 
@@ -705,16 +705,16 @@ class YearEndService:
         year: int,
         month: int,
     ) -> Tuple[str, int]:
-        """Prueft die Belegvollstaendigkeit fuer einen Monat.
+        """Prüft die Belegvollständigkeit für einen Monat.
 
         Args:
             db: Datenbank-Session.
             company_id: Unternehmens-ID.
-            year: Geschaeftsjahr.
+            year: Geschäftsjahr.
             month: Monat (1-12).
 
         Returns:
-            Tuple aus (Status-String, Anzahl Luecken).
+            Tuple aus (Status-String, Anzahl Lücken).
         """
         try:
             # Dokumente im Monat zaehlen
@@ -743,7 +743,7 @@ class YearEndService:
 
         except Exception as e:
             logger.warning(
-                "Belegpruefung fehlgeschlagen",
+                "Belegprüfung fehlgeschlagen",
                 **safe_error_log(e),
                 month=month,
                 year=year,
@@ -756,24 +756,24 @@ class YearEndService:
         company_id: UUID,
         year: int,
     ) -> Tuple[str, int]:
-        """Prueft den Bankabgleich auf nicht zugeordnete Transaktionen.
+        """Prüft den Bankabgleich auf nicht zugeordnete Transaktionen.
 
         BankTransaction hat kein direktes company_id. Der Zugriff
-        erfolgt ueber BankAccount -> User -> UserCompany.
-        Fuer den Jahresabschluss zaehlen wir nicht zugeordnete
-        Transaktionen (matched_document_id IS NULL) im Geschaeftsjahr.
+        erfolgt über BankAccount -> User -> UserCompany.
+        Für den Jahresabschluss zaehlen wir nicht zugeordnete
+        Transaktionen (matched_document_id IS NULL) im Geschäftsjahr.
 
         Args:
             db: Datenbank-Session.
             company_id: Unternehmens-ID.
-            year: Geschaeftsjahr.
+            year: Geschäftsjahr.
 
         Returns:
             Tuple aus (Status-String, Anzahl nicht zugeordneter Transaktionen).
         """
         try:
             # Nicht zugeordnete Transaktionen zaehlen
-            # Join: BankTransaction -> BankAccount (ueber bank_account_id)
+            # Join: BankTransaction -> BankAccount (über bank_account_id)
             stmt = (
                 select(func.count())
                 .select_from(BankTransaction)
@@ -800,7 +800,7 @@ class YearEndService:
 
         except Exception as e:
             logger.warning(
-                "Bankabgleich-Pruefung fehlgeschlagen",
+                "Bankabgleich-Prüfung fehlgeschlagen",
                 **safe_error_log(e),
                 year=year,
             )

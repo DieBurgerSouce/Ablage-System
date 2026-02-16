@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """TAN Handler Service.
 
-Verwaltet TAN-Challenges und -Verifikation fuer SEPA-Zahlungen.
+Verwaltet TAN-Challenges und -Verifikation für SEPA-Zahlungen.
 
-Unterstuetzte TAN-Verfahren:
+Unterstützte TAN-Verfahren:
 - pushTAN (App-basiert)
 - photoTAN (QR-Code)
 - chipTAN (Karte + Leser)
@@ -59,7 +59,7 @@ class TANChallenge:
     method: TANMethod
     challenge_data: Optional[str]  # Base64-kodierte Daten (z.B. QR-Code)
     challenge_text: Optional[str]  # Menschenlesbare Challenge
-    flicker_code: Optional[str]  # Fuer chipTAN
+    flicker_code: Optional[str]  # Für chipTAN
     status: ChallengeStatus
     created_at: datetime
     expires_at: datetime
@@ -80,7 +80,7 @@ class TANVerificationResult:
 
 
 class TANHandlerService:
-    """Service fuer TAN-Challenge und -Verifikation."""
+    """Service für TAN-Challenge und -Verifikation."""
 
     # Konfiguration
     CHALLENGE_TIMEOUT_MINUTES = 5
@@ -100,13 +100,13 @@ class TANHandlerService:
         """Initialisiere TAN-Handler.
 
         Args:
-            secret_key: Geheimer Schluessel fuer Challenge-Signierung
+            secret_key: Geheimer Schluessel für Challenge-Signierung
         """
         self._secret_key = secret_key or secrets.token_hex(32)
         # FAANG-AUDIT FIX: In-Memory Stores als Instanz-Variablen
-        # WICHTIG: Muessen Instanz-Variablen sein, damit jede Service-Instanz
+        # WICHTIG: Müssen Instanz-Variablen sein, damit jede Service-Instanz
         # eigene Daten hat und keine Cross-Instance Data Leakage entsteht!
-        # In Produktion: Diese sollten durch Redis ersetzt werden fuer
+        # In Produktion: Diese sollten durch Redis ersetzt werden für
         # Multi-Worker-Synchronisation.
         self._challenges: Dict[str, TANChallenge] = {}
         self._rate_limits: Dict[str, List[datetime]] = {}
@@ -129,14 +129,14 @@ class TANHandlerService:
             payment_id: Zahlungs-ID
             user_id: Benutzer-ID
             method: TAN-Verfahren
-            amount: Betrag (fuer Challenge-Text)
-            creditor: Empfaenger (fuer Challenge-Text)
-            iban: IBAN (fuer Challenge-Text)
+            amount: Betrag (für Challenge-Text)
+            creditor: Empfänger (für Challenge-Text)
+            iban: IBAN (für Challenge-Text)
 
         Returns:
             TANChallenge
         """
-        # Rate-Limiting pruefen
+        # Rate-Limiting prüfen
         if not self._check_rate_limit(user_id):
             raise ValueError("Zu viele TAN-Anfragen. Bitte warten Sie einige Minuten.")
 
@@ -205,7 +205,7 @@ class TANHandlerService:
         """
         user_key = str(user_id)
 
-        # SECURITY: User-Lockout pruefen
+        # SECURITY: User-Lockout prüfen
         if self._is_user_locked(user_id):
             logger.warning(
                 "tan_verification_blocked",
@@ -215,7 +215,7 @@ class TANHandlerService:
             return TANVerificationResult(
                 success=False,
                 challenge_id=challenge_id,
-                message="Konto temporaer gesperrt. Bitte versuchen Sie es spaeter erneut.",
+                message="Konto temporaer gesperrt. Bitte versuchen Sie es später erneut.",
                 locked=True,
             )
 
@@ -247,7 +247,7 @@ class TANHandlerService:
                 message="Challenge nicht gefunden",
             )
 
-        # User-Zugehoerigkeit pruefen
+        # User-Zugehoerigkeit prüfen
         if challenge.user_id != user_id:
             logger.warning(
                 "tan_verification_failed",
@@ -260,7 +260,7 @@ class TANHandlerService:
                 message="Zugriff verweigert",
             )
 
-        # Status pruefen
+        # Status prüfen
         if challenge.status != ChallengeStatus.PENDING:
             return TANVerificationResult(
                 success=False,
@@ -268,7 +268,7 @@ class TANHandlerService:
                 message=f"Challenge-Status: {challenge.status.value}",
             )
 
-        # Ablauf pruefen
+        # Ablauf prüfen
         if utc_now() > challenge.expires_at:
             challenge.status = ChallengeStatus.EXPIRED
             logger.info(
@@ -304,7 +304,7 @@ class TANHandlerService:
                 return TANVerificationResult(
                     success=False,
                     challenge_id=challenge_id,
-                    message="Maximale Versuche ueberschritten. Konto wird temporaer gesperrt." if is_locked else "Maximale Versuche ueberschritten",
+                    message="Maximale Versuche überschritten. Konto wird temporaer gesperrt." if is_locked else "Maximale Versuche überschritten",
                     remaining_attempts=0,
                     locked=is_locked,
                 )
@@ -318,7 +318,7 @@ class TANHandlerService:
             return TANVerificationResult(
                 success=False,
                 challenge_id=challenge_id,
-                message="Ungueltige TAN",
+                message="Ungültige TAN",
                 remaining_attempts=remaining,
             )
 
@@ -394,7 +394,7 @@ class TANHandlerService:
         if challenge.user_id != user_id:
             return None
 
-        # Pruefe Ablauf
+        # Prüfe Ablauf
         if challenge.status == ChallengeStatus.PENDING:
             if utc_now() > challenge.expires_at:
                 challenge.status = ChallengeStatus.EXPIRED
@@ -402,7 +402,7 @@ class TANHandlerService:
         return challenge
 
     def get_available_methods(self, user_id: UUID) -> List[Dict[str, Any]]:
-        """Hole verfuegbare TAN-Verfahren fuer User.
+        """Hole verfügbare TAN-Verfahren für User.
 
         In Produktion wuerde dies aus User-Einstellungen oder Bank-API kommen.
 
@@ -478,12 +478,12 @@ class TANHandlerService:
         iban: Optional[str],
     ) -> str:
         """Generiere menschenlesbaren Challenge-Text."""
-        parts = ["Zahlung bestaetigen:"]
+        parts = ["Zahlung bestätigen:"]
 
         if amount:
             parts.append(f"Betrag: {amount:.2f} EUR")
         if creditor:
-            parts.append(f"Empfaenger: {creditor}")
+            parts.append(f"Empfänger: {creditor}")
         if iban:
             # IBAN maskieren
             masked_iban = f"{iban[:4]}...{iban[-4:]}"
@@ -539,12 +539,12 @@ class TANHandlerService:
             tan: Eingegebene TAN
 
         Returns:
-            True wenn gueltig
+            True wenn gültig
         """
-        # Einfache Validierung fuer Development
+        # Einfache Validierung für Development
         # In Produktion: Bank-API oder HMAC-Verifikation
 
-        # TAN-Format pruefen (6 Ziffern)
+        # TAN-Format prüfen (6 Ziffern)
         if not tan or len(tan) != 6:
             return False
 
@@ -568,7 +568,7 @@ class TANHandlerService:
         return hmac.compare_digest(tan, expected_tan)
 
     def _compute_expected_tan(self, challenge: TANChallenge) -> str:
-        """Berechne erwartete TAN (fuer Simulation).
+        """Berechne erwartete TAN (für Simulation).
 
         In Produktion: Bank-seitige Generierung.
         """
@@ -583,7 +583,7 @@ class TANHandlerService:
         return str(int(h.hexdigest()[:8], 16) % 1000000).zfill(6)
 
     def _check_rate_limit(self, user_id: UUID) -> bool:
-        """Pruefe Rate-Limit.
+        """Prüfe Rate-Limit.
 
         Args:
             user_id: Benutzer-ID
@@ -601,7 +601,7 @@ class TANHandlerService:
         # Entferne alte Requests
         requests = [r for r in requests if r > window_start]
 
-        # Pruefe Limit
+        # Prüfe Limit
         if len(requests) >= self.RATE_LIMIT_MAX:
             return False
 
@@ -612,7 +612,7 @@ class TANHandlerService:
         return True
 
     def _check_tan_verify_rate_limit(self, user_id: UUID) -> bool:
-        """Pruefe Rate-Limit fuer TAN-Verifikation.
+        """Prüfe Rate-Limit für TAN-Verifikation.
 
         Verhindert Brute-Force-Angriffe durch Limitierung der
         Verifikationsversuche pro Zeitfenster.
@@ -633,7 +633,7 @@ class TANHandlerService:
         # Entferne alte Versuche
         attempts = [a for a in attempts if a > window_start]
 
-        # Pruefe Limit
+        # Prüfe Limit
         if len(attempts) >= self.TAN_VERIFY_RATE_LIMIT_MAX:
             return False
 
@@ -644,7 +644,7 @@ class TANHandlerService:
         return True
 
     def _is_user_locked(self, user_id: UUID) -> bool:
-        """Pruefe ob User gesperrt ist.
+        """Prüfe ob User gesperrt ist.
 
         Args:
             user_id: Benutzer-ID
@@ -658,7 +658,7 @@ class TANHandlerService:
         if not lockout_time:
             return False
 
-        # Pruefe ob Lockout abgelaufen
+        # Prüfe ob Lockout abgelaufen
         if utc_now() > lockout_time + timedelta(seconds=self.USER_LOCKOUT_DURATION):
             # Lockout aufheben
             del self._user_lockouts[user_key]
@@ -668,7 +668,7 @@ class TANHandlerService:
         return True
 
     def _increment_failed_challenges(self, user_id: UUID) -> None:
-        """Erhoehe Zaehler fuer fehlgeschlagene Challenges.
+        """Erhöhe Zähler für fehlgeschlagene Challenges.
 
         Args:
             user_id: Benutzer-ID
@@ -678,7 +678,7 @@ class TANHandlerService:
         self._failed_challenges[user_key] = current + 1
 
     def _check_and_lock_user_if_needed(self, user_id: UUID) -> bool:
-        """Pruefe und sperre User bei zu vielen Fehlversuchen.
+        """Prüfe und sperre User bei zu vielen Fehlversuchen.
 
         Args:
             user_id: Benutzer-ID

@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-LLM OCR Review Service fuer Ablage-System.
+LLM OCR Review Service für Ablage-System.
 
 LLM-basierte Review und Korrektur von OCR-Ergebnissen (Phase 6).
 
-Verwendet Ollama (Qwen3-8B/14B) fuer:
+Verwendet Ollama (Qwen3-8B/14B) für:
 1. Semantische Validierung (macht der Text Sinn?)
 2. Fehlerkorrektur (OCR-typische Fehler beheben)
-3. Qualitaetsbewertung (Score 1-10)
+3. Qualitätsbewertung (Score 1-10)
 4. Entscheidung: Accept nach Korrektur oder ablehnen
 
 Feinpoliert und durchdacht - Enterprise-grade OCR Quality Review.
@@ -89,7 +89,7 @@ class BatchReviewResult:
 # LLM Prompts
 # =============================================================================
 
-REVIEW_SYSTEM_PROMPT = """Du bist ein spezialisierter OCR-Qualitaetsprufer fuer deutsche Geschaeftsdokumente.
+REVIEW_SYSTEM_PROMPT = """Du bist ein spezialisierter OCR-Qualitätsprufer für deutsche Geschäftsdokumente.
 
 Deine Aufgabe ist es, OCR-extrahierten Text zu analysieren und NUR ECHTE FEHLER zu finden.
 
@@ -104,7 +104,7 @@ Du darfst NICHT als Fehler melden:
 - Korrekte deutsche Fachbegriffe und Redewendungen wie "frei Haus", "z.Hd.", "lt.", "ggf."
 - Unternehmensnamen mit ungewoehnlicher Schreibweise (a.b.s., GmbH & Co. KG)
 - Produktcodes, Artikelnummern, IBANs, Rechnungsnummern
-- Abkuerzungen die im Geschaeftskontext ueblich sind
+- Abkürzungen die im Geschäftskontext ueblich sind
 
 Wenn du dir nicht 100% sicher bist, dass etwas ein OCR-Fehler ist, melde es NICHT.
 Erfinde NIEMALS Korrekturen. Wenn ein Wort korrekt aussieht, ist es wahrscheinlich korrekt."""
@@ -127,7 +127,7 @@ Suche NUR nach diesen ECHTEN OCR-Problemen:
 IGNORIERE und melde NICHT:
 - "frei Haus" ist KORREKT (nicht "freihaus")
 - "a.b.s." ist ein Firmenname, KEIN Fehler
-- "Lt." fuer "Laut" ist eine korrekte Abkuerzung
+- "Lt." für "Laut" ist eine korrekte Abkürzung
 - "z.Hd." ist korrekt
 - Artikelnummern wie "2006-R" oder "180 my" sind KEINE Fehler
 - Formatierung, Kommasetzung, Stilfragen
@@ -162,10 +162,10 @@ class LLMOCRReviewService:
     """
     LLM-basierte Review und Korrektur von OCR-Ergebnissen.
 
-    Verwendet Ollama (Qwen3) fuer:
+    Verwendet Ollama (Qwen3) für:
     1. Semantische Validierung (macht der Text Sinn?)
     2. Fehlerkorrektur (OCR-typische Fehler beheben)
-    3. Qualitaetsbewertung (Score 1-10)
+    3. Qualitätsbewertung (Score 1-10)
     4. Entscheidung: Accept nach Korrektur oder ablehnen
 
     Circuit Breaker Pattern:
@@ -174,10 +174,10 @@ class LLMOCRReviewService:
     - HALF_OPEN: Test with single request
     """
 
-    # Maximale Textlaenge fuer LLM-Review (Token-Limit beachten)
+    # Maximale Textlänge für LLM-Review (Token-Limit beachten)
     MAX_TEXT_LENGTH = 8000
 
-    # Minimale Textlaenge fuer sinnvolle Review
+    # Minimale Textlänge für sinnvolle Review
     MIN_TEXT_LENGTH = 20
 
     # Circuit Breaker States (class-level for singleton pattern)
@@ -309,11 +309,11 @@ class LLMOCRReviewService:
         auto_correct: bool = True,
     ) -> LLMReviewResult:
         """
-        Prueft ein Sample mit LLM.
+        Prüft ein Sample mit LLM.
 
         Args:
             db: Datenbank-Session
-            sample: OCR Training Sample zum Pruefen
+            sample: OCR Training Sample zum Prüfen
             auto_correct: Wenn True, werden Korrekturen automatisch angewendet
 
         Returns:
@@ -321,24 +321,24 @@ class LLMOCRReviewService:
         """
         start_time = datetime.now(timezone.utc)
 
-        # Text fuer Review vorbereiten
+        # Text für Review vorbereiten
         text = sample.ground_truth_text or ""
 
         # Validierung
         if len(text) < self.MIN_TEXT_LENGTH:
             return LLMReviewResult(
                 quality_score=0.0,
-                issues_found=["Text zu kurz fuer Review"],
+                issues_found=["Text zu kurz für Review"],
                 recommendation="reject",
-                reasoning="Der OCR-Text ist zu kurz fuer eine sinnvolle Bewertung.",
+                reasoning="Der OCR-Text ist zu kurz für eine sinnvolle Bewertung.",
                 confidence=1.0,
             )
 
-        # Text kuerzen wenn noetig
+        # Text kürzen wenn noetig
         if len(text) > self.MAX_TEXT_LENGTH:
-            text = text[:self.MAX_TEXT_LENGTH] + "\n[...Text gekuerzt...]"
+            text = text[:self.MAX_TEXT_LENGTH] + "\n[...Text gekürzt...]"
 
-        # LLM-Review durchfuehren
+        # LLM-Review durchführen
         try:
             result = await self._call_llm_review(
                 text=text,
@@ -389,7 +389,7 @@ class LLMOCRReviewService:
         auto_correct: bool = True,
     ) -> Optional[LLMReviewResult]:
         """
-        Prueft ein Sample anhand seiner ID.
+        Prüft ein Sample anhand seiner ID.
 
         Args:
             db: Datenbank-Session
@@ -442,7 +442,7 @@ class LLMOCRReviewService:
             .where(OCRTrainingSample.deleted_at.is_(None))
             .where(OCRTrainingSample.auto_accepted == False)  # Nur rejected Samples
             .where(OCRTrainingSample.ground_truth_text.isnot(None))  # Mit Text
-            .order_by(OCRTrainingSample.business_priority.desc())  # Hohe Prioritaet zuerst
+            .order_by(OCRTrainingSample.business_priority.desc())  # Hohe Priorität zuerst
             .limit(max_samples)
         )
 
@@ -485,7 +485,7 @@ class LLMOCRReviewService:
                 )
                 result.errors += 1
 
-        # Durchschnittliche Qualitaet berechnen
+        # Durchschnittliche Qualität berechnen
         if quality_scores:
             result.avg_quality_score = sum(quality_scores) / len(quality_scores)
 
@@ -508,7 +508,7 @@ class LLMOCRReviewService:
         db: AsyncSession,
     ) -> Dict[str, Any]:
         """
-        Statistiken ueber LLM-Reviews.
+        Statistiken über LLM-Reviews.
 
         Returns:
             Dict mit Review-Statistiken
@@ -530,14 +530,14 @@ class LLMOCRReviewService:
             )
             status_counts[status] = count_result.scalar() or 0
 
-        # Durchschnittliche Qualitaet der reviewed Samples
+        # Durchschnittliche Qualität der reviewed Samples
         # Lade Samples mit Results und berechne Durchschnitt im Python-Code
         reviewed_result = await db.execute(
             select(OCRTrainingSample.llm_review_result)
             .where(OCRTrainingSample.deleted_at.is_(None))
             .where(OCRTrainingSample.llm_review_status.notin_(["pending", None]))
             .where(OCRTrainingSample.llm_review_result.isnot(None))
-            .limit(1000)  # Begrenze fuer Performance
+            .limit(1000)  # Begrenze für Performance
         )
         reviewed_samples = reviewed_result.scalars().all()
 
@@ -614,7 +614,7 @@ class LLMOCRReviewService:
         text: str,
         doc_type: str,
     ) -> LLMReviewResult:
-        """Ruft das LLM fuer die Review auf mit automatischem Retry.
+        """Ruft das LLM für die Review auf mit automatischem Retry.
 
         Retry bei:
         - Timeout (Ollama nicht erreichbar)
@@ -622,7 +622,7 @@ class LLMOCRReviewService:
         - Read Errors (Verbindung unterbrochen)
 
         Args:
-            text: OCR-Text zur Pruefung
+            text: OCR-Text zur Prüfung
             doc_type: Dokumenttyp
 
         Returns:
@@ -642,12 +642,12 @@ class LLMOCRReviewService:
             LLMMessage(role="user", content=user_prompt),
         ]
 
-        # LLM aufrufen (mit Thinking Mode fuer bessere Analyse)
+        # LLM aufrufen (mit Thinking Mode für bessere Analyse)
         response = await self.llm_service.generate(
             messages=messages,
             context_type=LLMContextType.EXTRACTION,
             enable_thinking=True,
-            temperature=0.3,  # Niedrig fuer konsistente Bewertungen
+            temperature=0.3,  # Niedrig für konsistente Bewertungen
         )
 
         # Antwort parsen
@@ -658,9 +658,9 @@ class LLMOCRReviewService:
         text: str,
         doc_type: str,
     ) -> LLMReviewResult:
-        """Ruft das LLM fuer die Review auf.
+        """Ruft das LLM für die Review auf.
 
-        Wrapper mit Circuit Breaker und Error-Handling fuer Retry-Failures.
+        Wrapper mit Circuit Breaker und Error-Handling für Retry-Failures.
         Bei geöffnetem Circuit wird direkt ein Fallback-Ergebnis zurückgegeben,
         um Blocking zu vermeiden wenn Ollama nicht erreichbar ist.
         """

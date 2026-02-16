@@ -2,10 +2,10 @@
 """
 IndustryBenchmarkService - Branchen-Benchmarks und Vergleiche.
 
-Verantwortlich fuer:
+Verantwortlich für:
 - Vergleich der eigenen KPIs mit Branchendurchschnitt
 - Perzentil-Rankings
-- Anonymisierte Aggregation ueber Tenants
+- Anonymisierte Aggregation über Tenants
 - Trend-Vergleiche
 
 Vision 2.0 - Feature #10 (Januar 2026)
@@ -55,7 +55,7 @@ class MetricType(str, Enum):
     SKONTO_USAGE = "skonto_usage"  # Skonto-Nutzungsrate
     DUNNING_RATE = "dunning_rate"  # Mahnquote
     DEFAULT_RATE = "default_rate"  # Ausfallrate
-    AVG_PAYMENT_DELAY = "avg_payment_delay"  # Durchschnittliche Zahlungsverzoegerung
+    AVG_PAYMENT_DELAY = "avg_payment_delay"  # Durchschnittliche Zahlungsverzögerung
 
 
 class PerformanceLevel(str, Enum):
@@ -80,7 +80,7 @@ class BenchmarkMetric:
     percentile: int  # 0-100, Position im Vergleich
     performance_level: PerformanceLevel
     trend_vs_avg: float  # Differenz zum Durchschnitt in %
-    is_better_higher: bool  # True wenn hoehere Werte besser sind
+    is_better_higher: bool  # True wenn höhere Werte besser sind
     unit: str  # z.B. "Tage", "%", "EUR"
     recommendations: List[str] = field(default_factory=list)
 
@@ -103,7 +103,7 @@ class IndustryBenchmarkData:
 
 @dataclass
 class CompanyBenchmarkReport:
-    """Vollstaendiger Benchmark-Report fuer eine Firma."""
+    """Vollständiger Benchmark-Report für eine Firma."""
 
     company_id: uuid.UUID
     company_name: str
@@ -274,7 +274,7 @@ INDUSTRY_LABELS: Dict[Industry, str] = {
 
 
 class IndustryBenchmarkService:
-    """Service fuer Branchen-Benchmarks und Vergleiche.
+    """Service für Branchen-Benchmarks und Vergleiche.
 
     Vergleicht Unternehmenskennzahlen mit Branchendurchschnitten:
     - DSO (Days Sales Outstanding)
@@ -298,7 +298,7 @@ class IndustryBenchmarkService:
         industry: Optional[Industry] = None,
         period_days: int = 365,
     ) -> CompanyBenchmarkReport:
-        """Erstellt einen vollstaendigen Benchmark-Report fuer eine Firma.
+        """Erstellt einen vollständigen Benchmark-Report für eine Firma.
 
         Args:
             company_id: Firmen-ID
@@ -385,10 +385,10 @@ class IndustryBenchmarkService:
             unit="%",
         ))
 
-        # Durchschnittliche Zahlungsverzoegerung
+        # Durchschnittliche Zahlungsverzögerung
         metrics.append(self._create_metric(
             metric_type=MetricType.AVG_PAYMENT_DELAY,
-            label="Durchschnittl. Zahlungsverzoegerung",
+            label="Durchschnittl. Zahlungsverzögerung",
             company_value=company_metrics.get("avg_payment_delay", 0),
             industry_average=benchmarks.avg_payment_delay_days,
             industry_median=benchmarks.avg_payment_delay_days,
@@ -557,7 +557,7 @@ class IndustryBenchmarkService:
             logger.warning("benchmark_dso_error", **safe_error_log(e))
             metrics["dso"] = 0.0
 
-        # Durchschnittliche Zahlungsverzoegerung
+        # Durchschnittliche Zahlungsverzögerung
         try:
             delay_stmt = (
                 select(
@@ -613,7 +613,7 @@ class IndustryBenchmarkService:
             company_value: Eigener Wert
             industry_average: Branchendurchschnitt
             industry_median: Branchenmedian
-            is_better_higher: True wenn hoehere Werte besser sind
+            is_better_higher: True wenn höhere Werte besser sind
             unit: Einheit
 
         Returns:
@@ -626,25 +626,25 @@ class IndustryBenchmarkService:
             trend_vs_avg = 0.0
 
         # Perzentil berechnen mit korrekter CDF-Approximation
-        # Annahme: Standardabweichung = 30% des Durchschnitts (typisch fuer Branchen-Benchmarks)
+        # Annahme: Standardabweichung = 30% des Durchschnitts (typisch für Branchen-Benchmarks)
         std_dev = industry_average * 0.30 if industry_average > 0 else 1.0
         z_score = (company_value - industry_average) / std_dev if std_dev > 0 else 0.0
 
         # Z-Score zu Perzentil mit CDF-Approximation (Normalverteilung)
         # Formel: CDF(z) ≈ 0.5 * (1 + erf(z / sqrt(2)))
-        # Vereinfachte Approximation fuer z in [-3, 3]:
+        # Vereinfachte Approximation für z in [-3, 3]:
         # Perzentil ≈ 50 + 50 * erf(z / sqrt(2))
         import math
         try:
-            # erf-Approximation fuer Normalverteilungs-CDF
+            # erf-Approximation für Normalverteilungs-CDF
             cdf_value = 0.5 * (1 + math.erf(z_score / math.sqrt(2)))
             base_percentile = int(cdf_value * 100)
         except (OverflowError, ValueError):
-            # Fallback fuer extreme Werte
+            # Fallback für extreme Werte
             base_percentile = 100 if z_score > 3 else (0 if z_score < -3 else 50)
 
         if is_better_higher:
-            # Hoeher = besser, also positiver Z-Score = hoeheres Perzentil
+            # Höher = besser, also positiver Z-Score = höheres Perzentil
             percentile = min(100, max(0, base_percentile))
         else:
             # Niedriger = besser, also invertieren
@@ -733,7 +733,7 @@ class IndustryBenchmarkService:
         is_better_higher: bool,
         level: PerformanceLevel,
     ) -> List[str]:
-        """Generiert Empfehlungen fuer eine Metrik."""
+        """Generiert Empfehlungen für eine Metrik."""
         recommendations = []
 
         # Nur Empfehlungen wenn unter Durchschnitt
@@ -747,29 +747,29 @@ class IndustryBenchmarkService:
 
         if metric_type == MetricType.DSO:
             if level in [PerformanceLevel.BELOW_AVERAGE, PerformanceLevel.POOR]:
-                recommendations.append("Verkuerzen Sie Zahlungsziele in neuen Vertraegen")
+                recommendations.append("Verkürzen Sie Zahlungsziele in neuen Verträgen")
                 recommendations.append("Intensivieren Sie das Forderungsmanagement")
-                recommendations.append("Bieten Sie Skonto fuer schnelle Zahlung an")
+                recommendations.append("Bieten Sie Skonto für schnelle Zahlung an")
 
         elif metric_type == MetricType.PUNCTUALITY:
             if level in [PerformanceLevel.BELOW_AVERAGE, PerformanceLevel.POOR]:
-                recommendations.append("Pruefen Sie Kunden mit schlechter Zahlungsmoral")
+                recommendations.append("Prüfen Sie Kunden mit schlechter Zahlungsmoral")
                 recommendations.append("Erwaegen Sie Vorkasse bei Neukunden")
                 recommendations.append("Automatisieren Sie Zahlungserinnerungen")
 
         elif metric_type == MetricType.SKONTO_USAGE:
             if level in [PerformanceLevel.BELOW_AVERAGE, PerformanceLevel.POOR]:
-                recommendations.append("Pruefen Sie Liquiditaet fuer Skonto-Nutzung")
+                recommendations.append("Prüfen Sie Liquiditaet für Skonto-Nutzung")
                 recommendations.append("Optimieren Sie Zahlungsprozesse")
 
         elif metric_type == MetricType.DUNNING_RATE:
             if level in [PerformanceLevel.BELOW_AVERAGE, PerformanceLevel.POOR]:
-                recommendations.append("Ueberpruefen Sie Ihre Bonitaetspruefung")
-                recommendations.append("Starten Sie Mahnwesen fruehzeitig")
+                recommendations.append("Überprüfen Sie Ihre Bonitaetsprüfung")
+                recommendations.append("Starten Sie Mahnwesen frühzeitig")
 
         elif metric_type == MetricType.DEFAULT_RATE:
             if level in [PerformanceLevel.BELOW_AVERAGE, PerformanceLevel.POOR]:
-                recommendations.append("Verschaerfen Sie die Kreditpruefung")
+                recommendations.append("Verschärfen Sie die Kreditprüfung")
                 recommendations.append("Erwaegen Sie Forderungsausfallversicherung")
 
         return recommendations
@@ -787,8 +787,8 @@ class IndustryBenchmarkService:
             recommendations.append("Ihre Kennzahlen liegen im Spitzenbereich der Branche.")
             recommendations.append("Halten Sie Ihre aktuellen Prozesse bei.")
         elif overall_level == PerformanceLevel.GOOD:
-            recommendations.append("Sie performen ueberdurchschnittlich.")
-            recommendations.append("Kleine Optimierungen koennen Sie in die Top-10% bringen.")
+            recommendations.append("Sie performen überdurchschnittlich.")
+            recommendations.append("Kleine Optimierungen können Sie in die Top-10% bringen.")
         elif overall_level == PerformanceLevel.AVERAGE:
             recommendations.append("Ihre Kennzahlen entsprechen dem Branchendurchschnitt.")
         elif overall_level in [PerformanceLevel.BELOW_AVERAGE, PerformanceLevel.POOR]:
@@ -825,7 +825,7 @@ class IndustryBenchmarkService:
         return INDUSTRY_BENCHMARKS.get(industry, INDUSTRY_BENCHMARKS[Industry.OTHER])
 
     async def get_available_industries(self) -> List[Dict[str, str]]:
-        """Holt alle verfuegbaren Branchen.
+        """Holt alle verfügbaren Branchen.
 
         Returns:
             Liste mit Industry-Value und Label
@@ -841,12 +841,12 @@ class IndustryBenchmarkService:
         industry: Industry,
         months: int = 12,
     ) -> List[Dict[str, Any]]:
-        """Vergleicht Trend ueber Zeit mit Branche.
+        """Vergleicht Trend über Zeit mit Branche.
 
         Args:
             company_id: Firmen-ID
             industry: Branche
-            months: Anzahl Monate zurueck
+            months: Anzahl Monate zurück
 
         Returns:
             Monatliche Trend-Daten
@@ -901,7 +901,7 @@ class IndustryBenchmarkService:
 
 
 async def get_benchmark_service(db: AsyncSession) -> IndustryBenchmarkService:
-    """Factory-Funktion fuer IndustryBenchmarkService.
+    """Factory-Funktion für IndustryBenchmarkService.
 
     Args:
         db: Async Database Session

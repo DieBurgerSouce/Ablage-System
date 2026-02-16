@@ -38,13 +38,13 @@ logger = structlog.get_logger(__name__)
 
 
 class EscalationService:
-    """Service fuer automatische Aufgaben-Eskalation."""
+    """Service für automatische Aufgaben-Eskalation."""
 
     def __init__(self, db: AsyncSession):
         """Initialisiert den EscalationService.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
         """
         self.db = db
 
@@ -73,15 +73,15 @@ class EscalationService:
             company_id: ID des Unternehmens
             name: Name der Regel
             timeout_hours: Stunden bis zur Eskalation
-            escalate_to_user_id: Ziel-Benutzer fuer Eskalation
-            escalate_to_role: Ziel-Rolle fuer Eskalation
-            task_type: Filter fuer Aufgabentyp (optional)
-            priority: Filter fuer Prioritaet (optional)
+            escalate_to_user_id: Ziel-Benutzer für Eskalation
+            escalate_to_role: Ziel-Rolle für Eskalation
+            task_type: Filter für Aufgabentyp (optional)
+            priority: Filter für Priorität (optional)
             description: Beschreibung der Regel
             notify_original_assignee: Benachrichtige urspr. Beauftragten
             notify_escalation_target: Benachrichtige Eskalationsziel
             notify_task_creator: Benachrichtige Ersteller
-            rule_priority: Prioritaet der Regel (niedrig = hoch)
+            rule_priority: Priorität der Regel (niedrig = hoch)
 
         Returns:
             Erstellte EscalationRule
@@ -122,7 +122,7 @@ class EscalationService:
     ) -> Optional[EscalationRule]:
         """Holt eine Eskalationsregel.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation übergeben werden.
 
         Args:
             rule_id: ID der Regel
@@ -178,7 +178,7 @@ class EscalationService:
     ) -> Optional[EscalationRule]:
         """Aktualisiert eine Eskalationsregel.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation übergeben werden.
 
         Args:
             rule_id: ID der Regel
@@ -220,9 +220,9 @@ class EscalationService:
         rule_id: UUID,
         company_id: UUID,
     ) -> bool:
-        """Loescht eine Eskalationsregel.
+        """Löscht eine Eskalationsregel.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation übergeben werden.
 
         Args:
             rule_id: ID der Regel
@@ -260,27 +260,27 @@ class EscalationService:
         task: DocumentTask,
         company_id: UUID,
     ) -> Optional[EscalationRule]:
-        """Findet die passende Eskalationsregel fuer eine Aufgabe.
+        """Findet die passende Eskalationsregel für eine Aufgabe.
 
         Die Regeln werden nach rule_priority sortiert und die erste
-        passende Regel wird zurueckgegeben.
+        passende Regel wird zurückgegeben.
 
         Args:
-            task: Die zu pruefende Aufgabe
+            task: Die zu prüfende Aufgabe
             company_id: ID des Unternehmens
 
         Returns:
             Passende EscalationRule oder None
         """
-        # Hole alle aktiven Regeln, sortiert nach Prioritaet
+        # Hole alle aktiven Regeln, sortiert nach Priorität
         rules = await self.get_rules_for_company(company_id)
 
         for rule in rules:
-            # Pruefe Task-Type Filter
+            # Prüfe Task-Type Filter
             if rule.task_type and task.task_type != rule.task_type:
                 continue
 
-            # Pruefe Prioritaet Filter
+            # Prüfe Priorität Filter
             if rule.priority and task.priority != rule.priority:
                 continue
 
@@ -294,10 +294,10 @@ class EscalationService:
         task: DocumentTask,
         company_id: UUID,
     ) -> Tuple[bool, Optional[EscalationRule]]:
-        """Prueft ob eine Aufgabe eskaliert werden sollte.
+        """Prüft ob eine Aufgabe eskaliert werden sollte.
 
         Args:
-            task: Die zu pruefende Aufgabe
+            task: Die zu prüfende Aufgabe
             company_id: ID des Unternehmens
 
         Returns:
@@ -319,7 +319,7 @@ class EscalationService:
         # Berechne Timeout-Zeitpunkt
         timeout_threshold = utc_now() - timedelta(hours=rule.timeout_hours)
 
-        # Pruefe ob Aufgabe alt genug ist
+        # Prüfe ob Aufgabe alt genug ist
         if task.created_at > timeout_threshold:
             return (False, None)
 
@@ -330,7 +330,7 @@ class EscalationService:
         task: DocumentTask,
         rule: EscalationRule,
     ) -> bool:
-        """Eskaliert eine Aufgabe gemaess Regel.
+        """Eskaliert eine Aufgabe gemäß Regel.
 
         Args:
             task: Die zu eskalierende Aufgabe
@@ -371,7 +371,7 @@ class EscalationService:
                 user_id=escalation_target_id,
                 notification_type=NotificationType.TASK_ESCALATED.value,
                 title="Eskalierte Aufgabe zugewiesen",
-                message=f"Eine ueberfaellige Aufgabe wurde an Sie eskaliert: {task.title}",
+                message=f"Eine überfällige Aufgabe wurde an Sie eskaliert: {task.title}",
                 action_url=f"/tasks/{task.id}",
                 data={
                     "task_id": str(task.id),
@@ -458,7 +458,7 @@ class EscalationService:
         """Findet einen Benutzer mit der angegebenen Rolle innerhalb der Company.
 
         SECURITY: Multi-Tenant Isolation - nur User der gleichen Company!
-        Sucht ueber UserCompany Join, um sicherzustellen, dass der User
+        Sucht über UserCompany Join, um sicherzustellen, dass der User
         auch Zugriff auf die Company hat.
 
         Args:
@@ -530,13 +530,13 @@ class EscalationService:
         self,
         company_id: UUID,
     ) -> Dict[str, int]:
-        """Verarbeitet alle faelligen Eskalationen fuer ein Unternehmen.
+        """Verarbeitet alle fälligen Eskalationen für ein Unternehmen.
 
         Args:
             company_id: ID des Unternehmens
 
         Returns:
-            Statistiken ueber verarbeitete Eskalationen
+            Statistiken über verarbeitete Eskalationen
         """
         stats = {
             "tasks_checked": 0,
@@ -591,7 +591,7 @@ class EscalationService:
         return stats
 
     async def process_all_escalations(self) -> Dict[str, Any]:
-        """Verarbeitet Eskalationen fuer alle Unternehmen.
+        """Verarbeitet Eskalationen für alle Unternehmen.
 
         Returns:
             Aggregierte Statistiken
@@ -638,7 +638,7 @@ class EscalationService:
 
         Args:
             company_id: ID des Unternehmens
-            days: Anzahl Tage fuer Statistik
+            days: Anzahl Tage für Statistik
 
         Returns:
             Statistik-Dict
@@ -707,10 +707,10 @@ class EscalationService:
 
 
 def get_escalation_service(db: AsyncSession) -> EscalationService:
-    """Factory-Funktion fuer EscalationService.
+    """Factory-Funktion für EscalationService.
 
     Args:
-        db: AsyncSession fuer Datenbankoperationen
+        db: AsyncSession für Datenbankoperationen
 
     Returns:
         EscalationService Instanz

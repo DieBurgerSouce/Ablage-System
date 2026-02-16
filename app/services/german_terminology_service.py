@@ -7,8 +7,8 @@ Kein Mix aus formell/informell. Alle Fachbegriffe korrekt.
 
 Erweitert um:
 - Umfassenderes Woerterbuch (Buchhaltung, Rechnungswesen, Steuer, DATEV, BWA)
-- Kategorisierte Begriffe fuer Frontend-i18n
-- Tooltip/Hilfetexte fuer UI-Elemente
+- Kategorisierte Begriffe für Frontend-i18n
+- Tooltip/Hilfetexte für UI-Elemente
 - Terminologie-Validierung mit Wortgrenzen-Erkennung
 """
 
@@ -48,7 +48,7 @@ class GermanTerminologyService:
         "balance_sheet": "Bilanz",
         "income_statement": "Gewinn- und Verlustrechnung",
         "profit_loss": "GuV",
-        "fiscal_year": "Geschaeftsjahr",
+        "fiscal_year": "Geschäftsjahr",
         "closing": "Abschluss",
         "month_end_closing": "Monatsabschluss",
         "year_end_closing": "Jahresabschluss",
@@ -56,7 +56,7 @@ class GermanTerminologyService:
         "depreciation": "Abschreibung",
         "amortization": "Tilgung",
         "retained_earnings": "Gewinnvortrag",
-        "audit": "Pruefung",
+        "audit": "Prüfung",
         "compliance": "Ordnungsmaessigkeit",
 
         # Rechnungswesen
@@ -72,7 +72,7 @@ class GermanTerminologyService:
         "cash_discount": "Skonto",
         "payment_terms": "Zahlungsbedingungen",
         "payment_term": "Zahlungsziel",
-        "due_date": "Faelligkeitsdatum",
+        "due_date": "Fälligkeitsdatum",
         "partial_payment": "Teilzahlung",
         "outstanding_amount": "Offener Betrag",
         "open_items": "Offene Posten",
@@ -117,8 +117,8 @@ class GermanTerminologyService:
         "operating_result": "Betriebsergebnis",
         "financial_result": "Finanzergebnis",
         "pre_tax_result": "Ergebnis vor Steuern",
-        "net_income": "Jahresueberschuss",
-        "net_profit": "Jahresueberschuss",
+        "net_income": "Jahresüberschuss",
+        "net_profit": "Jahresüberschuss",
 
         # Dokumente
         "document": "Dokument",
@@ -130,11 +130,11 @@ class GermanTerminologyService:
         "receipt": "Quittung",
         "voucher": "Buchungsbeleg",
         "offer": "Angebot",
-        "order_confirmation": "Auftragsbestaetigung",
+        "order_confirmation": "Auftragsbestätigung",
 
         # Bank-Begriffe
         "bank_statement": "Kontoauszug",
-        "wire_transfer": "Ueberweisung",
+        "wire_transfer": "Überweisung",
         "direct_debit": "Lastschrift",
         "standing_order": "Dauerauftrag",
         "account_balance": "Kontostand",
@@ -143,7 +143,7 @@ class GermanTerminologyService:
         # Entities
         "customer": "Kunde",
         "supplier": "Lieferant",
-        "business_partner": "Geschaeftspartner",
+        "business_partner": "Geschäftspartner",
         "contact": "Ansprechpartner",
 
         # Status
@@ -153,9 +153,9 @@ class GermanTerminologyService:
         "rejected": "Abgelehnt",
         "completed": "Abgeschlossen",
         "cancelled": "Storniert",
-        "overdue": "Ueberfaellig",
+        "overdue": "Überfällig",
         "in_progress": "In Bearbeitung",
-        "verified": "Geprueft",
+        "verified": "Geprüft",
         "archived": "Archiviert",
     }
 
@@ -164,7 +164,7 @@ class GermanTerminologyService:
         "not_found": "Nicht gefunden",
         "document_not_found": "Dokument nicht gefunden",
         "invoice_not_found": "Rechnung nicht gefunden",
-        "entity_not_found": "Geschaeftspartner nicht gefunden",
+        "entity_not_found": "Geschäftspartner nicht gefunden",
         "permission_denied": "Zugriff verweigert",
         "validation_failed": "Validierung fehlgeschlagen",
         "duplicate_detected": "Duplikat erkannt",
@@ -172,22 +172,22 @@ class GermanTerminologyService:
         "upload_failed": "Hochladen fehlgeschlagen",
         "export_failed": "Export fehlgeschlagen",
         "import_failed": "Import fehlgeschlagen",
-        "invalid_format": "Ungueltiges Dateiformat",
-        "invalid_amount": "Ungueltiger Betrag",
-        "invalid_date": "Ungueltiges Datum",
+        "invalid_format": "Ungültiges Dateiformat",
+        "invalid_amount": "Ungültiger Betrag",
+        "invalid_date": "Ungültiges Datum",
         "file_too_large": "Datei zu gross",
-        "quota_exceeded": "Kontingent ueberschritten",
+        "quota_exceeded": "Kontingent überschritten",
         "rate_limited": "Zu viele Anfragen - bitte warten",
         "session_expired": "Sitzung abgelaufen - bitte erneut anmelden",
-        "maintenance": "Wartungsarbeiten - bitte spaeter erneut versuchen",
+        "maintenance": "Wartungsarbeiten - bitte später erneut versuchen",
         "skonto_expired": "Skontofrist abgelaufen",
         "approval_required": "Genehmigung erforderlich",
-        "approval_timeout": "Genehmigungsfrist ueberschritten",
+        "approval_timeout": "Genehmigungsfrist überschritten",
         "sla_breach": "SLA-Verletzung festgestellt",
-        "invoice_overdue": "Rechnung ueberfaellig",
+        "invoice_overdue": "Rechnung überfällig",
         "insufficient_funds": "Unzureichende Deckung",
         "connection_failed": "Verbindung fehlgeschlagen",
-        "timeout": "Zeitueberschreitung",
+        "timeout": "Zeitüberschreitung",
         "contract_expired": "Vertrag abgelaufen",
         "deadline_missed": "Frist versaeumt",
         "thread_not_found": "Kommentar-Thread nicht gefunden",
@@ -195,8 +195,8 @@ class GermanTerminologyService:
         "task_not_found": "Aufgabe nicht gefunden",
         "annotation_not_found": "Annotation nicht gefunden",
         "user_not_found": "Benutzer nicht gefunden",
-        "invalid_status": "Ungueltiger Status",
-        "invalid_coordinates": "Ungueltige Koordinaten",
+        "invalid_status": "Ungültiger Status",
+        "invalid_coordinates": "Ungültige Koordinaten",
     }
 
     # Deutsche Statusmeldungen
@@ -213,13 +213,13 @@ class GermanTerminologyService:
         "approved": "Genehmigt",
         "rejected": "Abgelehnt",
         "archived": "Archiviert",
-        "deleted": "Geloescht",
+        "deleted": "Gelöscht",
     }
 
-    # Deutsche Tooltips fuer UI-Elemente
+    # Deutsche Tooltips für UI-Elemente
     TOOLTIPS: Dict[str, str] = {
         "skonto": (
-            "Nachlass bei fruehzeitiger Zahlung "
+            "Nachlass bei frühzeitiger Zahlung "
             "innerhalb der Skontofrist"
         ),
         "skonto_hint": (
@@ -228,7 +228,7 @@ class GermanTerminologyService:
         ),
         "bwa": (
             "Betriebswirtschaftliche Auswertung - "
-            "Ueberblick ueber Ertraege und Aufwendungen"
+            "Überblick über Erträge und Aufwendungen"
         ),
         "bwa_hint": (
             "Die Betriebswirtschaftliche Auswertung zeigt die "
@@ -259,15 +259,15 @@ class GermanTerminologyService:
             "(z.B. SKR 03, SKR 04)"
         ),
         "kontierungsmuster": (
-            "Vordefinierte Buchungsregeln fuer "
-            "wiederkehrende Geschaeftsvorfaelle"
+            "Vordefinierte Buchungsregeln für "
+            "wiederkehrende Geschäftsvorfaelle"
         ),
         "kostenstelle": (
             "Organisatorische Einheit zur Zuordnung von Kosten "
             "(z.B. Abteilung, Projekt)"
         ),
         "beleglink": (
-            "Verknuepfung zwischen digitalem Beleg "
+            "Verknüpfung zwischen digitalem Beleg "
             "und Buchungssatz in DATEV"
         ),
         "innergemeinschaftlich": (
@@ -275,11 +275,11 @@ class GermanTerminologyService:
             "besondere steuerliche Behandlung"
         ),
         "abgrenzung": (
-            "Periodengerechte Zuordnung von Aufwendungen und Ertraegen "
-            "zum richtigen Geschaeftsjahr"
+            "Periodengerechte Zuordnung von Aufwendungen und Erträgen "
+            "zum richtigen Geschäftsjahr"
         ),
         "datev_hint": (
-            "DATEV ist das Standard-Format fuer den Datenaustausch "
+            "DATEV ist das Standard-Format für den Datenaustausch "
             "mit Ihrem Steuerberater"
         ),
         "gdpr_hint": (
@@ -287,13 +287,13 @@ class GermanTerminologyService:
             "verarbeitet und gespeichert"
         ),
         "gobd_hint": (
-            "GoBD: Grundsaetze zur ordnungsmaessigen Fuehrung "
+            "GoBD: Grundsätze zur ordnungsmaessigen Führung "
             "und Aufbewahrung von Buechern"
         ),
     }
 
     def translate(self, key: str) -> str:
-        """Fachbegriff uebersetzen (English -> Deutsch).
+        """Fachbegriff übersetzen (English -> Deutsch).
 
         Args:
             key: Englischer Schluessel
@@ -337,12 +337,12 @@ class GermanTerminologyService:
         return self.TOOLTIPS.get(key, "")
 
     def validate_terminology(self, text: str) -> List[Dict[str, str]]:
-        """Pruefen ob englische Fachbegriffe im Text vorkommen die deutsch sein sollten.
+        """Prüfen ob englische Fachbegriffe im Text vorkommen die deutsch sein sollten.
 
         Verwendet Wortgrenzen-Erkennung um falsche Treffer zu vermeiden.
 
         Args:
-            text: Zu pruefender Text
+            text: Zu prüfender Text
 
         Returns:
             Liste von Befunden mit found, should_be und message
@@ -350,20 +350,20 @@ class GermanTerminologyService:
         findings: List[Dict[str, str]] = []
         text_lower = text.lower()
 
-        # Haeufige englische Begriffe mit Wortgrenzen-Erkennung pruefen
+        # Häufige englische Begriffe mit Wortgrenzen-Erkennung prüfen
         check_patterns: Dict[str, str] = {
             "invoice": "Rechnung",
             "credit note": "Gutschrift",
             "dunning": "Mahnung",
             "payment terms": "Zahlungsbedingungen",
-            "due date": "Faelligkeitsdatum",
+            "due date": "Fälligkeitsdatum",
             "cash discount": "Skonto",
             "outstanding amount": "Offener Betrag",
             "open items": "Offene Posten",
             "chart of accounts": "Kontenrahmen",
             "general ledger": "Hauptbuch",
             "trial balance": "Summen- und Saldenliste",
-            "fiscal year": "Geschaeftsjahr",
+            "fiscal year": "Geschäftsjahr",
             "cost center": "Kostenstelle",
             "delivery note": "Lieferschein",
             "purchase order": "Bestellauftrag",
@@ -382,16 +382,16 @@ class GermanTerminologyService:
                     "should_be": german,
                     "message": (
                         f"'{english}' sollte als '{german}' "
-                        f"uebersetzt werden"
+                        f"übersetzt werden"
                     ),
                 })
 
         return findings
 
     def get_all_terms(self) -> Dict[str, str]:
-        """Komplettes Terminologie-Woerterbuch zurueckgeben.
+        """Komplettes Terminologie-Woerterbuch zurückgeben.
 
-        Wird vom Frontend fuer i18n/Lokalisierung verwendet.
+        Wird vom Frontend für i18n/Lokalisierung verwendet.
 
         Returns:
             Dictionary mit allen englisch-deutschen Begriffspaaren
@@ -399,7 +399,7 @@ class GermanTerminologyService:
         return dict(self.FACHBEGRIFFE)
 
     def get_all_errors(self) -> Dict[str, str]:
-        """Alle deutschen Fehlermeldungen zurueckgeben.
+        """Alle deutschen Fehlermeldungen zurückgeben.
 
         Returns:
             Dictionary mit allen Fehler-Schluessel-Meldungs-Paaren
@@ -407,7 +407,7 @@ class GermanTerminologyService:
         return dict(self.FEHLERMELDUNGEN)
 
     def get_all_tooltips(self) -> Dict[str, str]:
-        """Alle Tooltips zurueckgeben.
+        """Alle Tooltips zurückgeben.
 
         Returns:
             Dictionary mit allen Tooltip-Schluessel-Text-Paaren
@@ -415,7 +415,7 @@ class GermanTerminologyService:
         return dict(self.TOOLTIPS)
 
     def get_full_dictionary(self) -> Dict[str, Dict[str, str]]:
-        """Komplettes Woerterbuch aller Kategorien zurueckgeben.
+        """Komplettes Woerterbuch aller Kategorien zurückgeben.
 
         Returns:
             Dict mit allen Kategorien (fachbegriffe, fehler, status, tooltips)
@@ -428,7 +428,7 @@ class GermanTerminologyService:
         }
 
     def get_category_terms(self, category: str) -> Dict[str, str]:
-        """Gibt Begriffe einer bestimmten Kategorie zurueck.
+        """Gibt Begriffe einer bestimmten Kategorie zurück.
 
         Args:
             category: Kategorie (buchhaltung, rechnungswesen, steuer,
@@ -500,7 +500,7 @@ _terminology_service: Optional[GermanTerminologyService] = None
 
 
 def get_german_terminology_service() -> GermanTerminologyService:
-    """Factory-Funktion fuer GermanTerminologyService Singleton."""
+    """Factory-Funktion für GermanTerminologyService Singleton."""
     global _terminology_service
     if _terminology_service is None:
         _terminology_service = GermanTerminologyService()

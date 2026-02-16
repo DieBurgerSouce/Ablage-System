@@ -2,14 +2,14 @@
 """
 Workflow Insights Service.
 
-Enterprise Feature: Proaktive Workflow-Optimierungsvorschlaege.
+Enterprise Feature: Proaktive Workflow-Optimierungsvorschläge.
 
-Dieses Modul analysiert Workflows und generiert Optimierungsvorschlaege:
+Dieses Modul analysiert Workflows und generiert Optimierungsvorschläge:
 
 - Batch-Genehmigungen: "5 Rechnungen vom gleichen Lieferanten warten auf Genehmigung"
 - Bottleneck-Erkennung: "Genehmigungsstau bei User X (15 Dokumente)"
-- Automatisierungsvorschlaege: "Diese 8 Rechnungen koennten automatisch genehmigt werden"
-- Delegationsvorschlaege: "User X ist ueberlastet, Delegation empfohlen"
+- Automatisierungsvorschläge: "Diese 8 Rechnungen könnten automatisch genehmigt werden"
+- Delegationsvorschläge: "User X ist überlastet, Delegation empfohlen"
 
 Integration mit: ApprovalService, WorkflowService, DelegationService
 """
@@ -41,9 +41,9 @@ logger = structlog.get_logger(__name__)
 
 class WorkflowInsightType(str, Enum):
     """Typ des Workflow-Insights."""
-    BATCH_APPROVAL = "batch_approval"           # Batch-Genehmigung moeglich
+    BATCH_APPROVAL = "batch_approval"           # Batch-Genehmigung möglich
     BOTTLENECK = "bottleneck"                   # Engpass erkannt
-    AUTOMATION_POSSIBLE = "automation_possible" # Automatisierung moeglich
+    AUTOMATION_POSSIBLE = "automation_possible" # Automatisierung möglich
     DELEGATION_SUGGESTED = "delegation_suggested"  # Delegation empfohlen
     STALE_ITEMS = "stale_items"                 # Veraltete Elemente
     WORKLOAD_IMBALANCE = "workload_imbalance"   # Ungleiche Arbeitslast
@@ -132,7 +132,7 @@ class WorkflowInsight:
 
 @dataclass
 class WorkflowCheckResult:
-    """Ergebnis einer Workflow-Pruefung."""
+    """Ergebnis einer Workflow-Prüfung."""
     insight_type: WorkflowInsightType
     title: str
     message: str
@@ -157,7 +157,7 @@ class WorkflowCheckResult:
 
 class WorkflowInsightsService:
     """
-    Service fuer proaktive Workflow-Optimierung.
+    Service für proaktive Workflow-Optimierung.
 
     Analysiert Genehmigungs-Workflows, erkennt Engpaesse und
     schlaegt Optimierungen vor.
@@ -165,10 +165,10 @@ class WorkflowInsightsService:
 
     def __init__(self) -> None:
         # Schwellwerte
-        self._batch_threshold = 3          # Mind. 3 Elemente fuer Batch
-        self._bottleneck_threshold = 5     # Mind. 5 Elemente fuer Bottleneck
+        self._batch_threshold = 3          # Mind. 3 Elemente für Batch
+        self._bottleneck_threshold = 5     # Mind. 5 Elemente für Bottleneck
         self._stale_threshold_hours = 48   # 48h ohne Bearbeitung = stale
-        self._overload_threshold = 10      # >10 Elemente = ueberlastet
+        self._overload_threshold = 10      # >10 Elemente = überlastet
 
         logger.info("workflow_insights_service_initialized")
 
@@ -179,12 +179,12 @@ class WorkflowInsightsService:
         user_id: Optional[UUID] = None,
     ) -> List[ProactiveInsight]:
         """
-        Prueft alle Workflow-Insights.
+        Prüft alle Workflow-Insights.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
-            user_id: Optional User-ID fuer benutzerspezifische Insights
+            user_id: Optional User-ID für benutzerspezifische Insights
 
         Returns:
             Liste von ProactiveInsights
@@ -197,7 +197,7 @@ class WorkflowInsightsService:
 
         all_insights: List[ProactiveInsight] = []
 
-        # Parallel alle Workflow-Checks ausfuehren
+        # Parallel alle Workflow-Checks ausführen
         results = await asyncio.gather(
             self.suggest_batch_approvals(db, company_id, user_id),
             self.detect_bottlenecks(db, company_id),
@@ -216,7 +216,7 @@ class WorkflowInsightsService:
             elif isinstance(result, list):
                 all_insights.extend(result)
 
-        # Nach Prioritaet sortieren
+        # Nach Priorität sortieren
         priority_order = {
             InsightPriority.CRITICAL: 0,
             InsightPriority.HIGH: 1,
@@ -241,8 +241,8 @@ class WorkflowInsightsService:
         """
         Schlaegt Batch-Genehmigungen vor.
 
-        Findet Gruppen von aehnlichen Dokumenten, die gemeinsam
-        genehmigt werden koennten.
+        Findet Gruppen von ähnlichen Dokumenten, die gemeinsam
+        genehmigt werden könnten.
 
         Args:
             db: Datenbank-Session
@@ -250,7 +250,7 @@ class WorkflowInsightsService:
             user_id: Optional User-ID (Genehmiger)
 
         Returns:
-            Liste von ProactiveInsights fuer Batch-Genehmigungen
+            Liste von ProactiveInsights für Batch-Genehmigungen
         """
         from app.db.models import ApprovalRequest, Document, BusinessEntity
 
@@ -325,7 +325,7 @@ class WorkflowInsightsService:
                 type_groups[doc_type].append((approval, doc))
 
             for doc_type, items in type_groups.items():
-                if len(items) >= self._batch_threshold * 2:  # Hoeherer Schwellwert fuer Typ-Batches
+                if len(items) >= self._batch_threshold * 2:  # Höherer Schwellwert für Typ-Batches
                     insight = WorkflowInsight(
                         insight_type=WorkflowInsightType.BATCH_APPROVAL,
                         title=f"Batch-Genehmigung: {doc_type}",
@@ -334,7 +334,7 @@ class WorkflowInsightsService:
                         pending_count=len(items),
                         potential_time_savings_hours=len(items) * 0.2,
                         action_url=f"/approvals?type={doc_type}&batch=true",
-                        action_label="Alle pruefen",
+                        action_label="Alle prüfen",
                         metadata={
                             "document_type": doc_type,
                         },
@@ -375,7 +375,7 @@ class WorkflowInsightsService:
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer Bottlenecks
+            Liste von ProactiveInsights für Bottlenecks
         """
         from app.db.models import ApprovalRequest, User
 
@@ -431,7 +431,7 @@ class WorkflowInsightsService:
                         pending_count=pending_count,
                         avg_wait_time_hours=float(avg_wait_hours or 0),
                         action_url=f"/admin/approvals?assignee={assignee_id}",
-                        action_label="Uebersicht oeffnen",
+                        action_label="Übersicht öffnen",
                         metadata={
                             "severity": severity.value,
                             "assignee_id": str(assignee_id),
@@ -465,16 +465,16 @@ class WorkflowInsightsService:
         company_id: UUID,
     ) -> List[ProactiveInsight]:
         """
-        Schlaegt Automatisierungsmoeglichkeiten vor.
+        Schlaegt Automatisierungsmöglichkeiten vor.
 
-        Findet wiederkehrende Muster, die automatisiert werden koennten.
+        Findet wiederkehrende Muster, die automatisiert werden könnten.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer Automatisierung
+            Liste von ProactiveInsights für Automatisierung
         """
         from app.db.models import ApprovalRequest, Document, BusinessEntity
 
@@ -509,7 +509,7 @@ class WorkflowInsightsService:
             for row in high_approval_entities:
                 entity_id, entity_name, approved_count, avg_amount, max_amount = row
 
-                # Pruefe ob es wartende Dokumente von diesem Lieferanten gibt
+                # Prüfe ob es wartende Dokumente von diesem Lieferanten gibt
                 pending_query = select(func.count()).select_from(
                     ApprovalRequest
                 ).join(
@@ -528,8 +528,8 @@ class WorkflowInsightsService:
                 if pending_count >= 3:
                     insight = WorkflowInsight(
                         insight_type=WorkflowInsightType.AUTOMATION_POSSIBLE,
-                        title=f"Auto-Genehmigung fuer {entity_name}",
-                        description=f"{pending_count} Dokumente von {entity_name} koennten automatisch genehmigt werden.",
+                        title=f"Auto-Genehmigung für {entity_name}",
+                        description=f"{pending_count} Dokumente von {entity_name} könnten automatisch genehmigt werden.",
                         pending_count=pending_count,
                         potential_time_savings_hours=pending_count * 0.5,  # 30 Min pro Dokument
                         action_url=f"/admin/rules/create?entity={entity_id}&type=auto_approve",
@@ -577,7 +577,7 @@ class WorkflowInsightsService:
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer veraltete Elemente
+            Liste von ProactiveInsights für veraltete Elemente
         """
         from app.db.models import ApprovalRequest, Document
 
@@ -624,7 +624,7 @@ class WorkflowInsightsService:
             if very_old:
                 insight = WorkflowInsight(
                     insight_type=WorkflowInsightType.STALE_ITEMS,
-                    title=f"{len(very_old)} Dokumente seit ueber 7 Tagen unbearbeitet",
+                    title=f"{len(very_old)} Dokumente seit über 7 Tagen unbearbeitet",
                     description="Diese Dokumente warten dringend auf Bearbeitung.",
                     affected_documents=[a.document_id for a, _, _ in very_old],
                     pending_count=len(very_old),
@@ -641,13 +641,13 @@ class WorkflowInsightsService:
             if old:
                 insight = WorkflowInsight(
                     insight_type=WorkflowInsightType.STALE_ITEMS,
-                    title=f"{len(old)} Dokumente seit ueber 3 Tagen unbearbeitet",
+                    title=f"{len(old)} Dokumente seit über 3 Tagen unbearbeitet",
                     description="Diese Dokumente sollten bald bearbeitet werden.",
                     affected_documents=[a.document_id for a, _, _ in old],
                     pending_count=len(old),
                     avg_wait_time_hours=sum(h for _, _, h in old) / len(old),
                     action_url="/approvals?filter=old",
-                    action_label="Pruefen",
+                    action_label="Prüfen",
                     metadata={
                         "age_category": "old",
                         "min_age_days": 3,
@@ -690,7 +690,7 @@ class WorkflowInsightsService:
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer Arbeitslast-Ungleichgewichte
+            Liste von ProactiveInsights für Arbeitslast-Ungleichgewichte
         """
         from app.db.models import ApprovalRequest, User
 
@@ -746,7 +746,7 @@ class WorkflowInsightsService:
                     insight = WorkflowInsight(
                         insight_type=WorkflowInsightType.WORKLOAD_IMBALANCE,
                         title="Ungleiche Arbeitslastverteilung",
-                        description=f"Ueberlastet: {', '.join(overloaded_names)}. Kapazitaet frei: {', '.join(underloaded_names)}.",
+                        description=f"Überlastet: {', '.join(overloaded_names)}. Kapazität frei: {', '.join(underloaded_names)}.",
                         affected_users=[u[0] for u in overloaded_users + underloaded_users],
                         pending_count=sum(counts),
                         action_url="/admin/workload",
@@ -809,7 +809,7 @@ class WorkflowInsightsService:
                 summary["by_type"][rule_type] = 0
             summary["by_type"][rule_type] += 1
 
-            # Nach Prioritaet zaehlen
+            # Nach Priorität zaehlen
             priority = insight.priority.value
             if priority not in summary["by_priority"]:
                 summary["by_priority"][priority] = 0
@@ -823,7 +823,7 @@ _workflow_insights_instance: Optional[WorkflowInsightsService] = None
 
 
 def get_workflow_insights_service() -> WorkflowInsightsService:
-    """Gibt die Singleton-Instanz des Workflow Insights Service zurueck."""
+    """Gibt die Singleton-Instanz des Workflow Insights Service zurück."""
     global _workflow_insights_instance
     if _workflow_insights_instance is None:
         _workflow_insights_instance = WorkflowInsightsService()

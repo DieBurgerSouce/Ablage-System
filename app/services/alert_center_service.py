@@ -116,24 +116,24 @@ class AlertCodes:
 
 ALERT_TEMPLATES: Dict[str, Dict[str, str]] = {
     AlertCodes.FRAUD_DUPLICATE_INVOICE: {
-        "title": "Moegliche Duplikat-Rechnung erkannt",
-        "message": "Die Rechnung {invoice_number} von {vendor_name} ist moeglicherweise ein Duplikat.",
+        "title": "Mögliche Duplikat-Rechnung erkannt",
+        "message": "Die Rechnung {invoice_number} von {vendor_name} ist möglicherweise ein Duplikat.",
     },
     AlertCodes.FRAUD_PRICE_ANOMALY: {
         "title": "Preisanomalie erkannt",
-        "message": "Der Preis fuer {item} weicht um {deviation}% vom historischen Durchschnitt ab.",
+        "message": "Der Preis für {item} weicht um {deviation}% vom historischen Durchschnitt ab.",
     },
     AlertCodes.FRAUD_CEO_FRAUD: {
         "title": "CEO-Betrug vermutet",
         "message": "Ein Dokument zeigt Anzeichen von CEO-Betrug: Dringlichkeit, Vertraulichkeit, unbekannter Absender.",
     },
     AlertCodes.FRAUD_IBAN_MANIPULATION: {
-        "title": "IBAN-Aenderung erfordert Verifizierung",
-        "message": "Eine IBAN-Aenderung wurde erkannt. Bitte verifizieren Sie die neuen Bankdaten vor Zahlung.",
+        "title": "IBAN-Änderung erfordert Verifizierung",
+        "message": "Eine IBAN-Änderung wurde erkannt. Bitte verifizieren Sie die neuen Bankdaten vor Zahlung.",
     },
     AlertCodes.FRAUD_DUPLICATE_PAYMENT: {
-        "title": "Moegliche Duplikat-Zahlung erkannt",
-        "message": "Die Rechnung koennte ein Duplikat sein. Manuelle Pruefung vor Zahlung erforderlich.",
+        "title": "Mögliche Duplikat-Zahlung erkannt",
+        "message": "Die Rechnung könnte ein Duplikat sein. Manuelle Prüfung vor Zahlung erforderlich.",
     },
     AlertCodes.FRAUD_SELF_APPROVAL: {
         "title": "Selbst-Genehmigung erkannt",
@@ -141,24 +141,24 @@ ALERT_TEMPLATES: Dict[str, Dict[str, str]] = {
     },
     AlertCodes.RISK_HIGH_SCORE: {
         "title": "Hoher Risiko-Score",
-        "message": "Der Geschaeftspartner hat einen Risiko-Score von {score}/100 erreicht.",
+        "message": "Der Geschäftspartner hat einen Risiko-Score von {score}/100 erreicht.",
     },
     AlertCodes.DEADLINE_SKONTO_EXPIRING: {
         "title": "Skonto-Frist laeuft ab",
-        "message": "Die Skonto-Frist fuer Rechnung {invoice_number} laeuft in {days} Tagen ab. Ersparnis: {savings} EUR.",
+        "message": "Die Skonto-Frist für Rechnung {invoice_number} laeuft in {days} Tagen ab. Ersparnis: {savings} EUR.",
     },
     # Contract Renewal Templates (Phase 1.1)
     AlertCodes.DEADLINE_CONTRACT_90_DAYS: {
         "title": "Vertragsablauf in 90 Tagen",
-        "message": "Der Vertrag '{contract_title}' laeuft in 90 Tagen ab. Bitte pruefen Sie die Verlaengerungsoptionen.",
+        "message": "Der Vertrag '{contract_title}' laeuft in 90 Tagen ab. Bitte prüfen Sie die Verlängerungsoptionen.",
     },
     AlertCodes.DEADLINE_CONTRACT_60_DAYS: {
         "title": "Vertragsablauf in 60 Tagen",
-        "message": "Der Vertrag '{contract_title}' laeuft in 60 Tagen ab. Eine Entscheidung zur Verlaengerung sollte zeitnah erfolgen.",
+        "message": "Der Vertrag '{contract_title}' laeuft in 60 Tagen ab. Eine Entscheidung zur Verlängerung sollte zeitnah erfolgen.",
     },
     AlertCodes.DEADLINE_CONTRACT_30_DAYS: {
         "title": "Vertragsablauf in 30 Tagen",
-        "message": "Der Vertrag '{contract_title}' laeuft in 30 Tagen ab. Dringende Pruefung erforderlich.",
+        "message": "Der Vertrag '{contract_title}' laeuft in 30 Tagen ab. Dringende Prüfung erforderlich.",
     },
     AlertCodes.DEADLINE_CONTRACT_14_DAYS: {
         "title": "Vertragsablauf in 14 Tagen",
@@ -166,31 +166,31 @@ ALERT_TEMPLATES: Dict[str, Dict[str, str]] = {
     },
     AlertCodes.DEADLINE_CONTRACT_7_DAYS: {
         "title": "Vertragsablauf in 7 Tagen - KRITISCH",
-        "message": "Der Vertrag '{contract_title}' laeuft in 7 Tagen ab. Letzte Moeglichkeit zur Kuendigung oder Verlaengerung.",
+        "message": "Der Vertrag '{contract_title}' laeuft in 7 Tagen ab. Letzte Möglichkeit zur Kündigung oder Verlängerung.",
     },
     AlertCodes.DEADLINE_CONTRACT_1_DAY: {
         "title": "Vertragsablauf MORGEN",
-        "message": "Der Vertrag '{contract_title}' laeuft morgen ab. Ohne Aktion tritt automatische Verlaengerung in Kraft.",
+        "message": "Der Vertrag '{contract_title}' laeuft morgen ab. Ohne Aktion tritt automatische Verlängerung in Kraft.",
     },
     AlertCodes.DEADLINE_NOTICE_CRITICAL: {
-        "title": "Kuendigungsfrist kritisch",
-        "message": "Die Kuendigungsfrist fuer Vertrag '{contract_title}' endet in {days} Tagen.",
+        "title": "Kündigungsfrist kritisch",
+        "message": "Die Kündigungsfrist für Vertrag '{contract_title}' endet in {days} Tagen.",
     },
     AlertCodes.DEADLINE_AUTO_RENEWAL: {
-        "title": "Automatische Vertragsverlaengerung",
-        "message": "Der Vertrag '{contract_title}' wird automatisch verlaengert, wenn bis {deadline} keine Kuendigung erfolgt.",
+        "title": "Automatische Vertragsverlängerung",
+        "message": "Der Vertrag '{contract_title}' wird automatisch verlängert, wenn bis {deadline} keine Kündigung erfolgt.",
     },
     AlertCodes.DEADLINE_INVOICE_OVERDUE: {
-        "title": "Rechnung ueberfaellig",
-        "message": "Die Rechnung {invoice_number} ist seit {days} Tagen ueberfaellig. Betrag: {amount} EUR.",
+        "title": "Rechnung überfällig",
+        "message": "Die Rechnung {invoice_number} ist seit {days} Tagen überfällig. Betrag: {amount} EUR.",
     },
     AlertCodes.SYSTEM_GPU_MEMORY: {
         "title": "GPU-Speicher kritisch",
         "message": "GPU-Speicherauslastung bei {usage}%. Empfehlung: OCR-Queue reduzieren.",
     },
     AlertCodes.QUALITY_LOW_OCR_CONFIDENCE: {
-        "title": "Niedrige OCR-Qualitaet",
-        "message": "Das Dokument wurde mit nur {confidence}% Konfidenz erkannt. Manuelle Pruefung empfohlen.",
+        "title": "Niedrige OCR-Qualität",
+        "message": "Das Dokument wurde mit nur {confidence}% Konfidenz erkannt. Manuelle Prüfung empfohlen.",
     },
     AlertCodes.COMPLIANCE_DLP_VIOLATION: {
         "title": "DLP-Richtlinien-Verletzung",
@@ -353,7 +353,7 @@ class AlertCenterService:
         """
         template = ALERT_TEMPLATES.get(alert_code)
         if not template:
-            raise ValueError(f"Keine Vorlage fuer Alert-Code: {alert_code}")
+            raise ValueError(f"Keine Vorlage für Alert-Code: {alert_code}")
 
         # Render title and message
         title = template["title"].format(**context_data)

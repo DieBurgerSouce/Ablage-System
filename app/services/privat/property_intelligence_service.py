@@ -3,7 +3,7 @@
 PropertyIntelligenceService - Intelligente Immobilienbewertung und KPIs.
 
 Berechnet automatisch:
-- Geschaetzter Immobilienwert (Inflation + Lage + Alter)
+- Geschätzter Immobilienwert (Inflation + Lage + Alter)
 - Mietrendite (Brutto/Netto)
 - ROI inkl. aller Kosten
 - Wertsteigerungsprognose
@@ -49,7 +49,7 @@ PROPERTY_INTEL_DURATION = Histogram(
 
 PROPERTY_ESTIMATED_VALUES = Gauge(
     "property_estimated_values_total",
-    "Summe aller geschaetzten Immobilienwerte"
+    "Summe aller geschätzten Immobilienwerte"
 )
 
 
@@ -57,8 +57,8 @@ PROPERTY_ESTIMATED_VALUES = Gauge(
 # Referenzdaten (Lokale statische Daten, keine externen APIs)
 # =============================================================================
 
-# PLZ-Faktoren fuer deutsche Regionen (vereinfacht)
-# Faktor 1.0 = Durchschnitt, >1.0 = teurer, <1.0 = guenstiger
+# PLZ-Faktoren für deutsche Regionen (vereinfacht)
+# Faktor 1.0 = Durchschnitt, >1.0 = teurer, <1.0 = günstiger
 PLZ_LOCATION_FACTORS: Dict[str, float] = {
     # Muenchen
     "80": 1.8, "81": 1.75, "82": 1.5, "83": 1.3, "85": 1.4,
@@ -82,7 +82,7 @@ PLZ_LOCATION_FACTORS: Dict[str, float] = {
     "88": 1.1, "89": 1.0, "94": 0.85, "95": 0.8, "96": 0.85, "97": 0.9,
 }
 
-# Durchschnittliche Inflation fuer Immobilien (konservativ)
+# Durchschnittliche Inflation für Immobilien (konservativ)
 REAL_ESTATE_INFLATION_RATE = Decimal("0.025")  # 2.5% p.a.
 
 # Gebaeude-Abschreibung
@@ -91,7 +91,7 @@ BUILDING_DEPRECIATION_RATE = Decimal("0.005")  # 0.5% p.a.
 # Typische Nebenkosten-Quote (% des Kaufpreises)
 ACQUISITION_COSTS_RATE = Decimal("0.10")  # ~10% (Notar, Grunderwerbsteuer, Makler)
 
-# Instandhaltungsruecklage Empfehlung (% des Wertes p.a.)
+# Instandhaltungsrücklage Empfehlung (% des Wertes p.a.)
 MAINTENANCE_RESERVE_RATE = Decimal("0.015")  # 1.5% p.a.
 
 
@@ -101,7 +101,7 @@ MAINTENANCE_RESERVE_RATE = Decimal("0.015")  # 1.5% p.a.
 
 @dataclass
 class PropertyValuation:
-    """Geschaetzter Immobilienwert."""
+    """Geschätzter Immobilienwert."""
     property_id: UUID
     purchase_price: Decimal
     estimated_current_value: Decimal
@@ -121,7 +121,7 @@ class PropertyValuation:
 
 @dataclass
 class PropertyAnalytics:
-    """Vollstaendige Property-Analytics."""
+    """Vollständige Property-Analytics."""
     property_id: UUID
 
     # Wertentwicklung
@@ -167,7 +167,7 @@ class PropertyCostAnalysis:
     notary_costs: Decimal = Decimal("0")
     land_transfer_tax: Decimal = Decimal("0")
 
-    # Laufende Kosten (jaehrlich)
+    # Laufende Kosten (jährlich)
     property_tax: Decimal = Decimal("0")
     insurance: Decimal = Decimal("0")
     maintenance: Decimal = Decimal("0")
@@ -192,8 +192,8 @@ class PropertyIntelligenceService:
     Intelligente Immobilien-Analyse ohne externe APIs.
 
     Features:
-    - Automatische Wertschaetzung basierend auf Inflation + Lage
-    - Vollstaendige Rendite-Berechnung
+    - Automatische Wertschätzung basierend auf Inflation + Lage
+    - Vollständige Rendite-Berechnung
     - Kosten-Analyse mit Trend
     - Prognosen und Empfehlungen
     """
@@ -203,7 +203,7 @@ class PropertyIntelligenceService:
         self._cache: Dict[str, Any] = {}
 
     # =========================================================================
-    # Wertschaetzung
+    # Wertschätzung
     # =========================================================================
 
     async def estimate_property_value(
@@ -212,7 +212,7 @@ class PropertyIntelligenceService:
         property_id: UUID,
     ) -> Optional[PropertyValuation]:
         """
-        Schaetzt den aktuellen Immobilienwert.
+        Schätzt den aktuellen Immobilienwert.
 
         Methodik:
         1. Kaufpreis als Basis
@@ -289,10 +289,10 @@ class PropertyIntelligenceService:
 
         # 3. Gebaeude-Abschreibung (nur wenn Baujahr bekannt, sonst ignorieren)
         # Vereinfacht: 0.5% pro Jahr auf 80% des Wertes (Gebaeudewert)
-        building_ratio = Decimal("0.8")  # 80% Gebaeude, 20% Grundstueck
+        building_ratio = Decimal("0.8")  # 80% Gebaeude, 20% Grundstück
         age_depreciation = purchase_price * building_ratio * BUILDING_DEPRECIATION_RATE * years_held
 
-        # Geschaetzter Wert
+        # Geschätzter Wert
         base_value = purchase_price * inflation_factor * location_factor
         estimated_value = (base_value - age_depreciation).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -301,7 +301,7 @@ class PropertyIntelligenceService:
         if estimated_value < min_value:
             estimated_value = min_value
 
-        # Konfidenz basierend auf verfuegbaren Daten
+        # Konfidenz basierend auf verfügbaren Daten
         confidence = Decimal("0.5")
         confidence_reasons = []
 
@@ -348,11 +348,11 @@ class PropertyIntelligenceService:
         """
         Analysiert alle Kosten einer Immobilie.
 
-        Beruecksichtigt:
+        Berücksichtigt:
         - Kaufnebenkosten
         - Nebenkostenabrechnungen
-        - Versicherung (falls verknuepft)
-        - Geschaetzte Instandhaltung
+        - Versicherung (falls verknüpft)
+        - Geschätzte Instandhaltung
         """
         from app.db.models import PrivatProperty, PrivatUtilityStatement, PrivatInsurance
 
@@ -383,7 +383,7 @@ class PropertyIntelligenceService:
             if statement.period_end and statement.period_end.year == current_year:
                 yearly_utility_costs += Decimal(str(statement.total_costs or 0))
 
-        # Geschaetzte Instandhaltung wenn keine Daten
+        # Geschätzte Instandhaltung wenn keine Daten
         estimated_maintenance = Decimal("0")
         if prop.current_value or prop.purchase_price:
             value = Decimal(str(prop.current_value or prop.purchase_price))
@@ -391,8 +391,8 @@ class PropertyIntelligenceService:
 
         analysis.maintenance = estimated_maintenance.quantize(Decimal("0.01"))
 
-        # Suche verknuepfte Versicherungen
-        # (Vereinfacht - in vollstaendiger Impl. wuerde man nach Insurance mit property_type suchen)
+        # Suche verknüpfte Versicherungen
+        # (Vereinfacht - in vollständiger Impl. wuerde man nach Insurance mit property_type suchen)
 
         # Gesamtkosten
         analysis.total_annual_costs = (
@@ -461,7 +461,7 @@ class PropertyIntelligenceService:
         return "stable"
 
     # =========================================================================
-    # Vollstaendige Analytics
+    # Vollständige Analytics
     # =========================================================================
 
     async def get_full_analytics(
@@ -471,7 +471,7 @@ class PropertyIntelligenceService:
         persist: bool = True,
     ) -> PropertyAnalytics:
         """
-        Berechnet alle Analytics fuer eine Immobilie.
+        Berechnet alle Analytics für eine Immobilie.
 
         Args:
             db: Datenbank-Session
@@ -502,7 +502,7 @@ class PropertyIntelligenceService:
 
             analytics = PropertyAnalytics(property_id=property_id)
 
-            # 1. Wertschaetzung
+            # 1. Wertschätzung
             analytics.valuation = await self.estimate_property_value(db, property_id)
 
             if analytics.valuation:
@@ -516,7 +516,7 @@ class PropertyIntelligenceService:
                         (analytics.value_appreciation_absolute / purchase_price) * 100
                     ).quantize(Decimal("0.01"))
 
-                    # Jaehrliche Rate
+                    # Jährliche Rate
                     if prop.purchase_date:
                         years = Decimal(str((date.today() - prop.purchase_date).days)) / Decimal("365.25")
                         if years > 0:
@@ -623,18 +623,18 @@ class PropertyIntelligenceService:
             if analytics.gross_rental_yield < Decimal("3"):
                 recommendations.append(
                     f"Bruttomietrendite nur {analytics.gross_rental_yield}% - "
-                    "Miterhoehung oder Vergleich mit Marktmieten pruefen"
+                    "Miterhöhung oder Vergleich mit Marktmieten prüfen"
                 )
             elif analytics.gross_rental_yield > Decimal("6"):
                 recommendations.append(
                     f"Starke Rendite von {analytics.gross_rental_yield}% - "
-                    "Potenzial fuer aehnliche Investments pruefen"
+                    "Potenzial für ähnliche Investments prüfen"
                 )
 
         # Leerstehend
         if not prop.is_rented and prop.property_type not in ["eigennutzung", "ferienwohnung"]:
             recommendations.append(
-                "Objekt nicht vermietet - Vermietungspotenzial pruefen"
+                "Objekt nicht vermietet - Vermietungspotenzial prüfen"
             )
 
         # Alter Wert
@@ -649,7 +649,7 @@ class PropertyIntelligenceService:
         # Nebenkosten-Trend
         if analytics.cost_breakdown.get("maintenance", Decimal("0")) == Decimal("0"):
             recommendations.append(
-                "Keine Instandhaltungsruecklage erfasst - "
+                "Keine Instandhaltungsrücklage erfasst - "
                 "Empfohlen: 1.5% des Wertes p.a. einplanen"
             )
 
@@ -703,7 +703,7 @@ class PropertyIntelligenceService:
         if not prop:
             return
 
-        # Wertschaetzung
+        # Wertschätzung
         if analytics.valuation:
             prop.current_value = analytics.valuation.estimated_current_value
             prop.value_date = date.today()
@@ -745,7 +745,7 @@ class PropertyIntelligenceService:
         space_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """
-        Berechnet Analytics fuer alle Immobilien.
+        Berechnet Analytics für alle Immobilien.
 
         Args:
             db: Datenbank-Session
@@ -813,7 +813,7 @@ _service_lock = threading.Lock()
 
 
 def get_property_intelligence_service() -> PropertyIntelligenceService:
-    """Factory fuer PropertyIntelligenceService Singleton (Thread-safe)."""
+    """Factory für PropertyIntelligenceService Singleton (Thread-safe)."""
     global _property_intelligence_service
     if _property_intelligence_service is None:
         with _service_lock:

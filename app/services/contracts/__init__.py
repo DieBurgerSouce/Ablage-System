@@ -3,19 +3,19 @@
 Contract AI Services for Ablage-System.
 
 Vision 2.0 Feature: Intelligente Vertragsanalyse
-Unterstuetzt:
+Unterstützt:
 - Automatische Vertragsklausel-Extraktion (NLP)
 - Vertragstyp-Klassifikation
 - Pflichten-Tracking mit Erinnerungen
 - Fristen-Management
 - Risiko-Bewertung
 - Versionsvergleich
-- Vertragsverlaengerungs-Warnungen (Phase 1.1)
+- Vertragsverlängerungs-Warnungen (Phase 1.1)
 
 Contract Management V2 (Phase 5):
 - Klauselerkennung mit strukturierter Extraktion
 - Markt-Benchmark-Vergleiche
-- Auto-Kuendigung mit deutschen Vorlagen
+- Auto-Kündigung mit deutschen Vorlagen
 - Kostenanalyse und Optimierung
 
 Feinpoliert und durchdacht.

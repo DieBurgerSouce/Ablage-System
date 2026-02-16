@@ -1,4 +1,4 @@
-"""Service fuer die Verwaltung von Fristen im Privat-Modul."""
+"""Service für die Verwaltung von Fristen im Privat-Modul."""
 
 import uuid
 from datetime import datetime, date, timedelta
@@ -32,7 +32,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PrivatDeadlineService:
-    """Service fuer Fristen und Erinnerungen."""
+    """Service für Fristen und Erinnerungen."""
 
     async def create(
         self,
@@ -89,8 +89,8 @@ class PrivatDeadlineService:
     ) -> Optional[PrivatDeadline]:
         """Holt eine Frist nach ID.
 
-        WARNUNG: Diese Methode fuehrt KEINEN Access-Check durch!
-        Fuer API-Aufrufe IMMER get_by_id_with_access_check() verwenden!
+        WARNUNG: Diese Methode führt KEINEN Access-Check durch!
+        Für API-Aufrufe IMMER get_by_id_with_access_check() verwenden!
         """
         result = await db.execute(
             select(PrivatDeadline).where(PrivatDeadline.id == deadline_id)
@@ -106,9 +106,9 @@ class PrivatDeadlineService:
         """Holt eine Frist nach ID MIT Access-Check.
 
         SECURITY: Diese Methode ist IDOR-sicher:
-        - Access-Check erfolgt VOR Rueckgabe der Frist
-        - Gibt None zurueck wenn nicht existiert ODER kein Zugriff
-        - Keine Information Disclosure ueber Existenz fremder Ressourcen
+        - Access-Check erfolgt VOR Rückgabe der Frist
+        - Gibt None zurück wenn nicht existiert ODER kein Zugriff
+        - Keine Information Disclosure über Existenz fremder Ressourcen
         """
         from app.db.models import PrivatSpace, PrivatSpaceAccess
 
@@ -129,7 +129,7 @@ class PrivatDeadlineService:
         if space.owner_id == requesting_user_id:
             return deadline
 
-        # Pruefe explizite Berechtigung - SECURITY: mit expires_at Validierung!
+        # Prüfe explizite Berechtigung - SECURITY: mit expires_at Validierung!
         now = datetime.now(tz.utc)
         access_result = await db.execute(
             select(PrivatSpaceAccess)
@@ -217,7 +217,7 @@ class PrivatDeadlineService:
         days_remaining = (deadline.due_date - today).days
         is_overdue = days_remaining < 0 and not deadline.is_completed
 
-        # Naechste Erinnerung berechnen
+        # Nächste Erinnerung berechnen
         next_reminder = None
         if deadline.reminder_days and not deadline.is_completed:
             for days in sorted(deadline.reminder_days, reverse=True):
@@ -226,7 +226,7 @@ class PrivatDeadlineService:
                     next_reminder = reminder_date
                     break
 
-        # Verknuepften Entity-Namen holen
+        # Verknüpften Entity-Namen holen
         related_name = None
         if deadline.related_entity_type and deadline.related_entity_id:
             related_name = await self._get_related_entity_name(
@@ -262,7 +262,7 @@ class PrivatDeadlineService:
         entity_type: str,
         entity_id: uuid.UUID,
     ) -> Optional[str]:
-        """Holt den Namen der verknuepften Entity."""
+        """Holt den Namen der verknüpften Entity."""
         if entity_type == "insurance":
             result = await db.execute(
                 select(PrivatInsurance.name)
@@ -294,7 +294,7 @@ class PrivatDeadlineService:
         db: AsyncSession,
         space_id: uuid.UUID,
     ) -> PrivatDeadlineWidget:
-        """Holt Fristen fuer das Dashboard-Widget."""
+        """Holt Fristen für das Dashboard-Widget."""
         today = date.today()
         week_end = today + timedelta(days=7)
         month_end = today + timedelta(days=30)
@@ -343,15 +343,15 @@ class PrivatDeadlineService:
         """Aktualisiert eine Frist.
 
         SECURITY FIX 23-7: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Updates zu verhindern. Ohne Row Lock koennte:
-        - Lost Updates bei gleichzeitigen Aenderungen auftreten
+        bei parallelen Updates zu verhindern. Ohne Row Lock könnte:
+        - Lost Updates bei gleichzeitigen Änderungen auftreten
         - Inkonsistente Frist-Daten entstehen
         """
         # SECURITY FIX 23-7: Row Lock verhindert parallele Modifikationen
         result = await db.execute(
             select(PrivatDeadline)
             .where(PrivatDeadline.id == deadline_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Frist-Daten!
+            .with_for_update()  # ROW LOCK - kritisch für Frist-Daten!
         )
         deadline = result.scalar_one_or_none()
         if not deadline:
@@ -379,7 +379,7 @@ class PrivatDeadlineService:
 
         SECURITY FIX 23-8: Row Lock mit with_for_update() um TOCTOU Race Conditions
         bei parallelem Complete zu verhindern. Besonders KRITISCH bei recurring deadlines!
-        Ohne Row Lock koennte:
+        Ohne Row Lock könnte:
         - Double-Complete auftreten
         - Doppelte Folge-Fristen erstellt werden
         """
@@ -387,7 +387,7 @@ class PrivatDeadlineService:
         result = await db.execute(
             select(PrivatDeadline)
             .where(PrivatDeadline.id == deadline_id)
-            .with_for_update()  # ROW LOCK - KRITISCH fuer recurring deadlines!
+            .with_for_update()  # ROW LOCK - KRITISCH für recurring deadlines!
         )
         deadline = result.scalar_one_or_none()
         if not deadline:
@@ -416,7 +416,7 @@ class PrivatDeadlineService:
         db: AsyncSession,
         deadline: PrivatDeadline,
     ) -> PrivatDeadline:
-        """Erstellt die naechste Wiederholung einer Frist."""
+        """Erstellt die nächste Wiederholung einer Frist."""
         interval_days = {
             "daily": 1,
             "weekly": 7,
@@ -454,10 +454,10 @@ class PrivatDeadlineService:
         db: AsyncSession,
         deadline_id: uuid.UUID,
     ) -> bool:
-        """Loescht eine Frist.
+        """Löscht eine Frist.
 
         SECURITY FIX 23-9: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelem Delete zu verhindern. Ohne Row Lock koennte:
+        bei parallelem Delete zu verhindern. Ohne Row Lock könnte:
         - Double-Delete auftreten
         - Inkonsistente Zustaende entstehen
         """
@@ -465,7 +465,7 @@ class PrivatDeadlineService:
         result = await db.execute(
             select(PrivatDeadline)
             .where(PrivatDeadline.id == deadline_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Datenintegritaet!
+            .with_for_update()  # ROW LOCK - kritisch für Datenintegrität!
         )
         deadline = result.scalar_one_or_none()
         if not deadline:
@@ -481,7 +481,7 @@ class PrivatDeadlineService:
         db: AsyncSession,
         space_id: uuid.UUID,
     ) -> List[PrivatDeadline]:
-        """Holt Fristen fuer die heute Erinnerungen faellig sind."""
+        """Holt Fristen für die heute Erinnerungen fällig sind."""
         today = date.today()
 
         result = await db.execute(
@@ -532,7 +532,7 @@ class PrivatDeadlineService:
         deadlines: List[PrivatDeadline],
         calendar_name: str = "Privat-Fristen",
     ) -> bytes:
-        """Generiert eine iCal-Datei fuer Fristen.
+        """Generiert eine iCal-Datei für Fristen.
 
         Args:
             deadlines: Liste von Fristen
@@ -595,7 +595,7 @@ class PrivatDeadlineService:
         Args:
             db: Datenbank-Session
             space_id: Space-ID
-            include_completed: Erledigte einschliessen?
+            include_completed: Erledigte einschließen?
 
         Returns:
             iCal-Datei als Bytes

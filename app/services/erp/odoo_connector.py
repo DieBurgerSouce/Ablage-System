@@ -37,7 +37,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
 
     Features:
     - XML-RPC Verbindung mit Connection Pooling
-    - Async-Wrapper fuer Blocking Calls
+    - Async-Wrapper für Blocking Calls
     - Rate Limiting und Retry-Logik
     - Bidirektionale Synchronisation
 
@@ -91,7 +91,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
         return msg
 
     async def _run_blocking(self, func: Any, *args: Any, **kwargs: Any) -> Any:
-        """Fuehrt blocking Funktion im ThreadPool aus."""
+        """Führt blocking Funktion im ThreadPool aus."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             self._executor,
@@ -192,7 +192,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return False
 
     async def get_version(self) -> str:
-        """Gibt die Odoo-Version zurueck."""
+        """Gibt die Odoo-Version zurück."""
         try:
             if not self._common:
                 await self.connect()
@@ -218,7 +218,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
         kwargs: Optional[Dict[str, Any]] = None,
     ) -> Any:
         """
-        Fuehrt eine Odoo-Operation aus.
+        Führt eine Odoo-Operation aus.
 
         Args:
             model: Odoo-Modell (z.B. "res.partner")
@@ -620,7 +620,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
         filename: str,
         mime_type: str,
     ) -> bool:
-        """Haengt ein Dokument an eine Odoo-Entitaet an."""
+        """Haengt ein Dokument an eine Odoo-Entität an."""
         try:
             import base64
 
@@ -676,7 +676,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
         entity: ERPEntity,
         erp_id: str,
     ) -> List[Dict[str, Any]]:
-        """Holt Anhaenge einer Odoo-Entitaet."""
+        """Holt Anhaenge einer Odoo-Entität."""
         try:
             model_map = {
                 ERPEntity.INVOICE: "account.move",
@@ -756,7 +756,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
             return []
 
     async def get_currencies(self) -> List[Dict[str, Any]]:
-        """Holt alle aktiven Waehrungen aus Odoo."""
+        """Holt alle aktiven Währungen aus Odoo."""
         try:
             currencies = await self._execute_kw(
                 "res.currency",
@@ -783,7 +783,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
         Synchronisiert Projekte aus Odoo.
 
         Args:
-            since: Nur Aenderungen seit diesem Zeitpunkt
+            since: Nur Änderungen seit diesem Zeitpunkt
             batch_size: Anzahl pro Batch
 
         Returns:
@@ -837,10 +837,10 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
         batch_size: int = 500,
     ) -> ERPSyncResult:
         """
-        Synchronisiert Zeiterfassungs-Eintraege aus Odoo.
+        Synchronisiert Zeiterfassungs-Einträge aus Odoo.
 
         Args:
-            since: Nur Aenderungen seit diesem Zeitpunkt
+            since: Nur Änderungen seit diesem Zeitpunkt
             batch_size: Anzahl pro Batch
 
         Returns:
@@ -896,7 +896,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
         Synchronisiert Lagerbewegungen aus Odoo.
 
         Args:
-            since: Nur Aenderungen seit diesem Zeitpunkt
+            since: Nur Änderungen seit diesem Zeitpunkt
             batch_size: Anzahl pro Batch
 
         Returns:
@@ -953,7 +953,7 @@ class OdooConnector(ERPConnector[Dict[str, Any]]):
         Synchronisiert Produktkatalog aus Odoo.
 
         Args:
-            since: Nur Aenderungen seit diesem Zeitpunkt
+            since: Nur Änderungen seit diesem Zeitpunkt
             batch_size: Anzahl pro Batch
 
         Returns:

@@ -3,8 +3,8 @@
 Automation API Endpoints.
 
 Feature #7: Automation 2.0
-- Auto-Filing Regeln (CRUD + Vorschlaege + Training)
-- Auto-Matching (Ergebnisse + Bestaetigung + Statistiken)
+- Auto-Filing Regeln (CRUD + Vorschläge + Training)
+- Auto-Matching (Ergebnisse + Bestätigung + Statistiken)
 """
 
 import structlog
@@ -55,7 +55,7 @@ class AutoFilingRuleCreateRequest(BaseModel):
         0.95,
         gt=0.0,
         le=1.0,
-        description="Confidence-Schwelle fuer automatische Ablage",
+        description="Confidence-Schwelle für automatische Ablage",
     )
     target_folder_id: Optional[UUID] = Field(
         None,
@@ -67,7 +67,7 @@ class AutoFilingRuleCreateRequest(BaseModel):
     )
     config: Optional[Dict[str, object]] = Field(
         None,
-        description="Zusaetzliche Konfiguration",
+        description="Zusätzliche Konfiguration",
     )
 
 
@@ -89,7 +89,7 @@ class AutoFilingRuleUpdateRequest(BaseModel):
 
 
 class AutoFilingRuleResponse(BaseModel):
-    """Response fuer eine Auto-Filing-Regel."""
+    """Response für eine Auto-Filing-Regel."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -110,7 +110,7 @@ class AutoFilingRuleResponse(BaseModel):
 
 
 class FilingSuggestionResponse(BaseModel):
-    """Response fuer einen Ablage-Vorschlag."""
+    """Response für einen Ablage-Vorschlag."""
 
     rule_id: UUID
     rule_name: str
@@ -122,7 +122,7 @@ class FilingSuggestionResponse(BaseModel):
 
 
 class AccuracyStatsResponse(BaseModel):
-    """Response fuer Accuracy-Statistiken."""
+    """Response für Accuracy-Statistiken."""
 
     total_rules: int
     active_rules: int
@@ -139,7 +139,7 @@ class AccuracyStatsResponse(BaseModel):
 
 
 class AutoMatchResponse(BaseModel):
-    """Response fuer ein Auto-Match-Ergebnis."""
+    """Response für ein Auto-Match-Ergebnis."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -157,7 +157,7 @@ class AutoMatchResponse(BaseModel):
 
 
 class MatchStatisticsResponse(BaseModel):
-    """Response fuer Match-Statistiken."""
+    """Response für Match-Statistiken."""
 
     total_matches: int
     confirmed_matches: int
@@ -244,7 +244,7 @@ async def update_filing_rule(
     if not updates:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="Keine Aenderungen angegeben",
+            detail="Keine Änderungen angegeben",
         )
 
     rule = await service.update_rule(
@@ -264,14 +264,14 @@ async def update_filing_rule(
 @router.delete(
     "/filing-rules/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Auto-Filing-Regel loeschen",
+    summary="Auto-Filing-Regel löschen",
 )
 async def delete_filing_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loescht eine Auto-Filing-Regel."""
+    """Löscht eine Auto-Filing-Regel."""
     service = AutoFilingService(db)
     deleted = await service.delete_rule(
         db, current_user.company_id, rule_id
@@ -287,21 +287,21 @@ async def delete_filing_rule(
 
 
 # =============================================================================
-# ENDPOINTS - Auto-Filing Vorschlaege & Training
+# ENDPOINTS - Auto-Filing Vorschläge & Training
 # =============================================================================
 
 
 @router.get(
     "/filing-suggestions/{document_id}",
     response_model=List[FilingSuggestionResponse],
-    summary="Ablage-Vorschlaege fuer Dokument",
+    summary="Ablage-Vorschläge für Dokument",
 )
 async def get_filing_suggestions(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[FilingSuggestionResponse]:
-    """Liefert Ablage-Vorschlaege fuer ein Dokument."""
+    """Liefert Ablage-Vorschläge für ein Dokument."""
     service = AutoFilingService(db)
     suggestions = await service.classify_document(
         db, current_user.company_id, document_id
@@ -356,7 +356,7 @@ async def get_filing_accuracy_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AccuracyStatsResponse:
-    """Liefert aggregierte Accuracy-Statistiken fuer alle Filing-Modelle."""
+    """Liefert aggregierte Accuracy-Statistiken für alle Filing-Modelle."""
     service = AutoFilingService(db)
     stats = await service.get_accuracy_stats(
         db, current_user.company_id
@@ -381,14 +381,14 @@ async def get_filing_accuracy_stats(
 @router.get(
     "/matches/{document_id}",
     response_model=List[AutoMatchResponse],
-    summary="Matches fuer Dokument",
+    summary="Matches für Dokument",
 )
 async def get_document_matches(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[AutoMatchResponse]:
-    """Holt alle Matching-Ergebnisse fuer ein Dokument."""
+    """Holt alle Matching-Ergebnisse für ein Dokument."""
     service = AutoMatchingService(db)
     matches = await service.get_matches_for_document(
         db, current_user.company_id, document_id
@@ -399,14 +399,14 @@ async def get_document_matches(
 @router.post(
     "/matches/{match_id}/confirm",
     response_model=AutoMatchResponse,
-    summary="Match bestaetigen",
+    summary="Match bestätigen",
 )
 async def confirm_match(
     match_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AutoMatchResponse:
-    """Bestaetigt ein automatisches Match."""
+    """Bestätigt ein automatisches Match."""
     service = AutoMatchingService(db)
     match = await service.confirm_match(
         db, current_user.company_id, match_id, current_user.id
@@ -425,14 +425,14 @@ async def confirm_match(
 @router.delete(
     "/matches/{match_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Match ablehnen/loeschen",
+    summary="Match ablehnen/löschen",
 )
 async def reject_match(
     match_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Lehnt ein automatisches Match ab (loescht es)."""
+    """Lehnt ein automatisches Match ab (löscht es)."""
     service = AutoMatchingService(db)
     deleted = await service.reject_match(
         db, current_user.company_id, match_id

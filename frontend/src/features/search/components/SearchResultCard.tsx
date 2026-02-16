@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import DOMPurify from 'dompurify';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import {
     FileText,
     FileImage,
@@ -10,6 +11,7 @@ import {
     Calendar,
     Tag,
     ExternalLink,
+    Eye,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RelevanceIndicator, type ScoreBreakdown } from './RelevanceIndicator';
@@ -108,104 +110,137 @@ export function SearchResultCard({ result, className }: SearchResultCardProps) {
     const typeLabel = documentTypeLabels[result.documentType] || result.documentType;
 
     return (
-        <Link
-            to="/documents/$documentId"
-            params={{ documentId: result.documentId }}
-            className="block group"
-        >
-            <Card
-                className={cn(
-                    'overflow-hidden transition-all duration-200',
-                    'hover:shadow-lg hover:border-primary/30',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    className
-                )}
-            >
-                <CardContent className="p-4">
-                    <div className="space-y-3">
-                        {/* Header: Icon, Title, External Link */}
-                        <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
-                                {getDocumentIcon(result.documentType)}
-                            </div>
+        <HoverCard openDelay={400} closeDelay={100}>
+            <HoverCardTrigger asChild>
+                <Link
+                    to="/documents/$documentId"
+                    params={{ documentId: result.documentId }}
+                    className="block group"
+                >
+                    <Card
+                        className={cn(
+                            'overflow-hidden transition-all duration-200',
+                            'hover:shadow-lg hover:border-primary/30',
+                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                            className
+                        )}
+                    >
+                        <CardContent className="p-4">
+                            <div className="space-y-3">
+                                {/* Header: Icon, Title, External Link */}
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+                                        {getDocumentIcon(result.documentType)}
+                                    </div>
 
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2">
-                                    <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                                        {result.originalFilename || result.filename}
-                                    </h3>
-                                    <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                                                {result.originalFilename || result.filename}
+                                            </h3>
+                                            <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Badge variant="outline" className="text-xs">
+                                                {typeLabel}
+                                            </Badge>
+                                            <span className="text-xs text-muted-foreground">
+                                                {formatFileSize(result.fileSize)}
+                                            </span>
+                                            {result.pageCount && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {result.pageCount} Seite{result.pageCount !== 1 ? 'n' : ''}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div className="flex items-center gap-2 mt-1">
-                                    <Badge variant="outline" className="text-xs">
-                                        {typeLabel}
-                                    </Badge>
-                                    <span className="text-xs text-muted-foreground">
-                                        {formatFileSize(result.fileSize)}
-                                    </span>
-                                    {result.pageCount && (
-                                        <span className="text-xs text-muted-foreground">
-                                            {result.pageCount} Seite{result.pageCount !== 1 ? 'n' : ''}
-                                        </span>
+                                {/* Relevanz Score */}
+                                <RelevanceIndicator scores={scores} compact={false} />
+
+                                {/* Entity Match Hint */}
+                                {result.matchedEntity && (
+                                    <EntitySearchHint entity={result.matchedEntity} />
+                                )}
+
+                                {/* Highlight / Preview */}
+                                {(result.highlightSnippets || result.highlight || result.textPreview) && (
+                                    <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3 border border-border/50 [&_mark]:bg-yellow-200 [&_mark]:dark:bg-yellow-800 [&_mark]:px-0.5 [&_mark]:rounded-sm">
+                                        {result.highlightSnippets ? (
+                                            <p
+                                                className="line-clamp-3"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: sanitizeHighlight(result.highlightSnippets),
+                                                }}
+                                            />
+                                        ) : result.highlight ? (
+                                            <p
+                                                className="line-clamp-3"
+                                                dangerouslySetInnerHTML={{
+                                                    __html: sanitizeHighlight(result.highlight),
+                                                }}
+                                            />
+                                        ) : (
+                                            <p className="line-clamp-3">{result.textPreview}</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Footer: Date and Tags */}
+                                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+                                    <div className="flex items-center gap-1">
+                                        <Calendar className="h-3 w-3" />
+                                        <span>{formatDate(result.createdAt)}</span>
+                                    </div>
+
+                                    {result.tags.length > 0 && (
+                                        <div className="flex items-center gap-1">
+                                            <Tag className="h-3 w-3" />
+                                            <span className="truncate max-w-32">
+                                                {result.tags.slice(0, 2).join(', ')}
+                                                {result.tags.length > 2 && ` +${result.tags.length - 2}`}
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
                             </div>
-                        </div>
-
-                        {/* Relevanz Score */}
-                        <RelevanceIndicator scores={scores} compact={false} />
-
-                        {/* Entity Match Hint */}
-                        {result.matchedEntity && (
-                            <EntitySearchHint entity={result.matchedEntity} />
-                        )}
-
-                        {/* Highlight / Preview */}
-                        {(result.highlightSnippets || result.highlight || result.textPreview) && (
-                            <div className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3 border border-border/50 [&_mark]:bg-yellow-200 [&_mark]:dark:bg-yellow-800 [&_mark]:px-0.5 [&_mark]:rounded-sm">
-                                {result.highlightSnippets ? (
-                                    <p
-                                        className="line-clamp-3"
-                                        dangerouslySetInnerHTML={{
-                                            __html: sanitizeHighlight(result.highlightSnippets),
-                                        }}
-                                    />
-                                ) : result.highlight ? (
-                                    <p
-                                        className="line-clamp-3"
-                                        dangerouslySetInnerHTML={{
-                                            __html: sanitizeHighlight(result.highlight),
-                                        }}
-                                    />
-                                ) : (
-                                    <p className="line-clamp-3">{result.textPreview}</p>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Footer: Date and Tags */}
-                        <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-                            <div className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                <span>{formatDate(result.createdAt)}</span>
-                            </div>
-
-                            {result.tags.length > 0 && (
-                                <div className="flex items-center gap-1">
-                                    <Tag className="h-3 w-3" />
-                                    <span className="truncate max-w-32">
-                                        {result.tags.slice(0, 2).join(', ')}
-                                        {result.tags.length > 2 && ` +${result.tags.length - 2}`}
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                        </CardContent>
+                    </Card>
+                </Link>
+            </HoverCardTrigger>
+            <HoverCardContent side="right" sideOffset={8} className="w-80">
+                <div className="space-y-2">
+                    <h4 className="font-semibold text-sm">{result.originalFilename || result.filename}</h4>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Badge variant="outline">{typeLabel}</Badge>
+                        <span>{formatDate(result.createdAt)}</span>
                     </div>
-                </CardContent>
-            </Card>
-        </Link>
+                    {(result.textPreview || result.highlight) && (
+                        <p className="text-xs text-muted-foreground line-clamp-6">
+                            {result.textPreview || stripHtml(result.highlight || '')}
+                        </p>
+                    )}
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-2 border-t">
+                        <span>{formatFileSize(result.fileSize)}</span>
+                        {result.pageCount && <span>{result.pageCount} Seiten</span>}
+                    </div>
+                    <p className="text-xs text-primary flex items-center gap-1 pt-1">
+                        <Eye className="h-3 w-3" />
+                        Vorschau - Klicken zum Oeffnen
+                    </p>
+                </div>
+            </HoverCardContent>
+        </HoverCard>
     );
+}
+
+/**
+ * Entfernt HTML-Tags aus einem String fuer die Vorschau-Anzeige.
+ */
+function stripHtml(html: string): string {
+    return html.replace(/<[^>]*>/g, '');
 }
 
 /**

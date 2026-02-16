@@ -2,10 +2,10 @@
 """
 Document Lifecycle database models for Ablage-System.
 
-Dokument-Lebenszyklus mit SLA-Ueberwachung:
-- Stufen: Eingang -> OCR -> Klassifizierung -> Pruefung -> Freigabe -> Buchung -> Archivierung
+Dokument-Lebenszyklus mit SLA-Überwachung:
+- Stufen: Eingang -> OCR -> Klassifizierung -> Prüfung -> Freigabe -> Buchung -> Archivierung
 - SLA-Konfiguration pro Dokumenttyp und Stufe
-- Stufen-Uebergaenge mit Zeitstempeln und SLA-Einhaltung
+- Stufen-Übergaenge mit Zeitstempeln und SLA-Einhaltung
 - Mandantenfaehig (company_id)
 
 Feinpoliert und durchdacht - Enterprise-grade Document Lifecycle.
@@ -41,7 +41,7 @@ class DocumentLifecycleStage(str, Enum):
     EINGANG = "eingang"                    # Dokument empfangen
     OCR = "ocr"                            # OCR-Verarbeitung
     KLASSIFIZIERUNG = "klassifizierung"    # Klassifikation
-    PRUEFUNG = "pruefung"                  # Pruefung/Verifizierung
+    PRUEFUNG = "prüfung"                  # Prüfung/Verifizierung
     FREIGABE = "freigabe"                  # Freigabe/Genehmigung
     BUCHUNG = "buchung"                    # Buchung/Verbuchung
     ARCHIVIERUNG = "archivierung"          # Archiviert
@@ -66,7 +66,7 @@ class DocumentLifecycleConfig(Base):
     SLA-Konfiguration pro Dokumenttyp und Lebenszyklus-Stufe.
 
     Definiert maximale Verweildauer und Eskalationszeiten
-    fuer jede Stufe eines Dokumenttyps.
+    für jede Stufe eines Dokumenttyps.
     """
     __tablename__ = "document_lifecycle_configs"
 
@@ -119,7 +119,7 @@ class DocumentLifecycleConfig(Base):
 
 class DocumentLifecycleEvent(Base):
     """
-    Protokolliert jeden Stufen-Uebergang im Dokument-Lebenszyklus.
+    Protokolliert jeden Stufen-Übergang im Dokument-Lebenszyklus.
 
     Speichert Von/Nach-Stufe, Zeitpunkt, Dauer und SLA-Einhaltung.
     """
@@ -143,8 +143,8 @@ class DocumentLifecycleEvent(Base):
         index=True,
     )
 
-    # Stufen-Uebergang
-    from_stage = Column(String(30), nullable=True)  # None fuer initialen Eingang
+    # Stufen-Übergang
+    from_stage = Column(String(30), nullable=True)  # None für initialen Eingang
     to_stage = Column(String(30), nullable=False)
 
     # Zeitstempel und Dauer
@@ -185,7 +185,7 @@ class DocumentLifecycleEvent(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertiert das Event in ein Dictionary fuer API-Antworten."""
+        """Konvertiert das Event in ein Dictionary für API-Antworten."""
         return {
             "id": str(self.id),
             "document_id": str(self.document_id),

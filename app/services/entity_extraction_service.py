@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Entity Extraction Service fuer Geschaeftspartner-Erkennung.
+Entity Extraction Service für Geschäftspartner-Erkennung.
 
-Extrahiert Geschaeftspartner (Kunden/Lieferanten) aus OCR-Text mit
+Extrahiert Geschäftspartner (Kunden/Lieferanten) aus OCR-Text mit
 99%+ Praezision durch Mehrfach-Validierung.
 
-Erkannte Entitaeten:
+Erkannte Entitäten:
 - USt-IdNr (DE123456789)
 - IBAN (DE89 3704 0044 0532 0130 00)
 - Steuernummer
@@ -57,9 +57,9 @@ class ExtractedAddress:
     country: str = "DE"
     confidence: float = 0.0
     raw_text: str = ""
-    # Neue Felder fuer intelligente Zuordnung
+    # Neue Felder für intelligente Zuordnung
     role: Optional[str] = None  # "sender" oder "recipient"
-    position_start: int = 0  # Position im Text fuer Proximity-Matching
+    position_start: int = 0  # Position im Text für Proximity-Matching
     company_name: Optional[str] = None  # Firmenname aus Kontext (ohne Rechtsform)
 
 
@@ -101,7 +101,7 @@ class EntityMatchResult:
 # =============================================================================
 
 class GermanPatterns:
-    """Regex-Muster fuer deutsche Geschaeftsdokumente."""
+    """Regex-Muster für deutsche Geschäftsdokumente."""
 
     # USt-IdNr: DE gefolgt von genau 9 Ziffern (Legacy, nur DE)
     VAT_ID = re.compile(
@@ -117,8 +117,8 @@ class GermanPatterns:
         re.IGNORECASE
     )
 
-    # Spezifischere Patterns fuer haeufige Laender (hoehere Praezision)
-    # WICHTIG: Mit optionalen Leerzeichen fuer OCR-Toleranz!
+    # Spezifischere Patterns für häufige Länder (höhere Praezision)
+    # WICHTIG: Mit optionalen Leerzeichen für OCR-Toleranz!
     VAT_ID_NL = re.compile(
         r'\b(NL\s?[0-9]{9}\s?B\s?[0-9]{2})\b',  # NL + 9 Ziffern + B + 2 Ziffern (mit optionalen Leerzeichen)
         re.IGNORECASE
@@ -137,15 +137,15 @@ class GermanPatterns:
     # =========================================================================
     # EU-WEITE IBAN/BIC PATTERNS (KRITISCH!)
     # =========================================================================
-    # EU IBAN - Alle Laender (ersetzt DE-only Pattern)
-    # Format: 2 Buchstaben Laendercode + 2 Pruefziffern + bis zu 30 alphanumerische Zeichen
+    # EU IBAN - Alle Länder (ersetzt DE-only Pattern)
+    # Format: 2 Buchstaben Ländercode + 2 Prüfziffern + bis zu 30 alphanumerische Zeichen
     # Mit optionalen Leerzeichen zwischen 4er-Gruppen
     EU_IBAN = re.compile(
         r'\b([A-Z]{2}\s?[0-9]{2}\s?(?:[A-Z0-9]{4}\s?){2,7}[A-Z0-9]{0,2})\b',
         re.IGNORECASE
     )
 
-    # Legacy: DE-only IBAN (fuer Rueckwaertskompatibilitaet)
+    # Legacy: DE-only IBAN (für Rückwärtskompatibilität)
     IBAN = re.compile(
         r'\b(DE\s?[0-9]{2}[\s]?(?:[0-9]{4}[\s]?){4}[0-9]{2})\b',
         re.IGNORECASE
@@ -157,7 +157,7 @@ class GermanPatterns:
         re.IGNORECASE
     )
 
-    # IBAN-Laengen pro Land (ohne Leerzeichen)
+    # IBAN-Längen pro Land (ohne Leerzeichen)
     IBAN_LENGTHS: Dict[str, int] = {
         'DE': 22,  # Deutschland
         'NL': 18,  # Niederlande
@@ -186,14 +186,14 @@ class GermanPatterns:
         'BG': 22,  # Bulgarien
     }
 
-    # EU BIC/SWIFT - Alle Laender (ersetzt DE-only Pattern)
+    # EU BIC/SWIFT - Alle Länder (ersetzt DE-only Pattern)
     # Format: 4 Buchstaben Bank + 2 Buchstaben Land + 2 alphanumerische Ort + optional 3 alphanumerische Filiale
     EU_BIC = re.compile(
         r'\b([A-Z]{4}\s?[A-Z]{2}\s?[A-Z0-9]{2}(?:\s?[A-Z0-9]{3})?)\b',
         re.IGNORECASE
     )
 
-    # Legacy: DE-only BIC (fuer Rueckwaertskompatibilitaet)
+    # Legacy: DE-only BIC (für Rückwärtskompatibilität)
     BIC = re.compile(
         r'\b([A-Z]{4}DE[A-Z0-9]{2}(?:[A-Z0-9]{3})?)\b'
     )
@@ -207,14 +207,14 @@ class GermanPatterns:
     # MULTI-LAND PLZ PATTERNS
     # =========================================================================
     # Deutsche PLZ (5-stellig) + Stadt
-    # Unterstuetzt optionales Laender-Prefix: "D-42719", "DE-42719", "42719"
+    # Unterstützt optionales Länder-Prefix: "D-42719", "DE-42719", "42719"
     PLZ_CITY = re.compile(
         r'(?:^|[^\d])(?:D-|DE-)?([0-9]{5})[ \t]+([A-ZÄÖÜ][a-zäöüß]+(?:[ \t]+[A-Za-zäöüß]+)*)\b',
         re.UNICODE
     )
 
     # Niederlaendische PLZ (4 Ziffern + 2 Buchstaben) + Stadt
-    # Unterstuetzt Leerzeichen in PLZ: "7418 HG" oder "7418HG"
+    # Unterstützt Leerzeichen in PLZ: "7418 HG" oder "7418HG"
     PLZ_CITY_NL = re.compile(
         r'\b([0-9]{4}[ \t]?[A-Z]{2})[ \t]+([A-Za-z\-]+(?:[ \t]+[A-Za-z\-]+)*)\b',
         re.UNICODE
@@ -248,8 +248,8 @@ class GermanPatterns:
     )
 
     RECIPIENT_LABELS = re.compile(
-        r'\b(?:an|to|recipient|empfänger|empfaenger|kunde|customer|'
-        r'rechnungsempfänger|rechnungsempfaenger|käufer|kaeufer|buyer|'
+        r'\b(?:an|to|recipient|empfänger|empfänger|kunde|customer|'
+        r'rechnungsempfänger|rechnungsempfänger|käufer|käufer|buyer|'
         r'bill\s*to|ship\s*to|lieferadresse|rechnungsadresse)\b',
         re.IGNORECASE
     )
@@ -268,7 +268,7 @@ class GermanPatterns:
         re.UNICODE | re.IGNORECASE
     )
 
-    # Hausnummer separat (fuer fragmentierten OCR wo Nummer auf eigener Zeile)
+    # Hausnummer separat (für fragmentierten OCR wo Nummer auf eigener Zeile)
     HOUSE_NUMBER = re.compile(
         r'^(\d{1,4}(?:[ \t]*[a-zA-Z])?)$',
         re.UNICODE
@@ -301,7 +301,7 @@ class GermanPatterns:
     # =========================================================================
     # LAENDERNAMEN MAPPING (Mehrsprachig -> ISO 3166-1 Alpha-2)
     # =========================================================================
-    # Alle Varianten in Kleinbuchstaben fuer case-insensitive Matching
+    # Alle Varianten in Kleinbuchstaben für case-insensitive Matching
     COUNTRY_NAMES_TO_CODE: Dict[str, str] = {
         # Deutschland
         "deutschland": "DE", "germany": "DE", "duitsland": "DE",
@@ -352,7 +352,7 @@ class GermanPatterns:
         "l": "LU", "lu": "LU",
     }
 
-    # Pattern fuer Laendernamen im Text (nach PLZ/Stadt)
+    # Pattern für Ländernamen im Text (nach PLZ/Stadt)
     COUNTRY_NAME_PATTERN = re.compile(
         r'(?:^|\n|\r)\s*([A-Za-zäöüÄÖÜßéèêëàâùûôîïç\-\s]+?)\s*(?:$|\n|\r)',
         re.UNICODE | re.MULTILINE
@@ -376,9 +376,9 @@ class GermanPatterns:
 
 class EntityExtractionService:
     """
-    Service zur Extraktion von Geschaeftspartnern aus OCR-Text.
+    Service zur Extraktion von Geschäftspartnern aus OCR-Text.
 
-    Verwendet Mehrfach-Validierung fuer 99%+ Praezision:
+    Verwendet Mehrfach-Validierung für 99%+ Praezision:
     1. Regex-basierte Erkennung
     2. Validierung (IBAN-Prüfziffer, etc.)
     3. Kontext-Analyse
@@ -418,14 +418,14 @@ class EntityExtractionService:
         document_id: Optional[UUID] = None
     ) -> EntityExtractionResult:
         """
-        Extrahiert alle Geschaeftspartner-Informationen aus OCR-Text.
+        Extrahiert alle Geschäftspartner-Informationen aus OCR-Text.
 
         Args:
             text: OCR-Text
-            document_id: Optionale Dokument-ID fuer Logging
+            document_id: Optionale Dokument-ID für Logging
 
         Returns:
-            EntityExtractionResult mit allen gefundenen Entitaeten
+            EntityExtractionResult mit allen gefundenen Entitäten
         """
         if not text or not text.strip():
             return EntityExtractionResult()
@@ -478,12 +478,12 @@ class EntityExtractionService:
     def _extract_vat_ids(self, text: str) -> List[ExtractedIdentifier]:
         """Extrahiert EU USt-IdNr (alle Mitgliedstaaten).
 
-        Unterstuetzt:
+        Unterstützt:
         - DE: DE + 9 Ziffern (z.B. DE200053646)
         - NL: NL + 9 Ziffern + B + 2 Ziffern (z.B. NL820594829B01)
         - AT: AT + U + 8 Ziffern (z.B. ATU12345678)
         - BE: BE + 10 Ziffern (z.B. BE0123456789)
-        - Alle anderen EU-Laender: Laendercode + 8-12 alphanumerische Zeichen
+        - Alle anderen EU-Länder: Ländercode + 8-12 alphanumerische Zeichen
         """
         results: List[ExtractedIdentifier] = []
         seen_vat_ids: Set[str] = set()
@@ -504,7 +504,7 @@ class EntityExtractionService:
                 if normalized in seen_vat_ids:
                     continue
 
-                # Laengen-Validierung
+                # Längen-Validierung
                 if len(normalized) != expected_len:
                     continue
 
@@ -524,7 +524,7 @@ class EntityExtractionService:
                 ))
                 self._extraction_stats["vat_ids_found"] += 1
 
-        # 2. Dann generisches EU-Pattern fuer andere Laender
+        # 2. Dann generisches EU-Pattern für andere Länder
         for match in self.patterns.EU_VAT_ID.finditer(text):
             country = match.group('country').upper()
             number = match.group('number').upper()
@@ -533,11 +533,11 @@ class EntityExtractionService:
             if normalized in seen_vat_ids:
                 continue
 
-            # Ueberspringe bereits durch spezifische Patterns erfasste
+            # Überspringe bereits durch spezifische Patterns erfasste
             if country in ("DE", "NL", "AT", "BE"):
                 continue
 
-            # Minimale Laengenvalidierung (Laendercode + mindestens 8 Zeichen)
+            # Minimale Längenvalidierung (Ländercode + mindestens 8 Zeichen)
             if len(normalized) < 10:
                 continue
 
@@ -546,7 +546,7 @@ class EntityExtractionService:
             if not any(c.isdigit() for c in number):
                 continue
 
-            # Zusaetzlich: Ablehne bekannte deutsche Woerter die mit Laendercodes beginnen
+            # Zusätzlich: Ablehne bekannte deutsche Woerter die mit Ländercodes beginnen
             german_words_with_country_prefix = {
                 "SILBERGRAU", "SEITENWAND", "SEITE", "SEITLICH", "SILBER",
                 "DEKO", "DEKORATION", "DEKOR", "DECKEL", "DEFAULT",
@@ -574,15 +574,15 @@ class EntityExtractionService:
             ))
             self._extraction_stats["vat_ids_found"] += 1
 
-        # Sortiere nach Position im Text (fuer spaetere Proximity-Analyse)
+        # Sortiere nach Position im Text (für spätere Proximity-Analyse)
         results.sort(key=lambda x: x.position_start)
 
         return results
 
     def _extract_ibans(self, text: str) -> List[ExtractedIdentifier]:
-        """Extrahiert EU-weite IBANs mit Pruefziffern-Validierung.
+        """Extrahiert EU-weite IBANs mit Prüfziffern-Validierung.
 
-        Unterstuetzt alle EU-Laender mit laenderspezifischer Laengenvalidierung:
+        Unterstützt alle EU-Länder mit länderspezifischer Längenvalidierung:
         - DE: 22 Zeichen (z.B. DE89370400440532013000)
         - NL: 18 Zeichen (z.B. NL51INGB0658010921)
         - AT: 20 Zeichen (z.B. AT611904300234573201)
@@ -601,16 +601,16 @@ class EntityExtractionService:
             if normalized in seen_ibans:
                 continue
 
-            # Laendercode extrahieren
+            # Ländercode extrahieren
             if len(normalized) < 2:
                 continue
             country = normalized[:2]
 
-            # Laenderspezifische Laengenvalidierung
+            # Länderspezifische Längenvalidierung
             expected_len = self.patterns.IBAN_LENGTHS.get(country)
             if expected_len:
                 if len(normalized) != expected_len:
-                    # Laenge stimmt nicht - ueberspringe
+                    # Länge stimmt nicht - überspringe
                     logger.debug(
                         "iban_length_mismatch",
                         country=country,
@@ -624,7 +624,7 @@ class EntityExtractionService:
                 if len(normalized) < 15:
                     continue
 
-            # IBAN-Pruefziffer validieren
+            # IBAN-Prüfziffer validieren
             if not self._validate_iban(normalized):
                 logger.debug(
                     "iban_checksum_invalid",
@@ -640,11 +640,11 @@ class EntityExtractionService:
                 identifier_type="iban",
                 value=raw_value,
                 normalized_value=normalized,
-                confidence=0.99,  # IBAN mit gueltiger Pruefziffer = sehr hohe Konfidenz
+                confidence=0.99,  # IBAN mit gültiger Prüfziffer = sehr hohe Konfidenz
                 position_start=match.start(),
                 position_end=match.end(),
                 context=context,
-                country_code=country,  # NEU: Laendercode fuer spaetere Attribution
+                country_code=country,  # NEU: Ländercode für spätere Attribution
             ))
             self._extraction_stats["ibans_found"] += 1
             logger.debug(
@@ -667,7 +667,7 @@ class EntityExtractionService:
         results: List[ExtractedIdentifier] = []
         seen_bics: Set[str] = set()
 
-        # Bekannte EU-Laendercodes fuer BIC-Validierung
+        # Bekannte EU-Ländercodes für BIC-Validierung
         valid_country_codes = {
             'DE', 'NL', 'AT', 'BE', 'FR', 'IT', 'ES', 'PT', 'CH', 'GB',
             'IE', 'LU', 'DK', 'SE', 'FI', 'NO', 'PL', 'CZ', 'HU', 'SK',
@@ -683,14 +683,14 @@ class EntityExtractionService:
             if normalized in seen_bics:
                 continue
 
-            # Laengenvalidierung: 8 oder 11 Zeichen (nach Entfernung von Leerzeichen)
+            # Längenvalidierung: 8 oder 11 Zeichen (nach Entfernung von Leerzeichen)
             if len(normalized) not in (8, 11):
                 continue
 
-            # Laendercode aus BIC extrahieren (Zeichen 5-6)
+            # Ländercode aus BIC extrahieren (Zeichen 5-6)
             country = normalized[4:6]
 
-            # STRENGE Validierung: Laendercode muss bekannter EU-Code sein
+            # STRENGE Validierung: Ländercode muss bekannter EU-Code sein
             if country not in valid_country_codes:
                 continue
 
@@ -701,10 +701,10 @@ class EntityExtractionService:
             # (Verhindert False Positives wie "BAKKENEN", "DEVENTER" etc.)
             if not re.search(r'bic|swift|bank', context, re.IGNORECASE):
                 # Ohne Kontext nur akzeptieren wenn eindeutig ein BIC-Pattern
-                # (z.B. endet mit Zahl oder typische Bank-Kuerzel)
+                # (z.B. endet mit Zahl oder typische Bank-Kürzel)
                 if not re.match(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}[A-Z0-9]{0,3}$', normalized):
                     continue
-                # Zusaetzlich: Muss mindestens eine Ziffer enthalten (typisch fuer BIC)
+                # Zusätzlich: Muss mindestens eine Ziffer enthalten (typisch für BIC)
                 if not any(c.isdigit() for c in normalized):
                     continue
 
@@ -735,7 +735,7 @@ class EntityExtractionService:
 
         # ZUSAETZLICH: Explizit gelabelte BICs suchen (z.B. "swift: ING BNL 2A")
         # Diese haben oft falsche Leerzeichen durch OCR
-        # Pattern: swift/bic + optional : + lockere Zeichenkette (wird spaeter validiert)
+        # Pattern: swift/bic + optional : + lockere Zeichenkette (wird später validiert)
         # Stoppt bei Newline oder wenn zu viele Zeichen
         labeled_bic_pattern = re.compile(
             r'(?:swift|bic)\s*[:\.]?\s*([A-Z][A-Z0-9\s]{6,15})',
@@ -746,11 +746,11 @@ class EntityExtractionService:
             # Alle Leerzeichen entfernen
             normalized = re.sub(r'\s', '', raw_value).upper()
 
-            # Wenn zu lang, versuche auf 8 zu kuerzen (Standard-BIC)
+            # Wenn zu lang, versuche auf 8 zu kürzen (Standard-BIC)
             # 8 chars ist der Standard, 11 nur mit Branch-Code
             if len(normalized) > 11:
                 candidate_8 = normalized[:8]
-                # Pruefe ob 8-char Version validen Laendercode hat
+                # Prüfe ob 8-char Version validen Ländercode hat
                 if candidate_8[4:6] in valid_country_codes:
                     normalized = candidate_8
                 else:
@@ -769,7 +769,7 @@ class EntityExtractionService:
             if normalized in seen_bics:
                 continue
 
-            # Laendercode validieren (Position 5-6)
+            # Ländercode validieren (Position 5-6)
             country = normalized[4:6]
             if country not in valid_country_codes:
                 continue
@@ -798,13 +798,13 @@ class EntityExtractionService:
 
     def _validate_iban(self, iban: str) -> bool:
         """
-        Validiert IBAN mit ISO 7064 Mod 97-10 Pruefziffer.
+        Validiert IBAN mit ISO 7064 Mod 97-10 Prüfziffer.
 
         Args:
             iban: Normalisierte IBAN ohne Leerzeichen
 
         Returns:
-            True wenn IBAN gueltig
+            True wenn IBAN gültig
         """
         try:
             # IBAN umstellen: erste 4 Zeichen ans Ende
@@ -877,7 +877,7 @@ class EntityExtractionService:
         """
         Extrahiert Adressen (PLZ + Stadt + optional Strasse).
 
-        Unterstuetzt mehrere Laender:
+        Unterstützt mehrere Länder:
         - DE: 5-stellig (12345)
         - NL: 4 Ziffern + 2 Buchstaben (1234 AB)
         - AT/CH/BE: 4-stellig (1234)
@@ -887,7 +887,7 @@ class EntityExtractionService:
         results = []
         seen_positions: Set[int] = set()  # Verhindere Duplikate
 
-        # PLZ-Patterns fuer verschiedene Laender
+        # PLZ-Patterns für verschiedene Länder
         plz_patterns = [
             (self.patterns.PLZ_CITY, "DE"),
             (self.patterns.PLZ_CITY_NL, "NL"),
@@ -914,42 +914,42 @@ class EntityExtractionService:
                     position_start=match.start(),
                 )
 
-                # Land aus Kontext bestimmen (ueberschreibt PLZ-basiertes Land)
-                # ABER: Bei eindeutigem PLZ-Format (NL NNNN AA) nicht ueberschreiben!
+                # Land aus Kontext bestimmen (überschreibt PLZ-basiertes Land)
+                # ABER: Bei eindeutigem PLZ-Format (NL NNNN AA) nicht überschreiben!
                 # Das verhindert falsche Zuordnung wenn nachfolgende Adressen anderes Land haben.
                 detected_country = self._detect_country_from_context(
                     text, match.start(), match.end()
                 )
                 if detected_country:
-                    # NL-PLZ (4+2 Format) ist eindeutig - nicht ueberschreiben
+                    # NL-PLZ (4+2 Format) ist eindeutig - nicht überschreiben
                     plz_is_nl_format = re.match(r'^[0-9]{4}[ 	]?[A-Z]{2}$', address.postal_code or '')
                     if plz_is_nl_format and country == 'NL' and detected_country != 'NL':
                         # Behalte NL - das PLZ-Format ist eindeutig
                         pass
                     else:
                         address.country = detected_country
-                        address.confidence += 0.05  # Boost fuer expliziten Laendernamen
+                        address.confidence += 0.05  # Boost für expliziten Ländernamen
 
                 # Strasse in der Naehe suchen (150 Zeichen vorher)
-                # WICHTIG: Letzten Match verwenden (naechster zur PLZ)
+                # WICHTIG: Letzten Match verwenden (nächster zur PLZ)
                 search_start = max(0, match.start() - 150)
                 before_text = text[search_start:match.start()]
 
                 street_matches = list(self.patterns.STREET.finditer(before_text))
                 if street_matches:
-                    # Letzten Match nehmen - der ist am naechsten zur PLZ
+                    # Letzten Match nehmen - der ist am nächsten zur PLZ
                     street_match = street_matches[-1]
                     address.street = street_match.group(1)
                     address.street_number = street_match.group(2)  # Kann None sein
                     address.confidence = 0.92
 
-                    # Wenn keine Hausnummer im Straßenmatch, suche in naechster Zeile
+                    # Wenn keine Hausnummer im Straßenmatch, suche in nächster Zeile
                     if not address.street_number:
                         # Text nach der Strasse bis zur PLZ
                         after_street = before_text[street_match.end():].strip()
                         lines_after = [l.strip() for l in after_street.split('\n') if l.strip()]
                         if lines_after:
-                            # Erste Zeile nach Strasse koennte Hausnummer sein
+                            # Erste Zeile nach Strasse könnte Hausnummer sein
                             potential_number = lines_after[0]
                             number_match = self.patterns.HOUSE_NUMBER.match(potential_number)
                             if number_match:
@@ -966,7 +966,7 @@ class EntityExtractionService:
                         potential_company = lines_before[-1]
                         # Validiere: Nicht zu kurz, nicht nur Zahlen, kein Label
                         skip_patterns = [
-                            'absender', 'empfänger', 'empfaenger', 'sender', 'recipient',
+                            'absender', 'empfänger', 'empfänger', 'sender', 'recipient',
                             'an:', 'von:', 'to:', 'from:', 'rechnung', 'invoice',
                             'lieferadresse', 'rechnungsadresse', 'delivery', 'billing',
                         ]
@@ -980,11 +980,11 @@ class EntityExtractionService:
                             address.company_name = potential_company
 
                 # Rolle aus Kontext-Labels bestimmen (das LETZTE Label im Kontext gewinnt)
-                context_window = 120  # Zeichen vor der Adresse (erhoehte fuer mehrzeilige Adressen)
+                context_window = 120  # Zeichen vor der Adresse (erhöhte für mehrzeilige Adressen)
                 context_start = max(0, match.start() - context_window)
                 context_before = text[context_start:match.start()]
 
-                # Finde das letzte (naechste zur Adresse) Label
+                # Finde das letzte (nächste zur Adresse) Label
                 sender_matches = list(self.patterns.SENDER_LABELS.finditer(context_before))
                 recipient_matches = list(self.patterns.RECIPIENT_LABELS.finditer(context_before))
 
@@ -1014,10 +1014,10 @@ class EntityExtractionService:
         plz_end: int,
     ) -> Optional[str]:
         """
-        Erkennt Laendernamen im Kontext einer Adresse.
+        Erkennt Ländernamen im Kontext einer Adresse.
 
         Sucht in 3 Bereichen:
-        1. Direkt nach der PLZ/Stadt (naechste Zeile)
+        1. Direkt nach der PLZ/Stadt (nächste Zeile)
         2. Vor der PLZ (D-42719 Prefix)
         3. Im weiteren Kontext (100 Zeichen danach)
 
@@ -1029,7 +1029,7 @@ class EntityExtractionService:
         Returns:
             ISO 3166-1 Alpha-2 Code oder None
         """
-        # 1. Pruefe Laender-Prefix vor der PLZ (z.B. "D-42719")
+        # 1. Prüfe Länder-Prefix vor der PLZ (z.B. "D-42719")
         prefix_start = max(0, plz_start - 3)
         prefix_text = text[prefix_start:plz_start].strip()
         if prefix_text.endswith("-") or prefix_text.endswith(" "):
@@ -1041,12 +1041,12 @@ class EntityExtractionService:
                 if country_code:
                     return country_code
 
-        # 2. Suche Laendernamen nach der PLZ/Stadt (naechste 100 Zeichen)
+        # 2. Suche Ländernamen nach der PLZ/Stadt (nächste 100 Zeichen)
         after_start = plz_end
         after_end = min(len(text), plz_end + 100)
         after_text = text[after_start:after_end]
 
-        # Suche nach Laendernamen auf einer eigenen Zeile oder nach Komma/Zeilenumbruch
+        # Suche nach Ländernamen auf einer eigenen Zeile oder nach Komma/Zeilenumbruch
         # Typische Patterns: "42719 Solingen\nDuitsland" oder "42719 Solingen, Germany"
         country_pattern = re.compile(
             r'[\n\r,]\s*([A-Za-zäöüÄÖÜßéèê\-]+)\s*(?:[\n\r,]|$)',
@@ -1058,17 +1058,17 @@ class EntityExtractionService:
             # Ignoriere zu kurze oder zu lange Strings
             if len(potential_country) < 1 or len(potential_country) > 25:
                 continue
-            # Pruefe gegen Mapping
+            # Prüfe gegen Mapping
             country_code = self.patterns.COUNTRY_NAMES_TO_CODE.get(potential_country)
             if country_code:
                 return country_code
 
-        # 3. Fallback: Suche nach bekannten Laendernamen als Wort im Kontext
+        # 3. Fallback: Suche nach bekannten Ländernamen als Wort im Kontext
         context_end = min(len(text), plz_end + 80)
         context_text = text[plz_end:context_end].lower()
 
         for country_name, code in self.patterns.COUNTRY_NAMES_TO_CODE.items():
-            # Nur laengere Namen (mind. 4 Zeichen) als Fallback
+            # Nur längere Namen (mind. 4 Zeichen) als Fallback
             if len(country_name) >= 4:
                 if re.search(r'\b' + re.escape(country_name) + r'\b', context_text):
                     return code
@@ -1093,7 +1093,7 @@ class EntityExtractionService:
                 continue
             seen_names.add(normalized_name)
 
-            # Minimale Laenge
+            # Minimale Länge
             if len(name) < 3:
                 continue
 
@@ -1127,13 +1127,13 @@ class EntityExtractionService:
         return phones
 
     def _get_context(self, text: str, start: int, end: int, window: int = 50) -> str:
-        """Gibt den umgebenden Kontext eines Matches zurueck."""
+        """Gibt den umgebenden Kontext eines Matches zurück."""
         context_start = max(0, start - window)
         context_end = min(len(text), end + window)
         return text[context_start:context_end]
 
     def _calculate_vat_confidence(self, vat_id: str, context: str) -> float:
-        """Berechnet Konfidenz fuer USt-IdNr basierend auf Kontext."""
+        """Berechnet Konfidenz für USt-IdNr basierend auf Kontext."""
         base_confidence = 0.85
 
         # Kontext-Boost
@@ -1430,11 +1430,11 @@ class EntityExtractionService:
     # =========================================================================
 
     def get_extraction_stats(self) -> Dict[str, int]:
-        """Gibt Extraktions-Statistiken zurueck."""
+        """Gibt Extraktions-Statistiken zurück."""
         return self._extraction_stats.copy()
 
     def reset_stats(self) -> None:
-        """Setzt Statistiken zurueck."""
+        """Setzt Statistiken zurück."""
         self._extraction_stats = {
             "total_extractions": 0,
             "vat_ids_found": 0,

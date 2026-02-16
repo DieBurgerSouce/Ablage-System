@@ -537,7 +537,7 @@ class MTLSService:
             )
             raise HTTPException(
                 status_code=401,
-                detail="Client-Zertifikat erforderlich fuer Service-Authentifizierung",
+                detail="Client-Zertifikat erforderlich für Service-Authentifizierung",
             )
 
         if verify_status != "SUCCESS":
@@ -567,7 +567,7 @@ class MTLSService:
             )
             raise HTTPException(
                 status_code=401,
-                detail="Ungueltiges Client-Zertifikat: Subject DN fehlt",
+                detail="Ungültiges Client-Zertifikat: Subject DN fehlt",
             )
 
         # Parse subject DN to extract service information
@@ -892,7 +892,7 @@ def require_service_type(*allowed_types: str):
         if identity.service_type not in allowed_types:
             raise HTTPException(
                 status_code=403,
-                detail=f"Zugriff nur fuer Service-Typen: {', '.join(allowed_types)}",
+                detail=f"Zugriff nur für Service-Typen: {', '.join(allowed_types)}",
             )
         return identity
 

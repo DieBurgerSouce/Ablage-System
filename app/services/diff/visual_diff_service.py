@@ -1,6 +1,6 @@
 """Visual Version Diff Service.
 
-Seite-an-Seite Vergleich mit Hervorhebungen fuer Vertraege und Dokumente.
+Seite-an-Seite Vergleich mit Hervorhebungen für Verträge und Dokumente.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ logger = structlog.get_logger(__name__)
 
 
 class DiffType(str, Enum):
-    """Typ der Aenderung."""
+    """Typ der Änderung."""
     ADDED = "added"
     REMOVED = "removed"
     MODIFIED = "modified"
@@ -26,7 +26,7 @@ class DiffType(str, Enum):
 
 @dataclass
 class DiffBlock:
-    """Ein Block von Aenderungen."""
+    """Ein Block von Änderungen."""
     diff_type: DiffType
     old_text: str = ""
     new_text: str = ""
@@ -54,7 +54,7 @@ class DiffResult:
 
 @dataclass
 class ChangeSummary:
-    """Zusammenfassung der Aenderungen."""
+    """Zusammenfassung der Änderungen."""
     total_changes: int
     additions: int
     deletions: int
@@ -65,7 +65,7 @@ class ChangeSummary:
 
 
 class VisualDiffService:
-    """Service fuer visuellen Dokumentenvergleich."""
+    """Service für visuellen Dokumentenvergleich."""
 
     def compare_texts(
         self,
@@ -82,10 +82,10 @@ class VisualDiffService:
             text_b: Neuer Text
             document_a_id: ID des Originaldokuments
             document_b_id: ID des neuen Dokuments
-            context_lines: Kontextzeilen um Aenderungen
+            context_lines: Kontextzeilen um Änderungen
 
         Returns:
-            DiffResult mit allen Aenderungen
+            DiffResult mit allen Änderungen
         """
         lines_a = text_a.splitlines(keepends=True)
         lines_b = text_b.splitlines(keepends=True)
@@ -159,7 +159,7 @@ class VisualDiffService:
         return result
 
     def generate_change_summary(self, diff_result: DiffResult) -> ChangeSummary:
-        """Erzeugt eine strukturierte Zusammenfassung der Aenderungen.
+        """Erzeugt eine strukturierte Zusammenfassung der Änderungen.
 
         Args:
             diff_result: Ergebnis des Vergleichs
@@ -198,7 +198,7 @@ class VisualDiffService:
             deletions=diff_result.deletions,
             modifications=diff_result.modifications,
             similarity_percentage=round(similarity * 100, 2),
-            key_changes=key_changes[:20],  # Max 20 Aenderungen
+            key_changes=key_changes[:20],  # Max 20 Änderungen
             risk_level=risk_level,
         )
 
@@ -219,15 +219,15 @@ class VisualDiffService:
         if additions > 0:
             parts.append(f"{additions} Hinzufuegung(en)")
         if deletions > 0:
-            parts.append(f"{deletions} Loeschung(en)")
+            parts.append(f"{deletions} Löschung(en)")
         if modifications > 0:
-            parts.append(f"{modifications} Aenderung(en)")
+            parts.append(f"{modifications} Änderung(en)")
 
         if not parts:
-            return "Keine Aenderungen gefunden."
+            return "Keine Änderungen gefunden."
 
         changes_text = ", ".join(parts)
         return (
-            f"{total} Aenderungen insgesamt: {changes_text}. "
-            f"Aehnlichkeit: {ratio:.1%}"
+            f"{total} Änderungen insgesamt: {changes_text}. "
+            f"Ähnlichkeit: {ratio:.1%}"
         )

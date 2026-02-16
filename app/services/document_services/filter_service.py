@@ -1,6 +1,6 @@
 """Document Filter Service - Query-Bau und Filterung.
 
-Enthaelt Logik fuer:
+Enthält Logik für:
 - Filter-Bedingungen erstellen
 - Sortier-Spalten ermitteln
 - Komplexe Queries aufbauen
@@ -13,10 +13,10 @@ from app.db.schemas import SearchFilters, SortField
 
 
 class DocumentFilterService:
-    """Service fuer Dokumentenfilterung und Query-Bau.
+    """Service für Dokumentenfilterung und Query-Bau.
 
     Trennt die Query-Logik von der Datenbankzugriffs-Logik
-    fuer bessere Testbarkeit und Wiederverwendung.
+    für bessere Testbarkeit und Wiederverwendung.
     """
 
     def build_filter_conditions(self, filters: SearchFilters) -> List:
@@ -57,13 +57,13 @@ class DocumentFilterService:
         return conditions
 
     def get_sort_column(self, sort_by: SortField):
-        """Spalte fuer Sortierung ermitteln.
+        """Spalte für Sortierung ermitteln.
 
         Args:
             sort_by: SortField-Enum-Wert
 
         Returns:
-            SQLAlchemy-Spalte fuer ORDER BY
+            SQLAlchemy-Spalte für ORDER BY
         """
         sort_map = {
             SortField.CREATED_AT: Document.created_at,

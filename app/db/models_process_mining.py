@@ -3,11 +3,11 @@
 Process Mining database models for Ablage-System.
 
 Vision 2.0 Feature: Process Mining & Autonome Automatisierung
-Unterstuetzt:
-- Event-Tracking fuer Dokumenten-Lebenszyklus
+Unterstützt:
+- Event-Tracking für Dokumenten-Lebenszyklus
 - Prozess-Discovery
 - Bottleneck-Erkennung
-- Automatisierungs-Vorschlaege
+- Automatisierungs-Vorschläge
 
 Feinpoliert und durchdacht.
 """
@@ -104,7 +104,7 @@ class SuggestionStatus(str, Enum):
 
 
 class SuggestionType(str, Enum):
-    """Typen von Automatisierungsvorschlaegen."""
+    """Typen von Automatisierungsvorschlägen."""
     AUTO_CLASSIFICATION = "auto_classification"
     AUTO_ROUTING = "auto_routing"
     AUTO_APPROVAL = "auto_approval"
@@ -118,7 +118,7 @@ class ProcessEvent(Base):
     """
     Ereignis im Dokumenten-Lebenszyklus.
 
-    Trackt jede Aktion fuer Process Mining und Analyse.
+    Trackt jede Aktion für Process Mining und Analyse.
     """
     __tablename__ = "process_events"
 
@@ -181,7 +181,7 @@ class ProcessEvent(Base):
     success = Column(Boolean, default=True)
     error_message = Column(Text, nullable=True)
 
-    # Zusaetzliche Daten
+    # Zusätzliche Daten
     # NOTE: "metadata" is reserved in SQLAlchemy 2.0, use "event_metadata" as Python attr
     event_metadata = Column("metadata", CrossDBJSON, default=dict)
 
@@ -229,7 +229,7 @@ class AutomationSuggestion(Base):
     """
     Automatisierungsvorschlag basierend auf Process Mining.
 
-    Speichert erkannte Muster und Vorschlaege zur Optimierung.
+    Speichert erkannte Muster und Vorschläge zur Optimierung.
     """
     __tablename__ = "automation_suggestions"
 
@@ -280,7 +280,7 @@ class AutomationSuggestion(Base):
     )
     rejection_reason = Column(Text, nullable=True)
 
-    # Verknuepfung zur erstellten Regel
+    # Verknüpfung zur erstellten Regel
     automation_rule_id = Column(UUID(as_uuid=True), nullable=True)
 
     # Multi-Tenant
@@ -328,7 +328,7 @@ class ProcessMetric(Base):
     """
     Aggregierte Prozess-Metriken.
 
-    Taeglich berechnete Statistiken fuer Dashboard und Reporting.
+    Täglich berechnete Statistiken für Dashboard und Reporting.
     """
     __tablename__ = "process_metrics"
 
@@ -364,7 +364,7 @@ class ProcessMetric(Base):
     # Bottleneck-Score (0-1)
     bottleneck_score = Column(Numeric(5, 4), nullable=True)
 
-    # Zusaetzliche Daten
+    # Zusätzliche Daten
     # NOTE: "metadata" is reserved in SQLAlchemy 2.0, use "mining_metadata" as Python attr
     mining_metadata = Column("metadata", CrossDBJSON, default=dict)
 

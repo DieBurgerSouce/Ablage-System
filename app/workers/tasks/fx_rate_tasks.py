@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Celery Tasks fuer Wechselkurs-Management.
+"""Celery Tasks für Wechselkurs-Management.
 
 Tasks:
-- Taeglicher ECB-Kursabruf (17:00 CET, nach ECB-Veroeffentlichung)
+- Täglicher ECB-Kursabruf (17:00 CET, nach ECB-Veröffentlichung)
 - Monatliche Kursbewertung (unrealisierte Gewinne/Verluste)
 """
 
@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
     default_retry_delay=300,  # 5 min retry
 )
 def fetch_ecb_rates_daily(self) -> Dict[str, Any]:
-    """Taeglicher Abruf der ECB Referenzkurse (17:00 CET via Beat)."""
+    """Täglicher Abruf der ECB Referenzkurse (17:00 CET via Beat)."""
     import asyncio
     from app.db.session import get_async_session
     from app.services.accounting.fx_rate_service import FXRateService
@@ -83,10 +83,10 @@ def fetch_ecb_rates_historical(self) -> Dict[str, Any]:
 def month_end_revaluation(self, company_id: str) -> Dict[str, Any]:
     """
     Monatsabschluss: Unrealisierte Kursdifferenzen berechnen.
-    Bewertet alle offenen Fremdwaehrungspositionen zum Stichtagskurs.
+    Bewertet alle offenen Fremdwährungspositionen zum Stichtagskurs.
 
-    Wird am letzten Tag des Monats automatisch via Beat ausgefuehrt
-    oder manuell ueber die API getriggert.
+    Wird am letzten Tag des Monats automatisch via Beat ausgeführt
+    oder manuell über die API getriggert.
     """
     import asyncio
     from uuid import UUID
@@ -136,10 +136,10 @@ def month_end_revaluation(self, company_id: str) -> Dict[str, Any]:
 )
 def run_month_end_fx_revaluation_all(self) -> Dict[str, Any]:
     """
-    Fuehrt Monatsabschluss-Bewertung fuer ALLE aktiven Firmen aus.
+    Führt Monatsabschluss-Bewertung für ALLE aktiven Firmen aus.
 
     Wird via Celery Beat am letzten Tag des Monats getriggert.
-    Startet fuer jede aktive Firma eine eigene month_end_revaluation Task.
+    Startet für jede aktive Firma eine eigene month_end_revaluation Task.
     """
     import asyncio
     from app.db.session import get_async_session_context

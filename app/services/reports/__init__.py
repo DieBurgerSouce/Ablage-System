@@ -2,7 +2,7 @@
 """
 Report Builder Services.
 
-Ermoeglicht Nutzern, eigene Reports zu erstellen und auszufuehren.
+Ermöglicht Nutzern, eigene Reports zu erstellen und auszuführen.
 """
 
 from app.services.reports.report_template_service import ReportTemplateService

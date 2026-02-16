@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Qwen2.5-VL-7B OCR Agent fuer Ablage-System.
+Qwen2.5-VL-7B OCR Agent für Ablage-System.
 
-GPT-4o-Level Vision-Language Model optimiert fuer deutsche Dokumente.
+GPT-4o-Level Vision-Language Model optimiert für deutsche Dokumente.
 Basierend auf docs/OCR_EVALUATION_2025.md Evaluation.
 
 VRAM: ~14GB (knapp unter RTX 4080 16GB Limit)
-Staerken: JSON/Struktur-Extraktion, multimodal, hohe Genauigkeit
+Stärken: JSON/Struktur-Extraktion, multimodal, hohe Genauigkeit
 """
 
 import asyncio
@@ -25,9 +25,9 @@ from app.core.safe_errors import safe_error_log
 logger = structlog.get_logger(__name__)
 
 
-# OCR Prompt optimiert fuer deutsche Geschaeftsdokumente
+# OCR Prompt optimiert für deutsche Geschäftsdokumente
 OCR_PROMPT = """Extrahiere den gesamten sichtbaren Text aus diesem Dokument.
-Gib NUR den extrahierten Text zurueck, ohne Erklaerungen oder Formatierung.
+Gib NUR den extrahierten Text zurück, ohne Erklärungen oder Formatierung.
 Achte besonders auf:
 - Deutsche Umlaute (ae, oe, ue, ss)
 - IBAN und BIC Nummern
@@ -37,17 +37,17 @@ Achte besonders auf:
 
 class QwenOCRAgent(OCRAgent):
     """
-    Qwen2.5-VL-7B OCR Agent fuer GPT-4o-Level Performance.
+    Qwen2.5-VL-7B OCR Agent für GPT-4o-Level Performance.
 
-    Verwendet das Qwen/Qwen2.5-VL-7B-Instruct Modell fuer hochpraezise
-    Textextraktion aus deutschen Geschaeftsdokumenten.
+    Verwendet das Qwen/Qwen2.5-VL-7B-Instruct Modell für hochpräzise
+    Textextraktion aus deutschen Geschäftsdokumenten.
     """
 
     MODEL_NAME = "Qwen/Qwen2.5-VL-7B-Instruct"
     VRAM_REQUIRED_GB = 14
-    MODEL_LOADING_TIMEOUT = 600.0  # 10 Minuten fuer grosses Modell
+    MODEL_LOADING_TIMEOUT = 600.0  # 10 Minuten für großes Modell
 
-    # Class-level Lock fuer Thread-Safe Model Loading
+    # Class-level Lock für Thread-Safe Model Loading
     _model_lock: Optional[asyncio.Lock] = None
 
     def __init__(self):
@@ -56,7 +56,7 @@ class QwenOCRAgent(OCRAgent):
         if QwenOCRAgent._model_lock is None:
             QwenOCRAgent._model_lock = asyncio.Lock()
 
-        # GPU-Verfuegbarkeit pruefen
+        # GPU-Verfügbarkeit prüfen
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
@@ -77,7 +77,7 @@ class QwenOCRAgent(OCRAgent):
 
         # GPU-Optimierungen aktivieren
         if torch.cuda.is_available():
-            # TensorFloat-32 fuer RTX 40xx Serie
+            # TensorFloat-32 für RTX 40xx Serie
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.allow_tf32 = True
             torch.backends.cudnn.benchmark = True
@@ -103,10 +103,10 @@ class QwenOCRAgent(OCRAgent):
         Lade Qwen2.5-VL Modell mit Thread-Safe Locking und Timeout.
 
         Args:
-            timeout_seconds: Maximale Wartezeit fuer Model-Loading
+            timeout_seconds: Maximale Wartezeit für Model-Loading
 
         Raises:
-            asyncio.TimeoutError: Bei Timeout-Ueberschreitung
+            asyncio.TimeoutError: Bei Timeout-Überschreitung
         """
         async with QwenOCRAgent._model_lock:
             # Double-Check Pattern
@@ -124,7 +124,7 @@ class QwenOCRAgent(OCRAgent):
                     "qwen_model_loading_timeout",
                     timeout_seconds=timeout_seconds,
                     device=str(self.device),
-                    message="Model-Loading hat Timeout ueberschritten"
+                    message="Model-Loading hat Timeout überschritten"
                 )
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
@@ -180,7 +180,7 @@ class QwenOCRAgent(OCRAgent):
                 local_files_only=True  # Only use cached files
             )
 
-            # Lade Model mit FP16 fuer VRAM-Effizienz
+            # Lade Model mit FP16 für VRAM-Effizienz
             logger.info("qwen_loading_model", dtype=str(self.dtype))
             self._model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
                 self.MODEL_NAME,
@@ -207,7 +207,7 @@ class QwenOCRAgent(OCRAgent):
             self._models_loaded = True
             logger.info("qwen_models_loaded_successfully")
 
-            # Warmup fuer CUDA Kernel Compilation
+            # Warmup für CUDA Kernel Compilation
             self._warmup_model()
 
         except Exception as e:
@@ -223,7 +223,7 @@ class QwenOCRAgent(OCRAgent):
             start = time.perf_counter()
             logger.info("qwen_warmup_starting")
 
-            # Kleines Dummy-Bild fuer Warmup
+            # Kleines Dummy-Bild für Warmup
             dummy_image = Image.new('RGB', (224, 224), color='white')
 
             # Minimale Inference
@@ -238,7 +238,7 @@ class QwenOCRAgent(OCRAgent):
                     }
                 ]
 
-                # Nur Text-Teil fuer Warmup
+                # Nur Text-Teil für Warmup
                 text = self._processor.apply_chat_template(
                     messages,
                     tokenize=False,
@@ -259,7 +259,7 @@ class QwenOCRAgent(OCRAgent):
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
         """
-        Lade Bild(er) aus Datei - unterstuetzt PDFs und Bildformate.
+        Lade Bild(er) aus Datei - unterstützt PDFs und Bildformate.
 
         Args:
             image_path: Pfad zur Bild- oder PDF-Datei
@@ -280,7 +280,7 @@ class QwenOCRAgent(OCRAgent):
                 pdf = pdfium.PdfDocument(image_path)
                 for page_num in range(len(pdf)):
                     page = pdf[page_num]
-                    # 300 DPI fuer gute Qualitaet
+                    # 300 DPI für gute Qualität
                     pil_image = page.render(scale=300/72).to_pil()
                     images.append(pil_image)
                     logger.debug(
@@ -325,7 +325,7 @@ class QwenOCRAgent(OCRAgent):
             torch.cuda.empty_cache()
 
         try:
-            # Nachricht fuer Qwen Vision-Language Model
+            # Nachricht für Qwen Vision-Language Model
             messages = [
                 {
                     "role": "user",
@@ -351,7 +351,7 @@ class QwenOCRAgent(OCRAgent):
                 return_tensors="pt"
             )
 
-            # Auf GPU verschieben wenn verfuegbar
+            # Auf GPU verschieben wenn verfügbar
             if torch.cuda.is_available():
                 inputs = inputs.to("cuda")
 
@@ -359,9 +359,9 @@ class QwenOCRAgent(OCRAgent):
             with torch.no_grad():
                 generated_ids = self._model.generate(
                     **inputs,
-                    max_new_tokens=4096,  # Viel Text fuer Dokumente
-                    do_sample=False,      # Deterministische Ausgabe fuer OCR
-                    num_beams=1,          # Greedy fuer Geschwindigkeit
+                    max_new_tokens=4096,  # Viel Text für Dokumente
+                    do_sample=False,      # Deterministische Ausgabe für OCR
+                    num_beams=1,          # Greedy für Geschwindigkeit
                     pad_token_id=self._processor.tokenizer.pad_token_id,
                 )
 
@@ -380,7 +380,7 @@ class QwenOCRAgent(OCRAgent):
             # Text bereinigen
             extracted_text = output_text.strip()
 
-            # Deutsche Zeichen pruefen
+            # Deutsche Zeichen prüfen
             german_chars = ['ae', 'oe', 'ue', 'Ae', 'Oe', 'Ue', 'ss']
             found_german = [c for c in german_chars if c in extracted_text]
 
@@ -435,7 +435,7 @@ class QwenOCRAgent(OCRAgent):
         Args:
             input_data: Pfad zur Datei oder Dict mit image_path
             language: Sprache (Standard: "de")
-            **kwargs: Zusaetzliche Parameter
+            **kwargs: Zusätzliche Parameter
 
         Returns:
             Standardisiertes OCRResult als Dict
@@ -598,7 +598,7 @@ class QwenOCRAgent(OCRAgent):
         """Ressourcen freigeben und GPU-Speicher leeren."""
         logger.info("qwen_cleanup_starting")
 
-        # Model-Referenzen loeschen
+        # Model-Referenzen löschen
         self._model = None
         self._processor = None
         self._models_loaded = False

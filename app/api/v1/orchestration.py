@@ -90,9 +90,9 @@ class DecisionResponse(BaseModel):
         json_schema_extra = {
             "example": {
                 "id": "550e8400-e29b-41d4-a716-446655440000",
-                "title": "Versicherungsluecke schliessen",
-                "description": "Fuer das Fahrzeug wurde eine Deckungsluecke erkannt.",
-                "reasoning": "Versicherungsluecke 'Teilkasko' erkannt",
+                "title": "Versicherungslücke schließen",
+                "description": "Für das Fahrzeug wurde eine Deckungslücke erkannt.",
+                "reasoning": "Versicherungslücke 'Teilkasko' erkannt",
                 "primary_module": "insurance",
                 "affected_modules": ["insurance", "vehicle"],
                 "impact_score": {
@@ -134,7 +134,7 @@ class OrchestratorMetricsResponse(BaseModel):
 
 class DecisionEngineMetricsResponse(BaseModel):
     """Metriken der Decision Engine."""
-    queue_size: int = Field(..., description="Groesse der Queue")
+    queue_size: int = Field(..., description="Größe der Queue")
     pending_count: int = Field(..., description="Ausstehende Entscheidungen")
     approved_count: int = Field(..., description="Genehmigte Entscheidungen")
     processed_count: int = Field(..., description="Verarbeitete Entscheidungen")
@@ -162,7 +162,7 @@ class ActionResponse(BaseModel):
 
 class RejectDecisionRequest(BaseModel):
     """Request zum Ablehnen einer Entscheidung."""
-    reason: str = Field(default="", max_length=1000, description="Begruendung fuer Ablehnung")
+    reason: str = Field(default="", max_length=1000, description="Begruendung für Ablehnung")
 
     @field_validator("reason")
     @classmethod
@@ -173,7 +173,7 @@ class RejectDecisionRequest(BaseModel):
         # Prevent potential XSS/Injection - only allow safe characters
         if v and not re.match(r'^[\w\s\-.,!?äöüÄÖÜß()]+$', v, re.UNICODE):
             raise ValueError(
-                "Begruendung enthaelt ungueltige Zeichen. "
+                "Begruendung enthält ungültige Zeichen. "
                 "Erlaubt sind: Buchstaben, Zahlen, Leerzeichen, -.!?()"
             )
         return v
@@ -189,7 +189,7 @@ class RejectDecisionRequest(BaseModel):
     response_model=List[DecisionResponse],
     summary="Priorisierte Entscheidungen abrufen",
     description="""
-    Gibt die priorisierten Entscheidungen zurueck.
+    Gibt die priorisierten Entscheidungen zurück.
 
     Die Entscheidungen werden nach Impact-Score sortiert (hoechster zuerst).
     Konflikte werden automatisch erkannt und aufgeloest.
@@ -208,7 +208,7 @@ async def get_prioritized_decisions(
     min_score: Optional[float] = Query(default=None, ge=0, description="Mindest-Impact-Score"),
     current_user: User = Depends(get_current_active_user),
 ) -> List[DecisionResponse]:
-    """Gibt priorisierte Entscheidungen zurueck."""
+    """Gibt priorisierte Entscheidungen zurück."""
     engine = get_unified_decision_engine()
 
     decisions = await engine.get_prioritized_decisions(
@@ -234,7 +234,7 @@ async def get_decision(
     decision_id: UUID,
     current_user: User = Depends(get_current_active_user),
 ) -> DecisionResponse:
-    """Gibt eine einzelne Entscheidung zurueck."""
+    """Gibt eine einzelne Entscheidung zurück."""
     engine = get_unified_decision_engine()
 
     # In Queue suchen
@@ -259,7 +259,7 @@ async def get_decision(
     "/decisions/{decision_id}/approve",
     response_model=JSONDict,
     summary="Entscheidung genehmigen",
-    description="Genehmigt eine Entscheidung zur Ausfuehrung.",
+    description="Genehmigt eine Entscheidung zur Ausführung.",
 )
 async def approve_decision(
     request: Request,
@@ -280,7 +280,7 @@ async def approve_decision(
     return {
         "status": "approved",
         "decision_id": str(decision_id),
-        "message": "Entscheidung wurde genehmigt und wird ausgefuehrt",
+        "message": "Entscheidung wurde genehmigt und wird ausgeführt",
     }
 
 
@@ -322,9 +322,9 @@ async def reject_decision(
     response_model=DecisionSummaryResponse,
     summary="Entscheidungs-Zusammenfassung",
     description="""
-    Gibt eine Zusammenfassung aller Entscheidungen zurueck.
+    Gibt eine Zusammenfassung aller Entscheidungen zurück.
 
-    Ideal fuer Dashboard-Anzeige:
+    Ideal für Dashboard-Anzeige:
     - Status-Verteilung (pending, approved, rejected, ...)
     - Modul-Verteilung (finance, insurance, property, ...)
     - Top-Entscheidungen nach Impact
@@ -336,7 +336,7 @@ async def get_decision_summary(
     request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> DecisionSummaryResponse:
-    """Gibt Entscheidungs-Zusammenfassung zurueck."""
+    """Gibt Entscheidungs-Zusammenfassung zurück."""
     engine = get_unified_decision_engine()
 
     summary = await engine.get_decision_summary(user_id=current_user.id)
@@ -349,13 +349,13 @@ async def get_decision_summary(
     "/metrics",
     response_model=CombinedMetricsResponse,
     summary="System-Metriken abrufen",
-    description="Gibt Metriken des Orchestrators und der Decision Engine zurueck.",
+    description="Gibt Metriken des Orchestrators und der Decision Engine zurück.",
 )
 async def get_orchestration_metrics(
     request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> CombinedMetricsResponse:
-    """Gibt Orchestration-Metriken zurueck."""
+    """Gibt Orchestration-Metriken zurück."""
     orchestrator = get_cross_module_orchestrator()
     engine = get_unified_decision_engine()
 
@@ -373,13 +373,13 @@ async def get_orchestration_metrics(
     "/pending-actions",
     response_model=List[ActionResponse],
     summary="Ausstehende Aktionen abrufen",
-    description="Gibt alle ausstehenden Orchestrierungs-Aktionen zurueck.",
+    description="Gibt alle ausstehenden Orchestrierungs-Aktionen zurück.",
 )
 async def get_pending_actions(
     request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> List[ActionResponse]:
-    """Gibt ausstehende Aktionen zurueck."""
+    """Gibt ausstehende Aktionen zurück."""
     orchestrator = get_cross_module_orchestrator()
 
     actions = orchestrator.get_pending_actions()
@@ -404,14 +404,14 @@ async def get_pending_actions(
 @router.post(
     "/execute-approved",
     response_model=JSONDict,
-    summary="Genehmigte Entscheidungen ausfuehren",
-    description="Fuehrt alle genehmigten Entscheidungen aus. Normalerweise via Celery Beat.",
+    summary="Genehmigte Entscheidungen ausführen",
+    description="Führt alle genehmigten Entscheidungen aus. Normalerweise via Celery Beat.",
 )
 async def execute_approved_decisions(
     request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> JSONDict:
-    """Fuehrt genehmigte Entscheidungen aus."""
+    """Führt genehmigte Entscheidungen aus."""
     engine = get_unified_decision_engine()
 
     executed_count = await engine.execute_approved_decisions()
@@ -419,7 +419,7 @@ async def execute_approved_decisions(
     return {
         "status": "success",
         "executed_count": executed_count,
-        "message": f"{executed_count} Entscheidungen wurden ausgefuehrt",
+        "message": f"{executed_count} Entscheidungen wurden ausgeführt",
     }
 
 
@@ -428,14 +428,14 @@ async def execute_approved_decisions(
     "/decision-history",
     response_model=List[DecisionResponse],
     summary="Entscheidungs-History abrufen",
-    description="Gibt die letzten verarbeiteten Entscheidungen zurueck.",
+    description="Gibt die letzten verarbeiteten Entscheidungen zurück.",
 )
 async def get_decision_history(
     request: Request,
     limit: int = Query(default=20, ge=1, le=100, description="Maximale Anzahl"),
     current_user: User = Depends(get_current_active_user),
 ) -> List[DecisionResponse]:
-    """Gibt Entscheidungs-History zurueck."""
+    """Gibt Entscheidungs-History zurück."""
     orchestrator = get_cross_module_orchestrator()
 
     decisions = orchestrator.get_decision_history(limit=limit)
@@ -478,7 +478,7 @@ async def get_decision_history(
 # =============================================================================
 
 class ExplanationFactorResponse(BaseModel):
-    """Ein Erklaerungsfaktor."""
+    """Ein Erklärungsfaktor."""
     factor_type: str = Field(..., description="Typ des Faktors")
     name: str = Field(..., description="Name des Faktors")
     description: str = Field(..., description="Beschreibung")
@@ -491,7 +491,7 @@ class ExplanationFactorResponse(BaseModel):
 class ImpactBreakdownResponse(BaseModel):
     """Aufschluesselung der Auswirkungen."""
     immediate_savings: float = Field(..., description="Sofortige Ersparnis in EUR")
-    annual_savings: float = Field(..., description="Jaehrliche Ersparnis in EUR")
+    annual_savings: float = Field(..., description="Jährliche Ersparnis in EUR")
     one_time_cost: float = Field(..., description="Einmalige Kosten in EUR")
     risk_before: float = Field(..., description="Risiko vorher (0-100)")
     risk_after: float = Field(..., description="Risiko nachher (0-100)")
@@ -507,16 +507,16 @@ class AlternativeOptionResponse(BaseModel):
 
 
 class DecisionExplanationResponse(BaseModel):
-    """Vollstaendige Erklaerung einer Entscheidung."""
-    headline: str = Field(..., description="Praegnante Ueberschrift")
-    summary: str = Field(..., description="Zusammenfassung in 2-3 Saetzen")
+    """Vollständige Erklärung einer Entscheidung."""
+    headline: str = Field(..., description="Praegnante Überschrift")
+    summary: str = Field(..., description="Zusammenfassung in 2-3 Sätzen")
     main_reason: str = Field(..., description="Hauptgrund")
-    factors: List[ExplanationFactorResponse] = Field(default=[], description="Erklaerungsfaktoren")
+    factors: List[ExplanationFactorResponse] = Field(default=[], description="Erklärungsfaktoren")
     impact_breakdown: ImpactBreakdownResponse = Field(..., description="Impact-Aufschluesselung")
     alternatives: List[AlternativeOptionResponse] = Field(default=[], description="Alternativen")
     confidence_level: str = Field(..., description="Konfidenz-Level")
     confidence_percentage: float = Field(..., description="Konfidenz in Prozent")
-    data_basis: str = Field(..., description="Datenbasis der Erklaerung")
+    data_basis: str = Field(..., description="Datenbasis der Erklärung")
 
     class Config:
         json_schema_extra = {
@@ -552,7 +552,7 @@ class DecisionExplanationResponse(BaseModel):
 
 
 class HealthScoreBreakdownRequest(BaseModel):
-    """Request fuer Health Score Breakdown."""
+    """Request für Health Score Breakdown."""
     health_score: float = Field(..., ge=0, le=100, description="Aktueller Health Score")
     dti_ratio: Optional[float] = Field(
         None,
@@ -593,7 +593,7 @@ class HealthScoreBreakdownRequest(BaseModel):
 
 
 class EarlyWarningExplainRequest(BaseModel):
-    """Request fuer Early Warning Erklaerung."""
+    """Request für Early Warning Erklärung."""
     kpi_name: str = Field(
         ...,
         min_length=1,
@@ -645,15 +645,15 @@ class EarlyWarningExplainRequest(BaseModel):
 @router.get(
     "/explain/recommendation/{recommendation_id}",
     response_model=DecisionExplanationResponse,
-    summary="Empfehlung erklaeren",
+    summary="Empfehlung erklären",
     description="""
-    Generiert eine ausfuehrliche Erklaerung fuer eine Empfehlung.
+    Generiert eine ausführliche Erklärung für eine Empfehlung.
 
-    Die Erklaerung enthaelt:
+    Die Erklärung enthält:
     - **Headline**: Praegnante Zusammenfassung mit konkreten Zahlen
-    - **Faktoren**: Alle Faktoren die zur Empfehlung gefuehrt haben
+    - **Faktoren**: Alle Faktoren die zur Empfehlung geführt haben
     - **Impact-Breakdown**: Konkrete finanzielle Auswirkungen
-    - **Alternativen**: Moegliche andere Optionen mit Trade-offs
+    - **Alternativen**: Mögliche andere Optionen mit Trade-offs
     - **Konfidenz**: Wie sicher ist die Empfehlung?
 
     **Enterprise Feature** - Teil des Explainability-Systems.
@@ -664,7 +664,7 @@ async def explain_recommendation(
     recommendation_id: UUID,
     current_user: User = Depends(get_current_active_user),
 ) -> DecisionExplanationResponse:
-    """Erklaert eine Empfehlung im Detail."""
+    """Erklärt eine Empfehlung im Detail."""
     explainability = get_explainability_service()
 
     # Empfehlung aus Engine holen
@@ -689,7 +689,7 @@ async def explain_recommendation(
             detail="Empfehlung nicht gefunden",
         )
 
-    # Daten fuer Erklaerung aufbereiten
+    # Daten für Erklärung aufbereiten
     recommendation_data = {
         "title": decision.title,
         "category": decision.primary_module.value if decision.primary_module else "system",
@@ -746,11 +746,11 @@ async def explain_recommendation(
 @router.post(
     "/explain/early-warning",
     response_model=DecisionExplanationResponse,
-    summary="Early Warning erklaeren",
+    summary="Early Warning erklären",
     description="""
-    Generiert eine Erklaerung fuer eine Fruehwarnung.
+    Generiert eine Erklärung für eine Frühwarnung.
 
-    Erklaert WARUM das System eine Warnung ausgibt und WAS der User tun kann.
+    Erklärt WARUM das System eine Warnung ausgibt und WAS der User tun kann.
     """,
 )
 async def explain_early_warning(
@@ -758,7 +758,7 @@ async def explain_early_warning(
     request: EarlyWarningExplainRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> DecisionExplanationResponse:
-    """Erklaert eine Early Warning im Detail."""
+    """Erklärt eine Early Warning im Detail."""
     explainability = get_explainability_service()
 
     warning_data = {
@@ -815,9 +815,9 @@ async def explain_early_warning(
 @router.post(
     "/explain/health-score",
     response_model=DecisionExplanationResponse,
-    summary="Health Score erklaeren",
+    summary="Health Score erklären",
     description="""
-    Erklaert WARUM der Health Score einen bestimmten Wert hat.
+    Erklärt WARUM der Health Score einen bestimmten Wert hat.
 
     Zeigt:
     - Welche Faktoren positiv/negativ beitragen
@@ -830,7 +830,7 @@ async def explain_health_score(
     request: HealthScoreBreakdownRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> DecisionExplanationResponse:
-    """Erklaert den Health Score im Detail."""
+    """Erklärt den Health Score im Detail."""
     explainability = get_explainability_service()
 
     score_data = {
@@ -893,8 +893,8 @@ class KPIProjectionResponse(BaseModel):
     kpi_name: str = Field(..., description="Name des KPI")
     current_value: float = Field(..., description="Aktueller Wert")
     projected_value: float = Field(..., description="Projizierter Wert")
-    change_absolute: float = Field(..., description="Absolute Aenderung")
-    change_percentage: float = Field(..., description="Prozentuale Aenderung")
+    change_absolute: float = Field(..., description="Absolute Änderung")
+    change_percentage: float = Field(..., description="Prozentuale Änderung")
     impact_severity: str = Field(..., description="Schweregrad des Impacts")
     threshold_warning: Optional[str] = Field(None, description="Warnung bei Schwellenwert")
 
@@ -920,8 +920,8 @@ class ScenarioResultResponse(BaseModel):
     projected_health_score: float = Field(..., description="Projizierter Health Score")
     projected_kpis: List[KPIProjectionResponse] = Field(..., description="Projizierte KPIs")
 
-    health_score_change: float = Field(..., description="Health Score Aenderung")
-    health_score_change_percentage: float = Field(..., description="Prozentuale Aenderung")
+    health_score_change: float = Field(..., description="Health Score Änderung")
+    health_score_change_percentage: float = Field(..., description="Prozentuale Änderung")
     overall_impact_severity: str = Field(..., description="Gesamter Impact-Schweregrad")
 
     timeline: List[TimelinePointResponse] = Field(..., description="Zeitleiste")
@@ -944,7 +944,7 @@ class ScenarioResultResponse(BaseModel):
             "example": {
                 "scenario_id": "550e8400-e29b-41d4-a716-446655440000",
                 "scenario_type": "extra_savings",
-                "scenario_description": "300 EUR/Monat zusaetzlich sparen",
+                "scenario_description": "300 EUR/Monat zusätzlich sparen",
                 "current_health_score": 67.5,
                 "current_kpis": {"dti_ratio": 38.5, "savings_rate": 12.0},
                 "projected_health_score": 78.2,
@@ -962,7 +962,7 @@ class ScenarioResultResponse(BaseModel):
                 "opportunities": ["Notgroschen waechst auf 5.2 Monate"],
                 "calculated_at": "2024-01-15T10:30:00Z",
                 "confidence_percentage": 85.0,
-                "data_basis": "Vollstaendige Finanzdaten",
+                "data_basis": "Vollständige Finanzdaten",
             }
         }
 
@@ -978,7 +978,7 @@ class ComparisonResultResponse(BaseModel):
 
 
 class SimulateScenarioRequest(BaseModel):
-    """Request fuer eine Szenario-Simulation."""
+    """Request für eine Szenario-Simulation."""
     scenario_type: str = Field(
         ...,
         min_length=1,
@@ -995,7 +995,7 @@ class SimulateScenarioRequest(BaseModel):
         default=0,
         ge=-100,
         le=1000,
-        description="Prozentuale Aenderung"
+        description="Prozentuale Änderung"
     )
     duration_months: int = Field(default=12, ge=1, le=60, description="Dauer in Monaten")
     target_entity_id: Optional[str] = Field(
@@ -1003,7 +1003,7 @@ class SimulateScenarioRequest(BaseModel):
         max_length=36,
         description="Ziel-Entity-ID (z.B. Kredit)"
     )
-    additional_params: JSONDict = Field(default={}, description="Zusaetzliche Parameter")
+    additional_params: JSONDict = Field(default={}, description="Zusätzliche Parameter")
 
     @field_validator("scenario_type")
     @classmethod
@@ -1022,7 +1022,7 @@ class SimulateScenarioRequest(BaseModel):
         v = v.strip().lower()
         if v not in allowed_types:
             raise ValueError(
-                f"Ungueltiger Szenario-Typ. Erlaubt sind: {', '.join(sorted(allowed_types))}"
+                f"Ungültiger Szenario-Typ. Erlaubt sind: {', '.join(sorted(allowed_types))}"
             )
         return v
 
@@ -1036,7 +1036,7 @@ class SimulateScenarioRequest(BaseModel):
         # Validate UUID format
         uuid_pattern = r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
         if not re.match(uuid_pattern, v):
-            raise ValueError("target_entity_id muss eine gueltige UUID sein")
+            raise ValueError("target_entity_id muss eine gültige UUID sein")
         return v
 
     @field_validator("additional_params")
@@ -1044,7 +1044,7 @@ class SimulateScenarioRequest(BaseModel):
     def validate_additional_params(cls, v: JSONDict) -> JSONDict:
         """Validiert und begrenzt additional_params."""
         if len(v) > 20:
-            raise ValueError("additional_params darf maximal 20 Eintraege haben")
+            raise ValueError("additional_params darf maximal 20 Einträge haben")
         # Prevent deeply nested structures
         import json
         try:
@@ -1066,7 +1066,7 @@ class SimulateScenarioRequest(BaseModel):
 
 
 class CurrentKPIsRequest(BaseModel):
-    """Aktuelle KPIs fuer die Simulation."""
+    """Aktuelle KPIs für die Simulation."""
     health_score: float = Field(
         default=70.0,
         ge=0,
@@ -1112,26 +1112,26 @@ class CurrentKPIsRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_expenses_vs_income(self) -> "CurrentKPIsRequest":
-        """Warnt wenn Ausgaben das Einkommen uebersteigen."""
-        # Nicht blockieren, nur logisch pruefen
+        """Warnt wenn Ausgaben das Einkommen übersteigen."""
+        # Nicht blockieren, nur logisch prüfen
         # Bei negativer Sparquote kann das legitim sein
         return self
 
 
 class SimulateRequest(BaseModel):
-    """Kombinierter Request fuer Simulation."""
+    """Kombinierter Request für Simulation."""
     scenario: SimulateScenarioRequest = Field(..., description="Szenario-Definition")
     current_kpis: CurrentKPIsRequest = Field(..., description="Aktuelle KPIs")
 
 
 class CompareRequest(BaseModel):
-    """Request fuer Szenario-Vergleich."""
+    """Request für Szenario-Vergleich."""
     scenarios: List[SimulateScenarioRequest] = Field(..., min_length=2, max_length=5, description="Zu vergleichende Szenarien")
     current_kpis: CurrentKPIsRequest = Field(..., description="Aktuelle KPIs")
 
 
 class CombineRequest(BaseModel):
-    """Request fuer kombinierte Szenarien."""
+    """Request für kombinierte Szenarien."""
     scenarios: List[SimulateScenarioRequest] = Field(..., min_length=1, max_length=5, description="Zu kombinierende Szenarien")
     current_kpis: CurrentKPIsRequest = Field(..., description="Aktuelle KPIs")
 
@@ -1155,10 +1155,10 @@ class CombineRequest(BaseModel):
     - Was passiert wenn mein Einkommen um 10% sinkt?
 
     **Szenario-Typen:**
-    - `extra_savings` - Zusaetzliche Sparrate
+    - `extra_savings` - Zusätzliche Sparrate
     - `extra_payment` - Sondertilgung
-    - `income_change` - Einkommensaenderung
-    - `interest_rate_change` - Zinssatzaenderung
+    - `income_change` - Einkommensänderung
+    - `interest_rate_change` - Zinssatzänderung
 
     **Enterprise Feature** - Teil des What-If Simulators.
     """,
@@ -1177,7 +1177,7 @@ async def simulate_scenario(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Szenario-Typ: {request.scenario.scenario_type}",
+            detail=f"Ungültiger Szenario-Typ: {request.scenario.scenario_type}",
         )
 
     scenario_input = ScenarioInput(
@@ -1222,7 +1222,7 @@ async def simulate_scenario(
     - 5000 EUR Sondertilgung vs.
     - 200 EUR/Monat + 2000 EUR Sondertilgung
 
-    Gibt ein Ranking nach Netto-Nutzen zurueck.
+    Gibt ein Ranking nach Netto-Nutzen zurück.
     """,
 )
 async def compare_scenarios(
@@ -1241,7 +1241,7 @@ async def compare_scenarios(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Szenario-Typ: {s.scenario_type}",
+                detail=f"Ungültiger Szenario-Typ: {s.scenario_type}",
             )
 
         scenario_inputs.append(ScenarioInput(
@@ -1310,7 +1310,7 @@ async def combine_scenarios(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Szenario-Typ: {s.scenario_type}",
+                detail=f"Ungültiger Szenario-Typ: {s.scenario_type}",
             )
 
         scenario_inputs.append(ScenarioInput(
@@ -1347,7 +1347,7 @@ async def combine_scenarios(
     response_model=List[JSONDict],
     summary="Schnell-Szenarien abrufen",
     description="""
-    Gibt vordefinierte Schnell-Szenarien zurueck, basierend auf aktuellen KPIs.
+    Gibt vordefinierte Schnell-Szenarien zurück, basierend auf aktuellen KPIs.
 
     Das System schlaegt intelligent relevante Szenarien vor:
     - Bei hohem DTI: Schuldenabbau-Szenarien
@@ -1365,7 +1365,7 @@ async def get_quick_scenarios(
     monthly_expenses: float = Query(default=3500.0, description="Monatliche Ausgaben"),
     current_user: User = Depends(get_current_active_user),
 ) -> List[JSONDict]:
-    """Gibt Schnell-Szenarien basierend auf aktuellen KPIs zurueck."""
+    """Gibt Schnell-Szenarien basierend auf aktuellen KPIs zurück."""
     simulator = get_whatif_simulator()
 
     current_kpis = {
@@ -1464,7 +1464,7 @@ class ProactiveInsightResponse(BaseModel):
                 "entity_id": "sup-123",
                 "entity_name": "Mueller GmbH",
                 "potential_value": 1500.0,
-                "recommendation": "Alternative Lieferanten pruefen?",
+                "recommendation": "Alternative Lieferanten prüfen?",
                 "action_url": "/suppliers/sup-123/alternatives",
                 "confidence": 0.87,
                 "source_rule": "supplier_pricing_check",
@@ -1489,7 +1489,7 @@ class EnrichedResponseResponse(BaseModel):
     original_response: str = Field(..., description="Urspruengliche Antwort")
     insights: List[ProactiveInsightResponse] = Field(..., description="Proaktive Insights")
     extracted_entities: List[ExtractedEntityResponse] = Field(..., description="Extrahierte Entities")
-    follow_up_suggestions: List[str] = Field(..., description="Follow-Up Vorschlaege")
+    follow_up_suggestions: List[str] = Field(..., description="Follow-Up Vorschläge")
     processing_time_ms: float = Field(..., description="Verarbeitungszeit in ms")
 
 
@@ -1502,7 +1502,7 @@ class EnrichChatRequest(BaseModel):
 
 
 class ContextualInsightRequest(BaseModel):
-    """Request fuer kontextbezogene Insights."""
+    """Request für kontextbezogene Insights."""
     context_source: str = Field(..., description="Kontext-Quelle (chat, document, dashboard)")
     context_data: JSONDict = Field(..., description="Kontext-Daten")
     current_kpis: Optional[JSONDict] = Field(None, description="Aktuelle KPIs")
@@ -1510,7 +1510,7 @@ class ContextualInsightRequest(BaseModel):
 
 
 class DashboardInsightRequest(BaseModel):
-    """Request fuer Dashboard-Insights."""
+    """Request für Dashboard-Insights."""
     health_score: float = Field(..., ge=0, le=100, description="Aktueller Health Score")
     dti_ratio: Optional[float] = Field(None, description="Debt-to-Income Ratio")
     emergency_fund_months: Optional[float] = Field(None, description="Notgroschen in Monaten")
@@ -1562,12 +1562,12 @@ class InsightRuleResponse(BaseModel):
     Das System analysiert die User-Frage und Base-Antwort:
     - Extrahiert relevante Entities (Lieferanten, Immobilien, Versicherungen, etc.)
     - Generiert Insights basierend auf dem Kontext
-    - Fuegt Follow-Up-Vorschlaege hinzu
+    - Fuegt Follow-Up-Vorschläge hinzu
 
     Beispiel:
     - User fragt nach "Lieferant Mueller"
     - System erkennt: Mueller ist 23% teurer als Durchschnitt
-    - Insight: "Preisanstieg bei Mueller GmbH - Alternativen pruefen?"
+    - Insight: "Preisanstieg bei Mueller GmbH - Alternativen prüfen?"
     """
 )
 async def enrich_chat_response(
@@ -1636,11 +1636,11 @@ async def enrich_chat_response(
     response_model=List[ProactiveInsightResponse],
     summary="Dashboard-Insights abrufen",
     description="""
-    Ruft proaktive Insights fuer das Dashboard ab.
+    Ruft proaktive Insights für das Dashboard ab.
 
     Analysiert aktuelle KPIs und generiert relevante Insights:
     - Early Warnings bei kritischen KPIs
-    - Optimierungsvorschlaege
+    - Optimierungsvorschläge
     - Opportunitaeten
 
     Die Insights sind priorisiert nach Wichtigkeit.
@@ -1659,7 +1659,7 @@ async def get_dashboard_insights(
     max_insights: int = Query(10, ge=1, le=50, description="Maximale Anzahl Insights"),
     current_user: User = Depends(get_current_active_user),
 ) -> List[ProactiveInsightResponse]:
-    """Ruft proaktive Insights fuer das Dashboard ab."""
+    """Ruft proaktive Insights für das Dashboard ab."""
     from app.services.orchestration import get_proactive_insights_service
 
     service = get_proactive_insights_service()
@@ -1712,7 +1712,7 @@ async def get_dashboard_insights(
     description="""
     Generiert Insights basierend auf spezifischem Kontext.
 
-    Moegliche Kontextquellen:
+    Mögliche Kontextquellen:
     - "chat": Chat-Konversation
     - "document": Dokument-Analyse
     - "dashboard": Dashboard-Ansicht
@@ -1774,7 +1774,7 @@ async def get_contextual_insights(
     - "acted_on": User hat auf Insight reagiert
     - "dismissed": User hat Insight abgelehnt
 
-    Dieses Feedback wird fuer Self-Learning verwendet.
+    Dieses Feedback wird für Self-Learning verwendet.
     """
 )
 async def submit_insight_feedback(
@@ -1930,13 +1930,13 @@ class UserThresholdResponse(BaseModel):
 
 
 class UserProfileResponse(BaseModel):
-    """User-Profil fuer Schwellenwert-Personalisierung."""
+    """User-Profil für Schwellenwert-Personalisierung."""
     user_id: str = Field(..., description="User-ID")
     profession_type: str = Field(..., description="Berufstyp")
     risk_tolerance: str = Field(..., description="Risikotoleranz")
     income_stability: float = Field(..., description="Einkommensstabilitaet (0-1)")
     age_group: str = Field(..., description="Altersgruppe")
-    household_size: int = Field(..., description="Haushaltsgroesse")
+    household_size: int = Field(..., description="Haushaltsgröße")
     has_dependents: bool = Field(..., description="Hat Unterhaltsberechtigte")
     is_homeowner: bool = Field(..., description="Ist Eigentuemer")
     has_pension_plan: bool = Field(..., description="Hat Altersvorsorge")
@@ -1952,7 +1952,7 @@ class UpdateProfileRequest(BaseModel):
     risk_tolerance: Optional[str] = Field(None, description="Risikotoleranz")
     income_stability: Optional[float] = Field(None, ge=0, le=1, description="Einkommensstabilitaet")
     age_group: Optional[str] = Field(None, description="Altersgruppe (18-30, 31-45, 46-60, 60+)")
-    household_size: Optional[int] = Field(None, ge=1, le=20, description="Haushaltsgroesse")
+    household_size: Optional[int] = Field(None, ge=1, le=20, description="Haushaltsgröße")
     has_dependents: Optional[bool] = Field(None, description="Hat Unterhaltsberechtigte")
     is_homeowner: Optional[bool] = Field(None, description="Ist Eigentuemer")
     has_pension_plan: Optional[bool] = Field(None, description="Hat Altersvorsorge")
@@ -1967,7 +1967,7 @@ class SetThresholdRequest(BaseModel):
 
 
 class ThresholdRecommendationResponse(BaseModel):
-    """Empfehlung fuer Schwellenwert-Anpassung."""
+    """Empfehlung für Schwellenwert-Anpassung."""
     id: str = Field(..., description="Empfehlungs-ID")
     threshold_type: str = Field(..., description="Schwellenwert-Typ")
     current_value: float = Field(..., description="Aktueller Wert")
@@ -1976,7 +1976,7 @@ class ThresholdRecommendationResponse(BaseModel):
     confidence: float = Field(..., description="Konfidenz (0-1)")
     potential_impact: str = Field(..., description="Potenzielle Auswirkung")
     created_at: str = Field(..., description="Erstellt am")
-    expires_at: str = Field(..., description="Gueltig bis")
+    expires_at: str = Field(..., description="Gültig bis")
 
 
 class ThresholdAdjustmentResponse(BaseModel):
@@ -2012,9 +2012,9 @@ class ThresholdStatisticsResponse(BaseModel):
     response_model=List[ThresholdDefinitionResponse],
     summary="Schwellenwert-Definitionen abrufen",
     description="""
-    Ruft alle verfuegbaren Schwellenwert-Definitionen ab.
+    Ruft alle verfügbaren Schwellenwert-Definitionen ab.
 
-    Jede Definition enthaelt:
+    Jede Definition enthält:
     - Typ und Kategorie
     - Standard-Wert und erlaubter Bereich
     - Beschreibung und Einheit
@@ -2037,7 +2037,7 @@ async def get_threshold_definitions(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltige Kategorie: {category}",
+                detail=f"Ungültige Kategorie: {category}",
             )
     else:
         definitions = service.registry.get_all_thresholds()
@@ -2063,9 +2063,9 @@ async def get_threshold_definitions(
     response_model=UserProfileResponse,
     summary="User-Profil abrufen",
     description="""
-    Ruft das User-Profil fuer Schwellenwert-Personalisierung ab.
+    Ruft das User-Profil für Schwellenwert-Personalisierung ab.
 
-    Das Profil enthaelt:
+    Das Profil enthält:
     - Berufstyp und Risikotoleranz
     - Demographische Informationen
     - Praeferenzen
@@ -2106,7 +2106,7 @@ async def get_user_profile(
     description="""
     Aktualisiert das User-Profil.
 
-    Nach einer Profil-Aenderung werden alle Schwellenwerte
+    Nach einer Profil-Änderung werden alle Schwellenwerte
     automatisch neu berechnet (ausser User-Overrides).
     """
 )
@@ -2149,7 +2149,7 @@ async def update_user_profile(
     Ruft alle personalisierten Schwellenwerte des Users ab.
 
     Die Werte sind basierend auf dem User-Profil berechnet,
-    koennen aber individuell ueberschrieben werden.
+    können aber individuell überschrieben werden.
     """
 )
 async def get_user_thresholds(
@@ -2169,7 +2169,7 @@ async def get_user_thresholds(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltige Kategorie: {category}",
+                detail=f"Ungültige Kategorie: {category}",
             )
 
     thresholds = await service.get_all_thresholds(current_user.id, cat)
@@ -2215,7 +2215,7 @@ async def get_user_threshold(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Schwellenwert-Typ: {threshold_type}",
+            detail=f"Ungültiger Schwellenwert-Typ: {threshold_type}",
         )
 
     threshold = await service.get_threshold(current_user.id, tt)
@@ -2250,7 +2250,7 @@ async def get_user_threshold(
     Setzt einen personalisierten Schwellenwert.
 
     Der Wert muss innerhalb des erlaubten Bereichs liegen.
-    Diese Einstellung ueberschreibt die Profil-basierte Berechnung.
+    Diese Einstellung überschreibt die Profil-basierte Berechnung.
     """
 )
 async def set_user_threshold(
@@ -2269,7 +2269,7 @@ async def set_user_threshold(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Schwellenwert-Typ: {threshold_type}",
+            detail=f"Ungültiger Schwellenwert-Typ: {threshold_type}",
         )
 
     try:
@@ -2305,11 +2305,11 @@ async def set_user_threshold(
 @router.post(
     "/thresholds/{threshold_type}/reset",
     response_model=UserThresholdResponse,
-    summary="Schwellenwert zuruecksetzen",
+    summary="Schwellenwert zurücksetzen",
     description="""
-    Setzt einen Schwellenwert auf den Profil-basierten Default zurueck.
+    Setzt einen Schwellenwert auf den Profil-basierten Default zurück.
 
-    Dies entfernt alle User-Overrides fuer diesen Schwellenwert.
+    Dies entfernt alle User-Overrides für diesen Schwellenwert.
     """
 )
 async def reset_user_threshold(
@@ -2317,7 +2317,7 @@ async def reset_user_threshold(
     threshold_type: str,
     current_user: User = Depends(get_current_active_user),
 ) -> UserThresholdResponse:
-    """Setzt einen Schwellenwert zurueck."""
+    """Setzt einen Schwellenwert zurück."""
     from app.services.orchestration import get_personalized_thresholds_service, ThresholdType
 
     service = get_personalized_thresholds_service()
@@ -2327,7 +2327,7 @@ async def reset_user_threshold(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Schwellenwert-Typ: {threshold_type}",
+            detail=f"Ungültiger Schwellenwert-Typ: {threshold_type}",
         )
 
     threshold = await service.reset_threshold(current_user.id, tt)
@@ -2352,14 +2352,14 @@ async def reset_user_threshold(
 @router.post(
     "/thresholds/reset-all",
     response_model=List[UserThresholdResponse],
-    summary="Alle Schwellenwerte zuruecksetzen",
-    description="Setzt alle Schwellenwerte auf Profil-basierte Defaults zurueck."
+    summary="Alle Schwellenwerte zurücksetzen",
+    description="Setzt alle Schwellenwerte auf Profil-basierte Defaults zurück."
 )
 async def reset_all_thresholds(
     request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> List[UserThresholdResponse]:
-    """Setzt alle Schwellenwerte zurueck."""
+    """Setzt alle Schwellenwerte zurück."""
     from app.services.orchestration import get_personalized_thresholds_service
 
     service = get_personalized_thresholds_service()
@@ -2390,7 +2390,7 @@ async def reset_all_thresholds(
     response_model=List[ThresholdRecommendationResponse],
     summary="Schwellenwert-Empfehlungen abrufen",
     description="""
-    Ruft ausstehende Empfehlungen fuer Schwellenwert-Anpassungen ab.
+    Ruft ausstehende Empfehlungen für Schwellenwert-Anpassungen ab.
 
     Empfehlungen werden generiert basierend auf:
     - Aktuellem Verhalten des Users
@@ -2500,7 +2500,7 @@ async def accept_threshold_recommendation(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Empfehlungs-ID",
+            detail="Ungültige Empfehlungs-ID",
         )
 
     threshold = await service.accept_recommendation(current_user.id, rec_uuid)
@@ -2548,7 +2548,7 @@ async def reject_threshold_recommendation(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Empfehlungs-ID",
+            detail="Ungültige Empfehlungs-ID",
         )
 
     success = await service.reject_recommendation(current_user.id, rec_uuid, reason)
@@ -2640,7 +2640,7 @@ async def get_threshold_stats(
 # ----------------------
 
 class SeasonalPatternResponse(BaseModel):
-    """Response fuer ein erkanntes saisonales Muster."""
+    """Response für ein erkanntes saisonales Muster."""
     id: str
     category: str
     season_type: str
@@ -2660,7 +2660,7 @@ class SeasonalPatternResponse(BaseModel):
 
 
 class MonthlyExpectationResponse(BaseModel):
-    """Response fuer monatliche Erwartungen."""
+    """Response für monatliche Erwartungen."""
     month: int
     year: int
     category: str
@@ -2674,7 +2674,7 @@ class MonthlyExpectationResponse(BaseModel):
 
 
 class SeasonalEventResponse(BaseModel):
-    """Response fuer ein saisonales Event."""
+    """Response für ein saisonales Event."""
     id: str
     name: str
     description: str
@@ -2689,7 +2689,7 @@ class SeasonalEventResponse(BaseModel):
 
 
 class SeasonalAnomalyRequest(BaseModel):
-    """Request fuer Anomalie-Analyse."""
+    """Request für Anomalie-Analyse."""
     transaction_date: str
     category: str
     amount: float
@@ -2697,7 +2697,7 @@ class SeasonalAnomalyRequest(BaseModel):
 
 
 class SeasonalAnomalyResponse(BaseModel):
-    """Response fuer Anomalie-Analyse mit saisonalem Kontext."""
+    """Response für Anomalie-Analyse mit saisonalem Kontext."""
     id: str
     transaction_date: str
     category: str
@@ -2714,7 +2714,7 @@ class SeasonalAnomalyResponse(BaseModel):
 
 
 class SeasonalForecastResponse(BaseModel):
-    """Response fuer saisonale Prognose."""
+    """Response für saisonale Prognose."""
     id: str
     forecast_date: str
     horizon_months: int
@@ -2728,13 +2728,13 @@ class SeasonalForecastResponse(BaseModel):
 
 
 class DetectPatternsRequest(BaseModel):
-    """Request fuer Pattern-Erkennung."""
+    """Request für Pattern-Erkennung."""
     historical_data: List[JSONDict]
     min_data_points: int = 12
 
 
 class AddCustomEventRequest(BaseModel):
-    """Request fuer benutzerdefiniertes Event."""
+    """Request für benutzerdefiniertes Event."""
     name: str
     month: int
     categories: List[str]
@@ -2743,7 +2743,7 @@ class AddCustomEventRequest(BaseModel):
 
 
 class SeasonalityStatisticsResponse(BaseModel):
-    """Response fuer Saisonalitaets-Statistiken."""
+    """Response für Saisonalitaets-Statistiken."""
     detected_patterns: int
     strong_patterns: int
     known_events: int
@@ -2767,8 +2767,8 @@ class SeasonalityStatisticsResponse(BaseModel):
 
     Features:
     - Monatliche Muster (z.B. hohe Heizkosten im Winter)
-    - Jaehrliche Zyklen (z.B. Weihnachten, Urlaub)
-    - Staerke-Klassifizierung (sehr stark bis schwach)
+    - Jährliche Zyklen (z.B. Weihnachten, Urlaub)
+    - Stärke-Klassifizierung (sehr stark bis schwach)
     - Kombiniert mit bekannten deutschen Mustern
 
     Input:
@@ -2820,7 +2820,7 @@ async def detect_seasonal_patterns(
     response_model=List[MonthlyExpectationResponse],
     summary="Monatliche Erwartungen abrufen",
     description="""
-    Berechnet erwartete Ausgaben fuer einen bestimmten Monat basierend auf:
+    Berechnet erwartete Ausgaben für einen bestimmten Monat basierend auf:
     - Erkannten saisonalen Mustern
     - Bekannten deutschen Saisonmustern (Heizung, Urlaub, etc.)
     - Bevorstehenden Events (Weihnachten, Ostern, etc.)
@@ -2887,17 +2887,17 @@ async def get_monthly_expectations(
     response_model=SeasonalAnomalyResponse,
     summary="Anomalie mit saisonalem Kontext analysieren",
     description="""
-    Analysiert eine potenzielle Anomalie unter Beruecksichtigung des saisonalen Kontexts.
+    Analysiert eine potenzielle Anomalie unter Berücksichtigung des saisonalen Kontexts.
 
     Das System unterscheidet:
     - EXPECTED_SEASONAL: Erwartet wegen Saison (z.B. hohe Heizkosten im Winter)
     - EXPECTED_EVENT: Erwartet wegen Event (z.B. Weihnachtsgeschenke im Dezember)
     - UNEXPECTED_SEASONAL: Unerwartet trotz Saison (ungewoehnlich hohe Peak-Ausgaben)
-    - TRUE_ANOMALY: Echte Anomalie ohne saisonale Erklaerung
+    - TRUE_ANOMALY: Echte Anomalie ohne saisonale Erklärung
 
     Vorteile:
     - Weniger False Positives bei saisonalen Ausgaben
-    - Bessere Erklaerungen fuer User
+    - Bessere Erklärungen für User
     - Kontextbewusste Empfehlungen
     """
 )
@@ -2953,7 +2953,7 @@ async def analyze_seasonal_anomaly(
     response_model=SeasonalForecastResponse,
     summary="Saisonale Prognose generieren",
     description="""
-    Generiert eine saisonale Prognose fuer zukuenftige Monate.
+    Generiert eine saisonale Prognose für zukuenftige Monate.
 
     Beinhaltet:
     - Erwartete Ausgaben pro Kategorie und Monat
@@ -2961,10 +2961,10 @@ async def analyze_seasonal_anomaly(
     - Monate mit hohen erwarteten Ausgaben
     - Peak-Kategorien pro Monat
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Budgetplanung
     - Cash-Flow Vorhersage
-    - Fruehwarnung bei teuren Monaten
+    - Frühwarnung bei teuren Monaten
     """
 )
 async def generate_seasonal_forecast(
@@ -3029,10 +3029,10 @@ async def generate_seasonal_forecast(
     Beispiele:
     - Geburtstage
     - Jubilaeen
-    - Jaehrliche Mitgliedsbeitraege
+    - Jährliche Mitgliedsbeitraege
     - Wiederkehrende Reparaturen
 
-    Das Event wird bei zukuenftigen Prognosen und Anomalie-Analysen beruecksichtigt.
+    Das Event wird bei zukuenftigen Prognosen und Anomalie-Analysen berücksichtigt.
     """
 )
 async def add_custom_event(
@@ -3082,9 +3082,9 @@ async def add_custom_event(
 @router.get(
     "/seasonality/events/{month}",
     response_model=List[SeasonalEventResponse],
-    summary="Events fuer Monat abrufen",
+    summary="Events für Monat abrufen",
     description="""
-    Ruft alle bekannten Events fuer einen bestimmten Monat ab.
+    Ruft alle bekannten Events für einen bestimmten Monat ab.
 
     Beinhaltet:
     - System-Events (Weihnachten, Ostern, etc.)
@@ -3096,7 +3096,7 @@ async def get_events_for_month(
     month: int = Path(..., ge=1, le=12, description="Monat (1-12)"),
     current_user: User = Depends(get_current_active_user),
 ) -> List[SeasonalEventResponse]:
-    """Ruft Events fuer einen Monat ab."""
+    """Ruft Events für einen Monat ab."""
     from app.services.orchestration import get_seasonality_detection_service
 
     service = get_seasonality_detection_service()
@@ -3131,7 +3131,7 @@ async def get_events_for_month(
     description="""
     Ruft alle bekannten deutschen Saisonmuster ab.
 
-    Beinhaltet Muster fuer:
+    Beinhaltet Muster für:
     - Heizkosten (hoehr im Winter)
     - Stromkosten (hoehr im Winter)
     - Urlaubsausgaben (Sommer, Weihnachten)
@@ -3239,7 +3239,7 @@ class HealthAssessmentResponse(BaseModel):
     current_risk_score: float = Field(..., description="Aktueller Risk Score")
     current_risk_level: str = Field(..., description="Aktuelles Risk Level")
     previous_risk_score: Optional[float] = Field(None, description="Vorheriger Risk Score")
-    score_change: float = Field(..., description="Score-Aenderung")
+    score_change: float = Field(..., description="Score-Änderung")
     is_degrading: bool = Field(..., description="Verschlechtert sich")
     recommended_actions: List[HealthActionResponse] = Field(
         default=[], description="Empfohlene Massnahmen"
@@ -3259,14 +3259,14 @@ class ApplyHealthActionsRequest(BaseModel):
             raise ValueError("Mindestens eine Aktions-ID erforderlich")
         if len(v) > 20:
             raise ValueError("Maximal 20 Aktionen auf einmal anwendbar")
-        # UUID-Format pruefen
+        # UUID-Format prüfen
         uuid_pattern = re.compile(
             r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
             re.IGNORECASE
         )
         for action_id in v:
             if not uuid_pattern.match(action_id):
-                raise ValueError(f"Ungueltige Aktions-ID: {action_id[:50]}")
+                raise ValueError(f"Ungültige Aktions-ID: {action_id[:50]}")
         return v
 
 
@@ -3291,7 +3291,7 @@ class InvestigationReportResponse(BaseModel):
     confidence: float = Field(..., description="Konfidenz (0-1)")
     related_documents_count: int = Field(..., description="Anzahl zugehoeriger Dokumente")
     related_transactions_count: int = Field(..., description="Anzahl zugehoeriger Transaktionen")
-    timeline_entries_count: int = Field(..., description="Anzahl Timeline-Eintraege")
+    timeline_entries_count: int = Field(..., description="Anzahl Timeline-Einträge")
     recommendations: List[str] = Field(default=[], description="Empfehlungen")
     immediate_actions: List[str] = Field(default=[], description="Sofortmassnahmen")
     data_collection_time_ms: int = Field(..., description="Datensammlungszeit in ms")
@@ -3317,7 +3317,7 @@ class StartInvestigationRequest(BaseModel):
         v_lower = v.lower().strip()
         if v_lower not in allowed_types:
             raise ValueError(
-                f"Ungueltiger Anomalie-Typ. Erlaubt: {', '.join(sorted(allowed_types))}"
+                f"Ungültiger Anomalie-Typ. Erlaubt: {', '.join(sorted(allowed_types))}"
             )
         return v_lower
 
@@ -3332,7 +3332,7 @@ class StartInvestigationRequest(BaseModel):
             re.IGNORECASE
         )
         if not uuid_pattern.match(v):
-            raise ValueError("Ungueltige UUID")
+            raise ValueError("Ungültige UUID")
         return v
 
     @model_validator(mode="after")
@@ -3368,13 +3368,13 @@ class YearComparisonResponse(BaseModel):
     """Vergleich zwischen Jahren."""
     current_year: int = Field(..., description="Aktuelles Jahr")
     previous_year: int = Field(..., description="Vorheriges Jahr")
-    revenue_change_percent: float = Field(..., description="Umsatzaenderung in %")
-    expense_change_percent: float = Field(..., description="Ausgabenaenderung in %")
-    invoice_volume_change_percent: float = Field(..., description="Rechnungsvolumenaenderung in %")
+    revenue_change_percent: float = Field(..., description="Umsatzänderung in %")
+    expense_change_percent: float = Field(..., description="Ausgabenänderung in %")
+    invoice_volume_change_percent: float = Field(..., description="Rechnungsvolumenänderung in %")
     monthly_differences: Dict[str, float] = Field(
         default={}, description="Monatliche Unterschiede (Monat -> %)"
     )
-    anomalies: List[str] = Field(default=[], description="Auffaelligkeiten")
+    anomalies: List[str] = Field(default=[], description="Auffälligkeiten")
 
 
 class SeasonalWarningResponse(BaseModel):
@@ -3395,13 +3395,13 @@ class LiquidityAdjustmentResponse(BaseModel):
     adjustment_type: str = Field(..., description="Anpassungstyp")
     description: str = Field(..., description="Beschreibung")
     amount: float = Field(..., description="Betrag in EUR")
-    effective_from: str = Field(..., description="Gueltig ab")
-    effective_until: str = Field(..., description="Gueltig bis")
+    effective_from: str = Field(..., description="Gültig ab")
+    effective_until: str = Field(..., description="Gültig bis")
     reason: str = Field(..., description="Begruendung")
 
 
 class SeasonalAnalysisResponse(BaseModel):
-    """Vollstaendige saisonale Analyse."""
+    """Vollständige saisonale Analyse."""
     id: str = Field(..., description="Analyse-ID")
     analysis_date: str = Field(..., description="Analysedatum")
     patterns: List[SeasonalPatternResponse] = Field(default=[], description="Erkannte Muster")
@@ -3427,11 +3427,11 @@ class SeasonalAnalysisResponse(BaseModel):
     response_model=HealthAssessmentResponse,
     summary="Entity-Gesundheitsmassnahmen abrufen",
     description="""
-    Gibt empfohlene Massnahmen fuer eine Entity basierend auf ihrem Risk Score zurueck.
+    Gibt empfohlene Massnahmen für eine Entity basierend auf ihrem Risk Score zurück.
 
     Analysiert:
     - Aktuellen Risk Score und Level
-    - Veraenderung gegenueber vorherigem Score
+    - Veränderung gegenüber vorherigem Score
     - Automatisch empfohlene Massnahmen
 
     **Enterprise Feature** - Teil der Entity Health Degradation Handling.
@@ -3442,7 +3442,7 @@ async def get_entity_health_actions(
     entity_id: UUID = Path(..., description="Entity-ID"),
     current_user: User = Depends(get_current_active_user),
 ) -> HealthAssessmentResponse:
-    """Gibt Gesundheits-Massnahmen fuer eine Entity zurueck."""
+    """Gibt Gesundheits-Massnahmen für eine Entity zurück."""
     from app.api.dependencies import get_db
     from app.services.orchestration import get_entity_health_handler
 
@@ -3459,7 +3459,7 @@ async def get_entity_health_actions(
         if not assessment:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Entity nicht gefunden oder keine Bewertung moeglich",
+                detail="Entity nicht gefunden oder keine Bewertung möglich",
             )
 
         return HealthAssessmentResponse(
@@ -3498,13 +3498,13 @@ async def get_entity_health_actions(
     description="""
     Wendet die angegebenen Gesundheits-Massnahmen auf eine Entity an.
 
-    Moegliche Massnahmen:
+    Mögliche Massnahmen:
     - Kreditlimit reduzieren
-    - Zahlungsziel verkuerzen
+    - Zahlungsziel verkürzen
     - Vorkasse verlangen
     - Mahnprozess beschleunigen
 
-    **Erfordert Genehmigung** - Bestimmte Massnahmen benoetigen Admin-Rechte.
+    **Erfordert Genehmigung** - Bestimmte Massnahmen benötigen Admin-Rechte.
     """,
 )
 async def apply_entity_health_actions(
@@ -3552,7 +3552,7 @@ async def apply_entity_health_actions(
                 results.append({
                     "action_id": action_id_str,
                     "status": "failed",
-                    "message": "Ungueltige Aktions-ID",
+                    "message": "Ungültige Aktions-ID",
                 })
             except Exception as e:
                 failed_count += 1
@@ -3575,9 +3575,9 @@ async def apply_entity_health_actions(
     response_model=InvestigationReportResponse,
     summary="Untersuchungsbericht abrufen",
     description="""
-    Gibt den Bericht einer Anomalie-Untersuchung zurueck.
+    Gibt den Bericht einer Anomalie-Untersuchung zurück.
 
-    Der Bericht enthaelt:
+    Der Bericht enthält:
     - Zusammenfassung und detaillierte Erkenntnisse
     - Risikobewertung und Konfidenz
     - Zugehoerige Dokumente und Transaktionen
@@ -3592,7 +3592,7 @@ async def get_investigation_report(
     investigation_id: UUID = Path(..., description="Untersuchungs-ID"),
     current_user: User = Depends(get_current_active_user),
 ) -> InvestigationReportResponse:
-    """Gibt einen Untersuchungsbericht zurueck."""
+    """Gibt einen Untersuchungsbericht zurück."""
     from app.services.orchestration import get_anomaly_investigation_service
 
     service = get_anomaly_investigation_service()
@@ -3678,7 +3678,7 @@ async def start_investigation(
         return StartInvestigationResponse(
             investigation_id=str(investigation.id),
             status=investigation.status.value,
-            message="Untersuchung wurde gestartet und wird im Hintergrund ausgefuehrt",
+            message="Untersuchung wurde gestartet und wird im Hintergrund ausgeführt",
         )
 
 
@@ -3688,7 +3688,7 @@ async def start_investigation(
     response_model=SeasonalAnalysisResponse,
     summary="Saisonale Analyse abrufen",
     description="""
-    Fuehrt eine vollstaendige saisonale Analyse durch.
+    Führt eine vollständige saisonale Analyse durch.
 
     Analysiert:
     - Historische Muster (Q4-Spitzen, Sommer-Einbrueche, etc.)
@@ -3705,11 +3705,11 @@ async def get_seasonal_analysis(
         default=24,
         ge=6,
         le=60,
-        description="Anzahl Monate fuer historische Analyse"
+        description="Anzahl Monate für historische Analyse"
     ),
     current_user: User = Depends(get_current_active_user),
 ) -> SeasonalAnalysisResponse:
-    """Fuehrt eine saisonale Analyse durch."""
+    """Führt eine saisonale Analyse durch."""
     from app.api.dependencies import get_db
     from app.services.orchestration import get_seasonal_detector_service
 
@@ -3725,7 +3725,7 @@ async def get_seasonal_analysis(
         if not analysis:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Nicht genuegend Daten fuer saisonale Analyse",
+                detail="Nicht genuegend Daten für saisonale Analyse",
             )
 
         # Patterns konvertieren

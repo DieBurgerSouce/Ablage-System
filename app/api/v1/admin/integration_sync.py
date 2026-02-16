@@ -1,6 +1,6 @@
 """Integration Sync Admin API.
 
-Admin-Endpunkte fuer DATEV Write-back und Lexware Bidirektional-Export.
+Admin-Endpunkte für DATEV Write-back und Lexware Bidirektional-Export.
 """
 
 from typing import Optional, List
@@ -108,7 +108,7 @@ async def download_datev_writeback(batch_id: str, db: AsyncSession = Depends(get
 @router.post("/datev/writeback/{batch_id}/confirm-import")
 async def confirm_datev_import(batch_id: str, db: AsyncSession = Depends(get_db),
                                 current_user: User = Depends(get_current_active_user)):
-    """Bestaetigt DATEV-Import eines Batches."""
+    """Bestätigt DATEV-Import eines Batches."""
     from app.services.datev.datev_writeback_service import DATEVWritebackService
     service = DATEVWritebackService(db)
     batch = await service.mark_imported(batch_id)

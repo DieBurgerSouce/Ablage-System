@@ -403,7 +403,7 @@ def sync_extended_data(
     Args:
         connection_id: ERP-Verbindungs-ID
         data_types: Liste der Datentypen (projects, timesheet, inventory, products)
-        since: Optional ISO-Timestamp fuer Delta-Sync
+        since: Optional ISO-Timestamp für Delta-Sync
 
     Returns:
         Sync-Ergebnis pro Datentyp
@@ -500,7 +500,7 @@ async def _update_sync_status(
     success: bool,
     error: Optional[str],
 ) -> None:
-    """Aktualisiert den Sync-Status fuer einen Datentyp."""
+    """Aktualisiert den Sync-Status für einen Datentyp."""
     from app.db.models import OdooSyncStatus
     import uuid
 
@@ -678,7 +678,7 @@ def push_all_risk_scores(connection_id: str) -> Dict[str, Any]:
             if not mappings:
                 return {
                     "success": True,
-                    "message": "Keine Entities mit Odoo-Verknuepfung gefunden",
+                    "message": "Keine Entities mit Odoo-Verknüpfung gefunden",
                     "pushed": 0,
                 }
 

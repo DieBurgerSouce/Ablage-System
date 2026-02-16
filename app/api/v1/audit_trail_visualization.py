@@ -4,12 +4,12 @@ Audit Trail Visualisierung API.
 
 Vision 2026+ Feature: Visuelle Timeline aller Dokumenten-Aktionen
 - Wer hat zugegriffen
-- Wer hat geaendert
+- Wer hat geändert
 - Wer hat genehmigt
 - Filter nach Aktionstyp
-- Export fuer Audits (PDF/CSV)
+- Export für Audits (PDF/CSV)
 
-Nutzt bestehende AuditLog-Infrastruktur und ergaenzt sie um
+Nutzt bestehende AuditLog-Infrastruktur und ergänzt sie um
 Dokument-spezifische und Entity-spezifische Audit Trails.
 """
 
@@ -49,18 +49,18 @@ router = APIRouter(prefix="/audit-trail", tags=["Audit Trail"])
 # =============================================================================
 
 class AuditTrailEventSchema(BaseModel):
-    """Schema fuer ein einzelnes Audit-Trail-Event."""
+    """Schema für ein einzelnes Audit-Trail-Event."""
     id: UUID
     event_type: str = Field(..., description="Typ des Events (view, edit, approve, download, etc.)")
     title: str = Field(..., description="Deutscher Titel des Events")
     description: Optional[str] = Field(None, description="Detailbeschreibung")
 
-    # Actor (wer hat die Aktion ausgefuehrt)
+    # Actor (wer hat die Aktion ausgeführt)
     actor_id: Optional[UUID] = None
     actor_name: Optional[str] = None
     actor_email: Optional[str] = None
 
-    # Target (worauf wurde die Aktion ausgefuehrt)
+    # Target (worauf wurde die Aktion ausgeführt)
     target_type: str = Field(..., description="document, entity, comment, etc.")
     target_id: UUID
     target_name: Optional[str] = None
@@ -68,11 +68,11 @@ class AuditTrailEventSchema(BaseModel):
     # Zeitstempel
     timestamp: datetime
 
-    # Zusaetzliche Metadaten
+    # Zusätzliche Metadaten
     ip_address: Optional[str] = None
     user_agent: Optional[str] = None
     metadata: JSONDict = Field(default_factory=dict)
-    changes: Optional[JSONDict] = Field(None, description="Delta bei Aenderungen")
+    changes: Optional[JSONDict] = Field(None, description="Delta bei Änderungen")
 
     # Visualisierung
     icon: str = Field(default="Activity", description="Lucide Icon")
@@ -101,7 +101,7 @@ class AuditTrailEventSchema(BaseModel):
 
 
 class AuditTrailResponse(BaseModel):
-    """Response fuer Audit Trail Abfragen."""
+    """Response für Audit Trail Abfragen."""
     events: List[AuditTrailEventSchema]
     total: int
     limit: int
@@ -111,7 +111,7 @@ class AuditTrailResponse(BaseModel):
 
 
 class AuditTrailStatsSchema(BaseModel):
-    """Statistiken fuer Audit Trail."""
+    """Statistiken für Audit Trail."""
     total_events: int
     unique_actors: int
     events_by_type: Dict[str, int]
@@ -131,7 +131,7 @@ EVENT_TYPE_CONFIG: Dict[str, JSONDict] = {
     "document_viewed": {"title": "Dokument angesehen", "icon": "Eye", "color": "gray", "important": False},
     "document_downloaded": {"title": "Dokument heruntergeladen", "icon": "Download", "color": "blue", "important": False},
     "document_updated": {"title": "Dokument aktualisiert", "icon": "Edit", "color": "blue", "important": True},
-    "document_deleted": {"title": "Dokument geloescht", "icon": "Trash", "color": "red", "important": True},
+    "document_deleted": {"title": "Dokument gelöscht", "icon": "Trash", "color": "red", "important": True},
     "document_restored": {"title": "Dokument wiederhergestellt", "icon": "RotateCcw", "color": "green", "important": True},
     "document_shared": {"title": "Dokument geteilt", "icon": "Share2", "color": "purple", "important": True},
     "document_exported": {"title": "Dokument exportiert", "icon": "FileOutput", "color": "blue", "important": False},
@@ -153,18 +153,18 @@ EVENT_TYPE_CONFIG: Dict[str, JSONDict] = {
     "comment_replied": {"title": "Auf Kommentar geantwortet", "icon": "CornerDownRight", "color": "blue", "important": False},
 
     # Tag Events
-    "tags_changed": {"title": "Tags geaendert", "icon": "Tag", "color": "purple", "important": False},
+    "tags_changed": {"title": "Tags geändert", "icon": "Tag", "color": "purple", "important": False},
 
     # Entity Events
-    "entity_linked": {"title": "Geschaeftspartner verknuepft", "icon": "Link", "color": "green", "important": True},
-    "entity_unlinked": {"title": "Verknuepfung entfernt", "icon": "Unlink", "color": "red", "important": False},
+    "entity_linked": {"title": "Geschäftspartner verknüpft", "icon": "Link", "color": "green", "important": True},
+    "entity_unlinked": {"title": "Verknüpfung entfernt", "icon": "Unlink", "color": "red", "important": False},
 
     # Metadata Events
     "metadata_updated": {"title": "Metadaten aktualisiert", "icon": "FileText", "color": "gray", "important": False},
-    "status_changed": {"title": "Status geaendert", "icon": "RefreshCw", "color": "blue", "important": True},
+    "status_changed": {"title": "Status geändert", "icon": "RefreshCw", "color": "blue", "important": True},
 
     # Access Events
-    "access_granted": {"title": "Zugriff gewaehrt", "icon": "UserPlus", "color": "green", "important": True},
+    "access_granted": {"title": "Zugriff gewährt", "icon": "UserPlus", "color": "green", "important": True},
     "access_revoked": {"title": "Zugriff entzogen", "icon": "UserMinus", "color": "red", "important": True},
 
     # Generic
@@ -173,7 +173,7 @@ EVENT_TYPE_CONFIG: Dict[str, JSONDict] = {
 
 
 def get_event_config(event_type: str) -> JSONDict:
-    """Gibt Konfiguration fuer einen Event-Typ zurueck."""
+    """Gibt Konfiguration für einen Event-Typ zurück."""
     return EVENT_TYPE_CONFIG.get(event_type, EVENT_TYPE_CONFIG["unknown"])
 
 
@@ -231,7 +231,7 @@ def _map_activity_type(activity_type: str) -> str:
 @router.get(
     "/document/{document_id}",
     response_model=AuditTrailResponse,
-    summary="Gibt Audit Trail fuer ein einzelnes Dokument zurueck",
+    summary="Gibt Audit Trail für ein einzelnes Dokument zurück",
     description="""
     Zeigt alle Aktivitaeten die ein Dokument betreffen:
     - Wer hat angesehen (Views, Downloads)
@@ -239,7 +239,7 @@ def _map_activity_type(activity_type: str) -> str:
     - OCR-Verarbeitung
     - Kommentare
     - Genehmigungen
-    - Verknuepfungen zu Geschaeftspartnern
+    - Verknüpfungen zu Geschäftspartnern
     """,
 )
 async def get_document_audit_trail(
@@ -255,8 +255,8 @@ async def get_document_audit_trail(
     current_user: User = Depends(get_current_user),
     company_id: UUID = Depends(require_company),
 ) -> AuditTrailResponse:
-    """Gibt Audit Trail fuer ein Dokument zurueck."""
-    # Pruefe ob Dokument existiert und Berechtigung
+    """Gibt Audit Trail für ein Dokument zurück."""
+    # Prüfe ob Dokument existiert und Berechtigung
     doc_result = await db.execute(
         select(Document).where(
             Document.id == document_id,
@@ -274,7 +274,7 @@ async def get_document_audit_trail(
     events: List[AuditTrailEventSchema] = []
     summary: Dict[str, int] = {}
 
-    # 1. Lade DocumentActivity Eintraege
+    # 1. Lade DocumentActivity Einträge
     activity_query = select(DocumentActivity).where(
         DocumentActivity.document_id == document_id
     )
@@ -288,10 +288,10 @@ async def get_document_audit_trail(
 
     activity_query = activity_query.order_by(DocumentActivity.created_at.desc())
 
-    activity_result = await db.execute(activity_query.limit(limit * 2))  # Holen mehr fuer Merge
+    activity_result = await db.execute(activity_query.limit(limit * 2))  # Holen mehr für Merge
     activities = activity_result.scalars().all()
 
-    # 2. Lade AuditLog Eintraege fuer dieses Dokument
+    # 2. Lade AuditLog Einträge für dieses Dokument
     audit_query = select(AuditLog).where(
         and_(
             AuditLog.resource_type == "document",
@@ -311,7 +311,7 @@ async def get_document_audit_trail(
     audit_result = await db.execute(audit_query.limit(limit * 2))
     audit_logs = audit_result.scalars().all()
 
-    # 3. Sammle User-IDs fuer Batch-Laden
+    # 3. Sammle User-IDs für Batch-Laden
     user_ids = set()
     for activity in activities:
         if activity.user_id:
@@ -366,7 +366,7 @@ async def get_document_audit_trail(
     existing_timestamps = {e.timestamp for e in events}
 
     for log in audit_logs:
-        # Skip wenn sehr aehnlicher Timestamp existiert (innerhalb 1 Sekunde)
+        # Skip wenn sehr ähnlicher Timestamp existiert (innerhalb 1 Sekunde)
         skip = False
         for ts in existing_timestamps:
             if abs((log.created_at - ts).total_seconds()) < 1:
@@ -441,7 +441,7 @@ async def get_document_audit_trail(
 @router.get(
     "/entity/{entity_id}",
     response_model=AuditTrailResponse,
-    summary="Gibt Audit Trail fuer einen Geschaeftspartner zurueck",
+    summary="Gibt Audit Trail für einen Geschäftspartner zurück",
 )
 async def get_entity_audit_trail(
     entity_id: UUID,
@@ -454,8 +454,8 @@ async def get_entity_audit_trail(
     current_user: User = Depends(get_current_user),
     company_id: UUID = Depends(require_company),
 ) -> AuditTrailResponse:
-    """Gibt Audit Trail fuer einen Geschaeftspartner zurueck."""
-    # Pruefe ob Entity existiert und Berechtigung
+    """Gibt Audit Trail für einen Geschäftspartner zurück."""
+    # Prüfe ob Entity existiert und Berechtigung
     entity_result = await db.execute(
         select(BusinessEntity).where(
             BusinessEntity.id == entity_id,
@@ -467,13 +467,13 @@ async def get_entity_audit_trail(
     if not entity:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Geschaeftspartner nicht gefunden",
+            detail="Geschäftspartner nicht gefunden",
         )
 
     events: List[AuditTrailEventSchema] = []
     summary: Dict[str, int] = {}
 
-    # Lade AuditLog Eintraege fuer diese Entity
+    # Lade AuditLog Einträge für diese Entity
     audit_query = select(AuditLog).where(
         and_(
             AuditLog.resource_type == "entity",
@@ -565,7 +565,7 @@ async def export_document_audit_trail(
     current_user: User = Depends(get_current_user),
     company_id: UUID = Depends(require_company),
 ) -> Response:
-    """Exportiert Audit Trail fuer ein Dokument."""
+    """Exportiert Audit Trail für ein Dokument."""
     # Hole alle Events (ohne Paginierung)
     result = await get_document_audit_trail(
         document_id=document_id,
@@ -614,7 +614,7 @@ def _export_to_csv(events: List[AuditTrailEventSchema], document_id: UUID) -> Re
             "Ja" if event.is_important else "Nein",
         ])
 
-    content = output.getvalue().encode('utf-8-sig')  # BOM fuer Excel
+    content = output.getvalue().encode('utf-8-sig')  # BOM für Excel
 
     return Response(
         content=content,
@@ -671,17 +671,17 @@ def _export_to_json(events: List[AuditTrailEventSchema], document_id: UUID) -> R
 @router.get(
     "/stats",
     response_model=AuditTrailStatsSchema,
-    summary="Gibt Audit Trail Statistiken zurueck",
+    summary="Gibt Audit Trail Statistiken zurück",
 )
 async def get_audit_trail_stats(
-    document_id: Optional[UUID] = Query(None, description="Optional: Nur fuer dieses Dokument"),
-    entity_id: Optional[UUID] = Query(None, description="Optional: Nur fuer diesen Geschaeftspartner"),
+    document_id: Optional[UUID] = Query(None, description="Optional: Nur für dieses Dokument"),
+    entity_id: Optional[UUID] = Query(None, description="Optional: Nur für diesen Geschäftspartner"),
     days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     company_id: UUID = Depends(require_company),
 ) -> AuditTrailStatsSchema:
-    """Gibt Statistiken ueber Audit Trail Events zurueck."""
+    """Gibt Statistiken über Audit Trail Events zurück."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     # Base Query
@@ -787,8 +787,8 @@ async def get_audit_trail_stats(
 @router.get(
     "/event-types",
     response_model=Dict[str, JSONDict],
-    summary="Gibt alle verfuegbaren Event-Typen zurueck",
+    summary="Gibt alle verfügbaren Event-Typen zurück",
 )
 async def get_event_types() -> Dict[str, JSONDict]:
-    """Gibt alle verfuegbaren Event-Typen mit Konfiguration zurueck."""
+    """Gibt alle verfügbaren Event-Typen mit Konfiguration zurück."""
     return EVENT_TYPE_CONFIG

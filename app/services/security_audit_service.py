@@ -2,7 +2,7 @@
 """
 Security Audit Service.
 
-Prueft das System auf Sicherheitsprobleme und Fehlkonfigurationen:
+Prüft das System auf Sicherheitsprobleme und Fehlkonfigurationen:
 - Hardcoded Credentials
 - Unsichere Defaults
 - Fehlende Authentifizierung
@@ -85,7 +85,7 @@ class AuditFinding:
 
 @dataclass
 class AuditReport:
-    """Vollstaendiger Audit-Report."""
+    """Vollständiger Audit-Report."""
 
     timestamp: datetime
     findings: List[AuditFinding]
@@ -114,10 +114,10 @@ class AuditReport:
 
 class SecurityAuditService:
     """
-    Service fuer Security Audits.
+    Service für Security Audits.
 
-    Fuehrt automatisierte Sicherheitspruefungen durch:
-    - Konfigurationspruefungen
+    Führt automatisierte Sicherheitsprüfungen durch:
+    - Konfigurationsprüfungen
     - Credential-Checks
     - Header-Validierung
     - Best-Practice-Compliance
@@ -144,7 +144,7 @@ class SecurityAuditService:
 
     def run_audit(self) -> AuditReport:
         """
-        Fuehrt vollstaendigen Security Audit durch.
+        Führt vollständigen Security Audit durch.
 
         Returns:
             AuditReport mit allen Findings
@@ -236,7 +236,7 @@ class SecurityAuditService:
     # =========================================================================
 
     def _check_debug_mode(self, settings: object) -> AuditFinding:
-        """Prueft ob Debug-Modus deaktiviert ist."""
+        """Prüft ob Debug-Modus deaktiviert ist."""
         debug_enabled = getattr(settings, "DEBUG", False)
 
         return AuditFinding(
@@ -252,10 +252,10 @@ class SecurityAuditService:
         )
 
     def _check_secret_key(self, settings: object) -> AuditFinding:
-        """Prueft ob ein sicherer Secret Key verwendet wird."""
+        """Prüft ob ein sicherer Secret Key verwendet wird."""
         secret_key = str(getattr(settings, "SECRET_KEY", ""))
 
-        # Pruefungen
+        # Prüfungen
         is_default = secret_key in ["", "changeme", "secret", "dev-secret-key"]
         is_short = len(secret_key) < 32
         is_weak = bool(re.match(r"^[a-z]+$", secret_key.lower()))
@@ -267,7 +267,7 @@ class SecurityAuditService:
             category=AuditCategory.SECRETS,
             severity=AuditSeverity.CRITICAL,
             title="Secret Key Sicherheit",
-            description="Der Secret Key muss lang, zufaellig und einzigartig sein.",
+            description="Der Secret Key muss lang, zufällig und einzigartig sein.",
             recommendation="Generiere einen neuen Secret Key: openssl rand -hex 32",
             affected_component="app.core.config.SECRET_KEY",
             passed=passed,
@@ -280,7 +280,7 @@ class SecurityAuditService:
         )
 
     def _check_database_url(self, settings: object) -> AuditFinding:
-        """Prueft Datenbank-URL auf Sicherheitsprobleme."""
+        """Prüft Datenbank-URL auf Sicherheitsprobleme."""
         db_url = str(getattr(settings, "DATABASE_URL", ""))
 
         has_password = ":" in db_url and "@" in db_url
@@ -295,7 +295,7 @@ class SecurityAuditService:
             category=AuditCategory.ENCRYPTION,
             severity=AuditSeverity.HIGH,
             title="Datenbank-Verbindungssicherheit",
-            description="Datenbankverbindungen sollten verschluesselt sein (SSL/TLS).",
+            description="Datenbankverbindungen sollten verschlüsselt sein (SSL/TLS).",
             recommendation="Aktiviere sslmode=require in der DATABASE_URL.",
             affected_component="app.core.config.DATABASE_URL",
             passed=passed,
@@ -307,7 +307,7 @@ class SecurityAuditService:
         )
 
     def _check_cors_config(self, settings: object) -> AuditFinding:
-        """Prueft CORS-Konfiguration."""
+        """Prüft CORS-Konfiguration."""
         cors_origins = getattr(settings, "CORS_ORIGINS", [])
         allow_all = "*" in cors_origins
 
@@ -327,7 +327,7 @@ class SecurityAuditService:
         )
 
     def _check_csrf_enabled(self, settings: object) -> AuditFinding:
-        """Prueft ob CSRF-Schutz aktiviert ist."""
+        """Prüft ob CSRF-Schutz aktiviert ist."""
         csrf_enabled = getattr(settings, "CSRF_ENABLED", True)
 
         return AuditFinding(
@@ -335,7 +335,7 @@ class SecurityAuditService:
             category=AuditCategory.AUTHENTICATION,
             severity=AuditSeverity.HIGH,
             title="CSRF-Schutz",
-            description="CSRF-Schutz sollte fuer state-changing Requests aktiviert sein.",
+            description="CSRF-Schutz sollte für state-changing Requests aktiviert sein.",
             recommendation="Setze CSRF_ENABLED=true.",
             affected_component="app.middleware.csrf",
             passed=csrf_enabled,
@@ -343,7 +343,7 @@ class SecurityAuditService:
         )
 
     def _check_rate_limiting(self, settings: object) -> AuditFinding:
-        """Prueft ob Rate Limiting aktiviert ist."""
+        """Prüft ob Rate Limiting aktiviert ist."""
         rate_limit_enabled = getattr(settings, "RATE_LIMIT_ENABLED", False)
 
         return AuditFinding(
@@ -359,7 +359,7 @@ class SecurityAuditService:
         )
 
     def _check_minio_credentials(self, settings: object) -> AuditFinding:
-        """Prueft MinIO-Credentials."""
+        """Prüft MinIO-Credentials."""
         access_key = str(getattr(settings, "MINIO_ACCESS_KEY", ""))
         secret_key = str(getattr(settings, "MINIO_SECRET_KEY", ""))
 
@@ -374,7 +374,7 @@ class SecurityAuditService:
             severity=AuditSeverity.HIGH,
             title="MinIO-Credentials",
             description="MinIO sollte nicht mit Default-Credentials betrieben werden.",
-            recommendation="Aendere MINIO_ACCESS_KEY und MINIO_SECRET_KEY.",
+            recommendation="Ändere MINIO_ACCESS_KEY und MINIO_SECRET_KEY.",
             affected_component="app.core.config.MINIO_*",
             passed=passed,
             details={
@@ -384,13 +384,13 @@ class SecurityAuditService:
         )
 
     def _check_redis_password(self, settings: object) -> AuditFinding:
-        """Prueft Redis-Authentifizierung."""
+        """Prüft Redis-Authentifizierung."""
         redis_url = str(getattr(settings, "REDIS_URL", ""))
 
         has_password = "@" in redis_url and ":" in redis_url.split("@")[0]
         uses_localhost = "localhost" in redis_url or "127.0.0.1" in redis_url
 
-        # Localhost ohne Passwort ist OK fuer Development
+        # Localhost ohne Passwort ist OK für Development
         passed = has_password or uses_localhost
 
         return AuditFinding(
@@ -409,7 +409,7 @@ class SecurityAuditService:
         )
 
     def _check_jwt_algorithm(self, settings: object) -> AuditFinding:
-        """Prueft JWT-Algorithmus."""
+        """Prüft JWT-Algorithmus."""
         algorithm = getattr(settings, "JWT_ALGORITHM", "HS256")
 
         # HS256 ist OK, aber RS256/ES256 waeren besser
@@ -433,7 +433,7 @@ class SecurityAuditService:
         )
 
     def _check_password_hashing(self, settings: object) -> AuditFinding:
-        """Prueft Password-Hashing-Konfiguration."""
+        """Prüft Password-Hashing-Konfiguration."""
         # Bcrypt rounds
         bcrypt_rounds = getattr(settings, "BCRYPT_ROUNDS", 12)
 
@@ -455,7 +455,7 @@ class SecurityAuditService:
         )
 
     def _check_session_security(self, settings: object) -> AuditFinding:
-        """Prueft Session-Sicherheit."""
+        """Prüft Session-Sicherheit."""
         access_token_expire = getattr(settings, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
         refresh_token_expire = getattr(settings, "REFRESH_TOKEN_EXPIRE_DAYS", 7)
 
@@ -482,7 +482,7 @@ class SecurityAuditService:
         )
 
     def _check_logging_config(self, settings: object) -> AuditFinding:
-        """Prueft Logging-Konfiguration."""
+        """Prüft Logging-Konfiguration."""
         log_level = getattr(settings, "LOG_LEVEL", "INFO")
 
         # DEBUG in Production ist ein Problem
@@ -497,7 +497,7 @@ class SecurityAuditService:
             severity=AuditSeverity.LOW,
             title="Log-Level",
             description="DEBUG-Logging kann sensible Informationen exponieren.",
-            recommendation="Setze LOG_LEVEL auf INFO oder hoeher in Production.",
+            recommendation="Setze LOG_LEVEL auf INFO oder höher in Production.",
             affected_component="app.core.logging_config",
             passed=passed,
             details={
@@ -507,7 +507,7 @@ class SecurityAuditService:
         )
 
     def _check_api_key_config(self, settings: object) -> AuditFinding:
-        """Prueft API-Key-Konfiguration."""
+        """Prüft API-Key-Konfiguration."""
         api_key_length = getattr(settings, "API_KEY_LENGTH", 32)
         api_key_prefix = getattr(settings, "API_KEY_PREFIX", "ablage_")
 
@@ -519,7 +519,7 @@ class SecurityAuditService:
             severity=AuditSeverity.LOW,
             title="API-Key-Konfiguration",
             description="API-Keys sollten ausreichend lang und mit Prefix versehen sein.",
-            recommendation="Mindestens 32 Zeichen fuer API-Keys.",
+            recommendation="Mindestens 32 Zeichen für API-Keys.",
             affected_component="app.services.api_key_service",
             passed=passed,
             details={
@@ -529,7 +529,7 @@ class SecurityAuditService:
         )
 
     def _check_https_enforcement(self, settings: object) -> AuditFinding:
-        """Prueft HTTPS-Enforcement."""
+        """Prüft HTTPS-Enforcement."""
         debug = getattr(settings, "DEBUG", False)
         cookie_secure = getattr(settings, "COOKIE_SECURE", not debug)
 
@@ -561,7 +561,7 @@ _security_audit_service: Optional[SecurityAuditService] = None
 
 
 def get_security_audit_service() -> SecurityAuditService:
-    """Gibt SecurityAuditService-Instanz zurueck."""
+    """Gibt SecurityAuditService-Instanz zurück."""
     global _security_audit_service
     if _security_audit_service is None:
         _security_audit_service = SecurityAuditService()

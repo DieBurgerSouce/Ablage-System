@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""API Endpoints fuer EML/MSG Datei-Import (Drag&Drop).
+"""API Endpoints für EML/MSG Datei-Import (Drag&Drop).
 
-Stellt REST-Endpoints bereit fuer:
+Stellt REST-Endpoints bereit für:
 - Upload und Parsen von .eml/.msg Dateien
 - Import ausgewaehlter Anhaenge aus geparsten E-Mails
 """
@@ -40,7 +40,7 @@ ALLOWED_EXTENSIONS = {".eml", ".msg"}
 
 
 class EmlAttachmentResponse(BaseModel):
-    """Schema fuer einen Anhang aus einer geparsten E-Mail."""
+    """Schema für einen Anhang aus einer geparsten E-Mail."""
 
     index: int
     filename: str
@@ -50,7 +50,7 @@ class EmlAttachmentResponse(BaseModel):
 
 
 class EmlParseResponse(BaseModel):
-    """Schema fuer das Ergebnis des E-Mail-Parsens."""
+    """Schema für das Ergebnis des E-Mail-Parsens."""
 
     parse_id: str
     subject: str
@@ -65,7 +65,7 @@ class EmlParseResponse(BaseModel):
 
 
 class EmlImportRequest(BaseModel):
-    """Schema fuer den Import ausgewaehlter Anhaenge."""
+    """Schema für den Import ausgewaehlter Anhaenge."""
 
     parse_id: str = Field(..., min_length=1, description="ID aus dem Parse-Ergebnis")
     selected_attachment_indices: List[int] = Field(
@@ -79,7 +79,7 @@ class EmlImportRequest(BaseModel):
 
 
 class ImportedAttachmentResponse(BaseModel):
-    """Schema fuer einen importierten Anhang."""
+    """Schema für einen importierten Anhang."""
 
     index: int
     filename: str
@@ -89,7 +89,7 @@ class ImportedAttachmentResponse(BaseModel):
 
 
 class EmlImportResponse(BaseModel):
-    """Schema fuer das Ergebnis des Imports."""
+    """Schema für das Ergebnis des Imports."""
 
     parse_id: str
     imported_count: int
@@ -125,7 +125,7 @@ async def upload_and_parse_eml(
 ) -> EmlParseResponse:
     """Laed eine .eml oder .msg Datei hoch und parst sie.
 
-    Gibt Metadaten und Anhangsliste zurueck (ohne binaere Inhalte).
+    Gibt Metadaten und Anhangsliste zurück (ohne binaere Inhalte).
     """
     # Validate filename
     if not file.filename:
@@ -297,7 +297,7 @@ async def import_eml_attachments(
                     filename=att.filename,
                     size=att.size,
                     mime_type=att.mime_type,
-                    status="uebersprungen_nicht_importierbar",
+                    status="übersprungen_nicht_importierbar",
                 )
             )
             skipped_count += 1

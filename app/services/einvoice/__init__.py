@@ -2,9 +2,9 @@
 """
 E-Invoice Service Package - E-Rechnung 2025 Compliance.
 
-Bietet Unterstuetzung fuer:
+Bietet Unterstützung für:
 - ZUGFeRD 2.x (Factur-X) PDF Parsing und Generierung
-- XRechnung 3.0.2 (CII/UBL) XML Generierung mit vollstaendiger BR-DE Unterstuetzung
+- XRechnung 3.0.2 (CII/UBL) XML Generierung mit vollständiger BR-DE Unterstützung
 - KoSIT Validator Integration
 - Peppol Netzwerk Versand (AS4)
 - Eingehende E-Rechnungen Empfang und Verarbeitung
@@ -13,18 +13,18 @@ Bietet Unterstuetzung fuer:
 Komponenten:
 - parser_service: ZUGFeRD-PDFs und XRechnung-XMLs parsen
 - generator_service: E-Rechnungen generieren (ZUGFeRD/XRechnung)
-- xrechnung_generator: Vollstaendige XRechnung 3.0 Generierung
+- xrechnung_generator: Vollständige XRechnung 3.0 Generierung
 - validator_service: KoSIT Validierung
-- peppol_sender_service: Versand ueber Peppol Netzwerk
+- peppol_sender_service: Versand über Peppol Netzwerk
 - receiver_service: Empfang und Verarbeitung eingehender E-Rechnungen
-- mustang_client: Java Microservice Client fuer XRechnung 3.0.2
+- mustang_client: Java Microservice Client für XRechnung 3.0.2
 
 E-Rechnung 2025 Features:
 - XRechnung 3.0.2 konform (EN 16931)
-- Alle BR-DE Geschaeftsregeln
+- Alle BR-DE Geschäftsregeln
 - Peppol BIS 3.0 Versand
 - Automatische Validierung
-- Entity-Linking fuer eingehende Rechnungen
+- Entity-Linking für eingehende Rechnungen
 """
 
 from typing import TYPE_CHECKING
@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from .receiver_service import EInvoiceReceiverService
     from .xrechnung_generator import XRechnungGenerator
 
-# Lazy imports fuer bessere Startup-Performance
+# Lazy imports für bessere Startup-Performance
 from .mustang_client import (
     MustangClient,
     MustangError,

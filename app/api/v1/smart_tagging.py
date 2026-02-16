@@ -38,12 +38,12 @@ router = APIRouter(prefix="/smart-tagging", tags=["smart-tagging"])
 # =============================================================================
 
 class SmartTagSchema(BaseModel):
-    """Schema fuer einen Smart Tag."""
+    """Schema für einen Smart Tag."""
     name: str = Field(..., description="Eindeutiger Tag-Name")
     display_name: str = Field(..., description="Deutscher Anzeigename")
     category: str = Field(..., description="Tag-Kategorie (urgency, financial, quality, action, trust)")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Konfidenz der Erkennung")
-    reason: str = Field(..., description="Deutsche Erklaerung warum der Tag vorgeschlagen wird")
+    reason: str = Field(..., description="Deutsche Erklärung warum der Tag vorgeschlagen wird")
     icon: str = Field(default="Tag", description="Lucide Icon Name")
     color: str = Field(default="gray", description="Tailwind Farbklasse")
     priority: int = Field(default=0, description="Anzeigepriorität (höher = wichtiger)")
@@ -64,7 +64,7 @@ class SmartTagSchema(BaseModel):
 
 
 class SmartTaggingResultSchema(BaseModel):
-    """Schema fuer das Ergebnis einer Smart-Tagging-Analyse."""
+    """Schema für das Ergebnis einer Smart-Tagging-Analyse."""
     document_id: UUID
     suggested_tags: List[SmartTagSchema] = Field(default_factory=list)
     applied_tags: List[str] = Field(default_factory=list)
@@ -73,7 +73,7 @@ class SmartTaggingResultSchema(BaseModel):
 
 
 class SmartTagDefinitionSchema(BaseModel):
-    """Schema fuer eine Smart Tag Definition."""
+    """Schema für eine Smart Tag Definition."""
     name: str
     display_name: str
     category: str
@@ -83,14 +83,14 @@ class SmartTagDefinitionSchema(BaseModel):
 
 
 class AnalyzeRequest(BaseModel):
-    """Request Schema fuer Batch-Analyse."""
+    """Request Schema für Batch-Analyse."""
     document_ids: List[UUID] = Field(..., min_length=1, max_length=50)
     auto_apply: bool = Field(default=True, description="Ob Tags automatisch angewendet werden sollen")
     min_confidence: float = Field(default=0.5, ge=0.0, le=1.0)
 
 
 class AnalyzeResponse(BaseModel):
-    """Response Schema fuer Batch-Analyse."""
+    """Response Schema für Batch-Analyse."""
     results: List[SmartTaggingResultSchema]
     total_processed: int
     total_tags_applied: int
@@ -108,10 +108,10 @@ class AnalyzeResponse(BaseModel):
     description="""
     Analysiert ein einzelnes Dokument auf verschiedene Kriterien:
 
-    - **Urgency**: Fristen, Dringlichkeit (dringend, ueberfaellig, frist-diese-woche)
-    - **Financial**: Betraege, Skonto (skonto-moeglich, hoher-betrag)
-    - **Quality**: OCR-Qualitaet, Duplikate (ocr-unsicher, duplikat-moeglich)
-    - **Action**: Erforderliche Aktionen (genehmigung-erforderlich, mahnung-faellig)
+    - **Urgency**: Fristen, Dringlichkeit (dringend, überfällig, frist-diese-woche)
+    - **Financial**: Betraege, Skonto (skonto-möglich, hoher-betrag)
+    - **Quality**: OCR-Qualitaet, Duplikate (ocr-unsicher, duplikat-möglich)
+    - **Action**: Erforderliche Aktionen (genehmigung-erforderlich, mahnung-fällig)
     - **Trust**: Entity-Vertrauen (neuer-lieferant, bekannter-partner, risiko-partner)
 
     Bei aktiviertem `auto_apply` werden Tags mit hoher Konfidenz automatisch zugewiesen.
@@ -120,7 +120,7 @@ class AnalyzeResponse(BaseModel):
 async def analyze_document(
     document_id: UUID,
     auto_apply: bool = Query(default=True, description="Ob Tags automatisch angewendet werden sollen"),
-    min_confidence: float = Query(default=0.5, ge=0.0, le=1.0, description="Minimale Konfidenz fuer Vorschlaege"),
+    min_confidence: float = Query(default=0.5, ge=0.0, le=1.0, description="Minimale Konfidenz für Vorschläge"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     company_id: UUID = Depends(require_company),
@@ -261,7 +261,7 @@ async def analyze_batch(
 @router.get(
     "/suggestions/{document_id}",
     response_model=List[SmartTagSchema],
-    summary="Gibt Tag-Vorschlaege fuer ein Dokument zurueck ohne sie anzuwenden",
+    summary="Gibt Tag-Vorschläge für ein Dokument zurück ohne sie anzuwenden",
 )
 async def get_suggestions(
     document_id: UUID,
@@ -270,7 +270,7 @@ async def get_suggestions(
     current_user: User = Depends(get_current_user),
     company_id: UUID = Depends(require_company),
 ) -> List[SmartTagSchema]:
-    """Gibt Tag-Vorschlaege zurueck ohne sie anzuwenden."""
+    """Gibt Tag-Vorschläge zurück ohne sie anzuwenden."""
     # Lade Dokument mit Company-Check
     result = await db.execute(
         select(Document).where(
@@ -300,12 +300,12 @@ async def get_suggestions(
 @router.get(
     "/definitions",
     response_model=List[SmartTagDefinitionSchema],
-    summary="Gibt alle verfuegbaren Smart Tag Definitionen zurueck",
+    summary="Gibt alle verfügbaren Smart Tag Definitionen zurück",
 )
 async def get_definitions(
     category: Optional[str] = Query(default=None, description="Filter nach Kategorie"),
 ) -> List[SmartTagDefinitionSchema]:
-    """Gibt alle Smart Tag Definitionen zurueck."""
+    """Gibt alle Smart Tag Definitionen zurück."""
     definitions = SMART_TAG_DEFINITIONS
 
     if category:
@@ -327,14 +327,14 @@ async def get_definitions(
 @router.get(
     "/categories",
     response_model=Dict[str, str],
-    summary="Gibt alle Tag-Kategorien zurueck",
+    summary="Gibt alle Tag-Kategorien zurück",
 )
 async def get_categories() -> Dict[str, str]:
-    """Gibt alle verfuegbaren Tag-Kategorien mit Beschreibung zurueck."""
+    """Gibt alle verfügbaren Tag-Kategorien mit Beschreibung zurück."""
     return {
         TagCategory.URGENCY: "Dringlichkeit und Fristen",
         TagCategory.FINANCIAL: "Finanzielle Aspekte (Betraege, Skonto)",
-        TagCategory.QUALITY: "Qualitaet und Vollstaendigkeit",
+        TagCategory.QUALITY: "Qualitaet und Vollständigkeit",
         TagCategory.ACTION: "Erforderliche Aktionen",
         TagCategory.TRUST: "Vertrauenswuerdigkeit des Partners",
     }

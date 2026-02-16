@@ -88,7 +88,7 @@ class EventStatsResponse(BaseModel):
     "/events/{aggregate_type}/{aggregate_id}",
     response_model=List[EventResponse],
     summary="Events abrufen",
-    description="Holt alle Events fuer ein Aggregat in zeitlicher Reihenfolge."
+    description="Holt alle Events für ein Aggregat in zeitlicher Reihenfolge."
 )
 async def get_events(
     aggregate_type: str,
@@ -97,7 +97,7 @@ async def get_events(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[EventResponse]:
-    """Holt Events fuer ein Aggregat."""
+    """Holt Events für ein Aggregat."""
     try:
         event_store = EventStore()
 
@@ -138,7 +138,7 @@ async def get_events(
     "/snapshot/{aggregate_type}/{aggregate_id}",
     response_model=Optional[SnapshotResponse],
     summary="Snapshot abrufen",
-    description="Holt den neuesten Snapshot fuer ein Aggregat."
+    description="Holt den neuesten Snapshot für ein Aggregat."
 )
 async def get_snapshot(
     aggregate_type: str,
@@ -193,7 +193,7 @@ async def get_projection(
         projection_service = ProjectionService()
         event_store = EventStore()
 
-        # Projektion durchfuehren
+        # Projektion durchführen
         if at_sequence is not None:
             state = await projection_service.project_at_sequence(
                 aggregate_type=aggregate_type,
@@ -248,7 +248,7 @@ async def get_projection(
     "/stats",
     response_model=EventStatsResponse,
     summary="Event-Statistiken",
-    description="Holt Statistiken ueber Events und Snapshots."
+    description="Holt Statistiken über Events und Snapshots."
 )
 async def get_event_stats(
     current_user: User = Depends(get_current_user),

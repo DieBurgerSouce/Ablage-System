@@ -6,9 +6,9 @@ Verwaltet Debitoren und Kreditoren:
 - Offene Forderungen (Ausgangsrechnungen)
 - Offene Verbindlichkeiten (Eingangsrechnungen)
 - Zahlungsstatus-Tracking
-- Faelligkeits-Management
+- Fälligkeits-Management
 
-GoBD-konform mit vollstaendiger Protokollierung.
+GoBD-konform mit vollständiger Protokollierung.
 """
 
 import uuid
@@ -45,11 +45,11 @@ class OpenItemType(str, Enum):
 
 
 class PaymentPriority(str, Enum):
-    """Zahlungsprioritaet."""
+    """Zahlungspriorität."""
     NORMAL = "normal"
     HIGH = "high"      # Skonto-Frist naht
-    URGENT = "urgent"  # Ueberfaellig
-    CRITICAL = "critical"  # Stark ueberfaellig (90+ Tage)
+    URGENT = "urgent"  # Überfällig
+    CRITICAL = "critical"  # Stark überfällig (90+ Tage)
 
 
 @dataclass
@@ -141,7 +141,7 @@ class OpenItemsReport:
 
 @dataclass
 class EntityBalance:
-    """Saldo eines Geschaeftspartners."""
+    """Saldo eines Geschäftspartners."""
     entity_id: uuid.UUID
     entity_name: str
     entity_type: str  # customer, supplier
@@ -167,11 +167,11 @@ class EntityBalance:
 
 class OpenItemsService:
     """
-    Service fuer Offene-Posten-Verwaltung.
+    Service für Offene-Posten-Verwaltung.
 
     Features:
-    - Debitoren-/Kreditoren-Uebersicht
-    - Faelligkeitsanalyse
+    - Debitoren-/Kreditoren-Übersicht
+    - Fälligkeitsanalyse
     - Skonto-Optimierung
     - Zahlungspriorisierung
     - Entity-Salden
@@ -194,7 +194,7 @@ class OpenItemsService:
         include_details: bool = True,
     ) -> OpenItemsReport:
         """
-        Erstellt vollstaendigen Offene-Posten-Bericht.
+        Erstellt vollständigen Offene-Posten-Bericht.
 
         Args:
             company_id: Firma
@@ -270,9 +270,9 @@ class OpenItemsService:
 
         Args:
             company_id: Firma
-            entity_id: Optional - nur fuer bestimmten Debitor
-            overdue_only: Nur ueberfaellige
-            priority: Nach Prioritaet filtern
+            entity_id: Optional - nur für bestimmten Debitor
+            overdue_only: Nur überfällige
+            priority: Nach Priorität filtern
 
         Returns:
             Liste offener Posten
@@ -305,8 +305,8 @@ class OpenItemsService:
 
         Args:
             company_id: Firma
-            entity_id: Optional - nur fuer bestimmten Kreditor
-            due_within_days: Nur die in X Tagen faellig werden
+            entity_id: Optional - nur für bestimmten Kreditor
+            due_within_days: Nur die in X Tagen fällig werden
 
         Returns:
             Liste offener Posten
@@ -339,9 +339,9 @@ class OpenItemsService:
 
         Args:
             company_id: Firma
-            as_of_date: Stichtag fuer Berechnungen
-            entity_id: Optional - nur fuer bestimmten Debitor (SQL-Filter)
-            overdue_before_date: Optional - nur ueberfaellige (due_date < date)
+            as_of_date: Stichtag für Berechnungen
+            entity_id: Optional - nur für bestimmten Debitor (SQL-Filter)
+            overdue_before_date: Optional - nur überfällige (due_date < date)
         """
         # Base conditions
         conditions = [
@@ -381,13 +381,13 @@ class OpenItemsService:
             if outstanding <= 0:
                 continue
 
-            # Tage ueberfaellig berechnen
+            # Tage überfällig berechnen
             days_overdue = 0
             if inv.due_date:
                 due = inv.due_date.date() if hasattr(inv.due_date, 'date') else inv.due_date
                 days_overdue = max(0, (as_of_date - due).days)
 
-            # Prioritaet bestimmen
+            # Priorität bestimmen
             priority = self._calculate_priority(days_overdue, inv.skonto_deadline, as_of_date)
 
             item = OpenItem(
@@ -413,7 +413,7 @@ class OpenItemsService:
             )
             items.append(item)
 
-        # Nach Prioritaet und Faelligkeit sortieren
+        # Nach Priorität und Fälligkeit sortieren
         items.sort(key=lambda x: (
             -self._priority_rank(x.payment_priority),
             x.due_date or date.max,
@@ -432,9 +432,9 @@ class OpenItemsService:
 
         Args:
             company_id: Firma
-            as_of_date: Stichtag fuer Berechnungen
-            entity_id: Optional - nur fuer bestimmten Kreditor (SQL-Filter)
-            due_within_date: Optional - nur faellig bis Datum (SQL-Filter)
+            as_of_date: Stichtag für Berechnungen
+            entity_id: Optional - nur für bestimmten Kreditor (SQL-Filter)
+            due_within_date: Optional - nur fällig bis Datum (SQL-Filter)
         """
         # Base conditions
         conditions = [
@@ -474,7 +474,7 @@ class OpenItemsService:
             if outstanding <= 0:
                 continue
 
-            # Tage ueberfaellig
+            # Tage überfällig
             days_overdue = 0
             if inv.due_date:
                 due = inv.due_date.date() if hasattr(inv.due_date, 'date') else inv.due_date
@@ -505,7 +505,7 @@ class OpenItemsService:
             )
             items.append(item)
 
-        # Sortieren: Skonto-Fristen zuerst, dann Faelligkeit
+        # Sortieren: Skonto-Fristen zuerst, dann Fälligkeit
         items.sort(key=lambda x: (
             x.skonto_deadline or date.max,
             x.due_date or date.max,
@@ -519,13 +519,13 @@ class OpenItemsService:
         skonto_deadline: Optional[datetime],
         as_of_date: date,
     ) -> PaymentPriority:
-        """Berechnet die Zahlungsprioritaet."""
+        """Berechnet die Zahlungspriorität."""
         if days_overdue >= 90:
             return PaymentPriority.CRITICAL
         elif days_overdue > 0:
             return PaymentPriority.URGENT
 
-        # Skonto-Frist pruefen
+        # Skonto-Frist prüfen
         if skonto_deadline:
             deadline = skonto_deadline.date() if hasattr(skonto_deadline, 'date') else skonto_deadline
             days_to_skonto = (deadline - as_of_date).days
@@ -535,7 +535,7 @@ class OpenItemsService:
         return PaymentPriority.NORMAL
 
     def _priority_rank(self, priority: PaymentPriority) -> int:
-        """Gibt numerischen Rang fuer Sortierung zurueck."""
+        """Gibt numerischen Rang für Sortierung zurück."""
         ranks = {
             PaymentPriority.CRITICAL: 4,
             PaymentPriority.URGENT: 3,
@@ -593,7 +593,7 @@ class OpenItemsService:
         """Aggregiert offene Posten zu Entity-Salden."""
         by_entity: Dict[uuid.UUID, EntityBalance] = {}
 
-        # Fallback fuer Items ohne Entity
+        # Fallback für Items ohne Entity
         unknown_id = uuid.UUID("00000000-0000-0000-0000-000000000000")
 
         for item in items:
@@ -639,18 +639,18 @@ class OpenItemsService:
         optimize_for: str = "skonto",  # skonto, due_date, amount
     ) -> List[Dict[str, Any]]:
         """
-        Erstellt Zahlungsvorschlaege basierend auf verfuegbaren Mitteln.
+        Erstellt Zahlungsvorschläge basierend auf verfügbaren Mitteln.
 
         Args:
             company_id: Firma
-            available_funds: Verfuegbare Mittel
+            available_funds: Verfügbare Mittel
             optimize_for: Optimierungsstrategie
                 - skonto: Maximiere Skonto-Ersparnis
-                - due_date: Nach Faelligkeit
+                - due_date: Nach Fälligkeit
                 - amount: Kleinste zuerst
 
         Returns:
-            Zahlungsvorschlaege
+            Zahlungsvorschläge
         """
         payables = await self._get_open_payables(company_id, date.today())
 
@@ -717,5 +717,5 @@ class OpenItemsService:
 
 
 def get_open_items_service(db: AsyncSession) -> OpenItemsService:
-    """Factory-Funktion fuer Dependency Injection."""
+    """Factory-Funktion für Dependency Injection."""
     return OpenItemsService(db)

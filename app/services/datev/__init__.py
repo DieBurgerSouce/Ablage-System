@@ -2,11 +2,11 @@
 """
 DATEV Export Module.
 
-Stellt DATEV Buchungsstapel-Export fuer das Ablage-System bereit.
+Stellt DATEV Buchungsstapel-Export für das Ablage-System bereit.
 
 Features:
 - DATEV Buchungsstapel CSV Export (Version 700)
-- Unterstuetzung fuer SKR03 und SKR04 Kontenrahmen
+- Unterstützung für SKR03 und SKR04 Kontenrahmen
 - Automatische Steuerschluessel-Ermittlung
 - Vendor-spezifische Kontozuordnung
 - Export-Historie und Audit-Trail

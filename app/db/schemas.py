@@ -54,7 +54,7 @@ class DocumentType(str, Enum):
     TAX_ASSESSMENT = "tax_assessment"           # Grundabgabenbescheid
     TAX_NOTICE = "tax_notice"                   # Steuerbescheid
     TAX_PREPAYMENT = "tax_prepayment"           # Vorauszahlung
-    TAX_RETURN = "tax_return"                   # Steuererklaerung
+    TAX_RETURN = "tax_return"                   # Steuererklärung
     TAX_CORRESPONDENCE = "tax_correspondence"   # Finanzamt-Korrespondenz
     PAYROLL = "payroll"                         # Lohn/Gehalt
     SOCIAL_SECURITY = "social_security"         # Sozialversicherung
@@ -293,7 +293,7 @@ class OCRRequest(BaseModel):
     language: str = Field(default="de", pattern="^(de|en)$", description="Zielsprache")
     detect_layout: bool = True
     extract_entities: bool = True
-    priority: int = Field(5, ge=1, le=10, description="Verarbeitungsprioritaet (1-10)")
+    priority: int = Field(5, ge=1, le=10, description="Verarbeitungspriorität (1-10)")
 
 
 class OCRResult(BaseModel):
@@ -542,10 +542,10 @@ class DocumentUploadResponse(BaseModel):
 
 
 class UploadCompleteRequest(BaseModel):
-    """Request fuer finales Speichern nach OCR-Review.
+    """Request für finales Speichern nach OCR-Review.
 
     Wird vom Frontend gesendet, nachdem der User das OCR-Ergebnis
-    im Review-Modal bestaetigt hat.
+    im Review-Modal bestätigt hat.
     """
     temp_file_id: str = Field(..., description="ID der temporaeren Datei aus /ocr/process")
     final_filename: str = Field(..., min_length=1, max_length=255, description="Finaler Dateiname (nach Umbenennung)")
@@ -555,18 +555,18 @@ class UploadCompleteRequest(BaseModel):
     document_number: Optional[str] = Field(None, max_length=100, description="Belegnummer (z.B. 'RG-2024-001')")
     document_date: Optional[date_type] = Field(None, description="Dokumentdatum")
     total_amount: Optional[Decimal] = Field(None, description="Gesamtbetrag")
-    currency: str = Field(default="EUR", max_length=3, description="Waehrung (ISO-Code)")
-    due_date: Optional[date_type] = Field(None, description="Faelligkeitsdatum (bei Rechnungen)")
+    currency: str = Field(default="EUR", max_length=3, description="Währung (ISO-Code)")
+    due_date: Optional[date_type] = Field(None, description="Fälligkeitsdatum (bei Rechnungen)")
 
     # Entity-Linking (aus Quick Classification oder manuell)
-    business_entity_id: Optional[uuid.UUID] = Field(None, description="Verknuepfte Business Entity (Kunde/Lieferant)")
+    business_entity_id: Optional[uuid.UUID] = Field(None, description="Verknüpfte Business Entity (Kunde/Lieferant)")
     folder_id: str = Field(..., description="Zielordner ('folie' oder 'messer')")
     category: str = Field(..., description="Kategorie (z.B. 'rechnungen', 'angebote')")
     entity_type: str = Field(..., description="Entity-Typ ('customer' oder 'supplier')")
 
-    # Zusaetzliche Daten
-    tags: List[str] = Field(default_factory=list, description="Tags fuer das Dokument")
-    ocr_text: Optional[str] = Field(None, description="OCR-Text (falls Speicherung gewuenscht)")
+    # Zusätzliche Daten
+    tags: List[str] = Field(default_factory=list, description="Tags für das Dokument")
+    ocr_text: Optional[str] = Field(None, description="OCR-Text (falls Speicherung gewünscht)")
     ocr_confidence: Optional[float] = Field(None, ge=0, le=100, description="OCR-Konfidenz")
 
     @field_validator("final_filename")
@@ -575,11 +575,11 @@ class UploadCompleteRequest(BaseModel):
         """Validate and sanitize filename against path traversal (CWE-22)."""
         # Reject null bytes (CWE-158)
         if "\x00" in v:
-            raise ValueError("Ungueltiger Dateiname - Nullbytes nicht erlaubt")
+            raise ValueError("Ungültiger Dateiname - Nullbytes nicht erlaubt")
 
         # Prevent path traversal
         if ".." in v or "/" in v or "\\" in v:
-            raise ValueError("Ungueltiger Dateiname - Pfad-Traversal nicht erlaubt")
+            raise ValueError("Ungültiger Dateiname - Pfad-Traversal nicht erlaubt")
 
         # Normalize to basename only (defense in depth)
         v = os.path.basename(v).strip()
@@ -993,10 +993,10 @@ class BatchDeleteRequest(BaseModel):
         {"document_ids": [...], "confirm": true, "dry_run": true}
     """
     document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
-    confirm: bool = Field(..., description="Bestaetigung erforderlich (muss true sein)")
+    confirm: bool = Field(..., description="Bestätigung erforderlich (muss true sein)")
     dry_run: bool = Field(
         default=False,
-        description="Nur simulieren, nicht loeschen. Zeigt welche Dokumente betroffen waeren."
+        description="Nur simulieren, nicht löschen. Zeigt welche Dokumente betroffen waeren."
     )
 
     @field_validator("confirm")
@@ -1026,7 +1026,7 @@ class BatchExportRequest(BaseModel):
 class BatchFetchRequest(BaseModel):
     """Request for batch document fetch.
 
-    Ermoeglicht das Abrufen mehrerer Dokumente in einem API-Call.
+    Ermöglicht das Abrufen mehrerer Dokumente in einem API-Call.
     Reduziert Netzwerk-Overhead bei Frontend-Dashboard-Ansichten.
 
     Beispiel:
@@ -1329,7 +1329,7 @@ class DocumentDetailResponse(BaseModel):
     download_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
 
-    # Quick Classification (schnelle Klassifizierung waehrend Upload)
+    # Quick Classification (schnelle Klassifizierung während Upload)
     quick_classification_status: str = "pending"
     quick_classification_result: Optional[Dict[str, Any]] = None
 
@@ -1349,7 +1349,7 @@ class DocumentSummary(BaseModel):
     tags: List[str] = []
     has_embedding: bool = False
 
-    # Quick Classification (schnelle Klassifizierung waehrend Upload)
+    # Quick Classification (schnelle Klassifizierung während Upload)
     quick_classification_status: str = "pending"
     quick_classification_result: Optional[Dict[str, Any]] = None
 
@@ -1767,14 +1767,14 @@ class JobActionResponse(BaseModel):
 
 class QueueClearRequest(BaseModel):
     """Request to clear pending jobs."""
-    confirm: bool = Field(..., description="Bestaetigung erforderlich")
-    status: ProcessingStatus = Field(ProcessingStatus.PENDING, description="Status der zu loeschenden Jobs")
+    confirm: bool = Field(..., description="Bestätigung erforderlich")
+    status: ProcessingStatus = Field(ProcessingStatus.PENDING, description="Status der zu löschenden Jobs")
 
     @field_validator("confirm")
     @classmethod
     def must_confirm(cls, v: bool) -> bool:
         if not v:
-            raise ValueError("Aktion muss mit confirm=true bestaetigt werden")
+            raise ValueError("Aktion muss mit confirm=true bestätigt werden")
         return v
 
 
@@ -2329,6 +2329,7 @@ class SuggestResponse(BaseModel):
     query: str
     suggestions: List[SuggestItem]
     total: int
+    did_you_mean: Optional[str] = None
 
 
 class SearchWithFacetsRequest(BaseModel):
@@ -2443,21 +2444,21 @@ class APIKeyDeleteResponse(BaseModel):
 # ============================================================================
 
 class EntityType(str, Enum):
-    """Geschaeftspartner-Typ."""
+    """Geschäftspartner-Typ."""
     CUSTOMER = "customer"      # Kunde
     SUPPLIER = "supplier"      # Lieferant
     BOTH = "both"             # Kann beides sein
-    INTERNAL = "internal"      # Interne Entitaet
+    INTERNAL = "internal"      # Interne Entität
 
 
 class BusinessEntityBase(BaseModel):
-    """Base schema fuer Geschaeftspartner."""
+    """Base schema für Geschäftspartner."""
     name: str = Field(..., min_length=1, max_length=255, description="Firmenname")
     entity_type: EntityType = Field(EntityType.SUPPLIER, description="Typ: customer, supplier, both, internal")
     display_name: Optional[str] = Field(None, max_length=255, description="Anzeigename")
     short_name: Optional[str] = Field(None, max_length=50, description="Kurzname")
 
-    # Deutsche Geschaeftsnummern
+    # Deutsche Geschäftsnummern
     vat_id: Optional[str] = Field(None, max_length=20, pattern=r"^DE[0-9]{9}$", description="USt-IdNr (DE123456789)")
     tax_number: Optional[str] = Field(None, max_length=30, description="Steuernummer")
     trade_register: Optional[str] = Field(None, max_length=50, description="Handelsregisternummer (z.B. HRB 12345)")
@@ -2472,7 +2473,7 @@ class BusinessEntityBase(BaseModel):
     street_number: Optional[str] = Field(None, max_length=20, description="Hausnummer")
     postal_code: Optional[str] = Field(None, max_length=10, description="PLZ")
     city: Optional[str] = Field(None, max_length=100, description="Stadt")
-    country: str = Field("DE", max_length=2, description="Laendercode (ISO 3166-1 alpha-2)")
+    country: str = Field("DE", max_length=2, description="Ländercode (ISO 3166-1 alpha-2)")
     phone: Optional[str] = Field(None, max_length=30, description="Telefon")
     fax: Optional[str] = Field(None, max_length=30, description="Fax")
     email: Optional[EmailStr] = Field(None, description="E-Mail")
@@ -2486,7 +2487,7 @@ class BusinessEntityBase(BaseModel):
         """Validiere deutsche USt-IdNr."""
         if v is None:
             return v
-        # Behandle ungueltige Altdaten ("nan", "none", etc.)
+        # Behandle ungültige Altdaten ("nan", "none", etc.)
         if v.lower() in ("nan", "none", "null", ""):
             return None
         # Entferne Leerzeichen
@@ -2501,7 +2502,7 @@ class BusinessEntityBase(BaseModel):
         """Validiere IBAN-Format."""
         if v is None:
             return v
-        # Behandle ungueltige Altdaten ("nan", "none", etc.)
+        # Behandle ungültige Altdaten ("nan", "none", etc.)
         if v.lower() in ("nan", "none", "null", ""):
             return None
         # Entferne Leerzeichen
@@ -2513,7 +2514,7 @@ class BusinessEntityBase(BaseModel):
     @field_validator("email", mode="before")
     @classmethod
     def validate_email_nan(cls, v: Optional[str]) -> Optional[str]:
-        """Behandle ungueltige Email-Werte aus Altdaten."""
+        """Behandle ungültige Email-Werte aus Altdaten."""
         if v is None:
             return v
         if isinstance(v, str) and v.lower() in ("nan", "none", "null", ""):
@@ -2522,13 +2523,13 @@ class BusinessEntityBase(BaseModel):
 
 
 class BusinessEntityCreate(BusinessEntityBase):
-    """Schema zum Erstellen eines Geschaeftspartners."""
+    """Schema zum Erstellen eines Geschäftspartners."""
     name_aliases: List[str] = Field(default_factory=list, max_length=20, description="Alternative Namen")
     email_domains: List[str] = Field(default_factory=list, max_length=10, description="E-Mail-Domains")
 
 
 class BusinessEntityUpdate(BaseModel):
-    """Schema zum Aktualisieren eines Geschaeftspartners."""
+    """Schema zum Aktualisieren eines Geschäftspartners."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     entity_type: Optional[EntityType] = None
     display_name: Optional[str] = Field(None, max_length=255)
@@ -2556,7 +2557,7 @@ class BusinessEntityUpdate(BaseModel):
 
 
 class BusinessEntityResponse(BusinessEntityBase):
-    """Antwort-Schema fuer Geschaeftspartner."""
+    """Antwort-Schema für Geschäftspartner."""
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -2584,7 +2585,7 @@ class BusinessEntityResponse(BusinessEntityBase):
 
 
 class BusinessEntitySummary(BaseModel):
-    """Kompakte Zusammenfassung eines Geschaeftspartners."""
+    """Kompakte Zusammenfassung eines Geschäftspartners."""
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -2598,7 +2599,7 @@ class BusinessEntitySummary(BaseModel):
 
 
 class BusinessEntityListResponse(BaseModel):
-    """Liste von Geschaeftspartnern."""
+    """Liste von Geschäftspartnern."""
     total: int
     page: int
     per_page: int
@@ -2607,7 +2608,7 @@ class BusinessEntityListResponse(BaseModel):
 
 
 class BusinessEntitySearchRequest(BaseModel):
-    """Suchanfrage fuer Geschaeftspartner."""
+    """Suchanfrage für Geschäftspartner."""
     query: Optional[str] = Field(None, max_length=255, description="Suchbegriff (Name, USt-IdNr, IBAN)")
     entity_type: Optional[EntityType] = None
     is_active: Optional[bool] = None
@@ -2618,13 +2619,13 @@ class BusinessEntitySearchRequest(BaseModel):
 
 
 class BusinessEntitySuggestion(BaseModel):
-    """Vorschlag fuer automatisch erkannten Geschaeftspartner aus OCR."""
+    """Vorschlag für automatisch erkannten Geschäftspartner aus OCR."""
     name: str
     vat_id: Optional[str] = None
     iban: Optional[str] = None
     address: Optional[str] = None
     confidence: float = Field(..., ge=0, le=1, description="Konfidenz der Erkennung (0-1)")
-    matched_existing: Optional[uuid.UUID] = Field(None, description="ID eines passenden existierenden Geschaeftspartners")
+    matched_existing: Optional[uuid.UUID] = Field(None, description="ID eines passenden existierenden Geschäftspartners")
     match_reason: Optional[str] = Field(None, description="Grund für die Übereinstimmung")
 
 
@@ -2643,7 +2644,7 @@ class DocumentGroupType(str, Enum):
 
 
 class DocumentGroupBase(BaseModel):
-    """Base schema fuer Dokumentgruppen."""
+    """Base schema für Dokumentgruppen."""
     name: str = Field(..., min_length=1, max_length=255, description="Name der Gruppe")
     description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
     group_type: DocumentGroupType = Field(DocumentGroupType.STAPLED, description="Gruppentyp")
@@ -2652,9 +2653,9 @@ class DocumentGroupBase(BaseModel):
 
 class DocumentGroupCreate(DocumentGroupBase):
     """Schema zum manuellen Erstellen einer Dokumentgruppe."""
-    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100, description="Dokument-IDs fuer die Gruppe")
-    primary_document_id: Optional[uuid.UUID] = Field(None, description="ID des primaeren Dokuments")
-    business_entity_id: Optional[uuid.UUID] = Field(None, description="Zugehoeriger Geschaeftspartner")
+    document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100, description="Dokument-IDs für die Gruppe")
+    primary_document_id: Optional[uuid.UUID] = Field(None, description="ID des primären Dokuments")
+    business_entity_id: Optional[uuid.UUID] = Field(None, description="Zugehoeriger Geschäftspartner")
 
 
 class DocumentGroupUpdate(BaseModel):
@@ -2680,7 +2681,7 @@ class DocumentInGroup(BaseModel):
 
 
 class DocumentGroupResponse(DocumentGroupBase):
-    """Antwort-Schema fuer Dokumentgruppen."""
+    """Antwort-Schema für Dokumentgruppen."""
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -2739,7 +2740,7 @@ class GroupDetectionRequest(BaseModel):
         max_length=1000,
         description="Spezifische Dokument-IDs (None = alle unzugeordneten)"
     )
-    min_confidence: float = Field(0.99, ge=0, le=1, description="Minimale Konfidenz fuer Auto-Gruppierung")
+    min_confidence: float = Field(0.99, ge=0, le=1, description="Minimale Konfidenz für Auto-Gruppierung")
     detection_methods: List[str] = Field(
         default=["filename_sequence", "content_similarity"],
         description="Zu verwendende Erkennungsmethoden"
@@ -2770,11 +2771,11 @@ class GroupDetectionResponse(BaseModel):
 
 
 class GroupConfirmRequest(BaseModel):
-    """Anfrage zur Bestaetigung einer Gruppe."""
-    confirmed: bool = Field(True, description="Gruppe bestaetigen (True) oder ablehnen (False)")
+    """Anfrage zur Bestätigung einer Gruppe."""
+    confirmed: bool = Field(True, description="Gruppe bestätigen (True) oder ablehnen (False)")
     adjust_documents: Optional[List[uuid.UUID]] = Field(
         None,
-        description="Optionale Liste der finalen Dokument-IDs (fuer Korrekturen)"
+        description="Optionale Liste der finalen Dokument-IDs (für Korrekturen)"
     )
 
 
@@ -2785,9 +2786,9 @@ class GroupSplitRequest(BaseModel):
 
 
 class GroupMergeRequest(BaseModel):
-    """Anfrage zum Zusammenfuehren von Gruppen."""
+    """Anfrage zum Zusammenführen von Gruppen."""
     target_group_id: uuid.UUID = Field(..., description="Zielgruppe (bleibt bestehen)")
-    source_group_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=10, description="Quellgruppen (werden geloescht)")
+    source_group_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=10, description="Quellgruppen (werden gelöscht)")
 
 
 # ============================================================================
@@ -2810,18 +2811,18 @@ class DocumentRelationshipCreate(BaseModel):
     source_document_id: uuid.UUID = Field(..., description="Quell-Dokument")
     target_document_id: uuid.UUID = Field(..., description="Ziel-Dokument")
     relationship_type: RelationshipType = Field(..., description="Beziehungstyp")
-    sequence_number: Optional[int] = Field(None, ge=1, description="Reihenfolge (fuer CHILD_OF)")
+    sequence_number: Optional[int] = Field(None, ge=1, description="Reihenfolge (für CHILD_OF)")
 
     @model_validator(mode='after')
     def validate_different_documents(self) -> 'DocumentRelationshipCreate':
         """Validate that source and target are different."""
         if self.source_document_id == self.target_document_id:
-            raise ValueError("Quell- und Zieldokument muessen unterschiedlich sein")
+            raise ValueError("Quell- und Zieldokument müssen unterschiedlich sein")
         return self
 
 
 class DocumentRelationshipResponse(BaseModel):
-    """Antwort-Schema fuer Dokumentbeziehungen."""
+    """Antwort-Schema für Dokumentbeziehungen."""
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -2899,7 +2900,7 @@ class RelationshipDetectionResponse(BaseModel):
 
 
 # ============================================================================
-# VALIDATION QUEUE SCHEMAS (Pruef-Warteschlange fuer 99%+ Praezision)
+# VALIDATION QUEUE SCHEMAS (Prüf-Warteschlange für 99%+ Präzision)
 # ============================================================================
 
 class ValidationQueueItem(BaseModel):
@@ -2928,7 +2929,7 @@ class ValidationQueueListResponse(BaseModel):
 
 
 class ValidationQueueResponse(BaseModel):
-    """Antwort fuer Validierungswarteschlange mit Zusammenfassung."""
+    """Antwort für Validierungswarteschlange mit Zusammenfassung."""
     total_pending: int
     groups_pending: int
     relationships_pending: int
@@ -2936,18 +2937,18 @@ class ValidationQueueResponse(BaseModel):
 
 
 class ValidationDecision(BaseModel):
-    """Entscheidung fuer ein Element in der Warteschlange."""
-    approved: bool = Field(..., description="True = bestaetigen, False = ablehnen")
+    """Entscheidung für ein Element in der Warteschlange."""
+    approved: bool = Field(..., description="True = bestätigen, False = ablehnen")
     adjustment: Optional[Dict[str, Any]] = Field(None, description="Optionale Anpassungen")
     reason: Optional[str] = Field(None, max_length=500, description="Begruendung")
 
 
 # ============================================================================
-# ENTITY EXTRACTION SCHEMAS (Entitaetsextraktion aus OCR-Text)
+# ENTITY EXTRACTION SCHEMAS (Entitätsextraktion aus OCR-Text)
 # ============================================================================
 
 class BusinessEntityDetailResponse(BusinessEntityResponse):
-    """Erweiterte Antwort mit allen Details eines Geschaeftspartners."""
+    """Erweiterte Antwort mit allen Details eines Geschäftspartners."""
     model_config = ConfigDict(from_attributes=True)
 
     # Statistiken
@@ -2967,15 +2968,15 @@ class BusinessEntityDetailResponse(BusinessEntityResponse):
 
 
 class EntityExtractionRequest(BaseModel):
-    """Anfrage zur Entitaetsextraktion aus Text."""
+    """Anfrage zur Entitätsextraktion aus Text."""
     text: str = Field(..., min_length=10, max_length=100000, description="OCR-Text zur Analyse")
-    document_id: Optional[uuid.UUID] = Field(None, description="Optionale Dokument-ID fuer Verknuepfung")
-    match_existing: bool = Field(True, description="Mit bestehenden Entitaeten abgleichen")
-    min_confidence: float = Field(0.7, ge=0, le=1, description="Minimale Konfidenz fuer Extraktion")
+    document_id: Optional[uuid.UUID] = Field(None, description="Optionale Dokument-ID für Verknüpfung")
+    match_existing: bool = Field(True, description="Mit bestehenden Entitäten abgleichen")
+    min_confidence: float = Field(0.7, ge=0, le=1, description="Minimale Konfidenz für Extraktion")
 
 
 class ExtractedEntity(BaseModel):
-    """Extrahierte Entitaet aus OCR-Text."""
+    """Extrahierte Entität aus OCR-Text."""
     name: Optional[str] = None
     vat_id: Optional[str] = None
     iban: Optional[str] = None
@@ -2989,7 +2990,7 @@ class ExtractedEntity(BaseModel):
 
 
 class EntityExtractionResponse(BaseModel):
-    """Antwort mit extrahierten Entitaeten."""
+    """Antwort mit extrahierten Entitäten."""
     entities: List[ExtractedEntity] = []
     matched_entities: List[BusinessEntitySummary] = []
     processing_time_ms: int
@@ -2997,7 +2998,7 @@ class EntityExtractionResponse(BaseModel):
 
 
 class EntityMatchResponse(BaseModel):
-    """Antwort fuer Entitaetsmatching."""
+    """Antwort für Entitätsmatching."""
     match_found: bool
     matched_entity: Optional[BusinessEntitySummary] = None
     match_confidence: float = 0.0
@@ -3006,24 +3007,24 @@ class EntityMatchResponse(BaseModel):
 
 
 class EntityMergeRequest(BaseModel):
-    """Anfrage zum Zusammenfuehren von Entitaeten."""
-    target_entity_id: uuid.UUID = Field(..., description="Ziel-Entitaet (bleibt bestehen)")
+    """Anfrage zum Zusammenführen von Entitäten."""
+    target_entity_id: uuid.UUID = Field(..., description="Ziel-Entität (bleibt bestehen)")
     source_entity_ids: List[uuid.UUID] = Field(
         ...,
         min_length=1,
         max_length=10,
-        description="Quell-Entitaeten (werden geloescht)"
+        description="Quell-Entitäten (werden gelöscht)"
     )
-    merge_documents: bool = Field(True, description="Dokumente zur Ziel-Entitaet verschieben")
-    merge_aliases: bool = Field(True, description="Aliase zusammenfuehren")
+    merge_documents: bool = Field(True, description="Dokumente zur Ziel-Entität verschieben")
+    merge_aliases: bool = Field(True, description="Aliase zusammenführen")
 
 
 # ============================================================================
-# INVOICE TRACKING SCHEMAS (Rechnungsverfolgung fuer Risk Scoring)
+# INVOICE TRACKING SCHEMAS (Rechnungsverfolgung für Risk Scoring)
 # ============================================================================
 
 class InvoiceStatusEnum(str, Enum):
-    """Rechnungsstatus fuer Zahlungsverfolgung."""
+    """Rechnungsstatus für Zahlungsverfolgung."""
     OPEN = "open"
     SENT = "sent"
     PAID = "paid"
@@ -3034,18 +3035,18 @@ class InvoiceStatusEnum(str, Enum):
 
 
 class InvoiceTrackingBase(BaseModel):
-    """Basis-Schema fuer Rechnungsverfolgung."""
+    """Basis-Schema für Rechnungsverfolgung."""
     invoice_number: Optional[str] = Field(None, max_length=100, description="Rechnungsnummer")
     invoice_date: Optional[datetime] = Field(None, description="Rechnungsdatum")
-    due_date: Optional[datetime] = Field(None, description="Faelligkeitsdatum")
+    due_date: Optional[datetime] = Field(None, description="Fälligkeitsdatum")
     amount: float = Field(0.0, ge=0, description="Rechnungsbetrag")
-    currency: str = Field("EUR", pattern="^[A-Z]{3}$", description="Waehrung (ISO 4217)")
+    currency: str = Field("EUR", pattern="^[A-Z]{3}$", description="Währung (ISO 4217)")
     status: InvoiceStatusEnum = Field(InvoiceStatusEnum.OPEN, description="Zahlungsstatus")
 
 
 class InvoiceTrackingCreate(InvoiceTrackingBase):
     """Schema zum Erstellen einer Rechnungsverfolgung."""
-    document_id: uuid.UUID = Field(..., description="Verknuepftes Rechnungsdokument")
+    document_id: uuid.UUID = Field(..., description="Verknüpftes Rechnungsdokument")
 
 
 class InvoiceTrackingUpdate(BaseModel):
@@ -3062,7 +3063,7 @@ class InvoiceTrackingUpdate(BaseModel):
 
 
 class InvoiceTrackingResponse(InvoiceTrackingBase):
-    """Antwort-Schema fuer Rechnungsverfolgung."""
+    """Antwort-Schema für Rechnungsverfolgung."""
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -3088,18 +3089,18 @@ class RiskFactorsResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     # Payment behavior metrics
-    payment_delay_days: float = Field(0.0, description="Durchschnittliche Zahlungsverzoegerung in Tagen")
+    payment_delay_days: float = Field(0.0, description="Durchschnittliche Zahlungsverzögerung in Tagen")
     default_rate: float = Field(0.0, ge=0, le=1, description="Ausfallrate (0-1)")
 
     # Invoice metrics
     invoice_volume: float = Field(0.0, ge=0, description="Gesamtes Rechnungsvolumen")
     document_frequency: float = Field(0.0, ge=0, description="Dokumente pro Monat")
-    relationship_months: float = Field(0.0, ge=0, description="Geschaeftsbeziehung in Monaten")
+    relationship_months: float = Field(0.0, ge=0, description="Geschäftsbeziehung in Monaten")
 
     # Invoice counts
     total_invoices: int = Field(0, ge=0, description="Gesamtzahl Rechnungen")
     paid_invoices: int = Field(0, ge=0, description="Bezahlte Rechnungen")
-    overdue_invoices: int = Field(0, ge=0, description="Ueberfaellige Rechnungen")
+    overdue_invoices: int = Field(0, ge=0, description="Überfällige Rechnungen")
     open_invoices: int = Field(0, ge=0, description="Offene Rechnungen")
 
     # Additional metrics
@@ -3117,11 +3118,11 @@ class RiskLevelEnum(str, Enum):
 
 
 class EntityRiskResponse(BaseModel):
-    """Vollstaendige Risiko-Bewertung einer Entitaet."""
+    """Vollständige Risiko-Bewertung einer Entität."""
     model_config = ConfigDict(from_attributes=True)
 
-    entity_id: uuid.UUID = Field(..., description="ID der Entitaet")
-    entity_name: str = Field(..., description="Name der Entitaet")
+    entity_id: uuid.UUID = Field(..., description="ID der Entität")
+    entity_name: str = Field(..., description="Name der Entität")
 
     # Risk scores
     risk_score: Optional[float] = Field(None, ge=0, le=100, description="Gesamt-Risiko-Score (0-100, 100=hoechstes Risiko)")
@@ -3140,28 +3141,28 @@ class EntityRiskResponse(BaseModel):
     # Entity context
     entity_type: Optional[str] = Field(None, description="Typ: customer, supplier, both")
     total_invoice_amount: float = Field(0.0, ge=0, description="Gesamtes Rechnungsvolumen")
-    document_count: int = Field(0, ge=0, description="Anzahl verknuepfter Dokumente")
+    document_count: int = Field(0, ge=0, description="Anzahl verknüpfter Dokumente")
 
 
 class RiskScoreCalculationRequest(BaseModel):
     """Anfrage zur Berechnung des Risk Scores."""
-    entity_id: uuid.UUID = Field(..., description="ID der Entitaet")
+    entity_id: uuid.UUID = Field(..., description="ID der Entität")
     force_recalculate: bool = Field(False, description="Neuberechnung erzwingen (auch wenn aktuell)")
 
 
 class RiskScoreBatchRequest(BaseModel):
     """Anfrage zur Batch-Berechnung von Risk Scores."""
     entity_type: Optional[str] = Field(None, pattern="^(customer|supplier|both)$", description="Nur bestimmten Typ berechnen")
-    limit: int = Field(1000, ge=1, le=10000, description="Maximale Anzahl zu bearbeitender Entitaeten")
+    limit: int = Field(1000, ge=1, le=10000, description="Maximale Anzahl zu bearbeitender Entitäten")
     recalculate_all: bool = Field(False, description="Alle neu berechnen (nicht nur veraltete)")
 
 
 class RiskScoreBatchResponse(BaseModel):
     """Antwort der Batch-Berechnung."""
-    total_processed: int = Field(..., ge=0, description="Anzahl verarbeiteter Entitaeten")
+    total_processed: int = Field(..., ge=0, description="Anzahl verarbeiteter Entitäten")
     successful: int = Field(..., ge=0, description="Erfolgreich berechnet")
     failed: int = Field(..., ge=0, description="Fehlgeschlagen")
-    skipped: int = Field(..., ge=0, description="Uebersprungen (noch aktuell)")
+    skipped: int = Field(..., ge=0, description="Übersprungen (noch aktuell)")
     processing_time_ms: int = Field(..., ge=0, description="Verarbeitungszeit in Millisekunden")
     errors: List[Dict[str, Any]] = Field(default_factory=list, description="Fehlerdetails")
 
@@ -3173,14 +3174,14 @@ class InvoiceStatusDistributionItem(BaseModel):
 
 
 class InvoiceStatisticsResponse(BaseModel):
-    """Antwort-Schema fuer Rechnungsstatistiken."""
+    """Antwort-Schema für Rechnungsstatistiken."""
     totalInvoices: int = Field(..., ge=0, description="Gesamtzahl Rechnungen")
     totalAmount: float = Field(..., ge=0, description="Gesamtbetrag aller Rechnungen")
     statusDistribution: Dict[str, InvoiceStatusDistributionItem] = Field(
         ..., description="Verteilung nach Status"
     )
     overdueInvoices: InvoiceStatusDistributionItem = Field(
-        ..., description="Ueberfaellige Rechnungen"
+        ..., description="Überfällige Rechnungen"
     )
     generatedAt: datetime = Field(..., description="Zeitpunkt der Generierung")
 
@@ -3229,7 +3230,7 @@ class TrainingBatchStatus(str, Enum):
 # --- Training Sample Schemas ---
 
 class TrainingSampleBase(BaseModel):
-    """Basis-Schema fuer Training Sample."""
+    """Basis-Schema für Training Sample."""
     language: str = Field("de", pattern="^(de|nl|pl|en)$")
     document_type: Optional[str] = Field(None, max_length=50)
     difficulty: str = Field("medium", pattern="^(easy|medium|hard)$")
@@ -3297,7 +3298,7 @@ class TrainingSampleListResponse(BaseModel):
 
 
 class VerifySampleRequest(BaseModel):
-    """Request Body fuer Sample-Verifizierung.
+    """Request Body für Sample-Verifizierung.
 
     Wird verwendet um Training-Samples zu verifizieren oder zu korrigieren.
     """
@@ -3346,7 +3347,7 @@ class BenchmarkRunRequest(BaseModel):
         default=["deepseek-janus-pro", "got-ocr-2.0", "surya-gpu", "surya"],
         description="Zu testende Backends"
     )
-    force_rerun: bool = Field(False, description="Existierende Benchmarks ueberschreiben")
+    force_rerun: bool = Field(False, description="Existierende Benchmarks überschreiben")
 
 
 class BenchmarkRunResponse(BaseModel):
@@ -3410,7 +3411,7 @@ class CorrectionListResponse(BaseModel):
 # --- Training Batch Schemas ---
 
 class StratificationConfig(BaseModel):
-    """Konfiguration fuer stratifizierte Stichproben."""
+    """Konfiguration für stratifizierte Stichproben."""
     by_document_type: bool = True
     by_language: bool = True
     by_difficulty: bool = False
@@ -3489,7 +3490,7 @@ class BatchItemUpdate(BaseModel):
 # --- Statistics Schemas ---
 
 class BackendStats(BaseModel):
-    """Statistiken fuer ein Backend."""
+    """Statistiken für ein Backend."""
     backend_name: str
     samples_processed: int
     avg_cer: Optional[float] = None
@@ -3526,7 +3527,7 @@ class DocumentTypeStats(BaseModel):
 
 
 class TrainingOverviewStats(BaseModel):
-    """Gesamtuebersicht Statistiken."""
+    """Gesamtübersicht Statistiken."""
     total_samples: int
     verified_samples: int
     pending_annotations: int
@@ -3538,7 +3539,7 @@ class TrainingOverviewStats(BaseModel):
 
 
 class TrainingStatsResponse(BaseModel):
-    """Vollstaendige Training-Statistiken."""
+    """Vollständige Training-Statistiken."""
     overview: TrainingOverviewStats
     backends: List[BackendStats]
     field_accuracies: List[FieldAccuracyStats]
@@ -3547,7 +3548,7 @@ class TrainingStatsResponse(BaseModel):
 
 
 class DailyStatsResponse(BaseModel):
-    """Taegliche Statistiken."""
+    """Tägliche Statistiken."""
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -3566,7 +3567,7 @@ class DailyStatsResponse(BaseModel):
 
 
 class TrendDataPoint(BaseModel):
-    """Datenpunkt fuer Trend-Analyse."""
+    """Datenpunkt für Trend-Analyse."""
     date: datetime
     value: float
 
@@ -3729,7 +3730,7 @@ class OCRDocumentOutputResponse(BaseModel):
 
 
 class OCRDocumentOutputListResponse(BaseModel):
-    """Liste von OCR Outputs fuer ein Sample."""
+    """Liste von OCR Outputs für ein Sample."""
     sample_id: uuid.UUID
     outputs: List[OCRDocumentOutputResponse]
     total_backends: int
@@ -3931,13 +3932,13 @@ class TrainingExportListResponse(BaseModel):
 # ============================================================================
 
 class DocumentPaymentStatus(str, Enum):
-    """Zahlungsstatus fuer Dokumente (Rechnungen, Bestellungen).
+    """Zahlungsstatus für Dokumente (Rechnungen, Bestellungen).
 
     Unterscheidet sich von banking.PaymentStatus (Zahlungsauftraege).
     """
     OFFEN = "offen"  # Noch nicht bezahlt
-    BEZAHLT = "bezahlt"  # Vollstaendig bezahlt
-    UEBERFAELLIG = "ueberfaellig"  # Faelligkeitsdatum ueberschritten
+    BEZAHLT = "bezahlt"  # Vollständig bezahlt
+    UEBERFAELLIG = "überfällig"  # Fälligkeitsdatum überschritten
     TEILBEZAHLT = "teilbezahlt"  # Teilweise bezahlt
 
 
@@ -3947,13 +3948,13 @@ class FinanceDocumentCategory(str, Enum):
     GRUNDABGABENBESCHEID = "grundabgabenbescheid"
     STEUERBESCHEIDE = "steuerbescheide"
     VORAUSZAHLUNGEN = "vorauszahlungen"
-    STEUERERKLAERUNGEN = "steuererklaerungen"
+    STEUERERKLAERUNGEN = "steuererklärungen"
     FINANZAMT_KORRESPONDENZ = "finanzamt_korrespondenz"
     # Personal-Paket
     LOHN_GEHALT = "lohn_gehalt"
     SOZIALVERSICHERUNG = "sozialversicherung"
     BERUFSGENOSSENSCHAFT = "berufsgenossenschaft"
-    ARBEITSVERTRAEGE = "arbeitsvertraege"
+    ARBEITSVERTRAEGE = "arbeitsverträge"
     # Versicherungs-Paket
     BETRIEBSHAFTPFLICHT = "betriebshaftpflicht"
     SACHVERSICHERUNGEN = "sachversicherungen"
@@ -3961,13 +3962,13 @@ class FinanceDocumentCategory(str, Enum):
     RECHTSSCHUTZ = "rechtsschutz"
     # Bank-Paket
     KONTOAUSZUEGE = "kontoauszuege"
-    KREDITVERTRAEGE = "kreditvertraege"
+    KREDITVERTRAEGE = "kreditverträge"
     BUERGSCHAFTEN = "buergschaften"
     DARLEHEN = "darlehen"
 
 
 class TaxType(str, Enum):
-    """Steuerart fuer Finanz-Dokumente."""
+    """Steuerart für Finanz-Dokumente."""
     EINKOMMENSTEUER = "einkommensteuer"
     KOERPERSCHAFTSTEUER = "koerperschaftsteuer"
     GEWERBESTEUER = "gewerbesteuer"
@@ -3978,17 +3979,17 @@ class TaxType(str, Enum):
 
 
 class EntityType(str, Enum):
-    """Entitaetstyp fuer Ablage-Navigation."""
+    """Entitätstyp für Ablage-Navigation."""
     CUSTOMER = "customer"  # Kunde
     SUPPLIER = "supplier"  # Lieferant
     FINANCE = "finance"    # Finanzen (Jahr-basiert)
 
 
 class CategoryDocumentFilter(BaseModel):
-    """Filter fuer Kategorie-Dokumentenliste.
+    """Filter für Kategorie-Dokumentenliste.
 
-    Ermoeglicht umfangreiche Filterung nach:
-    - Geschaeftspartner (Kunde/Lieferant)
+    Ermöglicht umfangreiche Filterung nach:
+    - Geschäftspartner (Kunde/Lieferant)
     - Ordner (z.B. Jahr oder Projekt)
     - Kategorie (Rechnungen, Angebote, etc.)
     - Zeitraum, Betrag, Status
@@ -3996,7 +3997,7 @@ class CategoryDocumentFilter(BaseModel):
     # Pflicht: Kontext
     business_entity_id: uuid.UUID = Field(..., description="Kunden- oder Lieferanten-ID")
     folder_id: str = Field(..., description="Ordner-ID (z.B. '2024' oder 'projekt-xyz')")
-    category: str = Field(..., description="Kategorie (rechnungen, angebote, vertraege, etc.)")
+    category: str = Field(..., description="Kategorie (rechnungen, angebote, verträge, etc.)")
     entity_type: EntityType = Field(EntityType.CUSTOMER, description="Kunde oder Lieferant")
 
     # Optional: Textsuche
@@ -4015,7 +4016,7 @@ class CategoryDocumentFilter(BaseModel):
         None, description="Verarbeitungsstatus (pending, completed, etc.)"
     )
     payment_status: Optional[List[DocumentPaymentStatus]] = Field(
-        None, description="Zahlungsstatus (nur fuer Rechnungen)"
+        None, description="Zahlungsstatus (nur für Rechnungen)"
     )
 
     # Optional: Tags
@@ -4023,7 +4024,7 @@ class CategoryDocumentFilter(BaseModel):
 
     # Pagination
     page: int = Field(0, ge=0, description="Seitennummer (0-basiert)")
-    page_size: int = Field(25, ge=1, le=100, description="Eintraege pro Seite")
+    page_size: int = Field(25, ge=1, le=100, description="Einträge pro Seite")
 
     # Sortierung
     sort_by: str = Field("document_date", description="Sortierfeld")
@@ -4043,10 +4044,10 @@ class ExtractedDocumentData(BaseModel):
     total_amount: Optional[float] = Field(None, description="Gesamtbetrag")
     net_amount: Optional[float] = Field(None, description="Nettobetrag")
     vat_amount: Optional[float] = Field(None, description="MwSt-Betrag")
-    currency: str = Field("EUR", description="Waehrung")
+    currency: str = Field("EUR", description="Währung")
 
-    # Faelligkeit
-    due_date: Optional[datetime] = Field(None, description="Faelligkeitsdatum")
+    # Fälligkeit
+    due_date: Optional[datetime] = Field(None, description="Fälligkeitsdatum")
 
     # Zahlungsstatus (manuell oder automatisch)
     payment_status: DocumentPaymentStatus = Field(
@@ -4055,21 +4056,21 @@ class ExtractedDocumentData(BaseModel):
     paid_amount: Optional[float] = Field(None, description="Bezahlter Betrag")
     payment_date: Optional[datetime] = Field(None, description="Zahlungsdatum")
 
-    # Geschaeftspartner
-    partner_name: Optional[str] = Field(None, description="Name des Geschaeftspartners")
+    # Geschäftspartner
+    partner_name: Optional[str] = Field(None, description="Name des Geschäftspartners")
     partner_address: Optional[str] = Field(None, description="Adresse")
 
     # Bankdaten
     iban: Optional[str] = Field(None, description="IBAN")
     bic: Optional[str] = Field(None, description="BIC")
 
-    model_config = ConfigDict(extra="allow")  # Erlaube zusaetzliche Felder
+    model_config = ConfigDict(extra="allow")  # Erlaube zusätzliche Felder
 
 
 class CategoryDocumentResponse(BaseModel):
     """Einzelnes Dokument in der Kategorie-Ansicht.
 
-    Optimiert fuer Tabellendarstellung mit allen relevanten Spalten.
+    Optimiert für Tabellendarstellung mit allen relevanten Spalten.
     """
     id: uuid.UUID
     filename: str
@@ -4092,7 +4093,7 @@ class CategoryDocumentResponse(BaseModel):
     # OCR-Ergebnis
     ocr_confidence: Optional[float] = None
 
-    # Extrahierte Daten (Subset fuer Tabelle)
+    # Extrahierte Daten (Subset für Tabelle)
     document_number: Optional[str] = None
     total_amount: Optional[float] = None
     currency: str = "EUR"
@@ -4111,7 +4112,7 @@ class CategoryDocumentResponse(BaseModel):
     # Skonto-Daten (aus extracted_data.invoice)
     skonto_percent: Optional[float] = Field(None, ge=0, le=100, description="Skonto-Prozentsatz")
     skonto_days: Optional[int] = Field(None, ge=0, description="Skonto-Frist in Tagen")
-    skonto_deadline: Optional[datetime] = Field(None, description="Skonto-Faelligkeitsdatum")
+    skonto_deadline: Optional[datetime] = Field(None, description="Skonto-Fälligkeitsdatum")
     skonto_amount: Optional[float] = Field(None, ge=0, description="Berechneter Skonto-Betrag")
 
     model_config = ConfigDict(from_attributes=True)
@@ -4125,14 +4126,14 @@ class CategoryDocumentListResponse(BaseModel):
     page_size: int
     total_pages: int
 
-    # Angewandte Filter (fuer Frontend-Synchronisation)
+    # Angewandte Filter (für Frontend-Synchronisation)
     filters_applied: Dict[str, Any] = Field(default_factory=dict)
 
 
 class CategoryAggregations(BaseModel):
-    """Aggregierte Statistiken fuer eine Kategorie.
+    """Aggregierte Statistiken für eine Kategorie.
 
-    Ermoeglicht Summen-Karten und Uebersichtsgrafiken.
+    Ermöglicht Summen-Karten und Übersichtsgrafiken.
     """
     # Anzahlen
     total_documents: int = 0
@@ -4150,7 +4151,7 @@ class CategoryAggregations(BaseModel):
     earliest_date: Optional[datetime] = None
     latest_date: Optional[datetime] = None
 
-    # Ueberfaellige Dokumente
+    # Überfällige Dokumente
     overdue_count: int = 0
     overdue_documents: List[uuid.UUID] = Field(default_factory=list, max_length=10)
 
@@ -4158,13 +4159,13 @@ class CategoryAggregations(BaseModel):
 # --- Bulk Operations for Ablage ---
 
 class BulkDownloadZipRequest(BaseModel):
-    """Request fuer ZIP-Download mehrerer Dokumente."""
+    """Request für ZIP-Download mehrerer Dokumente."""
     document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
     filename: Optional[str] = Field(None, max_length=200, description="Optionaler Dateiname")
 
 
 class BulkExportCsvRequest(BaseModel):
-    """Request fuer CSV-Export von Dokument-Metadaten."""
+    """Request für CSV-Export von Dokument-Metadaten."""
     document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=500)
     columns: Optional[List[str]] = Field(
         None, description="Spezifische Spalten (None = alle)"
@@ -4187,7 +4188,7 @@ class BulkMoveCategoryRequest(BaseModel):
 
 
 class BulkSetTagsRequest(BaseModel):
-    """Request zum Setzen von Tags fuer mehrere Dokumente."""
+    """Request zum Setzen von Tags für mehrere Dokumente."""
     document_ids: List[uuid.UUID] = Field(..., min_length=1, max_length=100)
     tags: List[str] = Field(..., min_length=1, max_length=20)
     mode: TagOperation = Field(TagOperation.ADD, description="add, remove, oder set")
@@ -4233,7 +4234,7 @@ class BulkOperationResultAblage(BaseModel):
 # ============================================================================
 
 class FinanceYearResponse(BaseModel):
-    """Response fuer ein einzelnes Finanz-Jahr."""
+    """Response für ein einzelnes Finanz-Jahr."""
     id: str = Field(..., description="Jahr als String (z.B. '2024')")
     year: int = Field(..., ge=2000, le=2100)
     is_active: bool = Field(False, description="Aktuelles Jahr")
@@ -4249,19 +4250,19 @@ class FinanceYearResponse(BaseModel):
 
 
 class FinanceYearListResponse(BaseModel):
-    """Response fuer Liste aller Finanz-Jahre."""
+    """Response für Liste aller Finanz-Jahre."""
     items: List[FinanceYearResponse]
     total: int = Field(0, ge=0)
 
 
 class FinanceAggregationsResponse(BaseModel):
-    """Aggregierte Statistiken fuer Finanzen (gesamt oder pro Jahr)."""
+    """Aggregierte Statistiken für Finanzen (gesamt oder pro Jahr)."""
     total_documents: int = Field(0, ge=0)
     total_nachzahlung: float = Field(0.0, ge=0, description="Summe aller Nachzahlungen")
     total_erstattung: float = Field(0.0, ge=0, description="Summe aller Erstattungen")
     saldo: float = Field(0.0, description="Erstattung - Nachzahlung (positiv = Guthaben)")
     pending_deadlines: int = Field(0, ge=0, description="Offene Fristen")
-    overdue_deadlines: int = Field(0, ge=0, description="Ueberfaellige Fristen")
+    overdue_deadlines: int = Field(0, ge=0, description="Überfällige Fristen")
     documents_by_category: Dict[str, int] = Field(
         default_factory=dict,
         description="Dokumente pro Kategorie"
@@ -4273,7 +4274,7 @@ class FinanceAggregationsResponse(BaseModel):
 
 
 class FinanceCategoryFilter(BaseModel):
-    """Filter fuer Finanz-Kategorie-Dokumentenliste."""
+    """Filter für Finanz-Kategorie-Dokumentenliste."""
     year: int = Field(..., ge=2000, le=2100, description="Jahr")
     category: str = Field(..., description="Kategorie-Slug")
 
@@ -4368,7 +4369,7 @@ class FinanceCategoryDocumentListResponse(BaseModel):
 
 
 class FinanceCategoryAggregations(BaseModel):
-    """Aggregationen fuer eine Finanz-Kategorie."""
+    """Aggregationen für eine Finanz-Kategorie."""
     category: str
     year: int
     total_documents: int = 0
@@ -4385,8 +4386,8 @@ class FinanceCategoryAggregations(BaseModel):
 # =============================================================================
 
 class FinanceDocumentUpdateRequest(BaseModel):
-    """Request fuer Aktualisierung von Finanz-Dokument-Feldern."""
-    # Kategorie-Aenderung
+    """Request für Aktualisierung von Finanz-Dokument-Feldern."""
+    # Kategorie-Änderung
     category: Optional[str] = Field(None, description="Neue Finanz-Kategorie")
 
     # Finanz-spezifische Felder
@@ -4427,11 +4428,11 @@ class FinanceDocumentUploadResponse(BaseModel):
 
 
 class FinanceDocumentDeleteResponse(BaseModel):
-    """Response nach Loeschung eines Finance-Dokuments."""
+    """Response nach Löschung eines Finance-Dokuments."""
     id: uuid.UUID
     deleted: bool = True
     deleted_at: datetime
-    message: str = "Dokument erfolgreich geloescht"
+    message: str = "Dokument erfolgreich gelöscht"
 
 
 # =============================================================================
@@ -4439,12 +4440,12 @@ class FinanceDocumentDeleteResponse(BaseModel):
 # =============================================================================
 
 class FinanceBulkDeleteRequest(BaseModel):
-    """Request fuer Bulk-Loeschung von Finanz-Dokumenten."""
+    """Request für Bulk-Löschung von Finanz-Dokumenten."""
     document_ids: list[uuid.UUID] = Field(
         ...,
         min_length=1,
         max_length=100,
-        description="Liste der zu loeschenden Dokument-IDs (max 100)"
+        description="Liste der zu löschenden Dokument-IDs (max 100)"
     )
 
     model_config = ConfigDict(
@@ -4457,17 +4458,17 @@ class FinanceBulkDeleteRequest(BaseModel):
 
 
 class FinanceBulkDeleteResponse(BaseModel):
-    """Response nach Bulk-Loeschung."""
-    deleted_count: int = Field(..., description="Anzahl geloeschter Dokumente")
-    failed_count: int = Field(0, description="Anzahl fehlgeschlagener Loeschungen")
-    deleted_ids: list[uuid.UUID] = Field(default_factory=list, description="Geloeschte IDs")
+    """Response nach Bulk-Löschung."""
+    deleted_count: int = Field(..., description="Anzahl gelöschter Dokumente")
+    failed_count: int = Field(0, description="Anzahl fehlgeschlagener Löschungen")
+    deleted_ids: list[uuid.UUID] = Field(default_factory=list, description="Gelöschte IDs")
     failed_ids: list[uuid.UUID] = Field(default_factory=list, description="Fehlgeschlagene IDs")
     errors: list[str] = Field(default_factory=list, description="Fehlermeldungen")
-    message: str = "Bulk-Loeschung abgeschlossen"
+    message: str = "Bulk-Löschung abgeschlossen"
 
 
 class FinanceBulkUpdateRequest(BaseModel):
-    """Request fuer Bulk-Aktualisierung von Finanz-Dokumenten."""
+    """Request für Bulk-Aktualisierung von Finanz-Dokumenten."""
     document_ids: list[uuid.UUID] = Field(
         ...,
         min_length=1,
@@ -4475,8 +4476,8 @@ class FinanceBulkUpdateRequest(BaseModel):
         description="Liste der zu aktualisierenden Dokument-IDs"
     )
     # Optionale Felder die auf alle Dokumente angewendet werden
-    category: Optional[str] = Field(None, description="Neue Kategorie fuer alle")
-    year: Optional[int] = Field(None, ge=2000, le=2100, description="Neues Jahr fuer alle")
+    category: Optional[str] = Field(None, description="Neue Kategorie für alle")
+    year: Optional[int] = Field(None, ge=2000, le=2100, description="Neues Jahr für alle")
     steuerart: Optional[str] = Field(None, description="Neue Steuerart")
 
     model_config = ConfigDict(
@@ -4501,14 +4502,14 @@ class FinanceBulkUpdateResponse(BaseModel):
 
 
 class FinanceExportFormat(str, Enum):
-    """Unterstuetzte Export-Formate."""
+    """Unterstützte Export-Formate."""
     JSON = "json"
     CSV = "csv"
     ZIP = "zip"
 
 
 class FinanceExportRequest(BaseModel):
-    """Request fuer Dokument-Export."""
+    """Request für Dokument-Export."""
     document_ids: Optional[list[uuid.UUID]] = Field(
         None,
         max_length=500,
@@ -4522,7 +4523,7 @@ class FinanceExportRequest(BaseModel):
     )
     include_files: bool = Field(
         True,
-        description="Original-Dateien in ZIP einschliessen"
+        description="Original-Dateien in ZIP einschließen"
     )
 
     model_config = ConfigDict(
@@ -4543,7 +4544,7 @@ class FinanceExportResponse(BaseModel):
     status: str = Field("pending", description="Export-Status")
     download_url: Optional[str] = Field(None, description="Download-URL (wenn fertig)")
     document_count: int = Field(0, description="Anzahl exportierter Dokumente")
-    file_size_bytes: Optional[int] = Field(None, description="Dateigroesse in Bytes")
+    file_size_bytes: Optional[int] = Field(None, description="Dateigröße in Bytes")
     expires_at: Optional[datetime] = Field(None, description="URL-Ablaufzeit")
     message: str = "Export gestartet"
 
@@ -4553,7 +4554,7 @@ class FinanceExportResponse(BaseModel):
 # =============================================================================
 
 class DeadlineType(str, Enum):
-    """Frist-Typ fuer Finanz-Dokumente."""
+    """Frist-Typ für Finanz-Dokumente."""
     EINSPRUCHSFRIST = "einspruchsfrist"
     ZAHLUNGSFRIST = "zahlungsfrist"
     ABGABEFRIST = "abgabefrist"
@@ -4571,14 +4572,14 @@ class FinanceDeadlineItem(BaseModel):
     deadline: datetime = Field(..., description="Frist-Datum")
     deadline_type: DeadlineType = Field(..., description="Frist-Typ")
     aktenzeichen: Optional[str] = Field(None, description="Aktenzeichen")
-    days_until: int = Field(..., description="Tage bis zur Frist (negativ = ueberfaellig)")
+    days_until: int = Field(..., description="Tage bis zur Frist (negativ = überfällig)")
 
 
 class FinanceDeadlineListResponse(BaseModel):
     """Response mit Liste aller Fristen."""
     items: List[FinanceDeadlineItem] = Field(default_factory=list, description="Fristen")
     total: int = Field(0, description="Gesamtanzahl")
-    overdue_count: int = Field(0, description="Anzahl ueberfaelliger Fristen")
+    overdue_count: int = Field(0, description="Anzahl überfälliger Fristen")
     urgent_count: int = Field(0, description="Anzahl dringender Fristen (7 Tage)")
     upcoming_count: int = Field(0, description="Anzahl anstehender Fristen (30 Tage)")
 
@@ -4589,7 +4590,7 @@ class FinanceDeadlineListResponse(BaseModel):
 
 
 class FinanceHistoryAction(str, Enum):
-    """Aktionstypen fuer Finanz-Dokument-History."""
+    """Aktionstypen für Finanz-Dokument-History."""
     CREATED = "created"
     UPDATED = "updated"
     DELETED = "deleted"
@@ -4603,7 +4604,7 @@ class FinanceHistoryAction(str, Enum):
 
 
 class FinanceDocumentHistoryItem(BaseModel):
-    """Einzelner History-Eintrag fuer ein Finanz-Dokument."""
+    """Einzelner History-Eintrag für ein Finanz-Dokument."""
     id: uuid.UUID = Field(..., description="History-Eintrag-ID")
     document_id: uuid.UUID = Field(..., description="Dokument-ID")
     user_id: Optional[uuid.UUID] = Field(None, description="Benutzer-ID")
@@ -4614,27 +4615,27 @@ class FinanceDocumentHistoryItem(BaseModel):
     action: FinanceHistoryAction = Field(..., description="Aktionstyp")
     description: Optional[str] = Field(None, description="Menschenlesbare Beschreibung")
 
-    # Aenderungsdetails
+    # Änderungsdetails
     old_values: Dict[str, Any] = Field(default_factory=dict, description="Vorherige Werte")
     new_values: Dict[str, Any] = Field(default_factory=dict, description="Neue Werte")
-    changed_fields: List[str] = Field(default_factory=list, description="Geaenderte Felder")
+    changed_fields: List[str] = Field(default_factory=list, description="Geänderte Felder")
 
     # Kontext
     ip_address: Optional[str] = Field(None, description="IP-Adresse")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Zusaetzliche Metadaten")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Zusätzliche Metadaten")
 
     # Zeitstempel
-    created_at: datetime = Field(..., description="Zeitpunkt der Aenderung")
+    created_at: datetime = Field(..., description="Zeitpunkt der Änderung")
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class FinanceDocumentHistoryResponse(BaseModel):
-    """Response mit vollstaendiger History eines Finanz-Dokuments."""
+    """Response mit vollständiger History eines Finanz-Dokuments."""
     document_id: uuid.UUID = Field(..., description="Dokument-ID")
     document_name: str = Field(..., description="Dokumentname")
-    items: List[FinanceDocumentHistoryItem] = Field(default_factory=list, description="History-Eintraege")
-    total: int = Field(0, description="Gesamtanzahl Eintraege")
+    items: List[FinanceDocumentHistoryItem] = Field(default_factory=list, description="History-Einträge")
+    total: int = Field(0, description="Gesamtanzahl Einträge")
 
 
 class FinanceDocumentHistoryCreate(BaseModel):
@@ -4718,7 +4719,7 @@ class CompanyRole(str, Enum):
 
 
 class CompanyBase(BaseModel):
-    """Basis-Schema fuer Company."""
+    """Basis-Schema für Company."""
 
     name: str = Field(..., min_length=1, max_length=255, description="Firmenname")
     short_name: Optional[str] = Field(None, max_length=50, description="Kurzname")
@@ -4738,7 +4739,7 @@ class CompanyBase(BaseModel):
     street_number: Optional[str] = Field(None, max_length=20, description="Hausnummer")
     postal_code: Optional[str] = Field(None, max_length=10, description="PLZ")
     city: Optional[str] = Field(None, max_length=100, description="Stadt")
-    country: str = Field("DE", max_length=2, description="Laendercode (ISO 3166-1 alpha-2)")
+    country: str = Field("DE", max_length=2, description="Ländercode (ISO 3166-1 alpha-2)")
 
     # Kontakt
     email: Optional[EmailStr] = Field(None, description="E-Mail")
@@ -4751,8 +4752,8 @@ class CompanyBase(BaseModel):
     bank_name: Optional[str] = Field(None, max_length=100, description="Bankname")
 
     # Einstellungen
-    default_currency: str = Field("EUR", max_length=3, description="Standardwaehrung")
-    fiscal_year_start: int = Field(1, ge=1, le=12, description="Beginn Geschaeftsjahr (Monat)")
+    default_currency: str = Field("EUR", max_length=3, description="Standardwährung")
+    fiscal_year_start: int = Field(1, ge=1, le=12, description="Beginn Geschäftsjahr (Monat)")
     kontenrahmen: str = Field("SKR03", description="Kontenrahmen (SKR03 oder SKR04)")
 
     @field_validator("vat_id")
@@ -4765,7 +4766,7 @@ class CompanyBase(BaseModel):
         if v and not v.startswith("DE"):
             raise ValueError("USt-ID muss mit DE beginnen")
         if v and len(v) != 11:
-            raise ValueError("Ungueltige USt-ID Laenge (DE + 9 Ziffern)")
+            raise ValueError("Ungültige USt-ID Länge (DE + 9 Ziffern)")
         return v
 
     @field_validator("kontenrahmen")
@@ -4780,7 +4781,7 @@ class CompanyBase(BaseModel):
 class CompanyCreate(CompanyBase):
     """Schema zum Erstellen einer Company."""
 
-    alternative_names: List[str] = Field(default_factory=list, description="Alternative Namen fuer OCR")
+    alternative_names: List[str] = Field(default_factory=list, description="Alternative Namen für OCR")
 
 
 class CompanyUpdate(BaseModel):
@@ -4814,7 +4815,7 @@ class CompanyUpdate(BaseModel):
 
 
 class CompanyResponse(CompanyBase):
-    """Response-Schema fuer Company."""
+    """Response-Schema für Company."""
 
     id: uuid.UUID
     alternative_names: List[str] = Field(default_factory=list)
@@ -4857,7 +4858,7 @@ class UserCompanyUpdate(BaseModel):
 
 
 class UserCompanyResponse(BaseModel):
-    """Response-Schema fuer User-Company-Zuordnung."""
+    """Response-Schema für User-Company-Zuordnung."""
 
     id: uuid.UUID
     user_id: uuid.UUID
@@ -4879,12 +4880,12 @@ class UserCompanyResponse(BaseModel):
 
 
 class CashRegisterBase(BaseModel):
-    """Basis-Schema fuer CashRegister."""
+    """Basis-Schema für CashRegister."""
 
     name: str = Field(..., min_length=1, max_length=100, description="Kassenname")
     description: Optional[str] = Field(None, description="Beschreibung")
     register_number: Optional[str] = Field(None, max_length=50, description="Interne Kassennummer")
-    currency: str = Field("EUR", max_length=3, description="Waehrung")
+    currency: str = Field("EUR", max_length=3, description="Währung")
     max_balance: Optional[float] = Field(None, ge=0, description="Maximaler Kassenbestand")
     warning_threshold: Optional[float] = Field(None, ge=0, description="Warnschwelle")
 
@@ -4892,7 +4893,7 @@ class CashRegisterBase(BaseModel):
 class CashRegisterCreate(CashRegisterBase):
     """Schema zum Erstellen einer Kasse."""
 
-    linked_bank_account_id: Optional[uuid.UUID] = Field(None, description="Verknuepftes Bankkonto")
+    linked_bank_account_id: Optional[uuid.UUID] = Field(None, description="Verknüpftes Bankkonto")
     opening_balance: float = Field(0, description="Anfangsbestand")
 
 
@@ -4910,7 +4911,7 @@ class CashRegisterUpdate(BaseModel):
 
 
 class CashRegisterResponse(CashRegisterBase):
-    """Response-Schema fuer CashRegister."""
+    """Response-Schema für CashRegister."""
 
     id: uuid.UUID
     company_id: uuid.UUID
@@ -4942,7 +4943,7 @@ class CashRegisterListResponse(BaseModel):
 
 
 class EntertainmentData(BaseModel):
-    """Schema fuer Bewirtungskosten-Daten (70% abzugsfaehig)."""
+    """Schema für Bewirtungskosten-Daten (70% abzugsfaehig)."""
 
     participants: List[str] = Field(
         ...,
@@ -4967,7 +4968,7 @@ class EntertainmentData(BaseModel):
 
 
 class CashEntryBase(BaseModel):
-    """Basis-Schema fuer CashEntry."""
+    """Basis-Schema für CashEntry."""
 
     entry_type: CashEntryType = Field(..., description="Buchungstyp")
     entry_date: datetime = Field(..., description="Buchungsdatum (nicht in Zukunft!)")
@@ -4984,11 +4985,11 @@ class CashEntryBase(BaseModel):
     # Steuer
     tax_rate: Optional[float] = Field(None, ge=0, le=100, description="MwSt-Satz")
 
-    # Geschaeftspartner
-    counterparty_name: Optional[str] = Field(None, max_length=255, description="Geschaeftspartner")
-    counterparty_id: Optional[uuid.UUID] = Field(None, description="Geschaeftspartner-ID")
+    # Geschäftspartner
+    counterparty_name: Optional[str] = Field(None, max_length=255, description="Geschäftspartner")
+    counterparty_id: Optional[uuid.UUID] = Field(None, description="Geschäftspartner-ID")
 
-    # Verknuepfungen
+    # Verknüpfungen
     document_id: Optional[uuid.UUID] = Field(None, description="Beleg-Dokument")
     bank_transaction_id: Optional[uuid.UUID] = Field(None, description="Bank-Transaktion")
 
@@ -5057,7 +5058,7 @@ class CashEntryCreate(CashEntryBase):
 
 
 class CashEntryResponse(BaseModel):
-    """Response-Schema fuer CashEntry - Frontend-kompatibel.
+    """Response-Schema für CashEntry - Frontend-kompatibel.
 
     WICHTIG: Feldnamen sind an Frontend angepasst (nicht an DB-Model)!
     Das Mapping erfolgt in der API-Schicht (cash.py).
@@ -5082,7 +5083,7 @@ class CashEntryResponse(BaseModel):
     entertainment_data: Optional[Dict[str, Any]] = None
     is_cancelled: bool = False
     cancelled_by_id: Optional[uuid.UUID] = None  # Frontend erwartet cancelled_by_id (nicht cancelled_by_entry_id)
-    cancels_entry_id: Optional[uuid.UUID] = None  # Fuer Storno-Referenz
+    cancels_entry_id: Optional[uuid.UUID] = None  # Für Storno-Referenz
     skr03_account: Optional[str] = None  # Frontend erwartet skr03_account (nicht debit_account)
     skr04_account: Optional[str] = None  # Frontend erwartet skr04_account (nicht credit_account)
     created_by_id: uuid.UUID
@@ -5117,20 +5118,20 @@ class CashEntryCancelRequest(BaseModel):
 
 
 class CashCategoryBase(BaseModel):
-    """Basis-Schema fuer CashCategory."""
+    """Basis-Schema für CashCategory."""
 
     name: str = Field(..., min_length=1, max_length=100, description="Kategoriename")
     name_en: Optional[str] = Field(None, max_length=100, description="Englischer Name")
     description: Optional[str] = Field(None, description="Beschreibung")
     icon: Optional[str] = Field(None, max_length=50, description="Icon-Name")
     color: Optional[str] = Field(None, max_length=7, description="Farbe (Hex)")
-    parent_id: Optional[uuid.UUID] = Field(None, description="Ueberkategorie")
+    parent_id: Optional[uuid.UUID] = Field(None, description="Überkategorie")
     skr03_account: Optional[str] = Field(None, max_length=10, description="SKR03-Konto")
     skr04_account: Optional[str] = Field(None, max_length=10, description="SKR04-Konto")
     default_tax_rate: float = Field(19, ge=0, le=100, description="Standard-MwSt-Satz")
     is_entertainment: bool = Field(False, description="Bewirtungskosten?")
     is_travel_expense: bool = Field(False, description="Reisekosten?")
-    deductible_percentage: int = Field(100, ge=0, le=100, description="Abzugsfaehigkeit %")
+    deductible_percentage: int = Field(100, ge=0, le=100, description="Abzugsfähigkeit %")
 
 
 class CashCategoryCreate(CashCategoryBase):
@@ -5158,7 +5159,7 @@ class CashCategoryUpdate(BaseModel):
 
 
 class CashCategoryResponse(CashCategoryBase):
-    """Response-Schema fuer CashCategory."""
+    """Response-Schema für CashCategory."""
 
     id: uuid.UUID
     company_id: Optional[uuid.UUID] = None
@@ -5191,7 +5192,7 @@ class CashCountCreate(BaseModel):
 
     cash_register_id: uuid.UUID = Field(..., description="Kassen-ID")
 
-    # Muenzen (Stueckzahl)
+    # Muenzen (Stückzahl)
     coins_1_cent: int = Field(0, ge=0)
     coins_2_cent: int = Field(0, ge=0)
     coins_5_cent: int = Field(0, ge=0)
@@ -5201,7 +5202,7 @@ class CashCountCreate(BaseModel):
     coins_1_euro: int = Field(0, ge=0)
     coins_2_euro: int = Field(0, ge=0)
 
-    # Scheine (Stueckzahl)
+    # Scheine (Stückzahl)
     notes_5_euro: int = Field(0, ge=0)
     notes_10_euro: int = Field(0, ge=0)
     notes_20_euro: int = Field(0, ge=0)
@@ -5214,7 +5215,7 @@ class CashCountCreate(BaseModel):
 
 
 class CashCountResponse(BaseModel):
-    """Response-Schema fuer CashCount."""
+    """Response-Schema für CashCount."""
 
     id: uuid.UUID
     company_id: uuid.UUID
@@ -5274,7 +5275,7 @@ class CashCountListResponse(BaseModel):
 
 
 class ExpenseReportBase(BaseModel):
-    """Basis-Schema fuer ExpenseReport."""
+    """Basis-Schema für ExpenseReport."""
 
     title: str = Field(..., min_length=3, max_length=255, description="Titel")
     description: Optional[str] = Field(None, description="Beschreibung")
@@ -5305,7 +5306,7 @@ class ExpenseReportUpdate(BaseModel):
 
 
 class ExpenseReportResponse(ExpenseReportBase):
-    """Response-Schema fuer ExpenseReport."""
+    """Response-Schema für ExpenseReport."""
 
     id: uuid.UUID
     company_id: uuid.UUID
@@ -5382,7 +5383,7 @@ class ExpenseReportPayRequest(BaseModel):
 
 
 class ExpenseItemBase(BaseModel):
-    """Basis-Schema fuer ExpenseItem."""
+    """Basis-Schema für ExpenseItem."""
 
     expense_type: ExpenseType = Field(..., description="Typ")
     expense_date: datetime = Field(..., description="Datum")
@@ -5414,7 +5415,7 @@ class ExpenseItemCreate(ExpenseItemBase):
 
     # Verpflegung
     per_diem_hours: Optional[float] = Field(None, gt=0, le=24, description="Stunden")
-    per_diem_breakfast_provided: bool = Field(False, description="Fruehstueck gestellt")
+    per_diem_breakfast_provided: bool = Field(False, description="Frühstück gestellt")
     per_diem_lunch_provided: bool = Field(False, description="Mittagessen gestellt")
     per_diem_dinner_provided: bool = Field(False, description="Abendessen gestellt")
 
@@ -5450,7 +5451,7 @@ class ExpenseItemUpdate(BaseModel):
 
 
 class ExpenseItemResponse(BaseModel):
-    """Response-Schema fuer ExpenseItem."""
+    """Response-Schema für ExpenseItem."""
 
     id: uuid.UUID
     expense_report_id: uuid.UUID
@@ -5554,7 +5555,7 @@ class PerDiemCalculationRequest(BaseModel):
 
     travel_date: datetime = Field(..., description="Reisetag")
     hours_away: float = Field(..., gt=0, le=24, description="Abwesenheitsstunden")
-    breakfast_provided: bool = Field(False, description="Fruehstueck gestellt")
+    breakfast_provided: bool = Field(False, description="Frühstück gestellt")
     lunch_provided: bool = Field(False, description="Mittagessen gestellt")
     dinner_provided: bool = Field(False, description="Abendessen gestellt")
     is_domestic: bool = Field(True, description="Inland?")
@@ -5567,14 +5568,14 @@ class PerDiemCalculationResponse(BaseModel):
     travel_start: datetime = Field(..., description="Reisebeginn")
     travel_end: datetime = Field(..., description="Reiseende")
     total_hours: Decimal = Field(..., description="Gesamtstunden")
-    country: str = Field("DE", description="Laendercode")
+    country: str = Field("DE", description="Ländercode")
     base_rate: Decimal = Field(..., description="Grundpauschale")
     rate_type: str = Field(..., description="Pauschale-Typ (full_day, partial_day, none)")
     meals_provided: Dict[str, bool] = Field(
         default_factory=dict,
         description="Gestellte Mahlzeiten"
     )
-    meal_reductions: Decimal = Field(default=Decimal("0.00"), description="Kuerzungen")
+    meal_reductions: Decimal = Field(default=Decimal("0.00"), description="Kürzungen")
     total_amount: Decimal = Field(..., description="Endbetrag")
 
 
@@ -5596,11 +5597,11 @@ class MileageCalculationResponse(BaseModel):
 # ==================== Workflow Request Schemas ====================
 
 class ExpenseReportApproveRequest(BaseModel):
-    """Request fuer Spesenabrechnung-Genehmigung."""
+    """Request für Spesenabrechnung-Genehmigung."""
 
     approved_amount: Optional[Decimal] = Field(
         None,
-        description="Optional geaenderter genehmigter Betrag"
+        description="Optional geänderter genehmigter Betrag"
     )
     notes: Optional[str] = Field(
         None,
@@ -5610,7 +5611,7 @@ class ExpenseReportApproveRequest(BaseModel):
 
 
 class ExpenseReportRejectRequest(BaseModel):
-    """Request fuer Spesenabrechnung-Ablehnung."""
+    """Request für Spesenabrechnung-Ablehnung."""
 
     reason: str = Field(
         ...,
@@ -5620,9 +5621,9 @@ class ExpenseReportRejectRequest(BaseModel):
     )
 
 
-# ==================== Aliase fuer Rueckwaertskompatibilitaet ====================
+# ==================== Aliase für Rückwärtskompatibilität ====================
 
-# Diese Aliase ermoeglichen flexible Imports in Services und APIs
+# Diese Aliase ermöglichen flexible Imports in Services und APIs
 PerDiemCalculation = PerDiemCalculationResponse
 MileageCalculation = MileageCalculationResponse
 PerDiemCalculateRequest = PerDiemCalculationRequest
@@ -5641,7 +5642,7 @@ class PrivatSpaceType(str, Enum):
 
 
 class PrivatAccessLevel(str, Enum):
-    """Zugriffsebene fuer geteilte Bereiche."""
+    """Zugriffsebene für geteilte Bereiche."""
     READ = "read"
     WRITE = "write"
     ADMIN = "admin"
@@ -5675,7 +5676,7 @@ class PrivatDeadlineType(str, Enum):
 
 
 class PrivatEmergencyAccessStatus(str, Enum):
-    """Status fuer Notfallzugriff-Anfragen."""
+    """Status für Notfallzugriff-Anfragen."""
     PENDING = "pending"
     APPROVED = "approved"
     DENIED = "denied"
@@ -5744,7 +5745,7 @@ class InvestmentType(str, Enum):
 
 
 class PrivatSpaceBase(BaseModel):
-    """Basis-Schema fuer Privat-Space."""
+    """Basis-Schema für Privat-Space."""
     name: str = Field(..., min_length=1, max_length=200, description="Name des Bereichs")
     description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
     space_type: PrivatSpaceType = Field(PrivatSpaceType.PERSONAL, description="Bereichstyp")
@@ -5763,7 +5764,7 @@ class PrivatSpaceUpdate(BaseModel):
 
 
 class PrivatSpaceResponse(PrivatSpaceBase):
-    """Response-Schema fuer Privat-Space."""
+    """Response-Schema für Privat-Space."""
     id: uuid.UUID
     owner_id: Optional[uuid.UUID] = None
     company_id: Optional[uuid.UUID] = None
@@ -5788,7 +5789,7 @@ class PrivatSpaceWithStats(PrivatSpaceResponse):
 
 
 class PrivatSpaceAccessBase(BaseModel):
-    """Basis-Schema fuer Space-Zugriff."""
+    """Basis-Schema für Space-Zugriff."""
     access_level: PrivatAccessLevel = Field(..., description="Zugriffsebene")
 
 
@@ -5803,14 +5804,14 @@ class PrivatSpaceAccessUpdate(BaseModel):
 
 
 class PrivatSpaceAccessResponse(PrivatSpaceAccessBase):
-    """Response-Schema fuer Space-Zugriff."""
+    """Response-Schema für Space-Zugriff."""
     id: uuid.UUID
     space_id: uuid.UUID
     user_id: uuid.UUID
     granted_by: Optional[uuid.UUID] = None
     created_at: datetime
-    expires_at: Optional[datetime] = None  # SECURITY: Ablaufdatum fuer zeitlich begrenzte Zugriffe
-    is_active: bool = True  # Computed field - nur aktive Zugriffe werden zurueckgegeben
+    expires_at: Optional[datetime] = None  # SECURITY: Ablaufdatum für zeitlich begrenzte Zugriffe
+    is_active: bool = True  # Computed field - nur aktive Zugriffe werden zurückgegeben
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -5821,7 +5822,7 @@ class PrivatSpaceAccessResponse(PrivatSpaceAccessBase):
 
 
 class PrivatFolderBase(BaseModel):
-    """Basis-Schema fuer Privat-Ordner."""
+    """Basis-Schema für Privat-Ordner."""
     name: str = Field(..., min_length=1, max_length=200, description="Ordnername")
     description: Optional[str] = Field(None, max_length=1000, description="Beschreibung")
     color: Optional[str] = Field(None, pattern="^#[0-9A-Fa-f]{6}$", description="Farbcode")
@@ -5830,7 +5831,7 @@ class PrivatFolderBase(BaseModel):
 
 class PrivatFolderCreate(PrivatFolderBase):
     """Schema zum Erstellen eines Privat-Ordners."""
-    parent_id: Optional[uuid.UUID] = Field(None, description="Uebergeordneter Ordner")
+    parent_id: Optional[uuid.UUID] = Field(None, description="Übergeordneter Ordner")
 
 
 class PrivatFolderUpdate(BaseModel):
@@ -5843,7 +5844,7 @@ class PrivatFolderUpdate(BaseModel):
 
 
 class PrivatFolderResponse(PrivatFolderBase):
-    """Response-Schema fuer Privat-Ordner."""
+    """Response-Schema für Privat-Ordner."""
     id: uuid.UUID
     space_id: uuid.UUID
     parent_id: Optional[uuid.UUID] = None
@@ -5867,7 +5868,7 @@ class PrivatFolderTree(PrivatFolderResponse):
 
 
 class PrivatDocumentBase(BaseModel):
-    """Basis-Schema fuer Privat-Dokument."""
+    """Basis-Schema für Privat-Dokument."""
     title: str = Field(..., min_length=1, max_length=200, description="Dokumenttitel")
     description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
     document_type: PrivatDocumentType = Field(
@@ -5907,7 +5908,7 @@ class PrivatDocumentUpdate(BaseModel):
 
 
 class PrivatDocumentResponse(PrivatDocumentBase):
-    """Response-Schema fuer Privat-Dokument."""
+    """Response-Schema für Privat-Dokument."""
     id: uuid.UUID
     space_id: uuid.UUID
     folder_id: Optional[uuid.UUID] = None
@@ -5938,7 +5939,7 @@ class PrivatDocumentUploadRequest(BaseModel):
 
 class PrivatDocumentDecryptRequest(BaseModel):
     """Request zum Entschluesseln eines Dokuments."""
-    password: str = Field(..., min_length=1, description="Passwort fuer Extra-Verschluesselung")
+    password: str = Field(..., min_length=1, description="Passwort für Extra-Verschluesselung")
 
 
 # =============================================================================
@@ -5947,7 +5948,7 @@ class PrivatDocumentDecryptRequest(BaseModel):
 
 
 class PrivatPropertyBase(BaseModel):
-    """Basis-Schema fuer Immobilie."""
+    """Basis-Schema für Immobilie."""
     name: str = Field(..., min_length=1, max_length=200, description="Bezeichnung")
     property_type: str = Field(..., max_length=50, description="Immobilientyp")
     # Adresse (alle Optional wie im Model)
@@ -5955,7 +5956,7 @@ class PrivatPropertyBase(BaseModel):
     street_number: Optional[str] = Field(None, max_length=20, description="Hausnummer")
     postal_code: Optional[str] = Field(None, max_length=10, description="PLZ")
     city: Optional[str] = Field(None, max_length=100, description="Stadt")
-    country: str = Field("DE", max_length=2, description="Laendercode")
+    country: str = Field("DE", max_length=2, description="Ländercode")
     # Kaufdaten
     purchase_date: Optional[date_type] = Field(None, description="Kaufdatum")
     purchase_price: Optional[Decimal] = Field(None, ge=0, description="Kaufpreis")
@@ -5967,10 +5968,10 @@ class PrivatPropertyBase(BaseModel):
     # Grundbuch
     land_register_entry: Optional[str] = Field(None, max_length=100, description="Grundbucheintrag")
     cadastral_district: Optional[str] = Field(None, max_length=100, description="Gemarkung")
-    parcel_number: Optional[str] = Field(None, max_length=50, description="Flurstuecknummer")
+    parcel_number: Optional[str] = Field(None, max_length=50, description="Flurstücknummer")
     # Flaeche
     living_area_sqm: Optional[Decimal] = Field(None, ge=0, description="Wohnflaeche in qm")
-    plot_area_sqm: Optional[Decimal] = Field(None, ge=0, description="Grundstuecksflaeche in qm")
+    plot_area_sqm: Optional[Decimal] = Field(None, ge=0, description="Grundstücksflaeche in qm")
     # Status
     is_rented: bool = Field(False, description="Vermietet?")
     is_active: bool = Field(True, description="Aktiv?")
@@ -6014,7 +6015,7 @@ class PrivatPropertyUpdate(BaseModel):
 
 
 class PrivatPropertyResponse(PrivatPropertyBase):
-    """Response-Schema fuer Immobilie."""
+    """Response-Schema für Immobilie."""
     id: uuid.UUID
     space_id: uuid.UUID
     created_at: datetime
@@ -6040,7 +6041,7 @@ PrivatPropertyWithDetails = PrivatPropertyWithTenants
 
 
 class PrivatTenantBase(BaseModel):
-    """Basis-Schema fuer Mieter."""
+    """Basis-Schema für Mieter."""
     first_name: str = Field(..., min_length=1, max_length=100, description="Vorname")
     last_name: str = Field(..., min_length=1, max_length=100, description="Nachname")
     email: Optional[EmailStr] = Field(None, description="E-Mail")
@@ -6074,7 +6075,7 @@ class PrivatTenantUpdate(BaseModel):
 
 
 class PrivatTenantResponse(PrivatTenantBase):
-    """Response-Schema fuer Mieter."""
+    """Response-Schema für Mieter."""
     id: uuid.UUID
     property_id: uuid.UUID
     is_active: bool
@@ -6090,7 +6091,7 @@ class PrivatTenantResponse(PrivatTenantBase):
 
 
 class PrivatRentalIncomeBase(BaseModel):
-    """Basis-Schema fuer Mieteinnahme."""
+    """Basis-Schema für Mieteinnahme."""
     amount: Decimal = Field(..., description="Betrag")
     payment_date: date_type = Field(..., description="Zahlungsdatum")
     period_start: date_type = Field(..., description="Zeitraum Beginn")
@@ -6115,7 +6116,7 @@ class PrivatRentalIncomeUpdate(BaseModel):
 
 
 class PrivatRentalIncomeResponse(PrivatRentalIncomeBase):
-    """Response-Schema fuer Mieteinnahme."""
+    """Response-Schema für Mieteinnahme."""
     id: uuid.UUID
     tenant_id: uuid.UUID
     created_at: datetime
@@ -6129,12 +6130,12 @@ class PrivatRentalIncomeResponse(PrivatRentalIncomeBase):
 
 
 class PrivatUtilityStatementBase(BaseModel):
-    """Basis-Schema fuer Nebenkostenabrechnung."""
+    """Basis-Schema für Nebenkostenabrechnung."""
     year: int = Field(..., ge=2000, le=2100, description="Abrechnungsjahr")
     total_amount: Decimal = Field(..., description="Gesamtbetrag")
     prepayments: Decimal = Field(default=Decimal("0.00"), description="Vorauszahlungen")
     balance: Decimal = Field(..., description="Saldo (Nachzahlung/Guthaben)")
-    due_date: Optional[date_type] = Field(None, description="Faelligkeitsdatum")
+    due_date: Optional[date_type] = Field(None, description="Fälligkeitsdatum")
     is_paid: bool = Field(False, description="Bezahlt?")
     notes: Optional[str] = Field(None, max_length=2000, description="Notizen")
 
@@ -6157,7 +6158,7 @@ class PrivatUtilityStatementUpdate(BaseModel):
 
 
 class PrivatUtilityStatementResponse(PrivatUtilityStatementBase):
-    """Response-Schema fuer Nebenkostenabrechnung."""
+    """Response-Schema für Nebenkostenabrechnung."""
     id: uuid.UUID
     property_id: uuid.UUID
     tenant_id: Optional[uuid.UUID] = None
@@ -6173,7 +6174,7 @@ class PrivatUtilityStatementResponse(PrivatUtilityStatementBase):
 
 
 class PrivatVehicleBase(BaseModel):
-    """Basis-Schema fuer Fahrzeug."""
+    """Basis-Schema für Fahrzeug."""
     name: str = Field(..., min_length=1, max_length=200, description="Bezeichnung")
     vehicle_type: VehicleType = Field(VehicleType.CAR, description="Fahrzeugtyp")
     make: str = Field(..., min_length=1, max_length=100, description="Marke")
@@ -6186,8 +6187,8 @@ class PrivatVehicleBase(BaseModel):
     purchase_date: Optional[date_type] = Field(None, description="Kaufdatum")
     purchase_price: Optional[Decimal] = Field(None, ge=0, description="Kaufpreis")
     current_value: Optional[Decimal] = Field(None, ge=0, description="Aktueller Wert")
-    next_inspection: Optional[date_type] = Field(None, description="Naechste HU/AU")
-    next_service: Optional[date_type] = Field(None, description="Naechster Service")
+    next_inspection: Optional[date_type] = Field(None, description="Nächste HU/AU")
+    next_service: Optional[date_type] = Field(None, description="Nächster Service")
     notes: Optional[str] = Field(None, max_length=5000, description="Notizen")
 
 
@@ -6217,7 +6218,7 @@ class PrivatVehicleUpdate(BaseModel):
 
 
 class PrivatVehicleResponse(PrivatVehicleBase):
-    """Response-Schema fuer Fahrzeug."""
+    """Response-Schema für Fahrzeug."""
     id: uuid.UUID
     space_id: uuid.UUID
     is_active: bool
@@ -6244,7 +6245,7 @@ PrivatVehicleWithStats = PrivatVehicleWithLogs
 
 
 class PrivatFuelLogBase(BaseModel):
-    """Basis-Schema fuer Tankbeleg."""
+    """Basis-Schema für Tankbeleg."""
     date: date_type = Field(..., description="Tankdatum")
     mileage: int = Field(..., ge=0, description="Kilometerstand")
     liters: Decimal = Field(..., gt=0, description="Liter")
@@ -6275,7 +6276,7 @@ class PrivatFuelLogUpdate(BaseModel):
 
 
 class PrivatFuelLogResponse(PrivatFuelLogBase):
-    """Response-Schema fuer Tankbeleg."""
+    """Response-Schema für Tankbeleg."""
     id: uuid.UUID
     vehicle_id: uuid.UUID
     consumption: Optional[Decimal] = None
@@ -6285,7 +6286,7 @@ class PrivatFuelLogResponse(PrivatFuelLogBase):
 
 
 class PrivatFuelStatisticsResponse(BaseModel):
-    """Response-Schema fuer Kraftstoff-Statistiken."""
+    """Response-Schema für Kraftstoff-Statistiken."""
     fill_ups: int = Field(..., description="Anzahl Tankfuellungen")
     total_liters: Decimal = Field(..., description="Gesamtliter")
     total_cost: Decimal = Field(..., description="Gesamtkosten")
@@ -6304,7 +6305,7 @@ class PrivatFuelStatisticsResponse(BaseModel):
 
 
 class PrivatInsuranceBase(BaseModel):
-    """Basis-Schema fuer Versicherung."""
+    """Basis-Schema für Versicherung."""
     name: str = Field(..., min_length=1, max_length=200, description="Bezeichnung")
     insurance_type: InsuranceType = Field(..., description="Versicherungstyp")
     provider: str = Field(..., min_length=1, max_length=200, description="Anbieter")
@@ -6322,9 +6323,9 @@ class PrivatInsuranceBase(BaseModel):
     cancellation_period: Optional[int] = Field(
         None,
         ge=0,
-        description="Kuendigungsfrist in Tagen"
+        description="Kündigungsfrist in Tagen"
     )
-    auto_renewal: bool = Field(True, description="Automatische Verlaengerung")
+    auto_renewal: bool = Field(True, description="Automatische Verlängerung")
     notes: Optional[str] = Field(None, max_length=5000, description="Notizen")
 
 
@@ -6352,7 +6353,7 @@ class PrivatInsuranceUpdate(BaseModel):
 
 
 class PrivatInsuranceResponse(PrivatInsuranceBase):
-    """Response-Schema fuer Versicherung."""
+    """Response-Schema für Versicherung."""
     id: uuid.UUID
     space_id: uuid.UUID
     is_active: bool
@@ -6375,7 +6376,7 @@ class PrivatInsuranceWithDeadlines(PrivatInsuranceResponse):
 
 
 class PrivatLoanBase(BaseModel):
-    """Basis-Schema fuer Kredit."""
+    """Basis-Schema für Kredit."""
     name: str = Field(..., min_length=1, max_length=200, description="Bezeichnung")
     loan_type: LoanType = Field(..., description="Kredittyp")
     lender: str = Field(..., min_length=1, max_length=200, description="Kreditgeber")
@@ -6385,7 +6386,7 @@ class PrivatLoanBase(BaseModel):
     monthly_payment: Decimal = Field(..., ge=0, description="Monatliche Rate")
     start_date: date_type = Field(..., description="Vertragsbeginn")
     end_date: Optional[date_type] = Field(None, description="Vertragsende")
-    next_payment_date: Optional[date_type] = Field(None, description="Naechste Zahlung")
+    next_payment_date: Optional[date_type] = Field(None, description="Nächste Zahlung")
     account_number: Optional[str] = Field(None, max_length=50, description="Kontonummer")
     notes: Optional[str] = Field(None, max_length=5000, description="Notizen")
 
@@ -6413,7 +6414,7 @@ class PrivatLoanUpdate(BaseModel):
 
 
 class PrivatLoanResponse(PrivatLoanBase):
-    """Response-Schema fuer Kredit."""
+    """Response-Schema für Kredit."""
     id: uuid.UUID
     space_id: uuid.UUID
     is_active: bool
@@ -6437,7 +6438,7 @@ class PrivatLoanWithStats(PrivatLoanResponse):
 
 
 class PrivatInvestmentBase(BaseModel):
-    """Basis-Schema fuer Geldanlage."""
+    """Basis-Schema für Geldanlage."""
     name: str = Field(..., min_length=1, max_length=200, description="Bezeichnung")
     investment_type: InvestmentType = Field(..., description="Anlagetyp")
     institution: str = Field(..., min_length=1, max_length=200, description="Institut")
@@ -6446,7 +6447,7 @@ class PrivatInvestmentBase(BaseModel):
     current_value: Decimal = Field(..., ge=0, description="Aktueller Wert")
     interest_rate: Optional[Decimal] = Field(None, ge=0, le=100, description="Zinssatz in %")
     start_date: date_type = Field(..., description="Beginn")
-    maturity_date: Optional[date_type] = Field(None, description="Faelligkeit")
+    maturity_date: Optional[date_type] = Field(None, description="Fälligkeit")
     is_taxable: bool = Field(True, description="Steuerpflichtig?")
     notes: Optional[str] = Field(None, max_length=5000, description="Notizen")
 
@@ -6473,7 +6474,7 @@ class PrivatInvestmentUpdate(BaseModel):
 
 
 class PrivatInvestmentResponse(PrivatInvestmentBase):
-    """Response-Schema fuer Geldanlage."""
+    """Response-Schema für Geldanlage."""
     id: uuid.UUID
     space_id: uuid.UUID
     is_active: bool
@@ -6496,28 +6497,28 @@ class PrivatInvestmentWithStats(PrivatInvestmentResponse):
 
 
 class PortfolioSnapshotBase(BaseModel):
-    """Basis-Schema fuer Portfolio-Snapshot."""
+    """Basis-Schema für Portfolio-Snapshot."""
     snapshot_date: date_type = Field(..., description="Datum des Snapshots")
     total_real_estate: Decimal = Field(default=Decimal("0"), description="Immobilienwerte")
     total_vehicles: Decimal = Field(default=Decimal("0"), description="Fahrzeugwerte")
     total_investments: Decimal = Field(default=Decimal("0"), description="Anlagewerte")
     total_cash: Decimal = Field(default=Decimal("0"), description="Bargeld/Konten")
-    total_other_assets: Decimal = Field(default=Decimal("0"), description="Sonstige Vermoegenswerte")
+    total_other_assets: Decimal = Field(default=Decimal("0"), description="Sonstige Vermögenswerte")
     total_mortgages: Decimal = Field(default=Decimal("0"), description="Hypotheken")
     total_loans: Decimal = Field(default=Decimal("0"), description="Sonstige Kredite")
     total_other_liabilities: Decimal = Field(default=Decimal("0"), description="Sonstige Verbindlichkeiten")
-    total_assets: Decimal = Field(default=Decimal("0"), description="Summe Vermoegenswerte")
+    total_assets: Decimal = Field(default=Decimal("0"), description="Summe Vermögenswerte")
     total_liabilities: Decimal = Field(default=Decimal("0"), description="Summe Verbindlichkeiten")
     net_worth: Decimal = Field(default=Decimal("0"), description="Nettovermoegen")
-    net_worth_change_absolute: Optional[Decimal] = Field(None, description="Absolute Aenderung")
-    net_worth_change_percent: Optional[Decimal] = Field(None, description="Prozentuale Aenderung")
+    net_worth_change_absolute: Optional[Decimal] = Field(None, description="Absolute Änderung")
+    net_worth_change_percent: Optional[Decimal] = Field(None, description="Prozentuale Änderung")
     debt_to_assets_ratio: Decimal = Field(default=Decimal("0"), description="Schuldenquote")
     liquidity_ratio: Decimal = Field(default=Decimal("0"), description="Liquiditaetsquote")
     asset_allocation: Optional[Dict[str, Decimal]] = Field(None, description="Asset Allocation")
 
 
 class PortfolioSnapshotResponse(PortfolioSnapshotBase):
-    """Response-Schema fuer Portfolio-Snapshot."""
+    """Response-Schema für Portfolio-Snapshot."""
     id: UUID
     space_id: UUID
     created_at: datetime
@@ -6532,7 +6533,7 @@ class PortfolioSnapshotListResponse(BaseModel):
 
 
 class PortfolioDashboardResponse(BaseModel):
-    """Vollstaendige Portfolio-Dashboard Response."""
+    """Vollständige Portfolio-Dashboard Response."""
     current_snapshot: Optional[PortfolioSnapshotResponse] = None
     historical_snapshots: List[PortfolioSnapshotResponse] = Field(default_factory=list)
     net_worth_trend: List[Dict[str, Any]] = Field(default_factory=list, description="Trend-Daten")
@@ -6565,19 +6566,19 @@ class FinancialGoalStatus(str, Enum):
 
 
 class FinancialGoalBase(BaseModel):
-    """Basis-Schema fuer finanzielles Ziel."""
+    """Basis-Schema für finanzielles Ziel."""
     name: str = Field(..., min_length=1, max_length=200, description="Name des Ziels")
     goal_type: FinancialGoalType = Field(..., description="Art des Ziels")
     target_value: Decimal = Field(..., gt=0, description="Zielwert")
     target_date: date_type = Field(..., description="Zieldatum")
     current_value: Decimal = Field(default=Decimal("0"), ge=0, description="Aktueller Wert")
-    priority: int = Field(default=1, ge=1, le=10, description="Prioritaet (1=hoechste)")
+    priority: int = Field(default=1, ge=1, le=10, description="Priorität (1=hoechste)")
     status: FinancialGoalStatus = Field(default=FinancialGoalStatus.active, description="Status")
 
 
 class FinancialGoalCreate(FinancialGoalBase):
     """Schema zum Erstellen eines finanziellen Ziels."""
-    linked_assets: Optional[Dict[str, Any]] = Field(None, description="Verknuepfte Assets")
+    linked_assets: Optional[Dict[str, Any]] = Field(None, description="Verknüpfte Assets")
 
 
 class FinancialGoalUpdate(BaseModel):
@@ -6592,11 +6593,11 @@ class FinancialGoalUpdate(BaseModel):
 
 
 class FinancialGoalResponse(FinancialGoalBase):
-    """Response-Schema fuer finanzielles Ziel."""
+    """Response-Schema für finanzielles Ziel."""
     id: UUID
     space_id: UUID
     progress_percent: Decimal = Field(default=Decimal("0"), description="Fortschritt in %")
-    monthly_savings_required: Optional[Decimal] = Field(None, description="Benoetigte monatliche Sparrate")
+    monthly_savings_required: Optional[Decimal] = Field(None, description="Benötigte monatliche Sparrate")
     months_remaining: Optional[int] = Field(None, description="Verbleibende Monate")
     is_on_track: bool = Field(default=True, description="Auf Kurs?")
     projected_completion_date: Optional[date_type] = Field(None, description="Voraussichtliches Abschlussdatum")
@@ -6617,7 +6618,7 @@ class FinancialGoalListResponse(BaseModel):
 
 
 class FinancialGoalProgressUpdate(BaseModel):
-    """Schema fuer Fortschritts-Update."""
+    """Schema für Fortschritts-Update."""
     new_value: Decimal = Field(..., ge=0, description="Neuer aktueller Wert")
 
 
@@ -6638,7 +6639,7 @@ class PrivatPortfolioItem(BaseModel):
 
 
 class PrivatPortfolioBreakdownResponse(BaseModel):
-    """Response-Schema fuer Portfolio-Verteilung."""
+    """Response-Schema für Portfolio-Verteilung."""
     breakdown: Dict[str, PrivatPortfolioItem] = Field(
         ..., description="Verteilung nach Anlagetyp"
     )
@@ -6653,14 +6654,14 @@ class PrivatPortfolioBreakdownResponse(BaseModel):
 
 
 class PrivatDeadlineBase(BaseModel):
-    """Basis-Schema fuer Frist."""
+    """Basis-Schema für Frist."""
     title: str = Field(..., min_length=1, max_length=200, description="Titel")
     description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
     deadline_type: PrivatDeadlineType = Field(
         PrivatDeadlineType.CUSTOM,
         description="Fristentyp"
     )
-    due_date: date_type = Field(..., description="Faelligkeitsdatum")
+    due_date: date_type = Field(..., description="Fälligkeitsdatum")
     reminder_days: List[int] = Field(
         default=[7, 3, 1],
         description="Erinnerung X Tage vorher"
@@ -6674,7 +6675,7 @@ class PrivatDeadlineBase(BaseModel):
     priority: str = Field(
         "medium",
         pattern="^(low|medium|high|critical)$",
-        description="Prioritaet"
+        description="Priorität"
     )
 
 
@@ -6683,11 +6684,11 @@ class PrivatDeadlineCreate(PrivatDeadlineBase):
     related_entity_type: Optional[str] = Field(
         None,
         max_length=50,
-        description="Verknuepfter Entity-Typ"
+        description="Verknüpfter Entity-Typ"
     )
     related_entity_id: Optional[uuid.UUID] = Field(
         None,
-        description="Verknuepfte Entity-ID"
+        description="Verknüpfte Entity-ID"
     )
 
 
@@ -6708,7 +6709,7 @@ class PrivatDeadlineUpdate(BaseModel):
 
 
 class PrivatDeadlineResponse(PrivatDeadlineBase):
-    """Response-Schema fuer Frist."""
+    """Response-Schema für Frist."""
     model_config = ConfigDict(
         from_attributes=True,
         alias_generator=to_camel,
@@ -6745,7 +6746,7 @@ class PrivatDeadlineCalendarExport(BaseModel):
 
 
 class PrivatEmergencyContactBase(BaseModel):
-    """Basis-Schema fuer Notfallkontakt."""
+    """Basis-Schema für Notfallkontakt."""
     first_name: str = Field(..., min_length=1, max_length=100, description="Vorname")
     last_name: str = Field(..., min_length=1, max_length=100, description="Nachname")
     email: EmailStr = Field(..., description="E-Mail")
@@ -6778,7 +6779,7 @@ class PrivatEmergencyContactUpdate(BaseModel):
 
 
 class PrivatEmergencyContactResponse(PrivatEmergencyContactBase):
-    """Response-Schema fuer Notfallkontakt."""
+    """Response-Schema für Notfallkontakt."""
     id: uuid.UUID
     space_id: uuid.UUID
     is_active: bool
@@ -6800,7 +6801,7 @@ class PrivatEmergencyAccessRequestCreate(BaseModel):
 
 
 class PrivatEmergencyAccessRequestResponse(BaseModel):
-    """Response-Schema fuer Notfallzugriff-Anfrage."""
+    """Response-Schema für Notfallzugriff-Anfrage."""
     id: uuid.UUID
     space_id: uuid.UUID
     contact_id: uuid.UUID
@@ -6842,7 +6843,7 @@ class PrivatDashboardStats(BaseModel):
 
 
 class PrivatDeadlineWidget(BaseModel):
-    """Dashboard-Widget fuer Fristen."""
+    """Dashboard-Widget für Fristen."""
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
@@ -6854,7 +6855,7 @@ class PrivatDeadlineWidget(BaseModel):
 
 
 class PrivatFinancialSummary(BaseModel):
-    """Finanzuebersicht."""
+    """Finanzübersicht."""
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
@@ -6952,7 +6953,7 @@ PrivatVehicleWithLogs.model_rebuild()
 
 # =============================================================================
 # VALIDATION QUEUE SYSTEM SCHEMAS
-# Enterprise-Grade Validierungssystem fuer OCR-Ergebnisse und extrahierte Daten
+# Enterprise-Grade Validierungssystem für OCR-Ergebnisse und extrahierte Daten
 # =============================================================================
 
 class ValidationStatusEnum(str, Enum):
@@ -6997,7 +6998,7 @@ class RejectionCategoryEnum(str, Enum):
 # -----------------------------------------------------------------------------
 
 class ValidationFieldBase(BaseModel):
-    """Basis-Schema fuer Validierungsfelder."""
+    """Basis-Schema für Validierungsfelder."""
     field_key: str = Field(..., description="Technischer Feldname z.B. 'invoice_number'")
     field_label: str = Field(..., description="Deutscher Anzeigename")
     field_type: Optional[str] = Field(None, description="Feldtyp z.B. 'text', 'currency', 'date'")
@@ -7021,7 +7022,7 @@ class ValidationFieldUpdate(BaseModel):
 
 
 class ValidationFieldResponse(ValidationFieldBase):
-    """Antwort-Schema fuer ein Validierungsfeld."""
+    """Antwort-Schema für ein Validierungsfeld."""
     id: UUID
     queue_item_id: UUID
     corrected_value: Optional[str] = None
@@ -7058,8 +7059,8 @@ class ValidationFieldValidateResult(BaseModel):
 # -----------------------------------------------------------------------------
 
 class ValidationQueueItemBase(BaseModel):
-    """Basis-Schema fuer Validierungs-Queue-Items."""
-    priority: int = Field(5, ge=1, le=10, description="Prioritaet 1-10, 1 = hoechste")
+    """Basis-Schema für Validierungs-Queue-Items."""
+    priority: int = Field(5, ge=1, le=10, description="Priorität 1-10, 1 = hoechste")
     sample_source: SampleSourceEnum = SampleSourceEnum.AUTOMATIC
 
 
@@ -7075,24 +7076,24 @@ class ValidationQueueItemUpdate(BaseModel):
 
 
 class ValidationQueueItemAssign(BaseModel):
-    """Schema fuer die Zuweisung eines Queue-Items."""
+    """Schema für die Zuweisung eines Queue-Items."""
     editor_id: UUID
     priority: Optional[int] = Field(None, ge=1, le=10)
 
 
 class ValidationQueueItemApprove(BaseModel):
-    """Schema fuer die Genehmigung eines Queue-Items."""
+    """Schema für die Genehmigung eines Queue-Items."""
     notes: Optional[str] = Field(None, max_length=2000)
 
 
 class ValidationQueueItemReject(BaseModel):
-    """Schema fuer die Ablehnung eines Queue-Items."""
+    """Schema für die Ablehnung eines Queue-Items."""
     reason: str = Field(..., min_length=5, max_length=2000)
     category: RejectionCategoryEnum = RejectionCategoryEnum.OTHER
 
 
 class ValidationQueueItemResponse(ValidationQueueItemBase):
-    """Antwort-Schema fuer ein Queue-Item."""
+    """Antwort-Schema für ein Queue-Item."""
     id: UUID
     document_id: UUID
     status: ValidationStatusEnum
@@ -7156,7 +7157,7 @@ class ValidationQueueListResponse(BaseModel):
 # -----------------------------------------------------------------------------
 
 class ValidationRuleBase(BaseModel):
-    """Basis-Schema fuer Validierungsregeln."""
+    """Basis-Schema für Validierungsregeln."""
     name: str = Field(..., min_length=3, max_length=100)
     description: Optional[str] = Field(None, max_length=1000)
     rule_type: ValidationRuleTypeEnum
@@ -7180,7 +7181,7 @@ class ValidationRuleUpdate(BaseModel):
 
 
 class ValidationRuleResponse(ValidationRuleBase):
-    """Antwort-Schema fuer eine Validierungsregel."""
+    """Antwort-Schema für eine Validierungsregel."""
     id: UUID
     is_system: bool = False
     documents_matched: int = 0
@@ -7203,7 +7204,7 @@ class ValidationRuleListResponse(BaseModel):
 # -----------------------------------------------------------------------------
 
 class ValidationSampleConfigBase(BaseModel):
-    """Basis-Schema fuer Stichproben-Konfiguration."""
+    """Basis-Schema für Stichproben-Konfiguration."""
     name: str = Field("Standard", max_length=100)
     description: Optional[str] = None
     sample_percentage: int = Field(10, ge=0, le=100)
@@ -7224,7 +7225,7 @@ class ValidationSampleConfigUpdate(BaseModel):
 
 
 class ValidationSampleConfigResponse(ValidationSampleConfigBase):
-    """Antwort-Schema fuer Stichproben-Konfiguration."""
+    """Antwort-Schema für Stichproben-Konfiguration."""
     id: UUID
     is_active: bool
     valid_from: Optional[datetime] = None
@@ -7243,26 +7244,26 @@ class ValidationSampleConfigResponse(ValidationSampleConfigBase):
 # -----------------------------------------------------------------------------
 
 class BatchApproveRequest(BaseModel):
-    """Schema fuer Batch-Genehmigung."""
+    """Schema für Batch-Genehmigung."""
     item_ids: List[UUID] = Field(..., min_length=1, max_length=100)
     notes: Optional[str] = Field(None, max_length=500)
 
 
 class BatchRejectRequest(BaseModel):
-    """Schema fuer Batch-Ablehnung."""
+    """Schema für Batch-Ablehnung."""
     item_ids: List[UUID] = Field(..., min_length=1, max_length=100)
     reason: str = Field(..., min_length=5, max_length=2000)
     category: RejectionCategoryEnum = RejectionCategoryEnum.OTHER
 
 
 class BatchAssignRequest(BaseModel):
-    """Schema fuer Batch-Zuweisung."""
+    """Schema für Batch-Zuweisung."""
     item_ids: List[UUID] = Field(..., min_length=1, max_length=100)
     editor_id: UUID
 
 
 class ValidationBatchOperationResult(BaseModel):
-    """Ergebnis einer Batch-Operation fuer Validation Queue."""
+    """Ergebnis einer Batch-Operation für Validation Queue."""
     success_count: int
     failed_count: int
     failed_items: List[Dict[str, Any]] = []
@@ -7274,7 +7275,7 @@ class ValidationBatchOperationResult(BaseModel):
 # -----------------------------------------------------------------------------
 
 class ValidationAnalyticsOverview(BaseModel):
-    """Uebersichts-Statistiken."""
+    """Übersichts-Statistiken."""
     # Queue-Status
     pending_count: int = 0
     in_progress_count: int = 0
@@ -7318,7 +7319,7 @@ class EditorStatsListResponse(BaseModel):
 
 
 class TrendDataPoint(BaseModel):
-    """Datenpunkt fuer Trend-Charts."""
+    """Datenpunkt für Trend-Charts."""
     date: date_type
     validated: int = 0
     approved: int = 0
@@ -7327,7 +7328,7 @@ class TrendDataPoint(BaseModel):
 
 
 class TrendDataResponse(BaseModel):
-    """Trend-Daten fuer Charts."""
+    """Trend-Daten für Charts."""
     data_points: List[TrendDataPoint]
     group_by: str = "day"
 
@@ -7359,7 +7360,7 @@ class ConfidenceDistribution(BaseModel):
 # -----------------------------------------------------------------------------
 
 class ValidationQueueFilters(BaseModel):
-    """Filter-Parameter fuer Queue-Abfragen."""
+    """Filter-Parameter für Queue-Abfragen."""
     status: Optional[List[ValidationStatusEnum]] = None
     assigned_to_id: Optional[UUID] = None
     document_type: Optional[List[str]] = None
@@ -7374,7 +7375,7 @@ class ValidationQueueFilters(BaseModel):
 
 
 class ValidationQueueSortOptions(str, Enum):
-    """Sortieroptionen fuer Queue."""
+    """Sortieroptionen für Queue."""
     PRIORITY_ASC = "priority_asc"
     PRIORITY_DESC = "priority_desc"
     CONFIDENCE_ASC = "confidence_asc"
@@ -7412,9 +7413,9 @@ class MentionSchema(BaseModel):
     """Mention in einem Kommentar.
 
     Validation:
-    - userId muss gueltige UUID sein
+    - userId muss gültige UUID sein
     - userName max 200 Zeichen (wie User.full_name), HTML-escaped
-    - startIndex und endIndex muessen BEIDE oder KEINER angegeben sein
+    - startIndex und endIndex müssen BEIDE oder KEINER angegeben sein
     - startIndex < endIndex wenn angegeben
     """
     userId: UUID = Field(..., description="UUID des erwahnten Users")
@@ -7431,7 +7432,7 @@ class MentionSchema(BaseModel):
 
     @model_validator(mode='after')
     def validate_indices(self) -> 'MentionSchema':
-        """Prueft Index-Konsistenz:
+        """Prüft Index-Konsistenz:
         - Beide oder keiner
         - startIndex < endIndex
         """
@@ -7441,7 +7442,7 @@ class MentionSchema(BaseModel):
         # Beide oder keiner
         if has_start != has_end:
             raise ValueError(
-                "startIndex und endIndex muessen beide angegeben werden oder beide fehlen"
+                "startIndex und endIndex müssen beide angegeben werden oder beide fehlen"
             )
 
         # Wenn beide angegeben: startIndex < endIndex
@@ -7460,7 +7461,7 @@ EMOJI_PATTERN = r'^[\U0001F300-\U0001F9FF\U00002600-\U000027BF\U0001FA00-\U0001F
 class ReactionSchema(BaseModel):
     """Reaktion auf einen Kommentar.
 
-    Hinweis: userIds sind UUID-Strings fuer JSON-Kompatibilitaet mit Frontend.
+    Hinweis: userIds sind UUID-Strings für JSON-Kompatibilität mit Frontend.
     """
     emoji: str = Field(..., min_length=1, max_length=10, description="Unicode Emoji")
     count: int = Field(..., ge=0, description="Anzahl Reaktionen")
@@ -7490,7 +7491,7 @@ class CommentCreate(BaseModel):
         None,
         max_length=100,
         pattern=r'^[a-zA-Z_][a-zA-Z0-9_]*$',
-        description="Feldname fuer Inline-Kommentare (z.B. 'invoice_number', 'total_amount')"
+        description="Feldname für Inline-Kommentare (z.B. 'invoice_number', 'total_amount')"
     )
 
     @field_validator('content')
@@ -7515,7 +7516,7 @@ class CommentResponse(BaseModel):
 
     Erweitert um:
     - companyId: Multi-Tenant Isolation
-    - fieldReference: Feld-Referenz fuer Inline-Kommentare
+    - fieldReference: Feld-Referenz für Inline-Kommentare
     - deletedAt: Soft-Delete Timestamp
     """
     model_config = ConfigDict(from_attributes=True)
@@ -7545,7 +7546,7 @@ class CommentsListResponse(BaseModel):
 
 
 class CommentStatistics(BaseModel):
-    """Statistiken fuer Dokument-Kommentare.
+    """Statistiken für Dokument-Kommentare.
 
     Liefert aggregierte Metriken zu Kommentaren eines Dokuments.
     """
@@ -7629,7 +7630,7 @@ class NotificationResponse(BaseModel):
         Erlaubt:
         - Relative Pfade (/documents/123) - MUSS mit einzelnem / starten
         - HTTPS URLs
-        - HTTP URLs (nur localhost fuer Dev)
+        - HTTP URLs (nur localhost für Dev)
 
         Blockiert:
         - javascript: URLs (inkl. Varianten mit Whitespace/Newlines)
@@ -7642,7 +7643,7 @@ class NotificationResponse(BaseModel):
         if v is None:
             return None
 
-        # KRITISCH: Entferne alle Whitespace und Steuerzeichen fuer Sicherheits-Check
+        # KRITISCH: Entferne alle Whitespace und Steuerzeichen für Sicherheits-Check
         # Dies verhindert Bypasses wie "java\nscript:" oder "java\tscript:"
         import re
         v_normalized = re.sub(r'[\s\x00-\x1f\x7f-\x9f]', '', v.lower())
@@ -7655,7 +7656,7 @@ class NotificationResponse(BaseModel):
         ]
         for protocol in dangerous_protocols:
             if v_normalized.startswith(protocol):
-                raise ValueError(f"Ungueltige URL: Protokoll '{protocol}' nicht erlaubt")
+                raise ValueError(f"Ungültige URL: Protokoll '{protocol}' nicht erlaubt")
 
         # Blockiere Steuerzeichen im Original-String
         if re.search(r'[\x00-\x1f\x7f-\x9f]', v):
@@ -7665,9 +7666,9 @@ class NotificationResponse(BaseModel):
         if v.startswith('//'):
             raise ValueError("Protocol-relative URLs (//) sind nicht erlaubt")
 
-        # Relative URLs erlauben (muessen mit EINEM / starten, nicht //)
+        # Relative URLs erlauben (müssen mit EINEM / starten, nicht //)
         if v.startswith('/') and not v.startswith('//'):
-            # Zusaetzlich: Blockiere Path-Traversal
+            # Zusätzlich: Blockiere Path-Traversal
             if '..' in v:
                 raise ValueError("Path-Traversal (..) ist nicht erlaubt")
             return v
@@ -7692,7 +7693,7 @@ class ReactionAdd(BaseModel):
     """Reaktion hinzufuegen.
 
     Validation:
-    - emoji muss ein gueltiges Unicode Emoji sein
+    - emoji muss ein gültiges Unicode Emoji sein
     - Akzeptiert Standard-Emojis (1F300-1F9FF), Dingbats (2600-27BF), etc.
     - Variation Selectors sind nur NACH einem echten Emoji erlaubt
     """
@@ -7728,7 +7729,7 @@ class ReactionAdd(BaseModel):
         if not emoji_pattern.match(v):
             raise ValueError("Ungültiges Emoji-Format")
 
-        # Zusaetzlich: Pruefe dass nicht NUR Variation Selectors/ZWJ
+        # Zusätzlich: Prüfe dass nicht NUR Variation Selectors/ZWJ
         base_chars = re.sub(r'[\U0000FE0F\U0000200D]', '', v)
         if not base_chars:
             raise ValueError("Emoji darf nicht nur aus Variation Selectors bestehen")
@@ -7737,7 +7738,7 @@ class ReactionAdd(BaseModel):
 
 
 # =============================================================================
-# TASK SCHEMAS - Aufgaben-Zuweisung fuer Collaboration
+# TASK SCHEMAS - Aufgaben-Zuweisung für Collaboration
 # =============================================================================
 
 
@@ -7751,7 +7752,7 @@ class TaskStatusEnum(str, Enum):
 
 
 class TaskPriorityEnum(str, Enum):
-    """Prioritaet einer Aufgabe."""
+    """Priorität einer Aufgabe."""
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -7760,7 +7761,7 @@ class TaskPriorityEnum(str, Enum):
 
 class TaskTypeEnum(str, Enum):
     """Vordefinierte Aufgabentypen."""
-    REVIEW = "review"       # Dokument pruefen
+    REVIEW = "review"       # Dokument prüfen
     APPROVE = "approve"     # Genehmigung erteilen
     PROCESS = "process"     # Verarbeiten
     CLASSIFY = "classify"   # Klassifizieren
@@ -7781,12 +7782,12 @@ class TaskCreate(BaseModel):
 
     documentId: uuid.UUID = Field(..., description="ID des zugehoerigen Dokuments")
     title: str = Field(..., min_length=1, max_length=200, description="Titel der Aufgabe")
-    description: Optional[str] = Field(None, max_length=5000, description="Ausfuehrliche Beschreibung")
+    description: Optional[str] = Field(None, max_length=5000, description="Ausführliche Beschreibung")
     taskType: TaskTypeEnum = Field(TaskTypeEnum.REVIEW, description="Art der Aufgabe")
     assignedToId: Optional[uuid.UUID] = Field(None, description="ID des zugewiesenen Benutzers")
-    priority: TaskPriorityEnum = Field(TaskPriorityEnum.NORMAL, description="Prioritaet")
-    dueDate: Optional[datetime] = Field(None, description="Faelligkeitsdatum")
-    metadata: Optional[Dict[str, Any]] = Field(None, description="Zusaetzliche Metadaten")
+    priority: TaskPriorityEnum = Field(TaskPriorityEnum.NORMAL, description="Priorität")
+    dueDate: Optional[datetime] = Field(None, description="Fälligkeitsdatum")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Zusätzliche Metadaten")
 
     @field_validator('title')
     @classmethod
@@ -7802,18 +7803,18 @@ class TaskCreate(BaseModel):
         """Due Date muss in der Zukunft liegen."""
         if v is not None:
             # Erlaube Daten die mindestens jetzt sind (nicht strikt in Zukunft)
-            # Dies ermoeglicht "heute faellig"
+            # Dies ermöglicht "heute fällig"
             from datetime import timezone
             now = datetime.now(timezone.utc) if v.tzinfo else datetime.utcnow()
             if v < now - timedelta(minutes=5):  # 5 Minuten Toleranz
-                raise ValueError("Faelligkeitsdatum muss in der Zukunft liegen")
+                raise ValueError("Fälligkeitsdatum muss in der Zukunft liegen")
         return v
 
 
 class TaskUpdate(BaseModel):
     """Aufgabe aktualisieren.
 
-    Alle Felder sind optional - nur uebergebene Felder werden aktualisiert.
+    Alle Felder sind optional - nur übergebene Felder werden aktualisiert.
     """
     model_config = ConfigDict(str_strip_whitespace=True)
 
@@ -7897,7 +7898,7 @@ class TasksListResponse(BaseModel):
 
 
 class TaskStatistics(BaseModel):
-    """Statistiken ueber Aufgaben."""
+    """Statistiken über Aufgaben."""
     totalTasks: int = 0
     openTasks: int = 0
     inProgressTasks: int = 0
@@ -7912,7 +7913,7 @@ class TaskStatistics(BaseModel):
 
 
 class NotificationChannelEnum(str, Enum):
-    """Verfuegbare Benachrichtigungskanaele."""
+    """Verfügbare Benachrichtigungskanaele."""
     IN_APP = "in_app"
     EMAIL = "email"
     WEBSOCKET = "websocket"
@@ -7921,7 +7922,7 @@ class NotificationChannelEnum(str, Enum):
 
 
 class DigestFrequencyEnum(str, Enum):
-    """Haeufigkeit fuer Email-Digest."""
+    """Häufigkeit für Email-Digest."""
     IMMEDIATE = "immediate"
     HOURLY = "hourly"
     DAILY = "daily"
@@ -7984,8 +7985,8 @@ class EscalationRuleCreate(BaseModel):
 
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=1000)
-    taskType: Optional[TaskTypeEnum] = Field(None, description="Gilt fuer diesen Aufgabentyp (null = alle)")
-    priority: Optional[TaskPriorityEnum] = Field(None, description="Gilt fuer diese Prioritaet (null = alle)")
+    taskType: Optional[TaskTypeEnum] = Field(None, description="Gilt für diesen Aufgabentyp (null = alle)")
+    priority: Optional[TaskPriorityEnum] = Field(None, description="Gilt für diese Priorität (null = alle)")
     timeoutHours: int = Field(24, ge=1, le=720, description="Stunden bis zur Eskalation")
     escalateToUserId: Optional[uuid.UUID] = Field(None, description="Eskalation an bestimmten Benutzer")
     escalateToRole: Optional[str] = Field(None, max_length=50, description="Eskalation an Rolle (z.B. 'manager')")
@@ -7993,7 +7994,7 @@ class EscalationRuleCreate(BaseModel):
     notifyEscalationTarget: bool = Field(True)
     notifyTaskCreator: bool = Field(False)
     isActive: bool = Field(True)
-    rulePriority: int = Field(100, ge=1, le=1000, description="Niedrigere Zahl = hoehere Prioritaet")
+    rulePriority: int = Field(100, ge=1, le=1000, description="Niedrigere Zahl = höhere Priorität")
 
 
 class EscalationRuleUpdate(BaseModel):
@@ -8043,23 +8044,23 @@ class EscalationRulesListResponse(BaseModel):
 
 # =============================================================================
 # RISK SCORING SCHEMAS
-# Risiko-Bewertung von Geschaeftspartnern
+# Risiko-Bewertung von Geschäftspartnern
 # =============================================================================
 
 class RiskLevel(str, Enum):
-    """Risiko-Stufe fuer Geschaeftspartner."""
+    """Risiko-Stufe für Geschäftspartner."""
     NIEDRIG = "niedrig"     # 0-30
     MITTEL = "mittel"       # 31-60
-    ERHOEHT = "erhoeht"     # 61-80
+    ERHOEHT = "erhöht"     # 61-80
     HOCH = "hoch"           # 81-100
     UNBEKANNT = "unbekannt" # Keine Daten
 
 
 class RiskFactorsResponse(BaseModel):
-    """Detaillierte Risikofaktoren eines Geschaeftspartners."""
+    """Detaillierte Risikofaktoren eines Geschäftspartners."""
 
-    # Zahlungsverzoegerung
-    payment_delay_days: float = Field(0.0, ge=0, description="Durchschnittliche Zahlungsverzoegerung in Tagen")
+    # Zahlungsverzögerung
+    payment_delay_days: float = Field(0.0, ge=0, description="Durchschnittliche Zahlungsverzögerung in Tagen")
 
     # Ausfallrate
     default_rate: float = Field(0.0, ge=0, le=100, description="Prozent ausgefallener Zahlungen")
@@ -8076,12 +8077,12 @@ class RiskFactorsResponse(BaseModel):
     # Rechnungsstatistiken
     total_invoices: int = Field(0, ge=0, description="Gesamtanzahl Rechnungen")
     paid_invoices: int = Field(0, ge=0, description="Bezahlte Rechnungen")
-    overdue_invoices: int = Field(0, ge=0, description="Ueberfaellige Rechnungen")
+    overdue_invoices: int = Field(0, ge=0, description="Überfällige Rechnungen")
     open_invoices: int = Field(0, ge=0, description="Offene Rechnungen")
 
 
 class EntityRiskResponse(BaseModel):
-    """Vollstaendige Risiko-Bewertung eines Geschaeftspartners."""
+    """Vollständige Risiko-Bewertung eines Geschäftspartners."""
     model_config = ConfigDict(from_attributes=True)
 
     entity_id: uuid.UUID
@@ -8139,7 +8140,7 @@ class EntityRiskCalculateRequest(BaseModel):
     """Anfrage zur Neuberechnung des Risiko-Scores."""
     force_recalculate: bool = Field(
         False,
-        description="Erzwingt Neuberechnung auch wenn kuerzlich berechnet"
+        description="Erzwingt Neuberechnung auch wenn kürzlich berechnet"
     )
 
 
@@ -8157,14 +8158,14 @@ class EntityRiskBatchResponse(BaseModel):
 # - InvoiceStatusEnum (ca. Zeile 3015)
 # - InvoiceTrackingBase, InvoiceTrackingCreate, InvoiceTrackingUpdate, InvoiceTrackingResponse (ca. Zeile 3026-3070)
 # - InvoiceStatisticsResponse (ca. Zeile 3165)
-# Diese duplizierten Definitionen wurden entfernt um Konsistenz zu gewaehrleisten.
+# Diese duplizierten Definitionen wurden entfernt um Konsistenz zu gewährleisten.
 
 
 # ==================== Business Contact Schemas ====================
 
 
 class ContactTypeEnum(str, Enum):
-    """Kontakttyp Enum fuer API."""
+    """Kontakttyp Enum für API."""
     CUSTOMER = "customer"
     SUPPLIER = "supplier"
     PARTNER = "partner"
@@ -8191,7 +8192,7 @@ class ContactPersonSchema(BaseModel):
 
 
 class BusinessContactBase(BaseModel):
-    """Basis-Schema fuer BusinessContact."""
+    """Basis-Schema für BusinessContact."""
     name: str = Field(..., min_length=1, max_length=255, description="Firmenname")
     contact_type: Optional[ContactTypeEnum] = ContactTypeEnum.CUSTOMER
     company_form: Optional[str] = Field(None, max_length=50, description="Rechtsform (GmbH, AG, etc.)")
@@ -8275,7 +8276,7 @@ class BusinessContactUpdate(BaseModel):
 
 
 class BusinessContactResponse(BaseModel):
-    """Vollstaendige Kontakt-Antwort."""
+    """Vollständige Kontakt-Antwort."""
     id: UUID
     name: str
     name_normalized: Optional[str] = None
@@ -8346,7 +8347,7 @@ class BusinessContactResponse(BaseModel):
 
 
 class BusinessContactListFilters(BaseModel):
-    """Filter fuer Kontaktliste."""
+    """Filter für Kontaktliste."""
     search: Optional[str] = None
     contact_type: Optional[ContactTypeEnum] = None
     is_verified: Optional[bool] = None
@@ -8369,7 +8370,7 @@ class BusinessContactListResponse(BaseModel):
 
 
 class ContactDocumentInfo(BaseModel):
-    """Dokument-Info fuer Kontaktansicht."""
+    """Dokument-Info für Kontaktansicht."""
     id: UUID
     filename: str
     document_type: Optional[str] = None
@@ -8387,13 +8388,13 @@ class ContactDocumentsResponse(BaseModel):
 
 
 class MergeContactsRequest(BaseModel):
-    """Anfrage zum Zusammenfuehren von Kontakten."""
-    source_id: UUID = Field(..., description="Kontakt der zusammengefuehrt wird")
+    """Anfrage zum Zusammenführen von Kontakten."""
+    source_id: UUID = Field(..., description="Kontakt der zusammengeführt wird")
     target_id: UUID = Field(..., description="Zielkontakt der uebrig bleibt")
 
 
 class MergeContactsResponse(BaseModel):
-    """Antwort auf Zusammenfuehrung."""
+    """Antwort auf Zusammenführung."""
     success: bool
     target_contact: BusinessContactResponse
     merged_document_links: int

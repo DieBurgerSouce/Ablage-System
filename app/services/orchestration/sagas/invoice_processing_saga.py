@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """Invoice Processing Saga - Rechnungsverarbeitung als Saga.
 
-Implementiert den vollstaendigen Rechnungsverarbeitungs-Workflow:
+Implementiert den vollständigen Rechnungsverarbeitungs-Workflow:
 1. validate_invoice - Rechnungsdaten validieren
 2. export_to_datev - DATEV-Export erstellen
 3. create_booking - Buchung in Finanzbuchhaltung anlegen
 
-Jeder Schritt hat eine Compensation-Aktion fuer automatisches Rollback.
+Jeder Schritt hat eine Compensation-Aktion für automatisches Rollback.
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ logger = structlog.get_logger(__name__)
 INVOICE_PROCESSING_STEPS: List[Dict[str, object]] = [
     {
         "name": "Rechnung validieren",
-        "description": "Prueft Vollstaendigkeit und Korrektheit der Rechnungsdaten",
+        "description": "Prüft Vollständigkeit und Korrektheit der Rechnungsdaten",
         "action_type": "validate_invoice",
         "compensation_type": "mark_validation_failed",
         "timeout_seconds": 60,
@@ -40,7 +40,7 @@ INVOICE_PROCESSING_STEPS: List[Dict[str, object]] = [
     },
     {
         "name": "DATEV-Export erstellen",
-        "description": "Erstellt den Buchungsstapel-Export fuer DATEV",
+        "description": "Erstellt den Buchungsstapel-Export für DATEV",
         "action_type": "export_to_datev",
         "compensation_type": "cancel_datev_export",
         "timeout_seconds": 120,
@@ -67,9 +67,9 @@ async def handle_validate_invoice(
     context_data: Dict[str, object],
     step_id: str,
 ) -> Dict[str, object]:
-    """Validiert Rechnungsdaten auf Vollstaendigkeit.
+    """Validiert Rechnungsdaten auf Vollständigkeit.
 
-    Prueft:
+    Prüft:
     - Pflichtfelder vorhanden (Betrag, Datum, Lieferant)
     - Betrag > 0
     - Rechnungsdatum nicht in der Zukunft
@@ -78,7 +78,7 @@ async def handle_validate_invoice(
     Args:
         action_params: {"document_id": str, "company_id": str}
         context_data: Saga-Kontext
-        step_id: Step-ID fuer Logging
+        step_id: Step-ID für Logging
 
     Returns:
         Validierungsergebnis mit extrahierten Daten
@@ -105,7 +105,7 @@ async def handle_validate_invoice(
                 f"Dokument nicht gefunden: {document_id}"
             )
 
-        # Extrahierte Daten pruefen
+        # Extrahierte Daten prüfen
         extracted = document.extracted_data or {}
         errors: List[str] = []
 
@@ -149,11 +149,11 @@ async def handle_export_to_datev(
     context_data: Dict[str, object],
     step_id: str,
 ) -> Dict[str, object]:
-    """Erstellt DATEV-Buchungsstapel-Export fuer die Rechnung.
+    """Erstellt DATEV-Buchungsstapel-Export für die Rechnung.
 
     Args:
         action_params: {"document_id": str, "company_id": str, "user_id": str}
-        context_data: Saga-Kontext (enthaelt Validierungsergebnis)
+        context_data: Saga-Kontext (enthält Validierungsergebnis)
         step_id: Step-ID
 
     Returns:
@@ -232,7 +232,7 @@ async def handle_create_booking(
             return {
                 "document_id": document_id,
                 "booked": False,
-                "reason": "Konfidenz zu niedrig fuer automatische Buchung",
+                "reason": "Konfidenz zu niedrig für automatische Buchung",
             }
 
         entry_id = str(entry.id)
@@ -392,7 +392,7 @@ async def compensate_reverse_booking(
 def register_invoice_processing_handlers(
     registry: StepHandlerRegistry,
 ) -> None:
-    """Registriert alle Handler fuer die Rechnungsverarbeitungs-Saga.
+    """Registriert alle Handler für die Rechnungsverarbeitungs-Saga.
 
     Args:
         registry: StepHandlerRegistry-Instanz
@@ -429,7 +429,7 @@ async def create_invoice_processing_saga(
         company_id: Company-ID (Multi-Tenant)
         user_id: Initiator
         document_id: Dokument-ID der Rechnung
-        confidence: Konfidenz-Schwellwert fuer Auto-Buchung
+        confidence: Konfidenz-Schwellwert für Auto-Buchung
         description: Optionale Beschreibung
 
     Returns:
@@ -452,7 +452,7 @@ async def create_invoice_processing_saga(
         user_id=user_id,
         name="Rechnungsverarbeitung",
         steps=steps,
-        description=description or f"Automatische Verarbeitung fuer Dokument {document_id}",
+        description=description or f"Automatische Verarbeitung für Dokument {document_id}",
         context_data={
             "document_id": str(document_id),
             "confidence": confidence,

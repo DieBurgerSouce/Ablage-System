@@ -6,7 +6,7 @@ Generiert E-Rechnungen aus ExtractedInvoiceData:
 - ZUGFeRD-PDFs (mit eingebettetem XML)
 - XRechnung-XML (standalone)
 
-Unterstuetzt Profile:
+Unterstützt Profile:
 - MINIMUM, BASIC, BASIC_WL, EN16931, EXTENDED, XRECHNUNG
 """
 
@@ -64,7 +64,7 @@ class EInvoiceGeneratorService:
         self._facturx_available = self._check_facturx()
 
     def _check_facturx(self) -> bool:
-        """Prueft ob factur-x verfuegbar ist."""
+        """Prüft ob factur-x verfügbar ist."""
         try:
             import facturx
             return True
@@ -101,7 +101,7 @@ class EInvoiceGeneratorService:
 
         Raises:
             ValueError: Bei fehlenden Pflichtdaten
-            ImportError: Wenn factur-x nicht verfuegbar
+            ImportError: Wenn factur-x nicht verfügbar
         """
         if not self._facturx_available:
             raise ImportError(
@@ -125,7 +125,7 @@ class EInvoiceGeneratorService:
         invoice_data = self._get_invoice_data(document)
         if not invoice_data:
             raise ValueError(
-                f"Keine Rechnungsdaten fuer Dokument: {document_id}"
+                f"Keine Rechnungsdaten für Dokument: {document_id}"
             )
 
         # XML generieren
@@ -146,7 +146,7 @@ class EInvoiceGeneratorService:
         # Hash berechnen
         xml_hash = hashlib.sha256(xml_content.encode("utf-8")).hexdigest()
 
-        # Pruefen ob bereits eine E-Invoice existiert
+        # Prüfen ob bereits eine E-Invoice existiert
         stmt = select(models.EInvoiceDocument).where(
             models.EInvoiceDocument.document_id == document_id
         )
@@ -164,7 +164,7 @@ class EInvoiceGeneratorService:
             existing_einvoice.generation_timestamp = datetime.now(timezone.utc)
             existing_einvoice.generated_by_id = user_id
             existing_einvoice.leitweg_id = invoice_data.buyer_reference
-            # Validierung zuruecksetzen bei Regenerierung
+            # Validierung zurücksetzen bei Regenerierung
             existing_einvoice.is_valid = None
             existing_einvoice.validation_timestamp = None
             einvoice_doc = existing_einvoice
@@ -241,19 +241,19 @@ class EInvoiceGeneratorService:
         invoice_data = self._get_invoice_data(document)
         if not invoice_data:
             raise ValueError(
-                f"Keine Rechnungsdaten fuer Dokument: {document_id}"
+                f"Keine Rechnungsdaten für Dokument: {document_id}"
             )
 
         # XRechnung erfordert Leitweg-ID
         if not invoice_data.buyer_reference:
             raise ValueError(
                 "Leitweg-ID (buyer_reference) fehlt - "
-                "Pflicht fuer XRechnung B2G-Rechnungen"
+                "Pflicht für XRechnung B2G-Rechnungen"
             )
 
         # XML generieren
         if syntax == XRechnungSyntax.UBL:
-            # UBL-Syntax ueber XRechnungUBLMapper
+            # UBL-Syntax über XRechnungUBLMapper
             from .mapping.xrechnung_ubl_mapper import get_ubl_mapper
             ubl_mapper = get_ubl_mapper()
             xml_content = ubl_mapper.invoice_data_to_ubl(
@@ -261,7 +261,7 @@ class EInvoiceGeneratorService:
                 leitweg_id=invoice_data.buyer_reference,
             )
         else:
-            # CII-Syntax (Default) ueber ZUGFeRD Mapper
+            # CII-Syntax (Default) über ZUGFeRD Mapper
             xml_content = self.mapper.invoice_data_to_xml(invoice_data, "XRECHNUNG")
 
         # Hash berechnen
@@ -307,7 +307,7 @@ class EInvoiceGeneratorService:
         """
         Generiert XML ohne DB-Speicherung.
 
-        Nuetzlich fuer Vorschau oder Tests.
+        Nützlich für Vorschau oder Tests.
 
         Args:
             invoice_data: Rechnungsdaten
@@ -443,7 +443,7 @@ class EInvoiceGeneratorService:
                 fontName='DejaVuSans-Bold' if use_dejavu else 'Helvetica-Bold'
             )
 
-            # Waehrung und Formatierungs-Helper (global fuer gesamte PDF)
+            # Währung und Formatierungs-Helper (global für gesamte PDF)
             currency = invoice_data.currency.value if invoice_data.currency else "EUR"
 
             def format_amount(val: float, with_currency: bool = True) -> str:
@@ -534,7 +534,7 @@ class EInvoiceGeneratorService:
                 story.append(Paragraph("Positionen", label_style))
                 story.append(Spacer(1, 0.2 * cm))
 
-                # Tabellen-Style fuer Beschreibungs-Zellen
+                # Tabellen-Style für Beschreibungs-Zellen
                 desc_style = ParagraphStyle(
                     'TableDesc',
                     parent=styles['Normal'],
@@ -663,7 +663,7 @@ _generator_service: Optional[EInvoiceGeneratorService] = None
 
 
 def get_generator_service() -> EInvoiceGeneratorService:
-    """Gibt Singleton Generator Service zurueck."""
+    """Gibt Singleton Generator Service zurück."""
     global _generator_service
     if _generator_service is None:
         _generator_service = EInvoiceGeneratorService()

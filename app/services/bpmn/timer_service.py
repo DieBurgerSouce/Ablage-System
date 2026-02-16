@@ -1,12 +1,12 @@
-"""Timer Service fuer BPMN Timer Events.
+"""Timer Service für BPMN Timer Events.
 
-Verwaltet Timer-Jobs fuer:
+Verwaltet Timer-Jobs für:
 - Timer Start Events
 - Timer Intermediate Catch Events
 - Timer Boundary Events
 - Cycle Timers (wiederkehrend)
 
-Wird von Celery Beat regelmaessig aufgerufen.
+Wird von Celery Beat regelmäßig aufgerufen.
 """
 
 from datetime import datetime, timezone, timedelta
@@ -28,10 +28,10 @@ logger = structlog.get_logger(__name__)
 
 
 class TimerService:
-    """Service fuer Timer-Event Verarbeitung.
+    """Service für Timer-Event Verarbeitung.
 
     Hauptaufgaben:
-    - Faellige Timer finden und ausfuehren
+    - Fällige Timer finden und ausführen
     - Wiederholende Timer (Cycles) neu planen
     - Abgelaufene/stornierte Timer bereinigen
     """
@@ -44,14 +44,14 @@ class TimerService:
         company_id: Optional[UUID] = None,
         limit: int = 100
     ) -> List[ProcessTimerJob]:
-        """Gibt alle faelligen Timer zurueck.
+        """Gibt alle fälligen Timer zurück.
 
         Args:
             company_id: Optional Filter nach Mandant
             limit: Maximale Anzahl
 
         Returns:
-            Liste faelliger Timer-Jobs
+            Liste fälliger Timer-Jobs
         """
         now = datetime.now(timezone.utc)
 
@@ -77,14 +77,14 @@ class TimerService:
         timer_id: UUID,
         company_id: UUID
     ) -> bool:
-        """Fuehrt einen Timer aus.
+        """Führt einen Timer aus.
 
         Args:
             timer_id: Timer-Job ID
             company_id: Mandant
 
         Returns:
-            True wenn erfolgreich ausgefuehrt
+            True wenn erfolgreich ausgeführt
         """
         # Timer laden
         timer = await self._get_timer(timer_id, company_id)
@@ -96,7 +96,7 @@ class TimerService:
             logger.info("timer_already_inactive", timer_id=str(timer_id))
             return False
 
-        # Instanz pruefen
+        # Instanz prüfen
         instance = await self._get_instance(timer.instance_id, company_id)
         if not instance or instance.status != ProcessStatus.RUNNING:
             # Instanz nicht mehr aktiv - Timer deaktivieren
@@ -162,14 +162,14 @@ class TimerService:
                 instance=instance,
                 event_type="TIMER_FIRED",
                 element_id=timer.element_id,
-                message=f"Timer ausgefuehrt ({timer.timer_type}: {timer.timer_value})",
+                message=f"Timer ausgeführt ({timer.timer_type}: {timer.timer_value})",
                 actor_type="timer"
             )
 
             # Timer aktualisieren
             timer.last_executed_at = datetime.now(timezone.utc)
 
-            # Bei Cycle: Naechste Ausfuehrung planen
+            # Bei Cycle: Nächste Ausführung planen
             if timer.timer_type == "cycle" and timer.repeat_count:
                 if timer.repeat_count > 1:
                     timer.repeat_count -= 1
@@ -199,7 +199,7 @@ class TimerService:
                 timer_id=str(timer_id),
                 **safe_error_log(e)
             )
-            # Bei Fehler: Timer nicht deaktivieren fuer Retry
+            # Bei Fehler: Timer nicht deaktivieren für Retry
             return False
 
     async def execute_due_timers(
@@ -207,14 +207,14 @@ class TimerService:
         company_id: Optional[UUID] = None,
         batch_size: int = 50
     ) -> int:
-        """Fuehrt alle faelligen Timer aus.
+        """Führt alle fälligen Timer aus.
 
         Args:
             company_id: Optional Filter nach Mandant
             batch_size: Anzahl pro Batch
 
         Returns:
-            Anzahl ausgefuehrter Timer
+            Anzahl ausgeführter Timer
         """
         timers = await self.get_due_timers(company_id, batch_size)
         executed = 0
@@ -304,7 +304,7 @@ class TimerService:
             company_id: Optional Filter
 
         Returns:
-            Anzahl geloeschter Timer
+            Anzahl gelöschter Timer
         """
         from sqlalchemy import delete
 
@@ -335,7 +335,7 @@ class TimerService:
         self,
         company_id: UUID
     ) -> dict:
-        """Gibt Timer-Statistiken zurueck."""
+        """Gibt Timer-Statistiken zurück."""
         from sqlalchemy import func
 
         # Aktive Timer
@@ -348,7 +348,7 @@ class TimerService:
             )
         ) or 0
 
-        # Faellige Timer
+        # Fällige Timer
         now = datetime.now(timezone.utc)
         due_count = await self.db.scalar(
             select(func.count(ProcessTimerJob.id)).where(
@@ -384,7 +384,7 @@ class TimerService:
         }
 
     def _calculate_next_cycle(self, timer: ProcessTimerJob) -> datetime:
-        """Berechnet naechsten Ausfuehrungszeitpunkt fuer Cycle Timer."""
+        """Berechnet nächsten Ausführungszeitpunkt für Cycle Timer."""
         import isodate
 
         # Cycle-Format: R3/PT1H oder R/PT1H (unendlich)
@@ -429,5 +429,5 @@ class TimerService:
 
 
 def get_timer_service(db: AsyncSession) -> TimerService:
-    """Factory Function fuer TimerService."""
+    """Factory Function für TimerService."""
     return TimerService(db)

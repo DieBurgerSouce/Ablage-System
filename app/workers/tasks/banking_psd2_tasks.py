@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Celery Tasks fuer PSD2/FinTS Banking Integration.
+Celery Tasks für PSD2/FinTS Banking Integration.
 
 Phase 6: Multi-Bank Aggregation Tasks.
 
 Geplante Tasks:
 - sync_all_bank_accounts: Alle 4 Stunden - Synchronisiere alle verbundenen Konten
-- refresh_psd2_consents: Taeglich - PSD2 Consent-Tokens erneuern
+- refresh_psd2_consents: Täglich - PSD2 Consent-Tokens erneuern
 - auto_reconcile_transactions: Nach Import - Automatischer Zahlungsabgleich
-- process_scheduled_payments: Stuendlich - Geplante Zahlungen ausfuehren
+- process_scheduled_payments: Stündlich - Geplante Zahlungen ausführen
 
 SECURITY NOTES:
 - NIEMALS IBANs, Kontonummern oder Salden loggen
-- Credentials sind AES-256-GCM verschluesselt
+- Credentials sind AES-256-GCM verschlüsselt
 - PSD2 Consent-Tokens haben begrenzte TTL
 - TAN-Challenges verfallen nach 5 Minuten
 """
@@ -35,7 +35,7 @@ logger = structlog.get_logger(__name__)
 
 
 def run_async(coro):
-    """Helper um async Code in Celery auszufuehren."""
+    """Helper um async Code in Celery auszuführen."""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -65,11 +65,11 @@ def sync_all_bank_accounts(
     """
     Synchronisiere alle verbundenen Bankkonten via PSD2/FinTS.
 
-    Wird alle 4 Stunden ausgefuehrt (via Celery Beat).
+    Wird alle 4 Stunden ausgeführt (via Celery Beat).
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
-        force: Sync auch wenn noch nicht faellig
+        company_id: Optional - nur für bestimmte Firma
+        force: Sync auch wenn noch nicht fällig
 
     Returns:
         Sync-Statistik
@@ -88,7 +88,7 @@ async def _sync_all_bank_accounts(
     company_id_str: Optional[str] = None,
     force: bool = False,
 ) -> Dict[str, Any]:
-    """Async Implementation fuer sync_all_bank_accounts."""
+    """Async Implementation für sync_all_bank_accounts."""
     from app.db.models_banking_connection import (
         BankConnection, ConnectionStatus, SyncStatus
     )
@@ -111,7 +111,7 @@ async def _sync_all_bank_accounts(
         async with async_session_factory() as db:
             import_service = AutoTransactionImportService(db)
 
-            # Query fuer aktive Verbindungen
+            # Query für aktive Verbindungen
             query = select(BankConnection).where(
                 and_(
                     BankConnection.status == ConnectionStatus.ACTIVE.value,
@@ -124,7 +124,7 @@ async def _sync_all_bank_accounts(
                     BankConnection.company_id == UUID(company_id_str)
                 )
 
-            # Nur wenn sync faellig (oder force)
+            # Nur wenn sync fällig (oder force)
             if not force:
                 now = datetime.now(timezone.utc)
                 query = query.where(
@@ -141,7 +141,7 @@ async def _sync_all_bank_accounts(
                 stats["connections_checked"] += 1
 
                 try:
-                    # Sync ausfuehren
+                    # Sync ausführen
                     sync_result = await import_service.sync_connection(
                         connection_id=connection.id
                     )
@@ -236,7 +236,7 @@ async def _sync_single_connection(
     connection_id: str,
     company_id: str,
 ) -> Dict[str, Any]:
-    """Async Implementation fuer sync_single_connection."""
+    """Async Implementation für sync_single_connection."""
     from app.services.banking.auto_transaction_import_service import (
         AutoTransactionImportService,
     )
@@ -285,7 +285,7 @@ def refresh_psd2_consents(self, days_before_expiry: int = 7) -> Dict[str, Any]:
     """
     Erneuere PSD2 Consent-Tokens vor Ablauf.
 
-    Wird taeglich ausgefuehrt (via Celery Beat).
+    Wird täglich ausgeführt (via Celery Beat).
     Warnt Benutzer bei Consents die bald ablaufen.
 
     Args:
@@ -304,7 +304,7 @@ def refresh_psd2_consents(self, days_before_expiry: int = 7) -> Dict[str, Any]:
 
 
 async def _refresh_psd2_consents(days_before_expiry: int = 7) -> Dict[str, Any]:
-    """Async Implementation fuer refresh_psd2_consents."""
+    """Async Implementation für refresh_psd2_consents."""
     from app.db.models_banking_connection import (
         BankConnection, ConnectionType, ConnectionStatus
     )
@@ -397,9 +397,9 @@ async def _refresh_psd2_consents(days_before_expiry: int = 7) -> Dict[str, Any]:
 )
 def check_expired_connections(self) -> Dict[str, Any]:
     """
-    Pruefe und markiere abgelaufene Verbindungen.
+    Prüfe und markiere abgelaufene Verbindungen.
 
-    Wird taeglich ausgefuehrt (via Celery Beat).
+    Wird täglich ausgeführt (via Celery Beat).
     Setzt Status auf EXPIRED bei abgelaufenem Consent/Token.
 
     Returns:
@@ -414,7 +414,7 @@ def check_expired_connections(self) -> Dict[str, Any]:
 
 
 async def _check_expired_connections() -> Dict[str, Any]:
-    """Async Implementation fuer check_expired_connections."""
+    """Async Implementation für check_expired_connections."""
     from app.db.models_banking_connection import (
         BankConnection, ConnectionType, ConnectionStatus
     )
@@ -531,11 +531,11 @@ def auto_reconcile_transactions(
     limit: int = 500,
 ) -> Dict[str, Any]:
     """
-    Automatischer Zahlungsabgleich fuer importierte Transaktionen.
+    Automatischer Zahlungsabgleich für importierte Transaktionen.
 
-    Wird nach jedem Import oder periodisch ausgefuehrt.
+    Wird nach jedem Import oder periodisch ausgeführt.
 
-    Matching-Strategien (nach Prioritaet):
+    Matching-Strategien (nach Priorität):
     1. IBAN + Betrag (exakt) - 99% Confidence
     2. Referenznummer - 95% Confidence
     3. Skonto-Erkennung - 92% Confidence
@@ -543,8 +543,8 @@ def auto_reconcile_transactions(
     5. Fuzzy Matching - 70%+ Confidence
 
     Args:
-        connection_id: Optional - nur fuer bestimmte Verbindung
-        account_id: Optional - nur fuer bestimmtes Konto
+        connection_id: Optional - nur für bestimmte Verbindung
+        account_id: Optional - nur für bestimmtes Konto
         limit: Max. Transaktionen pro Durchlauf
 
     Returns:
@@ -566,7 +566,7 @@ async def _auto_reconcile_transactions(
     account_id: Optional[str] = None,
     limit: int = 500,
 ) -> Dict[str, Any]:
-    """Async Implementation fuer auto_reconcile_transactions."""
+    """Async Implementation für auto_reconcile_transactions."""
     from app.db.models_banking_connection import ImportedTransaction
     from app.services.banking.auto_reconciliation_service import (
         AutoReconciliationService,
@@ -681,9 +681,9 @@ async def _auto_reconcile_transactions(
 )
 def reconcile_pending_batch(self, company_id: str) -> Dict[str, Any]:
     """
-    Batch-Reconciliation fuer alle pending Transaktionen einer Company.
+    Batch-Reconciliation für alle pending Transaktionen einer Company.
 
-    Wird periodisch oder on-demand ausgefuehrt.
+    Wird periodisch oder on-demand ausgeführt.
 
     Args:
         company_id: Company-ID
@@ -701,7 +701,7 @@ def reconcile_pending_batch(self, company_id: str) -> Dict[str, Any]:
 
 
 async def _reconcile_pending_batch(company_id: str) -> Dict[str, Any]:
-    """Async Implementation fuer reconcile_pending_batch."""
+    """Async Implementation für reconcile_pending_batch."""
     from app.services.banking.auto_reconciliation_service import (
         AutoReconciliationService,
     )
@@ -750,8 +750,8 @@ def process_scheduled_payments(self) -> Dict[str, Any]:
     """
     Verarbeite geplante Zahlungen.
 
-    Wird stuendlich ausgefuehrt (via Celery Beat).
-    Submittiert Zahlungen deren Ausfuehrungsdatum erreicht ist.
+    Wird stündlich ausgeführt (via Celery Beat).
+    Submittiert Zahlungen deren Ausführungsdatum erreicht ist.
 
     Returns:
         Processing-Statistik
@@ -765,7 +765,7 @@ def process_scheduled_payments(self) -> Dict[str, Any]:
 
 
 async def _process_scheduled_payments() -> Dict[str, Any]:
-    """Async Implementation fuer process_scheduled_payments."""
+    """Async Implementation für process_scheduled_payments."""
     from app.db.models_banking_connection import (
         PaymentInitiation, PaymentInitiationStatus
     )
@@ -787,7 +787,7 @@ async def _process_scheduled_payments() -> Dict[str, Any]:
             payment_service = PaymentInitiationService(db)
             now = datetime.now(timezone.utc)
 
-            # Finde Zahlungen die ausgefuehrt werden sollen
+            # Finde Zahlungen die ausgeführt werden sollen
             query = select(PaymentInitiation).where(
                 and_(
                     PaymentInitiation.status.in_([
@@ -808,7 +808,7 @@ async def _process_scheduled_payments() -> Dict[str, Any]:
                 stats["payments_checked"] += 1
 
                 try:
-                    # Genehmigung pruefen
+                    # Genehmigung prüfen
                     if payment.requires_approval and not payment.approved_by_id:
                         logger.debug(
                             "psd2_payment_awaiting_approval",
@@ -816,7 +816,7 @@ async def _process_scheduled_payments() -> Dict[str, Any]:
                         )
                         continue
 
-                    # SCA pruefen
+                    # SCA prüfen
                     if payment.status == PaymentInitiationStatus.AWAITING_SCA.value:
                         stats["payments_awaiting_sca"] += 1
                         continue
@@ -882,7 +882,7 @@ async def _process_scheduled_payments() -> Dict[str, Any]:
 )
 def check_payment_status(self, payment_id: str) -> Dict[str, Any]:
     """
-    Pruefe Status einer eingereichten Zahlung.
+    Prüfe Status einer eingereichten Zahlung.
 
     Wird nach Einreichung oder periodisch aufgerufen.
 
@@ -902,7 +902,7 @@ def check_payment_status(self, payment_id: str) -> Dict[str, Any]:
 
 
 async def _check_payment_status(payment_id: str) -> Dict[str, Any]:
-    """Async Implementation fuer check_payment_status."""
+    """Async Implementation für check_payment_status."""
     from app.db.models_banking_connection import PaymentInitiation
     from app.services.banking.payment_initiation_service import (
         PaymentInitiationService,
@@ -951,7 +951,7 @@ def update_connection_health(self) -> Dict[str, Any]:
     """
     Aktualisiere Health-Status aller Verbindungen.
 
-    Wird periodisch ausgefuehrt (via Celery Beat).
+    Wird periodisch ausgeführt (via Celery Beat).
     Setzt is_healthy basierend auf letzten Sync-Ergebnissen.
 
     Returns:
@@ -966,7 +966,7 @@ def update_connection_health(self) -> Dict[str, Any]:
 
 
 async def _update_connection_health() -> Dict[str, Any]:
-    """Async Implementation fuer update_connection_health."""
+    """Async Implementation für update_connection_health."""
     from app.db.models_banking_connection import BankConnection, ConnectionStatus
 
     stats = {
@@ -1050,7 +1050,7 @@ def cleanup_old_sync_logs(self, days_to_keep: int = 90) -> Dict[str, Any]:
     """
     Bereinige alte Sync-Logs.
 
-    Wird woechentlich ausgefuehrt (via Celery Beat).
+    Wird wöchentlich ausgeführt (via Celery Beat).
 
     Args:
         days_to_keep: Anzahl Tage aufbewahren
@@ -1068,7 +1068,7 @@ def cleanup_old_sync_logs(self, days_to_keep: int = 90) -> Dict[str, Any]:
 
 
 async def _cleanup_old_sync_logs(days_to_keep: int = 90) -> Dict[str, Any]:
-    """Async Implementation fuer cleanup_old_sync_logs."""
+    """Async Implementation für cleanup_old_sync_logs."""
     from app.db.models_banking_connection import BankSyncLog
     from sqlalchemy import delete
 

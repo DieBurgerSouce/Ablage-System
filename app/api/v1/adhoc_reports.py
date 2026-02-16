@@ -2,8 +2,8 @@
 """
 Ad-Hoc Reporting API Endpoints.
 
-Feature #12: Ermoeglicht Nutzern, eigene Reports mit beliebigen
-Datenquellen zu erstellen, auszufuehren und zu exportieren.
+Feature #12: Ermöglicht Nutzern, eigene Reports mit beliebigen
+Datenquellen zu erstellen, auszuführen und zu exportieren.
 
 Alle Endpunkte sind mandantenisoliert (company_id).
 User-facing Text ist auf Deutsch.
@@ -76,8 +76,8 @@ class AggregationConfig(BaseModel):
 class ChartConfig(BaseModel):
     """Diagramm-Konfiguration."""
     chart_type: str = Field(..., description="bar|line|pie|area|scatter")
-    x_field: Optional[str] = Field(None, description="Feld fuer X-Achse")
-    y_field: Optional[str] = Field(None, description="Feld fuer Y-Achse")
+    x_field: Optional[str] = Field(None, description="Feld für X-Achse")
+    y_field: Optional[str] = Field(None, description="Feld für Y-Achse")
     title: Optional[str] = Field(None, description="Diagramm-Titel")
     colors: Optional[List[str]] = Field(None, description="Benutzerdefinierte Farben")
 
@@ -86,7 +86,7 @@ class ChartConfig(BaseModel):
 
 
 class AdHocReportCreate(BaseModel):
-    """Schema fuer Report-Erstellung."""
+    """Schema für Report-Erstellung."""
     name: str = Field(..., min_length=1, max_length=300, description="Report-Name")
     description: Optional[str] = Field(None, description="Beschreibung")
     data_sources: List[str] = Field(
@@ -102,7 +102,7 @@ class AdHocReportCreate(BaseModel):
 
 
 class AdHocReportUpdate(BaseModel):
-    """Schema fuer Report-Aktualisierung."""
+    """Schema für Report-Aktualisierung."""
     name: Optional[str] = Field(None, min_length=1, max_length=300)
     description: Optional[str] = None
     data_sources: Optional[List[str]] = None
@@ -116,30 +116,30 @@ class AdHocReportUpdate(BaseModel):
 
 
 class ShareRequest(BaseModel):
-    """Schema fuer Report-Freigabe."""
+    """Schema für Report-Freigabe."""
     shared_with_user_id: uuid.UUID = Field(..., description="Benutzer-ID")
     can_edit: bool = Field(False, description="Bearbeitungsrecht?")
 
 
 class ExecuteRequest(BaseModel):
-    """Schema fuer Report-Ausfuehrung mit Parametern."""
+    """Schema für Report-Ausführung mit Parametern."""
     parameter_overrides: Optional[Dict[str, FilterValue]] = Field(
-        None, description="Laufzeit-Parameter-Ueberschreibungen"
+        None, description="Laufzeit-Parameter-Überschreibungen"
     )
 
 
 class ScheduleCreate(BaseModel):
-    """Schema fuer Zeitplan-Erstellung."""
+    """Schema für Zeitplan-Erstellung."""
     frequency: str = Field(..., description="daily|weekly|monthly|quarterly")
     export_format: str = Field("excel", description="pdf|excel|csv")
-    recipients: List[str] = Field(..., min_length=1, description="E-Mail-Empfaenger")
+    recipients: List[str] = Field(..., min_length=1, description="E-Mail-Empfänger")
     time_of_day: str = Field("08:00", description="Uhrzeit (HH:MM)")
     day_of_week: Optional[int] = Field(None, ge=0, le=6, description="0=Mo, 6=So")
     day_of_month: Optional[int] = Field(None, ge=1, le=28, description="Tag des Monats")
 
 
 class ScheduleUpdate(BaseModel):
-    """Schema fuer Zeitplan-Aktualisierung."""
+    """Schema für Zeitplan-Aktualisierung."""
     frequency: Optional[str] = None
     recipients: Optional[List[str]] = None
     export_format: Optional[str] = None
@@ -153,7 +153,7 @@ class ScheduleUpdate(BaseModel):
 
 
 class AdHocReportResponse(BaseModel):
-    """Response fuer einen Ad-Hoc Report."""
+    """Response für einen Ad-Hoc Report."""
     id: uuid.UUID
     company_id: uuid.UUID
     created_by: uuid.UUID
@@ -176,14 +176,14 @@ class AdHocReportResponse(BaseModel):
 
 
 class DataSourceResponse(BaseModel):
-    """Response fuer eine Datenquelle."""
+    """Response für eine Datenquelle."""
     key: str
     label: str
     table: str
 
 
 class FieldDefinitionResponse(BaseModel):
-    """Response fuer eine Feld-Definition."""
+    """Response für eine Feld-Definition."""
     field: str
     label: str
     type: str
@@ -191,7 +191,7 @@ class FieldDefinitionResponse(BaseModel):
 
 
 class ExecutionResultResponse(BaseModel):
-    """Response fuer eine Report-Ausfuehrung."""
+    """Response für eine Report-Ausführung."""
     columns: List[Dict[str, str]]
     rows: List[Dict[str, JSONValue]]
     total_rows: int
@@ -200,7 +200,7 @@ class ExecutionResultResponse(BaseModel):
 
 
 class ShareResponse(BaseModel):
-    """Response fuer eine Freigabe."""
+    """Response für eine Freigabe."""
     id: uuid.UUID
     report_id: uuid.UUID
     shared_with_user_id: Optional[uuid.UUID]
@@ -212,7 +212,7 @@ class ShareResponse(BaseModel):
 
 
 class ScheduleResponse(BaseModel):
-    """Response fuer einen Zeitplan."""
+    """Response für einen Zeitplan."""
     id: uuid.UUID
     report_id: uuid.UUID
     company_id: uuid.UUID
@@ -237,7 +237,7 @@ class ScheduleResponse(BaseModel):
 
 
 def _get_service():
-    """Lazy import um zirkulaere Importe zu vermeiden."""
+    """Lazy import um zirkuläre Importe zu vermeiden."""
     from app.services.adhoc_report_service import get_adhoc_report_service
     return get_adhoc_report_service()
 
@@ -249,9 +249,9 @@ def _get_service():
 
 @router.get("/data-sources", response_model=List[DataSourceResponse])
 async def list_data_sources() -> List[DataSourceResponse]:
-    """Gibt alle verfuegbaren Datenquellen zurueck.
+    """Gibt alle verfügbaren Datenquellen zurück.
 
-    Jede Datenquelle enthaelt Name und Beschreibung auf Deutsch.
+    Jede Datenquelle enthält Name und Beschreibung auf Deutsch.
     """
     service = _get_service()
     sources = service.get_data_sources()
@@ -263,9 +263,9 @@ async def list_data_sources() -> List[DataSourceResponse]:
     response_model=List[FieldDefinitionResponse],
 )
 async def list_source_fields(source: str) -> List[FieldDefinitionResponse]:
-    """Gibt die verfuegbaren Felder fuer eine bestimmte Datenquelle zurueck.
+    """Gibt die verfügbaren Felder für eine bestimmte Datenquelle zurück.
 
-    SICHERHEIT: Nur Felder aus der Whitelist werden zurueckgegeben.
+    SICHERHEIT: Nur Felder aus der Whitelist werden zurückgegeben.
     """
     service = _get_service()
     try:
@@ -326,14 +326,14 @@ async def create_report(
 
 @router.get("", response_model=List[AdHocReportResponse])
 async def list_reports(
-    include_shared: bool = Query(True, description="Geteilte Reports einschliessen?"),
+    include_shared: bool = Query(True, description="Geteilte Reports einschließen?"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ) -> List[AdHocReportResponse]:
-    """Listet alle Ad-Hoc Reports des aktuellen Benutzers (eigene + geteilte + oeffentliche)."""
+    """Listet alle Ad-Hoc Reports des aktuellen Benutzers (eigene + geteilte + öffentliche)."""
     service = _get_service()
     reports = await service.list_reports(
         db=db,
@@ -353,7 +353,7 @@ async def get_report(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ) -> AdHocReportResponse:
-    """Laedt einen spezifischen Ad-Hoc Report."""
+    """Lädt einen spezifischen Ad-Hoc Report."""
     service = _get_service()
     report = await service.get_report(db, report_id, company_id)
     if not report:
@@ -428,7 +428,7 @@ async def delete_report(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ) -> Response:
-    """Loescht einen Ad-Hoc Report (nur Besitzer)."""
+    """Löscht einen Ad-Hoc Report (nur Besitzer)."""
     service = _get_service()
     success = await service.delete_report(db, report_id, company_id, current_user.id)
     if not success:
@@ -452,9 +452,9 @@ async def execute_report(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ) -> ExecutionResultResponse:
-    """Fuehrt einen Ad-Hoc Report aus und gibt die Daten zurueck.
+    """Führt einen Ad-Hoc Report aus und gibt die Daten zurück.
 
-    Fuer grosse Reports (>5000 Zeilen) wird empfohlen,
+    Für große Reports (>5000 Zeilen) wird empfohlen,
     den Export-Endpunkt zu verwenden.
     """
     service = _get_service()
@@ -498,7 +498,7 @@ async def export_report(
 ) -> Response:
     """Exportiert einen Ad-Hoc Report als PDF, Excel oder CSV.
 
-    Gibt die Datei direkt als Download zurueck.
+    Gibt die Datei direkt als Download zurück.
     """
     from app.db.models_adhoc_report import AdHocExportFormat
 
@@ -506,7 +506,7 @@ async def export_report(
     if export_format not in valid_formats:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltiges Format: {export_format}. Erlaubt: {', '.join(valid_formats)}",
+            detail=f"Ungültiges Format: {export_format}. Erlaubt: {', '.join(valid_formats)}",
         )
 
     service = _get_service()
@@ -521,7 +521,7 @@ async def export_report(
             export_format=fmt,
         )
 
-        # Report-Name fuer Dateinamen holen
+        # Report-Name für Dateinamen holen
         report = await service.get_report(db, report_id, company_id)
         report_name = report.name if report else "Ad-Hoc-Report"
 
@@ -626,7 +626,7 @@ async def create_schedule(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ) -> ScheduleResponse:
-    """Erstellt einen Zeitplan fuer automatischen Report-Versand per E-Mail."""
+    """Erstellt einen Zeitplan für automatischen Report-Versand per E-Mail."""
     from app.db.models_adhoc_report import (
         AdHocExportFormat,
         ReportScheduleFrequency,
@@ -638,14 +638,14 @@ async def create_schedule(
     if data.frequency not in valid_frequencies:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltige Frequenz: {data.frequency}",
+            detail=f"Ungültige Frequenz: {data.frequency}",
         )
 
     valid_formats = {"pdf", "excel", "csv"}
     if data.export_format not in valid_formats:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltiges Format: {data.export_format}",
+            detail=f"Ungültiges Format: {data.export_format}",
         )
 
     try:
@@ -698,7 +698,7 @@ async def delete_schedule(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ) -> Response:
-    """Loescht einen Zeitplan."""
+    """Löscht einen Zeitplan."""
     service = _get_service()
     success = await service.delete_schedule(db, schedule_id, company_id)
     if not success:
@@ -712,7 +712,7 @@ async def list_schedules(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ) -> List[ScheduleResponse]:
-    """Listet alle Zeitplaene des aktuellen Mandanten."""
+    """Listet alle Zeitpläne des aktuellen Mandanten."""
     service = _get_service()
     schedules = await service.list_schedules(db, company_id)
     return [ScheduleResponse.model_validate(s) for s in schedules]

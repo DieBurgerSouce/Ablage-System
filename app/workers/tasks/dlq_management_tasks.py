@@ -28,26 +28,26 @@ from app.workers.celery_app import celery_app, CPUTask
 
 
 # =============================================================================
-# Pydantic Validierungsmodelle fuer DLQ-Tasks
+# Pydantic Validierungsmodelle für DLQ-Tasks
 # =============================================================================
 
 class DLQTaskHeadersSchema(BaseModel):
-    """Validierungsschema fuer Celery Task Headers."""
+    """Validierungsschema für Celery Task Headers."""
     id: Optional[str] = None
     task: Optional[str] = None
 
-    model_config = ConfigDict(extra="allow")  # Erlaube zusaetzliche Felder
+    model_config = ConfigDict(extra="allow")  # Erlaube zusätzliche Felder
 
 
 class DLQTaskPropertiesSchema(BaseModel):
-    """Validierungsschema fuer Celery Task Properties."""
+    """Validierungsschema für Celery Task Properties."""
     timestamp: Optional[float] = None
 
     model_config = ConfigDict(extra="allow")
 
 
 class DLQTaskSchema(BaseModel):
-    """Validierungsschema fuer DLQ Task JSON.
+    """Validierungsschema für DLQ Task JSON.
 
     Validiert die Struktur von Celery-Tasks in der Dead Letter Queue.
     """
@@ -151,7 +151,7 @@ def get_dlq_stats() -> Dict[str, Any]:
             for task_data in tasks:
                 try:
                     raw_task = json.loads(task_data)
-                    # Pydantic-Validierung fuer sichere Deserialisierung
+                    # Pydantic-Validierung für sichere Deserialisierung
                     validated_task = validate_dlq_task(raw_task)
                     task_name = validated_task.headers.task or "unknown"
                     task_types[task_name] += 1
@@ -204,7 +204,7 @@ def get_dlq_tasks(limit: int = 50, offset: int = 0) -> List[Dict[str, Any]]:
         for raw_task in raw_tasks:
             try:
                 task_data = json.loads(raw_task)
-                # Pydantic-Validierung fuer sichere Deserialisierung
+                # Pydantic-Validierung für sichere Deserialisierung
                 validated_task = validate_dlq_task(task_data)
                 task_info = {
                     "task_id": validated_task.headers.id,
@@ -537,11 +537,11 @@ def alert_on_critical_dlq_count(
 ) -> Dict[str, Any]:
     """Alarmiert bei kritischer DLQ-Anzahl.
 
-    Wird alle 5 Minuten von Celery Beat ausgefuehrt.
-    Erzeugt Alerts und Incidents wenn DLQ-Anzahl ueber Schwellenwert liegt.
+    Wird alle 5 Minuten von Celery Beat ausgeführt.
+    Erzeugt Alerts und Incidents wenn DLQ-Anzahl über Schwellenwert liegt.
 
     Args:
-        threshold: Schwellenwert fuer kritische Anzahl (default 100)
+        threshold: Schwellenwert für kritische Anzahl (default 100)
 
     Returns:
         Dict mit DLQ-Status und Alert-Information
@@ -578,14 +578,14 @@ def alert_on_critical_dlq_count(
                 severity=result["severity"],
             )
 
-            # Incident-Reporting fuer kritische DLQ-Zustaende
+            # Incident-Reporting für kritische DLQ-Zustaende
             if result["severity"] == "critical":
                 try:
                     from app.services.incident_response_service import (
                         report_system_incident, IncidentType, IncidentSeverity
                     )
 
-                    # Zusaetzliche Details sammeln
+                    # Zusätzliche Details sammeln
                     stats = get_dlq_stats()
 
                     report_system_incident(
@@ -603,7 +603,7 @@ def alert_on_critical_dlq_count(
                     result["incident_reported"] = True
 
                 except ImportError:
-                    # Incident-Service nicht verfuegbar
+                    # Incident-Service nicht verfügbar
                     logger.debug("incident_service_not_available")
                     result["incident_reported"] = False
                 except Exception as incident_e:
@@ -625,7 +625,7 @@ def alert_on_critical_dlq_count(
                         await alert_service.create_alert(
                             alert_code="SYS_003",  # System Performance Alert
                             title=f"DLQ kritisch: {dlq_count} fehlgeschlagene Tasks",
-                            message=f"Die Dead Letter Queue enthaelt {dlq_count} fehlgeschlagene Tasks. "
+                            message=f"Die Dead Letter Queue enthält {dlq_count} fehlgeschlagene Tasks. "
                                    f"Schwellenwert: {threshold}. Manuelles Eingreifen erforderlich.",
                             category="system",
                             severity=result["severity"],
@@ -648,7 +648,7 @@ def alert_on_critical_dlq_count(
                 result["alert_center_notified"] = True
 
             except ImportError:
-                # Alert Center nicht verfuegbar
+                # Alert Center nicht verfügbar
                 result["alert_center_notified"] = False
             except Exception as alert_e:
                 logger.debug(
@@ -670,7 +670,7 @@ def alert_on_critical_dlq_count(
         logger.error("dlq_alert_redis_error", **safe_error_log(e))
         return {
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "error": safe_error_detail(e, "DLQ-Pruefung"),
+            "error": safe_error_detail(e, "DLQ-Prüfung"),
             "alert_triggered": False,
         }
 

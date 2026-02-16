@@ -1,14 +1,14 @@
 """
-Hardware Monitoring Service fuer Ablage-System.
+Hardware Monitoring Service für Ablage-System.
 
-Ueberwacht Hardware-Metriken:
+Überwacht Hardware-Metriken:
 - Disk I/O
 - Netzwerk
 - CPU/Memory
 - GPU (NVIDIA)
 - Temperatur
 
-Integriert mit Prometheus fuer Metriken-Export.
+Integriert mit Prometheus für Metriken-Export.
 """
 
 import asyncio
@@ -307,7 +307,7 @@ class HardwareAlert:
 
 @dataclass
 class HardwareReport:
-    """Vollstaendiger Hardware-Bericht."""
+    """Vollständiger Hardware-Bericht."""
 
     timestamp: datetime
     hostname: str
@@ -327,7 +327,7 @@ class HardwareReport:
 # =============================================================================
 
 class HardwareMonitoringService:
-    """Service fuer Hardware-Ueberwachung."""
+    """Service für Hardware-Überwachung."""
 
     def __init__(
         self,
@@ -342,12 +342,12 @@ class HardwareMonitoringService:
         Initialisiert den Hardware-Monitoring-Service.
 
         Args:
-            disk_threshold_percent: Schwellwert fuer Disk-Warnung
-            memory_threshold_percent: Schwellwert fuer Memory-Warnung
-            cpu_threshold_percent: Schwellwert fuer CPU-Warnung
-            gpu_memory_threshold_percent: Schwellwert fuer GPU-Memory-Warnung
-            gpu_temp_threshold_celsius: Schwellwert fuer GPU-Temperatur-Warnung
-            cpu_temp_threshold_celsius: Schwellwert fuer CPU-Temperatur-Warnung
+            disk_threshold_percent: Schwellwert für Disk-Warnung
+            memory_threshold_percent: Schwellwert für Memory-Warnung
+            cpu_threshold_percent: Schwellwert für CPU-Warnung
+            gpu_memory_threshold_percent: Schwellwert für GPU-Memory-Warnung
+            gpu_temp_threshold_celsius: Schwellwert für GPU-Temperatur-Warnung
+            cpu_temp_threshold_celsius: Schwellwert für CPU-Temperatur-Warnung
         """
         self.disk_threshold = disk_threshold_percent
         self.memory_threshold = memory_threshold_percent
@@ -356,11 +356,11 @@ class HardwareMonitoringService:
         self.gpu_temp_threshold = gpu_temp_threshold_celsius
         self.cpu_temp_threshold = cpu_temp_threshold_celsius
 
-        # Cache fuer I/O-Berechnungen
+        # Cache für I/O-Berechnungen
         self._last_disk_io: dict[str, tuple[int, int, float]] = {}
         self._last_network_io: dict[str, tuple[int, int, float]] = {}
 
-        # GPU-Verfuegbarkeit pruefen
+        # GPU-Verfügbarkeit prüfen
         self._nvml_available = self._init_nvml()
 
     def _init_nvml(self) -> bool:
@@ -369,7 +369,7 @@ class HardwareMonitoringService:
             import pynvml
 
             pynvml.nvmlInit()
-            logger.info("NVML initialisiert - GPU-Monitoring verfuegbar")
+            logger.info("NVML initialisiert - GPU-Monitoring verfügbar")
             return True
         except ImportError:
             logger.warning("pynvml nicht installiert - GPU-Monitoring deaktiviert")
@@ -384,7 +384,7 @@ class HardwareMonitoringService:
 
     async def get_cpu_metrics(self) -> CPUMetrics:
         """Erfasst CPU-Metriken."""
-        # CPU-Auslastung (blockiert fuer Intervall)
+        # CPU-Auslastung (blockiert für Intervall)
         usage_per_core = await asyncio.to_thread(
             psutil.cpu_percent, interval=0.1, percpu=True
         )
@@ -511,7 +511,7 @@ class HardwareMonitoringService:
                     )
                 )
             except (PermissionError, OSError) as e:
-                logger.debug(f"Disk-Zugriff fehlgeschlagen fuer {partition.mountpoint}: {e}")
+                logger.debug(f"Disk-Zugriff fehlgeschlagen für {partition.mountpoint}: {e}")
                 continue
 
         return disks
@@ -527,7 +527,7 @@ class HardwareMonitoringService:
         net_if_stats = psutil.net_if_stats()
 
         for interface, io in io_counters.items():
-            # Loopback und virtuelle Interfaces ueberspringen
+            # Loopback und virtuelle Interfaces überspringen
             if interface.startswith(("lo", "veth", "docker", "br-")):
                 continue
 
@@ -664,7 +664,7 @@ class HardwareMonitoringService:
                     )
 
         except (AttributeError, OSError):
-            # sensors_temperatures() nicht auf allen Plattformen verfuegbar
+            # sensors_temperatures() nicht auf allen Plattformen verfügbar
             pass
 
         return temps
@@ -681,7 +681,7 @@ class HardwareMonitoringService:
         gpus: list[GPUMetrics],
         temperatures: list[TemperatureMetrics],
     ) -> list[HardwareAlert]:
-        """Prueft auf Hardware-Probleme und generiert Alerts."""
+        """Prüft auf Hardware-Probleme und generiert Alerts."""
         alerts: list[HardwareAlert] = []
 
         # CPU-Auslastung
@@ -779,7 +779,7 @@ class HardwareMonitoringService:
     # =========================================================================
 
     async def get_full_hardware_status(self) -> HardwareReport:
-        """Erfasst vollstaendigen Hardware-Status."""
+        """Erfasst vollständigen Hardware-Status."""
         # Alle Metriken parallel erfassen
         cpu, memory, disks, networks, gpus, temps = await asyncio.gather(
             self.get_cpu_metrics(),
@@ -799,7 +799,7 @@ class HardwareMonitoringService:
         uname = platform.uname()
         os_info = f"{uname.system} {uname.release} ({uname.machine})"
 
-        # Alerts pruefen
+        # Alerts prüfen
         alerts = await self.check_health_alerts(cpu, memory, disks, gpus, temps)
 
         return HardwareReport(
@@ -821,7 +821,7 @@ class HardwareMonitoringService:
     # =========================================================================
 
     async def quick_health_check(self) -> dict[str, Any]:
-        """Schnelle Health-Pruefung fuer API-Endpoints."""
+        """Schnelle Health-Prüfung für API-Endpoints."""
         cpu = psutil.cpu_percent(interval=0.1)
         memory = psutil.virtual_memory()
         disk = psutil.disk_usage("/")
@@ -877,7 +877,7 @@ _hardware_monitoring_service: Optional[HardwareMonitoringService] = None
 
 
 def get_hardware_monitoring_service() -> HardwareMonitoringService:
-    """Gibt die Singleton-Instanz des Hardware-Monitoring-Service zurueck."""
+    """Gibt die Singleton-Instanz des Hardware-Monitoring-Service zurück."""
     global _hardware_monitoring_service
     if _hardware_monitoring_service is None:
         _hardware_monitoring_service = HardwareMonitoringService()

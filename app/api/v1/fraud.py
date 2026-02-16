@@ -86,7 +86,7 @@ class IBANVerificationRequestSchema(BaseModel):
         if len(v) < 15 or len(v) > 34:
             raise ValueError("IBAN muss zwischen 15 und 34 Zeichen haben")
         if not v[:2].isalpha():
-            raise ValueError("IBAN muss mit Laendercode beginnen")
+            raise ValueError("IBAN muss mit Ländercode beginnen")
         return v
 
 
@@ -205,7 +205,7 @@ async def scan_document_for_fraud(
         else:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Scan-Typ '{request.scan_type}' erfordert zusaetzliche Parameter",
+                detail=f"Scan-Typ '{request.scan_type}' erfordert zusätzliche Parameter",
             )
 
         await db.commit()
@@ -543,7 +543,7 @@ async def approve_iban_change(
     if not change_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="IBAN-Aenderungsanfrage nicht gefunden",
+            detail="IBAN-Änderungsanfrage nicht gefunden",
         )
 
     if change_request.status != IBANChangeStatus.PENDING.value:
@@ -576,7 +576,7 @@ async def approve_iban_change(
 
     return {
         "success": True,
-        "message": "IBAN-Aenderung genehmigt",
+        "message": "IBAN-Änderung genehmigt",
         "request_id": str(request_id),
     }
 
@@ -612,7 +612,7 @@ async def reject_iban_change(
     if not change_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="IBAN-Aenderungsanfrage nicht gefunden",
+            detail="IBAN-Änderungsanfrage nicht gefunden",
         )
 
     if change_request.status != IBANChangeStatus.PENDING.value:
@@ -630,7 +630,7 @@ async def reject_iban_change(
 
     return {
         "success": True,
-        "message": "IBAN-Aenderung abgelehnt",
+        "message": "IBAN-Änderung abgelehnt",
         "request_id": str(request_id),
     }
 

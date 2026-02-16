@@ -2,8 +2,8 @@
 """
 Document Lifecycle SLA Monitoring - Celery Periodic Task.
 
-Prueft alle 15 Minuten auf SLA-Verletzungen und erstellt
-Alerts ueber den Alert Center Service.
+Prüft alle 15 Minuten auf SLA-Verletzungen und erstellt
+Alerts über den Alert Center Service.
 
 Beat Schedule (in celery_app.py zu registrieren):
     'check-lifecycle-sla-violations': {
@@ -35,18 +35,18 @@ def check_sla_violations_task(
     company_id: Optional[str] = None,
 ) -> Dict[str, int]:
     """
-    Prueft alle Mandanten auf SLA-Verletzungen und erstellt Alerts.
+    Prüft alle Mandanten auf SLA-Verletzungen und erstellt Alerts.
 
     Wird alle 15 Minuten von Celery Beat aufgerufen.
-    Erstellt Alerts ueber den Alert Center Service, wenn
+    Erstellt Alerts über den Alert Center Service, wenn
     die Verweildauer in einer Lebenszyklus-Stufe die konfigurierte
-    maximale Dauer ueberschreitet.
+    maximale Dauer überschreitet.
 
     Args:
-        company_id: Optional - nur fuer bestimmten Mandanten pruefen
+        company_id: Optional - nur für bestimmten Mandanten prüfen
 
     Returns:
-        Statistiken ueber gefundene Verletzungen und erstellte Alerts
+        Statistiken über gefundene Verletzungen und erstellte Alerts
     """
     logger.info(
         "lifecycle_sla_check_started",
@@ -74,10 +74,10 @@ async def _check_violations_async(
     company_id: Optional[str] = None,
 ) -> Dict[str, int]:
     """
-    Asynchrone SLA-Pruefung fuer alle oder einen bestimmten Mandanten.
+    Asynchrone SLA-Prüfung für alle oder einen bestimmten Mandanten.
 
-    Erstellt fuer jede gefundene SLA-Verletzung einen Alert
-    ueber den Alert Center Service.
+    Erstellt für jede gefundene SLA-Verletzung einen Alert
+    über den Alert Center Service.
     """
     from uuid import UUID
 
@@ -126,7 +126,7 @@ async def _check_violations_async(
                 alert_service = AlertCenterService(session)
 
                 for violation in violations:
-                    # Schweregrad basierend auf Ueberschreitung
+                    # Schweregrad basierend auf Überschreitung
                     if violation.overdue_hours > 24:
                         severity = AlertSeverity.CRITICAL
                     elif violation.overdue_hours > 8:
@@ -150,7 +150,7 @@ async def _check_violations_async(
                             f"{violation.actual_duration_hours:.1f} Stunden "
                             f"in der Stufe '{stage_label}' "
                             f"(Maximum: {violation.max_duration_hours}h). "
-                            f"Ueberschreitung: {violation.overdue_hours:.1f}h."
+                            f"Überschreitung: {violation.overdue_hours:.1f}h."
                         ),
                         source_type="lifecycle_sla",
                         source_id=str(violation.document_id),

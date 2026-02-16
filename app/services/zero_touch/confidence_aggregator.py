@@ -5,9 +5,9 @@ Aggregiert Confidence-Scores aus mehreren Quellen:
 - OCR Confidence (Texterkennung)
 - Classification Confidence (Dokumententyp)
 - Extraction Confidence (Strukturierte Felder)
-- Entity Matching Confidence (Geschaeftspartner-Zuordnung)
+- Entity Matching Confidence (Geschäftspartner-Zuordnung)
 
-Jede Quelle hat eine Gewichtung fuer die Gesamtbewertung.
+Jede Quelle hat eine Gewichtung für die Gesamtbewertung.
 """
 
 from dataclasses import dataclass
@@ -23,10 +23,10 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 DEFAULT_WEIGHTS = {
-    "ocr_confidence": 0.25,           # OCR-Qualitaet
+    "ocr_confidence": 0.25,           # OCR-Qualität
     "classification_confidence": 0.30, # Dokumententyp-Klassifizierung
     "extraction_confidence": 0.30,     # Feldextraktion
-    "entity_confidence": 0.15,         # Geschaeftspartner-Zuordnung
+    "entity_confidence": 0.15,         # Geschäftspartner-Zuordnung
 }
 
 
@@ -68,14 +68,14 @@ class ConfidenceAggregator:
 
         Args:
             weights: Optional custom Gewichtungen. Falls None, werden DEFAULT_WEIGHTS verwendet.
-            auto_threshold: Schwellwert fuer automatische Verarbeitung (0.0 - 1.0)
+            auto_threshold: Schwellwert für automatische Verarbeitung (0.0 - 1.0)
         """
         self._weights = weights or DEFAULT_WEIGHTS.copy()
         self._auto_threshold = auto_threshold
 
         # Validierung der Gewichtungen
         total_weight = sum(self._weights.values())
-        if not (0.99 <= total_weight <= 1.01):  # Toleranz fuer Rundungsfehler
+        if not (0.99 <= total_weight <= 1.01):  # Toleranz für Rundungsfehler
             logger.warning(
                 "confidence_weights_sum_invalid",
                 total_weight=total_weight,
@@ -179,7 +179,7 @@ class ConfidenceAggregator:
         # Gesamt-Score berechnen
         overall = sum(item.weighted_score for item in breakdown)
 
-        # Auto-Processable pruefen
+        # Auto-Processable prüfen
         auto_processable = overall >= self._auto_threshold
 
         logger.info(
@@ -206,7 +206,7 @@ class ConfidenceAggregator:
 
         Args:
             value: Der zu validierende Wert
-            name: Name des Werts (fuer Fehlermeldung)
+            name: Name des Werts (für Fehlermeldung)
 
         Raises:
             ValueError: Wenn der Wert nicht im Bereich [0.0, 1.0] liegt
@@ -230,7 +230,7 @@ class ConfidenceAggregator:
             new_threshold: Neuer Schwellwert (0.0 - 1.0)
 
         Raises:
-            ValueError: Wenn der Schwellwert ungueltig ist
+            ValueError: Wenn der Schwellwert ungültig ist
         """
         if not (0.0 <= new_threshold <= 1.0):
             raise ValueError(
@@ -255,7 +255,7 @@ class ConfidenceAggregator:
             new_weights: Neue Gewichtungen
 
         Raises:
-            ValueError: Wenn die Gewichtungen ungueltig sind
+            ValueError: Wenn die Gewichtungen ungültig sind
         """
         # Validierung
         required_keys = {"ocr_confidence", "classification_confidence", "extraction_confidence", "entity_confidence"}

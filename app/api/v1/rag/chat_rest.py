@@ -1,6 +1,6 @@
 """REST Chat API Endpoints.
 
-Non-WebSocket chat interface fuer:
+Non-WebSocket chat interface für:
 - Session-Management
 - Synchrone Chat-Nachrichten mit Multi-Tool Calling
 - History-Abfragen
@@ -33,7 +33,7 @@ router = APIRouter(prefix="/chat", tags=["rag-chat"])
 
 
 def _get_user_level(user: User) -> str:
-    """Bestimmt User-Level fuer Tool-Zugriff.
+    """Bestimmt User-Level für Tool-Zugriff.
 
     Args:
         user: User-Objekt
@@ -142,7 +142,7 @@ async def send_chat_message(
     """
     chat_service = get_chat_service()
 
-    # Bestimme User-Level fuer Tool-Zugriff
+    # Bestimme User-Level für Tool-Zugriff
     user_level = _get_user_level(current_user)
 
     try:
@@ -256,7 +256,7 @@ async def send_chat_message_stream(
             parsed_calls = chat_service.tool_registry.parse_tool_calls(full_response)
 
             if parsed_calls:
-                yield f"data: {_json.dumps({'type': 'processing', 'message': 'Aktionen werden ausgefuehrt...'})}\n\n"
+                yield f"data: {_json.dumps({'type': 'processing', 'message': 'Aktionen werden ausgeführt...'})}\n\n"
 
                 tool_actions = await chat_service.dispatch_tool_calls(
                     tool_calls=parsed_calls,
@@ -308,7 +308,7 @@ async def send_chat_message_stream(
     "/sessions",
     response_model=SessionListResponse,
     summary="Chat-Sessions auflisten",
-    description="Gibt alle aktiven Chat-Sessions des Benutzers zurueck.",
+    description="Gibt alle aktiven Chat-Sessions des Benutzers zurück.",
 )
 async def list_sessions(
     current_user: User = Depends(get_current_user),
@@ -372,7 +372,7 @@ async def create_session(
     "/sessions/{session_id}",
     response_model=SessionHistoryResponse,
     summary="Session-Verlauf abrufen",
-    description="Gibt den Chat-Verlauf einer Session zurueck.",
+    description="Gibt den Chat-Verlauf einer Session zurück.",
 )
 async def get_session_history(
     session_id: str,
@@ -392,7 +392,7 @@ async def get_session_history(
     if history.get("user_id") and history["user_id"] != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Session",
+            detail="Keine Berechtigung für diese Session",
         )
 
     return SessionHistoryResponse(
@@ -408,8 +408,8 @@ async def get_session_history(
     "/sessions/{session_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Session loeschen",
-    description="Loescht eine Chat-Session.",
+    summary="Session löschen",
+    description="Löscht eine Chat-Session.",
 )
 async def delete_session(
     session_id: str,
@@ -429,7 +429,7 @@ async def delete_session(
     if history.get("user_id") and history["user_id"] != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Session",
+            detail="Keine Berechtigung für diese Session",
         )
 
     chat_service.delete_session(session_id)
@@ -447,8 +447,8 @@ async def delete_session(
     "/sessions/{session_id}/clear",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Session-Verlauf loeschen",
-    description="Loescht den Chat-Verlauf einer Session (behaelt System-Prompt).",
+    summary="Session-Verlauf löschen",
+    description="Löscht den Chat-Verlauf einer Session (behaelt System-Prompt).",
 )
 async def clear_session_history(
     session_id: str,
@@ -468,7 +468,7 @@ async def clear_session_history(
     if history.get("user_id") and history["user_id"] != str(current_user.id):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Session",
+            detail="Keine Berechtigung für diese Session",
         )
 
     chat_service.clear_session_history(session_id)
@@ -485,7 +485,7 @@ async def clear_session_history(
 @router.get(
     "/status",
     summary="Chat-Service Status",
-    description="Gibt den Status des Chat-Service zurueck.",
+    description="Gibt den Status des Chat-Service zurück.",
 )
 async def get_chat_service_status(
     current_user: User = Depends(get_current_user),
@@ -512,8 +512,8 @@ async def get_chat_service_status(
 
 @router.post(
     "/actions/{action_id}/confirm",
-    summary="Aktion bestaetigen",
-    description="Bestaetigt eine ausstehende Chat-Aktion.",
+    summary="Aktion bestätigen",
+    description="Bestätigt eine ausstehende Chat-Aktion.",
 )
 async def confirm_action(
     action_id: str,
@@ -538,7 +538,7 @@ async def confirm_action(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Action-ID",
+            detail="Ungültige Action-ID",
         )
     except Exception as e:
         logger.error(
@@ -549,7 +549,7 @@ async def confirm_action(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail(e, "Aktionsbestaetigung"),
+            detail=safe_error_detail(e, "Aktionsbestätigung"),
         )
 
 
@@ -580,7 +580,7 @@ async def reject_action(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Action-ID",
+            detail="Ungültige Action-ID",
         )
     except Exception as e:
         logger.error(

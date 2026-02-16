@@ -4,7 +4,7 @@ Inventory Services - Lagerverwaltung und Wareneingang
 Services:
 - WarehouseService: Lager-CRUD
 - InventoryItemService: Artikel-CRUD
-- StockService: Bestandsfuehrung
+- StockService: Bestandsführung
 - GoodsReceiptService: Wareneingang aus Lieferscheinen
 """
 

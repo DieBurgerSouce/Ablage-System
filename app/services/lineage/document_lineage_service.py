@@ -2,11 +2,11 @@
 """
 Document Lineage Service.
 
-Tracking der Datenherkunft und Verarbeitungshistorie fuer Dokumente:
+Tracking der Datenherkunft und Verarbeitungshistorie für Dokumente:
 - Import-Quelle (Email/Ordner/API/Manuell)
 - Verarbeitungsschritte (OCR -> Klassifikation -> Extraktion)
 - Entity-Linking mit Konfidenz
-- Aenderungen mit Zeitstempel und Benutzer
+- Änderungen mit Zeitstempel und Benutzer
 
 SECURITY: Niemals PII (Dokumentinhalte, Kundendaten) in Logs speichern.
 """
@@ -72,7 +72,7 @@ class TimelineEntry:
     source_service: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert in Dictionary fuer API-Response."""
+        """Konvertiert in Dictionary für API-Response."""
         return {
             "id": self.id,
             "event_type": self.event_type,
@@ -92,7 +92,7 @@ class TimelineEntry:
 
 class DocumentLineageService:
     """
-    Service fuer Document Lineage Tracking.
+    Service für Document Lineage Tracking.
 
     Speichert und analysiert die Verarbeitungshistorie von Dokumenten.
     """
@@ -128,7 +128,7 @@ class DocumentLineageService:
             source_type: Typ der Import-Quelle
             source_details: Details zur Quelle (ohne PII!)
             user_id: ID des Benutzers (bei manuellem Upload)
-            correlation_id: Korrelations-ID fuer zusammengehoerende Events
+            correlation_id: Korrelations-ID für zusammengehoerende Events
 
         Returns:
             Das erstellte LineageEvent
@@ -249,16 +249,16 @@ class DocumentLineageService:
         correlation_id: Optional[UUID] = None,
     ) -> DocumentLineageEvent:
         """
-        Zeichnet eine Entity-Verknuepfung auf.
+        Zeichnet eine Entity-Verknüpfung auf.
 
         Args:
             document_id: ID des Dokuments
             company_id: ID der Firma
-            entity_id: ID des verknuepften Geschaeftspartners
-            confidence: Konfidenz der Verknuepfung (0.0 - 1.0)
-            reason: Grund fuer die Verknuepfung (ohne PII!)
+            entity_id: ID des verknüpften Geschäftspartners
+            confidence: Konfidenz der Verknüpfung (0.0 - 1.0)
+            reason: Grund für die Verknüpfung (ohne PII!)
             match_type: Art des Matches (z.B. "customer_number", "iban")
-            user_id: ID des Benutzers (bei manueller Verknuepfung)
+            user_id: ID des Benutzers (bei manueller Verknüpfung)
             correlation_id: Korrelations-ID
 
         Returns:
@@ -315,23 +315,23 @@ class DocumentLineageService:
         correlation_id: Optional[UUID] = None,
     ) -> DocumentLineageEvent:
         """
-        Zeichnet eine Dokumentenaenderung auf.
+        Zeichnet eine Dokumentenänderung auf.
 
         Args:
             document_id: ID des Dokuments
             company_id: ID der Firma
-            field_name: Name des geaenderten Feldes
+            field_name: Name des geänderten Feldes
             old_value: Alter Wert (ohne PII - wird gefiltert!)
             new_value: Neuer Wert (ohne PII - wird gefiltert!)
-            user_id: ID des aendernden Benutzers
-            modification_type: Art der Aenderung
+            user_id: ID des ändernden Benutzers
+            modification_type: Art der Änderung
             correlation_id: Korrelations-ID
 
         Returns:
             Das erstellte LineageEvent
         """
         # SECURITY: Werte filtern - keine PII speichern
-        # Nur den Feldnamen und die Tatsache der Aenderung speichern
+        # Nur den Feldnamen und die Tatsache der Änderung speichern
         event = DocumentLineageEvent(
             document_id=document_id,
             company_id=company_id,
@@ -340,7 +340,7 @@ class DocumentLineageService:
                 "field": field_name,
                 "modification_type": modification_type,
                 "value_changed": old_value != new_value,
-                # SECURITY: Keine Werte speichern, nur ob sich etwas geaendert hat
+                # SECURITY: Keine Werte speichern, nur ob sich etwas geändert hat
             },
             user_id=user_id,
             source_service="document_service",
@@ -433,13 +433,13 @@ class DocumentLineageService:
         event_types: Optional[List[LineageEventType]] = None,
     ) -> tuple[List[TimelineEntry], int]:
         """
-        Ruft die vollstaendige Zeitleiste eines Dokuments ab.
+        Ruft die vollständige Zeitleiste eines Dokuments ab.
 
         Args:
             document_id: ID des Dokuments
-            company_id: ID der Firma (fuer Zugriffskontrolle)
-            limit: Maximale Anzahl der Eintraege
-            offset: Offset fuer Pagination
+            company_id: ID der Firma (für Zugriffskontrolle)
+            limit: Maximale Anzahl der Einträge
+            offset: Offset für Pagination
             event_types: Optional: Nur bestimmte Event-Typen
 
         Returns:
@@ -501,7 +501,7 @@ class DocumentLineageService:
         Returns:
             LineageStats oder None wenn nicht gefunden
         """
-        # Zuerst Summary pruefen (schneller)
+        # Zuerst Summary prüfen (schneller)
         summary_result = await self._db.execute(
             select(DocumentLineageSummary).where(
                 and_(
@@ -629,7 +629,7 @@ class DocumentLineageService:
         """Aktualisiert Summary nach Verarbeitungsschritt."""
         summary = await self._get_or_create_summary(document_id, company_id)
 
-        # Event-Zaehler
+        # Event-Zähler
         summary.total_event_count = (summary.total_event_count or 0) + 1
 
         # Verarbeitungsdauer
@@ -723,11 +723,11 @@ class DocumentLineageService:
         for key, value in data.items():
             key_lower = key.lower()
 
-            # Sensible Schluessel ueberspringen
+            # Sensible Schluessel überspringen
             if any(s in key_lower for s in sensitive_keys):
                 continue
 
-            # Rekursiv fuer verschachtelte Dicts
+            # Rekursiv für verschachtelte Dicts
             if isinstance(value, dict):
                 sanitized[key] = self._sanitize_event_data(value)
             else:
@@ -739,7 +739,7 @@ class DocumentLineageService:
         """
         Entfernt potenzielle PII aus einem String.
 
-        SECURITY: Kuerzt lange Strings und entfernt offensichtliche PII-Patterns.
+        SECURITY: Kürzt lange Strings und entfernt offensichtliche PII-Patterns.
         """
         if not value:
             return None
@@ -759,7 +759,7 @@ class DocumentLineageService:
 
 def get_lineage_service(db: AsyncSession) -> DocumentLineageService:
     """
-    Factory-Funktion fuer den DocumentLineageService.
+    Factory-Funktion für den DocumentLineageService.
 
     Args:
         db: Async Database Session

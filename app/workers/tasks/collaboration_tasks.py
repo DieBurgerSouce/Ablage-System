@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Celery Tasks fuer die Collaboration-Suite.
+Celery Tasks für die Collaboration-Suite.
 
 Geplante Tasks:
-- process_hourly_digests: Stuendliche Digest-Emails (jede volle Stunde)
-- process_daily_digests: Taegliche Digest-Emails (08:00 Uhr)
-- process_weekly_digests: Woechentliche Digest-Emails (Montag 08:00)
-- check_overdue_tasks: Aufgaben-Erinnerungen (stuendlich)
-- escalate_overdue_tasks: Eskalation bei ueberfaelligen Aufgaben (alle 4 Stunden)
-- cleanup_old_digest_entries: Alte Digest-Queue-Eintraege loeschen (woechentlich)
+- process_hourly_digests: Stündliche Digest-Emails (jede volle Stunde)
+- process_daily_digests: Tägliche Digest-Emails (08:00 Uhr)
+- process_weekly_digests: Wöchentliche Digest-Emails (Montag 08:00)
+- check_overdue_tasks: Aufgaben-Erinnerungen (stündlich)
+- escalate_overdue_tasks: Eskalation bei überfälligen Aufgaben (alle 4 Stunden)
+- cleanup_old_digest_entries: Alte Digest-Queue-Einträge löschen (wöchentlich)
 
-Feinpoliert und durchdacht - Zuverlaessige Kollaboration fuer Teams.
+Feinpoliert und durchdacht - Zuverlässige Kollaboration für Teams.
 """
 
 import asyncio
@@ -44,11 +44,11 @@ logger = structlog.get_logger(__name__)
 
 
 def run_async(coro):
-    """Hilfsfunktion um async Code in sync Celery Tasks auszufuehren.
+    """Hilfsfunktion um async Code in sync Celery Tasks auszuführen.
 
     MEMORY FIX: Verwendet asyncio.run() statt new_event_loop() um Memory Leaks
-    zu verhindern. asyncio.run() erstellt einen neuen Event-Loop, fuehrt die
-    Coroutine aus und schliesst den Loop korrekt inkl. aller pending Tasks.
+    zu verhindern. asyncio.run() erstellt einen neuen Event-Loop, führt die
+    Coroutine aus und schließt den Loop korrekt inkl. aller pending Tasks.
     """
     return asyncio.run(coro)
 
@@ -67,9 +67,9 @@ def run_async(coro):
 )
 def process_hourly_digests(self) -> Dict[str, Any]:
     """
-    Celery Task fuer stuendliche Digest-Emails.
+    Celery Task für stündliche Digest-Emails.
 
-    Verarbeitet alle Queue-Eintraege mit hourly-Frequenz und
+    Verarbeitet alle Queue-Einträge mit hourly-Frequenz und
     sendet zusammengefasste Benachrichtigungen an Benutzer.
 
     Returns:
@@ -177,9 +177,9 @@ def process_hourly_digests(self) -> Dict[str, Any]:
 )
 def process_daily_digests(self) -> Dict[str, Any]:
     """
-    Celery Task fuer taegliche Digest-Emails.
+    Celery Task für tägliche Digest-Emails.
 
-    Wird taeglich um 08:00 Uhr ausgefuehrt.
+    Wird täglich um 08:00 Uhr ausgeführt.
 
     Returns:
         Dict mit Ergebnissen (users_processed, emails_sent, errors)
@@ -280,9 +280,9 @@ def process_daily_digests(self) -> Dict[str, Any]:
 )
 def process_weekly_digests(self) -> Dict[str, Any]:
     """
-    Celery Task fuer woechentliche Digest-Emails.
+    Celery Task für wöchentliche Digest-Emails.
 
-    Wird jeden Montag um 08:00 Uhr ausgefuehrt.
+    Wird jeden Montag um 08:00 Uhr ausgeführt.
 
     Returns:
         Dict mit Ergebnissen (users_processed, emails_sent, errors)
@@ -387,14 +387,14 @@ def process_weekly_digests(self) -> Dict[str, Any]:
 )
 def check_overdue_tasks(self) -> Dict[str, Any]:
     """
-    Celery Task zum Pruefen ueberfaelliger Aufgaben.
+    Celery Task zum Prüfen überfälliger Aufgaben.
 
     Sendet Erinnerungen an Bearbeiter wenn:
-    - Aufgabe faellig ist (due_date erreicht)
+    - Aufgabe fällig ist (due_date erreicht)
     - Aufgabe noch nicht abgeschlossen
-    - Keine kuerzliche Erinnerung gesendet (24h Cooldown)
+    - Keine kürzliche Erinnerung gesendet (24h Cooldown)
 
-    Wird stuendlich ausgefuehrt.
+    Wird stündlich ausgeführt.
 
     Returns:
         Dict mit Statistiken
@@ -414,7 +414,7 @@ def check_overdue_tasks(self) -> Dict[str, Any]:
                 "errors": 0,
             }
 
-            # Finde ueberfaellige Aufgaben
+            # Finde überfällige Aufgaben
             result = await db.execute(
                 select(DocumentTask)
                 .options(
@@ -429,7 +429,7 @@ def check_overdue_tasks(self) -> Dict[str, Any]:
                             TaskStatus.IN_PROGRESS.value,
                             TaskStatus.BLOCKED.value,
                         ]),
-                        # Nur wenn keine kuerzliche Erinnerung
+                        # Nur wenn keine kürzliche Erinnerung
                         (DocumentTask.last_reminder_at.is_(None)) |
                         (DocumentTask.last_reminder_at < reminder_cooldown),
                     )
@@ -446,7 +446,7 @@ def check_overdue_tasks(self) -> Dict[str, Any]:
                     if not task.assigned_to_id:
                         continue
 
-                    # Berechne Ueberfaelligkeit
+                    # Berechne Überfälligkeit
                     overdue_hours = int((now - task.due_date).total_seconds() / 3600)
                     overdue_text = f"{overdue_hours} Stunden" if overdue_hours < 48 else f"{overdue_hours // 24} Tagen"
 
@@ -454,8 +454,8 @@ def check_overdue_tasks(self) -> Dict[str, Any]:
                     await notification_service.create_notification(
                         user_id=task.assigned_to_id,
                         notification_type=NotificationType.TASK_REMINDER,
-                        title=f"Aufgabe ueberfaellig: {task.title}",
-                        message=f"Die Aufgabe '{task.title}' ist seit {overdue_text} ueberfaellig. Bitte bearbeiten Sie diese zeitnah.",
+                        title=f"Aufgabe überfällig: {task.title}",
+                        message=f"Die Aufgabe '{task.title}' ist seit {overdue_text} überfällig. Bitte bearbeiten Sie diese zeitnah.",
                         priority="high",
                         action_url=f"/documents/{task.document_id}/tasks/{task.id}",
                         metadata={
@@ -510,10 +510,10 @@ def escalate_overdue_tasks(
     escalation_threshold_hours: int = 48,
 ) -> Dict[str, Any]:
     """
-    Celery Task zur Eskalation stark ueberfaelliger Aufgaben.
+    Celery Task zur Eskalation stark überfälliger Aufgaben.
 
     Eskaliert Aufgaben die:
-    - Laenger als escalation_threshold_hours ueberfaellig sind
+    - Länger als escalation_threshold_hours überfällig sind
     - Noch nicht eskaliert wurden
     - Nicht abgeschlossen/abgebrochen sind
 
@@ -545,7 +545,7 @@ def escalate_overdue_tasks(
                 "errors": 0,
             }
 
-            # Finde stark ueberfaellige Aufgaben
+            # Finde stark überfällige Aufgaben
             result = await db.execute(
                 select(DocumentTask)
                 .options(
@@ -585,7 +585,7 @@ def escalate_overdue_tasks(
                             user_id=task.created_by_id,
                             notification_type=NotificationType.TASK_ESCALATED,
                             title=f"Aufgabe eskaliert: {task.title}",
-                            message=f"Die Aufgabe '{task.title}' ist seit {overdue_days} Tagen ueberfaellig und wurde eskaliert.",
+                            message=f"Die Aufgabe '{task.title}' ist seit {overdue_days} Tagen überfällig und wurde eskaliert.",
                             priority="urgent",
                             action_url=f"/documents/{task.document_id}/tasks/{task.id}",
                             metadata={
@@ -603,7 +603,7 @@ def escalate_overdue_tasks(
                             user_id=task.assigned_to_id,
                             notification_type=NotificationType.TASK_ESCALATED,
                             title=f"Aufgabe eskaliert: {task.title}",
-                            message=f"Die Ihnen zugewiesene Aufgabe '{task.title}' wurde aufgrund der Ueberfaelligkeit ({overdue_days} Tage) eskaliert.",
+                            message=f"Die Ihnen zugewiesene Aufgabe '{task.title}' wurde aufgrund der Überfälligkeit ({overdue_days} Tage) eskaliert.",
                             priority="urgent",
                             action_url=f"/documents/{task.document_id}/tasks/{task.id}",
                             metadata={
@@ -667,16 +667,16 @@ def cleanup_old_digest_entries(
     days_old: int = 7,
 ) -> Dict[str, Any]:
     """
-    Celery Task zum Loeschen alter Digest-Queue-Eintraege.
+    Celery Task zum Löschen alter Digest-Queue-Einträge.
 
-    Loescht gesendete Eintraege die aelter als X Tage sind.
-    Wird woechentlich ausgefuehrt.
+    Löscht gesendete Einträge die älter als X Tage sind.
+    Wird wöchentlich ausgeführt.
 
     Args:
-        days_old: Eintraege aelter als X Tage loeschen (Default: 7)
+        days_old: Einträge älter als X Tage löschen (Default: 7)
 
     Returns:
-        Dict mit Anzahl geloeschter Eintraege
+        Dict mit Anzahl gelöschter Einträge
     """
     logger.info(
         "cleanup_old_digest_entries_gestartet",
@@ -726,17 +726,17 @@ def send_task_due_soon_reminders(
     hours_before: int = 24,
 ) -> Dict[str, Any]:
     """
-    Celery Task fuer Erinnerungen an bald faellige Aufgaben.
+    Celery Task für Erinnerungen an bald fällige Aufgaben.
 
     Sendet Erinnerungen an Bearbeiter wenn:
-    - Aufgabe in weniger als hours_before faellig ist
+    - Aufgabe in weniger als hours_before fällig ist
     - Aufgabe noch nicht abgeschlossen
-    - Noch keine "bald faellig" Erinnerung gesendet
+    - Noch keine "bald fällig" Erinnerung gesendet
 
-    Wird alle 4 Stunden ausgefuehrt.
+    Wird alle 4 Stunden ausgeführt.
 
     Args:
-        hours_before: Stunden vor Faelligkeit (Default: 24)
+        hours_before: Stunden vor Fälligkeit (Default: 24)
 
     Returns:
         Dict mit Statistiken
@@ -760,7 +760,7 @@ def send_task_due_soon_reminders(
                 "errors": 0,
             }
 
-            # Finde bald faellige Aufgaben
+            # Finde bald fällige Aufgaben
             result = await db.execute(
                 select(DocumentTask)
                 .options(selectinload(DocumentTask.assigned_to))
@@ -794,8 +794,8 @@ def send_task_due_soon_reminders(
                     await notification_service.create_notification(
                         user_id=task.assigned_to_id,
                         notification_type=NotificationType.TASK_REMINDER,
-                        title=f"Aufgabe bald faellig: {task.title}",
-                        message=f"Die Aufgabe '{task.title}' ist in {time_text} faellig.",
+                        title=f"Aufgabe bald fällig: {task.title}",
+                        message=f"Die Aufgabe '{task.title}' ist in {time_text} fällig.",
                         priority="normal",
                         action_url=f"/documents/{task.document_id}/tasks/{task.id}",
                         metadata={

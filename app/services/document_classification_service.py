@@ -5,7 +5,7 @@ Document Classification Service.
 Klassifiziert Dokumente basierend auf Keywords und Muster:
 - Rechnungen (Invoice)
 - Bestellungen (Order)
-- Vertraege (Contract)
+- Verträge (Contract)
 - Lieferscheine (Delivery Note)
 - Quittungen (Receipt)
 - Briefe (Letter)
@@ -34,36 +34,36 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class DocumentTypeConfig:
-    """Konfiguration fuer einen Dokumenttyp."""
+    """Konfiguration für einen Dokumenttyp."""
     doc_type: ExtractedDocumentType
     primary_keywords: Set[str]  # Starke Indikatoren
-    secondary_keywords: Set[str]  # Unterstuetzende Indikatoren
-    negative_keywords: Set[str]  # Schliessen diesen Typ aus
+    secondary_keywords: Set[str]  # Unterstützende Indikatoren
+    negative_keywords: Set[str]  # Schließen diesen Typ aus
     required_patterns: List[re.Pattern]  # Mind. eines muss matchen
     weight_primary: float = 3.0
     weight_secondary: float = 1.0
     weight_pattern: float = 2.0
 
 
-# Keyword-Sets fuer deutsche Dokumente (und englische Varianten)
+# Keyword-Sets für deutsche Dokumente (und englische Varianten)
 INVOICE_CONFIG = DocumentTypeConfig(
     doc_type=ExtractedDocumentType.INVOICE,
     primary_keywords={
         "rechnung", "rechnungsnummer", "re-nr", "rechnungs-nr", "rg-nr",
         "invoice", "rechnungsbetrag", "rechnungsdatum", "faktura",
-        "zahlungsziel", "faelligkeit", "faellig", "netto", "brutto",
+        "zahlungsziel", "fälligkeit", "fällig", "netto", "brutto",
     },
     secondary_keywords={
         "mwst", "mehrwertsteuer", "umsatzsteuer", "ust", "steuerbetrag",
         "nettobetrag", "bruttobetrag", "zwischensumme", "gesamtbetrag",
-        "iban", "bic", "bankverbindung", "ueberweisung", "zahlung",
+        "iban", "bic", "bankverbindung", "überweisung", "zahlung",
         "skonto", "zahlbar", "zahlungsbedingungen", "verzugszinsen",
         "leistungszeitraum", "lieferdatum", "kundennummer", "kd-nr",
         # Englische Keywords
         "vat", "total", "amount", "payment", "due", "subtotal",
     },
     negative_keywords={
-        "angebot", "kostenvoranschlag", "bestaetigung", "vertrag",
+        "angebot", "kostenvoranschlag", "bestätigung", "vertrag",
     },
     required_patterns=[
         re.compile(r'rechnung(?:s)?[\s\-\.:]?(?:nr\.?|nummer)', re.IGNORECASE),
@@ -80,7 +80,7 @@ ORDER_CONFIG = DocumentTypeConfig(
     primary_keywords={
         "bestellung", "bestell-nr", "bestellnummer", "auftrag",
         "auftrags-nr", "auftragsnummer", "order", "purchase order",
-        "auftragsbestaetigung", "bestellbestaetigung",
+        "auftragsbestätigung", "bestellbestätigung",
     },
     secondary_keywords={
         "liefertermin", "lieferdatum", "lieferadresse", "lieferung",
@@ -89,12 +89,12 @@ ORDER_CONFIG = DocumentTypeConfig(
         "incoterms", "versand", "fracht",
     },
     negative_keywords={
-        "rechnung", "rechnungsnummer", "vertrag", "kuendigung",
+        "rechnung", "rechnungsnummer", "vertrag", "kündigung",
     },
     required_patterns=[
         re.compile(r'bestell(?:ung)?[\s\-\.:]?(?:nr\.?|nummer)', re.IGNORECASE),
-        re.compile(r'auftrag(?:s)?[\s\-\.:]?(?:nr\.?|nummer|bestaetigung)', re.IGNORECASE),
-        re.compile(r'liefertermin|gewuenschter?\s*lieferung', re.IGNORECASE),
+        re.compile(r'auftrag(?:s)?[\s\-\.:]?(?:nr\.?|nummer|bestätigung)', re.IGNORECASE),
+        re.compile(r'liefertermin|gewünschter?\s*lieferung', re.IGNORECASE),
     ],
 )
 
@@ -106,8 +106,8 @@ CONTRACT_CONFIG = DocumentTypeConfig(
         "mietvertrag", "arbeitsvertrag", "kaufvertrag", "servicevertrag",
     },
     secondary_keywords={
-        "laufzeit", "vertragslaufzeit", "kuendigungsfrist", "kuendigung",
-        "verlaengerung", "vertragsende", "vertragsbeginn", "geltungsdauer",
+        "laufzeit", "vertragslaufzeit", "kündigungsfrist", "kündigung",
+        "verlängerung", "vertragsende", "vertragsbeginn", "geltungsdauer",
         "unterschrift", "unterzeichnet", "gezeichnet", "signatur",
         "partei", "vertragsparteien", "auftragnehmer", "auftraggeber",
         "klausel", "paragraph", "leistungsumfang",
@@ -118,7 +118,7 @@ CONTRACT_CONFIG = DocumentTypeConfig(
     required_patterns=[
         re.compile(r'vertrag(?:s)?[\s\-\.:]?(?:nr\.?|nummer)', re.IGNORECASE),
         re.compile(r'vertragspartner|vertragsparteien', re.IGNORECASE),
-        re.compile(r'kuendigungsfrist|vertragslaufzeit|laufzeit', re.IGNORECASE),
+        re.compile(r'kündigungsfrist|vertragslaufzeit|laufzeit', re.IGNORECASE),
         re.compile(r'zwischen\s+.{5,50}\s+und\s+', re.IGNORECASE),  # "Zwischen X und Y"
     ],
 )
@@ -130,7 +130,7 @@ DELIVERY_NOTE_CONFIG = DocumentTypeConfig(
         "warenbegleitschein", "versandschein", "packliste",
     },
     secondary_keywords={
-        "empfaenger", "versender", "paket", "sendung", "tracking",
+        "empfänger", "versender", "paket", "sendung", "tracking",
         "karton", "palette", "gewicht", "volumen", "verpackung",
         "lieferadresse", "versandadresse", "frachtbrief",
     },
@@ -151,7 +151,7 @@ RECEIPT_CONFIG = DocumentTypeConfig(
     },
     secondary_keywords={
         "bar", "karte", "kartenzahlung", "ec", "kredit",
-        "wechselgeld", "gegeben", "zurueck", "kasse",
+        "wechselgeld", "gegeben", "zurück", "kasse",
         "bon", "transaktion", "terminal",
     },
     negative_keywords={
@@ -176,7 +176,7 @@ BANK_STATEMENT_CONFIG = DocumentTypeConfig(
     },
     secondary_keywords={
         "haben", "soll", "buchungsdatum", "wertstellung", "valuta",
-        "ueberweisung", "lastschrift", "gutschrift", "abbuchung",
+        "überweisung", "lastschrift", "gutschrift", "abbuchung",
         "kontoinhaber", "bic", "swift", "blz", "bankleitzahl",
         "auszugsnummer", "auszug", "zeitraum", "von", "bis",
         "neuer saldo", "alter saldo", "anfangssaldo", "endsaldo",
@@ -197,7 +197,7 @@ TAX_DOCUMENT_CONFIG = DocumentTypeConfig(
     primary_keywords={
         "steuerbescheid", "umsatzsteuervoranmeldung", "ust-voranmeldung",
         "einkommensteuerbescheid", "koerperschaftsteuerbescheid",
-        "gewerbesteuerbescheid", "steuererklaerung", "finanzamt",
+        "gewerbesteuerbescheid", "steuererklärung", "finanzamt",
         "steuernummer", "steuer-id", "tax return", "lohnsteuerbescheinigung",
         "jahresabschluss", "elster", "steuerberater",
     },
@@ -214,7 +214,7 @@ TAX_DOCUMENT_CONFIG = DocumentTypeConfig(
     },
     required_patterns=[
         re.compile(r'finanzamt\s+\w+', re.IGNORECASE),
-        re.compile(r'steuer(?:nummer|id|erklaerung|bescheid)', re.IGNORECASE),
+        re.compile(r'steuer(?:nummer|id|erklärung|bescheid)', re.IGNORECASE),
         re.compile(r'ust[\s\-]?(?:va|voranmeldung)', re.IGNORECASE),
         re.compile(r'veranlagungszeitraum|steuerjahr', re.IGNORECASE),
     ],
@@ -226,11 +226,11 @@ DUNNING_LETTER_CONFIG = DocumentTypeConfig(
         "mahnung", "zahlungserinnerung", "mahnschreiben", "zahlungsaufforderung",
         "1. mahnung", "2. mahnung", "3. mahnung", "letzte mahnung",
         "erste mahnung", "zweite mahnung", "dritte mahnung",
-        "verzug", "mahngebuehr", "mahnkosten", "inkasso",
+        "verzug", "mahngebühr", "mahnkosten", "inkasso",
     },
     secondary_keywords={
-        "ueberfaellig", "offener betrag", "offene rechnung", "ausstehend",
-        "zahlungsfrist", "fristverlaengerung", "saeumnis", "rueckstand",
+        "überfällig", "offener betrag", "offene rechnung", "ausstehend",
+        "zahlungsfrist", "fristverlängerung", "säumnis", "rückstand",
         "verzugszinsen", "mahnverfahren", "gerichtlich", "anwalt",
         "rechtliche schritte", "zwangsvollstreckung", "vollstreckung",
         "letztmalig", "umgehend", "sofort", "unverzueglich",
@@ -241,21 +241,21 @@ DUNNING_LETTER_CONFIG = DocumentTypeConfig(
     required_patterns=[
         re.compile(r'\d\.?\s*mahnung|letzte\s+mahnung', re.IGNORECASE),
         re.compile(r'zahlungserinnerung|mahnschreiben', re.IGNORECASE),
-        re.compile(r'ueberfaellig|rueckstand|ausstehend', re.IGNORECASE),
-        re.compile(r'mahngebuehr|verzugszinsen|inkasso', re.IGNORECASE),
+        re.compile(r'überfällig|rückstand|ausstehend', re.IGNORECASE),
+        re.compile(r'mahngebühr|verzugszinsen|inkasso', re.IGNORECASE),
     ],
 )
 
 CREDIT_NOTE_CONFIG = DocumentTypeConfig(
     doc_type=ExtractedDocumentType.CREDIT_NOTE,
     primary_keywords={
-        "gutschrift", "stornierung", "storno", "rueckerstattung",
-        "rueckzahlung", "credit note", "credit memo", "gutschriftsnummer",
+        "gutschrift", "stornierung", "storno", "rückerstattung",
+        "rückzahlung", "credit note", "credit memo", "gutschriftsnummer",
         "korrekturrechnung", "rechnungskorrektur", "erstattung",
     },
     secondary_keywords={
         "original-rechnung", "bezugnehmend", "korrektur", "minusbetrag",
-        "rueckbuchung", "guthaben", "erstattungsbetrag",
+        "rückbuchung", "guthaben", "erstattungsbetrag",
         "stornobetrag", "korrigiert", "berichtigt",
     },
     negative_keywords={
@@ -264,7 +264,7 @@ CREDIT_NOTE_CONFIG = DocumentTypeConfig(
     required_patterns=[
         re.compile(r'gutschrift(?:s)?[\s\-\.:]?(?:nr\.?|nummer)?', re.IGNORECASE),
         re.compile(r'storno|stornierung|korrektur', re.IGNORECASE),
-        re.compile(r'rueckerstattung|erstattung', re.IGNORECASE),
+        re.compile(r'rückerstattung|erstattung', re.IGNORECASE),
     ],
 )
 
@@ -276,7 +276,7 @@ OFFER_CONFIG = DocumentTypeConfig(
         "unverbindliches angebot", "verbindliches angebot",
     },
     secondary_keywords={
-        "gueltigkeit", "gueltig bis", "angebotsdatum", "angebotspreis",
+        "gültigkeit", "gültig bis", "angebotsdatum", "angebotspreis",
         "rabatt", "nachlass", "sonderpreis", "konditionen",
         "lieferzeit", "zahlungsbedingungen", "freibleibend",
         "unverbindlich", "vorbehaltlich", "optional",
@@ -287,7 +287,7 @@ OFFER_CONFIG = DocumentTypeConfig(
     required_patterns=[
         re.compile(r'angebot(?:s)?[\s\-\.:]?(?:nr\.?|nummer)?', re.IGNORECASE),
         re.compile(r'kostenvoranschlag', re.IGNORECASE),
-        re.compile(r'gueltig\s+bis|gueltigkeit', re.IGNORECASE),
+        re.compile(r'gültig\s+bis|gültigkeit', re.IGNORECASE),
     ],
 )
 
@@ -319,8 +319,8 @@ FORM_CONFIG = DocumentTypeConfig(
     doc_type=ExtractedDocumentType.FORM,
     primary_keywords={
         "antrag", "formular", "antragsformular", "anmeldung",
-        "abmeldung", "aenderungsantrag", "vollmacht",
-        "einwilligung", "erklaerung", "bestaetigung",
+        "abmeldung", "änderungsantrag", "vollmacht",
+        "einwilligung", "erklärung", "bestätigung",
     },
     secondary_keywords={
         "ausfuellen", "unterschrift", "datum", "stempel",
@@ -331,7 +331,7 @@ FORM_CONFIG = DocumentTypeConfig(
         "rechnung", "bestellung", "kontoauszug",
     },
     required_patterns=[
-        re.compile(r'antrag\s+(?:auf|fuer|zur)', re.IGNORECASE),
+        re.compile(r'antrag\s+(?:auf|für|zur)', re.IGNORECASE),
         re.compile(r'bitte\s+ausfuellen|ankreuzen', re.IGNORECASE),
         re.compile(r'\[\s*\]|\(\s*\)', re.IGNORECASE),  # Checkboxen
     ],
@@ -346,14 +346,14 @@ REPORT_CONFIG = DocumentTypeConfig(
     },
     secondary_keywords={
         "zusammenfassung", "fazit", "ergebnis", "schlussfolgerung",
-        "empfehlung", "massnahme", "uebersicht", "statistik",
+        "empfehlung", "massnahme", "übersicht", "statistik",
         "kennzahl", "kpi", "diagramm", "grafik", "tabelle",
     },
     negative_keywords={
         "rechnung", "bestellung", "vertrag", "mahnung",
     },
     required_patterns=[
-        re.compile(r'bericht\s+(?:ueber|zum|zur|fuer)', re.IGNORECASE),
+        re.compile(r'bericht\s+(?:über|zum|zur|für)', re.IGNORECASE),
         re.compile(r'zusammenfassung|fazit|ergebnis', re.IGNORECASE),
         re.compile(r'protokoll\s+(?:vom|der|des)', re.IGNORECASE),
     ],
@@ -381,7 +381,7 @@ PURCHASE_ORDER_CONFIG = DocumentTypeConfig(
 
 # Alle Konfigurationen (15 Typen - Phase 1.2 Komplett)
 DOCUMENT_TYPE_CONFIGS = [
-    # Rechnungswesen (hoehere Prioritaet)
+    # Rechnungswesen (höhere Priorität)
     INVOICE_CONFIG,
     CREDIT_NOTE_CONFIG,
     RECEIPT_CONFIG,
@@ -393,7 +393,7 @@ DOCUMENT_TYPE_CONFIGS = [
     OFFER_CONFIG,
     DELIVERY_NOTE_CONFIG,
 
-    # Vertraege & Dokumente
+    # Verträge & Dokumente
     CONTRACT_CONFIG,
     FORM_CONFIG,
     LETTER_CONFIG,
@@ -414,7 +414,7 @@ class DocumentClassificationService:
     Klassifiziert Dokumente basierend auf Keywords und Mustern.
 
     Performance: < 20ms pro Dokument
-    Genauigkeit: 95%+ bei deutschen Geschaeftsdokumenten
+    Genauigkeit: 95%+ bei deutschen Geschäftsdokumenten
 
     Usage:
         service = DocumentClassificationService()
@@ -422,10 +422,10 @@ class DocumentClassificationService:
         print(result.document_type)  # ExtractedDocumentType.INVOICE
     """
 
-    # Minimale Konfidenz fuer eine Klassifizierung
+    # Minimale Konfidenz für eine Klassifizierung
     MIN_CONFIDENCE = 0.30
 
-    # Bonus fuer mehrere Signale
+    # Bonus für mehrere Signale
     MULTI_SIGNAL_BONUS = 0.05
 
     def __init__(self) -> None:
@@ -459,7 +459,7 @@ class DocumentClassificationService:
         normalized_text = self._normalize_text(text)
         words = set(normalized_text.split())
 
-        # Scores fuer jeden Dokumenttyp berechnen
+        # Scores für jeden Dokumenttyp berechnen
         scores: List[Tuple[ExtractedDocumentType, float, List[str]]] = []
 
         for config in self.configs:
@@ -512,11 +512,11 @@ class DocumentClassificationService:
         )
 
     def _normalize_text(self, text: str) -> str:
-        """Normalisiert Text fuer Keyword-Matching."""
+        """Normalisiert Text für Keyword-Matching."""
         # Kleinschreibung
         text = text.lower()
 
-        # Deutsche Umlaute normalisieren (fuer Matching)
+        # Deutsche Umlaute normalisieren (für Matching)
         text = text.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue")
         text = text.replace("ß", "ss")
 
@@ -535,7 +535,7 @@ class DocumentClassificationService:
         config: DocumentTypeConfig
     ) -> Tuple[float, List[str]]:
         """
-        Berechnet den Score fuer einen Dokumenttyp.
+        Berechnet den Score für einen Dokumenttyp.
 
         Returns:
             (score, matched_keywords)
@@ -543,11 +543,11 @@ class DocumentClassificationService:
         score = 0.0
         matched_keywords: List[str] = []
 
-        # 1. Negative Keywords pruefen (Ausschluss)
+        # 1. Negative Keywords prüfen (Ausschluss)
         for neg_keyword in config.negative_keywords:
             normalized_neg = self._normalize_keyword(neg_keyword)
             if normalized_neg in normalized_text:
-                # Starke Reduktion, aber nicht vollstaendiger Ausschluss
+                # Starke Reduktion, aber nicht vollständiger Ausschluss
                 score -= 0.5
                 break
 
@@ -558,7 +558,7 @@ class DocumentClassificationService:
                 score += config.weight_primary
                 matched_keywords.append(keyword)
 
-        # 3. Secondary Keywords (unterstuetzend)
+        # 3. Secondary Keywords (unterstützend)
         for keyword in config.secondary_keywords:
             normalized_kw = self._normalize_keyword(keyword)
             if normalized_kw in normalized_text:
@@ -582,7 +582,7 @@ class DocumentClassificationService:
             score += self.MULTI_SIGNAL_BONUS
 
         # 6. Score normalisieren (0-1 Bereich)
-        # Angepasste Normalisierung fuer realistische Konfidenzen
+        # Angepasste Normalisierung für realistische Konfidenzen
         # Ein starkes Primary Keyword (3.0) + 1 Pattern (2.0) = 5.0 -> 0.625
         # Zwei Primary Keywords (6.0) + 2 Patterns (4.0) = 10.0 -> 0.90+
         normalized_score = min(score / 8.0, 1.0)
@@ -612,11 +612,11 @@ class DocumentClassificationService:
         return [self.classify(text) for text in texts]
 
     def get_stats(self) -> Dict[str, Any]:
-        """Gibt Klassifizierungs-Statistiken zurueck."""
+        """Gibt Klassifizierungs-Statistiken zurück."""
         return self._stats.copy()
 
     def reset_stats(self) -> None:
-        """Setzt Statistiken zurueck."""
+        """Setzt Statistiken zurück."""
         self._stats = {
             "total_classifications": 0,
             "by_type": {t.value: 0 for t in ExtractedDocumentType},
@@ -631,7 +631,7 @@ _classification_service: Optional[DocumentClassificationService] = None
 
 
 def get_classification_service() -> DocumentClassificationService:
-    """Gibt die Singleton-Instanz des Classification Service zurueck."""
+    """Gibt die Singleton-Instanz des Classification Service zurück."""
     global _classification_service
     if _classification_service is None:
         _classification_service = DocumentClassificationService()

@@ -2,13 +2,13 @@
 SSO Configuration Service.
 
 Verwaltung von SSO-Provider-Konfigurationen:
-- CRUD fuer Provider-Konfigurationen
-- Verschluesselung sensibler Daten
+- CRUD für Provider-Konfigurationen
+- Verschlüsselung sensibler Daten
 - Multi-Tenant Support
 
 SECURITY:
-- Client Secrets werden AES-256-GCM verschluesselt gespeichert
-- Private Keys werden verschluesselt gespeichert
+- Client Secrets werden AES-256-GCM verschlüsselt gespeichert
+- Private Keys werden verschlüsselt gespeichert
 - Keine Secrets in Logs
 """
 
@@ -56,7 +56,7 @@ class OIDCConfig(BaseModel):
     authorization_endpoint: str = Field(..., description="Authorization Endpoint URL")
     token_endpoint: str = Field(..., description="Token Endpoint URL")
     userinfo_endpoint: Optional[str] = Field(None, description="UserInfo Endpoint URL")
-    jwks_uri: Optional[str] = Field(None, description="JWKS URI fuer Token-Validierung")
+    jwks_uri: Optional[str] = Field(None, description="JWKS URI für Token-Validierung")
     issuer: str = Field(..., description="Token Issuer")
     scopes: List[str] = Field(default=["openid", "profile", "email"], description="Requested Scopes")
     response_type: str = Field(default="code", description="OAuth2 Response Type")
@@ -90,7 +90,7 @@ class SAMLConfig(BaseModel):
     )
     sign_requests: bool = Field(default=True, description="Requests signieren")
     sign_assertions: bool = Field(default=True, description="Assertion-Signatur erforderlich")
-    encrypt_assertions: bool = Field(default=False, description="Assertion-Verschluesselung erforderlich")
+    encrypt_assertions: bool = Field(default=False, description="Assertion-Verschlüsselung erforderlich")
     attribute_mapping: Dict[str, str] = Field(
         default={
             "email": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
@@ -105,7 +105,7 @@ class SAMLConfig(BaseModel):
 # TypedDict for config_data parameter to avoid Any type
 # NOTE: External JWKS/claims still use Dict[str, Any] as their structure is IdP-specific
 class SSOConfigData(TypedDict, total=False):
-    """Konfigurationsdaten fuer SSO-Provider-Erstellung."""
+    """Konfigurationsdaten für SSO-Provider-Erstellung."""
 
     # OIDC-spezifisch
     client_id: str
@@ -146,7 +146,7 @@ class SSOConfigData(TypedDict, total=False):
 
 
 class SSOProviderUpdate(TypedDict, total=False):
-    """Update-Daten fuer SSO-Provider."""
+    """Update-Daten für SSO-Provider."""
 
     name: str
     enabled: bool
@@ -168,7 +168,7 @@ class SSOProviderConfig(BaseModel):
     provider_type: SSOProviderType
     preset: SSOProviderPreset
     enabled: bool = Field(default=False, description="Provider aktiviert")
-    is_primary: bool = Field(default=False, description="Primaerer SSO-Provider")
+    is_primary: bool = Field(default=False, description="Primärer SSO-Provider")
 
     # Type-specific config
     oidc_config: Optional[OIDCConfig] = None
@@ -176,7 +176,7 @@ class SSOProviderConfig(BaseModel):
 
     # User provisioning
     auto_create_users: bool = Field(default=True, description="Benutzer automatisch anlegen")
-    default_role: str = Field(default="viewer", description="Standard-Rolle fuer neue Benutzer")
+    default_role: str = Field(default="viewer", description="Standard-Rolle für neue Benutzer")
     allowed_domains: Optional[List[str]] = Field(None, description="Erlaubte Email-Domains")
     group_mapping: Optional[Dict[str, str]] = Field(None, description="IdP Groups zu Rollen")
 
@@ -188,7 +188,7 @@ class SSOProviderConfig(BaseModel):
 
 
 class SSOConfigService:
-    """Service fuer SSO-Provider-Konfiguration."""
+    """Service für SSO-Provider-Konfiguration."""
 
     # Provider Presets mit vorkonfigurierten URLs
     PROVIDER_PRESETS = {
@@ -252,10 +252,10 @@ class SSOConfigService:
 
     def _get_encryption_key(self) -> bytes:
         """
-        Holt den Verschluesselungsschluessel aus den Settings.
+        Holt den Verschlüsselungsschluessel aus den Settings.
 
         SECURITY: Es wird KEIN Fallback auf einen Default-Schluessel verwendet,
-        da dies alle verschluesselten Credentials kompromittieren wuerde (CWE-327, CWE-330).
+        da dies alle verschlüsselten Credentials kompromittieren wuerde (CWE-327, CWE-330).
         """
         key = getattr(settings, "SSO_ENCRYPTION_KEY", None)
         if not key:
@@ -265,20 +265,20 @@ class SSOConfigService:
             if not secret_key:
                 raise ValueError(
                     "SSO_ENCRYPTION_KEY oder SECRET_KEY muss konfiguriert sein. "
-                    "SSO-Konfiguration ohne Verschluesselung nicht moeglich."
+                    "SSO-Konfiguration ohne Verschlüsselung nicht möglich."
                 )
             # Derive key from SECRET_KEY (production systems should use SSO_ENCRYPTION_KEY)
             import hashlib
             logger.warning(
                 "sso_using_derived_key",
                 message="SSO_ENCRYPTION_KEY nicht gesetzt - verwende abgeleiteten Schluessel. "
-                        "Fuer Produktionssysteme SSO_ENCRYPTION_KEY konfigurieren."
+                        "Für Produktionssysteme SSO_ENCRYPTION_KEY konfigurieren."
             )
             return hashlib.sha256(secret_key.encode()).digest()[:32]
         return key.encode() if isinstance(key, str) else key
 
     def _encrypt_secret(self, secret: str) -> str:
-        """Verschluesselt ein Secret."""
+        """Verschlüsselt ein Secret."""
         import base64
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
         import os
@@ -289,7 +289,7 @@ class SSOConfigService:
         return base64.b64encode(nonce + ciphertext).decode()
 
     def _decrypt_secret(self, encrypted: str) -> str:
-        """Entschluesselt ein Secret."""
+        """Entschlüsselt ein Secret."""
         import base64
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -477,7 +477,7 @@ class SSOConfigService:
             # OIDC-spezifische Felder
             if key in oidc_fields and provider.oidc_config:
                 if key == "client_secret":
-                    # Verschluesseln und speichern
+                    # Verschlüsseln und speichern
                     secret_val = value.get_secret_value() if hasattr(value, "get_secret_value") else value
                     encrypted = self._encrypt_secret(secret_val)
                     provider.oidc_config.client_secret = SecretStr(encrypted)
@@ -524,7 +524,7 @@ class SSOConfigService:
     async def delete_provider(
         self, provider_id: UUID, company_id: UUID
     ) -> bool:
-        """Loescht eine Provider-Konfiguration."""
+        """Löscht eine Provider-Konfiguration."""
         provider = await self.get_provider(provider_id, company_id)
         if not provider:
             return False
@@ -548,7 +548,7 @@ class SSOConfigService:
     async def set_primary_provider(
         self, provider_id: UUID, company_id: UUID
     ) -> bool:
-        """Setzt einen Provider als primaeren SSO-Provider."""
+        """Setzt einen Provider als primären SSO-Provider."""
         # First, unset all other providers as primary
         providers = await self.list_providers(company_id)
         for p in providers:
@@ -575,5 +575,5 @@ class SSOConfigService:
             )
 
     def get_preset_template(self, preset: SSOProviderPreset) -> SSOConfigData:
-        """Gibt das Template fuer einen Provider-Preset zurueck."""
+        """Gibt das Template für einen Provider-Preset zurück."""
         return self.PROVIDER_PRESETS.get(preset, {}).copy()

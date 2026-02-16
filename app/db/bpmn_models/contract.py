@@ -3,7 +3,7 @@ Business Contract Models
 
 Comprehensive contract management for B2B contracts including:
 - Contract tracking (Vertragslaufzeiten)
-- Cancellation deadline alerts (Kuendigungsfristen)
+- Cancellation deadline alerts (Kündigungsfristen)
 - Renewal options tracking
 - Contract amendments
 - Milestones and timeline
@@ -38,7 +38,7 @@ class ContractType(str, Enum):
     FRAMEWORK = "framework"  # Rahmenvertrag
     MAINTENANCE = "maintenance"  # Wartungsvertrag
     LICENSE = "license"  # Lizenzvertrag
-    LEASE = "lease"  # Mietvertrag (Geschaeftsraeume)
+    LEASE = "lease"  # Mietvertrag (Geschäftsräume)
     CONSULTING = "consulting"  # Beratungsvertrag
     COOPERATION = "cooperation"  # Kooperationsvertrag
     NDA = "nda"  # Geheimhaltungsvereinbarung
@@ -52,15 +52,15 @@ class ContractStatus(str, Enum):
     PENDING_SIGNATURE = "pending_signature"  # Unterschrift ausstehend
     ACTIVE = "active"  # Aktiv
     SUSPENDED = "suspended"  # Ausgesetzt
-    EXPIRING_SOON = "expiring_soon"  # Laeuft bald ab
+    EXPIRING_SOON = "expiring_soon"  # Läuft bald ab
     EXPIRED = "expired"  # Abgelaufen
-    TERMINATED = "terminated"  # Gekuendigt
-    RENEWED = "renewed"  # Verlaengert
+    TERMINATED = "terminated"  # Gekündigt
+    RENEWED = "renewed"  # Verlängert
 
 
 class RenewalOptionStatus(str, Enum):
     """Status of renewal options."""
-    AVAILABLE = "available"  # Verfuegbar
+    AVAILABLE = "available"  # Verfügbar
     PENDING = "pending"  # Entscheidung ausstehend
     EXERCISED = "exercised"  # Ausgeubt
     DECLINED = "declined"  # Abgelehnt

@@ -79,7 +79,7 @@ ESSENTIAL_INSURANCE_TYPES = [
     "haftpflicht",
     "privathaftpflicht",
     "hausrat",
-    "berufsunfaehigkeit",
+    "berufsunfähigkeit",
     "krankenversicherung",
     "kfz_haftpflicht",
 ]
@@ -99,11 +99,11 @@ RETIREMENT_FACTOR_BY_AGE = {
 
 
 class HealthRating(str, Enum):
-    """Bewertungs-Stufen fuer Financial Health."""
+    """Bewertungs-Stufen für Financial Health."""
     EXCELLENT = "exzellent"
     GOOD = "gut"
     MODERATE = "moderat"
-    NEEDS_ATTENTION = "verbesserungsbeduerftig"
+    NEEDS_ATTENTION = "verbesserungsbedürftig"
     CRITICAL = "kritisch"
 
 
@@ -148,7 +148,7 @@ class NetWorthSummary:
 
 @dataclass
 class FinancialHealthScore:
-    """Vollstaendiger Financial Health Score."""
+    """Vollständiger Financial Health Score."""
     space_id: UUID
 
     # Gesamt-Score (0-100)
@@ -181,11 +181,11 @@ class FinancialHealthScore:
 
 class FinancialHealthService:
     """
-    Singleton Service fuer Financial Health Score Berechnung.
+    Singleton Service für Financial Health Score Berechnung.
 
     Berechnet einen ganzheitlichen Gesundheits-Score basierend auf:
     - Vermoegen und Schulden
-    - Einkommens- und Ausgaben-Verhaeltnis
+    - Einkommens- und Ausgaben-Verhältnis
     - Versicherungsschutz
     - Notfall-Reserve
     - Altersvorsorge
@@ -246,7 +246,7 @@ class FinancialHealthService:
         )
         vehicle_value = Decimal(str(veh_result.scalar() or 0))
 
-        # Falls keine geschaetzten Werte, nehme Kaufpreis
+        # Falls keine geschätzten Werte, nehme Kaufpreis
         if vehicle_value == 0:
             veh_purchase_result = await db.execute(
                 select(func.coalesce(func.sum(PrivatVehicle.purchase_price), 0))
@@ -313,7 +313,7 @@ class FinancialHealthService:
         net_worth_change_ytd: Optional[Decimal] = None
         net_worth_change_pct: Optional[Decimal] = None
 
-        # Hole Net Worth vom Jahresanfang (oder aeltester verfuegbarer Eintrag)
+        # Hole Net Worth vom Jahresanfang (oder aeltester verfügbarer Eintrag)
         year_start = datetime(datetime.now(timezone.utc).year, 1, 1, tzinfo=timezone.utc)
 
         # Suche aeltesten Net Worth Eintrag im aktuellen Jahr
@@ -333,7 +333,7 @@ class FinancialHealthService:
             historical_net_worth = Decimal(str(oldest_entry.kpi_value))
             net_worth_change_ytd = net_worth - historical_net_worth
 
-            # Prozentuale Aenderung berechnen (Division by Zero vermeiden)
+            # Prozentuale Änderung berechnen (Division by Zero vermeiden)
             if historical_net_worth != 0:
                 net_worth_change_pct = (
                     (net_worth_change_ytd / abs(historical_net_worth)) * 100
@@ -370,7 +370,7 @@ class FinancialHealthService:
         self,
         net_worth: NetWorthSummary,
     ) -> DimensionScore:
-        """Berechnet den Score fuer Net Worth Trend."""
+        """Berechnet den Score für Net Worth Trend."""
         score = Decimal("50")  # Basis-Score wenn kein Trend bekannt
         recommendations: List[str] = []
 
@@ -378,14 +378,14 @@ class FinancialHealthService:
         if net_worth.net_worth >= 0:
             score = Decimal("60")
 
-            # Vermoegen im Verhaeltnis zu Schulden
+            # Vermoegen im Verhältnis zu Schulden
             if net_worth.total_liabilities == 0:
                 score = Decimal("85")
             elif net_worth.total_assets > 0:
                 asset_ratio = net_worth.total_assets / (net_worth.total_assets + net_worth.total_liabilities)
                 score = (asset_ratio * 100).quantize(Decimal("0.1"))
 
-            # Bonus fuer diversifizierte Assets
+            # Bonus für diversifizierte Assets
             asset_types = 0
             if net_worth.property_value > 0:
                 asset_types += 1
@@ -405,7 +405,7 @@ class FinancialHealthService:
                 "und bauen Sie gleichzeitig Vermoegen auf."
             )
 
-        # Trend-basierte Anpassung (falls verfuegbar)
+        # Trend-basierte Anpassung (falls verfügbar)
         if net_worth.net_worth_change_pct is not None:
             if net_worth.net_worth_change_pct > 10:
                 score = min(Decimal("100"), score + Decimal("15"))
@@ -415,7 +415,7 @@ class FinancialHealthService:
                 score = max(Decimal("0"), score - Decimal("15"))
                 recommendations.append(
                     "Ihr Netto-Vermoegen ist in diesem Jahr gesunken. "
-                    "Ueberpruefen Sie Ihre Ausgaben und Spar-Strategie."
+                    "Überprüfen Sie Ihre Ausgaben und Spar-Strategie."
                 )
 
         if not recommendations and score >= 70:
@@ -446,7 +446,7 @@ class FinancialHealthService:
         net_worth: NetWorthSummary,
         estimated_monthly_income: Optional[Decimal],
     ) -> DimensionScore:
-        """Berechnet den Score fuer Schulden-Management."""
+        """Berechnet den Score für Schulden-Management."""
         from app.db.models import PrivatLoan
 
         score = Decimal("100")  # Starte mit perfektem Score
@@ -497,7 +497,7 @@ class FinancialHealthService:
                 score = Decimal("40")
                 recommendations.append(
                     f"Ihre Schulden-Quote liegt bei {details['dti_ratio']}. "
-                    "Empfohlen sind maximal 36%. Reduzieren Sie Schulden oder erhoehen Sie das Einkommen."
+                    "Empfohlen sind maximal 36%. Reduzieren Sie Schulden oder erhöhen Sie das Einkommen."
                 )
             else:
                 score = Decimal("20")
@@ -506,7 +506,7 @@ class FinancialHealthService:
                     "Dringende Schuldenreduktion erforderlich."
                 )
         else:
-            # Fallback: Verhaeltnis Schulden zu Vermoegen
+            # Fallback: Verhältnis Schulden zu Vermoegen
             if net_worth.total_assets > 0:
                 debt_ratio = net_worth.total_liabilities / net_worth.total_assets
                 if debt_ratio <= Decimal("0.30"):
@@ -518,8 +518,8 @@ class FinancialHealthService:
                 else:
                     score = Decimal("20")
                     recommendations.append(
-                        "Sehr hohe Verschuldung im Verhaeltnis zum Vermoegen. "
-                        "Schuldenabbau sollte Prioritaet haben."
+                        "Sehr hohe Verschuldung im Verhältnis zum Vermoegen. "
+                        "Schuldenabbau sollte Priorität haben."
                     )
             else:
                 score = Decimal("25")
@@ -528,7 +528,7 @@ class FinancialHealthService:
                     "Fokussieren Sie sich auf Schuldenabbau."
                 )
 
-        # Bonus fuer niedrige Zinsen
+        # Bonus für niedrige Zinsen
         high_interest_result = await db.execute(
             select(func.count(PrivatLoan.id))
             .where(
@@ -543,7 +543,7 @@ class FinancialHealthService:
             score = max(Decimal("0"), score - Decimal("10"))
             recommendations.append(
                 f"Sie haben {high_interest_count} Kredit(e) mit hohen Zinsen (>8%). "
-                "Pruefen Sie Umschuldungs-Moeglichkeiten."
+                "Prüfen Sie Umschuldungs-Möglichkeiten."
             )
 
         if not recommendations:
@@ -566,7 +566,7 @@ class FinancialHealthService:
         db: AsyncSession,
         space_id: UUID,
     ) -> DimensionScore:
-        """Berechnet den Score fuer Risiko-Abdeckung (Versicherungen)."""
+        """Berechnet den Score für Risiko-Abdeckung (Versicherungen)."""
         from app.db.models import PrivatInsurance
 
         score = Decimal("0")
@@ -585,12 +585,12 @@ class FinancialHealthService:
         details["insurance_count"] = len(insurance_types)
         details["insurance_types"] = list(set(insurance_types))
 
-        # Pruefe essentielle Versicherungen
+        # Prüfe essentielle Versicherungen
         covered_essentials: List[str] = []
         missing_essentials: List[str] = []
 
         for essential in ESSENTIAL_INSURANCE_TYPES:
-            # Pruefe ob Typ (oder Variante) vorhanden
+            # Prüfe ob Typ (oder Variante) vorhanden
             found = any(
                 essential in ins_type or ins_type in essential
                 for ins_type in insurance_types
@@ -607,14 +607,14 @@ class FinancialHealthService:
         coverage_ratio = len(covered_essentials) / len(ESSENTIAL_INSURANCE_TYPES)
         score = (Decimal(str(coverage_ratio)) * 100).quantize(Decimal("0.1"))
 
-        # Empfehlungen fuer fehlende Versicherungen
+        # Empfehlungen für fehlende Versicherungen
         if missing_essentials:
             for missing in missing_essentials[:3]:  # Top 3
                 recommendations.append(
-                    f"Empfehlung: Pruefen Sie den Abschluss einer {missing.replace('_', '-').title()}-Versicherung."
+                    f"Empfehlung: Prüfen Sie den Abschluss einer {missing.replace('_', '-').title()}-Versicherung."
                 )
 
-        # Bonus fuer gute Deckung
+        # Bonus für gute Deckung
         if score >= 80:
             score = min(Decimal("100"), score + Decimal("10"))
 
@@ -638,7 +638,7 @@ class FinancialHealthService:
         net_worth: NetWorthSummary,
         estimated_monthly_expenses: Optional[Decimal],
     ) -> DimensionScore:
-        """Berechnet den Score fuer Liquiditaet (Notgroschen)."""
+        """Berechnet den Score für Liquiditaet (Notgroschen)."""
         score = Decimal("0")
         recommendations: List[str] = []
         details: Dict[str, Any] = {}
@@ -669,7 +669,7 @@ class FinancialHealthService:
                 score = Decimal("15")
                 recommendations.append(
                     "KRITISCH: Kaum liquide Mittel vorhanden! "
-                    "Ein Notgroschen sollte hoechste Prioritaet haben."
+                    "Ein Notgroschen sollte hoechste Priorität haben."
                 )
         else:
             # Fallback: Absolute Betraege
@@ -708,7 +708,7 @@ class FinancialHealthService:
         estimated_annual_income: Optional[Decimal],
         age: Optional[int],
     ) -> DimensionScore:
-        """Berechnet den Score fuer Altersvorsorge."""
+        """Berechnet den Score für Altersvorsorge."""
         score = Decimal("50")  # Default wenn keine Daten
         recommendations: List[str] = []
         details: Dict[str, Any] = {}
@@ -735,7 +735,7 @@ class FinancialHealthService:
                     recommendations.append(
                         f"Ihre Altersvorsorge liegt deutlich unter dem Ziel "
                         f"({(ratio * 100).quantize(Decimal('0.1'))}% vom empfohlenen Wert). "
-                        "Erhoehen Sie Ihre Sparquote."
+                        "Erhöhen Sie Ihre Sparquote."
                     )
                 elif ratio < Decimal("0.8"):
                     recommendations.append(
@@ -754,8 +754,8 @@ class FinancialHealthService:
             else:
                 score = Decimal("30")
                 recommendations.append(
-                    "Bauen Sie fruehzeitig Altersvorsorge auf. "
-                    "Der Zinseszins-Effekt wirkt umso staerker, je frueher Sie beginnen."
+                    "Bauen Sie frühzeitig Altersvorsorge auf. "
+                    "Der Zinseszins-Effekt wirkt umso stärker, je früher Sie beginnen."
                 )
 
         if not recommendations:
@@ -774,8 +774,8 @@ class FinancialHealthService:
         )
 
     def _get_retirement_factor(self, age: int) -> Decimal:
-        """Gibt den empfohlenen Altersvorsorge-Faktor fuer ein Alter zurueck."""
-        # Finde naechsten Ankerpunkt
+        """Gibt den empfohlenen Altersvorsorge-Faktor für ein Alter zurück."""
+        # Finde nächsten Ankerpunkt
         ages = sorted(RETIREMENT_FACTOR_BY_AGE.keys())
 
         if age <= ages[0]:
@@ -801,7 +801,7 @@ class FinancialHealthService:
         db: AsyncSession,
         space_id: UUID,
     ) -> DimensionScore:
-        """Berechnet den Score fuer Diversifikation."""
+        """Berechnet den Score für Diversifikation."""
         from app.services.privat.investment_intelligence_service import get_investment_intelligence_service
 
         intel_service = get_investment_intelligence_service()
@@ -825,8 +825,8 @@ class FinancialHealthService:
                 **safe_error_log(e),
             )
             score = Decimal("50")
-            details = {"error": "Berechnung nicht moeglich"}
-            recommendations = ["Fuegen Sie Investments hinzu fuer Diversifikations-Analyse."]
+            details = {"error": "Berechnung nicht möglich"}
+            recommendations = ["Fuegen Sie Investments hinzu für Diversifikations-Analyse."]
 
         rating = self._score_to_rating(score)
 
@@ -852,7 +852,7 @@ class FinancialHealthService:
         estimated_monthly_expenses: Optional[Decimal] = None,
         age: Optional[int] = None,
     ) -> FinancialHealthScore:
-        """Berechnet den vollstaendigen Financial Health Score."""
+        """Berechnet den vollständigen Financial Health Score."""
         import time
 
         start_time = time.time()
@@ -861,7 +861,7 @@ class FinancialHealthService:
         # 1. Net Worth berechnen
         net_worth = await self.calculate_net_worth(db, space_id)
 
-        # Jahreseinkommen schaetzen falls nicht angegeben
+        # Jahreseinkommen schätzen falls nicht angegeben
         estimated_annual_income: Optional[Decimal] = None
         if estimated_monthly_income:
             estimated_annual_income = estimated_monthly_income * 12
@@ -909,7 +909,7 @@ class FinancialHealthService:
         # 5. Top-Empfehlungen priorisieren
         all_recommendations: List[Tuple[Decimal, str]] = []
         for dim in dimensions:
-            # Niedrigere Scores = hoehere Prioritaet
+            # Niedrigere Scores = höhere Priorität
             priority = Decimal("100") - dim.score
             for rec in dim.recommendations:
                 all_recommendations.append((priority, rec))
@@ -984,14 +984,14 @@ class FinancialHealthService:
         Berechnet das Benchmark-Perzentil basierend auf anonymisierten Score-Vergleichen.
 
         Vergleicht den aktuellen Score mit den letzten Health Scores anderer Spaces.
-        Gibt das Perzentil zurueck (0-100), wobei 50 = Durchschnitt bedeutet.
+        Gibt das Perzentil zurück (0-100), wobei 50 = Durchschnitt bedeutet.
 
         Datenschutz-Hinweis: Nur aggregierte Statistiken werden verwendet,
         keine personenbezogenen Daten werden exponiert.
         """
         from app.db.models import PrivatKPIHistory
 
-        # Nur Scores der letzten 30 Tage fuer aktuellen Vergleich
+        # Nur Scores der letzten 30 Tage für aktuellen Vergleich
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=30)
 
         try:
@@ -1005,7 +1005,7 @@ class FinancialHealthService:
                 .where(
                     PrivatKPIHistory.kpi_name == "financial_health_score",
                     PrivatKPIHistory.recorded_at >= cutoff_date,
-                    PrivatKPIHistory.space_id != space_id,  # Eigener Space ausschliessen
+                    PrivatKPIHistory.space_id != space_id,  # Eigener Space ausschließen
                 )
                 .group_by(PrivatKPIHistory.space_id)
                 .subquery()
@@ -1027,7 +1027,7 @@ class FinancialHealthService:
             other_scores = [Decimal(str(row[0])) for row in result.all() if row[0] is not None]
 
             if len(other_scores) < 5:
-                # Mindestens 5 Vergleichswerte fuer statistisch sinnvolles Perzentil
+                # Mindestens 5 Vergleichswerte für statistisch sinnvolles Perzentil
                 logger.debug(
                     "benchmark_insufficient_data",
                     space_id=str(space_id),
@@ -1063,14 +1063,14 @@ class FinancialHealthService:
             return None
 
     # =========================================================================
-    # Batch-Operationen fuer Celery
+    # Batch-Operationen für Celery
     # =========================================================================
 
     async def recalculate_all_health_scores(
         self,
         db: AsyncSession,
     ) -> Dict[str, Any]:
-        """Berechnet alle Health Scores neu (fuer Celery Beat)."""
+        """Berechnet alle Health Scores neu (für Celery Beat)."""
         from app.db.models import PrivatSpace
 
 
@@ -1113,5 +1113,5 @@ class FinancialHealthService:
 # =============================================================================
 
 def get_financial_health_service() -> FinancialHealthService:
-    """Gibt die Singleton-Instanz des Financial Health Service zurueck."""
+    """Gibt die Singleton-Instanz des Financial Health Service zurück."""
     return FinancialHealthService()

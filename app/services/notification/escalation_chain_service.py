@@ -2,7 +2,7 @@
 """
 Notification Escalation Chain Service.
 
-Verwaltet zeitbasierte Eskalationsketten fuer Benachrichtigungen:
+Verwaltet zeitbasierte Eskalationsketten für Benachrichtigungen:
 - Level 1: In-App -> 1h Email
 - Level 2: + Slack nach 4h
 - Level 3: + SMS nach 8h (Critical only)
@@ -11,7 +11,7 @@ Features:
 - Vordefinierte Eskalationsketten (standard, urgent, approval)
 - Automatische Zeitbasierte Eskalation via Celery Beat
 - Eskalationsaufloesung bei Benutzeraktion
-- Audit-Logging fuer Compliance
+- Audit-Logging für Compliance
 
 Feinpoliert und durchdacht - Keine verpassten Benachrichtigungen mehr.
 """
@@ -46,7 +46,7 @@ class EscalationPreset(str, Enum):
 
 
 class EscalationChannel(str, Enum):
-    """Verfuegbare Eskalationskanaele."""
+    """Verfügbare Eskalationskanaele."""
     IN_APP = "in_app"
     EMAIL = "email"
     SLACK = "slack"
@@ -88,7 +88,7 @@ class EscalationLevel:
 
 @dataclass
 class EscalationChain:
-    """Vollstaendige Eskalationskette."""
+    """Vollständige Eskalationskette."""
     id: str
     name: str
     description: str
@@ -250,7 +250,7 @@ class NotificationEscalationService:
         Initialisiert den Service.
 
         Args:
-            db: AsyncSession fuer DB-Operationen
+            db: AsyncSession für DB-Operationen
         """
         self.db = db
         self._active_escalations: Dict[str, EscalationState] = {}
@@ -262,7 +262,7 @@ class NotificationEscalationService:
         user_id: uuid.UUID,
     ) -> str:
         """
-        Startet eine Eskalationskette fuer eine Benachrichtigung.
+        Startet eine Eskalationskette für eine Benachrichtigung.
 
         Args:
             notification_id: ID der Benachrichtigung
@@ -281,7 +281,7 @@ class NotificationEscalationService:
         chain = self.PRESET_CHAINS[chain_name]
         escalation_id = str(uuid.uuid4())
 
-        # Naechste Eskalationsstufe berechnen (Level 2, da Level 1 sofort)
+        # Nächste Eskalationsstufe berechnen (Level 2, da Level 1 sofort)
         next_level = 2 if len(chain.levels) > 1 else None
         next_escalation_at = None
 
@@ -317,7 +317,7 @@ class NotificationEscalationService:
 
     async def check_escalations(self) -> List[Dict[str, str]]:
         """
-        Prueft alle aktiven Eskalationen und fuehrt faellige Eskalationsstufen aus.
+        Prüft alle aktiven Eskalationen und führt fällige Eskalationsstufen aus.
 
         Wird periodisch von Celery Beat aufgerufen.
 
@@ -328,7 +328,7 @@ class NotificationEscalationService:
         escalated = []
 
         for escalation_id, state in list(self._active_escalations.items()):
-            # Nur pending oder in_progress pruefen
+            # Nur pending oder in_progress prüfen
             if state.status not in (EscalationStatus.PENDING, EscalationStatus.IN_PROGRESS):
                 continue
 
@@ -340,7 +340,7 @@ class NotificationEscalationService:
                     await self._auto_resolve_escalation(escalation_id, state)
                     continue
 
-            # Naechste Eskalationsstufe faellig?
+            # Nächste Eskalationsstufe fällig?
             if state.next_escalation_at and now >= state.next_escalation_at:
                 result = await self._escalate_to_next_level(escalation_id, state)
                 if result:
@@ -387,7 +387,7 @@ class NotificationEscalationService:
 
     async def get_active_escalations(self, user_id: uuid.UUID) -> List[Dict[str, str]]:
         """
-        Gibt alle aktiven Eskalationen fuer einen Benutzer zurueck.
+        Gibt alle aktiven Eskalationen für einen Benutzer zurück.
 
         Args:
             user_id: Benutzer-ID
@@ -436,7 +436,7 @@ class NotificationEscalationService:
         state: EscalationState,
     ) -> Optional[Dict[str, str]]:
         """
-        Eskaliert zur naechsten Stufe.
+        Eskaliert zur nächsten Stufe.
 
         Args:
             escalation_id: Eskalations-ID
@@ -450,7 +450,7 @@ class NotificationEscalationService:
             logger.error("escalation_chain_not_found", chain_id=state.chain_id)
             return None
 
-        # Naechstes Level
+        # Nächstes Level
         next_level = state.current_level + 1
         if next_level > chain.max_escalation_level:
             # Maximales Level erreicht
@@ -474,7 +474,7 @@ class NotificationEscalationService:
         state.current_level = next_level
         state.status = EscalationStatus.IN_PROGRESS
 
-        # Naechste Eskalation planen
+        # Nächste Eskalation planen
         if next_level < chain.max_escalation_level:
             next_level_config = next((lv for lv in chain.levels if lv.level == next_level + 1), None)
             if next_level_config:
@@ -538,7 +538,7 @@ _escalation_service: Optional[NotificationEscalationService] = None
 
 def get_escalation_service(db: AsyncSession) -> NotificationEscalationService:
     """
-    Factory fuer NotificationEscalationService.
+    Factory für NotificationEscalationService.
 
     Args:
         db: AsyncSession

@@ -2,7 +2,7 @@
 """
 Performance Profiling API Endpoints.
 
-Bietet Admin-Endpoints fuer:
+Bietet Admin-Endpoints für:
 - Endpoint-Performance-Statistiken
 - Langsame Requests
 - Hot Paths
@@ -46,7 +46,7 @@ class ProfilingConfigRequest(BaseModel):
         None,
         gt=0,
         le=60000,
-        description="Schwellwert fuer langsame Requests in ms (1-60000)",
+        description="Schwellwert für langsame Requests in ms (1-60000)",
     )
 
 
@@ -81,7 +81,7 @@ class ProfilingSummaryResponse(BaseModel):
 
 
 class ResetResponse(BaseModel):
-    """Response fuer Reset-Operationen."""
+    """Response für Reset-Operationen."""
 
     status: str
     geloeschte_endpoints: int
@@ -113,7 +113,7 @@ async def get_profiling_summary(
     """
     Profiling-Zusammenfassung abrufen.
 
-    Gibt aggregierte Metriken ueber alle getracten Endpoints zurueck:
+    Gibt aggregierte Metriken über alle getracten Endpoints zurück:
     - Gesamtzahl Requests und Fehler
     - Latenz-Statistiken (avg, p95, p99)
     - Anzahl langsamer Requests
@@ -153,7 +153,7 @@ async def get_endpoint_stats(
     """
     Endpoint-Statistiken abrufen.
 
-    Gibt detaillierte Performance-Metriken pro Endpoint zurueck:
+    Gibt detaillierte Performance-Metriken pro Endpoint zurück:
     - Request-Count, Fehler, langsame Requests
     - Timing-Statistiken (min, max, avg, p50, p95, p99)
     - Error-Rate
@@ -210,7 +210,7 @@ async def get_slow_requests(
     """
     Langsame Requests abrufen.
 
-    Gibt aufgezeichnete langsame Requests zurueck (sortiert nach Dauer):
+    Gibt aufgezeichnete langsame Requests zurück (sortiert nach Dauer):
     - Timestamp, Endpoint, Methode
     - Dauer, Status-Code
     - Request-ID, User-ID
@@ -252,7 +252,7 @@ async def get_hot_paths(
     """
     Hot Paths (meistgenutzte Endpoints) abrufen.
 
-    Gibt die am haeufigsten aufgerufenen Endpoints zurueck:
+    Gibt die am häufigsten aufgerufenen Endpoints zurück:
     - Rang, Endpoint, Methode
     - Request-Count
     - Durchschnittliche Latenz
@@ -260,7 +260,7 @@ async def get_hot_paths(
 
     **Erfordert Admin-Authentifizierung.**
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Performance-Optimierung
     - Kapazitaetsplanung
     - Caching-Entscheidungen
@@ -293,10 +293,10 @@ async def get_memory_snapshots(
     """
     Memory-Snapshots abrufen.
 
-    Gibt aufgezeichnete Memory-Snapshots zurueck (neueste zuerst):
+    Gibt aufgezeichnete Memory-Snapshots zurück (neueste zuerst):
     - Timestamp, Kontext
     - RSS, VMS, Shared Memory (in MB)
-    - GPU-Speicher (wenn verfuegbar)
+    - GPU-Speicher (wenn verfügbar)
 
     **Erfordert Admin-Authentifizierung.**
     """
@@ -328,8 +328,8 @@ async def trigger_memory_snapshot(
     """
     Memory-Snapshot manuell ausloesen.
 
-    Erstellt einen neuen Memory-Snapshot und gibt ihn zurueck.
-    Nuetzlich fuer:
+    Erstellt einen neuen Memory-Snapshot und gibt ihn zurück.
+    Nuetzlich für:
     - Debugging von Memory-Leaks
     - Vergleich vor/nach Operationen
     - Baseline-Messungen
@@ -387,9 +387,9 @@ async def update_profiling_config(
     """
     Profiling-Konfiguration aktualisieren.
 
-    Aendert Profiling-Einstellungen:
+    Ändert Profiling-Einstellungen:
     - **level**: off, basic, detailed, full
-    - **slow_threshold_ms**: Schwellwert fuer langsame Requests (1-60000ms)
+    - **slow_threshold_ms**: Schwellwert für langsame Requests (1-60000ms)
 
     **Erfordert Admin-Authentifizierung.**
 
@@ -427,14 +427,14 @@ async def reset_profiling_stats(
     current_user: User = Depends(get_current_superuser),
 ) -> ResetResponse:
     """
-    Alle Profiling-Statistiken zuruecksetzen.
+    Alle Profiling-Statistiken zurücksetzen.
 
-    Loescht:
+    Löscht:
     - Alle Endpoint-Statistiken
     - Alle aufgezeichneten langsamen Requests
     - Alle Memory-Snapshots
 
-    **ACHTUNG: Diese Aktion kann nicht rueckgaengig gemacht werden!**
+    **ACHTUNG: Diese Aktion kann nicht rückgängig gemacht werden!**
 
     **Erfordert Admin-Authentifizierung.**
     """
@@ -445,8 +445,8 @@ async def reset_profiling_stats(
         "profiling_stats_reset_by_user",
         user_id=str(current_user.id),
         user_email=current_user.email,
-        endpoints_cleared=result["geloeschte_endpoints"],
-        slow_requests_cleared=result["geloeschte_langsame_requests"],
+        endpoints_cleared=result["gelöschte_endpoints"],
+        slow_requests_cleared=result["gelöschte_langsame_requests"],
     )
 
     return ResetResponse(**result)
@@ -462,9 +462,9 @@ async def get_profiling_prometheus_metrics(
     current_user: User = Depends(get_current_superuser),  # V.7 SECURITY FIX: Superuser-Auth required
 ):
     """
-    Prometheus-Metriken fuer Profiling.
+    Prometheus-Metriken für Profiling.
 
-    Gibt Profiling-spezifische Metriken im Prometheus-Format zurueck:
+    Gibt Profiling-spezifische Metriken im Prometheus-Format zurück:
     - `ablage_profiling_requests_total`: Anzahl profilierter Requests
     - `ablage_profiling_latency_seconds`: Request-Latenz-Histogram
     - `ablage_profiling_slow_requests_total`: Anzahl langsamer Requests
@@ -472,7 +472,7 @@ async def get_profiling_prometheus_metrics(
 
     **V.7 SECURITY FIX: Erfordert Admin-Authentifizierung.**
 
-    Fuer Prometheus-Scraping ohne Auth verwenden Sie stattdessen
+    Für Prometheus-Scraping ohne Auth verwenden Sie stattdessen
     einen internen Endpoint mit IP-Whitelist oder Service-Mesh.
 
     Example Prometheus config (mit Basic Auth):
@@ -521,7 +521,7 @@ async def get_profiling_report(
 
     **Erfordert Admin-Authentifizierung.**
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Performance-Reviews
     - Debugging-Sessions
     - Kapazitaetsplanung
@@ -551,7 +551,7 @@ async def get_profiling_report(
             "endpoints": slowest,
         },
         "langsame_requests": {
-            "beschreibung": f"Requests ueber {summary['slow_request_threshold_ms']}ms",
+            "beschreibung": f"Requests über {summary['slow_request_threshold_ms']}ms",
             "requests": slow_requests,
         },
         "memory": {
@@ -595,7 +595,7 @@ def _generate_recommendations(
             recommendations.append({
                 "typ": "warnung",
                 "bereich": "Langsame Requests",
-                "nachricht": f"{slow_ratio:.1f}% der Requests sind langsam - Ursachen pruefen",
+                "nachricht": f"{slow_ratio:.1f}% der Requests sind langsam - Ursachen prüfen",
                 "prioritaet": "mittel",
             })
 
@@ -605,7 +605,7 @@ def _generate_recommendations(
             recommendations.append({
                 "typ": "optimierung",
                 "bereich": "Hot Path",
-                "nachricht": f"Haeufig genutzter Endpoint {hp['endpoint']} hat hohe Latenz ({hp['avg_time_ms']}ms) - Caching/Optimierung pruefen",
+                "nachricht": f"Häufig genutzter Endpoint {hp['endpoint']} hat hohe Latenz ({hp['avg_time_ms']}ms) - Caching/Optimierung prüfen",
                 "prioritaet": "hoch",
             })
 

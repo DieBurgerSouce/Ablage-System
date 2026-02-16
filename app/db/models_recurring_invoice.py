@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Wiederkehrende Rechnungen (Abo-Verwaltung) Models fuer Ablage-System.
+Wiederkehrende Rechnungen (Abo-Verwaltung) Models für Ablage-System.
 
 Abo-Erkennung & Verwaltung mit:
 - Automatische Erkennung wiederkehrender Rechnungsmuster
-- Soll/Ist-Vergleich fuer erwartete vs. tatsaechliche Rechnungen
-- Preisaenderungs-Tracking und Alerts
-- Kuendigungsfristen-Management
+- Soll/Ist-Vergleich für erwartete vs. tatsaechliche Rechnungen
+- Preisänderungs-Tracking und Alerts
+- Kündigungsfristen-Management
 - Fehlende-Rechnungen-Erkennung
 
 Phase 2.2 der Feature-Roadmap (Februar 2026).
@@ -49,16 +49,16 @@ class RecurringInvoiceStatus(str, Enum):
     """Status einer wiederkehrenden Rechnung."""
     ACTIVE = "active"           # Aktiv
     PAUSED = "paused"           # Pausiert
-    CANCELLED = "cancelled"     # Gekuendigt
+    CANCELLED = "cancelled"     # Gekündigt
     EXPIRED = "expired"         # Ausgelaufen
 
 
 class RecurringIntervalType(str, Enum):
-    """Intervall-Typ fuer wiederkehrende Rechnungen."""
+    """Intervall-Typ für wiederkehrende Rechnungen."""
     MONTHLY = "monthly"         # Monatlich
-    QUARTERLY = "quarterly"     # Vierteljaehrlich
-    HALF_YEARLY = "half_yearly" # Halbjaehrlich
-    YEARLY = "yearly"           # Jaehrlich
+    QUARTERLY = "quarterly"     # Vierteljährlich
+    HALF_YEARLY = "half_yearly" # Halbjährlich
+    YEARLY = "yearly"           # Jährlich
 
 
 class DetectionMethod(str, Enum):
@@ -71,9 +71,9 @@ class OccurrenceStatus(str, Enum):
     """Status einer einzelnen Abo-Instanz."""
     EXPECTED = "expected"       # Erwartet (noch nicht eingetroffen)
     MATCHED = "matched"         # Zugeordnet
-    MISSING = "missing"         # Fehlend / ueberfaellig
-    LATE = "late"               # Verspaetet eingetroffen
-    OVERPAID = "overpaid"       # Ueberzahlt
+    MISSING = "missing"         # Fehlend / überfällig
+    LATE = "late"               # Verspätet eingetroffen
+    OVERPAID = "overpaid"       # Überzahlt
     UNDERPAID = "underpaid"     # Unterzahlt
 
 
@@ -92,7 +92,7 @@ class RecurringInvoice(Base):
     """Wiederkehrende Rechnung / Abo-Erkennung.
 
     Repraesentiert ein erkanntes oder manuell angelegtes Abo-Muster
-    mit erwarteten Betraegen, Intervallen und Kuendigungsinformationen.
+    mit erwarteten Betraegen, Intervallen und Kündigungsinformationen.
     """
     __tablename__ = "recurring_invoices"
 
@@ -106,7 +106,7 @@ class RecurringInvoice(Base):
         index=True,
     )
 
-    # Lieferant-Verknuepfung
+    # Lieferant-Verknüpfung
     vendor_entity_id = Column(
         UUID(as_uuid=True),
         ForeignKey("business_entities.id", ondelete="SET NULL"),
@@ -133,7 +133,7 @@ class RecurringInvoice(Base):
     last_seen_date = Column(Date, nullable=True)
     next_expected_date = Column(Date, nullable=True)
 
-    # Kuendigungs-Management
+    # Kündigungs-Management
     cancellation_deadline = Column(Date, nullable=True)
     notice_period_days = Column(Integer, nullable=True)
     auto_renewal = Column(Boolean, default=True)
@@ -168,7 +168,7 @@ class RecurringInvoice(Base):
     category = Column(String(100), nullable=True)
     description = Column(Text, nullable=True)
     document_type = Column(String(100), nullable=True)
-    reference_pattern = Column(String(255), nullable=True)  # Regex fuer Rechnungsnummern
+    reference_pattern = Column(String(255), nullable=True)  # Regex für Rechnungsnummern
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -194,7 +194,7 @@ class RecurringInvoice(Base):
 
     @property
     def is_overdue(self) -> bool:
-        """Prueft ob die naechste erwartete Rechnung ueberfaellig ist."""
+        """Prüft ob die nächste erwartete Rechnung überfällig ist."""
         if self.next_expected_date and self.status == RecurringInvoiceStatus.ACTIVE:
             return date.today() > self.next_expected_date
         return False
@@ -215,7 +215,7 @@ class RecurringInvoiceOccurrence(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Abo-Verknuepfung
+    # Abo-Verknüpfung
     recurring_invoice_id = Column(
         UUID(as_uuid=True),
         ForeignKey("recurring_invoices.id", ondelete="CASCADE"),
@@ -223,7 +223,7 @@ class RecurringInvoiceOccurrence(Base):
         index=True,
     )
 
-    # Dokument-Verknuepfung
+    # Dokument-Verknüpfung
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),

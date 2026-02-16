@@ -1,13 +1,13 @@
 """
 Steuerberater Auto-Paket Service.
 
-Automatische Erstellung von Buchhaltungspaketen fuer Steuerberater:
+Automatische Erstellung von Buchhaltungspaketen für Steuerberater:
 - Monatliche/Quartalsweise Pakete
 - Konfigurierbare Dokumenttypen
 - Automatischer Versand
 - Push-Benachrichtigungen bei fehlenden Dokumenten
 
-GoBD-Konformitaet garantiert.
+GoBD-Konformität garantiert.
 """
 
 import uuid
@@ -37,11 +37,11 @@ logger = structlog.get_logger(__name__)
 
 
 class PackageFrequency(str, Enum):
-    """Haeufigkeit der Paket-Erstellung."""
+    """Häufigkeit der Paket-Erstellung."""
 
     MONTHLY = "monthly"        # Monatlich
     QUARTERLY = "quarterly"    # Quartalsweise
-    YEARLY = "yearly"          # Jaehrlich
+    YEARLY = "yearly"          # Jährlich
     ON_DEMAND = "on_demand"    # Auf Anfrage
 
 
@@ -70,7 +70,7 @@ class MissingDocumentType(str, Enum):
 
 @dataclass
 class PackageConfiguration:
-    """Konfiguration fuer Auto-Pakete."""
+    """Konfiguration für Auto-Pakete."""
 
     id: uuid.UUID
     company_id: uuid.UUID
@@ -80,7 +80,7 @@ class PackageConfiguration:
     document_categories: List[str]  # Kategorien die eingeschlossen werden
 
     # Zeitraum
-    period_start_day: int = 1       # Tag des Monats fuer Periodenstart
+    period_start_day: int = 1       # Tag des Monats für Periodenstart
     delivery_delay_days: int = 5    # Tage nach Periodenende bis Versand
 
     # Automatisierung
@@ -88,7 +88,7 @@ class PackageConfiguration:
     auto_reminder: bool = True
     reminder_days_before: int = 3
 
-    # Empfaenger
+    # Empfänger
     recipient_email: Optional[str] = None
     tax_advisor_user_id: Optional[uuid.UUID] = None
 
@@ -204,7 +204,7 @@ class MissingDocument:
 
 class TaxAdvisorPackageService:
     """
-    Service fuer automatische Steuerberater-Pakete.
+    Service für automatische Steuerberater-Pakete.
 
     Features:
     - Konfigurierbare Paket-Templates
@@ -219,7 +219,7 @@ class TaxAdvisorPackageService:
         missing = await service.identify_missing_documents(package)
     """
 
-    # Standard-Kategorien fuer Buchhaltungspakete
+    # Standard-Kategorien für Buchhaltungspakete
     DEFAULT_CATEGORIES = [
         "eingangsrechnung",
         "ausgangsrechnung",
@@ -231,7 +231,7 @@ class TaxAdvisorPackageService:
 
     # Erwartete Dokumente pro Monat
     EXPECTED_MONTHLY_DOCUMENTS = {
-        "kontoauszug": {"min_count": 1, "description": "Kontoauszug fuer alle Konten"},
+        "kontoauszug": {"min_count": 1, "description": "Kontoauszug für alle Konten"},
         "eingangsrechnung": {"min_count": 0, "description": "Eingangsrechnungen"},
         "ausgangsrechnung": {"min_count": 0, "description": "Ausgangsrechnungen"},
     }
@@ -261,9 +261,9 @@ class TaxAdvisorPackageService:
         Args:
             company_id: Firma
             name: Name der Konfiguration
-            frequency: Haeufigkeit
+            frequency: Häufigkeit
             document_categories: Kategorien
-            recipient_email: E-Mail fuer Versand
+            recipient_email: E-Mail für Versand
             tax_advisor_user_id: Steuerberater-User
 
         Returns:
@@ -302,7 +302,7 @@ class TaxAdvisorPackageService:
         self,
         company_id: uuid.UUID,
     ) -> List[PackageConfiguration]:
-        """Holt alle Konfigurationen fuer eine Firma."""
+        """Holt alle Konfigurationen für eine Firma."""
         return [
             c for c in self._configurations.values()
             if c.company_id == company_id
@@ -319,7 +319,7 @@ class TaxAdvisorPackageService:
         config_id: Optional[uuid.UUID] = None,
     ) -> TaxAdvisorPackage:
         """
-        Erstellt ein Paket fuer einen bestimmten Zeitraum.
+        Erstellt ein Paket für einen bestimmten Zeitraum.
 
         Args:
             company_id: Firma
@@ -454,8 +454,8 @@ class TaxAdvisorPackageService:
         period_end: date,
         categories: List[str],
     ) -> tuple[int, int]:
-        """Zaehlt Dokumente fuer einen Zeitraum."""
-        # Query fuer Dokumente im Zeitraum
+        """Zaehlt Dokumente für einen Zeitraum."""
+        # Query für Dokumente im Zeitraum
         query = select(
             func.count(Document.id),
             func.coalesce(func.sum(Document.file_size), 0),
@@ -483,14 +483,14 @@ class TaxAdvisorPackageService:
         """Identifiziert fehlende Dokumente."""
         missing: List[MissingDocument] = []
 
-        # Kontoauszuege pruefen
+        # Kontoauszuege prüfen
         # In Praxis: Query gegen Dokumente mit category='kontoauszug'
-        # Fuer jeden Monat sollte mindestens ein Kontoauszug existieren
+        # Für jeden Monat sollte mindestens ein Kontoauszug existieren
 
         # Hier Beispiel-Implementierung
-        # In Praxis: Dokumente zaehlen und gegen Erwartung pruefen
+        # In Praxis: Dokumente zaehlen und gegen Erwartung prüfen
 
-        # Beispiel: Pruefen ob Kontoauszug fuer jeden Monat existiert
+        # Beispiel: Prüfen ob Kontoauszug für jeden Monat existiert
         current = period_start
         while current <= period_end:
             month_start = date(current.year, current.month, 1)
@@ -503,7 +503,7 @@ class TaxAdvisorPackageService:
             # Hier vereinfacht - keine fehlenden Dokumente gefunden
             # missing.append(MissingDocument(...))
 
-            # Naechster Monat
+            # Nächster Monat
             if current.month == 12:
                 current = date(current.year + 1, 1, 1)
             else:
@@ -571,7 +571,7 @@ class TaxAdvisorPackageService:
         # Integration mit existierendem DATEV-Export-Service
         from app.services.datev.datev_export_service import DATEVExportService
 
-        # In Praxis: DATEV-Export durchfuehren
+        # In Praxis: DATEV-Export durchführen
         # Hier vereinfacht
         export_path = f"/exports/datev/{package.company_id}/{package.period_label.replace('/', '-')}.zip"
 
@@ -652,7 +652,7 @@ class TaxAdvisorPackageService:
                 body=f"""
 Sehr geehrte Damen und Herren,
 
-das Buchhaltungspaket fuer {package.period_label} steht zum Download bereit.
+das Buchhaltungspaket für {package.period_label} steht zum Download bereit.
 
 Inhalt:
 - {package.document_count} Dokumente
@@ -661,7 +661,7 @@ Inhalt:
 - Zusammenfassung: {'Ja' if package.summary_report_path else 'Nein'}
 
 Download-Link: {download_link}
-(Gueltig fuer 30 Tage)
+(Gültig für 30 Tage)
 
 Mit freundlichen Gruessen
 Ablage-System
@@ -698,7 +698,7 @@ Ablage-System
         admin_email: str,
     ) -> bool:
         """
-        Sendet Benachrichtigung ueber fehlende Dokumente.
+        Sendet Benachrichtigung über fehlende Dokumente.
 
         Args:
             package: Das Paket
@@ -722,13 +722,13 @@ Ablage-System
 
             await notification_service.send_email(
                 to_email=admin_email,
-                subject=f"Fehlende Dokumente fuer {package.period_label}",
+                subject=f"Fehlende Dokumente für {package.period_label}",
                 body=f"""
-Folgende Dokumente fehlen noch fuer das Buchhaltungspaket {package.period_label}:
+Folgende Dokumente fehlen noch für das Buchhaltungspaket {package.period_label}:
 
 {missing_list}
 
-Bitte laden Sie die fehlenden Dokumente hoch, damit das Paket vollstaendig ist.
+Bitte laden Sie die fehlenden Dokumente hoch, damit das Paket vollständig ist.
 
 Mit freundlichen Gruessen
 Ablage-System
@@ -762,9 +762,9 @@ Ablage-System
         admin_email: str,
     ) -> bool:
         """
-        Sendet Push-Benachrichtigung fuer fehlende Dokumente.
+        Sendet Push-Benachrichtigung für fehlende Dokumente.
 
-        Format: "Fuer [Steuerberater] fehlen noch: [Dokument X], [Dokument Y]"
+        Format: "Für [Steuerberater] fehlen noch: [Dokument X], [Dokument Y]"
 
         Args:
             company_id: Firma
@@ -792,9 +792,9 @@ Ablage-System
 
             await notification_service.send_email(
                 to_email=admin_email,
-                subject=f"Fehlende Dokumente fuer {tax_advisor_name}",
+                subject=f"Fehlende Dokumente für {tax_advisor_name}",
                 body=f"""
-Fuer {tax_advisor_name} fehlen noch:
+Für {tax_advisor_name} fehlen noch:
 
 {doc_list}
 
@@ -802,13 +802,13 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
                 """.strip(),
             )
 
-            # Push-Benachrichtigung (wenn verfuegbar)
+            # Push-Benachrichtigung (wenn verfügbar)
             try:
                 push_service = PushNotificationService(self.db)
                 await push_service.send_to_company_admins(
                     company_id=company_id,
                     title="Fehlende Dokumente",
-                    body=f"Fuer {tax_advisor_name} fehlen noch: {doc_list}",
+                    body=f"Für {tax_advisor_name} fehlen noch: {doc_list}",
                     data={
                         "type": "missing_documents",
                         "company_id": str(company_id),
@@ -848,9 +848,9 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
         quarter: Optional[int] = None,
     ) -> "CompletenessReport":
         """
-        Prueft die Vollstaendigkeit der Dokumente fuer einen Zeitraum.
+        Prüft die Vollständigkeit der Dokumente für einen Zeitraum.
 
-        Prueft:
+        Prüft:
         - Alle Monate haben Kontoauszuege
         - Rechnungen haben Zahlungen oder sind als offen markiert
         - Pflichtdokumente sind vorhanden
@@ -880,7 +880,7 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
         checks_passed = 0
         total_checks = 0
 
-        # Check 1: Kontoauszuege fuer alle Monate
+        # Check 1: Kontoauszuege für alle Monate
         total_checks += 1
         bank_statements_check = await self._check_bank_statements(
             company_id, period_start, period_end
@@ -892,7 +892,7 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
                 missing_items.append(
                     MissingItem(
                         category="kontoauszug",
-                        description=f"Kontoauszug fehlt fuer {month_label}",
+                        description=f"Kontoauszug fehlt für {month_label}",
                         severity="required",
                         suggestion="Laden Sie alle monatlichen Kontoauszuege hoch",
                     )
@@ -998,7 +998,7 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
         start: date,
         end: date,
     ) -> Dict[str, Any]:
-        """Prueft ob alle Monate Kontoauszuege haben."""
+        """Prüft ob alle Monate Kontoauszuege haben."""
         from calendar import monthrange
 
         query = select(Document).where(
@@ -1047,7 +1047,7 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
         start: date,
         end: date,
     ) -> Dict[str, Any]:
-        """Prueft ob Rechnungen Zahlungen oder Status haben."""
+        """Prüft ob Rechnungen Zahlungen oder Status haben."""
         from app.db.models import InvoiceTracking
 
         query = select(Document).where(
@@ -1063,7 +1063,7 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
 
         unmatched = 0
         for inv in invoices:
-            # InvoiceTracking pruefen
+            # InvoiceTracking prüfen
             tracking_query = select(InvoiceTracking).where(
                 InvoiceTracking.document_id == inv.id
             )
@@ -1088,7 +1088,7 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
         start: date,
         end: date,
     ) -> Dict[str, Any]:
-        """Prueft ob Pflichtdokumente vorhanden sind."""
+        """Prüft ob Pflichtdokumente vorhanden sind."""
         query = select(Document.document_type, func.count(Document.id)).where(
             and_(
                 Document.company_id == company_id,
@@ -1128,11 +1128,11 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
         start: date,
         end: date,
     ) -> Dict[str, Any]:
-        """Prueft DATEV-Export-Validierung."""
+        """Prüft DATEV-Export-Validierung."""
         # Vereinfachte Validierung - in Praxis: DATEV-Service nutzen
         errors: List[str] = []
 
-        # Firmen-Stammdaten pruefen
+        # Firmen-Stammdaten prüfen
         company_query = select(Company).where(Company.id == company_id)
         company_result = await self.db.execute(company_query)
         company = company_result.scalar_one_or_none()
@@ -1141,11 +1141,11 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
             errors.append("Firma nicht gefunden")
             return {"valid": False, "errors": errors}
 
-        # USt-IdNr pruefen
+        # USt-IdNr prüfen
         if not company.vat_id:
             errors.append("Keine USt-IdNr hinterlegt")
 
-        # Steuerberater-Mandantennummer pruefen
+        # Steuerberater-Mandantennummer prüfen
         if not company.tax_advisor_client_number:
             errors.append("Keine Steuerberater-Mandantennummer hinterlegt")
 
@@ -1160,7 +1160,7 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
         start: date,
         end: date,
     ) -> Dict[str, Any]:
-        """Prueft auf Compliance-Issues."""
+        """Prüft auf Compliance-Issues."""
         issues: List[Dict[str, str]] = []
 
         # Dokumente ohne OCR-Text
@@ -1182,7 +1182,7 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
             issues.append({
                 "description": f"{docs_without_ocr} Dokumente ohne OCR-Text",
                 "severity": "recommended",
-                "suggestion": "Fuehren Sie OCR fuer alle Dokumente durch",
+                "suggestion": "Führen Sie OCR für alle Dokumente durch",
             })
 
         return {
@@ -1193,7 +1193,7 @@ Bitte laden Sie die fehlenden Dokumente zeitnah hoch.
 
 @dataclass
 class MissingItem:
-    """Ein fehlendes oder unvollstaendiges Element."""
+    """Ein fehlendes oder unvollständiges Element."""
 
     category: str  # z.B. "kontoauszug", "rechnung", "datev"
     description: str  # Deutsche Beschreibung
@@ -1203,7 +1203,7 @@ class MissingItem:
 
 @dataclass
 class CompletenessReport:
-    """Vollstaendigkeits-Bericht."""
+    """Vollständigkeits-Bericht."""
 
     period: str  # z.B. "2026" oder "Q1/2026"
     period_start: date
@@ -1221,5 +1221,5 @@ class CompletenessReport:
 
 
 def get_tax_advisor_package_service(db: AsyncSession) -> TaxAdvisorPackageService:
-    """Factory-Funktion fuer Dependency Injection."""
+    """Factory-Funktion für Dependency Injection."""
     return TaxAdvisorPackageService(db)

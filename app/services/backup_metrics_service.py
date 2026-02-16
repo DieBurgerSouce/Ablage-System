@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Prometheus Metriken fuer Backup-Service.
+Prometheus Metriken für Backup-Service.
 
 Erfasst:
 - Backup-Erfolge und -Fehler
-- Backup-Dauer und -Groesse
+- Backup-Dauer und -Größe
 - Validierungs-Status
 - Remote-Synchronisation
 - Speicherplatz-Nutzung
 
-Feinpoliert und durchdacht - Observability fuer Backups in Produktion.
+Feinpoliert und durchdacht - Observability für Backups in Produktion.
 """
 
 import os
@@ -28,7 +28,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# Thread-Safety fuer Singleton
+# Thread-Safety für Singleton
 _backup_metrics_lock = threading.Lock()
 
 # Optional Prometheus integration
@@ -53,7 +53,7 @@ except ImportError:
 # =============================================================================
 
 if PROMETHEUS_AVAILABLE:
-    # Registry fuer alle Backup-Metriken
+    # Registry für alle Backup-Metriken
     BACKUP_REGISTRY = CollectorRegistry()
 
     # -------------------------------------------------------------------------
@@ -102,7 +102,7 @@ if PROMETHEUS_AVAILABLE:
 
     BACKUP_SIZE_BYTES = Gauge(
         "ablage_backup_size_bytes",
-        "Groesse des Backups in Bytes",
+        "Größe des Backups in Bytes",
         ["backup_type"],
         registry=BACKUP_REGISTRY,
     )
@@ -193,19 +193,19 @@ if PROMETHEUS_AVAILABLE:
 
     BACKUP_DISK_USAGE_BYTES = Gauge(
         "ablage_backup_disk_usage_bytes",
-        "Verwendeter Speicherplatz fuer Backups in Bytes",
+        "Verwendeter Speicherplatz für Backups in Bytes",
         registry=BACKUP_REGISTRY,
     )
 
     BACKUP_DISK_FREE_BYTES = Gauge(
         "ablage_backup_disk_free_bytes",
-        "Verfuegbarer Speicherplatz fuer Backups in Bytes",
+        "Verfügbarer Speicherplatz für Backups in Bytes",
         registry=BACKUP_REGISTRY,
     )
 
     BACKUP_DISK_TOTAL_BYTES = Gauge(
         "ablage_backup_disk_total_bytes",
-        "Gesamter Speicherplatz fuer Backups in Bytes",
+        "Gesamter Speicherplatz für Backups in Bytes",
         registry=BACKUP_REGISTRY,
     )
 
@@ -217,24 +217,24 @@ if PROMETHEUS_AVAILABLE:
     )
 
     # -------------------------------------------------------------------------
-    # Verschluesselungs-Metriken
+    # Verschlüsselungs-Metriken
     # -------------------------------------------------------------------------
 
     BACKUP_ENCRYPTION_ENABLED = Gauge(
         "ablage_backup_encryption_enabled",
-        "Ist Backup-Verschluesselung aktiviert (1=ja, 0=nein)",
+        "Ist Backup-Verschlüsselung aktiviert (1=ja, 0=nein)",
         registry=BACKUP_REGISTRY,
     )
 
     BACKUP_ENCRYPTION_SUCCESS_TOTAL = Counter(
         "ablage_backup_encryption_success_total",
-        "Erfolgreiche Backup-Verschluesselungen",
+        "Erfolgreiche Backup-Verschlüsselungen",
         registry=BACKUP_REGISTRY,
     )
 
     BACKUP_ENCRYPTION_FAILURE_TOTAL = Counter(
         "ablage_backup_encryption_failure_total",
-        "Fehlgeschlagene Backup-Verschluesselungen",
+        "Fehlgeschlagene Backup-Verschlüsselungen",
         registry=BACKUP_REGISTRY,
     )
 
@@ -246,7 +246,7 @@ if PROMETHEUS_AVAILABLE:
 
 @dataclass
 class BackupMetricData:
-    """Daten fuer Backup-Metriken."""
+    """Daten für Backup-Metriken."""
 
     backup_type: str
     success: bool
@@ -273,10 +273,10 @@ class DiskUsageData:
 
 class BackupMetrics:
     """
-    Zentrale Klasse fuer Backup-Metriken.
+    Zentrale Klasse für Backup-Metriken.
 
     Kapselt alle Prometheus-Operationen und bietet
-    Fallback wenn Prometheus nicht verfuegbar.
+    Fallback wenn Prometheus nicht verfügbar.
     """
 
     def __init__(self, backup_dir: Optional[str] = None) -> None:
@@ -284,7 +284,7 @@ class BackupMetrics:
         Initialisiere BackupMetrics.
 
         Args:
-            backup_dir: Pfad zum Backup-Verzeichnis fuer Speicherplatz-Metriken
+            backup_dir: Pfad zum Backup-Verzeichnis für Speicherplatz-Metriken
         """
         self.enabled = PROMETHEUS_AVAILABLE
         self.backup_dir = backup_dir or os.getenv("BACKUP_DIR", "/var/backups/ablage")
@@ -292,7 +292,7 @@ class BackupMetrics:
         if self.enabled:
             logger.info("Prometheus Backup-Metriken aktiviert")
         else:
-            logger.info("Prometheus nicht verfuegbar - Metriken nur als Logs")
+            logger.info("Prometheus nicht verfügbar - Metriken nur als Logs")
 
     # -------------------------------------------------------------------------
     # Backup-Operationen
@@ -310,7 +310,7 @@ class BackupMetrics:
         Args:
             backup_type: postgres, redis, minio, config, full
             duration_seconds: Dauer in Sekunden
-            size_bytes: Groesse in Bytes
+            size_bytes: Größe in Bytes
         """
         now = time.time()
 
@@ -651,31 +651,31 @@ class BackupMetrics:
         return counts
 
     # -------------------------------------------------------------------------
-    # Verschluesselung
+    # Verschlüsselung
     # -------------------------------------------------------------------------
 
     def set_encryption_enabled(self, enabled: bool) -> None:
         """
-        Setze Status der Backup-Verschluesselung.
+        Setze Status der Backup-Verschlüsselung.
 
         Args:
-            enabled: Ist Verschluesselung aktiviert?
+            enabled: Ist Verschlüsselung aktiviert?
         """
         if self.enabled:
             BACKUP_ENCRYPTION_ENABLED.set(1 if enabled else 0)
 
-        logger.info("verschluesselung_status", aktiviert=enabled)
+        logger.info("verschlüsselung_status", aktiviert=enabled)
 
     def record_encryption_success(self) -> None:
-        """Erfasse erfolgreiche Verschluesselung."""
+        """Erfasse erfolgreiche Verschlüsselung."""
         if self.enabled:
             BACKUP_ENCRYPTION_SUCCESS_TOTAL.inc()
 
-        logger.debug("verschluesselung_erfolgreich")
+        logger.debug("verschlüsselung_erfolgreich")
 
     def record_encryption_failure(self, error_message: str) -> None:
         """
-        Erfasse fehlgeschlagene Verschluesselung.
+        Erfasse fehlgeschlagene Verschlüsselung.
 
         Args:
             error_message: Fehlerbeschreibung
@@ -683,7 +683,7 @@ class BackupMetrics:
         if self.enabled:
             BACKUP_ENCRYPTION_FAILURE_TOTAL.inc()
 
-        logger.error("verschluesselung_fehlgeschlagen", error=error_message)
+        logger.error("verschlüsselung_fehlgeschlagen", error=error_message)
 
     # -------------------------------------------------------------------------
     # Export
@@ -697,7 +697,7 @@ class BackupMetrics:
             return b"# Prometheus not available\n"
 
     def get_content_type(self) -> str:
-        """Hole Content-Type fuer Metriken."""
+        """Hole Content-Type für Metriken."""
         if self.enabled:
             return CONTENT_TYPE_LATEST
         else:
@@ -707,7 +707,7 @@ class BackupMetrics:
         """
         Hole Zusammenfassung aller Backup-Metriken als Dict.
 
-        Nuetzlich fuer JSON-Endpunkte und Health-Checks.
+        Nützlich für JSON-Endpunkte und Health-Checks.
         """
         disk_usage = self.update_disk_usage()
         file_counts = self.update_backup_file_counts()
@@ -768,7 +768,7 @@ def track_backup(backup_type: str = "unknown"):
             try:
                 result = await func(*args, **kwargs)
 
-                # Versuche Groesse aus Ergebnis zu extrahieren
+                # Versuche Größe aus Ergebnis zu extrahieren
                 if isinstance(result, dict) and "size_bytes" in result:
                     size_bytes = result["size_bytes"]
                 elif isinstance(result, Path) and result.exists():
@@ -830,7 +830,7 @@ def track_backup(backup_type: str = "unknown"):
                         error_message=error_msg,
                     )
 
-        # Waehle Wrapper basierend auf Funktionstyp
+        # Wähle Wrapper basierend auf Funktionstyp
         import asyncio
 
 

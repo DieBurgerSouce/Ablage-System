@@ -57,7 +57,7 @@ class SkontoUsagePrediction:
 
 @dataclass
 class OptimalSkontoTerms:
-    """Optimale Skonto-Konditionen fuer eine Entity."""
+    """Optimale Skonto-Konditionen für eine Entity."""
     entity_id: UUID
     invoice_amount: float
 
@@ -68,9 +68,9 @@ class OptimalSkontoTerms:
 
     # Erwartete Ergebnisse
     expected_usage_probability: float
-    expected_savings_if_used: float  # Ersparnis fuer Kunde
-    expected_cash_advance_days: float  # Tage frueher Geld
-    expected_net_benefit: float  # Netto-Vorteil fuer Unternehmen
+    expected_savings_if_used: float  # Ersparnis für Kunde
+    expected_cash_advance_days: float  # Tage früher Geld
+    expected_net_benefit: float  # Netto-Vorteil für Unternehmen
 
     # Alternative Szenarien
     aggressive_scenario: Dict[str, float] = field(default_factory=dict)
@@ -116,7 +116,7 @@ STANDARD_SKONTO_TIERS = [
     {"percentage": 1.0, "days": 21, "name": "Long"},
 ]
 
-# Kapitalkosten (Zinssatz p.a.) fuer NPV-Berechnung
+# Kapitalkosten (Zinssatz p.a.) für NPV-Berechnung
 CAPITAL_COST_RATE = 0.05  # 5% p.a.
 
 
@@ -126,7 +126,7 @@ CAPITAL_COST_RATE = 0.05  # 5% p.a.
 
 class SkontoOptimizerService:
     """
-    Service fuer ML-basierte Skonto-Optimierung.
+    Service für ML-basierte Skonto-Optimierung.
 
     Features:
     - Skonto-Nutzungswahrscheinlichkeit pro Entity
@@ -158,13 +158,13 @@ class SkontoOptimizerService:
 
         Args:
             db: Datenbank-Session
-            entity_id: Geschaeftspartner-ID
+            entity_id: Geschäftspartner-ID
             skonto_percentage: Angebotener Skonto-Prozentsatz
 
         Returns:
             SkontoUsagePrediction mit Wahrscheinlichkeit
         """
-        # Hole Features ueber den Payment-Service
+        # Hole Features über den Payment-Service
         features = await self._payment_service.extract_features(db, entity_id)
 
         # Historische Skonto-Nutzung
@@ -185,8 +185,8 @@ class SkontoOptimizerService:
             "historical_usage_rate": round(historical_rate, 2),
         }
 
-        # Anpassung basierend auf Skonto-Hoehe
-        # Hoeherer Skonto = hoehere Nutzungswahrscheinlichkeit
+        # Anpassung basierend auf Skonto-Höhe
+        # Höherer Skonto = höhere Nutzungswahrscheinlichkeit
         percentage_factor = 1.0
         if skonto_percentage >= 3.0:
             percentage_factor = 1.3  # +30% Wahrscheinlichkeit
@@ -201,13 +201,13 @@ class SkontoOptimizerService:
         # Anpassung basierend auf Zahlungsverhalten
         # Schnelle Zahler nutzen eher Skonto
         if features.payment_history_avg_delay <= 0:
-            payment_factor = 1.2  # Zahlt puenktlich/frueh
+            payment_factor = 1.2  # Zahlt puenktlich/früh
             contributing_factors["on_time_payer"] = 0.2
         elif features.payment_history_avg_delay <= 5:
             payment_factor = 1.1
             contributing_factors["fast_payer"] = 0.1
         elif features.payment_history_avg_delay > 14:
-            payment_factor = 0.7  # Zahlt spaet, unwahrscheinlich Skonto
+            payment_factor = 0.7  # Zahlt spät, unwahrscheinlich Skonto
             contributing_factors["late_payer_effect"] = -0.3
         else:
             payment_factor = 1.0
@@ -220,7 +220,7 @@ class SkontoOptimizerService:
         else:
             liquidity_factor = 1.0
 
-        # Finanzstaerke (basierend auf Volumen und Beziehungsdauer)
+        # Finanzstärke (basierend auf Volumen und Beziehungsdauer)
         if features.invoice_volume_total > 100000 and features.relationship_age_days > 365:
             strength_factor = 1.1  # Grosser, etablierter Kunde
             contributing_factors["established_customer"] = 0.1
@@ -268,7 +268,7 @@ class SkontoOptimizerService:
         features: PaymentFeatures,
     ) -> Tuple[int, int]:
         """Hole detaillierte Skonto-Nutzungshistorie."""
-        # Query fuer Skonto-faehige Rechnungen
+        # Query für Skonto-fähige Rechnungen
         query = (
             select(
                 func.count(InvoiceTracking.id).label("total"),
@@ -292,10 +292,10 @@ class SkontoOptimizerService:
         return (0, 0)
 
     def _calculate_confidence(self, features: PaymentFeatures) -> float:
-        """Berechne Konfidenz basierend auf Datenqualitaet."""
+        """Berechne Konfidenz basierend auf Datenqualität."""
         confidence = 0.5
 
-        # Mehr historische Daten = hoehere Konfidenz
+        # Mehr historische Daten = höhere Konfidenz
         if features.paid_invoices >= 10:
             confidence += 0.25
         elif features.paid_invoices >= 5:
@@ -303,7 +303,7 @@ class SkontoOptimizerService:
         elif features.paid_invoices >= 2:
             confidence += 0.05
 
-        # Laengere Beziehung = stabilere Muster
+        # Längere Beziehung = stabilere Muster
         if features.relationship_age_days > 730:
             confidence += 0.1
         elif features.relationship_age_days > 365:
@@ -322,17 +322,17 @@ class SkontoOptimizerService:
         invoice_amount: Optional[float] = None,
     ) -> OptimalSkontoTerms:
         """
-        Berechne optimale Skonto-Konditionen fuer eine Entity.
+        Berechne optimale Skonto-Konditionen für eine Entity.
 
         Optimiert auf:
         - Maximale Wahrscheinlichkeit der Nutzung
-        - Positiver NPV fuer das Unternehmen
+        - Positiver NPV für das Unternehmen
         - Verbesserung des Working Capital
 
         Args:
             db: Datenbank-Session
-            entity_id: Geschaeftspartner-ID
-            invoice_amount: Rechnungsbetrag (optional, fuer Kalkulation)
+            entity_id: Geschäftspartner-ID
+            invoice_amount: Rechnungsbetrag (optional, für Kalkulation)
 
         Returns:
             OptimalSkontoTerms mit Empfehlung
@@ -355,7 +355,7 @@ class SkontoOptimizerService:
             percentage = tier["percentage"]
             days = tier["days"]
 
-            # Vorhersage fuer diese Staffel
+            # Vorhersage für diese Staffel
             usage_pred = await self.predict_skonto_usage(
                 db, entity_id, skonto_percentage=percentage
             )
@@ -364,12 +364,12 @@ class SkontoOptimizerService:
             discount_amount = invoice_amount * (percentage / 100)
             probability = usage_pred.usage_probability
 
-            # Erwartete Tage frueher bezahlt (wenn Skonto genutzt)
+            # Erwartete Tage früher bezahlt (wenn Skonto genutzt)
             # Annahme: Standardzahlungsziel 30 Tage
             standard_payment_days = 30
             days_advance = standard_payment_days - days
 
-            # NPV der frueheren Zahlung
+            # NPV der früheren Zahlung
             daily_rate = CAPITAL_COST_RATE / 365
             npv_benefit_if_used = invoice_amount * (math.pow(1 + daily_rate, days_advance) - 1)
 
@@ -406,19 +406,19 @@ class SkontoOptimizerService:
         # Reasoning erstellen
         reasoning_parts = []
         if features.skonto_usage_rate > 0.7:
-            reasoning_parts.append("Kunde nutzt haeufig Skonto")
+            reasoning_parts.append("Kunde nutzt häufig Skonto")
         elif features.skonto_usage_rate < 0.3:
             reasoning_parts.append("Kunde nutzt selten Skonto")
 
         if features.payment_history_avg_delay <= 0:
             reasoning_parts.append("Schneller Zahler")
         elif features.payment_history_avg_delay > 10:
-            reasoning_parts.append("Spaeter Zahler - Skonto-Incentive wichtig")
+            reasoning_parts.append("Später Zahler - Skonto-Incentive wichtig")
 
         if best_option["expected_net_benefit"] > 0:
             reasoning_parts.append("Positiver NPV erwartet")
         else:
-            reasoning_parts.append("NPV neutral/negativ - Kundenbeziehung beruecksichtigen")
+            reasoning_parts.append("NPV neutral/negativ - Kundenbeziehung berücksichtigen")
 
         result = OptimalSkontoTerms(
             entity_id=entity_id,
@@ -561,7 +561,7 @@ class SkontoOptimizerService:
 
         # Durchschnittliche Cash-Advance-Tage (gewichtet)
         if analysis.expected_skonto_usage_amount > 0:
-            # Annahme: Skonto-Nutzung = 20 Tage frueher (30-10)
+            # Annahme: Skonto-Nutzung = 20 Tage früher (30-10)
             avg_advance = 20.0
             analysis.expected_cash_advance_days_avg = avg_advance
             analysis.expected_working_capital_improvement = (

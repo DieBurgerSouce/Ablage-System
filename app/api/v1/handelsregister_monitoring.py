@@ -297,7 +297,7 @@ async def acknowledge_alert(
     service = get_handelsregister_monitoring_service()
 
     try:
-        # SECURITY: Uebergebe company_id fuer Ownership-Validierung
+        # SECURITY: Übergebe company_id für Ownership-Validierung
         success = await service.acknowledge_alert(
             alert_id=alert_id,
             user_id=current_user.id,
@@ -313,7 +313,7 @@ async def acknowledge_alert(
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diesen Alert.",
+            detail="Keine Berechtigung für diesen Alert.",
         )
 
     if not success:

@@ -1,6 +1,6 @@
-"""KPI Calculation Services fuer Enterprise Features.
+"""KPI Calculation Services für Enterprise Features.
 
-Dieses Modul enthaelt die KPI-Berechnungs-Services:
+Dieses Modul enthält die KPI-Berechnungs-Services:
 - PropertyKPIService: Immobilien-KPIs
 - VehicleKPIService: Fahrzeug-KPIs
 - InsuranceKPIService: Versicherungs-KPIs

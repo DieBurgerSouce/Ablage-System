@@ -370,7 +370,7 @@ class SuryaGPUAgent(OCRAgent):
 
             logger.info("ocr_completed", chars_extracted=len(full_text), pages=len(images))
 
-            # Pruefe auf deutsche Zeichen
+            # Prüfe auf deutsche Zeichen
             has_umlauts = any(c in full_text for c in "äöüÄÖÜß")
 
             # Erstelle standardisiertes OCRResult

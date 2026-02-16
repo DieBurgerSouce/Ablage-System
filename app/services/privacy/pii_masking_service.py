@@ -3,7 +3,7 @@
 PII Masking Service.
 
 Maskiert und pseudonymisiert personenbezogene Daten:
-- Vollstaendige Maskierung (****)
+- Vollständige Maskierung (****)
 - Partielle Maskierung (DE89****1234)
 - Pseudonymisierung (reversibel mit Schluessel)
 - Tokenisierung
@@ -47,7 +47,7 @@ logger = logging.getLogger(__name__)
 
 class MaskingStrategy(str, Enum):
     """Maskierungsstrategien."""
-    FULL = "full"           # Vollstaendige Maskierung: ********
+    FULL = "full"           # Vollständige Maskierung: ********
     PARTIAL = "partial"     # Partielle Maskierung: DE89****1234
     HASH = "hash"           # Hash-Ersetzung: sha256(value)[:8]
     PSEUDONYM = "pseudonym" # Pseudonymisierung: [PERSON-001]
@@ -61,14 +61,14 @@ class MaskingResult:
     original_text: str
     masked_text: str
     replacements: List[ReplacementDict]
-    tokens_map: Dict[str, str]  # Token -> Original (fuer Reversierung)
+    tokens_map: Dict[str, str]  # Token -> Original (für Reversierung)
 
 
 class PIIMaskingService:
     """
-    Service fuer die Maskierung personenbezogener Daten.
+    Service für die Maskierung personenbezogener Daten.
 
-    Unterstuetzt verschiedene Maskierungsstrategien je nach
+    Unterstützt verschiedene Maskierungsstrategien je nach
     Sensibilitaet und Verwendungszweck.
     """
 
@@ -131,7 +131,7 @@ class PIIMaskingService:
 
         Args:
             detection_service: Optional vorhandener Detection-Service
-            secret_key: Geheimer Schluessel fuer reversible Pseudonymisierung
+            secret_key: Geheimer Schluessel für reversible Pseudonymisierung
         """
         self.detection_service = detection_service or PIIDetectionService()
         self.secret_key = secret_key or secrets.token_hex(32)
@@ -149,7 +149,7 @@ class PIIMaskingService:
 
         Args:
             text: Zu maskierender Text
-            strategy: Globale Maskierungsstrategie (ueberschreibt Typ-spezifische)
+            strategy: Globale Maskierungsstrategie (überschreibt Typ-spezifische)
             pii_types: Optional Set von zu maskierenden PII-Typen
 
         Returns:
@@ -174,7 +174,7 @@ class PIIMaskingService:
                 tokens_map={},
             )
 
-        # Sortiere Matches nach Position (rueckwaerts fuer korrekte Ersetzung)
+        # Sortiere Matches nach Position (rückwärts für korrekte Ersetzung)
         sorted_matches = sorted(
             detection_result.pii_found,
             key=lambda m: m.start,
@@ -209,11 +209,11 @@ class PIIMaskingService:
                 strategy=mask_strategy.value,
             ))
 
-            # Token-Map fuer Reversierung
+            # Token-Map für Reversierung
             if token:
                 tokens_map[token] = match.value
 
-        # Kehre Replacements um (fuer chronologische Reihenfolge)
+        # Kehre Replacements um (für chronologische Reihenfolge)
         replacements.reverse()
 
         return MaskingResult(
@@ -271,14 +271,14 @@ class PIIMaskingService:
         """
         Stelle Original-Text aus maskiertem Text wieder her.
 
-        Nur moeglich bei Token-basierten Maskierungen.
+        Nur möglich bei Token-basierten Maskierungen.
 
         Args:
             masked_text: Maskierter Text
             tokens_map: Token -> Original Mapping
 
         Returns:
-            Original-Text (soweit moeglich)
+            Original-Text (soweit möglich)
         """
         result = masked_text
 
@@ -293,7 +293,7 @@ class PIIMaskingService:
         pii_type: PIIType,
     ) -> str:
         """
-        Erstelle konsistentes Pseudonym fuer einen Wert.
+        Erstelle konsistentes Pseudonym für einen Wert.
 
         Gleiche Werte ergeben immer das gleiche Pseudonym.
 
@@ -307,7 +307,7 @@ class PIIMaskingService:
         # Prefix basierend auf Typ
         prefix = self.TYPE_SPECIFIC_MASKS.get(pii_type, {}).get("prefix", pii_type.value.upper())
 
-        # Hash des Werts fuer Konsistenz
+        # Hash des Werts für Konsistenz
         value_hash = hashlib.sha256(
             (value + self.secret_key).encode()
         ).hexdigest()[:8]
@@ -316,7 +316,7 @@ class PIIMaskingService:
 
     def create_token(self, value: str) -> str:
         """
-        Erstelle reversiblen Token fuer einen Wert.
+        Erstelle reversiblen Token für einen Wert.
 
         Args:
             value: Zu tokenisierender Wert
@@ -333,7 +333,7 @@ class PIIMaskingService:
         return token
 
     def _get_strategy_for_match(self, match: PIIMatch) -> MaskingStrategy:
-        """Bestimme Maskierungsstrategie fuer einen Match."""
+        """Bestimme Maskierungsstrategie für einen Match."""
         # Typ-spezifische Regel
         type_config = self.TYPE_SPECIFIC_MASKS.get(match.pii_type, {})
         if "strategy" in type_config:
@@ -358,13 +358,13 @@ class PIIMaskingService:
             strategy: Zu verwendende Strategie
 
         Returns:
-            Tuple aus (maskierter_wert, token_fuer_reversierung)
+            Tuple aus (maskierter_wert, token_für_reversierung)
         """
         value = match.value
         token = None
 
         if strategy == MaskingStrategy.FULL:
-            # Vollstaendige Maskierung
+            # Vollständige Maskierung
             masked = self.MASK_CHAR * len(value)
 
         elif strategy == MaskingStrategy.PARTIAL:
@@ -429,7 +429,7 @@ class PIIMaskingService:
         text: str,
     ) -> str:
         """
-        Maskiere Text fuer Log-Ausgaben.
+        Maskiere Text für Log-Ausgaben.
 
         Schnelle Methode die kritische Daten immer maskiert.
 
@@ -439,7 +439,7 @@ class PIIMaskingService:
         Returns:
             Maskierter Text
         """
-        # Schnelle Patterns fuer Logs
+        # Schnelle Patterns für Logs
         patterns = [
             # IBAN
             (r'(DE\d{2})\d{14}(\d{4})', r'\1**************\2'),

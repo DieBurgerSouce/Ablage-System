@@ -1,12 +1,12 @@
 """GoBD & GDPR Compliance Services.
 
-Dieses Modul stellt Services fuer GoBD- und DSGVO-konforme Dokumentenverarbeitung bereit:
-- AuditChainService: Blockchain-aehnliche Hash-Kette
+Dieses Modul stellt Services für GoBD- und DSGVO-konforme Dokumentenverarbeitung bereit:
+- AuditChainService: Blockchain-ähnliche Hash-Kette
 - RetentionService: Aufbewahrungsfristen-Management
 - ArchiveService: Revisionssichere Archivierung mit TSA
 - ConsentManagementService: DSGVO Einwilligungsverwaltung (Phase 7)
 
-GoBD = Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung
+GoBD = Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung
        von Buechern, Aufzeichnungen und Unterlagen in elektronischer
        Form sowie zum Datenzugriff
 

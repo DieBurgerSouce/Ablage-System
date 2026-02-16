@@ -1,4 +1,4 @@
-"""Service fuer die Verwaltung von Fahrzeugen im Privat-Modul."""
+"""Service für die Verwaltung von Fahrzeugen im Privat-Modul."""
 
 import uuid
 from datetime import datetime, date
@@ -28,7 +28,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PrivatVehicleService:
-    """Service fuer Fahrzeuge und Tankbelege."""
+    """Service für Fahrzeuge und Tankbelege."""
 
     # ========== Vehicle CRUD ==========
 
@@ -102,11 +102,11 @@ class PrivatVehicleService:
     ) -> Optional[PrivatVehicle]:
         """IDOR-sichere Methode: Holt Fahrzeug nur wenn User Zugriff hat.
 
-        SECURITY: Gibt einheitlich None zurueck bei:
+        SECURITY: Gibt einheitlich None zurück bei:
         - Fahrzeug existiert nicht
         - User hat keinen Zugriff
 
-        Dies verhindert Information Disclosure ueber Existenz von Fahrzeugen.
+        Dies verhindert Information Disclosure über Existenz von Fahrzeugen.
 
         Args:
             db: Datenbank-Session
@@ -118,7 +118,7 @@ class PrivatVehicleService:
         """
         from app.db.models import PrivatSpace, PrivatSpaceAccess
 
-        # Join mit Space um Owner zu pruefen
+        # Join mit Space um Owner zu prüfen
         result = await db.execute(
             select(PrivatVehicle, PrivatSpace)
             .join(PrivatSpace, PrivatVehicle.space_id == PrivatSpace.id)
@@ -135,7 +135,7 @@ class PrivatVehicleService:
         if space.owner_id == requesting_user_id:
             return vehicle
 
-        # Pruefe explizite Berechtigung
+        # Prüfe explizite Berechtigung
         now = utc_now()
         access_result = await db.execute(
             select(PrivatSpaceAccess)
@@ -311,15 +311,15 @@ class PrivatVehicleService:
         """Aktualisiert ein Fahrzeug.
 
         SECURITY FIX 23-5: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Updates zu verhindern. Ohne Row Lock koennte:
-        - Lost Updates bei gleichzeitigen Aenderungen auftreten
+        bei parallelen Updates zu verhindern. Ohne Row Lock könnte:
+        - Lost Updates bei gleichzeitigen Änderungen auftreten
         - Inkonsistente Fahrzeugdaten entstehen
         """
         # SECURITY FIX 23-5: Row Lock verhindert parallele Modifikationen
         result = await db.execute(
             select(PrivatVehicle)
             .where(PrivatVehicle.id == vehicle_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Fahrzeugdaten!
+            .with_for_update()  # ROW LOCK - kritisch für Fahrzeugdaten!
         )
         vehicle = result.scalar_one_or_none()
         if not vehicle:
@@ -346,10 +346,10 @@ class PrivatVehicleService:
         vehicle_id: uuid.UUID,
         soft_delete: bool = True,
     ) -> bool:
-        """Loescht ein Fahrzeug.
+        """Löscht ein Fahrzeug.
 
         SECURITY FIX 23-6: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelem Delete zu verhindern. Ohne Row Lock koennte:
+        bei parallelem Delete zu verhindern. Ohne Row Lock könnte:
         - Double-Delete auftreten
         - Inkonsistente Zustaende entstehen
         """
@@ -357,7 +357,7 @@ class PrivatVehicleService:
         result = await db.execute(
             select(PrivatVehicle)
             .where(PrivatVehicle.id == vehicle_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Datenintegritaet!
+            .with_for_update()  # ROW LOCK - kritisch für Datenintegrität!
         )
         vehicle = result.scalar_one_or_none()
         if not vehicle:
@@ -381,7 +381,7 @@ class PrivatVehicleService:
         data: PrivatFuelLogCreate,
     ) -> PrivatFuelLog:
         """Erstellt einen neuen Tankbeleg."""
-        # Berechne Verbrauch wenn moeglich
+        # Berechne Verbrauch wenn möglich
         consumption = await self._calculate_consumption_for_log(
             db, data.vehicle_id, data.mileage, data.liters, data.is_full_tank
         )
@@ -404,7 +404,7 @@ class PrivatVehicleService:
 
         db.add(log)
 
-        # SECURITY FIX 24-4: Row Lock fuer atomare Mileage-Aktualisierung (TOCTOU Prevention)
+        # SECURITY FIX 24-4: Row Lock für atomare Mileage-Aktualisierung (TOCTOU Prevention)
         # Aktualisiere Kilometerstand des Fahrzeugs mit SELECT FOR UPDATE
         vehicle_result = await db.execute(
             select(PrivatVehicle)
@@ -435,7 +435,7 @@ class PrivatVehicleService:
         liters: Decimal,
         is_full_tank: bool,
     ) -> Optional[Decimal]:
-        """Berechnet den Verbrauch fuer einen einzelnen Tankbeleg."""
+        """Berechnet den Verbrauch für einen einzelnen Tankbeleg."""
         if not is_full_tank:
             return None
 

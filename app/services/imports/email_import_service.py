@@ -49,10 +49,10 @@ except ImportError:
 # Constants
 # ============================================================================
 
-# Maximale Anhang-Groesse (50 MB)
+# Maximale Anhang-Größe (50 MB)
 MAX_ATTACHMENT_SIZE = 50 * 1024 * 1024
 
-# Erlaubte MIME-Types fuer Dokument-Import
+# Erlaubte MIME-Types für Dokument-Import
 ALLOWED_MIME_TYPES = {
     "application/pdf",
     "image/png",
@@ -132,11 +132,11 @@ class EmailImportResult:
 # ============================================================================
 
 class EmailImportService:
-    """Service fuer E-Mail-Import via IMAP.
+    """Service für E-Mail-Import via IMAP.
 
     Features:
     - IMAP-Verbindung mit SSL/TLS
-    - Credential-Verschluesselung (AES-256-GCM)
+    - Credential-Verschlüsselung (AES-256-GCM)
     - Anhang-Extraktion mit MIME-Typ-Validierung
     - Duplikat-Erkennung via SHA256
     - Integration mit Document-Pipeline
@@ -167,9 +167,9 @@ class EmailImportService:
 
         Args:
             server: IMAP Server Hostname
-            port: IMAP Port (993 fuer SSL, 143 fuer STARTTLS)
+            port: IMAP Port (993 für SSL, 143 für STARTTLS)
             username: IMAP Username
-            password: IMAP Passwort (entschluesselt)
+            password: IMAP Passwort (entschlüsselt)
             use_ssl: SSL verwenden
             use_starttls: STARTTLS verwenden
 
@@ -182,8 +182,8 @@ class EmailImportService:
         """
         if not IMAP_AVAILABLE:
             raise RuntimeError(
-                "E-Mail-Import nicht verfuegbar. "
-                "Bitte 'pip install imapclient' ausfuehren."
+                "E-Mail-Import nicht verfügbar. "
+                "Bitte 'pip install imapclient' ausführen."
             )
 
         try:
@@ -213,11 +213,11 @@ class EmailImportService:
             raise ConnectionError(f"IMAP-Verbindung fehlgeschlagen: {e}")
 
     async def test_connection(self, config_id: UUID, user_id: UUID) -> Dict:
-        """Testet IMAP-Verbindung fuer eine Konfiguration.
+        """Testet IMAP-Verbindung für eine Konfiguration.
 
         Args:
             config_id: Email-Import-Konfigurations-ID
-            user_id: User-ID fuer Berechtigungspruefung
+            user_id: User-ID für Berechtigungsprüfung
 
         Returns:
             Dict mit Test-Ergebnis (success, message, folder_count)
@@ -233,7 +233,7 @@ class EmailImportService:
             }
 
         try:
-            # Credentials entschluesseln
+            # Credentials entschlüsseln
             username = decrypt_data(
                 config.username_encrypted,
                 associated_data=f"email_config:{config_id}"
@@ -274,7 +274,7 @@ class EmailImportService:
         except EncryptionError as e:
             return {
                 "success": False,
-                "message": "Credentials konnten nicht entschluesselt werden",
+                "message": "Credentials konnten nicht entschlüsselt werden",
             }
         except Exception as e:
             await self._update_connection_status(
@@ -295,7 +295,7 @@ class EmailImportService:
         user_id: UUID,
         max_emails: int = 100,
     ) -> EmailImportResult:
-        """Synchronisiert E-Mails fuer eine Konfiguration.
+        """Synchronisiert E-Mails für eine Konfiguration.
 
         Args:
             config_id: Email-Import-Konfigurations-ID
@@ -328,7 +328,7 @@ class EmailImportService:
 
         client = None
         try:
-            # Credentials entschluesseln
+            # Credentials entschlüsseln
             username = decrypt_data(
                 config.username_encrypted,
                 associated_data=f"email_config:{config_id}"
@@ -348,11 +348,11 @@ class EmailImportService:
                 use_starttls=config.use_starttls,
             )
 
-            # Ordner auswaehlen
+            # Ordner auswählen
             folder = config.imap_folder or "INBOX"
             client.select_folder(folder, readonly=False)
 
-            # Neue Nachrichten suchen (UIDs groesser als last_uid)
+            # Neue Nachrichten suchen (UIDs größer als last_uid)
             search_criteria = ["UID", f"{config.last_uid + 1}:*"]
 
             # Filter anwenden wenn konfiguriert
@@ -597,7 +597,7 @@ class EmailImportService:
             part: Email Message Part
 
         Returns:
-            EmailAttachment oder None wenn ungueltig
+            EmailAttachment oder None wenn ungültig
         """
         filename = part.get_filename()
         if not filename:
@@ -606,7 +606,7 @@ class EmailImportService:
         # Filename dekodieren
         filename = self._decode_header(filename)
 
-        # Dateiendung pruefen
+        # Dateiendung prüfen
         extension = "." + filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
         if extension not in ALLOWED_EXTENSIONS:
             logger.debug(
@@ -624,7 +624,7 @@ class EmailImportService:
         except Exception:
             return None
 
-        # Groesse pruefen
+        # Größe prüfen
         if len(content) > MAX_ATTACHMENT_SIZE:
             logger.warning(
                 "attachment_too_large",
@@ -634,7 +634,7 @@ class EmailImportService:
             )
             return None
 
-        # MIME-Type pruefen
+        # MIME-Type prüfen
         mime_type = part.get_content_type()
         if mime_type not in ALLOWED_MIME_TYPES:
             # Fallback: Extension-basierte Erkennung
@@ -655,7 +655,7 @@ class EmailImportService:
                 )
                 return None
 
-        # Content-ID fuer Inline-Bilder
+        # Content-ID für Inline-Bilder
         content_id = part.get("Content-ID", "").strip("<>")
 
         return EmailAttachment(
@@ -683,7 +683,7 @@ class EmailImportService:
             config: EmailImportConfig
             email: ParsedEmail
             attachment: EmailAttachment
-            batch_id: Batch-ID fuer Import-Log
+            batch_id: Batch-ID für Import-Log
             user_id: User-ID
 
         Returns:
@@ -765,7 +765,7 @@ class EmailImportService:
                 user_id=user_id,
             )
 
-            # Import Rules ausfuehren
+            # Import Rules ausführen
             await self._apply_import_rules(
                 document_id=document_id,
                 email=email,
@@ -827,7 +827,7 @@ class EmailImportService:
     async def _check_duplicate_by_hash(
         self, user_id: UUID, file_hash: str
     ) -> Optional[UUID]:
-        """Prueft ob ein Dokument mit gleichem Hash bereits existiert.
+        """Prüft ob ein Dokument mit gleichem Hash bereits existiert.
 
         Args:
             user_id: User-ID
@@ -894,7 +894,7 @@ class EmailImportService:
         from app.services.document_service import DocumentService
         from app.services.storage_service import StorageService
 
-        # Storage Service fuer MinIO Upload
+        # Storage Service für MinIO Upload
         storage = StorageService()
 
         # Datei in MinIO speichern
@@ -905,7 +905,7 @@ class EmailImportService:
             mime_type=attachment.mime_type,
         )
 
-        # Document Service fuer DB-Eintrag
+        # Document Service für DB-Eintrag
         doc_service = DocumentService(self.db)
 
         # Metadaten aus Email extrahieren
@@ -939,16 +939,16 @@ class EmailImportService:
         email: ParsedEmail,
         user_id: UUID,
     ) -> None:
-        """Matcht Email-Absender gegen BusinessEntities und verknuepft das Dokument.
+        """Matcht Email-Absender gegen BusinessEntities und verknüpft das Dokument.
 
-        Verwendet den EmailSenderMatcherService fuer intelligentes Matching:
-        - Bei Confidence >= 85%: Automatische Verknuepfung mit Entity
-        - Bei Confidence < 85%: Speichert Vorschlaege in Metadaten
+        Verwendet den EmailSenderMatcherService für intelligentes Matching:
+        - Bei Confidence >= 85%: Automatische Verknüpfung mit Entity
+        - Bei Confidence < 85%: Speichert Vorschläge in Metadaten
 
         Args:
             document_id: ID des erstellten Dokuments
             email: ParsedEmail mit Absender-Informationen
-            user_id: User-ID fuer Berechtigungspruefung
+            user_id: User-ID für Berechtigungsprüfung
         """
         from app.services.imports import get_email_sender_matcher
         from app.db.models import Document
@@ -957,7 +957,7 @@ class EmailImportService:
             # EmailSenderMatcher mit User-spezifischen Settings laden
             matcher = await get_email_sender_matcher(self.db, user_id)
 
-            # Matching durchfuehren
+            # Matching durchführen
             match_result = await matcher.match_sender(
                 from_address=email.from_address,
                 subject=email.subject,
@@ -973,7 +973,7 @@ class EmailImportService:
 
             # Dokument aktualisieren
             if match_result.entity_id and match_result.confidence >= 0.85:
-                # Hohe Confidence: Automatisch verknuepfen
+                # Hohe Confidence: Automatisch verknüpfen
                 await self.db.execute(
                     update(Document).where(Document.id == document_id).values(
                         entity_id=match_result.entity_id,
@@ -996,7 +996,7 @@ class EmailImportService:
                 )
 
             elif match_result.suggestions:
-                # Niedrige Confidence aber Vorschlaege vorhanden: Speichern fuer Validierung
+                # Niedrige Confidence aber Vorschläge vorhanden: Speichern für Validierung
                 suggestions_data = [
                     {
                         "entity_id": str(s.entity_id),
@@ -1005,7 +1005,7 @@ class EmailImportService:
                         "confidence": s.confidence,
                         "match_reason": s.match_reason,
                     }
-                    for s in match_result.suggestions[:3]  # Max 3 Vorschlaege
+                    for s in match_result.suggestions[:3]  # Max 3 Vorschläge
                 ]
 
                 await self.db.execute(
@@ -1058,7 +1058,7 @@ class EmailImportService:
         try:
             rule_service = ImportRuleService(self.db)
 
-            # Metadaten fuer Rule-Matching aufbauen
+            # Metadaten für Rule-Matching aufbauen
             metadata = {
                 "sender_email": email.from_address,
                 "sender_name": self._extract_display_name(email.from_address),
@@ -1132,7 +1132,7 @@ class EmailImportService:
         actions: Dict,
         user_id: UUID,
     ) -> None:
-        """Fuehrt die konsolidierten Rule-Actions aus.
+        """Führt die konsolidierten Rule-Actions aus.
 
         Args:
             document_id: Dokument-ID
@@ -1180,7 +1180,7 @@ class EmailImportService:
                 )
 
             elif action_key == "skip_ocr" and action_value:
-                # OCR ueberspringen (via Metadata)
+                # OCR überspringen (via Metadata)
                 metadata_updates["skip_ocr"] = True
                 logger.info(
                     "rule_action_skip_ocr",
@@ -1188,7 +1188,7 @@ class EmailImportService:
                 )
 
             elif action_key == "priority_ocr" and action_value:
-                # Prioritaets-OCR (via Metadata)
+                # Prioritäts-OCR (via Metadata)
                 metadata_updates["priority_ocr"] = True
                 logger.info(
                     "rule_action_priority_ocr",
@@ -1204,7 +1204,7 @@ class EmailImportService:
                 )
 
             elif action_key == "add_metadata" and action_value:
-                # Zusaetzliche Metadaten
+                # Zusätzliche Metadaten
                 if isinstance(action_value, dict):
                     metadata_updates.update(action_value)
 
@@ -1326,21 +1326,21 @@ class EmailImportService:
             imap_server: IMAP Server Hostname
             imap_port: IMAP Port
             username: IMAP Username
-            password: IMAP Passwort (Klartext - wird verschluesselt)
+            password: IMAP Passwort (Klartext - wird verschlüsselt)
             use_ssl: SSL verwenden
             use_starttls: STARTTLS verwenden
             imap_folder: IMAP Ordner
-            processed_folder: Ordner fuer verarbeitete Emails
-            error_folder: Ordner fuer fehlerhafte Emails
+            processed_folder: Ordner für verarbeitete Emails
+            error_folder: Ordner für fehlerhafte Emails
             sync_interval_minutes: Sync-Intervall
-            filter_from_addresses: Filter fuer Absender
-            filter_subject_patterns: Filter fuer Betreff
-            filter_attachment_types: Filter fuer Anhangs-Typen
+            filter_from_addresses: Filter für Absender
+            filter_subject_patterns: Filter für Betreff
+            filter_attachment_types: Filter für Anhangs-Typen
             extract_attachments_only: Nur Anhaenge importieren
             include_email_body_as_document: Email-Body als Dokument speichern
             auto_classify: Automatisch klassifizieren
-            auto_ocr: Automatisch OCR ausfuehren
-            default_folder_id: Standard-Ordner fuer Dokumente
+            auto_ocr: Automatisch OCR ausführen
+            default_folder_id: Standard-Ordner für Dokumente
             company_id: Firma-ID
 
         Returns:
@@ -1350,7 +1350,7 @@ class EmailImportService:
 
         config_id = uuid4()
 
-        # Credentials verschluesseln
+        # Credentials verschlüsseln
         username_encrypted = encrypt_data(
             username,
             associated_data=f"email_config:{config_id}"
@@ -1409,7 +1409,7 @@ class EmailImportService:
 
         Args:
             config_id: Config-ID
-            user_id: User-ID fuer Berechtigungspruefung
+            user_id: User-ID für Berechtigungsprüfung
             **updates: Zu aktualisierende Felder
 
         Returns:
@@ -1421,7 +1421,7 @@ class EmailImportService:
         if not config:
             return False
 
-        # Passwort separat behandeln (verschluesseln)
+        # Passwort separat behandeln (verschlüsseln)
         if "password" in updates:
             updates["password_encrypted"] = encrypt_data(
                 updates.pop("password"),
@@ -1455,11 +1455,11 @@ class EmailImportService:
         config_id: UUID,
         user_id: UUID,
     ) -> bool:
-        """Loescht eine Email-Import-Konfiguration.
+        """Löscht eine Email-Import-Konfiguration.
 
         Args:
             config_id: Config-ID
-            user_id: User-ID fuer Berechtigungspruefung
+            user_id: User-ID für Berechtigungsprüfung
 
         Returns:
             True wenn erfolgreich
@@ -1489,7 +1489,7 @@ class EmailImportService:
 
         Args:
             config_id: Config-ID
-            user_id: User-ID fuer Berechtigungspruefung
+            user_id: User-ID für Berechtigungsprüfung
 
         Returns:
             Config-Dict (ohne Credentials) oder None
@@ -1582,7 +1582,7 @@ class EmailImportService:
     # ========================================================================
 
     async def _get_config(self, config_id: UUID, user_id: UUID):
-        """Holt Config mit Berechtigungspruefung."""
+        """Holt Config mit Berechtigungsprüfung."""
         from app.db.models import EmailImportConfig
 
         result = await self.db.execute(
@@ -1638,7 +1638,7 @@ class EmailImportService:
             .where(EmailImportConfig.id == config_id)
             .values(last_uid=uid)
         )
-        # Kein Commit - wird mit naechster Operation committed
+        # Kein Commit - wird mit nächster Operation committed
 
     async def _update_stats(
         self,

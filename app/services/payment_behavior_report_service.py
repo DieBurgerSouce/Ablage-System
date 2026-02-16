@@ -5,7 +5,7 @@ Payment Behavior Report Service.
 Analysiert das Zahlungsverhalten von Kunden:
 - Durchschnittliche Zahldauer
 - Puenktlichkeitsrate
-- Zahlungsverzoegerungs-Trends
+- Zahlungsverzögerungs-Trends
 - Problematische Kunden identifizieren
 - Vergleich mit Branchendurchschnitt
 """
@@ -37,11 +37,11 @@ logger = structlog.get_logger(__name__)
 
 class PaymentBehaviorCategory(str, Enum):
     """Kategorisierung des Zahlungsverhaltens."""
-    EXCELLENT = "excellent"      # Zahlt vor Faelligkeit
+    EXCELLENT = "excellent"      # Zahlt vor Fälligkeit
     PUNCTUAL = "punctual"        # Zahlt puenktlich
-    DELAYED = "delayed"          # Zahlt verzoegert (1-14 Tage)
-    PROBLEMATIC = "problematic"  # Haeufig stark verzoegert
-    DEFAULTER = "defaulter"      # Regelmaessige Ausfaelle
+    DELAYED = "delayed"          # Zahlt verzögert (1-14 Tage)
+    PROBLEMATIC = "problematic"  # Häufig stark verzögert
+    DEFAULTER = "defaulter"      # Regelmäßige Ausfaelle
 
 
 class PaymentTrend(str, Enum):
@@ -53,7 +53,7 @@ class PaymentTrend(str, Enum):
 
 @dataclass
 class PaymentMetrics:
-    """Zahlungsmetriken fuer einen Kunden."""
+    """Zahlungsmetriken für einen Kunden."""
     entity_id: UUID
     entity_name: str
 
@@ -78,7 +78,7 @@ class PaymentMetrics:
     # Verhalten
     punctuality_rate: float  # Anteil puenktlicher Zahlungen (0-1)
     early_payment_rate: float  # Anteil vorzeitiger Zahlungen
-    late_payment_rate: float  # Anteil verspaeteter Zahlungen
+    late_payment_rate: float  # Anteil verspäteter Zahlungen
     default_rate: float  # Ausfallrate
 
     # Skonto
@@ -125,10 +125,10 @@ class PaymentBehaviorSummary:
 
 @dataclass
 class PaymentBehaviorReport:
-    """Kompletter Report ueber Kunden-Zahlungsverhalten."""
+    """Kompletter Report über Kunden-Zahlungsverhalten."""
     company_id: UUID
 
-    # Uebersicht
+    # Übersicht
     total_customers: int
     analyzed_customers: int
 
@@ -167,10 +167,10 @@ class PaymentBehaviorReportService:
     - Risikokunden identifizieren
     """
 
-    # Schwellenwerte fuer Kategorisierung
-    PUNCTUALITY_THRESHOLD = 3  # Tage Toleranz fuer "puenktlich"
-    DELAYED_THRESHOLD = 14  # Bis 14 Tage = "verzoegert"
-    PROBLEMATIC_THRESHOLD = 0.3  # 30% verspaetet = problematisch
+    # Schwellenwerte für Kategorisierung
+    PUNCTUALITY_THRESHOLD = 3  # Tage Toleranz für "puenktlich"
+    DELAYED_THRESHOLD = 14  # Bis 14 Tage = "verzögert"
+    PROBLEMATIC_THRESHOLD = 0.3  # 30% verspätet = problematisch
     DEFAULT_THRESHOLD = 0.1  # 10% Ausfaelle = Defaulter
 
     # Scoring-Gewichte
@@ -315,7 +315,7 @@ class PaymentBehaviorReportService:
         early_payment_rate = early_payments / paid_invoices if paid_invoices > 0 else 0.0
         late_payment_rate = late_payments / paid_invoices if paid_invoices > 0 else 0.0
 
-        # Default-Rate (ueberfaellig > 90 Tage)
+        # Default-Rate (überfällig > 90 Tage)
         severe_overdue = sum(
             1 for inv in invoices
             if inv.is_overdue and inv.days_overdue and inv.days_overdue > 90
@@ -384,7 +384,7 @@ class PaymentBehaviorReportService:
             return PaymentBehaviorCategory.DEFAULTER
         elif late_rate >= self.PROBLEMATIC_THRESHOLD:
             return PaymentBehaviorCategory.PROBLEMATIC
-        elif late_rate > 0.1:  # Mehr als 10% verspaetet
+        elif late_rate > 0.1:  # Mehr als 10% verspätet
             return PaymentBehaviorCategory.DELAYED
         elif punctuality_rate >= 0.95:
             return PaymentBehaviorCategory.EXCELLENT
@@ -410,7 +410,7 @@ class PaymentBehaviorReportService:
         older = sorted_invoices[:mid]
         newer = sorted_invoices[mid:]
 
-        # Verspaetungsraten vergleichen
+        # Verspätungsraten vergleichen
         def calc_late_rate(invs):
             paid = [i for i in invs if i.status == "paid" and i.paid_date and i.due_date]
             if not paid:
@@ -497,7 +497,7 @@ class PaymentBehaviorReportService:
 
         total_customers = len(customers)
 
-        # Metriken fuer alle Kunden berechnen
+        # Metriken für alle Kunden berechnen
         all_metrics: List[PaymentMetrics] = []
         for customer in customers:
             metrics = await self.analyze_customer_payment_behavior(
@@ -532,7 +532,7 @@ class PaymentBehaviorReportService:
             elif m.payment_trend == PaymentTrend.DECLINING:
                 summary.declining_count += 1
 
-            # Ueberfaellig
+            # Überfällig
             summary.overdue_total += m.overdue_volume
 
         # Durchschnitte
@@ -652,7 +652,7 @@ _payment_behavior_service: Optional[PaymentBehaviorReportService] = None
 
 
 def get_payment_behavior_report_service() -> PaymentBehaviorReportService:
-    """Gibt Payment-Behavior-Report-Service-Instanz zurueck."""
+    """Gibt Payment-Behavior-Report-Service-Instanz zurück."""
     global _payment_behavior_service
     if _payment_behavior_service is None:
         _payment_behavior_service = PaymentBehaviorReportService()

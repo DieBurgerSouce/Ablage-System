@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Activity Timeline API fuer Ablage-System.
+Activity Timeline API für Ablage-System.
 
 Multi-Level Activity Timeline:
 - /activity/my - Eigene Aktivitaeten
@@ -41,7 +41,7 @@ router = APIRouter(prefix="/activity", tags=["Activity Timeline"])
 
 
 class ActivityResponse(BaseModel):
-    """Response fuer eine einzelne Activity."""
+    """Response für eine einzelne Activity."""
     id: UUID
     source: ActivitySource
     activity_type: str
@@ -84,7 +84,7 @@ class ActivityResponse(BaseModel):
 
 
 class TimelineResponse(BaseModel):
-    """Response fuer Timeline-Abfragen."""
+    """Response für Timeline-Abfragen."""
     items: List[ActivityResponse]
     total: int
     limit: int
@@ -93,7 +93,7 @@ class TimelineResponse(BaseModel):
 
 
 class TimelineFilterRequest(BaseModel):
-    """Request fuer Timeline-Filter."""
+    """Request für Timeline-Filter."""
     sources: Optional[List[ActivitySource]] = None
     activity_types: Optional[List[str]] = None
     actor_ids: Optional[List[UUID]] = None
@@ -105,7 +105,7 @@ class TimelineFilterRequest(BaseModel):
 
 
 class StatisticsResponse(BaseModel):
-    """Response fuer Activity-Statistiken."""
+    """Response für Activity-Statistiken."""
     total_activities: int
     activities_by_type: Dict[str, int]
     activities_by_day: List[JSONDict]
@@ -184,7 +184,7 @@ async def get_my_activities(
     """Holt eigene Aktivitaeten.
 
     Zeigt:
-    - Aktivitaeten die der User selbst durchgefuehrt hat
+    - Aktivitaeten die der User selbst durchgeführt hat
     - Aktivitaeten an eigenen Dokumenten
     - Team-Aktivitaeten in Teams wo User Mitglied ist
     """
@@ -203,7 +203,7 @@ async def get_my_activities(
         user_id=current_user.id,
         company_id=current_user.company_id,
         filters=filters,
-        limit=limit + 1,  # +1 fuer has_more Check
+        limit=limit + 1,  # +1 für has_more Check
         offset=offset,
     )
 
@@ -213,7 +213,7 @@ async def get_my_activities(
 
     return TimelineResponse(
         items=[_activity_to_response(a) for a in activities],
-        total=len(activities),  # Vereinfacht, koennte echte Zaehlung sein
+        total=len(activities),  # Vereinfacht, könnte echte Zaehlung sein
         limit=limit,
         offset=offset,
         has_more=has_more,
@@ -236,7 +236,7 @@ async def get_team_timeline(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TimelineResponse:
-    """Holt Timeline fuer ein Team.
+    """Holt Timeline für ein Team.
 
     Zeigt:
     - Team-Aktivitaeten (Mitgliedschaften, Einstellungen)
@@ -262,11 +262,11 @@ async def get_team_timeline(
     )
 
     if not activities and offset == 0:
-        # Koennte bedeuten: Keine Berechtigung oder kein Team
-        # Service gibt [] zurueck bei fehlender Mitgliedschaft
+        # Könnte bedeuten: Keine Berechtigung oder kein Team
+        # Service gibt [] zurück bei fehlender Mitgliedschaft
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Team oder Team nicht gefunden",
+            detail="Keine Berechtigung für dieses Team oder Team nicht gefunden",
         )
 
     has_more = len(activities) > limit
@@ -296,7 +296,7 @@ async def get_document_timeline(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TimelineResponse:
-    """Holt Timeline fuer ein einzelnes Dokument.
+    """Holt Timeline für ein einzelnes Dokument.
 
     Zeigt alle Aktivitaeten die das Dokument betreffen:
     - Views, Downloads
@@ -345,11 +345,11 @@ async def get_chain_timeline(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TimelineResponse:
-    """Holt Timeline fuer eine Document Chain (Vorgang).
+    """Holt Timeline für eine Document Chain (Vorgang).
 
     Aggregiert Aktivitaeten aller Dokumente in der Chain:
     - Angebot erstellt
-    - Auftrag verknuepft
+    - Auftrag verknüpft
     - Lieferschein hinzugefuegt
     - Rechnung empfangen
     """
@@ -395,7 +395,7 @@ async def get_company_timeline(
 ) -> TimelineResponse:
     """Holt Company-weite Timeline.
 
-    Nur fuer Admins: Zeigt alle Aktivitaeten der Company.
+    Nur für Admins: Zeigt alle Aktivitaeten der Company.
     Nicht-Admins erhalten eingeschraenkte Sicht (nur eigene Aktivitaeten).
     """
     service = ActivityTimelineService(db)

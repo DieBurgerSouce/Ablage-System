@@ -2,7 +2,7 @@
 """
 Calendar API Endpoints.
 
-REST API fuer Fristen- und Kalenderverwaltung:
+REST API für Fristen- und Kalenderverwaltung:
 - GET /deadlines - Alle Fristen
 - GET /deadlines/summary - Zusammenfassung
 - GET /deadlines/alerts - Dringende Fristen
@@ -43,7 +43,7 @@ router = APIRouter(prefix="/calendar", tags=["Calendar"])
 # =============================================================================
 
 class DeadlineResponse(BaseModel):
-    """API Response fuer eine Frist."""
+    """API Response für eine Frist."""
     id: str
     category: str
     title: str
@@ -62,7 +62,7 @@ class DeadlineResponse(BaseModel):
 
 
 class DeadlineListResponse(BaseModel):
-    """API Response fuer Fristen-Liste."""
+    """API Response für Fristen-Liste."""
     items: List[DeadlineResponse]
     total: int
     critical_count: int
@@ -71,7 +71,7 @@ class DeadlineListResponse(BaseModel):
 
 
 class DeadlineSummaryResponse(BaseModel):
-    """API Response fuer Fristen-Zusammenfassung."""
+    """API Response für Fristen-Zusammenfassung."""
     total_count: int
     critical_count: int
     warning_count: int
@@ -85,7 +85,7 @@ class DeadlineSummaryResponse(BaseModel):
 
 
 class CalendarDayResponse(BaseModel):
-    """API Response fuer einen Kalendertag."""
+    """API Response für einen Kalendertag."""
     date: date
     deadlines: List[DeadlineResponse]
     deadline_count: int
@@ -95,7 +95,7 @@ class CalendarDayResponse(BaseModel):
 
 
 class CalendarWeekResponse(BaseModel):
-    """API Response fuer eine Kalenderwoche."""
+    """API Response für eine Kalenderwoche."""
     week_number: int
     year: int
     start_date: date
@@ -105,7 +105,7 @@ class CalendarWeekResponse(BaseModel):
 
 
 class CalendarMonthResponse(BaseModel):
-    """API Response fuer einen Kalendermonat."""
+    """API Response für einen Kalendermonat."""
     month: int
     year: int
     weeks: List[CalendarWeekResponse]
@@ -114,7 +114,7 @@ class CalendarMonthResponse(BaseModel):
 
 
 class TodayResponse(BaseModel):
-    """API Response fuer heutige Fristen."""
+    """API Response für heutige Fristen."""
     date: date
     deadlines: List[DeadlineResponse]
     total_count: int
@@ -156,13 +156,13 @@ def _deadline_to_response(deadline: DeadlineItem) -> DeadlineResponse:
     "/deadlines",
     response_model=DeadlineListResponse,
     summary="Alle Fristen auflisten",
-    description="Listet alle Fristen fuer einen Zeitraum"
+    description="Listet alle Fristen für einen Zeitraum"
 )
 async def list_deadlines(
     start_date: Optional[date] = Query(None, description="Startdatum (default: heute - 7 Tage)"),
     end_date: Optional[date] = Query(None, description="Enddatum (default: heute + 90 Tage)"),
     category: Optional[str] = Query(None, description="Filter nach Kategorie"),
-    include_completed: bool = Query(False, description="Erledigte einschliessen"),
+    include_completed: bool = Query(False, description="Erledigte einschließen"),
     limit: int = Query(100, ge=1, le=500, description="Maximale Anzahl"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -173,7 +173,7 @@ async def list_deadlines(
     **Kategorien:**
     - skonto: Skonto-Fristen
     - payment_incoming: Erwartete Zahlungseingaenge
-    - payment_outgoing: Faellige Zahlungen
+    - payment_outgoing: Fällige Zahlungen
     - tax: Steuertermine
     - contract: Vertragsfristen
     - dunning: Mahnfristen
@@ -185,7 +185,7 @@ async def list_deadlines(
     - include_completed: Auch erledigte Fristen
 
     **Sortierung:**
-    Nach Dringlichkeit (ueberfaellig zuerst, dann nach Datum)
+    Nach Dringlichkeit (überfällig zuerst, dann nach Datum)
     """
     service = get_calendar_service()
 
@@ -197,7 +197,7 @@ async def list_deadlines(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unbekannte Kategorie '{category}'. Gueltig: {[c.value for c in DeadlineCategory]}"
+                detail=f"Unbekannte Kategorie '{category}'. Gültig: {[c.value for c in DeadlineCategory]}"
             )
 
     # Company ID aus User holen
@@ -262,11 +262,11 @@ async def get_deadline_summary(
     """
     Holt eine Zusammenfassung aller aktuellen Fristen.
 
-    **Enthaelt:**
+    **Enthält:**
     - Anzahl nach Dringlichkeitsstufe
     - Verteilung nach Kategorie
     - Gesamtbetrag gefaehrdeter Zahlungen
-    - Naechste anstehende Frist
+    - Nächste anstehende Frist
     """
     service = get_calendar_service()
 
@@ -305,7 +305,7 @@ async def get_deadline_summary(
             by_category=by_category,
             total_amount_at_risk=float(summary.total_amount_at_risk),
             next_deadline=next_deadline_response,
-            message=f"{summary.total_count} Fristen, {summary.critical_count} kritisch, {summary.overdue_count} ueberfaellig"
+            message=f"{summary.total_count} Fristen, {summary.critical_count} kritisch, {summary.overdue_count} überfällig"
         )
 
     except HTTPException:
@@ -322,7 +322,7 @@ async def get_deadline_summary(
     "/deadlines/alerts",
     response_model=DeadlineListResponse,
     summary="Dringende Fristen (Alerts)",
-    description="Nur kritische und warnende Fristen fuer Benachrichtigungen"
+    description="Nur kritische und warnende Fristen für Benachrichtigungen"
 )
 async def get_deadline_alerts(
     days_ahead: int = Query(7, ge=1, le=30, description="Tage im Voraus"),
@@ -330,13 +330,13 @@ async def get_deadline_alerts(
     db: AsyncSession = Depends(get_db),
 ) -> DeadlineListResponse:
     """
-    Holt nur dringende Fristen fuer Benachrichtigungen.
+    Holt nur dringende Fristen für Benachrichtigungen.
 
-    **Enthaelt nur:**
-    - Kritische Fristen (heute oder ueberfaellig)
+    **Enthält nur:**
+    - Kritische Fristen (heute oder überfällig)
     - Warnungen (innerhalb 3 Tagen)
 
-    **Ideal fuer:**
+    **Ideal für:**
     - Dashboard-Widgets
     - E-Mail-Benachrichtigungen
     - Push-Notifications
@@ -400,7 +400,7 @@ async def get_calendar_month(
     db: AsyncSession = Depends(get_db),
 ) -> CalendarMonthResponse:
     """
-    Holt eine Kalender-Ansicht fuer einen Monat.
+    Holt eine Kalender-Ansicht für einen Monat.
 
     **Struktur:**
     - Wochen mit Start/Ende
@@ -460,7 +460,7 @@ async def get_calendar_month(
             year=year,
             weeks=weeks_response,
             summary=summary,
-            message=f"Kalender fuer {month}/{year}"
+            message=f"Kalender für {month}/{year}"
         )
 
     except HTTPException:
@@ -482,18 +482,18 @@ async def get_calendar_month(
     "/today",
     response_model=TodayResponse,
     summary="Heutige Fristen",
-    description="Alle heute faelligen Fristen"
+    description="Alle heute fälligen Fristen"
 )
 async def get_today_deadlines(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> TodayResponse:
     """
-    Holt alle heute faelligen Fristen.
+    Holt alle heute fälligen Fristen.
 
-    **Ideal fuer:**
+    **Ideal für:**
     - Tages-Dashboard
-    - Morgendliche Uebersicht
+    - Morgendliche Übersicht
     - Quick-Actions
     """
     service = get_calendar_service()

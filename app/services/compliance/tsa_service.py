@@ -1,11 +1,11 @@
 """RFC 3161 Timestamp Authority Service - Qualifizierte Zeitstempel.
 
-Implementiert RFC 3161 (Time-Stamp Protocol) fuer:
+Implementiert RFC 3161 (Time-Stamp Protocol) für:
 - Zeitstempel-Anfragen an TSA-Provider
 - Verifikation von Zeitstempeln
 - eIDAS-konforme qualifizierte Zeitstempel
 
-Unterstuetzte Provider (konfigurierbar):
+Unterstützte Provider (konfigurierbar):
 - FreeTSA (kostenlos, nicht qualifiziert)
 - D-TRUST (qualifiziert, kostenpflichtig)
 - SwissSign (qualifiziert, kostenpflichtig)
@@ -44,10 +44,10 @@ class TSAStatus(str, Enum):
 
 @dataclass
 class TimestampRequest:
-    """Anfrage fuer einen RFC 3161 Zeitstempel."""
+    """Anfrage für einen RFC 3161 Zeitstempel."""
     data_hash: str  # SHA-256 Hash des zu stempelnden Datums
     hash_algorithm: str = "sha256"  # SHA-256 empfohlen
-    nonce: Optional[str] = None  # Optional fuer Replay-Schutz
+    nonce: Optional[str] = None  # Optional für Replay-Schutz
     policy_oid: Optional[str] = None  # TSA Policy OID
 
 
@@ -65,12 +65,12 @@ class TimestampResponse:
 
 
 class TimestampAuthorityService:
-    """Service fuer RFC 3161 Zeitstempel-Anfragen.
+    """Service für RFC 3161 Zeitstempel-Anfragen.
 
-    Verwaltet TSA-Provider und fuehrt Zeitstempel-Anfragen durch.
+    Verwaltet TSA-Provider und führt Zeitstempel-Anfragen durch.
     """
 
-    # Bekannte Free TSA Endpoints (fuer Tests)
+    # Bekannte Free TSA Endpoints (für Tests)
     DEFAULT_TSA_ENDPOINTS = [
         {
             "name": "FreeTSA",
@@ -98,7 +98,7 @@ class TimestampAuthorityService:
         return self._http_client
 
     async def close(self) -> None:
-        """Schliesst den HTTP-Client."""
+        """Schließt den HTTP-Client."""
         if self._http_client:
             await self._http_client.aclose()
             self._http_client = None
@@ -113,7 +113,7 @@ class TimestampAuthorityService:
         """Fordert einen RFC 3161 Zeitstempel an.
 
         Args:
-            data: Die Daten fuer die ein Zeitstempel angefordert wird
+            data: Die Daten für die ein Zeitstempel angefordert wird
             tsa_url: URL des TSA-Endpoints
             auth_username: Optional HTTP Basic Auth Username
             auth_password: Optional HTTP Basic Auth Password
@@ -197,7 +197,7 @@ class TimestampAuthorityService:
         auth_username: Optional[str] = None,
         auth_password: Optional[str] = None,
     ) -> TimestampResponse:
-        """Fordert einen Zeitstempel fuer einen bereits berechneten Hash an.
+        """Fordert einen Zeitstempel für einen bereits berechneten Hash an.
 
         Args:
             data_hash: SHA-256 Hash als Hex-String (64 Zeichen)
@@ -217,7 +217,7 @@ class TimestampAuthorityService:
             )
             return TimestampResponse(
                 status=TSAStatus.INVALID_RESPONSE,
-                error_message=f"Ungueltiger Hash: Erwarte 64 Hex-Zeichen, erhalten {len(data_hash) if data_hash else 0}",
+                error_message=f"Ungültiger Hash: Erwarte 64 Hex-Zeichen, erhalten {len(data_hash) if data_hash else 0}",
                 response_time_ms=0,
             )
 
@@ -228,7 +228,7 @@ class TimestampAuthorityService:
             logger.warning("tsa_invalid_hash_format", **safe_error_log(e))
             return TimestampResponse(
                 status=TSAStatus.INVALID_RESPONSE,
-                error_message=f"Ungueltiges Hash-Format: {e}",
+                error_message=f"Ungültiges Hash-Format: {e}",
                 response_time_ms=0,
             )
 
@@ -310,7 +310,7 @@ class TimestampAuthorityService:
                 )
                 # Fahre ohne Auth fort (einige TSAs erlauben anonyme Anfragen)
 
-        # Anfrage durchfuehren
+        # Anfrage durchführen
         response = await self.request_timestamp(
             data,
             config.endpoint_url,
@@ -347,7 +347,7 @@ class TimestampAuthorityService:
             original_data: Die urspruenglichen Daten
 
         Returns:
-            True wenn Zeitstempel gueltig
+            True wenn Zeitstempel gültig
         """
         try:
             # Token decodieren
@@ -356,7 +356,7 @@ class TimestampAuthorityService:
             # Hash der Originaldaten berechnen
             expected_hash = hashlib.sha256(original_data).digest()
 
-            # Basis-Validierung: Mindestgroesse und ASN.1 SEQUENCE Tag
+            # Basis-Validierung: Mindestgröße und ASN.1 SEQUENCE Tag
             if len(token_bytes) < 100:
                 logger.warning("timestamp_too_short", length=len(token_bytes))
                 return False
@@ -366,12 +366,12 @@ class TimestampAuthorityService:
                 return False
 
             # RFC 3161 TimeStampResp Struktur parsen
-            # Die Response enthaelt den MessageImprint mit dem Hash
+            # Die Response enthält den MessageImprint mit dem Hash
             # Suche nach dem SHA-256 OID und dem darauffolgenden Hash
 
             # SHA-256 OID: 2.16.840.1.101.3.4.2.1
             sha256_oid = bytes([
-                0x06, 0x09,  # OID Tag + Laenge
+                0x06, 0x09,  # OID Tag + Länge
                 0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01
             ])
 
@@ -388,7 +388,7 @@ class TimestampAuthorityService:
                     logger.info("timestamp_oid_fallback_accepted")
                     return self._verify_timestamp_structure(token_bytes)
 
-            # Suche nach dem Hash-Wert (OCTET STRING mit 32 bytes fuer SHA-256)
+            # Suche nach dem Hash-Wert (OCTET STRING mit 32 bytes für SHA-256)
             # Nach dem OID kommt NULL (0x05 0x00) und dann OCTET STRING (0x04 0x20 + 32 bytes)
             hash_search_start = oid_pos + len(sha256_oid)
             octet_string_tag = bytes([0x04, 0x20])  # OCTET STRING, 32 bytes
@@ -412,7 +412,7 @@ class TimestampAuthorityService:
                         return False
 
             # Hash nicht an erwarteter Stelle gefunden
-            # Fuehre erweiterte Suche durch
+            # Führe erweiterte Suche durch
             hash_found = self._search_hash_in_token(token_bytes, expected_hash)
             if hash_found:
                 logger.info("timestamp_hash_found_extended_search")
@@ -429,19 +429,19 @@ class TimestampAuthorityService:
         """Verifiziert grundlegende TSA Response Struktur.
 
         ACHTUNG: Dies ist ein Fallback und bietet nur eingeschraenkte Sicherheit.
-        Fuer Production-Einsatz sollte eine vollstaendige ASN.1 Verifikation
-        mit pyasn1/cryptography durchgefuehrt werden.
+        Für Production-Einsatz sollte eine vollständige ASN.1 Verifikation
+        mit pyasn1/cryptography durchgeführt werden.
 
         Args:
             token_bytes: Die Token-Bytes
 
         Returns:
-            True wenn Struktur gueltig erscheint (mit Warnung)
+            True wenn Struktur gültig erscheint (mit Warnung)
         """
-        # Pruefe auf bekannte TSA Response Strukturmerkmale
+        # Prüfe auf bekannte TSA Response Strukturmerkmale
         # TimeStampResp ::= SEQUENCE { status, timeStampToken }
 
-        # Minimale Groesse: Ein TSA Response sollte mindestens ~200 Bytes sein
+        # Minimale Größe: Ein TSA Response sollte mindestens ~200 Bytes sein
         if len(token_bytes) < 100:
             logger.warning("timestamp_structure_too_small", size=len(token_bytes))
             return False
@@ -463,7 +463,7 @@ class TimestampAuthorityService:
             logger.warning(
                 "timestamp_structure_fallback_accepted",
                 reason="granted_status_found",
-                warning="Hash-Verifikation nicht erfolgreich, nur Strukturpruefung",
+                warning="Hash-Verifikation nicht erfolgreich, nur Strukturprüfung",
             )
             return True
 
@@ -471,7 +471,7 @@ class TimestampAuthorityService:
             logger.warning(
                 "timestamp_structure_fallback_accepted",
                 reason="granted_with_mods_status_found",
-                warning="Hash-Verifikation nicht erfolgreich, nur Strukturpruefung",
+                warning="Hash-Verifikation nicht erfolgreich, nur Strukturprüfung",
             )
             return True
 
@@ -505,9 +505,9 @@ class TimestampAuthorityService:
         Vault-Pfad: secret/data/tsa/{company_id}/{config_name}
 
         Args:
-            company_id: Firmen-ID fuer Namespace-Isolation
-            config_id: TSA-Config-ID (fuer Logging)
-            config_name: TSA-Config-Name (fuer Vault-Pfad)
+            company_id: Firmen-ID für Namespace-Isolation
+            config_id: TSA-Config-ID (für Logging)
+            config_name: TSA-Config-Name (für Vault-Pfad)
 
         Returns:
             Dict mit 'username' und 'password' oder None wenn nicht gefunden
@@ -525,7 +525,7 @@ class TimestampAuthorityService:
                 return None
 
             # Vault-Pfad: tsa/{company_id}/{config_name}
-            # Sanitize config_name fuer Vault-Pfad
+            # Sanitize config_name für Vault-Pfad
             safe_config_name = "".join(
                 c for c in config_name.lower()
                 if c.isalnum() or c in "-_"
@@ -583,14 +583,14 @@ class TimestampAuthorityService:
         """Baut eine RFC 3161 TimeStampReq Nachricht.
 
         Vereinfachte Implementation - in Produktion sollte
-        eine vollstaendige ASN.1-Bibliothek verwendet werden.
+        eine vollständige ASN.1-Bibliothek verwendet werden.
         """
-        # Vereinfachter TSA Request (nicht vollstaendig RFC-konform)
+        # Vereinfachter TSA Request (nicht vollständig RFC-konform)
         # In Produktion: pyasn1 oder cryptography library verwenden
 
         # SHA-256 OID: 2.16.840.1.101.3.4.2.1
         sha256_oid = bytes([
-            0x06, 0x09,  # OID Tag + Laenge
+            0x06, 0x09,  # OID Tag + Länge
             0x60, 0x86, 0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01
         ])
 
@@ -637,7 +637,7 @@ class TimestampAuthorityService:
                     response_time_ms=duration_ms,
                 )
 
-            # Pruefe SEQUENCE Tag
+            # Prüfe SEQUENCE Tag
             if response_data[0] != 0x30:
                 return TimestampResponse(
                     status=TSAStatus.INVALID_RESPONSE,
@@ -647,7 +647,7 @@ class TimestampAuthorityService:
 
             # Extrahiere Status (erste paar Bytes nach dem Header)
             # Status 0 = granted
-            # In Produktion: vollstaendiges ASN.1 Parsing
+            # In Produktion: vollständiges ASN.1 Parsing
 
             # Token als Base64 speichern
             token_base64 = base64.b64encode(response_data).decode("ascii")

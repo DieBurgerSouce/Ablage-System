@@ -6,7 +6,7 @@ Verhindert doppelte Benachrichtigungen innerhalb konfigurierbarer Zeitfenster:
 - Redis-basiert (mit Fallback auf In-Memory)
 - Konfigurierbare Time Windows pro Notification-Typ
 - Entity-basierte Dedup-Keys
-- Automatische Cleanup veralteter Eintraege
+- Automatische Cleanup veralteter Einträge
 
 Features:
 - Cross-Process Deduplication (via Redis)
@@ -36,7 +36,7 @@ logger = structlog.get_logger(__name__)
 
 DEDUP_CHECKS = Counter(
     "notification_dedup_checks_total",
-    "Anzahl Dedup-Pruefungen",
+    "Anzahl Dedup-Prüfungen",
     ["result"]
 )
 
@@ -48,7 +48,7 @@ DEDUP_HITS = Counter(
 
 DEDUP_CLEANUP = Counter(
     "notification_dedup_cleanup_total",
-    "Anzahl bereinigter Dedup-Eintraege"
+    "Anzahl bereinigter Dedup-Einträge"
 )
 
 
@@ -58,7 +58,7 @@ DEDUP_CLEANUP = Counter(
 
 
 class DedupWindow:
-    """Konfiguration fuer Dedup-Zeitfenster."""
+    """Konfiguration für Dedup-Zeitfenster."""
 
     def __init__(self, seconds: int = 300) -> None:
         self.seconds = seconds
@@ -68,12 +68,12 @@ class NotificationDeduplicationService:
     """
     Verhindert doppelte Benachrichtigungen.
 
-    Verwendet Redis fuer Cross-Process Deduplication mit Fallback auf In-Memory.
+    Verwendet Redis für Cross-Process Deduplication mit Fallback auf In-Memory.
 
     Verwendung:
         dedup = NotificationDeduplicationService(redis_client)
 
-        # Vor dem Senden pruefen
+        # Vor dem Senden prüfen
         if await dedup.is_duplicate(user_id, "invoice_received", invoice_id):
             logger.info("duplicate_skipped")
             return
@@ -86,7 +86,7 @@ class NotificationDeduplicationService:
 
     # Typ-spezifische Windows (in Sekunden)
     TYPE_WINDOWS: Dict[str, int] = {
-        # Haeufige Events - kurzes Window
+        # Häufige Events - kurzes Window
         "document_uploaded": 60,
         "ocr_started": 60,
         "ocr_completed": 120,
@@ -147,7 +147,7 @@ class NotificationDeduplicationService:
             Dedup-Key
         """
         if entity_id:
-            # Hash entity_id fuer kompakte Keys
+            # Hash entity_id für kompakte Keys
             entity_hash = hashlib.md5(entity_id.encode()).hexdigest()[:8]
             return f"notif_dedup:user:{user_id}:type:{notification_type}:entity:{entity_hash}"
         else:
@@ -161,16 +161,16 @@ class NotificationDeduplicationService:
         window_seconds: Optional[int] = None,
     ) -> bool:
         """
-        Prueft ob Benachrichtigung ein Duplikat ist.
+        Prüft ob Benachrichtigung ein Duplikat ist.
 
         Args:
             user_id: Benutzer-ID (UUID als String)
             notification_type: Typ der Benachrichtigung
             entity_id: Optionale Entity-ID
-            window_seconds: Optionales Window (ueberschreibt Typ-Default)
+            window_seconds: Optionales Window (überschreibt Typ-Default)
 
         Returns:
-            True wenn Duplikat (bereits kuerzlich gesendet)
+            True wenn Duplikat (bereits kürzlich gesendet)
         """
         key = self._build_dedup_key(user_id, notification_type, entity_id)
         window = window_seconds or self.TYPE_WINDOWS.get(
@@ -247,15 +247,15 @@ class NotificationDeduplicationService:
 
     async def clear_user_dedup(self, user_id: str) -> int:
         """
-        Loescht alle Dedup-Eintraege fuer einen Benutzer.
+        Löscht alle Dedup-Einträge für einen Benutzer.
 
-        Nuetzlich z.B. nach Logout oder beim Testen.
+        Nützlich z.B. nach Logout oder beim Testen.
 
         Args:
             user_id: Benutzer-ID
 
         Returns:
-            Anzahl geloeschter Eintraege
+            Anzahl gelöschter Einträge
         """
         pattern = f"notif_dedup:user:{user_id}:*"
         count = 0
@@ -285,12 +285,12 @@ class NotificationDeduplicationService:
 
     def cleanup_expired(self) -> int:
         """
-        Entfernt abgelaufene Eintraege aus dem Local Cache.
+        Entfernt abgelaufene Einträge aus dem Local Cache.
 
         Wird periodisch aufgerufen (z.B. via Celery Beat).
 
         Returns:
-            Anzahl entfernter Eintraege
+            Anzahl entfernter Einträge
         """
         if self._use_redis:
             # Redis hat TTL-basierte Auto-Expiration
@@ -319,7 +319,7 @@ class NotificationDeduplicationService:
     # =========================================================================
 
     def _is_duplicate_local(self, key: str, window_seconds: int) -> bool:
-        """Prueft Duplikat im Local Cache."""
+        """Prüft Duplikat im Local Cache."""
         now = time.time()
 
         if key in self._local_cache:
@@ -350,17 +350,17 @@ class NotificationDeduplicationService:
     # =========================================================================
 
     async def _redis_exists(self, key: str) -> bool:
-        """Prueft ob Key in Redis existiert."""
+        """Prüft ob Key in Redis existiert."""
         if not self.redis:
             return False
 
         # Redis client ist vermutlich aioredis oder redis-py mit async support
-        # Annahme: self.redis.exists(key) gibt int zurueck (1 oder 0)
+        # Annahme: self.redis.exists(key) gibt int zurück (1 oder 0)
         try:
             exists = await self.redis.exists(key)
             return exists > 0
         except AttributeError:
-            # Fallback fuer synchronen Redis-Client
+            # Fallback für synchronen Redis-Client
             exists = self.redis.exists(key)
             return exists > 0
 
@@ -373,11 +373,11 @@ class NotificationDeduplicationService:
             # SET mit EX (TTL in Sekunden)
             await self.redis.setex(key, window_seconds, "1")
         except AttributeError:
-            # Fallback fuer synchronen Redis-Client
+            # Fallback für synchronen Redis-Client
             self.redis.setex(key, window_seconds, "1")
 
     async def _redis_delete_pattern(self, pattern: str) -> int:
-        """Loescht alle Keys die Pattern matchen."""
+        """Löscht alle Keys die Pattern matchen."""
         if not self.redis:
             return 0
 
@@ -398,7 +398,7 @@ class NotificationDeduplicationService:
             return count
 
         except AttributeError:
-            # Fallback fuer synchronen Redis-Client
+            # Fallback für synchronen Redis-Client
             keys = self.redis.keys(pattern)
             if keys:
                 self.redis.delete(*keys)
@@ -416,7 +416,7 @@ _dedup_service: Optional[NotificationDeduplicationService] = None
 
 def get_dedup_service(redis_client: Optional[object] = None) -> NotificationDeduplicationService:
     """
-    Factory fuer NotificationDeduplicationService.
+    Factory für NotificationDeduplicationService.
 
     Args:
         redis_client: Redis Client (optional)

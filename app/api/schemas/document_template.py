@@ -1,7 +1,7 @@
 """
 Document Template API Schemas
 
-Pydantic Schemas fuer Dokumenten-Vorlagen API.
+Pydantic Schemas für Dokumenten-Vorlagen API.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field, ConfigDict
 # =============================================================================
 
 class TemplateCategoryEnum(str, Enum):
-    """Kategorien fuer Dokumentvorlagen."""
+    """Kategorien für Dokumentvorlagen."""
     INVOICE = "invoice"
     OFFER = "offer"
     CONTRACT = "contract"
@@ -33,7 +33,7 @@ class TemplateCategoryEnum(str, Enum):
 
 
 class TemplateOutputFormatEnum(str, Enum):
-    """Ausgabeformate fuer generierte Dokumente."""
+    """Ausgabeformate für generierte Dokumente."""
     PDF = "pdf"
     DOCX = "docx"
     HTML = "html"
@@ -41,7 +41,7 @@ class TemplateOutputFormatEnum(str, Enum):
 
 
 class VariableTypeEnum(str, Enum):
-    """Typen fuer Template-Variablen."""
+    """Typen für Template-Variablen."""
     TEXT = "text"
     NUMBER = "number"
     CURRENCY = "currency"
@@ -58,15 +58,15 @@ class VariableTypeEnum(str, Enum):
 # =============================================================================
 
 class TemplateVariableSchema(BaseModel):
-    """Schema fuer eine Template-Variable."""
+    """Schema für eine Template-Variable."""
     name: str = Field(..., min_length=1, max_length=50, pattern=r"^[a-zA-Z_][a-zA-Z0-9_]*$")
     type: VariableTypeEnum
     label: str = Field(..., min_length=1, max_length=100)
     description: str | None = None
     required: bool = False
     default: Union[str, int, float, bool, None] = None
-    options: list[str] | None = None  # Fuer SELECT-Typ
-    entity_type: str | None = None  # Fuer ENTITY-Typ (z.B. "customer", "supplier")
+    options: list[str] | None = None  # Für SELECT-Typ
+    entity_type: str | None = None  # Für ENTITY-Typ (z.B. "customer", "supplier")
 
 
 # =============================================================================
@@ -117,7 +117,7 @@ class TemplateUpdate(BaseModel):
 # =============================================================================
 
 class TemplateResponse(BaseModel):
-    """Response-Schema fuer eine Vorlage."""
+    """Response-Schema für eine Vorlage."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -148,7 +148,7 @@ class TemplateResponse(BaseModel):
 
 
 class TemplateListResponse(BaseModel):
-    """Response-Schema fuer Vorlagen-Liste."""
+    """Response-Schema für Vorlagen-Liste."""
     items: list[TemplateResponse]
     total: int
     offset: int
@@ -156,7 +156,7 @@ class TemplateListResponse(BaseModel):
 
 
 class TemplateBriefResponse(BaseModel):
-    """Kurzform fuer Vorlagen (ohne Content)."""
+    """Kurzform für Vorlagen (ohne Content)."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -186,12 +186,12 @@ class GenerateDocumentRequest(BaseModel):
 
 
 class PreviewRequest(BaseModel):
-    """Request fuer Template-Vorschau."""
+    """Request für Template-Vorschau."""
     variables: dict[str, Any] = Field(default_factory=dict)
 
 
 class GeneratedDocumentResponse(BaseModel):
-    """Response-Schema fuer generiertes Dokument."""
+    """Response-Schema für generiertes Dokument."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -214,7 +214,7 @@ class GeneratedDocumentResponse(BaseModel):
 
 
 class GeneratedDocumentListResponse(BaseModel):
-    """Response-Schema fuer Liste generierter Dokumente."""
+    """Response-Schema für Liste generierter Dokumente."""
     items: list[GeneratedDocumentResponse]
     total: int
     offset: int
@@ -244,7 +244,7 @@ class SnippetUpdate(BaseModel):
 
 
 class SnippetResponse(BaseModel):
-    """Response-Schema fuer ein Snippet."""
+    """Response-Schema für ein Snippet."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID

@@ -34,7 +34,7 @@ logger = structlog.get_logger(__name__)
 
 class LineageProcessingStep:
     """
-    Context Manager fuer automatisches Lineage-Tracking von Verarbeitungsschritten.
+    Context Manager für automatisches Lineage-Tracking von Verarbeitungsschritten.
 
     Misst automatisch die Dauer und zeichnet Start/Ende/Fehler auf.
 
@@ -46,7 +46,7 @@ class LineageProcessingStep:
             step_type=LineageEventType.OCR_COMPLETE,
             source_service="ocr_worker",
         ) as step:
-            # Verarbeitung durchfuehren
+            # Verarbeitung durchführen
             result = await process_document(doc_id)
             step.set_confidence(result.confidence)
             step.add_details({"backend": result.backend})
@@ -144,7 +144,7 @@ class LineageProcessingStep:
                 **safe_error_log(e),
             )
 
-        return False  # Exceptions nicht unterdruecken
+        return False  # Exceptions nicht unterdrücken
 
 
 # =============================================================================
@@ -228,7 +228,7 @@ async def record_ocr_result(
             "page_count": page_count,
         }
         if not success and error_message:
-            # SECURITY: Fehlermeldung kuerzen und sanitizen
+            # SECURITY: Fehlermeldung kürzen und sanitizen
             details["error"] = error_message[:100] if error_message else None
 
         await service.record_processing_step(
@@ -306,17 +306,17 @@ async def record_entity_linking(
     correlation_id: Optional[UUID] = None,
 ) -> None:
     """
-    Zeichnet eine Entity-Verknuepfung auf.
+    Zeichnet eine Entity-Verknüpfung auf.
 
     Args:
         db: Database Session
         document_id: ID des Dokuments
         company_id: ID der Firma
-        entity_id: ID des verknuepften Geschaeftspartners
-        confidence: Verknuepfungs-Konfidenz (0.0 - 1.0)
+        entity_id: ID des verknüpften Geschäftspartners
+        confidence: Verknüpfungs-Konfidenz (0.0 - 1.0)
         match_type: Art des Matches (customer_number, iban, vat_id, name_fuzzy)
-        reason: Grund fuer die Verknuepfung (ohne PII!)
-        user_id: ID des Benutzers (bei manueller Verknuepfung)
+        reason: Grund für die Verknüpfung (ohne PII!)
+        user_id: ID des Benutzers (bei manueller Verknüpfung)
         correlation_id: Korrelations-ID
     """
     try:
@@ -350,17 +350,17 @@ async def record_document_modification(
     correlation_id: Optional[UUID] = None,
 ) -> None:
     """
-    Zeichnet eine Dokumentenaenderung auf.
+    Zeichnet eine Dokumentenänderung auf.
 
-    SECURITY: Speichert KEINE Feldwerte, nur den Feldnamen und die Aenderungsart.
+    SECURITY: Speichert KEINE Feldwerte, nur den Feldnamen und die Änderungsart.
 
     Args:
         db: Database Session
         document_id: ID des Dokuments
         company_id: ID der Firma
-        user_id: ID des aendernden Benutzers
-        field_name: Name des geaenderten Feldes
-        modification_type: Art der Aenderung (update, delete, add)
+        user_id: ID des ändernden Benutzers
+        field_name: Name des geänderten Feldes
+        modification_type: Art der Änderung (update, delete, add)
         correlation_id: Korrelations-ID
     """
     try:
@@ -434,7 +434,7 @@ def track_lineage(
     source_service: str = "api",
 ):
     """
-    Decorator fuer automatisches Lineage-Tracking von API-Endpoints.
+    Decorator für automatisches Lineage-Tracking von API-Endpoints.
 
     Erwartet, dass die Funktion document_id, company_id und optional user_id
     als Argumente oder im Return-Wert hat.
@@ -447,7 +447,7 @@ def track_lineage(
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
-            # Funktion ausfuehren
+            # Funktion ausführen
             result = await func(*args, **kwargs)
 
             # Versuchen, Lineage zu tracken (im Hintergrund)

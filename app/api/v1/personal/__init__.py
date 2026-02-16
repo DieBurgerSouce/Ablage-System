@@ -4,7 +4,7 @@ Personal-Modul API - Enterprise HR.
 Beinhaltet alle HR-bezogenen Endpunkte:
 - Mitarbeiter-Verwaltung
 - Abteilungen & Positionen
-- Arbeitsvertraege
+- Arbeitsverträge
 - Urlaubsantraege & Abwesenheiten
 - Zeiterfassung
 - Weiterbildungen
@@ -21,7 +21,7 @@ from .employees import router as employees_router
 from .departments import router as departments_router
 from .positions import router as positions_router
 
-# Haupt-Router fuer Personal-Modul
+# Haupt-Router für Personal-Modul
 router = APIRouter(prefix="/personal", tags=["Personal"])
 
 # Sub-Router einbinden
@@ -29,7 +29,7 @@ router.include_router(employees_router)
 router.include_router(departments_router)
 router.include_router(positions_router)
 
-# Weitere Router werden in spaetereren Phasen hinzugefuegt:
+# Weitere Router werden in spätereren Phasen hinzugefuegt:
 # from .contracts import router as contracts_router
 # from .leave import router as leave_router
 # from .absences import router as absences_router

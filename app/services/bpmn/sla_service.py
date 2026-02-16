@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""SLA Monitoring Service fuer BPMN Workflows.
+"""SLA Monitoring Service für BPMN Workflows.
 
 Enterprise-Grade SLA Tracking mit:
 - Definition von SLAs pro Workflow-Typ
 - Progressives Alert-System (50%, 75%, 90%, 100%)
-- Eskalation bei Ueberschreitung
+- Eskalation bei Überschreitung
 - SLA-Metriken und Reporting
 
 Migration: 150_add_workflow_sla_monitoring.py
@@ -47,7 +47,7 @@ class SLAStatus(str, Enum):
     WARNING = "warning"            # 50-75% der Zeit verbraucht
     AT_RISK = "at_risk"            # 75-90% der Zeit verbraucht
     CRITICAL = "critical"          # 90-100% der Zeit verbraucht
-    BREACHED = "breached"          # SLA ueberschritten
+    BREACHED = "breached"          # SLA überschritten
 
 
 class SLAAlertThreshold(str, Enum):
@@ -55,10 +55,10 @@ class SLAAlertThreshold(str, Enum):
     INFO_50 = "info_50"            # 50% Zeit verbraucht
     WARNING_75 = "warning_75"      # 75% Zeit verbraucht
     HIGH_90 = "high_90"            # 90% Zeit verbraucht
-    CRITICAL_100 = "critical_100"  # SLA ueberschritten
+    CRITICAL_100 = "critical_100"  # SLA überschritten
 
 
-# Alert Code Extensions fuer SLA
+# Alert Code Extensions für SLA
 class SLAAlertCodes:
     """SLA-spezifische Alert-Codes."""
     SLA_INFO_50 = "SLA_001"
@@ -73,21 +73,21 @@ class SLAAlertCodes:
 # =============================================================================
 
 class SLAService:
-    """Service fuer SLA Monitoring und Tracking.
+    """Service für SLA Monitoring und Tracking.
 
-    Verwaltet SLA-Definitionen und ueberwacht Workflow-Instanzen
+    Verwaltet SLA-Definitionen und überwacht Workflow-Instanzen
     auf Einhaltung der definierten Zeitlimits.
     """
 
     # Default SLA-Konfigurationen (in Stunden)
     DEFAULT_SLAS: Dict[str, int] = {
-        "invoice-approval": 24,          # 24h fuer Rechnungsfreigabe
-        "document-review": 48,            # 48h fuer Dokumentenpruefung
-        "contract-approval": 72,          # 72h fuer Vertragsfreigabe
-        "expense-claim": 24,              # 24h fuer Spesenabrechnung
-        "leave-request": 8,               # 8h fuer Urlaubsantrag
-        "purchase-order": 24,             # 24h fuer Bestellung
-        "vendor-onboarding": 168,         # 7 Tage fuer Lieferanten-Onboarding
+        "invoice-approval": 24,          # 24h für Rechnungsfreigabe
+        "document-review": 48,            # 48h für Dokumentenprüfung
+        "contract-approval": 72,          # 72h für Vertragsfreigabe
+        "expense-claim": 24,              # 24h für Spesenabrechnung
+        "leave-request": 8,               # 8h für Urlaubsantrag
+        "purchase-order": 24,             # 24h für Bestellung
+        "vendor-onboarding": 168,         # 7 Tage für Lieferanten-Onboarding
         "default": 48,                    # Default: 48h
     }
 
@@ -123,26 +123,26 @@ class SLAService:
         description: Optional[str] = None,
         escalation_user_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
-        """Definiert SLA fuer einen Workflow-Typ.
+        """Definiert SLA für einen Workflow-Typ.
 
         Args:
             workflow_type: Key der Prozess-Definition
             max_duration_hours: Maximale Dauer in Stunden
             company_id: Mandant
             description: Optionale Beschreibung
-            escalation_user_id: User fuer Eskalation
+            escalation_user_id: User für Eskalation
 
         Returns:
             SLA-Definition als Dictionary
         """
         # Validierung
         if max_duration_hours <= 0:
-            raise ValueError("SLA-Dauer muss groesser als 0 sein")
+            raise ValueError("SLA-Dauer muss größer als 0 sein")
 
         if max_duration_hours > 720:  # Max 30 Tage
             raise ValueError("SLA-Dauer darf maximal 720 Stunden (30 Tage) betragen")
 
-        # Prozess-Definition pruefen
+        # Prozess-Definition prüfen
         definition = await self._get_definition_by_key(workflow_type, company_id)
         if not definition:
             raise ValueError(f"Prozess-Definition '{workflow_type}' nicht gefunden")
@@ -178,7 +178,7 @@ class SLAService:
         workflow_type: str,
         company_id: UUID,
     ) -> Optional[Dict[str, Any]]:
-        """Gibt SLA-Definition fuer einen Workflow-Typ zurueck.
+        """Gibt SLA-Definition für einen Workflow-Typ zurück.
 
         Args:
             workflow_type: Key der Prozess-Definition
@@ -202,7 +202,7 @@ class SLAService:
                 "escalation_user_id": sla_config.get("escalation_user_id"),
             }
 
-        # Default SLA zurueckgeben
+        # Default SLA zurückgeben
         default_hours = self.DEFAULT_SLAS.get(workflow_type, self.DEFAULT_SLAS["default"])
         return {
             "workflow_type": workflow_type,
@@ -221,7 +221,7 @@ class SLAService:
         workflow_instance_id: UUID,
         company_id: UUID,
     ) -> Dict[str, Any]:
-        """Startet SLA-Tracking fuer eine Workflow-Instanz.
+        """Startet SLA-Tracking für eine Workflow-Instanz.
 
         Wird automatisch beim Start eines Workflows aufgerufen.
 
@@ -236,7 +236,7 @@ class SLAService:
         if not instance:
             raise ValueError("Prozess-Instanz nicht gefunden")
 
-        # Definition laden fuer SLA-Konfiguration
+        # Definition laden für SLA-Konfiguration
         definition = await self._get_definition_by_id(instance.definition_id)
         if not definition:
             raise ValueError("Prozess-Definition nicht gefunden")
@@ -286,7 +286,7 @@ class SLAService:
         workflow_instance_id: UUID,
         company_id: UUID,
     ) -> Dict[str, Any]:
-        """Prueft aktuellen SLA-Status einer Instanz.
+        """Prüft aktuellen SLA-Status einer Instanz.
 
         Args:
             workflow_instance_id: Instanz-ID
@@ -304,7 +304,7 @@ class SLAService:
             return {
                 "instance_id": str(workflow_instance_id),
                 "has_sla": False,
-                "message": "Keine SLA-Konfiguration fuer diese Instanz",
+                "message": "Keine SLA-Konfiguration für diese Instanz",
             }
 
         now = datetime.now(timezone.utc)
@@ -367,15 +367,15 @@ class SLAService:
         self,
         company_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
-        """Prueft SLA-Status aller laufenden Workflows.
+        """Prüft SLA-Status aller laufenden Workflows.
 
         Wird periodisch von Celery Beat aufgerufen.
 
         Args:
-            company_id: Optional: Nur fuer diese Firma
+            company_id: Optional: Nur für diese Firma
 
         Returns:
-            Zusammenfassung der Pruefung
+            Zusammenfassung der Prüfung
         """
         # Alle laufenden Instanzen laden
         conditions = [ProcessInstance.status == ProcessStatus.RUNNING]
@@ -426,7 +426,7 @@ class SLAService:
                 elif status == SLAStatus.BREACHED.value:
                     stats["breached"] += 1
 
-                # Alerts pruefen und senden
+                # Alerts prüfen und senden
                 alerts_sent = await self._check_and_send_alerts(
                     instance,
                     sla_data,
@@ -459,7 +459,7 @@ class SLAService:
         time_range_days: int = 30,
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
-        """Gibt alle SLA-Verletzungen im Zeitraum zurueck.
+        """Gibt alle SLA-Verletzungen im Zeitraum zurück.
 
         Args:
             company_id: Mandant
@@ -602,11 +602,11 @@ class SLAService:
             else:
                 by_workflow[workflow_key]["breached"] += 1
 
-        # Prozentsaetze berechnen
+        # Prozentsätze berechnen
         compliance_rate = (on_time / total_with_sla * 100) if total_with_sla > 0 else 100.0
         avg_duration = (total_duration / total_with_sla) if total_with_sla > 0 else 0.0
 
-        # Per-Workflow Prozentsaetze
+        # Per-Workflow Prozentsätze
         for key, stats in by_workflow.items():
             stats["compliance_rate"] = (
                 stats["on_time"] / stats["total"] * 100
@@ -635,7 +635,7 @@ class SLAService:
         sla_data: Dict[str, Any],
         status_result: Dict[str, Any],
     ) -> int:
-        """Prueft und sendet SLA-Alerts.
+        """Prüft und sendet SLA-Alerts.
 
         Returns:
             Anzahl gesendeter Alerts
@@ -689,7 +689,7 @@ class SLAService:
             SLAAlertThreshold.INFO_50: "SLA-Warnung: 50% der Zeit verbraucht",
             SLAAlertThreshold.WARNING_75: "SLA-Warnung: 75% der Zeit verbraucht",
             SLAAlertThreshold.HIGH_90: "SLA-Kritisch: 90% der Zeit verbraucht",
-            SLAAlertThreshold.CRITICAL_100: "SLA-Verletzung: Zeitlimit ueberschritten",
+            SLAAlertThreshold.CRITICAL_100: "SLA-Verletzung: Zeitlimit überschritten",
         }
 
         remaining = status_result.get("remaining_hours", 0)
@@ -746,13 +746,13 @@ class SLAService:
         history = ProcessHistory(
             instance_id=instance.id,
             event_type="SLA_BREACHED",
-            message="SLA-Zeitlimit ueberschritten - automatische Eskalation",
+            message="SLA-Zeitlimit überschritten - automatische Eskalation",
             actor_type="system",
             company_id=instance.company_id,
         )
         self.session.add(history)
 
-        # Alert fuer Eskalation
+        # Alert für Eskalation
         await self.alert_service.create_alert(
             company_id=instance.company_id,
             alert_code=SLAAlertCodes.SLA_AUTO_ESCALATED,

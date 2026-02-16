@@ -1,9 +1,9 @@
 """
 Slack Integration Service.
 
-Ermoeglicht Benachrichtigungen an Slack-Kanaele ueber:
+Ermöglicht Benachrichtigungen an Slack-Kanaele über:
 - Incoming Webhooks (einfach, keine Bot-Installation noetig)
-- Bot Token (erweitert, fuer Slash-Commands und Datei-Uploads)
+- Bot Token (erweitert, für Slash-Commands und Datei-Uploads)
 
 Feinpoliert und durchdacht - Enterprise Slack-Integration.
 """
@@ -29,7 +29,7 @@ logger = structlog.get_logger(__name__)
 
 
 class SlackMessagePriority(str, Enum):
-    """Prioritaet einer Slack-Nachricht."""
+    """Priorität einer Slack-Nachricht."""
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -74,10 +74,10 @@ class SlackBlock(BaseModel):
 class SlackMessage(BaseModel):
     """Slack-Nachricht mit Block Kit Support."""
     channel: Optional[str] = None
-    text: str  # Fallback-Text fuer Notifications
+    text: str  # Fallback-Text für Notifications
     blocks: list[dict[str, Any]] = Field(default_factory=list)
     attachments: list[SlackAttachment] = Field(default_factory=list)
-    thread_ts: Optional[str] = None  # Fuer Thread-Antworten
+    thread_ts: Optional[str] = None  # Für Thread-Antworten
     mrkdwn: bool = True
     unfurl_links: bool = False
     unfurl_media: bool = False
@@ -99,11 +99,11 @@ class SlackService:
 
     Features:
     - Webhook-basierte Benachrichtigungen
-    - Block Kit fuer reichhaltige Nachrichten
+    - Block Kit für reichhaltige Nachrichten
     - Rate Limiting mit Sliding Window
-    - Retry-Logik fuer temporaere Fehler
-    - Thread-Support fuer Konversationen
-    - Attachment-Support fuer Dateien
+    - Retry-Logik für temporaere Fehler
+    - Thread-Support für Konversationen
+    - Attachment-Support für Dateien
 
     Verwendung:
         slack = SlackService()
@@ -123,7 +123,7 @@ class SlackService:
     _rate_limit_per_minute: int
 
     def __new__(cls) -> "SlackService":
-        """Singleton-Pattern fuer Thread-Safety."""
+        """Singleton-Pattern für Thread-Safety."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
@@ -209,11 +209,11 @@ class SlackService:
 
     def _check_rate_limit(self) -> bool:
         """
-        Prueft ob Rate Limit erreicht ist.
+        Prüft ob Rate Limit erreicht ist.
 
         Sliding Window Algorithmus:
         - Entfernt Timestamps aelter als 60 Sekunden
-        - Prueft ob Limit erreicht
+        - Prüft ob Limit erreicht
         """
         now = time.time()
         window_start = now - 60
@@ -225,16 +225,16 @@ class SlackService:
         return len(self._rate_limit_window) < self._rate_limit_per_minute
 
     def _record_message(self) -> None:
-        """Zeichnet eine gesendete Nachricht fuer Rate Limiting auf."""
+        """Zeichnet eine gesendete Nachricht für Rate Limiting auf."""
         self._rate_limit_window.append(time.time())
 
     @property
     def is_enabled(self) -> bool:
-        """Gibt zurueck ob Slack-Integration aktiv ist."""
+        """Gibt zurück ob Slack-Integration aktiv ist."""
         return self._enabled and (bool(self._webhook_url) or bool(self._bot_token))
 
     def should_send_notification(self, notification_type: str) -> bool:
-        """Prueft ob ein Notification-Typ an Slack gesendet werden soll."""
+        """Prüft ob ein Notification-Typ an Slack gesendet werden soll."""
         if not self.is_enabled:
             return False
         return notification_type in self._notification_types
@@ -349,7 +349,7 @@ class SlackService:
 
         Args:
             message: Die zu sendende Nachricht
-            channel: Ziel-Kanal (ueberschreibt message.channel)
+            channel: Ziel-Kanal (überschreibt message.channel)
             retry_count: Anzahl Retry-Versuche
 
         Returns:
@@ -419,7 +419,7 @@ class SlackService:
                     channel=target_channel,
                 )
 
-                # Nicht-retry-faehige Fehler
+                # Nicht-retry-fähige Fehler
                 if error in ("channel_not_found", "not_in_channel", "invalid_auth"):
                     return None
 
@@ -460,10 +460,10 @@ class SlackService:
             notification_type: Typ der Benachrichtigung
             title: Titel der Nachricht
             message: Haupttext
-            context: Zusaetzliche Kontext-Daten
-            priority: Prioritaet der Nachricht
+            context: Zusätzliche Kontext-Daten
+            priority: Priorität der Nachricht
             channel: Ziel-Kanal (optional)
-            thread_ts: Thread-ID fuer Antworten (optional)
+            thread_ts: Thread-ID für Antworten (optional)
 
         Returns:
             True wenn erfolgreich
@@ -475,7 +475,7 @@ class SlackService:
         # Typ als String
         type_str = notification_type.value if isinstance(notification_type, SlackNotificationType) else notification_type
 
-        # Pruefen ob Typ aktiviert
+        # Prüfen ob Typ aktiviert
         if not self.should_send_notification(type_str):
             logger.debug(
                 "slack_notification_type_disabled",
@@ -483,7 +483,7 @@ class SlackService:
             )
             return False
 
-        # Farbe basierend auf Prioritaet und Typ
+        # Farbe basierend auf Priorität und Typ
         color = self._get_notification_color(type_str, priority)
 
         # Icon basierend auf Typ
@@ -498,7 +498,7 @@ class SlackService:
             icon=icon,
         )
 
-        # Attachment fuer Farbe
+        # Attachment für Farbe
         attachment = SlackAttachment(
             color=color,
             footer=f"Ablage-System | {type_str}",
@@ -527,8 +527,8 @@ class SlackService:
         notification_type: str,
         priority: SlackMessagePriority,
     ) -> str:
-        """Bestimmt die Farbe basierend auf Typ und Prioritaet."""
-        # Prioritaet ueberschreibt
+        """Bestimmt die Farbe basierend auf Typ und Priorität."""
+        # Priorität überschreibt
         if priority == SlackMessagePriority.URGENT:
             return "#FF0000"  # Rot
         if priority == SlackMessagePriority.HIGH:
@@ -576,7 +576,7 @@ class SlackService:
         context: Optional[dict[str, Any]],
         icon: str,
     ) -> list[dict[str, Any]]:
-        """Erstellt Block Kit Blocks fuer die Nachricht."""
+        """Erstellt Block Kit Blocks für die Nachricht."""
         blocks: list[dict[str, Any]] = []
 
         # Header
@@ -708,7 +708,7 @@ class SlackService:
         return result
 
     async def close(self) -> None:
-        """Schliesst den HTTP-Client."""
+        """Schließt den HTTP-Client."""
         if self._client:
             await self._client.aclose()
             self._client = None
@@ -719,7 +719,7 @@ _slack_service: Optional[SlackService] = None
 
 
 def get_slack_service() -> SlackService:
-    """Factory-Funktion fuer Slack-Service Dependency Injection."""
+    """Factory-Funktion für Slack-Service Dependency Injection."""
     global _slack_service
     if _slack_service is None:
         _slack_service = SlackService()
@@ -735,7 +735,7 @@ async def send_slack_notification(
     channel: Optional[str] = None,
 ) -> bool:
     """
-    Convenience-Funktion fuer einfaches Senden von Slack-Benachrichtigungen.
+    Convenience-Funktion für einfaches Senden von Slack-Benachrichtigungen.
 
     Kann aus jedem Teil der Anwendung aufgerufen werden.
 
@@ -743,7 +743,7 @@ async def send_slack_notification(
         notification_type: Typ (document_processed, approval_required, etc.)
         title: Titel der Nachricht
         message: Haupttext
-        context: Zusaetzliche Kontext-Daten
+        context: Zusätzliche Kontext-Daten
         priority: low, normal, high, urgent
         channel: Ziel-Kanal (optional)
 

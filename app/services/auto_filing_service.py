@@ -10,7 +10,7 @@ Drei Methoden:
 2. Fuzzy Match: Lieferantenname, Betraege, Schluesselwoerter
 3. Pattern Match (rule): Regex-Patterns, Keywords, Lieferanten-IDs
 
-Nutzt models_approval_extended fuer AutoFilingRule.
+Nutzt models_approval_extended für AutoFilingRule.
 """
 
 from __future__ import annotations
@@ -32,13 +32,13 @@ logger = structlog.get_logger(__name__)
 
 
 class AutoFilingService:
-    """ML-basiertes Auto-Filing fuer Dokumente.
+    """ML-basiertes Auto-Filing für Dokumente.
 
     Workflow:
     1. Dokument-Upload oder OCR-Abschluss
-    2. classify_document() prueft alle aktiven Regeln
+    2. classify_document() prüft alle aktiven Regeln
     3. Bei Match (confidence >= threshold): auto_file_document()
-    4. Manuelle Korrekturen fliessen via learn_from_filing() zurueck
+    4. Manuelle Korrekturen fliessen via learn_from_filing() zurück
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -57,7 +57,7 @@ class AutoFilingService:
     ) -> Optional[AutoFilingRule]:
         """Dokument automatisch klassifizieren und Filing-Regel finden.
 
-        Versucht die Regeln und gibt die beste passende zurueck.
+        Versucht die Regeln und gibt die beste passende zurück.
 
         Args:
             db: Async Database Session
@@ -174,7 +174,7 @@ class AutoFilingService:
         if rule.target_category:
             applied_changes["target_category"] = rule.target_category
 
-        # Training-Statistik erhoehen
+        # Training-Statistik erhöhen
         rule.training_sample_count = (rule.training_sample_count or 0) + 1
 
         await db.flush()
@@ -196,7 +196,7 @@ class AutoFilingService:
         folder_id: UUID,
         tags: List[UUID],
     ) -> None:
-        """Aus manueller Einordnung lernen fuer zukuenftige Auto-Filing.
+        """Aus manueller Einordnung lernen für zukünftige Auto-Filing.
 
         Args:
             db: Async Database Session
@@ -231,7 +231,7 @@ class AutoFilingService:
         company_id: UUID,
         document_text: str,
     ) -> Optional[Dict[str, object]]:
-        """Fuzzy-Matching: Aehnliche Dokumente von gleichen Lieferanten finden.
+        """Fuzzy-Matching: Ähnliche Dokumente von gleichen Lieferanten finden.
 
         Args:
             db: Async Database Session
@@ -306,7 +306,7 @@ class AutoFilingService:
         matches = 0
         total_checks = 0
 
-        # Regex-Pattern pruefen
+        # Regex-Pattern prüfen
         regex_pattern = config.get("regex")
         if regex_pattern:
             total_checks += 1
@@ -316,7 +316,7 @@ class AutoFilingService:
             except re.error:
                 pass
 
-        # Keywords pruefen
+        # Keywords prüfen
         keywords = config.get("keywords", [])
         if keywords:
             total_checks += 1
@@ -327,7 +327,7 @@ class AutoFilingService:
             if keyword_matches > 0:
                 matches += keyword_matches / len(keywords)
 
-        # Lieferanten-IDs pruefen
+        # Lieferanten-IDs prüfen
         supplier_ids = config.get("supplier_ids", [])
         if supplier_ids:
             total_checks += 1

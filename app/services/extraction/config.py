@@ -73,7 +73,7 @@ SUMMARY_ROW_INDICATORS: FrozenSet[str] = frozenset([
     "ust",
     "mehrwertsteuer",
     "endbetrag",
-    "uebertrag",
+    "übertrag",
     "saldo",
     "rechnungsbetrag",
 ])

@@ -1,8 +1,8 @@
 """
 Risk Scoring Service v2.0
 
-Berechnet Risiko-Scores fuer Geschaeftspartner basierend auf:
-- Zahlungsverhalten (Zahlungsverzoegerungen, Ausfallraten)
+Berechnet Risiko-Scores für Geschäftspartner basierend auf:
+- Zahlungsverhalten (Zahlungsverzögerungen, Ausfallraten)
 - Dokumentenhistorie (Anzahl, Frequenz, Typen)
 - Rechnungsvolumen und -muster
 - Branchenrisiko (NEU in v2.0)
@@ -52,15 +52,15 @@ class TrendDirection(str, Enum):
 # ============================================================================
 
 RISK_WEIGHTS_V1 = {
-    "payment_delay": 0.35,      # Zahlungsverzoegerung
+    "payment_delay": 0.35,      # Zahlungsverzögerung
     "default_rate": 0.25,       # Ausfallrate
     "invoice_volume": 0.15,     # Rechnungsvolumen (niedriger = riskanter)
-    "document_frequency": 0.10, # Dokumentenfrequenz (unregelmaessig = riskanter)
-    "relationship_age": 0.15,   # Beziehungsdauer (kuerzer = riskanter)
+    "document_frequency": 0.10, # Dokumentenfrequenz (unregelmäßig = riskanter)
+    "relationship_age": 0.15,   # Beziehungsdauer (kürzer = riskanter)
 }
 
 RISK_WEIGHTS_V2 = {
-    "payment_delay": 0.20,      # Zahlungsverzoegerung (reduziert fuer neue Faktoren)
+    "payment_delay": 0.20,      # Zahlungsverzögerung (reduziert für neue Faktoren)
     "default_rate": 0.15,       # Ausfallrate
     "invoice_volume": 0.10,     # Rechnungsvolumen
     "document_frequency": 0.05, # Dokumentenfrequenz
@@ -307,18 +307,18 @@ class RiskFactor:
 
 @dataclass
 class PaymentHistoryEntry:
-    """Einzelner Zahlungseintrag fuer Trend-Analyse."""
+    """Einzelner Zahlungseintrag für Trend-Analyse."""
     invoice_id: UUID
     due_date: datetime
     paid_at: Optional[datetime]
-    delay_days: int  # Positive = verspaetet, Negative = frueh
+    delay_days: int  # Positive = verspätet, Negative = früh
 
 
 class RiskFactors:
     """Einzelne Risikofaktoren mit Bewertung (V1 compatibility)."""
 
     def __init__(self) -> None:
-        self.payment_delay_days: float = 0.0  # Durchschnittliche Verzoegerung in Tagen
+        self.payment_delay_days: float = 0.0  # Durchschnittliche Verzögerung in Tagen
         self.default_rate: float = 0.0  # Prozent ausgefallener Zahlungen
         self.invoice_volume: float = 0.0  # Gesamtvolumen in EUR
         self.document_frequency: float = 0.0  # Dokumente pro Monat
@@ -338,7 +338,7 @@ class RiskFactors:
         self.economic_indicator_score: float = 50.0
 
     def to_dict(self) -> Dict[str, object]:
-        """Konvertiert zu Dictionary fuer JSON-Speicherung."""
+        """Konvertiert zu Dictionary für JSON-Speicherung."""
         result = {
             "payment_delay_days": round(self.payment_delay_days, 1),
             "default_rate": round(self.default_rate * 100, 1),  # Als Prozent
@@ -415,7 +415,7 @@ class RiskScoreDetailedResponse:
 # ============================================================================
 
 class RiskScoringService:
-    """Service fuer Risiko-Score-Berechnung (V2)."""
+    """Service für Risiko-Score-Berechnung (V2)."""
 
     def __init__(
         self,
@@ -448,7 +448,7 @@ class RiskScoringService:
         entity_id: UUID,
     ) -> Tuple[float, float, RiskFactors]:
         """
-        Berechnet Risiko-Score fuer einen Geschaeftspartner.
+        Berechnet Risiko-Score für einen Geschäftspartner.
 
         Returns:
             Tuple[risk_score, payment_behavior_score, factors]
@@ -458,7 +458,7 @@ class RiskScoringService:
         """
         factors = await self._collect_factors(db, entity_id)
 
-        # Einzelne Scores berechnen (jeweils 0-100, hoeher = riskanter)
+        # Einzelne Scores berechnen (jeweils 0-100, höher = riskanter)
         payment_delay_score = self._score_payment_delay(factors.payment_delay_days)
         default_rate_score = self._score_default_rate(factors.default_rate)
         invoice_volume_score = self._score_invoice_volume(factors.invoice_volume)
@@ -466,7 +466,7 @@ class RiskScoringService:
         relationship_age_score = self._score_relationship_age(factors.relationship_months)
 
         if self._use_v2:
-            # V2: Berechne zusaetzliche Faktoren
+            # V2: Berechne zusätzliche Faktoren
             industry_risk_score = factors.industry_risk_score
             payment_trend_score = self._score_payment_trend(factors.trend_slope, factors.payment_trend)
             economic_score = factors.economic_indicator_score
@@ -492,8 +492,8 @@ class RiskScoringService:
                 + relationship_age_score * self._weights["relationship_age"]
             )
 
-        # Payment Behavior Score (umgekehrte Skala: hoeher = besser)
-        # Hauptsaechlich basierend auf Zahlungsverzoegerung und Ausfallrate
+        # Payment Behavior Score (umgekehrte Skala: höher = besser)
+        # Hauptsaechlich basierend auf Zahlungsverzögerung und Ausfallrate
         payment_behavior_score = 100 - (
             payment_delay_score * 0.6 + default_rate_score * 0.4
         )
@@ -532,7 +532,7 @@ class RiskScoringService:
                 score=payment_delay_score,
                 weight=self._weights["payment_delay"],
                 weighted_score=payment_delay_score * self._weights["payment_delay"],
-                description=f"Durchschnittliche Zahlungsverzoegerung: {factors.payment_delay_days:.1f} Tage",
+                description=f"Durchschnittliche Zahlungsverzögerung: {factors.payment_delay_days:.1f} Tage",
             ),
             "default_rate": RiskFactor(
                 name="default_rate",
@@ -571,7 +571,7 @@ class RiskScoringService:
         overall_score = sum(f.weighted_score for f in factor_details.values())
 
         if self._use_v2:
-            # V2: Zusaetzliche Faktoren
+            # V2: Zusätzliche Faktoren
             industry_risk_score = factors.industry_risk_score
             payment_trend_score = self._score_payment_trend(factors.trend_slope, factors.payment_trend)
             economic_score = factors.economic_indicator_score
@@ -635,7 +635,7 @@ class RiskScoringService:
         db: AsyncSession,
         entity_id: UUID,
     ) -> RiskFactors:
-        """Sammelt alle Risikofaktoren fuer einen Geschaeftspartner."""
+        """Sammelt alle Risikofaktoren für einen Geschäftspartner."""
         factors = RiskFactors()
 
         # Entity abrufen
@@ -679,22 +679,22 @@ class RiskScoringService:
             # V2: Payment Trend Analysis
             await self._analyze_payment_trend(db, entity_id, factors)
 
-            # V2: External Data (wenn Provider verfuegbar)
+            # V2: External Data (wenn Provider verfügbar)
             await self._fetch_external_data(entity_id, entity.vat_id, factors)
 
         return factors
 
     def _get_industry_code(self, entity: BusinessEntity) -> str:
         """
-        Bestimmt den Branchencode fuer eine Entity.
+        Bestimmt den Branchencode für eine Entity.
 
-        Prueft in Reihenfolge:
+        Prüft in Reihenfolge:
         1. risk_factors JSONB (direkt gesetzt)
         2. custom_fields JSONB (manuell vom User gepflegt)
         3. Lexware-Daten (branche Feld, falls vorhanden)
         4. Default "unknown"
         """
-        # 1. risk_factors (hoechste Prioritaet - direkt gesetzt)
+        # 1. risk_factors (hoechste Priorität - direkt gesetzt)
         if entity.risk_factors and isinstance(entity.risk_factors, dict):
             industry = entity.risk_factors.get("industry_code")
             if industry and industry in INDUSTRY_RISK_SCORES:
@@ -723,8 +723,8 @@ class RiskScoringService:
         factors: RiskFactors,
     ) -> None:
         """Sammelt Rechnungs-bezogene Faktoren."""
-        # Alle Rechnungen des Geschaeftspartners finden
-        # Ueber Document -> InvoiceTracking
+        # Alle Rechnungen des Geschäftspartners finden
+        # Über Document -> InvoiceTracking
         invoice_query = (
             select(InvoiceTracking)
             .join(Document, InvoiceTracking.document_id == Document.id)
@@ -759,7 +759,7 @@ class RiskScoringService:
                 overdue_count += 1
                 factors.overdue_invoices += 1
             elif inv.status in ("open", "sent"):
-                # Pruefen ob ueberfaellig (UTC-Vergleich)
+                # Prüfen ob überfällig (UTC-Vergleich)
                 due_utc = inv.due_date.replace(tzinfo=timezone.utc) if inv.due_date and not inv.due_date.tzinfo else inv.due_date
                 if due_utc and due_utc < now:
                     overdue_count += 1
@@ -768,7 +768,7 @@ class RiskScoringService:
                     open_count += 1
                     factors.open_invoices += 1
 
-        # Zahlungsverzoegerung berechnen
+        # Zahlungsverzögerung berechnen
         if paid_invoices:
             delay_days = []
             for inv in paid_invoices:
@@ -776,13 +776,13 @@ class RiskScoringService:
                     paid_date = inv.paid_at.replace(tzinfo=None) if inv.paid_at.tzinfo else inv.paid_at
                     due_date = inv.due_date.replace(tzinfo=None) if inv.due_date.tzinfo else inv.due_date
                     delay = (paid_date - due_date).days
-                    if delay > 0:  # Nur Verzoegerungen zaehlen
+                    if delay > 0:  # Nur Verzögerungen zaehlen
                         delay_days.append(delay)
 
             if delay_days:
                 factors.payment_delay_days = sum(delay_days) / len(delay_days)
 
-        # Ausfallrate berechnen (ueberfaellige / total)
+        # Ausfallrate berechnen (überfällige / total)
         if factors.total_invoices > 0:
             factors.default_rate = overdue_count / factors.total_invoices
 
@@ -795,10 +795,10 @@ class RiskScoringService:
         """
         Analysiert den Zahlungstrend der letzten 12 Monate.
 
-        Verwendet lineare Regression auf Zahlungsverzoegerungen:
-        - Steigung negativ -> Verbesserung (frueheres Zahlen)
+        Verwendet lineare Regression auf Zahlungsverzögerungen:
+        - Steigung negativ -> Verbesserung (früheres Zahlen)
         - Steigung ~0 -> Stabil
-        - Steigung positiv -> Verschlechterung (spaeteres Zahlen)
+        - Steigung positiv -> Verschlechterung (späteres Zahlen)
         """
         # Zahlungshistorie der letzten 12 Monate abrufen
         twelve_months_ago = datetime.now(timezone.utc) - timedelta(days=365)
@@ -823,13 +823,13 @@ class RiskScoringService:
         paid_invoices = result.scalars().all()
 
         if len(paid_invoices) < 3:
-            # Nicht genug Daten fuer Trend-Analyse
+            # Nicht genug Daten für Trend-Analyse
             factors.payment_trend = TrendDirection.STABLE
             factors.trend_slope = 0.0
             factors.trend_adjustment = 0
             return
 
-        # Berechne Zahlungsverzoegerungen mit Zeitstempel
+        # Berechne Zahlungsverzögerungen mit Zeitstempel
         data_points: List[Tuple[float, float]] = []
 
         for inv in paid_invoices:
@@ -904,7 +904,7 @@ class RiskScoringService:
         Ruft externe Daten von konfigurierten Providern ab.
 
         Aktuell: Alle Provider sind Stubs (nicht implementiert).
-        Bei Konfiguration: Ersten verfuegbaren Provider nutzen.
+        Bei Konfiguration: Ersten verfügbaren Provider nutzen.
         """
         for provider in self._external_providers:
             try:
@@ -914,7 +914,7 @@ class RiskScoringService:
                         factors.external_data = data
                         # Externer Score beeinflusst economic_indicator_score
                         if data.credit_score:
-                            # Normalisiere externen Score auf 0-100 (hoeher = riskanter)
+                            # Normalisiere externen Score auf 0-100 (höher = riskanter)
                             # Annahme: Externer Score ist 0-100, niedrig = gut
                             factors.economic_indicator_score = float(data.credit_score)
                         break
@@ -927,7 +927,7 @@ class RiskScoringService:
                 )
 
     def _score_payment_delay(self, delay_days: float) -> float:
-        """Bewertet Zahlungsverzoegerung. 0 Tage = 0 Score, 30+ Tage = 100."""
+        """Bewertet Zahlungsverzögerung. 0 Tage = 0 Score, 30+ Tage = 100."""
         if delay_days <= 0:
             return 0.0
         if delay_days >= 30:
@@ -953,7 +953,7 @@ class RiskScoringService:
         return 80 - (volume / 100000) * 80
 
     def _score_document_frequency(self, freq_per_month: float) -> float:
-        """Bewertet Dokumentenfrequenz. Unregelmaessig = riskanter."""
+        """Bewertet Dokumentenfrequenz. Unregelmäßig = riskanter."""
         # 0 Dokumente/Monat = 60 Score, 10+ = 0 Score
         if freq_per_month <= 0:
             return 60.0
@@ -962,7 +962,7 @@ class RiskScoringService:
         return 60 - (freq_per_month / 10) * 60
 
     def _score_relationship_age(self, months: float) -> float:
-        """Bewertet Beziehungsdauer. Kuerzer = riskanter."""
+        """Bewertet Beziehungsdauer. Kürzer = riskanter."""
         # 0 Monate = 70 Score, 24+ Monate = 0 Score
         if months <= 0:
             return 70.0
@@ -1000,7 +1000,7 @@ class RiskScoringService:
             return RiskLevel.CRITICAL
 
     def _get_trend_description(self, trend: TrendDirection, slope: float) -> str:
-        """Generiert eine deutsche Beschreibung fuer den Trend."""
+        """Generiert eine deutsche Beschreibung für den Trend."""
         if trend == TrendDirection.IMPROVING:
             return f"Zahlungsverhalten verbessert sich ({abs(slope):.1f} Tage/Monat schneller)"
         elif trend == TrendDirection.WORSENING:
@@ -1021,38 +1021,38 @@ class RiskScoringService:
         # Empfehlungen basierend auf einzelnen Faktoren
         if factors.payment_delay_days > 14:
             recommendations.append(
-                "Straffere Zahlungsbedingungen vereinbaren (z.B. Vorkasse, kuerzere Zahlungsziele)"
+                "Straffere Zahlungsbedingungen vereinbaren (z.B. Vorkasse, kürzere Zahlungsziele)"
             )
 
         if factors.default_rate > 0.1:
             recommendations.append(
-                "Kreditlimit ueberpruefen und ggf. reduzieren"
+                "Kreditlimit überprüfen und ggf. reduzieren"
             )
 
         if factors.payment_trend == TrendDirection.WORSENING:
             recommendations.append(
-                "Zahlerverhalten beobachten - moegliche Liquiditaetsprobleme"
+                "Zahlerverhalten beobachten - mögliche Liquiditaetsprobleme"
             )
         elif factors.payment_trend == TrendDirection.IMPROVING:
             recommendations.append(
-                "Positiver Trend - Geschaeftsbeziehung ausbauen moeglich"
+                "Positiver Trend - Geschäftsbeziehung ausbauen möglich"
             )
 
         if factors.industry_risk_score >= 70:
             recommendations.append(
-                f"Branche ({factors.industry_code}) hat erhoehtes Risiko - besondere Vorsicht geboten"
+                f"Branche ({factors.industry_code}) hat erhöhtes Risiko - besondere Vorsicht geboten"
             )
 
         if factors.relationship_months < 6:
             recommendations.append(
-                "Neue Geschaeftsbeziehung - engmaschigere Ueberwachung empfohlen"
+                "Neue Geschäftsbeziehung - engmaschigere Überwachung empfohlen"
             )
 
         # Allgemeine Empfehlungen basierend auf Gesamt-Risiko
         if risk_level == RiskLevel.CRITICAL:
             recommendations.insert(0, "ACHTUNG: Kritisches Risiko - Lieferstopp oder Vorkasse empfohlen")
         elif risk_level == RiskLevel.HIGH:
-            recommendations.insert(0, "Hohes Risiko - manuelle Freigabe fuer groessere Auftraege erforderlich")
+            recommendations.insert(0, "Hohes Risiko - manuelle Freigabe für größere Aufträge erforderlich")
 
         if not recommendations:
             recommendations.append("Keine besonderen Massnahmen erforderlich")
@@ -1065,7 +1065,7 @@ class RiskScoringService:
         entity_id: UUID,
     ) -> Optional[BusinessEntity]:
         """
-        Aktualisiert den Risiko-Score eines Geschaeftspartners.
+        Aktualisiert den Risiko-Score eines Geschäftspartners.
 
         Returns:
             Updated BusinessEntity or None if not found
@@ -1111,7 +1111,7 @@ class RiskScoringService:
         limit: int = 1000,
     ) -> int:
         """
-        Aktualisiert Risiko-Scores fuer alle (oder gefilterte) Geschaeftspartner.
+        Aktualisiert Risiko-Scores für alle (oder gefilterte) Geschäftspartner.
 
         Returns:
             Number of updated entities
@@ -1196,7 +1196,7 @@ class RiskScoringService:
         days: int = 90,
     ) -> List[Dict[str, object]]:
         """
-        Ruft historische Risk-Scores fuer Trend-Anzeige ab.
+        Ruft historische Risk-Scores für Trend-Anzeige ab.
 
         Args:
             db: Database session

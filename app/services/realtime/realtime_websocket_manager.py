@@ -1,7 +1,7 @@
 """
 Realtime WebSocket Manager.
 
-Verwaltet WebSocket-Verbindungen fuer Echtzeit-Updates.
+Verwaltet WebSocket-Verbindungen für Echtzeit-Updates.
 Unterscheidet sich vom Chat-WebSocket durch:
 - User-basierte Subscriptions (nicht Session-basiert)
 - Company-Isolation
@@ -44,7 +44,7 @@ class ConnectionState(str, Enum):
 
 @dataclass
 class UserConnection:
-    """Informationen ueber eine User-WebSocket-Verbindung."""
+    """Informationen über eine User-WebSocket-Verbindung."""
 
     websocket: WebSocket
     user_id: str
@@ -59,13 +59,13 @@ class UserConnection:
 
     @property
     def is_active(self) -> bool:
-        """Prueft ob Verbindung aktiv ist."""
+        """Prüft ob Verbindung aktiv ist."""
         return self.state == ConnectionState.CONNECTED
 
 
 @dataclass
 class Room:
-    """WebSocket Room fuer dokumentbezogene Kommunikation."""
+    """WebSocket Room für dokumentbezogene Kommunikation."""
 
     room_id: str
     room_type: str
@@ -96,7 +96,7 @@ class WSMessage:
 
 class RealtimeWebSocketManager:
     """
-    Manager fuer Realtime WebSocket Verbindungen.
+    Manager für Realtime WebSocket Verbindungen.
 
     Features:
     - User-basierte Verbindungsverwaltung
@@ -190,7 +190,7 @@ class RealtimeWebSocketManager:
         Args:
             websocket: WebSocket-Verbindung
             user_id: User ID
-            company_id: Optional Company ID fuer Isolation
+            company_id: Optional Company ID für Isolation
 
         Returns:
             True wenn erfolgreich verbunden
@@ -202,7 +202,7 @@ class RealtimeWebSocketManager:
             return False
 
         async with self._lock:
-            # Alte Verbindung schliessen falls vorhanden
+            # Alte Verbindung schließen falls vorhanden
             if user_id in self._connections:
                 old_conn = self._connections[user_id]
                 try:
@@ -432,7 +432,7 @@ class RealtimeWebSocketManager:
         )
 
     async def _handle_get_history(self, user_id: str, since: Optional[str]) -> None:
-        """Verarbeitet Get-History-Nachricht fuer Reconnection."""
+        """Verarbeitet Get-History-Nachricht für Reconnection."""
         since_dt = None
         if since:
             try:
@@ -650,7 +650,7 @@ class RealtimeWebSocketManager:
 
     async def get_document_viewers(self, document_id: str) -> List[Dict[str, str]]:
         """
-        Gibt alle User zurueck die ein Dokument gerade betrachten.
+        Gibt alle User zurück die ein Dokument gerade betrachten.
 
         Args:
             document_id: Dokument ID
@@ -673,7 +673,7 @@ class RealtimeWebSocketManager:
 
     async def get_company_presence(self, company_id: str) -> List[Dict[str, str]]:
         """
-        Gibt Presence-Informationen aller User einer Company zurueck.
+        Gibt Presence-Informationen aller User einer Company zurück.
 
         Args:
             company_id: Company ID
@@ -938,7 +938,7 @@ class RealtimeWebSocketManager:
                 logger.error("ping_loop_error", **safe_error_log(e))
 
     def get_stats(self) -> Dict[str, Any]:
-        """Gibt Statistiken ueber Verbindungen zurueck."""
+        """Gibt Statistiken über Verbindungen zurück."""
         return {
             "total_connections": len(self._connections),
             "companies": len(self._company_users),
@@ -954,7 +954,7 @@ _ws_manager_instance: Optional[RealtimeWebSocketManager] = None
 
 
 def get_realtime_ws_manager() -> RealtimeWebSocketManager:
-    """Factory-Funktion fuer RealtimeWebSocketManager Singleton."""
+    """Factory-Funktion für RealtimeWebSocketManager Singleton."""
     global _ws_manager_instance
     if _ws_manager_instance is None:
         _ws_manager_instance = RealtimeWebSocketManager()
@@ -962,7 +962,7 @@ def get_realtime_ws_manager() -> RealtimeWebSocketManager:
 
 
 async def reset_realtime_ws_manager() -> None:
-    """Setzt den WebSocket Manager zurueck (fuer Tests)."""
+    """Setzt den WebSocket Manager zurück (für Tests)."""
     global _ws_manager_instance
     if _ws_manager_instance:
         await _ws_manager_instance.stop()

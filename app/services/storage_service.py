@@ -65,7 +65,7 @@ class StorageConfig:
         # Fallback auf settings wenn vorhanden, sonst Default
         self.EXPORTS_BUCKET = getattr(settings, "MINIO_BUCKET_EXPORTS", None) or os.getenv("MINIO_EXPORTS_BUCKET", "exports")
 
-        # Settings - zentralisiert fuer bessere Validierung
+        # Settings - zentralisiert für bessere Validierung
         self.PRESIGNED_URL_EXPIRY_HOURS = getattr(settings, "MINIO_PRESIGNED_EXPIRY_HOURS", None) or int(os.getenv("MINIO_PRESIGNED_EXPIRY", "24"))
         self.MAX_FILE_SIZE_MB = settings.MAX_UPLOAD_SIZE_MB
 

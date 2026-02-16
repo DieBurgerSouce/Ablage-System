@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Dokument-Versionsvergleich API Router.
 
-Endpoints fuer Side-by-Side Dokumentvergleiche zwischen Versionen.
+Endpoints für Side-by-Side Dokumentvergleiche zwischen Versionen.
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/document-comparison", tags=["Dokumentvergleich"])
 
 
 class VersionInfo(BaseModel):
-    """Schema fuer Version-Informationen."""
+    """Schema für Version-Informationen."""
     id: str
     version_number: int
     change_type: str
@@ -46,13 +46,13 @@ class VersionInfo(BaseModel):
 
 
 class CompareVersionsRequest(BaseModel):
-    """Schema fuer Versionsvergleich-Anfrage."""
+    """Schema für Versionsvergleich-Anfrage."""
     version_a_id: UUID = Field(..., description="UUID der ersten Version")
     version_b_id: UUID = Field(..., description="UUID der zweiten Version")
 
 
 class DiffBlockResponse(BaseModel):
-    """Schema fuer einen Diff-Block."""
+    """Schema für einen Diff-Block."""
     type: str
     text_a: str
     text_b: str
@@ -63,7 +63,7 @@ class DiffBlockResponse(BaseModel):
 
 
 class ComparisonResultResponse(BaseModel):
-    """Schema fuer Vergleichsergebnis."""
+    """Schema für Vergleichsergebnis."""
     document_id: str
     version_a_id: str
     version_a_number: int
@@ -89,7 +89,7 @@ async def list_versions(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ) -> List[VersionInfo]:
-    """Listet alle verfuegbaren Versionen eines Dokuments fuer Vergleich auf."""
+    """Listet alle verfügbaren Versionen eines Dokuments für Vergleich auf."""
     try:
         service = await get_document_comparison_service(db)
         versions = await service.list_document_versions(
@@ -116,7 +116,7 @@ async def list_versions(
         elif "Berechtigung" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Keine Berechtigung fuer dieses Dokument"
+                detail="Keine Berechtigung für dieses Dokument"
             )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -183,7 +183,7 @@ async def compare_versions(
         elif "Berechtigung" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Keine Berechtigung fuer dieses Dokument"
+                detail="Keine Berechtigung für dieses Dokument"
             )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -247,7 +247,7 @@ async def compare_with_original(
         elif "Berechtigung" in error_msg:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Keine Berechtigung fuer dieses Dokument"
+                detail="Keine Berechtigung für dieses Dokument"
             )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

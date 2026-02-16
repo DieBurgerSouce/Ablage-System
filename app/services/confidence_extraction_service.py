@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Confidence Extraction Service - Orchestrierung fuer KI-Pipeline Feature #4.
+Confidence Extraction Service - Orchestrierung für KI-Pipeline Feature #4.
 
-Orchestriert die Confidence-basierte Extraktion fuer ein Dokument:
+Orchestriert die Confidence-basierte Extraktion für ein Dokument:
 - Extrahiert Daten mit Confidence-Scoring pro Feld
 - Klassifiziert Felder in AUTO_ACCEPT / REVIEW_NEEDED / MANUAL_REQUIRED
 - Generiert Confidence-Reports
@@ -46,7 +46,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class FieldConfidenceReport:
-    """Confidence-Report fuer ein einzelnes Feld."""
+    """Confidence-Report für ein einzelnes Feld."""
     field_name: str
     extracted_value: str
     confidence_score: float
@@ -70,7 +70,7 @@ class FieldConfidenceReport:
 
 @dataclass
 class DocumentConfidenceReport:
-    """Gesamter Confidence-Report fuer ein Dokument."""
+    """Gesamter Confidence-Report für ein Dokument."""
     document_id: str
     total_fields: int
     auto_accepted: int
@@ -135,9 +135,9 @@ COMMON_FIELD_PATHS: Dict[str, str] = {
 
 
 class ConfidenceExtractionService:
-    """Orchestriert die Confidence-basierte Extraktion fuer KI-Pipeline.
+    """Orchestriert die Confidence-basierte Extraktion für KI-Pipeline.
 
-    Nutzt den existierenden ExtractionConfidenceService fuer die
+    Nutzt den existierenden ExtractionConfidenceService für die
     Einzelfeld-Berechnung und ergaenzt Orchestrierungs-Logik.
     """
 
@@ -152,14 +152,14 @@ class ConfidenceExtractionService:
         """Extrahiert Daten mit Confidence-Scoring pro Feld.
 
         Laedt das Dokument, extrahiert Felder aus extracted_data JSONB
-        und berechnet fuer jedes Feld einen individuellen Score.
+        und berechnet für jedes Feld einen individuellen Score.
 
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
 
         Returns:
-            Liste von ExtractionConfidence-Eintraegen
+            Liste von ExtractionConfidence-Einträgen
 
         Raises:
             ValueError: Wenn das Dokument nicht gefunden wurde
@@ -177,7 +177,7 @@ class ConfidenceExtractionService:
         if not doc:
             raise ValueError(f"Dokument {document_id} nicht gefunden")
 
-        # Bereits vorhandene Confidence-Records pruefen
+        # Bereits vorhandene Confidence-Records prüfen
         existing = await db.execute(
             select(func.count())
             .select_from(ExtractionConfidence)
@@ -201,7 +201,7 @@ class ConfidenceExtractionService:
             )
             return []
 
-        # Lieferantenname und Dokumenttyp fuer Lernprofil
+        # Lieferantenname und Dokumenttyp für Lernprofil
         supplier_name = self._get_supplier_name(extracted_data)
         document_type = doc.document_type
 
@@ -235,7 +235,7 @@ class ConfidenceExtractionService:
         value: str,
         extraction_metadata: Optional[Dict[str, str]] = None,
     ) -> float:
-        """Berechnet Confidence-Score fuer ein einzelnes Feld.
+        """Berechnet Confidence-Score für ein einzelnes Feld.
 
         Stateless Berechnung ohne DB-Zugriff.
 
@@ -262,7 +262,7 @@ class ConfidenceExtractionService:
         field_adj = FIELD_CONFIDENCE_ADJUSTMENTS.get(field_name, 0.0)
         score = base_score + field_adj
 
-        # Plausibilitaetspruefung
+        # Plausibilitaetsprüfung
         pattern = FIELD_VALIDATION_PATTERNS.get(field_name)
         if pattern and value:
             normalized = value.replace(" ", "").strip()
@@ -271,7 +271,7 @@ class ConfidenceExtractionService:
             else:
                 score -= 0.10
 
-        # Wert-Laenge-Check
+        # Wert-Länge-Check
         if not value or len(value.strip()) < 2:
             score -= 0.30
 
@@ -293,7 +293,7 @@ class ConfidenceExtractionService:
         db: AsyncSession,
         document_id: UUID,
     ) -> DocumentConfidenceReport:
-        """Generiert einen Confidence-Report fuer ein Dokument.
+        """Generiert einen Confidence-Report für ein Dokument.
 
         Args:
             db: Datenbank-Session
@@ -348,7 +348,7 @@ class ConfidenceExtractionService:
         db: AsyncSession,
         document_id: UUID,
     ) -> List[ExtractionConfidence]:
-        """Gibt Felder zurueck die manuelle Pruefung benoetigen.
+        """Gibt Felder zurück die manuelle Prüfung benötigen.
 
         Args:
             db: Datenbank-Session
@@ -441,7 +441,7 @@ class ConfidenceExtractionService:
         record = result.scalar_one_or_none()
         if not record:
             raise ValueError(
-                f"Feld '{field_name}' fuer Dokument {document_id} nicht gefunden"
+                f"Feld '{field_name}' für Dokument {document_id} nicht gefunden"
             )
 
         # Korrektur anwenden
@@ -460,7 +460,7 @@ class ConfidenceExtractionService:
             )
             learning_svc = get_extraction_learning_service()
 
-            # Dokument-Infos fuer Lernprofil laden
+            # Dokument-Infos für Lernprofil laden
             doc_result = await db.execute(
                 select(
                     Document.company_id,
@@ -594,7 +594,7 @@ _service_instance: Optional[ConfidenceExtractionService] = None
 
 
 def get_confidence_extraction_service() -> ConfidenceExtractionService:
-    """Gibt die Singleton-Instanz des ConfidenceExtractionService zurueck."""
+    """Gibt die Singleton-Instanz des ConfidenceExtractionService zurück."""
     global _service_instance
     if _service_instance is None:
         _service_instance = ConfidenceExtractionService()

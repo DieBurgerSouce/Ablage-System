@@ -5,12 +5,12 @@ Urgency Classifier Service.
 Klassifiziert Dokumente nach Dringlichkeit basierend auf:
 - Erkannte Fristen und Deadlines
 - Mahnungen und Eskalationen
-- Keywords fuer Dringlichkeit
+- Keywords für Dringlichkeit
 - Dokumenttyp-spezifische Regeln
 
 Dringlichkeitsstufen:
 - IMMEDIATE: Frist < 3 Tage, Mahnungen, kritische Dokumente
-- NORMAL: Frist 3-14 Tage, Standard-Geschaeftsdokumente
+- NORMAL: Frist 3-14 Tage, Standard-Geschäftsdokumente
 - CAN_WAIT: Frist > 14 Tage oder keine Frist
 
 Feinpoliert und durchdacht.
@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
 
 
 class UrgencyLevel(str, Enum):
-    """Dringlichkeitsstufen fuer Dokumente."""
+    """Dringlichkeitsstufen für Dokumente."""
     IMMEDIATE = "immediate"  # < 3 Tage
     NORMAL = "normal"  # 3-14 Tage
     CAN_WAIT = "can_wait"  # > 14 Tage oder keine Frist
@@ -48,7 +48,7 @@ class UrgencyClassificationResult:
 # KEYWORD CONFIGURATION
 # =============================================================================
 
-# Keywords fuer hoechste Dringlichkeit (IMMEDIATE)
+# Keywords für hoechste Dringlichkeit (IMMEDIATE)
 IMMEDIATE_KEYWORDS: Set[str] = {
     # Mahnungen
     "mahnung", "zahlungserinnerung", "letzte mahnung", "inkasso",
@@ -57,44 +57,44 @@ IMMEDIATE_KEYWORDS: Set[str] = {
 
     # Dringlichkeit
     "dringend", "sofort", "umgehend", "unverzueglich", "eilig",
-    "fristablauf", "letzte frist", "endgueltig", "abschlussfrist",
+    "fristablauf", "letzte frist", "endgültig", "abschlussfrist",
 
     # Rechtliche Eskalation
     "anwalt", "rechtlich", "gerichtlich", "vollstreckung",
     "zwangsvollstreckung", "androhung", "klage", "mahnbescheid",
 
-    # Kuendigungen
-    "kuendigung", "vertragsende", "letzter tag", "ablauf",
+    # Kündigungen
+    "kündigung", "vertragsende", "letzter tag", "ablauf",
 
     # Finanzielle Dringlichkeit
     "skonto", "skontofrist", "rabattfrist", "zahlungsfrist",
-    "ueberfaellig", "rueckstand", "ausstehend",
+    "überfällig", "rückstand", "ausstehend",
 }
 
-# Keywords fuer normale Dringlichkeit (NORMAL)
+# Keywords für normale Dringlichkeit (NORMAL)
 NORMAL_KEYWORDS: Set[str] = {
-    "zahlungsziel", "faellig", "bis zum", "spätestens",
+    "zahlungsziel", "fällig", "bis zum", "spätestens",
     "deadline", "termin", "frist", "abgabetermin",
-    "liefertermin", "lieferdatum", "verlaengerung",
-    "gueltig bis", "angebotsfrist",
+    "liefertermin", "lieferdatum", "verlängerung",
+    "gültig bis", "angebotsfrist",
 }
 
 # Keywords die auf niedrige Dringlichkeit hinweisen
 LOW_URGENCY_KEYWORDS: Set[str] = {
     "zur kenntnisnahme", "zur information", "archiv",
     "dokumentation", "protokoll", "bericht", "jahresbericht",
-    "uebersicht", "zusammenfassung", "nachrichtlich",
+    "übersicht", "zusammenfassung", "nachrichtlich",
     "kopie", "duplikat",
 }
 
 # Dokumenttypen mit hoher Standarddringlichkeit
 HIGH_URGENCY_DOC_TYPES: Set[str] = {
     "dunning", "dunning_letter", "mahnung",
-    "cancellation", "kuendigung",
+    "cancellation", "kündigung",
     "legal_notice", "rechtliche_mitteilung",
 }
 
-# Regex-Patterns fuer Datumserkennung
+# Regex-Patterns für Datumserkennung
 DATE_PATTERNS = [
     # DD.MM.YYYY oder DD.MM.YY
     re.compile(r'(\d{1,2})\.(\d{1,2})\.(\d{2,4})'),
@@ -116,7 +116,7 @@ class UrgencyClassifier:
     Performance: < 10ms pro Dokument (rein regelbasiert)
     """
 
-    # Schwellenwerte fuer Dringlichkeit
+    # Schwellenwerte für Dringlichkeit
     IMMEDIATE_DAYS = 3
     NORMAL_DAYS = 14
 
@@ -138,8 +138,8 @@ class UrgencyClassifier:
 
         Args:
             text: OCR-Text des Dokuments
-            document_type: Optionaler Dokumenttyp fuer kontextuelle Klassifikation
-            document_date: Optionales Dokumentdatum fuer Fristberechnung
+            document_type: Optionaler Dokumenttyp für kontextuelle Klassifikation
+            document_date: Optionales Dokumentdatum für Fristberechnung
 
         Returns:
             UrgencyClassificationResult mit Level, Confidence und Details
@@ -167,7 +167,7 @@ class UrgencyClassifier:
         normal_matches = self._find_keywords(normalized_text, NORMAL_KEYWORDS)
         low_matches = self._find_keywords(normalized_text, LOW_URGENCY_KEYWORDS)
 
-        # 3. Dokumenttyp beruecksichtigen
+        # 3. Dokumenttyp berücksichtigen
         doc_type_score = 0.0
         if document_type and document_type.lower() in HIGH_URGENCY_DOC_TYPES:
             doc_type_score = 0.3
@@ -206,9 +206,9 @@ class UrgencyClassifier:
         )
 
     def _normalize_text(self, text: str) -> str:
-        """Normalisiere Text fuer Keyword-Matching."""
+        """Normalisiere Text für Keyword-Matching."""
         text = text.lower()
-        # Deutsche Umlaute beibehalten fuer besseres Matching
+        # Deutsche Umlaute beibehalten für besseres Matching
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
 
@@ -261,7 +261,7 @@ class UrgencyClassifier:
                         deadline = datetime(year, month, day)
 
                         # Wenn Datum in Vergangenheit und kein Jahr angegeben,
-                        # naechstes Jahr annehmen
+                        # nächstes Jahr annehmen
                         if deadline < today and not groups[2]:
                             deadline = datetime(today.year + 1, month, day)
 
@@ -288,7 +288,7 @@ class UrgencyClassifier:
         Returns:
             (urgency_level, confidence, reason)
         """
-        # Basis-Score fuer Immediate (0-1)
+        # Basis-Score für Immediate (0-1)
         immediate_score = 0.0
         normal_score = 0.0
         low_score = 0.0
@@ -333,7 +333,7 @@ class UrgencyClassifier:
             if days_until is not None:
                 reason = f"Frist in {days_until} Tagen"
             else:
-                reason = "Standard-Geschaeftsdokument mit erkannter Frist"
+                reason = "Standard-Geschäftsdokument mit erkannter Frist"
 
             return UrgencyLevel.NORMAL, confidence, reason
 
@@ -348,11 +348,11 @@ class UrgencyClassifier:
         return UrgencyLevel.CAN_WAIT, confidence, reason
 
     def get_stats(self) -> dict:
-        """Gibt Klassifizierungs-Statistiken zurueck."""
+        """Gibt Klassifizierungs-Statistiken zurück."""
         return self._stats.copy()
 
     def reset_stats(self) -> None:
-        """Setzt Statistiken zurueck."""
+        """Setzt Statistiken zurück."""
         self._stats = {
             "total_classifications": 0,
             "by_level": {level.value: 0 for level in UrgencyLevel},
@@ -367,7 +367,7 @@ _urgency_classifier: Optional[UrgencyClassifier] = None
 
 
 def get_urgency_classifier() -> UrgencyClassifier:
-    """Gibt die Singleton-Instanz des Urgency Classifier zurueck."""
+    """Gibt die Singleton-Instanz des Urgency Classifier zurück."""
     global _urgency_classifier
     if _urgency_classifier is None:
         _urgency_classifier = UrgencyClassifier()

@@ -1,6 +1,6 @@
 """Dunning Workflow Task Implementations.
 
-Service Tasks fuer den Mahnwesen-Workflow.
+Service Tasks für den Mahnwesen-Workflow.
 Diese Funktionen werden von der BPMN Engine aufgerufen.
 """
 
@@ -70,13 +70,13 @@ async def send_payment_reminder(
         )
         db.add(history)
 
-        # Email-Versand ueber EmailService
+        # Email-Versand über EmailService
         email_sent = False
         email_error = None
 
         if invoice_id and customer_id:
             try:
-                # Lade Entity, Invoice und Company fuer Email
+                # Lade Entity, Invoice und Company für Email
                 entity_result = await db.execute(
                     select(BusinessEntity).where(BusinessEntity.id == UUID(customer_id))
                 )
@@ -154,7 +154,7 @@ async def send_first_dunning(
 
     invoice_id = variables.get("invoice_id")
     amount = variables.get("amount", 0)
-    dunning_fee = 5.00  # Standard-Mahngebuehr
+    dunning_fee = 5.00  # Standard-Mahngebühr
 
     logger.info(
         "sending_first_dunning",
@@ -170,7 +170,7 @@ async def send_first_dunning(
         history = ProcessHistory(
             instance_id=UUID(instance_id),
             event_type="FIRST_DUNNING_SENT",
-            message=f"1. Mahnung versendet (Betrag: {amount:.2f} EUR, Mahngebuehr: {dunning_fee:.2f} EUR)",
+            message=f"1. Mahnung versendet (Betrag: {amount:.2f} EUR, Mahngebühr: {dunning_fee:.2f} EUR)",
             actor_type="system",
             company_id=variables.get("company_id"),
             timestamp=datetime.now(timezone.utc)
@@ -194,7 +194,7 @@ async def send_first_dunning(
                     invoice.dunning_level = 1
                     invoice.last_dunning_at = datetime.now(timezone.utc)
 
-                # Lade Entity fuer Email
+                # Lade Entity für Email
                 entity = None
                 if customer_id:
                     entity_result = await db.execute(
@@ -274,7 +274,7 @@ async def send_second_dunning(
     invoice_id = variables.get("invoice_id")
     amount = variables.get("amount", 0)
     previous_fee = variables.get("dunning_fee", 5.00)
-    dunning_fee = 10.00  # Erhoehte Mahngebuehr
+    dunning_fee = 10.00  # Erhöhte Mahngebühr
 
     logger.info(
         "sending_second_dunning",
@@ -290,7 +290,7 @@ async def send_second_dunning(
         history = ProcessHistory(
             instance_id=UUID(instance_id),
             event_type="SECOND_DUNNING_SENT",
-            message=f"2. Mahnung versendet (Betrag: {amount:.2f} EUR, Mahngebuehr: {dunning_fee:.2f} EUR)",
+            message=f"2. Mahnung versendet (Betrag: {amount:.2f} EUR, Mahngebühr: {dunning_fee:.2f} EUR)",
             actor_type="system",
             company_id=variables.get("company_id"),
             timestamp=datetime.now(timezone.utc)
@@ -314,7 +314,7 @@ async def send_second_dunning(
                     invoice.dunning_level = 2
                     invoice.last_dunning_at = datetime.now(timezone.utc)
 
-                # Lade Entity fuer Email
+                # Lade Entity für Email
                 entity = None
                 if customer_id:
                     entity_result = await db.execute(
@@ -393,7 +393,7 @@ async def send_final_dunning(
 
     invoice_id = variables.get("invoice_id")
     amount = variables.get("amount", 0)
-    dunning_fee = 15.00  # Letzte Mahngebuehr
+    dunning_fee = 15.00  # Letzte Mahngebühr
 
     logger.info(
         "sending_final_dunning",
@@ -433,7 +433,7 @@ async def send_final_dunning(
                     invoice.dunning_level = 3
                     invoice.last_dunning_at = datetime.now(timezone.utc)
 
-                # Lade Entity fuer Email
+                # Lade Entity für Email
                 entity = None
                 if customer_id:
                     entity_result = await db.execute(
@@ -499,9 +499,9 @@ async def transfer_to_collection(
     instance_id: str,
     variables: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Uebergibt die Forderung an ein Inkasso-Unternehmen.
+    """Übergibt die Forderung an ein Inkasso-Unternehmen.
 
-    Verwendet den InkassoService fuer die Integration mit Inkasso-Partnern.
+    Verwendet den InkassoService für die Integration mit Inkasso-Partnern.
 
     Args:
         instance_id: BPMN Prozess-Instanz ID
@@ -561,7 +561,7 @@ async def transfer_to_collection(
                     error_message = result.error_message
             else:
                 # Fallback: Generate reference without API call
-                error_message = "Fehlende IDs fuer Inkasso-Uebertragung"
+                error_message = "Fehlende IDs für Inkasso-Übertragung"
                 collection_reference = f"INK-{datetime.now().strftime('%Y%m%d')}-{str(invoice_id)[:8] if invoice_id else 'UNKNOWN'}"
                 logger.warning(
                     "inkasso_transfer_missing_ids",
@@ -583,7 +583,7 @@ async def transfer_to_collection(
         history = ProcessHistory(
             instance_id=UUID(instance_id),
             event_type="TRANSFERRED_TO_COLLECTION" if transfer_success else "COLLECTION_TRANSFER_FAILED",
-            message=f"{'Forderung an Inkasso uebergeben' if transfer_success else 'Inkasso-Uebertragung fehlgeschlagen'} - Ref: {collection_reference} ({provider})" + (f" - {error_message}" if error_message else ""),
+            message=f"{'Forderung an Inkasso übergeben' if transfer_success else 'Inkasso-Übertragung fehlgeschlagen'} - Ref: {collection_reference} ({provider})" + (f" - {error_message}" if error_message else ""),
             actor_type="system",
             company_id=company_id_str,
             timestamp=datetime.now(timezone.utc)
@@ -607,10 +607,10 @@ async def check_payment_received(
     instance_id: str,
     variables: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Prueft ob eine Zahlung eingegangen ist.
+    """Prüft ob eine Zahlung eingegangen ist.
 
     Diese Task wird typischerweise als Timer-Task aufgerufen.
-    Prueft BankTransaction-Tabelle auf passende Zahlungen.
+    Prüft BankTransaction-Tabelle auf passende Zahlungen.
 
     Args:
         instance_id: BPMN Prozess-Instanz ID
@@ -817,7 +817,7 @@ async def check_payment_received(
             return {
                 "payment_received": False,
                 "checked_at": datetime.now(timezone.utc).isoformat(),
-                "error": "Fehler bei Zahlungspruefung",
+                "error": "Fehler bei Zahlungsprüfung",
             }
 
     if not payment_received:
@@ -842,7 +842,7 @@ async def close_dunning_case(
     instance_id: str,
     variables: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Schliesst den Mahnfall ab (Zahlung eingegangen).
+    """Schließt den Mahnfall ab (Zahlung eingegangen).
 
     Args:
         instance_id: BPMN Prozess-Instanz ID
@@ -894,14 +894,14 @@ def calculate_dunning_deadline(
     current_level: int,
     base_date: datetime | None = None
 ) -> datetime:
-    """Berechnet die naechste Mahnfrist.
+    """Berechnet die nächste Mahnfrist.
 
     Args:
         current_level: Aktuelle Mahnstufe (0-3)
         base_date: Ausgangsdatum (default: jetzt)
 
     Returns:
-        Deadline fuer naechste Mahnung
+        Deadline für nächste Mahnung
     """
     if base_date is None:
         base_date = datetime.now(timezone.utc)

@@ -4,9 +4,9 @@
 Phase 4.5: Frontend UX Enhancement - Saved Filters
 
 Dieses Modul implementiert:
-- CRUD-Operationen fuer gespeicherte Filter
-- Sharing-Funktionalitaet innerhalb einer Company
-- Usage-Tracking fuer Sortierung nach Haeufigkeit
+- CRUD-Operationen für gespeicherte Filter
+- Sharing-Funktionalität innerhalb einer Company
+- Usage-Tracking für Sortierung nach Häufigkeit
 - Default-Filter pro User/Feature
 """
 from datetime import datetime, timezone
@@ -20,7 +20,7 @@ from app.db.models import SavedFilter
 from app.core.exceptions import NotFoundError, ForbiddenError, ValidationError
 
 
-# Erlaubte Features fuer Filter
+# Erlaubte Features für Filter
 ALLOWED_FEATURES = {
     "documents",
     "invoices",
@@ -37,7 +37,7 @@ ALLOWED_FEATURES = {
 
 
 class SavedFilterService:
-    """Service fuer Server-seitige Filter-Persistenz.
+    """Service für Server-seitige Filter-Persistenz.
 
     Bietet:
     - Speichern und Abrufen von Filtern pro Feature
@@ -56,7 +56,7 @@ class SavedFilterService:
         feature: str,
         include_shared: bool = True,
     ) -> List[SavedFilter]:
-        """Hole alle Filter fuer ein Feature (eigene + geteilte).
+        """Hole alle Filter für ein Feature (eigene + geteilte).
 
         Args:
             user_id: ID des aktuellen Users
@@ -95,7 +95,7 @@ class SavedFilterService:
             .order_by(
                 SavedFilter.is_default.desc(),  # Default zuerst
                 (SavedFilter.user_id == user_id).desc(),  # Eigene vor geteilten
-                SavedFilter.use_count.desc(),  # Haeufig genutzte zuerst
+                SavedFilter.use_count.desc(),  # Häufig genutzte zuerst
                 SavedFilter.last_used_at.desc().nullslast(),  # Zuletzt genutzte
             )
         )
@@ -135,7 +135,7 @@ class SavedFilterService:
         if not saved_filter:
             raise NotFoundError(f"Filter mit ID {filter_id} nicht gefunden")
 
-        # Zugriffspruefung: Eigentuemer ODER geteilt in der gleichen Company
+        # Zugriffsprüfung: Eigentuemer ODER geteilt in der gleichen Company
         is_owner = saved_filter.user_id == user_id
         is_shared_in_company = (
             saved_filter.is_shared and saved_filter.company_id == company_id
@@ -173,7 +173,7 @@ class SavedFilterService:
             Erstellter SavedFilter
 
         Raises:
-            ValidationError: Ungueltige Eingabedaten
+            ValidationError: Ungültige Eingabedaten
         """
         self._validate_feature(feature)
         self._validate_filter_config(filter_config)
@@ -184,7 +184,7 @@ class SavedFilterService:
         if len(name) > 255:
             raise ValidationError("Filtername darf maximal 255 Zeichen haben")
 
-        # Wenn default, alle anderen defaults fuer diesen User/Feature zuruecksetzen
+        # Wenn default, alle anderen defaults für diesen User/Feature zurücksetzen
         if is_default:
             await self._reset_default_filters(user_id, feature)
 
@@ -267,16 +267,16 @@ class SavedFilterService:
         user_id: UUID,
         hard_delete: bool = False,
     ) -> None:
-        """Loesche einen gespeicherten Filter (soft delete).
+        """Lösche einen gespeicherten Filter (soft delete).
 
         Args:
             filter_id: Filter-ID
             user_id: ID des aktuellen Users
-            hard_delete: Wenn True, permanentes Loeschen statt Soft-Delete
+            hard_delete: Wenn True, permanentes Löschen statt Soft-Delete
 
         Raises:
             NotFoundError: Filter nicht gefunden
-            ForbiddenError: Kein Loeschzugriff (nicht Eigentuemer)
+            ForbiddenError: Kein Löschzugriff (nicht Eigentuemer)
         """
         saved_filter = await self._get_owned_filter(filter_id, user_id)
 
@@ -295,14 +295,14 @@ class SavedFilterService:
     ) -> None:
         """Zeichne Nutzung eines Filters auf.
 
-        Erhoeht use_count und aktualisiert last_used_at.
+        Erhöht use_count und aktualisiert last_used_at.
 
         Args:
             filter_id: Filter-ID
             user_id: ID des aktuellen Users
             company_id: ID der Company
         """
-        # Zugriffspruefung (wirft Exception bei fehlendem Zugriff)
+        # Zugriffsprüfung (wirft Exception bei fehlendem Zugriff)
         await self.get_filter_by_id(filter_id, user_id, company_id)
 
         stmt = (
@@ -321,7 +321,7 @@ class SavedFilterService:
         user_id: UUID,
         feature: str,
     ) -> Optional[SavedFilter]:
-        """Hole den Standard-Filter eines Users fuer ein Feature.
+        """Hole den Standard-Filter eines Users für ein Feature.
 
         Args:
             user_id: User-ID
@@ -349,7 +349,7 @@ class SavedFilterService:
         user_id: UUID,
         company_id: UUID,
     ) -> SavedFilter:
-        """Setze einen Filter als Standard fuer das Feature.
+        """Setze einen Filter als Standard für das Feature.
 
         Args:
             filter_id: Filter-ID
@@ -365,7 +365,7 @@ class SavedFilterService:
         """
         saved_filter = await self.get_filter_by_id(filter_id, user_id, company_id)
 
-        # Reset alle anderen defaults fuer dieses Feature
+        # Reset alle anderen defaults für dieses Feature
         await self._reset_default_filters(user_id, saved_filter.feature)
 
         # Setze diesen als default
@@ -379,7 +379,7 @@ class SavedFilterService:
         user_id: UUID,
         feature: str,
     ) -> None:
-        """Entferne den Standard-Filter fuer ein Feature.
+        """Entferne den Standard-Filter für ein Feature.
 
         Args:
             user_id: User-ID
@@ -536,7 +536,7 @@ class SavedFilterService:
         user_id: UUID,
         feature: str,
     ) -> None:
-        """Setze alle default-Filter eines Users fuer ein Feature zurueck."""
+        """Setze alle default-Filter eines Users für ein Feature zurück."""
         stmt = (
             update(SavedFilter)
             .where(
@@ -557,7 +557,7 @@ class SavedFilterService:
 
         if feature not in ALLOWED_FEATURES:
             raise ValidationError(
-                f"Ungueltiges Feature: {feature}. "
+                f"Ungültiges Feature: {feature}. "
                 f"Erlaubt: {', '.join(sorted(ALLOWED_FEATURES))}"
             )
 
@@ -566,14 +566,14 @@ class SavedFilterService:
         if not isinstance(config, dict):
             raise ValidationError("filter_config muss ein Objekt sein")
 
-        # Maximale Groesse fuer JSONB (ca. 64KB)
+        # Maximale Größe für JSONB (ca. 64KB)
         import json
         config_str = json.dumps(config)
         if len(config_str) > 65536:
             raise ValidationError("Filter-Konfiguration ist zu gross (max 64KB)")
 
 
-# Factory Function fuer Dependency Injection
+# Factory Function für Dependency Injection
 def get_saved_filter_service(db: AsyncSession) -> SavedFilterService:
-    """Factory fuer SavedFilterService."""
+    """Factory für SavedFilterService."""
     return SavedFilterService(db)

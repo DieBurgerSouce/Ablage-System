@@ -3,7 +3,7 @@
 ConditionalLogicService - Bedingte Genehmigungslogik.
 
 Feature #3: Approval Workflow Depth
-Evaluiert bedingte Regeln und fuegt bei Bedarf zusaetzliche
+Evaluiert bedingte Regeln und fuegt bei Bedarf zusätzliche
 Genehmiger zum Approval-Workflow hinzu.
 
 Bedingungstypen:
@@ -81,10 +81,10 @@ OPERATORS = {
 
 
 class ConditionalLogicService:
-    """Service fuer bedingte Genehmigungslogik.
+    """Service für bedingte Genehmigungslogik.
 
     Evaluiert bedingte Regeln gegen Approval-Anfragen und bestimmt
-    ob zusaetzliche Genehmiger erforderlich sind.
+    ob zusätzliche Genehmiger erforderlich sind.
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -98,8 +98,8 @@ class ConditionalLogicService:
         """Evaluiert alle bedingten Regeln gegen eine Anfrage.
 
         Args:
-            approval_request: Die zu pruefende Genehmigungsanfrage
-            rules: Liste der zu pruefenden Regeln
+            approval_request: Die zu prüfende Genehmigungsanfrage
+            rules: Liste der zu prüfenden Regeln
 
         Returns:
             ConditionalResult mit allen Auswertungsergebnissen
@@ -149,13 +149,13 @@ class ConditionalLogicService:
         self,
         approval_request: ApprovalRequest,
     ) -> List[Dict[str, str]]:
-        """Ermittelt zusaetzliche Genehmiger basierend auf bedingten Regeln.
+        """Ermittelt zusätzliche Genehmiger basierend auf bedingten Regeln.
 
         Args:
             approval_request: Die Genehmigungsanfrage
 
         Returns:
-            Liste zusaetzlicher Genehmiger
+            Liste zusätzlicher Genehmiger
         """
         rules = await self._get_active_rules(approval_request.company_id)
         if not rules:
@@ -169,10 +169,10 @@ class ConditionalLogicService:
         amount: Optional[Decimal],
         conditions: List[Dict[str, object]],
     ) -> bool:
-        """Prueft ob Betrag eine Bedingung erfuellt.
+        """Prüft ob Betrag eine Bedingung erfuellt.
 
         Args:
-            amount: Der zu pruefende Betrag
+            amount: Der zu prüfende Betrag
             conditions: Liste der Bedingungen
 
         Returns:
@@ -206,7 +206,7 @@ class ConditionalLogicService:
         entity_id: Optional[UUID],
         conditions: List[Dict[str, object]],
     ) -> bool:
-        """Prueft ob Entity-Risiko-Score eine Bedingung erfuellt.
+        """Prüft ob Entity-Risiko-Score eine Bedingung erfuellt.
 
         Args:
             entity_id: ID der Business-Entity
@@ -218,7 +218,7 @@ class ConditionalLogicService:
         if entity_id is None:
             return False
 
-        # Entity laden fuer Risiko-Score
+        # Entity laden für Risiko-Score
         stmt = select(BusinessEntity.risk_score).where(
             BusinessEntity.id == entity_id
         )
@@ -274,7 +274,7 @@ class ConditionalLogicService:
         self,
         company_id: UUID,
     ) -> Sequence[ConditionalApprovalRule]:
-        """Holt alle aktiven bedingten Regeln fuer eine Firma."""
+        """Holt alle aktiven bedingten Regeln für eine Firma."""
         stmt = (
             select(ConditionalApprovalRule)
             .where(
@@ -335,7 +335,7 @@ class ConditionalLogicService:
             operator = str(condition.get("operator", "eq"))
             expected_value = condition.get("value")
 
-            # Sonderbehandlung fuer Risiko-Score (erfordert DB-Abfrage)
+            # Sonderbehandlung für Risiko-Score (erfordert DB-Abfrage)
             if field_name == "supplier_risk_score":
                 entity_id = context.get("entity_id")
                 if entity_id and isinstance(entity_id, UUID):

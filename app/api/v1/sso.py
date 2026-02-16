@@ -12,7 +12,7 @@ Feinpoliert und durchdacht - Enterprise SSO auf hoechstem Niveau.
 SECURITY:
 - Alle Endpoints erfordern Admin-Berechtigung (ausser Callbacks)
 - Secrets werden verschluesselt gespeichert
-- State/Nonce-Validierung fuer CSRF/Replay-Schutz
+- State/Nonce-Validierung für CSRF/Replay-Schutz
 """
 
 import secrets
@@ -98,7 +98,7 @@ class SSOProviderUpdate(BaseModel):
 
 
 class SSOProviderResponse(BaseModel):
-    """Response Schema fuer SSO-Provider."""
+    """Response Schema für SSO-Provider."""
 
     id: str
     name: str
@@ -116,7 +116,7 @@ class SSOProviderResponse(BaseModel):
 
 
 class SSOProviderListItem(BaseModel):
-    """Kurzform fuer Provider-Liste."""
+    """Kurzform für Provider-Liste."""
 
     id: str
     name: str
@@ -128,7 +128,7 @@ class SSOProviderListItem(BaseModel):
 
 
 class AuthorizationResponse(BaseModel):
-    """Response fuer Start des Auth-Flows."""
+    """Response für Start des Auth-Flows."""
 
     authorization_url: str = Field(..., description="Redirect-URL zum IdP")
     state: str = Field(..., description="State Parameter")
@@ -144,7 +144,7 @@ class CallbackTokenResponse(BaseModel):
 
 
 class PresetTemplateResponse(BaseModel):
-    """Response fuer Provider-Preset-Template."""
+    """Response für Provider-Preset-Template."""
 
     preset: str
     provider_type: str
@@ -196,7 +196,7 @@ async def get_sso_provider(
     current_user: User = Depends(get_current_user),
 ) -> SSOProviderResponse:
     """
-    Gibt Details eines SSO-Providers zurueck.
+    Gibt Details eines SSO-Providers zurück.
 
     Erfordert Admin-Berechtigung.
     """
@@ -292,7 +292,7 @@ async def delete_sso_provider(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     """
-    Loescht einen SSO-Provider.
+    Löscht einen SSO-Provider.
 
     Erfordert Admin-Berechtigung.
     """
@@ -312,7 +312,7 @@ async def delete_sso_provider(
 
 
 class SSOProviderTestResponse(BaseModel):
-    """Response Schema fuer Provider-Test."""
+    """Response Schema für Provider-Test."""
 
     success: bool
     message: str
@@ -328,8 +328,8 @@ async def test_sso_provider(
     """
     Testet die Verbindung zum SSO-Provider.
 
-    - OIDC: Prueft Discovery-Endpoint und JWKS
-    - SAML: Prueft IdP-Zertifikat
+    - OIDC: Prüft Discovery-Endpoint und JWKS
+    - SAML: Prüft IdP-Zertifikat
 
     Erfordert Admin-Berechtigung.
     """
@@ -373,7 +373,7 @@ async def test_sso_provider(
             except httpx.TimeoutException:
                 return SSOProviderTestResponse(
                     success=False,
-                    message="Zeitueberschreitung beim JWKS-Abruf",
+                    message="Zeitüberschreitung beim JWKS-Abruf",
                 )
             except Exception as e:
                 return SSOProviderTestResponse(
@@ -397,7 +397,7 @@ async def test_sso_provider(
                 expires = cert.not_valid_after_utc.isoformat()
                 return SSOProviderTestResponse(
                     success=True,
-                    message="IdP-Zertifikat gueltig",
+                    message="IdP-Zertifikat gültig",
                     expires=expires,
                 )
             return SSOProviderTestResponse(
@@ -412,7 +412,7 @@ async def test_sso_provider(
 
     return SSOProviderTestResponse(
         success=False,
-        message="Provider-Typ nicht unterstuetzt",
+        message="Provider-Typ nicht unterstützt",
     )
 
 
@@ -423,7 +423,7 @@ async def set_primary_provider(
     current_user: User = Depends(get_current_user),
 ) -> SSOProviderResponse:
     """
-    Setzt einen Provider als primaeren SSO-Provider.
+    Setzt einen Provider als primären SSO-Provider.
 
     Erfordert Admin-Berechtigung.
     """
@@ -448,7 +448,7 @@ async def list_provider_presets(
     current_user: User = Depends(get_current_user),
 ) -> List[PresetTemplateResponse]:
     """
-    Listet alle verfuegbaren Provider-Presets auf.
+    Listet alle verfügbaren Provider-Presets auf.
 
     Gibt Informationen zu erforderlichen und optionalen Feldern.
     """
@@ -523,7 +523,7 @@ async def start_oidc_authorization(
     """
     Startet den OIDC Authorization Code Flow.
 
-    Kein Login erforderlich - wird fuer SSO-Login verwendet.
+    Kein Login erforderlich - wird für SSO-Login verwendet.
     """
     # Get provider to determine company
     config_service = SSOConfigService(db)
@@ -675,7 +675,7 @@ async def start_saml_authentication(
     """
     Startet den SAML Authentication Flow.
 
-    Kein Login erforderlich - wird fuer SSO-Login verwendet.
+    Kein Login erforderlich - wird für SSO-Login verwendet.
     """
     config_service = SSOConfigService(db)
     from app.db.models import AppConfig
@@ -813,9 +813,9 @@ async def get_saml_metadata(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """
-    Gibt die SAML SP Metadata zurueck.
+    Gibt die SAML SP Metadata zurück.
 
-    Kann fuer die IdP-Konfiguration verwendet werden.
+    Kann für die IdP-Konfiguration verwendet werden.
     """
     config_service = SSOConfigService(db)
     from app.db.models import AppConfig
@@ -875,7 +875,7 @@ async def _provision_sso_user(
         db: Datenbank-Session
         provider: SSO-Provider-Konfiguration
         email: E-Mail-Adresse des Benutzers
-        name: Vollstaendiger Name
+        name: Vollständiger Name
         given_name: Vorname
         family_name: Nachname
         groups: IdP-Gruppen des Benutzers
@@ -897,7 +897,7 @@ async def _provision_sso_user(
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="E-Mail-Domain ist nicht fuer SSO freigeschaltet",
+                detail="E-Mail-Domain ist nicht für SSO freigeschaltet",
             )
 
     # Find existing user
@@ -993,7 +993,7 @@ async def _provision_sso_user(
 
 def _generate_sso_session_token(user: User) -> str:
     """
-    Generiert ein JWT Access Token fuer einen SSO-Benutzer.
+    Generiert ein JWT Access Token für einen SSO-Benutzer.
 
     Args:
         user: User-Objekt
@@ -1021,7 +1021,7 @@ def _generate_sso_session_token(user: User) -> str:
 
 
 def _require_admin(user: User) -> None:
-    """Prueft ob der Benutzer Admin-Rechte hat."""
+    """Prüft ob der Benutzer Admin-Rechte hat."""
     role = getattr(user, "role", "viewer")
     if role not in ["admin", "superadmin"]:
         raise HTTPException(

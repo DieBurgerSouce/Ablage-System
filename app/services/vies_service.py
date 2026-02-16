@@ -98,9 +98,9 @@ class VIESValidationResult:
 
     Attributes:
         vat_id: Die validierte USt-IdNr
-        country_code: Laendercode (z.B. DE)
-        vat_number: Nummer ohne Laendercode
-        valid: True wenn gueltig
+        country_code: Ländercode (z.B. DE)
+        vat_number: Nummer ohne Ländercode
+        valid: True wenn gültig
         status: Detaillierter Status
         name: Firmenname (wenn von VIES bereitgestellt)
         address: Adresse (wenn von VIES bereitgestellt)
@@ -133,9 +133,9 @@ class VIESService:
         result = await service.validate_vat_id("DE123456789")
 
         if result.valid:
-            print(f"Gueltige USt-IdNr fuer: {result.name}")
+            print(f"Gültige USt-IdNr für: {result.name}")
         else:
-            print(f"Ungueltig: {result.status}")
+            print(f"Ungültig: {result.status}")
     """
 
     def __init__(
@@ -147,8 +147,8 @@ class VIESService:
         Initialisiert den VIES Service.
 
         Args:
-            timeout: Timeout fuer VIES-Anfragen in Sekunden
-            cache_ttl_seconds: Cache-Dauer fuer erfolgreiche Validierungen
+            timeout: Timeout für VIES-Anfragen in Sekunden
+            cache_ttl_seconds: Cache-Dauer für erfolgreiche Validierungen
         """
         self.timeout = timeout
         self.cache_ttl_seconds = cache_ttl_seconds
@@ -156,16 +156,16 @@ class VIESService:
 
     def _parse_vat_id(self, vat_id: str) -> tuple[str, str]:
         """
-        Zerlegt USt-IdNr in Laendercode und Nummer.
+        Zerlegt USt-IdNr in Ländercode und Nummer.
 
         Args:
-            vat_id: Vollstaendige USt-IdNr (z.B. DE123456789)
+            vat_id: Vollständige USt-IdNr (z.B. DE123456789)
 
         Returns:
             Tuple (country_code, vat_number)
 
         Raises:
-            ValueError: Bei ungueltigem Format
+            ValueError: Bei ungültigem Format
         """
         # Bereinigen: Leerzeichen und Punkte entfernen
         cleaned = re.sub(r"[\s.\-]", "", vat_id.upper())
@@ -173,7 +173,7 @@ class VIESService:
         if len(cleaned) < 4:
             raise ValueError(f"USt-IdNr zu kurz: {vat_id}")
 
-        # Erste 2 Zeichen = Laendercode
+        # Erste 2 Zeichen = Ländercode
         country_code = cleaned[:2]
         vat_number = cleaned[2:]
 
@@ -184,17 +184,17 @@ class VIESService:
         return country_code, vat_number
 
     def _is_eu_country(self, country_code: str) -> bool:
-        """Prueft ob Laendercode zu EU gehoert."""
+        """Prüft ob Ländercode zu EU gehoert."""
         return country_code in EU_COUNTRY_CODES or country_code == "EL"
 
     def _validate_format(self, vat_id: str, country_code: str) -> bool:
         """
-        Validiert das Format der USt-IdNr fuer das jeweilige Land.
+        Validiert das Format der USt-IdNr für das jeweilige Land.
 
         Returns:
             True wenn Format korrekt
         """
-        # Mapping EL -> GR fuer Pattern-Lookup
+        # Mapping EL -> GR für Pattern-Lookup
         lookup_code = "GR" if country_code == "EL" else country_code
 
         pattern = VAT_ID_PATTERNS.get(lookup_code)
@@ -202,7 +202,7 @@ class VIESService:
             # Unbekanntes Land - akzeptieren und VIES entscheiden lassen
             return True
 
-        # Fuer Pattern-Matching: EL zurueck zu EL (da Pattern EL verwendet)
+        # Für Pattern-Matching: EL zurück zu EL (da Pattern EL verwendet)
         check_id = vat_id.upper().replace("GR", "EL")
         return bool(re.match(pattern, check_id.replace(" ", "").replace(".", "").replace("-", "")))
 
@@ -216,7 +216,7 @@ class VIESService:
 
         Args:
             vat_id: Zu validierende USt-IdNr (z.B. DE123456789)
-            requester_vat_id: Optional - eigene USt-IdNr fuer Beleg-Anfrage
+            requester_vat_id: Optional - eigene USt-IdNr für Beleg-Anfrage
 
         Returns:
             VIESValidationResult mit Validierungsergebnis
@@ -245,7 +245,7 @@ class VIESService:
                 valid=False,
                 status=VIESValidationStatus.NOT_EU,
                 request_date=request_date,
-                error_message=f"Laendercode {country_code} ist kein EU-Mitgliedsstaat",
+                error_message=f"Ländercode {country_code} ist kein EU-Mitgliedsstaat",
             )
 
         # Format-Validierung
@@ -255,9 +255,9 @@ class VIESService:
                 vat_id=vat_id[:8] + "***",  # Teilweise maskieren
                 country_code=country_code,
             )
-            # Format-Fehler bedeutet nicht unbedingt ungueltig - VIES entscheiden lassen
+            # Format-Fehler bedeutet nicht unbedingt ungültig - VIES entscheiden lassen
 
-        # Cache pruefen
+        # Cache prüfen
         cache_key = f"{country_code}{vat_number}"
         if cache_key in self._cache:
             cached_result, cached_time = self._cache[cache_key]
@@ -361,8 +361,8 @@ class VIESService:
             )
 
     def _build_soap_request(self, country_code: str, vat_number: str) -> bytes:
-        """Baut SOAP-Request fuer VIES checkVat."""
-        # SOAP Envelope fuer checkVat
+        """Baut SOAP-Request für VIES checkVat."""
+        # SOAP Envelope für checkVat
         soap = f"""<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                   xmlns:urn="urn:ec.europa.eu:taxud:vies:services:checkVat:types">
@@ -400,7 +400,7 @@ class VIESService:
             if body is None:
                 raise ValueError("SOAP Body nicht gefunden")
 
-            # Pruefe auf Fault
+            # Prüfe auf Fault
             fault = body.find(".//soap:Fault", ns)
             if fault is not None:
                 fault_string = fault.findtext("faultstring", "Unbekannter Fehler")
@@ -418,7 +418,7 @@ class VIESService:
                         valid=False,
                         status=VIESValidationStatus.UNAVAILABLE,
                         request_date=request_date,
-                        error_message=f"VIES nicht verfuegbar: {fault_string}",
+                        error_message=f"VIES nicht verfügbar: {fault_string}",
                     )
                 return VIESValidationResult(
                     vat_id=vat_id,
@@ -508,10 +508,10 @@ class VIESService:
 
     def clear_cache(self) -> int:
         """
-        Loescht den Validierungs-Cache.
+        Löscht den Validierungs-Cache.
 
         Returns:
-            Anzahl der geloeschten Eintraege
+            Anzahl der gelöschten Einträge
         """
         count = len(self._cache)
         self._cache.clear()
@@ -527,7 +527,7 @@ _vies_service: Optional[VIESService] = None
 
 def get_vies_service() -> VIESService:
     """
-    Gibt die Singleton-Instanz des VIES Service zurueck.
+    Gibt die Singleton-Instanz des VIES Service zurück.
 
     Returns:
         VIESService Instanz

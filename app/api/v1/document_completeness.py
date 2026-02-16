@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Belegpruefung API Endpoints.
+Belegprüfung API Endpoints.
 
-REST API fuer Belegvollstaendigkeitspruefung:
-- Vollstaendigkeits-Report
+REST API für Belegvollständigkeitsprüfung:
+- Vollständigkeits-Report
 - Quick Score
 - Buchungen ohne Beleg
-- Rechnungsnummern-Luecken
+- Rechnungsnummern-Lücken
 - Fehlende monatliche Rechnungen
 - Plausibilitaetsprobleme
 - Datumskonsistenz
@@ -34,7 +34,7 @@ logger = structlog.get_logger(__name__)
 
 router = APIRouter(
     prefix="/document-completeness",
-    tags=["Belegpruefung"],
+    tags=["Belegprüfung"],
 )
 
 
@@ -55,7 +55,7 @@ class UnmatchedBookingResponse(BaseModel):
 
 
 class InvoiceGapResponse(BaseModel):
-    """Luecke in einer Rechnungsnummern-Sequenz."""
+    """Lücke in einer Rechnungsnummern-Sequenz."""
 
     vendor_name: str
     vendor_entity_id: Optional[UUID] = None
@@ -100,7 +100,7 @@ class DateIssueResponse(BaseModel):
 
 
 class CompletenessReportResponse(BaseModel):
-    """Vollstaendiger Belegcheck-Report."""
+    """Vollständiger Belegcheck-Report."""
 
     company_id: UUID
     period_start: date
@@ -117,12 +117,12 @@ class CompletenessReportResponse(BaseModel):
 
 
 class ScoreResponse(BaseModel):
-    """Schneller Vollstaendigkeits-Score."""
+    """Schneller Vollständigkeits-Score."""
 
     company_id: UUID
     period_start: date
     period_end: date
-    score: float = Field(ge=0, le=100, description="Vollstaendigkeits-Score (0-100)")
+    score: float = Field(ge=0, le=100, description="Vollständigkeits-Score (0-100)")
 
 
 # ============================================================================
@@ -131,7 +131,7 @@ class ScoreResponse(BaseModel):
 
 
 def _decimal_to_float(val: Optional[Decimal]) -> Optional[float]:
-    """Konvertiert Decimal zu float fuer JSON-Serialisierung."""
+    """Konvertiert Decimal zu float für JSON-Serialisierung."""
     if val is None:
         return None
     return float(val)
@@ -146,7 +146,7 @@ def _decimal_to_float(val: Optional[Decimal]) -> Optional[float]:
     "/report",
     response_model=CompletenessReportResponse,
     summary="Belegcheck-Report",
-    description="Generiert einen vollstaendigen Belegvollstaendigkeits-Report",
+    description="Generiert einen vollständigen Belegvollständigkeits-Report",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_completeness_report(
@@ -157,7 +157,7 @@ async def get_completeness_report(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> CompletenessReportResponse:
-    """Generiert einen vollstaendigen Belegcheck-Report."""
+    """Generiert einen vollständigen Belegcheck-Report."""
     try:
         report = await document_completeness_service.generate_completeness_report(
             db,
@@ -249,18 +249,18 @@ async def get_completeness_report(
 @router.get(
     "/score",
     response_model=ScoreResponse,
-    summary="Vollstaendigkeits-Score",
-    description="Berechnet einen schnellen Vollstaendigkeits-Score (0-100)",
+    summary="Vollständigkeits-Score",
+    description="Berechnet einen schnellen Vollständigkeits-Score (0-100)",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_score(
     request: Request,  # Required for rate limiter
-    period_start: date = Query(..., description="Beginn des Pruefzeitraums"),
-    period_end: date = Query(..., description="Ende des Pruefzeitraums"),
+    period_start: date = Query(..., description="Beginn des Prüfzeitraums"),
+    period_end: date = Query(..., description="Ende des Prüfzeitraums"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> ScoreResponse:
-    """Berechnet den Vollstaendigkeits-Score."""
+    """Berechnet den Vollständigkeits-Score."""
     if period_end < period_start:
         raise HTTPException(
             status_code=400,
@@ -286,7 +286,7 @@ async def get_score(
         logger.exception("completeness_score_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=500,
-            detail="Fehler beim Berechnen des Vollstaendigkeits-Scores",
+            detail="Fehler beim Berechnen des Vollständigkeits-Scores",
         )
 
 
@@ -299,8 +299,8 @@ async def get_score(
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_unmatched_bookings(
     request: Request,  # Required for rate limiter
-    period_start: date = Query(..., description="Beginn des Pruefzeitraums"),
-    period_end: date = Query(..., description="Ende des Pruefzeitraums"),
+    period_start: date = Query(..., description="Beginn des Prüfzeitraums"),
+    period_end: date = Query(..., description="Ende des Prüfzeitraums"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[UnmatchedBookingResponse]:
@@ -342,8 +342,8 @@ async def get_unmatched_bookings(
 @router.get(
     "/invoice-gaps",
     response_model=List[InvoiceGapResponse],
-    summary="Rechnungsnummern-Luecken",
-    description="Prueft Luecken in Rechnungsnummern-Sequenzen pro Lieferant",
+    summary="Rechnungsnummern-Lücken",
+    description="Prüft Lücken in Rechnungsnummern-Sequenzen pro Lieferant",
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_invoice_gaps(
@@ -353,7 +353,7 @@ async def get_invoice_gaps(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[InvoiceGapResponse]:
-    """Prueft Luecken in Rechnungsnummern-Sequenzen."""
+    """Prüft Lücken in Rechnungsnummern-Sequenzen."""
     try:
         gaps = await document_completeness_service.check_invoice_number_gaps(
             db,
@@ -378,7 +378,7 @@ async def get_invoice_gaps(
         logger.exception("invoice_gaps_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=500,
-            detail="Fehler beim Pruefen der Rechnungsnummern",
+            detail="Fehler beim Prüfen der Rechnungsnummern",
         )
 
 
@@ -391,7 +391,7 @@ async def get_invoice_gaps(
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_missing_monthly(
     request: Request,  # Required for rate limiter
-    year: int = Query(..., ge=2000, le=2100, description="Pruef-Jahr"),
+    year: int = Query(..., ge=2000, le=2100, description="Prüf-Jahr"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[MissingMonthlyInvoiceResponse]:
@@ -427,17 +427,17 @@ async def get_missing_monthly(
     "/plausibility",
     response_model=List[PlausibilityIssueResponse],
     summary="Plausibilitaetsprobleme",
-    description="Prueft Plausibilitaet von Betraegen",
+    description="Prüft Plausibilitaet von Betraegen",
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_plausibility_issues(
     request: Request,  # Required for rate limiter
-    period_start: date = Query(..., description="Beginn des Pruefzeitraums"),
-    period_end: date = Query(..., description="Ende des Pruefzeitraums"),
+    period_start: date = Query(..., description="Beginn des Prüfzeitraums"),
+    period_end: date = Query(..., description="Ende des Prüfzeitraums"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[PlausibilityIssueResponse]:
-    """Prueft Plausibilitaet von Betraegen."""
+    """Prüft Plausibilitaet von Betraegen."""
     if period_end < period_start:
         raise HTTPException(
             status_code=400,
@@ -469,7 +469,7 @@ async def get_plausibility_issues(
         logger.exception("plausibility_check_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=500,
-            detail="Fehler bei der Plausibilitaetspruefung",
+            detail="Fehler bei der Plausibilitaetsprüfung",
         )
 
 
@@ -477,17 +477,17 @@ async def get_plausibility_issues(
     "/date-issues",
     response_model=List[DateIssueResponse],
     summary="Datumskonsistenz-Probleme",
-    description="Prueft Datumskonsistenz von Belegen",
+    description="Prüft Datumskonsistenz von Belegen",
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_date_issues(
     request: Request,  # Required for rate limiter
-    period_start: date = Query(..., description="Beginn des Pruefzeitraums"),
-    period_end: date = Query(..., description="Ende des Pruefzeitraums"),
+    period_start: date = Query(..., description="Beginn des Prüfzeitraums"),
+    period_end: date = Query(..., description="Ende des Prüfzeitraums"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[DateIssueResponse]:
-    """Prueft Datumskonsistenz von Belegen."""
+    """Prüft Datumskonsistenz von Belegen."""
     if period_end < period_start:
         raise HTTPException(
             status_code=400,
@@ -518,5 +518,5 @@ async def get_date_issues(
         logger.exception("date_issues_check_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=500,
-            detail="Fehler bei der Datumskonsistenzpruefung",
+            detail="Fehler bei der Datumskonsistenzprüfung",
         )

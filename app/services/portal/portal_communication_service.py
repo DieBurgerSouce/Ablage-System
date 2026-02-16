@@ -21,7 +21,7 @@ logger = structlog.get_logger(__name__)
 
 class PortalCommunicationService:
     """
-    Service fuer Kommunikation im Kundenportal.
+    Service für Kommunikation im Kundenportal.
     """
 
     def __init__(self, db: AsyncSession):
@@ -74,7 +74,7 @@ class PortalCommunicationService:
         offset: int = 0,
     ) -> tuple[List[dict], int]:
         """
-        Hole alle Nachrichten fuer einen Entity.
+        Hole alle Nachrichten für einen Entity.
         """
         query = select(PortalMessage).where(
             and_(
@@ -171,7 +171,7 @@ class PortalCommunicationService:
         """
         Markiere eine Nachricht als gelesen.
 
-        Nur fuer ausgehende Nachrichten (vom Unternehmen an Kunden).
+        Nur für ausgehende Nachrichten (vom Unternehmen an Kunden).
         """
         result = await self.db.execute(
             select(PortalMessage).where(
@@ -298,5 +298,5 @@ class PortalCommunicationService:
 
 
 def get_portal_communication_service(db: AsyncSession) -> PortalCommunicationService:
-    """Factory-Funktion fuer PortalCommunicationService."""
+    """Factory-Funktion für PortalCommunicationService."""
     return PortalCommunicationService(db)

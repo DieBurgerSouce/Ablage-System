@@ -233,7 +233,7 @@ def require_role(role_name: str) -> Callable:
         user_roles = await service.get_user_roles(current_user)
 
         if any(role.name == role_name for role in user_roles):
-            # J.1 SECURITY FIX: Auch normale User mit Rolle muessen 2FA haben fuer Admin-Rollen
+            # J.1 SECURITY FIX: Auch normale User mit Rolle müssen 2FA haben für Admin-Rollen
             # Q.3 SECURITY: 2FA-Check nur in Production erzwingen
             if role_name in ("admin", "super_admin") and not current_user.totp_enabled and not settings.DEBUG:
                 logger.warning(
@@ -242,11 +242,11 @@ def require_role(role_name: str) -> Callable:
                     role=role_name
                 )
                 raise TwoFactorRequiredError(
-                    f"Fuer die Rolle '{role_name}' ist Zwei-Faktor-Authentifizierung erforderlich."
+                    f"Für die Rolle '{role_name}' ist Zwei-Faktor-Authentifizierung erforderlich."
                 )
             return current_user
 
-        # J.1 SECURITY FIX: Superuser hat immer Zugriff, ABER muss 2FA haben fuer Admin-Rollen
+        # J.1 SECURITY FIX: Superuser hat immer Zugriff, ABER muss 2FA haben für Admin-Rollen
         # Q.3 SECURITY: 2FA-Check nur in Production erzwingen
         if current_user.is_superuser:
             if role_name in ("admin", "super_admin", "manager") and not current_user.totp_enabled and not settings.DEBUG:
@@ -256,7 +256,7 @@ def require_role(role_name: str) -> Callable:
                     required_role=role_name
                 )
                 raise TwoFactorRequiredError(
-                    "Superuser muessen Zwei-Faktor-Authentifizierung aktivieren fuer privilegierte Aktionen."
+                    "Superuser müssen Zwei-Faktor-Authentifizierung aktivieren für privilegierte Aktionen."
                 )
             return current_user
 
@@ -294,7 +294,7 @@ def require_any_role(*role_names: str) -> Callable:
         current_user: User = Depends(get_current_user),
         db: AsyncSession = Depends(get_db)
     ) -> User:
-        # J.1 SECURITY FIX: Superuser hat immer Zugriff, ABER muss 2FA haben fuer Admin-Rollen
+        # J.1 SECURITY FIX: Superuser hat immer Zugriff, ABER muss 2FA haben für Admin-Rollen
         privileged_roles = {"admin", "super_admin", "manager"}
         requires_2fa = bool(set(role_names) & privileged_roles)
 
@@ -307,7 +307,7 @@ def require_any_role(*role_names: str) -> Callable:
                     required_any=list(role_names)
                 )
                 raise TwoFactorRequiredError(
-                    "Superuser muessen Zwei-Faktor-Authentifizierung aktivieren fuer privilegierte Aktionen."
+                    "Superuser müssen Zwei-Faktor-Authentifizierung aktivieren für privilegierte Aktionen."
                 )
             return current_user
 
@@ -316,7 +316,7 @@ def require_any_role(*role_names: str) -> Callable:
 
         for role in user_roles:
             if role.name in role_names:
-                # J.1 SECURITY FIX: Auch normale User muessen 2FA haben fuer Admin-Rollen
+                # J.1 SECURITY FIX: Auch normale User müssen 2FA haben für Admin-Rollen
                 # Q.3 SECURITY: 2FA-Check nur in Production erzwingen
                 privileged_roles = {"admin", "super_admin", "manager"}
                 if role.name in privileged_roles and not current_user.totp_enabled and not settings.DEBUG:
@@ -326,7 +326,7 @@ def require_any_role(*role_names: str) -> Callable:
                         role=role.name
                     )
                     raise TwoFactorRequiredError(
-                        "Zwei-Faktor-Authentifizierung erforderlich fuer privilegierte Rollen."
+                        "Zwei-Faktor-Authentifizierung erforderlich für privilegierte Rollen."
                     )
                 return current_user
 
@@ -383,7 +383,7 @@ def require_min_role_priority(min_priority: int) -> Callable:
                     min_priority=min_priority
                 )
                 raise TwoFactorRequiredError(
-                    "Superuser muessen Zwei-Faktor-Authentifizierung aktivieren fuer privilegierte Aktionen."
+                    "Superuser müssen Zwei-Faktor-Authentifizierung aktivieren für privilegierte Aktionen."
                 )
             return current_user
 
@@ -393,7 +393,7 @@ def require_min_role_priority(min_priority: int) -> Callable:
         max_priority = max((role.priority for role in user_roles), default=0)
 
         if max_priority >= min_priority:
-            # J.1 SECURITY FIX: Auch normale User muessen 2FA haben bei hoher Prioritaet
+            # J.1 SECURITY FIX: Auch normale User müssen 2FA haben bei hoher Prioritaet
             if requires_2fa and not current_user.totp_enabled:
                 logger.warning(
                     "2fa_required_for_priority",
@@ -402,7 +402,7 @@ def require_min_role_priority(min_priority: int) -> Callable:
                     min_priority=min_priority
                 )
                 raise TwoFactorRequiredError(
-                    "Zwei-Faktor-Authentifizierung erforderlich fuer privilegierte Rollen."
+                    "Zwei-Faktor-Authentifizierung erforderlich für privilegierte Rollen."
                 )
             return current_user
 
@@ -458,7 +458,7 @@ def require_superuser() -> Callable:
                 user_id=str(current_user.id)
             )
             raise TwoFactorRequiredError(
-                "Superuser muessen Zwei-Faktor-Authentifizierung aktivieren."
+                "Superuser müssen Zwei-Faktor-Authentifizierung aktivieren."
             )
 
         return current_user
@@ -774,7 +774,7 @@ class PermissionContext:
         Returns:
             True wenn Rolle zugewiesen
         """
-        # J.1 SECURITY FIX: Superuser muss 2FA haben fuer privilegierte Rollen
+        # J.1 SECURITY FIX: Superuser muss 2FA haben für privilegierte Rollen
         privileged_roles = {"admin", "super_admin", "manager", "owner"}
         if self.user.is_superuser:
             if role_name in privileged_roles and not self.user.totp_enabled:

@@ -1,6 +1,6 @@
 """Finance Analytics Service.
 
-Intelligente Finanz-Analysen fuer das Privat-Modul:
+Intelligente Finanz-Analysen für das Privat-Modul:
 - Monatliche Trends (Einnahmen, Ausgaben, Netto)
 - Jahr-zu-Jahr Vergleiche
 - Wiederkehrende Zahlungen erkennen
@@ -84,7 +84,7 @@ class RecurringPayment:
 
 @dataclass
 class CashFlowPrediction:
-    """Cash-Flow Vorhersage fuer einen Monat."""
+    """Cash-Flow Vorhersage für einen Monat."""
 
     year: int
     month: int
@@ -117,7 +117,7 @@ class FinanceAnalyticsResult:
 
 
 class FinanceAnalyticsService:
-    """Service fuer intelligente Finanz-Analysen im Privat-Modul.
+    """Service für intelligente Finanz-Analysen im Privat-Modul.
 
     Analysiert:
     - Immobilien-Einnahmen (Mieteinnahmen) und -Kosten
@@ -186,7 +186,7 @@ class FinanceAnalyticsService:
         )
         for prop in props.scalars():
             if prop.monthly_rent:
-                # Miete fuer alle Monate im Zeitraum
+                # Miete für alle Monate im Zeitraum
                 for key in trends.keys():
                     trend = trends[key]
                     rent = Decimal(str(prop.monthly_rent))
@@ -233,7 +233,7 @@ class FinanceAnalyticsService:
                 monthly = Decimal(str(loan.monthly_payment))
                 for key in trends.keys():
                     year, month = key
-                    # Pruefen ob Kredit in diesem Monat aktiv
+                    # Prüfen ob Kredit in diesem Monat aktiv
                     month_start = date(year, month, 1)
                     if loan.start_date and month_start < loan.start_date:
                         continue
@@ -247,7 +247,7 @@ class FinanceAnalyticsService:
                         trend.expense_categories[category] = Decimal("0")
                     trend.expense_categories[category] += monthly
 
-        # Fahrzeug-Kosten (geschaetzt)
+        # Fahrzeug-Kosten (geschätzt)
         vehicles = await db.execute(
             select(PrivatVehicle).where(
                 and_(
@@ -258,7 +258,7 @@ class FinanceAnalyticsService:
             )
         )
         for vehicle in vehicles.scalars():
-            # Geschaetzte monatliche Kosten (Steuer/12 + Versicherung/12)
+            # Geschätzte monatliche Kosten (Steuer/12 + Versicherung/12)
             monthly_cost = Decimal("0")
             if vehicle.annual_tax:
                 monthly_cost += Decimal(str(vehicle.annual_tax)) / 12
@@ -453,7 +453,7 @@ class FinanceAnalyticsService:
             )
             recurring.append(payment)
 
-        # Fahrzeug-Kosten (jaehrlich: Steuer, Versicherung)
+        # Fahrzeug-Kosten (jährlich: Steuer, Versicherung)
         vehicles = await db.execute(
             select(PrivatVehicle).where(
                 and_(
@@ -501,7 +501,7 @@ class FinanceAnalyticsService:
         Args:
             db: Datenbank-Session
             space_id: ID des PrivatSpace
-            months_ahead: Anzahl Monate fuer Prognose
+            months_ahead: Anzahl Monate für Prognose
 
         Returns:
             Liste von CashFlowPrediction-Objekten
@@ -520,7 +520,7 @@ class FinanceAnalyticsService:
                 target_month -= 12
                 target_year += 1
 
-            # Zahlungen fuer diesen Monat filtern
+            # Zahlungen für diesen Monat filtern
             month_income: List[RecurringPayment] = []
             month_expenses: List[RecurringPayment] = []
             total_income = Decimal("0")
@@ -564,13 +564,13 @@ class FinanceAnalyticsService:
         months_history: int = 12,
         months_forecast: int = 6,
     ) -> FinanceAnalyticsResult:
-        """Erstellt vollstaendige Finanz-Analyse.
+        """Erstellt vollständige Finanz-Analyse.
 
         Args:
             db: Datenbank-Session
             space_id: ID des PrivatSpace
-            months_history: Monate fuer Trend-Analyse
-            months_forecast: Monate fuer Cash-Flow Prognose
+            months_history: Monate für Trend-Analyse
+            months_forecast: Monate für Cash-Flow Prognose
 
         Returns:
             FinanceAnalyticsResult mit allen Analysen
@@ -582,7 +582,7 @@ class FinanceAnalyticsService:
             months_forecast=months_forecast,
         )
 
-        # Alle Analysen parallel ausfuehren
+        # Alle Analysen parallel ausführen
         trends = await self.get_monthly_trends(
             db, space_id, months=months_history
         )
@@ -624,7 +624,7 @@ class FinanceAnalyticsService:
             if vehicle.current_estimated_value:
                 total_assets += Decimal(str(vehicle.current_estimated_value))
             elif vehicle.purchase_price:
-                # Grobe Schaetzung: 50% nach Kauf
+                # Grobe Schätzung: 50% nach Kauf
                 total_assets += Decimal(str(vehicle.purchase_price)) * Decimal("0.5")
 
         # Kredite als Verbindlichkeiten
@@ -721,14 +721,14 @@ class FinanceAnalyticsService:
         return "monthly"  # Default
 
     def _next_monthly_occurrence(self, from_date: date, day: int) -> date:
-        """Berechnet naechstes monatliches Vorkommen.
+        """Berechnet nächstes monatliches Vorkommen.
 
         Args:
             from_date: Ausgangsdatum
             day: Tag des Monats
 
         Returns:
-            Naechstes Vorkommen
+            Nächstes Vorkommen
         """
         # Versuche im aktuellen Monat
         try:
@@ -738,7 +738,7 @@ class FinanceAnalyticsService:
         except ValueError as e:
             logger.debug("monthly_occurrence_current_month_failed", error_type=type(e).__name__)
 
-        # Naechster Monat
+        # Nächster Monat
         if from_date.month == 12:
             next_month = from_date.replace(year=from_date.year + 1, month=1, day=1)
         else:
@@ -755,7 +755,7 @@ class FinanceAnalyticsService:
         frequency: str,
         day: int,
     ) -> date:
-        """Berechnet naechstes Vorkommen basierend auf Frequenz.
+        """Berechnet nächstes Vorkommen basierend auf Frequenz.
 
         Args:
             from_date: Ausgangsdatum
@@ -763,13 +763,13 @@ class FinanceAnalyticsService:
             day: Tag des Monats/Quartals
 
         Returns:
-            Naechstes Vorkommen
+            Nächstes Vorkommen
         """
         if frequency == "monthly":
             return self._next_monthly_occurrence(from_date, day)
 
         elif frequency == "quarterly":
-            # Naechster Quartalsmonat (1, 4, 7, 10)
+            # Nächster Quartalsmonat (1, 4, 7, 10)
             quarter_months = [1, 4, 7, 10]
             for qm in quarter_months:
                 if qm >= from_date.month:
@@ -782,7 +782,7 @@ class FinanceAnalyticsService:
                             "quarterly_date_calculation_failed",
                             error_type=type(e).__name__,
                         )
-            # Naechstes Jahr
+            # Nächstes Jahr
             return from_date.replace(year=from_date.year + 1, month=1, day=min(day, 28))
 
         elif frequency == "yearly":
@@ -799,7 +799,7 @@ class FinanceAnalyticsService:
         year: int,
         month: int,
     ) -> bool:
-        """Prueft ob Zahlung in einem Monat faellig ist.
+        """Prüft ob Zahlung in einem Monat fällig ist.
 
         Args:
             payment: Wiederkehrende Zahlung
@@ -807,7 +807,7 @@ class FinanceAnalyticsService:
             month: Monat
 
         Returns:
-            True wenn faellig
+            True wenn fällig
         """
         if payment.frequency == "monthly":
             return True
@@ -817,11 +817,11 @@ class FinanceAnalyticsService:
             return month in [1, 4, 7, 10]
 
         elif payment.frequency == "half-yearly":
-            # Halbjaehrlich: Jan, Jul
+            # Halbjährlich: Jan, Jul
             return month in [1, 7]
 
         elif payment.frequency == "yearly":
-            # Jaehrlich: Januar
+            # Jährlich: Januar
             return month == 1
 
         return True
@@ -836,7 +836,7 @@ _finance_analytics_service_lock = threading.Lock()
 
 
 def get_finance_analytics_service() -> FinanceAnalyticsService:
-    """Gibt die Singleton-Instanz des Finance Analytics Service zurueck.
+    """Gibt die Singleton-Instanz des Finance Analytics Service zurück.
 
     Returns:
         FinanceAnalyticsService Singleton-Instanz

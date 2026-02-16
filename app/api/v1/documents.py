@@ -141,20 +141,20 @@ async def upload_document(
     tags: Optional[str] = Form(None, description="Tags (kommasepariert)"),
     start_ocr: bool = Form(True, description="OCR-Verarbeitung automatisch starten"),
     ocr_backend: str = Form("auto", description="OCR-Backend (auto/deepseek/got_ocr/surya)"),
-    priority: int = Form(5, ge=1, le=10, description="Verarbeitungsprioritaet"),
+    priority: int = Form(5, ge=1, le=10, description="Verarbeitungspriorität"),
     current_user: User = Depends(check_rate_limit),
     db: AsyncSession = Depends(get_db),
     company: Company = Depends(require_company),
 ):
     """Dokument hochladen und persistent speichern.
 
-    Laedt ein Dokument in den Object Storage (MinIO) hoch und erstellt
+    Lädt ein Dokument in den Object Storage (MinIO) hoch und erstellt
     einen Datenbankeintrag. Optional wird die OCR-Verarbeitung gestartet.
 
-    **Unterstuetzte Formate:** PDF, PNG, JPG, JPEG, TIFF, BMP
+    **Unterstützte Formate:** PDF, PNG, JPG, JPEG, TIFF, BMP
 
     **Workflow:**
-    1. Datei-Validierung (Typ, Groesse, Magic-Bytes)
+    1. Datei-Validierung (Typ, Größe, Magic-Bytes)
     2. Upload zu MinIO Object Storage
     3. Datenbank-Eintrag erstellen
     4. Optional: OCR-Job in Queue einreihen
@@ -199,7 +199,7 @@ async def upload_document(
             detail=f"Ungültige Sprache: {language}. Erlaubt: de, en"
         )
 
-    # 3. Dateiinhalt lesen und Groesse pruefen
+    # 3. Dateiinhalt lesen und Größe prüfen
     file_content = await file.read()
     file_size = len(file_content)
     file_size_mb = file_size / (1024 * 1024)
@@ -213,7 +213,7 @@ async def upload_document(
     if file_size_mb > settings.MAX_UPLOAD_SIZE_MB:
         raise HTTPException(
             status_code=413,
-            detail=f"Datei zu gross: {file_size_mb:.1f}MB. Maximum: {settings.MAX_UPLOAD_SIZE_MB}MB"
+            detail=f"Datei zu groß: {file_size_mb:.1f}MB. Maximum: {settings.MAX_UPLOAD_SIZE_MB}MB"
         )
 
     # 4. Magic-Byte Validierung (Content-Type)
@@ -302,7 +302,7 @@ async def upload_document(
             )
 
         except ScannerUnavailableError as e:
-            # Scanner nicht verfuegbar - je nach Konfiguration fortfahren oder blockieren
+            # Scanner nicht verfügbar - je nach Konfiguration fortfahren oder blockieren
             # In Production sollte fail_on_unavailable=True sein
             fail_on_scan_unavailable = getattr(app_settings, 'MALWARE_SCAN_FAIL_CLOSED', True)
 
@@ -314,7 +314,7 @@ async def upload_document(
                 )
                 raise HTTPException(
                     status_code=503,
-                    detail="Malware-Scanner nicht verfuegbar. Upload temporaer blockiert."
+                    detail="Malware-Scanner nicht verfügbar. Upload temporär blockiert."
                 )
             else:
                 logger.warning(
@@ -335,7 +335,7 @@ async def upload_document(
             if fail_on_scan_error:
                 raise HTTPException(
                     status_code=503,
-                    detail="Sicherheitspruefung fehlgeschlagen. Bitte versuchen Sie es spaeter erneut."
+                    detail="Sicherheitsprüfung fehlgeschlagen. Bitte versuchen Sie es später erneut."
                 )
 
     # 7. Checksum berechnen
@@ -423,7 +423,7 @@ async def upload_document(
 
             # Quick Classification wird jetzt vom OCR-Task nach Completion getriggert.
             # Grund: Surya auf CPU dauert 3+ Minuten, daher nutzt Quick Classification
-            # den vorhandenen OCR-Text statt eigenes OCR durchzufuehren.
+            # den vorhandenen OCR-Text statt eigenes OCR durchzuführen.
             # Siehe: ocr_tasks.py -> quick_classification_task_queued_after_ocr
 
         except Exception as e:
@@ -432,7 +432,7 @@ async def upload_document(
                 document_id=str(doc_id),
                 **safe_error_log(e)
             )
-            # Dokument bleibt gespeichert, OCR kann spaeter gestartet werden
+            # Dokument bleibt gespeichert, OCR kann später gestartet werden
 
     logger.info(
         "document_uploaded_api",
@@ -485,22 +485,22 @@ async def upload_complete(
     db: AsyncSession = Depends(get_db),
     company: Company = Depends(require_company),
 ):
-    """Dokument nach OCR-Review endgueltig speichern.
+    """Dokument nach OCR-Review endgültig speichern.
 
     Dieser Endpoint wird aufgerufen, nachdem der User im OCR-Review-Modal
-    die extrahierten Daten geprueft und bestaetigt hat. Er:
+    die extrahierten Daten geprüft und bestätigt hat. Er:
 
-    1. Holt die Datei aus dem temporaeren Redis-Speicher
+    1. Holt die Datei aus dem temporären Redis-Speicher
     2. Speichert sie permanent in MinIO mit dem finalen Dateinamen
     3. Erstellt den Document-Eintrag in der Datenbank
-    4. Verknuepft das Dokument mit der Business Entity (falls angegeben)
-    5. Loescht die temporaere Datei
+    4. Verknüpft das Dokument mit der Business Entity (falls angegeben)
+    5. Löscht die temporäre Datei
 
     **Workflow:**
     ```
     /ocr/process → OCR + Quick Classification → temp_file_id
                          ↓
-    OCR-Review-Modal (User prueft/korrigiert)
+    OCR-Review-Modal (User prüft/korrigiert)
                          ↓
     /documents/upload-complete → Dokument permanent gespeichert
     ```
@@ -525,14 +525,14 @@ async def upload_complete(
     from app.services.storage_service import get_storage_service
     from app.db.models import Document, BusinessEntity
 
-    # 1. Temporaere Datei aus Redis holen
+    # 1. Temporäre Datei aus Redis holen
     temp_storage = get_temp_file_storage()
     temp_file = await temp_storage.get(request.temp_file_id)
 
     if not temp_file:
         raise HTTPException(
             status_code=404,
-            detail="Temporaere Datei nicht gefunden oder abgelaufen. "
+            detail="Temporäre Datei nicht gefunden oder abgelaufen. "
                    "Bitte laden Sie das Dokument erneut hoch."
         )
 
@@ -545,7 +545,7 @@ async def upload_complete(
         )
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer diese Datei"
+            detail="Keine Berechtigung für diese Datei"
         )
 
     # 2. Checksum berechnen
@@ -593,7 +593,7 @@ async def upload_complete(
             detail="Speichern fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
-    # 5. Business Entity laden (fuer Namen und Verknuepfung)
+    # 5. Business Entity laden (für Namen und Verknüpfung)
     entity_name = None
     if request.business_entity_id:
         from sqlalchemy import select
@@ -664,11 +664,11 @@ async def upload_complete(
             detail="Datenbank-Fehler. Bitte versuchen Sie es erneut."
         )
 
-    # 7. Temporaere Datei loeschen
+    # 7. Temporäre Datei löschen
     try:
         await temp_storage.delete(request.temp_file_id)
     except Exception as e:
-        # Nicht kritisch - TTL raeaumt spaeter auf
+        # Nicht kritisch - TTL räumt später auf
         logger.warning(
             "upload_complete_temp_delete_failed",
             temp_file_id=request.temp_file_id[:8],
@@ -714,12 +714,139 @@ async def upload_complete(
     )
 
 
+# ==================== Pre-Upload Duplicate Check ====================
+
+class DuplicateCheckPreUploadRequest(BaseModel):
+    """Request für Pre-Upload Duplikat-Check."""
+    model_config = ConfigDict(strict=True)
+
+    file_hash: str = Field(
+        ...,
+        min_length=64,
+        max_length=64,
+        pattern=r"^[a-f0-9]{64}$",
+        description="SHA-256 Hash der Datei (hex)"
+    )
+    filename: str = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Dateiname für Ähnlichkeits-Check"
+    )
+
+
+class DuplicateCandidate(BaseModel):
+    """Ein mögliches Duplikat."""
+    document_id: UUID
+    filename: str
+    upload_date: str
+    match_type: Literal["exact_hash", "similar_name"]
+    similarity: float = Field(ge=0.0, le=1.0)
+
+
+class DuplicateCheckPreUploadResponse(BaseModel):
+    """Ergebnis des Pre-Upload Duplikat-Checks."""
+    has_duplicates: bool
+    candidates: List[DuplicateCandidate]
+    recommendation: Literal["skip", "proceed", "review"]
+
+
+@router.post("/check-duplicate", response_model=DuplicateCheckPreUploadResponse)
+async def check_duplicate_pre_upload(
+    request: DuplicateCheckPreUploadRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
+):
+    """Duplikat-Check VOR dem Upload (spart GPU/OCR-Ressourcen).
+
+    Prüft anhand des SHA-256 Hash, ob ein identisches Dokument bereits existiert.
+    Der Hash wird client-seitig via Web Crypto API berechnet - es wird keine
+    Datei übertragen.
+
+    **Empfehlung:**
+    - ``skip``: Exaktes Duplikat vorhanden, Upload überspringen
+    - ``review``: Ähnlicher Dateiname gefunden, User entscheidet
+    - ``proceed``: Kein Duplikat, Upload starten
+    """
+    from app.db.models import Document
+    from sqlalchemy import select
+
+    candidates: List[DuplicateCandidate] = []
+
+    # 1. Exakter Hash-Vergleich (schnell, via Index ix_documents_checksum)
+    hash_query = (
+        select(Document)
+        .where(
+            Document.checksum == request.file_hash,
+            Document.company_id == company.id,
+            Document.deleted_at.is_(None),
+        )
+        .limit(5)
+    )
+    result = await db.execute(hash_query)
+    hash_matches = result.scalars().all()
+
+    for doc in hash_matches:
+        candidates.append(DuplicateCandidate(
+            document_id=doc.id,
+            filename=doc.original_filename or doc.filename,
+            upload_date=doc.upload_date.isoformat() if doc.upload_date else "",
+            match_type="exact_hash",
+            similarity=1.0,
+        ))
+
+    # 2. Falls kein exakter Hash-Treffer, Dateinamen-Ähnlichkeit prüfen
+    if not candidates and request.filename:
+        # Einfacher LIKE-Check auf den Basisnamen (ohne Extension)
+        import os
+        base_name = os.path.splitext(request.filename)[0]
+        if len(base_name) >= 3:
+            name_query = (
+                select(Document)
+                .where(
+                    Document.company_id == company.id,
+                    Document.deleted_at.is_(None),
+                    Document.original_filename.ilike(f"%{base_name}%"),
+                )
+                .limit(5)
+            )
+            name_result = await db.execute(name_query)
+            name_matches = name_result.scalars().all()
+
+            for doc in name_matches:
+                candidates.append(DuplicateCandidate(
+                    document_id=doc.id,
+                    filename=doc.original_filename or doc.filename,
+                    upload_date=doc.upload_date.isoformat() if doc.upload_date else "",
+                    match_type="similar_name",
+                    similarity=0.7,
+                ))
+
+    # 3. Empfehlung bestimmen
+    has_exact = any(c.match_type == "exact_hash" for c in candidates)
+    has_similar = any(c.match_type == "similar_name" for c in candidates)
+
+    if has_exact:
+        recommendation: Literal["skip", "proceed", "review"] = "skip"
+    elif has_similar:
+        recommendation = "review"
+    else:
+        recommendation = "proceed"
+
+    return DuplicateCheckPreUploadResponse(
+        has_duplicates=len(candidates) > 0,
+        candidates=candidates,
+        recommendation=recommendation,
+    )
+
+
 # ==================== Document CRUD Endpoints ====================
 
 @router.get("/", response_model=DocumentListResponseExtended)
 async def list_documents(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     document_type: Optional[DocumentType] = Query(None, description="Dokumenttyp filtern"),
     status: Optional[ProcessingStatus] = Query(None, description="Status filtern"),
     date_from: Optional[datetime] = Query(None, description="Erstellt nach"),
@@ -734,7 +861,7 @@ async def list_documents(
 ):
     """Dokumente auflisten mit Filterung und Pagination.
 
-    Gibt eine paginierte Liste der eigenen Dokumente zurueck,
+    Gibt eine paginierte Liste der eigenen Dokumente zurück,
     optional gefiltert nach verschiedenen Kriterien.
     """
     filters = SearchFilters(
@@ -765,7 +892,7 @@ async def search_documents(
     q: str = Query(..., min_length=2, max_length=1000, description="Suchbegriff (mindestens 2 Zeichen)"),
     search_type: SearchType = Query(SearchType.HYBRID, description="Art der Suche"),
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     document_type: Optional[DocumentType] = Query(None, description="Dokumenttyp filtern"),
     status: Optional[ProcessingStatus] = Query(None, description="Status filtern"),
     date_from: Optional[datetime] = Query(None, description="Erstellt nach"),
@@ -776,23 +903,23 @@ async def search_documents(
     sort_by: SortField = Query(SortField.RELEVANCE, description="Sortierfeld"),
     sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierreihenfolge"),
     highlight: bool = Query(True, description="Textausschnitte hervorheben"),
-    similarity_threshold: float = Query(0.5, ge=0, le=1, description="Min. Aehnlichkeit fuer semantische Suche"),
+    similarity_threshold: float = Query(0.5, ge=0, le=1, description="Min. Ähnlichkeit für semantische Suche"),
     use_synonyms: bool = Query(False, description="Suche mit Synonymen erweitern (z.B. Rechnung -> Invoice, Faktura)"),
-    session_id: Optional[str] = Query(None, description="Session-ID fuer Analytics"),
+    session_id: Optional[str] = Query(None, description="Session-ID für Analytics"),
     current_user: User = Depends(check_rate_limit),
     db: AsyncSession = Depends(get_db)
 ):
     """Dokumente durchsuchen.
 
-    Unterstuetzt drei Suchmodi:
-    - **fts**: PostgreSQL Volltextsuche mit deutschen Wortstaemmen
+    Unterstützt drei Suchmodi:
+    - **fts**: PostgreSQL Volltextsuche mit deutschen Wortstämmen
     - **semantic**: Semantische Suche mit Embeddings (multilingual-e5-large)
     - **hybrid**: Kombination beider Methoden (empfohlen)
 
     Die Hybrid-Suche kombiniert Volltext- und semantische Ergebnisse
-    mittels Reciprocal Rank Fusion fuer optimale Relevanz.
+    mittels Reciprocal Rank Fusion für optimale Relevanz.
 
-    Mit **use_synonyms=true** werden deutsche Geschaeftsbegriffe automatisch
+    Mit **use_synonyms=true** werden deutsche Geschäftsbegriffe automatisch
     um Synonyme erweitert (z.B. "Rechnung" findet auch "Invoice", "Faktura").
     """
     import time
@@ -846,7 +973,7 @@ async def search_documents(
         )
         raise HTTPException(
             status_code=504,
-            detail="Suche hat zu lange gedauert. Bitte versuchen Sie eine praezisere Anfrage."
+            detail="Suche hat zu lange gedauert. Bitte versuchen Sie eine präzisere Anfrage."
         )
 
     # Log analytics asynchronously (non-blocking)
@@ -918,16 +1045,16 @@ async def get_category_documents(
     payment_status: Optional[List[str]] = Query(None, description="Zahlungsstatus"),
     tags: Optional[List[str]] = Query(None, description="Tags"),
     page: int = Query(0, ge=0, description="Seitennummer (0-basiert)"),
-    page_size: int = Query(25, ge=1, le=100, description="Eintraege pro Seite"),
+    page_size: int = Query(25, ge=1, le=100, description="Einträge pro Seite"),
     sort_by: str = Query("document_date", description="Sortierfeld"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Dokumente fuer eine Kategorie-Ansicht abrufen.
+    """Dokumente für eine Kategorie-Ansicht abrufen.
 
-    Ermoeglicht gefilterte, paginierte Dokumentenliste fuer die Ablage-Ansicht.
-    Unterstuetzt Filterung nach Datum, Betrag, Status, Tags und Volltextsuche.
+    Ermöglicht gefilterte, paginierte Dokumentenliste für die Ablage-Ansicht.
+    Unterstützt Filterung nach Datum, Betrag, Status, Tags und Volltextsuche.
 
     **Beispiel:**
     ```
@@ -990,7 +1117,7 @@ async def get_category_documents(
         # SECURITY FIX 28-27: Generische Fehlermeldung
         raise HTTPException(
             status_code=400,
-            detail="Ungueltiger Filterwert. Bitte Eingaben pruefen."
+            detail="Ungültiger Filterwert. Bitte Eingaben prüfen."
         )
 
     try:
@@ -1032,9 +1159,9 @@ async def get_category_aggregations(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Aggregierte Statistiken fuer eine Kategorie abrufen.
+    """Aggregierte Statistiken für eine Kategorie abrufen.
 
-    Liefert Summen, Anzahlen und Status-Verteilungen fuer Dashboard-Karten.
+    Liefert Summen, Anzahlen und Status-Verteilungen für Dashboard-Karten.
 
     **Beispiel:**
     ```
@@ -1088,8 +1215,8 @@ async def get_document(
 ):
     """Einzelnes Dokument mit allen Details abrufen.
 
-    Gibt alle Metadaten, OCR-Ergebnisse und Tags fuer
-    das angeforderte Dokument zurueck.
+    Gibt alle Metadaten, OCR-Ergebnisse und Tags für
+    das angeforderte Dokument zurück.
     """
     service = get_document_service()
     document = await service.get_document(db, document_id, current_user.id)
@@ -1795,15 +1922,15 @@ async def update_document(
 ):
     """Dokumentmetadaten aktualisieren.
 
-    Erlaubt das Aendern von:
+    Erlaubt das Ändern von:
     - Dokumenttyp
     - Sprache
     - Tags
     - Benutzerdefinierte Metadaten
 
-    HINWEIS: Archivierte Dokumente (GoBD) koennen nicht geaendert werden.
+    HINWEIS: Archivierte Dokumente (GoBD) können nicht geändert werden.
     """
-    # GoBD: Unveraenderbarkeit pruefen
+    # GoBD: Unveränderbarkeit prüfen
     try:
         await archive_service.validate_modification_allowed(db, document_id)
     except ImmutabilityViolationError as e:
@@ -1847,20 +1974,20 @@ async def partial_update_document(
 ):
     """Partielle Dokumentaktualisierung (PATCH).
 
-    Phase 2.1: Ermoeglicht das Aendern einzelner Felder:
-    - **document_type**: Dokumenttyp aendern
-    - **language**: Sprache aendern
+    Phase 2.1: Ermöglicht das Ändern einzelner Felder:
+    - **document_type**: Dokumenttyp ändern
+    - **language**: Sprache ändern
     - **tags**: Alle Tags ersetzen
-    - **add_tags**: Tags hinzufuegen (additiv)
+    - **add_tags**: Tags hinzufügen (additiv)
     - **remove_tags**: Bestimmte Tags entfernen
     - **metadata**: Metadaten aktualisieren/erweitern
 
     Nur angegebene Felder werden aktualisiert.
     Tag-Operationen sind gegenseitig exklusiv.
 
-    HINWEIS: Archivierte Dokumente (GoBD) koennen nicht geaendert werden.
+    HINWEIS: Archivierte Dokumente (GoBD) können nicht geändert werden.
     """
-    # GoBD: Unveraenderbarkeit pruefen
+    # GoBD: Unveränderbarkeit prüfen
     try:
         await archive_service.validate_modification_allowed(db, document_id)
     except ImmutabilityViolationError as e:
@@ -1923,7 +2050,7 @@ async def partial_update_document(
 # EXTRACTED DATA UPDATE ENDPOINT (Phase 11: InlineMetadataEditor Backend)
 # =============================================================================
 
-# Whitelist fuer erlaubte extracted_data Pfade
+# Whitelist für erlaubte extracted_data Pfade
 # SECURITY: Verhindert SQL/NoSQL Injection und unbeabsichtigte Datenmanipulation
 ALLOWED_EXTRACTED_DATA_PATHS: set[str] = {
     # Invoice Daten
@@ -1970,7 +2097,7 @@ def _set_nested_value(obj: JSONDict, path: str, value: object) -> None:
         value: Der zu setzende Wert
 
     Security:
-        - Pfad wird NICHT validiert - muss vorher gegen Whitelist geprueft werden!
+        - Pfad wird NICHT validiert - muss vorher gegen Whitelist geprüft werden!
     """
     parts = path.split('.')
     current = obj
@@ -1987,11 +2114,11 @@ def _set_nested_value(obj: JSONDict, path: str, value: object) -> None:
 
 
 class ExtractedDataUpdateRequest(BaseModel):
-    """Request-Schema fuer extracted_data Updates.
+    """Request-Schema für extracted_data Updates.
 
     SECURITY:
     - Alle Pfade werden gegen ALLOWED_EXTRACTED_DATA_PATHS validiert
-    - Werte werden typgeprueft (keine Code-Injection)
+    - Werte werden typgeprüft (keine Code-Injection)
     """
     updates: JSONDict = Field(
         ...,
@@ -2006,7 +2133,7 @@ class ExtractedDataUpdateRequest(BaseModel):
     )
 
     class Config:
-        extra = "forbid"  # Keine zusaetzlichen Felder erlaubt
+        extra = "forbid"  # Keine zusätzlichen Felder erlaubt
 
 
 @router.patch(
@@ -2015,7 +2142,7 @@ class ExtractedDataUpdateRequest(BaseModel):
     summary="Extrahierte Daten aktualisieren",
     responses={
         200: {"description": "Aktualisierte extracted_data"},
-        400: {"description": "Ungueltige Feldpfade oder Werte"},
+        400: {"description": "Ungültige Feldpfade oder Werte"},
         403: {"description": "Archiviertes Dokument (GoBD)"},
         404: {"description": "Dokument nicht gefunden"},
     }
@@ -2028,7 +2155,7 @@ async def update_extracted_data(
 ) -> JSONDict:
     """Aktualisiert einzelne Felder in extracted_data (JSONB).
 
-    Ermoeglicht die Korrektur von OCR-Ergebnissen durch den Benutzer.
+    Ermöglicht die Korrektur von OCR-Ergebnissen durch den Benutzer.
     Nur vordefinierte Feldpfade sind erlaubt (Whitelist-Validierung).
 
     **Erlaubte Pfade:**
@@ -2041,7 +2168,7 @@ async def update_extracted_data(
     **Security:**
     - Multi-Tenant RLS: owner_id == current_user.id
     - Whitelist-Validierung aller Feldpfade
-    - GoBD: Archivierte Dokumente sind unveraenderbar
+    - GoBD: Archivierte Dokumente sind unveränderbar
 
     **Beispiel:**
     ```json
@@ -2060,7 +2187,7 @@ async def update_extracted_data(
     from sqlalchemy import select, and_
     from app.db.models import Document
 
-    # 1. GoBD: Unveraenderbarkeit pruefen
+    # 1. GoBD: Unveränderbarkeit prüfen
     try:
         await archive_service.validate_modification_allowed(db, document_id)
     except ImmutabilityViolationError as e:
@@ -2108,7 +2235,7 @@ async def update_extracted_data(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltige Feldpfade: {', '.join(invalid_paths)}"
+            detail=f"Ungültige Feldpfade: {', '.join(invalid_paths)}"
         )
 
     # 4. Update mit Typ-Sicherheit
@@ -2140,15 +2267,15 @@ async def delete_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Dokument loeschen.
+    """Dokument löschen.
 
-    Loescht das Dokument vollstaendig aus der Datenbank
+    Löscht das Dokument vollständig aus der Datenbank
     und dem Objektspeicher (MinIO).
 
-    HINWEIS: Archivierte Dokumente (GoBD) koennen nicht geloescht werden
+    HINWEIS: Archivierte Dokumente (GoBD) können nicht gelöscht werden
     bis die Aufbewahrungsfrist abgelaufen ist.
     """
-    # GoBD: Unveraenderbarkeit pruefen (archivierte Dokumente duerfen nicht geloescht werden)
+    # GoBD: Unveränderbarkeit prüfen (archivierte Dokumente dürfen nicht gelöscht werden)
     try:
         await archive_service.validate_modification_allowed(db, document_id)
     except ImmutabilityViolationError as e:
@@ -2180,24 +2307,24 @@ async def delete_document(
 @router.get("/{document_id}/report")
 async def get_document_report(
     document_id: UUID,
-    include_text: bool = Query(True, description="Extrahierten Text einschliessen"),
-    include_history: bool = Query(True, description="Verarbeitungshistorie einschliessen"),
-    include_entities: bool = Query(True, description="Erkannte Entitaeten einschliessen"),
+    include_text: bool = Query(True, description="Extrahierten Text einschließen"),
+    include_history: bool = Query(True, description="Verarbeitungshistorie einschließen"),
+    include_entities: bool = Query(True, description="Erkannte Entitäten einschließen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Detaillierten PDF-Bericht fuer ein Dokument generieren.
+    """Detaillierten PDF-Bericht für ein Dokument generieren.
 
     Erstellt einen umfassenden PDF-Bericht mit:
-    - Dokumentinformationen (Dateiname, Typ, Status, Groesse)
+    - Dokumentinformationen (Dateiname, Typ, Status, Größe)
     - OCR-Ergebnisse (Backend, Konfidenz, Wortanzahl)
-    - Erkannte Entitaeten (Datumsangaben, Geldbetraege, IBAN, USt-IdNr.)
+    - Erkannte Entitäten (Datumsangaben, Geldbeträge, IBAN, USt-IdNr.)
     - Deutsche Textvalidierung (Umlaute, Sprache)
     - Extrahierter Text (optional, max. 5000 Zeichen)
     - Verarbeitungshistorie (optional)
 
     Der Bericht wird im A4-Format generiert und ist
-    fuer Archivierung und Nachvollziehbarkeit geeignet.
+    für Archivierung und Nachvollziehbarkeit geeignet.
     """
     from app.services.document_report_service import get_document_report_service
 
@@ -2215,7 +2342,7 @@ async def get_document_report(
         # SECURITY FIX 28-27: Generische Fehlermeldung
         raise HTTPException(status_code=404, detail="Dokument nicht gefunden.")
 
-    # Filename fuer Download
+    # Filename für Download
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     filename = f"dokument_bericht_{str(document_id)[:8]}_{timestamp}.pdf"
 
@@ -2243,20 +2370,20 @@ async def get_document_report(
 async def get_similar_documents(
     document_id: UUID,
     limit: int = Query(10, ge=1, le=50, description="Maximale Anzahl Ergebnisse"),
-    similarity_threshold: float = Query(0.6, ge=0, le=1, description="Min. Aehnlichkeit"),
-    exclude_same_type: bool = Query(False, description="Gleichen Dokumenttyp ausschliessen"),
+    similarity_threshold: float = Query(0.6, ge=0, le=1, description="Min. Ähnlichkeit"),
+    exclude_same_type: bool = Query(False, description="Gleichen Dokumenttyp ausschließen"),
     current_user: User = Depends(check_rate_limit),
     db: AsyncSession = Depends(get_db)
 ):
-    """Aehnliche Dokumente basierend auf Inhalt finden.
+    """Ähnliche Dokumente basierend auf Inhalt finden.
 
-    Verwendet semantische Embeddings um inhaltlich aehnliche
-    Dokumente zu identifizieren. Nuetzlich fuer:
+    Verwendet semantische Embeddings um inhaltlich ähnliche
+    Dokumente zu identifizieren. Nützlich für:
     - Duplikaterkennung
     - Thematisch verwandte Dokumente
     - Dokumentengruppierung
     """
-    # Pruefen ob Dokument existiert und Zugriff erlaubt
+    # Prüfen ob Dokument existiert und Zugriff erlaubt
     doc_service = get_document_service()
     document = await doc_service.get_document(db, document_id, current_user.id)
 
@@ -2269,7 +2396,7 @@ async def get_similar_documents(
     if not document.has_embedding:
         raise HTTPException(
             status_code=400,
-            detail="Dokument hat kein Embedding. Bitte OCR-Verarbeitung durchfuehren."
+            detail="Dokument hat kein Embedding. Bitte OCR-Verarbeitung durchführen."
         )
 
     search_service = get_search_service()
@@ -2296,12 +2423,12 @@ async def batch_fetch_documents(
 ):
     """Mehrere Dokumente in einem API-Call abrufen.
 
-    Optimiert fuer Frontend-Dashboard-Ansichten und Dokumentenlisten.
+    Optimiert für Frontend-Dashboard-Ansichten und Dokumentenlisten.
     Reduziert Netzwerk-Overhead durch gebündelte Anfragen.
 
     **Limits:**
     - Maximal 50 Dokumente pro Anfrage
-    - include_text=true erhoeht Response-Groesse signifikant
+    - include_text=true erhöht Response-Größe signifikant
 
     **Beispiel:**
     ```
@@ -2334,7 +2461,7 @@ async def batch_fetch_documents(
     query = select(Document).where(
         Document.id.in_(request.document_ids),
         Document.owner_id == current_user.id,
-        Document.deleted_at.is_(None)  # Nur nicht-geloeschte Dokumente
+        Document.deleted_at.is_(None)  # Nur nicht-gelöschte Dokumente
     )
 
     result = await db.execute(query)
@@ -2396,14 +2523,14 @@ async def batch_delete_documents(
     current_user: User = Depends(check_batch_rate_limit),
     db: AsyncSession = Depends(get_db)
 ):
-    """Mehrere Dokumente gleichzeitig loeschen.
+    """Mehrere Dokumente gleichzeitig löschen.
 
     **Safeguards:**
     - `confirm: true` erforderlich
-    - `dry_run: true` fuer Simulation ohne Loeschung
+    - `dry_run: true` für Simulation ohne Löschung
     - Header `X-Force-Confirm: DELETE-{anzahl}` erforderlich bei >50 Dokumenten
 
-    **Beispiel fuer 75 Dokumente:**
+    **Beispiel für 75 Dokumente:**
     ```
     POST /documents/batch/delete
     X-Force-Confirm: DELETE-75
@@ -2415,10 +2542,10 @@ async def batch_delete_documents(
     if not request.confirm:
         raise HTTPException(
             status_code=400,
-            detail="Loeschung muss mit confirm=true bestaetigt werden"
+            detail="Löschung muss mit confirm=true bestätigt werden"
         )
 
-    # Explizite Batch-Groessen-Validierung (Defense in Depth)
+    # Explizite Batch-Größen-Validierung (Defense in Depth)
     MAX_BATCH_SIZE = 100
     doc_count = len(request.document_ids)
     if doc_count > MAX_BATCH_SIZE:
@@ -2432,7 +2559,7 @@ async def batch_delete_documents(
             detail="Mindestens ein Dokument muss angegeben werden"
         )
 
-    # Zusaetzliche Sicherheit bei grossen Batches
+    # Zusätzliche Sicherheit bei großen Batches
     if doc_count > FORCE_CONFIRM_THRESHOLD and not request.dry_run:
         force_confirm = request_obj.headers.get("X-Force-Confirm")
         expected_confirm = f"DELETE-{doc_count}"
@@ -2448,7 +2575,7 @@ async def batch_delete_documents(
         if force_confirm != expected_confirm:
             raise HTTPException(
                 status_code=400,
-                detail=f"X-Force-Confirm Header ungueltig. Erwartet: '{expected_confirm}', "
+                detail=f"X-Force-Confirm Header ungültig. Erwartet: '{expected_confirm}', "
                        f"erhalten: '{force_confirm}'"
             )
 
@@ -2475,10 +2602,10 @@ async def batch_tag_documents(
     current_user: User = Depends(check_batch_rate_limit),
     db: AsyncSession = Depends(get_db)
 ):
-    """Tags fuer mehrere Dokumente verwalten.
+    """Tags für mehrere Dokumente verwalten.
 
     Operationen:
-    - **add**: Tags hinzufuegen (Standard)
+    - **add**: Tags hinzufügen (Standard)
     - **remove**: Tags entfernen
     - **set**: Alle Tags ersetzen
 
@@ -2520,8 +2647,8 @@ async def batch_update_documents(
     - **tags**: Nach Tags filtern
 
     Update-Optionen:
-    - **document_type**: Dokumenttyp aendern
-    - **language**: Sprache aendern
+    - **document_type**: Dokumenttyp ändern
+    - **language**: Sprache ändern
     - **tags/add_tags/remove_tags**: Tag-Operationen
 
     Mit **dry_run: true** kann die Operation simuliert werden.
@@ -2556,7 +2683,7 @@ async def batch_export_documents(
 
     Exportformate:
     - **json**: JSON-Array mit Dokumentdaten
-    - **csv**: CSV-Tabelle (Text gekuerzt auf 1000 Zeichen)
+    - **csv**: CSV-Tabelle (Text gekürzt auf 1000 Zeichen)
     - **zip**: ZIP-Archiv mit einzelnen JSON-Dateien
 
     Maximal 100 Dokumente pro Anfrage.
@@ -2610,13 +2737,13 @@ async def soft_delete_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Dokument soft-loeschen (GDPR-konform).
+    """Dokument soft-löschen (GDPR-konform).
 
-    Phase 2.3: Markiert ein Dokument als geloescht, ohne es sofort
+    Phase 2.3: Markiert ein Dokument als gelöscht, ohne es sofort
     permanent zu entfernen. Das Dokument kann innerhalb von 30 Tagen
     wiederhergestellt werden.
 
-    Nach 30 Tagen wird das Dokument automatisch permanent geloescht.
+    Nach 30 Tagen wird das Dokument automatisch permanent gelöscht.
     """
     service = get_document_service()
     result = await service.soft_delete_document(
@@ -2629,7 +2756,7 @@ async def soft_delete_document(
     if not result:
         raise HTTPException(
             status_code=404,
-            detail="Dokument nicht gefunden oder bereits geloescht"
+            detail="Dokument nicht gefunden oder bereits gelöscht"
         )
 
     logger.info(
@@ -2647,9 +2774,9 @@ async def restore_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Soft-geloeschtes Dokument wiederherstellen.
+    """Soft-gelöschtes Dokument wiederherstellen.
 
-    Phase 2.3: Stellt ein geloeschtes Dokument wieder her,
+    Phase 2.3: Stellt ein gelöschtes Dokument wieder her,
     sofern die 30-Tage-Frist noch nicht abgelaufen ist.
     """
     service = get_document_service()
@@ -2662,12 +2789,12 @@ async def restore_document(
         )
     except ValueError as e:
         # SECURITY FIX 28-27: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="Wiederherstellung fehlgeschlagen. Bitte Eingaben pruefen.")
+        raise HTTPException(status_code=400, detail="Wiederherstellung fehlgeschlagen. Bitte Eingaben prüfen.")
 
     if not result:
         raise HTTPException(
             status_code=404,
-            detail="Dokument nicht gefunden oder nicht geloescht"
+            detail="Dokument nicht gefunden oder nicht gelöscht"
         )
 
     logger.info(
@@ -2684,10 +2811,10 @@ async def list_deleted_documents(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Alle soft-geloeschten Dokumente auflisten.
+    """Alle soft-gelöschten Dokumente auflisten.
 
-    Phase 2.3: Zeigt alle geloeschten Dokumente des Benutzers mit
-    der verbleibenden Zeit bis zur permanenten Loeschung.
+    Phase 2.3: Zeigt alle gelöschten Dokumente des Benutzers mit
+    der verbleibenden Zeit bis zur permanenten Löschung.
     """
     service = get_document_service()
     return await service.list_deleted_documents(db=db, user_id=current_user.id)
@@ -2697,7 +2824,7 @@ async def list_deleted_documents(
 
 
 class ClassificationConfirmRequest(BaseModel):
-    """Request zum Bestaetigen/Aendern der Dokumentklassifizierung."""
+    """Request zum Bestätigen/Ändern der Dokumentklassifizierung."""
     invoice_direction: Literal["incoming", "outgoing"]
     user_overridden: bool = False
 
@@ -2709,17 +2836,17 @@ async def confirm_document_classification(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ) -> dict:
-    """Bestaetigt oder aendert die Dokumentklassifizierung (Eingangs-/Ausgangsrechnung).
+    """Bestätigt oder ändert die Dokumentklassifizierung (Eingangs-/Ausgangsrechnung).
 
     Setzt den entsprechenden Tag am Dokument und aktualisiert optional
     die extrahierten Daten wenn der Benutzer die automatische Erkennung
-    ueberschrieben hat.
+    überschrieben hat.
 
     **Workflow:**
-    1. Dokument laden und Berechtigung pruefen
+    1. Dokument laden und Berechtigung prüfen
     2. Alten Richtungs-Tag entfernen (falls vorhanden)
-    3. Neuen Tag (Eingangsrechnung/Ausgangsrechnung) hinzufuegen
-    4. Bei Ueberschreibung: extracted_data aktualisieren
+    3. Neuen Tag (Eingangsrechnung/Ausgangsrechnung) hinzufügen
+    4. Bei Überschreibung: extracted_data aktualisieren
     """
     from app.db.models import Tag, Document
     from sqlalchemy import select
@@ -2762,7 +2889,7 @@ async def confirm_document_classification(
         db.add(tag)
         await db.flush()
 
-    # Tag zum Dokument hinzufuegen
+    # Tag zum Dokument hinzufügen
     doc.tags.append(tag)
 
     # Extracted Data aktualisieren falls user_overridden
@@ -2796,7 +2923,7 @@ async def confirm_document_classification(
 
 
 class RenameConfirmRequest(BaseModel):
-    """Request fuer Dokumenten-Umbenennung."""
+    """Request für Dokumenten-Umbenennung."""
     suggested_filename: str = Field(
         ...,
         min_length=1,
@@ -2812,17 +2939,17 @@ async def confirm_document_rename(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ) -> dict:
-    """Bestaetigt die Umbenennung eines Dokuments basierend auf dem Vorschlag.
+    """Bestätigt die Umbenennung eines Dokuments basierend auf dem Vorschlag.
 
     Wird aufgerufen wenn der User den Umbenennungs-Vorschlag aus der
     Quick Classification akzeptiert.
 
     **Workflow:**
-    1. Dokument laden und Berechtigung pruefen
+    1. Dokument laden und Berechtigung prüfen
     2. Dateinamen sanitisieren und Extension beibehalten
     3. Datenbank aktualisieren (filename, quick_classification_result)
 
-    **Hinweis:** Die original_filename bleibt fuer Audit-Zwecke erhalten.
+    **Hinweis:** Die original_filename bleibt für Audit-Zwecke erhalten.
     """
     from app.db.models import Document
     from sqlalchemy import select
@@ -2849,9 +2976,9 @@ async def confirm_document_rename(
     # Extension vom alten Dateinamen beibehalten
     ext = Path(old_filename).suffix
 
-    # Dateinamen sanitisieren (gefaehrliche Zeichen entfernen)
+    # Dateinamen sanitisieren (gefährliche Zeichen entfernen)
     sanitized_name = re.sub(r'[<>:"/\\|?*]', '_', request.suggested_filename)
-    sanitized_name = sanitized_name[:200]  # Maximale Laenge
+    sanitized_name = sanitized_name[:200]  # Maximale Länge
 
     # Neuen Dateinamen zusammenbauen
     new_filename = f"{sanitized_name}{ext}"
@@ -2859,7 +2986,7 @@ async def confirm_document_rename(
     # Dateinamen aktualisieren
     doc.filename = new_filename
 
-    # Source fuer Metriken extrahieren (vor dem Update)
+    # Source für Metriken extrahieren (vor dem Update)
     rename_source = "unknown"
     if doc.quick_classification_result:
         qc_result = dict(doc.quick_classification_result)
@@ -2936,16 +3063,16 @@ async def confirm_document_rename(
 @router.post("/{document_id}/cleanup")
 async def cleanup_document_resources(
     document_id: UUID,
-    clear_cache: bool = Query(True, description="Cache fuer dieses Dokument loeschen"),
-    clear_temp_files: bool = Query(True, description="Temporaere Dateien loeschen"),
+    clear_cache: bool = Query(True, description="Cache für dieses Dokument löschen"),
+    clear_temp_files: bool = Query(True, description="Temporäre Dateien löschen"),
     clear_gpu_memory: bool = Query(False, description="GPU-Speicher freigeben (VRAM)"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Ressourcen fuer ein Dokument bereinigen.
+    """Ressourcen für ein Dokument bereinigen.
 
-    Nuetzlich nach der Verarbeitung um:
-    - Temporaere Dateien zu loeschen
+    Nützlich nach der Verarbeitung um:
+    - Temporäre Dateien zu löschen
     - Caches zu invalidieren
     - GPU-Speicher freizugeben
 
@@ -2955,7 +3082,7 @@ async def cleanup_document_resources(
     from app.services.storage_service import get_storage_service
     from app.services.ocr_cache_service import get_ocr_cache_service
 
-    # Dokument existiert und gehoert dem Benutzer?
+    # Dokument existiert und gehört dem Benutzer?
     service = get_document_service()
     doc = await service.get_document(db=db, document_id=document_id, user_id=current_user.id)
 
@@ -2973,7 +3100,7 @@ async def cleanup_document_resources(
         "errors": []
     }
 
-    # 1. Cache loeschen
+    # 1. Cache löschen
     if clear_cache:
         try:
             cache_service = get_ocr_cache_service()
@@ -2988,7 +3115,7 @@ async def cleanup_document_resources(
             cleanup_results["errors"].append("Cache-Bereinigung fehlgeschlagen")
             logger.warning("cleanup_cache_failed", document_id=str(document_id), **safe_error_log(e))
 
-    # 2. Temporaere Dateien loeschen
+    # 2. Temporäre Dateien löschen
     if clear_temp_files:
         try:
             import shutil
@@ -3023,7 +3150,7 @@ async def cleanup_document_resources(
                 }
             else:
                 cleanup_results["gpu_memory_cleared"] = False
-                cleanup_results["errors"].append("GPU nicht verfuegbar")
+                cleanup_results["errors"].append("GPU nicht verfügbar")
         except Exception as e:
             cleanup_results["errors"].append("GPU-Bereinigung fehlgeschlagen")
             logger.warning("cleanup_gpu_failed", document_id=str(document_id), **safe_error_log(e))
@@ -3048,16 +3175,16 @@ async def validate_german_text(
 ):
     """Validiert den extrahierten Text eines Dokuments auf deutsche Sprachmerkmale.
 
-    Prueft auf:
+    Prüft auf:
     - Umlaute (ae, oe, ue, ss)
     - Deutsche Datumsformate (TT.MM.JJJJ)
-    - Waehrungsformate (1.234,56 EUR)
+    - Währungsformate (1.234,56 EUR)
     - IBANs (DE...)
     - USt-IDs (DE...)
-    - Geschaeftsbegriffe (Rechnung, Vertrag, etc.)
+    - Geschäftsbegriffe (Rechnung, Vertrag, etc.)
 
-    Nuetzlich zur:
-    - OCR-Qualitaetspruefung
+    Nützlich zur:
+    - OCR-Qualitätsprüfung
     - Spracherkennung
     - Dokumentklassifizierung
     """
@@ -3073,18 +3200,18 @@ async def validate_german_text(
             detail="Dokument nicht gefunden"
         )
 
-    # Extrahierten Text pruefen
+    # Extrahierten Text prüfen
     text = doc.extracted_text
     if not text:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Dokument hat keinen extrahierten Text. Bitte zuerst OCR durchfuehren."
+            detail="Dokument hat keinen extrahierten Text. Bitte zuerst OCR durchführen."
         )
 
     # German Validator initialisieren
     validator = GermanValidator()
 
-    # Validierungen durchfuehren
+    # Validierungen durchführen
     validation_result = {
         "document_id": str(document_id),
         "text_length": len(text),
@@ -3107,20 +3234,20 @@ async def validate_german_text(
         "description": "Deutsche Datumsformate (TT.MM.JJJJ)"
     }
 
-    # 3. Waehrungsformate
+    # 3. Währungsformate
     amounts = validator.validate_currency_format(text)
     validation_result["validations"]["currency"] = {
         "found": len(amounts),
         "examples": amounts[:5],
-        "description": "Deutsche Waehrungsformate (1.234,56 EUR)"
+        "description": "Deutsche Währungsformate (1.234,56 EUR)"
     }
 
-    # 4. Geschaeftsbegriffe
+    # 4. Geschäftsbegriffe
     business_terms = validator.extract_business_terms(text)
     validation_result["validations"]["business_terms"] = {
         "found": len(business_terms),
         "terms": business_terms[:10],
-        "description": "Deutsche Geschaeftsbegriffe (Rechnung, Vertrag, etc.)"
+        "description": "Deutsche Geschäftsbegriffe (Rechnung, Vertrag, etc.)"
     }
 
     # 5. IBANs und USt-IDs
@@ -3196,7 +3323,7 @@ async def _fetch_document_stats_uncached(
     user_id: str
 ) -> dict:
     """
-    Interne Funktion fuer Dokumentstatistiken (ohne Cache).
+    Interne Funktion für Dokumentstatistiken (ohne Cache).
 
     Wird von get_document_stats aufgerufen mit optionalem Caching.
     """
@@ -3204,7 +3331,7 @@ async def _fetch_document_stats_uncached(
     from sqlalchemy import select, func
     from app.db.models import Document
 
-    # Basis-Query fuer Benutzer
+    # Basis-Query für Benutzer
     base_filter = Document.owner_id == user_id
 
     # OPTIMIERUNG: Kombinierte Query mit allen Aggregationen
@@ -3230,7 +3357,7 @@ async def _fetch_document_stats_uncached(
         func.count(Document.id).label("count")
     ).where(base_filter).group_by(Document.document_type)
 
-    # PERFORMANCE: Alle 3 Queries parallel ausfuehren
+    # PERFORMANCE: Alle 3 Queries parallel ausführen
     combined_result, status_result, type_result = await asyncio.gather(
         db.execute(combined_query),
         db.execute(status_query),
@@ -3261,9 +3388,9 @@ async def get_document_stats(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Dokumentstatistiken fuer den aktuellen Benutzer abrufen.
+    """Dokumentstatistiken für den aktuellen Benutzer abrufen.
 
-    Gibt aggregierte Statistiken ueber alle Dokumente zurueck:
+    Gibt aggregierte Statistiken über alle Dokumente zurück:
     - Gesamtzahl Dokumente
     - Nach Status aufgeteilt
     - Nach Dokumenttyp aufgeteilt
@@ -3292,7 +3419,7 @@ async def get_document_stats(
             return json.loads(cached)
 
     except Exception as e:
-        # Redis nicht verfuegbar - kein Caching
+        # Redis nicht verfügbar - kein Caching
         logger.debug("document_stats_cache_unavailable", **safe_error_log(e))
 
     # Cache Miss - Daten aus DB holen
@@ -3328,7 +3455,7 @@ async def get_search_analytics(
 ):
     """Such-Statistiken abrufen.
 
-    Liefert aggregierte Statistiken ueber Suchanfragen:
+    Liefert aggregierte Statistiken über Suchanfragen:
     - Gesamtzahl der Suchen
     - Durchschnittliche Ergebnisse
     - Aufteilung nach Suchtyp
@@ -3355,11 +3482,11 @@ async def get_daily_search_analytics(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Taegliche Such-Statistiken abrufen.
+    """Tägliche Such-Statistiken abrufen.
 
-    Liefert Statistiken pro Tag fuer Dashboard-Graphen:
+    Liefert Statistiken pro Tag für Dashboard-Graphen:
     - Suchen pro Tag
-    - Durchschnittliche Ausfuehrungszeit
+    - Durchschnittliche Ausführungszeit
     - Null-Ergebnis-Suchen
     """
     from app.services.search_analytics_service import get_search_analytics_service
@@ -3383,9 +3510,9 @@ async def get_popular_search_terms(
 ):
     """Beliebte Suchbegriffe abrufen.
 
-    Nuetzlich fuer:
+    Nützlich für:
     - Verbesserung der Suchhilfe
-    - Auto-Vervollstaendigung
+    - Auto-Vervollständigung
     - Trend-Analyse
     """
     from app.services.search_analytics_service import get_search_analytics_service
@@ -3411,8 +3538,8 @@ async def get_zero_result_queries(
 
     Hilft bei der Identifikation von:
     - Fehlenden Dokumenten
-    - Verbesserungsmoeglichkeiten bei der Suche
-    - Haeufigen Tippfehlern
+    - Verbesserungsmöglichkeiten bei der Suche
+    - Häufigen Tippfehlern
     """
     from app.services.search_analytics_service import get_search_analytics_service
 
@@ -3431,7 +3558,7 @@ async def log_search_click(
     analytics_id: UUID = Query(..., description="ID des Such-Analytics-Eintrags"),
     position: int = Query(..., ge=1, description="Position des geklickten Ergebnisses"),
     is_download: bool = Query(False, description="Wurde das Dokument heruntergeladen?"),
-    current_user: User = Depends(check_rate_limit),  # Rate limiting hinzugefuegt
+    current_user: User = Depends(check_rate_limit),  # Rate limiting hinzugefügt
     db: AsyncSession = Depends(get_db)
 ):
     """Klick auf Suchergebnis protokollieren.
@@ -3457,20 +3584,20 @@ async def log_search_click(
 @router.get("/{document_id}/access-log")
 async def get_document_access_log(
     document_id: UUID,
-    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl Eintraege"),
-    offset: int = Query(0, ge=0, description="Offset fuer Paginierung"),
+    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl Einträge"),
+    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
     action_filter: Optional[str] = Query(None, description="Nach Aktionstyp filtern"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Zugriffs-Log fuer ein Dokument abrufen (Audit Trail).
+    """Zugriffs-Log für ein Dokument abrufen (Audit Trail).
 
     Zeigt alle Zugriffe und Aktionen auf dieses Dokument:
     - Views (Dokument angesehen)
     - Downloads
     - OCR-Verarbeitungen
-    - Metadaten-Aenderungen
-    - Sharing-Aktivitaeten
+    - Metadaten-Änderungen
+    - Sharing-Aktivitäten
 
     **Beispiel-Aktionen:**
     - document_viewed
@@ -3480,13 +3607,13 @@ async def get_document_access_log(
     - ocr_started
     - ocr_completed
 
-    **Hinweis:** Nur der Dokumenteigentuemer oder Admins
-    koennen das Access-Log einsehen.
+    **Hinweis:** Nur der Dokumenteigentümer oder Admins
+    können das Access-Log einsehen.
     """
     from sqlalchemy import select, and_, or_
     from app.db.models import Document, AuditLog
 
-    # Dokument laden und Berechtigung pruefen
+    # Dokument laden und Berechtigung prüfen
     doc_query = select(Document).where(Document.id == document_id)
     result = await db.execute(doc_query)
     document = result.scalar_one_or_none()
@@ -3497,7 +3624,7 @@ async def get_document_access_log(
             detail="Dokument nicht gefunden"
         )
 
-    # Nur Eigentuemer oder Admin darf Access-Log sehen
+    # Nur Eigentümer oder Admin darf Access-Log sehen
     if document.owner_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=403,
@@ -3505,7 +3632,7 @@ async def get_document_access_log(
         )
 
     try:
-        # Audit-Log-Eintraege fuer dieses Dokument abrufen
+        # Audit-Log-Einträge für dieses Dokument abrufen
         audit_query = select(AuditLog).where(
             and_(
                 AuditLog.resource_type == "document",
@@ -3526,7 +3653,7 @@ async def get_document_access_log(
         result = await db.execute(audit_query)
         audit_entries = result.scalars().all()
 
-        # Gesamtzahl fuer Paginierung
+        # Gesamtzahl für Paginierung
         count_query = select(func.count(AuditLog.id)).where(
             and_(
                 AuditLog.resource_type == "document",
@@ -3541,7 +3668,7 @@ async def get_document_access_log(
         count_result = await db.execute(count_query)
         total_count = count_result.scalar() or 0
 
-        # Eintraege formatieren
+        # Einträge formatieren
         access_log = []
         for entry in audit_entries:
             log_entry = {
@@ -3610,7 +3737,7 @@ async def bulk_download_zip(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     ablage_service = get_ablage_service()
@@ -3642,7 +3769,7 @@ async def bulk_download_zip(
 
     except ValueError as e:
         # SECURITY FIX 28-27: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="ZIP-Download fehlgeschlagen. Bitte Eingaben pruefen.")
+        raise HTTPException(status_code=400, detail="ZIP-Download fehlgeschlagen. Bitte Eingaben prüfen.")
     except Exception as e:
         logger.error(
             "bulk_zip_download_error",
@@ -3685,7 +3812,7 @@ async def bulk_export_csv(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     ablage_service = get_ablage_service()
@@ -3720,7 +3847,7 @@ async def bulk_export_csv(
 
     except ValueError as e:
         # SECURITY FIX 28-27: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="CSV-Export fehlgeschlagen. Bitte Eingaben pruefen.")
+        raise HTTPException(status_code=400, detail="CSV-Export fehlgeschlagen. Bitte Eingaben prüfen.")
     except Exception as e:
         logger.error(
             "bulk_csv_export_error",
@@ -3754,8 +3881,8 @@ async def update_payment_status(
 
     **Status-Werte:**
     - `offen`: Noch nicht bezahlt
-    - `bezahlt`: Vollstaendig bezahlt
-    - `ueberfaellig`: Faelligkeitsdatum ueberschritten
+    - `bezahlt`: Vollständig bezahlt
+    - `überfällig`: Fälligkeitsdatum überschritten
     - `teilbezahlt`: Teilweise bezahlt (paid_amount erforderlich)
     """
     from app.services.document_services.ablage_service import get_ablage_service
@@ -3768,7 +3895,7 @@ async def update_payment_status(
     except ValueError as e:
         raise HTTPException(
             status_code=400,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     ablage_service = get_ablage_service()
@@ -3834,7 +3961,7 @@ async def bulk_mark_as_paid(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     ablage_service = get_ablage_service()
@@ -3881,7 +4008,7 @@ async def bulk_move_category(
     ```json
     {
         "document_ids": ["uuid1", "uuid2", ...],
-        "target_category": "vertraege"
+        "target_category": "verträge"
     }
     ```
     """
@@ -3895,7 +4022,7 @@ async def bulk_move_category(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     ablage_service = get_ablage_service()
@@ -3919,7 +4046,7 @@ async def bulk_move_category(
 
     except ValueError as e:
         # SECURITY FIX 28-27: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="Kategoriewechsel fehlgeschlagen. Bitte Eingaben pruefen.")
+        raise HTTPException(status_code=400, detail="Kategoriewechsel fehlgeschlagen. Bitte Eingaben prüfen.")
     except Exception as e:
         logger.error(
             "bulk_move_category_error",
@@ -3939,7 +4066,7 @@ async def bulk_set_tags(
     current_user: User = Depends(check_batch_rate_limit),
     db: AsyncSession = Depends(get_db)
 ):
-    """Tags fuer mehrere Dokumente setzen/entfernen.
+    """Tags für mehrere Dokumente setzen/entfernen.
 
     **Request Body:**
     ```json
@@ -3951,7 +4078,7 @@ async def bulk_set_tags(
     ```
 
     **Mode-Werte:**
-    - `add`: Tags hinzufuegen
+    - `add`: Tags hinzufügen
     - `remove`: Tags entfernen
     - `set`: Alle Tags ersetzen
     """
@@ -3965,7 +4092,7 @@ async def bulk_set_tags(
     except Exception as e:
         raise HTTPException(
             status_code=400,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     ablage_service = get_ablage_service()
@@ -4008,13 +4135,13 @@ async def bulk_delete_documents(
     current_user: User = Depends(check_batch_rate_limit),
     db: AsyncSession = Depends(get_db)
 ):
-    """Mehrere Dokumente soft-loeschen (GDPR-konform).
+    """Mehrere Dokumente soft-löschen (GDPR-konform).
 
     **Request Body:**
     ```json
     {
         "document_ids": ["uuid1", "uuid2", ...],
-        "reason": "Nicht mehr benoetigt"
+        "reason": "Nicht mehr benötigt"
     }
     ```
     """
@@ -4036,7 +4163,7 @@ async def bulk_delete_documents(
     except ValueError:
         raise HTTPException(
             status_code=400,
-            detail="Ungueltige document_id(s)"
+            detail="Ungültige document_id(s)"
         )
 
     ablage_service = get_ablage_service()
@@ -4067,7 +4194,7 @@ async def bulk_delete_documents(
         )
         raise HTTPException(
             status_code=500,
-            detail="Fehler beim Loeschen der Dokumente"
+            detail="Fehler beim Löschen der Dokumente"
         )
 
 
@@ -4097,7 +4224,7 @@ class UnifiedBulkOperationRequest(BaseModel):
     )
     action: BulkOperationAction = Field(
         ...,
-        description="Auszufuehrende Aktion: tag, move, delete, export, categorize"
+        description="Auszuführende Aktion: tag, move, delete, export, categorize"
     )
     params: Optional[JSONDict] = Field(
         None,
@@ -4118,11 +4245,11 @@ class UnifiedBulkOperationResponse(BaseModel):
     message: str
     task_id: Optional[str] = Field(
         None,
-        description="Task-ID fuer asynchrone Operationen (z.B. Export)"
+        description="Task-ID für asynchrone Operationen (z.B. Export)"
     )
     download_url: Optional[str] = Field(
         None,
-        description="Download-URL fuer Export-Operationen"
+        description="Download-URL für Export-Operationen"
     )
 
 
@@ -4131,11 +4258,11 @@ class UnifiedBulkOperationResponse(BaseModel):
     response_model=UnifiedBulkOperationResponse,
     summary="Einheitliche Bulk-Operationen",
     description="""
-    Fuehrt Massenaktionen auf mehreren Dokumenten aus.
+    Führt Massenaktionen auf mehreren Dokumenten aus.
 
-    **Unterstuetzte Aktionen:**
+    **Unterstützte Aktionen:**
 
-    1. **tag** - Tags hinzufuegen/entfernen
+    1. **tag** - Tags hinzufügen/entfernen
        - `params.tags`: Liste der Tags (string[])
        - `params.operation`: "add" | "remove" | "set" (Standard: "add")
 
@@ -4143,7 +4270,7 @@ class UnifiedBulkOperationResponse(BaseModel):
        - `params.folder_id`: Zielordner-UUID (erforderlich)
 
     3. **delete** - Soft-Delete (GDPR-konform)
-       - `params.reason`: Loeschgrund (optional)
+       - `params.reason`: Löschgrund (optional)
 
     4. **export** - Dokumente exportieren
        - `params.format`: "zip" | "pdf" | "csv" (Standard: "zip")
@@ -4164,10 +4291,10 @@ class UnifiedBulkOperationResponse(BaseModel):
     ```
     """,
     responses={
-        200: {"description": "Operation erfolgreich ausgefuehrt"},
-        400: {"description": "Ungueltige Anfrage"},
+        200: {"description": "Operation erfolgreich ausgeführt"},
+        400: {"description": "Ungültige Anfrage"},
         404: {"description": "Dokument(e) nicht gefunden"},
-        429: {"description": "Rate Limit ueberschritten"},
+        429: {"description": "Rate Limit überschritten"},
     }
 )
 async def unified_bulk_operation(
@@ -4176,7 +4303,7 @@ async def unified_bulk_operation(
     db: AsyncSession = Depends(get_db),
     company: Company = Depends(require_company),
 ) -> UnifiedBulkOperationResponse:
-    """Einheitlicher Endpoint fuer alle Bulk-Operationen."""
+    """Einheitlicher Endpoint für alle Bulk-Operationen."""
     from app.services.document_services.ablage_service import get_ablage_service
     from app.services.document_services.batch_service import get_batch_service
 
@@ -4199,7 +4326,7 @@ async def unified_bulk_operation(
                 if not isinstance(tag, str) or len(tag) > 50:
                     raise HTTPException(
                         status_code=400,
-                        detail="Tags muessen Strings mit max. 50 Zeichen sein"
+                        detail="Tags müssen Strings mit max. 50 Zeichen sein"
                     )
 
             operation_str = params.get("operation", "add")
@@ -4208,7 +4335,7 @@ async def unified_bulk_operation(
             except ValueError:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Ungueltige Tag-Operation: {operation_str}. Erlaubt: add, remove, set"
+                    detail=f"Ungültige Tag-Operation: {operation_str}. Erlaubt: add, remove, set"
                 )
 
             result = await batch_service.batch_tag(
@@ -4251,7 +4378,7 @@ async def unified_bulk_operation(
             except ValueError:
                 raise HTTPException(
                     status_code=400,
-                    detail="params.folder_id muss eine gueltige UUID sein"
+                    detail="params.folder_id muss eine gültige UUID sein"
                 )
 
             # Verify folder exists and user has access
@@ -4341,7 +4468,7 @@ async def unified_bulk_operation(
             if export_format not in ["zip", "pdf", "csv"]:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Ungueltiges Export-Format: {export_format}. Erlaubt: zip, pdf, csv"
+                    detail=f"Ungültiges Export-Format: {export_format}. Erlaubt: zip, pdf, csv"
                 )
 
             include_metadata = params.get("include_metadata", True)
@@ -4387,7 +4514,7 @@ async def unified_bulk_operation(
             if category not in valid_categories:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Ungueltige Kategorie: {category}. Erlaubt: {', '.join(valid_categories)}"
+                    detail=f"Ungültige Kategorie: {category}. Erlaubt: {', '.join(valid_categories)}"
                 )
 
             result = await ablage_service.bulk_move_category(

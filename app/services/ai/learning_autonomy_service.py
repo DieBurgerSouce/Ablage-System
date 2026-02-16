@@ -1,9 +1,9 @@
 """Learning Autonomy Service - Lernende Automatisierung.
 
-Pro User + Pro Aktionstyp ein Autonomie-Level das mit Bestaetigungen waechst:
+Pro User + Pro Aktionstyp ein Autonomie-Level das mit Bestätigungen waechst:
 - manual → suggest → auto_with_undo → full_auto
 
-Jede Bestaetigung erhoeht den Streak-Zaehler.
+Jede Bestätigung erhöht den Streak-Zähler.
 Bei Erreichen des Schwellenwerts steigt das Level automatisch.
 Ablehnungen/Korrekturen senken den Streak und ggf. das Level.
 """
@@ -36,7 +36,7 @@ LEVEL_ORDER = [
 
 
 class LearningAutonomyService:
-    """Service fuer lernende Autonomie pro User und Aktionstyp."""
+    """Service für lernende Autonomie pro User und Aktionstyp."""
 
     # ================================================================
     # Level-Abfrage
@@ -49,7 +49,7 @@ class LearningAutonomyService:
         company_id: UUID,
         action_type: str,
     ) -> LearningAutonomyLevel:
-        """Aktuelles Autonomie-Level fuer User + Aktionstyp.
+        """Aktuelles Autonomie-Level für User + Aktionstyp.
 
         Erstellt automatisch einen Eintrag mit Default 'suggest' falls keiner existiert.
 
@@ -79,7 +79,7 @@ class LearningAutonomyService:
             company_id: Firmen-ID
 
         Returns:
-            Liste aller Level-Eintraege
+            Liste aller Level-Einträge
         """
         query = (
             select(UserActionAutonomy)
@@ -126,9 +126,9 @@ class LearningAutonomyService:
         document_id: Optional[UUID] = None,
         suggested_value: Optional[str] = None,
     ) -> Dict:
-        """Bestaetigung eines Vorschlags aufzeichnen.
+        """Bestätigung eines Vorschlags aufzeichnen.
 
-        Erhoeht den Streak und prueft ob ein Level-Upgrade faellig ist.
+        Erhöht den Streak und prüft ob ein Level-Upgrade fällig ist.
 
         Returns:
             Dict mit level_changed, new_level, streak
@@ -164,7 +164,7 @@ class LearningAutonomyService:
         )
         db.add(log)
 
-        # Level-Upgrade pruefen
+        # Level-Upgrade prüfen
         level_changed = await self._check_level_upgrade(db, uaa)
 
         await db.flush()
@@ -187,7 +187,7 @@ class LearningAutonomyService:
     ) -> Dict:
         """Ablehnung eines Vorschlags aufzeichnen.
 
-        Setzt den Streak zurueck und prueft ob ein Level-Downgrade noetig ist.
+        Setzt den Streak zurück und prüft ob ein Level-Downgrade noetig ist.
 
         Returns:
             Dict mit level_changed, new_level
@@ -196,7 +196,7 @@ class LearningAutonomyService:
 
         uaa.total_suggestions += 1
         uaa.total_rejections += 1
-        uaa.current_streak = 0  # Streak zuruecksetzen
+        uaa.current_streak = 0  # Streak zurücksetzen
         uaa.last_interaction_at = datetime.now(timezone.utc)
 
         # Decision-Log
@@ -212,7 +212,7 @@ class LearningAutonomyService:
         )
         db.add(log)
 
-        # Level-Downgrade pruefen
+        # Level-Downgrade prüfen
         level_changed = await self._check_level_downgrade(db, uaa)
 
         await db.flush()
@@ -235,7 +235,7 @@ class LearningAutonomyService:
     ) -> Dict:
         """Korrektur eines Vorschlags aufzeichnen.
 
-        Zaehlt als Teilbestaetigung (Richtung stimmte, Details nicht).
+        Zaehlt als Teilbestätigung (Richtung stimmte, Details nicht).
 
         Returns:
             Dict mit level_changed, new_level
@@ -279,7 +279,7 @@ class LearningAutonomyService:
         document_id: Optional[UUID] = None,
         suggested_value: Optional[str] = None,
     ) -> None:
-        """Automatische Ausfuehrung aufzeichnen (bei auto_with_undo oder full_auto)."""
+        """Automatische Ausführung aufzeichnen (bei auto_with_undo oder full_auto)."""
         uaa = await self._get_or_create(db, user_id, company_id, action_type)
         uaa.total_auto_executed += 1
         uaa.last_interaction_at = datetime.now(timezone.utc)
@@ -307,9 +307,9 @@ class LearningAutonomyService:
         action_type: str,
         document_id: Optional[UUID] = None,
     ) -> Dict:
-        """Undo einer automatischen Ausfuehrung aufzeichnen.
+        """Undo einer automatischen Ausführung aufzeichnen.
 
-        Zu viele Undos fuehren zu Level-Downgrade.
+        Zu viele Undos führen zu Level-Downgrade.
         """
         uaa = await self._get_or_create(db, user_id, company_id, action_type)
         uaa.total_undone += 1
@@ -411,7 +411,7 @@ class LearningAutonomyService:
         action_type: str,
         limit: int = 100,
     ) -> List[Dict]:
-        """Vertrauenskurve als Zeitreihe fuer die Visualisierung.
+        """Vertrauenskurve als Zeitreihe für die Visualisierung.
 
         Returns:
             Liste von {timestamp, streak, level, action} Datenpunkten
@@ -483,9 +483,9 @@ class LearningAutonomyService:
         db: AsyncSession,
         uaa: UserActionAutonomy,
     ) -> bool:
-        """Prueft ob ein Level-Upgrade faellig ist."""
+        """Prüft ob ein Level-Upgrade fällig ist."""
         if uaa.is_manually_set:
-            return False  # Manuell gesetzte Levels nicht automatisch aendern
+            return False  # Manuell gesetzte Levels nicht automatisch ändern
 
         current_idx = next(
             (i for i, l in enumerate(LEVEL_ORDER) if l.value == uaa.current_level),
@@ -495,7 +495,7 @@ class LearningAutonomyService:
         if current_idx >= len(LEVEL_ORDER) - 1:
             return False  # Bereits auf hoechstem Level
 
-        # Upgrade-Bedingungen pruefen
+        # Upgrade-Bedingungen prüfen
         if (
             uaa.current_level == LearningAutonomyLevel.SUGGEST.value
             and uaa.current_streak >= uaa.confirmations_for_auto_undo
@@ -516,7 +516,7 @@ class LearningAutonomyService:
         db: AsyncSession,
         uaa: UserActionAutonomy,
     ) -> bool:
-        """Prueft ob ein Level-Downgrade noetig ist."""
+        """Prüft ob ein Level-Downgrade noetig ist."""
         if uaa.is_manually_set:
             return False
 
@@ -534,7 +534,7 @@ class LearningAutonomyService:
         uaa: UserActionAutonomy,
         reason: str,
     ) -> bool:
-        """Level um eine Stufe erhoehen."""
+        """Level um eine Stufe erhöhen."""
         current_idx = next(
             (i for i, l in enumerate(LEVEL_ORDER) if l.value == uaa.current_level),
             -1,

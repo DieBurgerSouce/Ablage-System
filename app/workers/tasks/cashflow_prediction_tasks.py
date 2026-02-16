@@ -38,13 +38,13 @@ TaskResult = Dict[str, Union[str, int, float, bool, None]]
 )
 def update_daily_forecast(company_id: Optional[str] = None) -> TaskResult:
     """
-    Aktualisiert die Cashflow-Prognose fuer alle oder eine bestimmte Firma.
+    Aktualisiert die Cashflow-Prognose für alle oder eine bestimmte Firma.
 
-    Wird taeglich um 06:00 via Celery Beat ausgefuehrt.
-    Cached die Ergebnisse fuer schnelleren API-Zugriff.
+    Wird täglich um 06:00 via Celery Beat ausgeführt.
+    Cached die Ergebnisse für schnelleren API-Zugriff.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
 
     Returns:
         Dict mit Task-Ergebnissen
@@ -109,7 +109,7 @@ def update_daily_forecast(company_id: Optional[str] = None) -> TaskResult:
                         )
                         update_result["warnings_generated"] += len(warnings)
 
-                        # Kritische Warnungen zaehlen
+                        # Kritische Warnungen zählen
                         critical = sum(
                             1 for w in warnings
                             if w.severity == WarningSeverity.CRITICAL
@@ -173,8 +173,8 @@ def evaluate_prediction_accuracy() -> TaskResult:
     """
     Evaluiert die Genauigkeit der Cashflow-Vorhersagen.
 
-    Wird woechentlich (Sonntag 04:00) via Celery Beat ausgefuehrt.
-    Vergleicht historische Vorhersagen mit tatsaechlichen Zahlungen.
+    Wird wöchentlich (Sonntag 04:00) via Celery Beat ausgeführt.
+    Vergleicht historische Vorhersagen mit tatsächlichen Zahlungen.
 
     Returns:
         Dict mit Evaluations-Metriken
@@ -284,9 +284,9 @@ def evaluate_prediction_accuracy() -> TaskResult:
 )
 def generate_cashflow_alerts(company_id: str) -> TaskResult:
     """
-    Generiert Alerts fuer kritische Cashflow-Situationen.
+    Generiert Alerts für kritische Cashflow-Situationen.
 
-    Wird nach Forecast-Updates oder on-demand ausgefuehrt.
+    Wird nach Forecast-Updates oder on-demand ausgeführt.
 
     Args:
         company_id: Firmen-ID
@@ -330,7 +330,7 @@ def generate_cashflow_alerts(company_id: str) -> TaskResult:
 
                 alert_result["warnings_found"] = len(warnings)
 
-                # Alerts fuer kritische Warnungen erstellen
+                # Alerts für kritische Warnungen erstellen
                 critical_warnings = [
                     w for w in warnings
                     if w.severity == WarningSeverity.CRITICAL
@@ -380,9 +380,9 @@ def generate_cashflow_alerts(company_id: str) -> TaskResult:
 )
 def warm_forecast_cache() -> TaskResult:
     """
-    Waermt den Forecast-Cache fuer alle aktiven Companies.
+    Waermt den Forecast-Cache für alle aktiven Companies.
 
-    Wird stuendlich via Celery Beat ausgefuehrt um schnellere API-Responses zu ermoeglichen.
+    Wird stündlich via Celery Beat ausgeführt um schnellere API-Responses zu ermöglichen.
 
     Returns:
         Dict mit Cache-Warming Ergebnissen
@@ -438,7 +438,7 @@ def warm_forecast_cache() -> TaskResult:
                 for cid in company_ids:
                     cache_key = f"cashflow_forecast:{cid}:30d"
 
-                    # Cache pruefen
+                    # Cache prüfen
                     cached = redis_client.get(cache_key)
                     if cached:
                         cache_result["cache_hits"] += 1
@@ -515,7 +515,7 @@ async def _create_cashflow_alert(
     warnings: List,
 ) -> int:
     """
-    Erstellt Alert Center Eintraege fuer kritische Cashflow-Warnungen.
+    Erstellt Alert Center Einträge für kritische Cashflow-Warnungen.
 
     Returns:
         Anzahl erstellter Alerts
@@ -526,13 +526,13 @@ async def _create_cashflow_alert(
 
     try:
         for warning in warnings[:5]:  # Max 5 Alerts pro Company
-            # Pruefen ob Alert fuer dieses Datum bereits existiert
+            # Prüfen ob Alert für dieses Datum bereits existiert
             # (Deduplizierung in Produktion implementieren)
 
             alert = Alert(
                 company_id=company_id,
                 alert_code="CASH_001",
-                title="Liquiditaetsengpass erwartet",
+                title="Liquiditätsengpass erwartet",
                 message=warning.message,
                 category=AlertCategory.RISK,
                 severity=AlertSeverity.CRITICAL if warning.severity.value == "critical" else AlertSeverity.HIGH,
@@ -573,11 +573,11 @@ def update_entity_profiles(company_id: Optional[str] = None) -> TaskResult:
     """
     Aktualisiert alle Entity-Zahlungsprofile.
 
-    Wird woechentlich (Sonntag 03:00) via Celery Beat ausgefuehrt.
+    Wird wöchentlich (Sonntag 03:00) via Celery Beat ausgeführt.
     Berechnet Payment Consistency, Seasonal Patterns und Risk-adjusted Probability.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
 
     Returns:
         Dict mit Task-Ergebnissen
@@ -680,13 +680,13 @@ def update_entity_profiles(company_id: Optional[str] = None) -> TaskResult:
 )
 def check_liquidity_alerts(company_id: Optional[str] = None) -> TaskResult:
     """
-    Prueft auf Liquiditaetsprobleme und erstellt Alerts.
+    Prüft auf Liquiditätsprobleme und erstellt Alerts.
 
-    Wird alle 4 Stunden via Celery Beat ausgefuehrt.
+    Wird alle 4 Stunden via Celery Beat ausgeführt.
     Integriert mit Alert Center Service.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
 
     Returns:
         Dict mit Task-Ergebnissen
@@ -741,7 +741,7 @@ def check_liquidity_alerts(company_id: Optional[str] = None) -> TaskResult:
 
                 for cid in company_ids:
                     try:
-                        # Liquiditaetswarnungen generieren
+                        # Liquiditätswarnungen generieren
                         alerts = await predictor.get_liquidity_alerts(
                             company_id=cid,
                             forecast_days=30,
@@ -757,7 +757,7 @@ def check_liquidity_alerts(company_id: Optional[str] = None) -> TaskResult:
                                     alert_code="CASH_002",
                                     category=AlertCategory.RISK,
                                     severity=AlertSeverity.CRITICAL,
-                                    title="Kritischer Liquiditaetsengpass erwartet",
+                                    title="Kritischer Liquiditätsengpass erwartet",
                                     message=alert.message,
                                     context={
                                         "alert_type": alert.alert_type.value,
@@ -777,7 +777,7 @@ def check_liquidity_alerts(company_id: Optional[str] = None) -> TaskResult:
                                     alert_code="CASH_003",
                                     category=AlertCategory.RISK,
                                     severity=AlertSeverity.HIGH,
-                                    title="Liquiditaetswarnung",
+                                    title="Liquiditätswarnung",
                                     message=alert.message,
                                     context={
                                         "alert_type": alert.alert_type.value,
@@ -842,13 +842,13 @@ def check_liquidity_alerts(company_id: Optional[str] = None) -> TaskResult:
 )
 def calculate_daily_forecast_v2(company_id: Optional[str] = None) -> TaskResult:
     """
-    Berechnet taegliche Cashflow-Prognose (V2 mit Entity-Profilen).
+    Berechnet tägliche Cashflow-Prognose (V2 mit Entity-Profilen).
 
-    Wird taeglich um 06:00 via Celery Beat ausgefuehrt.
-    Verwendet Entity-basierte Zahlungsprofile fuer praezisere Vorhersagen.
+    Wird täglich um 06:00 via Celery Beat ausgeführt.
+    Verwendet Entity-basierte Zahlungsprofile für praezisere Vorhersagen.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
 
     Returns:
         Dict mit Task-Ergebnissen

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Document Context API - Aggregierter Cross-Module Kontext fuer Dokumente."""
+"""Document Context API - Aggregierter Cross-Module Kontext für Dokumente."""
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -100,14 +100,14 @@ async def get_document_context(
     current_user: User = Depends(get_current_active_user),
 ) -> DocumentContextResponse:
     """
-    Aggregierter Cross-Module Kontext fuer ein Dokument.
+    Aggregierter Cross-Module Kontext für ein Dokument.
 
     Liefert folgende Informationen:
-    - **Entitaet**: Geschaeftspartner-Info mit Risk-Scoring
+    - **Entitaet**: Geschäftspartner-Info mit Risk-Scoring
     - **Auftragskette**: Position in der Dokumentenkette (Angebot -> Rechnung)
-    - **Zahlung**: Zahlungsstatus, Skonto-Informationen, Ueberfaelligkeit
+    - **Zahlung**: Zahlungsstatus, Skonto-Informationen, Überfälligkeit
     - **Verwandte Dokumente**: Andere Dokumente derselben Entitaet
-    - **Ausstehende Aktionen**: Orchestrierungs-Aktionen fuer diese Entitaet
+    - **Ausstehende Aktionen**: Orchestrierungs-Aktionen für diese Entitaet
 
     Args:
         document_id: Dokument-ID
@@ -123,7 +123,7 @@ async def get_document_context(
     service = DocumentContextAggregatorService(db)
     context = await service.get_context(document_id, current_user.company_id)
 
-    # Wenn kein Dokument gefunden wurde, 404 zurueckgeben
+    # Wenn kein Dokument gefunden wurde, 404 zurückgeben
     # (context ist leer aber nicht None bei fehlendem Dokument)
 
     # Dataclasses zu Pydantic Models konvertieren

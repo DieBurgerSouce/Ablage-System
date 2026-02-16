@@ -1,7 +1,7 @@
 """
 Workflow Templates
 
-Vordefinierte Workflow-Templates fuer haeufige Anwendungsfaelle.
+Vordefinierte Workflow-Templates für häufige Anwendungsfaelle.
 Diese werden beim ersten Start oder via Admin-API erstellt.
 """
 
@@ -49,7 +49,7 @@ PREBUILT_TEMPLATES: List[Dict[str, Any]] = [
                 "type": "condition",
                 "position": {"x": 250, "y": 250},
                 "data": {
-                    "label": "Konfidenz pruefen",
+                    "label": "Konfidenz prüfen",
                     "config": {
                         "conditions": {
                             "operator": "AND",
@@ -68,7 +68,7 @@ PREBUILT_TEMPLATES: List[Dict[str, Any]] = [
                     "label": "Benachrichtigung",
                     "config": {
                         "action_type": "send_notification",
-                        "title": "Manuelle Pruefung erforderlich",
+                        "title": "Manuelle Prüfung erforderlich",
                         "message": "Dokument mit niedriger Konfidenz: {{document.original_filename}}",
                     },
                     "stepName": "Admin benachrichtigen",
@@ -107,7 +107,7 @@ PREBUILT_TEMPLATES: List[Dict[str, Any]] = [
     # ==========================================================================
     {
         "name": "Rechnungsverarbeitung",
-        "description": "OCR und Extraktion fuer Rechnungen mit Pruefung bei hohen Betraegen.",
+        "description": "OCR und Extraktion für Rechnungen mit Prüfung bei hohen Betraegen.",
         "trigger_type": "document_event",
         "trigger_config": {
             "events": ["created"],
@@ -153,7 +153,7 @@ PREBUILT_TEMPLATES: List[Dict[str, Any]] = [
                 "type": "condition",
                 "position": {"x": 250, "y": 350},
                 "data": {
-                    "label": "Betrag pruefen",
+                    "label": "Betrag prüfen",
                     "config": {
                         "conditions": {
                             "operator": "AND",
@@ -173,8 +173,8 @@ PREBUILT_TEMPLATES: List[Dict[str, Any]] = [
                     "label": "Genehmigung anfordern",
                     "config": {
                         "action_type": "request_approval",
-                        "title": "Rechnung ueber 10.000 EUR",
-                        "message": "Bitte pruefen: {{document.original_filename}} - Betrag: {{extracted_data.total_gross}} EUR",
+                        "title": "Rechnung über 10.000 EUR",
+                        "message": "Bitte prüfen: {{document.original_filename}} - Betrag: {{extracted_data.total_gross}} EUR",
                     },
                     "stepName": "Genehmigung einholen",
                 },
@@ -187,7 +187,7 @@ PREBUILT_TEMPLATES: List[Dict[str, Any]] = [
                     "label": "Tags zuweisen",
                     "config": {
                         "action_type": "assign_tags",
-                        "tag_names": ["verarbeitet", "geprueft"],
+                        "tag_names": ["verarbeitet", "geprüft"],
                     },
                     "stepName": "Als verarbeitet markieren",
                 },
@@ -311,7 +311,7 @@ PREBUILT_TEMPLATES: List[Dict[str, Any]] = [
     # ==========================================================================
     {
         "name": "Duplikat-Erkennung",
-        "description": "Automatische Pruefung auf Duplikate bei neuen Dokumenten mit Archivierung.",
+        "description": "Automatische Prüfung auf Duplikate bei neuen Dokumenten mit Archivierung.",
         "trigger_type": "document_event",
         "trigger_config": {
             "events": ["created"],
@@ -454,7 +454,7 @@ PREBUILT_TEMPLATES: List[Dict[str, Any]] = [
                 "type": "action",
                 "position": {"x": 250, "y": 250},
                 "data": {
-                    "label": "Status aendern",
+                    "label": "Status ändern",
                     "config": {
                         "action_type": "update_status",
                         "status": "pending_approval",
@@ -471,7 +471,7 @@ PREBUILT_TEMPLATES: List[Dict[str, Any]] = [
                     "config": {
                         "action_type": "send_notification",
                         "title": "Genehmigung erforderlich",
-                        "message": "Bitte pruefen Sie: {{document.original_filename}}",
+                        "message": "Bitte prüfen Sie: {{document.original_filename}}",
                         "user_ids": ["{{variables.approver_id}}"],
                     },
                     "stepName": "Benachrichtigung senden",
@@ -522,7 +522,7 @@ async def seed_workflow_templates(db_session) -> int:
     created_count = 0
 
     for template_data in PREBUILT_TEMPLATES:
-        # Pruefe ob Template bereits existiert
+        # Prüfe ob Template bereits existiert
         existing = await service.list_templates(
             db=db_session,
             category=template_data.get("trigger_config", {}).get("category")

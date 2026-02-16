@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Budget & Kostenstellen Models fuer Ablage-System.
+Budget & Kostenstellen Models für Ablage-System.
 
 Budgetierung & Controlling mit:
 - Budget-Perioden (Monat, Quartal, Jahr)
 - Kostenstellen-Support
 - Automatische Kategorisierung aus OCR-extrahierten Daten
 - Abweichungsberichte mit Drill-Down
-- Alert-System bei Budget-Ueberschreitung
+- Alert-System bei Budget-Überschreitung
 
 Phase 2.1 der Feature-Roadmap (Januar 2026).
 """
@@ -67,7 +67,7 @@ class BudgetLineStatus(str, Enum):
     UNDER_BUDGET = "under_budget"     # Unter Budget
     ON_TRACK = "on_track"             # Im Plan
     WARNING = "warning"               # Warnung (>80%)
-    OVER_BUDGET = "over_budget"       # Ueber Budget
+    OVER_BUDGET = "over_budget"       # Über Budget
 
 
 class AllocationSource(str, Enum):
@@ -83,7 +83,7 @@ class AlertSeverity(str, Enum):
     INFO = "info"           # Information
     WARNING = "warning"     # Warnung (>80%)
     CRITICAL = "critical"   # Kritisch (>95%)
-    EXCEEDED = "exceeded"   # Ueberschritten (>100%)
+    EXCEEDED = "exceeded"   # Überschritten (>100%)
 
 
 # ============================================================================
@@ -92,7 +92,7 @@ class AlertSeverity(str, Enum):
 
 
 class Kostenstelle(Base):
-    """Kostenstelle fuer Budget-Zuordnung.
+    """Kostenstelle für Budget-Zuordnung.
 
     Hierarchische Kostenstellenstruktur mit Parent-Child Beziehungen.
     Beispiel: Vertrieb (parent) -> Vertrieb Nord (child)
@@ -168,9 +168,9 @@ class Kostenstelle(Base):
 
 
 class Budget(Base):
-    """Hauptbudget fuer eine Periode.
+    """Hauptbudget für eine Periode.
 
-    Ein Budget kann fuer verschiedene Zeitraeume angelegt werden:
+    Ein Budget kann für verschiedene Zeiträume angelegt werden:
     - Jahresbudget
     - Quartalsbudget
     - Monatsbudget
@@ -224,10 +224,10 @@ class Budget(Base):
     total_committed = Column(Numeric(15, 2), default=Decimal("0.00"))  # Gebundene Mittel
     total_remaining = Column(Numeric(15, 2), default=Decimal("0.00"))
 
-    # Waehrung
+    # Währung
     currency = Column(String(3), default="EUR")
 
-    # Schwellenwerte fuer Alerts
+    # Schwellenwerte für Alerts
     warning_threshold = Column(Float, default=80.0)   # Alert bei 80%
     critical_threshold = Column(Float, default=95.0)  # Kritisch bei 95%
 
@@ -236,7 +236,7 @@ class Budget(Base):
     auto_close_on_period_end = Column(Boolean, default=True)
     notify_on_allocation = Column(Boolean, default=True)
 
-    # Vorgaenger-Budget (fuer Vergleiche)
+    # Vorgaenger-Budget (für Vergleiche)
     previous_budget_id = Column(
         UUID(as_uuid=True),
         ForeignKey("budgets.id", ondelete="SET NULL"),
@@ -281,7 +281,7 @@ class Budget(Base):
 
     @property
     def is_over_budget(self) -> bool:
-        """Prueft ob Budget ueberschritten."""
+        """Prüft ob Budget überschritten."""
         return self.total_actual > self.total_planned
 
 
@@ -291,7 +291,7 @@ class Budget(Base):
 
 
 class BudgetLine(Base):
-    """Budget-Position fuer eine Kategorie/Kostenstelle.
+    """Budget-Position für eine Kategorie/Kostenstelle.
 
     Granulare Budget-Planung pro:
     - Kostenstelle
@@ -337,7 +337,7 @@ class BudgetLine(Base):
         default=BudgetLineStatus.UNDER_BUDGET
     )
 
-    # Monatliche Verteilung (fuer Jahresbudgets)
+    # Monatliche Verteilung (für Jahresbudgets)
     monthly_distribution = Column(CrossDBJSON, default=dict)
     # Format: {"1": 1000.00, "2": 1200.00, ...}
 
@@ -345,7 +345,7 @@ class BudgetLine(Base):
     previous_year_actual = Column(Numeric(15, 2), nullable=True)
     variance_to_previous = Column(Numeric(15, 2), nullable=True)
 
-    # Regeln fuer automatische Zuordnung
+    # Regeln für automatische Zuordnung
     auto_assign_rules = Column(CrossDBJSON, default=list)
     # Format: [{"field": "vendor_name", "operator": "contains", "value": "Amazon"}]
 
@@ -388,7 +388,7 @@ class BudgetLine(Base):
 class BudgetAllocation(Base):
     """Einzelne Budget-Zuordnung zu einem Dokument/Transaktion.
 
-    Verknuepft Dokumente mit Budget-Positionen und trackt:
+    Verknüpft Dokumente mit Budget-Positionen und trackt:
     - Quelle (OCR, manuell, Import)
     - Betrag und Aufteilung
     - Verarbeitungsstatus
@@ -417,7 +417,7 @@ class BudgetAllocation(Base):
         index=True
     )
 
-    # Dokument-Verknuepfung
+    # Dokument-Verknüpfung
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
@@ -516,12 +516,12 @@ class BudgetAllocation(Base):
 
 
 class BudgetAlert(Base):
-    """Alert bei Budget-Ueberschreitung oder Warnung.
+    """Alert bei Budget-Überschreitung oder Warnung.
 
     Automatisch generiert bei:
-    - Ueberschreitung der Warnschwelle (z.B. 80%)
+    - Überschreitung der Warnschwelle (z.B. 80%)
     - Kritischer Schwelle (z.B. 95%)
-    - Budget-Ueberschreitung (>100%)
+    - Budget-Überschreitung (>100%)
     """
     __tablename__ = "budget_alerts"
 
@@ -596,7 +596,7 @@ class BudgetAlert(Base):
 class BudgetCategory(Base):
     """Vordefinierte Budget-Kategorien mit OCR-Mapping.
 
-    Ermoeglicht automatische Kategorisierung aus OCR-Daten
+    Ermöglicht automatische Kategorisierung aus OCR-Daten
     basierend auf Schluesselwoertern und Mustern.
     """
     __tablename__ = "budget_categories"
@@ -630,7 +630,7 @@ class BudgetCategory(Base):
 
     # Status
     is_active = Column(Boolean, default=True)
-    is_system = Column(Boolean, default=False)  # System-Kategorie (nicht loeschbar)
+    is_system = Column(Boolean, default=False)  # System-Kategorie (nicht löschbar)
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -650,7 +650,7 @@ class BudgetCategory(Base):
 class BudgetReport(Base):
     """Gespeicherter Budget-Bericht.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Periodische Berichte (Monatsabschluss)
     - Drill-Down Analysen
     - Export-Vorlagen

@@ -1,4 +1,4 @@
-"""Result Formatter - Formatiert Query-Ergebnisse fuer Display."""
+"""Result Formatter - Formatiert Query-Ergebnisse für Display."""
 
 from dataclasses import dataclass, field
 from typing import Dict, List, Union

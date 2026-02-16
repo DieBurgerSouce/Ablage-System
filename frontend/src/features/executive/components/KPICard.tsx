@@ -5,7 +5,9 @@
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowUp, ArrowDown, Minus, type LucideIcon } from 'lucide-react'
+import { ArrowUp, ArrowDown, Minus } from 'lucide-react'
+
+type LucideIcon = React.ComponentType<{ className?: string }>
 import { cn } from '@/lib/utils'
 
 interface KPICardProps {

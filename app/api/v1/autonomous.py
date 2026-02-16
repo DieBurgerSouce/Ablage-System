@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Autonomous Trust System API - Multi-Level Trust fuer KI-Aktionen.
+Autonomous Trust System API - Multi-Level Trust für KI-Aktionen.
 
-Endpoints fuer:
+Endpoints für:
 - Trust-Level Management
 - Pending Approvals Queue
 - Proposal Approve/Reject/Rollback
@@ -80,7 +80,7 @@ async def get_user_company_id(db: AsyncSession, user: User) -> Optional[uuid.UUI
     if current_company_id:
         return current_company_id
 
-    # Fallback: Erste verfuegbare Firma
+    # Fallback: Erste verfügbare Firma
     result = await db.execute(
         select(UserCompany.company_id)
         .join(Company, Company.id == UserCompany.company_id)
@@ -112,7 +112,7 @@ class TrustLevelResponse(BaseModel):
 
 
 class TrustLevelUpdateRequest(BaseModel):
-    """Update fuer Trust-Level."""
+    """Update für Trust-Level."""
     level: str = Field(..., pattern="^(assistance|auto_accept|confidence|autonomous)$")
     document_type: Optional[str] = None
     reason: Optional[str] = None
@@ -158,7 +158,7 @@ class PendingApprovalResponse(BaseModel):
 
 
 class ApprovalActionRequest(BaseModel):
-    """Anfrage fuer Approve/Reject."""
+    """Anfrage für Approve/Reject."""
     reason: Optional[str] = None
 
 
@@ -215,7 +215,7 @@ async def get_trust_level(
     current_user: User = Depends(get_current_user),
 ) -> TrustLevelResponse:
     """
-    Holt das aktuelle Trust-Level fuer die Company.
+    Holt das aktuelle Trust-Level für die Company.
 
     Optional kann ein spezifischer Dokumenttyp angegeben werden.
     """
@@ -257,9 +257,9 @@ async def update_trust_level(
     current_user: User = Depends(require_permission("admin:full")),
 ) -> JSONDict:
     """
-    Aktualisiert das Trust-Level fuer die Company.
+    Aktualisiert das Trust-Level für die Company.
 
-    Nur fuer Admins. Erfordert explizite Begruendung.
+    Nur für Admins. Erfordert explizite Begruendung.
     """
     company_id = await get_user_company_id(db, current_user)
 
@@ -274,7 +274,7 @@ async def update_trust_level(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiges Trust-Level: {request.level}",
+            detail=f"Ungültiges Trust-Level: {request.level}",
         )
 
     service = get_trust_level_service(db)
@@ -307,7 +307,7 @@ async def get_trust_metrics(
     current_user: User = Depends(get_current_user),
 ) -> TrustMetricsResponse:
     """
-    Holt Trust-Metriken fuer die Company.
+    Holt Trust-Metriken für die Company.
 
     Berechnet Erfolgsraten, Fehlerquoten und andere KPIs.
     """
@@ -343,7 +343,7 @@ async def get_trust_recommendation(
     current_user: User = Depends(get_current_user),
 ) -> TrustRecommendationResponse:
     """
-    Holt Empfehlung fuer Trust-Level Anpassung.
+    Holt Empfehlung für Trust-Level Anpassung.
 
     Basierend auf historischen Metriken.
     """
@@ -373,7 +373,7 @@ async def list_trust_levels(
     current_user: User = Depends(get_current_user),
 ) -> List[TrustLevelResponse]:
     """
-    Listet alle verfuegbaren Trust-Level mit Beschreibung.
+    Listet alle verfügbaren Trust-Level mit Beschreibung.
     """
     level_names = {
         TrustLevel.LEVEL_1_ASSISTANCE: "Assistenz-Modus",
@@ -413,7 +413,7 @@ async def get_pending_approvals(
     """
     Listet ausstehende Genehmigungen.
 
-    Zeigt alle Proposals die auf Bestaetigung oder Timeout warten.
+    Zeigt alle Proposals die auf Bestätigung oder Timeout warten.
     """
     company_id = await get_user_company_id(db, current_user)
 
@@ -431,7 +431,7 @@ async def get_pending_approvals(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Proposal-Typ: {proposal_type}",
+                detail=f"Ungültiger Proposal-Typ: {proposal_type}",
             )
 
     service = get_delayed_acceptance_service(db)
@@ -473,7 +473,7 @@ async def approve_proposal(
     """
     Genehmigt einen Vorschlag manuell.
 
-    Fuehrt die vorgeschlagene Aktion sofort aus.
+    Führt die vorgeschlagene Aktion sofort aus.
     """
     company_id = await get_user_company_id(db, current_user)
 
@@ -514,7 +514,7 @@ async def reject_proposal(
     """
     Lehnt einen Vorschlag ab.
 
-    Der Vorschlag wird nicht ausgefuehrt und als abgelehnt markiert.
+    Der Vorschlag wird nicht ausgeführt und als abgelehnt markiert.
     """
     company_id = await get_user_company_id(db, current_user)
 
@@ -554,9 +554,9 @@ async def rollback_proposal(
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
     """
-    Macht einen ausgefuehrten Vorschlag rueckgaengig.
+    Macht einen ausgeführten Vorschlag rückgängig.
 
-    Nur moeglich innerhalb von 7 Tagen nach Ausfuehrung.
+    Nur möglich innerhalb von 7 Tagen nach Ausführung.
     """
     company_id = await get_user_company_id(db, current_user)
 
@@ -599,7 +599,7 @@ async def get_proposal_history(
     """
     Holt Proposal-Historie.
 
-    Zeigt vergangene Proposals mit Status und Ausfuehrungsdetails.
+    Zeigt vergangene Proposals mit Status und Ausführungsdetails.
     """
     company_id = await get_user_company_id(db, current_user)
 
@@ -617,7 +617,7 @@ async def get_proposal_history(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Proposal-Typ: {proposal_type}",
+                detail=f"Ungültiger Proposal-Typ: {proposal_type}",
             )
 
     # Parse status
@@ -628,7 +628,7 @@ async def get_proposal_history(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Status: {status_filter}",
+                detail=f"Ungültiger Status: {status_filter}",
             )
 
     service = get_delayed_acceptance_service(db)
@@ -673,7 +673,7 @@ async def get_proposal_statistics(
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
     """
-    Holt Statistiken ueber Proposals.
+    Holt Statistiken über Proposals.
 
     Zeigt Verteilung nach Typ, Status und Confidence.
     """
@@ -752,9 +752,9 @@ async def get_amount_tiers(
     user: User = Depends(get_current_user),
 ) -> AmountTiersResponse:
     """
-    Gibt die konfigurierten Betrags-Freigabestufen zurueck.
+    Gibt die konfigurierten Betrags-Freigabestufen zurück.
 
-    Zeigt die aktuelle Konfiguration fuer betragsbasierte Auto-Approvals.
+    Zeigt die aktuelle Konfiguration für betragsbasierte Auto-Approvals.
     """
     company_id = await get_user_company_id(db, user)
     if not company_id:
@@ -793,7 +793,7 @@ async def update_amount_tiers(
     user: User = Depends(require_permission("admin:full")),
 ) -> AmountTiersResponse:
     """
-    Aktualisiert die Betrags-Freigabestufen fuer die Company.
+    Aktualisiert die Betrags-Freigabestufen für die Company.
 
     Validiert:
     - Mindestens 2 Stufen
@@ -858,7 +858,7 @@ async def check_approval_mode(
     """
     Ermittelt den Freigabemodus basierend auf Betrag und Trust-Level.
 
-    Prueft welche Freigabestufe fuer einen bestimmten Betrag und Trust-Level
+    Prüft welche Freigabestufe für einen bestimmten Betrag und Trust-Level
     angewendet werden soll.
     """
     company_id = await get_user_company_id(db, user)

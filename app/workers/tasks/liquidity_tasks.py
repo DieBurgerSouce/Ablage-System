@@ -259,13 +259,13 @@ def _get_alert_title(warning_type: str, days_until: int) -> str:
     urgency = "KRITISCH" if days_until <= 7 else "Warnung"
 
     titles = {
-        "shortfall": f"{urgency}: Liquiditaetsengpass in {days_until} Tagen",
-        "large_outflow": f"{urgency}: Grosse Zahlung in {days_until} Tagen faellig",
+        "shortfall": f"{urgency}: Liquiditätsengpass in {days_until} Tagen",
+        "large_outflow": f"{urgency}: Grosse Zahlung in {days_until} Tagen fällig",
         "critical_balance": f"{urgency}: Kritischer Kontostand erwartet",
         "negative_forecast": f"{urgency}: Negativer Saldo in {days_until} Tagen",
     }
 
-    return titles.get(warning_type, f"Liquiditaetswarnung in {days_until} Tagen")
+    return titles.get(warning_type, f"Liquiditätswarnung in {days_until} Tagen")
 
 
 # =============================================================================
@@ -351,8 +351,8 @@ def detect_large_outflows_task(
                             severity=AlertSeverity.HIGH if days_until <= 3 else AlertSeverity.MEDIUM,
                             title=f"Grosse Zahlung in {days_until} Tagen: {outflow.amount:,.2f} EUR",
                             message=(
-                                f"Eine ueberdurchschnittlich grosse Zahlung von {outflow.amount:,.2f} EUR "
-                                f"ist am {outflow.date} faellig. Dies entspricht {outflow.percentage_of_average:.1f}% "
+                                f"Eine überdurchschnittlich grosse Zahlung von {outflow.amount:,.2f} EUR "
+                                f"ist am {outflow.date} fällig. Dies entspricht {outflow.percentage_of_average:.1f}% "
                                 f"des monatlichen Durchschnitts."
                             ),
                             metadata={

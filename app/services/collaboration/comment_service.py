@@ -2,8 +2,8 @@
 """
 Comment Service for Ablage-System.
 
-Enterprise-grade Kommentar-Verwaltung fuer Dokumente:
-- CRUD-Operationen fuer DocumentComment
+Enterprise-grade Kommentar-Verwaltung für Dokumente:
+- CRUD-Operationen für DocumentComment
 - Thread/Reply Management
 - @Mention Parsing und Notification
 - Feld-Kommentare (Inline auf Extraktionsfeldern)
@@ -47,21 +47,21 @@ from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
-# Pattern fuer @mention Erkennung: @username oder @vorname.nachname
+# Pattern für @mention Erkennung: @username oder @vorname.nachname
 MENTION_PATTERN = re.compile(r'@([\w]+(?:\.[\w]+)?)', re.UNICODE)
 
 
 class CommentService:
-    """Service fuer Dokument-Kommentar-Verwaltung.
+    """Service für Dokument-Kommentar-Verwaltung.
 
-    Alle Methoden erwarten company_id fuer Multi-Tenant Isolation.
+    Alle Methoden erwarten company_id für Multi-Tenant Isolation.
     """
 
     def __init__(self, db: AsyncSession):
         """Initialisiert den CommentService.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
         """
         self.db = db
 
@@ -88,8 +88,8 @@ class CommentService:
             user_id: ID des erstellenden Users
             company_id: ID der Firma
             content: Kommentarinhalt
-            parent_id: ID des Parent-Kommentars (fuer Replies)
-            field_reference: Feldname fuer Inline-Kommentare
+            parent_id: ID des Parent-Kommentars (für Replies)
+            field_reference: Feldname für Inline-Kommentare
             mentions: Liste von Mentions [{"userId": ..., "userName": ..., ...}]
             auto_parse_mentions: Bei True werden @mentions aus content geparst
             notify_mentions: Bei True werden Notifications gesendet
@@ -98,7 +98,7 @@ class CommentService:
             Erstellter DocumentComment
 
         Raises:
-            ValueError: Bei ungueltigem Dokument, Parent oder User
+            ValueError: Bei ungültigem Dokument, Parent oder User
         """
         # Validiere Dokument existiert und gehoert zur Firma
         doc_result = await self.db.execute(
@@ -271,7 +271,7 @@ class CommentService:
         Args:
             comment_id: ID des Kommentars
             company_id: ID der Firma
-            include_deleted: Bei True auch geloeschte Kommentare
+            include_deleted: Bei True auch gelöschte Kommentare
 
         Returns:
             DocumentComment oder None
@@ -320,7 +320,7 @@ class CommentService:
             Aktualisierter DocumentComment oder None
 
         Raises:
-            ValueError: Wenn User nicht Autor ist oder Kommentar geloescht
+            ValueError: Wenn User nicht Autor ist oder Kommentar gelöscht
         """
         comment = await self.get_comment(comment_id, company_id)
         if not comment:
@@ -330,9 +330,9 @@ class CommentService:
         if comment.user_id != user_id:
             raise ValueError("Nur der Autor kann den Kommentar bearbeiten")
 
-        # Geloeschte Kommentare koennen nicht bearbeitet werden
+        # Gelöschte Kommentare können nicht bearbeitet werden
         if comment.deleted_at:
-            raise ValueError("Geloeschter Kommentar kann nicht bearbeitet werden")
+            raise ValueError("Gelöschter Kommentar kann nicht bearbeitet werden")
 
         # Mentions verarbeiten
         final_mentions = mentions
@@ -384,13 +384,13 @@ class CommentService:
         user_id: UUID,
         hard_delete: bool = False,
     ) -> bool:
-        """Loescht einen Kommentar (Soft Delete).
+        """Löscht einen Kommentar (Soft Delete).
 
         Args:
             comment_id: ID des Kommentars
             company_id: ID der Firma
-            user_id: ID des loeschenden Users
-            hard_delete: Bei True wird physisch geloescht (nur Admin)
+            user_id: ID des löschenden Users
+            hard_delete: Bei True wird physisch gelöscht (nur Admin)
 
         Returns:
             True bei Erfolg
@@ -402,14 +402,14 @@ class CommentService:
         if not comment:
             return False
 
-        # Autor oder Document-Owner koennen loeschen
+        # Autor oder Document-Owner können löschen
         doc_result = await self.db.execute(
             select(Document.owner_id).where(Document.id == comment.document_id)
         )
         doc_owner_id = doc_result.scalar()
 
         if comment.user_id != user_id and doc_owner_id != user_id:
-            raise ValueError("Keine Berechtigung zum Loeschen")
+            raise ValueError("Keine Berechtigung zum Löschen")
 
         # Speichere document_id vor möglichem Delete
         document_id = comment.document_id
@@ -527,7 +527,7 @@ class CommentService:
 
         Args:
             content: Kommentarinhalt
-            company_id: ID der Firma (fuer User-Lookup)
+            company_id: ID der Firma (für User-Lookup)
 
         Returns:
             Liste von MentionSchema mit erkannten Usern
@@ -556,7 +556,7 @@ class CommentService:
         """Findet einen User anhand des Usernames innerhalb der Company.
 
         SECURITY: Multi-Tenant Isolation - nur User der gleichen Company!
-        Sucht ueber UserCompany Join, um sicherzustellen, dass der User
+        Sucht über UserCompany Join, um sicherzustellen, dass der User
         auch Zugriff auf die Company hat.
 
         Sucht nach:
@@ -565,7 +565,7 @@ class CommentService:
 
         Args:
             username: Der gesuchte Username
-            company_id: ID der Firma (MUSS verwendet werden fuer Multi-Tenant!)
+            company_id: ID der Firma (MUSS verwendet werden für Multi-Tenant!)
 
         Returns:
             User oder None
@@ -617,7 +617,7 @@ class CommentService:
         from_user: User,
         mentions: List[Dict[str, Any]],
     ) -> None:
-        """Erstellt Benachrichtigungen fuer Mentions.
+        """Erstellt Benachrichtigungen für Mentions.
 
         Args:
             comment: Der Kommentar
@@ -633,7 +633,7 @@ class CommentService:
                 if mentioned_user_id == from_user.id:
                     continue
 
-                # Pruefe ob User existiert
+                # Prüfe ob User existiert
                 user_result = await self.db.execute(
                     select(User.id).where(
                         and_(
@@ -716,7 +716,7 @@ class CommentService:
             company_id: ID der Firma
             limit: Max Anzahl
             offset: Offset
-            include_deleted: Bei True auch geloeschte
+            include_deleted: Bei True auch gelöschte
             parent_id: Filtert auf Replies eines Parent-Kommentars
 
         Returns:
@@ -794,7 +794,7 @@ class CommentService:
         document_id: UUID,
         company_id: UUID,
     ) -> Dict[str, Any]:
-        """Berechnet Statistiken fuer die Kommentare eines Dokuments.
+        """Berechnet Statistiken für die Kommentare eines Dokuments.
 
         Args:
             document_id: ID des Dokuments
@@ -907,7 +907,7 @@ class CommentService:
         reactions = list(comment.reactions or [])
         user_id_str = str(user_id)
 
-        # Pruefe ob Emoji schon existiert
+        # Prüfe ob Emoji schon existiert
         existing_reaction = None
         for r in reactions:
             if r.get("emoji") == emoji:
@@ -1072,9 +1072,9 @@ class CommentService:
         Args:
             document_id: ID des Dokuments
             user_id: ID des Users
-            activity_type: Art der Aktivitaet
+            activity_type: Art der Aktivität
             description: Beschreibung
-            metadata: Zusaetzliche Metadaten
+            metadata: Zusätzliche Metadaten
         """
         activity = DocumentActivity(
             document_id=document_id,
@@ -1087,7 +1087,7 @@ class CommentService:
 
 
 def get_comment_service(db: AsyncSession) -> CommentService:
-    """Factory-Funktion fuer CommentService.
+    """Factory-Funktion für CommentService.
 
     Args:
         db: AsyncSession

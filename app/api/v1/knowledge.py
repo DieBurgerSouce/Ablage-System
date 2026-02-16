@@ -2,10 +2,10 @@
 """
 Knowledge Management API.
 
-API-Endpoints fuer das Knowledge Management System:
+API-Endpoints für das Knowledge Management System:
 - Notes: Wiki-artige Notizen mit Markdown
 - Checklists: Aufgabenlisten mit Items
-- Links: Knowledge Graph Verknuepfungen
+- Links: Knowledge Graph Verknüpfungen
 - Tags: Kategorisierung
 
 Alle Endpoints sind auf Deutsch lokalisiert.
@@ -51,7 +51,7 @@ router = APIRouter(prefix="/knowledge", tags=["Knowledge Management"])
 # --- Notes ---
 
 class NoteCreate(BaseModel):
-    """Schema fuer das Erstellen einer Note."""
+    """Schema für das Erstellen einer Note."""
 
     title: str = Field(..., min_length=1, max_length=500)
     content: Optional[str] = None
@@ -67,7 +67,7 @@ class NoteCreate(BaseModel):
 
 
 class NoteUpdate(BaseModel):
-    """Schema fuer das Aktualisieren einer Note."""
+    """Schema für das Aktualisieren einer Note."""
 
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     content: Optional[str] = None
@@ -83,7 +83,7 @@ class NoteUpdate(BaseModel):
 
 
 class NoteResponse(BaseModel):
-    """Schema fuer Note-Responses."""
+    """Schema für Note-Responses."""
 
     id: UUID
     title: str
@@ -107,7 +107,7 @@ class NoteResponse(BaseModel):
 
 
 class NoteListResponse(BaseModel):
-    """Schema fuer Note-Listen."""
+    """Schema für Note-Listen."""
 
     items: List[NoteResponse]
     total: int
@@ -118,7 +118,7 @@ class NoteListResponse(BaseModel):
 # --- Checklists ---
 
 class ChecklistItemCreate(BaseModel):
-    """Schema fuer das Erstellen eines Checklist-Items."""
+    """Schema für das Erstellen eines Checklist-Items."""
 
     text: str = Field(..., min_length=1, max_length=1000)
     description: Optional[str] = None
@@ -127,7 +127,7 @@ class ChecklistItemCreate(BaseModel):
 
 
 class ChecklistItemUpdate(BaseModel):
-    """Schema fuer das Aktualisieren eines Checklist-Items."""
+    """Schema für das Aktualisieren eines Checklist-Items."""
 
     text: Optional[str] = Field(None, min_length=1, max_length=1000)
     description: Optional[str] = None
@@ -137,7 +137,7 @@ class ChecklistItemUpdate(BaseModel):
 
 
 class ChecklistItemResponse(BaseModel):
-    """Schema fuer Checklist-Item-Responses."""
+    """Schema für Checklist-Item-Responses."""
 
     id: UUID
     checklist_id: UUID
@@ -153,7 +153,7 @@ class ChecklistItemResponse(BaseModel):
 
 
 class ChecklistCreate(BaseModel):
-    """Schema fuer das Erstellen einer Checklist."""
+    """Schema für das Erstellen einer Checklist."""
 
     title: str = Field(..., min_length=1, max_length=500)
     description: Optional[str] = None
@@ -166,7 +166,7 @@ class ChecklistCreate(BaseModel):
 
 
 class ChecklistUpdate(BaseModel):
-    """Schema fuer das Aktualisieren einer Checklist."""
+    """Schema für das Aktualisieren einer Checklist."""
 
     title: Optional[str] = Field(None, min_length=1, max_length=500)
     description: Optional[str] = None
@@ -178,7 +178,7 @@ class ChecklistUpdate(BaseModel):
 
 
 class ChecklistResponse(BaseModel):
-    """Schema fuer Checklist-Responses."""
+    """Schema für Checklist-Responses."""
 
     id: UUID
     title: str
@@ -200,7 +200,7 @@ class ChecklistResponse(BaseModel):
 
 
 class ChecklistListResponse(BaseModel):
-    """Schema fuer Checklist-Listen."""
+    """Schema für Checklist-Listen."""
 
     items: List[ChecklistResponse]
     total: int
@@ -211,7 +211,7 @@ class ChecklistListResponse(BaseModel):
 # --- Links ---
 
 class LinkCreate(BaseModel):
-    """Schema fuer das Erstellen eines Knowledge Links."""
+    """Schema für das Erstellen eines Knowledge Links."""
 
     source_type: str
     source_id: UUID
@@ -223,7 +223,7 @@ class LinkCreate(BaseModel):
 
 
 class LinkResponse(BaseModel):
-    """Schema fuer Link-Responses."""
+    """Schema für Link-Responses."""
 
     id: UUID
     source_type: str
@@ -243,7 +243,7 @@ class LinkResponse(BaseModel):
 # --- Tags ---
 
 class TagCreate(BaseModel):
-    """Schema fuer das Erstellen eines Tags."""
+    """Schema für das Erstellen eines Tags."""
 
     name: str = Field(..., min_length=1, max_length=100)
     color: Optional[str] = Field(None, pattern=r"^#[0-9A-Fa-f]{6}$")
@@ -251,7 +251,7 @@ class TagCreate(BaseModel):
 
 
 class TagResponse(BaseModel):
-    """Schema fuer Tag-Responses."""
+    """Schema für Tag-Responses."""
 
     id: UUID
     name: str
@@ -433,7 +433,7 @@ async def delete_note(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Loescht eine Knowledge Note (soft delete)."""
+    """Löscht eine Knowledge Note (soft delete)."""
     result = await db.execute(
         select(KnowledgeNote)
         .where(KnowledgeNote.id == note_id)
@@ -619,7 +619,7 @@ async def delete_checklist(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Loescht eine Checklist (soft delete)."""
+    """Löscht eine Checklist (soft delete)."""
     result = await db.execute(
         select(KnowledgeChecklist)
         .where(KnowledgeChecklist.id == checklist_id)
@@ -744,7 +744,7 @@ async def delete_checklist_item(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Loescht ein Checklist-Item."""
+    """Löscht ein Checklist-Item."""
     result = await db.execute(
         select(KnowledgeChecklistItem)
         .where(KnowledgeChecklistItem.id == item_id)
@@ -775,18 +775,18 @@ async def create_link(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> LinkResponse:
-    """Erstellt eine Knowledge Graph Verknuepfung."""
+    """Erstellt eine Knowledge Graph Verknüpfung."""
     # Validate types
     valid_types = [lt.value for lt in LinkableType]
     if data.source_type not in valid_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger source_type. Erlaubt: {valid_types}",
+            detail=f"Ungültiger source_type. Erlaubt: {valid_types}",
         )
     if data.target_type not in valid_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger target_type. Erlaubt: {valid_types}",
+            detail=f"Ungültiger target_type. Erlaubt: {valid_types}",
         )
 
     # Check if link already exists
@@ -804,7 +804,7 @@ async def create_link(
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Verknuepfung existiert bereits",
+            detail="Verknüpfung existiert bereits",
         )
 
     link = KnowledgeLink(
@@ -863,7 +863,7 @@ async def get_links_for_object(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[LinkResponse]:
-    """Ruft alle Links fuer ein Objekt ab (als Source oder Target)."""
+    """Ruft alle Links für ein Objekt ab (als Source oder Target)."""
     result = await db.execute(
         select(KnowledgeLink).where(
             or_(
@@ -888,7 +888,7 @@ async def delete_link(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Loescht eine Knowledge Graph Verknuepfung."""
+    """Löscht eine Knowledge Graph Verknüpfung."""
     result = await db.execute(
         select(KnowledgeLink).where(KnowledgeLink.id == link_id)
     )
@@ -897,7 +897,7 @@ async def delete_link(
     if not link:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Verknuepfung nicht gefunden",
+            detail="Verknüpfung nicht gefunden",
         )
 
     await db.delete(link)
@@ -948,7 +948,7 @@ async def list_tags(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[TagResponse]:
-    """Listet alle Tags sortiert nach Nutzungshaeufigkeit."""
+    """Listet alle Tags sortiert nach Nutzungshäufigkeit."""
     query = select(KnowledgeTag)
 
     if search:
@@ -966,7 +966,7 @@ async def delete_tag(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Loescht einen Tag."""
+    """Löscht einen Tag."""
     result = await db.execute(
         select(KnowledgeTag).where(KnowledgeTag.id == tag_id)
     )

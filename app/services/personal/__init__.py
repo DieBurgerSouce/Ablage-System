@@ -8,7 +8,7 @@ Bietet:
 Security Features:
 - RBAC-basierte Zugriffskontrolle
 - PII-Maskierung basierend auf Berechtigungen (GDPR Art. 25)
-- Audit-Logging fuer alle CRUD-Operationen (GDPR Art. 30)
+- Audit-Logging für alle CRUD-Operationen (GDPR Art. 30)
 - Input-Sanitization gegen XSS/Injection
 
 Verwendung:
@@ -18,7 +18,7 @@ Verwendung:
         db=db,
         company_id=company.id,
         user_id=current_user.id,
-        mask_pii=True,  # PII maskieren fuer Non-HR-User
+        mask_pii=True,  # PII maskieren für Non-HR-User
     )
 """
 

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Parallel Approval Service fuer BPMN Workflows.
+"""Parallel Approval Service für BPMN Workflows.
 
 Enterprise-Grade Genehmigungsworkflows mit:
 - Parallele Genehmigungen (mehrere Genehmiger gleichzeitig)
@@ -37,7 +37,7 @@ logger = structlog.get_logger(__name__)
 
 class ConsensusType(str, Enum):
     """Consensus types for parallel approvals."""
-    ALL_MUST_APPROVE = "all"       # Alle muessen zustimmen
+    ALL_MUST_APPROVE = "all"       # Alle müssen zustimmen
     MAJORITY = "majority"          # Mehrheit muss zustimmen
     ANY_ONE = "any"                # Einer reicht
     UNANIMOUS = "unanimous"        # Einstimmig (wie ALL, aber explizit)
@@ -58,7 +58,7 @@ class ParallelApprovalStatus(str, Enum):
     APPROVED = "approved"         # Konsens: Genehmigt
     REJECTED = "rejected"         # Konsens: Abgelehnt
     CANCELLED = "cancelled"       # Abgebrochen
-    EXPIRED = "expired"           # Zeitlimit ueberschritten
+    EXPIRED = "expired"           # Zeitlimit überschritten
 
 
 # =============================================================================
@@ -66,9 +66,9 @@ class ParallelApprovalStatus(str, Enum):
 # =============================================================================
 
 class ParallelApprovalService:
-    """Service fuer parallele Genehmigungen in Workflows.
+    """Service für parallele Genehmigungen in Workflows.
 
-    Ermoeglicht das gleichzeitige Abstimmen mehrerer Genehmiger
+    Ermöglicht das gleichzeitige Abstimmen mehrerer Genehmiger
     mit konfigurierbaren Konsens-Regeln.
     """
 
@@ -102,7 +102,7 @@ class ParallelApprovalService:
             quorum_count: Mindestanzahl bei QUORUM-Typ
             title: Titel der Genehmigung
             description: Beschreibung
-            due_date: Faelligkeitsdatum
+            due_date: Fälligkeitsdatum
             element_id: BPMN Element-ID
 
         Returns:
@@ -115,9 +115,9 @@ class ParallelApprovalService:
             raise ValueError("quorum_count erforderlich bei QUORUM-Konsenstyp")
 
         if quorum_count and quorum_count > len(approvers):
-            raise ValueError("quorum_count darf nicht groesser als Anzahl Genehmiger sein")
+            raise ValueError("quorum_count darf nicht größer als Anzahl Genehmiger sein")
 
-        # Instanz laden und pruefen
+        # Instanz laden und prüfen
         instance = await self._get_instance(workflow_instance_id, company_id)
         if not instance:
             raise ValueError("Prozess-Instanz nicht gefunden")
@@ -158,7 +158,7 @@ class ParallelApprovalService:
         current_vars["_parallel_approvals"] = parallel_approvals
         instance.variables = current_vars
 
-        # Tasks fuer jeden Genehmiger erstellen
+        # Tasks für jeden Genehmiger erstellen
         for approver_id in approvers:
             task = ProcessTask(
                 instance_id=instance.id,
@@ -167,7 +167,7 @@ class ParallelApprovalService:
                 task_type=TaskType.USER_TASK,
                 status=TaskStatus.ASSIGNED,
                 assignee_id=approver_id,
-                priority=70,  # Hohe Prioritaet
+                priority=70,  # Hohe Priorität
                 due_date=due_date,
                 task_variables={
                     "parallel_approval_id": approval_id,
@@ -248,16 +248,16 @@ class ParallelApprovalService:
         if not approval:
             raise ValueError("Parallele Genehmigung nicht gefunden")
 
-        # Status pruefen
+        # Status prüfen
         if approval["status"] != ParallelApprovalStatus.PENDING.value:
             raise ValueError(
                 f"Genehmigung ist bereits abgeschlossen (Status: {approval['status']})"
             )
 
-        # Genehmiger pruefen
+        # Genehmiger prüfen
         approver_str = str(approver_id)
         if approver_str not in approval["approvers"]:
-            raise ValueError("Benutzer ist kein Genehmiger fuer diese Anfrage")
+            raise ValueError("Benutzer ist kein Genehmiger für diese Anfrage")
 
         # Bereits abgestimmt?
         current_vote = approval["votes"].get(approver_str, {})
@@ -271,7 +271,7 @@ class ParallelApprovalService:
             "voted_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        # Konsens pruefen
+        # Konsens prüfen
         consensus_result = self._check_consensus(approval)
 
         if consensus_result["consensus_reached"]:
@@ -279,7 +279,7 @@ class ParallelApprovalService:
             approval["final_decision"] = consensus_result["final_decision"]
             approval["consensus_reached_at"] = datetime.now(timezone.utc).isoformat()
 
-            # Tasks abschliessen
+            # Tasks abschließen
             await self._complete_approval_tasks(
                 instance.id,
                 approval_id,
@@ -333,7 +333,7 @@ class ParallelApprovalService:
         approval_id: str,
         company_id: UUID,
     ) -> Dict[str, Any]:
-        """Prueft ob Konsens erreicht wurde.
+        """Prüft ob Konsens erreicht wurde.
 
         Args:
             approval_id: Parallel-Approval-ID
@@ -374,7 +374,7 @@ class ParallelApprovalService:
         approval_id: str,
         company_id: UUID,
     ) -> Dict[str, Any]:
-        """Gibt den Status einer parallelen Genehmigung zurueck.
+        """Gibt den Status einer parallelen Genehmigung zurück.
 
         Args:
             approval_id: Parallel-Approval-ID
@@ -412,7 +412,7 @@ class ParallelApprovalService:
         user_id: UUID,
         company_id: UUID,
     ) -> List[Dict[str, Any]]:
-        """Listet alle ausstehenden Genehmigungen fuer einen User.
+        """Listet alle ausstehenden Genehmigungen für einen User.
 
         Args:
             user_id: User-ID
@@ -421,7 +421,7 @@ class ParallelApprovalService:
         Returns:
             Liste ausstehender Genehmigungen
         """
-        # Tasks fuer den User finden
+        # Tasks für den User finden
         query = (
             select(ProcessTask)
             .where(
@@ -544,7 +544,7 @@ class ParallelApprovalService:
             raise ValueError("Parallele Genehmigung nicht gefunden")
 
         if approval["status"] != ParallelApprovalStatus.PENDING.value:
-            raise ValueError("Nur ausstehende Genehmigungen koennen abgebrochen werden")
+            raise ValueError("Nur ausstehende Genehmigungen können abgebrochen werden")
 
         # Status aktualisieren
         approval["status"] = ParallelApprovalStatus.CANCELLED.value
@@ -589,7 +589,7 @@ class ParallelApprovalService:
     # =========================================================================
 
     def _check_consensus(self, approval: Dict[str, Any]) -> Dict[str, Any]:
-        """Prueft ob Konsens erreicht wurde basierend auf Votes und Konsenstyp."""
+        """Prüft ob Konsens erreicht wurde basierend auf Votes und Konsenstyp."""
         consensus_type = ConsensusType(approval["consensus_type"])
         votes = approval["votes"]
         total = len(votes)
@@ -609,7 +609,7 @@ class ParallelApprovalService:
 
         # Konsens-Regeln
         if consensus_type == ConsensusType.ALL_MUST_APPROVE:
-            # Alle muessen zustimmen
+            # Alle müssen zustimmen
             if rejected_count > 0:
                 return {
                     "consensus_reached": True,
@@ -723,7 +723,7 @@ class ParallelApprovalService:
         approval_id: str,
         final_decision: str,
     ) -> None:
-        """Schliesst alle Tasks einer parallelen Genehmigung ab."""
+        """Schließt alle Tasks einer parallelen Genehmigung ab."""
         stmt = (
             update(ProcessTask)
             .where(
@@ -787,7 +787,7 @@ class ParallelApprovalService:
         approval_id: str,
         company_id: UUID,
     ) -> Optional[ProcessInstance]:
-        """Findet Instanz die eine bestimmte parallele Genehmigung enthaelt."""
+        """Findet Instanz die eine bestimmte parallele Genehmigung enthält."""
         # JSONB-Suche nach approval_id
         query = select(ProcessInstance).where(
             and_(

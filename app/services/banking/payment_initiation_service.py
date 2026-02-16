@@ -219,7 +219,7 @@ class PaymentInitiationService:
         if not connection or connection.company_id != request.company_id:
             return PaymentResult(
                 success=False,
-                error_message="Keine Berechtigung fuer dieses Konto",
+                error_message="Keine Berechtigung für dieses Konto",
             )
 
         if connection.status != ConnectionStatus.ACTIVE.value:
@@ -233,7 +233,7 @@ class PaymentInitiationService:
         if daily_total + request.amount > self.config.max_daily_total:
             return PaymentResult(
                 success=False,
-                error_message=f"Tageslimit von {self.config.max_daily_total} EUR wuerde ueberschritten",
+                error_message=f"Tageslimit von {self.config.max_daily_total} EUR wuerde überschritten",
             )
 
         # Check if approval required
@@ -331,7 +331,7 @@ class PaymentInitiationService:
             return PaymentResult(
                 success=False,
                 payment_id=payment.id,
-                error_message="Redirect URI erforderlich fuer PSD2 Zahlung",
+                error_message="Redirect URI erforderlich für PSD2 Zahlung",
             )
 
         psd2_request = PSD2PaymentRequest(
@@ -394,7 +394,7 @@ class PaymentInitiationService:
         tan_challenge = TANChallenge(
             challenge_id=uuid4().hex,
             tan_method=connection.selected_tan_method or "push_tan",
-            challenge_text=f"Bitte bestaetigen Sie die Ueberweisung an {payment.creditor_name}",
+            challenge_text=f"Bitte bestätigen Sie die Überweisung an {payment.creditor_name}",
             expires_at=utc_now() + timedelta(minutes=5),
         )
 
@@ -447,7 +447,7 @@ class PaymentInitiationService:
             return PaymentResult(
                 success=False,
                 payment_id=payment_id,
-                error_message=f"Ungueltiger Status: {payment.status}",
+                error_message=f"Ungültiger Status: {payment.status}",
             )
 
         connection = await db.get(BankConnection, payment.connection_id)
@@ -486,7 +486,7 @@ class PaymentInitiationService:
                     return PaymentResult(
                         success=False,
                         payment_id=payment_id,
-                        error_message="Ungueltige TAN",
+                        error_message="Ungültige TAN",
                     )
 
                 # In production: Verify TAN with FinTS
@@ -555,7 +555,7 @@ class PaymentInitiationService:
             return PaymentResult(
                 success=False,
                 payment_id=payment_id,
-                error_message="Eigene Zahlungen koennen nicht freigegeben werden",
+                error_message="Eigene Zahlungen können nicht freigegeben werden",
             )
 
         payment.status = PaymentInitiationStatus.PENDING_APPROVAL.value
@@ -651,7 +651,7 @@ class PaymentInitiationService:
         if daily_total + total_amount > self.config.max_daily_total:
             return BatchPaymentResult(
                 success=False,
-                error_message=f"Tageslimit von {self.config.max_daily_total} EUR wuerde ueberschritten",
+                error_message=f"Tageslimit von {self.config.max_daily_total} EUR wuerde überschritten",
             )
 
         requires_approval = total_amount >= self.config.require_approval_above
@@ -752,23 +752,23 @@ class PaymentInitiationService:
             return "Betrag muss positiv sein"
 
         if request.amount > self.config.max_single_payment:
-            return f"Maximalbetrag von {self.config.max_single_payment} EUR ueberschritten"
+            return f"Maximalbetrag von {self.config.max_single_payment} EUR überschritten"
 
         if not request.creditor_name or len(request.creditor_name) > 140:
-            return "Ungueltiger Empfaengername (1-140 Zeichen)"
+            return "Ungültiger Empfängername (1-140 Zeichen)"
 
         if not request.creditor_iban or len(request.creditor_iban) < 15:
-            return "Ungueltige IBAN"
+            return "Ungültige IBAN"
 
         if request.execution_date:
             today = date.today()
             if request.execution_date < today:
-                return "Ausfuehrungsdatum liegt in der Vergangenheit"
+                return "Ausführungsdatum liegt in der Vergangenheit"
             if not self.config.allow_future_dated:
                 if request.execution_date > today:
                     return "Terminzahlungen sind nicht erlaubt"
             if (request.execution_date - today).days > self.config.max_future_days:
-                return f"Ausfuehrungsdatum maximal {self.config.max_future_days} Tage in der Zukunft"
+                return f"Ausführungsdatum maximal {self.config.max_future_days} Tage in der Zukunft"
 
         return None
 

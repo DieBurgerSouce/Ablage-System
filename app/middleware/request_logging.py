@@ -2,7 +2,7 @@
 """
 Request/Response Logging Middleware mit PII-Filter.
 
-Protokolliert alle API-Requests und -Responses fuer:
+Protokolliert alle API-Requests und -Responses für:
 - Debugging und Troubleshooting
 - Security Auditing
 - Performance Monitoring
@@ -29,7 +29,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PIIFilterConfig:
-    """Konfiguration fuer PII-Filterung."""
+    """Konfiguration für PII-Filterung."""
 
     # Felder die komplett ausgeblendet werden (nur "[REDACTED]")
     REDACTED_FIELDS: Set[str] = {
@@ -66,7 +66,7 @@ class PIIFilterConfig:
         "sozialversicherung",
     }
 
-    # Felder die gekuerzt werden (nur erste 3 Zeichen)
+    # Felder die gekürzt werden (nur erste 3 Zeichen)
     TRUNCATED_FIELDS: Set[str] = {
         "name",
         "vorname",
@@ -81,7 +81,7 @@ class PIIFilterConfig:
         "street",
     }
 
-    # Regex-Patterns fuer sensitive Daten im Text
+    # Regex-Patterns für sensitive Daten im Text
     SENSITIVE_PATTERNS: List[tuple] = [
         # Email
         (r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', '[EMAIL-REDACTED]'),
@@ -93,11 +93,11 @@ class PIIFilterConfig:
         (r'\b\d{4}[\s\-]?\d{4}[\s\-]?\d{4}[\s\-]?\d{4}\b', '[CARD-REDACTED]'),
         # JWT Token
         (r'eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*', '[JWT-REDACTED]'),
-        # UUID (User IDs bleiben sichtbar fuer Debugging)
+        # UUID (User IDs bleiben sichtbar für Debugging)
         # (r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', '[UUID]'),
     ]
 
-    # Maximale Laenge fuer geloggte Body-Inhalte
+    # Maximale Länge für geloggte Body-Inhalte
     MAX_BODY_LOG_LENGTH: int = 2000
 
     # Pfade die nicht geloggt werden sollen
@@ -126,7 +126,7 @@ def mask_value(value: object) -> str:
 
 
 def truncate_value(value: object) -> str:
-    """Kuerzt Wert auf erste 3 Zeichen."""
+    """Kürzt Wert auf erste 3 Zeichen."""
     if not isinstance(value, str):
         value = str(value)
     if len(value) <= 3:
@@ -158,7 +158,7 @@ def filter_pii_from_dict(data: Dict[str, object], depth: int = 0) -> Dict[str, o
         # Maskiert
         elif any(f in key_lower for f in PIIFilterConfig.MASKED_FIELDS):
             filtered[key] = mask_value(value)
-        # Gekuerzt
+        # Gekürzt
         elif any(f in key_lower for f in PIIFilterConfig.TRUNCATED_FIELDS):
             filtered[key] = truncate_value(value)
         # Nested dict
@@ -195,7 +195,7 @@ def filter_pii_from_text(text: str) -> str:
 
 
 def truncate_body(body: str, max_length: int = None) -> str:
-    """Kuerzt Body auf maximale Laenge."""
+    """Kürzt Body auf maximale Länge."""
     max_len = max_length or PIIFilterConfig.MAX_BODY_LOG_LENGTH
     if len(body) <= max_len:
         return body
@@ -204,11 +204,11 @@ def truncate_body(body: str, max_length: int = None) -> str:
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
-    Middleware fuer umfassendes Request/Response Logging.
+    Middleware für umfassendes Request/Response Logging.
 
     Features:
     - Automatische PII-Filterung
-    - Performance-Metriken (Dauer, Body-Groesse)
+    - Performance-Metriken (Dauer, Body-Größe)
     - Request-ID-Tracking
     - Konfigurierbare Ausschluss-Pfade
     """
@@ -251,12 +251,12 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
         Args:
             request: Eingehender Request
-            call_next: Naechste Middleware/Handler
+            call_next: Nächste Middleware/Handler
 
         Returns:
             Response
         """
-        # Pfad pruefen
+        # Pfad prüfen
         path = request.url.path
         if any(path.startswith(excluded) for excluded in self.excluded_paths):
             return await call_next(request)
@@ -393,7 +393,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
 
 
 def get_request_logging_stats() -> Dict[str, object]:
-    """Gibt Statistiken ueber Request Logging zurueck."""
+    """Gibt Statistiken über Request Logging zurück."""
     return {
         "pii_redacted_fields": len(PIIFilterConfig.REDACTED_FIELDS),
         "pii_masked_fields": len(PIIFilterConfig.MASKED_FIELDS),

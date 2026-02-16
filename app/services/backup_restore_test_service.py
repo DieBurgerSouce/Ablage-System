@@ -2,9 +2,9 @@
 """
 Backup Restore Test Service.
 
-Automatisierte Validierung von Backup-Integritaet durch Wiederherstellungstests.
-Wird woechentlich ausgefuehrt um sicherzustellen, dass Backups tatsaechlich
-funktionsfaehig sind.
+Automatisierte Validierung von Backup-Integrität durch Wiederherstellungstests.
+Wird woechentlich ausgeführt um sicherzustellen, dass Backups tatsaechlich
+funktionsfähig sind.
 
 Phase 2.3 der Strategischen Roadmap.
 
@@ -176,16 +176,16 @@ class RestoreTestResult:
 
 
 class BackupRestoreTestService:
-    """Service fuer automatisierte Backup-Restore-Tests.
+    """Service für automatisierte Backup-Restore-Tests.
 
-    Stellt sicher, dass Backups tatsaechlich funktionsfaehig sind durch:
+    Stellt sicher, dass Backups tatsaechlich funktionsfähig sind durch:
     - Wiederherstellung in Temp-Datenbank
     - Schema-Validierung
     - Record-Count-Vergleich
     - Optionale Stichproben-Verifizierung
     """
 
-    # Kritische Tabellen die immer geprueft werden muessen
+    # Kritische Tabellen die immer geprüft werden müssen
     CRITICAL_TABLES = [
         "users",
         "companies",
@@ -199,7 +199,7 @@ class BackupRestoreTestService:
         "approvals",
     ]
 
-    # Tabellen die fuer Stichproben verwendet werden
+    # Tabellen die für Stichproben verwendet werden
     SAMPLE_TABLES = [
         "documents",
         "invoice_tracking",
@@ -222,13 +222,13 @@ class BackupRestoreTestService:
         cleanup_on_success: bool = True,
         cleanup_on_failure: bool = False,
     ) -> RestoreTestResult:
-        """Fuehre vollstaendigen Restore-Test durch.
+        """Führe vollständigen Restore-Test durch.
 
         Args:
             backup_path: Pfad zum Backup (oder neuestes verwenden)
             validation_level: Level der Validierung
-            cleanup_on_success: Temp-DB nach Erfolg loeschen
-            cleanup_on_failure: Temp-DB nach Fehler loeschen
+            cleanup_on_success: Temp-DB nach Erfolg löschen
+            cleanup_on_failure: Temp-DB nach Fehler löschen
 
         Returns:
             RestoreTestResult mit allen Details
@@ -283,7 +283,7 @@ class BackupRestoreTestService:
             # 4. Schema validieren
             await self._validate_schema(temp_db_name, result)
 
-            # 5. Record Counts vergleichen (wenn Standard oder hoeher)
+            # 5. Record Counts vergleichen (wenn Standard oder höher)
             if validation_level in (ValidationLevel.STANDARD, ValidationLevel.THOROUGH):
                 await self._compare_record_counts(temp_db_name, result)
 
@@ -314,7 +314,7 @@ class BackupRestoreTestService:
     # -------------------------------------------------------------------------
 
     async def _create_temp_database(self, result: RestoreTestResult) -> Optional[str]:
-        """Erstelle temporaere Datenbank fuer Restore-Test."""
+        """Erstelle temporaere Datenbank für Restore-Test."""
         temp_db_name = f"ablage_restore_test_{result.test_id.hex[:8]}"
 
         try:
@@ -367,7 +367,7 @@ class BackupRestoreTestService:
         temp_db_name: str,
         result: RestoreTestResult,
     ) -> None:
-        """Loesche temporaere Datenbank."""
+        """Lösche temporaere Datenbank."""
         try:
             drop_db_cmd = [
                 "psql",
@@ -413,7 +413,7 @@ class BackupRestoreTestService:
         if not backups:
             return None
 
-        # Sortiere nach Aenderungszeit (neuestes zuerst)
+        # Sortiere nach Änderungszeit (neuestes zuerst)
         backups.sort(key=lambda p: p.stat().st_mtime, reverse=True)
         return backups[0]
 
@@ -477,7 +477,7 @@ class BackupRestoreTestService:
             return True
 
         except asyncio.TimeoutError:
-            result.errors.append("Restore Timeout (10 Minuten ueberschritten)")
+            result.errors.append("Restore Timeout (10 Minuten überschritten)")
             result.status = RestoreTestStatus.FAILED
             return False
         except (subprocess.SubprocessError, IOError, OSError) as e:
@@ -506,7 +506,7 @@ class BackupRestoreTestService:
                 schema_result = SchemaValidationResult(table_name=table_name)
                 result.tables_checked += 1
 
-                # Pruefe ob Tabelle existiert
+                # Prüfe ob Tabelle existiert
                 if table_name in temp_schema:
                     schema_result.exists = True
                     schema_result.column_count = temp_schema[table_name]["columns"]
@@ -542,7 +542,7 @@ class BackupRestoreTestService:
         self,
         db_name: Optional[str] = None,
     ) -> Dict[str, Dict[str, Any]]:
-        """Hole Schema-Informationen fuer eine Datenbank."""
+        """Hole Schema-Informationen für eine Datenbank."""
         if db_name:
             db_url = settings.database_url.replace(
                 f"/{settings.postgres_db}", f"/{db_name}"
@@ -601,13 +601,13 @@ class BackupRestoreTestService:
                 count_result.restored_count = temp_count
                 count_result.difference = source_count - temp_count
 
-                # Match = exakt gleich oder +-1% (fuer Live-Datenbanken)
+                # Match = exakt gleich oder +-1% (für Live-Datenbanken)
                 if source_count == 0 and temp_count == 0:
                     count_result.match = True
                     count_result.percentage_match = 100.0
                 elif source_count > 0:
                     count_result.percentage_match = (temp_count / source_count) * 100
-                    # Erlaubt 1% Differenz da Backup und Source unterschiedlich alt sein koennen
+                    # Erlaubt 1% Differenz da Backup und Source unterschiedlich alt sein können
                     count_result.match = abs(count_result.difference) <= max(1, source_count * 0.01)
                 else:
                     count_result.match = False
@@ -630,7 +630,7 @@ class BackupRestoreTestService:
         self,
         db_name: Optional[str] = None,
     ) -> Dict[str, int]:
-        """Hole Record Counts fuer alle kritischen Tabellen."""
+        """Hole Record Counts für alle kritischen Tabellen."""
         if db_name:
             db_url = settings.database_url.replace(
                 f"/{settings.postgres_db}", f"/{db_name}"
@@ -688,7 +688,7 @@ class BackupRestoreTestService:
                             matches += 1
                         else:
                             sample_result.errors.append(
-                                f"Hash-Mismatch fuer ID {sample_id}"
+                                f"Hash-Mismatch für ID {sample_id}"
                             )
 
                 sample_result.hash_matches = matches
@@ -721,7 +721,7 @@ class BackupRestoreTestService:
 
         try:
             async with engine.connect() as conn:
-                # Hole zufaellige Stichproben
+                # Hole zufällige Stichproben
                 query = text(f"""
                     SELECT id::text, md5(row_to_json({table_name})::text) as hash
                     FROM {table_name}
@@ -749,7 +749,7 @@ class BackupRestoreTestService:
         if result.tables_failed > 0:
             return RestoreTestStatus.FAILED
 
-        # Bei Standard/Thorough auch Record Counts pruefen
+        # Bei Standard/Thorough auch Record Counts prüfen
         if result.validation_level in (ValidationLevel.STANDARD, ValidationLevel.THOROUGH):
             failed_counts = [
                 r for r in result.record_count_results if not r.match
@@ -787,7 +787,7 @@ class BackupRestoreTestService:
             error_count=len(result.errors),
         )
 
-        # Speichere Ergebnis in Redis fuer Historie
+        # Speichere Ergebnis in Redis für Historie
         await self.store_test_result(result)
 
         return result
@@ -800,7 +800,7 @@ class BackupRestoreTestService:
         self,
         result: RestoreTestResult,
     ) -> Dict[str, Any]:
-        """Generiere detaillierten Report fuer einen Test."""
+        """Generiere detaillierten Report für einen Test."""
         return {
             "test_id": str(result.test_id),
             "status": result.status.value,
@@ -909,7 +909,7 @@ class BackupRestoreTestService:
         Die Historie wird aus Redis gelesen (oder in Zukunft aus DB).
 
         Args:
-            days: Anzahl Tage zurueckblicken
+            days: Anzahl Tage zurückblicken
 
         Returns:
             Liste von Test-Ergebnis-Dicts
@@ -926,7 +926,7 @@ class BackupRestoreTestService:
             history: List[Dict[str, Any]] = []
             cutoff = utc_now() - timedelta(days=days)
 
-            # Pattern fuer Test-Ergebnisse
+            # Pattern für Test-Ergebnisse
             pattern = "backup_restore_test:*"
             keys = await redis_client.keys(pattern)
 
@@ -1031,7 +1031,7 @@ _service_instance: Optional[BackupRestoreTestService] = None
 
 
 def get_backup_restore_test_service() -> BackupRestoreTestService:
-    """Factory function fuer BackupRestoreTestService."""
+    """Factory function für BackupRestoreTestService."""
     global _service_instance
     if _service_instance is None:
         _service_instance = BackupRestoreTestService()

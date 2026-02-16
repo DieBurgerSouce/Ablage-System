@@ -2,9 +2,9 @@
 """
 Data Quality Celery Tasks.
 
-Periodische Aufgaben fuer Datenqualitaets-Tracking:
-- daily_quality_scan_task: Taeglicher Scan und History-Speicherung
-- quality_trend_cleanup_task: Alte History-Eintraege bereinigen
+Periodische Aufgaben für Datenqualitäts-Tracking:
+- daily_quality_scan_task: Täglicher Scan und History-Speicherung
+- quality_trend_cleanup_task: Alte History-Einträge bereinigen
 
 Feinpoliert und durchdacht - Automated Data Quality Monitoring.
 """
@@ -28,10 +28,10 @@ logger = structlog.get_logger(__name__)
 )
 def daily_quality_scan_task(self, company_id: str) -> dict:
     """
-    Fuehrt taeglichen Datenqualitaets-Scan durch und speichert Ergebnis.
+    Führt täglichen Datenqualitäts-Scan durch und speichert Ergebnis.
 
     Wird von Celery Beat getriggert. Erstellt einen DataQualityHistory-Eintrag
-    fuer die angegebene Company.
+    für die angegebene Company.
 
     Args:
         company_id: Company UUID als String
@@ -125,7 +125,7 @@ def daily_quality_scan_task(self, company_id: str) -> dict:
 )
 def scan_all_companies_task(self) -> dict:
     """
-    Startet Daily Quality Scan fuer alle aktiven Companies.
+    Startet Daily Quality Scan für alle aktiven Companies.
 
     Wird von Celery Beat getriggert. Dispatcht einzelne
     daily_quality_scan_task pro Company.

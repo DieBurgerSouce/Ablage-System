@@ -1,4 +1,4 @@
-"""Query Cache - Redis-basiertes Caching fuer NLQ-Queries."""
+"""Query Cache - Redis-basiertes Caching für NLQ-Queries."""
 
 import hashlib
 import json
@@ -62,7 +62,7 @@ class QueryCache:
         """
         # Normalize query (lowercase, strip whitespace)
         normalized = natural_query.lower().strip()
-        # SECURITY: company_id im Hash fuer Multi-Tenant Isolation
+        # SECURITY: company_id im Hash für Multi-Tenant Isolation
         key_data = f"{normalized}:{company_id}"
         return hashlib.sha256(key_data.encode()).hexdigest()
 
@@ -85,7 +85,7 @@ class QueryCache:
         """Get cached query result.
 
         SECURITY: Multi-Tenant Cache Isolation (CWE-639)
-        Cache keys enthalten company_id fuer sichere Filterung.
+        Cache keys enthalten company_id für sichere Filterung.
 
         Args:
             natural_query: Natural language query
@@ -229,7 +229,7 @@ class QueryCache:
         """Invalidate all cached queries for a SPECIFIC company.
 
         SECURITY: Multi-Tenant Cache Isolation (CWE-639)
-        Diese Methode loescht NUR Cache-Eintraege der angegebenen company_id,
+        Diese Methode löscht NUR Cache-Einträge der angegebenen company_id,
         NICHT aller Tenants. Dies verhindert Cross-Tenant Cache-Manipulation.
 
         Args:
@@ -240,12 +240,12 @@ class QueryCache:
         """
         try:
             # SECURITY: Pattern ist company_id-spezifisch (CWE-639)
-            # Verhindert versehentliches Loeschen von Cache anderer Tenants
+            # Verhindert versehentliches Löschen von Cache anderer Tenants
             pattern = f"{self._key_prefix}{company_id}:*"
             deleted_count = 0
 
             async for key in self.redis.scan_iter(match=pattern):
-                # SECURITY: Nur Keys dieser Company werden geloescht
+                # SECURITY: Nur Keys dieser Company werden gelöscht
                 await self.redis.delete(key)
                 deleted_count += 1
 
@@ -260,7 +260,7 @@ class QueryCache:
             logger.warning(
                 "cache_invalidate_company_failed",
                 company_id=company_id,
-                error_type=type(e).__name__,  # SECURITY: Kein str(e) - koennte PII enthalten
+                error_type=type(e).__name__,  # SECURITY: Kein str(e) - könnte PII enthalten
             )
             return 0
 

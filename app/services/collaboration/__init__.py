@@ -2,7 +2,7 @@
 """
 Collaboration Services Package.
 
-Services fuer Team-Zusammenarbeit an Dokumenten:
+Services für Team-Zusammenarbeit an Dokumenten:
 - CommentService: Dokument-Kommentare, @Mentions, Reaktionen
 - DocumentTaskService: Aufgaben-Zuweisung und -Verwaltung
 - DigestService: Email-Zusammenfassungen

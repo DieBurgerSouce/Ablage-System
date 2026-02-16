@@ -234,7 +234,7 @@ class EnhancedLineItemExtractor:
             r"^\s*(\d{1,3})\s+"  # Position
             r"(.{3,80}?)\s+"  # Description
             r"(\d+(?:[,\.]\d+)?)\s*"  # Quantity
-            r"(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stueck)?\s*"  # Unit
+            r"(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stück)?\s*"  # Unit
             r"(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?)\s*"  # Unit price
             r"(?:€|EUR)?\s*"
             r"(\d{1,3}(?:\.\d{3})*(?:,\d{2}))?",  # Total
@@ -248,7 +248,7 @@ class EnhancedLineItemExtractor:
             r"([A-Z0-9]{1,4}[-]?[A-Z0-9]{1,10}(?:[-\.][A-Z0-9]+)*)\s+"  # Article number
             r"(.+?)\s+"  # Description (greedy until quantity)
             r"(\d+)\s*"  # Quantity (whole number)
-            r"(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stueck)?\s+"  # Unit
+            r"(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stück)?\s+"  # Unit
             r"(\d{1,3}(?:\.\d{3})*(?:,\d{1,2}))\s*"  # Unit price
             r"(?:€|EUR)?\s*"
             r"(\d{1,3}(?:\.\d{3})*(?:,\d{2}))",  # Total (required)
@@ -268,7 +268,7 @@ class EnhancedLineItemExtractor:
             r"^\s*"
             r"([A-Za-zäöüÄÖÜß][A-Za-zäöüÄÖÜß0-9\s,.\-/]{5,60}?)\s+"  # Description
             r"(\d+(?:[,\.]\d+)?)\s*"  # Quantity
-            r"(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stueck)?\s*"  # Unit
+            r"(stk|st|stck|kg|l|m|h|std|psch|pieces?|pcs?|unit|stück)?\s*"  # Unit
             r"(\d{1,3}(?:\.\d{3})*(?:,\d{1,2})?)\s*"  # Unit price
             r"(?:€|EUR)?\s*"
             r"(\d{1,3}(?:\.\d{3})*(?:,\d{2}))",  # Total (required)
@@ -452,7 +452,7 @@ class EnhancedLineItemExtractor:
 
         # Pattern für Menge + Einheit (z.B. "384 Pieces", "10 Stk")
         qty_unit_pattern = re.compile(
-            r'^(\d+(?:[,\.]\d+)?)\s*(pieces?|pcs?|stk|st|stck|kg|l|m|h|std|psch|unit|stueck)$',
+            r'^(\d+(?:[,\.]\d+)?)\s*(pieces?|pcs?|stk|st|stck|kg|l|m|h|std|psch|unit|stück)$',
             re.IGNORECASE
         )
 
@@ -660,7 +660,7 @@ class EnhancedLineItemExtractor:
                 'stk': 'Stück',
                 'st': 'Stück',
                 'stck': 'Stück',
-                'stueck': 'Stück',
+                'stück': 'Stück',
             }
             translated_unit = None
             if units:

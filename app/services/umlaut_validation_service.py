@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Umlaut-Validierungs-Service fuer Ablage-System OCR.
+Umlaut-Validierungs-Service für Ablage-System OCR.
 
 Spezialisiert auf deutsche Umlaute (ae, oe, ue, ss) mit:
 - Automatische Erkennung von Umlaut-Fehlern
 - Woerterbuch-basierte Korrektur
-- Konsistenzpruefung zwischen Ground Truth und OCR-Output
+- Konsistenzprüfung zwischen Ground Truth und OCR-Output
 - CER/WER-Berechnung mit Umlaut-Fokus
 
-Ziel: 100% Umlaut-Genauigkeit fuer deutsche Dokumente.
+Ziel: 100% Umlaut-Genauigkeit für deutsche Dokumente.
 """
 
 from dataclasses import dataclass, field
@@ -40,7 +40,7 @@ class UmlautType(str, Enum):
 
 @dataclass
 class UmlautSuggestion:
-    """Vorschlag fuer eine Umlaut-Korrektur."""
+    """Vorschlag für eine Umlaut-Korrektur."""
     original: str
     suggested: str
     position: int
@@ -70,53 +70,53 @@ class UmlautValidationResult:
 # Bekannte deutsche Woerter mit Umlauten
 # Format: {falsche_schreibweise: korrekte_schreibweise}
 KNOWN_UMLAUT_WORDS: Dict[str, str] = {
-    # Haeufige Woerter mit ae
-    "fuer": "fuer",
-    "ueber": "ueber",
-    "waehrend": "waehrend",
-    "naechste": "naechste",
-    "naechsten": "naechsten",
-    "spaeter": "spaeter",
-    "aendern": "aendern",
-    "aenderung": "Aenderung",
-    "aenderungen": "Aenderungen",
-    "aehnlich": "aehnlich",
-    "aerger": "Aerger",
+    # Häufige Woerter mit ae
+    "für": "für",
+    "über": "über",
+    "während": "während",
+    "nächste": "nächste",
+    "nächsten": "nächsten",
+    "später": "später",
+    "ändern": "ändern",
+    "änderung": "Änderung",
+    "änderungen": "Änderungen",
+    "ähnlich": "ähnlich",
+    "ärger": "Ärger",
     "aerzte": "Aerzte",
     "aerztin": "Aerztin",
-    "laenger": "laenger",
-    "staerker": "staerker",
+    "länger": "länger",
+    "stärker": "stärker",
     "waerme": "Waerme",
-    "jaehrlich": "jaehrlich",
+    "jährlich": "jährlich",
     "maerz": "Maerz",
     "maennlich": "maennlich",
     "schaeden": "Schaeden",
     "kraefter": "Kraefte",
-    "erklaerung": "Erklaerung",
-    "geraet": "Geraet",
-    "geraete": "Geraete",
-    "faehig": "faehig",
-    "faehigkeit": "Faehigkeit",
+    "erklärung": "Erklärung",
+    "gerät": "Gerät",
+    "geräte": "Geräte",
+    "fähig": "fähig",
+    "fähigkeit": "Fähigkeit",
     "gefaehrlich": "gefaehrlich",
     "ungefaehr": "ungefaehr",
-    "saemtliche": "saemtliche",
-    "taetigkeit": "Taetigkeit",
-    "taeglich": "taeglich",
-    "zusaetzlich": "zusaetzlich",
+    "sämtliche": "sämtliche",
+    "tätigkeit": "Tätigkeit",
+    "täglich": "täglich",
+    "zusätzlich": "zusätzlich",
     "massnahme": "Massnahme",
     "massnahmen": "Massnahmen",
 
-    # Haeufige Woerter mit oe
-    "koennen": "koennen",
-    "koennte": "koennte",
+    # Häufige Woerter mit oe
+    "können": "können",
+    "könnte": "könnte",
     "moechten": "moechten",
     "moechte": "moechte",
-    "moeglich": "moeglich",
-    "moeglichkeit": "Moeglichkeit",
-    "moeglicherweise": "moeglicherweise",
-    "oeffnen": "oeffnen",
-    "oeffnung": "Oeffnung",
-    "oeffentlich": "oeffentlich",
+    "möglich": "möglich",
+    "möglichkeit": "Möglichkeit",
+    "möglicherweise": "möglicherweise",
+    "öffnen": "öffnen",
+    "öffnung": "Öffnung",
+    "öffentlich": "öffentlich",
     "oekonomisch": "oekonomisch",
     "hoechste": "hoechste",
     "hoechstens": "hoechstens",
@@ -124,81 +124,81 @@ KNOWN_UMLAUT_WORDS: Dict[str, str] = {
     "gehoeren": "gehoeren",
     "behoerde": "Behoerde",
     "behoerden": "Behoerden",
-    "groesse": "Groesse",
-    "groesste": "groesste",
-    "erhoehen": "erhoehen",
+    "größe": "Größe",
+    "größte": "größte",
+    "erhöhen": "erhöhen",
     "stoeren": "stoeren",
-    "stoerung": "Stoerung",
+    "störung": "Störung",
     "koerper": "Koerper",
     "woertlich": "woertlich",
     "foerdern": "foerdern",
     "foerderung": "Foerderung",
     "loesen": "loesen",
     "loesung": "Loesung",
-    "loeschen": "loeschen",
+    "löschen": "löschen",
     "noetigen": "noetigen",
     "noetig": "noetig",
 
-    # Haeufige Woerter mit ue
-    "muessen": "muessen",
-    "muesste": "muesste",
-    "wuenschen": "wuenschen",
+    # Häufige Woerter mit ue
+    "müssen": "müssen",
+    "müsste": "müsste",
+    "wünschen": "wünschen",
     "wuerden": "wuerden",
     "wuerde": "wuerde",
-    "zurueck": "zurueck",
-    "verfuegbar": "verfuegbar",
-    "verfuegen": "verfuegen",
-    "ueberall": "ueberall",
+    "zurück": "zurück",
+    "verfügbar": "verfügbar",
+    "verfügen": "verfügen",
+    "überall": "überall",
     "ueblich": "ueblich",
-    "ueblicherweise": "ueblicherweise",
-    "uebernehmen": "uebernehmen",
-    "uebernahme": "Uebernahme",
-    "ueberpruefen": "ueberpruefen",
-    "ueberpruefung": "Ueberpruefung",
-    "uebertragen": "uebertragen",
-    "uebertragung": "Uebertragung",
-    "ueberweisen": "ueberweisen",
-    "ueberweisung": "Ueberweisung",
-    "fuehren": "fuehren",
-    "fuehrung": "Fuehrung",
-    "ausfuehren": "ausfuehren",
-    "durchfuehren": "durchfuehren",
-    "einfuehren": "einfuehren",
+    "üblicherweise": "üblicherweise",
+    "übernehmen": "übernehmen",
+    "übernahme": "Übernahme",
+    "überprüfen": "überprüfen",
+    "überprüfung": "Überprüfung",
+    "übertragen": "übertragen",
+    "übertragung": "Übertragung",
+    "überweisen": "überweisen",
+    "überweisung": "Überweisung",
+    "führen": "führen",
+    "führung": "Führung",
+    "ausführen": "ausführen",
+    "durchführen": "durchführen",
+    "einführen": "einführen",
     "gruende": "Gruende",
     "gruendlich": "gruendlich",
-    "pruefung": "Pruefung",
-    "pruefen": "pruefen",
-    "gebuehr": "Gebuehr",
-    "gebuehren": "Gebuehren",
-    "guenstig": "guenstig",
-    "guenstiger": "guenstiger",
-    "gueltig": "gueltig",
-    "gueltigkeit": "Gueltigkeit",
-    "kuendigen": "kuendigen",
-    "kuendigung": "Kuendigung",
-    "kuerzlich": "kuerzlich",
-    "nuetzlich": "nuetzlich",
-    "stueck": "Stueck",
+    "prüfung": "Prüfung",
+    "prüfen": "prüfen",
+    "gebühr": "Gebühr",
+    "gebühren": "Gebühren",
+    "günstig": "günstig",
+    "günstiger": "günstiger",
+    "gültig": "gültig",
+    "gültigkeit": "Gültigkeit",
+    "kündigen": "kündigen",
+    "kündigung": "Kündigung",
+    "kürzlich": "kürzlich",
+    "nützlich": "nützlich",
+    "stück": "Stück",
     "stuetzen": "stuetzen",
-    "unterstuetzen": "unterstuetzen",
-    "unterstuetzung": "Unterstuetzung",
+    "unterstützen": "unterstützen",
+    "unterstützung": "Unterstützung",
 
     # Woerter mit ss (Eszett)
     "strasse": "Strasse",
     "strassen": "Strassen",
-    "schliessen": "schliessen",
-    "abschliessen": "abschliessen",
-    "anschliessend": "anschliessend",
-    "ausschliesslich": "ausschliesslich",
-    "bestaetigen": "bestaetigen",
-    "bestaetigung": "Bestaetigung",
-    "groesse": "Groesse",
-    "groessen": "Groessen",
+    "schließen": "schließen",
+    "abschließen": "abschließen",
+    "anschließend": "anschließend",
+    "ausschließlich": "ausschließlich",
+    "bestätigen": "bestätigen",
+    "bestätigung": "Bestätigung",
+    "größe": "Größe",
+    "größen": "Größen",
     "gruss": "Gruss",
     "gruesse": "Gruesse",
     "ermaessigung": "Ermaessigung",
     "massgeblich": "massgeblich",
-    "regelmassig": "regelmaessig",
+    "regelmassig": "regelmäßig",
     "spass": "Spass",
     "wissen": "wissen",  # bleibt ss
     "gewiss": "gewiss",
@@ -221,12 +221,12 @@ NON_UMLAUT_WORDS: Set[str] = {
 
 class UmlautValidationService:
     """
-    Service fuer die Validierung und Korrektur deutscher Umlaute.
+    Service für die Validierung und Korrektur deutscher Umlaute.
 
     Features:
     - Automatische Erkennung von Umlaut-Fehlern
-    - Woerterbuch-basierte Korrekturvorschlaege
-    - Konsistenzpruefung zwischen Texten
+    - Woerterbuch-basierte Korrekturvorschläge
+    - Konsistenzprüfung zwischen Texten
     - Statistische Auswertung der Umlaut-Genauigkeit
     """
 
@@ -247,17 +247,17 @@ class UmlautValidationService:
         Erkennt potentielle Umlaut-Fehler in einem Text.
 
         Args:
-            text: Zu pruefender Text
+            text: Zu prüfender Text
 
         Returns:
-            Liste von Korrekturvorschlaegen
+            Liste von Korrekturvorschlägen
         """
         suggestions: List[UmlautSuggestion] = []
         text_lower = text.lower()
 
         # Suche nach bekannten Woertern ohne Umlaute
         for wrong_spelling, correct_spelling in self.known_words.items():
-            # Pattern fuer Wortgrenzen
+            # Pattern für Wortgrenzen
             pattern = rf'\b{re.escape(wrong_spelling)}\b'
 
             for match in re.finditer(pattern, text_lower):
@@ -316,11 +316,11 @@ class UmlautValidationService:
         ocr_output: str,
     ) -> UmlautValidationResult:
         """
-        Prueft die Konsistenz der Umlaute zwischen Ground Truth und OCR-Output.
+        Prüft die Konsistenz der Umlaute zwischen Ground Truth und OCR-Output.
 
         Args:
             ground_truth: Referenztext (korrekt)
-            ocr_output: OCR-Ergebnis (zu pruefen)
+            ocr_output: OCR-Ergebnis (zu prüfen)
 
         Returns:
             Validierungsergebnis mit Genauigkeitsmetriken
@@ -345,11 +345,11 @@ class UmlautValidationService:
             total = len(gt_words | ocr_words)
             accuracy = correct / total if total > 0 else 1.0
 
-        # Fehlende und ueberzaehlige Umlaute
+        # Fehlende und überzaehlige Umlaute
         missing = list(set(gt_umlauts) - set(ocr_umlauts))
         extra = list(set(ocr_umlauts) - set(gt_umlauts))
 
-        # Korrekturvorschlaege
+        # Korrekturvorschläge
         suggestions = self.detect_potential_umlaut_errors(ocr_output)
 
         return UmlautValidationResult(
@@ -369,7 +369,7 @@ class UmlautValidationService:
         ocr_output: str,
     ) -> float:
         """
-        Berechnet die Character Error Rate nur fuer Umlaut-Zeichen.
+        Berechnet die Character Error Rate nur für Umlaut-Zeichen.
 
         Args:
             ground_truth: Referenztext
@@ -385,7 +385,7 @@ class UmlautValidationService:
         if not gt_umlauts:
             return 0.0 if not ocr_umlauts else 1.0
 
-        # Levenshtein fuer Umlaut-Sequenz
+        # Levenshtein für Umlaut-Sequenz
         gt_sequence = "".join([c for _, c in gt_umlauts])
         ocr_sequence = "".join([c for _, c in ocr_umlauts])
 
@@ -396,17 +396,17 @@ class UmlautValidationService:
 
     def validate_text(self, text: str) -> UmlautValidationResult:
         """
-        Validiert einen einzelnen Text auf Umlaut-Qualitaet.
+        Validiert einen einzelnen Text auf Umlaut-Qualität.
 
         Im Gegensatz zu validate_umlaut_consistency() erfordert diese
-        Methode keinen Ground-Truth-Vergleich, sondern prueft nur
+        Methode keinen Ground-Truth-Vergleich, sondern prüft nur
         den Text selbst auf potentielle Umlaut-Probleme.
 
         Args:
-            text: Zu pruefender Text
+            text: Zu prüfender Text
 
         Returns:
-            UmlautValidationResult mit Fehlerhinweisen und Korrekturvorschlaegen
+            UmlautValidationResult mit Fehlerhinweisen und Korrekturvorschlägen
         """
         # Erkenne potentielle Fehler
         suggestions = self.detect_potential_umlaut_errors(text)
@@ -415,10 +415,10 @@ class UmlautValidationService:
         umlauts_found = self._extract_umlauts(text)
         umlaut_count = len(umlauts_found)
 
-        # Berechne eine Schaetzung der Genauigkeit basierend auf Fehlern
-        # Wenn keine Vorschlaege, ist der Text wahrscheinlich korrekt
+        # Berechne eine Schätzung der Genauigkeit basierend auf Fehlern
+        # Wenn keine Vorschläge, ist der Text wahrscheinlich korrekt
         if umlaut_count == 0:
-            accuracy = 1.0  # Kein Umlaut = keine Fehler moeglich
+            accuracy = 1.0  # Kein Umlaut = keine Fehler möglich
         elif len(suggestions) == 0:
             accuracy = 1.0  # Umlaute vorhanden, keine Fehler erkannt
         else:
@@ -433,7 +433,7 @@ class UmlautValidationService:
             text=text,
             suggestions=suggestions,
             umlaut_accuracy=accuracy,
-            total_umlauts_expected=umlaut_count + len(suggestions),  # Schaetzung
+            total_umlauts_expected=umlaut_count + len(suggestions),  # Schätzung
             total_umlauts_found=umlaut_count,
             missing_umlauts=[s.suggested for s in suggestions],  # Was fehlt
             extra_umlauts=[],  # Ohne Ground Truth nicht bestimmbar
@@ -535,7 +535,7 @@ _service_instance: Optional[UmlautValidationService] = None
 
 
 def get_umlaut_validation_service() -> UmlautValidationService:
-    """Gibt die Singleton-Instanz des Services zurueck."""
+    """Gibt die Singleton-Instanz des Services zurück."""
     global _service_instance
     if _service_instance is None:
         _service_instance = UmlautValidationService()

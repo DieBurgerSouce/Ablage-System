@@ -1,4 +1,4 @@
-"""Event Store - Append-Only Event Storage fuer Event-Sourcing."""
+"""Event Store - Append-Only Event Storage für Event-Sourcing."""
 
 import structlog
 from dataclasses import dataclass
@@ -30,10 +30,10 @@ class StoredEvent:
 
 
 class EventStore:
-    """Append-Only Event Store fuer Domain Events.
+    """Append-Only Event Store für Domain Events.
 
-    Speichert alle Zustandsaenderungen als unveraenderliche Events.
-    Ermoeglicht Event-Replay und Audit-Trail.
+    Speichert alle Zustandsänderungen als unveränderliche Events.
+    Ermöglicht Event-Replay und Audit-Trail.
     """
 
     async def append(
@@ -56,11 +56,11 @@ class EventStore:
             aggregate_id: ID des Aggregats
             event_type: Typ des Events (z.B. "document_created")
             event_data: Event-Daten (JSONB)
-            company_id: Mandanten-ID fuer Multi-Tenant
+            company_id: Mandanten-ID für Multi-Tenant
             user_id: Benutzer der das Event ausgeloest hat
-            correlation_id: Korrelations-ID fuer Event-Ketten
+            correlation_id: Korrelations-ID für Event-Ketten
             causation_id: ID des Ursachen-Events
-            metadata: Zusaetzliche Metadaten
+            metadata: Zusätzliche Metadaten
             db: Datenbank-Session
 
         Returns:
@@ -78,13 +78,13 @@ class EventStore:
         allowed_types = {"document", "invoice", "payment", "entity", "alert", "workflow"}
         if aggregate_type not in allowed_types:
             logger.warning(
-                "ungueltige_aggregate_type",
+                "ungültige_aggregate_type",
                 aggregate_type=aggregate_type,
                 allowed=list(allowed_types)
             )
-            raise ValueError(f"Ungueltiger Aggregat-Typ: {aggregate_type}")
+            raise ValueError(f"Ungültiger Aggregat-Typ: {aggregate_type}")
 
-        # Naechste Sequenznummer ermitteln
+        # Nächste Sequenznummer ermitteln
         stmt = select(func.coalesce(func.max(DomainEvent.sequence_number), 0)).where(
             and_(
                 DomainEvent.aggregate_type == aggregate_type,
@@ -142,12 +142,12 @@ class EventStore:
         after_sequence: int = 0,
         db: AsyncSession = None,
     ) -> List[StoredEvent]:
-        """Holt Events fuer ein Aggregat nach einer Sequenznummer.
+        """Holt Events für ein Aggregat nach einer Sequenznummer.
 
         Args:
             aggregate_type: Typ des Aggregats
             aggregate_id: ID des Aggregats
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             after_sequence: Nur Events nach dieser Sequenznummer
             db: Datenbank-Session
 
@@ -200,12 +200,12 @@ class EventStore:
         company_id: UUID,
         db: AsyncSession = None,
     ) -> List[StoredEvent]:
-        """Holt alle Events fuer ein Aggregat.
+        """Holt alle Events für ein Aggregat.
 
         Args:
             aggregate_type: Typ des Aggregats
             aggregate_id: ID des Aggregats
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Datenbank-Session
 
         Returns:
@@ -227,11 +227,11 @@ class EventStore:
     ) -> List[StoredEvent]:
         """Holt alle Events mit einer bestimmten Korrelations-ID.
 
-        Nuetzlich fuer Tracing von Event-Ketten.
+        Nützlich für Tracing von Event-Ketten.
 
         Args:
             correlation_id: Korrelations-ID
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Datenbank-Session
 
         Returns:
@@ -281,12 +281,12 @@ class EventStore:
         company_id: UUID,
         db: AsyncSession = None,
     ) -> int:
-        """Zaehlt Events fuer ein Aggregat.
+        """Zaehlt Events für ein Aggregat.
 
         Args:
             aggregate_type: Typ des Aggregats
             aggregate_id: ID des Aggregats
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Datenbank-Session
 
         Returns:

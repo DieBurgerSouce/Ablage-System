@@ -2,7 +2,7 @@
 Bias Detector
 
 Erkennt Bias in KI-Entscheidungen (z.B. Risk Scoring).
-Prueft auf unfaire Behandlung nach Entity-Groesse, Region, Branche.
+Prüft auf unfaire Behandlung nach Entity-Größe, Region, Branche.
 
 Feinpoliert und durchdacht - Enterprise AI Fairness.
 """
@@ -31,11 +31,11 @@ logger = structlog.get_logger(__name__)
 class BiasDimension:
     """Bias in einer bestimmten Dimension."""
 
-    name: str  # Dimensions-Name (z.B. "Unternehmensgroesse")
+    name: str  # Dimensions-Name (z.B. "Unternehmensgröße")
     fairness_score: float  # 0-1 (1 = fair)
     affected_entities: int  # Anzahl betroffener Entities
     description: str  # German Beschreibung
-    details: Dict[str, float]  # Zusaetzliche Details
+    details: Dict[str, float]  # Zusätzliche Details
 
     def to_dict(self) -> Dict[str, any]:
         """Konvertiert zu Dictionary."""
@@ -50,7 +50,7 @@ class BiasDimension:
 
 @dataclass
 class BiasReport:
-    """Vollstaendiger Bias-Report."""
+    """Vollständiger Bias-Report."""
 
     overall_fairness: float  # 0-1 (1 = fair)
     dimensions: List[BiasDimension]
@@ -74,10 +74,10 @@ class BiasReport:
 
 class BiasDetector:
     """
-    Bias Detector fuer KI-Entscheidungen.
+    Bias Detector für KI-Entscheidungen.
 
-    Prueft Risk Scoring auf unfaire Behandlung nach:
-    - Entity-Groesse (klein vs. gross)
+    Prüft Risk Scoring auf unfaire Behandlung nach:
+    - Entity-Größe (klein vs. gross)
     - Branche
     - Region (falls vorhanden)
     """
@@ -121,15 +121,15 @@ class BiasDetector:
                 generated_at=datetime.now(timezone.utc),
             )
 
-        # 1. Pruefe Bias nach Entity-Typ
+        # 1. Prüfe Bias nach Entity-Typ
         type_bias = await self._check_type_bias(entities)
         dimensions.append(type_bias)
 
-        # 2. Pruefe Bias nach Risk-Score-Verteilung
+        # 2. Prüfe Bias nach Risk-Score-Verteilung
         distribution_bias = await self._check_distribution_bias(entities)
         dimensions.append(distribution_bias)
 
-        # 3. Pruefe Bias nach Beziehungsdauer
+        # 3. Prüfe Bias nach Beziehungsdauer
         relationship_bias = await self._check_relationship_bias(entities)
         dimensions.append(relationship_bias)
 
@@ -179,13 +179,13 @@ class BiasDetector:
         entities: List[BusinessEntity],
     ) -> BiasDimension:
         """
-        Prueft Bias nach Entity-Typ (customer vs. supplier).
+        Prüft Bias nach Entity-Typ (customer vs. supplier).
 
         Args:
             entities: Liste von Entities
 
         Returns:
-            BiasDimension fuer Entity-Typ
+            BiasDimension für Entity-Typ
         """
         # Gruppiere nach Type
         type_scores: Dict[str, List[float]] = defaultdict(list)
@@ -209,7 +209,7 @@ class BiasDetector:
             t: sum(scores) / len(scores) for t, scores in type_scores.items()
         }
 
-        # Pruefe auf signifikante Unterschiede
+        # Prüfe auf signifikante Unterschiede
         min_avg = min(type_averages.values())
         max_avg = max(type_averages.values())
         avg_difference = max_avg - min_avg
@@ -241,7 +241,7 @@ class BiasDetector:
         entities: List[BusinessEntity],
     ) -> BiasDimension:
         """
-        Prueft Bias in Risk-Score-Verteilung.
+        Prüft Bias in Risk-Score-Verteilung.
 
         Gesunde Verteilung sollte:
         - Normal verteilt sein (Glocke)
@@ -251,7 +251,7 @@ class BiasDetector:
             entities: Liste von Entities
 
         Returns:
-            BiasDimension fuer Verteilung
+            BiasDimension für Verteilung
         """
         risk_scores = [e.risk_score or 0 for e in entities]
 
@@ -311,7 +311,7 @@ class BiasDetector:
         entities: List[BusinessEntity],
     ) -> BiasDimension:
         """
-        Prueft Bias nach Beziehungsdauer.
+        Prüft Bias nach Beziehungsdauer.
 
         Neue Entities sollten nicht systematisch schlechter bewertet werden.
 
@@ -319,7 +319,7 @@ class BiasDetector:
             entities: Liste von Entities
 
         Returns:
-            BiasDimension fuer Beziehungsdauer
+            BiasDimension für Beziehungsdauer
         """
         # Gruppiere nach Alter (neu vs. etabliert)
         now = datetime.now(timezone.utc)

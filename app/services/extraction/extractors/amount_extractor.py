@@ -388,7 +388,7 @@ class SmartAmountExtractor:
     # REVERSE CHARGE HANDLING
     # =========================================================================
 
-    # Indikatoren fuer Reverse Charge / innergemeinschaftliche Lieferung
+    # Indikatoren für Reverse Charge / innergemeinschaftliche Lieferung
     REVERSE_CHARGE_INDICATORS: frozenset[str] = frozenset([
         "reverse charge",
         "steuerschuldnerschaft",
@@ -406,7 +406,7 @@ class SmartAmountExtractor:
         "tax exempt",
     ])
 
-    # Pattern fuer EU VAT-IDs (ausser DE)
+    # Pattern für EU VAT-IDs (ausser DE)
     _EU_VAT_ID_PATTERN = re.compile(
         r'\b(AT|BE|BG|CY|CZ|DK|EE|FI|FR|GR|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK)'
         r'[A-Z0-9]{8,12}\b',
@@ -523,8 +523,8 @@ class SmartAmountExtractor:
                 gross=result.gross_amount,
             )
 
-            # Bei Reverse Charge: Brutto = Netto BEHALTEN (nicht loeschen!)
-            # result.gross_amount bleibt unveraendert
+            # Bei Reverse Charge: Brutto = Netto BEHALTEN (nicht löschen!)
+            # result.gross_amount bleibt unverändert
 
             # Ensure VAT is set to 0
             if result.vat_amount is None:

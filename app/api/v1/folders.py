@@ -2,7 +2,7 @@
 """
 Folder Management API Endpoints.
 
-REST API fuer die geschaeftliche Ordnerverwaltung:
+REST API für die geschäftliche Ordnerverwaltung:
 - Hierarchische Ordnerstruktur (CRUD)
 - Drag-Drop Reorganisation
 - Dokument-Zuordnung
@@ -37,7 +37,7 @@ router = APIRouter(prefix="/folders", tags=["Ordner"])
 
 
 class FolderCreate(BaseModel):
-    """Schema fuer Ordner-Erstellung."""
+    """Schema für Ordner-Erstellung."""
     name: str = Field(..., min_length=1, max_length=255, description="Ordnername")
     parent_id: Optional[UUID] = Field(None, description="Eltern-Ordner (leer = Root)")
     description: Optional[str] = Field(None, max_length=2000)
@@ -48,7 +48,7 @@ class FolderCreate(BaseModel):
 
 
 class FolderUpdate(BaseModel):
-    """Schema fuer Ordner-Aktualisierung."""
+    """Schema für Ordner-Aktualisierung."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=2000)
     icon: Optional[str] = Field(None, max_length=50)
@@ -58,7 +58,7 @@ class FolderUpdate(BaseModel):
 
 
 class FolderResponse(BaseModel):
-    """Schema fuer Ordner-Antwort."""
+    """Schema für Ordner-Antwort."""
     id: UUID
     company_id: UUID
     parent_id: Optional[UUID] = None
@@ -81,23 +81,23 @@ class FolderResponse(BaseModel):
 
 
 class FolderMoveRequest(BaseModel):
-    """Schema fuer Ordner-Verschiebung."""
+    """Schema für Ordner-Verschiebung."""
     new_parent_id: Optional[UUID] = Field(None, description="Neuer Eltern-Ordner (leer = Root)")
 
 
 class DocumentAddRequest(BaseModel):
-    """Schema fuer Dokument-Zuordnung."""
+    """Schema für Dokument-Zuordnung."""
     document_id: UUID = Field(..., description="Dokument-ID")
     is_primary: bool = Field(True, description="Primaerer Ordner")
 
 
 class ReorderRequest(BaseModel):
-    """Schema fuer Ordner-Neuordnung."""
-    folder_order: List[UUID] = Field(..., description="Ordner-IDs in gewuenschter Reihenfolge")
+    """Schema für Ordner-Neuordnung."""
+    folder_order: List[UUID] = Field(..., description="Ordner-IDs in gewünschter Reihenfolge")
 
 
 class PermissionSetRequest(BaseModel):
-    """Schema fuer Berechtigungs-Vergabe."""
+    """Schema für Berechtigungs-Vergabe."""
     user_id: UUID = Field(..., description="User-ID")
     permission_level: str = Field(
         FolderPermissionLevel.READ.value,
@@ -107,7 +107,7 @@ class PermissionSetRequest(BaseModel):
 
 
 class PermissionResponse(BaseModel):
-    """Schema fuer Berechtigungs-Antwort."""
+    """Schema für Berechtigungs-Antwort."""
     id: UUID
     folder_id: UUID
     user_id: UUID
@@ -121,7 +121,7 @@ class PermissionResponse(BaseModel):
 
 
 class FolderStatsResponse(BaseModel):
-    """Schema fuer Ordner-Statistiken."""
+    """Schema für Ordner-Statistiken."""
     folder_id: str
     name: str
     direct_documents: int
@@ -140,7 +140,7 @@ class BreadcrumbItem(BaseModel):
 
 
 class DocumentMoveRequest(BaseModel):
-    """Schema fuer Dokument-Verschiebung zwischen Ordnern."""
+    """Schema für Dokument-Verschiebung zwischen Ordnern."""
     target_folder_id: UUID = Field(..., description="Ziel-Ordner-ID")
 
 
@@ -181,7 +181,7 @@ def _folder_to_response(folder) -> FolderResponse:
     response_model=FolderResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Ordner erstellen",
-    description="Erstellt einen neuen Ordner in der Geschaeftsablage",
+    description="Erstellt einen neuen Ordner in der Geschäftsablage",
 )
 async def create_folder(
     body: FolderCreate,
@@ -229,7 +229,7 @@ async def list_folders(
     parent_id: Optional[UUID] = Query(None, description="Eltern-Ordner filtern"),
     folder_type: Optional[str] = Query(None, description="Nach Typ filtern"),
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
+    per_page: int = Query(50, ge=1, le=200, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[FolderResponse]:
@@ -291,7 +291,7 @@ async def get_folder(
     "/{folder_id}",
     response_model=FolderResponse,
     summary="Ordner aktualisieren",
-    description="Ordner-Eigenschaften aendern",
+    description="Ordner-Eigenschaften ändern",
 )
 async def update_folder(
     folder_id: UUID,
@@ -330,15 +330,15 @@ async def update_folder(
 @router.delete(
     "/{folder_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Ordner loeschen",
-    description="Ordner und Unterordner weich loeschen",
+    summary="Ordner löschen",
+    description="Ordner und Unterordner weich löschen",
 )
 async def delete_folder(
     folder_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Ordner loeschen (Soft Delete)."""
+    """Ordner löschen (Soft Delete)."""
     service = get_folder_service()
     try:
         deleted = await service.soft_delete_folder(
@@ -364,7 +364,7 @@ async def delete_folder(
 @router.get(
     "/tree",
     summary="Ordnerbaum abrufen",
-    description="Vollstaendige Ordnerhierarchie als Baum",
+    description="Vollständige Ordnerhierarchie als Baum",
 )
 async def get_folder_tree(
     parent_id: Optional[UUID] = Query(None, description="Start-Ordner"),
@@ -565,7 +565,7 @@ async def move_document(
 @router.post(
     "/{folder_id}/reorder",
     summary="Unterordner sortieren",
-    description="Sortierreihenfolge der Unterordner aendern (Drag-Drop)",
+    description="Sortierreihenfolge der Unterordner ändern (Drag-Drop)",
 )
 async def reorder_folders(
     folder_id: UUID,
@@ -604,7 +604,7 @@ async def get_permissions(
     if not await service.check_folder_access(db, folder_id, current_user.id, "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Admins koennen Berechtigungen einsehen",
+            detail="Nur Admins können Berechtigungen einsehen",
         )
 
     perms = await service.get_folder_permissions(db, folder_id)
@@ -633,7 +633,7 @@ async def set_permission(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> Dict:
-    """Berechtigung fuer einen Ordner vergeben."""
+    """Berechtigung für einen Ordner vergeben."""
     service = get_folder_service()
     try:
         perm = await service.set_folder_permission(

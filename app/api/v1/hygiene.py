@@ -1,5 +1,5 @@
 """
-API Endpoints fuer Stammdaten-Hygiene.
+API Endpoints für Stammdaten-Hygiene.
 
 Erkennung und Korrektur von veralteten Stammdaten.
 """
@@ -33,7 +33,7 @@ router = APIRouter(prefix="/hygiene", tags=["stammdaten-hygiene"])
 
 
 class HygieneIssueResponse(BaseModel):
-    """Response fuer ein Hygiene-Issue."""
+    """Response für ein Hygiene-Issue."""
 
     id: UUID
     entity_id: UUID
@@ -58,7 +58,7 @@ class HygieneIssueResponse(BaseModel):
 
 
 class HygieneReportResponse(BaseModel):
-    """Response fuer einen Hygiene-Report."""
+    """Response für einen Hygiene-Report."""
 
     total_entities_checked: int
     issues_found: int
@@ -74,7 +74,7 @@ class HygieneReportResponse(BaseModel):
 
 
 class ApplyCorrectionRequest(BaseModel):
-    """Request fuer eine Korrektur."""
+    """Request für eine Korrektur."""
 
     entity_id: UUID
     field_name: str
@@ -82,7 +82,7 @@ class ApplyCorrectionRequest(BaseModel):
 
 
 class ApplyCorrectionResponse(BaseModel):
-    """Response fuer eine Korrektur."""
+    """Response für eine Korrektur."""
 
     success: bool
     message: str
@@ -98,7 +98,7 @@ class DeactivateEntityRequest(BaseModel):
 
 
 class LexwareCompareRequest(BaseModel):
-    """Request fuer Lexware-Delta-Vergleich."""
+    """Request für Lexware-Delta-Vergleich."""
 
     company: str = Field(..., pattern="^(folie|messer)$")
     entity_type: str = Field(default="customer", pattern="^(customer|supplier)$")
@@ -106,7 +106,7 @@ class LexwareCompareRequest(BaseModel):
 
 
 class LexwareDeltaResponse(BaseModel):
-    """Response fuer Lexware-Delta."""
+    """Response für Lexware-Delta."""
 
     issues_found: int
     issues: List[HygieneIssueResponse]
@@ -127,9 +127,9 @@ async def run_hygiene_scan(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Fuehrt einen vollstaendigen Hygiene-Scan durch.
+    Führt einen vollständigen Hygiene-Scan durch.
 
-    Prueft:
+    Prüft:
     - Inaktive Kunden/Lieferanten
     - Fehlende Pflichtdaten
     - Potentielle Duplikate
@@ -138,7 +138,7 @@ async def run_hygiene_scan(
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Hygiene-Scans durchfuehren"
+            detail="Nur Administratoren können Hygiene-Scans durchführen"
         )
 
     service = get_master_data_hygiene_service(db)
@@ -155,7 +155,7 @@ async def run_hygiene_scan(
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Entity-Typ: {e}"
+                detail=f"Ungültiger Entity-Typ: {e}"
             )
 
     report = await service.run_full_scan(entity_types=types_filter)
@@ -200,7 +200,7 @@ async def compare_lexware_data(
     """
     Vergleicht Lexware-Import mit bestehenden Daten.
 
-    Erkennt Aenderungen in:
+    Erkennt Änderungen in:
     - Adressen
     - Bankdaten (IBAN, BIC)
     - Kontaktdaten
@@ -209,7 +209,7 @@ async def compare_lexware_data(
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Lexware-Vergleiche durchfuehren"
+            detail="Nur Administratoren können Lexware-Vergleiche durchführen"
         )
 
     service = get_master_data_hygiene_service(db)
@@ -258,11 +258,11 @@ async def extract_updates_from_document(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Extrahiert moegliche Stammdaten-Updates aus einem Dokument.
+    Extrahiert mögliche Stammdaten-Updates aus einem Dokument.
 
-    Prueft OCR-Text auf:
+    Prüft OCR-Text auf:
     - Neue IBANs
-    - Geaenderte Adressen
+    - Geänderte Adressen
     - Neue E-Mail-Adressen
     """
     from app.db.models import Document
@@ -315,14 +315,14 @@ async def apply_correction(
     """
     Wendet eine Korrektur an.
 
-    Benoetigt Admin-Berechtigung fuer kritische Felder.
+    Benötigt Admin-Berechtigung für kritische Felder.
     """
-    # Kritische Felder nur fuer Admins
+    # Kritische Felder nur für Admins
     critical_fields = ["iban", "vat_id"]
     if request.field_name in critical_fields and not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"Feld '{request.field_name}' kann nur von Administratoren geaendert werden"
+            detail=f"Feld '{request.field_name}' kann nur von Administratoren geändert werden"
         )
 
     service = get_master_data_hygiene_service(db)
@@ -358,13 +358,13 @@ async def deactivate_entity(
     """
     Deaktiviert eine Entity.
 
-    Markiert die Entity als inaktiv statt sie zu loeschen.
+    Markiert die Entity als inaktiv statt sie zu löschen.
     """
     # Admin-Check
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Entities deaktivieren"
+            detail="Nur Administratoren können Entities deaktivieren"
         )
 
     service = get_master_data_hygiene_service(db)
@@ -392,27 +392,27 @@ async def deactivate_entity(
 async def get_issue_types(
     current_user: User = Depends(get_current_user),
 ):
-    """Gibt alle verfuegbaren Issue-Typen zurueck."""
+    """Gibt alle verfügbaren Issue-Typen zurück."""
     return {
         "issue_types": [
             {
                 "value": issue_type.value,
                 "label": {
-                    HygieneIssueType.ADDRESS_CHANGED: "Adresse geaendert",
+                    HygieneIssueType.ADDRESS_CHANGED: "Adresse geändert",
                     HygieneIssueType.ADDRESS_MISSING: "Adresse fehlt",
-                    HygieneIssueType.ADDRESS_INCOMPLETE: "Adresse unvollstaendig",
-                    HygieneIssueType.IBAN_CHANGED: "IBAN geaendert",
+                    HygieneIssueType.ADDRESS_INCOMPLETE: "Adresse unvollständig",
+                    HygieneIssueType.IBAN_CHANGED: "IBAN geändert",
                     HygieneIssueType.IBAN_MISSING: "IBAN fehlt",
-                    HygieneIssueType.IBAN_INVALID: "IBAN ungueltig",
-                    HygieneIssueType.EMAIL_CHANGED: "E-Mail geaendert",
+                    HygieneIssueType.IBAN_INVALID: "IBAN ungültig",
+                    HygieneIssueType.EMAIL_CHANGED: "E-Mail geändert",
                     HygieneIssueType.EMAIL_MISSING: "E-Mail fehlt",
-                    HygieneIssueType.PHONE_CHANGED: "Telefon geaendert",
-                    HygieneIssueType.VAT_ID_CHANGED: "USt-IdNr geaendert",
+                    HygieneIssueType.PHONE_CHANGED: "Telefon geändert",
+                    HygieneIssueType.VAT_ID_CHANGED: "USt-IdNr geändert",
                     HygieneIssueType.VAT_ID_MISSING: "USt-IdNr fehlt",
                     HygieneIssueType.INACTIVE_CUSTOMER: "Inaktiver Kunde",
                     HygieneIssueType.INACTIVE_SUPPLIER: "Inaktiver Lieferant",
-                    HygieneIssueType.POTENTIAL_DUPLICATE: "Moegliches Duplikat",
-                    HygieneIssueType.LEXWARE_DELTA: "Lexware-Aenderung",
+                    HygieneIssueType.POTENTIAL_DUPLICATE: "Mögliches Duplikat",
+                    HygieneIssueType.LEXWARE_DELTA: "Lexware-Änderung",
                 }.get(issue_type, issue_type.value),
             }
             for issue_type in HygieneIssueType
@@ -424,7 +424,7 @@ async def get_issue_types(
 async def get_severity_levels(
     current_user: User = Depends(get_current_user),
 ):
-    """Gibt alle verfuegbaren Schweregrade zurueck."""
+    """Gibt alle verfügbaren Schweregrade zurück."""
     return {
         "severity_levels": [
             {
@@ -449,5 +449,5 @@ async def get_severity_levels(
     }
 
 
-# Import fuer select
+# Import für select
 from sqlalchemy import select

@@ -5,7 +5,7 @@ Enhanced FinTS Service - Erweiterte Banking-Integration.
 Vision 2026 Q4: Vollautomatische Banking-Anbindung.
 
 Erweiterungen:
-- Automatischer taeglicher Kontoauszug-Abruf
+- Automatischer täglicher Kontoauszug-Abruf
 - Multi-Bank-Support mit vereinheitlichter Schnittstelle
 - Push-Benachrichtigung bei Zahlungseingang
 - Auto-Reconciliation mit offenen Rechnungen
@@ -90,9 +90,9 @@ class NotificationChannel(str, Enum):
 
 class SyncSchedule(str, Enum):
     """Sync-Zeitplan."""
-    REALTIME = "realtime"     # Sofort (wenn moeglich)
+    REALTIME = "realtime"     # Sofort (wenn möglich)
     HOURLY = "hourly"         # Stuendlich
-    DAILY = "daily"           # Taeglich
+    DAILY = "daily"           # Täglich
     MANUAL = "manual"         # Nur manuell
 
 
@@ -110,7 +110,7 @@ class ConnectionHealth(str, Enum):
 
 
 class TransactionData(TypedDict):
-    """Typisierte Transaktionsdaten fuer Type Safety."""
+    """Typisierte Transaktionsdaten für Type Safety."""
     id: str
     booking_date: date
     amount: float
@@ -121,7 +121,7 @@ class TransactionData(TypedDict):
 
 
 class BankConnectionDict(TypedDict):
-    """Typisiertes Dictionary fuer BankConnection.to_dict()."""
+    """Typisiertes Dictionary für BankConnection.to_dict()."""
     id: str
     company_id: str
     bank_name: str
@@ -136,7 +136,7 @@ class BankConnectionDict(TypedDict):
 
 
 class SyncResultDict(TypedDict):
-    """Typisiertes Dictionary fuer SyncResult.to_dict()."""
+    """Typisiertes Dictionary für SyncResult.to_dict()."""
     connection_id: str
     account_iban: str
     success: bool
@@ -270,7 +270,7 @@ class SyncResult:
 
 @dataclass
 class ReconciliationConfig:
-    """Konfiguration fuer Auto-Reconciliation."""
+    """Konfiguration für Auto-Reconciliation."""
     # Matching-Strategien (in Reihenfolge)
     strategies: List[ReconciliationType] = field(default_factory=lambda: [
         ReconciliationType.EXACT_MATCH,
@@ -287,7 +287,7 @@ class ReconciliationConfig:
     # Toleranzen
     amount_tolerance: Decimal = Decimal("0.01")  # Cent-Rundung
     skonto_tolerance: float = 0.05  # 5% Skonto-Toleranz
-    date_tolerance_days: int = 7    # Tage Toleranz fuer Datum
+    date_tolerance_days: int = 7    # Tage Toleranz für Datum
 
     # Benachrichtigungen
     notify_on_reconciliation: bool = True
@@ -304,7 +304,7 @@ class EnhancedFinTSService:
     Erweiterter FinTS Service.
 
     Features:
-    - Automatischer taeglicher Sync
+    - Automatischer täglicher Sync
     - Multi-Bank-Support
     - Auto-Reconciliation
     - Payment-Notifications
@@ -368,7 +368,7 @@ class EnhancedFinTSService:
             sync_schedule=sync_schedule,
         )
 
-        # Naechsten Sync berechnen
+        # Nächsten Sync berechnen
         connection.next_sync_at = self._calculate_next_sync(sync_schedule)
 
         self._connections[connection.id] = connection
@@ -390,21 +390,21 @@ class EnhancedFinTSService:
         company_id: Optional[UUID] = None,
     ) -> bool:
         """
-        Loescht eine Bank-Verbindung.
+        Löscht eine Bank-Verbindung.
 
         SECURITY: Validiert Company-Ownership um Cross-Company Access zu verhindern.
 
         Args:
-            db: Datenbank-Session (fuer zukuenftige DB-Persistenz)
-            connection_id: ID der zu loeschenden Verbindung
-            user_id: ID des ausfuehrenden Users (fuer Audit)
-            company_id: Company-ID des Users (PFLICHT fuer Security-Validierung)
+            db: Datenbank-Session (für zukünftige DB-Persistenz)
+            connection_id: ID der zu löschenden Verbindung
+            user_id: ID des ausführenden Users (für Audit)
+            company_id: Company-ID des Users (PFLICHT für Security-Validierung)
 
         Returns:
-            True wenn erfolgreich geloescht, False wenn nicht gefunden
+            True wenn erfolgreich gelöscht, False wenn nicht gefunden
 
         Raises:
-            PermissionError: Wenn User keine Berechtigung fuer diese Verbindung hat
+            PermissionError: Wenn User keine Berechtigung für diese Verbindung hat
         """
         connection = self._connections.get(connection_id)
         if not connection:
@@ -420,7 +420,7 @@ class EnhancedFinTSService:
                 connection_company_id=str(connection.company_id),
             )
             raise PermissionError(
-                f"Keine Berechtigung fuer Verbindung {connection_id}. "
+                f"Keine Berechtigung für Verbindung {connection_id}. "
                 f"Verbindung gehoert zu anderer Firma."
             )
 
@@ -447,7 +447,7 @@ class EnhancedFinTSService:
 
         Args:
             connection_id: ID der Verbindung
-            company_id: Company-ID fuer Ownership-Check (optional aber empfohlen)
+            company_id: Company-ID für Ownership-Check (optional aber empfohlen)
 
         Returns:
             BankConnection oder None wenn nicht gefunden
@@ -468,7 +468,7 @@ class EnhancedFinTSService:
                 connection_company_id=str(connection.company_id),
             )
             raise PermissionError(
-                f"Keine Berechtigung fuer Verbindung {connection_id}. "
+                f"Keine Berechtigung für Verbindung {connection_id}. "
                 f"Verbindung gehoert zu anderer Firma."
             )
 
@@ -492,9 +492,9 @@ class EnhancedFinTSService:
         Args:
             db: Datenbank-Session
             connection_id: ID der Verbindung
-            user_id: ID des ausfuehrenden Users (fuer Audit)
-            company_id: Company-ID des Users (PFLICHT fuer Security-Validierung)
-            is_primary: Ob Primaer-Verbindung
+            user_id: ID des ausführenden Users (für Audit)
+            company_id: Company-ID des Users (PFLICHT für Security-Validierung)
+            is_primary: Ob Primär-Verbindung
             auto_sync_enabled: Auto-Sync aktiviert
             sync_interval_hours: Sync-Intervall in Stunden
 
@@ -514,7 +514,7 @@ class EnhancedFinTSService:
                 user_company_id=str(company_id),
                 connection_company_id=str(connection.company_id),
             )
-            return None, "Keine Berechtigung fuer diese Verbindung."
+            return None, "Keine Berechtigung für diese Verbindung."
 
         # Felder aktualisieren
         if is_primary is not None:
@@ -538,10 +538,10 @@ class EnhancedFinTSService:
         force: bool = False,
     ) -> List[SyncResult]:
         """
-        Synchronisiert alle faelligen Bank-Verbindungen.
+        Synchronisiert alle fälligen Bank-Verbindungen.
 
         Args:
-            force: Erzwingt Sync auch wenn nicht faellig
+            force: Erzwingt Sync auch wenn nicht fällig
 
         Returns:
             Liste von Sync-Ergebnissen
@@ -550,11 +550,11 @@ class EnhancedFinTSService:
         now = utc_now()
 
         for connection in self._connections.values():
-            # Pruefen ob Sync faellig
+            # Prüfen ob Sync fällig
             if not force and connection.next_sync_at and connection.next_sync_at > now:
                 continue
 
-            # Pruefen ob Verbindung gesund
+            # Prüfen ob Verbindung gesund
             if connection.health_status == ConnectionHealth.UNHEALTHY:
                 logger.warning(
                     "skipping_unhealthy_connection",
@@ -566,7 +566,7 @@ class EnhancedFinTSService:
                 result = await self._sync_connection(connection)
                 results.append(result)
 
-                # Naechsten Sync planen
+                # Nächsten Sync planen
                 connection.next_sync_at = self._calculate_next_sync(connection.sync_schedule)
 
             except Exception as e:
@@ -601,7 +601,7 @@ class EnhancedFinTSService:
 
         Args:
             connection_id: Connection-ID
-            company_id: Company-ID fuer Ownership-Check (EMPFOHLEN)
+            company_id: Company-ID für Ownership-Check (EMPFOHLEN)
             date_from: Start-Datum
             date_to: End-Datum
 
@@ -629,7 +629,7 @@ class EnhancedFinTSService:
                 connection_id=connection_id,
                 account_iban="",
                 success=False,
-                error="Keine Berechtigung fuer diese Verbindung",
+                error="Keine Berechtigung für diese Verbindung",
             )
 
         return await self._sync_connection(connection, date_from, date_to)
@@ -836,7 +836,7 @@ class EnhancedFinTSService:
             if sender_iban and amount > 0:
                 try:
                     async with async_session_maker() as db:
-                        # Suche offene Rechnungen fuer Entity mit passender IBAN
+                        # Suche offene Rechnungen für Entity mit passender IBAN
                         result = await db.execute(
                             select(InvoiceTracking)
                             .join(Document, InvoiceTracking.document_id == Document.id)
@@ -846,7 +846,7 @@ class EnhancedFinTSService:
                                     BusinessEntity.iban == sender_iban,
                                     InvoiceTracking.company_id == company_id,
                                     InvoiceTracking.status.in_([InvoiceStatus.OPEN.value, InvoiceStatus.OVERDUE.value]),
-                                    # Toleranz: +/- 0.5% fuer Rundungsdifferenzen
+                                    # Toleranz: +/- 0.5% für Rundungsdifferenzen
                                     func.abs(InvoiceTracking.amount - float(amount)) < float(amount * Decimal("0.005") + Decimal("0.01")),
                                     InvoiceTracking.deleted_at.is_(None),
                                 )
@@ -866,7 +866,7 @@ class EnhancedFinTSService:
                                 matched_amount=amount,
                                 expected_amount=expected_amount,
                                 difference=amount - expected_amount,
-                                explanation=f"IBAN {sender_iban} und Betrag {amount} stimmen mit Rechnung {invoice.invoice_number or invoice.id} ueberein",
+                                explanation=f"IBAN {sender_iban} und Betrag {amount} stimmen mit Rechnung {invoice.invoice_number or invoice.id} überein",
                             )
                 except Exception as e:
                     logger.warning(
@@ -937,7 +937,7 @@ class EnhancedFinTSService:
             if sender_iban and amount > 0:
                 try:
                     async with async_session_maker() as db:
-                        # Suche Rechnungen mit aktivem Skonto fuer passende IBAN
+                        # Suche Rechnungen mit aktivem Skonto für passende IBAN
                         result = await db.execute(
                             select(InvoiceTracking)
                             .join(Document, InvoiceTracking.document_id == Document.id)
@@ -953,7 +953,7 @@ class EnhancedFinTSService:
                                     InvoiceTracking.deleted_at.is_(None),
                                 )
                             )
-                            .order_by(InvoiceTracking.skonto_deadline.asc())  # Frueheste Frist zuerst
+                            .order_by(InvoiceTracking.skonto_deadline.asc())  # Früheste Frist zuerst
                         )
                         invoices = result.scalars().all()
 
@@ -961,7 +961,7 @@ class EnhancedFinTSService:
                             # Berechne erwarteten Skonto-Betrag
                             expected_skonto_amount = Decimal(str(invoice.amount)) - Decimal(str(invoice.skonto_amount or 0))
 
-                            # Toleranz: +/- 0.5% fuer Rundungsdifferenzen
+                            # Toleranz: +/- 0.5% für Rundungsdifferenzen
                             tolerance = expected_skonto_amount * Decimal("0.005") + Decimal("0.01")
 
                             if abs(amount - expected_skonto_amount) <= tolerance:
@@ -991,7 +991,7 @@ class EnhancedFinTSService:
         company_id: UUID,
     ) -> bool:
         """
-        Sendet Benachrichtigung ueber Zahlungseingang.
+        Sendet Benachrichtigung über Zahlungseingang.
 
         Args:
             payment: Zahlungsinformation
@@ -1000,7 +1000,7 @@ class EnhancedFinTSService:
         Returns:
             True wenn gesendet
         """
-        # Pruefe ob Benachrichtigung gewuenscht
+        # Prüfe ob Benachrichtigung gewünscht
         if not self.reconciliation_config.notify_on_reconciliation:
             return False
 
@@ -1016,7 +1016,7 @@ class EnhancedFinTSService:
         sent = False
         for channel, handler in self._notification_handlers.items():
             try:
-                # FIX: Async handlers muessen awaited werden
+                # FIX: Async handlers müssen awaited werden
                 if asyncio.iscoroutinefunction(handler):
                     await handler(payment, company_id)
                 else:
@@ -1040,7 +1040,7 @@ class EnhancedFinTSService:
         connection_id: UUID,
     ) -> ConnectionHealth:
         """
-        Prueft die Gesundheit einer Bank-Verbindung.
+        Prüft die Gesundheit einer Bank-Verbindung.
 
         Args:
             connection_id: Connection-ID
@@ -1052,7 +1052,7 @@ class EnhancedFinTSService:
         if not connection:
             return ConnectionHealth.UNHEALTHY
 
-        # Pruefe letzte Sync-Zeit
+        # Prüfe letzte Sync-Zeit
         if connection.last_sync_at:
             hours_since_sync = (utc_now() - connection.last_sync_at).total_seconds() / 3600
 
@@ -1061,13 +1061,13 @@ class EnhancedFinTSService:
             elif connection.sync_schedule == SyncSchedule.DAILY and hours_since_sync > 48:
                 connection.health_status = ConnectionHealth.DEGRADED
 
-        # Pruefe Fehler-Count
+        # Prüfe Fehler-Count
         if connection.error_count >= 3:
             connection.health_status = ConnectionHealth.UNHEALTHY
         elif connection.error_count >= 1:
             connection.health_status = ConnectionHealth.DEGRADED
 
-        # Pruefe Credential-Ablauf
+        # Prüfe Credential-Ablauf
         if connection.credentials_valid_until:
             if connection.credentials_valid_until < utc_now():
                 connection.health_status = ConnectionHealth.EXPIRED
@@ -1083,7 +1083,7 @@ class EnhancedFinTSService:
 
     async def check_all_connections_health(self) -> Dict[UUID, ConnectionHealth]:
         """
-        Prueft Gesundheit aller Verbindungen.
+        Prüft Gesundheit aller Verbindungen.
 
         Returns:
             Dict von Connection-ID -> Health
@@ -1118,7 +1118,7 @@ class EnhancedFinTSService:
         return connections
 
     def _calculate_next_sync(self, schedule: SyncSchedule) -> datetime:
-        """Berechnet naechsten Sync-Zeitpunkt."""
+        """Berechnet nächsten Sync-Zeitpunkt."""
         now = utc_now()
 
         if schedule == SyncSchedule.REALTIME:
@@ -1126,7 +1126,7 @@ class EnhancedFinTSService:
         elif schedule == SyncSchedule.HOURLY:
             return now + timedelta(hours=1)
         elif schedule == SyncSchedule.DAILY:
-            # Naechster Tag um 06:00 UTC
+            # Nächster Tag um 06:00 UTC
             next_day = (now + timedelta(days=1)).replace(
                 hour=6, minute=0, second=0, microsecond=0
             )
@@ -1141,11 +1141,11 @@ class EnhancedFinTSService:
         company_id: UUID,
     ) -> bool:
         """
-        Prueft ob Transaktion bereits in der Datenbank existiert.
+        Prüft ob Transaktion bereits in der Datenbank existiert.
 
         Args:
             transaction: Transaktionsdaten
-            company_id: Company-ID fuer Multi-Tenant-Isolation
+            company_id: Company-ID für Multi-Tenant-Isolation
 
         Returns:
             True wenn Transaktion neu ist (noch nicht in DB)
@@ -1191,9 +1191,9 @@ class EnhancedFinTSService:
         date_to: date,
     ) -> List[TransactionData]:
         """
-        Generiert Mock-Transaktionen fuer Tests.
+        Generiert Mock-Transaktionen für Tests.
 
-        HINWEIS: Verwendet deterministisches Seeding fuer Reproduzierbarkeit.
+        HINWEIS: Verwendet deterministisches Seeding für Reproduzierbarkeit.
         In Produktion durch echte FinTS-API-Aufrufe ersetzen.
         """
         import hashlib
@@ -1261,7 +1261,7 @@ def get_enhanced_fints_service(
     reconciliation_config: Optional[ReconciliationConfig] = None,
 ) -> EnhancedFinTSService:
     """
-    Factory-Funktion fuer EnhancedFinTSService.
+    Factory-Funktion für EnhancedFinTSService.
 
     Args:
         reconciliation_config: Optional Konfiguration

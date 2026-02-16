@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-QES/eIDAS Signatur-Models fuer Ablage-System.
+QES/eIDAS Signatur-Models für Ablage-System.
 
 Qualifizierte Elektronische Signaturen (QES) nach eIDAS-Verordnung:
-- SignatureRequest: Signaturanfrage fuer ein Dokument
+- SignatureRequest: Signaturanfrage für ein Dokument
 - SignatureEntry: Einzelne Signatur eines Unterzeichners
-- SignatureAuditLog: Audit-Trail fuer alle Signaturereignisse
+- SignatureAuditLog: Audit-Trail für alle Signaturereignisse
 
-Unterstuetzte Provider:
+Unterstützte Provider:
 - D-Trust (qualifizierte Signaturen)
 - sign-me (Fernsignaturen)
 - Swisscom AIS (CH-Provider)
@@ -74,7 +74,7 @@ class SignatureProvider(str, Enum):
 
 
 class SignatureRequest(Base):
-    """Signaturanfrage fuer ein Dokument.
+    """Signaturanfrage für ein Dokument.
 
     Repraesentiert eine Anfrage zur Signierung eines Dokuments
     durch einen oder mehrere Unterzeichner.
@@ -166,7 +166,7 @@ class SignatureEntry(Base):
     """Einzelne Signatur eines Unterzeichners.
 
     Repraesentiert die Signatur oder den Signaturauftrag
-    fuer einen individuellen Unterzeichner.
+    für einen individuellen Unterzeichner.
     """
     __tablename__ = "signature_entries"
 
@@ -231,9 +231,9 @@ class SignatureEntry(Base):
 
 
 class SignatureAuditLog(Base):
-    """Audit-Trail fuer alle Signaturereignisse.
+    """Audit-Trail für alle Signaturereignisse.
 
-    Unveraenderliches Protokoll aller Aktionen im Zusammenhang
+    Unveränderliches Protokoll aller Aktionen im Zusammenhang
     mit Signaturanfragen (eIDAS-konform).
     """
     __tablename__ = "signature_audit_logs"

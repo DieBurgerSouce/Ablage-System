@@ -1,8 +1,8 @@
 """
 Merkle Tree Service
 
-Erweitert Audit-Chain mit Merkle Trees fuer kryptografische Integritaet.
-Ermoeglicht effiziente Verifikation einzelner Eintraege.
+Erweitert Audit-Chain mit Merkle Trees für kryptografische Integrität.
+Ermöglicht effiziente Verifikation einzelner Einträge.
 
 Feinpoliert und durchdacht - Enterprise Audit Trail Security.
 """
@@ -51,7 +51,7 @@ class MerkleNode:
 
 @dataclass
 class MerkleProof:
-    """Merkle Proof fuer Entry-Verifikation."""
+    """Merkle Proof für Entry-Verifikation."""
 
     entry_hash: str  # Hash des zu verifizierenden Eintrags
     root_hash: str  # Root Hash des Trees
@@ -74,7 +74,7 @@ class MerkleTree:
 
     root_hash: str  # Root Hash
     leaf_count: int  # Anzahl Leaves
-    tree_height: int  # Baum-Hoehe
+    tree_height: int  # Baum-Höhe
     nodes: List[MerkleNode]  # Alle Nodes
 
     def to_dict(self) -> Dict[str, any]:
@@ -89,7 +89,7 @@ class MerkleTree:
 
 @dataclass
 class IntegrityReport:
-    """Integritaets-Report fuer Audit-Chain."""
+    """Integritäts-Report für Audit-Chain."""
 
     total_entries: int
     verified_entries: int
@@ -117,13 +117,13 @@ class IntegrityReport:
 
 class MerkleTreeService:
     """
-    Merkle Tree Service fuer Audit-Chain.
+    Merkle Tree Service für Audit-Chain.
 
     Implementiert:
     - Tree-Konstruktion aus Audit-Logs
     - Proof-Generierung
     - Proof-Verifikation
-    - Integritaets-Checks
+    - Integritäts-Checks
     """
 
     def __init__(self) -> None:
@@ -250,17 +250,17 @@ class MerkleTreeService:
         db: AsyncSession,
     ) -> Optional[MerkleProof]:
         """
-        Generiert Merkle Proof fuer Entry.
+        Generiert Merkle Proof für Entry.
 
         Args:
             entry_hash: Hash des zu verifizierenden Eintrags
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Database session
 
         Returns:
             MerkleProof oder None wenn Entry nicht gefunden
         """
-        # Production: Nutze Cache wenn verfuegbar
+        # Production: Nutze Cache wenn verfügbar
         cache_key = f"merkle_tree:{company_id}"
         cached_tree = await self._get_cached_tree(cache_key, db)
 
@@ -412,7 +412,7 @@ class MerkleTreeService:
         db: AsyncSession,
     ) -> IntegrityReport:
         """
-        Erstellt Integritaets-Report fuer Audit-Chain.
+        Erstellt Integritäts-Report für Audit-Chain.
 
         Args:
             company_id: Company UUID
@@ -578,7 +578,7 @@ class MerkleTreeService:
             if not config or not config.value:
                 return None
 
-            # Pruefe Cache-Alter (max 1 Stunde)
+            # Prüfe Cache-Alter (max 1 Stunde)
             cache_data = config.value
             if not isinstance(cache_data, dict):
                 return None
@@ -681,7 +681,7 @@ class MerkleTreeService:
         """
         Invalidiert gecachten Merkle Tree.
 
-        Sollte aufgerufen werden wenn neue AuditLog-Eintraege hinzugefuegt werden.
+        Sollte aufgerufen werden wenn neue AuditLog-Einträge hinzugefuegt werden.
 
         Args:
             company_id: Company UUID

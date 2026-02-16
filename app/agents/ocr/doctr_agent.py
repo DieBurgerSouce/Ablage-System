@@ -13,7 +13,7 @@ Best for:
 - Low-resource environments
 - CPU-only deployments
 
-Feinpoliert und durchdacht - CPU-optimiert fuer deutsche Dokumente.
+Feinpoliert und durchdacht - CPU-optimiert für deutsche Dokumente.
 """
 
 import asyncio
@@ -56,9 +56,9 @@ class DocTRAgent(OCRAgent):
     """
     docTR OCR Agent - CPU-optimiert mit deutschem Modell.
 
-    Verwendet Mindee's docTR-Bibliothek fuer effiziente
-    Textextraktion auf CPU mit spezieller Unterstuetzung
-    fuer deutsche Dokumente und Umlaute.
+    Verwendet Mindee's docTR-Bibliothek für effiziente
+    Textextraktion auf CPU mit spezieller Unterstützung
+    für deutsche Dokumente und Umlaute.
 
     Features:
     - Kein GPU erforderlich
@@ -120,7 +120,7 @@ class DocTRAgent(OCRAgent):
         if not DOCTR_AVAILABLE:
             logger.warning(
                 "doctr_agent_dependency_missing",
-                message="docTR wird beim ersten Aufruf nicht verfuegbar sein"
+                message="docTR wird beim ersten Aufruf nicht verfügbar sein"
             )
 
         logger.info(

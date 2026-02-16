@@ -2,13 +2,13 @@
 """
 Conversational Assistant Service mit Ollama Integration.
 
-Enterprise Feature: Intelligenter Chat-Assistent fuer Dokument-Interaktion.
+Enterprise Feature: Intelligenter Chat-Assistent für Dokument-Interaktion.
 
 Funktionen:
 - Intent-Klassifikation (NLQ, DOCUMENT_SEARCH, ACTION_REQUEST, GENERAL)
 - RAG-basierte Dokumentensuche
 - Natural Language Queries auf Datenbank
-- Workflow-Aktionen mit Bestaetigung
+- Workflow-Aktionen mit Bestätigung
 - Streaming-Antworten
 
 Feinpoliert und durchdacht - Deutsche Praezision.
@@ -64,7 +64,7 @@ class AssistantIntent(str, Enum):
 
 
 class ActionType(str, Enum):
-    """Verfuegbare Aktionstypen."""
+    """Verfügbare Aktionstypen."""
 
     APPROVE_DOCUMENT = "approve_document"
     REJECT_DOCUMENT = "reject_document"
@@ -76,28 +76,28 @@ class ActionType(str, Enum):
     GENERATE_REPORT = "generate_report"
 
 
-# Intent-Keywords fuer Klassifikation
+# Intent-Keywords für Klassifikation
 INTENT_KEYWORDS: Dict[AssistantIntent, List[str]] = {
     AssistantIntent.NLQ: [
         "wie viele", "zeige mir", "liste", "welche", "berechne", "summe",
-        "durchschnitt", "anzahl", "gesamt", "statistik", "uebersicht",
+        "durchschnitt", "anzahl", "gesamt", "statistik", "übersicht",
         "show me", "how many", "list all", "calculate", "total",
     ],
     AssistantIntent.DOCUMENT_SEARCH: [
-        "finde", "suche", "dokument", "rechnung", "vertrag", "aehnlich",
+        "finde", "suche", "dokument", "rechnung", "vertrag", "ähnlich",
         "find", "search", "document", "invoice", "contract", "similar",
         "beleg", "lieferschein", "angebot", "bestellung",
     ],
     AssistantIntent.ACTION_REQUEST: [
-        "genehmige", "freigeben", "ablehnen", "kategorisiere", "verknuepfe",
+        "genehmige", "freigeben", "ablehnen", "kategorisiere", "verknüpfe",
         "erstelle", "exportiere", "plane", "approve", "reject", "categorize",
         "link", "create", "export", "schedule",
     ],
 }
 
-# NLQ Schema-Mapping fuer SQL-Generierung
+# NLQ Schema-Mapping für SQL-Generierung
 NLQ_SCHEMA_CONTEXT = """
-Verfuegbare Tabellen und Spalten:
+Verfügbare Tabellen und Spalten:
 
 documents:
 - id (UUID): Dokument-ID
@@ -118,14 +118,14 @@ business_entities:
 - tax_id (String): USt-IdNr
 
 invoice_tracking:
-- document_id (UUID): Verknuepftes Dokument
+- document_id (UUID): Verknüpftes Dokument
 - invoice_number (String): Rechnungsnummer
-- due_date (Date): Faelligkeitsdatum
+- due_date (Date): Fälligkeitsdatum
 - paid_at (DateTime): Bezahlt am
 - status (String): Status (open, overdue, paid)
 - dunning_level (Integer): Mahnstufe (0-3)
 
-Wichtig: Alle Abfragen muessen company_id filtern!
+Wichtig: Alle Abfragen müssen company_id filtern!
 """
 
 
@@ -178,7 +178,7 @@ class SuggestedAction:
 
 @dataclass
 class ChatContext:
-    """Kontext fuer Chat-Nachricht."""
+    """Kontext für Chat-Nachricht."""
 
     document_id: Optional[UUID] = None
     page_number: Optional[int] = None
@@ -204,7 +204,7 @@ class ChatResponse:
     error_message: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "response": self.response,
             "intent": self.intent.value,
@@ -226,7 +226,7 @@ class ChatResponse:
 
 
 class OllamaClient:
-    """HTTP-Client fuer Ollama API mit Streaming-Support."""
+    """HTTP-Client für Ollama API mit Streaming-Support."""
 
     def __init__(
         self,
@@ -256,13 +256,13 @@ class OllamaClient:
         return self._client
 
     async def close(self) -> None:
-        """Schliesst den HTTP-Client."""
+        """Schließt den HTTP-Client."""
         if self._client:
             await self._client.aclose()
             self._client = None
 
     async def is_available(self) -> bool:
-        """Prueft ob Ollama verfuegbar ist."""
+        """Prüft ob Ollama verfügbar ist."""
         try:
             client = await self._get_client()
             response = await client.get("/api/tags")
@@ -272,7 +272,7 @@ class OllamaClient:
             return False
 
     async def list_models(self) -> List[str]:
-        """Listet verfuegbare Modelle."""
+        """Listet verfügbare Modelle."""
         try:
             client = await self._get_client()
             response = await client.get("/api/tags")
@@ -399,7 +399,7 @@ class OllamaClient:
 
 
 class ConversationalAssistantService:
-    """Service fuer intelligenten Chat-Assistenten.
+    """Service für intelligenten Chat-Assistenten.
 
     Verarbeitet Benutzeranfragen mit:
     - Intent-Klassifikation
@@ -415,7 +415,7 @@ class ConversationalAssistantService:
         self._max_context_docs = getattr(settings, 'ASSISTANT_MAX_CONTEXT_DOCS', 5)
 
     async def is_available(self) -> bool:
-        """Prueft ob der Service verfuegbar ist."""
+        """Prüft ob der Service verfügbar ist."""
         if not self._enabled:
             return False
         return await self._ollama.is_available()
@@ -481,7 +481,7 @@ class ConversationalAssistantService:
         Returns:
             Tuple aus (Intent, Konfidenz)
         """
-        system_prompt = """Du bist ein Intent-Klassifikator fuer ein Dokumentenmanagementsystem.
+        system_prompt = """Du bist ein Intent-Klassifikator für ein Dokumentenmanagementsystem.
 Klassifiziere die Benutzeranfrage in eine der folgenden Kategorien:
 
 1. NLQ - Natural Language Query: Benutzer moechte Daten abfragen/berechnen
@@ -490,11 +490,11 @@ Klassifiziere die Benutzeranfrage in eine der folgenden Kategorien:
 2. DOCUMENT_SEARCH - Dokumentensuche: Benutzer sucht nach bestimmten Dokumenten
    Beispiele: "Finde die Rechnung von Amazon", "Suche nach Vertrag 2024"
 
-3. ACTION_REQUEST - Aktion ausfuehren: Benutzer moechte eine Aktion durchfuehren
+3. ACTION_REQUEST - Aktion ausführen: Benutzer moechte eine Aktion durchführen
    Beispiele: "Genehmige diese Rechnung", "Erstelle einen Export"
 
 4. GENERAL - Allgemeine Frage: Allgemeine Fragen oder Chat
-   Beispiele: "Was kannst du?", "Erklaere mir das Skonto"
+   Beispiele: "Was kannst du?", "Erkläre mir das Skonto"
 
 Antworte NUR mit JSON:
 {
@@ -596,7 +596,7 @@ Antworte NUR mit JSON:
             response.confidence = intent_confidence
             response.processing_time_ms = int((time.time() - start_time) * 1000)
 
-            # 4. Follow-up Vorschlaege generieren
+            # 4. Follow-up Vorschläge generieren
             response.follow_up_suggestions = await self._generate_follow_ups(
                 intent, message, response
             )
@@ -632,9 +632,9 @@ Antworte NUR mit JSON:
     ) -> ChatResponse:
         """Verarbeitet Natural Language Query.
 
-        Generiert SQL aus natuerlicher Sprache und fuehrt Abfrage aus.
+        Generiert SQL aus natürlicher Sprache und führt Abfrage aus.
         """
-        system_prompt = f"""Du bist ein SQL-Generator fuer ein Dokumentenmanagementsystem.
+        system_prompt = f"""Du bist ein SQL-Generator für ein Dokumentenmanagementsystem.
 Generiere sichere, parameterisierte SQL-Abfragen basierend auf Benutzeranfragen.
 
 {NLQ_SCHEMA_CONTEXT}
@@ -648,18 +648,18 @@ WICHTIG:
 
 {{
     "sql": "SELECT ... FROM ... WHERE company_id = :company_id ...",
-    "explanation": "Erklaerung was die Abfrage macht",
+    "explanation": "Erklärung was die Abfrage macht",
     "parameters": {{"company_id": "wird automatisch gesetzt"}}
 }}
 
 Bei unklaren Anfragen antworte mit:
 {{
     "sql": null,
-    "explanation": "Erklaerung warum keine Abfrage moeglich ist",
-    "suggestion": "Vorschlag fuer klarere Formulierung"
+    "explanation": "Erklärung warum keine Abfrage möglich ist",
+    "suggestion": "Vorschlag für klarere Formulierung"
 }}"""
 
-        prompt = f"Generiere eine SQL-Abfrage fuer: {message}"
+        prompt = f"Generiere eine SQL-Abfrage für: {message}"
 
         try:
             response = await self._ollama.generate(
@@ -682,7 +682,7 @@ Bei unklaren Anfragen antworte mit:
                     confidence=0.5,
                 )
 
-            # Sicherheitspruefung
+            # Sicherheitsprüfung
             sql_upper = sql.upper()
             forbidden = ["DELETE", "UPDATE", "INSERT", "DROP", "ALTER", "TRUNCATE", "GRANT", "REVOKE"]
             if any(f in sql_upper for f in forbidden):
@@ -698,7 +698,7 @@ Bei unklaren Anfragen antworte mit:
                     error_message="Forbidden SQL operation",
                 )
 
-            # Abfrage ausfuehren
+            # Abfrage ausführen
             result = await db.execute(
                 text(sql),
                 {"company_id": company_id}
@@ -739,7 +739,7 @@ Bei unklaren Anfragen antworte mit:
         except Exception as e:
             logger.error("nlq_execution_error", **safe_error_log(e))
             return ChatResponse(
-                response="Bei der Ausfuehrung der Abfrage ist ein Fehler aufgetreten.",
+                response="Bei der Ausführung der Abfrage ist ein Fehler aufgetreten.",
                 intent=AssistantIntent.NLQ,
                 error_message=str(e),
             )
@@ -783,7 +783,7 @@ Bei unklaren Anfragen antworte mit:
             context_chunks: List[str] = []
 
             for result in search_results.results[:self._max_context_docs]:
-                # Dokument laden fuer Metadaten
+                # Dokument laden für Metadaten
                 doc_stmt = select(Document).where(Document.id == result.document_id)
                 doc_result = await db.execute(doc_stmt)
                 doc = doc_result.scalar_one_or_none()
@@ -801,7 +801,7 @@ Bei unklaren Anfragen antworte mit:
             # Antwort mit Kontext generieren
             context_text = "\n\n---\n\n".join(context_chunks)
 
-            system_prompt = """Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
+            system_prompt = """Du bist ein hilfreicher Assistent für ein Dokumentenmanagementsystem.
 Beantworte die Frage basierend auf dem gegebenen Kontext aus den Dokumenten.
 Antworte auf Deutsch, praezise und hilfreich.
 Wenn die Antwort nicht im Kontext zu finden ist, sage das ehrlich."""
@@ -889,7 +889,7 @@ Bitte beantworte die Frage basierend auf dem Kontext."""
         ])
 
         return ChatResponse(
-            response=f"Ich habe {len(documents)} Dokumente gefunden:\n\n{doc_list}\n\nKlicken Sie auf ein Dokument fuer Details.",
+            response=f"Ich habe {len(documents)} Dokumente gefunden:\n\n{doc_list}\n\nKlicken Sie auf ein Dokument für Details.",
             intent=AssistantIntent.DOCUMENT_SEARCH,
             sources=sources,
             confidence=0.6,
@@ -905,16 +905,16 @@ Bitte beantworte die Frage basierend auf dem Kontext."""
     ) -> ChatResponse:
         """Verarbeitet Aktionsanfragen.
 
-        Erkennt gewuenschte Aktion und schlaegt sie zur Bestaetigung vor.
+        Erkennt gewünschte Aktion und schlaegt sie zur Bestätigung vor.
         """
-        system_prompt = """Du bist ein Aktions-Interpreter fuer ein Dokumentenmanagementsystem.
-Analysiere die Benutzeranfrage und identifiziere die gewuenschte Aktion.
+        system_prompt = """Du bist ein Aktions-Interpreter für ein Dokumentenmanagementsystem.
+Analysiere die Benutzeranfrage und identifiziere die gewünschte Aktion.
 
-Verfuegbare Aktionen:
+Verfügbare Aktionen:
 - approve_document: Dokument genehmigen/freigeben
 - reject_document: Dokument ablehnen
 - categorize_document: Dokument kategorisieren
-- link_entity: Dokument mit Geschaeftspartner verknuepfen
+- link_entity: Dokument mit Geschäftspartner verknüpfen
 - create_task: Aufgabe erstellen
 - export_documents: Dokumente exportieren
 - schedule_payment: Zahlung planen
@@ -949,7 +949,7 @@ Wenn keine klare Aktion erkannt wird, setze action_type auf null."""
 
             if not action_type:
                 return ChatResponse(
-                    response="Ich konnte keine eindeutige Aktion erkennen. Koennten Sie bitte genauer beschreiben, was Sie tun moechten?",
+                    response="Ich konnte keine eindeutige Aktion erkennen. Könnten Sie bitte genauer beschreiben, was Sie tun moechten?",
                     intent=AssistantIntent.ACTION_REQUEST,
                     confidence=0.3,
                 )
@@ -963,10 +963,10 @@ Wenn keine klare Aktion erkannt wird, setze action_type auf null."""
                 confidence=data.get("confidence", 0.7),
             )
 
-            # Pruefen ob Dokument benoetigt wird
+            # Prüfen ob Dokument benötigt wird
             if data.get("requires_document", False) and (not context or not context.document_id):
                 return ChatResponse(
-                    response=f"Fuer die Aktion '{action.description}' benoetigen Sie ein ausgewaehltes Dokument. Bitte oeffnen Sie zuerst das gewuenschte Dokument.",
+                    response=f"Für die Aktion '{action.description}' benötigen Sie ein ausgewaehltes Dokument. Bitte öffnen Sie zuerst das gewünschte Dokument.",
                     intent=AssistantIntent.ACTION_REQUEST,
                     actions=[action],
                     confidence=0.5,
@@ -977,7 +977,7 @@ Wenn keine klare Aktion erkannt wird, setze action_type auf null."""
                 action.parameters["document_id"] = str(context.document_id)
 
             return ChatResponse(
-                response=f"Ich habe folgende Aktion erkannt:\n\n**{action.description}**\n\nMoechten Sie diese Aktion ausfuehren? Klicken Sie auf 'Bestaetigen' oder sagen Sie 'Ja'.",
+                response=f"Ich habe folgende Aktion erkannt:\n\n**{action.description}**\n\nMoechten Sie diese Aktion ausführen? Klicken Sie auf 'Bestätigen' oder sagen Sie 'Ja'.",
                 intent=AssistantIntent.ACTION_REQUEST,
                 actions=[action],
                 confidence=action.confidence,
@@ -986,7 +986,7 @@ Wenn keine klare Aktion erkannt wird, setze action_type auf null."""
 
         except json.JSONDecodeError:
             return ChatResponse(
-                response="Die Anfrage konnte nicht verarbeitet werden. Bitte beschreiben Sie die gewuenschte Aktion genauer.",
+                response="Die Anfrage konnte nicht verarbeitet werden. Bitte beschreiben Sie die gewünschte Aktion genauer.",
                 intent=AssistantIntent.ACTION_REQUEST,
                 confidence=0.3,
             )
@@ -1000,14 +1000,14 @@ Wenn keine klare Aktion erkannt wird, setze action_type auf null."""
         context: Optional[ChatContext],
     ) -> ChatResponse:
         """Verarbeitet allgemeine Fragen und Chat."""
-        system_prompt = """Du bist ein hilfreicher Assistent fuer das Ablage-System, ein Dokumentenmanagementsystem.
+        system_prompt = """Du bist ein hilfreicher Assistent für das Ablage-System, ein Dokumentenmanagementsystem.
 Beantworte Fragen freundlich und kompetent auf Deutsch.
 
 Du kannst helfen mit:
 - Fragen zur Bedienung des Systems
-- Erklaerungen zu Funktionen (OCR, Rechnungsverarbeitung, Buchhaltung)
+- Erklärungen zu Funktionen (OCR, Rechnungsverarbeitung, Buchhaltung)
 - Allgemeinen Fragen zu Dokumentenmanagement
-- Informationen ueber Skonto, Mahnwesen, DATEV-Export
+- Informationen über Skonto, Mahnwesen, DATEV-Export
 
 Halte Antworten praegnant und hilfreich."""
 
@@ -1038,7 +1038,7 @@ Halte Antworten praegnant und hilfreich."""
         message: str,
         response: ChatResponse,
     ) -> List[str]:
-        """Generiert Follow-up Vorschlaege."""
+        """Generiert Follow-up Vorschläge."""
         follow_ups = []
 
         if intent == AssistantIntent.NLQ:
@@ -1050,8 +1050,8 @@ Halte Antworten praegnant und hilfreich."""
         elif intent == AssistantIntent.DOCUMENT_SEARCH:
             if response.sources:
                 follow_ups = [
-                    "Zeige aehnliche Dokumente",
-                    "Oeffne das erste Dokument",
+                    "Zeige ähnliche Dokumente",
+                    "Öffne das erste Dokument",
                     "Suche verfeinern",
                 ]
             else:
@@ -1062,7 +1062,7 @@ Halte Antworten praegnant und hilfreich."""
         elif intent == AssistantIntent.ACTION_REQUEST:
             if response.actions:
                 follow_ups = [
-                    "Ja, ausfuehren",
+                    "Ja, ausführen",
                     "Nein, abbrechen",
                     "Mehr Details",
                 ]
@@ -1156,7 +1156,7 @@ Halte Antworten praegnant und hilfreich."""
 
         except Exception as e:
             logger.error("conversation_save_error", **safe_error_log(e))
-            # Nicht critical - Konversation wird trotzdem zurueckgegeben
+            # Nicht critical - Konversation wird trotzdem zurückgegeben
 
     async def get_chat_history(
         self,
@@ -1165,12 +1165,12 @@ Halte Antworten praegnant und hilfreich."""
         user_id: UUID,
         limit: int = 50,
     ) -> List[Dict[str, Any]]:
-        """Ruft Chat-Historie fuer eine Session ab.
+        """Ruft Chat-Historie für eine Session ab.
 
         Args:
             db: Datenbank-Session
             session_id: Session-ID
-            user_id: Benutzer-ID (Sicherheitspruefung)
+            user_id: Benutzer-ID (Sicherheitsprüfung)
             limit: Maximale Anzahl Nachrichten
 
         Returns:
@@ -1249,7 +1249,7 @@ Halte Antworten praegnant und hilfreich."""
             return False
 
     async def close(self) -> None:
-        """Schliesst alle Verbindungen."""
+        """Schließt alle Verbindungen."""
         await self._ollama.close()
 
 
@@ -1274,7 +1274,7 @@ def get_conversational_assistant_service() -> ConversationalAssistantService:
 
 
 async def get_assistant_service() -> ConversationalAssistantService:
-    """Async Dependency fuer FastAPI.
+    """Async Dependency für FastAPI.
 
     Returns:
         ConversationalAssistantService Instanz

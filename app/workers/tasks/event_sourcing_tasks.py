@@ -22,11 +22,11 @@ logger = structlog.get_logger(__name__)
 
 @celery_app.task(name="app.workers.tasks.event_sourcing_tasks.create_snapshots")
 def create_snapshots() -> dict:
-    """Erstelle Snapshots fuer haeufig abgefragte Aggregates.
+    """Erstelle Snapshots für häufig abgefragte Aggregates.
 
-    Prueft alle Aggregates und erstellt Snapshots wenn:
+    Prüft alle Aggregates und erstellt Snapshots wenn:
     - Mehr als 50 Events seit letztem Snapshot
-    - Letzter Snapshot aelter als 24 Stunden
+    - Letzter Snapshot älter als 24 Stunden
     """
     logger.info("event_sourcing_snapshot_start")
     try:
@@ -42,7 +42,7 @@ def create_snapshots() -> dict:
 
 
 async def _create_snapshots() -> Dict[str, Any]:
-    """Async Implementation fuer Snapshot-Erstellung."""
+    """Async Implementation für Snapshot-Erstellung."""
     snapshots_created = 0
 
     async with async_session_maker() as db:
@@ -69,7 +69,7 @@ async def _create_snapshots() -> Dict[str, Any]:
                         config.value["last_snapshot_at"]
                     )
 
-                # Events seit letztem Snapshot zaehlen
+                # Events seit letztem Snapshot zählen
                 events_query = select(func.count(AuditLog.id)).where(
                     AuditLog.company_id == company_id
                 )
@@ -161,7 +161,7 @@ def archive_old_events(retention_days: int = 180) -> dict:
 
 
 async def _archive_old_events(retention_days: int) -> Dict[str, Any]:
-    """Async Implementation fuer Event-Archivierung."""
+    """Async Implementation für Event-Archivierung."""
     events_archived = 0
     cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
@@ -179,12 +179,12 @@ async def _archive_old_events(retention_days: int) -> Dict[str, Any]:
                 "message": "Keine alten Events zum Archivieren",
             }
 
-        # Batch-weise loeschen (max 10000 pro Durchlauf fuer Performance)
-        # In Production wuerden Events in Archiv-Tabelle verschoben statt geloescht
+        # Batch-weise löschen (max 10000 pro Durchlauf für Performance)
+        # In Production wuerden Events in Archiv-Tabelle verschoben statt gelöscht
         batch_size = 10000
 
         while events_archived < min(total_old_events, batch_size):
-            # IDs der zu loeschenden Events holen
+            # IDs der zu löschenden Events holen
             old_ids_result = await db.execute(
                 select(AuditLog.id)
                 .where(AuditLog.created_at < cutoff)
@@ -195,7 +195,7 @@ async def _archive_old_events(retention_days: int) -> Dict[str, Any]:
             if not old_ids:
                 break
 
-            # Loeschen
+            # Löschen
             await db.execute(
                 delete(AuditLog).where(AuditLog.id.in_(old_ids))
             )

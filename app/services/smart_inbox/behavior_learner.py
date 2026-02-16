@@ -385,19 +385,19 @@ class BehaviorLearner:
         )
 
     def _calculate_response_trend(self, current_ms: int) -> str:
-        """Berechnet Trend fuer Reaktionszeit."""
+        """Berechnet Trend für Reaktionszeit."""
         # Unter 5 Sekunden = sehr gut
         if current_ms < 5000:
             return "improving"
         # Unter 30 Sekunden = normal
         elif current_ms < 30000:
             return "stable"
-        # Ueber 30 Sekunden = langsam
+        # Über 30 Sekunden = langsam
         else:
             return "declining"
 
     def _calculate_completion_trend(self, rate: float) -> str:
-        """Berechnet Trend fuer Completion Rate."""
+        """Berechnet Trend für Completion Rate."""
         if rate >= 0.9:
             return "improving"
         elif rate >= 0.7:

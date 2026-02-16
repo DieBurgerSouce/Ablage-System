@@ -2,7 +2,7 @@
 """
 Report Catalog Service.
 
-Stellt vordefinierte Report-Templates bereit, die Nutzer instanziieren koennen.
+Stellt vordefinierte Report-Templates bereit, die Nutzer instanziieren können.
 """
 
 from __future__ import annotations
@@ -25,10 +25,10 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 CATALOG_TEMPLATES: List[Dict[str, Any]] = [
-    # 1. Monatliche Rechnungsuebersicht
+    # 1. Monatliche Rechnungsübersicht
     {
         "id": "monthly-invoices",
-        "name": "Monatliche Rechnungsuebersicht",
+        "name": "Monatliche Rechnungsübersicht",
         "description": "Alle Rechnungen eines Monats mit Betrag, Kunde und Status",
         "category": "Finanzen",
         "icon": "receipt",
@@ -63,7 +63,7 @@ CATALOG_TEMPLATES: List[Dict[str, Any]] = [
     {
         "id": "open-receivables",
         "name": "Offene Forderungen",
-        "description": "Uebersicht aller unbezahlten Rechnungen gruppiert nach Kunde",
+        "description": "Übersicht aller unbezahlten Rechnungen gruppiert nach Kunde",
         "category": "Finanzen",
         "icon": "alert-triangle",
         "report_type": "finance",
@@ -72,9 +72,9 @@ CATALOG_TEMPLATES: List[Dict[str, Any]] = [
             {"field_path": "customer_name", "display_name": "Kunde", "data_type": "string"},
             {"field_path": "invoice_number", "display_name": "Rechnungsnr.", "data_type": "string"},
             {"field_path": "invoice_date", "display_name": "Rechnungsdatum", "data_type": "date"},
-            {"field_path": "due_date", "display_name": "Faelligkeit", "data_type": "date"},
+            {"field_path": "due_date", "display_name": "Fälligkeit", "data_type": "date"},
             {"field_path": "total_amount", "display_name": "Offener Betrag", "data_type": "currency"},
-            {"field_path": "days_overdue", "display_name": "Ueberfaellig (Tage)", "data_type": "number"},
+            {"field_path": "days_overdue", "display_name": "Überfällig (Tage)", "data_type": "number"},
         ],
         "filters": [
             {"field_path": "status", "operator": "in", "value": ["open", "overdue"]},
@@ -103,7 +103,7 @@ CATALOG_TEMPLATES: List[Dict[str, Any]] = [
             {"field_path": "document_type", "display_name": "Dokumenttyp", "data_type": "string"},
             {"field_path": "status", "display_name": "Status", "data_type": "string"},
             {"field_path": "created_at", "display_name": "Erstellt", "data_type": "date"},
-            {"field_path": "file_size", "display_name": "Groesse", "data_type": "number"},
+            {"field_path": "file_size", "display_name": "Größe", "data_type": "number"},
         ],
         "enable_aggregations": True,
         "charts": [
@@ -115,18 +115,18 @@ CATALOG_TEMPLATES: List[Dict[str, Any]] = [
             },
             {
                 "chart_type": "area",
-                "title": "Dokumente ueber Zeit",
+                "title": "Dokumente über Zeit",
                 "x_axis_field": "created_at",
                 "aggregation": "count",
             },
         ],
     },
-    # 4. OCR-Qualitaetsreport
+    # 4. OCR-Qualitätsreport
     {
         "id": "ocr-quality",
-        "name": "OCR-Qualitaetsreport",
-        "description": "Auswertung der OCR-Erkennungsqualitaet und Fehlerquoten",
-        "category": "Qualitaet",
+        "name": "OCR-Qualitätsreport",
+        "description": "Auswertung der OCR-Erkennungsqualität und Fehlerquoten",
+        "category": "Qualität",
         "icon": "scan",
         "report_type": "ocr",
         "data_source": "documents",
@@ -150,7 +150,7 @@ CATALOG_TEMPLATES: List[Dict[str, Any]] = [
             },
             {
                 "chart_type": "line",
-                "title": "Verarbeitungszeit ueber Zeit",
+                "title": "Verarbeitungszeit über Zeit",
                 "x_axis_field": "created_at",
                 "y_axis_field": "processing_time_ms",
                 "aggregation": "avg",
@@ -187,11 +187,11 @@ CATALOG_TEMPLATES: List[Dict[str, Any]] = [
             }
         ],
     },
-    # 6. Lieferanten-Uebersicht
+    # 6. Lieferanten-Übersicht
     {
         "id": "supplier-overview",
-        "name": "Lieferanten-Uebersicht",
-        "description": "Alle Lieferanten mit Bestellvolumen und letzter Aktivitaet",
+        "name": "Lieferanten-Übersicht",
+        "description": "Alle Lieferanten mit Bestellvolumen und letzter Aktivität",
         "category": "Einkauf",
         "icon": "truck",
         "report_type": "custom",
@@ -201,7 +201,7 @@ CATALOG_TEMPLATES: List[Dict[str, Any]] = [
             {"field_path": "supplier_number", "display_name": "Lieferantennr.", "data_type": "string"},
             {"field_path": "city", "display_name": "Stadt", "data_type": "string"},
             {"field_path": "document_count", "display_name": "Dokumente", "data_type": "number"},
-            {"field_path": "last_activity", "display_name": "Letzte Aktivitaet", "data_type": "date"},
+            {"field_path": "last_activity", "display_name": "Letzte Aktivität", "data_type": "date"},
         ],
         "filters": [
             {"field_path": "entity_type", "operator": "in", "value": ["supplier", "both"]},
@@ -252,7 +252,7 @@ CATALOG_TEMPLATES: List[Dict[str, Any]] = [
         "charts": [
             {
                 "chart_type": "area",
-                "title": "Zahlungseingaenge ueber Zeit",
+                "title": "Zahlungseingaenge über Zeit",
                 "x_axis_field": "booking_date",
                 "y_axis_field": "amount",
                 "aggregation": "sum",
@@ -263,7 +263,7 @@ CATALOG_TEMPLATES: List[Dict[str, Any]] = [
     {
         "id": "expense-reports",
         "name": "Spesenabrechnungen",
-        "description": "Uebersicht aller Spesenabrechnungen nach Mitarbeiter",
+        "description": "Übersicht aller Spesenabrechnungen nach Mitarbeiter",
         "category": "Personal",
         "icon": "wallet",
         "report_type": "custom",
@@ -286,17 +286,17 @@ CATALOG_TEMPLATES: List[Dict[str, Any]] = [
             }
         ],
     },
-    # 10. Firmenuebersicht (Cross-Company)
+    # 10. Firmenübersicht (Cross-Company)
     {
         "id": "company-overview",
-        "name": "Firmenuebersicht",
-        "description": "Vergleich der Aktivitaeten zwischen Folie und Messer",
+        "name": "Firmenübersicht",
+        "description": "Vergleich der Aktivitäten zwischen Folie und Messer",
         "category": "Management",
         "icon": "building",
         "report_type": "custom",
         "data_source": "entities",
         "columns": [
-            {"field_path": "name", "display_name": "Geschaeftspartner", "data_type": "string"},
+            {"field_path": "name", "display_name": "Geschäftspartner", "data_type": "string"},
             {"field_path": "entity_type", "display_name": "Typ", "data_type": "string"},
             {"field_path": "company_presence", "display_name": "Firmen", "data_type": "string"},
             {"field_path": "folie_docs", "display_name": "Folie Docs", "data_type": "number"},
@@ -321,7 +321,7 @@ CATALOG_TEMPLATES: List[Dict[str, Any]] = [
 
 class ReportCatalogService:
     """
-    Service fuer vordefinierte Report-Templates.
+    Service für vordefinierte Report-Templates.
     """
 
     def __init__(self) -> None:
@@ -332,7 +332,7 @@ class ReportCatalogService:
         category: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
-        Gibt den Katalog aller vordefinierten Templates zurueck.
+        Gibt den Katalog aller vordefinierten Templates zurück.
 
         Args:
             category: Optional filter by category
@@ -363,7 +363,7 @@ class ReportCatalogService:
 
     def get_categories(self) -> List[str]:
         """
-        Gibt alle verfuegbaren Kategorien zurueck.
+        Gibt alle verfügbaren Kategorien zurück.
         """
         categories = set()
         for t in self._templates.values():
@@ -373,7 +373,7 @@ class ReportCatalogService:
 
     def get_template_preview(self, template_id: str) -> Optional[Dict[str, Any]]:
         """
-        Gibt die vollstaendige Vorschau eines Templates zurueck.
+        Gibt die vollständige Vorschau eines Templates zurück.
         """
         template = self._templates.get(template_id)
         if not template:
@@ -427,7 +427,7 @@ class ReportCatalogService:
         db: AsyncSession,
     ) -> Optional[Dict[str, Any]]:
         """
-        Erstellt eine Kopie eines Katalog-Templates fuer den Nutzer.
+        Erstellt eine Kopie eines Katalog-Templates für den Nutzer.
 
         Args:
             template_id: ID des Katalog-Templates

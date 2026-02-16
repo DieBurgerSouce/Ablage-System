@@ -41,11 +41,11 @@ _TRANSLATIONS_DE: Dict[str, str] = {
     "common.error": "Fehler",
     "common.loading": "Wird geladen...",
     "common.saving": "Wird gespeichert...",
-    "common.deleting": "Wird geloescht...",
+    "common.deleting": "Wird gelöscht...",
     "common.processing": "Wird verarbeitet...",
 
     # HTTP Errors
-    "error.bad_request": "Ungueltige Anfrage",
+    "error.bad_request": "Ungültige Anfrage",
     "error.unauthorized": "Nicht autorisiert",
     "error.forbidden": "Zugriff verweigert",
     "error.not_found": "Nicht gefunden",
@@ -53,17 +53,17 @@ _TRANSLATIONS_DE: Dict[str, str] = {
     "error.validation": "Validierungsfehler",
     "error.rate_limit": "Zu viele Anfragen. Bitte warten Sie {seconds} Sekunden.",
     "error.server_error": "Interner Serverfehler",
-    "error.service_unavailable": "Dienst voruebergehend nicht verfuegbar",
-    "error.timeout": "Zeitueberschreitung",
+    "error.service_unavailable": "Dienst vorübergehend nicht verfügbar",
+    "error.timeout": "Zeitüberschreitung",
 
     # Authentication
-    "auth.invalid_credentials": "Ungueltige Anmeldedaten",
+    "auth.invalid_credentials": "Ungültige Anmeldedaten",
     "auth.session_expired": "Sitzung abgelaufen. Bitte erneut anmelden.",
-    "auth.token_invalid": "Ungueltiger Authentifizierungstoken",
+    "auth.token_invalid": "Ungültiger Authentifizierungstoken",
     "auth.account_disabled": "Konto deaktiviert",
     "auth.account_locked": "Konto gesperrt. Bitte kontaktieren Sie den Administrator.",
     "auth.too_many_attempts": "Zu viele Anmeldeversuche. Bitte warten Sie {minutes} Minuten.",
-    "auth.password_changed": "Passwort erfolgreich geaendert",
+    "auth.password_changed": "Passwort erfolgreich geändert",
     "auth.logged_out": "Erfolgreich abgemeldet",
 
     # Documents
@@ -73,38 +73,38 @@ _TRANSLATIONS_DE: Dict[str, str] = {
     "document.processing": "Dokument wird verarbeitet...",
     "document.processed_successfully": "Dokument erfolgreich verarbeitet",
     "document.processing_failed": "Dokumentverarbeitung fehlgeschlagen",
-    "document.deleted_successfully": "Dokument erfolgreich geloescht",
-    "document.delete_failed": "Fehler beim Loeschen des Dokuments",
+    "document.deleted_successfully": "Dokument erfolgreich gelöscht",
+    "document.delete_failed": "Fehler beim Löschen des Dokuments",
     "document.page_count": "{count} Seiten",
     "document.file_too_large": "Datei zu gross: {size_mb:.1f}MB (max: {max_mb:.1f}MB)",
-    "document.invalid_type": "Ungueltiger Dateityp. Erlaubt: {allowed}",
+    "document.invalid_type": "Ungültiger Dateityp. Erlaubt: {allowed}",
     "document.access_denied": "Kein Zugriff auf dieses Dokument",
 
     # OCR
     "ocr.processing_started": "OCR-Verarbeitung gestartet",
     "ocr.processing_completed": "OCR-Verarbeitung abgeschlossen",
     "ocr.processing_failed": "OCR-Verarbeitung fehlgeschlagen",
-    "ocr.backend_not_available": "OCR-Backend nicht verfuegbar: {backend}",
+    "ocr.backend_not_available": "OCR-Backend nicht verfügbar: {backend}",
     "ocr.gpu_oom": "GPU-Speicher voll. Fallback auf CPU wird verwendet.",
-    "ocr.timeout": "OCR-Zeitueberschreitung",
+    "ocr.timeout": "OCR-Zeitüberschreitung",
     "ocr.confidence": "Erkennungssicherheit: {percent}%",
     "ocr.processing_page": "Verarbeite Seite {current} von {total}",
 
     # Entities
-    "entity.not_found": "Geschaeftspartner nicht gefunden",
-    "entity.created": "Geschaeftspartner erfolgreich erstellt",
-    "entity.updated": "Geschaeftspartner erfolgreich aktualisiert",
-    "entity.deleted": "Geschaeftspartner erfolgreich geloescht",
+    "entity.not_found": "Geschäftspartner nicht gefunden",
+    "entity.created": "Geschäftspartner erfolgreich erstellt",
+    "entity.updated": "Geschäftspartner erfolgreich aktualisiert",
+    "entity.deleted": "Geschäftspartner erfolgreich gelöscht",
     "entity.duplicate_customer_number": "Kundennummer bereits vergeben",
     "entity.duplicate_supplier_number": "Lieferantennummer bereits vergeben",
-    "entity.invalid_vat_id": "Ungueltige USt-IdNr.",
-    "entity.invalid_iban": "Ungueltige IBAN",
+    "entity.invalid_vat_id": "Ungültige USt-IdNr.",
+    "entity.invalid_iban": "Ungültige IBAN",
 
     # Banking
     "banking.account_not_found": "Konto nicht gefunden",
     "banking.transaction_not_found": "Transaktion nicht gefunden",
     "banking.payment_created": "Zahlung erfolgreich erstellt",
-    "banking.payment_executed": "Zahlung erfolgreich ausgefuehrt",
+    "banking.payment_executed": "Zahlung erfolgreich ausgeführt",
     "banking.payment_failed": "Zahlung fehlgeschlagen",
     "banking.reconciliation_complete": "Kontoabstimmung abgeschlossen",
     "banking.insufficient_funds": "Unzureichende Deckung",
@@ -121,63 +121,63 @@ _TRANSLATIONS_DE: Dict[str, str] = {
     # System
     "system.healthy": "System betriebsbereit",
     "system.degraded": "System eingeschraenkt",
-    "system.unhealthy": "System nicht verfuegbar",
-    "system.maintenance": "Wartungsarbeiten. Bitte versuchen Sie es spaeter.",
+    "system.unhealthy": "System nicht verfügbar",
+    "system.maintenance": "Wartungsarbeiten. Bitte versuchen Sie es später.",
     "system.backup_started": "Sicherung gestartet",
     "system.backup_completed": "Sicherung abgeschlossen",
     "system.backup_failed": "Sicherung fehlgeschlagen",
 
     # Validation
     "validation.required": "Dieses Feld ist erforderlich",
-    "validation.email": "Bitte geben Sie eine gueltige E-Mail-Adresse ein",
+    "validation.email": "Bitte geben Sie eine gültige E-Mail-Adresse ein",
     "validation.min_length": "Mindestens {min} Zeichen erforderlich",
     "validation.max_length": "Maximal {max} Zeichen erlaubt",
-    "validation.invalid_format": "Ungueltiges Format",
+    "validation.invalid_format": "Ungültiges Format",
     "validation.password_weak": "Passwort entspricht nicht den Anforderungen",
-    "validation.passwords_mismatch": "Passwoerter stimmen nicht ueberein",
+    "validation.passwords_mismatch": "Passwoerter stimmen nicht überein",
 
     # Retention
-    "retention.active_lock": "Aufbewahrungsfrist aktiv - Loeschung gesperrt",
+    "retention.active_lock": "Aufbewahrungsfrist aktiv - Löschung gesperrt",
     "retention.expires_in_days": "Aufbewahrungsfrist laeuft in {days} Tagen ab",
     "retention.expired": "Aufbewahrungsfrist abgelaufen",
-    "retention.gdpr_conflict": "DSGVO-Loeschantrag kollidiert mit Aufbewahrungspflicht",
+    "retention.gdpr_conflict": "DSGVO-Löschantrag kollidiert mit Aufbewahrungspflicht",
     "retention.gdpr_retention_wins": "Aufbewahrungspflicht hat Vorrang (§147 AO)",
-    "retention.review_scheduled": "Pruefung nach Fristablauf geplant",
+    "retention.review_scheduled": "Prüfung nach Fristablauf geplant",
     "retention.compliance_ok": "Alle Aufbewahrungsfristen eingehalten",
     "retention.violation_found": "Aufbewahrungsfrist-Verletzung gefunden",
 
     # Compliance
     "compliance.gobd_compliant": "GoBD-konform",
     "compliance.gobd_violation": "GoBD-Verstoss",
-    "compliance.audit_trail_complete": "Audit-Trail vollstaendig",
+    "compliance.audit_trail_complete": "Audit-Trail vollständig",
     "compliance.data_integrity_verified": "Datenintegritaet verifiziert",
     "compliance.report_generated": "Compliance-Bericht erstellt",
 
     # Reporting
     "reporting.generating": "Bericht wird erstellt...",
     "reporting.export_ready": "Export bereit zum Herunterladen",
-    "reporting.no_data": "Keine Daten fuer den gewaehlten Zeitraum",
-    "reporting.date_range_invalid": "Ungueltiger Zeitraum",
+    "reporting.no_data": "Keine Daten für den gewaehlten Zeitraum",
+    "reporting.date_range_invalid": "Ungültiger Zeitraum",
 
     # Procurement
     "procurement.po_created": "Bestellung erfolgreich erstellt",
-    "procurement.delivery_confirmed": "Wareneingang bestaetigt",
+    "procurement.delivery_confirmed": "Wareneingang bestätigt",
     "procurement.invoice_matched": "Rechnung zugeordnet",
     "procurement.matching_failed": "Zuordnung fehlgeschlagen",
     "procurement.three_way_match": "Drei-Wege-Abgleich erfolgreich",
 
     # AI
     "ai.trust_level_auto": "Automatische Verarbeitung (Trust Level 1)",
-    "ai.trust_level_confirm": "Bestaetigung erforderlich (Trust Level 2)",
+    "ai.trust_level_confirm": "Bestätigung erforderlich (Trust Level 2)",
     "ai.trust_level_explicit": "Explizite Genehmigung erforderlich (Trust Level 3)",
     "ai.confidence_high": "Hohe Erkennungssicherheit",
-    "ai.confidence_low": "Niedrige Erkennungssicherheit - manuelle Pruefung empfohlen",
-    "ai.decision_explanation": "KI-Entscheidungserklaerung",
+    "ai.confidence_low": "Niedrige Erkennungssicherheit - manuelle Prüfung empfohlen",
+    "ai.decision_explanation": "KI-Entscheidungserklärung",
 
     # Archive
     "archive.signed_successfully": "Dokument erfolgreich signiert",
     "archive.signature_verified": "Signatur verifiziert",
-    "archive.signature_invalid": "Signatur ungueltig",
+    "archive.signature_invalid": "Signatur ungültig",
     "archive.pdf_a3_created": "PDF/A-3 Archiv erstellt",
 }
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Life Event Engine periodic tasks (F16).
 
-Phase 12: Dokumenten-basierte Mustererkennung fuer Lebensereignisse.
+Phase 12: Dokumenten-basierte Mustererkennung für Lebensereignisse.
 """
 
 import asyncio
@@ -20,14 +20,14 @@ from app.db.models import Company, Document, DocumentType
 logger = structlog.get_logger(__name__)
 
 
-# Muster fuer Lebensereignis-Erkennung
+# Muster für Lebensereignis-Erkennung
 LIFE_EVENT_PATTERNS = {
     "umzug": {
-        "keywords": ["umzug", "neue adresse", "adressaenderung", "einzug", "auszug", "mietvertrag"],
+        "keywords": ["umzug", "neue adresse", "adressänderung", "einzug", "auszug", "mietvertrag"],
         "doc_types": [DocumentType.LETTER, DocumentType.CONTRACT, DocumentType.OTHER],
     },
     "heirat": {
-        "keywords": ["heirat", "eheschliessung", "standesamt", "trauung", "eheurkunde"],
+        "keywords": ["heirat", "eheschließung", "standesamt", "trauung", "eheurkunde"],
         "doc_types": [DocumentType.OTHER, DocumentType.LETTER],
     },
     "geburt": {
@@ -35,11 +35,11 @@ LIFE_EVENT_PATTERNS = {
         "doc_types": [DocumentType.OTHER, DocumentType.LETTER, DocumentType.FORM],
     },
     "jobwechsel": {
-        "keywords": ["arbeitsvertrag", "kuendigung", "neuer arbeitgeber", "einstellung", "probezeit"],
+        "keywords": ["arbeitsvertrag", "kündigung", "neuer arbeitgeber", "einstellung", "probezeit"],
         "doc_types": [DocumentType.CONTRACT, DocumentType.LETTER],
     },
     "immobilienkauf": {
-        "keywords": ["kaufvertrag", "grundbuch", "notar", "immobilie", "eigentum", "grundstueck"],
+        "keywords": ["kaufvertrag", "grundbuch", "notar", "immobilie", "eigentum", "grundstück"],
         "doc_types": [DocumentType.CONTRACT, DocumentType.OTHER],
     },
     "rente": {
@@ -54,11 +54,11 @@ def detect_life_events() -> dict:
     """Erkenne Lebensereignisse aus neuen Dokumenten.
 
     Erkennt:
-    - Umzug (Adressaenderung in Dokumenten)
-    - Heirat (Namensaenderung, Heiratsurkunde)
+    - Umzug (Adressänderung in Dokumenten)
+    - Heirat (Namensänderung, Heiratsurkunde)
     - Kind (Geburtsurkunde, Kindergeld-Antrag)
-    - Jobwechsel (Neue Arbeitsvertraege)
-    - Immobilienkauf (Kaufvertraege, Grundbuch)
+    - Jobwechsel (Neue Arbeitsverträge)
+    - Immobilienkauf (Kaufverträge, Grundbuch)
     """
     logger.info("life_events_detection_start")
     try:
@@ -74,7 +74,7 @@ def detect_life_events() -> dict:
 
 
 async def _detect_life_events() -> Dict[str, Any]:
-    """Async Implementation fuer Life Event Detection."""
+    """Async Implementation für Life Event Detection."""
     events_detected = 0
     events_by_type: Dict[str, int] = {}
 
@@ -116,7 +116,7 @@ async def _detect_life_events() -> Dict[str, Any]:
 
 
 def _detect_life_event_in_document(doc: Document) -> Optional[str]:
-    """Prueft ein Dokument auf Lebensereignis-Muster.
+    """Prüft ein Dokument auf Lebensereignis-Muster.
 
     Args:
         doc: Dokument mit OCR-Text
@@ -130,7 +130,7 @@ def _detect_life_event_in_document(doc: Document) -> Optional[str]:
     text_lower = doc.ocr_text.lower()
 
     for event_type, config in LIFE_EVENT_PATTERNS.items():
-        # Dokumenttyp pruefen
+        # Dokumenttyp prüfen
         if doc.document_type and doc.document_type not in config["doc_types"]:
             continue
 
@@ -140,7 +140,7 @@ def _detect_life_event_in_document(doc: Document) -> Optional[str]:
             if keyword in text_lower
         )
 
-        # Mindestens 2 Keywords muessen matchen fuer hoehere Confidence
+        # Mindestens 2 Keywords müssen matchen für höhere Confidence
         if keyword_matches >= 2:
             return event_type
 

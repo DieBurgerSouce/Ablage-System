@@ -568,7 +568,7 @@ class HistogramBinningCalibrator:
 
 
 # =============================================================================
-# Type Alias fuer Kalibratoren (nach Klassendefinitionen)
+# Type Alias für Kalibratoren (nach Klassendefinitionen)
 # =============================================================================
 
 # CalibratorType als Union aller Kalibrator-Klassen (Runtime-safe)

@@ -6,10 +6,10 @@ Enterprise Feature: Automatische Aktionen bei Verschlechterung des Entity-Risk-S
 
 Automatische Massnahmen wenn der Risiko-Score steigt:
 - Kreditlimit automatisch reduzieren
-- Zahlungsziele verkuerzen
+- Zahlungsziele verkürzen
 - Vorkasse ab Schwellenwert verlangen
 - Mahnprozess beschleunigen
-- Alert zur Pruefung erstellen
+- Alert zur Prüfung erstellen
 
 Feinpoliert und durchdacht - Proaktives Risikomanagement.
 """
@@ -47,7 +47,7 @@ logger = structlog.get_logger(__name__)
 
 
 class HealthAction(str, Enum):
-    """Moegliche Gesundheits-Massnahmen."""
+    """Mögliche Gesundheits-Massnahmen."""
     REDUCE_CREDIT_LIMIT = "reduce_credit_limit"
     SHORTEN_PAYMENT_TERMS = "shorten_payment_terms"
     REQUIRE_PREPAYMENT = "require_prepayment"
@@ -99,7 +99,7 @@ class HealthActionRecommendation:
     applied_at: Optional[datetime] = None
     applied_by_id: Optional[UUID] = None
 
-    # Vorherige Werte (fuer Rueckgaengig-Machen)
+    # Vorherige Werte (für Rückgängig-Machen)
     previous_values: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -123,7 +123,7 @@ class HealthActionRecommendation:
 
 @dataclass
 class HealthActionConfig:
-    """Konfiguration fuer automatische Massnahmen."""
+    """Konfiguration für automatische Massnahmen."""
     # Schwellenwerte
     credit_limit_reduction_threshold: float = 50.0  # Risk Score
     payment_terms_reduction_threshold: float = 60.0
@@ -139,7 +139,7 @@ class HealthActionConfig:
     prepayment_percent: float = 50.0  # 50% Vorkasse
 
     # Dunning-Beschleunigung
-    dunning_acceleration_days: int = 3  # 3 Tage frueher mahnen
+    dunning_acceleration_days: int = 3  # 3 Tage früher mahnen
 
 
 @dataclass
@@ -163,9 +163,9 @@ class HealthAssessment:
 
 class EntityHealthHandler:
     """
-    Handler fuer Entity-Gesundheitsverschlechterung.
+    Handler für Entity-Gesundheitsverschlechterung.
 
-    Ueberwacht Risiko-Score-Aenderungen und triggert
+    Überwacht Risiko-Score-Änderungen und triggert
     automatische Massnahmen bei Verschlechterung.
     """
 
@@ -306,7 +306,7 @@ class EntityHealthHandler:
         recommendations: List[HealthActionRecommendation] = []
         config = self._config
 
-        # Entity-Daten laden fuer aktuelle Werte
+        # Entity-Daten laden für aktuelle Werte
         entity_query = select(BusinessEntity).where(BusinessEntity.id == entity_id)
         result = await db.execute(entity_query)
         entity = result.scalar_one_or_none()
@@ -334,7 +334,7 @@ class EntityHealthHandler:
                 trigger_risk_score=risk_score,
                 trigger_risk_level=risk_level,
                 description=f"Kreditlimit von {current_credit_limit:,.2f} EUR auf {new_limit:,.2f} EUR reduzieren",
-                reason=f"Risk Score {risk_score:.0f} ueberschreitet Schwellenwert {config.credit_limit_reduction_threshold:.0f}",
+                reason=f"Risk Score {risk_score:.0f} überschreitet Schwellenwert {config.credit_limit_reduction_threshold:.0f}",
                 impact_description="Reduziert maximales Bestellvolumen ohne Genehmigung",
                 parameters={
                     "current_limit": float(current_credit_limit),
@@ -344,7 +344,7 @@ class EntityHealthHandler:
                 previous_values={"credit_limit": float(current_credit_limit)},
             ))
 
-        # 2. Zahlungsziel-Verkuerzung
+        # 2. Zahlungsziel-Verkürzung
         if risk_score >= config.payment_terms_reduction_threshold:
             new_days = max(7, current_payment_days - config.payment_terms_reduction_days)
             recommendations.append(HealthActionRecommendation(
@@ -353,9 +353,9 @@ class EntityHealthHandler:
                 company_id=company_id,
                 trigger_risk_score=risk_score,
                 trigger_risk_level=risk_level,
-                description=f"Zahlungsziel von {current_payment_days} auf {new_days} Tage verkuerzen",
-                reason=f"Risk Score {risk_score:.0f} ueberschreitet Schwellenwert {config.payment_terms_reduction_threshold:.0f}",
-                impact_description="Verkuerzt die Zeit bis zur Faelligkeit neuer Rechnungen",
+                description=f"Zahlungsziel von {current_payment_days} auf {new_days} Tage verkürzen",
+                reason=f"Risk Score {risk_score:.0f} überschreitet Schwellenwert {config.payment_terms_reduction_threshold:.0f}",
+                impact_description="Verkürzt die Zeit bis zur Fälligkeit neuer Rechnungen",
                 parameters={
                     "current_days": current_payment_days,
                     "new_days": new_days,
@@ -371,8 +371,8 @@ class EntityHealthHandler:
                 company_id=company_id,
                 trigger_risk_score=risk_score,
                 trigger_risk_level=risk_level,
-                description=f"{config.prepayment_percent:.0f}% Vorkasse bei neuen Auftraegen verlangen",
-                reason=f"Risk Score {risk_score:.0f} ueberschreitet Schwellenwert {config.prepayment_threshold:.0f}",
+                description=f"{config.prepayment_percent:.0f}% Vorkasse bei neuen Aufträgen verlangen",
+                reason=f"Risk Score {risk_score:.0f} überschreitet Schwellenwert {config.prepayment_threshold:.0f}",
                 impact_description="Reduziert Ausfallrisiko durch Vorauszahlung",
                 parameters={
                     "prepayment_percent": config.prepayment_percent,
@@ -388,15 +388,15 @@ class EntityHealthHandler:
                 company_id=company_id,
                 trigger_risk_score=risk_score,
                 trigger_risk_level=risk_level,
-                description=f"Mahnfristen um {config.dunning_acceleration_days} Tage verkuerzen",
-                reason=f"Risk Score {risk_score:.0f} ueberschreitet Schwellenwert {config.dunning_acceleration_threshold:.0f}",
-                impact_description="Beschleunigt Mahnprozess bei ueberfaelligen Rechnungen",
+                description=f"Mahnfristen um {config.dunning_acceleration_days} Tage verkürzen",
+                reason=f"Risk Score {risk_score:.0f} überschreitet Schwellenwert {config.dunning_acceleration_threshold:.0f}",
+                impact_description="Beschleunigt Mahnprozess bei überfälligen Rechnungen",
                 parameters={
                     "acceleration_days": config.dunning_acceleration_days,
                 },
             ))
 
-        # 5. Auftraege stoppen bei kritischem Risiko
+        # 5. Aufträge stoppen bei kritischem Risiko
         if risk_score >= config.order_suspension_threshold:
             recommendations.append(HealthActionRecommendation(
                 action=HealthAction.SUSPEND_ORDERS,
@@ -404,8 +404,8 @@ class EntityHealthHandler:
                 company_id=company_id,
                 trigger_risk_score=risk_score,
                 trigger_risk_level=risk_level,
-                description="Neue Auftraege bis zur Pruefung sperren",
-                reason=f"Kritischer Risk Score {risk_score:.0f} ueberschreitet Schwellenwert {config.order_suspension_threshold:.0f}",
+                description="Neue Aufträge bis zur Prüfung sperren",
+                reason=f"Kritischer Risk Score {risk_score:.0f} überschreitet Schwellenwert {config.order_suspension_threshold:.0f}",
                 impact_description="Verhindert weitere Risikoexposition",
                 parameters={"suspended": True},
                 previous_values={"orders_suspended": False},
@@ -419,9 +419,9 @@ class EntityHealthHandler:
                 company_id=company_id,
                 trigger_risk_score=risk_score,
                 trigger_risk_level=risk_level,
-                description="Alert zur manuellen Pruefung erstellen",
+                description="Alert zur manuellen Prüfung erstellen",
                 reason=f"Risk Level ist {risk_level.value}",
-                impact_description="Stellt sicher, dass ein Mitarbeiter die Situation prueft",
+                impact_description="Stellt sicher, dass ein Mitarbeiter die Situation prüft",
                 parameters={},
             ))
 
@@ -433,9 +433,9 @@ class EntityHealthHandler:
                 company_id=company_id,
                 trigger_risk_score=risk_score,
                 trigger_risk_level=risk_level,
-                description="Account Manager ueber schnelle Verschlechterung informieren",
+                description="Account Manager über schnelle Verschlechterung informieren",
                 reason=f"Risk Score ist um {score_change:.0f} Punkte gestiegen",
-                impact_description="Ermoeglicht proaktive Kundenbetreuung",
+                impact_description="Ermöglicht proaktive Kundenbetreuung",
                 parameters={"score_change": score_change},
             ))
 
@@ -457,7 +457,7 @@ class EntityHealthHandler:
         Args:
             db: Database Session
             recommendation_id: ID der Empfehlung
-            applied_by_id: ID des ausfuehrenden Benutzers
+            applied_by_id: ID des ausführenden Benutzers
 
         Returns:
             Tuple[success, message]
@@ -479,7 +479,7 @@ class EntityHealthHandler:
         if recommendation.status != ActionStatus.RECOMMENDED:
             return False, f"Empfehlung hat bereits Status: {recommendation.status.value}"
 
-        # Action ausfuehren
+        # Action ausführen
         success = False
         message = ""
 
@@ -566,7 +566,7 @@ class EntityHealthHandler:
         db: AsyncSession,
         recommendation: HealthActionRecommendation,
     ) -> Tuple[bool, str]:
-        """Wendet Zahlungsziel-Verkuerzung an."""
+        """Wendet Zahlungsziel-Verkürzung an."""
         entity_query = select(BusinessEntity).where(
             BusinessEntity.id == recommendation.entity_id
         )
@@ -586,7 +586,7 @@ class EntityHealthHandler:
 
         await db.commit()
 
-        return True, f"Zahlungsziel auf {new_days} Tage verkuerzt"
+        return True, f"Zahlungsziel auf {new_days} Tage verkürzt"
 
     async def _apply_prepayment_requirement(
         self,
@@ -647,7 +647,7 @@ class EntityHealthHandler:
         db: AsyncSession,
         recommendation: HealthActionRecommendation,
     ) -> Tuple[bool, str]:
-        """Sperrt neue Auftraege."""
+        """Sperrt neue Aufträge."""
         entity_query = select(BusinessEntity).where(
             BusinessEntity.id == recommendation.entity_id
         )
@@ -665,7 +665,7 @@ class EntityHealthHandler:
 
         await db.commit()
 
-        return True, "Neue Auftraege gesperrt"
+        return True, "Neue Aufträge gesperrt"
 
     async def _create_review_alert(
         self,
@@ -685,7 +685,7 @@ class EntityHealthHandler:
             title="Risiko-Verschlechterung erkannt",
             message=(
                 f"Der Risiko-Score ist auf {recommendation.trigger_risk_score:.0f} gestiegen. "
-                f"Eine manuelle Pruefung wird empfohlen."
+                f"Eine manuelle Prüfung wird empfohlen."
             ),
             source_type="health_handler",
             source_id=str(recommendation.id),
@@ -714,11 +714,11 @@ class EntityHealthHandler:
         limit: int = 500,
     ) -> Dict[str, Any]:
         """
-        Prueft alle Entities auf Gesundheitsverschlechterung.
+        Prüft alle Entities auf Gesundheitsverschlechterung.
 
         Args:
             db: Database Session
-            company_id: Optional: Nur fuer diese Company
+            company_id: Optional: Nur für diese Company
             limit: Maximale Anzahl
 
         Returns:
@@ -733,7 +733,7 @@ class EntityHealthHandler:
         )
 
         if company_id:
-            # Filter nach Company ueber Documents
+            # Filter nach Company über Documents
             subquery = (
                 select(Document.business_entity_id)
                 .where(
@@ -800,7 +800,7 @@ class EntityHealthHandler:
         self,
         entity_id: UUID,
     ) -> List[HealthActionRecommendation]:
-        """Gibt Empfehlungen fuer eine Entity zurueck."""
+        """Gibt Empfehlungen für eine Entity zurück."""
         async with self._recommendations_lock:
             return self._recommendations.get(entity_id, [])
 
@@ -808,7 +808,7 @@ class EntityHealthHandler:
         self,
         company_id: Optional[UUID] = None,
     ) -> List[HealthActionRecommendation]:
-        """Gibt alle ausstehenden Empfehlungen zurueck."""
+        """Gibt alle ausstehenden Empfehlungen zurück."""
         pending: List[HealthActionRecommendation] = []
 
         async with self._recommendations_lock:
@@ -839,7 +839,7 @@ _handler_lock = threading.Lock()
 
 
 def get_entity_health_handler() -> EntityHealthHandler:
-    """Factory-Funktion fuer EntityHealthHandler Singleton."""
+    """Factory-Funktion für EntityHealthHandler Singleton."""
     global _handler_instance
     if _handler_instance is None:
         with _handler_lock:

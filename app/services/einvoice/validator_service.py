@@ -9,10 +9,10 @@ Validiert E-Rechnungen gegen die offiziellen Standards:
 Validierungsstufen:
 1. XML-Schema-Validierung (XSD)
 2. Schematron Business-Rules (EN 16931 + BR-DE)
-3. PDF/A-3 Konformitaet (nur bei ZUGFeRD)
+3. PDF/A-3 Konformität (nur bei ZUGFeRD)
 
 Der KoSIT-Validator ist der offizielle Validator der Koordinierungsstelle
-fuer IT-Standards (KoSIT) und prueft gegen die aktuellen XRechnung-Spezifikationen.
+für IT-Standards (KoSIT) und prüft gegen die aktuellen XRechnung-Spezifikationen.
 """
 
 import logging
@@ -28,8 +28,8 @@ from app.core.safe_errors import safe_error_log, safe_error_detail
 
 # R.1 SECURITY FIX: Sicherer XMLParser gegen XXE-Angriffe
 # - resolve_entities=False: Externe Entities werden nicht aufgeloest
-# - no_network=True: Kein Netzwerkzugriff fuer DTDs/Schemas
-# - dtd_validation=False: DTD wird nicht fuer Validierung verwendet
+# - no_network=True: Kein Netzwerkzugriff für DTDs/Schemas
+# - dtd_validation=False: DTD wird nicht für Validierung verwendet
 # - load_dtd=False: DTD wird nicht geladen (verhindert Billion Laughs)
 SECURE_XML_PARSER = etree.XMLParser(
     resolve_entities=False,
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 class ValidatorType(str, Enum):
-    """Verfuegbare Validatoren."""
+    """Verfügbare Validatoren."""
     FACTURX = "facturx"  # Schnelle lokale Validierung
     KOSIT = "kosit"  # Offizieller KoSIT-Validator (via Mustang)
     MUSTANG = "mustang"  # Mustang-integrierter Validator
@@ -57,7 +57,7 @@ class ValidatorType(str, Enum):
 
 class ValidationSeverity(str, Enum):
     """Schweregrad einer Validierungsmeldung."""
-    FATAL = "fatal"  # Schema-Fehler, XML ungueltig
+    FATAL = "fatal"  # Schema-Fehler, XML ungültig
     ERROR = "error"  # Business Rule verletzt
     WARNING = "warning"  # Empfehlung nicht befolgt
     INFO = "info"  # Hinweis
@@ -76,7 +76,7 @@ class ValidationMessage:
 
 @dataclass
 class ValidationResult:
-    """Vollstaendiges Validierungsergebnis."""
+    """Vollständiges Validierungsergebnis."""
     valid: bool
     validated_at: datetime
     validator_used: str
@@ -95,7 +95,7 @@ class ValidationResult:
     error_count: int = 0
     warning_count: int = 0
 
-    # Raw Output (fuer Debugging)
+    # Raw Output (für Debugging)
     raw_output: Optional[str] = None
 
     def add_error(
@@ -134,7 +134,7 @@ class ValidationResult:
         self.warning_count += 1
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert zu Dictionary fuer API-Response."""
+        """Konvertiert zu Dictionary für API-Response."""
         return {
             "valid": self.valid,
             "validated_at": self.validated_at.isoformat(),
@@ -161,9 +161,9 @@ class ValidationResult:
 
 class EInvoiceValidatorService:
     """
-    Service fuer E-Invoice Validierung.
+    Service für E-Invoice Validierung.
 
-    Unterstuetzt mehrere Validatoren:
+    Unterstützt mehrere Validatoren:
     - facturx: Schnelle lokale Validierung (Python)
     - kosit: Offizieller KoSIT-Validator (Java via Mustang)
     - auto: Waehlt besten Validator basierend auf Format
@@ -182,13 +182,13 @@ class EInvoiceValidatorService:
         self._mustang_available: Optional[bool] = None
 
     async def _get_mustang_client(self) -> MustangClient:
-        """Gibt Mustang Client zurueck (lazy initialization)."""
+        """Gibt Mustang Client zurück (lazy initialization)."""
         if self._mustang_client is None:
             self._mustang_client = get_mustang_client()
         return self._mustang_client
 
     async def is_mustang_available(self) -> bool:
-        """Prueft ob Mustang-Service verfuegbar ist."""
+        """Prüft ob Mustang-Service verfügbar ist."""
         if self._mustang_available is None:
             try:
                 client = await self._get_mustang_client()
@@ -237,12 +237,12 @@ class EInvoiceValidatorService:
         detected_format = self._detect_format(xml_content)
         result.format_detected = format_hint or detected_format
 
-        # 2. Validator auswaehlen
+        # 2. Validator auswählen
         if validator_type == ValidatorType.AUTO:
             validator_type = await self._select_validator(result.format_detected)
             result.validator_used = validator_type.value
 
-        # 3. Validierung durchfuehren
+        # 3. Validierung durchführen
         if validator_type == ValidatorType.FACTURX:
             await self._validate_with_facturx(xml_content, result)
         elif validator_type in (ValidatorType.KOSIT, ValidatorType.MUSTANG):
@@ -270,7 +270,7 @@ class EInvoiceValidatorService:
         validator_type: ValidatorType = ValidatorType.AUTO,
     ) -> ValidationResult:
         """
-        Validiert ZUGFeRD-PDF inkl. PDF/A-3 Konformitaet.
+        Validiert ZUGFeRD-PDF inkl. PDF/A-3 Konformität.
 
         Args:
             pdf_content: PDF-Datei als Bytes
@@ -307,7 +307,7 @@ class EInvoiceValidatorService:
                 format_hint="zugferd"
             )
 
-            # Ergebnisse uebernehmen
+            # Ergebnisse übernehmen
             result.valid = xml_result.valid
             result.schema_valid = xml_result.schema_valid
             result.schematron_valid = xml_result.schematron_valid
@@ -343,7 +343,7 @@ class EInvoiceValidatorService:
         xml_content: str,
         result: ValidationResult
     ) -> etree._Element:
-        """Validiert XML-Syntax und gibt Root-Element zurueck."""
+        """Validiert XML-Syntax und gibt Root-Element zurück."""
         try:
             # R.1 SECURITY FIX: Sicherer Parser gegen XXE-Angriffe
             root = etree.fromstring(xml_content.encode("utf-8"), parser=SECURE_XML_PARSER)
@@ -416,7 +416,7 @@ class EInvoiceValidatorService:
             # Profil erkennen
             result.profile_detected = self._detect_profile(xml_content)
 
-            # Basis Business Rules pruefen
+            # Basis Business Rules prüfen
             self._check_basic_business_rules(xml_content, result)
 
         except ImportError:
@@ -476,21 +476,21 @@ class EInvoiceValidatorService:
         pdf_content: bytes,
         result: ValidationResult
     ) -> None:
-        """Validiert PDF/A-3 Konformitaet.
+        """Validiert PDF/A-3 Konformität.
 
-        Prueft grundlegende PDF/A-3 Anforderungen:
+        Prüft grundlegende PDF/A-3 Anforderungen:
         - PDF-Strukturvaliditaet
-        - Embedded File Stream (fuer ZUGFeRD XML)
+        - Embedded File Stream (für ZUGFeRD XML)
         - Metadata (XMP)
         - Keine externen Referenzen
 
-        Fuer volle PDF/A-3 Validierung wird VeraPDF empfohlen,
+        Für volle PDF/A-3 Validierung wird VeraPDF empfohlen,
         diese Implementation bietet eine Basisvalidierung.
         """
         import io
 
         try:
-            # PyPDF2 oder pypdf fuer Basis-PDF-Validierung
+            # PyPDF2 oder pypdf für Basis-PDF-Validierung
             try:
                 from pypdf import PdfReader
             except ImportError:
@@ -501,7 +501,7 @@ class EInvoiceValidatorService:
                     result.add_warning(
                         code="PDFA_LIBRARY_MISSING",
                         location="pdf",
-                        message="pypdf/PyPDF2 nicht installiert - PDF/A-3 Validierung uebersprungen"
+                        message="pypdf/PyPDF2 nicht installiert - PDF/A-3 Validierung übersprungen"
                     )
                     return
 
@@ -509,7 +509,7 @@ class EInvoiceValidatorService:
             pdf_file = io.BytesIO(pdf_content)
             reader = PdfReader(pdf_file)
 
-            # 1. Pruefe ob PDF lesbar ist (Strukturvaliditaet)
+            # 1. Prüfe ob PDF lesbar ist (Strukturvaliditaet)
             try:
                 num_pages = len(reader.pages)
                 if num_pages < 1:
@@ -517,7 +517,7 @@ class EInvoiceValidatorService:
                     result.add_error(
                         code="PDFA_NO_PAGES",
                         location="pdf",
-                        message="PDF enthaelt keine Seiten"
+                        message="PDF enthält keine Seiten"
                     )
                     return
             except Exception as e:
@@ -525,11 +525,11 @@ class EInvoiceValidatorService:
                 result.add_error(
                     code="PDFA_STRUCTURE_INVALID",
                     location="pdf",
-                    message=f"PDF-Struktur ungueltig: {safe_error_detail(e, 'PDF')}"
+                    message=f"PDF-Struktur ungültig: {safe_error_detail(e, 'PDF')}"
                 )
                 return
 
-            # 2. Pruefe auf eingebettete Dateien (ZUGFeRD XML)
+            # 2. Prüfe auf eingebettete Dateien (ZUGFeRD XML)
             has_embedded_files = False
             embedded_xml_found = False
 
@@ -546,7 +546,7 @@ class EInvoiceValidatorService:
                         embedded_xml_found = True
                         break
 
-            # 3. Pruefe XMP Metadata (PDF/A Konformitaet)
+            # 3. Prüfe XMP Metadata (PDF/A Konformität)
             has_xmp = False
             pdfa_conformance = None
 
@@ -554,7 +554,7 @@ class EInvoiceValidatorService:
                 # Standard-Metadaten vorhanden
                 has_xmp = True
 
-            # 4. Basis-Checks fuer ZUGFeRD: Embedded XML erforderlich
+            # 4. Basis-Checks für ZUGFeRD: Embedded XML erforderlich
             # ZUGFeRD erfordert eingebettetes XML (factur-x.xml)
             if not has_embedded_files:
                 result.pdf_a_compliant = False
@@ -580,13 +580,13 @@ class EInvoiceValidatorService:
             except Exception:
                 pass  # Ignoriere Fehler bei diesem optionalen Check
 
-            # 6. Pruefe Encryption (PDF/A erlaubt nur bestimmte Encryption)
+            # 6. Prüfe Encryption (PDF/A erlaubt nur bestimmte Encryption)
             if reader.is_encrypted:
                 result.pdf_a_compliant = False
                 result.add_error(
                     code="PDFA_ENCRYPTED",
                     location="pdf",
-                    message="PDF/A-3 verbietet Passwortverschluesselung"
+                    message="PDF/A-3 verbietet Passwortverschlüsselung"
                 )
                 return
 
@@ -598,7 +598,7 @@ class EInvoiceValidatorService:
                 result.add_warning(
                     code="PDFA_XMP_MISSING",
                     location="pdf/metadata",
-                    message="XMP-Metadaten nicht gefunden - fuer volle PDF/A-3 Konformitaet empfohlen"
+                    message="XMP-Metadaten nicht gefunden - für volle PDF/A-3 Konformität empfohlen"
                 )
 
             if not embedded_xml_found:
@@ -649,7 +649,7 @@ class EInvoiceValidatorService:
         xml_content: str,
         result: ValidationResult
     ) -> None:
-        """Prueft grundlegende Business Rules."""
+        """Prüft grundlegende Business Rules."""
         try:
             # R.1 SECURITY FIX: Sicherer Parser gegen XXE-Angriffe
             root = etree.fromstring(xml_content.encode("utf-8"), parser=SECURE_XML_PARSER)
@@ -678,11 +678,11 @@ class EInvoiceValidatorService:
                     result.add_error(
                         code="BR-DE-01",
                         location="BT-10",
-                        message="Leitweg-ID (BT-10) fehlt - Pflichtfeld fuer XRechnung",
+                        message="Leitweg-ID (BT-10) fehlt - Pflichtfeld für XRechnung",
                         rule_id="BR-DE-01"
                     )
 
-            # Waehrung pruefen
+            # Währung prüfen
             currency = self._find_element_text(
                 root, ["InvoiceCurrencyCode", "DocumentCurrencyCode"]
             )
@@ -690,7 +690,7 @@ class EInvoiceValidatorService:
                 result.add_warning(
                     code="CURRENCY_UNUSUAL",
                     location="BT-5",
-                    message=f"Ungewoehnliche Waehrung: {currency}"
+                    message=f"Ungewoehnliche Währung: {currency}"
                 )
 
         except Exception as e:
@@ -701,7 +701,7 @@ class EInvoiceValidatorService:
         root: etree._Element,
         possible_names: List[str]
     ) -> Optional[str]:
-        """Sucht Element mit verschiedenen moeglichen Namen."""
+        """Sucht Element mit verschiedenen möglichen Namen."""
         for elem in root.iter():
             local_name = etree.QName(elem.tag).localname
             if local_name in possible_names and elem.text:
@@ -714,7 +714,7 @@ _validator_service: Optional[EInvoiceValidatorService] = None
 
 
 def get_validator_service() -> EInvoiceValidatorService:
-    """Gibt Singleton-Instanz des Validator Service zurueck."""
+    """Gibt Singleton-Instanz des Validator Service zurück."""
     global _validator_service
     if _validator_service is None:
         _validator_service = EInvoiceValidatorService()

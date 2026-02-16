@@ -1,7 +1,7 @@
 """
-API-Endpunkte fuer Datenqualitaets-Ampel.
+API-Endpunkte für Datenqualitaets-Ampel.
 
-Bietet Qualitaetsbewertung und Ampel-Status fuer Dokumente.
+Bietet Qualitaetsbewertung und Ampel-Status für Dokumente.
 """
 
 from typing import Dict, List
@@ -53,14 +53,14 @@ class AmpelKategorie(BaseModel):
 
 
 class AmpelVerteilung(BaseModel):
-    """Ampel-Verteilung ueber alle Dokumente."""
+    """Ampel-Verteilung über alle Dokumente."""
     gruen: AmpelKategorie = Field(..., description="Gute Qualitaet")
     gelb: AmpelKategorie = Field(..., description="Mittlere Qualitaet")
     rot: AmpelKategorie = Field(..., description="Schlechte Qualitaet")
 
 
 class CompanyQualityOverviewResponse(BaseModel):
-    """Unternehmensweite Qualitaetsuebersicht."""
+    """Unternehmensweite Qualitaetsübersicht."""
     total_documents: int = Field(..., description="Gesamtanzahl Dokumente")
     average_score: float = Field(..., description="Durchschnittlicher Score")
     verteilung: AmpelVerteilung = Field(..., description="Ampel-Verteilung")
@@ -75,7 +75,7 @@ class CompanyQualityOverviewResponse(BaseModel):
     "/{document_id}/score",
     response_model=DocumentQualityResponse,
     summary="Dokumenten-Qualitaet",
-    description="Berechnet den Qualitaets-Score und Ampel-Status fuer ein Dokument.",
+    description="Berechnet den Qualitaets-Score und Ampel-Status für ein Dokument.",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_document_quality_score(
@@ -84,7 +84,7 @@ async def get_document_quality_score(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentQualityResponse:
-    """Qualitaets-Score fuer ein einzelnes Dokument."""
+    """Qualitaets-Score für ein einzelnes Dokument."""
     from app.services.ocr.document_quality_score_service import get_document_quality_service
 
     service = get_document_quality_service()
@@ -121,7 +121,7 @@ async def get_document_quality_score(
 @router.get(
     "/overview",
     response_model=CompanyQualityOverviewResponse,
-    summary="Qualitaets-Uebersicht",
+    summary="Qualitaets-Übersicht",
     description="Unternehmensweite Ampel-Verteilung.",
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
@@ -130,7 +130,7 @@ async def get_company_quality_overview(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> CompanyQualityOverviewResponse:
-    """Unternehmensweite Qualitaetsuebersicht."""
+    """Unternehmensweite Qualitaetsübersicht."""
     from app.services.ocr.document_quality_score_service import get_document_quality_service
 
     service = get_document_quality_service()
@@ -145,7 +145,7 @@ async def get_company_quality_overview(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Qualitaetsuebersicht konnte nicht berechnet werden",
+            detail="Qualitaetsübersicht konnte nicht berechnet werden",
         )
 
     result_dict = overview.to_dict()

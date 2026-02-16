@@ -19,7 +19,7 @@ logger = structlog.get_logger(__name__)
 
 
 class AnnotationService:
-    """Service fuer Dokument-Annotationen."""
+    """Service für Dokument-Annotationen."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -47,8 +47,8 @@ class AnnotationService:
             content: Textinhalt
             page_number: Seitennummer (Standard: 1)
             position: Position als Dict {x, y, width, height}
-            svg_data: SVG-Daten fuer Zeichnungen
-            parent_annotation_id: Eltern-Annotation fuer Threads
+            svg_data: SVG-Daten für Zeichnungen
+            parent_annotation_id: Eltern-Annotation für Threads
             mentioned_user_ids: Erwaehnte Benutzer
 
         Returns:
@@ -85,7 +85,7 @@ class AnnotationService:
         annotation_type: Optional[str] = None,
         include_resolved: bool = False,
     ) -> Sequence[DocumentAnnotation]:
-        """Holt alle Annotationen fuer ein Dokument."""
+        """Holt alle Annotationen für ein Dokument."""
         query = select(DocumentAnnotation).where(
             and_(
                 DocumentAnnotation.document_id == document_id,
@@ -169,7 +169,7 @@ class AnnotationService:
         company_id: UUID,
         user_id: UUID,
     ) -> bool:
-        """Loescht eine Annotation (nur eigene)."""
+        """Löscht eine Annotation (nur eigene)."""
         query = select(DocumentAnnotation).where(
             and_(
                 DocumentAnnotation.id == annotation_id,
@@ -192,7 +192,7 @@ class AnnotationService:
         document_id: UUID,
         company_id: UUID,
     ) -> dict[str, int]:
-        """Statistiken fuer Dokument-Annotationen."""
+        """Statistiken für Dokument-Annotationen."""
         query = select(
             DocumentAnnotation.annotation_type,
             func.count(DocumentAnnotation.id),

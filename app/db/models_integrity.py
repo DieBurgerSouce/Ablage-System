@@ -2,10 +2,10 @@
 """
 Document Integrity (Hash-Chain) database models for Ablage-System.
 
-Dokument-Integritaet und Manipulationsschutz:
+Dokument-Integrität und Manipulationsschutz:
 - SHA-256 Hashes pro Dokument
-- Taegliche Merkle-Baeume fuer kryptographische Verifizierung
-- Integritaetsberichte fuer Compliance und Audits
+- Tägliche Merkle-Baeume für kryptographische Verifizierung
+- Integritätsberichte für Compliance und Audits
 
 Feinpoliert und durchdacht - Enterprise-grade Document Integrity.
 """
@@ -36,8 +36,8 @@ from app.db.models import Base, CrossDBJSON
 class VerificationStatus(str, Enum):
     """Status der Dokumenten-Verifizierung."""
 
-    UNVERIFIED = "unverified"    # Hash berechnet, aber nicht geprueft
-    VERIFIED = "verified"        # Hash stimmt ueberein
+    UNVERIFIED = "unverified"    # Hash berechnet, aber nicht geprüft
+    VERIFIED = "verified"        # Hash stimmt überein
     TAMPERED = "tampered"        # Hash weicht ab - Manipulation erkannt
 
 
@@ -45,7 +45,7 @@ class DocumentHash(Base):
     """
     SHA-256 Hash eines Dokuments.
 
-    Speichert den kryptographischen Hash zur Integritaetspruefung.
+    Speichert den kryptographischen Hash zur Integritätsprüfung.
     Ein Dokument hat genau einen aktiven Hash-Eintrag.
     """
     __tablename__ = "document_hashes"
@@ -110,7 +110,7 @@ class DocumentHash(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertiert in ein Dictionary fuer API-Responses."""
+        """Konvertiert in ein Dictionary für API-Responses."""
         return {
             "id": str(self.id),
             "document_id": str(self.document_id),
@@ -127,11 +127,11 @@ class DocumentHash(Base):
 
 class MerkleTreeNode(Base):
     """
-    Knoten eines taeglichen Merkle-Baums.
+    Knoten eines täglichen Merkle-Baums.
 
-    Merkle-Baeume ermoeglichen effiziente kryptographische Verifizierung
+    Merkle-Baeume ermöglichen effiziente kryptographische Verifizierung
     aller Dokumente eines Tages. Blatt-Knoten (level=0) referenzieren
-    DocumentHash-Eintraege, innere Knoten bilden die Baumstruktur.
+    DocumentHash-Einträge, innere Knoten bilden die Baumstruktur.
     """
     __tablename__ = "merkle_tree_nodes"
 
@@ -149,11 +149,11 @@ class MerkleTreeNode(Base):
 
     # Knoten-Daten
     node_hash = Column(String(64), nullable=False)
-    parent_hash = Column(String(64), nullable=True)  # null fuer Root
+    parent_hash = Column(String(64), nullable=True)  # null für Root
     level = Column(Integer, nullable=False)  # 0 = Blatt
     position = Column(Integer, nullable=False)  # Position in der Ebene
 
-    # Blatt-Referenz (nur fuer level=0)
+    # Blatt-Referenz (nur für level=0)
     document_hash_id = Column(
         UUID(as_uuid=True),
         ForeignKey("document_hashes.id", ondelete="SET NULL"),
@@ -197,7 +197,7 @@ class MerkleTreeNode(Base):
 
 class IntegrityReport(Base):
     """
-    Integritaetsbericht fuer Compliance und Audits.
+    Integritätsbericht für Compliance und Audits.
 
     Fasst den Verifizierungsstatus aller Dokumente eines Unternehmens
     zusammen und speichert den Merkle-Root als Nachweis.
@@ -254,7 +254,7 @@ class IntegrityReport(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertiert in ein Dictionary fuer API-Responses."""
+        """Konvertiert in ein Dictionary für API-Responses."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),

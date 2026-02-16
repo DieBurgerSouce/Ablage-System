@@ -71,7 +71,7 @@ class CashFlowEntry:
 
 @dataclass
 class CashFlowProjection:
-    """Cash-Flow-Projektion fuer einen Zeitraum."""
+    """Cash-Flow-Projektion für einen Zeitraum."""
     start_date: date
     end_date: date
     period: ForecastPeriod
@@ -93,16 +93,16 @@ class CashFlowProjection:
 
 
 class CashFlowService:
-    """Service fuer Cash-Flow-Prognosen."""
+    """Service für Cash-Flow-Prognosen."""
 
     # Konfiguration
     DEFAULT_FORECAST_DAYS = 90
     PAYMENT_BEHAVIOR_WEIGHTS = {
         "on_time": 1.0,      # Zahlt puenktlich
-        "late_7": 0.9,       # Bis 7 Tage spaet
-        "late_14": 0.7,      # Bis 14 Tage spaet
-        "late_30": 0.5,      # Bis 30 Tage spaet
-        "late_60": 0.3,      # Bis 60 Tage spaet
+        "late_7": 0.9,       # Bis 7 Tage spät
+        "late_14": 0.7,      # Bis 14 Tage spät
+        "late_30": 0.5,      # Bis 30 Tage spät
+        "late_60": 0.3,      # Bis 60 Tage spät
         "default": 0.8,      # Ohne Historie
     }
 
@@ -121,7 +121,7 @@ class CashFlowService:
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            bank_account_id: Optional - nur fuer bestimmtes Konto
+            bank_account_id: Optional - nur für bestimmtes Konto
             days_ahead: Tage in die Zukunft
             scenario: Prognose-Szenario
             period: Aggregations-Zeitraum
@@ -237,10 +237,10 @@ class CashFlowService:
         bank_account_id: Optional[UUID] = None,
         days: int = 30,
     ) -> List[Dict[str, Any]]:
-        """Hole taegliche Cash-Flow-Prognose.
+        """Hole tägliche Cash-Flow-Prognose.
 
         Returns:
-            Liste mit taeglichen Werten
+            Liste mit täglichen Werten
         """
         projection = await self.get_cash_flow_forecast(
             db, user_id, bank_account_id, days_ahead=days
@@ -342,10 +342,10 @@ class CashFlowService:
         documents = result.scalars().all()
 
         for doc in documents:
-            # Extrahierte Daten pruefen
+            # Extrahierte Daten prüfen
             extracted = doc.extracted_data or {}
 
-            # Pruefen ob bereits bezahlt
+            # Prüfen ob bereits bezahlt
             if extracted.get("payment_status") == "paid":
                 continue
 
@@ -358,7 +358,7 @@ class CashFlowService:
             except (ValueError, TypeError, InvalidOperation):
                 continue
 
-            # Faelligkeitsdatum
+            # Fälligkeitsdatum
             due_date_str = extracted.get("due_date")
             if due_date_str:
                 try:
@@ -371,7 +371,7 @@ class CashFlowService:
             else:
                 due_date = date.today() + timedelta(days=14)
 
-            # Nur zukuenftige oder ueberfaellige
+            # Nur zukünftige oder überfällige
             if due_date > end_date:
                 continue
 
@@ -433,7 +433,7 @@ class CashFlowService:
             except (ValueError, TypeError, InvalidOperation):
                 continue
 
-            # Faelligkeitsdatum
+            # Fälligkeitsdatum
             due_date_str = extracted.get("due_date")
             if due_date_str:
                 try:
@@ -475,7 +475,7 @@ class CashFlowService:
         """Hole geplante Zahlungen."""
         entries = []
 
-        # Genehmigte aber noch nicht ausgefuehrte Zahlungen
+        # Genehmigte aber noch nicht ausgeführte Zahlungen
         query = select(PaymentOrder).where(
             and_(
                 PaymentOrder.user_id == user_id,
@@ -541,7 +541,7 @@ class CashFlowService:
         entries: List[CashFlowEntry],
         scenario: ForecastScenario,
     ) -> List[CashFlowEntry]:
-        """Wende Szenario auf Eintraege an."""
+        """Wende Szenario auf Einträge an."""
         multipliers = {
             ForecastScenario.OPTIMISTIC: {
                 CashFlowDirection.INFLOW: 1.1,   # +10% Einnahmen
@@ -575,7 +575,7 @@ class CashFlowService:
         projection: CashFlowProjection,
         starting_balance: Decimal,
     ) -> CashFlowProjection:
-        """Berechne Projektion aus Eintraegen."""
+        """Berechne Projektion aus Einträgen."""
         balance = starting_balance
         min_balance = balance
         min_balance_date = projection.start_date
@@ -638,7 +638,7 @@ class CashFlowService:
             alerts.append({
                 "level": "warning",
                 "type": "liquidity",
-                "message": f"Liquiditaetsprobleme an {mid_term.days_negative} Tagen im naechsten Monat",
+                "message": f"Liquiditaetsprobleme an {mid_term.days_negative} Tagen im nächsten Monat",
             })
 
         # Hohe Ausgaben
@@ -646,7 +646,7 @@ class CashFlowService:
             alerts.append({
                 "level": "warning",
                 "type": "cash_burn",
-                "message": "Ausgaben uebersteigen Einnahmen um mehr als 20%",
+                "message": "Ausgaben übersteigen Einnahmen um mehr als 20%",
                 "outflow": float(mid_term.total_outflow),
                 "inflow": float(mid_term.total_inflow),
             })
@@ -672,7 +672,7 @@ class CashFlowService:
         if pessimistic.get("days_negative", 0) > 10:
             return "Vorsicht: Auch im pessimistischen Szenario drohen Liquiditaetsprobleme. Massnahmen zur Liquiditaetssicherung empfohlen."
         elif pessimistic.get("min_balance", 0) < 0:
-            return "Risiko: Im pessimistischen Szenario koennte kurzfristig Liquiditaet knapp werden. Ruecklagen empfohlen."
+            return "Risiko: Im pessimistischen Szenario könnte kurzfristig Liquiditaet knapp werden. Rücklagen empfohlen."
         else:
             return "Stabil: Cash-Flow sieht in allen Szenarien solide aus."
 

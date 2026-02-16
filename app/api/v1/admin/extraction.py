@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Admin API fuer Strukturierte Extraktion.
+Admin API für Strukturierte Extraktion.
 
-Endpoints fuer:
+Endpoints für:
 - Batch-Reprocessing aller Dokumente
 - Task-Status abfragen
 - Extraktions-Statistiken
 
-Nur fuer Administratoren.
+Nur für Administratoren.
 """
 
 from datetime import datetime, timezone
@@ -41,14 +41,14 @@ router = APIRouter(prefix="/extraction", tags=["Admin - Extraktion"])
 
 
 class BatchReprocessRequest(BaseModel):
-    """Request fuer Batch-Reprocessing."""
+    """Request für Batch-Reprocessing."""
 
     batch_size: int = Field(100, ge=10, le=500, description="Dokumente pro Batch")
     document_type_filter: Optional[str] = Field(
         None, description="Nur bestimmte Dokumenttypen (invoice, order, contract)"
     )
     skip_already_processed: bool = Field(
-        True, description="Bereits verarbeitete ueberspringen"
+        True, description="Bereits verarbeitete überspringen"
     )
 
 
@@ -95,25 +95,25 @@ class ExtractionStatsResponse(BaseModel):
     response_model=TaskResponse,
     status_code=202,
     summary="Batch-Reprocessing starten",
-    description="Startet Batch-Reprocessing aller Dokumente fuer strukturierte Extraktion. "
-                "Langlaeufer Task, der im Hintergrund ausgefuehrt wird."
+    description="Startet Batch-Reprocessing aller Dokumente für strukturierte Extraktion. "
+                "Langlaeufer Task, der im Hintergrund ausgeführt wird."
 )
 async def trigger_batch_reprocessing(
     request: BatchReprocessRequest,
     current_user: models.User = Depends(get_current_superuser),
 ) -> TaskResponse:
     """
-    Startet Batch-Reprocessing aller Dokumente fuer strukturierte Extraktion.
+    Startet Batch-Reprocessing aller Dokumente für strukturierte Extraktion.
 
-    **Nur fuer Administratoren.**
+    **Nur für Administratoren.**
 
-    Dies ist ein langlaeufer Task, der im Hintergrund ausgefuehrt wird.
+    Dies ist ein langlaeufer Task, der im Hintergrund ausgeführt wird.
     Nutze GET /admin/extraction/reprocess-status/{task_id} um den Status abzufragen.
 
     **Parameter:**
     - batch_size: Dokumente pro Batch (10-500, default 100)
     - document_type_filter: Nur bestimmte Typen (optional)
-    - skip_already_processed: Bereits verarbeitete ueberspringen (default True)
+    - skip_already_processed: Bereits verarbeitete überspringen (default True)
     """
     logger.info(
         "batch_reprocessing_triggered",
@@ -136,7 +136,7 @@ async def trigger_batch_reprocessing(
         status="QUEUED",
         message=(
             f"Batch-Reprocessing gestartet. "
-            f"Batch-Groesse: {request.batch_size}, "
+            f"Batch-Größe: {request.batch_size}, "
             f"Skip bereits verarbeitet: {request.skip_already_processed}"
         ),
         started_at=datetime.now(timezone.utc),
@@ -157,8 +157,8 @@ async def get_reprocessing_status(
     Status eines Batch-Reprocessing Tasks abfragen.
 
     **Status-Werte:**
-    - PENDING: Task wartet auf Ausfuehrung
-    - PROGRESS: Task wird ausgefuehrt (mit Fortschritt in progress)
+    - PENDING: Task wartet auf Ausführung
+    - PROGRESS: Task wird ausgeführt (mit Fortschritt in progress)
     - SUCCESS: Task erfolgreich abgeschlossen
     - FAILURE: Task fehlgeschlagen
     """
@@ -183,16 +183,16 @@ async def get_reprocessing_status(
     "/reprocess-document/{document_id}",
     response_model=TaskResponse,
     summary="Einzeldokument reprocessen",
-    description="Startet Reprocessing eines einzelnen Dokuments fuer strukturierte Extraktion"
+    description="Startet Reprocessing eines einzelnen Dokuments für strukturierte Extraktion"
 )
 async def trigger_single_document_reprocessing(
     document_id: UUID,
     current_user: models.User = Depends(get_current_superuser),
 ) -> TaskResponse:
     """
-    Einzelnes Dokument fuer strukturierte Extraktion reprocessen.
+    Einzelnes Dokument für strukturierte Extraktion reprocessen.
 
-    **Nur fuer Administratoren.**
+    **Nur für Administratoren.**
     """
     logger.info(
         "single_document_reprocessing_triggered",
@@ -205,7 +205,7 @@ async def trigger_single_document_reprocessing(
     return TaskResponse(
         task_id=task.id,
         status="QUEUED",
-        message=f"Reprocessing fuer Dokument {document_id} gestartet",
+        message=f"Reprocessing für Dokument {document_id} gestartet",
         started_at=datetime.now(timezone.utc),
     )
 
@@ -223,9 +223,9 @@ async def get_extraction_statistics(
     """
     Aktuelle Statistiken zur strukturierten Extraktion abrufen.
 
-    **Nur fuer Administratoren.**
+    **Nur für Administratoren.**
 
-    **Enthaelt:**
+    **Enthält:**
     - Gesamtzahl Dokumente
     - Anzahl mit Extraktion
     - Aufschluesselung nach Dokumenttyp
@@ -233,11 +233,11 @@ async def get_extraction_statistics(
     - Anzahl mit Review-Bedarf
     """
     if refresh:
-        # Task synchron ausfuehren (fuer Admin OK)
+        # Task synchron ausführen (für Admin OK)
         task = generate_extraction_stats.delay()
         result = task.get(timeout=60)
     else:
-        # Direkt ausfuehren (schneller fuer Dashboard)
+        # Direkt ausführen (schneller für Dashboard)
         import asyncio
 
         loop = asyncio.new_event_loop()
@@ -274,9 +274,9 @@ async def cancel_reprocessing_task(
     """
     Laufenden Batch-Reprocessing Task abbrechen.
 
-    **Nur fuer Administratoren.**
+    **Nur für Administratoren.**
 
-    Hinweis: Der Task wird erst beim naechsten Batch-Check abgebrochen.
+    Hinweis: Der Task wird erst beim nächsten Batch-Check abgebrochen.
     """
     from app.workers.celery_app import celery_app
 

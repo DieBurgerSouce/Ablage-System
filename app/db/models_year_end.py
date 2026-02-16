@@ -3,9 +3,9 @@
 Year-End Closing (Jahresabschluss) database models for Ablage-System.
 
 Jahresabschluss-Assistent mit:
-- Session-Management fuer Jahresabschluss-Durchlaeufe
-- Checklisten-Items fuer Vollstaendigkeitspruefung
-- Luecken-Erkennung und -Nachverfolgung
+- Session-Management für Jahresabschluss-Durchlaeufe
+- Checklisten-Items für Vollständigkeitsprüfung
+- Lücken-Erkennung und -Nachverfolgung
 
 Feinpoliert und durchdacht - Enterprise-grade Jahresabschluss.
 """
@@ -37,26 +37,26 @@ class YearEndStatus(str, Enum):
     """Status eines Jahresabschluss-Durchlaufs."""
     DRAFT = "draft"                # Entwurf
     IN_PROGRESS = "in_progress"    # In Bearbeitung
-    REVIEW = "review"              # Zur Pruefung
+    REVIEW = "review"              # Zur Prüfung
     COMPLETED = "completed"        # Abgeschlossen
     EXPORTED = "exported"          # Exportiert
 
 
 class CheckItemStatus(str, Enum):
-    """Status eines einzelnen Pruefpunkts."""
+    """Status eines einzelnen Prüfpunkts."""
     PENDING = "pending"      # Ausstehend
     PASSED = "passed"        # Bestanden
     WARNING = "warning"      # Warnung
     FAILED = "failed"        # Fehlgeschlagen
-    SKIPPED = "skipped"      # Uebersprungen
+    SKIPPED = "skipped"      # Übersprungen
 
 
 class GapCategory(str, Enum):
-    """Kategorie einer erkannten Luecke."""
+    """Kategorie einer erkannten Lücke."""
     MISSING_RECEIPT = "missing_receipt"                  # Fehlender Beleg
     UNMATCHED_TRANSACTION = "unmatched_transaction"      # Nicht zugeordnete Transaktion
     MISSING_INVOICE = "missing_invoice"                  # Fehlende Rechnung
-    INCOMPLETE_DATA = "incomplete_data"                  # Unvollstaendige Daten
+    INCOMPLETE_DATA = "incomplete_data"                  # Unvollständige Daten
     AMOUNT_DISCREPANCY = "amount_discrepancy"            # Betragsdifferenz
 
 
@@ -65,7 +65,7 @@ class YearEndSession(Base):
     Jahresabschluss-Session.
 
     Repraesentiert einen kompletten Jahresabschluss-Durchlauf
-    fuer ein bestimmtes Geschaeftsjahr und Unternehmen.
+    für ein bestimmtes Geschäftsjahr und Unternehmen.
     """
     __tablename__ = "year_end_sessions"
 
@@ -79,7 +79,7 @@ class YearEndSession(Base):
         index=True,
     )
 
-    # Geschaeftsjahr
+    # Geschäftsjahr
     fiscal_year = Column(Integer, nullable=False)
 
     # Status
@@ -148,10 +148,10 @@ class YearEndSession(Base):
 
 class YearEndCheckItem(Base):
     """
-    Einzelner Pruefpunkt im Jahresabschluss.
+    Einzelner Prüfpunkt im Jahresabschluss.
 
-    Repraesentiert einen konkreten Pruefschritt wie
-    'Eingangsrechnungen Januar vollstaendig' oder 'Bankabgleich durchgefuehrt'.
+    Repraesentiert einen konkreten Prüfschritt wie
+    'Eingangsrechnungen Januar vollständig' oder 'Bankabgleich durchgeführt'.
     """
     __tablename__ = "year_end_check_items"
 
@@ -171,7 +171,7 @@ class YearEndCheckItem(Base):
         nullable=False,
     )
 
-    # Pruefpunkt-Details
+    # Prüfpunkt-Details
     category = Column(String(100), nullable=False)
     check_name = Column(String(255), nullable=False)
     status = Column(
@@ -181,7 +181,7 @@ class YearEndCheckItem(Base):
     )
     details_json = Column(CrossDBJSON, nullable=True)
 
-    # Pruefung
+    # Prüfung
     checked_at = Column(DateTime(timezone=True), nullable=True)
 
     # Loesung
@@ -215,7 +215,7 @@ class YearEndCheckItem(Base):
 
 class YearEndGap(Base):
     """
-    Erkannte Luecke oder Unstimmigkeit im Jahresabschluss.
+    Erkannte Lücke oder Unstimmigkeit im Jahresabschluss.
 
     Speichert identifizierte Probleme wie fehlende Belege,
     nicht zugeordnete Transaktionen oder Betragsdifferenzen.
@@ -238,7 +238,7 @@ class YearEndGap(Base):
         nullable=False,
     )
 
-    # Luecken-Details
+    # Lücken-Details
     category = Column(
         String(30),
         nullable=False,
@@ -247,7 +247,7 @@ class YearEndGap(Base):
     description = Column(Text, nullable=False)
     amount = Column(Numeric(12, 2), nullable=True)
 
-    # Verknuepfungen
+    # Verknüpfungen
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),

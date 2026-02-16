@@ -423,7 +423,7 @@ class ContractService:
             alerts.append(DeadlineAlert(
                 contract_id=option.contract_id,
                 contract_number=option.contract.contract_number,
-                contract_title=f"{option.contract.title} - Verlaengerungsoption {option.option_number}",
+                contract_title=f"{option.contract.title} - Verlängerungsoption {option.option_number}",
                 deadline_type="renewal",
                 deadline_date=option.exercise_deadline,
                 days_remaining=days,
@@ -470,15 +470,15 @@ class ContractService:
         option = result.scalar_one_or_none()
 
         if not option:
-            return None, "Verlaengerungsoption nicht gefunden"
+            return None, "Verlängerungsoption nicht gefunden"
 
         if option.status != RenewalOptionStatus.AVAILABLE:
-            return None, f"Option nicht verfuegbar (Status: {option.status})"
+            return None, f"Option nicht verfügbar (Status: {option.status})"
 
         if option.exercise_deadline < date.today():
             option.status = RenewalOptionStatus.EXPIRED
             await db.commit()
-            return None, "Frist fuer Verlaengerungsoption abgelaufen"
+            return None, "Frist für Verlängerungsoption abgelaufen"
 
         # Exercise the option
         option.status = RenewalOptionStatus.EXERCISED
@@ -536,10 +536,10 @@ class ContractService:
         option = result.scalar_one_or_none()
 
         if not option:
-            return None, "Verlaengerungsoption nicht gefunden"
+            return None, "Verlängerungsoption nicht gefunden"
 
         if option.status != RenewalOptionStatus.AVAILABLE:
-            return None, f"Option nicht verfuegbar (Status: {option.status})"
+            return None, f"Option nicht verfügbar (Status: {option.status})"
 
         option.status = RenewalOptionStatus.DECLINED
         option.exercised_date = date.today()
@@ -691,7 +691,7 @@ class ContractService:
             events.append(ContractTimelineEvent(
                 event_date=option.exercise_deadline,
                 event_type="renewal_option",
-                title=f"Verlaengerungsoption {option.option_number}",
+                title=f"Verlängerungsoption {option.option_number}",
                 description=f"{option.renewal_duration_months} Monate",
                 is_completed=option.status in [
                     RenewalOptionStatus.EXERCISED,
@@ -706,7 +706,7 @@ class ContractService:
             events.append(ContractTimelineEvent(
                 event_date=contract.notice_deadline,
                 event_type="notice_deadline",
-                title="Kuendigungsfrist",
+                title="Kündigungsfrist",
                 description=f"{contract.notice_period_days} Tage Frist",
                 is_completed=contract.notice_deadline <= today,
                 contract_id=contract.id,
@@ -753,7 +753,7 @@ class ContractService:
             milestones.append(ContractMilestone(
                 contract_id=contract.id,
                 milestone_type=MilestoneType.NOTICE_DEADLINE,
-                title="Kuendigungsfrist",
+                title="Kündigungsfrist",
                 description=f"{contract.notice_period_days} Tage vor Vertragsende",
                 scheduled_date=contract.notice_deadline,
             ))

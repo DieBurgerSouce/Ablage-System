@@ -48,9 +48,9 @@ logger = structlog.get_logger(__name__)
 
 
 class CashService:
-    """Service fuer Kassenbuchführung.
+    """Service für Kassenbuchführung.
 
-    Stellt alle Operationen fuer das Kassenbuch bereit:
+    Stellt alle Operationen für das Kassenbuch bereit:
     - Kassen verwalten
     - Buchungen erstellen (APPEND-ONLY!)
     - Stornierungen (Gegenbuchung)
@@ -167,8 +167,8 @@ class CashService:
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
-            skip: Anzahl zu ueberspringender Eintraege
-            limit: Maximale Anzahl Eintraege
+            skip: Anzahl zu überspringender Einträge
+            limit: Maximale Anzahl Einträge
             include_inactive: Auch inaktive Kassen
 
         Returns:
@@ -409,7 +409,7 @@ class CashService:
             raise ValueError("Buchung wurde bereits storniert")
 
         if original.entry_type == CashEntryType.CANCELLATION.value:
-            raise ValueError("Stornobuchungen koennen nicht storniert werden")
+            raise ValueError("Stornobuchungen können nicht storniert werden")
 
         # Kasse sperren
         register = await self._get_register_for_update(
@@ -520,7 +520,7 @@ class CashService:
         Returns:
             Tuple (Buchungen, Gesamtanzahl)
         """
-        # N+1 Fix: Eager Loading fuer Kategorie
+        # N+1 Fix: Eager Loading für Kategorie
         query = (
             select(CashEntry)
             .options(selectinload(CashEntry.category))
@@ -733,8 +733,8 @@ class CashService:
             register_id: Kassen-ID (optional)
             start_date: Von-Datum
             end_date: Bis-Datum
-            skip: Anzahl zu ueberspringender Eintraege
-            limit: Maximale Anzahl Eintraege
+            skip: Anzahl zu überspringender Einträge
+            limit: Maximale Anzahl Einträge
 
         Returns:
             Tuple (Liste von Zählprotokollen, Gesamtanzahl)
@@ -792,7 +792,7 @@ class CashService:
         if not register:
             raise ValueError("Kasse nicht gefunden")
 
-        # Standardwerte fuer Datumsbereich
+        # Standardwerte für Datumsbereich
         today = date.today()
         if end_date is None:
             end_date = today
@@ -1124,12 +1124,12 @@ class CashService:
         - Gleichem Register
         - Gleichem Betrag
         - Gleichem Datum
-        - Und: gleiche Belegnummer ODER aehnliche Beschreibung
+        - Und: gleiche Belegnummer ODER ähnliche Beschreibung
 
         Args:
             db: Datenbank-Session
             register_id: Kassen-ID
-            company_id: Firmen-ID (PFLICHT fuer Multi-Tenant-Sicherheit!)
+            company_id: Firmen-ID (PFLICHT für Multi-Tenant-Sicherheit!)
             amount: Betrag
             entry_date: Buchungsdatum
             description: Beschreibung
@@ -1138,7 +1138,7 @@ class CashService:
         Returns:
             Potentielles Duplikat oder None
         """
-        # Basis-Query mit company_id fuer Multi-Tenant-Sicherheit!
+        # Basis-Query mit company_id für Multi-Tenant-Sicherheit!
         query = (
             select(CashEntry)
             .where(CashEntry.company_id == company_id)
@@ -1169,7 +1169,7 @@ class CashService:
             # Exakte Übereinstimmung oder Teilstring
             if description_lower == existing_desc:
                 return entry
-            # Mindestens 80% der Woerter muessen uebereinstimmen
+            # Mindestens 80% der Woerter müssen übereinstimmen
             words_new = set(description_lower.split())
             words_existing = set(existing_desc.split())
             if len(words_new) > 0 and len(words_existing) > 0:
@@ -1193,7 +1193,7 @@ class CashService:
             db: Datenbank-Session
             entry_type: Buchungstyp
             category_id: Kategorie-ID
-            company_id: Firmen-ID (fuer SKR-Ermittlung)
+            company_id: Firmen-ID (für SKR-Ermittlung)
 
         Returns:
             Tuple (Soll-Konto, Haben-Konto)

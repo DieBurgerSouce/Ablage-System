@@ -176,14 +176,14 @@ def get_invoice_table_definition() -> ExportTable:
             ExportField("rechnungsnummer", "Rechnungsnummer", "text", 50, required=True),
             ExportField("rechnungsart", "Art (E=Eingang, A=Ausgang)", "text", 1, required=True),
             ExportField("rechnungsdatum", "Rechnungsdatum", "date", required=True),
-            ExportField("faelligkeitsdatum", "Fälligkeitsdatum", "date"),
+            ExportField("fälligkeitsdatum", "Fälligkeitsdatum", "date"),
             ExportField("buchungsdatum", "Buchungsdatum", "date"),
             ExportField("lieferant_kunde", "Lieferant/Kunde", "text", 100),
             ExportField("nettobetrag", "Nettobetrag EUR", "numeric", decimal_places=2),
             ExportField("mwst_satz", "MwSt-Satz %", "numeric", decimal_places=2),
             ExportField("mwst_betrag", "MwSt-Betrag EUR", "numeric", decimal_places=2),
             ExportField("bruttobetrag", "Bruttobetrag EUR", "numeric", decimal_places=2),
-            ExportField("waehrung", "Währung", "text", 3),
+            ExportField("währung", "Währung", "text", 3),
             ExportField("status", "Status", "text", 20),
             ExportField("dokument_id", "Dokument-ID", "text", 36),
             ExportField("buchungstext", "Buchungstext", "text", MAX_FIELD_LENGTH),
@@ -205,7 +205,7 @@ def get_bank_transaction_table_definition() -> ExportTable:
             ExportField("buchungsdatum", "Buchungsdatum", "date", required=True),
             ExportField("wertstellungsdatum", "Wertstellung", "date"),
             ExportField("betrag", "Betrag EUR", "numeric", decimal_places=2, required=True),
-            ExportField("waehrung", "Währung", "text", 3),
+            ExportField("währung", "Währung", "text", 3),
             ExportField("verwendungszweck", "Verwendungszweck", "text", MAX_FIELD_LENGTH),
             ExportField("gegenkonto_name", "Gegenkonto Name", "text", 100),
             ExportField("gegenkonto_iban", "Gegenkonto IBAN", "text", 34),
@@ -228,8 +228,8 @@ def get_document_table_definition() -> ExportTable:
             ExportField("belegdatum", "Belegdatum", "date"),
             ExportField("dateiname", "Originaldateiname", "text", MAX_FIELD_LENGTH),
             ExportField("dateipfad", "Archivpfad", "text", MAX_FIELD_LENGTH),
-            ExportField("dateigroesse", "Dateigröße Bytes", "numeric"),
-            ExportField("pruefsumme_sha256", "Prüfsumme SHA256", "text", 64),
+            ExportField("dateigröße", "Dateigröße Bytes", "numeric"),
+            ExportField("prüfsumme_sha256", "Prüfsumme SHA256", "text", 64),
             ExportField("ocr_text", "OCR-Text (Auszug)", "text", MAX_FIELD_LENGTH),
             ExportField("status", "Verarbeitungsstatus", "text", 20),
         ],
@@ -239,7 +239,7 @@ def get_document_table_definition() -> ExportTable:
 def get_audit_log_table_definition() -> ExportTable:
     """Definition für Änderungsprotokoll."""
     return ExportTable(
-        name="aenderungsprotokoll",
+        name="änderungsprotokoll",
         description="Protokoll aller Änderungen (§146 AO)",
         category=DataCategory.AUDIT_LOG,
         primary_key="log_id",
@@ -250,8 +250,8 @@ def get_audit_log_table_definition() -> ExportTable:
             ExportField("aktion", "Aktion", "text", 50, required=True),
             ExportField("tabelle", "Betroffene Tabelle", "text", 50),
             ExportField("datensatz_id", "Betroffener Datensatz", "text", 36),
-            ExportField("aenderung_vorher", "Wert vorher", "text", MAX_FIELD_LENGTH),
-            ExportField("aenderung_nachher", "Wert nachher", "text", MAX_FIELD_LENGTH),
+            ExportField("änderung_vorher", "Wert vorher", "text", MAX_FIELD_LENGTH),
+            ExportField("änderung_nachher", "Wert nachher", "text", MAX_FIELD_LENGTH),
             ExportField("ip_adresse", "IP-Adresse", "text", 45),
         ],
     )
@@ -359,7 +359,7 @@ class TaxAuthorityExportService:
                         company_id, period_start, period_end, output_dir
                     )
                     if count > 0:
-                        statistics.by_category["aenderungsprotokoll"] = count
+                        statistics.by_category["änderungsprotokoll"] = count
                         statistics.total_records += count
                         files.append(file_path)
 
@@ -807,7 +807,7 @@ class TaxAuthorityExportService:
                 )
             )
         )
-        counts["aenderungsprotokoll"] = audit_count.scalar() or 0
+        counts["änderungsprotokoll"] = audit_count.scalar() or 0
 
         return counts
 

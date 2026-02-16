@@ -278,7 +278,7 @@ class ErrorLoggingMiddleware(BaseHTTPMiddleware):
             raise
         except TimeoutError as e:
             logger.error(
-                "zeitueberschreitung",
+                "zeitüberschreitung",
                 path=request.url.path,
                 **safe_error_log(e),
                 error_type="timeout",

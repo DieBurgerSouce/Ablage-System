@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-GoBD Compliance Check Models fuer Ablage-System (Vision 2026).
+GoBD Compliance Check Models für Ablage-System (Vision 2026).
 
 Compliance-Tracking mit:
-- GoBDComplianceCheck: Pruefungen nach GoBD-Kriterien
-- GoBDComplianceHistory: Pruefverlauf (Audit-Trail)
+- GoBDComplianceCheck: Prüfungen nach GoBD-Kriterien
+- GoBDComplianceHistory: Prüfverlauf (Audit-Trail)
 - GoBDComplianceReport: Export-faehige Berichte
 
 Erweitert bestehende GoBD-Infrastruktur (DocumentArchive, DocumentAccessLog).
@@ -42,35 +42,35 @@ from app.db.models import Base, CrossDBJSON
 
 
 class GoBDCheckType(str, Enum):
-    """GoBD-Pruefungstypen nach deutschem Recht.
+    """GoBD-Prüfungstypen nach deutschem Recht.
 
-    Basierend auf den GoBD-Grundsaetzen:
+    Basierend auf den GoBD-Grundsätzen:
     - Nachvollziehbarkeit
-    - Nachpruefbarkeit
-    - Unveraenderbarkeit
-    - Vollstaendigkeit
+    - Nachprüfbarkeit
+    - Unveränderbarkeit
+    - Vollständigkeit
     - Ordnung
     - Zeitgerechte Buchung
     - Aufbewahrung
     - Maschinelle Auswertbarkeit
     """
     NACHVOLLZIEHBARKEIT = "nachvollziehbarkeit"      # Audit-Trail vorhanden
-    NACHPRUEFBARKEIT = "nachpruefbarkeit"            # Daten ueberpruefbar
-    UNVERAENDERBARKEIT = "unveraenderbarkeit"       # Keine Manipulation
-    VOLLSTAENDIGKEIT = "vollstaendigkeit"           # Keine Luecken
+    NACHPRUEFBARKEIT = "nachprüfbarkeit"            # Daten überprüfbar
+    UNVERAENDERBARKEIT = "unveränderbarkeit"       # Keine Manipulation
+    VOLLSTAENDIGKEIT = "vollständigkeit"           # Keine Lücken
     ORDNUNG = "ordnung"                             # Systematische Ablage
     ZEITGERECHTE_BUCHUNG = "zeitgerechte_buchung"   # Fristgerecht
     AUFBEWAHRUNG = "aufbewahrung"                   # 10 Jahre
-    MASCHINELLE_AUSWERTBARKEIT = "maschinelle_auswertbarkeit"  # Export moeglich
+    MASCHINELLE_AUSWERTBARKEIT = "maschinelle_auswertbarkeit"  # Export möglich
     VERFAHRENSDOKUMENTATION = "verfahrensdokumentation"       # Doku aktuell
     DATENSICHERUNG = "datensicherung"               # Backup vorhanden
     ZUGANGSKONTROLLE = "zugangskontrolle"           # Berechtigungen
 
 
 class ComplianceStatus(str, Enum):
-    """Status einer Compliance-Pruefung."""
+    """Status einer Compliance-Prüfung."""
     PENDING = "pending"             # Ausstehend
-    RUNNING = "running"             # Laeuft
+    RUNNING = "running"             # Läuft
     PASSED = "passed"               # Bestanden
     FAILED = "failed"               # Nicht bestanden
     WARNING = "warning"             # Warnung (teilweise bestanden)
@@ -79,11 +79,11 @@ class ComplianceStatus(str, Enum):
 
 class ComplianceReportType(str, Enum):
     """Typ des Compliance-Berichts."""
-    FULL = "full"           # Vollstaendiger Bericht
+    FULL = "full"           # Vollständiger Bericht
     SUMMARY = "summary"     # Zusammenfassung
-    AUDIT = "audit"         # Fuer Steuerpruefer
+    AUDIT = "audit"         # Für Steuerprüfer
     QUARTERLY = "quarterly" # Quartalsweise
-    ANNUAL = "annual"       # Jaehrlich
+    ANNUAL = "annual"       # Jährlich
     CUSTOM = "custom"       # Benutzerdefiniert
 
 
@@ -93,18 +93,18 @@ class ComplianceReportType(str, Enum):
 
 
 class GoBDComplianceCheck(Base):
-    """GoBD-Compliance-Pruefung.
+    """GoBD-Compliance-Prüfung.
 
-    Trackt den Compliance-Status fuer jedes GoBD-Kriterium:
-    - Automatische Pruefungen nach Zeitplan
-    - Manuelle Pruefungen durch Benutzer
-    - Event-basierte Pruefungen (z.B. nach Aenderungen)
+    Trackt den Compliance-Status für jedes GoBD-Kriterium:
+    - Automatische Prüfungen nach Zeitplan
+    - Manuelle Prüfungen durch Benutzer
+    - Event-basierte Prüfungen (z.B. nach Änderungen)
 
     Dashboard-Features:
     - Ampel-Anzeige pro Check (Gruen/Gelb/Rot)
-    - Trend ueber Zeit
-    - Export fuer Steuerberater/Pruefer
-    - Automatische Remediation-Vorschlaege
+    - Trend über Zeit
+    - Export für Steuerberater/Prüfer
+    - Automatische Remediation-Vorschläge
     """
     __tablename__ = "gobd_compliance_checks"
 
@@ -216,16 +216,16 @@ class GoBDComplianceCheck(Base):
     def get_check_description(self) -> str:
         """Get German description for check type."""
         descriptions = {
-            GoBDCheckType.NACHVOLLZIEHBARKEIT.value: "Audit-Trail Pruefung",
-            GoBDCheckType.NACHPRUEFBARKEIT.value: "Datenintegritaet",
+            GoBDCheckType.NACHVOLLZIEHBARKEIT.value: "Audit-Trail Prüfung",
+            GoBDCheckType.NACHPRUEFBARKEIT.value: "Datenintegrität",
             GoBDCheckType.UNVERAENDERBARKEIT.value: "Hash-Verifikation",
-            GoBDCheckType.VOLLSTAENDIGKEIT.value: "Lueckenlose Belegnummern",
+            GoBDCheckType.VOLLSTAENDIGKEIT.value: "Lückenlose Belegnummern",
             GoBDCheckType.ORDNUNG.value: "Systematische Ablage",
             GoBDCheckType.ZEITGERECHTE_BUCHUNG.value: "Fristgerechte Erfassung",
             GoBDCheckType.AUFBEWAHRUNG.value: "Aufbewahrungsfristen",
-            GoBDCheckType.MASCHINELLE_AUSWERTBARKEIT.value: "Export-Faehigkeit",
+            GoBDCheckType.MASCHINELLE_AUSWERTBARKEIT.value: "Export-Fähigkeit",
             GoBDCheckType.VERFAHRENSDOKUMENTATION.value: "Verfahrensdoku aktuell",
-            GoBDCheckType.DATENSICHERUNG.value: "Backup-Pruefung",
+            GoBDCheckType.DATENSICHERUNG.value: "Backup-Prüfung",
             GoBDCheckType.ZUGANGSKONTROLLE.value: "Berechtigungen",
         }
         return descriptions.get(self.check_type, self.check_type)
@@ -240,11 +240,11 @@ class GoBDComplianceCheck(Base):
 
 
 class GoBDComplianceHistory(Base):
-    """Historie von Compliance-Pruefungen - Immutables Audit-Log.
+    """Historie von Compliance-Prüfungen - Immutables Audit-Log.
 
-    Speichert jeden Pruefungslauf fuer:
-    - Trend-Analyse ueber Zeit
-    - Nachweis gegenueber Pruefern
+    Speichert jeden Prüfungslauf für:
+    - Trend-Analyse über Zeit
+    - Nachweis gegenüber Prüfern
     - Compliance-Reporting
     """
     __tablename__ = "gobd_compliance_history"
@@ -307,7 +307,7 @@ class GoBDComplianceHistory(Base):
 
 
 class GoBDComplianceReport(Base):
-    """Compliance-Bericht fuer Export an Steuerberater/Pruefer.
+    """Compliance-Bericht für Export an Steuerberater/Prüfer.
 
     Generiert auf Anfrage oder automatisch (Quartal/Jahr).
     """

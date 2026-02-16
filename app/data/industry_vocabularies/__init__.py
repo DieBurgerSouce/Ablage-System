@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Industry Vocabularies fuer deutsche Fachsprache.
+Industry Vocabularies für deutsche Fachsprache.
 
 Phase 8: Deutsche Fachsprache
 
-Dieses Modul stellt branchenspezifische Vokabularien bereit fuer:
+Dieses Modul stellt branchenspezifische Vokabularien bereit für:
 - Baugewerbe (VOB, HOAI, Baumaterialien)
 - Handwerk (Berufsbezeichnungen, Werkzeuge)
 - Medizin (Diagnosen, Behandlungen, Medikamente)
@@ -50,7 +50,7 @@ def load_vocabulary(industry: str) -> Dict[str, Any]:
 
 
 def get_available_industries() -> list[str]:
-    """Gibt Liste aller verfuegbaren Branchen zurueck."""
+    """Gibt Liste aller verfügbaren Branchen zurück."""
     return [
         f.stem for f in VOCABULARY_DIR.glob("*.json")
         if f.stem != "__init__"
@@ -77,11 +77,11 @@ def get_term(industry: str, term: str) -> Optional[Dict[str, Any]]:
 
 def get_abbreviation(industry: str, abbrev: str) -> Optional[str]:
     """
-    Holt die Expansion einer Abkuerzung.
+    Holt die Expansion einer Abkürzung.
 
     Args:
         industry: Name der Branche
-        abbrev: Die Abkuerzung (z.B. "VOB")
+        abbrev: Die Abkürzung (z.B. "VOB")
 
     Returns:
         Volle Bezeichnung oder None

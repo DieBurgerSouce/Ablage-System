@@ -1,9 +1,9 @@
 """
 Employee API Endpoints - Mitarbeiter-Verwaltung (Enterprise Security).
 
-CRUD-Operationen fuer Mitarbeiter-Stammdaten mit:
+CRUD-Operationen für Mitarbeiter-Stammdaten mit:
 - RBAC-basierter Zugriffskontrolle
-- PII-Maskierung fuer Non-HR-User
+- PII-Maskierung für Non-HR-User
 - Audit-Logging aller Operationen
 
 Alle Antworten auf Deutsch.
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/employees", tags=["Personal - Mitarbeiter"])
 # ==================== F.1 CRITICAL: Safe Error Messages ====================
 
 def _get_safe_error_response(error: ValueError) -> tuple[int, str]:
-    """Klassifiziert Fehler und gibt generische Nachricht zurueck.
+    """Klassifiziert Fehler und gibt generische Nachricht zurück.
 
     F.1 CRITICAL: Verhindert Information Leakage durch Exception-Messages.
     Interne Details werden geloggt, aber nicht an Client gesendet.
@@ -50,11 +50,11 @@ def _get_safe_error_response(error: ValueError) -> tuple[int, str]:
     elif 'nicht gefunden' in error_msg or 'not found' in error_msg:
         return status.HTTP_404_NOT_FOUND, "Die referenzierte Ressource wurde nicht gefunden."
     elif 'zyklisch' in error_msg or 'cycle' in error_msg or 'eigener vorgesetzter' in error_msg:
-        return status.HTTP_400_BAD_REQUEST, "Diese Aenderung wuerde eine ungueltige Struktur erzeugen."
+        return status.HTTP_400_BAD_REQUEST, "Diese Änderung wuerde eine ungültige Struktur erzeugen."
     elif 'berechtigung' in error_msg or 'permission' in error_msg or 'zugriff' in error_msg:
-        return status.HTTP_403_FORBIDDEN, "Keine Berechtigung fuer diese Aktion."
-    elif 'ungueltig' in error_msg or 'invalid' in error_msg or 'format' in error_msg:
-        return status.HTTP_400_BAD_REQUEST, "Die Eingabedaten sind ungueltig."
+        return status.HTTP_403_FORBIDDEN, "Keine Berechtigung für diese Aktion."
+    elif 'ungültig' in error_msg or 'invalid' in error_msg or 'format' in error_msg:
+        return status.HTTP_400_BAD_REQUEST, "Die Eingabedaten sind ungültig."
     else:
         return status.HTTP_400_BAD_REQUEST, "Die Anfrage konnte nicht verarbeitet werden."
 
@@ -62,7 +62,7 @@ def _get_safe_error_response(error: ValueError) -> tuple[int, str]:
 # ==================== Pydantic Schemas ====================
 
 class EmployeeBase(BaseModel):
-    """Basis-Schema fuer Mitarbeiter."""
+    """Basis-Schema für Mitarbeiter."""
     employee_number: str = Field(..., min_length=1, max_length=50, description="Personalnummer")
     salutation: Optional[str] = Field(None, max_length=20, description="Anrede (Herr/Frau)")
     title: Optional[str] = Field(None, max_length=50, description="Titel (Dr., Prof.)")
@@ -74,9 +74,9 @@ class EmployeeBase(BaseModel):
     nationality: Optional[str] = Field(None, max_length=50, description="Staatsangehoerigkeit")
     gender: Optional[str] = Field(None, max_length=20, description="Geschlecht")
 
-    # Kontakt geschaeftlich
-    email: Optional[str] = Field(None, max_length=255, description="Geschaeftliche E-Mail")
-    phone: Optional[str] = Field(None, max_length=50, description="Telefon geschaeftlich")
+    # Kontakt geschäftlich
+    email: Optional[str] = Field(None, max_length=255, description="Geschäftliche E-Mail")
+    phone: Optional[str] = Field(None, max_length=50, description="Telefon geschäftlich")
     mobile: Optional[str] = Field(None, max_length=50, description="Mobiltelefon")
 
     # Kontakt privat
@@ -100,10 +100,10 @@ class EmployeeBase(BaseModel):
     position_id: Optional[UUID] = Field(None, description="Position")
     supervisor_id: Optional[UUID] = Field(None, description="Vorgesetzter")
 
-    # Beschaeftigung - B.6 HIGH: Enum-Validierung
+    # Beschäftigung - B.6 HIGH: Enum-Validierung
     employment_type: Optional[EmploymentType] = Field(
         EmploymentType.FULL_TIME,
-        description="Beschaeftigungsart (full_time, part_time, mini_job, temporary, trainee, intern, freelance)"
+        description="Beschäftigungsart (full_time, part_time, mini_job, temporary, trainee, intern, freelance)"
     )
     status: Optional[EmployeeStatus] = Field(
         EmployeeStatus.ACTIVE,
@@ -138,10 +138,10 @@ class EmployeeBase(BaseModel):
             return None
         # Leerzeichen entfernen und uppercase
         v = v.replace(' ', '').upper()
-        # IBAN Format: 2 Buchstaben Laendercode + 2 Prüfziffern + 10-30 alphanumerische Zeichen
+        # IBAN Format: 2 Buchstaben Ländercode + 2 Prüfziffern + 10-30 alphanumerische Zeichen
         # Beispiel DE: DE89370400440532013000 (22 Zeichen)
         if not re.match(r'^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$', v):
-            raise ValueError('Ungueltig')  # G.1 CRITICAL: Keine Format-Details leaken!
+            raise ValueError('Ungültig')  # G.1 CRITICAL: Keine Format-Details leaken!
         return v
 
     # C.2 MEDIUM: BIC Validierung
@@ -156,19 +156,19 @@ class EmployeeBase(BaseModel):
         # BIC Format: 4 Buchstaben (Bank) + 2 Buchstaben (Land) + 2 alphanumerisch (Ort) + optional 3 alphanumerisch (Filiale)
         # Beispiel: COBADEFFXXX (11 Zeichen) oder COBADEFF (8 Zeichen)
         if not re.match(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$', v):
-            raise ValueError('Ungueltig')  # G.1 CRITICAL: Keine Format-Details leaken!
+            raise ValueError('Ungültig')  # G.1 CRITICAL: Keine Format-Details leaken!
         return v
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class EmployeeCreate(EmployeeBase):
-    """Schema fuer Mitarbeiter-Erstellung."""
+    """Schema für Mitarbeiter-Erstellung."""
     pass
 
 
 class EmployeeUpdate(BaseModel):
-    """Schema fuer Mitarbeiter-Update (alle Felder optional).
+    """Schema für Mitarbeiter-Update (alle Felder optional).
 
     B.6 HIGH: Enum-Felder werden bei Update validiert.
     """
@@ -198,7 +198,7 @@ class EmployeeUpdate(BaseModel):
     department_id: Optional[UUID] = None
     position_id: Optional[UUID] = None
     supervisor_id: Optional[UUID] = None
-    # B.6 HIGH: Enum-Validierung fuer Update
+    # B.6 HIGH: Enum-Validierung für Update
     employment_type: Optional[EmploymentType] = None
     status: Optional[EmployeeStatus] = None
     hire_date: Optional[date] = None
@@ -245,19 +245,19 @@ class EmployeeUpdate(BaseModel):
             return None
 
         if not isinstance(v, str):
-            raise ValueError('Ungueltig')
+            raise ValueError('Ungültig')
 
         # Nur Dateiname, keine Pfade
         photo_filename = os.path.basename(v)
         if not re.match(r'^[\w\-\.]+$', photo_filename):
-            raise ValueError('Ungueltig')
+            raise ValueError('Ungültig')
         if photo_filename.startswith('.'):
-            raise ValueError('Ungueltig')
+            raise ValueError('Ungültig')
 
         allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
         file_ext = os.path.splitext(photo_filename)[1].lower()
         if file_ext not in allowed_extensions:
-            raise ValueError('Ungueltig')
+            raise ValueError('Ungültig')
 
         return photo_filename
 
@@ -270,7 +270,7 @@ class EmployeeUpdate(BaseModel):
             return None
         v = v.replace(' ', '').upper()
         if not re.match(r'^[A-Z]{2}[0-9]{2}[A-Z0-9]{10,30}$', v):
-            raise ValueError('Ungueltig')  # G.1 CRITICAL: Keine Format-Details leaken!
+            raise ValueError('Ungültig')  # G.1 CRITICAL: Keine Format-Details leaken!
         return v
 
     # C.2 MEDIUM: BIC Validierung (auch bei Update)
@@ -282,7 +282,7 @@ class EmployeeUpdate(BaseModel):
             return None
         v = v.replace(' ', '').upper()
         if not re.match(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$', v):
-            raise ValueError('Ungueltig')  # G.1 CRITICAL: Keine Format-Details leaken!
+            raise ValueError('Ungültig')  # G.1 CRITICAL: Keine Format-Details leaken!
         return v
 
 
@@ -305,7 +305,7 @@ class PositionInfo(BaseModel):
 
 
 class EmployeeResponse(BaseModel):
-    """Response-Schema fuer Mitarbeiter."""
+    """Response-Schema für Mitarbeiter."""
     id: UUID
     employee_number: str
     salutation: Optional[str] = None
@@ -360,18 +360,18 @@ class MessageResponse(BaseModel):
     "",
     response_model=EmployeeListResponse,
     summary="Mitarbeiter auflisten",
-    description="Gibt alle Mitarbeiter mit optionaler Filterung und Paginierung zurueck. "
+    description="Gibt alle Mitarbeiter mit optionaler Filterung und Paginierung zurück. "
                 "PII-Felder werden ohne 'employees:read_pii' Berechtigung maskiert."
 )
 async def list_employees(
     request: Request,
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite (max 100)"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite (max 100)"),
     search: Optional[str] = Query(None, min_length=1, max_length=100, description="Suche (Name, E-Mail, Personalnummer)"),
     department_id: Optional[UUID] = Query(None, description="Filter nach Abteilung"),
     position_id: Optional[UUID] = Query(None, description="Filter nach Position"),
     status_filter: Optional[str] = Query(None, description="Filter nach Status", alias="status"),
-    employment_type: Optional[str] = Query(None, description="Filter nach Beschaeftigungsart"),
+    employment_type: Optional[str] = Query(None, description="Filter nach Beschäftigungsart"),
     sort_by: str = Query("last_name", description="Sortierfeld"),
     sort_order: str = Query("asc", description="Sortierrichtung (asc/desc)"),
     db: AsyncSession = Depends(get_db),
@@ -381,11 +381,11 @@ async def list_employees(
 ) -> EmployeeListResponse:
     """Liste der Mitarbeiter mit optionaler PII-Maskierung."""
 
-    # Pruefen ob User PII-Zugriff hat
+    # Prüfen ob User PII-Zugriff hat
     perm_ctx = PermissionContext(db, current_user)
     has_pii_access = await perm_ctx.can("employees:read_pii")
 
-    # IP-Adresse fuer Audit-Log (A.1 CRITICAL: Audit-Logging fuer List-Operationen)
+    # IP-Adresse für Audit-Log (A.1 CRITICAL: Audit-Logging für List-Operationen)
     ip_address = request.client.host if request.client else None
 
     # Service-Aufruf mit PII-Maskierung
@@ -460,7 +460,7 @@ async def create_employee(
     "/{employee_id}",
     response_model=EmployeeDetailResponse,
     summary="Mitarbeiter abrufen",
-    description="Gibt Details eines Mitarbeiters zurueck. "
+    description="Gibt Details eines Mitarbeiters zurück. "
                 "PII-Felder werden ohne 'employees:read_pii' Berechtigung maskiert."
 )
 async def get_employee(
@@ -471,9 +471,9 @@ async def get_employee(
     company: Company = Depends(require_company),
     _rate_limit: User = Depends(check_rate_limit),  # A.2 CRITICAL: Rate Limiting
 ) -> EmployeeDetailResponse:
-    """Gibt einen Mitarbeiter mit optionaler PII-Maskierung zurueck."""
+    """Gibt einen Mitarbeiter mit optionaler PII-Maskierung zurück."""
 
-    # Pruefen ob User PII-Zugriff hat
+    # Prüfen ob User PII-Zugriff hat
     perm_ctx = PermissionContext(db, current_user)
     has_pii_access = await perm_ctx.can("employees:read_pii")
     ip_address = request.client.host if request.client else None
@@ -536,8 +536,8 @@ async def update_employee(
 @router.delete(
     "/{employee_id}",
     response_model=MessageResponse,
-    summary="Mitarbeiter loeschen",
-    description="Loescht einen Mitarbeiter (Soft-Delete). "
+    summary="Mitarbeiter löschen",
+    description="Löscht einen Mitarbeiter (Soft-Delete). "
                 "Erfordert 'employees:delete' oder 'employees:manage' Berechtigung."
 )
 async def delete_employee(
@@ -548,7 +548,7 @@ async def delete_employee(
     company: Company = Depends(require_company),
     _rate_limit: User = Depends(check_rate_limit),  # A.2 CRITICAL: Rate Limiting
 ) -> MessageResponse:
-    """Loescht einen Mitarbeiter (Soft-Delete) mit Audit-Logging."""
+    """Löscht einen Mitarbeiter (Soft-Delete) mit Audit-Logging."""
 
     ip_address = request.client.host if request.client else None
 
@@ -566,7 +566,7 @@ async def delete_employee(
             detail="Mitarbeiter nicht gefunden."
         )
 
-    return MessageResponse(message="Mitarbeiter erfolgreich geloescht.")
+    return MessageResponse(message="Mitarbeiter erfolgreich gelöscht.")
 
 
 # ==================== Helper Functions ====================

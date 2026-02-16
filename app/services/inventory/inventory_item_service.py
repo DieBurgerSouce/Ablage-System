@@ -1,7 +1,7 @@
 """
 Inventory Item Service - Artikelverwaltung
 
-CRUD-Operationen fuer Lagerartikel.
+CRUD-Operationen für Lagerartikel.
 """
 
 import uuid
@@ -15,7 +15,7 @@ from app.db.models_inventory import InventoryItem, StockLevel
 
 
 class InventoryItemService:
-    """Service fuer Artikelverwaltung"""
+    """Service für Artikelverwaltung"""
 
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -25,7 +25,7 @@ class InventoryItemService:
         company_id: uuid.UUID,
         item_number: str,
         name: str,
-        unit: str = "Stueck",
+        unit: str = "Stück",
         description: Optional[str] = None,
         category: Optional[str] = None,
         ean: Optional[str] = None,
@@ -45,7 +45,7 @@ class InventoryItemService:
             company_id: Unternehmen
             item_number: Artikelnummer (eindeutig pro Unternehmen)
             name: Artikelbezeichnung
-            unit: Mengeneinheit (Stueck, kg, m, etc.)
+            unit: Mengeneinheit (Stück, kg, m, etc.)
             description: Langbeschreibung
             category: Kategorie/Warengruppe
             ean: EAN/GTIN
@@ -56,7 +56,7 @@ class InventoryItemService:
             reorder_point: Meldebestand
             reorder_quantity: Bestellmenge
             default_supplier_id: Standard-Lieferant
-            attributes: Zusaetzliche Attribute (JSONB)
+            attributes: Zusätzliche Attribute (JSONB)
 
         Returns:
             Erstellter Artikel
@@ -146,7 +146,7 @@ class InventoryItemService:
             category: Kategorie-Filter
             include_inactive: Inaktive Artikel einbeziehen
             limit: Max. Anzahl Ergebnisse
-            offset: Offset fuer Pagination
+            offset: Offset für Pagination
 
         Returns:
             Tuple aus Artikelliste und Gesamtanzahl
@@ -213,7 +213,7 @@ class InventoryItemService:
         """
         Artikel mit niedrigem Bestand abrufen.
 
-        Gibt Artikel zurueck, deren Bestand unter dem Meldebestand liegt.
+        Gibt Artikel zurück, deren Bestand unter dem Meldebestand liegt.
         """
         conditions = [
             InventoryItem.company_id == company_id,
@@ -278,7 +278,7 @@ class InventoryItemService:
         item_id: uuid.UUID,
         company_id: uuid.UUID,
     ) -> bool:
-        """Artikel deaktivieren (nicht loeschen)"""
+        """Artikel deaktivieren (nicht löschen)"""
         item = await self.get_by_id(item_id, company_id)
         if not item:
             return False
@@ -325,7 +325,7 @@ class InventoryItemService:
         )
 
         for item in items:
-            # Einfache Aehnlichkeitsberechnung
+            # Einfache Ähnlichkeitsberechnung
             confidence = 0.0
 
             # Artikelnummer teilweise enthalten
@@ -342,4 +342,4 @@ class InventoryItemService:
 
         # Nach Confidence sortieren
         matches.sort(key=lambda x: x[1], reverse=True)
-        return matches[:3]  # Max 3 Vorschlaege
+        return matches[:3]  # Max 3 Vorschläge

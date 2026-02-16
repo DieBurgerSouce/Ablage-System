@@ -2,7 +2,7 @@
 """
 Financial Insights database models for Ablage-System.
 
-Ermoeglicht Persistierung von:
+Ermöglicht Persistierung von:
 - Cashflow-Prognosen
 - Betrugs-Warnungen
 - Skonto-Empfehlungen
@@ -10,7 +10,7 @@ Ermoeglicht Persistierung von:
 
 Vision 2.0 Phase 2 - KI-Intelligenz
 
-Feinpoliert und durchdacht - Deutsche Praezision.
+Feinpoliert und durchdacht - Deutsche Präzision.
 """
 
 import uuid
@@ -67,7 +67,7 @@ class InsightStatus(str, Enum):
     """Bearbeitungsstatus der Insight."""
     NEW = "new"                    # Neu
     ACKNOWLEDGED = "acknowledged"  # Zur Kenntnis genommen
-    ACTED_UPON = "acted_upon"      # Aktion durchgefuehrt
+    ACTED_UPON = "acted_upon"      # Aktion durchgeführt
     DISMISSED = "dismissed"        # Verworfen
     EXPIRED = "expired"            # Abgelaufen
 
@@ -94,7 +94,7 @@ class FraudAlertStatus(str, Enum):
     """Status der Betrugswarnung."""
     OPEN = "open"                  # Offen
     INVESTIGATING = "investigating"  # In Untersuchung
-    CONFIRMED = "confirmed"        # Bestaetigt (Betrug)
+    CONFIRMED = "confirmed"        # Bestätigt (Betrug)
     FALSE_POSITIVE = "false_positive"  # Fehlalarm
     RESOLVED = "resolved"          # Geloest
 
@@ -106,9 +106,9 @@ class FraudAlertStatus(str, Enum):
 
 class CashflowPrediction(Base):
     """
-    Cashflow-Prognose fuer einen bestimmten Zeitraum.
+    Cashflow-Prognose für einen bestimmten Zeitraum.
 
-    Speichert die taeglichen Prognosen fuer Liquiditaetsplanung
+    Speichert die täglichen Prognosen für Liquiditaetsplanung
     mit verschiedenen Szenarien und Konfidenzintervallen.
     """
     __tablename__ = "cashflow_predictions"
@@ -127,7 +127,7 @@ class CashflowPrediction(Base):
     prediction_date = Column(
         Date,
         nullable=False,
-        comment="Datum fuer das die Prognose gilt"
+        comment="Datum für das die Prognose gilt"
     )
     scenario_type = Column(
         String(30),
@@ -170,7 +170,7 @@ class CashflowPrediction(Base):
         Float,
         nullable=True,
         default=0.95,
-        comment="Konfidenzniveau (z.B. 0.95 fuer 95%)"
+        comment="Konfidenzniveau (z.B. 0.95 für 95%)"
     )
 
     # Modell-Metadaten
@@ -226,11 +226,11 @@ class CashflowPrediction(Base):
             "scenario_type IN ('baseline', 'optimistic', 'pessimistic', 'custom')",
             name="ck_cashflow_scenario_type"
         ),
-        {"comment": "Cashflow-Prognosen fuer Liquiditaetsplanung"}
+        {"comment": "Cashflow-Prognosen für Liquiditaetsplanung"}
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),
@@ -258,7 +258,7 @@ class FraudAlert(Base):
     """
     Betrugs-Warnung aus der Anomalieerkennung.
 
-    Speichert erkannte Auffaelligkeiten mit Details
+    Speichert erkannte Auffälligkeiten mit Details
     zur Untersuchung und Nachverfolgung.
     """
     __tablename__ = "fraud_alerts"
@@ -304,7 +304,7 @@ class FraudAlert(Base):
         comment="Konfidenz der Erkennung (0.0-1.0)"
     )
 
-    # Betroffene Entitaeten
+    # Betroffene Entitäten
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
@@ -338,7 +338,7 @@ class FraudAlert(Base):
     similar_cases = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Referenzen zu aehnlichen Faellen"
+        comment="Referenzen zu ähnlichen Faellen"
     )
     recommended_actions = Column(
         CrossDBJSON,
@@ -394,7 +394,7 @@ class FraudAlert(Base):
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),
@@ -463,7 +463,7 @@ class SkontoRecommendation(Base):
         String(20),
         nullable=False,
         default="medium",
-        comment="Prioritaet: high, medium, low"
+        comment="Priorität: high, medium, low"
     )
 
     # Finanzielle Details
@@ -493,12 +493,12 @@ class SkontoRecommendation(Base):
     liquidity_impact = Column(
         Float,
         nullable=True,
-        comment="Auswirkung auf verfuegbare Liquiditaet"
+        comment="Auswirkung auf verfügbare Liquiditaet"
     )
     cash_available = Column(
         Float,
         nullable=True,
-        comment="Verfuegbare Liquiditaet zum Zeitpunkt"
+        comment="Verfügbare Liquiditaet zum Zeitpunkt"
     )
     liquidity_buffer_after = Column(
         Float,
@@ -510,7 +510,7 @@ class SkontoRecommendation(Base):
     reasoning = Column(
         Text,
         nullable=True,
-        comment="Ausfuehrliche Begruendung der Empfehlung"
+        comment="Ausführliche Begruendung der Empfehlung"
     )
     factors = Column(
         CrossDBJSON,
@@ -528,7 +528,7 @@ class SkontoRecommendation(Base):
     action_taken = Column(
         String(50),
         nullable=True,
-        comment="Tatsaechlich durchgefuehrte Aktion"
+        comment="Tatsaechlich durchgeführte Aktion"
     )
 
     # Timestamps
@@ -536,7 +536,7 @@ class SkontoRecommendation(Base):
     expires_at = Column(
         DateTime(timezone=True),
         nullable=False,
-        comment="Gueltig bis (= Skonto-Deadline)"
+        comment="Gültig bis (= Skonto-Deadline)"
     )
     acted_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -560,7 +560,7 @@ class SkontoRecommendation(Base):
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),
@@ -613,7 +613,7 @@ class ProactiveInsight(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
-        comment="Fuer benutzer-spezifische Insights"
+        comment="Für benutzer-spezifische Insights"
     )
 
     # Insight-Klassifikation
@@ -646,19 +646,19 @@ class ProactiveInsight(Base):
     icon = Column(
         String(50),
         nullable=True,
-        comment="Icon-Name fuer UI"
+        comment="Icon-Name für UI"
     )
 
     # Kontextdaten
     context_data = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Zusaetzliche Daten fuer Rendering"
+        comment="Zusätzliche Daten für Rendering"
     )
     related_entities = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Betroffene Entitaeten (Dokumente, Kunden, etc.)"
+        comment="Betroffene Entitäten (Dokumente, Kunden, etc.)"
     )
     metrics = Column(
         CrossDBJSON,
@@ -683,13 +683,13 @@ class ProactiveInsight(Base):
     valid_until = Column(
         DateTime(timezone=True),
         nullable=True,
-        comment="Gueltig bis (null = unbegrenzt)"
+        comment="Gültig bis (null = unbegrenzt)"
     )
     recurrence_key = Column(
         String(255),
         nullable=True,
         index=True,
-        comment="Schluessel fuer wiederkehrende Insights"
+        comment="Schluessel für wiederkehrende Insights"
     )
 
     # Interaktion
@@ -726,11 +726,11 @@ class ProactiveInsight(Base):
             "status IN ('new', 'acknowledged', 'acted_upon', 'dismissed', 'expired')",
             name="ck_insight_status"
         ),
-        {"comment": "Proaktive Insights fuer Benutzer"}
+        {"comment": "Proaktive Insights für Benutzer"}
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),

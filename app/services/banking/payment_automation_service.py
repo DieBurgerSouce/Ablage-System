@@ -5,7 +5,7 @@ Payment Automation Service.
 Automatisierte Zahlungsabwicklung:
 - Auto-SEPA-Generierung bei genehmigten Rechnungen
 - Skonto-optimierte Zahlungsplanung
-- Batch-Zahlungsvorschlaege
+- Batch-Zahlungsvorschläge
 - Intelligente Zahlungsterminierung
 
 Phase 5.4 der Strategischen Roadmap.
@@ -56,7 +56,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PaymentPriority(str, Enum):
-    """Zahlungsprioritaet."""
+    """Zahlungspriorität."""
 
     CRITICAL = "critical"  # Sofort zahlen (abgelaufen, Mahnung)
     HIGH = "high"  # Skonto laeuft bald ab
@@ -69,7 +69,7 @@ class PaymentStrategy(str, Enum):
 
     SKONTO_OPTIMIZED = "skonto_optimized"  # Maximiert Skonto-Ersparnis
     CASHFLOW_OPTIMIZED = "cashflow_optimized"  # Minimiert Liquiditaetsabfluss
-    DEADLINE_BASED = "deadline_based"  # Zahlt kurz vor Faelligkeit
+    DEADLINE_BASED = "deadline_based"  # Zahlt kurz vor Fälligkeit
     IMMEDIATE = "immediate"  # Sofortige Zahlung
 
 
@@ -86,11 +86,11 @@ class PaymentBatchStatus(str, Enum):
 
 
 class SuggestionReason(str, Enum):
-    """Grund fuer Zahlungsvorschlag."""
+    """Grund für Zahlungsvorschlag."""
 
     SKONTO_EXPIRING = "skonto_expiring"  # Skonto laeuft bald ab
-    DUE_DATE_NEAR = "due_date_near"  # Faelligkeit naht
-    OVERDUE = "overdue"  # Ueberfaellig
+    DUE_DATE_NEAR = "due_date_near"  # Fälligkeit naht
+    OVERDUE = "overdue"  # Überfällig
     APPROVED_INVOICE = "approved_invoice"  # Genehmigte Rechnung
     RECURRING_PAYMENT = "recurring_payment"  # Wiederkehrende Zahlung
     MANUAL_REQUEST = "manual_request"  # Manuell angefordert
@@ -143,7 +143,7 @@ class PaymentSuggestion:
 
     @property
     def is_skonto_available(self) -> bool:
-        """Ist Skonto noch moeglich?"""
+        """Ist Skonto noch möglich?"""
         if self.skonto_deadline is None:
             return False
         return self.skonto_deadline > utc_now()
@@ -227,12 +227,12 @@ class PaymentSchedule:
 
 @dataclass
 class AutomationConfig:
-    """Konfiguration fuer Zahlungsautomatisierung."""
+    """Konfiguration für Zahlungsautomatisierung."""
 
     # Automatische Generierung
     auto_generate_on_approval: bool = True  # Batch bei Genehmigung erstellen
     auto_approve_threshold: Decimal = Decimal("1000")  # Auto-Approve bis Betrag
-    auto_execute: bool = False  # Automatisch ausfuehren
+    auto_execute: bool = False  # Automatisch ausführen
 
     # Skonto-Optimierung
     prioritize_skonto: bool = True  # Skonto-Rechnungen priorisieren
@@ -243,7 +243,7 @@ class AutomationConfig:
     preferred_payment_days: List[int] = field(
         default_factory=lambda: [1, 15]
     )  # Zahltage im Monat
-    advance_days: int = 2  # Tage vor Faelligkeit generieren
+    advance_days: int = 2  # Tage vor Fälligkeit generieren
     batch_window_days: int = 7  # Rechnungen X Tage im Voraus batchen
 
     # Limits
@@ -258,12 +258,12 @@ class AutomationConfig:
 
 
 class PaymentAutomationService:
-    """Service fuer automatisierte Zahlungsabwicklung.
+    """Service für automatisierte Zahlungsabwicklung.
 
     Features:
-    - Automatische Erkennung faelliger Zahlungen
+    - Automatische Erkennung fälliger Zahlungen
     - Skonto-optimierte Zahlungsplanung
-    - Batch-Generierung fuer SEPA-Export
+    - Batch-Generierung für SEPA-Export
     - Intelligente Zahlungsterminierung
     """
 
@@ -278,11 +278,11 @@ class PaymentAutomationService:
         return self._default_config
 
     def _get_config_for_company(self, company_id: UUID) -> AutomationConfig:
-        """Hole Konfiguration fuer Company (oder Default)."""
+        """Hole Konfiguration für Company (oder Default)."""
         return self._configs.get(company_id, self._default_config)
 
     # -------------------------------------------------------------------------
-    # Zahlungsvorschlaege generieren
+    # Zahlungsvorschläge generieren
     # -------------------------------------------------------------------------
 
     async def generate_payment_suggestions(
@@ -293,17 +293,17 @@ class PaymentAutomationService:
         lookahead_days: int = 30,
         include_overdue: bool = True,
     ) -> List[PaymentSuggestion]:
-        """Generiere Zahlungsvorschlaege basierend auf Strategie.
+        """Generiere Zahlungsvorschläge basierend auf Strategie.
 
         Args:
             db: Database session
             company_id: Company-ID
             strategy: Zahlungsstrategie
             lookahead_days: Tage in die Zukunft schauen
-            include_overdue: Ueberfaellige einbeziehen
+            include_overdue: Überfällige einbeziehen
 
         Returns:
-            Liste von Zahlungsvorschlaegen
+            Liste von Zahlungsvorschlägen
         """
         now = utc_now()
         cutoff_date = now + timedelta(days=lookahead_days)
@@ -319,7 +319,7 @@ class PaymentAutomationService:
         )
 
         if include_overdue:
-            # Ueberfaellige + zukuenftig faellige
+            # Überfällige + zukünftig fällige
             query = query.where(
                 or_(
                     InvoiceTracking.due_date <= cutoff_date,
@@ -327,7 +327,7 @@ class PaymentAutomationService:
                 )
             )
         else:
-            # Nur zukuenftig faellige
+            # Nur zukünftig fällige
             query = query.where(
                 InvoiceTracking.due_date >= now,
                 InvoiceTracking.due_date <= cutoff_date,
@@ -347,7 +347,7 @@ class PaymentAutomationService:
         suggestions = self._sort_by_strategy(suggestions, strategy)
 
         logger.info(
-            "Zahlungsvorschlaege generiert",
+            "Zahlungsvorschläge generiert",
             company_id=str(company_id),
             strategy=strategy.value,
             suggestion_count=len(suggestions),
@@ -391,7 +391,7 @@ class PaymentAutomationService:
         if invoice.skonto_deadline:
             days_until_skonto = (invoice.skonto_deadline - now).days
 
-        # Bestimme Prioritaet
+        # Bestimme Priorität
         priority = self._calculate_priority(days_until_due, days_until_skonto, invoice)
 
         # Bestimme Grund
@@ -457,8 +457,8 @@ class PaymentAutomationService:
         days_until_skonto: Optional[int],
         invoice: InvoiceTracking,
     ) -> PaymentPriority:
-        """Berechne Zahlungsprioritaet."""
-        # Ueberfaellig = kritisch
+        """Berechne Zahlungspriorität."""
+        # Überfällig = kritisch
         if days_until_due is not None and days_until_due < 0:
             return PaymentPriority.CRITICAL
 
@@ -471,11 +471,11 @@ class PaymentAutomationService:
         if days_until_skonto is not None and 0 <= days_until_skonto <= config.skonto_alert_days:
             return PaymentPriority.HIGH
 
-        # Faellig in naechsten 3 Tagen = hoch
+        # Fällig in nächsten 3 Tagen = hoch
         if days_until_due is not None and 0 <= days_until_due <= 3:
             return PaymentPriority.HIGH
 
-        # Faellig in naechsten 7 Tagen = normal
+        # Fällig in nächsten 7 Tagen = normal
         if days_until_due is not None and days_until_due <= 7:
             return PaymentPriority.NORMAL
 
@@ -487,7 +487,7 @@ class PaymentAutomationService:
         days_until_skonto: Optional[int],
         invoice: InvoiceTracking,
     ) -> SuggestionReason:
-        """Bestimme Grund fuer Zahlungsvorschlag."""
+        """Bestimme Grund für Zahlungsvorschlag."""
         if days_until_due is not None and days_until_due < 0:
             return SuggestionReason.OVERDUE
 
@@ -513,27 +513,27 @@ class PaymentAutomationService:
             return today
 
         if strategy == PaymentStrategy.SKONTO_OPTIMIZED:
-            # Zahle vor Skonto-Ablauf falls verfuegbar
+            # Zahle vor Skonto-Ablauf falls verfügbar
             if invoice.skonto_deadline and days_until_skonto is not None and days_until_skonto > 0:
                 return (invoice.skonto_deadline - timedelta(days=1)).date()
 
         if strategy == PaymentStrategy.CASHFLOW_OPTIMIZED:
-            # Zahle am letzten moeglichen Tag
+            # Zahle am letzten möglichen Tag
             if invoice.due_date:
                 return invoice.due_date.date()
 
         if strategy == PaymentStrategy.DEADLINE_BASED:
-            # Zahle 2 Tage vor Faelligkeit
+            # Zahle 2 Tage vor Fälligkeit
             config = self._get_default_config()
             if invoice.due_date:
                 suggested = invoice.due_date - timedelta(days=config.advance_days)
                 return max(today, suggested.date())
 
-        # Fallback: Naechster bevorzugter Zahltag
+        # Fallback: Nächster bevorzugter Zahltag
         return self._next_preferred_payment_day(today)
 
     def _next_preferred_payment_day(self, from_date: date) -> date:
-        """Finde naechsten bevorzugten Zahltag."""
+        """Finde nächsten bevorzugten Zahltag."""
         config = self._get_default_config()
         if not config.preferred_payment_days:
             return from_date
@@ -551,7 +551,7 @@ class PaymentAutomationService:
         suggestions: List[PaymentSuggestion],
         strategy: PaymentStrategy,
     ) -> List[PaymentSuggestion]:
-        """Sortiere Vorschlaege nach Strategie."""
+        """Sortiere Vorschläge nach Strategie."""
         if strategy == PaymentStrategy.SKONTO_OPTIMIZED:
             # Skonto-Rechnungen mit hoechster Ersparnis zuerst
             return sorted(
@@ -564,20 +564,20 @@ class PaymentAutomationService:
             )
 
         if strategy == PaymentStrategy.DEADLINE_BASED:
-            # Nach Faelligkeit
+            # Nach Fälligkeit
             return sorted(
                 suggestions,
                 key=lambda s: (s.days_until_due or 999, -float(s.payment_amount)),
             )
 
         if strategy == PaymentStrategy.CASHFLOW_OPTIMIZED:
-            # Kleinste Betraege zuerst, spaetere Faelligkeit zuerst
+            # Kleinste Betraege zuerst, spätere Fälligkeit zuerst
             return sorted(
                 suggestions,
                 key=lambda s: (float(s.payment_amount), -(s.days_until_due or 0)),
             )
 
-        # Default: Nach Prioritaet
+        # Default: Nach Priorität
         priority_order = {
             PaymentPriority.CRITICAL: 0,
             PaymentPriority.HIGH: 1,
@@ -599,12 +599,12 @@ class PaymentAutomationService:
         debtor_account_id: Optional[UUID] = None,
         created_by_id: Optional[UUID] = None,
     ) -> PaymentBatch:
-        """Erstelle Payment-Batch aus Vorschlaegen.
+        """Erstelle Payment-Batch aus Vorschlägen.
 
         Args:
             db: Database session
             company_id: Company-ID
-            suggestions: Zahlungsvorschlaege
+            suggestions: Zahlungsvorschläge
             name: Batch-Name (optional)
             debtor_account_id: Auszugsquelle (optional)
             created_by_id: Ersteller-ID (optional)
@@ -612,7 +612,7 @@ class PaymentAutomationService:
         Returns:
             Erstellter PaymentBatch
         """
-        # Hole Company-Name fuer Debtor-Info
+        # Hole Company-Name für Debtor-Info
         company_result = await db.execute(
             select(Company).where(Company.id == company_id)
         )
@@ -675,7 +675,7 @@ class PaymentAutomationService:
             db: Database session
             company_id: Company-ID
             strategy: Zahlungsstrategie
-            max_amount: Maximalbetrag fuer Batch
+            max_amount: Maximalbetrag für Batch
             debtor_account_id: Auszugsquelle
             created_by_id: Ersteller-ID
 
@@ -684,7 +684,7 @@ class PaymentAutomationService:
         """
         config = self._get_config_for_company(company_id)
 
-        # Generiere Vorschlaege
+        # Generiere Vorschläge
         all_suggestions = await self.generate_payment_suggestions(
             db,
             company_id,
@@ -700,15 +700,15 @@ class PaymentAutomationService:
         running_total = Decimal("0")
 
         for suggestion in all_suggestions:
-            # Pruefe Einzelzahlungs-Limit
+            # Prüfe Einzelzahlungs-Limit
             if suggestion.payment_amount > config.max_single_payment:
                 continue
 
-            # Pruefe Batch-Groesse
+            # Prüfe Batch-Größe
             if len(selected) >= config.max_batch_size:
                 break
 
-            # Pruefe Gesamtbetrag
+            # Prüfe Gesamtbetrag
             if max_amount and running_total + suggestion.payment_amount > max_amount:
                 continue
 
@@ -723,7 +723,7 @@ class PaymentAutomationService:
         )
 
     # -------------------------------------------------------------------------
-    # Batch-Freigabe und Ausfuehrung
+    # Batch-Freigabe und Ausführung
     # -------------------------------------------------------------------------
 
     async def approve_batch(
@@ -732,7 +732,7 @@ class PaymentAutomationService:
         batch: PaymentBatch,
         approver_id: UUID,
     ) -> PaymentBatch:
-        """Gib Batch zur Ausfuehrung frei.
+        """Gib Batch zur Ausführung frei.
 
         Args:
             db: Database session
@@ -796,13 +796,13 @@ class PaymentAutomationService:
 
         Args:
             batch: Freigegebener Batch
-            execution_date: Ausfuehrungsdatum (optional)
+            execution_date: Ausführungsdatum (optional)
 
         Returns:
             Tuple von (XML-Content, Message-ID)
         """
         if batch.status not in (PaymentBatchStatus.APPROVED, PaymentBatchStatus.DRAFT):
-            raise ValueError(f"Batch hat ungueltigen Status: {batch.status}")
+            raise ValueError(f"Batch hat ungültigen Status: {batch.status}")
 
         if not batch.debtor_iban:
             raise ValueError("Keine Debtor-IBAN konfiguriert")
@@ -813,7 +813,7 @@ class PaymentAutomationService:
         for suggestion in batch.suggestions:
             if not suggestion.entity_iban:
                 logger.warning(
-                    "Ueberspringe Zahlung ohne IBAN",
+                    "Überspringe Zahlung ohne IBAN",
                     invoice_id=str(suggestion.invoice_id),
                     entity_name=suggestion.entity_name,
                 )
@@ -831,7 +831,7 @@ class PaymentAutomationService:
             transactions.append(txn)
 
         if not transactions:
-            raise ValueError("Keine gueltigen Transaktionen fuer SEPA-Export")
+            raise ValueError("Keine gültigen Transaktionen für SEPA-Export")
 
         # Erstelle SEPA-Batch
         sepa_batch = SEPACreditTransferBatch(
@@ -872,7 +872,7 @@ class PaymentAutomationService:
         period_days: int = 30,
         strategy: PaymentStrategy = PaymentStrategy.SKONTO_OPTIMIZED,
     ) -> PaymentSchedule:
-        """Erstelle Zahlungskalender fuer Periode.
+        """Erstelle Zahlungskalender für Periode.
 
         Args:
             db: Database session
@@ -903,7 +903,7 @@ class PaymentAutomationService:
                     by_date[date_key] = []
                 by_date[date_key].append(suggestion)
 
-        # Erstelle Eintraege
+        # Erstelle Einträge
         entries: List[Dict[str, Any]] = []
         for date_key in sorted(by_date.keys()):
             payments = by_date[date_key]
@@ -1001,7 +1001,7 @@ class PaymentAutomationService:
         )
         open_count = open_result.scalar() or 0
 
-        # Ueberfaellige
+        # Überfällige
         overdue_result = await db.execute(
             select(func.count())
             .select_from(InvoiceTracking)
@@ -1046,20 +1046,20 @@ class PaymentAutomationService:
         limit: int = 50,
         offset: int = 0,
     ) -> List[PaymentBatch]:
-        """Liste alle Zahlungs-Batches fuer eine Company.
+        """Liste alle Zahlungs-Batches für eine Company.
 
         Args:
             db: Database session
             company_id: Company-ID
             status: Optional Status-Filter
             limit: Maximum Anzahl
-            offset: Offset fuer Pagination
+            offset: Offset für Pagination
 
         Returns:
             Liste von PaymentBatch
         """
         # In einer echten Implementation wuerden wir PaymentBatch aus DB laden
-        # Hier geben wir eine leere Liste zurueck (Batches sind in-memory)
+        # Hier geben wir eine leere Liste zurück (Batches sind in-memory)
         return []
 
     async def get_batch(
@@ -1073,7 +1073,7 @@ class PaymentAutomationService:
         Args:
             db: Database session
             batch_id: Batch-ID
-            company_id: Company-ID (fuer Isolation)
+            company_id: Company-ID (für Isolation)
 
         Returns:
             PaymentBatch oder None
@@ -1087,7 +1087,7 @@ class PaymentAutomationService:
         company_id: UUID,
         invoice_ids: List[UUID],
     ) -> List[PaymentSuggestion]:
-        """Generiere Zahlungsvorschlaege fuer spezifische Rechnungen.
+        """Generiere Zahlungsvorschläge für spezifische Rechnungen.
 
         Args:
             db: Database session
@@ -1128,7 +1128,7 @@ class PaymentAutomationService:
         db: AsyncSession,
         company_id: UUID,
     ) -> AutomationConfig:
-        """Hole Automatisierungs-Konfiguration fuer Company.
+        """Hole Automatisierungs-Konfiguration für Company.
 
         Args:
             db: Database session
@@ -1208,7 +1208,7 @@ class PaymentAutomationService:
         company_id: UUID,
         days: int = 7,
     ) -> List[Dict[str, Any]]:
-        """Hole Skonto-Alerts fuer bald ablaufende Fristen.
+        """Hole Skonto-Alerts für bald ablaufende Fristen.
 
         Args:
             db: Database session
@@ -1256,7 +1256,7 @@ class PaymentAutomationService:
                 "days_remaining": days_remaining,
                 "potential_savings": float(potential_savings),
                 "urgency": urgency,
-                "message": f"Skonto-Frist laeuft in {days_remaining} Tag(en) ab - {float(potential_savings):.2f} EUR Ersparnis moeglich",
+                "message": f"Skonto-Frist laeuft in {days_remaining} Tag(en) ab - {float(potential_savings):.2f} EUR Ersparnis möglich",
             })
 
         return alerts
@@ -1268,7 +1268,7 @@ class PaymentAutomationService:
 
 
 def get_payment_automation_service() -> PaymentAutomationService:
-    """Factory function fuer PaymentAutomationService.
+    """Factory function für PaymentAutomationService.
 
     Returns:
         Service instance

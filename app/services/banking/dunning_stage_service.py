@@ -114,7 +114,7 @@ DEFAULT_STAGES: List[DefaultStage] = [
     ),
     DefaultStage(
         stage_number=5,
-        stage_name="Inkasso-Uebergabe",
+        stage_name="Inkasso-Übergabe",
         trigger_days_after_due=50,
         action_type=DunningActionType.ESCALATION,
         fee_amount=Decimal("0.00"),
@@ -123,14 +123,14 @@ DEFAULT_STAGES: List[DefaultStage] = [
 
 
 class DunningStageConfigService:
-    """Service fuer Mahnstufen-Konfiguration."""
+    """Service für Mahnstufen-Konfiguration."""
 
     async def get_stages(
         self,
         db: AsyncSession,
         user_id: UUID,
     ) -> List[JSONDict]:
-        """Hole alle Mahnstufen fuer Benutzer.
+        """Hole alle Mahnstufen für Benutzer.
 
         Args:
             db: Datenbank-Session
@@ -197,15 +197,15 @@ class DunningStageConfigService:
             db: Datenbank-Session
             user_id: Benutzer-ID
             stage_name: Name der Stufe
-            trigger_days_after_due: Tage nach Faelligkeit
+            trigger_days_after_due: Tage nach Fälligkeit
             action_type: Aktionstyp
-            fee_amount: Mahngebuehr
+            fee_amount: Mahngebühr
             template_id: Optionale Template-ID
 
         Returns:
             Erstellte Mahnstufe
         """
-        # Naechste Stufennummer und Sortierung bestimmen
+        # Nächste Stufennummer und Sortierung bestimmen
         max_query = select(
             func.max(DunningStageConfig.stage_number),
             func.max(DunningStageConfig.sort_order)
@@ -265,7 +265,7 @@ class DunningStageConfigService:
             stage_name: Neuer Name
             trigger_days_after_due: Neue Tage
             action_type: Neuer Aktionstyp
-            fee_amount: Neue Gebuehr
+            fee_amount: Neue Gebühr
             template_id: Neue Template-ID
             is_active: Aktiv/Inaktiv
 
@@ -307,7 +307,7 @@ class DunningStageConfigService:
         user_id: UUID,
         stage_id: UUID,
     ) -> bool:
-        """Loesche Mahnstufe.
+        """Lösche Mahnstufe.
 
         Args:
             db: Datenbank-Session
@@ -315,7 +315,7 @@ class DunningStageConfigService:
             stage_id: Stufen-ID
 
         Returns:
-            True wenn geloescht
+            True wenn gelöscht
         """
         stage = await self._get_stage(db, user_id, stage_id)
         if not stage:
@@ -369,7 +369,7 @@ class DunningStageConfigService:
             new_order=[str(sid) for sid in stage_ids],
         )
 
-        # Aktualisierte Liste zurueckgeben
+        # Aktualisierte Liste zurückgeben
         return await self.get_stages(db, user_id)
 
     async def reset_to_defaults(
@@ -377,7 +377,7 @@ class DunningStageConfigService:
         db: AsyncSession,
         user_id: UUID,
     ) -> List[JSONDict]:
-        """Setze Mahnstufen auf Standard zurueck.
+        """Setze Mahnstufen auf Standard zurück.
 
         Args:
             db: Datenbank-Session
@@ -386,7 +386,7 @@ class DunningStageConfigService:
         Returns:
             Standard-Stufenliste
         """
-        # Alle bestehenden Stufen loeschen
+        # Alle bestehenden Stufen löschen
         await db.execute(
             delete(DunningStageConfig).where(
                 DunningStageConfig.user_id == user_id
@@ -416,7 +416,7 @@ class DunningStageConfigService:
 
         Args:
             db: Datenbank-Session
-            business_entity_id: Geschaeftspartner-ID
+            business_entity_id: Geschäftspartner-ID
 
         Returns:
             Override-Einstellungen oder None
@@ -444,18 +444,18 @@ class DunningStageConfigService:
 
         Args:
             db: Datenbank-Session
-            business_entity_id: Geschaeftspartner-ID
+            business_entity_id: Geschäftspartner-ID
             custom_payment_terms_days: Abweichende Zahlungsfrist
             max_mahn_stufe: Max. Eskalationsstufe
             preferred_contact_method: Bevorzugte Kontaktart
-            exclude_from_auto_dunning: Von Auto-Mahnung ausschliessen
+            exclude_from_auto_dunning: Von Auto-Mahnung ausschließen
             exclusion_reason: Grund für Ausschluss
             notes: Notizen
 
         Returns:
             Gespeicherte Einstellungen
         """
-        # Pruefen ob Override existiert
+        # Prüfen ob Override existiert
         query = select(CustomerDunningOverride).where(
             CustomerDunningOverride.business_entity_id == business_entity_id
         )
@@ -508,14 +508,14 @@ class DunningStageConfigService:
         db: AsyncSession,
         business_entity_id: UUID,
     ) -> bool:
-        """Loesche kundenspezifische Mahneinstellungen.
+        """Lösche kundenspezifische Mahneinstellungen.
 
         Args:
             db: Datenbank-Session
-            business_entity_id: Geschaeftspartner-ID
+            business_entity_id: Geschäftspartner-ID
 
         Returns:
-            True wenn geloescht
+            True wenn gelöscht
         """
         query = select(CustomerDunningOverride).where(
             CustomerDunningOverride.business_entity_id == business_entity_id
@@ -540,7 +540,7 @@ class DunningStageConfigService:
     # Auto-Mahnlauf Einstellungen
     # =========================================================================
 
-    # Schluessel fuer Auto-Mahnlauf-Einstellungen im User.preferences JSONB
+    # Schluessel für Auto-Mahnlauf-Einstellungen im User.preferences JSONB
     AUTO_DUNNING_SETTINGS_KEY = "auto_dunning_settings"
 
     async def get_auto_dunning_settings(
@@ -548,7 +548,7 @@ class DunningStageConfigService:
         db: AsyncSession,
         user_id: UUID,
     ) -> AutoDunningSettingsResponse:
-        """Hole Auto-Mahnlauf-Einstellungen fuer Benutzer.
+        """Hole Auto-Mahnlauf-Einstellungen für Benutzer.
 
         Args:
             db: Datenbank-Session
@@ -595,7 +595,7 @@ class DunningStageConfigService:
         user_id: UUID,
         settings: AutoDunningSettingsUpdate,
     ) -> AutoDunningSettingsResponse:
-        """Aktualisiere Auto-Mahnlauf-Einstellungen fuer Benutzer.
+        """Aktualisiere Auto-Mahnlauf-Einstellungen für Benutzer.
 
         Args:
             db: Datenbank-Session
@@ -673,7 +673,7 @@ class DunningStageConfigService:
             is_b2b: B2B oder B2C Kunde
 
         Returns:
-            Jaehrlicher Zinssatz in Prozent
+            Jährlicher Zinssatz in Prozent
         """
         addon = B2B_INTEREST_ADDON if is_b2b else B2C_INTEREST_ADDON
         return BASE_INTEREST_RATE + addon
@@ -711,7 +711,7 @@ class DunningStageConfigService:
         db: AsyncSession,
         user_id: UUID,
     ) -> List[DunningStageConfig]:
-        """Erstelle Standard-Mahnstufen fuer Benutzer."""
+        """Erstelle Standard-Mahnstufen für Benutzer."""
         stages = []
 
         for default in DEFAULT_STAGES:

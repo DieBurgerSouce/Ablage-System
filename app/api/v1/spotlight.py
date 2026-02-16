@@ -2,7 +2,7 @@
 """
 Spotlight-Schnellsuche API.
 
-Einzelner Endpunkt fuer die Cmd+K Spotlight-Suche.
+Einzelner Endpunkt für die Cmd+K Spotlight-Suche.
 Kombiniert Autocomplete, Dokumentsuche und Entity-Matching.
 Ziel: <200ms Antwortzeit.
 """
@@ -29,7 +29,7 @@ async def spotlight_search(
     q: str = Query(
         "",
         max_length=200,
-        description="Suchbegriff fuer Spotlight-Schnellsuche",
+        description="Suchbegriff für Spotlight-Schnellsuche",
     ),
     limit: int = Query(
         8,
@@ -41,17 +41,17 @@ async def spotlight_search(
     current_user: User = Depends(get_current_active_user),
 ) -> SpotlightResponse:
     """
-    Spotlight-Schnellsuche fuer Cmd+K Dialog.
+    Spotlight-Schnellsuche für Cmd+K Dialog.
 
-    Gibt kombinierte Ergebnisse zurueck:
-    - Navigation/Autocomplete Vorschlaege
+    Gibt kombinierte Ergebnisse zurück:
+    - Navigation/Autocomplete Vorschläge
     - Dokument-Treffer (Top N)
     - Entity-Matches (Kunden/Lieferanten)
 
-    Bei leerem oder kurzem Query werden nur Navigations-Items zurueckgegeben.
+    Bei leerem oder kurzem Query werden nur Navigations-Items zurückgegeben.
 
     Args:
-        request: FastAPI Request (fuer Rate Limiting)
+        request: FastAPI Request (für Rate Limiting)
         q: Suchbegriff
         limit: Maximale Anzahl Ergebnisse pro Kategorie
         db: Datenbank-Session

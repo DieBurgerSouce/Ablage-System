@@ -24,7 +24,7 @@ class HybridOCRAgent(OCRAgent):
     5. Merge results using intelligent fusion
     """
 
-    # Backend VRAM requirements in GB (muss mit gpu_manager.py uebereinstimmen)
+    # Backend VRAM requirements in GB (muss mit gpu_manager.py übereinstimmen)
     BACKEND_VRAM_MAP = {
         "deepseek": 12.0,      # DeepSeek-Janus-Pro needs 12GB
         "chandra": 15.0,       # Chandra 9B VLM needs 15GB
@@ -32,11 +32,11 @@ class HybridOCRAgent(OCRAgent):
         "surya_docling": 0.5,  # Surya+Docling is mostly CPU (minimal GPU)
     }
 
-    # Backend Prioritaet (hoeher = wichtiger, wird zuerst versucht)
+    # Backend Priorität (höher = wichtiger, wird zuerst versucht)
     BACKEND_PRIORITY = {
-        "deepseek": 3,     # Beste Qualitaet
-        "chandra": 2,      # State-of-the-Art VLM (hohe Prioritaet!)
-        "got_ocr": 2,      # Gut fuer Tabellen/Formeln
+        "deepseek": 3,     # Beste Qualität
+        "chandra": 2,      # State-of-the-Art VLM (hohe Priorität!)
+        "got_ocr": 2,      # Gut für Tabellen/Formeln
         "surya_docling": 1 # CPU-Fallback
     }
 
@@ -48,7 +48,7 @@ class HybridOCRAgent(OCRAgent):
         self.got_ocr = GOTOCRAgent()
         self.surya_docling = SuryaDoclingAgent()
 
-        # GPU Manager fuer VRAM-Checks
+        # GPU Manager für VRAM-Checks
         self.gpu_manager = GPUManager()
 
     async def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -92,16 +92,16 @@ class HybridOCRAgent(OCRAgent):
         Smart Parallel OCR - Maximiert GPU-Nutzung ohne OOM.
 
         OPTIMIERUNG: Statt rein sequentieller Verarbeitung:
-        1. Pruefe verfuegbaren VRAM
-        2. Sortiere Backends nach Prioritaet
+        1. Prüfe verfügbaren VRAM
+        2. Sortiere Backends nach Priorität
         3. Backends die zusammen passen → parallel
         4. Rest → sequentiell mit Memory Cleanup
 
         Auf RTX 4080 (16GB) mit 13.6GB nutzbarem VRAM:
-        - DeepSeek (12GB) + Surya (0.5GB) = 12.5GB → parallel moeglich!
+        - DeepSeek (12GB) + Surya (0.5GB) = 12.5GB → parallel möglich!
         - Dann GOT-OCR (10GB) → sequentiell nach Cleanup
 
-        Erwarteter Speedup: ~30-40% gegenueber rein sequentiell.
+        Erwarteter Speedup: ~30-40% gegenüber rein sequentiell.
         """
         try:
             import torch
@@ -116,7 +116,7 @@ class HybridOCRAgent(OCRAgent):
             ("surya_docling", self.surya_docling),
         ]
 
-        # Hole verfuegbaren VRAM
+        # Hole verfügbaren VRAM
         available_vram_gb = self._get_available_vram()
 
         self.logger.info(
@@ -125,7 +125,7 @@ class HybridOCRAgent(OCRAgent):
             backends=[name for name, _ in engines]
         )
 
-        # Sortiere nach Prioritaet (hoeher zuerst)
+        # Sortiere nach Priorität (höher zuerst)
         sorted_engines = sorted(
             engines,
             key=lambda x: self.BACKEND_PRIORITY.get(x[0], 0),
@@ -141,11 +141,11 @@ class HybridOCRAgent(OCRAgent):
             vram_required = self.BACKEND_VRAM_MAP.get(engine_name, 8.0)
 
             if vram_required <= remaining_vram:
-                # Passt in verfuegbaren VRAM → parallel
+                # Passt in verfügbaren VRAM → parallel
                 parallel_tasks.append((engine_name, engine))
                 remaining_vram -= vram_required
             else:
-                # Passt nicht → sequentiell spaeter
+                # Passt nicht → sequentiell später
                 sequential_queue.append((engine_name, engine))
 
         self.logger.info(
@@ -155,14 +155,14 @@ class HybridOCRAgent(OCRAgent):
             parallel_vram_usage=round(available_vram_gb - remaining_vram, 2)
         )
 
-        # PHASE 1: Parallele Ausfuehrung
+        # PHASE 1: Parallele Ausführung
         if parallel_tasks:
             parallel_results = await self._run_parallel_group(
                 parallel_tasks, input_data, TORCH_AVAILABLE
             )
             valid_results.extend(parallel_results)
 
-        # PHASE 2: Sequentielle Ausfuehrung mit Memory Cleanup
+        # PHASE 2: Sequentielle Ausführung mit Memory Cleanup
         if sequential_queue:
             # Cleanup vor sequentieller Phase
             self._cleanup_gpu_memory(TORCH_AVAILABLE)
@@ -181,12 +181,12 @@ class HybridOCRAgent(OCRAgent):
         torch_available: bool
     ) -> List[Dict[str, Any]]:
         """
-        Fuehre eine Gruppe von Backends parallel aus.
+        Führe eine Gruppe von Backends parallel aus.
 
         Args:
             engines: Liste von (name, engine) Tupeln
             input_data: OCR Input
-            torch_available: PyTorch verfuegbar?
+            torch_available: PyTorch verfügbar?
 
         Returns:
             Liste von Ergebnissen
@@ -200,7 +200,7 @@ class HybridOCRAgent(OCRAgent):
         )
 
         async def process_engine(name: str, engine: OCRAgent) -> Dict[str, Any]:
-            """Wrapper fuer einzelnes Backend mit Error Handling."""
+            """Wrapper für einzelnes Backend mit Error Handling."""
             try:
                 self.logger.debug(f"hybrid_parallel_starting_{name}")
                 result = await engine.process(input_data)
@@ -239,12 +239,12 @@ class HybridOCRAgent(OCRAgent):
         torch_available: bool
     ) -> List[Dict[str, Any]]:
         """
-        Fuehre eine Gruppe von Backends sequentiell aus mit Memory Cleanup.
+        Führe eine Gruppe von Backends sequentiell aus mit Memory Cleanup.
 
         Args:
             engines: Liste von (name, engine) Tupeln
             input_data: OCR Input
-            torch_available: PyTorch verfuegbar?
+            torch_available: PyTorch verfügbar?
 
         Returns:
             Liste von Ergebnissen
@@ -281,10 +281,10 @@ class HybridOCRAgent(OCRAgent):
 
     def _get_available_vram(self) -> float:
         """
-        Hole verfuegbaren VRAM in GB.
+        Hole verfügbaren VRAM in GB.
 
         Returns:
-            Verfuegbarer VRAM in GB (mit 15% Safety Buffer)
+            Verfügbarer VRAM in GB (mit 15% Safety Buffer)
         """
         try:
             import torch
@@ -305,7 +305,7 @@ class HybridOCRAgent(OCRAgent):
             return 0.0
 
     def _cleanup_gpu_memory(self, torch_available: bool) -> None:
-        """GPU Memory aufraeumen."""
+        """GPU Memory aufräumen."""
         if not torch_available:
             return
 
@@ -325,7 +325,7 @@ class HybridOCRAgent(OCRAgent):
         except Exception as e:
             self.logger.warning("memory_cleanup_failed", **safe_error_log(e))
 
-    # Confidence-Differenz Schwellenwert fuer Ensemble Voting
+    # Confidence-Differenz Schwellenwert für Ensemble Voting
     CONFIDENCE_DIFF_THRESHOLD = 0.15
 
     async def _fuse_results(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -333,9 +333,9 @@ class HybridOCRAgent(OCRAgent):
         Fuse results from multiple engines with Ensemble Voting.
 
         Strategy (gemaess OCR/ML Optimierungsplan):
-        1. Wenn Confidence-Differenz > 0.15: Waehle hoechsten
+        1. Wenn Confidence-Differenz > 0.15: Wähle höchsten
         2. Wenn Differenz < 0.15: Character-Level Voting
-        3. Bei Konflikt: Fallback zu DeepSeek (Umlaut-staerker)
+        3. Bei Konflikt: Fallback zu DeepSeek (Umlaut-stärker)
         4. Merge entities from all engines
         """
         if not results:
@@ -356,7 +356,7 @@ class HybridOCRAgent(OCRAgent):
             confidence_diff = best_result.get("confidence", 0.0) - second_best.get("confidence", 0.0)
 
             if confidence_diff < self.CONFIDENCE_DIFF_THRESHOLD:
-                # Aehnliche Confidence -> Character-Level Voting
+                # Ähnliche Confidence -> Character-Level Voting
                 self.logger.info(
                     "hybrid_ensemble_voting",
                     confidence_diff=round(confidence_diff, 3),
@@ -395,11 +395,11 @@ class HybridOCRAgent(OCRAgent):
         """
         Character-Level Voting zwischen mehreren OCR-Ergebnissen.
 
-        Bei aehnlicher Confidence wird Zeichen fuer Zeichen abgestimmt.
-        DeepSeek hat Bonus bei deutschen Umlauten (Umlaut-staerker).
+        Bei ähnlicher Confidence wird Zeichen für Zeichen abgestimmt.
+        DeepSeek hat Bonus bei deutschen Umlauten (Umlaut-stärker).
 
         Args:
-            results: Sortierte Liste von OCR-Ergebnissen (hoechste Confidence zuerst)
+            results: Sortierte Liste von OCR-Ergebnissen (höchste Confidence zuerst)
 
         Returns:
             Fused text nach Character-Level Voting
@@ -411,7 +411,7 @@ class HybridOCRAgent(OCRAgent):
         confidences = [r.get("confidence", 0.5) for r in results]
         engines = [r.get("engine", "unknown") for r in results]
 
-        # Finde maximale Textlaenge
+        # Finde maximale Textlänge
         max_len = max(len(t) for t in texts) if texts else 0
 
         # Pad texts to same length
@@ -431,13 +431,13 @@ class HybridOCRAgent(OCRAgent):
 
                 vote_weight = conf
 
-                # DeepSeek Bonus fuer deutsche Umlaute
+                # DeepSeek Bonus für deutsche Umlaute
                 if engine == "deepseek" and char in "äöüÄÖÜß":
-                    vote_weight *= 1.5  # 50% Bonus fuer Umlaute
+                    vote_weight *= 1.5  # 50% Bonus für Umlaute
 
                 char_votes[char] += vote_weight
 
-            # Waehle Zeichen mit hoechster Stimmzahl
+            # Wähle Zeichen mit höchster Stimmzahl
             best_char = max(char_votes.keys(), key=lambda c: char_votes[c])
             result_chars.append(best_char)
 
@@ -456,7 +456,7 @@ class HybridOCRAgent(OCRAgent):
         """
         Berechne Ensemble-Confidence aus mehreren Ergebnissen.
 
-        Höhere Confidence wenn mehrere Engines uebereinstimmen.
+        Höhere Confidence wenn mehrere Engines übereinstimmen.
 
         Args:
             results: Liste von OCR-Ergebnissen
@@ -474,7 +474,7 @@ class HybridOCRAgent(OCRAgent):
         confidences = [r.get("confidence", 0.0) for r in results]
         avg_confidence = sum(confidences) / len(confidences)
 
-        # Bonus wenn Texte aehnlich sind (Übereinstimmung)
+        # Bonus wenn Texte ähnlich sind (Übereinstimmung)
         texts = [r.get("text", "") for r in results]
         if len(texts) >= 2:
             similarity = self._calculate_similarity(texts[0], texts[1])

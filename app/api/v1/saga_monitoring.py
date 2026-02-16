@@ -1,0 +1,390 @@
+"""Saga Monitoring API Endpoints.
+
+Überwachung von Saga-Ausführungen (Rechnungsverarbeitung, Zahlungen).
+Stellt Saga-Status, Step-Details und Statistiken bereit.
+
+3 Endpoints:
+- GET /sagas/ - Liste aller Saga-Ausführungen
+- GET /sagas/{saga_id} - Saga-Details mit Steps
+- GET /sagas/{saga_id}/logs - Transaktionslogs einer Saga
+"""
+
+from __future__ import annotations
+
+from typing import List, Optional
+from uuid import UUID
+
+import structlog
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.api.dependencies import get_current_user, get_db
+from app.api.v1.workflows import get_user_company_id
+from app.core.types import JSONDict
+from app.db.models import User
+from app.db.models_workflow_versioning import Saga, SagaStep, SagaTransactionLog
+from app.services.workflow.saga_service import SagaService
+
+logger = structlog.get_logger(__name__)
+
+router = APIRouter(prefix="/sagas", tags=["saga-monitoring"])
+
+
+# =============================================================================
+# Pydantic Schemas
+# =============================================================================
+
+
+class SagaStepResponse(BaseModel):
+    """Schema für einen Saga-Schritt."""
+
+    id: str
+    step_order: int
+    name: str
+    description: Optional[str] = None
+    action_type: str
+    status: str
+    has_compensation: bool = False
+    compensation_type: Optional[str] = None
+    executed_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    error_message: Optional[str] = None
+    retry_count: int = 0
+    result_data: Optional[JSONDict] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SagaSummaryResponse(BaseModel):
+    """Schema für Saga-Zusammenfassung in Listen."""
+
+    id: str
+    name: str
+    description: Optional[str] = None
+    status: str
+    total_steps: int
+    current_step_index: int = 0
+    created_at: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    in_dead_letter_queue: bool = False
+    retry_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SagaDetailResponse(BaseModel):
+    """Schema für Saga-Detailansicht mit Steps."""
+
+    id: str
+    name: str
+    description: Optional[str] = None
+    status: str
+    total_steps: int
+    current_step_index: int = 0
+    context_data: Optional[JSONDict] = None
+    created_at: Optional[str] = None
+    started_at: Optional[str] = None
+    completed_at: Optional[str] = None
+    in_dead_letter_queue: bool = False
+    dead_letter_reason: Optional[str] = None
+    retry_count: int = 0
+    max_retries: int = 3
+    steps: List[SagaStepResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SagaListResponse(BaseModel):
+    """Schema für paginierte Saga-Liste."""
+
+    items: List[SagaSummaryResponse]
+    total: int
+    offset: int
+    limit: int
+
+
+class SagaLogEntryResponse(BaseModel):
+    """Schema für einen Transaktionslog-Eintrag."""
+
+    id: str
+    saga_id: str
+    step_id: Optional[str] = None
+    event_type: str
+    previous_state: Optional[str] = None
+    new_state: str
+    event_data: Optional[JSONDict] = None
+    error_message: Optional[str] = None
+    created_at: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SagaLogsResponse(BaseModel):
+    """Schema für paginierte Transaktionslogs."""
+
+    items: List[SagaLogEntryResponse]
+    total: int
+    offset: int
+    limit: int
+
+
+# =============================================================================
+# Helper
+# =============================================================================
+
+
+def _saga_to_summary(saga: Saga) -> SagaSummaryResponse:
+    """Konvertiert ein Saga-ORM-Objekt in ein Summary-Schema."""
+    return SagaSummaryResponse(
+        id=str(saga.id),
+        name=saga.name,
+        description=saga.description,
+        status=saga.status,
+        total_steps=saga.total_steps,
+        current_step_index=saga.current_step_index or 0,
+        created_at=saga.created_at.isoformat() if saga.created_at else None,
+        started_at=saga.started_at.isoformat() if saga.started_at else None,
+        completed_at=saga.completed_at.isoformat() if saga.completed_at else None,
+        in_dead_letter_queue=saga.in_dead_letter_queue,
+        retry_count=saga.retry_count,
+    )
+
+
+def _step_to_response(step: SagaStep) -> SagaStepResponse:
+    """Konvertiert ein SagaStep-ORM-Objekt in ein Response-Schema."""
+    return SagaStepResponse(
+        id=str(step.id),
+        step_order=step.step_order,
+        name=step.name,
+        description=step.description,
+        action_type=step.action_type,
+        status=step.status,
+        has_compensation=step.has_compensation,
+        compensation_type=step.compensation_type,
+        executed_at=step.executed_at.isoformat() if step.executed_at else None,
+        completed_at=step.completed_at.isoformat() if step.completed_at else None,
+        error_message=step.error_message,
+        retry_count=step.retry_count,
+        result_data=step.result_data,
+    )
+
+
+def _log_to_response(log: SagaTransactionLog) -> SagaLogEntryResponse:
+    """Konvertiert ein SagaTransactionLog-ORM-Objekt in ein Response-Schema."""
+    return SagaLogEntryResponse(
+        id=str(log.id),
+        saga_id=str(log.saga_id),
+        step_id=str(log.step_id) if log.step_id else None,
+        event_type=log.event_type,
+        previous_state=log.previous_state,
+        new_state=log.new_state,
+        event_data=log.event_data,
+        error_message=log.error_message,
+        created_at=log.created_at.isoformat() if log.created_at else None,
+    )
+
+
+# =============================================================================
+# Endpoints
+# =============================================================================
+
+
+@router.get(
+    "/",
+    response_model=SagaListResponse,
+    summary="Saga-Ausführungen auflisten",
+)
+async def list_sagas(
+    saga_status: Optional[str] = Query(
+        None,
+        alias="status",
+        description="Filter nach Status (pending, running, completed, "
+        "failed, compensated, partially_compensated)",
+    ),
+    in_dlq: Optional[bool] = Query(
+        None,
+        description="Nur Sagas aus der Dead Letter Queue",
+    ),
+    offset: int = Query(0, ge=0, description="Pagination Offset"),
+    limit: int = Query(50, ge=1, le=200, description="Pagination Limit"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SagaListResponse:
+    """Listet alle Saga-Ausführungen des Mandanten auf.
+
+    Unterstützt Filterung nach Status und Dead Letter Queue.
+    """
+    company_id = await get_user_company_id(db, current_user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Benutzer muss einer Firma zugeordnet sein",
+        )
+
+    saga_service = SagaService(db)
+
+    logger.info(
+        "list_sagas_requested",
+        company_id=str(company_id),
+        status_filter=saga_status,
+        in_dlq=in_dlq,
+        offset=offset,
+        limit=limit,
+    )
+
+    try:
+        sagas, total = await saga_service.list_sagas(
+            company_id=company_id,
+            status=saga_status,
+            in_dead_letter_queue=in_dlq,
+            offset=offset,
+            limit=limit,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    return SagaListResponse(
+        items=[_saga_to_summary(s) for s in sagas],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/{saga_id}",
+    response_model=SagaDetailResponse,
+    summary="Saga-Details mit Steps abrufen",
+)
+async def get_saga_detail(
+    saga_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SagaDetailResponse:
+    """Gibt detaillierte Informationen zu einer Saga inkl. aller Steps zurück."""
+    company_id = await get_user_company_id(db, current_user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Benutzer muss einer Firma zugeordnet sein",
+        )
+
+    saga_service = SagaService(db)
+
+    logger.info(
+        "get_saga_detail_requested",
+        company_id=str(company_id),
+        saga_id=str(saga_id),
+    )
+
+    try:
+        saga = await saga_service.get_saga(
+            saga_id=saga_id,
+            company_id=company_id,
+            include_steps=True,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    if not saga:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Saga nicht gefunden",
+        )
+
+    steps = sorted(saga.steps, key=lambda s: s.step_order)
+
+    return SagaDetailResponse(
+        id=str(saga.id),
+        name=saga.name,
+        description=saga.description,
+        status=saga.status,
+        total_steps=saga.total_steps,
+        current_step_index=saga.current_step_index or 0,
+        context_data=saga.context_data,
+        created_at=saga.created_at.isoformat() if saga.created_at else None,
+        started_at=saga.started_at.isoformat() if saga.started_at else None,
+        completed_at=saga.completed_at.isoformat() if saga.completed_at else None,
+        in_dead_letter_queue=saga.in_dead_letter_queue,
+        dead_letter_reason=saga.dead_letter_reason,
+        retry_count=saga.retry_count,
+        max_retries=saga.max_retries,
+        steps=[_step_to_response(s) for s in steps],
+    )
+
+
+@router.get(
+    "/{saga_id}/logs",
+    response_model=SagaLogsResponse,
+    summary="Saga-Transaktionslogs abrufen",
+)
+async def get_saga_logs(
+    saga_id: UUID,
+    step_id: Optional[UUID] = Query(None, description="Filter nach Step-ID"),
+    offset: int = Query(0, ge=0, description="Pagination Offset"),
+    limit: int = Query(100, ge=1, le=200, description="Pagination Limit"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SagaLogsResponse:
+    """Gibt die Transaktionslogs einer Saga zurück.
+
+    Zeigt alle State-Transitions, Events und Fehler chronologisch.
+    """
+    company_id = await get_user_company_id(db, current_user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Benutzer muss einer Firma zugeordnet sein",
+        )
+
+    saga_service = SagaService(db)
+
+    logger.info(
+        "get_saga_logs_requested",
+        company_id=str(company_id),
+        saga_id=str(saga_id),
+        step_id=str(step_id) if step_id else None,
+        offset=offset,
+        limit=limit,
+    )
+
+    # Prüfen ob Saga existiert
+    saga = await saga_service.get_saga(
+        saga_id=saga_id,
+        company_id=company_id,
+        include_steps=False,
+    )
+    if not saga:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Saga nicht gefunden",
+        )
+
+    try:
+        logs, total = await saga_service.get_transaction_logs(
+            saga_id=saga_id,
+            company_id=company_id,
+            step_id=step_id,
+            offset=offset,
+            limit=limit,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    return SagaLogsResponse(
+        items=[_log_to_response(log) for log in logs],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )

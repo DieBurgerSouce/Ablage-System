@@ -1,11 +1,11 @@
 """RAG Chat Service.
 
 Document-aware chat service mit:
-- Semantischer Suche fuer Kontext-Retrieval
-- LLM-Integration fuer Antwortgenerierung
+- Semantischer Suche für Kontext-Retrieval
+- LLM-Integration für Antwortgenerierung
 - Multi-Tool Calling (Aktionen aus dem Chat)
 - Chat-History Management
-- Streaming-Unterstuetzung
+- Streaming-Unterstützung
 
 Feinpoliert und durchdacht - Intelligente Dokumentenanalyse.
 """
@@ -87,7 +87,7 @@ class ChatSession:
         self.messages.append(message)
         self.updated_at = datetime.now(timezone.utc)
 
-        # Begrenze History-Laenge
+        # Begrenze History-Länge
         if len(self.messages) > self.max_history:
             # Behalte System-Nachrichten und letzte N Nachrichten
             system_msgs = [m for m in self.messages if m.role == "system"]
@@ -96,7 +96,7 @@ class ChatSession:
             self.messages = system_msgs + other_msgs[-keep_count:]
 
     def get_context_for_llm(self, include_system: bool = True) -> List[Dict[str, str]]:
-        """Bereitet Chat-History fuer LLM auf."""
+        """Bereitet Chat-History für LLM auf."""
         result = []
         for msg in self.messages:
             if msg.role == "system" and not include_system:
@@ -117,9 +117,9 @@ class ChatSession:
 
 
 class RAGChatService:
-    """RAG Chat Service fuer dokumentenbasierte Konversationen.
+    """RAG Chat Service für dokumentenbasierte Konversationen.
 
-    Kombiniert semantische Suche mit LLM fuer kontextbewusste Antworten.
+    Kombiniert semantische Suche mit LLM für kontextbewusste Antworten.
     """
 
     _instance: Optional["RAGChatService"] = None
@@ -142,7 +142,7 @@ class RAGChatService:
         self.tool_registry = get_tool_registry()
         self.action_dispatcher = get_action_dispatcher()
 
-        # LLM-Konfiguration (kann erweitert werden fuer Ollama, OpenAI, etc.)
+        # LLM-Konfiguration (kann erweitert werden für Ollama, OpenAI, etc.)
         self.llm_enabled = getattr(settings, "LLM_ENABLED", False)
         self.llm_model = getattr(settings, "LLM_MODEL", "llama3.1:8b")
         self.ollama_url = getattr(settings, "OLLAMA_URL", "http://localhost:11434")
@@ -170,20 +170,20 @@ class RAGChatService:
         session = ChatSession(session_id=session_id, user_id=user_id)
         self.sessions[session.id] = session
 
-        # Tool-Definitionen fuer System-Prompt
+        # Tool-Definitionen für System-Prompt
         tools_text = self.tool_registry.format_tools_for_llm(user_level)
 
         # System-Prompt mit Tool-Calling Instruktionen
         system_prompt = ChatMessage(
             role="system",
             content=(
-                "Du bist ein hilfreicher Assistent fuer das Ablage-System. "
+                "Du bist ein hilfreicher Assistent für das Ablage-System. "
                 "Du kannst auf Dokumente zugreifen und Fragen dazu beantworten. "
                 "Antworte immer auf Deutsch und nutze die bereitgestellten Dokumente als Kontext. "
                 "Wenn du dir nicht sicher bist, sage es ehrlich.\n\n"
-                "Du hast Zugriff auf Tools die du aufrufen kannst um Aktionen auszufuehren. "
+                "Du hast Zugriff auf Tools die du aufrufen kannst um Aktionen auszuführen. "
                 "Du kannst MEHRERE Tools in einer Antwort aufrufen. "
-                "Verwende Tools nur wenn der Benutzer eine Aktion anfragt oder Daten benoetigt.\n\n"
+                "Verwende Tools nur wenn der Benutzer eine Aktion anfragt oder Daten benötigt.\n\n"
                 f"{tools_text}"
             ),
         )
@@ -198,7 +198,7 @@ class RAGChatService:
         return session
 
     def delete_session(self, session_id: str) -> bool:
-        """Loescht eine Chat-Session."""
+        """Löscht eine Chat-Session."""
         if session_id in self.sessions:
             del self.sessions[session_id]
             logger.info("chat_session_deleted", session_id=session_id)
@@ -213,9 +213,9 @@ class RAGChatService:
         max_documents: int = 5,
         similarity_threshold: float = 0.6,
     ) -> List[Dict[str, Any]]:
-        """Holt relevante Dokumente fuer die Anfrage.
+        """Holt relevante Dokumente für die Anfrage.
 
-        Verwendet semantische Suche fuer Kontext-Retrieval.
+        Verwendet semantische Suche für Kontext-Retrieval.
         """
         try:
             # Semantische Suche
@@ -301,7 +301,7 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
     ) -> AsyncGenerator[str, None]:
         """Generiert Antwort mit LLM.
 
-        Unterstuetzt Streaming fuer Echtzeit-Ausgabe.
+        Unterstützt Streaming für Echtzeit-Ausgabe.
         """
         # Prompt mit Kontext aufbauen
         chat_history = session.get_context_for_llm(include_system=False)
@@ -323,7 +323,7 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
             words = response.split()
             for i, word in enumerate(words):
                 yield word + (" " if i < len(words) - 1 else "")
-                await asyncio.sleep(0.02)  # Kleine Verzoegerung fuer Streaming-Effekt
+                await asyncio.sleep(0.02)  # Kleine Verzögerung für Streaming-Effekt
             return
 
         # LLM-Generierung mit Ollama
@@ -426,7 +426,7 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
                     "parameters": tc.parameters,
                     "action_type": "unknown",
                     "status": "failed",
-                    "message": safe_error_detail(e, "Tool-Ausfuehrung"),
+                    "message": safe_error_detail(e, "Tool-Ausführung"),
                     "data": None,
                     "requires_confirmation": False,
                     "execution_time_ms": 0,
@@ -451,7 +451,7 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
         user: Optional[Any] = None,
         user_level: str = "viewer",
     ) -> ChatMessage:
-        """Hauptmethode fuer Chat-Interaktion.
+        """Hauptmethode für Chat-Interaktion.
 
         Args:
             query: Benutzeranfrage
@@ -459,12 +459,12 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
             db: Datenbank-Session
             session_id: Optionale Session-ID
             stream: Streaming aktivieren
-            on_token: Callback fuer Streaming-Tokens
-            user: User-Objekt fuer Tool-Calling Permissions
-            user_level: User-Level fuer Tool-Zugriff
+            on_token: Callback für Streaming-Tokens
+            user: User-Objekt für Tool-Calling Permissions
+            user_level: User-Level für Tool-Zugriff
 
         Returns:
-            ChatMessage mit vollstaendiger Antwort und Tool-Actions
+            ChatMessage mit vollständiger Antwort und Tool-Actions
         """
         session = self.get_or_create_session(session_id, user_id, user_level=user_level)
 
@@ -533,7 +533,7 @@ Wenn die Dokumente keine relevanten Informationen enthalten, sage das ehrlich.
         return None
 
     def clear_session_history(self, session_id: str) -> bool:
-        """Loescht Chat-History einer Session (behaelt System-Prompt)."""
+        """Löscht Chat-History einer Session (behält System-Prompt)."""
         session = self.sessions.get(session_id)
         if session:
             system_msgs = [m for m in session.messages if m.role == "system"]
@@ -549,7 +549,7 @@ _chat_service: Optional[RAGChatService] = None
 
 
 def get_chat_service() -> RAGChatService:
-    """Gibt Singleton-Instanz des Chat-Service zurueck."""
+    """Gibt Singleton-Instanz des Chat-Service zurück."""
     global _chat_service
     if _chat_service is None:
         _chat_service = RAGChatService()

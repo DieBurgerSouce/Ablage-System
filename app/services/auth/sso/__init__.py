@@ -1,13 +1,13 @@
 """
 SSO (Single Sign-On) Integration Services.
 
-Enterprise-Level SSO-Unterstuetzung:
-- OIDC (OpenID Connect) fuer moderne IdPs
-- SAML 2.0 fuer Enterprise IdPs
+Enterprise-Level SSO-Unterstützung:
+- OIDC (OpenID Connect) für moderne IdPs
+- SAML 2.0 für Enterprise IdPs
 - Provider-Konfiguration und Management
-- Redis-basiertes State Management fuer Multi-Worker-Skalierbarkeit
+- Redis-basiertes State Management für Multi-Worker-Skalierbarkeit
 
-Unterstuetzte Provider:
+Unterstützte Provider:
 - Microsoft Entra ID (Azure AD)
 - Google Workspace
 - Okta

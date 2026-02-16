@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Delegations API fuer Ablage-System.
+Delegations API für Ablage-System.
 
-Ermoeglicht temporaere Rechte-Uebertragung:
+Ermöglicht temporaere Rechte-Übertragung:
 - Urlaubsvertretung
 - Krankheitsvertretung
 - Projektbasierte Delegation
@@ -40,7 +40,7 @@ router = APIRouter(prefix="/delegations", tags=["Delegations"])
 
 
 class DelegationCreate(BaseModel):
-    """Schema fuer neue Delegation."""
+    """Schema für neue Delegation."""
     delegate_id: UUID = Field(..., description="User der die Rechte erhaelt")
     valid_from: datetime = Field(..., description="Startzeitpunkt")
     valid_until: datetime = Field(..., description="Endzeitpunkt")
@@ -54,11 +54,11 @@ class DelegationCreate(BaseModel):
     )
     scope: Optional[JSONDict] = Field(
         default=None,
-        description="Einschraenkung auf bestimmte Ressourcen"
+        description="Einschränkung auf bestimmte Ressourcen"
     )
     reason: DelegationReason = Field(
         default=DelegationReason.OTHER,
-        description="Grund fuer die Delegation"
+        description="Grund für die Delegation"
     )
     reason_text: Optional[str] = Field(
         default=None,
@@ -72,7 +72,7 @@ class DelegationCreate(BaseModel):
     )
     requires_acceptance: bool = Field(
         default=True,
-        description="Muss Delegate bestaetigen?"
+        description="Muss Delegate bestätigen?"
     )
     notify_on_activation: bool = Field(
         default=True,
@@ -107,7 +107,7 @@ class DelegationCreate(BaseModel):
 
 
 class DelegationFromTemplate(BaseModel):
-    """Schema fuer Delegation aus Template."""
+    """Schema für Delegation aus Template."""
     template_id: UUID = Field(..., description="Template-ID")
     delegate_id: UUID = Field(..., description="User der die Rechte erhaelt")
     valid_from: Optional[datetime] = Field(
@@ -120,7 +120,7 @@ class DelegationFromTemplate(BaseModel):
     )
     reason: DelegationReason = Field(
         default=DelegationReason.OTHER,
-        description="Grund fuer die Delegation"
+        description="Grund für die Delegation"
     )
     reason_text: Optional[str] = Field(
         default=None,
@@ -130,7 +130,7 @@ class DelegationFromTemplate(BaseModel):
 
 
 class DelegationUpdate(BaseModel):
-    """Schema fuer Delegation-Update."""
+    """Schema für Delegation-Update."""
     permissions: Optional[List[str]] = None
     scope: Optional[JSONDict] = None
     notes: Optional[str] = Field(default=None, max_length=2000)
@@ -142,7 +142,7 @@ class DelegationUpdate(BaseModel):
 
 
 class DelegationResponse(BaseModel):
-    """Response-Schema fuer Delegation."""
+    """Response-Schema für Delegation."""
     id: UUID
     delegator_id: UUID
     delegator_name: Optional[str] = None
@@ -183,7 +183,7 @@ class DelegationResponse(BaseModel):
 
 
 class DelegationListResponse(BaseModel):
-    """Response-Schema fuer Delegations-Liste."""
+    """Response-Schema für Delegations-Liste."""
     items: List[DelegationResponse]
     total: int
     limit: int
@@ -191,7 +191,7 @@ class DelegationListResponse(BaseModel):
 
 
 class DeclineRequest(BaseModel):
-    """Request fuer Ablehnung."""
+    """Request für Ablehnung."""
     reason: Optional[str] = Field(
         default=None,
         max_length=1000,
@@ -200,7 +200,7 @@ class DeclineRequest(BaseModel):
 
 
 class RevokeRequest(BaseModel):
-    """Request fuer Widerruf."""
+    """Request für Widerruf."""
     reason: Optional[str] = Field(
         default=None,
         max_length=1000,
@@ -209,7 +209,7 @@ class RevokeRequest(BaseModel):
 
 
 class AuditLogResponse(BaseModel):
-    """Response-Schema fuer Audit-Log."""
+    """Response-Schema für Audit-Log."""
     id: UUID
     delegation_id: UUID
     action: str
@@ -227,13 +227,13 @@ class AuditLogResponse(BaseModel):
 
 
 class AuditLogListResponse(BaseModel):
-    """Response-Schema fuer Audit-Log-Liste."""
+    """Response-Schema für Audit-Log-Liste."""
     items: List[AuditLogResponse]
     total: int
 
 
 class TemplateCreate(BaseModel):
-    """Schema fuer neues Template."""
+    """Schema für neues Template."""
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(default=None, max_length=1000)
     delegation_type: DelegationType
@@ -246,7 +246,7 @@ class TemplateCreate(BaseModel):
 
 
 class TemplateResponse(BaseModel):
-    """Response-Schema fuer Template."""
+    """Response-Schema für Template."""
     id: UUID
     company_id: UUID
     name: str
@@ -268,15 +268,15 @@ class TemplateResponse(BaseModel):
 
 
 class PermissionCheckRequest(BaseModel):
-    """Request fuer Permission-Check."""
-    permission: str = Field(..., description="Benoetigte Berechtigung")
+    """Request für Permission-Check."""
+    permission: str = Field(..., description="Benötigte Berechtigung")
     resource_type: Optional[str] = None
     resource_id: Optional[UUID] = None
     amount: Optional[float] = None
 
 
 class PermissionCheckResponse(BaseModel):
-    """Response fuer Permission-Check."""
+    """Response für Permission-Check."""
     allowed: bool
     via_delegation: bool
     delegation_id: Optional[UUID]
@@ -459,7 +459,7 @@ async def get_pending_delegations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[DelegationResponse]:
-    """Holt ausstehende Delegationen die auf Bestaetigung warten."""
+    """Holt ausstehende Delegationen die auf Bestätigung warten."""
     service = DelegationService(db)
 
     delegations = await service.get_pending_delegations_for_user(
@@ -510,7 +510,7 @@ async def get_delegation(
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Delegation",
+            detail="Keine Berechtigung für diese Delegation",
         )
 
     return _delegation_to_response(delegation)
@@ -691,7 +691,7 @@ async def get_delegation_audit_logs(
     ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer Audit-Logs",
+            detail="Keine Berechtigung für Audit-Logs",
         )
 
     logs = await service.get_audit_logs(
@@ -734,9 +734,9 @@ async def check_permission_with_delegation(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> PermissionCheckResponse:
-    """Prueft Berechtigung unter Beruecksichtigung von Delegationen.
+    """Prüft Berechtigung unter Berücksichtigung von Delegationen.
 
-    Nützlich fuer Frontend um zu pruefen ob User via Delegation berechtigt ist.
+    Nützlich für Frontend um zu prüfen ob User via Delegation berechtigt ist.
     """
     service = DelegationService(db)
 
@@ -778,7 +778,7 @@ async def list_templates(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[TemplateResponse]:
-    """Listet verfuegbare Delegations-Templates."""
+    """Listet verfügbare Delegations-Templates."""
     service = DelegationService(db)
 
     templates = await service.list_templates(
@@ -816,12 +816,12 @@ async def create_template(
 ) -> TemplateResponse:
     """Erstellt ein neues Delegations-Template.
 
-    Nur Admins koennen Templates erstellen.
+    Nur Admins können Templates erstellen.
     """
     if current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Admins koennen Templates erstellen",
+            detail="Nur Admins können Templates erstellen",
         )
 
     service = DelegationService(db)

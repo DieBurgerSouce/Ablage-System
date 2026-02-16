@@ -63,11 +63,11 @@ class PartyRole(str, Enum):
 class ProofDocumentType(str, Enum):
     """Belegnachweis-Typ"""
     CMR = "cmr"                                # CMR-Frachtbrief
-    GELANGENSBESTAETIGUNG = "gelangensbestaetigung"  # §17b UStDV
+    GELANGENSBESTAETIGUNG = "gelangensbestätigung"  # §17b UStDV
     SPEDITIONSAUFTRAG = "speditionsauftrag"  # Speditionsauftrag
     SPEDITEURSBESCHEINIGUNG = "spediteursbescheinigung"
     LIEFERSCHEIN = "lieferschein"
-    VERSANDBESTAETIGUNG = "versandbestaetigung"
+    VERSANDBESTAETIGUNG = "versandbestätigung"
 
 
 class ProofValidationStatus(str, Enum):

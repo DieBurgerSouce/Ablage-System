@@ -2,7 +2,7 @@
 """
 Magic Buttons Service.
 
-Ein-Klick-Aktionen fuer Enterprise-Workflows:
+Ein-Klick-Aktionen für Enterprise-Workflows:
 - Tages-Abschluss: Alle heutigen Belege verarbeiten
 - Monats-Report: Steuerberater-Export mit einem Klick
 - Offene Posten: Zahlungsabgleich + Mahnungen
@@ -11,8 +11,8 @@ Ein-Klick-Aktionen fuer Enterprise-Workflows:
 Jede Magic-Button-Aktion:
 1. Sammelt Kontext
 2. Zeigt Vorschau (optional)
-3. Fuehrt Batch-Operationen aus
-4. Gibt strukturiertes Ergebnis zurueck
+3. Führt Batch-Operationen aus
+4. Gibt strukturiertes Ergebnis zurück
 """
 
 from dataclasses import dataclass, field
@@ -43,7 +43,7 @@ logger = structlog.get_logger(__name__)
 class MagicButtonType(str, Enum):
     """Typ der Magic-Button-Aktion."""
     DAILY_CLOSE = "daily_close"              # Tages-Abschluss
-    MONTHLY_REPORT = "monthly_report"        # Monats-Report fuer Steuerberater
+    MONTHLY_REPORT = "monthly_report"        # Monats-Report für Steuerberater
     CLEAR_OPEN_ITEMS = "clear_open_items"    # Offene Posten bereinigen
     CREATE_CONTACT = "create_contact"        # Neuen Kontakt aus Dokument
 
@@ -60,7 +60,7 @@ class MagicButtonStatus(str, Enum):
 
 @dataclass
 class MagicButtonPreview:
-    """Vorschau fuer eine Magic-Button-Aktion."""
+    """Vorschau für eine Magic-Button-Aktion."""
     button_type: MagicButtonType
     title: str
     description: str
@@ -71,7 +71,7 @@ class MagicButtonPreview:
     entity_count: int = 0
     invoice_count: int = 0
 
-    # Geschaetzte Werte
+    # Geschätzte Werte
     estimated_amount: Decimal = Decimal("0.00")
     estimated_duration_seconds: int = 0
 
@@ -81,7 +81,7 @@ class MagicButtonPreview:
     # Details zur Vorschau
     items: List[Dict[str, Any]] = field(default_factory=list)
 
-    # Kann ausgefuehrt werden?
+    # Kann ausgeführt werden?
     can_execute: bool = True
     block_reason: Optional[str] = None
 
@@ -116,7 +116,7 @@ class MagicButtonResult:
 
 
 class MagicButtonsService:
-    """Service fuer Ein-Klick-Aktionen."""
+    """Service für Ein-Klick-Aktionen."""
 
     # ==========================================================================
     # TAGES-ABSCHLUSS
@@ -128,7 +128,7 @@ class MagicButtonsService:
         company_id: UUID,
         target_date: Optional[date] = None,
     ) -> MagicButtonPreview:
-        """Vorschau fuer Tages-Abschluss.
+        """Vorschau für Tages-Abschluss.
 
         Zeigt:
         - Unverarbeitete Dokumente von heute
@@ -187,7 +187,7 @@ class MagicButtonsService:
                 total += abs(trans.amount)
         preview.estimated_amount = total
 
-        # Items fuer Vorschau
+        # Items für Vorschau
         preview.items = [
             {
                 "type": "documents",
@@ -203,9 +203,9 @@ class MagicButtonsService:
 
         # Warnungen
         if preview.document_count == 0 and preview.transaction_count == 0:
-            preview.warnings.append("Keine offenen Posten fuer heute gefunden")
+            preview.warnings.append("Keine offenen Posten für heute gefunden")
 
-        # Dauer schaetzen (ca. 1s pro Dokument + 0.5s pro Transaktion)
+        # Dauer schätzen (ca. 1s pro Dokument + 0.5s pro Transaktion)
         preview.estimated_duration_seconds = (
             preview.document_count * 1 +
             preview.transaction_count * 1
@@ -226,7 +226,7 @@ class MagicButtonsService:
         auto_match: bool = True,
         auto_assign: bool = True,
     ) -> MagicButtonResult:
-        """Fuehrt Tages-Abschluss aus.
+        """Führt Tages-Abschluss aus.
 
         1. Auto-Match Transaktionen (wenn aktiviert)
         2. Auto-Assign Dokumente zu Entities (wenn aktiviert)
@@ -348,12 +348,12 @@ class MagicButtonsService:
         year: int,
         month: int,
     ) -> MagicButtonPreview:
-        """Vorschau fuer Monats-Report.
+        """Vorschau für Monats-Report.
 
         Zeigt:
         - Anzahl Dokumente im Monat
         - Bereits exportierte vs. neue
-        - Geschaetztes Export-Volumen
+        - Geschätztes Export-Volumen
         """
         from calendar import monthrange
 
@@ -363,7 +363,7 @@ class MagicButtonsService:
         preview = MagicButtonPreview(
             button_type=MagicButtonType.MONTHLY_REPORT,
             title="Monats-Report",
-            description=f"Export fuer {first_day.strftime('%B %Y')}",
+            description=f"Export für {first_day.strftime('%B %Y')}",
         )
 
         # Dokumente im Monat zaehlen
@@ -424,7 +424,7 @@ class MagicButtonsService:
             },
         ]
 
-        # Dauer schaetzen
+        # Dauer schätzen
         preview.estimated_duration_seconds = max(5, preview.document_count // 10)
 
         preview.can_execute = preview.document_count > 0
@@ -461,7 +461,7 @@ class MagicButtonsService:
             button_type=MagicButtonType.MONTHLY_REPORT,
             status=MagicButtonStatus.RUNNING,
             title="Monats-Report",
-            message=f"Erstelle Report fuer {first_day.strftime('%B %Y')}...",
+            message=f"Erstelle Report für {first_day.strftime('%B %Y')}...",
         )
 
         try:
@@ -521,10 +521,10 @@ class MagicButtonsService:
         db: AsyncSession,
         company_id: UUID,
     ) -> MagicButtonPreview:
-        """Vorschau fuer Offene-Posten-Bereinigung.
+        """Vorschau für Offene-Posten-Bereinigung.
 
         Zeigt:
-        - Ueberfaellige Rechnungen
+        - Überfällige Rechnungen
         - Unabgeglichene Transaktionen
         - Ausstehende Mahnungen
         """
@@ -536,7 +536,7 @@ class MagicButtonsService:
 
         today = date.today()
 
-        # 1. Ueberfaellige Rechnungen
+        # 1. Überfällige Rechnungen
         overdue_query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
@@ -571,7 +571,7 @@ class MagicButtonsService:
             {
                 "type": "overdue",
                 "count": preview.invoice_count,
-                "label": f"{preview.invoice_count} ueberfaellige Rechnungen",
+                "label": f"{preview.invoice_count} überfällige Rechnungen",
                 "amount": float(overdue_total),
             },
             {
@@ -583,7 +583,7 @@ class MagicButtonsService:
 
         # Warnungen
         if preview.invoice_count > 10:
-            preview.warnings.append(f"Viele ueberfaellige Rechnungen ({preview.invoice_count})")
+            preview.warnings.append(f"Viele überfällige Rechnungen ({preview.invoice_count})")
 
         preview.estimated_duration_seconds = (
             preview.invoice_count * 2 +
@@ -609,7 +609,7 @@ class MagicButtonsService:
 
         1. Transaktionen automatisch abgleichen
         2. Optional: Zahlungserinnerungen senden
-        3. Optional: Mahnstufen erhoehen
+        3. Optional: Mahnstufen erhöhen
         """
         import time
         start_time = time.time()
@@ -641,11 +641,11 @@ class MagicButtonsService:
                 result.success_count += batch_result.matched_count
                 result.processed_count += batch_result.total_processed
 
-            # 2. Mahnstufen erhoehen
+            # 2. Mahnstufen erhöhen
             if increase_dunning:
                 today = date.today()
 
-                # Rechnungen mit ueberfaelliger Mahnstufe
+                # Rechnungen mit überfälliger Mahnstufe
                 overdue_query = select(InvoiceTracking).where(
                     and_(
                         InvoiceTracking.company_id == company_id,
@@ -659,7 +659,7 @@ class MagicButtonsService:
 
                 dunning_increased = 0
                 for inv in overdue_invoices:
-                    # Nur erhoehen wenn letzte Mahnung > 7 Tage her
+                    # Nur erhöhen wenn letzte Mahnung > 7 Tage her
                     if inv.last_dunning_at:
                         days_since_dunning = (today - inv.last_dunning_at.date()).days
                         if days_since_dunning < 7:
@@ -714,7 +714,7 @@ class MagicButtonsService:
         company_id: UUID,
         document_id: UUID,
     ) -> MagicButtonPreview:
-        """Vorschau fuer Kontakt-Erstellung aus Dokument.
+        """Vorschau für Kontakt-Erstellung aus Dokument.
 
         Zeigt:
         - Extrahierte Kontaktdaten
@@ -743,7 +743,7 @@ class MagicButtonsService:
             preview.block_reason = "Dokument nicht gefunden"
             return preview
 
-        # Extrahierte Daten pruefen
+        # Extrahierte Daten prüfen
         extracted = doc.extracted_data or {}
 
         company_name = (
@@ -759,9 +759,9 @@ class MagicButtonsService:
             {"field": "address", "value": extracted.get("sender", {}).get("address"), "label": "Adresse"},
         ]
 
-        # Pruefen ob Entity schon existiert
+        # Prüfen ob Entity schon existiert
         if company_name:
-            # BusinessEntity hat kein company_id - pruefen ob Name existiert
+            # BusinessEntity hat kein company_id - prüfen ob Name existiert
             existing_query = select(BusinessEntity).where(
                 BusinessEntity.name.ilike(f"%{company_name}%"),
             )
@@ -769,7 +769,7 @@ class MagicButtonsService:
             existing = existing_result.scalars().first()
 
             if existing:
-                preview.warnings.append(f"Aehnlicher Kontakt existiert bereits: {existing.name}")
+                preview.warnings.append(f"Ähnlicher Kontakt existiert bereits: {existing.name}")
 
         preview.can_execute = company_name is not None and len(company_name) > 2
         if not preview.can_execute:
@@ -790,7 +790,7 @@ class MagicButtonsService:
 
         1. Daten aus Dokument extrahieren
         2. BusinessEntity erstellen
-        3. Dokument mit Entity verknuepfen
+        3. Dokument mit Entity verknüpfen
         """
         import time
         start_time = time.time()
@@ -851,13 +851,13 @@ class MagicButtonsService:
 
             db.add(entity)
 
-            # Dokument verknuepfen
+            # Dokument verknüpfen
             doc.business_entity_id = entity.id
 
             await db.commit()
 
             result.status = MagicButtonStatus.COMPLETED
-            result.message = f"Kontakt '{name}' erstellt und mit Dokument verknuepft"
+            result.message = f"Kontakt '{name}' erstellt und mit Dokument verknüpft"
             result.success_count = 1
             result.processed_count = 1
 
@@ -884,7 +884,7 @@ _magic_buttons_service: Optional[MagicButtonsService] = None
 
 
 def get_magic_buttons_service() -> MagicButtonsService:
-    """Gibt Magic-Buttons-Service-Instanz zurueck."""
+    """Gibt Magic-Buttons-Service-Instanz zurück."""
     global _magic_buttons_service
     if _magic_buttons_service is None:
         _magic_buttons_service = MagicButtonsService()

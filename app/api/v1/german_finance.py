@@ -2,7 +2,7 @@
 """
 Deutsche Finanz-Feature API Endpoints.
 
-Feature #11: REST API fuer:
+Feature #11: REST API für:
 - USt-Voranmeldung (Umsatzsteuer-Voranmeldung)
 - BWA (Betriebswirtschaftliche Auswertung)
 - Cashflow-Prognose mit Szenarien
@@ -41,7 +41,7 @@ router = APIRouter(prefix="/finance/de", tags=["Deutsche Finanzen"])
 
 
 class UStVoranmeldungResponse(BaseModel):
-    """Response-Schema fuer USt-Voranmeldung."""
+    """Response-Schema für USt-Voranmeldung."""
 
     id: str
     company_id: str
@@ -66,7 +66,7 @@ class UStVoranmeldungResponse(BaseModel):
 
 
 class UStVoranmeldungCalculateRequest(BaseModel):
-    """Request-Schema fuer USt-Voranmeldung Berechnung."""
+    """Request-Schema für USt-Voranmeldung Berechnung."""
 
     company_id: str = Field(..., description="Firmen-UUID")
     year: int = Field(..., ge=2020, le=2099, description="Steuerjahr")
@@ -75,7 +75,7 @@ class UStVoranmeldungCalculateRequest(BaseModel):
 
 
 class TaxRateBreakdownResponse(BaseModel):
-    """Response-Schema fuer Steuersatz-Aufschluesselung."""
+    """Response-Schema für Steuersatz-Aufschluesselung."""
 
     period_start: str
     period_end: str
@@ -91,7 +91,7 @@ class TaxRateBreakdownResponse(BaseModel):
 
 
 class BWAReportResponse(BaseModel):
-    """Response-Schema fuer BWA."""
+    """Response-Schema für BWA."""
 
     id: str
     company_id: str
@@ -118,12 +118,12 @@ class BWAReportResponse(BaseModel):
 
 
 class BWAGenerateRequest(BaseModel):
-    """Request-Schema fuer BWA-Generierung."""
+    """Request-Schema für BWA-Generierung."""
 
     company_id: str = Field(..., description="Firmen-UUID")
-    year: int = Field(..., ge=2020, le=2099, description="Geschaeftsjahr")
-    month: Optional[int] = Field(None, ge=1, le=12, description="Geschaeftsmonat")
-    quarter: Optional[int] = Field(None, ge=1, le=4, description="Geschaeftsquartal")
+    year: int = Field(..., ge=2020, le=2099, description="Geschäftsjahr")
+    month: Optional[int] = Field(None, ge=1, le=12, description="Geschäftsmonat")
+    quarter: Optional[int] = Field(None, ge=1, le=4, description="Geschäftsquartal")
     skr_schema: str = Field(default="SKR03", description="SKR03 oder SKR04")
     period_type: str = Field(
         default="monthly",
@@ -135,7 +135,7 @@ class BWAGenerateRequest(BaseModel):
 
 
 class CashflowForecastResponse(BaseModel):
-    """Response-Schema fuer Cashflow-Prognose."""
+    """Response-Schema für Cashflow-Prognose."""
 
     id: str
     company_id: str
@@ -160,7 +160,7 @@ class CashflowForecastResponse(BaseModel):
 
 
 class CashflowGenerateRequest(BaseModel):
-    """Request-Schema fuer Cashflow-Prognose."""
+    """Request-Schema für Cashflow-Prognose."""
 
     company_id: str = Field(..., description="Firmen-UUID")
     horizon_days: int = Field(
@@ -174,7 +174,7 @@ class CashflowGenerateRequest(BaseModel):
 
 
 class WhatIfRequest(BaseModel):
-    """Request-Schema fuer Was-waere-wenn-Szenario."""
+    """Request-Schema für Was-waere-wenn-Szenario."""
 
     company_id: str = Field(..., description="Firmen-UUID")
     base_forecast_id: str = Field(..., description="Basis-Prognose-UUID")
@@ -182,7 +182,7 @@ class WhatIfRequest(BaseModel):
 
 
 class PaymentBehaviorResponse(BaseModel):
-    """Response-Schema fuer Zahlungsverhalten-Analyse."""
+    """Response-Schema für Zahlungsverhalten-Analyse."""
 
     company_id: str
     entity_id: Optional[str] = None
@@ -205,14 +205,14 @@ class PaymentBehaviorResponse(BaseModel):
     response_model=UStVoranmeldungResponse,
     status_code=status.HTTP_201_CREATED,
     summary="USt-Voranmeldung berechnen",
-    description="Berechnet die USt-Voranmeldung fuer einen Monat oder Quartal.",
+    description="Berechnet die USt-Voranmeldung für einen Monat oder Quartal.",
 )
 async def calculate_ust_voranmeldung(
     request: UStVoranmeldungCalculateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> UStVoranmeldungResponse:
-    """Berechnet USt-Voranmeldung fuer den angegebenen Zeitraum."""
+    """Berechnet USt-Voranmeldung für den angegebenen Zeitraum."""
     company_id = UUID(request.company_id)
     validate_company_access(company_id, current_user)
 
@@ -268,7 +268,7 @@ async def get_ust_voranmeldung(
     "/ust-va",
     response_model=List[UStVoranmeldungResponse],
     summary="USt-Voranmeldungen auflisten",
-    description="Alle USt-Voranmeldungen fuer ein bestimmtes Jahr.",
+    description="Alle USt-Voranmeldungen für ein bestimmtes Jahr.",
 )
 async def list_ust_voranmeldungen(
     company_id: UUID = Query(..., description="Firmen-UUID"),
@@ -276,7 +276,7 @@ async def list_ust_voranmeldungen(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[UStVoranmeldungResponse]:
-    """Alle USt-Voranmeldungen fuer ein Jahr auflisten."""
+    """Alle USt-Voranmeldungen für ein Jahr auflisten."""
     validate_company_access(company_id, current_user)
 
     service = get_ust_voranmeldung_service()
@@ -287,17 +287,17 @@ async def list_ust_voranmeldungen(
 @router.post(
     "/ust-va/{report_id}/elster-xml",
     summary="ELSTER-XML generieren",
-    description="Generiert ELSTER-kompatibles XML fuer eine USt-Voranmeldung.",
+    description="Generiert ELSTER-kompatibles XML für eine USt-Voranmeldung.",
 )
 async def generate_elster_xml(
     report_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, str]:
-    """ELSTER-XML fuer eine USt-VA generieren."""
+    """ELSTER-XML für eine USt-VA generieren."""
     service = get_ust_voranmeldung_service()
 
-    # Zugriffspruefung
+    # Zugriffsprüfung
     report = await service.get_report(db, report_id)
     if report is None:
         raise HTTPException(
@@ -365,7 +365,7 @@ async def get_tax_rate_breakdown(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> TaxRateBreakdownResponse:
-    """Steuersatz-Aufschluesselung fuer einen Zeitraum."""
+    """Steuersatz-Aufschluesselung für einen Zeitraum."""
     validate_company_access(company_id, current_user)
 
     service = get_ust_voranmeldung_service()
@@ -385,14 +385,14 @@ async def get_tax_rate_breakdown(
     response_model=BWAReportResponse,
     status_code=status.HTTP_201_CREATED,
     summary="BWA generieren",
-    description="Generiert eine BWA nach SKR03/SKR04 fuer einen Zeitraum.",
+    description="Generiert eine BWA nach SKR03/SKR04 für einen Zeitraum.",
 )
 async def generate_bwa(
     request: BWAGenerateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> BWAReportResponse:
-    """BWA generieren fuer den angegebenen Zeitraum."""
+    """BWA generieren für den angegebenen Zeitraum."""
     company_id = UUID(request.company_id)
     validate_company_access(company_id, current_user)
 
@@ -401,7 +401,7 @@ async def generate_bwa(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Kontenrahmen: {request.skr_schema}. Erlaubt: SKR03, SKR04",
+            detail=f"Ungültiger Kontenrahmen: {request.skr_schema}. Erlaubt: SKR03, SKR04",
         )
 
     try:
@@ -410,7 +410,7 @@ async def generate_bwa(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=(
-                f"Ungueltiger Zeitraumtyp: {request.period_type}. "
+                f"Ungültiger Zeitraumtyp: {request.period_type}. "
                 "Erlaubt: monthly, quarterly, yearly"
             ),
         )
@@ -464,15 +464,15 @@ async def get_bwa_report(
     "/bwa",
     response_model=List[BWAReportResponse],
     summary="BWA-Reports auflisten",
-    description="Alle BWA-Reports fuer ein bestimmtes Jahr.",
+    description="Alle BWA-Reports für ein bestimmtes Jahr.",
 )
 async def list_bwa_reports(
     company_id: UUID = Query(..., description="Firmen-UUID"),
-    year: int = Query(..., ge=2020, le=2099, description="Geschaeftsjahr"),
+    year: int = Query(..., ge=2020, le=2099, description="Geschäftsjahr"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[BWAReportResponse]:
-    """Alle BWA-Reports fuer ein Jahr auflisten."""
+    """Alle BWA-Reports für ein Jahr auflisten."""
     validate_company_access(company_id, current_user)
 
     service = get_bwa_service()
@@ -483,7 +483,7 @@ async def list_bwa_reports(
 @router.get(
     "/bwa/{report_id}/export-pdf",
     summary="BWA als PDF exportieren",
-    description="Generiert eine PDF-ready Datenstruktur fuer einen BWA-Report.",
+    description="Generiert eine PDF-ready Datenstruktur für einen BWA-Report.",
 )
 async def export_bwa_pdf(
     report_id: UUID,
@@ -612,7 +612,7 @@ async def generate_cashflow_forecast(
     "/cashflow/forecasts",
     response_model=List[CashflowForecastResponse],
     summary="Cashflow-Prognosen abrufen",
-    description="Ruft Cashflow-Prognosen fuer einen optionalen Zeitraum ab.",
+    description="Ruft Cashflow-Prognosen für einen optionalen Zeitraum ab.",
 )
 async def get_cashflow_forecasts(
     company_id: UUID = Query(..., description="Firmen-UUID"),
@@ -621,7 +621,7 @@ async def get_cashflow_forecasts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[CashflowForecastResponse]:
-    """Cashflow-Prognosen fuer einen Zeitraum abrufen."""
+    """Cashflow-Prognosen für einen Zeitraum abrufen."""
     validate_company_access(company_id, current_user)
 
     service = get_cashflow_forecast_service()
@@ -654,8 +654,8 @@ async def get_liquidity_warnings(
     status_code=status.HTTP_201_CREATED,
     summary="Was-waere-wenn-Szenario",
     description=(
-        "Erstellt eine Cashflow-Prognose fuer ein spezifisches Szenario. "
-        "Unterstuetzt: basis, optimistisch, pessimistisch, wenn_kunde_nicht_zahlt."
+        "Erstellt eine Cashflow-Prognose für ein spezifisches Szenario. "
+        "Unterstützt: basis, optimistisch, pessimistisch, wenn_kunde_nicht_zahlt."
     ),
 )
 async def generate_cashflow_scenario(
@@ -728,14 +728,14 @@ async def what_if_scenario(
 @router.get(
     "/cashflow/seasonal-factors",
     summary="Saisonale Faktoren",
-    description="Saisonale Korrekturfaktoren fuer alle 12 Monate.",
+    description="Saisonale Korrekturfaktoren für alle 12 Monate.",
 )
 async def get_seasonal_factors(
     company_id: UUID = Query(..., description="Firmen-UUID"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, float]:
-    """Saisonale Faktoren fuer alle Monate abrufen."""
+    """Saisonale Faktoren für alle Monate abrufen."""
     validate_company_access(company_id, current_user)
 
     service = get_cashflow_forecast_service()
@@ -747,7 +747,7 @@ async def get_seasonal_factors(
     response_model=PaymentBehaviorResponse,
     summary="Zahlungsverhalten analysieren",
     description=(
-        "Analysiert das historische Zahlungsverhalten fuer eine Firma "
+        "Analysiert das historische Zahlungsverhalten für eine Firma "
         "oder eine spezifische Entity (Kunde/Lieferant)."
     ),
 )

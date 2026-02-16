@@ -1,6 +1,6 @@
 """Bank-specific CSV parsers.
 
-Spezialisierte Parser fuer CSV-Exporte verschiedener deutscher Banken.
+Spezialisierte Parser für CSV-Exporte verschiedener deutscher Banken.
 Jede Bank hat eigene Spaltenbezeichnungen und Formate.
 """
 

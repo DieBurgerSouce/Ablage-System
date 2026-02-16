@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-POMatchingService - 3-Way Purchase Order Matching fuer Ablage-System.
+POMatchingService - 3-Way Purchase Order Matching für Ablage-System.
 
 Implementiert:
 - Bestellung <-> Lieferschein <-> Rechnung Matching
 - Automatisches Matching nach Bestellnummer, Lieferant und Betraegen
 - Abweichungserkennung mit konfigurierbaren Toleranzen
-- Freigabe-Workflow fuer Abweichungen
+- Freigabe-Workflow für Abweichungen
 - Statistiken und Auswertungen
 
 Phase 2.2 der Feature-Roadmap (Februar 2026).
@@ -45,7 +45,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class MatchCreateRequest:
-    """Request fuer Match-Erstellung."""
+    """Request für Match-Erstellung."""
     company_id: uuid.UUID
     purchase_order_id: Optional[uuid.UUID] = None
     delivery_note_id: Optional[uuid.UUID] = None
@@ -72,7 +72,7 @@ class AddDocumentRequest:
 
 @dataclass
 class MatchFilter:
-    """Filter fuer Match-Abfragen."""
+    """Filter für Match-Abfragen."""
     company_id: uuid.UUID
     status: Optional[MatchStatus] = None
     vendor_entity_id: Optional[uuid.UUID] = None
@@ -83,7 +83,7 @@ class MatchFilter:
 
 @dataclass
 class MatchStatistics:
-    """Statistiken fuer PO-Matching."""
+    """Statistiken für PO-Matching."""
     total_matches: int
     pending_matches: int
     partial_matches: int
@@ -106,7 +106,7 @@ class MatchStatistics:
 
 
 class POMatchingService:
-    """Service fuer 3-Way Purchase Order Matching."""
+    """Service für 3-Way Purchase Order Matching."""
 
     # ========================================================================
     # Match CRUD
@@ -235,25 +235,25 @@ class POMatchingService:
 
         if request.document_type == "purchase_order":
             if match.purchase_order_id is not None:
-                raise ValueError("Bestellung ist bereits verknuepft")
+                raise ValueError("Bestellung ist bereits verknüpft")
             match.purchase_order_id = request.document_id
             if request.amount is not None:
                 match.po_amount = request.amount
         elif request.document_type == "delivery_note":
             if match.delivery_note_id is not None:
-                raise ValueError("Lieferschein ist bereits verknuepft")
+                raise ValueError("Lieferschein ist bereits verknüpft")
             match.delivery_note_id = request.document_id
             if request.amount is not None:
                 match.dn_amount = request.amount
         elif request.document_type == "invoice":
             if match.invoice_id is not None:
-                raise ValueError("Rechnung ist bereits verknuepft")
+                raise ValueError("Rechnung ist bereits verknüpft")
             match.invoice_id = request.document_id
             if request.amount is not None:
                 match.invoice_amount = request.amount
         else:
             raise ValueError(
-                f"Ungueltiger Dokumenttyp: {request.document_type}. "
+                f"Ungültiger Dokumenttyp: {request.document_type}. "
                 "Erlaubt: purchase_order, delivery_note, invoice"
             )
 
@@ -291,7 +291,7 @@ class POMatchingService:
         if not match:
             raise ValueError("Match nicht gefunden")
 
-        # Bestehende Abweichungen loeschen (Neubewertung)
+        # Bestehende Abweichungen löschen (Neubewertung)
         for disc in list(match.discrepancies):
             await db.delete(disc)
 
@@ -356,7 +356,7 @@ class POMatchingService:
         self,
         match: PurchaseOrderMatch,
     ) -> Dict[str, Optional[Decimal]]:
-        """Sammelt alle verfuegbaren Betraege."""
+        """Sammelt alle verfügbaren Betraege."""
         return {
             "po": match.po_amount,
             "dn": match.dn_amount,
@@ -368,7 +368,7 @@ class POMatchingService:
         match: PurchaseOrderMatch,
         amounts: Dict[str, Optional[Decimal]],
     ) -> List[MatchDiscrepancy]:
-        """Prueft Betragsabweichungen zwischen den Dokumenten."""
+        """Prüft Betragsabweichungen zwischen den Dokumenten."""
         discrepancies: List[MatchDiscrepancy] = []
         tolerance = match.amount_tolerance_percent
 
@@ -530,7 +530,7 @@ class POMatchingService:
         Sucht nach PENDING/PARTIAL Matches und versucht, fehlende
         Dokumente anhand der Bestellnummer oder des Lieferanten zuzuordnen.
         """
-        # Finde unvollstaendige Matches
+        # Finde unvollständige Matches
         result = await db.execute(
             select(PurchaseOrderMatch).where(
                 and_(
@@ -554,7 +554,7 @@ class POMatchingService:
             updated = False
 
             # Suche nach fehlenden Dokumenten mit gleicher Bestellnummer
-            # (Vereinfachte Suche ueber document_type und extracted_data)
+            # (Vereinfachte Suche über document_type und extracted_data)
             if match.purchase_order_id is None:
                 po_doc = await self._find_document_by_reference(
                     db, company_id, match.order_number,
@@ -633,7 +633,7 @@ class POMatchingService:
         return result.scalar_one_or_none()
 
     # ========================================================================
-    # Potential Matches (Vorschlaege)
+    # Potential Matches (Vorschläge)
     # ========================================================================
 
     async def find_potential_matches(
@@ -643,10 +643,10 @@ class POMatchingService:
         document_id: uuid.UUID,
         document_type: str,
     ) -> List[PurchaseOrderMatch]:
-        """Findet potentielle Matches fuer ein neues Dokument.
+        """Findet potentielle Matches für ein neues Dokument.
 
-        Sucht nach bestehenden Matches, zu denen das Dokument passen koennte
-        (gleiche Bestellnummer, gleicher Lieferant, aehnlicher Betrag).
+        Sucht nach bestehenden Matches, zu denen das Dokument passen könnte
+        (gleiche Bestellnummer, gleicher Lieferant, ähnlicher Betrag).
         """
         # Lade das Dokument
         doc = await db.get(Document, document_id)
@@ -670,7 +670,7 @@ class POMatchingService:
         elif document_type == "invoice":
             conditions.append(PurchaseOrderMatch.invoice_id.is_(None))
 
-        # Kettenreferenz-Matching (chain_id enthaelt Bestellnummer)
+        # Kettenreferenz-Matching (chain_id enthält Bestellnummer)
         if hasattr(doc, "chain_id") and doc.chain_id:
             conditions.append(
                 or_(
@@ -702,7 +702,7 @@ class POMatchingService:
         period_start: date,
         period_end: date,
     ) -> MatchStatistics:
-        """Berechnet Matching-Statistiken fuer einen Zeitraum."""
+        """Berechnet Matching-Statistiken für einen Zeitraum."""
         base_filter = and_(
             PurchaseOrderMatch.company_id == company_id,
             PurchaseOrderMatch.created_at >= period_start,

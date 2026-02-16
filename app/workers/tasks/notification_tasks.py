@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Celery Tasks fuer Benachrichtigungen.
+Celery Tasks für Benachrichtigungen.
 
 Geplante Tasks:
-- send_daily_digest: Taegliche E-Mail-Zusammenfassung (08:00 Uhr)
-- send_weekly_digest: Woechentliche E-Mail-Zusammenfassung (Montag 08:00)
-- cleanup_old_notifications: Alte Benachrichtigungen loeschen (Sonntag 04:00)
+- send_daily_digest: Tägliche E-Mail-Zusammenfassung (08:00 Uhr)
+- send_weekly_digest: Wöchentliche E-Mail-Zusammenfassung (Montag 08:00)
+- cleanup_old_notifications: Alte Benachrichtigungen löschen (Sonntag 04:00)
 
-Feinpoliert und durchdacht - Zuverlaessige Benachrichtigungen fuer Benutzer.
+Feinpoliert und durchdacht - Zuverlässige Benachrichtigungen für Benutzer.
 """
 
 import asyncio
@@ -27,10 +27,10 @@ logger = structlog.get_logger(__name__)
 
 
 def run_async(coro):
-    """Hilfsfunktion um async Code in sync Celery Tasks auszufuehren.
+    """Hilfsfunktion um async Code in sync Celery Tasks auszuführen.
 
     MEMORY FIX: Verwendet asyncio.run() statt new_event_loop() um Memory Leaks
-    zu verhindern. asyncio.run() erstellt einen neuen Event-Loop, fuehrt die
+    zu verhindern. asyncio.run() erstellt einen neuen Event-Loop, führt die
     Coroutine aus und schließt den Loop korrekt inkl. aller pending Tasks.
     """
     return asyncio.run(coro)
@@ -93,9 +93,9 @@ Diese E-Mail wurde automatisch generiert.
 
 
 def format_avg_processing_time(avg_ms: Optional[float]) -> str:
-    """Formatiere durchschnittliche Verarbeitungszeit fuer Anzeige."""
+    """Formatiere durchschnittliche Verarbeitungszeit für Anzeige."""
     if avg_ms is None:
-        return "Nicht verfuegbar"
+        return "Nicht verfügbar"
     if avg_ms < 1000:
         return f"< 1 Sekunde"
     elif avg_ms < 60000:
@@ -117,7 +117,7 @@ async def get_users_with_digest_preference(
             and_(
                 User.is_active == True,
                 User.email.isnot(None),
-                # JSONB-Abfrage fuer preferences->notifications->email_digest
+                # JSONB-Abfrage für preferences->notifications->email_digest
                 User.preferences["notifications"]["email_digest"].astext == digest_type
             )
         )
@@ -130,7 +130,7 @@ async def get_user_document_stats(
     user_id: str,
     since: datetime
 ) -> Dict[str, Any]:
-    """Hole Dokumentstatistiken fuer einen Benutzer."""
+    """Hole Dokumentstatistiken für einen Benutzer."""
     # Dokumente seit Zeitpunkt
     doc_result = await db.execute(
         select(func.count(Document.id)).where(
@@ -193,7 +193,7 @@ async def get_user_notifications(
     since: datetime,
     limit: int = 10
 ) -> List[UserNotification]:
-    """Hole Benachrichtigungen fuer einen Benutzer."""
+    """Hole Benachrichtigungen für einen Benutzer."""
     result = await db.execute(
         select(UserNotification).where(
             and_(
@@ -222,7 +222,7 @@ async def get_unread_notification_count(
 
 
 def format_documents_section(stats: Dict[str, Any]) -> str:
-    """Formatiere Dokumenten-Sektion fuer E-Mail."""
+    """Formatiere Dokumenten-Sektion für E-Mail."""
     if stats["total"] == 0:
         return "- Keine neuen Dokumente"
 
@@ -238,7 +238,7 @@ def format_documents_section(stats: Dict[str, Any]) -> str:
 
 
 def format_notifications_section(notifications: List[UserNotification]) -> str:
-    """Formatiere Benachrichtigungs-Sektion fuer E-Mail."""
+    """Formatiere Benachrichtigungs-Sektion für E-Mail."""
     if not notifications:
         return "- Keine neuen Benachrichtigungen"
 
@@ -297,13 +297,13 @@ async def send_digest_email(
 )
 def send_daily_digest(self) -> Dict[str, Any]:
     """
-    Celery Task fuer taegliche E-Mail-Zusammenfassung.
+    Celery Task für tägliche E-Mail-Zusammenfassung.
 
     Sendet eine Zusammenfassung an alle Benutzer mit email_digest='daily'.
-    Wird taeglich um 08:00 Uhr ausgefuehrt.
+    Wird täglich um 08:00 Uhr ausgeführt.
 
     Returns:
-        Dict mit Ergebnissen (gesendet, fehlgeschlagen, uebersprungen)
+        Dict mit Ergebnissen (gesendet, fehlgeschlagen, übersprungen)
     """
     logger.info("daily_digest_task_gestartet", task_id=self.request.id)
 
@@ -314,7 +314,7 @@ def send_daily_digest(self) -> Dict[str, Any]:
             results = {
                 "gesendet": 0,
                 "fehlgeschlagen": 0,
-                "uebersprungen": 0,
+                "übersprungen": 0,
                 "benutzer_insgesamt": len(users)
             }
 
@@ -329,9 +329,9 @@ def send_daily_digest(self) -> Dict[str, Any]:
                     notifications = await get_user_notifications(db, str(user.id), since)
                     unread = await get_unread_notification_count(db, str(user.id))
 
-                    # Keine Aktivitaet? Ueberspringen
+                    # Keine Aktivität? Überspringen
                     if doc_stats["total"] == 0 and len(notifications) == 0:
-                        results["uebersprungen"] += 1
+                        results["übersprungen"] += 1
                         continue
 
                     # E-Mail-Body erstellen
@@ -394,13 +394,13 @@ def send_daily_digest(self) -> Dict[str, Any]:
 )
 def send_weekly_digest(self) -> Dict[str, Any]:
     """
-    Celery Task fuer woechentliche E-Mail-Zusammenfassung.
+    Celery Task für wöchentliche E-Mail-Zusammenfassung.
 
     Sendet eine Zusammenfassung an alle Benutzer mit email_digest='weekly'.
-    Wird jeden Montag um 08:00 Uhr ausgefuehrt.
+    Wird jeden Montag um 08:00 Uhr ausgeführt.
 
     Returns:
-        Dict mit Ergebnissen (gesendet, fehlgeschlagen, uebersprungen)
+        Dict mit Ergebnissen (gesendet, fehlgeschlagen, übersprungen)
     """
     logger.info("weekly_digest_task_gestartet", task_id=self.request.id)
 
@@ -411,7 +411,7 @@ def send_weekly_digest(self) -> Dict[str, Any]:
             results = {
                 "gesendet": 0,
                 "fehlgeschlagen": 0,
-                "uebersprungen": 0,
+                "übersprungen": 0,
                 "benutzer_insgesamt": len(users)
             }
 
@@ -428,9 +428,9 @@ def send_weekly_digest(self) -> Dict[str, Any]:
                     notifications = await get_user_notifications(db, str(user.id), since, limit=15)
                     unread = await get_unread_notification_count(db, str(user.id))
 
-                    # Keine Aktivitaet? Ueberspringen
+                    # Keine Aktivität? Überspringen
                     if doc_stats["total"] == 0 and len(notifications) == 0:
-                        results["uebersprungen"] += 1
+                        results["übersprungen"] += 1
                         continue
 
                     # Trend-Sektion
@@ -507,11 +507,11 @@ def send_weekly_digest(self) -> Dict[str, Any]:
     base=CPUTask,
     name="app.workers.tasks.notification_tasks.send_dunning_email_with_retry",
     max_retries=5,
-    default_retry_delay=30,  # Base delay, wird exponentiell erhoeht
+    default_retry_delay=30,  # Base delay, wird exponentiell erhöht
     autoretry_for=(Exception,),
     retry_backoff=True,
     retry_backoff_max=600,  # Max 10 Minuten zwischen Retries
-    retry_jitter=True,  # Zufaellige Variation um Thundering Herd zu vermeiden
+    retry_jitter=True,  # Zufällige Variation um Thundering Herd zu vermeiden
 )
 def send_dunning_email_with_retry(
     self,
@@ -535,11 +535,11 @@ def send_dunning_email_with_retry(
 
     Args:
         notification_id: ID der zugehoerigen Notification
-        recipient_email: Empfaenger-E-Mail
+        recipient_email: Empfänger-E-Mail
         subject: E-Mail-Betreff
         body: E-Mail-Text (Plain Text oder HTML)
         pdf_attachment: Optional PDF als Bytes
-        attachment_filename: Dateiname fuer Anhang
+        attachment_filename: Dateiname für Anhang
 
     Returns:
         Dict mit Sendestatus und Versuchszaehler
@@ -642,7 +642,7 @@ def send_dunning_email_with_retry(
                 total_attempts=attempt,
                 **safe_error_log(e),
             )
-            # Markiere als endgueltig fehlgeschlagen
+            # Markiere als endgültig fehlgeschlagen
             async def mark_failed():
                 async with get_async_session_context() as db:
                     from uuid import UUID
@@ -681,12 +681,12 @@ def send_dunning_email_with_retry(
 )
 def retry_failed_dunning_emails(self) -> Dict[str, Any]:
     """
-    Retry-Task fuer fehlgeschlagene Dunning-E-Mails.
+    Retry-Task für fehlgeschlagene Dunning-E-Mails.
 
     Sucht Notifications mit Status FAILED und retry_count < max_retries,
-    die aelter als 1 Stunde sind, und startet neue Zustellversuche.
+    die älter als 1 Stunde sind, und startet neue Zustellversuche.
 
-    Wird stuendlich ausgefuehrt (siehe Beat Schedule).
+    Wird stündlich ausgeführt (siehe Beat Schedule).
 
     Returns:
         Dict mit Anzahl der gestarteten Retry-Tasks
@@ -725,7 +725,7 @@ def retry_failed_dunning_emails(self) -> Dict[str, Any]:
                         Notification.retry_count < max_retry_attempts,
                         Notification.last_attempt_at < one_hour_ago,
                     )
-                ).limit(50)  # Batch-Groesse
+                ).limit(50)  # Batch-Größe
             )
             failed_notifications = result.scalars().all()
             stats["checked"] = len(failed_notifications)
@@ -800,16 +800,16 @@ def retry_failed_dunning_emails(self) -> Dict[str, Any]:
 )
 def cleanup_old_notifications(self, days: int = 90) -> Dict[str, Any]:
     """
-    Celery Task zum Loeschen alter Benachrichtigungen.
+    Celery Task zum Löschen alter Benachrichtigungen.
 
-    Loescht gelesene Benachrichtigungen aelter als X Tage.
-    Wird woechentlich am Sonntag um 04:00 Uhr ausgefuehrt.
+    Löscht gelesene Benachrichtigungen älter als X Tage.
+    Wird wöchentlich am Sonntag um 04:00 Uhr ausgeführt.
 
     Args:
-        days: Anzahl Tage nach denen geloescht wird (Default: 90)
+        days: Anzahl Tage nach denen gelöscht wird (Default: 90)
 
     Returns:
-        Dict mit Anzahl geloeschter Benachrichtigungen
+        Dict mit Anzahl gelöschter Benachrichtigungen
     """
     logger.info(
         "cleanup_notifications_task_gestartet",
@@ -821,7 +821,7 @@ def cleanup_old_notifications(self, days: int = 90) -> Dict[str, Any]:
         async with get_async_session_context() as db:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
-            # Zaehle zu loeschende
+            # Zaehle zu löschende
             count_result = await db.execute(
                 select(func.count(UserNotification.id)).where(
                     and_(
@@ -833,7 +833,7 @@ def cleanup_old_notifications(self, days: int = 90) -> Dict[str, Any]:
             count = count_result.scalar() or 0
 
             if count > 0:
-                # Loesche in Batches
+                # Lösche in Batches
                 from sqlalchemy import delete
                 await db.execute(
                     delete(UserNotification).where(
@@ -845,7 +845,7 @@ def cleanup_old_notifications(self, days: int = 90) -> Dict[str, Any]:
                 )
                 await db.commit()
 
-            return {"geloescht": count, "cutoff_datum": cutoff.isoformat()}
+            return {"gelöscht": count, "cutoff_datum": cutoff.isoformat()}
 
     try:
         results = run_async(run_cleanup())

@@ -1,6 +1,6 @@
 """RAG Metrics Service.
 
-Prometheus Metriken fuer den RAG Intelligence Layer:
+Prometheus Metriken für den RAG Intelligence Layer:
 - Search Requests & Latenz
 - LLM Requests & Tokens
 - Customer Card Lookups
@@ -328,7 +328,7 @@ if PROMETHEUS_AVAILABLE:
 # =============================================================================
 
 class RAGMetricsService:
-    """Service fuer RAG Metriken."""
+    """Service für RAG Metriken."""
 
     def __init__(self):
         self._enabled = PROMETHEUS_AVAILABLE
@@ -337,7 +337,7 @@ class RAGMetricsService:
 
     @property
     def enabled(self) -> bool:
-        """Prueft ob Metriken aktiviert sind."""
+        """Prüft ob Metriken aktiviert sind."""
         return self._enabled
 
     # -------------------------------------------------------------------------
@@ -810,7 +810,7 @@ _metrics_service: Optional[RAGMetricsService] = None
 
 
 def get_rag_metrics_service() -> RAGMetricsService:
-    """Gibt RAGMetricsService Singleton zurueck."""
+    """Gibt RAGMetricsService Singleton zurück."""
     global _metrics_service
     if _metrics_service is None:
         _metrics_service = RAGMetricsService()

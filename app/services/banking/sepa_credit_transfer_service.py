@@ -1,15 +1,15 @@
 """SEPA Credit Transfer Service (pain.001).
 
-Generiert SEPA-Ueberweisungsdateien im pain.001 Format (ISO 20022).
-Unterstuetzt:
-- Einzelueberweisungen (pain.001.003.03)
-- Sammelueberweisungen (pain.001.001.03)
-- Terminueberweisungen
+Generiert SEPA-Überweisungsdateien im pain.001 Format (ISO 20022).
+Unterstützt:
+- Einzelüberweisungen (pain.001.003.03)
+- Sammelüberweisungen (pain.001.001.03)
+- Terminüberweisungen
 
 SECURITY:
 - Validierung aller IBAN/BIC
 - Betragsgrenzen
-- Verwendungszweck-Pruefung auf verbotene Zeichen
+- Verwendungszweck-Prüfung auf verbotene Zeichen
 """
 
 import xml.etree.ElementTree as ET
@@ -39,7 +39,7 @@ logger = structlog.get_logger(__name__)
 
 
 class SEPAChargeBearer(str, Enum):
-    """Gebuehrenregelung."""
+    """Gebührenregelung."""
     SLEV = "SLEV"  # Service Level - Standard
     SHAR = "SHAR"  # Shared - aufgeteilt
     DEBT = "DEBT"  # Debtor pays all
@@ -49,7 +49,7 @@ class SEPAChargeBearer(str, Enum):
 class SEPAServiceLevel(str, Enum):
     """SEPA Service Level."""
     SEPA = "SEPA"  # Standard SEPA
-    URGP = "URGP"  # Urgent Payment (Eilueberweisung)
+    URGP = "URGP"  # Urgent Payment (Eilüberweisung)
 
 
 class SEPAPaymentMethod(str, Enum):
@@ -64,7 +64,7 @@ class SEPALocalInstrument(str, Enum):
 
 
 class BatchBookingPreference(str, Enum):
-    """Buchungsart fuer Sammelueberweisungen."""
+    """Buchungsart für Sammelüberweisungen."""
     TRUE = "true"  # Sammelbuchung
     FALSE = "false"  # Einzelbuchungen
 
@@ -74,7 +74,7 @@ SEPA_ALLOWED_CHARS = re.compile(
     r"^[a-zA-Z0-9 .,'()+\-/:?]*$"
 )
 
-# Maximale Zeichenlaengen nach SEPA-Spezifikation
+# Maximale Zeichenlängen nach SEPA-Spezifikation
 MAX_NAME_LENGTH = 70
 MAX_REFERENCE_LENGTH = 140
 MAX_IBAN_LENGTH = 34
@@ -88,15 +88,15 @@ MAX_BIC_LENGTH = 11
 
 @dataclass
 class SEPACreditTransferTransaction:
-    """Einzelne SEPA-Ueberweisung."""
+    """Einzelne SEPA-Überweisung."""
     payment_id: str  # Eindeutige ID (EndToEndId)
     amount: Decimal
     currency: str = "EUR"
 
-    # Empfaenger
+    # Empfänger
     creditor_name: str = ""
     creditor_iban: str = ""
-    creditor_bic: Optional[str] = None  # Optional fuer EU-Inlandsueberweisungen
+    creditor_bic: Optional[str] = None  # Optional für EU-Inlandsüberweisungen
     creditor_address: Optional[Dict[str, str]] = None
 
     # Verwendungszweck
@@ -106,7 +106,7 @@ class SEPACreditTransferTransaction:
     # Optionale Felder
     instruction_id: Optional[str] = None
     execution_date: Optional[date] = None  # Null = sofort
-    purpose_code: Optional[str] = None  # z.B. "SALA" fuer Gehalt
+    purpose_code: Optional[str] = None  # z.B. "SALA" für Gehalt
     category_purpose: Optional[str] = None
 
     def validate(self) -> List[str]:
@@ -121,32 +121,32 @@ class SEPACreditTransferTransaction:
         if self.amount <= 0:
             errors.append("Betrag muss positiv sein")
         if self.amount > Decimal("999999999.99"):
-            errors.append("Betrag ueberschreitet Maximum")
+            errors.append("Betrag überschreitet Maximum")
 
         # IBAN
         if not self.creditor_iban:
-            errors.append("Empfaenger-IBAN fehlt")
+            errors.append("Empfänger-IBAN fehlt")
         elif not self._validate_iban(self.creditor_iban):
-            errors.append(f"Ungueltige Empfaenger-IBAN: {self.creditor_iban}")
+            errors.append(f"Ungültige Empfänger-IBAN: {self.creditor_iban}")
 
         # BIC (optional, aber wenn vorhanden validieren)
         if self.creditor_bic and not self._validate_bic(self.creditor_bic):
-            errors.append(f"Ungueltige Empfaenger-BIC: {self.creditor_bic}")
+            errors.append(f"Ungültige Empfänger-BIC: {self.creditor_bic}")
 
         # Name
         if not self.creditor_name:
-            errors.append("Empfaengername fehlt")
+            errors.append("Empfängername fehlt")
         elif len(self.creditor_name) > MAX_NAME_LENGTH:
-            errors.append(f"Empfaengername zu lang (max {MAX_NAME_LENGTH} Zeichen)")
+            errors.append(f"Empfängername zu lang (max {MAX_NAME_LENGTH} Zeichen)")
         elif not SEPA_ALLOWED_CHARS.match(self.creditor_name):
-            errors.append("Empfaengername enthaelt ungueltige Zeichen")
+            errors.append("Empfängername enthält ungültige Zeichen")
 
         # Verwendungszweck
         if self.remittance_info:
             if len(self.remittance_info) > MAX_REFERENCE_LENGTH:
                 errors.append(f"Verwendungszweck zu lang (max {MAX_REFERENCE_LENGTH} Zeichen)")
             if not SEPA_ALLOWED_CHARS.match(self.remittance_info):
-                errors.append("Verwendungszweck enthaelt ungueltige Zeichen")
+                errors.append("Verwendungszweck enthält ungültige Zeichen")
 
         return errors
 
@@ -157,7 +157,7 @@ class SEPACreditTransferTransaction:
             return False
         if not re.match(r"^[A-Z]{2}\d{2}[A-Z0-9]+$", iban):
             return False
-        # MOD-97 Pruefung
+        # MOD-97 Prüfung
         rearranged = iban[4:] + iban[:4]
         numeric = ""
         for char in rearranged:
@@ -177,7 +177,7 @@ class SEPACreditTransferTransaction:
             return False
         # Format: XXXXYYCC[ZZZ]
         # XXXX = Bankcode
-        # YY = Laendercode
+        # YY = Ländercode
         # CC = Ort
         # ZZZ = Filiale (optional)
         return bool(re.match(r"^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$", bic))
@@ -228,12 +228,12 @@ class SEPACreditTransferMessage:
 
 
 # =============================================================================
-# Pydantic Models fuer API
+# Pydantic Models für API
 # =============================================================================
 
 
 class CreditTransferCreate(BaseModel):
-    """Request zum Erstellen einer SEPA-Ueberweisung."""
+    """Request zum Erstellen einer SEPA-Überweisung."""
     bank_account_id: UUID
     creditor_name: str = Field(..., min_length=1, max_length=70)
     creditor_iban: str = Field(..., min_length=15, max_length=34)
@@ -255,7 +255,7 @@ class CreditTransferCreate(BaseModel):
 
 
 class BatchTransferCreate(BaseModel):
-    """Request zum Erstellen einer Sammelueberweisung."""
+    """Request zum Erstellen einer Sammelüberweisung."""
     bank_account_id: UUID
     batch_name: Optional[str] = Field(None, max_length=70)
     execution_date: Optional[date] = None
@@ -280,20 +280,20 @@ class Pain001ExportResult(BaseModel):
 
 
 class SEPACreditTransferService:
-    """Service fuer SEPA Credit Transfers (pain.001).
+    """Service für SEPA Credit Transfers (pain.001).
 
-    Generiert ISO 20022 konforme XML-Dateien fuer:
-    - Einzelueberweisungen
-    - Sammelueberweisungen
+    Generiert ISO 20022 konforme XML-Dateien für:
+    - Einzelüberweisungen
+    - Sammelüberweisungen
     - SEPA Instant Payments
 
-    Die generierten Dateien koennen:
+    Die generierten Dateien können:
     - Via FinTS an die Bank gesendet werden
     - Manuell im Online-Banking hochgeladen werden
-    - An einen Zahlungsdienstleister uebermittelt werden
+    - An einen Zahlungsdienstleister übermittelt werden
     """
 
-    # pain.001.003.03 Namespace (Standard fuer deutsche Banken)
+    # pain.001.003.03 Namespace (Standard für deutsche Banken)
     NAMESPACE = "urn:iso:std:iso:20022:tech:xsd:pain.001.003.03"
     XSI_NAMESPACE = "http://www.w3.org/2001/XMLSchema-instance"
 
@@ -307,12 +307,12 @@ class SEPACreditTransferService:
         user_id: UUID,
         data: CreditTransferCreate,
     ) -> Pain001ExportResult:
-        """Erstelle pain.001 fuer Einzelueberweisung.
+        """Erstelle pain.001 für Einzelüberweisung.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            data: Ueberweisungsdaten
+            data: Überweisungsdaten
 
         Returns:
             Export-Ergebnis mit XML
@@ -373,7 +373,7 @@ class SEPACreditTransferService:
             "sepa_credit_transfer_created",
             message_id=message_id,
             amount=str(data.amount),
-            # SECURITY: Keine Empfaengerdaten loggen!
+            # SECURITY: Keine Empfängerdaten loggen!
         )
 
         return Pain001ExportResult(
@@ -392,7 +392,7 @@ class SEPACreditTransferService:
         user_id: UUID,
         data: BatchTransferCreate,
     ) -> Pain001ExportResult:
-        """Erstelle pain.001 fuer Sammelueberweisung.
+        """Erstelle pain.001 für Sammelüberweisung.
 
         Args:
             db: Datenbank-Session
@@ -424,7 +424,7 @@ class SEPACreditTransferService:
 
         if len(payment_orders) != len(data.transfer_ids):
             raise ValueError(
-                f"Nicht alle Zahlungsauftraege gefunden oder gueltig "
+                f"Nicht alle Zahlungsaufträge gefunden oder gültig "
                 f"({len(payment_orders)} von {len(data.transfer_ids)})"
             )
 
@@ -505,7 +505,7 @@ class SEPACreditTransferService:
 
         Args:
             message: SEPA-Nachricht
-            is_instant: True fuer SEPA Instant
+            is_instant: True für SEPA Instant
 
         Returns:
             XML als String
@@ -577,7 +577,7 @@ class SEPACreditTransferService:
             if batch.debtor_bic:
                 ET.SubElement(fin_inst, "BIC").text = batch.debtor_bic.upper()
             else:
-                # BIC optional bei EU-Inlandsueberweisungen
+                # BIC optional bei EU-Inlandsüberweisungen
                 other = ET.SubElement(fin_inst, "Othr")
                 ET.SubElement(other, "Id").text = "NOTPROVIDED"
 
@@ -600,13 +600,13 @@ class SEPACreditTransferService:
                 inst_amt.text = f"{tx.amount:.2f}"
                 inst_amt.set("Ccy", tx.currency)
 
-                # Creditor Agent (Empfaengerbank)
+                # Creditor Agent (Empfängerbank)
                 if tx.creditor_bic:
                     cdtr_agt = ET.SubElement(cdt_trf, "CdtrAgt")
                     fin_inst = ET.SubElement(cdtr_agt, "FinInstnId")
                     ET.SubElement(fin_inst, "BIC").text = tx.creditor_bic.upper()
 
-                # Creditor (Empfaenger)
+                # Creditor (Empfänger)
                 cdtr = ET.SubElement(cdt_trf, "Cdtr")
                 ET.SubElement(cdtr, "Nm").text = self._sanitize_text(
                     tx.creditor_name, MAX_NAME_LENGTH
@@ -641,7 +641,7 @@ class SEPACreditTransferService:
                         tx.remittance_info, MAX_REFERENCE_LENGTH
                     )
                 elif tx.structured_remittance:
-                    # Strukturierte Referenz (z.B. fuer SEPA Creditor Reference)
+                    # Strukturierte Referenz (z.B. für SEPA Creditor Reference)
                     rmt_inf = ET.SubElement(cdt_trf, "RmtInf")
                     strd = ET.SubElement(rmt_inf, "Strd")
                     cdtr_ref = ET.SubElement(strd, "CdtrRefInf")
@@ -657,11 +657,11 @@ class SEPACreditTransferService:
         return xml_declaration + xml_body
 
     def _sanitize_text(self, text: str, max_length: int) -> str:
-        """Bereinige Text fuer SEPA-konformitaet.
+        """Bereinige Text für SEPA-konformität.
 
         Args:
             text: Eingabetext
-            max_length: Maximale Laenge
+            max_length: Maximale Länge
 
         Returns:
             Bereinigter Text
@@ -669,7 +669,7 @@ class SEPACreditTransferService:
         if not text:
             return ""
 
-        # Ersetze ungueltige Zeichen
+        # Ersetze ungültige Zeichen
         sanitized = ""
         for char in text:
             if SEPA_ALLOWED_CHARS.match(char):
@@ -689,7 +689,7 @@ class SEPACreditTransferService:
         # Mehrfache Leerzeichen entfernen
         sanitized = " ".join(sanitized.split())
 
-        # Kuerzen
+        # Kürzen
         if len(sanitized) > max_length:
             sanitized = sanitized[:max_length]
 
@@ -710,11 +710,11 @@ class SEPACreditTransferService:
             # SECURITY: Use defusedxml to prevent XXE attacks (CWE-611)
             root = DefusedET.fromstring(xml_content)
 
-            # Pruefe Namespace
+            # Prüfe Namespace
             if not root.tag.endswith("Document"):
                 errors.append("Root-Element muss 'Document' sein")
 
-            # Pruefe Pflichtfelder
+            # Prüfe Pflichtfelder
             cstmr = root.find(".//{%s}CstmrCdtTrfInitn" % self.NAMESPACE)
             if cstmr is None:
                 errors.append("CstmrCdtTrfInitn fehlt")
@@ -733,21 +733,21 @@ class SEPACreditTransferService:
         bank_account_id: UUID,
         include_with_skonto: bool = True,
     ) -> List[Dict[str, Any]]:
-        """Holt Zahlungsvorschlaege fuer faellige Rechnungen.
+        """Holt Zahlungsvorschläge für fällige Rechnungen.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
             bank_account_id: Bankkonto-ID
-            include_with_skonto: Skonto-Rechnungen einschliessen
+            include_with_skonto: Skonto-Rechnungen einschließen
 
         Returns:
-            Liste von Zahlungsvorschlaegen
+            Liste von Zahlungsvorschlägen
         """
         from app.db.models import Document, BankAccount
         from sqlalchemy import select, and_
 
-        # Pruefe Bankkonto
+        # Prüfe Bankkonto
         account = await db.get(BankAccount, bank_account_id)
         if not account or account.user_id != user_id:
             return []

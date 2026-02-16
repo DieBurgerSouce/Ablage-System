@@ -532,12 +532,12 @@ class CollaborationService:
         self, db: AsyncSession, user_id: uuid.UUID, company_id: uuid.UUID
     ) -> List[Mention]:
         """
-        Holt alle @Mentions fuer einen Benutzer (gelesen und ungelesen).
+        Holt alle @Mentions für einen Benutzer (gelesen und ungelesen).
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            company_id: Company-ID fuer Multi-Tenant
+            company_id: Company-ID für Multi-Tenant
 
         Returns:
             Liste von Mention Objekten

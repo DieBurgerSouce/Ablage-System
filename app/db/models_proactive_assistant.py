@@ -2,10 +2,10 @@
 """
 Proaktiver Assistent - Datenbank-Modelle.
 
-Hint-System fuer vorausschauende Warnungen und Optimierungsvorschlaege:
-- Fristen & Deadlines (Skonto, Vertraege, Mahnungen)
-- Anomalien & Warnungen (Preisabweichungen, Duplikate, Bankverbindungsaenderungen)
-- Optimierungs-Vorschlaege (verpasste Skonti, Buendelungsrabatte, Dauerauftraege)
+Hint-System für vorausschauende Warnungen und Optimierungsvorschläge:
+- Fristen & Deadlines (Skonto, Verträge, Mahnungen)
+- Anomalien & Warnungen (Preisabweichungen, Duplikate, Bankverbindungsänderungen)
+- Optimierungs-Vorschläge (verpasste Skonti, Buendelungsrabatte, Dauerauftraege)
 
 Feinpoliert und durchdacht - Enterprise-grade Proactive Intelligence.
 """
@@ -36,11 +36,11 @@ class HintCategory(str, Enum):
     """Hinweis-Kategorie."""
     DEADLINE = "deadline"          # Fristen & Deadlines
     ANOMALY = "anomaly"            # Anomalien & Warnungen
-    OPTIMIZATION = "optimization"  # Optimierungs-Vorschlaege
+    OPTIMIZATION = "optimization"  # Optimierungs-Vorschläge
 
 
 class HintPriority(str, Enum):
-    """Hinweis-Prioritaet."""
+    """Hinweis-Priorität."""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -50,7 +50,7 @@ class HintPriority(str, Enum):
 class HintStatus(str, Enum):
     """Hinweis-Bearbeitungsstatus."""
     NEW = "new"                    # Neu, ungesehen
-    SEEN = "seen"                  # Gesehen aber nicht bestaetigt
+    SEEN = "seen"                  # Gesehen aber nicht bestätigt
     ACKNOWLEDGED = "acknowledged"  # Zur Kenntnis genommen
     DISMISSED = "dismissed"        # Verworfen/Irrelevant
     ACTED_ON = "acted_on"          # Massnahme ergriffen
@@ -192,9 +192,9 @@ class ProactiveHint(Base):
 
 class HintRule(Base):
     """
-    Konfigurierbare Regeln fuer die Hinweis-Generierung.
+    Konfigurierbare Regeln für die Hinweis-Generierung.
 
-    Ermoeglicht pro Firma die Anpassung von Schwellwerten und
+    Ermöglicht pro Firma die Anpassung von Schwellwerten und
     Aktivierung/Deaktivierung einzelner Hint-Typen.
     """
     __tablename__ = "hint_rules"
@@ -233,9 +233,9 @@ class HintRule(Base):
 
 class HintStatistics(Base):
     """
-    Aggregierte Statistiken ueber Hinweise pro Zeitraum.
+    Aggregierte Statistiken über Hinweise pro Zeitraum.
 
-    Wird taeglich berechnet fuer Reporting und Dashboard.
+    Wird täglich berechnet für Reporting und Dashboard.
     """
     __tablename__ = "hint_statistics"
 

@@ -2,11 +2,11 @@
 """
 SEPA QR-Code Parser Service.
 
-Parser fuer SEPA EPC QR-Codes (European Payments Council Standard).
+Parser für SEPA EPC QR-Codes (European Payments Council Standard).
 
-Ermoeglicht:
-- Parsen von EPC QR-Codes fuer SEPA-Ueberweisungen
-- IBAN-Validierung mit Pruefsumme
+Ermöglicht:
+- Parsen von EPC QR-Codes für SEPA-Überweisungen
+- IBAN-Validierung mit Prüfsumme
 - BIC-Validierung
 - Generierung von EPC QR-Codes
 
@@ -71,7 +71,7 @@ class SEPAPaymentInfo:
 
     @property
     def is_valid(self) -> bool:
-        """Pruefen ob minimale SEPA-Daten vorhanden und valide."""
+        """Prüfen ob minimale SEPA-Daten vorhanden und valide."""
         if not self.iban or not self.recipient_name:
             return False
         return validate_iban(self.iban)
@@ -108,7 +108,7 @@ class SEPAPaymentInfo:
 
 def validate_iban(iban: str) -> bool:
     """
-    Validiere IBAN mit Pruefsumme (ISO 7064 Mod 97-10).
+    Validiere IBAN mit Prüfsumme (ISO 7064 Mod 97-10).
 
     Args:
         iban: IBAN-String (mit oder ohne Leerzeichen)
@@ -122,7 +122,7 @@ def validate_iban(iban: str) -> bool:
     # Normalisiere
     iban = iban.replace(" ", "").upper()
 
-    # Laenge pruefen (DE = 22)
+    # Länge prüfen (DE = 22)
     country_lengths = {
         "DE": 22,  # Deutschland
         "AT": 20,  # Oesterreich
@@ -151,17 +151,17 @@ def validate_iban(iban: str) -> bool:
     if expected_length and len(iban) != expected_length:
         return False
 
-    # Laendercode muss aus Buchstaben bestehen
+    # Ländercode muss aus Buchstaben bestehen
     if not iban[:2].isalpha():
         return False
 
-    # Pruefziffer muss numerisch sein
+    # Prüfziffer muss numerisch sein
     if not iban[2:4].isdigit():
         return False
 
-    # Mod 97 Pruefung
+    # Mod 97 Prüfung
     try:
-        # IBAN umstellen: Laendercode + Pruefziffer ans Ende
+        # IBAN umstellen: Ländercode + Prüfziffer ans Ende
         rearranged = iban[4:] + iban[:4]
 
         # Buchstaben durch Zahlen ersetzen (A=10, B=11, ..., Z=35)
@@ -185,7 +185,7 @@ def validate_bic(bic: str) -> bool:
 
     Format: AAAABBCC[DDD]
     - AAAA: Bank-Code (4 Buchstaben)
-    - BB: Laendercode (2 Buchstaben, ISO 3166)
+    - BB: Ländercode (2 Buchstaben, ISO 3166)
     - CC: Orts-Code (2 alphanumerisch)
     - DDD: Branch-Code (3 alphanumerisch, optional)
 
@@ -208,7 +208,7 @@ def validate_bic(bic: str) -> bool:
     if not bic[:4].isalpha():
         return False
 
-    # Laendercode: 2 Buchstaben
+    # Ländercode: 2 Buchstaben
     if not bic[4:6].isalpha():
         return False
 
@@ -246,7 +246,7 @@ class SEPAQRParserService:
     """
     Service zum Parsen von SEPA EPC QR-Codes.
 
-    Unterstuetzt EPC QR-Code Version 001 und 002.
+    Unterstützt EPC QR-Code Version 001 und 002.
     """
 
     SEPARATOR = "\n"
@@ -301,7 +301,7 @@ class SEPAQRParserService:
 
         if len(lines) < 7:
             payment.parse_errors.append(
-                f"Ungueltige EPC QR-Code Struktur: {len(lines)} Zeilen (min. 7)"
+                f"Ungültige EPC QR-Code Struktur: {len(lines)} Zeilen (min. 7)"
             )
             return payment
 
@@ -309,7 +309,7 @@ class SEPAQRParserService:
             # 1. Service Tag (Index 0)
             if lines[0].strip().upper() != self.SERVICE_TAG:
                 payment.parse_errors.append(
-                    f"Ungueltiger Service Tag: {lines[0]} (erwartet: {self.SERVICE_TAG})"
+                    f"Ungültiger Service Tag: {lines[0]} (erwartet: {self.SERVICE_TAG})"
                 )
                 return payment
 
@@ -317,12 +317,12 @@ class SEPAQRParserService:
             version = lines[1].strip()
             if version not in self.VALID_VERSIONS:
                 payment.parse_errors.append(
-                    f"Ungueltige Version: {version} (unterstuetzt: {self.VALID_VERSIONS})"
+                    f"Ungültige Version: {version} (unterstützt: {self.VALID_VERSIONS})"
                 )
                 return payment
             payment.version = version
 
-            # 3. Character Set (Index 2) - wird fuer Encoding verwendet
+            # 3. Character Set (Index 2) - wird für Encoding verwendet
             # charset_id = lines[2].strip()
             # charset = self.CHARSETS.get(charset_id, "UTF-8")
 
@@ -330,7 +330,7 @@ class SEPAQRParserService:
             identification = lines[3].strip().upper()
             if identification != self.IDENTIFICATION:
                 payment.parse_errors.append(
-                    f"Ungueltige Identification: {identification} (erwartet: {self.IDENTIFICATION})"
+                    f"Ungültige Identification: {identification} (erwartet: {self.IDENTIFICATION})"
                 )
                 return payment
 
@@ -340,7 +340,7 @@ class SEPAQRParserService:
                 if validate_bic(bic):
                     payment.bic = bic
                 else:
-                    payment.parse_errors.append(f"Ungueltiger BIC: {bic}")
+                    payment.parse_errors.append(f"Ungültiger BIC: {bic}")
 
             # 6. Recipient Name (Index 5) - Pflicht
             if len(lines) > 5:
@@ -349,7 +349,7 @@ class SEPAQRParserService:
                     # Max 70 Zeichen nach EPC Standard
                     payment.recipient_name = recipient[:70]
                 else:
-                    payment.parse_errors.append("Empfaengername fehlt")
+                    payment.parse_errors.append("Empfängername fehlt")
 
             # 7. IBAN (Index 6) - Pflicht
             if len(lines) > 6:
@@ -358,7 +358,7 @@ class SEPAQRParserService:
                     payment.iban = iban
                 else:
                     payment.iban = iban  # Speichere trotzdem
-                    payment.parse_errors.append(f"Ungueltige IBAN: {iban}")
+                    payment.parse_errors.append(f"Ungültige IBAN: {iban}")
 
             # 8. Amount (Index 7) - optional, Format: EUR[Betrag]
             if len(lines) > 7 and lines[7].strip():
@@ -415,7 +415,7 @@ class SEPAQRParserService:
 
         amount_str = amount_str.strip()
 
-        # Waehrung extrahieren (3 Buchstaben am Anfang)
+        # Währung extrahieren (3 Buchstaben am Anfang)
         if len(amount_str) >= 3 and amount_str[:3].isalpha():
             currency = amount_str[:3].upper()
             amount_str = amount_str[3:]
@@ -441,7 +441,7 @@ class SEPAQRParserService:
 
     def is_epc_qr(self, qr_data: str) -> bool:
         """
-        Pruefen ob QR-Code ein EPC SEPA QR-Code ist.
+        Prüfen ob QR-Code ein EPC SEPA QR-Code ist.
 
         Args:
             qr_data: Rohdaten aus QR-Code
@@ -457,15 +457,15 @@ class SEPAQRParserService:
         if len(lines) < 4:
             return False
 
-        # Service Tag pruefen
+        # Service Tag prüfen
         if lines[0].strip().upper() != self.SERVICE_TAG:
             return False
 
-        # Version pruefen
+        # Version prüfen
         if lines[1].strip() not in self.VALID_VERSIONS:
             return False
 
-        # Identification pruefen
+        # Identification prüfen
         if lines[3].strip().upper() != self.IDENTIFICATION:
             return False
 
@@ -479,7 +479,7 @@ class SEPAQRParserService:
 
 class SEPAQRGenerator:
     """
-    Generator fuer SEPA EPC QR-Codes.
+    Generator für SEPA EPC QR-Codes.
 
     Erstellt QR-Code Daten nach EPC Standard.
     """
@@ -499,8 +499,8 @@ class SEPAQRGenerator:
         Generiere EPC QR-Code Daten.
 
         Args:
-            iban: IBAN des Empfaengers
-            recipient_name: Name des Empfaengers (max 70 Zeichen)
+            iban: IBAN des Empfängers
+            recipient_name: Name des Empfängers (max 70 Zeichen)
             amount: Betrag in EUR (optional)
             bic: BIC/SWIFT (optional in Version 002)
             reference: Strukturierter Verwendungszweck (max 35 Zeichen)
@@ -509,7 +509,7 @@ class SEPAQRGenerator:
             version: EPC Version (001 oder 002)
 
         Returns:
-            String fuer QR-Code Generierung
+            String für QR-Code Generierung
         """
         lines = []
 
@@ -591,7 +591,7 @@ def parse_sepa_qr(qr_data: str) -> SEPAPaymentInfo:
 
 
 def is_sepa_qr(qr_data: str) -> bool:
-    """Pruefen ob QR-Code ein SEPA EPC QR ist."""
+    """Prüfen ob QR-Code ein SEPA EPC QR ist."""
     return get_sepa_parser().is_epc_qr(qr_data)
 
 
@@ -606,8 +606,8 @@ def generate_sepa_qr(
     Generiere SEPA EPC QR-Code Daten.
 
     Args:
-        iban: IBAN des Empfaengers
-        recipient_name: Name des Empfaengers
+        iban: IBAN des Empfängers
+        recipient_name: Name des Empfängers
         amount: Betrag in EUR (optional)
         reference: Verwendungszweck
 

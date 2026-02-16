@@ -1,7 +1,7 @@
 """
 Event Bus Module.
 
-Stellt einen internen Event Bus fuer Event-Driven Architecture bereit.
+Stellt einen internen Event Bus für Event-Driven Architecture bereit.
 """
 
 from app.services.events.event_bus import (

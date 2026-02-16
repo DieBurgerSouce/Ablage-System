@@ -2,16 +2,16 @@
 """
 Predictive Payment Analytics Service.
 
-Vision 2026 Q3: Vorhersage von Zahlungseingaengen mit Erklaerbarkeit.
+Vision 2026 Q3: Vorhersage von Zahlungseingaengen mit Erklärbarkeit.
 
 Features:
 - ML-basierte Zahlungsprognose
 - Historische Zahlungsmuster-Analyse
 - Risiko-Score Integration
-- Erklaerbare Faktoren mit Gewichtung
+- Erklärbare Faktoren mit Gewichtung
 - Confidence-Intervalle
 
-Feinpoliert und durchdacht - Deutsche Qualitaet.
+Feinpoliert und durchdacht - Deutsche Qualität.
 """
 
 from __future__ import annotations
@@ -85,10 +85,10 @@ class PredictionFactor:
 
 @dataclass
 class ConfidenceInterval:
-    """Konfidenzintervall fuer Vorhersage."""
+    """Konfidenzintervall für Vorhersage."""
     lower_days: int
     upper_days: int
-    probability: float  # z.B. 0.9 fuer 90% Konfidenz
+    probability: float  # z.B. 0.9 für 90% Konfidenz
 
 
 @dataclass
@@ -98,7 +98,7 @@ class PaymentPrediction:
     predicted_payment_date: date
     confidence: float
     confidence_level: PredictionConfidence
-    predicted_days_from_due: int  # Positive = nach Faelligkeit
+    predicted_days_from_due: int  # Positive = nach Fälligkeit
     factors: List[PredictionFactor]
     confidence_interval: ConfidenceInterval
     explanation: str
@@ -108,7 +108,7 @@ class PaymentPrediction:
 
 @dataclass
 class EntityPaymentProfile:
-    """Zahlungsprofil eines Geschaeftspartners."""
+    """Zahlungsprofil eines Geschäftspartners."""
     entity_id: uuid.UUID
     avg_payment_delay_days: float
     median_payment_delay_days: float
@@ -118,7 +118,7 @@ class EntityPaymentProfile:
     early_payment_rate: float
     late_payment_rate: float
     typical_payment_weekday: Optional[int]  # 0=Montag, 6=Sonntag
-    seasonal_patterns: Dict[int, float]  # Monat -> Durchschnittliche Verzoegerung
+    seasonal_patterns: Dict[int, float]  # Monat -> Durchschnittliche Verzögerung
 
 
 @dataclass
@@ -144,14 +144,14 @@ FEATURE_WEIGHTS = {
     "relationship_age": 0.10,     # Beziehungsdauer
     "day_of_week": 0.05,          # Wochentag
     "month_pattern": 0.05,        # Monatsmuster
-    "skonto_available": 0.05,     # Skonto verfuegbar
+    "skonto_available": 0.05,     # Skonto verfügbar
     "dunning_level": 0.05,        # Aktuelle Mahnstufe
 }
 
 
 class PredictivePaymentService:
     """
-    Service fuer Zahlungsvorhersagen.
+    Service für Zahlungsvorhersagen.
 
     Verwendet historische Daten und ML-basierte Analyse
     um Zahlungseingaenge vorherzusagen.
@@ -177,7 +177,7 @@ class PredictivePaymentService:
             company_id: Optional Company-ID
 
         Returns:
-            PaymentPrediction mit vorhergesagtem Datum und Erklaerung
+            PaymentPrediction mit vorhergesagtem Datum und Erklärung
         """
         import time
         start_time = time.perf_counter()
@@ -191,7 +191,7 @@ class PredictivePaymentService:
         if not invoice:
             raise ValueError(f"Rechnung nicht gefunden: {invoice_id}")
 
-        # Entity laden falls verknuepft
+        # Entity laden falls verknüpft
         entity: Optional[BusinessEntity] = None
         if invoice.entity_id:
             entity_result = await db.execute(
@@ -236,7 +236,7 @@ class PredictivePaymentService:
             probability=0.90,
         )
 
-        # Erklaerung generieren
+        # Erklärung generieren
         explanation = self._generate_explanation(
             invoice, entity, profile, predicted_delay_days, factors
         )
@@ -370,7 +370,7 @@ class PredictivePaymentService:
         company_id: Optional[uuid.UUID] = None,
     ) -> EntityPaymentProfile:
         """
-        Gibt das Zahlungsprofil eines Geschaeftspartners zurueck.
+        Gibt das Zahlungsprofil eines Geschäftspartners zurück.
 
         Args:
             db: Database Session
@@ -393,7 +393,7 @@ class PredictivePaymentService:
         company_id: Optional[uuid.UUID],
     ) -> EntityPaymentProfile:
         """Laedt oder erstellt ein Zahlungsprofil."""
-        # Cache pruefen (vereinfacht, ohne TTL-Check)
+        # Cache prüfen (vereinfacht, ohne TTL-Check)
         if entity_id in self._profile_cache:
             return self._profile_cache[entity_id]
 
@@ -411,7 +411,7 @@ class PredictivePaymentService:
         result = await db.execute(query.limit(100))  # Letzte 100 Rechnungen
         paid_invoices = list(result.scalars().all())
 
-        # Verzoegerungen berechnen
+        # Verzögerungen berechnen
         delays: List[float] = []
         payment_weekdays: List[int] = []
         monthly_delays: Dict[int, List[float]] = {m: [] for m in range(1, 13)}
@@ -434,7 +434,7 @@ class PredictivePaymentService:
             early_rate = len([d for d in delays if d < 0]) / total
             late_rate = len([d for d in delays if d > 0]) / total
         else:
-            avg_delay = 7.0  # Default: 1 Woche nach Faelligkeit
+            avg_delay = 7.0  # Default: 1 Woche nach Fälligkeit
             median_delay = 7.0
             std_dev = 7.0
             on_time_rate = 0.5
@@ -481,7 +481,7 @@ class PredictivePaymentService:
         profile: Optional[EntityPaymentProfile],
         company_id: Optional[uuid.UUID],
     ) -> Dict[str, Any]:
-        """Berechnet Features fuer die Vorhersage."""
+        """Berechnet Features für die Vorhersage."""
         features: Dict[str, Any] = {}
 
         # Basis-Features
@@ -530,7 +530,7 @@ class PredictivePaymentService:
         features: Dict[str, Any],
     ) -> Tuple[int, float, List[PredictionFactor]]:
         """
-        Berechnet die vorhergesagte Verzoegerung.
+        Berechnet die vorhergesagte Verzögerung.
 
         Returns:
             (predicted_delay_days, confidence, factors)
@@ -551,7 +551,7 @@ class PredictivePaymentService:
                 name="Zahlungshistorie",
                 contribution=FEATURE_WEIGHTS["payment_history"],
                 value=f"{profile.avg_payment_delay_days:.1f} Tage",
-                explanation=f"Durchschnittliche Zahlungsverzoegerung bei {profile.total_invoices} Rechnungen",
+                explanation=f"Durchschnittliche Zahlungsverzögerung bei {profile.total_invoices} Rechnungen",
             ))
         else:
             # Fallback ohne Historie
@@ -576,13 +576,13 @@ class PredictivePaymentService:
             name="Risiko-Score",
             contribution=FEATURE_WEIGHTS["risk_score"],
             value=f"{risk_score}/100",
-            explanation=f"Entity-Risiko-Score beeinflusst erwartete Verzoegerung",
+            explanation=f"Entity-Risiko-Score beeinflusst erwartete Verzögerung",
         ))
 
         # 3. Rechnungsbetrag (15%)
         amount = features.get("invoice_amount", 0)
         if amount > 10000:
-            amount_delay = 7  # Groessere Betraege dauern laenger
+            amount_delay = 7  # Größere Betraege dauern länger
         elif amount > 5000:
             amount_delay = 5
         elif amount > 1000:
@@ -597,7 +597,7 @@ class PredictivePaymentService:
             name="Rechnungsbetrag",
             contribution=FEATURE_WEIGHTS["invoice_amount"],
             value=f"{amount:.2f} EUR",
-            explanation=f"Hoehere Betraege werden tendenziell spaeter bezahlt",
+            explanation=f"Höhere Betraege werden tendenziell später bezahlt",
         ))
 
         # 4. Beziehungsdauer (10%)
@@ -616,7 +616,7 @@ class PredictivePaymentService:
             name="Beziehungsdauer",
             contribution=FEATURE_WEIGHTS["relationship_age"],
             value=f"{relationship_months} Monate",
-            explanation=f"Laengere Geschaeftsbeziehungen zeigen zuverlaessigeres Zahlungsverhalten",
+            explanation=f"Längere Geschäftsbeziehungen zeigen zuverlaessigeres Zahlungsverhalten",
         ))
 
         # 5. Mahnstufe (5%)
@@ -637,14 +637,14 @@ class PredictivePaymentService:
 
         # 6. Skonto (5%)
         if features.get("has_skonto", False):
-            skonto_delay = -5  # Skonto motiviert fruehe Zahlung
+            skonto_delay = -5  # Skonto motiviert frühe Zahlung
             weighted_delay += skonto_delay * FEATURE_WEIGHTS["skonto_available"]
 
             factors.append(PredictionFactor(
                 name="Skonto",
                 contribution=FEATURE_WEIGHTS["skonto_available"],
-                value="Verfuegbar",
-                explanation=f"Skonto-Angebot motiviert fruehere Zahlung",
+                value="Verfügbar",
+                explanation=f"Skonto-Angebot motiviert frühere Zahlung",
             ))
 
         total_confidence += 0.6 * FEATURE_WEIGHTS["skonto_available"]
@@ -663,13 +663,13 @@ class PredictivePaymentService:
         predicted_delay: int,
         factors: List[PredictionFactor],
     ) -> str:
-        """Generiert eine erklaerende Zusammenfassung."""
+        """Generiert eine erklärende Zusammenfassung."""
         entity_name = entity.name if entity else "Unbekannter Partner"
 
         if profile and profile.total_invoices > 0:
             history_part = (
                 f"Basierend auf {profile.total_invoices} historischen Zahlungen "
-                f"(Durchschnitt: {profile.avg_payment_delay_days:.1f} Tage Verzoegerung)"
+                f"(Durchschnitt: {profile.avg_payment_delay_days:.1f} Tage Verzögerung)"
             )
         else:
             history_part = "Keine Zahlungshistorie vorhanden, Standardwerte verwendet"
@@ -678,13 +678,13 @@ class PredictivePaymentService:
         factor_list = ", ".join(f.name for f in top_factors)
 
         if predicted_delay <= 0:
-            timing = "puenktlich oder fruehzeitig"
+            timing = "puenktlich oder frühzeitig"
         elif predicted_delay <= 7:
-            timing = f"etwa {predicted_delay} Tage nach Faelligkeit"
+            timing = f"etwa {predicted_delay} Tage nach Fälligkeit"
         elif predicted_delay <= 14:
-            timing = f"etwa 1-2 Wochen nach Faelligkeit"
+            timing = f"etwa 1-2 Wochen nach Fälligkeit"
         else:
-            timing = f"etwa {predicted_delay} Tage nach Faelligkeit"
+            timing = f"etwa {predicted_delay} Tage nach Fälligkeit"
 
         return (
             f"Erwarteter Zahlungseingang von '{entity_name}': {timing}. "
@@ -704,7 +704,7 @@ class PredictivePaymentService:
                 "scenario": "optimistisch",
                 "date": (predicted_date - timedelta(days=int(std_dev))).isoformat(),
                 "probability": 0.25,
-                "description": "Fruehzeitige Zahlung bei guenstigem Verlauf",
+                "description": "Frühzeitige Zahlung bei günstigem Verlauf",
             },
             {
                 "scenario": "erwartet",
@@ -716,7 +716,7 @@ class PredictivePaymentService:
                 "scenario": "pessimistisch",
                 "date": (predicted_date + timedelta(days=int(std_dev * 1.5))).isoformat(),
                 "probability": 0.25,
-                "description": "Spaetere Zahlung bei Verzoegerungen",
+                "description": "Spätere Zahlung bei Verzögerungen",
             },
         ]
 
@@ -729,7 +729,7 @@ _predictive_payment_service: Optional[PredictivePaymentService] = None
 
 
 def get_predictive_payment_service() -> PredictivePaymentService:
-    """Factory fuer PredictivePaymentService Singleton."""
+    """Factory für PredictivePaymentService Singleton."""
     global _predictive_payment_service
     if _predictive_payment_service is None:
         _predictive_payment_service = PredictivePaymentService()

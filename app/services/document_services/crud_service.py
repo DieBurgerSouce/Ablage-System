@@ -1,11 +1,11 @@
 """Document CRUD Service - Basis-Operationen.
 
-Enthaelt:
+Enthält:
 - get_document: Einzelnes Dokument abrufen
 - list_documents: Dokumente mit Filterung und Pagination auflisten
 - update_document: Dokumentmetadaten aktualisieren
 - partial_update_document: Partielle Aktualisierung (PATCH)
-- delete_document: Dokument loeschen (hard delete)
+- delete_document: Dokument löschen (hard delete)
 """
 
 import math
@@ -34,10 +34,10 @@ logger = structlog.get_logger(__name__)
 
 
 class DocumentCRUDService(DocumentServiceBase):
-    """Service fuer Basis-CRUD-Operationen auf Dokumenten.
+    """Service für Basis-CRUD-Operationen auf Dokumenten.
 
-    Bietet standardmaessige Lese-, Schreib- und Loeschoperationen
-    mit Unterstuetzung fuer Filterung und Pagination.
+    Bietet standardmaessige Lese-, Schreib- und Löschoperationen
+    mit Unterstützung für Filterung und Pagination.
     """
 
     def __init__(self):
@@ -55,7 +55,7 @@ class DocumentCRUDService(DocumentServiceBase):
         Args:
             db: Datenbank-Session
             document_id: ID des Dokuments
-            user_id: ID des Benutzers (fuer Zugriffskontrolle)
+            user_id: ID des Benutzers (für Zugriffskontrolle)
 
         Returns:
             DocumentDetailResponse oder None wenn nicht gefunden
@@ -91,7 +91,7 @@ class DocumentCRUDService(DocumentServiceBase):
             user_id: ID des Benutzers
             filters: Optionale Filterkriterien
             page: Seitennummer (1-basiert)
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
             sort_by: Sortierfeld
             sort_order: Sortierrichtung
 
@@ -123,7 +123,7 @@ class DocumentCRUDService(DocumentServiceBase):
         # Tags laden
         query = query.options(selectinload(Document.tags))
 
-        # Ausfuehren
+        # Ausführen
         result = await db.execute(query)
         documents = result.scalars().all()
 
@@ -229,7 +229,7 @@ class DocumentCRUDService(DocumentServiceBase):
             user_id: Benutzer-ID
             updates: Dictionary mit Feldname -> Wert
             tag_operation: "set", "add", oder "remove"
-            tag_values: Tags fuer die Operation
+            tag_values: Tags für die Operation
 
         Returns:
             Aktualisiertes DocumentDetailResponse oder None
@@ -301,9 +301,9 @@ class DocumentCRUDService(DocumentServiceBase):
         document_id: UUID,
         user_id: UUID
     ) -> bool:
-        """Dokument permanent loeschen (Hard Delete).
+        """Dokument permanent löschen (Hard Delete).
 
-        Fuer GDPR-konformes Soft-Delete siehe DocumentGDPRService.
+        Für GDPR-konformes Soft-Delete siehe DocumentGDPRService.
 
         Args:
             db: Datenbank-Session
@@ -313,7 +313,7 @@ class DocumentCRUDService(DocumentServiceBase):
         Returns:
             True wenn erfolgreich, False wenn nicht gefunden
         """
-        # Pruefen ob Dokument existiert und Benutzer berechtigt ist
+        # Prüfen ob Dokument existiert und Benutzer berechtigt ist
         query = select(Document).where(
             and_(Document.id == document_id, Document.owner_id == user_id)
         )
@@ -323,7 +323,7 @@ class DocumentCRUDService(DocumentServiceBase):
         if not doc:
             return False
 
-        # Dokument loeschen (CASCADE loescht Tags-Verknuepfungen)
+        # Dokument löschen (CASCADE löscht Tags-Verknüpfungen)
         await db.delete(doc)
         await db.commit()
 

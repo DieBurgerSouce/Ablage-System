@@ -1,14 +1,14 @@
 """GoBD Retention Management Tasks - Aufbewahrungsfristen-Celery-Tasks.
 
-Automatisierte Tasks fuer das GoBD-konforme Aufbewahrungsfristen-Management:
-- Taegliche Pruefung auf ablaufende Archive
+Automatisierte Tasks für das GoBD-konforme Aufbewahrungsfristen-Management:
+- Tägliche Prüfung auf ablaufende Archive
 - Benachrichtigungen an Admins senden
-- Optionale automatische Loeschung nach Ablauf (wenn aktiviert)
+- Optionale automatische Löschung nach Ablauf (wenn aktiviert)
 - Batch-Verifikation der Dokumentintegritaet
 
 Erfuellt GoBD-Kriterien:
-- Vollstaendigkeit: Automatische Fristen-Ueberwachung
-- Nachvollziehbarkeit: Audit-Trail fuer alle Aktionen
+- Vollständigkeit: Automatische Fristen-Überwachung
+- Nachvollziehbarkeit: Audit-Trail für alle Aktionen
 """
 
 from __future__ import annotations
@@ -48,12 +48,12 @@ logger = structlog.get_logger(__name__)
     default_retry_delay=300,
 )
 def check_expiring_archives_task(self, days_ahead: int = 90) -> Dict[str, Any]:
-    """Prueft auf bald ablaufende Archive und sendet Erinnerungen.
+    """Prüft auf bald ablaufende Archive und sendet Erinnerungen.
 
-    Wird taeglich via Celery Beat ausgefuehrt.
+    Wird täglich via Celery Beat ausgeführt.
 
     Args:
-        days_ahead: Tage im Voraus pruefen (default: 90)
+        days_ahead: Tage im Voraus prüfen (default: 90)
 
     Returns:
         Dictionary mit Statistiken
@@ -85,7 +85,7 @@ async def _check_expiring_archives(
     db: AsyncSession,
     days_ahead: int
 ) -> Dict[str, Any]:
-    """Interne Funktion zum Pruefen ablaufender Archive."""
+    """Interne Funktion zum Prüfen ablaufender Archive."""
     # Alle Companies abrufen
     companies_result = await db.execute(
         select(Company).where(Company.is_active == True)
@@ -155,11 +155,11 @@ def verify_archive_integrity_task(
 ) -> Dict[str, Any]:
     """Batch-Verifikation der Dokumentintegritaet.
 
-    Prueft die SHA-256 Hashes aller archivierten Dokumente.
-    Wird woechentlich via Celery Beat ausgefuehrt.
+    Prüft die SHA-256 Hashes aller archivierten Dokumente.
+    Wird wöchentlich via Celery Beat ausgeführt.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
         batch_size: Anzahl Dokumente pro Batch
 
     Returns:
@@ -197,14 +197,14 @@ async def _batch_verify_integrity(
     company_id: Optional[uuid.UUID],
     batch_size: int
 ) -> Dict[str, Any]:
-    """Interne Funktion fuer Batch-Integritaetspruefung."""
+    """Interne Funktion für Batch-Integritätsprüfung."""
     # Query bauen
     query = select(DocumentArchive)
 
     if company_id:
         query = query.where(DocumentArchive.company_id == company_id)
 
-    # Nur Archive, die laenger als 24h nicht verifiziert wurden
+    # Nur Archive, die länger als 24h nicht verifiziert wurden
     stale_threshold = datetime.now(timezone.utc) - timedelta(hours=24)
     query = query.where(
         (DocumentArchive.last_verification_at == None) |
@@ -260,8 +260,8 @@ async def _batch_verify_integrity(
 def process_expired_archives_task(self) -> Dict[str, Any]:
     """Verarbeitet abgelaufene Archive (nach Aufbewahrungsfrist).
 
-    Wird taeglich via Celery Beat ausgefuehrt.
-    Loescht nur wenn auto_delete_enabled fuer die Kategorie aktiv ist.
+    Wird täglich via Celery Beat ausgeführt.
+    Löscht nur wenn auto_delete_enabled für die Kategorie aktiv ist.
 
     Returns:
         Dictionary mit Statistiken
@@ -291,7 +291,7 @@ async def _process_expired_archives(db: AsyncSession) -> Dict[str, Any]:
     """Interne Funktion zum Verarbeiten abgelaufener Archive."""
     today = date.today()
 
-    # Kategorien mit aktivierter Auto-Loeschung finden
+    # Kategorien mit aktivierter Auto-Löschung finden
     settings_result = await db.execute(
         select(RetentionSetting)
         .where(RetentionSetting.auto_delete_enabled == True)
@@ -300,7 +300,7 @@ async def _process_expired_archives(db: AsyncSession) -> Dict[str, Any]:
 
     if not auto_delete_categories:
         return {
-            "message": "Keine Kategorien mit Auto-Loeschung konfiguriert",
+            "message": "Keine Kategorien mit Auto-Löschung konfiguriert",
             "deleted": 0,
             "pending_approval": 0,
         }
@@ -332,7 +332,7 @@ async def _process_expired_archives(db: AsyncSession) -> Dict[str, Any]:
             continue
 
         if setting.requires_approval_for_delete:
-            # Nur markieren, Admin muss bestaetigen
+            # Nur markieren, Admin muss bestätigen
             pending_approval_count += 1
             await _create_retention_audit_log(
                 db,
@@ -346,8 +346,8 @@ async def _process_expired_archives(db: AsyncSession) -> Dict[str, Any]:
                 }
             )
         else:
-            # Automatisch loeschen (Document bleibt, nur Archive wird entfernt)
-            # WICHTIG: Das Dokument selbst wird NICHT geloescht!
+            # Automatisch löschen (Document bleibt, nur Archive wird entfernt)
+            # WICHTIG: Das Dokument selbst wird NICHT gelöscht!
             # Nur der Archiv-Eintrag wird entfernt, was das Dokument wieder editierbar macht
             await db.delete(archive)
             deleted_count += 1
@@ -438,7 +438,7 @@ async def _create_retention_audit_log(
     action: str,
     details: Dict[str, Any],
 ) -> None:
-    """Erstellt einen Audit-Log-Eintrag fuer Retention-Aktionen."""
+    """Erstellt einen Audit-Log-Eintrag für Retention-Aktionen."""
     audit_log = AuditLog(
         id=uuid.uuid4(),
         user_id=None,  # System-Aktion

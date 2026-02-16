@@ -2,20 +2,20 @@
 """
 Department Router Service.
 
-Routet Dokumente zur zustaendigen Abteilung basierend auf:
+Routet Dokumente zur zuständigen Abteilung basierend auf:
 - Dokumenttyp
 - Inhalt und Keywords
-- Geschaeftspartner-Kontext
+- Geschäftspartner-Kontext
 - Betragsschwellen
 
 Abteilungen:
 - BUCHHALTUNG: Rechnungen, Gutschriften, Kontoauszuege
 - EINKAUF: Bestellungen, Lieferscheine, Angebote (eingehend)
-- VERTRIEB: Angebote (ausgehend), Auftraege, Kundenkorrespondenz
-- HR: Arbeitsvertraege, Lohnabrechnungen, Bewerbungen
-- GESCHAEFTSFUEHRUNG: Hohe Betraege, Vertraege, strategische Dokumente
-- IT: Technische Dokumente, Lizenzen, Wartungsvertraege
-- RECHT: Vertraege, Mahnungen, rechtliche Korrespondenz
+- VERTRIEB: Angebote (ausgehend), Aufträge, Kundenkorrespondenz
+- HR: Arbeitsverträge, Lohnabrechnungen, Bewerbungen
+- GESCHAEFTSFUEHRUNG: Hohe Betraege, Verträge, strategische Dokumente
+- IT: Technische Dokumente, Lizenzen, Wartungsverträge
+- RECHT: Verträge, Mahnungen, rechtliche Korrespondenz
 
 Feinpoliert und durchdacht.
 """
@@ -31,12 +31,12 @@ logger = structlog.get_logger(__name__)
 
 
 class Department(str, Enum):
-    """Abteilungen fuer Dokumenten-Routing."""
+    """Abteilungen für Dokumenten-Routing."""
     BUCHHALTUNG = "buchhaltung"
     EINKAUF = "einkauf"
     VERTRIEB = "vertrieb"
     HR = "hr"
-    GESCHAEFTSFUEHRUNG = "geschaeftsfuehrung"
+    GESCHAEFTSFUEHRUNG = "geschäftsführung"
     IT = "it"
     RECHT = "recht"
     ALLGEMEIN = "allgemein"  # Fallback
@@ -50,7 +50,7 @@ class DepartmentRoutingResult:
     secondary_departments: List[Department]
     matched_indicators: List[str]
     reason: str
-    requires_cfo_approval: bool  # Fuer hohe Betraege
+    requires_cfo_approval: bool  # Für hohe Betraege
 
 
 # =============================================================================
@@ -59,12 +59,12 @@ class DepartmentRoutingResult:
 
 @dataclass
 class DepartmentConfig:
-    """Konfiguration fuer eine Abteilung."""
+    """Konfiguration für eine Abteilung."""
     department: Department
     document_types: Set[str]
     primary_keywords: Set[str]
     secondary_keywords: Set[str]
-    amount_threshold: Optional[Decimal]  # Mindestbetrag fuer Routing
+    amount_threshold: Optional[Decimal]  # Mindestbetrag für Routing
     amount_ceiling: Optional[Decimal]  # Max-Betrag ohne Eskalation
 
 
@@ -78,7 +78,7 @@ BUCHHALTUNG_CONFIG = DepartmentConfig(
     primary_keywords={
         "rechnung", "rechnungsnummer", "buchung", "kontierung",
         "mwst", "mehrwertsteuer", "umsatzsteuer", "ust-id",
-        "zahlungsziel", "skonto", "ueberweisung", "lastschrift",
+        "zahlungsziel", "skonto", "überweisung", "lastschrift",
         "gutschrift", "kontoauszug", "saldo", "buchungskreis",
         "debitoren", "kreditoren", "sachkonto", "kostenstelle",
     },
@@ -100,13 +100,13 @@ EINKAUF_CONFIG = DepartmentConfig(
     primary_keywords={
         "bestellung", "bestellnummer", "einkauf", "beschaffung",
         "lieferant", "lieferung", "lieferschein", "wareneingang",
-        "artikelnummer", "materialnummer", "stueckliste",
+        "artikelnummer", "materialnummer", "stückliste",
         "rahmenvertrag", "konditionen", "einkaufskonditionen",
     },
     secondary_keywords={
         "menge", "einzelpreis", "liefertermin", "versand",
         "tracking", "incoterms", "fracht", "palette",
-        "qualitaet", "reklamation", "retoure", "ruecksendung",
+        "qualität", "reklamation", "retoure", "rücksendung",
     },
     amount_threshold=None,
     amount_ceiling=Decimal("25000"),  # > 25k braucht GF-Freigabe
@@ -116,7 +116,7 @@ VERTRIEB_CONFIG = DepartmentConfig(
     department=Department.VERTRIEB,
     document_types={
         "offer", "angebot",  # Ausgehende Angebote
-        "order_confirmation", "auftragsbestaetigung",
+        "order_confirmation", "auftragsbestätigung",
     },
     primary_keywords={
         "kunde", "kundennummer", "kundenauftrag", "vertrieb",
@@ -142,32 +142,32 @@ HR_CONFIG = DepartmentConfig(
     },
     primary_keywords={
         "mitarbeiter", "personal", "gehalt", "lohn", "arbeitnehmer",
-        "arbeitsvertrag", "kuendigung", "abmahnung", "zeugnis",
+        "arbeitsvertrag", "kündigung", "abmahnung", "zeugnis",
         "bewerbung", "einstellung", "entlassung", "urlaub",
-        "krankmeldung", "arbeitszeit", "ueberstunden",
+        "krankmeldung", "arbeitszeit", "überstunden",
         "sozialversicherung", "lohnsteuer", "betriebsrat",
     },
     secondary_keywords={
-        "befristung", "probezeit", "verguetung", "bonus",
+        "befristung", "probezeit", "vergütung", "bonus",
         "zielvereinbarung", "leistungsbeurteilung",
         "weiterbildung", "schulung", "homeoffice", "teilzeit",
     },
     amount_threshold=None,
-    amount_ceiling=None,  # Keine Betrags-Eskalation fuer HR
+    amount_ceiling=None,  # Keine Betrags-Eskalation für HR
 )
 
 GESCHAEFTSFUEHRUNG_CONFIG = DepartmentConfig(
     department=Department.GESCHAEFTSFUEHRUNG,
     document_types={
-        "contract", "vertrag",  # Wichtige Vertraege
+        "contract", "vertrag",  # Wichtige Verträge
         "board_resolution", "gesellschafterbeschluss",
         "annual_report", "jahresbericht",
     },
     primary_keywords={
-        "geschaeftsfuehrung", "vorstand", "aufsichtsrat",
+        "geschäftsführung", "vorstand", "aufsichtsrat",
         "gesellschafter", "strategie", "investment",
-        "akquisition", "fusion", "uebernahme", "beteiligung",
-        "geschaeftsplan", "budget", "forecast", "prognose",
+        "akquisition", "fusion", "übernahme", "beteiligung",
+        "geschäftsplan", "budget", "forecast", "prognose",
     },
     secondary_keywords={
         "vertraulich", "streng vertraulich", "geheim",
@@ -192,7 +192,7 @@ IT_CONFIG = DepartmentConfig(
     secondary_keywords={
         "api", "integration", "schnittstelle", "datenbank",
         "netzwerk", "vpn", "zertifikat", "ssl", "https",
-        "gdpr", "dsgvo", "datensicherung", "verschluesselung",
+        "gdpr", "dsgvo", "datensicherung", "verschlüsselung",
     },
     amount_threshold=None,
     amount_ceiling=Decimal("10000"),
@@ -209,7 +209,7 @@ RECHT_CONFIG = DepartmentConfig(
         "anwalt", "rechtsanwalt", "kanzlei", "gericht",
         "klage", "verteidigung", "verfahren", "urteil",
         "vergleich", "vollstreckung", "zwangsvollstreckung",
-        "schadensersatz", "haftung", "gewaehrleistung",
+        "schadensersatz", "haftung", "gewährleistung",
         "marke", "patent", "urheberrecht", "lizenz",
     },
     secondary_keywords={
@@ -221,7 +221,7 @@ RECHT_CONFIG = DepartmentConfig(
     amount_ceiling=Decimal("5000"),  # Rechtliche Sachen schnell eskalieren
 )
 
-# Alle Konfigurationen (Reihenfolge = Prioritaet)
+# Alle Konfigurationen (Reihenfolge = Priorität)
 DEPARTMENT_CONFIGS = [
     RECHT_CONFIG,  # Rechtliche Dokumente haben Vorrang
     GESCHAEFTSFUEHRUNG_CONFIG,
@@ -229,13 +229,13 @@ DEPARTMENT_CONFIGS = [
     IT_CONFIG,
     EINKAUF_CONFIG,
     VERTRIEB_CONFIG,
-    BUCHHALTUNG_CONFIG,  # Buchhaltung als Fallback fuer Rechnungen
+    BUCHHALTUNG_CONFIG,  # Buchhaltung als Fallback für Rechnungen
 ]
 
 
 class DepartmentRouter:
     """
-    Routet Dokumente zur zustaendigen Abteilung.
+    Routet Dokumente zur zuständigen Abteilung.
 
     Performance: < 10ms pro Dokument (rein regelbasiert)
     """
@@ -256,13 +256,13 @@ class DepartmentRouter:
         is_incoming: bool = True,
     ) -> DepartmentRoutingResult:
         """
-        Route ein Dokument zur zustaendigen Abteilung.
+        Route ein Dokument zur zuständigen Abteilung.
 
         Args:
             text: OCR-Text des Dokuments
             document_type: Optionaler Dokumenttyp
-            amount: Optionaler Betrag fuer Schwellenwert-Pruefung
-            is_incoming: True fuer eingehende, False fuer ausgehende Dokumente
+            amount: Optionaler Betrag für Schwellenwert-Prüfung
+            is_incoming: True für eingehende, False für ausgehende Dokumente
 
         Returns:
             DepartmentRoutingResult mit Abteilung und Details
@@ -282,7 +282,7 @@ class DepartmentRouter:
         # Text normalisieren
         normalized_text = self._normalize_text(text)
 
-        # Scores fuer alle Abteilungen berechnen
+        # Scores für alle Abteilungen berechnen
         scores: Dict[Department, tuple] = {}
 
         for config in self.configs:
@@ -331,7 +331,7 @@ class DepartmentRouter:
         # Confidence berechnen
         confidence = min(0.99, 0.4 + primary_score)
 
-        # CFO-Genehmigung pruefen
+        # CFO-Genehmigung prüfen
         requires_cfo = self._requires_cfo_approval(amount, primary_dept)
 
         # Statistik aktualisieren
@@ -363,7 +363,7 @@ class DepartmentRouter:
         )
 
     def _normalize_text(self, text: str) -> str:
-        """Normalisiere Text fuer Keyword-Matching."""
+        """Normalisiere Text für Keyword-Matching."""
         text = text.lower()
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
@@ -376,7 +376,7 @@ class DepartmentRouter:
         config: DepartmentConfig,
     ) -> tuple:
         """
-        Berechne Score fuer eine Abteilung.
+        Berechne Score für eine Abteilung.
 
         Returns:
             (score, matched_keywords)
@@ -421,7 +421,7 @@ class DepartmentRouter:
         amount: Optional[Decimal],
         department: Optional[Department] = None,
     ) -> bool:
-        """Pruefe ob CFO-Genehmigung erforderlich ist."""
+        """Prüfe ob CFO-Genehmigung erforderlich ist."""
         if amount is None:
             return False
 
@@ -439,11 +439,11 @@ class DepartmentRouter:
         return False
 
     def get_stats(self) -> dict:
-        """Gibt Routing-Statistiken zurueck."""
+        """Gibt Routing-Statistiken zurück."""
         return self._stats.copy()
 
     def reset_stats(self) -> None:
-        """Setzt Statistiken zurueck."""
+        """Setzt Statistiken zurück."""
         self._stats = {
             "total_routings": 0,
             "by_department": {dept.value: 0 for dept in Department},
@@ -458,7 +458,7 @@ _department_router: Optional[DepartmentRouter] = None
 
 
 def get_department_router() -> DepartmentRouter:
-    """Gibt die Singleton-Instanz des Department Router zurueck."""
+    """Gibt die Singleton-Instanz des Department Router zurück."""
     global _department_router
     if _department_router is None:
         _department_router = DepartmentRouter()

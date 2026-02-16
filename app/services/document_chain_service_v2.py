@@ -4,12 +4,12 @@ Extended Document Chain Service V2.
 
 Erweitertes Auftragsketten-Tracking mit neuen Chain-Typen:
 - Vertragserfuellung (Vertrag -> Lieferung -> Mahnung)
-- Beschaffungsketten (Bestellung -> Wareneingang -> Qualitaetskontrolle)
+- Beschaffungsketten (Bestellung -> Wareneingang -> Qualitätskontrolle)
 - Projekt-basierte Dokumentengruppierung
 - ML-basiertes Auto-Matching mit erweiterter Konfidenz
-- Visualisierungs-API fuer Frontend
+- Visualisierungs-API für Frontend
 
-Phase 6.2: Extended Document Chains fuer Enterprise-Dokumentenmanagement.
+Phase 6.2: Extended Document Chains für Enterprise-Dokumentenmanagement.
 Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Praezision.
 """
 
@@ -49,7 +49,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ChainType(str, Enum):
-    """Erweiterte Kettentypen fuer unterschiedliche Geschaeftsprozesse."""
+    """Erweiterte Kettentypen für unterschiedliche Geschäftsprozesse."""
 
     # Bestehende Typen (aus v1)
     QUOTE_TO_ORDER = "quote_to_order"
@@ -71,7 +71,7 @@ class ContractDocumentType(str, Enum):
     """Dokumenttypen in einer Vertragserfuellungskette."""
 
     CONTRACT = "contract"  # Vertrag
-    AMENDMENT = "amendment"  # Vertragsaenderung
+    AMENDMENT = "amendment"  # Vertragsänderung
     DELIVERY = "delivery"  # Lieferung/Leistungserbringung
     ACCEPTANCE = "acceptance"  # Abnahmeprotokoll
     INVOICE = "invoice"  # Rechnung
@@ -79,7 +79,7 @@ class ContractDocumentType(str, Enum):
     DUNNING_L1 = "dunning_l1"  # 1. Mahnung
     DUNNING_L2 = "dunning_l2"  # 2. Mahnung
     DUNNING_L3 = "dunning_l3"  # 3. Mahnung (Inkasso-Androhung)
-    TERMINATION = "termination"  # Kuendigung
+    TERMINATION = "termination"  # Kündigung
 
 
 class ProcurementDocumentType(str, Enum):
@@ -87,7 +87,7 @@ class ProcurementDocumentType(str, Enum):
 
     REQUISITION = "requisition"  # Bedarfsmeldung
     PURCHASE_ORDER = "purchase_order"  # Bestellung
-    ORDER_CONFIRMATION = "order_confirmation"  # Auftragsbestaetigung
+    ORDER_CONFIRMATION = "order_confirmation"  # Auftragsbestätigung
     DELIVERY_NOTE = "delivery_note"  # Lieferschein
     GOODS_RECEIPT = "goods_receipt"  # Wareneingang
     QUALITY_CONTROL = "quality_control"  # QC-Protokoll
@@ -95,7 +95,7 @@ class ProcurementDocumentType(str, Enum):
     PAYMENT = "payment"  # Zahlungsbeleg
 
 
-# Chain-Positionen fuer erweiterte Typen
+# Chain-Positionen für erweiterte Typen
 EXTENDED_CHAIN_POSITIONS: Dict[str, Dict[str, int]] = {
     ChainType.CONTRACT_FULFILLMENT.value: {
         ContractDocumentType.CONTRACT.value: 1,
@@ -129,7 +129,7 @@ EXTENDED_CHAIN_POSITIONS: Dict[str, Dict[str, int]] = {
 
 @dataclass
 class ExtendedChainDocument:
-    """Ein Dokument in einer erweiterten Kette mit zusaetzlichen Metadaten."""
+    """Ein Dokument in einer erweiterten Kette mit zusätzlichen Metadaten."""
 
     id: UUID
     document_type: str
@@ -152,7 +152,7 @@ class ExtendedChainDocument:
 
 @dataclass
 class ExtendedDocumentChain:
-    """Eine erweiterte Auftragskette mit zusaetzlichen Funktionen."""
+    """Eine erweiterte Auftragskette mit zusätzlichen Funktionen."""
 
     chain_id: str
     chain_type: ChainType
@@ -208,7 +208,7 @@ class MLMatchResult:
 
 @dataclass
 class ChainVisualization:
-    """Visualisierungsdaten fuer eine Dokumentenkette."""
+    """Visualisierungsdaten für eine Dokumentenkette."""
 
     chain_id: str
     chain_type: ChainType
@@ -245,7 +245,7 @@ class ExtendedDocumentChainServiceV2:
     ML_CONFIDENCE_LOW = 0.60
     ML_MIN_AUTO_LINK = 0.80
 
-    # Feature-Gewichtungen fuer ML-Matching
+    # Feature-Gewichtungen für ML-Matching
     ML_FEATURE_WEIGHTS = {
         "reference_match": 0.35,
         "amount_similarity": 0.20,
@@ -257,7 +257,7 @@ class ExtendedDocumentChainServiceV2:
 
     def __init__(self) -> None:
         """Initialisiert den erweiterten Service."""
-        # Basisservice fuer Kompatibilitaet
+        # Basisservice für Kompatibilität
         self._base_service = DocumentChainService()
 
     # =========================================================================
@@ -286,7 +286,7 @@ class ExtendedDocumentChainServiceV2:
             chain_type: Typ der Kette
             project_id: Optionale Projekt-ID
             chain_id: Optionale Chain-ID (sonst auto-generiert)
-            metadata: Zusaetzliche Metadaten
+            metadata: Zusätzliche Metadaten
 
         Returns:
             Chain-ID der erstellten Kette
@@ -311,7 +311,7 @@ class ExtendedDocumentChainServiceV2:
             count = result.scalar() or 0
             chain_id = f"{prefix}-{year}-{count + 1:05d}"
 
-        # Positionsmap fuer Chain-Typ holen
+        # Positionsmap für Chain-Typ holen
         position_map = EXTENDED_CHAIN_POSITIONS.get(
             chain_type.value,
             CHAIN_POSITIONS  # Fallback auf Standard
@@ -358,7 +358,7 @@ class ExtendedDocumentChainServiceV2:
 
         await db.flush()
 
-        # Projekt-Verknuepfung erstellen (falls angegeben)
+        # Projekt-Verknüpfung erstellen (falls angegeben)
         if project_id:
             await self._create_project_chain_link(
                 db, chain_id, project_id, company_id, user_id
@@ -385,7 +385,7 @@ class ExtendedDocumentChainServiceV2:
         """
         Erstellt eine Vertragserfuellungskette.
 
-        Startet mit dem Vertragsdokument und ermoeglicht
+        Startet mit dem Vertragsdokument und ermöglicht
         die Verkettung von Lieferungen, Mahnungen, etc.
 
         Args:
@@ -423,7 +423,7 @@ class ExtendedDocumentChainServiceV2:
         """
         Erstellt eine Beschaffungskette.
 
-        Startet mit der Bestellung und ermoeglicht das Tracking
+        Startet mit der Bestellung und ermöglicht das Tracking
         von Wareneingang, QC, Rechnung, etc.
 
         Args:
@@ -656,7 +656,7 @@ class ExtendedDocumentChainServiceV2:
                     "critical_path": viz.critical_path,
                 }
 
-        # Primaere Entity ermitteln
+        # Primäre Entity ermitteln
         primary_entity_id: Optional[UUID] = None
         primary_entity_name: Optional[str] = None
         for doc in chain_documents:
@@ -705,7 +705,7 @@ class ExtendedDocumentChainServiceV2:
         """
         from app.db.models_project import ProjectDocumentChain
 
-        # Alle Chain-IDs fuer das Projekt holen
+        # Alle Chain-IDs für das Projekt holen
         stmt = select(ProjectDocumentChain.chain_id).where(
             and_(
                 ProjectDocumentChain.project_id == project_id,
@@ -736,15 +736,15 @@ class ExtendedDocumentChainServiceV2:
         chain_types: Optional[List[ChainType]] = None,
     ) -> List[MLMatchResult]:
         """
-        ML-basiertes Auto-Matching fuer ein Dokument.
+        ML-basiertes Auto-Matching für ein Dokument.
 
-        Verwendet mehrere Features fuer praezises Matching:
+        Verwendet mehrere Features für praezises Matching:
         - Referenznummern (hoechste Gewichtung)
-        - Betragsaehnlichkeit
+        - Betragsähnlichkeit
         - Datumsnaehe
         - Entity-Match
         - Dokumenttyp-Sequenz
-        - Text-Aehnlichkeit
+        - Text-Ähnlichkeit
 
         Args:
             db: Datenbank-Session
@@ -813,7 +813,7 @@ class ExtendedDocumentChainServiceV2:
         # Nach Konfidenz sortieren
         results.sort(key=lambda x: x.confidence, reverse=True)
 
-        # Top 10 zurueckgeben
+        # Top 10 zurückgeben
         return results[:10]
 
     async def ml_auto_link(
@@ -827,17 +827,17 @@ class ExtendedDocumentChainServiceV2:
         """
         Automatisches Linking basierend auf ML-Matching.
 
-        Fuehrt Auto-Linking nur durch wenn Konfidenz ueber Schwellenwert.
+        Führt Auto-Linking nur durch wenn Konfidenz über Schwellenwert.
 
         Args:
             db: Datenbank-Session
-            document_id: Zu verknuepfendes Dokument
+            document_id: Zu verknüpfendes Dokument
             company_id: Firmen-ID
             user_id: Benutzer-ID
-            min_confidence: Minimale Konfidenz fuer Auto-Link
+            min_confidence: Minimale Konfidenz für Auto-Link
 
         Returns:
-            Chain-ID wenn verknuepft, sonst None
+            Chain-ID wenn verknüpft, sonst None
         """
         matches = await self.ml_auto_match(db, document_id, company_id)
 
@@ -891,7 +891,7 @@ class ExtendedDocumentChainServiceV2:
         layout: str = "horizontal",
     ) -> Optional[ChainVisualization]:
         """
-        Generiert Visualisierungsdaten fuer eine Kette.
+        Generiert Visualisierungsdaten für eine Kette.
 
         Args:
             db: Datenbank-Session
@@ -982,7 +982,7 @@ class ExtendedDocumentChainServiceV2:
 
         edges: List[Dict[str, Any]] = []
         for rel in relationships:
-            # Discrepancy-Status fuer Edge
+            # Discrepancy-Status für Edge
             edge_status = "normal"
             disc_edge_stmt = select(func.count()).select_from(DocumentChainDiscrepancy).where(
                 and_(
@@ -1033,7 +1033,7 @@ class ExtendedDocumentChainServiceV2:
             status="active",
             completion_percentage=completion_pct,
             critical_path=critical_path,
-            bottlenecks=[],  # Kann spaeter erweitert werden
+            bottlenecks=[],  # Kann später erweitert werden
         )
 
     # =========================================================================
@@ -1065,7 +1065,7 @@ class ExtendedDocumentChainServiceV2:
         """
         from app.db.models import Document
 
-        # Chain-Typ pruefen
+        # Chain-Typ prüfen
         chain = await self.get_extended_chain(db, chain_id, company_id)
         if not chain or chain.chain_type != ChainType.CONTRACT_FULFILLMENT:
             logger.warning(
@@ -1089,7 +1089,7 @@ class ExtendedDocumentChainServiceV2:
         }
         doc_subtype = dunning_type_map.get(dunning_level, ContractDocumentType.DUNNING_L1.value)
 
-        # Position fuer Mahnung
+        # Position für Mahnung
         position = EXTENDED_CHAIN_POSITIONS[ChainType.CONTRACT_FULFILLMENT.value].get(
             doc_subtype, 7 + dunning_level
         )
@@ -1145,7 +1145,7 @@ class ExtendedDocumentChainServiceV2:
         """
         from app.db.models import Document
 
-        # Chain-Typ pruefen
+        # Chain-Typ prüfen
         chain = await self.get_extended_chain(db, chain_id, company_id)
         if not chain or chain.chain_type != ChainType.PROCUREMENT:
             logger.warning(
@@ -1198,7 +1198,7 @@ class ExtendedDocumentChainServiceV2:
                     expected_value="passed",
                     actual_value="failed",
                     severity="error",
-                    description=qc_notes or "Qualitaetskontrolle fehlgeschlagen",
+                    description=qc_notes or "Qualitätskontrolle fehlgeschlagen",
                     is_resolved=False,
                     company_id=company_id,
                 )
@@ -1219,7 +1219,7 @@ class ExtendedDocumentChainServiceV2:
     # =========================================================================
 
     def _get_chain_prefix(self, chain_type: ChainType) -> str:
-        """Gibt Prefix fuer Chain-ID basierend auf Typ zurueck."""
+        """Gibt Prefix für Chain-ID basierend auf Typ zurück."""
         prefixes = {
             ChainType.QUOTE_TO_ORDER: "CHAIN",
             ChainType.ORDER_TO_DELIVERY: "CHAIN",
@@ -1315,7 +1315,7 @@ class ExtendedDocumentChainServiceV2:
         self,
         doc: "Document",
     ) -> Dict[str, Any]:
-        """Extrahiert Features aus einem Dokument fuer ML-Matching."""
+        """Extrahiert Features aus einem Dokument für ML-Matching."""
         features: Dict[str, Any] = {
             "document_type": doc.document_type,
             "date": doc.processed_date or doc.created_at,
@@ -1499,12 +1499,12 @@ class ExtendedDocumentChainServiceV2:
                     break
 
         if feature_scores.get("entity_match", 0) >= 0.9:
-            reasons.append("Gleicher Geschaeftspartner")
+            reasons.append("Gleicher Geschäftspartner")
 
         if feature_scores.get("amount_similarity", 0) >= 0.9:
             reasons.append("Identischer Betrag")
         elif feature_scores.get("amount_similarity", 0) >= 0.7:
-            reasons.append("Aehnlicher Betrag")
+            reasons.append("Ähnlicher Betrag")
 
         if feature_scores.get("date_proximity", 0) >= 0.8:
             reasons.append("Zeitnaehe")
@@ -1513,7 +1513,7 @@ class ExtendedDocumentChainServiceV2:
             reasons.append("Logische Dokumentabfolge")
 
         if not reasons:
-            reasons.append("ML-basierte Aehnlichkeit")
+            reasons.append("ML-basierte Ähnlichkeit")
 
         return ", ".join(reasons)
 
@@ -1525,10 +1525,10 @@ class ExtendedDocumentChainServiceV2:
         company_id: UUID,
         user_id: UUID,
     ) -> None:
-        """Erstellt Verknuepfung zwischen Chain und Projekt."""
+        """Erstellt Verknüpfung zwischen Chain und Projekt."""
         from app.db.models_project import ProjectDocumentChain
 
-        # Pruefen ob bereits verknuepft
+        # Prüfen ob bereits verknüpft
         stmt = select(ProjectDocumentChain).where(
             and_(
                 ProjectDocumentChain.chain_id == chain_id,
@@ -1537,7 +1537,7 @@ class ExtendedDocumentChainServiceV2:
         )
         result = await db.execute(stmt)
         if result.scalar_one_or_none():
-            return  # Bereits verknuepft
+            return  # Bereits verknüpft
 
         link = ProjectDocumentChain(
             id=uuid4(),
@@ -1605,5 +1605,5 @@ class ExtendedDocumentChainServiceV2:
 
 
 def get_extended_chain_service() -> ExtendedDocumentChainServiceV2:
-    """Factory-Funktion fuer erweiterten Chain Service."""
+    """Factory-Funktion für erweiterten Chain Service."""
     return ExtendedDocumentChainServiceV2()

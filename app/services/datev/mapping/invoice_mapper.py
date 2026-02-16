@@ -2,14 +2,14 @@
 """
 DATEV Invoice Mapper.
 
-Mappt ExtractedInvoiceData auf DATEV Buchungssaetze.
+Mappt ExtractedInvoiceData auf DATEV Buchungssätze.
 
-Beruecksichtigt:
+Berücksichtigt:
 - Eingangs-/Ausgangsrechnungen (invoice_direction)
-- Steuersaetze und -schluessel
+- Steuersätze und -schluessel
 - MwSt-Aufschluesselung (tax_breakdown)
 - Reverse Charge / Innergemeinschaftlich
-- Vendor-Mappings fuer individuelle Kontozuordnung
+- Vendor-Mappings für individuelle Kontozuordnung
 """
 
 from dataclasses import dataclass, field
@@ -49,7 +49,7 @@ class DATEVBuchung:
     """
     umsatz: Decimal
     soll_haben: str  # "S" oder "H"
-    wkz_umsatz: str  # Waehrungscode (z.B. "EUR")
+    wkz_umsatz: str  # Währungscode (z.B. "EUR")
     konto: str       # Sachkonto
     gegenkonto: str  # Gegenkonto (Personenkonto)
     bu_schluessel: Optional[str]  # Steuerschluessel
@@ -61,12 +61,12 @@ class DATEVBuchung:
     kostenstelle_2: Optional[str] = None
     kostentraeger: Optional[str] = None
     skonto: Optional[Decimal] = None
-    kurs: Optional[Decimal] = None  # Wechselkurs bei Fremdwaehrung
+    kurs: Optional[Decimal] = None  # Wechselkurs bei Fremdwährung
 
 
 class DATEVInvoiceMapper:
     """
-    Mappt ExtractedInvoiceData auf DATEV Buchungssaetze.
+    Mappt ExtractedInvoiceData auf DATEV Buchungssätze.
 
     Verwendung:
         mapper = DATEVInvoiceMapper()
@@ -104,7 +104,7 @@ class DATEVInvoiceMapper:
         """
         warnings: List[str] = []
 
-        # Pflichtfelder pruefen
+        # Pflichtfelder prüfen
         validation_error = self._validate_invoice(invoice)
         if validation_error:
             return MappingResult(
@@ -125,7 +125,7 @@ class DATEVInvoiceMapper:
         if betrag is None or betrag == 0:
             return MappingResult(
                 success=False,
-                error="Kein gueltiger Rechnungsbetrag gefunden"
+                error="Kein gültiger Rechnungsbetrag gefunden"
             )
 
         # Je nach Richtung mappen
@@ -191,7 +191,7 @@ class DATEVInvoiceMapper:
 
         Buchungslogik:
         - Aufwand (Soll) an Kreditor (Haben)
-        - Vorsteuer wird ueber BU-Schluessel automatisch gebucht
+        - Vorsteuer wird über BU-Schluessel automatisch gebucht
         """
         warnings: List[str] = []
 
@@ -265,7 +265,7 @@ class DATEVInvoiceMapper:
 
         Buchungslogik:
         - Debitor (Soll) an Erloes (Haben)
-        - Umsatzsteuer wird ueber BU-Schluessel automatisch gebucht
+        - Umsatzsteuer wird über BU-Schluessel automatisch gebucht
         """
         warnings: List[str] = []
 
@@ -327,7 +327,7 @@ class DATEVInvoiceMapper:
         """
         format_str = config.buchungstext_format or "{invoice_number}"
 
-        # Verfuegbare Platzhalter
+        # Verfügbare Platzhalter
         sender_name = ""
         if invoice.sender:
             sender_name = invoice.sender.company or invoice.sender.person or ""
@@ -343,7 +343,7 @@ class DATEVInvoiceMapper:
                 recipient=recipient_name[:30],
             )
         except (KeyError, ValueError):
-            # Fallback bei ungueltigem Format
+            # Fallback bei ungültigem Format
             text = invoice.invoice_number or "Rechnung"
 
         # DATEV Limit: 60 Zeichen
@@ -370,11 +370,11 @@ class DATEVInvoiceMapper:
 
     def _is_third_country(self, invoice: ExtractedInvoiceData) -> bool:
         """
-        Prueft ob es sich um ein Drittlandsgeschaeft handelt.
+        Prüft ob es sich um ein Drittlandsgeschäft handelt.
 
         Verwendet zentrale EU_MEMBER_STATES aus constants.py.
         """
-        # Pruefen des Absenders/Empfaengers
+        # Prüfen des Absenders/Empfängers
         if invoice.sender and invoice.sender.country:
             if is_third_country_code(invoice.sender.country):
                 return True
@@ -389,18 +389,18 @@ class DATEVInvoiceMapper:
         """
         Ermittelt den Skonto-Betrag aus den extrahierten Rechnungsdaten.
 
-        Prioritaet:
+        Priorität:
         1. Direkt extrahierter discount_amount
         2. Berechnung aus discount_percent und gross_amount
 
         Returns:
             Skonto-Betrag oder None wenn keine Skonto-Daten vorhanden
         """
-        # Prioritaet 1: Direkt extrahierter Skonto-Betrag
+        # Priorität 1: Direkt extrahierter Skonto-Betrag
         if invoice.discount_amount:
             return Decimal(str(invoice.discount_amount)).quantize(Decimal("0.01"))
 
-        # Prioritaet 2: Berechnung aus Prozentsatz
+        # Priorität 2: Berechnung aus Prozentsatz
         if invoice.discount_percent and invoice.gross_amount:
             skonto = (
                 Decimal(str(invoice.gross_amount)) *

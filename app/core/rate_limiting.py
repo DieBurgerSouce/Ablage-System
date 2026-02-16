@@ -540,7 +540,7 @@ def bypass_rate_limit_if_whitelisted(func: Callable) -> Callable:
     Decorator to bypass rate limiting for whitelisted IPs.
 
     Markiert Requests von whitelisted IPs, sodass nachfolgende
-    Rate-Limit-Checks diese ueberspringen koennen.
+    Rate-Limit-Checks diese überspringen können.
 
     Args:
         func: Function to decorate
@@ -558,7 +558,7 @@ def bypass_rate_limit_if_whitelisted(func: Callable) -> Callable:
                 ip=get_remote_address(request),
                 path=request.url.path
             )
-            # Markiere Request als whitelisted fuer nachfolgende Checks
+            # Markiere Request als whitelisted für nachfolgende Checks
             request.state.rate_limit_whitelisted = True
         else:
             request.state.rate_limit_whitelisted = False

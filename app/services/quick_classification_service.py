@@ -5,7 +5,7 @@ QuickClassificationService - Schnelle Dokumenten-Klassifizierung.
 Ziel: Innerhalb von 2-5 Sekunden erkennen ob Eingangs- oder Ausgangsrechnung.
 Methode: Nur erste Seite mit schnellem OCR, dann Pattern-Matching.
 
-Feinpoliert und durchdacht - fuer sofortiges Tag-Assignment im Upload-Flow.
+Feinpoliert und durchdacht - für sofortiges Tag-Assignment im Upload-Flow.
 """
 
 from __future__ import annotations
@@ -57,29 +57,29 @@ QUICK_CLASSIFICATION_MATCH_TYPE = Counter(
     ["match_type"]  # vat_id, iban, company_name, none
 )
 
-# Fixed UUIDs fuer System-Tags (aus Migration 038)
+# Fixed UUIDs für System-Tags (aus Migration 038)
 EINGANGSRECHNUNG_TAG_ID = uuid.UUID("11111111-1111-1111-1111-111111111111")
 AUSGANGSRECHNUNG_TAG_ID = uuid.UUID("22222222-2222-2222-2222-222222222222")
 
-# FAANG-AUDIT FIX: Cache fuer CompanySettings (1 Minute TTL)
+# FAANG-AUDIT FIX: Cache für CompanySettings (1 Minute TTL)
 # Enterprise Refined: Vermeidet wiederholte DB-Abfragen bei Batch-Uploads
 # Modul-Level Cache ist hier akzeptabel da:
-# 1. Nur read-only Daten (CompanySettings aendert sich selten)
+# 1. Nur read-only Daten (CompanySettings ändert sich selten)
 # 2. TTL verhindert veraltete Daten
 # 3. asyncio.Lock schuetzt vor Race Conditions
 _company_settings_cache: Tuple[Optional[CompanySettings], datetime] = (None, datetime.min)
 _CACHE_TTL = timedelta(minutes=1)
 
-# Cache fuer BusinessEntities (1 Minute TTL)
-# Speichert Entities nach VAT-ID und IBAN fuer schnelles Matching
+# Cache für BusinessEntities (1 Minute TTL)
+# Speichert Entities nach VAT-ID und IBAN für schnelles Matching
 _business_entity_cache: Dict[str, Tuple[Optional[BusinessEntity], datetime]] = {}
 _ENTITY_CACHE_TTL = timedelta(minutes=1)
 
-# FAANG-AUDIT FIX: Thread-Safety Lock fuer Cache-Zugriff
+# FAANG-AUDIT FIX: Thread-Safety Lock für Cache-Zugriff
 import asyncio
 _cache_lock: asyncio.Lock = asyncio.Lock()
 
-# Prometheus Metrik fuer Entity-Matching
+# Prometheus Metrik für Entity-Matching
 QUICK_CLASSIFICATION_ENTITY_MATCH = Counter(
     "quick_classification_entity_match_total",
     "Anzahl der Business Entity Matches",
@@ -114,26 +114,26 @@ class QuickClassificationResult:
     entity_match_method: Optional[str] = None  # "vat_id" | "iban" | "name"
     entity_confidence: float = 0.0
     entity_auto_linked: bool = False
-    # Rename Suggestion (nur fuer Eingangsrechnungen)
+    # Rename Suggestion (nur für Eingangsrechnungen)
     rename_suggestion: Optional[Dict[str, Any]] = None
 
 
 class QuickClassificationService:
     """
-    Schnelle Klassifizierung fuer Upload-Flow.
+    Schnelle Klassifizierung für Upload-Flow.
 
     Erkennt Eingangs-/Ausgangsrechnungen in 2-5 Sekunden durch:
-    1. USt-IdNr Matching (hoechste Prioritaet)
+    1. USt-IdNr Matching (hoechste Priorität)
     2. IBAN Matching
     3. Firmenname Matching
 
     Weist automatisch Tags zu wenn Confidence >= 70%.
     """
 
-    # Confidence-Schwellenwert fuer automatische Tag-Zuweisung
+    # Confidence-Schwellenwert für automatische Tag-Zuweisung
     AUTO_TAG_CONFIDENCE_THRESHOLD = 0.70
 
-    # Regex-Patterns fuer Identifier-Extraktion
+    # Regex-Patterns für Identifier-Extraktion
     VAT_ID_PATTERNS = [
         # Deutsche USt-IdNr: DE123456789
         r'(?:USt[.-]?Id(?:Nr)?[.:\s]*|VAT[.:\s]*ID[.:\s]*|Steuernummer[.:\s]*)?(DE\s*\d{9})',
@@ -161,11 +161,11 @@ class QuickClassificationService:
         # WICHTIG: Kurzformen (AG, KG, SE, BV) brauchen \s+ davor, um false positives zu vermeiden
         # z.B. "Spargelmesse" soll nicht als "Spargelmes SE" erkannt werden
         # HINWEIS: .+ (GREEDY) statt .+? (non-greedy) um mehrteilige Namen wie
-        # "Amefa Stahlwaren GmbH" vollstaendig zu erfassen (Fix 2025-12-15)
+        # "Amefa Stahlwaren GmbH" vollständig zu erfassen (Fix 2025-12-15)
         r'^(.+(?:GmbH\s*&\s*Co\.?\s*KG|GmbH|\s+AG|\s+KG|OHG|UG|e\.K\.|\s+SE|Ltd\.?|Inc\.?|B\.?V\.?|N\.?V\.?|S\.?A\.?))(?:\s|$)',
     ]
 
-    # Rechtsformen fuer Normalisierung
+    # Rechtsformen für Normalisierung
     # WICHTIG: \s+ (nicht \s*) vor Kurzformen wie SE, um false positives zu vermeiden
     # z.B. "Spargelmesse" soll nicht zu "Spargelmes" werden
     LEGAL_SUFFIXES = [
@@ -184,11 +184,11 @@ class QuickClassificationService:
         r"\s*inc\.?\s*$",
     ]
 
-    # Maximale Textlaenge fuer Performance
+    # Maximale Textlänge für Performance
     MAX_TEXT_LENGTH = 50000
 
     # ==========================================================================
-    # Text-Preprocessing fuer Pattern-Extraktion
+    # Text-Preprocessing für Pattern-Extraktion
     # ==========================================================================
 
     def _preprocess_text_for_extraction(self, text: str) -> str:
@@ -224,11 +224,11 @@ class QuickClassificationService:
         return result.strip()
 
     # ==========================================================================
-    # Rechnungsnummer-Extraktion (fuer Rename-Vorschlaege)
+    # Rechnungsnummer-Extraktion (für Rename-Vorschläge)
     # ==========================================================================
 
     INVOICE_NUMBER_PATTERNS = [
-        # Deutsche Patterns (hoechste Prioritaet)
+        # Deutsche Patterns (hoechste Priorität)
         # "Rechnungsnummer: F-201401" oder "Rechnungs-Nr.: 12345"
         r'(?:rechnungs?-?\s*(?:nr\.?|nummer)|rechnung\s*nr\.?)[\s:]*([A-Za-z0-9\-_/]{3,30})',
         # "Beleg-Nr.: 12345"
@@ -239,7 +239,7 @@ class QuickClassificationService:
         r'([A-Z]-?\d{4,8})\s*\n\s*(?:Invoice|Rechnungs)',
         # Englische Patterns
         r'(?:invoice\s*(?:no\.?|number|#))[\s:]*([A-Za-z0-9\-_/]{3,30})',
-        # RE-Prefix (haeufig): "RE-2024-001"
+        # RE-Prefix (häufig): "RE-2024-001"
         r'\b(RE-\d{4}-\d{3,6})\b',
         # Standard numerisch mit Prefix: "R-12345", "INV-12345"
         r'\b([RI](?:NV)?-\d{4,10})\b',
@@ -259,8 +259,8 @@ class QuickClassificationService:
         r'VK\s*(\d{7})\s*/\s*D\d{5,6}',
     ]
 
-    # Kontext-Keywords fuer Empfaenger-Erkennung (unsere Firma dort = Eingangsrechnung)
-    # Unterstuetzt sowohl Umlaute (ä/ö/ü) als auch ASCII-Ersetzungen (ae/oe/ue)
+    # Kontext-Keywords für Empfänger-Erkennung (unsere Firma dort = Eingangsrechnung)
+    # Unterstützt sowohl Umlaute (ä/ö/ü) als auch ASCII-Ersetzungen (ae/oe/ue)
     RECIPIENT_CONTEXT_PATTERNS = [
         r'rechnungsempf(?:ae|ä)nger\s*:?',
         r'lieferanschrift\s*:?',
@@ -275,10 +275,10 @@ class QuickClassificationService:
         r'lieferadresse\s*:?',
     ]
 
-    # Kontext-Keywords fuer Absender-Erkennung (unsere Firma dort = Ausgangsrechnung)
-    # Unterstuetzt sowohl Umlaute (ä/ö/ü) als auch ASCII-Ersetzungen (ae/oe/ue)
+    # Kontext-Keywords für Absender-Erkennung (unsere Firma dort = Ausgangsrechnung)
+    # Unterstützt sowohl Umlaute (ä/ö/ü) als auch ASCII-Ersetzungen (ae/oe/ue)
     SENDER_CONTEXT_PATTERNS = [
-        r'gesch(?:ae|ä)ftsf(?:ue|ü)hr',  # Geschaeftsfuehrer / Geschäftsführer
+        r'gesch(?:ae|ä)ftsf(?:ue|ü)hr',  # Geschäftsführer / Geschäftsführer
         r'handelsregister',
         r'amtsgericht',
         r'hrb\s*\d+',  # HRB 12345
@@ -290,11 +290,11 @@ class QuickClassificationService:
         r'bankverbindung',
         r'registergericht',
         r'sitz\s+der\s+gesellschaft',
-        r'f(?:ue|ü)r\s+r(?:ue|ü)ckfragen',  # "Fuer Rueckfragen" / "Für Rückfragen"
+        r'f(?:ue|ü)r\s+r(?:ue|ü)ckfragen',  # "Für Rückfragen" / "Für Rückfragen"
     ]
 
     # =========================================================================
-    # Keyword-Analyse fuer Konfidenz-Boost (Phase 2)
+    # Keyword-Analyse für Konfidenz-Boost (Phase 2)
     # =========================================================================
 
     # Keywords die auf eine Rechnung hindeuten
@@ -302,7 +302,7 @@ class QuickClassificationService:
         r'\b(rechnung|invoice|factura)\b',
         r'\b(rechnungs?nr\.?|rechnungsnummer|invoice\s*no\.?)\b',
         r'\b(rechnungsdatum|invoice\s*date)\b',
-        r'\b(zahlungsziel|faellig|due\s*date)\b',
+        r'\b(zahlungsziel|fällig|due\s*date)\b',
         r'\b(nettobetrag|bruttobetrag|gesamtbetrag)\b',
         r'\b(mwst|mehrwertsteuer|vat|umsatzsteuer)\b',
     ]
@@ -318,7 +318,7 @@ class QuickClassificationService:
     ORDER_KEYWORDS = [
         r'\b(bestellung|order|auftrag)\b',
         r'\b(bestell?nr\.?|bestellnummer|order\s*no\.?)\b',
-        r'\b(auftragsbestaetigung|order\s*confirmation)\b',
+        r'\b(auftragsbestätigung|order\s*confirmation)\b',
     ]
 
     def _analyze_document_keywords(self, text: str) -> Tuple[Optional[str], float]:
@@ -390,7 +390,7 @@ class QuickClassificationService:
         return (None, 0.0)
 
     # ==========================================================================
-    # Rename-Vorschlag Generierung (fuer Eingangsrechnungen)
+    # Rename-Vorschlag Generierung (für Eingangsrechnungen)
     # ==========================================================================
 
     # Bestellnummern-Patterns (werden von Rechnungsnummern-Extraktion ausgeschlossen)
@@ -406,16 +406,16 @@ class QuickClassificationService:
 
     def _extract_invoice_number_from_table_layout(self, text: str) -> Optional[str]:
         """
-        Fallback-Extraktion fuer Tabellen-Layouts.
+        Fallback-Extraktion für Tabellen-Layouts.
 
         Erkennt Layouts wie:
             Rechnungs-Nr.    Kunden-Nr.    Datum
             246543           310835        25.05.22
 
         Strategie:
-        1. Finde "Rechnungs-Nr" oder aehnliches Label
-        2. Pruefe ob mehrere Labels in der Zeile (Tabellen-Header)
-        3. Extrahiere ersten numerischen Wert aus der naechsten Zeile
+        1. Finde "Rechnungs-Nr" oder ähnliches Label
+        2. Prüfe ob mehrere Labels in der Zeile (Tabellen-Header)
+        3. Extrahiere ersten numerischen Wert aus der nächsten Zeile
 
         Args:
             text: OCR-Text (bereits preprocessed)
@@ -437,14 +437,14 @@ class QuickClassificationService:
 
             for pattern in label_patterns:
                 if re.search(pattern, line_lower):
-                    # Pruefe ob mehrere Labels in dieser Zeile
-                    # (Indikator fuer Tabellen-Header)
+                    # Prüfe ob mehrere Labels in dieser Zeile
+                    # (Indikator für Tabellen-Header)
                     label_count = sum(1 for kw in ['nr', 'datum', 'kunde', 'betrag']
                                      if kw in line_lower)
 
                     if label_count >= 2:
                         # Tabellen-Layout erkannt!
-                        # Suche naechste Zeile mit Zahlen
+                        # Suche nächste Zeile mit Zahlen
                         for j in range(i + 1, min(i + 5, len(lines))):
                             value_line = lines[j].strip()
                             # Erste Zahl in der Zeile ist wahrscheinlich Rechnungsnr
@@ -463,9 +463,9 @@ class QuickClassificationService:
         """
         Extrahiert die Rechnungsnummer aus dem OCR-Text.
 
-        Verwendet mehrere Patterns fuer deutsche und englische Rechnungen.
-        Schliesst explizit Bestellnummern aus, um false positives zu vermeiden.
-        Faellt zurueck auf Tabellen-Layout-Erkennung wenn noetig.
+        Verwendet mehrere Patterns für deutsche und englische Rechnungen.
+        Schließt explizit Bestellnummern aus, um false positives zu vermeiden.
+        Faellt zurück auf Tabellen-Layout-Erkennung wenn noetig.
 
         Args:
             text: OCR-Text
@@ -476,7 +476,7 @@ class QuickClassificationService:
         # Preprocessing: HTML-Tags und Markdown entfernen
         text = self._preprocess_text_for_extraction(text)
 
-        # Erst Bestellnummern finden und ausschliessen
+        # Erst Bestellnummern finden und ausschließen
         excluded_numbers: set[str] = set()
         for pattern in self.ORDER_NUMBER_PATTERNS:
             for match in re.finditer(pattern, text, re.IGNORECASE | re.MULTILINE):
@@ -490,20 +490,20 @@ class QuickClassificationService:
                 )
 
         # Label-Keywords die nicht als Rechnungsnummer gelten
-        # (Bug-Fix 2025-12-15: Tabellen-Layouts matchen sonst das naechste Label)
+        # (Bug-Fix 2025-12-15: Tabellen-Layouts matchen sonst das nächste Label)
         label_keywords = {'datum', 'nr', 'nummer', 'kunde', 'kunden', 'betrag',
                          'mwst', 'steuer', 'summe', 'netto', 'brutto', 'artikel',
                          'position', 'menge', 'preis', 'date', 'amount', 'customer'}
 
-        # Dann Rechnungsnummer suchen, aber ausgeschlossene ueberspringen
+        # Dann Rechnungsnummer suchen, aber ausgeschlossene überspringen
         for pattern in self.INVOICE_NUMBER_PATTERNS:
             match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
             if match:
-                # Gruppe 1 enthaelt die Rechnungsnummer
+                # Gruppe 1 enthält die Rechnungsnummer
                 number = match.group(1).strip()
                 # Validierung: nicht zu kurz, nicht zu lang
                 if 3 <= len(number) <= 30:
-                    # Pruefen ob es eine ausgeschlossene Bestellnummer ist
+                    # Prüfen ob es eine ausgeschlossene Bestellnummer ist
                     if number in excluded_numbers or number.lower() in excluded_numbers:
                         logger.debug(
                             "invoice_number_skipped_is_order",
@@ -511,7 +511,7 @@ class QuickClassificationService:
                         )
                         continue
 
-                    # Pruefen ob es ein Label statt ein Wert ist (Tabellen-Layout Bug)
+                    # Prüfen ob es ein Label statt ein Wert ist (Tabellen-Layout Bug)
                     number_lower = number.lower().replace('-', '').replace('.', '')
                     is_label = any(kw in number_lower for kw in label_keywords)
                     if is_label:
@@ -537,7 +537,7 @@ class QuickClassificationService:
 
     def _normalize_for_filename(self, name: str) -> str:
         """
-        Normalisiert einen Firmennamen fuer die Verwendung im Dateinamen.
+        Normalisiert einen Firmennamen für die Verwendung im Dateinamen.
 
         Entfernt Rechtsformen (GmbH, AG, etc.), Slogans und Sonderzeichen.
 
@@ -557,7 +557,7 @@ class QuickClassificationService:
             result = re.sub(suffix_pattern, "", result, flags=re.IGNORECASE)
 
         # Slogan/Beschreibung entfernen: "Company - Slogan" → "Company"
-        # Haeufiges Muster bei niederlaendischen/internationalen Firmen
+        # Häufiges Muster bei niederlaendischen/internationalen Firmen
         if " - " in result:
             result = result.split(" - ")[0]
 
@@ -568,18 +568,18 @@ class QuickClassificationService:
         # Fix 2025-12-15: Vorher wurden alle Leerzeichen entfernt
         result = re.sub(r'\s+', ' ', result).strip()
 
-        # Maximale Laenge begrenzen
+        # Maximale Länge begrenzen
         return result[:50] if len(result) > 50 else result
 
     def _sanitize_for_filename(self, name: str) -> str:
         """
-        Konvertiert Namen fuer Dateinamen-Verwendung.
+        Konvertiert Namen für Dateinamen-Verwendung.
 
-        Ersetzt Leerzeichen durch Unterstriche fuer Dateisystem-Kompatibilitaet.
+        Ersetzt Leerzeichen durch Unterstriche für Dateisystem-Kompatibilität.
 
         Unterschied zu _normalize_for_filename:
-        - normalize: Behaelt Leerzeichen fuer Anzeige ("Amefa Stahlwaren")
-        - sanitize: Ersetzt fuer Dateisystem ("Amefa_Stahlwaren")
+        - normalize: Behält Leerzeichen für Anzeige ("Amefa Stahlwaren")
+        - sanitize: Ersetzt für Dateisystem ("Amefa_Stahlwaren")
 
         Args:
             name: Firmenname
@@ -604,7 +604,7 @@ class QuickClassificationService:
             Extrahierter Lieferantenname oder None
         """
         # Obere 40% des Texts durchsuchen (Header-Bereich)
-        # Erweitert von 30% auf 40% um auch laengere Briefkoepfe zu erfassen
+        # Erweitert von 30% auf 40% um auch längere Briefkoepfe zu erfassen
         header_text = text[:int(len(text) * 0.4)]
 
         # Preprocessing anwenden (HTML-Tags, Markdown entfernen)
@@ -614,7 +614,7 @@ class QuickClassificationService:
             match = re.search(pattern, header_text, re.IGNORECASE | re.MULTILINE)
             if match:
                 company_name = match.group(1).strip()
-                # Minimum-Laenge pruefen
+                # Minimum-Länge prüfen
                 if len(company_name) >= 3:
                     normalized = self._normalize_for_filename(company_name)
                     if normalized:
@@ -633,11 +633,11 @@ class QuickClassificationService:
         ocr_text: str
     ) -> Optional[Dict[str, Any]]:
         """
-        Generiert einen Dateinamen-Vorschlag fuer Eingangsrechnungen.
+        Generiert einen Dateinamen-Vorschlag für Eingangsrechnungen.
 
         Schema: Lieferantenname_Rechnungsnummer (z.B. "ALPAC_F-201401")
 
-        Nur fuer Eingangsrechnungen - Ausgangsrechnungen werden separat behandelt.
+        Nur für Eingangsrechnungen - Ausgangsrechnungen werden separat behandelt.
 
         Args:
             direction: Erkannte Dokumentrichtung
@@ -646,19 +646,19 @@ class QuickClassificationService:
 
         Returns:
             Dict mit suggested_filename, supplier_name, invoice_number, source, confidence
-            oder None wenn keine Generierung moeglich
+            oder None wenn keine Generierung möglich
         """
-        # Nur fuer Eingangsrechnungen
+        # Nur für Eingangsrechnungen
         if direction != InvoiceDirection.INCOMING:
             return None
 
         # 1. Lieferantenname ermitteln (mit Fallback-Kette)
-        # Prioritaet: 1. BusinessEntity-Name, 2. OCR-Header-Extraktion
+        # Priorität: 1. BusinessEntity-Name, 2. OCR-Header-Extraktion
         supplier_name: Optional[str] = None
         source = "ocr_extraction"
 
         if matched_entity_name:
-            # Primaer: BusinessEntity-Name verwenden (aus Datenbank)
+            # Primär: BusinessEntity-Name verwenden (aus Datenbank)
             supplier_name = self._normalize_for_filename(matched_entity_name)
             source = "entity_match"
             logger.debug(
@@ -757,7 +757,7 @@ class QuickClassificationService:
                 reason="Kein Text zur Klassifizierung"
             )
 
-        # Maximale Textlaenge begrenzen (Performance)
+        # Maximale Textlänge begrenzen (Performance)
         if len(ocr_text) > self.MAX_TEXT_LENGTH:
             logger.warning(
                 "quick_classification_text_truncated",
@@ -803,7 +803,7 @@ class QuickClassificationService:
             company_names_count=len(company_names)
         )
 
-        # 2b. Keyword-Analyse fuer Konfidenz-Boost
+        # 2b. Keyword-Analyse für Konfidenz-Boost
         doc_type_hint, keyword_boost = self._analyze_document_keywords(ocr_text)
         if keyword_boost > 0:
             logger.debug(
@@ -812,7 +812,7 @@ class QuickClassificationService:
                 keyword_boost=keyword_boost
             )
 
-        # 3. USt-IdNr Check (hoechste Prioritaet)
+        # 3. USt-IdNr Check (hoechste Priorität)
         if company.vat_id:
             vat_result = self._match_vat_id(vat_ids, company.vat_id, ocr_text)
             if vat_result:
@@ -828,7 +828,7 @@ class QuickClassificationService:
                 )
                 # Entity-Matching (Lieferanten-/Kunden-Erkennung)
                 await self._enrich_with_entity_match(db, document_id, result, vat_ids, ibans)
-                # Rename-Vorschlag generieren (nur fuer Eingangsrechnungen)
+                # Rename-Vorschlag generieren (nur für Eingangsrechnungen)
                 result.rename_suggestion = self._generate_rename_suggestion(
                     result.direction, result.matched_entity_name, ocr_text
                 )
@@ -853,7 +853,7 @@ class QuickClassificationService:
                 )
                 # Entity-Matching (Lieferanten-/Kunden-Erkennung)
                 await self._enrich_with_entity_match(db, document_id, result, vat_ids, ibans)
-                # Rename-Vorschlag generieren (nur fuer Eingangsrechnungen)
+                # Rename-Vorschlag generieren (nur für Eingangsrechnungen)
                 result.rename_suggestion = self._generate_rename_suggestion(
                     result.direction, result.matched_entity_name, ocr_text
                 )
@@ -882,7 +882,7 @@ class QuickClassificationService:
                 )
                 # Entity-Matching (Lieferanten-/Kunden-Erkennung)
                 await self._enrich_with_entity_match(db, document_id, result, vat_ids, ibans)
-                # Rename-Vorschlag generieren (nur fuer Eingangsrechnungen)
+                # Rename-Vorschlag generieren (nur für Eingangsrechnungen)
                 result.rename_suggestion = self._generate_rename_suggestion(
                     result.direction, result.matched_entity_name, ocr_text
                 )
@@ -896,7 +896,7 @@ class QuickClassificationService:
         result = QuickClassificationResult(
             direction=InvoiceDirection.UNKNOWN,
             confidence=0.0,
-            reason="Keine eindeutige Zuordnung moeglich",
+            reason="Keine eindeutige Zuordnung möglich",
             extracted_vat_ids=[v.value for v in vat_ids],
             extracted_ibans=[i.value for i in ibans]
         )
@@ -917,7 +917,7 @@ class QuickClassificationService:
         Diese Methode wird nach erfolgreicher Direction-Bestimmung aufgerufen und:
         1. Sucht passende BusinessEntity basierend auf extrahierten VAT-IDs/IBANs
         2. Fuellt Entity-Felder im Result
-        3. Verknuepft Document mit Entity bei >= 80% confidence
+        3. Verknüpft Document mit Entity bei >= 80% confidence
 
         Args:
             db: Datenbank-Session
@@ -954,8 +954,8 @@ class QuickClassificationService:
                     confidence=confidence
                 )
 
-                # Bei hoher Confidence: Document mit Entity verknuepfen
-                # Schwellenwert: 80% (etwas hoeher als Tag-Zuweisung)
+                # Bei hoher Confidence: Document mit Entity verknüpfen
+                # Schwellenwert: 80% (etwas höher als Tag-Zuweisung)
                 AUTO_LINK_CONFIDENCE_THRESHOLD = 0.80
                 if confidence >= AUTO_LINK_CONFIDENCE_THRESHOLD:
                     await self._link_entity_to_document(db, document_id, entity_id, result)
@@ -975,9 +975,9 @@ class QuickClassificationService:
         match_type: str
     ) -> None:
         """
-        Zeichnet Prometheus-Metriken fuer die Klassifizierung auf.
+        Zeichnet Prometheus-Metriken für die Klassifizierung auf.
 
-        Enterprise Refined: Vollstaendiges Monitoring fuer Grafana-Dashboards.
+        Enterprise Refined: Vollständiges Monitoring für Grafana-Dashboards.
 
         Args:
             result: Klassifizierungsergebnis
@@ -1013,7 +1013,7 @@ class QuickClassificationService:
         Laedt die Admin-Firmendaten aus der Datenbank (mit Caching).
 
         Enterprise Refined: 1-Minuten-Cache um DB-Last bei Batch-Uploads zu reduzieren.
-        FAANG-AUDIT FIX: Thread-Safety mit asyncio.Lock fuer Cache-Zugriff.
+        FAANG-AUDIT FIX: Thread-Safety mit asyncio.Lock für Cache-Zugriff.
         """
         global _company_settings_cache
 
@@ -1051,7 +1051,7 @@ class QuickClassificationService:
         - Eingangsrechnung -> Suche Lieferanten (SUPPLIER/BOTH) - deren Daten stehen auf der Rechnung
         - Ausgangsrechnung -> Suche Kunden (CUSTOMER/BOTH) - deren Daten stehen auf der Rechnung
 
-        Prioritaet:
+        Priorität:
         1. VAT-ID Match (0.95 confidence) - hoechste Praezision
         2. IBAN Match (0.90 confidence)
 
@@ -1079,7 +1079,7 @@ class QuickClassificationService:
             entity_types = ["customer", "both"]
             search_type = "customer"
 
-        # 1. Prioritaet: VAT-ID Matching (hoechste Praezision)
+        # 1. Priorität: VAT-ID Matching (hoechste Praezision)
         for vat in vat_ids:
             normalized_vat = self._normalize_vat_id(vat.value)
             cache_key = f"vat:{normalized_vat}"
@@ -1133,7 +1133,7 @@ class QuickClassificationService:
                     0.95
                 )
 
-        # 2. Prioritaet: IBAN Matching
+        # 2. Priorität: IBAN Matching
         for iban in ibans:
             normalized_iban = self._normalize_iban(iban.value)
             cache_key = f"iban:{normalized_iban}"
@@ -1203,7 +1203,7 @@ class QuickClassificationService:
         result: QuickClassificationResult
     ) -> None:
         """
-        Verknuepft ein Dokument mit einem BusinessEntity.
+        Verknüpft ein Dokument mit einem BusinessEntity.
 
         Wird nur aufgerufen wenn entity_confidence >= 80%.
 
@@ -1227,7 +1227,7 @@ class QuickClassificationService:
                 )
                 return
 
-            # Nur verknuepfen wenn noch keine Entity gesetzt ist
+            # Nur verknüpfen wenn noch keine Entity gesetzt ist
             if doc.business_entity_id is None:
                 doc.business_entity_id = entity_id
                 result.entity_auto_linked = True
@@ -1459,13 +1459,13 @@ class QuickClassificationService:
         """
         Matched USt-IdNr gegen Firmendaten.
 
-        Bestimmt anhand der Position im Dokument ob wir Sender oder Empfaenger sind.
+        Bestimmt anhand der Position im Dokument ob wir Sender oder Empfänger sind.
         """
         normalized_company = self._normalize_vat_id(company_vat_id)
 
         for vat in extracted:
             if vat.value == normalized_company:
-                # Position analysieren: oberes Drittel = Sender, mittleres = Empfaenger
+                # Position analysieren: oberes Drittel = Sender, mittleres = Empfänger
                 direction = self._determine_direction_by_position(vat.relative_position, full_text)
 
                 if direction == InvoiceDirection.OUTGOING:
@@ -1478,11 +1478,11 @@ class QuickClassificationService:
                     return (
                         InvoiceDirection.INCOMING,
                         0.95,
-                        f"Firmen-USt-IdNr im Empfaengerbereich gefunden"
+                        f"Firmen-USt-IdNr im Empfängerbereich gefunden"
                     )
                 else:
                     # Position unklar, aber USt-IdNr stimmt
-                    # Heuristik: Wenn unsere USt-IdNr vorkommt, sind wir vermutlich Empfaenger
+                    # Heuristik: Wenn unsere USt-IdNr vorkommt, sind wir vermutlich Empfänger
                     return (
                         InvoiceDirection.INCOMING,
                         0.75,
@@ -1500,7 +1500,7 @@ class QuickClassificationService:
         Matched IBAN gegen Firmendaten.
 
         Wenn unsere IBAN auf einer Rechnung steht, ist es eine Ausgangsrechnung
-        (wir geben unsere Bankverbindung fuer Zahlungen an).
+        (wir geben unsere Bankverbindung für Zahlungen an).
         """
         normalized_company = self._normalize_iban(company_iban)
 
@@ -1525,28 +1525,28 @@ class QuickClassificationService:
         Matched Firmennamen gegen Firmendaten.
 
         Priorisierung:
-        1. IBAN-Distanz-Analyse (hoechste Prioritaet)
-        2. Kontext-basierte Erkennung (Empfaenger/Absender-Keywords)
+        1. IBAN-Distanz-Analyse (hoechste Priorität)
+        2. Kontext-basierte Erkennung (Empfänger/Absender-Keywords)
         3. Pattern-basierte Extraktion (mit Rechtsform-Suffix)
         4. Fallback: unknown (NICHT mehr Position-Heuristik)
         """
-        # 1. IBAN-Distanz-Analyse (hoechste Prioritaet)
+        # 1. IBAN-Distanz-Analyse (hoechste Priorität)
         # Logik: Der Absender einer Rechnung gibt seine IBAN an.
         # Wenn unser Firmenname nahe der IBAN steht → wir sind Absender → Ausgangsrechnung
-        # Wenn unser Firmenname weit von der IBAN steht → wir sind Empfaenger → Eingangsrechnung
+        # Wenn unser Firmenname weit von der IBAN steht → wir sind Empfänger → Eingangsrechnung
         iban_result = self._determine_direction_by_iban_proximity(full_text, company_names, ibans)
         if iban_result:
             QUICK_CLASSIFICATION_MATCH_TYPE.labels(match_type="iban_proximity").inc()
             return iban_result
 
         # 2. Kontext-basierte Erkennung
-        # Sucht nach Empfaenger/Absender-Keywords und prueft ob Firmenname in der Naehe
+        # Sucht nach Empfänger/Absender-Keywords und prüft ob Firmenname in der Naehe
         context_result = self._find_company_in_context(full_text, company_names)
         if context_result:
             QUICK_CLASSIFICATION_MATCH_TYPE.labels(match_type="context").inc()
             return context_result
 
-        # 3. Pattern-basierte Extraktion pruefen (extrahierte Firmennamen mit Rechtsform)
+        # 3. Pattern-basierte Extraktion prüfen (extrahierte Firmennamen mit Rechtsform)
         for extracted_name in extracted:
             for company_name in company_names:
                 similarity = self._calculate_name_similarity(extracted_name.value, company_name)
@@ -1561,14 +1561,14 @@ class QuickClassificationService:
                     if direction == InvoiceDirection.OUTGOING:
                         return (
                             InvoiceDirection.OUTGOING,
-                            0.70,  # Niedrigere Confidence fuer Position-Heuristik
+                            0.70,  # Niedrigere Confidence für Position-Heuristik
                             f"Firmenname im Absenderbereich gefunden ({similarity:.0%} Übereinstimmung, Position-basiert)"
                         )
                     elif direction == InvoiceDirection.INCOMING:
                         return (
                             InvoiceDirection.INCOMING,
-                            0.70,  # Niedrigere Confidence fuer Position-Heuristik
-                            f"Firmenname im Empfaengerbereich gefunden ({similarity:.0%} Übereinstimmung, Position-basiert)"
+                            0.70,  # Niedrigere Confidence für Position-Heuristik
+                            f"Firmenname im Empfängerbereich gefunden ({similarity:.0%} Übereinstimmung, Position-basiert)"
                         )
 
         # 4. Direkte Suche: Firmenname gefunden, aber kein eindeutiger Kontext
@@ -1589,7 +1589,7 @@ class QuickClassificationService:
                     message="Firmenname gefunden aber kein eindeutiger Kontext"
                 )
                 # Kein Return hier - lieber "unknown" als falsch raten
-                # Der User muss manuell pruefen
+                # Der User muss manuell prüfen
 
         return None
 
@@ -1601,37 +1601,37 @@ class QuickClassificationService:
         """
         Bestimmt die Dokumentrichtung anhand der Position eines Identifiers.
 
-        Heuristik fuer deutsche Geschaeftsbriefe:
+        Heuristik für deutsche Geschäftsbriefe:
         - Oberes Drittel (0.0-0.33): Absenderbereich (Logo, Absenderadresse)
-        - Mittleres Drittel (0.33-0.66): Empfaengerbereich (Anschrift)
+        - Mittleres Drittel (0.33-0.66): Empfängerbereich (Anschrift)
         - Unteres Drittel (0.66-1.0): Inhalt (oft Bankverbindung des Absenders)
 
         Bei Rechnungen:
         - Unsere Daten oben = Wir sind Absender = Ausgangsrechnung
-        - Unsere Daten in der Mitte = Wir sind Empfaenger = Eingangsrechnung
+        - Unsere Daten in der Mitte = Wir sind Empfänger = Eingangsrechnung
         """
         # Position-basierte Heuristik
         if relative_position < 0.30:
             # Oberer Bereich: Wahrscheinlich Absender
             return InvoiceDirection.OUTGOING
         elif relative_position < 0.55:
-            # Mittlerer Bereich: Wahrscheinlich Empfaenger
+            # Mittlerer Bereich: Wahrscheinlich Empfänger
             return InvoiceDirection.INCOMING
         else:
-            # Unterer Bereich: Koennte Bankdaten sein
-            # Bankdaten am Ende = Absender gibt Konto fuer Zahlung an
+            # Unterer Bereich: Könnte Bankdaten sein
+            # Bankdaten am Ende = Absender gibt Konto für Zahlung an
             return InvoiceDirection.OUTGOING
 
     def _normalize_vat_id(self, vat_id: str) -> str:
-        """Normalisiert eine USt-IdNr fuer den Vergleich."""
+        """Normalisiert eine USt-IdNr für den Vergleich."""
         return vat_id.replace(" ", "").replace(".", "").replace("-", "").upper()
 
     def _normalize_iban(self, iban: str) -> str:
-        """Normalisiert eine IBAN fuer den Vergleich."""
+        """Normalisiert eine IBAN für den Vergleich."""
         return iban.replace(" ", "").upper()
 
     def _normalize_company_name(self, name: str) -> str:
-        """Normalisiert einen Firmennamen fuer den Vergleich."""
+        """Normalisiert einen Firmennamen für den Vergleich."""
         normalized = name.lower().strip()
 
         for suffix_pattern in self.LEGAL_SUFFIXES:
@@ -1642,10 +1642,10 @@ class QuickClassificationService:
 
     def _contains_company_name(self, text: str, company_name: str) -> bool:
         """
-        Prueft ob ein Text den Firmennamen enthaelt (case-insensitive, normalisiert).
+        Prüft ob ein Text den Firmennamen enthält (case-insensitive, normalisiert).
 
         Args:
-            text: Text-Ausschnitt zum Pruefen
+            text: Text-Ausschnitt zum Prüfen
             company_name: Zu suchender Firmenname
 
         Returns:
@@ -1660,8 +1660,8 @@ class QuickClassificationService:
 
         return normalized_name in text.lower()
 
-    # Pattern fuer Adressblock-Erkennung (Strasse + PLZ + Ort)
-    # Wenn nach dem Firmennamen eine Adresse kommt, ist es wahrscheinlich der Empfaenger
+    # Pattern für Adressblock-Erkennung (Strasse + PLZ + Ort)
+    # Wenn nach dem Firmennamen eine Adresse kommt, ist es wahrscheinlich der Empfänger
     ADDRESS_BLOCK_PATTERNS = [
         # Deutsche PLZ + Ort: "12345 Berlin" oder "D-12345 Berlin"
         r'(?:d-?)?\d{5}\s+[a-zäöüß]+',
@@ -1673,12 +1673,12 @@ class QuickClassificationService:
 
     def _has_address_after_company(self, text: str, company_position: int) -> bool:
         """
-        Prueft ob nach dem Firmennamen ein Adressblock folgt.
+        Prüft ob nach dem Firmennamen ein Adressblock folgt.
 
-        Wenn ja, ist dies sehr wahrscheinlich der Empfaenger-Bereich,
-        unabhaengig von der IBAN-Naehe.
+        Wenn ja, ist dies sehr wahrscheinlich der Empfänger-Bereich,
+        unabhängig von der IBAN-Naehe.
         """
-        # Pruefe die naechsten 300 Zeichen nach dem Firmennamen
+        # Prüfe die nächsten 300 Zeichen nach dem Firmennamen
         context_end = min(len(text), company_position + 300)
         context_after = text[company_position:context_end].lower()
 
@@ -1701,7 +1701,7 @@ class QuickClassificationService:
         - Firmenname weit von IBAN → Wir sind Empfänger → Eingangsrechnung
 
         ABER: Wenn nach dem Firmennamen eine Adresse folgt (Strasse, PLZ, Ort),
-        dann ist es wahrscheinlich der Empfaenger-Block, auch wenn IBAN nah ist.
+        dann ist es wahrscheinlich der Empfänger-Block, auch wenn IBAN nah ist.
 
         Args:
             text: OCR-Text
@@ -1738,19 +1738,19 @@ class QuickClassificationService:
             )
             return None
 
-        # NEUE LOGIK: Pruefe zuerst ob nach dem Firmennamen eine Adresse folgt
-        # Wenn ja, ist dies der Empfaenger-Block (Eingangsrechnung)
+        # NEUE LOGIK: Prüfe zuerst ob nach dem Firmennamen eine Adresse folgt
+        # Wenn ja, ist dies der Empfänger-Block (Eingangsrechnung)
         for company_pos in company_positions:
             if self._has_address_after_company(text, company_pos):
                 logger.info(
                     "quick_classification_address_block_detected",
                     company_position=company_pos,
-                    message="Adresse nach Firmenname gefunden - Empfaengerblock"
+                    message="Adresse nach Firmenname gefunden - Empfängerblock"
                 )
                 return (
                     InvoiceDirection.INCOMING,
                     0.88,
-                    "Firmenname mit Adresse gefunden (Empfaengerblock) - Eingangsrechnung"
+                    "Firmenname mit Adresse gefunden (Empfängerblock) - Eingangsrechnung"
                 )
 
         # Berechne minimalen Abstand zu irgendeiner IBAN
@@ -1767,7 +1767,7 @@ class QuickClassificationService:
 
         # Schwellenwert: 500 Zeichen
         # Typische Rechnungsstruktur: Absender + IBAN sind im gleichen Block (Header/Footer)
-        # Empfaenger steht im Adressblock, weit von der IBAN entfernt
+        # Empfänger steht im Adressblock, weit von der IBAN entfernt
         PROXIMITY_THRESHOLD = 500
 
         logger.info(
@@ -1800,10 +1800,10 @@ class QuickClassificationService:
         Findet den Firmennamen im Text und bestimmt anhand des Kontexts die Richtung.
 
         Diese Methode analysiert den umgebenden Text um gefundene Firmennamen
-        und erkennt ob sie im Empfaenger- oder Absender-Bereich stehen.
+        und erkennt ob sie im Empfänger- oder Absender-Bereich stehen.
 
         Args:
-            text: Vollstaendiger OCR-Text
+            text: Vollständiger OCR-Text
             company_names: Liste der konfigurierten Firmennamen
 
         Returns:
@@ -1811,11 +1811,11 @@ class QuickClassificationService:
         """
         text_lower = text.lower()
 
-        # 1. Suche nach Empfaenger-Kontext-Keywords
+        # 1. Suche nach Empfänger-Kontext-Keywords
         for pattern in self.RECIPIENT_CONTEXT_PATTERNS:
             matches = list(re.finditer(pattern, text_lower, re.IGNORECASE | re.MULTILINE))
             for match in matches:
-                # Pruefe die naechsten 300 Zeichen nach dem Keyword
+                # Prüfe die nächsten 300 Zeichen nach dem Keyword
                 context_start = match.end()
                 context_end = min(len(text_lower), context_start + 300)
                 context_after = text_lower[context_start:context_end]
@@ -1831,14 +1831,14 @@ class QuickClassificationService:
                         return (
                             InvoiceDirection.INCOMING,
                             0.92,
-                            f"Firmenname im Empfaengerbereich gefunden (nach '{match.group().strip()}')"
+                            f"Firmenname im Empfängerbereich gefunden (nach '{match.group().strip()}')"
                         )
 
         # 2. Suche nach Absender-Kontext-Keywords (Footer-Bereich)
         for pattern in self.SENDER_CONTEXT_PATTERNS:
             matches = list(re.finditer(pattern, text_lower, re.IGNORECASE))
             for match in matches:
-                # Pruefe 250 Zeichen vor und nach dem Keyword
+                # Prüfe 250 Zeichen vor und nach dem Keyword
                 context_start = max(0, match.start() - 250)
                 context_end = min(len(text_lower), match.end() + 250)
                 context = text_lower[context_start:context_end]
@@ -1861,7 +1861,7 @@ class QuickClassificationService:
         # GRUND: Der Briefkopf zeigt den ABSENDER der Rechnung an.
         # - Bei Eingangsrechnung: Lieferant steht im Briefkopf (nicht wir!)
         # - Bei Ausgangsrechnung: Wir stehen im Briefkopf
-        # OHNE Kontext-Keywords koennen wir nicht unterscheiden!
+        # OHNE Kontext-Keywords können wir nicht unterscheiden!
         #
         # Stattdessen: Wenn Firmenname gefunden aber kein Kontext -> UNKNOWN
         # Das ist besser als falsch raten.
@@ -1869,7 +1869,7 @@ class QuickClassificationService:
         return None
 
     def _calculate_name_similarity(self, name1: str, name2: str) -> float:
-        """Berechnet die Aehnlichkeit zweier Firmennamen (0.0-1.0)."""
+        """Berechnet die Ähnlichkeit zweier Firmennamen (0.0-1.0)."""
         n1 = self._normalize_company_name(name1)
         n2 = self._normalize_company_name(name2)
 
@@ -1907,7 +1907,7 @@ class QuickClassificationService:
         return previous_row[-1]
 
     def to_dict(self, result: QuickClassificationResult) -> Dict[str, Any]:
-        """Konvertiert das Ergebnis in ein Dictionary fuer JSON-Speicherung."""
+        """Konvertiert das Ergebnis in ein Dictionary für JSON-Speicherung."""
         return {
             "direction": result.direction.value if isinstance(result.direction, InvoiceDirection) else result.direction,
             "confidence": result.confidence,
@@ -1924,17 +1924,17 @@ class QuickClassificationService:
             "entity_match_method": result.entity_match_method,
             "entity_confidence": result.entity_confidence,
             "entity_auto_linked": result.entity_auto_linked,
-            # Rename Suggestion (nur fuer Eingangsrechnungen)
+            # Rename Suggestion (nur für Eingangsrechnungen)
             "rename_suggestion": result.rename_suggestion,
         }
 
 
-# Singleton-Instanz fuer Performance
+# Singleton-Instanz für Performance
 _quick_classification_service: Optional[QuickClassificationService] = None
 
 
 def get_quick_classification_service() -> QuickClassificationService:
-    """Gibt die Singleton-Instanz des QuickClassificationService zurueck."""
+    """Gibt die Singleton-Instanz des QuickClassificationService zurück."""
     global _quick_classification_service
     if _quick_classification_service is None:
         _quick_classification_service = QuickClassificationService()

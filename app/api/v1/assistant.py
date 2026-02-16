@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""API Endpoints fuer den Conversational Assistant.
+"""API Endpoints für den Conversational Assistant.
 
 Enterprise Feature: Intelligenter Chat-Assistent mit Ollama Integration.
 
@@ -7,11 +7,11 @@ Endpoints:
 - POST /chat - Chat-Nachricht senden
 - GET /history - Chat-Verlauf abrufen
 - POST /feedback - Feedback zu Antwort geben
-- GET /health - Service-Status pruefen
+- GET /health - Service-Status prüfen
 - GET /sessions - Aktive Sessions auflisten
-- DELETE /sessions/{session_id} - Session loeschen
+- DELETE /sessions/{session_id} - Session löschen
 
-Feinpoliert und durchdacht - Deutsche Praezision.
+Feinpoliert und durchdacht - Deutsche Präzision.
 """
 
 from typing import Dict, List, Optional
@@ -48,7 +48,7 @@ router = APIRouter(prefix="/assistant", tags=["Conversational Assistant"])
 
 
 class ContextData(BaseModel):
-    """Kontext-Daten fuer Chat-Nachricht."""
+    """Kontext-Daten für Chat-Nachricht."""
 
     document_id: Optional[UUID] = Field(
         default=None,
@@ -70,12 +70,12 @@ class ContextData(BaseModel):
     )
     additional_data: Optional[JSONDict] = Field(
         default=None,
-        description="Zusaetzliche Kontext-Daten"
+        description="Zusätzliche Kontext-Daten"
     )
 
 
 class ChatRequest(BaseModel):
-    """Anfrage fuer Chat-Nachricht."""
+    """Anfrage für Chat-Nachricht."""
 
     message: str = Field(
         ...,
@@ -86,7 +86,7 @@ class ChatRequest(BaseModel):
     session_id: Optional[str] = Field(
         default=None,
         max_length=100,
-        description="Session-ID fuer Konversations-Kontext (wird generiert wenn leer)"
+        description="Session-ID für Konversations-Kontext (wird generiert wenn leer)"
     )
     context: Optional[ContextData] = Field(
         default=None,
@@ -136,7 +136,7 @@ class ChatResponse(BaseModel):
         default_factory=list,
         description="Vorgeschlagene Aktionen"
     )
-    session_id: str = Field(description="Session-ID fuer Folgeanfragen")
+    session_id: str = Field(description="Session-ID für Folgeanfragen")
     confidence: float = Field(
         ge=0.0,
         le=1.0,
@@ -156,7 +156,7 @@ class ChatResponse(BaseModel):
     )
     follow_up_suggestions: List[str] = Field(
         default_factory=list,
-        description="Vorschlaege fuer Folgefragen"
+        description="Vorschläge für Folgefragen"
     )
     error_message: Optional[str] = Field(
         default=None,
@@ -189,7 +189,7 @@ class ChatHistoryResponse(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    """Anfrage fuer Feedback zu einer Antwort."""
+    """Anfrage für Feedback zu einer Antwort."""
 
     message_id: UUID = Field(description="ID der Assistenten-Nachricht")
     feedback_type: str = Field(
@@ -219,7 +219,7 @@ class FeedbackRequest(BaseModel):
         valid_types = ["helpful", "not_helpful", "incorrect", "confusing", "other"]
         v = v.lower()
         if v not in valid_types:
-            raise ValueError(f"Ungueltiger Feedback-Typ. Erlaubt: {', '.join(valid_types)}")
+            raise ValueError(f"Ungültiger Feedback-Typ. Erlaubt: {', '.join(valid_types)}")
         return v
 
 
@@ -266,7 +266,7 @@ class SessionsListResponse(BaseModel):
 
 
 async def get_service() -> ConversationalAssistantService:
-    """Dependency fuer ConversationalAssistantService."""
+    """Dependency für ConversationalAssistantService."""
     return get_conversational_assistant_service()
 
 
@@ -278,13 +278,13 @@ async def get_service() -> ConversationalAssistantService:
 @router.get(
     "/health",
     response_model=HealthResponse,
-    summary="Service-Verfuegbarkeit pruefen",
-    description="Prueft ob der Conversational Assistant und Ollama verfuegbar sind.",
+    summary="Service-Verfügbarkeit prüfen",
+    description="Prüft ob der Conversational Assistant und Ollama verfügbar sind.",
 )
 async def check_health(
     service: ConversationalAssistantService = Depends(get_service),
 ) -> HealthResponse:
-    """Prueft den Service-Status."""
+    """Prüft den Service-Status."""
     available = await service.is_available()
 
     if available:
@@ -300,7 +300,7 @@ async def check_health(
             available=False,
             ollama_connected=False,
             models=[],
-            message="Ollama ist nicht verfuegbar. Bitte stellen Sie sicher, dass Ollama laeuft.",
+            message="Ollama ist nicht verfügbar. Bitte stellen Sie sicher, dass Ollama laeuft.",
         )
 
 
@@ -323,7 +323,7 @@ Der Assistent kann:
 """,
     responses={
         200: {"description": "Erfolgreiche Antwort"},
-        503: {"description": "Ollama nicht verfuegbar"},
+        503: {"description": "Ollama nicht verfügbar"},
     },
 )
 async def chat(
@@ -334,11 +334,11 @@ async def chat(
     service: ConversationalAssistantService = Depends(get_service),
 ) -> ChatResponse:
     """Verarbeitet eine Chat-Nachricht."""
-    # Service-Verfuegbarkeit pruefen
+    # Service-Verfügbarkeit prüfen
     if not await service.is_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Der Assistent ist derzeit nicht verfuegbar. Ollama laeuft nicht.",
+            detail="Der Assistent ist derzeit nicht verfügbar. Ollama laeuft nicht.",
         )
 
     # Kontext erstellen
@@ -400,7 +400,7 @@ async def chat(
     "/history",
     response_model=ChatHistoryResponse,
     summary="Chat-Verlauf abrufen",
-    description="Ruft den Chat-Verlauf fuer eine bestimmte Session ab.",
+    description="Ruft den Chat-Verlauf für eine bestimmte Session ab.",
 )
 async def get_chat_history(
     session_id: str = Query(..., min_length=1, max_length=100),
@@ -444,7 +444,7 @@ async def get_chat_history(
     response_model=FeedbackResponse,
     summary="Feedback zu Antwort geben",
     description="""
-Ermoeglicht es dem Benutzer, Feedback zu einer Assistenten-Antwort zu geben.
+Ermöglicht es dem Benutzer, Feedback zu einer Assistenten-Antwort zu geben.
 
 **Feedback-Typen:**
 - `helpful` - Antwort war hilfreich
@@ -453,7 +453,7 @@ Ermoeglicht es dem Benutzer, Feedback zu einer Assistenten-Antwort zu geben.
 - `confusing` - Antwort war verwirrend
 - `other` - Sonstiges Feedback
 
-Das Feedback wird fuer die kontinuierliche Verbesserung des Assistenten genutzt.
+Das Feedback wird für die kontinuierliche Verbesserung des Assistenten genutzt.
 """,
 )
 async def submit_feedback(
@@ -476,7 +476,7 @@ async def submit_feedback(
     if success:
         return FeedbackResponse(
             success=True,
-            message="Vielen Dank fuer Ihr Feedback!",
+            message="Vielen Dank für Ihr Feedback!",
         )
     else:
         raise HTTPException(
@@ -625,8 +625,8 @@ async def toggle_star(
 
 @router.patch(
     "/sessions/{session_id}/title",
-    summary="Session-Titel aendern",
-    description="Aendert den Titel einer Chat-Session.",
+    summary="Session-Titel ändern",
+    description="Ändert den Titel einer Chat-Session.",
 )
 async def update_title(
     session_id: str,
@@ -634,7 +634,7 @@ async def update_title(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, str]:
-    """Aendert den Session-Titel."""
+    """Ändert den Session-Titel."""
     stmt = select(AIConversation).where(
         and_(
             AIConversation.session_id == session_id,

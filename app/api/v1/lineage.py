@@ -2,7 +2,7 @@
 """
 Document Lineage API endpoints for Ablage-System.
 
-API fuer Datenherkunfts-Tracking:
+API für Datenherkunfts-Tracking:
 - Timeline aller Ereignisse
 - Statistiken zur Verarbeitung
 - Export der Lineage-Daten
@@ -47,7 +47,7 @@ router = APIRouter(prefix="/documents", tags=["Document Lineage"])
 
 
 class TimelineEntryResponse(BaseModel):
-    """Response-Schema fuer einen Timeline-Eintrag."""
+    """Response-Schema für einen Timeline-Eintrag."""
 
     id: str
     event_type: str
@@ -62,7 +62,7 @@ class TimelineEntryResponse(BaseModel):
 
 
 class TimelineResponse(BaseModel):
-    """Response-Schema fuer die Timeline."""
+    """Response-Schema für die Timeline."""
 
     document_id: str
     events: List[TimelineEntryResponse]
@@ -72,7 +72,7 @@ class TimelineResponse(BaseModel):
 
 
 class LineageStatsResponse(BaseModel):
-    """Response-Schema fuer Lineage-Statistiken."""
+    """Response-Schema für Lineage-Statistiken."""
 
     document_id: str
     total_events: int
@@ -87,7 +87,7 @@ class LineageStatsResponse(BaseModel):
 
 
 class LineageSummaryResponse(BaseModel):
-    """Response-Schema fuer die Lineage-Zusammenfassung."""
+    """Response-Schema für die Lineage-Zusammenfassung."""
 
     id: str
     document_id: str
@@ -115,19 +115,19 @@ EVENT_TYPE_LABELS = {
     "ocr_failed": "OCR fehlgeschlagen",
     "classification": "Klassifizierung",
     "extraction": "Datenextraktion",
-    "entity_link": "Geschaeftspartner verknuepft",
-    "entity_unlink": "Verknuepfung entfernt",
+    "entity_link": "Geschäftspartner verknüpft",
+    "entity_unlink": "Verknüpfung entfernt",
     "modification": "Bearbeitung",
     "metadata_update": "Metadaten aktualisiert",
-    "tag_change": "Tags geaendert",
+    "tag_change": "Tags geändert",
     "approval": "Genehmigt",
     "rejection": "Abgelehnt",
     "escalation": "Eskaliert",
     "export": "Exportiert",
     "archive": "Archiviert",
     "restore": "Wiederhergestellt",
-    "soft_delete": "Geloescht (DSGVO)",
-    "hard_delete": "Endgueltig geloescht",
+    "soft_delete": "Gelöscht (DSGVO)",
+    "hard_delete": "Endgültig gelöscht",
 }
 
 
@@ -140,7 +140,7 @@ EVENT_TYPE_LABELS = {
 async def get_document_lineage(
     document_id: UUID,
     limit: int = Query(50, ge=1, le=500, description="Maximale Anzahl Ereignisse"),
-    offset: int = Query(0, ge=0, description="Offset fuer Pagination"),
+    offset: int = Query(0, ge=0, description="Offset für Pagination"),
     event_types: Optional[str] = Query(
         None,
         description="Komma-getrennte Event-Typen zum Filtern",
@@ -151,7 +151,7 @@ async def get_document_lineage(
     _ownership: bool = Depends(verify_document_ownership),
 ) -> TimelineResponse:
     """
-    Ruft die vollstaendige Lineage-Timeline eines Dokuments ab.
+    Ruft die vollständige Lineage-Timeline eines Dokuments ab.
 
     Zeigt alle Ereignisse in der Verarbeitungskette:
     - Import (Quelle, Zeitpunkt)
@@ -170,7 +170,7 @@ async def get_document_lineage(
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Event-Typ: {e}",
+                detail=f"Ungültiger Event-Typ: {e}",
             )
 
     service = get_lineage_service(session)
@@ -232,7 +232,7 @@ async def get_document_lineage_stats(
     if not stats:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine Lineage-Daten fuer dieses Dokument gefunden",
+            detail="Keine Lineage-Daten für dieses Dokument gefunden",
         )
 
     return LineageStatsResponse(
@@ -284,9 +284,9 @@ async def get_document_lineage_summary(
     _ownership: bool = Depends(verify_document_ownership),
 ) -> LineageSummaryResponse:
     """
-    Ruft die vollstaendige Lineage-Zusammenfassung ab.
+    Ruft die vollständige Lineage-Zusammenfassung ab.
 
-    Enthaelt alle aggregierten Informationen zur Dokumenten-Historie.
+    Enthält alle aggregierten Informationen zur Dokumenten-Historie.
     """
     service = get_lineage_service(session)
 
@@ -298,7 +298,7 @@ async def get_document_lineage_summary(
     if not summary:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine Lineage-Zusammenfassung fuer dieses Dokument gefunden",
+            detail="Keine Lineage-Zusammenfassung für dieses Dokument gefunden",
         )
 
     return LineageSummaryResponse(
@@ -401,8 +401,8 @@ async def export_document_lineage(
     """
     Exportiert die Lineage-Daten eines Dokuments.
 
-    Unterstuetzte Formate:
-    - json: Vollstaendige Lineage als JSON
+    Unterstützte Formate:
+    - json: Vollständige Lineage als JSON
     - pdf: Formatierter PDF-Report
     """
     service = get_lineage_service(session)
@@ -411,7 +411,7 @@ async def export_document_lineage(
     events, total = await service.get_timeline(
         document_id=document_id,
         company_id=company_id,
-        limit=1000,  # Maximale Events fuer Export
+        limit=1000,  # Maximale Events für Export
     )
 
     stats = await service.get_lineage_stats(
@@ -515,7 +515,7 @@ async def export_document_lineage(
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltiges Export-Format",
+            detail="Ungültiges Export-Format",
         )
 
 
@@ -524,9 +524,9 @@ async def get_lineage_event_types(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, str]:
     """
-    Gibt alle verfuegbaren Event-Typen mit deutschen Labels zurueck.
+    Gibt alle verfügbaren Event-Typen mit deutschen Labels zurück.
 
-    Nuetzlich fuer Frontend-Filterung und Anzeige.
+    Nuetzlich für Frontend-Filterung und Anzeige.
     """
     return EVENT_TYPE_LABELS
 
@@ -536,7 +536,7 @@ async def get_import_source_types(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, str]:
     """
-    Gibt alle verfuegbaren Import-Quelltypen mit deutschen Labels zurueck.
+    Gibt alle verfügbaren Import-Quelltypen mit deutschen Labels zurück.
     """
     return {
         "manual_upload": "Manueller Upload",

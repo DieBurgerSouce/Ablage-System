@@ -2,10 +2,10 @@
 """
 Jahresabschluss-Assistent API Endpoints.
 
-Endpunkte fuer den Jahresabschluss-Assistenten:
+Endpunkte für den Jahresabschluss-Assistenten:
 - Sessions erstellen und verwalten
-- Vollstaendigkeitspruefung durchfuehren
-- Luecken verwalten und beheben
+- Vollständigkeitsprüfung durchführen
+- Lücken verwalten und beheben
 - Steuerberater-Bericht generieren
 """
 
@@ -58,7 +58,7 @@ async def create_session(
     company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> YearEndSessionResponse:
-    """Erstellt eine neue Jahresabschluss-Session fuer das angegebene Geschaeftsjahr."""
+    """Erstellt eine neue Jahresabschluss-Session für das angegebene Geschäftsjahr."""
     try:
         session = await _service.create_session(
             db=db,
@@ -82,7 +82,7 @@ async def create_session(
 )
 async def list_sessions(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
@@ -123,7 +123,7 @@ async def get_session(
     company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> YearEndSessionDetailResponse:
-    """Ruft Details einer Jahresabschluss-Session ab (inkl. Pruefpunkte und Luecken)."""
+    """Ruft Details einer Jahresabschluss-Session ab (inkl. Prüfpunkte und Lücken)."""
     session = await _service.get_session(
         db=db,
         session_id=session_id,
@@ -145,7 +145,7 @@ async def get_session(
 @router.post(
     "/sessions/{session_id}/run-checks",
     response_model=YearEndSessionResponse,
-    summary="Vollstaendigkeitspruefung durchfuehren",
+    summary="Vollständigkeitsprüfung durchführen",
 )
 async def run_completeness_check(
     session_id: UUID,
@@ -153,7 +153,7 @@ async def run_completeness_check(
     company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> YearEndSessionResponse:
-    """Fuehrt die automatische Vollstaendigkeitspruefung fuer die Session durch."""
+    """Führt die automatische Vollständigkeitsprüfung für die Session durch."""
     try:
         session = await _service.run_completeness_check(
             db=db,
@@ -168,19 +168,19 @@ async def run_completeness_check(
         )
     except Exception as e:
         logger.error(
-            "Fehler bei Vollstaendigkeitspruefung",
+            "Fehler bei Vollständigkeitsprüfung",
             **safe_error_log(e),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail(e, "Vollstaendigkeitspruefung"),
+            detail=safe_error_detail(e, "Vollständigkeitsprüfung"),
         )
 
 
 @router.patch(
     "/check-items/{item_id}",
     response_model=YearEndCheckItemResponse,
-    summary="Pruefpunkt aktualisieren",
+    summary="Prüfpunkt aktualisieren",
 )
 async def update_check_item(
     item_id: UUID,
@@ -189,7 +189,7 @@ async def update_check_item(
     company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> YearEndCheckItemResponse:
-    """Aktualisiert den Status eines einzelnen Pruefpunkts."""
+    """Aktualisiert den Status eines einzelnen Prüfpunkts."""
     try:
         item = await _service.update_check_item(
             db=db,
@@ -206,10 +206,10 @@ async def update_check_item(
             detail=str(e),
         )
     except Exception as e:
-        logger.error("Fehler beim Aktualisieren des Pruefpunkts", **safe_error_log(e))
+        logger.error("Fehler beim Aktualisieren des Prüfpunkts", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail(e, "Pruefpunkt"),
+            detail=safe_error_detail(e, "Prüfpunkt"),
         )
 
 
@@ -221,7 +221,7 @@ async def update_check_item(
 @router.get(
     "/sessions/{session_id}/gaps",
     response_model=List[YearEndGapResponse],
-    summary="Luecken und Unstimmigkeiten auflisten",
+    summary="Lücken und Unstimmigkeiten auflisten",
 )
 async def list_gaps(
     session_id: UUID,
@@ -232,7 +232,7 @@ async def list_gaps(
     company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> List[YearEndGapResponse]:
-    """Listet alle Luecken und Unstimmigkeiten einer Session."""
+    """Listet alle Lücken und Unstimmigkeiten einer Session."""
     gaps = await _service.get_gaps(
         db=db,
         session_id=session_id,
@@ -247,7 +247,7 @@ async def list_gaps(
 @router.post(
     "/gaps/{gap_id}/resolve",
     response_model=YearEndGapResponse,
-    summary="Luecke als behoben markieren",
+    summary="Lücke als behoben markieren",
 )
 async def resolve_gap(
     gap_id: UUID,
@@ -256,7 +256,7 @@ async def resolve_gap(
     company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> YearEndGapResponse:
-    """Markiert eine identifizierte Luecke als behoben."""
+    """Markiert eine identifizierte Lücke als behoben."""
     try:
         gap = await _service.resolve_gap(
             db=db,
@@ -272,10 +272,10 @@ async def resolve_gap(
             detail=str(e),
         )
     except Exception as e:
-        logger.error("Fehler beim Beheben der Luecke", **safe_error_log(e))
+        logger.error("Fehler beim Beheben der Lücke", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail(e, "Luecke"),
+            detail=safe_error_detail(e, "Lücke"),
         )
 
 
@@ -295,14 +295,14 @@ async def generate_report(
     company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> YearEndReportResponse:
-    """Generiert einen umfassenden Bericht fuer den Steuerberater."""
+    """Generiert einen umfassenden Bericht für den Steuerberater."""
     try:
         report_data = await _service.generate_report_data(
             db=db,
             session_id=session_id,
             company_id=company.id,
         )
-        # Session neu laden fuer Zeitstempel
+        # Session neu laden für Zeitstempel
         session = await _service.get_session(
             db=db,
             session_id=session_id,
@@ -337,7 +337,7 @@ async def generate_report(
 @router.post(
     "/sessions/{session_id}/complete",
     response_model=YearEndSessionResponse,
-    summary="Jahresabschluss abschliessen",
+    summary="Jahresabschluss abschließen",
 )
 async def complete_session(
     session_id: UUID,
@@ -345,7 +345,7 @@ async def complete_session(
     company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> YearEndSessionResponse:
-    """Schliesst den Jahresabschluss ab (nur wenn alle kritischen Pruefungen bestanden)."""
+    """Schließt den Jahresabschluss ab (nur wenn alle kritischen Prüfungen bestanden)."""
     try:
         session = await _service.complete_session(
             db=db,
@@ -360,7 +360,7 @@ async def complete_session(
             detail=str(e),
         )
     except Exception as e:
-        logger.error("Fehler beim Abschliessen", **safe_error_log(e))
+        logger.error("Fehler beim Abschließen", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=safe_error_detail(e, "Jahresabschluss"),

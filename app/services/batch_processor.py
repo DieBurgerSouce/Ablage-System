@@ -173,7 +173,7 @@ class DynamicBatchSizer:
     Dynamic Batch Size Manager mit Real-Time VRAM Monitoring.
 
     Features:
-    - Kontinuierliche VRAM-Ueberwachung
+    - Kontinuierliche VRAM-Überwachung
     - Automatische Batch-Size-Anpassung vor jedem Chunk
     - Exponential Backoff bei OOM
     - Warmup-Phase Memory Profiling
@@ -184,7 +184,7 @@ class DynamicBatchSizer:
     VRAM_WARNING_THRESHOLD = 0.85   # Warnung bei 85%
     VRAM_CRITICAL_THRESHOLD = 0.95  # Kritisch bei 95%
 
-    # Geschaetzter Memory pro Dokument (in MB)
+    # Geschätzter Memory pro Dokument (in MB)
     MEMORY_PER_DOC_MB = {
         "deepseek": 600,
         "got_ocr": 450,
@@ -198,8 +198,8 @@ class DynamicBatchSizer:
         Initialisiere Dynamic Batch Sizer.
 
         Args:
-            max_batch_size: Maximale Batch-Groesse
-            min_batch_size: Minimale Batch-Groesse (fuer OOM Recovery)
+            max_batch_size: Maximale Batch-Größe
+            min_batch_size: Minimale Batch-Größe (für OOM Recovery)
         """
         self.max_batch_size = max_batch_size
         self.min_batch_size = min_batch_size
@@ -216,13 +216,13 @@ class DynamicBatchSizer:
 
     def get_optimal_batch_size(self, backend: str = "default") -> int:
         """
-        Berechne optimale Batch-Groesse basierend auf aktuellem VRAM-Status.
+        Berechne optimale Batch-Größe basierend auf aktuellem VRAM-Status.
 
         Args:
-            backend: OCR Backend Name fuer Memory-Schaetzung
+            backend: OCR Backend Name für Memory-Schätzung
 
         Returns:
-            Optimale Batch-Groesse
+            Optimale Batch-Größe
         """
         if not torch.cuda.is_available():
             return min(4, self.max_batch_size)
@@ -233,18 +233,18 @@ class DynamicBatchSizer:
         reserved = torch.cuda.memory_reserved()
         free_memory = total_memory - max(allocated, reserved)
 
-        # Memory pro Dokument (gemessen oder geschaetzt)
+        # Memory pro Dokument (gemessen oder geschätzt)
         if backend in self._measured_memory_per_doc:
             mem_per_doc = self._measured_memory_per_doc[backend]
         else:
             mem_per_doc = self.MEMORY_PER_DOC_MB.get(backend, self.MEMORY_PER_DOC_MB["default"])
             mem_per_doc *= 1024 * 1024  # MB to Bytes
 
-        # Berechne sichere Batch-Groesse
+        # Berechne sichere Batch-Größe
         safe_memory = free_memory * self.VRAM_SAFE_THRESHOLD
         calculated_batch = int(safe_memory / mem_per_doc) if mem_per_doc > 0 else 1
 
-        # Beruecksichtige OOM-History
+        # Berücksichtige OOM-History
         if self._oom_count > 0:
             # Reduziere exponentiell bei OOM-Fehlern
             reduction_factor = 0.5 ** self._oom_count
@@ -265,10 +265,10 @@ class DynamicBatchSizer:
 
     def record_oom(self) -> int:
         """
-        Erfasse OOM-Fehler und reduziere Batch-Groesse.
+        Erfasse OOM-Fehler und reduziere Batch-Größe.
 
         Returns:
-            Neue (reduzierte) Batch-Groesse
+            Neue (reduzierte) Batch-Größe
         """
         self._oom_count += 1
         self._current_batch_size = max(
@@ -286,10 +286,10 @@ class DynamicBatchSizer:
 
     def record_success(self, batch_size: int, backend: str, memory_used: float) -> None:
         """
-        Erfasse erfolgreiche Verarbeitung fuer Memory-Profiling.
+        Erfasse erfolgreiche Verarbeitung für Memory-Profiling.
 
         Args:
-            batch_size: Verwendete Batch-Groesse
+            batch_size: Verwendete Batch-Größe
             backend: Verwendetes Backend
             memory_used: Tatsaechlich verwendeter Speicher (Bytes)
         """
@@ -336,14 +336,14 @@ class DynamicBatchSizer:
 
     def warmup(self, backend: str, sample_batch_size: int = 2) -> None:
         """
-        Warmup-Phase: Bereite GPU fuer Verarbeitung vor.
+        Warmup-Phase: Bereite GPU für Verarbeitung vor.
 
-        Initialisiert CUDA-Kontext und setzt Memory-Statistiken zurueck.
+        Initialisiert CUDA-Kontext und setzt Memory-Statistiken zurück.
         Kein echter Verarbeitungs-Test - dient nur der GPU-Initialisierung.
 
         Args:
-            backend: Backend-Name fuer Logging
-            sample_batch_size: Geplante Sample-Groesse (nur fuer Logging)
+            backend: Backend-Name für Logging
+            sample_batch_size: Geplante Sample-Größe (nur für Logging)
 
         Note:
             Setzt _warmup_completed auf True nach Abschluss.
@@ -400,7 +400,7 @@ class BatchProcessor:
                 logger.warning("adaptive_batch_processor_init_failed", **safe_error_log(e))
                 self._use_adaptive = False
 
-        # Dynamic Batch Sizer fuer Real-Time VRAM Monitoring
+        # Dynamic Batch Sizer für Real-Time VRAM Monitoring
         self._dynamic_sizer = DynamicBatchSizer(
             max_batch_size=max_batch_size,
             min_batch_size=1

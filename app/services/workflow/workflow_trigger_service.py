@@ -28,12 +28,12 @@ logger = structlog.get_logger(__name__)
 
 
 class WorkflowTriggerService:
-    """Service fuer Workflow-Trigger.
+    """Service für Workflow-Trigger.
 
     Verwaltet:
     - Document Event Triggers (created, processed, failed, deleted)
     - Schedule Triggers (Cron-basiert)
-    - Condition Triggers (Feldaenderungen)
+    - Condition Triggers (Feldänderungen)
     - Manual Triggers (API/UI-Ausloesung)
     - Webhook Triggers (Externe Systeme)
     """
@@ -46,8 +46,8 @@ class WorkflowTriggerService:
         """Initialisiert den TriggerService.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
-            execution_service: WorkflowExecutionService fuer Ausfuehrung
+            db: AsyncSession für Datenbankoperationen
+            execution_service: WorkflowExecutionService für Ausführung
         """
         self.db = db
         self.execution_service = execution_service
@@ -56,7 +56,7 @@ class WorkflowTriggerService:
         self,
         service: "WorkflowExecutionService",
     ) -> None:
-        """Setzt den ExecutionService (fuer zirkulaere Abhaengigkeiten).
+        """Setzt den ExecutionService (für zirkuläre Abhängigkeiten).
 
         Args:
             service: WorkflowExecutionService
@@ -80,7 +80,7 @@ class WorkflowTriggerService:
             event_type: Event-Typ (created, processed, failed, deleted, status_changed)
             document_id: Dokument-ID
             user_id: User-ID
-            event_data: Zusaetzliche Event-Daten
+            event_data: Zusätzliche Event-Daten
 
         Returns:
             Liste gestarteter Execution-IDs
@@ -91,7 +91,7 @@ class WorkflowTriggerService:
             document_id=str(document_id),
         )
 
-        # Dokument-Daten ZUERST laden fuer company_id (Multi-Tenant Isolation)
+        # Dokument-Daten ZUERST laden für company_id (Multi-Tenant Isolation)
         document = await self._load_document(document_id)
         if not document:
             logger.warning(
@@ -101,7 +101,7 @@ class WorkflowTriggerService:
             )
             return []
 
-        # SECURITY: company_id aus Document fuer Multi-Tenant Isolation
+        # SECURITY: company_id aus Document für Multi-Tenant Isolation
         if not document.company_id:
             logger.error(
                 "document_missing_company_id",
@@ -123,11 +123,11 @@ class WorkflowTriggerService:
         execution_ids = []
 
         for workflow in workflows:
-            # Trigger-Bedingungen pruefen
+            # Trigger-Bedingungen prüfen
             if not self._check_trigger_conditions(workflow, document, event_data):
                 continue
 
-            # Workflow ausfuehren
+            # Workflow ausführen
             try:
                 if self.execution_service:
                     # SECURITY: company_id MUSS an ExecutionService weitergegeben werden
@@ -168,7 +168,7 @@ class WorkflowTriggerService:
         document_id: UUID,
         user_id: UUID,
     ) -> List[UUID]:
-        """Shortcut fuer document_created Event.
+        """Shortcut für document_created Event.
 
         Args:
             document_id: Dokument-ID
@@ -189,7 +189,7 @@ class WorkflowTriggerService:
         user_id: UUID,
         ocr_result: Optional[Dict[str, Any]] = None,
     ) -> List[UUID]:
-        """Shortcut fuer document_processed Event.
+        """Shortcut für document_processed Event.
 
         Args:
             document_id: Dokument-ID
@@ -212,7 +212,7 @@ class WorkflowTriggerService:
         user_id: UUID,
         error: str,
     ) -> List[UUID]:
-        """Shortcut fuer document_failed Event.
+        """Shortcut für document_failed Event.
 
         Args:
             document_id: Dokument-ID
@@ -236,7 +236,7 @@ class WorkflowTriggerService:
         old_status: str,
         new_status: str,
     ) -> List[UUID]:
-        """Shortcut fuer status_changed Event.
+        """Shortcut für status_changed Event.
 
         Args:
             document_id: Dokument-ID
@@ -262,13 +262,13 @@ class WorkflowTriggerService:
     # =========================================================================
 
     async def check_scheduled_workflows(self) -> List[UUID]:
-        """Prueft und startet faellige Schedule-Workflows.
+        """Prüft und startet fällige Schedule-Workflows.
 
-        Wird regelmaessig von Celery Beat aufgerufen.
+        Wird regelmäßig von Celery Beat aufgerufen.
 
-        SECURITY: Jeder Workflow wird mit seiner eigenen company_id ausgefuehrt,
+        SECURITY: Jeder Workflow wird mit seiner eigenen company_id ausgeführt,
         um Multi-Tenant Isolation sicherzustellen. Workflows OHNE company_id
-        werden uebersprungen (Sicherheitsmassnahme).
+        werden übersprungen (Sicherheitsmassnahme).
 
         Returns:
             Liste gestarteter Execution-IDs
@@ -276,7 +276,7 @@ class WorkflowTriggerService:
         now = datetime.now(timezone.utc)
 
         # SECURITY: Nur aktive Schedule-Workflows MIT company_id laden
-        # Workflows ohne company_id werden uebersprungen (potentielles Sicherheitsrisiko)
+        # Workflows ohne company_id werden übersprungen (potentielles Sicherheitsrisiko)
         query = select(Workflow).where(
             and_(
                 Workflow.trigger_type == "schedule",
@@ -336,33 +336,33 @@ class WorkflowTriggerService:
         workflow: Workflow,
         now: datetime,
     ) -> bool:
-        """Prueft ob ein Schedule-Workflow ausgefuehrt werden soll.
+        """Prüft ob ein Schedule-Workflow ausgeführt werden soll.
 
         Args:
             workflow: Workflow
             now: Aktuelle Zeit
 
         Returns:
-            True wenn faellig
+            True wenn fällig
         """
         cron_expression = workflow.trigger_config.get("cron")
         if not cron_expression:
             return False
 
         try:
-            # Timezone beruecksichtigen
+            # Timezone berücksichtigen
             tz_name = workflow.trigger_config.get("timezone", "UTC")
 
-            # Letzte Ausfuehrung pruefen
+            # Letzte Ausführung prüfen
             last_run = workflow.last_executed_at
             if last_run:
-                # Naechste geplante Ausfuehrung berechnen
+                # Nächste geplante Ausführung berechnen
                 cron = croniter(cron_expression, last_run)
                 next_run = cron.get_next(datetime)
 
                 return now >= next_run
             else:
-                # Noch nie ausgefuehrt - jetzt starten
+                # Noch nie ausgeführt - jetzt starten
                 return True
 
         except Exception as e:
@@ -379,14 +379,14 @@ class WorkflowTriggerService:
         cron_expression: str,
         from_time: Optional[datetime] = None,
     ) -> Optional[datetime]:
-        """Berechnet die naechste Ausfuehrungszeit.
+        """Berechnet die nächste Ausführungszeit.
 
         Args:
             cron_expression: Cron-Ausdruck
             from_time: Startzeit (default: jetzt)
 
         Returns:
-            Naechste Ausfuehrungszeit oder None
+            Nächste Ausführungszeit oder None
         """
         try:
             from_time = from_time or datetime.now(timezone.utc)
@@ -433,7 +433,7 @@ class WorkflowTriggerService:
         Args:
             workflow_id: Workflow-ID
             user_id: User-ID
-            company_id: Company-ID fuer Multi-Tenant Validierung (empfohlen)
+            company_id: Company-ID für Multi-Tenant Validierung (empfohlen)
             document_id: Optionale Dokument-ID
             variables: Optionale Variablen
 
@@ -444,7 +444,7 @@ class WorkflowTriggerService:
         if not workflow:
             return None
 
-        # Manuelle Trigger muessen nicht aktiv sein
+        # Manuelle Trigger müssen nicht aktiv sein
         # aber der Trigger-Typ muss manual sein oder es muss erlaubt sein
         allow_manual = workflow.trigger_config.get("allow_manual_trigger", True)
         if workflow.trigger_type != "manual" and not allow_manual:
@@ -500,7 +500,7 @@ class WorkflowTriggerService:
             webhook_path: Webhook-Pfad
             payload: Webhook-Payload
             headers: HTTP-Headers
-            company_id: Optional Company-ID fuer Multi-Tenant Validierung
+            company_id: Optional Company-ID für Multi-Tenant Validierung
 
         Returns:
             Execution-ID oder None
@@ -514,7 +514,7 @@ class WorkflowTriggerService:
             )
             return None
 
-        # SECURITY: Workflow MUSS company_id haben fuer Ausfuehrung
+        # SECURITY: Workflow MUSS company_id haben für Ausführung
         if not workflow.company_id:
             logger.error(
                 "webhook_workflow_missing_company_id",
@@ -565,7 +565,7 @@ class WorkflowTriggerService:
         user_id: UUID,
         company_id: Optional[UUID] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Holt Webhook-Konfiguration fuer einen Workflow.
+        """Holt Webhook-Konfiguration für einen Workflow.
 
         SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
         Company gehoeren (Multi-Tenant Isolation).
@@ -573,7 +573,7 @@ class WorkflowTriggerService:
         Args:
             workflow_id: Workflow-ID
             user_id: User-ID
-            company_id: Company-ID fuer Multi-Tenant Validierung (empfohlen)
+            company_id: Company-ID für Multi-Tenant Validierung (empfohlen)
 
         Returns:
             Webhook-Config oder None
@@ -609,7 +609,7 @@ class WorkflowTriggerService:
         Args:
             workflow_id: Workflow-ID
             user_id: User-ID
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            company_id: Company-ID für Multi-Tenant Isolation
 
         Returns:
             Neues Secret oder None
@@ -649,7 +649,7 @@ class WorkflowTriggerService:
             signature: Empfangene Signatur
 
         Returns:
-            True wenn gueltig
+            True wenn gültig
         """
         if not signature:
             return False
@@ -679,12 +679,12 @@ class WorkflowTriggerService:
         user_id: UUID,
         changed_fields: Dict[str, tuple[Any, Any]],
     ) -> List[UUID]:
-        """Prueft Condition-Triggers bei Feldaenderungen.
+        """Prüft Condition-Triggers bei Feldänderungen.
 
         Args:
             document_id: Dokument-ID
             user_id: User-ID
-            changed_fields: Geaenderte Felder {field: (old_value, new_value)}
+            changed_fields: Geänderte Felder {field: (old_value, new_value)}
 
         Returns:
             Liste gestarteter Execution-IDs
@@ -692,7 +692,7 @@ class WorkflowTriggerService:
         if not changed_fields:
             return []
 
-        # SECURITY: Dokument laden fuer company_id (Multi-Tenant Isolation)
+        # SECURITY: Dokument laden für company_id (Multi-Tenant Isolation)
         document = await self._load_document(document_id)
         if not document or not document.company_id:
             logger.warning(
@@ -714,10 +714,10 @@ class WorkflowTriggerService:
         execution_ids = []
 
         for workflow in workflows:
-            # Trigger-Bedingungen pruefen
+            # Trigger-Bedingungen prüfen
             watch_fields = workflow.trigger_config.get("watch_fields", [])
 
-            # Pruefen ob eines der beobachteten Felder geaendert wurde
+            # Prüfen ob eines der beobachteten Felder geändert wurde
             triggered = False
             for field in watch_fields:
                 if field in changed_fields:
@@ -765,19 +765,19 @@ class WorkflowTriggerService:
     ) -> List[Workflow]:
         """Findet passende Workflows mit Multi-Tenant Isolation.
 
-        SECURITY: Filtert IMMER nach company_id fuer Multi-Tenant Isolation.
-        Workflows ohne company_id (Templates) werden nur bei scope="global" beruecksichtigt.
+        SECURITY: Filtert IMMER nach company_id für Multi-Tenant Isolation.
+        Workflows ohne company_id (Templates) werden nur bei scope="global" berücksichtigt.
 
         Args:
             trigger_type: Trigger-Typ
             user_id: User-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant Isolation)
-            event_type: Optional Event-Typ fuer document_event
+            company_id: Company-ID (PFLICHT für Multi-Tenant Isolation)
+            event_type: Optional Event-Typ für document_event
 
         Returns:
             Liste passender Workflows
         """
-        # SECURITY: company_id ist Pflicht fuer Multi-Tenant Isolation
+        # SECURITY: company_id ist Pflicht für Multi-Tenant Isolation
         conditions = [
             Workflow.trigger_type == trigger_type,
             Workflow.is_active == True,  # noqa: E712
@@ -804,7 +804,7 @@ class WorkflowTriggerService:
         result = await self.db.execute(query)
         workflows = list(result.scalars().all())
 
-        # Event-Type Filter (fuer document_event)
+        # Event-Type Filter (für document_event)
         if event_type and trigger_type == "document_event":
             workflows = [
                 w for w in workflows
@@ -819,7 +819,7 @@ class WorkflowTriggerService:
         document: Optional[Document],
         event_data: Optional[Dict[str, Any]],
     ) -> bool:
-        """Prueft zusaetzliche Trigger-Bedingungen.
+        """Prüft zusätzliche Trigger-Bedingungen.
 
         Args:
             workflow: Workflow
@@ -833,7 +833,7 @@ class WorkflowTriggerService:
         if not conditions:
             return True
 
-        # Einfache Filter (Legacy-Kompatibilitaet)
+        # Einfache Filter (Legacy-Kompatibilität)
         # Document-Type Filter
         doc_types = conditions.get("document_types", [])
         if doc_types and document:
@@ -861,10 +861,10 @@ class WorkflowTriggerService:
             from typing import Optional as Opt
             from uuid import UUID as UUIDType
 
-            # Minimaler Trigger-Kontext fuer ConditionEvaluator
+            # Minimaler Trigger-Kontext für ConditionEvaluator
             @dataclass
             class TriggerContext:
-                """Minimaler Kontext fuer Trigger-Bedingungsevaluierung."""
+                """Minimaler Kontext für Trigger-Bedingungsevaluierung."""
                 document: Document
                 event_data: Dict[str, Any] = dataclass_field(default_factory=dict)
                 variables: Dict[str, Any] = dataclass_field(default_factory=dict)
@@ -899,13 +899,13 @@ class WorkflowTriggerService:
         """Laedt einen Workflow mit Multi-Tenant Isolation.
 
         SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
-        Company gehoeren. Templates werden nur zurueckgegeben wenn sie zur
+        Company gehoeren. Templates werden nur zurückgegeben wenn sie zur
         gleichen Company gehoeren.
 
         Args:
             workflow_id: Workflow-ID
             user_id: Optionale User-ID
-            company_id: Company-ID fuer Multi-Tenant Validierung (empfohlen)
+            company_id: Company-ID für Multi-Tenant Validierung (empfohlen)
 
         Returns:
             Workflow oder None
@@ -920,7 +920,7 @@ class WorkflowTriggerService:
                 )
             )
 
-        # SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        # SECURITY: company_id Filter für Multi-Tenant Isolation
         if company_id:
             query = query.where(Workflow.company_id == company_id)
 
@@ -929,7 +929,7 @@ class WorkflowTriggerService:
 
         # SECURITY: Cross-Tenant Zugriff loggen
         if workflow is None and company_id:
-            # Pruefen ob Workflow existiert aber andere Company hat
+            # Prüfen ob Workflow existiert aber andere Company hat
             check_query = select(Workflow.id, Workflow.company_id).where(
                 Workflow.id == workflow_id
             )
@@ -954,11 +954,11 @@ class WorkflowTriggerService:
 
         SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser Company gehoeren.
         Webhook-Paths sind global unique, aber die company_id Validierung schuetzt vor
-        Cross-Tenant Zugriff wenn die API den company_id Parameter uebergibt.
+        Cross-Tenant Zugriff wenn die API den company_id Parameter übergibt.
 
         Args:
             webhook_path: Webhook-Pfad
-            company_id: Optional Company-ID fuer Multi-Tenant Validierung
+            company_id: Optional Company-ID für Multi-Tenant Validierung
 
         Returns:
             Workflow oder None

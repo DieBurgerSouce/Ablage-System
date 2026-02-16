@@ -1,7 +1,7 @@
-"""Document-Service fuer CRUD-Operationen und Batch-Verarbeitung.
+"""Document-Service für CRUD-Operationen und Batch-Verarbeitung.
 
-Zentrale Service-Schicht fuer Dokumentenverwaltung mit Unterstuetzung
-fuer Filterung, Pagination und Batch-Operationen.
+Zentrale Service-Schicht für Dokumentenverwaltung mit Unterstützung
+für Filterung, Pagination und Batch-Operationen.
 
 NOTE: Dieses Modul delegiert nun an spezialisierte Services:
 - DocumentGDPRService: Soft-Delete, Restore, Permanent-Delete
@@ -97,11 +97,11 @@ def set_search_service(service: "SearchService") -> None:
 
 
 class DocumentService:
-    """Service fuer Dokumentenverwaltung.
+    """Service für Dokumentenverwaltung.
 
     Bietet CRUD-Operationen, Filterung, Pagination und Batch-Operationen.
 
-    NOTE: Delegiert an spezialisierte Services fuer:
+    NOTE: Delegiert an spezialisierte Services für:
     - GDPR-Operationen (soft_delete, restore)
     - Batch-Operationen (batch_delete, batch_tag, bulk_update)
     - Export-Operationen (batch_export)
@@ -191,7 +191,7 @@ class DocumentService:
         # Tags laden
         query = query.options(selectinload(Document.tags))
 
-        # Ausfuehren
+        # Ausführen
         result = await db.execute(query)
         documents = result.scalars().all()
 
@@ -294,7 +294,7 @@ class DocumentService:
             user_id: Benutzer-ID
             updates: Dictionary mit Feldname -> Wert
             tag_operation: "set", "add", oder "remove"
-            tag_values: Tags fuer die Operation
+            tag_values: Tags für die Operation
         """
         # Dokument laden
         query = (
@@ -371,7 +371,7 @@ class DocumentService:
         updates: DocumentPartialUpdateRequest,
         dry_run: bool = False
     ) -> BulkUpdateResult:
-        """Bulk-Update fuer mehrere Dokumente.
+        """Bulk-Update für mehrere Dokumente.
 
         NOTE: Delegiert an DocumentBatchService.
 
@@ -380,9 +380,9 @@ class DocumentService:
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            filter_criteria: Filter fuer zu aktualisierende Dokumente
-            updates: Anzuwendende Aenderungen
-            dry_run: Nur simulieren, nicht ausfuehren
+            filter_criteria: Filter für zu aktualisierende Dokumente
+            updates: Anzuwendende Änderungen
+            dry_run: Nur simulieren, nicht ausführen
         """
         return await self.batch_service.bulk_update(
             db, user_id, filter_criteria, updates, dry_run
@@ -394,8 +394,8 @@ class DocumentService:
         document_id: UUID,
         user_id: UUID
     ) -> bool:
-        """Dokument loeschen."""
-        # Pruefen ob Dokument existiert und Benutzer berechtigt ist
+        """Dokument löschen."""
+        # Prüfen ob Dokument existiert und Benutzer berechtigt ist
         query = select(Document).where(
             and_(Document.id == document_id, Document.owner_id == user_id)
         )
@@ -405,7 +405,7 @@ class DocumentService:
         if not doc:
             return False
 
-        # Dokument loeschen (CASCADE loescht Tags-Verknuepfungen)
+        # Dokument löschen (CASCADE löscht Tags-Verknüpfungen)
         await db.delete(doc)
         await db.commit()
 
@@ -450,10 +450,10 @@ class DocumentService:
         user_id: UUID,
         reason: Optional[str] = None
     ) -> Optional[SoftDeleteResponse]:
-        """Dokument soft-loeschen (GDPR-konform).
+        """Dokument soft-löschen (GDPR-konform).
 
-        Phase 2.3: Markiert Dokument als geloescht, entfernt es aber nicht.
-        Nach 30 Tagen wird es permanent geloescht (via Scheduled Task).
+        Phase 2.3: Markiert Dokument als gelöscht, entfernt es aber nicht.
+        Nach 30 Tagen wird es permanent gelöscht (via Scheduled Task).
 
         NOTE: Delegiert an DocumentGDPRService.
         """
@@ -467,9 +467,9 @@ class DocumentService:
         document_id: UUID,
         user_id: UUID
     ) -> Optional[RestoreDocumentResponse]:
-        """Soft-geloeschtes Dokument wiederherstellen.
+        """Soft-gelöschtes Dokument wiederherstellen.
 
-        Phase 2.3: Stellt ein geloeschtes Dokument wieder her,
+        Phase 2.3: Stellt ein gelöschtes Dokument wieder her,
         solange die 30-Tage-Frist nicht abgelaufen ist.
 
         NOTE: Delegiert an DocumentGDPRService.
@@ -481,10 +481,10 @@ class DocumentService:
         db: AsyncSession,
         user_id: UUID
     ) -> DeletedDocumentsListResponse:
-        """Alle soft-geloeschten Dokumente eines Benutzers auflisten.
+        """Alle soft-gelöschten Dokumente eines Benutzers auflisten.
 
-        Phase 2.3: Zeigt geloeschte Dokumente mit Restzeit bis zur
-        permanenten Loeschung.
+        Phase 2.3: Zeigt gelöschte Dokumente mit Restzeit bis zur
+        permanenten Löschung.
 
         NOTE: Delegiert an DocumentGDPRService.
         """
@@ -495,13 +495,13 @@ class DocumentService:
         db: AsyncSession,
         days_threshold: int = 30
     ) -> int:
-        """Permanent loescht alle Dokumente, deren Soft-Delete abgelaufen ist.
+        """Permanent löscht alle Dokumente, deren Soft-Delete abgelaufen ist.
 
         Phase 2.3: Sollte als Scheduled Task laufen.
 
         NOTE: Delegiert an DocumentGDPRService.
 
-        Returns: Anzahl geloeschter Dokumente
+        Returns: Anzahl gelöschter Dokumente
         """
         return await self.gdpr_service.permanently_delete_expired(db, days_threshold)
 
@@ -516,16 +516,16 @@ class DocumentService:
         dry_run: bool = False,
         soft_delete: bool = True
     ) -> BatchOperationResult:
-        """Mehrere Dokumente loeschen (optimierte Bulk-Operation).
+        """Mehrere Dokumente löschen (optimierte Bulk-Operation).
 
         NOTE: Delegiert an DocumentBatchService.
 
         Args:
             db: Datenbank-Session
-            document_ids: Liste der zu loeschenden Dokument-IDs
-            user_id: ID des ausfuehrenden Benutzers
-            dry_run: Wenn True, wird nur simuliert (keine Loeschung)
-            soft_delete: Wenn True (Standard), Soft-Delete fuer GDPR-Konformitaet
+            document_ids: Liste der zu löschenden Dokument-IDs
+            user_id: ID des ausführenden Benutzers
+            dry_run: Wenn True, wird nur simuliert (keine Löschung)
+            soft_delete: Wenn True (Standard), Soft-Delete für GDPR-Konformität
 
         Returns:
             BatchOperationResult mit Statistiken
@@ -542,11 +542,11 @@ class DocumentService:
         user_id: UUID,
         operation: TagOperation = TagOperation.ADD
     ) -> BatchOperationResult:
-        """Tags fuer mehrere Dokumente setzen - optimiert mit Bulk-Loading.
+        """Tags für mehrere Dokumente setzen - optimiert mit Bulk-Loading.
 
         NOTE: Delegiert an DocumentBatchService.
 
-        TRANSAKTIONSSICHER: Bei Fehlern wird Rollback durchgefuehrt.
+        TRANSAKTIONSSICHER: Bei Fehlern wird Rollback durchgeführt.
         """
         return await self.batch_service.batch_tag(
             db, document_ids, tags, user_id, operation
@@ -605,7 +605,7 @@ class DocumentService:
         return conditions
 
     def _get_sort_column(self, sort_by: SortField):
-        """Spalte fuer Sortierung ermitteln."""
+        """Spalte für Sortierung ermitteln."""
         sort_map = {
             SortField.CREATED_AT: Document.created_at,
             SortField.UPDATED_AT: Document.updated_at,
@@ -631,7 +631,7 @@ class DocumentService:
         db: AsyncSession,
         tag_names: List[str]
     ) -> List[Tag]:
-        """Tags erstellen falls nicht vorhanden, vorhandene zurueckgeben."""
+        """Tags erstellen falls nicht vorhanden, vorhandene zurückgeben."""
         if not tag_names:
             return []
 
@@ -650,7 +650,7 @@ class DocumentService:
                 db.add(new_tag)
                 tags.append(new_tag)
 
-        await db.flush()  # IDs fuer neue Tags generieren
+        await db.flush()  # IDs für neue Tags generieren
         return tags
 
     def _to_summary(self, doc: Document) -> DocumentSummary:
@@ -666,7 +666,7 @@ class DocumentService:
             created_at=doc.created_at,
             tags=[t.name for t in doc.tags] if doc.tags else [],
             has_embedding=doc.embedding is not None,
-            # Quick Classification (schnelle Klassifizierung waehrend Upload)
+            # Quick Classification (schnelle Klassifizierung während Upload)
             quick_classification_status=doc.quick_classification_status or "pending",
             quick_classification_result=doc.quick_classification_result
         )
@@ -712,7 +712,7 @@ class DocumentService:
             embedding_updated_at=doc.embedding_updated_at,
             embedding_model=doc.embedding_model,
             owner_id=doc.owner_id,
-            # Quick Classification (schnelle Klassifizierung waehrend Upload)
+            # Quick Classification (schnelle Klassifizierung während Upload)
             quick_classification_status=doc.quick_classification_status or "pending",
             quick_classification_result=doc.quick_classification_result
         )

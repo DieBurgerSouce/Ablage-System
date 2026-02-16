@@ -42,7 +42,7 @@ class GraphQLQueryRequest(BaseModel):
         """Validiert Entity-Type gegen Whitelist."""
         allowed = {"document", "entity", "invoice", "alert", "workflow", "payment"}
         if v not in allowed:
-            raise ValueError(f"Ungueltiger Entity-Typ. Erlaubt: {allowed}")
+            raise ValueError(f"Ungültiger Entity-Typ. Erlaubt: {allowed}")
         return v
 
     @validator("fields")
@@ -51,7 +51,7 @@ class GraphQLQueryRequest(BaseModel):
         pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{0,63}$")
         for field in v:
             if not pattern.match(field):
-                raise ValueError(f"Ungueltiger Feldname: {field}")
+                raise ValueError(f"Ungültiger Feldname: {field}")
         return v
 
     @validator("order_by")
@@ -61,7 +61,7 @@ class GraphQLQueryRequest(BaseModel):
             return v
         pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{0,63}$")
         if not pattern.match(v):
-            raise ValueError(f"Ungueltiges Sortierfeld: {v}")
+            raise ValueError(f"Ungültiges Sortierfeld: {v}")
         return v
 
 
@@ -208,7 +208,7 @@ class QueryBuilder:
         count_result = await db.execute(count_stmt)
         total_count = count_result.scalar() or 0
 
-        # SECURITY: Whitelist fuer Sortierfelder pro Entity-Typ (CWE-89)
+        # SECURITY: Whitelist für Sortierfelder pro Entity-Typ (CWE-89)
         ALLOWED_ORDER_FIELDS = {
             "document": {"id", "filename", "status", "created_at", "updated_at", "ocr_confidence"},
             "entity": {"id", "name", "entity_type", "risk_score", "created_at", "payment_delay_days"},
@@ -224,7 +224,7 @@ class QueryBuilder:
                 order_field = getattr(model_class, request.order_by, None)
                 if order_field is not None:
                     stmt = stmt.order_by(desc(order_field) if request.order_desc else asc(order_field))
-            # Ungueltige Felder werden ignoriert (Silent Fallback auf Default)
+            # Ungültige Felder werden ignoriert (Silent Fallback auf Default)
         else:
             # Standard: Nach created_at absteigend
             if hasattr(model_class, "created_at"):

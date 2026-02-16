@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Error Tracking Service fuer Ablage-System OCR.
+Error Tracking Service für Ablage-System OCR.
 
 Zentrales Error-Tracking mit:
 - Fehlerfrequenz-Tracking pro Kategorie
@@ -103,7 +103,7 @@ class TrackedError:
 
 @dataclass
 class ErrorStats:
-    """Fehler-Statistiken fuer eine Kategorie."""
+    """Fehler-Statistiken für eine Kategorie."""
     total_count: int = 0
     last_hour_count: int = 0
     last_24h_count: int = 0
@@ -115,7 +115,7 @@ class ErrorStats:
 
 @dataclass
 class AlertConfig:
-    """Konfiguration fuer Error-Alerts."""
+    """Konfiguration für Error-Alerts."""
     category: ErrorCategory
     threshold_per_minute: float = 10.0
     threshold_severity: ErrorSeverity = ErrorSeverity.ERROR
@@ -133,13 +133,13 @@ class ErrorTrackingService:
     Zentraler Error-Tracking-Service.
 
     Features:
-    - In-Memory Error Buffer mit konfigurierbarer Groesse
+    - In-Memory Error Buffer mit konfigurierbarer Größe
     - Fehler-Kategorisierung und Severity-Tracking
     - Prometheus-Metriken Integration
     - Alert-Schwellenwerte
     - Historische Analyse
 
-    Thread-safe fuer concurrent access.
+    Thread-safe für concurrent access.
     """
 
     _instance: Optional["ErrorTrackingService"] = None
@@ -218,8 +218,8 @@ class ErrorTrackingService:
             message: Fehlernachricht (KEINE PII!)
             path: Request-Pfad
             user_id: User-ID (anonymisiert)
-            request_id: Request-ID fuer Korrelation
-            details: Zusaetzliche Details (KEINE PII!)
+            request_id: Request-ID für Korrelation
+            details: Zusätzliche Details (KEINE PII!)
             stack_trace: Stack-Trace (nur in DEBUG)
             response_time_ms: Response-Zeit in ms
         """
@@ -265,7 +265,7 @@ class ErrorTrackingService:
                 response_time_ms / 1000.0
             )
 
-        # Alert-Pruefung
+        # Alert-Prüfung
         self._check_alerts(category, now)
 
         # Strukturiertes Logging
@@ -281,7 +281,7 @@ class ErrorTrackingService:
         )
 
     def _update_stats(self, error: TrackedError) -> None:
-        """Aktualisiere Statistiken fuer Fehler-Kategorie."""
+        """Aktualisiere Statistiken für Fehler-Kategorie."""
         with self._stats_lock:
             stats = self._stats[error.category]
             stats.total_count += 1
@@ -304,7 +304,7 @@ class ErrorTrackingService:
         with self._rate_lock:
             buckets = self._minute_buckets[category]
 
-            # Aktuellen Bucket erhoehen
+            # Aktuellen Bucket erhöhen
             if minute_key not in buckets:
                 buckets[minute_key] = 0
             buckets[minute_key] += 1
@@ -323,19 +323,19 @@ class ErrorTrackingService:
                 error_rate.labels(category=category.value).set(rate)
 
     def _check_alerts(self, category: ErrorCategory, now: datetime) -> None:
-        """Pruefe ob Alert ausgeloest werden soll."""
+        """Prüfe ob Alert ausgeloest werden soll."""
         with self._alert_lock:
             config = self._alert_configs.get(category)
             if not config:
                 return
 
-            # Cooldown pruefen
+            # Cooldown prüfen
             last_alert = self._active_alerts.get(category)
             if last_alert:
                 if (now - last_alert).total_seconds() < config.cooldown_minutes * 60:
                     return
 
-            # Rate pruefen
+            # Rate prüfen
             stats = self._stats[category]
             if stats.rate_per_minute >= config.threshold_per_minute:
                 # Alert ausloesen
@@ -369,11 +369,11 @@ class ErrorTrackingService:
         callback: Optional[Callable[[str, Dict[str, Any]], None]] = None,
     ) -> None:
         """
-        Konfiguriere Alert fuer eine Kategorie.
+        Konfiguriere Alert für eine Kategorie.
 
         Args:
             category: Fehler-Kategorie
-            threshold_per_minute: Schwellenwert fuer Alert
+            threshold_per_minute: Schwellenwert für Alert
             cooldown_minutes: Cooldown zwischen Alerts
             callback: Optionale Callback-Funktion bei Alert
         """
@@ -391,7 +391,7 @@ class ErrorTrackingService:
         )
 
     def clear_alert(self, category: ErrorCategory) -> None:
-        """Loesche aktiven Alert fuer Kategorie."""
+        """Lösche aktiven Alert für Kategorie."""
         with self._alert_lock:
             if category in self._active_alerts:
                 del self._active_alerts[category]
@@ -429,7 +429,7 @@ class ErrorTrackingService:
         hour_ago: datetime,
         day_ago: datetime,
     ) -> Dict[str, Any]:
-        """Formatiere Statistiken fuer Output."""
+        """Formatiere Statistiken für Output."""
         # Zaehle Fehler in Zeitraeumen
         with self._buffer_lock:
             last_hour = sum(
@@ -500,7 +500,7 @@ class ErrorTrackingService:
         hours: int = 24,
     ) -> Dict[str, Any]:
         """
-        Hole Fehler-Trends ueber Zeit.
+        Hole Fehler-Trends über Zeit.
 
         Args:
             category: Kategorie
@@ -543,14 +543,14 @@ class ErrorTrackingService:
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
         """
-        Hole haeufigste Fehler.
+        Hole häufigste Fehler.
 
         Args:
             category: Optional Kategorie-Filter
             limit: Anzahl
 
         Returns:
-            Liste der haeufigsten Fehler-Typen
+            Liste der häufigsten Fehler-Typen
         """
         with self._stats_lock:
             if category:
@@ -609,7 +609,7 @@ class ErrorTrackingService:
 
     def reset_stats(self, category: Optional[ErrorCategory] = None) -> None:
         """
-        Setze Statistiken zurueck.
+        Setze Statistiken zurück.
 
         Args:
             category: Optional spezifische Kategorie, sonst alle
@@ -643,7 +643,7 @@ class ErrorTrackingService:
         for key, value in details.items():
             key_lower = key.lower()
             if any(sensitive in key_lower for sensitive in sensitive_keys):
-                continue  # Ueberspringen
+                continue  # Überspringen
             elif isinstance(value, dict):
                 safe[key] = self._sanitize_details(value)
             elif isinstance(value, str) and len(value) > 200:

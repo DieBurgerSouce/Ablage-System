@@ -299,7 +299,7 @@ class DropShipmentDetectionService:
                 )
                 return (doc_id, classification, None)
             except Exception as e:
-                return (doc_id, None, safe_error_detail(e, "Streckengeschaeft"))
+                return (doc_id, None, safe_error_detail(e, "Streckengeschäft"))
 
         # Process all documents in parallel
         tasks = [classify_single(doc_id) for doc_id in document_ids]
@@ -739,7 +739,7 @@ class DropShipmentDetectionService:
                 {'proof_type': 'invoice', 'is_present': True, 'is_complete': True},  # The document itself
                 {'proof_type': 'delivery_note', 'is_present': False, 'is_complete': False},
                 {'proof_type': 'cmr', 'is_present': False, 'is_complete': False},
-                {'proof_type': 'gelangensbestaetigung', 'is_present': False, 'is_complete': False},
+                {'proof_type': 'gelangensbestätigung', 'is_present': False, 'is_complete': False},
             ]
 
         if transaction_type == 'triangular_eu':

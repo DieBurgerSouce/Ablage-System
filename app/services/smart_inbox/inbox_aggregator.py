@@ -34,7 +34,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class InboxItemData:
-    """Daten fuer ein Smart Inbox Item."""
+    """Daten für ein Smart Inbox Item."""
     source_type: str
     source_id: UUID
     title: str
@@ -62,11 +62,11 @@ class InboxAggregator:
         db: AsyncSession,
     ) -> List[InboxItemData]:
         """
-        Aggregiert alle Inbox Items fuer einen Benutzer.
+        Aggregiert alle Inbox Items für einen Benutzer.
 
         Args:
             user_id: Benutzer-ID
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            company_id: Company-ID für Multi-Tenant Isolation
             db: Async DB Session
 
         Returns:
@@ -410,7 +410,7 @@ class InboxAggregator:
         """Aggregiert offene Genehmigungsanfragen."""
         items: List[InboxItemData] = []
 
-        # Hole User-Rollen und Gruppen fuer erweiterte Approval-Suche
+        # Hole User-Rollen und Gruppen für erweiterte Approval-Suche
         user_roles = await self._get_user_roles(user_id, company_id, db)
         user_groups = await self._get_user_groups(user_id, company_id, db)
 
@@ -573,5 +573,5 @@ class InboxAggregator:
             )
             return list(result.scalars().all())
         except Exception:
-            # Tabelle existiert moeglicherweise nicht
+            # Tabelle existiert möglicherweise nicht
             return []

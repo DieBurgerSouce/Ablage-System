@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """Visual Workflow Builder Service.
 
-No-Code Workflow-Editor fuer Business-User.
-Erstellt Drag&Drop Workflow-Definitionen mit ReactFlow-Kompatibilitaet.
+No-Code Workflow-Editor für Business-User.
+Erstellt Drag&Drop Workflow-Definitionen mit ReactFlow-Kompatibilität.
 
 Features:
-- Pre-built Workflow-Bloecke (Genehmigung, Benachrichtigung, Bedingung, Verzoegerung)
+- Pre-built Workflow-Bloecke (Genehmigung, Benachrichtigung, Bedingung, Verzögerung)
 - Multi-Level Approval (sequentiell, parallel, 2-von-3)
 - Workflow-Simulation (Dry-Run)
 - Template-Generierung
@@ -34,7 +34,7 @@ logger = structlog.get_logger(__name__)
 
 
 class BlockType(str, Enum):
-    """Verfuegbare Block-Typen fuer den visuellen Builder."""
+    """Verfügbare Block-Typen für den visuellen Builder."""
 
     TRIGGER = "trigger"
     APPROVAL = "approval"
@@ -57,7 +57,7 @@ class ApprovalMode(str, Enum):
 
 
 class TriggerType(str, Enum):
-    """Verfuegbare Trigger-Typen."""
+    """Verfügbare Trigger-Typen."""
 
     DOCUMENT_UPLOADED = "document_uploaded"
     DOCUMENT_APPROVED = "document_approved"
@@ -121,7 +121,7 @@ class WorkflowEdge:
     id: str
     source_id: str
     target_id: str
-    source_handle: Optional[str] = None  # Fuer bedingte Ausgaenge
+    source_handle: Optional[str] = None  # Für bedingte Ausgaenge
     target_handle: Optional[str] = None
     label: Optional[str] = None
     condition: Optional[Dict[str, Any]] = None
@@ -129,7 +129,7 @@ class WorkflowEdge:
 
 @dataclass
 class VisualWorkflow:
-    """Vollstaendige visuelle Workflow-Definition."""
+    """Vollständige visuelle Workflow-Definition."""
 
     id: str
     name: str
@@ -147,7 +147,7 @@ class SimulationResult:
     """Ergebnis einer Workflow-Simulation."""
 
     success: bool
-    execution_path: List[str]  # Block-IDs in Ausfuehrungsreihenfolge
+    execution_path: List[str]  # Block-IDs in Ausführungsreihenfolge
     simulated_outputs: Dict[str, Any]
     warnings: List[str]
     errors: List[str]
@@ -251,7 +251,7 @@ BLOCK_DEFINITIONS: Dict[str, Dict[str, Any]] = {
     "approval_parallel": {
         "type": BlockType.APPROVAL,
         "label": "Parallele Genehmigung",
-        "description": "Alle muessen gleichzeitig genehmigen",
+        "description": "Alle müssen gleichzeitig genehmigen",
         "category": "approval",
         "icon": "git-merge",
         "config_schema": {
@@ -274,7 +274,7 @@ BLOCK_DEFINITIONS: Dict[str, Dict[str, Any]] = {
     "approval_threshold": {
         "type": BlockType.APPROVAL,
         "label": "Schwellwert-Genehmigung",
-        "description": "N von M muessen genehmigen (z.B. 2 von 3)",
+        "description": "N von M müssen genehmigen (z.B. 2 von 3)",
         "category": "approval",
         "icon": "users",
         "config_schema": {
@@ -327,8 +327,8 @@ BLOCK_DEFINITIONS: Dict[str, Dict[str, Any]] = {
     },
     "condition_entity": {
         "type": BlockType.CONDITION,
-        "label": "Geschaeftspartner-Bedingung",
-        "description": "Verzweigung nach Geschaeftspartner",
+        "label": "Geschäftspartner-Bedingung",
+        "description": "Verzweigung nach Geschäftspartner",
         "category": "condition",
         "icon": "building",
         "config_schema": {
@@ -470,10 +470,10 @@ BLOCK_DEFINITIONS: Dict[str, Dict[str, Any]] = {
         "inputs": ["input"],
         "outputs": ["success", "failed"],
     },
-    # Verzoegerungs-Blocks
+    # Verzögerungs-Blocks
     "delay_fixed": {
         "type": BlockType.DELAY,
-        "label": "Feste Verzoegerung",
+        "label": "Feste Verzögerung",
         "description": "Wartet eine feste Zeitspanne",
         "category": "delay",
         "icon": "clock",
@@ -522,9 +522,9 @@ BLOCK_DEFINITIONS: Dict[str, Dict[str, Any]] = {
 
 
 class VisualWorkflowBuilderService:
-    """Service fuer den visuellen Workflow-Builder.
+    """Service für den visuellen Workflow-Builder.
 
-    Ermoeglicht Business-Usern das Erstellen von Workflows per Drag&Drop
+    Ermöglicht Business-Usern das Erstellen von Workflows per Drag&Drop
     ohne Code-Kenntnisse.
     """
 
@@ -532,7 +532,7 @@ class VisualWorkflowBuilderService:
         """Initialisiert den Service.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
         """
         self.db = db
         self.workflow_service = WorkflowService(db)
@@ -542,7 +542,7 @@ class VisualWorkflowBuilderService:
     # =========================================================================
 
     def get_available_blocks(self, category: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Gibt verfuegbare Workflow-Blocks zurueck.
+        """Gibt verfügbare Workflow-Blocks zurück.
 
         Args:
             category: Optionaler Filter nach Kategorie
@@ -571,7 +571,7 @@ class VisualWorkflowBuilderService:
         return blocks
 
     def get_block_categories(self) -> List[Dict[str, str]]:
-        """Gibt verfuegbare Block-Kategorien zurueck.
+        """Gibt verfügbare Block-Kategorien zurück.
 
         Returns:
             Liste der Kategorien mit Labels
@@ -581,8 +581,8 @@ class VisualWorkflowBuilderService:
             {"id": "approval", "label": "Genehmigung", "description": "Genehmigungs-Workflows"},
             {"id": "condition", "label": "Bedingung", "description": "Verzweigungen"},
             {"id": "notification", "label": "Benachrichtigung", "description": "Benachrichtigungen senden"},
-            {"id": "action", "label": "Aktion", "description": "Aktionen ausfuehren"},
-            {"id": "delay", "label": "Verzoegerung", "description": "Warten"},
+            {"id": "action", "label": "Aktion", "description": "Aktionen ausführen"},
+            {"id": "delay", "label": "Verzögerung", "description": "Warten"},
             {"id": "control", "label": "Steuerung", "description": "Workflow-Steuerung"},
         ]
 
@@ -604,7 +604,7 @@ class VisualWorkflowBuilderService:
 
         Args:
             user_id: ID des erstellenden Users
-            company_id: Company-ID fuer Multi-Tenant
+            company_id: Company-ID für Multi-Tenant
             name: Workflow-Name
             blocks: Liste der Block-Definitionen
             edges: Liste der Verbindungen
@@ -746,15 +746,15 @@ class VisualWorkflowBuilderService:
         edges: List[Dict[str, Any]],
         test_data: Dict[str, Any],
     ) -> SimulationResult:
-        """Simuliert Workflow-Ausfuehrung.
+        """Simuliert Workflow-Ausführung.
 
         Args:
             blocks: Block-Definitionen
             edges: Verbindungen
-            test_data: Testdaten fuer Simulation
+            test_data: Testdaten für Simulation
 
         Returns:
-            SimulationResult mit Ausfuehrungspfad
+            SimulationResult mit Ausführungspfad
         """
         execution_path: List[str] = []
         outputs: Dict[str, Any] = {}
@@ -818,7 +818,7 @@ class VisualWorkflowBuilderService:
                 break
 
             elif block_type == BlockType.DELAY.value or block_type == "delay":
-                # Verzoegerung berechnen
+                # Verzögerung berechnen
                 delay_seconds = self._calculate_delay_seconds(config)
                 duration_estimate += delay_seconds
                 outputs[current_id] = {"delayed_seconds": delay_seconds}
@@ -841,7 +841,7 @@ class VisualWorkflowBuilderService:
             elif block_type == BlockType.ACTION.value or block_type == "action":
                 outputs[current_id] = {"simulated_executed": True}
 
-            # Naechsten Block finden
+            # Nächsten Block finden
             next_blocks = adjacency.get(current_id, [])
 
             if not next_blocks:
@@ -849,9 +849,9 @@ class VisualWorkflowBuilderService:
             elif len(next_blocks) == 1:
                 current_id = next_blocks[0]
             else:
-                # Mehrere Ausgaenge - basierend auf Bedingungsergebnis waehlen
+                # Mehrere Ausgaenge - basierend auf Bedingungsergebnis wählen
                 if block_type in [BlockType.CONDITION.value, "condition"]:
-                    # Bei Bedingung: "true" oder "match" Pfad waehlen basierend auf Ergebnis
+                    # Bei Bedingung: "true" oder "match" Pfad wählen basierend auf Ergebnis
                     condition_result = outputs.get(current_id, {}).get("condition_result", True)
                     # Finde passende Edge
                     for edge in edges:
@@ -864,7 +864,7 @@ class VisualWorkflowBuilderService:
                     else:
                         current_id = next_blocks[0]
                 elif block_type in [BlockType.APPROVAL.value, "approval"]:
-                    # Bei Genehmigung: "approved" Pfad waehlen
+                    # Bei Genehmigung: "approved" Pfad wählen
                     for edge in edges:
                         if edge.get("source_id") == current_id and edge.get("source_handle") == "approved":
                             current_id = edge.get("target_id")
@@ -888,7 +888,7 @@ class VisualWorkflowBuilderService:
     # =========================================================================
 
     def get_workflow_templates(self) -> List[Dict[str, Any]]:
-        """Gibt vordefinierte Workflow-Templates zurueck.
+        """Gibt vordefinierte Workflow-Templates zurück.
 
         Returns:
             Liste der Template-Definitionen
@@ -897,7 +897,7 @@ class VisualWorkflowBuilderService:
             {
                 "id": "invoice_approval_simple",
                 "name": "Einfache Rechnungsgenehmigung",
-                "description": "Rechnung ab 1000 EUR benoetigt Genehmigung",
+                "description": "Rechnung ab 1000 EUR benötigt Genehmigung",
                 "category": "approval",
                 "blocks": [
                     {
@@ -1083,13 +1083,13 @@ class VisualWorkflowBuilderService:
             {
                 "id": "payment_reminder",
                 "name": "Zahlungserinnerung",
-                "description": "Automatische Mahnung bei ueberfaelliger Zahlung",
+                "description": "Automatische Mahnung bei überfälliger Zahlung",
                 "category": "reminder",
                 "blocks": [
                     {
                         "id": "trigger",
                         "type": "trigger_schedule",
-                        "config": {"cron": "0 9 * * *"},  # Taeglich um 9 Uhr
+                        "config": {"cron": "0 9 * * *"},  # Täglich um 9 Uhr
                         "position_x": 100,
                         "position_y": 100,
                     },
@@ -1158,14 +1158,14 @@ class VisualWorkflowBuilderService:
         # Block-IDs sammeln
         block_ids = {b.get("id") for b in blocks if b.get("id")}
 
-        # Trigger-Block pruefen
+        # Trigger-Block prüfen
         trigger_blocks = [b for b in blocks if b.get("type", "").startswith("trigger")]
         if len(trigger_blocks) == 0:
             errors.append("Genau ein Trigger-Block erforderlich")
         elif len(trigger_blocks) > 1:
             errors.append("Nur ein Trigger-Block erlaubt")
 
-        # End-Block pruefen
+        # End-Block prüfen
         end_blocks = [b for b in blocks if b.get("type") == "end"]
         if not end_blocks:
             errors.append("Mindestens ein End-Block erforderlich")
@@ -1210,7 +1210,7 @@ class VisualWorkflowBuilderService:
         return adjacency
 
     def _has_cycle(self, adjacency: Dict[str, List[str]], all_nodes: set) -> bool:
-        """Prueft auf Zyklen mittels DFS.
+        """Prüft auf Zyklen mittels DFS.
 
         Args:
             adjacency: Adjacency-Liste
@@ -1281,7 +1281,7 @@ class VisualWorkflowBuilderService:
 
         base_type, base_config = type_mapping.get(block_type, ("manual", {}))
 
-        # Config zusammenfuehren
+        # Config zusammenführen
         merged_config = {**base_config, **config}
 
         return base_type, merged_config
@@ -1392,7 +1392,7 @@ class VisualWorkflowBuilderService:
         for order, block in enumerate(blocks):
             block_type = block.get("type", "")
 
-            # Trigger-Blocks ueberspringen (sind in Workflow-Config)
+            # Trigger-Blocks überspringen (sind in Workflow-Config)
             if block_type.startswith("trigger"):
                 continue
 
@@ -1436,7 +1436,7 @@ class VisualWorkflowBuilderService:
             return "action"
 
     def _calculate_delay_seconds(self, config: Dict[str, Any]) -> int:
-        """Berechnet Verzoegerung in Sekunden.
+        """Berechnet Verzögerung in Sekunden.
 
         Args:
             config: Delay-Konfiguration

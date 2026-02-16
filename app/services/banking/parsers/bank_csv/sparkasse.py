@@ -13,7 +13,7 @@ from ...models import ImportFormat
 
 @ParserRegistry.register
 class SparkasseCSVParser(GenericCSVParser):
-    """Parser fuer Sparkasse CSV-Kontoauszuege."""
+    """Parser für Sparkasse CSV-Kontoauszuege."""
 
     FORMAT = ImportFormat.CSV_SPARKASSE
     FORMAT_VARIANT = "sparkasse"
@@ -23,14 +23,14 @@ class SparkasseCSVParser(GenericCSVParser):
         "Auftragskonto", "Buchungstag", "Valutadatum", "Buchungstext",
         "Verwendungszweck", "Glaeubiger ID", "Mandatsreferenz",
         "Kundenreferenz (End-to-End)", "Sammlerreferenz",
-        "Lastschrift Ursprungsbetrag", "Auslagenersatz Ruecklastschrift",
-        "Beguenstigter/Zahlungspflichtiger", "Kontonummer/IBAN",
-        "BIC (SWIFT-Code)", "Betrag", "Waehrung", "Info"
+        "Lastschrift Ursprungsbetrag", "Auslagenersatz Rücklastschrift",
+        "Begünstigter/Zahlungspflichtiger", "Kontonummer/IBAN",
+        "BIC (SWIFT-Code)", "Betrag", "Währung", "Info"
     }
 
     @classmethod
     def can_parse(cls, content: Union[str, bytes], filename: Optional[str] = None) -> float:
-        """Pruefe auf Sparkasse-Format."""
+        """Prüfe auf Sparkasse-Format."""
         text = cls._decode_content(content)
         if not text:
             return 0.0
@@ -40,7 +40,7 @@ class SparkasseCSVParser(GenericCSVParser):
         # Charakteristische Sparkasse-Spalten
         sparkasse_markers = [
             "auftragskonto",
-            "beguenstigter/zahlungspflichtiger",
+            "begünstigter/zahlungspflichtiger",
             "glaeubiger id",
             "mandatsreferenz",
         ]
@@ -69,9 +69,9 @@ class SparkasseCSVParser(GenericCSVParser):
                 mapping["value_date"] = field
             elif "betrag" in field_lower and "ursprung" not in field_lower:
                 mapping["amount"] = field
-            elif "waehrung" in field_lower or "währung" in field_lower:
+            elif "währung" in field_lower or "währung" in field_lower:
                 mapping["currency"] = field
-            elif "beguenstigter" in field_lower or "begünstigter" in field_lower:
+            elif "begünstigter" in field_lower or "begünstigter" in field_lower:
                 mapping["counterparty_name"] = field
             elif "kontonummer" in field_lower or "iban" in field_lower:
                 mapping["counterparty_iban"] = field

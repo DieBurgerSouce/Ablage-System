@@ -2,11 +2,11 @@
 """
 Finance Services Package.
 
-Enterprise-Grade Finanzmanagement fuer Ablage-System:
+Enterprise-Grade Finanzmanagement für Ablage-System:
 - Budget-Verwaltung mit Kostenstellen
 - Soll/Ist-Vergleiche und Abweichungsanalysen
 - Automatische Kategorisierung aus OCR-Daten
-- Alert-System bei Budget-Ueberschreitung
+- Alert-System bei Budget-Überschreitung
 - 3-Way PO-Matching (Bestellung-Lieferschein-Rechnung)
 
 Phase 2.1-2.2 der Feature-Roadmap (Januar-Februar 2026).

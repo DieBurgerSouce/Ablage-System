@@ -6,8 +6,8 @@ Wrapper-Service der:
 - Einheitliches Interface wie PropertyIntelligenceService bietet
 - An bestehenden InsuranceAnalysisService delegiert
 - Integration mit RecommendationsService hat
-- Batch-Operationen fuer alle Spaces unterstuetzt
-- Event-Publishing fuer Deckungsluecken
+- Batch-Operationen für alle Spaces unterstützt
+- Event-Publishing für Deckungslücken
 
 Enterprise Feature - Singleton Pattern wie alle Intelligence Services.
 """
@@ -62,7 +62,7 @@ INSURANCE_COVERAGE_SCORE = Gauge(
 
 INSURANCE_CRITICAL_GAPS = Gauge(
     "insurance_critical_gaps_total",
-    "Anzahl kritischer Deckungsluecken insgesamt"
+    "Anzahl kritischer Deckungslücken insgesamt"
 )
 
 
@@ -72,14 +72,14 @@ INSURANCE_CRITICAL_GAPS = Gauge(
 
 @dataclass
 class InsuranceIntelligenceResult:
-    """Vollstaendiges Ergebnis der Insurance Intelligence Analyse."""
+    """Vollständiges Ergebnis der Insurance Intelligence Analyse."""
     space_id: UUID
 
     # Deckungsanalyse
     coverage_analysis: Optional[CoverageGapAnalysisResult] = None
     coverage_score: Decimal = Decimal("0")
 
-    # Kuendigungsfristen
+    # Kündigungsfristen
     cancellation_deadlines: List[CancellationDeadlineResult] = field(default_factory=list)
     urgent_deadlines_count: int = 0
     approaching_deadlines_count: int = 0
@@ -99,7 +99,7 @@ class InsuranceIntelligenceResult:
 
 @dataclass
 class BatchInsuranceResult:
-    """Ergebnis der Batch-Berechnung fuer alle Spaces."""
+    """Ergebnis der Batch-Berechnung für alle Spaces."""
     total_spaces: int = 0
     calculated: int = 0
     skipped: int = 0
@@ -126,8 +126,8 @@ class InsuranceIntelligenceService:
     - Einheitliches Interface wie PropertyIntelligenceService
     - Delegation an bestehenden InsuranceAnalysisService
     - Integration mit RecommendationsService
-    - Batch-Operationen fuer alle Spaces
-    - Event-Publishing bei kritischen Luecken
+    - Batch-Operationen für alle Spaces
+    - Event-Publishing bei kritischen Lücken
 
     Thread-safe Singleton mit Double-Checked Locking.
     """
@@ -155,7 +155,7 @@ class InsuranceIntelligenceService:
         pass
 
     # =========================================================================
-    # Vollstaendige Analyse
+    # Vollständige Analyse
     # =========================================================================
 
     async def get_full_analysis(
@@ -165,7 +165,7 @@ class InsuranceIntelligenceService:
         persist: bool = True,
     ) -> InsuranceIntelligenceResult:
         """
-        Fuehrt vollstaendige Insurance Intelligence Analyse durch.
+        Führt vollständige Insurance Intelligence Analyse durch.
 
         Delegiert an InsuranceAnalysisService und reichert mit
         Empfehlungen und Health Score an.
@@ -215,7 +215,7 @@ class InsuranceIntelligenceService:
         """
         recommendations: List[str] = []
 
-        # Deckungsluecken-Empfehlungen
+        # Deckungslücken-Empfehlungen
         if kpis.coverage_analysis:
             # Fehlende essentielle Versicherungen
             for missing in kpis.coverage_analysis.missing_essential:
@@ -224,31 +224,31 @@ class InsuranceIntelligenceService:
                     "Dringend Abschluss empfohlen"
                 )
 
-            # Kritische Luecken
+            # Kritische Lücken
             for gap in kpis.coverage_analysis.gaps:
                 if gap.severity == "critical":
                     recommendations.append(
-                        f"Kritische Deckungsluecke bei {gap.insurance_name}: "
+                        f"Kritische Deckungslücke bei {gap.insurance_name}: "
                         f"Nur {float(gap.current_coverage):,.0f} EUR von "
                         f"{float(gap.recommended_coverage):,.0f} EUR empfohlen"
                     )
                 elif gap.severity == "high" and gap.is_essential:
                     recommendations.append(
-                        f"Hohe Deckungsluecke bei {gap.insurance_name}: "
-                        f"Erhoehung auf {float(gap.recommended_coverage):,.0f} EUR pruefen"
+                        f"Hohe Deckungslücke bei {gap.insurance_name}: "
+                        f"Erhöhung auf {float(gap.recommended_coverage):,.0f} EUR prüfen"
                     )
 
-        # Kuendigungsfristen-Empfehlungen
+        # Kündigungsfristen-Empfehlungen
         for deadline in kpis.cancellation_deadlines:
             if deadline.is_urgent:
                 recommendations.append(
-                    f"DRINGEND: Kuendigungsfrist fuer {deadline.insurance_name} "
+                    f"DRINGEND: Kündigungsfrist für {deadline.insurance_name} "
                     f"endet in {deadline.days_until_deadline} Tagen - "
-                    "Jetzt pruefen ob Kuendigung oder Verlaengerung gewuenscht!"
+                    "Jetzt prüfen ob Kündigung oder Verlängerung gewünscht!"
                 )
             elif deadline.is_approaching and deadline.days_until_deadline <= 60:
                 recommendations.append(
-                    f"Kuendigungsfrist fuer {deadline.insurance_name} "
+                    f"Kündigungsfrist für {deadline.insurance_name} "
                     f"in {deadline.days_until_deadline} Tagen - "
                     "Rechtzeitig Konditionen vergleichen"
                 )
@@ -259,14 +259,14 @@ class InsuranceIntelligenceService:
             if monthly > Decimal("500"):
                 recommendations.append(
                     f"Monatliche Versicherungskosten von {float(monthly):,.0f} EUR - "
-                    "Potenzial fuer Buendelrabatte oder Tarifwechsel pruefen"
+                    "Potenzial für Buendelrabatte oder Tarifwechsel prüfen"
                 )
 
         # Coverage Score Empfehlung
         if kpis.coverage_analysis and kpis.coverage_analysis.coverage_score < Decimal("50"):
             recommendations.append(
                 f"Deckungsscore nur {float(kpis.coverage_analysis.coverage_score):.0f}% - "
-                "Dringende Ueberarbeitung des Versicherungsportfolios empfohlen"
+                "Dringende Überarbeitung des Versicherungsportfolios empfohlen"
             )
 
         return recommendations
@@ -277,7 +277,7 @@ class InsuranceIntelligenceService:
 
     def _calculate_health_score(self, kpis: InsuranceKPIs) -> Decimal:
         """
-        Berechnet einen Gesundheits-Score (0-100) fuer Versicherungen.
+        Berechnet einen Gesundheits-Score (0-100) für Versicherungen.
 
         Args:
             kpis: Berechnete KPIs
@@ -292,14 +292,14 @@ class InsuranceIntelligenceService:
             coverage_contribution = (kpis.coverage_analysis.coverage_score / 100) * 30
             score += coverage_contribution
 
-            # Abzuege fuer kritische Luecken
+            # Abzuege für kritische Lücken
             score -= Decimal(str(kpis.coverage_analysis.critical_gaps * 10))
             score -= Decimal(str(kpis.coverage_analysis.high_gaps * 5))
 
-            # Abzug fuer fehlende essentielle Versicherungen
+            # Abzug für fehlende essentielle Versicherungen
             score -= Decimal(str(len(kpis.coverage_analysis.missing_essential) * 8))
 
-        # Kuendigungsfristen (max +10 Punkte wenn keine dringend)
+        # Kündigungsfristen (max +10 Punkte wenn keine dringend)
         urgent_count = sum(1 for d in kpis.cancellation_deadlines if d.is_urgent)
         if urgent_count == 0:
             score += Decimal("10")
@@ -339,7 +339,7 @@ class InsuranceIntelligenceService:
 
             event_bus = get_event_bus()
 
-            # Event bei kritischen Deckungsluecken
+            # Event bei kritischen Deckungslücken
             if kpis.coverage_analysis and kpis.coverage_analysis.critical_gaps > 0:
                 await event_bus.publish(
                     EventType.INSURANCE_GAP_DETECTED,
@@ -352,7 +352,7 @@ class InsuranceIntelligenceService:
                     }
                 )
 
-            # Event bei dringenden Kuendigungsfristen
+            # Event bei dringenden Kündigungsfristen
             urgent_deadlines = [d for d in kpis.cancellation_deadlines if d.is_urgent]
             for deadline in urgent_deadlines:
                 await event_bus.publish(
@@ -384,10 +384,10 @@ class InsuranceIntelligenceService:
         space_ids: Optional[List[UUID]] = None,
     ) -> BatchInsuranceResult:
         """
-        Berechnet Insurance Intelligence fuer alle Spaces.
+        Berechnet Insurance Intelligence für alle Spaces.
 
         WICHTIG: Events werden NACH db.commit() publiziert um Transaktions-
-        konsistenz zu gewaehrleisten.
+        konsistenz zu gewährleisten.
 
         Args:
             db: Datenbank-Session
@@ -414,7 +414,7 @@ class InsuranceIntelligenceService:
 
         total_coverage_score = Decimal("0")
 
-        # Events sammeln fuer spaetere Publikation NACH db.commit()
+        # Events sammeln für spätere Publikation NACH db.commit()
         pending_events: List[tuple[UUID, InsuranceKPIs]] = []
 
         for space in spaces:
@@ -433,7 +433,7 @@ class InsuranceIntelligenceService:
                 if analysis.coverage_analysis:
                     batch_result.total_critical_gaps += analysis.coverage_analysis.critical_gaps
 
-                # Events fuer spaeter merken
+                # Events für später merken
                 if kpis:
                     pending_events.append((space.id, kpis))
 
@@ -483,13 +483,13 @@ class InsuranceIntelligenceService:
         defer_events: bool = False,
     ) -> tuple[InsuranceIntelligenceResult, Optional[InsuranceKPIs]]:
         """
-        Interne Methode fuer get_full_analysis mit optionalem Event-Defer.
+        Interne Methode für get_full_analysis mit optionalem Event-Defer.
 
         Args:
             db: Datenbank-Session
             space_id: Space-ID
             persist: Ob die Werte gespeichert werden sollen
-            defer_events: Wenn True, Events nicht publizieren sondern KPIs zurueckgeben
+            defer_events: Wenn True, Events nicht publizieren sondern KPIs zurückgeben
 
         Returns:
             Tuple aus Result und optional KPIs (wenn defer_events=True)
@@ -573,7 +573,7 @@ class InsuranceIntelligenceService:
 
 
 def get_insurance_intelligence_service() -> InsuranceIntelligenceService:
-    """Factory fuer InsuranceIntelligenceService Singleton (Thread-safe).
+    """Factory für InsuranceIntelligenceService Singleton (Thread-safe).
 
     Note:
         Thread-safety wird durch das Singleton Pattern in der Klasse garantiert.

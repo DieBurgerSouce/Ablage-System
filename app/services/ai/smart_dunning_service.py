@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-SmartDunningService - Intelligentes Mahnwesen mit KI-Unterstuetzung.
+SmartDunningService - Intelligentes Mahnwesen mit KI-Unterstützung.
 
 Features:
 - Optimales Mahntiming basierend auf Kundenhistorie
@@ -9,7 +9,7 @@ Features:
 - Erfolgstracking pro Strategie
 - Zahlungsvorhersage basierend auf Kundenverhalten
 
-On-Premises: Nutzt ausschliesslich lokales Ollama (keine Cloud-LLMs).
+On-Premises: Nutzt ausschließlich lokales Ollama (keine Cloud-LLMs).
 
 Feinpoliert und durchdacht - Enterprise Dunning Intelligence.
 """
@@ -74,7 +74,7 @@ DUNNING_SENT = Counter(
 
 DUNNING_SUCCESS = Counter(
     "smart_dunning_success_total",
-    "Anzahl erfolgreicher Mahnungen (fuehrten zu Zahlung)",
+    "Anzahl erfolgreicher Mahnungen (führten zu Zahlung)",
     ["dunning_level", "strategy"]
 )
 
@@ -107,7 +107,7 @@ class DunningLevel(int, Enum):
     FIRST = 1     # 1. Mahnung
     SECOND = 2    # 2. Mahnung
     FINAL = 3     # Letzte Mahnung vor Inkasso
-    INKASSO = 4   # Uebergabe an Inkasso
+    INKASSO = 4   # Übergabe an Inkasso
 
 
 class DunningTone(str, Enum):
@@ -136,12 +136,12 @@ class PaymentLikelihood(str, Enum):
 
 
 class CustomerSegment(str, Enum):
-    """Kundensegment fuer Personalisierung."""
+    """Kundensegment für Personalisierung."""
     VIP = "vip"                 # Langjaeahrige Top-Kunden
     GOOD = "good"               # Gute Zahlungshistorie
     NORMAL = "normal"           # Durchschnitt
-    RISKY = "risky"             # Erhoehtes Risiko
-    PROBLEMATIC = "problematic" # Chronisch spaete Zahler
+    RISKY = "risky"             # Erhöhtes Risiko
+    PROBLEMATIC = "problematic" # Chronisch späte Zahler
 
 
 # Deutsche Mahnstufen-Labels
@@ -150,12 +150,12 @@ DUNNING_LEVEL_LABELS_DE: Dict[DunningLevel, str] = {
     DunningLevel.FIRST: "1. Mahnung",
     DunningLevel.SECOND: "2. Mahnung",
     DunningLevel.FINAL: "Letzte Mahnung",
-    DunningLevel.INKASSO: "Inkasso-Ankuendigung",
+    DunningLevel.INKASSO: "Inkasso-Ankündigung",
 }
 
 # Standard-Wartezeiten zwischen Mahnstufen (Tage)
 DEFAULT_WAITING_PERIODS: Dict[DunningLevel, int] = {
-    DunningLevel.REMINDER: 7,   # 7 Tage nach Faelligkeit
+    DunningLevel.REMINDER: 7,   # 7 Tage nach Fälligkeit
     DunningLevel.FIRST: 14,     # 14 Tage nach Erinnerung
     DunningLevel.SECOND: 14,    # 14 Tage nach 1. Mahnung
     DunningLevel.FINAL: 7,      # 7 Tage nach 2. Mahnung
@@ -205,7 +205,7 @@ class PaymentPrediction:
 
 @dataclass
 class CustomerProfile:
-    """Kundenprofil fuer Personalisierung."""
+    """Kundenprofil für Personalisierung."""
     entity_id: uuid.UUID
     segment: CustomerSegment
     avg_payment_delay: float
@@ -259,20 +259,20 @@ class DunningResult:
 # LLM Prompt Templates
 # =============================================================================
 
-DUNNING_TEXT_SYSTEM_PROMPT = """Du bist ein Experte fuer professionelle Geschaeftskommunikation in Deutschland.
+DUNNING_TEXT_SYSTEM_PROMPT = """Du bist ein Experte für professionelle Geschäftskommunikation in Deutschland.
 Deine Aufgabe ist es, Mahntexte zu erstellen, die:
 1. Professionell und respektvoll sind
 2. Klar und eindeutig formuliert sind
 3. Rechtlich korrekt sind (deutsches Mahnrecht)
-4. Den gewuenschten Tonfall treffen
-5. Die Kundenbeziehung beruecksichtigen
+4. Den gewünschten Tonfall treffen
+5. Die Kundenbeziehung berücksichtigen
 
 WICHTIG:
 - Alle Texte auf Deutsch
 - Keine Drohungen oder Beleidigungen
 - Korrekte Anrede und Grussformel
 - Konkrete Zahlungsinformationen einbinden
-- Bei hoeheren Mahnstufen rechtliche Konsequenzen erwaehnen
+- Bei höheren Mahnstufen rechtliche Konsequenzen erwaehnen
 """
 
 DUNNING_TEXT_USER_PROMPT = """Erstelle einen Mahntext mit folgenden Parametern:
@@ -280,9 +280,9 @@ DUNNING_TEXT_USER_PROMPT = """Erstelle einen Mahntext mit folgenden Parametern:
 RECHNUNGSDATEN:
 - Rechnungsnummer: {invoice_number}
 - Rechnungsdatum: {invoice_date}
-- Faelligkeitsdatum: {due_date}
+- Fälligkeitsdatum: {due_date}
 - Betrag: {amount} {currency}
-- Tage ueberfaellig: {days_overdue}
+- Tage überfällig: {days_overdue}
 
 MAHNSTUFE: {dunning_level} ({dunning_level_de})
 
@@ -290,7 +290,7 @@ TONFALL: {tone} ({tone_description})
 
 KUNDENPROFIL:
 - Segment: {customer_segment}
-- Geschaeftsbeziehung: {relationship_months} Monate
+- Geschäftsbeziehung: {relationship_months} Monate
 - Zahlungsverhalten: {payment_behavior}
 - Offene Rechnungen: {open_invoices}
 
@@ -303,25 +303,25 @@ Antworte im folgenden JSON-Format:
 {{
     "subject": "Betreff der E-Mail/des Briefs",
     "greeting": "Anrede",
-    "body": "Haupttext (2-4 Absaetze)",
+    "body": "Haupttext (2-4 Absätze)",
     "closing": "Grussformel mit Unterschrift"
 }}
 """
 
-PAYMENT_PREDICTION_PROMPT = """Basierend auf dem Kundenprofil, schaetze die Zahlungswahrscheinlichkeit:
+PAYMENT_PREDICTION_PROMPT = """Basierend auf dem Kundenprofil, schätze die Zahlungswahrscheinlichkeit:
 
 KUNDENDATEN:
-- Durchschnittliche Zahlungsverzoegerung: {avg_delay} Tage
+- Durchschnittliche Zahlungsverzögerung: {avg_delay} Tage
 - Zahlungstrend: {trend}
 - Gesamte Rechnungen: {total_invoices}
 - Offene Rechnungen: {open_invoices}
-- Ueberfaellige Rechnungen: {overdue_invoices}
-- Geschaeftsbeziehung: {relationship_months} Monate
+- Überfällige Rechnungen: {overdue_invoices}
+- Geschäftsbeziehung: {relationship_months} Monate
 - Risiko-Score: {risk_score}
 
 AKTUELLE RECHNUNG:
 - Betrag: {amount} {currency}
-- Tage ueberfaellig: {days_overdue}
+- Tage überfällig: {days_overdue}
 - Aktuelle Mahnstufe: {dunning_level}
 
 Antworte im JSON-Format:
@@ -340,11 +340,11 @@ Antworte im JSON-Format:
 # =============================================================================
 
 TONE_DESCRIPTIONS: Dict[DunningTone, str] = {
-    DunningTone.FRIENDLY: "Freundlich und verstaendnisvoll, moeglicher Zahlungsverzug wird als Versehen behandelt",
+    DunningTone.FRIENDLY: "Freundlich und verstaendnisvoll, möglicher Zahlungsverzug wird als Versehen behandelt",
     DunningTone.NEUTRAL: "Sachlich und professionell, ohne emotionale Wertung",
     DunningTone.FIRM: "Bestimmt und klar, mit Nachdruck auf Zahlungspflicht",
     DunningTone.URGENT: "Dringend, mit Hinweis auf zeitkritische Konsequenzen",
-    DunningTone.FINAL: "Letztmalige Aufforderung mit Ankuendigung rechtlicher Schritte",
+    DunningTone.FINAL: "Letztmalige Aufforderung mit Ankündigung rechtlicher Schritte",
 }
 
 
@@ -354,7 +354,7 @@ TONE_DESCRIPTIONS: Dict[DunningTone, str] = {
 
 class SmartDunningService:
     """
-    Intelligentes Mahnwesen mit KI-Unterstuetzung.
+    Intelligentes Mahnwesen mit KI-Unterstützung.
 
     Features:
     - Personalisierte Mahntexte via Ollama
@@ -371,7 +371,7 @@ class SmartDunningService:
 
     # Konfiguration
     LLM_TIMEOUT_SECONDS = 30
-    MIN_HISTORY_FOR_PREDICTION = 3  # Mindest-Rechnungen fuer Vorhersage
+    MIN_HISTORY_FOR_PREDICTION = 3  # Mindest-Rechnungen für Vorhersage
 
     def __init__(
         self,
@@ -414,11 +414,11 @@ class SmartDunningService:
         entity_id: uuid.UUID,
     ) -> Optional[CustomerProfile]:
         """
-        Erstellt Kundenprofil fuer Personalisierung.
+        Erstellt Kundenprofil für Personalisierung.
 
         Args:
             db: Database Session
-            entity_id: Geschaeftspartner-ID
+            entity_id: Geschäftspartner-ID
 
         Returns:
             CustomerProfile oder None
@@ -466,7 +466,7 @@ class SmartDunningService:
             open_invoices=factors.open_invoices,
             relationship_months=factors.relationship_months,
             last_payment_date=last_payment,
-            preferred_communication=None,  # Koennte aus Entity-Metadaten kommen
+            preferred_communication=None,  # Könnte aus Entity-Metadaten kommen
             language="de",
         )
 
@@ -498,7 +498,7 @@ class SmartDunningService:
         dunning_level: DunningLevel,
     ) -> DunningTiming:
         """
-        Berechnet optimalen Zeitpunkt fuer Mahnung.
+        Berechnet optimalen Zeitpunkt für Mahnung.
 
         Args:
             db: Database Session
@@ -520,7 +520,7 @@ class SmartDunningService:
             return DunningTiming(
                 recommended_date=datetime.now(timezone.utc) + timedelta(days=default_days),
                 days_from_now=default_days,
-                reasoning="Keine Rechnungsdaten verfuegbar - Standard-Timing",
+                reasoning="Keine Rechnungsdaten verfügbar - Standard-Timing",
                 confidence=0.5,
                 factors={},
             )
@@ -538,7 +538,7 @@ class SmartDunningService:
             "dunning_level": dunning_level.value,
         }
 
-        # Tage ueberfaellig berechnen
+        # Tage überfällig berechnen
         if invoice.due_date:
             due_date = invoice.due_date.replace(tzinfo=timezone.utc) if invoice.due_date.tzinfo is None else invoice.due_date
             days_overdue = (datetime.now(timezone.utc) - due_date).days
@@ -557,16 +557,16 @@ class SmartDunningService:
                 # Timing anpassen basierend auf Profil
                 base_days = self._adjust_timing_by_profile(base_days, profile, dunning_level)
 
-        # Wochentag beruecksichtigen (Montag/Dienstag sind optimal)
+        # Wochentag berücksichtigen (Montag/Dienstag sind optimal)
         recommended_date = datetime.now(timezone.utc) + timedelta(days=base_days)
         weekday = recommended_date.weekday()
 
-        # Auf Montag/Dienstag verschieben wenn moeglich
+        # Auf Montag/Dienstag verschieben wenn möglich
         if weekday >= 5:  # Samstag/Sonntag
             days_to_monday = 7 - weekday
             recommended_date += timedelta(days=days_to_monday)
             base_days += days_to_monday
-        elif weekday == 4:  # Freitag -> naechster Montag
+        elif weekday == 4:  # Freitag -> nächster Montag
             recommended_date += timedelta(days=3)
             base_days += 3
 
@@ -603,7 +603,7 @@ class SmartDunningService:
         elif profile.segment == CustomerSegment.PROBLEMATIC:
             adjusted = int(base_days * 0.6)
 
-        # Trend beruecksichtigen
+        # Trend berücksichtigen
         if profile.payment_trend == TrendDirection.WORSENING:
             adjusted = int(adjusted * 0.8)  # Schneller bei Verschlechterung
         elif profile.payment_trend == TrendDirection.IMPROVING:
@@ -617,14 +617,14 @@ class SmartDunningService:
         factors: JSONDict,
         profile: Optional[CustomerProfile],
     ) -> str:
-        """Erstellt Begruendung fuer Timing-Empfehlung."""
+        """Erstellt Begruendung für Timing-Empfehlung."""
         parts = []
 
         if profile:
             parts.append(f"Kundensegment: {profile.segment.value}")
             if profile.avg_payment_delay > 0:
                 parts.append(
-                    f"Durchschnittliche Zahlungsverzoegerung: {profile.avg_payment_delay:.0f} Tage"
+                    f"Durchschnittliche Zahlungsverzögerung: {profile.avg_payment_delay:.0f} Tage"
                 )
             if profile.payment_trend != TrendDirection.STABLE:
                 trend_text = "verbessert sich" if profile.payment_trend == TrendDirection.IMPROVING else "verschlechtert sich"
@@ -667,7 +667,7 @@ class SmartDunningService:
                 expected_payment_date=None,
                 expected_delay_days=14,
                 factors={},
-                recommendations=["Keine Rechnungsdaten verfuegbar"],
+                recommendations=["Keine Rechnungsdaten verfügbar"],
             )
 
         # Entity laden
@@ -686,7 +686,7 @@ class SmartDunningService:
             db, entity_id
         )
 
-        # Tage ueberfaellig
+        # Tage überfällig
         days_overdue = 0
         if invoice.due_date:
             due_date = invoice.due_date.replace(tzinfo=timezone.utc) if invoice.due_date.tzinfo is None else invoice.due_date
@@ -710,7 +710,7 @@ class SmartDunningService:
         probability = self._calculate_payment_probability(factors, profile)
         likelihood = self._probability_to_likelihood(probability)
 
-        # Erwartete Verzoegerung
+        # Erwartete Verzögerung
         expected_delay = self._estimate_payment_delay(factors, profile)
 
         # Erwartetes Zahlungsdatum
@@ -753,7 +753,7 @@ class SmartDunningService:
         # Basis-Wahrscheinlichkeit
         base_prob = 0.7
 
-        # Payment Score einbeziehen (0-100, hoeher = besser)
+        # Payment Score einbeziehen (0-100, höher = besser)
         payment_score = factors.get("payment_score", 50)
         base_prob = 0.3 + (payment_score / 100) * 0.6  # 0.3 - 0.9
 
@@ -806,8 +806,8 @@ class SmartDunningService:
         factors: JSONDict,
         profile: Optional[CustomerProfile],
     ) -> int:
-        """Schaetzt erwartete Zahlungsverzoegerung in Tagen."""
-        # Basis: Durchschnittliche Verzoegerung oder 14 Tage
+        """Schätzt erwartete Zahlungsverzögerung in Tagen."""
+        # Basis: Durchschnittliche Verzögerung oder 14 Tage
         if profile and profile.avg_payment_delay > 0:
             base_delay = int(profile.avg_payment_delay)
         else:
@@ -817,7 +817,7 @@ class SmartDunningService:
         days_overdue = factors.get("days_overdue", 0)
         dunning_level = factors.get("dunning_level", 0)
 
-        # Je laenger ueberfaellig, desto laenger die erwartete Verzoegerung
+        # Je länger überfällig, desto länger die erwartete Verzögerung
         if days_overdue > 30:
             base_delay = max(base_delay, days_overdue + 7)
 
@@ -842,16 +842,16 @@ class SmartDunningService:
                 recommendations.append("Bei diesem Kunden kann eine persoenliche Kontaktaufnahme sinnvoll sein")
 
         elif likelihood == PaymentLikelihood.MEDIUM:
-            recommendations.append("Zahlung unsicher - engmaschigere Ueberwachung empfohlen")
+            recommendations.append("Zahlung unsicher - engmaschigere Überwachung empfohlen")
             if factors.get("days_overdue", 0) > 30:
                 recommendations.append("Telefonische Nachfrage erwagen")
 
         else:  # LOW
-            recommendations.append("Zahlung unwahrscheinlich - Eskalation oder Inkasso pruefen")
+            recommendations.append("Zahlung unwahrscheinlich - Eskalation oder Inkasso prüfen")
             if factors.get("dunning_level", 0) < 3:
                 recommendations.append("Schnellere Eskalation der Mahnstufen empfohlen")
             else:
-                recommendations.append("Inkasso-Uebergabe vorbereiten")
+                recommendations.append("Inkasso-Übergabe vorbereiten")
 
         # Skonto-Hinweis bei hohen Betraegen
         if factors.get("invoice_amount", 0) > 5000 and likelihood != PaymentLikelihood.LOW:
@@ -881,7 +881,7 @@ class SmartDunningService:
             dunning_level: Mahnstufe
             tone: Optionaler Tonfall (Default: basierend auf Stufe)
             strategy: Optionale Strategie (Default: basierend auf Kunde)
-            special_instructions: Zusaetzliche Anweisungen
+            special_instructions: Zusätzliche Anweisungen
 
         Returns:
             DunningText
@@ -944,7 +944,7 @@ class SmartDunningService:
         }
 
         try:
-            # LLM verfuegbar?
+            # LLM verfügbar?
             llm_available = await self.ollama.is_available()
             if not llm_available:
                 return self._generate_fallback_text(dunning_level, profile, tone, strategy)
@@ -1073,9 +1073,9 @@ class SmartDunningService:
         self,
         profile: Optional[CustomerProfile],
     ) -> str:
-        """Beschreibt Zahlungsverhalten fuer Prompt."""
+        """Beschreibt Zahlungsverhalten für Prompt."""
         if not profile:
-            return "Keine historischen Daten verfuegbar"
+            return "Keine historischen Daten verfügbar"
 
         parts = []
 
@@ -1084,11 +1084,11 @@ class SmartDunningService:
         elif profile.avg_payment_delay <= 7:
             parts.append("Zahlt meist puenktlich")
         elif profile.avg_payment_delay <= 14:
-            parts.append("Zahlt mit leichter Verzoegerung")
+            parts.append("Zahlt mit leichter Verzögerung")
         elif profile.avg_payment_delay <= 30:
-            parts.append("Zahlt regelmaessig verspaetet")
+            parts.append("Zahlt regelmäßig verspätet")
         else:
-            parts.append("Chronisch verspaetete Zahlungen")
+            parts.append("Chronisch verspätete Zahlungen")
 
         if profile.payment_trend == TrendDirection.IMPROVING:
             parts.append("Trend verbessert sich")
@@ -1108,13 +1108,13 @@ class SmartDunningService:
             factors.append(f"Segment: {profile.segment.value}")
             factors.append(f"Beziehungsdauer: {profile.relationship_months:.0f} Monate")
             if profile.avg_payment_delay > 0:
-                factors.append(f"Zahlungsverzoegerung: {profile.avg_payment_delay:.0f} Tage")
+                factors.append(f"Zahlungsverzögerung: {profile.avg_payment_delay:.0f} Tage")
             factors.append(f"Zahlungstrend: {profile.payment_trend.value}")
 
         return factors
 
     def _assemble_full_text(self, text_data: JSONDict) -> str:
-        """Setzt vollstaendigen Text zusammen."""
+        """Setzt vollständigen Text zusammen."""
         parts = [
             text_data.get("greeting", "Sehr geehrte Damen und Herren,"),
             "",
@@ -1139,23 +1139,23 @@ class SmartDunningService:
         templates = {
             DunningLevel.REMINDER: {
                 "subject": "Zahlungserinnerung",
-                "body": "wir moechten Sie freundlich daran erinnern, dass die oben genannte Rechnung noch nicht beglichen wurde. Bitte ueberweisen Sie den offenen Betrag zeitnah auf unser Konto.\n\nSollte sich Ihre Zahlung mit diesem Schreiben ueberschnitten haben, betrachten Sie diese Erinnerung bitte als gegenstandslos.",
+                "body": "wir moechten Sie freundlich daran erinnern, dass die oben genannte Rechnung noch nicht beglichen wurde. Bitte überweisen Sie den offenen Betrag zeitnah auf unser Konto.\n\nSollte sich Ihre Zahlung mit diesem Schreiben überschnitten haben, betrachten Sie diese Erinnerung bitte als gegenstandslos.",
             },
             DunningLevel.FIRST: {
                 "subject": "1. Mahnung",
-                "body": "trotz unserer Zahlungserinnerung konnten wir noch keinen Zahlungseingang feststellen. Wir bitten Sie, den ausstehenden Betrag innerhalb der naechsten 7 Tage zu begleichen.\n\nBitte beachten Sie, dass bei weiterem Zahlungsverzug zusaetzliche Mahngebuehren anfallen koennen.",
+                "body": "trotz unserer Zahlungserinnerung konnten wir noch keinen Zahlungseingang feststellen. Wir bitten Sie, den ausstehenden Betrag innerhalb der nächsten 7 Tage zu begleichen.\n\nBitte beachten Sie, dass bei weiterem Zahlungsverzug zusätzliche Mahngebühren anfallen können.",
             },
             DunningLevel.SECOND: {
                 "subject": "2. Mahnung",
-                "body": "leider ist die Zahlung des genannten Rechnungsbetrages trotz unserer bisherigen Mahnungen noch nicht erfolgt. Wir fordern Sie hiermit nachdrücklich auf, den offenen Betrag innerhalb von 7 Tagen zu ueberweisen.\n\nBei Nichtzahlung behalten wir uns rechtliche Schritte vor.",
+                "body": "leider ist die Zahlung des genannten Rechnungsbetrages trotz unserer bisherigen Mahnungen noch nicht erfolgt. Wir fordern Sie hiermit nachdrücklich auf, den offenen Betrag innerhalb von 7 Tagen zu überweisen.\n\nBei Nichtzahlung behalten wir uns rechtliche Schritte vor.",
             },
             DunningLevel.FINAL: {
                 "subject": "Letzte Mahnung vor Inkasso",
-                "body": "dies ist unsere letzte Mahnung. Der offene Betrag ist seit laengerem ueberfaellig. Sollte die Zahlung nicht innerhalb von 5 Werktagen bei uns eingehen, werden wir die Forderung ohne weitere Ankuendigung an ein Inkassounternehmen uebergeben.\n\nDadurch entstehen Ihnen erhebliche zusaetzliche Kosten.",
+                "body": "dies ist unsere letzte Mahnung. Der offene Betrag ist seit längerem überfällig. Sollte die Zahlung nicht innerhalb von 5 Werktagen bei uns eingehen, werden wir die Forderung ohne weitere Ankündigung an ein Inkassounternehmen übergeben.\n\nDadurch entstehen Ihnen erhebliche zusätzliche Kosten.",
             },
             DunningLevel.INKASSO: {
-                "subject": "Inkasso-Ankuendigung",
-                "body": "trotz mehrfacher Mahnung ist Ihre Zahlung nicht eingegangen. Wir werden die Forderung nunmehr an ein Inkassounternehmen uebergeben.\n\nDies fuehrt zu erheblichen zusaetzlichen Kosten fuer Sie, einschliesslich Inkassogebuehren, Zinsen und ggf. Gerichtskosten.",
+                "subject": "Inkasso-Ankündigung",
+                "body": "trotz mehrfacher Mahnung ist Ihre Zahlung nicht eingegangen. Wir werden die Forderung nunmehr an ein Inkassounternehmen übergeben.\n\nDies führt zu erheblichen zusätzlichen Kosten für Sie, einschliesslich Inkassogebühren, Zinsen und ggf. Gerichtskosten.",
             },
         }
 
@@ -1175,7 +1175,7 @@ class SmartDunningService:
             tone=tone,
             dunning_level=dunning_level,
             strategy=strategy,
-            personalization_factors=["Fallback-Template (LLM nicht verfuegbar)"],
+            personalization_factors=["Fallback-Template (LLM nicht verfügbar)"],
             generation_time_ms=0,
         )
 
@@ -1199,7 +1199,7 @@ class SmartDunningService:
             db: Database Session
             name: Test-Name
             description: Beschreibung
-            dunning_level: Mahnstufe fuer den Test
+            dunning_level: Mahnstufe für den Test
             variants: Liste von Varianten-Konfigurationen
             end_date: Optionales End-Datum
 
@@ -1254,17 +1254,17 @@ class SmartDunningService:
         entity_id: uuid.UUID,
     ) -> Optional[ABTestVariant]:
         """
-        Waehlt A/B Test Variante fuer Entity.
+        Waehlt A/B Test Variante für Entity.
 
         Args:
             db: Database Session
             dunning_level: Mahnstufe
-            entity_id: Entity-ID fuer konsistente Zuweisung
+            entity_id: Entity-ID für konsistente Zuweisung
 
         Returns:
             ABTestVariant oder None wenn kein Test aktiv
         """
-        # Aktiven Test fuer Mahnstufe finden
+        # Aktiven Test für Mahnstufe finden
         active_test = None
         for test in self._ab_tests.values():
             if test.is_active and test.dunning_level == dunning_level:
@@ -1275,7 +1275,7 @@ class SmartDunningService:
         if not active_test:
             return None
 
-        # Deterministisch basierend auf Entity-ID (konsistent ueber Zeit)
+        # Deterministisch basierend auf Entity-ID (konsistent über Zeit)
         hash_input = f"{active_test.test_id}_{entity_id}"
         hash_value = int(hashlib.md5(hash_input.encode()).hexdigest()[:8], 16)
         variant_index = hash_value % len(active_test.variants)
@@ -1322,7 +1322,7 @@ class SmartDunningService:
         test_id: str,
     ) -> Optional[JSONDict]:
         """
-        Gibt A/B Test Ergebnisse zurueck.
+        Gibt A/B Test Ergebnisse zurück.
 
         Args:
             db: Database Session
@@ -1338,7 +1338,7 @@ class SmartDunningService:
         # Statistisch signifikanten Gewinner ermitteln (vereinfacht)
         winner = None
         max_rate = 0.0
-        min_samples = 30  # Minimum fuer statistische Signifikanz
+        min_samples = 30  # Minimum für statistische Signifikanz
 
         for variant in test.variants:
             if variant.sample_count >= min_samples:
@@ -1483,7 +1483,7 @@ class SmartDunningService:
         strategy: DunningStrategy,
         dunning_level: DunningLevel,
     ) -> None:
-        """Zeichnet erfolgreiche Mahnung auf (fuehrte zu Zahlung)."""
+        """Zeichnet erfolgreiche Mahnung auf (führte zu Zahlung)."""
         key = f"{strategy.value}_{dunning_level.value}"
         if key not in self._strategy_stats:
             self._strategy_stats[key] = {"sent": 0, "success": 0}
@@ -1500,7 +1500,7 @@ class SmartDunningService:
         self,
         db: AsyncSession,
     ) -> JSONDict:
-        """Gibt Strategie-Statistiken zurueck."""
+        """Gibt Strategie-Statistiken zurück."""
         stats = {}
 
         for key, data in self._strategy_stats.items():
@@ -1596,7 +1596,7 @@ class SmartDunningService:
         )
         entity_id = doc_result.scalar_one_or_none()
 
-        # A/B Test Variante pruefen
+        # A/B Test Variante prüfen
         ab_variant = None
         strategy = force_strategy
         tone = force_tone
@@ -1641,7 +1641,7 @@ _service_lock = threading.Lock()
 
 
 def get_smart_dunning_service() -> SmartDunningService:
-    """Factory fuer SmartDunningService Singleton (Thread-safe)."""
+    """Factory für SmartDunningService Singleton (Thread-safe)."""
     global _smart_dunning_service
     if _smart_dunning_service is None:
         with _service_lock:
@@ -1651,6 +1651,6 @@ def get_smart_dunning_service() -> SmartDunningService:
 
 
 def reset_smart_dunning_service() -> None:
-    """Reset fuer Tests."""
+    """Reset für Tests."""
     global _smart_dunning_service
     _smart_dunning_service = None

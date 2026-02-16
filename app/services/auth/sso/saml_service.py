@@ -8,12 +8,12 @@ Implementiert SAML 2.0 Service Provider (SP):
 - Single Logout (SLO)
 
 SECURITY:
-- Signaturvalidierung fuer alle Responses
+- Signaturvalidierung für alle Responses
 - Replay-Schutz mit InResponseTo Validierung
 - Audience-Validierung
 - Time-based Assertion-Validierung
 
-Unterstuetzte IdPs:
+Unterstützte IdPs:
 - Microsoft Entra ID (Azure AD)
 - Okta
 - OneLogin
@@ -100,7 +100,7 @@ class SAMLUserInfo(BaseModel):
 
 
 class SAMLService:
-    """Service fuer SAML 2.0 Authentication."""
+    """Service für SAML 2.0 Authentication."""
 
     def __init__(
         self,
@@ -136,7 +136,7 @@ class SAMLService:
         return request_xml
 
     def _deflate_and_encode(self, xml: str) -> str:
-        """Komprimiert und Base64-kodiert XML fuer HTTP-Redirect Binding."""
+        """Komprimiert und Base64-kodiert XML für HTTP-Redirect Binding."""
         compressed = zlib.compress(xml.encode("utf-8"))[2:-4]  # Remove zlib header/checksum
         return base64.b64encode(compressed).decode("utf-8")
 
@@ -377,7 +377,7 @@ class SAMLService:
         # Find and validate request state (from Redis, deleted after retrieval)
         saml_request = await self.state_manager.get_saml_request(in_response_to, delete=True)
         if not saml_request:
-            raise ValueError("Ungueltiger oder abgelaufener SAML Request")
+            raise ValueError("Ungültiger oder abgelaufener SAML Request")
 
         if datetime.utcnow() > saml_request.expires_at:
             raise ValueError("SAML Request ist abgelaufen")
@@ -511,20 +511,20 @@ class SAMLService:
         # Validate issuer
         if assertion.issuer != config.idp_entity_id:
             raise ValueError(
-                f"Ungueltiger Issuer: {assertion.issuer} != {config.idp_entity_id}"
+                f"Ungültiger Issuer: {assertion.issuer} != {config.idp_entity_id}"
             )
 
         # Validate audience
         if assertion.audience and assertion.audience != config.sp_entity_id:
             raise ValueError(
-                f"Ungueltige Audience: {assertion.audience} != {config.sp_entity_id}"
+                f"Ungültige Audience: {assertion.audience} != {config.sp_entity_id}"
             )
 
         # Validate time conditions
         if assertion.not_before:
             # Allow 5 minute clock skew
             if now < assertion.not_before.replace(tzinfo=None) - timedelta(minutes=5):
-                raise ValueError("Assertion ist noch nicht gueltig")
+                raise ValueError("Assertion ist noch nicht gültig")
 
         if assertion.not_on_or_after:
             # Allow 5 minute clock skew

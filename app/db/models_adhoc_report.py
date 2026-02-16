@@ -6,9 +6,9 @@ Self-Service Reporting: Daten frei kombinieren, filtern,
 gruppieren und exportieren - ohne IT-Hilfe.
 
 - Report-Definitionen (Spalten, Filter, Gruppierung, Aggregation)
-- Report-Ausfuehrungen mit Metriken
+- Report-Ausführungen mit Metriken
 - Report-Sharing zwischen Nutzern
-- Geplante Report-Ausfuehrungen (Email-Versand)
+- Geplante Report-Ausführungen (Email-Versand)
 
 Feinpoliert und durchdacht - Enterprise-grade Ad-Hoc Reporting.
 """
@@ -41,18 +41,18 @@ from app.db.models import Base, CrossDBJSON
 
 
 class DataSourceType(str, Enum):
-    """Verfuegbare Datenquellen fuer Ad-Hoc Reports."""
+    """Verfügbare Datenquellen für Ad-Hoc Reports."""
     INVOICES = "invoices"            # Rechnungen
     DOCUMENTS = "documents"          # Dokumente
     SUPPLIERS = "suppliers"          # Lieferanten
     CUSTOMERS = "customers"          # Kunden
     TRANSACTIONS = "transactions"    # Banktransaktionen
     APPROVALS = "approvals"          # Genehmigungen
-    WORKFLOWS = "workflows"          # Workflow-Ausfuehrungen
+    WORKFLOWS = "workflows"          # Workflow-Ausführungen
 
 
 class AggregationType(str, Enum):
-    """Verfuegbare Aggregationstypen."""
+    """Verfügbare Aggregationstypen."""
     SUM = "sum"
     COUNT = "count"
     AVG = "avg"
@@ -62,14 +62,14 @@ class AggregationType(str, Enum):
 
 
 class AdHocExportFormat(str, Enum):
-    """Unterstuetzte Export-Formate."""
+    """Unterstützte Export-Formate."""
     PDF = "pdf"
     EXCEL = "excel"
     CSV = "csv"
 
 
 class ReportScheduleFrequency(str, Enum):
-    """Frequenz fuer geplante Reports."""
+    """Frequenz für geplante Reports."""
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
@@ -85,7 +85,7 @@ class AdHocReport(Base):
     """
     Ad-Hoc Report Definition.
 
-    Speichert die vollstaendige Report-Konfiguration:
+    Speichert die vollständige Report-Konfiguration:
     Datenquellen, Spalten, Filter, Gruppierung, Aggregation und Chart-Config.
     """
     __tablename__ = "ad_hoc_reports"
@@ -190,7 +190,7 @@ class AdHocReport(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertiert Report zu Dictionary fuer API-Responses."""
+        """Konvertiert Report zu Dictionary für API-Responses."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),
@@ -216,10 +216,10 @@ class AdHocReport(Base):
 
 class AdHocReportExecution(Base):
     """
-    Report-Ausfuehrungs-Protokoll.
+    Report-Ausführungs-Protokoll.
 
-    Zeichnet jede Ausfuehrung eines Ad-Hoc Reports auf:
-    Zeitpunkt, Dauer, Ergebnisgroesse, Export-Format.
+    Zeichnet jede Ausführung eines Ad-Hoc Reports auf:
+    Zeitpunkt, Dauer, Ergebnisgröße, Export-Format.
     """
     __tablename__ = "ad_hoc_report_executions"
 
@@ -251,7 +251,7 @@ class AdHocReportExecution(Base):
     export_format = Column(String(20), nullable=True)
     export_path = Column(String(500), nullable=True)
 
-    # Laufzeit-Parameter (Ueberschreibungen)
+    # Laufzeit-Parameter (Überschreibungen)
     parameters = Column(CrossDBJSON, nullable=True)
 
     # Fehler
@@ -275,9 +275,9 @@ class AdHocReportExecution(Base):
 
 class AdHocReportShare(Base):
     """
-    Report-Freigabe fuer andere Benutzer oder Rollen.
+    Report-Freigabe für andere Benutzer oder Rollen.
 
-    Ermoeglicht das Teilen von Reports mit bestimmten Nutzern
+    Ermöglicht das Teilen von Reports mit bestimmten Nutzern
     oder ganzen Rollen (z.B. 'buchhaltung', 'controlling').
     """
     __tablename__ = "ad_hoc_report_shares"
@@ -324,7 +324,7 @@ class ReportSchedule(Base):
     """
     Geplanter Report-Versand.
 
-    Konfiguriert automatische Report-Ausfuehrung und E-Mail-Versand
+    Konfiguriert automatische Report-Ausführung und E-Mail-Versand
     nach festgelegtem Zeitplan.
     """
     __tablename__ = "ad_hoc_report_schedules"
@@ -353,12 +353,12 @@ class ReportSchedule(Base):
     day_of_week = Column(
         Integer,
         nullable=True,
-        comment="0=Montag fuer WEEKLY",
+        comment="0=Montag für WEEKLY",
     )
     day_of_month = Column(
         Integer,
         nullable=True,
-        comment="1-28 fuer MONTHLY/QUARTERLY",
+        comment="1-28 für MONTHLY/QUARTERLY",
     )
     time_of_day = Column(
         String(5),

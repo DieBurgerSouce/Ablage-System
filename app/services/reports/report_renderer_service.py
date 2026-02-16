@@ -46,7 +46,7 @@ except ImportError:
 
 
 class ReportRendererService:
-    """Service fuer Report-Rendering in verschiedene Formate."""
+    """Service für Report-Rendering in verschiedene Formate."""
 
     _instance: Optional["ReportRendererService"] = None
 
@@ -57,7 +57,7 @@ class ReportRendererService:
         return cls._instance
 
     def get_supported_formats(self) -> List[Dict[str, object]]:
-        """Gibt unterstuetzte Export-Formate zurueck."""
+        """Gibt unterstützte Export-Formate zurück."""
         formats = [
             {"id": "json", "name": "JSON", "extension": ".json", "mime_type": "application/json", "available": True},
             {"id": "csv", "name": "CSV", "extension": ".csv", "mime_type": "text/csv", "available": True},
@@ -149,7 +149,7 @@ class ReportRendererService:
                     agg_row.append("")
             writer.writerow(agg_row)
 
-        return output.getvalue().encode("utf-8-sig")  # BOM fuer Excel-Kompatibilitaet
+        return output.getvalue().encode("utf-8-sig")  # BOM für Excel-Kompatibilität
 
     async def render_excel(
         self,
@@ -159,7 +159,7 @@ class ReportRendererService:
     ) -> bytes:
         """Rendert Report als Excel-Datei."""
         if not OPENPYXL_AVAILABLE:
-            raise RuntimeError("openpyxl nicht installiert - Excel-Export nicht verfuegbar")
+            raise RuntimeError("openpyxl nicht installiert - Excel-Export nicht verfügbar")
 
         wb = Workbook()
         ws = wb.active
@@ -186,7 +186,7 @@ class ReportRendererService:
 
         # Metadaten
         ws.cell(row=2, column=1, value=f"Erstellt: {result.executed_at.strftime('%d.%m.%Y %H:%M')}")
-        ws.cell(row=2, column=2, value=f"Datensaetze: {result.total_count}")
+        ws.cell(row=2, column=2, value=f"Datensätze: {result.total_count}")
 
         # Header (Zeile 4)
         header_row = 4
@@ -232,7 +232,7 @@ class ReportRendererService:
             column_letter = get_column_letter(col_idx)
             # Berechne Breite basierend auf Header und max 50 Zeichen
             max_length = len(col["display_name"])
-            for row in result.rows[:100]:  # Nur erste 100 Zeilen pruefen
+            for row in result.rows[:100]:  # Nur erste 100 Zeilen prüfen
                 value = row.data.get(col["field_path"])
                 if value:
                     max_length = max(max_length, min(len(str(value)), 50))
@@ -256,7 +256,7 @@ class ReportRendererService:
     ) -> bytes:
         """Rendert Report als PDF."""
         if not REPORTLAB_AVAILABLE:
-            raise RuntimeError("reportlab nicht installiert - PDF-Export nicht verfuegbar")
+            raise RuntimeError("reportlab nicht installiert - PDF-Export nicht verfügbar")
 
         # Layout-Konfiguration
         layout_config = layout_config or {}
@@ -298,7 +298,7 @@ class ReportRendererService:
         elements.append(Paragraph(result.template_name, title_style))
 
         # Metadaten
-        meta_text = f"Erstellt: {result.executed_at.strftime('%d.%m.%Y %H:%M')} | Datensaetze: {result.total_count}"
+        meta_text = f"Erstellt: {result.executed_at.strftime('%d.%m.%Y %H:%M')} | Datensätze: {result.total_count}"
         elements.append(Paragraph(meta_text, meta_style))
         elements.append(Spacer(1, 12))
 
@@ -309,7 +309,7 @@ class ReportRendererService:
         headers = [col["display_name"] for col in result.columns]
         table_data.append(headers)
 
-        # Daten (max 1000 Zeilen fuer PDF)
+        # Daten (max 1000 Zeilen für PDF)
         for row in result.rows[:1000]:
             row_values = []
             for col in result.columns:
@@ -384,7 +384,7 @@ class ReportRendererService:
     # =========================================================================
 
     def _format_csv_value(self, value: object, data_type: str) -> str:
-        """Formatiert einen Wert fuer CSV-Export."""
+        """Formatiert einen Wert für CSV-Export."""
         if value is None:
             return ""
 
@@ -411,7 +411,7 @@ class ReportRendererService:
         return str(value)
 
     def _format_pdf_value(self, value: object, data_type: str) -> str:
-        """Formatiert einen Wert fuer PDF-Export."""
+        """Formatiert einen Wert für PDF-Export."""
         if value is None:
             return "-"
 

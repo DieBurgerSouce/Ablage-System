@@ -3,7 +3,7 @@
 Error Tracking API Endpoints.
 
 Stellt Fehler-Statistiken und -Analytics bereit.
-Nur fuer Admins und Monitoring-Systeme zugaenglich.
+Nur für Admins und Monitoring-Systeme zugaenglich.
 
 Feinpoliert und durchdacht - Enterprise Error Analytics.
 """
@@ -72,7 +72,7 @@ class ErrorTrendsResponse(BaseModel):
 
 
 class TopErrorResponse(BaseModel):
-    """Haeufigster Fehler Response."""
+    """Häufigster Fehler Response."""
     error_type: str = Field(..., description="Fehler-Typ")
     count: int = Field(..., description="Anzahl")
     category: str = Field(..., description="Kategorie")
@@ -98,12 +98,12 @@ async def get_all_error_stats(
     current_user: User = Depends(get_current_superuser),
 ) -> AllErrorStatsResponse:
     """
-    Hole alle Fehler-Statistiken ueber alle Kategorien.
+    Hole alle Fehler-Statistiken über alle Kategorien.
 
     **ERFORDERT ADMIN-BERECHTIGUNG**
 
     Returns:
-        Statistiken fuer alle Fehler-Kategorien mit Zusammenfassung.
+        Statistiken für alle Fehler-Kategorien mit Zusammenfassung.
     """
     service = get_error_tracking_service()
     stats = service.get_stats()
@@ -128,14 +128,14 @@ async def get_all_error_stats(
 @router.get(
     "/stats/{category}",
     response_model=ErrorStatsResponse,
-    summary="Fehler-Statistiken fuer Kategorie",
+    summary="Fehler-Statistiken für Kategorie",
 )
 async def get_category_error_stats(
     category: ErrorCategory,
     current_user: User = Depends(get_current_superuser),
 ) -> ErrorStatsResponse:
     """
-    Hole Fehler-Statistiken fuer eine spezifische Kategorie.
+    Hole Fehler-Statistiken für eine spezifische Kategorie.
 
     **ERFORDERT ADMIN-BERECHTIGUNG**
 
@@ -143,7 +143,7 @@ async def get_category_error_stats(
         category: Fehler-Kategorie (ocr, gpu, database, auth, etc.)
 
     Returns:
-        Statistiken fuer die angegebene Kategorie.
+        Statistiken für die angegebene Kategorie.
     """
     service = get_error_tracking_service()
     stats = service.get_stats(category)
@@ -196,7 +196,7 @@ async def get_error_trends(
     current_user: User = Depends(get_current_superuser),
 ) -> ErrorTrendsResponse:
     """
-    Hole Fehler-Trends ueber Zeit fuer eine Kategorie.
+    Hole Fehler-Trends über Zeit für eine Kategorie.
 
     **ERFORDERT ADMIN-BERECHTIGUNG**
 
@@ -216,7 +216,7 @@ async def get_error_trends(
 @router.get(
     "/top",
     response_model=List[TopErrorResponse],
-    summary="Haeufigste Fehler abrufen",
+    summary="Häufigste Fehler abrufen",
 )
 async def get_top_errors(
     category: Optional[ErrorCategory] = Query(None, description="Filter nach Kategorie"),
@@ -224,7 +224,7 @@ async def get_top_errors(
     current_user: User = Depends(get_current_superuser),
 ) -> List[TopErrorResponse]:
     """
-    Hole die haeufigsten Fehler-Typen.
+    Hole die häufigsten Fehler-Typen.
 
     **ERFORDERT ADMIN-BERECHTIGUNG**
 
@@ -233,7 +233,7 @@ async def get_top_errors(
         limit: Anzahl (1-50)
 
     Returns:
-        Liste der haeufigsten Fehler-Typen, sortiert nach Anzahl.
+        Liste der häufigsten Fehler-Typen, sortiert nach Anzahl.
     """
     service = get_error_tracking_service()
     top_errors = service.get_top_errors(category, limit)
@@ -252,7 +252,7 @@ async def configure_alert(
     current_user: User = Depends(get_current_superuser),
 ) -> JSONDict:
     """
-    Konfiguriere Alert-Schwellenwert fuer eine Kategorie.
+    Konfiguriere Alert-Schwellenwert für eine Kategorie.
 
     **ERFORDERT ADMIN-BERECHTIGUNG**
 
@@ -261,7 +261,7 @@ async def configure_alert(
         config: Alert-Konfiguration
 
     Returns:
-        Bestaetigungsmeldung.
+        Bestätigungsmeldung.
     """
     service = get_error_tracking_service()
     service.configure_alert(
@@ -272,7 +272,7 @@ async def configure_alert(
 
     return {
         "status": "erfolg",
-        "nachricht": f"Alert fuer {category.value} konfiguriert",
+        "nachricht": f"Alert für {category.value} konfiguriert",
         "schwellenwert": config.threshold_per_minute,
         "cooldown_minuten": config.cooldown_minutes,
     }
@@ -280,7 +280,7 @@ async def configure_alert(
 
 @router.delete(
     "/alerts/{category}",
-    summary="Alert loeschen",
+    summary="Alert löschen",
     status_code=status.HTTP_200_OK,
 )
 async def clear_alert(
@@ -288,7 +288,7 @@ async def clear_alert(
     current_user: User = Depends(get_current_superuser),
 ) -> JSONDict:
     """
-    Loesche aktiven Alert fuer eine Kategorie.
+    Lösche aktiven Alert für eine Kategorie.
 
     **ERFORDERT ADMIN-BERECHTIGUNG**
 
@@ -296,20 +296,20 @@ async def clear_alert(
         category: Fehler-Kategorie
 
     Returns:
-        Bestaetigungsmeldung.
+        Bestätigungsmeldung.
     """
     service = get_error_tracking_service()
     service.clear_alert(category)
 
     return {
         "status": "erfolg",
-        "nachricht": f"Alert fuer {category.value} geloescht",
+        "nachricht": f"Alert für {category.value} gelöscht",
     }
 
 
 @router.post(
     "/reset",
-    summary="Fehler-Statistiken zuruecksetzen",
+    summary="Fehler-Statistiken zurücksetzen",
     status_code=status.HTTP_200_OK,
 )
 async def reset_error_stats(
@@ -317,17 +317,17 @@ async def reset_error_stats(
     current_user: User = Depends(get_current_superuser),
 ) -> JSONDict:
     """
-    Setze Fehler-Statistiken zurueck.
+    Setze Fehler-Statistiken zurück.
 
     **ERFORDERT ADMIN-BERECHTIGUNG**
 
-    **ACHTUNG**: Diese Aktion loescht alle Fehler-Daten im Buffer!
+    **ACHTUNG**: Diese Aktion löscht alle Fehler-Daten im Buffer!
 
     Args:
         category: Optional spezifische Kategorie, sonst alle
 
     Returns:
-        Bestaetigungsmeldung.
+        Bestätigungsmeldung.
     """
     import structlog
     logger = structlog.get_logger(__name__)
@@ -343,8 +343,8 @@ async def reset_error_stats(
 
     return {
         "status": "erfolg",
-        "nachricht": f"Fehler-Statistiken zurueckgesetzt fuer: {category.value if category else 'alle Kategorien'}",
-        "durchgefuehrt_von": str(current_user.id),
+        "nachricht": f"Fehler-Statistiken zurückgesetzt für: {category.value if category else 'alle Kategorien'}",
+        "durchgeführt_von": str(current_user.id),
     }
 
 
@@ -382,12 +382,12 @@ async def prometheus_error_metrics(
     current_user: User = Depends(get_current_superuser),  # X.2 SECURITY FIX: Admin required
 ) -> JSONDict:
     """
-    Prometheus-kompatible Metriken fuer Error Tracking.
+    Prometheus-kompatible Metriken für Error Tracking.
 
     **REQUIRES ADMIN AUTHENTICATION**
 
     Dieser Endpoint liefert eine Zusammenfassung der Error-Metriken.
-    Fuer vollstaendige Prometheus-Scraping, nutze /api/v1/metrics.
+    Für vollständige Prometheus-Scraping, nutze /api/v1/metrics.
 
     Args:
         current_user: Authenticated admin user (required)

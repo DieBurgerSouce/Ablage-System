@@ -1,10 +1,10 @@
 """Import Rule Service.
 
-Implementiert eine flexible Rule Engine fuer Import-Automatisierung:
+Implementiert eine flexible Rule Engine für Import-Automatisierung:
 - Bedingungsbasierte Regeln (AND/OR Logik)
-- Aktionen (Ordner-Zuweisung, Tags, OCR-Prioritaet, Benachrichtigungen)
-- Prioritaetsbasierte Regelauswertung
-- Test-Modus fuer Regel-Validierung
+- Aktionen (Ordner-Zuweisung, Tags, OCR-Priorität, Benachrichtigungen)
+- Prioritätsbasierte Regelauswertung
+- Test-Modus für Regel-Validierung
 
 Feinpoliert und durchdacht - Enterprise-grade Import Rules.
 """
@@ -25,7 +25,7 @@ logger = structlog.get_logger(__name__)
 # Constants
 # ============================================================================
 
-# Unterstuetzte Bedingungsfelder
+# Unterstützte Bedingungsfelder
 CONDITION_FIELDS = {
     # Email-spezifisch
     "sender_email": "E-Mail-Absender",
@@ -36,25 +36,25 @@ CONDITION_FIELDS = {
     # Datei-spezifisch
     "filename": "Dateiname",
     "file_extension": "Dateiendung",
-    "file_size": "Dateigroesse (Bytes)",
+    "file_size": "Dateigröße (Bytes)",
     "mime_type": "MIME-Type",
 
-    # Ordner-spezifisch (fuer Folder-Import)
+    # Ordner-spezifisch (für Folder-Import)
     "source_path": "Quellpfad",
-    "parent_folder": "Ueberordner",
+    "parent_folder": "Überordner",
 }
 
-# Unterstuetzte Operatoren
+# Unterstützte Operatoren
 OPERATORS = {
     "equals": "ist gleich",
     "not_equals": "ist nicht gleich",
-    "contains": "enthaelt",
-    "not_contains": "enthaelt nicht",
+    "contains": "enthält",
+    "not_contains": "enthält nicht",
     "starts_with": "beginnt mit",
     "ends_with": "endet mit",
     "regex": "entspricht RegEx",
-    "gt": "groesser als",
-    "gte": "groesser oder gleich",
+    "gt": "größer als",
+    "gte": "größer oder gleich",
     "lt": "kleiner als",
     "lte": "kleiner oder gleich",
     "in_list": "in Liste",
@@ -63,13 +63,13 @@ OPERATORS = {
     "is_not_empty": "ist nicht leer",
 }
 
-# Unterstuetzte Aktionen
+# Unterstützte Aktionen
 ACTIONS = {
     "assign_folder_id": "In Ordner verschieben",
     "assign_tags": "Tags zuweisen",
     "assign_document_type": "Dokumenttyp setzen",
-    "skip_ocr": "OCR ueberspringen",
-    "priority_ocr": "Prioritaets-OCR",
+    "skip_ocr": "OCR überspringen",
+    "priority_ocr": "Prioritäts-OCR",
     "notify_users": "Benutzer benachrichtigen",
     "set_status": "Status setzen",
     "add_metadata": "Metadaten hinzufuegen",
@@ -134,13 +134,13 @@ class RuleMatch:
 # ============================================================================
 
 class ImportRuleService:
-    """Service fuer Import-Regel-Verwaltung und -Auswertung.
+    """Service für Import-Regel-Verwaltung und -Auswertung.
 
     Features:
-    - CRUD fuer Import-Regeln
+    - CRUD für Import-Regeln
     - Flexible Bedingungen (AND/OR Logik)
-    - Prioritaetsbasierte Auswertung
-    - Test-Modus fuer Validierung
+    - Prioritätsbasierte Auswertung
+    - Test-Modus für Validierung
     - Statistik-Tracking (Match-Count)
     """
 
@@ -163,7 +163,7 @@ class ImportRuleService:
         source_type: str = "email",
         config_id: Optional[UUID] = None,
     ) -> List[RuleMatch]:
-        """Wertet alle zutreffenden Regeln fuer gegebene Metadaten aus.
+        """Wertet alle zutreffenden Regeln für gegebene Metadaten aus.
 
         Args:
             user_id: User-ID
@@ -172,7 +172,7 @@ class ImportRuleService:
             config_id: Optional spezifische Config-ID
 
         Returns:
-            Liste von RuleMatch-Objekten, sortiert nach Prioritaet
+            Liste von RuleMatch-Objekten, sortiert nach Priorität
         """
         from app.db.models import ImportRule
 
@@ -191,7 +191,7 @@ class ImportRuleService:
         matches = []
 
         for rule in rules:
-            # Pruefen ob Regel auf diese Quelle anwendbar ist
+            # Prüfen ob Regel auf diese Quelle anwendbar ist
             if not self._rule_applies_to_source(rule, source_type, config_id):
                 continue
 
@@ -228,12 +228,12 @@ class ImportRuleService:
         source_type: str,
         config_id: Optional[UUID],
     ) -> bool:
-        """Prueft ob Regel auf diese Quelle anwendbar ist."""
+        """Prüft ob Regel auf diese Quelle anwendbar ist."""
         # Wenn "applies_to_all" gesetzt ist
         if rule.applies_to_all:
             return True
 
-        # Email-Configs pruefen
+        # Email-Configs prüfen
         if source_type == "email" and rule.applies_to_email_configs:
             if config_id and str(config_id) in [
                 str(c) for c in rule.applies_to_email_configs
@@ -243,7 +243,7 @@ class ImportRuleService:
             if config_id is None and rule.applies_to_email_configs:
                 return False
 
-        # Folder-Configs pruefen
+        # Folder-Configs prüfen
         if source_type == "folder" and rule.applies_to_folder_configs:
             if config_id and str(config_id) in [
                 str(c) for c in rule.applies_to_folder_configs
@@ -418,8 +418,8 @@ class ImportRuleService:
     ) -> Dict:
         """Konsolidiert Aktionen aus allen Matches.
 
-        Bei Konflikten gewinnt die Regel mit hoeherer Prioritaet
-        (niedrigerer Prioritaets-Wert).
+        Bei Konflikten gewinnt die Regel mit höherer Priorität
+        (niedrigerer Prioritäts-Wert).
 
         Args:
             matches: Liste von RuleMatch-Objekten
@@ -430,7 +430,7 @@ class ImportRuleService:
         if not matches:
             return {}
 
-        # Nach Prioritaet sortieren (niedrigster Wert = hoechste Prioritaet)
+        # Nach Priorität sortieren (niedrigster Wert = hoechste Priorität)
         sorted_matches = sorted(matches, key=lambda m: m.priority)
 
         # Aktionen konsolidieren
@@ -438,7 +438,7 @@ class ImportRuleService:
 
         for match in sorted_matches:
             for action_key, action_value in match.actions.items():
-                # Erste Regel (hoechste Prioritaet) gewinnt bei Konflikten
+                # Erste Regel (hoechste Priorität) gewinnt bei Konflikten
                 if action_key not in consolidated:
                     consolidated[action_key] = action_value
                 elif action_key in ("assign_tags", "notify_users"):
@@ -564,7 +564,7 @@ class ImportRuleService:
             name: Regel-Name
             conditions: Bedingungs-Struktur
             actions: Aktions-Struktur
-            priority: Prioritaet (niedriger = hoeher)
+            priority: Priorität (niedriger = höher)
             description: Beschreibung
             applies_to_email_configs: Email-Config-IDs
             applies_to_folder_configs: Folder-Config-IDs
@@ -578,10 +578,10 @@ class ImportRuleService:
 
         # Validierung
         if not self._validate_conditions(conditions):
-            raise ValueError("Ungueltige Bedingungs-Struktur")
+            raise ValueError("Ungültige Bedingungs-Struktur")
 
         if not self._validate_actions(actions):
-            raise ValueError("Ungueltige Aktions-Struktur")
+            raise ValueError("Ungültige Aktions-Struktur")
 
         rule_id = uuid4()
 
@@ -625,11 +625,11 @@ class ImportRuleService:
         # Validierung
         if "conditions" in updates:
             if not self._validate_conditions(updates["conditions"]):
-                raise ValueError("Ungueltige Bedingungs-Struktur")
+                raise ValueError("Ungültige Bedingungs-Struktur")
 
         if "actions" in updates:
             if not self._validate_actions(updates["actions"]):
-                raise ValueError("Ungueltige Aktions-Struktur")
+                raise ValueError("Ungültige Aktions-Struktur")
 
         # Config-IDs konvertieren
         if "applies_to_email_configs" in updates:
@@ -661,7 +661,7 @@ class ImportRuleService:
         rule_id: UUID,
         user_id: UUID,
     ) -> bool:
-        """Loescht eine Import-Regel."""
+        """Löscht eine Import-Regel."""
         rule = await self._get_rule(rule_id, user_id)
         if not rule:
             return False
@@ -741,7 +741,7 @@ class ImportRuleService:
         user_id: UUID,
         rule_priorities: List[Tuple[UUID, int]],
     ) -> bool:
-        """Aendert die Prioritaeten mehrerer Regeln.
+        """Ändert die Prioritäten mehrerer Regeln.
 
         Args:
             user_id: User-ID
@@ -794,11 +794,11 @@ class ImportRuleService:
             email_subject: Betreff
             email_date: Datum
             attachment_filename: Dateiname des Anhangs
-            attachment_size: Dateigroesse
+            attachment_size: Dateigröße
             attachment_mime_type: MIME-Type
 
         Returns:
-            Metadaten-Dict fuer Regelauswertung
+            Metadaten-Dict für Regelauswertung
         """
         # Sender-Email und Name extrahieren
         sender_email = ""
@@ -837,14 +837,14 @@ class ImportRuleService:
         """Extrahiert Metadaten aus Datei-Informationen.
 
         Args:
-            file_path: Vollstaendiger Dateipfad
+            file_path: Vollständiger Dateipfad
             filename: Dateiname
-            file_size: Dateigroesse
+            file_size: Dateigröße
             mime_type: MIME-Type
-            modified_at: Aenderungsdatum
+            modified_at: Änderungsdatum
 
         Returns:
-            Metadaten-Dict fuer Regelauswertung
+            Metadaten-Dict für Regelauswertung
         """
         import os
 
@@ -906,7 +906,7 @@ class ImportRuleService:
                         "unknown_condition_field",
                         field=field,
                     )
-                    # Unbekannte Felder erlauben fuer Erweiterbarkeit
+                    # Unbekannte Felder erlauben für Erweiterbarkeit
 
                 if op not in OPERATORS:
                     return False
@@ -927,7 +927,7 @@ class ImportRuleService:
                     "unknown_action_key",
                     key=key,
                 )
-                # Unbekannte Aktionen erlauben fuer Erweiterbarkeit
+                # Unbekannte Aktionen erlauben für Erweiterbarkeit
 
         return True
 
@@ -936,7 +936,7 @@ class ImportRuleService:
     # ========================================================================
 
     async def _get_rule(self, rule_id: UUID, user_id: UUID):
-        """Holt Regel mit Berechtigungspruefung."""
+        """Holt Regel mit Berechtigungsprüfung."""
         from app.db.models import ImportRule
 
         result = await self.db.execute(
@@ -950,7 +950,7 @@ class ImportRuleService:
         return result.scalar_one_or_none()
 
     async def _increment_match_count(self, rule_id: UUID) -> None:
-        """Erhoeht den Match-Counter einer Regel."""
+        """Erhöht den Match-Counter einer Regel."""
         from app.db.models import ImportRule
 
         await self.db.execute(
@@ -961,7 +961,7 @@ class ImportRuleService:
                 last_matched_at=datetime.now(timezone.utc),
             )
         )
-        # Kein Commit - wird mit uebergeordneter Transaktion committed
+        # Kein Commit - wird mit übergeordneter Transaktion committed
 
     # ========================================================================
     # Schema Helpers
@@ -969,15 +969,15 @@ class ImportRuleService:
 
     @staticmethod
     def get_available_fields() -> Dict:
-        """Gibt verfuegbare Bedingungsfelder zurueck."""
+        """Gibt verfügbare Bedingungsfelder zurück."""
         return CONDITION_FIELDS.copy()
 
     @staticmethod
     def get_available_operators() -> Dict:
-        """Gibt verfuegbare Operatoren zurueck."""
+        """Gibt verfügbare Operatoren zurück."""
         return OPERATORS.copy()
 
     @staticmethod
     def get_available_actions() -> Dict:
-        """Gibt verfuegbare Aktionen zurueck."""
+        """Gibt verfügbare Aktionen zurück."""
         return ACTIONS.copy()

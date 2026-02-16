@@ -31,7 +31,7 @@ class JSONBValidationError(ValueError):
 # WHITELIST DEFINITIONS
 # =============================================================================
 
-# Erlaubte Keys fuer approval_chain Steps
+# Erlaubte Keys für approval_chain Steps
 APPROVAL_CHAIN_ALLOWED_KEYS: Set[str] = {
     "step",
     "type",
@@ -46,7 +46,7 @@ APPROVAL_CHAIN_ALLOWED_KEYS: Set[str] = {
     "auto_approve_if",
 }
 
-# Erlaubte Typen fuer approval_chain.type
+# Erlaubte Typen für approval_chain.type
 APPROVAL_CHAIN_ALLOWED_TYPES: Set[str] = {
     "user",
     "role",
@@ -56,7 +56,7 @@ APPROVAL_CHAIN_ALLOWED_TYPES: Set[str] = {
     "all",
 }
 
-# Erlaubte Keys fuer conditions (Approval Rules)
+# Erlaubte Keys für conditions (Approval Rules)
 APPROVAL_CONDITIONS_ALLOWED_KEYS: Set[str] = {
     # Betragsbedingungen
     "amount_greater_than",
@@ -92,7 +92,7 @@ APPROVAL_CONDITIONS_ALLOWED_KEYS: Set[str] = {
     "custom_field",
 }
 
-# Erlaubte Keys fuer notification actions
+# Erlaubte Keys für notification actions
 NOTIFICATION_ACTIONS_ALLOWED_KEYS: Set[str] = {
     "type",
     "title",
@@ -121,7 +121,7 @@ NOTIFICATION_ACTION_TYPES: Set[str] = {
     "teams",
 }
 
-# Erlaubte Keys fuer workflow definitions
+# Erlaubte Keys für workflow definitions
 WORKFLOW_DEFINITION_ALLOWED_KEYS: Set[str] = {
     "name",
     "description",
@@ -135,7 +135,7 @@ WORKFLOW_DEFINITION_ALLOWED_KEYS: Set[str] = {
     "retry_policy",
 }
 
-# Erlaubte Keys fuer workflow steps
+# Erlaubte Keys für workflow steps
 WORKFLOW_STEP_ALLOWED_KEYS: Set[str] = {
     "id",
     "name",
@@ -151,12 +151,12 @@ WORKFLOW_STEP_ALLOWED_KEYS: Set[str] = {
     "output_mapping",
 }
 
-# Regex fuer sichere Key-Namen (alphanumerisch + underscore, max 64 Zeichen)
+# Regex für sichere Key-Namen (alphanumerisch + underscore, max 64 Zeichen)
 SAFE_KEY_PATTERN = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{0,63}$")
 
 
 # =============================================================================
-# SCHEMA DEFINITIONS (fuer Dokumentation und OpenAPI)
+# SCHEMA DEFINITIONS (für Dokumentation und OpenAPI)
 # =============================================================================
 
 APPROVAL_CHAIN_SCHEMA = {
@@ -205,11 +205,11 @@ NOTIFICATION_ACTIONS_SCHEMA = {
 # =============================================================================
 
 def _validate_key_safety(key: str, field_name: str) -> bool:
-    """Prueft ob ein Key sicher ist (keine SQL Injection).
+    """Prüft ob ein Key sicher ist (keine SQL Injection).
 
     Args:
-        key: Der zu pruefende Key
-        field_name: Name des JSONB-Feldes (fuer Fehlermeldungen)
+        key: Der zu prüfende Key
+        field_name: Name des JSONB-Feldes (für Fehlermeldungen)
 
     Returns:
         True wenn sicher
@@ -221,10 +221,10 @@ def _validate_key_safety(key: str, field_name: str) -> bool:
         logger.warning(
             "jsonb_unsafe_key_detected",
             field=field_name,
-            key=key[:50],  # Truncate fuer Logging
+            key=key[:50],  # Truncate für Logging
         )
         raise JSONBValidationError(
-            f"Ungueltiger Key-Name: '{key[:50]}'. Keys muessen alphanumerisch sein.",
+            f"Ungültiger Key-Name: '{key[:50]}'. Keys müssen alphanumerisch sein.",
             field=field_name,
             invalid_keys=[key],
         )
@@ -320,7 +320,7 @@ def validate_approval_chain(
             strict=strict,
         )
 
-        # Pflichtfelder pruefen
+        # Pflichtfelder prüfen
         if "step" not in step:
             raise JSONBValidationError(
                 f"Schritt {idx}: 'step' ist erforderlich",
@@ -343,7 +343,7 @@ def validate_approval_chain(
         step_type = step.get("type")
         if step_type not in APPROVAL_CHAIN_ALLOWED_TYPES:
             raise JSONBValidationError(
-                f"Schritt {idx}: Ungueltiger Typ '{step_type}'. "
+                f"Schritt {idx}: Ungültiger Typ '{step_type}'. "
                 f"Erlaubt: {', '.join(APPROVAL_CHAIN_ALLOWED_TYPES)}",
                 field="approval_chain",
             )
@@ -378,7 +378,7 @@ def validate_approval_conditions(
     conditions: Dict[str, Any],
     strict: bool = True,
 ) -> bool:
-    """Validiert conditions JSONB-Struktur fuer Approval Rules.
+    """Validiert conditions JSONB-Struktur für Approval Rules.
 
     Args:
         conditions: Bedingungs-Dict
@@ -410,7 +410,7 @@ def validate_approval_conditions(
 
     # Wert-Validierung
     for key, value in conditions.items():
-        # Betrags-Bedingungen muessen numerisch sein
+        # Betrags-Bedingungen müssen numerisch sein
         if key.startswith("amount_"):
             if key == "amount_between":
                 if not isinstance(value, (list, tuple)) or len(value) != 2:
@@ -424,7 +424,7 @@ def validate_approval_conditions(
                     field="conditions",
                 )
 
-        # _in Bedingungen muessen Listen sein
+        # _in Bedingungen müssen Listen sein
         if key.endswith("_in"):
             if not isinstance(value, list):
                 raise JSONBValidationError(
@@ -432,7 +432,7 @@ def validate_approval_conditions(
                     field="conditions",
                 )
 
-        # risk_score Bedingungen muessen zwischen 0-100 sein
+        # risk_score Bedingungen müssen zwischen 0-100 sein
         if "risk_score" in key:
             if not isinstance(value, (int, float)) or value < 0 or value > 100:
                 raise JSONBValidationError(
@@ -496,12 +496,12 @@ def validate_notification_actions(
         action_type = action.get("type")
         if action_type not in NOTIFICATION_ACTION_TYPES:
             raise JSONBValidationError(
-                f"Aktion {idx}: Ungueltiger Typ '{action_type}'. "
+                f"Aktion {idx}: Ungültiger Typ '{action_type}'. "
                 f"Erlaubt: {', '.join(NOTIFICATION_ACTION_TYPES)}",
                 field="actions",
             )
 
-        # URL-Validierung fuer webhooks
+        # URL-Validierung für webhooks
         if action_type == "webhook":
             url = action.get("url")
             if not url or not isinstance(url, str):
@@ -515,7 +515,7 @@ def validate_notification_actions(
                     field="actions",
                 )
 
-        # Template-Validierung fuer email
+        # Template-Validierung für email
         if action_type == "email":
             if "template" not in action and "body" not in action:
                 raise JSONBValidationError(

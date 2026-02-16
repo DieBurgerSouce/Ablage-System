@@ -1,6 +1,6 @@
 """BPMN Process Engine API Endpoints.
 
-Endpunkte fuer:
+Endpunkte für:
 - Process Definitions: Deploy, List, Export
 - Process Instances: Start, List, Terminate
 - Process Tasks: Claim, Complete, Delegate
@@ -42,7 +42,7 @@ router = APIRouter(prefix="/bpmn", tags=["BPMN Workflow Engine"])
 # =============================================================================
 
 class ProcessDefinitionCreate(BaseModel):
-    """Schema fuer Prozess-Definition Erstellung."""
+    """Schema für Prozess-Definition Erstellung."""
     key: str = Field(..., min_length=1, max_length=255,
                      description="Eindeutiger Prozess-Key")
     name: str = Field(..., min_length=1, max_length=255,
@@ -57,7 +57,7 @@ class ProcessDefinitionCreate(BaseModel):
 
 
 class ProcessDefinitionResponse(BaseModel):
-    """Response fuer Prozess-Definition."""
+    """Response für Prozess-Definition."""
     id: UUID
     key: str
     name: str
@@ -83,12 +83,12 @@ class ProcessInstanceStart(BaseModel):
         None, max_length=255, description="Externer Schluessel (z.B. Rechnungsnummer)"
     )
     document_id: Optional[UUID] = Field(
-        None, description="Verknuepftes Dokument"
+        None, description="Verknüpftes Dokument"
     )
 
 
 class ProcessInstanceResponse(BaseModel):
-    """Response fuer Prozess-Instanz."""
+    """Response für Prozess-Instanz."""
     id: UUID
     definition_id: UUID
     definition_key: Optional[str] = None
@@ -106,7 +106,7 @@ class ProcessInstanceResponse(BaseModel):
 
 
 class ProcessTaskResponse(BaseModel):
-    """Response fuer Process Task."""
+    """Response für Process Task."""
     id: UUID
     instance_id: UUID
     element_id: str
@@ -131,7 +131,7 @@ class ProcessTaskResponse(BaseModel):
 
 
 class TaskCompleteRequest(BaseModel):
-    """Request zum Abschliessen eines Tasks."""
+    """Request zum Abschließen eines Tasks."""
     variables: Optional[JSONDict] = Field(
         default_factory=dict, description="Output-Variablen"
     )
@@ -139,12 +139,12 @@ class TaskCompleteRequest(BaseModel):
 
 class TaskDelegateRequest(BaseModel):
     """Request zum Delegieren eines Tasks."""
-    to_user_id: UUID = Field(..., description="Empfaenger-User ID")
+    to_user_id: UUID = Field(..., description="Empfänger-User ID")
     comment: Optional[str] = None
 
 
 class ProcessHistoryResponse(BaseModel):
-    """Response fuer History-Eintrag."""
+    """Response für History-Eintrag."""
     id: UUID
     event_type: str
     element_id: Optional[str]
@@ -185,7 +185,7 @@ async def deploy_process_definition(
 ):
     """Deployt eine neue Prozess-Definition.
 
-    Unterstuetzt sowohl BPMN 2.0 XML als auch Frontend JSON (React Flow).
+    Unterstützt sowohl BPMN 2.0 XML als auch Frontend JSON (React Flow).
     Bei existierendem Key wird automatisch eine neue Version erstellt.
     """
     service = get_process_definition_service(db)
@@ -271,7 +271,7 @@ async def get_process_definition(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gibt eine einzelne Prozess-Definition zurueck."""
+    """Gibt eine einzelne Prozess-Definition zurück."""
     service = get_process_definition_service(db)
 
     definition = await service.get_by_id(definition_id, current_user.company_id)
@@ -371,7 +371,7 @@ async def get_process_statistics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gibt Statistiken zu Prozess-Definitionen zurueck."""
+    """Gibt Statistiken zu Prozess-Definitionen zurück."""
     service = get_process_definition_service(db)
     return await service.get_statistics(current_user.company_id)
 
@@ -461,7 +461,7 @@ async def get_process_instance(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gibt eine einzelne Prozess-Instanz zurueck."""
+    """Gibt eine einzelne Prozess-Instanz zurück."""
     service = get_process_execution_service(db)
 
     instance = await service.get_instance(instance_id, current_user.company_id)
@@ -548,7 +548,7 @@ async def get_process_history(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gibt die Historie einer Prozess-Instanz zurueck."""
+    """Gibt die Historie einer Prozess-Instanz zurück."""
     service = get_process_execution_service(db)
 
     history = await service.get_history(
@@ -577,7 +577,7 @@ async def get_my_tasks(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gibt Tasks fuer den aktuellen Benutzer zurueck.
+    """Gibt Tasks für den aktuellen Benutzer zurück.
 
     Beinhaltet direkt zugewiesene Tasks sowie optionale Gruppen-Tasks.
     """
@@ -628,7 +628,7 @@ async def get_group_tasks(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gibt unzugewiesene Tasks fuer eine Gruppe zurueck."""
+    """Gibt unzugewiesene Tasks für eine Gruppe zurück."""
     service = get_task_service(db)
 
     tasks, total = await service.get_group_tasks(
@@ -658,7 +658,7 @@ async def get_task(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gibt einen einzelnen Task zurueck."""
+    """Gibt einen einzelnen Task zurück."""
     service = get_task_service(db)
 
     task = await service.get_task(task_id, current_user.company_id)
@@ -674,14 +674,14 @@ async def get_task(
 @router.post(
     "/tasks/{task_id}/claim",
     response_model=ProcessTaskResponse,
-    summary="Task uebernehmen"
+    summary="Task übernehmen"
 )
 async def claim_task(
     task_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Uebernimmt einen Task."""
+    """Übernimmt einen Task."""
     service = get_task_service(db)
 
     try:
@@ -694,7 +694,7 @@ async def claim_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=safe_error_detail(e, "Aufgabe-Uebernehmen")
+            detail=safe_error_detail(e, "Aufgabe-Übernehmen")
         )
 
 
@@ -728,7 +728,7 @@ async def unclaim_task(
 @router.post(
     "/tasks/{task_id}/complete",
     response_model=ProcessTaskResponse,
-    summary="Task abschliessen"
+    summary="Task abschließen"
 )
 async def complete_task(
     task_id: UUID,
@@ -736,9 +736,9 @@ async def complete_task(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Schliesst einen Task ab.
+    """Schließt einen Task ab.
 
-    Output-Variablen werden als Prozess-Variablen uebernommen.
+    Output-Variablen werden als Prozess-Variablen übernommen.
     Der Prozess wird automatisch fortgesetzt.
     """
     service = get_task_service(db)
@@ -754,7 +754,7 @@ async def complete_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=safe_error_detail(e, "Aufgabe-Abschliessen")
+            detail=safe_error_detail(e, "Aufgabe-Abschließen")
         )
 
 
@@ -791,14 +791,14 @@ async def delegate_task(
 @router.get(
     "/tasks/overdue",
     response_model=List[ProcessTaskResponse],
-    summary="Ueberfaellige Tasks"
+    summary="Überfällige Tasks"
 )
 async def get_overdue_tasks(
     limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gibt alle ueberfaelligen Tasks zurueck."""
+    """Gibt alle überfälligen Tasks zurück."""
     service = get_task_service(db)
 
     tasks = await service.get_overdue_tasks(
@@ -818,7 +818,7 @@ async def get_task_statistics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gibt Task-Statistiken zurueck."""
+    """Gibt Task-Statistiken zurück."""
     service = get_task_service(db)
 
     return await service.get_task_statistics(
@@ -839,7 +839,7 @@ async def get_timer_statistics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gibt Timer-Statistiken zurueck."""
+    """Gibt Timer-Statistiken zurück."""
     service = get_timer_service(db)
     return await service.get_timer_statistics(current_user.company_id)
 
@@ -849,7 +849,7 @@ async def get_timer_statistics(
 # =============================================================================
 
 class WorkflowTemplateResponse(BaseModel):
-    """Response fuer Workflow-Template."""
+    """Response für Workflow-Template."""
     key: str
     name: str
     description: str
@@ -874,7 +874,7 @@ async def list_templates(
     category: Optional[str] = Query(None, description="Filter nach Kategorie"),
     current_user: User = Depends(get_current_active_user)
 ):
-    """Listet alle verfuegbaren Workflow-Templates auf."""
+    """Listet alle verfügbaren Workflow-Templates auf."""
     from app.services.bpmn.workflow_templates import list_workflow_templates
 
     templates = list_workflow_templates()
@@ -907,7 +907,7 @@ async def get_template(
     template_key: str,
     current_user: User = Depends(get_current_active_user)
 ):
-    """Gibt die Details eines Workflow-Templates zurueck (inkl. vollstaendigem JSON)."""
+    """Gibt die Details eines Workflow-Templates zurück (inkl. vollständigem JSON)."""
     from app.services.bpmn.workflow_templates import get_workflow_template
 
     template = get_workflow_template(template_key)

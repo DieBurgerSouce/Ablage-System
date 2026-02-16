@@ -2,7 +2,7 @@
 """
 Report Builder Service.
 
-Baut SQL-Queries aus Report-Template-Konfigurationen und fuehrt Reports aus.
+Baut SQL-Queries aus Report-Template-Konfigurationen und führt Reports aus.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ class ReportRow:
 
 @dataclass
 class ReportResult:
-    """Ergebnis einer Report-Ausfuehrung."""
+    """Ergebnis einer Report-Ausführung."""
     template_id: uuid.UUID
     template_name: str
     columns: List[Dict[str, Any]]
@@ -85,7 +85,7 @@ FIELD_DEFINITIONS: Dict[str, Dict[str, Dict[str, Any]]] = {
         "ocr_confidence": {"path": "ocr_confidence", "type": "number", "display": "OCR-Konfidenz"},
         "extracted_data.invoice_number": {"path": "extracted_data", "json_key": "invoice_number", "type": "string", "display": "Rechnungsnummer"},
         "extracted_data.invoice_date": {"path": "extracted_data", "json_key": "invoice_date", "type": "date", "display": "Rechnungsdatum"},
-        "extracted_data.due_date": {"path": "extracted_data", "json_key": "due_date", "type": "date", "display": "Faelligkeitsdatum"},
+        "extracted_data.due_date": {"path": "extracted_data", "json_key": "due_date", "type": "date", "display": "Fälligkeitsdatum"},
         "extracted_data.total_net": {"path": "extracted_data", "json_key": "total_net", "type": "currency", "display": "Nettobetrag"},
         "extracted_data.total_gross": {"path": "extracted_data", "json_key": "total_gross", "type": "currency", "display": "Bruttobetrag"},
         "extracted_data.vat_amount": {"path": "extracted_data", "json_key": "vat_amount", "type": "currency", "display": "MwSt-Betrag"},
@@ -93,14 +93,14 @@ FIELD_DEFINITIONS: Dict[str, Dict[str, Dict[str, Any]]] = {
         "extracted_data.customer_name": {"path": "extracted_data", "json_key": "customer_name", "type": "string", "display": "Kunde"},
     },
     "invoices": {
-        # Gleiche Felder wie documents, aber fuer Rechnungen
+        # Gleiche Felder wie documents, aber für Rechnungen
         "id": {"path": "id", "type": "string", "display": "ID"},
         "filename": {"path": "original_filename", "type": "string", "display": "Dateiname"},
         "status": {"path": "status", "type": "string", "display": "Status"},
         "created_at": {"path": "created_at", "type": "date", "display": "Erstellt am"},
         "invoice_number": {"path": "extracted_data", "json_key": "invoice_number", "type": "string", "display": "Rechnungsnummer"},
         "invoice_date": {"path": "extracted_data", "json_key": "invoice_date", "type": "date", "display": "Rechnungsdatum"},
-        "due_date": {"path": "extracted_data", "json_key": "due_date", "type": "date", "display": "Faelligkeitsdatum"},
+        "due_date": {"path": "extracted_data", "json_key": "due_date", "type": "date", "display": "Fälligkeitsdatum"},
         "total_net": {"path": "extracted_data", "json_key": "total_net", "type": "currency", "display": "Nettobetrag"},
         "total_gross": {"path": "extracted_data", "json_key": "total_gross", "type": "currency", "display": "Bruttobetrag"},
         "vat_amount": {"path": "extracted_data", "json_key": "vat_amount", "type": "currency", "display": "MwSt-Betrag"},
@@ -127,7 +127,7 @@ FIELD_DEFINITIONS: Dict[str, Dict[str, Dict[str, Any]]] = {
         "account_type": {"path": "account_type", "type": "string", "display": "Kontotyp"},
         "current_balance": {"path": "current_balance", "type": "currency", "display": "Aktueller Saldo"},
         "balance_date": {"path": "balance_date", "type": "date", "display": "Saldo-Datum"},
-        "currency": {"path": "currency", "type": "string", "display": "Waehrung"},
+        "currency": {"path": "currency", "type": "string", "display": "Währung"},
         "is_active": {"path": "is_active", "type": "boolean", "display": "Aktiv"},
         "last_sync_at": {"path": "last_sync_at", "type": "date", "display": "Letzte Synchronisierung"},
     },
@@ -136,7 +136,7 @@ FIELD_DEFINITIONS: Dict[str, Dict[str, Dict[str, Any]]] = {
         "booking_date": {"path": "booking_date", "type": "date", "display": "Buchungsdatum"},
         "value_date": {"path": "value_date", "type": "date", "display": "Valuta"},
         "amount": {"path": "amount", "type": "currency", "display": "Betrag"},
-        "currency": {"path": "currency", "type": "string", "display": "Waehrung"},
+        "currency": {"path": "currency", "type": "string", "display": "Währung"},
         "counterparty_name": {"path": "counterparty_name", "type": "string", "display": "Gegenpartei"},
         "counterparty_iban": {"path": "counterparty_iban", "type": "string", "display": "Gegenpartei-IBAN"},
         "reference_text": {"path": "reference_text", "type": "string", "display": "Verwendungszweck"},
@@ -155,7 +155,7 @@ FIELD_DEFINITIONS: Dict[str, Dict[str, Dict[str, Any]]] = {
         "employee_name": {"path": "employee_name", "type": "string", "display": "Mitarbeiter"},
         "total_amount": {"path": "total_amount", "type": "currency", "display": "Gesamtbetrag"},
         "total_vat": {"path": "total_vat", "type": "currency", "display": "MwSt-Gesamt"},
-        "total_deductible": {"path": "total_deductible", "type": "currency", "display": "Abzugsfaehig"},
+        "total_deductible": {"path": "total_deductible", "type": "currency", "display": "Abzugsfähig"},
         "travel_days": {"path": "travel_days", "type": "number", "display": "Reisetage"},
         "travel_allowance_total": {"path": "travel_allowance_total", "type": "currency", "display": "Verpflegungspauschale"},
         "total_kilometers": {"path": "total_kilometers", "type": "number", "display": "Gefahrene km"},
@@ -170,19 +170,19 @@ FIELD_DEFINITIONS: Dict[str, Dict[str, Dict[str, Any]]] = {
         "expense_type": {"path": "expense_type", "type": "string", "display": "Ausgabentyp"},
         "expense_date": {"path": "expense_date", "type": "date", "display": "Datum"},
         "amount": {"path": "amount", "type": "currency", "display": "Betrag"},
-        "currency": {"path": "currency", "type": "string", "display": "Waehrung"},
+        "currency": {"path": "currency", "type": "string", "display": "Währung"},
         "tax_rate": {"path": "tax_rate", "type": "number", "display": "Steuersatz"},
         "tax_amount": {"path": "tax_amount", "type": "currency", "display": "Steuerbetrag"},
         "net_amount": {"path": "net_amount", "type": "currency", "display": "Nettobetrag"},
-        "is_deductible": {"path": "is_deductible", "type": "boolean", "display": "Abzugsfaehig"},
-        "deductible_percentage": {"path": "deductible_percentage", "type": "number", "display": "Abzugsfaehig %"},
-        "deductible_amount": {"path": "deductible_amount", "type": "currency", "display": "Abzugsfaehiger Betrag"},
+        "is_deductible": {"path": "is_deductible", "type": "boolean", "display": "Abzugsfähig"},
+        "deductible_percentage": {"path": "deductible_percentage", "type": "number", "display": "Abzugsfähig %"},
+        "deductible_amount": {"path": "deductible_amount", "type": "currency", "display": "Abzugsfähiger Betrag"},
     },
 }
 
 
 class ReportBuilderService:
-    """Service fuer Report-Query-Erstellung und Ausfuehrung."""
+    """Service für Report-Query-Erstellung und Ausführung."""
 
     _instance: Optional["ReportBuilderService"] = None
 
@@ -193,7 +193,7 @@ class ReportBuilderService:
         return cls._instance
 
     def get_available_fields(self, data_source: str) -> List[Dict[str, Any]]:
-        """Gibt verfuegbare Felder fuer eine Datenquelle zurueck."""
+        """Gibt verfügbare Felder für eine Datenquelle zurück."""
         fields = FIELD_DEFINITIONS.get(data_source, {})
         result = []
 
@@ -208,27 +208,27 @@ class ReportBuilderService:
         return sorted(result, key=lambda x: (x["category"], x["display_name"]))
 
     def get_available_data_sources(self) -> List[Dict[str, Any]]:
-        """Gibt verfuegbare Datenquellen zurueck."""
+        """Gibt verfügbare Datenquellen zurück."""
         return [
             {"id": "documents", "name": "Alle Dokumente", "description": "Alle hochgeladenen Dokumente"},
             {"id": "invoices", "name": "Rechnungen", "description": "Nur Rechnungsdokumente"},
-            {"id": "entities", "name": "Geschaeftspartner", "description": "Kunden und Lieferanten"},
-            {"id": "bank_accounts", "name": "Bankkonten", "description": "Verknuepfte Bankkonten"},
+            {"id": "entities", "name": "Geschäftspartner", "description": "Kunden und Lieferanten"},
+            {"id": "bank_accounts", "name": "Bankkonten", "description": "Verknüpfte Bankkonten"},
             {"id": "bank_transactions", "name": "Kontobewegungen", "description": "Banktransaktionen und Buchungen"},
             {"id": "expenses", "name": "Spesenabrechnungen", "description": "Reisekosten und Spesenabrechnungen"},
             {"id": "expense_items", "name": "Spesenpositionen", "description": "Einzelne Positionen der Spesenabrechnungen"},
         ]
 
     def get_available_operators(self) -> List[Dict[str, Any]]:
-        """Gibt verfuegbare Filter-Operatoren zurueck."""
+        """Gibt verfügbare Filter-Operatoren zurück."""
         return [
             {"id": "eq", "name": "gleich", "types": ["string", "number", "date", "boolean"]},
             {"id": "ne", "name": "ungleich", "types": ["string", "number", "date", "boolean"]},
-            {"id": "gt", "name": "groesser als", "types": ["number", "date", "currency"]},
-            {"id": "gte", "name": "groesser oder gleich", "types": ["number", "date", "currency"]},
+            {"id": "gt", "name": "größer als", "types": ["number", "date", "currency"]},
+            {"id": "gte", "name": "größer oder gleich", "types": ["number", "date", "currency"]},
             {"id": "lt", "name": "kleiner als", "types": ["number", "date", "currency"]},
             {"id": "lte", "name": "kleiner oder gleich", "types": ["number", "date", "currency"]},
-            {"id": "contains", "name": "enthaelt", "types": ["string"]},
+            {"id": "contains", "name": "enthält", "types": ["string"]},
             {"id": "starts_with", "name": "beginnt mit", "types": ["string"]},
             {"id": "ends_with", "name": "endet mit", "types": ["string"]},
             {"id": "in", "name": "in Liste", "types": ["string", "number"]},
@@ -238,7 +238,7 @@ class ReportBuilderService:
         ]
 
     def get_available_aggregations(self) -> List[Dict[str, Any]]:
-        """Gibt verfuegbare Aggregationen zurueck."""
+        """Gibt verfügbare Aggregationen zurück."""
         return [
             {"id": "sum", "name": "Summe", "types": ["number", "currency"]},
             {"id": "avg", "name": "Durchschnitt", "types": ["number", "currency"]},
@@ -256,7 +256,7 @@ class ReportBuilderService:
         limit: Optional[int] = None,
         offset: int = 0,
     ) -> ReportResult:
-        """Fuehrt einen Report aus."""
+        """Führt einen Report aus."""
         logger.info(
             "executing_report",
             template_id=str(template.id),
@@ -265,7 +265,7 @@ class ReportBuilderService:
             user_id=str(user_id),
         )
 
-        # Model fuer Datenquelle holen
+        # Model für Datenquelle holen
         model = DATA_SOURCE_MODELS.get(template.data_source)
         if not model:
             raise ValueError(f"Unbekannte Datenquelle: {template.data_source}")
@@ -273,7 +273,7 @@ class ReportBuilderService:
         # Basis-Query
         query = select(model)
 
-        # Spezial-Filter fuer invoices
+        # Spezial-Filter für invoices
         if template.data_source == "invoices":
             query = query.where(model.document_type.in_(["invoice", "rechnung"]))
 
@@ -301,7 +301,7 @@ class ReportBuilderService:
                     else:
                         query = query.order_by(column)
 
-        # Count Query fuer Gesamtanzahl
+        # Count Query für Gesamtanzahl
         count_query = select(func.count()).select_from(query.subquery())
         count_result = await db.execute(count_query)
         total_count = count_result.scalar() or 0
@@ -311,7 +311,7 @@ class ReportBuilderService:
             query = query.limit(limit)
         query = query.offset(offset)
 
-        # Ausfuehren
+        # Ausführen
         result = await db.execute(query)
         rows = list(result.scalars().all())
 
@@ -435,7 +435,7 @@ class ReportBuilderService:
             return "Sonstige"
 
     def _get_model_column(self, model: Type, field_path: str) -> Optional[object]:
-        """Holt die SQLAlchemy-Spalte fuer ein Feld.
+        """Holt die SQLAlchemy-Spalte für ein Feld.
 
         Returns:
             SQLAlchemy column object or None if not found
@@ -598,7 +598,7 @@ class ReportBuilderService:
         template: ReportTemplate,
         runtime_filters: Optional[Dict[str, Any]] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Berechnet Aggregationen fuer einen Report."""
+        """Berechnet Aggregationen für einen Report."""
         aggregations = {}
 
         for col in template.columns:

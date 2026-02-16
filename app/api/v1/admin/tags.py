@@ -37,19 +37,19 @@ router = APIRouter(prefix="/tags", tags=["Admin - Tags"])
 async def get_tags(
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
-    skip: int = Query(0, ge=0, description="Anzahl zu ueberspringender Eintraege"),
-    limit: int = Query(100, ge=1, le=200, description="Maximale Anzahl zurueckzugebender Eintraege"),
+    skip: int = Query(0, ge=0, description="Anzahl zu überspringender Einträge"),
+    limit: int = Query(100, ge=1, le=200, description="Maximale Anzahl zurückzugebender Einträge"),
     active_only: bool = Query(False, description="Nur aktive Tags anzeigen"),
     system_only: bool = Query(False, description="Nur System-Tags anzeigen"),
 ) -> List[TagResponse]:
     """
     Ruft alle Tags ab.
 
-    Tags werden verwendet fuer:
+    Tags werden verwendet für:
     - Dokumentenkategorisierung
-    - Optionale Verknuepfung mit Tunes fuer OCR-Feintuning
+    - Optionale Verknüpfung mit Tunes für OCR-Feintuning
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
     """
     query = select(Tag)
 
@@ -125,10 +125,10 @@ async def create_tag(
     """
     Erstellt ein neues Tag.
 
-    Tags werden verwendet fuer Dokumentenkategorisierung und
-    koennen optional mit Tunes verknuepft werden.
+    Tags werden verwendet für Dokumentenkategorisierung und
+    können optional mit Tunes verknüpft werden.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
     """
     # Check for name duplication
     query = select(Tag).where(Tag.name == tag_in.name)
@@ -179,9 +179,9 @@ async def update_tag(
     """
     Aktualisiert ein bestehendes Tag.
 
-    System-Tags koennen bearbeitet, aber nicht geloescht werden.
+    System-Tags können bearbeitet, aber nicht gelöscht werden.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
     """
     query = select(Tag).where(Tag.id == tag_id)
     result = await db.execute(query)
@@ -235,8 +235,8 @@ async def update_tag(
     "/{tag_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Tag loeschen",
-    description="Loescht ein Tag (System-Tags koennen nicht geloescht werden)"
+    summary="Tag löschen",
+    description="Löscht ein Tag (System-Tags können nicht gelöscht werden)"
 )
 async def delete_tag(
     tag_id: UUID,
@@ -244,12 +244,12 @@ async def delete_tag(
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """
-    Loescht ein Tag.
+    Löscht ein Tag.
 
-    System-Tags (wie Eingangsrechnung, Ausgangsrechnung) koennen
-    nicht geloescht werden.
+    System-Tags (wie Eingangsrechnung, Ausgangsrechnung) können
+    nicht gelöscht werden.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
     """
     query = select(Tag).where(Tag.id == tag_id)
     result = await db.execute(query)
@@ -264,7 +264,7 @@ async def delete_tag(
     if tag.is_system:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="System-Tags koennen nicht geloescht werden."
+            detail="System-Tags können nicht gelöscht werden."
         )
 
     tag_name = tag.name

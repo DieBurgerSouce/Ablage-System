@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Gemeinsame Typen fuer Kalender-Provider-Clients.
+Gemeinsame Typen für Kalender-Provider-Clients.
 
 Definiert CalendarEvent und CalendarInfo als zentrale Datenstrukturen,
 die von allen Provider-Clients (Google, Microsoft, CalDAV) verwendet werden.
@@ -20,7 +20,7 @@ class CalendarEvent:
     """
 
     uid: str
-    """Ablage-interne UID fuer Tracking."""
+    """Ablage-interne UID für Tracking."""
 
     title: str
     """Titel / Betreff des Ereignisses."""
@@ -58,7 +58,7 @@ class CalendarInfo:
     """Beschreibung des Kalenders."""
 
     primary: bool
-    """Ob dies der primaere Kalender des Benutzers ist."""
+    """Ob dies der primäre Kalender des Benutzers ist."""
 
     color: Optional[str] = None
     """Optionale Farbkennung (Hex-Wert)."""

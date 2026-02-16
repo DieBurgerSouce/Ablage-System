@@ -194,7 +194,7 @@ async def get_task_status(
     """Get current status of a task.
 
     Y.1 SECURITY FIX: Ownership-Check hinzugefuegt.
-    User kann nur eigene Tasks abrufen, Admins koennen alle sehen.
+    User kann nur eigene Tasks abrufen, Admins können alle sehen.
 
     Args:
         task_id: Celery task ID
@@ -248,7 +248,7 @@ async def cancel_task(
     """Cancel a running task.
 
     Y.1 SECURITY FIX: Ownership-Check hinzugefuegt.
-    User kann nur eigene Tasks abbrechen, Admins koennen alle abbrechen.
+    User kann nur eigene Tasks abbrechen, Admins können alle abbrechen.
 
     Args:
         task_id: Celery task ID
@@ -352,7 +352,7 @@ async def get_task_result(
     """Get task result.
 
     Y.2 SECURITY FIX: Ownership-Check hinzugefuegt.
-    User kann nur eigene Task-Ergebnisse abrufen, Admins koennen alle sehen.
+    User kann nur eigene Task-Ergebnisse abrufen, Admins können alle sehen.
 
     Args:
         task_id: Celery task ID
@@ -397,7 +397,7 @@ async def get_task_result(
         logger.warning("task_result_validation_error", task_id=task_id, **safe_error_log(e))
         raise HTTPException(
             status_code=400,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
     except TimeoutError:
         raise HTTPException(

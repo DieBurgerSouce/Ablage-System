@@ -169,8 +169,8 @@ async def create_batch_job(
 async def list_batch_jobs(
     status: Optional[str] = Query(None, description="Nach Status filtern"),
     job_type: Optional[str] = Query(None, description="Nach Job-Typ filtern"),
-    limit: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
-    offset: int = Query(0, ge=0, description="Offset fuer Pagination"),
+    limit: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
+    offset: int = Query(0, ge=0, description="Offset für Pagination"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -199,9 +199,9 @@ async def get_active_batch_jobs(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Gibt alle aktiven (laufenden oder wartenden) Batch-Jobs zurueck.
+    Gibt alle aktiven (laufenden oder wartenden) Batch-Jobs zurück.
 
-    Nuetzlich fuer Dashboard-Anzeigen.
+    Nuetzlich für Dashboard-Anzeigen.
     """
     service = get_batch_job_service()
     return await service.get_active_batch_jobs(db, current_user.id)
@@ -214,9 +214,9 @@ async def get_batch_job(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Gibt detaillierte Informationen zu einem Batch-Job zurueck.
+    Gibt detaillierte Informationen zu einem Batch-Job zurück.
 
-    Inklusive Fortschritt, Zeitschaetzung und Ergebnis-Zusammenfassung.
+    Inklusive Fortschritt, Zeitschätzung und Ergebnis-Zusammenfassung.
     """
     service = get_batch_job_service()
 
@@ -240,7 +240,7 @@ async def pause_batch_job(
     """
     Pausiert einen laufenden Batch-Job.
 
-    Nur Jobs im Status 'processing' koennen pausiert werden.
+    Nur Jobs im Status 'processing' können pausiert werden.
     Die Verarbeitung wird nach dem aktuellen Dokument angehalten.
     """
     service = get_batch_job_service()
@@ -269,11 +269,11 @@ async def pause_batch_job(
     except PermissionError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
         logger.warning("batch_pause_permission_denied", **safe_error_log(e))
-        raise HTTPException(status_code=403, detail="Keine Berechtigung fuer diese Aktion")
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Aktion")
     except ValueError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
         logger.warning("batch_pause_validation_error", **safe_error_log(e))
-        raise HTTPException(status_code=400, detail="Ungueltige Anfrage fuer Batch-Pause")
+        raise HTTPException(status_code=400, detail="Ungültige Anfrage für Batch-Pause")
 
 
 @router.post("/{batch_id}/resume", response_model=BatchJobActionResponse)
@@ -313,11 +313,11 @@ async def resume_batch_job(
     except PermissionError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
         logger.warning("batch_resume_permission_denied", **safe_error_log(e))
-        raise HTTPException(status_code=403, detail="Keine Berechtigung fuer diese Aktion")
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Aktion")
     except ValueError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
         logger.warning("batch_resume_validation_error", **safe_error_log(e))
-        raise HTTPException(status_code=400, detail="Ungueltige Anfrage fuer Batch-Fortsetzung")
+        raise HTTPException(status_code=400, detail="Ungültige Anfrage für Batch-Fortsetzung")
 
 
 @router.post("/{batch_id}/cancel", response_model=BatchJobActionResponse)
@@ -357,11 +357,11 @@ async def cancel_batch_job(
     except PermissionError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
         logger.warning("batch_cancel_permission_denied", **safe_error_log(e))
-        raise HTTPException(status_code=403, detail="Keine Berechtigung fuer diese Aktion")
+        raise HTTPException(status_code=403, detail="Keine Berechtigung für diese Aktion")
     except ValueError as e:
         # SECURITY FIX 28-17: Generische Fehlermeldung
         logger.warning("batch_cancel_validation_error", **safe_error_log(e))
-        raise HTTPException(status_code=400, detail="Ungueltige Anfrage fuer Batch-Abbruch")
+        raise HTTPException(status_code=400, detail="Ungültige Anfrage für Batch-Abbruch")
 
 
 @router.get("/{batch_id}/progress")
@@ -371,9 +371,9 @@ async def get_batch_job_progress(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Gibt kompakten Fortschrittsstatus fuer Echtzeit-Updates zurueck.
+    Gibt kompakten Fortschrittsstatus für Echtzeit-Updates zurück.
 
-    Optimiert fuer haeufiges Polling vom Frontend.
+    Optimiert für häufiges Polling vom Frontend.
     """
     service = get_batch_job_service()
 

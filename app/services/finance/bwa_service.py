@@ -3,7 +3,7 @@
 BWA Service - Betriebswirtschaftliche Auswertung.
 
 Standard-BWA nach SKR03/SKR04.
-Monatlich, quartalsweise, jaehrlich.
+Monatlich, quartalsweise, jährlich.
 Vergleich mit Vorjahr/Vormonat.
 
 Feinpoliert und durchdacht - Enterprise-grade Finanzberichterstattung.
@@ -39,7 +39,7 @@ SKR03_RANGES: Dict[str, List[str]] = {
     "personalaufwand": ["4000-4199"],
     "abschreibungen": ["4800-4855"],
     "sonstige_aufwendungen": ["4200-4799", "4856-4999"],
-    "zinsertraege": ["7000-7099"],
+    "zinserträge": ["7000-7099"],
     "zinsaufwand": ["7300-7399"],
 }
 
@@ -49,7 +49,7 @@ SKR04_RANGES: Dict[str, List[str]] = {
     "personalaufwand": ["6000-6199"],
     "abschreibungen": ["6200-6255"],
     "sonstige_aufwendungen": ["6256-6999"],
-    "zinsertraege": ["7000-7099"],
+    "zinserträge": ["7000-7099"],
     "zinsaufwand": ["7300-7399"],
 }
 
@@ -70,7 +70,7 @@ class BWAService:
         month: Optional[int] = None,
         quarter: Optional[int] = None,
     ) -> BWAReport:
-        """BWA generieren fuer einen Zeitraum.
+        """BWA generieren für einen Zeitraum.
 
         Args:
             db: Datenbank-Session
@@ -102,7 +102,7 @@ class BWAService:
 
         betriebsergebnis = erloese_total - material_total - personal_total - afa_total - sonstige_total
 
-        zinsertraege = self._sum_position(positionen.get("zinsertraege"))
+        zinsertraege = self._sum_position(positionen.get("zinserträge"))
         zinsaufwand = self._sum_position(positionen.get("zinsaufwand"))
         finanzergebnis = zinsertraege - zinsaufwand
 
@@ -117,7 +117,7 @@ class BWAService:
             db, company_id, skr_schema, period_start, period_end
         )
 
-        # Vorhandene BWA pruefen oder neu erstellen
+        # Vorhandene BWA prüfen oder neu erstellen
         existing = await self._find_existing(db, company_id, period_start, period_end)
 
         if existing:
@@ -174,7 +174,7 @@ class BWAService:
         company_id: UUID,
         year: int,
     ) -> List[BWAReport]:
-        """Liste BWA-Reports fuer ein Jahr."""
+        """Liste BWA-Reports für ein Jahr."""
         year_start = date(year, 1, 1)
         year_end = date(year, 12, 31)
 
@@ -198,10 +198,10 @@ class BWAService:
         db: AsyncSession,
         report_id: UUID,
     ) -> Dict[str, object]:
-        """Generiere PDF-ready Datenstruktur fuer einen BWA-Report.
+        """Generiere PDF-ready Datenstruktur für einen BWA-Report.
 
         Returns:
-            Dict mit allen BWA-Daten fuer PDF-Rendering
+            Dict mit allen BWA-Daten für PDF-Rendering
         """
         report = await self.get_bwa(db, report_id)
         if report is None:
@@ -243,7 +243,7 @@ class BWAService:
                 "finanzergebnis": report.finanzergebnis,
                 "ergebnis_vor_steuern": report.ergebnis_vor_steuern,
                 "steuern": report.steuern,
-                "jahresueberschuss": report.jahresueberschuss,
+                "jahresüberschuss": report.jahresueberschuss,
             },
             "vorjahresvergleich": report.vorjahresvergleich,
             "generiert_am": utc_now().isoformat(),
@@ -276,7 +276,7 @@ class BWAService:
                 "finanzergebnis": sum(r.finanzergebnis for r in reports),
                 "ergebnis_vor_steuern": sum(r.ergebnis_vor_steuern for r in reports),
                 "steuern": sum(r.steuern for r in reports),
-                "jahresueberschuss": sum(r.jahresueberschuss for r in reports),
+                "jahresüberschuss": sum(r.jahresueberschuss for r in reports),
             }
 
         data_a = _agg(reports_a)
@@ -292,7 +292,7 @@ class BWAService:
                 "periode_a": round(val_a, 2),
                 "periode_b": round(val_b, 2),
                 "differenz": round(diff, 2),
-                "veraenderung_prozent": round(pct, 1),
+                "veränderung_prozent": round(pct, 1),
             }
 
         return {
@@ -339,7 +339,7 @@ class BWAService:
             "betriebsergebnis": current_bwa.betriebsergebnis,
             "finanzergebnis": current_bwa.finanzergebnis,
             "ergebnis_vor_steuern": current_bwa.ergebnis_vor_steuern,
-            "jahresueberschuss": current_bwa.jahresueberschuss,
+            "jahresüberschuss": current_bwa.jahresueberschuss,
         }
 
         previous_data = current_bwa.vorjahresvergleich or {}
@@ -400,7 +400,7 @@ class BWAService:
         period_start: date,
         period_end: date,
     ) -> Dict[str, object]:
-        """Aggregiert GL-Eintraege nach BWA-Positionen."""
+        """Aggregiert GL-Einträge nach BWA-Positionen."""
         from app.db.models_gl_posting import (
             JournalEntry, JournalEntryLine, JournalEntryStatus,
         )
@@ -442,7 +442,7 @@ class BWAService:
                 for acct_range in account_ranges:
                     if self._account_in_range(acct, acct_range):
                         # Erloese: Credit-Seite; Aufwand: Debit-Seite
-                        if position in ("erloese", "zinsertraege"):
+                        if position in ("erloese", "zinserträge"):
                             betrag = credit - debit
                         else:
                             betrag = debit - credit
@@ -477,7 +477,7 @@ class BWAService:
         period_start: date,
         period_end: date,
     ) -> Optional[Dict[str, object]]:
-        """Laedt Vorjahresdaten fuer Vergleich."""
+        """Laedt Vorjahresdaten für Vergleich."""
         prev_start = date(period_start.year - 1, period_start.month, period_start.day)
         try:
             prev_end = date(period_end.year - 1, period_end.month, period_end.day)
@@ -495,7 +495,7 @@ class BWAService:
             "finanzergebnis": prev_bwa.finanzergebnis,
             "ergebnis_vor_steuern": prev_bwa.ergebnis_vor_steuern,
             "steuern": prev_bwa.steuern,
-            "jahresueberschuss": prev_bwa.jahresueberschuss,
+            "jahresüberschuss": prev_bwa.jahresueberschuss,
             "period_start": prev_start.isoformat(),
             "period_end": prev_end.isoformat(),
         }
@@ -541,7 +541,7 @@ class BWAService:
         return list(result.scalars().all())
 
     def _account_in_range(self, account_number: str, account_range: str) -> bool:
-        """Prueft ob ein Konto im angegebenen Bereich liegt."""
+        """Prüft ob ein Konto im angegebenen Bereich liegt."""
         if "-" not in account_range:
             return account_number == account_range
         try:

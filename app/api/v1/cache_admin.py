@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Admin-API fuer Cache-Verwaltung.
+Admin-API für Cache-Verwaltung.
 
-Nur fuer System-Administratoren zugaenglich.
+Nur für System-Administratoren zugaenglich.
 """
 
 import structlog
@@ -32,14 +32,14 @@ router = APIRouter(prefix="/admin/cache", tags=["cache-admin"])
 
 
 class CacheMetricsResponse(BaseModel):
-    """Response fuer Cache-Metriken."""
+    """Response für Cache-Metriken."""
 
     l1: Dict[str, object] = Field(default_factory=dict)
     l2: Dict[str, object] = Field(default_factory=dict)
 
 
 class CacheInvalidateRequest(BaseModel):
-    """Request fuer Cache-Invalidierung."""
+    """Request für Cache-Invalidierung."""
 
     pattern: Optional[str] = Field(None, description="Redis-Key-Pattern (z.B. 'cache:doc:*')")
     scope: Optional[str] = Field(None, description="Vordefinierter Scope: 'all', 'search', 'documents', 'users'")
@@ -48,7 +48,7 @@ class CacheInvalidateRequest(BaseModel):
 
 
 class CacheInvalidateResponse(BaseModel):
-    """Response fuer Cache-Invalidierung."""
+    """Response für Cache-Invalidierung."""
 
     deleted_keys: int = 0
     scope: str = ""
@@ -56,7 +56,7 @@ class CacheInvalidateResponse(BaseModel):
 
 
 class CacheWarmResponse(BaseModel):
-    """Response fuer Cache-Warming."""
+    """Response für Cache-Warming."""
 
     warmed_entries: Dict[str, int] = Field(default_factory=dict)
 
@@ -65,7 +65,7 @@ class CacheWarmResponse(BaseModel):
     "/metrics",
     response_model=CacheMetricsResponse,
     summary="Cache-Metriken abrufen",
-    description="Holt L1/L2 Cache-Statistiken (nur fuer Superuser)",
+    description="Holt L1/L2 Cache-Statistiken (nur für Superuser)",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_metrics(
@@ -73,13 +73,13 @@ async def get_metrics(
     current_user: User = Depends(get_current_superuser),
 ) -> CacheMetricsResponse:
     """
-    Holt die Cache-Metriken fuer L1 und L2.
+    Holt die Cache-Metriken für L1 und L2.
 
     Args:
         current_user: Aktueller Superuser
 
     Returns:
-        Cache-Metriken fuer beide Tiers
+        Cache-Metriken für beide Tiers
     """
     try:
         metrics = await get_cache_metrics()
@@ -97,7 +97,7 @@ async def get_metrics(
     "/invalidate",
     response_model=CacheInvalidateResponse,
     summary="Cache invalidieren",
-    description="Invalidiert Cache-Eintraege nach Pattern oder Scope (nur fuer Superuser)",
+    description="Invalidiert Cache-Einträge nach Pattern oder Scope (nur für Superuser)",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)
 async def invalidate(
@@ -106,15 +106,15 @@ async def invalidate(
     current_user: User = Depends(get_current_superuser),
 ) -> CacheInvalidateResponse:
     """
-    Invalidiert Cache-Eintraege nach Pattern, Scope oder ID.
+    Invalidiert Cache-Einträge nach Pattern, Scope oder ID.
 
     Args:
-        request: HTTP Request (fuer Rate-Limiting)
+        request: HTTP Request (für Rate-Limiting)
         body: Invalidierungs-Parameter
         current_user: Aktueller Superuser
 
     Returns:
-        Anzahl geloeschter Keys und Scope-Info
+        Anzahl gelöschter Keys und Scope-Info
     """
     try:
         if body.document_id:
@@ -196,7 +196,7 @@ async def invalidate(
     "/warm",
     response_model=CacheWarmResponse,
     summary="Cache aufwaermen",
-    description="Laedt haeufig genutzte Daten in den Cache (nur fuer Superuser)",
+    description="Laedt häufig genutzte Daten in den Cache (nur für Superuser)",
 )
 @limiter.limit("5/minute", key_func=get_user_identifier)
 async def warm_cache(
@@ -205,14 +205,14 @@ async def warm_cache(
     current_user: User = Depends(get_current_superuser),
 ) -> CacheWarmResponse:
     """
-    Startet Cache-Warming fuer haeufig genutzte Daten.
+    Startet Cache-Warming für häufig genutzte Daten.
 
     Args:
         db: Database Session
         current_user: Aktueller Superuser
 
     Returns:
-        Anzahl der aufgewaermten Eintraege pro Kategorie
+        Anzahl der aufgewaermten Einträge pro Kategorie
     """
     try:
         from app.services.cache.cache_warming_service import CacheWarmingService

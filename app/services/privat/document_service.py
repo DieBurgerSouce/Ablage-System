@@ -1,4 +1,4 @@
-"""Service fuer die Verwaltung privater Dokumente."""
+"""Service für die Verwaltung privater Dokumente."""
 
 import gc
 import uuid
@@ -34,27 +34,27 @@ logger = structlog.get_logger(__name__)
 
 
 def secure_memory_cleanup(*variables: bytes) -> None:
-    """Sichere Speicherbereinigung fuer sensible Daten im RAM.
+    """Sichere Speicherbereinigung für sensible Daten im RAM.
 
     SECURITY FIX (Iteration 19): CWE-226/CWE-316 Prevention
-    - Python bytes sind immutable, daher KEINE direkte Ueberschreibung moeglich
-    - Diese Funktion loescht Referenzen und triggert Garbage Collection
-    - WICHTIG: Caller MUSS sicherstellen, dass ALLE Referenzen geloescht sind!
+    - Python bytes sind immutable, daher KEINE direkte Überschreibung möglich
+    - Diese Funktion löscht Referenzen und triggert Garbage Collection
+    - WICHTIG: Caller MUSS sicherstellen, dass ALLE Referenzen gelöscht sind!
 
-    Best Practices fuer sensible Daten:
+    Best Practices für sensible Daten:
     1. Minimiere die Lebensdauer von Plaintext im RAM
-    2. Verwende lokale Variablen statt Klassenvariablen fuer Plaintext
+    2. Verwende lokale Variablen statt Klassenvariablen für Plaintext
     3. Rufe diese Funktion nach Gebrauch auf
     4. In kritischen Szenarien: Verwende bytearray (mutable) statt bytes
 
     Args:
         *variables: Bytes-Objekte die bereinigt werden sollen
                     (Hinweis: Die Referenzen werden hier nicht wirklich
-                    geloescht, das muss im aufrufenden Code geschehen!)
+                    gelöscht, das muss im aufrufenden Code geschehen!)
     """
     # Expliziter GC-Lauf um nicht mehr referenzierte Objekte freizugeben
     # SECURITY: Dies ist defense-in-depth - die Hauptverantwortung liegt
-    # beim Caller, alle Referenzen auf sensible Daten zu loeschen
+    # beim Caller, alle Referenzen auf sensible Daten zu löschen
     gc.collect()
 
     logger.debug(
@@ -65,16 +65,16 @@ def secure_memory_cleanup(*variables: bytes) -> None:
 
 
 class SecureBytesWrapper:
-    """Wrapper fuer sichere Handhabung von sensiblen Bytes.
+    """Wrapper für sichere Handhabung von sensiblen Bytes.
 
-    SECURITY (Iteration 19): Defense-in-depth fuer sensible Daten im RAM.
-    Verwendet intern bytearray fuer ueberschreibbare Speicherung.
+    SECURITY (Iteration 19): Defense-in-depth für sensible Daten im RAM.
+    Verwendet intern bytearray für überschreibbare Speicherung.
 
     Verwendung:
         with SecureBytesWrapper(plaintext) as secure_data:
-            # Verwende secure_data.data fuer Operationen
+            # Verwende secure_data.data für Operationen
             process(secure_data.data)
-        # Nach dem with-Block: Daten automatisch ueberschrieben!
+        # Nach dem with-Block: Daten automatisch überschrieben!
     """
 
     def __init__(self, data: bytes) -> None:
@@ -83,13 +83,13 @@ class SecureBytesWrapper:
         Args:
             data: Die zu schuetzenden Bytes
         """
-        # Konvertiere zu bytearray fuer spaetere Ueberschreibung
+        # Konvertiere zu bytearray für spätere Überschreibung
         self._data = bytearray(data)
         self._is_cleared = False
 
     @property
     def data(self) -> bytes:
-        """Gibt die Daten als bytes zurueck.
+        """Gibt die Daten als bytes zurück.
 
         Returns:
             Die gespeicherten Daten
@@ -102,16 +102,16 @@ class SecureBytesWrapper:
         return bytes(self._data)
 
     def clear(self) -> None:
-        """Ueberschreibt die Daten mit Nullen und bereinigt den Speicher.
+        """Überschreibt die Daten mit Nullen und bereinigt den Speicher.
 
-        SECURITY: Diese Methode ueberschreibt den bytearray mit Nullen,
+        SECURITY: Diese Methode überschreibt den bytearray mit Nullen,
         wodurch die sensiblen Daten im RAM vernichtet werden.
         """
         if not self._is_cleared:
-            # Ueberschreibe mit Nullen
+            # Überschreibe mit Nullen
             for i in range(len(self._data)):
                 self._data[i] = 0
-            # Loesche die Referenz
+            # Lösche die Referenz
             del self._data
             self._is_cleared = True
             # Trigger GC
@@ -141,18 +141,18 @@ _audit_logger_init_attempted: bool = False
 
 
 class AuditLoggerRequiredError(RuntimeError):
-    """Ausnahme wenn der Audit Logger nicht verfuegbar ist.
+    """Ausnahme wenn der Audit Logger nicht verfügbar ist.
 
-    SECURITY: Audit Logging ist fuer das Privat-Modul PFLICHT (Enterprise Requirement).
-    Ohne funktionierendes Audit Logging duerfen keine Operationen ausgefuehrt werden.
+    SECURITY: Audit Logging ist für das Privat-Modul PFLICHT (Enterprise Requirement).
+    Ohne funktionierendes Audit Logging duerfen keine Operationen ausgeführt werden.
     """
     pass
 
 
 def get_audit_logger() -> AuditLogger:
-    """Gibt den Audit Logger zurueck (Lazy Initialization).
+    """Gibt den Audit Logger zurück (Lazy Initialization).
 
-    SECURITY: Audit Logging ist MANDATORY fuer das Privat-Modul.
+    SECURITY: Audit Logging ist MANDATORY für das Privat-Modul.
     Bei Initialisierungsfehler wird eine Exception geworfen.
 
     Returns:
@@ -170,7 +170,7 @@ def get_audit_logger() -> AuditLogger:
         # Bereits einmal fehlgeschlagen - nicht erneut versuchen
         raise AuditLoggerRequiredError(
             "Audit Logger konnte nicht initialisiert werden. "
-            "Bitte pruefen Sie die Konfiguration."
+            "Bitte prüfen Sie die Konfiguration."
         )
 
     _audit_logger_init_attempted = True
@@ -213,9 +213,9 @@ PASSWORD_REQUIREMENTS_DE = (
 
 
 def validate_password_strength(password: str) -> bool:
-    """Validiert die Passwort-Staerke fuer Verschluesselung.
+    """Validiert die Passwort-Stärke für Verschlüsselung.
 
-    Enterprise-Standard: Mindestens 14 Zeichen mit Komplexitaet.
+    Enterprise-Standard: Mindestens 14 Zeichen mit Komplexität.
 
     Args:
         password: Das zu validierende Passwort
@@ -235,7 +235,7 @@ def validate_password_strength(password: str) -> bool:
 
 
 class PrivatDocumentService:
-    """Service fuer Privat-Dokument CRUD und Verschluesselung."""
+    """Service für Privat-Dokument CRUD und Verschlüsselung."""
 
     def __init__(self) -> None:
         """Initialisiert den Service."""
@@ -299,7 +299,7 @@ class PrivatDocumentService:
         resolved_path = os.path.realpath(full_path)
         resolved_base = os.path.realpath(self.storage_base_path)
 
-        # Pruefe ob resolved_path innerhalb von resolved_base liegt
+        # Prüfe ob resolved_path innerhalb von resolved_base liegt
         if not resolved_path.startswith(resolved_base + os.sep) and resolved_path != resolved_base:
             logger.warning(
                 "path_traversal_attempt",
@@ -308,7 +308,7 @@ class PrivatDocumentService:
                 base_path=resolved_base
             )
             raise PathTraversalError(
-                f"Ungueltiger Pfad: Path-Traversal erkannt"
+                f"Ungültiger Pfad: Path-Traversal erkannt"
             )
 
         return resolved_path
@@ -353,7 +353,7 @@ class PrivatDocumentService:
         if space.owner_id == user_id:
             return document
 
-        # Pruefe explizite Berechtigung
+        # Prüfe explizite Berechtigung
         # SECURITY: expires_at Validierung - abgelaufene Zugriffe ignorieren!
         from datetime import timezone
         from sqlalchemy import or_
@@ -364,7 +364,7 @@ class PrivatDocumentService:
             .where(
                 PrivatSpaceAccess.space_id == space.id,
                 PrivatSpaceAccess.user_id == user_id,
-                # SECURITY: expires_at check - None = kein Ablauf, sonst Datum pruefen
+                # SECURITY: expires_at check - None = kein Ablauf, sonst Datum prüfen
                 or_(
                     PrivatSpaceAccess.expires_at == None,
                     PrivatSpaceAccess.expires_at > now
@@ -396,7 +396,7 @@ class PrivatDocumentService:
                 required_level=required_level
             )
             raise AccessDeniedError(
-                f"Unzureichende Berechtigung: {access.access_level}, benoetigt: {required_level}"
+                f"Unzureichende Berechtigung: {access.access_level}, benötigt: {required_level}"
             )
 
         return document
@@ -426,11 +426,11 @@ class PrivatDocumentService:
             Erstelltes Dokument
 
         Raises:
-            ValueError: Bei ungueltigem Input
+            ValueError: Bei ungültigem Input
         """
         # ==================== Input Validation (Service Layer) ====================
 
-        # Dateigroesse pruefen (max 100 MB)
+        # Dateigröße prüfen (max 100 MB)
         max_size = 100 * 1024 * 1024  # 100 MB
         if len(file_content) > max_size:
             raise ValueError(f"Datei zu gross: {len(file_content)} bytes (max {max_size})")
@@ -440,7 +440,7 @@ class PrivatDocumentService:
 
         # Dateiname validieren
         if not file_name or len(file_name) > 255:
-            raise ValueError("Dateiname ungueltig (1-255 Zeichen erforderlich)")
+            raise ValueError("Dateiname ungültig (1-255 Zeichen erforderlich)")
 
         # MIME-Type validieren (nur sichere Typen)
         allowed_mimes = [
@@ -467,7 +467,7 @@ class PrivatDocumentService:
         if data.description and len(data.description) > 5000:
             raise ValueError("Beschreibung zu lang (max 5000 Zeichen)")
 
-        # Password-Hinweis validieren (falls verschluesselt)
+        # Password-Hinweis validieren (falls verschlüsselt)
         if data.extra_encrypted:
             if not extra_password:
                 raise WeakPasswordError(PASSWORD_REQUIREMENTS_DE)
@@ -483,12 +483,12 @@ class PrivatDocumentService:
         # Speicherpfad generieren
         file_path = self._generate_file_path(space_id, doc_id, file_name)
 
-        # Optional verschluesseln
+        # Optional verschlüsseln
         if data.extra_encrypted and extra_password:
             salt, nonce, ciphertext = self.encryption_service.encrypt(
                 file_content, extra_password
             )
-            # Speichere verschluesselt: salt + nonce + ciphertext
+            # Speichere verschlüsselt: salt + nonce + ciphertext
             file_content = salt + nonce + ciphertext
 
         # Dokument erstellen (noch ohne commit)
@@ -512,7 +512,7 @@ class PrivatDocumentService:
         )
 
         # Transaction Safety: File + DB Commit als atomare Operation
-        # Bei Fehler wird die Datei wieder geloescht
+        # Bei Fehler wird die Datei wieder gelöscht
         file_saved = False
         try:
             # Datei speichern
@@ -528,7 +528,7 @@ class PrivatDocumentService:
             # Rollback DB falls noetig
             await db.rollback()
 
-            # Cleanup: Datei loeschen wenn bereits gespeichert
+            # Cleanup: Datei löschen wenn bereits gespeichert
             if file_saved:
                 try:
                     await self._delete_file(file_path)
@@ -576,7 +576,7 @@ class PrivatDocumentService:
         doc_id: uuid.UUID,
         file_name: str,
     ) -> str:
-        """Generiert den Speicherpfad fuer ein Dokument.
+        """Generiert den Speicherpfad für ein Dokument.
 
         Args:
             space_id: Space-ID
@@ -593,7 +593,7 @@ class PrivatDocumentService:
         # Security: Dateiname bereinigen
         safe_name = self._sanitize_filename(file_name)
 
-        # Verwende UUID-Prefix fuer Verteilung
+        # Verwende UUID-Prefix für Verteilung
         prefix = str(doc_id)[:2]
         ext = os.path.splitext(safe_name)[1]
 
@@ -638,7 +638,7 @@ class PrivatDocumentService:
             return f.read()
 
     async def _delete_file(self, file_path: str) -> None:
-        """Loescht eine Datei aus dem Storage.
+        """Löscht eine Datei aus dem Storage.
 
         Args:
             file_path: Relativer Pfad
@@ -658,8 +658,8 @@ class PrivatDocumentService:
     ) -> Optional[PrivatDocument]:
         """Holt ein Dokument nach ID.
 
-        WARNUNG: Diese Methode fuehrt KEINEN Access-Check durch!
-        Fuer API-Aufrufe IMMER get_by_id_with_access_check() verwenden!
+        WARNUNG: Diese Methode führt KEINEN Access-Check durch!
+        Für API-Aufrufe IMMER get_by_id_with_access_check() verwenden!
 
         Args:
             db: Datenbank-Session
@@ -682,14 +682,14 @@ class PrivatDocumentService:
         """Holt ein Dokument nach ID MIT Access-Check.
 
         SECURITY: Diese Methode ist IDOR-sicher:
-        - Access-Check erfolgt VOR Rueckgabe des Dokuments
-        - Gibt None zurueck wenn Dokument nicht existiert ODER kein Zugriff
-        - Keine Information Disclosure ueber Existenz fremder Dokumente
+        - Access-Check erfolgt VOR Rückgabe des Dokuments
+        - Gibt None zurück wenn Dokument nicht existiert ODER kein Zugriff
+        - Keine Information Disclosure über Existenz fremder Dokumente
 
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
-            requesting_user_id: User-ID fuer Zugriffskontrolle (REQUIRED)
+            requesting_user_id: User-ID für Zugriffskontrolle (REQUIRED)
 
         Returns:
             Dokument wenn existiert UND Zugriff erlaubt, sonst None
@@ -720,7 +720,7 @@ class PrivatDocumentService:
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
-            requesting_user_id: User-ID fuer Zugriffskontrolle (REQUIRED)
+            requesting_user_id: User-ID für Zugriffskontrolle (REQUIRED)
 
         Returns:
             Tuple (Document, Space) wenn Zugriff erlaubt, sonst None
@@ -737,7 +737,7 @@ class PrivatDocumentService:
         row = result.first()
 
         if not row:
-            # SECURITY: Einheitliche Antwort - keine Info ueber Existenz
+            # SECURITY: Einheitliche Antwort - keine Info über Existenz
             return None
 
         document, space = row
@@ -746,7 +746,7 @@ class PrivatDocumentService:
         if space.owner_id == requesting_user_id:
             return (document, space)
 
-        # Pruefe explizite Berechtigung
+        # Prüfe explizite Berechtigung
         # SECURITY: expires_at Validierung - abgelaufene Zugriffe ignorieren!
         from datetime import timezone
         now = datetime.now(timezone.utc)
@@ -783,8 +783,8 @@ class PrivatDocumentService:
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
-            password: Optional Passwort fuer verschluesselte Dokumente
-            requesting_user_id: REQUIRED User-ID fuer Service-Level Zugriffskontrolle
+            password: Optional Passwort für verschlüsselte Dokumente
+            requesting_user_id: REQUIRED User-ID für Service-Level Zugriffskontrolle
 
         Returns:
             Tuple von (content, mime_type) oder None
@@ -807,10 +807,10 @@ class PrivatDocumentService:
 
         content = await self._read_file(document.file_path)
 
-        # Entschluesseln wenn noetig
+        # Entschlüsseln wenn noetig
         if document.extra_encrypted:
             if not password:
-                raise ValueError("Passwort erforderlich fuer verschluesseltes Dokument")
+                raise ValueError("Passwort erforderlich für verschlüsseltes Dokument")
 
             salt = content[:32]
             nonce = content[32:44]
@@ -837,9 +837,9 @@ class PrivatDocumentService:
             # SECURITY FIX (Iteration 19): Bereinige temporaere sensible Variablen
             # CWE-226 (Sensitive Information in Resource Not Removed Before Reuse)
             # CWE-316 (Cleartext Storage of Sensitive Information in Memory)
-            # Loesche Referenzen auf nicht mehr benoetigte sensible Daten
+            # Lösche Referenzen auf nicht mehr benötigte sensible Daten
             del decrypted, salt, nonce, ciphertext
-            # Trigger GC fuer nicht mehr referenzierte Objekte
+            # Trigger GC für nicht mehr referenzierte Objekte
             secure_memory_cleanup()
 
             # GDPR Audit: Decryption event (MANDATORY)
@@ -976,7 +976,7 @@ class PrivatDocumentService:
             db: Datenbank-Session
             document_id: Dokument-ID
             data: Update-Daten
-            requesting_user_id: Optional User-ID fuer Service-Level Zugriffskontrolle
+            requesting_user_id: Optional User-ID für Service-Level Zugriffskontrolle
 
         Returns:
             Aktualisiertes Dokument oder None
@@ -998,7 +998,7 @@ class PrivatDocumentService:
                 return None
 
         # Race Condition Prevention: Row Lock (SELECT ... FOR UPDATE)
-        # Re-fetch mit Row Lock um sicherzustellen, dass nur eine Transaktion gleichzeitig aendert
+        # Re-fetch mit Row Lock um sicherzustellen, dass nur eine Transaktion gleichzeitig ändert
         lock_result = await db.execute(
             select(PrivatDocument)
             .where(PrivatDocument.id == document_id)
@@ -1047,12 +1047,12 @@ class PrivatDocumentService:
         document_id: uuid.UUID,
         requesting_user_id: Optional[uuid.UUID] = None,
     ) -> bool:
-        """Loescht ein Dokument.
+        """Löscht ein Dokument.
 
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
-            requesting_user_id: Optional User-ID fuer Service-Level Zugriffskontrolle
+            requesting_user_id: Optional User-ID für Service-Level Zugriffskontrolle
 
         Returns:
             True wenn erfolgreich
@@ -1067,11 +1067,11 @@ class PrivatDocumentService:
         if requesting_user_id is not None:
             # Erst Access-Check, dann Lock
             await self._verify_document_access(
-                db, document_id, requesting_user_id, "admin"  # Loeschen erfordert Admin
+                db, document_id, requesting_user_id, "admin"  # Löschen erfordert Admin
             )
 
         # Race Condition Prevention: Row Lock (SELECT ... FOR UPDATE)
-        # Verhindert doppelte Loeschung oder Loeschung waehrend Update
+        # Verhindert doppelte Löschung oder Löschung während Update
         lock_result = await db.execute(
             select(PrivatDocument)
             .where(PrivatDocument.id == document_id)
@@ -1081,11 +1081,11 @@ class PrivatDocumentService:
         if not document:
             return False
 
-        # SECURITY: Soft-Delete statt Hard-Delete (GDPR-konform, Recovery moeglich)
-        # Die Datei wird NICHT sofort geloescht - erst nach Retention-Period
+        # SECURITY: Soft-Delete statt Hard-Delete (GDPR-konform, Recovery möglich)
+        # Die Datei wird NICHT sofort gelöscht - erst nach Retention-Period
         # durch einen separaten Cleanup-Task
 
-        # Soft-Delete: Markiere als geloescht
+        # Soft-Delete: Markiere als gelöscht
         document.is_active = False
         document.deleted_at = utc_now()
         document.deleted_by_id = requesting_user_id
@@ -1124,12 +1124,12 @@ class PrivatDocumentService:
         document_id: uuid.UUID,
         requesting_user_id: uuid.UUID,
     ) -> Optional[PrivatDocument]:
-        """Stellt ein geloeschtes Dokument wieder her.
+        """Stellt ein gelöschtes Dokument wieder her.
 
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
-            requesting_user_id: User-ID fuer Access Control
+            requesting_user_id: User-ID für Access Control
 
         Returns:
             Wiederhergestelltes Dokument oder None
@@ -1154,7 +1154,7 @@ class PrivatDocumentService:
         if not document:
             return None
 
-        # Wiederherstellen (Soft-Delete rueckgaengig machen)
+        # Wiederherstellen (Soft-Delete rückgängig machen)
         document.deleted_at = None
         document.updated_at = utc_now()
 
@@ -1195,8 +1195,8 @@ class PrivatDocumentService:
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
-            folder_id: Ziel-Ordner (None fuer Root)
-            requesting_user_id: User-ID fuer Access Control (REQUIRED for security)
+            folder_id: Ziel-Ordner (None für Root)
+            requesting_user_id: User-ID für Access Control (REQUIRED for security)
 
         Returns:
             Aktualisiertes Dokument oder None
@@ -1270,15 +1270,15 @@ class PrivatDocumentService:
         password_hint: Optional[str] = None,
         requesting_user_id: Optional[uuid.UUID] = None,
     ) -> Optional[PrivatDocument]:
-        """Aendert die Verschluesselung eines Dokuments.
+        """Ändert die Verschlüsselung eines Dokuments.
 
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
-            current_password: Aktuelles Passwort (bei verschluesseltem Dokument)
-            new_password: Neues Passwort (None zum Entschluesseln)
+            current_password: Aktuelles Passwort (bei verschlüsseltem Dokument)
+            new_password: Neues Passwort (None zum Entschlüsseln)
             password_hint: Optional neuer Passwort-Hinweis
-            requesting_user_id: User-ID fuer Access Control (REQUIRED for security)
+            requesting_user_id: User-ID für Access Control (REQUIRED for security)
 
         Returns:
             Aktualisiertes Dokument oder None
@@ -1295,7 +1295,7 @@ class PrivatDocumentService:
             )
 
         # Race Condition Prevention: Row Lock (SELECT ... FOR UPDATE)
-        # Verschluesselung aendern ist kritisch - Lock erforderlich
+        # Verschlüsselung ändern ist kritisch - Lock erforderlich
         lock_result = await db.execute(
             select(PrivatDocument)
             .where(PrivatDocument.id == document_id)
@@ -1307,7 +1307,7 @@ class PrivatDocumentService:
 
         was_encrypted = document.extra_encrypted
 
-        # Inhalt laden und ggf. entschluesseln
+        # Inhalt laden und ggf. entschlüsseln
         content = await self._read_file(document.file_path)
 
         if document.extra_encrypted:
@@ -1337,20 +1337,20 @@ class PrivatDocumentService:
             content = decrypted
 
             # SECURITY FIX (Iteration 19): Bereinige temporaere sensible Variablen
-            # CWE-226/CWE-316: Loesche nicht mehr benoetigte sensible Daten
+            # CWE-226/CWE-316: Lösche nicht mehr benötigte sensible Daten
             del decrypted, old_salt, old_nonce, old_ciphertext
             secure_memory_cleanup()
 
-        # Neu verschluesseln oder unverschluesselt speichern
+        # Neu verschlüsseln oder unverschlüsselt speichern
         if new_password:
             new_salt, new_nonce, new_ciphertext = self.encryption_service.encrypt(
                 content, new_password
             )
-            # SECURITY FIX (Iteration 19): Plaintext vor Ueberschreibung bereinigen
+            # SECURITY FIX (Iteration 19): Plaintext vor Überschreibung bereinigen
             del content
             secure_memory_cleanup()
             content = new_salt + new_nonce + new_ciphertext
-            # Bereinige temporaere Verschluesselungsdaten
+            # Bereinige temporaere Verschlüsselungsdaten
             del new_salt, new_nonce, new_ciphertext
             document.extra_encrypted = True
             document.password_hint = password_hint
@@ -1358,7 +1358,7 @@ class PrivatDocumentService:
             document.extra_encrypted = False
             document.password_hint = None
 
-        # Datei ueberschreiben
+        # Datei überschreiben
         await self._save_file(document.file_path, content)
         document.file_size = len(content)
 

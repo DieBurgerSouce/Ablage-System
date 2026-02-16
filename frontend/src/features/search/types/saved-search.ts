@@ -40,6 +40,12 @@ export const savedSearchSchema = z.object({
 
   /** Als Favorit markiert */
   pinned: z.boolean().default(false),
+
+  /** Mit Team geteilt */
+  isShared: z.boolean().default(false),
+
+  /** Benutzername des Teilenden (bei Team-Suchen) */
+  sharedBy: z.string().optional(),
 });
 
 export type SavedSearch = z.infer<typeof savedSearchSchema>;
@@ -65,6 +71,7 @@ export function createSavedSearch(input: CreateSavedSearchInput): SavedSearch {
     createdAt: new Date().toISOString(),
     accessCount: 0,
     pinned: false,
+    isShared: false,
   };
 }
 

@@ -2,7 +2,7 @@
 Dashboard API Endpoints.
 
 Enterprise-Level Dashboard-Management:
-- CRUD fuer personalisierte Dashboards
+- CRUD für personalisierte Dashboards
 - Widget-Management mit Drag & Drop Layout
 - Permission-basierte Widget-Filterung
 - Dashboard-Templates
@@ -43,15 +43,15 @@ class WidgetPositionSchema(BaseModel):
     x: int = Field(default=0, ge=0, description="X-Position im Grid")
     y: int = Field(default=0, ge=0, description="Y-Position im Grid")
     w: int = Field(default=4, ge=1, le=12, description="Breite in Grid-Einheiten")
-    h: int = Field(default=3, ge=1, le=10, description="Hoehe in Grid-Einheiten")
+    h: int = Field(default=3, ge=1, le=10, description="Höhe in Grid-Einheiten")
     minW: Optional[int] = Field(None, description="Minimale Breite")
-    minH: Optional[int] = Field(None, description="Minimale Hoehe")
+    minH: Optional[int] = Field(None, description="Minimale Höhe")
     maxW: Optional[int] = Field(None, description="Maximale Breite")
-    maxH: Optional[int] = Field(None, description="Maximale Hoehe")
+    maxH: Optional[int] = Field(None, description="Maximale Höhe")
 
 
 class WidgetCreate(BaseModel):
-    """Schema fuer neues Widget."""
+    """Schema für neues Widget."""
 
     widget_type: str = Field(..., min_length=1, max_length=50)
     position: Optional[WidgetPositionSchema] = None
@@ -60,7 +60,7 @@ class WidgetCreate(BaseModel):
 
 
 class WidgetUpdate(BaseModel):
-    """Schema fuer Widget-Update."""
+    """Schema für Widget-Update."""
 
     position: Optional[WidgetPositionSchema] = None
     config: Optional[JSONDict] = None
@@ -70,7 +70,7 @@ class WidgetUpdate(BaseModel):
 
 
 class WidgetResponse(BaseModel):
-    """Response Schema fuer Widget."""
+    """Response Schema für Widget."""
 
     id: str
     widget_type: str
@@ -91,7 +91,7 @@ class WidgetResponse(BaseModel):
 
 
 class DashboardCreate(BaseModel):
-    """Schema fuer neues Dashboard."""
+    """Schema für neues Dashboard."""
 
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
@@ -103,7 +103,7 @@ class DashboardCreate(BaseModel):
 
 
 class DashboardUpdate(BaseModel):
-    """Schema fuer Dashboard-Update."""
+    """Schema für Dashboard-Update."""
 
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = None
@@ -116,7 +116,7 @@ class DashboardUpdate(BaseModel):
 
 
 class DashboardResponse(BaseModel):
-    """Response Schema fuer Dashboard."""
+    """Response Schema für Dashboard."""
 
     id: str
     name: str
@@ -133,7 +133,7 @@ class DashboardResponse(BaseModel):
 
 
 class DashboardListItem(BaseModel):
-    """Response Schema fuer Dashboard-Liste."""
+    """Response Schema für Dashboard-Liste."""
 
     id: str
     name: str
@@ -145,13 +145,13 @@ class DashboardListItem(BaseModel):
 
 
 class LayoutUpdate(BaseModel):
-    """Schema fuer Layout-Update (Batch)."""
+    """Schema für Layout-Update (Batch)."""
 
     widgets: List[JSONDict] = Field(..., description="Liste von Widget-Positionen mit ID")
 
 
 class AvailableWidget(BaseModel):
-    """Schema fuer verfuegbare Widgets."""
+    """Schema für verfügbare Widgets."""
 
     widget_type: str
     requires_permission: bool
@@ -159,7 +159,7 @@ class AvailableWidget(BaseModel):
 
 
 class TemplateResponse(BaseModel):
-    """Response Schema fuer Dashboard-Template."""
+    """Response Schema für Dashboard-Template."""
 
     id: str
     name: str
@@ -179,9 +179,9 @@ class InvoiceKPIs(BaseModel):
     """Rechnungs-KPIs."""
 
     total_open: int = Field(description="Anzahl offener Rechnungen")
-    total_overdue: int = Field(description="Anzahl ueberfaelliger Rechnungen")
+    total_overdue: int = Field(description="Anzahl überfälliger Rechnungen")
     open_amount: float = Field(description="Offener Gesamtbetrag")
-    overdue_amount: float = Field(description="Ueberfaelliger Betrag")
+    overdue_amount: float = Field(description="Überfälliger Betrag")
     paid_this_month: int = Field(description="Bezahlte Rechnungen diesen Monat")
     avg_payment_days: float = Field(description="Durchschnittliche Zahlungsdauer")
 
@@ -211,7 +211,7 @@ class ApprovalKPIs(BaseModel):
 
     pending_total: int = Field(description="Ausstehende Genehmigungen gesamt")
     my_pending: int = Field(description="Meine ausstehenden Genehmigungen")
-    overdue: int = Field(description="Ueberfaellige Genehmigungen")
+    overdue: int = Field(description="Überfällige Genehmigungen")
     approved_this_week: int = Field(description="Diese Woche genehmigt")
 
 
@@ -230,11 +230,11 @@ class DocumentKPIs(BaseModel):
     total_documents: int = Field(description="Dokumente gesamt")
     documents_today: int = Field(description="Dokumente heute")
     documents_this_week: int = Field(description="Dokumente diese Woche")
-    pending_review: int = Field(description="Zur Pruefung ausstehend")
+    pending_review: int = Field(description="Zur Prüfung ausstehend")
 
 
 class AggregatedKPIsResponse(BaseModel):
-    """Aggregierte KPIs fuer Dashboard."""
+    """Aggregierte KPIs für Dashboard."""
 
     invoices: InvoiceKPIs
     cash_flow: CashFlowKPIs
@@ -256,7 +256,7 @@ async def get_default_dashboard(
     current_user: User = Depends(get_current_user),
 ) -> DashboardResponse:
     """
-    Gibt das Standard-Dashboard des Benutzers zurueck.
+    Gibt das Standard-Dashboard des Benutzers zurück.
 
     Erstellt automatisch ein Default-Dashboard falls noch keines existiert.
     """
@@ -294,7 +294,7 @@ async def get_dashboard(
     current_user: User = Depends(get_current_user),
 ) -> DashboardResponse:
     """
-    Gibt ein spezifisches Dashboard zurueck.
+    Gibt ein spezifisches Dashboard zurück.
     """
     service = DashboardService(db)
     dashboard = await service.get_user_dashboard(current_user.id, dashboard_id)
@@ -358,7 +358,7 @@ async def update_dashboard(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ungueltige Company-ID",
+                detail="Ungültige Company-ID",
             )
 
     dashboard = await service.update_dashboard(
@@ -390,9 +390,9 @@ async def delete_dashboard(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     """
-    Loescht ein Dashboard.
+    Löscht ein Dashboard.
 
-    Das letzte Dashboard kann nicht geloescht werden.
+    Das letzte Dashboard kann nicht gelöscht werden.
     """
     service = DashboardService(db)
     deleted = await service.delete_dashboard(current_user.id, dashboard_id)
@@ -400,7 +400,7 @@ async def delete_dashboard(
     if not deleted:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Dashboard konnte nicht geloescht werden. Mindestens ein Dashboard muss existieren.",
+            detail="Dashboard konnte nicht gelöscht werden. Mindestens ein Dashboard muss existieren.",
         )
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
@@ -449,7 +449,7 @@ async def get_available_widgets(
     current_user: User = Depends(get_current_user),
 ) -> List[AvailableWidget]:
     """
-    Listet alle verfuegbaren Widgets basierend auf Benutzerberechtigungen auf.
+    Listet alle verfügbaren Widgets basierend auf Benutzerberechtigungen auf.
     """
     service = DashboardService(db)
 
@@ -477,7 +477,7 @@ async def add_widget(
     if not service.can_view_widget(data.widget_type, user_permissions):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Widget",
+            detail="Keine Berechtigung für dieses Widget",
         )
 
     position = data.position.model_dump() if data.position else None
@@ -569,7 +569,7 @@ async def list_templates(
     current_user: User = Depends(get_current_user),
 ) -> List[TemplateResponse]:
     """
-    Listet verfuegbare Dashboard-Templates auf.
+    Listet verfügbare Dashboard-Templates auf.
     """
     service = DashboardService(db)
 
@@ -627,7 +627,7 @@ async def get_aggregated_kpis(
     current_user: User = Depends(get_current_user),
 ) -> AggregatedKPIsResponse:
     """
-    Gibt aggregierte KPIs aus allen Services zurueck.
+    Gibt aggregierte KPIs aus allen Services zurück.
 
     Kombiniert Daten aus:
     - Rechnungswesen (Invoices)

@@ -1,4 +1,4 @@
-"""Celery Tasks fuer das Approval System.
+"""Celery Tasks für das Approval System.
 
 Enterprise Feature: Automatisierte Genehmigungsworkflows mit:
 - Eskalation bei Timeout
@@ -48,18 +48,18 @@ def escalate_overdue_approvals(
     self,
     company_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Eskaliert ueberfaellige Genehmigungsanfragen.
+    """Eskaliert überfällige Genehmigungsanfragen.
 
-    Wird regelmaessig via Celery Beat ausgefuehrt um alle Anfragen
-    zu finden, die ihr Faelligkeitsdatum ueberschritten haben.
+    Wird regelmäßig via Celery Beat ausgeführt um alle Anfragen
+    zu finden, die ihr Fälligkeitsdatum überschritten haben.
 
     Args:
-        company_id: Optional: Nur fuer diese Firma
+        company_id: Optional: Nur für diese Firma
 
     Returns:
         Dict mit Statistiken
     """
-    logger.info("Starte Eskalation ueberfaelliger Genehmigungen...")
+    logger.info("Starte Eskalation überfälliger Genehmigungen...")
 
     with get_sync_session() as db:
         now = utc_now()
@@ -96,10 +96,10 @@ def escalate_overdue_approvals(
 
             logger.warning(
                 f"Genehmigungsanfrage {request.id} eskaliert - "
-                f"Faellig seit {request.due_date}"
+                f"Fällig seit {request.due_date}"
             )
 
-            # Benachrichtigung an Eskalationsempfaenger senden
+            # Benachrichtigung an Eskalationsempfänger senden
             escalation_recipients = _get_escalation_recipients(db, request)
             for recipient in escalation_recipients:
                 try:
@@ -129,7 +129,7 @@ def _get_escalation_recipients(
     db: Session,
     request: ApprovalRequest,
 ) -> list[User]:
-    """Ermittelt die Eskalationsempfaenger fuer eine Anfrage.
+    """Ermittelt die Eskalationsempfänger für eine Anfrage.
 
     Args:
         db: Database Session
@@ -146,7 +146,7 @@ def _get_escalation_recipients(
         escalation_role = request.triggered_by_rule.escalation_to_role
 
     # 2. Wenn Eskalations-Rolle definiert, User mit dieser Rolle finden
-    #    Nutze UserCompany-Tabelle fuer Multi-Tenant Zuordnung
+    #    Nutze UserCompany-Tabelle für Multi-Tenant Zuordnung
     if escalation_role:
         role_users_query = (
             select(User)
@@ -193,7 +193,7 @@ def _send_escalation_notification(
 
     Args:
         request: Die eskalierte Anfrage
-        recipient: Der Empfaenger
+        recipient: Der Empfänger
         escalated_at: Zeitpunkt der Eskalation
     """
     # Antragsteller-Name ermitteln
@@ -205,7 +205,7 @@ def _send_escalation_notification(
             else request.requested_by.email
         )
 
-    # Faelligkeitsdatum formatieren
+    # Fälligkeitsdatum formatieren
     due_date_str = (
         request.due_date.strftime("%d.%m.%Y %H:%M")
         if request.due_date
@@ -239,7 +239,7 @@ def _send_escalation_notification(
         asyncio.run(_send())
         logger.info(
             f"Eskalations-Benachrichtigung gesendet an {recipient_identifier} "
-            f"fuer Anfrage {request.id}"
+            f"für Anfrage {request.id}"
         )
     except Exception as e:
         # Fehler loggen aber nicht werfen - Notification-Fehler sollten
@@ -260,21 +260,21 @@ def send_approval_reminders(
     self,
     hours_before_due: int = 24,
 ) -> dict[str, Any]:
-    """Sendet Erinnerungen fuer bald faellige Genehmigungen.
+    """Sendet Erinnerungen für bald fällige Genehmigungen.
 
     Args:
-        hours_before_due: Stunden vor Faelligkeit fuer Erinnerung
+        hours_before_due: Stunden vor Fälligkeit für Erinnerung
 
     Returns:
         Dict mit Statistiken
     """
-    logger.info(f"Starte Erinnerungs-Versand ({hours_before_due}h vor Faelligkeit)...")
+    logger.info(f"Starte Erinnerungs-Versand ({hours_before_due}h vor Fälligkeit)...")
 
     with get_sync_session() as db:
         now = utc_now()
         reminder_threshold = now + timedelta(hours=hours_before_due)
 
-        # Finde bald faellige Steps mit allen benoetigten Relationen
+        # Finde bald fällige Steps mit allen benötigten Relationen
         query = (
             select(ApprovalStep)
             .options(
@@ -311,7 +311,7 @@ def send_approval_reminders(
                 reminders_sent += 1
             except Exception as e:
                 logger.error(
-                    f"Fehler beim Senden der Erinnerung fuer Step {step.id}: {e}"
+                    f"Fehler beim Senden der Erinnerung für Step {step.id}: {e}"
                 )
                 continue
 
@@ -319,7 +319,7 @@ def send_approval_reminders(
             step.last_reminder_at = now
 
             logger.info(
-                f"Erinnerung gesendet fuer Approval-Schritt {step.id} "
+                f"Erinnerung gesendet für Approval-Schritt {step.id} "
                 f"an User {step.assigned_user_id}"
             )
 
@@ -345,12 +345,12 @@ def _send_reminder_notification(
         now: Aktueller Zeitpunkt
     """
     if not step.assigned_user:
-        logger.warning(f"Kein zugewiesener User fuer Step {step.id}")
+        logger.warning(f"Kein zugewiesener User für Step {step.id}")
         return
 
     approval_request = step.approval_request
     if not approval_request:
-        logger.warning(f"Keine ApprovalRequest fuer Step {step.id}")
+        logger.warning(f"Keine ApprovalRequest für Step {step.id}")
         return
 
     # Antragsteller-Name ermitteln
@@ -362,7 +362,7 @@ def _send_reminder_notification(
             else approval_request.requested_by.email
         )
 
-    # Faelligkeitsdatum formatieren
+    # Fälligkeitsdatum formatieren
     due_date_str = (
         approval_request.due_date.strftime("%d.%m.%Y %H:%M")
         if approval_request.due_date
@@ -409,7 +409,7 @@ def _send_reminder_notification(
         asyncio.run(_send())
         logger.debug(
             f"Erinnerungs-Benachrichtigung gesendet an {user_identifier} "
-            f"fuer Anfrage {approval_request.id}"
+            f"für Anfrage {approval_request.id}"
         )
     except Exception as e:
         # Fehler loggen aber nicht werfen - Notification-Fehler sollten
@@ -430,10 +430,10 @@ def generate_approval_stats(
     self,
     company_id: Optional[str] = None,
 ) -> dict[str, Any]:
-    """Generiert Statistiken fuer das Approval Dashboard.
+    """Generiert Statistiken für das Approval Dashboard.
 
     Args:
-        company_id: Optional: Nur fuer diese Firma
+        company_id: Optional: Nur für diese Firma
 
     Returns:
         Dict mit Statistiken
@@ -487,7 +487,7 @@ def generate_approval_stats(
             )
             avg_hours = result.scalar() or 0
 
-            # Ueberfaellige
+            # Überfällige
             now = utc_now()
             result = db.execute(
                 select(func.count(ApprovalRequest.id))
@@ -508,7 +508,7 @@ def generate_approval_stats(
                 "total_requests": sum(status_distribution.values()),
             }
 
-    logger.info(f"Approval-Statistiken generiert fuer {len(stats_by_company)} Companies")
+    logger.info(f"Approval-Statistiken generiert für {len(stats_by_company)} Companies")
 
     return {
         "success": True,
@@ -530,12 +530,12 @@ def expire_old_approvals(
     """Markiert sehr alte ausstehende Genehmigungen als abgelaufen.
 
     Args:
-        days_to_expire: Tage nach denen eine Anfrage ablaeuft
+        days_to_expire: Tage nach denen eine Anfrage abläuft
 
     Returns:
         Dict mit Statistiken
     """
-    logger.info(f"Pruefe Genehmigungen aelter als {days_to_expire} Tage...")
+    logger.info(f"Prüfe Genehmigungen älter als {days_to_expire} Tage...")
 
     with get_sync_session() as db:
         now = utc_now()
@@ -568,7 +568,7 @@ def expire_old_approvals(
 
         db.commit()
 
-    logger.info(f"Ablauf-Pruefung abgeschlossen: {expired_count} Anfragen abgelaufen")
+    logger.info(f"Ablauf-Prüfung abgeschlossen: {expired_count} Anfragen abgelaufen")
 
     return {
         "success": True,
@@ -599,7 +599,7 @@ def process_approval_action(
         user_id: ID des handelnden Users
         action: Aktion (approve/reject/delegate)
         notes: Optionale Notizen
-        delegate_to_id: ID des Delegationsempfaengers
+        delegate_to_id: ID des Delegationsempfängers
 
     Returns:
         Dict mit Ergebnis
@@ -609,7 +609,7 @@ def process_approval_action(
     from app.services.approval.approval_service import ApprovalService
 
     logger.info(
-        f"Verarbeite Approval-Aktion: {action} fuer Anfrage {request_id} "
+        f"Verarbeite Approval-Aktion: {action} für Anfrage {request_id} "
         f"von User {user_id}"
     )
 
@@ -633,7 +633,7 @@ def process_approval_action(
                 )
             elif action == "delegate":
                 if not delegate_to_id:
-                    return {"success": False, "error": "Delegationsempfaenger erforderlich"}
+                    return {"success": False, "error": "Delegationsempfänger erforderlich"}
                 result = await service.delegate(
                     request_id=UUID(request_id),
                     user_id=UUID(user_id),
@@ -650,7 +650,7 @@ def process_approval_action(
                 "message": result.message,
             }
 
-    # Async ausfuehren
+    # Async ausführen
     result = asyncio.run(_process())
 
     logger.info(f"Approval-Aktion abgeschlossen: {result}")

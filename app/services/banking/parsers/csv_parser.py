@@ -1,7 +1,7 @@
 """Generic CSV Bank Statement Parser.
 
 Parst generische CSV-Kontoauszuege mit automatischer
-Spaltenerkennung. Basis fuer bank-spezifische Parser.
+Spaltenerkennung. Basis für bank-spezifische Parser.
 """
 
 from datetime import date, datetime
@@ -33,13 +33,13 @@ COLUMN_MAPPINGS = {
         "betrag in eur", "buchungsbetrag"
     ],
     "currency": [
-        "waehrung", "währung", "currency", "ccy"
+        "währung", "währung", "currency", "ccy"
     ],
     "counterparty_name": [
-        "empfaenger/auftraggeber", "empfänger/auftraggeber", "name",
-        "auftraggeber/empfaenger", "auftraggeber/empfänger",
-        "beguenstigter/zahlungspflichtiger", "begünstigter/zahlungspflichtiger",
-        "kontoinhaber", "empfaenger", "empfänger", "payee", "beneficiary"
+        "empfänger/auftraggeber", "empfänger/auftraggeber", "name",
+        "auftraggeber/empfänger", "auftraggeber/empfänger",
+        "begünstigter/zahlungspflichtiger", "begünstigter/zahlungspflichtiger",
+        "kontoinhaber", "empfänger", "empfänger", "payee", "beneficiary"
     ],
     "counterparty_iban": [
         "iban", "kontonummer", "account number", "konto-nr",
@@ -61,7 +61,7 @@ COLUMN_MAPPINGS = {
 
 @ParserRegistry.register
 class GenericCSVParser(BaseParser):
-    """Parser fuer generische CSV-Kontoauszuege."""
+    """Parser für generische CSV-Kontoauszuege."""
 
     FORMAT = ImportFormat.CSV_GENERIC
     FORMAT_VARIANT = "generic"
@@ -73,30 +73,30 @@ class GenericCSVParser(BaseParser):
 
     @classmethod
     def can_parse(cls, content: Union[str, bytes], filename: Optional[str] = None) -> float:
-        """Pruefe ob Inhalt CSV-Format ist."""
+        """Prüfe ob Inhalt CSV-Format ist."""
         # Konvertiere zu String
         text = cls._decode_content(content)
         if not text:
             return 0.0
 
-        # CSV-typische Struktur pruefen
+        # CSV-typische Struktur prüfen
         lines = text.strip().split("\n")[:10]
 
         if len(lines) < 2:
             return 0.0
 
-        # Pruefe Delimiter
+        # Prüfe Delimiter
         delimiter = cls._detect_delimiter(lines[0])
         if not delimiter:
             return 0.0
 
-        # Pruefe auf Spaltenheader
+        # Prüfe auf Spaltenheader
         header_lower = lines[0].lower()
 
         # Bekannte Banking-Spalten
         banking_keywords = [
             "buchung", "datum", "betrag", "amount", "iban", "verwendungszweck",
-            "umsatz", "empfaenger", "empfänger", "valuta", "saldo"
+            "umsatz", "empfänger", "empfänger", "valuta", "saldo"
         ]
 
         matches = sum(1 for kw in banking_keywords if kw in header_lower)
@@ -256,7 +256,7 @@ class GenericCSVParser(BaseParser):
         if not booking_date:
             return None
 
-        # Waehrung
+        # Währung
         currency = "EUR"
         ccy_col = column_map.get("currency")
         if ccy_col and row.get(ccy_col):

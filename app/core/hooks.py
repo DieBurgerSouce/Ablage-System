@@ -176,7 +176,7 @@ class RateLimitHook(BaseHook):
             allowed = self.rate_limiter(user_id)
 
         if not allowed:
-            raise RateLimitExceeded("Rate-Limit ueberschritten")
+            raise RateLimitExceeded("Rate-Limit überschritten")
 
         return context
 

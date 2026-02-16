@@ -4,12 +4,12 @@ Enhanced OCR Feedback Service.
 
 Erweitertes OCR-Korrektur-System mit:
 - Inline-Korrekturen auf Feld-Ebene
-- Korrektur-Queue fuer niedrig-konfidente Extraktionen
+- Korrektur-Queue für niedrig-konfidente Extraktionen
 - Gamification: Punkte pro Korrektur, woechentliches Leaderboard
 - Batch-Korrektur-Verarbeitung
 - Integration mit Self-Learning Pipeline
 
-Phase 6.3: OCR Feedback UX Improvements fuer Enterprise-Dokumentenmanagement.
+Phase 6.3: OCR Feedback UX Improvements für Enterprise-Dokumentenmanagement.
 Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Praezision.
 """
 
@@ -36,7 +36,7 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 
-# Punkte-Konfiguration fuer Gamification
+# Punkte-Konfiguration für Gamification
 POINTS_CONFIG = {
     # Basis-Punkte pro Korrektur-Typ
     "text_correction": 10,
@@ -48,7 +48,7 @@ POINTS_CONFIG = {
     "reference_correction": 15,
 
     # Bonus-Punkte
-    "major_correction_bonus": 5,  # Fuer grosse Korrekturen
+    "major_correction_bonus": 5,  # Für grosse Korrekturen
     "low_confidence_bonus": 10,  # Korrektur von <60% Konfidenz
     "consecutive_correction_bonus": 2,  # Pro aufeinanderfolgende Korrektur (max 10)
     "quality_verified_bonus": 15,  # Wenn Korrektur verifiziert wird
@@ -56,17 +56,17 @@ POINTS_CONFIG = {
     "streak_bonus_per_day": 3,  # Pro Tag im Streak
 
     # Schwellenwerte
-    "max_consecutive_bonus": 20,  # Max Bonus fuer konsekutive Korrekturen
+    "max_consecutive_bonus": 20,  # Max Bonus für konsekutive Korrekturen
 }
 
 # Leaderboard-Konfiguration
 LEADERBOARD_CONFIG = {
     "weekly_top_count": 10,  # Top 10 pro Woche
     "monthly_top_count": 20,  # Top 20 pro Monat
-    "min_corrections_for_ranking": 5,  # Min 5 Korrekturen fuer Ranking
+    "min_corrections_for_ranking": 5,  # Min 5 Korrekturen für Ranking
 }
 
-# Low-Confidence Schwellenwert fuer Queue
+# Low-Confidence Schwellenwert für Queue
 LOW_CONFIDENCE_THRESHOLD = 0.70
 
 
@@ -85,7 +85,7 @@ class CorrectionStatus(str, Enum):
 
 
 class QueuePriority(str, Enum):
-    """Prioritaet in der Korrektur-Queue."""
+    """Priorität in der Korrektur-Queue."""
     CRITICAL = "critical"  # <40% Konfidenz
     HIGH = "high"  # 40-55% Konfidenz
     MEDIUM = "medium"  # 55-65% Konfidenz
@@ -93,7 +93,7 @@ class QueuePriority(str, Enum):
 
 
 class LeaderboardPeriod(str, Enum):
-    """Zeitraum fuer Leaderboard."""
+    """Zeitraum für Leaderboard."""
     WEEKLY = "weekly"
     MONTHLY = "monthly"
     ALL_TIME = "all_time"
@@ -210,13 +210,13 @@ class BatchCorrectionResult:
 # Hinweis: Die folgenden Models sind in app/db/models_ocr_feedback.py definiert.
 # Hier nur als Referenz dokumentiert (siehe OCRCorrectionFeedback Model).
 #
-# Das bestehende Model OCRCorrectionFeedback wird verwendet mit extra_data fuer:
+# Das bestehende Model OCRCorrectionFeedback wird verwendet mit extra_data für:
 # - points_base, points_bonus, points_total: Gamification-Punkte
 # - page_number, bounding_box, context_text: Positions-Metadaten
 # - is_queue_item: True wenn aus Queue
 # - bonus_details: Liste der Bonus-Gruende
 #
-# Fuer erweiterte Gamification-Statistiken kann UserCorrectionStats hinzugefuegt
+# Für erweiterte Gamification-Statistiken kann UserCorrectionStats hinzugefuegt
 # werden (total_corrections, total_points, streaks, achievements).
 #
 
@@ -232,7 +232,7 @@ class EnhancedOCRFeedbackService:
 
     Features:
     - Inline-Korrekturen auf Feld-Ebene
-    - Korrektur-Queue fuer niedrig-konfidente Extraktionen
+    - Korrektur-Queue für niedrig-konfidente Extraktionen
     - Punkte-System mit Boni
     - Leaderboard (woechentlich/monatlich)
     - Streak-Tracking
@@ -465,10 +465,10 @@ class EnhancedOCRFeedbackService:
         Args:
             company_id: Firmen-ID
             user_id: Optional - Filter auf zugewiesene Items
-            priority: Optional - Filter auf Prioritaet
+            priority: Optional - Filter auf Priorität
             document_type: Optional - Filter auf Dokumenttyp
             limit: Maximale Anzahl
-            offset: Offset fuer Pagination
+            offset: Offset für Pagination
 
         Returns:
             Tuple von (Queue-Items, Gesamt-Anzahl)
@@ -476,12 +476,12 @@ class EnhancedOCRFeedbackService:
         from app.db.models import Document
         from app.db.models_ocr_feedback import OCRCorrectionFeedback
 
-        # Subquery fuer niedrig-konfidente Extraktionen
+        # Subquery für niedrig-konfidente Extraktionen
         # Wir nutzen OCRCorrectionFeedback wo confidence_before < Schwellenwert
         # und noch kein Status "processed" oder "verified"
 
         # Alternativ: Direkt aus extracted_data mit niedriger Konfidenz
-        # Hier vereinfachte Variante ueber vorhandene Feedbacks
+        # Hier vereinfachte Variante über vorhandene Feedbacks
 
         conditions = [
             OCRCorrectionFeedback.company_id == company_id,
@@ -565,7 +565,7 @@ class EnhancedOCRFeedbackService:
         """
         from app.db.models_ocr_feedback import OCRCorrectionFeedback, FeedbackStatus
 
-        # Pruefen ob bereits in Queue
+        # Prüfen ob bereits in Queue
         exists_stmt = select(OCRCorrectionFeedback.id).where(
             and_(
                 OCRCorrectionFeedback.document_id == document_id,
@@ -621,7 +621,7 @@ class EnhancedOCRFeedbackService:
         company_id: UUID,
     ) -> bool:
         """
-        Reserviert ein Queue-Item fuer einen Benutzer.
+        Reserviert ein Queue-Item für einen Benutzer.
 
         Args:
             item_id: Queue-Item ID
@@ -664,12 +664,12 @@ class EnhancedOCRFeedbackService:
         limit: int = 10,
     ) -> List[LeaderboardEntry]:
         """
-        Holt das Leaderboard fuer einen Zeitraum.
+        Holt das Leaderboard für einen Zeitraum.
 
         Args:
             company_id: Firmen-ID
             period: Zeitraum (weekly/monthly/all_time)
-            current_user_id: Optionale aktuelle User-ID fuer Markierung
+            current_user_id: Optionale aktuelle User-ID für Markierung
             limit: Maximale Anzahl
 
         Returns:
@@ -909,9 +909,9 @@ class EnhancedOCRFeedbackService:
         entity_id: Optional[UUID] = None,
     ) -> bool:
         """
-        Schnelle Feedback-Verarbeitung fuer kleine Korrekturen.
+        Schnelle Feedback-Verarbeitung für kleine Korrekturen.
 
-        Ueberspringt die Batch-Queue wenn edit_distance <= 2.
+        Überspringt die Batch-Queue wenn edit_distance <= 2.
         """
         # Calculate edit distance
         if len(original_value) == 0 or len(corrected_value) == 0:
@@ -975,7 +975,7 @@ class EnhancedOCRFeedbackService:
         company_id: UUID,
         now: datetime,
     ) -> Tuple[int, List[str]]:
-        """Berechnet Bonus-Punkte und gibt Details zurueck."""
+        """Berechnet Bonus-Punkte und gibt Details zurück."""
         bonus = 0
         details: List[str] = []
 
@@ -1014,7 +1014,7 @@ class EnhancedOCRFeedbackService:
         return bonus, details
 
     def _is_major_correction(self, original: str, corrected: str) -> bool:
-        """Prueft ob es eine grosse Korrektur ist."""
+        """Prüft ob es eine grosse Korrektur ist."""
         if not original or not corrected:
             return True
         len_diff = abs(len(original) - len(corrected))
@@ -1047,7 +1047,7 @@ class EnhancedOCRFeedbackService:
         user_id: Optional[UUID],
         now: datetime,
     ) -> bool:
-        """Prueft ob es die erste Korrektur des Tages ist."""
+        """Prüft ob es die erste Korrektur des Tages ist."""
         if not user_id:
             return False
 
@@ -1100,7 +1100,7 @@ class EnhancedOCRFeedbackService:
         points: int,
         now: datetime,
     ) -> Tuple[int, int, List[str]]:
-        """Aktualisiert User-Stats und gibt neue Totals zurueck."""
+        """Aktualisiert User-Stats und gibt neue Totals zurück."""
         if not user_id:
             return 0, 0, []
 
@@ -1123,7 +1123,7 @@ class EnhancedOCRFeedbackService:
         # Streak
         streak = await self._get_current_streak(user_id)
 
-        # Achievements pruefen
+        # Achievements prüfen
         achievements = await self._check_achievements(user_id, company_id, new_total, streak)
 
         return new_total, streak, achievements
@@ -1135,7 +1135,7 @@ class EnhancedOCRFeedbackService:
         total_points: int,
         streak: int,
     ) -> List[str]:
-        """Prueft und vergibt Achievements."""
+        """Prüft und vergibt Achievements."""
         new_achievements: List[str] = []
 
         # Achievement-Definitionen
@@ -1193,7 +1193,7 @@ class EnhancedOCRFeedbackService:
         pass
 
     def _calculate_priority(self, confidence: float) -> QueuePriority:
-        """Berechnet Prioritaet basierend auf Konfidenz."""
+        """Berechnet Priorität basierend auf Konfidenz."""
         if confidence < 0.40:
             return QueuePriority.CRITICAL
         elif confidence < 0.55:
@@ -1204,7 +1204,7 @@ class EnhancedOCRFeedbackService:
             return QueuePriority.LOW
 
     async def _get_user_streak(self, user_id: UUID) -> Dict[str, Any]:
-        """Holt Streak-Daten fuer einen User."""
+        """Holt Streak-Daten für einen User."""
         current = await self._get_current_streak(user_id)
         # Longest Streak: In Produktion aus Stats-Tabelle
         # Hier vereinfacht: current = longest wenn aktiv
@@ -1267,7 +1267,7 @@ class EnhancedOCRFeedbackService:
         bonus_details: List[str],
         achievements: List[str],
     ) -> str:
-        """Generiert eine Feedback-Nachricht fuer den User."""
+        """Generiert eine Feedback-Nachricht für den User."""
         msg_parts = [f"+{total_points} Punkte"]
 
         if bonus_details:
@@ -1300,7 +1300,7 @@ class EnhancedOCRFeedbackService:
 
 def get_feedback_service(db: AsyncSession) -> EnhancedOCRFeedbackService:
     """
-    Factory-Funktion fuer den Enhanced Feedback Service.
+    Factory-Funktion für den Enhanced Feedback Service.
 
     Args:
         db: Datenbank-Session

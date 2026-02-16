@@ -2,7 +2,7 @@
 // Shows: X von Y Dokumente, percentage bar, estimated time remaining
 
 import { Progress } from '@/components/ui/progress';
-import { Card, CardContent } from '@/components/ui/cards/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Clock, FileText, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { BatchProgress, formatEstimatedTime, UI_LABELS } from '../types/smart-dashboard-types';

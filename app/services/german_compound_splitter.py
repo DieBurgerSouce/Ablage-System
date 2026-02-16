@@ -410,11 +410,11 @@ def is_compound(word: str) -> bool:
 
 
 # =============================================================================
-# Umlaut-Normalisierung fuer OCR-Fehlertoleranz
+# Umlaut-Normalisierung für OCR-Fehlertoleranz
 # =============================================================================
 
 
-# Mapping fuer bidirektionale Umlaut-Expansion
+# Mapping für bidirektionale Umlaut-Expansion
 UMLAUT_EXPANSIONS: Dict[str, List[str]] = {
     # Umlaute zu ASCII-Varianten (inkl. OCR-Fehler ohne Punkte)
     'ä': ['ä', 'ae', 'a'],
@@ -437,7 +437,7 @@ DIGRAPH_TO_UMLAUT: Dict[str, str] = {
 
 
 def expand_umlaut_variants(word: str) -> List[str]:
-    """Expandiert ein Wort mit moeglichen Umlaut-Varianten.
+    """Expandiert ein Wort mit möglichen Umlaut-Varianten.
 
     Behandelt OCR-Fehler, bei denen:
     - ä zu ae, a oder ä wird
@@ -449,11 +449,11 @@ def expand_umlaut_variants(word: str) -> List[str]:
         word: Eingabewort (kann Umlaute oder ASCII-Digraphen enthalten)
 
     Returns:
-        Liste aller moeglichen Varianten (inkl. Original)
+        Liste aller möglichen Varianten (inkl. Original)
 
     Example:
         >>> expand_umlaut_variants("Größe")
-        ['größe', 'groesse', 'grosse']
+        ['größe', 'größe', 'grosse']
         >>> expand_umlaut_variants("Mueller")
         ['mueller', 'müller']
     """
@@ -482,7 +482,7 @@ def expand_umlaut_variants(word: str) -> List[str]:
         logger.debug(
             "umlaut_expansion",
             original=word,
-            variants=result[:5],  # Max 5 fuer Logging
+            variants=result[:5],  # Max 5 für Logging
             total_variants=len(result)
         )
 
@@ -493,17 +493,17 @@ def expand_query_with_umlauts(query: str) -> Tuple[str, List[str]]:
     """Expandiert eine Suchanfrage mit Umlaut-Varianten.
 
     Verarbeitet alle Woerter in der Query und generiert
-    OR-verknuepfte Varianten fuer bessere OCR-Fehlertoleranz.
+    OR-verknüpfte Varianten für bessere OCR-Fehlertoleranz.
 
     Args:
         query: Originale Suchanfrage
 
     Returns:
-        Tuple von (erweiterte_query, liste_zusaetzlicher_terms)
+        Tuple von (erweiterte_query, liste_zusätzlicher_terms)
 
     Example:
         >>> expand_query_with_umlauts("Größe Müller")
-        ("Größe Müller groesse grosse mueller müller", ["groesse", "grosse", ...])
+        ("Größe Müller größe grosse mueller müller", ["größe", "grosse", ...])
     """
     words = query.split()
     all_terms: Set[str] = set(words)

@@ -1,7 +1,7 @@
-"""Such-Service fuer Volltextsuche und semantische Suche.
+"""Such-Service für Volltextsuche und semantische Suche.
 
 Kombiniert PostgreSQL Full-Text Search (FTS) mit pgvector semantischer Suche.
-Unterstuetzt Hybrid-Suche mit Reciprocal Rank Fusion.
+Unterstützt Hybrid-Suche mit Reciprocal Rank Fusion.
 """
 
 from typing import List, Optional, Dict, Any, Tuple, Set
@@ -41,17 +41,17 @@ from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
-# Konstanten fuer Suche
-RRF_K_CONSTANT = 60  # Standard RRF Fusion Konstante (bewahrt fuer Ranking-Stabilitaet)
-HYBRID_EXPANSION_FACTOR = 3  # Faktor fuer erweiterte Ergebnisse bei Hybrid-Suche
+# Konstanten für Suche
+RRF_K_CONSTANT = 60  # Standard RRF Fusion Konstante (bewahrt für Ranking-Stabilität)
+HYBRID_EXPANSION_FACTOR = 3  # Faktor für erweiterte Ergebnisse bei Hybrid-Suche
 
 
 class SearchService:
-    """Service fuer Dokumentensuche.
+    """Service für Dokumentensuche.
 
     Bietet drei Suchmodi:
     - FTS (Volltext): PostgreSQL tsvector mit deutschen Wortstaemmen
-    - Semantic: pgvector Cosine-Aehnlichkeit mit multilingual-e5-large
+    - Semantic: pgvector Cosine-Ähnlichkeit mit multilingual-e5-large
     - Hybrid: Kombination beider Methoden via Reciprocal Rank Fusion
     """
 
@@ -71,12 +71,12 @@ class SearchService:
         self._compound_splitting_enabled = settings.COMPOUND_SPLITTING_ENABLED
         self._compound_splitter: Optional[GermanCompoundSplitter] = None
 
-        # Reranker fuer verbesserte Relevanz (BGE-Reranker GPU/CPU Dual-Stack)
+        # Reranker für verbesserte Relevanz (BGE-Reranker GPU/CPU Dual-Stack)
         self._reranker: Optional[RerankerService] = None
         self._rerank_enabled = settings.RAG_RERANK_ENABLED
         self._rerank_top_k = settings.RAG_RERANK_TOP_K
 
-        # Adaptive RRF-Gewichte (Query-laengenabhaengig)
+        # Adaptive RRF-Gewichte (Query-längenabhängig)
         self._adaptive_weights_enabled = settings.ADAPTIVE_RRF_WEIGHTS_ENABLED
 
     async def _get_redis(self) -> RedisStateManager:
@@ -97,7 +97,7 @@ class SearchService:
         sort_by: SortField,
         sort_order: SortOrder
     ) -> str:
-        """Generiert einen eindeutigen Cache-Key fuer Suchanfragen."""
+        """Generiert einen eindeutigen Cache-Key für Suchanfragen."""
         # Hash der Query
         query_hash = hashlib.sha256(query.encode()).hexdigest()[:12]
 
@@ -126,11 +126,11 @@ class SearchService:
         limit: int,
         threshold: float
     ) -> str:
-        """Generiert Cache-Key fuer aehnliche Dokumente."""
+        """Generiert Cache-Key für ähnliche Dokumente."""
         return f"search:similar:{user_id}:{document_id}:{limit}:{threshold}"
 
     def _generate_embedding_cache_key(self, query: str) -> str:
-        """Generiert Cache-Key fuer Query-Embeddings."""
+        """Generiert Cache-Key für Query-Embeddings."""
         query_hash = hashlib.sha256(query.encode()).hexdigest()[:16]
         return f"search:embedding:{query_hash}"
 
@@ -159,7 +159,7 @@ class SearchService:
             query: Originale Suchanfrage
 
         Returns:
-            Tuple von (erweiterte_query_string, liste_der_zusaetzlichen_terms)
+            Tuple von (erweiterte_query_string, liste_der_zusätzlichen_terms)
         """
         if not self._compound_splitting_enabled:
             return query, []
@@ -186,20 +186,20 @@ class SearchService:
             logger.debug(
                 "query_expanded_with_compounds",
                 original=query,
-                additional_terms=additional_terms[:5],  # Max 5 fuer Logging
+                additional_terms=additional_terms[:5],  # Max 5 für Logging
                 total_additional=len(additional_terms)
             )
 
-        # Erweiterte Query: Original + OR-verknuepfte Zusatzterms
+        # Erweiterte Query: Original + OR-verknüpfte Zusatzterms
         if additional_terms:
             expanded_query = query + " " + " ".join(additional_terms[:10])  # Max 10 Zusatzterms
             return expanded_query, additional_terms
         return query, []
 
     def _get_adaptive_weights(self, query: str) -> Tuple[float, float]:
-        """Waehlt RRF-Gewichte basierend auf Query-Laenge.
+        """Waehlt RRF-Gewichte basierend auf Query-Länge.
 
-        Kurze Queries (1-2 Woerter): 50/50 - Benoetigen sowohl exakte als auch semantische Matches
+        Kurze Queries (1-2 Woerter): 50/50 - Benötigen sowohl exakte als auch semantische Matches
         Mittlere Queries (3-5 Woerter): 30/70 - Standard, semantisch hilft bei Kontext
         Lange Queries (6+ Woerter): 20/80 - Lange Queries sind semantischer Natur
 
@@ -238,7 +238,7 @@ class SearchService:
         return fts_weight, semantic_weight
 
     def _validate_embedding(self, embedding: List[float]) -> bool:
-        """Validiert dass ein Embedding nur finite numerische Werte enthaelt.
+        """Validiert dass ein Embedding nur finite numerische Werte enthält.
 
         Args:
             embedding: Liste von Embedding-Werten
@@ -249,24 +249,24 @@ class SearchService:
         return all(isinstance(x, (int, float)) and math.isfinite(x) for x in embedding)
 
     async def invalidate_user_search_cache(self, user_id: UUID, reason: str = "user_update") -> int:
-        """Invalidiert alle Such-Caches fuer einen Benutzer.
+        """Invalidiert alle Such-Caches für einen Benutzer.
 
         Sollte aufgerufen werden wenn Dokumente erstellt, aktualisiert oder
-        geloescht werden, da Suchergebnisse nicht mehr aktuell sind.
+        gelöscht werden, da Suchergebnisse nicht mehr aktuell sind.
 
         Args:
             user_id: Benutzer-ID
             reason: Grund der Invalidierung
 
         Returns:
-            Anzahl der invalidierten Cache-Eintraege
+            Anzahl der invalidierten Cache-Einträge
         """
         if not self._cache_enabled:
             return 0
 
         try:
             redis = await self._get_redis()
-            # Pattern fuer alle Benutzer-Caches: search:*:{user_id}:*
+            # Pattern für alle Benutzer-Caches: search:*:{user_id}:*
             pattern = f"search:*:{user_id}:*"
             count = await redis.invalidate_cache(pattern)
 
@@ -294,11 +294,11 @@ class SearchService:
         user_id: UUID,
         reason: str = "document_update"
     ) -> int:
-        """Invalidiert Caches fuer ein spezifisches Dokument.
+        """Invalidiert Caches für ein spezifisches Dokument.
 
         Invalidiert:
-        - Aehnliche-Dokumente-Cache fuer dieses Dokument
-        - Alle Such-Caches des Benutzers (da Ergebnisse betroffen sein koennten)
+        - Ähnliche-Dokumente-Cache für dieses Dokument
+        - Alle Such-Caches des Benutzers (da Ergebnisse betroffen sein könnten)
 
         Args:
             document_id: Dokument-ID
@@ -306,7 +306,7 @@ class SearchService:
             reason: Grund der Invalidierung
 
         Returns:
-            Anzahl der invalidierten Cache-Eintraege
+            Anzahl der invalidierten Cache-Einträge
         """
         if not self._cache_enabled:
             return 0
@@ -316,7 +316,7 @@ class SearchService:
             redis = await self._get_redis()
             metrics = get_search_metrics()
 
-            # 1. Aehnliche-Dokumente-Cache invalidieren
+            # 1. Ähnliche-Dokumente-Cache invalidieren
             similar_pattern = f"search:similar:*:{document_id}:*"
             count = await redis.invalidate_cache(similar_pattern)
             total_invalidated += count
@@ -344,7 +344,7 @@ class SearchService:
         """Invalidiert alle Such-Caches (Admin-Funktion).
 
         Returns:
-            Anzahl der invalidierten Cache-Eintraege
+            Anzahl der invalidierten Cache-Einträge
         """
         if not self._cache_enabled:
             return 0
@@ -385,7 +385,7 @@ class SearchService:
         Args:
             db: Datenbank-Session
             query: Suchbegriff
-            user_id: Benutzer-ID fuer Zugriffsfilter
+            user_id: Benutzer-ID für Zugriffsfilter
             search_type: Art der Suche (fts, semantic, hybrid)
             filters: Optionale Filter
             page: Seitennummer (1-basiert)
@@ -393,10 +393,10 @@ class SearchService:
             sort_by: Sortierfeld
             sort_order: Sortierreihenfolge
             highlight: Text-Highlighting aktivieren
-            similarity_threshold: Min. Aehnlichkeit fuer semantische Suche
-            skip_cache: Cache fuer diese Anfrage umgehen
+            similarity_threshold: Min. Ähnlichkeit für semantische Suche
+            skip_cache: Cache für diese Anfrage umgehen
             rerank: Ergebnisse mit BGE-Reranker neu sortieren (verbessert Relevanz)
-            use_synonyms: Suchanfrage mit deutschen Geschaeftsbegriff-Synonymen erweitern
+            use_synonyms: Suchanfrage mit deutschen Geschäftsbegriff-Synonymen erweitern
 
         Returns:
             SearchResponse mit Ergebnissen und Metadaten
@@ -409,7 +409,7 @@ class SearchService:
             query, user_id, search_type, filters, page, per_page, sort_by, sort_order
         )
 
-        # Cache pruefen (wenn aktiviert)
+        # Cache prüfen (wenn aktiviert)
         metrics = get_search_metrics()
         cache_hit = False
 
@@ -430,7 +430,7 @@ class SearchService:
                     cached["results"] = [
                         SearchResultItem(**r) for r in cached.get("results", [])
                     ]
-                    # Metriken fuer Cache-Hit erfassen
+                    # Metriken für Cache-Hit erfassen
                     took_ms = int((time.time() - start_time) * 1000)
                     metrics.record_search(
                         search_type=search_type.value,
@@ -445,14 +445,14 @@ class SearchService:
             except Exception as e:
                 logger.warning("search_cache_error", **safe_error_log(e), cache_key=cache_key[:50])
 
-        # Query erweitern: Compound-Splits + Umlaut-Varianten + Synonyme (fuer FTS und Hybrid)
+        # Query erweitern: Compound-Splits + Umlaut-Varianten + Synonyme (für FTS und Hybrid)
         expanded_query = query
         compound_terms: List[str] = []
         umlaut_terms: List[str] = []
         synonym_expansions: List[Dict[str, Any]] = []
 
         if search_type in (SearchType.FTS, SearchType.HYBRID):
-            # 1. Umlaut-Varianten expandieren (z.B. "Größe" -> auch "Groesse", "Grosse")
+            # 1. Umlaut-Varianten expandieren (z.B. "Größe" -> auch "Größe", "Grosse")
             expanded_query, umlaut_terms = expand_query_with_umlauts(query)
             # 2. Compound-Splits hinzufuegen (z.B. "Finanzamt" -> "Finanz", "Amt")
             expanded_query, compound_terms = self._expand_query_with_compounds(expanded_query)
@@ -464,7 +464,7 @@ class SearchService:
                         expanded_query,
                         max_expansions_per_term=3
                     )
-                    # Hole Expansions-Info fuer Response
+                    # Hole Expansions-Info für Response
                     preview = synonym_service.get_expansion_preview(query)
                     synonym_expansions = preview.get("expansions", [])
                     if expanded_with_synonyms != expanded_query:
@@ -537,7 +537,7 @@ class SearchService:
                 embedding=filters.has_embedding is not None,
             )
 
-        # Baue Synonym-Expansions fuer Response
+        # Baue Synonym-Expansions für Response
         synonym_expansion_models = [
             SynonymExpansion(original=exp["original"], synonyms=exp["synonyms"])
             for exp in synonym_expansions
@@ -597,7 +597,7 @@ class SearchService:
 
         # Base query mit tsvector Suche und Field-Level Boosting
         # Inkludiert eigene UND geteilte Dokumente (via DocumentAccess)
-        # Boosting: Treffer im Dateinamen ranken hoeher als im extrahierten Text
+        # Boosting: Treffer im Dateinamen ranken höher als im extrahierten Text
         fts_query = text("""
             WITH search_query AS (
                 SELECT plainto_tsquery('german_text', :query) AS query
@@ -627,7 +627,7 @@ class SearchService:
                     d.ocr_confidence,
                     d.owner_id,
                     d.extracted_text,
-                    -- Field-Level Boosting: Filename-Treffer ranken hoeher
+                    -- Field-Level Boosting: Filename-Treffer ranken höher
                     ts_rank_cd(d.search_vector, sq.query) *
                     CASE
                         WHEN lower(d.filename) LIKE '%' || lower(:raw_query) || '%'
@@ -669,12 +669,12 @@ class SearchService:
                 {filters}
         """.format(filters=self._build_filter_sql(filters)))
 
-        # Extrahiere erstes Wort der Query fuer Filename-Matching (ohne Expansion)
+        # Extrahiere erstes Wort der Query für Filename-Matching (ohne Expansion)
         raw_query_first_word = query.split()[0] if query.split() else query
 
         params = {
             "query": query,
-            "raw_query": raw_query_first_word,  # Fuer LIKE-Matching im Filename
+            "raw_query": raw_query_first_word,  # Für LIKE-Matching im Filename
             "user_id": str(user_id),
             "limit": per_page,
             "offset": offset,
@@ -846,10 +846,10 @@ class SearchService:
         rerank: bool = True
     ) -> Tuple[List[SearchResultItem], int]:
         """Hybrid-Suche mit Reciprocal Rank Fusion (RRF) und optionalem Reranking."""
-        # Adaptive Gewichte basierend auf Query-Laenge waehlen
+        # Adaptive Gewichte basierend auf Query-Länge wählen
         fts_weight, semantic_weight = self._get_adaptive_weights(query)
 
-        # Beide Suchmethoden ausfuehren (mehr Ergebnisse holen fuer Fusion)
+        # Beide Suchmethoden ausführen (mehr Ergebnisse holen für Fusion)
         expanded_limit = per_page * HYBRID_EXPANSION_FACTOR
 
         fts_results, _ = await self._search_fts(
@@ -881,7 +881,7 @@ class SearchService:
             if doc_id in scores:
                 scores[doc_id]["rrf_score"] += rrf_contribution
                 scores[doc_id]["semantic_rank"] = rank + 1
-                # Semantic similarity uebernehmen
+                # Semantic similarity übernehmen
                 scores[doc_id]["result"].semantic_similarity = result.semantic_similarity
             else:
                 result.fts_rank = None  # Nicht in FTS gefunden
@@ -902,7 +902,7 @@ class SearchService:
 
         # Reranking mit BGE-Reranker (GPU/CPU Dual-Stack)
         if rerank and self._rerank_enabled and len(sorted_items) > 1:
-            # Top-Kandidaten fuer Reranking (max 30 fuer Performance)
+            # Top-Kandidaten für Reranking (max 30 für Performance)
             rerank_candidates = [item["result"] for item in sorted_items[:30]]
             reranked_results = await self._rerank_results(query, rerank_candidates, per_page)
 
@@ -937,7 +937,7 @@ class SearchService:
         exclude_same_type: bool = False,
         skip_cache: bool = False
     ) -> List[SimilarDocumentItem]:
-        """Aehnliche Dokumente basierend auf Embedding-Aehnlichkeit finden."""
+        """Ähnliche Dokumente basierend auf Embedding-Ähnlichkeit finden."""
         start_time = time.time()
         metrics = get_search_metrics()
 
@@ -946,7 +946,7 @@ class SearchService:
             document_id, user_id, limit, similarity_threshold
         )
 
-        # Cache pruefen
+        # Cache prüfen
         if self._cache_enabled and not skip_cache:
             try:
                 redis = await self._get_redis()
@@ -1006,13 +1006,13 @@ class SearchService:
             logger.error(
                 "invalid_embedding_values",
                 document_id=str(document_id),
-                message="Embedding enthaelt NaN oder Inf-Werte"
+                message="Embedding enthält NaN oder Inf-Werte"
             )
-            raise ValueError("Embedding enthaelt ungueltige Werte (NaN/Inf)")
+            raise ValueError("Embedding enthält ungültige Werte (NaN/Inf)")
 
         embedding_str = "[" + ",".join(str(x) for x in source_doc.embedding) + "]"
 
-        # Aehnliche Dokumente suchen (inkl. geteilte Dokumente)
+        # Ähnliche Dokumente suchen (inkl. geteilte Dokumente)
         type_filter = ""
         if exclude_same_type and source_doc.document_type:
             type_filter = "AND d.document_type != :source_type"
@@ -1094,7 +1094,7 @@ class SearchService:
         db: AsyncSession,
         doc_ids: List[UUID]
     ) -> Dict[UUID, List[str]]:
-        """Tags fuer mehrere Dokumente laden."""
+        """Tags für mehrere Dokumente laden."""
         if not doc_ids:
             return {}
 
@@ -1115,7 +1115,7 @@ class SearchService:
         return tags_map
 
     def _build_filter_sql(self, filters: Optional[SearchFilters]) -> str:
-        """SQL-Fragment fuer Filter generieren."""
+        """SQL-Fragment für Filter generieren."""
         if not filters:
             return ""
 
@@ -1146,7 +1146,7 @@ class SearchService:
             conditions.append("AND d.detected_language = :filter_language")
 
         if filters.tags:
-            # Subquery fuer Dokumente mit ALLEN angegebenen Tags
+            # Subquery für Dokumente mit ALLEN angegebenen Tags
             conditions.append("""
                 AND d.id IN (
                     SELECT dt.document_id
@@ -1161,7 +1161,7 @@ class SearchService:
         return " ".join(conditions)
 
     def _get_filter_params(self, filters: Optional[SearchFilters]) -> Dict[str, Any]:
-        """Parameter fuer Filter-SQL generieren."""
+        """Parameter für Filter-SQL generieren."""
         if not filters:
             return {}
 
@@ -1213,7 +1213,7 @@ class SearchService:
         return sorted(results, key=key_func, reverse=reverse)
 
     def _truncate_text(self, text: Optional[str], max_length: int = 500) -> Optional[str]:
-        """Text auf maximale Laenge kuerzen."""
+        """Text auf maximale Länge kürzen."""
         if not text:
             return None
         if len(text) <= max_length:
@@ -1230,8 +1230,8 @@ class SearchService:
     ) -> List[SearchResultItem]:
         """Rerankt Suchergebnisse mit BGE-Reranker (GPU/CPU Dual-Stack).
 
-        Verwendet den lokalen RerankerService fuer integriertes Reranking:
-        - Primaer: BGE-Reranker-v2-m3 (GPU, ~1GB VRAM)
+        Verwendet den lokalen RerankerService für integriertes Reranking:
+        - Primär: BGE-Reranker-v2-m3 (GPU, ~1GB VRAM)
         - Fallback: MiniLM Cross-Encoder (CPU, ~300MB RAM)
 
         Falls beide fehlschlagen: Original-Reihenfolge beibehalten.
@@ -1239,7 +1239,7 @@ class SearchService:
         Args:
             query: Suchanfrage
             results: Liste von Suchergebnissen (nach RRF sortiert)
-            top_k: Anzahl der zurueckzugebenden Ergebnisse
+            top_k: Anzahl der zurückzugebenden Ergebnisse
 
         Returns:
             Rerankte Liste von Suchergebnissen
@@ -1252,7 +1252,7 @@ class SearchService:
             if self._reranker is None:
                 self._reranker = get_reranker_service()
 
-            # Text fuer Reranking extrahieren (highlight oder text_preview)
+            # Text für Reranking extrahieren (highlight oder text_preview)
             documents = []
             for r in results:
                 # Priorisiere: highlight > text_preview > filename
@@ -1299,12 +1299,12 @@ class SearchService:
         filters: Optional[SearchFilters] = None
     ) -> Dict[str, Any]:
         """
-        Berechnet Facetten fuer die Suchseite.
+        Berechnet Facetten für die Suchseite.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID fuer Zugriffsfilter
-            facet_fields: Felder fuer Facetten (z.B. ["document_type", "status", "tags"])
+            user_id: Benutzer-ID für Zugriffsfilter
+            facet_fields: Felder für Facetten (z.B. ["document_type", "status", "tags"])
             filters: Optionale Filter (werden auf Facetten angewendet)
 
         Returns:
@@ -1312,7 +1312,7 @@ class SearchService:
         """
         from app.db.schemas import FacetGroup, FacetValue
 
-        # Label-Mapping fuer deutsche UI
+        # Label-Mapping für deutsche UI
         field_labels = {
             "document_type": "Dokumenttyp",
             "status": "Status",
@@ -1322,7 +1322,7 @@ class SearchService:
             "language": "Sprache",
         }
 
-        # Value-Labels fuer deutsche UI
+        # Value-Labels für deutsche UI
         value_labels = {
             "document_type": {
                 "invoice": "Rechnung",
@@ -1348,7 +1348,7 @@ class SearchService:
         # Basis-Query mit Benutzer-Filter
         base_conditions = [Document.owner_id == user_id]
 
-        # Zusaetzliche Filter anwenden
+        # Zusätzliche Filter anwenden
         if filters:
             if filters.document_type:
                 base_conditions.append(Document.document_type == filters.document_type.value)
@@ -1359,7 +1359,7 @@ class SearchService:
             if filters.date_to:
                 base_conditions.append(Document.created_at <= filters.date_to)
 
-        # Facet fuer jedes Feld berechnen
+        # Facet für jedes Feld berechnen
         for field in facet_fields:
             if field == "document_type":
                 result = await db.execute(
@@ -1497,7 +1497,7 @@ class SearchService:
         limit: int = 10
     ) -> Dict[str, Any]:
         """
-        Autovervollstaendigung fuer Suchanfragen.
+        Autovervollständigung für Suchanfragen.
 
         Sucht in:
         - Dokumentnamen
@@ -1506,12 +1506,12 @@ class SearchService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID fuer Zugriffsfilter
+            user_id: Benutzer-ID für Zugriffsfilter
             query: Suchbegriff (mind. 2 Zeichen)
-            limit: Maximale Anzahl Vorschlaege
+            limit: Maximale Anzahl Vorschläge
 
         Returns:
-            Dict mit Vorschlaegen
+            Dict mit Vorschlägen
         """
         from app.db.schemas import SuggestItem
 
@@ -1632,7 +1632,7 @@ class SearchService:
         }
 
     def _create_highlight(self, text: str, query: str) -> str:
-        """Erstellt sicheres HTML-Highlight fuer Suchbegriff (ReDoS-geschuetzt)."""
+        """Erstellt sicheres HTML-Highlight für Suchbegriff (ReDoS-geschuetzt)."""
         from app.core.input_sanitization import create_safe_highlight
 
         return create_safe_highlight(text, query, tag="mark")

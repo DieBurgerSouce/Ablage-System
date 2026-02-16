@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-OAuth2-Service fuer Kalender-Provider (Google Calendar, Microsoft Outlook).
+OAuth2-Service für Kalender-Provider (Google Calendar, Microsoft Outlook).
 
 Folgt dem Pattern aus datev_auth_service.py:
 - State-Cache mit CSRF-Schutz (15 Minuten Ablauf)
-- Token-Verschluesselung via encrypt_data() / decrypt_data()
+- Token-Verschlüsselung via encrypt_data() / decrypt_data()
 - Automatischer Token-Refresh
-- httpx.AsyncClient fuer Token-Exchange
+- httpx.AsyncClient für Token-Exchange
 
 Feinpoliert und durchdacht - Sichere Kalender-Authentifizierung.
 """
@@ -35,10 +35,10 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 STATE_EXPIRY_SECONDS = 900  # 15 Minuten
-"""CSRF-State ist maximal 15 Minuten gueltig."""
+"""CSRF-State ist maximal 15 Minuten gültig."""
 
 TOKEN_REFRESH_BUFFER_MINUTES = 5
-"""Token wird erneuert wenn weniger als 5 Minuten gueltig."""
+"""Token wird erneuert wenn weniger als 5 Minuten gültig."""
 
 PROVIDER_CONFIG: Dict[str, Dict[str, str]] = {
     "google": {
@@ -61,7 +61,7 @@ PROVIDER_CONFIG: Dict[str, Dict[str, str]] = {
 # =============================================================================
 
 class _StateEntry:
-    """Typ-sichere State-Cache-Eintraege."""
+    """Typ-sichere State-Cache-Einträge."""
 
     __slots__ = ("company_id", "provider", "created_at")
 
@@ -71,11 +71,11 @@ class _StateEntry:
         self.created_at = utc_now()
 
     def is_expired(self) -> bool:
-        """Prueft ob State abgelaufen ist."""
+        """Prüft ob State abgelaufen ist."""
         return utc_now() - self.created_at > timedelta(seconds=STATE_EXPIRY_SECONDS)
 
     def to_dict(self) -> Dict[str, str]:
-        """Konvertiert in Dict fuer Rueckgabe."""
+        """Konvertiert in Dict für Rückgabe."""
         return {
             "company_id": self.company_id,
             "provider": self.provider,
@@ -88,11 +88,11 @@ class _StateEntry:
 
 class CalendarOAuthService:
     """
-    OAuth2-Service fuer Kalender-Provider.
+    OAuth2-Service für Kalender-Provider.
 
-    Verwaltet den kompletten OAuth2-Flow fuer Google Calendar
+    Verwaltet den kompletten OAuth2-Flow für Google Calendar
     und Microsoft Outlook:
-    - Authorization URL fuer User-Consent
+    - Authorization URL für User-Consent
     - Code-Exchange nach Redirect
     - Token-Refresh bei Ablauf
     - Token-Widerruf
@@ -125,7 +125,7 @@ class CalendarOAuthService:
     def __init__(self) -> None:
         """Initialisiert den OAuth Service."""
         self._http_timeout = httpx.Timeout(30.0)
-        # State-Cache fuer CSRF-Schutz (In-Memory, fuer Production Redis verwenden)
+        # State-Cache für CSRF-Schutz (In-Memory, für Production Redis verwenden)
         self._state_cache: Dict[str, _StateEntry] = {}
         self._state_lock = threading.Lock()
 
@@ -141,13 +141,13 @@ class CalendarOAuthService:
         company_id: UUID,
     ) -> Tuple[str, str]:
         """
-        Generiert OAuth2 Authorization URL fuer einen Kalender-Provider.
+        Generiert OAuth2 Authorization URL für einen Kalender-Provider.
 
         Args:
             provider: Provider-Name ("google" oder "outlook")
             client_id: OAuth2 Client ID
             redirect_uri: Callback URL nach Authorization
-            company_id: Firmen-ID fuer State-Zuordnung
+            company_id: Firmen-ID für State-Zuordnung
 
         Returns:
             Tuple aus (Authorization URL, State-Token)
@@ -205,7 +205,7 @@ class CalendarOAuthService:
             state: State-Token aus Callback
 
         Returns:
-            State-Metadaten (company_id, provider) oder None wenn ungueltig
+            State-Metadaten (company_id, provider) oder None wenn ungültig
         """
         with self._state_lock:
             entry = self._state_cache.get(state)
@@ -217,7 +217,7 @@ class CalendarOAuthService:
             # State verbrauchen (einmalig verwendbar)
             del self._state_cache[state]
 
-            # Timeout pruefen
+            # Timeout prüfen
             if entry.is_expired():
                 logger.warning("calendar_state_expired")
                 return None
@@ -248,7 +248,7 @@ class CalendarOAuthService:
             code: Authorization Code
             client_id: OAuth2 Client ID
             client_secret: OAuth2 Client Secret
-            redirect_uri: Redirect URI (muss mit Authorization uebereinstimmen)
+            redirect_uri: Redirect URI (muss mit Authorization übereinstimmen)
 
         Returns:
             True wenn erfolgreich
@@ -288,7 +288,7 @@ class CalendarOAuthService:
                 expires_in = token_data.get("expires_in", 3600)
                 token_expires_at = utc_now() + timedelta(seconds=expires_in)
 
-                # Verschluesseln und in DB speichern
+                # Verschlüsseln und in DB speichern
                 await self._store_oauth_tokens(
                     db=db,
                     company_id=company_id,
@@ -423,10 +423,10 @@ class CalendarOAuthService:
         client_secret: str,
     ) -> Optional[str]:
         """
-        Gibt einen gueltigen Access Token zurueck, mit automatischem Refresh.
+        Gibt einen gültigen Access Token zurück, mit automatischem Refresh.
 
-        Prueft ob der gespeicherte Token noch gueltig ist. Falls nicht,
-        wird automatisch ein Refresh durchgefuehrt.
+        Prüft ob der gespeicherte Token noch gültig ist. Falls nicht,
+        wird automatisch ein Refresh durchgeführt.
 
         Args:
             db: Datenbank-Session
@@ -436,13 +436,13 @@ class CalendarOAuthService:
             client_secret: OAuth2 Client Secret
 
         Returns:
-            Gueltiger Access Token oder None
+            Gültiger Access Token oder None
         """
         tokens = await self._get_oauth_tokens(db, company_id, provider)
         if not tokens:
             return None
 
-        # Pruefen ob Token noch gueltig ist
+        # Prüfen ob Token noch gültig ist
         expires_at_str = tokens.get("expires_at", "")
         if expires_at_str:
             from app.core.datetime_utils import parse_iso_datetime
@@ -450,10 +450,10 @@ class CalendarOAuthService:
             if expires_at:
                 buffer = timedelta(minutes=TOKEN_REFRESH_BUFFER_MINUTES)
                 if utc_now() + buffer < expires_at:
-                    # Token ist noch gueltig
+                    # Token ist noch gültig
                     return tokens.get("access_token")
 
-        # Token abgelaufen oder bald ablaufend - Refresh durchfuehren
+        # Token abgelaufen oder bald ablaufend - Refresh durchführen
         return await self.refresh_token(
             db=db,
             company_id=company_id,
@@ -475,7 +475,7 @@ class CalendarOAuthService:
         client_secret: str,
     ) -> bool:
         """
-        Widerruft OAuth-Tokens beim Provider und loescht sie lokal.
+        Widerruft OAuth-Tokens beim Provider und löscht sie lokal.
 
         Args:
             db: Datenbank-Session
@@ -513,7 +513,7 @@ class CalendarOAuthService:
                     **safe_error_log(e),
                 )
 
-        # Lokal immer loeschen
+        # Lokal immer löschen
         await self._clear_oauth_tokens(db, company_id, provider)
 
         logger.info(
@@ -528,7 +528,7 @@ class CalendarOAuthService:
     # =========================================================================
 
     def _cleanup_expired_states(self) -> None:
-        """Entfernt abgelaufene State-Eintraege aus dem Cache."""
+        """Entfernt abgelaufene State-Einträge aus dem Cache."""
         with self._state_lock:
             expired_keys = [
                 key for key, entry in self._state_cache.items()
@@ -553,7 +553,7 @@ class CalendarOAuthService:
         company_id: UUID,
         provider: str,
     ) -> Optional[Dict[str, str]]:
-        """Oeffentliche Methode: Gibt Token-Metadaten zurueck (ohne Secrets).
+        """Öffentliche Methode: Gibt Token-Metadaten zurück (ohne Secrets).
 
         Returns:
             Dict mit 'connected' und 'expires_at' oder None
@@ -573,7 +573,7 @@ class CalendarOAuthService:
         provider: str,
     ) -> Optional[Dict[str, str]]:
         """
-        Liest und entschluesselt OAuth-Tokens aus CompanySettings.
+        Liest und entschlüsselt OAuth-Tokens aus CompanySettings.
 
         Token-Speicherstruktur in CompanySettings.calendar_oauth_tokens:
         {
@@ -629,7 +629,7 @@ class CalendarOAuthService:
         tokens_data: Dict[str, str],
     ) -> None:
         """
-        Verschluesselt und speichert OAuth-Tokens in CompanySettings.
+        Verschlüsselt und speichert OAuth-Tokens in CompanySettings.
 
         Args:
             db: Datenbank-Session
@@ -652,7 +652,7 @@ class CalendarOAuthService:
             )
             return
 
-        # Token-Daten verschluesseln
+        # Token-Daten verschlüsseln
         token_json = json.dumps(tokens_data)
         encrypted_blob = encrypt_data(
             token_json,
@@ -682,7 +682,7 @@ class CalendarOAuthService:
         company_id: UUID,
         provider: str,
     ) -> None:
-        """Loescht OAuth-Tokens fuer einen Provider aus CompanySettings."""
+        """Löscht OAuth-Tokens für einen Provider aus CompanySettings."""
         from app.db.models import CompanySettings
 
         stmt = select(CompanySettings).where(
@@ -711,7 +711,7 @@ _service_lock = threading.Lock()
 
 def get_calendar_oauth_service() -> CalendarOAuthService:
     """
-    Factory fuer CalendarOAuthService (Thread-Safe Singleton).
+    Factory für CalendarOAuthService (Thread-Safe Singleton).
 
     Returns:
         CalendarOAuthService Instanz

@@ -1,22 +1,22 @@
 """
 Holding Dashboard API Endpoints.
 
-API fuer Multi-Company Holding-Sicht mit konsolidierten KPIs.
+API für Multi-Company Holding-Sicht mit konsolidierten KPIs.
 
 Endpoints:
-- GET /holding/overview - Konsolidierte Uebersicht aller Firmen
+- GET /holding/overview - Konsolidierte Übersicht aller Firmen
 - GET /holding/companies - Firmen-Liste mit Zusammenfassung
 - GET /holding/compare - Firmenvergleich nach Metrik
 - GET /holding/intercompany - Intercompany-Transaktionen (Legacy)
-- GET /holding/cashflow - Konzern-Cashflow Uebersicht
+- GET /holding/cashflow - Konzern-Cashflow Übersicht
 
 Intercompany Reconciliation (NEU Phase 5.3):
 - GET /holding/ic/summary - IC-Zusammenfassung
 - GET /holding/ic/transactions - IC-Transaktionen
 - GET /holding/ic/balances - IC-Salden zwischen Firmen
-- POST /holding/ic/reconcile - Abstimmung durchfuehren
+- POST /holding/ic/reconcile - Abstimmung durchführen
 - GET /holding/ic/eliminations - Eliminierungsbuchungen generieren
-- GET /holding/ic/report - Vollstaendiger Abstimmungsbericht
+- GET /holding/ic/report - Vollständiger Abstimmungsbericht
 
 Created: 2026-01-19
 Updated: 2026-01-21 (Phase 5.3 IC Reconciliation)
@@ -98,7 +98,7 @@ class IntercompanyMetricsResponse(BaseModel):
 
 
 class ConsolidatedOverviewResponse(BaseModel):
-    """Vollstaendige konsolidierte Uebersicht."""
+    """Vollständige konsolidierte Übersicht."""
     generated_at: str
     company_count: int
     companies: List[CompanySummaryResponse]
@@ -110,7 +110,7 @@ class ConsolidatedOverviewResponse(BaseModel):
 
 
 class CompanyComparisonItem(BaseModel):
-    """Vergleichseintrag fuer eine Firma."""
+    """Vergleichseintrag für eine Firma."""
     company_id: str
     company_name: str
     metric: str
@@ -135,7 +135,7 @@ class CashFlowItemResponse(BaseModel):
 
 
 class CashFlowOverviewResponse(BaseModel):
-    """Konzern-Cashflow Uebersicht."""
+    """Konzern-Cashflow Übersicht."""
     period_type: str
     total_inflows: float
     total_outflows: float
@@ -193,8 +193,8 @@ async def get_user_company_ids(
 @router.get(
     "/overview",
     response_model=ConsolidatedOverviewResponse,
-    summary="Konsolidierte Holding-Uebersicht",
-    description="Zeigt konsolidierte KPIs ueber alle Firmen des Users.",
+    summary="Konsolidierte Holding-Übersicht",
+    description="Zeigt konsolidierte KPIs über alle Firmen des Users.",
 )
 async def get_holding_overview(
     company_ids: Optional[List[UUID]] = Query(
@@ -204,7 +204,7 @@ async def get_holding_overview(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Hole konsolidierte Uebersicht fuer Holding-Sicht."""
+    """Hole konsolidierte Übersicht für Holding-Sicht."""
     allowed_ids = await get_user_company_ids(db, current_user, company_ids)
 
     if not allowed_ids:
@@ -241,7 +241,7 @@ async def get_holding_companies(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Hole Liste aller Firmen fuer Holding-Sicht."""
+    """Hole Liste aller Firmen für Holding-Sicht."""
     allowed_ids = await get_user_company_ids(db, current_user)
 
     if not allowed_ids:
@@ -274,7 +274,7 @@ async def compare_companies(
     metric: str = Query(
         "receivables",
         pattern="^(documents|receivables|payables|balance)$",
-        description="Metrik fuer Vergleich"
+        description="Metrik für Vergleich"
     ),
     company_ids: Optional[List[UUID]] = Query(
         None,
@@ -341,7 +341,7 @@ async def get_intercompany_transactions(
     "/cashflow",
     response_model=CashFlowOverviewResponse,
     summary="Konzern-Cashflow",
-    description="Zeigt Cashflow-Uebersicht fuer die Holding.",
+    description="Zeigt Cashflow-Übersicht für die Holding.",
 )
 async def get_holding_cashflow(
     period: str = Query(
@@ -356,7 +356,7 @@ async def get_holding_cashflow(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Hole Cashflow-Uebersicht fuer Holding."""
+    """Hole Cashflow-Übersicht für Holding."""
     from app.db.models import BankTransaction, BankAccount
 
     allowed_ids = await get_user_company_ids(db, current_user, company_ids)
@@ -388,7 +388,7 @@ async def get_holding_cashflow(
         )
         company_name = company_result.scalar() or "Unbekannt"
 
-        # Hole Transaktionen ueber BankAccount.user_id -> UserCompany.company_id
+        # Hole Transaktionen über BankAccount.user_id -> UserCompany.company_id
         # Subquery: User-IDs die zur Company gehoeren
         user_ids_subquery = (
             select(UserCompany.user_id)
@@ -503,7 +503,7 @@ class ReconciliationDifferenceResponse(BaseModel):
 
 
 class EliminationEntryResponse(BaseModel):
-    """Eliminierungsbuchung fuer Konsolidierung."""
+    """Eliminierungsbuchung für Konsolidierung."""
 
     id: str
     account_debit: str
@@ -518,7 +518,7 @@ class EliminationEntryResponse(BaseModel):
 
 
 class ICSummaryResponse(BaseModel):
-    """IC-Zusammenfassung fuer Dashboard."""
+    """IC-Zusammenfassung für Dashboard."""
 
     has_ic_relationships: bool
     company_pairs: int = 0
@@ -567,7 +567,7 @@ class EliminationsResponse(BaseModel):
 
 
 class ReconciliationReportResponse(BaseModel):
-    """Vollstaendiger Abstimmungsbericht."""
+    """Vollständiger Abstimmungsbericht."""
 
     generated_at: str
     period_start: str
@@ -598,7 +598,7 @@ async def get_ic_summary(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Hole IC-Zusammenfassung fuer Dashboard."""
+    """Hole IC-Zusammenfassung für Dashboard."""
     allowed_ids = await get_user_company_ids(db, current_user, company_ids)
 
     if not allowed_ids:
@@ -708,8 +708,8 @@ async def get_ic_balances(
 @router.post(
     "/ic/reconcile",
     response_model=ReconciliationResultResponse,
-    summary="IC-Abstimmung durchfuehren",
-    description="Fuehrt den Abgleich der IC-Transaktionen durch.",
+    summary="IC-Abstimmung durchführen",
+    description="Führt den Abgleich der IC-Transaktionen durch.",
 )
 async def perform_ic_reconciliation(
     company_ids: Optional[List[UUID]] = Query(
@@ -724,7 +724,7 @@ async def perform_ic_reconciliation(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Fuehre IC-Abstimmung durch."""
+    """Führe IC-Abstimmung durch."""
     allowed_ids = await get_user_company_ids(db, current_user, company_ids)
 
     if not allowed_ids:
@@ -759,7 +759,7 @@ async def perform_ic_reconciliation(
     "/ic/eliminations",
     response_model=EliminationsResponse,
     summary="Eliminierungsbuchungen",
-    description="Generiert Eliminierungsbuchungen fuer den Konzernabschluss.",
+    description="Generiert Eliminierungsbuchungen für den Konzernabschluss.",
 )
 async def get_ic_eliminations(
     period: str = Query(
@@ -800,7 +800,7 @@ async def get_ic_eliminations(
     "/ic/report",
     response_model=ReconciliationReportResponse,
     summary="IC-Abstimmungsbericht",
-    description="Generiert vollstaendigen Abstimmungsbericht mit allen Details.",
+    description="Generiert vollständigen Abstimmungsbericht mit allen Details.",
 )
 async def get_ic_report(
     company_ids: Optional[List[UUID]] = Query(
@@ -815,12 +815,12 @@ async def get_ic_report(
     period: Optional[str] = Query(
         None,
         pattern=r"^\d{4}-(0[1-9]|1[0-2])$",
-        description="Periode fuer Eliminierungen (YYYY-MM)",
+        description="Periode für Eliminierungen (YYYY-MM)",
     ),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generiere vollstaendigen IC-Abstimmungsbericht."""
+    """Generiere vollständigen IC-Abstimmungsbericht."""
     allowed_ids = await get_user_company_ids(db, current_user, company_ids)
 
     if not allowed_ids:

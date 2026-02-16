@@ -16,7 +16,7 @@ from app.core.types import JSONDict
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request
 from pydantic import BaseModel, field_validator
 
-# SECURITY FIX 28-11: Rate Limiting fuer Agent Endpoints
+# SECURITY FIX 28-11: Rate Limiting für Agent Endpoints
 from app.core.rate_limiting import limiter, get_user_identifier
 
 from app.agents.orchestration import DocumentProcessingOrchestrator, OCRBackendRouter
@@ -195,7 +195,7 @@ async def get_agent_status(
 # =============================================================================
 
 
-# SECURITY FIX 28-11: Rate-Limit fuer ressourcenintensive OCR-Operationen
+# SECURITY FIX 28-11: Rate-Limit für ressourcenintensive OCR-Operationen
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @router.post("/execute/ocr")
 async def execute_ocr_agent(
@@ -235,7 +235,7 @@ async def execute_ocr_agent(
     }
 
 
-# SECURITY FIX 28-11: Rate-Limit fuer Batch-Operationen
+# SECURITY FIX 28-11: Rate-Limit für Batch-Operationen
 @limiter.limit("10/minute", key_func=get_user_identifier)
 @router.post("/execute/batch")
 async def execute_batch_processing(
@@ -275,7 +275,7 @@ async def execute_batch_processing(
     }
 
 
-# SECURITY FIX 28-11: Rate-Limit fuer Workflow-Operationen
+# SECURITY FIX 28-11: Rate-Limit für Workflow-Operationen
 @limiter.limit("20/minute", key_func=get_user_identifier)
 @router.post("/execute/workflow")
 async def execute_workflow(
@@ -365,7 +365,7 @@ async def get_task_status(
 # =============================================================================
 
 
-# SECURITY FIX 28-11: Rate-Limit fuer Backend-Routing
+# SECURITY FIX 28-11: Rate-Limit für Backend-Routing
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post("/route/backend")
 async def route_backend(

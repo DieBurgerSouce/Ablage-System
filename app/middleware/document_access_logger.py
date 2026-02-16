@@ -3,7 +3,7 @@
 Automatisches Logging von Dokumentzugriffen:
 - Interceptiert alle Dokument-bezogenen API-Aufrufe
 - Protokolliert Zugriffe in document_access_logs
-- Unterstuetzt Request-Korrelation via X-Request-ID
+- Unterstützt Request-Korrelation via X-Request-ID
 
 WICHTIG: Dieses Middleware loggt nur erfolgreich abgeschlossene Requests.
 Fehlgeschlagene Requests werden separat behandelt.
@@ -76,7 +76,7 @@ def extract_document_access_info(path: str, method: str) -> Optional[tuple[str, 
 
 
 class DocumentAccessLoggingMiddleware(BaseHTTPMiddleware):
-    """FastAPI Middleware fuer automatisches Document Access Logging.
+    """FastAPI Middleware für automatisches Document Access Logging.
 
     Interceptiert Requests zu Dokument-Endpoints und loggt Zugriffe.
     Das eigentliche Logging erfolgt NACH erfolgreichem Response.
@@ -232,7 +232,7 @@ class DocumentAccessLoggingMiddleware(BaseHTTPMiddleware):
             )
 
     def _get_client_ip(self, request: Request) -> Optional[str]:
-        """Extrahiert die Client-IP unter Beruecksichtigung von Proxies."""
+        """Extrahiert die Client-IP unter Berücksichtigung von Proxies."""
         # Check X-Forwarded-For header (reverse proxy)
         forwarded_for = request.headers.get("X-Forwarded-For")
         if forwarded_for:
@@ -262,7 +262,7 @@ class DocumentAccessLoggingMiddleware(BaseHTTPMiddleware):
 
 
 def get_current_document_access() -> Optional[dict]:
-    """Gibt die Document-Access-Info des aktuellen Requests zurueck.
+    """Gibt die Document-Access-Info des aktuellen Requests zurück.
 
     Kann von Endpoints genutzt werden um auf Access-Kontext zuzugreifen.
     """

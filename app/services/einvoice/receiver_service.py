@@ -9,7 +9,7 @@ Implementiert:
 - Alert-Generierung bei Fehlern
 - Integration ins Dokumentensystem
 
-Unterstuetzte Eingangskanaele:
+Unterstützte Eingangskanaele:
 - Peppol AS4 Webhook
 - Email-Import (via EmailImportService)
 - Manueller Upload (API)
@@ -59,8 +59,8 @@ class IncomingInvoiceStatus(str, Enum):
     VALIDATED = "validated"  # Validierung erfolgreich
     VALIDATION_FAILED = "validation_failed"  # Validierung fehlgeschlagen
     LINKING = "linking"  # Entity-Linking laeuft
-    LINKED = "linked"  # Mit Entity verknuepft
-    PROCESSED = "processed"  # Vollstaendig verarbeitet
+    LINKED = "linked"  # Mit Entity verknüpft
+    PROCESSED = "processed"  # Vollständig verarbeitet
     REJECTED = "rejected"  # Abgelehnt
     ERROR = "error"  # Fehler bei Verarbeitung
 
@@ -117,7 +117,7 @@ class ProcessingResult:
 
 class EInvoiceReceiverService:
     """
-    Service fuer Empfang und Verarbeitung eingehender E-Rechnungen.
+    Service für Empfang und Verarbeitung eingehender E-Rechnungen.
 
     Usage:
         receiver = EInvoiceReceiverService()
@@ -163,12 +163,12 @@ class EInvoiceReceiverService:
         Args:
             xml_content: E-Invoice XML Content
             source: Herkunft (peppol, email, portal, upload)
-            company_id: Empfaenger-Company
+            company_id: Empfänger-Company
             db: Database Session
-            source_metadata: Zusaetzliche Metadaten (Message-ID, Sender, etc.)
+            source_metadata: Zusätzliche Metadaten (Message-ID, Sender, etc.)
             pdf_content: Optional PDF (bei ZUGFeRD)
             original_filename: Originaler Dateiname
-            auto_link_entity: Automatisch Absender-Entity verknuepfen
+            auto_link_entity: Automatisch Absender-Entity verknüpfen
             create_document: Dokument in DB erstellen
 
         Returns:
@@ -186,10 +186,10 @@ class EInvoiceReceiverService:
             try:
                 root = etree.fromstring(xml_content.encode("utf-8"), parser=SECURE_XML_PARSER)
             except etree.XMLSyntaxError as e:
-                result.error = f"Ungueltiges XML: {safe_error_detail(e, 'XML-Parsing')}"
+                result.error = f"Ungültiges XML: {safe_error_detail(e, 'XML-Parsing')}"
                 result.validation_errors.append(ValidationError(
                     code="XML_SYNTAX_ERROR",
-                    message="XML-Syntax ungueltig",
+                    message="XML-Syntax ungültig",
                     severity="error"
                 ))
                 return result
@@ -208,7 +208,7 @@ class EInvoiceReceiverService:
             # 4. XML Hash berechnen
             xml_hash = hashlib.sha256(xml_content.encode("utf-8")).hexdigest()
 
-            # 5. Validierung durchfuehren
+            # 5. Validierung durchführen
             validator = await self._get_validator()
             validation_result = await validator.validate_xml(
                 xml_content,
@@ -376,7 +376,7 @@ class EInvoiceReceiverService:
         if not company_id:
             return ProcessingResult(
                 success=False,
-                error=f"Unbekannter Empfaenger: {receiver_id}"
+                error=f"Unbekannter Empfänger: {receiver_id}"
             )
 
         return await self.process_incoming_invoice(
@@ -500,7 +500,7 @@ class EInvoiceReceiverService:
             if gross is not None and gross.text:
                 info.gross_amount = Decimal(gross.text)
 
-        # Waehrung
+        # Währung
         currency = root.find(".//{*}InvoiceCurrencyCode")
         if currency is not None and currency.text:
             info.currency = currency.text
@@ -515,7 +515,7 @@ class EInvoiceReceiverService:
         if payment_ref is not None:
             info.payment_reference = payment_ref.text
 
-        # Faelligkeitsdatum
+        # Fälligkeitsdatum
         due_date = root.find(".//{*}SpecifiedTradePaymentTerms/{*}DueDateDateTime/{*}DateTimeString")
         if due_date is not None and due_date.text:
             info.due_date = self._parse_date(due_date.text)
@@ -542,7 +542,7 @@ class EInvoiceReceiverService:
         if date_elem is not None and date_elem.text:
             info.invoice_date = self._parse_date(date_elem.text)
 
-        # Faelligkeitsdatum
+        # Fälligkeitsdatum
         due_date = root.find(".//{*}DueDate")
         if due_date is not None and due_date.text:
             info.due_date = self._parse_date(due_date.text)
@@ -582,7 +582,7 @@ class EInvoiceReceiverService:
         if tax is not None and tax.text:
             info.vat_amount = Decimal(tax.text)
 
-        # Waehrung
+        # Währung
         currency = root.find(".//{*}DocumentCurrencyCode")
         if currency is not None and currency.text:
             info.currency = currency.text
@@ -655,7 +655,7 @@ class EInvoiceReceiverService:
 
         storage = get_storage_service()
 
-        # Bestimme primaeren Content (PDF bevorzugt, sonst XML)
+        # Bestimme primären Content (PDF bevorzugt, sonst XML)
         if pdf_content:
             content = pdf_content
             mime_type = "application/pdf"
@@ -688,7 +688,7 @@ class EInvoiceReceiverService:
             checksum=file_hash,
             document_type="invoice",
             status="processed",
-            owner_id=None,  # System-owned fuer eingehende
+            owner_id=None,  # System-owned für eingehende
             company_id=company_id,
             extracted_data={
                 "invoice": {
@@ -732,7 +732,7 @@ class EInvoiceReceiverService:
         errors: List[ValidationError],
         company_id: UUID,
     ) -> List[UUID]:
-        """Erstellt Alerts fuer Validierungsfehler."""
+        """Erstellt Alerts für Validierungsfehler."""
         from app.services.alert_center_service import get_alert_center_service
 
         alert_ids = []
@@ -740,7 +740,7 @@ class EInvoiceReceiverService:
         try:
             alert_service = get_alert_center_service()
 
-            # Haupt-Alert fuer ungueltige E-Rechnung
+            # Haupt-Alert für ungültige E-Rechnung
             error_summary = "; ".join([e.message for e in errors[:3]])
             if len(errors) > 3:
                 error_summary += f" (+{len(errors) - 3} weitere)"
@@ -748,7 +748,7 @@ class EInvoiceReceiverService:
             alert = await alert_service.create_alert(
                 db=db,
                 alert_code="COMP_004",  # E-Invoice Validation Failed
-                title=f"E-Rechnung ungueltig: {incoming.invoice_number or 'Unbekannt'}",
+                title=f"E-Rechnung ungültig: {incoming.invoice_number or 'Unbekannt'}",
                 message=f"Eingehende E-Rechnung hat {len(errors)} Validierungsfehler: {error_summary}",
                 category="compliance",
                 severity="high" if len(errors) > 5 else "medium",
@@ -805,7 +805,7 @@ _receiver_service_instance: Optional[EInvoiceReceiverService] = None
 
 def get_receiver_service() -> EInvoiceReceiverService:
     """
-    Factory-Funktion fuer EInvoiceReceiverService (Singleton).
+    Factory-Funktion für EInvoiceReceiverService (Singleton).
 
     Returns:
         EInvoiceReceiverService: Globale Instanz

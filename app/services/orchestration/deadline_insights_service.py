@@ -4,12 +4,12 @@ Deadline Insights Service.
 
 Enterprise Feature: Proaktive Warnungen zu Fristen und Deadlines.
 
-Dieses Modul ueberwacht verschiedene Deadline-Typen und generiert
+Dieses Modul überwacht verschiedene Deadline-Typen und generiert
 rechtzeitig Warnungen:
 
-- Skonto-Fristen: "Skonto-Frist fuer Rechnung XY laeuft in 2 Tagen ab!"
-- Vertrags-Kuendigungen: "Kuendigungsfrist fuer Vertrag Z endet am 15.02."
-- Zahlungsfristen: "3 Rechnungen sind ueberfaellig!"
+- Skonto-Fristen: "Skonto-Frist für Rechnung XY laeuft in 2 Tagen ab!"
+- Vertrags-Kündigungen: "Kündigungsfrist für Vertrag Z endet am 15.02."
+- Zahlungsfristen: "3 Rechnungen sind überfällig!"
 - Aufbewahrungsfristen: "12 Dokumente erreichen Aufbewahrungsfrist."
 
 Integration mit: SkontoService, ContractService, InvoiceTracking, RetentionService
@@ -51,9 +51,9 @@ class DeadlineType(str, Enum):
 class UrgencyLevel(str, Enum):
     """Dringlichkeitsstufe der Deadline."""
     CRITICAL = "critical"       # Heute oder morgen
-    URGENT = "urgent"           # Naechste 3 Tage
-    SOON = "soon"               # Naechste 7 Tage
-    UPCOMING = "upcoming"       # Naechste 14 Tage
+    URGENT = "urgent"           # Nächste 3 Tage
+    SOON = "soon"               # Nächste 7 Tage
+    UPCOMING = "upcoming"       # Nächste 14 Tage
     FUTURE = "future"           # Mehr als 14 Tage
 
 
@@ -129,19 +129,19 @@ class DeadlineAlert:
 
         elif self.deadline_type == DeadlineType.CONTRACT_CANCELLATION:
             if days <= 0:
-                return f"Kuendigungsfrist verpasst: {self.entity_name}"
+                return f"Kündigungsfrist verpasst: {self.entity_name}"
             elif days == 1:
-                return f"Kuendigungsfrist endet morgen!"
+                return f"Kündigungsfrist endet morgen!"
             else:
-                return f"Kuendigungsfrist in {days} Tagen"
+                return f"Kündigungsfrist in {days} Tagen"
 
         elif self.deadline_type == DeadlineType.PAYMENT_DUE:
             if days <= 0:
-                return f"Zahlung ueberfaellig: {self.entity_name}"
+                return f"Zahlung überfällig: {self.entity_name}"
             elif days == 1:
-                return f"Zahlung morgen faellig!"
+                return f"Zahlung morgen fällig!"
             else:
-                return f"Zahlung in {days} Tagen faellig"
+                return f"Zahlung in {days} Tagen fällig"
 
         elif self.deadline_type == DeadlineType.RETENTION_EXPIRY:
             if days <= 0:
@@ -158,13 +158,13 @@ class DeadlineAlert:
             return f"Bei Zahlung bis {self.deadline_date.strftime('%d.%m.%Y')} sparen Sie {percentage:.1f}% Skonto."
 
         elif self.deadline_type == DeadlineType.CONTRACT_CANCELLATION:
-            return f"Vertrag '{self.entity_name}' muss bis {self.deadline_date.strftime('%d.%m.%Y')} gekuendigt werden."
+            return f"Vertrag '{self.entity_name}' muss bis {self.deadline_date.strftime('%d.%m.%Y')} gekündigt werden."
 
         elif self.deadline_type == DeadlineType.PAYMENT_DUE:
-            return f"Rechnung '{self.entity_name}' ist bis {self.deadline_date.strftime('%d.%m.%Y')} faellig."
+            return f"Rechnung '{self.entity_name}' ist bis {self.deadline_date.strftime('%d.%m.%Y')} fällig."
 
         elif self.deadline_type == DeadlineType.RETENTION_EXPIRY:
-            return f"Dokument '{self.entity_name}' kann nach dem {self.deadline_date.strftime('%d.%m.%Y')} geloescht werden."
+            return f"Dokument '{self.entity_name}' kann nach dem {self.deadline_date.strftime('%d.%m.%Y')} gelöscht werden."
 
         return f"Deadline am {self.deadline_date.strftime('%d.%m.%Y')}."
 
@@ -178,7 +178,7 @@ class DeadlineAlert:
         elif self.deadline_type == DeadlineType.CONTRACT_CANCELLATION:
             notice_period = self.metadata.get("notice_period_months", 0)
             auto_extend = self.metadata.get("auto_extend_months", 0)
-            return f"Kuendigungsfrist: {notice_period} Monat(e), Auto-Verlaengerung: {auto_extend} Monat(e)"
+            return f"Kündigungsfrist: {notice_period} Monat(e), Auto-Verlängerung: {auto_extend} Monat(e)"
 
         elif self.deadline_type == DeadlineType.PAYMENT_DUE:
             dunning_level = self.metadata.get("dunning_level", 0)
@@ -221,7 +221,7 @@ def _calculate_urgency(deadline_date: datetime) -> UrgencyLevel:
 
 @dataclass
 class DeadlineCheckResult:
-    """Ergebnis einer Deadline-Pruefung."""
+    """Ergebnis einer Deadline-Prüfung."""
     deadline_type: DeadlineType
     deadline_date: datetime
     title: str
@@ -249,9 +249,9 @@ class DeadlineCheckResult:
 
 class DeadlineInsightsService:
     """
-    Service fuer proaktive Deadline-Warnungen.
+    Service für proaktive Deadline-Warnungen.
 
-    Ueberwacht verschiedene Fristen im System und generiert
+    Überwacht verschiedene Fristen im System und generiert
     rechtzeitig Warnungen, damit keine wichtigen Deadlines
     verpasst werden.
     """
@@ -267,15 +267,15 @@ class DeadlineInsightsService:
         days_ahead: int = 14,
     ) -> List[ProactiveInsight]:
         """
-        Prueft alle Deadline-Typen und generiert Insights.
+        Prüft alle Deadline-Typen und generiert Insights.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
-            days_ahead: Wie viele Tage in die Zukunft pruefen
+            days_ahead: Wie viele Tage in die Zukunft prüfen
 
         Returns:
-            Liste von ProactiveInsights fuer alle relevanten Deadlines
+            Liste von ProactiveInsights für alle relevanten Deadlines
         """
         logger.info(
             "checking_all_deadlines",
@@ -285,7 +285,7 @@ class DeadlineInsightsService:
 
         all_insights: List[ProactiveInsight] = []
 
-        # Parallel alle Deadline-Checks ausfuehren
+        # Parallel alle Deadline-Checks ausführen
         results = await asyncio.gather(
             self.check_skonto_deadlines(db, company_id, days_ahead),
             self.check_contract_deadlines(db, company_id, days_ahead),
@@ -303,7 +303,7 @@ class DeadlineInsightsService:
             elif isinstance(result, list):
                 all_insights.extend(result)
 
-        # Nach Prioritaet sortieren
+        # Nach Priorität sortieren
         priority_order = {
             InsightPriority.CRITICAL: 0,
             InsightPriority.HIGH: 1,
@@ -326,15 +326,15 @@ class DeadlineInsightsService:
         days_ahead: int = 14,
     ) -> List[ProactiveInsight]:
         """
-        Prueft ablaufende Skonto-Fristen.
+        Prüft ablaufende Skonto-Fristen.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
-            days_ahead: Wie viele Tage in die Zukunft pruefen
+            days_ahead: Wie viele Tage in die Zukunft prüfen
 
         Returns:
-            Liste von ProactiveInsights fuer Skonto-Deadlines
+            Liste von ProactiveInsights für Skonto-Deadlines
         """
         from app.db.models import InvoiceTracking
 
@@ -375,7 +375,7 @@ class DeadlineInsightsService:
                     urgency=_calculate_urgency(invoice.skonto_deadline),
                     potential_value=Decimal(str(skonto_amount)),
                     action_url=f"/invoices/{invoice.id}",
-                    action_label="Rechnung oeffnen",
+                    action_label="Rechnung öffnen",
                     metadata={
                         "skonto_percentage": float(invoice.skonto_percentage or 0),
                         "skonto_amount": skonto_amount,
@@ -411,15 +411,15 @@ class DeadlineInsightsService:
         days_ahead: int = 30,
     ) -> List[ProactiveInsight]:
         """
-        Prueft ablaufende Vertrags-Kuendigungsfristen.
+        Prüft ablaufende Vertrags-Kündigungsfristen.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
-            days_ahead: Wie viele Tage in die Zukunft pruefen
+            days_ahead: Wie viele Tage in die Zukunft prüfen
 
         Returns:
-            Liste von ProactiveInsights fuer Vertrags-Deadlines
+            Liste von ProactiveInsights für Vertrags-Deadlines
         """
         from app.db.models import Contract
 
@@ -427,7 +427,7 @@ class DeadlineInsightsService:
             now = datetime.now(timezone.utc)
             deadline_limit = now + timedelta(days=days_ahead)
 
-            # Vertraege mit ablaufender Kuendigungsfrist finden
+            # Verträge mit ablaufender Kündigungsfrist finden
             query = select(Contract).where(
                 and_(
                     Contract.company_id == company_id,
@@ -447,7 +447,7 @@ class DeadlineInsightsService:
                 if contract.cancellation_deadline is None:
                     continue
 
-                # Jaehrliche Kosten als potentieller Wert
+                # Jährliche Kosten als potentieller Wert
                 annual_cost = Decimal("0")
                 if contract.monthly_cost:
                     annual_cost = Decimal(str(contract.monthly_cost)) * 12
@@ -460,7 +460,7 @@ class DeadlineInsightsService:
                     urgency=_calculate_urgency(contract.cancellation_deadline),
                     potential_value=annual_cost if annual_cost > 0 else None,
                     action_url=f"/contracts/{contract.id}",
-                    action_label="Vertrag pruefen",
+                    action_label="Vertrag prüfen",
                     metadata={
                         "notice_period_months": contract.notice_period_months or 0,
                         "auto_extend_months": contract.auto_extend_months or 12,
@@ -496,15 +496,15 @@ class DeadlineInsightsService:
         days_ahead: int = 14,
     ) -> List[ProactiveInsight]:
         """
-        Prueft faellige und ueberfaellige Zahlungen.
+        Prüft fällige und überfällige Zahlungen.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
-            days_ahead: Wie viele Tage in die Zukunft pruefen
+            days_ahead: Wie viele Tage in die Zukunft prüfen
 
         Returns:
-            Liste von ProactiveInsights fuer Zahlungs-Deadlines
+            Liste von ProactiveInsights für Zahlungs-Deadlines
         """
         from app.db.models import InvoiceTracking
 
@@ -512,7 +512,7 @@ class DeadlineInsightsService:
             now = datetime.now(timezone.utc)
             deadline_limit = now + timedelta(days=days_ahead)
 
-            # Offene Rechnungen mit Faelligkeitsdatum finden
+            # Offene Rechnungen mit Fälligkeitsdatum finden
             query = select(InvoiceTracking).where(
                 and_(
                     InvoiceTracking.company_id == company_id,
@@ -576,15 +576,15 @@ class DeadlineInsightsService:
         days_ahead: int = 90,
     ) -> List[ProactiveInsight]:
         """
-        Prueft Dokumente, deren Aufbewahrungsfrist endet.
+        Prüft Dokumente, deren Aufbewahrungsfrist endet.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
-            days_ahead: Wie viele Tage in die Zukunft pruefen
+            days_ahead: Wie viele Tage in die Zukunft prüfen
 
         Returns:
-            Liste von ProactiveInsights fuer Aufbewahrungs-Deadlines
+            Liste von ProactiveInsights für Aufbewahrungs-Deadlines
         """
         from app.db.models import Document
 
@@ -607,7 +607,7 @@ class DeadlineInsightsService:
             result = await db.execute(query)
             documents: Sequence[Document] = result.scalars().all()
 
-            # Gruppieren nach Monat fuer bessere Uebersicht
+            # Gruppieren nach Monat für bessere Übersicht
             alerts: List[DeadlineAlert] = []
 
             # Bei vielen Dokumenten: Zusammenfassende Insights erstellen
@@ -631,7 +631,7 @@ class DeadlineInsightsService:
                         deadline_date=first_deadline,
                         urgency=_calculate_urgency(first_deadline),
                         action_url="/admin/retention",
-                        action_label="Aufbewahrung pruefen",
+                        action_label="Aufbewahrung prüfen",
                         metadata={
                             "document_count": len(docs),
                             "month": month_key,
@@ -640,7 +640,7 @@ class DeadlineInsightsService:
                     )
                     alerts.append(alert)
             else:
-                # Einzelne Insights fuer wenige Dokumente
+                # Einzelne Insights für wenige Dokumente
                 for doc in documents:
                     if doc.retention_until is None:
                         continue
@@ -652,7 +652,7 @@ class DeadlineInsightsService:
                         deadline_date=doc.retention_until,
                         urgency=_calculate_urgency(doc.retention_until),
                         action_url=f"/documents/{doc.id}",
-                        action_label="Dokument pruefen",
+                        action_label="Dokument prüfen",
                         metadata={
                             "document_type": doc.document_type,
                             "retention_years": 10,  # Standard GoBD
@@ -711,7 +711,7 @@ class DeadlineInsightsService:
                 summary["by_type"][rule_type] = 0
             summary["by_type"][rule_type] += 1
 
-            # Nach Prioritaet zaehlen
+            # Nach Priorität zaehlen
             priority = insight.priority.value
             if priority not in summary["by_urgency"]:
                 summary["by_urgency"][priority] = 0
@@ -729,7 +729,7 @@ _deadline_insights_instance: Optional[DeadlineInsightsService] = None
 
 
 def get_deadline_insights_service() -> DeadlineInsightsService:
-    """Gibt die Singleton-Instanz des Deadline Insights Service zurueck."""
+    """Gibt die Singleton-Instanz des Deadline Insights Service zurück."""
     global _deadline_insights_instance
     if _deadline_insights_instance is None:
         _deadline_insights_instance = DeadlineInsightsService()

@@ -5,9 +5,9 @@ Erkennt und korrigiert veraltete Stammdaten:
 - Delta-Vergleich bei Lexware-Import
 - Neue Adressen/IBANs aus Dokumenten extrahieren
 - Inaktive Kunden markieren
-- Automatische Korrekturvorschlaege
+- Automatische Korrekturvorschläge
 
-Fuer Enterprise-Niveau mit Human-in-the-Loop.
+Für Enterprise-Niveau mit Human-in-the-Loop.
 """
 
 import re
@@ -58,7 +58,7 @@ class HygieneIssueType(str, Enum):
     VAT_ID_CHANGED = "vat_id_changed"
     VAT_ID_MISSING = "vat_id_missing"
 
-    # Aktivitaets-Probleme
+    # Aktivitäts-Probleme
     INACTIVE_CUSTOMER = "inactive_customer"
     INACTIVE_SUPPLIER = "inactive_supplier"
 
@@ -73,7 +73,7 @@ class HygieneIssueSeverity(str, Enum):
     """Schweregrad von Stammdaten-Problemen."""
 
     INFO = "info"           # Nur zur Information
-    LOW = "low"             # Geringe Prioritaet
+    LOW = "low"             # Geringe Priorität
     MEDIUM = "medium"       # Sollte korrigiert werden
     HIGH = "high"           # Wichtig zu korrigieren
     CRITICAL = "critical"   # Muss sofort korrigiert werden
@@ -127,7 +127,7 @@ class HygieneIssue:
 
 @dataclass
 class HygieneReport:
-    """Bericht ueber Stammdaten-Hygiene."""
+    """Bericht über Stammdaten-Hygiene."""
 
     total_entities_checked: int = 0
     issues_found: int = 0
@@ -180,7 +180,7 @@ class MasterDataHygieneService:
     - Delta-Vergleich bei Lexware-Import
     - Extraktion neuer Daten aus Dokumenten
     - Erkennung inaktiver Kunden
-    - Automatische Korrekturvorschlaege
+    - Automatische Korrekturvorschläge
 
     Usage:
         service = MasterDataHygieneService(db)
@@ -213,9 +213,9 @@ class MasterDataHygieneService:
 
         Args:
             db: Async Database Session
-            inactivity_days: Tage ohne Aktivitaet = inaktiv
-            auto_correct_confidence: Schwelle fuer automatische Korrektur
-            suggest_confidence: Schwelle fuer Korrekturvorschlaege
+            inactivity_days: Tage ohne Aktivität = inaktiv
+            auto_correct_confidence: Schwelle für automatische Korrektur
+            suggest_confidence: Schwelle für Korrekturvorschläge
         """
         self.db = db
         self.inactivity_days = inactivity_days
@@ -232,10 +232,10 @@ class MasterDataHygieneService:
         entity_types: Optional[List[EntityType]] = None,
     ) -> HygieneReport:
         """
-        Fuehrt vollstaendigen Hygiene-Scan durch.
+        Führt vollständigen Hygiene-Scan durch.
 
         Args:
-            company_id: Optional - nur fuer bestimmte Firma
+            company_id: Optional - nur für bestimmte Firma
             entity_types: Optional - nur bestimmte Entity-Typen
 
         Returns:
@@ -327,12 +327,12 @@ class MasterDataHygieneService:
         Vergleicht Lexware-Import mit bestehenden Daten.
 
         Args:
-            import_data: Liste von Import-Datensaetzen
+            import_data: Liste von Import-Datensätzen
             company: Firma (folie/messer)
             entity_type: Entity-Typ
 
         Returns:
-            Liste von erkannten Aenderungen
+            Liste von erkannten Änderungen
         """
         issues: List[HygieneIssue] = []
 
@@ -390,12 +390,12 @@ class MasterDataHygieneService:
                     current_value = getattr(entity, db_field, None)
                     current_value = str(current_value).strip() if current_value else ""
 
-                    # Normalisieren fuer Vergleich
+                    # Normalisieren für Vergleich
                     if db_field == "iban":
                         import_value = re.sub(r"\s", "", import_value).upper()
                         current_value = re.sub(r"\s", "", current_value).upper()
 
-                    # Aenderung erkannt?
+                    # Änderung erkannt?
                     if import_value and import_value != current_value:
                         severity = self._determine_delta_severity(db_field, current_value, import_value)
 
@@ -463,7 +463,7 @@ class MasterDataHygieneService:
             return entity
 
         # Fallback: Suche in lexware_ids JSONB
-        # Hier muessen wir den JSONB-Pfad durchsuchen
+        # Hier müssen wir den JSONB-Pfad durchsuchen
         if entity_type == EntityType.CUSTOMER:
             key = "kd_nr"
         else:
@@ -486,20 +486,20 @@ class MasterDataHygieneService:
         current: Optional[str],
         new: str,
     ) -> HygieneIssueSeverity:
-        """Bestimmt Schweregrad einer Aenderung."""
-        # IBAN-Aenderung ist kritisch
+        """Bestimmt Schweregrad einer Änderung."""
+        # IBAN-Änderung ist kritisch
         if field_name == "iban":
             return HygieneIssueSeverity.CRITICAL
 
-        # VAT-ID Aenderung ist hoch
+        # VAT-ID Änderung ist hoch
         if field_name == "vat_id":
             return HygieneIssueSeverity.HIGH
 
-        # Adress-Aenderungen sind medium
+        # Adress-Änderungen sind medium
         if field_name in ("street", "postal_code", "city"):
             return HygieneIssueSeverity.MEDIUM
 
-        # Kontakt-Aenderungen sind niedrig
+        # Kontakt-Änderungen sind niedrig
         if field_name in ("email", "phone"):
             return HygieneIssueSeverity.LOW
 
@@ -516,15 +516,15 @@ class MasterDataHygieneService:
         ocr_text: str,
     ) -> List[HygieneIssue]:
         """
-        Extrahiert moegliche Stammdaten-Updates aus einem Dokument.
+        Extrahiert mögliche Stammdaten-Updates aus einem Dokument.
 
         Args:
             document_id: Dokument-ID
-            entity_id: Entity-ID die mit dem Dokument verknuepft ist
+            entity_id: Entity-ID die mit dem Dokument verknüpft ist
             ocr_text: OCR-extrahierter Text
 
         Returns:
-            Liste von erkannten Aenderungen
+            Liste von erkannten Änderungen
         """
         from app.services.entity_extraction_service import EntityExtractionService
 
@@ -544,11 +544,11 @@ class MasterDataHygieneService:
             logger.warning("entity_not_found", entity_id=str(entity_id))
             return issues
 
-        # Entity Extraction durchfuehren
+        # Entity Extraction durchführen
         extractor = EntityExtractionService(self.db)
         extraction = await extractor.extract_entities(ocr_text, document_id)
 
-        # IBAN pruefen
+        # IBAN prüfen
         for identifier in extraction.identifiers:
             if identifier.identifier_type == "iban":
                 extracted_iban = identifier.normalized_value
@@ -580,7 +580,7 @@ class MasterDataHygieneService:
                     )
                     issues.append(issue)
 
-        # Adressen pruefen
+        # Adressen prüfen
         for address in extraction.addresses:
             # Nur Sender-Adressen sind relevant (Entity = Absender)
             if address.role == "sender" or address.confidence >= 0.85:
@@ -612,7 +612,7 @@ class MasterDataHygieneService:
                                 source="document_ocr",
                                 source_document_id=document_id,
                                 confidence=address.confidence,
-                                auto_correctable=False,  # Adressen nie automatisch aendern
+                                auto_correctable=False,  # Adressen nie automatisch ändern
                                 details={
                                     "extracted_street": address.street,
                                     "extracted_plz": extracted_plz,
@@ -621,7 +621,7 @@ class MasterDataHygieneService:
                             )
                             issues.append(issue)
 
-        # E-Mail pruefen
+        # E-Mail prüfen
         for email in extraction.emails:
             current_email = (entity.email or "").lower()
             extracted_email = email.lower()
@@ -663,7 +663,7 @@ class MasterDataHygieneService:
         return issues
 
     def _similar_text(self, text1: str, text2: str, threshold: float) -> bool:
-        """Prueft ob zwei Texte aehnlich genug sind."""
+        """Prüft ob zwei Texte ähnlich genug sind."""
         if not text1 or not text2:
             return text1 == text2
         return SequenceMatcher(None, text1, text2).ratio() >= threshold
@@ -682,7 +682,7 @@ class MasterDataHygieneService:
 
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=self.inactivity_days)
 
-        # Query fuer Entities die:
+        # Query für Entities die:
         # 1. Aktiv sind (is_active = True)
         # 2. Kein letztes Dokument haben ODER letztes Dokument aelter als cutoff
         query = select(BusinessEntity).where(
@@ -711,7 +711,7 @@ class MasterDataHygieneService:
                 created_at = entity.created_at or datetime.now(timezone.utc)
                 days_inactive = (datetime.now(timezone.utc) - created_at).days
 
-            # Schweregrad basierend auf Inaktivitaetsdauer
+            # Schweregrad basierend auf Inaktivitätsdauer
             if days_inactive > 730:  # > 2 Jahre
                 severity = HygieneIssueSeverity.HIGH
             elif days_inactive > 365:  # > 1 Jahr
@@ -796,7 +796,7 @@ class MasterDataHygieneService:
                     BusinessEntity.entity_type.in_([t.value for t in entity_types])
                 )
 
-            # Limit fuer Performance
+            # Limit für Performance
             query = query.limit(100)
 
             result = await self.db.execute(query)
@@ -839,7 +839,7 @@ class MasterDataHygieneService:
         issues: List[HygieneIssue] = []
         seen_pairs: Set[Tuple[uuid.UUID, uuid.UUID]] = set()
 
-        # Entities mit gleichem Namen oder aehnlicher Adresse suchen
+        # Entities mit gleichem Namen oder ähnlicher Adresse suchen
         query = select(BusinessEntity).where(
             BusinessEntity.is_active == True,
             BusinessEntity.deleted_at.is_(None),
@@ -868,7 +868,7 @@ class MasterDataHygieneService:
                     continue
                 seen_pairs.add(pair_key)
 
-                # Aehnlichkeit pruefen
+                # Ähnlichkeit prüfen
                 similarity = self._calculate_entity_similarity(entity1, entity2)
 
                 if similarity >= 0.85:
@@ -881,7 +881,7 @@ class MasterDataHygieneService:
                         severity=HygieneIssueSeverity.MEDIUM,
                         field_name="duplicate",
                         current_value=entity1.name,
-                        suggested_value=f"Moeglicherweise Duplikat von: {entity2.name}",
+                        suggested_value=f"Möglicherweise Duplikat von: {entity2.name}",
                         source="duplicate_check",
                         confidence=similarity,
                         auto_correctable=False,
@@ -902,7 +902,7 @@ class MasterDataHygieneService:
         entity1: BusinessEntity,
         entity2: BusinessEntity,
     ) -> float:
-        """Berechnet Aehnlichkeit zwischen zwei Entities."""
+        """Berechnet Ähnlichkeit zwischen zwei Entities."""
         scores: List[float] = []
 
         # Namen vergleichen (wichtigster Faktor)
@@ -977,7 +977,7 @@ class MasterDataHygieneService:
                 )
                 return False
 
-            # Alten Wert speichern fuer Audit
+            # Alten Wert speichern für Audit
             old_value = getattr(entity, field_name, None)
 
             # Korrektur anwenden
@@ -1064,7 +1064,7 @@ def get_master_data_hygiene_service(
     db: AsyncSession,
     inactivity_days: int = MasterDataHygieneService.DEFAULT_INACTIVITY_DAYS,
 ) -> MasterDataHygieneService:
-    """Factory-Funktion fuer Dependency Injection."""
+    """Factory-Funktion für Dependency Injection."""
     return MasterDataHygieneService(db, inactivity_days=inactivity_days)
 
 

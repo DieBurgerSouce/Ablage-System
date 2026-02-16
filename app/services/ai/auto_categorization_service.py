@@ -5,7 +5,7 @@ AutoCategorizationService - Automatische Dokument-Kategorisierung.
 Erkennt Dokumenttypen (Rechnung, Vertrag, Lieferschein, etc.) mit
 Confidence-basierter Autonomie.
 
-Ziel-Konfidenz: 95%+ fuer Auto-Apply.
+Ziel-Konfidenz: 95%+ für Auto-Apply.
 
 Feinpoliert und durchdacht - nutzt bestehende QuickClassificationService Patterns.
 """
@@ -76,13 +76,13 @@ class DocumentCategory:
 
 @dataclass
 class CategoryPattern:
-    """Pattern fuer Kategorie-Erkennung."""
+    """Pattern für Kategorie-Erkennung."""
     category: str
     display_name: str  # Deutscher Name
     keywords: List[str]
     regex_patterns: List[str] = field(default_factory=list)
     weight: float = 1.0
-    priority: int = 0  # Hoeher = wichtiger bei Konflikten
+    priority: int = 0  # Höher = wichtiger bei Konflikten
 
 
 # Kategorie-Patterns mit deutschen Keywords
@@ -92,8 +92,8 @@ CATEGORY_PATTERNS: List[CategoryPattern] = [
         display_name="Eingangsrechnung",
         keywords=[
             "rechnung", "invoice", "rechnungsnummer", "rg-nr", "re-nr",
-            "rechnungsdatum", "zahlungsziel", "fällig am", "faellig am",
-            "überweisen", "ueberweisen", "bankverbindung", "iban",
+            "rechnungsdatum", "zahlungsziel", "fällig am", "fällig am",
+            "überweisen", "überweisen", "bankverbindung", "iban",
             "nettobetrag", "bruttobetrag", "mwst", "ust-id",
         ],
         regex_patterns=[
@@ -125,7 +125,7 @@ CATEGORY_PATTERNS: List[CategoryPattern] = [
         display_name="Lieferschein",
         keywords=[
             "lieferschein", "lieferung", "warenausgang", "versand",
-            "lieferadresse", "empfänger", "empfaenger", "lieferdatum",
+            "lieferadresse", "empfänger", "empfänger", "lieferdatum",
             "delivery note", "packing slip", "artikelnummer",
         ],
         regex_patterns=[
@@ -140,7 +140,7 @@ CATEGORY_PATTERNS: List[CategoryPattern] = [
         display_name="Bestellung",
         keywords=[
             "bestellung", "order", "auftrag", "bestellnummer",
-            "auftragsbestätigung", "auftragsbestaetigung", "po number",
+            "auftragsbestätigung", "auftragsbestätigung", "po number",
             "purchase order", "wir bestellen", "hiermit bestellen",
         ],
         regex_patterns=[
@@ -157,8 +157,8 @@ CATEGORY_PATTERNS: List[CategoryPattern] = [
         keywords=[
             "vertrag", "vereinbarung", "contract", "agreement",
             "vertragspartner", "vertragsgegenstand", "laufzeit",
-            "kündigungsfrist", "kuendigungsfrist", "unterzeichnet",
-            "geschäftsführer", "geschaeftsfuehrer", "prokurist",
+            "kündigungsfrist", "kündigungsfrist", "unterzeichnet",
+            "geschäftsführer", "geschäftsführer", "prokurist",
         ],
         regex_patterns=[
             r"vertrag\s*(nr\.?|nummer):?\s*\d+",
@@ -173,13 +173,13 @@ CATEGORY_PATTERNS: List[CategoryPattern] = [
         display_name="Angebot",
         keywords=[
             "angebot", "offer", "quotation", "kostenvoranschlag",
-            "angebotsnummer", "gültig bis", "gueltig bis",
+            "angebotsnummer", "gültig bis", "gültig bis",
             "wir bieten", "wir unterbreiten", "freibleibend",
         ],
         regex_patterns=[
             r"angebot\s*(nr\.?|nummer):?\s*\d+",
             r"gültig\s+bis:?\s*\d",
-            r"gueltig\s+bis:?\s*\d",
+            r"gültig\s+bis:?\s*\d",
         ],
         weight=1.0,
         priority=5,
@@ -189,8 +189,8 @@ CATEGORY_PATTERNS: List[CategoryPattern] = [
         display_name="Mahnung",
         keywords=[
             "mahnung", "zahlungserinnerung", "payment reminder",
-            "überfällig", "ueberfaellig", "verzug", "mahngebühr",
-            "mahngebuehr", "inkasso", "letzte mahnung", "zahlungsaufforderung",
+            "überfällig", "überfällig", "verzug", "mahngebühr",
+            "mahngebühr", "inkasso", "letzte mahnung", "zahlungsaufforderung",
         ],
         regex_patterns=[
             r"(erste|zweite|dritte|letzte)?\s*mahnung",
@@ -250,8 +250,8 @@ CATEGORY_PATTERNS: List[CategoryPattern] = [
         display_name="Steuerdokument",
         keywords=[
             "steuerbescheid", "umsatzsteuer-voranmeldung", "elster",
-            "finanzamt", "steuernummer", "steuer-id", "steuererklaerung",
-            "steuererklaerung", "einkommenssteuer", "gewerbesteuer",
+            "finanzamt", "steuernummer", "steuer-id", "steuererklärung",
+            "steuererklärung", "einkommenssteuer", "gewerbesteuer",
         ],
         regex_patterns=[
             r"finanzamt\s+\w+",
@@ -298,7 +298,7 @@ class AutoCategorizationService:
         self._decision_service = get_ai_decision_service()
 
     def _normalize_text(self, text: str) -> str:
-        """Normalisiert Text fuer Pattern-Matching."""
+        """Normalisiert Text für Pattern-Matching."""
         # Lowercase, mehrfache Leerzeichen entfernen
         text = text.lower()
         text = re.sub(r'\s+', ' ', text)
@@ -310,7 +310,7 @@ class AutoCategorizationService:
         pattern: CategoryPattern,
     ) -> Tuple[float, List[str], List[str]]:
         """
-        Berechnet Score fuer eine Kategorie.
+        Berechnet Score für eine Kategorie.
 
         Returns:
             Tuple (score, matched_keywords, matched_patterns)
@@ -324,12 +324,12 @@ class AutoCategorizationService:
         for keyword in pattern.keywords:
             if keyword.lower() in normalized_text:
                 matched_keywords.append(keyword)
-                # Gewichtung nach Position (frueh im Text = wichtiger)
+                # Gewichtung nach Position (früh im Text = wichtiger)
                 pos = normalized_text.find(keyword.lower())
                 position_weight = 1.0 - (pos / len(normalized_text)) * 0.3
                 keyword_score += position_weight
 
-        # Regex-Matching (hoehere Gewichtung)
+        # Regex-Matching (höhere Gewichtung)
         regex_score = 0.0
         for regex in pattern.regex_patterns:
             try:
@@ -355,7 +355,7 @@ class AutoCategorizationService:
         weighted_score = raw_score * pattern.weight
 
         # Confidence-Mapping (0.0-1.0)
-        # Mindestens 3 Keywords oder 1 Regex fuer brauchbaren Score
+        # Mindestens 3 Keywords oder 1 Regex für brauchbaren Score
         if len(matched_keywords) < 2 and len(matched_patterns) == 0:
             weighted_score *= 0.5  # Unsicher
 
@@ -374,14 +374,14 @@ class AutoCategorizationService:
 
         Args:
             text: OCR-Text des Dokuments
-            min_confidence: Minimale Konfidenz fuer Ergebnis
+            min_confidence: Minimale Konfidenz für Ergebnis
 
         Returns:
             CategorizationResult
         """
         start_time = time.perf_counter()
 
-        # Limitiere Text-Laenge
+        # Limitiere Text-Länge
         if len(text) > 50000:
             text = text[:50000]
 
@@ -403,7 +403,7 @@ class AutoCategorizationService:
                         matched_patterns=regexes,
                     )
                 elif score == best_result.confidence:
-                    # Bei Gleichstand: Prioritaet entscheidet
+                    # Bei Gleichstand: Priorität entscheidet
                     current_pattern = next(
                         (p for p in CATEGORY_PATTERNS if p.category == best_result.category),
                         None,
@@ -422,7 +422,7 @@ class AutoCategorizationService:
             best_result = CategorizationResult(
                 category=DocumentCategory.OTHER,
                 display_name="Sonstiges",
-                confidence=0.5,  # Niedrige Konfidenz fuer unbekannt
+                confidence=0.5,  # Niedrige Konfidenz für unbekannt
             )
 
         # Sekundaere Kategorien hinzufuegen
@@ -458,7 +458,7 @@ class AutoCategorizationService:
         Returns:
             AIDecisionResult
         """
-        # Kategorisierung durchfuehren
+        # Kategorisierung durchführen
         result = self.categorize_text(text)
 
         # Explanation erstellen
@@ -491,7 +491,7 @@ class AutoCategorizationService:
             ],
         }
 
-        # Callback fuer Auto-Apply
+        # Callback für Auto-Apply
         async def apply_category(value: Dict[str, Any]) -> None:
             """Wendet Kategorie auf Dokument an."""
             if not auto_apply_tags:
@@ -542,14 +542,14 @@ class AutoCategorizationService:
         limit: int = 5,
     ) -> List[Dict[str, Any]]:
         """
-        Gibt Kategorie-Vorschlaege ohne Persistenz zurueck.
+        Gibt Kategorie-Vorschläge ohne Persistenz zurück.
 
         Args:
             text: OCR-Text
-            limit: Max Anzahl Vorschlaege
+            limit: Max Anzahl Vorschläge
 
         Returns:
-            Liste von Vorschlaegen mit Kategorie und Konfidenz
+            Liste von Vorschlägen mit Kategorie und Konfidenz
         """
         result = self.categorize_text(text)
 
@@ -583,7 +583,7 @@ _service_lock = threading.Lock()
 
 
 def get_auto_categorization_service() -> AutoCategorizationService:
-    """Factory fuer AutoCategorizationService Singleton (Thread-safe)."""
+    """Factory für AutoCategorizationService Singleton (Thread-safe)."""
     global _auto_categorization_service
     if _auto_categorization_service is None:
         with _service_lock:

@@ -603,6 +603,39 @@ export async function uploadComplete(
     return response.data;
 }
 
+// ==================== Pre-Upload Duplicate Check ====================
+
+export interface DuplicateCandidate {
+    document_id: string;
+    filename: string;
+    upload_date: string;
+    match_type: 'exact_hash' | 'similar_name';
+    similarity: number;
+}
+
+export interface DuplicateCheckResult {
+    has_duplicates: boolean;
+    candidates: DuplicateCandidate[];
+    recommendation: 'skip' | 'proceed' | 'review';
+}
+
+/**
+ * Prueft vor dem Upload, ob ein identisches oder aehnliches Dokument existiert.
+ * Sendet nur den SHA-256-Hash, keine Datei.
+ */
+export async function checkDuplicatePreUpload(
+    fileHash: string,
+    filename: string
+): Promise<DuplicateCheckResult> {
+    const response = await apiClient.post<DuplicateCheckResult>(
+        '/documents/check-duplicate',
+        { file_hash: fileHash, filename }
+    );
+    return response.data;
+}
+
+// ==================== Temp File TTL ====================
+
 /**
  * Verlängert TTL einer temporären Datei.
  * Nützlich wenn User länger im Review-Dialog bleibt.

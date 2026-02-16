@@ -3,8 +3,8 @@
 Export Service.
 
 Exportiert extrahierte Dokumentdaten in verschiedene Formate:
-- CSV (fuer allgemeine Datenverarbeitung)
-- Excel (.xlsx) mit Formatierung (fuer Buchhaltung)
+- CSV (für allgemeine Datenverarbeitung)
+- Excel (.xlsx) mit Formatierung (für Buchhaltung)
 
 Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Genauigkeit.
 """
@@ -30,21 +30,21 @@ logger = structlog.get_logger(__name__)
 INVOICE_COLUMNS = [
     ("Rechnungsnummer", "invoice_number"),
     ("Rechnungsdatum", "invoice_date"),
-    ("Faelligkeitsdatum", "due_date"),
+    ("Fälligkeitsdatum", "due_date"),
     ("Absender (Firma)", "sender_company"),
     ("Absender (Strasse)", "sender_street"),
     ("Absender (PLZ)", "sender_zip"),
     ("Absender (Ort)", "sender_city"),
     ("IBAN", "sender_iban"),
     ("USt-IdNr", "sender_vat_id"),
-    ("Empfaenger (Firma)", "recipient_company"),
+    ("Empfänger (Firma)", "recipient_company"),
     ("Kundennummer", "customer_number"),
     ("Bestellnummer", "order_number"),
     ("Nettobetrag", "net_amount"),
     ("MwSt-Satz (%)", "vat_rate"),
     ("MwSt-Betrag", "vat_amount"),
     ("Bruttobetrag", "gross_amount"),
-    ("Waehrung", "currency"),
+    ("Währung", "currency"),
     ("Skonto (%)", "discount_percent"),
     ("Skonto-Frist", "discount_due_date"),
     ("Zahlungsziel (Tage)", "payment_days"),
@@ -60,7 +60,7 @@ ORDER_COLUMNS = [
     ("Besteller (Firma)", "orderer_company"),
     ("Lieferant (Firma)", "supplier_company"),
     ("Gesamtbetrag", "total_amount"),
-    ("Waehrung", "currency"),
+    ("Währung", "currency"),
     ("Konfidenz", "confidence"),
     ("Dokument-ID", "document_id"),
     ("Dateiname", "filename"),
@@ -72,7 +72,7 @@ CONTRACT_COLUMNS = [
     ("Vertragsbeginn", "start_date"),
     ("Vertragsende", "end_date"),
     ("Laufzeit", "duration"),
-    ("Kuendigungsfrist", "notice_period"),
+    ("Kündigungsfrist", "notice_period"),
     ("Partei A (Firma)", "party_a_company"),
     ("Partei B (Firma)", "party_b_company"),
     ("Vertragswert", "contract_value"),
@@ -89,7 +89,7 @@ CONTRACT_COLUMNS = [
 # =============================================================================
 
 def _extract_invoice_row(doc: Dict[str, Any]) -> Dict[str, Any]:
-    """Extrahiert Rechnungsdaten fuer Export-Zeile."""
+    """Extrahiert Rechnungsdaten für Export-Zeile."""
     extracted = doc.get("extracted_data", {}) or {}
     invoice = extracted.get("invoice", {}) or {}
     sender = invoice.get("sender", {}) or {}
@@ -125,7 +125,7 @@ def _extract_invoice_row(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _extract_order_row(doc: Dict[str, Any]) -> Dict[str, Any]:
-    """Extrahiert Bestellungsdaten fuer Export-Zeile."""
+    """Extrahiert Bestellungsdaten für Export-Zeile."""
     extracted = doc.get("extracted_data", {}) or {}
     order = extracted.get("order", {}) or {}
     orderer = order.get("orderer", {}) or {}
@@ -147,7 +147,7 @@ def _extract_order_row(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _extract_contract_row(doc: Dict[str, Any]) -> Dict[str, Any]:
-    """Extrahiert Vertragsdaten fuer Export-Zeile."""
+    """Extrahiert Vertragsdaten für Export-Zeile."""
     extracted = doc.get("extracted_data", {}) or {}
     contract = extracted.get("contract", {}) or {}
     party_a = contract.get("party_a", {}) or {}
@@ -173,7 +173,7 @@ def _extract_contract_row(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _format_value(value: object) -> str:
-    """Formatiert einen Wert fuer CSV-Export."""
+    """Formatiert einen Wert für CSV-Export."""
     if value is None:
         return ""
     if isinstance(value, (date, datetime)):
@@ -186,7 +186,7 @@ def _format_value(value: object) -> str:
 
 
 def _format_decimal_german(value: object) -> Optional[float]:
-    """Konvertiert zu float fuer Excel-Formatierung."""
+    """Konvertiert zu float für Excel-Formatierung."""
     if value is None:
         return None
     try:
@@ -207,11 +207,11 @@ def export_invoices_csv(documents: List[Dict[str, Any]]) -> str:
         documents: Liste von Document-Dicts mit extracted_data
 
     Returns:
-        CSV-String mit UTF-8 BOM fuer Excel-Kompatibilitaet
+        CSV-String mit UTF-8 BOM für Excel-Kompatibilität
     """
     output = io.StringIO()
 
-    # UTF-8 BOM fuer Excel
+    # UTF-8 BOM für Excel
     output.write('\ufeff')
 
     # Header
@@ -219,7 +219,7 @@ def export_invoices_csv(documents: List[Dict[str, Any]]) -> str:
     writer = csv.DictWriter(
         output,
         fieldnames=[col[1] for col in INVOICE_COLUMNS],
-        delimiter=';',  # Semikolon fuer deutsche Excel-Versionen
+        delimiter=';',  # Semikolon für deutsche Excel-Versionen
         quoting=csv.QUOTE_MINIMAL
     )
 
@@ -266,7 +266,7 @@ def export_orders_csv(documents: List[Dict[str, Any]]) -> str:
 
 
 def export_contracts_csv(documents: List[Dict[str, Any]]) -> str:
-    """Exportiert Vertraege als CSV."""
+    """Exportiert Verträge als CSV."""
     output = io.StringIO()
     output.write('\ufeff')
 
@@ -346,7 +346,7 @@ def _apply_excel_styling(ws, columns: List[tuple], row_count: int) -> None:
         else:
             ws.column_dimensions[column_letter].width = 15
 
-    # Zeilenhoehe fuer Header
+    # Zeilenhöhe für Header
     ws.row_dimensions[1].height = 30
 
 
@@ -374,7 +374,7 @@ def export_invoices_excel(documents: List[Dict[str, Any]]) -> bytes:
         for col_idx, (_, field_name) in enumerate(INVOICE_COLUMNS, 1):
             value = row.get(field_name)
 
-            # Zahlen direkt als float fuer Excel-Formatierung
+            # Zahlen direkt als float für Excel-Formatierung
             if field_name in ["net_amount", "vat_amount", "gross_amount", "discount_percent", "vat_rate"]:
                 value = _format_decimal_german(value)
             elif field_name in ["confidence"]:
@@ -402,7 +402,7 @@ def export_invoices_excel(documents: List[Dict[str, Any]]) -> bytes:
     # Erste Zeile fixieren
     ws.freeze_panes = "A2"
 
-    # Als Bytes zurueckgeben
+    # Als Bytes zurückgeben
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
@@ -450,10 +450,10 @@ def export_orders_excel(documents: List[Dict[str, Any]]) -> bytes:
 
 
 def export_contracts_excel(documents: List[Dict[str, Any]]) -> bytes:
-    """Exportiert Vertraege als formatiertes Excel (.xlsx)."""
+    """Exportiert Verträge als formatiertes Excel (.xlsx)."""
     wb = Workbook()
     ws = wb.active
-    ws.title = "Vertraege"
+    ws.title = "Verträge"
 
     for col_idx, (header_name, _) in enumerate(CONTRACT_COLUMNS, 1):
         ws.cell(row=1, column=col_idx, value=header_name)
@@ -544,8 +544,8 @@ def export_all_excel(
         ws_orders.auto_filter.ref = ws_orders.dimensions
         ws_orders.freeze_panes = "A2"
 
-    # Vertraege
-    ws_contracts = wb.create_sheet("Vertraege")
+    # Verträge
+    ws_contracts = wb.create_sheet("Verträge")
 
     for col_idx, (header_name, _) in enumerate(CONTRACT_COLUMNS, 1):
         ws_contracts.cell(row=1, column=col_idx, value=header_name)

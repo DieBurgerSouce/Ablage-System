@@ -1,8 +1,8 @@
 """
 Comments API Endpoints.
 
-Enterprise-level Collaboration-Feature fuer Dokument-Kommentare:
-- Kommentare zu Dokumenten hinzufuegen/bearbeiten/loeschen
+Enterprise-level Collaboration-Feature für Dokument-Kommentare:
+- Kommentare zu Dokumenten hinzufuegen/bearbeiten/löschen
 - Replies (verschachtelte Kommentare)
 - @Mentions mit Benachrichtigungen
 - Reaktionen auf Kommentare
@@ -60,14 +60,14 @@ async def _verify_document_access(
     user_id: UUID,
     required_level: str = AccessLevel.COMMENT.value,
 ) -> Document:
-    """Prueft ob User Zugriff auf das Dokument hat mit ausreichendem Access-Level.
+    """Prüft ob User Zugriff auf das Dokument hat mit ausreichendem Access-Level.
 
     Zugriff erlaubt wenn:
     - User ist Owner des Dokuments (immer voller Zugriff)
     - User hat expliziten Zugriff via document_access Tabelle mit ausreichendem Level
 
     Access-Level Hierarchie:
-    - VIEW: Nur lesen (NICHT ausreichend fuer Kommentare!)
+    - VIEW: Nur lesen (NICHT ausreichend für Kommentare!)
     - COMMENT: Lesen + Kommentieren
     - EDIT: Lesen + Bearbeiten
     - MANAGE: Vollzugriff
@@ -111,8 +111,8 @@ async def _verify_document_access(
     if document.owner_id == user_id:
         return document
 
-    # Pruefe shared access MIT access_level Check
-    # Hole alle gueltigen Access-Levels fuer diesen User
+    # Prüfe shared access MIT access_level Check
+    # Hole alle gültigen Access-Levels für diesen User
     valid_levels = [
         level for level, num in ACCESS_LEVEL_HIERARCHY.items()
         if num >= required_level_num
@@ -143,7 +143,7 @@ async def _verify_document_access(
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Aktion auf diesem Dokument"
+            detail="Keine Berechtigung für diese Aktion auf diesem Dokument"
         )
 
     return document
@@ -152,9 +152,9 @@ async def _verify_document_access(
 def _build_comment_response(comment: DocumentComment, user: User) -> CommentResponse:
     """Erstellt CommentResponse aus DB-Modell.
 
-    Unterstuetzt die neuen Felder aus Migration 103:
+    Unterstützt die neuen Felder aus Migration 103:
     - companyId: Multi-Tenant Isolation
-    - fieldReference: Feld-Referenz fuer Inline-Kommentare
+    - fieldReference: Feld-Referenz für Inline-Kommentare
     - deletedAt: Soft-Delete Timestamp
     """
     # Parse mentions from JSON - MentionSchema erwartet UUID
@@ -169,7 +169,7 @@ def _build_comment_response(comment: DocumentComment, user: User) -> CommentResp
                     endIndex=m.get("endIndex"),
                 ))
             except (ValueError, TypeError):
-                # Ungueltige UUID in alten Daten ignorieren
+                # Ungültige UUID in alten Daten ignorieren
                 logger.warning(
                     "invalid_mention_uuid",
                     mention_data=m,
@@ -232,7 +232,7 @@ async def _create_mention_notifications(
     from_user: User,
     mentions: List[MentionSchema],
 ) -> None:
-    """Erstellt Benachrichtigungen fuer Mentions.
+    """Erstellt Benachrichtigungen für Mentions.
 
     Security: Validiert dass der erwähnte User existiert bevor
     eine Notification erstellt wird.
@@ -246,7 +246,7 @@ async def _create_mention_notifications(
             if mentioned_user_id == from_user.id:
                 continue
 
-            # Security: Pruefe ob User existiert
+            # Security: Prüfe ob User existiert
             user_result = await db.execute(
                 select(exists().where(User.id == mentioned_user_id))
             )
@@ -284,7 +284,7 @@ async def _create_mention_notifications(
     "/{document_id}/comments",
     response_model=CommentsListResponse,
     summary="Kommentare auflisten",
-    description="Gibt alle Kommentare eines Dokuments zurueck."
+    description="Gibt alle Kommentare eines Dokuments zurück."
 )
 async def list_comments(
     document_id: UUID,
@@ -294,7 +294,7 @@ async def list_comments(
     db: AsyncSession = Depends(get_db),
 ) -> CommentsListResponse:
     """Liste aller Kommentare eines Dokuments."""
-    # Security: Pruefe Dokumentzugriff (VIEW Level reicht zum Lesen)
+    # Security: Prüfe Dokumentzugriff (VIEW Level reicht zum Lesen)
     await _verify_document_access(
         db, document_id, current_user.id,
         required_level=AccessLevel.VIEW.value
@@ -354,10 +354,10 @@ async def create_comment(
     db: AsyncSession = Depends(get_db),
 ) -> CommentResponse:
     """Neuen Kommentar erstellen."""
-    # Security: Pruefe Dokumentzugriff
+    # Security: Prüfe Dokumentzugriff
     document = await _verify_document_access(db, document_id, current_user.id)
 
-    # Pruefe ob Parent-Kommentar existiert (falls Reply)
+    # Prüfe ob Parent-Kommentar existiert (falls Reply)
     if comment_data.parentId:
         parent_result = await db.execute(
             select(DocumentComment).where(
@@ -471,12 +471,12 @@ async def update_comment(
 
     Verwendet SELECT ... FOR UPDATE um TOCTOU Race Conditions zu verhindern.
     """
-    # Security: Pruefe Dokumentzugriff
+    # Security: Prüfe Dokumentzugriff
     await _verify_document_access(db, document_id, current_user.id)
 
     # Kommentar abrufen mit Row-Level Lock
     # FOR UPDATE verhindert dass der Kommentar zwischen Check und Update
-    # von einem anderen Thread geloescht wird
+    # von einem anderen Thread gelöscht wird
     result = await db.execute(
         select(DocumentComment).where(
             and_(
@@ -533,8 +533,8 @@ async def update_comment(
     "/{document_id}/comments/{comment_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Kommentar loeschen",
-    description="Loescht einen Kommentar (Soft-Delete)."
+    summary="Kommentar löschen",
+    description="Löscht einen Kommentar (Soft-Delete)."
 )
 async def delete_comment(
     document_id: UUID,
@@ -542,14 +542,14 @@ async def delete_comment(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Kommentar loeschen (Soft-Delete).
+    """Kommentar löschen (Soft-Delete).
 
     Verwendet SELECT ... FOR UPDATE um TOCTOU Race Conditions zu verhindern.
     """
-    # Security: Pruefe Dokumentzugriff
+    # Security: Prüfe Dokumentzugriff
     await _verify_document_access(db, document_id, current_user.id)
 
-    # Row-Level Lock verhindert gleichzeitige Updates waehrend wir loeschen
+    # Row-Level Lock verhindert gleichzeitige Updates während wir löschen
     result = await db.execute(
         select(DocumentComment).where(
             and_(
@@ -567,12 +567,12 @@ async def delete_comment(
             detail="Kommentar nicht gefunden"
         )
 
-    # Nur eigene Kommentare loeschen (oder Superuser)
+    # Nur eigene Kommentare löschen (oder Superuser)
     # SECURITY FIX: is_admin existiert nicht auf User-Model, verwende is_superuser
     if comment.user_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung zum Loeschen dieses Kommentars"
+            detail="Keine Berechtigung zum Löschen dieses Kommentars"
         )
 
     # Soft-Delete mit Timestamp (Migration 103)
@@ -580,7 +580,7 @@ async def delete_comment(
 
     comment.is_deleted = True  # Legacy-Flag
     comment.deleted_at = utc_now()  # Neuer Timestamp
-    comment.deleted_by_id = current_user.id  # Wer hat geloescht
+    comment.deleted_by_id = current_user.id  # Wer hat gelöscht
     await db.commit()
 
     logger.info(
@@ -608,12 +608,12 @@ async def add_reaction(
 ) -> CommentResponse:
     """Reaktion zu Kommentar hinzufuegen.
 
-    Verwendet SELECT ... FOR UPDATE fuer atomare Updates bei Concurrent Access.
+    Verwendet SELECT ... FOR UPDATE für atomare Updates bei Concurrent Access.
     """
-    # Security: Pruefe Dokumentzugriff
+    # Security: Prüfe Dokumentzugriff
     await _verify_document_access(db, document_id, current_user.id)
 
-    # SELECT ... FOR UPDATE fuer Row-Level Locking
+    # SELECT ... FOR UPDATE für Row-Level Locking
     # Dies verhindert Race Conditions bei gleichzeitigen Reaction-Updates
     result = await db.execute(
         select(DocumentComment, User)
@@ -690,12 +690,12 @@ async def remove_reaction(
 ) -> CommentResponse:
     """Reaktion von Kommentar entfernen.
 
-    Verwendet SELECT ... FOR UPDATE fuer atomare Updates bei Concurrent Access.
+    Verwendet SELECT ... FOR UPDATE für atomare Updates bei Concurrent Access.
     """
-    # Security: Pruefe Dokumentzugriff
+    # Security: Prüfe Dokumentzugriff
     await _verify_document_access(db, document_id, current_user.id)
 
-    # SELECT ... FOR UPDATE fuer Row-Level Locking
+    # SELECT ... FOR UPDATE für Row-Level Locking
     result = await db.execute(
         select(DocumentComment, User)
         .join(User, DocumentComment.user_id == User.id)
@@ -759,7 +759,7 @@ async def remove_reaction(
     "/{document_id}/comments/field/{field_name}",
     response_model=CommentsListResponse,
     summary="Feld-Kommentare abrufen",
-    description="Gibt alle Kommentare zu einem bestimmten Extraktionsfeld zurueck."
+    description="Gibt alle Kommentare zu einem bestimmten Extraktionsfeld zurück."
 )
 async def get_field_comments(
     document_id: UUID,
@@ -769,13 +769,13 @@ async def get_field_comments(
 ) -> CommentsListResponse:
     """Holt Kommentare zu einem spezifischen Feld.
 
-    Felder koennen z.B. sein:
+    Felder können z.B. sein:
     - invoice_number
     - total_amount
     - vendor_name
     - etc.
     """
-    # Security: Pruefe Dokumentzugriff (VIEW reicht zum Lesen)
+    # Security: Prüfe Dokumentzugriff (VIEW reicht zum Lesen)
     document = await _verify_document_access(
         db, document_id, current_user.id,
         required_level=AccessLevel.VIEW.value
@@ -786,7 +786,7 @@ async def get_field_comments(
     if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', field_name):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltiger Feldname"
+            detail="Ungültiger Feldname"
         )
 
     # Feld-Kommentare abrufen
@@ -825,7 +825,7 @@ async def create_field_comment(
     db: AsyncSession = Depends(get_db),
 ) -> CommentResponse:
     """Erstellt einen Kommentar zu einem spezifischen Feld."""
-    # Security: Pruefe Dokumentzugriff
+    # Security: Prüfe Dokumentzugriff
     document = await _verify_document_access(db, document_id, current_user.id)
 
     # Field-Name validieren
@@ -833,7 +833,7 @@ async def create_field_comment(
     if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', field_name):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltiger Feldname"
+            detail="Ungültiger Feldname"
         )
 
     # Mentions vorbereiten
@@ -880,7 +880,7 @@ async def create_field_comment(
     "/{document_id}/comments/statistics",
     response_model=CommentStatistics,
     summary="Kommentar-Statistiken",
-    description="Gibt aggregierte Statistiken zu den Kommentaren eines Dokuments zurueck."
+    description="Gibt aggregierte Statistiken zu den Kommentaren eines Dokuments zurück."
 )
 async def get_comment_statistics(
     document_id: UUID,
@@ -888,7 +888,7 @@ async def get_comment_statistics(
     db: AsyncSession = Depends(get_db),
 ) -> CommentStatistics:
     """Holt Statistiken zu den Kommentaren eines Dokuments."""
-    # Security: Pruefe Dokumentzugriff
+    # Security: Prüfe Dokumentzugriff
     document = await _verify_document_access(
         db, document_id, current_user.id,
         required_level=AccessLevel.VIEW.value

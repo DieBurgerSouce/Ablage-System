@@ -4,10 +4,10 @@ Predictive Document Routing API Endpoints.
 
 Phase 9.2: Dream Features - Predictive Routing
 
-Ermoeglicht:
+Ermöglicht:
 - Vorhersage des Dokumenten-Routings (Bearbeiter, Prioritaet, Tags)
 - Training des Routing-Modells
-- Feedback fuer Online-Learning
+- Feedback für Online-Learning
 """
 
 import structlog
@@ -41,7 +41,7 @@ router = APIRouter(prefix="/routing", tags=["Predictive Routing"])
 
 
 class RoutingPredictionRequest(BaseModel):
-    """Request fuer Routing-Vorhersage."""
+    """Request für Routing-Vorhersage."""
 
     document_id: UUID = Field(..., description="ID des Dokuments")
     targets: List[RoutingTarget] = Field(
@@ -51,7 +51,7 @@ class RoutingPredictionRequest(BaseModel):
 
 
 class UserPredictionResponse(BaseModel):
-    """Vorhersage fuer Benutzer-Zuweisung."""
+    """Vorhersage für Benutzer-Zuweisung."""
 
     user_id: Optional[UUID]
     username: Optional[str]
@@ -60,7 +60,7 @@ class UserPredictionResponse(BaseModel):
 
 
 class PriorityPredictionResponse(BaseModel):
-    """Vorhersage fuer Prioritaet."""
+    """Vorhersage für Prioritaet."""
 
     priority: str
     confidence: float
@@ -68,7 +68,7 @@ class PriorityPredictionResponse(BaseModel):
 
 
 class TagsPredictionResponse(BaseModel):
-    """Vorhersage fuer Tags."""
+    """Vorhersage für Tags."""
 
     tags: List[str]
     confidence: float
@@ -76,7 +76,7 @@ class TagsPredictionResponse(BaseModel):
 
 
 class FolderPredictionResponse(BaseModel):
-    """Vorhersage fuer Ordner."""
+    """Vorhersage für Ordner."""
 
     folder_id: Optional[UUID]
     folder_name: Optional[str]
@@ -98,7 +98,7 @@ class RoutingPredictionResponse(BaseModel):
 
 
 class RoutingFeedbackRequest(BaseModel):
-    """Feedback fuer Routing-Vorhersage."""
+    """Feedback für Routing-Vorhersage."""
 
     routing_id: UUID = Field(..., description="ID der Routing-Vorhersage")
     target: RoutingTarget = Field(..., description="Welches Ziel betroffen")
@@ -117,7 +117,7 @@ class TrainingDataItem(BaseModel):
 
 
 class TrainingRequest(BaseModel):
-    """Request fuer Modell-Training."""
+    """Request für Modell-Training."""
 
     target: RoutingTarget = Field(
         default=RoutingTarget.USER,
@@ -125,7 +125,7 @@ class TrainingRequest(BaseModel):
     )
     training_data: Optional[List[TrainingDataItem]] = Field(
         default=None,
-        description="Optionale zusaetzliche Trainingsdaten",
+        description="Optionale zusätzliche Trainingsdaten",
     )
     use_historical: bool = Field(
         default=True,
@@ -135,7 +135,7 @@ class TrainingRequest(BaseModel):
         default=90,
         ge=7,
         le=365,
-        description="Zeitraum fuer historische Daten",
+        description="Zeitraum für historische Daten",
     )
 
 
@@ -154,7 +154,7 @@ class TrainingResultResponse(BaseModel):
 
 
 class ModelInfoResponse(BaseModel):
-    """Informationen ueber das Routing-Modell."""
+    """Informationen über das Routing-Modell."""
 
     model_version: str
     targets_available: List[str]
@@ -172,7 +172,7 @@ class ModelInfoResponse(BaseModel):
 @router.post(
     "/predict",
     response_model=RoutingPredictionResponse,
-    summary="Vorhersage fuer Dokumenten-Routing",
+    summary="Vorhersage für Dokumenten-Routing",
     description="Sagt vorher, an wen ein Dokument geroutet werden soll.",
 )
 async def predict_routing(
@@ -181,10 +181,10 @@ async def predict_routing(
     current_user: User = Depends(get_current_user),
 ) -> RoutingPredictionResponse:
     """
-    Generiert Routing-Vorhersagen fuer ein Dokument.
+    Generiert Routing-Vorhersagen für ein Dokument.
 
     - **document_id**: ID des zu routenden Dokuments
-    - **targets**: Welche Vorhersagen gewuenscht sind
+    - **targets**: Welche Vorhersagen gewünscht sind
 
     Returns:
         RoutingPredictionResponse mit Vorhersagen und Confidence-Werten
@@ -263,7 +263,7 @@ async def predict_routing(
                 folder_id = None
                 if prediction.predicted_value:
                     folder_id = UUID(prediction.predicted_value)
-                    # Hier koennte Folder-Name geladen werden
+                    # Hier könnte Folder-Name geladen werden
 
                 predictions["folder_prediction"] = FolderPredictionResponse(
                     folder_id=folder_id,
@@ -304,9 +304,9 @@ async def submit_routing_feedback(
     current_user: User = Depends(get_current_user),
 ) -> None:
     """
-    Uebermittelt Feedback zu einer Routing-Vorhersage.
+    Übermittelt Feedback zu einer Routing-Vorhersage.
 
-    Dies ermoeglicht Online-Learning des Modells.
+    Dies ermöglicht Online-Learning des Modells.
 
     - **routing_id**: ID der urspruenglichen Vorhersage
     - **target**: Welches Ziel betroffen (user, priority, tags, folder)
@@ -347,9 +347,9 @@ async def train_routing_model(
     Erfordert Admin-Berechtigung.
 
     - **target**: Welches Ziel trainiert werden soll
-    - **training_data**: Optionale zusaetzliche Trainingsdaten
+    - **training_data**: Optionale zusätzliche Trainingsdaten
     - **use_historical**: Historische Daten aus DB verwenden
-    - **days_back**: Zeitraum fuer historische Daten
+    - **days_back**: Zeitraum für historische Daten
 
     Returns:
         TrainingResultResponse mit Metriken
@@ -364,7 +364,7 @@ async def train_routing_model(
     predictor = RoutingPredictor(db)
     training_data = []
 
-    # Sammle historische Daten wenn gewuenscht
+    # Sammle historische Daten wenn gewünscht
     if request.use_historical:
         cutoff_date = datetime.utcnow() - timedelta(days=request.days_back)
 
@@ -388,7 +388,7 @@ async def train_routing_model(
             )
             training_data.append(history)
 
-    # Fuege optionale zusaetzliche Trainingsdaten hinzu
+    # Fuege optionale zusätzliche Trainingsdaten hinzu
     if request.training_data:
         for item in request.training_data:
             if request.target == RoutingTarget.USER and item.actual_user_id:
@@ -422,7 +422,7 @@ async def train_routing_model(
     if len(training_data) < 10:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Mindestens 10 Trainingsdatensaetze erforderlich",
+            detail="Mindestens 10 Trainingsdatensätze erforderlich",
         )
 
     try:
@@ -452,14 +452,14 @@ async def train_routing_model(
     "/model/info",
     response_model=ModelInfoResponse,
     summary="Modell-Informationen",
-    description="Gibt Informationen ueber das aktuelle Routing-Modell zurueck.",
+    description="Gibt Informationen über das aktuelle Routing-Modell zurück.",
 )
 async def get_model_info(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ModelInfoResponse:
     """
-    Ruft Informationen ueber das Routing-Modell ab.
+    Ruft Informationen über das Routing-Modell ab.
 
     Returns:
         ModelInfoResponse mit Modell-Details
@@ -481,8 +481,8 @@ async def get_model_info(
 @router.get(
     "/suggestions/{document_id}",
     response_model=JSONDict,
-    summary="Schnelle Routing-Vorschlaege",
-    description="Gibt schnelle Routing-Vorschlaege ohne volles ML-Modell.",
+    summary="Schnelle Routing-Vorschläge",
+    description="Gibt schnelle Routing-Vorschläge ohne volles ML-Modell.",
 )
 async def get_quick_suggestions(
     document_id: UUID,
@@ -490,14 +490,14 @@ async def get_quick_suggestions(
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
     """
-    Gibt schnelle regelbasierte Routing-Vorschlaege zurueck.
+    Gibt schnelle regelbasierte Routing-Vorschläge zurück.
 
-    Verwendet einfache Heuristiken statt ML fuer schnelle Antworten.
+    Verwendet einfache Heuristiken statt ML für schnelle Antworten.
 
     - **document_id**: ID des Dokuments
 
     Returns:
-        Dict mit Vorschlaegen
+        Dict mit Vorschlägen
     """
     from datetime import datetime
 
@@ -621,10 +621,10 @@ async def auto_route_document(
     - **apply_user**: Benutzer-Zuweisung anwenden
     - **apply_priority**: Prioritaet anwenden
     - **apply_tags**: Tags anwenden
-    - **min_confidence**: Mindest-Confidence fuer Anwendung
+    - **min_confidence**: Mindest-Confidence für Anwendung
 
     Returns:
-        Dict mit angewendeten Aenderungen
+        Dict mit angewendeten Änderungen
     """
     from datetime import datetime
 
@@ -729,7 +729,7 @@ async def auto_route_document(
             logger.debug("tags_prediction_failed", document_id=str(document_id), error_type=type(e).__name__)
             skipped.append({"field": "tags", "reason": safe_error_detail(e, "Feld")})
 
-    # Speichere Aenderungen
+    # Speichere Änderungen
     if applied_changes:
         document.updated_at = datetime.utcnow()
         await db.commit()

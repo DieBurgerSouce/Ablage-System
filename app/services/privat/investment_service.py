@@ -1,4 +1,4 @@
-"""Service fuer die Verwaltung von Geldanlagen im Privat-Modul."""
+"""Service für die Verwaltung von Geldanlagen im Privat-Modul."""
 
 import uuid
 from datetime import datetime, date
@@ -24,7 +24,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PrivatInvestmentService:
-    """Service fuer Geldanlagen-Verwaltung."""
+    """Service für Geldanlagen-Verwaltung."""
 
     async def create(
         self,
@@ -81,8 +81,8 @@ class PrivatInvestmentService:
     ) -> Optional[PrivatInvestment]:
         """Holt eine Anlage nach ID.
 
-        WARNUNG: Diese Methode fuehrt KEINEN Access-Check durch!
-        Fuer API-Aufrufe IMMER get_by_id_with_access_check() verwenden!
+        WARNUNG: Diese Methode führt KEINEN Access-Check durch!
+        Für API-Aufrufe IMMER get_by_id_with_access_check() verwenden!
         """
         result = await db.execute(
             select(PrivatInvestment).where(PrivatInvestment.id == investment_id)
@@ -98,9 +98,9 @@ class PrivatInvestmentService:
         """Holt eine Anlage nach ID MIT Access-Check.
 
         SECURITY: Diese Methode ist IDOR-sicher:
-        - Access-Check erfolgt VOR Rueckgabe der Anlage
-        - Gibt None zurueck wenn nicht existiert ODER kein Zugriff
-        - Keine Information Disclosure ueber Existenz fremder Ressourcen
+        - Access-Check erfolgt VOR Rückgabe der Anlage
+        - Gibt None zurück wenn nicht existiert ODER kein Zugriff
+        - Keine Information Disclosure über Existenz fremder Ressourcen
         """
         from app.db.models import PrivatSpace, PrivatSpaceAccess
 
@@ -121,7 +121,7 @@ class PrivatInvestmentService:
         if space.owner_id == requesting_user_id:
             return investment
 
-        # Pruefe explizite Berechtigung - SECURITY: mit expires_at Validierung!
+        # Prüfe explizite Berechtigung - SECURITY: mit expires_at Validierung!
         from datetime import timezone
         now = datetime.now(timezone.utc)
         access_result = await db.execute(
@@ -224,7 +224,7 @@ class PrivatInvestmentService:
         self,
         investment: PrivatInvestment,
     ) -> dict:
-        """Berechnet Statistiken fuer eine Anlage."""
+        """Berechnet Statistiken für eine Anlage."""
         # Gesamtrendite
         total_return = investment.current_value - investment.initial_amount
 
@@ -233,7 +233,7 @@ class PrivatInvestmentService:
         if investment.initial_amount > 0:
             return_percentage = (total_return / investment.initial_amount) * 100
 
-        # Jaehrliche Rendite (vereinfacht)
+        # Jährliche Rendite (vereinfacht)
         annual_return = None
         if investment.start_date:
             today = date.today()
@@ -259,15 +259,15 @@ class PrivatInvestmentService:
         """Aktualisiert eine Anlage.
 
         SECURITY FIX 22-11: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Updates zu verhindern. Ohne Row Lock koennte:
-        - Lost Updates bei gleichzeitigen Aenderungen auftreten
+        bei parallelen Updates zu verhindern. Ohne Row Lock könnte:
+        - Lost Updates bei gleichzeitigen Änderungen auftreten
         - Inkonsistente Anlagedaten entstehen
         """
         # SECURITY FIX 22-11: Row Lock verhindert parallele Modifikationen
         result = await db.execute(
             select(PrivatInvestment)
             .where(PrivatInvestment.id == investment_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Finanzdaten!
+            .with_for_update()  # ROW LOCK - kritisch für Finanzdaten!
         )
         investment = result.scalar_one_or_none()
         if not investment:
@@ -300,7 +300,7 @@ class PrivatInvestmentService:
         """Aktualisiert den aktuellen Wert einer Anlage.
 
         SECURITY FIX 21-2: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Wertaktualisierungen zu verhindern. Ohne Row Lock koennte:
+        bei parallelen Wertaktualisierungen zu verhindern. Ohne Row Lock könnte:
         - Lost Updates auftreten
         - Inkonsistente Werte entstehen
         - Performance-Berechnungen falsch werden
@@ -317,7 +317,7 @@ class PrivatInvestmentService:
         result = await db.execute(
             select(PrivatInvestment)
             .where(PrivatInvestment.id == investment_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Finanzdaten!
+            .with_for_update()  # ROW LOCK - kritisch für Finanzdaten!
         )
         investment = result.scalar_one_or_none()
         if not investment:
@@ -343,10 +343,10 @@ class PrivatInvestmentService:
         investment_id: uuid.UUID,
         soft_delete: bool = True,
     ) -> bool:
-        """Loescht eine Anlage.
+        """Löscht eine Anlage.
 
         SECURITY FIX 22-12: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelem Delete zu verhindern. Ohne Row Lock koennte:
+        bei parallelem Delete zu verhindern. Ohne Row Lock könnte:
         - Double-Delete auftreten
         - Inkonsistente Zustaende entstehen
         """
@@ -354,7 +354,7 @@ class PrivatInvestmentService:
         result = await db.execute(
             select(PrivatInvestment)
             .where(PrivatInvestment.id == investment_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Datenintegritaet!
+            .with_for_update()  # ROW LOCK - kritisch für Datenintegrität!
         )
         investment = result.scalar_one_or_none()
         if not investment:
@@ -424,7 +424,7 @@ class PrivatInvestmentService:
         space_id: uuid.UUID,
         days_ahead: int = 30,
     ) -> List[PrivatInvestmentWithStats]:
-        """Holt Anlagen die bald faellig werden."""
+        """Holt Anlagen die bald fällig werden."""
         from datetime import timedelta
         target_date = date.today() + timedelta(days=days_ahead)
 

@@ -2,11 +2,11 @@
 """
 Accounting Services Module.
 
-Integrierte Buchhaltung fuer das Ablage-System:
+Integrierte Buchhaltung für das Ablage-System:
 - Offene Posten (Debitoren/Kreditoren)
 - USt-Voranmeldung
-- Einnahmen-Ueberschuss-Rechnung (EUER)
-- Automatische Buchungsvorschlaege (NEU: Januar 2026)
+- Einnahmen-Überschuss-Rechnung (EUER)
+- Automatische Buchungsvorschläge (NEU: Januar 2026)
 - (Geplant: GuV/Bilanz)
 
 GoBD-konform und Enterprise-Ready.

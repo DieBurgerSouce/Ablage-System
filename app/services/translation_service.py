@@ -1,19 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-Translation Service fuer mehrsprachige Dokumentenextraktion.
+Translation Service für mehrsprachige Dokumentenextraktion.
 
-Uebersetzt nicht-deutsche Texte ins Deutsche VOR der strukturierten Extraktion.
-Ermoeglicht einheitliche Suche nach deutschen Keywords.
+Übersetzt nicht-deutsche Texte ins Deutsche VOR der strukturierten Extraktion.
+Ermöglicht einheitliche Suche nach deutschen Keywords.
 
 Provider-Optionen:
 1. Argos Translate (EMPFOHLEN - 100% offline, kein API-Key)
 2. LibreTranslate (self-hosted, REST API)
-3. DeepL API (kostenpflichtig, beste Qualitaet)
+3. DeepL API (kostenpflichtig, beste Qualität)
 
 Usage:
     service = TranslationService(provider=TranslationProvider.ARGOS)
     result = await service.translate_for_extraction(text, source_language="ru")
-    print(result.translated_text)  # Deutsche Uebersetzung
+    print(result.translated_text)  # Deutsche Übersetzung
 """
 
 import asyncio
@@ -32,17 +32,17 @@ logger = structlog.get_logger(__name__)
 
 
 class TranslationProvider(str, Enum):
-    """Verfuegbare Uebersetzungs-Provider."""
+    """Verfügbare Übersetzungs-Provider."""
 
     ARGOS = "argos"  # Offline, lokal - EMPFOHLEN
     LIBRETRANSLATE = "libretranslate"  # Self-hosted REST API
     DEEPL = "deepl"  # Cloud API (kostenpflichtig)
-    DISABLED = "disabled"  # Uebersetzung deaktiviert
+    DISABLED = "disabled"  # Übersetzung deaktiviert
 
 
 @dataclass
 class TranslationResult:
-    """Ergebnis einer Uebersetzung."""
+    """Ergebnis einer Übersetzung."""
 
     original_text: str
     translated_text: str
@@ -55,7 +55,7 @@ class TranslationResult:
 
 
 class LRUCache:
-    """Thread-safe LRU Cache mit Groessenbegrenzung."""
+    """Thread-safe LRU Cache mit Größenbegrenzung."""
 
     def __init__(self, maxsize: int = 1000) -> None:
         self._cache: OrderedDict[str, TranslationResult] = OrderedDict()
@@ -83,7 +83,7 @@ class LRUCache:
             self._cache[key] = value
 
     def clear(self) -> int:
-        """Leert Cache, gibt Anzahl entfernter Eintraege zurueck."""
+        """Leert Cache, gibt Anzahl entfernter Einträge zurück."""
         with self._lock:
             count = len(self._cache)
             self._cache.clear()
@@ -96,24 +96,24 @@ class LRUCache:
 
 class TranslationService:
     """
-    Uebersetzt Texte fuer die strukturierte Extraktion.
+    Übersetzt Texte für die strukturierte Extraktion.
 
     Strategie:
-    - Deutsche/Englische Texte: Direkt durchreichen (keine Uebersetzung)
-    - Andere Sprachen: Uebersetzen nach Deutsch
-    - Caching: Uebersetzungen werden gecacht (LRU mit Groessenlimit)
+    - Deutsche/Englische Texte: Direkt durchreichen (keine Übersetzung)
+    - Andere Sprachen: Übersetzen nach Deutsch
+    - Caching: Übersetzungen werden gecacht (LRU mit Größenlimit)
 
     Performance:
     - Argos: ~200-500ms pro Dokument
-    - LibreTranslate: ~100-300ms (Netzwerk-abhaengig)
+    - LibreTranslate: ~100-300ms (Netzwerk-abhängig)
     - DeepL: ~50-200ms (Cloud-API)
 
     Thread-Safety:
     - Alle internen State-Zugriffe sind thread-safe
-    - Geeignet fuer Celery Multi-Worker Umgebungen
+    - Geeignet für Celery Multi-Worker Umgebungen
     """
 
-    # Sprachen die NICHT uebersetzt werden (bereits unterstuetzt)
+    # Sprachen die NICHT übersetzt werden (bereits unterstützt)
     SUPPORTED_LANGUAGES = {"de", "en"}
 
     # Konfidenz-Werte pro Provider
@@ -141,13 +141,13 @@ class TranslationService:
         Initialisiert den TranslationService.
 
         Args:
-            provider: Uebersetzungs-Provider (argos, libretranslate, deepl)
+            provider: Übersetzungs-Provider (argos, libretranslate, deepl)
             target_language: Zielsprache (default: de)
-            cache_enabled: Uebersetzungen cachen
-            cache_size: Maximale Anzahl Cache-Eintraege (default: 1000)
-            max_text_length: Maximale Textlaenge (wird gekuerzt)
-            libretranslate_url: URL fuer LibreTranslate (falls verwendet)
-            deepl_api_key: API-Key fuer DeepL (falls verwendet)
+            cache_enabled: Übersetzungen cachen
+            cache_size: Maximale Anzahl Cache-Einträge (default: 1000)
+            max_text_length: Maximale Textlänge (wird gekürzt)
+            libretranslate_url: URL für LibreTranslate (falls verwendet)
+            deepl_api_key: API-Key für DeepL (falls verwendet)
         """
         self.provider = provider
         self.target_language = target_language
@@ -156,7 +156,7 @@ class TranslationService:
         self.libretranslate_url = libretranslate_url or "http://localhost:5000"
         self.deepl_api_key = deepl_api_key
 
-        # Thread-safe LRU Cache mit Groessenlimit
+        # Thread-safe LRU Cache mit Größenlimit
         self._cache = LRUCache(maxsize=cache_size)
 
         # Thread-safe stats
@@ -197,14 +197,14 @@ class TranslationService:
         source_language: str,
     ) -> TranslationResult:
         """
-        Uebersetzt Text fuer die strukturierte Extraktion.
+        Übersetzt Text für die strukturierte Extraktion.
 
         Args:
-            text: Zu uebersetzender Text
+            text: Zu übersetzender Text
             source_language: ISO 639-1 Sprachcode (z.B. "ru", "pl")
 
         Returns:
-            TranslationResult mit Original und Uebersetzung
+            TranslationResult mit Original und Übersetzung
         """
         self._increment_stat("total")
 
@@ -213,7 +213,7 @@ class TranslationService:
             self._increment_stat("skipped")
             return self._create_skip_result(text, source_language, "provider_disabled")
 
-        # Keine Uebersetzung noetig? (Deutsch/Englisch)
+        # Keine Übersetzung noetig? (Deutsch/Englisch)
         if source_language.lower() in self.SUPPORTED_LANGUAGES:
             self._increment_stat("skipped")
             return self._create_skip_result(text, source_language, "already_supported")
@@ -232,10 +232,10 @@ class TranslationService:
                 logger.debug("translation_cache_hit", source_language=source_language)
                 return cached_result
 
-        # Text kuerzen falls zu lang
+        # Text kürzen falls zu lang
         text_to_translate = text[: self.max_text_length]
 
-        # Uebersetzung durchfuehren
+        # Übersetzung durchführen
         start = time.monotonic()
 
         try:
@@ -262,8 +262,8 @@ class TranslationService:
                 source_language=source_language,
                 **safe_error_log(e),
             )
-            # Fallback: Original zurueckgeben
-            return self._create_skip_result(text, source_language, f"error:{safe_error_detail(e, 'Uebersetzung')}")
+            # Fallback: Original zurückgeben
+            return self._create_skip_result(text, source_language, f"error:{safe_error_detail(e, 'Übersetzung')}")
 
         duration_ms = int((time.monotonic() - start) * 1000)
 
@@ -299,7 +299,7 @@ class TranslationService:
     def _create_skip_result(
         self, text: str, source_language: str, reason: str
     ) -> TranslationResult:
-        """Erstellt ein Skip-Ergebnis (keine Uebersetzung)."""
+        """Erstellt ein Skip-Ergebnis (keine Übersetzung)."""
         return TranslationResult(
             original_text=text,
             translated_text=text,
@@ -313,9 +313,9 @@ class TranslationService:
 
     async def _translate_argos(self, text: str, source_lang: str) -> str:
         """
-        Uebersetzung mit Argos Translate (offline).
+        Übersetzung mit Argos Translate (offline).
 
-        Argos Translate ist synchron, wird daher in einem Thread ausgefuehrt.
+        Argos Translate ist synchron, wird daher in einem Thread ausgeführt.
         """
         # Lazy initialization mit Lock gegen Race Conditions
         if not self._argos_initialized:
@@ -323,7 +323,7 @@ class TranslationService:
 
         import argostranslate.translate
 
-        # Argos ist synchron, in Thread ausfuehren
+        # Argos ist synchron, in Thread ausführen
         # WICHTIG: get_running_loop() statt get_event_loop() (Python 3.10+ kompatibel)
         loop = asyncio.get_running_loop()
         translated = await loop.run_in_executor(
@@ -346,7 +346,7 @@ class TranslationService:
             return
 
         with self._argos_init_lock:
-            # Nochmal pruefen nach Lock-Erwerb
+            # Nochmal prüfen nach Lock-Erwerb
             if self._argos_initialized:
                 return
 
@@ -355,16 +355,16 @@ class TranslationService:
                 import argostranslate.translate
 
                 # Package-Index NICHT automatisch aktualisieren beim Start
-                # Das blockiert ~30 Sekunden und ist fuer Production nicht akzeptabel
+                # Das blockiert ~30 Sekunden und ist für Production nicht akzeptabel
                 # Stattdessen: Einmalig manuell oder via Script installieren
                 #
                 # Die Sprachpakete werden via Docker Volume persistent gespeichert
-                # und muessen nicht bei jedem Start neu geladen werden.
+                # und müssen nicht bei jedem Start neu geladen werden.
                 #
                 # Falls keine Pakete installiert sind, wird ein Fehler geloggt
-                # aber die Uebersetzung faellt graceful auf Original zurueck.
+                # aber die Übersetzung faellt graceful auf Original zurück.
 
-                # Pruefen ob Pakete verfuegbar sind
+                # Prüfen ob Pakete verfügbar sind
                 installed = argostranslate.package.get_installed_packages()
                 if not installed:
                     logger.warning(
@@ -388,7 +388,7 @@ class TranslationService:
                 raise
 
     async def _translate_libretranslate(self, text: str, source_lang: str) -> str:
-        """Uebersetzung mit LibreTranslate API."""
+        """Übersetzung mit LibreTranslate API."""
         import httpx
 
         async with httpx.AsyncClient() as client:
@@ -406,7 +406,7 @@ class TranslationService:
             return str(response.json()["translatedText"])
 
     async def _translate_deepl(self, text: str, source_lang: str) -> str:
-        """Uebersetzung mit DeepL API."""
+        """Übersetzung mit DeepL API."""
         if not self.deepl_api_key:
             raise ValueError("DEEPL_API_KEY nicht konfiguriert")
 
@@ -427,25 +427,25 @@ class TranslationService:
             return str(response.json()["translations"][0]["text"])
 
     def get_stats(self) -> Dict[str, int]:
-        """Gibt Uebersetzungsstatistiken zurueck (thread-safe)."""
+        """Gibt Übersetzungsstatistiken zurück (thread-safe)."""
         with self._stats_lock:
             return self._stats.copy()
 
     def clear_cache(self) -> int:
-        """Leert den Uebersetzungs-Cache. Gibt Anzahl geloeschter Eintraege zurueck."""
+        """Leert den Übersetzungs-Cache. Gibt Anzahl gelöschter Einträge zurück."""
         count = self._cache.clear()
         logger.info("translation_cache_cleared", entries_removed=count)
         return count
 
     def is_translation_needed(self, source_language: Optional[str]) -> bool:
         """
-        Prueft ob eine Uebersetzung fuer die Sprache noetig ist.
+        Prüft ob eine Übersetzung für die Sprache noetig ist.
 
         Args:
             source_language: ISO 639-1 Sprachcode oder None
 
         Returns:
-            True wenn Uebersetzung noetig, False wenn nicht
+            True wenn Übersetzung noetig, False wenn nicht
         """
         if self.provider == TranslationProvider.DISABLED:
             return False
@@ -466,7 +466,7 @@ _singleton_lock = threading.Lock()
 
 def get_translation_service() -> TranslationService:
     """
-    Gibt die Singleton-Instanz des TranslationService zurueck.
+    Gibt die Singleton-Instanz des TranslationService zurück.
 
     Thread-safe durch Double-Checked Locking.
     Konfiguration wird aus app.core.config geladen.
@@ -479,7 +479,7 @@ def get_translation_service() -> TranslationService:
 
     # Slow path: Mit Lock initialisieren
     with _singleton_lock:
-        # Nochmal pruefen nach Lock-Erwerb
+        # Nochmal prüfen nach Lock-Erwerb
         if _translation_service is not None:
             return _translation_service
 
@@ -506,7 +506,7 @@ def get_translation_service() -> TranslationService:
         if hasattr(settings, "DEEPL_API_KEY") and settings.DEEPL_API_KEY:
             deepl_api_key = settings.DEEPL_API_KEY.get_secret_value()
 
-        # Cache-Groesse aus Config
+        # Cache-Größe aus Config
         cache_size = getattr(
             settings,
             "TRANSLATION_CACHE_SIZE",
@@ -526,7 +526,7 @@ def get_translation_service() -> TranslationService:
 
 
 def reset_translation_service() -> None:
-    """Setzt die Singleton-Instanz zurueck (fuer Tests)."""
+    """Setzt die Singleton-Instanz zurück (für Tests)."""
     global _translation_service
     with _singleton_lock:
         _translation_service = None

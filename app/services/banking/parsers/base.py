@@ -1,6 +1,6 @@
 """Base parser classes and utilities for bank statement parsing.
 
-Definiert die gemeinsame Schnittstelle fuer alle Bank-Parser.
+Definiert die gemeinsame Schnittstelle für alle Bank-Parser.
 """
 
 from abc import ABC, abstractmethod
@@ -22,7 +22,7 @@ logger = structlog.get_logger(__name__)
 class ParsedTransaction:
     """Geparste Transaktion aus Kontoauszug.
 
-    Gemeinsames Format fuer alle Parser.
+    Gemeinsames Format für alle Parser.
     """
     # Identifikation
     transaction_id: Optional[str] = None
@@ -68,7 +68,7 @@ class ParsedTransaction:
             self.parsed_references = []
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer DB-Speicherung."""
+        """Konvertiere zu Dictionary für DB-Speicherung."""
         return {
             "transaction_id": self.transaction_id,
             "booking_date": self.booking_date.isoformat() if self.booking_date else None,
@@ -138,9 +138,9 @@ class ParseResult:
 
 
 class BaseParser(ABC):
-    """Abstrakte Basisklasse fuer Bank-Parser.
+    """Abstrakte Basisklasse für Bank-Parser.
 
-    Alle Parser muessen diese Schnittstelle implementieren.
+    Alle Parser müssen diese Schnittstelle implementieren.
     """
 
     # Parser-Metadaten (von Subklassen zu setzen)
@@ -155,11 +155,11 @@ class BaseParser(ABC):
     @classmethod
     @abstractmethod
     def can_parse(cls, content: Union[str, bytes], filename: Optional[str] = None) -> float:
-        """Pruefe ob dieser Parser den Inhalt verarbeiten kann.
+        """Prüfe ob dieser Parser den Inhalt verarbeiten kann.
 
         Args:
             content: Dateiinhalt als String oder Bytes
-            filename: Optionaler Dateiname fuer Extension-Check
+            filename: Optionaler Dateiname für Extension-Check
 
         Returns:
             Konfidenz 0.0-1.0 (0 = kann nicht parsen, 1 = sicher)
@@ -179,16 +179,16 @@ class BaseParser(ABC):
         pass
 
     def _compile_reference_patterns(self) -> Dict[str, re.Pattern]:
-        """Kompiliere Regex-Patterns fuer Referenz-Extraktion.
+        """Kompiliere Regex-Patterns für Referenz-Extraktion.
 
-        WICHTIG: Mehrere Patterns pro Typ fuer praezises Matching.
-        Laengere Praefixe (RECHNUNG) haben Vorrang vor kuerzeren (RE).
+        WICHTIG: Mehrere Patterns pro Typ für praezises Matching.
+        Längere Praefixe (RECHNUNG) haben Vorrang vor kürzeren (RE).
         Verhindert False Positives wie 'chnung' bei 'Rechnung' oder 'ferenz' bei 'Referenz'.
         """
         return {
-            # Rechnungsnummern - Liste von Patterns fuer verschiedene Formate
+            # Rechnungsnummern - Liste von Patterns für verschiedene Formate
             "invoice_number": [
-                # Vollstaendige Woerter: RECHNUNG, INVOICE, FAKTURA
+                # Vollständige Woerter: RECHNUNG, INVOICE, FAKTURA
                 re.compile(
                     r"(?:RECHNUNG|INVOICE|FAKTURA)[\s.\-:/#]*(?:NR\.?|NO\.?|NUM\.?)?[\s.:]*"
                     r"([A-Z0-9][A-Z0-9\-/]{2,20})(?=[\s\.,;]|$)",
@@ -307,8 +307,8 @@ class BaseParser(ABC):
         if any(kw in text_lower for kw in ["lastschrift", "einzug", "direct debit", "dd"]):
             return TransactionType.DIRECT_DEBIT
 
-        # Ueberweisung
-        if any(kw in text_lower for kw in ["ueberweisung", "überweisung", "transfer", "gutschr"]):
+        # Überweisung
+        if any(kw in text_lower for kw in ["überweisung", "überweisung", "transfer", "gutschr"]):
             return TransactionType.TRANSFER
 
         # Kartenzahlung
@@ -319,8 +319,8 @@ class BaseParser(ABC):
         if any(kw in text_lower for kw in ["bargeld", "cash", "auszahlung", "einzahlung", "gaa", "atm"]):
             return TransactionType.CASH
 
-        # Gebuehr
-        if any(kw in text_lower for kw in ["gebuehr", "gebühr", "fee", "entgelt", "provision"]):
+        # Gebühr
+        if any(kw in text_lower for kw in ["gebühr", "gebühr", "fee", "entgelt", "provision"]):
             return TransactionType.FEE
 
         # Zinsen
@@ -349,7 +349,7 @@ class BaseParser(ABC):
         if not amount_str:
             return Decimal("0")
 
-        # Entferne Waehrungssymbole und Leerzeichen
+        # Entferne Währungssymbole und Leerzeichen
         cleaned = amount_str.strip()
         cleaned = re.sub(r"[€$£CHF\s]", "", cleaned)
 
@@ -378,13 +378,13 @@ class BaseParser(ABC):
         counterparty: str,
         reference: str
     ) -> str:
-        """Generiere Hash fuer Duplikat-Erkennung."""
+        """Generiere Hash für Duplikat-Erkennung."""
         data = f"{booking_date}|{amount}|{counterparty or ''}|{reference or ''}"
         return hashlib.sha256(data.encode()).hexdigest()[:32]
 
 
 class ParserRegistry:
-    """Registry fuer Parser-Klassen."""
+    """Registry für Parser-Klassen."""
 
     _parsers: List[Type[BaseParser]] = []
 
@@ -402,7 +402,7 @@ class ParserRegistry:
 
     @classmethod
     def get_parser_for_format(cls, format: ImportFormat) -> Optional[Type[BaseParser]]:
-        """Hole Parser fuer spezifisches Format."""
+        """Hole Parser für spezifisches Format."""
         for parser in cls._parsers:
             if parser.FORMAT == format:
                 return parser

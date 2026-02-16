@@ -1,7 +1,7 @@
 """
 Qdrant Vector Database Service.
 
-Parallele Vector-DB neben pgvector fuer A/B Testing.
+Parallele Vector-DB neben pgvector für A/B Testing.
 Rust-basiert mit 48% besserer p99-Latenz als pgvector.
 
 Features:
@@ -28,7 +28,7 @@ from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
-# Lazy import fuer qdrant-client (nur wenn aktiviert)
+# Lazy import für qdrant-client (nur wenn aktiviert)
 _qdrant_client = None
 _qdrant_models = None
 
@@ -52,7 +52,7 @@ def _get_qdrant_imports():
 
 
 class QdrantPoint(BaseModel):
-    """Datenmodell fuer einen Qdrant Vector Point."""
+    """Datenmodell für einen Qdrant Vector Point."""
     id: str  # UUID als String
     vector: List[float]
     payload: Dict[str, Any] = Field(default_factory=dict)
@@ -69,7 +69,7 @@ class QdrantService:
     """
     Qdrant Vector Database Service.
 
-    Thread-safe Singleton fuer Qdrant-Verbindungen.
+    Thread-safe Singleton für Qdrant-Verbindungen.
     """
 
     _instance: Optional["QdrantService"] = None
@@ -92,7 +92,7 @@ class QdrantService:
 
     @property
     def is_enabled(self) -> bool:
-        """Prueft ob Qdrant aktiviert ist."""
+        """Prüft ob Qdrant aktiviert ist."""
         return settings.QDRANT_ENABLED
 
     async def initialize(self) -> bool:
@@ -134,7 +134,7 @@ class QdrantService:
                     api_key=api_key,
                 )
 
-            # Sync Client fuer bestimmte Operationen
+            # Sync Client für bestimmte Operationen
             self._client = QdrantClient(
                 host=settings.QDRANT_HOST,
                 port=settings.QDRANT_HTTP_PORT,
@@ -203,7 +203,7 @@ class QdrantService:
         _, models = _get_qdrant_imports()
 
         try:
-            # Pruefe ob Collection existiert
+            # Prüfe ob Collection existiert
             collections = await self._async_client.get_collections()
             existing = [c.name for c in collections.collections]
 
@@ -270,7 +270,7 @@ class QdrantService:
         Args:
             document_id: Dokument-UUID
             embedding: Embedding-Vektor
-            payload: Zusaetzliche Metadaten
+            payload: Zusätzliche Metadaten
 
         Returns:
             True wenn erfolgreich
@@ -326,7 +326,7 @@ class QdrantService:
             document_id: Parent Document UUID
             chunk_index: Index des Chunks im Dokument
             embedding: Embedding-Vektor
-            payload: Zusaetzliche Metadaten
+            payload: Zusätzliche Metadaten
 
         Returns:
             True wenn erfolgreich
@@ -372,7 +372,7 @@ class QdrantService:
 
         Args:
             points: Liste von QdrantPoint-Objekten
-            batch_size: Batch-Groesse
+            batch_size: Batch-Größe
 
         Returns:
             Tuple von (erfolgreiche, fehlgeschlagene)
@@ -515,7 +515,7 @@ class QdrantService:
 
     async def delete_document(self, document_id: UUID) -> bool:
         """
-        Loesche Dokument aus Qdrant.
+        Lösche Dokument aus Qdrant.
 
         Args:
             document_id: Dokument-UUID
@@ -529,7 +529,7 @@ class QdrantService:
         _, models = _get_qdrant_imports()
 
         try:
-            # Dokument loeschen
+            # Dokument löschen
             await self._async_client.delete(
                 collection_name=settings.QDRANT_COLLECTION_DOCUMENTS,
                 points_selector=models.PointIdsList(
@@ -537,7 +537,7 @@ class QdrantService:
                 ),
             )
 
-            # Zugehoerige Chunks loeschen
+            # Zugehoerige Chunks löschen
             await self._async_client.delete(
                 collection_name=settings.QDRANT_COLLECTION_CHUNKS,
                 points_selector=models.FilterSelector(
@@ -608,7 +608,7 @@ class QdrantService:
 
     async def health_check(self) -> bool:
         """
-        Pruefe Qdrant-Verbindung.
+        Prüfe Qdrant-Verbindung.
 
         Returns:
             True wenn gesund
@@ -630,7 +630,7 @@ _qdrant_service: Optional[QdrantService] = None
 
 
 async def get_qdrant_service() -> QdrantService:
-    """Factory Function fuer QdrantService."""
+    """Factory Function für QdrantService."""
     global _qdrant_service
     if _qdrant_service is None:
         _qdrant_service = await QdrantService.get_instance()

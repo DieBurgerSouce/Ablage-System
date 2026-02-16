@@ -50,6 +50,7 @@ from app.services.webhook_dispatcher import get_webhook_dispatcher
 from app.core.idempotency import check_idempotency, get_idempotency_service
 from app.services.ocr_cache_service import get_ocr_cache_service, get_cached_ocr_result, cache_ocr_result
 from app.core.exception_handlers import register_exception_handlers
+from app.core.exceptions import ErrorResponseSchema
 from app.services.model_preloader import get_model_preloader, preload_ocr_models
 from app.api.v1.websocket import startup_realtime_services, shutdown_realtime_services
 from app.core.backpressure import (
@@ -80,7 +81,7 @@ german_validator = None
 ocr_service = None
 redis_storage = None
 memory_guard = None  # P0: GPU Memory Guard mit proaktivem Monitor
-model_preloader = None  # P1: Model Pre-Loading fuer schnellere erste Anfragen
+model_preloader = None  # P1: Model Pre-Loading für schnellere erste Anfragen
 
 # Allowed MIME types mapped to extensions
 ALLOWED_MIME_TYPES = {
@@ -273,8 +274,8 @@ async def lifespan(app: FastAPI):
 
     logger.info("available_ocr_backends", backends=ocr_service.backend_manager.get_available_backends())
 
-    # P1: Model Pre-Loading - Laedt OCR-Modelle im Background vor
-    # Reduziert Cold-Start-Latenz fuer erste Anfragen um 10-30 Sekunden
+    # P1: Model Pre-Loading - Lädt OCR-Modelle im Background vor
+    # Reduziert Cold-Start-Latenz für erste Anfragen um 10-30 Sekunden
     model_preloader = get_model_preloader()
     preload_enabled = getattr(settings, "MODEL_PRELOAD_ENABLED", True)
 
@@ -364,7 +365,7 @@ async def lifespan(app: FastAPI):
 OPENAPI_TAGS = [
     {
         "name": "auth",
-        "description": "Authentifizierung und Benutzerverwaltung. JWT-Token-basierte Authentifizierung mit 2FA-Unterstuetzung.",
+        "description": "Authentifizierung und Benutzerverwaltung. JWT-Token-basierte Authentifizierung mit 2FA-Unterstützung.",
     },
     {
         "name": "documents",
@@ -452,11 +453,11 @@ OPENAPI_TAGS = [
     },
     {
         "name": "Strukturierte Daten",
-        "description": "Strukturierte Dokumenten-Extraktion. Rechnungen, Bestellungen, Vertraege mit automatischer Feld-Extraktion und Suche.",
+        "description": "Strukturierte Dokumenten-Extraktion. Rechnungen, Bestellungen, Verträge mit automatischer Feld-Extraktion und Suche.",
     },
     {
         "name": "rag",
-        "description": "RAG Intelligence Layer. Semantische Suche, Document Chunking, Chat mit LLM-Unterstuetzung.",
+        "description": "RAG Intelligence Layer. Semantische Suche, Document Chunking, Chat mit LLM-Unterstützung.",
     },
     {
         "name": "rag-search",
@@ -487,16 +488,16 @@ OPENAPI_TAGS = [
         "description": "Kassenverwaltung. Kassen erstellen, bearbeiten und Salden verwalten.",
     },
     {
-        "name": "Kassenbuch - Eintraege",
-        "description": "GoBD-konforme Kassenbucheintraege. APPEND-ONLY, Stornierung nur durch Gegenbuchung.",
+        "name": "Kassenbuch - Einträge",
+        "description": "GoBD-konforme Kassenbucheinträge. APPEND-ONLY, Stornierung nur durch Gegenbuchung.",
     },
     {
         "name": "Kassenbuch - Kassensturz",
-        "description": "Kassensturz-Protokolle. Zaehlung mit automatischer Differenz-Buchung.",
+        "description": "Kassensturz-Protokolle. Zählung mit automatischer Differenz-Buchung.",
     },
     {
         "name": "Kassenbuch - Berichte",
-        "description": "Kassenbuch-Berichte. Zusammenfassungen und Tagesabschluesse.",
+        "description": "Kassenbuch-Berichte. Zusammenfassungen und Tagesabschlüsse.",
     },
     {
         "name": "Kassenbuch - Kategorien",
@@ -504,7 +505,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "comments",
-        "description": "Dokumenten-Kommentare. Kommentieren, Antworten, @Mentions und Reaktionen fuer Enterprise-Collaboration.",
+        "description": "Dokumenten-Kommentare. Kommentieren, Antworten, @Mentions und Reaktionen für Enterprise-Collaboration.",
     },
     {
         "name": "notifications",
@@ -512,7 +513,7 @@ OPENAPI_TAGS = [
     },
     {
         "name": "activity",
-        "description": "Dokumenten-Aktivitaetsverlauf. Audit-Trail aller Aktionen auf Dokumenten.",
+        "description": "Dokumenten-Aktivitätsverlauf. Audit-Trail aller Aktionen auf Dokumenten.",
     },
     {
         "name": "Spesen - Abrechnungen",
@@ -528,11 +529,11 @@ OPENAPI_TAGS = [
     },
     {
         "name": "Spesen - Rechner",
-        "description": "Berechnungen fuer Kilometergeld und Verpflegungspauschalen.",
+        "description": "Berechnungen für Kilometergeld und Verpflegungspauschalen.",
     },
     {
         "name": "Contracts",
-        "description": "Vertragsmanagement. Vertragslaufzeiten, Kuendigungsfristen, Verlaengerungsoptionen, Meilensteine und Nachtraege.",
+        "description": "Vertragsmanagement. Vertragslaufzeiten, Kündigungsfristen, Verlängerungsoptionen, Meilensteine und Nachträge.",
     },
     {
         "name": "Dokumentvorlagen",
@@ -540,8 +541,282 @@ OPENAPI_TAGS = [
     },
     {
         "name": "DATEV Connect",
-        "description": "DATEVconnect API Integration. OAuth2-Authentifizierung, Buchungsstapel, Belegbilder-Upload, Stammdaten-Sync, GoBD-konforme Festschreibung, ML-basierte Kontierungsvorschlaege.",
+        "description": "DATEVconnect API Integration. OAuth2-Authentifizierung, Buchungsstapel, Belegbilder-Upload, Stammdaten-Sync, GoBD-konforme Festschreibung, ML-basierte Kontierungsvorschläge.",
     },
+    {
+        "name": "saga-monitoring",
+        "description": "Saga-Monitoring. Überwachung von Saga-Ausführungen, Steps und Transaktionslogs für verteilte Transaktionen.",
+    },
+    {
+        "name": "Analytics",
+        "description": "Team-Produktivitäts-Statistiken und Workload-Heatmaps.",
+    },
+    # AI/KI/ML
+    {"name": "AI/LLM", "description": "KI-gestützte Sprachmodell-Integration"},
+    {"name": "AI Autonomy", "description": "Autonome KI-Entscheidungsfindung"},
+    {"name": "AI Conversations", "description": "KI-Konversationen und Chat-Verläufe"},
+    {"name": "AI Decisions", "description": "KI-gestützte Entscheidungsunterstützung"},
+    {"name": "AI Ethics", "description": "KI-Ethik und verantwortungsvolle KI"},
+    {"name": "ai-mentor", "description": "KI-Mentor für personalisierte Empfehlungen"},
+    {"name": "Conversational Assistant", "description": "Konversationsbasierter KI-Assistent"},
+    {"name": "Explainable AI", "description": "Erklärbare KI-Entscheidungen"},
+    {"name": "Finance Assistant", "description": "KI-gestützter Finanzassistent"},
+    {"name": "KI-Pipeline", "description": "KI-Verarbeitungspipeline und Modellverwaltung"},
+    {"name": "Lernende Autonomie", "description": "Selbstlernende autonome Prozesse"},
+    {"name": "ML", "description": "Machine-Learning-Modelle und Training"},
+    {"name": "ML Dashboard", "description": "Machine-Learning-Dashboard und Metriken"},
+    {"name": "Classification", "description": "Dokumentenklassifizierung und Kategorisierung"},
+    {"name": "Predictive Actions", "description": "Prädiktive Aktionsvorschläge"},
+    {"name": "Predictive Payment AI", "description": "KI-gestützte Zahlungsvorhersage"},
+    {"name": "Predictive Routing", "description": "Prädiktives Dokumenten-Routing"},
+    {"name": "Predictive Cash-Flow", "description": "KI-basierte Cashflow-Prognose"},
+    {"name": "Action Queue", "description": "Aktionswarteschlange für automatisierte Aufgaben"},
+    {"name": "Autonomous Trust System", "description": "Autonomes Vertrauenssystem"},
+    {"name": "Trust Dashboard", "description": "Vertrauens-Dashboard und Metriken"},
+    {"name": "Predictive Health", "description": "Prädiktive Systemgesundheitsanalyse"},
+    # Admin
+    {"name": "Admin - Audit-Logs", "description": "Verwaltung der Audit-Protokolle"},
+    {"name": "Admin - Automation", "description": "Verwaltung der Automatisierungsregeln"},
+    {"name": "Admin - Benutzerverwaltung", "description": "Benutzerverwaltung und Zugriffssteuerung"},
+    {"name": "Admin - Dead Letter Queue", "description": "Verwaltung fehlgeschlagener Nachrichten"},
+    {"name": "Admin - Extraktion", "description": "Verwaltung der Datenextraktion"},
+    {"name": "Admin - Firmendaten", "description": "Verwaltung der Unternehmensstammdaten"},
+    {"name": "Admin - GDPR", "description": "DSGVO-Verwaltung und Datenschutz"},
+    {"name": "Admin - Rate Limits", "description": "Verwaltung der API-Ratenbegrenzung"},
+    {"name": "Admin - Systemstatus", "description": "Systemstatus und Gesundheitsprüfung"},
+    {"name": "Admin - Tags", "description": "Verwaltung der Dokumenten-Tags"},
+    {"name": "Admin - Warteschlangen", "description": "Verwaltung der Aufgabenwarteschlangen"},
+    {"name": "Admin - Auftragsverwaltung", "description": "Verwaltung von Hintergrundaufträgen"},
+    # Banking
+    {"name": "Banking - FinTS", "description": "FinTS-Bankanbindung und -Synchronisation"},
+    {"name": "Banking - SEPA", "description": "SEPA-Überweisungen und Lastschriften"},
+    {"name": "Banking - Dashboard", "description": "Banking-Dashboard und Übersicht"},
+    {"name": "Banking - Konten", "description": "Bankkontenverwaltung"},
+    {"name": "Banking - Import", "description": "Import von Bankdaten und Kontoauszügen"},
+    {"name": "Banking - Transaktionen", "description": "Banktransaktionen und Buchungen"},
+    {"name": "Banking - Abgleich", "description": "Automatischer Bankabgleich"},
+    {"name": "Banking - Zahlungen", "description": "Zahlungsverwaltung und -ausführung"},
+    {"name": "Banking - Cash-Flow", "description": "Cashflow-Analyse und -Planung"},
+    {"name": "Banking - Mahnwesen", "description": "Mahnwesen und Zahlungserinnerungen"},
+    {"name": "Banking - Altersanalyse", "description": "Fälligkeitsanalyse offener Posten"},
+    {"name": "Banking - Mahnaufgaben", "description": "Mahnaufgaben und Mahnlauf"},
+    {"name": "Banking - Mahneinstellungen", "description": "Konfiguration des Mahnwesens"},
+    {"name": "Banking - Kundeneinstellungen", "description": "Kundenspezifische Zahlungseinstellungen"},
+    {"name": "Banking - Zahlungsautomation", "description": "Automatisierte Zahlungsverarbeitung"},
+    {"name": "Banking Integration", "description": "Integration mit Bankensystemen"},
+    {"name": "Enhanced Banking", "description": "Erweiterte Banking-Funktionen"},
+    # Finance/Accounting
+    {"name": "Buchhaltung", "description": "Buchhaltung und Finanzverwaltung"},
+    {"name": "Buchungsvorschläge", "description": "Automatische Buchungsvorschläge"},
+    {"name": "Cashflow Prediction", "description": "Cashflow-Prognose und -Analyse"},
+    {"name": "Credit Management", "description": "Kreditmanagement und Bonitätsprüfung"},
+    {"name": "DATEV Export", "description": "DATEV-Datenexport"},
+    {"name": "DATEV Buchungsvorschläge", "description": "DATEV-Buchungsvorschläge"},
+    {"name": "Deutsche Finanzen", "description": "Deutsche Finanzstandards und -berichte"},
+    {"name": "Finance", "description": "Finanzverwaltung und -berichte"},
+    {"name": "Financial Insights", "description": "Finanzielle Einblicke und Analysen"},
+    {"name": "Invoice Tracking", "description": "Rechnungsverfolgung und -status"},
+    {"name": "Rechnungs-Pipeline", "description": "Rechnungsverarbeitungspipeline"},
+    {"name": "Reconciliation", "description": "Kontenabstimmung und Abgleich"},
+    {"name": "Wiederkehrende Rechnungen", "description": "Verwaltung wiederkehrender Rechnungen"},
+    {"name": "Payment Behavior", "description": "Zahlungsverhaltensanalyse"},
+    {"name": "Jahresabschluss", "description": "Jahresabschluss und Bilanzierung"},
+    {"name": "liquidity-scenarios", "description": "Liquiditätsszenarien und -planung"},
+    {"name": "PO-Matching", "description": "Bestellungsabgleich mit Rechnungen"},
+    {"name": "Period Comparison", "description": "Periodenvergleich und Trendanalyse"},
+    # Documents
+    {"name": "Bulk Operations", "description": "Massenoperationen für Dokumente"},
+    {"name": "Document Chains", "description": "Dokumentenketten und -verknüpfungen"},
+    {"name": "Document Chains V2", "description": "Erweiterte Dokumentenketten (V2)"},
+    {"name": "Document Comparison", "description": "Dokumentenvergleich und Differenzanalyse"},
+    {"name": "Dokumentvergleich", "description": "Visueller Dokumentenvergleich"},
+    {"name": "Document Context", "description": "Dokumentenkontext und -metadaten"},
+    {"name": "Document Groups", "description": "Dokumentengruppen und Sammlungen"},
+    {"name": "Document Hints", "description": "Dokumentenhinweise und Empfehlungen"},
+    {"name": "Document Lifecycle", "description": "Dokumentenlebenszyklus-Verwaltung"},
+    {"name": "Document Lineage", "description": "Dokumentenherkunft und -abstammung"},
+    {"name": "Document Timeline", "description": "Dokumenten-Zeitachse und -Verlauf"},
+    {"name": "Belegprüfung", "description": "Belegprüfung und Validierung"},
+    {"name": "Dokument-Integrität", "description": "Dokumentenintegrität und -sicherheit"},
+    {"name": "Ähnliche Dokumente", "description": "Ähnliche Dokumente finden"},
+    {"name": "document-quality", "description": "Dokumentenqualitätsanalyse"},
+    {"name": "document-tasks", "description": "Dokumentenaufgaben und -workflows"},
+    {"name": "Ordner", "description": "Ordner- und Ablageverwaltung"},
+    {"name": "Papierkorb", "description": "Papierkorb und Dokumentenwiederherstellung"},
+    {"name": "versions", "description": "Dokumentenversionierung und -historie"},
+    {"name": "visual-diff", "description": "Visueller Dokumentenvergleich"},
+    # Dashboard
+    {"name": "CEO Dashboard", "description": "CEO-Dashboard mit Geschäftskennzahlen"},
+    {"name": "dashboard", "description": "Dashboard-Verwaltung und -Konfiguration"},
+    {"name": "dashboards", "description": "Dashboard-Sammlung und Vorlagen"},
+    {"name": "Dashboard Widgets", "description": "Dashboard-Widgets und -Komponenten"},
+    {"name": "Digital Twin", "description": "Digitaler Zwilling des Unternehmens"},
+    {"name": "Holding Dashboard", "description": "Holding-Dashboard für Unternehmensgruppen"},
+    {"name": "Smart Dashboard", "description": "Intelligentes Dashboard mit KI-Empfehlungen"},
+    # Search
+    {"name": "Gespeicherte Suchen", "description": "Verwaltung gespeicherter Suchen"},
+    {"name": "Saved Filters", "description": "Gespeicherte Filtervorlagen"},
+    {"name": "smart-search", "description": "Intelligente Suche mit KI-Unterstützung"},
+    {"name": "Unified Search", "description": "Einheitliche Suche über alle Module"},
+    {"name": "spotlight", "description": "Spotlight-Schnellsuche"},
+    # OCR
+    {"name": "OCR Confidence", "description": "OCR-Konfidenzanalyse und -Schwellenwerte"},
+    {"name": "OCR Feedback", "description": "OCR-Feedback und manuelle Korrekturen"},
+    {"name": "OCR Self-Learning", "description": "OCR-Selbstlernende Optimierung"},
+    {"name": "OCR Templates", "description": "OCR-Vorlagen und Dokumenttypen"},
+    {"name": "Supplier OCR Templates", "description": "Lieferantenspezifische OCR-Vorlagen"},
+    {"name": "Zero-Touch OCR", "description": "Vollautomatische OCR-Verarbeitung"},
+    # Entities/Business
+    {"name": "Business Entities", "description": "Geschäftspartner und Unternehmensdaten"},
+    {"name": "business-contacts", "description": "Geschäftskontakte und Ansprechpartner"},
+    {"name": "Communication Hub", "description": "Kommunikationszentrale und Nachrichtenveraltung"},
+    {"name": "supplier-verification", "description": "Lieferantenverifizierung und -prüfung"},
+    {"name": "Supplier Ranking", "description": "Lieferantenbewertung und -ranking"},
+    {"name": "Streckengeschäft Detection", "description": "Erkennung von Streckengeschäften"},
+    {"name": "Handelsregister Monitoring", "description": "Handelsregisterüberwachung"},
+    # Annotations
+    {"name": "annotations", "description": "Dokumentenannotationen und Markierungen"},
+    {"name": "Annotationen & Kommentare", "description": "Annotationen und Kommentarfunktion"},
+    {"name": "Kommentar-Threads", "description": "Kommentar-Threads und Diskussionen"},
+    # Approval/Workflow
+    {"name": "approvals", "description": "Freigabeprozesse und Genehmigungen"},
+    {"name": "approval-enhanced", "description": "Erweiterte Freigabeworkflows"},
+    {"name": "approvals-extended", "description": "Mehrstufige Genehmigungsprozesse"},
+    {"name": "automation", "description": "Automatisierungsregeln und -workflows"},
+    {"name": "BPMN Workflow Engine", "description": "BPMN-Workflow-Engine"},
+    {"name": "BPMN 2.0 Converter", "description": "BPMN-2.0-Konvertierung"},
+    {"name": "workflows", "description": "Workflow-Verwaltung und -Ausführung"},
+    {"name": "workflow-analytics", "description": "Workflow-Analyse und -Optimierung"},
+    {"name": "visual-workflow-builder", "description": "Visueller Workflow-Designer"},
+    {"name": "Kanban Board", "description": "Kanban-Board für Aufgabenverwaltung"},
+    # Compliance/Archive
+    {"name": "Archive (GoBD)", "description": "GoBD-konforme Archivierung"},
+    {"name": "Audit Chain", "description": "Prüfkette und Revisionssicherheit"},
+    {"name": "Audit Trail", "description": "Lückenloser Prüfpfad"},
+    {"name": "GoBD Compliance", "description": "GoBD-Konformitätsprüfung"},
+    {"name": "compliance-autopilot", "description": "Automatisierte Compliance-Überwachung"},
+    {"name": "DPIA", "description": "Datenschutz-Folgenabschätzung"},
+    {"name": "GDPR - Einwilligung", "description": "DSGVO-Einwilligungsverwaltung"},
+    {"name": "GDPR - Betroffenenrechte", "description": "DSGVO-Betroffenenrechte"},
+    {"name": "Consent Management", "description": "Einwilligungsverwaltung"},
+    {"name": "ESG-Reporting", "description": "ESG-Berichterstattung und Nachhaltigkeit"},
+    # Teams/Collaboration
+    {"name": "Teams", "description": "Teamverwaltung und Zusammenarbeit"},
+    {"name": "Delegations", "description": "Delegationen und Stellvertretungen"},
+    {"name": "Präsenz", "description": "Präsenz- und Verfügbarkeitsstatus"},
+    {"name": "Smart Escalation", "description": "Intelligente Eskalationsregeln"},
+    {"name": "Projects", "description": "Projektverwaltung und -verfolgung"},
+    # Notifications
+    {"name": "notification-preferences", "description": "Benachrichtigungseinstellungen"},
+    {"name": "notification-rules", "description": "Benachrichtigungsregeln und -filter"},
+    {"name": "notification-templates", "description": "Benachrichtigungsvorlagen"},
+    {"name": "Push Notifications", "description": "Push-Benachrichtigungen"},
+    # Portal
+    {"name": "Kundenportal", "description": "Kundenportal und Selbstbedienung"},
+    {"name": "Portal-Auth", "description": "Portal-Authentifizierung"},
+    {"name": "Portal-Dokumente", "description": "Portal-Dokumentenverwaltung"},
+    {"name": "Portal-Rechnungen", "description": "Portal-Rechnungsübersicht"},
+    {"name": "Portal-Reklamationen", "description": "Portal-Reklamationsverwaltung"},
+    {"name": "Portal-Nachrichten", "description": "Portal-Nachrichtensystem"},
+    {"name": "Portal-Zahlungen", "description": "Portal-Zahlungsverwaltung"},
+    # Personal/HR
+    {"name": "Personal", "description": "Personalverwaltung"},
+    {"name": "Personal - Mitarbeiter", "description": "Mitarbeiterverwaltung"},
+    {"name": "Personal - Abteilungen", "description": "Abteilungsverwaltung"},
+    {"name": "Personal - Positionen", "description": "Positionsverwaltung und Stellenplan"},
+    # Private
+    {"name": "privat", "description": "Persönlicher Bereich und Finanzen"},
+    {"name": "privat-tax", "description": "Private Steuerverwaltung"},
+    {"name": "privat-analytics", "description": "Persönliche Finanzanalyse"},
+    {"name": "life-events", "description": "Lebensereignisse und Finanzplanung"},
+    {"name": "Privacy Analytics", "description": "Datenschutzanalyse und -berichte"},
+    # Integration
+    {"name": "Lexware Integration", "description": "Lexware-Datenimport und -synchronisation"},
+    {"name": "slack", "description": "Slack-Integration und Benachrichtigungen"},
+    {"name": "Microsoft Teams", "description": "Microsoft-Teams-Integration"},
+    {"name": "odoo-webhooks", "description": "Odoo-Webhook-Integration"},
+    {"name": "Integration Sync", "description": "Integrationssynchronisierung"},
+    {"name": "Calendar Sync", "description": "Kalendersynchronisierung"},
+    # Import/Export
+    {"name": "imports", "description": "Datenimport und -verarbeitung"},
+    {"name": "email-file-import", "description": "E-Mail- und Dateiimport"},
+    {"name": "exports", "description": "Datenexport und -bereitstellung"},
+    {"name": "scheduled-exports", "description": "Geplante automatische Exporte"},
+    # Training/QA
+    {"name": "training", "description": "KI-Training und Modelloptimierung"},
+    {"name": "training-export", "description": "Export von Trainingsdaten"},
+    {"name": "quality-monitoring", "description": "Qualitätsüberwachung und -sicherung"},
+    {"name": "verification-queue", "description": "Verifizierungswarteschlange"},
+    {"name": "coverage", "description": "Testabdeckung und Qualitätsmetriken"},
+    {"name": "llm-review", "description": "LLM-basierte Dokumentenprüfung"},
+    # Reports
+    {"name": "Ad-Hoc Reporting", "description": "Ad-hoc-Berichte und Auswertungen"},
+    {"name": "Executive Reporting", "description": "Führungskräfte-Berichte"},
+    {"name": "reports", "description": "Berichtswesen und Auswertungen"},
+    {"name": "industry-benchmarks", "description": "Branchenvergleiche und Benchmarks"},
+    {"name": "Daily Insights", "description": "Tägliche Geschäftseinblicke"},
+    {"name": "Proactive Insights", "description": "Proaktive Geschäftsempfehlungen"},
+    {"name": "Proaktiver Assistent", "description": "Proaktiver KI-Assistent"},
+    # Security
+    {"name": "DLP", "description": "Data Loss Prevention"},
+    {"name": "Incident Response", "description": "Sicherheitsvorfallbehandlung"},
+    {"name": "MFA", "description": "Multi-Faktor-Authentifizierung"},
+    {"name": "Rollen", "description": "Rollen- und Berechtigungsverwaltung"},
+    {"name": "SSO", "description": "Single Sign-On Integration"},
+    {"name": "Tenant Rate Limits", "description": "Mandantenspezifische Ratenbegrenzung"},
+    {"name": "tenant-admin", "description": "Mandantenverwaltung"},
+    # Misc
+    {"name": "agents", "description": "KI-Agenten und Automatisierung"},
+    {"name": "Alerts", "description": "Warnungen und Benachrichtigungen"},
+    {"name": "Budgets", "description": "Budgetverwaltung und -überwachung"},
+    {"name": "Calendar", "description": "Kalender und Terminverwaltung"},
+    {"name": "cache-admin", "description": "Cache-Verwaltung und -Optimierung"},
+    {"name": "chat-websocket", "description": "Echtzeit-Chat über WebSocket"},
+    {"name": "cross-tenant-reports", "description": "Mandantenübergreifende Berichte"},
+    {"name": "Datenqualität", "description": "Datenqualitätsmanagement"},
+    {"name": "enrichment", "description": "Dokumentenanreicherung und -ergänzung"},
+    {"name": "erp-admin", "description": "ERP-Systemverwaltung"},
+    {"name": "event-sourcing", "description": "Event-Sourcing und Ereignisprotokollierung"},
+    {"name": "feature-flags", "description": "Feature-Flags und Rollout-Steuerung"},
+    {"name": "feature-flags-admin", "description": "Feature-Flag-Verwaltung"},
+    {"name": "Fraud Detection", "description": "Betrugserkennung und -prävention"},
+    {"name": "graphql", "description": "GraphQL-API und -Abfragen"},
+    {"name": "Hardware-Monitoring", "description": "Hardware-Überwachung und -Status"},
+    {"name": "help", "description": "Hilfe und Dokumentation"},
+    {"name": "Inventory", "description": "Inventar- und Bestandsverwaltung"},
+    {"name": "Kassenbuch - Export", "description": "Kassenbuch-Export und -Berichte"},
+    {"name": "Knowledge Graph", "description": "Wissensgraph und Beziehungsnetzwerk"},
+    {"name": "Knowledge Management", "description": "Wissensmanagement und Wissensbasis"},
+    {"name": "nlq", "description": "Natural Language Queries - Natürlichsprachliche Abfragen"},
+    {"name": "oneclick", "description": "Ein-Klick-Aktionen und Schnellzugriff"},
+    {"name": "onboarding", "description": "Onboarding und Einführungsassistent"},
+    {"name": "Orchestration", "description": "Prozessorchestierung und -koordination"},
+    {"name": "Process Mining", "description": "Prozessanalyse und -optimierung"},
+    {"name": "retention-admin", "description": "Aufbewahrungsrichtlinien-Verwaltung"},
+    {"name": "Sendungen", "description": "Sendungsverfolgung und Lieferungen"},
+    {"name": "Scanner", "description": "Scanner-Integration und Dokumentenerfassung"},
+    {"name": "Elektronische Signaturen", "description": "Elektronische Signaturen und Unterschriften"},
+    {"name": "smart-inbox", "description": "Intelligenter Posteingang"},
+    {"name": "smart-tagging", "description": "Automatische intelligente Verschlagwortung"},
+    {"name": "Steuerberater-Zugang", "description": "Steuerberaterzugang und -portal"},
+    {"name": "Steuerberater Packages", "description": "Steuerberater-Pakete und -Export"},
+    {"name": "Steuerberater-Pakete", "description": "Steuerberater-Paketversand"},
+    {"name": "Subscriptions", "description": "Abonnementverwaltung"},
+    {"name": "stammdaten-hygiene", "description": "Stammdatenbereinigung und -pflege"},
+    {"name": "sync", "description": "Datensynchronisierung"},
+    {"name": "Zusammenfassungen", "description": "KI-gestützte Dokumentenzusammenfassungen"},
+    {"name": "Deutsche Terminologie", "description": "Deutsche Fachbegriffe und Terminologie"},
+    {"name": "tasks", "description": "Aufgabenverwaltung"},
+    {"name": "templates", "description": "Vorlagenverwaltung"},
+    {"name": "transactions", "description": "Transaktionsverwaltung"},
+    {"name": "validation", "description": "Datenvalidierung und -prüfung"},
+    {"name": "webhooks-inbound", "description": "Eingehende Webhook-Verarbeitung"},
+    # Mismatch Variants (router names differ from existing tags)
+    {"name": "Authentication", "description": "Authentifizierung und Anmeldung"},
+    {"name": "API Keys", "description": "API-Schlüssel-Verwaltung"},
+    {"name": "Administration", "description": "Systemadministration"},
+    {"name": "GDPR", "description": "DSGVO-Datenschutzkonformität"},
+    {"name": "RAG Intelligence", "description": "RAG-basierte intelligente Dokumentensuche"},
 ]
 
 OPENAPI_DESCRIPTION = """
@@ -617,10 +892,67 @@ Konfigurieren Sie Webhooks für Event-Benachrichtigungen:
 - `document.processed` - OCR abgeschlossen
 - `document.failed` - Verarbeitung fehlgeschlagen
 
+## Fehlercode-Katalog
+
+Alle Fehlercodes folgen dem Format `[DOMAIN]_[NUMMER]`:
+
+| Domain | Codes | Beschreibung |
+|--------|-------|--------------|
+| **GPU** | GPU_001 - GPU_003 | GPU/CUDA-Fehler (OOM, nicht verfügbar) |
+| **OCR** | OCR_001 - OCR_004 | OCR-Verarbeitung (Timeout, Backend, Encoding) |
+| **VAL** | VAL_001 - VAL_003 | Validierung (Format, Dateigröße, Eingabe) |
+| **AUTH** | AUTH_001 - AUTH_005 | Authentifizierung (Login, Token, Rate-Limit) |
+| **DB** | DB_001 - DB_003 | Datenbank (Verbindung, Timeout, Transaktion) |
+| **STOR** | STOR_001 - STOR_003 | Speicher/MinIO (Upload, Not Found) |
+| **NET** | NET_001 - NET_003 | Netzwerk (Redis, Webhook, externe API) |
+| **GDPR** | GDPR_001 - GDPR_003 | DSGVO-Compliance (Verstoß, Aufbewahrung) |
+| **DOC** | DOC_001 - DOC_003 | Dokumente (Verarbeitung, Export, Not Found) |
+| **ML** | ML_001 - ML_004 | ML/KI (Verarbeitung, Suche, Embedding, Modell) |
+| **NOTIF** | NOTIF_001 - NOTIF_003 | Benachrichtigungen (E-Mail, Slack) |
+| **ARCH** | ARCH_001 - ARCH_003 | Archiv/Backup (GoBD, Restore) |
+| **PARSE** | PARSE_001 - PARSE_004 | Parsing (Betrag, Datum, MwSt, Währung) |
+| **CACHE** | CACHE_001 - CACHE_003 | Cache/Metriken (Redis Pool) |
+
 ## Support
 
 Bei Problemen erstellen Sie ein Issue im [GitHub Repository](https://github.com/ablage-system/ocr).
 """
+
+# Global error responses for OpenAPI documentation
+_ERROR_RESPONSES = {
+    400: {
+        "model": ErrorResponseSchema,
+        "description": "Ungültige Anfrage",
+    },
+    401: {
+        "model": ErrorResponseSchema,
+        "description": "Nicht authentifiziert",
+    },
+    403: {
+        "model": ErrorResponseSchema,
+        "description": "Zugriff verweigert",
+    },
+    404: {
+        "model": ErrorResponseSchema,
+        "description": "Ressource nicht gefunden",
+    },
+    422: {
+        "model": ErrorResponseSchema,
+        "description": "Validierungsfehler - Eingabedaten ungültig",
+    },
+    429: {
+        "model": ErrorResponseSchema,
+        "description": "Zu viele Anfragen",
+    },
+    500: {
+        "model": ErrorResponseSchema,
+        "description": "Interner Serverfehler",
+    },
+    503: {
+        "model": ErrorResponseSchema,
+        "description": "Service nicht verfügbar",
+    },
+}
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -631,6 +963,7 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
     openapi_tags=OPENAPI_TAGS,
+    responses=_ERROR_RESPONSES,
     contact={
         "name": "Ablage-System Support",
         "url": "https://github.com/ablage-system/ocr",
@@ -673,10 +1006,10 @@ app.add_middleware(
 )
 
 # Add CORS middleware for web interface
-# J.5 SECURITY FIX: In Production NUR explizite Origins, in Development zusaetzlich localhost
+# J.5 SECURITY FIX: In Production NUR explizite Origins, in Development zusätzlich localhost
 _cors_origins = settings.CORS_ORIGINS.copy()
 if settings.DEBUG:
-    # Nur in Development (DEBUG=True): localhost Origins hinzufuegen
+    # Nur in Development (DEBUG=True): localhost Origins hinzufügen
     _cors_origins.extend(settings.CORS_DEVELOPMENT_ORIGINS)
 elif not _cors_origins:
     # In Production OHNE konfigurierte Origins: Warnung ausgeben
@@ -711,7 +1044,7 @@ app.add_middleware(
 app.add_middleware(CompanyContextMiddleware)
 
 # Add Tenant Context middleware (Multi-Tenancy RLS)
-# Propagiert tenant_id fuer Row-Level Security Policies
+# Propagiert tenant_id für Row-Level Security Policies
 app.add_middleware(TenantContextMiddleware)
 
 # Add profiling middleware
@@ -855,7 +1188,7 @@ from app.api.v1.ocr_templates import router as ocr_templates_router
 from app.api.v1.bpmn import router as bpmn_router
 from app.api.v1.compliance import router as compliance_router
 from app.api.v1.document_completeness import router as document_completeness_router
-from app.api.v1.document_quality import router as document_quality_router  # Datenqualitaets-Ampel
+from app.api.v1.document_quality import router as document_quality_router  # Datenqualitäts-Ampel
 from app.api.v1.dpia import router as dpia_router
 from app.api.v1.help import router as help_router
 from app.api.v1.mfa import router as mfa_router
@@ -899,7 +1232,7 @@ from app.api.v1.communication_hub import router as communication_hub_router  # V
 from app.api.v1.supplier_ocr_templates import router as supplier_ocr_templates_router  # Vision 2026+ Q1: Lieferanten OCR-Templates
 from app.api.v1.visual_workflow_builder import router as visual_workflow_builder_router  # Vision 2026+ Q2: Visual Workflow Builder
 from app.api.v1.supplier_verification import router as supplier_verification_router  # Vision 2026+ Q2: Lieferanten-Verifizierung
-from app.api.v1.liquidity_scenarios import router as liquidity_scenarios_router  # Vision 2026+ Q2: Liquiditaets-Szenarien
+from app.api.v1.liquidity_scenarios import router as liquidity_scenarios_router  # Vision 2026+ Q2: Liquiditäts-Szenarien
 from app.api.v1.ai_mentor import router as ai_mentor_router  # Vision 2026+ Q3: AI-Mentor (Feature #9)
 from app.api.v1.industry_benchmarks import router as industry_benchmarks_router  # Vision 2026+ Q3: Branchen-Benchmarks (Feature #10)
 from app.api.v1.onboarding import router as onboarding_router  # Vision 2026+ Q3: Tenant Onboarding Wizard (Feature #11)
@@ -908,7 +1241,7 @@ from app.api.v1.onboarding import router as onboarding_router  # Vision 2026+ Q3
 from app.api.v1.process_mining import router as process_mining_router  # Vision 2.0: Process Mining
 from app.api.v1.consent import router as consent_router  # Vision 2.0: Consent Management (DSGVO)
 from app.api.v1.credit import router as credit_router  # Vision 2.0: Creditreform Integration
-from app.api.v1.datev_booking import router as datev_booking_router  # Vision 2.0: DATEV Buchungsvorschlaege
+from app.api.v1.datev_booking import router as datev_booking_router  # Vision 2.0: DATEV Buchungsvorschläge
 from app.api.v1.datev_connect import router as datev_connect_router  # DATEV Connect Integration (Migration 145)
 from app.api.v1.classification import router as classification_router  # Vision 2.0 Phase 3: Multi-Label Classification
 from app.api.v1.document_context import router as document_context_router  # Phase 2: Document Context Aggregation
@@ -945,11 +1278,11 @@ from app.api.v1.cross_tenant_reports import router as cross_tenant_reports_route
 from app.api.v1.notification_preferences import router as notification_preferences_router  # Phase 3: Notification Preferences
 from app.api.v1.feature_flags import admin_router as feature_flags_admin_router, user_router as feature_flags_router  # Feature Flag Service
 from app.api.v1.digital_twin import router as digital_twin_router  # Feature #6: Digitaler Zwilling
-from app.api.v1.data_quality import router as data_quality_router  # Feature #8: Datenqualitaets-Cockpit
+from app.api.v1.data_quality import router as data_quality_router  # Feature #8: Datenqualitäts-Cockpit
 from app.api.v1.presence import router as presence_router  # Feature: Collaborative Presence Indicators
 
-# Phase 1: Enterprise & Compliance (Dokument-Integritaet, Signaturen, Jahresabschluss)
-from app.api.v1.integrity import router as integrity_router  # Phase 1: Dokument-Integritaet (Hash-Chain)
+# Phase 1: Enterprise & Compliance (Dokument-Integrität, Signaturen, Jahresabschluss)
+from app.api.v1.integrity import router as integrity_router  # Phase 1: Dokument-Integrität (Hash-Chain)
 from app.api.v1.signatures import router as signatures_router  # Phase 1: QES/eIDAS Signaturen
 from app.api.v1.year_end import router as year_end_router  # Phase 1: Jahresabschluss-Assistent
 from app.api.v1.document_hints import router as document_hints_router  # Feature #5: Proaktive Dokument-Hinweise
@@ -957,13 +1290,14 @@ from app.api.v1.collaboration import router as collaboration_router  # Feature #
 from app.api.v1.trust_dashboard import router as trust_dashboard_router  # Feature #7: Trust/Security Dashboard
 from app.api.v1.ml_dashboard import router as ml_dashboard_router  # Feature #10: ML Progress Dashboard
 from app.api.v1.document_timeline import router as document_timeline_router  # Feature #11: Document Timeline
-from app.api.v1.folders import router as folders_router  # Phase 1.1: Geschaeftliche Ordnerhierarchie
+from app.api.v1.folders import router as folders_router  # Phase 1.1: Geschäftliche Ordnerhierarchie
 from app.api.v1.learning_autonomy import router as learning_autonomy_router  # Phase 2.2: Lernende Autonomie
 from app.api.v1.comment_threads import router as comment_threads_router  # Phase 3.1: Kommentar-Threads
 from app.api.v1.summarization import router as summarization_router  # Phase 4.1: AI-Zusammenfassungen
-from app.api.v1.booking_suggestions import router as booking_suggestions_router  # Phase 5.1: Buchungsvorschlaege
-from app.api.v1.similar_documents import router as similar_documents_router  # Aehnliche Dokumente API
+from app.api.v1.booking_suggestions import router as booking_suggestions_router  # Phase 5.1: Buchungsvorschläge
+from app.api.v1.similar_documents import router as similar_documents_router  # Ähnliche Dokumente API
 from app.api.v1.smart_dashboard import router as smart_dashboard_router  # Feature #2+#6: Smart Dashboard + Live-Feedback
+from app.api.v1.analytics_team import router as analytics_team_router  # Phase 5: Analytics Team Stats
 from app.api.v1.approval_enhanced import router as approval_enhanced_router  # Feature #3+#7: Approval Depth + Automation 2.0
 from app.api.v1.approval_extended import router as approval_extended_router  # Feature #3: Approval Escalation & SLA
 from app.api.v1.automation import router as automation_router  # Feature #7: Automation 2.0 (Auto-Filing & Auto-Matching)
@@ -973,6 +1307,7 @@ from app.api.v1.annotations_extended import router as annotations_extended_route
 from app.api.v1.terminology import router as terminology_router  # Feature #10: Deutsche Praezision
 from app.api.v1.german_finance import router as german_finance_router  # Feature #11: Deutsche Finanz-Features
 from app.api.v1.adhoc_reports import router as adhoc_reports_router  # Feature #12: Ad-Hoc Reporting
+from app.api.v1.saga_monitoring import router as saga_monitoring_router  # Phase 2.2: Saga Monitoring
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -1088,8 +1423,8 @@ app.include_router(ocr_learning_router, prefix="/api/v1")
 app.include_router(ocr_templates_router, prefix="/api/v1")
 app.include_router(bpmn_router, prefix="/api/v1")
 app.include_router(compliance_router, prefix="/api/v1")
-app.include_router(document_completeness_router, prefix="/api/v1")  # Belegpruefung
-app.include_router(document_quality_router, prefix="/api/v1")  # Datenqualitaets-Ampel
+app.include_router(document_completeness_router, prefix="/api/v1")  # Belegprüfung
+app.include_router(document_quality_router, prefix="/api/v1")  # Datenqualitäts-Ampel
 app.include_router(dpia_router, prefix="/api/v1")
 app.include_router(help_router, prefix="/api/v1")
 app.include_router(mfa_router, prefix="/api/v1")
@@ -1148,7 +1483,7 @@ app.include_router(communication_hub_router, prefix="/api/v1")  # Vision 2026+ Q
 app.include_router(supplier_ocr_templates_router, prefix="/api/v1")  # Vision 2026+ Q1: Lieferanten OCR-Templates
 app.include_router(visual_workflow_builder_router, prefix="/api/v1")  # Vision 2026+ Q2: Visual Workflow Builder
 app.include_router(supplier_verification_router, prefix="/api/v1")  # Vision 2026+ Q2: Lieferanten-Verifizierung
-app.include_router(liquidity_scenarios_router, prefix="/api/v1")  # Vision 2026+ Q2: Liquiditaets-Szenarien
+app.include_router(liquidity_scenarios_router, prefix="/api/v1")  # Vision 2026+ Q2: Liquiditäts-Szenarien
 app.include_router(ai_mentor_router, prefix="/api/v1")  # Vision 2026+ Q3: AI-Mentor (Feature #9)
 app.include_router(industry_benchmarks_router, prefix="/api/v1")  # Vision 2026+ Q3: Branchen-Benchmarks (Feature #10)
 app.include_router(onboarding_router, prefix="/api/v1")  # Vision 2026+ Q3: Tenant Onboarding Wizard (Feature #11)
@@ -1157,7 +1492,7 @@ app.include_router(onboarding_router, prefix="/api/v1")  # Vision 2026+ Q3: Tena
 app.include_router(process_mining_router, prefix="/api/v1")  # Vision 2.0: Process Mining
 app.include_router(consent_router, prefix="/api/v1")  # Vision 2.0: Consent Management (DSGVO)
 app.include_router(credit_router, prefix="/api/v1")  # Vision 2.0: Creditreform Integration
-app.include_router(datev_booking_router, prefix="/api/v1")  # Vision 2.0: DATEV Buchungsvorschlaege
+app.include_router(datev_booking_router, prefix="/api/v1")  # Vision 2.0: DATEV Buchungsvorschläge
 app.include_router(datev_connect_router, prefix="/api/v1")  # DATEV Connect Integration (Migration 145)
 app.include_router(classification_router, prefix="/api/v1")  # Vision 2.0 Phase 3: Multi-Label Classification
 
@@ -1202,24 +1537,25 @@ app.include_router(feature_flags_router, prefix="/api/v1")  # Feature Flag Evalu
 app.include_router(document_context_router, prefix="/api/v1")  # Phase 2: Document Context Aggregation
 
 # Phase 1: Enterprise & Compliance
-app.include_router(integrity_router, prefix="/api/v1")  # Dokument-Integritaet (Hash-Chain, Merkle-Tree)
+app.include_router(integrity_router, prefix="/api/v1")  # Dokument-Integrität (Hash-Chain, Merkle-Tree)
 app.include_router(signatures_router, prefix="/api/v1")  # QES/eIDAS Elektronische Signaturen
 app.include_router(year_end_router, prefix="/api/v1")  # Jahresabschluss-Assistent
 app.include_router(document_hints_router, prefix="/api/v1")  # Feature #5: Proaktive Dokument-Hinweise
 app.include_router(collaboration_router, prefix="/api/v1")  # Feature #4: Echtzeit-Kollaboration
 app.include_router(digital_twin_router, prefix="/api/v1")  # Feature #6: Digitaler Zwilling
-app.include_router(data_quality_router, prefix="/api/v1")  # Feature #8: Datenqualitaets-Cockpit
+app.include_router(data_quality_router, prefix="/api/v1")  # Feature #8: Datenqualitäts-Cockpit
 app.include_router(presence_router, prefix="/api/v1")  # Feature: Collaborative Presence Indicators
 app.include_router(trust_dashboard_router, prefix="/api/v1")  # Feature #7: Trust/Security Dashboard
 app.include_router(ml_dashboard_router, prefix="/api/v1")  # Feature #10: ML Progress Dashboard
 app.include_router(document_timeline_router, prefix="/api/v1")  # Feature #11: Document Timeline
-app.include_router(folders_router, prefix="/api/v1")  # Phase 1.1: Geschaeftliche Ordnerhierarchie
+app.include_router(folders_router, prefix="/api/v1")  # Phase 1.1: Geschäftliche Ordnerhierarchie
 app.include_router(learning_autonomy_router, prefix="/api/v1")  # Phase 2.2: Lernende Autonomie
 app.include_router(comment_threads_router, prefix="/api/v1")  # Phase 3.1: Kommentar-Threads
 app.include_router(summarization_router, prefix="/api/v1")  # Phase 4.1: AI-Zusammenfassungen
-app.include_router(booking_suggestions_router, prefix="/api/v1")  # Phase 5.1: Buchungsvorschlaege
-app.include_router(similar_documents_router, prefix="/api/v1")  # Aehnliche Dokumente API
+app.include_router(booking_suggestions_router, prefix="/api/v1")  # Phase 5.1: Buchungsvorschläge
+app.include_router(similar_documents_router, prefix="/api/v1")  # Ähnliche Dokumente API
 app.include_router(smart_dashboard_router, prefix="/api/v1")  # Feature #2+#6: Smart Dashboard + Live-Feedback
+app.include_router(analytics_team_router, prefix="/api/v1")  # Phase 5: Analytics Team Stats
 app.include_router(approval_enhanced_router, prefix="/api/v1")  # Feature #3+#7: Approval Depth + Automation 2.0
 app.include_router(approval_extended_router, prefix="/api/v1")  # Feature #3: Approval Escalation & SLA
 app.include_router(automation_router, prefix="/api/v1")  # Feature #7: Automation 2.0 (Auto-Filing & Auto-Matching)
@@ -1229,6 +1565,7 @@ app.include_router(annotations_extended_router, prefix="/api/v1")  # Feature #8:
 app.include_router(terminology_router, prefix="/api/v1")  # Feature #10: Deutsche Praezision
 app.include_router(german_finance_router, prefix="/api/v1")  # Feature #11: Deutsche Finanz-Features
 app.include_router(adhoc_reports_router, prefix="/api/v1")  # Feature #12: Ad-Hoc Reporting
+app.include_router(saga_monitoring_router, prefix="/api/v1")  # Phase 2.2: Saga Monitoring
 
 
 # ==================== Health & Status Endpoints ====================
@@ -1322,7 +1659,7 @@ async def health_check():
     bp_status = backpressure_status.get("current_status", "normal")
     if bp_status == BackpressureStatus.OVERLOADED:
         health["status"] = "degraded"
-        health["message"] = "System ueberlastet - hohe Queue-Auslastung"
+        health["message"] = "System überlastet - hohe Queue-Auslastung"
     elif bp_status == BackpressureStatus.CRITICAL:
         if health["status"] == "healthy":
             health["status"] = "warning"
@@ -1372,17 +1709,17 @@ async def process_document(
     cached_response: Optional[Dict[str, object]] = Depends(check_idempotency),
     backpressure: Dict[str, object] = Depends(backpressure_dependency),
     current_user: User = Depends(get_current_active_user),  # CC.1 SECURITY FIX: Auth required
-    db: AsyncSession = Depends(get_db),  # NEU: DB Session fuer Quick Classification
+    db: AsyncSession = Depends(get_db),  # NEU: DB Session für Quick Classification
 ):
     """
     Process a document with OCR and optional Quick Classification.
 
     NEU: Enterprise Upload Workflow mit Quick Classification + Temp Storage.
-    Nach erfolgreichem OCR wird automatisch Quick Classification ausgefuehrt:
+    Nach erfolgreichem OCR wird automatisch Quick Classification ausgeführt:
     - Dokumenttyp erkennen (Eingangs-/Ausgangsrechnung)
     - Entity-Matching (Lieferant/Kunde)
     - Rename-Vorschlag generieren
-    - Datei temporaer speichern fuer Review-Modal
+    - Datei temporär speichern für Review-Modal
 
     Args:
         file: Document file (PDF, PNG, JPG, etc.)
@@ -1398,15 +1735,15 @@ async def process_document(
         - text: Extrahierter Text
         - quick_classification: Direction, Entity-Match, Tags (wenn aktiviert)
         - rename_suggestion: Vorgeschlagener Dateiname (wenn aktiviert)
-        - temp_file_id: ID fuer temporaere Datei (wenn aktiviert)
+        - temp_file_id: ID für temporäre Datei (wenn aktiviert)
 
     Headers:
         Idempotency-Key: Optional. Bei Wiederholung wird gecachtes Ergebnis zurückgegeben.
-        X-Priority: Optional. Prioritaet der Anfrage (high, normal, low)
+        X-Priority: Optional. Priorität der Anfrage (high, normal, low)
         X-Backpressure-Status: Response Header mit aktuellem Queue-Status
 
     Raises:
-        HTTPException 503: Wenn System ueberlastet (Backpressure)
+        HTTPException 503: Wenn System überlastet (Backpressure)
     """
     # P2: Backpressure - Backend-Empfehlung bei hoher Last
     suggested_backend = backpressure.get("suggested_backend")
@@ -1611,9 +1948,9 @@ async def process_document(
                 from app.services.temp_file_storage import get_temp_file_storage
 
                 ocr_text = result.get("text", "")
-                temp_doc_id = uuid_module.uuid4()  # Temporaere ID fuer Classification
+                temp_doc_id = uuid_module.uuid4()  # Temporäre ID für Classification
 
-                # 1. Quick Classification ausfuehren
+                # 1. Quick Classification ausführen
                 logger.info("quick_classification_starting", filename=file.filename)
                 quick_service = QuickClassificationService()
                 classification_result = await quick_service.classify_document(
@@ -1637,8 +1974,8 @@ async def process_document(
                     "entity_confidence": classification_result.entity_confidence,
                 }
 
-                # 2b. Structured Extraction fuer Datum, Betrag, Belegnummer
-                # Nutzt StructuredExtractionService fuer vollstaendige Datenextraktion
+                # 2b. Structured Extraction für Datum, Betrag, Belegnummer
+                # Nutzt StructuredExtractionService für vollständige Datenextraktion
                 extracted_data = None
                 if ocr_text and len(ocr_text) > 50:
                     try:
@@ -1693,13 +2030,13 @@ async def process_document(
                         )
                         extracted_data = None
 
-                # Extracted data zum quick_classification hinzufuegen
+                # Extracted data zum quick_classification hinzufügen
                 result["quick_classification"]["extracted_data"] = extracted_data
 
                 # 3. Rename-Vorschlag (bereits in classification_result enthalten)
                 result["rename_suggestion"] = classification_result.rename_suggestion
 
-                # 4. Datei temporaer speichern (fuer spaeteres Ablegen)
+                # 4. Datei temporär speichern (für späteres Ablegen)
                 temp_storage = get_temp_file_storage()
 
                 # MIME-Type aus Dateiendung
@@ -1798,20 +2135,20 @@ async def process_batch(
         List of OCR results
 
     Headers:
-        X-Priority: Optional. Prioritaet der Anfrage (high, normal, low)
+        X-Priority: Optional. Priorität der Anfrage (high, normal, low)
 
     Raises:
-        HTTPException 503: Wenn System ueberlastet (Backpressure)
+        HTTPException 503: Wenn System überlastet (Backpressure)
     """
     # P2: Backpressure - Bei Batch strengere Limits
     bp_status = backpressure.get("status", "normal")
     if bp_status in [BackpressureStatus.CRITICAL, BackpressureStatus.OVERLOADED]:
-        # Bei kritischer Last: Batch-Groesse reduzieren
+        # Bei kritischer Last: Batch-Größe reduzieren
         max_batch = 8 if bp_status == BackpressureStatus.CRITICAL else 4
         if len(files) > max_batch:
             raise HTTPException(
                 status_code=503,
-                detail=f"System unter hoher Last. Batch-Groesse temporaer auf {max_batch} Dateien limitiert. "
+                detail=f"System unter hoher Last. Batch-Größe temporär auf {max_batch} Dateien limitiert. "
                        f"Aktuelle Anfrage: {len(files)} Dateien."
             )
 

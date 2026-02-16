@@ -1,7 +1,7 @@
 """
 Warehouse Service - Lagerverwaltung
 
-CRUD-Operationen fuer Lager (Warehouses).
+CRUD-Operationen für Lager (Warehouses).
 """
 
 import uuid
@@ -14,7 +14,7 @@ from app.db.models_inventory import Warehouse
 
 
 class WarehouseService:
-    """Service fuer Lagerverwaltung"""
+    """Service für Lagerverwaltung"""
 
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -158,7 +158,7 @@ class WarehouseService:
         warehouse_id: uuid.UUID,
         company_id: uuid.UUID,
     ) -> bool:
-        """Lager deaktivieren (nicht loeschen)"""
+        """Lager deaktivieren (nicht löschen)"""
         warehouse = await self.get_by_id(warehouse_id, company_id)
         if not warehouse:
             return False

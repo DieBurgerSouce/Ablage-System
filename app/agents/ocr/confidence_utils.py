@@ -26,22 +26,22 @@ def calculate_token_confidence(
     """
     Berechne Token-Level Confidence aus Model Output Logits.
 
-    Gemeinsame Implementierung fuer DeepSeek, GOT-OCR und andere
+    Gemeinsame Implementierung für DeepSeek, GOT-OCR und andere
     transformer-basierte OCR Backends.
 
     Args:
-        scores: Tuple von Logit-Tensoren fuer jeden generierten Token
+        scores: Tuple von Logit-Tensoren für jeden generierten Token
         generated_ids: Die generierten Token-IDs (batch_size x seq_len)
-        tokenizer: Optional tokenizer fuer Special Token Detection
-        skip_special_tokens: Spezielle Tokens ueberspringen
-        low_confidence_threshold: Schwellenwert fuer niedrige Confidence
+        tokenizer: Optional tokenizer für Special Token Detection
+        skip_special_tokens: Spezielle Tokens überspringen
+        low_confidence_threshold: Schwellenwert für niedrige Confidence
         vectorized: Verwende vektorisierte Berechnung (schneller)
 
     Returns:
         Dictionary mit Confidence-Metriken:
-        - mean_confidence: Durchschnittliche Confidence ueber alle Tokens
+        - mean_confidence: Durchschnittliche Confidence über alle Tokens
         - min_confidence: Minimale Token-Confidence
-        - weighted_confidence: Gewichtete Confidence (laengere Tokens wichtiger)
+        - weighted_confidence: Gewichtete Confidence (längere Tokens wichtiger)
         - token_confidences: Liste der Confidences pro Token
         - low_confidence_positions: Positionen mit Confidence < threshold
         - confidence_method: Verwendete Berechnungsmethode
@@ -135,23 +135,23 @@ def _calculate_vectorized(
         elif stacked_logits.dim() == 3:
             stacked_logits = stacked_logits[:, 0, :]  # First batch
 
-        # Softmax ueber Vokabular
+        # Softmax über Vokabular
         all_probs = F.softmax(stacked_logits, dim=-1)  # (num_tokens, vocab_size)
 
-        # Token IDs fuer generierte Tokens
+        # Token IDs für generierte Tokens
         if generated_ids.dim() > 1:
             gen_ids = generated_ids[0, input_length:input_length + len(scores)]
         else:
             gen_ids = generated_ids[input_length:input_length + len(scores)]
 
-        # Gather Wahrscheinlichkeiten fuer generierte Tokens
+        # Gather Wahrscheinlichkeiten für generierte Tokens
         token_probs = torch.gather(
             all_probs,
             dim=-1,
             index=gen_ids.unsqueeze(-1)
         ).squeeze(-1)
 
-        # Maske fuer Special Tokens
+        # Maske für Special Tokens
         if skip_special_tokens and special_token_ids:
             mask = torch.tensor(
                 [tid.item() not in special_token_ids for tid in gen_ids],
@@ -176,7 +176,7 @@ def _calculate_vectorized(
         mean_conf = float(valid_probs.mean())
         min_conf = float(valid_probs.min())
 
-        # Gewichtete Confidence (spaetere Tokens haben mehr Gewicht)
+        # Gewichtete Confidence (spätere Tokens haben mehr Gewicht)
         weights = torch.arange(1, len(valid_probs) + 1, device=valid_probs.device, dtype=torch.float32)
         weighted_conf = float((valid_probs * weights).sum() / weights.sum())
 
@@ -286,11 +286,11 @@ def calculate_ensemble_confidence(
     """
     Berechne Ensemble-Confidence aus mehreren OCR-Ergebnissen.
 
-    Verwendet fuer Hybrid-Agent bei Multi-Backend-Verarbeitung.
+    Verwendet für Hybrid-Agent bei Multi-Backend-Verarbeitung.
 
     Args:
         results: Liste von OCR-Ergebnissen mit 'confidence' Key
-        weight_by_quality: Gewichte nach Qualitaet (hoehere Confidence = mehr Gewicht)
+        weight_by_quality: Gewichte nach Qualität (höhere Confidence = mehr Gewicht)
 
     Returns:
         Ensemble-Confidence (0.0 - 1.0)
@@ -306,7 +306,7 @@ def calculate_ensemble_confidence(
     if not weight_by_quality:
         return sum(confidences) / len(confidences)
 
-    # Gewichtete Berechnung: hoehere Confidences haben mehr Einfluss
+    # Gewichtete Berechnung: höhere Confidences haben mehr Einfluss
     total_weight = sum(confidences)
     if total_weight == 0:
         return 0.0
@@ -317,13 +317,13 @@ def calculate_ensemble_confidence(
 
 def confidence_to_quality_level(confidence: float) -> str:
     """
-    Konvertiere Confidence-Score zu Qualitaets-Level.
+    Konvertiere Confidence-Score zu Qualitäts-Level.
 
     Args:
         confidence: Confidence-Score (0.0 - 1.0)
 
     Returns:
-        Qualitaets-Level als String
+        Qualitäts-Level als String
     """
     if confidence >= 0.95:
         return "excellent"

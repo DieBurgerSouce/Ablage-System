@@ -2,8 +2,8 @@
 
 FinTS/HBCI Direktverbindung und SEPA Credit Transfer API:
 - FinTS Verbindung herstellen
-- Kontoumsaetze abrufen
-- SEPA-Ueberweisungen (pain.001)
+- Kontoumsätze abrufen
+- SEPA-Überweisungen (pain.001)
 - TAN-Verfahren
 
 SECURITY:
@@ -70,13 +70,13 @@ class FinTSConnectResponse(BaseModel):
 
 
 class TANConfirmRequest(BaseModel):
-    """Request zum Bestaetigen einer TAN."""
+    """Request zum Bestätigen einer TAN."""
     challenge_id: str
     tan: str = Field(..., min_length=4, max_length=10)
 
 
 class FinTSSyncRequest(BaseModel):
-    """Request fuer FinTS-Synchronisation."""
+    """Request für FinTS-Synchronisation."""
     account_id: UUID
     pin: str = Field(..., min_length=5, max_length=50)
     date_from: Optional[date] = None
@@ -94,7 +94,7 @@ class FinTSSyncResponse(BaseModel):
 
 
 class FinTSBalanceResponse(BaseModel):
-    """Response fuer Kontostand-Abfrage."""
+    """Response für Kontostand-Abfrage."""
     success: bool
     balance: Optional[Decimal] = None
     currency: str = "EUR"
@@ -123,7 +123,7 @@ class TANMethodResponse(BaseModel):
 
 
 class SEPATransferInitRequest(BaseModel):
-    """Request fuer SEPA-Ueberweisung via FinTS."""
+    """Request für SEPA-Überweisung via FinTS."""
     account_id: UUID
     pin: str = Field(..., min_length=5, max_length=50)
     creditor_name: str = Field(..., min_length=1, max_length=70)
@@ -167,9 +167,9 @@ async def get_bank_info(
     blz: str,
     current_user: User = Depends(get_current_active_user),
 ):
-    """Hole Bank-Informationen fuer eine BLZ.
+    """Hole Bank-Informationen für eine BLZ.
 
-    Gibt FinTS-URL und unterstuetzte TAN-Verfahren zurueck.
+    Gibt FinTS-URL und unterstützte TAN-Verfahren zurück.
     """
     if len(blz) != 8 or not blz.isdigit():
         raise HTTPException(
@@ -182,7 +182,7 @@ async def get_bank_info(
     if not bank_info:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Bank-Informationen fuer diese BLZ nicht gefunden. "
+            detail="Bank-Informationen für diese BLZ nicht gefunden. "
                    "Bitte FinTS-URL manuell eingeben.",
         )
 
@@ -204,7 +204,7 @@ async def connect_fints(
     """Verbinde mit FinTS-Server.
 
     Initiiert die FinTS-Verbindung. Bei Erfolg wird typischerweise
-    eine TAN angefordert, die mit /confirm-tan bestaetigt werden muss.
+    eine TAN angefordert, die mit /confirm-tan bestätigt werden muss.
 
     SECURITY: Die PIN wird nur temporaer verwendet und nie gespeichert!
     """
@@ -245,7 +245,7 @@ async def confirm_tan(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Bestaetigt TAN-Challenge.
+    """Bestätigt TAN-Challenge.
 
     Wird nach erfolgreicher TAN-Eingabe aufgerufen, um die
     FinTS-Session zu aktivieren.
@@ -260,12 +260,12 @@ async def confirm_tan(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error or "TAN-Bestaetigung fehlgeschlagen",
+            detail=error or "TAN-Bestätigung fehlgeschlagen",
         )
 
     return {
         "success": True,
-        "message": "TAN erfolgreich bestaetigt. Verbindung aktiv.",
+        "message": "TAN erfolgreich bestätigt. Verbindung aktiv.",
     }
 
 
@@ -275,9 +275,9 @@ async def sync_transactions(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Synchronisiert Kontoumsaetze via FinTS.
+    """Synchronisiert Kontoumsätze via FinTS.
 
-    Ruft Transaktionen fuer den angegebenen Zeitraum ab.
+    Ruft Transaktionen für den angegebenen Zeitraum ab.
     Standard: letzte 90 Tage.
 
     SECURITY: Die PIN wird nur temporaer verwendet!
@@ -338,7 +338,7 @@ async def get_tan_methods(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Gibt verfuegbare TAN-Verfahren fuer ein Konto zurueck."""
+    """Gibt verfügbare TAN-Verfahren für ein Konto zurück."""
     methods = await fints_service.get_available_tan_methods(
         db=db,
         account_id=account_id,
@@ -385,9 +385,9 @@ async def initiate_transfer(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Initiiert SEPA-Ueberweisung via FinTS.
+    """Initiiert SEPA-Überweisung via FinTS.
 
-    Erfordert TAN-Bestaetigung fuer die Ausfuehrung.
+    Erfordert TAN-Bestätigung für die Ausführung.
     """
     success, tan_challenge, error = await fints_service.initiate_sepa_transfer(
         db=db,
@@ -435,12 +435,12 @@ async def create_credit_transfer(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Erstellt pain.001 XML fuer SEPA-Ueberweisung.
+    """Erstellt pain.001 XML für SEPA-Überweisung.
 
     Generiert eine ISO 20022 konforme Datei, die:
     - Via FinTS gesendet werden kann
     - Manuell im Online-Banking hochgeladen werden kann
-    - An einen Zahlungsdienstleister uebermittelt werden kann
+    - An einen Zahlungsdienstleister übermittelt werden kann
     """
     try:
         result = await sepa_credit_transfer_service.create_single_transfer(
@@ -463,9 +463,9 @@ async def create_batch_transfer(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Erstellt pain.001 XML fuer Sammelueberweisung.
+    """Erstellt pain.001 XML für Sammelüberweisung.
 
-    Fasst mehrere Zahlungsauftraege in einer Datei zusammen.
+    Fasst mehrere Zahlungsaufträge in einer Datei zusammen.
     """
     try:
         result = await sepa_credit_transfer_service.create_batch_transfer(
@@ -486,11 +486,11 @@ async def create_batch_transfer(
 @sepa_router.get("/payment-suggestions")
 async def get_payment_suggestions(
     bank_account_id: UUID,
-    include_skonto: bool = Query(True, description="Skonto-Rechnungen einschliessen"),
+    include_skonto: bool = Query(True, description="Skonto-Rechnungen einschließen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Holt Zahlungsvorschlaege fuer faellige Rechnungen.
+    """Holt Zahlungsvorschläge für fällige Rechnungen.
 
     Zeigt unbezahlte Eingangsrechnungen mit optionalen Skonto-Infos.
     """
@@ -518,7 +518,7 @@ async def get_multi_account_balances(
 ):
     """Aggregierte Kontostaende aller Bankkonten.
 
-    Zeigt Gesamtueberblick ueber alle verbundenen Konten.
+    Zeigt Gesamtüberblick über alle verbundenen Konten.
     """
     from app.db.models import BankAccount
     from sqlalchemy import select, and_
@@ -566,7 +566,7 @@ async def get_cashflow_summary(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Cash-Flow-Zusammenfassung fuer Dashboard.
+    """Cash-Flow-Zusammenfassung für Dashboard.
 
     Zeigt aktuellen Stand und Prognose.
     """
@@ -587,7 +587,7 @@ async def get_cashflow_summary(
     )
     current_balance = balance_result.scalar() or Decimal("0")
 
-    # Hole ausstehende Zahlungen (naechste 30 Tage)
+    # Hole ausstehende Zahlungen (nächste 30 Tage)
     today = date.today()
     in_30_days = today + timedelta(days=30)
 
@@ -607,7 +607,7 @@ async def get_cashflow_summary(
     upcoming_payments = payment_stats.count or 0
     upcoming_amount = payment_stats.total or Decimal("0")
 
-    # Hole erwartete Einnahmen aus offenen Forderungen (naechste 30 Tage)
+    # Hole erwartete Einnahmen aus offenen Forderungen (nächste 30 Tage)
     income_result = await db.execute(
         select(
             func.count(InvoiceTracking.id).label("count"),
@@ -645,7 +645,7 @@ async def get_quick_stats(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Schnelle Statistiken fuer Dashboard-Widgets."""
+    """Schnelle Statistiken für Dashboard-Widgets."""
     from app.db.models import BankAccount, BankTransaction, PaymentOrder
     from sqlalchemy import select, func, and_
     from app.core.datetime_utils import utc_now

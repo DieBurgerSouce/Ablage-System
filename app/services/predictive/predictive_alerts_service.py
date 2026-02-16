@@ -168,8 +168,8 @@ class PredictiveAlertsService:
         """Erstellt Alert aus Prediction."""
         # Titel basierend auf Typ
         titles = {
-            PredictiveAlertType.GPU_VRAM_OVERFLOW: "GPU VRAM Ueberlauf droht",
-            PredictiveAlertType.QUEUE_OVERFLOW: "Queue Ueberlauf droht",
+            PredictiveAlertType.GPU_VRAM_OVERFLOW: "GPU VRAM Überlauf droht",
+            PredictiveAlertType.QUEUE_OVERFLOW: "Queue Überlauf droht",
             PredictiveAlertType.DISK_EXHAUSTION: "Festplattenspeicher erschoepft",
             PredictiveAlertType.MEMORY_EXHAUSTION: "Arbeitsspeicher erschoepft",
         }
@@ -182,7 +182,7 @@ class PredictiveAlertsService:
                 eta_str = f"in ca. {prediction.eta_minutes / 60:.1f} Stunden"
             message = f"Basierend auf aktuellem Trend wird {titles.get(alert_type, 'Problem')} {eta_str} auftreten."
         else:
-            message = f"Trend zeigt moegliches Problem bei {alert_type.value}."
+            message = f"Trend zeigt mögliches Problem bei {alert_type.value}."
 
         return PredictiveAlert(
             id=uuid4(),
@@ -219,17 +219,17 @@ class PredictiveAlertsService:
             else:
                 eta_str = f"in ca. {degradation.days_to_threshold:.1f} Tagen"
             message = (
-                f"OCR-Qualitaet fuer Backend '{degradation.backend.value}' verschlechtert sich. "
+                f"OCR-Qualität für Backend '{degradation.backend.value}' verschlechtert sich. "
                 f"Kritischer Schwellenwert wird {eta_str} erreicht."
             )
         else:
-            message = f"OCR-Qualitaet fuer Backend '{degradation.backend.value}' zeigt negativen Trend."
+            message = f"OCR-Qualität für Backend '{degradation.backend.value}' zeigt negativen Trend."
 
         return PredictiveAlert(
             id=uuid4(),
             alert_type=PredictiveAlertType.OCR_QUALITY_DEGRADATION,
             severity=severity_mapping.get(degradation.severity, PredictiveAlertSeverity.INFO),
-            title=f"OCR-Qualitaet degradiert: {degradation.backend.value}",
+            title=f"OCR-Qualität degradiert: {degradation.backend.value}",
             message=message,
             recommendation=degradation.recommendation,
             eta_minutes=degradation.days_to_threshold * 24 * 60 if degradation.days_to_threshold else None,
@@ -309,7 +309,7 @@ class PredictiveAlertsService:
         alert_type_filter: Optional[PredictiveAlertType] = None
     ) -> List[PredictiveAlert]:
         """
-        Gibt aktive Alerts zurueck.
+        Gibt aktive Alerts zurück.
 
         Args:
             severity_filter: Optional Severity-Filter
@@ -342,7 +342,7 @@ class PredictiveAlertsService:
         user_id: Optional[UUID] = None
     ) -> bool:
         """
-        Markiert Alert als bestaetigt.
+        Markiert Alert als bestätigt.
 
         Args:
             alert_id: Alert-ID
@@ -376,7 +376,7 @@ class PredictiveAlertsService:
 
     def dismiss_alert(self, alert_id: UUID) -> bool:
         """
-        Verwirft einen Alert ohne Bestaetigung.
+        Verwirft einen Alert ohne Bestätigung.
 
         Args:
             alert_id: Alert-ID
@@ -396,7 +396,7 @@ class PredictiveAlertsService:
 
     def get_alert_stats(self) -> AlertStatsDict:
         """
-        Gibt Statistiken ueber Alerts zurueck.
+        Gibt Statistiken über Alerts zurück.
 
         Returns:
             Dict mit Statistiken
@@ -457,7 +457,7 @@ _predictive_alerts_service: Optional[PredictiveAlertsService] = None
 
 
 def get_predictive_alerts_service() -> PredictiveAlertsService:
-    """Gibt Singleton-Instanz des Predictive Alerts Service zurueck."""
+    """Gibt Singleton-Instanz des Predictive Alerts Service zurück."""
     global _predictive_alerts_service
     if _predictive_alerts_service is None:
         _predictive_alerts_service = PredictiveAlertsService()

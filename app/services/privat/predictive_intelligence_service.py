@@ -81,51 +81,51 @@ ACTIVE_WARNINGS_GAUGE = Gauge(
 # KPI-Definitionen und Schwellenwerte
 # =============================================================================
 
-# Standard-Schwellenwerte (koennen pro User angepasst werden)
+# Standard-Schwellenwerte (können pro User angepasst werden)
 DEFAULT_THRESHOLDS: Dict[str, Dict[str, Decimal]] = {
     # Debt-to-Income Ratio (niedriger ist besser)
     "dti_ratio": {
         "warning": Decimal("0.36"),      # 36% - Standard-Grenze
         "critical": Decimal("0.50"),     # 50% - Kritisch
-        "direction": Decimal("-1"),      # Negativ = hoeher ist schlecht
+        "direction": Decimal("-1"),      # Negativ = höher ist schlecht
     },
-    # Notgroschen in Monaten (hoeher ist besser)
+    # Notgroschen in Monaten (höher ist besser)
     "emergency_fund_months": {
         "warning": Decimal("3"),         # 3 Monate minimum
         "critical": Decimal("1"),        # 1 Monat kritisch
         "direction": Decimal("1"),       # Positiv = niedriger ist schlecht
     },
-    # Financial Health Score (hoeher ist besser)
+    # Financial Health Score (höher ist besser)
     "financial_health_score": {
         "warning": Decimal("50"),        # Unter 50 = Warnung
         "critical": Decimal("30"),       # Unter 30 = Kritisch
         "direction": Decimal("1"),
     },
-    # Net Worth (hoeher ist besser, negativ ist schlecht)
+    # Net Worth (höher ist besser, negativ ist schlecht)
     "net_worth": {
         "warning": Decimal("0"),         # Negatives Net Worth
         "critical": Decimal("-50000"),   # Stark negativ
         "direction": Decimal("1"),
     },
-    # Monatliche Sparquote % (hoeher ist besser)
+    # Monatliche Sparquote % (höher ist besser)
     "savings_rate": {
         "warning": Decimal("10"),        # Unter 10% Sparquote
         "critical": Decimal("0"),        # Keine Ersparnisse
         "direction": Decimal("1"),
     },
-    # Liquiditaetsquote (hoeher ist besser)
+    # Liquiditaetsquote (höher ist besser)
     "liquidity_ratio": {
         "warning": Decimal("0.20"),      # Unter 20%
         "critical": Decimal("0.10"),     # Unter 10%
         "direction": Decimal("1"),
     },
-    # Versicherungsdeckungsquote (hoeher ist besser)
+    # Versicherungsdeckungsquote (höher ist besser)
     "insurance_coverage": {
         "warning": Decimal("60"),        # Unter 60%
         "critical": Decimal("40"),       # Unter 40%
         "direction": Decimal("1"),
     },
-    # Immobilien-Rendite % (hoeher ist besser)
+    # Immobilien-Rendite % (höher ist besser)
     "property_yield": {
         "warning": Decimal("3"),         # Unter 3%
         "critical": Decimal("1"),        # Unter 1%
@@ -133,14 +133,14 @@ DEFAULT_THRESHOLDS: Dict[str, Dict[str, Decimal]] = {
     },
     # Fahrzeug-TCO als % des Einkommens (niedriger ist besser)
     "vehicle_tco_ratio": {
-        "warning": Decimal("0.15"),      # Ueber 15%
-        "critical": Decimal("0.25"),     # Ueber 25%
+        "warning": Decimal("0.15"),      # Über 15%
+        "critical": Decimal("0.25"),     # Über 25%
         "direction": Decimal("-1"),
     },
     # Kredit-Zinsbelastung % (niedriger ist besser)
     "interest_burden": {
-        "warning": Decimal("0.08"),      # Ueber 8%
-        "critical": Decimal("0.15"),     # Ueber 15%
+        "warning": Decimal("0.08"),      # Über 8%
+        "critical": Decimal("0.15"),     # Über 15%
         "direction": Decimal("-1"),
     },
 }
@@ -179,7 +179,7 @@ class TrendAnalysis:
     method: ProjectionMethod
     direction: TrendDirection
     strength: Decimal  # 0-1, wie stark ist der Trend
-    slope: Decimal  # Aenderungsrate pro Monat
+    slope: Decimal  # Änderungsrate pro Monat
     r_squared: Decimal  # Guete der Anpassung (0-1)
     seasonality_detected: bool
     seasonal_amplitude: Optional[Decimal]
@@ -188,7 +188,7 @@ class TrendAnalysis:
 
 @dataclass
 class ProjectedValue:
-    """Ein projizierter Wert fuer einen Zeitpunkt."""
+    """Ein projizierter Wert für einen Zeitpunkt."""
     month: int  # Monate ab jetzt
     date: date
     value: Decimal
@@ -213,7 +213,7 @@ class ThresholdBreach:
 
 @dataclass
 class KPIProjection:
-    """Vollstaendige Projektion fuer einen KPI."""
+    """Vollständige Projektion für einen KPI."""
     kpi_name: str
     current_value: Decimal
     unit: KPIUnit
@@ -249,7 +249,7 @@ class EarlyWarningAlert:
 
 @dataclass
 class PredictiveInsightsSummary:
-    """Zusammenfassung aller proaktiven Insights fuer einen Space."""
+    """Zusammenfassung aller proaktiven Insights für einen Space."""
     space_id: UUID
 
     # Projektionen
@@ -283,7 +283,7 @@ class PredictiveInsightsSummary:
 
 class PredictiveIntelligenceService:
     """
-    Singleton Service fuer Predictive Intelligence.
+    Singleton Service für Predictive Intelligence.
 
     Kernfunktionen:
     - KPI-Projektion in die Zukunft (3/6/12 Monate)
@@ -329,7 +329,7 @@ class PredictiveIntelligenceService:
         if len(values) < 2:
             return Decimal("0"), values[0] if values else Decimal("0"), Decimal("0")
 
-        # Konvertiere zu numpy fuer Berechnung
+        # Konvertiere zu numpy für Berechnung
         n = len(values)
         x = np.array([i for i in range(n)], dtype=float)
         y = np.array([float(v) for v in values], dtype=float)
@@ -378,7 +378,7 @@ class PredictiveIntelligenceService:
         y = np.array([float(v) for v in values], dtype=float)
         n = len(y)
 
-        # FFT fuer Frequenz-Analyse
+        # FFT für Frequenz-Analyse
         fft_result = np.fft.fft(y)
         frequencies = np.fft.fftfreq(n)
 
@@ -390,7 +390,7 @@ class PredictiveIntelligenceService:
         dominant_idx = np.argmax(power) + 1
         dominant_freq = abs(frequencies[dominant_idx])
 
-        # Pruefe ob Frequenz nahe der erwarteten Periode liegt
+        # Prüfe ob Frequenz nahe der erwarteten Periode liegt
         expected_freq = 1 / period
         freq_tolerance = 0.1
 
@@ -435,17 +435,17 @@ class PredictiveIntelligenceService:
         else:
             direction = TrendDirection.DECREASING
 
-        # Trend-Staerke (normalisiert)
+        # Trend-Stärke (normalisiert)
         if len(values) > 0:
             mean_value = sum(values) / len(values)
             if mean_value != 0:
-                strength = min(Decimal("1"), abs(slope * 12 / mean_value))  # Jaehrliche Aenderung
+                strength = min(Decimal("1"), abs(slope * 12 / mean_value))  # Jährliche Änderung
             else:
                 strength = Decimal("0")
         else:
             strength = Decimal("0")
 
-        # Methode waehlen
+        # Methode wählen
         method = ProjectionMethod.SEASONAL if is_seasonal else ProjectionMethod.LINEAR
 
         # Konfidenz berechnen
@@ -496,7 +496,7 @@ class PredictiveIntelligenceService:
                 projected_value += Decimal(str(round(seasonal_factor, 2)))
 
             # Konfidenzintervall berechnen
-            # Breiter fuer weiter in der Zukunft und niedrigere R-squared
+            # Breiter für weiter in der Zukunft und niedrigere R-squared
             uncertainty = float(
                 (1 - float(trend.r_squared)) * 0.1 * month +
                 0.05 * month  # Basis-Unsicherheit
@@ -535,7 +535,7 @@ class PredictiveIntelligenceService:
         kpi_name: str,
         threshold_type: str,  # "warning" oder "critical"
     ) -> Optional[Decimal]:
-        """Holt den Schwellenwert fuer einen KPI (personalisiert oder Standard)."""
+        """Holt den Schwellenwert für einen KPI (personalisiert oder Standard)."""
         threshold_key = f"{kpi_name}_{threshold_type}"
 
         # Versuche personalisierte Schwellenwerte
@@ -564,7 +564,7 @@ class PredictiveIntelligenceService:
         projection: ProjectedValue,
         thresholds: Dict[str, Decimal],
     ) -> Optional[ThresholdBreach]:
-        """Prueft ob eine Projektion einen Schwellenwert durchbricht."""
+        """Prüft ob eine Projektion einen Schwellenwert durchbricht."""
         if kpi_name not in DEFAULT_THRESHOLDS:
             return None
 
@@ -576,7 +576,7 @@ class PredictiveIntelligenceService:
 
         breach: Optional[ThresholdBreach] = None
 
-        # Pruefe kritischen Schwellenwert
+        # Prüfe kritischen Schwellenwert
         if critical_threshold is not None:
             is_breach = (
                 (direction > 0 and projection.value < critical_threshold) or
@@ -595,7 +595,7 @@ class PredictiveIntelligenceService:
                     confidence=projection.confidence,
                 )
 
-        # Pruefe Warn-Schwellenwert (nur wenn nicht bereits kritisch)
+        # Prüfe Warn-Schwellenwert (nur wenn nicht bereits kritisch)
         if breach is None and warning_threshold is not None:
             is_breach = (
                 (direction > 0 and projection.value < warning_threshold) or
@@ -633,7 +633,7 @@ class PredictiveIntelligenceService:
             space_id: Privat-Space ID
             kpi_name: Name des KPI (z.B. "dti_ratio", "net_worth")
             months_ahead: Maximale Projektion in Monaten
-            user_id: Optional fuer personalisierte Schwellenwerte
+            user_id: Optional für personalisierte Schwellenwerte
 
         Returns:
             KPIProjection mit Trend, Projektionen und Warnungen
@@ -707,7 +707,7 @@ class PredictiveIntelligenceService:
             "critical": critical_threshold,
         }
 
-        # Schwellenwert-Durchbrueche pruefen
+        # Schwellenwert-Durchbrueche prüfen
         breaches: List[ThresholdBreach] = []
         for proj in projections:
             breach = self._check_threshold_breach(
@@ -760,7 +760,7 @@ class PredictiveIntelligenceService:
             "dti_ratio": {
                 "title": "Schuldenquote wird kritisch",
                 "desc": "Ihre Schulden-zu-Einkommen-Quote wird in {days} Tagen voraussichtlich {threshold}% erreichen.",
-                "rec": "Reduzieren Sie Schulden oder erhoehen Sie Ihr Einkommen um die Quote zu verbessern.",
+                "rec": "Reduzieren Sie Schulden oder erhöhen Sie Ihr Einkommen um die Quote zu verbessern.",
                 "impact": "Kredite werden teurer und schwerer zu erhalten.",
                 "url": "/privat/loans",
             },
@@ -768,27 +768,27 @@ class PredictiveIntelligenceService:
                 "title": "Notgroschen schrumpft",
                 "desc": "Ihre Notfall-Reserve wird in {days} Tagen voraussichtlich auf {value} Monate sinken.",
                 "rec": "Reduzieren Sie diskretionaere Ausgaben und bauen Sie die Reserve wieder auf.",
-                "impact": "Bei unerwarteten Ausgaben koennten Sie in finanzielle Schwierigkeiten geraten.",
+                "impact": "Bei unerwarteten Ausgaben könnten Sie in finanzielle Schwierigkeiten geraten.",
                 "url": "/privat/investments",
             },
             "financial_health_score": {
                 "title": "Financial Health verschlechtert sich",
                 "desc": "Ihr Financial Health Score wird in {days} Tagen voraussichtlich auf {value} fallen.",
-                "rec": "Analysieren Sie die Einzel-Dimensionen des Scores fuer gezielte Verbesserungen.",
-                "impact": "Ihre finanzielle Stabilitaet ist gefaehrdet.",
+                "rec": "Analysieren Sie die Einzel-Dimensionen des Scores für gezielte Verbesserungen.",
+                "impact": "Ihre finanzielle Stabilität ist gefaehrdet.",
                 "url": "/privat/dashboard",
             },
             "net_worth": {
-                "title": "Netto-Vermoegen ruecklaeufig",
+                "title": "Netto-Vermoegen rücklaeufig",
                 "desc": "Ihr Netto-Vermoegen wird in {days} Tagen voraussichtlich {value} EUR erreichen.",
-                "rec": "Pruefen Sie Ihre Ausgaben und Investitions-Strategie.",
+                "rec": "Prüfen Sie Ihre Ausgaben und Investitions-Strategie.",
                 "impact": "Ihre Vermoegensbildung stagniert oder ist negativ.",
                 "url": "/privat/analytics",
             },
             "savings_rate": {
                 "title": "Sparquote sinkt",
                 "desc": "Ihre Sparquote wird in {days} Tagen voraussichtlich auf {value}% sinken.",
-                "rec": "Identifizieren Sie Einsparpotenziale oder erhoehen Sie Ihr Einkommen.",
+                "rec": "Identifizieren Sie Einsparpotenziale oder erhöhen Sie Ihr Einkommen.",
                 "impact": "Langfristige Ziele wie Altersvorsorge sind gefaehrdet.",
                 "url": "/privat/analytics",
             },
@@ -797,7 +797,7 @@ class PredictiveIntelligenceService:
         texts = kpi_texts.get(kpi_name, {
             "title": f"Warnung: {kpi_name}",
             "desc": f"Der KPI {kpi_name} erreicht in {{days}} Tagen einen kritischen Wert von {{value}}.",
-            "rec": f"Pruefen Sie die Entwicklung von {kpi_name}.",
+            "rec": f"Prüfen Sie die Entwicklung von {kpi_name}.",
             "impact": None,
             "url": None,
         })
@@ -831,7 +831,7 @@ class PredictiveIntelligenceService:
         user_id: Optional[UUID] = None,
     ) -> List[EarlyWarningAlert]:
         """
-        Generiert Early Warning Alerts fuer alle relevanten KPIs.
+        Generiert Early Warning Alerts für alle relevanten KPIs.
 
         Returns:
             Liste von proaktiven Warnhinweisen
@@ -862,7 +862,7 @@ class PredictiveIntelligenceService:
 
                     factors = [
                         f"Trend: {projection.trend.direction.value}",
-                        f"Aenderungsrate: {projection.trend.slope}/Monat",
+                        f"Änderungsrate: {projection.trend.slope}/Monat",
                     ]
                     if projection.trend.seasonality_detected:
                         factors.append("Saisonale Schwankungen erkannt")
@@ -936,7 +936,7 @@ class PredictiveIntelligenceService:
         user_id: Optional[UUID] = None,
     ) -> PredictiveInsightsSummary:
         """
-        Generiert eine vollstaendige Zusammenfassung aller proaktiven Insights.
+        Generiert eine vollständige Zusammenfassung aller proaktiven Insights.
         """
         import time
         start_time = time.time()
@@ -968,7 +968,7 @@ class PredictiveIntelligenceService:
         stable_kpis: List[str] = []
 
         for proj in projections:
-            # Pruefe ob hoeher oder niedriger besser ist
+            # Prüfe ob höher oder niedriger besser ist
             direction_is_good = DEFAULT_THRESHOLDS.get(proj.kpi_name, {}).get("direction", 1)
 
             if proj.trend.direction == TrendDirection.STABLE:
@@ -1006,7 +1006,7 @@ class PredictiveIntelligenceService:
         elif outlook_score >= 60:
             outlook_summary = "Insgesamt stabil, aber einige Bereiche verdienen Aufmerksamkeit."
         elif outlook_score >= 40:
-            outlook_summary = "Mehrere Indikatoren zeigen Handlungsbedarf. Pruefen Sie die Warnungen."
+            outlook_summary = "Mehrere Indikatoren zeigen Handlungsbedarf. Prüfen Sie die Warnungen."
         elif outlook_score >= 20:
             outlook_summary = "Achtung: Mehrere kritische Entwicklungen erkannt. Zeitnahes Handeln empfohlen."
         else:
@@ -1054,10 +1054,10 @@ class PredictiveIntelligenceService:
         source: str = "calculated",
     ) -> PrivatKPIHistory:
         """
-        Speichert einen KPI-Schnappschuss fuer die History.
-        Wird taeglich von Celery Beat aufgerufen.
+        Speichert einen KPI-Schnappschuss für die History.
+        Wird täglich von Celery Beat aufgerufen.
         """
-        # Pruefe ob heute schon ein Eintrag existiert
+        # Prüfe ob heute schon ein Eintrag existiert
         today = date.today()
         result = await db.execute(
             select(PrivatKPIHistory)
@@ -1107,7 +1107,7 @@ class PredictiveIntelligenceService:
         space_id: UUID,
     ) -> Dict[str, Any]:
         """
-        Erfasst alle KPIs fuer einen Space (fuer Celery Beat).
+        Erfasst alle KPIs für einen Space (für Celery Beat).
 
         Holt aktuelle Werte von verschiedenen Services und speichert sie.
         """
@@ -1284,7 +1284,7 @@ class PredictiveIntelligenceService:
         persisted = 0
 
         for warning in warnings:
-            # Suche existierende Warnung fuer diesen KPI
+            # Suche existierende Warnung für diesen KPI
             result = await db.execute(
                 select(PrivatEarlyWarning)
                 .where(
@@ -1385,5 +1385,5 @@ class PredictiveIntelligenceService:
 # =============================================================================
 
 def get_predictive_intelligence_service() -> PredictiveIntelligenceService:
-    """Gibt die Singleton-Instanz des Predictive Intelligence Service zurueck."""
+    """Gibt die Singleton-Instanz des Predictive Intelligence Service zurück."""
     return PredictiveIntelligenceService()

@@ -753,7 +753,7 @@ async def verify_2fa_temp_token(token: str) -> str:
         if token_type != "2fa_temp":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Ungueltiger Token-Typ",
+                detail="Ungültiger Token-Typ",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -761,7 +761,7 @@ async def verify_2fa_temp_token(token: str) -> str:
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Ungueltiges Token-Format",
+                detail="Ungültiges Token-Format",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -780,7 +780,7 @@ async def verify_2fa_temp_token(token: str) -> str:
         logger.warning("2fa_temp_token_invalid", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="2FA-Token ungueltig oder abgelaufen",
+            detail="2FA-Token ungültig oder abgelaufen",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -862,7 +862,7 @@ from typing import Tuple
 # DNS resolution timeout in seconds (prevents slow/hanging DNS)
 DNS_RESOLUTION_TIMEOUT_SECONDS = 3.0
 
-# M.1 CRITICAL: Liste der blockierten IP-Ranges fuer SSRF-Schutz
+# M.1 CRITICAL: Liste der blockierten IP-Ranges für SSRF-Schutz
 SSRF_BLOCKED_IP_RANGES = [
     ipaddress.ip_network("10.0.0.0/8"),       # Private Class A
     ipaddress.ip_network("172.16.0.0/12"),    # Private Class B
@@ -888,7 +888,7 @@ SSRF_BLOCKED_IPV6_RANGES = [
 
 def is_ip_blocked_for_ssrf(ip_str: str) -> bool:
     """
-    Prueft ob eine IP-Adresse in einem blockierten Range liegt.
+    Prüft ob eine IP-Adresse in einem blockierten Range liegt.
 
     Args:
         ip_str: IP-Adresse als String
@@ -911,7 +911,7 @@ def is_ip_blocked_for_ssrf(ip_str: str) -> bool:
         return False
 
     except ValueError:
-        # Ungueltige IP - sicherheitshalber blockieren
+        # Ungültige IP - sicherheitshalber blockieren
         return True
 
 
@@ -933,7 +933,7 @@ def validate_url_for_ssrf(url: str) -> Tuple[bool, str]:
     Example:
         is_valid, error = validate_url_for_ssrf(webhook_url)
         if not is_valid:
-            raise ValueError(f"Ungueltige Webhook-URL: {error}")
+            raise ValueError(f"Ungültige Webhook-URL: {error}")
     """
     if not url:
         return False, "URL darf nicht leer sein"
@@ -947,9 +947,9 @@ def validate_url_for_ssrf(url: str) -> Tuple[bool, str]:
             url_prefix=url[:50] if len(url) > 50 else url,
             error_type=type(e).__name__,
         )
-        return False, "Ungueltige URL-Syntax"
+        return False, "Ungültige URL-Syntax"
 
-    # Protokoll pruefen
+    # Protokoll prüfen
     if parsed.scheme not in ("http", "https"):
         return False, f"Nur HTTP/HTTPS erlaubt, nicht '{parsed.scheme}'"
 
@@ -973,10 +973,10 @@ def validate_url_for_ssrf(url: str) -> Tuple[bool, str]:
     if hostname_lower in dangerous_hostnames:
         return False, f"Hostname '{hostname}' ist nicht erlaubt (Sicherheitsrisiko)"
 
-    # DNS-Aufloesung und IP-Pruefung mit Timeout
+    # DNS-Auflösung und IP-Prüfung mit Timeout
     # SECURITY FIX: ThreadPoolExecutor mit Timeout verhindert DNS-basierte DoS
     try:
-        # DNS-Aufloesung in Thread mit Timeout (socket.getaddrinfo hat kein Timeout)
+        # DNS-Auflösung in Thread mit Timeout (socket.getaddrinfo hat kein Timeout)
         with ThreadPoolExecutor(max_workers=1) as executor:
             future = executor.submit(
                 socket.getaddrinfo,
@@ -994,7 +994,7 @@ def validate_url_for_ssrf(url: str) -> Tuple[bool, str]:
                     hostname=hostname,
                     timeout_seconds=DNS_RESOLUTION_TIMEOUT_SECONDS,
                 )
-                return False, f"DNS-Timeout fuer '{hostname}' (>{DNS_RESOLUTION_TIMEOUT_SECONDS}s)"
+                return False, f"DNS-Timeout für '{hostname}' (>{DNS_RESOLUTION_TIMEOUT_SECONDS}s)"
 
         for addr_info in ip_addresses:
             ip_str = addr_info[4][0]
@@ -1009,10 +1009,10 @@ def validate_url_for_ssrf(url: str) -> Tuple[bool, str]:
                 return False, f"URL resolves zu interner Adresse ({ip_str}) - nicht erlaubt"
 
     except socket.gaierror as e:
-        # DNS-Aufloesung fehlgeschlagen
-        return False, f"Hostname '{hostname}' konnte nicht aufgeloest werden"
+        # DNS-Auflösung fehlgeschlagen
+        return False, f"Hostname '{hostname}' konnte nicht aufgelöst werden"
     except socket.timeout:
-        return False, f"DNS-Timeout fuer '{hostname}'"
+        return False, f"DNS-Timeout für '{hostname}'"
     except Exception as e:
         logger.error(
             "ssrf_validation_error",
@@ -1029,7 +1029,7 @@ async def validate_url_for_ssrf_async(url: str) -> Tuple[bool, str]:
     """
     Async Version der SSRF-Validierung.
 
-    Verwendet ThreadPool fuer DNS-Aufloesung um Event-Loop nicht zu blockieren.
+    Verwendet ThreadPool für DNS-Auflösung um Event-Loop nicht zu blockieren.
 
     Args:
         url: Die zu validierende URL
@@ -1152,7 +1152,7 @@ def sanitize_email_header(value: str) -> str:
 # TOTP Replay Protection
 # =============================================================================
 # SECURITY FIX: Verhindert mehrfache Verwendung desselben TOTP-Codes
-# innerhalb seines Gueltigkeitsfensters (30s + Toleranz)
+# innerhalb seines Gültigkeitsfensters (30s + Toleranz)
 
 TOTP_REPLAY_PREFIX = "totp_used:"
 TOTP_REPLAY_TTL_SECONDS = 90  # 30s Intervall + 30s Window + 30s Puffer
@@ -1162,14 +1162,14 @@ _totp_fallback_lock = asyncio.Lock()
 
 async def check_and_mark_totp_used(user_id: str, code: str) -> bool:
     """
-    Atomare Pruefung und Markierung eines TOTP-Codes (SETNX-Pattern).
+    Atomare Prüfung und Markierung eines TOTP-Codes (SETNX-Pattern).
 
     SECURITY FIX: Ersetzt das vorherige check-then-mark Pattern, das eine
-    Race-Condition bei parallelen Requests ermoeglichte.
+    Race-Condition bei parallelen Requests ermöglichte.
 
     Args:
         user_id: Benutzer-ID
-        code: Der zu pruefende TOTP-Code
+        code: Der zu prüfende TOTP-Code
 
     Returns:
         True wenn der Code BEREITS verwendet wurde (REPLAY - Ablehnen!)
@@ -1179,9 +1179,9 @@ async def check_and_mark_totp_used(user_id: str, code: str) -> bool:
         - Atomare Operation verhindert Race-Conditions
         - SETNX (SET if Not eXists) mit TTL
         - Jeder Code kann nur EINMAL verwendet werden
-        - TTL von 90 Sekunden deckt das Gueltigkeitsfenster ab
+        - TTL von 90 Sekunden deckt das Gültigkeitsfenster ab
     """
-    # Hash des Codes mit User-ID fuer Eindeutigkeit
+    # Hash des Codes mit User-ID für Eindeutigkeit
     code_hash = hashlib.sha256(f"{user_id}:{code}".encode()).hexdigest()[:32]
     key = f"{TOTP_REPLAY_PREFIX}{code_hash}"
 
@@ -1220,7 +1220,7 @@ async def check_and_mark_totp_used(user_id: str, code: str) -> bool:
             )
             # Fallback zu In-Memory bei Redis-Fehler
 
-    # Fallback: In-Memory mit Lock fuer Atomizitaet
+    # Fallback: In-Memory mit Lock für Atomizität
     async with _totp_fallback_lock:
         _cleanup_totp_fallback()
         if key in _totp_used_fallback:
@@ -1236,7 +1236,7 @@ async def check_and_mark_totp_used(user_id: str, code: str) -> bool:
 
 
 def _cleanup_totp_fallback() -> None:
-    """Entfernt abgelaufene TOTP-Eintraege aus dem Fallback-Speicher."""
+    """Entfernt abgelaufene TOTP-Einträge aus dem Fallback-Speicher."""
     now = datetime.now(tz=timezone.utc)
     expired_keys = [
         key for key, timestamp in _totp_used_fallback.items()

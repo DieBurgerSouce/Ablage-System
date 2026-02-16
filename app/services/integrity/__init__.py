@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Dokument-Integritaet (Hash-Chain) Service-Paket."""
+"""Dokument-Integrität (Hash-Chain) Service-Paket."""
 
 from app.services.integrity.document_integrity_service import DocumentIntegrityService
 

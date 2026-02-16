@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Prometheus Metriken fuer Such-Service.
+Prometheus Metriken für Such-Service.
 
 Erfasst:
 - Suchanfragen nach Typ (FTS, Semantic, Hybrid)
@@ -9,7 +9,7 @@ Erfasst:
 - Embedding-Generierung
 - Zero-Result-Queries
 
-Feinpoliert und durchdacht - Observability fuer Suche in Produktion.
+Feinpoliert und durchdacht - Observability für Suche in Produktion.
 """
 
 import threading
@@ -22,7 +22,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# Thread-Safety fuer Singleton
+# Thread-Safety für Singleton
 _search_metrics_lock = threading.Lock()
 
 # Optional Prometheus integration
@@ -46,7 +46,7 @@ except ImportError:
 # =============================================================================
 
 if PROMETHEUS_AVAILABLE:
-    # Registry fuer alle Such-Metriken
+    # Registry für alle Such-Metriken
     SEARCH_REGISTRY = CollectorRegistry()
 
     # -------------------------------------------------------------------------
@@ -96,7 +96,7 @@ if PROMETHEUS_AVAILABLE:
 
     SEARCH_CACHE_SIZE = Gauge(
         "search_cache_entries",
-        "Geschaetzte Anzahl der Cache-Eintraege",
+        "Geschätzte Anzahl der Cache-Einträge",
         registry=SEARCH_REGISTRY,
     )
 
@@ -113,7 +113,7 @@ if PROMETHEUS_AVAILABLE:
 
     EMBEDDING_GENERATION_SECONDS = Histogram(
         "search_embedding_generation_seconds",
-        "Zeit fuer Embedding-Generierung",
+        "Zeit für Embedding-Generierung",
         ["source"],  # source: query, document
         buckets=[0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0],
         registry=SEARCH_REGISTRY,
@@ -126,19 +126,19 @@ if PROMETHEUS_AVAILABLE:
     )
 
     # -------------------------------------------------------------------------
-    # Aehnliche Dokumente Metriken
+    # Ähnliche Dokumente Metriken
     # -------------------------------------------------------------------------
 
     SIMILAR_DOCUMENT_REQUESTS_TOTAL = Counter(
         "search_similar_requests_total",
-        "Anfragen fuer aehnliche Dokumente",
+        "Anfragen für ähnliche Dokumente",
         ["status", "cached"],
         registry=SEARCH_REGISTRY,
     )
 
     SIMILAR_DOCUMENT_COUNT = Histogram(
         "search_similar_count",
-        "Anzahl gefundener aehnlicher Dokumente",
+        "Anzahl gefundener ähnlicher Dokumente",
         buckets=[0, 1, 2, 5, 10, 20, 50],
         registry=SEARCH_REGISTRY,
     )
@@ -160,7 +160,7 @@ if PROMETHEUS_AVAILABLE:
 
     SEARCH_ANALYTICS_LOGGED = Counter(
         "search_analytics_logged_total",
-        "Geloggte Such-Analytics Eintraege",
+        "Geloggte Such-Analytics Einträge",
         registry=SEARCH_REGISTRY,
     )
 
@@ -178,10 +178,10 @@ if PROMETHEUS_AVAILABLE:
 
 class SearchMetrics:
     """
-    Zentrale Klasse fuer Such-Metriken.
+    Zentrale Klasse für Such-Metriken.
 
     Kapselt alle Prometheus-Operationen und bietet
-    Fallback wenn Prometheus nicht verfuegbar.
+    Fallback wenn Prometheus nicht verfügbar.
     """
 
     def __init__(self) -> None:
@@ -191,7 +191,7 @@ class SearchMetrics:
         if self.enabled:
             logger.info("Prometheus Such-Metriken aktiviert")
         else:
-            logger.info("Prometheus nicht verfuegbar - Metriken nur als Logs")
+            logger.info("Prometheus nicht verfügbar - Metriken nur als Logs")
 
     # -------------------------------------------------------------------------
     # Such-Anfragen
@@ -276,7 +276,7 @@ class SearchMetrics:
 
         Args:
             reason: Grund (document_update, document_delete, batch_delete, batch_tag, admin)
-            count: Anzahl der invalidierten Eintraege
+            count: Anzahl der invalidierten Einträge
         """
         if self.enabled:
             SEARCH_CACHE_INVALIDATIONS.labels(reason=reason).inc(count)
@@ -284,7 +284,7 @@ class SearchMetrics:
             logger.debug("cache_invalidation", reason=reason, count=count)
 
     def set_cache_size(self, size: int) -> None:
-        """Setze geschaetzte Cache-Groesse."""
+        """Setze geschätzte Cache-Größe."""
         if self.enabled:
             SEARCH_CACHE_SIZE.set(size)
 
@@ -330,7 +330,7 @@ class SearchMetrics:
             EMBEDDING_CACHE_HITS.inc()
 
     # -------------------------------------------------------------------------
-    # Aehnliche Dokumente
+    # Ähnliche Dokumente
     # -------------------------------------------------------------------------
 
     def record_similar_documents(
@@ -341,10 +341,10 @@ class SearchMetrics:
         success: bool = True,
     ) -> None:
         """
-        Erfasse Anfrage fuer aehnliche Dokumente.
+        Erfasse Anfrage für ähnliche Dokumente.
 
         Args:
-            count: Anzahl gefundener aehnlicher Dokumente
+            count: Anzahl gefundener ähnlicher Dokumente
             duration_seconds: Dauer in Sekunden
             cached: War es ein Cache-Hit?
             success: War die Anfrage erfolgreich?
@@ -432,7 +432,7 @@ class SearchMetrics:
             return b"# Prometheus not available\n"
 
     def get_content_type(self) -> str:
-        """Hole Content-Type fuer Metriken."""
+        """Hole Content-Type für Metriken."""
         if self.enabled:
             return CONTENT_TYPE_LATEST
         else:

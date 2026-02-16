@@ -7,7 +7,7 @@ Erweitert den bestehenden AnnotationService um:
 - BoundingBox-Annotationen mit praeziser PDF-Positionierung
 - Verschachtelte Antworten (Replies) mit @Mention-Verarbeitung
 - Aufgabenverwaltung aus Kommentar-Threads
-- Soft-Delete fuer Annotationen
+- Soft-Delete für Annotationen
 """
 
 from __future__ import annotations
@@ -37,9 +37,9 @@ logger = structlog.get_logger(__name__)
 
 
 class ExtendedAnnotationService:
-    """Service fuer erweiterte Dokument-Annotationen.
+    """Service für erweiterte Dokument-Annotationen.
 
-    Bietet CRUD-Operationen fuer:
+    Bietet CRUD-Operationen für:
     - BoundingBox-Annotationen (PDF-Markierungen)
     - Verschachtelte Kommentar-Antworten
     - Kommentar-Aufgaben
@@ -79,18 +79,18 @@ class ExtendedAnnotationService:
             x: X-Position (0.0 - 1.0)
             y: Y-Position (0.0 - 1.0)
             width: Breite (0.0 - 1.0)
-            height: Hoehe (0.0 - 1.0)
+            height: Höhe (0.0 - 1.0)
             author_id: Ersteller-ID
             label: Optionale Beschriftung
             color: Farbe (Hex, Standard: #FFD700)
             annotation_type: Annotationstyp
-            thread_id: Optionaler verknuepfter Kommentar-Thread
+            thread_id: Optionaler verknüpfter Kommentar-Thread
 
         Returns:
             Erstellte BoundingBoxAnnotation
 
         Raises:
-            ValueError: Bei ungueltigen Koordinaten
+            ValueError: Bei ungültigen Koordinaten
         """
         # Validierung der Koordinaten
         if not (0.0 <= x <= 1.0):
@@ -100,7 +100,7 @@ class ExtendedAnnotationService:
         if not (0.0 <= width <= 1.0):
             raise ValueError("Breite muss zwischen 0.0 und 1.0 liegen")
         if not (0.0 <= height <= 1.0):
-            raise ValueError("Hoehe muss zwischen 0.0 und 1.0 liegen")
+            raise ValueError("Höhe muss zwischen 0.0 und 1.0 liegen")
         if page_number < 1:
             raise ValueError("Seitennummer muss mindestens 1 sein")
 
@@ -136,7 +136,7 @@ class ExtendedAnnotationService:
         document_id: uuid_module.UUID,
         page_number: int,
     ) -> Sequence[BoundingBoxAnnotation]:
-        """Holt alle Bounding-Box-Annotationen fuer eine Seite.
+        """Holt alle Bounding-Box-Annotationen für eine Seite.
 
         Args:
             document_id: Dokument-ID
@@ -164,7 +164,7 @@ class ExtendedAnnotationService:
         self,
         document_id: uuid_module.UUID,
     ) -> Sequence[BoundingBoxAnnotation]:
-        """Holt alle Bounding-Box-Annotationen fuer ein Dokument.
+        """Holt alle Bounding-Box-Annotationen für ein Dokument.
 
         Args:
             document_id: Dokument-ID
@@ -196,14 +196,14 @@ class ExtendedAnnotationService:
     ) -> bool:
         """Soft-Delete einer Bounding-Box-Annotation.
 
-        Nur der Ersteller kann seine eigene Annotation loeschen.
+        Nur der Ersteller kann seine eigene Annotation löschen.
 
         Args:
             annotation_id: Annotation-ID
             user_id: ID des anfragenden Benutzers
 
         Returns:
-            True wenn erfolgreich geloescht, False wenn nicht gefunden
+            True wenn erfolgreich gelöscht, False wenn nicht gefunden
         """
         query = select(BoundingBoxAnnotation).where(
             and_(
@@ -249,7 +249,7 @@ class ExtendedAnnotationService:
             author_id: Ersteller-ID
             content: Antwort-Inhalt
             mentions: Liste von erwaehnten User-UUIDs (als Strings)
-            parent_reply_id: Optionale Eltern-Antwort fuer Verschachtelung
+            parent_reply_id: Optionale Eltern-Antwort für Verschachtelung
 
         Returns:
             Erstellte CommentReply
@@ -257,7 +257,7 @@ class ExtendedAnnotationService:
         Raises:
             ValueError: Wenn Thread nicht existiert
         """
-        # Thread-Existenz pruefen
+        # Thread-Existenz prüfen
         thread_query = select(CommentThread).where(
             CommentThread.id == thread_id
         )
@@ -444,8 +444,8 @@ class ExtendedAnnotationService:
         """Verarbeitet @Mentions und sendet Benachrichtigungen.
 
         Args:
-            thread_id: Thread-ID fuer Kontext
-            reply_id: Reply-ID fuer Kontext
+            thread_id: Thread-ID für Kontext
+            reply_id: Reply-ID für Kontext
             author_id: ID des Erwaehnenden
             mentions: Liste von User-UUIDs (als Strings)
 
@@ -536,7 +536,7 @@ class ExtendedAnnotationService:
             title: Aufgabentitel
             created_by_user_id: Ersteller
             description: Optionale Beschreibung
-            due_date: Optionales Faelligkeitsdatum
+            due_date: Optionales Fälligkeitsdatum
 
         Returns:
             Erstellte CommentTask
@@ -544,7 +544,7 @@ class ExtendedAnnotationService:
         Raises:
             ValueError: Wenn Thread oder Benutzer nicht existiert
         """
-        # Thread-Existenz pruefen
+        # Thread-Existenz prüfen
         thread_query = select(CommentThread).where(
             CommentThread.id == thread_id
         )
@@ -612,7 +612,7 @@ class ExtendedAnnotationService:
         status: Optional[str] = None,
         limit: int = 50,
     ) -> Sequence[CommentTask]:
-        """Holt Aufgaben fuer einen Benutzer.
+        """Holt Aufgaben für einen Benutzer.
 
         Args:
             user_id: Benutzer-ID
@@ -630,7 +630,7 @@ class ExtendedAnnotationService:
             query = query.where(CommentTask.status == status)
 
         query = query.order_by(
-            # Offene Aufgaben zuerst, dann nach Faelligkeitsdatum
+            # Offene Aufgaben zuerst, dann nach Fälligkeitsdatum
             desc(CommentTask.status == CommentTaskStatus.OFFEN.value),
             CommentTask.due_date.asc().nullslast(),
             CommentTask.created_at.desc(),
@@ -650,19 +650,19 @@ class ExtendedAnnotationService:
         Args:
             task_id: Aufgaben-ID
             status: Neuer Status
-            user_id: ID des aenderenden Benutzers
+            user_id: ID des änderenden Benutzers
 
         Returns:
             Aktualisierte CommentTask oder None wenn nicht gefunden
 
         Raises:
-            ValueError: Bei ungueltigem Status
+            ValueError: Bei ungültigem Status
         """
         # Status validieren
         valid_statuses = {s.value for s in CommentTaskStatus}
         if status not in valid_statuses:
             raise ValueError(
-                f"Ungueltiger Status: {status}. "
+                f"Ungültiger Status: {status}. "
                 f"Erlaubt: {', '.join(valid_statuses)}"
             )
 
@@ -673,14 +673,14 @@ class ExtendedAnnotationService:
         if not task:
             return None
 
-        # Nur zugewiesener Benutzer oder Ersteller darf aendern
+        # Nur zugewiesener Benutzer oder Ersteller darf ändern
         if (
             task.assigned_to_user_id != user_id
             and task.created_by_user_id != user_id
         ):
             raise ValueError(
                 "Nur der zugewiesene Benutzer oder Ersteller kann "
-                "den Status aendern"
+                "den Status ändern"
             )
 
         old_status = task.status
@@ -689,7 +689,7 @@ class ExtendedAnnotationService:
         if status == CommentTaskStatus.ERLEDIGT.value:
             task.completed_at = utc_now()
         elif old_status == CommentTaskStatus.ERLEDIGT.value:
-            # Aufgabe wieder geoeffnet
+            # Aufgabe wieder geöffnet
             task.completed_at = None
 
         await self.db.flush()
@@ -705,10 +705,10 @@ class ExtendedAnnotationService:
         return task
 
     async def get_overdue_tasks(self) -> Sequence[CommentTask]:
-        """Holt alle ueberfaelligen Aufgaben.
+        """Holt alle überfälligen Aufgaben.
 
         Returns:
-            Liste von ueberfaelligen CommentTask-Objekten
+            Liste von überfälligen CommentTask-Objekten
         """
         now = utc_now()
         query = (

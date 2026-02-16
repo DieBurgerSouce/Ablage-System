@@ -2,7 +2,7 @@
 """
 DATEV Steuerberater-Paket Service.
 
-Vision 2026 Q4: Vollstaendiger DATEV-Export fuer Steuerberater.
+Vision 2026 Q4: Vollständiger DATEV-Export für Steuerberater.
 
 Features:
 - Buchungsstapel-Export (CSV)
@@ -79,7 +79,7 @@ class ExportFormat(str, Enum):
 
 
 class DocumentImageFormat(str, Enum):
-    """Format fuer Belegbilder."""
+    """Format für Belegbilder."""
     PDF = "pdf"
     TIFF = "tiff"
     JPEG = "jpeg"
@@ -91,7 +91,7 @@ class DocumentImageFormat(str, Enum):
 
 
 class SteuerberaterPackageDict(TypedDict):
-    """Typisiertes Dictionary fuer SteuerberaterPackage.to_dict()."""
+    """Typisiertes Dictionary für SteuerberaterPackage.to_dict()."""
     id: str
     company_id: str
     period_from: str
@@ -116,7 +116,7 @@ class SteuerberaterPackageDict(TypedDict):
 
 
 class ValidationSummaryDict(TypedDict):
-    """Typisiertes Dictionary fuer Validierungs-Zusammenfassung."""
+    """Typisiertes Dictionary für Validierungs-Zusammenfassung."""
     total_documents: int
     valid_documents: int
     invalid_documents: int
@@ -242,7 +242,7 @@ class PackageExportResult:
 # =============================================================================
 
 class DATEVValidationRules:
-    """Validierungsregeln fuer DATEV-Export."""
+    """Validierungsregeln für DATEV-Export."""
 
     REQUIRED_FIELDS = [
         "document_date",
@@ -279,18 +279,18 @@ class DATEVValidationRules:
 
         # Steuersatz validieren
         if doc.tax_rate not in DATEVValidationRules.VALID_TAX_RATES:
-            errors.append(f"Ungueltiger Steuersatz: {doc.tax_rate}%")
+            errors.append(f"Ungültiger Steuersatz: {doc.tax_rate}%")
 
-        # Beschreibung kuerzen
+        # Beschreibung kürzen
         if len(doc.description) > DATEVValidationRules.MAX_DESCRIPTION_LENGTH:
             errors.append(f"Beschreibung zu lang (max {DATEVValidationRules.MAX_DESCRIPTION_LENGTH} Zeichen)")
 
         # Kontonummern validieren (4-5 Stellen)
         if doc.account_debit and not (4 <= len(doc.account_debit) <= 5):
-            errors.append(f"Soll-Konto ungueltig: {doc.account_debit}")
+            errors.append(f"Soll-Konto ungültig: {doc.account_debit}")
 
         if doc.account_credit and not (4 <= len(doc.account_credit) <= 5):
-            errors.append(f"Haben-Konto ungueltig: {doc.account_credit}")
+            errors.append(f"Haben-Konto ungültig: {doc.account_credit}")
 
         return errors
 
@@ -301,7 +301,7 @@ class DATEVValidationRules:
 
 class SteuerberaterPackageService:
     """
-    Service fuer Steuerberater-Export-Pakete.
+    Service für Steuerberater-Export-Pakete.
 
     Orchestriert:
     - Paket-Erstellung mit Dokumenten
@@ -332,7 +332,7 @@ class SteuerberaterPackageService:
             period_to: Zeitraum-Ende
             created_by_id: Ersteller-ID
             kontenrahmen: SKR03 oder SKR04
-            include_images: Belegbilder einschliessen
+            include_images: Belegbilder einschließen
 
         Returns:
             Neues SteuerberaterPackage
@@ -424,7 +424,7 @@ class SteuerberaterPackageService:
             errors.append("Keine Dokumente im Paket")
 
         if package.period_from > package.period_to:
-            errors.append("Zeitraum ungueltig (Start nach Ende)")
+            errors.append("Zeitraum ungültig (Start nach Ende)")
 
         # Dokument-Level Validierung
         for doc in package.documents:
@@ -433,7 +433,7 @@ class SteuerberaterPackageService:
                 doc.validation_errors = doc_errors
                 document_errors[str(doc.document_id)] = doc_errors
 
-            # Zeitraum pruefen
+            # Zeitraum prüfen
             if doc.document_date < package.period_from or doc.document_date > package.period_to:
                 warnings.append(
                     f"Dokument {doc.document_number} ausserhalb Zeitraum ({doc.document_date})"
@@ -590,7 +590,7 @@ class SteuerberaterPackageService:
 
         Args:
             package_id: Paket-ID
-            include_images: Belegbilder einschliessen
+            include_images: Belegbilder einschließen
 
         Returns:
             Export-Ergebnis mit ZIP-Bytes
@@ -625,7 +625,7 @@ class SteuerberaterPackageService:
                 index_xml = self._generate_index_xml(package)
                 zf.writestr("Index.xml", index_xml.encode("utf-8"))
 
-                # 3. Belegbilder (wenn vorhanden und gewuenscht)
+                # 3. Belegbilder (wenn vorhanden und gewünscht)
                 if include_images and package.include_images:
                     for doc in package.documents:
                         if doc.image_path:
@@ -745,7 +745,7 @@ class SteuerberaterPackageService:
         """
         docs_xml = ""
         for doc in package.documents:
-            # SECURITY: XML-Escape fuer alle User-generierten Felder
+            # SECURITY: XML-Escape für alle User-generierten Felder
             docs_xml += f"""
     <Document>
       <DocumentId>{xml_escape(str(doc.document_id))}</DocumentId>
@@ -780,7 +780,7 @@ class SteuerberaterPackageService:
 
     def _generate_placeholder_pdf(self, doc: PackageDocument) -> bytes:
         """
-        Generiert ein Platzhalter-PDF fuer Tests.
+        Generiert ein Platzhalter-PDF für Tests.
 
         In Produktion: Echtes PDF aus Storage laden.
         """
@@ -829,7 +829,7 @@ startxref
         status: Optional[PackageStatus] = None,
     ) -> List[SteuerberaterPackage]:
         """
-        Listet Pakete fuer eine Company.
+        Listet Pakete für eine Company.
 
         Args:
             company_id: Company-ID
@@ -858,7 +858,7 @@ _service_instance: Optional[SteuerberaterPackageService] = None
 
 def get_steuerberater_package_service() -> SteuerberaterPackageService:
     """
-    Factory-Funktion fuer SteuerberaterPackageService.
+    Factory-Funktion für SteuerberaterPackageService.
 
     Returns:
         SteuerberaterPackageService Instanz

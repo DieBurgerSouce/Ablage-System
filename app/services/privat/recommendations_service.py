@@ -54,7 +54,7 @@ ACTIVE_RECOMMENDATIONS = Gauge(
 # =============================================================================
 
 class RecommendationPriority(str, Enum):
-    """Prioritaet einer Empfehlung."""
+    """Priorität einer Empfehlung."""
     CRITICAL = "kritisch"
     HIGH = "hoch"
     MEDIUM = "mittel"
@@ -76,7 +76,7 @@ class RecommendationCategory(str, Enum):
     RISK = "risiko"
 
 
-# Aktuelle Marktzinsen (statisch, sollte regelmaessig aktualisiert werden)
+# Aktuelle Marktzinsen (statisch, sollte regelmäßig aktualisiert werden)
 MARKET_INTEREST_RATES = {
     "hypothek": Decimal("3.8"),      # 10-Jahres Baufinanzierung
     "baufinanzierung": Decimal("3.8"),
@@ -89,7 +89,7 @@ MARKET_INTEREST_RATES = {
 }
 
 # Schwellenwerte
-REFINANCING_THRESHOLD = Decimal("1.0")  # 1% ueber Marktzins
+REFINANCING_THRESHOLD = Decimal("1.0")  # 1% über Marktzins
 EMERGENCY_FUND_MONTHS_MIN = 3
 EMERGENCY_FUND_MONTHS_RECOMMENDED = 6
 VALUE_UPDATE_THRESHOLD_DAYS = 180  # 6 Monate
@@ -133,10 +133,10 @@ class Recommendation:
 
 @dataclass
 class RecommendationsSummary:
-    """Zusammenfassung aller Empfehlungen fuer einen Space."""
+    """Zusammenfassung aller Empfehlungen für einen Space."""
     space_id: UUID
 
-    # Alle Empfehlungen nach Prioritaet
+    # Alle Empfehlungen nach Priorität
     critical: List[Recommendation]
     high: List[Recommendation]
     medium: List[Recommendation]
@@ -159,7 +159,7 @@ class RecommendationsSummary:
 
 class RecommendationsService:
     """
-    Singleton Service fuer intelligente Finanz-Empfehlungen.
+    Singleton Service für intelligente Finanz-Empfehlungen.
 
     Analysiert alle Finanzdaten und generiert priorisierte,
     umsetzbare Empfehlungen ohne externe APIs.
@@ -191,7 +191,7 @@ class RecommendationsService:
         db: AsyncSession,
         space_id: UUID,
     ) -> RecommendationsSummary:
-        """Generiert alle Empfehlungen fuer einen Space."""
+        """Generiert alle Empfehlungen für einen Space."""
         all_recommendations: List[Recommendation] = []
 
         # 1. Refinancing-Empfehlungen
@@ -202,7 +202,7 @@ class RecommendationsService:
         rebalancing_recs = await self._check_rebalancing_needs(db, space_id)
         all_recommendations.extend(rebalancing_recs)
 
-        # 3. Versicherungs-Luecken
+        # 3. Versicherungs-Lücken
         insurance_recs = await self._check_insurance_gaps(db, space_id)
         all_recommendations.extend(insurance_recs)
 
@@ -222,7 +222,7 @@ class RecommendationsService:
         vehicle_recs = await self._check_vehicle_maintenance(db, space_id)
         all_recommendations.extend(vehicle_recs)
 
-        # Nach Prioritaet sortieren
+        # Nach Priorität sortieren
         critical = [r for r in all_recommendations if r.priority == RecommendationPriority.CRITICAL]
         high = [r for r in all_recommendations if r.priority == RecommendationPriority.HIGH]
         medium = [r for r in all_recommendations if r.priority == RecommendationPriority.MEDIUM]
@@ -274,7 +274,7 @@ class RecommendationsService:
         db: AsyncSession,
         space_id: UUID,
     ) -> List[Recommendation]:
-        """Prueft auf Umschuldungs-Moeglichkeiten."""
+        """Prüft auf Umschuldungs-Möglichkeiten."""
         from app.db.models import PrivatLoan
 
         recommendations: List[Recommendation] = []
@@ -293,7 +293,7 @@ class RecommendationsService:
             market_rate = MARKET_INTEREST_RATES.get(loan_type, MARKET_INTEREST_RATES["default"])
             current_rate = loan.interest_rate or Decimal("0")
 
-            # Pruefe ob signifikant ueber Marktzins
+            # Prüfe ob signifikant über Marktzins
             rate_difference = current_rate - market_rate
 
             if rate_difference >= REFINANCING_THRESHOLD:
@@ -301,7 +301,7 @@ class RecommendationsService:
                 remaining = loan.current_balance or Decimal("0")
                 monthly_payment = loan.monthly_payment or Decimal("0")
 
-                # Geschaetzte Restlaufzeit
+                # Geschätzte Restlaufzeit
                 if monthly_payment > 0:
                     months_remaining = remaining / monthly_payment
                     annual_interest_current = remaining * (current_rate / 100)
@@ -319,10 +319,10 @@ class RecommendationsService:
                     id=f"refinancing_loan_{loan.id}",
                     category=RecommendationCategory.REFINANCING,
                     priority=priority,
-                    title=f"Umschuldung pruefen: {loan.name}",
+                    title=f"Umschuldung prüfen: {loan.name}",
                     description=(
-                        f"Ihr Kreditzins ({current_rate}%) liegt {rate_difference}% ueber dem "
-                        f"aktuellen Marktzins ({market_rate}%). Eine Umschuldung koennte sich lohnen."
+                        f"Ihr Kreditzins ({current_rate}%) liegt {rate_difference}% über dem "
+                        f"aktuellen Marktzins ({market_rate}%). Eine Umschuldung könnte sich lohnen."
                     ),
                     impact=f"Potenzielle Ersparnis: {total_savings or 'zu berechnen'} EUR",
                     resource_type="loan",
@@ -333,8 +333,8 @@ class RecommendationsService:
                     recommended_value=market_rate,
                     suggested_actions=[
                         "Holen Sie Angebote von anderen Banken ein",
-                        "Pruefen Sie die Vorfaelligkeitsentschaedigung",
-                        "Vergleichen Sie Gesamtkosten inkl. Umschuldungsgebuehren",
+                        "Prüfen Sie die Vorfälligkeitsentschaedigung",
+                        "Vergleichen Sie Gesamtkosten inkl. Umschuldungsgebühren",
                     ],
                 )
                 recommendations.append(rec)
@@ -355,7 +355,7 @@ class RecommendationsService:
         db: AsyncSession,
         space_id: UUID,
     ) -> List[Recommendation]:
-        """Prueft auf Portfolio-Rebalancing Bedarf."""
+        """Prüft auf Portfolio-Rebalancing Bedarf."""
         from app.services.privat.investment_intelligence_service import get_investment_intelligence_service
 
         recommendations: List[Recommendation] = []
@@ -378,7 +378,7 @@ class RecommendationsService:
                         priority=priority,
                         title=f"Portfolio-Rebalancing: {rebal.category.title()}",
                         description=(
-                            f"Die Allokation fuer '{rebal.category}' weicht um "
+                            f"Die Allokation für '{rebal.category}' weicht um "
                             f"{abs(rebal.difference)}% vom Ziel ab. "
                             f"Aktuell: {rebal.current_percentage}%, Ziel: {rebal.target_percentage}%"
                         ),
@@ -392,7 +392,7 @@ class RecommendationsService:
                         suggested_actions=[
                             f"{rebal.action.title()} Sie Investments in der Kategorie '{rebal.category}'",
                             f"Betroffene Typen: {', '.join(rebal.affected_types[:3]) if rebal.affected_types else 'keine spezifischen'}",
-                            "Pruefen Sie die Transaktionskosten vor der Umsetzung",
+                            "Prüfen Sie die Transaktionskosten vor der Umsetzung",
                         ],
                     )
                     recommendations.append(rec)
@@ -412,7 +412,7 @@ class RecommendationsService:
         return recommendations
 
     # =========================================================================
-    # Versicherungs-Luecken
+    # Versicherungs-Lücken
     # =========================================================================
 
     async def _check_insurance_gaps(
@@ -420,7 +420,7 @@ class RecommendationsService:
         db: AsyncSession,
         space_id: UUID,
     ) -> List[Recommendation]:
-        """Prueft auf Versicherungs-Luecken."""
+        """Prüft auf Versicherungs-Lücken."""
         from app.db.models import PrivatInsurance
 
         recommendations: List[Recommendation] = []
@@ -429,7 +429,7 @@ class RecommendationsService:
         essential = [
             ("haftpflicht", "Privathaftpflicht", RecommendationPriority.HIGH),
             ("hausrat", "Hausratversicherung", RecommendationPriority.MEDIUM),
-            ("berufsunfaehigkeit", "Berufsunfaehigkeitsversicherung", RecommendationPriority.HIGH),
+            ("berufsunfähigkeit", "Berufsunfähigkeitsversicherung", RecommendationPriority.HIGH),
         ]
 
         result = await db.execute(
@@ -442,7 +442,7 @@ class RecommendationsService:
         existing_types = [row[0].lower() for row in result.all()]
 
         for ins_type, ins_name, priority in essential:
-            # Pruefe verschiedene Schreibweisen
+            # Prüfe verschiedene Schreibweisen
             found = any(
                 ins_type in existing or existing in ins_type
                 for existing in existing_types
@@ -453,7 +453,7 @@ class RecommendationsService:
                     id=f"insurance_gap_{ins_type}_{space_id}",
                     category=RecommendationCategory.INSURANCE,
                     priority=priority,
-                    title=f"Versicherungs-Luecke: {ins_name}",
+                    title=f"Versicherungs-Lücke: {ins_name}",
                     description=(
                         f"Eine {ins_name} ist eine wichtige Absicherung, "
                         f"die in Ihrem Portfolio fehlt."
@@ -466,9 +466,9 @@ class RecommendationsService:
                     current_value=None,
                     recommended_value=None,
                     suggested_actions=[
-                        f"Informieren Sie sich ueber {ins_name}",
+                        f"Informieren Sie sich über {ins_name}",
                         "Holen Sie mehrere Angebote ein",
-                        "Pruefen Sie Deckungssummen und Ausschluesse",
+                        "Prüfen Sie Deckungssummen und Ausschluesse",
                     ],
                 )
                 recommendations.append(rec)
@@ -489,7 +489,7 @@ class RecommendationsService:
         db: AsyncSession,
         space_id: UUID,
     ) -> List[Recommendation]:
-        """Prueft die Notgroschen-Reserve."""
+        """Prüft die Notgroschen-Reserve."""
         from app.db.models import PrivatInvestment
 
         recommendations: List[Recommendation] = []
@@ -505,7 +505,7 @@ class RecommendationsService:
         )
         liquid_assets = Decimal(str(result.scalar() or 0))
 
-        # Geschaetzte monatliche Ausgaben (Fallback: 2500 EUR)
+        # Geschätzte monatliche Ausgaben (Fallback: 2500 EUR)
         estimated_monthly_expenses = Decimal("2500")
 
         months_covered = liquid_assets / estimated_monthly_expenses if estimated_monthly_expenses > 0 else Decimal("0")
@@ -533,9 +533,9 @@ class RecommendationsService:
                 current_value=liquid_assets,
                 recommended_value=target_amount,
                 suggested_actions=[
-                    f"Sparen Sie {gap:.0f} EUR fuer einen vollstaendigen Notgroschen",
+                    f"Sparen Sie {gap:.0f} EUR für einen vollständigen Notgroschen",
                     "Richten Sie einen Dauerauftrag auf ein Tagesgeldkonto ein",
-                    "Priorisieren Sie Liquiditaet vor Rendite fuer diesen Betrag",
+                    "Priorisieren Sie Liquiditaet vor Rendite für diesen Betrag",
                 ],
             )
             recommendations.append(rec)
@@ -556,7 +556,7 @@ class RecommendationsService:
         db: AsyncSession,
         space_id: UUID,
     ) -> List[Recommendation]:
-        """Prueft auf anstehende wichtige Fristen."""
+        """Prüft auf anstehende wichtige Fristen."""
         from app.db.models import PrivatDeadline
 
         recommendations: List[Recommendation] = []
@@ -581,7 +581,7 @@ class RecommendationsService:
             for deadline in deadlines:
                 days_until = (deadline.due_date - today).days
 
-                # Prioritaet basierend auf verbleibenden Tagen
+                # Priorität basierend auf verbleibenden Tagen
                 if days_until <= 7:
                     priority = RecommendationPriority.CRITICAL
                 elif days_until <= 14:
@@ -630,7 +630,7 @@ class RecommendationsService:
         db: AsyncSession,
         space_id: UUID,
     ) -> List[Recommendation]:
-        """Prueft auf veraltete Wert-Angaben."""
+        """Prüft auf veraltete Wert-Angaben."""
         from app.db.models import PrivatProperty, PrivatInvestment
 
         recommendations: List[Recommendation] = []
@@ -660,10 +660,10 @@ class RecommendationsService:
                 priority=RecommendationPriority.LOW,
                 title=f"Wert aktualisieren: {prop.name}",
                 description=(
-                    f"Der Wert dieser Immobilie wurde laenger als "
+                    f"Der Wert dieser Immobilie wurde länger als "
                     f"{VALUE_UPDATE_THRESHOLD_DAYS} Tage nicht aktualisiert."
                 ),
-                impact="Aktuelle Werte verbessern Ihre Finanzuebersicht",
+                impact="Aktuelle Werte verbessern Ihre Finanzübersicht",
                 resource_type="property",
                 resource_id=prop.id,
                 resource_name=prop.name,
@@ -671,7 +671,7 @@ class RecommendationsService:
                 current_value=prop.current_value,
                 recommended_value=None,
                 suggested_actions=[
-                    "Aktualisieren Sie den geschaetzten Marktwert",
+                    "Aktualisieren Sie den geschätzten Marktwert",
                     "Nutzen Sie Online-Immobilienbewertungen als Referenz",
                 ],
             )
@@ -698,10 +698,10 @@ class RecommendationsService:
                 priority=RecommendationPriority.LOW,
                 title=f"Wert aktualisieren: {inv.name}",
                 description=(
-                    f"Der Wert dieses Investments wurde laenger als "
+                    f"Der Wert dieses Investments wurde länger als "
                     f"{VALUE_UPDATE_THRESHOLD_DAYS} Tage nicht aktualisiert."
                 ),
-                impact="Aktuelle Werte fuer bessere Portfolio-Analyse",
+                impact="Aktuelle Werte für bessere Portfolio-Analyse",
                 resource_type="investment",
                 resource_id=inv.id,
                 resource_name=inv.name,
@@ -709,7 +709,7 @@ class RecommendationsService:
                 current_value=inv.current_value,
                 recommended_value=None,
                 suggested_actions=[
-                    "Pruefen Sie den aktuellen Kurs/Wert",
+                    "Prüfen Sie den aktuellen Kurs/Wert",
                     "Aktualisieren Sie den Wert in der App",
                 ],
             )
@@ -726,7 +726,7 @@ class RecommendationsService:
         db: AsyncSession,
         space_id: UUID,
     ) -> List[Recommendation]:
-        """Prueft auf anstehende Fahrzeug-Wartung."""
+        """Prüft auf anstehende Fahrzeug-Wartung."""
         from app.db.models import PrivatVehicle
 
         recommendations: List[Recommendation] = []
@@ -749,7 +749,7 @@ class RecommendationsService:
                 if days_until_tuev <= 30:
                     priority = RecommendationPriority.CRITICAL if days_until_tuev <= 7 else RecommendationPriority.HIGH
                     if days_until_tuev < 0:
-                        title = f"TUeV ueberfaellig: {vehicle.name}"
+                        title = f"TUeV überfällig: {vehicle.name}"
                         description = f"Der TUeV ist seit {abs(days_until_tuev)} Tagen abgelaufen!"
                         priority = RecommendationPriority.CRITICAL
                     else:
@@ -771,7 +771,7 @@ class RecommendationsService:
                         recommended_value=None,
                         suggested_actions=[
                             "TUeV-Termin vereinbaren",
-                            "Fahrzeug auf offensichtliche Maengel pruefen",
+                            "Fahrzeug auf offensichtliche Maengel prüfen",
                         ],
                     )
                     recommendations.append(rec)
@@ -790,8 +790,8 @@ class RecommendationsService:
                         category=RecommendationCategory.DEADLINE,
                         priority=priority,
                         title=f"Inspektion in {days_until_inspection} Tagen: {vehicle.name}",
-                        description=f"Naechste Inspektion am {vehicle.inspection_due}",
-                        impact="Regelmaessige Wartung erhaelt den Fahrzeugwert",
+                        description=f"Nächste Inspektion am {vehicle.inspection_due}",
+                        impact="Regelmäßige Wartung erhält den Fahrzeugwert",
                         resource_type="vehicle",
                         resource_id=vehicle.id,
                         resource_name=vehicle.name,
@@ -808,14 +808,14 @@ class RecommendationsService:
         return recommendations
 
     # =========================================================================
-    # Batch-Operationen fuer Celery
+    # Batch-Operationen für Celery
     # =========================================================================
 
     async def generate_all_recommendations(
         self,
         db: AsyncSession,
     ) -> Dict[str, Any]:
-        """Generiert Empfehlungen fuer alle Spaces (fuer Celery Beat)."""
+        """Generiert Empfehlungen für alle Spaces (für Celery Beat)."""
         from app.db.models import PrivatSpace
 
 
@@ -862,5 +862,5 @@ class RecommendationsService:
 # =============================================================================
 
 def get_recommendations_service() -> RecommendationsService:
-    """Gibt die Singleton-Instanz des Recommendations Service zurueck."""
+    """Gibt die Singleton-Instanz des Recommendations Service zurück."""
     return RecommendationsService()

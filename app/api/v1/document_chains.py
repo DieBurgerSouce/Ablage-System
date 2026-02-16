@@ -2,8 +2,8 @@
 """
 Document Chain API Endpoints.
 
-REST API fuer Auftragsketten-Tracking:
-- Verknuepfung von Dokumenten (Angebot → Auftrag → Lieferschein → Rechnung)
+REST API für Auftragsketten-Tracking:
+- Verknüpfung von Dokumenten (Angebot → Auftrag → Lieferschein → Rechnung)
 - Automatische Erkennung zusammengehoeriger Dokumente
 - Differenz-Erkennung zwischen Dokumenten
 - Chain-Visualisierung
@@ -60,7 +60,7 @@ async def create_chain(
 
     **Response:**
     - chain_id: Die ID der erstellten Kette
-    - document_count: Anzahl der verknuepften Dokumente
+    - document_count: Anzahl der verknüpften Dokumente
     """
     if not document_ids:
         raise HTTPException(
@@ -75,7 +75,7 @@ async def create_chain(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # SECURITY: Pruefen ob alle Dokumente dem User gehoeren
+    # SECURITY: Prüfen ob alle Dokumente dem User gehoeren
     for doc_id in document_ids:
         result = await db.execute(
             select(Document).where(
@@ -198,7 +198,7 @@ async def get_chain_by_document(
     """
     Findet die Auftragskette eines Dokuments.
 
-    Falls das Dokument keiner Kette zugeordnet ist, wird ein leeres Ergebnis zurueckgegeben.
+    Falls das Dokument keiner Kette zugeordnet ist, wird ein leeres Ergebnis zurückgegeben.
     """
     company_id = current_user.company_id
     if not company_id:
@@ -207,7 +207,7 @@ async def get_chain_by_document(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # SECURITY: Pruefen ob Dokument dem User gehoert
+    # SECURITY: Prüfen ob Dokument dem User gehoert
     result = await db.execute(
         select(Document).where(
             Document.id == document_id,
@@ -257,8 +257,8 @@ async def get_chain_by_document(
 @router.post(
     "/link",
     status_code=status.HTTP_201_CREATED,
-    summary="Dokumente verknuepfen",
-    description="Verknuepft zwei Dokumente miteinander"
+    summary="Dokumente verknüpfen",
+    description="Verknüpft zwei Dokumente miteinander"
 )
 async def link_documents(
     source_document_id: UUID,
@@ -271,7 +271,7 @@ async def link_documents(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Verknuepft zwei Dokumente in einer Auftragskette.
+    Verknüpft zwei Dokumente in einer Auftragskette.
 
     **Beziehungstypen:**
     - quote_to_order: Angebot → Auftrag
@@ -295,10 +295,10 @@ async def link_documents(
         valid_types = [t.value for t in RelationshipType]
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Beziehungstyp. Erlaubt: {', '.join(valid_types)}"
+            detail=f"Ungültiger Beziehungstyp. Erlaubt: {', '.join(valid_types)}"
         )
 
-    # SECURITY: Pruefen ob beide Dokumente dem User gehoeren
+    # SECURITY: Prüfen ob beide Dokumente dem User gehoeren
     for doc_id in [source_document_id, target_document_id]:
         result = await db.execute(
             select(Document).where(
@@ -345,7 +345,7 @@ async def link_documents(
         "source_document_id": str(source_document_id),
         "target_document_id": str(target_document_id),
         "relationship_type": relationship_type,
-        "message": "Dokumente erfolgreich verknuepft",
+        "message": "Dokumente erfolgreich verknüpft",
     }
 
 
@@ -369,11 +369,11 @@ async def auto_match_documents(
 
     **Matching-Strategien:**
     - Referenznummern (Bestellnummer, Angebotsnummer)
-    - Kundennummer + aehnlicher Betrag
+    - Kundennummer + ähnlicher Betrag
     - Textanalyse
 
     **Response:**
-    - matches: Liste moeglicher Matches mit Konfidenz
+    - matches: Liste möglicher Matches mit Konfidenz
     """
     company_id = current_user.company_id
     if not company_id:
@@ -382,7 +382,7 @@ async def auto_match_documents(
             detail="Benutzer hat keine Firmenzuordnung"
         )
 
-    # SECURITY: Pruefen ob Dokument dem User gehoert
+    # SECURITY: Prüfen ob Dokument dem User gehoert
     result = await db.execute(
         select(Document).where(
             Document.id == document_id,
@@ -447,8 +447,8 @@ async def get_chain_discrepancies(
 
     **Schweregrade:**
     - info: Harmlos
-    - warning: Pruefung empfohlen
-    - error: Muss geprueft werden
+    - warning: Prüfung empfohlen
+    - error: Muss geprüft werden
     - critical: Blockiert Workflow
     """
     company_id = current_user.company_id
@@ -457,7 +457,7 @@ async def get_chain_discrepancies(
 
     chain_service = DocumentChainService()
 
-    # Erst pruefen ob Chain existiert und zugaenglich ist
+    # Erst prüfen ob Chain existiert und zugaenglich ist
     chain = await chain_service.get_chain(db=db, chain_id=chain_id, company_id=company_id)
     if not chain:
         raise HTTPException(
@@ -465,7 +465,7 @@ async def get_chain_discrepancies(
             detail="Auftragskette nicht gefunden"
         )
 
-    # SECURITY: Multi-Tenant Isolation - company_id uebergeben!
+    # SECURITY: Multi-Tenant Isolation - company_id übergeben!
     discrepancies = await chain_service.get_chain_discrepancies(
         db=db,
         chain_id=chain_id,
@@ -498,7 +498,7 @@ async def get_chain_discrepancies(
 @router.post(
     "/discrepancies/{discrepancy_id}/resolve",
     summary="Abweichung als geloest markieren",
-    description="Markiert eine Abweichung als geprueft und geloest"
+    description="Markiert eine Abweichung als geprüft und geloest"
 )
 async def resolve_discrepancy(
     discrepancy_id: UUID,
@@ -509,10 +509,10 @@ async def resolve_discrepancy(
     """
     Markiert eine Abweichung als geloest.
 
-    Die Abweichung wird nicht geloescht, sondern nur als "resolved" markiert
+    Die Abweichung wird nicht gelöscht, sondern nur als "resolved" markiert
     mit Timestamp und User-Referenz.
 
-    SECURITY: Multi-Tenant Isolation - nur Abweichungen der eigenen Firma koennen geloest werden.
+    SECURITY: Multi-Tenant Isolation - nur Abweichungen der eigenen Firma können geloest werden.
     """
     # SECURITY: Multi-Tenant Isolation
     company_id = current_user.company_id
@@ -566,9 +566,9 @@ async def resolve_discrepancy(
 )
 async def list_chains(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     has_discrepancies: Optional[bool] = Query(None, description="Nur Ketten mit/ohne Abweichungen"),
-    is_complete: Optional[bool] = Query(None, description="Nur vollstaendige/unvollstaendige Ketten"),
+    is_complete: Optional[bool] = Query(None, description="Nur vollständige/unvollständige Ketten"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -583,7 +583,7 @@ async def list_chains(
     if not company_id:
         return {"chains": [], "total": 0, "page": page, "per_page": per_page}
 
-    # Query ueber die View v_document_chains
+    # Query über die View v_document_chains
     query = """
         SELECT
             chain_id,
@@ -637,7 +637,7 @@ async def list_chains(
 
     return {
         "chains": chains,
-        "total": len(chains),  # Fuer echte Pagination: COUNT(*) Query
+        "total": len(chains),  # Für echte Pagination: COUNT(*) Query
         "page": page,
         "per_page": per_page,
     }

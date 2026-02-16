@@ -1,18 +1,18 @@
 """Finance Service - Jahr-basierte Finanz-Dokumentenverwaltung.
 
-Enthaelt:
+Enthält:
 - get_finance_years: Alle Jahre mit Dokument-Aggregationen
-- get_year_details: Details fuer ein Jahr
+- get_year_details: Details für ein Jahr
 - get_overall_aggregations: Gesamt-Aggregationen
-- get_year_aggregations: Aggregationen fuer ein Jahr
+- get_year_aggregations: Aggregationen für ein Jahr
 - get_category_documents: Dokumente einer Kategorie
-- get_category_aggregations: Aggregationen fuer eine Kategorie
+- get_category_aggregations: Aggregationen für eine Kategorie
 
 Finanz-Kategorien (18 in 4 Paketen):
 - Steuern: Grundabgabenbescheid, Steuerbescheide, Vorauszahlungen, etc.
 - Personal: Lohn/Gehalt, Sozialversicherung, etc.
 - Versicherung: Betriebshaftpflicht, KFZ, etc.
-- Bank: Kontoauszuege, Kreditvertraege, etc.
+- Bank: Kontoauszuege, Kreditverträge, etc.
 """
 
 import math
@@ -84,13 +84,13 @@ FINANCE_CATEGORY_TO_DOCTYPE: Dict[str, DocumentType] = {
     "grundabgabenbescheid": DocumentType.TAX_ASSESSMENT,
     "steuerbescheide": DocumentType.TAX_NOTICE,
     "vorauszahlungen": DocumentType.TAX_PREPAYMENT,
-    "steuererklaerungen": DocumentType.TAX_RETURN,
+    "steuererklärungen": DocumentType.TAX_RETURN,
     "finanzamt_korrespondenz": DocumentType.TAX_CORRESPONDENCE,
     # Personal-Paket
     "lohn_gehalt": DocumentType.PAYROLL,
     "sozialversicherung": DocumentType.SOCIAL_SECURITY,
     "berufsgenossenschaft": DocumentType.TRADE_ASSOCIATION,
-    "arbeitsvertraege": DocumentType.CONTRACT,
+    "arbeitsverträge": DocumentType.CONTRACT,
     # Versicherungs-Paket
     "betriebshaftpflicht": DocumentType.CONTRACT,
     "sachversicherungen": DocumentType.CONTRACT,
@@ -98,7 +98,7 @@ FINANCE_CATEGORY_TO_DOCTYPE: Dict[str, DocumentType] = {
     "rechtsschutz": DocumentType.CONTRACT,
     # Bank-Paket
     "kontoauszuege": DocumentType.BANK_STATEMENT,
-    "kreditvertraege": DocumentType.CONTRACT,
+    "kreditverträge": DocumentType.CONTRACT,
     "buergschaften": DocumentType.CONTRACT,
     "darlehen": DocumentType.CONTRACT,
 }
@@ -122,18 +122,18 @@ CATEGORY_TO_PACKAGE: Dict[str, str] = {
     "grundabgabenbescheid": "steuern",
     "steuerbescheide": "steuern",
     "vorauszahlungen": "steuern",
-    "steuererklaerungen": "steuern",
+    "steuererklärungen": "steuern",
     "finanzamt_korrespondenz": "steuern",
     "lohn_gehalt": "personal",
     "sozialversicherung": "personal",
     "berufsgenossenschaft": "personal",
-    "arbeitsvertraege": "personal",
+    "arbeitsverträge": "personal",
     "betriebshaftpflicht": "versicherung",
     "sachversicherungen": "versicherung",
     "kfz_versicherung": "versicherung",
     "rechtsschutz": "versicherung",
     "kontoauszuege": "bank",
-    "kreditvertraege": "bank",
+    "kreditverträge": "bank",
     "buergschaften": "bank",
     "darlehen": "bank",
 }
@@ -170,20 +170,20 @@ async def log_finance_history(
     user_agent: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
 ) -> None:
-    """Loggt eine Aenderung an einem Finanz-Dokument.
+    """Loggt eine Änderung an einem Finanz-Dokument.
 
     Args:
         db: Datenbank-Session
         document_id: ID des betroffenen Dokuments
-        user_id: ID des Benutzers (kann None sein fuer System-Aktionen)
+        user_id: ID des Benutzers (kann None sein für System-Aktionen)
         action: Aktionstyp (created, updated, deleted, etc.)
         old_values: Vorherige Werte (bei Updates)
         new_values: Neue Werte (bei Updates)
-        changed_fields: Liste der geaenderten Felder
+        changed_fields: Liste der geänderten Felder
         description: Menschenlesbare Beschreibung (auf Deutsch)
         ip_address: IP-Adresse des Benutzers
         user_agent: Browser/Client Info
-        metadata: Zusaetzliche Kontext-Informationen
+        metadata: Zusätzliche Kontext-Informationen
     """
     from app.db.models import FinanceDocumentHistory
 
@@ -221,10 +221,10 @@ async def log_finance_history(
 
 
 class FinanceService(DocumentServiceBase):
-    """Service fuer Jahr-basierte Finanz-Dokumentenverwaltung.
+    """Service für Jahr-basierte Finanz-Dokumentenverwaltung.
 
-    Ermoeglicht gefilterte Dokumentenlisten und Aggregationen
-    fuer die Finanzen-Ansicht im Frontend.
+    Ermöglicht gefilterte Dokumentenlisten und Aggregationen
+    für die Finanzen-Ansicht im Frontend.
     """
 
     def __init__(self) -> None:
@@ -244,7 +244,7 @@ class FinanceService(DocumentServiceBase):
 
         Args:
             db: Datenbank-Session
-            user_id: ID des Benutzers (fuer Zugriffskontrolle)
+            user_id: ID des Benutzers (für Zugriffskontrolle)
 
         Returns:
             FinanceYearListResponse mit allen Jahren
@@ -272,7 +272,7 @@ class FinanceService(DocumentServiceBase):
         for row in rows:
             year_int = int(row.year)
 
-            # Hole Kategorie-Counts fuer dieses Jahr
+            # Hole Kategorie-Counts für dieses Jahr
             category_counts = await self._get_year_category_counts(db, user_id, year_int)
 
             # Berechne Aggregationen
@@ -300,7 +300,7 @@ class FinanceService(DocumentServiceBase):
         user_id: UUID,
         year: int,
     ) -> Optional[FinanceYearResponse]:
-        """Details fuer ein spezifisches Jahr abrufen.
+        """Details für ein spezifisches Jahr abrufen.
 
         Args:
             db: Datenbank-Session
@@ -310,7 +310,7 @@ class FinanceService(DocumentServiceBase):
         Returns:
             FinanceYearResponse oder None wenn keine Dokumente
         """
-        # Pruefe ob Dokumente fuer dieses Jahr existieren
+        # Prüfe ob Dokumente für dieses Jahr existieren
         count_query = (
             select(func.count(Document.id))
             .where(Document.owner_id == user_id)
@@ -366,7 +366,7 @@ class FinanceService(DocumentServiceBase):
         db: AsyncSession,
         user_id: UUID,
     ) -> FinanceAggregationsResponse:
-        """Gesamt-Aggregationen ueber alle Jahre.
+        """Gesamt-Aggregationen über alle Jahre.
 
         Args:
             db: Datenbank-Session
@@ -375,7 +375,7 @@ class FinanceService(DocumentServiceBase):
         Returns:
             FinanceAggregationsResponse mit Gesamt-Statistiken
         """
-        # Basis-Query fuer Finanz-Dokumente
+        # Basis-Query für Finanz-Dokumente
         base_query = (
             select(Document)
             .where(Document.owner_id == user_id)
@@ -421,7 +421,7 @@ class FinanceService(DocumentServiceBase):
         user_id: UUID,
         year: int,
     ) -> FinanceAggregationsResponse:
-        """Aggregationen fuer ein spezifisches Jahr.
+        """Aggregationen für ein spezifisches Jahr.
 
         Args:
             db: Datenbank-Session
@@ -431,7 +431,7 @@ class FinanceService(DocumentServiceBase):
         Returns:
             FinanceAggregationsResponse mit Jahr-Statistiken
         """
-        # Gesamt-Anzahl fuer Jahr
+        # Gesamt-Anzahl für Jahr
         count_result = await db.execute(
             select(func.count(Document.id))
             .where(Document.owner_id == user_id)
@@ -474,7 +474,7 @@ class FinanceService(DocumentServiceBase):
         user_id: UUID,
         filter_params: FinanceCategoryFilter,
     ) -> FinanceCategoryDocumentListResponse:
-        """Dokumente fuer eine Finanz-Kategorie abrufen.
+        """Dokumente für eine Finanz-Kategorie abrufen.
 
         Args:
             db: Datenbank-Session
@@ -512,7 +512,7 @@ class FinanceService(DocumentServiceBase):
         if filter_params.date_to:
             conditions.append(Document.created_at <= filter_params.date_to)
 
-        # Betragsfilter (aus extracted_data) - PostgreSQL JSONB ->> fuer Text-Extraktion
+        # Betragsfilter (aus extracted_data) - PostgreSQL JSONB ->> für Text-Extraktion
         if filter_params.amount_min is not None:
             conditions.append(
                 sql_cast(jsonb_text("extracted_data", "total_amount"), Float) >= filter_params.amount_min
@@ -549,7 +549,7 @@ class FinanceService(DocumentServiceBase):
         # Tags eager-loaden
         query = query.options(selectinload(Document.tags))
 
-        # Ausfuehren
+        # Ausführen
         result = await db.execute(query)
         documents = result.scalars().all()
 
@@ -570,7 +570,7 @@ class FinanceService(DocumentServiceBase):
         year: int,
         category: str,
     ) -> FinanceCategoryAggregations:
-        """Aggregationen fuer eine Finanz-Kategorie.
+        """Aggregationen für eine Finanz-Kategorie.
 
         Args:
             db: Datenbank-Session
@@ -636,7 +636,7 @@ class FinanceService(DocumentServiceBase):
         user_id: UUID,
         year: int,
     ) -> Dict[str, int]:
-        """Hole Dokument-Counts pro Kategorie fuer ein Jahr."""
+        """Hole Dokument-Counts pro Kategorie für ein Jahr."""
         query = (
             select(
                 Document.document_type,
@@ -652,7 +652,7 @@ class FinanceService(DocumentServiceBase):
         result = await db.execute(query)
         rows = result.all()
 
-        # Konvertiere DocumentType zurueck zu Kategorie-Slug
+        # Konvertiere DocumentType zurück zu Kategorie-Slug
         counts: Dict[str, int] = {}
         doctype_to_category = {v.value: k for k, v in FINANCE_CATEGORY_TO_DOCTYPE.items()}
 
@@ -669,7 +669,7 @@ class FinanceService(DocumentServiceBase):
         user_id: UUID,
         year: int,
     ) -> Dict[str, Any]:
-        """Berechne Aggregationen fuer ein Jahr."""
+        """Berechne Aggregationen für ein Jahr."""
         amounts = await self._calculate_amounts(db, user_id, year)
         deadlines = await self._calculate_deadlines(db, user_id, year)
 
@@ -687,10 +687,10 @@ class FinanceService(DocumentServiceBase):
     ) -> Dict[str, float]:
         """Berechne Nachzahlung/Erstattung-Summen aus JSONB.
 
-        Nutzt SQL-Aggregation fuer Performance statt Python-Loop.
-        PostgreSQL JSONB ->> Operator fuer Text-Extraktion.
+        Nutzt SQL-Aggregation für Performance statt Python-Loop.
+        PostgreSQL JSONB ->> Operator für Text-Extraktion.
         """
-        # T.1 SECURITY FIX: Parameterisierte Query statt f-string fuer year
+        # T.1 SECURITY FIX: Parameterisierte Query statt f-string für year
         # Baue IN-Clause als String (PostgreSQL-kompatibel) - doc_types sind Konstanten
         doc_types_str = ", ".join(f"'{dt}'" for dt in FINANCE_DOCUMENT_TYPES)
 
@@ -698,7 +698,7 @@ class FinanceService(DocumentServiceBase):
         year_clause = "AND EXTRACT(YEAR FROM created_at) = :year" if year is not None else ""
 
         # Aggregiere Nachzahlung und Erstattung in einer Query
-        # COALESCE fuer NULL-Handling, NULLIF fuer leere Strings
+        # COALESCE für NULL-Handling, NULLIF für leere Strings
         query = text(f"""
             SELECT
                 COALESCE(SUM(
@@ -745,9 +745,9 @@ class FinanceService(DocumentServiceBase):
     ) -> Dict[str, int]:
         """Berechne Fristen-Counts direkt in SQL (Performance-optimiert).
 
-        Nutzt PostgreSQL JSONB ->> Operator fuer Datum-Vergleich.
+        Nutzt PostgreSQL JSONB ->> Operator für Datum-Vergleich.
         """
-        # T.1 SECURITY FIX: Parameterisierte Query statt f-string fuer year
+        # T.1 SECURITY FIX: Parameterisierte Query statt f-string für year
         # Baue IN-Clause als String (PostgreSQL-kompatibel) - doc_types sind Konstanten
         doc_types_str = ", ".join(f"'{dt}'" for dt in FINANCE_DOCUMENT_TYPES)
 
@@ -854,7 +854,7 @@ class FinanceService(DocumentServiceBase):
         year: int,
         category: str,
     ) -> Dict[str, float]:
-        """Berechne Nachzahlung/Erstattung fuer eine Kategorie."""
+        """Berechne Nachzahlung/Erstattung für eine Kategorie."""
         if category not in CATEGORIES_WITH_AMOUNTS:
             return {"nachzahlung": 0.0, "erstattung": 0.0}
 
@@ -868,7 +868,7 @@ class FinanceService(DocumentServiceBase):
             doc_type = FINANCE_CATEGORY_TO_DOCTYPE[category]
             conditions.append(Document.document_type == doc_type.value)
 
-        # Query fuer Nachzahlung/Erstattung mit PostgreSQL JSONB ->> Operator
+        # Query für Nachzahlung/Erstattung mit PostgreSQL JSONB ->> Operator
         nachzahlung_query = (
             select(
                 func.coalesce(
@@ -909,9 +909,9 @@ class FinanceService(DocumentServiceBase):
         year: int,
         category: str,
     ) -> Dict[str, int]:
-        """Berechne Fristen fuer eine Kategorie (SQL-optimiert).
+        """Berechne Fristen für eine Kategorie (SQL-optimiert).
 
-        Nutzt PostgreSQL JSONB ->> Operator fuer Datum-Vergleich.
+        Nutzt PostgreSQL JSONB ->> Operator für Datum-Vergleich.
         """
         if category not in CATEGORIES_WITH_DEADLINES:
             return {"pending": 0, "overdue": 0}
@@ -1066,7 +1066,7 @@ class FinanceService(DocumentServiceBase):
         return None
 
     def _get_thumbnail_url(self, doc: Document) -> Optional[str]:
-        """Generiert Thumbnail-URL fuer Dokument."""
+        """Generiert Thumbnail-URL für Dokument."""
         if not doc.storage_path:
             return None
 
@@ -1075,7 +1075,7 @@ class FinanceService(DocumentServiceBase):
         return f"/api/v1/documents/{doc.id}/thumbnail"
 
     def _get_preview_url(self, doc: Document) -> Optional[str]:
-        """Generiert Preview-URL fuer Dokument."""
+        """Generiert Preview-URL für Dokument."""
         if not doc.storage_path:
             return None
 
@@ -1098,7 +1098,7 @@ class FinanceService(DocumentServiceBase):
 
         Args:
             db: Datenbank-Session
-            user_id: ID des Benutzers (fuer Zugriffskontrolle)
+            user_id: ID des Benutzers (für Zugriffskontrolle)
             document_id: ID des Dokuments
             update_data: Dictionary mit zu aktualisierenden Feldern
 
@@ -1118,7 +1118,7 @@ class FinanceService(DocumentServiceBase):
         if not document:
             return None
 
-        # Extrahiere Kategorie-Aenderung
+        # Extrahiere Kategorie-Änderung
         new_category = update_data.pop("category", None)
         if new_category and new_category in FINANCE_CATEGORY_TO_DOCTYPE:
             document.document_type = FINANCE_CATEGORY_TO_DOCTYPE[new_category].value
@@ -1155,7 +1155,7 @@ class FinanceService(DocumentServiceBase):
                     value = value.value
                 document.extracted_data[json_key] = value
 
-        # Markiere extracted_data als geaendert (JSONB)
+        # Markiere extracted_data als geändert (JSONB)
         from sqlalchemy.orm.attributes import flag_modified
         flag_modified(document, "extracted_data")
 
@@ -1179,7 +1179,7 @@ class FinanceService(DocumentServiceBase):
         user_id: UUID,
         document_id: UUID,
     ) -> Optional[Document]:
-        """Loescht ein Finanz-Dokument (Soft-Delete).
+        """Löscht ein Finanz-Dokument (Soft-Delete).
 
         Args:
             db: Datenbank-Session
@@ -1187,7 +1187,7 @@ class FinanceService(DocumentServiceBase):
             document_id: ID des Dokuments
 
         Returns:
-            Geloeschtes Document oder None wenn nicht gefunden
+            Gelöschtes Document oder None wenn nicht gefunden
         """
         query = (
             select(Document)

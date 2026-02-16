@@ -38,7 +38,7 @@ except ImportError:
     VAULT_AVAILABLE = False
     hvac = None  # type: ignore
     logger.debug(
-        "vault_client_nicht_verfuegbar",
+        "vault_client_nicht_verfügbar",
         message="hvac nicht installiert, Vault-Integration deaktiviert",
     )
 
@@ -144,7 +144,7 @@ class VaultClient:
             logger.warning(
                 "vault_verbindung_fehlgeschlagen",
                 reason="hvac nicht installiert",
-                message="Vault-Verbindung nicht moeglich ohne hvac-Bibliothek",
+                message="Vault-Verbindung nicht möglich ohne hvac-Bibliothek",
             )
             return False
 
@@ -220,10 +220,10 @@ class VaultClient:
 
         cache_key = f"{mount_point}/{path}"
 
-        # SECURITY FIX: Check cache mit TTL-Pruefung
+        # SECURITY FIX: Check cache mit TTL-Prüfung
         if use_cache and cache_key in self._secret_cache:
             cached_data, cached_time = self._secret_cache[cache_key]
-            # Pruefe ob Cache noch gueltig ist
+            # Prüfe ob Cache noch gültig ist
             if (time.time() - cached_time) < self._cache_ttl_seconds:
                 if key:
                     return cached_data.get("data", {}).get("data", {}).get(key)
@@ -340,7 +340,7 @@ class VaultClient:
             logger.warning(
                 "vault_transit_encrypt_kein_ciphertext",
                 key_name=key_name,
-                message="Verschluesselung gab keinen Ciphertext zurueck",
+                message="Verschluesselung gab keinen Ciphertext zurück",
             )
             return None
 
@@ -410,7 +410,7 @@ class VaultClient:
             logger.warning(
                 "vault_transit_decrypt_kein_plaintext",
                 key_name=key_name,
-                message="Entschluesselung gab keinen Plaintext zurueck",
+                message="Entschluesselung gab keinen Plaintext zurück",
             )
             return None
 
@@ -480,7 +480,7 @@ class VaultClient:
             logger.warning(
                 "vault_transit_rewrap_kein_ciphertext",
                 key_name=key_name,
-                message="Rewrap gab keinen neuen Ciphertext zurueck",
+                message="Rewrap gab keinen neuen Ciphertext zurück",
             )
             return None
 
@@ -765,14 +765,14 @@ class VaultTransitEncryptionService:
 
         # Fallback to local encryption
         if self.fallback_to_local:
-            # NOTE: Import hier um zirkulaere Imports zu vermeiden
+            # NOTE: Import hier um zirkuläre Imports zu vermeiden
             # (encryption.py importiert evtl. config-Module)
             from app.core.encryption import encrypt_data
             local_ciphertext = encrypt_data(plaintext, associated_data=context)
             return f"local:{local_ciphertext}"
 
         raise VaultTransitError(
-            "Vault Transit nicht verfuegbar und kein Fallback aktiviert",
+            "Vault Transit nicht verfügbar und kein Fallback aktiviert",
         )
 
     def decrypt(
@@ -807,18 +807,18 @@ class VaultTransitEncryptionService:
                     return plaintext
 
             raise VaultTransitError(
-                "Vault Transit nicht verfuegbar fuer Entschluesselung",
+                "Vault Transit nicht verfügbar für Entschluesselung",
             )
 
         elif ciphertext.startswith("local:"):
             local_ciphertext = ciphertext[6:]  # Remove "local:" prefix
-            # NOTE: Import hier um zirkulaere Imports zu vermeiden
+            # NOTE: Import hier um zirkuläre Imports zu vermeiden
             from app.core.encryption import decrypt_data
             return decrypt_data(local_ciphertext, associated_data=context)
 
         else:
             # Legacy format - assume local encryption
-            # NOTE: Import hier um zirkulaere Imports zu vermeiden
+            # NOTE: Import hier um zirkuläre Imports zu vermeiden
             from app.core.encryption import decrypt_data
 
             return decrypt_data(ciphertext, associated_data=context)
@@ -852,7 +852,7 @@ class VaultTransitEncryptionService:
                 if new_ciphertext:
                     return f"transit:{new_ciphertext}"
 
-            raise VaultTransitError("Vault Transit nicht verfuegbar fuer Rewrap")
+            raise VaultTransitError("Vault Transit nicht verfügbar für Rewrap")
 
         # For local encryption, decrypt and re-encrypt
         plaintext = self.decrypt(ciphertext, context)
@@ -879,7 +879,7 @@ class VaultTransitEncryptionService:
 
         if not self.is_vault_available():
             raise VaultTransitError(
-                "Vault Transit nicht verfuegbar fuer Migration",
+                "Vault Transit nicht verfügbar für Migration",
             )
 
         # Decrypt local

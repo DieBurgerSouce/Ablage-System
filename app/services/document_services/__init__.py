@@ -1,9 +1,9 @@
 """Document Services - Modulare Dokumentenverwaltung.
 
-Split-Architektur fuer bessere Wartbarkeit und Testbarkeit:
+Split-Architektur für bessere Wartbarkeit und Testbarkeit:
 - DocumentCRUDService: Basis-CRUD-Operationen
-- DocumentGDPRService: Soft-Delete und GDPR-Konformitaet
-- DocumentBatchService: Bulk-Operationen fuer mehrere Dokumente
+- DocumentGDPRService: Soft-Delete und GDPR-Konformität
+- DocumentBatchService: Bulk-Operationen für mehrere Dokumente
 - DocumentExportService: Export in verschiedene Formate
 - DocumentFilterService: Filterung und Query-Bau
 - AblageService: Kategorie-basierte Dokumentenverwaltung (Ablage-Ansicht)
@@ -11,7 +11,7 @@ Split-Architektur fuer bessere Wartbarkeit und Testbarkeit:
 
 Diese modularen Services sind die kanonischen Implementierungen.
 Die Standalone-Dateien (document_gdpr_service.py, document_export_service.py)
-sind deprecated Wrapper fuer Rueckwaertskompatibilitaet.
+sind deprecated Wrapper für Rückwärtskompatibilität.
 """
 
 from app.services.document_services.crud_service import DocumentCRUDService

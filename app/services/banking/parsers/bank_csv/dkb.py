@@ -15,14 +15,14 @@ from ...models import ImportFormat
 
 @ParserRegistry.register
 class DKBCSVParser(GenericCSVParser):
-    """Parser fuer DKB CSV-Kontoauszuege."""
+    """Parser für DKB CSV-Kontoauszuege."""
 
     FORMAT = ImportFormat.CSV_DKB
     FORMAT_VARIANT = "dkb"
 
     @classmethod
     def can_parse(cls, content: Union[str, bytes], filename: Optional[str] = None) -> float:
-        """Pruefe auf DKB-Format."""
+        """Prüfe auf DKB-Format."""
         text = cls._decode_content(content)
         if not text:
             return 0.0
@@ -30,7 +30,7 @@ class DKBCSVParser(GenericCSVParser):
         lines = text.split("\n")[:15]  # DKB hat oft Metadaten vor Header
         header_line = ""
 
-        # DKB CSV beginnt oft mit "Kontonummer:" oder aehnlich
+        # DKB CSV beginnt oft mit "Kontonummer:" oder ähnlich
         for i, line in enumerate(lines):
             if "buchungstag" in line.lower() and "wertstellung" in line.lower():
                 header_line = line.lower()

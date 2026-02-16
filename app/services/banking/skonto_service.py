@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Skonto Service.
 
-Verwaltet Skonto (Fruehzahlerrabatt) fuer Rechnungen:
+Verwaltet Skonto (Frühzahlerrabatt) für Rechnungen:
 - Skonto-Berechnung basierend auf Konditionen
-- Fristenueberwachung mit Alerts
+- Fristenüberwachung mit Alerts
 - Skonto-Anwendung bei Zahlung
 - Reporting zu gesparten/verpassten Skonti
 
@@ -30,7 +30,7 @@ logger = structlog.get_logger(__name__)
 @dataclass
 class SkontoCondition:
     """Skonto-Konditionen."""
-    percentage: float  # z.B. 2.0 fuer 2%
+    percentage: float  # z.B. 2.0 für 2%
     days: int  # Tage nach Rechnungsdatum
     net_days: int  # Zahlungsziel netto
 
@@ -47,11 +47,11 @@ class SkontoCalculation:
     is_expired: bool
     amount_with_skonto: Decimal
     savings_potential: Decimal
-    skonto_days: int = 0  # Anzahl Tage fuer Skonto-Berechtigung
+    skonto_days: int = 0  # Anzahl Tage für Skonto-Berechtigung
 
     @property
     def is_skonto_valid(self) -> bool:
-        """Ist Skonto noch gueltig (nicht abgelaufen)?"""
+        """Ist Skonto noch gültig (nicht abgelaufen)?"""
         return not self.is_expired
 
 
@@ -83,7 +83,7 @@ class SkontoStatistics:
     usage_rate: float  # Prozent
 
 
-# Standard Skonto-Konditionen fuer Deutschland
+# Standard Skonto-Konditionen für Deutschland
 DEFAULT_SKONTO_CONDITIONS = SkontoCondition(
     percentage=2.0,
     days=10,
@@ -92,7 +92,7 @@ DEFAULT_SKONTO_CONDITIONS = SkontoCondition(
 
 
 class SkontoService:
-    """Service fuer Skonto-Management.
+    """Service für Skonto-Management.
 
     Features:
     - Automatische Skonto-Berechnung bei Rechnungserfassung
@@ -121,14 +121,14 @@ class SkontoService:
         skonto_days: Optional[int] = None,
         net_days: Optional[int] = None,
     ) -> SkontoCalculation:
-        """Berechne Skonto fuer eine Rechnung.
+        """Berechne Skonto für eine Rechnung.
 
         Args:
             db: Datenbank-Session
             invoice_amount: Rechnungsbetrag
             invoice_date: Rechnungsdatum
             skonto_percentage: Skonto-Prozentsatz (oder Default)
-            skonto_days: Tage fuer Skonto-Berechtigung (oder Default)
+            skonto_days: Tage für Skonto-Berechtigung (oder Default)
             net_days: Zahlungsziel netto (oder Default)
 
         Returns:
@@ -164,7 +164,7 @@ class SkontoService:
             is_expired=is_expired,
             amount_with_skonto=amount_with_skonto,
             savings_potential=skonto_amount if not is_expired else Decimal("0.00"),
-            skonto_days=days,  # Anzahl Tage fuer Skonto-Berechtigung
+            skonto_days=days,  # Anzahl Tage für Skonto-Berechtigung
         )
 
     async def apply_skonto(
@@ -179,7 +179,7 @@ class SkontoService:
     ) -> Tuple[bool, Decimal, str]:
         """Wende Skonto auf Zahlung an.
 
-        SECURITY: company_id ist REQUIRED fuer Multi-Tenant Isolation.
+        SECURITY: company_id ist REQUIRED für Multi-Tenant Isolation.
 
         Args:
             db: Datenbank-Session
@@ -187,7 +187,7 @@ class SkontoService:
             payment_amount: Gezahlter Betrag
             payment_date: Zahlungsdatum
             user_id: Benutzer-ID
-            company_id: Firmen-ID (REQUIRED fuer Multi-Tenant)
+            company_id: Firmen-ID (REQUIRED für Multi-Tenant)
             force_apply: Skonto auch nach Fristablauf anwenden (mit Warnung)
 
         Returns:
@@ -195,7 +195,7 @@ class SkontoService:
         """
         from app.db.models import InvoiceTracking  # Lazy import
 
-        # Invoice laden - SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        # Invoice laden - SECURITY: company_id Filter für Multi-Tenant Isolation
         stmt = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.id == invoice_tracking_id,
@@ -214,15 +214,15 @@ class SkontoService:
             )
             return False, payment_amount, "Rechnung nicht gefunden"
 
-        # Pruefen ob Skonto-Konditionen vorhanden
+        # Prüfen ob Skonto-Konditionen vorhanden
         if not invoice.skonto_percentage or invoice.skonto_percentage <= 0:
             return False, payment_amount, "Keine Skonto-Konditionen hinterlegt"
 
-        # Pruefen ob Skonto bereits genutzt
+        # Prüfen ob Skonto bereits genutzt
         if invoice.skonto_used:
             return False, payment_amount, "Skonto wurde bereits angewendet"
 
-        # Skonto-Frist pruefen
+        # Skonto-Frist prüfen
         skonto_deadline = invoice.skonto_deadline
         is_expired = payment_date > skonto_deadline if skonto_deadline else True
 
@@ -234,10 +234,10 @@ class SkontoService:
         skonto_amount = skonto_amount.quantize(Decimal("0.01"))
         expected_amount = Decimal(str(invoice.amount)) - skonto_amount
 
-        # Toleranz fuer Rundungsdifferenzen (5 Cent)
+        # Toleranz für Rundungsdifferenzen (5 Cent)
         tolerance = Decimal("0.05")
         if abs(Decimal(str(payment_amount)) - expected_amount) > tolerance:
-            # Betrag stimmt nicht mit Skonto-Erwartung ueberein
+            # Betrag stimmt nicht mit Skonto-Erwartung überein
             logger.warning(
                 "Skonto-Zahlung weicht ab",
                 invoice_id=str(invoice_tracking_id),
@@ -291,8 +291,8 @@ class SkontoService:
         now = utc_now()
         deadline_cutoff = now + timedelta(days=days_ahead)
 
-        # Query fuer Rechnungen mit anstehendem Skonto
-        # Entity-Info kommt ueber Document.business_entity_id
+        # Query für Rechnungen mit anstehendem Skonto
+        # Entity-Info kommt über Document.business_entity_id
         stmt = (
             select(InvoiceTracking, Document, BusinessEntity)
             .join(Document, InvoiceTracking.document_id == Document.id)
@@ -348,7 +348,7 @@ class SkontoService:
         start_date: datetime,
         end_date: datetime,
     ) -> SkontoStatistics:
-        """Berechne Skonto-Statistiken fuer einen Zeitraum.
+        """Berechne Skonto-Statistiken für einen Zeitraum.
 
         Args:
             db: Datenbank-Session
@@ -430,16 +430,16 @@ class SkontoService:
     ) -> bool:
         """Aktualisiere Skonto-Felder einer Rechnung.
 
-        SECURITY: company_id ist REQUIRED fuer Multi-Tenant Isolation.
+        SECURITY: company_id ist REQUIRED für Multi-Tenant Isolation.
 
         Berechnet automatisch skonto_deadline, skonto_amount, etc.
 
         Args:
             db: Datenbank-Session
             invoice_tracking_id: ID des Invoice-Trackings
-            company_id: Firmen-ID (REQUIRED fuer Multi-Tenant)
+            company_id: Firmen-ID (REQUIRED für Multi-Tenant)
             skonto_percentage: Skonto-Prozentsatz
-            skonto_days: Tage fuer Skonto
+            skonto_days: Tage für Skonto
             net_days: Zahlungsziel netto
 
         Returns:
@@ -447,7 +447,7 @@ class SkontoService:
         """
         from app.db.models import InvoiceTracking
 
-        # SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        # SECURITY: company_id Filter für Multi-Tenant Isolation
         stmt = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.id == invoice_tracking_id,
@@ -517,11 +517,11 @@ class SkontoService:
 
         text_lower = text.lower()
 
-        # Pattern fuer Prozent und Tage
+        # Pattern für Prozent und Tage
         # "2% skonto" oder "2 % skonto" oder "2 prozent skonto"
         skonto_pattern = r"(\d+(?:[.,]\d+)?)\s*(?:%|prozent)?\s*skonto"
         days_pattern = r"(?:innerhalb|binnen|in)\s+(\d+)\s*(?:tage|tag)"
-        netto_pattern = r"(?:netto|zahlungsziel|faellig)\s*(?:innerhalb)?\s*(\d+)\s*(?:tage|tag)"
+        netto_pattern = r"(?:netto|zahlungsziel|fällig)\s*(?:innerhalb)?\s*(\d+)\s*(?:tage|tag)"
 
         percentage = None
         skonto_days = None
@@ -555,7 +555,7 @@ class SkontoService:
             except ValueError as e:
                 logger.debug("skonto_auto_detect_net_days_parse_failed", error_type=type(e).__name__, net_days_value=netto_match.group(1))
 
-        # Nur zurueckgeben wenn mindestens Prozent gefunden
+        # Nur zurückgeben wenn mindestens Prozent gefunden
         if percentage and percentage > 0 and percentage < 10:  # Plausibilitaet
             return SkontoCondition(
                 percentage=percentage,

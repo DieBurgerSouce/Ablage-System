@@ -1,14 +1,14 @@
 """
-Datenqualitaets-Ampel Service.
+Datenqualitäts-Ampel Service.
 
-Berechnet einen Composite Quality Score fuer Dokumente basierend auf:
+Berechnet einen Composite Quality Score für Dokumente basierend auf:
 - OCR Confidence (40% Gewichtung)
-- Feld-Vollstaendigkeit (35% Gewichtung)
+- Feld-Vollständigkeit (35% Gewichtung)
 - Verarbeitungs-Status (25% Gewichtung)
 
 Score -> Ampel:
-- GRUEN (>=0.80): Vollstaendig und vertrauenswuerdig
-- GELB (0.50-0.79): Pruefung empfohlen
+- GRUEN (>=0.80): Vollständig und vertrauenswuerdig
+- GELB (0.50-0.79): Prüfung empfohlen
 - ROT (<0.50): Manuelle Korrektur erforderlich
 """
 
@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
 
 
 class AmpelColor(str, Enum):
-    """Ampel-Farben fuer Qualitaetsbewertung."""
+    """Ampel-Farben für Qualitätsbewertung."""
     GRUEN = "gruen"
     GELB = "gelb"
     ROT = "rot"
@@ -35,7 +35,7 @@ class AmpelColor(str, Enum):
 
 @dataclass
 class QualityDimension:
-    """Einzelne Qualitaetsdimension."""
+    """Einzelne Qualitätsdimension."""
     name: str
     score: float  # 0.0 - 1.0
     weight: float  # Gewichtung
@@ -45,7 +45,7 @@ class QualityDimension:
 
 @dataclass
 class DocumentQualityScore:
-    """Vollstaendiges Qualitaetsergebnis fuer ein Dokument."""
+    """Vollständiges Qualitätsergebnis für ein Dokument."""
     document_id: str
     score: float  # Composite 0.0 - 1.0
     ampel_color: AmpelColor
@@ -75,7 +75,7 @@ class DocumentQualityScore:
 
 @dataclass
 class CompanyQualityOverview:
-    """Unternehmensweite Qualitaetsuebersicht."""
+    """Unternehmensweite Qualitätsübersicht."""
     total_documents: int
     average_score: float
     gruen_count: int
@@ -118,15 +118,15 @@ REQUIRED_FIELDS: Dict[str, List[str]] = {
 def _score_to_ampel(score: float) -> Tuple[AmpelColor, str]:
     """Konvertiere Score zu Ampel-Farbe und Label."""
     if score >= 0.80:
-        return AmpelColor.GRUEN, "Vollstaendig und vertrauenswuerdig"
+        return AmpelColor.GRUEN, "Vollständig und vertrauenswuerdig"
     elif score >= 0.50:
-        return AmpelColor.GELB, "Pruefung empfohlen"
+        return AmpelColor.GELB, "Prüfung empfohlen"
     else:
         return AmpelColor.ROT, "Manuelle Korrektur erforderlich"
 
 
 class DocumentQualityScoreService:
-    """Service fuer Dokumenten-Qualitaetsbewertung."""
+    """Service für Dokumenten-Qualitätsbewertung."""
 
     # Dimension weights
     WEIGHT_OCR_CONFIDENCE = 0.40
@@ -139,7 +139,7 @@ class DocumentQualityScoreService:
         session: AsyncSession,
     ) -> DocumentQualityScore:
         """
-        Berechne Composite Quality Score fuer ein Dokument.
+        Berechne Composite Quality Score für ein Dokument.
 
         Args:
             document_id: Dokument-ID
@@ -174,9 +174,9 @@ class DocumentQualityScoreService:
         dimensions.append(ocr_dim)
 
         if ocr_confidence < 0.70:
-            recommendations.append("OCR-Ergebnis manuell pruefen - niedrige Konfidenz")
+            recommendations.append("OCR-Ergebnis manuell prüfen - niedrige Konfidenz")
         elif ocr_confidence < 0.85:
-            recommendations.append("Stichprobenartige Pruefung des OCR-Textes empfohlen")
+            recommendations.append("Stichprobenartige Prüfung des OCR-Textes empfohlen")
 
         # Dimension 2: Field Completeness (35%)
         doc_type = getattr(document, "document_type", None) or "default"
@@ -185,7 +185,7 @@ class DocumentQualityScoreService:
             doc_type, extracted_data
         )
         field_dim = QualityDimension(
-            name="Feld-Vollstaendigkeit",
+            name="Feld-Vollständigkeit",
             score=field_score,
             weight=self.WEIGHT_FIELD_COMPLETENESS,
             details=self._field_completeness_detail(field_score, field_sub_scores),
@@ -196,7 +196,7 @@ class DocumentQualityScoreService:
         if field_score < 0.50:
             recommendations.append("Wichtige Felder fehlen - Daten manuell ergaenzen")
         elif field_score < 0.80:
-            recommendations.append("Einige Felder unvollstaendig - Datensatz pruefen")
+            recommendations.append("Einige Felder unvollständig - Datensatz prüfen")
 
         # Dimension 3: Processing Status (25%)
         status_score, status_sub = self._calculate_processing_status(document)
@@ -210,7 +210,7 @@ class DocumentQualityScoreService:
         dimensions.append(status_dim)
 
         if status_score < 0.50:
-            recommendations.append("Dokument noch nicht vollstaendig verarbeitet")
+            recommendations.append("Dokument noch nicht vollständig verarbeitet")
 
         # Calculate composite score
         composite_score = sum(d.score * d.weight for d in dimensions)
@@ -243,7 +243,7 @@ class DocumentQualityScoreService:
         session: AsyncSession,
     ) -> CompanyQualityOverview:
         """
-        Unternehmensweite Qualitaetsuebersicht berechnen.
+        Unternehmensweite Qualitätsübersicht berechnen.
 
         Args:
             company_id: Unternehmens-ID
@@ -377,13 +377,13 @@ class DocumentQualityScoreService:
 
     def _ocr_confidence_detail(self, confidence: float) -> str:
         if confidence >= 0.95:
-            return "Sehr hohe OCR-Qualitaet"
+            return "Sehr hohe OCR-Qualität"
         elif confidence >= 0.85:
-            return "Gute OCR-Qualitaet"
+            return "Gute OCR-Qualität"
         elif confidence >= 0.70:
-            return "Akzeptable OCR-Qualitaet"
+            return "Akzeptable OCR-Qualität"
         else:
-            return "Niedrige OCR-Qualitaet - Pruefung erforderlich"
+            return "Niedrige OCR-Qualität - Prüfung erforderlich"
 
     def _field_completeness_detail(self, score: float, sub_scores: Dict[str, float]) -> str:
         missing = [k for k, v in sub_scores.items() if v < 1.0]
@@ -393,11 +393,11 @@ class DocumentQualityScoreService:
 
     def _processing_status_detail(self, score: float) -> str:
         if score >= 1.0:
-            return "Vollstaendig verarbeitet"
+            return "Vollständig verarbeitet"
         elif score >= 0.5:
             return "Teilweise verarbeitet"
         else:
-            return "Verarbeitung unvollstaendig"
+            return "Verarbeitung unvollständig"
 
 
 # Singleton

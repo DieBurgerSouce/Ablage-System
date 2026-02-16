@@ -1,15 +1,15 @@
 """
 DLP (Data Loss Prevention) API Endpoints.
 
-Ermoeglicht die Verwaltung von DLP-Policies und Zugriffspruefungen.
+Ermöglicht die Verwaltung von DLP-Policies und Zugriffsprüfungen.
 
 Endpoints:
 - GET  /dlp/policies         - Alle Policies auflisten
 - POST /dlp/policies         - Neue Policy erstellen
 - GET  /dlp/policies/{id}    - Policy abrufen
 - PATCH /dlp/policies/{id}   - Policy aktualisieren
-- DELETE /dlp/policies/{id}  - Policy loeschen
-- POST /dlp/check            - Zugriffspruefung durchfuehren
+- DELETE /dlp/policies/{id}  - Policy löschen
+- POST /dlp/check            - Zugriffsprüfung durchführen
 - POST /dlp/scan             - Text auf sensible Daten scannen
 
 SECURITY:
@@ -90,7 +90,7 @@ class PolicyUpdateRequest(BaseModel):
 
 
 class AccessCheckRequest(BaseModel):
-    """Request fuer Zugriffspruefung."""
+    """Request für Zugriffsprüfung."""
     document_id: UUID
     action_type: str = Field(
         default="download",
@@ -103,12 +103,12 @@ class ScanRequest(BaseModel):
     text: str = Field(..., max_length=100000)
     types: Optional[list[SensitiveDataType]] = Field(
         default=None,
-        description="Zu pruefende Typen (None = alle)"
+        description="Zu prüfende Typen (None = alle)"
     )
 
 
 class ScanResponse(BaseModel):
-    """Response fuer Sensitive-Data-Scan."""
+    """Response für Sensitive-Data-Scan."""
     has_sensitive_data: bool
     findings: dict[SensitiveDataType, int] = Field(
         default_factory=dict,
@@ -118,7 +118,7 @@ class ScanResponse(BaseModel):
 
 
 class PolicyListResponse(BaseModel):
-    """Response fuer Policy-Liste."""
+    """Response für Policy-Liste."""
     policies: list[DLPPolicy]
     total: int
 
@@ -135,14 +135,14 @@ class SuccessResponse(BaseModel):
     "/policies",
     response_model=PolicyListResponse,
     summary="Alle DLP-Policies auflisten",
-    description="Gibt alle konfigurierten DLP-Policies zurueck. Erfordert Admin-Rolle."
+    description="Gibt alle konfigurierten DLP-Policies zurück. Erfordert Admin-Rolle."
 )
 async def list_policies(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> PolicyListResponse:
     """Listet alle DLP-Policies auf (Multi-Tenant isoliert)."""
-    # SECURITY: company_id aus User fuer Multi-Tenant Isolation
+    # SECURITY: company_id aus User für Multi-Tenant Isolation
     company_id = getattr(current_user, 'company_id', None)
     dlp_service = get_dlp_service(db, company_id)
     policies = await dlp_service.get_policies()
@@ -162,7 +162,7 @@ async def create_policy(
     db: AsyncSession = Depends(get_db),
 ) -> DLPPolicy:
     """Erstellt eine neue DLP-Policy (Multi-Tenant isoliert, persistiert in DB)."""
-    # SECURITY: company_id aus User fuer Multi-Tenant Isolation
+    # SECURITY: company_id aus User für Multi-Tenant Isolation
     company_id = getattr(current_user, 'company_id', None)
     if not company_id:
         raise HTTPException(
@@ -187,7 +187,7 @@ async def create_policy(
     "/policies/{policy_id}",
     response_model=DLPPolicy,
     summary="DLP-Policy abrufen",
-    description="Gibt eine spezifische DLP-Policy zurueck. Erfordert Admin-Rolle."
+    description="Gibt eine spezifische DLP-Policy zurück. Erfordert Admin-Rolle."
 )
 async def get_policy(
     policy_id: str,
@@ -244,15 +244,15 @@ async def update_policy(
 @router.delete(
     "/policies/{policy_id}",
     response_model=SuccessResponse,
-    summary="DLP-Policy loeschen",
-    description="Loescht eine DLP-Policy. Erfordert Admin-Rolle."
+    summary="DLP-Policy löschen",
+    description="Löscht eine DLP-Policy. Erfordert Admin-Rolle."
 )
 async def delete_policy(
     policy_id: str,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> SuccessResponse:
-    """Loescht eine DLP-Policy (Multi-Tenant isoliert)."""
+    """Löscht eine DLP-Policy (Multi-Tenant isoliert)."""
     company_id = getattr(current_user, 'company_id', None)
     if not company_id:
         raise HTTPException(
@@ -262,7 +262,7 @@ async def delete_policy(
 
     dlp_service = get_dlp_service(db, company_id)
 
-    # Pruefen ob Policy existiert
+    # Prüfen ob Policy existiert
     policies = await dlp_service.get_policies()
     if not any(p.id == policy_id for p in policies):
         raise HTTPException(
@@ -271,14 +271,14 @@ async def delete_policy(
         )
 
     await dlp_service.delete_policy(policy_id)
-    return SuccessResponse(message=f"Policy '{policy_id}' wurde geloescht")
+    return SuccessResponse(message=f"Policy '{policy_id}' wurde gelöscht")
 
 
 @router.post(
     "/check",
     response_model=DLPCheckResult,
-    summary="Zugriffspruefung durchfuehren",
-    description="Prueft ob eine Aktion auf einem Dokument erlaubt ist."
+    summary="Zugriffsprüfung durchführen",
+    description="Prüft ob eine Aktion auf einem Dokument erlaubt ist."
 )
 async def check_access(
     body: AccessCheckRequest,
@@ -287,7 +287,7 @@ async def check_access(
     db: AsyncSession = Depends(get_db),
 ) -> DLPCheckResult:
     """
-    Prueft Zugriffsberechtigung basierend auf DLP-Policies.
+    Prüft Zugriffsberechtigung basierend auf DLP-Policies.
 
     SECURITY:
     - Multi-Tenant: Dokument muss zur gleichen Company gehoeren wie User!
@@ -318,14 +318,14 @@ async def check_access(
     # DLP-Service mit company_id initialisieren
     dlp_service = get_dlp_service(db, user_company_id)
 
-    # DLP-Pruefung durchfuehren
+    # DLP-Prüfung durchführen
     check_result = await dlp_service.check_access(
         user=current_user,
         document=document,
         action_type=body.action_type,
     )
 
-    # Client-Info fuer Audit
+    # Client-Info für Audit
     ip_address, user_agent = _get_client_info(request)
 
     # Logging (jetzt mit DB-Persistenz!)
@@ -385,13 +385,13 @@ async def scan_sensitive_data(
 @router.get(
     "/sensitive-data-types",
     response_model=list[str],
-    summary="Verfuegbare Typen sensibler Daten",
-    description="Gibt alle Typen sensibler Daten zurueck, die erkannt werden koennen."
+    summary="Verfügbare Typen sensibler Daten",
+    description="Gibt alle Typen sensibler Daten zurück, die erkannt werden können."
 )
 async def get_sensitive_data_types(
     current_user: User = Depends(get_current_user),
 ) -> list[str]:
-    """Gibt verfuegbare Typen sensibler Daten zurueck."""
+    """Gibt verfügbare Typen sensibler Daten zurück."""
     return [t.value for t in SensitiveDataType]
 
 
@@ -405,7 +405,7 @@ async def seed_default_policies(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> SuccessResponse:
-    """Erstellt Standard-Policies fuer die Company des Benutzers."""
+    """Erstellt Standard-Policies für die Company des Benutzers."""
     company_id = getattr(current_user, 'company_id', None)
     if not company_id:
         raise HTTPException(

@@ -4,7 +4,7 @@ Comment Reply Service.
 
 Verschachtelte Antworten auf Kommentare mit @mentions.
 Thread-Replies mit Benachrichtigungen bei @mentions.
-Kommentar-basierte Aufgaben ('Bitte pruefen' -> erzeugt Task).
+Kommentar-basierte Aufgaben ('Bitte prüfen' -> erzeugt Task).
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ class CommentReplyService:
     """Verschachtelte Antworten auf Kommentare mit @mentions.
 
     Thread-Replies mit Benachrichtigungen bei @mentions.
-    Kommentar-basierte Aufgaben ('Bitte pruefen' -> erzeugt Task).
+    Kommentar-basierte Aufgaben ('Bitte prüfen' -> erzeugt Task).
     """
 
     async def create_reply(
@@ -54,7 +54,7 @@ class CommentReplyService:
             thread_id: Thread-ID
             author_id: Autor-ID
             content: Antwort-Inhalt
-            parent_reply_id: Eltern-Antwort fuer Verschachtelung
+            parent_reply_id: Eltern-Antwort für Verschachtelung
             mentions: Liste von erwaehnten User-IDs
 
         Returns:
@@ -102,7 +102,7 @@ class CommentReplyService:
     ) -> List[CommentReply]:
         """Alle Antworten eines Threads abrufen (flache Liste).
 
-        Gibt eine flache Liste zurueck; parent_reply_id kann fuer
+        Gibt eine flache Liste zurück; parent_reply_id kann für
         Baum-Konstruktion im Frontend verwendet werden.
 
         Args:
@@ -131,7 +131,7 @@ class CommentReplyService:
         Args:
             db: Datenbank-Session
             reply_id: Antwort-ID
-            author_id: Autor-ID (muss uebereinstimmen)
+            author_id: Autor-ID (muss übereinstimmen)
             new_content: Neuer Inhalt
 
         Returns:
@@ -178,7 +178,7 @@ class CommentReplyService:
         description: Optional[str] = None,
         due_date: Optional[datetime] = None,
     ) -> CommentTask:
-        """Aufgabe aus Kommentar/Antwort erstellen ('Bitte pruefen' -> Task).
+        """Aufgabe aus Kommentar/Antwort erstellen ('Bitte prüfen' -> Task).
 
         Args:
             db: Datenbank-Session
@@ -189,7 +189,7 @@ class CommentReplyService:
             reply_id: Optionale Antwort-Referenz
             assigned_to: Optionale Zuweisung
             description: Optionale Beschreibung
-            due_date: Optionales Faelligkeitsdatum
+            due_date: Optionales Fälligkeitsdatum
 
         Returns:
             Erstellte CommentTask
@@ -294,7 +294,7 @@ class CommentReplyService:
         user_id: UUID,
         unread_only: bool = True,
     ) -> List[MentionNotification]:
-        """@mention-Benachrichtigungen fuer einen Benutzer abrufen.
+        """@mention-Benachrichtigungen für einen Benutzer abrufen.
 
         Args:
             db: Datenbank-Session
@@ -327,7 +327,7 @@ class CommentReplyService:
         Args:
             db: Datenbank-Session
             notification_id: Benachrichtigungs-ID
-            user_id: Benutzer-ID (muss Empfaenger sein)
+            user_id: Benutzer-ID (muss Empfänger sein)
 
         Returns:
             Aktualisierte MentionNotification
@@ -379,12 +379,12 @@ class CommentReplyService:
             mentioned_user_ids: Liste der erwaehnten User-IDs
             source_type: Quell-Typ (comment, reply, annotation)
             source_id: Quell-ID
-            thread_id: Thread-ID fuer Dokument-Referenz
+            thread_id: Thread-ID für Dokument-Referenz
 
         Returns:
             Liste der erstellten MentionNotifications
         """
-        # Thread laden fuer document_id
+        # Thread laden für document_id
         from app.db.models_comments import CommentThread
         thread_result = await db.execute(
             select(CommentThread).where(CommentThread.id == thread_id)
@@ -433,7 +433,7 @@ _comment_reply_service: Optional[CommentReplyService] = None
 
 
 def get_comment_reply_service() -> CommentReplyService:
-    """Factory-Funktion fuer CommentReplyService Singleton."""
+    """Factory-Funktion für CommentReplyService Singleton."""
     global _comment_reply_service
     if _comment_reply_service is None:
         _comment_reply_service = CommentReplyService()

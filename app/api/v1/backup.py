@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-API-Endpunkte fuer Backup-Operationen.
+API-Endpunkte für Backup-Operationen.
 
 Alle Endpunkte erfordern Admin-Authentifizierung.
 
@@ -46,7 +46,7 @@ def validate_backup_path(user_path: str, is_directory: bool = False) -> Path:
 
     Args:
         user_path: Vom User angegebener Pfad
-        is_directory: True wenn Verzeichnis erwartet, False fuer Datei
+        is_directory: True wenn Verzeichnis erwartet, False für Datei
 
     Returns:
         Validierter, normalisierter Pfad
@@ -59,7 +59,7 @@ def validate_backup_path(user_path: str, is_directory: bool = False) -> Path:
         # Resolve normalisiert und entfernt .. und symbolische Links
         resolved_path = Path(user_path).resolve()
 
-        # Pruefe ob Pfad innerhalb des erlaubten Verzeichnisses liegt
+        # Prüfe ob Pfad innerhalb des erlaubten Verzeichnisses liegt
         try:
             resolved_path.relative_to(ALLOWED_BACKUP_BASE_DIR)
         except ValueError:
@@ -75,14 +75,14 @@ def validate_backup_path(user_path: str, is_directory: bool = False) -> Path:
                 detail=f"Zugriff verweigert: Pfad muss innerhalb von {ALLOWED_BACKUP_BASE_DIR} liegen"
             )
 
-        # Pruefe ob Pfad existiert
+        # Prüfe ob Pfad existiert
         if not resolved_path.exists():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Backup nicht gefunden: {user_path}"
             )
 
-        # Pruefe ob Typ stimmt
+        # Prüfe ob Typ stimmt
         if is_directory and not resolved_path.is_dir():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -102,7 +102,7 @@ def validate_backup_path(user_path: str, is_directory: bool = False) -> Path:
         logger.error("path_validation_error", user_path=user_path, **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Pfad: {user_path}"
+            detail=f"Ungültiger Pfad: {user_path}"
         )
 
 router = APIRouter(prefix="/backup", tags=["backup"])
@@ -114,13 +114,13 @@ router = APIRouter(prefix="/backup", tags=["backup"])
 
 
 class BackupResponse(BaseModel):
-    """Antwort fuer einzelne Backup-Operation."""
+    """Antwort für einzelne Backup-Operation."""
 
     erfolg: bool = Field(..., description="War das Backup erfolgreich?")
     backup_typ: str = Field(..., description="postgres, redis, minio, config")
     pfad: Optional[str] = Field(None, description="Pfad zur Backup-Datei")
-    groesse_bytes: int = Field(0, description="Groesse in Bytes")
-    groesse_mb: float = Field(0.0, description="Groesse in MB")
+    groesse_bytes: int = Field(0, description="Größe in Bytes")
+    groesse_mb: float = Field(0.0, description="Größe in MB")
     validiert: bool = Field(False, description="Wurde Backup validiert?")
     verschluesselt: bool = Field(False, description="Ist Backup verschluesselt?")
     remote_sync: bool = Field(False, description="Wurde zum Remote synchronisiert?")
@@ -143,7 +143,7 @@ class BackupResponse(BaseModel):
 
 
 class FullBackupResponse(BaseModel):
-    """Antwort fuer vollstaendiges Backup."""
+    """Antwort für vollständiges Backup."""
 
     erfolg: bool = Field(..., description="Waren alle Backups erfolgreich?")
     erfolgreich: int = Field(..., description="Anzahl erfolgreicher Backups")
@@ -157,26 +157,26 @@ class BackupListItem(BaseModel):
 
     typ: str = Field(..., description="Backup-Typ")
     name: str = Field(..., description="Dateiname")
-    pfad: str = Field(..., description="Vollstaendiger Pfad")
-    groesse_bytes: int = Field(..., description="Groesse in Bytes")
-    groesse_mb: float = Field(..., description="Groesse in MB")
+    pfad: str = Field(..., description="Vollständiger Pfad")
+    groesse_bytes: int = Field(..., description="Größe in Bytes")
+    groesse_mb: float = Field(..., description="Größe in MB")
     erstellt: str = Field(..., description="Erstellungszeitpunkt (ISO)")
     verschluesselt: bool = Field(..., description="Ist verschluesselt?")
 
 
 class BackupListResponse(BaseModel):
-    """Antwort fuer Backup-Liste."""
+    """Antwort für Backup-Liste."""
 
     anzahl: int = Field(..., description="Anzahl der Backups")
     backups: List[BackupListItem] = Field(..., description="Liste der Backups")
 
 
 class RetentionResponse(BaseModel):
-    """Antwort fuer Retention Policy."""
+    """Antwort für Retention Policy."""
 
     erfolg: bool = Field(..., description="War Aufraeumen erfolgreich?")
-    geloescht_gesamt: int = Field(..., description="Gesamtzahl geloeschter Backups")
-    details: Dict[str, int] = Field(..., description="Geloescht pro Typ")
+    geloescht_gesamt: int = Field(..., description="Gesamtzahl gelöschter Backups")
+    details: Dict[str, int] = Field(..., description="Gelöscht pro Typ")
     nachricht: str = Field(..., description="Zusammenfassung")
 
 
@@ -193,7 +193,7 @@ class BackupStatusResponse(BaseModel):
 
 
 class AsyncBackupResponse(BaseModel):
-    """Antwort fuer asynchron gestartetes Backup."""
+    """Antwort für asynchron gestartetes Backup."""
 
     gestartet: bool = Field(True, description="Wurde Backup gestartet?")
     backup_typ: str = Field(..., description="Gestarteter Backup-Typ")
@@ -201,10 +201,10 @@ class AsyncBackupResponse(BaseModel):
 
 
 class RestoreRequest(BaseModel):
-    """Anfrage fuer Restore-Operation."""
+    """Anfrage für Restore-Operation."""
 
     backup_path: str = Field(..., description="Pfad zur Backup-Datei")
-    dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+    dry_run: bool = Field(False, description="Nur simulieren, nicht ausführen")
 
     @field_validator('backup_path')
     @classmethod
@@ -244,11 +244,11 @@ class RestoreRequest(BaseModel):
 
 
 class RestoreMinioRequest(BaseModel):
-    """Anfrage fuer MinIO-Restore."""
+    """Anfrage für MinIO-Restore."""
 
     backup_path: str = Field(..., description="Pfad zur Backup-Datei")
     bucket: Optional[str] = Field(None, description="Ziel-Bucket (optional)")
-    dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+    dry_run: bool = Field(False, description="Nur simulieren, nicht ausführen")
 
     @field_validator('backup_path')
     @classmethod
@@ -284,13 +284,13 @@ class RestoreMinioRequest(BaseModel):
 
 
 class FullRestoreRequest(BaseModel):
-    """Anfrage fuer vollstaendigen Restore."""
+    """Anfrage für vollständigen Restore."""
 
     backup_verzeichnis: str = Field(..., description="Verzeichnis mit Backup-Dateien")
     komponenten: Optional[List[str]] = Field(
         None, description="Komponenten: postgres, redis, minio, config"
     )
-    dry_run: bool = Field(False, description="Nur simulieren, nicht ausfuehren")
+    dry_run: bool = Field(False, description="Nur simulieren, nicht ausführen")
 
     @field_validator('backup_verzeichnis')
     @classmethod
@@ -327,7 +327,7 @@ class FullRestoreRequest(BaseModel):
 
 
 class RestoreResponse(BaseModel):
-    """Antwort fuer Restore-Operation."""
+    """Antwort für Restore-Operation."""
 
     erfolg: bool = Field(..., description="War Restore erfolgreich?")
     backup_typ: str = Field(..., description="postgres, redis, minio, config")
@@ -357,7 +357,7 @@ class RestoreResponse(BaseModel):
 
 
 class FullRestoreResponse(BaseModel):
-    """Antwort fuer vollstaendigen Restore."""
+    """Antwort für vollständigen Restore."""
 
     erfolg: bool = Field(..., description="Waren alle Restores erfolgreich?")
     erfolgreich: int = Field(..., description="Anzahl erfolgreicher Restores")
@@ -372,16 +372,16 @@ class ValidationIssueResponse(BaseModel):
     schweregrad: str = Field(..., description="error, warning, info")
     code: str = Field(..., description="Fehlercode")
     nachricht: str = Field(..., description="Beschreibung des Problems")
-    details: Optional[JSONDict] = Field(None, description="Zusaetzliche Details")
+    details: Optional[JSONDict] = Field(None, description="Zusätzliche Details")
 
 
 class ValidateBackupResponse(BaseModel):
-    """Antwort fuer Backup-Validierung."""
+    """Antwort für Backup-Validierung."""
 
-    gueltig: bool = Field(..., description="Ist Backup gueltig?")
+    gueltig: bool = Field(..., description="Ist Backup gültig?")
     status: str = Field(..., description="valid, invalid, warning, skipped")
     backup_typ: str = Field(..., description="Erkannter Backup-Typ")
-    groesse_bytes: int = Field(..., description="Groesse in Bytes")
+    groesse_bytes: int = Field(..., description="Größe in Bytes")
     datei_anzahl: int = Field(0, description="Anzahl Dateien (bei Archiven)")
     checksum_sha256: Optional[str] = Field(None, description="SHA256 Checksum")
     verschluesselt: bool = Field(..., description="Ist Backup verschluesselt?")
@@ -392,7 +392,7 @@ class ValidateBackupResponse(BaseModel):
     anzahl_fehler: int = Field(0, description="Anzahl Fehler")
     anzahl_warnungen: int = Field(0, description="Anzahl Warnungen")
     details: JSONDict = Field(default_factory=dict, description="Weitere Metadaten")
-    fehler: Optional[str] = Field(None, description="Hauptfehlermeldung bei ungueltigem Backup")
+    fehler: Optional[str] = Field(None, description="Hauptfehlermeldung bei ungültigem Backup")
 
 
 # =============================================================================
@@ -562,15 +562,15 @@ async def backup_config(
 @router.post(
     "/full",
     response_model=FullBackupResponse,
-    summary="Vollstaendiges Backup",
+    summary="Vollständiges Backup",
     description="Erstellt Backups aller Komponenten (PostgreSQL, Redis, MinIO, Config).",
 )
 async def backup_full(
     current_user: User = Depends(get_current_superuser),
 ) -> FullBackupResponse:
-    """Erstelle vollstaendiges Backup aller Komponenten."""
+    """Erstelle vollständiges Backup aller Komponenten."""
     logger.info(
-        "vollstaendiges_backup_angefordert",
+        "vollständiges_backup_angefordert",
         user_id=str(current_user.id),
     )
 
@@ -600,16 +600,16 @@ async def backup_full(
 @router.post(
     "/full/async",
     response_model=AsyncBackupResponse,
-    summary="Vollstaendiges Backup (Hintergrund)",
-    description="Startet vollstaendiges Backup im Hintergrund.",
+    summary="Vollständiges Backup (Hintergrund)",
+    description="Startet vollständiges Backup im Hintergrund.",
 )
 async def backup_full_async(
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_superuser),
 ) -> AsyncBackupResponse:
-    """Starte vollstaendiges Backup im Hintergrund."""
+    """Starte vollständiges Backup im Hintergrund."""
     logger.info(
-        "vollstaendiges_backup_async_angefordert",
+        "vollständiges_backup_async_angefordert",
         user_id=str(current_user.id),
     )
 
@@ -622,7 +622,7 @@ async def backup_full_async(
     return AsyncBackupResponse(
         gestartet=True,
         backup_typ="full",
-        nachricht="Vollstaendiges Backup wurde im Hintergrund gestartet. Fortschritt in Logs und Metriken sichtbar.",
+        nachricht="Vollständiges Backup wurde im Hintergrund gestartet. Fortschritt in Logs und Metriken sichtbar.",
     )
 
 
@@ -630,12 +630,12 @@ async def backup_full_async(
     "/retention",
     response_model=RetentionResponse,
     summary="Retention Policy anwenden",
-    description="Loescht alte Backups gemaess Retention Policy.",
+    description="Löscht alte Backups gemaess Retention Policy.",
 )
 async def apply_retention(
     current_user: User = Depends(get_current_superuser),
 ) -> RetentionResponse:
-    """Wende Retention Policy an - loesche alte Backups."""
+    """Wende Retention Policy an - lösche alte Backups."""
     logger.info(
         "retention_policy_angefordert",
         user_id=str(current_user.id),
@@ -646,9 +646,9 @@ async def apply_retention(
     total_deleted = sum(deleted.values())
 
     if total_deleted > 0:
-        nachricht = f"{total_deleted} alte Backup(s) geloescht."
+        nachricht = f"{total_deleted} alte Backup(s) gelöscht."
     else:
-        nachricht = "Keine alten Backups zum Loeschen gefunden."
+        nachricht = "Keine alten Backups zum Löschen gefunden."
 
     return RetentionResponse(
         erfolg=True,
@@ -731,7 +731,7 @@ async def list_remote_backups(
     "/restore/postgres",
     response_model=RestoreResponse,
     summary="PostgreSQL Restore",
-    description="Stellt PostgreSQL-Datenbank aus Backup wieder her. ACHTUNG: Ueberschreibt aktuelle Daten!",
+    description="Stellt PostgreSQL-Datenbank aus Backup wieder her. ACHTUNG: Überschreibt aktuelle Daten!",
 )
 async def restore_postgres(
     request: RestoreRequest,
@@ -758,7 +758,7 @@ async def restore_postgres(
     "/restore/redis",
     response_model=RestoreResponse,
     summary="Redis Restore",
-    description="Stellt Redis-Cache aus Backup wieder her. ACHTUNG: Ueberschreibt aktuelle Daten!",
+    description="Stellt Redis-Cache aus Backup wieder her. ACHTUNG: Überschreibt aktuelle Daten!",
 )
 async def restore_redis(
     request: RestoreRequest,
@@ -785,7 +785,7 @@ async def restore_redis(
     "/restore/minio",
     response_model=RestoreResponse,
     summary="MinIO Restore",
-    description="Stellt MinIO-Bucket aus Backup wieder her. ACHTUNG: Ueberschreibt aktuelle Daten!",
+    description="Stellt MinIO-Bucket aus Backup wieder her. ACHTUNG: Überschreibt aktuelle Daten!",
 )
 async def restore_minio(
     request: RestoreMinioRequest,
@@ -814,8 +814,8 @@ async def restore_minio(
 @router.post(
     "/restore/full",
     response_model=FullRestoreResponse,
-    summary="Vollstaendiger Restore",
-    description="Stellt alle Komponenten aus Backup-Verzeichnis wieder her. ACHTUNG: Ueberschreibt alle Daten!",
+    summary="Vollständiger Restore",
+    description="Stellt alle Komponenten aus Backup-Verzeichnis wieder her. ACHTUNG: Überschreibt alle Daten!",
 )
 async def restore_full(
     request: FullRestoreRequest,
@@ -823,7 +823,7 @@ async def restore_full(
 ) -> FullRestoreResponse:
     """Stelle alle Komponenten aus Backup wieder her."""
     logger.warning(
-        "vollstaendiger_restore_angefordert",
+        "vollständiger_restore_angefordert",
         user_id=str(current_user.id),
         backup_verzeichnis=request.backup_verzeichnis,
         komponenten=request.komponenten,

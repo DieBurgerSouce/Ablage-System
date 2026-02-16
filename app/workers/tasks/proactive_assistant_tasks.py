@@ -3,9 +3,9 @@
 Proaktiver Assistent - Celery Tasks.
 
 Automatische Hint-Generierung und Verwaltung:
-- Taegliche Hint-Generierung fuer alle Firmen
-- Woechentliche tiefere Optimierungs-Analyse
-- Stuendliche Pruefung abgelaufener Hints
+- Tägliche Hint-Generierung für alle Firmen
+- Wöchentliche tiefere Optimierungs-Analyse
+- Stündliche Prüfung abgelaufener Hints
 - Tagesstatistiken
 
 Feinpoliert und durchdacht - Enterprise-grade Proactive Intelligence.
@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
 
 
 # =============================================================================
-# Taegliche Hint-Generierung
+# Tägliche Hint-Generierung
 # =============================================================================
 
 
@@ -39,10 +39,10 @@ logger = structlog.get_logger(__name__)
     queue="maintenance",
 )
 def generate_daily_hints_task(self) -> Dict[str, object]:
-    """Taeglich: Hints fuer alle aktiven Firmen generieren.
+    """Täglich: Hints für alle aktiven Firmen generieren.
 
-    Wird taeglich um 06:00 Uhr via Celery Beat ausgefuehrt.
-    Prueft Fristen, Anomalien und Optimierungspotenziale.
+    Wird täglich um 06:00 Uhr via Celery Beat ausgeführt.
+    Prüft Fristen, Anomalien und Optimierungspotenziale.
 
     Returns:
         Dict mit Verarbeitungsstatistiken pro Firma
@@ -97,7 +97,7 @@ def generate_daily_hints_task(self) -> Dict[str, object]:
                         company_id=str(company_id),
                         **safe_error_log(e),
                     )
-                    # Rollback fuer diese Firma, weiter mit naechster
+                    # Rollback für diese Firma, weiter mit nächster
                     await db.rollback()
 
             return stats
@@ -118,7 +118,7 @@ def generate_daily_hints_task(self) -> Dict[str, object]:
 
 
 # =============================================================================
-# Woechentliche Optimierungs-Analyse
+# Wöchentliche Optimierungs-Analyse
 # =============================================================================
 
 
@@ -130,9 +130,9 @@ def generate_daily_hints_task(self) -> Dict[str, object]:
     queue="maintenance",
 )
 def generate_weekly_optimization_hints_task(self) -> Dict[str, object]:
-    """Woechentlich: Tiefere Optimierungs-Analyse fuer alle Firmen.
+    """Wöchentlich: Tiefere Optimierungs-Analyse für alle Firmen.
 
-    Wird montags um 07:00 Uhr via Celery Beat ausgefuehrt.
+    Wird montags um 07:00 Uhr via Celery Beat ausgeführt.
     Fokus auf wiederkehrende Muster und langfristige Sparpotenziale.
 
     Returns:
@@ -200,7 +200,7 @@ def generate_weekly_optimization_hints_task(self) -> Dict[str, object]:
 
 
 # =============================================================================
-# Abgelaufene Hints pruefen
+# Abgelaufene Hints prüfen
 # =============================================================================
 
 
@@ -212,10 +212,10 @@ def generate_weekly_optimization_hints_task(self) -> Dict[str, object]:
     queue="maintenance",
 )
 def check_expiring_hints_task(self) -> Dict[str, object]:
-    """Stuendlich: Abgelaufene Hints als dismissed markieren.
+    """Stündlich: Abgelaufene Hints als dismissed markieren.
 
-    Wird stuendlich via Celery Beat ausgefuehrt.
-    Raeumt Hints auf deren expires_at ueberschritten ist.
+    Wird stündlich via Celery Beat ausgeführt.
+    Räumt Hints auf deren expires_at überschritten ist.
 
     Returns:
         Dict mit Anzahl bereinigter Hints
@@ -261,10 +261,10 @@ def send_hint_notifications_task(
     self,
     company_id: Optional[str] = None,
 ) -> Dict[str, object]:
-    """Benachrichtigungen fuer hochpriorisierte neue Hints versenden.
+    """Benachrichtigungen für hochpriorisierte neue Hints versenden.
 
-    Wird nach Hint-Generierung ausgefuehrt oder manuell getriggert.
-    Sendet Benachrichtigungen fuer CRITICAL/HIGH-Hints.
+    Wird nach Hint-Generierung ausgeführt oder manuell getriggert.
+    Sendet Benachrichtigungen für CRITICAL/HIGH-Hints.
 
     Args:
         company_id: Optionale Firma-ID (None = alle Firmen)
@@ -304,8 +304,8 @@ def send_hint_notifications_task(
             notified_count = 0
             for hint in hints:
                 try:
-                    # Hier koennte eine Notification Service Integration erfolgen
-                    # Fuer den Moment: Hint als gesehen markieren
+                    # Hier könnte eine Notification Service Integration erfolgen
+                    # Für den Moment: Hint als gesehen markieren
                     logger.info(
                         "high_priority_hint_notification",
                         hint_id=str(hint.id),
@@ -347,10 +347,10 @@ def send_hint_notifications_task(
     queue="maintenance",
 )
 def calculate_hint_statistics_task(self) -> Dict[str, object]:
-    """Taeglich: Hint-Statistiken aggregieren.
+    """Täglich: Hint-Statistiken aggregieren.
 
-    Wird taeglich um 23:00 Uhr via Celery Beat ausgefuehrt.
-    Berechnet Statistiken fuer den vergangenen Tag.
+    Wird täglich um 23:00 Uhr via Celery Beat ausgeführt.
+    Berechnet Statistiken für den vergangenen Tag.
 
     Returns:
         Dict mit Statistik-Ergebnissen

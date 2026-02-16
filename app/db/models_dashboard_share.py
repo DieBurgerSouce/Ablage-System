@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Dashboard Sharing Models fuer Ablage-System.
+Dashboard Sharing Models für Ablage-System.
 
 Persistente Dashboard-Freigaben mit Audit-Trail:
 - Benutzer-basiertes Sharing mit Berechtigungen
-- Ablaufdatum-Unterstuetzung
-- Vollstaendiger Audit-Trail aller Freigabe-Aktionen
+- Ablaufdatum-Unterstützung
+- Vollständiger Audit-Trail aller Freigabe-Aktionen
 - Eindeutigkeit pro Dashboard-Benutzer-Paar
 
 Feinpoliert und durchdacht - Enterprise-grade Dashboard Sharing.
@@ -126,13 +126,13 @@ class DashboardShare(Base):
 
 class DashboardShareAudit(Base):
     """
-    Audit-Trail fuer Dashboard-Freigabe-Aktionen.
+    Audit-Trail für Dashboard-Freigabe-Aktionen.
 
-    Protokolliert alle Aenderungen an Freigaben:
+    Protokolliert alle Änderungen an Freigaben:
     - Neue Freigabe erstellt
     - Freigabe entfernt
-    - Berechtigung geaendert
-    - Zusaetzliche Details in JSONB
+    - Berechtigung geändert
+    - Zusätzliche Details in JSONB
     """
     __tablename__ = "dashboard_share_audits"
 
@@ -146,7 +146,7 @@ class DashboardShareAudit(Base):
         UUID(as_uuid=True),
         ForeignKey("dashboard_shares.id", ondelete="SET NULL"),
         nullable=True,
-        comment="Referenz zur Freigabe (kann NULL sein bei Loeschung)"
+        comment="Referenz zur Freigabe (kann NULL sein bei Löschung)"
     )
     dashboard_id = Column(
         UUID(as_uuid=True),
@@ -163,12 +163,12 @@ class DashboardShareAudit(Base):
         UUID(as_uuid=True),
         ForeignKey("users.id"),
         nullable=False,
-        comment="Benutzer der die Aktion durchgefuehrt hat"
+        comment="Benutzer der die Aktion durchgeführt hat"
     )
     details = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Zusaetzliche Details zur Aktion (alte/neue Werte, etc.)"
+        comment="Zusätzliche Details zur Aktion (alte/neue Werte, etc.)"
     )
     created_at = Column(
         DateTime(timezone=True),

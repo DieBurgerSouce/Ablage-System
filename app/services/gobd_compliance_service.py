@@ -1,13 +1,13 @@
 """GoBD Compliance Report Service.
 
-Service fuer die Generierung von GoBD-Compliance-Berichten:
+Service für die Generierung von GoBD-Compliance-Berichten:
 - Archivierungsstatus
 - Aufbewahrungsfristen-Compliance
-- Audit-Trail-Vollstaendigkeit
-- Integritaetspruefungen
+- Audit-Trail-Vollständigkeit
+- Integritätsprüfungen
 - Zusammenfassender Compliance-Score
 
-GoBD = Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung
+GoBD = Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung
        von Buechern, Aufzeichnungen und Unterlagen in elektronischer
        Form sowie zum Datenzugriff
 
@@ -58,12 +58,12 @@ class ComplianceMetric:
 
 
 class GoBDComplianceService:
-    """Service fuer GoBD-Compliance-Berichte und -Pruefungen."""
+    """Service für GoBD-Compliance-Berichte und -Prüfungen."""
 
     # Compliance Thresholds
     MIN_ARCHIVE_RATE = 0.95  # 95% der steuerrelevanten Dokumente archiviert
     MAX_VERIFICATION_AGE_DAYS = 90  # Max. Tage seit letzter Verifikation
-    MIN_AUDIT_TRAIL_COVERAGE = 1.0  # 100% Audit-Trail fuer Zugriffe
+    MIN_AUDIT_TRAIL_COVERAGE = 1.0  # 100% Audit-Trail für Zugriffe
     MAX_FAILED_VERIFICATIONS = 0  # Keine fehlgeschlagenen Verifikationen
 
     async def generate_compliance_report(
@@ -73,13 +73,13 @@ class GoBDComplianceService:
         report_date: Optional[date] = None,
         include_details: bool = True,
     ) -> Dict[str, Any]:
-        """Generiert einen vollstaendigen GoBD-Compliance-Bericht.
+        """Generiert einen vollständigen GoBD-Compliance-Bericht.
 
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
             report_date: Stichtag (default: heute)
-            include_details: Details einschliessen
+            include_details: Details einschließen
 
         Returns:
             Dict mit Compliance-Bericht
@@ -157,7 +157,7 @@ class GoBDComplianceService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[ComplianceMetric]:
-        """Prueft Archivierungs-Compliance."""
+        """Prüft Archivierungs-Compliance."""
         metrics = []
 
         # Gesamtzahl Dokumente
@@ -188,7 +188,7 @@ class GoBDComplianceService:
             status=archive_status,
             threshold=f"{self.MIN_ARCHIVE_RATE * 100:.0f}%",
             description=f"{archived_docs} von {total_docs} Dokumenten archiviert",
-            recommendation="Nicht archivierte Dokumente pruefen und archivieren" if archive_status != ComplianceStatus.COMPLIANT else None,
+            recommendation="Nicht archivierte Dokumente prüfen und archivieren" if archive_status != ComplianceStatus.COMPLIANT else None,
         ))
 
         # Dokumente ohne Hash (nicht signiert)
@@ -215,8 +215,8 @@ class GoBDComplianceService:
             value=unsigned_docs,
             status=unsigned_status,
             threshold=0,
-            description="Alle archivierten Dokumente benoetigen SHA-256 Hash",
-            recommendation="Hash-Signatur fuer unsignierte Dokumente erstellen" if unsigned_docs > 0 else None,
+            description="Alle archivierten Dokumente benötigen SHA-256 Hash",
+            recommendation="Hash-Signatur für unsignierte Dokumente erstellen" if unsigned_docs > 0 else None,
         ))
 
         return metrics
@@ -227,10 +227,10 @@ class GoBDComplianceService:
         company_id: uuid.UUID,
         report_date: date,
     ) -> List[ComplianceMetric]:
-        """Prueft Aufbewahrungsfristen-Compliance."""
+        """Prüft Aufbewahrungsfristen-Compliance."""
         metrics = []
 
-        # Abgelaufene Archive (Aufbewahrungsfrist ueberschritten, aber nicht geloescht)
+        # Abgelaufene Archive (Aufbewahrungsfrist überschritten, aber nicht gelöscht)
         expired_result = await db.execute(
             select(func.count()).select_from(DocumentArchive)
             .where(
@@ -243,7 +243,7 @@ class GoBDComplianceService:
         expired_count = expired_result.scalar() or 0
 
         # Hinweis: Abgelaufene Dokumente sind NICHT automatisch non-compliant
-        # Sie KOENNEN geloescht werden, muessen aber nicht sofort geloescht werden
+        # Sie KOENNEN gelöscht werden, müssen aber nicht sofort gelöscht werden
         expired_status = (
             ComplianceStatus.COMPLIANT if expired_count == 0
             else ComplianceStatus.WARNING
@@ -254,7 +254,7 @@ class GoBDComplianceService:
             value=expired_count,
             status=expired_status,
             description="Dokumente deren Aufbewahrungsfrist abgelaufen ist",
-            recommendation="Pruefen ob abgelaufene Dokumente geloescht werden koennen" if expired_count > 0 else None,
+            recommendation="Prüfen ob abgelaufene Dokumente gelöscht werden können" if expired_count > 0 else None,
         ))
 
         # Bald ablaufende Archive (90 Tage)
@@ -300,7 +300,7 @@ class GoBDComplianceService:
                 name=f"Kategorie: {cat_name}",
                 value=count,
                 status=cat_status,
-                description=f"Fruehester Ablauf: {earliest.isoformat() if earliest else 'Unbekannt'}",
+                description=f"Frühester Ablauf: {earliest.isoformat() if earliest else 'Unbekannt'}",
             ))
 
         return metrics
@@ -310,7 +310,7 @@ class GoBDComplianceService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[ComplianceMetric]:
-        """Prueft Audit-Trail-Compliance (Nachvollziehbarkeit)."""
+        """Prüft Audit-Trail-Compliance (Nachvollziehbarkeit)."""
         metrics = []
 
         # Dokumente mit Audit-Trail
@@ -341,10 +341,10 @@ class GoBDComplianceService:
             status=coverage_status,
             threshold="100%",
             description=f"{docs_with_audit} von {archived_docs} archivierten Dokumenten haben Zugriffsprotokoll",
-            recommendation="Zugriffsprotokollierung fuer alle archivierten Dokumente aktivieren" if coverage_status != ComplianceStatus.COMPLIANT else None,
+            recommendation="Zugriffsprotokollierung für alle archivierten Dokumente aktivieren" if coverage_status != ComplianceStatus.COMPLIANT else None,
         ))
 
-        # Sequenzluecken prufen
+        # Sequenzlücken prufen
         null_seq_result = await db.execute(
             select(func.count())
             .where(
@@ -361,12 +361,12 @@ class GoBDComplianceService:
         )
 
         metrics.append(ComplianceMetric(
-            name="Sequenzluecken im Audit-Trail",
+            name="Sequenzlücken im Audit-Trail",
             value=null_sequences,
             status=seq_status,
             threshold=0,
-            description="Fehlende Sequenznummern (GoBD Vollstaendigkeit)",
-            recommendation="Ursache fuer fehlende Sequenznummern untersuchen" if null_sequences > 0 else None,
+            description="Fehlende Sequenznummern (GoBD Vollständigkeit)",
+            recommendation="Ursache für fehlende Sequenznummern untersuchen" if null_sequences > 0 else None,
         ))
 
         # Fehlgeschlagene Zugriffe
@@ -396,7 +396,7 @@ class GoBDComplianceService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[ComplianceMetric]:
-        """Prueft Integritaets-Compliance (Unveraenderbarkeit)."""
+        """Prüft Integritäts-Compliance (Unveränderbarkeit)."""
         metrics = []
 
         # Fehlgeschlagene Verifikationen
@@ -416,12 +416,12 @@ class GoBDComplianceService:
         )
 
         metrics.append(ComplianceMetric(
-            name="Fehlgeschlagene Integritaetspruefungen",
+            name="Fehlgeschlagene Integritätsprüfungen",
             value=failed_verifications,
             status=verif_status,
             threshold=0,
             description="Dokumente deren Hash-Verifikation fehlgeschlagen ist",
-            recommendation="Sofort pruefen - moegliche Manipulation!" if failed_verifications > 0 else None,
+            recommendation="Sofort prüfen - mögliche Manipulation!" if failed_verifications > 0 else None,
         ))
 
         # Verifikationen aelter als 90 Tage
@@ -450,7 +450,7 @@ class GoBDComplianceService:
             status=old_verif_status,
             threshold=0,
             description=f"Archive ohne Verifikation in letzten {self.MAX_VERIFICATION_AGE_DAYS} Tagen",
-            recommendation="Regelmaessige Integritaetspruefungen planen" if old_verifications > 0 else None,
+            recommendation="Regelmäßige Integritätsprüfungen planen" if old_verifications > 0 else None,
         ))
 
         # Archive mit Verifikations-Fehlermeldung
@@ -472,7 +472,7 @@ class GoBDComplianceService:
                 status=ComplianceStatus.NON_COMPLIANT,
                 threshold=0,
                 description="Archive mit dokumentierten Verifikationsfehlern",
-                recommendation="Fehlerhafte Archive pruefen und korrigieren",
+                recommendation="Fehlerhafte Archive prüfen und korrigieren",
             ))
 
         return metrics
@@ -514,9 +514,9 @@ class GoBDComplianceService:
         return round(avg_score, 1), overall_status
 
     def _get_score_description(self, score: float) -> str:
-        """Gibt eine deutsche Beschreibung fuer den Score zurueck."""
+        """Gibt eine deutsche Beschreibung für den Score zurück."""
         if score >= 95:
-            return "Ausgezeichnet - Vollstaendige GoBD-Compliance"
+            return "Ausgezeichnet - Vollständige GoBD-Compliance"
         elif score >= 80:
             return "Gut - Geringfuegige Verbesserungen empfohlen"
         elif score >= 60:
@@ -597,9 +597,9 @@ class GoBDComplianceService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> Dict[str, Any]:
-        """Gibt einen schnellen Compliance-Status zurueck (ohne Details).
+        """Gibt einen schnellen Compliance-Status zurück (ohne Details).
 
-        Fuer Dashboard-Widgets und Uebersichten.
+        Für Dashboard-Widgets und Übersichten.
 
         Args:
             db: Datenbank-Session
@@ -633,7 +633,7 @@ class GoBDComplianceService:
         )
         failed_verifications = failed_result.scalar() or 0
 
-        # 2. Sequenzluecken
+        # 2. Sequenzlücken
         null_seq_result = await db.execute(
             select(func.count())
             .where(
@@ -676,17 +676,17 @@ class GoBDComplianceService:
         - Allgemeine Beschreibung des DV-Systems
         - Prozessbeschreibungen
         - Benutzer- und Rollenkonzept
-        - Aenderungshistorie
+        - Änderungshistorie
 
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
-            include_system_info: System-Architektur einschliessen
-            include_user_roles: Benutzer und Rollen einschliessen
-            include_change_history: Aenderungshistorie einschliessen
+            include_system_info: System-Architektur einschließen
+            include_user_roles: Benutzer und Rollen einschließen
+            include_change_history: Änderungshistorie einschließen
 
         Returns:
-            Dict mit vollstaendiger Verfahrensdokumentation
+            Dict mit vollständiger Verfahrensdokumentation
         """
         # Firmendaten laden
         company = await db.get(Company, company_id)
@@ -700,7 +700,7 @@ class GoBDComplianceService:
                 "generated_at": datetime.now(timezone.utc).isoformat(),
                 "company_id": str(company_id),
                 # WICHTIG: Firmennamen sind nicht PII im Sinne der DSGVO,
-                # da sie oeffentliche Handelsdaten sind (Handelsregister)
+                # da sie öffentliche Handelsdaten sind (Handelsregister)
                 "company_name": company.name if company else "Unbekannt",
             },
             "rechtliche_grundlagen": self._get_legal_basis(),
@@ -715,32 +715,32 @@ class GoBDComplianceService:
             documentation["benutzer_rollen"] = await self._generate_user_role_documentation(db, company_id)
 
         if include_change_history:
-            documentation["aenderungshistorie"] = await self._generate_change_history(db, company_id)
+            documentation["änderungshistorie"] = await self._generate_change_history(db, company_id)
 
         return documentation
 
     def _get_legal_basis(self) -> Dict[str, Any]:
-        """Gibt die rechtlichen Grundlagen zurueck."""
+        """Gibt die rechtlichen Grundlagen zurück."""
         return {
             "gobd": {
-                "name": "Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung von Buechern, Aufzeichnungen und Unterlagen in elektronischer Form sowie zum Datenzugriff",
+                "name": "Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung von Buechern, Aufzeichnungen und Unterlagen in elektronischer Form sowie zum Datenzugriff",
                 "kurzform": "GoBD",
                 "herausgeber": "Bundesministerium der Finanzen",
                 "version": "BMF-Schreiben vom 28.11.2019",
             },
             "aufbewahrungsfristen": [
-                {"kategorie": "Handels- und Geschaeftsbriefe", "frist_jahre": 6, "rechtsgrundlage": "§ 257 Abs. 4 HGB"},
+                {"kategorie": "Handels- und Geschäftsbriefe", "frist_jahre": 6, "rechtsgrundlage": "§ 257 Abs. 4 HGB"},
                 {"kategorie": "Buchungsbelege", "frist_jahre": 10, "rechtsgrundlage": "§ 147 Abs. 3 AO"},
                 {"kategorie": "Rechnungen", "frist_jahre": 10, "rechtsgrundlage": "§ 14b UStG"},
-                {"kategorie": "Handels- und Geschaeftsbuecher", "frist_jahre": 10, "rechtsgrundlage": "§ 257 Abs. 4 HGB"},
+                {"kategorie": "Handels- und Geschäftsbuecher", "frist_jahre": 10, "rechtsgrundlage": "§ 257 Abs. 4 HGB"},
             ],
             "kernprinzipien": [
-                "Nachvollziehbarkeit und Nachpruefbarkeit",
-                "Vollstaendigkeit",
+                "Nachvollziehbarkeit und Nachprüfbarkeit",
+                "Vollständigkeit",
                 "Richtigkeit",
                 "Zeitgerechte Buchung und Aufzeichnung",
                 "Ordnung",
-                "Unveraenderbarkeit",
+                "Unveränderbarkeit",
             ],
         }
 
@@ -757,28 +757,28 @@ class GoBDComplianceService:
                 "automatischer Klassifizierung und GoBD-konformer Archivierung."
             ),
             "einsatzzweck": [
-                "Digitalisierung von Eingangsrechnungen und Geschaeftskorrespondenz",
+                "Digitalisierung von Eingangsrechnungen und Geschäftskorrespondenz",
                 "Automatische Texterkennung (OCR) mit GPU-Beschleunigung",
                 "Klassifizierung und Kategorisierung von Dokumenten",
                 "Revisionssichere Archivierung nach GoBD-Anforderungen",
                 "Aufbewahrungsfristen-Management",
-                "DATEV-Export fuer Steuerberater",
+                "DATEV-Export für Steuerberater",
             ],
             "datenarten": [
                 {"art": "Eingangsrechnungen", "aufbewahrung": "10 Jahre"},
                 {"art": "Ausgangsrechnungen", "aufbewahrung": "10 Jahre"},
-                {"art": "Vertraege", "aufbewahrung": "10 Jahre (ab Vertragsende)"},
-                {"art": "Geschaeftskorrespondenz", "aufbewahrung": "6 Jahre"},
+                {"art": "Verträge", "aufbewahrung": "10 Jahre (ab Vertragsende)"},
+                {"art": "Geschäftskorrespondenz", "aufbewahrung": "6 Jahre"},
                 {"art": "Buchhaltungsbelege", "aufbewahrung": "10 Jahre"},
             ],
             "compliance_features": [
-                "SHA-256 Hash-Signaturen fuer alle archivierten Dokumente",
-                "Blockchain-aehnliche Audit-Chain fuer Nachvollziehbarkeit",
-                "RFC 3161 Zeitstempel-Unterstuetzung (optional)",
+                "SHA-256 Hash-Signaturen für alle archivierten Dokumente",
+                "Blockchain-ähnliche Audit-Chain für Nachvollziehbarkeit",
+                "RFC 3161 Zeitstempel-Unterstützung (optional)",
                 "Automatische Aufbewahrungsfristen nach Dokumenttyp",
-                "Loeschsperre waehrend Aufbewahrungsfrist",
-                "Integritaetspruefungen (automatisch und manuell)",
-                "Vollstaendiger Audit-Trail aller Zugriffe",
+                "Löschsperre während Aufbewahrungsfrist",
+                "Integritätsprüfungen (automatisch und manuell)",
+                "Vollständiger Audit-Trail aller Zugriffe",
             ],
         }
 
@@ -789,12 +789,12 @@ class GoBDComplianceService:
                 {
                     "name": "Backend API",
                     "technologie": "Python FastAPI",
-                    "funktion": "REST-API fuer alle Geschaeftslogik",
+                    "funktion": "REST-API für alle Geschäftslogik",
                 },
                 {
                     "name": "Datenbank",
                     "technologie": "PostgreSQL 16",
-                    "funktion": "Persistente Datenspeicherung mit JSONB-Unterstuetzung",
+                    "funktion": "Persistente Datenspeicherung mit JSONB-Unterstützung",
                 },
                 {
                     "name": "Objektspeicher",
@@ -823,19 +823,19 @@ class GoBDComplianceService:
                 },
             ],
             "sicherheitsmerkmale": [
-                "HTTPS/TLS fuer alle Verbindungen",
+                "HTTPS/TLS für alle Verbindungen",
                 "JWT-basierte Authentifizierung",
                 "Bcrypt-Passwort-Hashing (Cost Factor 12)",
                 "Multi-Tenant Isolation (Row Level Security)",
                 "Rate Limiting (Login: 5/15min, API: 100/min)",
                 "GDPR-konforme Datenhaltung",
-                "AES-256-GCM Verschluesselung fuer sensible Daten",
+                "AES-256-GCM Verschlüsselung für sensible Daten",
             ],
             "datensicherung": [
-                "Taegliche Datenbank-Backups (PostgreSQL)",
+                "Tägliche Datenbank-Backups (PostgreSQL)",
                 "Inkrementelle MinIO-Backups",
                 "30-Tage Backup-Retention",
-                "Verschluesselte Backup-Speicherung",
+                "Verschlüsselte Backup-Speicherung",
             ],
         }
 
@@ -849,7 +849,7 @@ class GoBDComplianceService:
             {
                 "prozess_id": "P001",
                 "name": "Dokumentenerfassung",
-                "beschreibung": "Erfassung von Dokumenten ueber verschiedene Eingangskanaele",
+                "beschreibung": "Erfassung von Dokumenten über verschiedene Eingangskanaele",
                 "schritte": [
                     "1. Dokument-Upload (manuell oder automatisch via Email/Folder-Import)",
                     "2. Format-Validierung (PDF, JPG, PNG, TIFF)",
@@ -871,7 +871,7 @@ class GoBDComplianceService:
                     "4. Strukturierte Datenextraktion (Rechnungsnummer, Betrag, etc.)",
                     "5. Confidence-Score Berechnung",
                     "6. Speicherung der extrahierten Daten",
-                    "7. Bei niedriger Confidence: Markierung zur manuellen Pruefung",
+                    "7. Bei niedriger Confidence: Markierung zur manuellen Prüfung",
                 ],
                 "verantwortlich": "System (automatisch)",
             },
@@ -886,16 +886,16 @@ class GoBDComplianceService:
                     "4. Optional: RFC 3161 Zeitstempel anfordern",
                     "5. Archiv-Eintrag mit Hash-Signatur erstellen",
                     "6. Eintrag in Audit-Chain hinzufuegen",
-                    "7. Loeschsperre aktivieren bis Ablauf der Aufbewahrungsfrist",
+                    "7. Löschsperre aktivieren bis Ablauf der Aufbewahrungsfrist",
                 ],
                 "verantwortlich": "System (automatisch) oder Benutzer (manuell)",
             },
             {
                 "prozess_id": "P004",
-                "name": "Integritaetspruefung",
-                "beschreibung": "Regelmaessige Verifikation der Dokumentintegritaet",
+                "name": "Integritätsprüfung",
+                "beschreibung": "Regelmäßige Verifikation der Dokumentintegrität",
                 "schritte": [
-                    "1. Geplante Pruefung via Celery-Task (taeglich/woechentlich)",
+                    "1. Geplante Prüfung via Celery-Task (täglich/woechentlich)",
                     "2. Dokument aus Objektspeicher laden",
                     "3. SHA-256 Hash neu berechnen",
                     "4. Vergleich mit gespeichertem Hash",
@@ -908,10 +908,10 @@ class GoBDComplianceService:
             {
                 "prozess_id": "P005",
                 "name": "DATEV-Export",
-                "beschreibung": "Export von Buchungsdaten fuer Steuerberater",
+                "beschreibung": "Export von Buchungsdaten für Steuerberater",
                 "schritte": [
-                    "1. Zeitraum und Dokumenttypen auswaehlen",
-                    "2. Buchungsstapel gemaess DATEV-Format (Version 700) generieren",
+                    "1. Zeitraum und Dokumenttypen auswählen",
+                    "2. Buchungsstapel gemäß DATEV-Format (Version 700) generieren",
                     "3. Vendor-Mapping anwenden (Lieferant -> Konto)",
                     "4. CSV-Export erstellen",
                     "5. Export in Historie protokollieren",
@@ -922,9 +922,9 @@ class GoBDComplianceService:
             {
                 "prozess_id": "P006",
                 "name": "Steuerberater-Zugang",
-                "beschreibung": "Temporaerer Lesezugriff fuer Steuerberater",
+                "beschreibung": "Temporaerer Lesezugriff für Steuerberater",
                 "schritte": [
-                    "1. Administrator erstellt Einladung mit Gueltigkeitsdauer",
+                    "1. Administrator erstellt Einladung mit Gültigkeitsdauer",
                     "2. Einladungs-Link per Email an Steuerberater",
                     "3. Steuerberater akzeptiert und setzt Passwort",
                     "4. Lesezugriff auf freigegebene Dokumente/Zeitraeume",
@@ -942,7 +942,7 @@ class GoBDComplianceService:
     ) -> Dict[str, Any]:
         """Generiert die Benutzer- und Rollendokumentation.
 
-        WICHTIG: Diese Methode gibt nur aggregierte Statistiken zurueck,
+        WICHTIG: Diese Methode gibt nur aggregierte Statistiken zurück,
         keine individuellen User-Daten (PII-Schutz nach DSGVO).
         """
         from app.db.models import User
@@ -970,9 +970,9 @@ class GoBDComplianceService:
                     "rolle": "admin",
                     "beschreibung": "Administrator mit vollen Zugriffsrechten",
                     "berechtigungen": [
-                        "Alle Dokumente lesen, bearbeiten, loeschen",
+                        "Alle Dokumente lesen, bearbeiten, löschen",
                         "Benutzer verwalten",
-                        "System-Einstellungen aendern",
+                        "System-Einstellungen ändern",
                         "Aufbewahrungsfristen konfigurieren",
                         "DATEV-Export",
                         "Steuerberater-Zugang verwalten",
@@ -994,7 +994,7 @@ class GoBDComplianceService:
                     "beschreibung": "Leser mit eingeschraenkten Rechten",
                     "berechtigungen": [
                         "Zugewiesene Dokumente lesen",
-                        "Keine Aenderungen moeglich",
+                        "Keine Änderungen möglich",
                     ],
                 },
                 {
@@ -1003,7 +1003,7 @@ class GoBDComplianceService:
                     "berechtigungen": [
                         "Freigegebene Dokumente lesen",
                         "DATEV-Export (eingeschraenkt)",
-                        "Keine Aenderungen moeglich",
+                        "Keine Änderungen möglich",
                         "Zeitlich und inhaltlich begrenzt",
                     ],
                 },
@@ -1022,9 +1022,9 @@ class GoBDComplianceService:
         company_id: uuid.UUID,
         limit: int = 50,
     ) -> Dict[str, Any]:
-        """Generiert die Aenderungshistorie aus dem Audit-Trail.
+        """Generiert die Änderungshistorie aus dem Audit-Trail.
 
-        HINWEIS: Gibt nur technische Metadaten zurueck, keine PII.
+        HINWEIS: Gibt nur technische Metadaten zurück, keine PII.
         """
         # Input-Validierung: limit begrenzen (DoS-Schutz)
         if limit <= 0 or limit > 1000:
@@ -1055,8 +1055,8 @@ class GoBDComplianceService:
 
             return {
                 "quelle": "GoBD Audit-Chain",
-                "eintraege": history_entries,
-                "gesamt_eintraege": len(history_entries),
+                "einträge": history_entries,
+                "gesamt_einträge": len(history_entries),
                 "abgerufen_am": datetime.now(timezone.utc).isoformat(),
             }
         except ImportError:
@@ -1064,7 +1064,7 @@ class GoBDComplianceService:
             logger.info("change_history_model_not_available")
             return {
                 "quelle": "GoBD Audit-Chain",
-                "eintraege": [],
+                "einträge": [],
                 "hinweis": "Audit-Chain Model noch nicht initialisiert",
                 "abgerufen_am": datetime.now(timezone.utc).isoformat(),
             }
@@ -1073,11 +1073,11 @@ class GoBDComplianceService:
             logger.error(
                 "change_history_unexpected_error",
                 error_type=type(e).__name__,
-                # WICHTIG: Keine Details des Fehlers loggen (koennte PII enthalten)
+                # WICHTIG: Keine Details des Fehlers loggen (könnte PII enthalten)
             )
             return {
                 "quelle": "GoBD Audit-Chain",
-                "eintraege": [],
+                "einträge": [],
                 "hinweis": "Fehler beim Abrufen der Audit-Chain",
                 "abgerufen_am": datetime.now(timezone.utc).isoformat(),
             }

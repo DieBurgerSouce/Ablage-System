@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Celery Tasks fuer Banking-Operationen.
+Celery Tasks für Banking-Operationen.
 
 Geplante Tasks:
 - process_bank_import: Verarbeite hochgeladene Kontoauszuege
 - auto_reconcile: Automatischer Zahlungsabgleich
 - update_transaction_stats: Aktualisiere Transaktions-Statistiken
-- check_duplicate_transactions: Pruefe auf Duplikate
+- check_duplicate_transactions: Prüfe auf Duplikate
 - parse_transaction_references: Analysiere Verwendungszwecke
 
 Beat Schedule:
 - auto_reconcile: Stundlich
-- update_transaction_stats: Taeglich 01:00
-- check_overdue_payments: Taeglich 08:00
+- update_transaction_stats: Täglich 01:00
+- check_overdue_payments: Täglich 08:00
 """
 
 import asyncio
@@ -29,7 +29,7 @@ logger = structlog.get_logger(__name__)
 
 
 def run_async(coro):
-    """Hilfsfunktion um async Code in sync Celery Tasks auszufuehren."""
+    """Hilfsfunktion um async Code in sync Celery Tasks auszuführen."""
     return asyncio.run(coro)
 
 
@@ -40,7 +40,7 @@ async def _match_transaction_to_document(
 ) -> Optional[Dict[str, Any]]:
     """Matched eine Transaktion gegen Dokumente im System.
 
-    Matching-Strategien (nach Prioritaet):
+    Matching-Strategien (nach Priorität):
     1. Rechnungsnummer (exakt) - Confidence: 95%
     2. Kundennummer + Betrag - Confidence: 85%
     3. Fuzzy Betrag + Datum - Confidence: 70%
@@ -108,7 +108,7 @@ async def _match_transaction_to_document(
             docs = result.scalars().all()
 
             for doc in docs:
-                # Pruefe Betrag mit Toleranz (0.5%)
+                # Prüfe Betrag mit Toleranz (0.5%)
                 doc_amount = None
                 if doc.extracted_data:
                     doc_amount = (
@@ -140,12 +140,12 @@ async def _match_transaction_to_document(
                             error_type=type(e).__name__,
                         )
 
-    # Strategie 3: Fuzzy Betrag + Datum-Naehe
+    # Strategie 3: Fuzzy Betrag + Datum-Nähe
     if transaction.amount and transaction.booking_date:
         tx_amount = abs(float(transaction.amount))
         tx_date = transaction.booking_date.date() if hasattr(transaction.booking_date, 'date') else transaction.booking_date
 
-        # Suche Dokumente mit aehnlichem Betrag (1% Toleranz)
+        # Suche Dokumente mit ähnlichem Betrag (1% Toleranz)
         tolerance = tx_amount * 0.01
 
         # Zeitraum: 30 Tage vor Buchungsdatum
@@ -335,7 +335,7 @@ def auto_reconcile(
     Matched unabgeglichene Transaktionen mit Rechnungen basierend auf:
     - IBAN + Betrag
     - Rechnungsnummer im Verwendungszweck
-    - Betrag + Datum-Naehe
+    - Betrag + Datum-Nähe
 
     Args:
         user_id: Optional User-Filter
@@ -593,7 +593,7 @@ def update_account_balances(self, bank_account_id: Optional[str] = None) -> Dict
             stats = {"accounts_updated": 0}
 
             async with get_async_session() as db:
-                # Query fuer Konten
+                # Query für Konten
                 query = select(BankAccount).where(
                     and_(
                         BankAccount.deleted_at.is_(None),
@@ -658,10 +658,10 @@ def update_account_balances(self, bank_account_id: Optional[str] = None) -> Dict
 )
 def check_overdue_payments(self) -> Dict[str, Any]:
     """
-    Pruefe auf ueberfaellige Zahlungen.
+    Prüfe auf überfällige Zahlungen.
 
     Returns:
-        Statistik ueberfaelliger Zahlungen
+        Statistik überfälliger Zahlungen
     """
     logger.info(
         "check_overdue_task_started",
@@ -740,7 +740,7 @@ def process_automatic_dunning(
     dry_run: bool = False,
 ) -> Dict[str, Any]:
     """
-    Fuehre automatisches Mahnverfahren durch.
+    Führe automatisches Mahnverfahren durch.
 
     Args:
         user_id: Optional User-Filter
@@ -834,7 +834,7 @@ def process_automatic_dunning(
 )
 def update_cash_flow_forecasts(self) -> Dict[str, Any]:
     """
-    Aktualisiere Cash-Flow-Prognosen fuer alle User.
+    Aktualisiere Cash-Flow-Prognosen für alle User.
 
     Returns:
         Update-Statistik
@@ -918,10 +918,10 @@ def update_cash_flow_forecasts(self) -> Dict[str, Any]:
 )
 def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
     """
-    Sende Alerts fuer ablaufende Skonto-Fristen.
+    Sende Alerts für ablaufende Skonto-Fristen.
 
     Args:
-        days_ahead: Tage voraus pruefen
+        days_ahead: Tage voraus prüfen
 
     Returns:
         Alert-Statistik
@@ -969,7 +969,7 @@ def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
                         )
                         stats["total_savings"] += user_savings
 
-                        # Sende Notifications fuer ablaufende Skonti
+                        # Sende Notifications für ablaufende Skonti
                         if opportunities and user.email:
                             from app.services.notification_service import (
                                 NotificationService,
@@ -1000,7 +1000,7 @@ def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
                                 priority=NotificationPriority.HIGH,
                             )
 
-                            # Sende auch Slack-Benachrichtigung fuer dringende Fristen (<=3 Tage)
+                            # Sende auch Slack-Benachrichtigung für dringende Fristen (<=3 Tage)
                             if days_ahead <= 3:
                                 try:
                                     from app.services.slack_service import (
@@ -1020,7 +1020,7 @@ def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
                                         title=f"{urgency}: Skonto-Fristen laufen ab",
                                         message=(
                                             f"*{len(opportunities)} Rechnung(en)* mit ablaufenden "
-                                            f"Skonto-Fristen in den naechsten {days_ahead} Tag(en).\n\n"
+                                            f"Skonto-Fristen in den nächsten {days_ahead} Tag(en).\n\n"
                                             f"Potenzielle Ersparnis: *{user_savings:.2f} EUR*"
                                         ),
                                         context={
@@ -1112,10 +1112,10 @@ def cleanup_tan_challenges(self) -> Dict[str, Any]:
 
 def is_german_business_day(check_date: Optional[date] = None) -> bool:
     """
-    Pruefe ob Datum ein deutscher Werktag ist.
+    Prüfe ob Datum ein deutscher Werktag ist.
 
     Args:
-        check_date: Zu pruefendes Datum (default: heute)
+        check_date: Zu prüfendes Datum (default: heute)
 
     Returns:
         True wenn Werktag (Mo-Fr, kein Feiertag)
@@ -1145,13 +1145,13 @@ def is_german_business_day(check_date: Optional[date] = None) -> bool:
 )
 def daily_mahnlauf(self) -> Dict[str, Any]:
     """
-    Taeglicher Mahnlauf um 9:00 Uhr (Mo-Fr, keine deutschen Feiertage).
+    Täglicher Mahnlauf um 9:00 Uhr (Mo-Fr, keine deutschen Feiertage).
 
-    Erstellt MahnTasks fuer faellige Mahnungen.
-    Sendet NICHT automatisch - Tasks muessen manuell bearbeitet werden.
+    Erstellt MahnTasks für fällige Mahnungen.
+    Sendet NICHT automatisch - Tasks müssen manuell bearbeitet werden.
 
     BGB §286 Compliance:
-    - Prueft B2B/B2C fuer korrekte Verzugszinsen
+    - Prüft B2B/B2C für korrekte Verzugszinsen
     - Respektiert Mahnstopp bei Reklamationen
     - Respektiert Customer Dunning Overrides
 
@@ -1163,7 +1163,7 @@ def daily_mahnlauf(self) -> Dict[str, Any]:
         task_id=self.request.id,
     )
 
-    # Pruefe ob Werktag
+    # Prüfe ob Werktag
     today = date.today()
     if not is_german_business_day(today):
         logger.info(
@@ -1206,14 +1206,14 @@ def daily_mahnlauf(self) -> Dict[str, Any]:
                     try:
                         stats["users_processed"] += 1
 
-                        # Hole Mahnstufen-Konfiguration fuer User
+                        # Hole Mahnstufen-Konfiguration für User
                         stages = await dunning_stage_service.get_stages(db, user.id)
                         active_stages = [s for s in stages if s.get("is_active")]
 
                         if not active_stages:
                             continue
 
-                        # Hole ueberfaellige Rechnungen
+                        # Hole überfällige Rechnungen
                         overdue = await dunning_service.get_overdue_invoices(
                             db=db,
                             user_id=user.id,
@@ -1224,7 +1224,7 @@ def daily_mahnlauf(self) -> Dict[str, Any]:
                         for candidate in overdue:
                             stats["overdue_invoices"] += 1
 
-                            # Pruefe Mahnvorgang
+                            # Prüfe Mahnvorgang
                             dunning_query = select(DunningRecord).where(
                                 DunningRecord.document_id == candidate.document_id
                             )
@@ -1236,7 +1236,7 @@ def daily_mahnlauf(self) -> Dict[str, Any]:
                                 stats["skipped_mahnstopp"] += 1
                                 continue
 
-                            # Customer Override pruefen
+                            # Customer Override prüfen
                             entity_override = None
                             max_allowed_stufe = None
                             exclude_from_dunning = False
@@ -1272,14 +1272,14 @@ def daily_mahnlauf(self) -> Dict[str, Any]:
                                 stats["skipped_mahnstopp"] += 1
                                 continue
 
-                            # Welche Stufe ist faellig?
+                            # Welche Stufe ist fällig?
                             for stage in active_stages:
                                 if candidate.days_overdue >= stage.get("trigger_days_after_due", 0):
                                     # Aktuelle Stufe ist kleiner als diese?
                                     current_level = candidate.current_level.value if candidate.current_level else 0
                                     stage_number = stage.get("stage_number", 0)
 
-                                    # Customer Override: Max-Stufe pruefen
+                                    # Customer Override: Max-Stufe prüfen
                                     if max_allowed_stufe is not None and stage_number > max_allowed_stufe:
                                         logger.debug(
                                             "dunning_stage_capped",
@@ -1361,9 +1361,9 @@ def daily_mahnlauf(self) -> Dict[str, Any]:
 )
 def reactivate_snoozed_tasks(self) -> Dict[str, Any]:
     """
-    Reaktiviere zurueckgestellte Mahn-Aufgaben.
+    Reaktiviere zurückgestellte Mahn-Aufgaben.
 
-    Wird taeglich ausgefuehrt und setzt snoozed Tasks zurueck auf pending,
+    Wird täglich ausgeführt und setzt snoozed Tasks zurück auf pending,
     wenn ihr snoozed_until Datum erreicht ist.
 
     Returns:
@@ -1410,13 +1410,13 @@ def reactivate_snoozed_tasks(self) -> Dict[str, Any]:
 )
 def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
     """
-    Sende Zahlungserinnerungen VOR Faelligkeit.
+    Sende Zahlungserinnerungen VOR Fälligkeit.
 
     Proaktive Erinnerungen um Mahnverfahren zu vermeiden.
     BGB-konform: Freundliche Erinnerung, keine Verzugsfolgen.
 
     Args:
-        days_before: Tage vor Faelligkeit (default: 3)
+        days_before: Tage vor Fälligkeit (default: 3)
 
     Returns:
         Statistik der versendeten Erinnerungen
@@ -1454,7 +1454,7 @@ def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
                 today = date.today()
                 target_due_date = today + timedelta(days=days_before)
 
-                # Finde Rechnungen die in {days_before} Tagen faellig werden
+                # Finde Rechnungen die in {days_before} Tagen fällig werden
                 # und noch nicht bezahlt sind
                 query = select(InvoiceTracking).where(
                     and_(
@@ -1486,7 +1486,7 @@ def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
                         if not document:
                             continue
 
-                        # Lade BusinessEntity fuer Kontaktdaten
+                        # Lade BusinessEntity für Kontaktdaten
                         entity = None
                         if invoice.entity_id:
                             entity_query = select(BusinessEntity).where(
@@ -1495,7 +1495,7 @@ def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
                             entity_result = await db.execute(entity_query)
                             entity = entity_result.scalar_one_or_none()
 
-                        # Pruefe ob bereits Pre-Due Erinnerung gesendet wurde
+                        # Prüfe ob bereits Pre-Due Erinnerung gesendet wurde
                         # (innerhalb der letzten 7 Tage)
                         existing_query = select(Notification).where(
                             and_(
@@ -1510,7 +1510,7 @@ def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
                             stats["already_notified"] += 1
                             continue
 
-                        # Hole User fuer Benachrichtigung
+                        # Hole User für Benachrichtigung
                         user_query = select(User).where(
                             User.id == document.user_id
                         )
@@ -1543,9 +1543,9 @@ def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
                             title=f"Zahlungserinnerung: {invoice_number}",
                             message=(
                                 f"Die Rechnung {invoice_number} von {entity_name} "
-                                f"ueber {amount:.2f} EUR ist am {target_due_date.strftime('%d.%m.%Y')} "
-                                f"faellig (in {days_before} Tagen). "
-                                f"Bitte ueberweisen Sie den Betrag rechtzeitig."
+                                f"über {amount:.2f} EUR ist am {target_due_date.strftime('%d.%m.%Y')} "
+                                f"fällig (in {days_before} Tagen). "
+                                f"Bitte überweisen Sie den Betrag rechtzeitig."
                             ),
                             document_id=invoice.document_id,
                             metadata=message_data,
@@ -1600,13 +1600,13 @@ def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
 )
 def check_expired_mahnstopp(self) -> Dict[str, Any]:
     """
-    Pruefe und hebe abgelaufene Mahnstopps auf.
+    Prüfe und hebe abgelaufene Mahnstopps auf.
 
-    Wird taeglich ausgefuehrt und hebt Mahnstopps auf,
+    Wird täglich ausgeführt und hebt Mahnstopps auf,
     deren mahnstopp_until Datum erreicht ist.
 
     Returns:
-        Mahnstopp-Pruefungs-Statistik
+        Mahnstopp-Prüfungs-Statistik
     """
     logger.info(
         "check_expired_mahnstopp_started",
@@ -1649,7 +1649,7 @@ def check_expired_mahnstopp(self) -> Dict[str, Any]:
 )
 def generate_dunning_daily_report(self) -> Dict[str, Any]:
     """
-    Generiere taeglichen Mahnlauf-Bericht.
+    Generiere täglichen Mahnlauf-Bericht.
 
     Erstellt eine Zusammenfassung aller Mahnaktivitaeten des Tages
     und sendet sie an Admin-Benutzer.
@@ -1753,7 +1753,7 @@ def generate_dunning_daily_report(self) -> Dict[str, Any]:
                 admins = admin_result.scalars().all()
 
                 report_message = (
-                    f"📊 Taeglicher Mahnlauf-Bericht ({today.strftime('%d.%m.%Y')})\n\n"
+                    f"📊 Täglicher Mahnlauf-Bericht ({today.strftime('%d.%m.%Y')})\n\n"
                     f"• Zahlungserinnerungen gesendet: {report['pre_due_reminders_sent']}\n"
                     f"• Neue Mahnungen erstellt: {report['new_dunnings_created']}\n"
                     f"• Mahnungen eskaliert: {report['dunnings_escalated']}\n"
@@ -1831,12 +1831,12 @@ def fints_sync_all_accounts(
     """
     Synchronisiere alle FinTS-verbundenen Konten.
 
-    Wird regelmaessig ausgefuehrt um Transaktionen abzurufen.
+    Wird regelmäßig ausgeführt um Transaktionen abzurufen.
     WICHTIG: Erfordert gespeicherte PIN oder aktive TAN-Session.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
-        sync_days: Anzahl Tage zurueck (default: 30)
+        company_id: Optional - nur für bestimmte Firma
+        sync_days: Anzahl Tage zurück (default: 30)
 
     Returns:
         Sync-Statistik
@@ -1862,7 +1862,7 @@ def fints_sync_all_accounts(
             }
 
             async with get_async_session() as db:
-                # Query fuer Konten mit FinTS-Verbindung
+                # Query für Konten mit FinTS-Verbindung
                 query = select(BankAccount).where(
                     and_(
                         BankAccount.deleted_at.is_(None),
@@ -1883,7 +1883,7 @@ def fints_sync_all_accounts(
                     try:
                         # Sync wuerde normalerweise FinTS-Service aufrufen
                         # HINWEIS: In Produktion muss PIN entschluesselt werden
-                        # und TAN-Verfahren beruecksichtigt werden
+                        # und TAN-Verfahren berücksichtigt werden
 
                         logger.info(
                             "fints_account_sync_attempt",
@@ -1941,7 +1941,7 @@ def fints_refresh_balances(self, company_id: Optional[str] = None) -> Dict[str, 
     Schneller als volle Sync - nur Saldo-Abfrage.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
 
     Returns:
         Update-Statistik
@@ -2024,13 +2024,13 @@ def fints_refresh_balances(self, company_id: Optional[str] = None) -> Dict[str, 
 )
 def execute_pending_sepa_transfers(self) -> Dict[str, Any]:
     """
-    Fuehre ausstehende SEPA-Ueberweisungen aus.
+    Führe ausstehende SEPA-Überweisungen aus.
 
-    Verarbeitet Transfers die auf Ausfuehrung warten
+    Verarbeitet Transfers die auf Ausführung warten
     (z.B. nach Workflow-Freigabe).
 
     Returns:
-        Ausfuehrungs-Statistik
+        Ausführungs-Statistik
     """
     logger.info(
         "execute_pending_sepa_transfers_started",
@@ -2106,7 +2106,7 @@ def update_bundesbank_basiszins(self) -> Dict[str, Any]:
     Holt den aktuellen Basiszins von der Bundesbank SDMX-REST API
     und aktualisiert den Redis-Cache.
 
-    Laeuft halbjaehrlich am 1. Januar und 1. Juli, da der Basiszins
+    Läuft halbjährlich am 1. Januar und 1. Juli, da der Basiszins
     nur zum 1.1. und 1.7. angepasst wird (§247 BGB).
 
     Returns:
@@ -2126,7 +2126,7 @@ def update_bundesbank_basiszins(self) -> Dict[str, Any]:
             # Erzwinge Neuladung des Basiszinssatzes
             current_rate = await bundesbank_rate_service.refresh_basiszins()
 
-            # Berechne Verzugszinsen (fuer schnellen Cache-Zugriff)
+            # Berechne Verzugszinsen (für schnellen Cache-Zugriff)
             verzugszins_b2b = await bundesbank_rate_service.get_verzugszins(
                 is_b2b=True
             )

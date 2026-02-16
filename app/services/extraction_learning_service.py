@@ -7,7 +7,7 @@ Lernendes System - Lernt aus User-Korrekturen.
 
 Per-Lieferant und Per-Dokumenttyp Lernprofile:
 - Speichert Korrektur-Patterns
-- Erstellt automatische Feld-Ueberschreibungen ab 3 Korrekturen
+- Erstellt automatische Feld-Überschreibungen ab 3 Korrekturen
 - Berechnet Confidence-Boost basierend auf Lernhistorie
 
 Feinpoliert und durchdacht - Selbstlernendes Extraktionssystem.
@@ -63,12 +63,12 @@ class ExtractionLearningService:
         Args:
             db: Datenbank-Session
             company_id: Firma-ID
-            document_id: Dokument-ID (fuer Logging)
+            document_id: Dokument-ID (für Logging)
             field_name: Name des korrigierten Feldes
             original_value: Urspruenglicher extrahierter Wert
             corrected_value: Korrigierter Wert
-            supplier_name: Lieferantenname (fuer Lieferant-Profil)
-            document_type: Dokumenttyp (fuer Dokumenttyp-Profil)
+            supplier_name: Lieferantenname (für Lieferant-Profil)
+            document_type: Dokumenttyp (für Dokumenttyp-Profil)
 
         Returns:
             Aktualisiertes LearningProfile
@@ -99,7 +99,7 @@ class ExtractionLearningService:
 
         field_patterns = patterns[field_name]
 
-        # Neue Korrektur hinzufuegen (begrenzt auf letzte 50 Eintraege)
+        # Neue Korrektur hinzufuegen (begrenzt auf letzte 50 Einträge)
         field_patterns["original"].append(original_value)
         field_patterns["corrected"].append(corrected_value)
         if len(field_patterns["original"]) > 50:
@@ -109,11 +109,11 @@ class ExtractionLearningService:
         patterns[field_name] = field_patterns
         profile.correction_patterns = patterns
 
-        # Korrektur-Zaehler erhoehen
+        # Korrektur-Zähler erhöhen
         profile.correction_count = (profile.correction_count or 0) + 1
         profile.last_correction_at = now
 
-        # Pruefen ob automatische Regel erstellt werden soll
+        # Prüfen ob automatische Regel erstellt werden soll
         await self._check_and_create_override(profile, field_name)
 
         # Confidence-Boost aktualisieren
@@ -186,9 +186,9 @@ class ExtractionLearningService:
         profile: LearningProfile,
         field_name: str,
     ) -> None:
-        """Prueft ob eine automatische Feld-Regel erstellt werden soll.
+        """Prüft ob eine automatische Feld-Regel erstellt werden soll.
 
-        Ab MIN_CORRECTIONS_FOR_OVERRIDE identischen Korrekturen fuer
+        Ab MIN_CORRECTIONS_FOR_OVERRIDE identischen Korrekturen für
         dasselbe Feld wird ein field_override erstellt.
 
         Args:
@@ -202,7 +202,7 @@ class ExtractionLearningService:
         if len(corrected_values) < MIN_CORRECTIONS_FOR_OVERRIDE:
             return
 
-        # Pruefen ob die letzten N Korrekturen identisch sind
+        # Prüfen ob die letzten N Korrekturen identisch sind
         recent = corrected_values[-MIN_CORRECTIONS_FOR_OVERRIDE:]
         if len(set(recent)) == 1:
             # Alle gleich -> Override erstellen
@@ -230,7 +230,7 @@ class ExtractionLearningService:
         supplier_name: Optional[str] = None,
         document_type: Optional[str] = None,
     ) -> Dict[str, Dict[str, str]]:
-        """Gelernte Ueberschreibungen fuer Extraktion abrufen.
+        """Gelernte Überschreibungen für Extraktion abrufen.
 
         Args:
             db: Datenbank-Session
@@ -245,7 +245,7 @@ class ExtractionLearningService:
             db, company_id, supplier_name, document_type
         )
 
-        # Overrides zusammenfuehren (Lieferant hat Vorrang vor Dokumenttyp)
+        # Overrides zusammenführen (Lieferant hat Vorrang vor Dokumenttyp)
         merged: Dict[str, Dict[str, str]] = {}
         for profile in profiles:
             if profile.field_overrides:
@@ -416,7 +416,7 @@ _service_instance: Optional[ExtractionLearningService] = None
 
 
 def get_extraction_learning_service() -> ExtractionLearningService:
-    """Gibt die Singleton-Instanz des ExtractionLearningService zurueck."""
+    """Gibt die Singleton-Instanz des ExtractionLearningService zurück."""
     global _service_instance
     if _service_instance is None:
         _service_instance = ExtractionLearningService()

@@ -1,7 +1,7 @@
 """ValidationSampleService - Stichproben-Auswahl und Regel-Verwaltung.
 
 Dieser Service verwaltet die automatische und regelbasierte Auswahl
-von Dokumenten fuer die Validierungswarteschlange.
+von Dokumenten für die Validierungswarteschlange.
 
 Verwendung:
     from app.services.validation_sample_service import get_validation_sample_service
@@ -41,7 +41,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ValidationSampleService:
-    """Service fuer Stichproben-Auswahl und Regel-Verwaltung."""
+    """Service für Stichproben-Auswahl und Regel-Verwaltung."""
 
     def __init__(self, db: AsyncSession):
         """Initialisiere den Service."""
@@ -111,16 +111,16 @@ class ValidationSampleService:
         document: Document,
         force_check_rules: bool = True
     ) -> tuple[bool, Optional[str], Optional[uuid.UUID]]:
-        """Prueft ob ein Dokument zur Validierung ausgewaehlt werden soll.
+        """Prüft ob ein Dokument zur Validierung ausgewaehlt werden soll.
 
         Args:
-            document: Das zu pruefende Dokument
-            force_check_rules: Ob Regeln geprueft werden sollen
+            document: Das zu prüfende Dokument
+            force_check_rules: Ob Regeln geprüft werden sollen
 
         Returns:
             Tuple aus (sollte_validiert_werden, sample_source, rule_id)
         """
-        # 1. Regelbasierte Pruefung
+        # 1. Regelbasierte Prüfung
         if force_check_rules:
             matched_rule = await self.evaluate_rules(document)
             if matched_rule:
@@ -169,11 +169,11 @@ class ValidationSampleService:
     ) -> List[Document]:
         """Wendet stratifizierte Stichprobenauswahl an.
 
-        Waehlt Dokumente gleichmaessig ueber Dokumenttypen verteilt aus.
+        Waehlt Dokumente gleichmaessig über Dokumenttypen verteilt aus.
 
         Args:
             documents: Liste aller Dokumente
-            sample_percentage: Optionaler Override fuer Prozentsatz
+            sample_percentage: Optionaler Override für Prozentsatz
 
         Returns:
             Liste der ausgewaehlten Dokumente
@@ -226,7 +226,7 @@ class ValidationSampleService:
         """Evaluiert aktive Regeln gegen ein Dokument.
 
         Args:
-            document: Das zu pruefende Dokument
+            document: Das zu prüfende Dokument
 
         Returns:
             Die erste passende Regel oder None
@@ -234,7 +234,7 @@ class ValidationSampleService:
         result = await self.db.execute(
             select(ValidationRule)
             .where(ValidationRule.is_active == True)
-            .order_by(ValidationRule.priority.asc())  # Niedrigste Prioritaet zuerst
+            .order_by(ValidationRule.priority.asc())  # Niedrigste Priorität zuerst
         )
         rules = result.scalars().all()
 
@@ -249,11 +249,11 @@ class ValidationSampleService:
         return None
 
     def _matches_rule(self, document: Document, rule: ValidationRule) -> bool:
-        """Prueft ob ein Dokument eine Regel erfuellt.
+        """Prüft ob ein Dokument eine Regel erfuellt.
 
         Args:
-            document: Das zu pruefende Dokument
-            rule: Die zu pruefende Regel
+            document: Das zu prüfende Dokument
+            rule: Die zu prüfende Regel
 
         Returns:
             True wenn Regel erfuellt
@@ -269,12 +269,12 @@ class ValidationSampleService:
             # Min Field Confidence
             min_field_threshold = conditions.get("min_field_confidence_below")
             if min_field_threshold is not None:
-                # Muesste aus extracted_data gelesen werden
+                # Müsste aus extracted_data gelesen werden
                 # Vereinfachte Implementierung
                 return False
 
         elif rule.rule_type == ValidationRuleType.FIELD_PATTERN.value:
-            # Feld fehlt oder ist ungueltig
+            # Feld fehlt oder ist ungültig
             required_doc_type = conditions.get("document_type")
             if required_doc_type and document.document_type != required_doc_type:
                 return False
@@ -296,11 +296,11 @@ class ValidationSampleService:
             # Fehler-Pattern erkannt
             error_type = conditions.get("error_type")
             if error_type == "umlaut_error":
-                # Umlaut-Fehler in extracted_data pruefen
+                # Umlaut-Fehler in extracted_data prüfen
                 extracted = document.extracted_data or {}
                 for value in extracted.values():
                     if isinstance(value, str):
-                        # Vereinfachte Pruefung: typische Umlaut-Ersetzungen
+                        # Vereinfachte Prüfung: typische Umlaut-Ersetzungen
                         if "ae" in value.lower() or "oe" in value.lower() or "ue" in value.lower():
                             return True
 
@@ -401,7 +401,7 @@ class ValidationSampleService:
             return None
 
         if rule.is_system:
-            raise ValueError("System-Regeln koennen nicht bearbeitet werden")
+            raise ValueError("System-Regeln können nicht bearbeitet werden")
 
         update_dict = update_data.model_dump(exclude_unset=True)
         for key, value in update_dict.items():
@@ -420,13 +420,13 @@ class ValidationSampleService:
         return rule
 
     async def delete_rule(self, rule_id: uuid.UUID) -> bool:
-        """Loescht eine Regel.
+        """Löscht eine Regel.
 
         Args:
             rule_id: ID der Regel
 
         Returns:
-            True wenn geloescht, False wenn nicht gefunden
+            True wenn gelöscht, False wenn nicht gefunden
 
         Raises:
             ValueError: Wenn System-Regel
@@ -436,7 +436,7 @@ class ValidationSampleService:
             return False
 
         if rule.is_system:
-            raise ValueError("System-Regeln koennen nicht geloescht werden")
+            raise ValueError("System-Regeln können nicht gelöscht werden")
 
         await self.db.delete(rule)
         await self.db.commit()
@@ -446,7 +446,7 @@ class ValidationSampleService:
 
 
 def get_validation_sample_service(db: AsyncSession) -> ValidationSampleService:
-    """Factory-Funktion fuer den ValidationSampleService.
+    """Factory-Funktion für den ValidationSampleService.
 
     Args:
         db: Async-Datenbankverbindung

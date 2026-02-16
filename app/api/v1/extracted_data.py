@@ -91,7 +91,7 @@ class PaginatedSearchResponse(BaseModel):
 
 
 class InvoiceSummary(BaseModel):
-    """Rechnungsuebersicht fuer Liste."""
+    """Rechnungsübersicht für Liste."""
     document_id: UUID
     invoice_number: Optional[str] = None
     invoice_date: Optional[date] = None
@@ -162,7 +162,7 @@ async def search_extracted_data(
     document_type: Optional[ExtractedDocumentType] = Query(None, description="Dokumenttyp"),
 
     # Flags
-    needs_review: Optional[bool] = Query(None, description="Nur Dokumente die Review benoetigen"),
+    needs_review: Optional[bool] = Query(None, description="Nur Dokumente die Review benötigen"),
     has_skonto: Optional[bool] = Query(None, description="Nur Rechnungen mit Skonto"),
 
     # Pagination
@@ -199,7 +199,7 @@ async def search_extracted_data(
             models.Document.extracted_data["classification"]["document_type"].astext == document_type.value
         )
 
-    # Rechnungsnummer (ILIKE fuer Teilmatch)
+    # Rechnungsnummer (ILIKE für Teilmatch)
     if invoice_number:
         filters.append(
             or_(
@@ -220,11 +220,11 @@ async def search_extracted_data(
         # Normalisiere IBAN (entferne Leerzeichen)
         iban_clean = iban.replace(" ", "").upper()
         # SECURITY: Whitelist-Validierung gegen JSONB Path Injection (CWE-89)
-        # IBAN-Format: 2 Buchstaben Laendercode + 2-32 alphanumerische Zeichen
+        # IBAN-Format: 2 Buchstaben Ländercode + 2-32 alphanumerische Zeichen
         if not re.match(r'^[A-Z]{2}[A-Z0-9]{2,32}$', iban_clean):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ungueltiges IBAN-Format. Erlaubt: 2-Buchstaben Laendercode + alphanumerisch."
+                detail="Ungültiges IBAN-Format. Erlaubt: 2-Buchstaben Ländercode + alphanumerisch."
             )
         filters.append(
             or_(
@@ -240,11 +240,11 @@ async def search_extracted_data(
     if vat_id:
         vat_clean = vat_id.replace(" ", "").upper()
         # SECURITY: Whitelist-Validierung gegen JSONB Path Injection (CWE-89)
-        # VAT-ID Format: 2 Buchstaben Laendercode + 2-12 alphanumerische Zeichen
+        # VAT-ID Format: 2 Buchstaben Ländercode + 2-12 alphanumerische Zeichen
         if not re.match(r'^[A-Z]{2}[A-Z0-9]{2,12}$', vat_clean):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ungueltiges USt-IdNr-Format. Erlaubt: 2-Buchstaben Laendercode + alphanumerisch."
+                detail="Ungültiges USt-IdNr-Format. Erlaubt: 2-Buchstaben Ländercode + alphanumerisch."
             )
         filters.append(
             or_(
@@ -333,7 +333,7 @@ async def search_extracted_data(
     # Sortierung (neueste zuerst)
     query = query.order_by(models.Document.created_at.desc())
 
-    # Ausfuehren
+    # Ausführen
     result = await db.execute(query)
     documents = result.scalars().all()
 
@@ -399,7 +399,7 @@ async def search_extracted_data(
 @router.get("/invoices", response_model=PaginatedInvoiceList)
 async def list_invoices(
     # Filter
-    overdue: Optional[bool] = Query(None, description="Nur ueberfaellige Rechnungen"),
+    overdue: Optional[bool] = Query(None, description="Nur überfällige Rechnungen"),
     has_skonto: Optional[bool] = Query(None, description="Nur mit Skonto-Option"),
     skonto_expiring_soon: Optional[bool] = Query(None, description="Skonto laeuft in 3 Tagen ab"),
 
@@ -419,14 +419,14 @@ async def list_invoices(
     current_user: models.User = Depends(get_current_active_user)
 ) -> PaginatedInvoiceList:
     """
-    Listet alle Rechnungen mit Filtermoeglichkeiten.
+    Listet alle Rechnungen mit Filtermöglichkeiten.
 
-    Optimiert fuer Buchhaltungs-Workflows:
+    Optimiert für Buchhaltungs-Workflows:
     - Offene Rechnungen: `?overdue=true`
     - Mit Skonto-Option: `?has_skonto=true`
     - Skonto laeuft bald ab: `?skonto_expiring_soon=true`
     """
-    # Helper fuer JSONB Text-Extraktion (PostgreSQL-kompatibel)
+    # Helper für JSONB Text-Extraktion (PostgreSQL-kompatibel)
     def jsonb_text(field: str, *path: str) -> ColumnElement[str]:
         """Extrahiert Text aus JSONB-Feld mit PostgreSQL jsonb_extract_path_text."""
         return func.jsonb_extract_path_text(
@@ -445,7 +445,7 @@ async def list_invoices(
 
     filters = []
 
-    # Ueberfaellige (due_date < heute)
+    # Überfällige (due_date < heute)
     if overdue is True:
         today = date.today().isoformat()
         filters.append(
@@ -546,7 +546,7 @@ async def get_aggregations(
     current_user: models.User = Depends(get_current_active_user)
 ) -> ExtractedDataAggregations:
     """
-    Aggregierte Statistiken ueber extrahierte Daten.
+    Aggregierte Statistiken über extrahierte Daten.
 
     **Returns:**
     - Gesamtanzahl Dokumente
@@ -608,7 +608,7 @@ async def get_aggregations(
         # By Type
         by_type[doc_type] = by_type.get(doc_type, 0) + 1
 
-        # Betraege (nur fuer Rechnungen)
+        # Betraege (nur für Rechnungen)
         if doc_type == "invoice":
             invoice = extracted.get("invoice", {})
 
@@ -677,7 +677,7 @@ async def get_document_type_stats(
     current_user: models.User = Depends(get_current_active_user)
 ) -> Dict[str, int]:
     """
-    Statistik ueber Dokumenttypen.
+    Statistik über Dokumenttypen.
 
     **Returns:**
     Dict mit Dokumenttyp -> Anzahl
@@ -715,7 +715,7 @@ async def _get_documents_for_export(
     min_amount: Optional[Decimal],
     max_amount: Optional[Decimal],
 ) -> List[JSONDict]:
-    """Holt Dokumente fuer Export mit Filtern."""
+    """Holt Dokumente für Export mit Filtern."""
     query = select(models.Document).where(
         and_(
             models.Document.owner_id == user_id,
@@ -782,7 +782,7 @@ async def _get_documents_for_export(
 async def export_csv(
     document_type: ExtractedDocumentType = Query(
         ExtractedDocumentType.INVOICE,
-        description="Dokumenttyp fuer Export"
+        description="Dokumenttyp für Export"
     ),
     date_from: Optional[date] = Query(None, description="Datum ab (inklusiv)"),
     date_to: Optional[date] = Query(None, description="Datum bis (inklusiv)"),
@@ -796,8 +796,8 @@ async def export_csv(
     Exportiert extrahierte Daten als CSV.
 
     **Format:**
-    - Semikolon-getrennt (;) fuer deutsche Excel-Versionen
-    - UTF-8 mit BOM fuer korrekte Umlaut-Darstellung
+    - Semikolon-getrennt (;) für deutsche Excel-Versionen
+    - UTF-8 mit BOM für korrekte Umlaut-Darstellung
     - Deutsche Spaltennamen
 
     **Beispiele:**
@@ -818,7 +818,7 @@ async def export_csv(
     if not documents:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine Dokumente fuer Export gefunden"
+            detail="Keine Dokumente für Export gefunden"
         )
 
     # CSV generieren
@@ -830,11 +830,11 @@ async def export_csv(
         filename = f"bestellungen_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     elif document_type == ExtractedDocumentType.CONTRACT:
         csv_content = export_contracts_csv(documents)
-        filename = f"vertraege_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        filename = f"verträge_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Export fuer Dokumenttyp '{document_type.value}' nicht unterstuetzt"
+            detail=f"Export für Dokumenttyp '{document_type.value}' nicht unterstützt"
         )
 
     logger.info(
@@ -858,7 +858,7 @@ async def export_csv(
 async def export_excel(
     document_type: ExtractedDocumentType = Query(
         ExtractedDocumentType.INVOICE,
-        description="Dokumenttyp fuer Export"
+        description="Dokumenttyp für Export"
     ),
     date_from: Optional[date] = Query(None, description="Datum ab (inklusiv)"),
     date_to: Optional[date] = Query(None, description="Datum bis (inklusiv)"),
@@ -880,7 +880,7 @@ async def export_excel(
     **Beispiele:**
     - Alle Rechnungen: `?document_type=invoice`
     - Alle Bestellungen: `?document_type=order`
-    - Alle Vertraege: `?document_type=contract`
+    - Alle Verträge: `?document_type=contract`
     """
     documents = await _get_documents_for_export(
         db=db,
@@ -895,7 +895,7 @@ async def export_excel(
     if not documents:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine Dokumente fuer Export gefunden"
+            detail="Keine Dokumente für Export gefunden"
         )
 
     # Excel generieren
@@ -907,11 +907,11 @@ async def export_excel(
         filename = f"bestellungen_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     elif document_type == ExtractedDocumentType.CONTRACT:
         excel_content = export_contracts_excel(documents)
-        filename = f"vertraege_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        filename = f"verträge_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Export fuer Dokumenttyp '{document_type.value}' nicht unterstuetzt"
+            detail=f"Export für Dokumenttyp '{document_type.value}' nicht unterstützt"
         )
 
     logger.info(
@@ -945,9 +945,9 @@ async def export_all_types_excel(
     **Tabs:**
     - Rechnungen
     - Bestellungen
-    - Vertraege
+    - Verträge
 
-    Ideal fuer Monats-/Jahresabschluesse.
+    Ideal für Monats-/Jahresabschluesse.
     """
     # Alle Dokumenttypen laden
     invoices = await _get_documents_for_export(
@@ -985,7 +985,7 @@ async def export_all_types_excel(
     if total_count == 0:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine Dokumente fuer Export gefunden"
+            detail="Keine Dokumente für Export gefunden"
         )
 
     # Kombinierte Excel generieren
@@ -1049,7 +1049,7 @@ async def get_extracted_data_by_id(
     if not document.extracted_data:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine strukturierten Daten fuer dieses Dokument verfuegbar"
+            detail="Keine strukturierten Daten für dieses Dokument verfügbar"
         )
 
     # JSONB zu Pydantic konvertieren

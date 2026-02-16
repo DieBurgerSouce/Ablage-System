@@ -25,16 +25,16 @@ logger = structlog.get_logger(__name__)
 
 
 class PositionService:
-    """Service fuer Stellen-Verwaltung.
+    """Service für Stellen-Verwaltung.
 
     Security Features:
-    - Audit-Logging fuer alle CRUD-Operationen
-    - Gehalts-Maskierung fuer Non-HR-User
+    - Audit-Logging für alle CRUD-Operationen
+    - Gehalts-Maskierung für Non-HR-User
     - Input-Sanitization
     - Company Context Enforcement
     """
 
-    # Gehalts-Felder die maskiert werden koennen
+    # Gehalts-Felder die maskiert werden können
     SALARY_FIELDS = {'salary_band_min', 'salary_band_max', 'min_salary', 'max_salary'}
 
     async def list_positions(
@@ -59,7 +59,7 @@ class PositionService:
             company_id: Firmen-ID
             mask_salary: Gehalts-Felder maskieren
             page: Seitennummer
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
             search: Suchbegriff
             department_id: Filter nach Abteilung
             job_family: Filter nach Job-Familie
@@ -114,7 +114,7 @@ class PositionService:
             for p in positions
         ]
 
-        # A.1 CRITICAL: Audit-Logging fuer List-Operationen (GDPR Art. 30)
+        # A.1 CRITICAL: Audit-Logging für List-Operationen (GDPR Art. 30)
         audit = get_audit_logger(db)
         await audit.log_event(
             event_type=SecurityEventType.POSITIONS_LISTED,
@@ -165,7 +165,7 @@ class PositionService:
         )
         position_counts = {row[0]: row[1] for row in pos_result}
 
-        # Mitarbeiter pro Job-Family (ueber Position)
+        # Mitarbeiter pro Job-Family (über Position)
         emp_result = await db.execute(
             select(Position.job_family, func.count(Employee.id))
             .join(Employee, Employee.position_id == Position.id)
@@ -295,7 +295,7 @@ class PositionService:
 
         if min_salary is not None and max_salary is not None:
             if Decimal(str(min_salary)) > Decimal(str(max_salary)):
-                raise ValueError("Mindestgehalt kann nicht hoeher als Maximalgehalt sein.")
+                raise ValueError("Mindestgehalt kann nicht höher als Maximalgehalt sein.")
 
         # Abteilung validieren (falls angegeben)
         department_id = sanitized_data.get('department_id')
@@ -332,7 +332,7 @@ class PositionService:
                 resource_id=str(position.id),
                 details={
                     "company_id": str(company_id),
-                    # H.6 MEDIUM: title ENTFERNT - koennte sensible Info enthalten
+                    # H.6 MEDIUM: title ENTFERNT - könnte sensible Info enthalten
                 },
             )
 
@@ -441,9 +441,9 @@ class PositionService:
 
         if min_salary is not None and max_salary is not None:
             if Decimal(str(min_salary)) > Decimal(str(max_salary)):
-                raise ValueError("Mindestgehalt kann nicht hoeher als Maximalgehalt sein.")
+                raise ValueError("Mindestgehalt kann nicht höher als Maximalgehalt sein.")
 
-        # Gehalts-Aenderungen tracken
+        # Gehalts-Änderungen tracken
         salary_changed = any(
             field in sanitized_data and sanitized_data[field] != getattr(position, field)
             for field in self.SALARY_FIELDS
@@ -533,7 +533,7 @@ class PositionService:
         user_id: UUID,
         ip_address: Optional[str] = None,
     ) -> bool:
-        """Loescht eine Stelle (Soft-Delete).
+        """Löscht eine Stelle (Soft-Delete).
 
         Args:
             db: Datenbank-Session
@@ -560,7 +560,7 @@ class PositionService:
         if not position:
             return False
 
-        # Pruefen auf Mitarbeiter
+        # Prüfen auf Mitarbeiter
         emp_count = await db.execute(
             select(func.count(Employee.id))
             .where(Employee.position_id == position_id)
@@ -589,7 +589,7 @@ class PositionService:
                 resource_id=str(position_id),
                 details={
                     "company_id": str(company_id),
-                    # H.6 MEDIUM: title ENTFERNT - koennte sensible Info enthalten
+                    # H.6 MEDIUM: title ENTFERNT - könnte sensible Info enthalten
                 },
                 severity="warning",
             )
@@ -615,7 +615,7 @@ class PositionService:
                 company_id=str(company_id),
                 user_id=str(user_id),
             )
-            raise ValueError("Die Stelle kann nicht geloescht werden (Referenz-Fehler).")
+            raise ValueError("Die Stelle kann nicht gelöscht werden (Referenz-Fehler).")
         except (DataError, OperationalError) as e:
             # I.3 CRITICAL: DB-Fehler generisch behandeln
             await db.rollback()
@@ -683,7 +683,7 @@ class PositionService:
 
     def _sanitize_input(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Sanitiert Eingaben."""
-        # B.3 HIGH: responsibilities hinzugefuegt fuer vollstaendige Sanitization
+        # B.3 HIGH: responsibilities hinzugefuegt für vollständige Sanitization
         text_fields = {'title', 'title_en', 'job_family', 'description', 'requirements', 'responsibilities'}
         sanitized = {}
 

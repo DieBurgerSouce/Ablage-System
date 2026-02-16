@@ -1,11 +1,11 @@
 """
-SSO State Manager - Redis-basierter State Storage fuer OIDC/SAML.
+SSO State Manager - Redis-basierter State Storage für OIDC/SAML.
 
-Ersetzt In-Memory-Dictionaries fuer Multi-Worker-Skalierbarkeit.
-Fallback auf In-Memory wenn Redis nicht verfuegbar (mit Warning).
+Ersetzt In-Memory-Dictionaries für Multi-Worker-Skalierbarkeit.
+Fallback auf In-Memory wenn Redis nicht verfügbar (mit Warning).
 
 SECURITY:
-- TTL von 600 Sekunden (10 Minuten) fuer State
+- TTL von 600 Sekunden (10 Minuten) für State
 - Automatische Bereinigung abgelaufener States
 - State kann nur einmal konsumiert werden (delete after get)
 - Multi-Tenant-Isolation durch company_id im State (nicht im Key)
@@ -35,20 +35,20 @@ SAML_REQUEST_PREFIX = "sso:saml:request:"
 
 
 class SSOStateManager:
-    """Redis-basierter State Manager fuer SSO-Flows.
+    """Redis-basierter State Manager für SSO-Flows.
 
-    Bietet thread-safe und multi-worker-safe State-Verwaltung fuer
+    Bietet thread-safe und multi-worker-safe State-Verwaltung für
     OIDC und SAML Authentication Flows.
 
     Features:
-    - Redis-basiert fuer horizontale Skalierung
+    - Redis-basiert für horizontale Skalierung
     - Automatischer Fallback auf In-Memory bei Redis-Ausfall
     - TTL-basierte automatische Bereinigung
     - One-time-use States (delete after get)
 
     SECURITY:
     - States sind zeitlich begrenzt (10 Minuten default)
-    - States werden nach Abruf geloescht (Replay-Schutz)
+    - States werden nach Abruf gelöscht (Replay-Schutz)
     - Keine sensiblen Daten in Redis Keys
     """
 
@@ -67,11 +67,11 @@ class SSOStateManager:
             logger.warning(
                 "sso_state_manager_fallback_mode",
                 nachricht="SSO State Manager verwendet In-Memory-Fallback. "
-                         "Nicht fuer Multi-Worker-Deployments geeignet.",
+                         "Nicht für Multi-Worker-Deployments geeignet.",
             )
 
     async def _get_redis(self) -> Optional["Redis"]:
-        """Gibt Redis-Client zurueck (lazy loading moeglich)."""
+        """Gibt Redis-Client zurück (lazy loading möglich)."""
         if self._redis is not None:
             return self._redis
 
@@ -102,7 +102,7 @@ class SSOStateManager:
         ttl: int = STATE_TTL_SECONDS,
     ) -> None:
         """
-        Speichert OIDC State fuer Authorization Flow.
+        Speichert OIDC State für Authorization Flow.
 
         Args:
             state: State Parameter (unique identifier)
@@ -147,18 +147,18 @@ class SSOStateManager:
         delete: bool = True,
     ) -> Optional["OIDCState"]:
         """
-        Ruft OIDC State ab. Loescht standardmaessig nach Abruf (one-time use).
+        Ruft OIDC State ab. Löscht standardmaessig nach Abruf (one-time use).
 
         Args:
             state: State Parameter
-            delete: Wenn True, wird State nach Abruf geloescht (default: True)
+            delete: Wenn True, wird State nach Abruf gelöscht (default: True)
 
         Returns:
             OIDCState oder None wenn nicht gefunden/abgelaufen
 
         SECURITY:
         - Delete-after-get verhindert Replay-Attacken
-        - Abgelaufene States werden nicht zurueckgegeben
+        - Abgelaufene States werden nicht zurückgegeben
         """
         from app.services.auth.sso.oidc_service import OIDCState
 
@@ -209,13 +209,13 @@ class SSOStateManager:
 
     async def delete_oidc_state(self, state: str) -> bool:
         """
-        Loescht einen OIDC State explizit.
+        Löscht einen OIDC State explizit.
 
         Args:
             state: State Parameter
 
         Returns:
-            True wenn geloescht, False wenn nicht gefunden
+            True wenn gelöscht, False wenn nicht gefunden
         """
         key = f"{OIDC_STATE_PREFIX}{state}"
 
@@ -252,7 +252,7 @@ class SSOStateManager:
         ttl: int = STATE_TTL_SECONDS,
     ) -> None:
         """
-        Speichert SAML Request State fuer Authentication Flow.
+        Speichert SAML Request State für Authentication Flow.
 
         Args:
             request_id: SAML Request ID (unique identifier)
@@ -297,18 +297,18 @@ class SSOStateManager:
         delete: bool = True,
     ) -> Optional["SAMLRequest"]:
         """
-        Ruft SAML Request ab. Loescht standardmaessig nach Abruf (one-time use).
+        Ruft SAML Request ab. Löscht standardmaessig nach Abruf (one-time use).
 
         Args:
             request_id: SAML Request ID
-            delete: Wenn True, wird Request nach Abruf geloescht (default: True)
+            delete: Wenn True, wird Request nach Abruf gelöscht (default: True)
 
         Returns:
             SAMLRequest oder None wenn nicht gefunden/abgelaufen
 
         SECURITY:
         - Delete-after-get verhindert Replay-Attacken
-        - Abgelaufene Requests werden nicht zurueckgegeben
+        - Abgelaufene Requests werden nicht zurückgegeben
         """
         from app.services.auth.sso.saml_service import SAMLRequest
 
@@ -359,13 +359,13 @@ class SSOStateManager:
 
     async def delete_saml_request(self, request_id: str) -> bool:
         """
-        Loescht einen SAML Request explizit.
+        Löscht einen SAML Request explizit.
 
         Args:
             request_id: SAML Request ID
 
         Returns:
-            True wenn geloescht, False wenn nicht gefunden
+            True wenn gelöscht, False wenn nicht gefunden
         """
         key = f"{SAML_REQUEST_PREFIX}{request_id}"
 
@@ -397,12 +397,12 @@ class SSOStateManager:
 
     async def cleanup_expired(self) -> int:
         """
-        Bereinigt abgelaufene States (fuer In-Memory Fallback).
+        Bereinigt abgelaufene States (für In-Memory Fallback).
 
         Redis handhabt dies automatisch via TTL.
 
         Returns:
-            Anzahl der bereinigten Eintraege
+            Anzahl der bereinigten Einträge
         """
         if not self._using_fallback:
             # Redis handhabt TTL automatisch
@@ -427,7 +427,7 @@ class SSOStateManager:
 
     async def get_stats(self) -> dict:
         """
-        Gibt Statistiken ueber den State Manager zurueck.
+        Gibt Statistiken über den State Manager zurück.
 
         Returns:
             Dict mit Statistiken
@@ -476,16 +476,16 @@ class SSOStateManager:
         return self._using_fallback
 
 
-# Singleton-Instanz fuer einfachen Zugriff
+# Singleton-Instanz für einfachen Zugriff
 _state_manager: Optional[SSOStateManager] = None
 
 
 def get_sso_state_manager(redis_client: Optional["Redis"] = None) -> SSOStateManager:
     """
-    Gibt die Singleton-Instanz des SSO State Managers zurueck.
+    Gibt die Singleton-Instanz des SSO State Managers zurück.
 
     Args:
-        redis_client: Optional Redis client fuer Erstinitialisierung
+        redis_client: Optional Redis client für Erstinitialisierung
 
     Returns:
         SSOStateManager Instanz
@@ -498,7 +498,7 @@ def get_sso_state_manager(redis_client: Optional["Redis"] = None) -> SSOStateMan
 
 async def cleanup_sso_states() -> int:
     """
-    Fuehrt Cleanup auf dem Singleton State Manager aus.
+    Führt Cleanup auf dem Singleton State Manager aus.
     Kann als Celery Task aufgerufen werden.
 
     Returns:

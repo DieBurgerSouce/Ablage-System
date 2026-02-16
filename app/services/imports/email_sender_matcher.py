@@ -74,7 +74,7 @@ class EmailSenderInfo:
 
 
 class EmailSenderMatcherService:
-    """Service fuer intelligentes Email-Absender-Matching.
+    """Service für intelligentes Email-Absender-Matching.
 
     Strategie-Reihenfolge (nach Confidence):
     1. Whitelist-Match (100%)
@@ -85,9 +85,9 @@ class EmailSenderMatcherService:
     6. Fuzzy-Name-Matching (80%)
     7. KI-Klassifikation (variable)
 
-    Konfigurierbar ueber Admin-Settings:
-    - auto_assign_threshold: Schwelle fuer automatische Zuordnung (default: 85%)
-    - suggestion_threshold: Schwelle fuer Vorschlaege (default: 60%)
+    Konfigurierbar über Admin-Settings:
+    - auto_assign_threshold: Schwelle für automatische Zuordnung (default: 85%)
+    - suggestion_threshold: Schwelle für Vorschläge (default: 60%)
     """
 
     DEFAULT_AUTO_ASSIGN_THRESHOLD = 0.85
@@ -106,7 +106,7 @@ class EmailSenderMatcherService:
         Args:
             db: Async Database Session
             auto_assign_threshold: Confidence ab der automatisch zugeordnet wird
-            suggestion_threshold: Minimale Confidence fuer Vorschlaege
+            suggestion_threshold: Minimale Confidence für Vorschläge
             whitelist: Liste von Email-Domains die immer akzeptiert werden
             blacklist: Liste von Email-Domains die ignoriert werden
         """
@@ -129,9 +129,9 @@ class EmailSenderMatcherService:
         """Matcht einen Email-Absender gegen BusinessEntities.
 
         Args:
-            from_address: Vollstaendige From-Adresse (z.B. "Max Müller <max@mueller-gmbh.de>")
-            subject: Optional Betreff fuer zusaetzlichen Kontext
-            body_preview: Optional Body-Preview fuer KI-Analyse
+            from_address: Vollständige From-Adresse (z.B. "Max Müller <max@mueller-gmbh.de>")
+            subject: Optional Betreff für zusätzlichen Kontext
+            body_preview: Optional Body-Preview für KI-Analyse
 
         Returns:
             EmailMatchResult mit Entity-Zuordnung und Confidence
@@ -146,7 +146,7 @@ class EmailSenderMatcherService:
             display_name=sender_info.display_name,
         )
 
-        # 2. Blacklist pruefen
+        # 2. Blacklist prüfen
         if self._is_blacklisted(sender_info.domain):
             logger.debug("sender_blacklisted", domain=sender_info.domain)
             return EmailMatchResult(
@@ -160,7 +160,7 @@ class EmailSenderMatcherService:
                 is_blacklisted=True,
             )
 
-        # 3. Whitelist pruefen
+        # 3. Whitelist prüfen
         if self._is_whitelisted(sender_info.domain):
             logger.debug("sender_whitelisted", domain=sender_info.domain)
             entity = await self._find_by_whitelisted_domain(sender_info.domain)
@@ -245,9 +245,9 @@ class EmailSenderMatcherService:
                 suggestions=self._deduplicate_suggestions(suggestions, entity.id),
             )
 
-        # 6. Keine sichere Zuordnung - nur Vorschlaege zurueckgeben
+        # 6. Keine sichere Zuordnung - nur Vorschläge zurückgeben
         if suggestions:
-            # Beste Suggestion als Haupt-Ergebnis wenn ueber Threshold
+            # Beste Suggestion als Haupt-Ergebnis wenn über Threshold
             best_suggestion = max(suggestions, key=lambda s: s.confidence)
             if best_suggestion.confidence >= self.suggestion_threshold:
                 return EmailMatchResult(
@@ -256,7 +256,7 @@ class EmailSenderMatcherService:
                     entity_type=None,
                     confidence=best_suggestion.confidence,
                     match_strategy="suggestion",
-                    match_details="Keine sichere Zuordnung, aber Vorschlaege vorhanden",
+                    match_details="Keine sichere Zuordnung, aber Vorschläge vorhanden",
                     suggestions=self._deduplicate_suggestions(suggestions),
                 )
 
@@ -283,7 +283,7 @@ class EmailSenderMatcherService:
     def _parse_sender(self, from_address: str) -> EmailSenderInfo:
         """Parst eine From-Adresse in ihre Bestandteile.
 
-        Unterstuetzte Formate:
+        Unterstützte Formate:
         - "user@domain.de"
         - "Max Müller <user@domain.de>"
         - "\"Max Müller GmbH\" <user@domain.de>"
@@ -354,13 +354,13 @@ class EmailSenderMatcherService:
     # ========================================================================
 
     def _is_whitelisted(self, domain: str) -> bool:
-        """Prueft ob eine Domain auf der Whitelist ist."""
+        """Prüft ob eine Domain auf der Whitelist ist."""
         if not self.whitelist:
             return False
         return domain.lower() in self.whitelist
 
     def _is_blacklisted(self, domain: str) -> bool:
-        """Prueft ob eine Domain auf der Blacklist ist.
+        """Prüft ob eine Domain auf der Blacklist ist.
 
         Typische Blacklist-Domains:
         - gmail.com, yahoo.com, outlook.com (Freemail)
@@ -387,7 +387,7 @@ class EmailSenderMatcherService:
     async def _find_by_whitelisted_domain(
         self, domain: str
     ) -> Optional[BusinessEntity]:
-        """Findet Entity fuer eine Whitelist-Domain."""
+        """Findet Entity für eine Whitelist-Domain."""
         # Suche in email-Feld
         stmt = select(BusinessEntity).where(
             and_(
@@ -422,7 +422,7 @@ class EmailSenderMatcherService:
             return (
                 entity,
                 0.99,
-                f"Email-Domain {sender_info.domain} stimmt mit gespeicherter Email ueberein",
+                f"Email-Domain {sender_info.domain} stimmt mit gespeicherter Email überein",
             )
         return None, 0.0, ""
 
@@ -450,7 +450,7 @@ class EmailSenderMatcherService:
             return (
                 entity,
                 0.95,
-                f"Domain {sender_info.domain} stimmt mit Website ueberein",
+                f"Domain {sender_info.domain} stimmt mit Website überein",
             )
         return None, 0.0, ""
 
@@ -475,21 +475,21 @@ class EmailSenderMatcherService:
         for entity in entities:
             best_similarity = 0.0
 
-            # Name pruefen
+            # Name prüfen
             if entity.name:
                 sim = self._calculate_similarity(
                     display_name_normalized, self._normalize_name(entity.name)
                 )
                 best_similarity = max(best_similarity, sim)
 
-            # Short name pruefen
+            # Short name prüfen
             if entity.short_name:
                 sim = self._calculate_similarity(
                     display_name_normalized, self._normalize_name(entity.short_name)
                 )
                 best_similarity = max(best_similarity, sim)
 
-            # Display name pruefen
+            # Display name prüfen
             if entity.display_name:
                 sim = self._calculate_similarity(
                     display_name_normalized, self._normalize_name(entity.display_name)
@@ -500,8 +500,8 @@ class EmailSenderMatcherService:
                 matches.append(
                     (
                         entity,
-                        best_similarity * 0.90,  # Max 90% fuer Name-Match
-                        f"Display-Name '{sender_info.display_name}' aehnlich zu '{entity.name}'",
+                        best_similarity * 0.90,  # Max 90% für Name-Match
+                        f"Display-Name '{sender_info.display_name}' ähnlich zu '{entity.name}'",
                     )
                 )
 
@@ -558,8 +558,8 @@ class EmailSenderMatcherService:
                 matches.append(
                     (
                         entity,
-                        best_similarity * 0.85,  # Max 85% fuer Domain-zu-Name
-                        f"Domain '{sender_info.domain}' aehnlich zu '{entity.name}'",
+                        best_similarity * 0.85,  # Max 85% für Domain-zu-Name
+                        f"Domain '{sender_info.domain}' ähnlich zu '{entity.name}'",
                     )
                 )
 
@@ -571,7 +571,7 @@ class EmailSenderMatcherService:
     # ========================================================================
 
     def _normalize_name(self, name: str) -> str:
-        """Normalisiert einen Namen fuer Vergleiche."""
+        """Normalisiert einen Namen für Vergleiche."""
         if not name:
             return ""
         # Kleinbuchstaben, mehrfache Leerzeichen entfernen
@@ -580,7 +580,7 @@ class EmailSenderMatcherService:
         return name
 
     def _normalize_domain_for_matching(self, text: str) -> str:
-        """Normalisiert Text fuer Domain-zu-Name-Matching.
+        """Normalisiert Text für Domain-zu-Name-Matching.
 
         Entfernt:
         - Umlaute (ue -> u, etc.)
@@ -632,7 +632,7 @@ class EmailSenderMatcherService:
         return text
 
     def _calculate_similarity(self, text1: str, text2: str) -> float:
-        """Berechnet Aehnlichkeit zwischen zwei Texten (0.0-1.0)."""
+        """Berechnet Ähnlichkeit zwischen zwei Texten (0.0-1.0)."""
         if not text1 or not text2:
             return 0.0
         return SequenceMatcher(None, text1, text2).ratio()
@@ -642,7 +642,7 @@ class EmailSenderMatcherService:
         suggestions: List[EmailMatchSuggestion],
         exclude_id: Optional[UUID] = None,
     ) -> List[EmailMatchSuggestion]:
-        """Entfernt Duplikate aus Vorschlaegen."""
+        """Entfernt Duplikate aus Vorschlägen."""
         seen_ids = set()
         if exclude_id:
             seen_ids.add(exclude_id)
@@ -653,7 +653,7 @@ class EmailSenderMatcherService:
                 seen_ids.add(suggestion.entity_id)
                 unique.append(suggestion)
 
-        return unique[:5]  # Max 5 Vorschlaege
+        return unique[:5]  # Max 5 Vorschläge
 
 
 # ============================================================================
@@ -669,7 +669,7 @@ async def get_email_sender_matcher(
 
     Args:
         db: Async Database Session
-        user_id: Optional User-ID fuer personalisierte Settings
+        user_id: Optional User-ID für personalisierte Settings
 
     Returns:
         Konfigurierter EmailSenderMatcherService

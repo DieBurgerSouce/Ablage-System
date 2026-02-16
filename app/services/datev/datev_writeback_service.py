@@ -1,7 +1,7 @@
 """DATEV Write-Back Service.
 
-Schreibt Buchungsstapel zurueck an DATEV:
-- Buchungssaetze als DATEV CSV (Version 700) fuer Import
+Schreibt Buchungsstapel zurück an DATEV:
+- Buchungssätze als DATEV CSV (Version 700) für Import
 - Status-Tracking pro Stapel
 - Quittungs-Verarbeitung nach DATEV-Import
 """
@@ -23,13 +23,13 @@ class WritebackStatus(str, Enum):
     DRAFT = "draft"
     READY = "ready"         # Bereit zum Export
     EXPORTED = "exported"    # CSV generiert und heruntergeladen
-    IMPORTED = "imported"    # In DATEV importiert (manuell bestaetigt)
+    IMPORTED = "imported"    # In DATEV importiert (manuell bestätigt)
     ERROR = "error"
     CANCELLED = "cancelled"
 
 @dataclass
 class WritebackEntry:
-    """Einzelne Buchung fuer Writeback."""
+    """Einzelne Buchung für Writeback."""
     document_id: str
     soll_konto: str      # Debit account (SKR03/SKR04)
     haben_konto: str     # Credit account
@@ -43,7 +43,7 @@ class WritebackEntry:
 
 @dataclass
 class WritebackBatch:
-    """Batch von Buchungen fuer DATEV-Writeback."""
+    """Batch von Buchungen für DATEV-Writeback."""
     id: str
     company_id: str
     created_by: str

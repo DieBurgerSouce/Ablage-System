@@ -2,14 +2,14 @@
 """
 DATEV Connect Celery Tasks.
 
-Hintergrund-Jobs fuer DATEV-Integration:
+Hintergrund-Jobs für DATEV-Integration:
 - Token Refresh
 - Stammdaten Sync
 - Buchungsstapel Push
 - Belegbilder Upload
 - GoBD Compliance Check
 
-Feinpoliert und durchdacht - Zuverlaessige DATEV-Synchronisation.
+Feinpoliert und durchdacht - Zuverlässige DATEV-Synchronisation.
 """
 
 import uuid
@@ -43,7 +43,7 @@ def refresh_all_datev_tokens(self) -> Dict[str, Any]:
     """
     Aktualisiert alle DATEV OAuth-Tokens die bald ablaufen.
 
-    Wird alle 30 Minuten ausgefuehrt um Token-Expiration zu vermeiden.
+    Wird alle 30 Minuten ausgeführt um Token-Expiration zu vermeiden.
     """
     import asyncio
 
@@ -240,9 +240,9 @@ def sync_datev_stammdaten(
 )
 def sync_all_datev_stammdaten() -> Dict[str, Any]:
     """
-    Synchronisiert Stammdaten fuer alle aktiven DATEV-Verbindungen.
+    Synchronisiert Stammdaten für alle aktiven DATEV-Verbindungen.
 
-    Wird alle 4 Stunden per Beat-Schedule ausgefuehrt.
+    Wird alle 4 Stunden per Beat-Schedule ausgeführt.
     """
     import asyncio
 
@@ -258,7 +258,7 @@ def sync_all_datev_stammdaten() -> Dict[str, Any]:
             )
             connection_ids = [str(c) for c in connections_result.scalars().all()]
 
-        # Tasks fuer alle Verbindungen starten
+        # Tasks für alle Verbindungen starten
         tasks_started = 0
         for conn_id in connection_ids:
             sync_datev_stammdaten.delay(conn_id, "all")
@@ -368,7 +368,7 @@ def push_datev_buchungsstapel(
                 for b in buchungen
             ]
 
-            # Push durchfuehren
+            # Push durchführen
             success, stapel_id, errors = await connector.push_buchungsstapel(buchungen_data)
 
             if success:
@@ -426,7 +426,7 @@ def upload_pending_datev_belege() -> Dict[str, Any]:
     """
     Laedt ausstehende Belegbilder zu DATEV hoch.
 
-    Wird alle 15 Minuten per Beat-Schedule ausgefuehrt.
+    Wird alle 15 Minuten per Beat-Schedule ausgeführt.
     """
     import asyncio
 
@@ -446,7 +446,7 @@ def upload_pending_datev_belege() -> Dict[str, Any]:
                     models.DATEVBeleglink.upload_status == "pending",
                     models.DATEVConnection.is_active == True,
                 )
-                .limit(50)  # Batch-Groesse
+                .limit(50)  # Batch-Größe
             )
             links = links_result.scalars().all()
 
@@ -547,9 +547,9 @@ def upload_pending_datev_belege() -> Dict[str, Any]:
 )
 def datev_gobd_compliance_check() -> Dict[str, Any]:
     """
-    Fuehrt GoBD-Compliance-Check fuer alle Verbindungen durch.
+    Führt GoBD-Compliance-Check für alle Verbindungen durch.
 
-    Wird taeglich um 05:00 per Beat-Schedule ausgefuehrt.
+    Wird täglich um 05:00 per Beat-Schedule ausgeführt.
     """
     import asyncio
 
@@ -634,9 +634,9 @@ def datev_gobd_compliance_check() -> Dict[str, Any]:
 )
 def datev_auto_festschreibung() -> Dict[str, Any]:
     """
-    Fuehrt automatische Festschreibung am Monatsende durch.
+    Führt automatische Festschreibung am Monatsende durch.
 
-    Wird am 1. jeden Monats um 02:00 ausgefuehrt.
+    Wird am 1. jeden Monats um 02:00 ausgeführt.
     """
     import asyncio
 

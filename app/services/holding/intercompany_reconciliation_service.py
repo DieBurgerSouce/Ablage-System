@@ -4,9 +4,9 @@ Intercompany Reconciliation Service.
 
 Automatischer Abgleich zwischen Holding-Gesellschaften:
 - IC-Salden tracken und abgleichen
-- Eliminierungen fuer Konsolidierung vorbereiten
+- Eliminierungen für Konsolidierung vorbereiten
 - Differenzen identifizieren und ausgleichen
-- Audit-Trail fuer IC-Transaktionen
+- Audit-Trail für IC-Transaktionen
 
 Created: 2026-01-21
 Phase 5.3 der Strategischen Roadmap.
@@ -47,7 +47,7 @@ class ICTransactionType(str, Enum):
     INVOICE = "invoice"  # Interne Rechnung
     LOAN = "loan"  # Darlehen zwischen Firmen
     DIVIDEND = "dividend"  # Gewinnausschuettung
-    MANAGEMENT_FEE = "management_fee"  # Management-Gebuehr
+    MANAGEMENT_FEE = "management_fee"  # Management-Gebühr
     COST_ALLOCATION = "cost_allocation"  # Kostenallokation
     CASH_POOLING = "cash_pooling"  # Cash-Pooling Transfer
     SERVICE = "service"  # Interne Dienstleistung
@@ -57,7 +57,7 @@ class ICTransactionType(str, Enum):
 class ReconciliationStatus(str, Enum):
     """Status des Abgleichs."""
 
-    MATCHED = "matched"  # Beide Seiten stimmen ueberein
+    MATCHED = "matched"  # Beide Seiten stimmen überein
     UNMATCHED = "unmatched"  # Keine Gegenbuchung gefunden
     PARTIAL = "partial"  # Teilweise abgeglichen
     DISPUTED = "disputed"  # Differenz festgestellt
@@ -70,7 +70,7 @@ class DifferenceType(str, Enum):
     AMOUNT = "amount"  # Betragsdifferenz
     DATE = "date"  # Datumsdifferenz
     MISSING_COUNTERPART = "missing_counterpart"  # Fehlende Gegenbuchung
-    CURRENCY = "currency"  # Waehrungsdifferenz
+    CURRENCY = "currency"  # Währungsdifferenz
     TIMING = "timing"  # Timing-Differenz (Periodenabgrenzung)
 
 
@@ -139,7 +139,7 @@ class ReconciliationDifference:
 
 @dataclass
 class EliminationEntry:
-    """Eliminierungsbuchung fuer Konsolidierung."""
+    """Eliminierungsbuchung für Konsolidierung."""
 
     id: UUID
     account_debit: str  # Soll-Konto
@@ -155,7 +155,7 @@ class EliminationEntry:
 
 @dataclass
 class ReconciliationReport:
-    """Vollstaendiger Abstimmungsbericht."""
+    """Vollständiger Abstimmungsbericht."""
 
     generated_at: datetime
     period_start: datetime
@@ -176,7 +176,7 @@ class ReconciliationReport:
 
 
 class IntercompanyReconciliationService:
-    """Service fuer Intercompany-Abstimmung und Konsolidierung.
+    """Service für Intercompany-Abstimmung und Konsolidierung.
 
     Features:
     - Automatische Erkennung von IC-Transaktionen
@@ -186,11 +186,11 @@ class IntercompanyReconciliationService:
     - Audit-Trail und Reports
     """
 
-    # Toleranz fuer Betragsabweichungen (0.5% oder 1 EUR)
+    # Toleranz für Betragsabweichungen (0.5% oder 1 EUR)
     AMOUNT_TOLERANCE_PERCENT = Decimal("0.005")
     AMOUNT_TOLERANCE_ABSOLUTE = Decimal("1.00")
 
-    # Toleranz fuer Datumsabweichungen (Tage)
+    # Toleranz für Datumsabweichungen (Tage)
     DATE_TOLERANCE_DAYS = 5
 
     def __init__(self, db: AsyncSession):
@@ -209,7 +209,7 @@ class IntercompanyReconciliationService:
         """Identifiziere Intercompany-Transaktionen.
 
         Eine Transaktion ist IC wenn:
-        - Rechnungsaussteller und -empfaenger beide zur Holding gehoeren
+        - Rechnungsaussteller und -empfänger beide zur Holding gehoeren
         - Oder explizit als IC markiert
 
         Args:
@@ -228,7 +228,7 @@ class IntercompanyReconciliationService:
         if start_date is None:
             start_date = end_date - timedelta(days=365)
 
-        # Hole Company-Namen fuer Mapping
+        # Hole Company-Namen für Mapping
         company_names = await self._get_company_names(company_ids)
 
         # Hole alle Entities die zu unseren Firmen gehoeren
@@ -258,7 +258,7 @@ class IntercompanyReconciliationService:
         return ic_transactions
 
     async def _get_company_names(self, company_ids: List[UUID]) -> Dict[UUID, str]:
-        """Hole Company-Namen fuer IDs."""
+        """Hole Company-Namen für IDs."""
         result = await self.db.execute(
             select(Company.id, Company.name).where(Company.id.in_(company_ids))
         )
@@ -326,7 +326,7 @@ class IntercompanyReconciliationService:
             if not counterpart_companies:
                 continue
 
-            # Nehme erste Gegenpartei (oder koennte komplexer sein)
+            # Nehme erste Gegenpartei (oder könnte komplexer sein)
             to_company_id = counterpart_companies[0]
 
             # Bestimme Richtung basierend auf invoice_type
@@ -448,7 +448,7 @@ class IntercompanyReconciliationService:
             return ICTransactionType.LOAN
         if any(kw in purpose_lower for kw in ["dividende", "gewinn", "ausschuettung"]):
             return ICTransactionType.DIVIDEND
-        if any(kw in purpose_lower for kw in ["management", "verwaltung", "gebuehr"]):
+        if any(kw in purpose_lower for kw in ["management", "verwaltung", "gebühr"]):
             return ICTransactionType.MANAGEMENT_FEE
         if any(kw in purpose_lower for kw in ["umlage", "allokation", "verteilung"]):
             return ICTransactionType.COST_ALLOCATION
@@ -475,7 +475,7 @@ class IntercompanyReconciliationService:
             as_of_date: Stichtag (default: heute)
 
         Returns:
-            Liste der IC-Salden fuer jedes Firmenpaar
+            Liste der IC-Salden für jedes Firmenpaar
         """
         if len(company_ids) < 2:
             return []
@@ -583,7 +583,7 @@ class IntercompanyReconciliationService:
                 matched_ids.add(txn.id)
                 matched_ids.add(match.id)
 
-                # Pruefe auf Betrags- oder Datums-Differenzen
+                # Prüfe auf Betrags- oder Datums-Differenzen
                 amount_diff = abs(txn.amount - match.amount)
                 if amount_diff > Decimal("0.01"):
                     differences.append(
@@ -600,7 +600,7 @@ class IntercompanyReconciliationService:
                             expected_date=txn.transaction_date,
                             actual_date=match.transaction_date,
                             description=f"Betragsdifferenz bei {txn.reference}",
-                            recommendation="Betraege pruefen und korrigieren",
+                            recommendation="Betraege prüfen und korrigieren",
                         )
                     )
             else:
@@ -619,7 +619,7 @@ class IntercompanyReconciliationService:
                         difference_amount=txn.amount,
                         expected_date=txn.transaction_date,
                         actual_date=None,
-                        description=f"Fehlende Gegenbuchung fuer {txn.reference}",
+                        description=f"Fehlende Gegenbuchung für {txn.reference}",
                         recommendation="Gegenbuchung in der Gegenseite erfassen",
                     )
                 )
@@ -643,8 +643,8 @@ class IntercompanyReconciliationService:
 
         Matching-Kriterien:
         1. Umgekehrte Firmen (from<->to)
-        2. Gleicher/aehnlicher Betrag (mit Toleranz)
-        3. Aehnliches Datum (mit Toleranz)
+        2. Gleicher/ähnlicher Betrag (mit Toleranz)
+        3. Ähnliches Datum (mit Toleranz)
         4. Gleiche Referenz (wenn vorhanden)
         """
         for candidate in candidates:
@@ -655,7 +655,7 @@ class IntercompanyReconciliationService:
             ):
                 continue
 
-            # Betrags-Pruefung mit Toleranz
+            # Betrags-Prüfung mit Toleranz
             amount_diff = abs(txn.amount - candidate.amount)
             tolerance = max(
                 txn.amount * self.AMOUNT_TOLERANCE_PERCENT,
@@ -664,7 +664,7 @@ class IntercompanyReconciliationService:
             if amount_diff > tolerance:
                 continue
 
-            # Datums-Pruefung mit Toleranz
+            # Datums-Prüfung mit Toleranz
             date_diff = abs((txn.transaction_date - candidate.transaction_date).days)
             if date_diff > self.DATE_TOLERANCE_DAYS:
                 continue
@@ -689,10 +689,10 @@ class IntercompanyReconciliationService:
         period: str,
         as_of_date: Optional[datetime] = None,
     ) -> List[EliminationEntry]:
-        """Generiere Eliminierungsbuchungen fuer Konsolidierung.
+        """Generiere Eliminierungsbuchungen für Konsolidierung.
 
         Erstellt die notwendigen Buchungen um IC-Transaktionen
-        fuer den Konzernabschluss zu eliminieren.
+        für den Konzernabschluss zu eliminieren.
 
         Args:
             company_ids: Firmen der Holding
@@ -705,7 +705,7 @@ class IntercompanyReconciliationService:
         if as_of_date is None:
             as_of_date = datetime.now(timezone.utc)
 
-        # Parse Periode fuer Datumsbereich
+        # Parse Periode für Datumsbereich
         try:
             year, month = map(int, period.split("-"))
             start_date = datetime(year, month, 1, tzinfo=timezone.utc)
@@ -743,9 +743,9 @@ class IntercompanyReconciliationService:
             data = pair_totals[pair]
             data["transaction_ids"].append(txn.id)
 
-            # Klassifiziere fuer Eliminierung
+            # Klassifiziere für Eliminierung
             if txn.transaction_type == ICTransactionType.INVOICE:
-                # Forderung beim Aussteller, Verbindlichkeit beim Empfaenger
+                # Forderung beim Aussteller, Verbindlichkeit beim Empfänger
                 if txn.from_company_id == pair[0]:
                     data["receivables"] += txn.amount
                 else:
@@ -784,7 +784,7 @@ class IntercompanyReconciliationService:
         return eliminations
 
     # -------------------------------------------------------------------------
-    # Vollstaendiger Report
+    # Vollständiger Report
     # -------------------------------------------------------------------------
 
     async def generate_reconciliation_report(
@@ -794,16 +794,16 @@ class IntercompanyReconciliationService:
         end_date: Optional[datetime] = None,
         period: Optional[str] = None,
     ) -> ReconciliationReport:
-        """Generiere vollstaendigen Abstimmungsbericht.
+        """Generiere vollständigen Abstimmungsbericht.
 
         Args:
             company_ids: Firmen der Holding
             start_date: Startdatum
             end_date: Enddatum
-            period: Periode fuer Eliminierungen (z.B. "2026-01")
+            period: Periode für Eliminierungen (z.B. "2026-01")
 
         Returns:
-            Vollstaendiger ReconciliationReport
+            Vollständiger ReconciliationReport
         """
         if end_date is None:
             end_date = datetime.now(timezone.utc)
@@ -819,7 +819,7 @@ class IntercompanyReconciliationService:
             for cid, name in company_names.items()
         ]
 
-        # Fuehre Abstimmung durch
+        # Führe Abstimmung durch
         transactions, differences = await self.reconcile_transactions(
             company_ids, start_date, end_date
         )
@@ -872,28 +872,28 @@ class IntercompanyReconciliationService:
         return counts
 
     # -------------------------------------------------------------------------
-    # Hilfsfunktionen fuer UI/API
+    # Hilfsfunktionen für UI/API
     # -------------------------------------------------------------------------
 
     async def get_ic_summary(
         self,
         company_ids: List[UUID],
     ) -> Dict[str, Any]:
-        """Hole kompakte IC-Zusammenfassung fuer Dashboard.
+        """Hole kompakte IC-Zusammenfassung für Dashboard.
 
         Args:
             company_ids: Firmen der Holding
 
         Returns:
-            Zusammenfassung fuer Dashboard-Anzeige
+            Zusammenfassung für Dashboard-Anzeige
         """
         if len(company_ids) < 2:
             return {
                 "has_ic_relationships": False,
-                "message": "Mindestens 2 Firmen erforderlich fuer IC-Analyse",
+                "message": "Mindestens 2 Firmen erforderlich für IC-Analyse",
             }
 
-        # Schnelle Abfrage fuer Uebersicht
+        # Schnelle Abfrage für Übersicht
         balances = await self.calculate_ic_balances(company_ids)
 
         total_receivables = sum(b.balance_a_to_b for b in balances)
@@ -912,7 +912,7 @@ class IntercompanyReconciliationService:
         }
 
     def to_dict(self, obj: Union["ICTransaction", "ICBalance"]) -> Dict[str, Any]:
-        """Konvertiere dataclass zu dict fuer JSON-Serialisierung."""
+        """Konvertiere dataclass zu dict für JSON-Serialisierung."""
         if isinstance(obj, ICTransaction):
             return {
                 "id": str(obj.id),
@@ -1009,7 +1009,7 @@ class IntercompanyReconciliationService:
 def get_intercompany_reconciliation_service(
     db: AsyncSession,
 ) -> IntercompanyReconciliationService:
-    """Factory function fuer IntercompanyReconciliationService.
+    """Factory function für IntercompanyReconciliationService.
 
     Args:
         db: Async database session

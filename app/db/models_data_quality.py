@@ -2,10 +2,10 @@
 """
 Data Quality History database models.
 
-Speichert historische Datenqualitaets-Berichte fuer Trend-Tracking:
+Speichert historische Datenqualitaets-Berichte für Trend-Tracking:
 - Gesamt-Score pro Zeitpunkt
 - Issue-Zaehler pro Kategorie
-- Detail-Informationen fuer Drill-Down
+- Detail-Informationen für Drill-Down
 
 Feinpoliert und durchdacht - Enterprise Data Quality History.
 """
@@ -29,10 +29,10 @@ from app.db.models import Base, CrossDBJSON
 
 class DataQualityHistory(Base):
     """
-    Historische Datenqualitaets-Eintraege.
+    Historische Datenqualitaets-Einträge.
 
     Speichert periodische Snapshots des Datenqualitaets-Scores
-    und der Issues pro Company fuer Trend-Analyse.
+    und der Issues pro Company für Trend-Analyse.
     """
 
     __tablename__ = "data_quality_history"
@@ -59,7 +59,7 @@ class DataQualityHistory(Base):
         CrossDBJSON,
         default=list,
         nullable=False,
-        comment="Vollstaendige Issue-Liste fuer Drill-Down",
+        comment="Vollständige Issue-Liste für Drill-Down",
     )
     checked_at = Column(
         DateTime(timezone=True),

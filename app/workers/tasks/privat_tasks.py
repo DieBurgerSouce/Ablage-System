@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Celery Tasks fuer das Privat-Modul.
+Celery Tasks für das Privat-Modul.
 
 Geplante Tasks:
 - send_deadline_reminders: Sende Frist-Erinnerungen per Email
-- check_emergency_access_requests: Pruefe ablaufende Wartezeiten
+- check_emergency_access_requests: Prüfe ablaufende Wartezeiten
 - cleanup_expired_access: Raeume abgelaufene Notfallzugriffe auf
-- generate_deadline_report: Erstelle woechentlichen Fristenreport
+- generate_deadline_report: Erstelle wöchentlichen Fristenreport
 
 Beat Schedule:
-- send_deadline_reminders: Taeglich 08:00
+- send_deadline_reminders: Täglich 08:00
 - check_emergency_access_requests: Stundlich
-- cleanup_expired_access: Taeglich 03:00
+- cleanup_expired_access: Täglich 03:00
 - generate_deadline_report: Montag 07:00
 """
 
@@ -30,7 +30,7 @@ logger = structlog.get_logger(__name__)
 
 
 def run_async(coro):
-    """Hilfsfunktion um async Code in sync Celery Tasks auszufuehren."""
+    """Hilfsfunktion um async Code in sync Celery Tasks auszuführen."""
     return asyncio.run(coro)
 
 
@@ -44,15 +44,15 @@ def run_async(coro):
 @idempotent_task(date_scoped=True, ttl=86400)
 def send_deadline_reminders(self) -> Dict[str, Any]:
     """
-    Sende Erinnerungen fuer anstehende Fristen.
+    Sende Erinnerungen für anstehende Fristen.
 
-    IDEMPOTENT: Wird nur einmal pro Tag ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag ausgeführt.
 
-    Prueft alle aktiven Fristen und sendet Erinnerungen basierend
+    Prüft alle aktiven Fristen und sendet Erinnerungen basierend
     auf den konfigurierten reminder_days.
 
     Returns:
-        Statistik ueber gesendete Erinnerungen
+        Statistik über gesendete Erinnerungen
     """
     logger.info(
         "deadline_reminders_task_started",
@@ -91,12 +91,12 @@ def send_deadline_reminders(self) -> Dict[str, Any]:
                     checked_count += 1
                     days_until = (deadline.due_date - today).days
 
-                    # Pruefe ob heute eine Erinnerung gesendet werden soll
+                    # Prüfe ob heute eine Erinnerung gesendet werden soll
                     reminder_days = deadline.reminder_days or [7, 3, 1]
                     if days_until not in reminder_days:
                         continue
 
-                    # Pruefe ob heute schon eine Erinnerung gesendet wurde
+                    # Prüfe ob heute schon eine Erinnerung gesendet wurde
                     existing_notification = await db.execute(
                         select(PrivatDeadlineNotification)
                         .where(
@@ -130,10 +130,10 @@ def send_deadline_reminders(self) -> Dict[str, Any]:
                     body = f"""
                     Guten Tag,
 
-                    dies ist eine Erinnerung fuer die folgende Frist:
+                    dies ist eine Erinnerung für die folgende Frist:
 
                     Titel: {deadline.title}
-                    Faellig am: {deadline.due_date.strftime('%d.%m.%Y')}
+                    Fällig am: {deadline.due_date.strftime('%d.%m.%Y')}
                     Tage verbleibend: {days_until}
 
                     {f'Beschreibung: {deadline.description}' if deadline.description else ''}
@@ -207,13 +207,13 @@ def send_deadline_reminders(self) -> Dict[str, Any]:
 )
 def check_emergency_access_requests(self) -> Dict[str, Any]:
     """
-    Pruefe Notfallzugriff-Anfragen auf ablaufende Wartezeiten.
+    Prüfe Notfallzugriff-Anfragen auf ablaufende Wartezeiten.
 
     Wenn die Wartezeit einer Anfrage abgelaufen ist und diese nicht
     abgelehnt wurde, wird sie automatisch genehmigt.
 
     Returns:
-        Statistik ueber verarbeitete Anfragen
+        Statistik über verarbeitete Anfragen
     """
     logger.info(
         "emergency_access_check_started",
@@ -255,7 +255,7 @@ def check_emergency_access_requests(self) -> Dict[str, Any]:
 
                     auto_approved += 1
 
-                    # SECURITY: Benachrichtige Owner ueber automatische Genehmigung
+                    # SECURITY: Benachrichtige Owner über automatische Genehmigung
                     try:
                         space_result = await db.execute(
                             select(PrivatSpace).where(PrivatSpace.id == request.space_id)
@@ -285,7 +285,7 @@ Guten Tag,
 der Notfallzugriff auf Ihren Privat-Bereich '{space.name}' wurde automatisch genehmigt,
 da die Wartezeit von {waiting_period_str} abgelaufen ist und Sie den Zugriff nicht abgelehnt haben.
 
-Bitte pruefen Sie die Zugriffsberechtigungen in Ihrem Ablage-System.
+Bitte prüfen Sie die Zugriffsberechtigungen in Ihrem Ablage-System.
 
 Mit freundlichen Gruessen,
 Ihr Ablage-System
@@ -306,7 +306,7 @@ Ihr Ablage-System
 
                 await db.commit()
 
-                # Pruefe auch Anfragen die kurz vor Ablauf sind (1 Tag)
+                # Prüfe auch Anfragen die kurz vor Ablauf sind (1 Tag)
                 tomorrow = now + timedelta(days=1)
                 expiring_stmt = select(PrivatEmergencyAccessRequest).where(
                     and_(
@@ -342,7 +342,7 @@ WICHTIGE WARNUNG!
 Ein Notfallzugriff auf Ihren Privat-Bereich '{space.name}' wird in ca. {hours_remaining} Stunden
 AUTOMATISCH GENEHMIGT, wenn Sie nicht handeln.
 
-Wenn Sie diesen Zugriff NICHT gewaehren moechten, loggen Sie sich JETZT in Ihr
+Wenn Sie diesen Zugriff NICHT gewähren moechten, loggen Sie sich JETZT in Ihr
 Ablage-System ein und lehnen Sie die Anfrage ab.
 
 Mit freundlichen Gruessen,
@@ -404,10 +404,10 @@ def cleanup_expired_access(self) -> Dict[str, Any]:
     """
     Raeume abgelaufene Zugriffsberechtigungen auf.
 
-    Deaktiviert Space-Access-Eintraege deren expires_at abgelaufen ist.
+    Deaktiviert Space-Access-Einträge deren expires_at abgelaufen ist.
 
     Returns:
-        Anzahl der deaktivierten Eintraege
+        Anzahl der deaktivierten Einträge
     """
     logger.info(
         "cleanup_expired_access_started",
@@ -424,8 +424,8 @@ def cleanup_expired_access(self) -> Dict[str, Any]:
             async with get_async_session() as db:
                 now = datetime.now(timezone.utc)
 
-                # Loesche abgelaufene Zugriffsberechtigungen
-                # PrivatSpaceAccess hat kein is_active - expires_at bestimmt Gueltigkeit
+                # Lösche abgelaufene Zugriffsberechtigungen
+                # PrivatSpaceAccess hat kein is_active - expires_at bestimmt Gültigkeit
                 stmt = (
                     delete(PrivatSpaceAccess)
                     .where(
@@ -477,9 +477,9 @@ def cleanup_expired_access(self) -> Dict[str, Any]:
 )
 def generate_deadline_report(self) -> Dict[str, Any]:
     """
-    Erstelle einen woechentlichen Fristenreport per Email.
+    Erstelle einen wöchentlichen Fristenreport per Email.
 
-    Sendet eine Zusammenfassung aller anstehenden Fristen der naechsten
+    Sendet eine Zusammenfassung aller anstehenden Fristen der nächsten
     4 Wochen an jeden Space-Owner.
 
     Returns:
@@ -561,7 +561,7 @@ def generate_deadline_report(self) -> Dict[str, Any]:
                     body = f"""
                     Guten Tag,
 
-                    hier ist Ihr woechentlicher Fristenreport:
+                    hier ist Ihr wöchentlicher Fristenreport:
 
                     Anstehende Fristen ({len(deadlines)}):
                     {chr(10).join(deadline_lines)}
@@ -575,7 +575,7 @@ def generate_deadline_report(self) -> Dict[str, Any]:
                     try:
                         await email_service.send_email(
                             to=user.email,
-                            subject=f"Woechentlicher Fristenreport - {len(deadlines)} Fristen",
+                            subject=f"Wöchentlicher Fristenreport - {len(deadlines)} Fristen",
                             body=body.strip(),
                         )
                         reports_sent += 1
@@ -625,12 +625,12 @@ def cleanup_orphaned_privat_files(self) -> Dict[str, Any]:
     """
     Raeume verwaiste Dateien in MinIO auf.
 
-    Loescht Dateien im privat/ Bucket, die keine Referenz in der
+    Löscht Dateien im privat/ Bucket, die keine Referenz in der
     Datenbank haben (z.B. nach einem Crash zwischen Upload und Commit).
-    Nur Dateien die aelter als 1 Stunde sind werden geloescht.
+    Nur Dateien die älter als 1 Stunde sind werden gelöscht.
 
     Returns:
-        Anzahl der geloeschten Dateien
+        Anzahl der gelöschten Dateien
     """
     logger.info(
         "cleanup_orphaned_files_started",
@@ -675,16 +675,16 @@ def cleanup_orphaned_privat_files(self) -> Dict[str, Any]:
                     file_path = file_info.get("key", "")
                     last_modified = file_info.get("last_modified")
 
-                    # Ueberspringe Dateien die in der DB existieren
+                    # Überspringe Dateien die in der DB existieren
                     if file_path in db_paths:
                         continue
 
-                    # Ueberspringe Dateien die weniger als 1 Stunde alt sind
-                    # (koennten noch im Upload-Prozess sein)
+                    # Überspringe Dateien die weniger als 1 Stunde alt sind
+                    # (könnten noch im Upload-Prozess sein)
                     if last_modified and last_modified > one_hour_ago:
                         continue
 
-                    # Loesche verwaiste Datei
+                    # Lösche verwaiste Datei
                     try:
                         await storage_service.delete_file(
                             bucket="privat",
@@ -749,16 +749,16 @@ def calculate_property_kpis(
     property_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Berechnet KPIs fuer Immobilien: Mietrendite, ROI, Wertzuwachs.
+    Berechnet KPIs für Immobilien: Mietrendite, ROI, Wertzuwachs.
 
-    IDEMPOTENT: Wird nur einmal pro Tag pro space_id/property_id ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id/property_id ausgeführt.
 
-    Kann fuer alle Properties eines Spaces oder eine einzelne Property
-    ausgefuehrt werden.
+    Kann für alle Properties eines Spaces oder eine einzelne Property
+    ausgeführt werden.
 
     Args:
-        space_id: Optional - Berechne fuer alle Properties eines Spaces
-        property_id: Optional - Berechne nur fuer diese Property
+        space_id: Optional - Berechne für alle Properties eines Spaces
+        property_id: Optional - Berechne nur für diese Property
 
     Returns:
         Statistik der berechneten KPIs
@@ -872,15 +872,15 @@ def calculate_vehicle_tco(
     vehicle_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Berechnet Total Cost of Ownership fuer Fahrzeuge.
+    Berechnet Total Cost of Ownership für Fahrzeuge.
 
-    IDEMPOTENT: Wird nur einmal pro Tag pro space_id/vehicle_id ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id/vehicle_id ausgeführt.
 
     Inkludiert: Wertverlust, Kraftstoff, Versicherung, Steuer, Wartung.
 
     Args:
-        space_id: Optional - Berechne fuer alle Fahrzeuge eines Spaces
-        vehicle_id: Optional - Berechne nur fuer dieses Fahrzeug
+        space_id: Optional - Berechne für alle Fahrzeuge eines Spaces
+        vehicle_id: Optional - Berechne nur für dieses Fahrzeug
 
     Returns:
         Statistik der berechneten TCO-Werte
@@ -926,7 +926,7 @@ def calculate_vehicle_tco(
                         # TCO berechnen
                         tco = await calc_service.calculate_tco(vehicle.id)
 
-                        # Naechster Service vorhersagen
+                        # Nächster Service vorhersagen
                         next_service = await calc_service.predict_next_service(vehicle.id)
 
                         calculated_count += 1
@@ -993,18 +993,18 @@ def analyze_insurance_coverage(
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Analysiert Versicherungsdeckung und identifiziert Deckungsluecken.
+    Analysiert Versicherungsdeckung und identifiziert Deckungslücken.
 
-    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgeführt.
 
     Vergleicht vorhandene Deckungssummen mit Empfehlungen und
-    berechnet Kuendigungsfristen automatisch.
+    berechnet Kündigungsfristen automatisch.
 
     Args:
-        space_id: Optional - Analysiere nur fuer diesen Space
+        space_id: Optional - Analysiere nur für diesen Space
 
     Returns:
-        Analyse-Ergebnisse mit Deckungsluecken
+        Analyse-Ergebnisse mit Deckungslücken
     """
     logger.info(
         "insurance_coverage_analysis_started",
@@ -1036,12 +1036,12 @@ def analyze_insurance_coverage(
 
                 for space in spaces:
                     try:
-                        # Deckungsluecken analysieren
+                        # Deckungslücken analysieren
                         gap_analysis = await analysis_service.analyze_coverage_gaps(
                             space.id
                         )
 
-                        # Kuendigungsfristen berechnen
+                        # Kündigungsfristen berechnen
                         await analysis_service.calculate_cancellation_deadlines(
                             space.id
                         )
@@ -1115,15 +1115,15 @@ def generate_loan_amortization(
     loan_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Generiert Tilgungsplaene fuer Kredite.
+    Generiert Tilgungsplaene für Kredite.
 
-    IDEMPOTENT: Wird nur einmal pro Tag pro space_id/loan_id ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id/loan_id ausgeführt.
 
     Berechnet monatliche Raten, Restschuld, Zinsersparnis bei Sondertilgung.
 
     Args:
-        space_id: Optional - Generiere fuer alle Kredite eines Spaces
-        loan_id: Optional - Generiere nur fuer diesen Kredit
+        space_id: Optional - Generiere für alle Kredite eines Spaces
+        loan_id: Optional - Generiere nur für diesen Kredit
 
     Returns:
         Statistik der generierten Tilgungsplaene
@@ -1240,7 +1240,7 @@ def run_finance_analytics(
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Fuehrt umfassende Finanzanalyse durch.
+    Führt umfassende Finanzanalyse durch.
 
     Berechnet: Monats-Trends, YoY-Vergleiche, wiederkehrende Zahlungen,
     Cash-Flow-Prognosen.
@@ -1280,7 +1280,7 @@ def run_finance_analytics(
 
                 for space in spaces:
                     try:
-                        # Vollstaendige Analyse durchfuehren
+                        # Vollständige Analyse durchführen
                         analysis = await analytics_service.get_full_analysis(
                             space.id
                         )
@@ -1345,10 +1345,10 @@ def run_finance_analytics(
 )
 def daily_kpi_recalculation(self) -> Dict[str, Any]:
     """
-    Taegliche Neuberechnung aller KPIs.
+    Tägliche Neuberechnung aller KPIs.
 
-    Wird per Celery Beat um 02:00 Uhr ausgefuehrt.
-    Berechnet alle Enterprise-KPIs fuer alle aktiven Spaces.
+    Wird per Celery Beat um 02:00 Uhr ausgeführt.
+    Berechnet alle Enterprise-KPIs für alle aktiven Spaces.
 
     Returns:
         Zusammenfassung der berechneten KPIs
@@ -1416,9 +1416,9 @@ def recalculate_property_intelligence(
     property_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Neuberechnung aller Property-Intelligence-KPIs fuer eine Immobilie.
+    Neuberechnung aller Property-Intelligence-KPIs für eine Immobilie.
 
-    Berechnet: Wertschaetzung, Renditen, ROI, Wertsteigerung.
+    Berechnet: Wertschätzung, Renditen, ROI, Wertsteigerung.
 
     Args:
         property_id: Property-ID
@@ -1487,7 +1487,7 @@ def recalculate_all_property_intelligence(
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Neuberechnung aller Property-Intelligence-KPIs fuer einen Space.
+    Neuberechnung aller Property-Intelligence-KPIs für einen Space.
 
     Args:
         space_id: Space-ID
@@ -1573,7 +1573,7 @@ def recalculate_vehicle_intelligence(
     vehicle_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Neuberechnung aller Vehicle-Intelligence-KPIs fuer ein Fahrzeug.
+    Neuberechnung aller Vehicle-Intelligence-KPIs für ein Fahrzeug.
 
     Args:
         vehicle_id: Vehicle-ID
@@ -1641,7 +1641,7 @@ def recalculate_all_vehicle_intelligence(
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Neuberechnung aller Vehicle-Intelligence-KPIs fuer einen Space.
+    Neuberechnung aller Vehicle-Intelligence-KPIs für einen Space.
 
     Args:
         space_id: Space-ID
@@ -1727,7 +1727,7 @@ def recalculate_investment_intelligence(
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Neuberechnung aller Investment-Intelligence-KPIs fuer einen Space.
+    Neuberechnung aller Investment-Intelligence-KPIs für einen Space.
 
     Berechnet: Portfolio-Allokation, Diversifikation, Risikoprofil.
 
@@ -1824,15 +1824,15 @@ def calculate_financial_health(
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Berechnet Financial Health Score fuer Space(s).
+    Berechnet Financial Health Score für Space(s).
 
     6 Dimensionen: Vermoegensaufbau, Schulden, Risikoabdeckung,
-    Liquiditaet, Altersvorsorge, Diversifikation.
+    Liquidität, Altersvorsorge, Diversifikation.
 
-    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgeführt.
 
     Args:
-        space_id: Optional - Nur fuer diesen Space
+        space_id: Optional - Nur für diesen Space
 
     Returns:
         Health Score Ergebnisse
@@ -1923,15 +1923,15 @@ def generate_smart_recommendations(
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Generiert Smart Recommendations fuer Space(s).
+    Generiert Smart Recommendations für Space(s).
 
-    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgeführt.
 
-    Prueft: Refinanzierung, Rebalancing, Versicherungsluecken,
+    Prüft: Refinanzierung, Rebalancing, Versicherungslücken,
     Notgroschen, Fristen, veraltete Werte.
 
     Args:
-        space_id: Optional - Nur fuer diesen Space
+        space_id: Optional - Nur für diesen Space
 
     Returns:
         Recommendations Ergebnisse
@@ -2025,12 +2025,12 @@ def generate_smart_recommendations(
 @idempotent_task(date_scoped=True, ttl=86400)
 def daily_intelligence_recalculation(self) -> Dict[str, Any]:
     """
-    Taegliche Neuberechnung aller Intelligence-KPIs.
+    Tägliche Neuberechnung aller Intelligence-KPIs.
 
-    Wird per Celery Beat um 03:00 Uhr ausgefuehrt (nach daily_kpi_recalculation).
+    Wird per Celery Beat um 03:00 Uhr ausgeführt (nach daily_kpi_recalculation).
     Berechnet alle Enterprise-Intelligence-Features.
 
-    IDEMPOTENT: Wird nur einmal pro Tag ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag ausgeführt.
 
     Returns:
         Zusammenfassung der berechneten Intelligence-KPIs
@@ -2094,12 +2094,12 @@ def orchestrate_all_kpis(
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Orchestriert alle KPI-Berechnungen ueber den KPIOrchestrationService.
+    Orchestriert alle KPI-Berechnungen über den KPIOrchestrationService.
 
-    Fuehrt KEINE eigenen Berechnungen durch, sondern:
+    Führt KEINE eigenen Berechnungen durch, sondern:
     - Koordiniert PropertyCalculationService, VehicleCalculationService,
       LoanScenarioService, InvestmentIntelligenceService, InsuranceIntelligenceService
-    - Stellt korrekte Abhaengigkeitsreihenfolge sicher
+    - Stellt korrekte Abhängigkeitsreihenfolge sicher
     - Berechnet Financial Health Score zuletzt
 
     Args:
@@ -2187,7 +2187,7 @@ def recalculate_entity_kpi(
     recalculate_health: bool = True,
 ) -> Dict[str, Any]:
     """
-    Berechnet KPIs fuer eine einzelne Entity ueber den Orchestrator.
+    Berechnet KPIs für eine einzelne Entity über den Orchestrator.
 
     Nuetzlich nach Datenänderungen an einer Entity.
 
@@ -2258,15 +2258,15 @@ def recalculate_entity_kpi(
     max_retries=2,
     default_retry_delay=30,
 )
-@idempotent_task(date_scoped=False, ttl=600)  # 10 Minuten TTL, nicht taeglich
+@idempotent_task(date_scoped=False, ttl=600)  # 10 Minuten TTL, nicht täglich
 def update_privat_metrics(self) -> Dict[str, Any]:
     """
-    Aktualisiert Prometheus-Metriken fuer das Privat-Modul.
+    Aktualisiert Prometheus-Metriken für das Privat-Modul.
 
     IDEMPOTENT: Maximal alle 10 Minuten (TTL=600s).
 
-    Laeuft alle 15 Minuten via Celery Beat.
-    Sammelt aggregierte Statistiken fuer Monitoring.
+    Läuft alle 15 Minuten via Celery Beat.
+    Sammelt aggregierte Statistiken für Monitoring.
 
     Returns:
         Aktualisierte Metrik-Counts
@@ -2389,10 +2389,10 @@ def create_monthly_portfolio_snapshot(
 ) -> dict:
     """Erstellt monatliche Portfolio-Snapshots.
 
-    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgeführt.
 
-    Wenn keine space_id angegeben, werden Snapshots fuer alle Spaces erstellt.
-    Sollte am 1. jeden Monats via Celery Beat ausgefuehrt werden.
+    Wenn keine space_id angegeben, werden Snapshots für alle Spaces erstellt.
+    Sollte am 1. jeden Monats via Celery Beat ausgeführt werden.
 
     Args:
         space_id: Optional - spezifischer Space
@@ -2460,7 +2460,7 @@ def recalculate_financial_goals(
 ) -> dict:
     """Berechnet den Fortschritt aller Finanzziele neu.
 
-    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgeführt.
 
     Aktualisiert:
     - Progress-Prozentsatz
@@ -2528,11 +2528,11 @@ def recalculate_financial_goals(
 )
 @idempotent_task(date_scoped=True, ttl=86400)
 def check_goals_at_risk(self) -> dict:
-    """Prueft auf gefaehrdete Finanzziele und sendet Benachrichtigungen.
+    """Prüft auf gefaehrdete Finanzziele und sendet Benachrichtigungen.
 
-    IDEMPOTENT: Wird nur einmal pro Tag ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag ausgeführt.
 
-    Wird taeglich ausgefuehrt um User ueber gefaehrdete Ziele zu informieren.
+    Wird täglich ausgeführt um User über gefaehrdete Ziele zu informieren.
 
     Returns:
         dict mit Anzahl gefaehrdeter Ziele und gesendeter Benachrichtigungen
@@ -2552,7 +2552,7 @@ def check_goals_at_risk(self) -> dict:
             notifications_sent = 0
 
             if at_risk_goals:
-                # Benachrichtigungen fuer jedes gefaehrdete Ziel senden
+                # Benachrichtigungen für jedes gefaehrdete Ziel senden
                 notifications_sent = await _send_goals_at_risk_notifications(
                     at_risk_goals
                 )
@@ -2591,7 +2591,7 @@ def check_goals_at_risk(self) -> dict:
 
 
 async def _send_goals_at_risk_notifications(at_risk_goals) -> int:
-    """Sendet Benachrichtigungen fuer gefaehrdete Finanzziele.
+    """Sendet Benachrichtigungen für gefaehrdete Finanzziele.
 
     Args:
         at_risk_goals: Liste von FinancialGoal-Objekten die gefaehrdet sind
@@ -2609,7 +2609,7 @@ async def _send_goals_at_risk_notifications(at_risk_goals) -> int:
     notifications_sent = 0
     notification_service = get_notification_service()
 
-    # Gruppiere Ziele nach Owner fuer aggregierte Benachrichtigungen
+    # Gruppiere Ziele nach Owner für aggregierte Benachrichtigungen
     goals_by_owner = {}
     for goal in at_risk_goals:
         owner_id = str(goal.owner_id) if goal.owner_id else None
@@ -2656,7 +2656,7 @@ async def _send_goals_at_risk_notifications(at_risk_goals) -> int:
                     goal_names += f" und {len(goals) - 3} weitere"
                 message = (
                     f"Folgende Ziele liegen hinter dem Plan: {goal_names}. "
-                    f"Bitte pruefen Sie diese zeitnah."
+                    f"Bitte prüfen Sie diese zeitnah."
                 )
 
             # In-App Benachrichtigung senden
@@ -2675,7 +2675,7 @@ async def _send_goals_at_risk_notifications(at_risk_goals) -> int:
             )
             notifications_sent += 1
 
-            # Slack-Alert fuer kritische Faelle
+            # Slack-Alert für kritische Faelle
             if severity == "critical":
                 try:
                     from app.services.slack_service import (
@@ -2688,7 +2688,7 @@ async def _send_goals_at_risk_notifications(at_risk_goals) -> int:
                         title=f"🚨 Kritische Finanzziele: {len(goals)} Ziele gefaehrdet",
                         message=(
                             f"Benutzer hat {critical_count} kritische Ziele "
-                            f"(Faelligkeit innerhalb 30 Tagen) und insgesamt "
+                            f"(Fälligkeit innerhalb 30 Tagen) und insgesamt "
                             f"{len(goals)} gefaehrdete Ziele."
                         ),
                         severity="critical",
@@ -2714,10 +2714,10 @@ async def _send_goals_at_risk_notifications(at_risk_goals) -> int:
 # =============================================================================
 # PREDICTIVE INTELLIGENCE TASKS (Enterprise Feature - Phase 1)
 # =============================================================================
-# Diese Tasks bilden das Fundament fuer proaktive Intelligence:
-# - record_kpi_history: Erfasst taeglich KPI-Snapshots fuer Trend-Analyse
+# Diese Tasks bilden das Fundament für proaktive Intelligence:
+# - record_kpi_history: Erfasst täglich KPI-Snapshots für Trend-Analyse
 # - generate_predictive_alerts: Generiert Early Warnings basierend auf Prognosen
-# - cleanup_old_projections: Raeumt veraltete Projektionen auf
+# - cleanup_old_projections: Räumt veraltete Projektionen auf
 # =============================================================================
 
 
@@ -2737,19 +2737,19 @@ def record_kpi_history(
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Erfasst taegliche KPI-Snapshots fuer alle oder einen spezifischen Space.
+    Erfasst tägliche KPI-Snapshots für alle oder einen spezifischen Space.
 
-    Diese Daten bilden die Grundlage fuer:
+    Diese Daten bilden die Grundlage für:
     - Trend-Analyse (linear, saisonal)
     - KPI-Projektionen (3/6/12 Monate)
     - Early Warning Alerts
 
-    Sollte taeglich um 23:55 via Celery Beat ausgefuehrt werden.
+    Sollte täglich um 23:55 via Celery Beat ausgeführt werden.
 
-    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgeführt.
 
     Args:
-        space_id: Optional - nur fuer diesen Space aufzeichnen
+        space_id: Optional - nur für diesen Space aufzeichnen
 
     Returns:
         Statistik der erfassten KPIs
@@ -2864,13 +2864,13 @@ def generate_predictive_alerts(
     - "Notgroschen reicht nur noch 2.5 Monate"
     - "Financial Health Score faellt unter 50 in 6 Monaten"
 
-    Sollte taeglich um 03:30 via Celery Beat ausgefuehrt werden
+    Sollte täglich um 03:30 via Celery Beat ausgeführt werden
     (nach record_kpi_history um 23:55).
 
-    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag pro space_id ausgeführt.
 
     Args:
-        space_id: Optional - nur fuer diesen Space generieren
+        space_id: Optional - nur für diesen Space generieren
         projection_months: Wie viele Monate vorausschauen (default 12)
 
     Returns:
@@ -3002,22 +3002,22 @@ def cleanup_old_projections(
     days_to_keep: int = 90,
 ) -> Dict[str, Any]:
     """
-    Raeumt alte/abgelaufene Projektionen und Warnings auf.
+    Räumt alte/abgelaufene Projektionen und Warnings auf.
 
-    IDEMPOTENT: Wird nur einmal pro Tag ausgefuehrt.
+    IDEMPOTENT: Wird nur einmal pro Tag ausgeführt.
 
-    Loescht:
-    - Projektionen aelter als days_to_keep
+    Löscht:
+    - Projektionen älter als days_to_keep
     - Warnings die bereits resolved oder expired sind
-    - KPI-History aelter als 2 Jahre (optional archivieren)
+    - KPI-History älter als 2 Jahre (optional archivieren)
 
-    Sollte woechentlich via Celery Beat ausgefuehrt werden.
+    Sollte wöchentlich via Celery Beat ausgeführt werden.
 
     Args:
         days_to_keep: Wie viele Tage behalten (default 90)
 
     Returns:
-        Anzahl geloeschter Datensaetze
+        Anzahl gelöschter Datensätze
     """
     logger.info(
         "cleanup_old_projections_started",
@@ -3037,14 +3037,14 @@ def cleanup_old_projections(
         warnings_deleted = 0
 
         async with get_async_session() as db:
-            # Loesche alte Projektionen
+            # Lösche alte Projektionen
             stmt = delete(PrivatProjection).where(
                 PrivatProjection.calculated_at < cutoff_date
             )
             result = await db.execute(stmt)
             projections_deleted = result.rowcount
 
-            # Loesche resolved/expired Warnings
+            # Lösche resolved/expired Warnings
             stmt = delete(PrivatEarlyWarning).where(
                 PrivatEarlyWarning.is_resolved == True,
                 PrivatEarlyWarning.created_at < cutoff_date,
@@ -3095,7 +3095,7 @@ def get_predictive_insights_summary(
     user_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Generiert eine vollstaendige Predictive Insights Summary fuer einen Space.
+    Generiert eine vollständige Predictive Insights Summary für einen Space.
 
     Kombiniert:
     - KPI Projektionen (3/6/12 Monate)
@@ -3107,7 +3107,7 @@ def get_predictive_insights_summary(
 
     Args:
         space_id: Der zu analysierende Space
-        user_id: Optional - fuer personalisierte Schwellenwerte
+        user_id: Optional - für personalisierte Schwellenwerte
 
     Returns:
         PredictiveInsightsSummary als Dict

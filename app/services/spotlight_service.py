@@ -3,8 +3,8 @@
 Spotlight-Schnellsuche Service.
 
 Kombiniert Autocomplete, Dokumentsuche und Entity-Matching
-fuer die Cmd+K Spotlight-Suche im Frontend.
-Ziel: <200ms Antwortzeit fuer schnelle Interaktion.
+für die Cmd+K Spotlight-Suche im Frontend.
+Ziel: <200ms Antwortzeit für schnelle Interaktion.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ class SpotlightSuggestion(BaseModel):
 
 
 class SpotlightDocument(BaseModel):
-    """Dokument-Ergebnis fuer Spotlight."""
+    """Dokument-Ergebnis für Spotlight."""
     document_id: str
     filename: str
     document_type: str
@@ -85,7 +85,7 @@ class SpotlightInterpretation(BaseModel):
 
 
 class SpotlightResponse(BaseModel):
-    """Vollstaendige Spotlight-Antwort."""
+    """Vollständige Spotlight-Antwort."""
     suggestions: List[SpotlightSuggestion] = Field(default_factory=list)
     documents: List[SpotlightDocument] = Field(default_factory=list)
     entities: List[SpotlightEntity] = Field(default_factory=list)
@@ -135,10 +135,10 @@ NAVIGATION_ITEMS: List[SpotlightSuggestion] = [
 
 class SpotlightService:
     """
-    Schnellsuche fuer die Cmd+K Spotlight-Funktion.
+    Schnellsuche für die Cmd+K Spotlight-Funktion.
 
     Kombiniert parallel:
-    - Autocomplete-Vorschlaege
+    - Autocomplete-Vorschläge
     - Dokumentsuche (via SmartSearch)
     - Entity-Matching (Kunden/Lieferanten)
 
@@ -158,17 +158,17 @@ class SpotlightService:
         limit: int = 8,
     ) -> SpotlightResponse:
         """
-        Fuehrt Spotlight-Schnellsuche durch.
+        Führt Spotlight-Schnellsuche durch.
 
         Bei kurzen Queries (<2 Zeichen) werden nur Navigations-Items
-        zurueckgegeben. Bei laengeren Queries werden parallel
-        Autocomplete, Dokument- und Entity-Suche durchgefuehrt.
+        zurückgegeben. Bei längeren Queries werden parallel
+        Autocomplete, Dokument- und Entity-Suche durchgeführt.
 
         Args:
             db: Datenbank-Session
             query: Suchanfrage
             user_id: Benutzer-ID
-            company_id: Optional Company-ID fuer Multi-Tenant
+            company_id: Optional Company-ID für Multi-Tenant
             limit: Maximale Anzahl Ergebnisse pro Kategorie
 
         Returns:
@@ -261,7 +261,7 @@ class SpotlightService:
         query: str,
         limit: int,
     ) -> List[SpotlightSuggestion]:
-        """Generiert Autocomplete-Vorschlaege."""
+        """Generiert Autocomplete-Vorschläge."""
         smart_search = self._get_smart_search()
 
         # Autocomplete vom SmartSearchService
@@ -278,7 +278,7 @@ class SpotlightService:
         for nav in nav_matches[:3]:
             suggestions.append(nav)
 
-        # Autocomplete-Vorschlaege
+        # Autocomplete-Vorschläge
         for text in raw_suggestions:
             suggestions.append(SpotlightSuggestion(
                 text=text,
@@ -386,7 +386,7 @@ _spotlight_service: Optional[SpotlightService] = None
 
 
 def get_spotlight_service() -> SpotlightService:
-    """Factory-Funktion fuer Dependency Injection."""
+    """Factory-Funktion für Dependency Injection."""
     global _spotlight_service
     if _spotlight_service is None:
         _spotlight_service = SpotlightService()

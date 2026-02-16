@@ -2,10 +2,10 @@
 """
 Document Summary Service.
 
-Deutsche Zusammenfassungen fuer Dokumente:
+Deutsche Zusammenfassungen für Dokumente:
 - Template-basierte Generierung
-- Strukturierte Key-Facts fuer Dashboard
-- Batch-Verarbeitung fuer fehlende Summaries
+- Strukturierte Key-Facts für Dashboard
+- Batch-Verarbeitung für fehlende Summaries
 
 Format: 'Rechnung #4711 von Mueller GmbH, 3.450 EUR netto,
          Zahlungsziel 30 Tage, 2% Skonto bei 10 Tagen'
@@ -90,7 +90,7 @@ def _safe_format(template: str, **kwargs: str) -> str:
 
 
 class DocumentSummaryService:
-    """Deutsche Zusammenfassungen fuer Dokumente.
+    """Deutsche Zusammenfassungen für Dokumente.
 
     Format: 'Rechnung #4711 von Mueller GmbH, 3.450 EUR netto,
              Zahlungsziel 30 Tage, 2% Skonto bei 10 Tagen'
@@ -104,7 +104,7 @@ class DocumentSummaryService:
         document_type: Optional[str] = None,
         extracted_data: Optional[Dict[str, str]] = None,
     ) -> DocumentSummary:
-        """Deutsche Zusammenfassung fuer ein Dokument generieren.
+        """Deutsche Zusammenfassung für ein Dokument generieren.
 
         Laedt extrahierte Daten und Confidence-Scores, bestimmt den
         Dokumenttyp und fuellt das passende Template.
@@ -127,7 +127,7 @@ class DocumentSummaryService:
         if document_type is None:
             document_type = extracted_data.get("document_type", "default")
 
-        # Template waehlen
+        # Template wählen
         template_key = document_type if document_type in SUMMARY_TEMPLATES else "default"
         template = SUMMARY_TEMPLATES[template_key]
 
@@ -142,7 +142,7 @@ class DocumentSummaryService:
 
         now = utc_now()
 
-        # Bestehende Summary pruefen (upsert-artig)
+        # Bestehende Summary prüfen (upsert-artig)
         existing = await self.get_summary(db, document_id)
         if existing:
             existing.summary_text = summary_text
@@ -210,8 +210,8 @@ class DocumentSummaryService:
     ) -> List[DocumentSummary]:
         """Batch-Generierung von Zusammenfassungen.
 
-        Generiert Zusammenfassungen fuer alle angegebenen Dokumente,
-        ueberspringt bereits vorhandene.
+        Generiert Zusammenfassungen für alle angegebenen Dokumente,
+        überspringt bereits vorhandene.
 
         Args:
             db: Datenbank-Session
@@ -225,7 +225,7 @@ class DocumentSummaryService:
 
         for doc_id in document_ids:
             try:
-                # Pruefen ob Summary bereits existiert
+                # Prüfen ob Summary bereits existiert
                 existing = await self.get_summary(db, doc_id)
                 if existing:
                     results.append(existing)
@@ -259,7 +259,7 @@ class DocumentSummaryService:
         db: AsyncSession,
         document_id: UUID,
     ) -> Optional[Dict[str, object]]:
-        """Strukturierte Fakten fuer Dashboard/Listen.
+        """Strukturierte Fakten für Dashboard/Listen.
 
         Args:
             db: Datenbank-Session
@@ -284,7 +284,7 @@ class DocumentSummaryService:
     ) -> Dict[str, str]:
         """Extrahierte Daten als flaches Dict laden.
 
-        Verwendet korrigierte Werte wenn verfuegbar.
+        Verwendet korrigierte Werte wenn verfügbar.
 
         Args:
             db: Datenbank-Session
@@ -358,7 +358,7 @@ class DocumentSummaryService:
             vars_dict["end"] = data.get("contract_end", "")
             vars_dict["value"] = data.get("contract_value", data.get("total_amount", ""))
             if data.get("auto_renewal") == "true":
-                vars_dict["renewal"] = ", automatische Verlaengerung"
+                vars_dict["renewal"] = ", automatische Verlängerung"
             else:
                 vars_dict["renewal"] = ""
 
@@ -387,7 +387,7 @@ class DocumentSummaryService:
             "type_label": DOCUMENT_TYPE_LABELS.get(document_type, document_type),
         }
 
-        # Standard-Felder uebernehmen wenn vorhanden
+        # Standard-Felder übernehmen wenn vorhanden
         standard_fields = [
             "invoice_number", "order_number", "supplier_name",
             "customer_name", "total_amount", "net_amount",
@@ -411,7 +411,7 @@ _service_instance: Optional[DocumentSummaryService] = None
 
 
 def get_document_summary_service() -> DocumentSummaryService:
-    """Gibt die Singleton-Instanz des DocumentSummaryService zurueck."""
+    """Gibt die Singleton-Instanz des DocumentSummaryService zurück."""
     global _service_instance
     if _service_instance is None:
         _service_instance = DocumentSummaryService()

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Delegation Service fuer Ablage-System.
+Delegation Service für Ablage-System.
 
-Ermoeglicht temporaere Rechte-Uebertragung:
+Ermöglicht temporaere Rechte-Übertragung:
 - Urlaubsvertretung
 - Krankheitsvertretung
 - Projektbasierte Delegation
-- Vollstaendiger Audit-Trail
+- Vollständiger Audit-Trail
 
 Phase 3.2 der Strategischen Roadmap (Januar 2026).
 """
@@ -34,12 +34,12 @@ logger = logging.getLogger(__name__)
 
 
 class DelegationService:
-    """Service fuer Delegations-Management.
+    """Service für Delegations-Management.
 
     Bietet:
     - Erstellen/Verwalten von Delegationen
     - Permission-Checks mit Delegation-Support
-    - Audit-Logging fuer Compliance
+    - Audit-Logging für Compliance
     - Template-basierte Schnellerstellung
     """
 
@@ -75,23 +75,23 @@ class DelegationService:
 
         Args:
             delegator_id: User der seine Rechte delegiert
-            delegate_id: User der die Rechte erhaelt
+            delegate_id: User der die Rechte erhält
             company_id: Company-ID (Multi-Tenant)
             valid_from: Startzeitpunkt
             valid_until: Endzeitpunkt
             delegation_type: Art der Delegation (FULL, PARTIAL, APPROVAL, READ_ONLY, EMERGENCY)
             permissions: Liste der delegierten Berechtigungen (bei PARTIAL)
-            scope: Einschraenkung auf bestimmte Ressourcen
-            reason: Grund fuer die Delegation
+            scope: Einschränkung auf bestimmte Ressourcen
+            reason: Grund für die Delegation
             reason_text: Freitext-Begruendung
             notes: Interne Notizen
-            requires_acceptance: Muss Delegate bestaetigen?
+            requires_acceptance: Muss Delegate bestätigen?
             notify_on_activation: Bei Aktivierung benachrichtigen
             notify_on_expiry: Bei Ablauf benachrichtigen
             notify_on_usage: Bei jeder Nutzung benachrichtigen
             max_approvals: Max. Anzahl Genehmigungen
             max_amount: Max. Betrag pro Genehmigung
-            metadata: Zusaetzliche Metadaten
+            metadata: Zusätzliche Metadaten
 
         Returns:
             Die erstellte Delegation
@@ -101,7 +101,7 @@ class DelegationService:
         """
         # Validierung
         if delegator_id == delegate_id:
-            raise ValueError("Delegator und Delegate muessen unterschiedlich sein")
+            raise ValueError("Delegator und Delegate müssen unterschiedlich sein")
 
         if valid_until <= valid_from:
             raise ValueError("Endzeitpunkt muss nach Startzeitpunkt liegen")
@@ -109,13 +109,13 @@ class DelegationService:
         if valid_until <= datetime.utcnow():
             raise ValueError("Delegation kann nicht in der Vergangenheit enden")
 
-        # Pruefen ob bereits aktive Delegation existiert
+        # Prüfen ob bereits aktive Delegation existiert
         existing = await self._get_overlapping_delegation(
             delegator_id, delegate_id, company_id, valid_from, valid_until
         )
         if existing:
             raise ValueError(
-                f"Es existiert bereits eine ueberlappende Delegation "
+                f"Es existiert bereits eine überlappende Delegation "
                 f"(ID: {existing.id}, {existing.valid_from} - {existing.valid_until})"
             )
 
@@ -163,7 +163,7 @@ class DelegationService:
 
         Args:
             delegation_id: Delegation-ID
-            company_id: Company-ID fuer Multi-Tenant-Isolation
+            company_id: Company-ID für Multi-Tenant-Isolation
 
         Returns:
             Delegation oder None
@@ -203,7 +203,7 @@ class DelegationService:
             status: Status-Filter
             include_expired: Abgelaufene einbeziehen
             limit: Max. Anzahl
-            offset: Offset fuer Pagination
+            offset: Offset für Pagination
 
         Returns:
             Liste von Delegationen
@@ -338,7 +338,7 @@ class DelegationService:
             Aktualisierte Delegation
 
         Raises:
-            ValueError: Bei ungueltigem Zustand
+            ValueError: Bei ungültigem Zustand
         """
         delegation = await self.get_delegation(delegation_id, company_id)
         if not delegation:
@@ -450,7 +450,7 @@ class DelegationService:
     async def expire_delegations(self, company_id: Optional[UUID] = None) -> int:
         """Markiert abgelaufene Delegationen als expired.
 
-        Sollte regelmaessig per Celery-Task aufgerufen werden.
+        Sollte regelmäßig per Celery-Task aufgerufen werden.
 
         Args:
             company_id: Optional Company-Filter
@@ -499,16 +499,16 @@ class DelegationService:
         amount: Optional[float] = None,
         request_info: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        """Prueft Berechtigung unter Beruecksichtigung von Delegationen.
+        """Prüft Berechtigung unter Berücksichtigung von Delegationen.
 
         Args:
-            user_id: User der die Aktion ausfuehrt
+            user_id: User der die Aktion ausführt
             company_id: Company-ID
-            permission: Benoetigte Berechtigung (z.B. "approvals:execute")
+            permission: Benötigte Berechtigung (z.B. "approvals:execute")
             resource_type: Optional Ressourcen-Typ
             resource_id: Optional Ressourcen-ID
-            amount: Optional Betrag (fuer Betragsgrenzen)
-            request_info: Request-Informationen fuer Audit
+            amount: Optional Betrag (für Betragsgrenzen)
+            request_info: Request-Informationen für Audit
 
         Returns:
             Dict mit:
@@ -517,7 +517,7 @@ class DelegationService:
             - delegation_id: Optional[UUID]
             - reason: str
         """
-        # Aktive Delegationen fuer diesen User finden
+        # Aktive Delegationen für diesen User finden
         now = datetime.utcnow()
 
         result = await self.db.execute(
@@ -543,19 +543,19 @@ class DelegationService:
 
         # Passende Delegation suchen
         for delegation in delegations:
-            # Permission pruefen
+            # Permission prüfen
             if not self._check_permission_match(delegation, permission):
                 continue
 
-            # Scope pruefen
+            # Scope prüfen
             if not self._check_scope_match(delegation, resource_type, resource_id):
                 continue
 
-            # Betragslimit pruefen
+            # Betragslimit prüfen
             if amount and delegation.max_amount and amount > delegation.max_amount:
                 continue
 
-            # Genehmigungslimit pruefen
+            # Genehmigungslimit prüfen
             if delegation.max_approvals:
                 if delegation.usage_count >= delegation.max_approvals:
                     continue
@@ -570,7 +570,7 @@ class DelegationService:
                 request_info=request_info,
             )
 
-            # Usage Counter erhoehen
+            # Usage Counter erhöhen
             delegation.usage_count += 1
             delegation.last_used_at = now
             await self.db.flush()
@@ -587,7 +587,7 @@ class DelegationService:
             "allowed": False,
             "via_delegation": False,
             "delegation_id": None,
-            "reason": "Keine passende Delegation fuer diese Aktion gefunden",
+            "reason": "Keine passende Delegation für diese Aktion gefunden",
         }
 
     def _check_permission_match(
@@ -595,7 +595,7 @@ class DelegationService:
         delegation: Delegation,
         permission: str,
     ) -> bool:
-        """Prueft ob Delegation die Berechtigung abdeckt."""
+        """Prüft ob Delegation die Berechtigung abdeckt."""
         # FULL Delegation deckt alles ab
         if delegation.delegation_type == DelegationType.FULL:
             return True
@@ -612,7 +612,7 @@ class DelegationService:
         if delegation.delegation_type == DelegationType.APPROVAL:
             return permission.startswith("approval")
 
-        # PARTIAL - explizite Permissions pruefen
+        # PARTIAL - explizite Permissions prüfen
         if delegation.delegation_type == DelegationType.PARTIAL:
             permissions = delegation.permissions or []
 
@@ -637,20 +637,20 @@ class DelegationService:
         resource_type: Optional[str],
         resource_id: Optional[UUID],
     ) -> bool:
-        """Prueft ob Ressource im Scope der Delegation liegt."""
+        """Prüft ob Ressource im Scope der Delegation liegt."""
         scope = delegation.scope or {}
 
         # Kein Scope definiert = alles erlaubt
         if not scope:
             return True
 
-        # Ordner-Einschraenkung
+        # Ordner-Einschränkung
         if resource_type == "folder" and resource_id:
             allowed_folders = scope.get("folders", [])
             if allowed_folders and str(resource_id) not in allowed_folders:
                 return False
 
-        # Tag-Einschraenkung (muesste separat geprueft werden)
+        # Tag-Einschränkung (müsste separat geprüft werden)
         # allowed_tags = scope.get("tags", [])
 
         return True
@@ -671,7 +671,7 @@ class DelegationService:
         details: Optional[Dict[str, Any]] = None,
         request_info: Optional[Dict[str, Any]] = None,
     ) -> DelegationAuditLog:
-        """Erstellt Audit-Log-Eintrag fuer Delegations-Nutzung."""
+        """Erstellt Audit-Log-Eintrag für Delegations-Nutzung."""
         log = DelegationAuditLog(
             delegation_id=delegation.id,
             action=action,
@@ -697,7 +697,7 @@ class DelegationService:
         limit: int = 100,
         offset: int = 0,
     ) -> List[DelegationAuditLog]:
-        """Holt Audit-Logs fuer eine Delegation.
+        """Holt Audit-Logs für eine Delegation.
 
         Args:
             delegation_id: Delegation-ID
@@ -749,12 +749,12 @@ class DelegationService:
             delegation_type: Delegations-Typ
             description: Beschreibung
             permissions: Berechtigungen
-            scope: Scope-Einschraenkungen
+            scope: Scope-Einschränkungen
             default_duration_days: Standard-Dauer
-            requires_acceptance: Bestaetigung erforderlich
+            requires_acceptance: Bestätigung erforderlich
             notify_on_activation: Benachrichtigung bei Aktivierung
             notify_on_usage: Benachrichtigung bei Nutzung
-            is_system: System-Template (nicht loeschbar)
+            is_system: System-Template (nicht löschbar)
 
         Returns:
             Das erstellte Template
@@ -870,7 +870,7 @@ class DelegationService:
         valid_from: datetime,
         valid_until: datetime,
     ) -> Optional[Delegation]:
-        """Prueft auf ueberlappende Delegationen."""
+        """Prüft auf überlappende Delegationen."""
         result = await self.db.execute(
             select(Delegation)
             .where(
@@ -881,7 +881,7 @@ class DelegationService:
                     DelegationStatus.PENDING,
                     DelegationStatus.ACTIVE,
                 ]),
-                # Ueberlappungspruefung
+                # Überlappungsprüfung
                 or_(
                     and_(
                         Delegation.valid_from <= valid_from,
@@ -905,7 +905,7 @@ class DelegationService:
         user_id: UUID,
         company_id: UUID,
     ) -> List[Delegation]:
-        """Holt alle aktiven Delegationen fuer einen User (als Delegate)."""
+        """Holt alle aktiven Delegationen für einen User (als Delegate)."""
         now = datetime.utcnow()
 
         result = await self.db.execute(
@@ -927,7 +927,7 @@ class DelegationService:
         user_id: UUID,
         company_id: UUID,
     ) -> List[Delegation]:
-        """Holt ausstehende Delegationen die auf Bestaetigung warten."""
+        """Holt ausstehende Delegationen die auf Bestätigung warten."""
         result = await self.db.execute(
             select(Delegation)
             .options(selectinload(Delegation.delegator))

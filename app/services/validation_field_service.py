@@ -1,7 +1,7 @@
 """ValidationFieldService - Feld-Validierung und -Review.
 
 Dieser Service verwaltet die Validierung einzelner extrahierter Felder.
-Er integriert den UmlautValidationService und CrossFieldValidator fuer
+Er integriert den UmlautValidationService und CrossFieldValidator für
 umfassende deutsche Textvalidierung.
 
 Verwendung:
@@ -41,7 +41,7 @@ logger = structlog.get_logger(__name__)
 FIELD_LABELS_DE = {
     "invoice_number": "Rechnungsnummer",
     "invoice_date": "Rechnungsdatum",
-    "due_date": "Faelligkeitsdatum",
+    "due_date": "Fälligkeitsdatum",
     "total_amount": "Gesamtbetrag",
     "net_amount": "Nettobetrag",
     "vat_amount": "Mehrwertsteuerbetrag",
@@ -57,7 +57,7 @@ FIELD_LABELS_DE = {
     "payment_terms": "Zahlungsbedingungen",
     "order_number": "Bestellnummer",
     "delivery_date": "Lieferdatum",
-    "currency": "Waehrung",
+    "currency": "Währung",
     "tax_id": "Steuernummer",
     "vat_id": "USt-IdNr.",
 }
@@ -79,7 +79,7 @@ FIELD_TYPES = {
 
 
 class ValidationFieldService:
-    """Service fuer Feld-Validierung und -Review."""
+    """Service für Feld-Validierung und -Review."""
 
     def __init__(self, db: AsyncSession):
         """Initialisiere den Service."""
@@ -107,7 +107,7 @@ class ValidationFieldService:
             confidence_data: Confidence-Scores pro Feld
             bounding_boxes: PDF-Koordinaten pro Feld
             ocr_backend: Verwendetes OCR-Backend
-            confidence_threshold: Schwellenwert fuer niedrige Confidence
+            confidence_threshold: Schwellenwert für niedrige Confidence
 
         Returns:
             Liste der erstellten FieldReviews
@@ -168,7 +168,7 @@ class ValidationFieldService:
         self,
         queue_item_id: uuid.UUID
     ) -> List[ValidationFieldReview]:
-        """Holt alle Feld-Reviews fuer ein Queue-Item.
+        """Holt alle Feld-Reviews für ein Queue-Item.
 
         Args:
             queue_item_id: ID des Queue-Items
@@ -249,13 +249,13 @@ class ValidationFieldService:
     ) -> ValidationFieldValidateResult:
         """Validiert ein einzelnes Feld.
 
-        Fuehrt Umlaut-Pruefung und Format-Validierung durch.
+        Führt Umlaut-Prüfung und Format-Validierung durch.
 
         Args:
             field_id: ID des Felds
 
         Returns:
-            ValidationFieldValidateResult mit Fehlern und Vorschlaegen
+            ValidationFieldValidateResult mit Fehlern und Vorschlägen
         """
         field = await self.get_field(field_id)
         if not field:
@@ -401,17 +401,17 @@ class ValidationFieldService:
             if not any(re.match(p, value.strip()) for p in date_patterns):
                 issues.append({
                     "field": field_key,
-                    "message": "Ungueltiges Datumsformat. Erwartet: TT.MM.JJJJ",
+                    "message": "Ungültiges Datumsformat. Erwartet: TT.MM.JJJJ",
                     "expected_format": "TT.MM.JJJJ"
                 })
 
         elif field_type == "currency":
-            # Deutsche Waehrungsformate: 1.234,56 EUR oder 1234,56€
+            # Deutsche Währungsformate: 1.234,56 EUR oder 1234,56€
             currency_pattern = r"^-?[\d\s.]*,\d{2}\s*(EUR|€|CHF)?$|^-?[\d,]*\.\d{2}\s*(EUR|€|USD)?$"
             if not re.match(currency_pattern, value.strip(), re.IGNORECASE):
                 issues.append({
                     "field": field_key,
-                    "message": "Ungueltiges Waehrungsformat. Erwartet: 1.234,56 EUR",
+                    "message": "Ungültiges Währungsformat. Erwartet: 1.234,56 EUR",
                     "expected_format": "1.234,56 EUR"
                 })
 
@@ -421,13 +421,13 @@ class ValidationFieldService:
             if not re.match(r"^[A-Z]{2}\d{2}[A-Z0-9]{4,30}$", iban_clean):
                 issues.append({
                     "field": field_key,
-                    "message": "Ungueltiges IBAN-Format",
+                    "message": "Ungültiges IBAN-Format",
                     "expected_format": "DE12 3456 7890 1234 5678 90"
                 })
             elif len(iban_clean) < 15 or len(iban_clean) > 34:
                 issues.append({
                     "field": field_key,
-                    "message": "IBAN hat ungueltige Laenge",
+                    "message": "IBAN hat ungültige Länge",
                     "expected_length": "15-34 Zeichen"
                 })
 
@@ -437,7 +437,7 @@ class ValidationFieldService:
             if not re.match(r"^[A-Z]{2}[A-Z0-9]{2,12}$", vat_clean):
                 issues.append({
                     "field": field_key,
-                    "message": "Ungueltige USt-IdNr. Format: DE + 9 Ziffern",
+                    "message": "Ungültige USt-IdNr. Format: DE + 9 Ziffern",
                     "expected_format": "DE123456789"
                 })
 
@@ -447,7 +447,7 @@ class ValidationFieldService:
             if not re.match(percent_pattern, value.strip()):
                 issues.append({
                     "field": field_key,
-                    "message": "Ungueltiges Prozentformat",
+                    "message": "Ungültiges Prozentformat",
                     "expected_format": "19% oder 19,00"
                 })
 
@@ -517,7 +517,7 @@ class ValidationFieldService:
 
 
 def get_validation_field_service(db: AsyncSession) -> ValidationFieldService:
-    """Factory-Funktion fuer den ValidationFieldService.
+    """Factory-Funktion für den ValidationFieldService.
 
     Args:
         db: Async-Datenbankverbindung

@@ -1,9 +1,9 @@
-"""Company Context Middleware fuer Multi-Company Support.
+"""Company Context Middleware für Multi-Company Support.
 
-Dieses Modul stellt die Infrastruktur fuer Multi-Mandanten-Faehigkeit bereit:
-- ContextVar fuer aktuelle Company-ID (Thread-/Async-safe)
+Dieses Modul stellt die Infrastruktur für Multi-Mandanten-Faehigkeit bereit:
+- ContextVar für aktuelle Company-ID (Thread-/Async-safe)
 - Middleware zum Setzen des Company-Kontexts
-- Dependency fuer FastAPI-Endpoints
+- Dependency für FastAPI-Endpoints
 
 Verwendung in Endpoints:
     @router.get("/kasse/entries")
@@ -47,7 +47,7 @@ logger = structlog.get_logger(__name__)
 # CWE-113 CRLF Injection Prevention: Maximum X-Company-ID header length
 _MAX_COMPANY_HEADER_LENGTH: int = 40  # UUID is max 36 chars + margin
 
-# ContextVar fuer aktuelle Company-ID (Thread-/Async-safe)
+# ContextVar für aktuelle Company-ID (Thread-/Async-safe)
 _current_company_id: ContextVar[Optional[UUID]] = ContextVar(
     "current_company_id",
     default=None
@@ -55,7 +55,7 @@ _current_company_id: ContextVar[Optional[UUID]] = ContextVar(
 
 
 def get_current_company_id() -> Optional[UUID]:
-    """Gibt die aktuelle Company-ID aus dem Context zurueck.
+    """Gibt die aktuelle Company-ID aus dem Context zurück.
 
     Returns:
         Company-ID oder None wenn nicht gesetzt
@@ -67,7 +67,7 @@ def set_company_context(company_id: Optional[UUID]) -> None:
     """Setzt die aktuelle Company-ID im Context.
 
     Args:
-        company_id: Company-ID oder None zum Loeschen
+        company_id: Company-ID oder None zum Löschen
     """
     _current_company_id.set(company_id)
 
@@ -76,11 +76,11 @@ class CompanyContextMiddleware(BaseHTTPMiddleware):
     """Middleware zum Setzen des Company-Kontexts aus JWT/Session.
 
     Liest die aktuelle Company-ID aus:
-    1. X-Company-ID Header (fuer explizite Auswahl)
+    1. X-Company-ID Header (für explizite Auswahl)
     2. JWT Claims (falls vorhanden)
     3. User's is_current Company aus user_companies
 
-    Setzt die ID im ContextVar fuer alle nachfolgenden Operationen.
+    Setzt die ID im ContextVar für alle nachfolgenden Operationen.
     """
 
     async def dispatch(self, request: Request, call_next):
@@ -91,7 +91,7 @@ class CompanyContextMiddleware(BaseHTTPMiddleware):
         # 1. Versuche X-Company-ID Header
         company_header = request.headers.get("X-Company-ID")
         if company_header:
-            # CWE-400 DoS Prevention: Laengenpruefung
+            # CWE-400 DoS Prevention: Längenprüfung
             if len(company_header) > _MAX_COMPANY_HEADER_LENGTH:
                 logger.warning(
                     "x_company_header_too_long",
@@ -135,7 +135,7 @@ class CompanyContextMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             return response
         finally:
-            # Context zuruecksetzen nach Request
+            # Context zurücksetzen nach Request
             set_company_context(None)
 
 
@@ -152,7 +152,7 @@ async def get_user_current_company(
     Returns:
         Company oder None
     """
-    # Finde is_current=True fuer User
+    # Finde is_current=True für User
     result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == user_id)
@@ -202,7 +202,7 @@ async def switch_company(
         ValueError: Wenn User keinen Zugriff auf Company hat
         RuntimeError: Wenn DB-Operation fehlschlaegt
     """
-    # Pruefe ob User Zugriff hat
+    # Prüfe ob User Zugriff hat
     result = await db.execute(
         select(UserCompany)
         .where(UserCompany.user_id == user_id)
@@ -218,7 +218,7 @@ async def switch_company(
     try:
         await db.execute(sa.text("SET LOCAL lock_timeout = '5s'"))
 
-        # Row-Level Lock auf alle UserCompany-Eintraege des Users
+        # Row-Level Lock auf alle UserCompany-Einträge des Users
         await db.execute(
             select(UserCompany)
             .where(UserCompany.user_id == user_id)
@@ -273,7 +273,7 @@ async def _get_user_from_request_optional(
 ) -> Optional[User]:
     """Extract user from request, return None if not authenticated.
 
-    P1 DRY-FIX: Nutzt _extract_user_from_token() fuer gemeinsame Logik.
+    P1 DRY-FIX: Nutzt _extract_user_from_token() für gemeinsame Logik.
 
     Args:
         request: FastAPI Request
@@ -298,7 +298,7 @@ async def get_current_company(
     """Dependency: Holt die aktuelle Company (optional).
 
     U.4 SECURITY FIX: Ownership-Validierung bei Company-ID aus Header.
-    CWE-208 FIX: Konstante Ausfuehrungszeit gegen Timing-Attacks.
+    CWE-208 FIX: Konstante Ausführungszeit gegen Timing-Attacks.
 
     Verwendung:
         @router.get("/optional-company")
@@ -321,7 +321,7 @@ async def get_current_company(
 
         if company_id:
             # U.4 SECURITY FIX: Wenn company_id aus Header kommt UND User bekannt,
-            # MUSS Ownership geprueft werden um Company Context Bypass zu verhindern
+            # MUSS Ownership geprüft werden um Company Context Bypass zu verhindern
             if user:
                 # P1 DRY-FIX: Nutzt _get_user_company() Helper
                 user_company = await _get_user_company(user.id, company_id, db)
@@ -376,7 +376,7 @@ async def get_current_company(
 
 
 async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
-    """Setzt die PostgreSQL Session-Variable fuer RLS.
+    """Setzt die PostgreSQL Session-Variable für RLS.
 
     WICHTIG: Diese Funktion muss vor allen DB-Operationen aufgerufen werden,
     die durch RLS geschuetzt sind!
@@ -385,7 +385,7 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
 
     Args:
         db: Datenbank-Session
-        company_id: Company-ID fuer RLS-Filter
+        company_id: Company-ID für RLS-Filter
     """
     try:
         # I.7 CRITICAL: Strenge UUID-Validierung gegen SQL-Injection
@@ -417,10 +417,10 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
         logger.error(
             "rls_context_failed",
             error_type=type(e).__name__,
-            company_id=str(company_id)[:8] + "...",  # Nur Prefix fuer Logs (PII)
+            company_id=str(company_id)[:8] + "...",  # Nur Prefix für Logs (PII)
             message="RLS-Context konnte nicht gesetzt werden - Datenzugriff ohne Tenant-Filter!"
         )
-        # Bei Fehler: Session zurueckrollen um "aborted transaction" zu vermeiden
+        # Bei Fehler: Session zurückrollen um "aborted transaction" zu vermeiden
         try:
             await db.rollback()
         except sa.exc.SQLAlchemyError as rollback_err:
@@ -440,10 +440,10 @@ async def set_rls_company_context(db: AsyncSession, company_id: UUID) -> None:
 
 
 async def enable_rls_bypass(db: AsyncSession) -> None:
-    """P1.1 SECURITY: Aktiviert RLS-Bypass fuer Service-Account Operationen.
+    """P1.1 SECURITY: Aktiviert RLS-Bypass für Service-Account Operationen.
 
-    WARNUNG: Nur fuer Hintergrund-Tasks, Migrations, und Admin-Operationen!
-    Niemals fuer normale User-Requests verwenden!
+    WARNUNG: Nur für Hintergrund-Tasks, Migrations, und Admin-Operationen!
+    Niemals für normale User-Requests verwenden!
 
     Args:
         db: Datenbank-Session
@@ -460,7 +460,7 @@ async def enable_rls_bypass(db: AsyncSession) -> None:
         logger.warning(
             "rls_bypass_enabled",
             audit_event="RLS_BYPASS_START",
-            message="RLS-Bypass aktiviert - Cross-Tenant Zugriff moeglich"
+            message="RLS-Bypass aktiviert - Cross-Tenant Zugriff möglich"
         )
     except sa.exc.SQLAlchemyError as e:
         # CWE-390 FIX: Spezifische Exception statt bare except
@@ -488,7 +488,7 @@ async def disable_rls_bypass(db: AsyncSession) -> None:
             sa.text("SELECT set_config('app.rls_bypass', 'false', true)")
         )
         record_security_rls_event("bypass_disabled")
-        # CWE-390/391 FIX: Audit-Level Logging fuer RLS-Bypass Ende
+        # CWE-390/391 FIX: Audit-Level Logging für RLS-Bypass Ende
         logger.warning(
             "rls_bypass_disabled",
             audit_event="RLS_BYPASS_END",
@@ -506,18 +506,18 @@ async def disable_rls_bypass(db: AsyncSession) -> None:
 
 @asynccontextmanager
 async def rls_bypass_context(db: AsyncSession):
-    """P1.1 SECURITY: Context Manager fuer RLS-Bypass.
+    """P1.1 SECURITY: Context Manager für RLS-Bypass.
 
     Verwendung:
         async with rls_bypass_context(db):
-            # Hier koennen cross-tenant Operationen ausgefuehrt werden
+            # Hier können cross-tenant Operationen ausgeführt werden
             ...
         # RLS ist wieder aktiv
 
     Args:
         db: Datenbank-Session
 
-    WARNUNG: Nur fuer Celery-Tasks, Migrations und System-Operationen!
+    WARNUNG: Nur für Celery-Tasks, Migrations und System-Operationen!
     """
     try:
         await enable_rls_bypass(db)
@@ -562,7 +562,7 @@ async def _extract_user_from_token(
 ) -> Optional[User]:
     """Core logic for extracting user from JWT token.
 
-    P1 DRY-FIX: Gemeinsame Logik fuer optional und required User extraction.
+    P1 DRY-FIX: Gemeinsame Logik für optional und required User extraction.
 
     Args:
         request: FastAPI Request
@@ -571,7 +571,7 @@ async def _extract_user_from_token(
     Returns:
         User oder None wenn:
         - Kein Token vorhanden
-        - Token ungueltig/abgelaufen
+        - Token ungültig/abgelaufen
         - User nicht gefunden oder inaktiv
     """
     # Try to get from request state first (set by middleware)
@@ -636,7 +636,7 @@ async def _get_user_from_request_required(
                 status_code=401,
                 detail="Nicht authentifiziert"
             )
-        # Token war vorhanden aber ungueltig
+        # Token war vorhanden aber ungültig
         raise HTTPException(
             status_code=401,
             detail="Authentifizierung fehlgeschlagen"
@@ -675,7 +675,7 @@ async def require_company(
     if not company:
         raise HTTPException(
             status_code=400,
-            detail="Keine Firma ausgewaehlt. Bitte waehlen Sie zuerst eine Firma aus."
+            detail="Keine Firma ausgewaehlt. Bitte wählen Sie zuerst eine Firma aus."
         )
 
     # I.5 CRITICAL: Validiere Zugriff IMMER (User ist garantiert vorhanden)
@@ -693,7 +693,7 @@ async def require_company(
             detail="Sie haben keinen Zugriff auf diese Firma."
         )
 
-    # Setze Context fuer nachfolgende Operationen
+    # Setze Context für nachfolgende Operationen
     set_company_context(company.id)
 
     # Setze PostgreSQL RLS Context
@@ -709,7 +709,7 @@ async def require_cash_permission(
     """Dependency: Erfordert Kassenbuch-Berechtigung.
 
     Raises:
-        HTTPException 403: Keine Berechtigung fuer Kassenbuchfuehrung
+        HTTPException 403: Keine Berechtigung für Kassenbuchführung
     """
     company = await require_company(request, db)
     user = await _get_user_from_request_required(request, db)
@@ -729,13 +729,13 @@ async def require_cash_permission(
             detail="Sie haben keinen Zugriff auf diese Firma."
         )
 
-    # Pruefe Kassenberechtigung
+    # Prüfe Kassenberechtigung
     if not user_company.can_manage_cash:
         # Admins und Owners haben immer Zugriff
         if user_company.role not in ["owner", "admin"]:
             raise HTTPException(
                 status_code=403,
-                detail="Sie haben keine Berechtigung fuer die Kassenbuchfuehrung."
+                detail="Sie haben keine Berechtigung für die Kassenbuchführung."
             )
 
     return company
@@ -748,7 +748,7 @@ async def require_expense_approval_permission(
     """Dependency: Erfordert Spesenfreigabe-Berechtigung.
 
     Raises:
-        HTTPException 403: Keine Berechtigung fuer Spesenfreigabe
+        HTTPException 403: Keine Berechtigung für Spesenfreigabe
     """
     company = await require_company(request, db)
     user = await _get_user_from_request_required(request, db)
@@ -768,7 +768,7 @@ async def require_expense_approval_permission(
             detail="Sie haben keinen Zugriff auf diese Firma."
         )
 
-    # Pruefe Spesenfreigabe-Berechtigung
+    # Prüfe Spesenfreigabe-Berechtigung
     if not user_company.can_approve_expenses:
         # Admins und Owners haben immer Zugriff
         if user_company.role not in ["owner", "admin"]:

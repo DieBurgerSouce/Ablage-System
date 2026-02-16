@@ -1,7 +1,7 @@
 """BPMN 2.0 XML Parser und Generator.
 
 Parst BPMN 2.0 XML und konvertiert es in eine JSONB-freundliche Struktur.
-Unterstuetzt:
+Unterstützt:
 - Start/End Events
 - User Tasks, Service Tasks, Script Tasks
 - Exclusive, Parallel, Inclusive Gateways
@@ -89,7 +89,7 @@ class BPMNElement:
 
     # Service Task spezifisch
     implementation: Optional[str] = None  # z.B. "celery:task_name"
-    topic: Optional[str] = None  # Fuer External Tasks
+    topic: Optional[str] = None  # Für External Tasks
 
     # Script Task spezifisch
     script_format: Optional[str] = None
@@ -113,7 +113,7 @@ class BPMNElement:
     extension_properties: Dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert zu Dictionary fuer JSONB."""
+        """Konvertiert zu Dictionary für JSONB."""
         result = asdict(self)
         # Entferne None-Werte und leere Listen
         return {k: v for k, v in result.items()
@@ -128,7 +128,7 @@ class BPMNProcess:
     is_executable: bool = True
     elements: List[BPMNElement] = field(default_factory=list)
 
-    # Maps fuer schnellen Zugriff
+    # Maps für schnellen Zugriff
     _elements_by_id: Dict[str, BPMNElement] = field(
         default_factory=dict, repr=False
     )
@@ -146,12 +146,12 @@ class BPMNProcess:
         return self._elements_by_id.get(element_id)
 
     def get_start_events(self) -> List[BPMNElement]:
-        """Alle Start-Events zurueckgeben."""
+        """Alle Start-Events zurückgeben."""
         return [e for e in self.elements
                 if e.type == ElementType.START_EVENT.value]
 
     def get_outgoing_elements(self, element_id: str) -> List[BPMNElement]:
-        """Nachfolger-Elemente fuer ein Element."""
+        """Nachfolger-Elemente für ein Element."""
         element = self.get_element(element_id)
         if not element:
             return []
@@ -166,7 +166,7 @@ class BPMNProcess:
         return result
 
     def get_incoming_flows(self, element_id: str) -> List[BPMNElement]:
-        """Eingehende Sequence Flows fuer ein Element."""
+        """Eingehende Sequence Flows für ein Element."""
         element = self.get_element(element_id)
         if not element:
             return []
@@ -175,7 +175,7 @@ class BPMNProcess:
                 if self.get_element(flow_id)]
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert zu Dictionary fuer JSONB-Speicherung."""
+        """Konvertiert zu Dictionary für JSONB-Speicherung."""
         return {
             "id": self.id,
             "name": self.name,
@@ -233,7 +233,7 @@ class BPMNParser:
     }
 
     def parse(self, bpmn_xml: str) -> BPMNProcess:
-        """Parst BPMN 2.0 XML und gibt BPMNProcess zurueck.
+        """Parst BPMN 2.0 XML und gibt BPMNProcess zurück.
 
         Args:
             bpmn_xml: BPMN 2.0 XML String
@@ -242,14 +242,14 @@ class BPMNParser:
             BPMNProcess mit allen geparsten Elementen
 
         Raises:
-            ValueError: Bei ungueltigem XML oder fehlendem Process
+            ValueError: Bei ungültigem XML oder fehlendem Process
         """
         try:
             # SECURITY: Use defusedxml to prevent XXE attacks (CWE-611)
             root = DefusedET.fromstring(bpmn_xml)
         except ET.ParseError as e:
             logger.error("bpmn_parse_error", **safe_error_log(e))
-            raise ValueError(f"Ungueltiges BPMN XML: {e}") from e
+            raise ValueError(f"Ungültiges BPMN XML: {e}") from e
 
         # Process Element finden
         process_elem = root.find(f"{BPMN_NS}process")
@@ -405,7 +405,7 @@ class BPMNParser:
 
         # User Task spezifisch (Camunda-Attribute)
         if element_type == ElementType.USER_TASK:
-            # Camunda namespace fuer Assignee etc.
+            # Camunda namespace für Assignee etc.
             camunda_ns = "{http://camunda.org/schema/1.0/bpmn}"
 
             element.assignee = elem.get(f"{camunda_ns}assignee")
@@ -536,7 +536,7 @@ class BPMNParser:
         parent: ET.Element,
         element: BPMNElement
     ) -> ET.Element:
-        """Generiert XML fuer ein einzelnes Element."""
+        """Generiert XML für ein einzelnes Element."""
         elem = ET.SubElement(parent, element.type)
         elem.set("id", element.id)
 

@@ -6,7 +6,7 @@ Berechnet automatisch:
 - Total Cost of Ownership (TCO)
 - Wertverlust/Abschreibung
 - Durchschnittsverbrauch
-- Naechster Service
+- Nächster Service
 
 Enterprise Feature - feinpoliert und durchdacht.
 """
@@ -60,7 +60,7 @@ class DepreciationResult:
     total_depreciation: Decimal  # Gesamter Wertverlust
     depreciation_rate: Decimal  # Prozent
     monthly_depreciation: Decimal  # Monatliche Abschreibung
-    annual_depreciation: Decimal  # Jaehrliche Abschreibung
+    annual_depreciation: Decimal  # Jährliche Abschreibung
     age_months: int
     calculated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -108,7 +108,7 @@ class ServicePredictionResult:
 
 @dataclass
 class VehicleKPIs:
-    """Alle berechneten KPIs fuer ein Fahrzeug."""
+    """Alle berechneten KPIs für ein Fahrzeug."""
     vehicle_id: UUID
     depreciation: Optional[DepreciationResult] = None
     tco: Optional[TCOResult] = None
@@ -151,13 +151,13 @@ SERVICE_INTERVALS = {
 
 class VehicleCalculationService:
     """
-    Service fuer berechnete Fahrzeug-KPIs.
+    Service für berechnete Fahrzeug-KPIs.
 
     Berechnet:
     - Wertverlust/Abschreibung
     - Total Cost of Ownership (TCO)
     - Durchschnittsverbrauch aus Tankdaten
-    - Naechster Service-Termin
+    - Nächster Service-Termin
     """
 
     def __init__(self) -> None:
@@ -183,7 +183,7 @@ class VehicleCalculationService:
             vehicle_id: Fahrzeug-ID
 
         Returns:
-            DepreciationResult oder None wenn Berechnung nicht moeglich
+            DepreciationResult oder None wenn Berechnung nicht möglich
         """
         from app.db.models import PrivatVehicle
 
@@ -201,7 +201,7 @@ class VehicleCalculationService:
             )
             return None
 
-        # Kaufpreis pruefen
+        # Kaufpreis prüfen
         if not vehicle.purchase_price or vehicle.purchase_price <= 0:
             logger.debug(
                 "no_purchase_price_for_depreciation",
@@ -209,7 +209,7 @@ class VehicleCalculationService:
             )
             return None
 
-        # Kaufdatum pruefen
+        # Kaufdatum prüfen
         if not vehicle.purchase_date:
             logger.debug(
                 "no_purchase_date_for_depreciation",
@@ -239,7 +239,7 @@ class VehicleCalculationService:
         total_depreciation = vehicle.purchase_price * (depreciation_rate / 100)
         current_value = vehicle.purchase_price - total_depreciation
 
-        # Monatliche/jaehrliche Abschreibung
+        # Monatliche/jährliche Abschreibung
         if age_months > 0:
             monthly_depreciation = total_depreciation / age_months
             annual_depreciation = monthly_depreciation * 12
@@ -282,7 +282,7 @@ class VehicleCalculationService:
         Summiert:
         - Kraftstoffkosten
         - Versicherung (annualisiert)
-        - Steuern (geschaetzt)
+        - Steuern (geschätzt)
         - Wartung/Reparaturen
         - Wertverlust
 
@@ -291,7 +291,7 @@ class VehicleCalculationService:
             vehicle_id: Fahrzeug-ID
 
         Returns:
-            TCOResult oder None wenn Berechnung nicht moeglich
+            TCOResult oder None wenn Berechnung nicht möglich
         """
         from app.db.models import PrivatVehicle, PrivatFuelLog
 
@@ -324,27 +324,27 @@ class VehicleCalculationService:
             for log in vehicle.fuel_logs:
                 if log.total_cost:
                     fuel_cost += log.total_cost
-            # Gesamtkilometer aus aktuellem Stand minus Kaufstand schaetzen
+            # Gesamtkilometer aus aktuellem Stand minus Kaufstand schätzen
             if vehicle.current_mileage:
-                # Geschaetzt: Mileage bei Kauf war deutlich niedriger
+                # Geschätzt: Mileage bei Kauf war deutlich niedriger
                 total_km = vehicle.current_mileage
 
         components["fuel"] = fuel_cost
 
-        # 2. Versicherung (jaehrlich auf Haltedauer umrechnen)
+        # 2. Versicherung (jährlich auf Haltedauer umrechnen)
         insurance_cost = Decimal("0")
         if vehicle.insurance_premium:
             years_held = Decimal(holding_months) / 12
             insurance_cost = vehicle.insurance_premium * years_held
         components["insurance"] = round(insurance_cost, 2)
 
-        # 3. Kfz-Steuer (geschaetzt 200 EUR/Jahr fuer Durchschnittsfahrzeug)
+        # 3. Kfz-Steuer (geschätzt 200 EUR/Jahr für Durchschnittsfahrzeug)
         estimated_tax_per_year = Decimal("200")
         years_held = Decimal(holding_months) / 12
         tax_cost = estimated_tax_per_year * years_held
         components["tax"] = round(tax_cost, 2)
 
-        # 4. Wartung/Reparaturen (geschaetzt 500 EUR/Jahr)
+        # 4. Wartung/Reparaturen (geschätzt 500 EUR/Jahr)
         estimated_maintenance_per_year = Decimal("500")
         maintenance_cost = estimated_maintenance_per_year * years_held
         components["maintenance"] = round(maintenance_cost, 2)
@@ -503,9 +503,9 @@ class VehicleCalculationService:
         vehicle_id: UUID,
     ) -> Optional[ServicePredictionResult]:
         """
-        Sagt den naechsten Servicetermin voraus.
+        Sagt den nächsten Servicetermin voraus.
 
-        Beruecksichtigt:
+        Berücksichtigt:
         - Letzte Inspektion/Service
         - Durchschnittliche km-Leistung
         - TUeV-Termin
@@ -534,7 +534,7 @@ class VehicleCalculationService:
 
         today = date.today()
 
-        # 1. TUeV-Termin pruefen (hoechste Prioritaet)
+        # 1. TUeV-Termin prüfen (hoechste Priorität)
         if vehicle.tuev_due:
             days_until_tuev = (vehicle.tuev_due - today).days
             if days_until_tuev <= 90:  # Innerhalb 3 Monate
@@ -548,7 +548,7 @@ class VehicleCalculationService:
                     service_type="tuev",
                 )
 
-        # 2. Inspektion pruefen
+        # 2. Inspektion prüfen
         if vehicle.inspection_due:
             days_until_inspection = (vehicle.inspection_due - today).days
             if days_until_inspection <= 60:  # Innerhalb 2 Monate
@@ -580,19 +580,19 @@ class VehicleCalculationService:
                 if days_diff > 0:
                     average_daily_km = Decimal(km_diff) / days_diff
 
-        # Naechsten Service schaetzen
+        # Nächsten Service schätzen
         next_service_date = None
         next_service_km = None
         days_until_service = None
         km_until_service = None
 
         if vehicle.current_mileage:
-            # Naechster Service bei km-Stand
+            # Nächster Service bei km-Stand
             current_interval = vehicle.current_mileage // interval["km"]
             next_service_km = (current_interval + 1) * interval["km"]
             km_until_service = next_service_km - vehicle.current_mileage
 
-            # Datum schaetzen basierend auf Fahrleistung
+            # Datum schätzen basierend auf Fahrleistung
             if average_daily_km and average_daily_km > 0:
                 days_until = int(km_until_service / average_daily_km)
                 next_service_date = today + timedelta(days=days_until)
@@ -631,7 +631,7 @@ class VehicleCalculationService:
         persist: bool = True,
     ) -> VehicleKPIs:
         """
-        Berechnet alle KPIs fuer ein Fahrzeug.
+        Berechnet alle KPIs für ein Fahrzeug.
 
         Args:
             db: Datenbank-Session
@@ -724,7 +724,7 @@ class VehicleCalculationService:
         space_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """
-        Berechnet KPIs fuer alle Fahrzeuge (oder alle in einem Space).
+        Berechnet KPIs für alle Fahrzeuge (oder alle in einem Space).
 
         Args:
             db: Datenbank-Session
@@ -785,7 +785,7 @@ _service_lock = threading.Lock()
 
 
 def get_vehicle_calculation_service() -> VehicleCalculationService:
-    """Factory fuer VehicleCalculationService Singleton (Thread-safe)."""
+    """Factory für VehicleCalculationService Singleton (Thread-safe)."""
     global _vehicle_calculation_service
     if _vehicle_calculation_service is None:
         with _service_lock:

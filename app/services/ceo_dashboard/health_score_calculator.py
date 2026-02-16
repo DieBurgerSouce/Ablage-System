@@ -110,7 +110,7 @@ class HealthScoreCalculator:
 
         Faktoren:
         - Zahlungsrate (paid/total): 50%
-        - Ueberfaellige Quote: 30%
+        - Überfällige Quote: 30%
         - Durchschnittliche Zahlungsdauer: 20%
 
         Returns:
@@ -145,13 +145,13 @@ class HealthScoreCalculator:
         payment_rate = paid / total if total > 0 else 0
         payment_score = payment_rate * 100
 
-        # 2. Ueberfaellige Quote (30%)
+        # 2. Überfällige Quote (30%)
         overdue_rate = overdue / total if total > 0 else 0
-        # Invers: weniger ueberfaellig = hoeher Score
+        # Invers: weniger überfällig = höher Score
         overdue_score = max(0, (1 - overdue_rate * 2)) * 100  # 50% overdue = 0 Score
 
         # 3. Durchschnittliche Zahlungsdauer (20%)
-        # Query fuer durchschnittliche Zahlungsdauer (in Tagen)
+        # Query für durchschnittliche Zahlungsdauer (in Tagen)
         avg_payment_query = select(
             func.avg(
                 func.extract(
@@ -251,7 +251,7 @@ class HealthScoreCalculator:
 
         # 3. Fehlerrate (20%)
         error_rate = failed / total if total > 0 else 0
-        # Invers: weniger Fehler = hoeher Score
+        # Invers: weniger Fehler = höher Score
         error_score = max(0, (1 - error_rate * 10)) * 100  # 10% Fehler = 0 Score
 
         # Gewichteter Operations Score
@@ -308,7 +308,7 @@ class HealthScoreCalculator:
 
         if total_entities > 0:
             high_risk_rate = high_risk_count / total_entities
-            # Invers: weniger high-risk = hoeher Score
+            # Invers: weniger high-risk = höher Score
             high_risk_score = max(0, (1 - high_risk_rate * 5)) * 100  # 20% high-risk = 0
         else:
             high_risk_score = 100.0
@@ -378,7 +378,7 @@ class HealthScoreCalculator:
         last_30_days = now - timedelta(days=30)
 
         # 1. Audit Trail Completeness
-        # Pruefe ob alle wichtigen Aktionen geloggt sind
+        # Prüfe ob alle wichtigen Aktionen geloggt sind
         docs_count_query = select(func.count(Document.id)).where(
             and_(
                 Document.company_id == company_id,
@@ -389,7 +389,7 @@ class HealthScoreCalculator:
         docs_result = await db.execute(docs_count_query)
         docs_count = docs_result.scalar() or 0
 
-        # Erwarte mindestens 3 Audit-Log-Eintraege pro Dokument (upload, process, update)
+        # Erwarte mindestens 3 Audit-Log-Einträge pro Dokument (upload, process, update)
         expected_logs = docs_count * 3
 
         audit_logs_query = select(func.count(AuditLog.id)).where(
@@ -453,7 +453,7 @@ class HealthScoreCalculator:
         Returns:
             "improving", "stable", "declining"
         """
-        # Fuer echte Implementierung: Score von vor 7 Tagen aus Cache/DB holen
+        # Für echte Implementierung: Score von vor 7 Tagen aus Cache/DB holen
         # Hier: Vereinfachte Logik basierend auf aktuellen Werten
 
         # Hole historischen Score aus AppConfig (vor 7 Tagen)
@@ -507,7 +507,7 @@ class HealthScoreCalculator:
         company_id: UUID,
         score: float,
     ) -> bool:
-        """Speichert aktuellen Score fuer Trend-Berechnung."""
+        """Speichert aktuellen Score für Trend-Berechnung."""
         from app.db.models import AppConfig
 
         cache_key = f"health_score_history:{company_id}"

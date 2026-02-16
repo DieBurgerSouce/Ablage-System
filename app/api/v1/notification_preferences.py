@@ -32,13 +32,13 @@ router = APIRouter(prefix="/notification-preferences", tags=["notification-prefe
 class NotificationChannelStatus(BaseModel):
     """Status eines Benachrichtigungskanals."""
     channel: str = Field(..., description="Kanalname (in_app, email, push, slack)")
-    available: bool = Field(..., description="Ob der Kanal verfuegbar ist")
+    available: bool = Field(..., description="Ob der Kanal verfügbar ist")
     configured: bool = Field(..., description="Ob der Kanal konfiguriert ist")
     description: str = Field(..., description="Beschreibung des Kanals")
 
 
 class NotificationPreferenceUpdate(BaseModel):
-    """Update fuer eine Benachrichtigungspraeferenz."""
+    """Update für eine Benachrichtigungspraeferenz."""
     notification_type: str = Field(..., description="Typ der Benachrichtigung")
     enabled_channels: Dict[str, bool] = Field(
         default_factory=dict,
@@ -64,7 +64,7 @@ class NotificationPreferenceResponse(BaseModel):
 
 
 class NotificationPreferencesUpdateRequest(BaseModel):
-    """Batch-Update fuer Benachrichtigungspraeferenzen."""
+    """Batch-Update für Benachrichtigungspraeferenzen."""
     preferences: List[NotificationPreferenceUpdate] = Field(
         ...,
         description="Liste von Praeferenz-Updates"
@@ -88,10 +88,10 @@ class TestNotificationResponse(BaseModel):
 
 
 class TestNotificationRequest(BaseModel):
-    """Request fuer Test-Benachrichtigung."""
+    """Request für Test-Benachrichtigung."""
     channel: str = Field(
         default="in_app",
-        description="Kanal fuer Test-Benachrichtigung"
+        description="Kanal für Test-Benachrichtigung"
     )
 
 
@@ -164,7 +164,7 @@ async def update_notification_preferences(
         created_count = 0
 
         for pref_update in body.preferences:
-            # Pruefen ob Praeferenz bereits existiert
+            # Prüfen ob Praeferenz bereits existiert
             query = select(NotificationPreference).where(
                 NotificationPreference.user_id == current_user.id,
                 NotificationPreference.notification_type == pref_update.notification_type
@@ -227,22 +227,22 @@ async def update_notification_preferences(
 @router.get(
     "/channels",
     response_model=List[NotificationChannelStatus],
-    summary="Verfuegbare Kanaele auflisten",
-    description="Listet alle verfuegbaren Benachrichtigungskanaele mit ihrem Status"
+    summary="Verfügbare Kanaele auflisten",
+    description="Listet alle verfügbaren Benachrichtigungskanaele mit ihrem Status"
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_available_channels(
     request: Request,  # Required for rate limiter
     current_user: User = Depends(get_current_active_user),
 ) -> List[NotificationChannelStatus]:
-    """Listet alle verfuegbaren Benachrichtigungskanaele mit ihrem Status."""
-    # Statische Liste der verfuegbaren Kanaele
+    """Listet alle verfügbaren Benachrichtigungskanaele mit ihrem Status."""
+    # Statische Liste der verfügbaren Kanaele
     channels = [
         NotificationChannelStatus(
             channel="in_app",
             available=True,
             configured=True,
-            description="In-App Benachrichtigungen (immer verfuegbar)"
+            description="In-App Benachrichtigungen (immer verfügbar)"
         ),
         NotificationChannelStatus(
             channel="email",
@@ -254,7 +254,7 @@ async def get_available_channels(
             channel="websocket",
             available=True,
             configured=True,
-            description="Echtzeit-Benachrichtigungen ueber WebSocket"
+            description="Echtzeit-Benachrichtigungen über WebSocket"
         ),
         NotificationChannelStatus(
             channel="push",
@@ -292,8 +292,8 @@ async def send_test_notification(
         if body.channel not in valid_channels:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Kanal '{body.channel}' wird nicht unterstuetzt. "
-                       f"Verfuegbar: {', '.join(sorted(valid_channels))}"
+                detail=f"Kanal '{body.channel}' wird nicht unterstützt. "
+                       f"Verfügbar: {', '.join(sorted(valid_channels))}"
             )
 
         notification_id_str = ""
@@ -329,7 +329,7 @@ async def send_test_notification(
                 user_id=current_user.id,
                 notification_type="system.test",
                 title="Test-Benachrichtigung",
-                message=f"Dies ist eine Test-Benachrichtigung fuer den Kanal '{body.channel}'.",
+                message=f"Dies ist eine Test-Benachrichtigung für den Kanal '{body.channel}'.",
                 action_url=None,
                 is_read=False,
             )

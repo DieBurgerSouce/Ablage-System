@@ -2,7 +2,7 @@
 """
 Inbound Webhook Provider Adapters.
 
-Generisches Provider-Registry fuer eingehende Webhooks.
+Generisches Provider-Registry für eingehende Webhooks.
 Jeder Provider mappt seine Events auf interne EventTypes
 und definiert provider-spezifische Header und PII-Felder.
 
@@ -20,12 +20,12 @@ logger = structlog.get_logger(__name__)
 
 
 class BaseWebhookProvider(ABC):
-    """Basisklasse fuer Inbound-Webhook-Provider.
+    """Basisklasse für Inbound-Webhook-Provider.
 
     Jeder Provider definiert:
     - Signatur-Header-Namen
     - Event-Mapping auf interne EventTypes
-    - PII-Felder fuer Payload-Sanitisierung
+    - PII-Felder für Payload-Sanitisierung
     - Externe-Referenz-Extraktion
     """
 
@@ -58,10 +58,10 @@ class BaseWebhookProvider(ABC):
         """
 
     def get_pii_fields(self) -> Set[str]:
-        """Provider-spezifische PII-Felder fuer Sanitisierung.
+        """Provider-spezifische PII-Felder für Sanitisierung.
 
         Returns:
-            Set von Feldnamen die PII enthalten koennen
+            Set von Feldnamen die PII enthalten können
         """
         # Standard-PII-Felder (erweitert von Odoo-Pattern)
         return {
@@ -76,7 +76,7 @@ class BaseWebhookProvider(ABC):
 class DATEVWebhookProvider(BaseWebhookProvider):
     """DATEV Webhook Provider.
 
-    Empfaengt Events von DATEV Connect:
+    Empfängt Events von DATEV Connect:
     - Dokument-Export-Benachrichtigungen
     - Rechnungs-Events
     - Buchungs-Events
@@ -120,7 +120,7 @@ class DATEVWebhookProvider(BaseWebhookProvider):
 class DHLWebhookProvider(BaseWebhookProvider):
     """DHL Webhook Provider.
 
-    Empfaengt Sendungsstatus-Updates von DHL.
+    Empfängt Sendungsstatus-Updates von DHL.
     """
 
     provider_name = "dhl"
@@ -129,7 +129,7 @@ class DHLWebhookProvider(BaseWebhookProvider):
     webhook_id_header = "X-DHL-Webhook-Id"
 
     # DHL Events werden nicht direkt auf EventBus-Events gemappt,
-    # sondern ueber den CarrierService verarbeitet
+    # sondern über den CarrierService verarbeitet
     EVENT_MAP: Dict[str, Optional[EventType]] = {
         "shipment.in_transit": None,
         "shipment.out_for_delivery": None,
@@ -159,7 +159,7 @@ class DHLWebhookProvider(BaseWebhookProvider):
 class DPDWebhookProvider(BaseWebhookProvider):
     """DPD Webhook Provider.
 
-    Empfaengt Sendungsstatus-Updates von DPD.
+    Empfängt Sendungsstatus-Updates von DPD.
     """
 
     provider_name = "dpd"
@@ -192,7 +192,7 @@ class DPDWebhookProvider(BaseWebhookProvider):
 class UPSWebhookProvider(BaseWebhookProvider):
     """UPS Webhook Provider.
 
-    Empfaengt Sendungsstatus-Updates von UPS.
+    Empfängt Sendungsstatus-Updates von UPS.
     """
 
     provider_name = "ups"
@@ -225,7 +225,7 @@ class UPSWebhookProvider(BaseWebhookProvider):
 class GLSWebhookProvider(BaseWebhookProvider):
     """GLS Webhook Provider.
 
-    Empfaengt Sendungsstatus-Updates von GLS.
+    Empfängt Sendungsstatus-Updates von GLS.
     """
 
     provider_name = "gls"
@@ -268,7 +268,7 @@ PROVIDER_REGISTRY: Dict[str, BaseWebhookProvider] = {
 
 
 def get_provider(provider_name: str) -> Optional[BaseWebhookProvider]:
-    """Gibt den Provider-Adapter fuer einen Provider-Namen zurueck.
+    """Gibt den Provider-Adapter für einen Provider-Namen zurück.
 
     Args:
         provider_name: Name des Providers (z.B. "datev", "dhl")

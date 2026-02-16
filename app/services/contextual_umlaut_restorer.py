@@ -2,13 +2,13 @@
 """
 Contextual Umlaut Restoration Service.
 
-Verwendet regelbasierte und optionale ML-basierte Methoden fuer
+Verwendet regelbasierte und optionale ML-basierte Methoden für
 kontextuelle Umlaut-Restaurierung:
 - Entscheidet kontextuell ob "ae" zu "ae", "oe" zu "oe", "ue" zu "ue"
-- Fraktur-zu-Modern Mapping fuer historische Dokumente
+- Fraktur-zu-Modern Mapping für historische Dokumente
 - Regional Dialect Normalization (DE/AT/CH)
 
-Feinpoliert und durchdacht - Deutsche OCR-Qualitaet.
+Feinpoliert und durchdacht - Deutsche OCR-Qualität.
 """
 
 import re
@@ -19,7 +19,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-# Optional: Transformers fuer BERT
+# Optional: Transformers für BERT
 try:
     from transformers import AutoModelForMaskedLM, AutoTokenizer
     import torch
@@ -94,9 +94,9 @@ class ContextualUmlautRestorer:
         Initialisiere Contextual Umlaut Restorer.
 
         Args:
-            model_name: BERT Model Name (oder None fuer Default)
-            use_gpu: GPU verwenden wenn verfuegbar
-            confidence_threshold: Mindest-Confidence fuer Korrektur
+            model_name: BERT Model Name (oder None für Default)
+            use_gpu: GPU verwenden wenn verfügbar
+            confidence_threshold: Mindest-Confidence für Korrektur
             enable_bert: BERT aktivieren
         """
         self._confidence_threshold = confidence_threshold
@@ -228,7 +228,7 @@ class ContextualUmlautRestorer:
                         corrected_text[pos + len(candidate.original):]
                     )
 
-                    # Berechne Perplexity fuer beide
+                    # Berechne Perplexity für beide
                     ascii_score = self._calculate_sentence_score(text_with_ascii)
                     umlaut_score = self._calculate_sentence_score(text_with_umlaut)
 
@@ -268,7 +268,7 @@ class ContextualUmlautRestorer:
         )
 
     def _calculate_sentence_score(self, text: str) -> float:
-        """Berechne Pseudo-Perplexity Score fuer einen Satz."""
+        """Berechne Pseudo-Perplexity Score für einen Satz."""
         if self._tokenizer is None or self._model is None:
             return 0.0
 
@@ -338,8 +338,8 @@ class ContextualUmlautRestorer:
         """Einfache Ersetzung ohne Kontext."""
         corrections = []
         known = {
-            'fuer': 'f\u00fcr',
-            'ueber': '\u00fcber',
+            'für': 'f\u00fcr',
+            'über': '\u00fcber',
             'muenchen': 'm\u00fcnchen',
             'koeln': 'k\u00f6ln',
         }

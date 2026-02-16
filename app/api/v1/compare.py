@@ -4,10 +4,10 @@ Document Comparison API Endpoints.
 
 Phase 9.1: Dream Features - Document Comparison
 
-Ermoeglicht:
+Ermöglicht:
 - Vergleich zweier Dokumente (Text, Struktur, visuell)
 - Diff-Reports mit Unterschieden
-- Aehnliche Dokumente finden
+- Ähnliche Dokumente finden
 """
 
 import logging
@@ -39,7 +39,7 @@ router = APIRouter(prefix="/compare", tags=["Document Comparison"])
 
 
 class CompareDocumentsRequest(BaseModel):
-    """Request fuer Dokumentenvergleich."""
+    """Request für Dokumentenvergleich."""
 
     document_id_1: UUID = Field(..., description="ID des ersten Dokuments")
     document_id_2: UUID = Field(..., description="ID des zweiten Dokuments")
@@ -62,7 +62,7 @@ class TextDifferenceResponse(BaseModel):
 
 
 class FieldChangeResponse(BaseModel):
-    """Feldaenderung."""
+    """Feldänderung."""
 
     field_name: str
     category: str
@@ -88,7 +88,7 @@ class ComparisonResultResponse(BaseModel):
 
 
 class SimilarDocumentResponse(BaseModel):
-    """Aehnliches Dokument."""
+    """Ähnliches Dokument."""
 
     document_id: UUID
     filename: str
@@ -111,13 +111,13 @@ class DiffReportResponse(BaseModel):
 
 
 class FindSimilarRequest(BaseModel):
-    """Request fuer Aehnlichkeitssuche."""
+    """Request für Ähnlichkeitssuche."""
 
     threshold: float = Field(
         default=0.8,
         ge=0.0,
         le=1.0,
-        description="Mindest-Aehnlichkeit (0.0-1.0)",
+        description="Mindest-Ähnlichkeit (0.0-1.0)",
     )
     limit: int = Field(
         default=10,
@@ -140,7 +140,7 @@ class FindSimilarRequest(BaseModel):
     "/documents",
     response_model=ComparisonResultResponse,
     summary="Vergleiche zwei Dokumente",
-    description="Fuehrt einen detaillierten Vergleich zweier Dokumente durch.",
+    description="Führt einen detaillierten Vergleich zweier Dokumente durch.",
 )
 async def compare_documents(
     request: CompareDocumentsRequest,
@@ -148,14 +148,14 @@ async def compare_documents(
     current_user: User = Depends(get_current_user),
 ) -> ComparisonResultResponse:
     """
-    Vergleicht zwei Dokumente und gibt Unterschiede zurueck.
+    Vergleicht zwei Dokumente und gibt Unterschiede zurück.
 
     - **document_id_1**: ID des ersten Dokuments
     - **document_id_2**: ID des zweiten Dokuments
     - **comparison_type**: Art des Vergleichs (text, structured, visual, hybrid)
 
     Returns:
-        ComparisonResultResponse mit Aehnlichkeitswerten und Unterschieden
+        ComparisonResultResponse mit Ähnlichkeitswerten und Unterschieden
     """
     service = DocumentComparisonService(db)
 
@@ -224,7 +224,7 @@ async def compare_documents(
     "/diff/{doc_id_1}/{doc_id_2}",
     response_model=DiffReportResponse,
     summary="Generiere Diff-Report",
-    description="Erstellt einen detaillierten Diff-Report fuer zwei Dokumente.",
+    description="Erstellt einen detaillierten Diff-Report für zwei Dokumente.",
 )
 async def get_diff_report(
     doc_id_1: UUID,
@@ -237,14 +237,14 @@ async def get_diff_report(
     current_user: User = Depends(get_current_user),
 ) -> DiffReportResponse:
     """
-    Generiert einen vollstaendigen Diff-Report.
+    Generiert einen vollständigen Diff-Report.
 
     - **doc_id_1**: ID des ersten Dokuments
     - **doc_id_2**: ID des zweiten Dokuments
     - **comparison_type**: Art des Vergleichs
 
     Returns:
-        DiffReportResponse mit vollstaendigem Report
+        DiffReportResponse mit vollständigem Report
     """
     service = DocumentComparisonService(db)
 
@@ -323,8 +323,8 @@ async def get_diff_report(
 @router.get(
     "/similar/{doc_id}",
     response_model=List[SimilarDocumentResponse],
-    summary="Finde aehnliche Dokumente",
-    description="Sucht nach Dokumenten, die dem angegebenen Dokument aehnlich sind.",
+    summary="Finde ähnliche Dokumente",
+    description="Sucht nach Dokumenten, die dem angegebenen Dokument ähnlich sind.",
 )
 async def find_similar_documents(
     doc_id: UUID,
@@ -332,7 +332,7 @@ async def find_similar_documents(
         default=0.8,
         ge=0.0,
         le=1.0,
-        description="Mindest-Aehnlichkeit (0.0-1.0)",
+        description="Mindest-Ähnlichkeit (0.0-1.0)",
     ),
     limit: int = Query(
         default=10,
@@ -348,15 +348,15 @@ async def find_similar_documents(
     current_user: User = Depends(get_current_user),
 ) -> List[SimilarDocumentResponse]:
     """
-    Findet aehnliche Dokumente basierend auf Inhalt und Struktur.
+    Findet ähnliche Dokumente basierend auf Inhalt und Struktur.
 
     - **doc_id**: ID des Referenzdokuments
-    - **threshold**: Mindest-Aehnlichkeitsscore (0.8 = 80%)
+    - **threshold**: Mindest-Ähnlichkeitsscore (0.8 = 80%)
     - **limit**: Maximale Anzahl Ergebnisse
     - **include_same_entity**: Auch Dokumente derselben Entity einbeziehen
 
     Returns:
-        Liste aehnlicher Dokumente mit Aehnlichkeitswerten
+        Liste ähnlicher Dokumente mit Ähnlichkeitswerten
     """
     service = DocumentComparisonService(db)
 
@@ -384,18 +384,18 @@ async def find_similar_documents(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=safe_error_detail(e, "Aehnlichkeitssuche"),
+            detail=safe_error_detail(e, "Ähnlichkeitssuche"),
         )
     except PermissionError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=safe_error_detail(e, "Aehnlichkeitssuche"),
+            detail=safe_error_detail(e, "Ähnlichkeitssuche"),
         )
     except Exception as e:
-        logger.error("Fehler bei Aehnlichkeitssuche", **safe_error_log(e))
+        logger.error("Fehler bei Ähnlichkeitssuche", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Aehnlichkeitssuche fehlgeschlagen",
+            detail="Ähnlichkeitssuche fehlgeschlagen",
         )
 
 
@@ -416,7 +416,7 @@ async def batch_compare_documents(
     current_user: User = Depends(get_current_user),
 ) -> List[ComparisonResultResponse]:
     """
-    Fuehrt einen Batch-Vergleich durch.
+    Führt einen Batch-Vergleich durch.
 
     - **reference_doc_id**: ID des Referenzdokuments
     - **compare_doc_ids**: Liste der zu vergleichenden Dokument-IDs
@@ -479,7 +479,7 @@ async def batch_compare_documents(
                 )
             )
         except (ValueError, PermissionError) as e:
-            logger.warning("Ueberspringe Dokument im Batch-Vergleich", **safe_error_log(e))
+            logger.warning("Überspringe Dokument im Batch-Vergleich", **safe_error_log(e))
             continue
         except Exception as e:
             logger.error("Fehler bei Batch-Vergleich", **safe_error_log(e))
@@ -499,7 +499,7 @@ async def find_potential_duplicates(
         default=0.95,
         ge=0.8,
         le=1.0,
-        description="Mindest-Aehnlichkeit fuer Duplikat-Erkennung",
+        description="Mindest-Ähnlichkeit für Duplikat-Erkennung",
     ),
     days_back: int = Query(
         default=30,
@@ -517,14 +517,14 @@ async def find_potential_duplicates(
     current_user: User = Depends(get_current_user),
 ) -> List[JSONDict]:
     """
-    Identifiziert potenzielle Duplikate basierend auf hoher Aehnlichkeit.
+    Identifiziert potenzielle Duplikate basierend auf hoher Ähnlichkeit.
 
-    - **threshold**: Mindest-Aehnlichkeit (Standard: 95%)
-    - **days_back**: Zeitraum fuer Suche (Standard: 30 Tage)
+    - **threshold**: Mindest-Ähnlichkeit (Standard: 95%)
+    - **days_back**: Zeitraum für Suche (Standard: 30 Tage)
     - **limit**: Maximale Anzahl Ergebnisse
 
     Returns:
-        Liste von Duplikat-Paaren mit Aehnlichkeitswerten
+        Liste von Duplikat-Paaren mit Ähnlichkeitswerten
     """
     from datetime import datetime, timedelta
 
@@ -543,7 +543,7 @@ async def find_potential_duplicates(
         .where(Document.created_at >= cutoff_date)
         .where(Document.deleted_at.is_(None))
         .order_by(Document.created_at.desc())
-        .limit(100)  # Beschraenke auf 100 fuer Performance
+        .limit(100)  # Beschraenke auf 100 für Performance
     )
 
     result = await db.execute(stmt)
@@ -581,7 +581,7 @@ async def find_potential_duplicates(
                                 "created_at": doc2.created_at.isoformat(),
                             },
                             "similarity_score": comparison.similarity_score,
-                            "recommendation": "Pruefung empfohlen"
+                            "recommendation": "Prüfung empfohlen"
                             if comparison.similarity_score < 0.99
                             else "Wahrscheinlich identisch",
                         }

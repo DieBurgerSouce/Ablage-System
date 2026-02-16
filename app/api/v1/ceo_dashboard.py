@@ -1,10 +1,10 @@
 """
 CEO Dashboard API Endpoints
 
-REST API fuer Digital Twin des Unternehmens:
-- Executive-Level Uebersicht
+REST API für Digital Twin des Unternehmens:
+- Executive-Level Übersicht
 - Gesundheits-Score mit Dimensionen
-- Trend-Analysen fuer Sparklines
+- Trend-Analysen für Sparklines
 - Anomalie-Erkennung
 
 Feinpoliert und durchdacht - Enterprise CEO Dashboard.
@@ -37,8 +37,8 @@ router = APIRouter(prefix="/ceo-dashboard", tags=["CEO Dashboard"])
 @router.get(
     "/overview",
     response_model=JSONDict,
-    summary="Unternehmens-Uebersicht",
-    description="Vollstaendige Uebersicht fuer CEO Dashboard mit allen Metriken"
+    summary="Unternehmens-Übersicht",
+    description="Vollständige Übersicht für CEO Dashboard mit allen Metriken"
 )
 async def get_overview(
     current_user: User = Depends(get_current_active_user),
@@ -46,12 +46,12 @@ async def get_overview(
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
-    Holt Unternehmens-Uebersicht.
+    Holt Unternehmens-Übersicht.
 
-    **Enthaelt:**
+    **Enthält:**
     - Gesundheits-Score (overall + Dimensionen)
     - Dokument-Statistiken (heute, Monat)
-    - Rechnungs-Status (offen, ueberfaellig)
+    - Rechnungs-Status (offen, überfällig)
     - Alert-Zaehler (aktiv, kritisch)
     - Auto-Process Rate
 
@@ -131,7 +131,7 @@ async def get_health_score(
     "/trends",
     response_model=Dict[str, List[Dict]],
     summary="Trend-Analysen",
-    description="Zeitreihen-Daten fuer Sparklines und Charts"
+    description="Zeitreihen-Daten für Sparklines und Charts"
 )
 async def get_trends(
     days: int = Query(30, ge=7, le=365, description="Anzahl Tage (7-365)"),
@@ -140,7 +140,7 @@ async def get_trends(
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, List[Dict]]:
     """
-    Holt Trend-Daten fuer Sparklines.
+    Holt Trend-Daten für Sparklines.
 
     **Zeitreihen:**
     - documents_processed: Anzahl verarbeiteter Dokumente

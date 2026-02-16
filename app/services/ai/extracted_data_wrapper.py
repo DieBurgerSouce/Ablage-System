@@ -2,8 +2,8 @@
 """
 ExtractedData Wrapper.
 
-Wrapper-Klasse fuer Document.extracted_data JSONB-Feld,
-um einheitlichen Zugriff auf extrahierte Daten zu ermoeglichen.
+Wrapper-Klasse für Document.extracted_data JSONB-Feld,
+um einheitlichen Zugriff auf extrahierte Daten zu ermöglichen.
 
 Die Daten werden im Document-Model als JSONB gespeichert:
 Document.extracted_data = {
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 @dataclass
 class ExtractedData:
     """
-    Wrapper fuer extrahierte Dokumentdaten.
+    Wrapper für extrahierte Dokumentdaten.
 
     Bietet typisierten Zugriff auf JSONB-Daten.
     """
@@ -124,7 +124,7 @@ class ExtractedData:
         except Exception:
             return None
 
-    # Geschaeftspartner
+    # Geschäftspartner
     @property
     def supplier_name(self) -> Optional[str]:
         return self.raw_data.get("supplier_name") or self.raw_data.get("vendor_name")

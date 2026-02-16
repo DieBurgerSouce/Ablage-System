@@ -7,7 +7,7 @@ Enterprise Feature: Transparente KI-Entscheidungen.
 Module:
 - decision_explainer: "Warum wurde X entschieden?"
 - confidence_visualizer: Confidence-Score Breakdown
-- case_comparator: "Basierend auf 47 aehnlichen Faellen"
+- case_comparator: "Basierend auf 47 ähnlichen Faellen"
 """
 
 from app.services.ai.explainer.decision_explainer import (

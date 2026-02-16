@@ -78,7 +78,7 @@ class PaymentPatterns:
         r"prepaid|proforma|anzahlung\s*erforderlich|"
         r"zahlung\s*vor\s*(?:versand|lieferung)|"
         r"vorkasse\s*erforderlich|"
-        r"bitte\s*(?:vorab|im\s*voraus)\s*(?:ueberweisen|zahlen))",
+        r"bitte\s*(?:vorab|im\s*voraus)\s*(?:überweisen|zahlen))",
         re.IGNORECASE,
     )
 
@@ -111,7 +111,7 @@ class PaymentPatterns:
         re.IGNORECASE,
     )
 
-    # Flexibel: "Bei Zahlung innerhalb von 10 Tagen gewaehren wir 2% Skonto"
+    # Flexibel: "Bei Zahlung innerhalb von 10 Tagen gewähren wir 2% Skonto"
     SKONTO_FLEXIBLE: RePattern[str] = re.compile(
         r"(?:bei\s+)?zahlung\s+innerhalb\s+(?:von\s+)?"
         r"(?P<days>\d{1,3})\s*(?:tage?n?)\s+"
@@ -383,7 +383,7 @@ def extract_all_discount_tiers(text: str) -> List[DiscountTier]:
             raw_text=match.group(),
         ))
 
-    # Try flexible pattern (e.g., "Bei Zahlung innerhalb von 10 Tagen gewaehren wir 2%")
+    # Try flexible pattern (e.g., "Bei Zahlung innerhalb von 10 Tagen gewähren wir 2%")
     for match in patterns.SKONTO_FLEXIBLE.finditer(text):
         percent_str = match.group("percent").replace(",", ".")
         tiers.append(DiscountTier(

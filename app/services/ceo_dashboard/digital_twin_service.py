@@ -1,8 +1,8 @@
 """
 CEO Dashboard - Digital Twin Service
 
-Zentrale Uebersicht ueber Unternehmensgesundheit.
-Kombiniert Daten aus allen Modulen fuer Executive Dashboard.
+Zentrale Übersicht über Unternehmensgesundheit.
+Kombiniert Daten aus allen Modulen für Executive Dashboard.
 
 Feinpoliert und durchdacht - Enterprise CEO Dashboard.
 """
@@ -59,7 +59,7 @@ class HealthScore:
 
 @dataclass
 class CompanyOverview:
-    """Unternehmens-Uebersicht fuer CEO Dashboard."""
+    """Unternehmens-Übersicht für CEO Dashboard."""
 
     health_score: HealthScore
     documents_today: int
@@ -90,7 +90,7 @@ class CompanyOverview:
 
 @dataclass
 class TrendDataPoint:
-    """Einzelner Datenpunkt fuer Trend-Analyse."""
+    """Einzelner Datenpunkt für Trend-Analyse."""
 
     timestamp: datetime
     value: float
@@ -99,7 +99,7 @@ class TrendDataPoint:
 
 @dataclass
 class TrendData:
-    """Trend-Daten fuer Sparklines."""
+    """Trend-Daten für Sparklines."""
 
     documents_processed: List[TrendDataPoint]
     invoice_volume: List[TrendDataPoint]
@@ -180,9 +180,9 @@ class Anomaly:
 
 class DigitalTwinService:
     """
-    Digital Twin Service fuer CEO Dashboard.
+    Digital Twin Service für CEO Dashboard.
 
-    Aggregiert Daten aus allen Modulen fuer Executive-Level Uebersicht.
+    Aggregiert Daten aus allen Modulen für Executive-Level Übersicht.
     """
 
     def __init__(self) -> None:
@@ -195,7 +195,7 @@ class DigitalTwinService:
         db: AsyncSession,
     ) -> CompanyOverview:
         """
-        Holt Unternehmens-Uebersicht.
+        Holt Unternehmens-Übersicht.
 
         Args:
             company_id: Company UUID
@@ -252,7 +252,7 @@ class DigitalTwinService:
         pending_invoices = pending_row[0] if pending_row else 0
         pending_amount = Decimal(str(pending_row[1])) if pending_row else Decimal("0")
 
-        # Ueberfaellige Rechnungen
+        # Überfällige Rechnungen
         overdue_query = select(
             func.count(InvoiceTracking.id),
             func.coalesce(func.sum(InvoiceTracking.outstanding_amount), 0),
@@ -329,7 +329,7 @@ class DigitalTwinService:
         """
         Berechnet Unternehmens-Gesundheits-Score.
 
-        Delegiert an HealthScoreCalculator fuer detaillierte Berechnung.
+        Delegiert an HealthScoreCalculator für detaillierte Berechnung.
 
         Args:
             company_id: Company UUID
@@ -350,7 +350,7 @@ class DigitalTwinService:
         db: AsyncSession,
     ) -> TrendData:
         """
-        Holt Trend-Daten fuer Sparklines.
+        Holt Trend-Daten für Sparklines.
 
         Args:
             company_id: Company UUID
@@ -482,7 +482,7 @@ class DigitalTwinService:
 
         if total_invoices > 10:
             overdue_rate = overdue_count / total_invoices
-            if overdue_rate > 0.15:  # Mehr als 15% ueberfaellig
+            if overdue_rate > 0.15:  # Mehr als 15% überfällig
                 anomalies.append(
                     Anomaly(
                         title="Hohe Ausfallrate bei Rechnungen",

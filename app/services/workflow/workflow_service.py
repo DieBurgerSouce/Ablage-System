@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Workflow Service fuer CRUD-Operationen.
+"""Workflow Service für CRUD-Operationen.
 
 Verwaltet Workflows, Steps und Templates.
 """
@@ -25,7 +25,7 @@ logger = structlog.get_logger(__name__)
 
 
 class WorkflowService:
-    """Service fuer Workflow-CRUD-Operationen.
+    """Service für Workflow-CRUD-Operationen.
 
     Verwaltet:
     - Workflow-Definitionen
@@ -38,7 +38,7 @@ class WorkflowService:
         """Initialisiert den WorkflowService.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
         """
         self.db = db
 
@@ -73,7 +73,7 @@ class WorkflowService:
             description: Beschreibung
             company_id: Optionale Firmen-ID
             variables: Workflow-Variablen
-            max_concurrent_executions: Max parallele Ausfuehrungen
+            max_concurrent_executions: Max parallele Ausführungen
             timeout_seconds: Timeout in Sekunden
             retry_config: Retry-Konfiguration
 
@@ -127,8 +127,8 @@ class WorkflowService:
 
         Args:
             workflow_id: Workflow-ID
-            user_id: Optionale User-ID fuer Berechtigungspruefung
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            user_id: Optionale User-ID für Berechtigungsprüfung
+            company_id: Company-ID für Multi-Tenant Isolation
             include_steps: Steps mit laden
 
         Returns:
@@ -147,7 +147,7 @@ class WorkflowService:
                 )
             )
 
-        # SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        # SECURITY: company_id Filter für Multi-Tenant Isolation
         if company_id:
             query = query.where(Workflow.company_id == company_id)
 
@@ -190,7 +190,7 @@ class WorkflowService:
             trigger_type: Filter nach Trigger-Typ
             is_active: Filter nach Aktiv-Status
             is_template: Filter nach Template-Status
-            search: Suchbegriff fuer Name/Beschreibung
+            search: Suchbegriff für Name/Beschreibung
             offset: Pagination Offset
             limit: Pagination Limit
 
@@ -261,8 +261,8 @@ class WorkflowService:
 
         Args:
             workflow_id: Workflow-ID
-            user_id: User-ID fuer Berechtigungspruefung
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            user_id: User-ID für Berechtigungsprüfung
+            company_id: Company-ID für Multi-Tenant Isolation
             **updates: Zu aktualisierende Felder
 
         Returns:
@@ -321,18 +321,18 @@ class WorkflowService:
         user_id: UUID,
         company_id: Optional[UUID] = None,
     ) -> bool:
-        """Loescht einen Workflow.
+        """Löscht einen Workflow.
 
         SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
         Company gehoeren (Multi-Tenant Isolation).
 
         Args:
             workflow_id: Workflow-ID
-            user_id: User-ID fuer Berechtigungspruefung
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            user_id: User-ID für Berechtigungsprüfung
+            company_id: Company-ID für Multi-Tenant Isolation
 
         Returns:
-            True wenn erfolgreich geloescht
+            True wenn erfolgreich gelöscht
         """
         workflow = await self.get_workflow(
             workflow_id, user_id, company_id=company_id, include_steps=False
@@ -340,7 +340,7 @@ class WorkflowService:
         if not workflow or workflow.user_id != user_id:
             return False
 
-        # Loescht auch Steps durch CASCADE
+        # Löscht auch Steps durch CASCADE
         await self.db.delete(workflow)
         await self.db.commit()
 
@@ -367,7 +367,7 @@ class WorkflowService:
         Args:
             workflow_id: Original Workflow-ID
             user_id: User-ID des neuen Besitzers
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            company_id: Company-ID für Multi-Tenant Isolation
             new_name: Optionaler neuer Name
 
         Returns:
@@ -433,7 +433,7 @@ class WorkflowService:
         Args:
             workflow_id: Workflow-ID
             user_id: User-ID
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            company_id: Company-ID für Multi-Tenant Isolation
 
         Returns:
             Aktualisierter Workflow oder None
@@ -485,8 +485,8 @@ class WorkflowService:
             workflow_id: Workflow-ID
             step_order: Reihenfolge
             step_type: Step-Typ (condition, action, branch, delay, parallel)
-            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
-            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
+            user_id: User-ID für Berechtigungsprüfung (empfohlen)
+            company_id: Company-ID für Multi-Tenant Isolation (empfohlen)
             step_name: Optionaler Name
             config: Step-Konfiguration
             retry_on_failure: Bei Fehler wiederholen
@@ -550,8 +550,8 @@ class WorkflowService:
 
         Args:
             workflow_id: Workflow-ID
-            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
-            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
+            user_id: User-ID für Berechtigungsprüfung (empfohlen)
+            company_id: Company-ID für Multi-Tenant Isolation (empfohlen)
 
         Returns:
             Liste der Steps (leer wenn Workflow nicht zugreifbar)
@@ -593,8 +593,8 @@ class WorkflowService:
 
         Args:
             step_id: Step-ID
-            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
-            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
+            user_id: User-ID für Berechtigungsprüfung (empfohlen)
+            company_id: Company-ID für Multi-Tenant Isolation (empfohlen)
             **updates: Zu aktualisierende Felder
 
         Returns:
@@ -650,15 +650,15 @@ class WorkflowService:
         user_id: Optional[UUID] = None,
         company_id: Optional[UUID] = None,
     ) -> bool:
-        """Loescht einen Step.
+        """Löscht einen Step.
 
         SECURITY: Wenn company_id angegeben wird, MUSS der zugehoerige Workflow
         zu dieser Company gehoeren (Multi-Tenant Isolation).
 
         Args:
             step_id: Step-ID
-            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
-            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
+            user_id: User-ID für Berechtigungsprüfung (empfohlen)
+            company_id: Company-ID für Multi-Tenant Isolation (empfohlen)
 
         Returns:
             True wenn erfolgreich
@@ -706,8 +706,8 @@ class WorkflowService:
         Args:
             workflow_id: Workflow-ID
             step_orders: Liste mit {step_id, step_order}
-            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
-            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
+            user_id: User-ID für Berechtigungsprüfung (empfohlen)
+            company_id: Company-ID für Multi-Tenant Isolation (empfohlen)
 
         Returns:
             True wenn erfolgreich
@@ -768,8 +768,8 @@ class WorkflowService:
         Args:
             workflow_id: Workflow-ID
             steps_data: Liste mit Step-Daten
-            user_id: User-ID fuer Berechtigungspruefung (empfohlen)
-            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
+            user_id: User-ID für Berechtigungsprüfung (empfohlen)
+            company_id: Company-ID für Multi-Tenant Isolation (empfohlen)
 
         Returns:
             Aktualisierte Steps (leer wenn Workflow nicht zugreifbar)
@@ -794,12 +794,12 @@ class WorkflowService:
             step_id = step_data.pop("id", None)
 
             if step_id:
-                # Update existierenden Step (ohne erneute Validierung, da bereits geprueft)
+                # Update existierenden Step (ohne erneute Validierung, da bereits geprüft)
                 step = await self.update_step(UUID(str(step_id)), **step_data)
                 if step:
                     updated_steps.append(step)
             else:
-                # Neuen Step erstellen (ohne erneute Validierung, da bereits geprueft)
+                # Neuen Step erstellen (ohne erneute Validierung, da bereits geprüft)
                 step = await self.create_step(
                     workflow_id=workflow_id,
                     step_order=step_data.get("step_order", 0),
@@ -823,13 +823,13 @@ class WorkflowService:
         company_id: Optional[UUID] = None,
         category: Optional[str] = None,
     ) -> List[Workflow]:
-        """Listet verfuegbare Workflow-Templates.
+        """Listet verfügbare Workflow-Templates.
 
         SECURITY: Wenn company_id angegeben wird, werden nur Templates dieser
-        Company oder globale System-Templates (company_id=NULL) zurueckgegeben.
+        Company oder globale System-Templates (company_id=NULL) zurückgegeben.
 
         Args:
-            company_id: Company-ID fuer Multi-Tenant Isolation (empfohlen)
+            company_id: Company-ID für Multi-Tenant Isolation (empfohlen)
             category: Optionale Kategorie
 
         Returns:
@@ -837,7 +837,7 @@ class WorkflowService:
         """
         conditions = [Workflow.is_template == True]  # noqa: E712
 
-        # SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        # SECURITY: company_id Filter für Multi-Tenant Isolation
         if company_id:
             conditions.append(
                 or_(
@@ -876,7 +876,7 @@ class WorkflowService:
         Args:
             template_id: Template-ID
             user_id: User-ID
-            company_id: Company-ID fuer den neuen Workflow (PFLICHT)
+            company_id: Company-ID für den neuen Workflow (PFLICHT)
             name: Optionaler Name
 
         Returns:
@@ -967,8 +967,8 @@ class WorkflowService:
 
         Args:
             workflow_id: Workflow-ID
-            user_id: User-ID fuer Berechtigungspruefung
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            user_id: User-ID für Berechtigungsprüfung
+            company_id: Company-ID für Multi-Tenant Isolation
 
         Returns:
             Validierungsergebnis mit errors und warnings
@@ -989,12 +989,12 @@ class WorkflowService:
         if workflow.trigger_type == "schedule":
             cron = workflow.trigger_config.get("cron")
             if not cron:
-                errors.append("Schedule-Trigger benoetigt Cron-Ausdruck")
+                errors.append("Schedule-Trigger benötigt Cron-Ausdruck")
 
         if workflow.trigger_type == "document_event":
             events = workflow.trigger_config.get("events", [])
             if not events:
-                errors.append("Document-Event-Trigger benoetigt mindestens ein Event")
+                errors.append("Document-Event-Trigger benötigt mindestens ein Event")
 
         # Steps validieren
         if not workflow.steps:
@@ -1039,7 +1039,7 @@ class WorkflowService:
         elif step.step_type == "delay":
             delay_seconds = step.config.get("delay_seconds")
             if not delay_seconds or delay_seconds <= 0:
-                errors.append(f"Step '{step.step_name}': Ungueltige Verzoegerung")
+                errors.append(f"Step '{step.step_name}': Ungültige Verzögerung")
 
         return errors
 
@@ -1062,12 +1062,12 @@ class WorkflowService:
         # Node-IDs sammeln
         node_ids = {node.get("id") for node in nodes}
 
-        # Start-Knoten pruefen
+        # Start-Knoten prüfen
         has_start = any(node.get("type") == "trigger" for node in nodes)
         if not has_start:
-            errors.append("Graph benoetigt einen Trigger-Knoten")
+            errors.append("Graph benötigt einen Trigger-Knoten")
 
-        # Kanten pruefen
+        # Kanten prüfen
         for edge in edges:
             source = edge.get("source")
             target = edge.get("target")
@@ -1118,7 +1118,7 @@ class WorkflowService:
         cycle_path: List[str] = []
 
         def dfs(node_id: str) -> bool:
-            """DFS-Traversierung. Gibt True zurueck wenn Zyklus gefunden."""
+            """DFS-Traversierung. Gibt True zurück wenn Zyklus gefunden."""
             if state[node_id] == VISITING:
                 # Zyklus gefunden - extrahiere Zykluspfad
                 cycle_start = cycle_path.index(node_id) if node_id in cycle_path else 0
@@ -1158,15 +1158,15 @@ class WorkflowService:
         user_id: Optional[UUID] = None,
         company_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
-        """Holt Statistiken fuer einen Workflow.
+        """Holt Statistiken für einen Workflow.
 
         SECURITY: Wenn company_id angegeben wird, MUSS der Workflow zu dieser
         Company gehoeren (Multi-Tenant Isolation).
 
         Args:
             workflow_id: Workflow-ID
-            user_id: User-ID fuer Berechtigungspruefung
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            user_id: User-ID für Berechtigungsprüfung
+            company_id: Company-ID für Multi-Tenant Isolation
 
         Returns:
             Statistik-Dictionary

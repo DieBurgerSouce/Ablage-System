@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Token-Level Caching Service mit LRU fuer OCR-Optimierung.
+Token-Level Caching Service mit LRU für OCR-Optimierung.
 
-Cacht OCR-erkannte Token/Woerter fuer schnellere Verarbeitung
-bei aehnlichen Dokumenten:
-- In-Memory LRU Cache fuer schnellsten Zugriff
-- Optional: Redis-Backed fuer Persistenz
-- Fingerprint-basiertes Caching fuer Bild-Regionen
+Cacht OCR-erkannte Token/Woerter für schnellere Verarbeitung
+bei ähnlichen Dokumenten:
+- In-Memory LRU Cache für schnellsten Zugriff
+- Optional: Redis-Backed für Persistenz
+- Fingerprint-basiertes Caching für Bild-Regionen
 - +30% Speed-Improvement bei Batch-Processing
 
 Feinpoliert und durchdacht - Deutsche OCR Performance.
@@ -53,10 +53,10 @@ class CacheStats:
 
 class LRUTokenCache:
     """
-    LRU Token Cache fuer OCR-Ergebnisse.
+    LRU Token Cache für OCR-Ergebnisse.
 
     Cacht erkannte Textfragmente basierend auf Bild-Fingerprints.
-    Verwendet Least-Recently-Used Eviction bei voller Kapazitaet.
+    Verwendet Least-Recently-Used Eviction bei voller Kapazität.
     """
 
     def __init__(
@@ -70,17 +70,17 @@ class LRUTokenCache:
         Initialisiere LRU Token Cache.
 
         Args:
-            max_entries: Maximale Anzahl Eintraege
+            max_entries: Maximale Anzahl Einträge
             max_memory_mb: Maximaler Speicherverbrauch in MB
-            ttl_seconds: Time-to-Live fuer Eintraege
-            min_confidence: Minimale Confidence fuer Caching
+            ttl_seconds: Time-to-Live für Einträge
+            min_confidence: Minimale Confidence für Caching
         """
         self._max_entries = max_entries
         self._max_memory_bytes = max_memory_mb * 1024 * 1024
         self._ttl_seconds = ttl_seconds
         self._min_confidence = min_confidence
 
-        # OrderedDict fuer LRU-Verhalten
+        # OrderedDict für LRU-Verhalten
         self._cache: OrderedDict[str, CacheEntry] = OrderedDict()
         self._lock = Lock()
 
@@ -100,11 +100,11 @@ class LRUTokenCache:
         region: Optional[Tuple[int, int, int, int]] = None
     ) -> str:
         """
-        Berechne Fingerprint fuer Bild oder Region.
+        Berechne Fingerprint für Bild oder Region.
 
         Args:
             image_data: Rohe Bilddaten
-            region: Optional (x, y, width, height) fuer Region
+            region: Optional (x, y, width, height) für Region
 
         Returns:
             MD5 Fingerprint als Hex-String
@@ -115,8 +115,8 @@ class LRUTokenCache:
         if region:
             hasher.update(f"region:{region}".encode())
 
-        # Bild-Hash (verwende nur Teilmenge fuer Performance)
-        # Sample jeden 100. Byte fuer schnelleres Hashing
+        # Bild-Hash (verwende nur Teilmenge für Performance)
+        # Sample jeden 100. Byte für schnelleres Hashing
         sample_size = min(len(image_data), 10000)
         step = max(1, len(image_data) // sample_size)
 
@@ -126,22 +126,22 @@ class LRUTokenCache:
         return hasher.hexdigest()
 
     def _estimate_entry_size(self, entry: CacheEntry) -> int:
-        """Schaetze Speicherverbrauch eines Eintrags."""
+        """Schätze Speicherverbrauch eines Eintrags."""
         # Basis: Python object overhead (~128 bytes)
-        # + String-Laenge * 2 (Unicode) + Metadata
+        # + String-Länge * 2 (Unicode) + Metadata
         return 128 + len(entry.value) * 2 + 64
 
     def _evict_if_needed(self) -> int:
         """
-        Entferne Eintraege wenn Limits ueberschritten.
+        Entferne Einträge wenn Limits überschritten.
 
         Returns:
-            Anzahl entfernter Eintraege
+            Anzahl entfernter Einträge
         """
         evicted = 0
         current_time = time.time()
 
-        # Entferne abgelaufene Eintraege
+        # Entferne abgelaufene Einträge
         expired_keys = []
         for key, entry in self._cache.items():
             if current_time - entry.created_at > self._ttl_seconds:
@@ -191,7 +191,7 @@ class LRUTokenCache:
             if fingerprint in self._cache:
                 entry = self._cache[fingerprint]
 
-                # Pruefe TTL
+                # Prüfe TTL
                 if time.time() - entry.created_at > self._ttl_seconds:
                     del self._cache[fingerprint]
                     self._stats.misses += 1
@@ -238,7 +238,7 @@ class LRUTokenCache:
         Returns:
             True wenn gecacht, False wenn abgelehnt
         """
-        # Pruefe Mindest-Confidence
+        # Prüfe Mindest-Confidence
         if confidence < self._min_confidence:
             logger.debug(
                 "token_cache_rejected_low_confidence",
@@ -247,7 +247,7 @@ class LRUTokenCache:
             )
             return False
 
-        # Pruefe auf leeren Text
+        # Prüfe auf leeren Text
         if not text or not text.strip():
             return False
 
@@ -283,7 +283,7 @@ class LRUTokenCache:
 
     def get_by_text_hash(self, text_hash: str) -> Optional[CacheEntry]:
         """
-        Suche nach Text-Hash (fuer Deduplizierung).
+        Suche nach Text-Hash (für Deduplizierung).
 
         Args:
             text_hash: MD5-Hash des Textes
@@ -314,10 +314,10 @@ class LRUTokenCache:
 
     def clear(self) -> int:
         """
-        Loesche alle Cache-Eintraege.
+        Lösche alle Cache-Einträge.
 
         Returns:
-            Anzahl geloeschter Eintraege
+            Anzahl gelöschter Einträge
         """
         with self._lock:
             count = len(self._cache)
@@ -329,13 +329,13 @@ class LRUTokenCache:
 
     def warm_up(self, entries: List[Dict[str, Any]]) -> int:
         """
-        Warm-up Cache mit vorberechneten Eintraegen.
+        Warm-up Cache mit vorberechneten Einträgen.
 
         Args:
             entries: Liste von Dicts mit keys: image_data, text, confidence, backend
 
         Returns:
-            Anzahl hinzugefuegter Eintraege
+            Anzahl hinzugefuegter Einträge
         """
         added = 0
         for entry in entries:
@@ -358,26 +358,26 @@ class LRUTokenCache:
 
 class WordFrequencyCache:
     """
-    Cache fuer haeufige deutsche Woerter.
+    Cache für häufige deutsche Woerter.
 
-    Optimiert OCR fuer wiederkehrende Woerter wie
+    Optimiert OCR für wiederkehrende Woerter wie
     Artikel, Praepositionen und Standardphrasen.
     """
 
-    # Haeufige deutsche Woerter (Top 100)
+    # Häufige deutsche Woerter (Top 100)
     COMMON_GERMAN_WORDS = {
         "der", "die", "das", "und", "in", "zu", "den", "ist", "nicht",
-        "von", "es", "mit", "sich", "auf", "fuer", "als", "auch",
+        "von", "es", "mit", "sich", "auf", "für", "als", "auch",
         "aber", "an", "wie", "aus", "wenn", "hat", "war", "noch",
         "nach", "wird", "nur", "kann", "oder", "sein", "so", "einem",
         "diese", "alle", "werden", "bei", "mehr", "was", "einer",
         "haben", "schon", "sehr", "im", "man", "wurden", "ihre",
         "sind", "dann", "unter", "vor", "durch", "ohne", "dass",
         # Deutsche Umlaute
-        "fuer", "ueber", "waehrend", "spaeter", "frueher",
-        "groesser", "kleiner", "aelter", "juenger",
-        # Geschaeftsdeutsch
-        "betreff", "anlage", "bezueglich", "gemaess",
+        "für", "über", "während", "später", "früher",
+        "größer", "kleiner", "aelter", "juenger",
+        # Geschäftsdeutsch
+        "betreff", "anlage", "bezueglich", "gemäß",
         "hiermit", "anbei", "freundlichen", "gruessen",
         "rechnung", "betrag", "zahlung", "datum",
     }
@@ -387,13 +387,13 @@ class WordFrequencyCache:
         Initialisiere Word Frequency Cache.
 
         Args:
-            min_word_length: Minimale Wortlaenge fuer Caching
+            min_word_length: Minimale Wortlänge für Caching
         """
         self._min_length = min_word_length
         self._word_cache: Dict[str, int] = {}  # word -> frequency
         self._lock = Lock()
 
-        # Initialisiere mit haeufigen Woertern
+        # Initialisiere mit häufigen Woertern
         for word in self.COMMON_GERMAN_WORDS:
             self._word_cache[word.lower()] = 100
 
@@ -403,7 +403,7 @@ class WordFrequencyCache:
         )
 
     def is_common_word(self, word: str) -> bool:
-        """Pruefe ob Wort haeufig vorkommt."""
+        """Prüfe ob Wort häufig vorkommt."""
         if len(word) < self._min_length:
             return False
 
@@ -412,7 +412,7 @@ class WordFrequencyCache:
             return word_lower in self._word_cache
 
     def get_frequency(self, word: str) -> int:
-        """Hole Worthaeufigkeit."""
+        """Hole Worthäufigkeit."""
         word_lower = word.lower()
         with self._lock:
             return self._word_cache.get(word_lower, 0)
@@ -449,7 +449,7 @@ class WordFrequencyCache:
         return count
 
     def get_top_words(self, n: int = 50) -> List[Tuple[str, int]]:
-        """Hole Top-N haeufigste Woerter."""
+        """Hole Top-N häufigste Woerter."""
         with self._lock:
             sorted_words = sorted(
                 self._word_cache.items(),
@@ -460,7 +460,7 @@ class WordFrequencyCache:
 
     def suggest_correction(self, word: str, max_distance: int = 1) -> Optional[str]:
         """
-        Schlage Korrektur fuer unbekanntes Wort vor.
+        Schlage Korrektur für unbekanntes Wort vor.
 
         Args:
             word: Zu korrigierendes Wort
@@ -476,7 +476,7 @@ class WordFrequencyCache:
             if word_lower in self._word_cache:
                 return None  # Keine Korrektur noetig
 
-            # Suche aehnliche Woerter
+            # Suche ähnliche Woerter
             best_match = None
             best_freq = 0
 
@@ -484,7 +484,7 @@ class WordFrequencyCache:
                 if abs(len(cached_word) - len(word_lower)) > max_distance:
                     continue
 
-                # Einfache Edit-Distanz Schaetzung
+                # Einfache Edit-Distanz Schätzung
                 distance = self._simple_distance(word_lower, cached_word)
                 if distance <= max_distance and freq > best_freq:
                     best_match = cached_word

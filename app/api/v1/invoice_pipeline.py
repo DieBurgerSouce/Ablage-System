@@ -1,7 +1,7 @@
 """
 Invoice Pipeline API Endpoints.
 
-API fuer vollautomatischen Rechnungsworkflow (Feature #3):
+API für vollautomatischen Rechnungsworkflow (Feature #3):
 - Rechnungen automatisch verarbeiten (OCR -> Entity -> Approval -> Payment)
 - Pipeline-Status abfragen
 - Manuelle Genehmigung mit Pipeline-Fortsetzung
@@ -38,14 +38,14 @@ router = APIRouter(prefix="/invoice-pipeline", tags=["Rechnungs-Pipeline"])
 
 
 class PipelineResultResponse(BaseModel):
-    """Antwort-Schema fuer Pipeline-Ergebnis."""
+    """Antwort-Schema für Pipeline-Ergebnis."""
 
     document_id: UUID
     stage: str
     status: str
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence-Score (0-1)")
-    actions_taken: List[str] = Field(..., description="Ausgefuehrte Aktionen (deutsch)")
-    next_action: Optional[str] = Field(None, description="Naechster Schritt")
+    actions_taken: List[str] = Field(..., description="Ausgeführte Aktionen (deutsch)")
+    next_action: Optional[str] = Field(None, description="Nächster Schritt")
     processing_time_ms: int = Field(0, description="Verarbeitungszeit in Millisekunden")
     error_message: Optional[str] = None
     metadata: dict = Field(default_factory=dict)
@@ -69,11 +69,11 @@ class PipelineResultResponse(BaseModel):
 
 
 class PipelineStatsResponse(BaseModel):
-    """Antwort-Schema fuer Pipeline-Statistiken."""
+    """Antwort-Schema für Pipeline-Statistiken."""
 
     total_processed: int = Field(..., description="Gesamt verarbeitete Dokumente")
     successful: int = Field(..., description="Erfolgreich verarbeitet")
-    needs_review: int = Field(..., description="Benoetigen manuelle Pruefung")
+    needs_review: int = Field(..., description="Benötigen manuelle Prüfung")
     failed: int = Field(..., description="Fehlgeschlagen")
     escalated: int = Field(..., description="Eskaliert")
     avg_processing_time_ms: float = Field(..., description="Durchschn. Verarbeitungszeit (ms)")
@@ -113,7 +113,7 @@ class MessageResponse(BaseModel):
     "/{document_id}/process",
     response_model=PipelineResultResponse,
     summary="Rechnung verarbeiten",
-    description="Fuehrt vollautomatische Pipeline fuer Rechnung aus: OCR -> Entity -> Approval -> Payment"
+    description="Führt vollautomatische Pipeline für Rechnung aus: OCR -> Entity -> Approval -> Payment"
 )
 async def process_invoice(
     document_id: UUID,
@@ -122,18 +122,18 @@ async def process_invoice(
     db: AsyncSession = Depends(get_db),
 ) -> PipelineResultResponse:
     """
-    Fuehrt die vollstaendige automatische Verarbeitung durch:
+    Führt die vollständige automatische Verarbeitung durch:
 
-    1. OCR-Qualitaet pruefen
-    2. Entity automatisch verknuepfen
+    1. OCR-Qualitaet prüfen
+    2. Entity automatisch verknüpfen
     3. Dokument kategorisieren
-    4. Auto-Approval pruefen
+    4. Auto-Approval prüfen
     5. Bei Genehmigung: Als zahlungsbereit markieren
     6. Bei Ablehnung: Eskalation mit Details
 
-    **Rueckgabewerte:**
-    - `SUCCESS`: Dokument wurde vollstaendig verarbeitet und ist zahlungsbereit
-    - `NEEDS_REVIEW`: Manuelle Pruefung erforderlich (siehe `next_action`)
+    **Rückgabewerte:**
+    - `SUCCESS`: Dokument wurde vollständig verarbeitet und ist zahlungsbereit
+    - `NEEDS_REVIEW`: Manuelle Prüfung erforderlich (siehe `next_action`)
     - `ESCALATED`: Wurde an Admin eskaliert
     - `FAILED`: Verarbeitung fehlgeschlagen (siehe `error_message`)
     """
@@ -171,7 +171,7 @@ async def process_invoice(
     "/{document_id}/status",
     response_model=PipelineResultResponse,
     summary="Pipeline-Status abrufen",
-    description="Ruft den aktuellen Status der Pipeline fuer ein Dokument ab"
+    description="Ruft den aktuellen Status der Pipeline für ein Dokument ab"
 )
 async def get_pipeline_status(
     document_id: UUID,
@@ -182,14 +182,14 @@ async def get_pipeline_status(
     """
     Ruft den aktuellen Pipeline-Status ab.
 
-    Zeigt, welche Schritte bereits durchlaufen wurden und was als naechstes passieren muss.
+    Zeigt, welche Schritte bereits durchlaufen wurden und was als nächstes passieren muss.
 
     **Pipeline-Stufen:**
-    - `ocr_complete`: OCR wurde durchgefuehrt
-    - `entity_linked`: Entity wurde verknuepft
+    - `ocr_complete`: OCR wurde durchgeführt
+    - `entity_linked`: Entity wurde verknüpft
     - `categorized`: Dokument wurde kategorisiert
     - `approved`: Dokument wurde genehmigt
-    - `payment_ready`: Bereit fuer Zahlung
+    - `payment_ready`: Bereit für Zahlung
     - `escalated`: Wurde eskaliert
     """
     try:
@@ -228,9 +228,9 @@ async def approve_invoice(
     Nach manueller Genehmigung wird das Dokument automatisch als zahlungsbereit markiert.
 
     **Verwendung:**
-    - Fuer Dokumente mit Status `NEEDS_REVIEW`
-    - Fuer Dokumente, die nicht automatisch genehmigt werden konnten
-    - Ueberschreibt Auto-Approval-Regeln
+    - Für Dokumente mit Status `NEEDS_REVIEW`
+    - Für Dokumente, die nicht automatisch genehmigt werden konnten
+    - Überschreibt Auto-Approval-Regeln
 
     **Berechtigungen:**
     - Erfordert Genehmigungsrechte (siehe User-Rolle)
@@ -267,7 +267,7 @@ async def approve_invoice(
     "/stats",
     response_model=PipelineStatsResponse,
     summary="Pipeline-Statistiken",
-    description="Zeigt Dashboard-Statistiken fuer die Rechnungs-Pipeline"
+    description="Zeigt Dashboard-Statistiken für die Rechnungs-Pipeline"
 )
 async def get_pipeline_stats(
     days: int = 30,
@@ -276,7 +276,7 @@ async def get_pipeline_stats(
     db: AsyncSession = Depends(get_db),
 ) -> PipelineStatsResponse:
     """
-    Zeigt Pipeline-Statistiken fuer die letzten N Tage.
+    Zeigt Pipeline-Statistiken für die letzten N Tage.
 
     **Metriken:**
     - Gesamt verarbeitete Dokumente
@@ -284,10 +284,10 @@ async def get_pipeline_stats(
     - Auto-Approval-Rate
     - Entity-Linking-Rate
     - Durchschnittliche Confidence
-    - Dokumente, die manuelle Pruefung benoetigen
+    - Dokumente, die manuelle Prüfung benötigen
 
     **Parameter:**
-    - `days`: Anzahl Tage fuer Statistik (default: 30)
+    - `days`: Anzahl Tage für Statistik (default: 30)
     """
     try:
         service = get_invoice_pipeline_service(db=db, company_id=company_id)

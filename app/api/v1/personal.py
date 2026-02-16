@@ -67,7 +67,7 @@ class ManagerInfoSchema(BaseModel):
 # Employee Schemas
 
 class EmployeeSchema(BaseModel):
-    """Mitarbeiter-Uebersicht."""
+    """Mitarbeiter-Übersicht."""
     id: UUID
     employee_number: str
     salutation: Optional[str] = None
@@ -428,7 +428,7 @@ def employee_to_schema(emp: Employee, department: Optional[Department] = None,
 
 
 async def get_company_id_for_user(db: AsyncSession, user: User) -> Optional[UUID]:
-    """Ermittelt die Company-ID fuer den aktuellen User via UserCompany-Tabelle.
+    """Ermittelt die Company-ID für den aktuellen User via UserCompany-Tabelle.
 
     SECURITY FIX: Diese Funktion validiert jetzt den Zugriff über die UserCompany-Tabelle,
     um Multi-Tenant-Isolation sicherzustellen. Ein User kann nur auf Firmen zugreifen,
@@ -759,7 +759,7 @@ async def delete_employee(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Loescht einen Mitarbeiter (Soft-Delete durch Status-Aenderung)."""
+    """Löscht einen Mitarbeiter (Soft-Delete durch Status-Änderung)."""
     company_id = await get_company_id_for_user(db, current_user)
 
     query = select(Employee).where(Employee.id == employee_id)
@@ -1158,7 +1158,7 @@ async def delete_department(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Loescht eine Abteilung (Soft-Delete)."""
+    """Löscht eine Abteilung (Soft-Delete)."""
     company_id = await get_company_id_for_user(db, current_user)
 
     query = select(Department).where(
@@ -1184,7 +1184,7 @@ async def delete_department(
     if children_result.scalar() > 0:
         raise HTTPException(
             status_code=400,
-            detail="Abteilung hat Unterabteilungen und kann nicht geloescht werden"
+            detail="Abteilung hat Unterabteilungen und kann nicht gelöscht werden"
         )
 
     # Soft delete
@@ -1193,7 +1193,7 @@ async def delete_department(
 
     logger.info("department_deleted", department_id=str(department_id), user_id=str(current_user.id))
 
-    return {"message": "Abteilung erfolgreich geloescht"}
+    return {"message": "Abteilung erfolgreich gelöscht"}
 
 
 # =============================================================================
@@ -1550,7 +1550,7 @@ async def delete_position(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Loescht eine Position (Soft-Delete)."""
+    """Löscht eine Position (Soft-Delete)."""
     company_id = await get_company_id_for_user(db, current_user)
 
     query = select(Position).where(
@@ -1576,7 +1576,7 @@ async def delete_position(
     if emp_count_result.scalar() > 0:
         raise HTTPException(
             status_code=400,
-            detail="Position wird noch verwendet und kann nicht geloescht werden"
+            detail="Position wird noch verwendet und kann nicht gelöscht werden"
         )
 
     # Soft delete
@@ -1585,4 +1585,4 @@ async def delete_position(
 
     logger.info("position_deleted", position_id=str(position_id), user_id=str(current_user.id))
 
-    return {"message": "Position erfolgreich geloescht"}
+    return {"message": "Position erfolgreich gelöscht"}

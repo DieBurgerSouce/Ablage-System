@@ -2,11 +2,11 @@
 """
 Document Chain Intelligence Service.
 
-Proaktive Erkennung von Kettenluecken und Vorschlaegen:
+Proaktive Erkennung von Kettenlücken und Vorschlägen:
 - Scannt alle Dokumente auf potenzielle Kettenbildungen
 - Erkennt fehlende Glieder in bestehenden Ketten
-- Berechnet Vollstaendigkeitswerte
-- Identifiziert verwaiste Dokumente ohne Kettenverknuepfung
+- Berechnet Vollständigkeitswerte
+- Identifiziert verwaiste Dokumente ohne Kettenverknüpfung
 
 Feinpoliert und durchdacht - Intelligente Kettenanalyse.
 """
@@ -44,12 +44,12 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class ChainGap:
-    """Eine Luecke in einer bestehenden Auftragskette."""
+    """Eine Lücke in einer bestehenden Auftragskette."""
 
     chain_id: str
     chain_name: str
     expected_type: str  # z.B. "Lieferschein"
-    after_document: str  # Dokument-Name/ID nach dem die Luecke ist
+    after_document: str  # Dokument-Name/ID nach dem die Lücke ist
     days_overdue: int
     severity: str  # "info", "warning", "critical"
     suggested_matches: List[str] = field(default_factory=list)  # Dokument-IDs
@@ -57,7 +57,7 @@ class ChainGap:
 
 @dataclass
 class OrphanDocument:
-    """Ein Dokument ohne Kettenverknuepfung das zu einer Kette gehoeren koennte."""
+    """Ein Dokument ohne Kettenverknüpfung das zu einer Kette gehoeren könnte."""
 
     document_id: str
     filename: str
@@ -87,7 +87,7 @@ class ChainIntelligenceReport:
 # =============================================================================
 
 # Erwartete Reihenfolge der Dokumenttypen pro Chain-Typ
-# Key = aktueller Typ, Value = naechster erwarteter Typ
+# Key = aktueller Typ, Value = nächster erwarteter Typ
 EXPECTED_NEXT_TYPE: Dict[str, Dict[str, str]] = {
     ChainType.QUOTE_TO_INVOICE.value: {
         "quote": "order",
@@ -111,7 +111,7 @@ EXPECTED_NEXT_TYPE: Dict[str, Dict[str, str]] = {
     },
 }
 
-# Deutsche Labels fuer Dokumenttypen
+# Deutsche Labels für Dokumenttypen
 DOCUMENT_TYPE_LABELS: Dict[str, str] = {
     "quote": "Angebot",
     "order": "Auftrag",
@@ -119,7 +119,7 @@ DOCUMENT_TYPE_LABELS: Dict[str, str] = {
     "invoice": "Rechnung",
     "credit_note": "Gutschrift",
     "contract": "Vertrag",
-    "amendment": "Vertragsaenderung",
+    "amendment": "Vertragsänderung",
     "delivery": "Lieferung",
     "acceptance": "Abnahmeprotokoll",
     "reminder": "Zahlungserinnerung",
@@ -128,17 +128,17 @@ DOCUMENT_TYPE_LABELS: Dict[str, str] = {
     "dunning_l3": "3. Mahnung",
     "requisition": "Bedarfsmeldung",
     "purchase_order": "Bestellung",
-    "order_confirmation": "Auftragsbestaetigung",
+    "order_confirmation": "Auftragsbestätigung",
     "goods_receipt": "Wareneingang",
-    "quality_control": "Qualitaetskontrolle",
+    "quality_control": "Qualitätskontrolle",
     "payment": "Zahlungsbeleg",
 }
 
-# Schwellenwerte fuer Luecken-Severity
+# Schwellenwerte für Lücken-Severity
 GAP_SEVERITY_THRESHOLDS = {
-    "critical": 30,  # > 30 Tage ueberfaellig
-    "warning": 14,   # > 14 Tage ueberfaellig
-    "info": 0,       # Luecke erkannt, aber nicht ueberfaellig
+    "critical": 30,  # > 30 Tage überfällig
+    "warning": 14,   # > 14 Tage überfällig
+    "info": 0,       # Lücke erkannt, aber nicht überfällig
 }
 
 
@@ -154,7 +154,7 @@ class DocumentChainIntelligenceService:
     Analysiert bestehende Dokumentenketten auf:
     - Fehlende Glieder (Gaps)
     - Verwaiste Dokumente (Orphans)
-    - Vorschlaege fuer neue Verknuepfungen
+    - Vorschläge für neue Verknüpfungen
     """
 
     def __init__(self) -> None:
@@ -171,14 +171,14 @@ class DocumentChainIntelligenceService:
         db: AsyncSession,
     ) -> ChainIntelligenceReport:
         """
-        Scannt alle Ketten einer Firma auf Luecken und erstellt einen Bericht.
+        Scannt alle Ketten einer Firma auf Lücken und erstellt einen Bericht.
 
         Args:
             company_id: Firmen-ID
             db: Datenbank-Session
 
         Returns:
-            ChainIntelligenceReport mit Luecken, Orphans und Vorschlaegen
+            ChainIntelligenceReport mit Lücken, Orphans und Vorschlägen
         """
         now = utc_now()
         gaps: List[ChainGap] = []
@@ -236,7 +236,7 @@ class DocumentChainIntelligenceService:
                     latest_doc_name = doc.filename
                     latest_doc_type = doc.document_type
 
-            # Erwartete naechste Typen ermitteln
+            # Erwartete nächste Typen ermitteln
             next_types_map = EXPECTED_NEXT_TYPE.get(chain_type, {})
             chain_gaps = self._find_gaps_in_chain(
                 chain_id=chain_id,
@@ -256,7 +256,7 @@ class DocumentChainIntelligenceService:
         # Verwaiste Dokumente suchen
         orphans = await self.detect_orphan_documents(company_id, db)
 
-        # Vorschlaege fuer neue Ketten
+        # Vorschläge für neue Ketten
         suggested_new_chains = self._generate_new_chain_suggestions(orphans)
 
         # Durchschnittliche Completion
@@ -295,12 +295,12 @@ class DocumentChainIntelligenceService:
         latest_doc_name: str,
         now: datetime,
     ) -> List[ChainGap]:
-        """Findet Luecken in einer einzelnen Kette."""
+        """Findet Lücken in einer einzelnen Kette."""
         chain_gaps: List[ChainGap] = []
 
         for current_type, expected_next in next_types_map.items():
             if current_type in doc_types and expected_next not in doc_types:
-                # Luecke gefunden: aktueller Typ vorhanden, naechster fehlt
+                # Lücke gefunden: aktueller Typ vorhanden, nächster fehlt
                 days_since = 0
                 if latest_doc_date:
                     delta = now - latest_doc_date
@@ -336,14 +336,14 @@ class DocumentChainIntelligenceService:
         db: AsyncSession,
     ) -> List[OrphanDocument]:
         """
-        Erkennt Dokumente ohne Kettenverknuepfung die potentiell zu Ketten gehoeren.
+        Erkennt Dokumente ohne Kettenverknüpfung die potentiell zu Ketten gehoeren.
 
         Args:
             company_id: Firmen-ID
             db: Datenbank-Session
 
         Returns:
-            Liste verwaister Dokumente mit potentiellen Verknuepfungen
+            Liste verwaister Dokumente mit potentiellen Verknüpfungen
         """
         # Dokumente ohne Chain mit extrahiertem Text laden (max 200)
         orphan_stmt = (
@@ -463,7 +463,7 @@ class DocumentChainIntelligenceService:
         company_id: UUID,
     ) -> List[ChainGap]:
         """
-        Generiert spezifische Vorschlaege zur Vervollstaendigung einer Kette.
+        Generiert spezifische Vorschläge zur Vervollständigung einer Kette.
 
         Args:
             chain_id: Ketten-ID
@@ -471,7 +471,7 @@ class DocumentChainIntelligenceService:
             company_id: Firmen-ID
 
         Returns:
-            Liste von Luecken mit Vorschlaegen
+            Liste von Lücken mit Vorschlägen
         """
         now = utc_now()
 
@@ -500,7 +500,7 @@ class DocumentChainIntelligenceService:
                 latest_doc_date = doc.document_date
                 latest_doc_name = doc.filename
 
-        # Erwartete naechste Typen
+        # Erwartete nächste Typen
         next_types_map = EXPECTED_NEXT_TYPE.get(chain_type, {})
 
         gaps: List[ChainGap] = []
@@ -549,14 +549,14 @@ class DocumentChainIntelligenceService:
         entity_id: Optional[UUID],
         reference_date: Optional[datetime],
     ) -> List[str]:
-        """Sucht unchained Dokumente die eine Luecke fuellen koennten."""
+        """Sucht unchained Dokumente die eine Lücke fuellen könnten."""
         conditions = [
             Document.company_id == company_id,
             Document.chain_id.is_(None),
             Document.deleted_at.is_(None),
         ]
 
-        # Dokumenttyp filtern (exakt oder aehnlich)
+        # Dokumenttyp filtern (exakt oder ähnlich)
         type_alternatives = [expected_type]
         # Alternative Benennungen
         if expected_type == "delivery_note":
@@ -596,7 +596,7 @@ class DocumentChainIntelligenceService:
         self,
         orphans: List[OrphanDocument],
     ) -> List[Dict[str, str]]:
-        """Generiert Vorschlaege fuer neue Ketten aus verwaisten Dokumenten."""
+        """Generiert Vorschläge für neue Ketten aus verwaisten Dokumenten."""
         suggestions: List[Dict[str, str]] = []
 
         # Orphans nach Referenznummern gruppieren
@@ -609,7 +609,7 @@ class DocumentChainIntelligenceService:
                         ref_groups[group_key] = []
                     ref_groups[group_key].append(orphan)
 
-        # Gruppen mit 2+ Dokumenten als Kettenvorschlaege
+        # Gruppen mit 2+ Dokumenten als Kettenvorschläge
         for group_key, group_orphans in ref_groups.items():
             if len(group_orphans) >= 2:
                 ref_parts = group_key.split(":", 1)
@@ -640,7 +640,7 @@ _intelligence_service: Optional[DocumentChainIntelligenceService] = None
 
 
 def get_chain_intelligence_service() -> DocumentChainIntelligenceService:
-    """Factory-Funktion fuer Chain Intelligence Service."""
+    """Factory-Funktion für Chain Intelligence Service."""
     global _intelligence_service
     if _intelligence_service is None:
         _intelligence_service = DocumentChainIntelligenceService()

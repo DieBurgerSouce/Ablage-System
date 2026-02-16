@@ -5,14 +5,14 @@ Clause Recognition Service for Contract Management V2.
 Erkennt und extrahiert Vertragsklauseln aus OCR-Text:
 - Preisanpassungsklauseln (Indexierung, Prozentual)
 - Mindestlaufzeiten
-- Automatische Verlaengerungsklauseln
+- Automatische Verlängerungsklauseln
 - Vertragsstrafen (Penalty)
-- Kuendigungsbedingungen
+- Kündigungsbedingungen
 - Haftungsbegrenzungen
-- Gewaehrleistungsklauseln
+- Gewährleistungsklauseln
 
 SECURITY:
-- NIEMALS Vertragstext in Logs speichern (Geschaeftsgeheimnisse)
+- NIEMALS Vertragstext in Logs speichern (Geschäftsgeheimnisse)
 - Multi-Tenant via company_id Filter
 
 Feinpoliert und durchdacht - Enterprise Contract Management V2.
@@ -58,13 +58,13 @@ CLAUSE_PATTERNS: Dict[str, ClausePattern] = {
         clause_type=ClauseType.PRICE_ADJUSTMENT.value,
         patterns=[
             re.compile(
-                r"(?:preis(?:anpassung|erhoehung|aenderung)|indexierung)[^.]*"
+                r"(?:preis(?:anpassung|erhöhung|änderung)|indexierung)[^.]*"
                 r"(?:verbraucherpreisindex|vpi|index|prozent|%)[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
-                r"(?:die\s+preise|der\s+preis)[^.]*(?:angepasst|erhoeh|geaender)[^.]*"
-                r"(?:jaehrlich|jaehrlich|index|prozent)[^.]*\.?",
+                r"(?:die\s+preise|der\s+preis)[^.]*(?:angepasst|erhöh|geänder)[^.]*"
+                r"(?:jährlich|jährlich|index|prozent)[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
@@ -98,22 +98,22 @@ CLAUSE_PATTERNS: Dict[str, ClausePattern] = {
             ),
         ],
         extractor="extract_minimum_term",
-        risk_keywords=["unkuendbar", "bindend", "keine kuendigung"],
+        risk_keywords=["unkuendbar", "bindend", "keine kündigung"],
         confidence_base=0.8,
     ),
 
-    # Automatische Verlaengerung
+    # Automatische Verlängerung
     ClauseType.AUTO_RENEWAL.value: ClausePattern(
         clause_type=ClauseType.AUTO_RENEWAL.value,
         patterns=[
             re.compile(
-                r"(?:verlaengert\s+sich|verlaengerung)[^.]*"
+                r"(?:verlängert\s+sich|verlängerung)[^.]*"
                 r"(?:automatisch|stillschweigend)[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
                 r"(?:sofern|wenn)[^.]*(?:nicht|keine)[^.]*(?:kuendi)[^.]*"
-                r"verlaenger[^.]*\.?",
+                r"verlänger[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
@@ -135,8 +135,8 @@ CLAUSE_PATTERNS: Dict[str, ClausePattern] = {
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
-                r"(?:verzug|verspaetung)[^.]*"
-                r"(?:\d+)[^.]*(?:prozent|%|euro|eur)[^.]*(?:pro\s+tag|taeglich)?[^.]*\.?",
+                r"(?:verzug|verspätung)[^.]*"
+                r"(?:\d+)[^.]*(?:prozent|%|euro|eur)[^.]*(?:pro\s+tag|täglich)?[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
@@ -149,21 +149,21 @@ CLAUSE_PATTERNS: Dict[str, ClausePattern] = {
         confidence_base=0.75,
     ),
 
-    # Kuendigungsbedingungen
+    # Kündigungsbedingungen
     ClauseType.TERMINATION_CONDITION.value: ClausePattern(
         clause_type=ClauseType.TERMINATION_CONDITION.value,
         patterns=[
             re.compile(
-                r"(?:kuendigung|kuendigungsrecht)[^.]*"
+                r"(?:kündigung|kündigungsrecht)[^.]*"
                 r"(?:frist|termin|form|schriftlich)[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
-                r"(?:ausserordentliche\s+kuendigung|fristlose\s+kuendigung)[^.]*\.?",
+                r"(?:ausserordentliche\s+kündigung|fristlose\s+kündigung)[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
-                r"(?:der\s+vertrag)[^.]*(?:gekuendigt|beendet)[^.]*"
+                r"(?:der\s+vertrag)[^.]*(?:gekündigt|beendet)[^.]*"
                 r"(?:wenn|falls|sofern)[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
@@ -192,21 +192,21 @@ CLAUSE_PATTERNS: Dict[str, ClausePattern] = {
             ),
         ],
         extractor="extract_liability",
-        risk_keywords=["ausgeschlossen", "keinerlei", "vollstaendig"],
+        risk_keywords=["ausgeschlossen", "keinerlei", "vollständig"],
         confidence_base=0.75,
     ),
 
-    # Gewaehrleistung
+    # Gewährleistung
     ClauseType.WARRANTY.value: ClausePattern(
         clause_type=ClauseType.WARRANTY.value,
         patterns=[
             re.compile(
-                r"(?:gewaehrleistung|garantie|maengelanspruch)[^.]*"
+                r"(?:gewährleistung|garantie|maengelanspruch)[^.]*"
                 r"(?:\d+)[^.]*(?:monat|jahr)[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
-                r"(?:gewaehrleistungsfrist|garantiezeit)[^.]*\.?",
+                r"(?:gewährleistungsfrist|garantiezeit)[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
@@ -215,7 +215,7 @@ CLAUSE_PATTERNS: Dict[str, ClausePattern] = {
             ),
         ],
         extractor="extract_warranty",
-        risk_keywords=["ausgeschlossen", "verkuerzt", "eingeschraenkt"],
+        risk_keywords=["ausgeschlossen", "verkürzt", "eingeschraenkt"],
         confidence_base=0.8,
     ),
 
@@ -224,7 +224,7 @@ CLAUSE_PATTERNS: Dict[str, ClausePattern] = {
         clause_type=ClauseType.JURISDICTION.value,
         patterns=[
             re.compile(
-                r"(?:gerichtsstand|zustaendiges\s+gericht)[^.]*"
+                r"(?:gerichtsstand|zuständiges\s+gericht)[^.]*"
                 r"(?:ist|sind|liegt)[^.]*(?:[A-Z][a-z]+)[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
@@ -257,7 +257,7 @@ CLAUSE_PATTERNS: Dict[str, ClausePattern] = {
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
-                r"(?:faellig|zahlbar)[^.]*(?:sofort|innerhalb|nach)[^.]*\.?",
+                r"(?:fällig|zahlbar)[^.]*(?:sofort|innerhalb|nach)[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
         ],
@@ -297,7 +297,7 @@ CLAUSE_PATTERNS: Dict[str, ClausePattern] = {
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
-                r"(?:geschaeftsgeheimnisse?|betriebsgeheimnisse?)[^.]*\.?",
+                r"(?:geschäftsgeheimnisse?|betriebsgeheimnisse?)[^.]*\.?",
                 re.IGNORECASE | re.DOTALL
             ),
             re.compile(
@@ -412,7 +412,7 @@ class ClauseRecognitionService:
         )
 
         if not text or len(text) < 100:
-            result.warnings.append("Text zu kurz fuer Klauselextraktion")
+            result.warnings.append("Text zu kurz für Klauselextraktion")
             return result
 
         # Normalize text
@@ -793,7 +793,7 @@ class ClauseRecognitionService:
                 value["cap_percent"] = float(cap_match.group(1).replace(",", "."))
 
         # Check for interval
-        if "jaehrlich" in text or "jahr" in text:
+        if "jährlich" in text or "jahr" in text:
             value["interval"] = "annual"
         elif "quartalsweise" in text or "quartal" in text:
             value["interval"] = "quarterly"
@@ -834,14 +834,14 @@ class ClauseRecognitionService:
             value["period_months"] = int(years_match.group(1)) * 12
 
         # Extract notice period
-        if "kuendig" in text:
+        if "kündig" in text:
             days_match = NUMBER_PATTERNS["days"].search(text)
             if days_match:
                 value["notice_days"] = int(days_match.group(1))
             weeks_match = NUMBER_PATTERNS["weeks"].search(text)
             if weeks_match:
                 value["notice_days"] = int(weeks_match.group(1)) * 7
-            months_match2 = NUMBER_PATTERNS["months"].search(text[text.find("kuendig"):])
+            months_match2 = NUMBER_PATTERNS["months"].search(text[text.find("kündig"):])
             if months_match2:
                 value["notice_days"] = int(months_match2.group(1)) * 30
 
@@ -862,7 +862,7 @@ class ClauseRecognitionService:
             value["amount_eur"] = float(euro_match.group(1).replace(",", "."))
 
         # Check for type
-        if "verzug" in text or "verspaetung" in text:
+        if "verzug" in text or "verspätung" in text:
             value["type"] = "late_delivery"
         elif "mangel" in text or "fehler" in text:
             value["type"] = "defect"
@@ -924,7 +924,7 @@ class ClauseRecognitionService:
             value["type"] = "prepayment"
         elif "nachnahme" in text:
             value["type"] = "cod"
-        elif "ueberweisung" in text:
+        elif "überweisung" in text:
             value["type"] = "bank_transfer"
 
         return value
@@ -970,7 +970,7 @@ class ClauseRecognitionService:
         # Type-specific risk assessment
         if clause_type == ClauseType.PRICE_ADJUSTMENT.value:
             if "unbegrenzt" in text_lower or "ohne limit" in text_lower:
-                risk_factors.append("Unbegrenzte Preisanpassung moeglich")
+                risk_factors.append("Unbegrenzte Preisanpassung möglich")
             if "einseitig" in text_lower:
                 risk_factors.append("Einseitige Anpassung durch Vertragspartner")
 

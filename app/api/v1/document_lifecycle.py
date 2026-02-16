@@ -2,12 +2,12 @@
 """
 Document Lifecycle API Endpoints.
 
-Enterprise Feature: Dokument-Lebenszyklus mit SLA-Ueberwachung.
+Enterprise Feature: Dokument-Lebenszyklus mit SLA-Überwachung.
 
 Endpoints:
-- GET  /document-lifecycle/overview           - Kanban-Uebersicht (Stufen-Zaehler)
+- GET  /document-lifecycle/overview           - Kanban-Übersicht (Stufen-Zaehler)
 - GET  /document-lifecycle/{document_id}      - Lebenszyklus-Historie eines Dokuments
-- POST /document-lifecycle/{document_id}/transition - Stufen-Uebergang
+- POST /document-lifecycle/{document_id}/transition - Stufen-Übergang
 - GET  /document-lifecycle/sla-violations     - Aktuelle SLA-Verletzungen
 - GET  /document-lifecycle/metrics            - Stufen-Metriken (Durchschnittszeiten)
 """
@@ -46,7 +46,7 @@ router = APIRouter(
 
 
 class StageTransitionRequest(BaseModel):
-    """Anfrage fuer einen Stufen-Uebergang."""
+    """Anfrage für einen Stufen-Übergang."""
 
     to_stage: DocumentLifecycleStage = Field(
         ..., description="Ziel-Stufe"
@@ -57,14 +57,14 @@ class StageTransitionRequest(BaseModel):
 
 
 class LifecycleEventResponse(BaseModel):
-    """Antwort fuer ein Lebenszyklus-Event."""
+    """Antwort für ein Lebenszyklus-Event."""
 
     id: str = Field(..., description="Event-ID")
     document_id: str = Field(..., description="Dokument-ID")
     from_stage: Optional[str] = Field(None, description="Ausgangs-Stufe")
     to_stage: str = Field(..., description="Ziel-Stufe")
     transitioned_at: Optional[str] = Field(
-        None, description="Zeitpunkt des Uebergangs"
+        None, description="Zeitpunkt des Übergangs"
     )
     transitioned_by_id: Optional[str] = Field(
         None, description="Benutzer-ID"
@@ -93,7 +93,7 @@ class LifecycleEventResponse(BaseModel):
 
 
 class SLAViolationResponse(BaseModel):
-    """Antwort fuer eine SLA-Verletzung."""
+    """Antwort für eine SLA-Verletzung."""
 
     document_id: str = Field(..., description="Dokument-ID")
     document_filename: str = Field(..., description="Dateiname")
@@ -109,7 +109,7 @@ class SLAViolationResponse(BaseModel):
         ..., description="Tatsaechliche Dauer (Stunden)"
     )
     overdue_hours: float = Field(
-        ..., description="Ueberschreitung (Stunden)"
+        ..., description="Überschreitung (Stunden)"
     )
     escalation_to_role: Optional[str] = Field(
         None, description="Eskalations-Rolle"
@@ -117,7 +117,7 @@ class SLAViolationResponse(BaseModel):
 
 
 class StageMetricResponse(BaseModel):
-    """Antwort fuer eine Stufen-Metrik."""
+    """Antwort für eine Stufen-Metrik."""
 
     stage: str = Field(..., description="Stufe")
     avg_duration_seconds: float = Field(
@@ -130,7 +130,7 @@ class StageMetricResponse(BaseModel):
         ..., description="Maximale Dauer (Sekunden)"
     )
     total_transitions: int = Field(
-        ..., description="Anzahl Uebergaenge"
+        ..., description="Anzahl Übergaenge"
     )
     sla_compliance_rate: float = Field(
         ..., description="SLA-Einhaltungsrate (0-1)"
@@ -147,7 +147,7 @@ class StageMetricResponse(BaseModel):
 @router.get(
     "/overview",
     response_model=Dict[str, int],
-    summary="Kanban-Uebersicht",
+    summary="Kanban-Übersicht",
 )
 @limiter.limit("60/minute")
 async def get_lifecycle_overview(
@@ -156,9 +156,9 @@ async def get_lifecycle_overview(
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, int]:
     """
-    Gibt die Kanban-Uebersicht zurueck: Anzahl Dokumente pro Stufe.
+    Gibt die Kanban-Übersicht zurück: Anzahl Dokumente pro Stufe.
 
-    Zeigt fuer jede Lebenszyklus-Stufe die Anzahl der aktuell
+    Zeigt für jede Lebenszyklus-Stufe die Anzahl der aktuell
     in dieser Stufe befindlichen Dokumente.
 
     Returns:
@@ -171,7 +171,7 @@ async def get_lifecycle_overview(
         logger.error("lifecycle_overview_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Lebenszyklus-Uebersicht konnte nicht abgerufen werden",
+            detail="Lebenszyklus-Übersicht konnte nicht abgerufen werden",
         )
 
 
@@ -190,7 +190,7 @@ async def get_sla_violations(
     Listet alle aktuellen SLA-Verletzungen auf.
 
     Zeigt Dokumente, deren Verweildauer in einer Stufe die
-    konfigurierte maximale Dauer ueberschreitet.
+    konfigurierte maximale Dauer überschreitet.
 
     Returns:
         Liste von SLA-Verletzungen
@@ -284,9 +284,9 @@ async def get_document_lifecycle_history(
     current_user: User = Depends(get_current_active_user),
 ) -> List[LifecycleEventResponse]:
     """
-    Gibt die vollstaendige Lebenszyklus-Historie eines Dokuments zurueck.
+    Gibt die vollständige Lebenszyklus-Historie eines Dokuments zurück.
 
-    Zeigt alle Stufen-Uebergaenge chronologisch sortiert mit
+    Zeigt alle Stufen-Übergaenge chronologisch sortiert mit
     Dauer- und SLA-Informationen.
 
     Returns:
@@ -336,7 +336,7 @@ async def get_document_lifecycle_history(
 @router.post(
     "/{document_id}/transition",
     response_model=LifecycleEventResponse,
-    summary="Stufen-Uebergang",
+    summary="Stufen-Übergang",
     status_code=status.HTTP_201_CREATED,
 )
 @limiter.limit("30/minute")
@@ -348,10 +348,10 @@ async def transition_document_stage(
     current_user: User = Depends(get_current_active_user),
 ) -> LifecycleEventResponse:
     """
-    Fuehrt einen Stufen-Uebergang fuer ein Dokument durch.
+    Führt einen Stufen-Übergang für ein Dokument durch.
 
-    Validiert den Uebergang, berechnet die Dauer in der
-    vorherigen Stufe und prueft die SLA-Einhaltung.
+    Validiert den Übergang, berechnet die Dauer in der
+    vorherigen Stufe und prüft die SLA-Einhaltung.
 
     Returns:
         Das erstellte Lebenszyklus-Event
@@ -399,5 +399,5 @@ async def transition_document_stage(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Stufen-Uebergang konnte nicht durchgefuehrt werden",
+            detail="Stufen-Übergang konnte nicht durchgeführt werden",
         )

@@ -2,9 +2,9 @@
 """
 Payment Behavior Report API Endpoints.
 
-Endpoints fuer Kunden-Zahlungsverhaltens-Analyse:
+Endpoints für Kunden-Zahlungsverhaltens-Analyse:
 - Einzelanalyse eines Kunden
-- Gesamtreport ueber alle Kunden
+- Gesamtreport über alle Kunden
 - Kunden-Ranking nach Zahlungsverhalten
 """
 
@@ -34,7 +34,7 @@ router = APIRouter(prefix="/payment-behavior", tags=["Payment Behavior"])
 # =============================================================================
 
 class PaymentMetricsResponse(BaseModel):
-    """Zahlungsmetriken fuer einen Kunden."""
+    """Zahlungsmetriken für einen Kunden."""
     entity_id: str = Field(..., description="Kunden-ID")
     entity_name: str = Field(..., description="Kundenname")
 
@@ -42,13 +42,13 @@ class PaymentMetricsResponse(BaseModel):
     total_invoices: int = Field(..., description="Gesamtanzahl Rechnungen")
     paid_invoices: int = Field(..., description="Bezahlte Rechnungen")
     unpaid_invoices: int = Field(..., description="Unbezahlte Rechnungen")
-    overdue_invoices: int = Field(..., description="Ueberfaellige Rechnungen")
+    overdue_invoices: int = Field(..., description="Überfällige Rechnungen")
 
     # Volumen
     total_volume: float = Field(..., description="Gesamtvolumen EUR")
     paid_volume: float = Field(..., description="Bezahltes Volumen EUR")
     outstanding_volume: float = Field(..., description="Ausstehendes Volumen EUR")
-    overdue_volume: float = Field(..., description="Ueberfaelliges Volumen EUR")
+    overdue_volume: float = Field(..., description="Überfälliges Volumen EUR")
 
     # Zeitbasierte Metriken
     avg_payment_days: float = Field(..., description="Durchschnittliche Zahlungsdauer in Tagen")
@@ -59,7 +59,7 @@ class PaymentMetricsResponse(BaseModel):
     # Verhalten
     punctuality_rate: float = Field(..., ge=0, le=1, description="Puenktlichkeitsrate (0-1)")
     early_payment_rate: float = Field(..., ge=0, le=1, description="Rate vorzeitiger Zahlungen")
-    late_payment_rate: float = Field(..., ge=0, le=1, description="Rate verspaeteter Zahlungen")
+    late_payment_rate: float = Field(..., ge=0, le=1, description="Rate verspäteter Zahlungen")
     default_rate: float = Field(..., ge=0, le=1, description="Ausfallrate")
 
     # Skonto
@@ -119,7 +119,7 @@ class PaymentBehaviorSummaryResponse(BaseModel):
     """Zusammenfassung des Zahlungsverhaltens."""
     excellent_count: int = Field(..., description="Anzahl exzellenter Zahler")
     punctual_count: int = Field(..., description="Anzahl puenktlicher Zahler")
-    delayed_count: int = Field(..., description="Anzahl verspaeteter Zahler")
+    delayed_count: int = Field(..., description="Anzahl verspäteter Zahler")
     problematic_count: int = Field(..., description="Anzahl problematischer Zahler")
     defaulter_count: int = Field(..., description="Anzahl Ausfaeller")
 
@@ -128,7 +128,7 @@ class PaymentBehaviorSummaryResponse(BaseModel):
     avg_payment_score: float = Field(..., description="Durchschnittlicher Payment-Score")
 
     volume_at_risk: float = Field(..., description="Volumen bei Risiko-Kunden EUR")
-    overdue_total: float = Field(..., description="Gesamtes ueberfaelliges Volumen EUR")
+    overdue_total: float = Field(..., description="Gesamtes überfälliges Volumen EUR")
 
     improving_count: int = Field(..., description="Sich verbessernde Kunden")
     stable_count: int = Field(..., description="Stabile Kunden")
@@ -163,7 +163,7 @@ class CategoryDistributionResponse(BaseModel):
     """Verteilung der Kunden auf Kategorien."""
     excellent: int = Field(0, description="Exzellente Zahler")
     punctual: int = Field(0, description="Puenktliche Zahler")
-    delayed: int = Field(0, description="Verspaetete Zahler")
+    delayed: int = Field(0, description="Verspätete Zahler")
     problematic: int = Field(0, description="Problematische Zahler")
     defaulter: int = Field(0, description="Ausfaeller")
 
@@ -175,7 +175,7 @@ class CategoryDistributionResponse(BaseModel):
 CATEGORY_LABELS = {
     PaymentBehaviorCategory.EXCELLENT: "Exzellent",
     PaymentBehaviorCategory.PUNCTUAL: "Puenktlich",
-    PaymentBehaviorCategory.DELAYED: "Verzoegert",
+    PaymentBehaviorCategory.DELAYED: "Verzögert",
     PaymentBehaviorCategory.PROBLEMATIC: "Problematisch",
     PaymentBehaviorCategory.DEFAULTER: "Zahlungsausfall",
 }
@@ -271,7 +271,7 @@ async def get_customer_payment_behavior(
     "",
     response_model=PaymentBehaviorReportResponse,
     summary="Zahlungsverhaltens-Report",
-    description="Erstellt einen Report ueber das Zahlungsverhalten aller Kunden.",
+    description="Erstellt einen Report über das Zahlungsverhalten aller Kunden.",
 )
 async def get_payment_behavior_report(
     period_days: int = Query(365, ge=30, le=730, description="Auswertungszeitraum in Tagen"),
@@ -280,15 +280,15 @@ async def get_payment_behavior_report(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Erstellt Gesamt-Report ueber Kunden-Zahlungsverhalten.
+    Erstellt Gesamt-Report über Kunden-Zahlungsverhalten.
 
-    Der Report enthaelt:
-    - Kategorien-Verteilung (Exzellent/Puenktlich/Verzoegert/Problematisch/Ausfall)
+    Der Report enthält:
+    - Kategorien-Verteilung (Exzellent/Puenktlich/Verzögert/Problematisch/Ausfall)
     - Top-Zahler und schlechteste Zahler
     - Trend-Entwicklungen
     - Risiko-Kunden mit hohem ausstehenden Volumen
 
-    Wird fuer:
+    Wird für:
     - Kreditlimit-Entscheidungen
     - Mahnstrategie-Optimierung
     - Kundensegmentierung
@@ -361,7 +361,7 @@ async def get_customer_payment_ranking(
     - **avg_payment_days**: Durchschnittliche Zahlungsdauer
     - **punctuality_rate**: Puenktlichkeitsrate
     - **total_volume**: Gesamtvolumen
-    - **overdue_volume**: Ueberfaelliges Volumen
+    - **overdue_volume**: Überfälliges Volumen
     """
     service = get_payment_behavior_report_service()
 
@@ -369,7 +369,7 @@ async def get_customer_payment_ranking(
     if sort_by not in valid_sort_fields:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiges Sortierfeld. Erlaubt: {', '.join(valid_sort_fields)}"
+            detail=f"Ungültiges Sortierfeld. Erlaubt: {', '.join(valid_sort_fields)}"
         )
 
     ranking = await service.get_customer_ranking_by_payment(
@@ -396,14 +396,14 @@ async def get_category_distribution(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Schnelle Uebersicht ueber Kategorien-Verteilung.
+    Schnelle Übersicht über Kategorien-Verteilung.
 
     Kategorien:
-    - **Exzellent**: Zahlt vor Faelligkeit, hohe Skonto-Nutzung
+    - **Exzellent**: Zahlt vor Fälligkeit, hohe Skonto-Nutzung
     - **Puenktlich**: Zahlt innerhalb der Frist
-    - **Verzoegert**: 1-14 Tage verspaetet
-    - **Problematisch**: Haeufig stark verzoegert
-    - **Zahlungsausfall**: Regelmaessige Ausfaelle (>90 Tage)
+    - **Verzögert**: 1-14 Tage verspätet
+    - **Problematisch**: Häufig stark verzögert
+    - **Zahlungsausfall**: Regelmäßige Ausfaelle (>90 Tage)
     """
     service = get_payment_behavior_report_service()
 

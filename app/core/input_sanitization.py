@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Input Sanitization fuer sichere API-Verarbeitung.
+Input Sanitization für sichere API-Verarbeitung.
 
 Bietet zentrale Validierungs- und Sanitierungsfunktionen:
 - Search Query Sanitization (XSS, ReDoS-Schutz)
@@ -10,8 +10,8 @@ Bietet zentrale Validierungs- und Sanitierungsfunktionen:
 - SQL-Injection-Schutz (Ergaenzung zu SQLAlchemy)
 
 Konfiguration via Umgebungsvariablen:
-- INPUT_MAX_QUERY_LENGTH: Max. Suchquery-Laenge (default: 500)
-- INPUT_MAX_FILENAME_LENGTH: Max. Dateiname-Laenge (default: 255)
+- INPUT_MAX_QUERY_LENGTH: Max. Suchquery-Länge (default: 500)
+- INPUT_MAX_FILENAME_LENGTH: Max. Dateiname-Länge (default: 255)
 """
 
 import html
@@ -27,15 +27,15 @@ logger = structlog.get_logger(__name__)
 
 
 class SanitizationConfig:
-    """Konfiguration fuer Input Sanitization."""
+    """Konfiguration für Input Sanitization."""
 
-    # Maximale Laengen
+    # Maximale Längen
     MAX_QUERY_LENGTH = int(os.environ.get("INPUT_MAX_QUERY_LENGTH", "500"))
     MAX_FILENAME_LENGTH = int(os.environ.get("INPUT_MAX_FILENAME_LENGTH", "255"))
     MAX_TAG_LENGTH = int(os.environ.get("INPUT_MAX_TAG_LENGTH", "50"))
     MAX_PATH_LENGTH = int(os.environ.get("INPUT_MAX_PATH_LENGTH", "1024"))
 
-    # Erlaubte Zeichen fuer verschiedene Kontexte
+    # Erlaubte Zeichen für verschiedene Kontexte
     # Suchquery: Alphanumerisch + Umlaute + Leerzeichen + einige Sonderzeichen
     QUERY_ALLOWED_PATTERN = re.compile(r'^[\w\säöüÄÖÜß\-_.,:;!?@#&()\[\]"\'*/+]+$', re.UNICODE)
 
@@ -45,7 +45,7 @@ class SanitizationConfig:
     # Tag-Namen: Alphanumerisch + Umlaute + Bindestrich + Unterstrich
     TAG_ALLOWED_PATTERN = re.compile(r'^[\w\säöüÄÖÜß\-_]+$', re.UNICODE)
 
-    # Gefaehrliche Patterns fuer ReDoS (Backtracking-Angriffe)
+    # Gefaehrliche Patterns für ReDoS (Backtracking-Angriffe)
     REDOS_DANGEROUS_PATTERNS = [
         r'(a+)+',            # Nested quantifiers
         r'(a|aa)+',          # Overlapping alternatives
@@ -54,7 +54,7 @@ class SanitizationConfig:
     ]
 
     # Verbotene SQL-Fragmente (Defense in Depth)
-    # I.8 HIGH: Erweiterte Liste fuer umfassenden SQL-Injection-Schutz
+    # I.8 HIGH: Erweiterte Liste für umfassenden SQL-Injection-Schutz
     SQL_DANGEROUS_KEYWORDS = [
         # DML/DDL Keywords
         'UNION', 'SELECT', 'INSERT', 'UPDATE', 'DELETE', 'DROP',
@@ -85,12 +85,12 @@ class SanitizationConfig:
 
 
 class SanitizationError(Exception):
-    """Exception fuer Sanitization-Fehler."""
+    """Exception für Sanitization-Fehler."""
 
     def __init__(self, message: str, field: str = "", user_message_de: str = ""):
         self.message = message
         self.field = field
-        self.user_message_de = user_message_de or f"Ungueltiger Wert fuer {field}"
+        self.user_message_de = user_message_de or f"Ungültiger Wert für {field}"
         super().__init__(self.message)
 
 
@@ -105,7 +105,7 @@ def sanitize_search_query(
 
     Args:
         query: Originale Suchanfrage
-        max_length: Maximale Laenge (default: Config-Wert)
+        max_length: Maximale Länge (default: Config-Wert)
         allow_wildcards: Ob * und ? erlaubt sind
         strict_mode: Strengere Validierung (nur alphanumerisch + Umlaute)
 
@@ -121,7 +121,7 @@ def sanitize_search_query(
     if not query:
         return "", []
 
-    # 1. Unicode-Normalisierung (NFKC fuer maximale Sicherheit)
+    # 1. Unicode-Normalisierung (NFKC für maximale Sicherheit)
     # K.2 SECURITY FIX: NFKC normalisiert auch Kompatabilitaets-Zeichen
     # z.B. Fullwidth-Zeichen wie ＇ → ' und ；→ ;
     sanitized = unicodedata.normalize('NFKC', query)
@@ -157,7 +157,7 @@ def sanitize_search_query(
             warnings.append(warning)
             sanitized = re.sub(pattern, '', sanitized, flags=re.IGNORECASE)
 
-    # 6. ReDoS-gefaehrliche Patterns pruefen
+    # 6. ReDoS-gefaehrliche Patterns prüfen
     for dangerous in SanitizationConfig.REDOS_DANGEROUS_PATTERNS:
         if re.search(dangerous, sanitized, re.IGNORECASE):
             logger.warning(
@@ -175,9 +175,9 @@ def sanitize_search_query(
             warnings.append("Wildcards entfernt")
             sanitized = sanitized.replace('*', '').replace('?', '')
 
-    # 8. Laenge begrenzen
+    # 8. Länge begrenzen
     if len(sanitized) > max_len:
-        warnings.append(f"Auf {max_len} Zeichen gekuerzt")
+        warnings.append(f"Auf {max_len} Zeichen gekürzt")
         sanitized = sanitized[:max_len]
 
     # 9. Strict Mode: Nur erlaubte Zeichen
@@ -214,14 +214,14 @@ def sanitize_filename(
 
     Args:
         filename: Originaler Dateiname
-        max_length: Maximale Laenge (default: Config-Wert)
+        max_length: Maximale Länge (default: Config-Wert)
         preserve_extension: Ob Dateiendung erhalten bleiben soll
 
     Returns:
         Sanitierter Dateiname
 
     Raises:
-        SanitizationError: Bei ungueltigem Dateinamen
+        SanitizationError: Bei ungültigem Dateinamen
     """
     max_len = max_length or SanitizationConfig.MAX_FILENAME_LENGTH
 
@@ -232,7 +232,7 @@ def sanitize_filename(
             user_message_de="Bitte geben Sie einen Dateinamen an"
         )
 
-    # 1. Unicode-Normalisierung (NFKC fuer maximale Sicherheit)
+    # 1. Unicode-Normalisierung (NFKC für maximale Sicherheit)
     # K.2/K.3 SECURITY FIX: NFKC normalisiert Homoglyphen wie ．→ . und ／→ /
     sanitized = unicodedata.normalize('NFKC', filename)
 
@@ -291,7 +291,7 @@ def sanitize_filename(
         raise SanitizationError(
             "Dateiname nach Sanitization leer",
             field="filename",
-            user_message_de="Ungueltiger Dateiname - bitte verwenden Sie nur Buchstaben, Zahlen und Unterstriche"
+            user_message_de="Ungültiger Dateiname - bitte verwenden Sie nur Buchstaben, Zahlen und Unterstriche"
         )
 
     return sanitized
@@ -303,13 +303,13 @@ def sanitize_tag(tag: str, max_length: Optional[int] = None) -> str:
 
     Args:
         tag: Originaler Tag-Name
-        max_length: Maximale Laenge (default: Config-Wert)
+        max_length: Maximale Länge (default: Config-Wert)
 
     Returns:
         Sanitierter Tag-Name
 
     Raises:
-        SanitizationError: Bei ungueltigem Tag
+        SanitizationError: Bei ungültigem Tag
     """
     max_len = max_length or SanitizationConfig.MAX_TAG_LENGTH
 
@@ -335,17 +335,17 @@ def sanitize_tag(tag: str, max_length: Optional[int] = None) -> str:
     # 4. Doppelte Unterstriche/Bindestriche reduzieren
     sanitized = re.sub(r'[-_]{2,}', '-', sanitized)
 
-    # 5. Laenge begrenzen
+    # 5. Länge begrenzen
     sanitized = sanitized[:max_len]
 
-    # 6. Fuehrende/folgende Sonderzeichen entfernen
+    # 6. Führende/folgende Sonderzeichen entfernen
     sanitized = sanitized.strip('-_')
 
     if not sanitized:
         raise SanitizationError(
             "Tag nach Sanitization leer",
             field="tag",
-            user_message_de="Ungueltiger Tag - bitte verwenden Sie nur Buchstaben, Zahlen und Bindestriche"
+            user_message_de="Ungültiger Tag - bitte verwenden Sie nur Buchstaben, Zahlen und Bindestriche"
         )
 
     return sanitized
@@ -386,10 +386,10 @@ def sanitize_html_content(html_content: str, allowed_tags: Optional[List[str]] =
         if tag_match:
             tag_name = tag_match.group(1).lower()
             if tag_name in allowed_tags:
-                # Tag behalten, aber Attribute entfernen (ausser fuer mark)
+                # Tag behalten, aber Attribute entfernen (ausser für mark)
                 if tag_name == 'mark':
                     return tag_content
-                # Nur einfaches Tag zurueckgeben
+                # Nur einfaches Tag zurückgeben
                 if tag_content.startswith('</'):
                     return f'</{tag_name}>'
                 return f'<{tag_name}>'
@@ -402,12 +402,12 @@ def sanitize_html_content(html_content: str, allowed_tags: Optional[List[str]] =
 
 def check_sql_injection_patterns(value: str) -> Tuple[bool, Optional[str]]:
     """
-    Prueft auf potentielle SQL-Injection-Patterns.
+    Prüft auf potentielle SQL-Injection-Patterns.
 
-    Dies ist eine Defense-in-Depth-Massnahme zusaetzlich zu parametrisierten Queries.
+    Dies ist eine Defense-in-Depth-Massnahme zusätzlich zu parametrisierten Queries.
 
     Args:
-        value: Zu pruefender Wert
+        value: Zu prüfender Wert
 
     Returns:
         Tuple von (is_safe, detected_pattern)
@@ -437,28 +437,28 @@ def validate_uuid(value: str, field_name: str = "id") -> UUID:
 
     Args:
         value: UUID als String
-        field_name: Feldname fuer Fehlermeldung
+        field_name: Feldname für Fehlermeldung
 
     Returns:
         UUID-Objekt
 
     Raises:
-        SanitizationError: Bei ungueltigem UUID-Format
+        SanitizationError: Bei ungültigem UUID-Format
     """
     if not value:
         raise SanitizationError(
             f"{field_name} darf nicht leer sein",
             field=field_name,
-            user_message_de=f"Bitte geben Sie eine gueltige {field_name} an"
+            user_message_de=f"Bitte geben Sie eine gültige {field_name} an"
         )
 
     try:
         return UUID(value)
     except ValueError:
         raise SanitizationError(
-            f"Ungueltiges UUID-Format: {value[:50]}",
+            f"Ungültiges UUID-Format: {value[:50]}",
             field=field_name,
-            user_message_de=f"Ungueltige {field_name} - bitte verwenden Sie ein gueltiges UUID-Format"
+            user_message_de=f"Ungültige {field_name} - bitte verwenden Sie ein gültiges UUID-Format"
         )
 
 
@@ -474,10 +474,10 @@ def sanitize_pagination_params(
 
     Args:
         page: Seitennummer
-        per_page: Eintraege pro Seite
+        per_page: Einträge pro Seite
         max_page: Maximale Seitennummer
-        max_per_page: Maximale Eintraege pro Seite
-        default_per_page: Standard-Eintraege pro Seite
+        max_per_page: Maximale Einträge pro Seite
+        default_per_page: Standard-Einträge pro Seite
 
     Returns:
         Tuple von (sanitized_page, sanitized_per_page)
@@ -504,7 +504,7 @@ def create_safe_highlight(text: str, query: str, tag: str = "mark") -> str:
     Args:
         text: Zu highlightender Text
         query: Suchbegriff
-        tag: HTML-Tag fuer Highlighting (default: mark)
+        tag: HTML-Tag für Highlighting (default: mark)
 
     Returns:
         Text mit HTML-Highlighting
@@ -543,7 +543,7 @@ def create_safe_highlight(text: str, query: str, tag: str = "mark") -> str:
 
 def get_sanitization_stats() -> Dict[str, Any]:
     """
-    Gibt Statistiken ueber Sanitization-Konfiguration zurueck.
+    Gibt Statistiken über Sanitization-Konfiguration zurück.
 
     Returns:
         Dict mit Konfigurationswerten
@@ -572,23 +572,23 @@ class SQLInjectionError(SanitizationError):
         super().__init__(
             message=f"SQL-Injection-Pattern erkannt: {detected_pattern}",
             field="query",
-            user_message_de="Ungueltige Suchanfrage - verbotene Zeichen erkannt"
+            user_message_de="Ungültige Suchanfrage - verbotene Zeichen erkannt"
         )
 
 
 def enforce_sql_safe(value: str, field_name: str = "query") -> str:
     """
-    Prueft einen Wert auf SQL-Injection-Patterns und wirft Exception bei Erkennung.
+    Prüft einen Wert auf SQL-Injection-Patterns und wirft Exception bei Erkennung.
 
-    Dies ist eine Defense-in-Depth-Massnahme zusaetzlich zu SQLAlchemy's
+    Dies ist eine Defense-in-Depth-Massnahme zusätzlich zu SQLAlchemy's
     parametrisierten Queries.
 
     Args:
-        value: Zu pruefender Wert
-        field_name: Feldname fuer Logging und Fehlermeldung
+        value: Zu prüfender Wert
+        field_name: Feldname für Logging und Fehlermeldung
 
     Returns:
-        Der unveraenderte Wert, wenn sicher
+        Der unveränderte Wert, wenn sicher
 
     Raises:
         SQLInjectionError: Bei erkanntem SQL-Injection-Pattern
@@ -624,8 +624,8 @@ def sql_safe_decorator(fields: Optional[List[str]] = None):
             ...
 
     Args:
-        fields: Liste der zu pruefenden Parameter-Namen.
-                Falls None, werden alle String-Parameter geprueft.
+        fields: Liste der zu prüfenden Parameter-Namen.
+                Falls None, werden alle String-Parameter geprüft.
     """
     import functools
     import inspect
@@ -638,9 +638,9 @@ def sql_safe_decorator(fields: Optional[List[str]] = None):
             bound = sig.bind(*args, **kwargs)
             bound.apply_defaults()
 
-            # Parameter pruefen
+            # Parameter prüfen
             for param_name, param_value in bound.arguments.items():
-                # Nur String-Parameter pruefen
+                # Nur String-Parameter prüfen
                 if not isinstance(param_value, str):
                     continue
 
@@ -659,7 +659,7 @@ def sql_safe_decorator(fields: Optional[List[str]] = None):
             bound = sig.bind(*args, **kwargs)
             bound.apply_defaults()
 
-            # Parameter pruefen
+            # Parameter prüfen
             for param_name, param_value in bound.arguments.items():
                 if not isinstance(param_value, str):
                     continue
@@ -669,7 +669,7 @@ def sql_safe_decorator(fields: Optional[List[str]] = None):
 
             return func(*args, **kwargs)
 
-        # Async oder Sync Wrapper zurueckgeben
+        # Async oder Sync Wrapper zurückgeben
         if inspect.iscoroutinefunction(func):
             return async_wrapper
         return sync_wrapper
@@ -677,10 +677,10 @@ def sql_safe_decorator(fields: Optional[List[str]] = None):
     return decorator
 
 
-# FastAPI Dependency fuer SQL-Safe Query-Parameter
+# FastAPI Dependency für SQL-Safe Query-Parameter
 def create_sql_safe_query_dependency():
     """
-    Erstellt eine FastAPI Dependency zur Pruefung von Query-Parametern.
+    Erstellt eine FastAPI Dependency zur Prüfung von Query-Parametern.
 
     Verwendung in Endpoints:
         from app.core.input_sanitization import SQLSafeQuery
@@ -696,18 +696,18 @@ def create_sql_safe_query_dependency():
     from fastapi import Query, HTTPException, status
 
     class SQLSafeQuery:
-        """FastAPI Dependency fuer SQL-sichere Query-Parameter."""
+        """FastAPI Dependency für SQL-sichere Query-Parameter."""
 
         def __init__(self, param_names: Optional[List[str]] = None):
             """
             Args:
-                param_names: Namen der zu pruefenden Query-Parameter.
-                            Falls None, wird "q" und "query" geprueft.
+                param_names: Namen der zu prüfenden Query-Parameter.
+                            Falls None, wird "q" und "query" geprüft.
             """
             self.param_names = param_names or ["q", "query", "search", "filter"]
 
         async def __call__(self, **kwargs) -> None:
-            """Prueft alle konfigurierten Parameter."""
+            """Prüft alle konfigurierten Parameter."""
             for name in self.param_names:
                 value = kwargs.get(name)
                 if value and isinstance(value, str):
@@ -737,19 +737,19 @@ def validate_and_sanitize_search_input(
     strict_mode: bool = False
 ) -> str:
     """
-    Kombinierte Validierung und Sanitierung fuer Sucheingaben.
+    Kombinierte Validierung und Sanitierung für Sucheingaben.
 
-    Fuehrt alle relevanten Checks in einem Aufruf durch:
+    Führt alle relevanten Checks in einem Aufruf durch:
     1. SQL-Injection-Check (Defense in Depth)
     2. XSS-Schutz
     3. ReDoS-Schutz
-    4. Laengenbegrenzung
+    4. Längenbegrenzung
     5. Unicode-Normalisierung
 
     Args:
         query: Originale Suchanfrage
-        max_length: Maximale erlaubte Laenge
-        check_sql: SQL-Injection-Patterns pruefen
+        max_length: Maximale erlaubte Länge
+        check_sql: SQL-Injection-Patterns prüfen
         strict_mode: Nur alphanumerisch + Umlaute erlauben
 
     Returns:
@@ -766,7 +766,7 @@ def validate_and_sanitize_search_input(
     if check_sql:
         enforce_sql_safe(query, field_name="search_query")
 
-    # 2. Vollstaendige Sanitierung
+    # 2. Vollständige Sanitierung
     sanitized, warnings = sanitize_search_query(
         query=query,
         max_length=max_length,
@@ -790,16 +790,16 @@ def sanitize_text_field(
     """
     Sanitiert ein Text-Feld (Notes, Kommentare, etc.) gegen XSS.
 
-    Diese Funktion ist speziell fuer laengere Text-Felder wie:
+    Diese Funktion ist speziell für längere Text-Felder wie:
     - Validierungs-Notizen
     - Ablehnungsgruende
     - Kommentare
 
     Args:
         text: Originaler Text
-        max_length: Maximale Laenge (default: 2000)
+        max_length: Maximale Länge (default: 2000)
         allow_newlines: Ob Zeilenumbrueche erlaubt sind
-        field_name: Feldname fuer Logging
+        field_name: Feldname für Logging
 
     Returns:
         Sanitierter Text
@@ -851,7 +851,7 @@ def sanitize_text_field(
     else:
         sanitized = ' '.join(sanitized.split())
 
-    # 8. Laenge begrenzen
+    # 8. Länge begrenzen
     if len(sanitized) > max_length:
         sanitized = sanitized[:max_length]
         logger.info(
@@ -864,7 +864,7 @@ def sanitize_text_field(
     return sanitized.strip()
 
 
-# Prometheus Metriken fuer Security-Monitoring (optional)
+# Prometheus Metriken für Security-Monitoring (optional)
 try:
     from prometheus_client import Counter
 
@@ -880,5 +880,5 @@ try:
 
 except ImportError:
     def _increment_sql_injection_metric(pattern: str, field: str):
-        """Stub wenn Prometheus nicht verfuegbar."""
+        """Stub wenn Prometheus nicht verfügbar."""
         pass

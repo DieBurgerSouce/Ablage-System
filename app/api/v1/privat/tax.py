@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Steuer-Optimierung API Endpunkte fuer das Privat-Modul.
+Steuer-Optimierung API Endpunkte für das Privat-Modul.
 
-Stellt Endpunkte bereit fuer:
+Stellt Endpunkte bereit für:
 - Jahres-Steuerzusammenfassung
 - Dokument-Steueranalyse
-- Optimierungsvorschlaege
+- Optimierungsvorschläge
 - Steuer-Prognose
 - ELSTER Export
 - Was-waere-wenn Szenarien
@@ -56,7 +56,7 @@ space_service = PrivatSpaceService()
 
 
 class TaxDeductionItemSchema(BaseModel):
-    """Schema fuer einen einzelnen Steuerabzugs-Posten."""
+    """Schema für einen einzelnen Steuerabzugs-Posten."""
 
     category: str
     description: str
@@ -71,7 +71,7 @@ class TaxDeductionItemSchema(BaseModel):
 
 
 class TaxDeductionSummarySchema(BaseModel):
-    """Schema fuer Kategorie-Zusammenfassung."""
+    """Schema für Kategorie-Zusammenfassung."""
 
     category: str
     category_name: str
@@ -86,7 +86,7 @@ class TaxDeductionSummarySchema(BaseModel):
 
 
 class TaxDeadlineSchema(BaseModel):
-    """Schema fuer Steuerfristen."""
+    """Schema für Steuerfristen."""
 
     deadline_type: str
     title: str
@@ -99,7 +99,7 @@ class TaxDeadlineSchema(BaseModel):
 
 
 class TaxYearSummaryResponse(BaseModel):
-    """Response fuer Jahres-Zusammenfassung."""
+    """Response für Jahres-Zusammenfassung."""
 
     space_id: UUID
     tax_year: int
@@ -119,7 +119,7 @@ class TaxYearSummaryResponse(BaseModel):
 
 
 class TaxProjectionResponse(BaseModel):
-    """Response fuer Steuer-Prognose."""
+    """Response für Steuer-Prognose."""
 
     tax_year: int
 
@@ -163,7 +163,7 @@ class TaxProjectionResponse(BaseModel):
 
 
 class WhatIfScenarioRequest(BaseModel):
-    """Request fuer Was-waere-wenn Szenario."""
+    """Request für Was-waere-wenn Szenario."""
 
     scenario_name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
@@ -174,7 +174,7 @@ class WhatIfScenarioRequest(BaseModel):
 
 
 class WhatIfScenarioResponse(BaseModel):
-    """Response fuer Was-waere-wenn Szenario."""
+    """Response für Was-waere-wenn Szenario."""
 
     scenario_name: str
     description: str
@@ -187,7 +187,7 @@ class WhatIfScenarioResponse(BaseModel):
 
 
 class DocumentTaxAnalysisResponse(BaseModel):
-    """Response fuer Dokument-Steueranalyse."""
+    """Response für Dokument-Steueranalyse."""
 
     document_id: UUID
     document_name: str
@@ -206,7 +206,7 @@ class DocumentTaxAnalysisResponse(BaseModel):
 
 
 class TaxSuggestionResponse(BaseModel):
-    """Response fuer einen Optimierungsvorschlag."""
+    """Response für einen Optimierungsvorschlag."""
 
     title: str
     description: str
@@ -219,7 +219,7 @@ class TaxSuggestionResponse(BaseModel):
 
 
 class ElsterExportResponse(BaseModel):
-    """Response fuer ELSTER Export."""
+    """Response für ELSTER Export."""
 
     tax_year: int
     is_complete: bool
@@ -237,14 +237,14 @@ class ElsterExportResponse(BaseModel):
 
 
 class ElsterXmlExportRequest(BaseModel):
-    """Request fuer ELSTER XML Export."""
+    """Request für ELSTER XML Export."""
 
     taxpayer_name: str = Field(..., min_length=1, max_length=100)
     steuernummer: str = Field(..., pattern=r"^\d{2,3}/\d{3}/\d{5}$")
 
 
 class AfACalculationResponse(BaseModel):
-    """Response fuer AfA-Berechnung."""
+    """Response für AfA-Berechnung."""
 
     asset_name: str
     asset_type: str
@@ -263,7 +263,7 @@ class AfACalculationResponse(BaseModel):
 
 
 class AdvancePaymentResponse(BaseModel):
-    """Response fuer Vorauszahlungstermin."""
+    """Response für Vorauszahlungstermin."""
 
     quarter: int
     due_date: str
@@ -285,14 +285,14 @@ async def get_user_space_or_403(
     space_id: UUID,
     user: User,
 ) -> PrivatSpace:
-    """Prueft ob User Zugriff auf Space hat und gibt Space zurueck."""
+    """Prüft ob User Zugriff auf Space hat und gibt Space zurück."""
     # SECURITY: Atomarer TOCTOU-sicherer Check
     space = await space_service.get_with_access_check(
         db, space_id, user.id, "read"
     )
 
     if space is None:
-        # SECURITY: CWE-200 Prevention - keine Info ueber Existenz
+        # SECURITY: CWE-200 Prevention - keine Info über Existenz
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Space nicht gefunden",
@@ -302,7 +302,7 @@ async def get_user_space_or_403(
 
 
 def _decimal_to_str(value: Decimal) -> str:
-    """Konvertiert Decimal zu String fuer JSON-Serialisierung."""
+    """Konvertiert Decimal zu String für JSON-Serialisierung."""
     return str(value.quantize(Decimal("0.01")))
 
 
@@ -409,29 +409,29 @@ async def get_tax_year_summary(
     year: int,
     space_id: UUID = Query(..., description="Space-ID"),
     estimated_gross_income: Optional[Decimal] = Query(
-        None, description="Geschaetztes Bruttoeinkommen", ge=Decimal("0")
+        None, description="Geschätztes Bruttoeinkommen", ge=Decimal("0")
     ),
     is_married: bool = Query(False, description="Verheiratet (Splittingtarif)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> TaxYearSummaryResponse:
     """
-    Ruft die Jahres-Steuerzusammenfassung fuer ein Steuerjahr ab.
+    Ruft die Jahres-Steuerzusammenfassung für ein Steuerjahr ab.
 
     Analysiert alle steuerlich relevanten Dokumente und berechnet:
     - Abzuege nach Kategorie (Werbungskosten, Sonderausgaben, etc.)
-    - Geschaetzte Steuerersparnis
-    - Optimierungsvorschlaege
+    - Geschätzte Steuerersparnis
+    - Optimierungsvorschläge
     - Anstehende Fristen
 
     Args:
         year: Steuerjahr (z.B. 2024, 2025, 2026)
         space_id: ID des Privat-Space
-        estimated_gross_income: Optionales Bruttoeinkommen fuer Ersparnisberechnung
-        is_married: Verheiratet fuer Splittingtarif
+        estimated_gross_income: Optionales Bruttoeinkommen für Ersparnisberechnung
+        is_married: Verheiratet für Splittingtarif
 
     Returns:
-        TaxYearSummaryResponse mit vollstaendiger Analyse
+        TaxYearSummaryResponse mit vollständiger Analyse
     """
     await get_user_space_or_403(db, space_id, current_user)
 
@@ -550,7 +550,7 @@ async def get_document_tax_analysis(
 @router.get(
     "/suggestions",
     response_model=List[TaxSuggestionResponse],
-    summary="Personalisierte Optimierungsvorschlaege abrufen",
+    summary="Personalisierte Optimierungsvorschläge abrufen",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_tax_suggestions(
@@ -561,13 +561,13 @@ async def get_tax_suggestions(
     current_user: User = Depends(get_current_active_user),
 ) -> List[TaxSuggestionResponse]:
     """
-    Holt personalisierte Steuer-Optimierungsvorschlaege.
+    Holt personalisierte Steuer-Optimierungsvorschläge.
 
     Analysiert die vorhandenen Daten und generiert spezifische
-    Empfehlungen mit geschaetztem Sparpotenzial.
+    Empfehlungen mit geschätztem Sparpotenzial.
 
     Beispiele:
-    - "Sie koennten noch 1.500 EUR haushaltsnahe DL absetzen"
+    - "Sie könnten noch 1.500 EUR haushaltsnahe DL absetzen"
     - "Ihre Werbungskosten liegen unter der Pauschale"
     - "Handwerkerleistungen nicht ausgeschoepft"
 
@@ -608,7 +608,7 @@ async def get_tax_suggestions(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Abrufen der Vorschlaege",
+            detail="Fehler beim Abrufen der Vorschläge",
         )
 
 
@@ -633,10 +633,10 @@ async def get_tax_projection(
     current_user: User = Depends(get_current_active_user),
 ) -> TaxProjectionResponse:
     """
-    Berechnet eine vollstaendige Steuer-Prognose.
+    Berechnet eine vollständige Steuer-Prognose.
 
     Ermittelt:
-    - Geschaetzte Einkommensteuer
+    - Geschätzte Einkommensteuer
     - Solidaritaetszuschlag
     - Kirchensteuer
     - Erwartete Erstattung/Nachzahlung
@@ -648,12 +648,12 @@ async def get_tax_projection(
         space_id: ID des Privat-Space
         gross_income: Jahres-Bruttoeinkommen
         is_married: Verheiratet (Splittingtarif)
-        number_of_children: Anzahl Kinder fuer Kinderfreibetrag
-        federal_state: Bundesland fuer Kirchensteuer (z.B. "BY", "NW")
+        number_of_children: Anzahl Kinder für Kinderfreibetrag
+        federal_state: Bundesland für Kirchensteuer (z.B. "BY", "NW")
         already_paid: Bereits gezahlte Vorauszahlungen
 
     Returns:
-        TaxProjectionResponse mit vollstaendiger Prognose
+        TaxProjectionResponse mit vollständiger Prognose
     """
     await get_user_space_or_403(db, space_id, current_user)
 
@@ -708,9 +708,9 @@ async def calculate_what_if_scenario(
     """
     Berechnet ein Was-waere-wenn Szenario.
 
-    Simuliert Steuerauswirkungen von Aenderungen wie:
-    - Gehaltserhoehung
-    - Zusaetzliche Werbungskosten
+    Simuliert Steuerauswirkungen von Änderungen wie:
+    - Gehaltserhöhung
+    - Zusätzliche Werbungskosten
     - Heirat
     - Kinder
 
@@ -839,15 +839,15 @@ async def prepare_elster_export(
     current_user: User = Depends(get_current_active_user),
 ) -> ElsterExportResponse:
     """
-    Bereitet Daten fuer ELSTER-Export vor.
+    Bereitet Daten für ELSTER-Export vor.
 
-    Erzeugt strukturierte Daten fuer:
+    Erzeugt strukturierte Daten für:
     - Anlage N (Arbeitnehmereinkuenfte)
     - Anlage V (Vermietung und Verpachtung)
     - Anlage Vorsorge (Vorsorgeaufwendungen)
     - Haushaltsnahe Dienstleistungen
 
-    Validiert Vollstaendigkeit und zeigt fehlende Felder an.
+    Validiert Vollständigkeit und zeigt fehlende Felder an.
 
     Args:
         year: Steuerjahr
@@ -908,10 +908,10 @@ async def generate_elster_xml(
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, str]:
     """
-    Generiert ELSTER-kompatibles XML fuer die Steuererklaerung.
+    Generiert ELSTER-kompatibles XML für die Steuererklärung.
 
-    HINWEIS: Dies ist ein vereinfachtes Format fuer die Vorschau.
-    Fuer die echte ELSTER-Uebertragung ist die offizielle
+    HINWEIS: Dies ist ein vereinfachtes Format für die Vorschau.
+    Für die echte ELSTER-Übertragung ist die offizielle
     ERiC-Bibliothek des Finanzamts erforderlich.
 
     SECURITY: Die Steuernummer wird NICHT gespeichert!
@@ -980,10 +980,10 @@ async def get_afa_calculations(
     current_user: User = Depends(get_current_active_user),
 ) -> List[AfACalculationResponse]:
     """
-    Ruft AfA-Berechnungen (Abschreibungen) fuer vermietete Immobilien ab.
+    Ruft AfA-Berechnungen (Abschreibungen) für vermietete Immobilien ab.
 
-    Berechnet fuer jede Immobilie:
-    - Jaehrliche Abschreibung
+    Berechnet für jede Immobilie:
+    - Jährliche Abschreibung
     - Kumulierte Abschreibung
     - Restbuchwert
     - Verbleibende Nutzungsdauer
@@ -1050,12 +1050,12 @@ async def get_advance_payments(
     current_user: User = Depends(get_current_active_user),
 ) -> List[AdvancePaymentResponse]:
     """
-    Ruft die Vorauszahlungs-Termine fuer ein Steuerjahr ab.
+    Ruft die Vorauszahlungs-Termine für ein Steuerjahr ab.
 
     Zeigt:
-    - Faelligkeitstermine (10. Maerz, Juni, September, Dezember)
-    - Faellige Betraege
-    - Ueberfaellige Zahlungen
+    - Fälligkeitstermine (10. Maerz, Juni, September, Dezember)
+    - Fällige Betraege
+    - Überfällige Zahlungen
 
     Args:
         year: Steuerjahr

@@ -170,7 +170,7 @@ class GOTOCRAgent(OCRAgent):
                 device=device,
             )
 
-            # Rueckgabe als standardisiertes Dictionary
+            # Rückgabe als standardisiertes Dictionary
             return result.to_dict()
 
         except torch.cuda.OutOfMemoryError as e:
@@ -333,11 +333,11 @@ class GOTOCRAgent(OCRAgent):
             self.logger.error(
                 "got_ocr_model_lock_timeout",
                 timeout_seconds=self.LOCK_ACQUISITION_TIMEOUT,
-                message="Lock-Akquisition Timeout - moeglicherweise haengt ein anderer Ladevorgang"
+                message="Lock-Akquisition Timeout - möglicherweise hängt ein anderer Ladevorgang"
             )
             raise AgentResourceError(
                 f"Model-Lock Timeout nach {self.LOCK_ACQUISITION_TIMEOUT / 60:.0f} Minuten. "
-                "Ein anderer Ladevorgang haengt moeglicherweise."
+                "Ein anderer Ladevorgang hängt möglicherweise."
             )
 
         try:
@@ -373,7 +373,7 @@ class GOTOCRAgent(OCRAgent):
                 )
                 raise AgentResourceError(
                     f"Model-Loading Timeout nach {self.MODEL_LOADING_TIMEOUT / 60:.0f} Minuten. "
-                    "Ueberpruefen Sie die Netzwerkverbindung und den verfuegbaren Speicher."
+                    "Überprüfen Sie die Netzwerkverbindung und den verfügbaren Speicher."
                 )
             except Exception as e:
                 # Mark as permanently failed to prevent infinite retry loops
@@ -767,7 +767,7 @@ class GOTOCRAgent(OCRAgent):
             result.text = german_result["text"]
             result.has_umlauts = any(c in result.text for c in "äöüÄÖÜß")
 
-            # Extrahiere Qualitaetsmetriken
+            # Extrahiere Qualitätsmetriken
             stats = german_result.get("stats", {})
             result.german_validation_score = stats.get("quality_score", 0.0)
 

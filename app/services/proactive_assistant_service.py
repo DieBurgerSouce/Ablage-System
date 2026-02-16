@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Proaktiver Assistent Service fuer Ablage-System.
+Proaktiver Assistent Service für Ablage-System.
 
 Denkt mit und warnt vorausschauend. Drei Hinweis-Kategorien:
-1. Fristen & Deadlines (Skonto, Vertraege, Mahnungen)
-2. Anomalien & Warnungen (Preisabweichungen, Duplikate, Bankverbindungsaenderungen)
-3. Optimierungs-Vorschlaege (verpasste Skonti, Buendelungsrabatte, Dauerauftraege)
+1. Fristen & Deadlines (Skonto, Verträge, Mahnungen)
+2. Anomalien & Warnungen (Preisabweichungen, Duplikate, Bankverbindungsänderungen)
+3. Optimierungs-Vorschläge (verpasste Skonti, Buendelungsrabatte, Daueraufträge)
 
 Feinpoliert und durchdacht - Enterprise-grade Proactive Intelligence.
 """
@@ -52,7 +52,7 @@ PRICE_DEVIATION_THRESHOLD = 0.40  # 40%
 # Duplikat-Erkennung: Gleicher Betrag + Lieferant + X Tage Fenster
 DUPLICATE_WINDOW_DAYS = 5
 
-# Ueberfaellig: Ab X Tagen ueberfaellig wird Mahnung-Hint erzeugt
+# Überfällig: Ab X Tagen überfällig wird Mahnung-Hint erzeugt
 OVERDUE_THRESHOLD_DAYS = 7
 
 # Optimierung: Analyse der letzten X Monate
@@ -66,23 +66,23 @@ class ProactiveAssistantService:
     """Proaktiver Assistent - Denkt mit und warnt vorausschauend.
 
     Drei Hinweis-Kategorien:
-    1. Fristen & Deadlines (Skonto, Vertraege, Mahnungen)
-    2. Anomalien & Warnungen (Preisabweichungen, Duplikate, Bankverbindungsaenderungen)
-    3. Optimierungs-Vorschlaege (verpasste Skonti, Buendelungsrabatte, Dauerauftraege)
+    1. Fristen & Deadlines (Skonto, Verträge, Mahnungen)
+    2. Anomalien & Warnungen (Preisabweichungen, Duplikate, Bankverbindungsänderungen)
+    3. Optimierungs-Vorschläge (verpasste Skonti, Buendelungsrabatte, Daueraufträge)
     """
 
     # =========================================================================
-    # Deadline-Pruefungen
+    # Deadline-Prüfungen
     # =========================================================================
 
     async def check_deadline_hints(
         self, db: AsyncSession, company_id: UUID
     ) -> List[ProactiveHint]:
-        """Prueft faellige Fristen: Skonto-Deadlines, ueberfaellige Rechnungen."""
+        """Prüft fällige Fristen: Skonto-Deadlines, überfällige Rechnungen."""
         now = utc_now()
         hints: List[ProactiveHint] = []
 
-        # --- 1. Skonto-Deadlines innerhalb der naechsten 3 Tage ---
+        # --- 1. Skonto-Deadlines innerhalb der nächsten 3 Tage ---
         skonto_cutoff = now + timedelta(days=SKONTO_WARNING_DAYS)
         skonto_query = (
             select(InvoiceTracking, Document)
@@ -139,12 +139,12 @@ class ProactiveAssistantService:
                     "document_id": str(doc.id),
                 },
                 action_url=f"/documents/{doc.id}",
-                action_label="Rechnung oeffnen",
+                action_label="Rechnung öffnen",
                 expires_at=invoice.skonto_deadline,
             )
             hints.append(hint)
 
-        # --- 2. Ueberfaellige Rechnungen ---
+        # --- 2. Überfällige Rechnungen ---
         overdue_cutoff = now - timedelta(days=OVERDUE_THRESHOLD_DAYS)
         overdue_query = (
             select(InvoiceTracking, Document)
@@ -176,11 +176,11 @@ class ProactiveAssistantService:
                 category=HintCategory.DEADLINE.value,
                 priority=HintPriority.HIGH.value if days_overdue > 30 else HintPriority.MEDIUM.value,
                 status=HintStatus.NEW.value,
-                title=f"Rechnung seit {days_overdue} Tagen ueberfaellig",
+                title=f"Rechnung seit {days_overdue} Tagen überfällig",
                 message=(
                     f"Rechnung {invoice.invoice_number or 'ohne Nr.'} "
-                    f"ueber {invoice.amount or 0:.2f} EUR ist seit "
-                    f"{days_overdue} Tagen ueberfaellig (Faellig: "
+                    f"über {invoice.amount or 0:.2f} EUR ist seit "
+                    f"{days_overdue} Tagen überfällig (Fällig: "
                     f"{invoice.due_date.strftime('%d.%m.%Y')})."
                 ),
                 urgency_score=round(urgency, 2),
@@ -196,7 +196,7 @@ class ProactiveAssistantService:
                     "document_id": str(doc.id),
                 },
                 action_url=f"/documents/{doc.id}",
-                action_label="Rechnung pruefen",
+                action_label="Rechnung prüfen",
                 expires_at=None,
             )
             hints.append(hint)
@@ -283,7 +283,7 @@ class ProactiveAssistantService:
                         title=f"Preisabweichung {deviation_pct}% bei {entity.name}",
                         message=(
                             f"Rechnung {invoice.invoice_number or 'ohne Nr.'} "
-                            f"ueber {invoice.amount:.2f} EUR weicht um "
+                            f"über {invoice.amount:.2f} EUR weicht um "
                             f"{deviation_pct}% vom 12-Monats-Durchschnitt "
                             f"({avg_amount:.2f} EUR) ab."
                         ),
@@ -302,7 +302,7 @@ class ProactiveAssistantService:
                             "document_id": str(doc.id),
                         },
                         action_url=f"/documents/{doc.id}",
-                        action_label="Rechnung pruefen",
+                        action_label="Rechnung prüfen",
                     )
                     hints.append(hint)
 
@@ -351,7 +351,7 @@ class ProactiveAssistantService:
                     category=HintCategory.ANOMALY.value,
                     priority=HintPriority.HIGH.value,
                     status=HintStatus.NEW.value,
-                    title=f"Moegliche Duplikat-Rechnung ({cnt}x {amount:.2f} EUR)",
+                    title=f"Mögliche Duplikat-Rechnung ({cnt}x {amount:.2f} EUR)",
                     message=(
                         f"{cnt} Rechnungen mit identischem Betrag "
                         f"({amount:.2f} EUR) vom selben Lieferanten "
@@ -369,11 +369,11 @@ class ProactiveAssistantService:
                         "invoice_numbers": [n for n in (invoice_numbers or []) if n],
                     },
                     action_url=f"/entities/{entity_id}",
-                    action_label="Lieferant pruefen",
+                    action_label="Lieferant prüfen",
                 )
                 hints.append(hint)
         except Exception as e:
-            # array_agg nicht verfuegbar auf SQLite - Duplikat-Check ueberspringen
+            # array_agg nicht verfügbar auf SQLite - Duplikat-Check überspringen
             logger.debug(
                 "duplicate_check_skipped",
                 reason="array_agg_not_available",
@@ -389,13 +389,13 @@ class ProactiveAssistantService:
         return hints
 
     # =========================================================================
-    # Optimierungs-Vorschlaege
+    # Optimierungs-Vorschläge
     # =========================================================================
 
     async def check_optimization_hints(
         self, db: AsyncSession, company_id: UUID
     ) -> List[ProactiveHint]:
-        """Optimierungs-Vorschlaege: Verpasste Skonti, wiederkehrende Rechnungen."""
+        """Optimierungs-Vorschläge: Verpasste Skonti, wiederkehrende Rechnungen."""
         now = utc_now()
         hints: List[ProactiveHint] = []
         lookback = now - timedelta(days=OPTIMIZATION_LOOKBACK_MONTHS * 30)
@@ -441,11 +441,11 @@ class ProactiveAssistantService:
                 category=HintCategory.OPTIMIZATION.value,
                 priority=HintPriority.MEDIUM.value if total_savings < 500 else HintPriority.HIGH.value,
                 status=HintStatus.NEW.value,
-                title=f"{missed_count} Skonti verpasst - {total_savings:.2f} EUR Ersparnis moeglich",
+                title=f"{missed_count} Skonti verpasst - {total_savings:.2f} EUR Ersparnis möglich",
                 message=(
                     f"Im letzten Monat wurden {missed_count} Skonto-Fristen "
                     f"versaeumt. Potenzielle Ersparnis: {total_savings:.2f} EUR. "
-                    f"Pruefen Sie, ob Rechnungen frueher bezahlt werden koennen."
+                    f"Prüfen Sie, ob Rechnungen früher bezahlt werden können."
                 ),
                 urgency_score=urgency,
                 value_score=round(value, 2),
@@ -505,7 +505,7 @@ class ProactiveAssistantService:
                     f"{inv_count} Rechnungen von {entity_name} in den "
                     f"letzten {OPTIMIZATION_LOOKBACK_MONTHS} Monaten "
                     f"(Durchschnitt: {avg_amount:.2f} EUR). "
-                    f"Ein Dauerauftrag koennte den Aufwand reduzieren."
+                    f"Ein Dauerauftrag könnte den Aufwand reduzieren."
                 ),
                 urgency_score=urgency,
                 value_score=round(value, 2),
@@ -539,10 +539,10 @@ class ProactiveAssistantService:
     async def generate_daily_hints(
         self, db: AsyncSession, company_id: UUID
     ) -> List[ProactiveHint]:
-        """Taeglich: Alle drei Kategorien pruefen und Hints erzeugen."""
+        """Täglich: Alle drei Kategorien prüfen und Hints erzeugen."""
         all_hints: List[ProactiveHint] = []
 
-        # Alle drei Kategorien pruefen
+        # Alle drei Kategorien prüfen
         try:
             deadline_hints = await self.check_deadline_hints(db, company_id)
             all_hints.extend(deadline_hints)
@@ -591,11 +591,11 @@ class ProactiveAssistantService:
     async def get_dashboard_summary(
         self, db: AsyncSession, company_id: UUID, user_id: UUID
     ) -> Dict[str, object]:
-        """Dashboard-Widget Daten: Tagesuebersicht fuer Startseite."""
+        """Dashboard-Widget Daten: Tagesübersicht für Startseite."""
         now = utc_now()
         active_statuses = [HintStatus.NEW.value, HintStatus.SEEN.value, HintStatus.ACKNOWLEDGED.value]
 
-        # Zaehler pro Kategorie
+        # Zähler pro Kategorie
         category_counts_query = (
             select(ProactiveHint.category, func.count(ProactiveHint.id))
             .where(
@@ -729,7 +729,7 @@ class ProactiveAssistantService:
         user_id: UUID,
         new_status: HintStatus,
     ) -> Optional[ProactiveHint]:
-        """Hint-Status aktualisieren (gesehen, bestaetigt, abgelehnt, bearbeitet)."""
+        """Hint-Status aktualisieren (gesehen, bestätigt, abgelehnt, bearbeitet)."""
         now = utc_now()
 
         stmt = select(ProactiveHint).where(ProactiveHint.id == hint_id)
@@ -780,7 +780,7 @@ class ProactiveAssistantService:
 
         source_conditions = []
         if document_id:
-            # Finde Invoices fuer dieses Dokument
+            # Finde Invoices für dieses Dokument
             inv_query = select(InvoiceTracking.id).where(
                 InvoiceTracking.document_id == document_id
             )
@@ -815,7 +815,7 @@ class ProactiveAssistantService:
         period_start: datetime,
         period_end: datetime,
     ) -> HintStatistics:
-        """Statistiken berechnen fuer Reporting."""
+        """Statistiken berechnen für Reporting."""
         # Gesamtzahl Hints im Zeitraum
         total_query = (
             select(func.count(ProactiveHint.id))
@@ -882,7 +882,7 @@ class ProactiveAssistantService:
         avg_seconds = result.scalar()
         avg_response_hours = (avg_seconds / 3600.0) if avg_seconds else 0.0
 
-        # Geschaetzte Ersparnisse (Summe der Skonto-Hints die bearbeitet wurden)
+        # Geschätzte Ersparnisse (Summe der Skonto-Hints die bearbeitet wurden)
         savings_query = (
             select(func.sum(ProactiveHint.value_score))
             .where(
@@ -895,7 +895,7 @@ class ProactiveAssistantService:
                 )
             )
         )
-        # Einfache Schaetzung basierend auf Value-Score
+        # Einfache Schätzung basierend auf Value-Score
         result = await db.execute(savings_query)
         est_savings = (result.scalar() or 0.0) * 500.0  # Grobe Hochrechnung
 
@@ -1025,5 +1025,5 @@ class ProactiveAssistantService:
 
 
 def get_proactive_assistant_service() -> ProactiveAssistantService:
-    """Factory function fuer ProactiveAssistantService."""
+    """Factory function für ProactiveAssistantService."""
     return ProactiveAssistantService()

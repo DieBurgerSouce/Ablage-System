@@ -11,7 +11,7 @@ Features:
 - What-If Szenarien (erweitert)
 - Saisonalitaets-Erkennung (NEU: Januar 2026)
 - Multi-Company Konsolidierung (NEU: Januar 2026)
-- Fruehwarnsystem (NEU: Januar 2026)
+- Frühwarnsystem (NEU: Januar 2026)
 
 Created: 2026-01-19
 Updated: 2026-01-21 - Phase 5.2 Enhancement
@@ -51,7 +51,7 @@ class SeasonalityPeriod(str, Enum):
     WEEKLY = "weekly"      # Wochentags-Muster
     MONTHLY = "monthly"    # Monatsmuster
     QUARTERLY = "quarterly"  # Quartalsmuster
-    YEARLY = "yearly"      # Jaehrliches Muster
+    YEARLY = "yearly"      # Jährliches Muster
 
 
 class AlertSeverity(str, Enum):
@@ -87,7 +87,7 @@ class LiquidityAlert:
 
 @dataclass
 class ConsolidatedForecast:
-    """Konsolidierte Prognose fuer Holding."""
+    """Konsolidierte Prognose für Holding."""
 
     total_current_balance: float
     total_min_balance: float
@@ -102,7 +102,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PredictiveCashFlowService:
-    """Service fuer ML-basierte Cashflow-Vorhersagen."""
+    """Service für ML-basierte Cashflow-Vorhersagen."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -111,18 +111,18 @@ class PredictiveCashFlowService:
         self,
         invoice_id: UUID,
     ) -> Dict[str, Any]:
-        """Vorhersage des Zahlungseingangs fuer eine Rechnung.
+        """Vorhersage des Zahlungseingangs für eine Rechnung.
 
         Berechnet basierend auf:
         - Historisches Zahlungsverhalten des Kunden
-        - Rechnungsbetrag (groessere Betraege = laengere Zahlungsziele)
+        - Rechnungsbetrag (größere Betraege = längere Zahlungsziele)
         - Wochentag der Rechnungsstellung
         - Saisonale Faktoren
 
         Returns:
             predicted_date: Vorhergesagtes Zahlungsdatum
             confidence: Konfidenz der Vorhersage (0-1)
-            delay_probability: Wahrscheinlichkeit einer Verspaetung
+            delay_probability: Wahrscheinlichkeit einer Verspätung
             factors: Einflussfaktoren
         """
         # Hole Rechnung
@@ -167,17 +167,17 @@ class PredictiveCashFlowService:
         # Konfidenz basierend auf Datenmenge
         confidence = min(0.9, 0.3 + (history["count"] * 0.05))
 
-        # Verspaetungs-Wahrscheinlichkeit
+        # Verspätungs-Wahrscheinlichkeit
         if invoice.due_date:
             days_until_due = (invoice.due_date - datetime.now(timezone.utc)).days
             if days_until_due < 0:
-                delay_probability = 0.95  # Bereits ueberfaellig
+                delay_probability = 0.95  # Bereits überfällig
             elif predicted_date > invoice.due_date:
                 delay_probability = 0.7
             else:
                 delay_probability = max(0.1, 1 - (days_until_due / 60))
         else:
-            delay_probability = 0.3  # Default ohne Faelligkeitsdatum
+            delay_probability = 0.3  # Default ohne Fälligkeitsdatum
 
         return {
             "invoice_id": str(invoice_id),
@@ -199,7 +199,7 @@ class PredictiveCashFlowService:
         company_id: UUID,
         days: int = 30,
     ) -> Dict[str, Any]:
-        """Liquiditaetsprognose fuer die naechsten X Tage.
+        """Liquiditaetsprognose für die nächsten X Tage.
 
         Args:
             company_id: Firmen-ID
@@ -295,9 +295,9 @@ class PredictiveCashFlowService:
         self,
         company_id: UUID,
     ) -> List[Dict[str, Any]]:
-        """Empfehlungen fuer optimale Zahlungszeitpunkte.
+        """Empfehlungen für optimale Zahlungszeitpunkte.
 
-        Beruecksichtigt:
+        Berücksichtigt:
         - Skonto-Fristen
         - Liquiditaetssituation
         - Lieferanten-Priorisierung
@@ -321,7 +321,7 @@ class PredictiveCashFlowService:
         recommendations = []
 
         for inv in invoices:
-            # Pruefen ob Skonto moeglich
+            # Prüfen ob Skonto möglich
             skonto_savings = 0.0
             if inv.skonto_percentage and inv.skonto_deadline:
                 if inv.skonto_deadline > now:
@@ -348,10 +348,10 @@ class PredictiveCashFlowService:
                 reason = f"Skonto nutzen: {skonto_savings:,.2f} EUR sparen"
             elif urgency == "overdue":
                 recommendation = "pay_immediately"
-                reason = "Ueberfaellig - sofort zahlen"
+                reason = "Überfällig - sofort zahlen"
             elif urgency == "critical":
                 recommendation = "pay_soon"
-                reason = "Faellig in weniger als 3 Tagen"
+                reason = "Fällig in weniger als 3 Tagen"
 
             recommendations.append({
                 "invoice_id": str(inv.id),
@@ -377,7 +377,7 @@ class PredictiveCashFlowService:
         """What-If Szenario-Analyse.
 
         Scenario Types:
-        - delayed_payments: Was wenn X% der Zahlungen sich verzoegern?
+        - delayed_payments: Was wenn X% der Zahlungen sich verzögern?
         - large_expense: Was wenn eine grosse Ausgabe ansteht?
         - revenue_drop: Was wenn Umsatz um X% sinkt?
         """
@@ -492,7 +492,7 @@ class PredictiveCashFlowService:
         return {"avg_days": 30, "stddev": 10, "count": 0}
 
     def _calculate_amount_factor(self, amount: float) -> float:
-        """Betragsabhaengiger Faktor (groessere Betraege = laengere Zahlung)."""
+        """Betragsabhängiger Faktor (größere Betraege = längere Zahlung)."""
         if amount < 500:
             return 0.9
         elif amount < 2000:
@@ -505,7 +505,7 @@ class PredictiveCashFlowService:
             return 1.3
 
     def _calculate_weekday_factor(self, date: Optional[datetime]) -> float:
-        """Wochentags-Faktor (Rechnungen am Freitag = laengere Zahlung)."""
+        """Wochentags-Faktor (Rechnungen am Freitag = längere Zahlung)."""
         if not date:
             return 1.0
         weekday = date.weekday()
@@ -515,7 +515,7 @@ class PredictiveCashFlowService:
         return 1.0
 
     def _calculate_seasonal_factor(self, date: datetime) -> float:
-        """Saisonaler Faktor (Jahresende/Urlaubszeit = laengere Zahlung)."""
+        """Saisonaler Faktor (Jahresende/Urlaubszeit = längere Zahlung)."""
         month = date.month
         # Dezember, August = Urlaubszeit
         if month in [8, 12]:
@@ -546,7 +546,7 @@ class PredictiveCashFlowService:
 
         inflows = []
         for inv in invoices:
-            # Vorhersage basierend auf Faelligkeitsdatum oder Durchschnitt
+            # Vorhersage basierend auf Fälligkeitsdatum oder Durchschnitt
             if inv.due_date:
                 expected = inv.due_date
             else:
@@ -584,7 +584,7 @@ class PredictiveCashFlowService:
 
         outflows = []
         for inv in invoices:
-            # Zahlungszeitpunkt: Skonto-Frist oder Faelligkeitsdatum
+            # Zahlungszeitpunkt: Skonto-Frist oder Fälligkeitsdatum
             if inv.skonto_deadline and inv.skonto_deadline > now:
                 expected = inv.skonto_deadline  # Skonto nutzen
             elif inv.due_date:
@@ -619,7 +619,7 @@ class PredictiveCashFlowService:
         Analysiert:
         - Wochentags-Muster (z.B. Freitags mehr Zahlungseingaenge)
         - Monatsmuster (z.B. Quartalszahlungen)
-        - Jaehrliche Muster (z.B. Weihnachtsgeschaeft)
+        - Jährliche Muster (z.B. Weihnachtsgeschäft)
 
         Returns:
             Liste erkannter Saisonalitaets-Muster mit Konfidenz
@@ -908,13 +908,13 @@ class PredictiveCashFlowService:
         warning_threshold: float = 5000.0,
         critical_threshold: float = 0.0,
     ) -> List[Dict[str, Any]]:
-        """Generiert Fruehwarnungen fuer Liquiditaetsprobleme.
+        """Generiert Frühwarnungen für Liquiditaetsprobleme.
 
         Args:
             company_id: Firmen-ID
             forecast_days: Vorausschau in Tagen
-            warning_threshold: Schwelle fuer Warnung (EUR)
-            critical_threshold: Schwelle fuer kritisch (EUR)
+            warning_threshold: Schwelle für Warnung (EUR)
+            critical_threshold: Schwelle für kritisch (EUR)
 
         Returns:
             Liste von Warnungen mit Empfehlungen
@@ -1019,7 +1019,7 @@ class PredictiveCashFlowService:
         company_ids: List[UUID],
         days: int = 30,
     ) -> Dict[str, Any]:
-        """Konsolidierte Cashflow-Prognose fuer mehrere Unternehmen (Holding).
+        """Konsolidierte Cashflow-Prognose für mehrere Unternehmen (Holding).
 
         Args:
             company_ids: Liste der Firmen-IDs
@@ -1120,10 +1120,10 @@ class PredictiveCashFlowService:
         Neue Szenarien:
         - customer_default: Was wenn ein Grosskunde ausfaellt?
         - interest_rate_change: Was wenn Zinsen steigen?
-        - seasonal_adjustment: Was wenn Saisonalitaet sich aendert?
+        - seasonal_adjustment: Was wenn Saisonalitaet sich ändert?
         - revenue_growth: Was wenn Umsatz um X% waechst?
         """
-        # Basis-Methode fuer einfache Szenarien
+        # Basis-Methode für einfache Szenarien
         if scenario_type in ("delayed_payments", "large_expense"):
             return await self.run_scenario(company_id, scenario_type, parameters)
 
@@ -1172,7 +1172,7 @@ class PredictiveCashFlowService:
                     for f in base_forecast["forecast"]
                 ),
                 "impact": "severe" if affected_amount > 50000 else "moderate",
-                "recommendation": "Zahlungsausfall-Versicherung pruefen" if affected_amount > 50000 else "Diversifikation verbessern",
+                "recommendation": "Zahlungsausfall-Versicherung prüfen" if affected_amount > 50000 else "Diversifikation verbessern",
             }
 
         elif scenario_type == "revenue_growth":
@@ -1209,5 +1209,5 @@ class PredictiveCashFlowService:
 
 
 def get_predictive_cashflow_service(db: AsyncSession) -> PredictiveCashFlowService:
-    """Factory-Funktion fuer PredictiveCashFlowService."""
+    """Factory-Funktion für PredictiveCashFlowService."""
     return PredictiveCashFlowService(db)

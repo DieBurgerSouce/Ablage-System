@@ -570,7 +570,7 @@ class GermanCorrectionAgent(PostprocessingAgent):
     # Common German words that should contain umlauts
     # Used for context-aware correction
     UMLAUT_WORDS: Dict[str, str] = {
-        # ä words
+        # ä words (keys = ASCII OCR output, values = correct German)
         "aenderung": "Änderung",
         "aenderungen": "Änderungen",
         "aerger": "Ärger",
@@ -1408,33 +1408,52 @@ class GermanCorrectionAgent(PostprocessingAgent):
 
         domain_words = DOMAIN_CORRECTIONS[domain]
 
+        # ASCII↔UTF-8 mapping for umlaut variants
+        umlaut_map = [("ae", "\u00e4"), ("oe", "\u00f6"), ("ue", "\u00fc")]
+
         for wrong, correct in domain_words.items():
-            # Case-insensitive search
-            pattern = r'\b' + re.escape(wrong) + r'\b'
-            matches = list(re.finditer(pattern, result_text, re.IGNORECASE))
+            # Try both ASCII and UTF-8 forms of the key so that
+            # partial conversions by earlier pipeline steps (Step 5
+            # context-aware corrections) are still matched.
+            variants = [wrong]
+            alt = wrong
+            for ascii_form, utf8_form in umlaut_map:
+                alt = alt.replace(ascii_form, utf8_form)
+            if alt != wrong:
+                variants.append(alt)
 
-            for match in reversed(matches):
-                original = match.group()
+            for variant in variants:
+                pattern = r'\b' + re.escape(variant) + r'\b'
+                matches = list(re.finditer(pattern, result_text, re.IGNORECASE))
 
-                # Preserve case pattern
-                if original.isupper():
-                    replacement = correct.upper()
-                elif original[0].isupper():
-                    replacement = correct
-                else:
-                    replacement = correct.lower()
+                if not matches:
+                    continue
 
-                result_text = (
-                    result_text[:match.start()] + replacement + result_text[match.end():]
-                )
+                for match in reversed(matches):
+                    original = match.group()
 
-                corrections.append({
-                    "type": "domain_correction",
-                    "domain": domain,
-                    "original": original,
-                    "corrected": replacement,
-                    "confidence": 0.92,
-                })
+                    # Preserve case pattern
+                    if original.isupper():
+                        replacement = correct.upper()
+                    elif original[0].isupper():
+                        replacement = correct
+                    else:
+                        replacement = correct.lower()
+
+                    result_text = (
+                        result_text[:match.start()] + replacement + result_text[match.end():]
+                    )
+
+                    if original != replacement:
+                        corrections.append({
+                            "type": "domain_correction",
+                            "domain": domain,
+                            "original": original,
+                            "corrected": replacement,
+                            "confidence": 0.92,
+                        })
+
+                break  # First matching variant wins; skip remaining variants
 
         return result_text, corrections
 

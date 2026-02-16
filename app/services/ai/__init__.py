@@ -1,9 +1,9 @@
 """
 AI Autonomy Services.
 
-Confidence-basierte Autonomie fuer Dokument-Verarbeitung:
+Confidence-basierte Autonomie für Dokument-Verarbeitung:
 - 95%+ Konfidenz: Automatisch verarbeiten
-- 80-95% Konfidenz: Vorschlag mit 1-Click Bestaetigung
+- 80-95% Konfidenz: Vorschlag mit 1-Click Bestätigung
 - <80% Konfidenz: Manuelle Review Queue
 
 Services:
@@ -11,9 +11,9 @@ Services:
 - AutonomousActionsService: Konkrete autonome Aktionen (Ablage, Freigabe, etc.)
 - NLQService: Natural Language Queries (deutsch)
 - RoutingIntelligenceService: Intelligentes Dokumenten-Routing
-- PredictiveActionService: Proaktive Handlungsvorschlaege
+- PredictiveActionService: Proaktive Handlungsvorschläge
 - AutoCategorizationV2Service: LLM-basierte Dokument-Kategorisierung 2.0
-- SmartDunningService: Intelligentes Mahnwesen mit KI-Unterstuetzung
+- SmartDunningService: Intelligentes Mahnwesen mit KI-Unterstützung
 """
 
 from app.services.ai.decision_service import AIDecisionService

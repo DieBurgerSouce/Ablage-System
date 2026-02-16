@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Margin Analyzer Service.
 
-Liefert Daten fuer das Margen-Analyse Widget:
+Liefert Daten für das Margen-Analyse Widget:
 - Umsatz vs. Kosten nach Kategorie
 - Margen-Prozent-Berechnung
 - Kategorie-Aufschluesselung
@@ -28,7 +28,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class CategoryMargin:
-    """Margen-Daten fuer eine Kategorie."""
+    """Margen-Daten für eine Kategorie."""
     category: str
     revenue: float
     costs: float
@@ -63,9 +63,9 @@ class MarginAnalyzerResult:
 
 
 class MarginAnalyzerService:
-    """Service fuer Margen-Analysen im Dashboard."""
+    """Service für Margen-Analysen im Dashboard."""
 
-    # Geschaetzte Kostensaetze nach Dokumenttyp
+    # Geschätzte Kostensätze nach Dokumenttyp
     COST_RATIOS: Dict[str, float] = {
         "eingangsrechnung": 0.70,
         "ausgangsrechnung": 0.40,
@@ -84,13 +84,13 @@ class MarginAnalyzerService:
         date_to: Optional[date] = None,
         compare_period: Optional[str] = None,
     ) -> MarginAnalyzerResult:
-        """Erstelle Margen-Analyse fuer Dashboard-Widget.
+        """Erstelle Margen-Analyse für Dashboard-Widget.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            company_id: Firmen-ID fuer Multi-Tenant
-            date_from: Startdatum (Standard: 6 Monate zurueck)
+            company_id: Firmen-ID für Multi-Tenant
+            date_from: Startdatum (Standard: 6 Monate zurück)
             date_to: Enddatum (Standard: heute)
             compare_period: Vergleichszeitraum (previous_period, yoy)
 
@@ -201,7 +201,7 @@ class MarginAnalyzerService:
         categories: List[CategoryMargin] = []
         for row in rows:
             category = row[0]
-            revenue = float(row[1]) * 1000  # Skalierung fuer Demo
+            revenue = float(row[1]) * 1000  # Skalierung für Demo
             cost_ratio = self.COST_RATIOS.get(category, self.COST_RATIOS["default"])
             costs = revenue * cost_ratio
             margin = revenue - costs

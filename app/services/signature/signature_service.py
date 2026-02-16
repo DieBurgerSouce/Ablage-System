@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-QES/eIDAS Signatur-Service fuer Ablage-System.
+QES/eIDAS Signatur-Service für Ablage-System.
 
-Business-Logik fuer qualifizierte elektronische Signaturen:
+Business-Logik für qualifizierte elektronische Signaturen:
 - Signaturanfragen erstellen und verwalten
 - Dokumente signieren und ablehnen
 - Signaturen verifizieren
-- Audit-Trail fuehren
+- Audit-Trail führen
 
 Feinpoliert und durchdacht - eIDAS-konforme Signaturverwaltung.
 """
@@ -68,7 +68,7 @@ class SignatureVerificationResult:
 
 
 class SignatureService:
-    """Service fuer QES/eIDAS Signaturverwaltung.
+    """Service für QES/eIDAS Signaturverwaltung.
 
     Verwaltet den gesamten Signatur-Lebenszyklus:
     - Anfrage erstellen
@@ -129,7 +129,7 @@ class SignatureService:
         db.add(request)
         await db.flush()
 
-        # Signatureintraege fuer jeden Unterzeichner erstellen
+        # Signatureinträge für jeden Unterzeichner erstellen
         for signer in signers:
             entry = SignatureEntry(
                 id=uuid4(),
@@ -226,7 +226,7 @@ class SignatureService:
             document_id: Optional - Filter nach Dokument
             status: Optional - Filter nach Status
             page: Seite (1-basiert)
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
 
         Returns:
             Tuple aus (Ergebnisliste, Gesamtanzahl)
@@ -307,7 +307,7 @@ class SignatureService:
                 "erwartet 'pending'"
             )
 
-        # Request laden fuer Reihenfolge-Validierung
+        # Request laden für Reihenfolge-Validierung
         request = await self.get_signature_request(
             db, entry.signature_request_id, company_id
         )
@@ -322,7 +322,7 @@ class SignatureService:
                 f"Signaturanfrage hat Status '{request.status}'"
             )
 
-        # Signierreihenfolge pruefen
+        # Signierreihenfolge prüfen
         if request.signing_order_required:
             await self._validate_signing_order(db, entry, request)
 
@@ -357,7 +357,7 @@ class SignatureService:
             },
         )
 
-        # Pruefen ob alle signiert haben
+        # Prüfen ob alle signiert haben
         await self._check_request_completion(db, request)
 
         await db.commit()
@@ -470,7 +470,7 @@ class SignatureService:
         Returns:
             SignatureVerificationResult mit Status aller Signaturen
         """
-        # Alle Requests fuer das Dokument laden
+        # Alle Requests für das Dokument laden
         stmt = (
             select(SignatureRequest)
             .options(selectinload(SignatureRequest.entries))
@@ -548,7 +548,7 @@ class SignatureService:
             company_id: Mandanten-ID
 
         Returns:
-            Liste der Audit-Eintraege
+            Liste der Audit-Einträge
         """
         stmt = (
             select(SignatureAuditLog)
@@ -581,7 +581,7 @@ class SignatureService:
             company_id: Mandanten-ID
 
         Returns:
-            Liste der ausstehenden Signatureintraege
+            Liste der ausstehenden Signatureinträge
         """
         stmt = (
             select(SignatureEntry)
@@ -631,7 +631,7 @@ class SignatureService:
         Raises:
             ValueError: Falls die Reihenfolge nicht eingehalten wird
         """
-        # Alle Entries mit niedrigerer Reihenfolge pruefen
+        # Alle Entries mit niedrigerer Reihenfolge prüfen
         earlier_entries = [
             e for e in request.entries
             if e.signing_order < entry.signing_order
@@ -654,7 +654,7 @@ class SignatureService:
         db: AsyncSession,
         request: SignatureRequest,
     ) -> None:
-        """Prueft ob alle Entries signiert sind und setzt Request-Status."""
+        """Prüft ob alle Entries signiert sind und setzt Request-Status."""
         all_signed = all(
             e.status == SignatureStatus.SIGNED.value
             for e in request.entries
@@ -665,7 +665,7 @@ class SignatureService:
             request.completed_at = datetime.now(timezone.utc)
 
             logger.info(
-                "Signaturanfrage vollstaendig signiert",
+                "Signaturanfrage vollständig signiert",
                 request_id=str(request.id),
             )
 

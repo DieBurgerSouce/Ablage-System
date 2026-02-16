@@ -4,11 +4,11 @@ Extraction Confidence Service.
 
 Confidence-basierte Extraktion mit Farbcodierung:
 - Score > 90%: Auto-Akzeptieren (gruen)
-- Score 60-90%: Gelb markiert, manuell pruefen
+- Score 60-90%: Gelb markiert, manuell prüfen
 - Score < 60%: Rot markiert, manuell eingeben
 
 Berechnet Confidence-Scores basierend auf Extraktionsmethode,
-Lernprofil-Boost und Plausibilitaetspruefungen.
+Lernprofil-Boost und Plausibilitaetsprüfungen.
 
 Feinpoliert und durchdacht - Vertrauenswuerdige Extraktion.
 """
@@ -36,25 +36,25 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 METHOD_BASE_CONFIDENCE: Dict[str, float] = {
-    "regex": 0.95,      # Regulaere Ausdruecke: hoechste Praezision
+    "regex": 0.95,      # Regulaere Ausdrücke: hoechste Praezision
     "template": 0.90,   # Template-basiert: sehr zuverlaessig
     "llm": 0.85,        # LLM-Extraktion: gut, aber variabel
-    "ocr": 0.75,        # OCR-direkt: abhaengig von Qualitaet
+    "ocr": 0.75,        # OCR-direkt: abhängig von Qualität
 }
 
 # Feldspezifische Adjustierungen
 FIELD_CONFIDENCE_ADJUSTMENTS: Dict[str, float] = {
     "invoice_number": 0.05,    # Rechnungsnummern sind gut strukturiert
     "total_amount": 0.0,       # Betraege sind durchschnittlich
-    "supplier_name": -0.05,    # Namen koennen variieren
-    "iban": 0.05,              # IBANs haben Pruefsummen
+    "supplier_name": -0.05,    # Namen können variieren
+    "iban": 0.05,              # IBANs haben Prüfsummen
     "vat_id": 0.05,            # USt-IdNr sind validierbar
     "date": 0.0,               # Datumsangaben sind neutral
     "address": -0.10,          # Adressen sind komplex
     "line_items": -0.15,       # Einzelpositionen sind schwierig
 }
 
-# Validierungs-Patterns fuer Plausibilitaetspruefung
+# Validierungs-Patterns für Plausibilitaetsprüfung
 FIELD_VALIDATION_PATTERNS: Dict[str, re.Pattern[str]] = {
     "invoice_number": re.compile(r"^[A-Za-z0-9\-/\.]{2,50}$"),
     "iban": re.compile(r"^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$"),
@@ -81,7 +81,7 @@ class ExtractionConfidenceService:
     """Confidence-basierte Extraktion mit Farbcodierung.
 
     Score > 90%: Auto-Akzeptieren (gruen)
-    Score 60-90%: Gelb markiert, manuell pruefen
+    Score 60-90%: Gelb markiert, manuell prüfen
     Score < 60%: Rot markiert, manuell eingeben
     """
 
@@ -96,12 +96,12 @@ class ExtractionConfidenceService:
         learning_boost: float = 0.0,
         metadata: Optional[Dict[str, str]] = None,
     ) -> ExtractionConfidence:
-        """Berechnet Confidence-Score fuer ein extrahiertes Feld.
+        """Berechnet Confidence-Score für ein extrahiertes Feld.
 
         Berechnung:
         1. Base-Confidence aus Extraktionsmethode
         2. Feld-spezifische Adjustierung
-        3. Plausibilitaetspruefung (Validierung)
+        3. Plausibilitaetsprüfung (Validierung)
         4. Learning-Boost aus Korrekturhistorie
         5. Clamp auf [0.0, 1.0]
 
@@ -112,7 +112,7 @@ class ExtractionConfidenceService:
             field_name: Name des extrahierten Feldes
             extracted_value: Extrahierter Wert
             extraction_method: Extraktionsmethode (ocr, llm, regex, template)
-            learning_boost: Zusaetzlicher Boost aus Lernprofil
+            learning_boost: Zusätzlicher Boost aus Lernprofil
             metadata: Optionale Metadaten
 
         Returns:
@@ -125,17 +125,17 @@ class ExtractionConfidenceService:
         field_adj = FIELD_CONFIDENCE_ADJUSTMENTS.get(field_name, 0.0)
         score = base_score + field_adj
 
-        # 3. Plausibilitaetspruefung
+        # 3. Plausibilitaetsprüfung
         pattern = FIELD_VALIDATION_PATTERNS.get(field_name)
         if pattern:
-            # Normalisiere fuer Pattern-Check (Leerzeichen entfernen)
+            # Normalisiere für Pattern-Check (Leerzeichen entfernen)
             normalized = extracted_value.replace(" ", "").strip()
             if pattern.match(normalized):
-                score += 0.05  # Bonus fuer valides Format
+                score += 0.05  # Bonus für valides Format
             else:
-                score -= 0.10  # Penalty fuer invalides Format
+                score -= 0.10  # Penalty für invalides Format
 
-        # 4. Wert-Laenge-Check (leere/zu kurze Werte sind verdaechtig)
+        # 4. Wert-Länge-Check (leere/zu kurze Werte sind verdaechtig)
         if not extracted_value or len(extracted_value.strip()) < 2:
             score -= 0.30
 
@@ -184,7 +184,7 @@ class ExtractionConfidenceService:
     ) -> List[ExtractionConfidence]:
         """Alle Felder eines Dokuments mit Confidence-Scores versehen.
 
-        Laedt ggf. ein Lernprofil fuer den Lieferanten/Dokumenttyp
+        Laedt ggf. ein Lernprofil für den Lieferanten/Dokumenttyp
         und berechnet pro Feld einen individuellen Confidence-Score.
 
         Args:
@@ -193,8 +193,8 @@ class ExtractionConfidenceService:
             company_id: Firma-ID
             extracted_fields: Dict {field_name: extracted_value}
             extraction_method: Standard-Extraktionsmethode
-            supplier_name: Optionaler Lieferantenname fuer Lernprofil
-            document_type: Optionaler Dokumenttyp fuer Lernprofil
+            supplier_name: Optionaler Lieferantenname für Lernprofil
+            document_type: Optionaler Dokumenttyp für Lernprofil
 
         Returns:
             Liste von ExtractionConfidence-Objekten
@@ -244,14 +244,14 @@ class ExtractionConfidenceService:
         db: AsyncSession,
         document_id: UUID,
     ) -> List[ExtractionConfidence]:
-        """Alle Confidence-Scores fuer ein Dokument abrufen.
+        """Alle Confidence-Scores für ein Dokument abrufen.
 
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
 
         Returns:
-            Liste aller ExtractionConfidence-Eintraege
+            Liste aller ExtractionConfidence-Einträge
         """
         result = await db.execute(
             select(ExtractionConfidence)
@@ -265,14 +265,14 @@ class ExtractionConfidenceService:
         db: AsyncSession,
         document_id: UUID,
     ) -> List[ExtractionConfidence]:
-        """Felder die manuelle Pruefung benoetigen (Score < 0.9).
+        """Felder die manuelle Prüfung benötigen (Score < 0.9).
 
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
 
         Returns:
-            Liste der zu pruefenden Felder (sortiert nach Score aufsteigend)
+            Liste der zu prüfenden Felder (sortiert nach Score aufsteigend)
         """
         result = await db.execute(
             select(ExtractionConfidence)
@@ -294,10 +294,10 @@ class ExtractionConfidenceService:
         corrected_value: str,
         user_id: UUID,
     ) -> ExtractionConfidence:
-        """Korrektur fuer ein extrahiertes Feld einreichen.
+        """Korrektur für ein extrahiertes Feld einreichen.
 
         Aktualisiert den ExtractionConfidence-Record und stellt
-        Daten fuer das Lernsystem bereit.
+        Daten für das Lernsystem bereit.
 
         Args:
             db: Datenbank-Session
@@ -348,7 +348,7 @@ _service_instance: Optional[ExtractionConfidenceService] = None
 
 
 def get_extraction_confidence_service() -> ExtractionConfidenceService:
-    """Gibt die Singleton-Instanz des ExtractionConfidenceService zurueck."""
+    """Gibt die Singleton-Instanz des ExtractionConfidenceService zurück."""
     global _service_instance
     if _service_instance is None:
         _service_instance = ExtractionConfidenceService()

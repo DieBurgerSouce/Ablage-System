@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Workflow Versioning und Saga Pattern Models fuer Ablage-System.
+Workflow Versioning und Saga Pattern Models für Ablage-System.
 
 Implementiert:
 - WorkflowVersion: Semantische Versionierung von Workflows
 - WorkflowABTest: A/B Testing zwischen Workflow-Versionen
-- Saga: Saga-Orchestrierung fuer verteilte Transaktionen
+- Saga: Saga-Orchestrierung für verteilte Transaktionen
 - SagaStep: Einzelne Schritte mit Compensation
 
-GoBD-konform: Vollstaendige Nachvollziehbarkeit aller Aenderungen.
+GoBD-konform: Vollständige Nachvollziehbarkeit aller Änderungen.
 """
 
 from datetime import datetime
@@ -45,38 +45,38 @@ class WorkflowVersionStatus(str, Enum):
     """Status einer Workflow-Version."""
     DRAFT = "draft"           # In Entwicklung
     ACTIVE = "active"         # Aktiv und verwendbar
-    DEPRECATED = "deprecated" # Veraltet, nicht fuer neue Executions
+    DEPRECATED = "deprecated" # Veraltet, nicht für neue Executions
     ARCHIVED = "archived"     # Archiviert, nur Lesezugriff
 
 
 class ABTestStatus(str, Enum):
     """Status eines A/B Tests."""
     DRAFT = "draft"           # Noch nicht gestartet
-    RUNNING = "running"       # Laeuft
+    RUNNING = "running"       # Läuft
     PAUSED = "paused"         # Pausiert
     COMPLETED = "completed"   # Beendet (manuell oder Zeit)
     CANCELLED = "cancelled"   # Abgebrochen
 
 
 class SagaStatus(str, Enum):
-    """Status einer Saga-Ausfuehrung."""
+    """Status einer Saga-Ausführung."""
     PENDING = "pending"               # Noch nicht gestartet
-    RUNNING = "running"               # Laeuft (Forward)
+    RUNNING = "running"               # Läuft (Forward)
     COMPENSATING = "compensating"     # Rollback aktiv
     COMPLETED = "completed"           # Erfolgreich abgeschlossen
-    FAILED = "failed"                 # Fehlgeschlagen (kein Rollback moeglich)
-    COMPENSATED = "compensated"       # Erfolgreich zurueckgerollt
+    FAILED = "failed"                 # Fehlgeschlagen (kein Rollback möglich)
+    COMPENSATED = "compensated"       # Erfolgreich zurückgerollt
     PARTIALLY_COMPENSATED = "partially_compensated"  # Teilweise Rollback
 
 
 class SagaStepStatus(str, Enum):
     """Status eines Saga-Schritts."""
-    PENDING = "pending"               # Noch nicht ausgefuehrt
-    RUNNING = "running"               # Wird ausgefuehrt
+    PENDING = "pending"               # Noch nicht ausgeführt
+    RUNNING = "running"               # Wird ausgeführt
     COMPLETED = "completed"           # Erfolgreich
     FAILED = "failed"                 # Fehlgeschlagen
-    SKIPPED = "skipped"               # Uebersprungen
-    COMPENSATING = "compensating"     # Compensation laeuft
+    SKIPPED = "skipped"               # Übersprungen
+    COMPENSATING = "compensating"     # Compensation läuft
     COMPENSATED = "compensated"       # Erfolgreich kompensiert
     COMPENSATION_FAILED = "compensation_failed"  # Compensation fehlgeschlagen
 
@@ -89,8 +89,8 @@ class SagaStepStatus(str, Enum):
 class WorkflowVersion(Base):
     """Workflow-Version mit semantischer Versionierung.
 
-    Ermoeglicht:
-    - Vollstaendige Versionshistorie
+    Ermöglicht:
+    - Vollständige Versionshistorie
     - Diff-Ansicht zwischen Versionen
     - Rollback auf jede vorherige Version
     - A/B Testing zwischen Versionen
@@ -98,9 +98,9 @@ class WorkflowVersion(Base):
 
     Semantische Versionierung:
     - major.minor.patch (z.B. 1.2.3)
-    - Major: Breaking Changes (Trigger/Steps geaendert)
+    - Major: Breaking Changes (Trigger/Steps geändert)
     - Minor: Neue Features (Steps hinzugefuegt)
-    - Patch: Bugfixes (Config-Aenderungen)
+    - Patch: Bugfixes (Config-Änderungen)
     """
     __tablename__ = "workflow_versions"
 
@@ -138,12 +138,12 @@ class WorkflowVersion(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     is_latest: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
-    # Vollstaendige Workflow-Definition (Snapshot)
+    # Vollständige Workflow-Definition (Snapshot)
     definition: Mapped[Dict[str, Any]] = mapped_column(
         CrossDBJSON, nullable=False
     )  # nodes, edges, trigger_config, variables
 
-    # Aenderungsinformationen
+    # Änderungsinformationen
     change_description: Mapped[str] = mapped_column(Text, nullable=False)
     change_type: Mapped[str] = mapped_column(
         String(20), nullable=False, default="minor"
@@ -215,12 +215,12 @@ class WorkflowVersion(Base):
 
     @property
     def semver(self) -> str:
-        """Gibt die semantische Version zurueck."""
+        """Gibt die semantische Version zurück."""
         return f"{self.major}.{self.minor}.{self.patch}"
 
     @property
     def is_publishable(self) -> bool:
-        """Prueft ob die Version veroeffentlicht werden kann."""
+        """Prüft ob die Version veröffentlicht werden kann."""
         return self.status == WorkflowVersionStatus.DRAFT.value
 
     @property
@@ -239,7 +239,7 @@ class WorkflowVersion(Base):
 class WorkflowABTest(Base):
     """A/B Test zwischen zwei Workflow-Versionen.
 
-    Ermoeglicht:
+    Ermöglicht:
     - 50/50 oder gewichteten Traffic-Split
     - Statistische Analyse der Ergebnisse
     - Automatisches Beenden bei Signifikanz
@@ -389,13 +389,13 @@ class WorkflowABTest(Base):
 
 
 class Saga(Base):
-    """Saga fuer verteilte Transaktionen mit Compensation.
+    """Saga für verteilte Transaktionen mit Compensation.
 
-    Implementiert das Saga-Pattern fuer:
+    Implementiert das Saga-Pattern für:
     - Atomare Multi-Step-Operationen
     - Automatische Compensation bei Fehler
-    - Vollstaendige Transaktions-Nachvollziehbarkeit
-    - Dead Letter Queue fuer fehlgeschlagene Compensations
+    - Vollständige Transaktions-Nachvollziehbarkeit
+    - Dead Letter Queue für fehlgeschlagene Compensations
 
     Saga-Zustandsmaschine:
     PENDING -> RUNNING -> COMPLETED
@@ -436,7 +436,7 @@ class Saga(Base):
     current_step_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total_steps: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    # Checkpoint (fuer Resume)
+    # Checkpoint (für Resume)
     checkpoint_data: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         CrossDBJSON, nullable=True
     )
@@ -487,7 +487,7 @@ class Saga(Base):
         DateTime(timezone=True), nullable=True
     )
 
-    # Kontext-Daten (fuer Steps verfuegbar)
+    # Kontext-Daten (für Steps verfügbar)
     context_data: Mapped[Dict[str, Any]] = mapped_column(
         CrossDBJSON, nullable=False, default=dict
     )
@@ -516,7 +516,7 @@ class Saga(Base):
 
     @property
     def is_running(self) -> bool:
-        """Prueft ob die Saga noch laeuft."""
+        """Prüft ob die Saga noch läuft."""
         return self.status in (
             SagaStatus.RUNNING.value,
             SagaStatus.COMPENSATING.value
@@ -524,12 +524,12 @@ class Saga(Base):
 
     @property
     def is_completed(self) -> bool:
-        """Prueft ob die Saga erfolgreich abgeschlossen ist."""
+        """Prüft ob die Saga erfolgreich abgeschlossen ist."""
         return self.status == SagaStatus.COMPLETED.value
 
     @property
     def needs_compensation(self) -> bool:
-        """Prueft ob Compensation erforderlich ist."""
+        """Prüft ob Compensation erforderlich ist."""
         return self.status == SagaStatus.FAILED.value
 
     @property
@@ -551,7 +551,7 @@ class SagaStep(Base):
     Jeder Step hat:
     - Forward Action: Die eigentliche Aktion
     - Compensation Action: Die Umkehraktion bei Fehler
-    - Idempotenz-Key: Fuer sichere Wiederholung
+    - Idempotenz-Key: Für sichere Wiederholung
     """
     __tablename__ = "saga_steps"
 
@@ -598,12 +598,12 @@ class SagaStep(Base):
     max_retries: Mapped[int] = mapped_column(Integer, nullable=False, default=3)
     retry_delay_seconds: Mapped[int] = mapped_column(Integer, nullable=False, default=60)
 
-    # Idempotenz (fuer sichere Wiederholung)
+    # Idempotenz (für sichere Wiederholung)
     idempotency_key: Mapped[Optional[str]] = mapped_column(
         String(64), nullable=True, unique=True
     )
 
-    # Ausfuehrungszeitpunkte
+    # Ausführungszeitpunkte
     executed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -660,22 +660,22 @@ class SagaStep(Base):
 
     @property
     def is_completed(self) -> bool:
-        """Prueft ob der Schritt abgeschlossen ist."""
+        """Prüft ob der Schritt abgeschlossen ist."""
         return self.status == SagaStepStatus.COMPLETED.value
 
     @property
     def is_compensated(self) -> bool:
-        """Prueft ob der Schritt kompensiert wurde."""
+        """Prüft ob der Schritt kompensiert wurde."""
         return self.status == SagaStepStatus.COMPENSATED.value
 
     @property
     def can_retry(self) -> bool:
-        """Prueft ob der Schritt wiederholt werden kann."""
+        """Prüft ob der Schritt wiederholt werden kann."""
         return self.retry_count < self.max_retries
 
     @property
     def duration_ms(self) -> Optional[int]:
-        """Berechnet die Ausfuehrungsdauer in Millisekunden."""
+        """Berechnet die Ausführungsdauer in Millisekunden."""
         if not self.executed_at or not self.completed_at:
             return None
         delta = self.completed_at - self.executed_at
@@ -683,14 +683,14 @@ class SagaStep(Base):
 
 
 # ============================================================================
-# Saga Transaction Log Model (fuer Debugging & Audit)
+# Saga Transaction Log Model (für Debugging & Audit)
 # ============================================================================
 
 
 class SagaTransactionLog(Base):
-    """Transaktionslog fuer Saga-Ausfuehrungen.
+    """Transaktionslog für Saga-Ausführungen.
 
-    Protokolliert alle State-Transitions fuer:
+    Protokolliert alle State-Transitions für:
     - Debugging
     - Audit-Trail
     - Forensische Analyse

@@ -4,7 +4,7 @@ ZUGFeRD Embedder - PDF/A-3 XML Embedding.
 
 Embeddet ZUGFeRD/Factur-X XML in PDF/A-3 konforme PDFs.
 
-Unterstuetzte Profile:
+Unterstützte Profile:
 - MINIMUM, BASIC, BASIC_WL, EN16931, EXTENDED, XRECHNUNG
 
 Referenz: ZUGFeRD 2.3.3 / Factur-X 1.0 / PDF/A-3 (ISO 19005-3)
@@ -63,17 +63,17 @@ class ZUGFeRDEmbedder:
         # XML aus PDF extrahieren
         xml_content = embedder.extract_xml_from_pdf(pdf_content)
 
-        # PDF auf PDF/A-3 Konformitaet pruefen
+        # PDF auf PDF/A-3 Konformität prüfen
         is_valid = embedder.check_pdfa3_compliance(pdf_content)
     """
 
     def __init__(self) -> None:
-        """Initialisiere Embedder mit verfuegbaren Backends."""
+        """Initialisiere Embedder mit verfügbaren Backends."""
         self._backend: Optional[str] = None
         self._detect_backend()
 
     def _detect_backend(self) -> None:
-        """Erkennt verfuegbares PDF-Backend (PyMuPDF oder pikepdf)."""
+        """Erkennt verfügbares PDF-Backend (PyMuPDF oder pikepdf)."""
         try:
             import fitz  # PyMuPDF
             self._backend = "pymupdf"
@@ -92,7 +92,7 @@ class ZUGFeRDEmbedder:
 
     @property
     def available(self) -> bool:
-        """Prueft ob ein PDF-Backend verfuegbar ist."""
+        """Prüft ob ein PDF-Backend verfügbar ist."""
         return self._backend is not None
 
     def embed_xml_in_pdf(
@@ -109,7 +109,7 @@ class ZUGFeRDEmbedder:
             pdf_content: Original-PDF als Bytes
             xml_content: ZUGFeRD XML als String
             profile: ZUGFeRD-Profil (bestimmt Relationship-Type)
-            use_facturx_name: True fuer factur-x.xml, False fuer zugferd-invoice.xml
+            use_facturx_name: True für factur-x.xml, False für zugferd-invoice.xml
 
         Returns:
             Tuple aus:
@@ -117,12 +117,12 @@ class ZUGFeRDEmbedder:
             - dict: Metadaten (xml_hash, profile, filename)
 
         Raises:
-            RuntimeError: Wenn kein Backend verfuegbar
-            ValueError: Bei ungueltigem PDF oder XML
+            RuntimeError: Wenn kein Backend verfügbar
+            ValueError: Bei ungültigem PDF oder XML
         """
         if not self.available:
             raise RuntimeError(
-                "Kein PDF-Backend verfuegbar. "
+                "Kein PDF-Backend verfügbar. "
                 "Installieren Sie PyMuPDF (pip install pymupdf) "
                 "oder pikepdf (pip install pikepdf)."
             )
@@ -131,7 +131,7 @@ class ZUGFeRDEmbedder:
         if not xml_content or not xml_content.strip():
             raise ValueError("XML-Inhalt darf nicht leer sein")
 
-        # XML Hash fuer Integritaet
+        # XML Hash für Integrität
         xml_bytes = xml_content.encode("utf-8")
         xml_hash = hashlib.sha256(xml_bytes).hexdigest()
 
@@ -179,11 +179,11 @@ class ZUGFeRDEmbedder:
         import fitz
 
         try:
-            # PDF oeffnen
+            # PDF öffnen
             doc = fitz.open(stream=pdf_content, filetype="pdf")
 
             # XML als Embedded File hinzufuegen
-            # PyMuPDF verwendet embfile_add fuer Attachments
+            # PyMuPDF verwendet embfile_add für Attachments
             doc.embfile_add(
                 name=filename,
                 buffer_=xml_bytes,
@@ -220,7 +220,7 @@ class ZUGFeRDEmbedder:
         from pikepdf import AttachedFileSpec, Name
 
         try:
-            # PDF oeffnen
+            # PDF öffnen
             pdf = pikepdf.open(io.BytesIO(pdf_content))
 
             # Embedded File Stream erstellen
@@ -263,7 +263,7 @@ class ZUGFeRDEmbedder:
             names_array.extend([filename, filespec_dict])
             names_dict[Name.Names] = pikepdf.Array(names_array)
 
-            # AF Array (Associated Files) fuer PDF/A-3
+            # AF Array (Associated Files) für PDF/A-3
             if Name.AF not in pdf.Root:
                 pdf.Root[Name.AF] = pikepdf.Array()
             af_array = list(pdf.Root[Name.AF])
@@ -292,11 +292,11 @@ class ZUGFeRDEmbedder:
             XML-Inhalt als String oder None wenn nicht gefunden
 
         Raises:
-            RuntimeError: Wenn kein Backend verfuegbar
-            ValueError: Bei ungueltigem PDF
+            RuntimeError: Wenn kein Backend verfügbar
+            ValueError: Bei ungültigem PDF
         """
         if not self.available:
-            raise RuntimeError("Kein PDF-Backend verfuegbar")
+            raise RuntimeError("Kein PDF-Backend verfügbar")
 
         if self._backend == "pymupdf":
             return self._extract_with_pymupdf(pdf_content)
@@ -313,7 +313,7 @@ class ZUGFeRDEmbedder:
             # Nach bekannten Dateinamen suchen
             for name in [FACTURX_FILENAME, ZUGFERD_FILENAME]:
                 try:
-                    # embfile_get gibt Dict zurueck mit 'content' key
+                    # embfile_get gibt Dict zurück mit 'content' key
                     file_data = doc.embfile_get(name)
                     if file_data and "content" in file_data:
                         doc.close()
@@ -373,13 +373,13 @@ class ZUGFeRDEmbedder:
 
     def check_pdfa3_compliance(self, pdf_content: bytes) -> dict:
         """
-        Prueft PDF auf PDF/A-3 Konformitaet (vereinfacht).
+        Prüft PDF auf PDF/A-3 Konformität (vereinfacht).
 
         Args:
             pdf_content: PDF als Bytes
 
         Returns:
-            Dict mit Pruefergebnis:
+            Dict mit Prüfergebnis:
             - compliant: True/False
             - has_embedded_files: True/False
             - embedded_files: Liste der Dateinamen
@@ -393,7 +393,7 @@ class ZUGFeRDEmbedder:
         }
 
         if not self.available:
-            result["issues"].append("Kein PDF-Backend verfuegbar")
+            result["issues"].append("Kein PDF-Backend verfügbar")
             return result
 
         if self._backend == "pymupdf":
@@ -402,7 +402,7 @@ class ZUGFeRDEmbedder:
             return self._check_with_pikepdf(pdf_content, result)
 
     def _check_with_pymupdf(self, pdf_content: bytes, result: dict) -> dict:
-        """Prueft Konformitaet mit PyMuPDF."""
+        """Prüft Konformität mit PyMuPDF."""
         import fitz
 
         try:
@@ -417,7 +417,7 @@ class ZUGFeRDEmbedder:
                     if info:
                         result["embedded_files"].append(info.get("name", f"file_{i}"))
 
-            # XMP Metadaten pruefen (PDF/A Indikator)
+            # XMP Metadaten prüfen (PDF/A Indikator)
             xmp = doc.xref_xml_metadata()
             if xmp:
                 if "pdfaid:part" in xmp.lower() or "pdfa:part" in xmp.lower():
@@ -431,13 +431,13 @@ class ZUGFeRDEmbedder:
             doc.close()
 
         except Exception as e:
-            result["issues"].append(f"Pruefung fehlgeschlagen: {type(e).__name__}")
+            result["issues"].append(f"Prüfung fehlgeschlagen: {type(e).__name__}")
             logger.warning("pdfa3_check_failed", **safe_error_log(e))
 
         return result
 
     def _check_with_pikepdf(self, pdf_content: bytes, result: dict) -> dict:
-        """Prueft Konformitaet mit pikepdf."""
+        """Prüft Konformität mit pikepdf."""
         import pikepdf
         from pikepdf import Name
 
@@ -455,7 +455,7 @@ class ZUGFeRDEmbedder:
                         for i in range(0, len(names_array), 2):
                             result["embedded_files"].append(str(names_array[i]))
 
-            # XMP Metadaten pruefen
+            # XMP Metadaten prüfen
             if pdf.Root.get(Name.Metadata):
                 xmp_stream = pdf.Root[Name.Metadata]
                 xmp_data = bytes(xmp_stream.get_stream_buffer()).decode("utf-8", errors="ignore")
@@ -470,7 +470,7 @@ class ZUGFeRDEmbedder:
             pdf.close()
 
         except Exception as e:
-            result["issues"].append(f"Pruefung fehlgeschlagen: {type(e).__name__}")
+            result["issues"].append(f"Prüfung fehlgeschlagen: {type(e).__name__}")
             logger.warning("pdfa3_check_failed", **safe_error_log(e))
 
         return result
@@ -481,7 +481,7 @@ class ZUGFeRDEmbedder:
         filename: str,
         relationship: str
     ) -> str:
-        """Erstellt XMP Metadaten fuer PDF/A-3 mit ZUGFeRD Extension."""
+        """Erstellt XMP Metadaten für PDF/A-3 mit ZUGFeRD Extension."""
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
 
         # Profile URN
@@ -590,7 +590,7 @@ _zugferd_embedder_instance: Optional[ZUGFeRDEmbedder] = None
 
 def get_zugferd_embedder() -> ZUGFeRDEmbedder:
     """
-    Factory-Funktion fuer ZUGFeRDEmbedder (Singleton).
+    Factory-Funktion für ZUGFeRDEmbedder (Singleton).
 
     Returns:
         ZUGFeRDEmbedder: Globale Embedder-Instanz

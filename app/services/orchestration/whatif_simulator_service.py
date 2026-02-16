@@ -2,13 +2,13 @@
 """
 What-If Simulator Service.
 
-Enterprise Feature: Szenario-Simulation fuer finanzielle Entscheidungen.
+Enterprise Feature: Szenario-Simulation für finanzielle Entscheidungen.
 
 "Was passiert wenn ich 500 EUR/Monat mehr spare?"
 "Was passiert wenn der Zins um 2% steigt?"
 "Was passiert wenn ich den Kredit jetzt tilge?"
 
-Dieses Modul berechnet die Auswirkungen hypothetischer Aenderungen auf:
+Dieses Modul berechnet die Auswirkungen hypothetischer Änderungen auf:
 - Financial Health Score
 - Einzelne KPIs (DTI, Sparquote, Notgroschen, etc.)
 - Langzeit-Prognosen (3, 6, 12, 24 Monate)
@@ -40,15 +40,15 @@ logger = structlog.get_logger(__name__)
 
 class ScenarioType(str, Enum):
     """Typ des Szenarios."""
-    EXTRA_SAVINGS = "extra_savings"                 # Zusaetzliche Sparrate
-    EXTRA_PAYMENT = "extra_payment"                 # Zusaetzliche Kredittilgung
-    INCOME_CHANGE = "income_change"                 # Einkommensaenderung
-    EXPENSE_CHANGE = "expense_change"               # Ausgabenaenderung
-    INTEREST_RATE_CHANGE = "interest_rate_change"   # Zinssatzaenderung
+    EXTRA_SAVINGS = "extra_savings"                 # Zusätzliche Sparrate
+    EXTRA_PAYMENT = "extra_payment"                 # Zusätzliche Kredittilgung
+    INCOME_CHANGE = "income_change"                 # Einkommensänderung
+    EXPENSE_CHANGE = "expense_change"               # Ausgabenänderung
+    INTEREST_RATE_CHANGE = "interest_rate_change"   # Zinssatzänderung
     ASSET_SALE = "asset_sale"                       # Vermoegensverkauf
     ASSET_PURCHASE = "asset_purchase"               # Vermoegenskauf
     LOAN_REFINANCE = "loan_refinance"               # Kredit-Refinanzierung
-    INSURANCE_CHANGE = "insurance_change"           # Versicherungsaenderung
+    INSURANCE_CHANGE = "insurance_change"           # Versicherungsänderung
     EMERGENCY_EXPENSE = "emergency_expense"         # Notfall-Ausgabe
     RENTAL_INCOME = "rental_income"                 # Mieteinnahmen
     TENANT_CHANGE = "tenant_change"                 # Mieterwechsel
@@ -80,10 +80,10 @@ class ImpactSeverity(str, Enum):
 
 @dataclass
 class ScenarioInput:
-    """Eingabeparameter fuer ein Szenario."""
+    """Eingabeparameter für ein Szenario."""
     scenario_type: ScenarioType
     amount: Decimal = Decimal("0")              # Betrag in EUR
-    percentage: float = 0.0                     # Prozentuale Aenderung
+    percentage: float = 0.0                     # Prozentuale Änderung
     target_entity_id: Optional[UUID] = None     # Ziel-Entity (z.B. Kredit-ID)
     target_entity_type: Optional[str] = None    # Typ der Entity
     duration_months: int = 12                   # Dauer in Monaten
@@ -150,7 +150,7 @@ class ScenarioResult:
     projected_health_score: float
     projected_kpis: List[KPIProjection]
 
-    # Aenderungen
+    # Änderungen
     health_score_change: float
     health_score_change_percentage: float
     overall_impact_severity: ImpactSeverity
@@ -228,7 +228,7 @@ class ComparisonResult:
 # =============================================================================
 
 class ScenarioTemplates:
-    """Vorlagen fuer verschiedene Szenario-Typen."""
+    """Vorlagen für verschiedene Szenario-Typen."""
 
     @staticmethod
     def calculate_extra_savings_impact(
@@ -236,7 +236,7 @@ class ScenarioTemplates:
         monthly_amount: Decimal,
         duration_months: int
     ) -> Dict[str, Any]:
-        """Berechnet Impact von zusaetzlicher Sparrate."""
+        """Berechnet Impact von zusätzlicher Sparrate."""
         current_savings_rate = current_kpis.get("savings_rate", 10.0)
         current_emergency_months = current_kpis.get("emergency_fund_months", 3.0)
         current_health = current_kpis.get("health_score", 70.0)
@@ -301,7 +301,7 @@ class ScenarioTemplates:
 
         # Neues DTI
         if target_loan_data and target_loan_data.get("monthly_payment"):
-            # Geschaetzte Reduktion der monatlichen Rate
+            # Geschätzte Reduktion der monatlichen Rate
             loan_balance = target_loan_data.get("balance", total_debt)
             if loan_balance > 0:
                 reduction_ratio = float(payment_amount) / loan_balance
@@ -315,19 +315,19 @@ class ScenarioTemplates:
             else:
                 new_dti = current_dti
         else:
-            # Grobe Schaetzung
+            # Grobe Schätzung
             if total_debt > 0:
                 reduction_ratio = float(payment_amount) / total_debt
                 new_dti = current_dti * (1 - reduction_ratio * 0.8)  # Nicht linear
             else:
                 new_dti = current_dti
 
-        # Zinsersparnis schaetzen (4% p.a. als Default)
+        # Zinsersparnis schätzen (4% p.a. als Default)
         interest_rate = 0.04
         if target_loan_data and target_loan_data.get("interest_rate"):
             interest_rate = target_loan_data["interest_rate"] / 100
 
-        # Ersparnis ueber Restlaufzeit (vereinfacht: 10 Jahre)
+        # Ersparnis über Restlaufzeit (vereinfacht: 10 Jahre)
         remaining_years = target_loan_data.get("remaining_years", 10) if target_loan_data else 10
         interest_savings = float(payment_amount) * interest_rate * remaining_years
 
@@ -355,7 +355,7 @@ class ScenarioTemplates:
             ] if float(payment_amount) > monthly_income * 3 else [],
             "opportunities": [
                 f"DTI sinkt auf {new_dti:.1f}%",
-                f"Zinsersparnis: ca. {interest_savings:,.0f} EUR ueber Restlaufzeit",
+                f"Zinsersparnis: ca. {interest_savings:,.0f} EUR über Restlaufzeit",
             ],
         }
 
@@ -364,19 +364,19 @@ class ScenarioTemplates:
         current_kpis: Dict[str, float],
         rate_change_percentage: float
     ) -> Dict[str, Any]:
-        """Berechnet Impact einer Zinssatzaenderung."""
+        """Berechnet Impact einer Zinssatzänderung."""
         current_health = current_kpis.get("health_score", 70.0)
         total_debt = current_kpis.get("total_debt", 100000.0)
         current_dti = current_kpis.get("dti_ratio", 35.0)
         monthly_income = current_kpis.get("monthly_income", 5000.0)
 
-        # Vereinfachte Berechnung: Wie aendert sich die monatliche Belastung?
+        # Vereinfachte Berechnung: Wie ändert sich die monatliche Belastung?
         # Annahme: 15 Jahre Restlaufzeit, Annuitaetendarlehen
         current_rate = 0.04  # Annahme 4%
         new_rate = current_rate + (rate_change_percentage / 100)
 
-        # Monatliche Rate Aenderung (vereinfacht)
-        # Bei 2% Zinserhoehung steigt Rate um ca. 10-15% je nach Tilgung
+        # Monatliche Rate Änderung (vereinfacht)
+        # Bei 2% Zinserhöhung steigt Rate um ca. 10-15% je nach Tilgung
         rate_increase_factor = 1 + (rate_change_percentage / 100) * 3  # Approximation
 
         if rate_change_percentage > 0:
@@ -407,11 +407,11 @@ class ScenarioTemplates:
                 "total_cost": Decimal(str(annual_increase * 10)),  # 10 Jahre Mehrkosten
                 "risks": [
                     f"DTI steigt auf {new_dti:.1f}%",
-                    f"Jaehrliche Mehrbelastung: ca. {annual_increase:,.0f} EUR",
+                    f"Jährliche Mehrbelastung: ca. {annual_increase:,.0f} EUR",
                 ],
                 "opportunities": [],
                 "warnings": [
-                    "Bei weiteren Zinserhoehungen koennte die Belastung kritisch werden",
+                    "Bei weiteren Zinserhöhungen könnte die Belastung kritisch werden",
                 ],
             }
         else:
@@ -442,8 +442,8 @@ class ScenarioTemplates:
                 "risks": [],
                 "opportunities": [
                     f"DTI sinkt auf {new_dti:.1f}%",
-                    f"Jaehrliche Ersparnis: ca. {annual_savings:,.0f} EUR",
-                    "Refinanzierung pruefen!",
+                    f"Jährliche Ersparnis: ca. {annual_savings:,.0f} EUR",
+                    "Refinanzierung prüfen!",
                 ],
             }
 
@@ -453,7 +453,7 @@ class ScenarioTemplates:
         change_amount: Decimal,
         is_increase: bool
     ) -> Dict[str, Any]:
-        """Berechnet Impact einer Einkommensaenderung."""
+        """Berechnet Impact einer Einkommensänderung."""
         current_health = current_kpis.get("health_score", 70.0)
         monthly_income = current_kpis.get("monthly_income", 5000.0)
         current_dti = current_kpis.get("dti_ratio", 35.0)
@@ -465,14 +465,14 @@ class ScenarioTemplates:
         else:
             new_income = max(monthly_income - float(change_amount), 0)
 
-        # DTI aendert sich
+        # DTI ändert sich
         if new_income > 0:
             current_debt_payment = (current_dti / 100) * monthly_income
             new_dti = (current_debt_payment / new_income) * 100
         else:
             new_dti = 100.0 if current_dti > 0 else 0.0
 
-        # Sparquote bei Einkommensaenderung
+        # Sparquote bei Einkommensänderung
         if new_income > monthly_expenses:
             new_savings_potential = new_income - monthly_expenses
             new_savings_rate = (new_savings_potential / new_income) * 100
@@ -525,12 +525,12 @@ class ScenarioTemplates:
 
 class WhatIfSimulatorService:
     """
-    Service fuer What-If Szenario-Simulationen.
+    Service für What-If Szenario-Simulationen.
 
-    Ermoeglicht dem User, hypothetische Szenarien durchzuspielen und
+    Ermöglicht dem User, hypothetische Szenarien durchzuspielen und
     deren Auswirkungen auf die finanzielle Gesundheit zu sehen.
 
-    Singleton-Pattern fuer globalen Zugriff.
+    Singleton-Pattern für globalen Zugriff.
     """
 
     _instance: Optional["WhatIfSimulatorService"] = None
@@ -566,7 +566,7 @@ class WhatIfSimulatorService:
         Args:
             scenario_input: Eingabeparameter des Szenarios
             current_kpis: Aktuelle KPI-Werte
-            user_id: Optional User-ID fuer Caching
+            user_id: Optional User-ID für Caching
 
         Returns:
             ScenarioResult mit allen Projektionen und Analysen
@@ -597,7 +597,7 @@ class WhatIfSimulatorService:
             scenario_input.duration_months,
         )
 
-        # Health Score Aenderung
+        # Health Score Änderung
         current_health = current_kpis.get("health_score", 70.0)
         new_health = impact_data.get("new_kpis", {}).get("health_score", current_health)
         health_change = new_health - current_health
@@ -762,7 +762,7 @@ class WhatIfSimulatorService:
             {k: running_kpis.get(k, 0) - current_kpis.get(k, 0) for k in running_kpis},
         )
 
-        # Beschreibung fuer kombiniertes Szenario
+        # Beschreibung für kombiniertes Szenario
         descriptions = [self._generate_scenario_description(s) for s in scenarios]
         combined_description = " + ".join(descriptions)
 
@@ -800,7 +800,7 @@ class WhatIfSimulatorService:
         current_kpis: Dict[str, float],
     ) -> List[Dict[str, Any]]:
         """
-        Gibt vordefinierte Quick-Szenarien zurueck basierend auf aktuellen KPIs.
+        Gibt vordefinierte Quick-Szenarien zurück basierend auf aktuellen KPIs.
 
         Intelligent: Schlaegt relevante Szenarien basierend auf der aktuellen Situation vor.
         """
@@ -835,7 +835,7 @@ class WhatIfSimulatorService:
         if savings_rate < 15:
             scenarios.append({
                 "id": "increase_savings",
-                "title": "Sparquote erhoehen",
+                "title": "Sparquote erhöhen",
                 "description": f"Sparquote nur {savings_rate:.1f}% - Ziel 15-20%",
                 "scenario_type": ScenarioType.EXTRA_SAVINGS.value,
                 "suggested_amount": 200,
@@ -849,17 +849,17 @@ class WhatIfSimulatorService:
             "description": "Was passiert bei steigenden Zinsen?",
             "scenario_type": ScenarioType.INTEREST_RATE_CHANGE.value,
             "suggested_percentage": 2.0,
-            "expected_impact": "Stresstest fuer Finanzierung",
+            "expected_impact": "Stresstest für Finanzierung",
         })
 
         # Einkommensausfall
         scenarios.append({
             "id": "income_loss",
             "title": "Einkommensausfall 20%",
-            "description": "Resilienz bei Einkommensrueckgang testen",
+            "description": "Resilienz bei Einkommensrückgang testen",
             "scenario_type": ScenarioType.INCOME_CHANGE.value,
             "suggested_percentage": -20.0,
-            "expected_impact": "Stresstest fuer Haushaltsbudget",
+            "expected_impact": "Stresstest für Haushaltsbudget",
         })
 
         return scenarios
@@ -908,7 +908,7 @@ class WhatIfSimulatorService:
                 is_increase,
             )
 
-        # Fallback fuer andere Typen
+        # Fallback für andere Typen
         return {
             "new_kpis": current_kpis.copy(),
             "changes": {},
@@ -954,7 +954,7 @@ class WhatIfSimulatorService:
             # Schwellenwert-Warnung
             warning = None
             if kpi_name == "dti_ratio" and new_val > 40:
-                warning = "Kritisch: DTI ueber 40%"
+                warning = "Kritisch: DTI über 40%"
             elif kpi_name == "emergency_fund_months" and new_val < 3:
                 warning = "Warnung: Weniger als 3 Monate Reserve"
             elif kpi_name == "savings_rate" and new_val < 5:
@@ -1033,7 +1033,7 @@ class WhatIfSimulatorService:
         kpi_name: str,
         change_percentage: float,
     ) -> ImpactSeverity:
-        """Bestimmt Impact-Severity fuer spezifische KPIs."""
+        """Bestimmt Impact-Severity für spezifische KPIs."""
         # Bei DTI ist eine SENKUNG positiv
         if kpi_name == "dti_ratio":
             return self._determine_impact_severity(-change_percentage)
@@ -1042,15 +1042,15 @@ class WhatIfSimulatorService:
         if kpi_name == "total_debt":
             return self._determine_impact_severity(-change_percentage)
 
-        # Standard: Erhoehung ist positiv
+        # Standard: Erhöhung ist positiv
         return self._determine_impact_severity(change_percentage)
 
     def _generate_scenario_description(self, scenario: ScenarioInput) -> str:
         """Generiert eine menschenlesbare Beschreibung."""
         descriptions = {
-            ScenarioType.EXTRA_SAVINGS: f"{scenario.amount:,.0f} EUR/Monat zusaetzlich sparen",
+            ScenarioType.EXTRA_SAVINGS: f"{scenario.amount:,.0f} EUR/Monat zusätzlich sparen",
             ScenarioType.EXTRA_PAYMENT: f"{scenario.amount:,.0f} EUR Sondertilgung",
-            ScenarioType.INCOME_CHANGE: f"Einkommen {'erhoeht' if scenario.amount > 0 or scenario.percentage > 0 else 'reduziert'} um {abs(scenario.percentage):.1f}%" if scenario.percentage else f"Einkommen aendert sich um {scenario.amount:,.0f} EUR",
+            ScenarioType.INCOME_CHANGE: f"Einkommen {'erhöht' if scenario.amount > 0 or scenario.percentage > 0 else 'reduziert'} um {abs(scenario.percentage):.1f}%" if scenario.percentage else f"Einkommen ändert sich um {scenario.amount:,.0f} EUR",
             ScenarioType.INTEREST_RATE_CHANGE: f"Zinssatz {'steigt' if scenario.percentage > 0 else 'sinkt'} um {abs(scenario.percentage):.2f}%",
             ScenarioType.ASSET_SALE: f"Vermoegensverkauf: {scenario.amount:,.0f} EUR",
             ScenarioType.LOAN_REFINANCE: "Kredit-Refinanzierung",
@@ -1092,13 +1092,13 @@ class WhatIfSimulatorService:
         """Berechnet Konfidenz-Prozentsatz."""
         base_confidence = 85.0
 
-        # Weniger Konfidenz bei laengeren Zeithorizonten
+        # Weniger Konfidenz bei längeren Zeithorizonten
         if scenario.duration_months > 24:
             base_confidence -= 10
         elif scenario.duration_months > 12:
             base_confidence -= 5
 
-        # Mehr Konfidenz bei vollstaendigen Daten
+        # Mehr Konfidenz bei vollständigen Daten
         required_kpis = ["health_score", "dti_ratio", "savings_rate", "monthly_income"]
         available = sum(1 for k in required_kpis if k in current_kpis)
         data_completeness_factor = available / len(required_kpis)
@@ -1110,7 +1110,7 @@ class WhatIfSimulatorService:
         """Bestimmt die Datenbasis-Beschreibung."""
         kpi_count = len(current_kpis)
         if kpi_count >= 10:
-            return "Vollstaendige Finanzdaten"
+            return "Vollständige Finanzdaten"
         elif kpi_count >= 5:
             return "Basis-Finanzdaten"
         else:
@@ -1121,7 +1121,7 @@ class WhatIfSimulatorService:
         best: ScenarioResult,
         all_ranked: List[ScenarioResult],
     ) -> str:
-        """Generiert Begruendung fuer bestes Szenario."""
+        """Generiert Begruendung für bestes Szenario."""
         if len(all_ranked) == 1:
             return "Einziges analysiertes Szenario"
 
@@ -1136,7 +1136,7 @@ class WhatIfSimulatorService:
         if second_best:
             advantage = float(best.net_benefit - second_best.net_benefit)
             if advantage > 0:
-                reasons.append(f"{advantage:,.0f} EUR besser als naechste Alternative")
+                reasons.append(f"{advantage:,.0f} EUR besser als nächste Alternative")
 
         return "; ".join(reasons)
 
@@ -1153,9 +1153,9 @@ class WhatIfSimulatorService:
         if best.overall_impact_severity in [ImpactSeverity.VERY_POSITIVE, ImpactSeverity.POSITIVE]:
             return f"Empfehlung: '{best.scenario_description}' mit {float(best.net_benefit):,.0f} EUR Netto-Nutzen und Health Score Verbesserung von {best.health_score_change:.1f} Punkten."
         elif best.overall_impact_severity == ImpactSeverity.NEUTRAL:
-            return f"Alle Szenarien haben aehnliche Auswirkungen. '{best.scenario_description}' hat leichten Vorteil."
+            return f"Alle Szenarien haben ähnliche Auswirkungen. '{best.scenario_description}' hat leichten Vorteil."
         else:
-            return f"Achtung: Alle Szenarien haben negative Auswirkungen. Wenn noetig, waehle '{best.scenario_description}' als geringstes Uebel."
+            return f"Achtung: Alle Szenarien haben negative Auswirkungen. Wenn noetig, wähle '{best.scenario_description}' als geringstes Uebel."
 
 
 # =============================================================================
@@ -1167,7 +1167,7 @@ _simulator_lock = threading.Lock()
 
 
 def get_whatif_simulator() -> WhatIfSimulatorService:
-    """Gibt die Singleton-Instanz des What-If Simulators zurueck."""
+    """Gibt die Singleton-Instanz des What-If Simulators zurück."""
     global _simulator_instance
     with _simulator_lock:
         if _simulator_instance is None:

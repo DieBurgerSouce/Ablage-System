@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Chandra OCR Agent fuer Ablage-System.
+Chandra OCR Agent für Ablage-System.
 
 State-of-the-Art 9B Vision-Language Model von Datalab (Surya/Marker Entwickler).
 Benchmark-Score: 83.1 - beste Open-Source Performance (olmOCR-Bench).
 
 VRAM: ~14-16GB (Standard) / ~8-9GB (8-bit) / ~4-5GB (4-bit)
-Staerken: Tabellen (88%), Tiny Text (92.3%), Mathematik (80.3%), Handschrift
+Stärken: Tabellen (88%), Tiny Text (92.3%), Mathematik (80.3%), Handschrift
 """
 
 import asyncio
@@ -25,9 +25,9 @@ from app.core.safe_errors import safe_error_log
 logger = structlog.get_logger(__name__)
 
 
-# OCR Prompt optimiert fuer deutsche Geschaeftsdokumente
+# OCR Prompt optimiert für deutsche Geschäftsdokumente
 OCR_PROMPT = """Extrahiere den gesamten sichtbaren Text aus diesem Dokument.
-Gib NUR den extrahierten Text zurueck, ohne Erklaerungen oder Formatierung.
+Gib NUR den extrahierten Text zurück, ohne Erklärungen oder Formatierung.
 Achte besonders auf:
 - Deutsche Umlaute (ae, oe, ue, ss)
 - IBAN und BIC Nummern
@@ -44,13 +44,13 @@ class ChandraOCRAgent(OCRAgent):
     """
     Chandra OCR Agent - State-of-the-Art 9B VLM von Datalab.
 
-    Verwendet das Chandra-Modell fuer hochpraezise Textextraktion
+    Verwendet das Chandra-Modell für hochpräzise Textextraktion
     mit herausragender Tabellen- und Tiny-Text-Erkennung.
 
     Features:
     - 9B Parameter Vision-Language Model
     - Basiert auf Qwen-3-VL
-    - Unterstuetzt Standard, 8-bit und 4-bit Quantisierung
+    - Unterstützt Standard, 8-bit und 4-bit Quantisierung
     - Automatischer OOM-Fallback auf niedrigere Quantisierung
     """
 
@@ -58,9 +58,9 @@ class ChandraOCRAgent(OCRAgent):
     VRAM_REQUIRED_GB = 15  # Standard FP16
     VRAM_8BIT_GB = 9       # 8-bit Quantisierung
     VRAM_4BIT_GB = 5       # 4-bit Quantisierung
-    MODEL_LOADING_TIMEOUT = 1800.0  # 30 Minuten fuer initialen Download
+    MODEL_LOADING_TIMEOUT = 1800.0  # 30 Minuten für initialen Download
 
-    # Class-level Lock fuer Thread-Safe Model Loading
+    # Class-level Lock für Thread-Safe Model Loading
     _model_lock: Optional[asyncio.Lock] = None
 
     def __init__(self, quantization: QuantizationMode = "none"):
@@ -69,7 +69,7 @@ class ChandraOCRAgent(OCRAgent):
 
         Args:
             quantization: Quantisierungs-Modus
-                - "none": Volle FP16 Praezision (~15GB VRAM)
+                - "none": Volle FP16 Präzision (~15GB VRAM)
                 - "8bit": 8-bit Quantisierung (~9GB VRAM)
                 - "4bit": 4-bit Quantisierung (~5GB VRAM)
         """
@@ -79,7 +79,7 @@ class ChandraOCRAgent(OCRAgent):
 
         self.quantization = quantization
 
-        # GPU-Verfuegbarkeit pruefen
+        # GPU-Verfügbarkeit prüfen
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
@@ -110,7 +110,7 @@ class ChandraOCRAgent(OCRAgent):
 
         # GPU-Optimierungen aktivieren
         if torch.cuda.is_available():
-            # TensorFloat-32 fuer RTX 40xx Serie
+            # TensorFloat-32 für RTX 40xx Serie
             torch.backends.cuda.matmul.allow_tf32 = True
             torch.backends.cudnn.allow_tf32 = True
             torch.backends.cudnn.benchmark = True
@@ -142,16 +142,16 @@ class ChandraOCRAgent(OCRAgent):
         Lade Chandra Modell mit Thread-Safe Locking und Timeout.
 
         Args:
-            timeout_seconds: Maximale Wartezeit fuer Model-Loading
-            quantization: Optional - ueberschreibt self.quantization
+            timeout_seconds: Maximale Wartezeit für Model-Loading
+            quantization: Optional - überschreibt self.quantization
 
         Raises:
-            asyncio.TimeoutError: Bei Timeout-Ueberschreitung
+            asyncio.TimeoutError: Bei Timeout-Überschreitung
         """
         async with ChandraOCRAgent._model_lock:
             target_quantization = quantization or self.quantization
 
-            # Pruefen ob Reload noetig
+            # Prüfen ob Reload nötig
             if self._models_loaded and self._current_quantization == target_quantization:
                 return
 
@@ -179,7 +179,7 @@ class ChandraOCRAgent(OCRAgent):
                     timeout_seconds=timeout_seconds,
                     device=str(self.device),
                     quantization=target_quantization,
-                    message="Model-Loading hat Timeout ueberschritten"
+                    message="Model-Loading hat Timeout überschritten"
                 )
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
@@ -220,7 +220,7 @@ class ChandraOCRAgent(OCRAgent):
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-            # Importiere benoetigte Klassen
+            # Importiere benötigte Klassen
             # Chandra basiert auf Qwen3-VL, also brauchen wir die richtige Vision-Language Klasse
             from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
             from transformers import logging as transformers_logging
@@ -299,7 +299,7 @@ class ChandraOCRAgent(OCRAgent):
 
             logger.info("chandra_models_loaded_successfully")
 
-            # Warmup fuer CUDA Kernel Compilation
+            # Warmup für CUDA Kernel Compilation
             self._warmup_model()
 
         except Exception as e:
@@ -308,6 +308,7 @@ class ChandraOCRAgent(OCRAgent):
 
     async def _unload_models(self):
         """Entlade Modelle und gib GPU-Speicher frei."""
+
         logger.info("chandra_unloading_models")
 
         self._model = None
@@ -329,7 +330,7 @@ class ChandraOCRAgent(OCRAgent):
             start = time.perf_counter()
             logger.info("chandra_warmup_starting")
 
-            # Kleines Dummy-Bild fuer Warmup
+            # Kleines Dummy-Bild für Warmup
             dummy_image = Image.new('RGB', (224, 224), color='white')
 
             # Minimale Inference
@@ -344,7 +345,7 @@ class ChandraOCRAgent(OCRAgent):
                     }
                 ]
 
-                # Nur Text-Teil fuer Warmup
+                # Nur Text-Teil für Warmup
                 text = self._processor.apply_chat_template(
                     messages,
                     tokenize=False,
@@ -365,7 +366,7 @@ class ChandraOCRAgent(OCRAgent):
 
     def _load_image(self, image_path: str) -> List[Image.Image]:
         """
-        Lade Bild(er) aus Datei - unterstuetzt PDFs und Bildformate.
+        Lade Bild(er) aus Datei - unterstützt PDFs und Bildformate.
 
         Args:
             image_path: Pfad zur Bild- oder PDF-Datei
@@ -386,7 +387,7 @@ class ChandraOCRAgent(OCRAgent):
                 pdf = pdfium.PdfDocument(image_path)
                 for page_num in range(len(pdf)):
                     page = pdf[page_num]
-                    # 300 DPI fuer gute Qualitaet
+                    # 300 DPI für gute Qualität
                     pil_image = page.render(scale=300/72).to_pil()
                     images.append(pil_image)
                     logger.debug(
@@ -431,7 +432,7 @@ class ChandraOCRAgent(OCRAgent):
             torch.cuda.empty_cache()
 
         try:
-            # Nachricht fuer Chandra Vision-Language Model
+            # Nachricht für Chandra Vision-Language Model
             messages = [
                 {
                     "role": "user",
@@ -457,7 +458,7 @@ class ChandraOCRAgent(OCRAgent):
                 return_tensors="pt"
             )
 
-            # Auf GPU verschieben wenn verfuegbar
+            # Auf GPU verschieben wenn verfügbar
             if torch.cuda.is_available():
                 inputs = inputs.to("cuda")
 
@@ -465,9 +466,9 @@ class ChandraOCRAgent(OCRAgent):
             with torch.no_grad():
                 generated_ids = self._model.generate(
                     **inputs,
-                    max_new_tokens=4096,  # Viel Text fuer Dokumente
-                    do_sample=False,      # Deterministische Ausgabe fuer OCR
-                    num_beams=1,          # Greedy fuer Geschwindigkeit
+                    max_new_tokens=4096,  # Viel Text für Dokumente
+                    do_sample=False,      # Deterministische Ausgabe für OCR
+                    num_beams=1,          # Greedy für Geschwindigkeit
                     pad_token_id=self._processor.tokenizer.pad_token_id,
                 )
 
@@ -486,7 +487,7 @@ class ChandraOCRAgent(OCRAgent):
             # Text bereinigen
             extracted_text = output_text.strip()
 
-            # Deutsche Zeichen pruefen
+            # Deutsche Zeichen prüfen
             german_chars = ['ae', 'oe', 'ue', 'Ae', 'Oe', 'Ue', 'ss']
             found_german = [c for c in german_chars if c in extracted_text]
 
@@ -575,7 +576,7 @@ class ChandraOCRAgent(OCRAgent):
             if not result.get("oom", False):
                 return result
 
-            # OOM aufgetreten - versuche naechste Stufe
+            # OOM aufgetreten - versuche nächste Stufe
             logger.warning(
                 "chandra_oom_trying_lower_quantization",
                 current=quant_mode,
@@ -603,7 +604,7 @@ class ChandraOCRAgent(OCRAgent):
         Args:
             input_data: Pfad zur Datei oder Dict mit image_path
             language: Sprache (Standard: "de")
-            **kwargs: Zusaetzliche Parameter
+            **kwargs: Zusätzliche Parameter
 
         Returns:
             Standardisiertes OCRResult als Dict
@@ -774,7 +775,7 @@ class ChandraOCRAgent(OCRAgent):
         """Ressourcen freigeben und GPU-Speicher leeren."""
         logger.info("chandra_cleanup_starting")
 
-        # Model-Referenzen loeschen
+        # Model-Referenzen löschen
         self._model = None
         self._processor = None
         self._models_loaded = False

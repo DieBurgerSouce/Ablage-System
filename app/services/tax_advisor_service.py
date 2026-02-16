@@ -1,12 +1,12 @@
 """GoBD Steuerberater-Zugang Service.
 
-Verwaltet zeitlich begrenzte Zugaenge fuer Steuerberater und Pruefer:
+Verwaltet zeitlich begrenzte Zugaenge für Steuerberater und Prüfer:
 - Einladungen erstellen und versenden
 - Einladungen akzeptieren (Benutzer erstellen)
 - Zugriffsrechte verwalten
-- Aktivitaeten protokollieren
+- Aktivitäten protokollieren
 
-GoBD-Konformitaet:
+GoBD-Konformität:
 - Nachvollziehbarkeit: Alle Aktionen werden protokolliert
 - Zeitliche Begrenzung: Zugang laeuft automatisch ab
 - Eingeschraenkter Zugriff: Nur Lesezugriff auf relevante Dokumente
@@ -37,10 +37,10 @@ logger = structlog.get_logger(__name__)
 
 
 class TaxAdvisorService:
-    """Service fuer Steuerberater-Zugang und -Verwaltung."""
+    """Service für Steuerberater-Zugang und -Verwaltung."""
 
     # Konstanten
-    TOKEN_LENGTH = 64  # Bytes fuer secure token
+    TOKEN_LENGTH = 64  # Bytes für secure token
     TOKEN_EXPIRY_DAYS = 7  # Tage bis Invite ablaeuft
     DEFAULT_ACCESS_DAYS = 30  # Standard-Zugang in Tagen
 
@@ -60,7 +60,7 @@ class TaxAdvisorService:
 
         Args:
             db: Database Session
-            company_id: Firma, fuer die der Zugang gilt
+            company_id: Firma, für die der Zugang gilt
             email: E-Mail des Steuerberaters
             invited_by: Einladender Benutzer (Admin)
             full_name: Optionaler Name des Steuerberaters
@@ -70,18 +70,18 @@ class TaxAdvisorService:
             access_scope: Optionale Zugriffsbeschraenkungen
 
         Returns:
-            Tuple aus TaxAdvisorInvite und dem Klartext-Token (fuer E-Mail)
+            Tuple aus TaxAdvisorInvite und dem Klartext-Token (für E-Mail)
 
         Raises:
-            ValueError: Bei ungueltigem company_id oder wenn bereits eine
-                       aktive Einladung fuer diese E-Mail existiert
+            ValueError: Bei ungültigem company_id oder wenn bereits eine
+                       aktive Einladung für diese E-Mail existiert
         """
-        # Pruefen ob Company existiert
+        # Prüfen ob Company existiert
         company = await db.get(Company, company_id)
         if not company:
             raise ValueError(f"Firma mit ID {company_id} nicht gefunden")
 
-        # Pruefen ob bereits eine aktive Einladung existiert
+        # Prüfen ob bereits eine aktive Einladung existiert
         existing = await db.execute(
             select(TaxAdvisorInvite).where(
                 and_(
@@ -94,7 +94,7 @@ class TaxAdvisorService:
         )
         if existing.scalar_one_or_none():
             raise ValueError(
-                f"Es existiert bereits eine aktive Einladung fuer {email}"
+                f"Es existiert bereits eine aktive Einladung für {email}"
             )
 
         # Token generieren
@@ -146,14 +146,14 @@ class TaxAdvisorService:
             db: Database Session
             token: Klartext-Token aus der Einladung
             password: Gewaehltes Passwort des Steuerberaters
-            ip_address: IP-Adresse fuer Audit
-            user_agent: User-Agent fuer Audit
+            ip_address: IP-Adresse für Audit
+            user_agent: User-Agent für Audit
 
         Returns:
             Erstellter User mit tax_advisor Rolle
 
         Raises:
-            ValueError: Bei ungueltigem oder abgelaufenem Token
+            ValueError: Bei ungültigem oder abgelaufenem Token
         """
         # Token hashen und Einladung suchen
         token_hash = hashlib.sha256(token.encode()).hexdigest()
@@ -170,7 +170,7 @@ class TaxAdvisorService:
         invite = result.scalar_one_or_none()
 
         if not invite:
-            raise ValueError("Ungueltige Einladung")
+            raise ValueError("Ungültige Einladung")
 
         if invite.status != TaxAdvisorInviteStatus.PENDING.value:
             raise ValueError(
@@ -183,7 +183,7 @@ class TaxAdvisorService:
             await db.commit()
             raise ValueError("Diese Einladung ist abgelaufen")
 
-        # Pruefen ob E-Mail bereits verwendet wird
+        # Prüfen ob E-Mail bereits verwendet wird
         existing_user = await db.execute(
             select(User).where(User.email == invite.email)
         )
@@ -199,7 +199,7 @@ class TaxAdvisorService:
         tax_advisor_role = role_result.scalar_one_or_none()
         if not tax_advisor_role:
             raise ValueError(
-                "tax_advisor Rolle nicht gefunden. Bitte Migration ausfuehren."
+                "tax_advisor Rolle nicht gefunden. Bitte Migration ausführen."
             )
 
         # Benutzer erstellen
@@ -310,13 +310,13 @@ class TaxAdvisorService:
         additional_days: int,
         extended_by: User,
     ) -> User:
-        """Verlaengert den Zugang eines Steuerberaters.
+        """Verlängert den Zugang eines Steuerberaters.
 
         Args:
             db: Database Session
             user_id: ID des Steuerberaters
-            additional_days: Zusaetzliche Tage
-            extended_by: Admin, der den Zugang verlaengert
+            additional_days: Zusätzliche Tage
+            extended_by: Admin, der den Zugang verlängert
 
         Returns:
             Aktualisierter User
@@ -456,10 +456,10 @@ class TaxAdvisorService:
             from_date: Optionales Start-Datum
             to_date: Optionales End-Datum
             limit: Max. Ergebnisse
-            offset: Offset fuer Paginierung
+            offset: Offset für Paginierung
 
         Returns:
-            Liste der Log-Eintraege
+            Liste der Log-Einträge
         """
         query = select(TaxAdvisorAccessLog).where(
             TaxAdvisorAccessLog.company_id == company_id
@@ -485,7 +485,7 @@ class TaxAdvisorService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[TaxAdvisorInvite]:
-        """Ruft ausstehende Einladungen fuer eine Firma ab."""
+        """Ruft ausstehende Einladungen für eine Firma ab."""
         result = await db.execute(
             select(TaxAdvisorInvite)
             .where(
@@ -504,7 +504,7 @@ class TaxAdvisorService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[User]:
-        """Ruft aktive Steuerberater fuer eine Firma ab."""
+        """Ruft aktive Steuerberater für eine Firma ab."""
         # Benutzer mit tax_advisor Rolle und aktivem Zugang
         result = await db.execute(
             select(User)
@@ -588,7 +588,7 @@ class TaxAdvisorService:
         base = email.split("@")[0].lower()
         # Entfernt Sonderzeichen
         base = "".join(c for c in base if c.isalnum() or c in "._-")
-        # Fuegt Suffix hinzu fuer Eindeutigkeit
+        # Fuegt Suffix hinzu für Eindeutigkeit
         suffix = secrets.token_hex(4)
         return f"ta_{base}_{suffix}"
 

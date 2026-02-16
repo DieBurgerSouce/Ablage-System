@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class ProcessDiscoveryService:
     """
-    Service fuer Process Discovery aus Event-Logs.
+    Service für Process Discovery aus Event-Logs.
 
     Analysiert historische Events um Prozessmuster zu erkennen.
     """
@@ -48,7 +48,7 @@ class ProcessDiscoveryService:
         Initialisiere Service.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
         """
         self.db = db
 
@@ -64,10 +64,10 @@ class ProcessDiscoveryService:
         Args:
             company_id: Mandanten-ID
             days: Analysezeitraum
-            min_occurrences: Mindestanzahl fuer Variante
+            min_occurrences: Mindestanzahl für Variante
 
         Returns:
-            Prozessvarianten mit Haeufigkeiten
+            Prozessvarianten mit Häufigkeiten
         """
         since = datetime.utcnow() - timedelta(days=days)
 
@@ -371,7 +371,7 @@ class ProcessDiscoveryService:
         instance_ids = [row[0] for row in result.all()]
 
         deviations = {
-            "skipped_steps": [],      # Uebersprungene Schritte
+            "skipped_steps": [],      # Übersprungene Schritte
             "repeated_steps": [],     # Wiederholte Schritte
             "failed_steps": [],       # Fehlgeschlagene Schritte
             "manual_corrections": [], # Manuelle Korrekturen
@@ -395,17 +395,17 @@ class ProcessDiscoveryService:
 
             event_types = [e.event_type for e in events]
 
-            # Pruefe auf uebersprungene Schritte
+            # Prüfe auf übersprungene Schritte
             for i, expected in enumerate(standard_flow):
                 if expected not in event_types:
-                    # Pruefe ob nachfolgende Schritte vorhanden
+                    # Prüfe ob nachfolgende Schritte vorhanden
                     if any(e in event_types for e in standard_flow[i + 1:]):
                         deviations["skipped_steps"].append({
                             "instance_id": instance_id,
                             "skipped_step": expected,
                         })
 
-            # Pruefe auf wiederholte Schritte
+            # Prüfe auf wiederholte Schritte
             for event_type in set(event_types):
                 count = event_types.count(event_type)
                 if count > 1:
@@ -415,7 +415,7 @@ class ProcessDiscoveryService:
                         "count": count,
                     })
 
-            # Pruefe auf Fehler
+            # Prüfe auf Fehler
             for event in events:
                 if not event.success:
                     deviations["failed_steps"].append({
@@ -424,7 +424,7 @@ class ProcessDiscoveryService:
                         "error": event.error_message,
                     })
 
-            # Pruefe auf manuelle Korrekturen
+            # Prüfe auf manuelle Korrekturen
             if EventType.CLASSIFICATION_CORRECTED.value in event_types:
                 deviations["manual_corrections"].append({
                     "instance_id": instance_id,
@@ -454,7 +454,7 @@ class ProcessDiscoveryService:
         days: int = 30,
     ) -> Dict[str, Any]:
         """
-        Generiere Prozessmodell fuer Visualisierung.
+        Generiere Prozessmodell für Visualisierung.
 
         Args:
             company_id: Mandanten-ID
@@ -465,7 +465,7 @@ class ProcessDiscoveryService:
         """
         since = datetime.utcnow() - timedelta(days=days)
 
-        # Sammle Uebergaenge zwischen Events
+        # Sammle Übergaenge zwischen Events
         transitions: Dict[Tuple[str, str], int] = defaultdict(int)
         event_counts: Dict[str, int] = defaultdict(int)
 
@@ -500,7 +500,7 @@ class ProcessDiscoveryService:
             for event_type in event_types:
                 event_counts[event_type] += 1
 
-            # Zaehle Uebergaenge
+            # Zaehle Übergaenge
             for i in range(len(event_types) - 1):
                 transition = (event_types[i], event_types[i + 1])
                 transitions[transition] += 1
@@ -525,7 +525,7 @@ class ProcessDiscoveryService:
             for (source, target), count in transitions.items()
         ]
 
-        # Sortiere nach Haeufigkeit
+        # Sortiere nach Häufigkeit
         edges.sort(key=lambda x: x["count"], reverse=True)
 
         return {

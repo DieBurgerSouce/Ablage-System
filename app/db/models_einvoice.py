@@ -2,7 +2,7 @@
 """
 E-Invoice Database Models - E-Rechnung 2025 Compliance.
 
-Erweiterte Modelle fuer:
+Erweiterte Modelle für:
 - E-Invoice Status Tracking (Peppol/Email)
 - Transmission History
 - Peppol Participant Registry
@@ -32,20 +32,20 @@ from app.db.models import Base, CrossDBJSON
 # =============================================================================
 
 class EInvoiceTransmissionStatus(str, Enum):
-    """Status einer E-Rechnungsuebertragung."""
+    """Status einer E-Rechnungsübertragung."""
     DRAFT = "draft"  # Entwurf, noch nicht gesendet
-    QUEUED = "queued"  # In Warteschlange fuer Versand
+    QUEUED = "queued"  # In Warteschlange für Versand
     SENDING = "sending"  # Wird gerade gesendet
     SENT = "sent"  # Erfolgreich gesendet
-    DELIVERED = "delivered"  # Zugestellt (Empfaenger bestaetigt)
-    ACKNOWLEDGED = "acknowledged"  # Geschaeftlich bestaetigt (MDN)
-    REJECTED = "rejected"  # Abgelehnt durch Empfaenger
+    DELIVERED = "delivered"  # Zugestellt (Empfänger bestätigt)
+    ACKNOWLEDGED = "acknowledged"  # Geschäftlich bestätigt (MDN)
+    REJECTED = "rejected"  # Abgelehnt durch Empfänger
     FAILED = "failed"  # Technischer Fehler beim Versand
     CANCELLED = "cancelled"  # Manuell abgebrochen
 
 
 class EInvoiceTransmissionChannel(str, Enum):
-    """Uebertragungskanal fuer E-Rechnungen."""
+    """Übertragungskanal für E-Rechnungen."""
     PEPPOL = "peppol"  # Peppol AS4 Network
     EMAIL = "email"  # Fallback via E-Mail
     PORTAL = "portal"  # Upload auf Behoerdenportal
@@ -66,7 +66,7 @@ class PeppolDocumentType(str, Enum):
 
 class EInvoiceTransmission(Base):
     """
-    Tracking einer E-Rechnungsuebertragung.
+    Tracking einer E-Rechnungsübertragung.
 
     Speichert alle Versandversuche und deren Status.
     Pro EInvoice kann es mehrere Transmissions geben (Retry, etc.).
@@ -90,7 +90,7 @@ class EInvoiceTransmission(Base):
     # Peppol-spezifisch
     peppol_message_id = Column(String(255), nullable=True, unique=True)  # AS4 Message ID
     peppol_conversation_id = Column(String(255), nullable=True)  # Conversation ID
-    peppol_endpoint_id = Column(String(100), nullable=True)  # Empfaenger Peppol ID
+    peppol_endpoint_id = Column(String(100), nullable=True)  # Empfänger Peppol ID
     peppol_process_id = Column(String(255), nullable=True)  # Peppol Process ID
     peppol_document_type = Column(String(255), nullable=True)  # Document Type ID
 
@@ -145,7 +145,7 @@ class EInvoiceTransmission(Base):
         self.delivered_at = datetime.now(timezone.utc)
 
     def mark_acknowledged(self, mdn_content: Optional[str] = None) -> None:
-        """Markiert als bestaetigt."""
+        """Markiert als bestätigt."""
         self.status = EInvoiceTransmissionStatus.ACKNOWLEDGED.value
         self.acknowledged_at = datetime.now(timezone.utc)
         self.mdn_received = True
@@ -160,7 +160,7 @@ class EInvoiceTransmission(Base):
         self.retry_count += 1
 
     def can_retry(self) -> bool:
-        """Prueft ob Retry moeglich ist."""
+        """Prüft ob Retry möglich ist."""
         return self.retry_count < self.max_retries and self.status == EInvoiceTransmissionStatus.FAILED.value
 
 
@@ -172,7 +172,7 @@ class PeppolParticipant(Base):
     """
     Peppol Teilnehmer-Registry (Cache).
 
-    Speichert bekannte Peppol-Teilnehmer fuer schnellen Lookup.
+    Speichert bekannte Peppol-Teilnehmer für schnellen Lookup.
     """
     __tablename__ = "peppol_participants"
 
@@ -183,7 +183,7 @@ class PeppolParticipant(Base):
     scheme_id = Column(String(20), nullable=False, default="0204")  # Leitweg-ID Scheme
     endpoint_url = Column(String(500), nullable=True)  # SMP Endpoint
 
-    # Entity Reference (optional - wenn lokaler Geschaeftskontakt)
+    # Entity Reference (optional - wenn lokaler Geschäftskontakt)
     entity_id = Column(UUID(as_uuid=True), ForeignKey("entities.id"), nullable=True)
 
     # Metadata from SMP
@@ -246,7 +246,7 @@ class IncomingEInvoice(Base):
     has_pdf_attachment = Column(Boolean, default=False)
     pdf_storage_path = Column(String(500), nullable=True)
 
-    # Extracted Basic Data (fuer schnelle Uebersicht)
+    # Extracted Basic Data (für schnelle Übersicht)
     invoice_number = Column(String(100), nullable=True)
     invoice_date = Column(DateTime, nullable=True)
     seller_name = Column(String(255), nullable=True)
@@ -264,7 +264,7 @@ class IncomingEInvoice(Base):
     processed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Linking
-    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)  # Verknuepftes Dokument
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)  # Verknüpftes Dokument
     entity_id = Column(UUID(as_uuid=True), ForeignKey("entities.id"), nullable=True)  # Erkannter Absender
 
     # Audit

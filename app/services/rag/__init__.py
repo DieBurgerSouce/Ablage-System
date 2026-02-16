@@ -1,6 +1,6 @@
 """RAG Intelligence Layer Services.
 
-Dieses Paket enthaelt alle Services fuer den RAG Intelligence Layer:
+Dieses Paket enthält alle Services für den RAG Intelligence Layer:
 - Document Chunking
 - LLM Inference
 - Chat System (Phase 4)

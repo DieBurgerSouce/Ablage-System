@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Scheduled Exports API - Geplante automatische Exports.
 
-Enthaelt:
-- CRUD fuer Scheduled Exports
-- Manuelle Ausfuehrung
+Enthält:
+- CRUD für Scheduled Exports
+- Manuelle Ausführung
 - Aktivierung/Deaktivierung
 """
 
@@ -54,7 +54,7 @@ class ScheduledExportCreate(BaseModel):
         try:
             croniter(v)
         except (ValueError, KeyError) as e:
-            raise ValueError(f"Ungueltiger Cron-Ausdruck: {e}")
+            raise ValueError(f"Ungültiger Cron-Ausdruck: {e}")
         return v
 
 
@@ -82,12 +82,12 @@ class ScheduledExportUpdate(BaseModel):
             try:
                 croniter(v)
             except (ValueError, KeyError) as e:
-                raise ValueError(f"Ungueltiger Cron-Ausdruck: {e}")
+                raise ValueError(f"Ungültiger Cron-Ausdruck: {e}")
         return v
 
 
 class ScheduledExportResponse(BaseModel):
-    """Response fuer Scheduled Export."""
+    """Response für Scheduled Export."""
     id: UUID
     name: str
     description: Optional[str] = None
@@ -120,7 +120,7 @@ class ScheduledExportListResponse(BaseModel):
 
 
 class RunNowResponse(BaseModel):
-    """Response nach manueller Ausfuehrung."""
+    """Response nach manueller Ausführung."""
     scheduled_export_id: UUID
     job_id: UUID
     status: str
@@ -140,11 +140,11 @@ def get_cron_description(cron_expr: str) -> str:
 
     minute, hour, day_of_month, month, day_of_week = parts
 
-    # Einfache Uebersetzungen
+    # Einfache Übersetzungen
     if cron_expr == "0 8 * * 1":
         return "Jeden Montag um 08:00 Uhr"
     elif cron_expr == "0 8 * * *":
-        return "Taeglich um 08:00 Uhr"
+        return "Täglich um 08:00 Uhr"
     elif cron_expr == "0 0 1 * *":
         return "Monatlich am 1. um Mitternacht"
     elif cron_expr == "0 6 * * 1-5":
@@ -169,7 +169,7 @@ def get_cron_description(cron_expr: str) -> str:
 
 
 def calculate_next_run(cron_expression: str, tz_name: str = "Europe/Berlin") -> datetime:
-    """Berechnet den naechsten Ausfuehrungszeitpunkt."""
+    """Berechnet den nächsten Ausführungszeitpunkt."""
     try:
         import pytz
         tz = pytz.timezone(tz_name)
@@ -202,7 +202,7 @@ async def create_scheduled_export(
     Returns:
         ScheduledExportResponse
     """
-    # Berechne naechsten Ausfuehrungszeitpunkt
+    # Berechne nächsten Ausführungszeitpunkt
     next_run = calculate_next_run(request.cron_expression, request.timezone)
 
     scheduled_export = ScheduledExport(
@@ -273,7 +273,7 @@ async def list_scheduled_exports(
     Args:
         is_active: Optional Filter nach aktiv/inaktiv
         limit: Maximale Anzahl
-        offset: Offset fuer Pagination
+        offset: Offset für Pagination
 
     Returns:
         ScheduledExportListResponse
@@ -472,7 +472,7 @@ async def delete_scheduled_export(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Scheduled Export loeschen.
+    """Scheduled Export löschen.
 
     Args:
         export_id: ScheduledExport UUID
@@ -509,7 +509,7 @@ async def run_scheduled_export_now(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Scheduled Export jetzt manuell ausfuehren.
+    """Scheduled Export jetzt manuell ausführen.
 
     Args:
         export_id: ScheduledExport UUID

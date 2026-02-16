@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Verification Queue Service fuer Ablage-System OCR.
+Verification Queue Service für Ablage-System OCR.
 
-Priorisierte Queue fuer manuelle Verifikation von OCR-Samples.
+Priorisierte Queue für manuelle Verifikation von OCR-Samples.
 
 Bei 500+ Dokumenten/Tag werden ~80-90% automatisch akzeptiert.
-Dieser Service verwaltet die restlichen ~10-20% fuer manuelle Pruefung:
+Dieser Service verwaltet die restlichen ~10-20% für manuelle Prüfung:
 
-1. Business-kritische Typen (Rechnungen > Vertraege > Briefe)
-2. Coverage-Luecken (Typen unter 90% Abdeckung)
+1. Business-kritische Typen (Rechnungen > Verträge > Briefe)
+2. Coverage-Lücken (Typen unter 90% Abdeckung)
 3. Auto-Accepted Stichproben (10% der auto-accepted)
 4. Low-Confidence Samples
 
@@ -41,8 +41,8 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 class VerificationPriority(str, Enum):
-    """Prioritaet fuer Verifikation."""
-    CRITICAL = "critical"      # Business-kritisch, Coverage-Luecke
+    """Priorität für Verifikation."""
+    CRITICAL = "critical"      # Business-kritisch, Coverage-Lücke
     HIGH = "high"              # Stichproben-Review, niedrige Confidence
     MEDIUM = "medium"          # Standard-Samples
     LOW = "low"                # Optional, keine Eile
@@ -54,14 +54,14 @@ class QueueItem:
     sample_id: UUID
     document_type: Optional[str]
     priority: VerificationPriority
-    priority_score: float  # 0-100, hoeher = wichtiger
+    priority_score: float  # 0-100, höher = wichtiger
     reason: str
     ocr_text_preview: str
     confidence: float
     is_spot_check: bool
     created_at: datetime
     file_path: Optional[str] = None
-    document_id: Optional[UUID] = None  # Verknuepfung zu Document fuer ExtractedData
+    document_id: Optional[UUID] = None  # Verknüpfung zu Document für ExtractedData
 
 
 @dataclass
@@ -93,27 +93,27 @@ class VerificationResult:
 
 class VerificationQueueService:
     """
-    Service fuer priorisierte Verifikations-Queue.
+    Service für priorisierte Verifikations-Queue.
 
     Priorisierung:
-    1. Business-kritische Typen (Rechnungen > Vertraege > Briefe)
-    2. Coverage-Luecken (Typen unter 90% Abdeckung)
+    1. Business-kritische Typen (Rechnungen > Verträge > Briefe)
+    2. Coverage-Lücken (Typen unter 90% Abdeckung)
     3. Auto-Accepted Stichproben (10% der auto-accepted)
     4. Low-Confidence Samples
     """
 
-    # Prioritaet basierend auf Dokumenttyp
+    # Priorität basierend auf Dokumenttyp
     TYPE_PRIORITY = {
-        "invoice": 1.5,       # Rechnungen hoechste Prioritaet
-        "contract": 1.3,      # Vertraege hoch
+        "invoice": 1.5,       # Rechnungen hoechste Priorität
+        "contract": 1.3,      # Verträge hoch
         "order_confirmation": 1.2,
         "letter": 1.0,        # Standard
         "delivery_note": 0.8, # Niedriger
     }
 
-    # Gewichtung fuer Priority-Score Berechnung
+    # Gewichtung für Priority-Score Berechnung
     PRIORITY_WEIGHTS = {
-        "coverage_gap": 30,      # Luecke in Coverage
+        "coverage_gap": 30,      # Lücke in Coverage
         "spot_check": 25,        # Stichproben-Review
         "type_priority": 20,     # Dokumenttyp-Wichtigkeit
         "low_confidence": 15,    # Niedrige Confidence
@@ -132,25 +132,25 @@ class VerificationQueueService:
         include_spot_checks: bool = True,
     ) -> Optional[QueueItem]:
         """
-        Holt naechstes Sample zur Verifikation.
+        Holt nächstes Sample zur Verifikation.
 
         Priorisiert nach:
-        1. Priority-Score (hoeher = wichtiger)
+        1. Priority-Score (höher = wichtiger)
         2. Alter (aeltere zuerst)
 
         Args:
             db: Datenbank-Session
             user_id: User der verifiziert
-            document_type: Optional Filter fuer Dokumenttyp
+            document_type: Optional Filter für Dokumenttyp
             include_spot_checks: Ob Stichproben-Reviews eingeschlossen werden
 
         Returns:
             QueueItem oder None wenn Queue leer
         """
-        # Hole Coverage-Status fuer Priority-Berechnung
+        # Hole Coverage-Status für Priority-Berechnung
         coverage_status = await self._get_coverage_status(db)
 
-        # Baue Query fuer pending Samples
+        # Baue Query für pending Samples
         # Filtere Samples ohne Text heraus (leere Platzhalter)
         query = select(OCRTrainingSample).where(
             and_(
@@ -181,7 +181,7 @@ class VerificationQueueService:
         if not samples:
             return None
 
-        # Berechne Priority-Score fuer alle Samples
+        # Berechne Priority-Score für alle Samples
         scored_samples = []
         for sample in samples:
             score = await self._calculate_priority_score(
@@ -196,7 +196,7 @@ class VerificationQueueService:
         # Hole bestes Sample
         best_sample, best_score = scored_samples[0]
 
-        # Hole document_id ueber file_path Lookup
+        # Hole document_id über file_path Lookup
         document_id = await self._lookup_document_id(db, best_sample.file_path)
 
         # Erstelle QueueItem
@@ -297,7 +297,7 @@ class VerificationQueueService:
         if oldest_date:
             oldest_item_days = (datetime.now(timezone.utc) - oldest_date).total_seconds() / 86400
 
-        # Coverage-Luecken
+        # Coverage-Lücken
         coverage_gaps = await self._get_coverage_gaps(db)
 
         return QueueStats(
@@ -306,7 +306,7 @@ class VerificationQueueService:
             pending_by_type=pending_by_type,
             spot_checks_pending=spot_checks_pending,
             oldest_item_days=oldest_item_days,
-            avg_wait_time_hours=oldest_item_days * 24 / 2,  # Schaetzung
+            avg_wait_time_hours=oldest_item_days * 24 / 2,  # Schätzung
             coverage_gaps=coverage_gaps,
         )
 
@@ -406,13 +406,13 @@ class VerificationQueueService:
         offset: int = 0,
     ) -> List[QueueItem]:
         """
-        Holt Queue-Items fuer einen bestimmten Dokumenttyp.
+        Holt Queue-Items für einen bestimmten Dokumenttyp.
 
         Args:
             db: Datenbank-Session
             document_type: Dokumenttyp
             limit: Maximale Anzahl
-            offset: Offset fuer Pagination
+            offset: Offset für Pagination
 
         Returns:
             Liste von QueueItems
@@ -468,7 +468,7 @@ class VerificationQueueService:
         sample: OCRTrainingSample,
         coverage_status: Dict[str, float],
     ) -> float:
-        """Berechnet Priority-Score fuer ein Sample (0-100)."""
+        """Berechnet Priority-Score für ein Sample (0-100)."""
         score = 0.0
 
         # 1. Coverage-Gap Score (max 30)
@@ -482,7 +482,7 @@ class VerificationQueueService:
         if sample.needs_spot_check and sample.auto_accepted:
             score += self.PRIORITY_WEIGHTS["spot_check"]
 
-        # 3. Dokumenttyp-Prioritaet (max 20)
+        # 3. Dokumenttyp-Priorität (max 20)
         type_priority = self.TYPE_PRIORITY.get(doc_type, 1.0)
         score += type_priority * self.PRIORITY_WEIGHTS["type_priority"] / 1.5
 
@@ -516,14 +516,14 @@ class VerificationQueueService:
         sample: OCRTrainingSample,
         coverage_status: Dict[str, float],
     ) -> str:
-        """Generiert menschenlesbare Prioritaets-Begruendung."""
+        """Generiert menschenlesbare Prioritäts-Begruendung."""
         reasons = []
 
         doc_type = sample.document_type or "unknown"
         coverage = coverage_status.get(doc_type, 1.0)
 
         if coverage < 0.90:
-            reasons.append(f"Coverage-Luecke ({coverage:.0%})")
+            reasons.append(f"Coverage-Lücke ({coverage:.0%})")
 
         if sample.needs_spot_check and sample.auto_accepted:
             reasons.append("Stichproben-Review")
@@ -532,7 +532,7 @@ class VerificationQueueService:
             reasons.append(f"Niedrige Confidence ({sample.auto_acceptance_confidence:.0%})")
 
         if sample.document_type == "invoice":
-            reasons.append("Geschaeftskritisch (Rechnung)")
+            reasons.append("Geschäftskritisch (Rechnung)")
 
         if not reasons:
             reasons.append("Standard-Verifikation")
@@ -618,7 +618,7 @@ class VerificationQueueService:
         if doc_id:
             return doc_id
 
-        # Strategie 2: Match ueber Dateinamen (letzter Teil des Pfades)
+        # Strategie 2: Match über Dateinamen (letzter Teil des Pfades)
         import os
         filename = os.path.basename(file_path)
         if filename:
@@ -631,7 +631,7 @@ class VerificationQueueService:
             if doc_id:
                 return doc_id
 
-        # Strategie 3: Match ueber original_filename
+        # Strategie 3: Match über original_filename
         if filename:
             result = await db.execute(
                 select(Document.id)
@@ -646,7 +646,7 @@ class VerificationQueueService:
         logger.debug(
             "document_lookup_failed",
             file_path=file_path,
-            message="Kein Document fuer file_path gefunden",
+            message="Kein Document für file_path gefunden",
         )
         return None
 

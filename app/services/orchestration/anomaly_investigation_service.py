@@ -209,7 +209,7 @@ class Investigation:
 
 class AnomalyInvestigationService:
     """
-    Service fuer automatisierte Anomalie-Untersuchungen.
+    Service für automatisierte Anomalie-Untersuchungen.
 
     Koordiniert den gesamten Investigation-Workflow von der
     Datensammlung bis zur Alert-Erstellung.
@@ -236,7 +236,7 @@ class AnomalyInvestigationService:
         self._investigations_lock = asyncio.Lock()
 
         # Konfiguration
-        self._lookback_days = 90  # Tage fuer Timeline
+        self._lookback_days = 90  # Tage für Timeline
         self._max_related_documents = 50
         self._max_related_transactions = 100
 
@@ -293,7 +293,7 @@ class AnomalyInvestigationService:
             anomaly_type=anomaly_type.value,
         )
 
-        # Vollstaendige Untersuchung durchfuehren
+        # Vollständige Untersuchung durchführen
         try:
             investigation = await self._run_investigation(db, investigation)
         except Exception as e:
@@ -312,7 +312,7 @@ class AnomalyInvestigationService:
         db: AsyncSession,
         investigation: Investigation,
     ) -> Investigation:
-        """Fuehrt die vollstaendige Untersuchung durch."""
+        """Führt die vollständige Untersuchung durch."""
 
         # Phase 1: Datensammlung
         investigation.status = InvestigationStatus.COLLECTING_DATA
@@ -437,7 +437,7 @@ class AnomalyInvestigationService:
         db: AsyncSession,
         entity_id: UUID,
     ) -> List[TimelineEntry]:
-        """Baut eine Timeline der Entity-Aktivitaeten auf."""
+        """Baut eine Timeline der Entity-Aktivitäten auf."""
         timeline: List[TimelineEntry] = []
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=self._lookback_days)
 
@@ -450,7 +450,7 @@ class AnomalyInvestigationService:
             timeline.append(TimelineEntry(
                 timestamp=entity.created_at,
                 event_type="entity_created",
-                description="Geschaeftspartner angelegt",
+                description="Geschäftspartner angelegt",
             ))
 
         # Dokumente der Entity
@@ -529,7 +529,7 @@ class AnomalyInvestigationService:
 
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=self._lookback_days)
 
-        # Transaktionen mit verknuepfter Entity
+        # Transaktionen mit verknüpfter Entity
         query = (
             select(BankTransaction)
             .where(
@@ -639,7 +639,7 @@ class AnomalyInvestigationService:
             AnomalyType.PATTERN_BREAK: RiskAssessment.LOW,
         }.get(anomaly_type, RiskAssessment.MEDIUM)
 
-        # Erhoehen basierend auf Betragssumme
+        # Erhöhen basierend auf Betragssumme
         total_amount = sum(
             t.amount for t in related_transactions
             if t.amount
@@ -690,14 +690,14 @@ class AnomalyInvestigationService:
 
         # Timeline-Analyse
         if entity_timeline:
-            # Ungewoehnliche Aktivitaetsmuster
+            # Ungewoehnliche Aktivitätsmuster
             recent_events = [
                 e for e in entity_timeline
                 if e.timestamp > datetime.now(timezone.utc) - timedelta(days=7)
             ]
             if len(recent_events) > 10:
                 findings.append(
-                    f"Ungewoehnlich hohe Aktivitaet: {len(recent_events)} Events in den letzten 7 Tagen"
+                    f"Ungewoehnlich hohe Aktivität: {len(recent_events)} Events in den letzten 7 Tagen"
                 )
 
         # Transaktions-Analyse
@@ -720,15 +720,15 @@ class AnomalyInvestigationService:
         # Anomalie-spezifische Erkenntnisse
         if investigation.anomaly_type == AnomalyType.DUPLICATE_INVOICE:
             findings.append(
-                "Moegliche Duplikat-Rechnung - manuelle Pruefung erforderlich"
+                "Mögliche Duplikat-Rechnung - manuelle Prüfung erforderlich"
             )
         elif investigation.anomaly_type == AnomalyType.IBAN_CHANGE:
             findings.append(
-                "IBAN-Aenderung erkannt - Verifizierung der neuen Bankdaten erforderlich"
+                "IBAN-Änderung erkannt - Verifizierung der neuen Bankdaten erforderlich"
             )
         elif investigation.anomaly_type == AnomalyType.CEO_FRAUD:
             findings.append(
-                "KRITISCH: Moeglicher CEO-Fraud erkannt - sofortige Eskalation empfohlen"
+                "KRITISCH: Möglicher CEO-Fraud erkannt - sofortige Eskalation empfohlen"
             )
 
         return findings
@@ -751,9 +751,9 @@ class AnomalyInvestigationService:
             AnomalyType.DUPLICATE_INVOICE: "Duplikat-Rechnung",
             AnomalyType.PRICE_DEVIATION: "Preisabweichung",
             AnomalyType.UNUSUAL_TIMING: "ungewoehnlichem Timing",
-            AnomalyType.IBAN_CHANGE: "IBAN-Aenderung",
+            AnomalyType.IBAN_CHANGE: "IBAN-Änderung",
             AnomalyType.PHANTOM_SUPPLIER: "unbekanntem Lieferanten",
-            AnomalyType.CEO_FRAUD: "moeglichem CEO-Betrug",
+            AnomalyType.CEO_FRAUD: "möglichem CEO-Betrug",
             AnomalyType.PATTERN_BREAK: "Musterbrechung",
             AnomalyType.VOLUME_ANOMALY: "Volumen-Anomalie",
         }.get(anomaly_type, "Anomalie")
@@ -787,14 +787,14 @@ class AnomalyInvestigationService:
             recommendations.append("Lieferanten kontaktieren zur Klaerung")
         elif anomaly_type == AnomalyType.IBAN_CHANGE:
             recommendations.append("Neue IBAN telefonisch beim Lieferanten verifizieren")
-            recommendations.append("Schriftliche Bestaetigung der Bankverbindung anfordern")
+            recommendations.append("Schriftliche Bestätigung der Bankverbindung anfordern")
             immediate_actions.append("Keine Zahlung auf neue IBAN ohne Verifizierung")
         elif anomaly_type == AnomalyType.CEO_FRAUD:
-            recommendations.append("Absender-Identitaet verifizieren")
-            recommendations.append("Vier-Augen-Prinzip fuer alle Zahlungen aktivieren")
-            immediate_actions.append("IT-Sicherheit ueber verdaechtige Email informieren")
+            recommendations.append("Absender-Identität verifizieren")
+            recommendations.append("Vier-Augen-Prinzip für alle Zahlungen aktivieren")
+            immediate_actions.append("IT-Sicherheit über verdaechtige Email informieren")
         elif anomaly_type == AnomalyType.PHANTOM_SUPPLIER:
-            recommendations.append("Lieferanten-Existenz pruefen (Handelsregister)")
+            recommendations.append("Lieferanten-Existenz prüfen (Handelsregister)")
             recommendations.append("Bestellhistorie analysieren")
         elif anomaly_type == AnomalyType.PRICE_DEVIATION:
             recommendations.append("Preise mit Rahmenvertrag abgleichen")
@@ -802,7 +802,7 @@ class AnomalyInvestigationService:
 
         # Allgemeine Empfehlungen
         recommendations.append("Untersuchungsergebnis dokumentieren")
-        recommendations.append("Praeventivmassnahmen fuer zukuenftige Faelle pruefen")
+        recommendations.append("Praeventivmassnahmen für zukünftige Faelle prüfen")
 
         return recommendations, immediate_actions
 
@@ -814,13 +814,13 @@ class AnomalyInvestigationService:
         """Berechnet die Konfidenz der Analyse."""
         base_confidence = 0.5
 
-        # Mehr Daten = hoehere Konfidenz
+        # Mehr Daten = höhere Konfidenz
         if len(related_docs) > 5:
             base_confidence += 0.15
         if len(related_docs) > 20:
             base_confidence += 0.10
 
-        # Mehr Erkenntnisse = hoehere Konfidenz
+        # Mehr Erkenntnisse = höhere Konfidenz
         if len(findings) > 3:
             base_confidence += 0.10
         if len(findings) > 6:
@@ -837,7 +837,7 @@ class AnomalyInvestigationService:
         db: AsyncSession,
         investigation: Investigation,
     ) -> Optional[UUID]:
-        """Erstellt einen Alert fuer die Untersuchung."""
+        """Erstellt einen Alert für die Untersuchung."""
         if not investigation.report:
             return None
 
@@ -899,7 +899,7 @@ class AnomalyInvestigationService:
         self,
         investigation_id: UUID,
     ) -> Optional[Investigation]:
-        """Gibt eine Untersuchung zurueck."""
+        """Gibt eine Untersuchung zurück."""
         async with self._investigations_lock:
             return self._active_investigations.get(investigation_id)
 
@@ -957,7 +957,7 @@ _service_lock = threading.Lock()
 
 
 def get_anomaly_investigation_service() -> AnomalyInvestigationService:
-    """Factory-Funktion fuer AnomalyInvestigationService Singleton."""
+    """Factory-Funktion für AnomalyInvestigationService Singleton."""
     global _service_instance
     if _service_instance is None:
         with _service_lock:

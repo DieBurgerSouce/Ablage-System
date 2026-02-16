@@ -2,11 +2,11 @@
 """
 Automation Suggester Service.
 
-Generiert Automatisierungsvorschlaege basierend auf Process Mining:
+Generiert Automatisierungsvorschläge basierend auf Process Mining:
 - Manuelle Aktionen erkennen
 - Wiederholte Muster identifizieren
 - ROI berechnen
-- Vorschlaege mit Confidence erstellen
+- Vorschläge mit Confidence erstellen
 
 Feinpoliert und durchdacht.
 """
@@ -35,15 +35,15 @@ logger = logging.getLogger(__name__)
 
 class AutomationSuggester:
     """
-    Service fuer die Generierung von Automatisierungsvorschlaegen.
+    Service für die Generierung von Automatisierungsvorschlägen.
 
     Analysiert manuelle Aktionen und schlaegt Automatisierung vor.
     """
 
-    # Stundenlohn fuer ROI-Berechnung (EUR)
+    # Stundenlohn für ROI-Berechnung (EUR)
     DEFAULT_HOURLY_RATE = 50.0
 
-    # Mindest-Confidence fuer Vorschlaege
+    # Mindest-Confidence für Vorschläge
     MIN_CONFIDENCE = 0.7
 
     # Mindest-Frequenz pro Woche
@@ -54,7 +54,7 @@ class AutomationSuggester:
         Initialisiere Suggester.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
         """
         self.db = db
 
@@ -64,14 +64,14 @@ class AutomationSuggester:
         days: int = 30,
     ) -> List[Dict[str, Any]]:
         """
-        Generiere Automatisierungsvorschlaege.
+        Generiere Automatisierungsvorschläge.
 
         Args:
             company_id: Mandanten-ID
             days: Analysezeitraum
 
         Returns:
-            Liste von Vorschlaegen
+            Liste von Vorschlägen
         """
         suggestions = []
 
@@ -98,11 +98,11 @@ class AutomationSuggester:
         company_id: UUID,
         days: int,
     ) -> List[Dict[str, Any]]:
-        """Analysiere Klassifikations-Korrekturen fuer Auto-Klassifikation."""
+        """Analysiere Klassifikations-Korrekturen für Auto-Klassifikation."""
         suggestions = []
         since = datetime.utcnow() - timedelta(days=days)
 
-        # Finde haeufige manuelle Klassifikations-Korrekturen
+        # Finde häufige manuelle Klassifikations-Korrekturen
         result = await self.db.execute(
             select(
                 ProcessEvent.event_metadata['document_type'].astext.label('doc_type'),
@@ -135,10 +135,10 @@ class AutomationSuggester:
 
                 suggestions.append({
                     "suggestion_type": SuggestionType.AUTO_CLASSIFICATION.value,
-                    "title": f"Auto-Klassifikation fuer '{row.doc_type}'",
+                    "title": f"Auto-Klassifikation für '{row.doc_type}'",
                     "description": (
-                        f"Dokumente vom Typ '{row.doc_type}' werden haeufig manuell korrigiert. "
-                        f"Eine automatische Klassifikationsregel koennte {frequency_per_week:.1f} "
+                        f"Dokumente vom Typ '{row.doc_type}' werden häufig manuell korrigiert. "
+                        f"Eine automatische Klassifikationsregel könnte {frequency_per_week:.1f} "
                         f"manuelle Korrekturen pro Woche einsparen."
                     ),
                     "pattern_description": (
@@ -168,7 +168,7 @@ class AutomationSuggester:
         company_id: UUID,
         days: int,
     ) -> List[Dict[str, Any]]:
-        """Analysiere Routing-Muster fuer Auto-Routing."""
+        """Analysiere Routing-Muster für Auto-Routing."""
         suggestions = []
         since = datetime.utcnow() - timedelta(days=days)
 
@@ -198,7 +198,7 @@ class AutomationSuggester:
                     "count": row.count,
                 })
 
-        # Generiere Vorschlaege fuer konsistente Patterns
+        # Generiere Vorschläge für konsistente Patterns
         for entity_id, patterns in entity_patterns.items():
             total_count = sum(p["count"] for p in patterns)
             frequency_per_week = total_count / (days / 7)
@@ -211,10 +211,10 @@ class AutomationSuggester:
                 if consistency >= 0.8:  # 80%+ konsistent
                     suggestions.append({
                         "suggestion_type": SuggestionType.AUTO_ROUTING.value,
-                        "title": f"Auto-Routing fuer Entity {entity_id[:8]}...",
+                        "title": f"Auto-Routing für Entity {entity_id[:8]}...",
                         "description": (
                             f"Dokumente werden konsistent zu dieser Entity geroutet. "
-                            f"Auto-Routing koennte den Prozess beschleunigen."
+                            f"Auto-Routing könnte den Prozess beschleunigen."
                         ),
                         "confidence": round(consistency * 0.9, 4),
                         "potential_savings_hours": round(frequency_per_week * 52 * 0.05, 2),
@@ -234,7 +234,7 @@ class AutomationSuggester:
         company_id: UUID,
         days: int,
     ) -> List[Dict[str, Any]]:
-        """Analysiere Freigabe-Muster fuer Auto-Approval."""
+        """Analysiere Freigabe-Muster für Auto-Approval."""
         suggestions = []
         since = datetime.utcnow() - timedelta(days=days)
 
@@ -275,10 +275,10 @@ class AutomationSuggester:
 
                     suggestions.append({
                         "suggestion_type": SuggestionType.AUTO_APPROVAL.value,
-                        "title": "Auto-Freigabe fuer Routinedokumente",
+                        "title": "Auto-Freigabe für Routinedokumente",
                         "description": (
                             f"Bei einer Genehmigungsrate von {approval_rate * 100:.1f}% "
-                            f"koennten bestimmte Dokumente automatisch freigegeben werden."
+                            f"könnten bestimmte Dokumente automatisch freigegeben werden."
                         ),
                         "pattern_description": (
                             f"{row.approved} von {row.total} Dokumenten wurden genehmigt."
@@ -306,11 +306,11 @@ class AutomationSuggester:
         company_id: UUID,
         days: int,
     ) -> List[Dict[str, Any]]:
-        """Analysiere Entity-Linking fuer Verbesserungen."""
+        """Analysiere Entity-Linking für Verbesserungen."""
         suggestions = []
         since = datetime.utcnow() - timedelta(days=days)
 
-        # Finde manuelle Entity-Verknuepfungen
+        # Finde manuelle Entity-Verknüpfungen
         result = await self.db.execute(
             select(
                 func.count(ProcessEvent.id).label('total'),
@@ -335,18 +335,18 @@ class AutomationSuggester:
 
             if manual_rate > 0.3:  # Mehr als 30% manuell
                 avg_duration_hours = (row.avg_duration or 0) / 3600000
-                potential_auto = row.manual * 0.7  # 70% koennten automatisiert werden
+                potential_auto = row.manual * 0.7  # 70% könnten automatisiert werden
                 savings_hours = (potential_auto / (days / 7)) * 52 * avg_duration_hours
 
                 suggestions.append({
                     "suggestion_type": SuggestionType.AUTO_ENTITY_LINK.value,
                     "title": "Verbesserte Entity-Erkennung",
                     "description": (
-                        f"{manual_rate * 100:.1f}% der Entity-Verknuepfungen erfolgen manuell. "
-                        f"Erweitertes Training koennte die Erkennungsrate verbessern."
+                        f"{manual_rate * 100:.1f}% der Entity-Verknüpfungen erfolgen manuell. "
+                        f"Erweitertes Training könnte die Erkennungsrate verbessern."
                     ),
                     "pattern_description": (
-                        f"{row.manual} von {row.total} Verknuepfungen waren manuell."
+                        f"{row.manual} von {row.total} Verknüpfungen waren manuell."
                     ),
                     "confidence": round(0.75, 4),
                     "potential_savings_hours": round(savings_hours, 2),
@@ -414,7 +414,7 @@ class AutomationSuggester:
                 "title": "Workflow-Optimierung durch Musterlernen",
                 "description": (
                     f"Es gibt {int(frequency_per_week)} manuelle Korrekturen pro Woche. "
-                    f"Ein lernender Workflow koennte diese reduzieren."
+                    f"Ein lernender Workflow könnte diese reduzieren."
                 ),
                 "pattern_description": (
                     f"Insgesamt {total_corrections} manuelle Korrekturen in {days} Tagen."
@@ -446,11 +446,11 @@ class AutomationSuggester:
         suggestions: List[Dict[str, Any]],
     ) -> List[AutomationSuggestion]:
         """
-        Speichere generierte Vorschlaege in der Datenbank.
+        Speichere generierte Vorschläge in der Datenbank.
 
         Args:
             company_id: Mandanten-ID
-            suggestions: Liste von Vorschlaegen
+            suggestions: Liste von Vorschlägen
 
         Returns:
             Gespeicherte AutomationSuggestion-Objekte
@@ -458,7 +458,7 @@ class AutomationSuggester:
         saved = []
 
         for sugg in suggestions:
-            # Pruefe ob aehnlicher Vorschlag existiert
+            # Prüfe ob ähnlicher Vorschlag existiert
             existing = await self.db.execute(
                 select(AutomationSuggestion)
                 .where(
@@ -472,7 +472,7 @@ class AutomationSuggester:
             )
 
             if existing.scalar_one_or_none():
-                continue  # Ueberspringe Duplikate
+                continue  # Überspringe Duplikate
 
             suggestion = AutomationSuggestion(
                 company_id=company_id,
@@ -504,14 +504,14 @@ class AutomationSuggester:
         limit: int = 10,
     ) -> List[AutomationSuggestion]:
         """
-        Hole offene Vorschlaege.
+        Hole offene Vorschläge.
 
         Args:
             company_id: Mandanten-ID
             limit: Maximale Anzahl
 
         Returns:
-            Liste offener Vorschlaege
+            Liste offener Vorschläge
         """
         result = await self.db.execute(
             select(AutomationSuggestion)
@@ -597,7 +597,7 @@ class AutomationSuggester:
         company_id: UUID,
     ) -> Dict[str, Any]:
         """
-        Hole Statistiken ueber Vorschlaege.
+        Hole Statistiken über Vorschläge.
 
         Args:
             company_id: Mandanten-ID
@@ -617,7 +617,7 @@ class AutomationSuggester:
 
         stats_by_status = {row.status: {"count": row.count, "savings": float(row.total_savings or 0)} for row in result.all()}
 
-        # Berechne realisierte Einsparungen (aktivierte Vorschlaege)
+        # Berechne realisierte Einsparungen (aktivierte Vorschläge)
         activated_savings = stats_by_status.get(SuggestionStatus.ACTIVATED.value, {}).get("savings", 0)
 
         return {

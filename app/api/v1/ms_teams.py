@@ -1,7 +1,7 @@
 """
 Microsoft Teams Integration API Endpoints.
 
-Ermoeglicht:
+Ermöglicht:
 - Verbindungstest und Status
 - Test-Nachrichten senden
 - Webhook-Konfiguration (Admin)
@@ -43,7 +43,7 @@ router = APIRouter(prefix="/ms-teams", tags=["Microsoft Teams"])
 
 
 class TeamsTestMessageRequest(BaseModel):
-    """Schema fuer Test-Nachricht."""
+    """Schema für Test-Nachricht."""
     title: str = Field(
         default="Test-Benachrichtigung",
         min_length=1,
@@ -89,14 +89,14 @@ class TeamsTestMessageRequest(BaseModel):
 
 
 class TeamsTestMessageResponse(BaseModel):
-    """Schema fuer Test-Nachricht Response."""
+    """Schema für Test-Nachricht Response."""
     success: bool
     message: Optional[str] = None
     error: Optional[str] = None
 
 
 class TeamsConnectionStatus(BaseModel):
-    """Schema fuer Verbindungs-Status."""
+    """Schema für Verbindungs-Status."""
     enabled: bool
     webhook_configured: bool
     default_channel: Optional[str] = None
@@ -104,7 +104,7 @@ class TeamsConnectionStatus(BaseModel):
 
 
 class TeamsWebhookConfigRequest(BaseModel):
-    """Schema fuer Webhook-Konfiguration."""
+    """Schema für Webhook-Konfiguration."""
     webhook_url: str = Field(
         ...,
         min_length=10,
@@ -144,12 +144,12 @@ class TeamsWebhookConfigRequest(BaseModel):
         valid_types = [e.value for e in TeamsNotificationType]
         for t in v:
             if t not in valid_types:
-                raise ValueError(f"Ungueltiger Notification-Typ: {t}. Muss einer von {valid_types} sein")
+                raise ValueError(f"Ungültiger Notification-Typ: {t}. Muss einer von {valid_types} sein")
         return v
 
 
 class TeamsWebhookConfigResponse(BaseModel):
-    """Schema fuer Webhook-Konfiguration Response."""
+    """Schema für Webhook-Konfiguration Response."""
     success: bool
     message: str
     enabled: bool
@@ -157,7 +157,7 @@ class TeamsWebhookConfigResponse(BaseModel):
 
 
 class TeamsNotificationTypeInfo(BaseModel):
-    """Schema fuer Notification-Typ Information."""
+    """Schema für Notification-Typ Information."""
     type: str
     name: str
     description: str
@@ -165,7 +165,7 @@ class TeamsNotificationTypeInfo(BaseModel):
 
 
 class TeamsStatistics(BaseModel):
-    """Schema fuer Teams-Statistiken."""
+    """Schema für Teams-Statistiken."""
     enabled: bool
     webhook_configured: bool
     notification_types_enabled: int
@@ -174,11 +174,11 @@ class TeamsStatistics(BaseModel):
 
 
 class TeamsSendNotificationRequest(BaseModel):
-    """Schema fuer benutzerdefinierte Benachrichtigung."""
+    """Schema für benutzerdefinierte Benachrichtigung."""
     notification_type: str = Field(..., description="Notification-Typ")
     title: str = Field(..., min_length=1, max_length=200, description="Titel")
     message: str = Field(..., min_length=1, max_length=2000, description="Nachricht")
-    context: Optional[dict[str, JSONValue]] = Field(default=None, description="Zusaetzlicher Kontext")
+    context: Optional[dict[str, JSONValue]] = Field(default=None, description="Zusätzlicher Kontext")
     priority: str = Field(default="normal", description="Prioritaet")
     actions: Optional[list[dict[str, str]]] = Field(default=None, description="Aktions-Buttons")
 
@@ -212,7 +212,7 @@ class TeamsSendNotificationRequest(BaseModel):
             if "url" not in action and "data" not in action:
                 raise ValueError("Jede Aktion muss entweder 'url' oder 'data' haben")
             if "url" in action and not action["url"].startswith("https://"):
-                raise ValueError("Action URLs muessen mit https:// beginnen")
+                raise ValueError("Action URLs müssen mit https:// beginnen")
         return v
 
 
@@ -224,13 +224,13 @@ class TeamsSendNotificationRequest(BaseModel):
 @router.get(
     "/status",
     response_model=TeamsConnectionStatus,
-    summary="Verbindungs-Status pruefen",
-    description="Prueft den Status der Microsoft Teams-Integration.",
+    summary="Verbindungs-Status prüfen",
+    description="Prüft den Status der Microsoft Teams-Integration.",
 )
 async def get_teams_status(
     current_user: User = Depends(require_admin),
 ) -> TeamsConnectionStatus:
-    """Gibt den aktuellen Teams-Verbindungsstatus zurueck."""
+    """Gibt den aktuellen Teams-Verbindungsstatus zurück."""
     service = get_teams_service()
     status_data = await service.test_connection()
     return TeamsConnectionStatus(**status_data)
@@ -405,7 +405,7 @@ async def send_notification(
     "/webhook",
     response_model=TeamsWebhookConfigResponse,
     summary="Webhook konfigurieren",
-    description="Konfiguriert den Microsoft Teams Incoming Webhook (nur fuer Admins).",
+    description="Konfiguriert den Microsoft Teams Incoming Webhook (nur für Admins).",
 )
 async def configure_webhook(
     request: Request,
@@ -416,7 +416,7 @@ async def configure_webhook(
     Konfiguriert den Microsoft Teams Incoming Webhook.
 
     HINWEIS: Diese Konfiguration wird zur Laufzeit angewendet.
-    Fuer persistente Konfiguration muessen die Umgebungsvariablen
+    Für persistente Konfiguration müssen die Umgebungsvariablen
     TEAMS_WEBHOOK_URL, TEAMS_ENABLED, etc. gesetzt werden.
     """
     service = get_teams_service()
@@ -469,13 +469,13 @@ async def configure_webhook(
 @router.get(
     "/notification-types",
     response_model=list[TeamsNotificationTypeInfo],
-    summary="Verfuegbare Notification-Typen",
-    description="Listet alle verfuegbaren Microsoft Teams-Notification-Typen auf.",
+    summary="Verfügbare Notification-Typen",
+    description="Listet alle verfügbaren Microsoft Teams-Notification-Typen auf.",
 )
 async def get_notification_types(
     current_user: User = Depends(get_current_user),
 ) -> list[TeamsNotificationTypeInfo]:
-    """Gibt alle verfuegbaren Notification-Typen zurueck."""
+    """Gibt alle verfügbaren Notification-Typen zurück."""
     types = [
         TeamsNotificationTypeInfo(
             type="document_processed",
@@ -510,13 +510,13 @@ async def get_notification_types(
         TeamsNotificationTypeInfo(
             type="high_risk_entity",
             name="Hochrisiko-Partner",
-            description="Wenn ein Geschaeftspartner hohen Risikowert erreicht",
+            description="Wenn ein Geschäftspartner hohen Risikowert erreicht",
             icon="\u26A0\uFE0F",
         ),
         TeamsNotificationTypeInfo(
             type="dunning_escalation",
             name="Mahneskalation",
-            description="Wenn eine Mahnstufe erhoeht wird",
+            description="Wenn eine Mahnstufe erhöht wird",
             icon="\u26A0\uFE0F",
         ),
         TeamsNotificationTypeInfo(
@@ -561,10 +561,10 @@ async def get_notification_types(
 @router.get(
     "/health",
     summary="Health Check",
-    description="Prueft ob der Microsoft Teams-Service verfuegbar ist.",
+    description="Prüft ob der Microsoft Teams-Service verfügbar ist.",
 )
 async def health_check() -> dict[str, JSONValue]:
-    """Health Check fuer den Teams-Service."""
+    """Health Check für den Teams-Service."""
     service = get_teams_service()
 
     return {

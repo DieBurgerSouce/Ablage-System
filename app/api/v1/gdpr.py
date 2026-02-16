@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
-# SECURITY FIX 27-7: Rate Limiting fuer GDPR Endpoints
+# SECURITY FIX 27-7: Rate Limiting für GDPR Endpoints
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_detail, safe_error_log
 
@@ -64,7 +64,7 @@ router = APIRouter(prefix="/users/me/gdpr", tags=["GDPR"])
 
 # ==================== Art. 17 - Recht auf Löschung ====================
 
-# SECURITY FIX 27-7: Rate-Limit fuer Account-Loeschung - nur 3x pro Tag!
+# SECURITY FIX 27-7: Rate-Limit für Account-Löschung - nur 3x pro Tag!
 @limiter.limit("3/day", key_func=get_user_identifier)
 @router.post(
     "/request-deletion",
@@ -592,10 +592,10 @@ def _get_export_status_message(export_status: str) -> str:
     return messages.get(export_status, "Unbekannter Status")
 
 
-# ==================== Pydantic Schemas fuer Consent Management ====================
+# ==================== Pydantic Schemas für Consent Management ====================
 
 class ConsentScopeInfo(BaseModel):
-    """Information ueber einen einzelnen Einwilligungs-Bereich."""
+    """Information über einen einzelnen Einwilligungs-Bereich."""
     scope: str
     scope_description: str
     consent_given: bool
@@ -665,7 +665,7 @@ class DSRCreateRequest(BaseModel):
     request_type: str = Field(..., description="Typ: access, rectification, erasure, restriction, portability, objection")
     description: Optional[str] = Field(None, description="Optionale Beschreibung")
     affected_data_categories: Optional[List[str]] = Field(None, description="Betroffene Datenkategorien")
-    rectification_details: Optional[dict] = Field(None, description="Details fuer Berichtigungen (Art. 16)")
+    rectification_details: Optional[dict] = Field(None, description="Details für Berichtigungen (Art. 16)")
 
 
 class DSRCreateResponse(BaseModel):
@@ -700,7 +700,7 @@ class DSRListResponse(BaseModel):
 
 
 class DSRVerifyRequest(BaseModel):
-    """Request zur Identitaetsverifikation."""
+    """Request zur Identitätsverifikation."""
     verification_token: str = Field(..., description="Verifikations-Token aus der Email")
 
 
@@ -715,7 +715,7 @@ class DSRVerifyResponse(BaseModel):
 class RectificationRequest(BaseModel):
     """Request zur Datenberichtigung (Art. 16)."""
     corrections: dict = Field(..., description="Zu korrigierende Felder und neue Werte")
-    reason: Optional[str] = Field(None, description="Begruendung")
+    reason: Optional[str] = Field(None, description="Begründung")
 
 
 class RectificationResponse(BaseModel):
@@ -744,18 +744,18 @@ async def get_consent_status(
     db: AsyncSession = Depends(get_db)
 ) -> ConsentStatusResponse:
     """
-    Zeigt den aktuellen Einwilligungs-Status fuer alle Bereiche.
+    Zeigt den aktuellen Einwilligungs-Status für alle Bereiche.
 
     Args:
         current_user: Aktuell angemeldeter Benutzer
         db: Datenbank-Session
 
     Returns:
-        Aktueller Consent-Status fuer alle Scopes
+        Aktueller Consent-Status für alle Scopes
     """
     consent_service = get_consent_management_service()
 
-    # Hole Status fuer alle Scopes
+    # Hole Status für alle Scopes
     scopes_info = []
     active_count = 0
 
@@ -802,7 +802,7 @@ async def get_consent_status(
     "",
     response_model=ConsentGrantResponse,
     summary="Einwilligung erteilen/aktualisieren",
-    description="Art. 6, 7 DSGVO - Einwilligung fuer einen Bereich erteilen"
+    description="Art. 6, 7 DSGVO - Einwilligung für einen Bereich erteilen"
 )
 async def grant_consent(
     request: Request,
@@ -811,7 +811,7 @@ async def grant_consent(
     db: AsyncSession = Depends(get_db)
 ) -> ConsentGrantResponse:
     """
-    Erteilt oder aktualisiert eine Einwilligung fuer einen bestimmten Bereich.
+    Erteilt oder aktualisiert eine Einwilligung für einen bestimmten Bereich.
 
     Args:
         consent_request: Einwilligungs-Daten
@@ -819,10 +819,10 @@ async def grant_consent(
         db: Datenbank-Session
 
     Returns:
-        Bestaetigung der Einwilligung
+        Bestätigung der Einwilligung
 
     Raises:
-        400: Ungueltiger Scope
+        400: Ungültiger Scope
     """
     consent_service = get_consent_management_service()
 
@@ -832,8 +832,8 @@ async def grant_consent(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Einwilligungs-Bereich: {consent_request.scope}. "
-                   f"Gueltige Werte: {[s.value for s in ConsentScope]}"
+            detail=f"Ungültiger Einwilligungs-Bereich: {consent_request.scope}. "
+                   f"Gültige Werte: {[s.value for s in ConsentScope]}"
         )
 
     # IP-Adresse aus Request extrahieren
@@ -852,7 +852,7 @@ async def grant_consent(
                 user_agent=user_agent[:500] if user_agent else None,
                 valid_until=consent_request.valid_until,
             )
-            nachricht = f"Einwilligung fuer '{scope.value}' erfolgreich erteilt."
+            nachricht = f"Einwilligung für '{scope.value}' erfolgreich erteilt."
         else:
             # Consent ablehnen = withdraw
             result = await consent_service.withdraw_consent(
@@ -872,7 +872,7 @@ async def grant_consent(
                 consent_given=False,
                 consent_version=None,
                 granted_at=result.withdrawn_at,
-                nachricht=f"Einwilligung fuer '{scope.value}' wurde abgelehnt/widerrufen."
+                nachricht=f"Einwilligung für '{scope.value}' wurde abgelehnt/widerrufen."
             )
 
         await db.commit()
@@ -929,15 +929,15 @@ async def withdraw_consent(
 
     Args:
         scope: Bereich der Einwilligung
-        reason: Optionaler Grund fuer den Widerruf
+        reason: Optionaler Grund für den Widerruf
         current_user: Aktuell angemeldeter Benutzer
         db: Datenbank-Session
 
     Returns:
-        Bestaetigung des Widerrufs
+        Bestätigung des Widerrufs
 
     Raises:
-        400: Ungueltiger Scope oder keine aktive Einwilligung
+        400: Ungültiger Scope oder keine aktive Einwilligung
     """
     consent_service = get_consent_management_service()
 
@@ -947,7 +947,7 @@ async def withdraw_consent(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Einwilligungs-Bereich: {scope}"
+            detail=f"Ungültiger Einwilligungs-Bereich: {scope}"
         )
 
     client_ip = request.client.host if request.client else None
@@ -977,7 +977,7 @@ async def withdraw_consent(
             scope=scope,
             withdrawn_at=result.withdrawn_at,
             consent_id=result.consent_scope_id,
-            nachricht=f"Einwilligung fuer '{scope}' erfolgreich widerrufen. "
+            nachricht=f"Einwilligung für '{scope}' erfolgreich widerrufen. "
                       f"Die Verarbeitung Ihrer Daten in diesem Bereich wird eingestellt."
         )
 
@@ -993,7 +993,7 @@ async def withdraw_consent(
     "/history",
     response_model=ConsentHistoryResponse,
     summary="Einwilligungs-Historie abrufen",
-    description="Vollstaendige Historie aller Einwilligungs-Aenderungen"
+    description="Vollständige Historie aller Einwilligungs-Änderungen"
 )
 async def get_consent_history(
     scope: Optional[str] = Query(None, description="Filter nach Bereich"),
@@ -1002,16 +1002,16 @@ async def get_consent_history(
     db: AsyncSession = Depends(get_db)
 ) -> ConsentHistoryResponse:
     """
-    Zeigt die vollstaendige Historie aller Einwilligungs-Aenderungen.
+    Zeigt die vollständige Historie aller Einwilligungs-Änderungen.
 
     Args:
         scope: Optionaler Filter nach Bereich
-        limit: Maximale Anzahl der Eintraege
+        limit: Maximale Anzahl der Einträge
         current_user: Aktuell angemeldeter Benutzer
         db: Datenbank-Session
 
     Returns:
-        Liste der Historie-Eintraege
+        Liste der Historie-Einträge
     """
     consent_service = get_consent_management_service()
 
@@ -1023,7 +1023,7 @@ async def get_consent_history(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Einwilligungs-Bereich: {scope}"
+                detail=f"Ungültiger Einwilligungs-Bereich: {scope}"
             )
 
     history = await consent_service.get_consent_history(
@@ -1066,7 +1066,7 @@ dsr_router = APIRouter(prefix="/dsr", tags=["GDPR - Betroffenenrechte"])
     response_model=DSRCreateResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Betroffenenrechte-Anfrage erstellen",
-    description="Art. 15-21 DSGVO - Antrag auf Auskunft, Berichtigung, Loeschung etc."
+    description="Art. 15-21 DSGVO - Antrag auf Auskunft, Berichtigung, Löschung etc."
 )
 async def create_dsr_request(
     request: Request,
@@ -1077,12 +1077,12 @@ async def create_dsr_request(
     """
     Erstellt eine neue Betroffenenrechte-Anfrage (Data Subject Request).
 
-    Unterstuetzte Antragstypen:
+    Unterstützte Antragstypen:
     - access: Art. 15 - Recht auf Auskunft
     - rectification: Art. 16 - Recht auf Berichtigung
-    - erasure: Art. 17 - Recht auf Loeschung
-    - restriction: Art. 18 - Recht auf Einschraenkung
-    - portability: Art. 20 - Recht auf Datenuebertragbarkeit
+    - erasure: Art. 17 - Recht auf Löschung
+    - restriction: Art. 18 - Recht auf Einschränkung
+    - portability: Art. 20 - Recht auf Datenübertragbarkeit
     - objection: Art. 21 - Widerspruchsrecht
 
     Die Anfrage muss innerhalb von 30 Tagen bearbeitet werden (DSGVO-Frist).
@@ -1093,7 +1093,7 @@ async def create_dsr_request(
         db: Datenbank-Session
 
     Returns:
-        Bestaetigung mit Anfrage-ID und Frist
+        Bestätigung mit Anfrage-ID und Frist
     """
     dsr_service = get_data_subject_rights_service()
 
@@ -1103,8 +1103,8 @@ async def create_dsr_request(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Antragstyp: {dsr_request.request_type}. "
-                   f"Gueltige Werte: {[t.value for t in DSRType]}"
+            detail=f"Ungültiger Antragstyp: {dsr_request.request_type}. "
+                   f"Gültige Werte: {[t.value for t in DSRType]}"
         )
 
     # Validiere Data Categories wenn angegeben
@@ -1117,7 +1117,7 @@ async def create_dsr_request(
             except ValueError:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Ungueltige Datenkategorie: {cat}"
+                    detail=f"Ungültige Datenkategorie: {cat}"
                 )
 
     try:
@@ -1137,9 +1137,9 @@ async def create_dsr_request(
         type_descriptions = {
             DSRType.ACCESS: "Auskunftsantrag (Art. 15)",
             DSRType.RECTIFICATION: "Berichtigungsantrag (Art. 16)",
-            DSRType.ERASURE: "Loeschantrag (Art. 17)",
-            DSRType.RESTRICTION: "Einschraenkungsantrag (Art. 18)",
-            DSRType.PORTABILITY: "Portabilitaetsantrag (Art. 20)",
+            DSRType.ERASURE: "Löschantrag (Art. 17)",
+            DSRType.RESTRICTION: "Einschränkungsantrag (Art. 18)",
+            DSRType.PORTABILITY: "Portabilitätsantrag (Art. 20)",
             DSRType.OBJECTION: "Widerspruch (Art. 21)",
         }
 
@@ -1203,7 +1203,7 @@ async def list_dsr_requests(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Status: {status_filter}"
+                detail=f"Ungültiger Status: {status_filter}"
             )
 
     dsr_type = None
@@ -1213,7 +1213,7 @@ async def list_dsr_requests(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Antragstyp: {request_type}"
+                detail=f"Ungültiger Antragstyp: {request_type}"
             )
 
     requests = await dsr_service.list_requests(
@@ -1228,7 +1228,7 @@ async def list_dsr_requests(
 
     status_messages = {
         "pending": "Antrag eingereicht, warte auf Bearbeitung",
-        "verified": "Identitaet verifiziert, Bearbeitung beginnt",
+        "verified": "Identität verifiziert, Bearbeitung beginnt",
         "in_progress": "Antrag wird bearbeitet",
         "completed": "Antrag abgeschlossen",
         "rejected": "Antrag abgelehnt",
@@ -1301,7 +1301,7 @@ async def get_dsr_status(
 
     status_messages = {
         "pending": "Antrag eingereicht, warte auf Bearbeitung",
-        "verified": "Identitaet verifiziert, Bearbeitung beginnt",
+        "verified": "Identität verifiziert, Bearbeitung beginnt",
         "in_progress": "Antrag wird bearbeitet",
         "completed": "Antrag abgeschlossen",
         "rejected": "Antrag abgelehnt",
@@ -1327,8 +1327,8 @@ async def get_dsr_status(
 @dsr_router.post(
     "/{request_id}/verify",
     response_model=DSRVerifyResponse,
-    summary="Identitaet verifizieren",
-    description="Verifikation der Identitaet fuer eine DSR-Anfrage"
+    summary="Identität verifizieren",
+    description="Verifikation der Identität für eine DSR-Anfrage"
 )
 async def verify_dsr_identity(
     request_id: UUID,
@@ -1337,7 +1337,7 @@ async def verify_dsr_identity(
     db: AsyncSession = Depends(get_db)
 ) -> DSRVerifyResponse:
     """
-    Verifiziert die Identitaet des Antragstellers.
+    Verifiziert die Identität des Antragstellers.
 
     Args:
         request_id: ID der Anfrage
@@ -1346,7 +1346,7 @@ async def verify_dsr_identity(
         db: Datenbank-Session
 
     Returns:
-        Bestaetigung der Verifikation
+        Bestätigung der Verifikation
 
     Raises:
         400: Ungültiger Token
@@ -1373,7 +1373,7 @@ async def verify_dsr_identity(
             success=True,
             request_id=request_id,
             verified_at=result.verified_at,
-            nachricht="Identitaet erfolgreich verifiziert. Ihr Antrag wird nun bearbeitet."
+            nachricht="Identität erfolgreich verifiziert. Ihr Antrag wird nun bearbeitet."
         )
 
     except HTTPException:
@@ -1400,7 +1400,7 @@ async def cancel_dsr_request(
     """
     Storniert eine Betroffenenrechte-Anfrage.
 
-    Nur moeglich wenn die Anfrage noch nicht abgeschlossen ist.
+    Nur möglich wenn die Anfrage noch nicht abgeschlossen ist.
 
     Args:
         request_id: ID der Anfrage
@@ -1408,7 +1408,7 @@ async def cancel_dsr_request(
         db: Datenbank-Session
 
     Returns:
-        Bestaetigung der Stornierung
+        Bestätigung der Stornierung
 
     Raises:
         400: Anfrage kann nicht storniert werden
@@ -1454,32 +1454,32 @@ async def cancel_dsr_request(
 @router.get(
     "/my-data",
     summary="Alle meine Daten abrufen",
-    description="Art. 15 DSGVO - Vollstaendige Auskunft ueber gespeicherte personenbezogene Daten"
+    description="Art. 15 DSGVO - Vollständige Auskunft über gespeicherte personenbezogene Daten"
 )
 async def get_my_data(
-    include_documents: bool = Query(True, description="Dokumente einschliessen"),
-    include_activity: bool = Query(True, description="Aktivitaeten einschliessen"),
+    include_documents: bool = Query(True, description="Dokumente einschließen"),
+    include_activity: bool = Query(True, description="Aktivitäten einschließen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Vollstaendige Auskunft ueber alle gespeicherten personenbezogenen Daten.
+    Vollständige Auskunft über alle gespeicherten personenbezogenen Daten.
 
-    Art. 15 DSGVO garantiert das Recht auf Auskunft ueber:
+    Art. 15 DSGVO garantiert das Recht auf Auskunft über:
     - Verarbeitungszwecke
     - Kategorien personenbezogener Daten
-    - Empfaenger der Daten
+    - Empfänger der Daten
     - Geplante Speicherdauer
     - Herkunft der Daten
 
     Args:
         include_documents: Ob Dokumente eingeschlossen werden sollen
-        include_activity: Ob Aktivitaeten eingeschlossen werden sollen
+        include_activity: Ob Aktivitäten eingeschlossen werden sollen
         current_user: Aktuell angemeldeter Benutzer
         db: Datenbank-Session
 
     Returns:
-        Vollstaendiger Datenauszug
+        Vollständiger Datenauszug
     """
     dsr_service = get_data_subject_rights_service()
 
@@ -1498,9 +1498,9 @@ async def get_my_data(
             "data_categories": [cat.value if hasattr(cat, 'value') else cat for cat in export.data_categories],
             "personal_data": export.personal_data,
             "total_records": export.total_records,
-            "hinweis": "Dies ist eine vollstaendige Auskunft gemaess Art. 15 DSGVO. "
-                       "Sie haben das Recht auf Berichtigung (Art. 16), Loeschung (Art. 17) "
-                       "und Datenportabilitaet (Art. 20)."
+            "hinweis": "Dies ist eine vollständige Auskunft gemäß Art. 15 DSGVO. "
+                       "Sie haben das Recht auf Berichtigung (Art. 16), Löschung (Art. 17) "
+                       "und Datenportabilität (Art. 20)."
         }
 
     except Exception as e:
@@ -1526,15 +1526,15 @@ async def rectify_data(
     """
     Berichtigt unrichtige personenbezogene Daten.
 
-    Art. 16 DSGVO: Betroffene haben das Recht, unverz├╝glich die
+    Art. 16 DSGVO: Betroffene haben das Recht, unverzüglich die
     Berichtigung unrichtiger Daten zu verlangen.
 
     Berichtigbare Felder:
-    - Persoenliche Daten (Name, etc.)
+    - Persönliche Daten (Name, etc.)
     - Kontaktdaten
-    - Praeferenzen
+    - Präferenzen
 
-    Geschuetzte Felder (nicht berichtigbar):
+    Geschützte Felder (nicht berichtigbar):
     - System-IDs
     - Audit-Logs
     - Authentifizierungsdaten
@@ -1569,9 +1569,9 @@ async def rectify_data(
         if result.corrected_fields:
             nachricht_parts.append(f"{len(result.corrected_fields)} Feld(er) korrigiert")
         if result.skipped_fields:
-            nachricht_parts.append(f"{len(result.skipped_fields)} Feld(er) uebersprungen")
+            nachricht_parts.append(f"{len(result.skipped_fields)} Feld(er) übersprungen")
         if result.protected_fields:
-            nachricht_parts.append(f"{len(result.protected_fields)} geschuetzte Feld(er) nicht aenderbar")
+            nachricht_parts.append(f"{len(result.protected_fields)} geschützte Feld(er) nicht änderbar")
 
         return RectificationResponse(
             success=result.success,

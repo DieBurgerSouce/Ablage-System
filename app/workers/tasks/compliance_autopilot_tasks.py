@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Compliance Autopilot periodic tasks (F13).
 
-Phase 12: Vollstaendige Integration mit ComplianceAutopilotService.
+Phase 12: Vollständige Integration mit ComplianceAutopilotService.
 """
 
 import asyncio
@@ -21,11 +21,11 @@ logger = structlog.get_logger(__name__)
 
 @celery_app.task(name="app.workers.tasks.compliance_autopilot_tasks.run_daily_scan")
 def run_daily_scan() -> dict:
-    """Taeglicher Compliance-Scan aller Dokumente und Prozesse.
+    """Täglicher Compliance-Scan aller Dokumente und Prozesse.
 
-    Prueft:
-    - GoBD-Konformitaet (Aufbewahrungsfristen, Unveraenderbarkeit)
-    - GDPR-Konformitaet (Loeschfristen, Einwilligungen)
+    Prüft:
+    - GoBD-Konformitaet (Aufbewahrungsfristen, Unveränderbarkeit)
+    - GDPR-Konformitaet (Löschfristen, Einwilligungen)
     - DLP-Policy-Verletzungen
     - Fehlende Pflichtfelder
     """
@@ -43,7 +43,7 @@ def run_daily_scan() -> dict:
 
 
 async def _run_daily_scan() -> Dict[str, Any]:
-    """Async Implementation fuer Daily Compliance Scan."""
+    """Async Implementation für Daily Compliance Scan."""
     from app.services.compliance.autopilot_service import ComplianceAutopilotService
 
     total_violations = 0
@@ -88,7 +88,7 @@ async def _run_daily_scan() -> Dict[str, Any]:
 
 @celery_app.task(name="app.workers.tasks.compliance_autopilot_tasks.prepare_audit_report")
 def prepare_audit_report() -> dict:
-    """Bereite woechentlichen Audit-Bericht vor."""
+    """Bereite wöchentlichen Audit-Bericht vor."""
     logger.info("compliance_autopilot_audit_report_start")
     try:
         result = asyncio.get_event_loop().run_until_complete(_prepare_audit_report())
@@ -100,7 +100,7 @@ def prepare_audit_report() -> dict:
 
 
 async def _prepare_audit_report() -> Dict[str, Any]:
-    """Async Implementation fuer Audit Report."""
+    """Async Implementation für Audit Report."""
     from app.services.compliance.autopilot_service import ComplianceAutopilotService
 
     reports_prepared = 0
@@ -151,8 +151,8 @@ async def _prepare_audit_report() -> Dict[str, Any]:
 def run_gdpr_check() -> dict:
     """Monatlicher DSGVO-Compliance-Check.
 
-    Prueft:
-    - Loeschfristen eingehalten
+    Prüft:
+    - Löschfristen eingehalten
     - Verarbeitungsverzeichnis aktuell
     - Einwilligungen dokumentiert
     - Auftragsverarbeitung aktuell
@@ -171,7 +171,7 @@ def run_gdpr_check() -> dict:
 
 
 async def _run_gdpr_check() -> Dict[str, Any]:
-    """Async Implementation fuer GDPR Check."""
+    """Async Implementation für GDPR Check."""
     from app.services.compliance.autopilot_service import ComplianceAutopilotService
 
     total_issues = 0

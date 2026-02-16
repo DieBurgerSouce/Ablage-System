@@ -1,6 +1,6 @@
 """RAG Search Service - Semantische Chunk-Suche mit Reranking.
 
-Erweitert die bestehende Search-Funktionalitaet um:
+Erweitert die bestehende Search-Funktionalität um:
 - Chunk-basierte semantische Suche
 - Hybrid Search (Semantic + Keyword)
 - Optional: Reranking mit BGE-Reranker
@@ -52,7 +52,7 @@ class SearchResponse:
 
 
 class RAGSearchService:
-    """Service fuer RAG-basierte Chunk-Suche.
+    """Service für RAG-basierte Chunk-Suche.
 
     Implementiert:
     - Semantische Suche mit pgvector
@@ -76,7 +76,7 @@ class RAGSearchService:
         rerank: bool = True,
         user_id: Optional[UUID] = None
     ) -> SearchResponse:
-        """Fuehrt semantische Suche auf Chunks durch.
+        """Führt semantische Suche auf Chunks durch.
 
         Args:
             db: Datenbank-Session
@@ -108,11 +108,11 @@ class RAGSearchService:
         embed_time = int((datetime.now(timezone.utc) - embed_start).total_seconds() * 1000)
 
         # 2. Vektor-Suche mit pgvector
-        # Nutze die DB-Function rag_semantic_search falls verfuegbar
+        # Nutze die DB-Function rag_semantic_search falls verfügbar
         results = await self._vector_search(
             db=db,
             query_embedding=query_embedding,
-            limit=limit * 2 if rerank else limit,  # Mehr Kandidaten fuer Reranking
+            limit=limit * 2 if rerank else limit,  # Mehr Kandidaten für Reranking
             threshold=threshold,
             document_ids=document_ids,
             section_types=section_types,
@@ -161,7 +161,7 @@ class RAGSearchService:
         rerank: bool = True,
         user_id: Optional[UUID] = None
     ) -> SearchResponse:
-        """Fuehrt Hybrid-Suche durch (Semantic + Keyword).
+        """Führt Hybrid-Suche durch (Semantic + Keyword).
 
         Kombiniert:
         - Semantische Vektorsuche (pgvector)
@@ -202,7 +202,7 @@ class RAGSearchService:
             db=db,
             query_embedding=query_embedding,
             limit=limit * 2,
-            threshold=0.5,  # Niedrigerer Threshold fuer Fusion
+            threshold=0.5,  # Niedrigerer Threshold für Fusion
             document_ids=document_ids,
             user_id=user_id
         )
@@ -266,7 +266,7 @@ class RAGSearchService:
         document_ids: Optional[List[UUID]] = None,
         user_id: Optional[UUID] = None
     ) -> SearchResponse:
-        """Fuehrt reine Keyword-Suche durch.
+        """Führt reine Keyword-Suche durch.
 
         Args:
             db: Datenbank-Session
@@ -311,25 +311,25 @@ class RAGSearchService:
         """Interne Vektorsuche mit pgvector."""
         # DD.1 SECURITY FIX: Validate embedding values are numeric before SQL construction
         # Embedding kommt vom ML-Modell, aber wir validieren trotzdem zur Sicherheit
-        # EE.2 SECURITY FIX: Zusaetzlich NaN/Inf Validierung hinzugefuegt
+        # EE.2 SECURITY FIX: Zusätzlich NaN/Inf Validierung hinzugefuegt
         validated_values = []
         for x in query_embedding:
             if not isinstance(x, (int, float)):
                 raise ValueError(f"Invalid embedding value type: {type(x)}")
             # Konvertiere zu float um sicherzustellen dass es numerisch ist
             fval = float(x)
-            # EE.2: Pruefe auf NaN und Infinity - diese wuerden SQL-Syntax brechen
+            # EE.2: Prüfe auf NaN und Infinity - diese wuerden SQL-Syntax brechen
             if math.isnan(fval) or math.isinf(fval):
                 raise ValueError(f"Embedding contains invalid value (NaN/Inf): {fval}")
             validated_values.append(fval)
 
-        # Embedding als String fuer PostgreSQL (pgvector erwartet '[x,y,z]' Format)
+        # Embedding als String für PostgreSQL (pgvector erwartet '[x,y,z]' Format)
         embedding_str = "[" + ",".join(str(v) for v in validated_values) + "]"
 
         # Base Query mit Cosine Similarity via raw SQL
         # pgvector: <=> ist Cosine Distance, 1 - distance = similarity
         # CrossDBVector TypeDecorator exponiert keine pgvector-Operatoren,
-        # daher direktes SQL fuer den Distance-Ausdruck
+        # daher direktes SQL für den Distance-Ausdruck
         from sqlalchemy import literal_column
         similarity_expr = literal_column(f"(1 - (embedding <=> '{embedding_str}'::vector))")
 
@@ -469,7 +469,7 @@ class RAGSearchService:
     ) -> List[SearchResult]:
         """Fusioniert Ergebnisse mit Reciprocal Rank Fusion.
 
-        RRF Score = sum(1 / (k + rank)) fuer jede Liste
+        RRF Score = sum(1 / (k + rank)) für jede Liste
         """
         k = 60  # RRF Konstante
 
@@ -519,8 +519,8 @@ class RAGSearchService:
     ) -> List[SearchResult]:
         """Rerankt Ergebnisse mit Dual-Stack Cross-Encoder (GPU/CPU).
 
-        Verwendet lokalen RerankerService fuer integriertes Reranking:
-        - Primaer: BGE-Reranker-v2-m3 (GPU, ~1GB VRAM)
+        Verwendet lokalen RerankerService für integriertes Reranking:
+        - Primär: BGE-Reranker-v2-m3 (GPU, ~1GB VRAM)
         - Fallback: MiniLM Cross-Encoder (CPU, ~300MB RAM)
 
         Falls beide fehlschlagen: Original-Reihenfolge beibehalten.
@@ -580,12 +580,12 @@ class RAGSearchService:
         document_ids: Optional[List[UUID]] = None,
         user_id: Optional[UUID] = None
     ) -> List[Dict[str, Any]]:
-        """Sucht Chunks fuer RAG-Kontext.
+        """Sucht Chunks für RAG-Kontext.
 
-        Optimiert fuer die Verwendung mit LLM:
-        - Weniger Ergebnisse, hoehere Qualitaet
+        Optimiert für die Verwendung mit LLM:
+        - Weniger Ergebnisse, höhere Qualität
         - Immer mit Reranking
-        - Gibt vereinfachte Dicts zurueck
+        - Gibt vereinfachte Dicts zurück
 
         Args:
             db: Datenbank-Session
@@ -595,7 +595,7 @@ class RAGSearchService:
             user_id: Optional: Nur Dokumente dieses Users durchsuchen (Security)
 
         Returns:
-            Liste von Chunk-Dictionaries fuer RAG-Kontext
+            Liste von Chunk-Dictionaries für RAG-Kontext
         """
         response = await self.hybrid_search(
             db=db,
@@ -629,7 +629,7 @@ _rag_search_service: Optional[RAGSearchService] = None
 
 
 def get_rag_search_service() -> RAGSearchService:
-    """Gibt die RAG Search Service Instanz zurueck."""
+    """Gibt die RAG Search Service Instanz zurück."""
     global _rag_search_service
     if _rag_search_service is None:
         _rag_search_service = RAGSearchService()

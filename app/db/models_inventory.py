@@ -1,10 +1,10 @@
 """
 Inventory Models - Warenbestand und Lagerverwaltung
 
-Modelle fuer:
+Modelle für:
 - Lager (Warehouse)
 - Artikel (InventoryItem)
-- Bestandsfuehrung (StockLevel)
+- Bestandsführung (StockLevel)
 - Warenbewegungen (InventoryMovement)
 - Wareneingang aus Lieferscheinen
 """
@@ -36,7 +36,7 @@ from app.db.models import Base
 
 
 class MovementType(str, Enum):
-    """Bewegungsarten fuer Inventar"""
+    """Bewegungsarten für Inventar"""
     GOODS_RECEIPT = "goods_receipt"          # Wareneingang
     GOODS_ISSUE = "goods_issue"              # Warenausgang
     TRANSFER = "transfer"                     # Umlagerung
@@ -50,7 +50,7 @@ class MovementType(str, Enum):
 class MovementStatus(str, Enum):
     """Status einer Warenbewegung"""
     PENDING = "pending"       # Ausstehend
-    CONFIRMED = "confirmed"   # Bestaetigt
+    CONFIRMED = "confirmed"   # Bestätigt
     CANCELLED = "cancelled"   # Storniert
 
 
@@ -104,7 +104,7 @@ class Warehouse(Base):
 
 class InventoryItem(Base):
     """
-    Artikel - Stammdaten fuer Lagerartikel
+    Artikel - Stammdaten für Lagerartikel
     """
     __tablename__ = "inventory_items"
 
@@ -126,7 +126,7 @@ class InventoryItem(Base):
     category: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Einheiten
-    unit: Mapped[str] = mapped_column(String(20), default="Stueck")  # Stueck, kg, m, etc.
+    unit: Mapped[str] = mapped_column(String(20), default="Stück")  # Stück, kg, m, etc.
 
     # Preise (optional, hauptsaechlich aus Rechnungen)
     purchase_price: Mapped[Optional[Decimal]] = mapped_column(
@@ -148,7 +148,7 @@ class InventoryItem(Base):
         Numeric(precision=12, scale=3), nullable=True
     )
 
-    # Lieferant (kann mit BusinessEntity verknuepft werden)
+    # Lieferant (kann mit BusinessEntity verknüpft werden)
     default_supplier_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True
     )
@@ -156,7 +156,7 @@ class InventoryItem(Base):
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    # Zusaetzliche Attribute
+    # Zusätzliche Attribute
     attributes: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
 
     # Timestamps
@@ -185,7 +185,7 @@ class InventoryItem(Base):
 
 class StockLevel(Base):
     """
-    Bestandsfuehrung - Aktueller Bestand pro Artikel und Lager
+    Bestandsführung - Aktueller Bestand pro Artikel und Lager
     """
     __tablename__ = "stock_levels"
 
@@ -203,7 +203,7 @@ class StockLevel(Base):
         UUID(as_uuid=True), ForeignKey("warehouses.id", ondelete="CASCADE"), nullable=False
     )
 
-    # Bestaende
+    # Bestände
     quantity_on_hand: Mapped[Decimal] = mapped_column(
         Numeric(precision=12, scale=3), default=0
     )
@@ -243,7 +243,7 @@ class StockLevel(Base):
 
     @property
     def quantity_available(self) -> Decimal:
-        """Verfuegbare Menge = Bestand - Reserviert"""
+        """Verfügbare Menge = Bestand - Reserviert"""
         return self.quantity_on_hand - self.quantity_reserved
 
 
@@ -298,12 +298,12 @@ class InventoryMovement(Base):
     )
     reference_number: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
-    # Geschaeftspartner
+    # Geschäftspartner
     entity_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True
     )
 
-    # Zusaetzliche Infos
+    # Zusätzliche Infos
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Audit
@@ -336,7 +336,7 @@ class InventoryMovement(Base):
 
 class GoodsReceipt(Base):
     """
-    Wareneingang - Verknuepfung Lieferschein mit Bestandsbuchung
+    Wareneingang - Verknüpfung Lieferschein mit Bestandsbuchung
     """
     __tablename__ = "goods_receipts"
 
@@ -347,7 +347,7 @@ class GoodsReceipt(Base):
         UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
     )
 
-    # Verknuepfung mit Lieferschein-Dokument
+    # Verknüpfung mit Lieferschein-Dokument
     delivery_note_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False
     )
@@ -436,7 +436,7 @@ class GoodsReceiptLine(Base):
     quantity_received: Mapped[Decimal] = mapped_column(
         Numeric(precision=12, scale=3), nullable=False
     )
-    unit: Mapped[str] = mapped_column(String(20), default="Stueck")
+    unit: Mapped[str] = mapped_column(String(20), default="Stück")
 
     # Warenbewegung (erstellt nach Verarbeitung)
     movement_id: Mapped[Optional[uuid.UUID]] = mapped_column(

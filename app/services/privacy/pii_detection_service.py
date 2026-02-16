@@ -3,7 +3,7 @@
 PII Detection Service.
 
 Automatische Erkennung personenbezogener Daten (PII) in Texten.
-Unterstuetzte Datentypen:
+Unterstützte Datentypen:
 - Bankdaten (IBAN, BIC)
 - Personennamen
 - Steuer-IDs (USt-ID, Steuernummer)
@@ -90,10 +90,10 @@ class PIIDetectionResult:
 
 class PIIDetectionService:
     """
-    Service fuer die automatische PII-Erkennung.
+    Service für die automatische PII-Erkennung.
 
     Verwendet regelbasierte Pattern-Matching kombiniert mit
-    Heuristiken fuer die Erkennung personenbezogener Daten.
+    Heuristiken für die Erkennung personenbezogener Daten.
     """
 
     # Sensibilitaet pro Typ
@@ -120,9 +120,9 @@ class PIIDetectionService:
     # Regex-Patterns
     PATTERNS = {
         PIIType.IBAN: [
-            # Deutsche IBAN: DE + 2 Pruefziffern + 18 Ziffern
+            # Deutsche IBAN: DE + 2 Prüfziffern + 18 Ziffern
             r'\b(DE\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2})\b',
-            # Allgemeine IBAN (alle Laender)
+            # Allgemeine IBAN (alle Länder)
             r'\b([A-Z]{2}\d{2}\s?(?:[A-Z0-9]\s?){10,30})\b',
         ],
         PIIType.BIC: [
@@ -157,7 +157,7 @@ class PIIDetectionService:
         PIIType.VAT_ID: [
             # Deutsche USt-ID
             r'\b(DE\s?\d{9})\b',
-            # Andere EU-Laender
+            # Andere EU-Länder
             r'\b([A-Z]{2}\s?\d{8,12})\b',
         ],
         PIIType.SOCIAL_SECURITY: [
@@ -176,7 +176,7 @@ class PIIDetectionService:
         ],
         PIIType.SALARY: [
             # Gehalt/Lohn mit Betrag
-            r'(?:gehalt|lohn|verguetung|brutto|netto)[\s:]*(?:EUR|€)?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)',
+            r'(?:gehalt|lohn|vergütung|brutto|netto)[\s:]*(?:EUR|€)?\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)',
             r'(?:EUR|€)\s*(\d{1,3}(?:[.,]\d{3})*(?:[.,]\d{2})?)\s*(?:gehalt|lohn|brutto|netto)',
         ],
         PIIType.IP_ADDRESS: [
@@ -285,7 +285,7 @@ class PIIDetectionService:
         if PIIType.HEALTH_DATA in types_to_check:
             matches.extend(self._detect_health_data(text))
 
-        # Dedupliziere ueberlappende Matches
+        # Dedupliziere überlappende Matches
         matches = self._deduplicate_matches(matches)
 
         # Erstelle Summary
@@ -293,7 +293,7 @@ class PIIDetectionService:
         for m in matches:
             summary[m.pii_type] = summary.get(m.pii_type, 0) + 1
 
-        # Pruefe auf kritische Daten
+        # Prüfe auf kritische Daten
         has_critical = any(m.sensitivity == PIISensitivity.CRITICAL for m in matches)
 
         # Berechne Risiko-Score
@@ -360,26 +360,26 @@ class PIIDetectionService:
             # Deutsche Steuer-ID: 11 Ziffern
             return len(value.replace(" ", "")) == 11 and value.replace(" ", "").isdigit()
         elif pii_type == PIIType.VAT_ID:
-            # USt-ID: Laendercode + 8-12 Ziffern
+            # USt-ID: Ländercode + 8-12 Ziffern
             clean = value.replace(" ", "")
             return len(clean) >= 10 and clean[:2].isalpha()
 
         return True  # Default: Akzeptieren
 
     def _validate_iban(self, iban: str) -> bool:
-        """Validiere IBAN mit Pruefziffer."""
+        """Validiere IBAN mit Prüfziffer."""
         iban_clean = iban.replace(" ", "").upper()
 
         if len(iban_clean) < 15 or len(iban_clean) > 34:
             return False
 
-        # Laendercode pruefen
+        # Ländercode prüfen
         if not iban_clean[:2].isalpha():
             return False
 
-        # Pruefziffern validieren (vereinfacht)
+        # Prüfziffern validieren (vereinfacht)
         try:
-            # IBAN umstellen: Laendercode + Pruefziffern ans Ende
+            # IBAN umstellen: Ländercode + Prüfziffern ans Ende
             rearranged = iban_clean[4:] + iban_clean[:4]
 
             # Buchstaben durch Zahlen ersetzen (A=10, B=11, etc.)
@@ -493,10 +493,10 @@ class PIIDetectionService:
         value: str,
         full_text: str,
     ) -> float:
-        """Berechne Confidence fuer einen Fund."""
+        """Berechne Confidence für einen Fund."""
         base_confidence = 0.8
 
-        # Hoehere Confidence bei validiertem Format
+        # Höhere Confidence bei validiertem Format
         if pii_type == PIIType.IBAN and self._validate_iban(value):
             return 0.99
         if pii_type == PIIType.CREDIT_CARD and self._validate_credit_card(value):
@@ -504,7 +504,7 @@ class PIIDetectionService:
         if pii_type == PIIType.EMAIL:
             return 0.95
 
-        # Kontext-basierte Erhoehung
+        # Kontext-basierte Erhöhung
         context_keywords = {
             PIIType.IBAN: ["iban", "kontonummer", "bankverbindung"],
             PIIType.VAT_ID: ["ust-id", "vat", "mehrwertsteuer"],
@@ -521,7 +521,7 @@ class PIIDetectionService:
         return base_confidence
 
     def _deduplicate_matches(self, matches: List[PIIMatch]) -> List[PIIMatch]:
-        """Entferne ueberlappende Matches, behalte hoechste Confidence."""
+        """Entferne überlappende Matches, behalte hoechste Confidence."""
         if not matches:
             return []
 
@@ -530,9 +530,9 @@ class PIIDetectionService:
 
         result = []
         for match in sorted_matches:
-            # Pruefe Ueberlappung mit letztem Match
+            # Prüfe Überlappung mit letztem Match
             if result and match.start < result[-1].end:
-                # Ueberlappung: Behalte den mit hoeherer Confidence
+                # Überlappung: Behalte den mit höherer Confidence
                 if match.confidence > result[-1].confidence:
                     result[-1] = match
             else:
@@ -576,8 +576,8 @@ class PIIDetectionService:
 
         if has_critical:
             recommendations.append(
-                "KRITISCHE DATEN GEFUNDEN: Dokument enthaelt hochsensible Informationen. "
-                "Zugriff einschraenken und Verschluesselung sicherstellen."
+                "KRITISCHE DATEN GEFUNDEN: Dokument enthält hochsensible Informationen. "
+                "Zugriff einschränken und Verschlüsselung sicherstellen."
             )
 
         # Spezifische Empfehlungen pro Typ
@@ -601,7 +601,7 @@ class PIIDetectionService:
 
         if PIIType.EMAIL in types_found or PIIType.PHONE in types_found:
             recommendations.append(
-                "Kontaktdaten gefunden: Bei Weitergabe Einwilligung pruefen."
+                "Kontaktdaten gefunden: Bei Weitergabe Einwilligung prüfen."
             )
 
         return recommendations[:5]  # Max 5 Empfehlungen

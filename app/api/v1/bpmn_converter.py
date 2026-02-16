@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """BPMN 2.0 Import/Export API Endpoints.
 
-Endpunkte fuer:
+Endpunkte für:
 - Import: BPMN 2.0 XML importieren und Workflow erstellen
 - Export: Workflow als BPMN 2.0 XML exportieren
 - Validate: BPMN 2.0 XML validieren ohne Import
@@ -47,7 +47,7 @@ router = APIRouter(prefix="/bpmn-converter", tags=["BPMN 2.0 Converter"])
 # =============================================================================
 
 class BPMNImportRequest(BaseModel):
-    """Request fuer BPMN Import via JSON Body."""
+    """Request für BPMN Import via JSON Body."""
     bpmn_xml: str = Field(..., min_length=100, description="BPMN 2.0 XML Content")
     name: Optional[str] = Field(None, max_length=255, description="Optionaler Workflow-Name")
     description: Optional[str] = Field(None, description="Optionale Beschreibung")
@@ -55,7 +55,7 @@ class BPMNImportRequest(BaseModel):
 
 
 class BPMNExportRequest(BaseModel):
-    """Request fuer BPMN Export aus internem Format."""
+    """Request für BPMN Export aus internem Format."""
     nodes: List[JSONDict] = Field(..., description="ReactFlow Nodes")
     edges: List[JSONDict] = Field(..., description="ReactFlow Edges")
     name: str = Field(..., min_length=1, max_length=255, description="Workflow-Name")
@@ -64,7 +64,7 @@ class BPMNExportRequest(BaseModel):
 
 
 class BPMNValidateRequest(BaseModel):
-    """Request fuer BPMN Validierung."""
+    """Request für BPMN Validierung."""
     bpmn_xml: str = Field(..., min_length=100, description="BPMN 2.0 XML Content")
 
 
@@ -76,7 +76,7 @@ class ValidationErrorResponse(BaseModel):
 
 
 class ValidationResultResponse(BaseModel):
-    """Response fuer Validierung."""
+    """Response für Validierung."""
     valid: bool
     errors: List[ValidationErrorResponse]
     warnings: List[ValidationErrorResponse]
@@ -106,7 +106,7 @@ class BPMNExportResponse(BaseModel):
 
 
 class BPMNPreviewResponse(BaseModel):
-    """Response fuer BPMN Preview."""
+    """Response für BPMN Preview."""
     workflow_id: str
     preview_available: bool
     message: str
@@ -130,10 +130,10 @@ async def import_bpmn(
     """Importiert BPMN 2.0 XML und erstellt einen Workflow.
 
     Der BPMN-Inhalt wird geparst und in das interne Workflow-Format
-    konvertiert. Der resultierende Workflow kann anschliessend im
+    konvertiert. Der resultierende Workflow kann anschließend im
     Visual Workflow Builder bearbeitet werden.
 
-    Unterstuetzt werden:
+    Unterstützt werden:
     - Start/End Events
     - User Tasks, Service Tasks, Script Tasks
     - Exclusive, Parallel, Inclusive Gateways
@@ -151,7 +151,7 @@ async def import_bpmn(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
-                    "message": "Ungueltiges BPMN-Format",
+                    "message": "Ungültiges BPMN-Format",
                     "errors": error_messages,
                 }
             )
@@ -159,7 +159,7 @@ async def import_bpmn(
         # BPMN zu internem Format konvertieren
         nodes, edges = converter.convert_to_internal(request.bpmn_xml)
 
-        # Workflow-Definition parsen fuer Metadaten
+        # Workflow-Definition parsen für Metadaten
         workflow_def = converter.import_bpmn(request.bpmn_xml)
 
         # Workflow-Name bestimmen
@@ -223,9 +223,9 @@ async def import_bpmn_file(
     - .bpmn (BPMN 2.0 XML)
     - .xml (BPMN 2.0 XML)
 
-    Maximale Dateigroesse: 5 MB
+    Maximale Dateigröße: 5 MB
     """
-    # Dateiformat pruefen
+    # Dateiformat prüfen
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -237,17 +237,17 @@ async def import_bpmn_file(
     if file_ext not in allowed_extensions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiges Dateiformat. Erlaubt: {', '.join(allowed_extensions)}"
+            detail=f"Ungültiges Dateiformat. Erlaubt: {', '.join(allowed_extensions)}"
         )
 
-    # Content-Type pruefen (optional)
+    # Content-Type prüfen (optional)
     allowed_content_types = {
         "application/xml",
         "text/xml",
         "application/octet-stream",
     }
 
-    # Dateiinhalt lesen (mit Groessenbegrenzung)
+    # Dateiinhalt lesen (mit Größenbegrenzung)
     max_size = 5 * 1024 * 1024  # 5 MB
     content = await file.read()
 
@@ -265,7 +265,7 @@ async def import_bpmn_file(
             detail="Datei muss UTF-8 kodiert sein"
         )
 
-    # Import durchfuehren
+    # Import durchführen
     request = BPMNImportRequest(
         bpmn_xml=bpmn_xml,
         name=name,
@@ -359,7 +359,7 @@ async def export_from_internal(
 ) -> BPMNExportResponse:
     """Konvertiert internes ReactFlow-Format direkt zu BPMN 2.0 XML.
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Vorschau vor dem Speichern
     - Export von nicht gespeicherten Workflows
     - Integration mit anderen Tools
@@ -409,12 +409,12 @@ async def validate_bpmn(
 ) -> ValidationResultResponse:
     """Validiert BPMN 2.0 XML ohne zu importieren.
 
-    Prueft:
+    Prüft:
     - XML-Syntax
-    - BPMN 2.0 Schema-Konformitaet
+    - BPMN 2.0 Schema-Konformität
     - Semantische Regeln (Start/End Events, Erreichbarkeit)
 
-    Gibt Fehler und Warnungen zurueck.
+    Gibt Fehler und Warnungen zurück.
     """
     converter = get_bpmn_converter()
 
@@ -452,8 +452,8 @@ async def validate_bpmn_file(
 ) -> ValidationResultResponse:
     """Validiert eine BPMN 2.0 XML Datei ohne zu importieren.
 
-    Nuetzlich fuer:
-    - Vorab-Pruefung vor Import
+    Nuetzlich für:
+    - Vorab-Prüfung vor Import
     - Qualitaetssicherung
     - CI/CD Integration
     """
@@ -493,11 +493,11 @@ async def preview_bpmn(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ) -> BPMNPreviewResponse:
-    """Gibt Informationen zur BPMN-Diagramm-Vorschau zurueck.
+    """Gibt Informationen zur BPMN-Diagramm-Vorschau zurück.
 
     Hinweis: SVG-Rendering erfordert einen externen BPMN-Renderer.
-    Diese Funktion gibt Metadaten zurueck und verweist auf die
-    Export-Funktion fuer den XML-Download.
+    Diese Funktion gibt Metadaten zurück und verweist auf die
+    Export-Funktion für den XML-Download.
     """
     workflow_service = WorkflowService(db)
 
@@ -517,7 +517,7 @@ async def preview_bpmn(
         workflow_id=str(workflow_id),
         preview_available=False,
         message=(
-            "SVG-Vorschau nicht verfuegbar. "
+            "SVG-Vorschau nicht verfügbar. "
             "Verwenden Sie /export/{workflow_id}?download=true "
             "um das BPMN-XML herunterzuladen und in einem BPMN-Viewer anzuzeigen."
         ),
@@ -530,17 +530,17 @@ async def preview_bpmn(
 
 @router.get(
     "/supported-elements",
-    summary="Unterstuetzte BPMN-Elemente auflisten"
+    summary="Unterstützte BPMN-Elemente auflisten"
 )
 async def list_supported_elements(
     current_user: User = Depends(get_current_active_user)
 ) -> JSONDict:
-    """Listet alle unterstuetzten BPMN 2.0 Elemente auf.
+    """Listet alle unterstützten BPMN 2.0 Elemente auf.
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Dokumentation
     - Client-Validierung
-    - Kompatibilitaetspruefung
+    - Kompatibilitätsprüfung
     """
     return {
         "events": {
@@ -562,7 +562,7 @@ async def list_supported_elements(
             "supported": [
                 {"type": "userTask", "description": "User Task (Manuelle Aufgabe)"},
                 {"type": "serviceTask", "description": "Service Task (Automatisierte Aufgabe)"},
-                {"type": "scriptTask", "description": "Script Task (Skript-Ausfuehrung)"},
+                {"type": "scriptTask", "description": "Script Task (Skript-Ausführung)"},
                 {"type": "manualTask", "description": "Manual Task"},
                 {"type": "sendTask", "description": "Send Task (Benachrichtigung)"},
                 {"type": "receiveTask", "description": "Receive Task"},

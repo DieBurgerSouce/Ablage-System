@@ -158,7 +158,7 @@ class RedisIdempotencyStore:
         """Markiere Request als in Bearbeitung (atomic mit SETNX)."""
         redis_key = self._key(key)
 
-        # Pruefe ob bereits existiert
+        # Prüfe ob bereits existiert
         existing = await self._redis.get(redis_key)
         if existing:
             data = json.loads(existing)
@@ -340,7 +340,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
     async def _generate_key(self, request: Request) -> str:
         """Generiere Idempotency Key aus Request-Daten."""
-        # Body lesen (nur einmal moeglich, daher in state speichern)
+        # Body lesen (nur einmal möglich, daher in state speichern)
         body = await request.body()
 
         # Hash aus Methode + Pfad + Body

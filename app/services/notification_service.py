@@ -447,7 +447,7 @@ Folgende Rechnungen haben bald ablaufende Skonto-Fristen:
 
 Gesamtersparnis bei rechtzeitiger Zahlung: {total_savings} EUR
 
-Bitte pruefen Sie die Zahlungsmoeglichkeiten.
+Bitte prüfen Sie die Zahlungsmöglichkeiten.
 
 Mit freundlichen Gruessen,
 Ablage-System
@@ -484,7 +484,7 @@ Details:
 - Kunde: {customer_name}
 - Rechnungsnummer: {invoice_number}
 - Betrag: {amount} EUR
-- Faellig seit: {days_overdue} Tagen
+- Fällig seit: {days_overdue} Tagen
 - Mahnstufe: {dunning_level}
 - Empfohlene Aktion: {recommended_action}
 
@@ -915,7 +915,7 @@ class NotificationService:
         self.email = EmailNotifier()
         self.webhook = WebhookNotifier()
         self.in_app = InAppNotificationStore()
-        # WebSocket manager wird lazy initialisiert um zirkulaere Imports zu vermeiden
+        # WebSocket manager wird lazy initialisiert um zirkuläre Imports zu vermeiden
         self._ws_manager: Optional["NotificationWebSocketManager"] = None
 
     @property
@@ -1350,18 +1350,18 @@ class NotificationService:
 
 class NotificationWebSocketManager:
     """
-    WebSocket Manager fuer Real-time Benachrichtigungen an Benutzer.
+    WebSocket Manager für Real-time Benachrichtigungen an Benutzer.
 
     Features:
     - Pro-User WebSocket-Verbindungen (kann mehrere Tabs haben)
     - Broadcast an alle Verbindungen eines Users
     - Automatische Verbindungsverwaltung
-    - Thread-safe fuer async Operationen
+    - Thread-safe für async Operationen
     """
 
     def __init__(self) -> None:
         """Initialize notification WebSocket manager."""
-        # user_id -> List[WebSocket]  (User kann mehrere Tabs/Geraete haben)
+        # user_id -> List[WebSocket]  (User kann mehrere Tabs/Geräte haben)
         self._connections: Dict[str, List[WebSocket]] = {}
         self._lock = asyncio.Lock()
 
@@ -1371,7 +1371,7 @@ class NotificationWebSocketManager:
         user_id: str,
     ) -> bool:
         """
-        Verbindet einen User fuer Benachrichtigungen.
+        Verbindet einen User für Benachrichtigungen.
 
         Args:
             websocket: WebSocket-Verbindung
@@ -1453,7 +1453,7 @@ class NotificationWebSocketManager:
             if user_id not in self._connections:
                 return 0
 
-            # Kopie der Liste fuer thread-safe Iteration
+            # Kopie der Liste für thread-safe Iteration
             connections = list(self._connections[user_id])
 
         sent_count = 0
@@ -1510,15 +1510,15 @@ class NotificationWebSocketManager:
         return total_sent
 
     def get_connected_users(self) -> List[str]:
-        """Gibt Liste aller verbundenen User-IDs zurueck."""
+        """Gibt Liste aller verbundenen User-IDs zurück."""
         return list(self._connections.keys())
 
     def get_connection_count(self, user_id: str) -> int:
-        """Gibt Anzahl der Verbindungen eines Users zurueck."""
+        """Gibt Anzahl der Verbindungen eines Users zurück."""
         return len(self._connections.get(user_id, []))
 
     def is_user_connected(self, user_id: str) -> bool:
-        """Prueft ob User verbunden ist."""
+        """Prüft ob User verbunden ist."""
         return user_id in self._connections and len(self._connections[user_id]) > 0
 
 
@@ -1534,7 +1534,7 @@ def get_notification_service() -> NotificationService:
     global _notification_service
     if _notification_service is None:
         with _notification_service_lock:
-            # Double-Check Locking: Erneut pruefen nach Lock-Erwerb
+            # Double-Check Locking: Erneut prüfen nach Lock-Erwerb
             if _notification_service is None:
                 _notification_service = NotificationService()
     return _notification_service
@@ -1545,7 +1545,7 @@ def get_notification_ws_manager() -> NotificationWebSocketManager:
     global _notification_ws_manager
     if _notification_ws_manager is None:
         with _notification_ws_manager_lock:
-            # Double-Check Locking: Erneut pruefen nach Lock-Erwerb
+            # Double-Check Locking: Erneut prüfen nach Lock-Erwerb
             if _notification_ws_manager is None:
                 _notification_ws_manager = NotificationWebSocketManager()
     return _notification_ws_manager

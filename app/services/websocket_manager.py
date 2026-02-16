@@ -1,7 +1,7 @@
 """
-WebSocket Manager fuer Real-time Chat Collaboration.
+WebSocket Manager für Real-time Chat Collaboration.
 
-Verwaltet WebSocket-Verbindungen fuer:
+Verwaltet WebSocket-Verbindungen für:
 - Echtzeit-Nachrichten-Synchronisation
 - Typing-Indikatoren
 - Presence-Tracking (wer ist online)
@@ -47,7 +47,7 @@ class WSMessageType(str, Enum):
 
 
 class ConnectionInfo:
-    """Informationen ueber eine WebSocket-Verbindung."""
+    """Informationen über eine WebSocket-Verbindung."""
 
     def __init__(
         self,
@@ -67,7 +67,7 @@ class ConnectionInfo:
 
 class ChatWebSocketManager:
     """
-    Manager fuer WebSocket-Verbindungen in Chat Sessions.
+    Manager für WebSocket-Verbindungen in Chat Sessions.
 
     Features:
     - Multi-User pro Session
@@ -82,7 +82,7 @@ class ChatWebSocketManager:
         self._connections: Dict[str, Dict[str, ConnectionInfo]] = {}
         # user_id -> Set[session_id]  (User kann in mehreren Sessions sein)
         self._user_sessions: Dict[str, Set[str]] = {}
-        # Lock fuer thread-safe Zugriff
+        # Lock für thread-safe Zugriff
         self._lock = asyncio.Lock()
 
     async def connect(
@@ -99,7 +99,7 @@ class ChatWebSocketManager:
             websocket: WebSocket-Verbindung
             session_id: Chat Session ID
             user_id: User ID
-            username: Username fuer Anzeige
+            username: Username für Anzeige
 
         Returns:
             True wenn erfolgreich verbunden
@@ -111,7 +111,7 @@ class ChatWebSocketManager:
             if session_id not in self._connections:
                 self._connections[session_id] = {}
 
-            # Alte Verbindung schliessen falls vorhanden
+            # Alte Verbindung schließen falls vorhanden
             if user_id in self._connections[session_id]:
                 old_conn = self._connections[session_id][user_id]
                 try:
@@ -221,7 +221,7 @@ class ChatWebSocketManager:
         Args:
             session_id: Chat Session ID
             message: Nachricht als Dict
-            exclude_user: Optional User ID zum Ausschliessen
+            exclude_user: Optional User ID zum Ausschließen
         """
         async with self._lock:
             if session_id not in self._connections:
@@ -423,7 +423,7 @@ class ChatWebSocketManager:
         Args:
             session_id: Chat Session ID
             message_id: Message ID
-            full_content: Vollstaendiger Inhalt
+            full_content: Vollständiger Inhalt
         """
         await self.broadcast_to_session(
             session_id=session_id,
@@ -437,7 +437,7 @@ class ChatWebSocketManager:
 
     def get_online_users(self, session_id: str) -> List[Dict[str, Any]]:
         """
-        Gibt alle online User einer Session zurueck.
+        Gibt alle online User einer Session zurück.
 
         Args:
             session_id: Chat Session ID
@@ -458,7 +458,7 @@ class ChatWebSocketManager:
         ]
 
     def get_connection_count(self, session_id: str) -> int:
-        """Gibt Anzahl der Verbindungen in einer Session zurueck."""
+        """Gibt Anzahl der Verbindungen in einer Session zurück."""
         if session_id not in self._connections:
             return 0
         return len(self._connections[session_id])
@@ -469,7 +469,7 @@ _ws_manager: Optional[ChatWebSocketManager] = None
 
 
 def get_websocket_manager() -> ChatWebSocketManager:
-    """Gibt die globale WebSocket-Manager-Instanz zurueck."""
+    """Gibt die globale WebSocket-Manager-Instanz zurück."""
     global _ws_manager
     if _ws_manager is None:
         _ws_manager = ChatWebSocketManager()

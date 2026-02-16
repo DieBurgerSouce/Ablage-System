@@ -15,8 +15,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { useCompareDiff } from '../hooks/use-visual-diff';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useCompareDiff, useCompareDocuments } from '../hooks/use-visual-diff';
+import { DocumentSearchSelect } from './DocumentSearchSelect';
 import type { DiffResponse, DiffBlock } from '../api/visual-diff-api';
+import type { ComparisonResult } from '@/features/documents/compare/types';
 import {
   FileText,
   GitCompare,
@@ -26,15 +29,66 @@ import {
   Plus,
   Minus,
   Edit,
+  FileSearch,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+/**
+ * Wandelt ein ComparisonResult in ein DiffResponse-Format um,
+ * damit die bestehende DiffBlockDisplay-Komponente wiederverwendet werden kann.
+ */
+function comparisonResultToDiffResponse(result: ComparisonResult): DiffResponse {
+  const blocks: DiffBlock[] = result.textDifferences.map((d, i) => ({
+    diff_type:
+      d.type === 'added'
+        ? 'added'
+        : d.type === 'removed'
+          ? 'deleted'
+          : d.type === 'changed'
+            ? 'modified'
+            : 'unchanged',
+    old_text: d.originalText,
+    new_text: d.newText,
+    old_line_start: d.positionStart,
+    old_line_end: d.positionEnd,
+    new_line_start: d.positionStart,
+    new_line_end: d.positionEnd,
+    page_number: 1,
+  }));
+
+  const additions = blocks.filter((b) => b.diff_type === 'added').length;
+  const deletions = blocks.filter((b) => b.diff_type === 'deleted').length;
+  const modifications = blocks.filter((b) => b.diff_type === 'modified').length;
+
+  return {
+    document_a_id: result.documentId1,
+    document_b_id: result.documentId2,
+    total_changes: additions + deletions + modifications,
+    additions,
+    deletions,
+    modifications,
+    similarity_ratio: result.similarityScore,
+    blocks,
+    summary: result.summary,
+  };
+}
+
+interface DocumentOption {
+  id: string;
+  filename: string;
+  document_type: string | null;
+  upload_date: string | null;
+}
 
 export function VisualDiffPage() {
   const [textA, setTextA] = useState('');
   const [textB, setTextB] = useState('');
   const [diffResult, setDiffResult] = useState<DiffResponse | null>(null);
+  const [docA, setDocA] = useState<DocumentOption | null>(null);
+  const [docB, setDocB] = useState<DocumentOption | null>(null);
 
   const compareMutation = useCompareDiff();
+  const compareDocsMutation = useCompareDocuments();
 
   const handleCompare = () => {
     if (!textA.trim() || !textB.trim()) {
@@ -55,11 +109,28 @@ export function VisualDiffPage() {
     );
   };
 
+  const handleCompareDocuments = () => {
+    if (!docA || !docB) return;
+
+    compareDocsMutation.mutate(
+      { documentId1: docA.id, documentId2: docB.id },
+      {
+        onSuccess: (result) => {
+          setDiffResult(comparisonResultToDiffResponse(result));
+        },
+      }
+    );
+  };
+
   const handleReset = () => {
     setTextA('');
     setTextB('');
+    setDocA(null);
+    setDocB(null);
     setDiffResult(null);
   };
+
+  const isComparing = compareMutation.isPending || compareDocsMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -75,7 +146,7 @@ export function VisualDiffPage() {
         </div>
         {diffResult && (
           <Button variant="outline" onClick={handleReset}>
-            Zurücksetzen
+            Zuruecksetzen
           </Button>
         )}
       </div>
@@ -86,56 +157,106 @@ export function VisualDiffPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Texte eingeben
+              Vergleich starten
             </CardTitle>
             <CardDescription>
-              Geben Sie zwei Texte ein, um die Unterschiede zu vergleichen
+              Texte eingeben oder vorhandene Dokumente auswaehlen
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Version A */}
-              <div className="space-y-2">
-                <Label htmlFor="text-a">Version A</Label>
-                <Textarea
-                  id="text-a"
-                  placeholder="Geben Sie hier die erste Version ein..."
-                  value={textA}
-                  onChange={(e) => setTextA(e.target.value)}
-                  className="min-h-[300px] font-mono text-sm"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {textA.length} Zeichen, {textA.split('\n').length} Zeilen
-                </p>
-              </div>
+          <CardContent>
+            <Tabs defaultValue="text" className="space-y-6">
+              <TabsList>
+                <TabsTrigger value="text" className="gap-1.5">
+                  <FileText className="h-4 w-4" />
+                  Text eingeben
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="gap-1.5">
+                  <FileSearch className="h-4 w-4" />
+                  Dokumente vergleichen
+                </TabsTrigger>
+              </TabsList>
 
-              {/* Version B */}
-              <div className="space-y-2">
-                <Label htmlFor="text-b">Version B</Label>
-                <Textarea
-                  id="text-b"
-                  placeholder="Geben Sie hier die zweite Version ein..."
-                  value={textB}
-                  onChange={(e) => setTextB(e.target.value)}
-                  className="min-h-[300px] font-mono text-sm"
-                />
-                <p className="text-xs text-muted-foreground">
-                  {textB.length} Zeichen, {textB.split('\n').length} Zeilen
-                </p>
-              </div>
-            </div>
+              {/* Tab 1: Text Input (existing behavior) */}
+              <TabsContent value="text" className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="text-a">Version A</Label>
+                    <Textarea
+                      id="text-a"
+                      placeholder="Geben Sie hier die erste Version ein..."
+                      value={textA}
+                      onChange={(e) => setTextA(e.target.value)}
+                      className="min-h-[300px] font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {textA.length} Zeichen, {textA.split('\n').length} Zeilen
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="text-b">Version B</Label>
+                    <Textarea
+                      id="text-b"
+                      placeholder="Geben Sie hier die zweite Version ein..."
+                      value={textB}
+                      onChange={(e) => setTextB(e.target.value)}
+                      className="min-h-[300px] font-mono text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {textB.length} Zeichen, {textB.split('\n').length} Zeilen
+                    </p>
+                  </div>
+                </div>
 
-            <div className="flex justify-center">
-              <Button
-                onClick={handleCompare}
-                disabled={!textA.trim() || !textB.trim() || compareMutation.isPending}
-                size="lg"
-                className="gap-2"
-              >
-                <GitCompare className="h-5 w-5" />
-                {compareMutation.isPending ? 'Wird verglichen...' : 'Vergleichen'}
-              </Button>
-            </div>
+                <div className="flex justify-center">
+                  <Button
+                    onClick={handleCompare}
+                    disabled={!textA.trim() || !textB.trim() || isComparing}
+                    size="lg"
+                    className="gap-2"
+                  >
+                    <GitCompare className="h-5 w-5" />
+                    {compareMutation.isPending ? 'Wird verglichen...' : 'Vergleichen'}
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* Tab 2: Document Selector */}
+              <TabsContent value="documents" className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <DocumentSearchSelect
+                    label="Dokument A"
+                    selectedDocument={docA}
+                    onSelect={setDocA}
+                  />
+                  <DocumentSearchSelect
+                    label="Dokument B"
+                    selectedDocument={docB}
+                    onSelect={setDocB}
+                  />
+                </div>
+
+                <div className="flex justify-center">
+                  <Button
+                    onClick={handleCompareDocuments}
+                    disabled={!docA || !docB || docA.id === docB.id || isComparing}
+                    size="lg"
+                    className="gap-2"
+                  >
+                    <GitCompare className="h-5 w-5" />
+                    {compareDocsMutation.isPending ? 'Wird verglichen...' : 'Vergleichen'}
+                  </Button>
+                </div>
+
+                {docA && docB && docA.id === docB.id && (
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      Bitte waehlen Sie zwei unterschiedliche Dokumente aus.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       ) : (
@@ -242,7 +363,7 @@ export function VisualDiffPage() {
       )}
 
       {/* Loading State */}
-      {compareMutation.isPending && (
+      {isComparing && (
         <div className="space-y-4">
           <Skeleton className="h-32 w-full" />
           <Skeleton className="h-64 w-full" />

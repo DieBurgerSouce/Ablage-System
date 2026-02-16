@@ -1,4 +1,4 @@
-"""Service fuer die Verwaltung von Versicherungen im Privat-Modul."""
+"""Service für die Verwaltung von Versicherungen im Privat-Modul."""
 
 import uuid
 from datetime import datetime, date
@@ -24,7 +24,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PrivatInsuranceService:
-    """Service fuer Versicherungsverwaltung."""
+    """Service für Versicherungsverwaltung."""
 
     async def create(
         self,
@@ -83,8 +83,8 @@ class PrivatInsuranceService:
     ) -> Optional[PrivatInsurance]:
         """Holt eine Versicherung nach ID.
 
-        WARNUNG: Diese Methode fuehrt KEINEN Access-Check durch!
-        Fuer API-Aufrufe IMMER get_by_id_with_access_check() verwenden!
+        WARNUNG: Diese Methode führt KEINEN Access-Check durch!
+        Für API-Aufrufe IMMER get_by_id_with_access_check() verwenden!
         """
         result = await db.execute(
             select(PrivatInsurance).where(PrivatInsurance.id == insurance_id)
@@ -100,14 +100,14 @@ class PrivatInsuranceService:
         """Holt eine Versicherung nach ID MIT Access-Check.
 
         SECURITY: Diese Methode ist IDOR-sicher:
-        - Access-Check erfolgt VOR Rueckgabe der Versicherung
-        - Gibt None zurueck wenn nicht existiert ODER kein Zugriff
-        - Keine Information Disclosure ueber Existenz fremder Ressourcen
+        - Access-Check erfolgt VOR Rückgabe der Versicherung
+        - Gibt None zurück wenn nicht existiert ODER kein Zugriff
+        - Keine Information Disclosure über Existenz fremder Ressourcen
 
         Args:
             db: Datenbank-Session
             insurance_id: Versicherungs-ID
-            requesting_user_id: User-ID fuer Zugriffskontrolle (REQUIRED)
+            requesting_user_id: User-ID für Zugriffskontrolle (REQUIRED)
 
         Returns:
             Versicherung wenn existiert UND Zugriff erlaubt, sonst None
@@ -131,7 +131,7 @@ class PrivatInsuranceService:
         if space.owner_id == requesting_user_id:
             return insurance
 
-        # Pruefe explizite Berechtigung - SECURITY: mit expires_at Validierung!
+        # Prüfe explizite Berechtigung - SECURITY: mit expires_at Validierung!
         from datetime import timezone
         now = datetime.now(timezone.utc)
         access_result = await db.execute(
@@ -244,7 +244,7 @@ class PrivatInsuranceService:
         self,
         insurance: PrivatInsurance,
     ) -> Optional[date]:
-        """Berechnet das naechste Zahlungsdatum."""
+        """Berechnet das nächste Zahlungsdatum."""
         if not insurance.start_date:
             return None
 
@@ -259,10 +259,10 @@ class PrivatInsuranceService:
             "annual": 12,
         }.get(insurance.premium_interval, 12)
 
-        # Berechne naechstes Zahlungsdatum
+        # Berechne nächstes Zahlungsdatum
         current = start
         while current <= today:
-            # Naechstes Datum
+            # Nächstes Datum
             month = current.month + interval_months
             year = current.year + (month - 1) // 12
             month = ((month - 1) % 12) + 1
@@ -280,7 +280,7 @@ class PrivatInsuranceService:
         self,
         insurance: PrivatInsurance,
     ) -> Decimal:
-        """Berechnet die jaehrlichen Kosten."""
+        """Berechnet die jährlichen Kosten."""
         if not insurance.premium:
             return Decimal("0.00")
 
@@ -302,15 +302,15 @@ class PrivatInsuranceService:
         """Aktualisiert eine Versicherung.
 
         SECURITY FIX 21-5: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Updates zu verhindern. Ohne Row Lock koennte:
-        - Lost Updates bei gleichzeitigen Aenderungen auftreten
+        bei parallelen Updates zu verhindern. Ohne Row Lock könnte:
+        - Lost Updates bei gleichzeitigen Änderungen auftreten
         - Inkonsistente Versicherungsdaten entstehen
         """
         # SECURITY FIX 21-5: Row Lock verhindert parallele Modifikationen
         result = await db.execute(
             select(PrivatInsurance)
             .where(PrivatInsurance.id == insurance_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Versicherungsdaten!
+            .with_for_update()  # ROW LOCK - kritisch für Versicherungsdaten!
         )
         insurance = result.scalar_one_or_none()
         if not insurance:
@@ -340,10 +340,10 @@ class PrivatInsuranceService:
         insurance_id: uuid.UUID,
         soft_delete: bool = True,
     ) -> bool:
-        """Loescht eine Versicherung.
+        """Löscht eine Versicherung.
 
         SECURITY FIX 22-13: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelem Delete zu verhindern. Ohne Row Lock koennte:
+        bei parallelem Delete zu verhindern. Ohne Row Lock könnte:
         - Double-Delete auftreten
         - Inkonsistente Zustaende entstehen
         """
@@ -351,7 +351,7 @@ class PrivatInsuranceService:
         result = await db.execute(
             select(PrivatInsurance)
             .where(PrivatInsurance.id == insurance_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Datenintegritaet!
+            .with_for_update()  # ROW LOCK - kritisch für Datenintegrität!
         )
         insurance = result.scalar_one_or_none()
         if not insurance:
@@ -379,7 +379,7 @@ class PrivatInsuranceService:
         space_id: uuid.UUID,
         days_ahead: int = 30,
     ) -> List[PrivatInsuranceWithDeadlines]:
-        """Holt Versicherungen die bald ablaufen oder erneuert werden muessen."""
+        """Holt Versicherungen die bald ablaufen oder erneuert werden müssen."""
         target_date = date.today()
         from datetime import timedelta
         end_date = target_date + timedelta(days=days_ahead)
@@ -429,7 +429,7 @@ class PrivatInsuranceService:
         db: AsyncSession,
         space_id: uuid.UUID,
     ) -> Decimal:
-        """Berechnet die gesamten jaehrlichen Versicherungskosten."""
+        """Berechnet die gesamten jährlichen Versicherungskosten."""
         result = await db.execute(
             select(PrivatInsurance)
             .where(

@@ -1,7 +1,7 @@
-"""Retention Enforcement Tasks - Celery Tasks fuer Aufbewahrungsfristen-Durchsetzung.
+"""Retention Enforcement Tasks - Celery Tasks für Aufbewahrungsfristen-Durchsetzung.
 
-Automatisierte Tasks fuer:
-- Taeglicher Scan auf Retention-Verletztungen
+Automatisierte Tasks für:
+- Täglicher Scan auf Retention-Verletztungen
 - Verarbeitung von Post-Retention Reviews
 - Wochentlicher Compliance-Report
 - GDPR-Konflikt-Aufloesung
@@ -41,10 +41,10 @@ logger = structlog.get_logger(__name__)
     default_retry_delay=300,
 )
 def enforce_retention_daily_scan(self) -> Dict[str, Any]:
-    """Taeglicher Scan auf Retention-Verletztungen.
+    """Täglicher Scan auf Retention-Verletztungen.
 
-    Prueft:
-    - Dokumente die trotz aktiver Frist geloescht wurden
+    Prüft:
+    - Dokumente die trotz aktiver Frist gelöscht wurden
     - Archive ohne korrekte enforcement_status
     - Inkonsistenzen zwischen Document.is_archived und DocumentArchive
 
@@ -73,7 +73,7 @@ def enforce_retention_daily_scan(self) -> Dict[str, Any]:
 
 
 async def _daily_enforcement_scan(db: AsyncSession) -> Dict[str, Any]:
-    """Interne Funktion fuer taeglichen Enforcement-Scan."""
+    """Interne Funktion für täglichen Enforcement-Scan."""
     violations_found = 0
     inconsistencies_fixed = 0
     archives_checked = 0
@@ -98,7 +98,7 @@ async def _daily_enforcement_scan(db: AsyncSession) -> Dict[str, Any]:
         orphaned_docs = orphaned_result.scalars().all()
 
         for doc in orphaned_docs:
-            # Pruefe ob Archive-Eintrag existiert
+            # Prüfe ob Archive-Eintrag existiert
             archive_result = await db.execute(
                 select(DocumentArchive)
                 .where(DocumentArchive.document_id == doc.id)
@@ -114,12 +114,12 @@ async def _daily_enforcement_scan(db: AsyncSession) -> Dict[str, Any]:
                 )
                 violations_found += 1
 
-                # Automatische Korrektur: is_archived zuruecksetzen
+                # Automatische Korrektur: is_archived zurücksetzen
                 doc.is_archived = False
                 doc.archived_at = None
                 inconsistencies_fixed += 1
 
-        # Alle Archive dieser Company pruefen
+        # Alle Archive dieser Company prüfen
         archives_result = await db.execute(
             select(DocumentArchive)
             .where(DocumentArchive.company_id == company.id)
@@ -161,7 +161,7 @@ async def _daily_enforcement_scan(db: AsyncSession) -> Dict[str, Any]:
 def process_post_retention_reviews(self) -> Dict[str, Any]:
     """Verarbeitet Dokumente deren Aufbewahrungsfrist abgelaufen ist.
 
-    Prueft Archive deren post_retention_review_scheduled=True und
+    Prüft Archive deren post_retention_review_scheduled=True und
     post_retention_review_at <= heute ist. Erstellt Audit-Logs und
     benachrichtigt Admins.
 
@@ -190,11 +190,11 @@ def process_post_retention_reviews(self) -> Dict[str, Any]:
 
 
 async def _process_post_retention_reviews(db: AsyncSession) -> Dict[str, Any]:
-    """Interne Funktion fuer Post-Retention Review Verarbeitung."""
+    """Interne Funktion für Post-Retention Review Verarbeitung."""
     reviews_processed = 0
     notifications_sent = 0
 
-    # Archive mit faelliger Review finden
+    # Archive mit fälliger Review finden
     # Nach Migration 205:
     # reviews_result = await db.execute(
     #     select(DocumentArchive)
@@ -238,7 +238,7 @@ async def _process_post_retention_reviews(db: AsyncSession) -> Dict[str, Any]:
                     notification_type=SlackNotificationType.COMPLIANCE_ALERT,
                     title="Aufbewahrungsfrist abgelaufen",
                     message=(
-                        f"Archiv {archive.id} kann nun geloescht werden. "
+                        f"Archiv {archive.id} kann nun gelöscht werden. "
                         f"Kategorie: {archive.retention_category}, "
                         f"Abgelaufen: {archive.retention_expires_at}"
                     ),
@@ -289,7 +289,7 @@ def generate_retention_compliance_report(
     """Generiert wochentlichen Compliance-Report.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
 
     Returns:
         Dictionary mit Report-Daten
@@ -323,7 +323,7 @@ async def _generate_compliance_report(
     db: AsyncSession,
     company_id: Optional[uuid.UUID]
 ) -> Dict[str, Any]:
-    """Interne Funktion fuer Compliance-Report Generierung."""
+    """Interne Funktion für Compliance-Report Generierung."""
     reports = {}
 
     if company_id:
@@ -378,7 +378,7 @@ async def _create_enforcement_audit_log(
     action: str,
     details: Dict[str, Any],
 ) -> None:
-    """Erstellt Audit-Log fuer Enforcement-Aktionen."""
+    """Erstellt Audit-Log für Enforcement-Aktionen."""
     audit_log = AuditLog(
         id=uuid.uuid4(),
         user_id=None,  # System-Aktion

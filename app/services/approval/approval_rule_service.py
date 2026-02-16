@@ -1,6 +1,6 @@
-"""Approval Rule Service fuer Enterprise Genehmigungsregeln.
+"""Approval Rule Service für Enterprise Genehmigungsregeln.
 
-Enterprise Feature: Verwaltet Regeln fuer automatisches Approval-Routing mit:
+Enterprise Feature: Verwaltet Regeln für automatisches Approval-Routing mit:
 - Betragsschwellen
 - Kategoriebasiertes Routing
 - Lieferanten-Risikobewertung
@@ -34,23 +34,23 @@ class ApprovalChainStep:
     type: str  # "user", "role", "group"
     value: str  # User-ID, Rollenname, etc.
     required: bool = True
-    threshold: Optional[Decimal] = None  # Optional: Betragsschwelle fuer diesen Schritt
+    threshold: Optional[Decimal] = None  # Optional: Betragsschwelle für diesen Schritt
 
 
 @dataclass
 class MatchedRule:
-    """Ergebnis einer Regel-Ueberpruefung."""
+    """Ergebnis einer Regel-Überprüfung."""
 
     rule: ApprovalRule
-    match_score: float  # 0.0 - 1.0, hoeher = bessere Uebereinstimmung
+    match_score: float  # 0.0 - 1.0, höher = bessere Übereinstimmung
     matched_conditions: List[str]
 
 
 class ApprovalRuleService:
-    """Service fuer Approval-Regeln.
+    """Service für Approval-Regeln.
 
-    Ermoeglicht das Erstellen, Verwalten und Evaluieren von
-    Genehmigungsregeln fuer verschiedene Entitaeten.
+    Ermöglicht das Erstellen, Verwalten und Evaluieren von
+    Genehmigungsregeln für verschiedene Entitäten.
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -82,7 +82,7 @@ class ApprovalRuleService:
             company_id: ID der Firma
             name: Name der Regel
             rule_type: Typ der Regel
-            entity_types: Entitaeten auf die die Regel angewendet wird
+            entity_types: Entitäten auf die die Regel angewendet wird
             conditions: Bedingungen als Dict
             approval_chain: Genehmiger-Kette
             created_by_id: ID des Erstellers
@@ -90,7 +90,7 @@ class ApprovalRuleService:
             escalation_after_hours: Eskalation nach X Stunden
             escalation_to_role: Eskalation an Rolle
             sla_hours: Max. Bearbeitungszeit
-            priority: Prioritaet (niedriger = hoeher)
+            priority: Priorität (niedriger = höher)
 
         Returns:
             Erstellte ApprovalRule
@@ -116,7 +116,7 @@ class ApprovalRuleService:
 
         logger.info(
             f"Approval-Regel erstellt: {name} (ID: {rule.id}) "
-            f"fuer Company {company_id}"
+            f"für Company {company_id}"
         )
 
         return rule
@@ -128,11 +128,11 @@ class ApprovalRuleService:
     ) -> Optional[ApprovalRule]:
         """Holt eine Regel anhand der ID.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation übergeben werden.
 
         Args:
             rule_id: ID der Regel
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
 
         Returns:
             ApprovalRule oder None
@@ -177,11 +177,11 @@ class ApprovalRuleService:
     ) -> Optional[ApprovalRule]:
         """Aktualisiert eine Regel.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation übergeben werden.
 
         Args:
             rule_id: ID der Regel
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
             **updates: Felder zum Aktualisieren
 
         Returns:
@@ -213,16 +213,16 @@ class ApprovalRuleService:
         rule_id: UUID,
         company_id: UUID,
     ) -> bool:
-        """Loescht eine Regel.
+        """Löscht eine Regel.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation übergeben werden.
 
         Args:
             rule_id: ID der Regel
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
 
         Returns:
-            True wenn erfolgreich geloescht
+            True wenn erfolgreich gelöscht
         """
         rule = await self.get_rule(rule_id, company_id=company_id)
         if not rule:
@@ -237,7 +237,7 @@ class ApprovalRuleService:
         await self.db.delete(rule)
         await self.db.commit()
 
-        logger.info(f"Approval-Regel geloescht: {rule.name} (ID: {rule_id})")
+        logger.info(f"Approval-Regel gelöscht: {rule.name} (ID: {rule_id})")
 
         return True
 
@@ -247,26 +247,26 @@ class ApprovalRuleService:
         entity_type: str,
         entity_data: Dict[str, object],
     ) -> List[MatchedRule]:
-        """Findet alle passenden Regeln fuer eine Entitaet.
+        """Findet alle passenden Regeln für eine Entität.
 
         Args:
             company_id: ID der Firma
-            entity_type: Typ der Entitaet (invoice, expense, etc.)
-            entity_data: Daten der Entitaet zur Bedingungspruefung
+            entity_type: Typ der Entität (invoice, expense, etc.)
+            entity_data: Daten der Entität zur Bedingungsprüfung
 
         Returns:
-            Liste von MatchedRule, sortiert nach Prioritaet
+            Liste von MatchedRule, sortiert nach Priorität
         """
         rules = await self.get_rules_for_company(company_id, active_only=True)
 
         matched_rules: List[MatchedRule] = []
 
         for rule in rules:
-            # Pruefen ob Entity-Typ passt
+            # Prüfen ob Entity-Typ passt
             if entity_type not in rule.entity_types:
                 continue
 
-            # Bedingungen pruefen
+            # Bedingungen prüfen
             match_result = self._evaluate_conditions(rule.conditions, entity_data)
 
             if match_result["matches"]:
@@ -278,7 +278,7 @@ class ApprovalRuleService:
                     )
                 )
 
-        # Sortieren nach Prioritaet (niedrig = hoch)
+        # Sortieren nach Priorität (niedrig = hoch)
         matched_rules.sort(key=lambda x: x.rule.priority)
 
         return matched_rules
@@ -288,11 +288,11 @@ class ApprovalRuleService:
         conditions: Dict[str, object],
         entity_data: Dict[str, object],
     ) -> Dict[str, object]:
-        """Evaluiert Bedingungen gegen Entitaetsdaten.
+        """Evaluiert Bedingungen gegen Entitätsdaten.
 
         Args:
             conditions: Bedingungen aus der Regel
-            entity_data: Daten der Entitaet
+            entity_data: Daten der Entität
 
         Returns:
             Dict mit matches (bool), score (float), matched (list)
@@ -325,15 +325,15 @@ class ApprovalRuleService:
                 if entity_value == condition_value:
                     matched_conditions.append(condition_key)
             elif "_not_in" in condition_key:
-                # WICHTIG: _not_in muss VOR _in geprueft werden,
-                # da "category_not_in" auch "_in" enthaelt
+                # WICHTIG: _not_in muss VOR _in geprüft werden,
+                # da "category_not_in" auch "_in" enthält
                 if entity_value not in condition_value:
                     matched_conditions.append(condition_key)
             elif "_in" in condition_key:
                 if entity_value in condition_value:
                     matched_conditions.append(condition_key)
             else:
-                # Exakte Uebereinstimmung
+                # Exakte Übereinstimmung
                 if entity_value == condition_value:
                     matched_conditions.append(condition_key)
 
@@ -355,7 +355,7 @@ class ApprovalRuleService:
         """Vergleicht zwei Werte.
 
         Args:
-            entity_value: Wert der Entitaet
+            entity_value: Wert der Entität
             condition_value: Wert aus der Bedingung
             operator: Vergleichsoperator (>, <, ==)
 
@@ -363,7 +363,7 @@ class ApprovalRuleService:
             True wenn Vergleich erfolgreich
         """
         try:
-            # Konvertiere zu Decimal fuer numerische Vergleiche
+            # Konvertiere zu Decimal für numerische Vergleiche
             if isinstance(entity_value, (int, float, str)):
                 entity_value = Decimal(str(entity_value))
             if isinstance(condition_value, (int, float, str)):
@@ -381,7 +381,7 @@ class ApprovalRuleService:
         return False
 
     async def create_default_rules(self, company_id: UUID, created_by_id: UUID) -> List[ApprovalRule]:
-        """Erstellt Standard-Genehmigungsregeln fuer eine Firma.
+        """Erstellt Standard-Genehmigungsregeln für eine Firma.
 
         Args:
             company_id: ID der Firma
@@ -392,8 +392,8 @@ class ApprovalRuleService:
         """
         default_rules = [
             {
-                "name": "Rechnungen ueber 5.000 EUR",
-                "description": "Alle Rechnungen ueber 5.000 EUR benoetigen Manager-Genehmigung",
+                "name": "Rechnungen über 5.000 EUR",
+                "description": "Alle Rechnungen über 5.000 EUR benötigen Manager-Genehmigung",
                 "rule_type": ApprovalRuleType.AMOUNT_THRESHOLD,
                 "entity_types": ["invoice"],
                 "conditions": {"amount_greater_than": 5000},
@@ -403,8 +403,8 @@ class ApprovalRuleService:
                 "priority": 100,
             },
             {
-                "name": "Rechnungen ueber 25.000 EUR",
-                "description": "Alle Rechnungen ueber 25.000 EUR benoetigen CFO-Genehmigung",
+                "name": "Rechnungen über 25.000 EUR",
+                "description": "Alle Rechnungen über 25.000 EUR benötigen CFO-Genehmigung",
                 "rule_type": ApprovalRuleType.AMOUNT_THRESHOLD,
                 "entity_types": ["invoice"],
                 "conditions": {"amount_greater_than": 25000},
@@ -412,11 +412,11 @@ class ApprovalRuleService:
                     {"step": 1, "type": "role", "value": "manager", "required": True},
                     {"step": 2, "type": "role", "value": "cfo", "required": True},
                 ],
-                "priority": 50,  # Hoehere Prioritaet
+                "priority": 50,  # Höhere Priorität
             },
             {
-                "name": "Reisekosten ueber 1.000 EUR",
-                "description": "Reisekosten ueber 1.000 EUR benoetigen Genehmigung",
+                "name": "Reisekosten über 1.000 EUR",
+                "description": "Reisekosten über 1.000 EUR benötigen Genehmigung",
                 "rule_type": ApprovalRuleType.CATEGORY,
                 "entity_types": ["expense"],
                 "conditions": {
@@ -429,8 +429,8 @@ class ApprovalRuleService:
                 "priority": 100,
             },
             {
-                "name": "Neue Vertraege",
-                "description": "Alle neuen Vertraege benoetigen Rechtsabteilung und Management",
+                "name": "Neue Verträge",
+                "description": "Alle neuen Verträge benötigen Rechtsabteilung und Management",
                 "rule_type": ApprovalRuleType.DOCUMENT_TYPE,
                 "entity_types": ["contract", "document"],
                 "conditions": {"document_type_in": ["contract", "vertrag"]},
@@ -454,7 +454,7 @@ class ApprovalRuleService:
             created_rules.append(rule)
 
         logger.info(
-            f"Standard-Genehmigungsregeln erstellt fuer Company {company_id}: "
+            f"Standard-Genehmigungsregeln erstellt für Company {company_id}: "
             f"{len(created_rules)} Regeln"
         )
 
@@ -465,11 +465,11 @@ class ApprovalRuleService:
         rule: ApprovalRule,
         entity_data: Dict[str, object],
     ) -> bool:
-        """Evaluiert ob eine Regel auf Entity-Daten zutrifft (fuer API Preview).
+        """Evaluiert ob eine Regel auf Entity-Daten zutrifft (für API Preview).
 
         Args:
-            rule: Die zu pruefende Regel
-            entity_data: Testdaten der Entitaet
+            rule: Die zu prüfende Regel
+            entity_data: Testdaten der Entität
 
         Returns:
             True wenn die Regel zutrifft

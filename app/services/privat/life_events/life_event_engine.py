@@ -27,7 +27,7 @@ EVENT_TYPES: dict[str, dict[str, str]] = {
     },
     "heirat": {
         "label": "Heirat",
-        "description": "Eheschliessung und zugehoerige Dokumente",
+        "description": "Eheschließung und zugehoerige Dokumente",
         "icon": "heart",
     },
     "kind": {
@@ -42,7 +42,7 @@ EVENT_TYPES: dict[str, dict[str, str]] = {
     },
     "ruhestand": {
         "label": "Ruhestand",
-        "description": "Uebergang in den Ruhestand",
+        "description": "Übergang in den Ruhestand",
         "icon": "sunset",
     },
     "todesfall": {
@@ -64,12 +64,12 @@ EVENT_TYPES: dict[str, dict[str, str]] = {
 
 
 def _get_checklist_template(event_type: str) -> list[dict[str, object]]:
-    """Gibt die Checkliste fuer einen Event-Typ zurueck."""
+    """Gibt die Checkliste für einen Event-Typ zurück."""
     templates: dict[str, list[dict[str, object]]] = {
         "umzug": [
             {"id": "ummeldung", "label": "Ummeldung beim Einwohnermeldeamt", "category": "behoerden", "priority": "high", "done": False},
             {"id": "post_nachsendung", "label": "Nachsendeauftrag bei der Post", "category": "post", "priority": "high", "done": False},
-            {"id": "bank_adresse", "label": "Adressaenderung bei der Bank", "category": "finanzen", "priority": "medium", "done": False},
+            {"id": "bank_adresse", "label": "Adressänderung bei der Bank", "category": "finanzen", "priority": "medium", "done": False},
             {"id": "versicherungen", "label": "Versicherungen informieren", "category": "versicherung", "priority": "medium", "done": False},
             {"id": "arbeitgeber", "label": "Arbeitgeber informieren", "category": "arbeit", "priority": "medium", "done": False},
             {"id": "finanzamt", "label": "Finanzamt informieren", "category": "behoerden", "priority": "medium", "done": False},
@@ -78,11 +78,11 @@ def _get_checklist_template(event_type: str) -> list[dict[str, object]]:
         ],
         "heirat": [
             {"id": "standesamt", "label": "Termin beim Standesamt", "category": "behoerden", "priority": "high", "done": False},
-            {"id": "steuerklasse", "label": "Steuerklasse aendern", "category": "finanzen", "priority": "high", "done": False},
-            {"id": "namensaenderung", "label": "Namensaenderung (falls gewuenscht)", "category": "behoerden", "priority": "medium", "done": False},
+            {"id": "steuerklasse", "label": "Steuerklasse ändern", "category": "finanzen", "priority": "high", "done": False},
+            {"id": "namensänderung", "label": "Namensänderung (falls gewünscht)", "category": "behoerden", "priority": "medium", "done": False},
             {"id": "versicherung_partner", "label": "Partner in Versicherungen aufnehmen", "category": "versicherung", "priority": "medium", "done": False},
             {"id": "testament", "label": "Testament erstellen/aktualisieren", "category": "recht", "priority": "medium", "done": False},
-            {"id": "bank_gemeinschaftskonto", "label": "Gemeinschaftskonto eroeffnen", "category": "finanzen", "priority": "low", "done": False},
+            {"id": "bank_gemeinschaftskonto", "label": "Gemeinschaftskonto eröffnen", "category": "finanzen", "priority": "low", "done": False},
         ],
         "kind": [
             {"id": "geburtsurkunde", "label": "Geburtsurkunde beantragen", "category": "behoerden", "priority": "high", "done": False},
@@ -91,21 +91,21 @@ def _get_checklist_template(event_type: str) -> list[dict[str, object]]:
             {"id": "krankenversicherung", "label": "Kind bei Krankenversicherung anmelden", "category": "versicherung", "priority": "high", "done": False},
             {"id": "steuer_kinderfreibetrag", "label": "Kinderfreibetrag eintragen lassen", "category": "finanzen", "priority": "medium", "done": False},
             {"id": "elternzeit", "label": "Elternzeit beim Arbeitgeber beantragen", "category": "arbeit", "priority": "high", "done": False},
-            {"id": "sorgerecht", "label": "Sorgerechterklaerung (unverheiratet)", "category": "recht", "priority": "medium", "done": False},
+            {"id": "sorgerecht", "label": "Sorgerechterklärung (unverheiratet)", "category": "recht", "priority": "medium", "done": False},
         ],
         "jobwechsel": [
-            {"id": "arbeitsvertrag", "label": "Neuen Arbeitsvertrag pruefen", "category": "arbeit", "priority": "high", "done": False},
-            {"id": "kuendigung", "label": "Kuendigungsfristen beachten", "category": "arbeit", "priority": "high", "done": False},
+            {"id": "arbeitsvertrag", "label": "Neuen Arbeitsvertrag prüfen", "category": "arbeit", "priority": "high", "done": False},
+            {"id": "kündigung", "label": "Kündigungsfristen beachten", "category": "arbeit", "priority": "high", "done": False},
             {"id": "steuer_lohnsteuerkarte", "label": "Lohnsteuerkarte aktualisieren", "category": "finanzen", "priority": "medium", "done": False},
-            {"id": "altersvorsorge", "label": "Betriebliche Altersvorsorge pruefen", "category": "finanzen", "priority": "medium", "done": False},
+            {"id": "altersvorsorge", "label": "Betriebliche Altersvorsorge prüfen", "category": "finanzen", "priority": "medium", "done": False},
             {"id": "arbeitszeugnis", "label": "Arbeitszeugnis anfordern", "category": "arbeit", "priority": "medium", "done": False},
-            {"id": "versicherungen_pruefen", "label": "Versicherungen pruefen/anpassen", "category": "versicherung", "priority": "low", "done": False},
+            {"id": "versicherungen_prüfen", "label": "Versicherungen prüfen/anpassen", "category": "versicherung", "priority": "low", "done": False},
         ],
         "ruhestand": [
             {"id": "rentenantrag", "label": "Rentenantrag stellen", "category": "behoerden", "priority": "high", "done": False},
             {"id": "krankenversicherung_rente", "label": "Krankenversicherung im Alter klaeren", "category": "versicherung", "priority": "high", "done": False},
             {"id": "altersvorsorge_auszahlung", "label": "Betriebliche Altersvorsorge abwickeln", "category": "finanzen", "priority": "high", "done": False},
-            {"id": "steuererklaerung", "label": "Steuererklaerung als Rentner planen", "category": "finanzen", "priority": "medium", "done": False},
+            {"id": "steuererklärung", "label": "Steuererklärung als Rentner planen", "category": "finanzen", "priority": "medium", "done": False},
             {"id": "testament_aktualisieren", "label": "Testament aktualisieren", "category": "recht", "priority": "medium", "done": False},
         ],
         "todesfall": [
@@ -113,16 +113,16 @@ def _get_checklist_template(event_type: str) -> list[dict[str, object]]:
             {"id": "erbschein", "label": "Erbschein beantragen", "category": "recht", "priority": "high", "done": False},
             {"id": "versicherungen_melden", "label": "Versicherungen informieren", "category": "versicherung", "priority": "high", "done": False},
             {"id": "bank_informieren", "label": "Bank informieren", "category": "finanzen", "priority": "high", "done": False},
-            {"id": "kuendigungen", "label": "Vertraege kuendigen", "category": "vertraege", "priority": "medium", "done": False},
+            {"id": "kündigungen", "label": "Verträge kündigen", "category": "verträge", "priority": "medium", "done": False},
             {"id": "rente_witwe", "label": "Witwenrente beantragen", "category": "finanzen", "priority": "medium", "done": False},
-            {"id": "steuererklarung_verstorbener", "label": "Steuererklaerung des Verstorbenen", "category": "finanzen", "priority": "medium", "done": False},
+            {"id": "steuererklarung_verstorbener", "label": "Steuererklärung des Verstorbenen", "category": "finanzen", "priority": "medium", "done": False},
         ],
         "immobilienkauf": [
             {"id": "finanzierung", "label": "Finanzierung sicherstellen", "category": "finanzen", "priority": "high", "done": False},
             {"id": "notar", "label": "Notartermin vereinbaren", "category": "recht", "priority": "high", "done": False},
-            {"id": "grundbuch", "label": "Grundbucheintragung pruefen", "category": "behoerden", "priority": "high", "done": False},
+            {"id": "grundbuch", "label": "Grundbucheintragung prüfen", "category": "behoerden", "priority": "high", "done": False},
             {"id": "grunderwerbsteuer", "label": "Grunderwerbsteuer einplanen", "category": "finanzen", "priority": "high", "done": False},
-            {"id": "versicherungen_immobilie", "label": "Gebaeudeversicherung abschliessen", "category": "versicherung", "priority": "medium", "done": False},
+            {"id": "versicherungen_immobilie", "label": "Gebaeudeversicherung abschließen", "category": "versicherung", "priority": "medium", "done": False},
             {"id": "umzug_planen", "label": "Umzug planen", "category": "organisation", "priority": "medium", "done": False},
             {"id": "handwerker", "label": "Handwerkerkosten steuerlich absetzen", "category": "finanzen", "priority": "low", "done": False},
         ],
@@ -130,52 +130,52 @@ def _get_checklist_template(event_type: str) -> list[dict[str, object]]:
             {"id": "anwalt", "label": "Scheidungsanwalt beauftragen", "category": "recht", "priority": "high", "done": False},
             {"id": "trennungsjahr", "label": "Trennungsjahr dokumentieren", "category": "recht", "priority": "high", "done": False},
             {"id": "finanzen_trennen", "label": "Finanzen trennen", "category": "finanzen", "priority": "high", "done": False},
-            {"id": "steuerklasse_aendern", "label": "Steuerklasse aendern", "category": "finanzen", "priority": "medium", "done": False},
-            {"id": "versicherungen_aendern", "label": "Versicherungen anpassen", "category": "versicherung", "priority": "medium", "done": False},
+            {"id": "steuerklasse_ändern", "label": "Steuerklasse ändern", "category": "finanzen", "priority": "medium", "done": False},
+            {"id": "versicherungen_ändern", "label": "Versicherungen anpassen", "category": "versicherung", "priority": "medium", "done": False},
             {"id": "unterhalt", "label": "Unterhalt berechnen", "category": "finanzen", "priority": "medium", "done": False},
-            {"id": "sorgerecht_kinder", "label": "Sorgerecht fuer Kinder regeln", "category": "recht", "priority": "high", "done": False},
+            {"id": "sorgerecht_kinder", "label": "Sorgerecht für Kinder regeln", "category": "recht", "priority": "high", "done": False},
         ],
     }
     return templates.get(event_type, [])
 
 
 def _get_recommendations(event_type: str) -> list[dict[str, str]]:
-    """Gibt Empfehlungen fuer einen Event-Typ zurueck."""
+    """Gibt Empfehlungen für einen Event-Typ zurück."""
     recommendations: dict[str, list[dict[str, str]]] = {
         "umzug": [
-            {"title": "Steuerliche Vorteile", "text": "Umzugskosten koennen steuerlich absetzbar sein (beruflich bedingt)."},
-            {"title": "Kuendigungsfristen", "text": "Mietvertrag-Kuendigungsfrist beachten (meist 3 Monate)."},
+            {"title": "Steuerliche Vorteile", "text": "Umzugskosten können steuerlich absetzbar sein (beruflich bedingt)."},
+            {"title": "Kündigungsfristen", "text": "Mietvertrag-Kündigungsfrist beachten (meist 3 Monate)."},
         ],
         "heirat": [
-            {"title": "Steuerklassenwahl", "text": "Kombination III/V oder IV/IV pruefen fuer optimale Steuerbelastung."},
+            {"title": "Steuerklassenwahl", "text": "Kombination III/V oder IV/IV prüfen für optimale Steuerbelastung."},
             {"title": "Zusammenveranlagung", "text": "Ehegattensplitting kann erhebliche Steuervorteile bringen."},
         ],
         "kind": [
-            {"title": "Elterngeld Plus", "text": "ElterngeldPlus ermoeglicht laengere Bezugsdauer bei Teilzeitarbeit."},
-            {"title": "Kinderzulage Riester", "text": "300 EUR Kinderzulage pro Jahr bei Riester-Vertrag moeglich."},
+            {"title": "Elterngeld Plus", "text": "ElterngeldPlus ermöglicht längere Bezugsdauer bei Teilzeitarbeit."},
+            {"title": "Kinderzulage Riester", "text": "300 EUR Kinderzulage pro Jahr bei Riester-Vertrag möglich."},
         ],
         "jobwechsel": [
-            {"title": "Sperrzeit vermeiden", "text": "Bei Eigenkuendigung droht 12 Wochen ALG-Sperrzeit."},
-            {"title": "Wettbewerbsverbot", "text": "Nachvertragliches Wettbewerbsverbot und Karenzentschaedigung pruefen."},
+            {"title": "Sperrzeit vermeiden", "text": "Bei Eigenkündigung droht 12 Wochen ALG-Sperrzeit."},
+            {"title": "Wettbewerbsverbot", "text": "Nachvertragliches Wettbewerbsverbot und Karenzentschaedigung prüfen."},
         ],
     }
     return recommendations.get(event_type, [])
 
 
 def _estimate_financial_impact(event_type: str) -> dict[str, object]:
-    """Schaetzt die finanziellen Auswirkungen eines Events."""
+    """Schätzt die finanziellen Auswirkungen eines Events."""
     impacts: dict[str, dict[str, object]] = {
         "umzug": {
             "estimated_cost_min": 500,
             "estimated_cost_max": 5000,
             "potential_savings": "Umzugskosten steuerlich absetzbar bei beruflichem Anlass",
-            "recurring_changes": "Mietkosten koennen sich aendern",
+            "recurring_changes": "Mietkosten können sich ändern",
         },
         "heirat": {
             "estimated_cost_min": 200,
             "estimated_cost_max": 1000,
             "potential_savings": "Ehegattensplitting: bis zu mehrere Tausend EUR/Jahr",
-            "recurring_changes": "Steuerklassenaenderung wirkt sich monatlich aus",
+            "recurring_changes": "Steuerklassenänderung wirkt sich monatlich aus",
         },
         "kind": {
             "estimated_cost_min": 0,
@@ -199,8 +199,8 @@ def _estimate_financial_impact(event_type: str) -> dict[str, object]:
     return impacts.get(event_type, {
         "estimated_cost_min": 0,
         "estimated_cost_max": 0,
-        "potential_savings": "Keine Schaetzung verfuegbar",
-        "recurring_changes": "Individuell zu pruefen",
+        "potential_savings": "Keine Schätzung verfügbar",
+        "recurring_changes": "Individuell zu prüfen",
     })
 
 
@@ -321,7 +321,7 @@ class LifeEventEngine:
 
         event.checklist = checklist
 
-        # Pruefen ob alle Items erledigt
+        # Prüfen ob alle Items erledigt
         all_done = all(item.get("done", False) for item in checklist)
         if all_done:
             event.status = "completed"
@@ -345,7 +345,7 @@ class LifeEventEngine:
         return event
 
     async def get_event_types(self) -> dict[str, dict[str, str]]:
-        """Gibt alle verfuegbaren Event-Typen zurueck."""
+        """Gibt alle verfügbaren Event-Typen zurück."""
         return EVENT_TYPES
 
     async def get_active_events_count(

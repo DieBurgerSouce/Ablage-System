@@ -1,7 +1,7 @@
 """
 Kundenportal Services (Phase 5.2).
 
-Self-Service Portal fuer Kunden und Lieferanten.
+Self-Service Portal für Kunden und Lieferanten.
 """
 
 from app.services.portal.portal_auth_service import (

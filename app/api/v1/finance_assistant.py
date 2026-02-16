@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-"""API Endpoints fuer den intelligenten Finanz-Assistenten.
+"""API Endpoints für den intelligenten Finanz-Assistenten.
 
 Vision 2.0 - Phase 1 (Januar 2026)
 
 Endpoints:
 - Chat mit KI-Assistent
-- Aktionen ausfuehren
+- Aktionen ausführen
 - Proaktive Insights abrufen
-- Buchungsvorschlaege
+- Buchungsvorschläge
 """
 
 from typing import List, Optional
@@ -46,7 +46,7 @@ router = APIRouter(prefix="/finance-assistant", tags=["Finance Assistant"])
 
 
 class ChatRequest(BaseModel):
-    """Anfrage fuer Chat mit dem Assistenten."""
+    """Anfrage für Chat mit dem Assistenten."""
 
     message: str = Field(..., min_length=1, max_length=5000)
     current_page: Optional[str] = None
@@ -108,14 +108,14 @@ class ChatResponse(BaseModel):
 
 
 class ExecuteActionRequest(BaseModel):
-    """Anfrage zur Aktionsausfuehrung."""
+    """Anfrage zur Aktionsausführung."""
 
     action_type: str = Field(..., pattern="^[a-z_]+$")
     parameters: JSONDict
 
 
 class ExecuteActionResponse(BaseModel):
-    """Antwort der Aktionsausfuehrung."""
+    """Antwort der Aktionsausführung."""
 
     action_id: UUID
     status: str
@@ -168,12 +168,12 @@ async def chat_with_assistant(
 ) -> ChatResponse:
     """Chat mit dem intelligenten Finanz-Assistenten.
 
-    Unterstuetzte Intents:
+    Unterstützte Intents:
     - search: Dokumente/Daten suchen
-    - execute_action: Aktionen ausfuehren
-    - explain: Erklaerungen generieren
-    - suggest_booking: Buchungsvorschlaege
-    - analyze: Analysen durchfuehren
+    - execute_action: Aktionen ausführen
+    - explain: Erklärungen generieren
+    - suggest_booking: Buchungsvorschläge
+    - analyze: Analysen durchführen
     - predict: Vorhersagen treffen
     - help: Hilfe anzeigen
     - chat: Allgemeiner Chat
@@ -249,10 +249,10 @@ async def execute_action(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ExecuteActionResponse:
-    """Fuehrt eine vom Assistenten vorgeschlagene Aktion aus.
+    """Führt eine vom Assistenten vorgeschlagene Aktion aus.
 
-    Erfordert mindestens Editor-Rolle fuer die meisten Aktionen.
-    Admin-Rolle fuer Zahlungslaeufe und Loeschungen.
+    Erfordert mindestens Editor-Rolle für die meisten Aktionen.
+    Admin-Rolle für Zahlungslaeufe und Löschungen.
     """
     service = await get_action_executor_service(db)
 
@@ -288,9 +288,9 @@ async def rollback_action(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ExecuteActionResponse:
-    """Macht eine ausgefuehrte Aktion rueckgaengig.
+    """Macht eine ausgeführte Aktion rückgängig.
 
-    Nur moeglich fuer Aktionen mit rollback_possible=True.
+    Nur möglich für Aktionen mit rollback_possible=True.
     """
     service = await get_action_executor_service(db)
 
@@ -328,7 +328,7 @@ async def get_insights(
     """Ruft proaktive Insights ab.
 
     Generiert Insights basierend auf:
-    - Ueberfaellige Posten
+    - Überfällige Posten
     - Cash-Flow-Analyse
     - Skonto-Chancen
     - Anomalien
@@ -372,31 +372,31 @@ async def get_insights(
 async def get_assistant_help(
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
-    """Gibt Hilfe-Informationen zum Assistenten zurueck."""
+    """Gibt Hilfe-Informationen zum Assistenten zurück."""
     return {
         "version": "2.0",
         "capabilities": [
             {
                 "name": "Suchen",
-                "description": "Dokumente und Daten mit natuerlicher Sprache suchen",
+                "description": "Dokumente und Daten mit natürlicher Sprache suchen",
                 "examples": [
                     "Zeige alle Rechnungen von Mueller GmbH",
-                    "Welche Rechnungen sind ueberfaellig?",
+                    "Welche Rechnungen sind überfällig?",
                     "Finde Dokumente mit Stichwort 'Wartung'",
                 ],
             },
             {
                 "name": "Aktionen",
-                "description": "Geschaeftsprozesse ausfuehren",
+                "description": "Geschäftsprozesse ausführen",
                 "examples": [
-                    "Erstelle Zahlungslauf fuer faellige Rechnungen unter 5000 EUR",
+                    "Erstelle Zahlungslauf für fällige Rechnungen unter 5000 EUR",
                     "Starte Mahnlauf",
                     "Exportiere Daten als DATEV",
                 ],
             },
             {
                 "name": "Analysen",
-                "description": "Geschaeftsdaten analysieren",
+                "description": "Geschäftsdaten analysieren",
                 "examples": [
                     "Analysiere den Cash Flow",
                     "Warum ist der Umsatz gesunken?",
@@ -404,11 +404,11 @@ async def get_assistant_help(
                 ],
             },
             {
-                "name": "Buchungsvorschlaege",
+                "name": "Buchungsvorschläge",
                 "description": "Kontierung nach SKR03/04",
                 "examples": [
-                    "Wie buche ich einen Wareneingang ueber 500 EUR?",
-                    "Buchungsvorschlag fuer Werbekosten",
+                    "Wie buche ich einen Wareneingang über 500 EUR?",
+                    "Buchungsvorschlag für Werbekosten",
                 ],
             },
             {
@@ -416,7 +416,7 @@ async def get_assistant_help(
                 "description": "Prognosen und Trends",
                 "examples": [
                     "Wie entwickelt sich die Liquiditaet?",
-                    "Prognose fuer naechsten Monat",
+                    "Prognose für nächsten Monat",
                 ],
             },
         ],

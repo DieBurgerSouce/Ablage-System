@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Backpressure Handling fuer OCR API.
+Backpressure Handling für OCR API.
 
 Verhindert Queue-Overflow durch:
-- Queue-Laengen-Monitoring
+- Queue-Längen-Monitoring
 - Anfrage-Ablehnung bei hoher Last
 - Graceful Degradation zu schnelleren Backends
 - Response Headers mit Queue-Status
@@ -26,7 +26,7 @@ logger = structlog.get_logger(__name__)
 
 
 class BackpressureConfig:
-    """Konfiguration fuer Backpressure-Handling."""
+    """Konfiguration für Backpressure-Handling."""
 
     # Aktivierung
     ENABLED = os.environ.get("BACKPRESSURE_ENABLED", "true").lower() == "true"
@@ -36,10 +36,10 @@ class BackpressureConfig:
     QUEUE_THRESHOLD_CRITICAL = int(os.environ.get("BACKPRESSURE_QUEUE_THRESHOLD_CRITICAL", "100"))
     QUEUE_THRESHOLD_REJECT = int(os.environ.get("BACKPRESSURE_QUEUE_THRESHOLD_REJECT", "200"))
 
-    # Welche Queues werden geprueft
+    # Welche Queues werden geprüft
     MONITORED_QUEUES = ["ocr_high", "ocr_normal"]
 
-    # Cache TTL fuer Queue-Status (Sekunden)
+    # Cache TTL für Queue-Status (Sekunden)
     STATUS_CACHE_TTL_SECONDS = 5
 
     # Retry-After Header Wert (Sekunden)
@@ -47,7 +47,7 @@ class BackpressureConfig:
 
 
 class BackpressureStatus:
-    """Status-Informationen fuer Backpressure."""
+    """Status-Informationen für Backpressure."""
 
     NORMAL = "normal"           # Alles OK, Anfragen akzeptiert
     WARNING = "warning"         # Hohe Last, Anfragen akzeptiert mit Warnung
@@ -55,17 +55,17 @@ class BackpressureStatus:
     OVERLOADED = "overloaded"   # Queue voll, Anfragen abgelehnt
 
 
-# Cache fuer Queue-Status
+# Cache für Queue-Status
 _queue_status_cache: Optional[Dict[str, Any]] = None
 _queue_status_timestamp: Optional[datetime] = None
 
 
 def get_queue_lengths() -> Dict[str, int]:
     """
-    Hole aktuelle Queue-Laengen aus Redis.
+    Hole aktuelle Queue-Längen aus Redis.
 
     Returns:
-        Dict mit Queue-Namen und Laengen
+        Dict mit Queue-Namen und Längen
     """
     try:
         from redis import Redis
@@ -104,13 +104,13 @@ def get_backpressure_status(force_refresh: bool = False) -> Dict[str, Any]:
     """
     global _queue_status_cache, _queue_status_timestamp
 
-    # Cache pruefen
+    # Cache prüfen
     if not force_refresh and _queue_status_cache and _queue_status_timestamp:
         age = (datetime.now(timezone.utc) - _queue_status_timestamp).total_seconds()
         if age < BackpressureConfig.STATUS_CACHE_TTL_SECONDS:
             return _queue_status_cache
 
-    # Queue-Laengen holen
+    # Queue-Längen holen
     queue_lengths = get_queue_lengths()
     total_length = sum(queue_lengths.values())
 
@@ -148,7 +148,7 @@ def check_backpressure(
     allow_degraded: bool = True
 ) -> Tuple[bool, Optional[str], Dict[str, Any]]:
     """
-    Pruefe ob eine neue Anfrage akzeptiert werden kann.
+    Prüfe ob eine neue Anfrage akzeptiert werden kann.
 
     Args:
         priority: Anfrage-Prioritaet ("high", "normal", "low")
@@ -158,7 +158,7 @@ def check_backpressure(
         Tuple von:
         - accepted: Bool ob Anfrage akzeptiert wird
         - suggested_backend: Empfohlenes Backend bei Degradation
-        - status: Status-Dictionary fuer Headers
+        - status: Status-Dictionary für Headers
     """
     if not BackpressureConfig.ENABLED:
         return True, None, {"status": BackpressureStatus.NORMAL}
@@ -199,7 +199,7 @@ def check_backpressure(
         # Ablehnen
         return False, None, status
 
-    # Ueberlastet - ablehnen (ausser high priority)
+    # Überlastet - ablehnen (ausser high priority)
     if backpressure_status == BackpressureStatus.OVERLOADED:
         if priority == "high":
             logger.error(
@@ -220,7 +220,7 @@ def check_backpressure(
 
 async def backpressure_dependency(request: Request) -> Dict[str, Any]:
     """
-    FastAPI Dependency fuer Backpressure-Checking.
+    FastAPI Dependency für Backpressure-Checking.
 
     Verwendung:
         @app.post("/ocr/process")
@@ -230,7 +230,7 @@ async def backpressure_dependency(request: Request) -> Dict[str, Any]:
             ...
 
     Raises:
-        HTTPException 503: Wenn System ueberlastet
+        HTTPException 503: Wenn System überlastet
     """
     if not BackpressureConfig.ENABLED:
         return {"status": BackpressureStatus.NORMAL, "accepted": True}
@@ -249,7 +249,7 @@ async def backpressure_dependency(request: Request) -> Dict[str, Any]:
         raise HTTPException(
             status_code=503,
             detail={
-                "error": "Service voruebergehend ueberlastet",
+                "error": "Service vorübergehend überlastet",
                 "message": f"Verarbeitungs-Queue hat {status['total_queue_length']} ausstehende Tasks. "
                            f"Bitte versuchen Sie es in {BackpressureConfig.RETRY_AFTER_SECONDS} Sekunden erneut.",
                 "status": status["status"],
@@ -294,7 +294,7 @@ def add_backpressure_headers(response: JSONResponse, status: Dict[str, Any]) -> 
 
 def get_backpressure_info() -> Dict[str, Any]:
     """
-    Hole vollstaendige Backpressure-Information fuer Monitoring.
+    Hole vollständige Backpressure-Information für Monitoring.
 
     Returns:
         Dict mit allen Backpressure-Metriken
@@ -322,9 +322,9 @@ def _get_recommendation(status: str) -> str:
     if status == BackpressureStatus.NORMAL:
         return "System laeuft normal. Keine Aktion erforderlich."
     elif status == BackpressureStatus.WARNING:
-        return "Erhoehte Last. Erwaeuge zusaetzliche Worker zu starten."
+        return "Erhöhte Last. Erwaeuge zusätzliche Worker zu starten."
     elif status == BackpressureStatus.CRITICAL:
         return "Kritische Last. Neue Anfragen werden auf CPU-Backend umgeleitet."
     elif status == BackpressureStatus.OVERLOADED:
-        return "System ueberlastet. Neue Anfragen werden abgelehnt. Sofortiges Eingreifen erforderlich!"
+        return "System überlastet. Neue Anfragen werden abgelehnt. Sofortiges Eingreifen erforderlich!"
     return "Unbekannter Status"

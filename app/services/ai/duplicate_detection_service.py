@@ -2,14 +2,14 @@
 """
 DuplicateDetectionService - Erkennung von Duplikaten.
 
-Erkennt doppelte oder sehr aehnliche Dokumente:
+Erkennt doppelte oder sehr ähnliche Dokumente:
 - Exakte Duplikate (gleicher Hash)
-- Nahe Duplikate (aehnlicher Inhalt)
+- Nahe Duplikate (ähnlicher Inhalt)
 - Semantische Duplikate (gleiche Information, anderes Format)
 
-Ziel-Konfidenz: 90%+ fuer Auto-Flag.
+Ziel-Konfidenz: 90%+ für Auto-Flag.
 
-Feinpoliert und durchdacht - nutzt pgvector fuer Embedding-Aehnlichkeit.
+Feinpoliert und durchdacht - nutzt pgvector für Embedding-Ähnlichkeit.
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ from app.services.ai.decision_service import (
     get_ai_decision_service,
 )
 
-# Optional: Perceptual Hashing fuer visuelle Duplikat-Erkennung
+# Optional: Perceptual Hashing für visuelle Duplikat-Erkennung
 try:
     import imagehash
     from PIL import Image
@@ -47,7 +47,7 @@ try:
 except ImportError:
     PHASH_AVAILABLE = False
 
-# Optional: TF-IDF + Cosine Similarity fuer Text-Vergleich
+# Optional: TF-IDF + Cosine Similarity für Text-Vergleich
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.metrics.pairwise import cosine_similarity as sklearn_cosine_similarity
@@ -88,10 +88,10 @@ DUPLICATES_FOUND = Counter(
 class DuplicateType:
     """Typen von Duplikaten."""
     EXACT = "exact"  # Identischer Hash
-    NEAR = "near"  # Sehr aehnlicher Text
+    NEAR = "near"  # Sehr ähnlicher Text
     SEMANTIC = "semantic"  # Gleiche Information
     NUMBER_MATCH = "number_match"  # Gleiche Rechnungsnummer
-    VISUAL = "visual"  # Visuell aehnlich (Perceptual Hash)
+    VISUAL = "visual"  # Visuell ähnlich (Perceptual Hash)
 
 
 @dataclass
@@ -106,7 +106,7 @@ class DuplicateCandidate:
 
 @dataclass
 class DuplicateCheckResult:
-    """Ergebnis der Duplikat-Pruefung."""
+    """Ergebnis der Duplikat-Prüfung."""
     has_duplicates: bool = False
     candidates: List[DuplicateCandidate] = field(default_factory=list)
     best_match: Optional[DuplicateCandidate] = None
@@ -117,24 +117,24 @@ class DuplicateDetectionService:
     """
     Erkennung von Duplikaten mit verschiedenen Methoden.
 
-    Kombiniert Hash-Vergleich, Text-Aehnlichkeit und
+    Kombiniert Hash-Vergleich, Text-Ähnlichkeit und
     strukturierte Feld-Matches.
     """
 
     # Konfiguration
-    MIN_SIMILARITY_NEAR = 0.85  # Min Aehnlichkeit fuer "near"
-    MIN_SIMILARITY_SEMANTIC = 0.70  # Min Aehnlichkeit fuer "semantic"
+    MIN_SIMILARITY_NEAR = 0.85  # Min Ähnlichkeit für "near"
+    MIN_SIMILARITY_SEMANTIC = 0.70  # Min Ähnlichkeit für "semantic"
     MAX_CANDIDATES = 50  # Max Kandidaten pro Check
-    MAX_TEXT_LENGTH = 10000  # Max Text-Laenge fuer Vergleich
+    MAX_TEXT_LENGTH = 10000  # Max Text-Länge für Vergleich
 
     def __init__(self) -> None:
         """Initialisiert den Service."""
         self._decision_service = get_ai_decision_service()
 
     def _normalize_text(self, text: Optional[str]) -> str:
-        """Normalisiert Text fuer Vergleich.
+        """Normalisiert Text für Vergleich.
 
-        WICHTIG: Erhaelt deutsche Umlaute (ä, ö, ü, ß) fuer korrekten
+        WICHTIG: Erhält deutsche Umlaute (ä, ö, ü, ß) für korrekten
         Vergleich deutscher Dokumente.
         """
         if not text:
@@ -157,11 +157,11 @@ class DuplicateDetectionService:
         text1: str,
         text2: str,
     ) -> float:
-        """Berechnet Text-Aehnlichkeit mit TF-IDF + Cosine Similarity.
+        """Berechnet Text-Ähnlichkeit mit TF-IDF + Cosine Similarity.
 
-        Verwendet char_wb Analyzer mit n-grams (2,4) fuer robuste
+        Verwendet char_wb Analyzer mit n-grams (2,4) für robuste
         Erkennung bei deutschen Texten (Umlaute, Komposita).
-        Fallback auf SequenceMatcher wenn sklearn nicht verfuegbar.
+        Fallback auf SequenceMatcher wenn sklearn nicht verfügbar.
         """
         t1 = self._normalize_text(text1)[:self.MAX_TEXT_LENGTH]
         t2 = self._normalize_text(text2)[:self.MAX_TEXT_LENGTH]
@@ -193,7 +193,7 @@ class DuplicateDetectionService:
         data2: ExtractedData,
     ) -> Tuple[float, List[str]]:
         """
-        Berechnet Aehnlichkeit basierend auf extrahierten Feldern.
+        Berechnet Ähnlichkeit basierend auf extrahierten Feldern.
 
         Returns:
             Tuple (similarity, matched_fields)
@@ -324,9 +324,9 @@ class DuplicateDetectionService:
             if not dup_data or dup_data.invoice_number != data.invoice_number:
                 continue
 
-            # Berechne zusaetzliche Aehnlichkeit
+            # Berechne zusätzliche Ähnlichkeit
             field_sim, matched = self._calculate_field_similarity(data, dup_data)
-            overall_sim = 0.5 + field_sim * 0.5  # 50% fuer Nummer + 50% fuer andere Felder
+            overall_sim = 0.5 + field_sim * 0.5  # 50% für Nummer + 50% für andere Felder
 
             candidates.append(
                 DuplicateCandidate(
@@ -352,7 +352,7 @@ class DuplicateDetectionService:
         data: Optional[ExtractedData],
         company_id: Optional[uuid.UUID],
     ) -> List[DuplicateCandidate]:
-        """Findet nahe Duplikate via Text-Aehnlichkeit."""
+        """Findet nahe Duplikate via Text-Ähnlichkeit."""
         if not document.extracted_text:
             return []
 
@@ -389,7 +389,7 @@ class DuplicateDetectionService:
             if not cand_doc.extracted_text:
                 continue
 
-            # Text-Aehnlichkeit
+            # Text-Ähnlichkeit
             text_sim = self._calculate_text_similarity(
                 source_text,
                 cand_doc.extracted_text,
@@ -398,7 +398,7 @@ class DuplicateDetectionService:
             if text_sim < self.MIN_SIMILARITY_SEMANTIC:
                 continue
 
-            # Feld-Aehnlichkeit wenn ExtractedData vorhanden
+            # Feld-Ähnlichkeit wenn ExtractedData vorhanden
             matched_fields: List[str] = []
             if data:
                 cand_data = get_extracted_data(cand_doc)
@@ -406,7 +406,7 @@ class DuplicateDetectionService:
                     field_sim, matched_fields = self._calculate_field_similarity(data, cand_data)
                     text_sim = (text_sim + field_sim) / 2  # Durchschnitt
 
-            # Typ basierend auf Aehnlichkeit
+            # Typ basierend auf Ähnlichkeit
             if text_sim >= self.MIN_SIMILARITY_NEAR:
                 dup_type = DuplicateType.NEAR
             else:
@@ -425,7 +425,7 @@ class DuplicateDetectionService:
                 )
             )
 
-        # Sortiere nach Aehnlichkeit
+        # Sortiere nach Ähnlichkeit
         candidates.sort(key=lambda x: x.similarity, reverse=True)
 
         return candidates[:10]
@@ -512,7 +512,7 @@ class DuplicateDetectionService:
             if distance > 10:
                 continue
 
-            # Aehnlichkeit: 1.0 bei Distanz 0, 0.0 bei Distanz 256
+            # Ähnlichkeit: 1.0 bei Distanz 0, 0.0 bei Distanz 256
             similarity = 1.0 - (distance / 256.0)
 
             candidates.append(
@@ -540,13 +540,13 @@ class DuplicateDetectionService:
         include_near: bool = True,
     ) -> DuplicateCheckResult:
         """
-        Prueft ein Dokument auf Duplikate.
+        Prüft ein Dokument auf Duplikate.
 
         Args:
             db: Database Session
             document_id: Dokument-ID
             company_id: Optional Company-Filter
-            include_near: Ob Near-Duplicate Check durchgefuehrt werden soll
+            include_near: Ob Near-Duplicate Check durchgeführt werden soll
 
         Returns:
             DuplicateCheckResult
@@ -593,7 +593,7 @@ class DuplicateDetectionService:
                 seen.add(cand.document_id)
                 unique_candidates.append(cand)
 
-        # Sortiere nach Aehnlichkeit
+        # Sortiere nach Ähnlichkeit
         unique_candidates.sort(key=lambda x: x.similarity, reverse=True)
 
         processing_time_ms = int((time.perf_counter() - start_time) * 1000)
@@ -619,12 +619,12 @@ class DuplicateDetectionService:
         auto_flag: bool = True,
     ) -> Optional[AIDecisionResult]:
         """
-        Erstellt eine AI-Entscheidung fuer erkannte Duplikate.
+        Erstellt eine AI-Entscheidung für erkannte Duplikate.
 
         Args:
             db: Database Session
             document_id: Dokument-ID
-            check_result: Ergebnis der Duplikat-Pruefung
+            check_result: Ergebnis der Duplikat-Prüfung
             company_id: Optional Company-ID
             auto_flag: Ob automatisch geflagt werden soll
 
@@ -658,19 +658,19 @@ class DuplicateDetectionService:
             explanation["reasons"].append("Gleiche Rechnungsnummer gefunden")
         elif best.duplicate_type == DuplicateType.VISUAL:
             explanation["reasons"].append(
-                f"Visuell aehnlich (pHash Distanz: {best.details.get('hamming_distance', '?')})"
+                f"Visuell ähnlich (pHash Distanz: {best.details.get('hamming_distance', '?')})"
             )
         elif best.duplicate_type == DuplicateType.NEAR:
-            explanation["reasons"].append(f"Sehr aehnlicher Text ({best.similarity * 100:.1f}%)")
+            explanation["reasons"].append(f"Sehr ähnlicher Text ({best.similarity * 100:.1f}%)")
         else:
-            explanation["reasons"].append(f"Semantisch aehnlich ({best.similarity * 100:.1f}%)")
+            explanation["reasons"].append(f"Semantisch ähnlich ({best.similarity * 100:.1f}%)")
 
         if best.matched_fields:
             explanation["reasons"].append(
-                f"Uebereinstimmende Felder: {', '.join(best.matched_fields[:5])}"
+                f"Übereinstimmende Felder: {', '.join(best.matched_fields[:5])}"
             )
 
-        # Callback fuer Auto-Flag
+        # Callback für Auto-Flag
         async def apply_flag(value: Dict[str, Any]) -> None:
             """Markiert Dokument als potentielles Duplikat."""
             doc_result = await db.execute(
@@ -723,7 +723,7 @@ _service_lock = threading.Lock()
 
 
 def get_duplicate_detection_service() -> DuplicateDetectionService:
-    """Factory fuer DuplicateDetectionService Singleton (Thread-safe)."""
+    """Factory für DuplicateDetectionService Singleton (Thread-safe)."""
     global _duplicate_detection_service
     if _duplicate_detection_service is None:
         with _service_lock:

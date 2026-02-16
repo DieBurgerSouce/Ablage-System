@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-ZUGFeRD Validator - Schema-Validierung fuer ZUGFeRD 2.3.3.
+ZUGFeRD Validator - Schema-Validierung für ZUGFeRD 2.3.3.
 
 Validiert ZUGFeRD XML gegen:
 - XSD Schema (Syntax-Validierung)
 - Schematron Rules (Business Rules)
 
-Unterstuetzte Profile:
+Unterstützte Profile:
 - MINIMUM, BASIC, BASIC_WL, EN16931, EXTENDED, XRECHNUNG
 
 Referenz: ZUGFeRD 2.3.3 / EN16931 / XRechnung 3.0.2
@@ -156,16 +156,16 @@ REQUIRED_FIELDS = {
     ],
 }
 
-# Gueltige Invoice Type Codes (UNTDID 1001)
+# Gültige Invoice Type Codes (UNTDID 1001)
 VALID_TYPE_CODES = {"380", "381", "384", "389", "751"}
 
-# Gueltige Waehrungscodes (ISO 4217)
+# Gültige Währungscodes (ISO 4217)
 VALID_CURRENCY_CODES = {
     "EUR", "USD", "GBP", "CHF", "JPY", "CNY", "AUD", "CAD",
     "SEK", "NOK", "DKK", "PLN", "CZK", "HUF", "RON", "BGN"
 }
 
-# Gueltige Tax Category Codes (UNTDID 5305)
+# Gültige Tax Category Codes (UNTDID 5305)
 VALID_TAX_CATEGORIES = {"S", "Z", "E", "AE", "K", "G", "O", "L", "M"}
 
 
@@ -180,10 +180,10 @@ class ZUGFeRDValidator:
     Verwendung:
         validator = ZUGFeRDValidator()
 
-        # Vollstaendige Validierung
+        # Vollständige Validierung
         result = validator.validate(xml_content)
 
-        # Nur Syntaxpruefung (schneller)
+        # Nur Syntaxprüfung (schneller)
         result = validator.validate_syntax(xml_content)
 
         # Profil erkennen
@@ -205,7 +205,7 @@ class ZUGFeRDValidator:
         expected_profile: Optional[ZUGFeRDProfile] = None
     ) -> ValidationResult:
         """
-        Vollstaendige Validierung eines ZUGFeRD XML.
+        Vollständige Validierung eines ZUGFeRD XML.
 
         Args:
             xml_content: XML als String oder Bytes
@@ -249,20 +249,20 @@ class ZUGFeRDValidator:
                        f"entspricht nicht erwartetem Profil ({expected_profile.value})",
             ))
 
-        # Root Element pruefen
+        # Root Element prüfen
         if root.tag != "{urn:un:unece:uncefact:data:standard:CrossIndustryInvoice:100}CrossIndustryInvoice":
             messages.append(ValidationMessage(
                 severity=ValidationSeverity.ERROR,
                 code="INVALID_ROOT_ELEMENT",
-                message=f"Ungueltiges Root-Element: {root.tag}",
+                message=f"Ungültiges Root-Element: {root.tag}",
                 location="/",
             ))
 
-        # Pflichtfelder pruefen
+        # Pflichtfelder prüfen
         if profile:
             self._validate_required_fields(root, profile, messages)
 
-        # Business Rules pruefen
+        # Business Rules prüfen
         self._validate_business_rules(root, profile, messages)
 
         # Betraege validieren
@@ -391,11 +391,11 @@ class ZUGFeRDValidator:
         profile: ZUGFeRDProfile,
         messages: List[ValidationMessage]
     ) -> None:
-        """Prueft Pflichtfelder fuer das Profil."""
+        """Prüft Pflichtfelder für das Profil."""
         required = REQUIRED_FIELDS.get(profile, REQUIRED_FIELDS[ZUGFeRDProfile.EN16931])
 
         for xpath in required:
-            # Namespace-Prefix korrigieren fuer lxml
+            # Namespace-Prefix korrigieren für lxml
             elements = root.xpath(xpath, namespaces=self.namespaces)
 
             if not elements:
@@ -416,7 +416,7 @@ class ZUGFeRDValidator:
         profile: Optional[ZUGFeRDProfile],
         messages: List[ValidationMessage]
     ) -> None:
-        """Prueft Business Rules."""
+        """Prüft Business Rules."""
         ns = self.namespaces
 
         # BR-01: Invoice number muss vorhanden sein
@@ -430,26 +430,26 @@ class ZUGFeRDValidator:
                     location="//rsm:ExchangedDocument/ram:ID",
                 ))
 
-        # BR-02: Invoice type code muss gueltig sein
+        # BR-02: Invoice type code muss gültig sein
         type_code = root.find(".//rsm:ExchangedDocument/ram:TypeCode", ns)
         if type_code is not None and type_code.text:
             if type_code.text not in VALID_TYPE_CODES:
                 messages.append(ValidationMessage(
                     severity=ValidationSeverity.ERROR,
                     code="BR-02",
-                    message=f"Ungueltiger TypeCode: {type_code.text}. "
+                    message=f"Ungültiger TypeCode: {type_code.text}. "
                            f"Erlaubt: {', '.join(sorted(VALID_TYPE_CODES))}",
                     location="//rsm:ExchangedDocument/ram:TypeCode",
                 ))
 
-        # BR-05: Currency code muss gueltig sein (ISO 4217)
+        # BR-05: Currency code muss gültig sein (ISO 4217)
         currency = root.find(".//ram:InvoiceCurrencyCode", ns)
         if currency is not None and currency.text:
             if currency.text not in VALID_CURRENCY_CODES:
                 messages.append(ValidationMessage(
                     severity=ValidationSeverity.WARNING,
                     code="BR-05",
-                    message=f"Unbekannter Waehrungscode: {currency.text}",
+                    message=f"Unbekannter Währungscode: {currency.text}",
                     location="//ram:InvoiceCurrencyCode",
                 ))
 
@@ -465,13 +465,13 @@ class ZUGFeRDValidator:
                     profile="XRECHNUNG",
                 ))
             elif buyer_ref.text:
-                # Leitweg-ID Format pruefen (vereinfacht)
+                # Leitweg-ID Format prüfen (vereinfacht)
                 leitweg_pattern = r"^\d{2,12}-\d{4,12}-\d{2}$"
                 if not re.match(leitweg_pattern, buyer_ref.text):
                     messages.append(ValidationMessage(
                         severity=ValidationSeverity.WARNING,
                         code="BR-DE-01-FORMAT",
-                        message=f"Leitweg-ID Format moeglicherweise ungueltig: {buyer_ref.text}",
+                        message=f"Leitweg-ID Format möglicherweise ungültig: {buyer_ref.text}",
                         location="//ram:BuyerReference",
                         profile="XRECHNUNG",
                     ))
@@ -481,7 +481,7 @@ class ZUGFeRDValidator:
         root: etree._Element,
         messages: List[ValidationMessage]
     ) -> None:
-        """Prueft Betraege auf Konsistenz."""
+        """Prüft Betraege auf Konsistenz."""
         ns = self.namespaces
 
         # Betraege extrahieren
@@ -534,24 +534,24 @@ class ZUGFeRDValidator:
         root: etree._Element,
         messages: List[ValidationMessage]
     ) -> None:
-        """Prueft Steuerangaben."""
+        """Prüft Steuerangaben."""
         ns = self.namespaces
 
         taxes = root.findall(".//ram:ApplicableTradeTax", ns)
 
         for i, tax in enumerate(taxes):
-            # Tax Category Code pruefen
+            # Tax Category Code prüfen
             cat_code = tax.find(".//ram:CategoryCode", ns)
             if cat_code is not None and cat_code.text:
                 if cat_code.text not in VALID_TAX_CATEGORIES:
                     messages.append(ValidationMessage(
                         severity=ValidationSeverity.ERROR,
                         code=f"BR-CL-17-{i}",
-                        message=f"Ungueltiger Tax CategoryCode: {cat_code.text}",
+                        message=f"Ungültiger Tax CategoryCode: {cat_code.text}",
                         location=f"//ram:ApplicableTradeTax[{i+1}]/ram:CategoryCode",
                     ))
 
-            # Steuersatz pruefen
+            # Steuersatz prüfen
             rate = tax.find(".//ram:RateApplicablePercent", ns)
             if rate is not None and rate.text:
                 try:
@@ -560,14 +560,14 @@ class ZUGFeRDValidator:
                         messages.append(ValidationMessage(
                             severity=ValidationSeverity.ERROR,
                             code=f"BR-48-{i}",
-                            message=f"Steuersatz ausserhalb gueltigen Bereichs: {rate_value}%",
+                            message=f"Steuersatz ausserhalb gültigen Bereichs: {rate_value}%",
                             location=f"//ram:ApplicableTradeTax[{i+1}]/ram:RateApplicablePercent",
                         ))
                 except ValueError:
                     messages.append(ValidationMessage(
                         severity=ValidationSeverity.ERROR,
                         code=f"BR-48-FORMAT-{i}",
-                        message=f"Ungueltiges Steuersatz-Format: {rate.text}",
+                        message=f"Ungültiges Steuersatz-Format: {rate.text}",
                         location=f"//ram:ApplicableTradeTax[{i+1}]/ram:RateApplicablePercent",
                     ))
 
@@ -592,7 +592,7 @@ _zugferd_validator_instance: Optional[ZUGFeRDValidator] = None
 
 def get_zugferd_validator() -> ZUGFeRDValidator:
     """
-    Factory-Funktion fuer ZUGFeRDValidator (Singleton).
+    Factory-Funktion für ZUGFeRDValidator (Singleton).
 
     Returns:
         ZUGFeRDValidator: Globale Validator-Instanz

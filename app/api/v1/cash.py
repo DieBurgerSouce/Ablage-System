@@ -1,14 +1,14 @@
 """
 Cash API Endpoints - Kassenbuch.
 
-GoBD-konforme Kassenbuchfuehrung:
+GoBD-konforme Kassenbuchführung:
 - Kassen-CRUD (Register)
-- Kassenbucheintraege (APPEND-ONLY!)
+- Kassenbucheinträge (APPEND-ONLY!)
 - Kassensturz (Zaehlung)
 - Berichte und Zusammenfassungen
 
 WICHTIG: CashEntry ist APPEND-ONLY gemaess GoBD!
-- Keine PUT/PATCH/DELETE fuer Eintraege
+- Keine PUT/PATCH/DELETE für Einträge
 - Stornierung nur durch Gegenbuchung
 
 Alle Antworten auf Deutsch.
@@ -67,7 +67,7 @@ logger = structlog.get_logger(__name__)
 # ==================== Routers ====================
 
 registers_router = APIRouter(prefix="/cash/registers", tags=["Kassenbuch - Kassen"])
-entries_router = APIRouter(prefix="/cash/entries", tags=["Kassenbuch - Eintraege"])
+entries_router = APIRouter(prefix="/cash/entries", tags=["Kassenbuch - Einträge"])
 counts_router = APIRouter(prefix="/cash/counts", tags=["Kassenbuch - Kassensturz"])
 reports_router = APIRouter(prefix="/cash", tags=["Kassenbuch - Berichte"])
 categories_router = APIRouter(prefix="/cash/categories", tags=["Kassenbuch - Kategorien"])
@@ -82,7 +82,7 @@ cash_service = CashService()
     "",
     response_model=CashRegisterListResponse,
     summary="Kassen auflisten",
-    description="Gibt alle Kassen der aktuellen Firma zurueck."
+    description="Gibt alle Kassen der aktuellen Firma zurück."
 )
 async def list_registers(
     request: Request,
@@ -128,7 +128,7 @@ async def list_registers(
     response_model=CashRegisterResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Kasse erstellen",
-    description="Erstellt eine neue Kasse fuer die aktuelle Firma."
+    description="Erstellt eine neue Kasse für die aktuelle Firma."
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)
 async def create_register(
@@ -165,7 +165,7 @@ async def create_register(
     "/{register_id}",
     response_model=CashRegisterResponse,
     summary="Kasse abrufen",
-    description="Gibt Details einer spezifischen Kasse zurueck."
+    description="Gibt Details einer spezifischen Kasse zurück."
 )
 async def get_register(
     register_id: UUID,
@@ -174,7 +174,7 @@ async def get_register(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> CashRegisterResponse:
-    """Gibt eine Kasse zurueck."""
+    """Gibt eine Kasse zurück."""
 
     register = await cash_service.get_register(
         db=db,
@@ -251,8 +251,8 @@ async def update_register(
 @entries_router.get(
     "",
     response_model=CashEntryListResponse,
-    summary="Kassenbucheintraege auflisten",
-    description="Gibt Kassenbucheintraege mit optionaler Filterung zurueck."
+    summary="Kassenbucheinträge auflisten",
+    description="Gibt Kassenbucheinträge mit optionaler Filterung zurück."
 )
 async def list_entries(
     request: Request,
@@ -261,14 +261,14 @@ async def list_entries(
     end_date: Optional[date] = Query(None, description="End-Datum (inklusiv)"),
     entry_type: Optional[CashEntryType] = Query(None, description="Filter nach Typ"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),  # Max 100 fuer Performance
+    limit: int = Query(50, ge=1, le=100),  # Max 100 für Performance
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> CashEntryListResponse:
-    """Liste der Kassenbucheintraege."""
+    """Liste der Kassenbucheinträge."""
 
-    # Konvertiere skip/limit zu page/page_size fuer Service
+    # Konvertiere skip/limit zu page/page_size für Service
     page = (skip // limit) + 1 if limit > 0 else 1
     page_size = limit
 
@@ -321,7 +321,7 @@ async def list_entries(
 
 
 class DuplicateCheckRequest(BaseModel):
-    """Request-Schema fuer Duplikat-Check."""
+    """Request-Schema für Duplikat-Check."""
     register_id: UUID = Field(..., description="Kassen-ID")
     amount: float = Field(..., description="Betrag")
     entry_date: str = Field(..., description="Buchungsdatum (YYYY-MM-DD)")
@@ -332,7 +332,7 @@ class DuplicateCheckRequest(BaseModel):
 @reports_router.post(
     "/check-duplicate",
     summary="Duplikat-Check",
-    description="Prueft ob eine aehnliche Buchung bereits existiert (UX-Verbesserung)."
+    description="Prüft ob eine ähnliche Buchung bereits existiert (UX-Verbesserung)."
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def check_duplicate(
@@ -342,7 +342,7 @@ async def check_duplicate(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> dict:
-    """Prueft auf moegliche Duplikate vor Buchungserstellung.
+    """Prüft auf mögliche Duplikate vor Buchungserstellung.
 
     Akzeptiert JSON-Body mit register_id, amount, entry_date, description, receipt_number.
     """
@@ -376,7 +376,7 @@ async def check_duplicate(
                 "description": duplicate.description,
                 "created_at": duplicate.created_at.isoformat() if duplicate.created_at else None,
             },
-            "message": "Moegliches Duplikat gefunden: Gleicher Betrag und Datum mit aehnlicher Beschreibung."
+            "message": "Mögliches Duplikat gefunden: Gleicher Betrag und Datum mit ähnlicher Beschreibung."
         }
 
     return {"is_duplicate": False, "existing_entry": None, "message": None}
@@ -387,8 +387,8 @@ async def check_duplicate(
     status_code=status.HTTP_201_CREATED,
     summary="Kassenbucheintrag erstellen",
     description="Erstellt einen neuen Kassenbucheintrag. "
-                "APPEND-ONLY: Eintraege koennen nicht geaendert werden! "
-                "Unterstuetzt Idempotency-Key Header fuer Netzwerk-Resilience.",
+                "APPEND-ONLY: Einträge können nicht geändert werden! "
+                "Unterstützt Idempotency-Key Header für Netzwerk-Resilience.",
     responses={201: {"model": CashEntryResponse}}
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)  # SECURITY FIX 30: Reduced from 30 to 10 for GoBD compliance
@@ -402,10 +402,10 @@ async def create_entry(
 ) -> JSONResponse:
     """Erstellt einen neuen Kassenbucheintrag.
 
-    Unterstuetzt Idempotency-Key Header:
+    Unterstützt Idempotency-Key Header:
     - Senden Sie 'Idempotency-Key: <unique-id>' im Header
     - Bei Netzwerkfehler kann der gleiche Request wiederholt werden
-    - Das gleiche Ergebnis wird zurueckgegeben (kein Duplikat)
+    - Das gleiche Ergebnis wird zurückgegeben (kein Duplikat)
     """
     # Idempotency: Bereits verarbeiteter Request
     if cached_response:
@@ -441,11 +441,11 @@ async def create_entry(
         logger.warning("cash_entry_create_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Kassenbucheingabe. Bitte Eingaben pruefen."
+            detail="Ungültige Kassenbucheingabe. Bitte Eingaben prüfen."
         )
 
     # Kategorie-Name aus Entry-Relationship (Eager Loading im Service)
-    # Kein separater Query noetig - N+1 Fix!
+    # Kein separater Query nötig - N+1 Fix!
     category_name = entry.category.name if entry.category else None
 
     # WICHTIG: Mapping von DB-Feldnamen zu Frontend-Feldnamen!
@@ -528,7 +528,7 @@ async def cancel_entry(
         logger.warning("cash_entry_cancel_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Stornierung fehlgeschlagen. Bitte Eingaben pruefen."
+            detail="Stornierung fehlgeschlagen. Bitte Eingaben prüfen."
         )
 
     # Kategorie-Name aus Eager Loading (N+1 Fix!)
@@ -567,7 +567,7 @@ async def cancel_entry(
     "/{entry_id}",
     response_model=CashEntryResponse,
     summary="Kassenbucheintrag abrufen",
-    description="Gibt Details eines spezifischen Eintrags zurueck."
+    description="Gibt Details eines spezifischen Eintrags zurück."
 )
 async def get_entry(
     entry_id: UUID,
@@ -576,7 +576,7 @@ async def get_entry(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> CashEntryResponse:
-    """Gibt einen Kassenbucheintrag zurueck."""
+    """Gibt einen Kassenbucheintrag zurück."""
 
     entry = await cash_service.get_entry(
         db=db,
@@ -630,7 +630,7 @@ async def get_entry(
     "",
     response_model=CashCountListResponse,
     summary="Kassensturz-Protokolle auflisten",
-    description="Gibt alle Kassensturz-Protokolle zurueck."
+    description="Gibt alle Kassensturz-Protokolle zurück."
 )
 async def list_cash_counts(
     request: Request,
@@ -638,7 +638,7 @@ async def list_cash_counts(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),  # Max 100 fuer Performance
+    limit: int = Query(50, ge=1, le=100),  # Max 100 für Performance
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -665,8 +665,8 @@ async def list_cash_counts(
     "",
     response_model=CashCountResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Kassensturz durchfuehren",
-    description="Fuehrt einen Kassensturz durch. "
+    summary="Kassensturz durchführen",
+    description="Führt einen Kassensturz durch. "
                 "Bei Differenz wird automatisch eine Ausgleichsbuchung erstellt."
 )
 @limiter.limit("5/minute", key_func=get_user_identifier)
@@ -677,7 +677,7 @@ async def perform_cash_count(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_cash_permission),
 ) -> CashCountResponse:
-    """Fuehrt einen Kassensturz durch."""
+    """Führt einen Kassensturz durch."""
 
     try:
         cash_count = await cash_service.perform_cash_count(
@@ -691,7 +691,7 @@ async def perform_cash_count(
         logger.warning("cash_count_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Kassensturz fehlgeschlagen. Bitte Eingaben pruefen."
+            detail="Kassensturz fehlgeschlagen. Bitte Eingaben prüfen."
         )
 
     return CashCountResponse.model_validate(cash_count)
@@ -703,7 +703,7 @@ async def perform_cash_count(
     "/summary",
     response_model=CashBookSummary,
     summary="Kassenbuch-Zusammenfassung",
-    description="Gibt eine Zusammenfassung des Kassenbuchs fuer einen Zeitraum zurueck."
+    description="Gibt eine Zusammenfassung des Kassenbuchs für einen Zeitraum zurück."
 )
 async def get_cash_summary(
     request: Request,
@@ -714,7 +714,7 @@ async def get_cash_summary(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> CashBookSummary:
-    """Gibt Kassenbuch-Zusammenfassung zurueck."""
+    """Gibt Kassenbuch-Zusammenfassung zurück."""
 
     summary = await cash_service.get_summary(
         db=db,
@@ -737,7 +737,7 @@ async def get_cash_summary(
     "/daily",
     response_model=List[DailySummary],
     summary="Tagesabschluesse",
-    description="Gibt Tagesabschluesse fuer einen Zeitraum zurueck."
+    description="Gibt Tagesabschluesse für einen Zeitraum zurück."
 )
 async def get_daily_summaries(
     request: Request,
@@ -748,7 +748,7 @@ async def get_daily_summaries(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> List[DailySummary]:
-    """Gibt Tagesabschluesse zurueck."""
+    """Gibt Tagesabschluesse zurück."""
 
     summaries = await cash_service.get_daily_summaries(
         db=db,
@@ -767,7 +767,7 @@ async def get_daily_summaries(
     "",
     response_model=List[CashCategoryResponse],
     summary="Kategorien auflisten",
-    description="Gibt alle Kassenbuch-Kategorien der Firma zurueck."
+    description="Gibt alle Kassenbuch-Kategorien der Firma zurück."
 )
 async def list_categories(
     request: Request,
@@ -865,7 +865,7 @@ async def export_csv(
     register_id: UUID = Query(..., description="Kassen-ID"),
     start_date: date = Query(..., description="Start-Datum"),
     end_date: date = Query(..., description="End-Datum"),
-    include_cancelled: bool = Query(False, description="Stornierte einschliessen"),
+    include_cancelled: bool = Query(False, description="Stornierte einschließen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_cash_permission),  # SECURITY: Kassenbuch-Berechtigung erforderlich!
@@ -873,7 +873,7 @@ async def export_csv(
     """Exportiert Kassenbuch als CSV."""
     import io
 
-    # Eintraege laden (alle ohne Pagination)
+    # Einträge laden (alle ohne Pagination)
     entries, _ = await cash_service.get_entries(
         db=db,
         company_id=company.id,
@@ -885,14 +885,14 @@ async def export_csv(
         page_size=10000,  # Alle
     )
 
-    # CSV erstellen (UTF-8 mit BOM fuer Excel)
+    # CSV erstellen (UTF-8 mit BOM für Excel)
     output = io.StringIO()
-    output.write("\ufeff")  # BOM fuer Excel UTF-8 Erkennung
+    output.write("\ufeff")  # BOM für Excel UTF-8 Erkennung
 
     # Header
     output.write(
         "Beleg-Nr;Datum;Wertstellung;Buchungstyp;Beschreibung;"
-        "Betrag;Saldo;MwSt-Satz;Kategorie;Kostenstelle;Geschaeftspartner;"
+        "Betrag;Saldo;MwSt-Satz;Kategorie;Kostenstelle;Geschäftspartner;"
         "Storniert;Storno-Grund\n"
     )
 
@@ -915,7 +915,7 @@ async def export_csv(
 
     output.seek(0)
 
-    # Register-Name fuer Dateiname (mit Firma-Validierung!)
+    # Register-Name für Dateiname (mit Firma-Validierung!)
     register = await cash_service.get_register(db, register_id, company.id)
     if not register:
         raise HTTPException(
@@ -944,7 +944,7 @@ async def export_pdf(
     register_id: UUID = Query(..., description="Kassen-ID"),
     start_date: date = Query(..., description="Start-Datum"),
     end_date: date = Query(..., description="End-Datum"),
-    include_cancelled: bool = Query(False, description="Stornierte einschliessen"),
+    include_cancelled: bool = Query(False, description="Stornierte einschließen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_cash_permission),  # SECURITY: Kassenbuch-Berechtigung erforderlich!
@@ -957,7 +957,7 @@ async def export_pdf(
     from reportlab.lib.units import cm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 
-    # Eintraege laden
+    # Einträge laden
     entries, total = await cash_service.get_entries(
         db=db,
         company_id=company.id,
@@ -1098,7 +1098,7 @@ async def export_pdf(
 @exports_router.get(
     "/datev",
     summary="DATEV Export",
-    description="Exportiert das Kassenbuch im DATEV-Format fuer den Steuerberater."
+    description="Exportiert das Kassenbuch im DATEV-Format für den Steuerberater."
 )
 async def export_datev(
     request: Request,
@@ -1118,8 +1118,8 @@ async def export_datev(
     """
     import io
 
-    # Eintraege laden (INKL. Stornierungen fuer GoBD-Compliance!)
-    # GoBD erfordert lueckenlose Dokumentation aller Geschaeftsvorfaelle
+    # Einträge laden (INKL. Stornierungen für GoBD-Compliance!)
+    # GoBD erfordert lückenlose Dokumentation aller Geschäftsvorfaelle
     entries, _ = await cash_service.get_entries(
         db=db,
         company_id=company.id,
@@ -1131,7 +1131,7 @@ async def export_datev(
         page_size=10000,
     )
 
-    # DATEV Header (vereinfacht - vollstaendiger DATEV-Header ist komplexer)
+    # DATEV Header (vereinfacht - vollständiger DATEV-Header ist komplexer)
     output = io.StringIO()
 
     # Kopfzeile (DATEV Buchungsstapel Format)
@@ -1139,11 +1139,11 @@ async def export_datev(
         "Umsatz (ohne Soll/Haben-Kz);Soll/Haben-Kennzeichen;WKZ Umsatz;Kurs;"
         "Basis-Umsatz;WKZ Basis-Umsatz;Konto;Gegenkonto (ohne BU-Schluessel);"
         "BU-Schluessel;Belegdatum;Belegfeld 1;Belegfeld 2;Skonto;Buchungstext;"
-        "Postensperre;Diverse Adressnummer;Geschaeftspartnerbank;Sachverhalt;"
+        "Postensperre;Diverse Adressnummer;Geschäftspartnerbank;Sachverhalt;"
         "Zinssperre;Beleglink;Beleginfo - Art 1;Beleginfo - Inhalt 1\n"
     )
 
-    # Konto fuer Kasse - dynamisch nach Kontenrahmen
+    # Konto für Kasse - dynamisch nach Kontenrahmen
     kontenrahmen = getattr(company, "kontenrahmen", "SKR03") or "SKR03"
     if kontenrahmen == "SKR04":
         kassa_konto = "1600"
@@ -1180,7 +1180,7 @@ async def export_datev(
             else:
                 gegenkonto = default_ausgabe
 
-        # BU-Schluessel fuer MwSt
+        # BU-Schluessel für MwSt
         bu_schluessel = ""
         if entry.tax_rate:
             if entry.tax_rate == 19:
@@ -1203,13 +1203,13 @@ async def export_datev(
 
     output.seek(0)
 
-    # In Windows-1252 konvertieren fuer DATEV-Kompatibilitaet
+    # In Windows-1252 konvertieren für DATEV-Kompatibilität
     try:
         content_bytes = output.getvalue().encode("cp1252", errors="replace")
     except Exception:
         content_bytes = output.getvalue().encode("utf-8")
 
-    # Register-Name fuer Dateiname (mit Firma-Validierung!)
+    # Register-Name für Dateiname (mit Firma-Validierung!)
     register = await cash_service.get_register(db, register_id, company.id)
     if not register:
         raise HTTPException(

@@ -1,4 +1,4 @@
-"""Service fuer die Verwaltung von Immobilien im Privat-Modul."""
+"""Service für die Verwaltung von Immobilien im Privat-Modul."""
 
 import uuid
 from datetime import datetime, date
@@ -36,7 +36,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PrivatPropertyService:
-    """Service fuer Immobilien, Mieter und zugehoerige Daten."""
+    """Service für Immobilien, Mieter und zugehoerige Daten."""
 
     # ========== Property CRUD ==========
 
@@ -106,11 +106,11 @@ class PrivatPropertyService:
     ) -> Optional[PrivatProperty]:
         """IDOR-sichere Methode: Holt Immobilie nur wenn User Zugriff hat.
 
-        SECURITY: Gibt einheitlich None zurueck bei:
+        SECURITY: Gibt einheitlich None zurück bei:
         - Immobilie existiert nicht
         - User hat keinen Zugriff
 
-        Dies verhindert Information Disclosure ueber Existenz von Immobilien.
+        Dies verhindert Information Disclosure über Existenz von Immobilien.
 
         Args:
             db: Datenbank-Session
@@ -122,7 +122,7 @@ class PrivatPropertyService:
         """
         from app.db.models import PrivatSpace, PrivatSpaceAccess
 
-        # Join mit Space um Owner zu pruefen
+        # Join mit Space um Owner zu prüfen
         result = await db.execute(
             select(PrivatProperty, PrivatSpace)
             .join(PrivatSpace, PrivatProperty.space_id == PrivatSpace.id)
@@ -139,7 +139,7 @@ class PrivatPropertyService:
         if space.owner_id == requesting_user_id:
             return property_obj
 
-        # Pruefe explizite Berechtigung
+        # Prüfe explizite Berechtigung
         now = utc_now()
         access_result = await db.execute(
             select(PrivatSpaceAccess)
@@ -288,15 +288,15 @@ class PrivatPropertyService:
         """Aktualisiert eine Immobilie.
 
         SECURITY FIX 22-14: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Updates zu verhindern. Ohne Row Lock koennte:
-        - Lost Updates bei gleichzeitigen Aenderungen auftreten
+        bei parallelen Updates zu verhindern. Ohne Row Lock könnte:
+        - Lost Updates bei gleichzeitigen Änderungen auftreten
         - Inkonsistente Immobiliendaten entstehen
         """
         # SECURITY FIX 22-14: Row Lock verhindert parallele Modifikationen
         result = await db.execute(
             select(PrivatProperty)
             .where(PrivatProperty.id == property_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Immobiliendaten!
+            .with_for_update()  # ROW LOCK - kritisch für Immobiliendaten!
         )
         property_obj = result.scalar_one_or_none()
         if not property_obj:
@@ -318,7 +318,7 @@ class PrivatPropertyService:
         db: AsyncSession,
         property_id: uuid.UUID,
     ) -> bool:
-        """Loescht eine Immobilie.
+        """Löscht eine Immobilie.
 
         SECURITY FIX 22-14b: Row Lock mit with_for_update() um TOCTOU Race Conditions
         bei parallelem Delete zu verhindern.
@@ -327,7 +327,7 @@ class PrivatPropertyService:
         result = await db.execute(
             select(PrivatProperty)
             .where(PrivatProperty.id == property_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Datenintegritaet!
+            .with_for_update()  # ROW LOCK - kritisch für Datenintegrität!
         )
         property_obj = result.scalar_one_or_none()
         if not property_obj:
@@ -394,7 +394,7 @@ class PrivatPropertyService:
     ) -> Optional[PrivatTenant]:
         """IDOR-sichere Methode: Holt Mieter nur wenn User Zugriff auf Property hat.
 
-        SECURITY: Gibt einheitlich None zurueck bei:
+        SECURITY: Gibt einheitlich None zurück bei:
         - Mieter existiert nicht
         - User hat keinen Zugriff auf zugehoerige Immobilie
 
@@ -408,7 +408,7 @@ class PrivatPropertyService:
         """
         from app.db.models import PrivatSpace, PrivatSpaceAccess
 
-        # Join Tenant -> Property -> Space um Owner zu pruefen
+        # Join Tenant -> Property -> Space um Owner zu prüfen
         result = await db.execute(
             select(PrivatTenant, PrivatProperty, PrivatSpace)
             .join(PrivatProperty, PrivatTenant.property_id == PrivatProperty.id)
@@ -426,7 +426,7 @@ class PrivatPropertyService:
         if space.owner_id == requesting_user_id:
             return tenant
 
-        # Pruefe explizite Berechtigung
+        # Prüfe explizite Berechtigung
         now = utc_now()
         access_result = await db.execute(
             select(PrivatSpaceAccess)
@@ -509,15 +509,15 @@ class PrivatPropertyService:
         """Aktualisiert einen Mieter.
 
         SECURITY FIX 23-10: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Updates zu verhindern. Ohne Row Lock koennte:
-        - Lost Updates bei gleichzeitigen Aenderungen auftreten
+        bei parallelen Updates zu verhindern. Ohne Row Lock könnte:
+        - Lost Updates bei gleichzeitigen Änderungen auftreten
         - Inkonsistente Mieterdaten entstehen
         """
         # SECURITY FIX 23-10: Row Lock verhindert parallele Modifikationen
         result = await db.execute(
             select(PrivatTenant)
             .where(PrivatTenant.id == tenant_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Mieterdaten!
+            .with_for_update()  # ROW LOCK - kritisch für Mieterdaten!
         )
         tenant = result.scalar_one_or_none()
         if not tenant:
@@ -555,7 +555,7 @@ class PrivatPropertyService:
         Returns:
             Erstellte Mieteinnahme oder None wenn kein Zugriff
         """
-        # SECURITY FIX 20-4: Pruefe Tenant-Ownership bevor Einnahme erstellt wird
+        # SECURITY FIX 20-4: Prüfe Tenant-Ownership bevor Einnahme erstellt wird
         tenant = await self.get_tenant_with_access_check(
             db, data.tenant_id, requesting_user_id
         )
@@ -599,7 +599,7 @@ class PrivatPropertyService:
     ) -> PrivatRentalIncome:
         """Erfasst eine Mieteinnahme.
 
-        DEPRECATED: Nutze record_rental_income_with_access_check() fuer IDOR-sichere Operationen.
+        DEPRECATED: Nutze record_rental_income_with_access_check() für IDOR-sichere Operationen.
         """
         income = PrivatRentalIncome(
             id=uuid.uuid4(),
@@ -675,7 +675,7 @@ class PrivatPropertyService:
         Returns:
             Erstellte Nebenkostenabrechnung oder None wenn kein Zugriff
         """
-        # SECURITY FIX 20-9: Pruefe Property-Ownership
+        # SECURITY FIX 20-9: Prüfe Property-Ownership
         property_obj = await self.get_property_with_access_check(
             db, data.property_id, requesting_user_id
         )
@@ -687,7 +687,7 @@ class PrivatPropertyService:
             )
             return None
 
-        # SECURITY FIX 20-9: Pruefe Tenant-Ownership wenn angegeben
+        # SECURITY FIX 20-9: Prüfe Tenant-Ownership wenn angegeben
         if data.tenant_id:
             tenant = await self.get_tenant_with_access_check(
                 db, data.tenant_id, requesting_user_id
@@ -700,7 +700,7 @@ class PrivatPropertyService:
                 )
                 return None
 
-            # Zusaetzlich pruefen: Tenant muss zur Property gehoeren
+            # Zusätzlich prüfen: Tenant muss zur Property gehoeren
             if tenant.property_id != data.property_id:
                 logger.warning(
                     "idor_utility_statement_tenant_mismatch",
@@ -747,7 +747,7 @@ class PrivatPropertyService:
     ) -> PrivatUtilityStatement:
         """Erstellt eine Nebenkostenabrechnung.
 
-        DEPRECATED: Nutze create_utility_statement_with_access_check() fuer IDOR-sichere Operationen.
+        DEPRECATED: Nutze create_utility_statement_with_access_check() für IDOR-sichere Operationen.
         """
         statement = PrivatUtilityStatement(
             id=uuid.uuid4(),

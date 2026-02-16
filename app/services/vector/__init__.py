@@ -1,7 +1,7 @@
 """
 Vector Search Services Package.
 
-Parallele Vector-DB-Infrastruktur fuer A/B Testing:
+Parallele Vector-DB-Infrastruktur für A/B Testing:
 - QdrantService: Qdrant Vector-DB Integration
 - EmbeddingFactory: Multi-Model Embedding Generation (E5-Large, Jina-DE)
 - RerankerService: BGE-Reranker Cross-Encoder

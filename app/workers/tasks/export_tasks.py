@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""Celery Export Tasks fuer asynchrone Batch-Exports.
+"""Celery Export Tasks für asynchrone Batch-Exports.
 
-Enthaelt:
+Enthält:
 - batch_export_task: Async Export mit Progress-Tracking
 - Export-Cancellation Support
 - Progress-Updates via Redis/Celery State
@@ -27,7 +27,7 @@ from app.workers.task_callbacks import ProgressCallback
 
 logger = structlog.get_logger(__name__)
 
-# Database session factory fuer Worker
+# Database session factory für Worker
 engine = create_async_engine(
     settings.DATABASE_URL,
     pool_pre_ping=True,
@@ -151,7 +151,7 @@ def batch_export_task(
     include_text: bool = True,
     include_metadata: bool = True,
 ) -> Dict:
-    """Celery task fuer asynchronen Batch-Export.
+    """Celery task für asynchronen Batch-Export.
 
     Args:
         self: Celery Task instance
@@ -368,7 +368,7 @@ def batch_export_task(
     queue="default",
 )
 def check_scheduled_exports() -> Dict:
-    """Prueft und startet faellige Scheduled Exports.
+    """Prüft und startet fällige Scheduled Exports.
 
     Wird via Celery Beat alle 5 Minuten aufgerufen.
 
@@ -486,7 +486,7 @@ def run_scheduled_export_task(
     user_id: str,
     manual: bool = False,
 ) -> Dict:
-    """Fuehrt einen Scheduled Export aus.
+    """Führt einen Scheduled Export aus.
 
     Args:
         self: Celery Task instance

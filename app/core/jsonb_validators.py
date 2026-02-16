@@ -63,11 +63,11 @@ def validate_jsonb_keys(
     if isinstance(data, dict):
         for key in data.keys():
             if not isinstance(key, str):
-                raise ValueError("JSON-Keys muessen Strings sein")
+                raise ValueError("JSON-Keys müssen Strings sein")
             # Reject SQL injection patterns in keys
             if any(c in key for c in ("'", '"', ";", "--", "/*", "*/", "\x00")):
                 raise ValueError(
-                    f"Ungueltiger JSON-Key: Sonderzeichen nicht erlaubt"
+                    f"Ungültiger JSON-Key: Sonderzeichen nicht erlaubt"
                 )
             if allowed_keys and key not in allowed_keys:
                 raise ValueError(

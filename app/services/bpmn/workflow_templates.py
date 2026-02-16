@@ -1,12 +1,12 @@
 """Enterprise BPMN Workflow Templates.
 
-Vordefinierte Workflow-Templates fuer typische Geschaeftsprozesse:
+Vordefinierte Workflow-Templates für typische Geschäftsprozesse:
 - Rechnungsfreigabe mit Betrags-Eskalation
 - Automatisches Mahnwesen
 - Kunden-Onboarding
 - Dokumenten-Klassifizierung
 
-Diese Templates koennen direkt deployed oder als Basis fuer eigene Workflows genutzt werden.
+Diese Templates können direkt deployed oder als Basis für eigene Workflows genutzt werden.
 """
 
 from typing import Dict, Any, List
@@ -30,20 +30,20 @@ INVOICE_APPROVAL_WORKFLOW: Dict[str, Any] = {
     "key": "invoice-approval",
     "name": "Rechnungsfreigabe",
     "description": """
-Mehrstufiger Freigabe-Workflow fuer eingehende Rechnungen.
+Mehrstufiger Freigabe-Workflow für eingehende Rechnungen.
 
 Ablauf:
 1. Rechnung wird eingereicht (automatisch nach OCR oder manuell)
-2. Sachbearbeiter prueft Rechnung (Formelle Pruefung)
+2. Sachbearbeiter prüft Rechnung (Formelle Prüfung)
 3. Bei Betrag > 1.000 EUR: Abteilungsleiter-Freigabe erforderlich
-4. Bei Betrag > 5.000 EUR: Zusaetzlich Geschaeftsfuehrer-Freigabe
+4. Bei Betrag > 5.000 EUR: Zusätzlich Geschäftsführer-Freigabe
 5. Nach Freigabe: Buchung und Zahlung ausloesen
 
 Features:
-- Automatische Eskalation bei Ueberfaelligkeit (24h, 48h, 72h)
+- Automatische Eskalation bei Überfälligkeit (24h, 48h, 72h)
 - Betrags-basiertes Routing
-- Audit-Trail fuer alle Entscheidungen
-- Integration mit Banking-Modul fuer Zahlungsausloesung
+- Audit-Trail für alle Entscheidungen
+- Integration mit Banking-Modul für Zahlungsausloesung
 """,
     "category": WorkflowCategory.FINANZEN,
     "tags": ["rechnung", "freigabe", "approval", "finanzen"],
@@ -59,25 +59,25 @@ Features:
                 "name": "Rechnung eingegangen",
                 "outgoing": ["flow_to_check"],
             },
-            # Task 1: Formelle Pruefung
+            # Task 1: Formelle Prüfung
             {
                 "id": "task_formal_check",
                 "type": "userTask",
-                "name": "Formelle Pruefung",
+                "name": "Formelle Prüfung",
                 "incoming": ["flow_to_check"],
                 "outgoing": ["flow_to_gateway_amount"],
                 "assignee_group": "Buchhaltung",
                 "form_key": "form:invoice-check",
                 "extension_properties": {
-                    "description": "Pruefen Sie die Rechnung auf Vollstaendigkeit und Korrektheit",
+                    "description": "Prüfen Sie die Rechnung auf Vollständigkeit und Korrektheit",
                     "required_fields": ["supplier_valid", "amount_correct", "tax_correct"],
                 },
             },
-            # Gateway: Betrags-Pruefung
+            # Gateway: Betrags-Prüfung
             {
                 "id": "gateway_amount",
                 "type": "exclusiveGateway",
-                "name": "Betrag pruefen",
+                "name": "Betrag prüfen",
                 "incoming": ["flow_to_gateway_amount"],
                 "outgoing": ["flow_small_amount", "flow_medium_amount", "flow_large_amount"],
             },
@@ -102,7 +102,7 @@ Features:
                 "due_date_duration": "PT24H",
                 "extension_properties": {
                     "escalation_after": "PT48H",
-                    "escalation_to": "Geschaeftsfuehrung",
+                    "escalation_to": "Geschäftsführung",
                 },
             },
             # Gateway nach Abteilungsleiter
@@ -113,14 +113,14 @@ Features:
                 "incoming": ["flow_dept_to_gateway"],
                 "outgoing": ["flow_dept_approved", "flow_dept_rejected"],
             },
-            # Branch 3: Grosse Betraege (> 5000 EUR) - Geschaeftsfuehrer
+            # Branch 3: Grosse Betraege (> 5000 EUR) - Geschäftsführer
             {
                 "id": "task_ceo_approval",
                 "type": "userTask",
-                "name": "Geschaeftsfuehrer-Freigabe",
+                "name": "Geschäftsführer-Freigabe",
                 "incoming": ["flow_large_amount", "flow_dept_approved_large"],
                 "outgoing": ["flow_ceo_to_gateway"],
-                "assignee_group": "Geschaeftsfuehrung",
+                "assignee_group": "Geschäftsführung",
                 "form_key": "form:invoice-approval-ceo",
                 "due_date_duration": "PT48H",
                 "extension_properties": {
@@ -128,11 +128,11 @@ Features:
                     "notify_slack": True,
                 },
             },
-            # Gateway nach Geschaeftsfuehrer
+            # Gateway nach Geschäftsführer
             {
                 "id": "gateway_ceo_decision",
                 "type": "exclusiveGateway",
-                "name": "Entscheidung Geschaeftsfuehrer",
+                "name": "Entscheidung Geschäftsführer",
                 "incoming": ["flow_ceo_to_gateway"],
                 "outgoing": ["flow_ceo_approved", "flow_ceo_rejected"],
             },
@@ -297,8 +297,8 @@ Features:
         "document_id": {"type": "string", "required": True, "description": "Dokument-ID"},
         "supplier_id": {"type": "string", "required": False, "description": "Lieferanten-ID"},
         "amount": {"type": "number", "required": True, "description": "Rechnungsbetrag"},
-        "currency": {"type": "string", "default": "EUR", "description": "Waehrung"},
-        "due_date": {"type": "date", "required": False, "description": "Faelligkeitsdatum"},
+        "currency": {"type": "string", "default": "EUR", "description": "Währung"},
+        "due_date": {"type": "date", "required": False, "description": "Fälligkeitsdatum"},
         "approved": {"type": "boolean", "description": "Freigabe-Entscheidung"},
         "rejection_reason": {"type": "string", "description": "Ablehnungsgrund"},
     },
@@ -313,21 +313,21 @@ DUNNING_PROCESS_WORKFLOW: Dict[str, Any] = {
     "key": "dunning-process",
     "name": "Automatisches Mahnwesen",
     "description": """
-Automatisierter Mahnprozess fuer ueberfaellige Rechnungen.
+Automatisierter Mahnprozess für überfällige Rechnungen.
 
 Ablauf:
-1. Rechnung wird ueberfaellig (Trigger: Timer oder manuell)
-2. Zahlungserinnerung (freundlich, keine Gebuehren)
-3. Erste Mahnung nach 14 Tagen (Mahngebuehr moeglich)
-4. Zweite Mahnung nach weiteren 14 Tagen (hoehere Gebuehr)
+1. Rechnung wird überfällig (Trigger: Timer oder manuell)
+2. Zahlungserinnerung (freundlich, keine Gebühren)
+3. Erste Mahnung nach 14 Tagen (Mahngebühr möglich)
+4. Zweite Mahnung nach weiteren 14 Tagen (höhere Gebühr)
 5. Dritte Mahnung nach weiteren 14 Tagen (letzte Warnung)
-6. Inkasso-Uebergabe oder Abschreibung
+6. Inkasso-Übergabe oder Abschreibung
 
 Features:
 - Automatische Timer-Events
 - Eskalationsstufen mit konfigurierbaren Intervallen
 - Integration mit Telefon-Protokoll
-- Optionale Inkasso-Uebergabe
+- Optionale Inkasso-Übergabe
 """,
     "category": WorkflowCategory.FINANZEN,
     "tags": ["mahnung", "inkasso", "forderungen", "dunning"],
@@ -340,7 +340,7 @@ Features:
             {
                 "id": "start_dunning",
                 "type": "startEvent",
-                "name": "Rechnung ueberfaellig",
+                "name": "Rechnung überfällig",
                 "outgoing": ["flow_to_reminder"],
             },
             # Task 1: Zahlungserinnerung senden
@@ -451,14 +451,14 @@ Features:
                 "incoming": ["flow_to_decision"],
                 "outgoing": ["flow_to_inkasso", "flow_to_writeoff"],
             },
-            # Task: Inkasso-Uebergabe
+            # Task: Inkasso-Übergabe
             {
                 "id": "task_inkasso",
                 "type": "userTask",
-                "name": "Inkasso-Uebergabe vorbereiten",
+                "name": "Inkasso-Übergabe vorbereiten",
                 "incoming": ["flow_to_inkasso"],
                 "outgoing": ["flow_to_end_inkasso"],
-                "assignee_group": "Geschaeftsfuehrung",
+                "assignee_group": "Geschäftsführung",
                 "form_key": "form:inkasso-handover",
             },
             # Task: Abschreibung
@@ -480,7 +480,7 @@ Features:
             {
                 "id": "end_inkasso",
                 "type": "endEvent",
-                "name": "An Inkasso uebergeben",
+                "name": "An Inkasso übergeben",
                 "incoming": ["flow_to_end_inkasso"],
             },
             {
@@ -489,7 +489,7 @@ Features:
                 "name": "Abgeschrieben",
                 "incoming": ["flow_to_end_writeoff"],
             },
-            # Sequence Flows (gekuerzt fuer Lesbarkeit)
+            # Sequence Flows (gekürzt für Lesbarkeit)
             {"id": "flow_to_reminder", "type": "sequenceFlow", "source_ref": "start_dunning", "target_ref": "task_send_reminder"},
             {"id": "flow_reminder_to_timer", "type": "sequenceFlow", "source_ref": "task_send_reminder", "target_ref": "timer_14_days_1"},
             {"id": "flow_timer_to_check_1", "type": "sequenceFlow", "source_ref": "timer_14_days_1", "target_ref": "gateway_payment_check_1"},
@@ -533,7 +533,7 @@ Strukturierter Prozess zur Aufnahme neuer Kunden.
 
 Ablauf:
 1. Stammdaten erfassen (Kontaktdaten, Anschrift)
-2. Bonitaetspruefung (automatisch via Creditreform/SCHUFA)
+2. Bonitaetsprüfung (automatisch via Creditreform/SCHUFA)
 3. Kreditlimit festlegen
 4. Zahlungsbedingungen vereinbaren
 5. Willkommenspaket versenden
@@ -541,7 +541,7 @@ Ablauf:
 
 Features:
 - Parallele Aufgaben (Bonitaet + Stammdaten)
-- Automatische Bonitaetspruefung
+- Automatische Bonitaetsprüfung
 - Integration mit CRM
 """,
     "category": WorkflowCategory.KUNDEN,
@@ -562,25 +562,25 @@ Features:
             {
                 "id": "gateway_parallel_start",
                 "type": "parallelGateway",
-                "name": "Parallele Pruefungen",
+                "name": "Parallele Prüfungen",
                 "incoming": ["flow_to_parallel"],
                 "outgoing": ["flow_to_stammdaten", "flow_to_bonitaet"],
             },
-            # Branch 1: Stammdaten vervollstaendigen
+            # Branch 1: Stammdaten vervollständigen
             {
                 "id": "task_stammdaten",
                 "type": "userTask",
-                "name": "Stammdaten vervollstaendigen",
+                "name": "Stammdaten vervollständigen",
                 "incoming": ["flow_to_stammdaten"],
                 "outgoing": ["flow_stammdaten_done"],
                 "assignee_group": "Vertriebsinnendienst",
                 "form_key": "form:customer-masterdata",
             },
-            # Branch 2: Bonitaetspruefung
+            # Branch 2: Bonitaetsprüfung
             {
                 "id": "task_bonitaet",
                 "type": "serviceTask",
-                "name": "Bonitaetspruefung",
+                "name": "Bonitaetsprüfung",
                 "incoming": ["flow_to_bonitaet"],
                 "outgoing": ["flow_bonitaet_done"],
                 "implementation": "celery:customer.check_creditworthiness",
@@ -589,7 +589,7 @@ Features:
             {
                 "id": "gateway_parallel_end",
                 "type": "parallelGateway",
-                "name": "Pruefungen abgeschlossen",
+                "name": "Prüfungen abgeschlossen",
                 "incoming": ["flow_stammdaten_done", "flow_bonitaet_done"],
                 "outgoing": ["flow_to_bonitaet_check"],
             },
@@ -611,14 +611,14 @@ Features:
                 "assignee_group": "Buchhaltung",
                 "form_key": "form:credit-limit",
             },
-            # Task: Manuelle Pruefung bei schlechter Bonitaet
+            # Task: Manuelle Prüfung bei schlechter Bonitaet
             {
                 "id": "task_manual_review",
                 "type": "userTask",
-                "name": "Manuelle Bonitaetspruefung",
+                "name": "Manuelle Bonitaetsprüfung",
                 "incoming": ["flow_bonitaet_review"],
                 "outgoing": ["flow_review_decision"],
-                "assignee_group": "Geschaeftsfuehrung",
+                "assignee_group": "Geschäftsführung",
                 "form_key": "form:manual-credit-review",
             },
             # Gateway: Kunde annehmen?
@@ -713,7 +713,7 @@ Ablauf:
 1. Dokument wird hochgeladen (Start-Event)
 2. OCR-Verarbeitung (Service Task)
 3. KI-Klassifizierung (Service Task)
-4. Bei niedriger Confidence: Manuelle Pruefung
+4. Bei niedriger Confidence: Manuelle Prüfung
 5. Routing basierend auf Dokumenttyp
 
 Features:
@@ -732,7 +732,7 @@ Features:
             {
                 "id": "task_ocr",
                 "type": "serviceTask",
-                "name": "OCR durchfuehren",
+                "name": "OCR durchführen",
                 "incoming": ["flow_to_ocr"],
                 "outgoing": ["flow_to_classify"],
                 "implementation": "celery:ocr.process_document",
@@ -748,7 +748,7 @@ Features:
             {
                 "id": "gateway_confidence",
                 "type": "exclusiveGateway",
-                "name": "Confidence pruefen",
+                "name": "Confidence prüfen",
                 "incoming": ["flow_to_confidence_check"],
                 "outgoing": ["flow_high_confidence", "flow_low_confidence"],
             },
@@ -764,7 +764,7 @@ Features:
             {
                 "id": "task_entity_linking",
                 "type": "serviceTask",
-                "name": "Entity-Verknuepfung",
+                "name": "Entity-Verknüpfung",
                 "incoming": ["flow_high_confidence", "flow_manual_done"],
                 "outgoing": ["flow_to_routing"],
                 "implementation": "celery:entity.link_document",
@@ -823,7 +823,7 @@ Features:
         "document_id": {"type": "string", "required": True},
         "document_type": {"type": "string", "description": "Erkannter Dokumenttyp"},
         "classification_confidence": {"type": "number", "description": "KI-Confidence 0-1"},
-        "entity_id": {"type": "string", "description": "Verknuepfte Entity"},
+        "entity_id": {"type": "string", "description": "Verknüpfte Entity"},
     },
 }
 
@@ -841,7 +841,7 @@ ALL_WORKFLOW_TEMPLATES: List[Dict[str, Any]] = [
 
 
 def get_workflow_template(key: str) -> Dict[str, Any] | None:
-    """Gibt ein Workflow-Template nach Key zurueck."""
+    """Gibt ein Workflow-Template nach Key zurück."""
     for template in ALL_WORKFLOW_TEMPLATES:
         if template["key"] == key:
             return template
@@ -849,20 +849,20 @@ def get_workflow_template(key: str) -> Dict[str, Any] | None:
 
 
 def list_workflow_templates(category: WorkflowCategory | None = None) -> List[Dict[str, Any]]:
-    """Listet alle verfuegbaren Workflow-Templates auf.
+    """Listet alle verfügbaren Workflow-Templates auf.
 
     Args:
         category: Optional Filter nach Kategorie
 
     Returns:
-        Liste der Templates (ohne process_data fuer Uebersicht)
+        Liste der Templates (ohne process_data für Übersicht)
     """
     templates = ALL_WORKFLOW_TEMPLATES
 
     if category:
         templates = [t for t in templates if t.get("category") == category]
 
-    # Nur Metadaten zurueckgeben
+    # Nur Metadaten zurückgeben
     return [
         {
             "key": t["key"],

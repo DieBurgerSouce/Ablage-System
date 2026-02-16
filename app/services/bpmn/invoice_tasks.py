@@ -1,6 +1,6 @@
 """Invoice Workflow Task Implementations.
 
-Service Tasks fuer den Rechnungsfreigabe-Workflow.
+Service Tasks für den Rechnungsfreigabe-Workflow.
 Diese Funktionen werden von der BPMN Engine aufgerufen.
 """
 
@@ -16,7 +16,7 @@ async def auto_approve_invoice(
     instance_id: str,
     variables: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Automatische Freigabe fuer Rechnungen unter 1.000 EUR.
+    """Automatische Freigabe für Rechnungen unter 1.000 EUR.
 
     Args:
         instance_id: BPMN Prozess-Instanz ID

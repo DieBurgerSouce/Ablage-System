@@ -2,16 +2,16 @@
 """
 Unified German Text Postprocessor.
 
-Gemeinsamer Service fuer deutsche Textnachbearbeitung in allen OCR-Backends:
+Gemeinsamer Service für deutsche Textnachbearbeitung in allen OCR-Backends:
 - Umlaut-Restaurierung (ae->ä, oe->ö, ue->ü)
 - Eszett-Korrektur (ss->ß wo angemessen)
 - Kontextbasierte Korrektur mit deutschem Woerterbuch
 - Compound-Word-Erkennung und -Splitting
-- Phonetische Aehnlichkeit (Cologne Phonetic)
+- Phonetische Ähnlichkeit (Cologne Phonetic)
 - Integration mit GermanValidator
 - Branchenspezifische Fachvokabulare (Phase 8)
 
-Feinpoliert und durchdacht - Deutsche OCR-Qualitaet.
+Feinpoliert und durchdacht - Deutsche OCR-Qualität.
 """
 
 import re
@@ -31,14 +31,14 @@ logger = structlog.get_logger(__name__)
 
 class GermanTextPostprocessor:
     """
-    Unified German Text Postprocessor fuer alle OCR-Backends.
+    Unified German Text Postprocessor für alle OCR-Backends.
 
     Features:
     - Context-aware Umlaut-Restaurierung
     - Eszett (ss) Korrektur
-    - Deutsches Woerterbuch fuer haeufige Woerter
+    - Deutsches Woerterbuch für häufige Woerter
     - Integration mit GermanValidator (optional)
-    - Statistiken ueber Korrekturen
+    - Statistiken über Korrekturen
 
     Usage:
         postprocessor = GermanTextPostprocessor()
@@ -208,8 +208,8 @@ class GermanTextPostprocessor:
         Initialisiere German Text Postprocessor.
 
         Args:
-            use_validator: GermanValidator fuer erweiterte Validierung nutzen
-            aggressive_mode: Aggressivere Umlaut-Ersetzung (mehr false positives moeglich)
+            use_validator: GermanValidator für erweiterte Validierung nutzen
+            aggressive_mode: Aggressivere Umlaut-Ersetzung (mehr false positives möglich)
             use_industry_vocabulary: Branchenspezifische Vokabulare nutzen (Phase 8)
             use_spellchecker: SymSpell-basierte Rechtschreibkorrektur nutzen (Phase 5.1)
         """
@@ -229,7 +229,7 @@ class GermanTextPostprocessor:
             "validation_errors": 0
         }
 
-        # Lade GermanValidator wenn verfuegbar
+        # Lade GermanValidator wenn verfügbar
         if use_validator:
             try:
                 from app.german_validator import GermanValidator
@@ -239,7 +239,7 @@ class GermanTextPostprocessor:
                 logger.warning("german_validator_not_available")
                 self._validator = None
 
-        # Lade IndustryVocabularyService wenn verfuegbar (Phase 8)
+        # Lade IndustryVocabularyService wenn verfügbar (Phase 8)
         if use_industry_vocabulary:
             try:
                 from app.services.ocr.industry_vocabulary_service import (
@@ -251,7 +251,7 @@ class GermanTextPostprocessor:
                 logger.warning("industry_vocabulary_service_not_available")
                 self._industry_vocab_service = None
 
-        # Lade GermanSpellchecker wenn verfuegbar (Phase 5.1)
+        # Lade GermanSpellchecker wenn verfügbar (Phase 5.1)
         if use_spellchecker:
             try:
                 from app.services.german_spellchecker import get_german_spellchecker
@@ -261,10 +261,10 @@ class GermanTextPostprocessor:
                 logger.warning("german_spellchecker_not_available")
                 self._spellchecker = None
 
-        # Precompile regex patterns fuer Performance
+        # Precompile regex patterns für Performance
         self._word_pattern = re.compile(r'\b\w+\b')
 
-        # Erstelle Lookup-Dictionaries fuer schnellere Suche
+        # Erstelle Lookup-Dictionaries für schnellere Suche
         self._umlaut_lookup = self._build_umlaut_lookup()
         self._eszett_lookup = self._build_eszett_lookup()
 
@@ -283,7 +283,7 @@ class GermanTextPostprocessor:
         Erstelle Lookup von ASCII-Varianten zu Umlaut-Versionen.
 
         Returns:
-            Dict mapping "fuer" -> "für", "ueber" -> "über", etc.
+            Dict mapping "für" -> "für", "über" -> "über", etc.
         """
         lookup = {}
 
@@ -510,17 +510,17 @@ class GermanTextPostprocessor:
         options: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
         """
-        Fuehre deutsche Textnachbearbeitung durch.
+        Führe deutsche Textnachbearbeitung durch.
 
         Args:
             text: Zu verarbeitender Text
-            options: Zusaetzliche Optionen:
-                - skip_umlauts: Umlaut-Korrektur ueberspringen
-                - skip_eszett: Eszett-Korrektur ueberspringen
-                - skip_spelling: Rechtschreibkorrektur ueberspringen (Phase 5.1)
-                - skip_industry: Branchenspezifische Korrektur ueberspringen
+            options: Zusätzliche Optionen:
+                - skip_umlauts: Umlaut-Korrektur überspringen
+                - skip_eszett: Eszett-Korrektur überspringen
+                - skip_spelling: Rechtschreibkorrektur überspringen (Phase 5.1)
+                - skip_industry: Branchenspezifische Korrektur überspringen
                 - industry: Explizite Branche (z.B. "baugewerbe", "medizin")
-                - expand_abbreviations: Abkuerzungen im Text expandieren
+                - expand_abbreviations: Abkürzungen im Text expandieren
                 - validate: Mit GermanValidator validieren
 
         Returns:
@@ -633,7 +633,7 @@ class GermanTextPostprocessor:
         Args:
             text: Eingabetext
             industry: Explizite Branche (optional)
-            expand_abbreviations: Abkuerzungen expandieren
+            expand_abbreviations: Abkürzungen expandieren
 
         Returns:
             Tuple (korrigierter_text, korrekturen, industry_detection)
@@ -811,12 +811,12 @@ class GermanTextPostprocessor:
             "eszett_words_in_dictionary": len(self.ESZETT_WORDS)
         }
 
-        # Fuege Industry Vocabulary Stats hinzu wenn verfuegbar
+        # Fuege Industry Vocabulary Stats hinzu wenn verfügbar
         if self._industry_vocab_service:
             industry_stats = self._industry_vocab_service.get_statistics()
             stats["industry_vocabularies"] = industry_stats
 
-        # Fuege Spellchecker Stats hinzu wenn verfuegbar (Phase 5.1)
+        # Fuege Spellchecker Stats hinzu wenn verfügbar (Phase 5.1)
         if self._spellchecker:
             spellchecker_stats = self._spellchecker.get_stats()
             stats["spellchecker"] = spellchecker_stats
@@ -824,7 +824,7 @@ class GermanTextPostprocessor:
         return stats
 
     def reset_stats(self) -> None:
-        """Setze Statistiken zurueck."""
+        """Setze Statistiken zurück."""
         self._stats = {
             "total_processed": 0,
             "umlaut_corrections": 0,
@@ -855,7 +855,7 @@ def postprocess_german_text(
     options: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
-    Convenience-Funktion fuer deutsche Textnachbearbeitung.
+    Convenience-Funktion für deutsche Textnachbearbeitung.
 
     Args:
         text: Zu verarbeitender Text

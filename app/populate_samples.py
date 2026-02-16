@@ -2,7 +2,7 @@
 """
 Populate Training Samples mit OCR-Text.
 
-Fuellt leere OCRTrainingSample-Eintraege mit echtem OCR-Text aus Surya.
+Fuellt leere OCRTrainingSample-Einträge mit echtem OCR-Text aus Surya.
 """
 
 import asyncio
@@ -59,7 +59,7 @@ def load_surya_models() -> dict:
 
 
 def run_surya_ocr(file_path: Path) -> tuple[bool, str, float]:
-    """Fuehrt OCR mit Surya 0.17.0 durch."""
+    """Führt OCR mit Surya 0.17.0 durch."""
     from PIL import Image
     import pypdfium2 as pdfium
 
@@ -89,7 +89,7 @@ def run_surya_ocr(file_path: Path) -> tuple[bool, str, float]:
         if not images:
             return False, "", 0.0
 
-        # OCR ausfuehren
+        # OCR ausführen
         all_text = []
         total_confidence = 0.0
         total_blocks = 0
@@ -172,7 +172,7 @@ async def process_batch(limit: int = 50) -> tuple[int, int, int]:
         for sample in samples:
             file_path = Path(sample.file_path)
 
-            # Pruefe ob Datei existiert
+            # Prüfe ob Datei existiert
             if not file_path.exists():
                 logger.warning("file_not_found", index=processed+1, filename=file_path.name)
                 processed += 1
@@ -180,7 +180,7 @@ async def process_batch(limit: int = 50) -> tuple[int, int, int]:
 
             logger.info("processing_file", index=processed+1, total=len(samples), filename=file_path.name)
 
-            # OCR ausfuehren
+            # OCR ausführen
             success, text, confidence = run_surya_ocr(file_path)
 
             if not success or not text:

@@ -2,11 +2,11 @@
 """
 Document Feature Classifier for OCR Backend Selection.
 
-Analysiert Dokument-Features um das optimale OCR-Backend zu waehlen:
+Analysiert Dokument-Features um das optimale OCR-Backend zu wählen:
 - Tabellen-Detection -> GOT-OCR
 - Fraktur-Detection -> DeepSeek
 - Formel-Detection -> GOT-OCR
-- Layout-Komplexitaet -> Surya+Docling
+- Layout-Komplexität -> Surya+Docling
 - Sprache (DE/EN)
 
 Feinpoliert und durchdacht - Intelligente Backend-Auswahl.
@@ -46,7 +46,7 @@ except ImportError:
 
 
 class DocumentComplexity(str, Enum):
-    """Komplexitaetsstufen eines Dokuments."""
+    """Komplexitätsstufen eines Dokuments."""
     SIMPLE = "simple"           # Reiner Text, keine Struktur
     MODERATE = "moderate"       # Einfache Struktur, wenige Elemente
     COMPLEX = "complex"         # Tabellen, mehrspaltiges Layout
@@ -121,7 +121,7 @@ class DocumentFeatures:
 
 class DocumentFeatureClassifier:
     """
-    Classifier fuer Dokument-Features zur OCR-Backend-Auswahl.
+    Classifier für Dokument-Features zur OCR-Backend-Auswahl.
 
     Verwendet regelbasierte Heuristiken und optionale ML-Modelle
     um Dokument-Features zu erkennen und das beste Backend zu empfehlen.
@@ -133,7 +133,7 @@ class DocumentFeatureClassifier:
     - Surya+Docling: Layout-Analyse, mehrspaltiges Layout
     """
 
-    # Backend-Feature Mapping (welches Backend ist fuer welches Feature optimal)
+    # Backend-Feature Mapping (welches Backend ist für welches Feature optimal)
     BACKEND_FEATURE_SCORES = {
         "deepseek": {
             DocumentFeature.FRAKTUR: 1.0,
@@ -162,7 +162,7 @@ class DocumentFeatureClassifier:
         },
     }
 
-    # Sprach-Backend Praeferenzen
+    # Sprach-Backend Präferenzen
     LANGUAGE_BACKEND_PREFERENCE = {
         "de": ["deepseek", "got_ocr", "surya_gpu", "surya"],
         "en": ["got_ocr", "surya_gpu", "deepseek", "surya"],
@@ -200,7 +200,7 @@ class DocumentFeatureClassifier:
 
         Args:
             image_path: Pfad zum Dokumentbild
-            text_sample: Optionaler Text-Sample fuer Spracherkennung
+            text_sample: Optionaler Text-Sample für Spracherkennung
 
         Returns:
             DocumentFeatures mit allen erkannten Features
@@ -215,7 +215,7 @@ class DocumentFeatureClassifier:
         if text_sample:
             self._analyze_text_features(text_sample, features)
 
-        # Komplexitaet berechnen
+        # Komplexität berechnen
         self._calculate_complexity(features)
 
         # Backend-Empfehlung generieren
@@ -298,7 +298,7 @@ class DocumentFeatureClassifier:
             # Edge detection
             edges = cv2.Canny(img_array, 50, 150)
 
-            # Hough transform fuer Linien
+            # Hough transform für Linien
             lines = cv2.HoughLinesP(
                 edges,
                 rho=1,
@@ -311,7 +311,7 @@ class DocumentFeatureClassifier:
             if lines is None:
                 return False
 
-            # Zaehle horizontale und vertikale Linien
+            # Zähle horizontale und vertikale Linien
             horizontal_lines = 0
             vertical_lines = 0
 
@@ -336,11 +336,11 @@ class DocumentFeatureClassifier:
             # Horizontale Projektion
             horizontal_proj = np.sum(img_array < 128, axis=0)
 
-            # Suche nach deutlichen Luecken (Spalten-Trenner)
+            # Suche nach deutlichen Lücken (Spalten-Trenner)
             threshold = np.max(horizontal_proj) * 0.1
             gaps = horizontal_proj < threshold
 
-            # Zaehle zusammenhaengende Luecken
+            # Zähle zusammenhängende Lücken
             gap_count = 0
             in_gap = False
             for is_gap in gaps:
@@ -350,7 +350,7 @@ class DocumentFeatureClassifier:
                 elif not is_gap:
                     in_gap = False
 
-            # Mehrspaltiges Layout bei mindestens einer deutlichen Luecke in der Mitte
+            # Mehrspaltiges Layout bei mindestens einer deutlichen Lücke in der Mitte
             return gap_count >= 1
 
         except Exception:
@@ -390,7 +390,7 @@ class DocumentFeatureClassifier:
             "ꝛ",  # r-Ligatur
         ]
         fraktur_error_patterns = [
-            "ck" in text_sample and text_sample.count("ck") > 3,  # Haeufige ck in alten Texten
+            "ck" in text_sample and text_sample.count("ck") > 3,  # Häufige ck in alten Texten
             "th" in text_sample and text_sample.count("th") > 5,  # Alte Schreibweise
         ]
 
@@ -410,7 +410,7 @@ class DocumentFeatureClassifier:
             features.feature_scores["formulas"] = 0.7
 
     def _calculate_complexity(self, features: DocumentFeatures) -> None:
-        """Berechne Gesamtkomplexitaet des Dokuments."""
+        """Berechne Gesamtkomplexität des Dokuments."""
         complexity_score = 0.0
 
         if features.has_tables:
@@ -468,7 +468,7 @@ class DocumentFeatureClassifier:
                 if feature in feature_scores:
                     backend_scores[backend] += feature_scores[feature]
 
-        # Sprach-Praeferenz hinzufuegen
+        # Sprach-Präferenz hinzufügen
         lang_prefs = self.LANGUAGE_BACKEND_PREFERENCE.get(
             features.detected_language,
             self.LANGUAGE_BACKEND_PREFERENCE["de"]
@@ -477,16 +477,16 @@ class DocumentFeatureClassifier:
             if backend in backend_scores:
                 backend_scores[backend] += (len(lang_prefs) - i) * 0.1
 
-        # Komplexitaets-Bonus fuer bestimmte Backends
+        # Komplexitäts-Bonus für bestimmte Backends
         if features.complexity in [DocumentComplexity.COMPLEX, DocumentComplexity.VERY_COMPLEX]:
             backend_scores["deepseek"] += 0.2
             backend_scores["got_ocr"] += 0.15
 
-        # Default-Bonus fuer DeepSeek bei deutschen Dokumenten
+        # Default-Bonus für DeepSeek bei deutschen Dokumenten
         if features.detected_language == "de":
             backend_scores["deepseek"] += 0.3
 
-        # Bestes Backend waehlen
+        # Bestes Backend wählen
         sorted_backends = sorted(
             backend_scores.items(),
             key=lambda x: x[1],

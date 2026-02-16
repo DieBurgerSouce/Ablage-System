@@ -8,8 +8,8 @@ Endpoints:
 - GET/POST /dpia - DPIAs auflisten/erstellen
 - GET/PATCH /dpia/{id} - DPIA abrufen/aktualisieren
 - POST /dpia/{id}/consultation - DPO-Konsultation hinzufuegen
-- GET /dpia/templates - Verfuegbare Templates
-- POST /dpia/check-required - Pruefe ob DPIA erforderlich
+- GET /dpia/templates - Verfügbare Templates
+- POST /dpia/check-required - Prüfe ob DPIA erforderlich
 
 Feinpoliert und durchdacht - DSGVO-konform.
 """
@@ -49,7 +49,7 @@ router = APIRouter(prefix="/dpia", tags=["DPIA"])
 
 
 class ProcessingOperationSchema(BaseModel):
-    """Schema fuer Verarbeitungstaetigkeit."""
+    """Schema für Verarbeitungstätigkeit."""
     name: str = Field(..., description="Name der Verarbeitung")
     description: str = Field(..., description="Beschreibung")
     purpose: str = Field(..., description="Zweck der Verarbeitung")
@@ -59,26 +59,26 @@ class ProcessingOperationSchema(BaseModel):
     automated_decision_making: bool = Field(False, description="Automatisierte Entscheidungen")
     profiling: bool = Field(False, description="Profiling")
     data_transfer_outside_eu: bool = Field(False, description="Transfer ausserhalb EU")
-    transfer_countries: List[str] = Field(default_factory=list, description="Ziellaender")
+    transfer_countries: List[str] = Field(default_factory=list, description="Zielländer")
 
 
 class DataSubjectGroupSchema(BaseModel):
-    """Schema fuer Betroffenengruppe."""
+    """Schema für Betroffenengruppe."""
     name: str = Field(..., description="Name der Gruppe")
     description: str = Field(..., description="Beschreibung")
-    estimated_count: Optional[int] = Field(None, description="Geschaetzte Anzahl")
-    includes_vulnerable: bool = Field(False, description="Enthaelt schutzbeduertige Personen")
-    includes_children: bool = Field(False, description="Enthaelt Kinder")
+    estimated_count: Optional[int] = Field(None, description="Geschätzte Anzahl")
+    includes_vulnerable: bool = Field(False, description="Enthält schutzbeduertige Personen")
+    includes_children: bool = Field(False, description="Enthält Kinder")
 
 
 class CheckRequiredRequest(BaseModel):
-    """Request fuer DPIA-Erforderlichkeitspruefung."""
+    """Request für DPIA-Erforderlichkeitsprüfung."""
     processing_operations: List[ProcessingOperationSchema]
     data_subject_groups: List[DataSubjectGroupSchema]
 
 
 class CheckRequiredResponse(BaseModel):
-    """Response fuer DPIA-Erforderlichkeitspruefung."""
+    """Response für DPIA-Erforderlichkeitsprüfung."""
     required: bool
     reasons: List[str]
     criteria_met: int
@@ -94,7 +94,7 @@ class CreateFromTemplateRequest(BaseModel):
 
 
 class DPOConsultationRequest(BaseModel):
-    """Request fuer DPO-Konsultation."""
+    """Request für DPO-Konsultation."""
     opinion: str = Field(..., description="Stellungnahme des DPO")
     recommendations: List[str] = Field(..., description="Empfehlungen")
     approval: bool = Field(..., description="Genehmigt")
@@ -124,7 +124,7 @@ class RecommendationResponse(BaseModel):
 
 
 class DPIASummary(BaseModel):
-    """Kurzuebersicht einer DPIA."""
+    """Kurzübersicht einer DPIA."""
     id: str
     title: str
     status: str
@@ -144,7 +144,7 @@ async def check_dpia_required(
     current_user: User = Depends(get_current_user),
 ) -> CheckRequiredResponse:
     """
-    Pruefe ob eine DPIA erforderlich ist.
+    Prüfe ob eine DPIA erforderlich ist.
 
     Basierend auf Art. 35 DSGVO und den Leitlinien der Art.-29-Datenschutzgruppe.
     """
@@ -206,7 +206,7 @@ async def check_dpia_required(
 async def list_templates(
     current_user: User = Depends(get_current_user),
 ) -> List[TemplateInfo]:
-    """Liste verfuegbarer DPIA-Templates."""
+    """Liste verfügbarer DPIA-Templates."""
     service = get_dpia_service()
     templates = service.get_available_templates()
     return [TemplateInfo(**t) for t in templates]
@@ -221,7 +221,7 @@ async def create_dpia_from_template(
     """
     Erstelle neue DPIA aus Template.
 
-    Verfuegbare Templates:
+    Verfügbare Templates:
     - ocr_document_processing
     - lexware_customer_import
     - email_import
@@ -307,7 +307,7 @@ async def get_dpia(
             detail="DPIA nicht gefunden",
         )
 
-    # Pruefe Zugriff
+    # Prüfe Zugriff
     if dpia.company_id and dpia.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -333,7 +333,7 @@ async def update_dpia_status(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Status: {request.status}",
+            detail=f"Ungültiger Status: {request.status}",
         )
 
     try:
@@ -370,7 +370,7 @@ async def add_dpo_consultation(
     """
     Fuege DPO-Konsultation hinzu.
 
-    Nur fuer Benutzer mit DPO-Rolle.
+    Nur für Benutzer mit DPO-Rolle.
     """
     service = get_dpia_service()
 

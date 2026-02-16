@@ -2,12 +2,12 @@
 """
 E-Invoice API Endpoints.
 
-Endpunkte fuer:
+Endpunkte für:
 - /api/v1/einvoice/parse - E-Rechnung parsen
 - /api/v1/einvoice/generate/zugferd - ZUGFeRD-PDF generieren
 - /api/v1/einvoice/generate/xrechnung - XRechnung-XML generieren
 - /api/v1/einvoice/validate - E-Rechnung validieren
-- /api/v1/einvoice/formats - Unterstuetzte Formate
+- /api/v1/einvoice/formats - Unterstützte Formate
 
 Standards: ZUGFeRD 2.x, XRechnung 3.0.2
 """
@@ -67,12 +67,12 @@ router = APIRouter(prefix="/einvoice", tags=["E-Invoice"])
     description="""
     Parst eine eingehende E-Rechnung (ZUGFeRD-PDF oder XRechnung-XML).
 
-    **Unterstuetzte Formate:**
+    **Unterstützte Formate:**
     - ZUGFeRD 2.x PDF (Factur-X)
     - XRechnung 3.0.x (CII oder UBL XML)
     - ZUGFeRD 1.0 PDF (Legacy)
 
-    **Rueckgabe:**
+    **Rückgabe:**
     - Extrahierte Rechnungsdaten als ExtractedInvoiceData
     - Erkanntes Format und Profil
     - Optional: Direkte Speicherung als Dokument
@@ -191,7 +191,7 @@ async def parse_einvoice(
             "einvoice_parse_validation_error",
             extra={"filename": file.filename, **safe_error_log(e)}
         )
-        raise HTTPException(status_code=400, detail="Ungueltige E-Rechnung. Bitte Format pruefen.")
+        raise HTTPException(status_code=400, detail="Ungültige E-Rechnung. Bitte Format prüfen.")
 
     except ImportError as e:
         logger.error("einvoice_parse_import_error", **safe_error_log(e))
@@ -227,7 +227,7 @@ async def parse_einvoice(
     - EXTENDED: Erweiterte Daten
     - XRECHNUNG: XRechnung-Profil (B2G Deutschland)
 
-    **Rueckgabe:** PDF-Datei zum Download
+    **Rückgabe:** PDF-Datei zum Download
     """
 )
 async def generate_zugferd(
@@ -269,7 +269,7 @@ async def generate_zugferd(
             "einvoice_generate_zugferd_validation_error",
             extra={"document_id": str(document_id), **safe_error_log(e)}
         )
-        raise HTTPException(status_code=400, detail="Ungueltige Daten fuer ZUGFeRD-Generierung.")
+        raise HTTPException(status_code=400, detail="Ungültige Daten für ZUGFeRD-Generierung.")
 
     except ImportError as e:
         logger.error("einvoice_generate_import_error", **safe_error_log(e))
@@ -294,7 +294,7 @@ async def generate_zugferd(
     description="""
     Generiert eine XRechnung 3.0.2 konforme XML-Datei aus einem bestehenden Dokument.
 
-    **Wichtig fuer B2G:**
+    **Wichtig für B2G:**
     - Leitweg-ID (BT-10) muss im Dokument gesetzt sein
     - BT-23, BT-34, BT-49 sind Pflichtfelder ab Version 3.0.1
 
@@ -302,7 +302,7 @@ async def generate_zugferd(
     - CII: UN/CEFACT Cross Industry Invoice (empfohlen)
     - UBL: Universal Business Language 2.1 (erfordert Mustang)
 
-    **Rueckgabe:** XML-Datei zum Download
+    **Rückgabe:** XML-Datei zum Download
     """
 )
 async def generate_xrechnung(
@@ -349,7 +349,7 @@ async def generate_xrechnung(
             "einvoice_generate_xrechnung_validation_error",
             extra={"document_id": str(document_id), **safe_error_log(e)}
         )
-        raise HTTPException(status_code=400, detail="Ungueltige Daten fuer XRechnung-Generierung.")
+        raise HTTPException(status_code=400, detail="Ungültige Daten für XRechnung-Generierung.")
 
     except Exception as e:
         # SECURITY FIX 28-19: Generische Fehlermeldung
@@ -376,10 +376,10 @@ async def generate_xrechnung(
     - KOSIT: Offizieller KoSIT-Validator (erfordert Mustang)
     - MUSTANG: Mustang-integrierter Validator (erfordert Mustang)
 
-    **Pruefungen:**
+    **Prüfungen:**
     - XML-Schema-Validierung (XSD)
     - Schematron-Business-Rules
-    - PDF/A-3 Konformitaet (bei ZUGFeRD)
+    - PDF/A-3 Konformität (bei ZUGFeRD)
     """
 )
 async def validate_einvoice(
@@ -416,7 +416,7 @@ async def validate_einvoice(
             content = await file.read()
             filename = file.filename or "unknown"
 
-            # Pruefen ob PDF oder XML
+            # Prüfen ob PDF oder XML
             if filename.lower().endswith(".pdf") or content[:4] == b"%PDF":
                 pdf_content = content
                 is_pdf = True
@@ -440,7 +440,7 @@ async def validate_einvoice(
             if not einvoice_doc:
                 raise HTTPException(
                     status_code=404,
-                    detail=f"Keine E-Invoice fuer Dokument: {document_id}"
+                    detail=f"Keine E-Invoice für Dokument: {document_id}"
                 )
 
             xml_content = einvoice_doc.xml_content
@@ -460,7 +460,7 @@ async def validate_einvoice(
         elif validator == ValidatorType.MUSTANG:
             service_validator = ServiceValidatorType.MUSTANG
 
-        # Validierung durchfuehren
+        # Validierung durchführen
         if is_pdf and pdf_content:
             validation_result = await validator_service.validate_pdf(
                 pdf_content, service_validator
@@ -521,11 +521,11 @@ async def validate_einvoice(
 @router.get(
     "/formats",
     response_model=EInvoiceFormatsResponse,
-    summary="Unterstuetzte Formate",
-    description="Gibt alle unterstuetzten E-Rechnungsformate und Profile zurueck."
+    summary="Unterstützte Formate",
+    description="Gibt alle unterstützten E-Rechnungsformate und Profile zurück."
 )
 async def get_formats() -> EInvoiceFormatsResponse:
-    """Gibt unterstuetzte Formate zurueck."""
+    """Gibt unterstützte Formate zurück."""
     return EInvoiceFormatsResponse(
         formats=[
             SupportedFormat(
@@ -558,10 +558,10 @@ async def get_formats() -> EInvoiceFormatsResponse:
 @router.get(
     "/health/mustang",
     summary="Mustang Service Health",
-    description="Prueft ob der Mustang Microservice verfuegbar ist."
+    description="Prüft ob der Mustang Microservice verfügbar ist."
 )
 async def check_mustang_health() -> dict:
-    """Prueft Mustang Service Verfuegbarkeit."""
+    """Prüft Mustang Service Verfügbarkeit."""
     from app.services.einvoice.mustang_client import (
 
         get_mustang_client,
@@ -622,14 +622,14 @@ async def check_mustang_health() -> dict:
     "/{document_id}",
     response_model=dict,
     summary="E-Invoice Status",
-    description="Gibt den E-Invoice Status fuer ein Dokument zurueck."
+    description="Gibt den E-Invoice Status für ein Dokument zurück."
 )
 async def get_einvoice_status(
     document_id: UUID,
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),  # W.3 SECURITY FIX: Auth required
 ) -> dict:
-    """Gibt E-Invoice Status zurueck.
+    """Gibt E-Invoice Status zurück.
 
     Args:
         document_id: Document UUID
@@ -663,7 +663,7 @@ async def get_einvoice_status(
         )
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer dieses Dokument"
+            detail="Keine Berechtigung für dieses Dokument"
         )
 
     stmt = select(models.EInvoiceDocument).where(
@@ -739,7 +739,7 @@ async def download_xml(
         )
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer dieses Dokument"
+            detail="Keine Berechtigung für dieses Dokument"
         )
 
     stmt = select(models.EInvoiceDocument).where(
@@ -751,7 +751,7 @@ async def download_xml(
     if not einvoice_doc or not einvoice_doc.xml_content:
         raise HTTPException(
             status_code=404,
-            detail=f"Keine E-Invoice fuer Dokument: {document_id}"
+            detail=f"Keine E-Invoice für Dokument: {document_id}"
         )
 
     filename = f"einvoice_{document_id}.xml"
@@ -786,7 +786,7 @@ def safe_error_detail(e: Exception, context: str = "Vorgang") -> str:
     - Dokument muss ein PDF sein
     - XML muss valide ZUGFeRD/Factur-X Struktur haben
 
-    **Rueckgabe:** PDF mit eingebettetem XML
+    **Rückgabe:** PDF mit eingebettetem XML
     """
 )
 async def embed_xml_in_pdf(
@@ -811,7 +811,7 @@ async def embed_xml_in_pdf(
             detail="Entweder xml_content oder xml_file erforderlich"
         )
 
-    # Dokument laden und Berechtigung pruefen
+    # Dokument laden und Berechtigung prüfen
     doc_stmt = select(models.Document).where(models.Document.id == document_id)
     doc_result = await db.execute(doc_stmt)
     document = doc_result.scalar_one_or_none()
@@ -830,13 +830,13 @@ async def embed_xml_in_pdf(
         try:
             zugferd_profile = ZUGFeRDProfile(profile)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Ungueltiges Profil: {profile}")
+            raise HTTPException(status_code=400, detail=f"Ungültiges Profil: {profile}")
 
         embedder = get_zugferd_embedder()
         if not embedder.available:
             raise HTTPException(
                 status_code=501,
-                detail="PDF-Backend nicht verfuegbar (PyMuPDF oder pikepdf erforderlich)"
+                detail="PDF-Backend nicht verfügbar (PyMuPDF oder pikepdf erforderlich)"
             )
 
         storage = get_storage_service()
@@ -869,7 +869,7 @@ async def embed_xml_in_pdf(
         raise
     except ValueError as e:
         logger.warning("embed_validation_error", **safe_error_log(e))
-        raise HTTPException(status_code=400, detail="Ungueltige Eingabedaten")
+        raise HTTPException(status_code=400, detail="Ungültige Eingabedaten")
     except Exception as e:
         logger.exception("embed_xml_failed")
         raise HTTPException(status_code=500, detail="Embedding fehlgeschlagen")
@@ -882,7 +882,7 @@ async def embed_xml_in_pdf(
     description="""
     Extrahiert eingebettetes ZUGFeRD XML aus einem PDF.
 
-    **Rueckgabe:**
+    **Rückgabe:**
     - xml_content: Extrahiertes XML
     - found: True wenn XML gefunden
     - profile: Erkanntes Profil (falls ermittelbar)
@@ -908,7 +908,7 @@ async def extract_xml_from_pdf(
     if not embedder.available:
         raise HTTPException(
             status_code=501,
-            detail="PDF-Backend nicht verfuegbar"
+            detail="PDF-Backend nicht verfügbar"
         )
 
     pdf_content: Optional[bytes] = None
@@ -971,8 +971,8 @@ async def extract_xml_from_pdf(
 @router.post(
     "/check-pdfa3",
     response_model=dict,
-    summary="PDF/A-3 Konformitaet pruefen",
-    description="Prueft ob ein PDF PDF/A-3 konform ist und eingebettete Dateien hat."
+    summary="PDF/A-3 Konformität prüfen",
+    description="Prüft ob ein PDF PDF/A-3 konform ist und eingebettete Dateien hat."
 )
 async def check_pdfa3_compliance(
     document_id: UUID = Query(None, description="Dokument-ID"),
@@ -980,7 +980,7 @@ async def check_pdfa3_compliance(
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
-    """Prueft PDF/A-3 Konformitaet."""
+    """Prüft PDF/A-3 Konformität."""
     from app.services.einvoice import get_zugferd_embedder
     from app.services.storage_service import get_storage_service
 
@@ -992,7 +992,7 @@ async def check_pdfa3_compliance(
 
     embedder = get_zugferd_embedder()
     if not embedder.available:
-        raise HTTPException(status_code=501, detail="PDF-Backend nicht verfuegbar")
+        raise HTTPException(status_code=501, detail="PDF-Backend nicht verfügbar")
 
     pdf_content: Optional[bytes] = None
 
@@ -1022,7 +1022,7 @@ async def check_pdfa3_compliance(
 
     except Exception as e:
         logger.exception("pdfa3_check_failed")
-        raise HTTPException(status_code=500, detail="Pruefung fehlgeschlagen")
+        raise HTTPException(status_code=500, detail="Prüfung fehlgeschlagen")
 
 
 @router.post(
@@ -1031,13 +1031,13 @@ async def check_pdfa3_compliance(
     description="""
     Startet asynchrone Batch-Konvertierung mehrerer Dokumente zu ZUGFeRD.
 
-    **Rueckgabe:** Task-ID fuer Status-Abfrage
+    **Rückgabe:** Task-ID für Status-Abfrage
     """
 )
 async def batch_convert_to_zugferd(
     document_ids: List[UUID] = Query(..., description="Liste der Dokument-IDs"),
     profile: str = Query("EN16931", description="ZUGFeRD-Profil"),
-    overwrite: bool = Query(False, description="Bestehende E-Invoices ueberschreiben"),
+    overwrite: bool = Query(False, description="Bestehende E-Invoices überschreiben"),
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
@@ -1083,32 +1083,32 @@ async def batch_convert_to_zugferd(
     response_model=dict,
     summary="E-Rechnung versenden",
     description="""
-    Versendet eine E-Rechnung ueber Peppol oder Email-Fallback.
+    Versendet eine E-Rechnung über Peppol oder Email-Fallback.
 
     **Peppol-Versand:**
-    - Prueft automatisch ob Empfaenger Peppol-faehig ist (SMP Lookup)
-    - Sendet ueber konfigurierten Peppol Access Point
-    - Tracking der Zustellung und Bestaetigung (MDN)
+    - Prüft automatisch ob Empfänger Peppol-faehig ist (SMP Lookup)
+    - Sendet über konfigurierten Peppol Access Point
+    - Tracking der Zustellung und Bestätigung (MDN)
 
     **Email-Fallback:**
-    - Wenn Peppol nicht verfuegbar, wird Email verwendet
+    - Wenn Peppol nicht verfügbar, wird Email verwendet
     - XRechnung-XML als Anhang
 
     **Voraussetzungen:**
-    - E-Invoice muss fuer Dokument existieren
+    - E-Invoice muss für Dokument existieren
     - Leitweg-ID (BT-10) muss gesetzt sein
     """
 )
 async def send_einvoice(
     document_id: UUID,
-    fallback_email: Optional[str] = Query(None, description="Email fuer Fallback"),
+    fallback_email: Optional[str] = Query(None, description="Email für Fallback"),
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
-    """Versendet E-Rechnung ueber Peppol oder Email."""
+    """Versendet E-Rechnung über Peppol oder Email."""
     from app.workers.tasks.einvoice_tasks import einvoice_send_peppol_task
 
-    # E-Invoice pruefen
+    # E-Invoice prüfen
     stmt = select(EInvoiceDocument).where(
         EInvoiceDocument.document_id == document_id
     )
@@ -1118,10 +1118,10 @@ async def send_einvoice(
     if not einvoice:
         raise HTTPException(
             status_code=404,
-            detail="Keine E-Invoice fuer dieses Dokument gefunden. Bitte zuerst generieren."
+            detail="Keine E-Invoice für dieses Dokument gefunden. Bitte zuerst generieren."
         )
 
-    # Berechtigung pruefen
+    # Berechtigung prüfen
     doc_stmt = select(Document).where(Document.id == document_id)
     doc_result = await db.execute(doc_stmt)
     document = doc_result.scalar_one_or_none()
@@ -1155,14 +1155,14 @@ async def send_einvoice(
     "/{document_id}/transmission",
     response_model=dict,
     summary="Transmission Status",
-    description="Gibt den Uebertragungsstatus einer E-Rechnung zurueck."
+    description="Gibt den Übertragungsstatus einer E-Rechnung zurück."
 )
 async def get_transmission_status(
     document_id: UUID,
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
-    """Gibt Transmission Status zurueck."""
+    """Gibt Transmission Status zurück."""
     from app.db.models_einvoice import EInvoiceTransmission
 
     # E-Invoice laden
@@ -1208,14 +1208,14 @@ async def get_transmission_status(
 @router.post(
     "/check-peppol",
     response_model=dict,
-    summary="Peppol-Faehigkeit pruefen",
-    description="Prueft ob ein Empfaenger Peppol-faehig ist (SMP Lookup)."
+    summary="Peppol-Faehigkeit prüfen",
+    description="Prüft ob ein Empfänger Peppol-faehig ist (SMP Lookup)."
 )
 async def check_peppol_capability(
-    leitweg_id: str = Query(..., description="Leitweg-ID des Empfaengers"),
+    leitweg_id: str = Query(..., description="Leitweg-ID des Empfängers"),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
-    """Prueft Peppol-Faehigkeit eines Empfaengers."""
+    """Prüft Peppol-Faehigkeit eines Empfängers."""
     from app.services.einvoice import get_peppol_sender
 
     sender = get_peppol_sender()
@@ -1250,9 +1250,9 @@ async def check_peppol_capability(
     response_model=dict,
     summary="E-Rechnung empfangen (Webhook)",
     description="""
-    Webhook-Endpunkt fuer eingehende E-Rechnungen.
+    Webhook-Endpunkt für eingehende E-Rechnungen.
 
-    **Unterstuetzte Quellen:**
+    **Unterstützte Quellen:**
     - Peppol AS4 (automatisch via Access Point)
     - Manueller Upload (XML oder PDF)
 
@@ -1270,7 +1270,7 @@ async def receive_einvoice(
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
-    """Empfaengt und verarbeitet eingehende E-Rechnung."""
+    """Empfängt und verarbeitet eingehende E-Rechnung."""
     from app.services.einvoice import get_receiver_service
 
     receiver = get_receiver_service()
@@ -1303,7 +1303,7 @@ async def receive_einvoice(
             except UnicodeDecodeError:
                 raise HTTPException(
                     status_code=400,
-                    detail="Datei ist kein gueltiges UTF-8 XML"
+                    detail="Datei ist kein gültiges UTF-8 XML"
                 )
 
     elif peppol_payload:
@@ -1425,15 +1425,15 @@ async def list_incoming_einvoices(
     "/incoming/{incoming_id}",
     response_model=dict,
     summary="Eingehende E-Rechnung Details",
-    description="Gibt Details einer eingehenden E-Rechnung zurueck."
+    description="Gibt Details einer eingehenden E-Rechnung zurück."
 )
 async def get_incoming_einvoice(
     incoming_id: UUID,
-    include_xml: bool = Query(False, description="XML-Inhalt einschliessen"),
+    include_xml: bool = Query(False, description="XML-Inhalt einschließen"),
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
-    """Gibt Details einer eingehenden E-Rechnung zurueck."""
+    """Gibt Details einer eingehenden E-Rechnung zurück."""
     from app.db.models_einvoice import IncomingEInvoice
 
     query = select(IncomingEInvoice).where(

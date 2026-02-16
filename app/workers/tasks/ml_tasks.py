@@ -767,7 +767,7 @@ CELERY_BEAT_ML_SCHEDULE = {
     },
     "ml-concept-drift-weekly": {
         "task": "app.workers.tasks.ml_tasks.detect_concept_drift",
-        "schedule": 604800.0,  # Woechentlich (7 Tage)
+        "schedule": 604800.0,  # Wöchentlich (7 Tage)
     },
 }
 
@@ -791,7 +791,7 @@ from app.core.celery_idempotency import idempotent_task
     acks_late=True,
     reject_on_worker_lost=True,
 )
-@idempotent_task(date_scoped=True, ttl=604800)  # Woechentlich - 7 Tage TTL
+@idempotent_task(date_scoped=True, ttl=604800)  # Wöchentlich - 7 Tage TTL
 def detect_concept_drift(
     self,
     lookback_days: int = 30,
@@ -801,18 +801,18 @@ def detect_concept_drift(
     """
     Erkennt Concept Drift in ML-Modellen durch Ground-Truth-Vergleich.
 
-    IDEMPOTENT: Laeuft nur einmal pro Woche.
+    IDEMPOTENT: Läuft nur einmal pro Woche.
 
     PHASE 0.6 CRITICAL: Stellt sicher, dass ML-Modelle nicht veralten.
 
-    Prueft:
+    Prüft:
     1. OCR-Genauigkeit gegen Ground Truth (Training Samples)
     2. Klassifikations-Genauigkeit (Dokumenttypen, Kategorien)
-    3. Routing-Entscheidungen vs. tatsaechliche Performance
-    4. Trend-Analyse ueber Zeit
+    3. Routing-Entscheidungen vs. tatsächliche Performance
+    4. Trend-Analyse über Zeit
 
     Args:
-        lookback_days: Anzahl Tage fuer Ground-Truth-Vergleich (default: 30)
+        lookback_days: Anzahl Tage für Ground-Truth-Vergleich (default: 30)
         accuracy_threshold: Mindest-Genauigkeit (default: 0.85)
         drift_threshold: Max. erlaubter Drift (default: 0.15 / 15%)
 
@@ -894,7 +894,7 @@ def detect_concept_drift(
                         "type": "classification_review",
                         "priority": "medium",
                         "message": f"Klassifikations-Genauigkeit: {classification_drift['accuracy']:.2%}",
-                        "action": "Klassifikations-Regeln und ML-Modell ueberpruefen",
+                        "action": "Klassifikations-Regeln und ML-Modell überprüfen",
                     })
 
                 if routing_drift["suboptimal_rate"] > 0.2:
@@ -902,7 +902,7 @@ def detect_concept_drift(
                         "type": "routing_optimization",
                         "priority": "medium",
                         "message": f"Suboptimale Routing-Rate: {routing_drift['suboptimal_rate']:.2%}",
-                        "action": "A/B-Test fuer Backend-Routing starten",
+                        "action": "A/B-Test für Backend-Routing starten",
                     })
 
                 if overall_drift > drift_threshold:
@@ -910,7 +910,7 @@ def detect_concept_drift(
                         "type": "full_retraining",
                         "priority": "critical",
                         "message": f"Signifikanter Concept Drift: {overall_drift:.2%} > {drift_threshold:.2%}",
-                        "action": "Vollstaendiges Modell-Retraining empfohlen",
+                        "action": "Vollständiges Modell-Retraining empfohlen",
                     })
 
                 return {
@@ -1057,7 +1057,7 @@ def detect_concept_drift(
                 logger.warning("classification_drift_calculation_failed", **safe_error_log(e))
                 return {
                     "drift_score": 0.0,
-                    "accuracy": 0.95,  # Konservative Schaetzung
+                    "accuracy": 0.95,  # Konservative Schätzung
                     "sample_count": 0,
                     "error": safe_error_detail(e, "Vorgang"),
                 }
@@ -1135,7 +1135,7 @@ def detect_concept_drift(
 
             return dp[m][n] / m if m > 0 else 0.0
 
-        # Ausfuehren
+        # Ausführen
         from sqlalchemy import Integer
         result = asyncio.run(_detect_concept_drift())
 

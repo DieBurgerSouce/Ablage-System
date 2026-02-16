@@ -1,7 +1,7 @@
 """
 Portal-Dokumentenservice.
 
-Kunden koennen Dokumente hochladen.
+Kunden können Dokumente hochladen.
 """
 
 from datetime import datetime, timezone
@@ -28,13 +28,13 @@ ALLOWED_MIME_TYPES = {
     "image/tiff": [".tif", ".tiff"],
 }
 
-# Maximale Dateigroesse (10 MB)
+# Maximale Dateigröße (10 MB)
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
 
 class PortalDocumentService:
     """
-    Service fuer Dokument-Uploads im Kundenportal.
+    Service für Dokument-Uploads im Kundenportal.
     """
 
     def __init__(self, db: AsyncSession, storage_path: str = "/data/portal_uploads"):
@@ -53,11 +53,11 @@ class PortalDocumentService:
         Returns:
             Tuple aus (ist_valide, Fehlermeldung)
         """
-        # Pruefe Dateigroesse
+        # Prüfe Dateigröße
         if file_size > MAX_FILE_SIZE:
             return False, f"Datei zu gross. Maximum: {MAX_FILE_SIZE // (1024*1024)} MB"
 
-        # Pruefe Dateiendung
+        # Prüfe Dateiendung
         ext = Path(filename).suffix.lower()
         allowed_extensions = []
         for extensions in ALLOWED_MIME_TYPES.values():
@@ -66,7 +66,7 @@ class PortalDocumentService:
         if ext not in allowed_extensions:
             return False, f"Dateityp nicht erlaubt. Erlaubt: {', '.join(allowed_extensions)}"
 
-        # Pruefe MIME-Type wenn angegeben
+        # Prüfe MIME-Type wenn angegeben
         if content_type and content_type not in ALLOWED_MIME_TYPES:
             # Toleriere fehlenden MIME-Type, aber logge
             logger.warning(
@@ -98,7 +98,7 @@ class PortalDocumentService:
 
         # Generiere Storage-Pfad
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        safe_filename = Path(filename).stem[:50]  # Begrenze Laenge
+        safe_filename = Path(filename).stem[:50]  # Begrenze Länge
         ext = Path(filename).suffix.lower()
         storage_filename = f"{portal_user.company_id}/{portal_user.entity_id}/{timestamp}_{safe_filename}{ext}"
         full_path = os.path.join(self.storage_path, storage_filename)
@@ -150,7 +150,7 @@ class PortalDocumentService:
         offset: int = 0,
     ) -> tuple[List[dict], int]:
         """
-        Hole alle hochgeladenen Dokumente fuer einen Entity.
+        Hole alle hochgeladenen Dokumente für einen Entity.
         """
         query = select(PortalDocument).where(
             and_(
@@ -278,9 +278,9 @@ class PortalDocumentService:
         portal_user: PortalUser,
     ) -> bool:
         """
-        Loesche ein hochgeladenes Dokument.
+        Lösche ein hochgeladenes Dokument.
 
-        Nur moeglich wenn noch nicht verarbeitet.
+        Nur möglich wenn noch nicht verarbeitet.
         """
         result = await self.db.execute(
             select(PortalDocument).where(
@@ -289,7 +289,7 @@ class PortalDocumentService:
                     PortalDocument.entity_id == portal_user.entity_id,
                     PortalDocument.company_id == portal_user.company_id,
                     PortalDocument.processing_status == "pending",
-                    PortalDocument.document_id.is_(None),  # Noch nicht verknuepft
+                    PortalDocument.document_id.is_(None),  # Noch nicht verknüpft
                 )
             )
         )
@@ -298,13 +298,13 @@ class PortalDocumentService:
         if not doc:
             return False
 
-        # Loesche Datei
+        # Lösche Datei
         if doc.storage_path:
             full_path = os.path.join(self.storage_path, doc.storage_path)
             if os.path.exists(full_path):
                 os.remove(full_path)
 
-        # Loesche DB-Eintrag
+        # Lösche DB-Eintrag
         await self.db.delete(doc)
         await self.db.commit()
 
@@ -317,7 +317,7 @@ class PortalDocumentService:
 
     @staticmethod
     def get_allowed_file_types() -> List[dict]:
-        """Gebe erlaubte Dateitypen zurueck."""
+        """Gebe erlaubte Dateitypen zurück."""
         types = []
         for mime, extensions in ALLOWED_MIME_TYPES.items():
             types.append({
@@ -328,7 +328,7 @@ class PortalDocumentService:
 
     @staticmethod
     def get_max_file_size() -> int:
-        """Gebe maximale Dateigroesse zurueck."""
+        """Gebe maximale Dateigröße zurück."""
         return MAX_FILE_SIZE
 
 
@@ -336,5 +336,5 @@ def get_portal_document_service(
     db: AsyncSession,
     storage_path: str = "/data/portal_uploads"
 ) -> PortalDocumentService:
-    """Factory-Funktion fuer PortalDocumentService."""
+    """Factory-Funktion für PortalDocumentService."""
     return PortalDocumentService(db, storage_path)

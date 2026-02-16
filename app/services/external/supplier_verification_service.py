@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Supplier Verification Service.
 
-Automatische Pruefung von Geschaeftspartnern gegen externe Register:
-- Handelsregister (Firmenexistenz, Geschaeftsfuehrer)
+Automatische Prüfung von Geschäftspartnern gegen externe Register:
+- Handelsregister (Firmenexistenz, Geschäftsführer)
 - Insolvenzregister (Keine Insolvenz)
 - VIES (USt-IdNr Validierung, EU-weit) - ECHTE API-INTEGRATION
 - Bundesanzeiger (Jahresabschluesse, Bekanntmachungen)
@@ -22,7 +22,7 @@ import hashlib
 import json
 import re
 import unicodedata
-import xml.etree.ElementTree as ET  # Fuer ET.ParseError Exception
+import xml.etree.ElementTree as ET  # Für ET.ParseError Exception
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -99,7 +99,7 @@ class VerificationFinding:
 
 @dataclass
 class HandelsregisterResult:
-    """Ergebnis der Handelsregister-Pruefung."""
+    """Ergebnis der Handelsregister-Prüfung."""
 
     found: bool
     company_name: Optional[str] = None
@@ -115,7 +115,7 @@ class HandelsregisterResult:
 
 @dataclass
 class InsolvenzResult:
-    """Ergebnis der Insolvenzregister-Pruefung."""
+    """Ergebnis der Insolvenzregister-Prüfung."""
 
     has_insolvency: bool
     insolvency_type: Optional[str] = None  # "opened", "rejected", "terminated"
@@ -140,7 +140,7 @@ class ViesResult:
 
 @dataclass
 class BundesanzeigerAnnouncement:
-    """Einzelne Bundesanzeiger-Veroeffentlichung."""
+    """Einzelne Bundesanzeiger-Veröffentlichung."""
 
     date: Optional[str] = None
     type: Optional[str] = None
@@ -149,7 +149,7 @@ class BundesanzeigerAnnouncement:
 
 @dataclass
 class BundesanzeigerResult:
-    """Ergebnis der Bundesanzeiger-Pruefung."""
+    """Ergebnis der Bundesanzeiger-Prüfung."""
 
     found: bool
     publications_count: int = 0
@@ -194,9 +194,9 @@ CACHE_TTL_DAYS = 30
 
 
 class SupplierVerificationService:
-    """Service fuer Lieferanten-Verifizierung.
+    """Service für Lieferanten-Verifizierung.
 
-    Prueft Geschaeftspartner gegen externe Register und berechnet
+    Prüft Geschäftspartner gegen externe Register und berechnet
     einen Verifizierungs-Score.
     """
 
@@ -204,7 +204,7 @@ class SupplierVerificationService:
         """Initialisiert den Service.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
         """
         self.db = db
         self.handelsregister = HandelsregisterService()
@@ -221,13 +221,13 @@ class SupplierVerificationService:
         force_refresh: bool = False,
         sources: Optional[List[VerificationSource]] = None,
     ) -> VerificationResult:
-        """Verifiziert einen Geschaeftspartner.
+        """Verifiziert einen Geschäftspartner.
 
         Args:
             entity_id: ID des zu verifizierenden Entity
-            company_id: Company-ID fuer Multi-Tenant
+            company_id: Company-ID für Multi-Tenant
             force_refresh: Cache ignorieren
-            sources: Optionale Liste zu pruefender Quellen
+            sources: Optionale Liste zu prüfender Quellen
 
         Returns:
             VerificationResult mit allen Befunden
@@ -251,7 +251,7 @@ class SupplierVerificationService:
             )
             return self._create_error_result(entity_id, "Entity nicht gefunden")
 
-        # Cache pruefen
+        # Cache prüfen
         if not force_refresh:
             cached_result = await self._get_cached_result(entity_id, company_id)
             if cached_result:
@@ -267,7 +267,7 @@ class SupplierVerificationService:
                 VerificationSource.BUNDESANZEIGER,
             ]
 
-        # Verifizierung durchfuehren
+        # Verifizierung durchführen
         findings: List[VerificationFinding] = []
         sources_checked: List[VerificationSource] = []
 
@@ -288,7 +288,7 @@ class SupplierVerificationService:
                 )
                 findings.extend(hr_findings)
             except Exception as e:
-                # SECURITY: Nur error_type loggen, nicht str(e) - koennte PII enthalten (CWE-532)
+                # SECURITY: Nur error_type loggen, nicht str(e) - könnte PII enthalten (CWE-532)
                 logger.warning(
                     "handelsregister_check_error",
                     entity_id=str(entity_id),
@@ -299,7 +299,7 @@ class SupplierVerificationService:
                         source=VerificationSource.HANDELSREGISTER,
                         severity=VerificationSeverity.WARNING,
                         code="HR_CHECK_ERROR",
-                        message="Handelsregister-Pruefung fehlgeschlagen",
+                        message="Handelsregister-Prüfung fehlgeschlagen",
                         # SECURITY: Keine Exception-Details in User-Facing Data (CWE-209)
                         details={"error_type": type(e).__name__},
                     )
@@ -315,7 +315,7 @@ class SupplierVerificationService:
                 )
                 findings.extend(insolvenz_findings)
             except Exception as e:
-                # SECURITY: Nur error_type loggen, nicht str(e) - koennte PII enthalten (CWE-532)
+                # SECURITY: Nur error_type loggen, nicht str(e) - könnte PII enthalten (CWE-532)
                 logger.warning(
                     "insolvenzregister_check_error",
                     entity_id=str(entity_id),
@@ -326,7 +326,7 @@ class SupplierVerificationService:
                         source=VerificationSource.INSOLVENZREGISTER,
                         severity=VerificationSeverity.WARNING,
                         code="INSO_CHECK_ERROR",
-                        message="Insolvenzregister-Pruefung fehlgeschlagen",
+                        message="Insolvenzregister-Prüfung fehlgeschlagen",
                         # SECURITY: Keine Exception-Details in User-Facing Data (CWE-209)
                         details={"error_type": type(e).__name__},
                     )
@@ -341,7 +341,7 @@ class SupplierVerificationService:
                     vies_result, vies_findings = await self._check_vies(vat_id)
                     findings.extend(vies_findings)
                 except Exception as e:
-                    # SECURITY: Nur error_type loggen, nicht str(e) - koennte PII enthalten (CWE-532)
+                    # SECURITY: Nur error_type loggen, nicht str(e) - könnte PII enthalten (CWE-532)
                     logger.warning(
                         "vies_check_error",
                         entity_id=str(entity_id),
@@ -352,7 +352,7 @@ class SupplierVerificationService:
                             source=VerificationSource.VIES,
                             severity=VerificationSeverity.WARNING,
                             code="VIES_CHECK_ERROR",
-                            message="VIES-Pruefung fehlgeschlagen",
+                            message="VIES-Prüfung fehlgeschlagen",
                             # SECURITY: Keine Exception-Details in User-Facing Data (CWE-209)
                             details={"error_type": type(e).__name__},
                         )
@@ -376,7 +376,7 @@ class SupplierVerificationService:
                 )
                 findings.extend(ba_findings)
             except Exception as e:
-                # SECURITY: Nur error_type loggen, nicht str(e) - koennte PII enthalten (CWE-532)
+                # SECURITY: Nur error_type loggen, nicht str(e) - könnte PII enthalten (CWE-532)
                 logger.warning(
                     "bundesanzeiger_check_error",
                     entity_id=str(entity_id),
@@ -387,7 +387,7 @@ class SupplierVerificationService:
                         source=VerificationSource.BUNDESANZEIGER,
                         severity=VerificationSeverity.WARNING,
                         code="BA_CHECK_ERROR",
-                        message="Bundesanzeiger-Pruefung fehlgeschlagen",
+                        message="Bundesanzeiger-Prüfung fehlgeschlagen",
                         # SECURITY: Keine Exception-Details in User-Facing Data (CWE-209)
                         details={"error_type": type(e).__name__},
                     )
@@ -456,7 +456,7 @@ class SupplierVerificationService:
                 )
                 results[str(entity_id)] = result
             except Exception as e:
-                # SECURITY: Nur error_type loggen, nicht str(e) - koennte PII enthalten (CWE-532)
+                # SECURITY: Nur error_type loggen, nicht str(e) - könnte PII enthalten (CWE-532)
                 logger.error(
                     "batch_verify_entity_failed",
                     entity_id=str(entity_id),
@@ -478,7 +478,7 @@ class SupplierVerificationService:
 
         Args:
             entity_id: Entity-ID
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            company_id: Company-ID für Multi-Tenant Isolation
 
         Returns:
             Cached VerificationResult oder None
@@ -527,7 +527,7 @@ class SupplierVerificationService:
         return needs_verification
 
     # =========================================================================
-    # Source-spezifische Pruefungen
+    # Source-spezifische Prüfungen
     # =========================================================================
 
     async def _check_handelsregister(
@@ -535,7 +535,7 @@ class SupplierVerificationService:
         company_name: str,
         city: Optional[str],
     ) -> Tuple[HandelsregisterResult, List[VerificationFinding]]:
-        """Prueft Handelsregister.
+        """Prüft Handelsregister.
 
         Args:
             company_name: Firmenname
@@ -561,7 +561,7 @@ class SupplierVerificationService:
                 )
                 return HandelsregisterResult(found=False), findings
 
-            # Erste Uebereinstimmung nehmen
+            # Erste Übereinstimmung nehmen
             record = records[0]
 
             result = HandelsregisterResult(
@@ -577,7 +577,7 @@ class SupplierVerificationService:
                 capital=record.capital,
             )
 
-            # Status pruefen
+            # Status prüfen
             if record.status != "active":
                 findings.append(
                     VerificationFinding(
@@ -605,7 +605,7 @@ class SupplierVerificationService:
             return result, findings
 
         except Exception as e:
-            # SECURITY: Keine Exception-Details loggen (CWE-209) - koennte PII enthalten
+            # SECURITY: Keine Exception-Details loggen (CWE-209) - könnte PII enthalten
             logger.error(
                 "handelsregister_check_failed",
                 error_type=type(e).__name__,
@@ -616,7 +616,7 @@ class SupplierVerificationService:
                     severity=VerificationSeverity.WARNING,
                     code="HR_ERROR",
                     # SECURITY: Keine Exception-Details in User-Facing Message (CWE-209)
-                    message="Handelsregister-Pruefung fehlgeschlagen",
+                    message="Handelsregister-Prüfung fehlgeschlagen",
                 )
             )
             return HandelsregisterResult(found=False), findings
@@ -627,7 +627,7 @@ class SupplierVerificationService:
 
     INSOLVENZREGISTER_SEARCH_URL = "https://www.insolvenzbekanntmachungen.de/cgi-bin/bl_suche.pl"
     INSOLVENZREGISTER_TIMEOUT_SECONDS = 30
-    # Whitelist erlaubter Suchfelder fuer HTML-Formular
+    # Whitelist erlaubter Suchfelder für HTML-Formular
     _INSOLVENZ_ALLOWED_FIELDS = frozenset({"Name", "Ort", "Aktenzeichen", "Gericht", "Reg-Datum-von", "Reg-Datum-bis"})
 
     async def _check_insolvenzregister(
@@ -635,9 +635,9 @@ class SupplierVerificationService:
         company_name: str,
         city: Optional[str],
     ) -> Tuple[InsolvenzResult, List[VerificationFinding]]:
-        """Prueft Insolvenzregister via insolvenzbekanntmachungen.de.
+        """Prüft Insolvenzregister via insolvenzbekanntmachungen.de.
 
-        Nutzt das oeffentliche Suchformular des Bundesministeriums der Justiz.
+        Nutzt das öffentliche Suchformular des Bundesministeriums der Justiz.
         Fallback auf "unbekannt" bei API-Fehlern (keine false negatives).
 
         SECURITY:
@@ -664,7 +664,7 @@ class SupplierVerificationService:
                     source=VerificationSource.INSOLVENZREGISTER,
                     severity=VerificationSeverity.WARNING,
                     code="INSOLVENZ_INVALID_INPUT",
-                    message="Firmenname fuer Insolvenzpruefung ungueltig",
+                    message="Firmenname für Insolvenzprüfung ungültig",
                 )
             )
             return InsolvenzResult(has_insolvency=False), findings
@@ -749,19 +749,19 @@ class SupplierVerificationService:
                 error_type=type(e).__name__,
             )
 
-        # Fallback: Bei API-Fehler "unbekannt" zurueckgeben (keine false negatives)
+        # Fallback: Bei API-Fehler "unbekannt" zurückgeben (keine false negatives)
         findings.append(
             VerificationFinding(
                 source=VerificationSource.INSOLVENZREGISTER,
                 severity=VerificationSeverity.WARNING,
                 code="INSOLVENZ_CHECK_UNAVAILABLE",
-                message="Insolvenzregister-Pruefung nicht verfuegbar",
+                message="Insolvenzregister-Prüfung nicht verfügbar",
             )
         )
         return InsolvenzResult(has_insolvency=False), findings
 
     def _sanitize_company_name(self, name: str) -> str:
-        """Sanitize Firmenname fuer sichere Suche.
+        """Sanitize Firmenname für sichere Suche.
 
         SECURITY: Entfernt potentiell gefaehrliche Zeichen (CWE-20).
 
@@ -781,13 +781,13 @@ class SupplierVerificationService:
         safe = re.sub(r"[^\w\s\-äöüÄÖÜß]", "", safe, flags=re.UNICODE)
         # Entferne mehrfache Leerzeichen
         safe = re.sub(r"\s+", " ", safe).strip()
-        # Begrenze Laenge
+        # Begrenze Länge
         return safe[:100]
 
     def _parse_insolvenzregister_html(self, html: str) -> List[Dict[str, str]]:
         """Parse insolvenzbekanntmachungen.de HTML Response.
 
-        Extrahiert Insolvenzeintraege aus der Ergebnistabelle.
+        Extrahiert Insolvenzeinträge aus der Ergebnistabelle.
 
         Args:
             html: HTML-Response vom Suchformular
@@ -798,14 +798,14 @@ class SupplierVerificationService:
         results: List[Dict[str, str]] = []
 
         try:
-            # Einfaches Regex-basiertes Parsing (robuster als BS4 bei sich aenderndem HTML)
+            # Einfaches Regex-basiertes Parsing (robuster als BS4 bei sich änderndem HTML)
             # Suche nach typischen Mustern in der Ergebnisliste
 
-            # Pattern fuer Aktenzeichen (z.B. "IN 123/24", "IK 456/23")
+            # Pattern für Aktenzeichen (z.B. "IN 123/24", "IK 456/23")
             aktenzeichen_pattern = r"(?:IN|IK|IE)\s*\d+/\d+"
-            # Pattern fuer Amtsgericht
+            # Pattern für Amtsgericht
             gericht_pattern = r"Amtsgericht\s+[\w\-]+"
-            # Pattern fuer Datum (DD.MM.YYYY)
+            # Pattern für Datum (DD.MM.YYYY)
             datum_pattern = r"\d{2}\.\d{2}\.\d{4}"
 
             # Finde alle Aktenzeichen
@@ -815,7 +815,7 @@ class SupplierVerificationService:
 
             # Wenn Aktenzeichen gefunden, haben wir Treffer
             if aktenzeichen_matches:
-                for i, az in enumerate(aktenzeichen_matches[:10]):  # Max 10 Eintraege
+                for i, az in enumerate(aktenzeichen_matches[:10]):  # Max 10 Einträge
                     entry = {
                         "case_number": az,
                         "court": gerichte_matches[i] if i < len(gerichte_matches) else None,
@@ -825,7 +825,7 @@ class SupplierVerificationService:
                     }
                     results.append(entry)
 
-            # Pruefe auch auf "Keine Ergebnisse" Meldung
+            # Prüfe auch auf "Keine Ergebnisse" Meldung
             if "keine Ergebnisse" in html.lower() or "keine Treffer" in html.lower():
                 return []
 
@@ -869,7 +869,7 @@ class SupplierVerificationService:
         self,
         vat_id: str,
     ) -> Tuple[ViesResult, List[VerificationFinding]]:
-        """Validiert USt-IdNr ueber VIES SOAP API.
+        """Validiert USt-IdNr über VIES SOAP API.
 
         Nutzt die offizielle EU-Kommission VIES API:
         https://ec.europa.eu/taxation_customs/vies/checkVatService.wsdl
@@ -893,7 +893,7 @@ class SupplierVerificationService:
                     severity=VerificationSeverity.WARNING,
                     code="VIES_INVALID_FORMAT",
                     # SECURITY: Keine PII (VAT-Nummer) in Message (CWE-532/GDPR)
-                    message="USt-IdNr hat ungueltiges Format",
+                    message="USt-IdNr hat ungültiges Format",
                 )
             )
             return ViesResult(valid=False, vat_number=vat_id), findings
@@ -946,7 +946,7 @@ class SupplierVerificationService:
                     )
                     return self._vies_format_fallback(
                         cleaned_vat, country_code, vat_number, findings,
-                        f"VIES-Service nicht verfuegbar (HTTP {e.response.status_code})"
+                        f"VIES-Service nicht verfügbar (HTTP {e.response.status_code})"
                     )
                 raise
 
@@ -958,10 +958,10 @@ class SupplierVerificationService:
                     attempt=attempt + 1,
                 )
                 if attempt == self.VIES_MAX_RETRIES - 1:
-                    # SECURITY: Generische Fehlermeldung fuer User (keine PII/Exception-Details)
+                    # SECURITY: Generische Fehlermeldung für User (keine PII/Exception-Details)
                     return self._vies_format_fallback(
                         cleaned_vat, country_code, vat_number, findings,
-                        "VIES-Service voruebergehend nicht verfuegbar"
+                        "VIES-Service vorübergehend nicht verfügbar"
                     )
 
         # Sollte nicht erreicht werden
@@ -971,21 +971,21 @@ class SupplierVerificationService:
         )
 
     def _build_vies_soap_request(self, country_code: str, vat_number: str) -> str:
-        """Erstellt SOAP-Envelope fuer VIES checkVat Request.
+        """Erstellt SOAP-Envelope für VIES checkVat Request.
 
         SECURITY: XML-Escape aller Eingaben zur Vermeidung von XML Injection (CWE-91).
 
         Args:
-            country_code: Laendercode (z.B. DE)
-            vat_number: VAT-Nummer ohne Laendercode
+            country_code: Ländercode (z.B. DE)
+            vat_number: VAT-Nummer ohne Ländercode
 
         Returns:
             SOAP XML Envelope als String
         """
         # SECURITY: XML-Escape zur Vermeidung von XML Injection (CWE-91)
-        # Begrenzen auf erlaubte Laenge + escape
+        # Begrenzen auf erlaubte Länge + escape
         country_safe = xml_escape(country_code[:2].upper())
-        vat_safe = xml_escape(vat_number[:20])  # Max 20 Zeichen fuer EU VAT
+        vat_safe = xml_escape(vat_number[:20])  # Max 20 Zeichen für EU VAT
 
         return f"""<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
@@ -1011,8 +1011,8 @@ class SupplierVerificationService:
         Args:
             soap_envelope: SOAP Request XML
             cleaned_vat: Bereinigte VAT-ID
-            country_code: Laendercode
-            vat_number: VAT-Nummer ohne Laendercode
+            country_code: Ländercode
+            vat_number: VAT-Nummer ohne Ländercode
 
         Returns:
             Tuple aus (ViesResult, Findings)
@@ -1048,7 +1048,7 @@ class SupplierVerificationService:
 
             vies_response = body.find(".//vies:checkVatResponse", ns)
             if vies_response is None:
-                # Fault pruefen
+                # Fault prüfen
                 fault = body.find(".//soap:Fault", ns)
                 if fault is not None:
                     fault_string = fault.findtext("faultstring", "Unbekannter Fehler")
@@ -1085,7 +1085,7 @@ class SupplierVerificationService:
                         source=VerificationSource.VIES,
                         severity=VerificationSeverity.INFO,
                         code="VIES_VALID",
-                        message="USt-IdNr ist gueltig (VIES verifiziert)",
+                        message="USt-IdNr ist gültig (VIES verifiziert)",
                         details={
                             # SECURITY: Keine PII in details (company_name, address entfernt)
                             "verified_via": "EU-VIES-API",
@@ -1105,7 +1105,7 @@ class SupplierVerificationService:
                         source=VerificationSource.VIES,
                         severity=VerificationSeverity.WARNING,
                         code="VIES_INVALID",
-                        message="USt-IdNr ist ungueltig (VIES abgelehnt)",
+                        message="USt-IdNr ist ungültig (VIES abgelehnt)",
                         details={
                             # SECURITY: Keine VAT-Nummer in details
                             "verified_via": "EU-VIES-API",
@@ -1123,7 +1123,7 @@ class SupplierVerificationService:
             return result, findings
 
         except ET.ParseError as e:
-            # SECURITY: Keine Details aus Exception loggen (koennte PII enthalten)
+            # SECURITY: Keine Details aus Exception loggen (könnte PII enthalten)
             logger.warning(
                 "vies_xml_parse_error",
                 error_type=type(e).__name__,
@@ -1153,8 +1153,8 @@ class SupplierVerificationService:
 
         Args:
             cleaned_vat: Bereinigte VAT-ID
-            country_code: Laendercode
-            vat_number: VAT-Nummer ohne Laendercode
+            country_code: Ländercode
+            vat_number: VAT-Nummer ohne Ländercode
             findings: Bestehende Findings
             warning_message: Warnmeldung
 
@@ -1177,7 +1177,7 @@ class SupplierVerificationService:
                 source=VerificationSource.VIES,
                 severity=VerificationSeverity.WARNING,
                 code="VIES_FALLBACK",
-                message=f"{warning_message}. Nur Format geprueft.",
+                message=f"{warning_message}. Nur Format geprüft.",
                 details={
                     "country_code": country_code,
                     "format_valid": format_valid,
@@ -1198,13 +1198,13 @@ class SupplierVerificationService:
         """Validiert VAT-Format je nach Land.
 
         Args:
-            country_code: Laendercode
-            vat_number: VAT-Nummer ohne Laendercode
+            country_code: Ländercode
+            vat_number: VAT-Nummer ohne Ländercode
 
         Returns:
             True wenn Format korrekt
         """
-        # Laenderspezifische Formate (wichtigste EU-Laender)
+        # Länderspezifische Formate (wichtigste EU-Länder)
         formats = {
             "DE": r"^\d{9}$",  # Deutschland: 9 Ziffern
             "AT": r"^U\d{8}$",  # Oesterreich: U + 8 Ziffern
@@ -1229,7 +1229,7 @@ class SupplierVerificationService:
         self,
         company_name: str,
     ) -> Tuple[BundesanzeigerResult, List[VerificationFinding]]:
-        """Prueft Bundesanzeiger.
+        """Prüft Bundesanzeiger.
 
         Args:
             company_name: Firmenname
@@ -1249,7 +1249,7 @@ class SupplierVerificationService:
                         source=VerificationSource.BUNDESANZEIGER,
                         severity=VerificationSeverity.INFO,
                         code="BA_NO_PUBLICATIONS",
-                        message="Keine Veroeffentlichungen im Bundesanzeiger gefunden",
+                        message="Keine Veröffentlichungen im Bundesanzeiger gefunden",
                     )
                 )
                 return BundesanzeigerResult(found=False), findings
@@ -1281,7 +1281,7 @@ class SupplierVerificationService:
                     source=VerificationSource.BUNDESANZEIGER,
                     severity=VerificationSeverity.INFO,
                     code="BA_FOUND",
-                    message=f"{len(publications)} Veroeffentlichung(en) gefunden",
+                    message=f"{len(publications)} Veröffentlichung(en) gefunden",
                     details={"count": len(publications)},
                 )
             )
@@ -1289,7 +1289,7 @@ class SupplierVerificationService:
             return result, findings
 
         except Exception as e:
-            # SECURITY: Keine Exception-Details loggen (CWE-209) - koennte PII enthalten
+            # SECURITY: Keine Exception-Details loggen (CWE-209) - könnte PII enthalten
             logger.error(
                 "bundesanzeiger_check_failed",
                 error_type=type(e).__name__,
@@ -1300,7 +1300,7 @@ class SupplierVerificationService:
                     severity=VerificationSeverity.WARNING,
                     code="BA_ERROR",
                     # SECURITY: Keine Exception-Details in User-Facing Message (CWE-209)
-                    message="Bundesanzeiger-Pruefung fehlgeschlagen",
+                    message="Bundesanzeiger-Prüfung fehlgeschlagen",
                 )
             )
             return BundesanzeigerResult(found=False), findings
@@ -1328,7 +1328,7 @@ class SupplierVerificationService:
                 score -= 40
             elif finding.severity == VerificationSeverity.WARNING:
                 score -= 15
-            # INFO erhoeht nicht und verringert nicht
+            # INFO erhöht nicht und verringert nicht
 
         return max(0, min(100, score))
 
@@ -1380,7 +1380,7 @@ class SupplierVerificationService:
 
         Args:
             entity_id: Entity-ID
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            company_id: Company-ID für Multi-Tenant Isolation
 
         Returns:
             Cached Result oder None
@@ -1403,7 +1403,7 @@ class SupplierVerificationService:
 
         cached_data = cache[entity_key]
 
-        # Ablauf pruefen
+        # Ablauf prüfen
         expires_at = datetime.fromisoformat(cached_data.get("expires_at", "2000-01-01"))
         if expires_at < datetime.now(timezone.utc):
             return None
@@ -1424,7 +1424,7 @@ class SupplierVerificationService:
 
         Args:
             entity_id: Entity-ID
-            company_id: Company-ID fuer Multi-Tenant Isolation
+            company_id: Company-ID für Multi-Tenant Isolation
             result: VerificationResult
 
         Raises:
@@ -1460,13 +1460,13 @@ class SupplierVerificationService:
         await self.db.commit()
 
     def _serialize_result(self, result: VerificationResult) -> Dict[str, Any]:
-        """Serialisiert Result fuer Cache.
+        """Serialisiert Result für Cache.
 
         Args:
             result: VerificationResult
 
         Returns:
-            Dict fuer JSON-Speicherung
+            Dict für JSON-Speicherung
         """
         return {
             "entity_id": str(result.entity_id),

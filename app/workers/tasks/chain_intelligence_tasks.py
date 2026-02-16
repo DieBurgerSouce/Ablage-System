@@ -3,9 +3,9 @@
 Chain Intelligence Celery Tasks.
 
 Automatische Analyse von Dokumentenketten:
-- Naechtliche Lueckenerkennung fuer alle Firmen
-- Woechentliche Erkennung verwaister Dokumente
-- Proaktive Benachrichtigungen bei kritischen Luecken
+- Naechtliche Lückenerkennung für alle Firmen
+- Wöchentliche Erkennung verwaister Dokumente
+- Proaktive Benachrichtigungen bei kritischen Lücken
 
 Feinpoliert und durchdacht - Proaktive Kettenanalyse.
 """
@@ -40,12 +40,12 @@ def scan_chain_gaps_task(
 ) -> Dict[str, object]:
     """Scannt alle Ketten auf fehlende Glieder.
 
-    Wird naechtlich um 03:30 Uhr ausgefuehrt.
-    Wenn company_id angegeben, nur fuer diese Firma.
-    Sonst fuer alle Firmen mit Ketten.
+    Wird naechtlich um 03:30 Uhr ausgeführt.
+    Wenn company_id angegeben, nur für diese Firma.
+    Sonst für alle Firmen mit Ketten.
 
     Args:
-        company_id: Optional - nur fuer diese Firma
+        company_id: Optional - nur für diese Firma
 
     Returns:
         Dict mit Scan-Ergebnissen und Statistiken
@@ -148,12 +148,12 @@ def detect_orphan_documents_task(
     self,
     company_id: Optional[str] = None,
 ) -> Dict[str, object]:
-    """Erkennt verwaiste Dokumente ohne Kettenverknuepfung.
+    """Erkennt verwaiste Dokumente ohne Kettenverknüpfung.
 
-    Wird woechentlich am Sonntag um 04:00 Uhr ausgefuehrt.
+    Wird wöchentlich am Sonntag um 04:00 Uhr ausgeführt.
 
     Args:
-        company_id: Optional - nur fuer diese Firma
+        company_id: Optional - nur für diese Firma
 
     Returns:
         Dict mit Orphan-Statistiken

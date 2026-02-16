@@ -36,15 +36,15 @@ logger = structlog.get_logger(__name__)
 
 
 class ConfidenceSource(str, Enum):
-    """Quellen fuer Confidence-Werte."""
+    """Quellen für Confidence-Werte."""
 
     OCR = "ocr"                          # OCR Backend Confidence
     CLASSIFICATION = "classification"    # Dokumenttyp-Klassifikation
-    ENTITY_LINKING = "entity_linking"    # Entity-Verknuepfung
+    ENTITY_LINKING = "entity_linking"    # Entity-Verknüpfung
     AMOUNT_EXTRACTION = "amount_extraction"  # Betragsextraktion
     DATE_EXTRACTION = "date_extraction"  # Datumsextraktion
     REFERENCE_EXTRACTION = "reference_extraction"  # Referenznummern
-    SEMANTIC_SIMILARITY = "semantic_similarity"  # Semantische Aehnlichkeit
+    SEMANTIC_SIMILARITY = "semantic_similarity"  # Semantische Ähnlichkeit
     PATTERN_MATCHING = "pattern_matching"  # Muster-Erkennung
     HISTORICAL = "historical"            # Historische Genauigkeit
 
@@ -76,7 +76,7 @@ class AggregatedConfidence:
     max_confidence: float           # Maximum aller Scores
     source_count: int               # Anzahl der Quellen
     sources: List[ConfidenceScore]  # Einzelne Scores
-    explanation: str                # Erklaerung
+    explanation: str                # Erklärung
 
 
 @dataclass
@@ -99,7 +99,7 @@ DEFAULT_WEIGHTS: Dict[ConfidenceSource, float] = {
     ConfidenceSource.OCR: 0.8,
     ConfidenceSource.CLASSIFICATION: 1.0,
     ConfidenceSource.ENTITY_LINKING: 0.9,
-    ConfidenceSource.AMOUNT_EXTRACTION: 1.2,  # Hoeher wegen Wichtigkeit
+    ConfidenceSource.AMOUNT_EXTRACTION: 1.2,  # Höher wegen Wichtigkeit
     ConfidenceSource.DATE_EXTRACTION: 0.9,
     ConfidenceSource.REFERENCE_EXTRACTION: 1.1,
     ConfidenceSource.SEMANTIC_SIMILARITY: 0.7,
@@ -117,7 +117,7 @@ class ConfidenceAggregator:
     """Service zur Aggregation von Confidence-Scores.
 
     Kombiniert mehrere Confidence-Werte zu einem Gesamt-Score.
-    Beruecksichtigt historische Genauigkeit und Kalibrierung.
+    Berücksichtigt historische Genauigkeit und Kalibrierung.
     """
 
     def __init__(self, db: AsyncSession):
@@ -139,8 +139,8 @@ class ConfidenceAggregator:
 
         Args:
             scores: Liste von ConfidenceScore-Objekten
-            company_id: Optional Company-ID fuer Kalibrierung
-            document_type: Optional Dokumenttyp fuer spezifische Kalibrierung
+            company_id: Optional Company-ID für Kalibrierung
+            document_type: Optional Dokumenttyp für spezifische Kalibrierung
 
         Returns:
             AggregatedConfidence mit allen Berechnungen
@@ -185,7 +185,7 @@ class ConfidenceAggregator:
             )
             calibrated_scores.append(calibrated_score)
 
-            # Summiere fuer Durchschnitte
+            # Summiere für Durchschnitte
             weight = calibrated_score.weight
             total_weight += weight
             weighted_sum += calibrated_value * weight
@@ -200,7 +200,7 @@ class ConfidenceAggregator:
         min_confidence = min(s.value for s in scores)
         max_confidence = max(s.value for s in scores)
 
-        # Erklaerung generieren
+        # Erklärung generieren
         explanation = self._generate_explanation(
             calibrated_scores, weighted_confidence, calibration
         )
@@ -303,19 +303,19 @@ class ConfidenceAggregator:
         document_type: Optional[str],
         cutoff,
     ) -> Optional[CalibrationFactors]:
-        """Berechnet Kalibrierungsfaktoren fuer eine Quelle.
+        """Berechnet Kalibrierungsfaktoren für eine Quelle.
 
         Args:
             source: Confidence-Quelle
             company_id: Company-ID
             document_type: Dokumenttyp
-            cutoff: Zeitpunkt ab dem Daten beruecksichtigt werden
+            cutoff: Zeitpunkt ab dem Daten berücksichtigt werden
 
         Returns:
             CalibrationFactors oder None
         """
         try:
-            # Query fuer finale Entscheidungen mit Feedback
+            # Query für finale Entscheidungen mit Feedback
             base_filter = [
                 AIDecision.created_at >= cutoff,
                 AIDecision.is_final == True,
@@ -341,7 +341,7 @@ class ConfidenceAggregator:
             confidence_sum = 0.0
 
             for decision in decisions:
-                # Pruefe ob diese Source verwendet wurde
+                # Prüfe ob diese Source verwendet wurde
                 features = decision.features_used or {}
                 if source.value not in features:
                     continue
@@ -349,7 +349,7 @@ class ConfidenceAggregator:
                 total += 1
                 confidence_sum += decision.confidence
 
-                # Pruefe ob genehmigt oder korrigiert
+                # Prüfe ob genehmigt oder korrigiert
                 if decision.auto_applied or decision.review_action == "approved":
                     correct += 1
 
@@ -385,7 +385,7 @@ class ConfidenceAggregator:
         weighted_confidence: float,
         calibration: Dict[ConfidenceSource, CalibrationFactors],
     ) -> str:
-        """Generiert eine Erklaerung fuer die Aggregation.
+        """Generiert eine Erklärung für die Aggregation.
 
         Args:
             scores: Kalibrierte Scores
@@ -393,7 +393,7 @@ class ConfidenceAggregator:
             calibration: Kalibrierungsfaktoren
 
         Returns:
-            Erklaerungstext
+            Erklärungstext
         """
         parts = []
 
@@ -439,7 +439,7 @@ class ConfidenceAggregator:
         predicted_confidence: float,
         was_correct: bool,
     ) -> None:
-        """Zeichnet Feedback fuer Kalibrierung auf.
+        """Zeichnet Feedback für Kalibrierung auf.
 
         Args:
             company_id: Company-ID
@@ -448,7 +448,7 @@ class ConfidenceAggregator:
             was_correct: Ob die Vorhersage korrekt war
         """
         try:
-            # Invalidiere Cache fuer diese Company
+            # Invalidiere Cache für diese Company
             cache_keys_to_remove = [
                 key for key in self._calibration_cache
                 if key.startswith(str(company_id))
@@ -477,7 +477,7 @@ class ConfidenceAggregator:
 
 
 def get_confidence_aggregator(db: AsyncSession) -> ConfidenceAggregator:
-    """Factory-Funktion fuer ConfidenceAggregator.
+    """Factory-Funktion für ConfidenceAggregator.
 
     Args:
         db: Async Database Session

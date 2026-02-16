@@ -1,12 +1,12 @@
 """Employee Service - Enterprise-Grade Mitarbeiterverwaltung.
 
 Implementiert GDPR-konforme Mitarbeiter-Operationen:
-- CRUD mit vollstaendigem Audit-Trail
+- CRUD mit vollständigem Audit-Trail
 - PII-Maskierung basierend auf Berechtigungen
 - Input-Sanitization
 - Company Context Enforcement
 
-WICHTIG: Alle PII-Felder werden fuer Non-HR-User maskiert!
+WICHTIG: Alle PII-Felder werden für Non-HR-User maskiert!
 """
 
 from datetime import datetime, timezone
@@ -28,11 +28,11 @@ logger = structlog.get_logger(__name__)
 
 
 class EmployeeService:
-    """Service fuer Mitarbeiter-Verwaltung (Enterprise-Grade).
+    """Service für Mitarbeiter-Verwaltung (Enterprise-Grade).
 
     Security Features:
     - PII-Maskierung basierend auf Berechtigungen
-    - Audit-Logging fuer alle CRUD-Operationen
+    - Audit-Logging für alle CRUD-Operationen
     - Input-Sanitization
     - Company Context Enforcement
     """
@@ -55,7 +55,7 @@ class EmployeeService:
         'emergency_contact_phone': lambda v: f"***{v[-4:]}" if v and len(v) >= 4 else "***" if v else None,
     }
 
-    # Felder die fuer Change-Detection bei Updates geprueft werden (fuer Audit-Log)
+    # Felder die für Change-Detection bei Updates geprüft werden (für Audit-Log)
     SENSITIVE_FIELDS = {
         'tax_id', 'social_security_number', 'iban', 'bic',
         'health_insurance_number', 'salary', 'tax_class',
@@ -88,19 +88,19 @@ class EmployeeService:
 
         Args:
             db: Datenbank-Session
-            company_id: Firmen-ID (fuer Multi-Tenancy)
-            user_id: Benutzer-ID (fuer Audit)
-            mask_pii: PII-Felder maskieren (True fuer Non-HR-User)
+            company_id: Firmen-ID (für Multi-Tenancy)
+            user_id: Benutzer-ID (für Audit)
+            mask_pii: PII-Felder maskieren (True für Non-HR-User)
             page: Seitennummer (1-basiert)
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
             search: Suchbegriff (Name, E-Mail, Personalnummer)
             department_id: Filter nach Abteilung
             position_id: Filter nach Position
             status_filter: Filter nach Status
-            employment_type: Filter nach Beschaeftigungsart
+            employment_type: Filter nach Beschäftigungsart
             sort_by: Sortierfeld
             sort_order: Sortierrichtung (asc/desc)
-            ip_address: Client-IP fuer Audit-Log
+            ip_address: Client-IP für Audit-Log
 
         Returns:
             Tuple (Liste von Mitarbeiter-Dicts, Gesamtanzahl)
@@ -166,7 +166,7 @@ class EmployeeService:
         offset = (page - 1) * per_page
         query = query.offset(offset).limit(per_page)
 
-        # Ausfuehren
+        # Ausführen
         result = await db.execute(query)
         employees = result.scalars().all()
 
@@ -176,7 +176,7 @@ class EmployeeService:
             for emp in employees
         ]
 
-        # A.1 CRITICAL: Audit-Logging fuer List-Operationen (GDPR Art. 30)
+        # A.1 CRITICAL: Audit-Logging für List-Operationen (GDPR Art. 30)
         audit = get_audit_logger(db)
         await audit.log_event(
             event_type=SecurityEventType.EMPLOYEES_LISTED,
@@ -225,10 +225,10 @@ class EmployeeService:
         Args:
             db: Datenbank-Session
             employee_id: Mitarbeiter-ID
-            company_id: Firmen-ID (fuer Multi-Tenancy)
-            user_id: Benutzer-ID (fuer Audit)
+            company_id: Firmen-ID (für Multi-Tenancy)
+            user_id: Benutzer-ID (für Audit)
             mask_pii: PII-Felder maskieren
-            ip_address: Client-IP fuer Audit-Log
+            ip_address: Client-IP für Audit-Log
 
         Returns:
             Mitarbeiter-Dict oder None
@@ -294,9 +294,9 @@ class EmployeeService:
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
-            user_id: Benutzer-ID (fuer Audit)
+            user_id: Benutzer-ID (für Audit)
             data: Mitarbeiter-Daten
-            ip_address: Client-IP fuer Audit-Log
+            ip_address: Client-IP für Audit-Log
 
         Returns:
             Erstellter Mitarbeiter als Dict
@@ -307,7 +307,7 @@ class EmployeeService:
         # Input-Sanitization
         sanitized_data = self._sanitize_input(data)
 
-        # Pruefen auf Duplikate (Personalnummer)
+        # Prüfen auf Duplikate (Personalnummer)
         existing = await db.execute(
             select(Employee).where(
                 Employee.company_id == company_id,
@@ -321,7 +321,7 @@ class EmployeeService:
                 "Ein Mitarbeiter mit dieser Personalnummer existiert bereits."
             )
 
-        # Pruefen auf Duplikate (E-Mail falls angegeben)
+        # Prüfen auf Duplikate (E-Mail falls angegeben)
         email = sanitized_data.get('email')
         if email:
             existing_email = await db.execute(
@@ -442,7 +442,7 @@ class EmployeeService:
             company_id: Firmen-ID
             user_id: Benutzer-ID
             data: Update-Daten
-            ip_address: Client-IP fuer Audit-Log
+            ip_address: Client-IP für Audit-Log
 
         Returns:
             Aktualisierter Mitarbeiter als Dict oder None
@@ -470,7 +470,7 @@ class EmployeeService:
             # F.2 HIGH: Zyklische Supervisor-Ketten verhindern (A->B->C->A)
             if await self._would_create_supervisor_cycle(db, employee_id, supervisor_id, company_id):
                 raise ValueError(
-                    "Diese Aenderung wuerde eine zyklische Vorgesetzten-Hierarchie erzeugen."
+                    "Diese Änderung wuerde eine zyklische Vorgesetzten-Hierarchie erzeugen."
                 )
 
             # B.5 HIGH: Cross-Company Check
@@ -485,7 +485,7 @@ class EmployeeService:
                 # I.1 CRITICAL: Generische Fehlermeldung - keine Company-Struktur leaken
                 raise ValueError("Die referenzierte Ressource wurde nicht gefunden.")
 
-        # Change-Detection fuer Audit
+        # Change-Detection für Audit
         changed_fields = {}
         sensitive_changes = {}
 
@@ -580,14 +580,14 @@ class EmployeeService:
         user_id: UUID,
         ip_address: Optional[str] = None,
     ) -> bool:
-        """Loescht einen Mitarbeiter (Soft-Delete) mit Audit-Logging.
+        """Löscht einen Mitarbeiter (Soft-Delete) mit Audit-Logging.
 
         Args:
             db: Datenbank-Session
             employee_id: Mitarbeiter-ID
             company_id: Firmen-ID
             user_id: Benutzer-ID
-            ip_address: Client-IP fuer Audit-Log
+            ip_address: Client-IP für Audit-Log
 
         Returns:
             True wenn erfolgreich, False wenn nicht gefunden
@@ -647,7 +647,7 @@ class EmployeeService:
                 company_id=str(company_id),
                 user_id=str(user_id),
             )
-            raise ValueError("Der Mitarbeiter kann nicht geloescht werden (Referenzen vorhanden).")
+            raise ValueError("Der Mitarbeiter kann nicht gelöscht werden (Referenzen vorhanden).")
         except (DataError, OperationalError) as e:
             # I.3 CRITICAL: DB-Fehler generisch behandeln
             await db.rollback()
@@ -685,7 +685,7 @@ class EmployeeService:
         Args:
             employee: Employee-Objekt
             mask_pii: PII-Felder maskieren
-            include_details: Alle Details einbeziehen (fuer Detail-View)
+            include_details: Alle Details einbeziehen (für Detail-View)
 
         Returns:
             Mitarbeiter als Dict
@@ -743,7 +743,7 @@ class EmployeeService:
                 'updated_at': employee.updated_at.isoformat() if employee.updated_at else None,
             })
 
-            # O.1 CRITICAL FIX: Alle PII-Felder muessen hier sein (inkl. Emergency Contact)
+            # O.1 CRITICAL FIX: Alle PII-Felder müssen hier sein (inkl. Emergency Contact)
             # Damit sie bei mask_pii=True maskiert werden!
             pii_data = {
                 'date_of_birth': employee.date_of_birth.isoformat() if employee.date_of_birth else None,
@@ -783,7 +783,7 @@ class EmployeeService:
             Sanitisierte Daten
 
         Raises:
-            ValueError: Bei ungueltigen Eingaben (z.B. Path Traversal)
+            ValueError: Bei ungültigen Eingaben (z.B. Path Traversal)
 
         Security:
             - B.3 HIGH: photo_path Path Traversal Prevention
@@ -806,13 +806,13 @@ class EmployeeService:
             if key in text_fields and isinstance(value, str):
                 sanitized[key] = sanitize_text_field(value, max_length=255)
             elif key == 'photo_path' and value is not None:
-                # B.3 HIGH: Path Traversal Prevention fuer photo_path
+                # B.3 HIGH: Path Traversal Prevention für photo_path
                 if isinstance(value, str) and value.strip():
                     # Nur Dateiname extrahieren (keine Verzeichnispfade erlaubt)
                     photo_filename = os.path.basename(value)
                     # Nur sichere Zeichen: alphanumerisch, Unterstriche, Bindestriche, Punkte
                     if not re.match(r'^[\w\-\.]+$', photo_filename):
-                        raise ValueError("Ungueltiger Dateiname fuer Foto. Nur Buchstaben, Zahlen, Unterstriche, Bindestriche und Punkte erlaubt.")
+                        raise ValueError("Ungültiger Dateiname für Foto. Nur Buchstaben, Zahlen, Unterstriche, Bindestriche und Punkte erlaubt.")
                     # Keine versteckten Dateien (beginnend mit .)
                     if photo_filename.startswith('.'):
                         raise ValueError("Versteckte Dateien sind nicht erlaubt.")
@@ -820,7 +820,7 @@ class EmployeeService:
                     allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
                     file_ext = os.path.splitext(photo_filename)[1].lower()
                     if file_ext not in allowed_extensions:
-                        raise ValueError(f"Ungueltige Dateiendung. Erlaubt: {', '.join(allowed_extensions)}")
+                        raise ValueError(f"Ungültige Dateiendung. Erlaubt: {', '.join(allowed_extensions)}")
                     sanitized['photo_path'] = photo_filename
                 else:
                     sanitized['photo_path'] = None
@@ -837,13 +837,13 @@ class EmployeeService:
         company_id: UUID,
         max_depth: int = 20,
     ) -> bool:
-        """Prueft ob eine Supervisor-Zuweisung einen Zyklus erzeugen wuerde.
+        """Prüft ob eine Supervisor-Zuweisung einen Zyklus erzeugen wuerde.
 
         F.2 HIGH: Verhindert zyklische Vorgesetzten-Ketten (A->B->C->A).
 
         Args:
             db: Datenbank-Session
-            employee_id: Mitarbeiter, dessen Supervisor geaendert werden soll
+            employee_id: Mitarbeiter, dessen Supervisor geändert werden soll
             new_supervisor_id: Neuer vorgeschlagener Supervisor
             company_id: Firmen-ID
             max_depth: Maximale Hierarchietiefe (Schutz vor Endlosschleife)
@@ -855,13 +855,13 @@ class EmployeeService:
         if employee_id == new_supervisor_id:
             return True
 
-        # Traversiere die Supervisor-Kette vom neuen Supervisor aufwaerts
+        # Traversiere die Supervisor-Kette vom neuen Supervisor aufwärts
         visited: set[UUID] = {employee_id}  # Der Mitarbeiter selbst gilt als besucht
         current_id: Optional[UUID] = new_supervisor_id
 
         for _ in range(max_depth):
             if current_id is None:
-                # Kein weiterer Supervisor -> kein Zyklus moeglich
+                # Kein weiterer Supervisor -> kein Zyklus möglich
                 return False
 
             if current_id in visited:
@@ -893,5 +893,5 @@ class EmployeeService:
         return True
 
 
-# Singleton-Instance fuer globalen Zugriff
+# Singleton-Instance für globalen Zugriff
 employee_service = EmployeeService()

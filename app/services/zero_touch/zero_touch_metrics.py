@@ -1,7 +1,7 @@
 """
 Zero-Touch OCR Prometheus Metrics.
 
-Metriken fuer Monitoring und Observability des Zero-Touch Processing Systems.
+Metriken für Monitoring und Observability des Zero-Touch Processing Systems.
 """
 
 from prometheus_client import Counter, Histogram, Gauge
@@ -17,7 +17,7 @@ ZERO_TOUCH_PROCESSED = Counter(
     ["result", "type"],
 )
 """
-Counter fuer verarbeitete Dokumente.
+Counter für verarbeitete Dokumente.
 
 Labels:
 - result: success, failed, manual_review_required
@@ -34,8 +34,8 @@ ZERO_TOUCH_AUTO_RATE = Gauge(
     "Percentage of documents auto-processed without manual intervention",
 )
 """
-Gauge fuer Auto-Processing-Rate (0.0 - 1.0).
-Wird regelmaessig aktualisiert basierend auf letzten N Dokumenten.
+Gauge für Auto-Processing-Rate (0.0 - 1.0).
+Wird regelmäßig aktualisiert basierend auf letzten N Dokumenten.
 """
 
 
@@ -49,8 +49,8 @@ ZERO_TOUCH_CONFIDENCE = Histogram(
     buckets=[0.5, 0.6, 0.7, 0.8, 0.85, 0.9, 0.95, 1.0],
 )
 """
-Histogram fuer Confidence-Score-Verteilung.
-Buckets optimiert fuer Schwellwert-Analyse (typischer Threshold: 0.90).
+Histogram für Confidence-Score-Verteilung.
+Buckets optimiert für Schwellwert-Analyse (typischer Threshold: 0.90).
 """
 
 ZERO_TOUCH_DURATION = Histogram(
@@ -59,7 +59,7 @@ ZERO_TOUCH_DURATION = Histogram(
     buckets=[100, 500, 1000, 2000, 5000, 10000],
 )
 """
-Histogram fuer Verarbeitungsdauer in Millisekunden.
+Histogram für Verarbeitungsdauer in Millisekunden.
 Umfasst gesamte Zero-Touch-Pipeline von OCR-Completion bis Business-Object-Creation.
 """
 
@@ -75,7 +75,7 @@ def record_processing(
     duration_ms: int,
 ) -> None:
     """
-    Erfasst Metriken fuer eine abgeschlossene Verarbeitung.
+    Erfasst Metriken für eine abgeschlossene Verarbeitung.
 
     Args:
         result: Ergebnis (success, failed, manual_review_required)

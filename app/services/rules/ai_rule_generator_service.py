@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-"""KI-Regelgenerierung aus natuerlicher Sprache.
+"""KI-Regelgenerierung aus natürlicher Sprache.
 
 Vision 2.0 - Phase 2 (Januar 2026)
 
-Generiert Business Rules aus natuerlichsprachlichen Beschreibungen
+Generiert Business Rules aus natürlichsprachlichen Beschreibungen
 unter Verwendung von Ollama (lokaler LLM).
 """
 
@@ -34,26 +34,26 @@ class GeneratedRule(BaseModel):
     actions: List[Dict[str, Any]]
     else_actions: Optional[List[Dict[str, Any]]] = None
     confidence: float = Field(ge=0.0, le=1.0)
-    explanation: str  # Erklaerung warum diese Regel generiert wurde
+    explanation: str  # Erklärung warum diese Regel generiert wurde
 
 
 class AIRuleGeneratorService:
     """Service zur KI-basierten Regelgenerierung.
 
-    Nutzt Ollama (lokaler LLM) um aus natuerlichsprachlichen
+    Nutzt Ollama (lokaler LLM) um aus natürlichsprachlichen
     Beschreibungen strukturierte Business Rules zu generieren.
     """
 
-    SYSTEM_PROMPT = """Du bist ein Experte fuer Geschaeftsregeln in einem deutschen Dokumentenmanagement-System.
-Generiere JSON-Regeln basierend auf natuerlichsprachlichen Beschreibungen.
+    SYSTEM_PROMPT = """Du bist ein Experte für Geschäftsregeln in einem deutschen Dokumentenmanagement-System.
+Generiere JSON-Regeln basierend auf natürlichsprachlichen Beschreibungen.
 
-VERFUEGBARE FELDER fuer Bedingungen:
+VERFUEGBARE FELDER für Bedingungen:
 - amount: Betrag (numerisch, in EUR)
 - document_type: Dokumenttyp (invoice, contract, receipt, order, delivery_note, quote, etc.)
 - supplier.name: Lieferantenname (String)
 - supplier.is_new: Ist neuer Lieferant (boolean)
 - customer.name: Kundenname (String)
-- due_date: Faelligkeitsdatum (ISO-Datum)
+- due_date: Fälligkeitsdatum (ISO-Datum)
 - invoice_date: Rechnungsdatum (ISO-Datum)
 - created_at: Erstellungsdatum (ISO-Datum)
 - status: Status (pending, approved, rejected, processed)
@@ -66,24 +66,24 @@ VERFUEGBARE FELDER fuer Bedingungen:
 
 VERFUEGBARE OPERATOREN:
 - "==" (gleich), "!=" (ungleich)
-- ">" (groesser), ">=" (groesser-gleich)
+- ">" (größer), ">=" (größer-gleich)
 - "<" (kleiner), "<=" (kleiner-gleich)
 - "contains", "not_contains" (String-Suche)
 - "starts_with", "ends_with" (String-Anfang/Ende)
 - "matches" (Regex-Pattern)
 - "in", "not_in" (Liste-Zugehoerigkeit)
-- "is_empty", "is_not_empty" (Leer-Pruefung)
-- "is_null", "is_not_null" (Null-Pruefung)
+- "is_empty", "is_not_empty" (Leer-Prüfung)
+- "is_null", "is_not_null" (Null-Prüfung)
 - "before", "after" (Datum-Vergleich)
-- "between" (Bereichs-Pruefung)
-- "has_tag", "has_any_tag", "has_all_tags" (Tag-Pruefung)
+- "between" (Bereichs-Prüfung)
+- "has_tag", "has_any_tag", "has_all_tags" (Tag-Prüfung)
 
 VERFUEGBARE AKTIONEN:
 - require_approval: Genehmigung anfordern
 - require_cfo_approval: CFO-Genehmigung erforderlich
 - require_manager_approval: Manager-Genehmigung erforderlich
-- flag_for_review: Zur Pruefung markieren
-- manual_review_required: Manuelle Pruefung erforderlich
+- flag_for_review: Zur Prüfung markieren
+- manual_review_required: Manuelle Prüfung erforderlich
 - notify_user: Benutzer benachrichtigen (params: {"user_id": "uuid"})
 - notify_team: Team benachrichtigen (params: {"team_id": "uuid"})
 - notify_admin: Admin benachrichtigen
@@ -92,7 +92,7 @@ VERFUEGBARE AKTIONEN:
 - add_tag: Tag hinzufuegen (params: {"tag": "name"})
 - remove_tag: Tag entfernen (params: {"tag": "name"})
 - set_status: Status setzen (params: {"status": "pending|approved|rejected"})
-- set_priority: Prioritaet setzen (params: {"priority": 1-5})
+- set_priority: Priorität setzen (params: {"priority": 1-5})
 - start_workflow: Workflow starten (params: {"workflow_id": "uuid"})
 - assign_to_user: Benutzer zuweisen (params: {"user_id": "uuid"})
 - block_processing: Verarbeitung blockieren
@@ -101,7 +101,7 @@ KATEGORIEN: approval, compliance, fraud, workflow, notification, data_quality, c
 
 BEISPIELE:
 
-Prompt: "Erstelle Regel fuer Skonto-Ueberwachung"
+Prompt: "Erstelle Regel für Skonto-Überwachung"
 Antwort:
 {
     "name": "Skonto-Frist Warnung",
@@ -122,7 +122,7 @@ Antwort:
     "explanation": "Warnt rechtzeitig vor Skonto-Ablauf (3 Tage Vorlauf)"
 }
 
-Prompt: "Rechnungen ueber 10000 EUR muessen vom CFO genehmigt werden"
+Prompt: "Rechnungen über 10000 EUR müssen vom CFO genehmigt werden"
 Antwort:
 {
     "name": "Hohe Rechnungen CFO-Genehmigung",
@@ -140,15 +140,15 @@ Antwort:
         {"type": "set_priority", "params": {"priority": 5}}
     ],
     "confidence": 0.95,
-    "explanation": "Vier-Augen-Prinzip fuer hohe Betraege"
+    "explanation": "Vier-Augen-Prinzip für hohe Betraege"
 }
 
 WICHTIG:
 - Antworte NUR mit validem JSON im gegebenen Format
 - Verwende deutsche Beschreibungen
-- Waehle realistische confidence-Werte
+- Wähle realistische confidence-Werte
 - Bei komplexen Bedingungen nutze "and" / "or" Komposition
-- Erklaere IMMER warum die Regel sinnvoll ist
+- Erkläre IMMER warum die Regel sinnvoll ist
 """
 
     def __init__(self, ollama_service: OllamaService):
@@ -160,24 +160,24 @@ WICHTIG:
         self.ollama = ollama_service
 
     async def generate_rule(self, prompt: str) -> GeneratedRule:
-        """Generiert eine Regel aus natuerlicher Sprache.
+        """Generiert eine Regel aus natürlicher Sprache.
 
         Args:
-            prompt: Natuerlichsprachliche Beschreibung der gewuenschten Regel
+            prompt: Natürlichsprachliche Beschreibung der gewünschten Regel
 
         Returns:
             GeneratedRule mit strukturierter Regel-Definition
 
         Raises:
-            ValueError: Wenn kein gueltiges JSON generiert werden konnte
+            ValueError: Wenn kein gültiges JSON generiert werden konnte
             Exception: Bei Ollama-Service-Fehlern
         """
         logger.info(f"Generiere Regel aus Prompt: {prompt[:100]}...")
 
-        user_message = f"Erstelle eine Geschaeftsregel fuer: {prompt}"
+        user_message = f"Erstelle eine Geschäftsregel für: {prompt}"
 
         try:
-            # Ollama mit niedriger Temperatur fuer konsistente Struktur
+            # Ollama mit niedriger Temperatur für konsistente Struktur
             response = await self.ollama.generate(
                 prompt=user_message,
                 system_prompt=self.SYSTEM_PROMPT,
@@ -190,7 +190,7 @@ WICHTIG:
             # JSON aus Antwort extrahieren
             rule_json = self._extract_json(response)
 
-            # Validieren und zurueckgeben
+            # Validieren und zurückgeben
             generated = GeneratedRule(**rule_json)
 
             logger.info(
@@ -214,7 +214,7 @@ WICHTIG:
             Geparste JSON-Struktur
 
         Raises:
-            ValueError: Wenn kein gueltiges JSON gefunden wurde
+            ValueError: Wenn kein gültiges JSON gefunden wurde
         """
         # Versuche direktes Parsing
         try:
@@ -248,21 +248,21 @@ WICHTIG:
                 logger.debug("parse_json_multiline", error_type=type(e).__name__)
 
         raise ValueError(
-            f"Konnte kein gueltiges JSON aus Antwort extrahieren. "
+            f"Konnte kein gültiges JSON aus Antwort extrahieren. "
             f"Response: {text[:200]}..."
         )
 
 
 async def get_ai_rule_generator_service() -> AIRuleGeneratorService:
-    """Factory fuer AIRuleGeneratorService.
+    """Factory für AIRuleGeneratorService.
 
     Returns:
         AIRuleGeneratorService Instanz
     """
     ollama = get_ollama_service()
 
-    # Verfuegbarkeit pruefen
+    # Verfügbarkeit prüfen
     if not await ollama.is_available():
-        logger.warning("Ollama nicht verfuegbar - Rule Generator wird fehlschlagen")
+        logger.warning("Ollama nicht verfügbar - Rule Generator wird fehlschlagen")
 
     return AIRuleGeneratorService(ollama)

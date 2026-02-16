@@ -5,7 +5,7 @@ Consent Management Service.
 Verwaltung von Einwilligungen nach DSGVO:
 - Einwilligungen erfassen und verwalten
 - Widerruf verarbeiten
-- Audit-Trail fuehren
+- Audit-Trail führen
 - Ablauf-Benachrichtigungen
 
 Feinpoliert und durchdacht.
@@ -36,9 +36,9 @@ logger = logging.getLogger(__name__)
 
 class ConsentService:
     """
-    Service fuer Einwilligungsverwaltung.
+    Service für Einwilligungsverwaltung.
 
-    Unterstuetzt alle DSGVO-Anforderungen fuer Consent Management.
+    Unterstützt alle DSGVO-Anforderungen für Consent Management.
     """
 
     def __init__(self, db: AsyncSession):
@@ -46,7 +46,7 @@ class ConsentService:
         Initialisiere Service.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
         """
         self.db = db
 
@@ -77,7 +77,7 @@ class ConsentService:
             entity_id: Optional - betroffene Entity
             user_id: Optional - betroffener User
             grantor_name: Name des Einwilligenden
-            grantor_email: E-Mail fuer Kommunikation
+            grantor_email: E-Mail für Kommunikation
             scope: Umfang der Einwilligung
             expires_at: Ablaufdatum
             source: Quelle der Anfrage
@@ -143,7 +143,7 @@ class ConsentService:
             grantor_name: Name des Erteilenden
             grantor_role: Rolle/Position
             conditions: Textuelle Bedingungen
-            restrictions: Einschraenkungen
+            restrictions: Einschränkungen
             document_id: Verweis auf Dokument
             document_reference: Textuelle Referenz
             ip_address: IP-Adresse
@@ -343,7 +343,7 @@ class ConsentService:
             user_id: Filter nach User
             consent_type: Filter nach Typ
             status: Filter nach Status
-            only_valid: Nur gueltige
+            only_valid: Nur gültige
             offset: Pagination
             limit: Pagination
 
@@ -396,7 +396,7 @@ class ConsentService:
         user_id: Optional[UUID] = None,
     ) -> bool:
         """
-        Pruefe ob gueltige Einwilligung vorliegt.
+        Prüfe ob gültige Einwilligung vorliegt.
 
         Args:
             company_id: Mandanten-ID
@@ -405,7 +405,7 @@ class ConsentService:
             user_id: Betroffener User
 
         Returns:
-            True wenn gueltige Einwilligung vorliegt
+            True wenn gültige Einwilligung vorliegt
         """
         query = select(ConsentRecord).where(
             and_(
@@ -540,7 +540,7 @@ class ConsentService:
             data_categories: Datenkategorien
             data_subjects: Betroffenengruppen
             subprocessor_allowed: Subunternehmer erlaubt
-            international_transfer: Internationale Uebermittlung
+            international_transfer: Internationale Übermittlung
             **kwargs: Weitere Felder
 
         Returns:
@@ -580,7 +580,7 @@ class ConsentService:
         limit: int = 50,
     ) -> tuple[List[DataProcessingAgreement], int]:
         """
-        Liste Auftragsverarbeitungsvertraege.
+        Liste Auftragsverarbeitungsverträge.
 
         Args:
             company_id: Mandanten-ID
@@ -644,11 +644,11 @@ class ConsentService:
         reason: Optional[str] = None,
     ) -> Optional[DataProcessingAgreement]:
         """
-        Kuendige AVV.
+        Kündige AVV.
 
         Args:
             dpa_id: ID des AVV
-            reason: Kuendigungsgrund
+            reason: Kündigungsgrund
 
         Returns:
             Aktualisierter AVV oder None
@@ -700,7 +700,7 @@ class ConsentService:
             legal_basis: Rechtsgrundlage
             action_after_expiry: Aktion nach Ablauf
             notify_days_before: Tage vor Ablauf benachrichtigen
-            notify_emails: E-Mails fuer Benachrichtigung
+            notify_emails: E-Mails für Benachrichtigung
 
         Returns:
             Erstellte RetentionPolicy
@@ -773,7 +773,7 @@ class ConsentService:
             )
         )
 
-        # Prioritaet: Spezifisch vor Allgemein
+        # Priorität: Spezifisch vor Allgemein
         if document_type:
             result = await self.db.execute(
                 query.where(RetentionPolicy.document_type == document_type).limit(1)
@@ -826,7 +826,7 @@ class ConsentService:
         Args:
             consent_record_id: ID der Einwilligung
             company_id: Mandanten-ID
-            action: Ausgefuehrte Aktion
+            action: Ausgeführte Aktion
             performed_by_id: User-ID
             performed_by_name: User-Name
             performed_by_role: User-Rolle
@@ -839,7 +839,7 @@ class ConsentService:
         Returns:
             Erstellter ConsentAuditLog
         """
-        # Berechne Aenderungen
+        # Berechne Änderungen
         changes = {}
         if old_value and new_value:
             for key in set(old_value.keys()) | set(new_value.keys()):
@@ -871,13 +871,13 @@ class ConsentService:
         consent_id: UUID,
     ) -> List[ConsentAuditLog]:
         """
-        Hole Audit-Trail fuer eine Einwilligung.
+        Hole Audit-Trail für eine Einwilligung.
 
         Args:
             consent_id: ID der Einwilligung
 
         Returns:
-            Liste von Audit-Eintraegen
+            Liste von Audit-Einträgen
         """
         result = await self.db.execute(
             select(ConsentAuditLog)
@@ -906,7 +906,7 @@ class ConsentService:
             limit: Maximale Anzahl
 
         Returns:
-            Liste von Audit-Eintraegen
+            Liste von Audit-Einträgen
         """
         query = select(ConsentAuditLog).where(ConsentAuditLog.company_id == company_id)
 

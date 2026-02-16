@@ -2,7 +2,7 @@
 Risk Scoring Celery Tasks v2.0.
 
 Automatische Berechnung von Entity Risk Scores mit erweiterten Funktionen:
-- Batch-Berechnung aller Entitaeten (taeglich um 02:00)
+- Batch-Berechnung aller Entitaeten (täglich um 02:00)
 - Einzelberechnung nach Invoice-Updates
 - Neuberechnung bei Zahlungseingang
 - Statistik-Generierung
@@ -46,9 +46,9 @@ def calculate_all_risk_scores_task(
     limit: int = 1000,
     recalculate_all: bool = False,
 ) -> Dict[str, Any]:
-    """Berechnet Risk Scores fuer alle Entitaeten.
+    """Berechnet Risk Scores für alle Entitaeten.
 
-    Wird taeglich um 02:00 Uhr automatisch ausgefuehrt.
+    Wird täglich um 02:00 Uhr automatisch ausgeführt.
     Berechnet nur Entitaeten, deren Score veraltet ist (>24h).
 
     Args:
@@ -169,17 +169,17 @@ def calculate_all_risk_scores_v2_task(
 ) -> Dict[str, Any]:
     """Enhanced daily risk score calculation with trend analysis (V2).
 
-    Erweiterungen gegenueber V1:
+    Erweiterungen gegenüber V1:
     - Branchenrisiko-Bewertung
     - Trend-Analyse (Verbesserung/Verschlechterung)
-    - History-Speicherung fuer spaetere Auswertung
+    - History-Speicherung für spätere Auswertung
     - Empfehlungsgenerierung
 
     Args:
         entity_type: Nur bestimmten Typ berechnen ("customer", "supplier", "both")
         limit: Maximale Anzahl zu verarbeitender Entitaeten
         recalculate_all: Alle neu berechnen, nicht nur veraltete
-        save_history: History-Eintraege speichern (Standard: True)
+        save_history: History-Einträge speichern (Standard: True)
 
     Returns:
         Dict mit erweiterten Verarbeitungsstatistiken
@@ -285,7 +285,7 @@ def calculate_all_risk_scores_v2_task(
                         if risk_key in stats["risk_distribution"]:
                             stats["risk_distribution"][risk_key] += 1
 
-                        # History speichern (wenn Company verfuegbar und save_history=True)
+                        # History speichern (wenn Company verfügbar und save_history=True)
                         if save_history and company_id:
                             try:
                                 await service.save_risk_score_history(
@@ -367,7 +367,7 @@ def calculate_single_risk_score_task(
     self,
     entity_id: str,
 ) -> Dict[str, Any]:
-    """Berechnet Risk Score fuer eine einzelne Entitaet.
+    """Berechnet Risk Score für eine einzelne Entitaet.
 
     Wird getriggert nach:
     - Invoice-Status-Updates
@@ -388,14 +388,14 @@ def calculate_single_risk_score_task(
             try:
                 entity_uuid = UUID(entity_id)
             except ValueError:
-                # Ungueltige UUID - nicht retryable
+                # Ungültige UUID - nicht retryable
                 return {
                     "entity_id": entity_id,
                     "success": False,
-                    "error": "Ungueltige Entity-ID (kein gueltiges UUID-Format)",
+                    "error": "Ungültige Entity-ID (kein gültiges UUID-Format)",
                 }
 
-            # Service gibt aktualisierte Entity zurueck
+            # Service gibt aktualisierte Entity zurück
             updated_entity = await service.update_entity_risk_score(db, entity_uuid)
 
             if not updated_entity:
@@ -405,7 +405,7 @@ def calculate_single_risk_score_task(
                     "error": "Entitaet nicht gefunden oder keine Daten",
                 }
 
-            # SECURITY: Kein entity_name zurueckgeben (PII)
+            # SECURITY: Kein entity_name zurückgeben (PII)
             return {
                 "entity_id": entity_id,
                 "success": True,
@@ -447,7 +447,7 @@ def calculate_single_risk_score_detailed_task(
     save_history: bool = True,
     company_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Berechnet detaillierten Risk Score (V2) fuer eine einzelne Entitaet.
+    """Berechnet detaillierten Risk Score (V2) für eine einzelne Entitaet.
 
     Erweiterte Version mit:
     - Trend-Analyse
@@ -458,7 +458,7 @@ def calculate_single_risk_score_detailed_task(
     Args:
         entity_id: UUID der Entitaet als String
         save_history: History-Eintrag speichern (Standard: True)
-        company_id: Company-ID fuer History (optional)
+        company_id: Company-ID für History (optional)
 
     Returns:
         Dict mit detaillierten Risk Score Informationen
@@ -474,7 +474,7 @@ def calculate_single_risk_score_detailed_task(
                 return {
                     "entity_id": entity_id,
                     "success": False,
-                    "error": "Ungueltige Entity-ID (kein gueltiges UUID-Format)",
+                    "error": "Ungültige Entity-ID (kein gültiges UUID-Format)",
                 }
 
             # V2: Detaillierte Berechnung
@@ -579,25 +579,25 @@ def on_invoice_updated_recalculate(
 
     Wird automatisch getriggert wenn:
     - Rechnung als bezahlt markiert wird
-    - Mahnstufe erhoeht wird
-    - Faelligkeitsdatum ueberschritten wird
+    - Mahnstufe erhöht wird
+    - Fälligkeitsdatum überschritten wird
 
     Args:
-        document_id: UUID des Dokuments (verknuepft mit Invoice)
+        document_id: UUID des Dokuments (verknüpft mit Invoice)
 
     Returns:
         Dict mit Neuberechnungs-Ergebnis
     """
     async def _recalculate_for_document() -> Dict[str, Any]:
         async with get_async_session_context() as db:
-            # UUID validieren - nicht retryable bei ungueltigem Format
+            # UUID validieren - nicht retryable bei ungültigem Format
             try:
                 doc_uuid = UUID(document_id)
             except ValueError:
                 return {
                     "document_id": document_id,
                     "success": False,
-                    "error": "Ungueltige Document-ID (kein gueltiges UUID-Format)",
+                    "error": "Ungültige Document-ID (kein gültiges UUID-Format)",
                 }
 
             # Finde das Dokument und seine Entitaet
@@ -616,7 +616,7 @@ def on_invoice_updated_recalculate(
                 return {
                     "document_id": document_id,
                     "success": False,
-                    "error": "Dokument nicht mit Entitaet verknuepft",
+                    "error": "Dokument nicht mit Entitaet verknüpft",
                 }
 
             # Trigger Neuberechnung
@@ -664,9 +664,9 @@ def check_high_risk_entities_task(
     self,
     threshold: float = 75.0,
 ) -> Dict[str, Any]:
-    """Prueft auf Entitaeten mit hohem Risiko.
+    """Prüft auf Entitaeten mit hohem Risiko.
 
-    Wird nach Batch-Berechnung ausgefuehrt.
+    Wird nach Batch-Berechnung ausgeführt.
     Kann Benachrichtigungen triggern (zukuenftige Erweiterung).
 
     Args:
@@ -689,7 +689,7 @@ def check_high_risk_entities_task(
             result = await db.execute(query)
             high_risk_entities = result.scalars().all()
 
-            # SECURITY: Kein entity_name zurueckgeben (PII)
+            # SECURITY: Kein entity_name zurückgeben (PII)
             entities_list = [
                 {
                     "entity_id": str(e.id),
@@ -732,13 +732,13 @@ def check_worsening_trends_task(
     days: int = 30,
     min_invoices: int = 3,
 ) -> Dict[str, Any]:
-    """Prueft auf Entitaeten mit sich verschlechterndem Zahlungstrend.
+    """Prüft auf Entitaeten mit sich verschlechterndem Zahlungstrend.
 
-    NEU in V2: Identifiziert fruehzeitig potenzielle Zahlungsprobleme.
+    NEU in V2: Identifiziert frühzeitig potenzielle Zahlungsprobleme.
 
     Args:
         days: Beobachtungszeitraum in Tagen (Standard: 30)
-        min_invoices: Mindestanzahl Rechnungen fuer Trend-Analyse
+        min_invoices: Mindestanzahl Rechnungen für Trend-Analyse
 
     Returns:
         Dict mit worsening trend entities
@@ -813,9 +813,9 @@ def check_worsening_trends_task(
     queue="maintenance",
 )
 def generate_risk_statistics_task(self) -> Dict[str, Any]:
-    """Generiert Statistiken ueber Risk Scores.
+    """Generiert Statistiken über Risk Scores.
 
-    Wird woechentlich ausgefuehrt fuer Reporting.
+    Wird wöchentlich ausgeführt für Reporting.
 
     Returns:
         Dict mit Risk Score Statistiken
@@ -930,11 +930,11 @@ def update_industry_codes_task(
     self,
     industry_mappings: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Any]:
-    """Aktualisiert Branchencodes fuer Entitaeten.
+    """Aktualisiert Branchencodes für Entitaeten.
 
     Kann verwendet werden um:
-    - Branchencodes aus Lexware-Import zu uebernehmen
-    - Manuelle Branchenzuordnungen durchzufuehren
+    - Branchencodes aus Lexware-Import zu übernehmen
+    - Manuelle Branchenzuordnungen durchzuführen
 
     Args:
         industry_mappings: Dict von entity_id -> industry_code
@@ -949,7 +949,7 @@ def update_industry_codes_task(
         return {
             "success": True,
             "updated": 0,
-            "message": "Keine Mappings uebergeben",
+            "message": "Keine Mappings übergeben",
         }
 
     async def _update_codes() -> Dict[str, Any]:

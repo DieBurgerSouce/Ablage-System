@@ -311,7 +311,7 @@ def extract_invoice_number(text: str) -> Optional[str]:
     ])
 
     def is_likely_label(value: str) -> bool:
-        """Prueft ob ein Wert wahrscheinlich ein Label ist."""
+        """Prüft ob ein Wert wahrscheinlich ein Label ist."""
         if not value:
             return True
         value_clean = value.lower().replace('-', '').replace('.', '').replace(' ', '')

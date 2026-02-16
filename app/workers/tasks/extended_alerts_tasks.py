@@ -2,10 +2,10 @@
 """
 Extended Alerts Celery Tasks.
 
-Automatische Pruefung und Erstellung erweiterter Alert-Typen:
-- Cashflow-Warnungen (taeglich um 06:00)
-- Vertrags-Warnungen (taeglich um 07:00)
-- Compliance-Warnungen (taeglich um 05:00)
+Automatische Prüfung und Erstellung erweiterter Alert-Typen:
+- Cashflow-Warnungen (täglich um 06:00)
+- Vertrags-Warnungen (täglich um 07:00)
+- Compliance-Warnungen (täglich um 05:00)
 - Lieferanten-Monitoring (bei Bedarf)
 
 Feinpoliert und durchdacht - Enterprise Extended Alerts.
@@ -45,15 +45,15 @@ def check_cashflow_alerts_task(
     days_ahead: int = 30,
 ) -> Dict[str, Any]:
     """
-    Prueft auf Cashflow-basierte Alert-Bedingungen.
+    Prüft auf Cashflow-basierte Alert-Bedingungen.
 
-    Wird taeglich um 06:00 Uhr automatisch ausgefuehrt.
-    Integriert mit CashflowPredictionService fuer:
-    - Liquiditaetsengpaesse (CASH_001)
+    Wird täglich um 06:00 Uhr automatisch ausgeführt.
+    Integriert mit CashflowPredictionService für:
+    - Liquiditätsengpaesse (CASH_001)
     - Unerwartete Zahlungsausgaenge (CASH_002)
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
+        company_id: Optional - nur für spezifische Firma
         days_ahead: Vorausschau in Tagen (Standard: 30)
 
     Returns:
@@ -142,16 +142,16 @@ def check_contract_alerts_task(
     days_ahead: int = 90,
 ) -> Dict[str, Any]:
     """
-    Prueft auf Vertrags-basierte Alert-Bedingungen.
+    Prüft auf Vertrags-basierte Alert-Bedingungen.
 
-    Wird taeglich um 07:00 Uhr automatisch ausgefuehrt.
-    Erstellt Alerts fuer:
+    Wird täglich um 07:00 Uhr automatisch ausgeführt.
+    Erstellt Alerts für:
     - Vertragsablauf (CONT_001)
-    - Kuendigungsfristen (CONT_002)
-    - Automatische Verlaengerungen (CONT_003)
+    - Kündigungsfristen (CONT_002)
+    - Automatische Verlängerungen (CONT_003)
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
+        company_id: Optional - nur für spezifische Firma
         days_ahead: Vorausschau in Tagen (Standard: 90)
 
     Returns:
@@ -192,7 +192,7 @@ def check_contract_alerts_task(
                     stats["total_alerts_created"] += alert_count
                     stats["alerts_by_company"][str(company.id)] = alert_count
 
-                    # Alert-Typen zaehlen
+                    # Alert-Typen zählen
                     for alert in alerts:
                         if "CONT_001" in alert.alert_code:
                             stats["expiry_alerts"] += 1
@@ -255,15 +255,15 @@ def check_compliance_alerts_task(
     days_ahead: int = 30,
 ) -> Dict[str, Any]:
     """
-    Prueft auf Compliance-basierte Alert-Bedingungen.
+    Prüft auf Compliance-basierte Alert-Bedingungen.
 
-    Wird taeglich um 05:00 Uhr automatisch ausgefuehrt.
-    Erstellt Alerts fuer:
-    - GDPR-Loeschfristen (COMP_006)
+    Wird täglich um 05:00 Uhr automatisch ausgeführt.
+    Erstellt Alerts für:
+    - GDPR-Löschfristen (COMP_006)
     - Aufbewahrungsfristen (COMP_007)
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
+        company_id: Optional - nur für spezifische Firma
         days_ahead: Vorausschau in Tagen (Standard: 30)
 
     Returns:
@@ -303,7 +303,7 @@ def check_compliance_alerts_task(
                     stats["total_alerts_created"] += alert_count
                     stats["alerts_by_company"][str(company.id)] = alert_count
 
-                    # Alert-Typen zaehlen
+                    # Alert-Typen zählen
                     for alert in alerts:
                         if "COMP_006" in alert.alert_code:
                             stats["gdpr_alerts"] += 1
@@ -367,7 +367,7 @@ def create_supplier_insolvency_alert_task(
     open_invoices_amount: float = 0.0,
 ) -> Dict[str, Any]:
     """
-    Erstellt Alert fuer moegliche Lieferanten-Insolvenz.
+    Erstellt Alert für mögliche Lieferanten-Insolvenz.
 
     Wird von externen Diensten oder manuell getriggert.
 
@@ -443,7 +443,7 @@ def create_supplier_ownership_change_alert_task(
     change_details: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
-    Erstellt Alert fuer Lieferanten-Eigentuemerwechsel.
+    Erstellt Alert für Lieferanten-Eigentuemerwechsel.
 
     Wird von externen Diensten oder manuell getriggert.
 
@@ -517,13 +517,13 @@ def run_all_extended_alerts_checks_task(
     days_ahead: int = 30,
 ) -> Dict[str, Any]:
     """
-    Fuehrt alle erweiterten Alert-Checks aus.
+    Führt alle erweiterten Alert-Checks aus.
 
-    Wird taeglich um 05:30 Uhr als Haupt-Task ausgefuehrt.
+    Wird täglich um 05:30 Uhr als Haupt-Task ausgeführt.
     Delegiert an spezialisierte Tasks.
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
+        company_id: Optional - nur für spezifische Firma
         days_ahead: Vorausschau in Tagen
 
     Returns:
@@ -578,7 +578,7 @@ def run_all_extended_alerts_checks_task(
                 except Exception as e:
                     overall_stats["errors"].append({
                         "company_id": str(company.id),
-                        "error": safe_error_detail(e, "Gesamtpruefung"),
+                        "error": safe_error_detail(e, "Gesamtprüfung"),
                     })
                     logger.warning(
                         "extended_alerts_company_check_failed",
@@ -623,12 +623,12 @@ def cleanup_old_extended_alerts_task(
     days_to_keep: int = 90,
 ) -> Dict[str, Any]:
     """
-    Loescht alte geloeste/verworfene Alerts.
+    Löscht alte geloeste/verworfene Alerts.
 
-    Wird woechentlich am Sonntag um 03:00 Uhr ausgefuehrt.
+    Wird wöchentlich am Sonntag um 03:00 Uhr ausgeführt.
 
     Args:
-        days_to_keep: Tage fuer geloeste Alerts behalten
+        days_to_keep: Tage für geloeste Alerts behalten
 
     Returns:
         Dict mit Statistiken
@@ -641,7 +641,7 @@ def cleanup_old_extended_alerts_task(
         async with get_async_session_context() as db:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
 
-            # Zaehlen vor Loeschung
+            # Zaehlen vor Löschung
             count_query = select(func.count(Alert.id)).where(
                 and_(
                     Alert.status.in_([
@@ -657,7 +657,7 @@ def cleanup_old_extended_alerts_task(
             count_to_delete = count_result.scalar() or 0
 
             if count_to_delete > 0:
-                # Loeschen
+                # Löschen
                 delete_stmt = delete(Alert).where(
                     and_(
                         Alert.status.in_([

@@ -1528,15 +1528,15 @@ class SuryaDatasetExporter:
         oversampling_factor: float = 2.0
     ) -> SuryaExportResult:
         """
-        Exportiert mit Business-Gewichtung fuer 90% Coverage-Strategie.
+        Exportiert mit Business-Gewichtung für 90% Coverage-Strategie.
 
-        Business-kritische Dokumenttypen werden ueberrepresentiert:
+        Business-kritische Dokumenttypen werden überrepresentiert:
         - Rechnungen (invoice): 2x Representation (business_criticality=1.5)
-        - Vertraege (contract): 1.5x Representation
-        - Umlaut-Samples: zusaetzlich 2x
+        - Verträge (contract): 1.5x Representation
+        - Umlaut-Samples: zusätzlich 2x
 
         Args:
-            oversampling_factor: Basis-Faktor fuer Oversampling (default: 2.0)
+            oversampling_factor: Basis-Faktor für Oversampling (default: 2.0)
 
         Returns:
             SuryaExportResult mit Business-gewichteten Samples
@@ -1552,7 +1552,7 @@ class SuryaDatasetExporter:
             "oversampling_factor": oversampling_factor
         })
 
-        # 1. Hole Business Document Profiles fuer Gewichtung
+        # 1. Hole Business Document Profiles für Gewichtung
         from app.db.models import BusinessDocumentProfile
 
         profiles_result = await self.db.execute(
@@ -1602,7 +1602,7 @@ class SuryaDatasetExporter:
             if self._has_umlauts(sample):
                 total_weight *= self.config.umlaut_weight_multiplier
 
-                # Extra Boost fuer viele Umlaute
+                # Extra Boost für viele Umlaute
                 umlaut_count = self._count_umlaut_words(sample)
                 if umlaut_count >= 5:
                     total_weight *= 1.3
@@ -1618,7 +1618,7 @@ class SuryaDatasetExporter:
         random.seed(self.config.seed)
         random.shuffle(weighted_samples)
 
-        # Eindeutige Samples fuer Statistik
+        # Eindeutige Samples für Statistik
         unique_samples = list({getattr(s, 'id', id(s)): s for s in weighted_samples}.values())
 
         # 4. Split

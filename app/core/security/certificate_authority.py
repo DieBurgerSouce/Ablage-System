@@ -218,7 +218,7 @@ class CertificateAuthority:
             )
         else:
             raise CertificateAuthorityError(
-                f"Nicht unterstuetzter Algorithmus: {algorithm}"
+                f"Nicht unterstützter Algorithmus: {algorithm}"
             )
 
     def _save_private_key(
@@ -354,7 +354,7 @@ class CertificateAuthority:
         """
         if self.is_initialized() and not force:
             raise CertificateAuthorityError(
-                "CA existiert bereits. Verwende force=True zum Ueberschreiben."
+                "CA existiert bereits. Verwende force=True zum Überschreiben."
             )
 
         logger.info(
@@ -527,7 +527,7 @@ class CertificateAuthority:
         # Validate validity period
         if request.validity_days < 1 or request.validity_days > 365:
             raise CertificateAuthorityError(
-                f"Ungueltige Gueltigkeit: {request.validity_days} Tage. "
+                f"Ungültige Gültigkeit: {request.validity_days} Tage. "
                 "Muss zwischen 1 und 365 Tagen liegen."
             )
 
@@ -796,7 +796,7 @@ class CertificateAuthority:
 
         # Check validity period
         if cert.not_valid_before_utc > now:
-            return False, "Zertifikat ist noch nicht gueltig"
+            return False, "Zertifikat ist noch nicht gültig"
 
         if cert.not_valid_after_utc < now:
             return False, "Zertifikat ist abgelaufen"
@@ -817,7 +817,7 @@ class CertificateAuthority:
                 cert.signature_algorithm_parameters,
             )
         except Exception:
-            return False, "Zertifikat-Signatur ungueltig"
+            return False, "Zertifikat-Signatur ungültig"
 
         return True, None
 

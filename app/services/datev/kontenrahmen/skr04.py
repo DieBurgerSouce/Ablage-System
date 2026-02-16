@@ -2,18 +2,18 @@
 """
 SKR04 Kontenrahmen.
 
-Standardkontenrahmen fuer bilanzierende Unternehmen.
-Verwendung: GmbH, AG, groessere Unternehmen mit Bilanzierungspflicht.
+Standardkontenrahmen für bilanzierende Unternehmen.
+Verwendung: GmbH, AG, größere Unternehmen mit Bilanzierungspflicht.
 
 Gliederung (nach Abschlussgliederungsprinzip):
 - Klasse 0: Anlagevermoegen
 - Klasse 1: Umlaufvermoegen
 - Klasse 2: Eigenkapital
-- Klasse 3: Verbindlichkeiten, Rueckstellungen
-- Klasse 4: Ertraege
+- Klasse 3: Verbindlichkeiten, Rückstellungen
+- Klasse 4: Erträge
 - Klasse 5: Material- und Personalaufwand
 - Klasse 6: Sonstige Aufwendungen
-- Klasse 7: Weitere Ertraege und Aufwendungen
+- Klasse 7: Weitere Erträge und Aufwendungen
 """
 
 from typing import Dict
@@ -35,7 +35,7 @@ class SKR04(BaseKontenrahmen):
 
     @property
     def beschreibung(self) -> str:
-        return "Standardkontenrahmen fuer bilanzierende Unternehmen (abschlussorientiert)"
+        return "Standardkontenrahmen für bilanzierende Unternehmen (abschlussorientiert)"
 
     # =========================================================================
     # AUFWANDSKONTEN (Klasse 5 und 6)
@@ -47,7 +47,7 @@ class SKR04(BaseKontenrahmen):
     WARENEINGANG_EU_19 = "5425"   # Innergemeinschaftlicher Erwerb 19%
     WARENEINGANG_EU_7 = "5435"    # Innergemeinschaftlicher Erwerb 7%
     WARENEINGANG_DRITTLAND = "5550"  # Einfuhr Drittland
-    FREMDLEISTUNGEN = "5900"      # Aufwendungen fuer bez. Leistungen
+    FREMDLEISTUNGEN = "5900"      # Aufwendungen für bez. Leistungen
 
     # Klasse 6: Sonstige betriebliche Aufwendungen
     MIETE = "6310"                # Miete
@@ -61,7 +61,7 @@ class SKR04(BaseKontenrahmen):
     TELEFON = "6805"              # Telekommunikation
     VERSICHERUNGEN = "6400"       # Versicherungen
     RECHTSBERATUNG = "6825"       # Rechts- und Beratungskosten
-    BUCHFUEHRUNG = "6827"         # Buchfuehrungskosten
+    BUCHFUEHRUNG = "6827"         # Buchführungskosten
     REPARATUREN = "6470"          # Reparatur und Instandhaltung
     KFZKOSTEN = "6520"            # Kfz-Kosten
     KFZBETRIEB = "6530"           # Lfd. Kfz-Betriebskosten
@@ -92,7 +92,7 @@ class SKR04(BaseKontenrahmen):
             "telefon": self.TELEFON,
             "versicherung": self.VERSICHERUNGEN,
             "rechtsberatung": self.RECHTSBERATUNG,
-            "buchfuehrung": self.BUCHFUEHRUNG,
+            "buchführung": self.BUCHFUEHRUNG,
             "reparatur": self.REPARATUREN,
             "kfz": self.KFZKOSTEN,
             "kfz_betrieb": self.KFZBETRIEB,
@@ -100,7 +100,7 @@ class SKR04(BaseKontenrahmen):
             "abschreibung": self.ABSCHREIBUNGEN,
         }
 
-    # Properties fuer Base-Klassen-Methoden (get_expense_account/get_revenue_account)
+    # Properties für Base-Klassen-Methoden (get_expense_account/get_revenue_account)
     @property
     def _wareneingang_19(self) -> str:
         return self.WARENEINGANG_19
@@ -115,11 +115,11 @@ class SKR04(BaseKontenrahmen):
 
     ERLOESE_19 = "4400"           # Erloese 19% USt
     ERLOESE_7 = "4300"            # Erloese 7% USt
-    ERLOESE_0 = "4100"            # Steuerfreie Umsaetze Inland
+    ERLOESE_0 = "4100"            # Steuerfreie Umsätze Inland
     ERLOESE_EU = "4125"           # Steuerfreie IG Lieferungen
     ERLOESE_DRITTLAND = "4120"    # Steuerfreie Ausfuhrlieferungen
     ERLOESE_RC = "4337"           # Erloese Reverse Charge
-    ERLOESE_SONSTIGE = "4830"     # Sonstige betriebliche Ertraege
+    ERLOESE_SONSTIGE = "4830"     # Sonstige betriebliche Erträge
 
     @property
     def revenue_accounts(self) -> Dict[str, str]:
@@ -146,7 +146,7 @@ class SKR04(BaseKontenrahmen):
         return self.ERLOESE_7
 
     # =========================================================================
-    # PERSONENKONTEN (Defaults aus BaseKontenrahmen uebernommen)
+    # PERSONENKONTEN (Defaults aus BaseKontenrahmen übernommen)
     # =========================================================================
     # Kreditor-/Debitoren-Ranges sind identisch zu SKR03, daher in Base definiert
 

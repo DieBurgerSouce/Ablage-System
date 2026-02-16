@@ -2,7 +2,7 @@
 """
 Peppol Sender Service - E-Invoice Transmission via Peppol Network.
 
-Implementiert den Versand von E-Rechnungen ueber das Peppol-Netzwerk:
+Implementiert den Versand von E-Rechnungen über das Peppol-Netzwerk:
 - SMP (Service Metadata Publisher) Lookup
 - AS4 Message Preparation
 - Transmission Tracking
@@ -114,12 +114,12 @@ class PeppolMessage:
 
 class PeppolSenderService:
     """
-    Service fuer den Versand von E-Rechnungen ueber Peppol.
+    Service für den Versand von E-Rechnungen über Peppol.
 
     Usage:
         sender = PeppolSenderService()
 
-        # Peppol-Faehigkeit pruefen
+        # Peppol-Fähigkeit prüfen
         can_send = await sender.check_peppol_capability(leitweg_id)
 
         # E-Rechnung senden
@@ -145,7 +145,7 @@ class PeppolSenderService:
         # Eigene Peppol Participant ID
         self._sender_id = getattr(settings, "PEPPOL_SENDER_ID", None)
 
-        # Client Certificate fuer AS4
+        # Client Certificate für AS4
         self._client_certificate = getattr(settings, "PEPPOL_CLIENT_CERTIFICATE", None)
 
         # Production vs Test
@@ -162,7 +162,7 @@ class PeppolSenderService:
 
     @property
     def is_configured(self) -> bool:
-        """Prueft ob Peppol konfiguriert ist."""
+        """Prüft ob Peppol konfiguriert ist."""
         return bool(self._access_point_url and self._sender_id)
 
     async def check_peppol_capability(
@@ -171,10 +171,10 @@ class PeppolSenderService:
         document_type: str = "invoice"
     ) -> Tuple[bool, Optional[PeppolEndpoint]]:
         """
-        Prueft ob ein Empfaenger Peppol-faehig ist (SMP Lookup).
+        Prüft ob ein Empfänger Peppol-fähig ist (SMP Lookup).
 
         Args:
-            leitweg_id: Leitweg-ID des Empfaengers (BT-10)
+            leitweg_id: Leitweg-ID des Empfängers (BT-10)
             document_type: Dokumenttyp (invoice, credit_note, xrechnung_cii)
 
         Returns:
@@ -215,7 +215,7 @@ class PeppolSenderService:
 
         Verwendet den offiziellen Peppol SMP DNS-basierten Discovery.
         """
-        # Hash fuer DNS Lookup
+        # Hash für DNS Lookup
         participant_hash = hashlib.md5(participant_id.lower().encode()).hexdigest()
 
         # SML Domain
@@ -320,12 +320,12 @@ class PeppolSenderService:
         fallback_email: Optional[str] = None,
     ) -> TransmissionResult:
         """
-        Sendet eine E-Rechnung ueber Peppol oder Email-Fallback.
+        Sendet eine E-Rechnung über Peppol oder Email-Fallback.
 
         Args:
             einvoice_id: EInvoiceDocument ID
             db: Database Session
-            fallback_email: Email fuer Fallback wenn Peppol nicht moeglich
+            fallback_email: Email für Fallback wenn Peppol nicht möglich
 
         Returns:
             TransmissionResult mit Status
@@ -359,7 +359,7 @@ class PeppolSenderService:
             # Versuche aus XML zu extrahieren
             leitweg_id = self._extract_leitweg_id(einvoice.xml_content)
 
-        # Peppol-Faehigkeit pruefen
+        # Peppol-Fähigkeit prüfen
         can_peppol, endpoint = await self.check_peppol_capability(leitweg_id) if leitweg_id else (False, None)
 
         # Transmission Record erstellen
@@ -383,7 +383,7 @@ class PeppolSenderService:
             else:
                 return TransmissionResult(
                     success=False,
-                    error="Weder Peppol noch Email-Fallback verfuegbar",
+                    error="Weder Peppol noch Email-Fallback verfügbar",
                     error_code="NO_CHANNEL_AVAILABLE",
                     retry_allowed=False
                 )
@@ -517,7 +517,7 @@ class PeppolSenderService:
     def _create_as4_envelope(self, message: PeppolMessage) -> bytes:
         """Erstellt AS4 SOAP Envelope (vereinfacht)."""
         # Dies ist eine vereinfachte Version
-        # In Produktion wuerde ein vollstaendiges AS4 Message mit WS-Security verwendet
+        # In Produktion wuerde ein vollständiges AS4 Message mit WS-Security verwendet
         soap_envelope = f'''<?xml version="1.0" encoding="UTF-8"?>
 <soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope"
                xmlns:eb="http://docs.oasis-open.org/ebxml-msg/ebms/v3.0/ns/core/200704/">
@@ -580,13 +580,13 @@ class PeppolSenderService:
 anbei erhalten Sie eine E-Rechnung im XRechnung-Format.
 
 Diese Rechnung wurde automatisch aus unserem Rechnungssystem generiert
-und entspricht dem deutschen Standard fuer elektronische Rechnungen (XRechnung 3.0).
+und entspricht dem deutschen Standard für elektronische Rechnungen (XRechnung 3.0).
 
 Rechnungsnummer: {invoice_number or "siehe Anhang"}
 Format: {einvoice.format or "XRechnung"}
 Profil: {einvoice.profile or "EN16931"}
 
-Die XML-Datei im Anhang kann mit einer XRechnung-faehigen Software
+Die XML-Datei im Anhang kann mit einer XRechnung-fähigen Software
 verarbeitet werden.
 
 Mit freundlichen Gruessen
@@ -640,11 +640,11 @@ Ihr Rechnungssystem
         message_id: str
     ) -> Dict[str, Any]:
         """
-        Prueft Status einer Peppol-Uebertragung.
+        Prüft Status einer Peppol-Übertragung.
 
-        In einer vollstaendigen Implementierung wuerde dies:
+        In einer vollständigen Implementierung wuerde dies:
         - Access Point API abfragen
-        - MDN (Message Disposition Notification) pruefen
+        - MDN (Message Disposition Notification) prüfen
         - Delivery Status aktualisieren
         """
         if not self._access_point_url:
@@ -716,7 +716,7 @@ _peppol_sender_instance: Optional[PeppolSenderService] = None
 
 def get_peppol_sender() -> PeppolSenderService:
     """
-    Factory-Funktion fuer PeppolSenderService (Singleton).
+    Factory-Funktion für PeppolSenderService (Singleton).
 
     Returns:
         PeppolSenderService: Globale Instanz

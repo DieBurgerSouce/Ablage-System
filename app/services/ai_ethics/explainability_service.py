@@ -1,7 +1,7 @@
 """
 Explainability Service
 
-Erklaert KI-Entscheidungen in verstaendlicher Sprache.
+Erklärt KI-Entscheidungen in verstaendlicher Sprache.
 Zeigt Faktoren, Gewichtungen und Alternativen.
 
 Feinpoliert und durchdacht - Enterprise AI Explainability.
@@ -33,7 +33,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class ExplanationFactor:
-    """Einzelner Erklaerungsfaktor."""
+    """Einzelner Erklärungsfaktor."""
 
     name: str  # Faktor-Name (German)
     weight: float  # Gewichtung (0-1)
@@ -54,7 +54,7 @@ class ExplanationFactor:
 
 @dataclass
 class Explanation:
-    """Vollstaendige Erklaerung einer KI-Entscheidung."""
+    """Vollständige Erklärung einer KI-Entscheidung."""
 
     decision_type: str  # risk_score, document_classification, etc.
     summary: str  # German Zusammenfassung
@@ -80,12 +80,12 @@ class Explanation:
 
 class ExplainabilityService:
     """
-    Explainability Service fuer KI-Entscheidungen.
+    Explainability Service für KI-Entscheidungen.
 
-    Unterstuetzt:
-    - Risk Score Erklaerungen
-    - Document Classification Erklaerungen
-    - Auto-Approval Erklaerungen
+    Unterstützt:
+    - Risk Score Erklärungen
+    - Document Classification Erklärungen
+    - Auto-Approval Erklärungen
     """
 
     def __init__(self) -> None:
@@ -99,7 +99,7 @@ class ExplainabilityService:
         db: AsyncSession,
     ) -> Optional[Explanation]:
         """
-        Erklaert KI-Entscheidung.
+        Erklärt KI-Entscheidung.
 
         Args:
             decision_id: ID der Entscheidung (Entity, Document, etc.)
@@ -131,7 +131,7 @@ class ExplainabilityService:
         db: AsyncSession,
     ) -> Optional[Explanation]:
         """
-        Erklaert Risk Score Berechnung.
+        Erklärt Risk Score Berechnung.
 
         Args:
             entity_id: Entity UUID
@@ -157,7 +157,7 @@ class ExplainabilityService:
         # Erstelle Faktoren
         factors: List[ExplanationFactor] = []
 
-        # 1. Zahlungsverzoegerung (35%)
+        # 1. Zahlungsverzögerung (35%)
         if payment_delay > 30:
             impact = "negative"
             desc = f"Zahlungen durchschnittlich {payment_delay:.0f} Tage verspätet (kritisch)"
@@ -294,7 +294,7 @@ class ExplainabilityService:
         db: AsyncSession,
     ) -> Optional[Explanation]:
         """
-        Erklaert Document Classification.
+        Erklärt Document Classification.
 
         Args:
             document_id: Document UUID
@@ -383,7 +383,7 @@ class ExplainabilityService:
         db: AsyncSession,
     ) -> Optional[Explanation]:
         """
-        Erklaert Auto-Approval Entscheidung.
+        Erklärt Auto-Approval Entscheidung.
 
         Args:
             invoice_id: Invoice UUID
@@ -396,7 +396,7 @@ class ExplainabilityService:
         if not invoice:
             return None
 
-        # Lade zugehoerige Daten fuer Erklaerung
+        # Lade zugehoerige Daten für Erklärung
         factors: List[ExplanationFactor] = []
         total_confidence = 0.0
         positive_factors = 0
@@ -430,7 +430,7 @@ class ExplainabilityService:
                 weight=0.35,
                 value=f"{amount:.2f} EUR",
                 impact="negative",
-                description=f"Betrag ueber automatischer Freigabegrenze ({amount:.2f} EUR > 1000 EUR)",
+                description=f"Betrag über automatischer Freigabegrenze ({amount:.2f} EUR > 1000 EUR)",
             ))
             negative_factors += 1
 
@@ -460,7 +460,7 @@ class ExplainabilityService:
                     weight=0.30,
                     value=f"Risiko-Score: {risk_score}/100",
                     impact="neutral" if risk_score < 60 else "negative",
-                    description=f"Lieferant mit {'mittlerer' if risk_score < 60 else 'hoeherer'} Risikobewertung",
+                    description=f"Lieferant mit {'mittlerer' if risk_score < 60 else 'höherer'} Risikobewertung",
                 ))
                 if risk_score < 60:
                     total_confidence += 0.15
@@ -476,7 +476,7 @@ class ExplainabilityService:
             ))
             total_confidence += 0.10
 
-        # 3. Dokumenten-Qualitaet (basierend auf Vollstaendigkeit)
+        # 3. Dokumenten-Qualität (basierend auf Vollständigkeit)
         doc_quality_score = 0.0
         quality_details = []
 
@@ -485,7 +485,7 @@ class ExplainabilityService:
             quality_details.append("Rechnungsnummer erkannt")
         if invoice.due_date:
             doc_quality_score += 0.25
-            quality_details.append("Faelligkeitsdatum vorhanden")
+            quality_details.append("Fälligkeitsdatum vorhanden")
         if invoice.amount and invoice.amount > 0:
             doc_quality_score += 0.25
             quality_details.append("Betrag erkannt")
@@ -496,34 +496,34 @@ class ExplainabilityService:
         quality_value = f"{doc_quality_score * 100:.0f}%"
         if doc_quality_score >= 0.75:
             factors.append(ExplanationFactor(
-                name="Dokumenten-Qualitaet",
+                name="Dokumenten-Qualität",
                 weight=0.25,
                 value=quality_value,
                 impact="positive",
-                description=f"Hohe Dokumentqualitaet: {', '.join(quality_details)}",
+                description=f"Hohe Dokumentqualität: {', '.join(quality_details)}",
             ))
             total_confidence += 0.25
             positive_factors += 1
         elif doc_quality_score >= 0.50:
             factors.append(ExplanationFactor(
-                name="Dokumenten-Qualitaet",
+                name="Dokumenten-Qualität",
                 weight=0.25,
                 value=quality_value,
                 impact="neutral",
-                description=f"Mittlere Dokumentqualitaet: {', '.join(quality_details)}",
+                description=f"Mittlere Dokumentqualität: {', '.join(quality_details)}",
             ))
             total_confidence += 0.15
         else:
             factors.append(ExplanationFactor(
-                name="Dokumenten-Qualitaet",
+                name="Dokumenten-Qualität",
                 weight=0.25,
                 value=quality_value,
                 impact="negative",
-                description=f"Niedrige Dokumentqualitaet, fehlende Felder",
+                description=f"Niedrige Dokumentqualität, fehlende Felder",
             ))
             negative_factors += 1
 
-        # 4. Zahlungshistorie (wenn verfuegbar)
+        # 4. Zahlungshistorie (wenn verfügbar)
         if entity:
             # Zaehle bisherige bezahlte Rechnungen
             from sqlalchemy import func
@@ -567,15 +567,15 @@ class ExplainabilityService:
                 "Vier-Augen-Prinzip ab 5000 EUR",
             ]
         elif final_confidence >= 0.50:
-            summary = f"Bedingte Freigabe moeglich: {positive_factors} positive, {negative_factors} kritische Faktoren"
+            summary = f"Bedingte Freigabe möglich: {positive_factors} positive, {negative_factors} kritische Faktoren"
             alternatives = [
-                "Manuelle Pruefung empfohlen",
-                "Rueckfrage beim Lieferanten",
+                "Manuelle Prüfung empfohlen",
+                "Rückfrage beim Lieferanten",
             ]
         else:
             summary = f"Manuelle Freigabe erforderlich: {negative_factors} kritische Faktoren identifiziert"
             alternatives = [
-                "Detailpruefung durch Buchhaltung",
+                "Detailprüfung durch Buchhaltung",
                 "Eskalation an Vorgesetzten",
             ]
 

@@ -43,13 +43,13 @@ LOCKOUT_PREFIX = "login:lockout:"
 # FAANG-AUDIT FIX: In-Memory-Fallback (wenn Redis nicht verfügbar)
 # SICHERHEITSWARNUNG: In-Memory ist prozesslokal!
 # Bei Multi-Worker-Deployments:
-# - Brute-Force kann ueber verschiedene Worker verteilt werden
+# - Brute-Force kann über verschiedene Worker verteilt werden
 # - Lockout-Status ist nicht synchronisiert
 # EMPFEHLUNG: fail_closed=True in Production (Default), dann wird In-Memory nicht genutzt
 import asyncio
 _failed_attempts_fallback: Dict[str, int] = {}
 _lockout_until_fallback: Dict[str, datetime] = {}
-_fallback_lock: asyncio.Lock = asyncio.Lock()  # Thread-Safety fuer Fallback-Dicts
+_fallback_lock: asyncio.Lock = asyncio.Lock()  # Thread-Safety für Fallback-Dicts
 
 # Flag um einmalig vor In-Memory Fallback zu warnen
 _fallback_warned: bool = False
@@ -250,7 +250,7 @@ async def check_account_lockout(
             identifier=identifier[:30] + "...",
             message="SICHERHEITSWARNUNG: In-Memory-Fallback ist prozesslokal! "
                     "Bei Multi-Worker-Deployments kann Brute-Force verteilt werden. "
-                    "Empfehlung: Redis verfuegbar machen oder fail_closed=True setzen."
+                    "Empfehlung: Redis verfügbar machen oder fail_closed=True setzen."
         )
         _fallback_warned = True
 

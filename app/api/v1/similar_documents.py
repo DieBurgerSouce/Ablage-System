@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Aehnliche Dokumente API Endpoints.
+Ähnliche Dokumente API Endpoints.
 
-Enterprise Feature: Dokumenten-Aehnlichkeitssuche basierend auf pgvector Embeddings.
+Enterprise Feature: Dokumenten-Ähnlichkeitssuche basierend auf pgvector Embeddings.
 
 Endpoints:
-- GET  /documents/{document_id}/similar - Aehnliche Dokumente finden
+- GET  /documents/{document_id}/similar - Ähnliche Dokumente finden
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ from app.services.search_service import SearchService
 
 logger = structlog.get_logger(__name__)
 
-router = APIRouter(prefix="/documents", tags=["Aehnliche Dokumente"])
+router = APIRouter(prefix="/documents", tags=["Ähnliche Dokumente"])
 
 
 # =============================================================================
@@ -36,12 +36,12 @@ router = APIRouter(prefix="/documents", tags=["Aehnliche Dokumente"])
 
 
 class SimilarDocumentResponse(BaseModel):
-    """Aehnliches Dokument mit Aehnlichkeitswert."""
+    """Ähnliches Dokument mit Ähnlichkeitswert."""
 
     document_id: UUID
     filename: str
     document_type: str
-    similarity_score: float = Field(..., description="Aehnlichkeitswert (0-1)")
+    similarity_score: float = Field(..., description="Ähnlichkeitswert (0-1)")
     created_at: datetime
     text_preview: Optional[str] = None
 
@@ -49,7 +49,7 @@ class SimilarDocumentResponse(BaseModel):
 
 
 class SimilarDocumentsListResponse(BaseModel):
-    """Liste aehnlicher Dokumente."""
+    """Liste ähnlicher Dokumente."""
 
     document_id: UUID = Field(..., description="Quell-Dokument")
     similar_documents: List[SimilarDocumentResponse]
@@ -65,12 +65,12 @@ class SimilarDocumentsListResponse(BaseModel):
 @router.get(
     "/{document_id}/similar",
     response_model=SimilarDocumentsListResponse,
-    summary="Aehnliche Dokumente finden",
-    description="Findet aehnliche Dokumente basierend auf Embedding-Aehnlichkeit (pgvector).",
+    summary="Ähnliche Dokumente finden",
+    description="Findet ähnliche Dokumente basierend auf Embedding-Ähnlichkeit (pgvector).",
     responses={
-        200: {"description": "Liste aehnlicher Dokumente erfolgreich abgerufen"},
+        200: {"description": "Liste ähnlicher Dokumente erfolgreich abgerufen"},
         404: {"description": "Quell-Dokument nicht gefunden"},
-        429: {"description": "Rate Limit ueberschritten"},
+        429: {"description": "Rate Limit überschritten"},
         500: {"description": "Interner Serverfehler"},
     },
 )
@@ -82,37 +82,37 @@ async def find_similar_documents(
         10,
         ge=1,
         le=50,
-        description="Maximale Anzahl aehnlicher Dokumente"
+        description="Maximale Anzahl ähnlicher Dokumente"
     ),
     threshold: float = Query(
         0.6,
         ge=0.1,
         le=1.0,
-        description="Minimaler Aehnlichkeitswert (0.1-1.0)"
+        description="Minimaler Ähnlichkeitswert (0.1-1.0)"
     ),
     exclude_same_type: bool = Query(
         False,
-        description="Dokumente desselben Typs ausschliessen"
+        description="Dokumente desselben Typs ausschließen"
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> SimilarDocumentsListResponse:
     """
-    Findet aehnliche Dokumente basierend auf Embedding-Aehnlichkeit.
+    Findet ähnliche Dokumente basierend auf Embedding-Ähnlichkeit.
 
-    Verwendet pgvector fuer hochperformante Vektorsuche in der Datenbank.
+    Verwendet pgvector für hochperformante Vektorsuche in der Datenbank.
 
     Args:
-        request: FastAPI Request (fuer Rate Limiting)
+        request: FastAPI Request (für Rate Limiting)
         document_id: UUID des Quell-Dokuments
         limit: Maximale Anzahl Ergebnisse (1-50, Standard: 10)
-        threshold: Minimaler Aehnlichkeitswert (0.1-1.0, Standard: 0.6)
-        exclude_same_type: Dokumente desselben Typs ausschliessen (Standard: False)
+        threshold: Minimaler Ähnlichkeitswert (0.1-1.0, Standard: 0.6)
+        exclude_same_type: Dokumente desselben Typs ausschließen (Standard: False)
         db: Datenbankverbindung
         current_user: Authentifizierter Benutzer
 
     Returns:
-        Liste aehnlicher Dokumente mit Aehnlichkeitswerten
+        Liste ähnlicher Dokumente mit Ähnlichkeitswerten
 
     Raises:
         HTTPException 404: Quell-Dokument nicht gefunden
@@ -188,5 +188,5 @@ async def find_similar_documents(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Suchen aehnlicher Dokumente",
+            detail="Fehler beim Suchen ähnlicher Dokumente",
         )

@@ -12,8 +12,10 @@
 
 import React, { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
+import { useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import { logger } from '@/lib/logger';
+import { computeFileHash } from '@/lib/utils/file-hash';
 import {
     Upload,
     Cpu,
@@ -44,8 +46,11 @@ import {
 } from '../types';
 import { useAblageMultiUpload } from '../hooks/use-ablage-multi-upload';
 import { useGPUStatus } from '../hooks/useAblage';
+import { useDuplicateCheck } from '../hooks/use-duplicate-check';
 import { OCRReviewModal } from './OCRReviewModal';
 import { AblageUploadFileList } from './AblageUploadFileList';
+import { DuplicateWarningDialog } from './DuplicateWarningDialog';
+import type { DuplicateCandidate } from '../api/ablage-api';
 
 interface DocumentUploadDialogProps {
     open: boolean;
@@ -74,7 +79,15 @@ export function DocumentUploadDialog({
 }: DocumentUploadDialogProps) {
     const [selectedBackend, setSelectedBackend] = useState<string>('deepseek');
     const [isSavingFile, setIsSavingFile] = useState(false);
+    const [duplicateWarning, setDuplicateWarning] = useState<{
+        file: File;
+        candidates: DuplicateCandidate[];
+        recommendation: 'skip' | 'proceed' | 'review';
+    } | null>(null);
+    const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
+    const navigate = useNavigate();
+    const { check: checkDuplicate } = useDuplicateCheck();
     const { data: gpuStatus } = useGPUStatus();
     const gpuAvailable = gpuStatus?.available ?? true;
 
@@ -122,12 +135,71 @@ export function DocumentUploadDialog({
     });
 
     const onDrop = useCallback(
-        (acceptedFiles: File[]) => {
-            if (acceptedFiles.length > 0) {
-                addFiles(acceptedFiles);
+        async (acceptedFiles: File[]) => {
+            if (acceptedFiles.length === 0) return;
+
+            // Check each file for duplicates before adding
+            const filesToAdd: File[] = [];
+
+            for (const file of acceptedFiles) {
+                try {
+                    const hash = await computeFileHash(file);
+                    const result = await checkDuplicate({ fileHash: hash, filename: file.name });
+
+                    if (result.has_duplicates) {
+                        // Show warning for first duplicate, queue remaining
+                        setDuplicateWarning({
+                            file,
+                            candidates: result.candidates,
+                            recommendation: result.recommendation,
+                        });
+                        setPendingFiles(acceptedFiles.filter((f) => f !== file));
+                        // Add files checked so far (before duplicate hit)
+                        if (filesToAdd.length > 0) {
+                            addFiles(filesToAdd);
+                        }
+                        return;
+                    }
+
+                    filesToAdd.push(file);
+                } catch {
+                    // Falls der Check fehlschlaegt, Datei trotzdem hinzufuegen
+                    filesToAdd.push(file);
+                }
+            }
+
+            if (filesToAdd.length > 0) {
+                addFiles(filesToAdd);
             }
         },
-        [addFiles]
+        [addFiles, checkDuplicate]
+    );
+
+    const handleDuplicateProceed = useCallback(() => {
+        if (duplicateWarning) {
+            addFiles([duplicateWarning.file, ...pendingFiles]);
+        }
+        setDuplicateWarning(null);
+        setPendingFiles([]);
+    }, [duplicateWarning, pendingFiles, addFiles]);
+
+    const handleDuplicateCancel = useCallback(() => {
+        // Skip this file, but add remaining pending files
+        if (pendingFiles.length > 0) {
+            addFiles(pendingFiles);
+        }
+        setDuplicateWarning(null);
+        setPendingFiles([]);
+    }, [pendingFiles, addFiles]);
+
+    const handleDuplicateNavigate = useCallback(
+        (documentId: string) => {
+            setDuplicateWarning(null);
+            setPendingFiles([]);
+            onOpenChange(false);
+            navigate({ to: '/documents/$documentId', params: { documentId } });
+        },
+        [navigate, onOpenChange]
     );
 
     const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
@@ -382,6 +454,22 @@ export function DocumentUploadDialog({
                     )}
                 </DialogFooter>
             </DialogContent>
+
+            {/* Duplicate Warning Dialog */}
+            <DuplicateWarningDialog
+                open={duplicateWarning !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        handleDuplicateCancel();
+                    }
+                }}
+                filename={duplicateWarning?.file.name ?? ''}
+                candidates={duplicateWarning?.candidates ?? []}
+                recommendation={duplicateWarning?.recommendation ?? 'proceed'}
+                onProceed={handleDuplicateProceed}
+                onNavigate={handleDuplicateNavigate}
+                onCancel={handleDuplicateCancel}
+            />
         </Dialog>
     );
 }

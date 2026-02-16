@@ -413,7 +413,7 @@ class TableExtractionService:
                 page_count=0,
                 extraction_timestamp=datetime.now(timezone.utc).isoformat(),
                 processing_time_ms=0,
-                metadata={"error": "Kein Layout verfuegbar"},
+                metadata={"error": "Kein Layout verfügbar"},
             )
 
         page_count = layout.page_count

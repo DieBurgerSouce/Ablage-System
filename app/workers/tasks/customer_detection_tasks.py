@@ -1,7 +1,7 @@
 """Customer Detection Tasks for Celery.
 
-Automatische Erkennung von Geschaeftskontakten aus verarbeiteten Dokumenten.
-Laeuft nach OCR-Verarbeitung als Background-Task.
+Automatische Erkennung von Geschäftskontakten aus verarbeiteten Dokumenten.
+Läuft nach OCR-Verarbeitung als Background-Task.
 """
 
 from datetime import datetime, timezone
@@ -100,7 +100,7 @@ def detect_contacts_task(
                         "success": True,
                         "document_id": document_id,
                         "skipped": True,
-                        "reason": f"Dokumenttyp '{doc_type}' wird nicht unterstuetzt",
+                        "reason": f"Dokumenttyp '{doc_type}' wird nicht unterstützt",
                     }
 
                 # Use document owner if not specified
@@ -113,7 +113,7 @@ def detect_contacts_task(
                     return {
                         "success": False,
                         "document_id": document_id,
-                        "error": "Kein Besitzer fuer Dokument",
+                        "error": "Kein Besitzer für Dokument",
                     }
 
                 # Run detection

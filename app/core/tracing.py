@@ -1,9 +1,9 @@
 """OpenTelemetry Distributed Tracing.
 
-Implementiert End-to-End Tracing fuer das Ablage-System:
-- Request Tracing ueber alle Services
+Implementiert End-to-End Tracing für das Ablage-System:
+- Request Tracing über alle Services
 - Span Context Propagation
-- Custom Attributes fuer OCR-Operationen
+- Custom Attributes für OCR-Operationen
 - Integration mit Jaeger/OTLP Collector
 
 Usage:
@@ -29,7 +29,7 @@ import structlog
 
 from app.core.safe_errors import safe_error_log
 
-# Lazy imports fuer OpenTelemetry (optional dependency)
+# Lazy imports für OpenTelemetry (optional dependency)
 try:
     from opentelemetry import trace
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -61,12 +61,12 @@ F = TypeVar('F', bound=Callable[..., object])
 class TracingService:
     """OpenTelemetry Tracing Service.
 
-    Konfiguriert und verwaltet Distributed Tracing fuer das gesamte System.
+    Konfiguriert und verwaltet Distributed Tracing für das gesamte System.
 
     Features:
     - OTLP Export zu Jaeger/Collector
-    - Auto-Instrumentierung fuer FastAPI, SQLAlchemy, Redis, Celery
-    - Custom Span Attributes fuer OCR-Metriken
+    - Auto-Instrumentierung für FastAPI, SQLAlchemy, Redis, Celery
+    - Custom Span Attributes für OCR-Metriken
     - B3 und W3C Trace Context Propagation
     """
 
@@ -81,10 +81,10 @@ class TracingService:
         """Initialisiert den Tracing Service.
 
         Args:
-            service_name: Name des Services fuer Traces
+            service_name: Name des Services für Traces
             service_version: Version des Services
             otlp_endpoint: OTLP Collector Endpoint (z.B. localhost:4317)
-            console_export: Zusaetzlich auf Console ausgeben (Debug)
+            console_export: Zusätzlich auf Console ausgeben (Debug)
             enabled: Tracing aktivieren/deaktivieren
         """
         self.service_name = service_name
@@ -119,7 +119,7 @@ class TracingService:
         """Initialisiert OpenTelemetry Tracing.
 
         Args:
-            app: Optional FastAPI App fuer Auto-Instrumentierung
+            app: Optional FastAPI App für Auto-Instrumentierung
 
         Returns:
             True wenn erfolgreich initialisiert
@@ -165,7 +165,7 @@ class TracingService:
             try:
                 otlp_exporter = OTLPSpanExporter(
                     endpoint=self.otlp_endpoint,
-                    insecure=True  # Fuer lokale Entwicklung
+                    insecure=True  # Für lokale Entwicklung
                 )
                 self._provider.add_span_processor(
                     BatchSpanProcessor(otlp_exporter)
@@ -190,7 +190,7 @@ class TracingService:
             # Global Tracer Provider setzen
             trace.set_tracer_provider(self._provider)
 
-            # Propagators fuer Context Propagation
+            # Propagators für Context Propagation
             set_global_textmap(TraceContextTextMapPropagator())
 
             # Tracer holen
@@ -215,7 +215,7 @@ class TracingService:
             return False
 
     def _setup_auto_instrumentation(self, app: Optional[object]) -> None:
-        """Konfiguriert Auto-Instrumentierung fuer Frameworks."""
+        """Konfiguriert Auto-Instrumentierung für Frameworks."""
         if not OPENTELEMETRY_AVAILABLE:
             return
 
@@ -283,12 +283,12 @@ class TracingService:
         kind: Optional[object] = None,
         attributes: Optional[Dict[str, Union[str, int, float, bool]]] = None
     ):
-        """Context Manager fuer manuelles Span-Tracing.
+        """Context Manager für manuelles Span-Tracing.
 
         Args:
             name: Span Name
             kind: SpanKind (CLIENT, SERVER, INTERNAL, etc.)
-            attributes: Zusaetzliche Span-Attribute
+            attributes: Zusätzliche Span-Attribute
 
         Yields:
             Span Instance
@@ -338,7 +338,7 @@ def trace_span(
     kind: str = "internal",
     attributes: Optional[Dict[str, Union[str, int, float, bool]]] = None
 ) -> Callable[[F], F]:
-    """Decorator fuer automatisches Span-Tracing.
+    """Decorator für automatisches Span-Tracing.
 
     Args:
         name: Span Name (default: Funktionsname)
@@ -378,7 +378,7 @@ def trace_span(
             with tracing.span(span_name, kind=span_kind, attributes=attributes):
                 return func(*args, **kwargs)
 
-        # Pruefe ob async
+        # Prüfe ob async
         if asyncio_iscoroutinefunction(func):
             return async_wrapper  # type: ignore
         return sync_wrapper  # type: ignore
@@ -387,7 +387,7 @@ def trace_span(
 
 
 def asyncio_iscoroutinefunction(func: Callable[..., object]) -> bool:
-    """Prueft ob Funktion async ist (ohne asyncio Import)."""
+    """Prüft ob Funktion async ist (ohne asyncio Import)."""
     import asyncio
     return asyncio.iscoroutinefunction(func)
 

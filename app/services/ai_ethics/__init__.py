@@ -1,1 +1,1 @@
-"""KI-Ethik-Layer - Bias-Detection, Erklaerbarkeit, Guardrails."""
+"""KI-Ethik-Layer - Bias-Detection, Erklärbarkeit, Guardrails."""

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-ExplainabilityService - Transparente Entscheidungserklaerungen.
+ExplainabilityService - Transparente Entscheidungserklärungen.
 
 Das "Sprachzentrum" des Systems:
-- Erklaert WARUM eine Empfehlung gemacht wird
-- Zeigt WELCHE FAKTOREN zur Entscheidung fuehrten
+- Erklärt WARUM eine Empfehlung gemacht wird
+- Zeigt WELCHE FAKTOREN zur Entscheidung führten
 - Berechnet KONKRETEN IMPACT mit Zahlen
-- Bietet ALTERNATIVEN und erklaert warum nicht
+- Bietet ALTERNATIVEN und erklärt warum nicht
 
 TRUE Enterprise-Level: User versteht WARUM und WIE GENAU.
 """
@@ -33,13 +33,13 @@ logger = structlog.get_logger(__name__)
 
 EXPLANATIONS_GENERATED = Counter(
     "explanations_generated_total",
-    "Anzahl generierter Erklaerungen",
+    "Anzahl generierter Erklärungen",
     ["explanation_type"]
 )
 
 EXPLANATION_COMPLEXITY = Histogram(
     "explanation_complexity_factors",
-    "Anzahl Faktoren in Erklaerungen",
+    "Anzahl Faktoren in Erklärungen",
     buckets=[1, 2, 3, 5, 7, 10, 15, 20]
 )
 
@@ -49,7 +49,7 @@ EXPLANATION_COMPLEXITY = Histogram(
 # =============================================================================
 
 class FactorType(str, Enum):
-    """Typen von Erklaerungsfaktoren."""
+    """Typen von Erklärungsfaktoren."""
     FINANCIAL = "financial"            # Finanzielle Auswirkung
     RISK = "risk"                      # Risikobetrachtung
     COMPLIANCE = "compliance"          # Fristen/Regularien
@@ -68,7 +68,7 @@ class ImpactDirection(str, Enum):
 
 
 class ConfidenceLevel(str, Enum):
-    """Konfidenzniveau der Erklaerung."""
+    """Konfidenzniveau der Erklärung."""
     VERY_HIGH = "sehr_hoch"    # 90%+
     HIGH = "hoch"              # 75-90%
     MEDIUM = "mittel"          # 50-75%
@@ -82,7 +82,7 @@ class ConfidenceLevel(str, Enum):
 
 @dataclass
 class ExplanationFactor:
-    """Ein einzelner Erklaerungsfaktor."""
+    """Ein einzelner Erklärungsfaktor."""
     id: UUID = field(default_factory=uuid4)
 
     # Faktor-Details
@@ -128,7 +128,7 @@ class AlternativeOption:
     pros: List[str] = field(default_factory=list)
     cons: List[str] = field(default_factory=list)
     why_not_chosen: str = ""
-    estimated_impact: float = 0.0  # Geschaetzter Impact-Score
+    estimated_impact: float = 0.0  # Geschätzter Impact-Score
 
     def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
@@ -147,7 +147,7 @@ class ImpactBreakdown:
     """Detaillierte Aufschluesselung des Impacts."""
     # Finanziell
     immediate_savings: Decimal = Decimal("0")      # Sofortige Ersparnis
-    annual_savings: Decimal = Decimal("0")         # Jaehrliche Ersparnis
+    annual_savings: Decimal = Decimal("0")         # Jährliche Ersparnis
     one_time_cost: Decimal = Decimal("0")          # Einmalige Kosten
     ongoing_cost: Decimal = Decimal("0")           # Laufende Kosten
 
@@ -190,7 +190,7 @@ class ImpactBreakdown:
 
 @dataclass
 class DecisionExplanation:
-    """Vollstaendige Erklaerung einer Entscheidung."""
+    """Vollständige Erklärung einer Entscheidung."""
     id: UUID = field(default_factory=uuid4)
 
     # Referenz zur Entscheidung
@@ -199,7 +199,7 @@ class DecisionExplanation:
 
     # Zusammenfassung
     headline: str = ""                             # Einzeilige Zusammenfassung
-    summary: str = ""                              # 2-3 Saetze Erklaerung
+    summary: str = ""                              # 2-3 Sätze Erklärung
     main_reason: str = ""                          # Hauptgrund
 
     # Faktoren
@@ -225,7 +225,7 @@ class DecisionExplanation:
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert zu Dictionary fuer API."""
+        """Konvertiert zu Dictionary für API."""
         return {
             "id": str(self.id),
             "decision_id": str(self.decision_id) if self.decision_id else None,
@@ -254,9 +254,9 @@ class DecisionExplanation:
 
 class ExplainabilityService:
     """
-    Singleton Service fuer Entscheidungserklaerungen.
+    Singleton Service für Entscheidungserklärungen.
 
-    Generiert menschenlesbare, detaillierte Erklaerungen fuer:
+    Generiert menschenlesbare, detaillierte Erklärungen für:
     - Empfehlungen (Recommendations)
     - Entscheidungen (Unified Decisions)
     - Early Warnings
@@ -282,31 +282,31 @@ class ExplainabilityService:
             return
         self._initialized = True
 
-        # Templates fuer Erklaerungen (Deutsche Sprache)
+        # Templates für Erklärungen (Deutsche Sprache)
         self._templates = self._load_templates()
 
-        # Cache fuer generierte Erklaerungen
+        # Cache für generierte Erklärungen
         self._explanation_cache: Dict[UUID, DecisionExplanation] = {}
         self._max_cache_size = 500
 
         logger.info("explainability_service_initialized")
 
     def _load_templates(self) -> Dict[str, Dict[str, str]]:
-        """Laedt Erklaerungstemplates."""
+        """Laedt Erklärungstemplates."""
         return {
             "refinanzierung": {
                 "headline": "Refinanzierung spart {savings} EUR",
-                "summary": "Der aktuelle Zins ({current_rate}%) liegt {diff}% ueber dem Marktzins ({market_rate}%). Bei einer Restlaufzeit von {remaining_years} Jahren ergibt sich eine Ersparnis von {savings} EUR.",
+                "summary": "Der aktuelle Zins ({current_rate}%) liegt {diff}% über dem Marktzins ({market_rate}%). Bei einer Restlaufzeit von {remaining_years} Jahren ergibt sich eine Ersparnis von {savings} EUR.",
                 "main_reason": "Zinsdifferenz von {diff}% bei Restlaufzeit {remaining_years} Jahre",
             },
-            "versicherungsluecke": {
-                "headline": "Deckungsluecke: {asset} nicht ausreichend versichert",
-                "summary": "Der {asset} hat eine Deckungsluecke bei {gap_type}. Die empfohlene Deckungssumme ist {recommended_coverage}. Bei einem Schadensfall droht ein finanzieller Verlust von bis zu {potential_loss} EUR.",
-                "main_reason": "Fehlende Deckung fuer {gap_type}",
+            "versicherungslücke": {
+                "headline": "Deckungslücke: {asset} nicht ausreichend versichert",
+                "summary": "Der {asset} hat eine Deckungslücke bei {gap_type}. Die empfohlene Deckungssumme ist {recommended_coverage}. Bei einem Schadensfall droht ein finanzieller Verlust von bis zu {potential_loss} EUR.",
+                "main_reason": "Fehlende Deckung für {gap_type}",
             },
-            "budgetueberschreitung": {
-                "headline": "Budget '{category}' um {overage_percent}% ueberschritten",
-                "summary": "Die Kategorie '{category}' hat das monatliche Budget von {budget} EUR um {overage} EUR ({overage_percent}%) ueberschritten. Dies beeinflusst den Financial Health Score negativ.",
+            "budgetüberschreitung": {
+                "headline": "Budget '{category}' um {overage_percent}% überschritten",
+                "summary": "Die Kategorie '{category}' hat das monatliche Budget von {budget} EUR um {overage} EUR ({overage_percent}%) überschritten. Dies beeinflusst den Financial Health Score negativ.",
                 "main_reason": "Ausgaben {spent} EUR statt geplanter {budget} EUR",
             },
             "early_warning": {
@@ -331,19 +331,19 @@ class ExplainabilityService:
         recommendation_data: Dict[str, Any],
     ) -> DecisionExplanation:
         """
-        Generiert Erklaerung fuer eine Empfehlung.
+        Generiert Erklärung für eine Empfehlung.
 
         Args:
             recommendation_id: ID der Empfehlung
             recommendation_data: Daten der Empfehlung (category, priority, etc.)
 
         Returns:
-            Vollstaendige Erklaerung
+            Vollständige Erklärung
         """
         category = recommendation_data.get("category", "allgemein")
         explanation = DecisionExplanation(recommendation_id=recommendation_id)
 
-        # Kategorie-spezifische Erklaerung
+        # Kategorie-spezifische Erklärung
         if category == "refinanzierung":
             explanation = await self._explain_refinancing(recommendation_data)
         elif category == "versicherung":
@@ -372,7 +372,7 @@ class ExplainabilityService:
         self,
         warning_data: Dict[str, Any],
     ) -> DecisionExplanation:
-        """Generiert Erklaerung fuer einen Early Warning Alert."""
+        """Generiert Erklärung für einen Early Warning Alert."""
         kpi_name = warning_data.get("kpi_name", "KPI")
         current_value = warning_data.get("current_value", 0)
         projected_value = warning_data.get("projected_value", 0)
@@ -433,7 +433,7 @@ class ExplainabilityService:
             ExplanationFactor(
                 factor_type=FactorType.THRESHOLD,
                 name="Kritischer Schwellenwert",
-                description=f"Bei Ueberschreitung von {threshold_value:.2f} wird eine Aktion empfohlen",
+                description=f"Bei Überschreitung von {threshold_value:.2f} wird eine Aktion empfohlen",
                 current_value=threshold_value,
                 impact_direction=ImpactDirection.NEUTRAL,
                 impact_weight=0.2,
@@ -441,17 +441,17 @@ class ExplainabilityService:
             ),
         ]
 
-        # Confidence basierend auf Datenqualitaet
+        # Confidence basierend auf Datenqualität
         explanation.confidence_level = ConfidenceLevel.MEDIUM
         explanation.confidence_percent = 65.0
         explanation.confidence_reasoning = "Basierend auf 12 Monaten historischer Daten"
         explanation.data_quality = "12 Monate Verlaufsdaten"
 
-        # Naechste Schritte
+        # Nächste Schritte
         explanation.suggested_next_steps = [
-            f"{kpi_name} monatlich ueberwachen",
+            f"{kpi_name} monatlich überwachen",
             "Budget oder Ausgaben anpassen",
-            "Finanzberater konsultieren falls Trend anhaelt",
+            "Finanzberater konsultieren falls Trend anhält",
         ]
 
         return explanation
@@ -460,7 +460,7 @@ class ExplainabilityService:
         self,
         health_score_data: Dict[str, Any],
     ) -> DecisionExplanation:
-        """Generiert detaillierte Erklaerung des Financial Health Scores."""
+        """Generiert detaillierte Erklärung des Financial Health Scores."""
         score = health_score_data.get("score", 0)
         components = health_score_data.get("components", {})
 
@@ -502,7 +502,7 @@ class ExplainabilityService:
             main_reason=template["main_reason"].format(main_factors=main_factors),
         )
 
-        # Faktoren fuer jede Komponente
+        # Faktoren für jede Komponente
         explanation.factors = [
             ExplanationFactor(
                 factor_type=FactorType.FINANCIAL,
@@ -578,14 +578,14 @@ class ExplainabilityService:
             ),
         ]
 
-        # Alternativen: Was koennte den Score verbessern?
+        # Alternativen: Was könnte den Score verbessern?
         explanation.alternatives = []
         for name, component_score in weakest:
             if component_score < 60:
                 explanation.alternatives.append(AlternativeOption(
                     name=f"{name} verbessern",
-                    description=f"Aktuell {component_score} Punkte - Potential fuer Verbesserung",
-                    pros=[f"Score-Verbesserung um bis zu {(60 - component_score) * 0.25:.0f} Punkte moeglich"],
+                    description=f"Aktuell {component_score} Punkte - Potential für Verbesserung",
+                    pros=[f"Score-Verbesserung um bis zu {(60 - component_score) * 0.25:.0f} Punkte möglich"],
                     cons=["Erfordert Zeit und Aufwand"],
                     estimated_impact=(60 - component_score) * 0.25,
                 ))
@@ -593,14 +593,14 @@ class ExplainabilityService:
         # Confidence
         explanation.confidence_level = ConfidenceLevel.HIGH
         explanation.confidence_percent = 85.0
-        explanation.confidence_reasoning = "Basierend auf vollstaendigen Finanzdaten"
+        explanation.confidence_reasoning = "Basierend auf vollständigen Finanzdaten"
         explanation.data_quality = "Aktuelle Daten aus allen Modulen"
 
-        # Naechste Schritte
+        # Nächste Schritte
         explanation.suggested_next_steps = [
             f"Fokus auf {weakest[0][0]} legen (aktuell {weakest[0][1]} Punkte)",
             "Monatliche Score-Entwicklung verfolgen",
-            "Konkrete Empfehlungen im Privat-Modul pruefen",
+            "Konkrete Empfehlungen im Privat-Modul prüfen",
         ]
 
         return explanation
@@ -613,7 +613,7 @@ class ExplainabilityService:
         self,
         data: Dict[str, Any],
     ) -> DecisionExplanation:
-        """Erklaert eine Refinanzierungsempfehlung."""
+        """Erklärt eine Refinanzierungsempfehlung."""
         current_rate = data.get("current_rate", 0)
         market_rate = data.get("market_rate", 0)
         remaining_years = data.get("remaining_years", 0)
@@ -666,7 +666,7 @@ class ExplainabilityService:
             ExplanationFactor(
                 factor_type=FactorType.PROJECTION,
                 name="Restlaufzeit",
-                description=f"Je laenger die Restlaufzeit, desto groesser die Ersparnis",
+                description=f"Je länger die Restlaufzeit, desto größer die Ersparnis",
                 current_value=remaining_years,
                 unit="Jahre",
                 impact_direction=ImpactDirection.POSITIVE if remaining_years > 5 else ImpactDirection.NEUTRAL,
@@ -680,10 +680,10 @@ class ExplainabilityService:
         explanation.impact_breakdown = ImpactBreakdown(
             immediate_savings=Decimal("0"),
             annual_savings=annual_savings,
-            one_time_cost=Decimal("1500"),  # Geschaetzte Umschuldungskosten
+            one_time_cost=Decimal("1500"),  # Geschätzte Umschuldungskosten
             ongoing_cost=Decimal("0"),
             time_to_implement="2-4 Wochen",
-            time_to_benefit="Mit naechster Rate",
+            time_to_benefit="Mit nächster Rate",
             risk_before=0,
             risk_after=0,
             opportunity_cost_if_not_done=Decimal(str(potential_savings)),
@@ -718,7 +718,7 @@ class ExplainabilityService:
         explanation.suggested_next_steps = [
             "Angebote von 2-3 Banken einholen",
             "Umschuldungskosten in Rechnung stellen",
-            "Kuendigungsfrist des aktuellen Kredits pruefen",
+            "Kündigungsfrist des aktuellen Kredits prüfen",
         ]
 
         return explanation
@@ -727,14 +727,14 @@ class ExplainabilityService:
         self,
         data: Dict[str, Any],
     ) -> DecisionExplanation:
-        """Erklaert eine Versicherungsluecken-Empfehlung."""
+        """Erklärt eine Versicherungslücken-Empfehlung."""
         asset = data.get("affected_asset", "Vermoegenswert")
-        gap_type = data.get("gap_type", "Deckungsluecke")
+        gap_type = data.get("gap_type", "Deckungslücke")
         recommended_coverage = data.get("recommended_coverage", "")
         potential_loss = data.get("potential_loss", 0)
         severity = data.get("severity", "medium")
 
-        template = self._templates["versicherungsluecke"]
+        template = self._templates["versicherungslücke"]
 
         explanation = DecisionExplanation(
             headline=template["headline"].format(asset=asset),
@@ -780,7 +780,7 @@ class ExplainabilityService:
             ),
         ]
 
-        # Impact Breakdown - geschaetzte Praemie
+        # Impact Breakdown - geschätzte Praemie
         estimated_annual_premium = Decimal(str(potential_loss)) * Decimal("0.002")  # 0.2% des Werts
 
         explanation.impact_breakdown = ImpactBreakdown(
@@ -801,9 +801,9 @@ class ExplainabilityService:
         explanation.confidence_reasoning = "Basierend auf Vermoegensanalyse"
 
         explanation.suggested_next_steps = [
-            "Aktuelle Versicherungspolicen pruefen",
+            "Aktuelle Versicherungspolicen prüfen",
             "Vergleichsangebote einholen",
-            f"Deckung fuer {gap_type} erhoehen",
+            f"Deckung für {gap_type} erhöhen",
         ]
 
         return explanation
@@ -812,14 +812,14 @@ class ExplainabilityService:
         self,
         data: Dict[str, Any],
     ) -> DecisionExplanation:
-        """Erklaert eine Budgetueberschreitung."""
+        """Erklärt eine Budgetüberschreitung."""
         category = data.get("category", "Kategorie")
         budget = Decimal(str(data.get("budget", 0)))
         spent = Decimal(str(data.get("spent", 0)))
         overage = spent - budget
         overage_percent = (float(overage) / float(budget) * 100) if budget > 0 else 0
 
-        template = self._templates["budgetueberschreitung"]
+        template = self._templates["budgetüberschreitung"]
 
         explanation = DecisionExplanation(
             headline=template["headline"].format(
@@ -863,8 +863,8 @@ class ExplainabilityService:
             ),
             ExplanationFactor(
                 factor_type=FactorType.THRESHOLD,
-                name="Ueberschreitung",
-                description=f"{overage:.2f} EUR ueber Budget ({overage_percent:.1f}%)",
+                name="Überschreitung",
+                description=f"{overage:.2f} EUR über Budget ({overage_percent:.1f}%)",
                 current_value=float(overage),
                 unit="EUR",
                 impact_direction=ImpactDirection.NEGATIVE,
@@ -879,14 +879,14 @@ class ExplainabilityService:
             one_time_cost=Decimal("0"),
             ongoing_cost=Decimal("0"),
             time_to_implement="Sofort",
-            time_to_benefit="Naechster Monat",
+            time_to_benefit="Nächster Monat",
             risk_before=min(overage_percent, 100),
             risk_after=0,
         )
 
         explanation.suggested_next_steps = [
             f"Ausgaben in '{category}' analysieren",
-            "Budget fuer naechsten Monat anpassen",
+            "Budget für nächsten Monat anpassen",
             "Automatische Warnungen bei 80% Budget setzen",
         ]
 
@@ -896,7 +896,7 @@ class ExplainabilityService:
         self,
         data: Dict[str, Any],
     ) -> DecisionExplanation:
-        """Erklaert eine Investment-Empfehlung."""
+        """Erklärt eine Investment-Empfehlung."""
         # Generic Investment explanation
         return await self._explain_generic(data)
 
@@ -904,7 +904,7 @@ class ExplainabilityService:
         self,
         data: Dict[str, Any],
     ) -> DecisionExplanation:
-        """Generische Erklaerung fuer nicht-kategorisierte Empfehlungen."""
+        """Generische Erklärung für nicht-kategorisierte Empfehlungen."""
         title = data.get("title", "Empfehlung")
         description = data.get("description", "")
         priority = data.get("priority", "normal")
@@ -920,7 +920,7 @@ class ExplainabilityService:
             ExplanationFactor(
                 factor_type=FactorType.FINANCIAL,
                 name="Empfehlungspriorität",
-                description=f"Diese Empfehlung hat Prioritaet: {priority}",
+                description=f"Diese Empfehlung hat Priorität: {priority}",
                 impact_direction=ImpactDirection.NEUTRAL,
                 impact_weight=1.0,
                 visualization_type="bar",
@@ -937,12 +937,12 @@ class ExplainabilityService:
     # =========================================================================
 
     def _cache_explanation(self, key: UUID, explanation: DecisionExplanation) -> None:
-        """Speichert Erklaerung im Cache."""
+        """Speichert Erklärung im Cache."""
         self._explanation_cache[key] = explanation
 
-        # Cache-Groesse begrenzen
+        # Cache-Größe begrenzen
         if len(self._explanation_cache) > self._max_cache_size:
-            # Aelteste Eintraege entfernen
+            # Aelteste Einträge entfernen
             oldest_keys = sorted(
                 self._explanation_cache.keys(),
                 key=lambda k: self._explanation_cache[k].created_at
@@ -951,7 +951,7 @@ class ExplainabilityService:
                 del self._explanation_cache[k]
 
     def get_cached_explanation(self, key: UUID) -> Optional[DecisionExplanation]:
-        """Holt Erklaerung aus Cache."""
+        """Holt Erklärung aus Cache."""
         return self._explanation_cache.get(key)
 
 
@@ -964,7 +964,7 @@ _explainability_lock = threading.Lock()
 
 
 def get_explainability_service() -> ExplainabilityService:
-    """Factory-Funktion fuer ExplainabilityService Singleton."""
+    """Factory-Funktion für ExplainabilityService Singleton."""
     global _explainability_instance
     if _explainability_instance is None:
         with _explainability_lock:

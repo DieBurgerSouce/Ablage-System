@@ -2,7 +2,7 @@
 """
 Predictive Health API.
 
-Bietet proaktive Systemueberwachung mit Vorhersagen:
+Bietet proaktive Systemüberwachung mit Vorhersagen:
 - GPU VRAM Overflow Vorhersage
 - Queue Overflow Vorhersage
 - OCR Qualitaets-Degradation
@@ -52,7 +52,7 @@ router = APIRouter(prefix="/health/predictions", tags=["Predictive Health"])
 # ============================================================================
 
 class PredictionResponse(BaseModel):
-    """Response fuer eine einzelne Vorhersage."""
+    """Response für eine einzelne Vorhersage."""
     metric: str
     current_value: float
     predicted_value: float
@@ -66,7 +66,7 @@ class PredictionResponse(BaseModel):
 
 
 class DegradationAlertResponse(BaseModel):
-    """Response fuer OCR Degradation Alert."""
+    """Response für OCR Degradation Alert."""
     backend: str
     metric: str
     current_value: float
@@ -79,7 +79,7 @@ class DegradationAlertResponse(BaseModel):
 
 
 class PredictiveAlertResponse(BaseModel):
-    """Response fuer Predictive Alert."""
+    """Response für Predictive Alert."""
     id: str
     alert_type: str
     severity: str
@@ -94,7 +94,7 @@ class PredictiveAlertResponse(BaseModel):
 
 
 class AlertStatsResponse(BaseModel):
-    """Response fuer Alert-Statistiken."""
+    """Response für Alert-Statistiken."""
     total_active: int
     by_severity: Dict[str, int]
     by_type: Dict[str, int]
@@ -103,7 +103,7 @@ class AlertStatsResponse(BaseModel):
 
 
 class QualitySummaryResponse(BaseModel):
-    """Response fuer OCR Quality Summary."""
+    """Response für OCR Quality Summary."""
     backend: str
     metrics: Dict[str, Dict[str, float]]
 
@@ -137,7 +137,7 @@ async def get_all_predictions(
     current_user: User = Depends(get_current_active_user),
 ) -> List[PredictionResponse]:
     """
-    Gibt alle aktuellen System-Vorhersagen zurueck.
+    Gibt alle aktuellen System-Vorhersagen zurück.
 
     Beinhaltet GPU VRAM, Queue-Tiefen und Disk-Auslastung.
     """
@@ -155,7 +155,7 @@ async def get_gpu_prediction(
     current_user: User = Depends(get_current_active_user),
 ) -> Optional[PredictionResponse]:
     """
-    Gibt GPU VRAM Overflow-Vorhersage zurueck.
+    Gibt GPU VRAM Overflow-Vorhersage zurück.
 
     Prognostiziert wann VRAM-Limit erreicht wird basierend auf aktuellem Trend.
     """
@@ -172,9 +172,9 @@ async def get_queue_predictions(
     current_user: User = Depends(get_current_active_user),
 ) -> List[PredictionResponse]:
     """
-    Gibt Queue Overflow-Vorhersagen zurueck.
+    Gibt Queue Overflow-Vorhersagen zurück.
 
-    Prognostiziert fuer alle bekannten Queues.
+    Prognostiziert für alle bekannten Queues.
     """
     predictor = get_health_predictor()
     predictions: List[PredictionResponse] = []
@@ -193,7 +193,7 @@ async def get_disk_prediction(
     current_user: User = Depends(get_current_active_user),
 ) -> Optional[PredictionResponse]:
     """
-    Gibt Disk Space Exhaustion-Vorhersage zurueck.
+    Gibt Disk Space Exhaustion-Vorhersage zurück.
     """
     predictor = get_health_predictor()
     prediction = await predictor.predict_disk_exhaustion()
@@ -213,7 +213,7 @@ async def get_ocr_degradation_alerts(
     current_user: User = Depends(get_current_active_user),
 ) -> List[DegradationAlertResponse]:
     """
-    Gibt OCR Qualitaets-Degradation Alerts zurueck.
+    Gibt OCR Qualitaets-Degradation Alerts zurück.
 
     Erkennt wenn CER/WER steigt oder Confidence faellt.
     """
@@ -243,7 +243,7 @@ async def get_ocr_quality_summary(
     current_user: User = Depends(get_current_active_user),
 ) -> QualitySummaryResponse:
     """
-    Gibt Qualitaets-Zusammenfassung fuer ein OCR-Backend zurueck.
+    Gibt Qualitaets-Zusammenfassung für ein OCR-Backend zurück.
 
     Beinhaltet aktuelle Werte und 24h-Statistiken.
     """
@@ -272,7 +272,7 @@ async def get_predictive_alerts(
     current_user: User = Depends(get_current_active_user),
 ) -> List[PredictiveAlertResponse]:
     """
-    Gibt alle aktiven proaktiven Alerts zurueck.
+    Gibt alle aktiven proaktiven Alerts zurück.
 
     Kombiniert System Health und OCR Quality Alerts.
     """
@@ -336,14 +336,14 @@ async def acknowledge_alert(
     current_user: User = Depends(get_current_active_user),
 ) -> None:
     """
-    Markiert einen Alert als bestaetigt/gelesen.
+    Markiert einen Alert als bestätigt/gelesen.
     """
     try:
         alert_uuid = UUID(alert_id)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Alert-ID"
+            detail="Ungültige Alert-ID"
         )
 
     service = get_predictive_alerts_service()
@@ -369,7 +369,7 @@ async def dismiss_alert(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Alert-ID"
+            detail="Ungültige Alert-ID"
         )
 
     service = get_predictive_alerts_service()
@@ -387,7 +387,7 @@ async def get_alert_stats(
     current_user: User = Depends(get_current_active_user),
 ) -> AlertStatsResponse:
     """
-    Gibt Statistiken ueber proaktive Alerts zurueck.
+    Gibt Statistiken über proaktive Alerts zurück.
     """
     service = get_predictive_alerts_service()
     stats = service.get_alert_stats()
@@ -492,7 +492,7 @@ async def clear_metric_history(
     current_user: User = Depends(get_current_superuser),
 ) -> None:
     """
-    Loescht Metrik-History (Admin-only).
+    Löscht Metrik-History (Admin-only).
     """
     predictor = get_health_predictor()
 

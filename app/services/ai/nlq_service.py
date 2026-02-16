@@ -2,17 +2,17 @@
 """
 NLQService - Natural Language Query Service.
 
-Ermoeglicht natuerlichsprachliche Abfragen auf Dokumenten und Geschaeftsdaten:
-- "Zeige alle Rechnungen von Mueller GmbH ueber 1000 EUR"
-- "Wie viel haben wir letzten Monat fuer Bueroartikel ausgegeben?"
+Ermöglicht natürlichsprachliche Abfragen auf Dokumenten und Geschäftsdaten:
+- "Zeige alle Rechnungen von Mueller GmbH über 1000 EUR"
+- "Wie viel haben wir letzten Monat für Bueroartikel ausgegeben?"
 - "Welche Rechnungen sind seit mehr als 30 Tagen offen?"
 - "Finde alle Dokumente mit dem Stichwort 'Wartung'"
 
 Features:
 - Intent-Erkennung (Query, Aggregation, Comparison)
 - Entity-Extraction (Firmenname, Betrag, Datum, Dokumenttyp)
-- SQL-Generierung aus natuerlicher Sprache
-- RAG-Integration fuer Dokumenten-Chat
+- SQL-Generierung aus natürlicher Sprache
+- RAG-Integration für Dokumenten-Chat
 - Confidence-basierte Antworten
 
 Phase 2.2 der Feature-Roadmap (Januar 2026)
@@ -55,7 +55,7 @@ class QueryIntent(str, Enum):
     AGGREGATE = "aggregate"  # Summe, Durchschnitt, Anzahl
     COMPARE = "compare"  # Vergleich zwischen Zeitraeumen/Entities
     TREND = "trend"  # Trend-Analyse
-    CHAT = "chat"  # Freie Frage ueber Dokumente (RAG)
+    CHAT = "chat"  # Freie Frage über Dokumente (RAG)
     LIST = "list"  # Auflistung
     UNKNOWN = "unknown"
 
@@ -147,7 +147,7 @@ DOCUMENT_TYPE_KEYWORDS = {
     "lieferschein": ["delivery_note", "lieferschein"],
     "lieferscheine": ["delivery_note", "lieferschein"],
     "vertrag": ["contract", "vertrag"],
-    "vertraege": ["contract", "vertrag"],
+    "verträge": ["contract", "vertrag"],
     "mahnung": ["dunning", "mahnung", "reminder"],
     "mahnungen": ["dunning", "mahnung", "reminder"],
     "gutschrift": ["credit_note", "gutschrift"],
@@ -160,8 +160,8 @@ STATUS_KEYWORDS = {
     "offene": ["pending", "open", "unpaid"],
     "bezahlt": ["paid", "completed"],
     "bezahlte": ["paid", "completed"],
-    "ueberfaellig": ["overdue"],
-    "ueberfaellige": ["overdue"],
+    "überfällig": ["overdue"],
+    "überfällige": ["overdue"],
     "teil": ["partial"],
     "storniert": ["cancelled", "canceled"],
 }
@@ -190,9 +190,9 @@ AGGREGATION_KEYWORDS = {
 
 
 class NLQService:
-    """Service fuer Natural Language Queries.
+    """Service für Natural Language Queries.
 
-    Verarbeitet natuerlichsprachliche Abfragen und generiert
+    Verarbeitet natürlichsprachliche Abfragen und generiert
     entsprechende Datenbankabfragen.
 
     Settings werden aus app.core.config.settings geladen.
@@ -230,12 +230,12 @@ class NLQService:
         user_id: Optional[uuid.UUID] = None,
         limit: int = 50,
     ) -> NLQResult:
-        """Verarbeitet eine natuerlichsprachliche Abfrage.
+        """Verarbeitet eine natürlichsprachliche Abfrage.
 
         Args:
-            query: Die Abfrage in natuerlicher Sprache
-            company_id: Optional Company-ID fuer Multi-Tenant
-            user_id: Optional User-ID fuer Berechtigungspruefung
+            query: Die Abfrage in natürlicher Sprache
+            company_id: Optional Company-ID für Multi-Tenant
+            user_id: Optional User-ID für Berechtigungsprüfung
             limit: Maximale Anzahl Ergebnisse
 
         Returns:
@@ -330,11 +330,11 @@ class NLQService:
     # ========================================================================
 
     def _normalize_query(self, query: str) -> str:
-        """Normalisiert die Abfrage fuer bessere Verarbeitung."""
+        """Normalisiert die Abfrage für bessere Verarbeitung."""
         # Kleinschreibung
         normalized = query.lower().strip()
 
-        # Umlaute normalisieren (fuer Matching)
+        # Umlaute normalisieren (für Matching)
         umlaut_map = {
             "ae": "ae", "ä": "ae",
             "oe": "oe", "ö": "oe",
@@ -362,7 +362,7 @@ class NLQService:
                 return QueryIntent.AGGREGATE
 
         # Vergleichs-Keywords
-        compare_keywords = ["vergleich", "unterschied", "mehr als", "weniger als", "gegenueber"]
+        compare_keywords = ["vergleich", "unterschied", "mehr als", "weniger als", "gegenüber"]
         for keyword in compare_keywords:
             if keyword in query:
                 return QueryIntent.COMPARE
@@ -374,13 +374,13 @@ class NLQService:
                 return QueryIntent.SEARCH
 
         # Frage-Keywords (Chat/RAG)
-        question_keywords = ["warum", "wie", "erklaere", "was bedeutet", "wer"]
+        question_keywords = ["warum", "wie", "erkläre", "was bedeutet", "wer"]
         for keyword in question_keywords:
             if keyword in query:
                 return QueryIntent.CHAT
 
         # Liste-Keywords
-        list_keywords = ["alle", "auflistung", "uebersicht"]
+        list_keywords = ["alle", "auflistung", "übersicht"]
         for keyword in list_keywords:
             if keyword in query:
                 return QueryIntent.LIST
@@ -448,14 +448,14 @@ class NLQService:
                     error_type=type(e).__name__,
                 )
 
-        # Pattern: "ueber X", "mehr als X", "unter X"
-        comparison_pattern = r'(ueber|mehr als|mindestens|unter|weniger als|maximal|bis)\s+(\d+)'
+        # Pattern: "über X", "mehr als X", "unter X"
+        comparison_pattern = r'(über|mehr als|mindestens|unter|weniger als|maximal|bis)\s+(\d+)'
         comp_matches = re.findall(comparison_pattern, query, re.IGNORECASE)
 
         for operator, value in comp_matches:
             try:
                 amount = Decimal(value)
-                op = "gte" if operator in ["ueber", "mehr als", "mindestens"] else "lte"
+                op = "gte" if operator in ["über", "mehr als", "mindestens"] else "lte"
                 entities.append(ExtractedEntity(
                     entity_type=EntityType.AMOUNT,
                     value={"amount": amount, "operator": op},
@@ -573,7 +573,7 @@ class NLQService:
         """Extrahiert und validiert Firmennamen gegen die DB."""
         entities = []
 
-        # Haeufige Firmenbezeichnungen
+        # Häufige Firmenbezeichnungen
         company_suffixes = ["gmbh", "ag", "kg", "ohg", "e.k.", "ug", "mbh", "co kg"]
 
         # Finde potentielle Firmennamen
@@ -604,7 +604,7 @@ class NLQService:
                         confidence=0.90,
                     ))
                 else:
-                    # Auch ohne DB-Match hinzufuegen (fuer Fuzzy-Suche)
+                    # Auch ohne DB-Match hinzufuegen (für Fuzzy-Suche)
                     entities.append(ExtractedEntity(
                         entity_type=EntityType.COMPANY,
                         value={"name": full_name},
@@ -702,7 +702,7 @@ class NLQService:
 
         stmt = stmt.order_by(Document.created_at.desc()).limit(limit)
 
-        # Ausfuehren (Tupel: Document, entity_name)
+        # Ausführen (Tupel: Document, entity_name)
         result = await self.db.execute(stmt)
         rows = result.all()
 
@@ -722,7 +722,7 @@ class NLQService:
                 "entity_name": entity_name,
             })
 
-        # Natuerliche Antwort generieren
+        # Natürliche Antwort generieren
         if len(documents) == 0:
             natural_response = "Keine Dokumente gefunden, die Ihren Kriterien entsprechen."
         elif len(documents) == 1:
@@ -757,7 +757,7 @@ class NLQService:
                 agg_type = agg
                 break
 
-        # Base-Query auf InvoiceTracking (fuer Betraege)
+        # Base-Query auf InvoiceTracking (für Betraege)
         if agg_type in ["sum", "avg", "max", "min"]:
             if agg_type == "sum":
                 agg_func = func.sum(InvoiceTracking.total_amount)
@@ -794,17 +794,17 @@ class NLQService:
         result = await self.db.execute(stmt)
         agg_value = result.scalar()
 
-        # Natuerliche Antwort
+        # Natürliche Antwort
         if agg_type == "sum":
             if agg_value:
                 natural_response = f"Die Gesamtsumme betraegt {float(agg_value):,.2f} EUR."
             else:
-                natural_response = "Keine Daten fuer die Summenberechnung gefunden."
+                natural_response = "Keine Daten für die Summenberechnung gefunden."
         elif agg_type == "avg":
             if agg_value:
                 natural_response = f"Der Durchschnitt betraegt {float(agg_value):,.2f} EUR."
             else:
-                natural_response = "Keine Daten fuer die Durchschnittsberechnung gefunden."
+                natural_response = "Keine Daten für die Durchschnittsberechnung gefunden."
         elif agg_type == "count":
             natural_response = f"Anzahl: {agg_value or 0}"
         elif agg_type == "max":
@@ -844,7 +844,7 @@ class NLQService:
                 success=False,
                 intent=QueryIntent.COMPARE,
                 extracted_entities=entities,
-                natural_response="Fuer einen Vergleich benoetigen Sie zwei Zeitraeume. "
+                natural_response="Für einen Vergleich benötigen Sie zwei Zeitraeume. "
                                "Beispiel: 'Vergleiche Januar mit Februar'",
                 confidence=0.5,
             )
@@ -893,7 +893,7 @@ class NLQService:
         entities: List[ExtractedEntity],
         company_id: Optional[uuid.UUID],
     ) -> NLQResult:
-        """Verarbeitet eine Chat/RAG-Abfrage mit vollstaendiger RAG-Integration.
+        """Verarbeitet eine Chat/RAG-Abfrage mit vollständiger RAG-Integration.
 
         Phase 9.3: Enhanced NLQ with RAG
 
@@ -901,7 +901,7 @@ class NLQService:
         1. Semantische Suche nach relevanten Dokumenten-Chunks
         2. Kontext aus Chunks zusammenstellen
         3. LLM mit Kontext und Frage aufrufen
-        4. Antwort mit Quellenangaben zurueckgeben
+        4. Antwort mit Quellenangaben zurückgeben
         """
         try:
             # RAG-Services importieren (lazy import um Circular Imports zu vermeiden)
@@ -919,7 +919,7 @@ class NLQService:
                 rerank=True
             )
 
-            # Pruefen ob Chunks gefunden wurden
+            # Prüfen ob Chunks gefunden wurden
             if not search_result.results:
                 return NLQResult(
                     success=True,
@@ -953,8 +953,8 @@ class NLQService:
 
             context = "\n\n---\n\n".join(context_parts)
 
-            # 3. System-Prompt fuer RAG erstellen
-            system_prompt = """Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
+            # 3. System-Prompt für RAG erstellen
+            system_prompt = """Du bist ein hilfreicher Assistent für ein Dokumentenmanagementsystem.
 Beantworte die Frage basierend auf den bereitgestellten Dokumenten-Auszuegen.
 
 WICHTIGE REGELN:
@@ -979,7 +979,7 @@ KONTEXT AUS DOKUMENTEN:
                     messages=messages,
                     context_type=LLMContextType.GENERAL,
                     max_tokens=1024,
-                    temperature=0.3  # Niedrigere Temperatur fuer faktische Antworten
+                    temperature=0.3  # Niedrigere Temperatur für faktische Antworten
                 )
 
                 natural_response = llm_response.content
@@ -1007,14 +1007,14 @@ KONTEXT AUS DOKUMENTEN:
                     error=str(llm_error),
                     query=query[:50]
                 )
-                # Fallback: Chunks ohne LLM-Verarbeitung zurueckgeben
+                # Fallback: Chunks ohne LLM-Verarbeitung zurückgeben
                 return NLQResult(
                     success=True,
                     intent=QueryIntent.CHAT,
                     extracted_entities=entities,
                     natural_response=(
                         f"Ich habe {len(search_result.results)} relevante Dokumente gefunden. "
-                        "Die LLM-Verarbeitung ist derzeit nicht verfuegbar. "
+                        "Die LLM-Verarbeitung ist derzeit nicht verfügbar. "
                         "Hier sind die relevanten Textausschnitte:\n\n" +
                         "\n---\n".join(
                             f"• {r.chunk_text[:200]}..." for r in search_result.results[:3]
@@ -1035,8 +1035,8 @@ KONTEXT AUS DOKUMENTEN:
                 intent=QueryIntent.CHAT,
                 extracted_entities=entities,
                 natural_response=(
-                    "Die RAG-Funktionalitaet ist derzeit nicht verfuegbar. "
-                    "Bitte versuchen Sie es spaeter erneut."
+                    "Die RAG-Funktionalität ist derzeit nicht verfügbar. "
+                    "Bitte versuchen Sie es später erneut."
                 ),
                 confidence=0.30,
             )
@@ -1058,7 +1058,7 @@ KONTEXT AUS DOKUMENTEN:
 
 
 async def get_nlq_service(db: AsyncSession) -> NLQService:
-    """Factory-Funktion fuer NLQService.
+    """Factory-Funktion für NLQService.
 
     Args:
         db: Async Database Session

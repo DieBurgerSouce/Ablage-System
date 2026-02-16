@@ -2,10 +2,10 @@
 Contract Management Celery Tasks.
 
 Automatische Vertragsmanagement-Tasks:
-- Kuendigungsfrist-Erinnerungen (taeglich um 08:00)
-- Ablaufende Vertraege pruefen (30/60/90 Tage Vorlauf)
-- Automatische Vertragsverlaengerung (wenn konfiguriert)
-- Woechentlicher Vertragsreport
+- Kündigungsfrist-Erinnerungen (täglich um 08:00)
+- Ablaufende Verträge prüfen (30/60/90 Tage Vorlauf)
+- Automatische Vertragsverlängerung (wenn konfiguriert)
+- Wöchentlicher Vertragsreport
 
 Feinpoliert und durchdacht - Enterprise Contract Management.
 """
@@ -51,18 +51,18 @@ def send_contract_deadline_reminders_task(
     days_ahead: int = 90,
     company_id: Optional[str] = None,
 ) -> Dict[str, object]:
-    """Sendet Erinnerungen fuer anstehende Vertragsfristen.
+    """Sendet Erinnerungen für anstehende Vertragsfristen.
 
-    Wird taeglich um 08:00 Uhr automatisch ausgefuehrt.
-    Prueft:
-    - Kuendigungsfristen
+    Wird täglich um 08:00 Uhr automatisch ausgeführt.
+    Prüft:
+    - Kündigungsfristen
     - Vertragsenden
-    - Verlaengerungsoptionen
+    - Verlängerungsoptionen
     - Meilensteine
 
     Args:
-        days_ahead: Tage im Voraus pruefen (default 90)
-        company_id: Optional - nur fuer spezifische Firma
+        days_ahead: Tage im Voraus prüfen (default 90)
+        company_id: Optional - nur für spezifische Firma
 
     Returns:
         Dict mit Statistiken
@@ -85,7 +85,7 @@ def send_contract_deadline_reminders_task(
                 "errors": [],
             }
 
-            # Query fuer aktive Vertraege mit anstehenden Fristen
+            # Query für aktive Verträge mit anstehenden Fristen
             query = select(BusinessContract).where(
                 and_(
                     BusinessContract.status.in_([
@@ -94,7 +94,7 @@ def send_contract_deadline_reminders_task(
                     ]),
                     BusinessContract.deleted_at.is_(None),
                     or_(
-                        # Kuendigungsfrist innerhalb des Zeitraums
+                        # Kündigungsfrist innerhalb des Zeitraums
                         and_(
                             BusinessContract.notice_deadline.isnot(None),
                             BusinessContract.notice_deadline <= cutoff_date,
@@ -125,7 +125,7 @@ def send_contract_deadline_reminders_task(
                 stats["total_contracts_checked"] += 1
 
                 try:
-                    # Kuendigungsfrist pruefen
+                    # Kündigungsfrist prüfen
                     if contract.notice_deadline:
                         days_until_notice = (contract.notice_deadline - today).days
                         if days_until_notice in contract.reminder_days:
@@ -138,7 +138,7 @@ def send_contract_deadline_reminders_task(
                             stats["notice_deadline_alerts"] += 1
                             stats["reminders_sent"] += 1
 
-                    # Vertragsende pruefen
+                    # Vertragsende prüfen
                     if contract.end_date:
                         days_until_end = (contract.end_date - today).days
                         if days_until_end in contract.reminder_days:
@@ -151,7 +151,7 @@ def send_contract_deadline_reminders_task(
                             stats["end_date_alerts"] += 1
                             stats["reminders_sent"] += 1
 
-                    # Verlaengerungsoptionen pruefen
+                    # Verlängerungsoptionen prüfen
                     for option in contract.renewal_options:
                         if (
                             option.status == RenewalOptionStatus.AVAILABLE
@@ -170,7 +170,7 @@ def send_contract_deadline_reminders_task(
                                 stats["renewal_option_alerts"] += 1
                                 stats["reminders_sent"] += 1
 
-                    # Meilensteine pruefen
+                    # Meilensteine prüfen
                     for milestone in contract.milestones:
                         if not milestone.is_completed and milestone.scheduled_date:
                             days_until_due = (milestone.scheduled_date - today).days
@@ -222,25 +222,25 @@ async def _send_deadline_notification(
     deadline_type: str,
     days_remaining: int,
 ) -> None:
-    """Sendet Benachrichtigung fuer Vertragsfrist."""
+    """Sendet Benachrichtigung für Vertragsfrist."""
     from app.services.notification_service import NotificationPriority, NotificationType
 
     urgency = _get_urgency(days_remaining)
 
     if deadline_type == "notice_deadline":
-        title = f"Kuendigungsfrist in {days_remaining} Tagen"
+        title = f"Kündigungsfrist in {days_remaining} Tagen"
         message = (
-            f"Die Kuendigungsfrist fuer Vertrag '{contract.title}' "
-            f"(Nr. {contract.contract_number}) laeuft am {contract.notice_deadline} ab."
+            f"Die Kündigungsfrist für Vertrag '{contract.title}' "
+            f"(Nr. {contract.contract_number}) läuft am {contract.notice_deadline} ab."
         )
     else:
-        title = f"Vertrag laeuft in {days_remaining} Tagen ab"
+        title = f"Vertrag läuft in {days_remaining} Tagen ab"
         message = (
             f"Der Vertrag '{contract.title}' (Nr. {contract.contract_number}) "
             f"endet am {contract.end_date}."
         )
 
-    # Prioritaet basierend auf Dringlichkeit
+    # Priorität basierend auf Dringlichkeit
     priority_map = {
         "critical": NotificationPriority.CRITICAL,
         "high": NotificationPriority.HIGH,
@@ -311,15 +311,15 @@ async def _send_renewal_option_notification(
     option: ContractRenewalOption,
     days_remaining: int,
 ) -> None:
-    """Sendet Benachrichtigung fuer Verlaengerungsoption."""
+    """Sendet Benachrichtigung für Verlängerungsoption."""
     from app.services.notification_service import NotificationPriority, NotificationType
 
     urgency = _get_urgency(days_remaining)
 
-    title = f"Verlaengerungsoption laeuft in {days_remaining} Tagen ab"
+    title = f"Verlängerungsoption läuft in {days_remaining} Tagen ab"
     message = (
-        f"Die Verlaengerungsoption {option.option_number} fuer Vertrag "
-        f"'{contract.title}' muss bis {option.exercise_deadline} ausgeuebt werden."
+        f"Die Verlängerungsoption {option.option_number} für Vertrag "
+        f"'{contract.title}' muss bis {option.exercise_deadline} ausgeübt werden."
     )
 
     priority_map = {
@@ -367,15 +367,15 @@ async def _send_milestone_notification(
     milestone: ContractMilestone,
     days_remaining: int,
 ) -> None:
-    """Sendet Benachrichtigung fuer Meilenstein."""
+    """Sendet Benachrichtigung für Meilenstein."""
     from app.services.notification_service import NotificationPriority, NotificationType
 
     urgency = _get_urgency(days_remaining)
 
-    title = f"Meilenstein faellig in {days_remaining} Tagen"
+    title = f"Meilenstein fällig in {days_remaining} Tagen"
     message = (
-        f"Der Meilenstein '{milestone.title}' fuer Vertrag '{contract.title}' "
-        f"ist am {milestone.scheduled_date} faellig."
+        f"Der Meilenstein '{milestone.title}' für Vertrag '{contract.title}' "
+        f"ist am {milestone.scheduled_date} fällig."
     )
 
     priority_map = {
@@ -468,12 +468,12 @@ def check_expiring_contracts_task(
     self,
     days_ahead_list: Optional[List[int]] = None,
 ) -> Dict[str, object]:
-    """Prueft ablaufende Vertraege und aktualisiert Status.
+    """Prüft ablaufende Verträge und aktualisiert Status.
 
-    Wird taeglich um 08:30 Uhr automatisch ausgefuehrt.
+    Wird täglich um 08:30 Uhr automatisch ausgeführt.
     Aktualisiert Status von ACTIVE zu EXPIRING_SOON wenn:
     - Vertragsende innerhalb von 90 Tagen
-    - Kuendigungsfrist innerhalb von 30 Tagen
+    - Kündigungsfrist innerhalb von 30 Tagen
 
     Args:
         days_ahead_list: Liste von Vorwarntagen [30, 60, 90]
@@ -498,7 +498,7 @@ def check_expiring_contracts_task(
                 "errors": [],
             }
 
-            # Query fuer aktive Vertraege
+            # Query für aktive Verträge
             query = select(BusinessContract).where(
                 and_(
                     BusinessContract.status == ContractStatus.ACTIVE,
@@ -584,10 +584,10 @@ def check_expiring_contracts_task(
     queue="maintenance",
 )
 def auto_renew_contracts_task(self) -> Dict[str, object]:
-    """Verlaengert Vertraege automatisch wenn konfiguriert.
+    """Verlängert Verträge automatisch wenn konfiguriert.
 
-    Wird taeglich um 09:00 Uhr automatisch ausgefuehrt.
-    Prueft Vertraege mit:
+    Wird täglich um 09:00 Uhr automatisch ausgeführt.
+    Prüft Verträge mit:
     - auto_renewal = True
     - Vertragsende heute oder in Vergangenheit
     - current_renewal_count < max_renewals (oder max_renewals = None)
@@ -606,7 +606,7 @@ def auto_renew_contracts_task(self) -> Dict[str, object]:
                 "errors": [],
             }
 
-            # Query fuer auto-renewal Vertraege
+            # Query für auto-renewal Verträge
             query = select(BusinessContract).where(
                 and_(
                     BusinessContract.auto_renewal == True,
@@ -627,7 +627,7 @@ def auto_renew_contracts_task(self) -> Dict[str, object]:
                 stats["total_checked"] += 1
 
                 try:
-                    # Pruefen ob max_renewals erreicht
+                    # Prüfen ob max_renewals erreicht
                     if (
                         contract.max_renewals is not None
                         and contract.current_renewal_count >= contract.max_renewals
@@ -642,7 +642,7 @@ def auto_renew_contracts_task(self) -> Dict[str, object]:
                         )
                         continue
 
-                    # Verlaengern
+                    # Verlängern
                     renewal_months = contract.renewal_period_months or 12
                     old_end_date = contract.end_date
 
@@ -654,7 +654,7 @@ def auto_renew_contracts_task(self) -> Dict[str, object]:
                     ) + 1
                     contract.status = ContractStatus.RENEWED
 
-                    # Kuendigungsfrist neu berechnen
+                    # Kündigungsfrist neu berechnen
                     if contract.notice_period_days:
                         contract.notice_deadline = (
                             new_end_date - timedelta(days=contract.notice_period_days)
@@ -721,12 +721,12 @@ def _add_months(d: date, months: int) -> date:
     queue="maintenance",
 )
 def generate_contract_report_task(self) -> Dict[str, object]:
-    """Generiert woechentlichen Vertragsreport.
+    """Generiert wöchentlichen Vertragsreport.
 
-    Wird jeden Montag um 07:00 Uhr automatisch ausgefuehrt.
-    Enthaelt:
-    - Portfolio-Uebersicht
-    - Ablaufende Vertraege
+    Wird jeden Montag um 07:00 Uhr automatisch ausgeführt.
+    Enthält:
+    - Portfolio-Übersicht
+    - Ablaufende Verträge
     - Kritische Fristen
     - Statistiken
 
@@ -747,7 +747,7 @@ def generate_contract_report_task(self) -> Dict[str, object]:
             total_result = await db.execute(total_query)
             total_contracts = total_result.scalar() or 0
 
-            # Aktive Vertraege
+            # Aktive Verträge
             active_query = select(func.count(BusinessContract.id)).where(
                 and_(
                     BusinessContract.status == ContractStatus.ACTIVE,
@@ -868,9 +868,9 @@ def generate_contract_report_task(self) -> Dict[str, object]:
     queue="maintenance",
 )
 def check_renewal_option_expiry_task(self) -> Dict[str, object]:
-    """Markiert abgelaufene Verlaengerungsoptionen als EXPIRED.
+    """Markiert abgelaufene Verlängerungsoptionen als EXPIRED.
 
-    Wird taeglich um 00:30 Uhr automatisch ausgefuehrt.
+    Wird täglich um 00:30 Uhr automatisch ausgeführt.
 
     Returns:
         Dict mit Statistiken
@@ -885,7 +885,7 @@ def check_renewal_option_expiry_task(self) -> Dict[str, object]:
                 "errors": [],
             }
 
-            # Query fuer verfuegbare Optionen mit abgelaufener Frist
+            # Query für verfügbare Optionen mit abgelaufener Frist
             query = select(ContractRenewalOption).where(
                 and_(
                     ContractRenewalOption.status == RenewalOptionStatus.AVAILABLE,
@@ -947,9 +947,9 @@ def check_renewal_option_expiry_task(self) -> Dict[str, object]:
     queue="maintenance",
 )
 def check_overdue_milestones_task(self) -> Dict[str, object]:
-    """Prueft auf ueberfaellige Meilensteine und sendet Benachrichtigungen.
+    """Prüft auf überfällige Meilensteine und sendet Benachrichtigungen.
 
-    Wird taeglich um 09:30 Uhr automatisch ausgefuehrt.
+    Wird täglich um 09:30 Uhr automatisch ausgeführt.
 
     Returns:
         Dict mit Statistiken
@@ -965,7 +965,7 @@ def check_overdue_milestones_task(self) -> Dict[str, object]:
                 "errors": [],
             }
 
-            # Query fuer nicht abgeschlossene Meilensteine mit Vertrag
+            # Query für nicht abgeschlossene Meilensteine mit Vertrag
             query = (
                 select(ContractMilestone, BusinessContract)
                 .join(BusinessContract)
@@ -1007,7 +1007,7 @@ def check_overdue_milestones_task(self) -> Dict[str, object]:
 
                     # In-App Notification senden
                     if contract.responsible_user_id:
-                        # Prioritaet basierend auf Ueberfaelligkeit
+                        # Priorität basierend auf Überfälligkeit
                         priority = "high" if days_overdue > 7 else "normal"
 
                         await notification_service.notify(
@@ -1068,16 +1068,16 @@ def check_contract_renewal_deadlines_task(
     self,
     company_id: Optional[str] = None,
 ) -> Dict[str, object]:
-    """Prueft alle Vertraege auf bevorstehende Verlaengerungsfristen.
+    """Prüft alle Verträge auf bevorstehende Verlängerungsfristen.
 
-    Wird taeglich um 08:00 Uhr automatisch ausgefuehrt.
-    Erstellt Alerts im Alert Center fuer:
-    - Kuendigungsfristen (30/60/90 Tage Vorlauf)
+    Wird täglich um 08:00 Uhr automatisch ausgeführt.
+    Erstellt Alerts im Alert Center für:
+    - Kündigungsfristen (30/60/90 Tage Vorlauf)
     - Vertragsablauf
-    - Automatische Verlaengerungen
+    - Automatische Verlängerungen
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
+        company_id: Optional - nur für spezifische Firma
 
     Returns:
         Dict mit Statistiken
@@ -1123,10 +1123,10 @@ def extract_contract_dates_task(
 ) -> Dict[str, object]:
     """Extrahiert Vertragsfristen aus OCR-Text eines Dokuments.
 
-    Wird nach OCR-Abschluss automatisch fuer Vertragsdokumente aufgerufen.
+    Wird nach OCR-Abschluss automatisch für Vertragsdokumente aufgerufen.
     Analysiert den Text und erkennt:
     - Vertragslaufzeit
-    - Kuendigungsfristen
+    - Kündigungsfristen
     - Ablaufdaten
 
     Args:
@@ -1221,7 +1221,7 @@ def send_contract_renewal_reminder_task(
     days_remaining: int,
     deadline_type: str = "expiration",
 ) -> Dict[str, object]:
-    """Sendet individuelle Erinnerung fuer Vertragserneuerung.
+    """Sendet individuelle Erinnerung für Vertragserneuerung.
 
     Args:
         contract_id: Vertrags-ID
@@ -1294,7 +1294,7 @@ def schedule_contract_reminders_task(
     deadline_date: str,
     deadline_type: str = "termination_notice",
 ) -> Dict[str, object]:
-    """Plant Erinnerungen fuer einen Vertrag.
+    """Plant Erinnerungen für einen Vertrag.
 
     Args:
         contract_id: Vertrags-ID

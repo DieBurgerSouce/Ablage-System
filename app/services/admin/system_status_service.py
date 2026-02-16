@@ -56,12 +56,12 @@ class SystemStatusService:
             # Generate recommendations
             recommendations = []
             if memory_usage_percent > 85:
-                recommendations.append("VRAM-Auslastung kritisch hoch. Batch-Groesse reduzieren.")
+                recommendations.append("VRAM-Auslastung kritisch hoch. Batch-Größe reduzieren.")
             elif memory_usage_percent > 70:
                 recommendations.append("VRAM-Auslastung erhoet. Monitoring empfohlen.")
 
             if not status.get("available", False):
-                recommendations.append("GPU nicht verfuegbar. Fallback auf CPU aktiv.")
+                recommendations.append("GPU nicht verfügbar. Fallback auf CPU aktiv.")
 
             return GPUStatusAdmin(
                 available=status.get("available", False),

@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Activity Timeline Service fuer Ablage-System.
+Activity Timeline Service für Ablage-System.
 
 Multi-Level Activity Tracking:
 - Dokument-zentriert: Alles was mit einem Dokument passiert
-- Team-weit: Aktivitaeten aller Team-Mitglieder
+- Team-weit: Aktivitäten aller Team-Mitglieder
 - Vorgang-basiert: Document Chains als Activity-Stream
-- Projekt-basiert: Projektteam-Aktivitaeten
+- Projekt-basiert: Projektteam-Aktivitäten
 - Company-Timeline: Admins sehen alles (permission-filtered)
-- Benutzer-Timeline: Eigene Aktivitaeten
+- Benutzer-Timeline: Eigene Aktivitäten
 
 Phase 3.3 der Strategischen Roadmap (Januar 2026).
 """
@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 
 class ActivitySource(str, Enum):
-    """Quelle der Aktivitaet."""
+    """Quelle der Aktivität."""
     DOCUMENT = "document"
     TEAM = "team"
     CHAIN = "chain"
@@ -52,7 +52,7 @@ class ActivitySource(str, Enum):
 
 
 class UnifiedActivity(BaseModel):
-    """Einheitliches Activity-Modell fuer alle Quellen."""
+    """Einheitliches Activity-Modell für alle Quellen."""
     id: UUID
     source: ActivitySource
     activity_type: str
@@ -95,7 +95,7 @@ class UnifiedActivity(BaseModel):
 
 
 class TimelineFilter(BaseModel):
-    """Filter fuer Timeline-Abfragen."""
+    """Filter für Timeline-Abfragen."""
     sources: Optional[List[ActivitySource]] = None
     activity_types: Optional[List[str]] = None
     actor_ids: Optional[List[UUID]] = None
@@ -112,9 +112,9 @@ class TimelineFilter(BaseModel):
 
 
 class ActivityTimelineService:
-    """Service fuer Multi-Level Activity Timeline.
+    """Service für Multi-Level Activity Timeline.
 
-    Aggregiert Aktivitaeten aus verschiedenen Quellen:
+    Aggregiert Aktivitäten aus verschiedenen Quellen:
     - DocumentActivity (Dokument-bezogen)
     - TeamActivity (Team-bezogen)
     - Document Chains
@@ -127,7 +127,7 @@ class ActivityTimelineService:
         self.db = db
 
     # =========================================================================
-    # My Activities (Eigene Aktivitaeten)
+    # My Activities (Eigene Aktivitäten)
     # =========================================================================
 
     async def get_my_activities(
@@ -138,19 +138,19 @@ class ActivityTimelineService:
         limit: int = 50,
         offset: int = 0,
     ) -> List[UnifiedActivity]:
-        """Holt Aktivitaeten des aktuellen Users.
+        """Holt Aktivitäten des aktuellen Users.
 
         Umfasst:
-        - Aktivitaeten die der User selbst durchgefuehrt hat
-        - Aktivitaeten an Dokumenten die dem User gehoeren
-        - Team-Aktivitaeten in Teams wo User Mitglied ist
+        - Aktivitäten die der User selbst durchgeführt hat
+        - Aktivitäten an Dokumenten die dem User gehören
+        - Team-Aktivitäten in Teams wo User Mitglied ist
 
         Args:
             user_id: ID des Users
-            company_id: Company-ID fuer Multi-Tenant
+            company_id: Company-ID für Multi-Tenant
             filters: Optional Filter
             limit: Max. Anzahl
-            offset: Offset fuer Pagination
+            offset: Offset für Pagination
 
         Returns:
             Liste von UnifiedActivity
@@ -193,15 +193,15 @@ class ActivityTimelineService:
         limit: int = 50,
         offset: int = 0,
     ) -> List[UnifiedActivity]:
-        """Holt Timeline fuer ein Team.
+        """Holt Timeline für ein Team.
 
         Umfasst:
-        - Team-Aktivitaeten (Mitgliedschaften, Einstellungen)
-        - Aktivitaeten aller Team-Mitglieder an Team-Dokumenten
+        - Team-Aktivitäten (Mitgliedschaften, Einstellungen)
+        - Aktivitäten aller Team-Mitglieder an Team-Dokumenten
 
         Args:
             team_id: Team-ID
-            user_id: Anfragender User (fuer Berechtigungspruefung)
+            user_id: Anfragender User (für Berechtigungsprüfung)
             company_id: Company-ID
             filters: Optional Filter
             limit: Max. Anzahl
@@ -210,27 +210,27 @@ class ActivityTimelineService:
         Returns:
             Liste von UnifiedActivity
         """
-        # Berechtigung pruefen (User muss Team-Mitglied sein)
+        # Berechtigung prüfen (User muss Team-Mitglied sein)
         is_member = await self._check_team_membership(team_id, user_id)
         if not is_member:
             return []
 
         activities = []
 
-        # 1. Team-eigene Aktivitaeten
+        # 1. Team-eigene Aktivitäten
         result = await self.db.execute(
             select(TeamActivity)
             .options(selectinload(TeamActivity.actor))
             .where(TeamActivity.team_id == team_id)
             .order_by(desc(TeamActivity.created_at))
-            .limit(limit * 2)  # Mehr holen fuer Merge
+            .limit(limit * 2)  # Mehr holen für Merge
         )
         team_acts = result.scalars().all()
 
         for ta in team_acts:
             activities.append(self._convert_team_activity(ta))
 
-        # 2. Dokument-Aktivitaeten von Team-Mitgliedern
+        # 2. Dokument-Aktivitäten von Team-Mitgliedern
         # Hole Team-Mitglieder
         members_result = await self.db.execute(
             select(TeamMembership.user_id)
@@ -266,15 +266,15 @@ class ActivityTimelineService:
         limit: int = 50,
         offset: int = 0,
     ) -> List[UnifiedActivity]:
-        """Holt Timeline fuer ein einzelnes Dokument.
+        """Holt Timeline für ein einzelnes Dokument.
 
-        Umfasst alle Aktivitaeten die das Dokument betreffen:
+        Umfasst alle Aktivitäten die das Dokument betreffen:
         - Views, Downloads
         - Bearbeitungen
         - OCR-Verarbeitung
         - Kommentare
         - Genehmigungen
-        - Chain-Verknuepfungen
+        - Chain-Verknüpfungen
 
         Args:
             document_id: Dokument-ID
@@ -305,7 +305,7 @@ class ActivityTimelineService:
                 )
                 user = user_result.scalar_one_or_none()
 
-            # Document laden fuer Namen
+            # Document laden für Namen
             doc_result = await self.db.execute(
                 select(Document).where(Document.id == da.document_id)
             )
@@ -331,14 +331,14 @@ class ActivityTimelineService:
         limit: int = 50,
         offset: int = 0,
     ) -> List[UnifiedActivity]:
-        """Holt Timeline fuer eine Document Chain (Vorgang).
+        """Holt Timeline für eine Document Chain (Vorgang).
 
-        Aggregiert Aktivitaeten aller Dokumente in der Chain:
+        Aggregiert Aktivitäten aller Dokumente in der Chain:
         - Angebot erstellt
-        - Auftrag verknuepft
-        - Lieferschein hinzugefuegt
+        - Auftrag verknüpft
+        - Lieferschein hinzugefügt
         - Rechnung empfangen
-        - Status-Aenderungen
+        - Status-Änderungen
 
         Args:
             chain_id: Chain-ID
@@ -351,12 +351,12 @@ class ActivityTimelineService:
             Liste von UnifiedActivity
         """
         # Document Chain Dokumente holen
-        # Hier muesste DocumentChain Model importiert werden
+        # Hier müsste DocumentChain Model importiert werden
         # Vereinfacht: Wir holen Dokumente mit chain_id Referenz
 
         activities = []
 
-        # DocumentChain Integration - hole Aktivitaeten fuer verknuepfte Dokumente
+        # DocumentChain Integration - hole Aktivitäten für verknüpfte Dokumente
         try:
             from app.db.models import DocumentChain, DocumentChainItem
 
@@ -368,14 +368,14 @@ class ActivityTimelineService:
             if not chain:
                 return activities
 
-            # Lade verknuepfte Dokument-IDs
+            # Lade verknüpfte Dokument-IDs
             items_query = select(DocumentChainItem.document_id).where(
                 DocumentChainItem.chain_id == chain_id
             )
             items_result = await self.db.execute(items_query)
             document_ids = items_result.scalars().all()
 
-            # Hole Aktivitaeten fuer alle Dokumente der Chain
+            # Hole Aktivitäten für alle Dokumente der Chain
             for doc_id in document_ids:
                 doc_activities = await self.get_document_timeline(
                     document_id=doc_id,
@@ -389,7 +389,7 @@ class ActivityTimelineService:
             activities.sort(key=lambda a: a.timestamp, reverse=True)
 
         except ImportError:
-            # DocumentChain Model nicht verfuegbar
+            # DocumentChain Model nicht verfügbar
             pass
         except Exception as e:
             logger.warning("document_chain_timeline_error", error=str(e))
@@ -409,11 +409,11 @@ class ActivityTimelineService:
         limit: int = 50,
         offset: int = 0,
     ) -> List[UnifiedActivity]:
-        """Holt Company-weite Timeline (nur fuer Admins).
+        """Holt Company-weite Timeline (nur für Admins).
 
-        Zeigt alle Aktivitaeten der Company:
-        - Alle Dokument-Aktivitaeten
-        - Alle Team-Aktivitaeten
+        Zeigt alle Aktivitäten der Company:
+        - Alle Dokument-Aktivitäten
+        - Alle Team-Aktivitäten
         - System-Events
 
         Args:
@@ -428,7 +428,7 @@ class ActivityTimelineService:
             Liste von UnifiedActivity
         """
         if not is_admin:
-            # Nicht-Admins bekommen nur eingeschraenkte Sicht
+            # Nicht-Admins bekommen nur eingeschränkte Sicht
             return await self.get_my_activities(
                 user_id=user_id,
                 company_id=company_id,
@@ -479,7 +479,7 @@ class ActivityTimelineService:
         date_from: Optional[datetime] = None,
         date_until: Optional[datetime] = None,
     ) -> Dict[str, Any]:
-        """Berechnet Aktivitaets-Statistiken.
+        """Berechnet Aktivitäts-Statistiken.
 
         Args:
             company_id: Company-ID
@@ -496,7 +496,7 @@ class ActivityTimelineService:
         if not date_until:
             date_until = datetime.utcnow()
 
-        # Basis-Query fuer DocumentActivity
+        # Basis-Query für DocumentActivity
         base_query = select(func.count(DocumentActivity.id)).where(
             DocumentActivity.created_at >= date_from,
             DocumentActivity.created_at <= date_until,
@@ -551,7 +551,7 @@ class ActivityTimelineService:
             for row in daily_result.all()
         ]
 
-        # Top Active Users (nur fuer Company-Admin)
+        # Top Active Users (nur für Company-Admin)
         top_users_query = (
             select(
                 DocumentActivity.user_id,
@@ -617,7 +617,7 @@ class ActivityTimelineService:
         )
 
         if user_id and include_owned_docs:
-            # Aktivitaeten vom User ODER an seinen Dokumenten
+            # Aktivitäten vom User ODER an seinen Dokumenten
             query = query.where(
                 or_(
                     DocumentActivity.user_id == user_id,
@@ -625,7 +625,7 @@ class ActivityTimelineService:
                 )
             )
         elif user_id:
-            # Nur Aktivitaeten vom User
+            # Nur Aktivitäten vom User
             query = query.where(DocumentActivity.user_id == user_id)
 
         # Filter anwenden
@@ -670,7 +670,7 @@ class ActivityTimelineService:
         filters: Optional[TimelineFilter],
         limit: int,
     ) -> List[UnifiedActivity]:
-        """Holt Document Activities fuer bestimmte User."""
+        """Holt Document Activities für bestimmte User."""
         query = (
             select(DocumentActivity)
             .join(Document, DocumentActivity.document_id == Document.id)
@@ -716,7 +716,7 @@ class ActivityTimelineService:
         filters: Optional[TimelineFilter],
         limit: int,
     ) -> List[UnifiedActivity]:
-        """Holt Team Activities fuer Teams wo User Mitglied ist."""
+        """Holt Team Activities für Teams wo User Mitglied ist."""
         # Finde Teams des Users
         membership_result = await self.db.execute(
             select(TeamMembership.team_id)
@@ -751,7 +751,7 @@ class ActivityTimelineService:
         return [self._convert_team_activity(ta) for ta in team_activities]
 
     async def _check_team_membership(self, team_id: UUID, user_id: UUID) -> bool:
-        """Prueft ob User Mitglied eines Teams ist."""
+        """Prüft ob User Mitglied eines Teams ist."""
         result = await self.db.execute(
             select(TeamMembership.id)
             .where(
@@ -803,10 +803,10 @@ class ActivityTimelineService:
             actor_avatar=None,
             target_type="team",
             target_id=activity.team_id,
-            target_name=None,  # Team-Name muesste separat geladen werden
+            target_name=None,  # Team-Name müsste separat geladen werden
             related_type=activity.target_entity_type,
             related_id=activity.target_entity_id,
-            company_id=UUID(int=0),  # Muesste ueber Team geladen werden
+            company_id=UUID(int=0),  # Müsste über Team geladen werden
             team_id=activity.team_id,
             metadata=activity.details or {},
             created_at=activity.created_at,
@@ -855,14 +855,14 @@ class ActivityTimelineService:
         return result
 
     def _get_activity_title(self, activity_type: Optional[str]) -> str:
-        """Gibt deutschen Titel fuer Activity-Typ zurueck."""
+        """Gibt deutschen Titel für Activity-Typ zurück."""
         titles = {
             "document_created": "Dokument erstellt",
             "document_uploaded": "Dokument hochgeladen",
             "document_viewed": "Dokument angesehen",
             "document_downloaded": "Dokument heruntergeladen",
             "document_edited": "Dokument bearbeitet",
-            "document_deleted": "Dokument geloescht",
+            "document_deleted": "Dokument gelöscht",
             "document_archived": "Dokument archiviert",
             "document_restored": "Dokument wiederhergestellt",
             "document_shared": "Dokument geteilt",
@@ -873,14 +873,14 @@ class ActivityTimelineService:
             "approval_requested": "Genehmigung angefordert",
             "approval_granted": "Genehmigung erteilt",
             "approval_rejected": "Genehmigung abgelehnt",
-            "comment_added": "Kommentar hinzugefuegt",
-            "tag_added": "Tag hinzugefuegt",
+            "comment_added": "Kommentar hinzugefügt",
+            "tag_added": "Tag hinzugefügt",
             "tag_removed": "Tag entfernt",
         }
-        return titles.get(activity_type or "", activity_type or "Aktivitaet")
+        return titles.get(activity_type or "", activity_type or "Aktivität")
 
     def _get_activity_icon(self, activity_type: Optional[str]) -> str:
-        """Gibt Icon-Name fuer Activity-Typ zurueck."""
+        """Gibt Icon-Name für Activity-Typ zurück."""
         icons = {
             "document_created": "file-plus",
             "document_uploaded": "upload",
@@ -905,7 +905,7 @@ class ActivityTimelineService:
         return icons.get(activity_type or "", "activity")
 
     def _get_activity_color(self, activity_type: Optional[str]) -> str:
-        """Gibt Farbe fuer Activity-Typ zurueck."""
+        """Gibt Farbe für Activity-Typ zurück."""
         colors = {
             "document_created": "green",
             "document_uploaded": "green",
@@ -930,7 +930,7 @@ class ActivityTimelineService:
         return colors.get(activity_type or "", "gray")
 
     def _get_team_activity_icon(self, activity_type: str) -> str:
-        """Gibt Icon-Name fuer Team-Activity-Typ zurueck."""
+        """Gibt Icon-Name für Team-Activity-Typ zurück."""
         icons = {
             "member_joined": "user-plus",
             "member_left": "user-minus",

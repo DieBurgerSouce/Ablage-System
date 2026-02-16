@@ -6,11 +6,11 @@ Klassifiziert Dokumente nach Vertraulichkeitsstufe basierend auf:
 - Explizite Vertraulichkeits-Marker
 - Dokumenttyp
 - Inhalt (PII, Finanzdaten, etc.)
-- Geschaeftsgeheimnisse
+- Geschäftsgeheimnisse
 
 Vertraulichkeitsstufen:
-- PUBLIC: Oeffentlich zugaengliche Informationen
-- INTERNAL: Nur fuer interne Nutzung
+- PUBLIC: Öffentlich zugaengliche Informationen
+- INTERNAL: Nur für interne Nutzung
 - CONFIDENTIAL: Vertraulich, eingeschraenkter Zugriff
 - STRICTLY_CONFIDENTIAL: Streng vertraulich, minimaler Zugriff
 
@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ConfidentialityLevel(str, Enum):
-    """Vertraulichkeitsstufen fuer Dokumente."""
+    """Vertraulichkeitsstufen für Dokumente."""
     PUBLIC = "public"
     INTERNAL = "internal"
     CONFIDENTIAL = "confidential"
@@ -50,23 +50,23 @@ class ConfidentialityClassificationResult:
 # CLASSIFICATION RULES
 # =============================================================================
 
-# Explizite Marker fuer Vertraulichkeit
+# Explizite Marker für Vertraulichkeit
 STRICTLY_CONFIDENTIAL_MARKERS: Set[str] = {
     "streng vertraulich", "strictly confidential", "top secret",
-    "geheim", "nur fuer geschaeftsfuehrung", "nur fuer vorstand",
+    "geheim", "nur für geschäftsführung", "nur für vorstand",
     "persoenlich/vertraulich", "nicht zur weitergabe",
     "highly confidential", "secret", "restricted",
 }
 
 CONFIDENTIAL_MARKERS: Set[str] = {
-    "vertraulich", "confidential", "nicht oeffentlich",
-    "intern und vertraulich", "nur fuer internen gebrauch",
+    "vertraulich", "confidential", "nicht öffentlich",
+    "intern und vertraulich", "nur für internen gebrauch",
     "privilegiert", "sensibel", "protected", "private",
 }
 
 INTERNAL_MARKERS: Set[str] = {
     "intern", "internal", "nur intern", "internal use only",
-    "firmenintern", "nicht zur veroeffentlichung",
+    "firmenintern", "nicht zur veröffentlichung",
     "for internal use", "company confidential",
 }
 
@@ -82,7 +82,7 @@ CONFIDENTIAL_TYPES: Set[str] = {
     "employment_contract", "arbeitsvertrag",
     "performance_review", "leistungsbeurteilung",
     "financial_statement", "jahresabschluss", "bilanz",
-    "tax_return", "steuererklaerung",
+    "tax_return", "steuererklärung",
     "contract", "vertrag",
     "offer", "angebot",  # Preiskalkulationen
 }
@@ -95,7 +95,7 @@ INTERNAL_TYPES: Set[str] = {
     "project_plan", "projektplan",
 }
 
-# PII-Patterns fuer automatische Einstufung
+# PII-Patterns für automatische Einstufung
 PII_PATTERNS = {
     "iban": re.compile(r'[A-Z]{2}\d{2}[A-Z0-9]{4}\d{7}([A-Z0-9]?){0,16}', re.IGNORECASE),
     "steuer_id": re.compile(r'steuer[\s\-]?(?:id|nummer|nr)[\s:]*\d{10,11}', re.IGNORECASE),
@@ -106,12 +106,12 @@ PII_PATTERNS = {
     "krankenversicherung": re.compile(r'(?:kranken)?versicherungsnummer[\s:]*[A-Z]?\d{9,10}', re.IGNORECASE),
 }
 
-# Geschaeftsgeheimnisse
+# Geschäftsgeheimnisse
 TRADE_SECRET_KEYWORDS: Set[str] = {
     "patentanmeldung", "erfindung", "forschung", "entwicklung",
     "kundenliste", "preiskalkulation", "margenkalkulation",
     "lieferantenkonditionen", "einkaufspreise", "herstellkosten",
-    "betriebsgeheimnis", "geschaeftsgeheimnis",
+    "betriebsgeheimnis", "geschäftsgeheimnis",
     "prototyp", "rezeptur", "formel", "algorithmus",
     "know-how", "verfahren",
 }
@@ -169,14 +169,14 @@ class ConfidentialityClassifier:
         internal_markers = self._find_markers(normalized_text, INTERNAL_MARKERS)
 
         # 2. PII scannen
-        pii_types = self._scan_pii(text)  # Original-Text fuer bessere Erkennung
+        pii_types = self._scan_pii(text)  # Original-Text für bessere Erkennung
         if pii_types:
             self._stats["pii_detections"] += 1
 
-        # 3. Trade Secrets pruefen
+        # 3. Trade Secrets prüfen
         trade_secrets = self._find_markers(normalized_text, TRADE_SECRET_KEYWORDS)
 
-        # 4. Dokumenttyp beruecksichtigen
+        # 4. Dokumenttyp berücksichtigen
         doc_type_level = self._get_doc_type_level(document_type)
 
         # 5. Level bestimmen
@@ -216,7 +216,7 @@ class ConfidentialityClassifier:
         )
 
     def _normalize_text(self, text: str) -> str:
-        """Normalisiere Text fuer Marker-Matching."""
+        """Normalisiere Text für Marker-Matching."""
         text = text.lower()
         text = re.sub(r'\s+', ' ', text)
         return text.strip()
@@ -269,7 +269,7 @@ class ConfidentialityClassifier:
         Returns:
             (level, confidence, reason)
         """
-        # Prioritaet 1: Explizite streng vertraulich Marker
+        # Priorität 1: Explizite streng vertraulich Marker
         if strict_markers:
             return (
                 ConfidentialityLevel.STRICTLY_CONFIDENTIAL,
@@ -277,7 +277,7 @@ class ConfidentialityClassifier:
                 f"Expliziter Marker: {strict_markers[0]}",
             )
 
-        # Prioritaet 2: Sensible PII (Gehalt, Steuer-ID, etc.)
+        # Priorität 2: Sensible PII (Gehalt, Steuer-ID, etc.)
         sensitive_pii = {"gehalt", "steuer_id", "sozialversicherung"}
         if any(pii in pii_types for pii in sensitive_pii):
             return (
@@ -286,15 +286,15 @@ class ConfidentialityClassifier:
                 f"Sensible personenbezogene Daten erkannt: {', '.join(pii_types)}",
             )
 
-        # Prioritaet 3: Trade Secrets
+        # Priorität 3: Trade Secrets
         if len(trade_secrets) >= 2:
             return (
                 ConfidentialityLevel.STRICTLY_CONFIDENTIAL,
                 0.85,
-                f"Geschaeftsgeheimnisse erkannt: {', '.join(trade_secrets[:2])}",
+                f"Geschäftsgeheimnisse erkannt: {', '.join(trade_secrets[:2])}",
             )
 
-        # Prioritaet 4: Explizite vertraulich Marker
+        # Priorität 4: Explizite vertraulich Marker
         if conf_markers:
             return (
                 ConfidentialityLevel.CONFIDENTIAL,
@@ -302,7 +302,7 @@ class ConfidentialityClassifier:
                 f"Expliziter Marker: {conf_markers[0]}",
             )
 
-        # Prioritaet 5: PII vorhanden
+        # Priorität 5: PII vorhanden
         if pii_types:
             return (
                 ConfidentialityLevel.CONFIDENTIAL,
@@ -310,15 +310,15 @@ class ConfidentialityClassifier:
                 f"Personenbezogene Daten erkannt: {', '.join(pii_types)}",
             )
 
-        # Prioritaet 6: Trade Secrets (einzeln)
+        # Priorität 6: Trade Secrets (einzeln)
         if trade_secrets:
             return (
                 ConfidentialityLevel.CONFIDENTIAL,
                 0.75,
-                f"Potenzielle Geschaeftsinformationen: {trade_secrets[0]}",
+                f"Potenzielle Geschäftsinformationen: {trade_secrets[0]}",
             )
 
-        # Prioritaet 7: Dokumenttyp-basiert
+        # Priorität 7: Dokumenttyp-basiert
         if doc_type_level:
             confidence = 0.8 if doc_type_level == ConfidentialityLevel.STRICTLY_CONFIDENTIAL else 0.7
             return (
@@ -327,7 +327,7 @@ class ConfidentialityClassifier:
                 f"Basierend auf Dokumenttyp",
             )
 
-        # Prioritaet 8: Explizite intern Marker
+        # Priorität 8: Explizite intern Marker
         if internal_markers:
             return (
                 ConfidentialityLevel.INTERNAL,
@@ -339,25 +339,25 @@ class ConfidentialityClassifier:
         return (
             ConfidentialityLevel.INTERNAL,
             0.6,
-            "Standardklassifikation fuer Geschaeftsdokumente",
+            "Standardklassifikation für Geschäftsdokumente",
         )
 
     def _get_access_restriction(self, level: ConfidentialityLevel) -> str:
         """Bestimme Zugriffsbeschraenkung basierend auf Level."""
         restrictions = {
-            ConfidentialityLevel.PUBLIC: "Keine Einschraenkung",
+            ConfidentialityLevel.PUBLIC: "Keine Einschränkung",
             ConfidentialityLevel.INTERNAL: "Alle Mitarbeiter",
             ConfidentialityLevel.CONFIDENTIAL: "Nur autorisierte Mitarbeiter",
-            ConfidentialityLevel.STRICTLY_CONFIDENTIAL: "Nur Geschaeftsfuehrung und benannte Personen",
+            ConfidentialityLevel.STRICTLY_CONFIDENTIAL: "Nur Geschäftsführung und benannte Personen",
         }
         return restrictions.get(level, "Unbekannt")
 
     def get_stats(self) -> dict:
-        """Gibt Klassifizierungs-Statistiken zurueck."""
+        """Gibt Klassifizierungs-Statistiken zurück."""
         return self._stats.copy()
 
     def reset_stats(self) -> None:
-        """Setzt Statistiken zurueck."""
+        """Setzt Statistiken zurück."""
         self._stats = {
             "total_classifications": 0,
             "by_level": {level.value: 0 for level in ConfidentialityLevel},
@@ -373,7 +373,7 @@ _confidentiality_classifier: Optional[ConfidentialityClassifier] = None
 
 
 def get_confidentiality_classifier() -> ConfidentialityClassifier:
-    """Gibt die Singleton-Instanz des Confidentiality Classifier zurueck."""
+    """Gibt die Singleton-Instanz des Confidentiality Classifier zurück."""
     global _confidentiality_classifier
     if _confidentiality_classifier is None:
         _confidentiality_classifier = ConfidentialityClassifier()

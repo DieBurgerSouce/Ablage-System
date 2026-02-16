@@ -2,8 +2,8 @@
 """
 DATEV Booking Suggestion Service.
 
-Generiert Buchungsvorschlaege basierend auf OCR-Extraktion:
-- SKR03/04 Konten-Vorschlaege
+Generiert Buchungsvorschläge basierend auf OCR-Extraktion:
+- SKR03/04 Konten-Vorschläge
 - Steuercode-Erkennung
 - Kostenstellen-Zuordnung
 - Belegart-Klassifikation
@@ -26,13 +26,13 @@ logger = logging.getLogger(__name__)
 
 
 class Kontenrahmen(str, Enum):
-    """Unterstuetzte Kontenrahmen."""
+    """Unterstützte Kontenrahmen."""
     SKR03 = "skr03"
     SKR04 = "skr04"
 
 
 class Belegart(str, Enum):
-    """Belegarten fuer DATEV."""
+    """Belegarten für DATEV."""
     EINGANGSRECHNUNG = "ER"      # Eingangsrechnung
     AUSGANGSRECHNUNG = "AR"      # Ausgangsrechnung
     GUTSCHRIFT_EINGANG = "GE"    # Gutschrift Eingang
@@ -55,7 +55,7 @@ class Steuercode(str, Enum):
 
 
 class BookingSuggestion(BaseModel):
-    """Schema fuer Buchungsvorschlag."""
+    """Schema für Buchungsvorschlag."""
     # Pflichtfelder
     belegart: str = Field(..., description="Belegart (ER, AR, etc.)")
     belegdatum: date = Field(..., description="Belegdatum")
@@ -74,7 +74,7 @@ class BookingSuggestion(BaseModel):
     steuerbetrag: Optional[Decimal] = None
     nettobetrag: Optional[Decimal] = None
 
-    # Zusaetzliche Felder
+    # Zusätzliche Felder
     belegnummer: Optional[str] = Field(None, max_length=12)
     rechnungsnummer: Optional[str] = Field(None, max_length=36)
     gegenkonto_name: Optional[str] = None  # Lieferant/Kunde Name
@@ -103,13 +103,13 @@ class AccountMapping(BaseModel):
 
 class BookingSuggestionService:
     """
-    Service fuer DATEV Buchungsvorschlaege.
+    Service für DATEV Buchungsvorschläge.
 
-    Analysiert OCR-Text und generiert Buchungsvorschlaege
+    Analysiert OCR-Text und generiert Buchungsvorschläge
     nach SKR03 oder SKR04.
     """
 
-    # SKR03 Konten-Mappings (haeufig verwendete)
+    # SKR03 Konten-Mappings (häufig verwendete)
     SKR03_ACCOUNTS = {
         # Aufwandskonten
         "buero": AccountMapping(
@@ -222,7 +222,7 @@ class BookingSuggestionService:
         ),
     }
 
-    # USt-Saetze
+    # USt-Sätze
     TAX_RATES = {
         19: ("9", Decimal("0.19")),
         7: ("8", Decimal("0.07")),
@@ -258,8 +258,8 @@ class BookingSuggestionService:
             ocr_text: Volltext aus OCR
             extracted_data: Strukturierte Daten (Betrag, Datum, etc.)
             document_type: Dokumenttyp (eingangsrechnung, ausgangsrechnung, etc.)
-            entity_name: Name des Geschaeftspartners
-            entity_id: ID des Geschaeftspartners (fuer Kontoaufloesung)
+            entity_name: Name des Geschäftspartners
+            entity_id: ID des Geschäftspartners (für Kontoaufloesung)
             custom_account_mappings: Benutzerdefinierte Konto-Zuordnungen
 
         Returns:
@@ -337,7 +337,7 @@ class BookingSuggestionService:
         # Gesamt-Confidence
         total_confidence = sum(confidence_details.values()) / len(confidence_details)
 
-        # Pruefe ob Review erforderlich
+        # Prüfe ob Review erforderlich
         requires_review = total_confidence < 0.7 or len(warnings) > 0
 
         return BookingSuggestion(
@@ -575,7 +575,7 @@ class BookingSuggestionService:
         parts = []
 
         if entity_name:
-            # Kuerze langen Namen
+            # Kürze langen Namen
             name = entity_name[:25] if len(entity_name) > 25 else entity_name
             parts.append(name)
 
@@ -617,13 +617,13 @@ class BookingSuggestionService:
         documents: List[Dict[str, Any]],
     ) -> List[BookingSuggestion]:
         """
-        Batch-Vorschlaege fuer mehrere Dokumente.
+        Batch-Vorschläge für mehrere Dokumente.
 
         Args:
             documents: Liste von Dokumenten mit ocr_text und extracted_data
 
         Returns:
-            Liste von Buchungsvorschlaegen
+            Liste von Buchungsvorschlägen
         """
         suggestions = []
 
@@ -664,10 +664,10 @@ class BookingSuggestionService:
         wirtschaftsjahr: int,
     ) -> str:
         """
-        Exportiere Vorschlaege im DATEV-Format.
+        Exportiere Vorschläge im DATEV-Format.
 
         Args:
-            suggestions: Liste von Buchungsvorschlaegen
+            suggestions: Liste von Buchungsvorschlägen
             mandant_nr: Mandantennummer
             berater_nr: Beraternummer
             wirtschaftsjahr: Wirtschaftsjahr
@@ -688,7 +688,7 @@ class BookingSuggestionService:
         # Buchungen
         for sugg in suggestions:
             if sugg.requires_review and sugg.confidence < 0.5:
-                continue  # Ueberspringe unsichere Buchungen
+                continue  # Überspringe unsichere Buchungen
 
             line = (
                 f'"{sugg.belegart}";'

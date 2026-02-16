@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Refactor: Systematische Unicode-Normalisierung über 1168 Dateien (ae→ä, oe→ö, ue→ü, ss→ß, fuer→für) für konsistente deutsche Sprachqualität
+
 ### Added
 - Database: Migration 225 Next Generation Features (automation_rules, annotation_tasks)
 - Database: Migration 226 Inbound Webhook Events (webhook_inbound_events)

@@ -1,7 +1,7 @@
 """
 Executive Reporting API Schemas
 
-Pydantic Schemas fuer Geschaeftsfuehrung Dashboard und Reporting.
+Pydantic Schemas für Geschäftsführung Dashboard und Reporting.
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field, ConfigDict
 # =============================================================================
 
 class KPIResponse(BaseModel):
-    """Key Performance Indicators fuer Dashboard."""
+    """Key Performance Indicators für Dashboard."""
 
     documents_this_month: int = Field(
         ...,
@@ -52,7 +52,7 @@ class KPIResponse(BaseModel):
     )
     cost_per_document: float = Field(
         ...,
-        description="Geschaetzte Kosten pro Dokument basierend auf Verarbeitungszeit"
+        description="Geschätzte Kosten pro Dokument basierend auf Verarbeitungszeit"
     )
     active_users_count: int = Field(
         ...,
@@ -60,7 +60,7 @@ class KPIResponse(BaseModel):
     )
     pending_reviews: int = Field(
         ...,
-        description="Anzahl ausstehender Pruefungen"
+        description="Anzahl ausstehender Prüfungen"
     )
 
     model_config = ConfigDict(from_attributes=True)
@@ -119,7 +119,7 @@ class TrendDataPoint(BaseModel):
 
 
 class TrendResponse(BaseModel):
-    """Zeitreihen-Daten fuer Trendanalyse."""
+    """Zeitreihen-Daten für Trendanalyse."""
 
     metric: str = Field(
         ...,
@@ -142,7 +142,7 @@ class TrendResponse(BaseModel):
 # =============================================================================
 
 class ExecutiveSummaryResponse(BaseModel):
-    """Gesamtuebersicht fuer Geschaeftsfuehrung."""
+    """Gesamtübersicht für Geschäftsführung."""
 
     kpis: KPIResponse = Field(
         ...,

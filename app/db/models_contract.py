@@ -3,11 +3,11 @@
 Contract database models for Ablage-System.
 
 Vision 2.0 Feature: Contract AI - Intelligente Vertragsanalyse
-Unterstuetzt alle Vertragstypen:
-- Lieferantenvertraege (Rahmenvertraege, Einkaufskonditionen)
-- Kundenvertraege (SLAs, Gewaehrleistungen)
-- Miet-/Leasingvertraege (Immobilien, Fahrzeuge, Equipment)
-- Arbeitsvertraege (Befristungen, Kuendigungsfristen)
+Unterstützt alle Vertragstypen:
+- Lieferantenverträge (Rahmenverträge, Einkaufskonditionen)
+- Kundenverträge (SLAs, Gewährleistungen)
+- Miet-/Leasingverträge (Immobilien, Fahrzeuge, Equipment)
+- Arbeitsverträge (Befristungen, Kündigungsfristen)
 
 Feinpoliert und durchdacht - Enterprise-grade Contract Management.
 """
@@ -40,21 +40,21 @@ from app.db.models import Base, CrossDBJSON
 
 class ContractType(str, Enum):
     """Vertragstyp-Klassifikation."""
-    # Lieferantenvertraege
+    # Lieferantenverträge
     SUPPLIER_FRAMEWORK = "supplier_framework"  # Rahmenvertrag
     SUPPLIER_PURCHASE = "supplier_purchase"    # Einkaufskonditionen
 
-    # Kundenvertraege
+    # Kundenverträge
     CUSTOMER_SLA = "customer_sla"              # Service Level Agreement
-    CUSTOMER_WARRANTY = "customer_warranty"    # Gewaehrleistungsvertrag
+    CUSTOMER_WARRANTY = "customer_warranty"    # Gewährleistungsvertrag
     CUSTOMER_SALES = "customer_sales"          # Verkaufsvertrag
 
-    # Miet-/Leasingvertraege
+    # Miet-/Leasingverträge
     LEASE_PROPERTY = "lease_property"          # Immobilienmiete
     LEASE_VEHICLE = "lease_vehicle"            # Fahrzeugleasing
     LEASE_EQUIPMENT = "lease_equipment"        # Equipment-Leasing
 
-    # Arbeitsvertraege
+    # Arbeitsverträge
     EMPLOYMENT_PERMANENT = "employment_permanent"  # Unbefristet
     EMPLOYMENT_FIXED = "employment_fixed"          # Befristet
     EMPLOYMENT_FREELANCE = "employment_freelance"  # Freiberufler
@@ -73,9 +73,9 @@ class ContractStatus(str, Enum):
     PENDING_APPROVAL = "pending"     # Warten auf Genehmigung
     ACTIVE = "active"                # Aktiv/Laufend
     EXPIRED = "expired"              # Abgelaufen
-    TERMINATED = "terminated"        # Gekuendigt
+    TERMINATED = "terminated"        # Gekündigt
     SUSPENDED = "suspended"          # Ausgesetzt
-    RENEWED = "renewed"              # Verlaengert
+    RENEWED = "renewed"              # Verlängert
 
 
 class ObligationType(str, Enum):
@@ -84,10 +84,10 @@ class ObligationType(str, Enum):
     DELIVERY = "delivery"            # Lieferung
     REPORT = "report"                # Bericht/Report
     MAINTENANCE = "maintenance"      # Wartung
-    AUDIT = "audit"                  # Pruefung
+    AUDIT = "audit"                  # Prüfung
     NOTIFICATION = "notification"    # Benachrichtigung
     COMPLIANCE = "compliance"        # Compliance-Pflicht
-    RENEWAL = "renewal"              # Verlaengerung
+    RENEWAL = "renewal"              # Verlängerung
     OTHER = "other"                  # Sonstige
 
 
@@ -96,7 +96,7 @@ class ObligationStatus(str, Enum):
     PENDING = "pending"              # Ausstehend
     IN_PROGRESS = "in_progress"      # In Bearbeitung
     FULFILLED = "fulfilled"          # Erfuellt
-    OVERDUE = "overdue"              # Ueberfaellig
+    OVERDUE = "overdue"              # Überfällig
     WAIVED = "waived"                # Verzichtet
     CANCELLED = "cancelled"          # Storniert
 
@@ -104,18 +104,18 @@ class ObligationStatus(str, Enum):
 class RecurrencePattern(str, Enum):
     """Wiederholungsmuster."""
     ONCE = "once"                    # Einmalig
-    DAILY = "daily"                  # Taeglich
+    DAILY = "daily"                  # Täglich
     WEEKLY = "weekly"                # Woechentlich
     BIWEEKLY = "biweekly"            # Alle 2 Wochen
     MONTHLY = "monthly"              # Monatlich
     QUARTERLY = "quarterly"          # Vierteljährlich
-    SEMIANNUAL = "semiannual"        # Halbjaehrlich
-    ANNUAL = "annual"                # Jaehrlich
+    SEMIANNUAL = "semiannual"        # Halbjährlich
+    ANNUAL = "annual"                # Jährlich
 
 
 class Contract(Base):
     """
-    Haupttabelle fuer Vertraege.
+    Haupttabelle für Verträge.
 
     Speichert alle Vertragsmetadaten inkl. automatisch extrahierter
     Klauseln, Fristen und Risiko-Scores.
@@ -124,7 +124,7 @@ class Contract(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verknuepfung zum Quelldokument
+    # Verknüpfung zum Quelldokument
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
@@ -168,12 +168,12 @@ class Contract(Base):
     expiration_date = Column(Date, nullable=True, index=True)
     signed_date = Column(Date, nullable=True)
 
-    # Automatische Verlaengerung
+    # Automatische Verlängerung
     auto_renewal = Column(Boolean, default=False)
     renewal_period_months = Column(Integer, nullable=True)
-    renewal_notice_days = Column(Integer, nullable=True)  # Kuendigungsfrist vor Verlaengerung
+    renewal_notice_days = Column(Integer, nullable=True)  # Kündigungsfrist vor Verlängerung
 
-    # Kuendigung
+    # Kündigung
     notice_period_days = Column(Integer, nullable=True)
     termination_date = Column(Date, nullable=True)
     termination_reason = Column(Text, nullable=True)
@@ -201,7 +201,7 @@ class Contract(Base):
     # Format: [{"party": "...", "signatory": "Name", "date": "2026-01-15", "valid": true}]
 
     # Risiko-Bewertung
-    risk_score = Column(Integer, nullable=True)  # 0-100, hoeher = mehr Risiko
+    risk_score = Column(Integer, nullable=True)  # 0-100, höher = mehr Risiko
     risk_factors = Column(CrossDBJSON, default=list)
     # Format: [{"factor": "short_notice_period", "impact": 15, "description": "..."}]
 
@@ -211,7 +211,7 @@ class Contract(Base):
     last_analyzed_at = Column(DateTime(timezone=True), nullable=True)
     analysis_version = Column(String(20), nullable=True)  # Version des Analyse-Algorithmus
 
-    # Versionen (fuer Vertragsaenderungen)
+    # Versionen (für Vertragsänderungen)
     version_number = Column(Integer, default=1)
     parent_contract_id = Column(
         UUID(as_uuid=True),
@@ -243,7 +243,7 @@ class Contract(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    # Tags fuer Kategorisierung
+    # Tags für Kategorisierung
     tags = Column(CrossDBJSON, default=list)
 
     # Freitext-Notizen
@@ -310,14 +310,14 @@ class ContractObligation(Base):
     """
     Vertragspflichten und -verpflichtungen.
 
-    Trackt wiederkehrende und einmalige Pflichten aus Vertraegen
+    Trackt wiederkehrende und einmalige Pflichten aus Verträgen
     inkl. Erinnerungen und Status-Tracking.
     """
     __tablename__ = "contract_obligations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verknuepfung zum Vertrag
+    # Verknüpfung zum Vertrag
     contract_id = Column(
         UUID(as_uuid=True),
         ForeignKey("contracts.id", ondelete="CASCADE"),
@@ -334,7 +334,7 @@ class ContractObligation(Base):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
 
-    # Zustaendigkeit
+    # Zuständigkeit
     responsible_party = Column(String(50), nullable=True)  # "us", "them", "both"
     assignee_id = Column(
         UUID(as_uuid=True),
@@ -342,7 +342,7 @@ class ContractObligation(Base):
         nullable=True,
     )
 
-    # Faelligkeit
+    # Fälligkeit
     due_date = Column(Date, nullable=True, index=True)
 
     # Wiederholung
@@ -366,7 +366,7 @@ class ContractObligation(Base):
     )
 
     # Erinnerungen
-    reminder_days = Column(Integer, default=7)  # Tage vor Faelligkeit
+    reminder_days = Column(Integer, default=7)  # Tage vor Fälligkeit
     reminder_sent = Column(Boolean, default=False)
     reminder_sent_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -374,7 +374,7 @@ class ContractObligation(Base):
     amount = Column(Numeric(15, 2), nullable=True)
     currency = Column(String(3), default="EUR")
 
-    # Zusaetzliche Metadaten
+    # Zusätzliche Metadaten
     obligation_metadata = Column("metadata", CrossDBJSON, default=dict)
 
     # Multi-Tenant
@@ -429,14 +429,14 @@ class ContractDeadline(Base):
     """
     Vertragsfristen und wichtige Termine.
 
-    Trackt alle wichtigen Termine wie Kuendigungsfristen,
-    Verlaengerungen, Preisanpassungen etc.
+    Trackt alle wichtigen Termine wie Kündigungsfristen,
+    Verlängerungen, Preisanpassungen etc.
     """
     __tablename__ = "contract_deadlines"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verknuepfung zum Vertrag
+    # Verknüpfung zum Vertrag
     contract_id = Column(
         UUID(as_uuid=True),
         ForeignKey("contracts.id", ondelete="CASCADE"),
@@ -455,7 +455,7 @@ class ContractDeadline(Base):
     # Datum
     deadline_date = Column(Date, nullable=False, index=True)
 
-    # Prioritaet
+    # Priorität
     priority = Column(String(20), default="medium")  # low, medium, high, critical
 
     # Status
@@ -470,10 +470,10 @@ class ContractDeadline(Base):
 
     # Erinnerungen
     reminder_days_before = Column(CrossDBJSON, default=lambda: [30, 14, 7, 1])
-    # Liste der Tage vor Frist fuer Erinnerungen
+    # Liste der Tage vor Frist für Erinnerungen
     last_reminder_sent = Column(DateTime(timezone=True), nullable=True)
 
-    # Zustaendigkeit
+    # Zuständigkeit
     assignee_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -527,14 +527,14 @@ class ContractComparison(Base):
     """
     Vertragsvergleiche zwischen Versionen.
 
-    Speichert Vergleichsergebnisse fuer Audit-Trail
+    Speichert Vergleichsergebnisse für Audit-Trail
     und Nachvollziehbarkeit.
     """
     __tablename__ = "contract_comparisons"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verglichene Vertraege
+    # Verglichene Verträge
     contract_a_id = Column(
         UUID(as_uuid=True),
         ForeignKey("contracts.id", ondelete="CASCADE"),
@@ -554,12 +554,12 @@ class ContractComparison(Base):
 
     similarity_score = Column(Numeric(5, 4), nullable=True)  # 0.0 - 1.0
 
-    # Kategorisierte Aenderungen
+    # Kategorisierte Änderungen
     added_clauses = Column(CrossDBJSON, default=list)
     removed_clauses = Column(CrossDBJSON, default=list)
     modified_clauses = Column(CrossDBJSON, default=list)
 
-    # Risiko-Bewertung der Aenderungen
+    # Risiko-Bewertung der Änderungen
     risk_impact = Column(Integer, nullable=True)  # -100 bis +100
     risk_summary = Column(Text, nullable=True)
 
@@ -601,15 +601,15 @@ class ClauseType(str, Enum):
     """Typen von Vertragsklauseln."""
     PRICE_ADJUSTMENT = "price_adjustment"      # Preisanpassungsklausel
     MINIMUM_TERM = "minimum_term"              # Mindestlaufzeit
-    AUTO_RENEWAL = "auto_renewal"              # Automatische Verlaengerung
+    AUTO_RENEWAL = "auto_renewal"              # Automatische Verlängerung
     PENALTY = "penalty"                        # Vertragsstrafe
-    TERMINATION_CONDITION = "termination"      # Kuendigungsbedingungen
+    TERMINATION_CONDITION = "termination"      # Kündigungsbedingungen
     LIABILITY = "liability"                    # Haftungsbegrenzung
     CONFIDENTIALITY = "confidentiality"        # Geheimhaltung
-    WARRANTY = "warranty"                      # Gewaehrleistung
+    WARRANTY = "warranty"                      # Gewährleistung
     JURISDICTION = "jurisdiction"              # Gerichtsstand
     PAYMENT_TERMS = "payment_terms"            # Zahlungsbedingungen
-    FORCE_MAJEURE = "force_majeure"            # Hoehere Gewalt
+    FORCE_MAJEURE = "force_majeure"            # Höhere Gewalt
     INTELLECTUAL_PROPERTY = "ip"               # Geistiges Eigentum
     DATA_PROTECTION = "data_protection"        # Datenschutz
     COMPLIANCE = "compliance"                  # Compliance-Anforderungen
@@ -622,14 +622,14 @@ class ContractClause(Base):
     """
     Extrahierte Vertragsklauseln.
 
-    Speichert aus Vertraegen extrahierte Klauseln mit
-    strukturierten Werten und Risikoeinschaetzung.
+    Speichert aus Verträgen extrahierte Klauseln mit
+    strukturierten Werten und Risikoeinschätzung.
     """
     __tablename__ = "contract_clauses"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verknuepfungen
+    # Verknüpfungen
     contract_id = Column(
         UUID(as_uuid=True),
         ForeignKey("contracts.id", ondelete="CASCADE"),
@@ -715,10 +715,10 @@ class ContractClause(Base):
 
 class ContractBenchmark(Base):
     """
-    Markt-Benchmark-Daten fuer Vertragsvergleiche.
+    Markt-Benchmark-Daten für Vertragsvergleiche.
 
     Speichert Durchschnittswerte und Statistiken
-    fuer verschiedene Vertragskategorien.
+    für verschiedene Vertragskategorien.
     """
     __tablename__ = "contract_benchmarks"
 
@@ -737,7 +737,7 @@ class ContractBenchmark(Base):
     percentile_75 = Column(Numeric(15, 4), nullable=True)
     std_deviation = Column(Numeric(15, 4), nullable=True)
 
-    # Sample und Gueltigkeit
+    # Sample und Gültigkeit
     sample_size = Column(Integer, nullable=False, default=0)
     region = Column(String(50), default="DACH", nullable=False)
     industry = Column(String(100), nullable=True)
@@ -788,36 +788,36 @@ class ContractBenchmark(Base):
 
 
 class CancellationStatus(str, Enum):
-    """Status der Kuendigung."""
+    """Status der Kündigung."""
     DRAFT = "draft"                    # Entwurf
     PENDING = "pending"                # Warten auf Genehmigung
-    SCHEDULED = "scheduled"            # Geplant fuer Versand
+    SCHEDULED = "scheduled"            # Geplant für Versand
     SENT = "sent"                      # Gesendet
-    ACKNOWLEDGED = "acknowledged"      # Bestaetigt
+    ACKNOWLEDGED = "acknowledged"      # Bestätigt
     REJECTED = "rejected"              # Abgelehnt
     COMPLETED = "completed"            # Abgeschlossen
     CANCELLED = "cancelled"            # Abgebrochen
 
 
 class CancellationType(str, Enum):
-    """Art der Kuendigung."""
-    ORDINARY = "ordinary"              # Ordentliche Kuendigung
-    EXTRAORDINARY = "extraordinary"    # Ausserordentliche Kuendigung
+    """Art der Kündigung."""
+    ORDINARY = "ordinary"              # Ordentliche Kündigung
+    EXTRAORDINARY = "extraordinary"    # Ausserordentliche Kündigung
     MUTUAL = "mutual"                  # Einvernehmliche Aufhebung
 
 
 class ContractCancellation(Base):
     """
-    Kuendigungsanfragen und -verfolgung.
+    Kündigungsanfragen und -verfolgung.
 
-    Verwaltet den gesamten Kuendigungsprozess
-    von der Anfrage bis zur Bestaetigung.
+    Verwaltet den gesamten Kündigungsprozess
+    von der Anfrage bis zur Bestätigung.
     """
     __tablename__ = "contract_cancellations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verknuepfungen
+    # Verknüpfungen
     contract_id = Column(
         UUID(as_uuid=True),
         ForeignKey("contracts.id", ondelete="CASCADE"),
@@ -831,7 +831,7 @@ class ContractCancellation(Base):
         index=True,
     )
 
-    # Kuendigungsdetails
+    # Kündigungsdetails
     cancellation_type = Column(String(50), nullable=False)
     reason = Column(Text, nullable=True)
     reason_code = Column(String(50), nullable=True)
@@ -842,7 +842,7 @@ class ContractCancellation(Base):
     latest_send_date = Column(Date, nullable=False)
     scheduled_send_date = Column(Date, nullable=True)
 
-    # Kuendigungsschreiben
+    # Kündigungsschreiben
     letter_template = Column(String(100), nullable=True)
     letter_content = Column(Text, nullable=True)
     letter_language = Column(String(10), default="de", nullable=False)
@@ -860,7 +860,7 @@ class ContractCancellation(Base):
     )
     sent_reference = Column(String(255), nullable=True)
 
-    # Bestaetigung
+    # Bestätigung
     acknowledgment_received = Column(Boolean, default=False, nullable=False)
     acknowledgment_date = Column(DateTime(timezone=True), nullable=True)
     acknowledgment_reference = Column(String(255), nullable=True)
@@ -936,16 +936,16 @@ class ContractCancellation(Base):
 
 class ContractCostAnalysis(Base):
     """
-    Kostenanalyse fuer Vertraege.
+    Kostenanalyse für Verträge.
 
     Cached berechnete Kostenmetriken und
-    Optimierungsvorschlaege.
+    Optimierungsvorschläge.
     """
     __tablename__ = "contract_cost_analyses"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verknuepfungen
+    # Verknüpfungen
     contract_id = Column(
         UUID(as_uuid=True),
         ForeignKey("contracts.id", ondelete="CASCADE"),

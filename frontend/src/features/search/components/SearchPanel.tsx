@@ -24,6 +24,7 @@ import {
     Layers,
     Bookmark,
     Languages,
+    Users,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,10 @@ interface SearchPanelProps {
     onChange: (updates: Partial<SearchPanelValue>) => void;
     /** Callback um alle Filter zurückzusetzen */
     onReset?: () => void;
+    /** Suchstatistiken: Anzahl der Treffer (optional) */
+    resultCount?: number;
+    /** Suchstatistiken: Suchzeit in Millisekunden (optional) */
+    searchTimeMs?: number;
 }
 
 // ==================== Debounce Hook ====================
@@ -91,7 +96,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 const MotionDiv = motion.div;
 
-export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
+export function SearchPanel({ value, onChange, onReset, resultCount, searchTimeMs }: SearchPanelProps) {
     // Local state for input (debounced before sending to parent)
     const [localQuery, setLocalQuery] = useState(value.query);
     const debouncedQuery = useDebounce(localQuery, 300);
@@ -111,7 +116,8 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
     // Save Search Dialog
     const [showSaveDialog, setShowSaveDialog] = useState(false);
     const [saveName, setSaveName] = useState('');
-    const { saveSearch, isLimitReached } = useSavedSearches();
+    const [shareWithTeam, setShareWithTeam] = useState(false);
+    const { saveSearch, shareSearch, isLimitReached } = useSavedSearches();
     const { addRecentSearch } = useRecentSearches();
     const { getDefault: getSearchDefault, recordValues: recordSearchValues } = useFormDefaults('search-panel');
 
@@ -148,13 +154,18 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
             dateRange: value.filters.dateRange as SearchParams['dateRange'],
         };
 
-        saveSearch({
+        const newSearch = saveSearch({
             name: saveName || generateSearchName(currentParams),
             params: currentParams,
         });
 
+        if (shareWithTeam && newSearch) {
+            shareSearch(newSearch);
+        }
+
         setShowSaveDialog(false);
         setSaveName('');
+        setShareWithTeam(false);
     };
 
     const updateFilter = useCallback(
@@ -357,6 +368,16 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
                 )}
             </MotionDiv>
 
+            {/* Suchstatistiken */}
+            {resultCount !== undefined && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground px-1">
+                    <span className="font-medium">{resultCount.toLocaleString('de-DE')} Dokumente</span>
+                    {searchTimeMs !== undefined && (
+                        <span>in {(searchTimeMs / 1000).toFixed(2)}s durchsucht</span>
+                    )}
+                </div>
+            )}
+
             {/* Save Search Dialog */}
             <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
                 <DialogContent>
@@ -381,6 +402,17 @@ export function SearchPanel({ value, onChange, onReset }: SearchPanelProps) {
                                     dateRange: value.filters.dateRange as SearchParams['dateRange'],
                                 })}
                             />
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Checkbox
+                                id="share-with-team"
+                                checked={shareWithTeam}
+                                onCheckedChange={(checked) => setShareWithTeam(checked === true)}
+                            />
+                            <Label htmlFor="share-with-team" className="flex items-center gap-2 cursor-pointer">
+                                <Users className="h-4 w-4 text-muted-foreground" />
+                                Mit Team teilen
+                            </Label>
                         </div>
                     </div>
                     <DialogFooter>

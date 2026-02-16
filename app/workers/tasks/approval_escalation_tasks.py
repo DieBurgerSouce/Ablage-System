@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Celery Tasks fuer Approval Eskalation und Stellvertretung.
+Celery Tasks für Approval Eskalation und Stellvertretung.
 
 Feature #3: Approval Workflow Depth
-- check_approval_timeouts_task: Stuendlich ueberfaellige Genehmigungen pruefen
-- activate_substitutions_task: Taeglich Stellvertretungen aktivieren/deaktivieren
-- record_sla_metrics_task: SLA-Metrik fuer abgeschlossenen Schritt erfassen
-- generate_sla_report_task: Woechentlichen SLA-Report generieren
+- check_approval_timeouts_task: Stündlich überfällige Genehmigungen prüfen
+- activate_substitutions_task: Täglich Stellvertretungen aktivieren/deaktivieren
+- record_sla_metrics_task: SLA-Metrik für abgeschlossenen Schritt erfassen
+- generate_sla_report_task: Wöchentlichen SLA-Report generieren
 """
 
 from __future__ import annotations
@@ -43,19 +43,19 @@ def check_approval_timeouts_task(
     self,
     company_id: Optional[str] = None,
 ) -> Dict[str, object]:
-    """Prueft ueberfaellige Genehmigungen und eskaliert bei Bedarf.
+    """Prüft überfällige Genehmigungen und eskaliert bei Bedarf.
 
-    Wird stuendlich via Celery Beat ausgefuehrt.
-    Fuer jede ueberfaellige Anfrage wird die passende Eskalationsregel
+    Wird stündlich via Celery Beat ausgeführt.
+    Für jede überfällige Anfrage wird die passende Eskalationsregel
     gesucht und angewendet.
 
     Args:
-        company_id: Optional: Nur fuer diese Firma
+        company_id: Optional: Nur für diese Firma
 
     Returns:
         Dict mit Statistiken
     """
-    logger.info("Starte Ueberpruefung ueberfaelliger Genehmigungen...")
+    logger.info("Starte Überprüfung überfälliger Genehmigungen...")
 
     with get_sync_session() as db:
         now = utc_now()
@@ -73,7 +73,7 @@ def check_approval_timeouts_task(
 
         for cid in company_ids:
             try:
-                # Ueberfaellige Anfragen finden
+                # Überfällige Anfragen finden
                 overdue_stmt = (
                     select(ApprovalRequest)
                     .options(
@@ -160,7 +160,7 @@ def check_approval_timeouts_task(
             except Exception as exc:
                 db.rollback()
                 error_msg = (
-                    f"Fehler bei Eskalation fuer Company {cid}: {exc}"
+                    f"Fehler bei Eskalation für Company {cid}: {exc}"
                 )
                 errors.append(error_msg)
                 logger.error(error_msg)
@@ -173,7 +173,7 @@ def check_approval_timeouts_task(
     }
 
     logger.info(
-        "Eskalation abgeschlossen: %d geprueft, %d eskaliert",
+        "Eskalation abgeschlossen: %d geprüft, %d eskaliert",
         total_checked,
         total_escalated,
     )
@@ -193,12 +193,12 @@ def activate_substitutions_task(
 ) -> Dict[str, object]:
     """Aktiviert und deaktiviert Stellvertretungen basierend auf Datum.
 
-    Wird taeglich via Celery Beat ausgefuehrt.
+    Wird täglich via Celery Beat ausgeführt.
     - Aktiviert Stellvertretungen deren Zeitraum begonnen hat
     - Deaktiviert Stellvertretungen deren Zeitraum abgelaufen ist
 
     Args:
-        company_id: Optional: Nur fuer diese Firma
+        company_id: Optional: Nur für diese Firma
 
     Returns:
         Dict mit Statistiken
@@ -241,7 +241,7 @@ def activate_substitutions_task(
 
                 except Exception as exc:
                     error_msg = (
-                        f"Fehler bei Stellvertretung fuer "
+                        f"Fehler bei Stellvertretung für "
                         f"Company {cid}: {exc}"
                     )
                     errors.append(error_msg)
@@ -276,7 +276,7 @@ def record_sla_metrics_task(
     approval_request_id: str,
     step_id: str,
 ) -> Dict[str, object]:
-    """Erfasst SLA-Metrik fuer einen abgeschlossenen Genehmigungsschritt.
+    """Erfasst SLA-Metrik für einen abgeschlossenen Genehmigungsschritt.
 
     Wird ausgeloest wenn ein ApprovalStep abgeschlossen wird.
 
@@ -352,14 +352,14 @@ def generate_sla_report_task(
     company_id: Optional[str] = None,
     period_days: int = 7,
 ) -> Dict[str, object]:
-    """Generiert woechentlichen SLA-Report.
+    """Generiert wöchentlichen SLA-Report.
 
-    Wird woechentlich via Celery Beat ausgefuehrt.
+    Wird wöchentlich via Celery Beat ausgeführt.
     Erstellt Dashboard-Daten und Bottleneck-Analyse.
 
     Args:
-        company_id: Optional: Nur fuer diese Firma
-        period_days: Zeitraum in Tagen (Default: 7 fuer woechentlich)
+        company_id: Optional: Nur für diese Firma
+        period_days: Zeitraum in Tagen (Default: 7 für wöchentlich)
 
     Returns:
         Dict mit SLA-Report-Daten
@@ -418,7 +418,7 @@ def generate_sla_report_task(
 
                 except Exception as exc:
                     logger.error(
-                        "Fehler bei SLA-Report fuer Company %s: %s",
+                        "Fehler bei SLA-Report für Company %s: %s",
                         str(cid),
                         str(exc),
                     )

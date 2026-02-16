@@ -539,5 +539,5 @@ async def get_verzugszins(is_b2b: bool = True) -> Decimal:
     return await service.get_verzugszins(is_b2b)
 
 
-# Singleton-Instanz fuer direkten Import (Celery Tasks, etc.)
+# Singleton-Instanz für direkten Import (Celery Tasks, etc.)
 bundesbank_rate_service = get_bundesbank_rate_service()

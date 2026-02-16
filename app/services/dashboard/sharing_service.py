@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Dashboard Sharing Service fuer Ablage-System.
+Dashboard Sharing Service für Ablage-System.
 
-Service fuer persistente Dashboard-Freigaben:
+Service für persistente Dashboard-Freigaben:
 - Dashboard-Sharing mit Benutzern
 - Berechtigungsverwaltung (view/edit)
 - Audit-Trail aller Freigabe-Aktionen
-- Zugriffspruefung
+- Zugriffsprüfung
 - Ablaufdatum-Verwaltung
 
 Feinpoliert und durchdacht - Enterprise-grade Dashboard Sharing Service.
@@ -28,14 +28,14 @@ logger = structlog.get_logger(__name__)
 
 class DashboardSharingService:
     """
-    Service fuer persistente Dashboard-Freigaben.
+    Service für persistente Dashboard-Freigaben.
 
     Features:
     - Dashboard mit Benutzern teilen
     - Berechtigungen verwalten (view/edit)
     - Freigaben entfernen
-    - Audit-Trail fuer alle Aktionen
-    - Zugriffspruefung
+    - Audit-Trail für alle Aktionen
+    - Zugriffsprüfung
     """
 
     def __init__(self, db: AsyncSession):
@@ -43,7 +43,7 @@ class DashboardSharingService:
         Initialisiert den DashboardSharingService.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
         """
         self.db = db
 
@@ -60,7 +60,7 @@ class DashboardSharingService:
 
         Args:
             dashboard_id: ID des Dashboards
-            user_id: ID des Benutzers der Zugriff erhaelt
+            user_id: ID des Benutzers der Zugriff erhält
             permission: Berechtigungsstufe (view oder edit)
             shared_by: ID des Benutzers der das Dashboard teilt
             expires_at: Optionales Ablaufdatum
@@ -72,7 +72,7 @@ class DashboardSharingService:
             Exception: Bei Datenbankfehlern
         """
         try:
-            # Pruefen ob bereits eine Freigabe existiert
+            # Prüfen ob bereits eine Freigabe existiert
             existing_stmt = select(DashboardShare).where(
                 and_(
                     DashboardShare.dashboard_id == dashboard_id,
@@ -169,7 +169,7 @@ class DashboardSharingService:
         Args:
             dashboard_id: ID des Dashboards
             user_id: ID des Benutzers dessen Zugriff entfernt wird
-            performed_by: ID des Benutzers der die Aktion durchfuehrt
+            performed_by: ID des Benutzers der die Aktion durchführt
 
         Returns:
             True wenn Freigabe gefunden und deaktiviert, False sonst
@@ -240,7 +240,7 @@ class DashboardSharingService:
         Args:
             share_id: ID der Freigabe
             permission: Neue Berechtigungsstufe (view oder edit)
-            performed_by: ID des Benutzers der die Aenderung durchfuehrt
+            performed_by: ID des Benutzers der die Änderung durchführt
 
         Returns:
             Aktualisierte DashboardShare-Instanz oder None
@@ -387,7 +387,7 @@ class DashboardSharingService:
         user_id: UUID,
     ) -> Optional[str]:
         """
-        Prueft Zugriffsrecht eines Benutzers auf ein Dashboard.
+        Prüft Zugriffsrecht eines Benutzers auf ein Dashboard.
 
         Args:
             dashboard_id: ID des Dashboards
@@ -438,7 +438,7 @@ class DashboardSharingService:
             dashboard_id: ID des Dashboards
             action: Aktion (shared, unshared, permission_changed)
             performed_by: ID des Benutzers
-            details: Optionale zusaetzliche Details
+            details: Optionale zusätzliche Details
         """
         audit = DashboardShareAudit(
             dashboard_share_id=dashboard_share_id,
@@ -453,10 +453,10 @@ class DashboardSharingService:
 
 def get_sharing_service(db: AsyncSession) -> DashboardSharingService:
     """
-    Factory fuer DashboardSharingService.
+    Factory für DashboardSharingService.
 
     Args:
-        db: AsyncSession fuer Datenbankzugriff
+        db: AsyncSession für Datenbankzugriff
 
     Returns:
         DashboardSharingService-Instanz

@@ -55,7 +55,7 @@ class PredictionSeverity(str, Enum):
 
 
 class MetricType(str, Enum):
-    """Typen von ueberwachten Metriken."""
+    """Typen von überwachten Metriken."""
     GPU_VRAM = "gpu_vram"
     GPU_UTILIZATION = "gpu_utilization"
     QUEUE_DEPTH = "queue_depth"
@@ -106,7 +106,7 @@ class PredictionResult:
 
 @dataclass
 class PredictorConfig:
-    """Konfiguration fuer den Predictor."""
+    """Konfiguration für den Predictor."""
     # Datensammlung
     max_history_points: int = 60  # Letzte 60 Datenpunkte
     collection_interval_seconds: int = 60  # Alle 60 Sekunden
@@ -146,13 +146,13 @@ class MetricHistory:
         ))
 
     def get_values(self, last_n: Optional[int] = None) -> List[float]:
-        """Gibt letzte N Werte zurueck."""
+        """Gibt letzte N Werte zurück."""
         if last_n is None:
             return [dp.value for dp in self._data]
         return [dp.value for dp in list(self._data)[-last_n:]]
 
     def get_timestamps(self, last_n: Optional[int] = None) -> List[datetime]:
-        """Gibt letzte N Timestamps zurueck."""
+        """Gibt letzte N Timestamps zurück."""
         if last_n is None:
             return [dp.timestamp for dp in self._data]
         return [dp.timestamp for dp in list(self._data)[-last_n:]]
@@ -169,9 +169,9 @@ class SystemHealthPredictor:
     Prognostiziert System-Gesundheit und Ressourcen-Erschoepfung.
 
     Verwendet:
-    - EMA fuer geglättete Trendanalyse
-    - Lineare Regression fuer Zeitvorhersage
-    - Konfidenzintervalle fuer Unsicherheit
+    - EMA für geglättete Trendanalyse
+    - Lineare Regression für Zeitvorhersage
+    - Konfidenzintervalle für Unsicherheit
     """
 
     def __init__(self, config: Optional[PredictorConfig] = None) -> None:
@@ -210,7 +210,7 @@ class SystemHealthPredictor:
         Args:
             metric: Metrik-Typ
             value: Aktueller Wert
-            metadata: Zusaetzliche Informationen
+            metadata: Zusätzliche Informationen
         """
         history = self._histories.get(metric.value)
         if history:
@@ -249,7 +249,7 @@ class SystemHealthPredictor:
 
     def _linear_regression(self, values: List[float]) -> Tuple[float, float, float]:
         """
-        Fuehrt lineare Regression durch.
+        Führt lineare Regression durch.
 
         Returns:
             Tuple von (slope, intercept, r_squared)
@@ -303,7 +303,7 @@ class SystemHealthPredictor:
             return None  # Trend ist fallend oder stabil
 
         if current >= threshold:
-            return 0.0  # Bereits ueberschritten
+            return 0.0  # Bereits überschritten
 
         # Datenpunkte pro Minute
         points_per_minute = 60.0 / self.config.collection_interval_seconds
@@ -319,7 +319,7 @@ class SystemHealthPredictor:
         Prognostiziert GPU VRAM Overflow.
 
         Returns:
-            PredictionResult oder None wenn keine Vorhersage moeglich
+            PredictionResult oder None wenn keine Vorhersage möglich
         """
         history = self._histories[MetricType.GPU_VRAM.value]
         values = history.get_values()
@@ -327,7 +327,7 @@ class SystemHealthPredictor:
         if len(values) < self.config.min_points_for_prediction:
             return None
 
-        # EMA fuer geglättete Werte
+        # EMA für geglättete Werte
         ema_values = self._calculate_ema(values)
         current = ema_values[-1]
 
@@ -453,8 +453,8 @@ class SystemHealthPredictor:
 
         if severity == PredictionSeverity.CRITICAL:
             recommendation = (
-                f"KRITISCH: Queue '{queue_name}' droht ueberzulaufen. "
-                "Zusaetzliche Worker starten oder Rate-Limiting aktivieren."
+                f"KRITISCH: Queue '{queue_name}' droht überzulaufen. "
+                "Zusätzliche Worker starten oder Rate-Limiting aktivieren."
             )
         else:
             recommendation = (
@@ -498,7 +498,7 @@ class SystemHealthPredictor:
 
         eta = self._predict_time_to_threshold(current, slope, critical_threshold)
 
-        # Konvertiere zu Tagen fuer Disk (langsamerer Prozess)
+        # Konvertiere zu Tagen für Disk (langsamerer Prozess)
         eta_days = eta / (60 * 24) if eta else None
 
         if slope <= 0 or (eta_days is not None and eta_days > 7):
@@ -508,7 +508,7 @@ class SystemHealthPredictor:
             severity = PredictionSeverity.CRITICAL
             recommendation = (
                 "KRITISCH: Disk Space in weniger als 24 Stunden erschoepft. "
-                "Sofort alte Dateien loeschen oder Storage erweitern."
+                "Sofort alte Dateien löschen oder Storage erweitern."
             )
         elif eta_days is not None and eta_days < 7:
             severity = PredictionSeverity.WARNING
@@ -535,7 +535,7 @@ class SystemHealthPredictor:
 
     async def get_all_predictions(self) -> List[PredictionResult]:
         """
-        Fuehrt alle Vorhersagen aus und gibt Liste zurueck.
+        Führt alle Vorhersagen aus und gibt Liste zurück.
 
         Returns:
             Liste von PredictionResult
@@ -565,14 +565,14 @@ class SystemHealthPredictor:
         metric: MetricType,
         last_n: Optional[int] = None
     ) -> List[MetricDataPoint]:
-        """Gibt Metrik-History zurueck."""
+        """Gibt Metrik-History zurück."""
         history = self._histories.get(metric.value)
         if not history:
             return []
         return list(history._data)[-last_n:] if last_n else list(history._data)
 
     def clear_history(self, metric: Optional[MetricType] = None) -> None:
-        """Loescht History."""
+        """Löscht History."""
         if metric:
             history = self._histories.get(metric.value)
             if history:
@@ -589,7 +589,7 @@ _health_predictor: Optional[SystemHealthPredictor] = None
 
 
 def get_health_predictor() -> SystemHealthPredictor:
-    """Gibt Singleton-Instanz des Health Predictors zurueck."""
+    """Gibt Singleton-Instanz des Health Predictors zurück."""
     global _health_predictor
     if _health_predictor is None:
         _health_predictor = SystemHealthPredictor()

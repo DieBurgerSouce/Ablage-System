@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Enterprise Analytics API Router fuer Privat-Modul.
+Enterprise Analytics API Router für Privat-Modul.
 
-Stellt Endpunkte fuer:
+Stellt Endpunkte für:
 - Immobilien-KPIs (Mietrendite, ROI)
 - Fahrzeug-TCO (Total Cost of Ownership)
-- Versicherungs-Analyse (Deckungsluecken)
+- Versicherungs-Analyse (Deckungslücken)
 - Kredit-Tilgungsplaene
 - Finanz-Trends und Prognosen
 - NER und Deadline-Extraktion
@@ -44,7 +44,7 @@ class PropertyKPIResponse(BaseModel):
     rental_yield_percent: Optional[float] = Field(None, description="Bruttomietrendite in %")
     net_yield_percent: Optional[float] = Field(None, description="Nettomietrendite in %")
     roi_percent: Optional[float] = Field(None, description="Return on Investment in %")
-    current_value: Optional[float] = Field(None, description="Aktueller Schaetzwert")
+    current_value: Optional[float] = Field(None, description="Aktueller Schätzwert")
     value_appreciation_percent: Optional[float] = Field(None, description="Wertsteigerung in %")
     total_costs_ytd: Optional[float] = Field(None, description="Nebenkosten YTD")
     calculated_at: datetime
@@ -57,15 +57,15 @@ class VehicleTCOResponse(BaseModel):
     model: str
     cost_per_km: Optional[float] = Field(None, description="Kosten pro km")
     monthly_depreciation: Optional[float] = Field(None, description="Monatl. Wertverlust")
-    current_estimated_value: Optional[float] = Field(None, description="Aktueller Schaetzwert")
-    next_service_date: Optional[date] = Field(None, description="Naechster Service")
-    next_service_km: Optional[int] = Field(None, description="Naechster Service bei km")
+    current_estimated_value: Optional[float] = Field(None, description="Aktueller Schätzwert")
+    next_service_date: Optional[date] = Field(None, description="Nächster Service")
+    next_service_km: Optional[int] = Field(None, description="Nächster Service bei km")
     total_cost_breakdown: Optional[dict] = Field(None, description="Kostenaufschluesselung")
     calculated_at: datetime
 
 
 class InsuranceCoverageGap(BaseModel):
-    """Einzelne Deckungsluecke."""
+    """Einzelne Deckungslücke."""
     insurance_type: str
     recommended_coverage: float
     current_coverage: float
@@ -200,7 +200,7 @@ async def get_user_space_or_403(
     user: User,
     required_level: PrivatAccessLevel = PrivatAccessLevel.READ,
 ):
-    """Prueft ob User Zugriff auf Space hat."""
+    """Prüft ob User Zugriff auf Space hat."""
     from app.services.privat import PrivatSpaceService
     space_service = PrivatSpaceService()
 
@@ -233,7 +233,7 @@ async def get_property_kpis(
     current_user: User = Depends(get_current_active_user),
 ) -> PropertyKPIResponse:
     """
-    Berechnet KPIs fuer eine Immobilie:
+    Berechnet KPIs für eine Immobilie:
     - Brutto-/Nettomietrendite
     - ROI inkl. Wertsteigerung
     - Nebenkostentrend
@@ -249,7 +249,7 @@ async def get_property_kpis(
             detail="Immobilie nicht gefunden",
         )
 
-    # Pruefe Space-Zugriff
+    # Prüfe Space-Zugriff
     await get_user_space_or_403(db, prop.space_id, current_user, PrivatAccessLevel.READ)
 
     calc_service = get_property_calculation_service(db)
@@ -296,7 +296,7 @@ async def trigger_property_kpi_calculation(
     return TaskTriggerResponse(
         task_id=task.id,
         status="queued",
-        message="KPI-Berechnung fuer alle Immobilien gestartet",
+        message="KPI-Berechnung für alle Immobilien gestartet",
     )
 
 
@@ -316,10 +316,10 @@ async def get_vehicle_tco(
     current_user: User = Depends(get_current_active_user),
 ) -> VehicleTCOResponse:
     """
-    Berechnet Total Cost of Ownership fuer ein Fahrzeug:
+    Berechnet Total Cost of Ownership für ein Fahrzeug:
     - Kosten pro km
     - Abschreibung
-    - Naechster Service
+    - Nächster Service
     """
     from app.services.privat import get_vehicle_calculation_service, PrivatVehicleService
 
@@ -377,7 +377,7 @@ async def trigger_vehicle_tco_calculation(
     return TaskTriggerResponse(
         task_id=task.id,
         status="queued",
-        message="TCO-Berechnung fuer alle Fahrzeuge gestartet",
+        message="TCO-Berechnung für alle Fahrzeuge gestartet",
     )
 
 
@@ -398,9 +398,9 @@ async def get_insurance_analysis(
 ) -> InsuranceAnalysisResponse:
     """
     Analysiert Versicherungsdeckung:
-    - Identifiziert Deckungsluecken
-    - Berechnet Kuendigungsfristen
-    - Gesamtpraemien-Uebersicht
+    - Identifiziert Deckungslücken
+    - Berechnet Kündigungsfristen
+    - Gesamtpraemien-Übersicht
     """
     await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
 
@@ -454,7 +454,7 @@ async def get_loan_amortization(
     current_user: User = Depends(get_current_active_user),
 ) -> LoanAmortizationResponse:
     """
-    Generiert Tilgungsplan fuer einen Kredit:
+    Generiert Tilgungsplan für einen Kredit:
     - Monatliche Raten mit Zins-/Tilgungsaufteilung
     - Voraussichtliches Auszahlungsdatum
     - Optional: Zinsersparnis bei Sondertilgung
@@ -658,7 +658,7 @@ async def extract_document_entities(
             detail="Dokument nicht gefunden",
         )
 
-    # Pruefe ob User Zugriff hat
+    # Prüfe ob User Zugriff hat
     if doc.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -703,14 +703,14 @@ async def extract_document_entities(
 async def extract_document_deadlines(
     request: Request,
     document_id: uuid.UUID,
-    space_id: uuid.UUID = Query(..., description="Space fuer Fristen-Erstellung"),
+    space_id: uuid.UUID = Query(..., description="Space für Fristen-Erstellung"),
     auto_create: bool = Query(True, description="Fristen automatisch anlegen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> DeadlineExtractionResponse:
     """
     Extrahiert Fristen aus Dokumenttext und erstellt optional
-    PrivatDeadline-Eintraege.
+    PrivatDeadline-Einträge.
     """
     from app.db.models import Document
     from sqlalchemy import select
@@ -788,7 +788,7 @@ async def trigger_all_kpi_calculations(
     current_user: User = Depends(get_current_active_user),
 ) -> TaskTriggerResponse:
     """
-    Startet Berechnung aller KPIs fuer einen Space:
+    Startet Berechnung aller KPIs für einen Space:
     - Immobilien-KPIs
     - Fahrzeug-TCO
     - Versicherungs-Analyse
@@ -865,7 +865,7 @@ class DiversificationResponse(BaseModel):
     """Diversifikations-Analyse Response."""
     space_id: uuid.UUID
     herfindahl_index: float
-    diversification_score: float  # 0-100, hoeher = besser
+    diversification_score: float  # 0-100, höher = besser
     rating: str  # excellent, good, moderate, poor, critical
     largest_position_percent: float
     recommendation: str
@@ -905,7 +905,7 @@ class RebalancingResponse(BaseModel):
 
 
 class FullPortfolioAnalyticsResponse(BaseModel):
-    """Vollstaendige Portfolio-Analyse Response."""
+    """Vollständige Portfolio-Analyse Response."""
     space_id: uuid.UUID
     total_value: float
     total_investments: int
@@ -1039,7 +1039,7 @@ class PaymentChangeScenarioResponse(BaseModel):
 
 
 class FullAmortizationResponse(BaseModel):
-    """Vollstaendiger Tilgungsplan Response."""
+    """Vollständiger Tilgungsplan Response."""
     loan_id: uuid.UUID
     loan_name: str
     principal_amount: float
@@ -1092,7 +1092,7 @@ async def get_investment_performance(
     current_user: User = Depends(get_current_active_user),
 ) -> InvestmentPerformanceResponse:
     """
-    Berechnet Performance fuer ein einzelnes Investment:
+    Berechnet Performance für ein einzelnes Investment:
     - Absolute und prozentuale Rendite
     - Annualisierte Rendite (CAGR)
     - Haltedauer
@@ -1340,19 +1340,19 @@ async def get_rebalancing_recommendations(
 @router.get(
     "/spaces/{space_id}/portfolio/full-analytics",
     response_model=FullPortfolioAnalyticsResponse,
-    summary="Vollstaendige Portfolio-Analyse",
+    summary="Vollständige Portfolio-Analyse",
 )
 @limiter.limit("5/minute", key_func=get_user_identifier)
 async def get_full_portfolio_analytics(
     request: Request,
     space_id: uuid.UUID,
-    target_profile: Optional[str] = Query(None, pattern="^(konservativ|ausgewogen|wachstum|aggressiv)$", description="Ziel-Profil fuer Rebalancing"),
+    target_profile: Optional[str] = Query(None, pattern="^(konservativ|ausgewogen|wachstum|aggressiv)$", description="Ziel-Profil für Rebalancing"),
     include_rebalancing: bool = Query(True, description="Rebalancing-Empfehlungen einbeziehen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> FullPortfolioAnalyticsResponse:
     """
-    Vollstaendige Portfolio-Analyse in einem Aufruf:
+    Vollständige Portfolio-Analyse in einem Aufruf:
     - Allokation
     - Diversifikation
     - Risikoprofil
@@ -1458,7 +1458,7 @@ async def get_full_portfolio_analytics(
 @router.get(
     "/spaces/{space_id}/net-worth",
     response_model=NetWorthResponse,
-    summary="Net Worth Uebersicht",
+    summary="Net Worth Übersicht",
 )
 @limiter.limit("20/minute", key_func=get_user_identifier)
 async def get_net_worth(
@@ -1518,7 +1518,7 @@ async def get_financial_health_score(
     space_id: uuid.UUID,
     monthly_income: Optional[float] = Query(None, gt=0, le=1000000, description="Monatliches Nettoeinkommen"),
     monthly_expenses: Optional[float] = Query(None, ge=0, le=1000000, description="Monatliche Fixausgaben"),
-    age: Optional[int] = Query(None, ge=18, le=100, description="Alter fuer Altersvorsorge-Bewertung"),
+    age: Optional[int] = Query(None, ge=18, le=100, description="Alter für Altersvorsorge-Bewertung"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> FinancialHealthResponse:
@@ -1587,9 +1587,9 @@ async def get_recommendations(
 ) -> RecommendationsResponse:
     """
     Generiert intelligente Empfehlungen:
-    - Refinanzierungs-Moeglichkeiten
+    - Refinanzierungs-Möglichkeiten
     - Rebalancing-Bedarf
-    - Versicherungsluecken
+    - Versicherungslücken
     - Notgroschen-Status
     - Bevorstehende Fristen
     - Veraltete Werte
@@ -1651,7 +1651,7 @@ async def simulate_extra_payment(
     request: Request,
     loan_id: uuid.UUID,
     extra_amount: float = Query(..., gt=0, description="Sondertilgungs-Betrag"),
-    frequency: str = Query("einmalig", description="einmalig, monatlich, jaehrlich"),
+    frequency: str = Query("einmalig", description="einmalig, monatlich, jährlich"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> ExtraPaymentScenarioResponse:
@@ -1682,7 +1682,7 @@ async def simulate_extra_payment(
     if not scenario:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Simulation konnte nicht durchgefuehrt werden",
+            detail="Simulation konnte nicht durchgeführt werden",
         )
 
     return ExtraPaymentScenarioResponse(
@@ -1711,14 +1711,14 @@ async def simulate_refinancing(
     request: Request,
     loan_id: uuid.UUID,
     new_rate: float = Query(..., gt=0, le=30, description="Neuer Zinssatz in %"),
-    penalty_rate: float = Query(1.0, ge=0, le=5, description="Vorfaelligkeitsentschaedigung in %"),
+    penalty_rate: float = Query(1.0, ge=0, le=5, description="Vorfälligkeitsentschaedigung in %"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> RefinancingScenarioResponse:
     """
     Simuliert Umschuldungs-Szenario:
     - Neue monatliche Rate
-    - Geschaetzte Vorfaelligkeitsentschaedigung
+    - Geschätzte Vorfälligkeitsentschaedigung
     - Gesamt-Ersparnis
     - Break-Even-Punkt
     """
@@ -1743,7 +1743,7 @@ async def simulate_refinancing(
     if not scenario:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Simulation konnte nicht durchgefuehrt werden",
+            detail="Simulation konnte nicht durchgeführt werden",
         )
 
     return RefinancingScenarioResponse(
@@ -1803,7 +1803,7 @@ async def simulate_payment_change(
     if not scenario:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Simulation konnte nicht durchgefuehrt werden",
+            detail="Simulation konnte nicht durchgeführt werden",
         )
 
     return PaymentChangeScenarioResponse(
@@ -1825,7 +1825,7 @@ async def simulate_payment_change(
 @router.get(
     "/loans/{loan_id}/full-amortization",
     response_model=FullAmortizationResponse,
-    summary="Vollstaendiger Tilgungsplan",
+    summary="Vollständiger Tilgungsplan",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)
 async def get_full_amortization(
@@ -1835,7 +1835,7 @@ async def get_full_amortization(
     current_user: User = Depends(get_current_active_user),
 ) -> FullAmortizationResponse:
     """
-    Generiert vollstaendigen Tilgungsplan:
+    Generiert vollständigen Tilgungsplan:
     - Monatliche Aufschluesselung
     - Zins-/Tilgungsanteil pro Rate
     - Restschuld nach jeder Rate
@@ -2067,7 +2067,7 @@ async def trigger_all_intelligence_calculations(
     current_user: User = Depends(get_current_active_user),
 ) -> TaskTriggerResponse:
     """
-    Startet alle Intelligence-Berechnungen fuer einen Space:
+    Startet alle Intelligence-Berechnungen für einen Space:
     - Property Intelligence (Werte, Renditen)
     - Vehicle Intelligence (TCO, Depreciation)
     - Investment Intelligence (Portfolio, Risk)
@@ -2154,7 +2154,7 @@ class InvestmentKIAdviceResponse(BaseModel):
 
 
 class InsuranceKICheckResponse(BaseModel):
-    """KI-gestuetzte Versicherungs-Pruefung Response."""
+    """KI-gestuetzte Versicherungs-Prüfung Response."""
     space_id: uuid.UUID
     coverage_score: float = Field(..., ge=0, le=100)
     cost_efficiency_score: float = Field(..., ge=0, le=100)
@@ -2168,7 +2168,7 @@ class InsuranceKICheckResponse(BaseModel):
 
 
 class FinancialQARequest(BaseModel):
-    """Request fuer Financial Q&A."""
+    """Request für Financial Q&A."""
     question: str = Field(..., min_length=10, max_length=1000, description="Finanzfrage in Deutsch")
 
 
@@ -2205,12 +2205,12 @@ async def get_property_ki_analysis(
 ) -> PropertyKIAnalysisResponse:
     """
     KI-gestuetzte Immobilienbewertung mit Ollama LLM:
-    - Marktwert-Schaetzung
+    - Marktwert-Schätzung
     - Vergleich mit Region
     - Mietrendite-Potenzial
-    - Markttrend-Einschaetzung
+    - Markttrend-Einschätzung
 
-    Verwendet lokales Ollama Modell (qwen2.5) fuer datenschutzfreundliche Analyse.
+    Verwendet lokales Ollama Modell (qwen2.5) für datenschutzfreundliche Analyse.
     """
     from app.services.privat import PrivatPropertyService, get_privat_ki_prompt_service
 
@@ -2233,7 +2233,7 @@ async def get_property_ki_analysis(
         logger.error("ki_property_analysis_failed", property_id=str(property_id), **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+            detail="KI-Analyse derzeit nicht verfügbar. Bitte später erneut versuchen.",
         )
 
     return PropertyKIAnalysisResponse(
@@ -2273,7 +2273,7 @@ async def get_vehicle_ki_analysis(
     - Optimaler Verkaufszeitpunkt
     - Markttrend und Nachfrage
 
-    Beruecksichtigt deutsche Marktbedingungen und E-Mobilitaets-Trends.
+    Berücksichtigt deutsche Marktbedingungen und E-Mobilitaets-Trends.
     """
     from app.services.privat import PrivatVehicleService, get_privat_ki_prompt_service
 
@@ -2296,7 +2296,7 @@ async def get_vehicle_ki_analysis(
         logger.error("ki_vehicle_analysis_failed", vehicle_id=str(vehicle_id), **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+            detail="KI-Analyse derzeit nicht verfügbar. Bitte später erneut versuchen.",
         )
 
     return VehicleKIAnalysisResponse(
@@ -2350,7 +2350,7 @@ async def get_investment_ki_advice(
         logger.error("ki_investment_advice_failed", space_id=str(space_id), **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+            detail="KI-Analyse derzeit nicht verfügbar. Bitte später erneut versuchen.",
         )
 
     return InvestmentKIAdviceResponse(
@@ -2375,7 +2375,7 @@ async def get_investment_ki_advice(
 @router.post(
     "/spaces/{space_id}/insurances/ki-check",
     response_model=InsuranceKICheckResponse,
-    summary="KI-gestuetzte Versicherungs-Pruefung",
+    summary="KI-gestuetzte Versicherungs-Prüfung",
 )
 @limiter.limit("3/minute", key_func=get_user_identifier)
 async def get_insurance_ki_check(
@@ -2387,10 +2387,10 @@ async def get_insurance_ki_check(
 ) -> InsuranceKICheckResponse:
     """
     KI-gestuetzte Versicherungs-Analyse:
-    - Deckungsluecken identifizieren
+    - Deckungslücken identifizieren
     - Preis-Leistungs-Bewertung
-    - Optimierungsvorschlaege
-    - Unnoetige Versicherungen erkennen
+    - Optimierungsvorschläge
+    - Unnötige Versicherungen erkennen
 
     Basiert auf deutschen Versicherungsstandards und Marktpreisen.
     """
@@ -2406,7 +2406,7 @@ async def get_insurance_ki_check(
         logger.error("ki_insurance_check_failed", space_id=str(space_id), **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="KI-Analyse derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+            detail="KI-Analyse derzeit nicht verfügbar. Bitte später erneut versuchen.",
         )
 
     return InsuranceKICheckResponse(
@@ -2440,9 +2440,9 @@ async def financial_qa_chat(
     current_user: User = Depends(get_current_active_user),
 ) -> FinancialQAAnswerResponse:
     """
-    KI-gestuetzter Finanz-Assistent fuer Privatfragen:
+    KI-gestuetzter Finanz-Assistent für Privatfragen:
     - Beantwortet Finanzfragen basierend auf Nutzerdaten
-    - Beruecksichtigt deutsches Steuer- und Finanzrecht
+    - Berücksichtigt deutsches Steuer- und Finanzrecht
     - Gibt Handlungsempfehlungen
     - Verweist auf Experten bei komplexen Themen
 
@@ -2465,7 +2465,7 @@ async def financial_qa_chat(
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="KI-Assistent derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+            detail="KI-Assistent derzeit nicht verfügbar. Bitte später erneut versuchen.",
         )
 
     return FinancialQAAnswerResponse(
@@ -2491,7 +2491,7 @@ async def financial_qa_chat(
 
 
 class TrendAnalysisResponse(BaseModel):
-    """Trend-Analyse fuer einen KPI."""
+    """Trend-Analyse für einen KPI."""
     method: str
     direction: str  # rising, falling, stable
     strength: float  # 0-1
@@ -2502,7 +2502,7 @@ class TrendAnalysisResponse(BaseModel):
 
 
 class ProjectedValueResponse(BaseModel):
-    """Projizierter Wert fuer einen Monat."""
+    """Projizierter Wert für einen Monat."""
     month: int
     date: str  # ISO date
     value: float
@@ -2524,7 +2524,7 @@ class ThresholdBreachResponse(BaseModel):
 
 
 class KPIProjectionResponse(BaseModel):
-    """Vollstaendige KPI-Projektion."""
+    """Vollständige KPI-Projektion."""
     kpi_name: str
     current_value: float
     unit: str
@@ -2554,7 +2554,7 @@ class EarlyWarningResponse(BaseModel):
 
 
 class PredictiveInsightsResponse(BaseModel):
-    """Vollstaendige Predictive Insights Summary."""
+    """Vollständige Predictive Insights Summary."""
     space_id: uuid.UUID
     projections: List[KPIProjectionResponse]
     early_warnings: List[EarlyWarningResponse]
@@ -2571,7 +2571,7 @@ class PredictiveInsightsResponse(BaseModel):
 @router.get(
     "/spaces/{space_id}/predictive-insights",
     response_model=PredictiveInsightsResponse,
-    summary="Vollstaendige Predictive Insights Summary",
+    summary="Vollständige Predictive Insights Summary",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)
 async def get_predictive_insights(
@@ -2581,7 +2581,7 @@ async def get_predictive_insights(
     current_user: User = Depends(get_current_active_user),
 ) -> PredictiveInsightsResponse:
     """
-    Liefert vollstaendige proaktive Insights:
+    Liefert vollständige proaktive Insights:
 
     - **Projektionen**: KPIs 3/6/12 Monate in die Zukunft
     - **Early Warnings**: Warnungen VOR Problemen
@@ -2609,7 +2609,7 @@ async def get_predictive_insights(
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Predictive Intelligence derzeit nicht verfuegbar. Bitte spaeter erneut versuchen.",
+            detail="Predictive Intelligence derzeit nicht verfügbar. Bitte später erneut versuchen.",
         )
 
     # Convert dataclasses to Pydantic models
@@ -2687,7 +2687,7 @@ async def get_predictive_insights(
 @router.get(
     "/spaces/{space_id}/projections/{kpi_name}",
     response_model=KPIProjectionResponse,
-    summary="KPI-Projektion fuer spezifischen KPI",
+    summary="KPI-Projektion für spezifischen KPI",
 )
 @limiter.limit("20/minute", key_func=get_user_identifier)
 async def get_kpi_projection(
@@ -2701,7 +2701,7 @@ async def get_kpi_projection(
     """
     Projiziert einen spezifischen KPI in die Zukunft.
 
-    **Verfuegbare KPIs:**
+    **Verfügbare KPIs:**
     - financial_health_score
     - dti_ratio (Debt-to-Income)
     - emergency_fund_months
@@ -2736,7 +2736,7 @@ async def get_kpi_projection(
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="KPI-Projektion derzeit nicht verfuegbar.",
+            detail="KPI-Projektion derzeit nicht verfügbar.",
         )
 
     return KPIProjectionResponse(
@@ -2863,7 +2863,7 @@ async def resolve_early_warning(
     """
     Markiert eine Early Warning als geloest.
 
-    User hat die empfohlene Aktion durchgefuehrt oder
+    User hat die empfohlene Aktion durchgeführt oder
     das Problem wurde anderweitig addressiert.
     """
     await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.MANAGE)
@@ -2954,7 +2954,7 @@ class PortfolioSnapshotResponse(BaseModel):
     total_liabilities: float
     net_worth: float
 
-    # Veraenderungen
+    # Veränderungen
     net_worth_change_absolute: Optional[float] = None
     net_worth_change_percent: Optional[float] = None
 
@@ -3007,7 +3007,7 @@ async def create_portfolio_snapshot(
     current_user: User = Depends(get_current_active_user),
 ) -> PortfolioSnapshotResponse:
     """
-    Erstellt einen neuen Portfolio-Snapshot fuer den Space.
+    Erstellt einen neuen Portfolio-Snapshot für den Space.
 
     Aggregiert alle Vermoegenswerte und Verbindlichkeiten:
     - Immobilien (current_value)
@@ -3017,8 +3017,8 @@ async def create_portfolio_snapshot(
     - Hypotheken und Kredite (remaining_balance)
 
     Berechnet ausserdem:
-    - Nettovermoegen-Veraenderung zum Vormonat
-    - Schulden-zu-Vermoegen-Verhaeltnis
+    - Nettovermoegen-Veränderung zum Vormonat
+    - Schulden-zu-Vermoegen-Verhältnis
     - Liquiditaetsquote
     - Asset Allocation in %
     """
@@ -3080,14 +3080,14 @@ async def create_portfolio_snapshot(
 async def get_portfolio_snapshots(
     request: Request,
     space_id: uuid.UUID,
-    months: int = Query(12, ge=1, le=120, description="Anzahl Monate zurueck"),
+    months: int = Query(12, ge=1, le=120, description="Anzahl Monate zurück"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[PortfolioSnapshotResponse]:
     """
-    Laedt historische Portfolio-Snapshots fuer einen Space.
+    Laedt historische Portfolio-Snapshots für einen Space.
 
-    Gibt die Snapshots der letzten X Monate zurueck,
+    Gibt die Snapshots der letzten X Monate zurück,
     sortiert nach Datum (neueste zuerst).
     """
     await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
@@ -3137,9 +3137,9 @@ async def get_latest_portfolio_snapshot(
     current_user: User = Depends(get_current_active_user),
 ) -> PortfolioSnapshotResponse:
     """
-    Laedt den neuesten Portfolio-Snapshot fuer einen Space.
+    Laedt den neuesten Portfolio-Snapshot für einen Space.
 
-    Falls kein Snapshot existiert, wird ein 404 zurueckgegeben.
+    Falls kein Snapshot existiert, wird ein 404 zurückgegeben.
     """
     await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
 
@@ -3187,15 +3187,15 @@ async def get_latest_portfolio_snapshot(
 async def get_net_worth_trend(
     request: Request,
     space_id: uuid.UUID,
-    months: int = Query(12, ge=1, le=120, description="Anzahl Monate zurueck"),
+    months: int = Query(12, ge=1, le=120, description="Anzahl Monate zurück"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> NetWorthTrendResponse:
     """
-    Laedt den Nettovermoegen-Trend fuer einen Space.
+    Laedt den Nettovermoegen-Trend für einen Space.
 
-    Gibt eine Liste von (Datum, Nettovermoegen) Tupeln zurueck,
-    sowie Trend-Richtung und Gesamtveraenderung.
+    Gibt eine Liste von (Datum, Nettovermoegen) Tupeln zurück,
+    sowie Trend-Richtung und Gesamtveränderung.
     """
     await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.READ)
 
@@ -3224,7 +3224,7 @@ async def get_net_worth_trend(
         for item in trend_data
     ]
 
-    # Trend-Richtung und Veraenderung berechnen
+    # Trend-Richtung und Veränderung berechnen
     first_value = trend_data[0]["net_worth"] if trend_data else 0.0
     last_value = trend_data[-1]["net_worth"] if trend_data else 0.0
 
@@ -3265,8 +3265,8 @@ async def trigger_portfolio_snapshot(
     """
     Startet die Portfolio-Snapshot-Erstellung als Hintergrund-Task.
 
-    Nuetzlich fuer grosse Spaces mit vielen Assets,
-    wo die Berechnung laenger dauern kann.
+    Nuetzlich für grosse Spaces mit vielen Assets,
+    wo die Berechnung länger dauern kann.
     """
     await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.WRITE)
 

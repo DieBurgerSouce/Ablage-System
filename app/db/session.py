@@ -93,8 +93,8 @@ async def get_async_session_context() -> AsyncGenerator[AsyncSession, None]:
     Creates a fresh engine and session inside the current event loop to avoid
     'Future attached to a different loop' errors when using asyncio.run().
 
-    WICHTIG: Diese Funktion ist fuer Celery Tasks gedacht, die in separaten
-    Prozessen laufen. Fuer FastAPI Endpoints sollte AsyncSessionLocal aus
+    WICHTIG: Diese Funktion ist für Celery Tasks gedacht, die in separaten
+    Prozessen laufen. Für FastAPI Endpoints sollte AsyncSessionLocal aus
     app.api.dependencies verwendet werden.
 
     Usage:
@@ -164,11 +164,11 @@ async_session_factory = get_async_session_context
 def get_sync_session() -> Generator[Session, None, None]:
     """Synchronous context manager for database sessions in Celery tasks.
 
-    Erstellt eine synchrone DB-Session fuer Celery-Tasks, die keine
-    async/await-Syntax verwenden koennen oder wollen.
+    Erstellt eine synchrone DB-Session für Celery-Tasks, die keine
+    async/await-Syntax verwenden können oder wollen.
 
-    WICHTIG: Diese Funktion ist fuer Celery Tasks gedacht, die synchron
-    arbeiten muessen. Die async-URL wird automatisch zu sync konvertiert.
+    WICHTIG: Diese Funktion ist für Celery Tasks gedacht, die synchron
+    arbeiten müssen. Die async-URL wird automatisch zu sync konvertiert.
 
     Performance: Nutzt gecachte Engine/SessionMaker Singletons statt
     bei jedem Aufruf neue Engines zu erstellen.
@@ -199,14 +199,14 @@ def get_sync_session() -> Generator[Session, None, None]:
 
 
 def set_rls_company_context_sync(session: Session, company_id: UUID) -> None:
-    """Setzt die PostgreSQL Session-Variable fuer RLS (synchron).
+    """Setzt die PostgreSQL Session-Variable für RLS (synchron).
 
     WICHTIG: Muss vor allen DB-Operationen in Celery Tasks aufgerufen werden,
     wenn diese Company-spezifische Daten bearbeiten sollen.
 
     Args:
         session: Sync DB-Session
-        company_id: Company-ID fuer RLS-Filter
+        company_id: Company-ID für RLS-Filter
     """
     try:
         # Strenge UUID-Validierung gegen SQL-Injection
@@ -234,9 +234,9 @@ def set_rls_company_context_sync(session: Session, company_id: UUID) -> None:
 
 
 def enable_rls_bypass_sync(session: Session) -> None:
-    """Aktiviert RLS-Bypass fuer Service-Account Operationen (synchron).
+    """Aktiviert RLS-Bypass für Service-Account Operationen (synchron).
 
-    WARNUNG: Nur fuer Migrations, Admin-Operationen und Cross-Tenant Tasks!
+    WARNUNG: Nur für Migrations, Admin-Operationen und Cross-Tenant Tasks!
 
     Args:
         session: Sync DB-Session
@@ -267,12 +267,12 @@ def disable_rls_bypass_sync(session: Session) -> None:
 
 @contextmanager
 def rls_bypass_context_sync(session: Session) -> Generator[None, None, None]:
-    """Context Manager fuer RLS-Bypass in Celery Tasks (synchron).
+    """Context Manager für RLS-Bypass in Celery Tasks (synchron).
 
     Usage:
         with get_sync_session() as session:
             with rls_bypass_context_sync(session):
-                # Cross-tenant Operationen moeglich
+                # Cross-tenant Operationen möglich
                 ...
             # RLS wieder aktiv
 
@@ -290,16 +290,16 @@ def rls_bypass_context_sync(session: Session) -> Generator[None, None, None]:
 def get_sync_session_with_rls(company_id: UUID) -> Generator[Session, None, None]:
     """Synchrone Session mit automatischem RLS-Context.
 
-    Convenience-Funktion fuer Celery Tasks, die nur fuer eine bestimmte
+    Convenience-Funktion für Celery Tasks, die nur für eine bestimmte
     Company Daten verarbeiten.
 
     Usage:
         with get_sync_session_with_rls(company_id) as session:
-            # RLS ist automatisch aktiv fuer diese Company
+            # RLS ist automatisch aktiv für diese Company
             docs = session.query(Document).all()  # Nur company_id's Docs
 
     Args:
-        company_id: Company-ID fuer RLS-Filter
+        company_id: Company-ID für RLS-Filter
 
     Yields:
         Session: DB-Session mit aktivem RLS-Context

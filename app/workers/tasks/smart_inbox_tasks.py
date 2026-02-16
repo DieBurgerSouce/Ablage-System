@@ -3,7 +3,7 @@ Smart Inbox Celery Tasks.
 
 Intelligente Posteingangs-Aggregation und Priorisierung:
 - Aggregation aus allen Quellen (Dokumente, Approvals, Invoices, etc.)
-- ML-basierte Prioritaets-Berechnung
+- ML-basierte Prioritäts-Berechnung
 - Verhaltensmodell-Training
 - Automatisches Cleanup
 
@@ -61,13 +61,13 @@ def aggregate_inbox_items(
     Quellen:
     - Neue Dokumente (COMPLETED, noch nicht reviewed)
     - Offene Approval-Requests
-    - Ueberfaellige Rechnungen
+    - Überfällige Rechnungen
     - Zero-Touch Review-Queue
     - Workflow-Tasks
 
     Args:
-        user_id: Optional - nur fuer bestimmten Benutzer (default: alle)
-        company_id: Optional - nur fuer bestimmte Firma (default: alle)
+        user_id: Optional - nur für bestimmten Benutzer (default: alle)
+        company_id: Optional - nur für bestimmte Firma (default: alle)
 
     Returns:
         Dict mit Aggregations-Statistiken
@@ -90,7 +90,7 @@ def aggregate_inbox_items(
                 "errors": [],
             }
 
-            # Filter fuer User/Company
+            # Filter für User/Company
             filter_conditions = []
             if user_id:
                 filter_conditions.append(SmartInboxItem.user_id == UUID(user_id))
@@ -182,7 +182,7 @@ def aggregate_inbox_items(
 
             for approval in approvals:
                 try:
-                    # Prioritaet hoeher bei aelteren Requests
+                    # Priorität höher bei älteren Requests
                     age_days = (datetime.now(timezone.utc) - approval.created_at).days
                     priority = min(50.0 + (age_days * 5), 100.0)
 
@@ -209,7 +209,7 @@ def aggregate_inbox_items(
                         **safe_error_log(e),
                     })
 
-            # 3. Ueberfaellige Rechnungen ohne Inbox-Item
+            # 3. Überfällige Rechnungen ohne Inbox-Item
             invoice_query = (
                 select(InvoiceTracking)
                 .outerjoin(
@@ -239,7 +239,7 @@ def aggregate_inbox_items(
 
             for invoice in invoices:
                 try:
-                    # Hohe Prioritaet fuer ueberfaellige Rechnungen
+                    # Hohe Priorität für überfällige Rechnungen
                     days_overdue = (datetime.now(timezone.utc) - invoice.due_date).days
                     priority = min(70.0 + (days_overdue * 3), 100.0)
 
@@ -248,8 +248,8 @@ def aggregate_inbox_items(
                         company_id=invoice.company_id,
                         source_type="invoice_overdue",
                         source_id=invoice.id,
-                        title=f"Ueberfaellige Rechnung: {invoice.invoice_number}",
-                        description=f"Faellig seit {days_overdue} Tagen",
+                        title=f"Überfällige Rechnung: {invoice.invoice_number}",
+                        description=f"Fällig seit {days_overdue} Tagen",
                         priority_score=priority,
                         status="pending",
                         metadata={
@@ -314,13 +314,13 @@ def recalculate_priorities(
     self,
     batch_size: int = 500,
 ) -> Dict[str, Any]:
-    """Berechne Prioritaets-Scores fuer Inbox-Items neu.
+    """Berechne Prioritäts-Scores für Inbox-Items neu.
 
     ML-basierte Faktoren:
     - Alter des Items
     - Source-Type (Approvals > Invoices > Documents)
     - Benutzer-Interaktionsmuster
-    - Dringlichkeit (Deadlines, Ueberfaelligkeit)
+    - Dringlichkeit (Deadlines, Überfälligkeit)
     - Historische Completion-Zeit
 
     Args:
@@ -366,7 +366,7 @@ def recalculate_priorities(
                         "workflow_task": 50.0,
                     }.get(item.source_type, 50.0)
 
-                    # Altersfaktor (max +30 Punkte fuer 7+ Tage)
+                    # Altersfaktor (max +30 Punkte für 7+ Tage)
                     age_hours = (datetime.now(timezone.utc) - item.created_at).total_seconds() / 3600
                     age_bonus = min((age_hours / 24) * 5, 30.0)
 
@@ -379,7 +379,7 @@ def recalculate_priorities(
                     # Berechne finalen Score
                     new_priority = min(base_priority + age_bonus + deadline_bonus, 100.0)
 
-                    # Nur updaten wenn signifikante Aenderung
+                    # Nur updaten wenn signifikante Änderung
                     if abs(item.priority_score - new_priority) > 1.0:
                         item.priority_score = new_priority
                         item.updated_at = datetime.now(timezone.utc)
@@ -427,16 +427,16 @@ def train_behavior_model(
     self,
     lookback_days: int = 90,
 ) -> Dict[str, Any]:
-    """Trainiere ML-Modell fuer Benutzer-Verhaltensprognose.
+    """Trainiere ML-Modell für Benutzer-Verhaltensprognose.
 
     Lernt aus:
     - Completion-Zeiten nach Source-Type
     - Ignorierte vs. bearbeitete Items
-    - Tageszeit-Praeferenzen
-    - Prioritaets-Muster
+    - Tageszeit-Präferenzen
+    - Prioritäts-Muster
 
     Args:
-        lookback_days: Anzahl der Tage fuer Trainings-Daten
+        lookback_days: Anzahl der Tage für Trainings-Daten
 
     Returns:
         Dict mit Trainings-Metriken
@@ -584,10 +584,10 @@ def cleanup_completed_items(
     self,
     retention_days: int = 30,
 ) -> Dict[str, Any]:
-    """Loesche alte completed/dismissed Inbox-Items.
+    """Lösche alte completed/dismissed Inbox-Items.
 
     Args:
-        retention_days: Behalte Items fuer X Tage (default: 30)
+        retention_days: Behalte Items für X Tage (default: 30)
 
     Returns:
         Dict mit Cleanup-Statistiken

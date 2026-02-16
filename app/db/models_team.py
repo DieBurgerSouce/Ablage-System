@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Team & Collaboration Models fuer Ablage-System.
+Team & Collaboration Models für Ablage-System.
 
 Matrix-Team-Struktur mit:
 - Departments (permanente Abteilungen)
@@ -43,12 +43,12 @@ from app.db.models import Base, CrossDBJSON
 
 
 class TeamType(str, Enum):
-    """Team-Typ fuer Matrix-Struktur."""
+    """Team-Typ für Matrix-Struktur."""
     DEPARTMENT = "department"     # Permanente Abteilung
     PROJECT = "project"           # Temporaeres Projektteam
     WORKING_GROUP = "working_group"  # Arbeitsgruppe
     COMMITTEE = "committee"       # Ausschuss/Gremium
-    VIRTUAL = "virtual"           # Virtuelles Team (standortuebergreifend)
+    VIRTUAL = "virtual"           # Virtuelles Team (standortübergreifend)
 
 
 class TeamMemberRole(str, Enum):
@@ -70,9 +70,9 @@ class TeamStatus(str, Enum):
 
 class TeamVisibility(str, Enum):
     """Sichtbarkeit eines Teams."""
-    PUBLIC = "public"       # Fuer alle sichtbar
-    PRIVATE = "private"     # Nur fuer Mitglieder sichtbar
-    COMPANY = "company"     # Fuer die gesamte Company sichtbar
+    PUBLIC = "public"       # Für alle sichtbar
+    PRIVATE = "private"     # Nur für Mitglieder sichtbar
+    COMPANY = "company"     # Für die gesamte Company sichtbar
 
 
 # ============================================================================
@@ -81,9 +81,9 @@ class TeamVisibility(str, Enum):
 
 
 class Team(Base):
-    """Team fuer Kollaboration und Zugriffssteuerung.
+    """Team für Kollaboration und Zugriffssteuerung.
 
-    Unterstuetzt Matrix-Struktur:
+    Unterstützt Matrix-Struktur:
     - Departments: Permanente organisatorische Einheiten
     - Projects: Temporaere Teams mit Enddatum
     - Hierarchie: Parent-Child Beziehungen
@@ -140,7 +140,7 @@ class Team(Base):
         default=TeamVisibility.COMPANY
     )
 
-    # Zeitliche Begrenzung (fuer Projektteams)
+    # Zeitliche Begrenzung (für Projektteams)
     start_date = Column(DateTime(timezone=True), nullable=True)
     end_date = Column(DateTime(timezone=True), nullable=True)
 
@@ -158,7 +158,7 @@ class Team(Base):
     default_permissions = Column(CrossDBJSON, default=list)
     # Format: ["documents:read", "documents:comment", ...]
 
-    # Tags fuer Filterung
+    # Tags für Filterung
     tags = Column(CrossDBJSON, default=list)
 
     # Kontaktinformationen
@@ -211,7 +211,7 @@ class Team(Base):
 
     @property
     def is_active(self) -> bool:
-        """Prueft ob Team aktiv ist."""
+        """Prüft ob Team aktiv ist."""
         if self.status != TeamStatus.ACTIVE:
             return False
         now = datetime.utcnow()
@@ -223,12 +223,12 @@ class Team(Base):
 
     @property
     def is_project(self) -> bool:
-        """Prueft ob es ein Projektteam ist."""
+        """Prüft ob es ein Projektteam ist."""
         return self.team_type == TeamType.PROJECT
 
     @property
     def is_department(self) -> bool:
-        """Prueft ob es eine Abteilung ist."""
+        """Prüft ob es eine Abteilung ist."""
         return self.team_type == TeamType.DEPARTMENT
 
 
@@ -243,8 +243,8 @@ class TeamMembership(Base):
     Features:
     - Verschiedene Rollen (Member, Lead, Admin)
     - Zeitlich begrenzte Mitgliedschaften
-    - Mehrfache Mitgliedschaften moeglich (Matrix)
-    - Audit-Trail fuer Aenderungen
+    - Mehrfache Mitgliedschaften möglich (Matrix)
+    - Audit-Trail für Änderungen
     """
     __tablename__ = "team_memberships"
 
@@ -279,13 +279,13 @@ class TeamMembership(Base):
     is_active = Column(Boolean, default=True)
     is_primary = Column(Boolean, default=False)  # Hauptteam des Users
 
-    # Zusaetzliche Berechtigungen (ueber Rolle hinaus)
+    # Zusätzliche Berechtigungen (über Rolle hinaus)
     additional_permissions = Column(CrossDBJSON, default=list)
 
     # Mitgliedschafts-Details
     title = Column(String(100), nullable=True)  # Funktion/Titel im Team
     department = Column(String(100), nullable=True)  # Wenn in Projektteam: Herkunfts-Abteilung
-    allocation_percent = Column(Integer, default=100)  # Anteil Zuordnung (z.B. 50% fuer Projekt)
+    allocation_percent = Column(Integer, default=100)  # Anteil Zuordnung (z.B. 50% für Projekt)
 
     # Einladung/Beitritt
     invited_by_id = Column(
@@ -305,7 +305,7 @@ class TeamMembership(Base):
     #   "mention_notifications": true
     # }
 
-    # Grund fuer Mitgliedschaft (Audit)
+    # Grund für Mitgliedschaft (Audit)
     reason = Column(Text, nullable=True)  # z.B. "Projektzuordnung Q1"
 
     # Metadata
@@ -340,7 +340,7 @@ class TeamMembership(Base):
 
     @property
     def is_currently_valid(self) -> bool:
-        """Prueft ob Mitgliedschaft aktuell gueltig ist."""
+        """Prüft ob Mitgliedschaft aktuell gültig ist."""
         if not self.is_active:
             return False
         now = datetime.utcnow()
@@ -352,12 +352,12 @@ class TeamMembership(Base):
 
     @property
     def is_leader(self) -> bool:
-        """Prueft ob Mitglied ein Leader ist."""
+        """Prüft ob Mitglied ein Leader ist."""
         return self.role in (TeamMemberRole.LEAD, TeamMemberRole.ADMIN)
 
     @property
     def can_manage_members(self) -> bool:
-        """Prueft ob Mitglied andere verwalten kann."""
+        """Prüft ob Mitglied andere verwalten kann."""
         return self.role == TeamMemberRole.ADMIN
 
 
@@ -382,10 +382,10 @@ class TeamActivityType(str, Enum):
 
 
 class TeamActivity(Base):
-    """Aktivitaets-Log fuer ein Team.
+    """Aktivitaets-Log für ein Team.
 
     Trackt alle relevanten Ereignisse innerhalb eines Teams
-    fuer Activity Feed und Audit.
+    für Activity Feed und Audit.
     """
     __tablename__ = "team_activities"
 
@@ -405,7 +405,7 @@ class TeamActivity(Base):
         nullable=False
     )
 
-    # Actor (wer hat die Aktion ausgefuehrt)
+    # Actor (wer hat die Aktion ausgeführt)
     actor_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -486,7 +486,7 @@ class InvitationStatus(str, Enum):
 class TeamInvitation(Base):
     """Einladung zu einem Team.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Einladung per Email (auch externe User)
     - Zeitlich begrenzte Einladungen
     - Tracking von Einladungs-Status
@@ -517,7 +517,7 @@ class TeamInvitation(Base):
         nullable=True,
         index=True
     )
-    email = Column(String(255), nullable=True)  # Fuer externe Einladungen
+    email = Column(String(255), nullable=True)  # Für externe Einladungen
 
     # Geplante Rolle
     role = Column(
@@ -533,7 +533,7 @@ class TeamInvitation(Base):
         default=InvitationStatus.PENDING
     )
 
-    # Token fuer Einladungs-Link
+    # Token für Einladungs-Link
     token = Column(String(100), unique=True, nullable=False)
 
     # Zeitliche Begrenzung
@@ -566,17 +566,17 @@ class TeamInvitation(Base):
 
     @property
     def is_expired(self) -> bool:
-        """Prueft ob Einladung abgelaufen ist."""
+        """Prüft ob Einladung abgelaufen ist."""
         return datetime.utcnow() > self.expires_at
 
 
 # ============================================================================
-# TeamDocument Model (Team-Dokument-Verknuepfung)
+# TeamDocument Model (Team-Dokument-Verknüpfung)
 # ============================================================================
 
 
 class TeamDocumentPermission(str, Enum):
-    """Berechtigung fuer Team-Dokument."""
+    """Berechtigung für Team-Dokument."""
     READ = "read"
     COMMENT = "comment"
     EDIT = "edit"
@@ -584,9 +584,9 @@ class TeamDocumentPermission(str, Enum):
 
 
 class TeamDocument(Base):
-    """Verknuepfung zwischen Team und Dokument.
+    """Verknüpfung zwischen Team und Dokument.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Team-weite Dokument-Freigaben
     - Differenzierte Berechtigungen
     - Tracking von geteilten Dokumenten

@@ -2,7 +2,7 @@
 
 Automatischer Zahlungsabgleich zwischen Banktransaktionen und Rechnungen.
 
-Matching-Strategien (nach Prioritaet):
+Matching-Strategien (nach Priorität):
 1. IBAN + Betrag exakt → 0.99 Konfidenz
 2. Rechnungsnummer im Verwendungszweck + Betrag → 0.95
 3. Kundennummer + Betrag + Datum-Naehe → 0.85
@@ -36,7 +36,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class MatchCandidate:
-    """Ein moeglicher Match-Kandidat."""
+    """Ein möglicher Match-Kandidat."""
     document_id: UUID
     invoice_number: Optional[str]
     invoice_date: Optional[date]
@@ -51,15 +51,15 @@ class MatchCandidate:
 
 
 class ReconciliationService:
-    """Service fuer automatischen Zahlungsabgleich."""
+    """Service für automatischen Zahlungsabgleich."""
 
     # Konfidenz-Schwellenwerte
     AUTO_MATCH_THRESHOLD = 0.90  # Ab hier automatisch matchen
     SUGGESTION_THRESHOLD = 0.50  # Ab hier als Vorschlag zeigen
 
     # Toleranzen
-    AMOUNT_TOLERANCE_PERCENT = 0.01  # 1% Toleranz fuer Betragsabweichung
-    DATE_TOLERANCE_DAYS = 5  # Tage-Toleranz fuer Datumsnaehe
+    AMOUNT_TOLERANCE_PERCENT = 0.01  # 1% Toleranz für Betragsabweichung
+    DATE_TOLERANCE_DAYS = 5  # Tage-Toleranz für Datumsnaehe
 
     async def find_matches(
         self,
@@ -68,13 +68,13 @@ class ReconciliationService:
         transaction_id: UUID,
         limit: int = 5,
     ) -> List[MatchCandidate]:
-        """Finde moegliche Matches fuer eine Transaktion.
+        """Finde mögliche Matches für eine Transaktion.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
             transaction_id: Transaktions-ID
-            limit: Max. Anzahl Vorschlaege
+            limit: Max. Anzahl Vorschläge
 
         Returns:
             Liste von MatchCandidates, sortiert nach Konfidenz
@@ -98,7 +98,7 @@ class ReconciliationService:
         if not transaction:
             return []
 
-        # Parse Verwendungszweck fuer Referenzen
+        # Parse Verwendungszweck für Referenzen
         parsed_ref = reference_parser.parse(transaction.reference_text or "")
 
         # Sammle Kandidaten aus verschiedenen Strategien
@@ -224,7 +224,7 @@ class ReconciliationService:
         bank_account_id: Optional[UUID] = None,
         limit: int = 100,
     ) -> BatchReconciliationResult:
-        """Fuehre Batch-Abgleich fuer ungematchte Transaktionen durch.
+        """Führe Batch-Abgleich für ungematchte Transaktionen durch.
 
         Args:
             db: Datenbank-Session
@@ -427,7 +427,7 @@ class ReconciliationService:
     ) -> List[ReconciliationResult]:
         """Teile eine Transaktion auf mehrere Dokumente auf.
 
-        Fuer Teilzahlungen oder Sammelzahlungen.
+        Für Teilzahlungen oder Sammelzahlungen.
 
         Args:
             db: Datenbank-Session
@@ -462,7 +462,7 @@ class ReconciliationService:
         if abs(total_split - abs(transaction.amount)) > Decimal("0.01"):
             raise ValueError(
                 f"Summe der Splits ({total_split}) stimmt nicht mit "
-                f"Transaktionsbetrag ({abs(transaction.amount)}) ueberein"
+                f"Transaktionsbetrag ({abs(transaction.amount)}) überein"
             )
 
         # SECURITY: Validiere dass ALLE Dokumente dem User gehoeren
@@ -551,7 +551,7 @@ class ReconciliationService:
 
             extracted = doc.extracted_data
 
-            # Pruefe IBAN
+            # Prüfe IBAN
             doc_iban = extracted.get("payment_details", {}).get("iban", "")
             if not doc_iban:
                 continue
@@ -560,7 +560,7 @@ class ReconciliationService:
             if doc_iban_normalized != iban_normalized:
                 continue
 
-            # Pruefe Betrag
+            # Prüfe Betrag
             doc_amount = self._get_document_amount(extracted)
             if doc_amount is None:
                 continue
@@ -620,7 +620,7 @@ class ReconciliationService:
             if not doc_invoice_nr:
                 continue
 
-            # Pruefe ob eine der gefundenen Rechnungsnummern matcht
+            # Prüfe ob eine der gefundenen Rechnungsnummern matcht
             matched_invoice = None
             for inv_nr in invoice_numbers:
                 if self._invoice_numbers_match(inv_nr, doc_invoice_nr):
@@ -630,7 +630,7 @@ class ReconciliationService:
             if not matched_invoice:
                 continue
 
-            # Pruefe Betrag
+            # Prüfe Betrag
             doc_amount = self._get_document_amount(extracted)
             if doc_amount is None:
                 continue
@@ -690,7 +690,7 @@ class ReconciliationService:
             if not doc_customer_nr:
                 continue
 
-            # Pruefe Kundennummer
+            # Prüfe Kundennummer
             matched_customer = None
             for cust_nr in customer_numbers:
                 if cust_nr.lower() in doc_customer_nr.lower() or doc_customer_nr.lower() in cust_nr.lower():
@@ -700,7 +700,7 @@ class ReconciliationService:
             if not matched_customer:
                 continue
 
-            # Pruefe Betrag
+            # Prüfe Betrag
             doc_amount = self._get_document_amount(extracted)
             if doc_amount is None:
                 continue
@@ -709,7 +709,7 @@ class ReconciliationService:
             if not self._amounts_match(tx_amount, doc_amount, tolerance=0.02):
                 continue
 
-            # Pruefe Datum-Naehe
+            # Prüfe Datum-Naehe
             doc_due_date = self._parse_date(extracted.get("due_date"))
             date_proximity = 0
             if doc_due_date and transaction.booking_date:
@@ -772,11 +772,11 @@ class ReconciliationService:
             if doc_amount is None:
                 continue
 
-            # Pruefe Betrag (exakt)
+            # Prüfe Betrag (exakt)
             if tx_amount != doc_amount:
                 continue
 
-            # Pruefe Datum-Naehe
+            # Prüfe Datum-Naehe
             doc_due_date = self._parse_date(extracted.get("due_date"))
             if not doc_due_date or not tx_date:
                 continue
@@ -851,7 +851,7 @@ class ReconciliationService:
             if name_similarity < 0.7:
                 continue
 
-            # Pruefe Betrag
+            # Prüfe Betrag
             doc_amount = self._get_document_amount(extracted)
             if doc_amount is None:
                 continue
@@ -904,7 +904,7 @@ class ReconciliationService:
         amount2: Decimal,
         tolerance: float = None,
     ) -> bool:
-        """Pruefe ob zwei Betraege uebereinstimmen."""
+        """Prüfe ob zwei Betraege übereinstimmen."""
         if tolerance is None:
             tolerance = self.AMOUNT_TOLERANCE_PERCENT
 
@@ -920,7 +920,7 @@ class ReconciliationService:
         return False
 
     def _invoice_numbers_match(self, num1: str, num2: str) -> bool:
-        """Pruefe ob zwei Rechnungsnummern uebereinstimmen."""
+        """Prüfe ob zwei Rechnungsnummern übereinstimmen."""
         # Normalisiere
         n1 = re.sub(r"[^a-zA-Z0-9]", "", num1.upper())
         n2 = re.sub(r"[^a-zA-Z0-9]", "", num2.upper())
@@ -948,8 +948,8 @@ class ReconciliationService:
         return None
 
     def _calculate_name_similarity(self, name1: str, name2: str) -> float:
-        """Berechne Aehnlichkeit zwischen zwei Namen (0-1)."""
-        # Einfache Wort-Ueberlappung
+        """Berechne Ähnlichkeit zwischen zwei Namen (0-1)."""
+        # Einfache Wort-Überlappung
         words1 = set(name1.split())
         words2 = set(name2.split())
 

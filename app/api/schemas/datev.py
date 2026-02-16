@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Pydantic-Modelle fuer DATEV Export API Endpoints.
+Pydantic-Modelle für DATEV Export API Endpoints.
 
-Definiert Request/Response Schemas fuer:
+Definiert Request/Response Schemas für:
 - /api/v1/datev/config - Konfiguration verwalten
 - /api/v1/datev/export - Buchungsstapel exportieren
 - /api/v1/datev/export/preview - Export-Vorschau
@@ -24,11 +24,11 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 # VALIDATION PATTERNS
 # =============================================================================
 
-# EU VAT-ID: 2 Buchstaben Laendercode + 8-12 Zeichen (Ziffern/Buchstaben je nach Land)
+# EU VAT-ID: 2 Buchstaben Ländercode + 8-12 Zeichen (Ziffern/Buchstaben je nach Land)
 # Beispiel: DE123456789, AT U12345678, FR 12345678901
 VAT_ID_PATTERN = re.compile(r'^[A-Z]{2}[A-Z0-9]{2,13}$')
 
-# IBAN: 2 Buchstaben + 2 Pruefziffern + 11-30 alphanumerische Zeichen
+# IBAN: 2 Buchstaben + 2 Prüfziffern + 11-30 alphanumerische Zeichen
 # Beispiel: DE89370400440532013000
 IBAN_PATTERN = re.compile(r'^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}$')
 
@@ -41,7 +41,7 @@ ACCOUNT_NUMBER_PATTERN = re.compile(r'^[0-9]{4,10}$')
 # =============================================================================
 
 class Kontenrahmen(str, Enum):
-    """Unterstuetzte Kontenrahmen."""
+    """Unterstützte Kontenrahmen."""
     SKR03 = "SKR03"
     SKR04 = "SKR04"
 
@@ -61,7 +61,7 @@ class DATEVExportType(str, Enum):
 
 class DATEVTaxCode(str, Enum):
     """
-    DATEV Steuerschluessel (BU-Schluessel).
+    DATEV Steuerschlüssel (BU-Schlüssel).
 
     Vorsteuer (Eingangsrechnungen):
     - 9: 19% Vorsteuer
@@ -74,7 +74,7 @@ class DATEVTaxCode(str, Enum):
     - 3: 19% Umsatzsteuer
     - 2: 7% Umsatzsteuer
     - 10: Innergemeinschaftliche Lieferung
-    - 13: Reverse Charge (Empfaenger schuldet)
+    - 13: Reverse Charge (Empfänger schuldet)
     """
     # Vorsteuer (Eingang)
     VST_19 = "9"
@@ -103,7 +103,7 @@ class SollHaben(str, Enum):
 # =============================================================================
 
 class DATEVConfigurationBase(BaseModel):
-    """Basis-Schema fuer DATEV-Konfiguration."""
+    """Basis-Schema für DATEV-Konfiguration."""
     berater_nr: str = Field(
         ...,
         min_length=1,
@@ -128,7 +128,7 @@ class DATEVConfigurationBase(BaseModel):
     @field_validator("berater_nr")
     @classmethod
     def validate_berater_nr(cls, v: str) -> str:
-        """Validiere Beraternummer (nur Ziffern, auffuellen auf 7 Stellen)."""
+        """Validiere Beraternummer (nur Ziffern, auffüllen auf 7 Stellen)."""
         cleaned = v.strip()
         if not cleaned.isdigit():
             raise ValueError("Beraternummer darf nur Ziffern enthalten")
@@ -137,7 +137,7 @@ class DATEVConfigurationBase(BaseModel):
     @field_validator("mandanten_nr")
     @classmethod
     def validate_mandanten_nr(cls, v: str) -> str:
-        """Validiere Mandantennummer (nur Ziffern, auffuellen auf 5 Stellen)."""
+        """Validiere Mandantennummer (nur Ziffern, auffüllen auf 5 Stellen)."""
         cleaned = v.strip()
         if not cleaned.isdigit():
             raise ValueError("Mandantennummer darf nur Ziffern enthalten")
@@ -154,7 +154,7 @@ class DATEVConfigurationBase(BaseModel):
         """
         today = date.today()
 
-        # Nicht in der Zukunft (mit Toleranz fuer naechstes Jahr)
+        # Nicht in der Zukunft (mit Toleranz für nächstes Jahr)
         max_future_date = date(today.year + 1, 12, 31)
         if v > max_future_date:
             raise ValueError(
@@ -178,24 +178,24 @@ class DATEVConfigurationCreate(DATEVConfigurationBase):
     incoming_expense_account: Optional[str] = Field(
         None,
         max_length=10,
-        description="Aufwandskonto fuer Eingangsrechnungen (z.B. 4200)"
+        description="Aufwandskonto für Eingangsrechnungen (z.B. 4200)"
     )
     incoming_creditor_account: Optional[str] = Field(
         None,
         max_length=10,
-        description="Kreditorenkonto fuer Eingangsrechnungen (z.B. 70000)"
+        description="Kreditorenkonto für Eingangsrechnungen (z.B. 70000)"
     )
 
     # Standardkonten Ausgang
     outgoing_revenue_account: Optional[str] = Field(
         None,
         max_length=10,
-        description="Erloeskonto fuer Ausgangsrechnungen (z.B. 8400)"
+        description="Erlöskonto für Ausgangsrechnungen (z.B. 8400)"
     )
     outgoing_debtor_account: Optional[str] = Field(
         None,
         max_length=10,
-        description="Debitorenkonto fuer Ausgangsrechnungen (z.B. 10000)"
+        description="Debitorenkonto für Ausgangsrechnungen (z.B. 10000)"
     )
 
     # Sammelkonten
@@ -215,12 +215,12 @@ class DATEVConfigurationCreate(DATEVConfigurationBase):
         4,
         ge=4,
         le=8,
-        description="Laenge der Sachkonten (4-8 Stellen)"
+        description="Länge der Sachkonten (4-8 Stellen)"
     )
     buchungstext_format: str = Field(
         "{invoice_number}",
         max_length=100,
-        description="Format fuer Buchungstext (Platzhalter: {invoice_number}, {sender})"
+        description="Format für Buchungstext (Platzhalter: {invoice_number}, {sender})"
     )
     is_default: bool = Field(
         False,
@@ -253,7 +253,7 @@ class DATEVConfigurationUpdate(BaseModel):
 
         today = date.today()
 
-        # Nicht in der Zukunft (mit Toleranz fuer naechstes Jahr)
+        # Nicht in der Zukunft (mit Toleranz für nächstes Jahr)
         max_future_date = date(today.year + 1, 12, 31)
         if v > max_future_date:
             raise ValueError(
@@ -272,7 +272,7 @@ class DATEVConfigurationUpdate(BaseModel):
 
 
 class DATEVConfigurationResponse(DATEVConfigurationBase):
-    """Response-Schema fuer DATEV-Konfiguration."""
+    """Response-Schema für DATEV-Konfiguration."""
     id: UUID
     incoming_expense_account: Optional[str] = None
     incoming_creditor_account: Optional[str] = None
@@ -317,7 +317,7 @@ class DATEVVendorMappingCreate(BaseModel):
     )
     business_entity_id: Optional[UUID] = Field(
         None,
-        description="Verknuepfter Geschaeftspartner"
+        description="Verknüpfter Geschäftspartner"
     )
     expense_account: str = Field(
         ...,
@@ -337,7 +337,7 @@ class DATEVVendorMappingCreate(BaseModel):
     cost_object: Optional[str] = Field(
         None,
         max_length=20,
-        description="Kostentraeger"
+        description="Kostenträger"
     )
 
     @field_validator("vendor_vat_id")
@@ -350,7 +350,7 @@ class DATEVVendorMappingCreate(BaseModel):
         cleaned = re.sub(r'[\s\-.]', '', v.upper())
         if not VAT_ID_PATTERN.match(cleaned):
             raise ValueError(
-                "Ungueltige USt-IdNr. Format: 2 Buchstaben Laendercode + 8-12 Zeichen "
+                "Ungültige USt-IdNr. Format: 2 Buchstaben Ländercode + 8-12 Zeichen "
                 "(z.B. DE123456789, ATU12345678)"
             )
         return cleaned
@@ -358,14 +358,14 @@ class DATEVVendorMappingCreate(BaseModel):
     @field_validator("vendor_iban")
     @classmethod
     def validate_iban(cls, v: Optional[str]) -> Optional[str]:
-        """Validiere IBAN Format (basic, ohne Pruefsumme)."""
+        """Validiere IBAN Format (basic, ohne Prüfsumme)."""
         if v is None:
             return None
         # Whitespace entfernen und uppercase
         cleaned = re.sub(r'\s', '', v.upper())
         if not IBAN_PATTERN.match(cleaned):
             raise ValueError(
-                "Ungueltige IBAN. Format: 2 Buchstaben + 2 Pruefziffern + Kontonummer "
+                "Ungültige IBAN. Format: 2 Buchstaben + 2 Prüfziffern + Kontonummer "
                 "(z.B. DE89370400440532013000)"
             )
         return cleaned
@@ -379,7 +379,7 @@ class DATEVVendorMappingCreate(BaseModel):
         cleaned = v.strip()
         if not ACCOUNT_NUMBER_PATTERN.match(cleaned):
             raise ValueError(
-                "Ungueltige Kontonummer. Muss 4-10 Ziffern enthalten (z.B. 4200, 70001)"
+                "Ungültige Kontonummer. Muss 4-10 Ziffern enthalten (z.B. 4200, 70001)"
             )
         return cleaned
 
@@ -405,20 +405,20 @@ class DATEVVendorMappingUpdate(BaseModel):
         cleaned = re.sub(r'[\s\-.]', '', v.upper())
         if not VAT_ID_PATTERN.match(cleaned):
             raise ValueError(
-                "Ungueltige USt-IdNr. Format: 2 Buchstaben Laendercode + 8-12 Zeichen"
+                "Ungültige USt-IdNr. Format: 2 Buchstaben Ländercode + 8-12 Zeichen"
             )
         return cleaned
 
     @field_validator("vendor_iban")
     @classmethod
     def validate_iban(cls, v: Optional[str]) -> Optional[str]:
-        """Validiere IBAN Format (basic, ohne Pruefsumme)."""
+        """Validiere IBAN Format (basic, ohne Prüfsumme)."""
         if v is None:
             return None
         cleaned = re.sub(r'\s', '', v.upper())
         if not IBAN_PATTERN.match(cleaned):
             raise ValueError(
-                "Ungueltige IBAN. Format: 2 Buchstaben + 2 Pruefziffern + Kontonummer"
+                "Ungültige IBAN. Format: 2 Buchstaben + 2 Prüfziffern + Kontonummer"
             )
         return cleaned
 
@@ -431,13 +431,13 @@ class DATEVVendorMappingUpdate(BaseModel):
         cleaned = v.strip()
         if not ACCOUNT_NUMBER_PATTERN.match(cleaned):
             raise ValueError(
-                "Ungueltige Kontonummer. Muss 4-10 Ziffern enthalten"
+                "Ungültige Kontonummer. Muss 4-10 Ziffern enthalten"
             )
         return cleaned
 
 
 class DATEVVendorMappingResponse(BaseModel):
-    """Response-Schema fuer Vendor-Mapping."""
+    """Response-Schema für Vendor-Mapping."""
     id: UUID
     config_id: UUID
     vendor_name: Optional[str] = None
@@ -459,7 +459,7 @@ class DATEVVendorMappingResponse(BaseModel):
 # =============================================================================
 
 class DATEVExportRequest(BaseModel):
-    """Request fuer DATEV-Export."""
+    """Request für DATEV-Export."""
     config_id: Optional[UUID] = Field(
         None,
         description="Konfiguration (falls nicht angegeben: Standard-Konfiguration)"
@@ -478,7 +478,7 @@ class DATEVExportRequest(BaseModel):
     )
     include_already_exported: bool = Field(
         False,
-        description="Bereits exportierte Dokumente einschliessen"
+        description="Bereits exportierte Dokumente einschließen"
     )
     export_type: DATEVExportType = Field(
         DATEVExportType.BUCHUNGSSTAPEL,
@@ -490,15 +490,15 @@ class DATEVBuchungsstapelEntry(BaseModel):
     """
     Eine Zeile im DATEV Buchungsstapel.
 
-    Entspricht einer Buchungszeile gemaess DATEV-Format Version 700.
+    Entspricht einer Buchungszeile gemäß DATEV-Format Version 700.
     """
     umsatz: Decimal = Field(..., description="Betrag (immer positiv)")
     soll_haben: SollHaben = Field(..., description="S = Soll, H = Haben")
-    wkz_umsatz: str = Field("EUR", description="Waehrungskennzeichen")
-    kurs: Optional[Decimal] = Field(None, description="Wechselkurs (bei Fremdwaehrung)")
+    wkz_umsatz: str = Field("EUR", description="Währungskennzeichen")
+    kurs: Optional[Decimal] = Field(None, description="Wechselkurs (bei Fremdwährung)")
     konto: str = Field(..., description="Sachkonto (z.B. 4200)")
     gegenkonto: str = Field(..., description="Gegenkonto (z.B. 70000)")
-    bu_schluessel: Optional[str] = Field(None, description="Steuerschluessel (BU-Schluessel)")
+    bu_schluessel: Optional[str] = Field(None, description="Steuerschlüssel (BU-Schlüssel)")
     belegdatum: date = Field(..., description="Belegdatum")
     belegfeld_1: str = Field(..., description="Rechnungsnummer (max. 36 Zeichen)")
     belegfeld_2: Optional[str] = Field(None, description="Zusatzinfo (max. 12 Zeichen)")
@@ -526,10 +526,10 @@ class DATEVExportPreview(BaseModel):
         default_factory=list,
         description="Warnungen (z.B. fehlende Daten)"
     )
-    skipped_count: int = Field(0, description="Anzahl uebersprungener Dokumente")
+    skipped_count: int = Field(0, description="Anzahl übersprungener Dokumente")
     skipped_reasons: Dict[str, int] = Field(
         default_factory=dict,
-        description="Gruende fuer Uebersprungene ({grund: anzahl})"
+        description="Gründe für Übersprungene ({grund: anzahl})"
     )
 
 
@@ -569,7 +569,7 @@ class DATEVExportHistoryItem(BaseModel):
     @field_validator("export_type", mode="before")
     @classmethod
     def convert_export_type(cls, v: Any) -> DATEVExportType:
-        """Konvertiert String zu Enum falls noetig."""
+        """Konvertiert String zu Enum falls nötig."""
         if isinstance(v, str):
             return DATEVExportType(v)
         return v
@@ -577,7 +577,7 @@ class DATEVExportHistoryItem(BaseModel):
     @field_validator("status", mode="before")
     @classmethod
     def convert_status(cls, v: Any) -> DATEVExportStatus:
-        """Konvertiert String zu Enum falls noetig."""
+        """Konvertiert String zu Enum falls nötig."""
         if isinstance(v, str):
             return DATEVExportStatus(v)
         return v
@@ -605,7 +605,7 @@ class KontenrahmenAccount(BaseModel):
 
 
 class KontenrahmenInfo(BaseModel):
-    """Informationen ueber einen Kontenrahmen."""
+    """Informationen über einen Kontenrahmen."""
     name: Kontenrahmen
     beschreibung: str
     standard_konten: Dict[str, str] = Field(
@@ -614,5 +614,5 @@ class KontenrahmenInfo(BaseModel):
     )
     verfuegbare_kategorien: List[str] = Field(
         ...,
-        description="Verfuegbare Kontokategorien"
+        description="Verfügbare Kontokategorien"
     )

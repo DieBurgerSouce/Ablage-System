@@ -2,14 +2,14 @@
 """
 Proactive Insights Service.
 
-Enterprise Feature: Kontextsensitive, proaktive Insights fuer Chat und UI.
+Enterprise Feature: Kontextsensitive, proaktive Insights für Chat und UI.
 
 Dieses Modul analysiert User-Aktionen und Chat-Kontext und generiert
 automatisch relevante Insights:
 
 - "Du fragst nach Lieferant XY - er ist 23% teurer als der Durchschnitt"
 - "Du schaust auf Mieteinnahmen - Miete liegt unter Marktniveau"
-- "Du fragst nach Versicherungen - 3 haben ueberlappende Deckung"
+- "Du fragst nach Versicherungen - 3 haben überlappende Deckung"
 
 TRUE Enterprise-Level: Das System DENKT MIT, nicht nur ANTWORTET.
 """
@@ -38,7 +38,7 @@ logger = structlog.get_logger(__name__)
 
 class InsightType(str, Enum):
     """Typ des proaktiven Insights."""
-    OPTIMIZATION = "optimization"           # Optimierungsmoeglichkeit
+    OPTIMIZATION = "optimization"           # Optimierungsmöglichkeit
     WARNING = "warning"                     # Warnung/Risiko
     OPPORTUNITY = "opportunity"             # Chance/Gelegenheit
     INFORMATION = "information"             # Neutrale Info
@@ -65,7 +65,7 @@ class EntityType(str, Enum):
 
 
 class InsightPriority(str, Enum):
-    """Prioritaet des Insights."""
+    """Priorität des Insights."""
     CRITICAL = "critical"       # Muss gezeigt werden
     HIGH = "high"               # Sollte gezeigt werden
     MEDIUM = "medium"           # Kann gezeigt werden
@@ -107,8 +107,8 @@ class ProactiveInsight:
     detail: str = ""
     related_entities: List[ExtractedEntity] = field(default_factory=list)
     potential_value: Optional[Decimal] = None       # Potenzieller Wert in EUR
-    action_url: Optional[str] = None                # URL fuer Aktion
-    action_label: Optional[str] = None              # Label fuer Aktion
+    action_url: Optional[str] = None                # URL für Aktion
+    action_label: Optional[str] = None              # Label für Aktion
     expires_at: Optional[datetime] = None           # Wann Insight verfaellt
     context_source: ContextSource = ContextSource.CHAT_MESSAGE
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -164,7 +164,7 @@ class EnrichedResponse:
 
 @dataclass
 class RuleFeedbackStats:
-    """Statistiken zu User-Feedback fuer eine Regel."""
+    """Statistiken zu User-Feedback für eine Regel."""
     rule_id: str
     helpful_count: int = 0
     unhelpful_count: int = 0
@@ -180,7 +180,7 @@ class RuleFeedbackStats:
         """
         Berechnet Gewichtung basierend auf Feedback.
 
-        Formel: Nutzt Wilson Score Interval Lower Bound fuer faire Gewichtung.
+        Formel: Nutzt Wilson Score Interval Lower Bound für faire Gewichtung.
         - 0.3 bei vielen negativen Feedbacks (Regel wird gefiltert)
         - 1.0 bei neutralem/keinem Feedback (Standard)
         - 1.5 bei vielen positiven Feedbacks (Regel wird bevorzugt)
@@ -191,7 +191,7 @@ class RuleFeedbackStats:
         # Positiver Anteil
         positive_ratio = self.helpful_count / self.total_feedback
 
-        # Wilson Score Lower Bound fuer statistische Signifikanz
+        # Wilson Score Lower Bound für statistische Signifikanz
         import math
         z = 1.96  # 95% Konfidenz
         n = self.total_feedback
@@ -251,7 +251,7 @@ class UserContext:
 class EntityPatterns:
     """Muster zur Entity-Erkennung aus Text."""
 
-    # Deutsche Schluesselwoerter fuer Entity-Typen
+    # Deutsche Schluesselwoerter für Entity-Typen
     PATTERNS = {
         EntityType.SUPPLIER: [
             r"lieferant\s+(\w+)",
@@ -295,9 +295,9 @@ class EntityPatterns:
         ],
     }
 
-    # Kontext-Schluesselwoerter fuer Insight-Generierung
+    # Kontext-Schluesselwoerter für Insight-Generierung
     CONTEXT_KEYWORDS = {
-        "kosten": ["kosten", "preis", "teuer", "guenstig", "sparen", "ausgabe"],
+        "kosten": ["kosten", "preis", "teuer", "günstig", "sparen", "ausgabe"],
         "risiko": ["risiko", "gefahr", "warnung", "kritisch", "problem"],
         "optimierung": ["optimieren", "verbessern", "steigern", "reduzieren"],
         "vergleich": ["vergleich", "alternative", "besser", "schlechter"],
@@ -320,7 +320,7 @@ class InsightRule:
 
 
 class InsightRuleEngine:
-    """Engine fuer Insight-Generierung basierend auf Regeln."""
+    """Engine für Insight-Generierung basierend auf Regeln."""
 
     def __init__(self) -> None:
         self._rules: List[InsightRule] = []
@@ -337,9 +337,9 @@ class InsightRuleEngine:
             generate=lambda ctx: ProactiveInsight(
                 insight_type=InsightType.OPTIMIZATION,
                 priority=InsightPriority.HIGH,
-                title=f"{ctx.get('supplier_name', 'Lieferant')} ueberdurchschnittlich teuer",
+                title=f"{ctx.get('supplier_name', 'Lieferant')} überdurchschnittlich teuer",
                 message=f"Dieser Lieferant ist {ctx.get('price_vs_average', 0):.0f}% teurer als der Durchschnitt.",
-                detail="Basierend auf Vergleich mit aehnlichen Lieferanten in der gleichen Kategorie.",
+                detail="Basierend auf Vergleich mit ähnlichen Lieferanten in der gleichen Kategorie.",
                 potential_value=Decimal(str(ctx.get("potential_savings", 0))),
                 action_url="/suppliers/compare",
                 action_label="Alternativen vergleichen",
@@ -356,14 +356,14 @@ class InsightRuleEngine:
                 priority=InsightPriority.MEDIUM,
                 title="Miete unter Marktniveau",
                 message=f"Die Miete liegt {abs(ctx.get('rent_vs_market', 0)):.0f}% unter dem Marktniveau.",
-                detail="Bei naechster Gelegenheit koennte eine Mietanpassung sinnvoll sein.",
+                detail="Bei nächster Gelegenheit könnte eine Mietanpassung sinnvoll sein.",
                 potential_value=Decimal(str(ctx.get("potential_rent_increase", 0) * 12)),
                 action_url=f"/properties/{ctx.get('property_id')}/rent-analysis",
-                action_label="Mietanalyse oeffnen",
+                action_label="Mietanalyse öffnen",
             ),
         ))
 
-        # Regel: Versicherungsluecke
+        # Regel: Versicherungslücke
         self._rules.append(InsightRule(
             rule_id="insurance_gap",
             entity_types=[EntityType.INSURANCE],
@@ -371,15 +371,15 @@ class InsightRuleEngine:
             generate=lambda ctx: ProactiveInsight(
                 insight_type=InsightType.WARNING,
                 priority=InsightPriority.CRITICAL,
-                title="Versicherungsluecke erkannt",
-                message=f"Fuer {ctx.get('asset_type', 'diesen Vermoegenswert')} fehlt {ctx.get('missing_coverage', 'eine wichtige Deckung')}.",
+                title="Versicherungslücke erkannt",
+                message=f"Für {ctx.get('asset_type', 'diesen Vermoegenswert')} fehlt {ctx.get('missing_coverage', 'eine wichtige Deckung')}.",
                 detail="Ohne diese Deckung besteht ein erhebliches finanzielles Risiko.",
                 action_url="/insurance/gaps",
-                action_label="Luecke schliessen",
+                action_label="Lücke schließen",
             ),
         ))
 
-        # Regel: Ueberlappende Versicherungen
+        # Regel: Überlappende Versicherungen
         self._rules.append(InsightRule(
             rule_id="insurance_overlap",
             entity_types=[EntityType.INSURANCE],
@@ -387,26 +387,26 @@ class InsightRuleEngine:
             generate=lambda ctx: ProactiveInsight(
                 insight_type=InsightType.OPTIMIZATION,
                 priority=InsightPriority.MEDIUM,
-                title="Ueberlappende Versicherungsdeckung",
-                message=f"{len(ctx.get('overlapping_policies', []))} Policen haben ueberlappende Deckung.",
-                detail="Eine Konsolidierung koennte Praemien sparen.",
+                title="Überlappende Versicherungsdeckung",
+                message=f"{len(ctx.get('overlapping_policies', []))} Policen haben überlappende Deckung.",
+                detail="Eine Konsolidierung könnte Praemien sparen.",
                 potential_value=Decimal(str(ctx.get("potential_premium_savings", 0))),
                 action_url="/insurance/consolidate",
-                action_label="Konsolidierung pruefen",
+                action_label="Konsolidierung prüfen",
             ),
         ))
 
-        # Regel: Kredit-Refinanzierung moeglich
+        # Regel: Kredit-Refinanzierung möglich
         self._rules.append(InsightRule(
             rule_id="loan_refinance_opportunity",
             entity_types=[EntityType.LOAN],
-            condition=lambda ctx: ctx.get("interest_vs_market", 0) > 0.5,  # 0.5% hoeher
+            condition=lambda ctx: ctx.get("interest_vs_market", 0) > 0.5,  # 0.5% höher
             generate=lambda ctx: ProactiveInsight(
                 insight_type=InsightType.OPPORTUNITY,
                 priority=InsightPriority.HIGH,
                 title="Refinanzierung sinnvoll",
-                message=f"Der aktuelle Zins liegt {ctx.get('interest_vs_market', 0):.2f}% ueber dem Marktzins.",
-                detail=f"Bei Refinanzierung koennten ca. {ctx.get('potential_savings_annual', 0):,.0f} EUR/Jahr gespart werden.",
+                message=f"Der aktuelle Zins liegt {ctx.get('interest_vs_market', 0):.2f}% über dem Marktzins.",
+                detail=f"Bei Refinanzierung könnten ca. {ctx.get('potential_savings_annual', 0):,.0f} EUR/Jahr gespart werden.",
                 potential_value=Decimal(str(ctx.get("potential_savings_total", 0))),
                 action_url=f"/loans/{ctx.get('loan_id')}/refinance",
                 action_label="Refinanzierung simulieren",
@@ -422,8 +422,8 @@ class InsightRuleEngine:
                 insight_type=InsightType.WARNING,
                 priority=InsightPriority.CRITICAL,
                 title="DTI kritisch hoch",
-                message=f"Dein DTI liegt bei {ctx.get('dti_ratio', 0):.1f}% - das ist ueber dem kritischen Schwellenwert.",
-                detail="Ein DTI ueber 40% kann zu Kreditablehnungen und finanzieller Belastung fuehren.",
+                message=f"Dein DTI liegt bei {ctx.get('dti_ratio', 0):.1f}% - das ist über dem kritischen Schwellenwert.",
+                detail="Ein DTI über 40% kann zu Kreditablehnungen und finanzieller Belastung führen.",
                 action_url="/simulator/what-if",
                 action_label="Reduktion simulieren",
             ),
@@ -438,7 +438,7 @@ class InsightRuleEngine:
                 insight_type=InsightType.WARNING,
                 priority=InsightPriority.HIGH,
                 title="Notgroschen aufbauen",
-                message=f"Dein Notgroschen reicht nur fuer {ctx.get('emergency_fund_months', 0):.1f} Monate.",
+                message=f"Dein Notgroschen reicht nur für {ctx.get('emergency_fund_months', 0):.1f} Monate.",
                 detail="Experten empfehlen mindestens 3-6 Monatsausgaben als Reserve.",
                 action_url="/simulator/what-if",
                 action_label="Aufbau simulieren",
@@ -465,11 +465,11 @@ class InsightRuleEngine:
         context_data: Dict[str, Any],
         user_rule_weights: Optional[Dict[str, float]] = None,
     ) -> List[ProactiveInsight]:
-        """Evaluiert alle Regeln fuer eine Entity.
+        """Evaluiert alle Regeln für eine Entity.
 
         Args:
             entity: Die zu evaluierende Entity.
-            context_data: Kontext-Daten fuer die Regelauswertung.
+            context_data: Kontext-Daten für die Regelauswertung.
             user_rule_weights: Optional User-spezifische Regel-Gewichte (0-2).
                                1.0 = Standard, <1 = weniger oft zeigen, >1 = bevorzugen.
 
@@ -516,12 +516,12 @@ class InsightRuleEngine:
 
 class ProactiveInsightsService:
     """
-    Service fuer proaktive, kontextsensitive Insights.
+    Service für proaktive, kontextsensitive Insights.
 
     Analysiert User-Interaktionen und Chat-Nachrichten, extrahiert
     relevante Entities und generiert automatisch hilfreiche Insights.
 
-    Singleton-Pattern fuer globalen Zugriff.
+    Singleton-Pattern für globalen Zugriff.
     """
 
     _instance: Optional["ProactiveInsightsService"] = None
@@ -559,7 +559,7 @@ class ProactiveInsightsService:
         self._feedback_ttl = timedelta(days=90)  # Feedback expiry
         self._feedback_timestamps: Dict[UUID, datetime] = {}  # Track last update
 
-        # Insight cache fuer Feedback-Lookup
+        # Insight cache für Feedback-Lookup
         # Structure: {insight_id_str: (insight, user_id, created_at)}
         self._generated_insights: Dict[str, Tuple[ProactiveInsight, UUID, datetime]] = {}
         self._max_generated_insights = 10000  # Max insights to track
@@ -571,10 +571,10 @@ class ProactiveInsightsService:
 
     async def cleanup_stale_contexts(self) -> int:
         """
-        Entfernt abgelaufene User-Kontexte und Cache-Eintraege.
+        Entfernt abgelaufene User-Kontexte und Cache-Einträge.
 
         Returns:
-            Anzahl entfernter Eintraege.
+            Anzahl entfernter Einträge.
         """
         async with self._cache_lock:
             now = datetime.now(timezone.utc)
@@ -647,10 +647,10 @@ class ProactiveInsightsService:
             user_question: Die Frage des Users
             base_answer: Die Basis-Antwort (ohne Insights)
             space_id: Optional Space-ID
-            additional_context: Zusaetzlicher Kontext (z.B. aktuelle KPIs)
+            additional_context: Zusätzlicher Kontext (z.B. aktuelle KPIs)
 
         Returns:
-            EnrichedResponse mit Insights und Follow-up-Vorschlaegen
+            EnrichedResponse mit Insights und Follow-up-Vorschlägen
         """
         logger.info(
             "enriching_chat_response",
@@ -673,7 +673,7 @@ class ProactiveInsightsService:
             additional_data=additional_context or {},
         )
 
-        # Follow-up Vorschlaege generieren
+        # Follow-up Vorschläge generieren
         follow_ups = self._generate_follow_up_suggestions(
             user_question,
             entities,
@@ -727,7 +727,7 @@ class ProactiveInsightsService:
                 confidence=1.0,  # Explizit angegeben
             ))
 
-        # Zusaetzliche Entities aus Text extrahieren
+        # Zusätzliche Entities aus Text extrahieren
         if "search_query" in context_data:
             text_entities = await self._extract_entities(context_data["search_query"])
             entities.extend(text_entities)
@@ -756,10 +756,10 @@ class ProactiveInsightsService:
         max_insights: int = 5,
     ) -> List[ProactiveInsight]:
         """
-        Generiert Insights fuer das Dashboard.
+        Generiert Insights für das Dashboard.
 
         Analysiert aktuelle KPIs und generiert die wichtigsten Insights
-        fuer die Dashboard-Anzeige.
+        für die Dashboard-Anzeige.
 
         Args:
             user_id: ID des Users
@@ -789,7 +789,7 @@ class ProactiveInsightsService:
         kpi_insights = self._rule_engine.evaluate(kpi_entity, current_kpis)
         insights.extend(kpi_insights)
 
-        # Nach Prioritaet sortieren
+        # Nach Priorität sortieren
         priority_order = {
             InsightPriority.CRITICAL: 0,
             InsightPriority.HIGH: 1,
@@ -809,7 +809,7 @@ class ProactiveInsightsService:
         """
         Lernt aus User-Feedback zu Insights.
 
-        Speichert ob ein Insight hilfreich war und passt zukuenftige
+        Speichert ob ein Insight hilfreich war und passt zukünftige
         Generierung entsprechend an.
 
         Args:
@@ -892,7 +892,7 @@ class ProactiveInsightsService:
         Entfernt veraltete Feedback-Daten.
 
         Returns:
-            Anzahl entfernter User-Feedback-Eintraege.
+            Anzahl entfernter User-Feedback-Einträge.
         """
         now = datetime.now(timezone.utc)
         cutoff = now - self._feedback_ttl
@@ -940,7 +940,7 @@ class ProactiveInsightsService:
 
     def get_user_rule_weights(self, user_id: UUID) -> Dict[str, float]:
         """
-        Gibt die personalisierten Regel-Gewichte fuer einen User zurueck.
+        Gibt die personalisierten Regel-Gewichte für einen User zurück.
 
         Args:
             user_id: User-ID.
@@ -958,7 +958,7 @@ class ProactiveInsightsService:
 
     async def get_feedback_summary(self, user_id: UUID) -> Dict[str, Any]:
         """
-        Gibt eine Zusammenfassung des User-Feedbacks zurueck.
+        Gibt eine Zusammenfassung des User-Feedbacks zurück.
 
         Args:
             user_id: User-ID.
@@ -1043,12 +1043,12 @@ class ProactiveInsightsService:
         user_rule_weights = self.get_user_rule_weights(user_context.user_id)
 
         for entity in entities:
-            # Kontext-Daten fuer diese Entity zusammenstellen
+            # Kontext-Daten für diese Entity zusammenstellen
             context_data = additional_data.copy()
             context_data["entity_name"] = entity.entity_name
             context_data["entity_id"] = str(entity.entity_id) if entity.entity_id else None
 
-            # Mock-Daten fuer Demo (in Produktion: aus DB laden)
+            # Mock-Daten für Demo (in Produktion: aus DB laden)
             context_data = self._enrich_with_mock_data(entity, context_data)
 
             # Regeln evaluieren mit User-Gewichten
@@ -1062,7 +1062,7 @@ class ProactiveInsightsService:
         # Deduplizieren und priorisieren
         final_insights = self._deduplicate_and_prioritize(insights)
 
-        # Insights fuer Feedback-Tracking registrieren
+        # Insights für Feedback-Tracking registrieren
         now = datetime.now(timezone.utc)
         for insight in final_insights:
             self._generated_insights[str(insight.id)] = (
@@ -1089,11 +1089,11 @@ class ProactiveInsightsService:
         entity: ExtractedEntity,
         context_data: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """Reichert Kontext mit simulierten Daten an (fuer Demo).
+        """Reichert Kontext mit simulierten Daten an (für Demo).
 
         Verwendet deterministisches Hashing basierend auf entity_id,
-        um konsistente Mock-Daten pro Entity zu gewaehrleisten.
-        Dies ermoeglicht reproduzierbare Tests.
+        um konsistente Mock-Daten pro Entity zu gewährleisten.
+        Dies ermöglicht reproduzierbare Tests.
         """
         import hashlib
 
@@ -1127,7 +1127,7 @@ class ProactiveInsightsService:
                 context_data.setdefault("potential_premium_savings", 200)
 
         elif entity.entity_type == EntityType.LOAN:
-            context_data.setdefault("interest_vs_market", 1.1)  # 1.1% hoeher
+            context_data.setdefault("interest_vs_market", 1.1)  # 1.1% höher
             context_data.setdefault("potential_savings_annual", 1300)
             context_data.setdefault("potential_savings_total", 15600)
             context_data.setdefault("loan_id", str(entity.entity_id or uuid4()))
@@ -1147,7 +1147,7 @@ class ProactiveInsightsService:
                 seen_titles.add(insight.title)
                 unique.append(insight)
 
-        # Nach Prioritaet sortieren
+        # Nach Priorität sortieren
         priority_order = {
             InsightPriority.CRITICAL: 0,
             InsightPriority.HIGH: 1,
@@ -1164,7 +1164,7 @@ class ProactiveInsightsService:
         entities: List[ExtractedEntity],
         insights: List[ProactiveInsight],
     ) -> List[str]:
-        """Generiert Follow-up-Vorschlaege basierend auf Kontext."""
+        """Generiert Follow-up-Vorschläge basierend auf Kontext."""
         suggestions = []
 
         # Basierend auf Entity-Typen
@@ -1177,13 +1177,13 @@ class ProactiveInsightsService:
             suggestions.append("Soll ich eine Mietpreis-Analyse erstellen?")
 
         if EntityType.INSURANCE in entity_types:
-            suggestions.append("Moechtest du deine Versicherungen auf Luecken pruefen?")
+            suggestions.append("Moechtest du deine Versicherungen auf Lücken prüfen?")
 
         if EntityType.LOAN in entity_types:
             suggestions.append("Soll ich eine Refinanzierung simulieren?")
 
         if EntityType.KPI in entity_types:
-            suggestions.append("Was-Wenn-Simulation fuer deine Finanzen?")
+            suggestions.append("Was-Wenn-Simulation für deine Finanzen?")
 
         # Basierend auf Insights
         if any(i.insight_type == InsightType.WARNING for i in insights):
@@ -1192,7 +1192,7 @@ class ProactiveInsightsService:
         if any(i.insight_type == InsightType.OPPORTUNITY for i in insights):
             suggestions.append("Moechtest du die Optimierungspotenziale im Detail sehen?")
 
-        return suggestions[:3]  # Max 3 Vorschlaege
+        return suggestions[:3]  # Max 3 Vorschläge
 
     def _get_or_create_context(
         self,
@@ -1216,12 +1216,12 @@ class ExtendedInsightRuleEngine(InsightRuleEngine):
     """
     Erweiterte Rule Engine mit Phase 6 Insights.
 
-    Neue Regeln fuer:
+    Neue Regeln für:
     - Skonto-Deadlines
-    - Vertrags-Kuendigungsfristen
+    - Vertrags-Kündigungsfristen
     - Zahlungsfristen
     - Preisanomalien
-    - Batch-Genehmigungsvorschlaege
+    - Batch-Genehmigungsvorschläge
     - Fehlende Stammdaten
     """
 
@@ -1250,7 +1250,7 @@ class ExtendedInsightRuleEngine(InsightRuleEngine):
             ),
         ))
 
-        # Regel: Vertragskuendigung naht
+        # Regel: Vertragskündigung naht
         self._rules.append(InsightRule(
             rule_id="contract_cancellation",
             entity_types=[EntityType.DOCUMENT],
@@ -1258,16 +1258,16 @@ class ExtendedInsightRuleEngine(InsightRuleEngine):
             generate=lambda ctx: ProactiveInsight(
                 insight_type=InsightType.WARNING,
                 priority=InsightPriority.HIGH if ctx.get("cancellation_days_remaining", 99) <= 7 else InsightPriority.MEDIUM,
-                title=f"Kuendigungsfrist in {ctx.get('cancellation_days_remaining', 0)} Tagen",
-                message=f"Vertrag '{ctx.get('contract_name', 'Unbekannt')}' verlaengert sich automatisch wenn nicht gekuendigt.",
-                detail=f"Monatliche Kosten: {ctx.get('monthly_cost', 0):,.2f} EUR, Verlaengerung: {ctx.get('auto_extend_months', 12)} Monate",
+                title=f"Kündigungsfrist in {ctx.get('cancellation_days_remaining', 0)} Tagen",
+                message=f"Vertrag '{ctx.get('contract_name', 'Unbekannt')}' verlängert sich automatisch wenn nicht gekündigt.",
+                detail=f"Monatliche Kosten: {ctx.get('monthly_cost', 0):,.2f} EUR, Verlängerung: {ctx.get('auto_extend_months', 12)} Monate",
                 potential_value=Decimal(str(ctx.get("annual_cost", 0))),
                 action_url=f"/contracts/{ctx.get('contract_id')}",
-                action_label="Vertrag pruefen",
+                action_label="Vertrag prüfen",
             ),
         ))
 
-        # Regel: Zahlung ueberfaellig
+        # Regel: Zahlung überfällig
         self._rules.append(InsightRule(
             rule_id="payment_overdue",
             entity_types=[EntityType.DOCUMENT],
@@ -1275,12 +1275,12 @@ class ExtendedInsightRuleEngine(InsightRuleEngine):
             generate=lambda ctx: ProactiveInsight(
                 insight_type=InsightType.WARNING,
                 priority=InsightPriority.CRITICAL if ctx.get("days_overdue", 0) > 14 else InsightPriority.HIGH,
-                title=f"Zahlung {ctx.get('days_overdue', 0)} Tage ueberfaellig",
-                message=f"Rechnung '{ctx.get('invoice_number', 'Unbekannt')}' ist seit {ctx.get('days_overdue', 0)} Tagen ueberfaellig.",
+                title=f"Zahlung {ctx.get('days_overdue', 0)} Tage überfällig",
+                message=f"Rechnung '{ctx.get('invoice_number', 'Unbekannt')}' ist seit {ctx.get('days_overdue', 0)} Tagen überfällig.",
                 detail=f"Ausstehender Betrag: {ctx.get('outstanding_amount', 0):,.2f} EUR, Mahnstufe: {ctx.get('dunning_level', 0)}",
                 potential_value=Decimal(str(ctx.get("outstanding_amount", 0))),
                 action_url=f"/invoices/{ctx.get('invoice_id')}",
-                action_label="Rechnung oeffnen",
+                action_label="Rechnung öffnen",
             ),
         ))
 
@@ -1293,14 +1293,14 @@ class ExtendedInsightRuleEngine(InsightRuleEngine):
                 insight_type=InsightType.ANOMALY,
                 priority=InsightPriority.HIGH if abs(ctx.get("price_deviation_percent", 0)) > 50 else InsightPriority.MEDIUM,
                 title=f"Preisabweichung bei {ctx.get('supplier_name', 'Lieferant')}",
-                message=f"Aktueller Preis liegt {ctx.get('price_deviation_percent', 0):+.1f}% {'ueber' if ctx.get('price_deviation_percent', 0) > 0 else 'unter'} dem Durchschnitt.",
+                message=f"Aktueller Preis liegt {ctx.get('price_deviation_percent', 0):+.1f}% {'über' if ctx.get('price_deviation_percent', 0) > 0 else 'unter'} dem Durchschnitt.",
                 detail=f"Historischer Durchschnitt: {ctx.get('historical_avg', 0):,.2f} EUR, Aktuell: {ctx.get('current_price', 0):,.2f} EUR",
                 action_url=f"/entities/{ctx.get('supplier_id')}/price-analysis",
                 action_label="Preisanalyse",
             ),
         ))
 
-        # Regel: Batch-Genehmigung moeglich
+        # Regel: Batch-Genehmigung möglich
         self._rules.append(InsightRule(
             rule_id="batch_approval_suggestion",
             entity_types=[EntityType.SUPPLIER, EntityType.GENERAL],
@@ -1324,9 +1324,9 @@ class ExtendedInsightRuleEngine(InsightRuleEngine):
             generate=lambda ctx: ProactiveInsight(
                 insight_type=InsightType.WARNING,
                 priority=InsightPriority.MEDIUM if "iban" in ctx.get("missing_fields", []) else InsightPriority.LOW,
-                title=f"Unvollstaendige Stammdaten: {ctx.get('entity_name', 'Entitaet')}",
+                title=f"Unvollständige Stammdaten: {ctx.get('entity_name', 'Entität')}",
                 message=f"Fehlende Felder: {', '.join(ctx.get('missing_fields', []))}",
-                detail="Vollstaendige Stammdaten ermoeglichen automatische Verarbeitung.",
+                detail="Vollständige Stammdaten ermöglichen automatische Verarbeitung.",
                 action_url=f"/entities/{ctx.get('entity_id')}/edit",
                 action_label="Daten ergaenzen",
             ),
@@ -1342,7 +1342,7 @@ _insights_lock = threading.Lock()
 
 
 def get_proactive_insights_service() -> ProactiveInsightsService:
-    """Gibt die Singleton-Instanz des Proactive Insights Service zurueck."""
+    """Gibt die Singleton-Instanz des Proactive Insights Service zurück."""
     global _insights_instance
     with _insights_lock:
         if _insights_instance is None:
@@ -1351,5 +1351,5 @@ def get_proactive_insights_service() -> ProactiveInsightsService:
 
 
 def get_extended_rule_engine() -> ExtendedInsightRuleEngine:
-    """Gibt eine ExtendedInsightRuleEngine Instanz zurueck."""
+    """Gibt eine ExtendedInsightRuleEngine Instanz zurück."""
     return ExtendedInsightRuleEngine()

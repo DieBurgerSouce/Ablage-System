@@ -1,7 +1,7 @@
 """
-Stock Service - Bestandsfuehrung
+Stock Service - Bestandsführung
 
-Verwaltung von Lagerbestaenden und Warenbewegungen.
+Verwaltung von Lagerbeständen und Warenbewegungen.
 """
 
 import uuid
@@ -23,7 +23,7 @@ from app.db.models_inventory import (
 
 
 class StockService:
-    """Service fuer Bestandsfuehrung"""
+    """Service für Bestandsführung"""
 
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -34,7 +34,7 @@ class StockService:
         warehouse_id: uuid.UUID,
         company_id: uuid.UUID,
     ) -> Optional[StockLevel]:
-        """Bestandslevel fuer Artikel im Lager abrufen"""
+        """Bestandslevel für Artikel im Lager abrufen"""
         query = select(StockLevel).where(
             and_(
                 StockLevel.item_id == item_id,
@@ -71,7 +71,7 @@ class StockService:
         item_id: uuid.UUID,
         company_id: uuid.UUID,
     ) -> Decimal:
-        """Gesamtbestand eines Artikels ueber alle Lager"""
+        """Gesamtbestand eines Artikels über alle Lager"""
         query = select(func.sum(StockLevel.quantity_on_hand)).where(
             and_(
                 StockLevel.item_id == item_id,
@@ -120,7 +120,7 @@ class StockService:
         company_id: uuid.UUID,
         include_zero_stock: bool = False,
     ) -> list[dict]:
-        """Alle Bestaende in einem Lager"""
+        """Alle Bestände in einem Lager"""
         conditions = [
             StockLevel.warehouse_id == warehouse_id,
             StockLevel.company_id == company_id,
@@ -172,10 +172,10 @@ class StockService:
             warehouse_id: Quelllager
             movement_type: Art der Bewegung
             quantity: Menge (immer positiv)
-            document_id: Verknuepftes Dokument
+            document_id: Verknüpftes Dokument
             reference_number: Referenznummer (Lieferschein, etc.)
-            entity_id: Geschaeftspartner
-            unit_price: Stueckpreis
+            entity_id: Geschäftspartner
+            unit_price: Stückpreis
             notes: Bemerkungen
             created_by: Erstellt durch User
             target_warehouse_id: Ziellager (bei Umlagerung)
@@ -248,10 +248,10 @@ class StockService:
         quantity: Decimal,
     ) -> bool:
         """
-        Reserviert Bestand fuer einen Auftrag.
+        Reserviert Bestand für einen Auftrag.
 
         Returns:
-            True wenn genug verfuegbar und reserviert, False sonst
+            True wenn genug verfügbar und reserviert, False sonst
         """
         stock = await self.get_stock_level(item_id, warehouse_id, company_id)
         if not stock:

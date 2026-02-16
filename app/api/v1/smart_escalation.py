@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-API Endpoints fuer SmartEscalationService.
+API Endpoints für SmartEscalationService.
 
 KI-gestuetzte intelligente Aufgabenzuweisung:
-- Empfehlungen fuer optimale Zuweisung
+- Empfehlungen für optimale Zuweisung
 - Team-Auslastung anzeigen
 - User-Scores debuggen/analysieren
 
@@ -50,25 +50,25 @@ class FactorWeightsRequest(BaseModel):
         default=0.35,
         ge=0.0,
         le=1.0,
-        description="Gewicht fuer Expertise (0-1)",
+        description="Gewicht für Expertise (0-1)",
     )
     workload: float = Field(
         default=0.25,
         ge=0.0,
         le=1.0,
-        description="Gewicht fuer Auslastung (0-1)",
+        description="Gewicht für Auslastung (0-1)",
     )
     availability: float = Field(
         default=0.25,
         ge=0.0,
         le=1.0,
-        description="Gewicht fuer Verfuegbarkeit (0-1)",
+        description="Gewicht für Verfügbarkeit (0-1)",
     )
     relationship: float = Field(
         default=0.15,
         ge=0.0,
         le=1.0,
-        description="Gewicht fuer Kundenbeziehung (0-1)",
+        description="Gewicht für Kundenbeziehung (0-1)",
     )
 
     def to_factor_weights(self) -> FactorWeights:
@@ -129,7 +129,7 @@ class CandidateScoreResponse(BaseModel):
 
 
 class AssignmentRecommendationResponse(BaseModel):
-    """Empfehlung fuer Aufgabenzuweisung."""
+    """Empfehlung für Aufgabenzuweisung."""
 
     recommended_user_id: str
     recommended_user_name: str
@@ -175,7 +175,7 @@ class TeamMemberWorkload(BaseModel):
 
 
 class TeamWorkloadResponse(BaseModel):
-    """Team-Auslastungsuebersicht."""
+    """Team-Auslastungsübersicht."""
 
     team_members: List[TeamMemberWorkload]
     total_open_items: int
@@ -185,19 +185,19 @@ class TeamWorkloadResponse(BaseModel):
 
 
 class AssignmentRequest(BaseModel):
-    """Request fuer Zuweisungsempfehlung."""
+    """Request für Zuweisungsempfehlung."""
 
     document_id: Optional[str] = Field(
         default=None,
-        description="Dokument-ID fuer Kontext",
+        description="Dokument-ID für Kontext",
     )
     document_type: Optional[str] = Field(
         default=None,
-        description="Dokumenttyp fuer Expertise-Matching",
+        description="Dokumenttyp für Expertise-Matching",
     )
     entity_id: Optional[str] = Field(
         default=None,
-        description="Entity-ID fuer Relationship-Matching",
+        description="Entity-ID für Relationship-Matching",
     )
     task_type: Optional[str] = Field(
         default=None,
@@ -228,7 +228,7 @@ class AssignmentRequest(BaseModel):
     "/recommend",
     response_model=AssignmentRecommendationResponse,
     summary="Zuweisungsempfehlung holen",
-    description="Ermittelt die beste Zuweisung fuer eine Aufgabe basierend auf KI-Faktoren.",
+    description="Ermittelt die beste Zuweisung für eine Aufgabe basierend auf KI-Faktoren.",
 )
 async def get_assignment_recommendation(
     request: AssignmentRequest,
@@ -245,7 +245,7 @@ async def get_assignment_recommendation(
         if not request.weights.validate_sum():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Gewichtungen muessen sich zu 1.0 summieren",
+                detail="Gewichtungen müssen sich zu 1.0 summieren",
             )
         weights = request.weights.to_factor_weights()
 
@@ -331,14 +331,14 @@ async def get_assignment_recommendation_query(
     "/team-workload",
     response_model=TeamWorkloadResponse,
     summary="Team-Auslastung anzeigen",
-    description="Zeigt Auslastungsuebersicht fuer alle Team-Mitglieder.",
+    description="Zeigt Auslastungsübersicht für alle Team-Mitglieder.",
 )
 async def get_team_workload(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> TeamWorkloadResponse:
-    """Hole Team-Auslastungsuebersicht."""
+    """Hole Team-Auslastungsübersicht."""
     service = get_smart_escalation_service(db)
 
     overview = await service.get_team_workload_overview(company.id)
@@ -368,7 +368,7 @@ async def get_team_workload(
     "/user-scores/{user_id}",
     response_model=CandidateScoreResponse,
     summary="User-Scores anzeigen",
-    description="Zeigt alle Scores eines bestimmten Users (fuer Debugging/Analyse).",
+    description="Zeigt alle Scores eines bestimmten Users (für Debugging/Analyse).",
 )
 async def get_user_scores(
     user_id: str,
@@ -386,7 +386,7 @@ async def get_user_scores(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige User-ID",
+            detail="Ungültige User-ID",
         )
 
     ent_uuid = UUID(entity_id) if entity_id else None
@@ -410,13 +410,13 @@ async def get_user_scores(
 @router.get(
     "/factors",
     response_model=JSONDict,
-    summary="Verfuegbare Faktoren anzeigen",
-    description="Listet alle verfuegbaren Zuweisungsfaktoren und Standardgewichtungen auf.",
+    summary="Verfügbare Faktoren anzeigen",
+    description="Listet alle verfügbaren Zuweisungsfaktoren und Standardgewichtungen auf.",
 )
 async def get_available_factors(
     current_user: User = Depends(get_current_active_user),
 ) -> JSONDict:
-    """Hole verfuegbare Faktoren und Konfiguration."""
+    """Hole verfügbare Faktoren und Konfiguration."""
     default_weights = FactorWeights()
 
     return {
@@ -445,7 +445,7 @@ async def get_available_factors(
 
 
 def _get_factor_description(factor: AssignmentFactor) -> str:
-    """Gibt deutsche Beschreibung fuer Faktor zurueck."""
+    """Gibt deutsche Beschreibung für Faktor zurück."""
     descriptions = {
         AssignmentFactor.EXPERTISE: (
             "Erfahrung mit dem Dokumenttyp basierend auf bisheriger Verarbeitungshistorie"
@@ -454,7 +454,7 @@ def _get_factor_description(factor: AssignmentFactor) -> str:
             "Aktuelle Auslastung basierend auf offenen Validierungen und Aufgaben"
         ),
         AssignmentFactor.AVAILABILITY: (
-            "Verfuegbarkeit basierend auf Login-Aktivitaet und Status"
+            "Verfügbarkeit basierend auf Login-Aktivitaet und Status"
         ),
         AssignmentFactor.RELATIONSHIP: (
             "Vorherige Zusammenarbeit mit dem Kunden/Lieferanten"

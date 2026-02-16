@@ -1,7 +1,7 @@
 """
 Executive Reporting API Endpoints
 
-FastAPI Router fuer Geschaeftsfuehrung Dashboard und Reporting.
+FastAPI Router für Geschäftsführung Dashboard und Reporting.
 """
 
 from typing import List
@@ -37,7 +37,7 @@ router = APIRouter(
     "/kpis",
     response_model=KPIResponse,
     summary="Hole Key Performance Indicators",
-    description="Liefert aktuelle KPIs fuer Geschaeftsfuehrung Dashboard",
+    description="Liefert aktuelle KPIs für Geschäftsführung Dashboard",
 )
 async def get_kpis_endpoint(
     current_user: User = Depends(get_current_user),
@@ -51,9 +51,9 @@ async def get_kpis_endpoint(
     - Dokumentenanzahl aktueller/letzter Monat + Trend
     - Durchschnittliche Verarbeitungszeit + Trend
     - OCR-Genauigkeit + Trend
-    - Geschaetzte Kosten pro Dokument
+    - Geschätzte Kosten pro Dokument
     - Anzahl aktiver Benutzer
-    - Ausstehende Pruefungen
+    - Ausstehende Prüfungen
     """
     try:
         kpis = await get_kpis(company_id=company_id, db=db)
@@ -90,7 +90,7 @@ async def get_departments_endpoint(
     """
     Hole Abteilungsstatistiken.
 
-    Gruppiert Dokumente nach Typ (als Proxy fuer Abteilung) und liefert:
+    Gruppiert Dokumente nach Typ (als Proxy für Abteilung) und liefert:
     - Dokumentenanzahl
     - Durchschnittliche Verarbeitungszeit
     - Durchschnittliche OCR-Genauigkeit
@@ -122,33 +122,33 @@ async def get_departments_endpoint(
     "/trends/{metric}",
     response_model=TrendResponse,
     summary="Hole Trend-Daten",
-    description="Liefert taegliche Trend-Daten fuer eine Metrik",
+    description="Liefert tägliche Trend-Daten für eine Metrik",
 )
 async def get_trend_endpoint(
     metric: str,
-    days: int = Query(default=30, ge=1, le=365, description="Anzahl Tage zurueck"),
+    days: int = Query(default=30, ge=1, le=365, description="Anzahl Tage zurück"),
     current_user: User = Depends(get_current_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
 ) -> TrendResponse:
     """
-    Hole Trend-Daten fuer eine Metrik.
+    Hole Trend-Daten für eine Metrik.
 
-    Unterstuetzte Metriken:
+    Unterstützte Metriken:
     - documents: Anzahl Dokumente pro Tag
     - processing_time: Durchschnittliche Verarbeitungszeit pro Tag
     - accuracy: Durchschnittliche OCR-Genauigkeit pro Tag
 
     Args:
         metric: Name der Metrik
-        days: Anzahl Tage zurueck (1-365)
+        days: Anzahl Tage zurück (1-365)
     """
     # Validiere Metrik
     valid_metrics = {"documents", "processing_time", "accuracy"}
     if metric not in valid_metrics:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltige Metrik. Erlaubt: {', '.join(valid_metrics)}",
+            detail=f"Ungültige Metrik. Erlaubt: {', '.join(valid_metrics)}",
         )
 
     try:
@@ -190,7 +190,7 @@ async def get_trend_endpoint(
     "/summary",
     response_model=ExecutiveSummaryResponse,
     summary="Hole Executive Summary",
-    description="Liefert vollstaendige Zusammenfassung mit KPIs, Abteilungen und Trends",
+    description="Liefert vollständige Zusammenfassung mit KPIs, Abteilungen und Trends",
 )
 async def get_summary_endpoint(
     current_user: User = Depends(get_current_user),

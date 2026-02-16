@@ -2,11 +2,11 @@
 """
 Document Task Service for Ablage-System.
 
-Enterprise-grade Aufgabenverwaltung fuer Dokumente:
-- CRUD-Operationen fuer DocumentTask
+Enterprise-grade Aufgabenverwaltung für Dokumente:
+- CRUD-Operationen für DocumentTask
 - Zuweisung mit Benachrichtigung
-- Status-Uebergaenge
-- Deadline-Ueberwachung
+- Status-Übergaenge
+- Deadline-Überwachung
 - Eskalations-Integration
 
 Feinpoliert und durchdacht - Aufgaben-Management auf Enterprise-Niveau.
@@ -46,13 +46,13 @@ class TaskType:
 
 
 class DocumentTaskService:
-    """Service fuer Dokument-Aufgaben-Verwaltung."""
+    """Service für Dokument-Aufgaben-Verwaltung."""
 
     def __init__(self, db: AsyncSession):
         """Initialisiert den DocumentTaskService.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
         """
         self.db = db
 
@@ -74,7 +74,7 @@ class DocumentTaskService:
         metadata: Optional[Dict[str, Any]] = None,
         notify_assignee: bool = True,
     ) -> DocumentTask:
-        """Erstellt eine neue Aufgabe fuer ein Dokument.
+        """Erstellt eine neue Aufgabe für ein Dokument.
 
         Args:
             document_id: ID des zugehoerigen Dokuments
@@ -84,16 +84,16 @@ class DocumentTaskService:
             description: Optionale Beschreibung
             task_type: Art der Aufgabe (review, approve, etc.)
             assigned_to_id: ID des zugewiesenen Benutzers
-            priority: Prioritaet (low, normal, high, urgent)
-            due_date: Faelligkeitsdatum
-            metadata: Zusaetzliche Metadaten
+            priority: Priorität (low, normal, high, urgent)
+            due_date: Fälligkeitsdatum
+            metadata: Zusätzliche Metadaten
             notify_assignee: Bei True wird der Zugewiesene benachrichtigt
 
         Returns:
             Erstellte DocumentTask
 
         Raises:
-            ValueError: Bei ungueltigem Dokument oder Benutzer
+            ValueError: Bei ungültigem Dokument oder Benutzer
         """
         # Validiere Dokument existiert
         doc_result = await self.db.execute(
@@ -159,7 +159,7 @@ class DocumentTaskService:
 
         Args:
             task_id: ID der Aufgabe
-            company_id: Optional - Firmenzugehoerigkeit pruefen
+            company_id: Optional - Firmenzugehoerigkeit prüfen
 
         Returns:
             DocumentTask oder None
@@ -199,8 +199,8 @@ class DocumentTaskService:
             updated_by_id: ID des aktualisierenden Benutzers
             title: Neuer Titel
             description: Neue Beschreibung
-            priority: Neue Prioritaet
-            due_date: Neues Faelligkeitsdatum
+            priority: Neue Priorität
+            due_date: Neues Fälligkeitsdatum
             metadata: Neue Metadaten
 
         Returns:
@@ -244,12 +244,12 @@ class DocumentTaskService:
         company_id: UUID,
         deleted_by_id: UUID,
     ) -> bool:
-        """Loescht eine Aufgabe.
+        """Löscht eine Aufgabe.
 
         Args:
             task_id: ID der Aufgabe
             company_id: ID der Firma
-            deleted_by_id: ID des loeschenden Benutzers
+            deleted_by_id: ID des löschenden Benutzers
 
         Returns:
             True bei Erfolg, False wenn nicht gefunden
@@ -294,7 +294,7 @@ class DocumentTaskService:
             return None
 
         if task.status != TaskStatus.OPEN.value:
-            raise ValueError(f"Nur offene Aufgaben koennen gestartet werden (aktuell: {task.status})")
+            raise ValueError(f"Nur offene Aufgaben können gestartet werden (aktuell: {task.status})")
 
         task.status = TaskStatus.IN_PROGRESS.value
         task.updated_at = utc_now()
@@ -321,12 +321,12 @@ class DocumentTaskService:
         completed_by_id: UUID,
         completion_notes: Optional[str] = None,
     ) -> Optional[DocumentTask]:
-        """Schliesst eine Aufgabe ab.
+        """Schließt eine Aufgabe ab.
 
         Args:
             task_id: ID der Aufgabe
             company_id: ID der Firma
-            completed_by_id: ID des abschliessenden Benutzers
+            completed_by_id: ID des abschließenden Benutzers
             completion_notes: Optionale Abschlussnotizen
 
         Returns:
@@ -374,7 +374,7 @@ class DocumentTaskService:
             task_id: ID der Aufgabe
             company_id: ID der Firma
             cancelled_by_id: ID des abbrechenden Benutzers
-            reason: Optionaler Grund fuer Abbruch
+            reason: Optionaler Grund für Abbruch
 
         Returns:
             Aktualisierte DocumentTask oder None
@@ -384,7 +384,7 @@ class DocumentTaskService:
             return None
 
         if task.status == TaskStatus.COMPLETED.value:
-            raise ValueError("Abgeschlossene Aufgaben koennen nicht abgebrochen werden")
+            raise ValueError("Abgeschlossene Aufgaben können nicht abgebrochen werden")
 
         task.status = TaskStatus.CANCELLED.value
         task.updated_at = utc_now()
@@ -415,7 +415,7 @@ class DocumentTaskService:
             task_id: ID der Aufgabe
             company_id: ID der Firma
             blocked_by_id: ID des blockierenden Benutzers
-            reason: Grund fuer Blockierung (Pflichtfeld)
+            reason: Grund für Blockierung (Pflichtfeld)
 
         Returns:
             Aktualisierte DocumentTask oder None
@@ -463,7 +463,7 @@ class DocumentTaskService:
             return None
 
         if task.status != TaskStatus.BLOCKED.value:
-            raise ValueError("Nur blockierte Aufgaben koennen entblockt werden")
+            raise ValueError("Nur blockierte Aufgaben können entblockt werden")
 
         task.status = TaskStatus.IN_PROGRESS.value
         task.updated_at = utc_now()
@@ -562,7 +562,7 @@ class DocumentTaskService:
         task.assigned_to_id = None
         task.updated_at = utc_now()
 
-        # Status zurueck auf OPEN wenn IN_PROGRESS
+        # Status zurück auf OPEN wenn IN_PROGRESS
         if task.status == TaskStatus.IN_PROGRESS.value:
             task.status = TaskStatus.OPEN.value
 
@@ -603,9 +603,9 @@ class DocumentTaskService:
             assigned_to_id: Filter nach Zugewiesenem
             created_by_id: Filter nach Ersteller
             status: Filter nach Status
-            priority: Filter nach Prioritaet
+            priority: Filter nach Priorität
             task_type: Filter nach Aufgabentyp
-            overdue_only: Nur ueberfaellige Aufgaben
+            overdue_only: Nur überfällige Aufgaben
             limit: Max. Anzahl Ergebnisse
             offset: Pagination Offset
 
@@ -670,7 +670,7 @@ class DocumentTaskService:
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[DocumentTask], int]:
-        """Holt alle Aufgaben fuer einen Benutzer.
+        """Holt alle Aufgaben für einen Benutzer.
 
         Args:
             user_id: ID des Benutzers
@@ -696,7 +696,7 @@ class DocumentTaskService:
         company_id: UUID,
         include_completed: bool = False,
     ) -> List[DocumentTask]:
-        """Holt alle Aufgaben fuer ein Dokument.
+        """Holt alle Aufgaben für ein Dokument.
 
         Args:
             document_id: ID des Dokuments
@@ -737,14 +737,14 @@ class DocumentTaskService:
         company_id: UUID,
         limit: int = 100,
     ) -> List[DocumentTask]:
-        """Holt alle ueberfaelligen Aufgaben.
+        """Holt alle überfälligen Aufgaben.
 
         Args:
             company_id: ID der Firma
             limit: Max. Anzahl Ergebnisse
 
         Returns:
-            Liste von ueberfaelligen DocumentTasks
+            Liste von überfälligen DocumentTasks
         """
         now = utc_now()
 
@@ -778,15 +778,15 @@ class DocumentTaskService:
         hours: int = 24,
         limit: int = 100,
     ) -> List[DocumentTask]:
-        """Holt Aufgaben, die bald faellig sind.
+        """Holt Aufgaben, die bald fällig sind.
 
         Args:
             company_id: ID der Firma
-            hours: Stunden bis Faelligkeit
+            hours: Stunden bis Fälligkeit
             limit: Max. Anzahl Ergebnisse
 
         Returns:
-            Liste von bald faelligen DocumentTasks
+            Liste von bald fälligen DocumentTasks
         """
         now = utc_now()
         soon = now + timedelta(hours=hours)
@@ -830,7 +830,7 @@ class DocumentTaskService:
 
         Args:
             company_id: ID der Firma
-            user_id: Optional - nur fuer diesen Benutzer
+            user_id: Optional - nur für diesen Benutzer
 
         Returns:
             Dict mit Statistiken
@@ -857,7 +857,7 @@ class DocumentTaskService:
             )
             status_counts[status.value] = status_result.scalar() or 0
 
-        # Ueberfaellig
+        # Überfällig
         overdue_result = await self.db.execute(
             select(func.count(DocumentTask.id)).where(
                 and_(
@@ -872,7 +872,7 @@ class DocumentTaskService:
         )
         overdue_count = overdue_result.scalar() or 0
 
-        # Nach Prioritaet
+        # Nach Priorität
         priority_counts = {}
         for priority in TaskPriority:
             priority_result = await self.db.execute(
@@ -946,9 +946,9 @@ class DocumentTaskService:
 
         Args:
             task: Die abgeschlossene Aufgabe
-            completed_by_id: ID des Abschliessenden
+            completed_by_id: ID des Abschließenden
         """
-        # Hole Abschliessenden Namen
+        # Hole Abschließenden Namen
         completer_result = await self.db.execute(
             select(User).where(User.id == completed_by_id)
         )
@@ -1074,10 +1074,10 @@ class DocumentTaskService:
 
 
 def get_document_task_service(db: AsyncSession) -> DocumentTaskService:
-    """Factory-Funktion fuer DocumentTaskService.
+    """Factory-Funktion für DocumentTaskService.
 
     Args:
-        db: AsyncSession fuer Datenbankoperationen
+        db: AsyncSession für Datenbankoperationen
 
     Returns:
         DocumentTaskService Instanz

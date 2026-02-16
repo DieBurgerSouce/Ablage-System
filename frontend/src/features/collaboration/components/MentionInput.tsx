@@ -20,12 +20,14 @@ import { useUserSearch } from '../hooks/use-user-search';
 interface MentionInputProps {
   value: string;
   onChange: (value: string) => void;
-  onSubmit: () => void;
+  onSubmit?: () => void;
   placeholder?: string;
   disabled?: boolean;
   isSubmitting?: boolean;
   mentions: { userId: string; userName: string }[];
   onMentionsChange: (mentions: { userId: string; userName: string }[]) => void;
+  hideSubmitButton?: boolean;
+  hideHint?: boolean;
 }
 
 function getInitials(name: string): string {
@@ -46,6 +48,8 @@ export function MentionInput({
   isSubmitting = false,
   mentions,
   onMentionsChange,
+  hideSubmitButton = false,
+  hideHint = false,
 }: MentionInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -122,7 +126,7 @@ export function MentionInput({
         // Submit on Ctrl/Cmd + Enter
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
           e.preventDefault();
-          onSubmit();
+          onSubmit?.();
         }
         return;
       }
@@ -179,19 +183,21 @@ export function MentionInput({
         />
 
         {/* Submit Button */}
-        <Button
-          type="button"
-          size="icon"
-          className="absolute bottom-2 right-2"
-          onClick={onSubmit}
-          disabled={disabled || isSubmitting || !value.trim()}
-        >
-          {isSubmitting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </Button>
+        {!hideSubmitButton && onSubmit && (
+          <Button
+            type="button"
+            size="icon"
+            className="absolute bottom-2 right-2"
+            onClick={onSubmit}
+            disabled={disabled || isSubmitting || !value.trim()}
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+          </Button>
+        )}
       </div>
 
       {/* Mention Suggestions */}
@@ -247,12 +253,14 @@ export function MentionInput({
       )}
 
       {/* Hint */}
-      <div className="flex items-center justify-between mt-1.5 text-xs text-muted-foreground">
-        <span>@ zum Erwähnen, Ctrl+Enter zum Senden</span>
-        {mentions.length > 0 && (
-          <span>{mentions.length} Erwähnung{mentions.length > 1 ? 'en' : ''}</span>
-        )}
-      </div>
+      {!hideHint && (
+        <div className="flex items-center justify-between mt-1.5 text-xs text-muted-foreground">
+          <span>@ zum Erwähnen, Ctrl+Enter zum Senden</span>
+          {mentions.length > 0 && (
+            <span>{mentions.length} Erwähnung{mentions.length > 1 ? 'en' : ''}</span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

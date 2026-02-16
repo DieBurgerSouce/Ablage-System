@@ -310,7 +310,7 @@ class JobAdminService:
                 success=False,
                 job_id=job_id,
                 action="cancel",
-                message="Betriebsfehler aufgetreten. Bitte versuchen Sie es spaeter erneut.",
+                message="Betriebsfehler aufgetreten. Bitte versuchen Sie es später erneut.",
             )
 
         logger.info(
@@ -416,7 +416,7 @@ class JobAdminService:
                 success=False,
                 job_id=job_id,
                 action="retry",
-                message="Betriebsfehler aufgetreten. Bitte versuchen Sie es spaeter erneut.",
+                message="Betriebsfehler aufgetreten. Bitte versuchen Sie es später erneut.",
             )
 
         logger.info(
@@ -468,7 +468,7 @@ class JobAdminService:
             return QueueClearResponse(
                 success=True,
                 cleared_count=0,
-                message="Keine wartenden Auftraege vorhanden",
+                message="Keine wartenden Aufträge vorhanden",
             )
 
         status_value = status.value if hasattr(status, 'value') else str(status)
@@ -509,7 +509,7 @@ class JobAdminService:
             return QueueClearResponse(
                 success=False,
                 cleared_count=0,
-                message="Fehler beim Leeren der Warteschlange. Bitte versuchen Sie es spaeter erneut.",
+                message="Fehler beim Leeren der Warteschlange. Bitte versuchen Sie es später erneut.",
             )
 
         logger.warning(
@@ -522,7 +522,7 @@ class JobAdminService:
         return QueueClearResponse(
             success=True,
             cleared_count=count,
-            message=f"{count} wartende Auftraege wurden geloescht",
+            message=f"{count} wartende Aufträge wurden gelöscht",
         )
 
     @staticmethod
@@ -702,7 +702,7 @@ class JobAdminService:
                 success=False,
                 job_id=job_id,
                 action="change_priority",
-                message="Prioritaet kann nur fuer wartende Auftraege geaendert werden",
+                message="Priorität kann nur für wartende Aufträge geändert werden",
             )
 
         old_priority = job.priority
@@ -736,7 +736,7 @@ class JobAdminService:
             success=True,
             job_id=job_id,
             action="change_priority",
-            message=f"Prioritaet von {old_priority} auf {priority} geaendert",
+            message=f"Priorität von {old_priority} auf {priority} geändert",
         )
 
     @staticmethod

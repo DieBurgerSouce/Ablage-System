@@ -2,7 +2,7 @@
 """PaddleOCR PP-OCRv5 Agent - CPU-optimiertes OCR Backend.
 
 Leichtgewichtiges, ressourceneffizientes OCR mit 106 Sprachen-Support.
-Ideal als CPU-Fallback wenn GPU belegt oder nicht verfuegbar.
+Ideal als CPU-Fallback wenn GPU belegt oder nicht verfügbar.
 
 Technische Daten:
 - GPU erforderlich: NEIN (CPU-optimiert)

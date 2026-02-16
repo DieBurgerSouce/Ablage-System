@@ -52,14 +52,14 @@ class UStVoranmeldungService:
         month: Optional[int] = None,
         quarter: Optional[int] = None,
     ) -> UStVoranmeldung:
-        """USt-Voranmeldung fuer einen Zeitraum berechnen.
+        """USt-Voranmeldung für einen Zeitraum berechnen.
 
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
             year: Steuerjahr
-            month: Monat (1-12) fuer monatliche VA
-            quarter: Quartal (1-4) fuer quartalsweise VA
+            month: Monat (1-12) für monatliche VA
+            quarter: Quartal (1-4) für quartalsweise VA
 
         Returns:
             UStVoranmeldung mit berechneten Betraegen
@@ -86,7 +86,7 @@ class UStVoranmeldungService:
         umsatzsteuer_summe = sum(umsatzsteuer_details.values())
         zahllast = umsatzsteuer_summe - vorsteuer_summe
 
-        # Vorhandene VA pruefen oder neu erstellen
+        # Vorhandene VA prüfen oder neu erstellen
         existing = await self._find_existing(db, company_id, period_start, period_end)
 
         if existing:
@@ -107,7 +107,7 @@ class UStVoranmeldungService:
         va.innergemeinschaftliche_lieferungen = float(ig_lieferungen)
         va.vorsteuer_details = {k: float(v) for k, v in vorsteuer_details.items()}
         va.umsatzsteuer_details = {k: float(v) for k, v in umsatzsteuer_details.items()}
-        va.status = "geprueft"
+        va.status = "geprüft"
 
         await db.flush()
 
@@ -243,13 +243,13 @@ class UStVoranmeldungService:
             "abweichung_vorsteuer": float(abweichung_vorsteuer),
             "abweichung_umsatzsteuer": float(abweichung_umsatzsteuer),
             "abgleich_datum": utc_now().isoformat(),
-            "status": "abweichung" if has_discrepancy else "uebereinstimmung",
+            "status": "abweichung" if has_discrepancy else "übereinstimmung",
         }
 
         logger.info(
-            "datev_abgleich_durchgefuehrt",
+            "datev_abgleich_durchgeführt",
             voranmeldung_id=str(voranmeldung_id),
-            status="abweichung" if has_discrepancy else "uebereinstimmung",
+            status="abweichung" if has_discrepancy else "übereinstimmung",
         )
 
         return abgleich_details
@@ -270,7 +270,7 @@ class UStVoranmeldungService:
         company_id: UUID,
         year: int,
     ) -> List[UStVoranmeldung]:
-        """Jahresuebersicht aller USt-Voranmeldungen."""
+        """Jahresübersicht aller USt-Voranmeldungen."""
         year_start = date(year, 1, 1)
         year_end = date(year, 12, 31)
 
@@ -289,7 +289,7 @@ class UStVoranmeldungService:
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
-    # Alias fuer Abwaertskompatibilitaet
+    # Alias für Abwärtskompatibilität
     get_period_overview = list_reports
 
     async def validate_report(
@@ -310,9 +310,9 @@ class UStVoranmeldungService:
         return {
             "report_id": str(report_id),
             "status": abgleich.get("status", "unbekannt"),
-            "datev_vergleich_moeglich": True,
+            "datev_vergleich_möglich": True,
             "abweichungen": abgleich,
-            "geprueft_am": utc_now().isoformat(),
+            "geprüft_am": utc_now().isoformat(),
         }
 
     async def get_tax_rate_breakdown(
@@ -354,7 +354,7 @@ class UStVoranmeldungService:
         period_start: date,
         period_end: date,
     ) -> Tuple[Dict[str, Decimal], Dict[str, Decimal], Decimal]:
-        """Aggregiert Rechnungsdaten fuer den Zeitraum.
+        """Aggregiert Rechnungsdaten für den Zeitraum.
 
         Returns:
             Tuple von (vorsteuer_details, umsatzsteuer_details, ig_lieferungen)
@@ -406,7 +406,7 @@ class UStVoranmeldungService:
         period_start: date,
         period_end: date,
     ) -> Optional[UStVoranmeldung]:
-        """Sucht vorhandene USt-VA fuer den Zeitraum."""
+        """Sucht vorhandene USt-VA für den Zeitraum."""
         stmt = select(UStVoranmeldung).where(
             and_(
                 UStVoranmeldung.company_id == company_id,

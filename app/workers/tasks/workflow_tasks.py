@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
-"""Celery Tasks fuer Workflow-Automation.
+"""Celery Tasks für Workflow-Automation.
 
 6 Tasks:
-- execute_workflow_async: Async Workflow-Ausfuehrung
-- execute_workflow_step: Einzelschritt-Ausfuehrung
-- check_scheduled_workflows: Prueft faellige Cron-Workflows (jede Minute)
-- cleanup_old_workflow_executions: Loescht alte Executions (taeglich)
+- execute_workflow_async: Async Workflow-Ausführung
+- execute_workflow_step: Einzelschritt-Ausführung
+- check_scheduled_workflows: Prüft fällige Cron-Workflows (jede Minute)
+- cleanup_old_workflow_executions: Löscht alte Executions (täglich)
 - process_delayed_step: Fortsetzung nach Delay
-- generate_workflow_report: Woechentlicher Bericht
+- generate_workflow_report: Wöchentlicher Bericht
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ def execute_workflow_async(
     trigger_data: Optional[Dict[str, Any]] = None,
     initial_variables: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Fuehrt einen Workflow asynchron aus.
+    """Führt einen Workflow asynchron aus.
 
     Args:
         workflow_id: Workflow-ID
@@ -108,7 +108,7 @@ def execute_workflow_step(
     step_id: str,
     context_data: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Fuehrt einen einzelnen Workflow-Step aus.
+    """Führt einen einzelnen Workflow-Step aus.
 
     Args:
         execution_id: Execution-ID
@@ -149,7 +149,7 @@ def execute_workflow_step(
                 data=context_data.get("data", {}),
             )
 
-            # Step ausfuehren
+            # Step ausführen
             executor = WorkflowStepExecutor(db)
             result = await executor.execute_step(step, context)
 
@@ -169,7 +169,7 @@ def execute_workflow_step(
     acks_late=True,
 )
 def check_scheduled_workflows(self) -> Dict[str, Any]:
-    """Prueft und startet faellige Schedule-Workflows.
+    """Prüft und startet fällige Schedule-Workflows.
 
     Wird jede Minute von Celery Beat aufgerufen.
 
@@ -226,13 +226,13 @@ def cleanup_old_workflow_executions(
     self,
     retention_days: int = 90,
 ) -> Dict[str, Any]:
-    """Loescht alte Workflow-Executions.
+    """Löscht alte Workflow-Executions.
 
     Args:
         retention_days: Aufbewahrungsfrist in Tagen
 
     Returns:
-        Anzahl geloeschter Executions
+        Anzahl gelöschter Executions
     """
     import asyncio
     from app.db.session import async_session_factory
@@ -257,13 +257,13 @@ def cleanup_old_workflow_executions(
                 if not old_execution_ids:
                     return {"success": True, "deleted_count": 0}
 
-                # Step-Executions loeschen
+                # Step-Executions löschen
                 step_delete = delete(WorkflowStepExecution).where(
                     WorkflowStepExecution.execution_id.in_(old_execution_ids)
                 )
                 await db.execute(step_delete)
 
-                # Executions loeschen
+                # Executions löschen
                 exec_delete = delete(WorkflowExecution).where(
                     WorkflowExecution.id.in_(old_execution_ids)
                 )
@@ -311,12 +311,12 @@ def process_delayed_step(
     delay_seconds: int,
     context_data: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Fortsetzt eine Workflow-Ausfuehrung nach einer Verzoegerung.
+    """Fortsetzt eine Workflow-Ausführung nach einer Verzögerung.
 
     Args:
         execution_id: Execution-ID
         step_id: Step-ID der nach dem Delay fortgesetzt werden soll
-        delay_seconds: Verzoegerung in Sekunden
+        delay_seconds: Verzögerung in Sekunden
         context_data: Kontext-Daten
 
     Returns:
@@ -337,7 +337,7 @@ def process_delayed_step(
 
     async def _continue_execution() -> Dict[str, Any]:
         async with async_session_factory() as db:
-            # Execution-Status pruefen
+            # Execution-Status prüfen
             query = select(WorkflowExecution).where(
                 WorkflowExecution.id == UUID(execution_id)
             )
@@ -376,7 +376,7 @@ def process_delayed_step(
     acks_late=True,
 )
 def generate_workflow_report(self) -> Dict[str, Any]:
-    """Generiert einen woechentlichen Workflow-Bericht.
+    """Generiert einen wöchentlichen Workflow-Bericht.
 
     Returns:
         Berichts-Daten
@@ -707,5 +707,5 @@ def on_document_failed(
 # Diese Tasks werden in der Celery Beat Konfiguration registriert:
 #
 # check_scheduled_workflows: Jede Minute
-# cleanup_old_workflow_executions: Taeglich 03:00
+# cleanup_old_workflow_executions: Täglich 03:00
 # generate_workflow_report: Montag 07:00

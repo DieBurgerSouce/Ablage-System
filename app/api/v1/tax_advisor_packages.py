@@ -1,14 +1,14 @@
 """
 Steuerberater-Paket API Endpoints.
 
-API fuer automatische Buchhaltungspakete:
+API für automatische Buchhaltungspakete:
 - Konfigurationen erstellen und verwalten
 - Pakete erstellen und generieren
 - Pakete herunterladen
 - Fehlende Dokumente identifizieren
 - Push-Benachrichtigungen
 
-GoBD-Konformitaet garantiert.
+GoBD-Konformität garantiert.
 """
 
 from datetime import datetime, timezone
@@ -51,29 +51,29 @@ class PackageConfigurationCreate(BaseModel):
     """Schema zum Erstellen einer Paket-Konfiguration."""
 
     name: str = Field(..., min_length=3, max_length=100, description="Name der Konfiguration")
-    frequency: str = Field("monthly", description="Haeufigkeit: monthly, quarterly, yearly, on_demand")
+    frequency: str = Field("monthly", description="Häufigkeit: monthly, quarterly, yearly, on_demand")
     document_categories: Optional[List[str]] = Field(
         None,
         description="Dokumentkategorien (default: alle relevanten)"
     )
 
-    period_start_day: int = Field(1, ge=1, le=28, description="Tag des Monats fuer Periodenstart")
+    period_start_day: int = Field(1, ge=1, le=28, description="Tag des Monats für Periodenstart")
     delivery_delay_days: int = Field(5, ge=1, le=30, description="Tage nach Periodenende bis Versand")
 
     auto_send: bool = Field(True, description="Automatischer Versand")
     auto_reminder: bool = Field(True, description="Automatische Erinnerungen")
-    reminder_days_before: int = Field(3, ge=1, le=14, description="Tage vor Deadline fuer Erinnerung")
+    reminder_days_before: int = Field(3, ge=1, le=14, description="Tage vor Deadline für Erinnerung")
 
-    recipient_email: Optional[EmailStr] = Field(None, description="E-Mail fuer Versand")
+    recipient_email: Optional[EmailStr] = Field(None, description="E-Mail für Versand")
     tax_advisor_user_id: Optional[UUID] = Field(None, description="Steuerberater-User-ID")
 
-    include_datev_export: bool = Field(True, description="DATEV-Export einschliessen")
-    include_pdf_copies: bool = Field(True, description="PDF-Kopien einschliessen")
-    include_summary_report: bool = Field(True, description="Zusammenfassung einschliessen")
+    include_datev_export: bool = Field(True, description="DATEV-Export einschließen")
+    include_pdf_copies: bool = Field(True, description="PDF-Kopien einschließen")
+    include_summary_report: bool = Field(True, description="Zusammenfassung einschließen")
 
 
 class PackageConfigurationResponse(BaseModel):
-    """Antwort-Schema fuer Paket-Konfiguration."""
+    """Antwort-Schema für Paket-Konfiguration."""
 
     id: UUID
     company_id: UUID
@@ -130,7 +130,7 @@ class PackageCreateRequest(BaseModel):
 
 
 class MissingDocumentResponse(BaseModel):
-    """Schema fuer fehlendes Dokument."""
+    """Schema für fehlendes Dokument."""
 
     document_type: str
     description: str
@@ -140,7 +140,7 @@ class MissingDocumentResponse(BaseModel):
 
 
 class PackageResponse(BaseModel):
-    """Antwort-Schema fuer Paket."""
+    """Antwort-Schema für Paket."""
 
     id: UUID
     configuration_id: Optional[UUID]
@@ -201,9 +201,9 @@ class SendPackageRequest(BaseModel):
 
 
 class ReminderRequest(BaseModel):
-    """Schema fuer Erinnerung."""
+    """Schema für Erinnerung."""
 
-    admin_email: EmailStr = Field(..., description="E-Mail fuer Benachrichtigung")
+    admin_email: EmailStr = Field(..., description="E-Mail für Benachrichtigung")
     tax_advisor_name: Optional[str] = Field(None, description="Name des Steuerberaters")
 
 
@@ -215,7 +215,7 @@ class MessageResponse(BaseModel):
 
 
 class MissingItemResponse(BaseModel):
-    """Schema fuer fehlendes Element."""
+    """Schema für fehlendes Element."""
 
     category: str
     description: str
@@ -224,7 +224,7 @@ class MissingItemResponse(BaseModel):
 
 
 class CompletenessReportResponse(BaseModel):
-    """Schema fuer Vollstaendigkeits-Bericht."""
+    """Schema für Vollständigkeits-Bericht."""
 
     period: str
     period_start: str
@@ -271,7 +271,7 @@ _packages: dict[UUID, TaxAdvisorPackage] = {}
     response_model=PackageConfigurationResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Paket-Konfiguration erstellen",
-    description="Erstellt eine neue Konfiguration fuer automatische Steuerberater-Pakete"
+    description="Erstellt eine neue Konfiguration für automatische Steuerberater-Pakete"
 )
 async def create_configuration(
     data: PackageConfigurationCreate,
@@ -282,14 +282,14 @@ async def create_configuration(
     """
     Erstellt eine neue Paket-Konfiguration.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     try:
         frequency = PackageFrequency(data.frequency)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltige Haeufigkeit: {data.frequency}. Erlaubt: monthly, quarterly, yearly, on_demand"
+            detail=f"Ungültige Häufigkeit: {data.frequency}. Erlaubt: monthly, quarterly, yearly, on_demand"
         )
 
     service = get_tax_advisor_package_service(db)
@@ -325,7 +325,7 @@ async def create_configuration(
     "/configurations",
     response_model=List[PackageConfigurationResponse],
     summary="Konfigurationen auflisten",
-    description="Listet alle Paket-Konfigurationen fuer die aktuelle Firma"
+    description="Listet alle Paket-Konfigurationen für die aktuelle Firma"
 )
 async def list_configurations(
     company_id: UUID = Depends(require_company),
@@ -335,7 +335,7 @@ async def list_configurations(
     """
     Listet alle Paket-Konfigurationen.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     service = get_tax_advisor_package_service(db)
     configs = await service.get_configurations_for_company(company_id)
@@ -358,7 +358,7 @@ async def get_configuration(
     """
     Ruft eine Konfiguration ab.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     service = get_tax_advisor_package_service(db)
     config = await service.get_configuration(config_id)
@@ -372,7 +372,7 @@ async def get_configuration(
     if config.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Konfiguration"
+            detail="Keine Berechtigung für diese Konfiguration"
         )
 
     return PackageConfigurationResponse.from_config(config)
@@ -386,7 +386,7 @@ async def get_configuration(
     response_model=PackageResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Paket erstellen",
-    description="Erstellt ein neues Buchhaltungspaket fuer einen Zeitraum"
+    description="Erstellt ein neues Buchhaltungspaket für einen Zeitraum"
 )
 async def create_package(
     data: PackageCreateRequest,
@@ -399,7 +399,7 @@ async def create_package(
 
     Der Zeitraum kann als Monat (YYYY-MM) oder Quartal (YYYY-QN) angegeben werden.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     service = get_tax_advisor_package_service(db)
 
@@ -433,7 +433,7 @@ async def create_package(
     "",
     response_model=List[PackageResponse],
     summary="Pakete auflisten",
-    description="Listet alle Pakete fuer die aktuelle Firma"
+    description="Listet alle Pakete für die aktuelle Firma"
 )
 async def list_packages(
     status_filter: Optional[str] = Query(None, description="Nach Status filtern"),
@@ -444,7 +444,7 @@ async def list_packages(
     """
     Listet alle Pakete.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     packages = [
         p for p in _packages.values()
@@ -458,7 +458,7 @@ async def list_packages(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Status: {status_filter}"
+                detail=f"Ungültiger Status: {status_filter}"
             )
 
     # Nach Erstelldatum sortieren (neueste zuerst)
@@ -482,7 +482,7 @@ async def get_package(
     """
     Ruft ein Paket ab.
 
-    Zugaenglich fuer Administratoren und zugeordnete Steuerberater.
+    Zugaenglich für Administratoren und zugeordnete Steuerberater.
     """
     package = _packages.get(package_id)
 
@@ -492,13 +492,13 @@ async def get_package(
             detail="Paket nicht gefunden"
         )
 
-    # Berechtigungspruefung
+    # Berechtigungsprüfung
     if package.company_id != company_id:
-        # Steuerberater koennen zugeordnete Pakete sehen
+        # Steuerberater können zugeordnete Pakete sehen
         if not current_user.is_admin and not current_user.is_tax_advisor:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Keine Berechtigung fuer dieses Paket"
+                detail="Keine Berechtigung für dieses Paket"
             )
 
     return PackageResponse.from_package(package)
@@ -521,7 +521,7 @@ async def generate_package(
 
     Erstellt DATEV-Export, PDF-Archiv und Zusammenfassungs-Bericht.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     package = _packages.get(package_id)
 
@@ -534,7 +534,7 @@ async def generate_package(
     if package.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Paket"
+            detail="Keine Berechtigung für dieses Paket"
         )
 
     service = get_tax_advisor_package_service(db)
@@ -571,7 +571,7 @@ async def send_package(
 
     Das Paket muss den Status 'ready' haben.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     package = _packages.get(package_id)
 
@@ -584,7 +584,7 @@ async def send_package(
     if package.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Paket"
+            detail="Keine Berechtigung für dieses Paket"
         )
 
     if package.status != PackageStatus.READY:
@@ -636,7 +636,7 @@ async def download_package(
     """
     Laedt Paket-Dateien herunter.
 
-    Zugaenglich fuer Administratoren und zugeordnete Steuerberater.
+    Zugaenglich für Administratoren und zugeordnete Steuerberater.
     """
     package = _packages.get(package_id)
 
@@ -646,15 +646,15 @@ async def download_package(
             detail="Paket nicht gefunden"
         )
 
-    # Berechtigungspruefung
+    # Berechtigungsprüfung
     if package.company_id != company_id:
         if not current_user.is_admin and not current_user.is_tax_advisor:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Keine Berechtigung fuer dieses Paket"
+                detail="Keine Berechtigung für dieses Paket"
             )
 
-    # Ablauf pruefen
+    # Ablauf prüfen
     if package.expires_at and package.expires_at < datetime.now(timezone.utc):
         raise HTTPException(
             status_code=status.HTTP_410_GONE,
@@ -670,7 +670,7 @@ async def download_package(
 
     if file_type == "all":
         # In Praxis: Alle Dateien in ZIP zusammenfassen
-        # Hier vereinfacht: DATEV-Export zurueckgeben
+        # Hier vereinfacht: DATEV-Export zurückgeben
         file_path = package.datev_export_path
         filename = f"paket_{package.period_label.replace('/', '-')}_komplett.zip"
     elif file_type in file_paths:
@@ -679,13 +679,13 @@ async def download_package(
     else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Dateityp: {file_type}"
+            detail=f"Ungültiger Dateityp: {file_type}"
         )
 
     if not file_path:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Datei nicht verfuegbar: {file_type}"
+            detail=f"Datei nicht verfügbar: {file_type}"
         )
 
     # Download-Tracking
@@ -701,9 +701,9 @@ async def download_package(
     )
 
     # In Praxis: FileResponse mit tatsaechlicher Datei
-    # Hier: JSON-Response fuer MVP
+    # Hier: JSON-Response für MVP
     return Response(
-        content=f"Download fuer {filename} (Pfad: {file_path})",
+        content=f"Download für {filename} (Pfad: {file_path})",
         media_type="text/plain",
         headers={
             "Content-Disposition": build_content_disposition(filename, "attachment"),
@@ -718,7 +718,7 @@ async def download_package(
     "/{package_id}/remind",
     response_model=MessageResponse,
     summary="Erinnerung senden",
-    description="Sendet eine Erinnerung fuer fehlende Dokumente"
+    description="Sendet eine Erinnerung für fehlende Dokumente"
 )
 async def send_reminder(
     package_id: UUID,
@@ -728,9 +728,9 @@ async def send_reminder(
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
     """
-    Sendet eine Erinnerung fuer fehlende Dokumente.
+    Sendet eine Erinnerung für fehlende Dokumente.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     package = _packages.get(package_id)
 
@@ -743,7 +743,7 @@ async def send_reminder(
     if package.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Paket"
+            detail="Keine Berechtigung für dieses Paket"
         )
 
     if not package.missing_documents:
@@ -789,7 +789,7 @@ async def send_reminder(
 @router.get(
     "/statistics/summary",
     summary="Paket-Statistiken",
-    description="Zeigt Statistiken ueber erstellte Pakete"
+    description="Zeigt Statistiken über erstellte Pakete"
 )
 async def get_package_statistics(
     company_id: UUID = Depends(require_company),
@@ -797,9 +797,9 @@ async def get_package_statistics(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Zeigt Statistiken ueber Pakete.
+    Zeigt Statistiken über Pakete.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     packages = [p for p in _packages.values() if p.company_id == company_id]
 
@@ -834,8 +834,8 @@ async def get_package_statistics(
 @router.post(
     "/completeness-check",
     response_model=CompletenessReportResponse,
-    summary="Vollstaendigkeits-Check",
-    description="Prueft die Vollstaendigkeit der Dokumente fuer einen Zeitraum"
+    summary="Vollständigkeits-Check",
+    description="Prüft die Vollständigkeit der Dokumente für einen Zeitraum"
 )
 async def check_completeness(
     year: int = Query(..., ge=2020, le=2030, description="Jahr (z.B. 2026)"),
@@ -845,7 +845,7 @@ async def check_completeness(
     db: AsyncSession = Depends(get_db),
 ) -> CompletenessReportResponse:
     """
-    Prueft die Vollstaendigkeit der Dokumente fuer einen Zeitraum.
+    Prüft die Vollständigkeit der Dokumente für einen Zeitraum.
 
     **Checks:**
     - Alle Monate haben Kontoauszuege
@@ -863,7 +863,7 @@ async def check_completeness(
     - `year`: Jahr (2020-2030)
     - `quarter`: Optional Quartal (1-4), None = ganzes Jahr
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     try:
         service = get_tax_advisor_package_service(db)
@@ -894,5 +894,5 @@ async def check_completeness(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail(e, "Vollstaendigkeits-Check"),
+            detail=safe_error_detail(e, "Vollständigkeits-Check"),
         )

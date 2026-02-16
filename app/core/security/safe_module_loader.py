@@ -304,7 +304,7 @@ class SafeModuleLoader:
         # Validate path format
         if not full_path or "." not in full_path:
             raise ModuleLoadingError(
-                f"Ungueltiger Funktionspfad: {full_path}"
+                f"Ungültiger Funktionspfad: {full_path}"
             )
 
         # Split into module and function
@@ -318,7 +318,7 @@ class SafeModuleLoader:
         # Validate function name (prevent injection)
         if not function_name.isidentifier():
             raise ModuleLoadingError(
-                f"Ungueltiger Funktionsname: {function_name}"
+                f"Ungültiger Funktionsname: {function_name}"
             )
 
         # Check module whitelist

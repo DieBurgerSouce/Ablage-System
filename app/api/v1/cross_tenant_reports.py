@@ -1,13 +1,13 @@
-"""Cross-Tenant Reports API - Aggregierte Statistiken ueber alle Mandanten.
+"""Cross-Tenant Reports API - Aggregierte Statistiken über alle Mandanten.
 
-Dieser Router bietet Superusern/Admins einen Ueberblick ueber alle
+Dieser Router bietet Superusern/Admins einen Überblick über alle
 Firmen-Mandanten in der Installation.
 
 Security:
 ---------
 - ALLE Endpoints erfordern Superuser-Berechtigung
-- RLS-Bypass wird automatisch aktiviert fuer aggregierte Queries
-- Keine direkten Dokumenten-Inhalte werden zurueckgegeben
+- RLS-Bypass wird automatisch aktiviert für aggregierte Queries
+- Keine direkten Dokumenten-Inhalte werden zurückgegeben
 
 Use Cases:
 ----------
@@ -41,7 +41,7 @@ router = APIRouter(prefix="/cross-tenant", tags=["cross-tenant-reports"])
 
 
 class CompanyOverviewStats(BaseModel):
-    """Aggregierte Statistiken fuer eine Firma."""
+    """Aggregierte Statistiken für eine Firma."""
 
     company_id: UUID = Field(..., description="Firmen-ID")
     company_name: str = Field(..., description="Firmenname")
@@ -57,7 +57,7 @@ class CompanyOverviewStats(BaseModel):
 
 
 class CompanyFinancialSummary(BaseModel):
-    """Finanz-Uebersicht fuer eine Firma."""
+    """Finanz-Übersicht für eine Firma."""
 
     company_id: UUID = Field(..., description="Firmen-ID")
     company_name: str = Field(..., description="Firmenname")
@@ -73,7 +73,7 @@ class CompanyFinancialSummary(BaseModel):
 
 
 class CrossTenantOverviewResponse(BaseModel):
-    """Response fuer den Overview-Endpoint."""
+    """Response für den Overview-Endpoint."""
 
     total_companies: int = Field(..., description="Anzahl Firmen in System")
     active_companies: int = Field(..., description="Anzahl aktiver Firmen")
@@ -81,7 +81,7 @@ class CrossTenantOverviewResponse(BaseModel):
 
 
 class CrossTenantFinancialResponse(BaseModel):
-    """Response fuer den Financial-Summary-Endpoint."""
+    """Response für den Financial-Summary-Endpoint."""
 
     total_companies: int = Field(..., description="Anzahl Firmen in System")
     active_companies: int = Field(..., description="Anzahl aktiver Firmen")
@@ -94,8 +94,8 @@ class CrossTenantFinancialResponse(BaseModel):
 @router.get(
     "/overview",
     response_model=CrossTenantOverviewResponse,
-    summary="Cross-Tenant Uebersicht",
-    description="Aggregierte Statistiken fuer alle Firmen (nur Admins)"
+    summary="Cross-Tenant Übersicht",
+    description="Aggregierte Statistiken für alle Firmen (nur Admins)"
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_cross_tenant_overview(
@@ -104,9 +104,9 @@ async def get_cross_tenant_overview(
     db: AsyncSession = Depends(get_db)
 ) -> CrossTenantOverviewResponse:
     """
-    Gibt einen Ueberblick ueber alle Firmen im System.
+    Gibt einen Überblick über alle Firmen im System.
 
-    Fuer jede Firma wird zurueckgegeben:
+    Für jede Firma wird zurückgegeben:
     - Firmen-ID und Name
     - Anzahl Dokumente (gesamt, diesen Monat, archiviert)
     - Datum des letzten Uploads
@@ -116,7 +116,7 @@ async def get_cross_tenant_overview(
     **RLS-Hinweis**: Dieser Endpoint aktiviert RLS-Bypass um alle Firmen zu sehen.
     """
     try:
-        # RLS-Bypass aktivieren fuer Cross-Tenant-Zugriff
+        # RLS-Bypass aktivieren für Cross-Tenant-Zugriff
         await db.execute(text("SET LOCAL app.rls_bypass = true"))
 
         # Alle Firmen abrufen (sortiert nach Name)
@@ -132,12 +132,12 @@ async def get_cross_tenant_overview(
         company_stats: List[CompanyOverviewStats] = []
 
         for company in companies:
-            # Dokumenten-Statistiken fuer diese Firma
+            # Dokumenten-Statistiken für diese Firma
             total_docs_result = await db.execute(
                 select(func.count(Document.id)).where(
                     and_(
                         Document.company_id == company.id,
-                        Document.deleted_at.is_(None)  # Soft-deleted ausschliessen
+                        Document.deleted_at.is_(None)  # Soft-deleted ausschließen
                     )
                 )
             )
@@ -213,15 +213,15 @@ async def get_cross_tenant_overview(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Abrufen der Cross-Tenant-Uebersicht"
+            detail="Fehler beim Abrufen der Cross-Tenant-Übersicht"
         )
 
 
 @router.get(
     "/financial-summary",
     response_model=CrossTenantFinancialResponse,
-    summary="Cross-Tenant Finanz-Uebersicht",
-    description="Finanz-relevante Statistiken fuer alle Firmen (nur Admins)"
+    summary="Cross-Tenant Finanz-Übersicht",
+    description="Finanz-relevante Statistiken für alle Firmen (nur Admins)"
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_cross_tenant_financial_summary(
@@ -230,9 +230,9 @@ async def get_cross_tenant_financial_summary(
     db: AsyncSession = Depends(get_db)
 ) -> CrossTenantFinancialResponse:
     """
-    Gibt eine Finanz-Uebersicht fuer alle Firmen im System.
+    Gibt eine Finanz-Übersicht für alle Firmen im System.
 
-    Fuer jede Firma wird zurueckgegeben:
+    Für jede Firma wird zurückgegeben:
     - Firmen-ID und Name
     - Anzahl Rechnungen (document_type='invoice')
     - Processing-Status (queued, completed, failed)
@@ -341,5 +341,5 @@ async def get_cross_tenant_financial_summary(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Abrufen der Cross-Tenant-Finanz-Uebersicht"
+            detail="Fehler beim Abrufen der Cross-Tenant-Finanz-Übersicht"
         )

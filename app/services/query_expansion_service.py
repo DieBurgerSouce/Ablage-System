@@ -2,7 +2,7 @@
 """
 Query Expansion Service.
 
-Erweitert Suchanfragen mit deutschen Geschaeftsbegriff-Synonymen.
+Erweitert Suchanfragen mit deutschen Geschäftsbegriff-Synonymen.
 """
 
 import json
@@ -19,7 +19,7 @@ logger = structlog.get_logger(__name__)
 
 class QueryExpansionService:
     """
-    Service fuer Query-Expansion mit Synonymen.
+    Service für Query-Expansion mit Synonymen.
 
     Features:
     - Ladet Synonym-Woerterbuch aus JSON
@@ -73,7 +73,7 @@ class QueryExpansionService:
         """
         Baut bidirektionalen Index auf.
 
-        Fuer jeden Begriff (Hauptbegriff und Synonyme) wird
+        Für jeden Begriff (Hauptbegriff und Synonyme) wird
         eine Menge aller zugehoerigen Begriffe gespeichert.
         """
         self._reverse_index = {}
@@ -83,7 +83,7 @@ class QueryExpansionService:
                 # Normalisiere Hauptbegriff
                 normalized_main = self._normalize(main_term)
 
-                # Sammle alle Begriffe fuer diese Gruppe
+                # Sammle alle Begriffe für diese Gruppe
                 all_terms = {normalized_main}
                 for syn in synonyms:
                     all_terms.add(self._normalize(syn))
@@ -96,7 +96,7 @@ class QueryExpansionService:
 
     @staticmethod
     def _normalize(text: str) -> str:
-        """Normalisiert Text fuer Synonym-Lookup."""
+        """Normalisiert Text für Synonym-Lookup."""
         text = text.lower().strip()
         # Umlaute normalisieren
         replacements = {
@@ -111,7 +111,7 @@ class QueryExpansionService:
 
     def get_synonyms(self, term: str) -> List[str]:
         """
-        Gibt Synonyme fuer einen Begriff zurueck.
+        Gibt Synonyme für einen Begriff zurück.
 
         Args:
             term: Der zu erweiternde Begriff
@@ -137,8 +137,8 @@ class QueryExpansionService:
 
         Returns:
             Tuple aus:
-            - Erweiterter Query-String (fuer PostgreSQL Volltext)
-            - Liste der Erweiterungen fuer UI-Anzeige
+            - Erweiterter Query-String (für PostgreSQL Volltext)
+            - Liste der Erweiterungen für UI-Anzeige
         """
         # Tokenize Query
         tokens = self._tokenize(query)
@@ -173,9 +173,9 @@ class QueryExpansionService:
         max_expansions_per_term: int = 3
     ) -> str:
         """
-        Vereinfachte Query-Expansion fuer allgemeine Suche.
+        Vereinfachte Query-Expansion für allgemeine Suche.
 
-        Gibt einen erweiterten Such-String zurueck, der fuer
+        Gibt einen erweiterten Such-String zurück, der für
         LIKE-Suche oder einfache Volltext-Suche geeignet ist.
 
         Args:
@@ -196,9 +196,9 @@ class QueryExpansionService:
 
     def get_expansion_preview(self, query: str) -> Dict[str, Any]:
         """
-        Gibt eine Vorschau der Query-Expansion zurueck.
+        Gibt eine Vorschau der Query-Expansion zurück.
 
-        Nützlich fuer UI-Feedback, bevor die Suche ausgefuehrt wird.
+        Nützlich für UI-Feedback, bevor die Suche ausgeführt wird.
 
         Args:
             query: Die Suchanfrage
@@ -226,7 +226,7 @@ class QueryExpansionService:
 
     def get_category_terms(self, category: str) -> Dict[str, List[str]]:
         """
-        Gibt alle Begriffe einer Kategorie zurueck.
+        Gibt alle Begriffe einer Kategorie zurück.
 
         Args:
             category: Name der Kategorie (z.B. "document_types")
@@ -237,11 +237,11 @@ class QueryExpansionService:
         return self._synonyms.get(category, {})
 
     def get_all_categories(self) -> List[str]:
-        """Gibt alle verfuegbaren Kategorien zurueck."""
+        """Gibt alle verfügbaren Kategorien zurück."""
         return list(self._synonyms.keys())
 
     def reload_synonyms(self) -> None:
-        """Laedt Synonyme neu (nach Datei-Aenderung)."""
+        """Laedt Synonyme neu (nach Datei-Änderung)."""
         self._load_synonyms()
 
 

@@ -1,10 +1,10 @@
 """
 Knowledge Graph satellite model.
 
-Erweiterte Datenmodelle fuer den Knowledge Graph:
+Erweiterte Datenmodelle für den Knowledge Graph:
 - KnowledgeGraphRelation: Explizite Beziehungen zwischen Entities
 - EntityResolution: Entity-Matching / Deduplizierung
-- GraphSnapshot: Graph-Snapshots fuer Zeitreihen-Analyse
+- GraphSnapshot: Graph-Snapshots für Zeitreihen-Analyse
 
 Baut auf dem bestehenden KnowledgeGraphService auf und ergaenzt
 persistente Beziehungs-Speicherung (Adjacency List Pattern).
@@ -49,7 +49,7 @@ class RelationType(str, Enum):
     BEZAHLT_DURCH = "bezahlt_durch"
     ERSTELLT_VON = "erstellt_von"
     GENEHMIGT_VON = "genehmigt_von"
-    VERKNUEPFT_MIT = "verknuepft_mit"
+    VERKNUEPFT_MIT = "verknüpft_mit"
     IST_NACHFOLGER_VON = "ist_nachfolger_von"
     REFERENZIERT = "referenziert"
 
@@ -57,7 +57,7 @@ class RelationType(str, Enum):
 class EntityMatchStatus(str, Enum):
     """Status der Entity-Resolution."""
     VORGESCHLAGEN = "vorgeschlagen"
-    BESTAETIGT = "bestaetigt"
+    BESTAETIGT = "bestätigt"
     ABGELEHNT = "abgelehnt"
     AUTOMATISCH = "automatisch"
 
@@ -81,7 +81,7 @@ class GraphNodeType(str, Enum):
 class KnowledgeGraphRelation(Base):
     """Explizite Beziehung zwischen zwei Knoten im Knowledge Graph.
 
-    Speichert gerichtete Beziehungen mit Typ, Staerke und Metadaten.
+    Speichert gerichtete Beziehungen mit Typ, Stärke und Metadaten.
     Kann automatisch aus OCR-Ergebnissen extrahiert oder manuell erstellt werden.
     """
     __tablename__ = "knowledge_graph_relations"
@@ -93,7 +93,7 @@ class KnowledgeGraphRelation(Base):
         nullable=False,
     )
 
-    # Quelle und Ziel (polymorph - koennen verschiedene Entity-Typen sein)
+    # Quelle und Ziel (polymorph - können verschiedene Entity-Typen sein)
     source_id = Column(UUID(as_uuid=True), nullable=False, comment="Quell-Knoten UUID")
     source_type = Column(
         String(50),
@@ -115,11 +115,11 @@ class KnowledgeGraphRelation(Base):
         comment="Menschenlesbares Label",
     )
 
-    # Staerke und Vertrauen
+    # Stärke und Vertrauen
     strength = Column(
         Float,
         default=1.0,
-        comment="Beziehungsstaerke (0.0 - 1.0)",
+        comment="Beziehungsstärke (0.0 - 1.0)",
     )
     confidence = Column(
         Float,
@@ -148,7 +148,7 @@ class KnowledgeGraphRelation(Base):
     # Metadaten
     relation_metadata = Column(CrossDBJSON, default=dict)
 
-    # Zeitliche Gueltigkeit
+    # Zeitliche Gültigkeit
     valid_from = Column(DateTime(timezone=True), nullable=True)
     valid_until = Column(DateTime(timezone=True), nullable=True)
 
@@ -186,7 +186,7 @@ class KnowledgeGraphRelation(Base):
 
 
 class EntityResolution(Base):
-    """Entity-Matching fuer Deduplizierung.
+    """Entity-Matching für Deduplizierung.
 
     Erkennt ob zwei Entities dieselbe reale Person/Firma repraesentieren.
     Z.B. "Mueller GmbH" und "Müller GmbH" sind dieselbe Firma.
@@ -216,7 +216,7 @@ class EntityResolution(Base):
     similarity_score = Column(
         Float,
         nullable=False,
-        comment="Aehnlichkeitsscore 0.0-1.0",
+        comment="Ähnlichkeitsscore 0.0-1.0",
     )
     match_status = Column(
         String(30),
@@ -224,12 +224,12 @@ class EntityResolution(Base):
         nullable=False,
     )
 
-    # Canonical Entity (Haupteintrag nach Zusammenfuehrung)
+    # Canonical Entity (Haupteintrag nach Zusammenführung)
     canonical_entity_id = Column(
         UUID(as_uuid=True),
         ForeignKey("business_entities.id", ondelete="SET NULL"),
         nullable=True,
-        comment="Haupt-Entity nach Zusammenfuehrung",
+        comment="Haupt-Entity nach Zusammenführung",
     )
 
     # Matching-Details
@@ -272,15 +272,15 @@ class EntityResolution(Base):
 
 
 # ============================================================================
-# Graph Snapshot (fuer Zeitreihen-Analyse)
+# Graph Snapshot (für Zeitreihen-Analyse)
 # ============================================================================
 
 
 class GraphSnapshot(Base):
     """Periodischer Snapshot des Knowledge Graph.
 
-    Speichert Graph-Metriken fuer Trend-Analyse:
-    - Wie waechst der Graph ueber Zeit?
+    Speichert Graph-Metriken für Trend-Analyse:
+    - Wie waechst der Graph über Zeit?
     - Welche Beziehungstypen nehmen zu/ab?
     - Community-Entwicklung
     """

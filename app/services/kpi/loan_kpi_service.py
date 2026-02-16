@@ -1,4 +1,4 @@
-"""Loan KPI Service fuer Kredit-Berechnungen.
+"""Loan KPI Service für Kredit-Berechnungen.
 
 Berechnet alle Kredit-bezogenen KPIs:
 - Tilgungsplan (Amortization Schedule)
@@ -29,10 +29,10 @@ from app.core.safe_errors import safe_error_log
 logger = structlog.get_logger(__name__)
 
 
-# Type alias fuer Loan-Optionen (vermeidet Any)
+# Type alias für Loan-Optionen (vermeidet Any)
 @dataclass
 class LoanOption:
-    """Eine Kreditoption fuer Vergleich."""
+    """Eine Kreditoption für Vergleich."""
 
     name: str
     rate: Decimal
@@ -52,7 +52,7 @@ class AmortizationEntry:
 
 @dataclass
 class AmortizationSchedule:
-    """Vollstaendiger Tilgungsplan."""
+    """Vollständiger Tilgungsplan."""
 
     schedule: list[AmortizationEntry]
     total_interest: Decimal
@@ -83,7 +83,7 @@ class LoanComparison:
 
 
 class LoanKPIService:
-    """Service fuer Kredit-KPI-Berechnungen.
+    """Service für Kredit-KPI-Berechnungen.
 
     Berechnet Tilgungsplaene, Restschuld-Prognosen und
     analysiert Auswirkungen von Sondertilgungen.
@@ -103,7 +103,7 @@ class LoanKPIService:
         space_id: UUID,
         persist: bool = True,
     ) -> AmortizationSchedule:
-        """Berechnet den vollstaendigen Tilgungsplan.
+        """Berechnet den vollständigen Tilgungsplan.
 
         Args:
             loan_id: UUID des Kredits
@@ -124,11 +124,11 @@ class LoanKPIService:
 
         loan = await self._get_loan(loan_id, space_id)
 
-        # Validierung der benoetigten Felder
+        # Validierung der benötigten Felder
         if not loan.principal_amount or loan.principal_amount <= 0:
-            raise ValueError(f"Kredit {loan_id} hat keine gueltige Kreditsumme")
+            raise ValueError(f"Kredit {loan_id} hat keine gültige Kreditsumme")
         if not loan.monthly_payment or loan.monthly_payment <= 0:
-            raise ValueError(f"Kredit {loan_id} hat keine gueltige monatliche Rate")
+            raise ValueError(f"Kredit {loan_id} hat keine gültige monatliche Rate")
 
         # Verwende aktuellen Saldo wenn vorhanden, sonst Ursprungssumme
         principal = Decimal(str(loan.current_balance or loan.principal_amount))
@@ -167,7 +167,7 @@ class LoanKPIService:
 
         Args:
             principal: Kreditsumme
-            annual_rate: Jaehrlicher Zinssatz in Prozent
+            annual_rate: Jährlicher Zinssatz in Prozent
             monthly_payment: Monatliche Rate
             start_date: Startdatum
             extra_payment: Optionale monatliche Sondertilgung
@@ -243,9 +243,9 @@ class LoanKPIService:
 
         # Validierung
         if not loan.principal_amount or loan.principal_amount <= 0:
-            raise ValueError(f"Kredit {loan_id} hat keine gueltige Kreditsumme")
+            raise ValueError(f"Kredit {loan_id} hat keine gültige Kreditsumme")
         if not loan.monthly_payment or loan.monthly_payment <= 0:
-            raise ValueError(f"Kredit {loan_id} hat keine gueltige monatliche Rate")
+            raise ValueError(f"Kredit {loan_id} hat keine gültige monatliche Rate")
 
         principal = Decimal(str(loan.current_balance or loan.principal_amount))
         annual_rate = Decimal(str(loan.interest_rate or 0))
@@ -499,7 +499,7 @@ class LoanKPIService:
             loan: PrivatLoan Objekt
             schedule: Berechneter Tilgungsplan
         """
-        # Konvertiere Schedule zu JSON-faehigem Format
+        # Konvertiere Schedule zu JSON-fähigem Format
         schedule_json = [
             {
                 "month": entry.month,
@@ -552,9 +552,9 @@ class LoanKPIService:
         space_id: UUID,
         persist: bool = True,
     ) -> dict[UUID, AmortizationSchedule]:
-        """Berechnet KPIs fuer alle Kredite eines Space.
+        """Berechnet KPIs für alle Kredite eines Space.
 
-        Batch-Methode fuer Celery Tasks.
+        Batch-Methode für Celery Tasks.
 
         Args:
             space_id: UUID des Space

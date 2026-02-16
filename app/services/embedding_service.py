@@ -1,11 +1,11 @@
-"""Embedding-Service fuer semantische Dokumentensuche.
+"""Embedding-Service für semantische Dokumentensuche.
 
 GPU-beschleunigte Generierung von Embeddings mit multilingual-e5-large.
-Optionale Jina-Embeddings-v2-base-de fuer deutsche Dokumente (8k Token-Kontext).
-Singleton-Muster fuer effiziente Modellnutzung.
+Optionale Jina-Embeddings-v2-base-de für deutsche Dokumente (8k Token-Kontext).
+Singleton-Muster für effiziente Modellnutzung.
 Mit Redis-Caching für Query-Embeddings.
 
-Unterstuetzte Modelle:
+Unterstützte Modelle:
 - intfloat/multilingual-e5-large: Standard-Modell (1024 dim, 512 token)
 - jinaai/jina-embeddings-v2-base-de: Deutsch-spezialisiert (1024 dim, 8k token)
 """
@@ -27,7 +27,7 @@ from app.core.safe_errors import safe_error_log
 
 
 class EmbeddingModelType(str, Enum):
-    """Verfuegbare Embedding-Modelle."""
+    """Verfügbare Embedding-Modelle."""
     E5_MULTILINGUAL = "e5"
     JINA_GERMAN = "jina"
 
@@ -50,7 +50,7 @@ class EmbeddingModelInfo(TypedDict, total=False):
 
 
 class MultiModelEmbeddingInfo(TypedDict, total=False):
-    """Informationen ueber alle geladenen Modelle."""
+    """Informationen über alle geladenen Modelle."""
     active_model: str
     e5_model: Optional[EmbeddingModelInfo]
     jina_model: Optional[EmbeddingModelInfo]
@@ -67,7 +67,7 @@ logger = structlog.get_logger(__name__)
 
 
 class JinaEmbeddingService:
-    """Service fuer Jina-Embeddings-v2-base-de.
+    """Service für Jina-Embeddings-v2-base-de.
 
     Spezialisiert auf deutsche Dokumente mit:
     - 8192 Token-Kontext (16x mehr als E5)
@@ -86,7 +86,7 @@ class JinaEmbeddingService:
     _redis = None
 
     def __new__(cls) -> 'JinaEmbeddingService':
-        """Singleton-Instanz zurueckgeben."""
+        """Singleton-Instanz zurückgeben."""
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -144,7 +144,7 @@ class JinaEmbeddingService:
                     trust_remote_code=self.trust_remote_code
                 )
 
-                # Max sequence length - Jina unterstuetzt bis 8192
+                # Max sequence length - Jina unterstützt bis 8192
                 self._model.max_seq_length = self.max_length
 
                 # Warmup (GPU-Kernel kompilieren)
@@ -168,7 +168,7 @@ class JinaEmbeddingService:
                 raise RuntimeError(f"Jina-Modell konnte nicht geladen werden: {e}")
 
     def _check_gpu_memory(self, required_mb: float = 2000) -> bool:
-        """GPU-Speicher pruefen (Threshold: 85% VRAM)."""
+        """GPU-Speicher prüfen (Threshold: 85% VRAM)."""
         if self.device.type != "cuda":
             return True
 
@@ -189,9 +189,9 @@ class JinaEmbeddingService:
         return available >= required_mb
 
     def generate_embedding(self, text: str) -> List[float]:
-        """Embedding fuer einzelnen Text generieren.
+        """Embedding für einzelnen Text generieren.
 
-        Jina benoetigt KEINE Praefixe (anders als E5)!
+        Jina benötigt KEINE Praefixe (anders als E5)!
 
         Args:
             text: Zu kodierender Text
@@ -240,7 +240,7 @@ class JinaEmbeddingService:
 
         Args:
             texts: Liste von Texten
-            batch_size: Optionale Batch-Groesse
+            batch_size: Optionale Batch-Größe
 
         Returns:
             Liste von Embeddings
@@ -334,14 +334,14 @@ class JinaEmbeddingService:
 
 
 class EmbeddingService:
-    """Service fuer semantische Embeddings mit Query-Caching.
+    """Service für semantische Embeddings mit Query-Caching.
 
-    Verwendet multilingual-e5-large (1024 Dimensionen) fuer deutsche Dokumente.
-    GPU-beschleunigt mit VRAM-Management fuer RTX 4080.
+    Verwendet multilingual-e5-large (1024 Dimensionen) für deutsche Dokumente.
+    GPU-beschleunigt mit VRAM-Management für RTX 4080.
 
-    Hinweis: E5-Modelle benoetigen spezielle Praefixe:
-    - "query: " fuer Suchanfragen
-    - "passage: " fuer Dokumente/Texte
+    Hinweis: E5-Modelle benötigen spezielle Praefixe:
+    - "query: " für Suchanfragen
+    - "passage: " für Dokumente/Texte
 
     Query-Embeddings werden gecacht um GPU-Last zu reduzieren.
     """
@@ -354,7 +354,7 @@ class EmbeddingService:
     _redis = None
 
     def __new__(cls) -> 'EmbeddingService':
-        """Singleton-Instanz zurueckgeben."""
+        """Singleton-Instanz zurückgeben."""
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -433,7 +433,7 @@ class EmbeddingService:
                 raise RuntimeError(f"Embedding-Modell konnte nicht geladen werden: {e}")
 
     def _check_gpu_memory(self, required_mb: float = 2000) -> bool:
-        """GPU-Speicher pruefen (Threshold: 85% VRAM)."""
+        """GPU-Speicher prüfen (Threshold: 85% VRAM)."""
         if self.device.type != "cuda":
             return True
 
@@ -454,27 +454,27 @@ class EmbeddingService:
         return available >= required_mb
 
     def _calculate_optimal_batch_size(self, text_count: int) -> int:
-        """Berechnet optimale Batch-Groesse basierend auf verfuegbarem GPU-Speicher.
+        """Berechnet optimale Batch-Größe basierend auf verfügbarem GPU-Speicher.
 
-        Dynamisches Batching fuer maximale Performance bei sicherem Speicherverbrauch.
-        - Prueft aktuellen GPU-Speicher
-        - Skaliert Batch-Size basierend auf verfuegbarem Speicher
+        Dynamisches Batching für maximale Performance bei sicherem Speicherverbrauch.
+        - Prüft aktuellen GPU-Speicher
+        - Skaliert Batch-Size basierend auf verfügbarem Speicher
         - Respektiert MIN/MAX Grenzen aus Config
 
         Args:
             text_count: Anzahl zu verarbeitender Texte
 
         Returns:
-            Optimale Batch-Groesse fuer aktuelle Speichersituation
+            Optimale Batch-Größe für aktuelle Speichersituation
         """
         if not settings.EMBEDDING_DYNAMIC_BATCH_ENABLED:
             return min(self.batch_size, text_count)
 
         if self.device.type != "cuda":
-            # CPU kann mehr parallel verarbeiten (RAM ist groesser)
+            # CPU kann mehr parallel verarbeiten (RAM ist größer)
             return min(settings.EMBEDDING_MAX_BATCH_SIZE, text_count)
 
-        # GPU-Speicher pruefen
+        # GPU-Speicher prüfen
         allocated_mb = torch.cuda.memory_allocated() / 1024**2
         total_mb = torch.cuda.get_device_properties(0).total_memory / 1024**2
         available_mb = total_mb - allocated_mb
@@ -483,7 +483,7 @@ class EmbeddingService:
         max_usable_mb = total_mb * settings.EMBEDDING_GPU_MEMORY_THRESHOLD
         remaining_mb = max_usable_mb - allocated_mb
 
-        # Schaetzung: ~100-150MB pro Batch-Item fuer E5-large
+        # Schätzung: ~100-150MB pro Batch-Item für E5-large
         # Konservativ: 150MB pro Item
         mb_per_item = 150
         max_safe_items = int(remaining_mb / mb_per_item)
@@ -508,11 +508,11 @@ class EmbeddingService:
         text: str,
         is_query: bool = False
     ) -> List[float]:
-        """Embedding fuer einzelnen Text generieren.
+        """Embedding für einzelnen Text generieren.
 
         Args:
             text: Zu kodierender Text
-            is_query: True fuer Suchanfragen (verwendet "query: " Praefix)
+            is_query: True für Suchanfragen (verwendet "query: " Praefix)
 
         Returns:
             Liste von Floats (1024 Dimensionen)
@@ -524,7 +524,7 @@ class EmbeddingService:
         prefixed_text = prefix + text
 
         try:
-            # GPU-Speicher pruefen
+            # GPU-Speicher prüfen
             self._check_gpu_memory()
 
             embedding = self._model.encode(
@@ -596,18 +596,18 @@ class EmbeddingService:
             logger.debug("query_embedding_cache_set_failed", **safe_error_log(e))
 
     def generate_query_embedding(self, query: str) -> List[float]:
-        """Embedding fuer Suchanfrage generieren (sync).
+        """Embedding für Suchanfrage generieren (sync).
 
-        Verwendet automatisch "query: " Praefix fuer E5-Modell.
-        Fuer gecachte Version nutze generate_query_embedding_cached().
+        Verwendet automatisch "query: " Praefix für E5-Modell.
+        Für gecachte Version nutze generate_query_embedding_cached().
         """
         return self.generate_embedding(query, is_query=True)
 
     async def generate_query_embedding_cached(self, query: str) -> List[float]:
-        """Embedding fuer Suchanfrage mit Cache generieren (async).
+        """Embedding für Suchanfrage mit Cache generieren (async).
 
-        Prueft erst den Cache, generiert nur bei Cache-Miss.
-        Ideal fuer Search-Endpoints.
+        Prüft erst den Cache, generiert nur bei Cache-Miss.
+        Ideal für Search-Endpoints.
         """
         # Cache-Lookup
         cached = await self._get_cached_query_embedding(query)
@@ -623,9 +623,9 @@ class EmbeddingService:
         return embedding
 
     def generate_document_embedding(self, text: str) -> List[float]:
-        """Embedding fuer Dokument generieren.
+        """Embedding für Dokument generieren.
 
-        Verwendet automatisch "passage: " Praefix fuer E5-Modell.
+        Verwendet automatisch "passage: " Praefix für E5-Modell.
         """
         return self.generate_embedding(text, is_query=False)
 
@@ -637,13 +637,13 @@ class EmbeddingService:
     ) -> List[List[float]]:
         """Batch-Embeddings generieren mit GPU-Speicher-Management.
 
-        Verwendet dynamisches Batching basierend auf verfuegbarem GPU-Speicher.
+        Verwendet dynamisches Batching basierend auf verfügbarem GPU-Speicher.
         Automatische Anpassung bei Speicherknappheit.
 
         Args:
             texts: Liste von Texten
-            is_query: True fuer Suchanfragen
-            batch_size: Optionale Batch-Groesse (Standard: dynamisch berechnet)
+            is_query: True für Suchanfragen
+            batch_size: Optionale Batch-Größe (Standard: dynamisch berechnet)
 
         Returns:
             Liste von Embeddings
@@ -666,7 +666,7 @@ class EmbeddingService:
             batch = prefixed_texts[i:i + batch_size]
 
             try:
-                # GPU-Speicher pruefen und ggf. Batch-Size reduzieren
+                # GPU-Speicher prüfen und ggf. Batch-Size reduzieren
                 if not self._check_gpu_memory():
                     old_size = batch_size
                     batch_size = max(settings.EMBEDDING_MIN_BATCH_SIZE, batch_size // 2)
@@ -724,9 +724,9 @@ class EmbeddingService:
         text: str,
         is_query: bool = False
     ) -> List[float]:
-        """Async-Wrapper fuer Embedding-Generierung mit Query-Caching.
+        """Async-Wrapper für Embedding-Generierung mit Query-Caching.
 
-        Bei is_query=True wird erst der Cache geprueft.
+        Bei is_query=True wird erst der Cache geprüft.
         """
         # Bei Query-Embeddings Cache nutzen
         if is_query:
@@ -751,7 +751,7 @@ class EmbeddingService:
         texts: List[str],
         is_query: bool = False
     ) -> List[List[float]]:
-        """Async-Wrapper fuer Batch-Embedding-Generierung."""
+        """Async-Wrapper für Batch-Embedding-Generierung."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None,
@@ -797,19 +797,19 @@ class EmbeddingService:
 
 
 class EmbeddingProvider:
-    """Unified Provider fuer Embeddings mit A/B Testing Support.
+    """Unified Provider für Embeddings mit A/B Testing Support.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Automatische Modell-Auswahl basierend auf Config
     - A/B Testing zwischen E5 und Jina
-    - Einheitliches Interface fuer beide Modelle
+    - Einheitliches Interface für beide Modelle
     """
 
     _instance: Optional['EmbeddingProvider'] = None
     _lock = threading.Lock()
 
     def __new__(cls) -> 'EmbeddingProvider':
-        """Singleton-Instanz zurueckgeben."""
+        """Singleton-Instanz zurückgeben."""
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -860,7 +860,7 @@ class EmbeddingProvider:
         Args:
             text: Zu kodierender Text
             model_type: E5_MULTILINGUAL oder JINA_GERMAN
-            is_query: True fuer Suchanfragen (nur relevant fuer E5)
+            is_query: True für Suchanfragen (nur relevant für E5)
 
         Returns:
             Liste von Floats (1024 Dimensionen)
@@ -910,7 +910,7 @@ class EmbeddingProvider:
         model_type: EmbeddingModelType = EmbeddingModelType.E5_MULTILINGUAL,
         is_query: bool = False
     ) -> List[float]:
-        """Async-Wrapper fuer Embedding-Generierung."""
+        """Async-Wrapper für Embedding-Generierung."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None,
@@ -923,7 +923,7 @@ class EmbeddingProvider:
         model_type: EmbeddingModelType = EmbeddingModelType.E5_MULTILINGUAL,
         is_query: bool = False
     ) -> List[List[float]]:
-        """Async-Wrapper fuer Batch-Embedding-Generierung."""
+        """Async-Wrapper für Batch-Embedding-Generierung."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None,
@@ -937,11 +937,11 @@ class EmbeddingProvider:
         """Modell-Informationen abrufen.
 
         Args:
-            model_type: Spezifisches Modell oder None fuer alle
+            model_type: Spezifisches Modell oder None für alle
 
         Returns:
-            EmbeddingModelInfo fuer spezifisches Modell oder
-            MultiModelEmbeddingInfo fuer Uebersicht aller Modelle
+            EmbeddingModelInfo für spezifisches Modell oder
+            MultiModelEmbeddingInfo für Übersicht aller Modelle
         """
         if model_type == EmbeddingModelType.E5_MULTILINGUAL:
             return self._get_e5_service().get_model_info()
@@ -955,7 +955,7 @@ class EmbeddingProvider:
                 "ab_testing_enabled": settings.VECTOR_AB_TESTING_ENABLED
             }
 
-            # E5 Model Info (immer verfuegbar)
+            # E5 Model Info (immer verfügbar)
             if self._e5_service is not None:
                 info["e5_model"] = self._e5_service.get_model_info()
 
@@ -972,7 +972,7 @@ class EmbeddingProvider:
         """Modell(e) aus Speicher entfernen.
 
         Args:
-            model_type: Spezifisches Modell oder None fuer alle
+            model_type: Spezifisches Modell oder None für alle
         """
         if model_type is None or model_type == EmbeddingModelType.E5_MULTILINGUAL:
             if self._e5_service is not None:
@@ -1019,7 +1019,7 @@ def get_jina_embedding_service() -> JinaEmbeddingService:
 def get_embedding_provider() -> EmbeddingProvider:
     """Unified Embedding-Provider abrufen (Dependency Injection).
 
-    Bevorzugt fuer A/B Testing und Multi-Model-Szenarien.
+    Bevorzugt für A/B Testing und Multi-Model-Szenarien.
     """
     global _embedding_provider
     if _embedding_provider is None:

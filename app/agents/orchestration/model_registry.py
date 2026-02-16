@@ -392,7 +392,7 @@ class ModelRegistry:
         self._registry["versions"].remove(version)
         self._save_registry()
 
-        logger.info("version_geloescht", version=version)
+        logger.info("version_gelöscht", version=version)
         return True
 
     def get_version_info(self, version: str) -> Optional[ModelVersion]:
@@ -459,7 +459,7 @@ class ModelRegistry:
                     self.delete_version(version)
                     deleted += 1
                 except Exception as e:
-                    logger.warning("version_loeschen_fehlgeschlagen", version=version, **safe_error_log(e))
+                    logger.warning("version_löschen_fehlgeschlagen", version=version, **safe_error_log(e))
 
         return deleted
 
@@ -516,7 +516,7 @@ def migrate_pickle_to_registry(
         "pickle_migration_started",
         pickle_path=str(pickle_path),
         force_allow=force_allow,
-        security_warning="pickle.load kann beliebigen Code ausfuehren!",
+        security_warning="pickle.load kann beliebigen Code ausführen!",
     )
 
     warnings.warn(

@@ -1,7 +1,7 @@
 """
 Portal Authentication API.
 
-Login, Logout, Account-Aktivierung fuer Kundenportal.
+Login, Logout, Account-Aktivierung für Kundenportal.
 """
 
 from datetime import datetime, timezone
@@ -59,7 +59,7 @@ class PortalRefreshRequest(BaseModel):
 
 
 class PortalChangePasswordRequest(BaseModel):
-    """Passwort-Aenderungs-Anfrage."""
+    """Passwort-Änderungs-Anfrage."""
     current_password: str
     new_password: str = Field(..., min_length=8)
 
@@ -125,7 +125,7 @@ async def get_current_portal_user(
     if not portal_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltige oder abgelaufene Session",
+            detail="Ungültige oder abgelaufene Session",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
@@ -183,7 +183,7 @@ async def portal_login(
     except PortalUserNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltige Anmeldedaten",
+            detail="Ungültige Anmeldedaten",
         )
     except PortalUserInactiveError:
         raise HTTPException(
@@ -198,7 +198,7 @@ async def portal_login(
     except InvalidPortalCredentialsError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltige Anmeldedaten",
+            detail="Ungültige Anmeldedaten",
         )
 
 
@@ -229,7 +229,7 @@ async def portal_activate(
     except PortalUserNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige oder abgelaufene Einladung",
+            detail="Ungültige oder abgelaufene Einladung",
         )
     except PortalAuthError as e:
         raise HTTPException(
@@ -285,7 +285,7 @@ async def portal_refresh(
     except PortalAuthError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltige oder abgelaufene Session",
+            detail="Ungültige oder abgelaufene Session",
         )
 
 
@@ -316,7 +316,7 @@ async def portal_change_password(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Aendere Passwort.
+    Ändere Passwort.
     """
     auth_service = get_portal_auth_service(db)
 
@@ -329,7 +329,7 @@ async def portal_change_password(
 
         return PortalSuccessResponse(
             success=True,
-            message="Passwort erfolgreich geaendert. Bitte melden Sie sich erneut an.",
+            message="Passwort erfolgreich geändert. Bitte melden Sie sich erneut an.",
         )
 
     except InvalidPortalCredentialsError:

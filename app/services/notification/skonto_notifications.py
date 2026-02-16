@@ -1,8 +1,8 @@
 """
 Skonto Deadline Notification Service.
 
-Spezialisierter Service fuer Skonto-Frist-Benachrichtigungen.
-Unterstuetzt Email, Slack und In-App Channels.
+Spezialisierter Service für Skonto-Frist-Benachrichtigungen.
+Unterstützt Email, Slack und In-App Channels.
 
 Feinpoliert und durchdacht - Multi-Channel Skonto Alerts.
 """
@@ -19,7 +19,7 @@ logger = structlog.get_logger(__name__)
 
 
 class SkontoUrgencyLevel(str, Enum):
-    """Dringlichkeitsstufen fuer Skonto-Benachrichtigungen."""
+    """Dringlichkeitsstufen für Skonto-Benachrichtigungen."""
     INFO = "info"           # 7+ Tage voraus
     WARNING = "warning"     # 3-7 Tage voraus
     URGENT = "urgent"       # 1-3 Tage voraus
@@ -28,7 +28,7 @@ class SkontoUrgencyLevel(str, Enum):
 
 @dataclass
 class SkontoOpportunity:
-    """Skonto-Gelegenheit fuer Benachrichtigungen."""
+    """Skonto-Gelegenheit für Benachrichtigungen."""
     invoice_id: UUID
     invoice_number: str
     amount: float
@@ -54,11 +54,11 @@ class SkontoOpportunity:
 
 class SkontoNotificationService:
     """
-    Service fuer Multi-Channel Skonto-Benachrichtigungen.
+    Service für Multi-Channel Skonto-Benachrichtigungen.
 
     Channels:
     - Email: Detaillierte Zusammenfassung
-    - Slack: Schnelle Benachrichtigungen (nur fuer dringende Fristen)
+    - Slack: Schnelle Benachrichtigungen (nur für dringende Fristen)
     - In-App: Immer, wenn Opportunities existieren
 
     Usage:
@@ -137,7 +137,7 @@ class SkontoNotificationService:
                 total_savings=total_savings,
             )
 
-        # Slack nur fuer kritische/dringende Faelle
+        # Slack nur für kritische/dringende Faelle
         if include_slack and (critical or urgent):
             result["slack"] = await self._send_slack_notification(
                 critical=critical,
@@ -190,7 +190,7 @@ class SkontoNotificationService:
             if len(opportunities) > 15:
                 opportunities_list += f"\n... und {len(opportunities) - 15} weitere"
 
-            # Prioritaet basierend auf dringendster Frist
+            # Priorität basierend auf dringendster Frist
             min_days = min(o.days_remaining for o in opportunities)
             priority = (
                 NotificationPriority.URGENT if min_days <= 1
@@ -224,7 +224,7 @@ class SkontoNotificationService:
         urgent: list[SkontoOpportunity],
         total_savings: float,
     ) -> bool:
-        """Sendet Slack-Benachrichtigung fuer dringende Faelle."""
+        """Sendet Slack-Benachrichtigung für dringende Faelle."""
         try:
             from app.services.slack_service import (
 
@@ -292,7 +292,7 @@ class SkontoNotificationService:
             elif min_days <= 3:
                 title = f"Skonto-Fristen in {min_days} Tagen"
             else:
-                title = "Skonto-Gelegenheiten verfuegbar"
+                title = "Skonto-Gelegenheiten verfügbar"
 
             message = (
                 f"{len(opportunities)} Rechnung(en) mit Skonto-Fristen. "
@@ -326,7 +326,7 @@ _skonto_notification_service: Optional[SkontoNotificationService] = None
 
 
 def get_skonto_notification_service() -> SkontoNotificationService:
-    """Gibt die Singleton-Instanz zurueck."""
+    """Gibt die Singleton-Instanz zurück."""
     global _skonto_notification_service
     if _skonto_notification_service is None:
         _skonto_notification_service = SkontoNotificationService()
@@ -339,7 +339,7 @@ async def send_skonto_alerts(
     opportunities: list[dict[str, Any]],
 ) -> dict[str, bool]:
     """
-    Convenience-Funktion fuer Skonto-Alerts.
+    Convenience-Funktion für Skonto-Alerts.
 
     Args:
         user_id: User-ID

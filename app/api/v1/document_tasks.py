@@ -2,18 +2,18 @@
 """
 Document Tasks API Endpoints.
 
-Enterprise-level Aufgabenverwaltung fuer Dokumente:
-- Aufgaben erstellen/bearbeiten/loeschen
+Enterprise-level Aufgabenverwaltung für Dokumente:
+- Aufgaben erstellen/bearbeiten/löschen
 - Zuweisung an Benutzer
-- Status-Uebergaenge (Start, Abschluss, Abbruch, Blockierung)
-- Deadline-Ueberwachung
+- Status-Übergaenge (Start, Abschluss, Abbruch, Blockierung)
+- Deadline-Überwachung
 - Eskalations-Support
 
 Feinpoliert und durchdacht - Aufgabenmanagement auf Enterprise-Niveau.
 
 Security:
 - Firmenzugehoerigkeit wird bei jeder Operation validiert
-- Dokumentzugriff wird vor Erstellung geprueft
+- Dokumentzugriff wird vor Erstellung geprüft
 - Benutzer-Existenz wird vor Zuweisung validiert
 """
 
@@ -69,7 +69,7 @@ async def _verify_document_access(
     document_id: UUID,
     user_id: UUID,
 ) -> Document:
-    """Prueft ob User Zugriff auf das Dokument hat.
+    """Prüft ob User Zugriff auf das Dokument hat.
 
     Zugriff erlaubt wenn:
     - User ist Owner des Dokuments
@@ -103,7 +103,7 @@ async def _verify_document_access(
     if document.owner_id == user_id:
         return document
 
-    # Pruefe shared access
+    # Prüfe shared access
     access_result = await db.execute(
         select(exists().where(
             and_(
@@ -126,7 +126,7 @@ async def _verify_document_access(
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument"
+            detail="Keine Berechtigung für dieses Dokument"
         )
 
     return document
@@ -187,15 +187,15 @@ def _build_task_response(task: DocumentTask) -> TaskResponse:
     response_model=TaskResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Aufgabe erstellen",
-    description="Erstellt eine neue Aufgabe fuer ein Dokument."
+    description="Erstellt eine neue Aufgabe für ein Dokument."
 )
 async def create_task(
     task_data: TaskCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
-    """Erstellt eine neue Aufgabe fuer ein Dokument."""
-    # Pruefe Dokumentzugriff
+    """Erstellt eine neue Aufgabe für ein Dokument."""
+    # Prüfe Dokumentzugriff
     document = await _verify_document_access(db, task_data.documentId, current_user.id)
 
     # Service initialisieren
@@ -216,8 +216,8 @@ async def create_task(
             notify_assignee=True,
         )
 
-        # Lade Beziehungen fuer Response
-        # SECURITY: company_id muss IMMER uebergeben werden fuer Multi-Tenant Isolation
+        # Lade Beziehungen für Response
+        # SECURITY: company_id muss IMMER übergeben werden für Multi-Tenant Isolation
         task = await task_service.get_task(task.id, company_id=document.company_id)
 
         logger.info(
@@ -248,7 +248,7 @@ async def list_tasks(
     created_by_me: bool = Query(False, description="Nur von mir erstellte Aufgaben"),
     status_filter: Optional[TaskStatusEnum] = Query(None, alias="status", description="Filter nach Status"),
     priority_filter: Optional[TaskPriorityEnum] = Query(None, alias="priority", description="Filter nach Prioritaet"),
-    overdue_only: bool = Query(False, description="Nur ueberfaellige Aufgaben"),
+    overdue_only: bool = Query(False, description="Nur überfällige Aufgaben"),
     limit: int = Query(50, ge=1, le=100),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(get_current_user),
@@ -322,15 +322,15 @@ async def get_my_tasks(
 @router.get(
     "/overdue",
     response_model=TasksListResponse,
-    summary="Ueberfaellige Aufgaben",
-    description="Holt alle ueberfaelligen Aufgaben."
+    summary="Überfällige Aufgaben",
+    description="Holt alle überfälligen Aufgaben."
 )
 async def get_overdue_tasks(
     limit: int = Query(50, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TasksListResponse:
-    """Holt alle ueberfaelligen Aufgaben."""
+    """Holt alle überfälligen Aufgaben."""
     task_service = get_document_task_service(db)
 
     tasks = await task_service.get_overdue_tasks(
@@ -451,15 +451,15 @@ async def update_task(
     "/{task_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Aufgabe loeschen",
-    description="Loescht eine Aufgabe."
+    summary="Aufgabe löschen",
+    description="Löscht eine Aufgabe."
 )
 async def delete_task(
     task_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Loescht eine Aufgabe."""
+    """Löscht eine Aufgabe."""
     task_service = get_document_task_service(db)
 
     deleted = await task_service.delete_task(
@@ -533,8 +533,8 @@ async def start_task(
 @router.post(
     "/{task_id}/complete",
     response_model=TaskResponse,
-    summary="Aufgabe abschliessen",
-    description="Schliesst eine Aufgabe ab."
+    summary="Aufgabe abschließen",
+    description="Schließt eine Aufgabe ab."
 )
 async def complete_task(
     task_id: UUID,
@@ -542,7 +542,7 @@ async def complete_task(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
-    """Schliesst eine Aufgabe ab."""
+    """Schließt eine Aufgabe ab."""
     task_service = get_document_task_service(db)
 
     completion_notes = request_body.completionNotes if request_body else None
@@ -584,7 +584,7 @@ async def complete_task(
 )
 async def cancel_task(
     task_id: UUID,
-    reason: Optional[str] = Query(None, description="Grund fuer Abbruch"),
+    reason: Optional[str] = Query(None, description="Grund für Abbruch"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
@@ -628,7 +628,7 @@ async def cancel_task(
 )
 async def block_task(
     task_id: UUID,
-    reason: str = Query(..., description="Grund fuer Blockierung"),
+    reason: str = Query(..., description="Grund für Blockierung"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TaskResponse:
@@ -801,7 +801,7 @@ async def unassign_task(
     "/document/{document_id}",
     response_model=TasksListResponse,
     summary="Dokument-Aufgaben",
-    description="Holt alle Aufgaben fuer ein Dokument."
+    description="Holt alle Aufgaben für ein Dokument."
 )
 async def get_document_tasks(
     document_id: UUID,
@@ -809,8 +809,8 @@ async def get_document_tasks(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TasksListResponse:
-    """Holt alle Aufgaben fuer ein bestimmtes Dokument."""
-    # Pruefe Dokumentzugriff
+    """Holt alle Aufgaben für ein bestimmtes Dokument."""
+    # Prüfe Dokumentzugriff
     await _verify_document_access(db, document_id, current_user.id)
 
     task_service = get_document_task_service(db)

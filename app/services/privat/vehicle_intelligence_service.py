@@ -156,7 +156,7 @@ class VehicleTCO:
     current_value: Decimal = Decimal("0")
     depreciation_total: Decimal = Decimal("0")
 
-    # Laufende Kosten (jaehrlich)
+    # Laufende Kosten (jährlich)
     fuel_costs_annual: Decimal = Decimal("0")
     insurance_annual: Decimal = Decimal("0")
     tax_annual: Decimal = Decimal("0")
@@ -204,7 +204,7 @@ class ServicePrediction:
     """Service-Prognose."""
     vehicle_id: UUID
 
-    # Naechster Service
+    # Nächster Service
     next_service_km: int
     next_service_date: Optional[date] = None
     km_until_service: int = 0
@@ -214,7 +214,7 @@ class ServicePrediction:
     tuev_due: Optional[date] = None
     days_until_tuev: Optional[int] = None
 
-    # Geschaetzte Kosten
+    # Geschätzte Kosten
     estimated_service_cost: Decimal = Decimal("0")
     estimated_tuev_cost: Decimal = Decimal("150")
 
@@ -226,7 +226,7 @@ class ServicePrediction:
 
 @dataclass
 class VehicleAnalytics:
-    """Vollstaendige Fahrzeug-Analytics."""
+    """Vollständige Fahrzeug-Analytics."""
     vehicle_id: UUID
 
     depreciation: Optional[VehicleDepreciation] = None
@@ -312,7 +312,7 @@ class VehicleIntelligenceService:
         depreciation_curve = DEPRECIATION_CURVES.get(vehicle_class, DEPRECIATION_CURVES["volume"])
         retention_factor = self._interpolate_depreciation(depreciation_curve, float(age_years))
 
-        # Kilometerstand-Faktor (wenn verfuegbar)
+        # Kilometerstand-Faktor (wenn verfügbar)
         mileage_factor = Decimal("1.0")
         if vehicle.current_mileage and age_years > 0:
             expected_annual_km = 15000  # Durchschnitt
@@ -321,9 +321,9 @@ class VehicleIntelligenceService:
 
             if expected_km > 0:
                 km_ratio = actual_km / expected_km
-                if km_ratio > 1.2:  # Mehr als 20% ueber Durchschnitt
+                if km_ratio > 1.2:  # Mehr als 20% über Durchschnitt
                     mileage_factor = Decimal("0.95")
-                elif km_ratio > 1.5:  # Mehr als 50% ueber Durchschnitt
+                elif km_ratio > 1.5:  # Mehr als 50% über Durchschnitt
                     mileage_factor = Decimal("0.90")
                 elif km_ratio < 0.7:  # Weniger als 70% des Durchschnitts
                     mileage_factor = Decimal("1.05")
@@ -465,11 +465,11 @@ class VehicleIntelligenceService:
         if vehicle.insurance_premium:
             tco.insurance_annual = Decimal(str(vehicle.insurance_premium))
 
-        # 4. KFZ-Steuer (Schaetzung basierend auf Hubraum/CO2)
-        # Vereinfacht: 100-300 EUR fuer PKW
+        # 4. KFZ-Steuer (Schätzung basierend auf Hubraum/CO2)
+        # Vereinfacht: 100-300 EUR für PKW
         tco.tax_annual = Decimal("180")  # Durchschnitt
 
-        # 5. Wartung (Schaetzung)
+        # 5. Wartung (Schätzung)
         # Junge Autos: ~300 EUR, Alte: ~600 EUR
         age_years = 0
         if vehicle.purchase_date:
@@ -482,7 +482,7 @@ class VehicleIntelligenceService:
         else:
             tco.maintenance_annual = Decimal("600")
 
-        # 6. Reparaturen (Schaetzung)
+        # 6. Reparaturen (Schätzung)
         if age_years < 3:
             tco.repairs_annual = Decimal("100")
         elif age_years < 6:
@@ -511,7 +511,7 @@ class VehicleIntelligenceService:
                     tco.total_annual_costs / Decimal(str(annual_km))
                 ).quantize(Decimal("0.01"))
 
-        # Prognose naechstes Jahr (leichte Steigerung)
+        # Prognose nächstes Jahr (leichte Steigerung)
         tco.projected_annual_costs_next_year = (
             tco.total_annual_costs * Decimal("1.05")
         ).quantize(Decimal("0.01"))
@@ -555,7 +555,7 @@ class VehicleIntelligenceService:
         if len(fuel_logs) < 2:
             return None
 
-        # Verbrauch berechnen (benoetigt 2 aufeinanderfolgende Tankungen)
+        # Verbrauch berechnen (benötigt 2 aufeinanderfolgende Tankungen)
         consumptions: List[Decimal] = []
         costs: List[Decimal] = []
         anomalies: List[Dict[str, Any]] = []
@@ -599,7 +599,7 @@ class VehicleIntelligenceService:
                 trend = "improving"
                 trend_percent = ((first_half_avg - second_half_avg) / first_half_avg * 100).quantize(Decimal("0.1"))
 
-        # Anomalien erkennen (>20% ueber Durchschnitt)
+        # Anomalien erkennen (>20% über Durchschnitt)
         for i, consumption in enumerate(consumptions):
             if consumption > avg_consumption * Decimal("1.2"):
                 anomalies.append({
@@ -648,7 +648,7 @@ class VehicleIntelligenceService:
         vehicle_id: UUID,
     ) -> Optional[ServicePrediction]:
         """
-        Sagt den naechsten Service voraus.
+        Sagt den nächsten Service voraus.
 
         Basiert auf:
         - Aktuellem Kilometerstand
@@ -676,19 +676,19 @@ class VehicleIntelligenceService:
         fuel_type = (vehicle.fuel_type or "benzin").lower()
         interval = SERVICE_INTERVALS.get(fuel_type, SERVICE_INTERVALS["default"])
 
-        # Naechster Service-km
+        # Nächster Service-km
         if vehicle.current_mileage:
-            # Berechne naechstes Intervall
+            # Berechne nächstes Intervall
             current_interval = (vehicle.current_mileage // interval) + 1
             prediction.next_service_km = current_interval * interval
             prediction.km_until_service = prediction.next_service_km - vehicle.current_mileage
 
-            # Geschaetzte Tage bis Service (basierend auf Fahrleistung)
+            # Geschätzte Tage bis Service (basierend auf Fahrleistung)
             if vehicle.mileage_date and vehicle.purchase_date:
                 days_since_mileage = (date.today() - vehicle.mileage_date).days
                 if days_since_mileage > 0:
-                    # Schaetze taegliche km
-                    # Hier koennte man historische Daten nutzen
+                    # Schätze tägliche km
+                    # Hier könnte man historische Daten nutzen
                     daily_km = 50  # Durchschnitt
                     days_until = prediction.km_until_service // daily_km
                     prediction.next_service_date = date.today() + timedelta(days=days_until)
@@ -700,7 +700,7 @@ class VehicleIntelligenceService:
             days_until_tuev = (vehicle.tuev_due - date.today()).days
             prediction.days_until_tuev = days_until_tuev
 
-        # Geschaetzte Kosten
+        # Geschätzte Kosten
         age_years = 0
         if vehicle.purchase_date:
             age_years = (date.today() - vehicle.purchase_date).days / 365.25
@@ -715,13 +715,13 @@ class VehicleIntelligenceService:
         # Empfehlungen
         if prediction.days_until_service is not None and prediction.days_until_service < 30:
             prediction.recommendations.append(
-                f"Service in {prediction.days_until_service} Tagen faellig - Termin vereinbaren"
+                f"Service in {prediction.days_until_service} Tagen fällig - Termin vereinbaren"
             )
 
         if prediction.days_until_tuev is not None:
             if prediction.days_until_tuev < 0:
                 prediction.recommendations.append(
-                    f"TUeV ueberfaellig seit {abs(prediction.days_until_tuev)} Tagen - DRINGEND!"
+                    f"TUeV überfällig seit {abs(prediction.days_until_tuev)} Tagen - DRINGEND!"
                 )
             elif prediction.days_until_tuev < 30:
                 prediction.recommendations.append(
@@ -731,7 +731,7 @@ class VehicleIntelligenceService:
         return prediction
 
     # =========================================================================
-    # Vollstaendige Analytics
+    # Vollständige Analytics
     # =========================================================================
 
     async def get_full_analytics(
@@ -741,7 +741,7 @@ class VehicleIntelligenceService:
         persist: bool = True,
     ) -> VehicleAnalytics:
         """
-        Berechnet alle Analytics fuer ein Fahrzeug.
+        Berechnet alle Analytics für ein Fahrzeug.
         """
         from app.db.models import PrivatVehicle
 
@@ -769,13 +769,13 @@ class VehicleIntelligenceService:
             if analytics.fuel_analysis and analytics.fuel_analysis.consumption_trend == "worsening":
                 analytics.recommendations.append(
                     f"Kraftstoffverbrauch steigt (+{analytics.fuel_analysis.trend_percent}%) - "
-                    "Wartung oder Fahrverhalten pruefen"
+                    "Wartung oder Fahrverhalten prüfen"
                 )
 
             if analytics.fuel_analysis and analytics.fuel_analysis.anomalies:
                 analytics.recommendations.append(
                     f"{len(analytics.fuel_analysis.anomalies)} Verbrauchs-Anomalien erkannt - "
-                    "Moegliche Probleme pruefen"
+                    "Mögliche Probleme prüfen"
                 )
 
             # 6. Optimaler Verkaufszeitpunkt
@@ -805,14 +805,14 @@ class VehicleIntelligenceService:
 
         # Regel: Verkaufen wenn monatliche Kosten > monatlicher Wertverlust + Grenzwert
         if tco.cost_per_month > depreciation.monthly_depreciation + Decimal("200"):
-            return date.today() + timedelta(days=90), "Betriebskosten uebersteigen Wertverlust"
+            return date.today() + timedelta(days=90), "Betriebskosten übersteigen Wertverlust"
 
         # Regel: Premium-Fahrzeuge nach 3-4 Jahren, Volume nach 5-6 Jahren
         if depreciation.vehicle_class == "premium" and age_years > 4:
-            return date.today() + timedelta(days=180), "Premium-Fahrzeug nach 4 Jahren - hoehere Wartungskosten erwartet"
+            return date.today() + timedelta(days=180), "Premium-Fahrzeug nach 4 Jahren - höhere Wartungskosten erwartet"
 
         if depreciation.vehicle_class == "volume" and age_years > 6:
-            return date.today() + timedelta(days=365), "Fahrzeug ueber 6 Jahre - erhoehtes Reparaturrisiko"
+            return date.today() + timedelta(days=365), "Fahrzeug über 6 Jahre - erhöhtes Reparaturrisiko"
 
         return None, ""
 
@@ -906,7 +906,7 @@ class VehicleIntelligenceService:
         db: AsyncSession,
         space_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
-        """Berechnet Analytics fuer alle Fahrzeuge."""
+        """Berechnet Analytics für alle Fahrzeuge."""
         from app.db.models import PrivatVehicle
 
 
@@ -960,7 +960,7 @@ _service_lock = threading.Lock()
 
 
 def get_vehicle_intelligence_service() -> VehicleIntelligenceService:
-    """Factory fuer VehicleIntelligenceService Singleton (Thread-safe)."""
+    """Factory für VehicleIntelligenceService Singleton (Thread-safe)."""
     global _vehicle_intelligence_service
     if _vehicle_intelligence_service is None:
         with _service_lock:

@@ -2,7 +2,7 @@
 Expense Service - Spesenabrechnung.
 
 Verwaltet Spesenabrechnungen mit:
-- CRUD fuer Reports und Items
+- CRUD für Reports und Items
 - Workflow (Draft -> Submitted -> Approved -> Paid)
 - Bewirtungskosten-Validierung
 - Kilometergeld- und Verpflegungspauschalen-Berechnung
@@ -43,7 +43,7 @@ from app.db.schemas import (
 logger = structlog.get_logger(__name__)
 
 
-# ==================== Konstanten fuer deutsche Steuern ====================
+# ==================== Konstanten für deutsche Steuern ====================
 
 # Kilometerpauschale (§ 9 Abs. 1 Nr. 4 EStG)
 MILEAGE_RATE_PER_KM = Decimal("0.30")  # EUR pro km
@@ -54,7 +54,7 @@ PER_DIEM_FULL_DAY_DE = Decimal("28.00")  # Ab 24 Stunden
 PER_DIEM_PARTIAL_DAY_DE = Decimal("14.00")  # 8-24 Stunden
 PER_DIEM_ARRIVAL_DEPARTURE_DE = Decimal("14.00")  # An-/Abreisetag
 
-# Kuerzung bei Mahlzeitengestellung
+# Kürzung bei Mahlzeitengestellung
 MEAL_REDUCTION_BREAKFAST = Decimal("0.20")  # 20% des Tagessatzes
 MEAL_REDUCTION_LUNCH = Decimal("0.40")  # 40%
 MEAL_REDUCTION_DINNER = Decimal("0.40")  # 40%
@@ -65,7 +65,7 @@ ENTERTAINMENT_NON_DEDUCTIBLE_RATE = Decimal("0.30")  # 30% nicht absetzbar
 
 
 class ExpenseService:
-    """Service fuer Spesenabrechnung."""
+    """Service für Spesenabrechnung."""
 
     # ==================== Report CRUD ====================
 
@@ -269,10 +269,10 @@ class ExpenseService:
         if not report:
             return None
 
-        # Nur Entwuerfe koennen bearbeitet werden
+        # Nur Entwuerfe können bearbeitet werden
         if report.status != "draft":
             raise ValueError(
-                f"Nur Entwuerfe koennen bearbeitet werden. "
+                f"Nur Entwuerfe können bearbeitet werden. "
                 f"Aktueller Status: {report.status}"
             )
 
@@ -293,7 +293,7 @@ class ExpenseService:
         report_id: UUID,
         company_id: UUID,
     ) -> bool:
-        """Loescht eine Spesenabrechnung (Soft-Delete).
+        """Löscht eine Spesenabrechnung (Soft-Delete).
 
         Args:
             db: Datenbank-Session
@@ -307,11 +307,11 @@ class ExpenseService:
         if not report:
             return False
 
-        # Nur Entwuerfe koennen geloescht werden
+        # Nur Entwuerfe können gelöscht werden
         if report.status != "draft":
             raise ValueError(
-                "Nur Entwuerfe koennen geloescht werden. "
-                "Eingereichte Abrechnungen muessen abgelehnt werden."
+                "Nur Entwuerfe können gelöscht werden. "
+                "Eingereichte Abrechnungen müssen abgelehnt werden."
             )
 
         report.deleted_at = utc_now()
@@ -352,13 +352,13 @@ class ExpenseService:
             raise ValueError("Spesenabrechnung nicht gefunden.")
 
         if report.status != "draft":
-            raise ValueError("Positionen koennen nur zu Entwuerfen hinzugefuegt werden.")
+            raise ValueError("Positionen können nur zu Entwuerfen hinzugefuegt werden.")
 
         # Validiere Bewirtungskosten
         if data.expense_type == ExpenseType.RECEIPT and data.is_entertainment:
             self._validate_entertainment_data(data.entertainment_data)
 
-        # Berechne abzugsfaehigen Betrag
+        # Berechne abzugsfähigen Betrag
         deductible_amount = data.amount
         if data.is_entertainment:
             deductible_amount = data.amount * ENTERTAINMENT_DEDUCTIBLE_RATE
@@ -434,7 +434,7 @@ class ExpenseService:
             item_id: Item-ID
             company_id: Firmen-ID
             data: Update-Daten
-            employee_id: Optional Employee-ID fuer IDOR-Schutz
+            employee_id: Optional Employee-ID für IDOR-Schutz
 
         Returns:
             Aktualisierte Position oder None
@@ -448,7 +448,7 @@ class ExpenseService:
             .where(ExpenseReport.deleted_at.is_(None))
             .with_for_update()  # SECURITY: Row Lock
         )
-        # SECURITY FIX 26-16: IDOR Protection - Employee kann nur eigene Items aendern
+        # SECURITY FIX 26-16: IDOR Protection - Employee kann nur eigene Items ändern
         if employee_id:
             query = query.where(ExpenseReport.employee_id == employee_id)
 
@@ -461,7 +461,7 @@ class ExpenseService:
         # Lade Report
         report = await self.get_report(db, item.report_id, company_id)
         if report and report.status != "draft":
-            raise ValueError("Positionen koennen nur in Entwuerfen bearbeitet werden.")
+            raise ValueError("Positionen können nur in Entwuerfen bearbeitet werden.")
 
         update_data = data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
@@ -490,7 +490,7 @@ class ExpenseService:
         item_id: UUID,
         company_id: UUID,
     ) -> bool:
-        """Loescht eine Position.
+        """Löscht eine Position.
 
         Args:
             db: Datenbank-Session
@@ -515,7 +515,7 @@ class ExpenseService:
         # Lade Report
         report = await self.get_report(db, item.report_id, company_id)
         if report and report.status != "draft":
-            raise ValueError("Positionen koennen nur aus Entwuerfen geloescht werden.")
+            raise ValueError("Positionen können nur aus Entwuerfen gelöscht werden.")
 
         await db.delete(item)
 
@@ -536,7 +536,7 @@ class ExpenseService:
         company_id: UUID,
         user_id: UUID,
     ) -> ExpenseReport:
-        """Reicht eine Spesenabrechnung zur Pruefung ein.
+        """Reicht eine Spesenabrechnung zur Prüfung ein.
 
         Args:
             db: Datenbank-Session
@@ -554,7 +554,7 @@ class ExpenseService:
         if report.status != "draft":
             raise ValueError(f"Report ist nicht im Entwurf-Status: {report.status}")
 
-        # Pruefe ob Positionen vorhanden
+        # Prüfe ob Positionen vorhanden
         if not report.items or len(report.items) == 0:
             raise ValueError("Spesenabrechnung hat keine Positionen.")
 
@@ -597,7 +597,7 @@ class ExpenseService:
             report_id: Report-ID
             company_id: Firmen-ID
             user_id: Genehmiger-ID
-            approved_amount: Optional geaenderter Betrag
+            approved_amount: Optional geänderter Betrag
             notes: Optional Notizen
 
         Returns:
@@ -698,7 +698,7 @@ class ExpenseService:
             report_id: Report-ID
             company_id: Firmen-ID
             user_id: Auszahlender
-            register_id: Optional Kassen-ID fuer Kassenbuchung
+            register_id: Optional Kassen-ID für Kassenbuchung
 
         Returns:
             Ausgezahlte Spesenabrechnung
@@ -709,7 +709,7 @@ class ExpenseService:
 
         if report.status != "approved":
             raise ValueError(
-                f"Nur genehmigte Abrechnungen koennen ausgezahlt werden: {report.status}"
+                f"Nur genehmigte Abrechnungen können ausgezahlt werden: {report.status}"
             )
 
         report.status = "paid"
@@ -767,7 +767,7 @@ class ExpenseService:
             travel_start: Reisebeginn
             travel_end: Reiseende
             meals_provided: Dict mit 'breakfast', 'lunch', 'dinner' -> True/False
-            country: Laendercode (nur DE implementiert)
+            country: Ländercode (nur DE implementiert)
 
         Returns:
             Berechnung mit Details
@@ -789,7 +789,7 @@ class ExpenseService:
             base_rate = Decimal("0.00")
             rate_type = "none"
 
-        # Berechne Kuerzungen
+        # Berechne Kürzungen
         reduction = Decimal("0.00")
         if meals_provided.get("breakfast"):
             reduction += base_rate * MEAL_REDUCTION_BREAKFAST
@@ -838,13 +838,13 @@ class ExpenseService:
     # ==================== Private Helpers ====================
 
     def _validate_entertainment_data(self, data: Optional[Dict[str, Any]]) -> None:
-        """Validiert Bewirtungsdaten fuer steuerliche Anforderungen.
+        """Validiert Bewirtungsdaten für steuerliche Anforderungen.
 
         Args:
             data: Bewirtungsdaten
 
         Raises:
-            ValueError: Bei ungueltigen Daten
+            ValueError: Bei ungültigen Daten
         """
         if not data:
             raise ValueError(
@@ -856,17 +856,17 @@ class ExpenseService:
 
         if missing:
             raise ValueError(
-                f"Folgende Pflichtangaben fuer Bewirtung fehlen: {', '.join(missing)}"
+                f"Folgende Pflichtangaben für Bewirtung fehlen: {', '.join(missing)}"
             )
 
-        # Pruefe Teilnehmer
+        # Prüfe Teilnehmer
         attendees = data.get("attendees", [])
         if not isinstance(attendees, list) or len(attendees) < 1:
             raise ValueError(
                 "Mindestens ein Teilnehmer muss angegeben werden."
             )
 
-        # Pruefe ob Gastgeber-Unternehmen angegeben
+        # Prüfe ob Gastgeber-Unternehmen angegeben
         if not data.get("host_company"):
             raise ValueError(
                 "Das bewirtende Unternehmen muss angegeben werden."
@@ -883,7 +883,7 @@ class ExpenseService:
             db: Datenbank-Session
             report: Spesenabrechnung
         """
-        # SECURITY FIX 26-15: Row Lock fuer Report vor parallelen Updates
+        # SECURITY FIX 26-15: Row Lock für Report vor parallelen Updates
         locked_result = await db.execute(
             select(ExpenseReport)
             .where(ExpenseReport.id == report.id)
@@ -891,7 +891,7 @@ class ExpenseService:
         )
         locked_report = locked_result.scalar_one_or_none()
         if not locked_report:
-            return  # Report wurde geloescht
+            return  # Report wurde gelöscht
 
         # Berechne Summen aus Items
         result = await db.execute(

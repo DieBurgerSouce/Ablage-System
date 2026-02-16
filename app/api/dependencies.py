@@ -106,9 +106,9 @@ async def set_rls_context(
     except ValueError:
         logger.warning(
             "rls_context_invalid_user_id",
-            attempted_value=str(user_id)[:50]  # Trunkiert fuer Sicherheit
+            attempted_value=str(user_id)[:50]  # Trunkiert für Sicherheit
         )
-        raise ValueError(f"Ungueltige User-ID fuer RLS-Context: {str(user_id)[:8]}...")
+        raise ValueError(f"Ungültige User-ID für RLS-Context: {str(user_id)[:8]}...")
 
     # SECURITY FIX: Use parameterized queries to prevent SQL injection
     # Previous code used f-string interpolation which was vulnerable
@@ -198,8 +198,8 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Q.1 SECURITY FIX: is_active Pruefung direkt in get_current_user()
-    # Verhindert, dass deaktivierte User mit gueltigem Token API-Calls machen
+    # Q.1 SECURITY FIX: is_active Prüfung direkt in get_current_user()
+    # Verhindert, dass deaktivierte User mit gültigem Token API-Calls machen
     if not user.is_active:
         logger.warning(
             "inactive_user_api_access_blocked",
@@ -455,11 +455,11 @@ async def check_rate_limit(
         # Bei Redis-Ausfall wird Anfrage abgelehnt statt durchgelassen
         logger.error(
             "rate_limit_redis_unavailable",
-            message="Redis nicht verfuegbar - Rate Limiting nicht moeglich"
+            message="Redis nicht verfügbar - Rate Limiting nicht möglich"
         )
         raise HTTPException(
             status_code=503,
-            detail="Sicherheitsdienst temporaer nicht verfuegbar. Bitte spaeter erneut versuchen.",
+            detail="Sicherheitsdienst temporär nicht verfügbar. Bitte später erneut versuchen.",
             headers={"Retry-After": "60"}
         )
 
@@ -531,15 +531,15 @@ async def check_ocr_rate_limit(
     # Get Redis storage
     storage = await get_redis_storage()
     if not storage or not storage.is_available:
-        # L.1 SECURITY FIX: Fail-Closed fuer OCR Rate Limiting
-        # Bei Redis-Ausfall werden OCR-Requests abgelehnt um GPU-Ueberlastung zu verhindern
+        # L.1 SECURITY FIX: Fail-Closed für OCR Rate Limiting
+        # Bei Redis-Ausfall werden OCR-Requests abgelehnt um GPU-Überlastung zu verhindern
         logger.error(
             "ocr_rate_limit_redis_unavailable",
-            message="Redis nicht verfuegbar - OCR Rate Limiting nicht moeglich"
+            message="Redis nicht verfügbar - OCR Rate Limiting nicht möglich"
         )
         raise HTTPException(
             status_code=503,
-            detail="OCR-Service temporaer nicht verfuegbar. Bitte spaeter erneut versuchen.",
+            detail="OCR-Service temporär nicht verfügbar. Bitte später erneut versuchen.",
             headers={"Retry-After": "60"}
         )
 
@@ -614,14 +614,14 @@ async def check_batch_rate_limit(
 
     storage = await get_redis_storage()
     if not storage or not storage.is_available:
-        # L.1 SECURITY FIX: Fail-Closed fuer Batch Rate Limiting
+        # L.1 SECURITY FIX: Fail-Closed für Batch Rate Limiting
         logger.error(
             "batch_rate_limit_redis_unavailable",
-            message="Redis nicht verfuegbar - Batch Rate Limiting nicht moeglich"
+            message="Redis nicht verfügbar - Batch Rate Limiting nicht möglich"
         )
         raise HTTPException(
             status_code=503,
-            detail="Batch-Service temporaer nicht verfuegbar. Bitte spaeter erneut versuchen.",
+            detail="Batch-Service temporär nicht verfügbar. Bitte später erneut versuchen.",
             headers={"Retry-After": "60"}
         )
 
@@ -851,12 +851,12 @@ async def verify_document_ownership(
         return True
 
     # Check document ownership
-    # P.2 SECURITY FIX: is_deleted Pruefung hinzugefuegt (GDPR Art. 17 Compliance)
+    # P.2 SECURITY FIX: is_deleted Prüfung hinzugefügt (GDPR Art. 17 Compliance)
     result = await db.execute(
         select(Document).where(
             Document.id == document_id,
             Document.owner_id == current_user.id,
-            Document.deleted_at.is_(None)  # P.2 FIX: Geloeschte Dokumente ausschliessen
+            Document.deleted_at.is_(None)  # P.2 FIX: Gelöschte Dokumente ausschließen
         )
     )
     document = result.scalar_one_or_none()
@@ -1012,7 +1012,7 @@ async def check_datev_export_rate_limit(
     current_user: User = Depends(get_current_active_user)
 ) -> User:
     """
-    Dependency fuer DATEV-Export-spezifisches Rate Limiting.
+    Dependency für DATEV-Export-spezifisches Rate Limiting.
 
     DATEV-Exporte sind ressourcenintensive Operationen mit ThreadPool-Execution.
     Limit: 10 Exports pro Stunde pro User (Admins: 100).
@@ -1036,14 +1036,14 @@ async def check_datev_export_rate_limit(
 
     storage = await get_redis_storage()
     if not storage or not storage.is_available:
-        # L.1 SECURITY FIX: Fail-Closed fuer DATEV-Export Rate Limiting
+        # L.1 SECURITY FIX: Fail-Closed für DATEV-Export Rate Limiting
         logger.error(
             "datev_export_rate_limit_redis_unavailable",
-            message="Redis nicht verfuegbar - DATEV-Export nicht moeglich"
+            message="Redis nicht verfügbar - DATEV-Export nicht möglich"
         )
         raise HTTPException(
             status_code=503,
-            detail="DATEV-Export temporaer nicht verfuegbar. Bitte spaeter erneut versuchen.",
+            detail="DATEV-Export temporär nicht verfügbar. Bitte später erneut versuchen.",
             headers={"Retry-After": "60"}
         )
 
@@ -1081,9 +1081,9 @@ async def require_admin(
     current_user: User = Depends(get_current_active_user)
 ) -> User:
     """
-    Dependency fuer Admin-Berechtigungspruefung.
+    Dependency für Admin-Berechtigungsprüfung.
 
-    Prueft ob der aktuelle Benutzer Admin/Superuser ist.
+    Prüft ob der aktuelle Benutzer Admin/Superuser ist.
 
     Args:
         current_user: Aktueller aktiver Benutzer
@@ -1115,16 +1115,16 @@ async def require_admin(
     return current_user
 
 
-# Alias fuer require_admin (Backwards-Kompatibilitaet)
+# Alias für require_admin (Backwards-Kompatibilität)
 get_current_admin_user = require_admin
 
 
 class RateLimitDependency:
     """
-    Konfigurierbare Rate-Limit-Dependency fuer FastAPI.
+    Konfigurierbare Rate-Limit-Dependency für FastAPI.
 
-    Ermoeglicht das Erstellen von benutzerdefinierten Rate-Limits
-    fuer verschiedene Endpunkte mit individuellen Limits und Zeitfenstern.
+    Ermöglicht das Erstellen von benutzerdefinierten Rate-Limits
+    für verschiedene Endpunkte mit individuellen Limits und Zeitfenstern.
 
     Usage:
         # In Router-Datei:
@@ -1148,7 +1148,7 @@ class RateLimitDependency:
 
         Args:
             requests_per_hour: Maximale Anfragen pro Stunde
-            key_prefix: Prefix fuer den Redis-Key
+            key_prefix: Prefix für den Redis-Key
         """
         self.requests_per_hour = requests_per_hour
         self.key_prefix = key_prefix
@@ -1160,7 +1160,7 @@ class RateLimitDependency:
         current_user: User = Depends(get_current_active_user),
     ) -> User:
         """
-        Prueft das Rate-Limit fuer den aktuellen Benutzer.
+        Prüft das Rate-Limit für den aktuellen Benutzer.
 
         Args:
             request: FastAPI Request-Objekt
@@ -1170,7 +1170,7 @@ class RateLimitDependency:
             Benutzer wenn innerhalb des Limits
 
         Raises:
-            HTTPException: Wenn Rate-Limit ueberschritten
+            HTTPException: Wenn Rate-Limit überschritten
         """
         from app.core.rate_limiting import (
             get_redis_storage,
@@ -1182,7 +1182,7 @@ class RateLimitDependency:
         # Request in Metriken erfassen
         rate_limit_metrics.record_request()
 
-        # Whitelist pruefen
+        # Whitelist prüfen
         ip = get_remote_address(request)
         if ip_whitelist.is_whitelisted(ip):
             rate_limit_metrics.record_whitelisted()
@@ -1191,15 +1191,15 @@ class RateLimitDependency:
         # Redis-Speicher holen
         storage = await get_redis_storage()
         if not storage or not storage.is_available:
-            # L.1 SECURITY FIX: Fail-Closed fuer RateLimitDependency
+            # L.1 SECURITY FIX: Fail-Closed für RateLimitDependency
             logger.error(
                 "rate_limit_dependency_redis_unavailable",
                 key_prefix=self.key_prefix,
-                message="Redis nicht verfuegbar - Rate-Limit nicht pruefbar"
+                message="Redis nicht verfügbar - Rate-Limit nicht prüfbar"
             )
             raise HTTPException(
                 status_code=503,
-                detail="Service temporaer nicht verfuegbar. Bitte spaeter erneut versuchen.",
+                detail="Service temporär nicht verfügbar. Bitte später erneut versuchen.",
                 headers={"Retry-After": "60"}
             )
 
@@ -1207,7 +1207,7 @@ class RateLimitDependency:
         if current_user.is_superuser:
             return current_user
 
-        # Rate-Limit pruefen
+        # Rate-Limit prüfen
         key = f"{self.key_prefix}:{current_user.id}:{self.window}"
         current_count = await storage.increment(key, self.window)
 
@@ -1215,8 +1215,8 @@ class RateLimitDependency:
             rate_limit_metrics.record_rate_limited()
             raise HTTPException(
                 status_code=429,
-                detail=f"Ratenlimit ueberschritten ({self.requests_per_hour} Anfragen/Stunde). "
-                       f"Bitte versuchen Sie es spaeter erneut.",
+                detail=f"Ratenlimit überschritten ({self.requests_per_hour} Anfragen/Stunde). "
+                       f"Bitte versuchen Sie es später erneut.",
                 headers={"Retry-After": str(self.window)},
             )
 

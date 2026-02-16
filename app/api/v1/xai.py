@@ -526,7 +526,7 @@ async def submit_explanation_feedback(
 
 
 class AggregatedFactorResponse(BaseModel):
-    """Ein Faktor einer aggregierten KI-Erklaerung."""
+    """Ein Faktor einer aggregierten KI-Erklärung."""
 
     name: str = Field(..., description="Faktor-Name")
     value: str = Field(..., description="Faktor-Wert")
@@ -535,7 +535,7 @@ class AggregatedFactorResponse(BaseModel):
 
 
 class AggregatedExplanationResponse(BaseModel):
-    """Aggregierte KI-Erklaerung fuer ein Dokument oder eine Entity."""
+    """Aggregierte KI-Erklärung für ein Dokument oder eine Entity."""
 
     decision_type: str = Field(..., description="Entscheidungstyp")
     service_name: str = Field(..., description="Name des KI-Services")
@@ -572,26 +572,26 @@ class AggregatedExplanationResponse(BaseModel):
 
 
 class DocumentExplanationsResponse(BaseModel):
-    """Alle KI-Erklaerungen fuer ein Dokument."""
+    """Alle KI-Erklärungen für ein Dokument."""
 
     document_id: str = Field(..., description="Dokument-ID")
     total_explanations: int = Field(
-        ..., description="Anzahl Erklaerungen"
+        ..., description="Anzahl Erklärungen"
     )
     explanations: List[AggregatedExplanationResponse] = Field(
-        default=[], description="KI-Erklaerungen"
+        default=[], description="KI-Erklärungen"
     )
 
 
 class EntityExplanationsResponse(BaseModel):
-    """Alle KI-Erklaerungen fuer eine Entity."""
+    """Alle KI-Erklärungen für eine Entity."""
 
     entity_id: str = Field(..., description="Entity-ID")
     total_explanations: int = Field(
-        ..., description="Anzahl Erklaerungen"
+        ..., description="Anzahl Erklärungen"
     )
     explanations: List[AggregatedExplanationResponse] = Field(
-        default=[], description="KI-Erklaerungen"
+        default=[], description="KI-Erklärungen"
     )
 
 
@@ -603,7 +603,7 @@ class EntityExplanationsResponse(BaseModel):
 @router.get(
     "/document/{document_id}",
     response_model=DocumentExplanationsResponse,
-    summary="Alle KI-Erklaerungen fuer ein Dokument",
+    summary="Alle KI-Erklärungen für ein Dokument",
 )
 @limiter.limit("60/minute")
 async def get_document_explanations(
@@ -613,7 +613,7 @@ async def get_document_explanations(
     current_user: User = Depends(get_current_active_user),
 ) -> DocumentExplanationsResponse:
     """
-    Sammelt und aggregiert alle KI-Erklaerungen fuer ein Dokument.
+    Sammelt und aggregiert alle KI-Erklärungen für ein Dokument.
 
     Beantwortet Fragen wie:
     - Welches Tag wurde zugewiesen und warum?
@@ -622,7 +622,7 @@ async def get_document_explanations(
     - Welcher Buchungsvorschlag und warum?
 
     Returns:
-        DocumentExplanationsResponse mit allen Erklaerungen
+        DocumentExplanationsResponse mit allen Erklärungen
     """
     try:
         collector = ExplanationCollector(db)
@@ -664,14 +664,14 @@ async def get_document_explanations(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="KI-Erklaerungen konnten nicht abgerufen werden",
+            detail="KI-Erklärungen konnten nicht abgerufen werden",
         )
 
 
 @router.get(
     "/entity/{entity_id}",
     response_model=EntityExplanationsResponse,
-    summary="Alle KI-Erklaerungen fuer eine Entity",
+    summary="Alle KI-Erklärungen für eine Entity",
 )
 @limiter.limit("60/minute")
 async def get_entity_explanations(
@@ -681,14 +681,14 @@ async def get_entity_explanations(
     current_user: User = Depends(get_current_active_user),
 ) -> EntityExplanationsResponse:
     """
-    Sammelt und aggregiert alle KI-Erklaerungen fuer eine Entity.
+    Sammelt und aggregiert alle KI-Erklärungen für eine Entity.
 
     Zeigt Risikobewertungen, Mahnempfehlungen und andere
-    KI-Entscheidungen, die fuer diesen Geschaeftspartner
+    KI-Entscheidungen, die für diesen Geschäftspartner
     getroffen wurden.
 
     Returns:
-        EntityExplanationsResponse mit allen Erklaerungen
+        EntityExplanationsResponse mit allen Erklärungen
     """
     try:
         collector = ExplanationCollector(db)
@@ -730,5 +730,5 @@ async def get_entity_explanations(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Entity-Erklaerungen konnten nicht abgerufen werden",
+            detail="Entity-Erklärungen konnten nicht abgerufen werden",
         )

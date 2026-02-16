@@ -2,7 +2,7 @@
 """
 Autonomy Framework database models for Ablage-System.
 
-Ermoeglicht Persistierung von:
+Ermöglicht Persistierung von:
 - Action-Queue (Genehmigungs-Warteschlange)
 - Autonomie-Einstellungen pro Company/User
 - Autonomie-Entscheidungs-Logs
@@ -10,7 +10,7 @@ Ermoeglicht Persistierung von:
 
 Vision 2.0 Phase 3 - Autonomie-Framework
 
-Feinpoliert und durchdacht - Deutsche Praezision.
+Feinpoliert und durchdacht - Deutsche Präzision.
 """
 
 import uuid
@@ -43,8 +43,8 @@ from app.db.models import Base, CrossDBJSON
 
 
 class AutonomyLevelEnum(str, Enum):
-    """Autonomie-Stufen fuer das System."""
-    CONSERVATIVE = "conservative"      # Level 1: Immer Bestaetigung
+    """Autonomie-Stufen für das System."""
+    CONSERVATIVE = "conservative"      # Level 1: Immer Bestätigung
     SMART_HYBRID = "smart_hybrid"      # Level 2: 95%+ auto
     PROGRESSIVE = "progressive"        # Level 3: Routine auto
     ZERO_TOUCH = "zero_touch"          # Level 4: Alles auto
@@ -57,7 +57,7 @@ class ActionCategoryEnum(str, Enum):
     MODIFICATION = "modification"      # Datenmodifikation
     NOTIFICATION = "notification"      # Benachrichtigungen
     FINANCIAL = "financial"            # Finanzielle Aktionen
-    DELETION = "deletion"              # Loeschungen
+    DELETION = "deletion"              # Löschungen
     EXTERNAL = "external"              # Externe Systeme
     LEGAL = "legal"                    # Rechtlich relevant
     COMPLIANCE = "compliance"          # Hoechstes Risiko
@@ -75,9 +75,9 @@ class PendingActionStatus(str, Enum):
 
 class RoutingDecision(str, Enum):
     """Routing-Entscheidung basierend auf Confidence."""
-    AUTO_EXECUTE = "auto_execute"      # Direkt ausfuehren
-    SUGGEST_AND_CONFIRM = "suggest_and_confirm"  # Vorschlagen + Bestaetigung
-    MANUAL_REVIEW = "manual_review"    # Manuelle Pruefung
+    AUTO_EXECUTE = "auto_execute"      # Direkt ausführen
+    SUGGEST_AND_CONFIRM = "suggest_and_confirm"  # Vorschlagen + Bestätigung
+    MANUAL_REVIEW = "manual_review"    # Manuelle Prüfung
 
 
 # =============================================================================
@@ -90,7 +90,7 @@ class AutonomySettings(Base):
     Autonomie-Einstellungen pro Company.
 
     Definiert das Autonomie-Level und Kategorie-spezifische
-    Einstellungen fuer die automatische Aktionsausfuehrung.
+    Einstellungen für die automatische Aktionsausführung.
     """
     __tablename__ = "autonomy_settings"
 
@@ -130,7 +130,7 @@ class AutonomySettings(Base):
         Float,
         nullable=False,
         default=0.95,
-        comment="Ueber diesem Wert: Auto-Execute (wenn erlaubt)"
+        comment="Über diesem Wert: Auto-Execute (wenn erlaubt)"
     )
 
     # Timeout-Einstellungen
@@ -138,7 +138,7 @@ class AutonomySettings(Base):
         Integer,
         nullable=False,
         default=24,
-        comment="Standard-Timeout fuer ausstehende Aktionen"
+        comment="Standard-Timeout für ausstehende Aktionen"
     )
     auto_approve_on_timeout = Column(
         Boolean,
@@ -165,12 +165,12 @@ class AutonomySettings(Base):
         Boolean,
         nullable=False,
         default=False,
-        comment="Vier-Augen-Prinzip fuer kritische Aktionen"
+        comment="Vier-Augen-Prinzip für kritische Aktionen"
     )
     dual_approval_categories = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Kategorien die Dual-Approval benoetigen"
+        comment="Kategorien die Dual-Approval benötigen"
     )
 
     # Limits
@@ -182,7 +182,7 @@ class AutonomySettings(Base):
     max_single_action_value = Column(
         Float,
         nullable=True,
-        comment="Max. Wert fuer Auto-Execute (Finanzaktionen)"
+        comment="Max. Wert für Auto-Execute (Finanzaktionen)"
     )
 
     # Timestamps
@@ -223,7 +223,7 @@ class AutonomySettings(Base):
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),
@@ -281,7 +281,7 @@ class PendingAction(Base):
     detailed_description = Column(
         Text,
         nullable=True,
-        comment="Ausfuehrliche Beschreibung fuer Review"
+        comment="Ausführliche Beschreibung für Review"
     )
 
     # Status
@@ -306,7 +306,7 @@ class PendingAction(Base):
     reason = Column(
         Text,
         nullable=True,
-        comment="Begruendung fuer die Routing-Entscheidung"
+        comment="Begruendung für die Routing-Entscheidung"
     )
 
     # Aktionsdetails
@@ -319,12 +319,12 @@ class PendingAction(Base):
     affected_entities = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Betroffene Entitaeten (Dokumente, Kunden, etc.)"
+        comment="Betroffene Entitäten (Dokumente, Kunden, etc.)"
     )
     estimated_impact = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Geschaetzte Auswirkungen der Aktion"
+        comment="Geschätzte Auswirkungen der Aktion"
     )
 
     # Quell-Information
@@ -357,12 +357,12 @@ class PendingAction(Base):
     )
     second_approved_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Ausfuehrung
+    # Ausführung
     executed_at = Column(DateTime(timezone=True), nullable=True)
     execution_result = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Ergebnis der Ausfuehrung"
+        comment="Ergebnis der Ausführung"
     )
     execution_error = Column(Text, nullable=True)
 
@@ -373,12 +373,12 @@ class PendingAction(Base):
         comment="Ablaufzeitpunkt"
     )
 
-    # Prioritaet
+    # Priorität
     priority = Column(
         Integer,
         nullable=False,
         default=50,
-        comment="Prioritaet (0=niedrig, 100=hoch)"
+        comment="Priorität (0=niedrig, 100=hoch)"
     )
 
     # Timestamps
@@ -422,11 +422,11 @@ class PendingAction(Base):
             "confidence >= 0.0 AND confidence <= 1.0",
             name="ck_pending_confidence_range"
         ),
-        {"comment": "Ausstehende Aktionen fuer Genehmigung"}
+        {"comment": "Ausstehende Aktionen für Genehmigung"}
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),
@@ -459,7 +459,7 @@ class AutonomyDecisionLog(Base):
     """
     Protokoll von Autonomie-Entscheidungen.
 
-    Speichert alle Routing-Entscheidungen fuer
+    Speichert alle Routing-Entscheidungen für
     Audit, Analyse und ML-Training.
     """
     __tablename__ = "autonomy_decision_logs"
@@ -522,12 +522,12 @@ class AutonomyDecisionLog(Base):
     decision_time_ms = Column(
         Integer,
         nullable=True,
-        comment="Zeit fuer Routing-Entscheidung in ms"
+        comment="Zeit für Routing-Entscheidung in ms"
     )
     execution_time_ms = Column(
         Integer,
         nullable=True,
-        comment="Zeit fuer Ausfuehrung in ms (wenn auto)"
+        comment="Zeit für Ausführung in ms (wenn auto)"
     )
 
     # Timestamp
@@ -549,7 +549,7 @@ class AutonomyDecisionLog(Base):
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),
@@ -575,9 +575,9 @@ class AutonomyDecisionLog(Base):
 
 class AutonomyMetrics(Base):
     """
-    Aggregierte Metriken fuer Autonomie-Performance.
+    Aggregierte Metriken für Autonomie-Performance.
 
-    Speichert taegliche Zusammenfassungen fuer
+    Speichert tägliche Zusammenfassungen für
     Dashboard und Trend-Analyse.
     """
     __tablename__ = "autonomy_metrics"
@@ -628,7 +628,7 @@ class AutonomyMetrics(Base):
     false_positive_rate = Column(
         Float,
         nullable=True,
-        comment="Rate der ueberfluessigen Reviews"
+        comment="Rate der überfluessigen Reviews"
     )
 
     # Kategorien-Aufschluesselung
@@ -665,7 +665,7 @@ class AutonomyMetrics(Base):
     )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),

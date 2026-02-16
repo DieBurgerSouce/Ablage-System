@@ -74,6 +74,8 @@ export interface SmartSearchResponse {
     total: number;
     search_time_ms: number;
     search_mode: 'nlq' | 'keyword';
+    /** Rechtschreibkorrektur-Vorschlag vom Backend (optional) */
+    spelling_suggestion?: string;
 }
 
 export interface AutocompleteResult {
@@ -148,6 +150,7 @@ interface SmartSearchResponseBackend {
     total: number;
     search_time_ms: number;
     search_mode: string;
+    spelling_suggestion?: string;
 }
 
 interface AutocompleteResultBackend {
@@ -228,6 +231,7 @@ function transformSmartSearchResponse(response: SmartSearchResponseBackend): Sma
         total: response.total,
         search_time_ms: response.search_time_ms,
         search_mode: response.search_mode as 'nlq' | 'keyword',
+        spelling_suggestion: response.spelling_suggestion,
     };
 }
 

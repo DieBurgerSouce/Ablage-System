@@ -1,6 +1,6 @@
-"""API Endpoints fuer E-Mail und Ordner Import.
+"""API Endpoints für E-Mail und Ordner Import.
 
-Stellt REST-Endpoints bereit fuer:
+Stellt REST-Endpoints bereit für:
 - Email-Import-Konfigurationen
 - Folder-Import-Konfigurationen
 - Import-Regeln
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/imports", tags=["imports"])
 # --- Email Config Schemas ---
 
 class EmailConfigCreate(BaseModel):
-    """Schema fuer Email-Config-Erstellung."""
+    """Schema für Email-Config-Erstellung."""
     name: str = Field(..., min_length=1, max_length=255)
     imap_server: str = Field(..., min_length=1, max_length=255)
     imap_port: int = Field(default=993, ge=1, le=65535)
@@ -62,7 +62,7 @@ class EmailConfigCreate(BaseModel):
 
 
 class EmailConfigUpdate(BaseModel):
-    """Schema fuer Email-Config-Update."""
+    """Schema für Email-Config-Update."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     imap_server: Optional[str] = Field(None, min_length=1, max_length=255)
     imap_port: Optional[int] = Field(None, ge=1, le=65535)
@@ -86,7 +86,7 @@ class EmailConfigUpdate(BaseModel):
 
 
 class EmailConfigResponse(BaseModel):
-    """Schema fuer Email-Config-Response."""
+    """Schema für Email-Config-Response."""
     id: UUID
     name: str
     imap_server: str
@@ -120,7 +120,7 @@ class EmailConfigResponse(BaseModel):
 
 
 class EmailConfigListResponse(BaseModel):
-    """Schema fuer Email-Config-Liste."""
+    """Schema für Email-Config-Liste."""
     id: UUID
     name: str
     imap_server: str
@@ -134,7 +134,7 @@ class EmailConfigListResponse(BaseModel):
 # --- Folder Config Schemas ---
 
 class FolderConfigCreate(BaseModel):
-    """Schema fuer Folder-Config-Erstellung."""
+    """Schema für Folder-Config-Erstellung."""
     name: str = Field(..., min_length=1, max_length=255)
     watch_path: str = Field(..., min_length=1, max_length=1000)
     is_network_path: bool = False
@@ -155,7 +155,7 @@ class FolderConfigCreate(BaseModel):
 
 
 class FolderConfigUpdate(BaseModel):
-    """Schema fuer Folder-Config-Update."""
+    """Schema für Folder-Config-Update."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     watch_path: Optional[str] = Field(None, min_length=1, max_length=1000)
     is_network_path: Optional[bool] = None
@@ -176,7 +176,7 @@ class FolderConfigUpdate(BaseModel):
 
 
 class FolderConfigResponse(BaseModel):
-    """Schema fuer Folder-Config-Response."""
+    """Schema für Folder-Config-Response."""
     id: UUID
     name: str
     watch_path: str
@@ -208,7 +208,7 @@ class FolderConfigResponse(BaseModel):
 
 
 class FolderConfigListResponse(BaseModel):
-    """Schema fuer Folder-Config-Liste."""
+    """Schema für Folder-Config-Liste."""
     id: UUID
     name: str
     watch_path: str
@@ -221,20 +221,20 @@ class FolderConfigListResponse(BaseModel):
 # --- Import Rule Schemas ---
 
 class RuleConditionSchema(BaseModel):
-    """Schema fuer eine einzelne Regel-Bedingung."""
+    """Schema für eine einzelne Regel-Bedingung."""
     field: str
     operator: str
     value: Optional[str] = None
 
 
 class RuleConditionsSchema(BaseModel):
-    """Schema fuer Bedingungs-Struktur."""
+    """Schema für Bedingungs-Struktur."""
     operator: str = "AND"
     rules: List[RuleConditionSchema]
 
 
 class RuleCreate(BaseModel):
-    """Schema fuer Regel-Erstellung."""
+    """Schema für Regel-Erstellung."""
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
     priority: int = Field(default=100, ge=1, le=1000)
@@ -247,7 +247,7 @@ class RuleCreate(BaseModel):
 
 
 class RuleUpdate(BaseModel):
-    """Schema fuer Regel-Update."""
+    """Schema für Regel-Update."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     priority: Optional[int] = Field(None, ge=1, le=1000)
@@ -260,7 +260,7 @@ class RuleUpdate(BaseModel):
 
 
 class RuleResponse(BaseModel):
-    """Schema fuer Regel-Response."""
+    """Schema für Regel-Response."""
     id: UUID
     name: str
     description: Optional[str]
@@ -280,7 +280,7 @@ class RuleResponse(BaseModel):
 
 
 class RuleListResponse(BaseModel):
-    """Schema fuer Regel-Liste."""
+    """Schema für Regel-Liste."""
     id: UUID
     name: str
     priority: int
@@ -291,12 +291,12 @@ class RuleListResponse(BaseModel):
 
 
 class RuleReorderRequest(BaseModel):
-    """Schema fuer Regel-Umordnung."""
+    """Schema für Regel-Umordnung."""
     priorities: List[dict]  # [{"rule_id": UUID, "priority": int}, ...]
 
 
 class RuleTestRequest(BaseModel):
-    """Schema fuer Regel-Test."""
+    """Schema für Regel-Test."""
     metadata: dict
     source_type: str = "email"
 
@@ -304,7 +304,7 @@ class RuleTestRequest(BaseModel):
 # --- Import Log Schemas ---
 
 class ImportLogResponse(BaseModel):
-    """Schema fuer Import-Log-Response."""
+    """Schema für Import-Log-Response."""
     id: UUID
     user_id: UUID
     source_type: str
@@ -334,7 +334,7 @@ class ImportLogResponse(BaseModel):
 
 
 class ImportStatsResponse(BaseModel):
-    """Schema fuer Import-Statistiken."""
+    """Schema für Import-Statistiken."""
     total_imports: int
     successful_imports: int
     failed_imports: int
@@ -441,7 +441,7 @@ async def delete_email_config(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Loescht eine Email-Import-Konfiguration."""
+    """Löscht eine Email-Import-Konfiguration."""
     service = EmailImportService(db)
     success = await service.delete_config(config_id, current_user.id)
 
@@ -451,7 +451,7 @@ async def delete_email_config(
             detail="Konfiguration nicht gefunden"
         )
 
-    return {"message": "Konfiguration geloescht"}
+    return {"message": "Konfiguration gelöscht"}
 
 
 @router.post("/email/configs/{config_id}/test")
@@ -473,7 +473,7 @@ async def sync_email_config(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Fuehrt manuellen Email-Sync durch."""
+    """Führt manuellen Email-Sync durch."""
     service = EmailImportService(db)
     result = await service.sync_emails(
         config_id=config_id,
@@ -598,7 +598,7 @@ async def delete_folder_config(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Loescht eine Folder-Import-Konfiguration."""
+    """Löscht eine Folder-Import-Konfiguration."""
     service = FolderImportService(db)
     success = await service.delete_config(config_id, current_user.id)
 
@@ -608,7 +608,7 @@ async def delete_folder_config(
             detail="Konfiguration nicht gefunden"
         )
 
-    return {"message": "Konfiguration geloescht"}
+    return {"message": "Konfiguration gelöscht"}
 
 
 @router.post("/folder/configs/{config_id}/start")
@@ -641,7 +641,7 @@ async def poll_folder(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Fuehrt manuellen Folder-Scan durch."""
+    """Führt manuellen Folder-Scan durch."""
     service = FolderImportService(db)
     result = await service.poll_folder(config_id, current_user.id)
 
@@ -754,7 +754,7 @@ async def delete_import_rule(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Loescht eine Import-Regel."""
+    """Löscht eine Import-Regel."""
     service = ImportRuleService(db)
     success = await service.delete_rule(rule_id, current_user.id)
 
@@ -764,7 +764,7 @@ async def delete_import_rule(
             detail="Regel nicht gefunden"
         )
 
-    return {"message": "Regel geloescht"}
+    return {"message": "Regel gelöscht"}
 
 
 @router.post("/rules/reorder")
@@ -773,7 +773,7 @@ async def reorder_import_rules(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Aendert die Prioritaeten mehrerer Regeln."""
+    """Ändert die Prioritaeten mehrerer Regeln."""
     service = ImportRuleService(db)
 
     priorities = [
@@ -826,7 +826,7 @@ async def test_all_import_rules(
 async def get_rule_fields(
     current_user: User = Depends(get_current_user),
 ):
-    """Gibt verfuegbare Bedingungs-Felder zurueck."""
+    """Gibt verfügbare Bedingungs-Felder zurück."""
     return ImportRuleService.get_available_fields()
 
 
@@ -834,7 +834,7 @@ async def get_rule_fields(
 async def get_rule_operators(
     current_user: User = Depends(get_current_user),
 ):
-    """Gibt verfuegbare Operatoren zurueck."""
+    """Gibt verfügbare Operatoren zurück."""
     return ImportRuleService.get_available_operators()
 
 
@@ -842,7 +842,7 @@ async def get_rule_operators(
 async def get_rule_actions(
     current_user: User = Depends(get_current_user),
 ):
-    """Gibt verfuegbare Aktionen zurueck."""
+    """Gibt verfügbare Aktionen zurück."""
     return ImportRuleService.get_available_actions()
 
 
@@ -945,7 +945,7 @@ async def retry_failed_import(
             detail="Nur fehlgeschlagene Imports können wiederholt werden"
         )
 
-    # Retry-Logik (wird ueber Celery Task implementiert)
+    # Retry-Logik (wird über Celery Task implementiert)
     from app.workers.tasks.import_tasks import retry_import_task
 
     retry_import_task.delay(str(log_id))
@@ -1026,7 +1026,7 @@ async def get_import_stats(
         )
         source_counts[source] = count_result.scalar() or 0
 
-    # Imports nach Tag fuer Chart-Daten (letzte 30 Tage)
+    # Imports nach Tag für Chart-Daten (letzte 30 Tage)
     imports_by_day_result = await db.execute(
         select(
             func.date(ImportLog.started_at).label("date"),

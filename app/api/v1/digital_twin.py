@@ -33,14 +33,14 @@ router = APIRouter(prefix="/digital-twin", tags=["Digital Twin"])
     "",
     response_model=Dict[str, Any],
     summary="Digital Twin Snapshot abrufen",
-    description="Vollstaendiger 360° Schnappschuss des Unternehmens mit allen Metriken und Trends.",
+    description="Vollständiger 360° Schnappschuss des Unternehmens mit allen Metriken und Trends.",
 )
 async def get_digital_twin_snapshot(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
     """
-    Ruft vollstaendigen Digital Twin Snapshot ab.
+    Ruft vollständigen Digital Twin Snapshot ab.
 
     Returns:
         Digital Twin Snapshot mit allen Sektionen
@@ -113,7 +113,7 @@ async def get_digital_twin_section(
     if section not in valid_sections:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltige Sektion. Erlaubt: {', '.join(valid_sections)}",
+            detail=f"Ungültige Sektion. Erlaubt: {', '.join(valid_sections)}",
         )
 
     try:

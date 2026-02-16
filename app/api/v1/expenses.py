@@ -2,7 +2,7 @@
 Expense API Endpoints - Spesenabrechnung.
 
 Verwaltet Spesenabrechnungen:
-- CRUD fuer Reports und Items
+- CRUD für Reports und Items
 - Workflow-Endpunkte (Einreichen, Genehmigen, Ablehnen, Auszahlen)
 - Berechnungs-Endpunkte (Kilometergeld, Verpflegungspauschale)
 
@@ -70,7 +70,7 @@ expense_service = ExpenseService()
     "",
     response_model=ExpenseReportListResponse,
     summary="Spesenabrechnungen auflisten",
-    description="Gibt alle Spesenabrechnungen mit optionaler Filterung zurueck."
+    description="Gibt alle Spesenabrechnungen mit optionaler Filterung zurück."
 )
 async def list_reports(
     request: Request,
@@ -136,7 +136,7 @@ async def create_report(
     "/{report_id}",
     response_model=ExpenseReportResponse,
     summary="Spesenabrechnung abrufen",
-    description="Gibt Details einer Spesenabrechnung zurueck."
+    description="Gibt Details einer Spesenabrechnung zurück."
 )
 async def get_report(
     report_id: UUID,
@@ -145,7 +145,7 @@ async def get_report(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> ExpenseReportResponse:
-    """Gibt eine Spesenabrechnung zurueck."""
+    """Gibt eine Spesenabrechnung zurück."""
 
     report = await expense_service.get_report(
         db=db,
@@ -190,7 +190,7 @@ async def update_report(
         logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     if not report:
@@ -206,8 +206,8 @@ async def update_report(
     "/{report_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Spesenabrechnung loeschen",
-    description="Loescht eine Spesenabrechnung (nur Entwuerfe)."
+    summary="Spesenabrechnung löschen",
+    description="Löscht eine Spesenabrechnung (nur Entwuerfe)."
 )
 async def delete_report(
     report_id: UUID,
@@ -216,7 +216,7 @@ async def delete_report(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> Response:
-    """Loescht eine Spesenabrechnung."""
+    """Löscht eine Spesenabrechnung."""
 
     try:
         success = await expense_service.delete_report(
@@ -229,7 +229,7 @@ async def delete_report(
         logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     if not success:
@@ -274,7 +274,7 @@ async def add_item(
         logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     return _map_item_to_response(item)
@@ -308,7 +308,7 @@ async def update_item(
         logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     if not item:
@@ -324,8 +324,8 @@ async def update_item(
     "/{item_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Position loeschen",
-    description="Loescht eine Position (nur in Entwuerfen)."
+    summary="Position löschen",
+    description="Löscht eine Position (nur in Entwuerfen)."
 )
 async def delete_item(
     item_id: UUID,
@@ -334,7 +334,7 @@ async def delete_item(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> Response:
-    """Loescht eine Position."""
+    """Löscht eine Position."""
 
     try:
         success = await expense_service.delete_item(
@@ -347,7 +347,7 @@ async def delete_item(
         logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     if not success:
@@ -365,7 +365,7 @@ async def delete_item(
     "/{report_id}/submit",
     response_model=ExpenseReportResponse,
     summary="Spesenabrechnung einreichen",
-    description="Reicht eine Spesenabrechnung zur Pruefung ein."
+    description="Reicht eine Spesenabrechnung zur Prüfung ein."
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)  # SECURITY FIX 30
 async def submit_report(
@@ -389,7 +389,7 @@ async def submit_report(
         logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     return _map_report_to_response(report)
@@ -426,7 +426,7 @@ async def approve_report(
         logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     return _map_report_to_response(report)
@@ -462,7 +462,7 @@ async def reject_report(
         logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     return _map_report_to_response(report)
@@ -499,7 +499,7 @@ async def pay_report(
         logger.warning("expense_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
     return _map_report_to_response(report)

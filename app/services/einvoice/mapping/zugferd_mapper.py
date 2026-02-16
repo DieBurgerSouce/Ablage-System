@@ -5,7 +5,7 @@ ZUGFeRD Mapper - Bidirektionale Konvertierung.
 Konvertiert zwischen:
 - ExtractedInvoiceData (Pydantic) <-> ZUGFeRD XML (factur-x)
 
-Unterstuetzte Profile:
+Unterstützte Profile:
 - MINIMUM, BASIC, BASIC_WL, EN16931, EXTENDED, XRECHNUNG
 
 Referenz: ZUGFeRD 2.3.3 / Factur-X 1.0
@@ -23,7 +23,7 @@ from lxml import etree
 
 # R.1 SECURITY FIX: Sicherer XMLParser gegen XXE-Angriffe
 # - resolve_entities=False: Externe Entities werden nicht aufgeloest
-# - no_network=True: Kein Netzwerkzugriff fuer DTDs/Schemas
+# - no_network=True: Kein Netzwerkzugriff für DTDs/Schemas
 # - load_dtd=False: DTD wird nicht geladen (verhindert Billion Laughs)
 SECURE_XML_PARSER = etree.XMLParser(
     resolve_entities=False,
@@ -146,7 +146,7 @@ class ZUGFeRDMapper:
             - Dict: Metadaten (format, profile, version, xml_hash)
 
         Raises:
-            ValueError: Bei ungueltigem XML
+            ValueError: Bei ungültigem XML
         """
         if isinstance(xml_content, str):
             xml_content = xml_content.encode("utf-8")
@@ -155,7 +155,7 @@ class ZUGFeRDMapper:
             # R.1 SECURITY FIX: Sicherer Parser gegen XXE-Angriffe
             root = etree.fromstring(xml_content, parser=SECURE_XML_PARSER)
         except etree.XMLSyntaxError as e:
-            raise ValueError(f"Ungueltiges XML: {e}")
+            raise ValueError(f"Ungültiges XML: {e}")
 
         # Metadaten extrahieren
         metadata = self._extract_metadata(root, xml_content)
@@ -268,7 +268,7 @@ class ZUGFeRDMapper:
             ns
         ))
 
-        # Buyer (Empfaenger)
+        # Buyer (Empfänger)
         buyer_party = root.find(
             ".//ram:ApplicableHeaderTradeAgreement/ram:BuyerTradeParty",
             ns
@@ -296,7 +296,7 @@ class ZUGFeRDMapper:
             settlement, ".//ram:GrandTotalAmount"
         ) if settlement is not None else None
 
-        # Waehrung
+        # Währung
         currency_code = self._get_text(
             root, ".//ram:ApplicableHeaderTradeSettlement/ram:InvoiceCurrencyCode"
         )
@@ -321,7 +321,7 @@ class ZUGFeRDMapper:
             main_tax = max(tax_breakdown, key=lambda t: t.taxable_amount)
             vat_rate = main_tax.tax_rate
 
-        # Faelligkeitsdatum
+        # Fälligkeitsdatum
         due_date = self._parse_date(
             root, ".//ram:ApplicableHeaderTradeSettlement/ram:SpecifiedTradePaymentTerms/ram:DueDateDateTime/udt:DateTimeString"
         )
@@ -366,7 +366,7 @@ class ZUGFeRDMapper:
             sender_tax_number=sender_tax_number,
             sender_bank=sender_bank,
 
-            # Empfaenger
+            # Empfänger
             recipient=recipient,
             recipient_vat_id=recipient_vat_id,
 
@@ -584,7 +584,7 @@ class ZUGFeRDMapper:
             errors.append("Bruttobetrag (gross_amount) fehlt")
 
         if profile == "XRECHNUNG" and not invoice.buyer_reference:
-            errors.append("Leitweg-ID (buyer_reference) fehlt - Pflicht fuer XRechnung")
+            errors.append("Leitweg-ID (buyer_reference) fehlt - Pflicht für XRechnung")
 
         if errors:
             raise ValueError(f"Validierungsfehler: {', '.join(errors)}")
@@ -1074,7 +1074,7 @@ _zugferd_mapper_instance: Optional[ZUGFeRDMapper] = None
 
 def get_zugferd_mapper() -> ZUGFeRDMapper:
     """
-    Factory-Funktion fuer ZUGFeRDMapper (Singleton).
+    Factory-Funktion für ZUGFeRDMapper (Singleton).
 
     Returns:
         ZUGFeRDMapper: Globale Mapper-Instanz

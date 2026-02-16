@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """Papierkorb (Trash) API - Soft Delete Management.
 
-Benutzerfreundliche Schnittstelle fuer:
-- Geloeschte Dokumente auflisten
+Benutzerfreundliche Schnittstelle für:
+- Gelöschte Dokumente auflisten
 - Dokumente wiederherstellen
-- Dokumente permanent loeschen
+- Dokumente permanent löschen
 
 GDPR-konform mit 30-Tage-Wiederherstellungsfrist.
 """
@@ -48,15 +48,15 @@ class TrashStatsResponse(BaseModel):
         ..., description="Laufen in 7 Tagen ab"
     )
     storage_used_bytes: int = Field(
-        0, description="Speicherplatz der geloeschten Dokumente"
+        0, description="Speicherplatz der gelöschten Dokumente"
     )
 
 
 class PermanentDeleteResponse(BaseModel):
-    """Response nach permanenter Loeschung."""
+    """Response nach permanenter Löschung."""
 
     document_id: UUID
-    message: str = "Dokument wurde permanent geloescht"
+    message: str = "Dokument wurde permanent gelöscht"
 
 
 class EmptyTrashResponse(BaseModel):
@@ -75,7 +75,7 @@ class EmptyTrashResponse(BaseModel):
     "",
     response_model=DeletedDocumentsListResponse,
     summary="Papierkorb auflisten",
-    description="Listet alle soft-geloeschten Dokumente des aktuellen Benutzers auf.",
+    description="Listet alle soft-gelöschten Dokumente des aktuellen Benutzers auf.",
 )
 async def list_trash(
     db: AsyncSession = Depends(get_db),
@@ -83,13 +83,13 @@ async def list_trash(
 ) -> DeletedDocumentsListResponse:
     """Alle Dokumente im Papierkorb auflisten.
 
-    Zeigt geloeschte Dokumente mit:
-    - Loeschdatum
-    - Verbleibende Tage bis zur permanenten Loeschung
+    Zeigt gelöschte Dokumente mit:
+    - Löschdatum
+    - Verbleibende Tage bis zur permanenten Löschung
     - Wiederherstellbarkeit
 
     Returns:
-        DeletedDocumentsListResponse mit allen geloeschten Dokumenten
+        DeletedDocumentsListResponse mit allen gelöschten Dokumenten
     """
     service = get_gdpr_service()
     result = await service.list_deleted_documents(db=db, user_id=current_user.id)
@@ -107,7 +107,7 @@ async def list_trash(
     "/stats",
     response_model=TrashStatsResponse,
     summary="Papierkorb-Statistiken",
-    description="Gibt Statistiken ueber den Papierkorb zurueck.",
+    description="Gibt Statistiken über den Papierkorb zurück.",
 )
 async def get_trash_stats(
     db: AsyncSession = Depends(get_db),
@@ -150,14 +150,14 @@ async def get_trash_stats(
 @router.get(
     "/{document_id}",
     summary="Dokument-Details im Papierkorb",
-    description="Gibt Details zu einem geloeschten Dokument zurueck.",
+    description="Gibt Details zu einem gelöschten Dokument zurück.",
 )
 async def get_trash_item(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    """Details eines geloeschten Dokuments abrufen.
+    """Details eines gelöschten Dokuments abrufen.
 
     Args:
         document_id: ID des Dokuments
@@ -192,16 +192,16 @@ async def get_trash_item(
     "/{document_id}/restore",
     response_model=RestoreDocumentResponse,
     summary="Dokument wiederherstellen",
-    description="Stellt ein soft-geloeschtes Dokument wieder her.",
+    description="Stellt ein soft-gelöschtes Dokument wieder her.",
 )
 async def restore_document(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> RestoreDocumentResponse:
-    """Soft-geloeschtes Dokument wiederherstellen.
+    """Soft-gelöschtes Dokument wiederherstellen.
 
-    Nur moeglich innerhalb der 30-Tage-Frist.
+    Nur möglich innerhalb der 30-Tage-Frist.
 
     Args:
         document_id: ID des wiederherzustellenden Dokuments
@@ -244,20 +244,20 @@ async def restore_document(
 @router.delete(
     "/{document_id}",
     response_model=PermanentDeleteResponse,
-    summary="Dokument permanent loeschen",
-    description="Loescht ein Dokument permanent aus dem Papierkorb.",
+    summary="Dokument permanent löschen",
+    description="Löscht ein Dokument permanent aus dem Papierkorb.",
 )
 async def permanently_delete_document(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> PermanentDeleteResponse:
-    """Dokument permanent aus dem Papierkorb loeschen.
+    """Dokument permanent aus dem Papierkorb löschen.
 
-    ACHTUNG: Diese Aktion kann nicht rueckgaengig gemacht werden!
+    ACHTUNG: Diese Aktion kann nicht rückgängig gemacht werden!
 
     Args:
-        document_id: ID des zu loeschenden Dokuments
+        document_id: ID des zu löschenden Dokuments
 
     Returns:
         PermanentDeleteResponse bei Erfolg
@@ -268,7 +268,7 @@ async def permanently_delete_document(
     from app.db.models import Document
     from sqlalchemy import select, and_
 
-    # Nur geloeschte Dokumente des Benutzers finden
+    # Nur gelöschte Dokumente des Benutzers finden
     query = select(Document).where(
         and_(
             Document.id == document_id,
@@ -301,25 +301,25 @@ async def permanently_delete_document(
     "",
     response_model=EmptyTrashResponse,
     summary="Papierkorb leeren",
-    description="Loescht alle Dokumente im Papierkorb permanent.",
+    description="Löscht alle Dokumente im Papierkorb permanent.",
 )
 async def empty_trash(
     only_expired: bool = Query(
         False,
-        description="Nur abgelaufene Dokumente loeschen (>30 Tage)",
+        description="Nur abgelaufene Dokumente löschen (>30 Tage)",
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EmptyTrashResponse:
     """Papierkorb leeren.
 
-    ACHTUNG: Diese Aktion kann nicht rueckgaengig gemacht werden!
+    ACHTUNG: Diese Aktion kann nicht rückgängig gemacht werden!
 
     Args:
-        only_expired: Wenn True, nur >30 Tage alte Dokumente loeschen
+        only_expired: Wenn True, nur >30 Tage alte Dokumente löschen
 
     Returns:
-        EmptyTrashResponse mit Anzahl geloeschter Dokumente
+        EmptyTrashResponse mit Anzahl gelöschter Dokumente
     """
     from datetime import datetime, timezone, timedelta
     from app.db.models import Document
@@ -334,13 +334,13 @@ async def empty_trash(
         cutoff = datetime.now(timezone.utc) - timedelta(days=30)
         conditions.append(Document.deleted_at < cutoff)
 
-    # Zaehlen vor dem Loeschen
+    # Zaehlen vor dem Löschen
     count_query = select(Document).where(and_(*conditions))
     result = await db.execute(count_query)
     docs = result.scalars().all()
     count = len(docs)
 
-    # Loeschen
+    # Löschen
     for doc in docs:
         await db.delete(doc)
 
@@ -356,5 +356,5 @@ async def empty_trash(
 
     return EmptyTrashResponse(
         deleted_count=count,
-        message=f"{count} {action} wurden permanent geloescht",
+        message=f"{count} {action} wurden permanent gelöscht",
     )

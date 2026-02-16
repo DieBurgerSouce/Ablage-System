@@ -2,7 +2,7 @@
 Abstract Base Class for ERP Connectors.
 
 Enterprise-Level ERP-Abstraktion:
-- Einheitliche Schnittstelle fuer alle ERP-Systeme
+- Einheitliche Schnittstelle für alle ERP-Systeme
 - Sync-Richtungen (Push/Pull/Bidirektional)
 - Connection Pooling und Rate Limiting
 - Retry-Logik und Circuit Breaker
@@ -41,7 +41,7 @@ class ERPConnectionStatus(str, Enum):
 
 
 class ERPEntity(str, Enum):
-    """Synchronisierbare Entitaeten."""
+    """Synchronisierbare Entitäten."""
     CUSTOMER = "customer"  # Kunden
     SUPPLIER = "supplier"  # Lieferanten
     INVOICE = "invoice"  # Rechnungen
@@ -53,7 +53,7 @@ class ERPEntity(str, Enum):
 
 @dataclass
 class ERPConnectionConfig:
-    """Konfiguration fuer ERP-Verbindung."""
+    """Konfiguration für ERP-Verbindung."""
 
     # Identifikation
     id: Optional[UUID] = None
@@ -65,7 +65,7 @@ class ERPConnectionConfig:
     url: str = ""
     database: str = ""
     username: str = ""
-    api_key: str = ""  # Wird verschluesselt gespeichert
+    api_key: str = ""  # Wird verschlüsselt gespeichert
 
     # Sync-Einstellungen
     sync_direction: ERPSyncDirection = ERPSyncDirection.BIDIRECTIONAL
@@ -124,7 +124,7 @@ class ERPSyncResult:
     failed_records: List[Dict[str, Any]] = field(default_factory=list)
     sync_id: Optional[str] = None
 
-    # Die tatsaechlichen Datensaetze (fuer _fetch_remote)
+    # Die tatsaechlichen Datensätze (für _fetch_remote)
     records: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -189,12 +189,12 @@ T = TypeVar("T")
 
 class ERPConnector(ABC, Generic[T]):
     """
-    Abstrakte Basisklasse fuer ERP-Connectoren.
+    Abstrakte Basisklasse für ERP-Connectoren.
 
     Implementierungen:
     - OdooConnector: Odoo ERP (XML-RPC API)
     - LexwareConnector: Lexware (CSV-basiert, geplant)
-    - SAPConnector: SAP Business One (optional, spaeter)
+    - SAPConnector: SAP Business One (optional, später)
 
     Usage:
         config = ERPConnectionConfig(
@@ -217,7 +217,7 @@ class ERPConnector(ABC, Generic[T]):
         self._last_error: Optional[str] = None
         self._request_count = 0
         self._rate_limit_reset: Optional[datetime] = None
-        self._rate_limit_lock = threading.Lock()  # Thread-Safety fuer Rate Limiting
+        self._rate_limit_lock = threading.Lock()  # Thread-Safety für Rate Limiting
 
         logger.info(
             "erp_connector_initialized",
@@ -228,21 +228,21 @@ class ERPConnector(ABC, Generic[T]):
 
     @property
     def status(self) -> ERPConnectionStatus:
-        """Gibt den aktuellen Verbindungsstatus zurueck."""
+        """Gibt den aktuellen Verbindungsstatus zurück."""
         return self._status
 
     @property
     def last_error(self) -> Optional[str]:
-        """Gibt die letzte Fehlermeldung zurueck."""
+        """Gibt die letzte Fehlermeldung zurück."""
         return self._last_error
 
     @property
     def erp_type(self) -> str:
-        """Gibt den ERP-Typ zurueck."""
+        """Gibt den ERP-Typ zurück."""
         return self.config.erp_type
 
     # ==========================================================================
-    # Abstract Methods - Muessen von Subklassen implementiert werden
+    # Abstract Methods - Müssen von Subklassen implementiert werden
     # ==========================================================================
 
     @abstractmethod
@@ -273,7 +273,7 @@ class ERPConnector(ABC, Generic[T]):
     @abstractmethod
     async def get_version(self) -> str:
         """
-        Gibt die Version des ERP-Systems zurueck.
+        Gibt die Version des ERP-Systems zurück.
 
         Returns:
             Versionsstring
@@ -296,7 +296,7 @@ class ERPConnector(ABC, Generic[T]):
 
         Args:
             direction: Sync-Richtung
-            since: Nur Aenderungen seit diesem Zeitpunkt
+            since: Nur Änderungen seit diesem Zeitpunkt
             batch_size: Anzahl pro Batch
 
         Returns:
@@ -360,7 +360,7 @@ class ERPConnector(ABC, Generic[T]):
 
         Args:
             direction: Sync-Richtung
-            since: Nur Aenderungen seit diesem Zeitpunkt
+            since: Nur Änderungen seit diesem Zeitpunkt
             batch_size: Anzahl pro Batch
 
         Returns:
@@ -399,7 +399,7 @@ class ERPConnector(ABC, Generic[T]):
 
         Args:
             direction: Sync-Richtung
-            since: Nur Aenderungen seit diesem Zeitpunkt
+            since: Nur Änderungen seit diesem Zeitpunkt
             batch_size: Anzahl pro Batch
 
         Returns:
@@ -448,11 +448,11 @@ class ERPConnector(ABC, Generic[T]):
         mime_type: str,
     ) -> bool:
         """
-        Haengt ein Dokument an eine ERP-Entitaet an.
+        Haengt ein Dokument an eine ERP-Entität an.
 
         Args:
-            entity: Entitaetstyp (INVOICE, CUSTOMER, etc.)
-            erp_id: ID der Entitaet im ERP
+            entity: Entitätstyp (INVOICE, CUSTOMER, etc.)
+            erp_id: ID der Entität im ERP
             document_data: Dokumentinhalt als Bytes
             filename: Dateiname
             mime_type: MIME-Typ
@@ -469,11 +469,11 @@ class ERPConnector(ABC, Generic[T]):
         erp_id: str,
     ) -> List[Dict[str, Any]]:
         """
-        Holt Anhaenge einer ERP-Entitaet.
+        Holt Anhaenge einer ERP-Entität.
 
         Args:
-            entity: Entitaetstyp
-            erp_id: ID der Entitaet
+            entity: Entitätstyp
+            erp_id: ID der Entität
 
         Returns:
             Liste der Anhaenge mit Metadaten
@@ -491,12 +491,12 @@ class ERPConnector(ABC, Generic[T]):
         remote_records: List[Dict[str, Any]],
     ) -> List[ERPConflict]:
         """
-        Erkennt Konflikte zwischen lokalen und Remote-Datensaetzen.
+        Erkennt Konflikte zwischen lokalen und Remote-Datensätzen.
 
         Args:
-            entity: Entitaetstyp
-            local_records: Lokale Datensaetze
-            remote_records: Remote-Datensaetze
+            entity: Entitätstyp
+            local_records: Lokale Datensätze
+            remote_records: Remote-Datensätze
 
         Returns:
             Liste erkannter Konflikte
@@ -604,7 +604,7 @@ class ERPConnector(ABC, Generic[T]):
 
     def _check_rate_limit(self) -> bool:
         """
-        Prueft ob Rate Limit erreicht ist (Thread-Safe).
+        Prüft ob Rate Limit erreicht ist (Thread-Safe).
 
         Returns:
             True wenn Request erlaubt
@@ -654,7 +654,7 @@ class ERPConnector(ABC, Generic[T]):
         )
 
     def _complete_sync_result(self, result: ERPSyncResult) -> ERPSyncResult:
-        """Vervollstaendigt das Sync-Ergebnis mit Timing."""
+        """Vervollständigt das Sync-Ergebnis mit Timing."""
         result.completed_at = utc_now()
         if result.started_at:
             result.duration_seconds = (

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Document Progress Service fuer Ablage-System.
+Document Progress Service für Ablage-System.
 
-Live-Status-Tracker fuer Dokumente im DHL-Tracking-Stil.
+Live-Status-Tracker für Dokumente im DHL-Tracking-Stil.
 
 Zeigt Echtzeit-Fortschritt:
-Hochgeladen -> OCR laeuft (43%) -> Extraktion -> Pruefung -> Fertig
+Hochgeladen -> OCR laeuft (43%) -> Extraktion -> Prüfung -> Fertig
 
 Feinpoliert und durchdacht - Enterprise Document Progress Tracking.
 """
@@ -40,7 +40,7 @@ PROCESSING_STEPS: List[Tuple[str, str]] = [
     ("fertig", "Fertig"),
 ]
 
-# Mapping fuer schnellen Zugriff
+# Mapping für schnellen Zugriff
 STEP_LABELS: Dict[str, str] = dict(PROCESSING_STEPS)
 STEP_ORDER: Dict[str, int] = {step: idx for idx, (step, _) in enumerate(PROCESSING_STEPS)}
 TOTAL_STEPS = len(PROCESSING_STEPS)
@@ -51,7 +51,7 @@ TOTAL_STEPS = len(PROCESSING_STEPS)
 # =============================================================================
 
 class DocumentProgressService:
-    """Live-Status-Tracker fuer Dokumente - DHL-Tracking-Stil."""
+    """Live-Status-Tracker für Dokumente - DHL-Tracking-Stil."""
 
     async def create_tracker(
         self,
@@ -59,7 +59,7 @@ class DocumentProgressService:
         document_id: UUID,
         company_id: UUID,
     ) -> DocumentProgressTracker:
-        """Neuen Progress-Tracker fuer ein Dokument erstellen.
+        """Neuen Progress-Tracker für ein Dokument erstellen.
 
         Args:
             db: Async Datenbank-Session
@@ -189,7 +189,7 @@ class DocumentProgressService:
             tracker.completed_at = now
             tracker.progress_percent = 100.0
 
-        # Geschaetzte Fertigstellungszeit berechnen
+        # Geschätzte Fertigstellungszeit berechnen
         tracker.estimated_completion = self._estimate_completion(
             step, steps_completed, now,
         )
@@ -231,15 +231,15 @@ class DocumentProgressService:
         company_id: UUID,
         batch_id: Optional[UUID] = None,
     ) -> Dict[str, object]:
-        """Batch-Fortschritt: Gesamtfortschritt + geschaetzte Restzeit + Fehler.
+        """Batch-Fortschritt: Gesamtfortschritt + geschätzte Restzeit + Fehler.
 
         Args:
             db: Async Datenbank-Session
             company_id: Firmen-ID
-            batch_id: Optionale Batch-ID fuer spezifischen Batch
+            batch_id: Optionale Batch-ID für spezifischen Batch
 
         Returns:
-            Batch-Fortschritts-Uebersicht
+            Batch-Fortschritts-Übersicht
         """
         logger.info(
             "document_progress.get_batch_progress",
@@ -259,7 +259,7 @@ class DocumentProgressService:
             if batch_tracker:
                 return batch_tracker.to_dict()
 
-        # Ansonsten: Gesamtuebersicht aus DocumentProgressTracker
+        # Ansonsten: Gesamtübersicht aus DocumentProgressTracker
         step_counts_stmt = (
             select(
                 DocumentProgressTracker.current_step,
@@ -303,7 +303,7 @@ class DocumentProgressService:
         avg_result = await db.execute(avg_time_stmt)
         avg_seconds = avg_result.scalar()
 
-        # Geschaetzte Restzeit
+        # Geschätzte Restzeit
         estimated_remaining_seconds: Optional[float] = None
         if avg_seconds and in_progress > 0:
             estimated_remaining_seconds = round(float(avg_seconds) * in_progress, 1)
@@ -420,7 +420,7 @@ class DocumentProgressService:
                 ((processed + failed) / tracker.total_documents) * 100, 1,
             )
 
-        # Zeitschaetzung
+        # Zeitschätzung
         elapsed = (now - tracker.started_at).total_seconds() if tracker.started_at else 0
         done = processed + failed
         if done > 0 and elapsed > 0:
@@ -428,7 +428,7 @@ class DocumentProgressService:
             avg_per_doc = elapsed / done
             tracker.estimated_remaining_seconds = int(avg_per_doc * remaining)
 
-        # Fertigstellung pruefen
+        # Fertigstellung prüfen
         if done >= tracker.total_documents:
             tracker.completed_at = now
             tracker.progress_percent = 100.0
@@ -446,10 +446,10 @@ class DocumentProgressService:
 
         Args:
             db: Async Datenbank-Session
-            older_than_days: Alter in Tagen ab dem geloescht wird
+            older_than_days: Alter in Tagen ab dem gelöscht wird
 
         Returns:
-            Anzahl geloeschter Tracker
+            Anzahl gelöschter Tracker
         """
         cutoff = utc_now() - timedelta(days=older_than_days)
 
@@ -495,7 +495,7 @@ class DocumentProgressService:
         steps_completed: List[Dict[str, str]],
         now: datetime,
     ) -> Optional[datetime]:
-        """Geschaetzte Fertigstellungszeit basierend auf bisheriger Dauer.
+        """Geschätzte Fertigstellungszeit basierend auf bisheriger Dauer.
 
         Args:
             current_step: Aktueller Verarbeitungsschritt
@@ -503,7 +503,7 @@ class DocumentProgressService:
             now: Aktuelle Zeit
 
         Returns:
-            Geschaetzte Fertigstellungszeit oder None
+            Geschätzte Fertigstellungszeit oder None
         """
         if current_step in ("fertig", "fehler"):
             return None

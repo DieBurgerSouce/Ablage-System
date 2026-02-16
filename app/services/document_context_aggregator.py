@@ -2,7 +2,7 @@
 """Document Context Aggregator Service.
 
 Aggregiert Cross-Module Kontext (Risk, Chains, Payments, Skonto, Pending Actions)
-fuer ein einzelnes Dokument in einer Response.
+für ein einzelnes Dokument in einer Response.
 """
 
 import asyncio
@@ -35,7 +35,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class EntityContext:
-    """Entitaets-Kontext mit Risk-Scoring."""
+    """Entitäts-Kontext mit Risk-Scoring."""
     id: str
     name: str
     entity_type: str  # "customer" oder "supplier"
@@ -93,7 +93,7 @@ class RelatedDocument:
 
 @dataclass
 class DocumentContext:
-    """Aggregierter Cross-Module Kontext fuer ein Dokument."""
+    """Aggregierter Cross-Module Kontext für ein Dokument."""
     entity: Optional[EntityContext] = None
     chain: Optional[ChainContext] = None
     payment: Optional[PaymentContext] = None
@@ -106,23 +106,23 @@ class DocumentContext:
 # ============================================================================
 
 class DocumentContextAggregatorService:
-    """Aggregiert Cross-Module Kontext fuer ein Dokument."""
+    """Aggregiert Cross-Module Kontext für ein Dokument."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
 
     async def get_context(self, document_id: UUID, company_id: UUID) -> DocumentContext:
         """
-        Aggregiert Kontext fuer ein Dokument.
+        Aggregiert Kontext für ein Dokument.
 
-        Alle Sub-Queries laufen parallel fuer optimale Performance.
+        Alle Sub-Queries laufen parallel für optimale Performance.
 
         Args:
             document_id: Dokument-ID
             company_id: Company-ID des aktuellen Benutzers
 
         Returns:
-            DocumentContext mit allen verfuegbaren Kontextinformationen
+            DocumentContext mit allen verfügbaren Kontextinformationen
         """
         # Zuerst Dokument laden um Entity-Referenz zu erhalten
         doc = await self._load_document(document_id, company_id)
@@ -130,7 +130,7 @@ class DocumentContextAggregatorService:
             logger.warning("document_not_found", document_id=str(document_id))
             return DocumentContext()
 
-        # Alle Kontext-Sammlungen parallel ausfuehren
+        # Alle Kontext-Sammlungen parallel ausführen
         entity_ctx, chain_ctx, payment_ctx, related, actions = await asyncio.gather(
             self._get_entity_context(doc),
             self._get_chain_context(document_id, company_id),
@@ -140,7 +140,7 @@ class DocumentContextAggregatorService:
             return_exceptions=True,
         )
 
-        # Exceptions gracefully behandeln - loggen und None/empty zurueckgeben
+        # Exceptions gracefully behandeln - loggen und None/empty zurückgeben
         result = DocumentContext()
 
         if isinstance(entity_ctx, EntityContext):
@@ -188,7 +188,7 @@ class DocumentContextAggregatorService:
 
     async def _get_entity_context(self, doc: Document) -> Optional[EntityContext]:
         """
-        Laedt Entitaets-Kontext mit Risk-Scoring.
+        Laedt Entitäts-Kontext mit Risk-Scoring.
 
         Risk-Score wird aus dem JSONB-Feld der BusinessEntity gelesen.
         Risk-Level wird basierend auf Schwellenwerten berechnet:
@@ -246,13 +246,13 @@ class DocumentContextAggregatorService:
         """
         Laedt Auftragsketten-Kontext.
 
-        Versucht eine Kette ueber den DocumentChainService zu finden.
-        Falls keine Kette gefunden wird, werden Default-Werte zurueckgegeben.
+        Versucht eine Kette über den DocumentChainService zu finden.
+        Falls keine Kette gefunden wird, werden Default-Werte zurückgegeben.
         """
         try:
             chain_service = DocumentChainService(self.db)
 
-            # Versuche Kette fuer dieses Dokument zu finden
+            # Versuche Kette für dieses Dokument zu finden
             chain = await chain_service.get_chain_for_document(
                 document_id=document_id,
                 company_id=company_id
@@ -289,8 +289,8 @@ class DocumentContextAggregatorService:
         """
         Laedt Zahlungs-Kontext mit Skonto-Informationen.
 
-        Prueft InvoiceTracking fuer Zahlungsinformationen und
-        SkontoService fuer Skonto-Daten.
+        Prüft InvoiceTracking für Zahlungsinformationen und
+        SkontoService für Skonto-Daten.
         """
         try:
             # InvoiceTracking laden
@@ -321,7 +321,7 @@ class DocumentContextAggregatorService:
             if tracking.paid_amount is not None:
                 paid_amount = Decimal(str(tracking.paid_amount))
 
-            # Ueberfaelligkeitstage berechnen
+            # Überfälligkeitstage berechnen
             if tracking.due_date and status in ["open", "overdue"]:
                 from app.core.datetime_utils import utc_now
                 now = utc_now()
@@ -386,7 +386,7 @@ class DocumentContextAggregatorService:
                 select(Document)
                 .where(Document.business_entity_id == doc.business_entity_id)
                 .where(Document.company_id == company_id)
-                .where(Document.id != doc.id)  # Aktuelles Dokument ausschliessen
+                .where(Document.id != doc.id)  # Aktuelles Dokument ausschließen
                 .order_by(Document.created_at.desc())
                 .limit(10)
             )
@@ -411,8 +411,8 @@ class DocumentContextAggregatorService:
         """
         Laedt ausstehende Orchestrierungs-Aktionen.
 
-        Wenn der Orchestrator verfuegbar ist, werden ausstehende Aktionen
-        fuer die Entitaet des Dokuments abgerufen.
+        Wenn der Orchestrator verfügbar ist, werden ausstehende Aktionen
+        für die Entität des Dokuments abgerufen.
         """
         if not doc.business_entity_id:
             return []
@@ -420,7 +420,7 @@ class DocumentContextAggregatorService:
         try:
             orchestrator = CrossModuleOrchestrator.get_instance()
 
-            # Hole ausstehende Aktionen fuer diese Entitaet
+            # Hole ausstehende Aktionen für diese Entität
             all_pending = orchestrator.get_pending_actions()
 
             # Filtere nach target_entity_id
@@ -443,6 +443,6 @@ class DocumentContextAggregatorService:
             ]
 
         except Exception as e:
-            # Orchestrator koennte nicht initialisiert sein
+            # Orchestrator könnte nicht initialisiert sein
             logger.info("pending_actions_unavailable", error=str(e))
             return []

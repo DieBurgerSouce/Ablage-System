@@ -2,10 +2,10 @@
 """
 Retention Admin API Endpoints - GoBD Aufbewahrungsfristen Verwaltung.
 
-REST API fuer Administratoren zur Konfiguration der GoBD-konformen Aufbewahrungsfristen:
+REST API für Administratoren zur Konfiguration der GoBD-konformen Aufbewahrungsfristen:
 - Retention Settings pro Kategorie konfigurieren
 - Auto-Delete und Approval-Flags verwalten
-- Uebersicht ueber anstehende Loeschungen
+- Übersicht über anstehende Löschungen
 - Warning Days und Grace Periods anpassen
 
 Feinpoliert und durchdacht - Enterprise GoBD Compliance.
@@ -47,11 +47,11 @@ class RetentionSettingUpdate(BaseModel):
     )
     auto_delete_enabled: bool = Field(
         default=False,
-        description="Automatische Loeschung nach Ablauf aktivieren"
+        description="Automatische Löschung nach Ablauf aktivieren"
     )
     requires_approval_for_delete: bool = Field(
         default=True,
-        description="Admin-Freigabe vor Loeschung erforderlich"
+        description="Admin-Freigabe vor Löschung erforderlich"
     )
     retention_years: int = Field(
         default=10,
@@ -63,18 +63,18 @@ class RetentionSettingUpdate(BaseModel):
         default=90,
         ge=1,
         le=365,
-        description="Tage vor Ablauf fuer Erinnerung"
+        description="Tage vor Ablauf für Erinnerung"
     )
     grace_period_days: int = Field(
         default=30,
         ge=0,
         le=180,
-        description="Kulanzfrist nach Ablauf vor automatischer Loeschung"
+        description="Kulanzfrist nach Ablauf vor automatischer Löschung"
     )
 
 
 class RetentionSettingResponse(BaseModel):
-    """Schema fuer Retention-Setting Rueckgabe."""
+    """Schema für Retention-Setting Rückgabe."""
 
     id: UUID
     category: str
@@ -89,7 +89,7 @@ class RetentionSettingResponse(BaseModel):
 
 
 class UpcomingDeletionItem(BaseModel):
-    """Schema fuer anstehende Loeschungen."""
+    """Schema für anstehende Löschungen."""
 
     archive_id: UUID
     document_id: UUID
@@ -101,7 +101,7 @@ class UpcomingDeletionItem(BaseModel):
 
 
 class UpcomingDeletionsResponse(BaseModel):
-    """Response mit Liste anstehender Loeschungen."""
+    """Response mit Liste anstehender Löschungen."""
 
     total_count: int
     items: List[UpcomingDeletionItem]
@@ -126,7 +126,7 @@ async def get_retention_config(
     current_user: User = Depends(get_current_superuser),
 ) -> List[RetentionSettingResponse]:
     """
-    Ruft alle Retention Settings fuer die Firma des aktuellen Admin-Users ab.
+    Ruft alle Retention Settings für die Firma des aktuellen Admin-Users ab.
 
     Args:
         db: Database Session
@@ -136,7 +136,7 @@ async def get_retention_config(
         Liste aller Retention-Konfigurationen
     """
     try:
-        # Alle RetentionSettings fuer die Company des Users laden
+        # Alle RetentionSettings für die Company des Users laden
         stmt = select(RetentionSetting).where(
             RetentionSetting.company_id == current_user.company_id
         ).order_by(RetentionSetting.category)
@@ -174,7 +174,7 @@ async def get_retention_config(
     "/config",
     response_model=RetentionSettingResponse,
     summary="Retention-Einstellung aktualisieren",
-    description="Erstellt oder aktualisiert die Retention-Konfiguration fuer eine Kategorie"
+    description="Erstellt oder aktualisiert die Retention-Konfiguration für eine Kategorie"
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def update_retention_config(
@@ -195,7 +195,7 @@ async def update_retention_config(
         Aktualisierte Retention-Konfiguration
     """
     try:
-        # Pruefen ob bereits existiert
+        # Prüfen ob bereits existiert
         stmt = select(RetentionSetting).where(
             and_(
                 RetentionSetting.category == config.category,
@@ -230,7 +230,7 @@ async def update_retention_config(
             new_setting = RetentionSetting(
                 category=config.category,
                 display_name=config.category.replace("_", " ").title(),
-                description=f"Aufbewahrungsfrist fuer {config.category}",
+                description=f"Aufbewahrungsfrist für {config.category}",
                 retention_years=config.retention_years,
                 auto_delete_enabled=config.auto_delete_enabled,
                 requires_approval_for_delete=config.requires_approval_for_delete,
@@ -265,14 +265,14 @@ async def update_retention_config(
 
 
 # =============================================================================
-# GET UPCOMING-DELETIONS - Anstehende Loeschungen auflisten
+# GET UPCOMING-DELETIONS - Anstehende Löschungen auflisten
 # =============================================================================
 
 
 @router.get(
     "/upcoming-deletions",
     response_model=UpcomingDeletionsResponse,
-    summary="Anstehende Loeschungen auflisten",
+    summary="Anstehende Löschungen auflisten",
     description="Zeigt Dokumente an, deren Aufbewahrungsfrist bald ablaeuft"
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
@@ -282,13 +282,13 @@ async def get_upcoming_deletions(
         default=30,
         ge=1,
         le=365,
-        description="Tage im Voraus pruefen"
+        description="Tage im Voraus prüfen"
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
 ) -> UpcomingDeletionsResponse:
     """
-    Listet alle Dokumente auf, deren Aufbewahrungsfrist in den naechsten X Tagen ablaeuft.
+    Listet alle Dokumente auf, deren Aufbewahrungsfrist in den nächsten X Tagen ablaeuft.
 
     Args:
         days_ahead: Anzahl Tage im Voraus (default: 30)
@@ -296,13 +296,13 @@ async def get_upcoming_deletions(
         current_user: Aktueller Admin-User
 
     Returns:
-        Liste anstehender Loeschungen
+        Liste anstehender Löschungen
     """
     try:
         today = date.today()
         threshold_date = today + timedelta(days=days_ahead)
 
-        # DocumentArchive Eintraege finden, die in der Zeitspanne ablaufen
+        # DocumentArchive Einträge finden, die in der Zeitspanne ablaufen
         stmt = select(DocumentArchive).where(
             and_(
                 DocumentArchive.company_id == current_user.company_id,
@@ -314,11 +314,11 @@ async def get_upcoming_deletions(
         result = await db.execute(stmt)
         archives = result.scalars().all()
 
-        # Fuer jedes Archiv die entsprechende RetentionSetting laden
+        # Für jedes Archiv die entsprechende RetentionSetting laden
         items: List[UpcomingDeletionItem] = []
 
         for archive in archives:
-            # RetentionSetting fuer diese Kategorie laden
+            # RetentionSetting für diese Kategorie laden
             setting_stmt = select(RetentionSetting).where(
                 and_(
                     RetentionSetting.category == archive.retention_category,
@@ -363,5 +363,5 @@ async def get_upcoming_deletions(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail("Fehler beim Abrufen anstehender Loeschungen", e)
+            detail=safe_error_detail("Fehler beim Abrufen anstehender Löschungen", e)
         )

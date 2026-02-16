@@ -1,8 +1,8 @@
-"""Ollama Service fuer lokale LLM Integration.
+"""Ollama Service für lokale LLM Integration.
 
-Enterprise Feature: On-Premises KI ohne Cloud-Abhaengigkeiten mit:
-- Named Entity Recognition (NER) fuer deutsche Texte
-- Vertragsanalyse (Laufzeiten, Kuendigungsfristen)
+Enterprise Feature: On-Premises KI ohne Cloud-Abhängigkeiten mit:
+- Named Entity Recognition (NER) für deutsche Texte
+- Vertragsanalyse (Laufzeiten, Kündigungsfristen)
 - Dokumentenkategorisierung
 - Textextraktion und -zusammenfassung
 """
@@ -24,13 +24,13 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class OllamaConfig:
-    """Konfiguration fuer Ollama Service."""
+    """Konfiguration für Ollama Service."""
 
     base_url: str = "http://localhost:11434"
     default_model: str = "mistral"
     timeout: float = 120.0
     max_retries: int = 3
-    temperature: float = 0.1  # Niedrig fuer konsistente Ergebnisse
+    temperature: float = 0.1  # Niedrig für konsistente Ergebnisse
 
 
 @dataclass
@@ -68,10 +68,10 @@ class ContractAnalysis:
 
 
 class OllamaService:
-    """Service fuer lokale LLM-Integration mit Ollama.
+    """Service für lokale LLM-Integration mit Ollama.
 
-    Verwendet lokale Sprachmodelle fuer NER, Vertragsanalyse
-    und Dokumentenkategorisierung - komplett ohne Cloud-Abhaengigkeiten.
+    Verwendet lokale Sprachmodelle für NER, Vertragsanalyse
+    und Dokumentenkategorisierung - komplett ohne Cloud-Abhängigkeiten.
     """
 
     def __init__(self, config: Optional[OllamaConfig] = None) -> None:
@@ -111,13 +111,13 @@ class OllamaService:
         return self._client
 
     async def close(self) -> None:
-        """Schliesst den HTTP-Client."""
+        """Schließt den HTTP-Client."""
         if self._client:
             await self._client.aclose()
             self._client = None
 
     async def is_available(self) -> bool:
-        """Prueft ob Ollama verfuegbar ist.
+        """Prüft ob Ollama verfügbar ist.
 
         Returns:
             True wenn Ollama laeuft
@@ -127,11 +127,11 @@ class OllamaService:
             response = await client.get("/api/tags")
             return response.status_code == 200
         except Exception as e:
-            logger.warning(f"Ollama nicht verfuegbar: {e}")
+            logger.warning(f"Ollama nicht verfügbar: {e}")
             return False
 
     async def list_models(self) -> list[str]:
-        """Listet alle verfuegbaren Modelle.
+        """Listet alle verfügbaren Modelle.
 
         Returns:
             Liste der Modellnamen
@@ -161,7 +161,7 @@ class OllamaService:
             prompt: Der Benutzer-Prompt
             model: Modellname (Standard: default_model)
             system_prompt: Optionaler System-Prompt
-            temperature: Temperatur fuer Sampling
+            temperature: Temperatur für Sampling
             format_json: JSON-Ausgabe erzwingen
 
         Returns:
@@ -219,29 +219,29 @@ class OllamaService:
             text: Der zu analysierende Text
 
         Returns:
-            ExtractedEntities mit allen gefundenen Entitaeten
+            ExtractedEntities mit allen gefundenen Entitäten
         """
-        system_prompt = """Du bist ein NER-System fuer deutsche Texte.
-Extrahiere folgende Entitaeten und gib sie als JSON zurueck:
+        system_prompt = """Du bist ein NER-System für deutsche Texte.
+Extrahiere folgende Entitäten und gib sie als JSON zurück:
 
 {
     "persons": ["Liste von Personennamen"],
     "organizations": ["Liste von Organisationen/Firmen"],
     "locations": ["Liste von Orten/Adressen"],
-    "money_amounts": ["Liste von Geldbetraegen mit Waehrung"],
+    "money_amounts": ["Liste von Geldbetraegen mit Währung"],
     "dates": ["Liste von Datumsangaben"],
     "contract_numbers": ["Liste von Vertragsnummern/Referenzen"]
 }
 
 Regeln:
-- Extrahiere NUR Entitaeten die tatsaechlich im Text vorkommen
-- Geldbetraege immer mit Waehrung (z.B. "1.500,00 EUR")
+- Extrahiere NUR Entitäten die tatsaechlich im Text vorkommen
+- Geldbetraege immer mit Währung (z.B. "1.500,00 EUR")
 - Daten im deutschen Format (TT.MM.JJJJ)
-- Leere Listen fuer nicht gefundene Kategorien
+- Leere Listen für nicht gefundene Kategorien
 
-Antworte NUR mit dem JSON-Objekt, keine Erklaerungen."""
+Antworte NUR mit dem JSON-Objekt, keine Erklärungen."""
 
-        prompt = f"Extrahiere Entitaeten aus folgendem Text:\n\n{text}"
+        prompt = f"Extrahiere Entitäten aus folgendem Text:\n\n{text}"
 
         try:
             response = await self.generate(
@@ -303,7 +303,7 @@ Antworte NUR mit dem JSON-Objekt, keine Erklaerungen."""
 {
     "start_date": "Vertragsbeginn (TT.MM.JJJJ oder null)",
     "end_date": "Vertragsende (TT.MM.JJJJ oder null)",
-    "notice_period_days": "Kuendigungsfrist in Tagen (Zahl oder null)",
+    "notice_period_days": "Kündigungsfrist in Tagen (Zahl oder null)",
     "parties": ["Liste der Vertragsparteien"],
     "payment_terms": "Zahlungsbedingungen als Text oder null",
     "milestones": [{"date": "Datum", "description": "Beschreibung"}],
@@ -312,10 +312,10 @@ Antworte NUR mit dem JSON-Objekt, keine Erklaerungen."""
 }
 
 Regeln:
-- Nutze null fuer nicht gefundene Informationen
-- Kuendigungsfrist in Tagen umrechnen (3 Monate = 90 Tage)
-- auto_renewal auf true wenn automatische Verlaengerung erwaehnt wird
-- Leere Listen fuer nicht gefundene Arrays
+- Nutze null für nicht gefundene Informationen
+- Kündigungsfrist in Tagen umrechnen (3 Monate = 90 Tage)
+- auto_renewal auf true wenn automatische Verlängerung erwaehnt wird
+- Leere Listen für nicht gefundene Arrays
 
 Antworte NUR mit dem JSON-Objekt."""
 
@@ -365,7 +365,7 @@ Antworte NUR mit dem JSON-Objekt."""
 
         Args:
             text: Der Dokumententext
-            available_categories: Liste der moeglichen Kategorien
+            available_categories: Liste der möglichen Kategorien
 
         Returns:
             Tuple aus (Kategorie, Konfidenz 0.0-1.0)
@@ -381,9 +381,9 @@ Antworte NUR mit dem JSON-Objekt."""
         categories_str = ", ".join(available_categories)
 
         system_prompt = f"""Du bist ein Dokumenten-Kategorisierer.
-Verfuegbare Kategorien: {categories_str}
+Verfügbare Kategorien: {categories_str}
 
-Waehle die passendste Kategorie fuer das Dokument und gib deine Antwort als JSON:
+Wähle die passendste Kategorie für das Dokument und gib deine Antwort als JSON:
 
 {{
     "category": "gewaehlte Kategorie",
@@ -445,7 +445,7 @@ Antworte NUR mit dem JSON-Objekt."""
 
         Args:
             text: Der zu zusammenfassende Text
-            max_sentences: Maximale Anzahl Saetze
+            max_sentences: Maximale Anzahl Sätze
             language: Sprache der Zusammenfassung
 
         Returns:
@@ -459,7 +459,7 @@ Antworte NUR mit dem JSON-Objekt."""
         lang_instruction = "auf Deutsch" if language == "de" else "in English"
 
         system_prompt = f"""Du fasst Texte {lang_instruction} zusammen.
-Erstelle eine praegnante Zusammenfassung in maximal {max_sentences} Saetzen.
+Erstelle eine praegnante Zusammenfassung in maximal {max_sentences} Sätzen.
 Behalte die wichtigsten Informationen bei.
 Antworte NUR mit der Zusammenfassung, keine Einleitung."""
 
@@ -503,7 +503,7 @@ Antworte NUR mit der Zusammenfassung, keine Einleitung."""
         system_prompt = f"""Du extrahierst Schluessel-Wert-Paare aus Dokumenten.
 {keys_hint}
 
-Gib das Ergebnis als JSON-Objekt zurueck:
+Gib das Ergebnis als JSON-Objekt zurück:
 {{
     "schluessel1": "wert1",
     "schluessel2": "wert2"

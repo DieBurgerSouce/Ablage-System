@@ -4,7 +4,7 @@ Contract Service V2 Celery Tasks.
 
 Automatische Vertragsmanagement-Tasks mit V2-Features:
 - Datumsertraktion aus OCR-Dokumenten
-- Deadline-Pruefung und Erinnerungen
+- Deadline-Prüfung und Erinnerungen
 - iCal-Export-Generierung
 - Vertragsstatistik-Aktualisierung
 
@@ -50,11 +50,11 @@ def extract_contract_dates_v2_task(
     """
     Extrahiert Vertragsdaten aus OCR-Text eines Dokuments (V2).
 
-    Wird nach OCR-Abschluss fuer Vertragsdokumente aufgerufen.
+    Wird nach OCR-Abschluss für Vertragsdokumente aufgerufen.
     Erweiterte Erkennung mit:
     - Deutsche Datumsformate
-    - Kuendigungsfristen
-    - Automatische Verlaengerung
+    - Kündigungsfristen
+    - Automatische Verlängerung
     - Laufzeit-Berechnung
 
     Args:
@@ -196,13 +196,13 @@ def check_upcoming_deadlines_v2_task(
     days_ahead: int = 90,
 ) -> Dict[str, Any]:
     """
-    Prueft auf bevorstehende Vertragsfristen (V2).
+    Prüft auf bevorstehende Vertragsfristen (V2).
 
-    Wird taeglich um 08:00 Uhr automatisch ausgefuehrt.
+    Wird täglich um 08:00 Uhr automatisch ausgeführt.
     Erstellt Benachrichtigungen basierend auf reminder_days_before.
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
+        company_id: Optional - nur für spezifische Firma
         days_ahead: Vorausschau in Tagen
 
     Returns:
@@ -247,22 +247,22 @@ def check_upcoming_deadlines_v2_task(
                     for deadline in deadlines:
                         stats["deadlines_found"] += 1
 
-                        # Typ zaehlen
+                        # Typ zählen
                         deadline_type = deadline.deadline_type
                         stats["by_type"][deadline_type] = stats["by_type"].get(deadline_type, 0) + 1
 
-                        # Prioritaet zaehlen
+                        # Priorität zählen
                         priority = deadline.priority
                         stats["by_priority"][priority] = stats["by_priority"].get(priority, 0) + 1
 
-                        # Pruefen ob heute Reminder faellig ist
+                        # Prüfen ob heute Reminder fällig ist
                         days_until = (deadline.deadline_date - today).days
                         reminder_days = deadline.reminder_days_before or [30, 14, 7, 1]
 
                         if days_until in reminder_days:
                             # Notification senden
                             try:
-                                # Prioritaet basierend auf verbleibenden Tagen
+                                # Priorität basierend auf verbleibenden Tagen
                                 if days_until <= 1:
                                     notif_priority = NotificationPriority.CRITICAL
                                 elif days_until <= 7:
@@ -352,14 +352,14 @@ def generate_ical_export_task(
     contract_ids: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
-    Generiert iCal-Export fuer Vertragsfristen.
+    Generiert iCal-Export für Vertragsfristen.
 
     Kann manuell oder per API getriggert werden.
 
     Args:
         company_id: Firmen-ID
         days_ahead: Vorausschau in Tagen
-        contract_ids: Optional - nur bestimmte Vertraege
+        contract_ids: Optional - nur bestimmte Verträge
 
     Returns:
         Dict mit iCal-Daten und Statistiken
@@ -380,7 +380,7 @@ def generate_ical_export_task(
                 contract_ids=contract_uuids,
             )
 
-            # Event-Anzahl zaehlen
+            # Event-Anzahl zählen
             event_count = ical_content.count("BEGIN:VEVENT")
 
             return {
@@ -429,10 +429,10 @@ def update_contract_statistics_task(
     """
     Aktualisiert Vertragsstatistiken (V2).
 
-    Wird taeglich um 04:00 Uhr automatisch ausgefuehrt.
+    Wird täglich um 04:00 Uhr automatisch ausgeführt.
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
+        company_id: Optional - nur für spezifische Firma
 
     Returns:
         Dict mit aggregierten Statistiken
@@ -520,9 +520,9 @@ def update_contract_statistics_task(
 )
 def check_expired_contracts_v2_task(self) -> Dict[str, Any]:
     """
-    Markiert abgelaufene Vertraege als EXPIRED.
+    Markiert abgelaufene Verträge als EXPIRED.
 
-    Wird taeglich um 00:30 Uhr automatisch ausgefuehrt.
+    Wird täglich um 00:30 Uhr automatisch ausgeführt.
 
     Returns:
         Dict mit Statistiken
@@ -537,7 +537,7 @@ def check_expired_contracts_v2_task(self) -> Dict[str, Any]:
                 "errors": [],
             }
 
-            # Aktive Vertraege mit abgelaufenem Enddatum
+            # Aktive Verträge mit abgelaufenem Enddatum
             result = await db.execute(
                 select(Contract).where(
                     and_(
@@ -607,8 +607,8 @@ def complete_contract_deadline_task(
     Args:
         deadline_id: Deadline-ID
         company_id: Firmen-ID
-        completed_by_id: ID des abschliessenden Benutzers
-        action_taken: Durchgefuehrte Aktion
+        completed_by_id: ID des abschließenden Benutzers
+        action_taken: Durchgeführte Aktion
 
     Returns:
         Dict mit Status
@@ -680,16 +680,16 @@ def check_auto_renewals_task(
     days_ahead: int = 30,
 ) -> Dict[str, Any]:
     """
-    Prueft und fuehrt automatische Vertragsverlaengerungen durch.
+    Prüft und führt automatische Vertragsverlängerungen durch.
 
-    Wird taeglich um 09:15 Uhr automatisch ausgefuehrt.
-    Findet Vertraege mit:
+    Wird täglich um 09:15 Uhr automatisch ausgeführt.
+    Findet Verträge mit:
     - auto_renewal=True
     - Ablaufdatum innerhalb days_ahead Tagen
-    - Kuendigungsfrist nicht verpasst
+    - Kündigungsfrist nicht verpasst
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
+        company_id: Optional - nur für spezifische Firma
         days_ahead: Vorausschau in Tagen (default 30)
 
     Returns:
@@ -722,7 +722,7 @@ def check_auto_renewals_task(
                 stats["companies_checked"] += 1
 
                 try:
-                    # Vertraege mit auto_renewal finden
+                    # Verträge mit auto_renewal finden
                     contracts_query = select(Contract).where(
                         and_(
                             Contract.company_id == company.id,
@@ -741,19 +741,19 @@ def check_auto_renewals_task(
                         stats["contracts_checked"] += 1
 
                         try:
-                            # Pruefen ob Kuendigungsfrist schon vorbei
+                            # Prüfen ob Kündigungsfrist schon vorbei
                             notice_deadline = None
                             if contract.notice_period_days and contract.expiration_date:
                                 notice_deadline = contract.expiration_date - timedelta(
                                     days=contract.notice_period_days
                                 )
 
-                            # Wenn Kuendigungsfrist noch nicht abgelaufen -> noch Zeit zum Kuendigen
+                            # Wenn Kündigungsfrist noch nicht abgelaufen -> noch Zeit zum Kündigen
                             if notice_deadline and notice_deadline > today:
                                 stats["renewals_skipped"] += 1
                                 continue
 
-                            # Verlaengerungszeitraum bestimmen
+                            # Verlängerungszeitraum bestimmen
                             renewal_months = contract.renewal_period_months or 12
 
                             # Neues Ablaufdatum berechnen
@@ -764,7 +764,7 @@ def check_auto_renewals_task(
                             try:
                                 new_expiration = old_expiration.replace(year=new_year, month=new_month)
                             except ValueError:
-                                # Fuer Monate mit weniger Tagen (z.B. 31. -> 28. Feb)
+                                # Für Monate mit weniger Tagen (z.B. 31. -> 28. Feb)
                                 new_expiration = old_expiration.replace(
                                     year=new_year, month=new_month, day=28
                                 )
@@ -825,7 +825,7 @@ def check_auto_renewals_task(
                         except Exception as contract_e:
                             stats["errors"].append({
                                 "contract_id": str(contract.id),
-                                "error": safe_error_detail(contract_e, "Verlaengerung"),
+                                "error": safe_error_detail(contract_e, "Verlängerung"),
                             })
                             logger.warning(
                                 "contract_renewal_failed_v2",
@@ -885,7 +885,7 @@ def link_document_to_contract_task(
     is_primary: bool = False,
 ) -> Dict[str, Any]:
     """
-    Verknuepft ein Dokument mit einem Vertrag.
+    Verknüpft ein Dokument mit einem Vertrag.
 
     Args:
         contract_id: Vertrags-ID
@@ -960,8 +960,8 @@ def extract_contract_clauses_task(
     Erkennt automatisch:
     - Preisanpassungsklauseln
     - Mindestlaufzeiten
-    - Kuendigungsfristen
-    - Automatische Verlaengerung
+    - Kündigungsfristen
+    - Automatische Verlängerung
     - Vertragsstrafen
     - Haftungsbegrenzungen
     - Gerichtsstand
@@ -1003,7 +1003,7 @@ def extract_contract_clauses_task(
             if not text:
                 return {
                     "success": False,
-                    "error": "Kein Text zum Analysieren verfuegbar",
+                    "error": "Kein Text zum Analysieren verfügbar",
                     "contract_id": contract_id,
                 }
 
@@ -1053,12 +1053,12 @@ def extract_all_contract_clauses_task(
     company_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Batch-Extraktion von Klauseln fuer alle Vertraege.
+    Batch-Extraktion von Klauseln für alle Verträge.
 
-    Wird woechentlich am Sonntag um 03:00 ausgefuehrt.
+    Wird wöchentlich am Sonntag um 03:00 ausgeführt.
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
+        company_id: Optional - nur für spezifische Firma
 
     Returns:
         Dict mit Statistiken
@@ -1073,7 +1073,7 @@ def extract_all_contract_clauses_task(
                 "errors": [],
             }
 
-            # Aktive Vertraege laden
+            # Aktive Verträge laden
             query = select(Contract).where(
                 Contract.status.in_([
                     ContractStatus.ACTIVE.value,
@@ -1088,7 +1088,7 @@ def extract_all_contract_clauses_task(
 
             for contract in contracts:
                 try:
-                    # Task fuer jeden Vertrag triggern
+                    # Task für jeden Vertrag triggern
                     extract_contract_clauses_task.delay(
                         contract_id=str(contract.id),
                         company_id=str(contract.company_id),
@@ -1164,7 +1164,7 @@ def compare_contract_to_benchmark_task(
                 category=category,
             )
 
-            # Verhandlungsvorschlaege generieren
+            # Verhandlungsvorschläge generieren
             suggestions = await service.get_negotiation_suggestions(result)
 
             return {
@@ -1215,12 +1215,12 @@ def update_contract_benchmarks_task(
     company_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Aktualisiert Benchmark-Daten basierend auf Vertraegen.
+    Aktualisiert Benchmark-Daten basierend auf Verträgen.
 
-    Wird monatlich am 1. um 04:00 ausgefuehrt.
+    Wird monatlich am 1. um 04:00 ausgeführt.
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
+        company_id: Optional - nur für spezifische Firma
 
     Returns:
         Dict mit Statistiken
@@ -1270,8 +1270,8 @@ def process_scheduled_cancellations_task(self) -> Dict[str, Any]:
     """
     Verarbeitet geplante Vertragskunedigungen.
 
-    Wird taeglich um 08:30 ausgefuehrt.
-    Sendet Kuendigungsschreiben die zur Versendung faellig sind.
+    Wird täglich um 08:30 ausgeführt.
+    Sendet Kündigungsschreiben die zur Versendung fällig sind.
 
     Returns:
         Dict mit Statistiken
@@ -1289,7 +1289,7 @@ def process_scheduled_cancellations_task(self) -> Dict[str, Any]:
 
             today = date.today()
 
-            # Genehmigte Kuendigungen die heute gesendet werden sollen
+            # Genehmigte Kündigungen die heute gesendet werden sollen
             result = await db.execute(
                 select(ContractCancellation).where(
                     and_(
@@ -1315,7 +1315,7 @@ def process_scheduled_cancellations_task(self) -> Dict[str, Any]:
                 except Exception as e:
                     stats["errors"].append({
                         "cancellation_id": str(cancellation.id),
-                        "error": safe_error_detail(e, "Kuendigungs-Versand"),
+                        "error": safe_error_detail(e, "Kündigungs-Versand"),
                     })
                     logger.warning(
                         "cancellation_send_failed",
@@ -1352,13 +1352,13 @@ def check_cancellation_deadlines_task(
     days_ahead: int = 30,
 ) -> Dict[str, Any]:
     """
-    Prueft Kuendigungsfristen und erstellt Warnungen.
+    Prüft Kündigungsfristen und erstellt Warnungen.
 
-    Wird taeglich um 09:00 ausgefuehrt.
-    Benachrichtigt bei bevorstehenden Kuendigungsfristen.
+    Wird täglich um 09:00 ausgeführt.
+    Benachrichtigt bei bevorstehenden Kündigungsfristen.
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
+        company_id: Optional - nur für spezifische Firma
         days_ahead: Vorausschau in Tagen
 
     Returns:
@@ -1378,7 +1378,7 @@ def check_cancellation_deadlines_task(
             today = date.today()
             deadline_limit = today + timedelta(days=days_ahead)
 
-            # Vertraege mit Kuendigungsfrist-Berechnung
+            # Verträge mit Kündigungsfrist-Berechnung
             query = select(Contract).where(
                 and_(
                     Contract.status == ContractStatus.ACTIVE.value,
@@ -1397,7 +1397,7 @@ def check_cancellation_deadlines_task(
             for contract in contracts:
                 stats["contracts_checked"] += 1
 
-                # Kuendigungsfrist berechnen
+                # Kündigungsfrist berechnen
                 notice_deadline = contract.expiration_date - timedelta(
                     days=contract.notice_period_days
                 )
@@ -1405,7 +1405,7 @@ def check_cancellation_deadlines_task(
                 if today <= notice_deadline <= deadline_limit:
                     days_until = (notice_deadline - today).days
 
-                    # Prioritaet bestimmen
+                    # Priorität bestimmen
                     if days_until <= 7:
                         priority = NotificationPriority.CRITICAL
                         stats["critical_deadlines"] += 1
@@ -1535,9 +1535,9 @@ def generate_contract_cost_report_task(
     company_id: str,
 ) -> Dict[str, Any]:
     """
-    Generiert Kosten-Report fuer alle Vertraege.
+    Generiert Kosten-Report für alle Verträge.
 
-    Wird monatlich am 1. um 06:00 ausgefuehrt.
+    Wird monatlich am 1. um 06:00 ausgeführt.
 
     Args:
         company_id: Firmen-ID

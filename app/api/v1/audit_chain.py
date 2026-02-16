@@ -1,8 +1,8 @@
 """
 Audit Chain API Endpoints
 
-REST API fuer kryptografischen Audit-Trail mit Merkle Trees:
-- Status-Uebersicht
+REST API für kryptografischen Audit-Trail mit Merkle Trees:
+- Status-Übersicht
 - Merkle Proof Generierung
 - Proof-Verifikation
 - Integritaets-Reports
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/audit-chain", tags=["Audit Chain"])
 
 
 class VerifyProofRequest(BaseModel):
-    """Request-Schema fuer Proof-Verifikation."""
+    """Request-Schema für Proof-Verifikation."""
 
     entry_hash: str = Field(..., min_length=64, max_length=64, description="SHA256 Hash des Eintrags")
     root_hash: str = Field(..., min_length=64, max_length=64, description="Root Hash des Trees")
@@ -64,8 +64,8 @@ async def get_status(
     """
     Holt Audit-Chain Status.
 
-    **Enthaelt:**
-    - Anzahl Eintraege
+    **Enthält:**
+    - Anzahl Einträge
     - Root Hash
     - Letzte Verifikation
     - Integritaets-Score
@@ -108,7 +108,7 @@ async def get_status(
     "/merkle-proof/{entry_hash}",
     response_model=JSONDict,
     summary="Merkle Proof",
-    description="Generiert Merkle Proof fuer einzelnen Eintrag"
+    description="Generiert Merkle Proof für einzelnen Eintrag"
 )
 async def get_merkle_proof(
     entry_hash: str,
@@ -121,7 +121,7 @@ async def get_merkle_proof(
 
     **Verwendung:**
     - Verifiziere dass bestimmter Audit-Log-Eintrag im Tree existiert
-    - Beweise Integritaet ohne kompletten Tree zu uebertragen
+    - Beweise Integritaet ohne kompletten Tree zu übertragen
 
     **Parameter:**
     - **entry_hash**: SHA256 Hash des Audit-Log-Eintrags
@@ -183,7 +183,7 @@ async def verify_proof(
     Verifiziert Merkle Proof.
 
     **Verwendung:**
-    - Pruefe ob Proof valide ist
+    - Prüfe ob Proof valide ist
     - Verifiziere Integritaet eines Eintrags
 
     **Request Body:**
@@ -252,8 +252,8 @@ async def get_integrity_report(
     """
     Holt Integritaets-Report.
 
-    **Enthaelt:**
-    - Anzahl verifizierter Eintraege
+    **Enthält:**
+    - Anzahl verifizierter Einträge
     - Integritaets-Score (0-100)
     - Erkannte Verletzungen
     - Root Hash

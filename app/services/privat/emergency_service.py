@@ -1,4 +1,4 @@
-"""Service fuer Notfallzugriff im Privat-Modul.
+"""Service für Notfallzugriff im Privat-Modul.
 
 Enterprise Features:
 - Vertrauenspersonen-Verwaltung
@@ -17,9 +17,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 
-# SECURITY FIX 27-9: PII Masking fuer Logs (GDPR-konform)
+# SECURITY FIX 27-9: PII Masking für Logs (GDPR-konform)
 def _mask_email_for_log(email: Optional[str]) -> str:
-    """Maskiert Email-Adresse fuer Log-Ausgabe."""
+    """Maskiert Email-Adresse für Log-Ausgabe."""
     if not email or "@" not in email:
         return "[no-email]"
     local, domain = email.split("@", 1)
@@ -51,7 +51,7 @@ _notification_service: Optional[NotificationService] = None
 
 
 def get_notification_service() -> NotificationService:
-    """Gibt den globalen NotificationService zurueck."""
+    """Gibt den globalen NotificationService zurück."""
     global _notification_service
     if _notification_service is None:
         _notification_service = NotificationService()
@@ -59,14 +59,14 @@ def get_notification_service() -> NotificationService:
 
 
 class PrivatEmergencyService:
-    """Service fuer Notfallzugriff-Verwaltung.
+    """Service für Notfallzugriff-Verwaltung.
 
     Workflow:
     1. Owner definiert Vertrauenspersonen (Emergency Contacts)
     2. Konfiguriert Wartezeit pro Kontakt (z.B. 30 Tage)
     3. Im Notfall: Vertrauensperson fordert Zugriff an
-    4. Owner erhaelt Benachrichtigung
-    5. Nach Wartezeit ohne Widerruf: Zugriff wird automatisch gewaehrt
+    4. Owner erhält Benachrichtigung
+    5. Nach Wartezeit ohne Widerruf: Zugriff wird automatisch gewährt
     """
 
     # ========== Emergency Contact CRUD ==========
@@ -106,7 +106,7 @@ class PrivatEmergencyService:
         await db.commit()
         await db.refresh(contact)
 
-        # SECURITY FIX 27-9: PII Masking - Email nicht vollstaendig loggen!
+        # SECURITY FIX 27-9: PII Masking - Email nicht vollständig loggen!
         logger.info(
             "privat_emergency_contact_created",
             contact_id=str(contact.id),
@@ -136,11 +136,11 @@ class PrivatEmergencyService:
     ) -> Optional[PrivatEmergencyContact]:
         """IDOR-sichere Methode: Holt Kontakt nur wenn User Zugriff hat.
 
-        SECURITY: Gibt einheitlich None zurueck bei:
+        SECURITY: Gibt einheitlich None zurück bei:
         - Kontakt existiert nicht
         - User hat keinen Zugriff
 
-        Dies verhindert Information Disclosure ueber Existenz von Kontakten.
+        Dies verhindert Information Disclosure über Existenz von Kontakten.
 
         Args:
             db: Datenbank-Session
@@ -153,7 +153,7 @@ class PrivatEmergencyService:
         from app.db.models import PrivatSpaceAccess
 
 
-        # Join mit Space um Owner zu pruefen
+        # Join mit Space um Owner zu prüfen
         result = await db.execute(
             select(PrivatEmergencyContact, PrivatSpace)
             .join(PrivatSpace, PrivatEmergencyContact.space_id == PrivatSpace.id)
@@ -170,7 +170,7 @@ class PrivatEmergencyService:
         if space.owner_id == requesting_user_id:
             return contact
 
-        # Pruefe explizite Berechtigung (erfordert ADMIN-Level fuer Emergency Contacts)
+        # Prüfe explizite Berechtigung (erfordert ADMIN-Level für Emergency Contacts)
         now = utc_now()
         access_result = await db.execute(
             select(PrivatSpaceAccess)
@@ -268,8 +268,8 @@ class PrivatEmergencyService:
         """Aktualisiert einen Kontakt.
 
         SECURITY FIX 23-11: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Updates zu verhindern. Ohne Row Lock koennte:
-        - Lost Updates bei gleichzeitigen Aenderungen auftreten
+        bei parallelen Updates zu verhindern. Ohne Row Lock könnte:
+        - Lost Updates bei gleichzeitigen Änderungen auftreten
         - Inkonsistente Kontaktdaten entstehen
 
         Args:
@@ -284,7 +284,7 @@ class PrivatEmergencyService:
         result = await db.execute(
             select(PrivatEmergencyContact)
             .where(PrivatEmergencyContact.id == contact_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Kontaktdaten!
+            .with_for_update()  # ROW LOCK - kritisch für Kontaktdaten!
         )
         contact = result.scalar_one_or_none()
         if not contact:
@@ -312,10 +312,10 @@ class PrivatEmergencyService:
         contact_id: uuid.UUID,
         soft_delete: bool = True,
     ) -> bool:
-        """Loescht einen Kontakt.
+        """Löscht einen Kontakt.
 
         SECURITY FIX 23-12: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelem Delete zu verhindern. Ohne Row Lock koennte:
+        bei parallelem Delete zu verhindern. Ohne Row Lock könnte:
         - Double-Delete auftreten
         - Inkonsistente Zustaende bei gleichzeitigem Update/Delete entstehen
 
@@ -331,7 +331,7 @@ class PrivatEmergencyService:
         result = await db.execute(
             select(PrivatEmergencyContact)
             .where(PrivatEmergencyContact.id == contact_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Datenintegritaet!
+            .with_for_update()  # ROW LOCK - kritisch für Datenintegrität!
         )
         contact = result.scalar_one_or_none()
         if not contact:
@@ -374,7 +374,7 @@ class PrivatEmergencyService:
         # Finde Kontakt
         contact = await self.get_contact_by_email(db, data.space_id, contact_email)
         if not contact:
-            # SECURITY FIX 27-9: PII Masking - Email nicht vollstaendig loggen!
+            # SECURITY FIX 27-9: PII Masking - Email nicht vollständig loggen!
             logger.warning(
                 "privat_emergency_access_denied",
                 space_id=str(data.space_id),
@@ -383,7 +383,7 @@ class PrivatEmergencyService:
             )
             return None
 
-        # Pruefe ob bereits eine offene Anfrage existiert
+        # Prüfe ob bereits eine offene Anfrage existiert
         existing = await self._get_pending_request(db, data.space_id, contact.id)
         if existing:
             return existing
@@ -455,7 +455,7 @@ class PrivatEmergencyService:
     ) -> Optional[PrivatEmergencyAccessRequest]:
         """IDOR-sichere Methode: Holt Request nur wenn User Zugriff hat.
 
-        SECURITY: Gibt einheitlich None zurueck bei:
+        SECURITY: Gibt einheitlich None zurück bei:
         - Request existiert nicht
         - User hat keinen Zugriff (kein Space-Owner)
 
@@ -469,7 +469,7 @@ class PrivatEmergencyService:
         Returns:
             Request wenn vorhanden und Zugriff erlaubt, sonst None
         """
-        # Join mit Space um Owner zu pruefen
+        # Join mit Space um Owner zu prüfen
         result = await db.execute(
             select(PrivatEmergencyAccessRequest, PrivatSpace)
             .join(PrivatSpace, PrivatEmergencyAccessRequest.space_id == PrivatSpace.id)
@@ -483,7 +483,7 @@ class PrivatEmergencyService:
         request, space = row
 
         # NUR Owner darf Notfallzugriff-Anfragen bearbeiten!
-        # Dies ist ein Enterprise-Requirement fuer Datenschutz
+        # Dies ist ein Enterprise-Requirement für Datenschutz
         if space.owner_id != requesting_user_id:
             # SECURITY: Log IDOR-Versuch ohne sensible Details
             logger.warning(
@@ -564,7 +564,7 @@ class PrivatEmergencyService:
             select(PrivatEmergencyAccessRequest, PrivatSpace)
             .join(PrivatSpace, PrivatEmergencyAccessRequest.space_id == PrivatSpace.id)
             .where(PrivatEmergencyAccessRequest.id == request_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Notfallzugriff!
+            .with_for_update()  # ROW LOCK - kritisch für Notfallzugriff!
         )
         row = result.first()
         if not row:
@@ -591,7 +591,7 @@ class PrivatEmergencyService:
         await db.commit()
         await db.refresh(request)
 
-        # SECURITY FIX 22-15: Audit-Log fuer Notfallzugriff
+        # SECURITY FIX 22-15: Audit-Log für Notfallzugriff
         logger.info(
             "privat_emergency_access_approved",
             request_id=str(request_id),
@@ -613,7 +613,7 @@ class PrivatEmergencyService:
 
         SECURITY FIX 22-2: Row Lock und Access-Check um TOCTOU Race Conditions
         und IDOR zu verhindern.
-        SECURITY FIX 22-8: Input Validation fuer reason.
+        SECURITY FIX 22-8: Input Validation für reason.
 
         Args:
             db: Datenbank-Session
@@ -624,7 +624,7 @@ class PrivatEmergencyService:
         Returns:
             Aktualisierte Anfrage
         """
-        # SECURITY FIX 22-8: Input Validation fuer reason
+        # SECURITY FIX 22-8: Input Validation für reason
         if not reason or len(reason.strip()) < 3:
             raise ValueError("Ablehnungsgrund muss mindestens 3 Zeichen haben")
         if len(reason) > 1000:
@@ -635,7 +635,7 @@ class PrivatEmergencyService:
             select(PrivatEmergencyAccessRequest, PrivatSpace)
             .join(PrivatSpace, PrivatEmergencyAccessRequest.space_id == PrivatSpace.id)
             .where(PrivatEmergencyAccessRequest.id == request_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Notfallzugriff!
+            .with_for_update()  # ROW LOCK - kritisch für Notfallzugriff!
         )
         row = result.first()
         if not row:
@@ -663,7 +663,7 @@ class PrivatEmergencyService:
         await db.commit()
         await db.refresh(request)
 
-        # SECURITY FIX 22-15: Audit-Log fuer Notfallzugriff
+        # SECURITY FIX 22-15: Audit-Log für Notfallzugriff
         logger.info(
             "privat_emergency_access_denied",
             request_id=str(request_id),
@@ -680,7 +680,7 @@ class PrivatEmergencyService:
     ) -> List[PrivatEmergencyAccessRequest]:
         """Verarbeitet abgelaufene Anfragen (Wartezeit vorbei).
 
-        Diese Methode sollte regelmaessig durch einen Celery Task
+        Diese Methode sollte regelmäßig durch einen Celery Task
         aufgerufen werden.
 
         Returns:
@@ -689,7 +689,7 @@ class PrivatEmergencyService:
         now = utc_now()
 
         # SECURITY: FOR UPDATE mit skip_locked verhindert Race Conditions
-        # bei parallelen Celery-Workers die gleiche Requests verarbeiten koennten
+        # bei parallelen Celery-Workers die gleiche Requests verarbeiten könnten
         result = await db.execute(
             select(PrivatEmergencyAccessRequest)
             .where(
@@ -725,7 +725,7 @@ class PrivatEmergencyService:
         space_id: uuid.UUID,
         contact_email: str,
     ) -> bool:
-        """Prueft ob ein Kontakt Notfallzugriff auf einen Space hat.
+        """Prüft ob ein Kontakt Notfallzugriff auf einen Space hat.
 
         Args:
             db: Datenbank-Session
@@ -733,7 +733,7 @@ class PrivatEmergencyService:
             contact_email: E-Mail des Kontakts
 
         Returns:
-            True wenn Zugriff gewaehrt
+            True wenn Zugriff gewährt
         """
         contact = await self.get_contact_by_email(db, space_id, contact_email)
         if not contact:
@@ -764,7 +764,7 @@ class PrivatEmergencyService:
         Returns:
             True wenn erfolgreich
         """
-        # SECURITY FIX 24-5: Row Lock fuer atomare Status-Aenderung (TOCTOU Prevention)
+        # SECURITY FIX 24-5: Row Lock für atomare Status-Änderung (TOCTOU Prevention)
         result = await db.execute(
             select(PrivatEmergencyAccessRequest)
             .where(PrivatEmergencyAccessRequest.id == request_id)
@@ -796,7 +796,7 @@ class PrivatEmergencyService:
         request: PrivatEmergencyAccessRequest,
         contact: PrivatEmergencyContact,
     ) -> None:
-        """Benachrichtigt den Space-Owner ueber eine Notfallzugriff-Anfrage.
+        """Benachrichtigt den Space-Owner über eine Notfallzugriff-Anfrage.
 
         SECURITY: Enterprise Requirement - Owner MUSS informiert werden,
         damit er die Anfrage ggf. widerrufen kann.
@@ -859,7 +859,7 @@ class PrivatEmergencyService:
 
         except Exception as e:
             # Notification-Fehler sollten den Workflow nicht stoppen,
-            # aber geloggt werden fuer Monitoring
+            # aber geloggt werden für Monitoring
             logger.error(
                 "privat_emergency_notification_failed",
                 request_id=str(request.id),

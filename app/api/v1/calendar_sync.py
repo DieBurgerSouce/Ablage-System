@@ -58,7 +58,7 @@ class OAuthAuthorizeResponse(BaseModel):
 class OAuthCallbackRequest(BaseModel):
     code: str = Field(description="Authorization Code aus OAuth-Callback")
     state: str = Field(description="CSRF State-Token")
-    redirect_uri: str = Field(description="Redirect-URI (muss mit Authorize uebereinstimmen)")
+    redirect_uri: str = Field(description="Redirect-URI (muss mit Authorize übereinstimmen)")
 
 
 class OAuthStatusEntry(BaseModel):
@@ -213,9 +213,9 @@ async def oauth_authorize(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Startet den OAuth2-Flow fuer einen Kalender-Provider.
+    """Startet den OAuth2-Flow für einen Kalender-Provider.
 
-    Gibt eine Authorization-URL zurueck, zu der der Benutzer
+    Gibt eine Authorization-URL zurück, zu der der Benutzer
     weitergeleitet werden muss.
     """
     from app.services.calendar.oauth_service import get_calendar_oauth_service
@@ -224,7 +224,7 @@ async def oauth_authorize(
     if body.provider not in ("google", "outlook"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltiger Provider. Erlaubt: google, outlook",
+            detail="Ungültiger Provider. Erlaubt: google, outlook",
         )
 
     oauth = get_calendar_oauth_service()
@@ -238,7 +238,7 @@ async def oauth_authorize(
     if not client_id:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"OAuth fuer {body.provider} ist nicht konfiguriert.",
+            detail=f"OAuth für {body.provider} ist nicht konfiguriert.",
         )
 
     try:
@@ -276,7 +276,7 @@ async def oauth_callback(
     if not state_data:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltiger oder abgelaufener State-Token.",
+            detail="Ungültiger oder abgelaufener State-Token.",
         )
 
     provider = state_data.get("provider", "")
@@ -322,7 +322,7 @@ async def oauth_revoke(
     if body.provider not in ("google", "outlook"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltiger Provider. Erlaubt: google, outlook",
+            detail="Ungültiger Provider. Erlaubt: google, outlook",
         )
 
     oauth = get_calendar_oauth_service()
@@ -352,7 +352,7 @@ async def oauth_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Zeigt den OAuth-Verbindungsstatus fuer alle Provider."""
+    """Zeigt den OAuth-Verbindungsstatus für alle Provider."""
     from app.services.calendar.oauth_service import get_calendar_oauth_service
 
     oauth = get_calendar_oauth_service()
@@ -360,7 +360,7 @@ async def oauth_status(
     google_status = OAuthStatusEntry(connected=False)
     outlook_status = OAuthStatusEntry(connected=False)
 
-    # Google pruefen
+    # Google prüfen
     google_meta = await oauth.get_token_status(
         db, current_user.company_id, "google"
     )
@@ -370,7 +370,7 @@ async def oauth_status(
             expires_at=google_meta.get("expires_at"),
         )
 
-    # Outlook pruefen
+    # Outlook prüfen
     outlook_meta = await oauth.get_token_status(
         db, current_user.company_id, "outlook"
     )
@@ -463,7 +463,7 @@ async def list_calendars(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Listet verfuegbare Kalender vom konfigurierten Provider."""
+    """Listet verfügbare Kalender vom konfigurierten Provider."""
     from app.services.calendar.calendar_sync_executor import CalendarSyncExecutor
 
     service = CalendarSyncService(db)

@@ -1,4 +1,4 @@
-"""Service fuer die Verwaltung von Krediten im Privat-Modul."""
+"""Service für die Verwaltung von Krediten im Privat-Modul."""
 
 import uuid
 from datetime import datetime, date
@@ -24,7 +24,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PrivatLoanService:
-    """Service fuer Kreditverwaltung."""
+    """Service für Kreditverwaltung."""
 
     async def create(
         self,
@@ -82,8 +82,8 @@ class PrivatLoanService:
     ) -> Optional[PrivatLoan]:
         """Holt einen Kredit nach ID.
 
-        WARNUNG: Diese Methode fuehrt KEINEN Access-Check durch!
-        Fuer API-Aufrufe IMMER get_by_id_with_access_check() verwenden!
+        WARNUNG: Diese Methode führt KEINEN Access-Check durch!
+        Für API-Aufrufe IMMER get_by_id_with_access_check() verwenden!
         """
         result = await db.execute(
             select(PrivatLoan).where(PrivatLoan.id == loan_id)
@@ -99,9 +99,9 @@ class PrivatLoanService:
         """Holt einen Kredit nach ID MIT Access-Check.
 
         SECURITY: Diese Methode ist IDOR-sicher:
-        - Access-Check erfolgt VOR Rueckgabe des Kredits
-        - Gibt None zurueck wenn nicht existiert ODER kein Zugriff
-        - Keine Information Disclosure ueber Existenz fremder Ressourcen
+        - Access-Check erfolgt VOR Rückgabe des Kredits
+        - Gibt None zurück wenn nicht existiert ODER kein Zugriff
+        - Keine Information Disclosure über Existenz fremder Ressourcen
         """
         from app.db.models import PrivatSpace, PrivatSpaceAccess
 
@@ -122,7 +122,7 @@ class PrivatLoanService:
         if space.owner_id == requesting_user_id:
             return loan
 
-        # Pruefe explizite Berechtigung - SECURITY: mit expires_at Validierung!
+        # Prüfe explizite Berechtigung - SECURITY: mit expires_at Validierung!
         from datetime import timezone
         now = datetime.now(timezone.utc)
         access_result = await db.execute(
@@ -224,15 +224,15 @@ class PrivatLoanService:
         self,
         loan: PrivatLoan,
     ) -> dict:
-        """Berechnet Statistiken fuer einen Kredit."""
+        """Berechnet Statistiken für einen Kredit."""
         today = date.today()
 
-        # Bereits bezahlt (geschaetzt)
+        # Bereits bezahlt (geschätzt)
         total_paid = loan.principal_amount - loan.current_balance
         if total_paid < 0:
             total_paid = Decimal("0.00")
 
-        # Geschaetzte Zinsen (vereinfacht)
+        # Geschätzte Zinsen (vereinfacht)
         # Tatsaechliche Berechnung waere komplexer (Annuitaet)
         months_since_start = 0
         if loan.start_date:
@@ -275,15 +275,15 @@ class PrivatLoanService:
         """Aktualisiert einen Kredit.
 
         SECURITY FIX 22-9: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Updates zu verhindern. Ohne Row Lock koennte:
-        - Lost Updates bei gleichzeitigen Aenderungen auftreten
+        bei parallelen Updates zu verhindern. Ohne Row Lock könnte:
+        - Lost Updates bei gleichzeitigen Änderungen auftreten
         - Inkonsistente Kreditdaten entstehen
         """
         # SECURITY FIX 22-9: Row Lock verhindert parallele Modifikationen
         result = await db.execute(
             select(PrivatLoan)
             .where(PrivatLoan.id == loan_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Finanzdaten!
+            .with_for_update()  # ROW LOCK - kritisch für Finanzdaten!
         )
         loan = result.scalar_one_or_none()
         if not loan:
@@ -317,7 +317,7 @@ class PrivatLoanService:
         """Erfasst eine Kreditrate.
 
         SECURITY FIX 21-1: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Zahlungen zu verhindern. Ohne Row Lock koennte:
+        bei parallelen Zahlungen zu verhindern. Ohne Row Lock könnte:
         - Double-Spending auftreten
         - Zahlungen verloren gehen
         - current_balance korrupt werden
@@ -335,7 +335,7 @@ class PrivatLoanService:
         result = await db.execute(
             select(PrivatLoan)
             .where(PrivatLoan.id == loan_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Finanzdaten!
+            .with_for_update()  # ROW LOCK - kritisch für Finanzdaten!
         )
         loan = result.scalar_one_or_none()
         if not loan:
@@ -344,7 +344,7 @@ class PrivatLoanService:
         # Reduziere Restschuld
         loan.current_balance = max(Decimal("0"), loan.current_balance - amount)
 
-        # Setze naechstes Zahlungsdatum
+        # Setze nächstes Zahlungsdatum
         if payment_date is None:
             payment_date = date.today()
 
@@ -376,10 +376,10 @@ class PrivatLoanService:
         loan_id: uuid.UUID,
         soft_delete: bool = True,
     ) -> bool:
-        """Loescht einen Kredit.
+        """Löscht einen Kredit.
 
         SECURITY FIX 22-10: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelem Delete zu verhindern. Ohne Row Lock koennte:
+        bei parallelem Delete zu verhindern. Ohne Row Lock könnte:
         - Double-Delete auftreten
         - Inkonsistente Zustaende entstehen
         """
@@ -387,7 +387,7 @@ class PrivatLoanService:
         result = await db.execute(
             select(PrivatLoan)
             .where(PrivatLoan.id == loan_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Datenintegritaet!
+            .with_for_update()  # ROW LOCK - kritisch für Datenintegrität!
         )
         loan = result.scalar_one_or_none()
         if not loan:

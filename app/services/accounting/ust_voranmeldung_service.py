@@ -278,7 +278,7 @@ class UStVoranmeldungService:
                 kz_data[kz] = Decimal(str(val))
 
         def _kz_summary(kz: str) -> VATSummary:
-            """Erstellt VATSummary fuer eine Kennziffer."""
+            """Erstellt VATSummary für eine Kennziffer."""
             label = VAT_KENNZIFFERN.get(kz, kz)
             amount = kz_data.get(kz, Decimal("0"))
             return VATSummary(kennziffer=kz, label=label, vat_amount=amount, net_amount=amount)

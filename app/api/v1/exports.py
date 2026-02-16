@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Export Jobs API - Zentraler Endpoint fuer Export-Status und -Verwaltung.
+"""Export Jobs API - Zentraler Endpoint für Export-Status und -Verwaltung.
 
-Enthaelt:
+Enthält:
 - Export-Job starten (async via Celery)
 - Export-Job Status abfragen (Polling)
 - Export-Job abbrechen (Cancellation)
-- WebSocket fuer Echtzeit-Updates
+- WebSocket für Echtzeit-Updates
 """
 
 import asyncio
@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# SECURITY FIX 27-6: Rate Limiting fuer Export Endpoints
+# SECURITY FIX 27-6: Rate Limiting für Export Endpoints
 from app.core.rate_limiting import limiter, get_user_identifier
 
 from app.api.dependencies import get_current_active_user, get_db
@@ -41,7 +41,7 @@ router = APIRouter(prefix="/exports", tags=["exports"])
 
 
 class ExportJobRequest(BaseModel):
-    """Request fuer neuen Export-Job."""
+    """Request für neuen Export-Job."""
     document_ids: List[UUID] = Field(..., min_length=1, max_length=1000)
     format: ExportFormat = Field(default=ExportFormat.JSON)
     include_text: bool = Field(default=True)
@@ -95,7 +95,7 @@ class ExportJobListResponse(BaseModel):
 # ==============================================================================
 
 
-# SECURITY FIX 27-6: Rate-Limit fuer Export-Jobs - ressourcenintensiv!
+# SECURITY FIX 27-6: Rate-Limit für Export-Jobs - ressourcenintensiv!
 @limiter.limit("10/hour", key_func=get_user_identifier)
 @router.post("/jobs", response_model=ExportJobResponse, status_code=202)
 async def create_export_job(
@@ -176,7 +176,7 @@ async def get_export_job_status(
 ):
     """Status eines Export-Jobs abfragen.
 
-    Kann fuer Polling verwendet werden.
+    Kann für Polling verwendet werden.
 
     Args:
         job_id: BatchJob UUID
@@ -232,7 +232,7 @@ async def list_export_jobs(
     Args:
         status: Optional Status-Filter
         limit: Maximale Anzahl
-        offset: Offset fuer Pagination
+        offset: Offset für Pagination
 
     Returns:
         ExportJobListResponse
@@ -317,7 +317,7 @@ async def cancel_export_job(
             detail="Export-Job nicht gefunden oder keine Berechtigung",
         )
 
-    # Nur laufende Jobs koennen abgebrochen werden
+    # Nur laufende Jobs können abgebrochen werden
     if job.status in [ProcessingStatus.COMPLETED, ProcessingStatus.FAILED]:
         raise HTTPException(
             status_code=400,
@@ -408,7 +408,7 @@ async def pause_export_job(
     if job.status != ProcessingStatus.PROCESSING:
         raise HTTPException(
             status_code=400,
-            detail=f"Nur laufende Jobs koennen pausiert werden (Status: {job.status})",
+            detail=f"Nur laufende Jobs können pausiert werden (Status: {job.status})",
         )
 
     await db.execute(
@@ -527,9 +527,9 @@ async def resume_export_job(
 
 
 class ExportConnectionManager:
-    """Manager fuer WebSocket-Verbindungen zu Export-Jobs.
+    """Manager für WebSocket-Verbindungen zu Export-Jobs.
 
-    Verwendet Redis Pub/Sub fuer Multi-Worker Support:
+    Verwendet Redis Pub/Sub für Multi-Worker Support:
     - Lokale WebSocket-Clients werden direkt informiert
     - Redis Pub/Sub verteilt Updates an alle Worker
     """
@@ -557,10 +557,10 @@ class ExportConnectionManager:
                 del self.active_connections[job_id]
 
     async def broadcast_to_job(self, job_id: str, message: dict):
-        """Broadcast Message an alle Clients fuer diesen Job.
+        """Broadcast Message an alle Clients für diesen Job.
 
         1. Sendet direkt an lokale WebSocket-Clients
-        2. Publiziert via Redis fuer andere Worker
+        2. Publiziert via Redis für andere Worker
         """
         # 1. Lokale WebSocket-Clients direkt informieren
         if job_id in self.active_connections:
@@ -575,7 +575,7 @@ class ExportConnectionManager:
             for conn in disconnected:
                 self.disconnect(conn, job_id)
 
-        # 2. Redis Pub/Sub fuer Multi-Worker Support
+        # 2. Redis Pub/Sub für Multi-Worker Support
         try:
             from app.core.redis_state import get_redis
 
@@ -593,7 +593,7 @@ class ExportConnectionManager:
             )
 
     async def _handle_redis_message(self, channel: str, data: dict):
-        """Handler fuer eingehende Redis Pub/Sub Messages."""
+        """Handler für eingehende Redis Pub/Sub Messages."""
         if data.get("type") == "export.progress":
             payload = data.get("data", {})
             job_id = payload.get("job_id")
@@ -612,7 +612,7 @@ class ExportConnectionManager:
                         )
 
     async def start_pubsub_listener(self):
-        """Startet Redis Pub/Sub Listener fuer diesen Worker."""
+        """Startet Redis Pub/Sub Listener für diesen Worker."""
         if self._pubsub_task is not None:
             return
 
@@ -697,7 +697,7 @@ async def export_job_websocket(
     job_id: UUID,
     token: str = Query(..., description="JWT Access Token"),
 ):
-    """WebSocket fuer Echtzeit-Updates eines Export-Jobs.
+    """WebSocket für Echtzeit-Updates eines Export-Jobs.
 
     U.2 SECURITY FIX: Authentifizierung + Ownership-Check hinzugefuegt.
 

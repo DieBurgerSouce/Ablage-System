@@ -6,7 +6,7 @@ Handles AI-driven actions with role-based autonomy levels:
 - Editor: Supervised actions (requires confirmation)
 - Admin: Autonomous actions (self-executing)
 
-ENTERPRISE: Alle Aktionen fuehren echte DB-Operationen durch.
+ENTERPRISE: Alle Aktionen führen echte DB-Operationen durch.
 """
 
 import asyncio
@@ -45,7 +45,7 @@ logger = structlog.get_logger(__name__)
 def _parse_period_range(period: str) -> tuple:
     """Parst Periodenbezeichnung in Start/End-Datetime.
 
-    Unterstuetzte Formate:
+    Unterstützte Formate:
     - YYYY-MM (z.B. '2025-01')
     - Qx_YYYY (z.B. 'Q3_2025')
     - letzter_monat, dieser_monat
@@ -148,51 +148,51 @@ ACTION_DESCRIPTIONS: Dict[AIActionType, Dict[str, str]] = {
     AIActionType.SEARCH_DOCUMENTS: {
         "title": "Dokumente durchsuchen",
         "description": "Durchsucht die Dokumentenbasis nach relevanten Inhalten.",
-        "impact": "Keine Aenderungen - nur Lesezugriff",
+        "impact": "Keine Änderungen - nur Lesezugriff",
     },
     AIActionType.ANALYZE_ENTITY: {
-        "title": "Geschaeftspartner analysieren",
+        "title": "Geschäftspartner analysieren",
         "description": "Analysiert Daten zu einem Kunden oder Lieferanten.",
-        "impact": "Keine Aenderungen - nur Analyse",
+        "impact": "Keine Änderungen - nur Analyse",
     },
     AIActionType.GENERATE_REPORT: {
         "title": "Bericht erstellen",
         "description": "Generiert einen Bericht basierend auf den Daten.",
-        "impact": "Keine Aenderungen - nur Export",
+        "impact": "Keine Änderungen - nur Export",
     },
     AIActionType.EXPLAIN_DOCUMENT: {
-        "title": "Dokument erklaeren",
-        "description": "Erklaert den Inhalt und die wichtigsten Punkte eines Dokuments.",
-        "impact": "Keine Aenderungen - nur Erklaerung",
+        "title": "Dokument erklären",
+        "description": "Erklärt den Inhalt und die wichtigsten Punkte eines Dokuments.",
+        "impact": "Keine Änderungen - nur Erklärung",
     },
     AIActionType.CATEGORIZE_DOCUMENT: {
         "title": "Dokument kategorisieren",
         "description": "Ordnet das Dokument einer Kategorie zu.",
-        "impact": "Aendert Dokument-Kategorie",
+        "impact": "Ändert Dokument-Kategorie",
     },
     AIActionType.TAG_DOCUMENT: {
         "title": "Tags hinzufuegen",
         "description": "Fuegt Tags zum Dokument hinzu.",
-        "impact": "Aendert Dokument-Tags",
+        "impact": "Ändert Dokument-Tags",
     },
     AIActionType.LINK_ENTITY: {
-        "title": "Mit Geschaeftspartner verknuepfen",
-        "description": "Verknuepft das Dokument mit einem Kunden oder Lieferanten.",
-        "impact": "Erstellt Verknuepfung",
+        "title": "Mit Geschäftspartner verknüpfen",
+        "description": "Verknüpft das Dokument mit einem Kunden oder Lieferanten.",
+        "impact": "Erstellt Verknüpfung",
     },
     AIActionType.CREATE_REMINDER: {
         "title": "Erinnerung erstellen",
-        "description": "Erstellt eine Erinnerung fuer eine Aufgabe.",
+        "description": "Erstellt eine Erinnerung für eine Aufgabe.",
         "impact": "Erstellt neue Erinnerung",
     },
     AIActionType.APPROVE_VALIDATION: {
         "title": "Validierung genehmigen",
         "description": "Genehmigt ein Dokument in der Validierungs-Queue.",
-        "impact": "Aendert Validierungs-Status",
+        "impact": "Ändert Validierungs-Status",
     },
     AIActionType.TRIGGER_OCR: {
         "title": "OCR starten",
-        "description": "Startet die OCR-Verarbeitung fuer ein Dokument.",
+        "description": "Startet die OCR-Verarbeitung für ein Dokument.",
         "impact": "Startet Hintergrund-Task",
     },
     AIActionType.SEND_NOTIFICATION: {
@@ -203,33 +203,33 @@ ACTION_DESCRIPTIONS: Dict[AIActionType, Dict[str, str]] = {
     AIActionType.BULK_CATEGORIZE: {
         "title": "Mehrere kategorisieren",
         "description": "Kategorisiert mehrere Dokumente gleichzeitig.",
-        "impact": "Aendert mehrere Dokumente",
+        "impact": "Ändert mehrere Dokumente",
     },
     AIActionType.GET_DAILY_AGENDA: {
         "title": "Tagesagenda anzeigen",
-        "description": "Zeigt Fristen, offene Freigaben, Skonto-Deadlines und ueberfaellige Rechnungen.",
-        "impact": "Keine Aenderungen - nur Lesezugriff",
+        "description": "Zeigt Fristen, offene Freigaben, Skonto-Deadlines und überfällige Rechnungen.",
+        "impact": "Keine Änderungen - nur Lesezugriff",
     },
     AIActionType.COMPARE_EXPENSES: {
         "title": "Ausgaben vergleichen",
         "description": "Vergleicht Ausgaben zwischen zwei Zeitraeumen nach Kategorie oder Lieferant.",
-        "impact": "Keine Aenderungen - nur Analyse",
+        "impact": "Keine Änderungen - nur Analyse",
     },
     AIActionType.GET_SKONTO: {
-        "title": "Skonto-Moeglichkeiten anzeigen",
-        "description": "Zeigt aktuelle Skonto-Moeglichkeiten mit Fristen und Ersparnissen.",
-        "impact": "Keine Aenderungen - nur Analyse",
+        "title": "Skonto-Möglichkeiten anzeigen",
+        "description": "Zeigt aktuelle Skonto-Möglichkeiten mit Fristen und Ersparnissen.",
+        "impact": "Keine Änderungen - nur Analyse",
     },
     AIActionType.BOOK_INVOICE: {
         "title": "Rechnung buchen",
         "description": "Bucht eine Rechnung auf ein bestimmtes Sachkonto oder eine Kostenstelle.",
-        "impact": "Aendert Buchungsdaten der Rechnung",
+        "impact": "Ändert Buchungsdaten der Rechnung",
     },
 }
 
 
 class AIActionService:
-    """Service fuer AI-gesteuerte Aktionen."""
+    """Service für AI-gesteuerte Aktionen."""
 
     def __init__(self) -> None:
         """Initialisiert den AI Action Service."""
@@ -260,14 +260,14 @@ class AIActionService:
         user: User,
         context_type: Optional[str] = None,
     ) -> AIActionListResponse:
-        """Gibt verfuegbare Aktionen basierend auf Rolle zurueck.
+        """Gibt verfügbare Aktionen basierend auf Rolle zurück.
 
         Args:
             user: Der aktuelle User
             context_type: Optionaler Kontext-Typ (document, entity, etc.)
 
         Returns:
-            Liste der verfuegbaren Aktionen
+            Liste der verfügbaren Aktionen
         """
         level = self.get_autonomy_level(user)
 
@@ -312,7 +312,7 @@ class AIActionService:
         user: User,
         request: AIActionRequest,
     ) -> AIActionResult:
-        """Fuehrt eine AI-Aktion aus.
+        """Führt eine AI-Aktion aus.
 
         Args:
             db: Database Session
@@ -339,7 +339,7 @@ class AIActionService:
                 action_id=action_id,
                 action_type=request.action_type,
                 status=AIActionStatus.FAILED,
-                message="Keine Berechtigung fuer diese Aktion.",
+                message="Keine Berechtigung für diese Aktion.",
                 execution_time_ms=int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000),
             )
 
@@ -362,7 +362,7 @@ class AIActionService:
                 action_id=action_id,
                 action_type=request.action_type,
                 status=AIActionStatus.SUGGESTED,
-                message="Aktion vorgeschlagen. Bitte bestaetigen Sie die Ausfuehrung.",
+                message="Aktion vorgeschlagen. Bitte bestätigen Sie die Ausführung.",
                 details={"suggestion": suggestion.model_dump()},
                 execution_time_ms=int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000),
             )
@@ -398,14 +398,14 @@ class AIActionService:
         confirmed: bool,
         modified_parameters: Optional[Dict[str, object]] = None,
     ) -> AIActionResult:
-        """Bestaetigt oder lehnt eine vorgeschlagene Aktion ab.
+        """Bestätigt oder lehnt eine vorgeschlagene Aktion ab.
 
         Args:
             db: Database Session
             user: Der aktuelle User
             action_id: ID der Aktion
-            confirmed: True = bestaetigen, False = ablehnen
-            modified_parameters: Optionale geaenderte Parameter
+            confirmed: True = bestätigen, False = ablehnen
+            modified_parameters: Optionale geänderte Parameter
 
         Returns:
             Action Result
@@ -499,7 +499,7 @@ class AIActionService:
         action_id: UUID,
         request: AIActionRequest,
     ) -> AIActionResult:
-        """Fuehrt die eigentliche Aktion aus.
+        """Führt die eigentliche Aktion aus.
 
         Args:
             db: Database Session
@@ -516,12 +516,12 @@ class AIActionService:
 
         # Dispatch to specific action handlers
         if request.action_type == AIActionType.SEARCH_DOCUMENTS:
-            message = "Suche ausgefuehrt."
+            message = "Suche ausgeführt."
             details = {"query": request.parameters.get("query", "")}
 
         elif request.action_type == AIActionType.ANALYZE_ENTITY:
             entity_id = request.context_id or request.parameters.get("entity_id")
-            message = f"Analyse fuer Entitaet abgeschlossen."
+            message = f"Analyse für Entität abgeschlossen."
             if entity_id:
                 affected_items.append(entity_id)
 
@@ -531,7 +531,7 @@ class AIActionService:
 
         elif request.action_type == AIActionType.EXPLAIN_DOCUMENT:
             doc_id = request.context_id or request.parameters.get("document_id")
-            message = "Dokument-Erklaerung generiert."
+            message = "Dokument-Erklärung generiert."
             if doc_id:
                 affected_items.append(doc_id)
 
@@ -571,7 +571,7 @@ class AIActionService:
                 doc_uuid = UUID(doc_id) if isinstance(doc_id, str) else doc_id
                 # Echte DB-Operation: Tags zum Dokument hinzufuegen
                 for tag_name in tags:
-                    # Pruefe ob Tag bereits existiert
+                    # Prüfe ob Tag bereits existiert
                     existing_tag = await db.execute(
                         select(Tag).where(Tag.name == tag_name)
                     )
@@ -580,7 +580,7 @@ class AIActionService:
                         tag_obj = Tag(name=tag_name)
                         db.add(tag_obj)
                         await db.flush()
-                    # Verknuepfe Tag mit Dokument (via association table)
+                    # Verknüpfe Tag mit Dokument (via association table)
                     existing_link = await db.execute(
                         select(document_tags).where(
                             document_tags.c.document_id == doc_uuid,
@@ -612,7 +612,7 @@ class AIActionService:
             if doc_id and entity_id:
                 doc_uuid = UUID(doc_id) if isinstance(doc_id, str) else doc_id
                 entity_uuid = UUID(entity_id) if isinstance(entity_id, str) else entity_id
-                # Echte DB-Operation: Entity mit Dokument verknuepfen
+                # Echte DB-Operation: Entity mit Dokument verknüpfen
                 await db.execute(
                     update(Document)
                     .where(
@@ -627,7 +627,7 @@ class AIActionService:
                 await db.commit()
                 affected_items.append(doc_uuid)
                 affected_items.append(entity_uuid)
-                message = "Dokument mit Geschaeftspartner verknuepft."
+                message = "Dokument mit Geschäftspartner verknüpft."
                 logger.info(
                     "document_linked_to_entity_by_ai",
                     document_id=str(doc_uuid),
@@ -668,7 +668,7 @@ class AIActionService:
             db.add(reminder)
             await db.commit()
             affected_items.append(reminder.id)
-            message = f"Erinnerung '{title}' erstellt fuer {due_date.strftime('%d.%m.%Y')}."
+            message = f"Erinnerung '{title}' erstellt für {due_date.strftime('%d.%m.%Y')}."
             details = {
                 "reminder_id": str(reminder.id),
                 "due_date": due_date.isoformat(),
@@ -833,7 +833,7 @@ class AIActionService:
             now = datetime.now(timezone.utc)
             future_cutoff = now + timedelta(days=int(include_future_days))
 
-            # Ueberfaellige Rechnungen (via InvoiceTracking)
+            # Überfällige Rechnungen (via InvoiceTracking)
             overdue_result = await db.execute(
                 select(InvoiceTracking).where(
                     InvoiceTracking.company_id == user.company_id,
@@ -873,7 +873,7 @@ class AIActionService:
             agenda_items: List[Dict[str, object]] = []
             for inv in overdue_invoices:
                 agenda_items.append({
-                    "typ": "ueberfaellig",
+                    "typ": "überfällig",
                     "document_id": str(inv.document_id),
                     "rechnungsnummer": inv.invoice_number or "Unbekannt",
                     "betrag": float(inv.amount or 0),
@@ -891,13 +891,13 @@ class AIActionService:
                 })
 
             details = {
-                "ueberfaellige_rechnungen": len(overdue_invoices),
+                "überfällige_rechnungen": len(overdue_invoices),
                 "ausstehende_validierungen": pending_count,
                 "skonto_fristen": len(skonto_invoices),
                 "items": agenda_items,
             }
             message = (
-                f"Tagesagenda: {len(overdue_invoices)} ueberfaellige Rechnungen, "
+                f"Tagesagenda: {len(overdue_invoices)} überfällige Rechnungen, "
                 f"{pending_count} ausstehende Validierungen, "
                 f"{len(skonto_invoices)} ablaufende Skonto-Fristen."
             )
@@ -917,7 +917,7 @@ class AIActionService:
             range_1_start, range_1_end = _parse_period_range(str(period_1))
             range_2_start, range_2_end = _parse_period_range(str(period_2))
 
-            # Summe und Anzahl fuer Periode 1
+            # Summe und Anzahl für Periode 1
             result_1 = await db.execute(
                 select(
                     sa_func.coalesce(sa_func.sum(InvoiceTracking.amount), 0),
@@ -933,7 +933,7 @@ class AIActionService:
             total_1 = float(row_1[0])
             count_1 = int(row_1[1])
 
-            # Summe und Anzahl fuer Periode 2
+            # Summe und Anzahl für Periode 2
             result_2 = await db.execute(
                 select(
                     sa_func.coalesce(sa_func.sum(InvoiceTracking.amount), 0),
@@ -1018,7 +1018,7 @@ class AIActionService:
                 "opportunities": opportunities,
             }
             message = (
-                f"{len(opportunities)} Skonto-Moeglichkeiten in den naechsten {days_ahead} Tagen. "
+                f"{len(opportunities)} Skonto-Möglichkeiten in den nächsten {days_ahead} Tagen. "
                 f"Potenzielle Ersparnis: {total_savings:.2f} EUR."
             )
             logger.info(
@@ -1048,7 +1048,7 @@ class AIActionService:
                 if not doc:
                     message = "Fehler: Dokument nicht gefunden."
                 else:
-                    # Aktive DATEV-Verbindung fuer diese Company
+                    # Aktive DATEV-Verbindung für diese Company
                     conn_result = await db.execute(
                         select(DATEVConnection).where(
                             DATEVConnection.company_id == user.company_id,
@@ -1154,7 +1154,7 @@ class AIActionService:
         document_id: Optional[UUID] = None,
         entity_id: Optional[UUID] = None,
     ) -> AIContextInfo:
-        """Gibt Kontext-Informationen fuer den AI-Assistent zurueck.
+        """Gibt Kontext-Informationen für den AI-Assistent zurück.
 
         Args:
             user: Der aktuelle User
@@ -1163,7 +1163,7 @@ class AIActionService:
             entity_id: Optional Entity ID
 
         Returns:
-            AIContextInfo mit Vorschlaegen und verfuegbaren Aktionen
+            AIContextInfo mit Vorschlägen und verfügbaren Aktionen
         """
         level = self.get_autonomy_level(user)
 
@@ -1194,7 +1194,7 @@ class AIActionService:
         document_id: Optional[UUID] = None,
         entity_id: Optional[UUID] = None,
     ) -> List[str]:
-        """Generiert kontextspezifische Vorschlaege.
+        """Generiert kontextspezifische Vorschläge.
 
         Args:
             page_type: Seitentyp
@@ -1202,22 +1202,22 @@ class AIActionService:
             entity_id: Optional Entity ID
 
         Returns:
-            Liste von Vorschlaegen auf Deutsch
+            Liste von Vorschlägen auf Deutsch
         """
         suggestions = {
             'dashboard': [
                 "Was sind meine offenen Aufgaben?",
                 "Zeige mir die wichtigsten KPIs",
-                "Welche Rechnungen sind ueberfaellig?",
+                "Welche Rechnungen sind überfällig?",
             ],
             'documents': [
                 "Finde alle Rechnungen von letztem Monat",
                 "Zeige mir unbezahlte Rechnungen",
-                "Suche nach Vertraegen",
+                "Suche nach Verträgen",
             ],
             'document-detail': [
                 "Fasse dieses Dokument zusammen",
-                "Welche Entitaeten sind hier erwaehnt?",
+                "Welche Entitäten sind hier erwaehnt?",
                 "Kategorisiere dieses Dokument",
             ],
             'entities': [
@@ -1231,19 +1231,19 @@ class AIActionService:
                 "Erstelle einen Kundenbericht",
             ],
             'invoices': [
-                "Welche Rechnungen sind ueberfaellig?",
-                "Zeige mir Skonto-Moeglichkeiten",
+                "Welche Rechnungen sind überfällig?",
+                "Zeige mir Skonto-Möglichkeiten",
                 "Analysiere Zahlungseingaenge",
             ],
             'banking': [
                 "Zeige offene Transaktionen",
                 "Finde nicht zugeordnete Buchungen",
-                "Analysiere Kontoumsaetze",
+                "Analysiere Kontoumsätze",
             ],
             'validation': [
                 "Zeige mir Items mit niedrigem Confidence",
                 "Was muss ich heute validieren?",
-                "Erklaere die OCR-Fehler",
+                "Erkläre die OCR-Fehler",
             ],
         }
 
@@ -1259,7 +1259,7 @@ _ai_action_service: Optional[AIActionService] = None
 
 
 def get_ai_action_service() -> AIActionService:
-    """Gibt die AI Action Service Instanz zurueck.
+    """Gibt die AI Action Service Instanz zurück.
 
     Returns:
         AIActionService Singleton

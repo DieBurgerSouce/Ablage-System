@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-CalDAV-Protokoll Client fuer On-Premises Kalender (Nextcloud, ownCloud).
+CalDAV-Protokoll Client für On-Premises Kalender (Nextcloud, ownCloud).
 
-Verwendet die caldav Python Library fuer CalDAV-Server-Kommunikation.
+Verwendet die caldav Python Library für CalDAV-Server-Kommunikation.
 Bei fehlender Library wird auf manuell generierte iCalendar-Strings
-und httpx-basierte WebDAV-Aufrufe zurueckgegriffen.
+und httpx-basierte WebDAV-Aufrufe zurückgegriffen.
 
 Feinpoliert und durchdacht - On-Premises Kalender-Integration.
 """
@@ -29,7 +29,7 @@ def _render_vevent(event: CalendarEvent) -> str:
         event: CalendarEvent mit Ereignisdaten
 
     Returns:
-        Vollstaendiger VCALENDAR-String
+        Vollständiger VCALENDAR-String
     """
     lines = [
         "BEGIN:VCALENDAR",
@@ -59,7 +59,7 @@ def _render_vevent(event: CalendarEvent) -> str:
 
 
 def _ical_escape(text: str) -> str:
-    """Escaped Sonderzeichen fuer iCalendar nach RFC 5545."""
+    """Escaped Sonderzeichen für iCalendar nach RFC 5545."""
     return (
         text
         .replace("\\", "\\\\")
@@ -71,9 +71,9 @@ def _ical_escape(text: str) -> str:
 
 class CaldavClient:
     """
-    CalDAV-Client fuer On-Premises Kalender-Server.
+    CalDAV-Client für On-Premises Kalender-Server.
 
-    Unterstuetzt Nextcloud, ownCloud, Radicale und andere
+    Unterstützt Nextcloud, ownCloud, Radicale und andere
     CalDAV-kompatible Server.
 
     Versucht zuerst die caldav Python Library zu verwenden.
@@ -97,15 +97,15 @@ class CaldavClient:
 
         Args:
             url: CalDAV-Server URL (z.B. https://nextcloud.example.com/remote.php/dav)
-            username: Benutzername fuer Basic Auth
-            password: Passwort fuer Basic Auth
+            username: Benutzername für Basic Auth
+            password: Passwort für Basic Auth
         """
         self._url = url.rstrip("/")
         self._username = username
         self._password = password
         self._caldav_available = False
 
-        # Pruefen ob caldav Library verfuegbar ist
+        # Prüfen ob caldav Library verfügbar ist
         try:
             import caldav as _caldav_mod  # noqa: F401
             self._caldav_available = True
@@ -141,7 +141,7 @@ class CaldavClient:
             return True, f"Verbindung erfolgreich. {len(calendars)} Kalender gefunden."
         except Exception as e:
             logger.error("caldav_connection_test_failed", **safe_error_log(e))
-            return False, "Verbindung fehlgeschlagen. Bitte URL und Zugangsdaten pruefen."
+            return False, "Verbindung fehlgeschlagen. Bitte URL und Zugangsdaten prüfen."
 
     async def _test_connection_httpx(self) -> Tuple[bool, str]:
         """Verbindungstest via httpx PROPFIND."""
@@ -167,7 +167,7 @@ class CaldavClient:
                 if response.status_code in (200, 207):
                     return True, "Verbindung erfolgreich."
                 if response.status_code == 401:
-                    return False, "Authentifizierung fehlgeschlagen. Zugangsdaten pruefen."
+                    return False, "Authentifizierung fehlgeschlagen. Zugangsdaten prüfen."
                 return False, f"Server-Antwort: HTTP {response.status_code}"
 
         except Exception as e:
@@ -180,7 +180,7 @@ class CaldavClient:
 
     async def list_calendars(self) -> List[CalendarInfo]:
         """
-        Listet alle verfuegbaren Kalender auf dem Server auf.
+        Listet alle verfügbaren Kalender auf dem Server auf.
 
         Returns:
             Liste von CalendarInfo-Objekten
@@ -239,7 +239,7 @@ class CaldavClient:
                 if response.status_code not in (200, 207):
                     return []
 
-                # Einfaches XML-Parsing fuer Kalender-Eintraege
+                # Einfaches XML-Parsing für Kalender-Einträge
                 return self._parse_propfind_calendars(response.text)
 
         except Exception as e:
@@ -248,7 +248,7 @@ class CaldavClient:
 
     @staticmethod
     def _parse_propfind_calendars(xml_text: str) -> List[CalendarInfo]:
-        """Parst PROPFIND-Antwort fuer Kalender-Eintraege (einfaches Parsing)."""
+        """Parst PROPFIND-Antwort für Kalender-Einträge (einfaches Parsing)."""
         import xml.etree.ElementTree as ET
 
         calendars: List[CalendarInfo] = []
@@ -269,7 +269,7 @@ class CaldavClient:
                 if prop is None:
                     continue
 
-                # Pruefen ob es ein Kalender ist (resourcetype hat calendar)
+                # Prüfen ob es ein Kalender ist (resourcetype hat calendar)
                 resourcetype = prop.find("d:resourcetype", ns)
                 if resourcetype is None:
                     continue
@@ -381,7 +381,7 @@ class CaldavClient:
         Aktualisiert ein bestehendes Ereignis.
 
         Bei CalDAV wird ein Update durch erneutes PUT der .ics-Datei
-        mit derselben UID durchgefuehrt.
+        mit derselben UID durchgeführt.
 
         Args:
             calendar_id: Kalender-URL / Pfad
@@ -457,7 +457,7 @@ class CaldavClient:
         event_id: str,
     ) -> bool:
         """
-        Loescht ein Ereignis aus dem CalDAV-Kalender.
+        Löscht ein Ereignis aus dem CalDAV-Kalender.
 
         Args:
             calendar_id: Kalender-URL / Pfad
@@ -471,7 +471,7 @@ class CaldavClient:
         return await self._delete_event_httpx(calendar_id, event_id)
 
     async def _delete_event_caldav(self, calendar_id: str, event_id: str) -> bool:
-        """Event loeschen via caldav Library."""
+        """Event löschen via caldav Library."""
         try:
             import caldav
             client = caldav.DAVClient(
@@ -481,7 +481,7 @@ class CaldavClient:
             )
             calendar = caldav.Calendar(client=client, url=calendar_id)
 
-            # Event suchen und loeschen
+            # Event suchen und löschen
             try:
                 event_url = f"{calendar_id.rstrip('/')}/{event_id}.ics"
                 event_obj = caldav.Event(client=client, url=event_url, parent=calendar)
@@ -508,7 +508,7 @@ class CaldavClient:
             return False
 
     async def _delete_event_httpx(self, calendar_id: str, event_id: str) -> bool:
-        """Event loeschen via httpx DELETE."""
+        """Event löschen via httpx DELETE."""
         event_url = f"{calendar_id.rstrip('/')}/{event_id}.ics"
 
         try:

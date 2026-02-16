@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-EstatePlanningService - Nachlassplanung fuer das Privat-Modul.
+EstatePlanningService - Nachlassplanung für das Privat-Modul.
 
-Bietet Funktionen fuer:
-1. Vermoegensuebertragungsplanung
+Bietet Funktionen für:
+1. Vermoegensübertragungsplanung
 2. Erbschaftsteuer-Szenarien (deutsches Erbschaftsteuerrecht)
 3. Vollmacht-Verwaltung (Vorsorge-, General-, Bankvollmacht)
-4. Zeitgesteuerten Dokumentenzugriff fuer Erben
+4. Zeitgesteuerten Dokumentenzugriff für Erben
 5. Nachlass-Zusammenfassungen
 
 Basierend auf deutschem Erbschaftsteuer- und Schenkungsteuergesetz (ErbStG).
 
 Enterprise Feature - KEINE externen APIs, alles lokal berechnet.
-SECURITY: NIEMALS persoenliche Daten oder Vermoegenshoehen loggen!
+SECURITY: NIEMALS persoenliche Daten oder Vermoegenshöhen loggen!
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ ESTATE_PLANNING_DURATION = Histogram(
 # =============================================================================
 
 class RelationshipType(str, Enum):
-    """Verwandtschaftsverhaeltnis zum Erblasser/Schenker."""
+    """Verwandtschaftsverhältnis zum Erblasser/Schenker."""
     EHEPARTNER = "ehepartner"
     LEBENSPARTNER = "lebenspartner"  # Eingetragene Lebenspartnerschaft
     KIND = "kind"
@@ -84,15 +84,15 @@ class PowerOfAttorneyType(str, Enum):
     VORSORGEVOLLMACHT = "vorsorgevollmacht"
     GENERALVOLLMACHT = "generalvollmacht"
     BANKVOLLMACHT = "bankvollmacht"
-    PATIENTENVERFUEGUNG = "patientenverfuegung"
-    BETREUUNGSVERFUEGUNG = "betreuungsverfuegung"
-    SORGERECHTSVERFUEGUNG = "sorgerechtsverfuegung"
+    PATIENTENVERFUEGUNG = "patientenverfügung"
+    BETREUUNGSVERFUEGUNG = "betreuungsverfügung"
+    SORGERECHTSVERFUEGUNG = "sorgerechtsverfügung"
 
 
 class DocumentAccessTrigger(str, Enum):
-    """Ausloeser fuer Dokumentenzugriff."""
+    """Ausloeser für Dokumentenzugriff."""
     DEATH = "death"  # Nach Tod
-    INCAPACITY = "incapacity"  # Bei Geschaeftsunfaehigkeit
+    INCAPACITY = "incapacity"  # Bei Geschäftsunfähigkeit
     DATE = "date"  # Ab bestimmtem Datum
     AGE = "age"  # Ab bestimmtem Alter des Erben
     MANUAL = "manual"  # Manuell durch Vollmachtgeber
@@ -123,7 +123,7 @@ VERSORGUNGSFREIBETRAG_KIND_20_27 = Decimal("10300")
 HAUSRAT_FREIBETRAG_KLASSE_I = Decimal("41000")
 SONSTIGE_BEWEGLICHE_SACHEN_KLASSE_I = Decimal("12000")
 
-# Steuersaetze nach Steuerklasse und Wert (Tabelle 19 ErbStG)
+# Steuersätze nach Steuerklasse und Wert (Tabelle 19 ErbStG)
 # Format: {(von, bis): {klasse: satz}}
 ERBSCHAFTSTEUER_SAETZE = {
     (Decimal("0"), Decimal("75000")): {
@@ -192,7 +192,7 @@ class PowerOfAttorney:
     granted_date: Optional[date] = None
     valid_from: Optional[date] = None
     valid_until: Optional[date] = None
-    document_id: Optional[UUID] = None  # Verknuepftes Dokument
+    document_id: Optional[UUID] = None  # Verknüpftes Dokument
     is_active: bool = True
     scope: Optional[str] = None  # Umfang der Vollmacht
     notarized: bool = False
@@ -201,7 +201,7 @@ class PowerOfAttorney:
 
 @dataclass
 class InheritanceTaxScenario:
-    """Erbschaftsteuer-Szenario fuer einen Erben."""
+    """Erbschaftsteuer-Szenario für einen Erben."""
     heir: Heir
     gross_inheritance: Decimal
     taxable_inheritance: Decimal
@@ -219,26 +219,26 @@ class InheritanceTaxScenario:
 class GiftPlanningScenario:
     """Schenkungsplanung zur Steueroptimierung."""
     recipient: Heir
-    annual_gift: Decimal  # Jaehrliche Schenkung
+    annual_gift: Decimal  # Jährliche Schenkung
     years: int
     total_gift: Decimal
     tax_free_amount: Decimal
     taxable_amount: Decimal
     estimated_tax: Decimal
     strategy_description: str
-    next_renewal_date: date  # Naechste Freibetrag-Erneuerung
+    next_renewal_date: date  # Nächste Freibetrag-Erneuerung
 
 
 @dataclass
 class HeirDocumentAccess:
-    """Zeitgesteuerter Dokumentenzugriff fuer Erben."""
+    """Zeitgesteuerter Dokumentenzugriff für Erben."""
     heir_name: str
     heir_email: Optional[str]
     documents: List[UUID]
     folders: List[UUID]
     trigger: DocumentAccessTrigger
-    trigger_date: Optional[date] = None  # Fuer DATE/AGE Trigger
-    trigger_age: Optional[int] = None  # Fuer AGE Trigger
+    trigger_date: Optional[date] = None  # Für DATE/AGE Trigger
+    trigger_age: Optional[int] = None  # Für AGE Trigger
     is_active: bool = True
     access_granted: bool = False
     access_granted_at: Optional[datetime] = None
@@ -302,10 +302,10 @@ class TenYearGiftPlan:
 
 class EstatePlanningService:
     """
-    Singleton Service fuer Nachlassplanung.
+    Singleton Service für Nachlassplanung.
 
     Berechnet Erbschaftsteuer-Szenarien, verwaltet Vollmachten
-    und plant Vermoegensuebertragungen.
+    und plant Vermoegensübertragungen.
 
     SECURITY: NIEMALS persoenliche Daten oder Betraege loggen!
     """
@@ -332,7 +332,7 @@ class EstatePlanningService:
     # =========================================================================
 
     def get_tax_class(self, relationship: RelationshipType) -> TaxClass:
-        """Bestimmt die Steuerklasse basierend auf Verwandtschaftsverhaeltnis."""
+        """Bestimmt die Steuerklasse basierend auf Verwandtschaftsverhältnis."""
         if relationship in (
             RelationshipType.EHEPARTNER,
             RelationshipType.LEBENSPARTNER,
@@ -393,7 +393,7 @@ class EstatePlanningService:
         Ermittelt den Versorgungsfreibetrag.
 
         Nur bei Erbschaft, nicht bei Schenkung!
-        Wird um Kapitalwert von Versorgungsbezuegen gekuerzt.
+        Wird um Kapitalwert von Versorgungsbezuegen gekürzt.
         """
         if not is_inheritance:
             return Decimal("0")
@@ -459,7 +459,7 @@ class EstatePlanningService:
         total_estate: Decimal,
         is_inheritance: bool = True,
     ) -> InheritanceTaxScenario:
-        """Berechnet das Steuer-Szenario fuer einen einzelnen Erben."""
+        """Berechnet das Steuer-Szenario für einen einzelnen Erben."""
         # Anteil am Nachlass berechnen
         if heir.specific_bequest:
             gross_inheritance = heir.specific_bequest
@@ -476,7 +476,7 @@ class EstatePlanningService:
             heir.relationship, is_inheritance
         )
 
-        # Alter bei Tod berechnen fuer Versorgungsfreibetrag
+        # Alter bei Tod berechnen für Versorgungsfreibetrag
         age_at_event: Optional[int] = None
         if heir.birth_date:
             age_at_event = (date.today() - heir.birth_date).days // 365
@@ -492,7 +492,7 @@ class EstatePlanningService:
 
         # Steuerpflichtiger Erwerb
         total_deductions = personal_allowance + care_allowance + household_allowance
-        other_deductions = Decimal("0")  # Erweiterbar fuer Beerdigungskosten etc.
+        other_deductions = Decimal("0")  # Erweiterbar für Beerdigungskosten etc.
 
         taxable_inheritance = gross_inheritance
         tax_base = max(Decimal("0"), taxable_inheritance - total_deductions - other_deductions)
@@ -534,7 +534,7 @@ class EstatePlanningService:
         """
         Erstellt einen 10-Jahres-Schenkungsplan zur Steueroptimierung.
 
-        Der Freibetrag erneuert sich alle 10 Jahre vollstaendig.
+        Der Freibetrag erneuert sich alle 10 Jahre vollständig.
         """
         if gifts_already_made is None:
             gifts_already_made = []
@@ -557,7 +557,7 @@ class EstatePlanningService:
 
         remaining_allowance = max(Decimal("0"), allowance - current_gifts)
 
-        # Naechstes Freibetrag-Reset berechnen
+        # Nächstes Freibetrag-Reset berechnen
         if earliest_gift_date:
             period_end = earliest_gift_date + timedelta(days=3650)
         else:
@@ -598,7 +598,7 @@ class EstatePlanningService:
                 estimated_tax=Decimal("0"),
                 strategy_description=(
                     f"Nach Freibetrag-Erneuerung ({period_end}): "
-                    f"{next_period_gift:.2f} EUR steuerfrei moeglich"
+                    f"{next_period_gift:.2f} EUR steuerfrei möglich"
                 ),
                 next_renewal_date=period_end + timedelta(days=3650),
             ))
@@ -644,7 +644,7 @@ class EstatePlanningService:
                     PrivatDocument.document_type == "vollmacht",
                     PrivatDocument.document_type == "power_of_attorney",
                     func.lower(PrivatDocument.name).contains("vollmacht"),
-                    func.lower(PrivatDocument.name).contains("verfuegung"),
+                    func.lower(PrivatDocument.name).contains("verfügung"),
                 ),
             )
         )
@@ -660,7 +660,7 @@ class EstatePlanningService:
                 id=doc.id,
                 poa_type=poa_type,
                 title=doc.name or "Vollmacht",
-                granted_to="",  # Muesste aus OCR extrahiert werden
+                granted_to="",  # Müsste aus OCR extrahiert werden
                 granted_date=doc.document_date,
                 document_id=doc.id,
                 is_active=True,
@@ -683,9 +683,9 @@ class EstatePlanningService:
             return PowerOfAttorneyType.GENERALVOLLMACHT
         if "bankvollmacht" in text or "kontovollmacht" in text:
             return PowerOfAttorneyType.BANKVOLLMACHT
-        if "patientenverfuegung" in text:
+        if "patientenverfügung" in text:
             return PowerOfAttorneyType.PATIENTENVERFUEGUNG
-        if "betreuungsverfuegung" in text:
+        if "betreuungsverfügung" in text:
             return PowerOfAttorneyType.BETREUUNGSVERFUEGUNG
         if "sorgerecht" in text:
             return PowerOfAttorneyType.SORGERECHTSVERFUEGUNG
@@ -693,26 +693,26 @@ class EstatePlanningService:
         return PowerOfAttorneyType.VORSORGEVOLLMACHT  # Default
 
     def _check_if_notarized(self, doc: Any) -> bool:
-        """Prueft ob ein Dokument notariell beglaubigt ist."""
+        """Prüft ob ein Dokument notariell beglaubigt ist."""
         text = ""
         if hasattr(doc, 'name') and doc.name:
             text += doc.name.lower()
         if hasattr(doc, 'ocr_text') and doc.ocr_text:
             text += " " + doc.ocr_text.lower()[:500]
 
-        notary_indicators = ["notar", "beurkundung", "beglaubig", "oeffentlich"]
+        notary_indicators = ["notar", "beurkundung", "beglaubig", "öffentlich"]
         return any(ind in text for ind in notary_indicators)
 
     def check_essential_poas(
         self,
         existing_poas: List[PowerOfAttorney],
     ) -> List[str]:
-        """Prueft auf fehlende wichtige Vollmachten."""
+        """Prüft auf fehlende wichtige Vollmachten."""
         existing_types = {poa.poa_type for poa in existing_poas if poa.is_active}
 
         essential = [
             (PowerOfAttorneyType.VORSORGEVOLLMACHT, "Vorsorgevollmacht"),
-            (PowerOfAttorneyType.PATIENTENVERFUEGUNG, "Patientenverfuegung"),
+            (PowerOfAttorneyType.PATIENTENVERFUEGUNG, "Patientenverfügung"),
             (PowerOfAttorneyType.BANKVOLLMACHT, "Bankvollmacht"),
         ]
 
@@ -724,7 +724,7 @@ class EstatePlanningService:
         return missing
 
     # =========================================================================
-    # Dokumentenzugriff fuer Erben
+    # Dokumentenzugriff für Erben
     # =========================================================================
 
     async def setup_heir_document_access(
@@ -741,9 +741,9 @@ class EstatePlanningService:
         notes: Optional[str] = None,
     ) -> HeirDocumentAccess:
         """
-        Richtet zeitgesteuerten Dokumentenzugriff fuer einen Erben ein.
+        Richtet zeitgesteuerten Dokumentenzugriff für einen Erben ein.
 
-        SECURITY: Keine Details ueber Dokumente loggen!
+        SECURITY: Keine Details über Dokumente loggen!
         """
         ESTATE_PLANNING_CALCULATIONS.labels(calculation_type="heir_access_setup").inc()
 
@@ -761,7 +761,7 @@ class EstatePlanningService:
         )
 
         # In der Praxis: In DB speichern
-        # Hier nur Rueckgabe des Objekts
+        # Hier nur Rückgabe des Objekts
 
         logger.info(
             "heir_document_access_setup",
@@ -784,7 +784,7 @@ class EstatePlanningService:
         heirs: List[Heir],
     ) -> EstateSummary:
         """
-        Generiert eine vollstaendige Nachlass-Zusammenfassung.
+        Generiert eine vollständige Nachlass-Zusammenfassung.
 
         SECURITY: Keine Betraege oder persoenliche Daten loggen!
         """
@@ -823,7 +823,7 @@ class EstatePlanningService:
             tax_scenarios.append(scenario)
             total_tax += scenario.tax_amount
 
-        # 4. Vollmachten pruefen
+        # 4. Vollmachten prüfen
         poas = await self.get_powers_of_attorney(db, space_id)
         missing_poas = self.check_essential_poas(poas)
 
@@ -893,7 +893,7 @@ class EstatePlanningService:
         high_tax_heirs = [s for s in scenarios if s.effective_tax_rate > Decimal("10")]
         if high_tax_heirs:
             recommendations.append(
-                "Schenkungsplanung: Durch gestaffelte Schenkungen koennten "
+                "Schenkungsplanung: Durch gestaffelte Schenkungen könnten "
                 "Freibetraege mehrfach genutzt werden (alle 10 Jahre)."
             )
 
@@ -911,13 +911,13 @@ class EstatePlanningService:
         ):
             recommendations.append(
                 "Familienheim-Befreiung: Selbstgenutzte Immobilie kann "
-                "steuerfrei an Ehepartner vererbt werden (bei Selbstnutzung fuer 10 Jahre)."
+                "steuerfrei an Ehepartner vererbt werden (bei Selbstnutzung für 10 Jahre)."
             )
 
         # Lebensversicherungen
         recommendations.append(
             "Tipp: Lebensversicherungen mit Bezugsrecht umgehen den Nachlass "
-            "und koennen Erbschaftsteuer sparen."
+            "und können Erbschaftsteuer sparen."
         )
 
         return recommendations[:5]  # Max 5 Empfehlungen
@@ -929,14 +929,14 @@ class EstatePlanningService:
     def calculate_usufruct_value(
         self,
         asset_value: Decimal,
-        annual_yield_rate: Decimal,  # z.B. 0.04 fuer 4% Mietrendite
+        annual_yield_rate: Decimal,  # z.B. 0.04 für 4% Mietrendite
         beneficiary_age: int,
         gender: str = "m",  # "m" oder "f"
     ) -> Decimal:
         """
         Berechnet den Kapitalwert eines Niessbrauchs.
 
-        Wichtig fuer Schenkung unter Niessbrauchsvorbehalt
+        Wichtig für Schenkung unter Niessbrauchsvorbehalt
         (Steueroptimierung bei Immobilien).
         """
         # Jahrlicher Ertrag
@@ -959,7 +959,7 @@ class EstatePlanningService:
             90: Decimal("2.4"),
         }
 
-        # Naechsten Faktor finden
+        # Nächsten Faktor finden
         ages = sorted(multipliers.keys())
         factor = Decimal("5")  # Default
 
@@ -978,7 +978,7 @@ class EstatePlanningService:
         recipient: Heir,
     ) -> Dict[str, Any]:
         """
-        Berechnet Schenkungsteuer bei Uebertragung unter Niessbrauchsvorbehalt.
+        Berechnet Schenkungsteuer bei Übertragung unter Niessbrauchsvorbehalt.
 
         Der Niessbrauch mindert den steuerpflichtigen Erwerb.
         """
@@ -1007,7 +1007,7 @@ class EstatePlanningService:
             "savings_vs_direct_gift": str(savings),
             "recommendation": (
                 "Niessbrauchsvorbehalt empfohlen" if savings > 1000
-                else "Direktuebertragung ggf. vorteilhafter"
+                else "Direktübertragung ggf. vorteilhafter"
             ),
         }
 
@@ -1017,5 +1017,5 @@ class EstatePlanningService:
 # =============================================================================
 
 def get_estate_planning_service() -> EstatePlanningService:
-    """Gibt die Singleton-Instanz des Estate Planning Service zurueck."""
+    """Gibt die Singleton-Instanz des Estate Planning Service zurück."""
     return EstatePlanningService()

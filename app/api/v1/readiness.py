@@ -2,9 +2,9 @@
 """
 Production Readiness API Endpoints.
 
-Bietet Admin-Endpoints fuer:
-- Production Readiness Check durchfuehren
-- Status-Uebersicht abrufen
+Bietet Admin-Endpoints für:
+- Production Readiness Check durchführen
+- Status-Übersicht abrufen
 - Deployment-Checkliste
 - Empfehlungen vor Go-Live
 
@@ -38,7 +38,7 @@ router = APIRouter(prefix="/readiness", tags=["readiness"])
 
 
 class ReadinessCheckResponse(BaseModel):
-    """Response fuer einzelnen Check."""
+    """Response für einzelnen Check."""
 
     name: str
     category: str
@@ -49,7 +49,7 @@ class ReadinessCheckResponse(BaseModel):
 
 
 class ReadinessSummaryResponse(BaseModel):
-    """Response fuer Summary."""
+    """Response für Summary."""
 
     total: int
     ready: int
@@ -59,7 +59,7 @@ class ReadinessSummaryResponse(BaseModel):
 
 
 class ReadinessReportResponse(BaseModel):
-    """Response fuer vollstaendigen Readiness Report."""
+    """Response für vollständigen Readiness Report."""
 
     timestamp: str
     overall_status: str
@@ -72,7 +72,7 @@ class ReadinessReportResponse(BaseModel):
 
 
 class DeploymentStatusResponse(BaseModel):
-    """Response fuer Deployment-Status."""
+    """Response für Deployment-Status."""
 
     ready_for_production: bool
     overall_status: str
@@ -84,7 +84,7 @@ class DeploymentStatusResponse(BaseModel):
 
 
 class CategoryReportResponse(BaseModel):
-    """Response fuer Kategorie-Report."""
+    """Response für Kategorie-Report."""
 
     category: str
     total_checks: int
@@ -104,9 +104,9 @@ async def run_readiness_check(
     current_user: User = Depends(get_current_superuser),
 ) -> ReadinessReportResponse:
     """
-    Fuehrt vollstaendigen Production Readiness Check durch.
+    Führt vollständigen Production Readiness Check durch.
 
-    Prueft:
+    Prüft:
     - Security (Score, kritische Issues)
     - Performance (P99 Latenz, Error Rate)
     - Health (Database, Redis, GPU)
@@ -116,7 +116,7 @@ async def run_readiness_check(
     **Erfordert Superuser-Authentifizierung.**
 
     Returns:
-        Vollstaendiger Readiness-Report mit Score und Checks
+        Vollständiger Readiness-Report mit Score und Checks
     """
     service = get_production_readiness_service()
     report = await service.run_readiness_check()
@@ -162,9 +162,9 @@ async def get_deployment_status(
     current_user: User = Depends(get_current_superuser),
 ) -> DeploymentStatusResponse:
     """
-    Gibt den aktuellen Deployment-Status zurueck.
+    Gibt den aktuellen Deployment-Status zurück.
 
-    Schnelle Uebersicht ob das System production-ready ist.
+    Schnelle Übersicht ob das System production-ready ist.
 
     **Erfordert Superuser-Authentifizierung.**
     """
@@ -185,7 +185,7 @@ async def get_deployment_status(
         and blocking_issues == 0
     )
 
-    # Naechste Schritte basierend auf Status
+    # Nächste Schritte basierend auf Status
     next_steps = []
     if report.overall_status == ReadinessStatus.CRITICAL:
         next_steps.append("KRITISCH: Behebe alle kritischen Issues sofort")
@@ -198,18 +198,18 @@ async def get_deployment_status(
             if c.status == ReadinessStatus.NOT_READY and c.recommendation:
                 next_steps.append(f"- {c.recommendation}")
     elif report.overall_status == ReadinessStatus.WARNINGS:
-        next_steps.append("System ist deployment-faehig mit Einschraenkungen")
-        next_steps.append("Empfohlen: Behebe Warnungen fuer optimale Stabilitaet")
+        next_steps.append("System ist deployment-faehig mit Einschränkungen")
+        next_steps.append("Empfohlen: Behebe Warnungen für optimale Stabilitaet")
     else:
         next_steps.append("System ist production-ready")
-        next_steps.append("Empfohlen: Regelmaessige Readiness-Checks durchfuehren")
+        next_steps.append("Empfohlen: Regelmäßige Readiness-Checks durchführen")
 
     # Status-Nachricht
     if ready_for_production:
         if warnings > 0:
             message = f"Production-Ready mit {warnings} Warnungen"
         else:
-            message = "Vollstaendig Production-Ready"
+            message = "Vollständig Production-Ready"
     else:
         message = f"Nicht Production-Ready: {blocking_issues} blockierende Issues"
 
@@ -237,9 +237,9 @@ async def get_category_report(
     current_user: User = Depends(get_current_superuser),
 ) -> CategoryReportResponse:
     """
-    Gibt Readiness-Report fuer eine bestimmte Kategorie zurueck.
+    Gibt Readiness-Report für eine bestimmte Kategorie zurück.
 
-    Verfuegbare Kategorien:
+    Verfügbare Kategorien:
     - security: Sicherheits-Checks
     - performance: Performance-Checks
     - health: System-Health-Checks
@@ -254,7 +254,7 @@ async def get_category_report(
         from fastapi import HTTPException
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltige Kategorie. Erlaubt: {valid_categories}"
+            detail=f"Ungültige Kategorie. Erlaubt: {valid_categories}"
         )
 
     service = get_production_readiness_service()
@@ -307,10 +307,10 @@ async def get_blocking_issues(
     current_user: User = Depends(get_current_superuser),
 ):
     """
-    Gibt nur blockierende Issues zurueck.
+    Gibt nur blockierende Issues zurück.
 
-    Nuetzlich fuer schnelle Uebersicht der kritischen Probleme
-    die vor einem Production-Deployment behoben werden muessen.
+    Nuetzlich für schnelle Übersicht der kritischen Probleme
+    die vor einem Production-Deployment behoben werden müssen.
 
     **Erfordert Superuser-Authentifizierung.**
     """
@@ -335,7 +335,7 @@ async def get_blocking_issues(
         "message": (
             f"Deployment blockiert: {critical_count} kritische und {not_ready_count} nicht-bereite Issues"
             if blockers
-            else "Keine blockierenden Issues - Deployment moeglich"
+            else "Keine blockierenden Issues - Deployment möglich"
         ),
     }
 
@@ -345,9 +345,9 @@ async def get_deployment_checklist(
     current_user: User = Depends(get_current_superuser),
 ):
     """
-    Gibt eine Deployment-Checkliste zurueck.
+    Gibt eine Deployment-Checkliste zurück.
 
-    Zeigt alle Pruefpunkte mit Status, sortiert nach Wichtigkeit.
+    Zeigt alle Prüfpunkte mit Status, sortiert nach Wichtigkeit.
 
     **Erfordert Superuser-Authentifizierung.**
     """
@@ -397,7 +397,7 @@ async def get_recommendations(
     include_passed: bool = Query(False, description="Auch bestandene Checks einbeziehen"),
 ):
     """
-    Gibt priorisierte Empfehlungen zurueck.
+    Gibt priorisierte Empfehlungen zurück.
 
     Empfehlungen sind nach Prioritaet sortiert.
 
@@ -440,7 +440,7 @@ async def get_recommendations(
     return {
         "total_empfehlungen": len(recommendations),
         "empfehlungen": recommendations,
-        "naechste_aktion": recommendations[0] if recommendations else None,
+        "nächste_aktion": recommendations[0] if recommendations else None,
         "deployment_empfehlung": (
             "Alle Empfehlungen umsetzen vor Production-Deployment"
             if any(r["schweregrad"] in ("critical", "not_ready") for r in recommendations)
@@ -454,9 +454,9 @@ async def get_quick_summary(
     current_user: User = Depends(get_current_superuser),
 ):
     """
-    Gibt schnelle Zusammenfassung zurueck.
+    Gibt schnelle Zusammenfassung zurück.
 
-    Kompakte Uebersicht fuer Dashboards und Monitoring.
+    Kompakte Übersicht für Dashboards und Monitoring.
 
     **Erfordert Superuser-Authentifizierung.**
     """

@@ -169,7 +169,7 @@ class TaskService:
     ) -> bool:
         """Verify that a task belongs to a user.
 
-        Y.1-Y.2 SECURITY FIX: Task-Ownership-Pruefung hinzugefuegt.
+        Y.1-Y.2 SECURITY FIX: Task-Ownership-Prüfung hinzugefuegt.
 
         Checks via ProcessingJob -> Document -> owner_id chain.
 

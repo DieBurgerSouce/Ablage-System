@@ -13,14 +13,14 @@ from ...models import ImportFormat
 
 @ParserRegistry.register
 class CommerzbankCSVParser(GenericCSVParser):
-    """Parser fuer Commerzbank CSV-Kontoauszuege."""
+    """Parser für Commerzbank CSV-Kontoauszuege."""
 
     FORMAT = ImportFormat.CSV_COMMERZBANK
     FORMAT_VARIANT = "commerzbank"
 
     @classmethod
     def can_parse(cls, content: Union[str, bytes], filename: Optional[str] = None) -> float:
-        """Pruefe auf Commerzbank-Format."""
+        """Prüfe auf Commerzbank-Format."""
         text = cls._decode_content(content)
         if not text:
             return 0.0
@@ -40,7 +40,7 @@ class CommerzbankCSVParser(GenericCSVParser):
             "auftraggeber / begünstigter",
         ]
 
-        if "auftraggeber / begünstigter" in header or "auftraggeber / beguenstigter" in header:
+        if "auftraggeber / begünstigter" in header or "auftraggeber / begünstigter" in header:
             return 0.95
 
         matches = sum(1 for m in coba_markers if m in header)
@@ -65,7 +65,7 @@ class CommerzbankCSVParser(GenericCSVParser):
                 mapping["value_date"] = field
             elif "betrag" in field_lower and "urspr" not in field_lower:
                 mapping["amount"] = field
-            elif "waehrung" in field_lower or "währung" in field_lower:
+            elif "währung" in field_lower or "währung" in field_lower:
                 mapping["currency"] = field
             elif "auftraggeber" in field_lower or "begünstigter" in field_lower:
                 mapping["counterparty_name"] = field

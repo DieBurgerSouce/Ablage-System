@@ -1,12 +1,12 @@
 """
 MFA (Multi-Factor Authentication) API Endpoints.
 
-Ermoeglicht das Einrichten und Verwalten von TOTP-basierter 2FA.
+Ermöglicht das Einrichten und Verwalten von TOTP-basierter 2FA.
 
 Endpoints:
 - GET  /mfa/status     - MFA-Status abrufen
 - POST /mfa/setup      - 2FA-Einrichtung starten (QR-Code + Backup-Codes)
-- POST /mfa/verify     - 2FA-Einrichtung bestaetigen
+- POST /mfa/verify     - 2FA-Einrichtung bestätigen
 - POST /mfa/validate   - TOTP-Code bei Login validieren
 - POST /mfa/backup     - Backup-Code verwenden
 - POST /mfa/disable    - 2FA deaktivieren
@@ -14,7 +14,7 @@ Endpoints:
 
 SECURITY:
 - Alle Endpoints erfordern Authentifizierung
-- Rate Limiting: 5 Versuche pro 15 Minuten fuer validate/backup
+- Rate Limiting: 5 Versuche pro 15 Minuten für validate/backup
 """
 
 from typing import Optional
@@ -52,11 +52,11 @@ class MFAStatusResponse(BaseModel):
 class MFASetupResponse(BaseModel):
     """Response beim Starten des 2FA-Setups."""
     qr_code: str = Field(..., description="QR-Code als Data-URI (PNG)")
-    secret: str = Field(..., description="TOTP-Secret fuer manuelle Eingabe")
+    secret: str = Field(..., description="TOTP-Secret für manuelle Eingabe")
     backup_codes: list[str] = Field(..., description="10 Backup-Codes (einmalig angezeigt!)")
     message: str = Field(
-        default="Scannen Sie den QR-Code mit Ihrer Authenticator-App und bestaetigen Sie mit einem Code.",
-        description="Anweisungen fuer den Benutzer"
+        default="Scannen Sie den QR-Code mit Ihrer Authenticator-App und bestätigen Sie mit einem Code.",
+        description="Anweisungen für den Benutzer"
     )
 
 
@@ -83,7 +83,7 @@ class BackupCodeRequest(BaseModel):
 
 
 class MFASuccessResponse(BaseModel):
-    """Erfolgs-Response fuer MFA-Operationen."""
+    """Erfolgs-Response für MFA-Operationen."""
     success: bool = Field(default=True)
     message: str
 
@@ -93,7 +93,7 @@ class BackupCodesResponse(BaseModel):
     backup_codes: list[str] = Field(..., description="Neue Backup-Codes")
     message: str = Field(
         default="Speichern Sie diese Codes sicher ab. Sie werden nur einmal angezeigt!",
-        description="Warnung fuer den Benutzer"
+        description="Warnung für den Benutzer"
     )
 
 
@@ -103,7 +103,7 @@ class BackupCodesResponse(BaseModel):
     "/status",
     response_model=MFAStatusResponse,
     summary="MFA-Status abrufen",
-    description="Gibt den aktuellen 2FA-Status des angemeldeten Benutzers zurueck."
+    description="Gibt den aktuellen 2FA-Status des angemeldeten Benutzers zurück."
 )
 async def get_mfa_status(
     current_user: User = Depends(get_current_user),
@@ -128,8 +128,8 @@ async def get_mfa_status(
     summary="2FA-Einrichtung starten",
     description=(
         "Startet die Einrichtung der Zwei-Faktor-Authentifizierung. "
-        "Gibt einen QR-Code und Backup-Codes zurueck. "
-        "Der Benutzer muss anschliessend /mfa/verify aufrufen um die Einrichtung abzuschliessen."
+        "Gibt einen QR-Code und Backup-Codes zurück. "
+        "Der Benutzer muss anschließend /mfa/verify aufrufen um die Einrichtung abzuschließen."
     )
 )
 async def setup_mfa(
@@ -163,10 +163,10 @@ async def setup_mfa(
 @router.post(
     "/verify",
     response_model=MFASuccessResponse,
-    summary="2FA-Einrichtung bestaetigen",
+    summary="2FA-Einrichtung bestätigen",
     description=(
-        "Bestaetigt die 2FA-Einrichtung mit einem Code aus der Authenticator-App. "
-        "Dieser Schritt aktiviert die Zwei-Faktor-Authentifizierung endgueltig."
+        "Bestätigt die 2FA-Einrichtung mit einem Code aus der Authenticator-App. "
+        "Dieser Schritt aktiviert die Zwei-Faktor-Authentifizierung endgültig."
     )
 )
 async def verify_mfa_setup(
@@ -174,7 +174,7 @@ async def verify_mfa_setup(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> MFASuccessResponse:
-    """Bestaetigt die 2FA-Einrichtung."""
+    """Bestätigt die 2FA-Einrichtung."""
     mfa_service = get_mfa_service(db)
 
     try:
@@ -192,7 +192,7 @@ async def verify_mfa_setup(
     except InvalidTOTPCodeError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltiger Verifizierungscode. Bitte versuchen Sie es erneut."
+            detail="Ungültiger Verifizierungscode. Bitte versuchen Sie es erneut."
         )
     except MFAServiceError as e:
         raise HTTPException(
@@ -207,7 +207,7 @@ async def verify_mfa_setup(
     summary="TOTP-Code validieren",
     description=(
         "Validiert einen TOTP-Code. "
-        "Wird waehrend des Logins verwendet, wenn 2FA aktiviert ist."
+        "Wird während des Logins verwendet, wenn 2FA aktiviert ist."
     )
 )
 async def validate_totp(
@@ -233,7 +233,7 @@ async def validate_totp(
     except InvalidTOTPCodeError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltiger Code. Bitte versuchen Sie es erneut."
+            detail="Ungültiger Code. Bitte versuchen Sie es erneut."
         )
     except MFAServiceError as e:
         raise HTTPException(
@@ -274,7 +274,7 @@ async def use_backup_code(
     except InvalidTOTPCodeError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltiger Backup-Code."
+            detail="Ungültiger Backup-Code."
         )
     except MFAServiceError as e:
         raise HTTPException(
@@ -289,7 +289,7 @@ async def use_backup_code(
     summary="2FA deaktivieren",
     description=(
         "Deaktiviert die Zwei-Faktor-Authentifizierung. "
-        "Erfordert einen gueltigen TOTP-Code zur Bestaetigung."
+        "Erfordert einen gültigen TOTP-Code zur Bestätigung."
     )
 )
 async def disable_mfa(
@@ -315,7 +315,7 @@ async def disable_mfa(
     except InvalidTOTPCodeError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltiger Code. Die Deaktivierung wurde abgebrochen."
+            detail="Ungültiger Code. Die Deaktivierung wurde abgebrochen."
         )
     except MFAServiceError as e:
         raise HTTPException(
@@ -330,8 +330,8 @@ async def disable_mfa(
     summary="Backup-Codes neu generieren",
     description=(
         "Generiert neue Backup-Codes. "
-        "Alle bestehenden Backup-Codes werden ungueltig. "
-        "Erfordert einen gueltigen TOTP-Code zur Bestaetigung."
+        "Alle bestehenden Backup-Codes werden ungültig. "
+        "Erfordert einen gültigen TOTP-Code zur Bestätigung."
     )
 )
 async def regenerate_backup_codes(
@@ -357,7 +357,7 @@ async def regenerate_backup_codes(
     except InvalidTOTPCodeError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Ungueltiger Code. Die Generierung wurde abgebrochen."
+            detail="Ungültiger Code. Die Generierung wurde abgebrochen."
         )
     except MFAServiceError as e:
         raise HTTPException(

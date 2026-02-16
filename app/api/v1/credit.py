@@ -2,8 +2,8 @@
 """
 Credit Management API Endpoints.
 
-Endpoints fuer Bonitaetspruefung und Kreditlimit-Management:
-- Bonitaetspruefung via Creditreform
+Endpoints für Bonitaetsprüfung und Kreditlimit-Management:
+- Bonitaetsprüfung via Creditreform
 - Kreditlimit-Verwaltung
 - Risiko-Scoring
 - Monitoring
@@ -41,7 +41,7 @@ router = APIRouter(prefix="/credit", tags=["Credit Management"])
 # =============================================================================
 
 class CreditCheckRequest(BaseModel):
-    """Request fuer Bonitaetspruefung."""
+    """Request für Bonitaetsprüfung."""
     company_name: Optional[str] = Field(None, max_length=255)
     crefo_id: Optional[str] = Field(None, max_length=50)
     vat_id: Optional[str] = Field(None, max_length=50)
@@ -52,7 +52,7 @@ class CreditCheckRequest(BaseModel):
 
 
 class CreditCheckResponse(BaseModel):
-    """Response einer Bonitaetspruefung."""
+    """Response einer Bonitaetsprüfung."""
     crefo_id: str
     company_name: str
     legal_form: Optional[str]
@@ -72,7 +72,7 @@ class CreditCheckResponse(BaseModel):
 
 
 class CreditScoreRequest(BaseModel):
-    """Request fuer Score-Berechnung."""
+    """Request für Score-Berechnung."""
     entity_id: UUID
     include_external: bool = True
 
@@ -93,7 +93,7 @@ class CreditScoreResponse(BaseModel):
 
 
 class CreditLimitResponse(BaseModel):
-    """Response fuer Kreditlimit."""
+    """Response für Kreditlimit."""
     entity_id: str
     entity_name: str
     credit_limit: float
@@ -106,12 +106,12 @@ class CreditLimitResponse(BaseModel):
 
 
 class LimitUpdateRequest(BaseModel):
-    """Request fuer Limit-Aktualisierung."""
+    """Request für Limit-Aktualisierung."""
     include_external: bool = False
 
 
 class LimitAdjustRequest(BaseModel):
-    """Request fuer manuelle Limit-Anpassung."""
+    """Request für manuelle Limit-Anpassung."""
     new_limit: float = Field(..., ge=0, le=10000000)
     reason: str = Field(..., max_length=50)
     reason_details: Optional[str] = Field(None, max_length=500)
@@ -129,7 +129,7 @@ class LimitHistoryEntry(BaseModel):
 
 
 class EntityReviewItem(BaseModel):
-    """Entity die Review benoetigt."""
+    """Entity die Review benötigt."""
     entity_id: str
     entity_name: str
     reason: str
@@ -138,7 +138,7 @@ class EntityReviewItem(BaseModel):
 
 
 class BatchUpdateResponse(BaseModel):
-    """Response fuer Batch-Update."""
+    """Response für Batch-Update."""
     total_entities: int
     updated: int
     errors: int
@@ -183,9 +183,9 @@ async def check_credit(
     company: Company = Depends(require_company),
 ) -> CreditCheckResponse:
     """
-    Fuehre Bonitaetspruefung via Creditreform durch.
+    Führe Bonitaetsprüfung via Creditreform durch.
 
-    Benoetigt mindestens eine Identifikation:
+    Benötigt mindestens eine Identifikation:
     - company_name: Firmenname
     - crefo_id: Creditreform-ID (falls bekannt)
     - vat_id: USt-ID
@@ -218,10 +218,10 @@ async def check_credit(
             use_cache=data.use_cache,
         )
     except Exception as e:
-        logger.error("Credit check failed", **safe_error_log(e, "Bonitaetspruefung"))
+        logger.error("Credit check failed", **safe_error_log(e, "Bonitaetsprüfung"))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=safe_error_detail(e, "Bonitaetspruefung"),
+            detail=safe_error_detail(e, "Bonitaetsprüfung"),
         )
 
     logger.info(
@@ -242,7 +242,7 @@ async def check_entity_credit(
     company: Company = Depends(require_company),
 ) -> CreditCheckResponse:
     """
-    Bonitaetspruefung fuer eine bekannte Entity.
+    Bonitaetsprüfung für eine bekannte Entity.
 
     Verwendet die in der Entity gespeicherten Daten.
     """
@@ -274,10 +274,10 @@ async def check_entity_credit(
             use_cache=use_cache,
         )
     except Exception as e:
-        logger.error("Entity credit check failed", **safe_error_log(e, "Entity-Bonitaetspruefung"))
+        logger.error("Entity credit check failed", **safe_error_log(e, "Entity-Bonitaetsprüfung"))
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=safe_error_detail(e, "Bonitaetspruefung"),
+            detail=safe_error_detail(e, "Bonitaetsprüfung"),
         )
 
     return _credit_result_to_response(check_result)
@@ -296,7 +296,7 @@ async def get_entity_score(
     company: Company = Depends(require_company),
 ) -> CreditScoreResponse:
     """
-    Berechne internen Kredit-Score fuer Entity.
+    Berechne internen Kredit-Score für Entity.
 
     Kombiniert:
     - Externe Bonitaetsdaten (Creditreform)
@@ -368,7 +368,7 @@ async def get_credit_limit(
     company: Company = Depends(require_company),
 ) -> CreditLimitResponse:
     """
-    Hole aktuelles Kreditlimit fuer Entity.
+    Hole aktuelles Kreditlimit für Entity.
     """
     manager = CreditLimitManager(db)
 
@@ -398,7 +398,7 @@ async def update_credit_limit(
     Berechne und aktualisiere Kreditlimit.
 
     Automatische Anpassungen bis +10% / -20%.
-    Groessere Aenderungen erfordern manuelle Pruefung.
+    Größere Änderungen erfordern manuelle Prüfung.
     """
     manager = CreditLimitManager(db)
 
@@ -481,7 +481,7 @@ async def get_limit_history(
     company: Company = Depends(require_company),
 ) -> List[LimitHistoryEntry]:
     """
-    Hole Limit-Historie fuer Entity.
+    Hole Limit-Historie für Entity.
     """
     manager = CreditLimitManager(db)
 
@@ -505,12 +505,12 @@ async def get_entities_for_review(
     company: Company = Depends(require_company),
 ) -> List[EntityReviewItem]:
     """
-    Hole Entities die Review benoetigen.
+    Hole Entities die Review benötigen.
 
     Gruende:
     - Initiales Limit setzen
-    - Grosse Limit-Aenderung genehmigen
-    - Planmaessige Ueberpruefung faellig
+    - Grosse Limit-Änderung genehmigen
+    - Planmaessige Überprüfung fällig
     """
     manager = CreditLimitManager(db)
 
@@ -532,7 +532,7 @@ async def batch_update_limits(
     Batch-Aktualisierung aller Kreditlimits.
 
     Achtung: Kann bei vielen Entities lange dauern.
-    Mit include_external=true koennen Kosten entstehen.
+    Mit include_external=true können Kosten entstehen.
     """
     manager = CreditLimitManager(db)
 
@@ -563,12 +563,12 @@ async def get_monitoring_events(
     company: Company = Depends(require_company),
 ) -> List[dict]:
     """
-    Hole Monitoring-Ereignisse fuer Entity.
+    Hole Monitoring-Ereignisse für Entity.
     """
     from app.db.models import BusinessEntity
     from sqlalchemy import select, and_
 
-    # Hole Entity fuer crefo_id
+    # Hole Entity für crefo_id
     result = await db.execute(
         select(BusinessEntity).where(
             and_(
@@ -601,19 +601,19 @@ async def get_monitoring_events(
 @router.post("/entity/{entity_id}/monitoring/start", response_model=dict)
 async def start_monitoring(
     entity_id: UUID,
-    webhook_url: Optional[str] = Query(None, description="Webhook fuer Benachrichtigungen"),
+    webhook_url: Optional[str] = Query(None, description="Webhook für Benachrichtigungen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Starte Monitoring fuer Entity.
+    Starte Monitoring für Entity.
 
-    Ueberwacht:
+    Überwacht:
     - Insolvenz-Ereignisse
-    - Adressaenderungen
+    - Adressänderungen
     - Management-Wechsel
-    - Rating-Aenderungen
+    - Rating-Änderungen
     """
     from app.db.models import BusinessEntity
     from sqlalchemy import select, and_
@@ -639,7 +639,7 @@ async def start_monitoring(
     crefo_id = metadata.get("credit_limit", {}).get("crefo_id")
 
     if not crefo_id:
-        # Fuehre zuerst Credit Check durch
+        # Führe zuerst Credit Check durch
         service = CreditreformService()
         check_result = await service.check_credit(company_name=entity.name)
         crefo_id = check_result.crefo_id
@@ -674,7 +674,7 @@ async def stop_monitoring(
     company: Company = Depends(require_company),
 ) -> None:
     """
-    Stoppe Monitoring fuer Entity.
+    Stoppe Monitoring für Entity.
     """
     from app.db.models import BusinessEntity
     from sqlalchemy import select, and_
@@ -719,7 +719,7 @@ async def get_credit_statistics(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Kredit-Statistiken fuer das Unternehmen.
+    Kredit-Statistiken für das Unternehmen.
     """
     from app.db.models import BusinessEntity
     from sqlalchemy import select

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Team Service fuer Ablage-System.
+Team Service für Ablage-System.
 
-Business Logic fuer:
+Business Logic für:
 - Team-Verwaltung (CRUD)
 - Mitgliedschaften verwalten
 - Team-Hierarchien
-- Aktivitaets-Tracking
+- Aktivitäts-Tracking
 - Einladungen
 
 Phase 3.1 der Strategischen Roadmap (Januar 2026).
@@ -44,7 +44,7 @@ logger = structlog.get_logger(__name__)
 
 
 class TeamService:
-    """Service fuer Team-Verwaltung."""
+    """Service für Team-Verwaltung."""
 
     def __init__(self, db: AsyncSession):
         """Initialisiert den Service."""
@@ -80,10 +80,10 @@ class TeamService:
             team_type: Art des Teams (department, project, etc.)
             description: Beschreibung
             code: Kurzcode (z.B. "DEV")
-            parent_team_id: Parent-Team fuer Hierarchie
+            parent_team_id: Parent-Team für Hierarchie
             visibility: Sichtbarkeit
-            start_date: Startdatum (fuer Projektteams)
-            end_date: Enddatum (fuer Projektteams)
+            start_date: Startdatum (für Projektteams)
+            end_date: Enddatum (für Projektteams)
             settings: Team-Einstellungen
             default_permissions: Standard-Berechtigungen
             tags: Tags
@@ -205,9 +205,9 @@ class TeamService:
             parent_team_id: Nach Parent filtern
             user_id: Nur Teams in denen User Mitglied ist
             search: Suchbegriff
-            include_inactive: Inaktive Teams einschliessen
+            include_inactive: Inaktive Teams einschließen
             page: Seite
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
 
         Returns:
             Tuple aus (Teams, Total)
@@ -390,13 +390,13 @@ class TeamService:
             invited_by_id: Wer hat eingeladen
             title: Funktion im Team
             allocation_percent: Prozentuale Zuordnung
-            valid_until: Gueltig bis (fuer temporaere Mitgliedschaften)
-            reason: Grund fuer Mitgliedschaft
+            valid_until: Gültig bis (für temporaere Mitgliedschaften)
+            reason: Grund für Mitgliedschaft
 
         Returns:
             Erstellte Mitgliedschaft
         """
-        # Pruefen ob bereits Mitglied
+        # Prüfen ob bereits Mitglied
         existing = await self.get_membership(team_id, user_id)
         if existing:
             if existing.is_active:
@@ -513,13 +513,13 @@ class TeamService:
         actor_id: UUID,
     ) -> Optional[TeamMembership]:
         """
-        Aendert die Rolle eines Mitglieds.
+        Ändert die Rolle eines Mitglieds.
 
         Args:
             team_id: Team UUID
             user_id: User UUID
             new_role: Neue Rolle
-            actor_id: Wer aendert
+            actor_id: Wer ändert
 
         Returns:
             Aktualisierte Mitgliedschaft oder None
@@ -538,7 +538,7 @@ class TeamService:
             activity_type=TeamActivityType.MEMBER_ROLE_CHANGED,
             actor_id=actor_id,
             target_user_id=user_id,
-            title="Rolle geaendert",
+            title="Rolle geändert",
             details={
                 "old_role": old_role.value,
                 "new_role": new_role.value,
@@ -594,7 +594,7 @@ class TeamService:
         Args:
             team_id: Team UUID
             role: Nach Rolle filtern
-            include_inactive: Inaktive einschliessen
+            include_inactive: Inaktive einschließen
             page: Seite
             per_page: Pro Seite
 
@@ -640,7 +640,7 @@ class TeamService:
         Args:
             user_id: User UUID
             company_id: Company UUID
-            include_inactive: Inaktive Teams einschliessen
+            include_inactive: Inaktive Teams einschließen
 
         Returns:
             Liste der Teams
@@ -682,10 +682,10 @@ class TeamService:
             team_id: Team UUID
             invited_by_id: Einladender User
             user_id: Eingeladener User (wenn bekannt)
-            email: Email (fuer externe Einladungen)
+            email: Email (für externe Einladungen)
             role: Geplante Rolle
             personal_message: Persoenliche Nachricht
-            expires_in_days: Gueltigkeitsdauer
+            expires_in_days: Gültigkeitsdauer
 
         Returns:
             Erstellte Einladung
@@ -693,7 +693,7 @@ class TeamService:
         if not user_id and not email:
             raise ValueError("user_id oder email muss angegeben werden")
 
-        # Pruefen ob bereits eingeladen
+        # Prüfen ob bereits eingeladen
         if user_id:
             existing = await self._get_pending_invitation(team_id, user_id=user_id)
             if existing:
@@ -756,9 +756,9 @@ class TeamService:
             await self.db.commit()
             raise ValueError("Einladung ist abgelaufen")
 
-        # Pruefen ob passender User
+        # Prüfen ob passender User
         if invitation.user_id and invitation.user_id != user_id:
-            raise ValueError("Diese Einladung ist fuer einen anderen User")
+            raise ValueError("Diese Einladung ist für einen anderen User")
 
         # Mitgliedschaft erstellen
         membership = await self.add_member(
@@ -796,7 +796,7 @@ class TeamService:
         Args:
             invitation_id: Einladungs-UUID
             user_id: User der ablehnt
-            reason: Grund fuer Ablehnung
+            reason: Grund für Ablehnung
 
         Returns:
             True wenn erfolgreich
@@ -806,7 +806,7 @@ class TeamService:
             return False
 
         if invitation.user_id and invitation.user_id != user_id:
-            raise ValueError("Diese Einladung ist fuer einen anderen User")
+            raise ValueError("Diese Einladung ist für einen anderen User")
 
         invitation.status = InvitationStatus.DECLINED
         invitation.responded_at = utc_now()
@@ -849,7 +849,7 @@ class TeamService:
         return result.scalar_one_or_none()
 
     # =========================================================================
-    # Aktivitaeten
+    # Aktivitäten
     # =========================================================================
 
     async def _log_activity(
@@ -863,7 +863,7 @@ class TeamService:
         target_document_id: Optional[UUID] = None,
         details: Optional[Dict[str, Any]] = None,
     ) -> TeamActivity:
-        """Loggt eine Team-Aktivitaet."""
+        """Loggt eine Team-Aktivität."""
         activity = TeamActivity(
             team_id=team_id,
             activity_type=activity_type,
@@ -888,18 +888,18 @@ class TeamService:
         per_page: int = 50,
     ) -> tuple[List[TeamActivity], int]:
         """
-        Holt Team-Aktivitaeten.
+        Holt Team-Aktivitäten.
 
         Args:
             team_id: Team UUID
             activity_types: Nach Typen filtern
             actor_id: Nach Actor filtern
-            since: Aktivitaeten seit Zeitpunkt
+            since: Aktivitäten seit Zeitpunkt
             page: Seite
             per_page: Pro Seite
 
         Returns:
-            Tuple aus (Aktivitaeten, Total)
+            Tuple aus (Aktivitäten, Total)
         """
         query = select(TeamActivity).where(
             TeamActivity.team_id == team_id,
@@ -953,13 +953,13 @@ class TeamService:
             document_id: Document UUID
             shared_by_id: Wer teilt
             permission: Berechtigung
-            valid_until: Gueltig bis
+            valid_until: Gültig bis
             note: Notiz
 
         Returns:
             TeamDocument
         """
-        # Pruefen ob bereits geteilt
+        # Prüfen ob bereits geteilt
         existing = await self._get_team_document(team_id, document_id)
         if existing:
             # Update permission
@@ -1008,7 +1008,7 @@ class TeamService:
         team_id: UUID,
         document_id: UUID,
     ) -> Optional[TeamDocument]:
-        """Holt eine Team-Dokument-Verknuepfung."""
+        """Holt eine Team-Dokument-Verknüpfung."""
         query = select(TeamDocument).where(
             TeamDocument.team_id == team_id,
             TeamDocument.document_id == document_id,
@@ -1017,7 +1017,7 @@ class TeamService:
         return result.scalar_one_or_none()
 
     # =========================================================================
-    # Berechtigungen pruefen
+    # Berechtigungen prüfen
     # =========================================================================
 
     async def check_permission(
@@ -1027,7 +1027,7 @@ class TeamService:
         required_role: TeamMemberRole = TeamMemberRole.MEMBER,
     ) -> bool:
         """
-        Prueft ob User die erforderliche Rolle hat.
+        Prüft ob User die erforderliche Rolle hat.
 
         Args:
             team_id: Team UUID
@@ -1053,11 +1053,11 @@ class TeamService:
         return role_levels.get(membership.role, 0) >= role_levels.get(required_role, 1)
 
     async def is_team_admin(self, team_id: UUID, user_id: UUID) -> bool:
-        """Prueft ob User Team-Admin ist."""
+        """Prüft ob User Team-Admin ist."""
         return await self.check_permission(team_id, user_id, TeamMemberRole.ADMIN)
 
     async def is_team_leader(self, team_id: UUID, user_id: UUID) -> bool:
-        """Prueft ob User Team-Leader ist."""
+        """Prüft ob User Team-Leader ist."""
         return await self.check_permission(team_id, user_id, TeamMemberRole.LEAD)
 
 
@@ -1067,5 +1067,5 @@ class TeamService:
 
 
 def get_team_service(db: AsyncSession) -> TeamService:
-    """Factory fuer TeamService."""
+    """Factory für TeamService."""
     return TeamService(db)

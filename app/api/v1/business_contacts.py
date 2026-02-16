@@ -1,11 +1,11 @@
 """
 Business Contacts API Endpoints.
 
-Geschaeftskontakt-Verwaltung mit automatischer Erkennung:
-- CRUD-Operationen fuer Kunden, Lieferanten, Partner
+Geschäftskontakt-Verwaltung mit automatischer Erkennung:
+- CRUD-Operationen für Kunden, Lieferanten, Partner
 - Automatische Kontakterkennung aus Dokumenten
-- Deduplizierung und Zusammenfuehrung
-- Dokumentenverknuepfung
+- Deduplizierung und Zusammenführung
+- Dokumentenverknüpfung
 
 Feinpoliert und durchdacht - Enterprise Contact Management.
 """
@@ -106,7 +106,7 @@ async def create_contact(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> BusinessContactResponse:
-    """Erstellt einen neuen Geschaeftskontakt."""
+    """Erstellt einen neuen Geschäftskontakt."""
     logger.info(
         "creating_business_contact",
         user_id=str(current_user.id),
@@ -198,7 +198,7 @@ async def list_contacts(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> BusinessContactListResponse:
-    """Listet Geschaeftskontakte mit Filtern und Paginierung."""
+    """Listet Geschäftskontakte mit Filtern und Paginierung."""
     # Multi-Tenant: company_id aus User-Context
     company_id = current_user.company_id
 
@@ -289,7 +289,7 @@ async def get_contact_stats(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ContactStatsResponse:
-    """Statistiken ueber Geschaeftskontakte."""
+    """Statistiken über Geschäftskontakte."""
     # Multi-Tenant: company_id aus User-Context
     company_id = current_user.company_id
 
@@ -408,7 +408,7 @@ async def get_contact(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> BusinessContactResponse:
-    """Holt einen einzelnen Geschaeftskontakt."""
+    """Holt einen einzelnen Geschäftskontakt."""
     # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
     company_id = current_user.company_id
 
@@ -442,7 +442,7 @@ async def update_contact(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> BusinessContactResponse:
-    """Aktualisiert einen Geschaeftskontakt."""
+    """Aktualisiert einen Geschäftskontakt."""
     # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
     company_id = current_user.company_id
 
@@ -465,7 +465,7 @@ async def update_contact(
     if contact.merged_into_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Zusammengefuehrter Kontakt kann nicht bearbeitet werden",
+            detail="Zusammengeführter Kontakt kann nicht bearbeitet werden",
         )
 
     # Update fields
@@ -494,11 +494,11 @@ async def update_contact(
 @router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
 async def delete_contact(
     contact_id: UUID,
-    hard_delete: bool = Query(False, description="Permanent loeschen statt deaktivieren"),
+    hard_delete: bool = Query(False, description="Permanent löschen statt deaktivieren"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Loescht oder deaktiviert einen Geschaeftskontakt."""
+    """Löscht oder deaktiviert einen Geschäftskontakt."""
     # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
     company_id = current_user.company_id
 
@@ -625,7 +625,7 @@ async def merge_contacts(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> MergeContactsResponse:
-    """Fuehrt zwei Kontakte zusammen."""
+    """Führt zwei Kontakte zusammen."""
     # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
     company_id = current_user.company_id
     service = get_customer_detection_service()
@@ -666,16 +666,16 @@ async def merge_contacts(
     if source.merged_into_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Quell-Kontakt wurde bereits zusammengefuehrt",
+            detail="Quell-Kontakt wurde bereits zusammengeführt",
         )
 
     if target.merged_into_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ziel-Kontakt wurde bereits zusammengefuehrt",
+            detail="Ziel-Kontakt wurde bereits zusammengeführt",
         )
 
-    # Merge using service - Multi-Tenant: company_id fuer Defense-in-Depth
+    # Merge using service - Multi-Tenant: company_id für Defense-in-Depth
     success = await service.merge_contacts(
         db=db,
         source_id=request.source_id,
@@ -687,7 +687,7 @@ async def merge_contacts(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Zusammenfuehrung fehlgeschlagen",
+            detail="Zusammenführung fehlgeschlagen",
         )
 
     # Refresh target
@@ -705,7 +705,7 @@ async def merge_contacts(
         success=True,
         target_contact=build_contact_response(target),
         merged_document_links=merged_links,
-        message=f"Kontakt '{source.name}' wurde erfolgreich mit '{target.name}' zusammengefuehrt",
+        message=f"Kontakt '{source.name}' wurde erfolgreich mit '{target.name}' zusammengeführt",
     )
 
 
@@ -738,7 +738,7 @@ async def detect_contacts(
 
     service = get_customer_detection_service()
 
-    # Multi-Tenant: company_id fuer sichere Isolation
+    # Multi-Tenant: company_id für sichere Isolation
     results = await service.process_document(
         db=db,
         document=document,
@@ -799,12 +799,12 @@ async def verify_contact(
 @router.get("/{contact_id}/similar", response_model=List[BusinessContactResponse])
 async def find_similar_contacts(
     contact_id: UUID,
-    threshold: float = Query(0.7, ge=0.0, le=1.0, description="Aehnlichkeitsschwelle"),
+    threshold: float = Query(0.7, ge=0.0, le=1.0, description="Ähnlichkeitsschwelle"),
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[BusinessContactResponse]:
-    """Findet aehnliche Kontakte (potenzielle Duplikate)."""
+    """Findet ähnliche Kontakte (potenzielle Duplikate)."""
     # Multi-Tenant: company_id aus User-Context (IDOR Prevention)
     company_id = current_user.company_id
 
@@ -828,7 +828,7 @@ async def find_similar_contacts(
     service = get_customer_detection_service()
     service.similarity_threshold = threshold
 
-    # Multi-Tenant: company_id fuer sichere Isolation
+    # Multi-Tenant: company_id für sichere Isolation
     similar = await service.find_similar_contacts(
         db=db,
         name=contact.name,

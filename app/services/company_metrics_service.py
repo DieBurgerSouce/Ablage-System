@@ -2,8 +2,8 @@
 """
 Company Metrics Service.
 
-Aggregiert Metriken ueber alle Firmen fuer das Multi-Firma-Dashboard.
-Bietet Vergleichsdaten und KPIs fuer Management-Uebersicht.
+Aggregiert Metriken über alle Firmen für das Multi-Firma-Dashboard.
+Bietet Vergleichsdaten und KPIs für Management-Übersicht.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class CompanyDocumentMetrics:
-    """Dokument-Metriken fuer eine Firma."""
+    """Dokument-Metriken für eine Firma."""
 
     total_documents: int = 0
     documents_this_month: int = 0
@@ -43,7 +43,7 @@ class CompanyDocumentMetrics:
 
 @dataclass
 class CompanyInvoiceMetrics:
-    """Rechnungs-Metriken fuer eine Firma."""
+    """Rechnungs-Metriken für eine Firma."""
 
     total_invoices: int = 0
     total_amount: Decimal = Decimal("0.00")
@@ -56,7 +56,7 @@ class CompanyInvoiceMetrics:
 
 @dataclass
 class CompanyEntityMetrics:
-    """Geschaeftspartner-Metriken fuer eine Firma."""
+    """Geschäftspartner-Metriken für eine Firma."""
 
     total_entities: int = 0
     customers: int = 0
@@ -66,7 +66,7 @@ class CompanyEntityMetrics:
 
 @dataclass
 class CompanyDunningMetrics:
-    """Mahnwesen-Metriken fuer eine Firma."""
+    """Mahnwesen-Metriken für eine Firma."""
 
     active_dunnings: int = 0
     total_dunning_amount: Decimal = Decimal("0.00")
@@ -78,7 +78,7 @@ class CompanyDunningMetrics:
 
 @dataclass
 class CompanyBankingMetrics:
-    """Banking-Metriken fuer eine Firma."""
+    """Banking-Metriken für eine Firma."""
 
     total_balance: Decimal = Decimal("0.00")
     incoming_this_month: Decimal = Decimal("0.00")
@@ -88,7 +88,7 @@ class CompanyBankingMetrics:
 
 @dataclass
 class CompanyMetrics:
-    """Aggregierte Metriken fuer eine Firma."""
+    """Aggregierte Metriken für eine Firma."""
 
     company_id: UUID
     company_name: str
@@ -105,7 +105,7 @@ class CompanyMetrics:
     health_score: int = 100
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert zu Dictionary fuer JSON-Response."""
+        """Konvertiert zu Dictionary für JSON-Response."""
         return {
             "company_id": str(self.company_id),
             "company_name": self.company_name,
@@ -166,7 +166,7 @@ class DashboardSummary:
     active_dunnings: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert zu Dictionary fuer JSON-Response."""
+        """Konvertiert zu Dictionary für JSON-Response."""
         return {
             "total_companies": self.total_companies,
             "active_companies": self.active_companies,
@@ -180,7 +180,7 @@ class DashboardSummary:
 
 
 class CompanyMetricsService:
-    """Service fuer Firmen-Metriken und Dashboard-Daten."""
+    """Service für Firmen-Metriken und Dashboard-Daten."""
 
     def __init__(self) -> None:
         """Initialisiert den Service."""
@@ -192,7 +192,7 @@ class CompanyMetricsService:
         company_id: UUID,
     ) -> CompanyMetrics:
         """
-        Holt Metriken fuer eine einzelne Firma.
+        Holt Metriken für eine einzelne Firma.
 
         Args:
             db: Datenbank-Session
@@ -234,7 +234,7 @@ class CompanyMetricsService:
         include_inactive: bool = False,
     ) -> List[CompanyMetrics]:
         """
-        Holt Metriken fuer alle Firmen.
+        Holt Metriken für alle Firmen.
 
         Args:
             db: Datenbank-Session
@@ -263,7 +263,7 @@ class CompanyMetricsService:
                     **safe_error_log(e),
                 )
 
-        # Sortiere nach Health Score (schlechteste zuerst fuer Attention)
+        # Sortiere nach Health Score (schlechteste zuerst für Attention)
         metrics_list.sort(key=lambda m: m.health_score)
 
         return metrics_list
@@ -308,7 +308,7 @@ class CompanyMetricsService:
         summary.total_invoices = row[0] or 0
         summary.total_outstanding_amount = Decimal(str(row[1] or 0))
 
-        # Ueberfaellige
+        # Überfällige
         today = date.today()
         overdue_query = select(
             func.coalesce(func.sum(InvoiceTracking.outstanding_amount), 0)
@@ -347,7 +347,7 @@ class CompanyMetricsService:
         Args:
             db: Datenbank-Session
             company_ids: Liste von Company-IDs (None = alle)
-            metric: Metrik fuer Vergleich (invoices, documents, entities, dunning)
+            metric: Metrik für Vergleich (invoices, documents, entities, dunning)
 
         Returns:
             Liste von Vergleichsdaten
@@ -381,7 +381,7 @@ class CompanyMetricsService:
         return comparison_data
 
     # =========================================================================
-    # Private Methoden fuer Metrik-Sammlung
+    # Private Methoden für Metrik-Sammlung
     # =========================================================================
 
     async def _get_document_metrics(
@@ -443,7 +443,7 @@ class CompanyMetricsService:
 
         today = date.today()
 
-        # Basis-Query mit Company-Filter ueber Document
+        # Basis-Query mit Company-Filter über Document
         base_query = (
             select(InvoiceTracking)
             .join(Document, Document.id == InvoiceTracking.document_id)
@@ -476,7 +476,7 @@ class CompanyMetricsService:
         metrics.paid_amount = Decimal(str(row[2] or 0))
         metrics.outstanding_amount = Decimal(str(row[3] or 0))
 
-        # Ueberfaellige
+        # Überfällige
         overdue_query = (
             select(
                 func.count(InvoiceTracking.id),
@@ -531,7 +531,7 @@ class CompanyMetricsService:
         db: AsyncSession,
         company_id: UUID,
     ) -> CompanyEntityMetrics:
-        """Sammelt Geschaeftspartner-Metriken."""
+        """Sammelt Geschäftspartner-Metriken."""
         metrics = CompanyEntityMetrics()
 
         # Total
@@ -580,7 +580,7 @@ class CompanyMetricsService:
         """Sammelt Mahnwesen-Metriken."""
         metrics = CompanyDunningMetrics()
 
-        # Aktive Mahnungen mit Company-Filter ueber Document
+        # Aktive Mahnungen mit Company-Filter über Document
         active_query = (
             select(
                 func.count(DunningRecord.id),
@@ -686,10 +686,10 @@ class CompanyMetricsService:
 
     def _calculate_health_score(self, metrics: CompanyMetrics) -> int:
         """
-        Berechnet den Health Score (0-100) fuer eine Firma.
+        Berechnet den Health Score (0-100) für eine Firma.
 
         Faktoren:
-        - Ueberfaellige Rechnungen (-30 max)
+        - Überfällige Rechnungen (-30 max)
         - High-Risk Entities (-20 max)
         - Aktive Mahnungen Level 3/4 (-20 max)
         - Ungematchte Transaktionen (-10 max)
@@ -697,7 +697,7 @@ class CompanyMetricsService:
         """
         score = 100
 
-        # Ueberfaellige Rechnungen
+        # Überfällige Rechnungen
         if metrics.invoices.overdue_count > 0:
             overdue_ratio = metrics.invoices.overdue_count / max(
                 metrics.invoices.total_invoices, 1
@@ -727,7 +727,7 @@ class CompanyMetricsService:
         return max(0, min(100, score))
 
     def _get_comparison_value(self, metrics: CompanyMetrics, metric: str) -> float:
-        """Holt den Vergleichswert fuer eine Metrik."""
+        """Holt den Vergleichswert für eine Metrik."""
         if metric == "invoices":
             return float(metrics.invoices.total_amount)
         elif metric == "documents":
@@ -748,7 +748,7 @@ class CompanyMetricsService:
     def _get_comparison_details(
         self, metrics: CompanyMetrics, metric: str
     ) -> Dict[str, Any]:
-        """Holt zusaetzliche Details fuer einen Vergleich."""
+        """Holt zusätzliche Details für einen Vergleich."""
         if metric == "invoices":
             return {
                 "total_count": metrics.invoices.total_invoices,

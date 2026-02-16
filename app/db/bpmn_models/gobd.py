@@ -1,12 +1,12 @@
-"""GoBD Compliance Models - Erweiterte Modelle fuer revisionssichere Archivierung.
+"""GoBD Compliance Models - Erweiterte Modelle für revisionssichere Archivierung.
 
 Dieses Modul erweitert die GoBD-Konformitaet mit:
-- AuditChainEntry: Blockchain-aehnliche Hash-Kette fuer Audit-Trail
+- AuditChainEntry: Blockchain-ähnliche Hash-Kette für Audit-Trail
 - RetentionPolicy: Aufbewahrungsrichtlinien mit automatischen Aktionen
-- ArchiveIntegrityCheck: Protokollierung von Integritaetspruefungen
+- ArchiveIntegrityCheck: Protokollierung von Integritätsprüfungen
 - TimestampAuthority: RFC 3161 Zeitstempel-Konfiguration
 
-GoBD = Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung
+GoBD = Grundsätze zur ordnungsmäßigen Führung und Aufbewahrung
        von Buechern, Aufzeichnungen und Unterlagen in elektronischer
        Form sowie zum Datenzugriff
 """
@@ -36,7 +36,7 @@ class AuditChainEventType(str, Enum):
     DOCUMENT_DELETED = "document_deleted"
     DOCUMENT_EXPORTED = "document_exported"
 
-    # Integritaets-Ereignisse
+    # Integritäts-Ereignisse
     INTEGRITY_CHECK_PASSED = "integrity_check_passed"
     INTEGRITY_CHECK_FAILED = "integrity_check_failed"
     HASH_RECALCULATED = "hash_recalculated"
@@ -59,7 +59,7 @@ class AuditChainEventType(str, Enum):
 
 
 class IntegrityCheckStatus(str, Enum):
-    """Status einer Integritaetspruefung."""
+    """Status einer Integritätsprüfung."""
     PENDING = "pending"
     PASSED = "passed"
     FAILED = "failed"
@@ -67,13 +67,13 @@ class IntegrityCheckStatus(str, Enum):
 
 
 class AuditChainEntry(Base):
-    """Blockchain-aehnliche Audit-Chain fuer GoBD-konforme Nachvollziehbarkeit.
+    """Blockchain-ähnliche Audit-Chain für GoBD-konforme Nachvollziehbarkeit.
 
-    Jeder Eintrag enthaelt:
+    Jeder Eintrag enthält:
     - Hash des vorherigen Eintrags (Chain)
     - Hash des Ereignis-Inhalts
     - Kombinierter Hash (previous + content)
-    - Sequenznummer (lueckenlos)
+    - Sequenznummer (lückenlos)
 
     Die Kette ist APPEND-ONLY und IMMUTABLE!
     Manipulationsversuche werden durch Hash-Verifikation erkannt.
@@ -86,12 +86,12 @@ class AuditChainEntry(Base):
     sequence_number = Column(
         Integer,
         nullable=False,
-        comment="Lueckenlose Sequenznummer (startet bei 1)"
+        comment="Lückenlose Sequenznummer (startet bei 1)"
     )
     previous_hash = Column(
         String(128),
         nullable=True,
-        comment="SHA-256 Hash des vorherigen Eintrags (NULL fuer Genesis)"
+        comment="SHA-256 Hash des vorherigen Eintrags (NULL für Genesis)"
     )
     content_hash = Column(
         String(128),
@@ -183,7 +183,7 @@ class AuditChainEntry(Base):
             "(sequence_number = 1 AND previous_hash IS NULL) OR (sequence_number > 1 AND previous_hash IS NOT NULL)",
             name="ck_audit_chain_genesis"
         ),
-        {"comment": "GoBD Audit-Chain: Blockchain-aehnliche verkettete Ereignis-Protokollierung"}
+        {"comment": "GoBD Audit-Chain: Blockchain-ähnliche verkettete Ereignis-Protokollierung"}
     )
 
     def __repr__(self) -> str:
@@ -191,12 +191,12 @@ class AuditChainEntry(Base):
 
 
 class RetentionPolicy(Base):
-    """GoBD Aufbewahrungsrichtlinie fuer Dokumenttypen.
+    """GoBD Aufbewahrungsrichtlinie für Dokumenttypen.
 
     Definiert automatische Aktionen basierend auf Aufbewahrungsfristen:
     - Warnungen vor Ablauf
     - Automatische Kennzeichnung
-    - Loeschfreigabe-Workflow
+    - Löschfreigabe-Workflow
     """
     __tablename__ = "gobd_retention_policies"
 
@@ -235,13 +235,13 @@ class RetentionPolicy(Base):
         Integer,
         default=180,
         nullable=False,
-        comment="Tage vor Ablauf fuer erste Warnung"
+        comment="Tage vor Ablauf für erste Warnung"
     )
     critical_days_before = Column(
         Integer,
         default=30,
         nullable=False,
-        comment="Tage vor Ablauf fuer kritische Warnung"
+        comment="Tage vor Ablauf für kritische Warnung"
     )
 
     # Automatische Aktionen
@@ -249,19 +249,19 @@ class RetentionPolicy(Base):
         Boolean,
         default=False,
         nullable=False,
-        comment="Automatisch loeschen nach Ablauf (GEFAEHRLICH!)"
+        comment="Automatisch löschen nach Ablauf (GEFAEHRLICH!)"
     )
     require_approval_for_delete = Column(
         Boolean,
         default=True,
         nullable=False,
-        comment="Freigabe vor Loeschung erforderlich"
+        comment="Freigabe vor Löschung erforderlich"
     )
     approval_roles = Column(
         CrossDBJSON,
         default=list,
         nullable=False,
-        comment="Rollen die Loeschung freigeben koennen"
+        comment="Rollen die Löschung freigeben können"
     )
 
     # Benachrichtigungen
@@ -270,7 +270,7 @@ class RetentionPolicy(Base):
         CrossDBJSON,
         default=list,
         nullable=False,
-        comment="User-IDs oder Rollen fuer Benachrichtigungen"
+        comment="User-IDs oder Rollen für Benachrichtigungen"
     )
 
     # Status
@@ -297,9 +297,9 @@ class RetentionPolicy(Base):
 
 
 class ArchiveIntegrityCheck(Base):
-    """Protokollierung von Integritaetspruefungen fuer Dokument-Archive.
+    """Protokollierung von Integritätsprüfungen für Dokument-Archive.
 
-    Erfasst regelmaessige und Ad-hoc Verifikationen der Hash-Signaturen.
+    Erfasst regelmäßige und Ad-hoc Verifikationen der Hash-Signaturen.
     Bei Fehlern wird ein Alert ausgeloest.
     """
     __tablename__ = "gobd_archive_integrity_checks"
@@ -318,7 +318,7 @@ class ArchiveIntegrityCheck(Base):
         nullable=False
     )
 
-    # Pruefungs-Details
+    # Prüfungs-Details
     check_type = Column(
         String(50),
         nullable=False,
@@ -349,7 +349,7 @@ class ArchiveIntegrityCheck(Base):
     error_message = Column(Text, nullable=True)
     error_details = Column(CrossDBJSON, nullable=True)
 
-    # Triggered User (bei manueller Pruefung)
+    # Triggered User (bei manueller Prüfung)
     triggered_by_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -366,7 +366,7 @@ class ArchiveIntegrityCheck(Base):
         Index("ix_integrity_checks_company", "company_id"),
         Index("ix_integrity_checks_status", "status"),
         Index("ix_integrity_checks_started_at", "started_at"),
-        {"comment": "GoBD Integritaetspruefungen fuer Dokument-Archive"}
+        {"comment": "GoBD Integritätsprüfungen für Dokument-Archive"}
     )
 
     def __repr__(self) -> str:
@@ -376,7 +376,7 @@ class ArchiveIntegrityCheck(Base):
 class TimestampAuthorityConfig(Base):
     """RFC 3161 Zeitstempel-Dienst Konfiguration.
 
-    Erlaubt Konfiguration verschiedener TSA-Provider fuer
+    Erlaubt Konfiguration verschiedener TSA-Provider für
     qualifizierte Zeitstempel (eIDAS-konform).
     """
     __tablename__ = "gobd_tsa_configs"
@@ -411,10 +411,10 @@ class TimestampAuthorityConfig(Base):
     credentials_vault_key = Column(
         String(255),
         nullable=True,
-        comment="Key im Vault fuer Credentials"
+        comment="Key im Vault für Credentials"
     )
 
-    # Zertifikats-Info (fuer Verifikation)
+    # Zertifikats-Info (für Verifikation)
     issuer_certificate = Column(Text, nullable=True)
     certificate_chain = Column(Text, nullable=True)
     certificate_expires_at = Column(DateTime(timezone=True), nullable=True)
@@ -442,7 +442,7 @@ class TimestampAuthorityConfig(Base):
     __table_args__ = (
         Index("ix_tsa_configs_company", "company_id"),
         Index("ix_tsa_configs_is_default", "company_id", "is_default"),
-        {"comment": "RFC 3161 TSA-Provider Konfiguration fuer qualifizierte Zeitstempel"}
+        {"comment": "RFC 3161 TSA-Provider Konfiguration für qualifizierte Zeitstempel"}
     )
 
     def __repr__(self) -> str:
@@ -450,10 +450,10 @@ class TimestampAuthorityConfig(Base):
 
 
 class RetentionDeletionRequest(Base):
-    """Loeschanfrage fuer abgelaufene Dokumente.
+    """Löschanfrage für abgelaufene Dokumente.
 
-    Dokumente mit abgelaufener Aufbewahrungsfrist muessen
-    explizit zur Loeschung freigegeben werden (GoBD-Compliance).
+    Dokumente mit abgelaufener Aufbewahrungsfrist müssen
+    explizit zur Löschung freigegeben werden (GoBD-Compliance).
     """
     __tablename__ = "gobd_retention_deletion_requests"
 
@@ -509,7 +509,7 @@ class RetentionDeletionRequest(Base):
     )
     rejection_reason = Column(Text, nullable=True)
 
-    # Ausfuehrung
+    # Ausführung
     executed_at = Column(DateTime(timezone=True), nullable=True)
     execution_log = Column(CrossDBJSON, nullable=True)
 
@@ -524,7 +524,7 @@ class RetentionDeletionRequest(Base):
         Index("ix_deletion_requests_archive", "archive_id"),
         Index("ix_deletion_requests_company", "company_id"),
         Index("ix_deletion_requests_status", "status"),
-        {"comment": "GoBD Loeschanfragen fuer abgelaufene Dokumente"}
+        {"comment": "GoBD Löschanfragen für abgelaufene Dokumente"}
     )
 
     def __repr__(self) -> str:

@@ -2,13 +2,13 @@
 """
 Wiederkehrende Rechnungen (Abo-Verwaltung) API Endpoints.
 
-REST API fuer Abo-Erkennung und -Verwaltung:
+REST API für Abo-Erkennung und -Verwaltung:
 - Automatische Erkennung wiederkehrender Rechnungsmuster
-- CRUD fuer wiederkehrende Rechnungen
+- CRUD für wiederkehrende Rechnungen
 - Soll/Ist-Vergleiche
-- Preisaenderungs-Alerts
+- Preisänderungs-Alerts
 - Fehlende-Rechnungen-Erkennung
-- Kuendigungsfristen-Tracking
+- Kündigungsfristen-Tracking
 
 Phase 2.2 der Feature-Roadmap (Februar 2026).
 """
@@ -56,7 +56,7 @@ router = APIRouter(
 
 
 class RecurringInvoiceCreateSchema(BaseModel):
-    """Schema fuer manuelle Abo-Erstellung."""
+    """Schema für manuelle Abo-Erstellung."""
     vendor_name: str = Field(..., min_length=1, max_length=255, description="Lieferantenname")
     interval_type: RecurringIntervalType = Field(
         default=RecurringIntervalType.MONTHLY,
@@ -64,14 +64,14 @@ class RecurringInvoiceCreateSchema(BaseModel):
     )
     interval_months: int = Field(default=1, ge=1, le=60, description="Intervall in Monaten")
     expected_amount: Decimal = Field(..., gt=0, description="Erwarteter Betrag")
-    currency: str = Field(default="EUR", max_length=3, description="Waehrung")
+    currency: str = Field(default="EUR", max_length=3, description="Währung")
     tolerance_percent: float = Field(default=5.0, ge=0, le=100, description="Toleranz in Prozent")
     vendor_entity_id: Optional[UUID] = Field(None, description="Lieferanten-Entity-ID")
     first_seen_date: Optional[date] = Field(None, description="Erstes Auftreten")
-    next_expected_date: Optional[date] = Field(None, description="Naechstes erwartetes Datum")
-    cancellation_deadline: Optional[date] = Field(None, description="Kuendigungsfrist")
-    notice_period_days: Optional[int] = Field(None, ge=0, description="Kuendigungsfrist in Tagen")
-    auto_renewal: bool = Field(default=True, description="Automatische Verlaengerung")
+    next_expected_date: Optional[date] = Field(None, description="Nächstes erwartetes Datum")
+    cancellation_deadline: Optional[date] = Field(None, description="Kündigungsfrist")
+    notice_period_days: Optional[int] = Field(None, ge=0, description="Kündigungsfrist in Tagen")
+    auto_renewal: bool = Field(default=True, description="Automatische Verlängerung")
     category: Optional[str] = Field(None, max_length=100, description="Kategorie")
     description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
     document_type: Optional[str] = Field(None, max_length=100, description="Dokumenttyp")
@@ -80,17 +80,17 @@ class RecurringInvoiceCreateSchema(BaseModel):
     @field_validator("reference_pattern")
     @classmethod
     def validate_reference_pattern(cls, v: Optional[str]) -> Optional[str]:
-        """Pruefe ob reference_pattern ein gueltiger Regex ist."""
+        """Prüfe ob reference_pattern ein gültiger Regex ist."""
         if v is not None:
             try:
                 re.compile(v)
             except re.error as e:
-                raise ValueError(f"Ungueltiger regulaerer Ausdruck: {e}")
+                raise ValueError(f"Ungültiger regulaerer Ausdruck: {e}")
         return v
 
 
 class RecurringInvoiceUpdateSchema(BaseModel):
-    """Schema fuer Abo-Aktualisierung."""
+    """Schema für Abo-Aktualisierung."""
     status: Optional[RecurringInvoiceStatus] = None
     expected_amount: Optional[Decimal] = Field(None, gt=0)
     interval_type: Optional[RecurringIntervalType] = None
@@ -107,12 +107,12 @@ class RecurringInvoiceUpdateSchema(BaseModel):
     @field_validator("reference_pattern")
     @classmethod
     def validate_reference_pattern(cls, v: Optional[str]) -> Optional[str]:
-        """Pruefe ob reference_pattern ein gueltiger Regex ist."""
+        """Prüfe ob reference_pattern ein gültiger Regex ist."""
         if v is not None:
             try:
                 re.compile(v)
             except re.error as e:
-                raise ValueError(f"Ungueltiger regulaerer Ausdruck: {e}")
+                raise ValueError(f"Ungültiger regulaerer Ausdruck: {e}")
         return v
 
 
@@ -124,7 +124,7 @@ class PriceHistoryEntry(BaseModel):
 
 
 class RecurringInvoiceResponse(BaseModel):
-    """Response-Schema fuer wiederkehrende Rechnung."""
+    """Response-Schema für wiederkehrende Rechnung."""
     id: UUID
     company_id: UUID
     vendor_entity_id: Optional[UUID]
@@ -168,7 +168,7 @@ class RecurringInvoiceListResponse(BaseModel):
 
 
 class OccurrenceResponse(BaseModel):
-    """Response-Schema fuer eine Abo-Instanz."""
+    """Response-Schema für eine Abo-Instanz."""
     id: UUID
     recurring_invoice_id: UUID
     document_id: Optional[UUID]
@@ -196,7 +196,7 @@ class RecurringInvoiceDetailResponse(RecurringInvoiceResponse):
 
 
 class DetectedPatternResponse(BaseModel):
-    """Response fuer erkanntes Abo-Muster."""
+    """Response für erkanntes Abo-Muster."""
     vendor_name: str
     vendor_entity_id: Optional[UUID]
     interval_type: RecurringIntervalType
@@ -209,7 +209,7 @@ class DetectedPatternResponse(BaseModel):
 
 
 class MissingInvoiceResponse(BaseModel):
-    """Response fuer fehlende Rechnung."""
+    """Response für fehlende Rechnung."""
     recurring_invoice_id: UUID
     vendor_name: str
     expected_date: date
@@ -218,7 +218,7 @@ class MissingInvoiceResponse(BaseModel):
 
 
 class PriceChangeResponse(BaseModel):
-    """Response fuer Preisaenderung."""
+    """Response für Preisänderung."""
     recurring_invoice_id: UUID
     vendor_name: str
     old_amount: float
@@ -256,7 +256,7 @@ class SollIstReportResponse(BaseModel):
 
 
 class ManualMatchSchema(BaseModel):
-    """Schema fuer manuelle Dokumentzuordnung."""
+    """Schema für manuelle Dokumentzuordnung."""
     document_id: UUID = Field(..., description="Dokument-ID")
 
 
@@ -395,7 +395,7 @@ async def list_recurring_invoices(
         None, alias="status", description="Status-Filter"
     ),
     page: int = Query(0, ge=0, description="Seite (0-basiert)"),
-    page_size: int = Query(25, ge=1, le=100, description="Eintraege pro Seite"),
+    page_size: int = Query(25, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> RecurringInvoiceListResponse:
@@ -556,7 +556,7 @@ async def update_recurring_invoice(
     "/missing",
     response_model=List[MissingInvoiceResponse],
     summary="Fehlende Rechnungen",
-    description="Listet ueberfaellige / fehlende erwartete Rechnungen",
+    description="Listet überfällige / fehlende erwartete Rechnungen",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_missing_invoices(
@@ -564,7 +564,7 @@ async def get_missing_invoices(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[MissingInvoiceResponse]:
-    """Gibt fehlende/ueberfaellige Rechnungen zurueck."""
+    """Gibt fehlende/überfällige Rechnungen zurück."""
     service = get_recurring_invoice_service()
 
     try:
@@ -583,14 +583,14 @@ async def get_missing_invoices(
 
     except Exception as e:
         logger.exception("missing_invoices_check_failed", **safe_error_log(e))
-        raise HTTPException(status_code=500, detail="Fehler bei der Pruefung fehlender Rechnungen")
+        raise HTTPException(status_code=500, detail="Fehler bei der Prüfung fehlender Rechnungen")
 
 
 @router.get(
     "/price-changes",
     response_model=List[PriceChangeResponse],
-    summary="Preisaenderungen",
-    description="Listet nicht-alertierte Preisaenderungen bei Abos",
+    summary="Preisänderungen",
+    description="Listet nicht-alertierte Preisänderungen bei Abos",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_price_changes(
@@ -598,7 +598,7 @@ async def get_price_changes(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[PriceChangeResponse]:
-    """Gibt Preisaenderungen bei wiederkehrenden Rechnungen zurueck."""
+    """Gibt Preisänderungen bei wiederkehrenden Rechnungen zurück."""
     service = get_recurring_invoice_service()
 
     try:
@@ -618,14 +618,14 @@ async def get_price_changes(
 
     except Exception as e:
         logger.exception("price_changes_check_failed", **safe_error_log(e))
-        raise HTTPException(status_code=500, detail="Fehler bei der Pruefung von Preisaenderungen")
+        raise HTTPException(status_code=500, detail="Fehler bei der Prüfung von Preisänderungen")
 
 
 @router.get(
     "/soll-ist",
     response_model=SollIstReportResponse,
     summary="Soll/Ist-Vergleich",
-    description="Erstellt Soll/Ist-Bericht fuer wiederkehrende Rechnungen",
+    description="Erstellt Soll/Ist-Bericht für wiederkehrende Rechnungen",
 )
 @limiter.limit("20/minute", key_func=get_user_identifier)
 async def get_soll_ist_report(
@@ -635,7 +635,7 @@ async def get_soll_ist_report(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> SollIstReportResponse:
-    """Gibt Soll/Ist-Vergleichsbericht zurueck."""
+    """Gibt Soll/Ist-Vergleichsbericht zurück."""
     service = get_recurring_invoice_service()
 
     try:

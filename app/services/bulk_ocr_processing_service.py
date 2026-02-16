@@ -172,14 +172,14 @@ class BulkProcessingJob:
 
 
 # DB-Migration: Jobs werden in OCRBulkProcessingJob Tabelle persistiert (Multi-Worker Ready)
-# In-Memory Cache nur fuer:
+# In-Memory Cache nur für:
 # - Cancel-Flags (Worker-lokal, schneller Zugriff)
-# - Lokaler Job-Cache fuer aktiv laufende Jobs (Performance-Optimierung)
+# - Lokaler Job-Cache für aktiv laufende Jobs (Performance-Optimierung)
 # HINWEIS: _job_cancel_flags.get() Aufrufe in Verarbeitungsschleifen
 # sind absichtlich ohne Lock, da nur Bool-Reads (atomic) und Lock-Overhead vermieden wird.
-_active_jobs_cache: Dict[str, BulkProcessingJob] = {}  # Lokaler Cache fuer laufende Jobs
+_active_jobs_cache: Dict[str, BulkProcessingJob] = {}  # Lokaler Cache für laufende Jobs
 _job_cancel_flags: Dict[str, bool] = {}
-_job_storage_lock: asyncio.Lock = asyncio.Lock()  # Thread-Safety fuer concurrent access
+_job_storage_lock: asyncio.Lock = asyncio.Lock()  # Thread-Safety für concurrent access
 
 
 def _db_job_to_dataclass(db_job) -> BulkProcessingJob:
@@ -282,10 +282,10 @@ class BulkOCRProcessingService:
         await db.commit()
         await db.refresh(db_job)
 
-        # Erstelle Dataclass fuer Rueckgabe
+        # Erstelle Dataclass für Rückgabe
         job = _db_job_to_dataclass(db_job)
 
-        # Cache und Cancel-Flag fuer laufende Verarbeitung
+        # Cache und Cancel-Flag für laufende Verarbeitung
         async with _job_storage_lock:
             _active_jobs_cache[job_id] = job
             _job_cancel_flags[job_id] = False
@@ -431,7 +431,7 @@ class BulkOCRProcessingService:
         from uuid import UUID as UUIDType
         from sqlalchemy import select
 
-        # Erst Cache pruefen (fuer laufende Jobs)
+        # Erst Cache prüfen (für laufende Jobs)
         async with _job_storage_lock:
             if job_id in _active_jobs_cache:
                 return _active_jobs_cache[job_id]
@@ -885,7 +885,7 @@ class BulkOCRProcessingService:
                     current_backend_index=job.current_backend_index,
                     current_document_index=job.current_document_index,
                     documents_per_backend=job.documents_per_backend,
-                    error_log=job.error_log[-100:],  # Begrenzt auf 100 Eintraege
+                    error_log=job.error_log[-100:],  # Begrenzt auf 100 Einträge
                     last_checkpoint_at=now,
                 )
             )
@@ -898,7 +898,7 @@ class BulkOCRProcessingService:
             )
             await db.rollback()
 
-        # Lokaler Cache-Update fuer schnellen Zugriff
+        # Lokaler Cache-Update für schnellen Zugriff
         async with _job_storage_lock:
             _active_jobs_cache[job.id] = job
 

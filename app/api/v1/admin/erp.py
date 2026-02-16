@@ -2,7 +2,7 @@
 ERP Admin API Endpoints.
 
 Enterprise-Level ERP-Verbindungsverwaltung:
-- CRUD fuer ERP-Verbindungen
+- CRUD für ERP-Verbindungen
 - Verbindungstest
 - Sync-Status und Historie
 - Konflikt-Management
@@ -49,7 +49,7 @@ router = APIRouter(prefix="/erp", tags=["erp-admin"])
 
 
 class ERPConnectionCreate(BaseModel):
-    """Schema fuer neue ERP-Verbindung."""
+    """Schema für neue ERP-Verbindung."""
 
     name: str = Field(..., min_length=1, max_length=255)
     erp_type: str = Field(default="odoo", pattern="^(odoo|lexware|sap_b1|custom)$")
@@ -67,7 +67,7 @@ class ERPConnectionCreate(BaseModel):
 
 
 class ERPConnectionUpdate(BaseModel):
-    """Schema fuer Verbindungs-Update."""
+    """Schema für Verbindungs-Update."""
 
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     url: Optional[str] = Field(None, min_length=1, max_length=500)
@@ -86,7 +86,7 @@ class ERPConnectionUpdate(BaseModel):
 
 
 class ERPConnectionResponse(BaseModel):
-    """Response Schema fuer ERP-Verbindung."""
+    """Response Schema für ERP-Verbindung."""
 
     id: str
     company_id: str
@@ -126,7 +126,7 @@ class ERPConnectionTestResult(BaseModel):
 
 
 class ERPSyncHistoryResponse(BaseModel):
-    """Response Schema fuer Sync-Historie."""
+    """Response Schema für Sync-Historie."""
 
     id: str
     connection_id: str
@@ -155,7 +155,7 @@ class ERPSyncHistoryResponse(BaseModel):
 
 
 class ERPConflictResponse(BaseModel):
-    """Response Schema fuer Konflikte."""
+    """Response Schema für Konflikte."""
 
     id: str
     connection_id: str
@@ -179,7 +179,7 @@ class ERPConflictResponse(BaseModel):
 
 
 class ERPConflictResolve(BaseModel):
-    """Schema fuer Konflikt-Aufloesung."""
+    """Schema für Konflikt-Auflösung."""
 
     resolution: str = Field(..., pattern="^(local_wins|remote_wins|merged|ignored)$")
     resolved_data: Optional[dict] = None
@@ -425,7 +425,7 @@ async def update_connection(
     "/connections/{connection_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="ERP-Verbindung loeschen",
+    summary="ERP-Verbindung löschen",
 )
 async def delete_connection(
     connection_id: UUID,
@@ -433,7 +433,7 @@ async def delete_connection(
     company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Loescht eine ERP-Verbindung."""
+    """Löscht eine ERP-Verbindung."""
     # SECURITY FIX: company.id via require_company (Multi-Tenant-validiert)
     result = await db.execute(
         select(ERPConnection).where(

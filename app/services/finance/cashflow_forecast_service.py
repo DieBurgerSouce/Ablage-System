@@ -80,7 +80,7 @@ class CashflowForecastService:
         confidence_lower = predicted_balance * 0.8
         confidence_upper = predicted_balance * 1.2
 
-        # 5. Engpass-Pruefung
+        # 5. Engpass-Prüfung
         warnung = predicted_balance < 0
         engpass_datum = None
         if warnung:
@@ -130,7 +130,7 @@ class CashflowForecastService:
         db: AsyncSession,
         company_id: UUID,
     ) -> Optional[Dict[str, object]]:
-        """Prueft auf drohende Liquiditaetsengpaesse.
+        """Prüft auf drohende Liquiditaetsengpaesse.
 
         Args:
             db: Datenbank-Session
@@ -173,7 +173,7 @@ class CashflowForecastService:
             db: Datenbank-Session
             company_id: Firmen-ID
             base_forecast_id: Basis-Prognose
-            modifications: Aenderungen
+            modifications: Änderungen
 
         Returns:
             Neue CashflowForecast
@@ -190,7 +190,7 @@ class CashflowForecastService:
         db: AsyncSession,
         company_id: UUID,
     ) -> Dict[str, float]:
-        """Saisonale Faktoren fuer alle Monate."""
+        """Saisonale Faktoren für alle Monate."""
         factors: Dict[str, float] = {}
         for month in range(1, 13):
             factors[str(month)] = await self._calculate_seasonal_factor(
@@ -208,7 +208,7 @@ class CashflowForecastService:
     ) -> CashflowForecast:
         """Spezifisches Szenario generieren.
 
-        Unterstuetzte Szenarien:
+        Unterstützte Szenarien:
             - basis: Standardprognose
             - optimistisch: +10% Einnahmen, -10% Ausgaben
             - pessimistisch: -25% Einnahmen, +10% Ausgaben
@@ -222,7 +222,7 @@ class CashflowForecastService:
             horizon_days: Prognosezeitraum
 
         Returns:
-            CashflowForecast fuer das Szenario
+            CashflowForecast für das Szenario
         """
         return await self.generate_forecast(
             db,
@@ -239,7 +239,7 @@ class CashflowForecastService:
         from_date: Optional[date] = None,
         to_date: Optional[date] = None,
     ) -> List[CashflowForecast]:
-        """Cashflow-Prognosen fuer einen Zeitraum abrufen.
+        """Cashflow-Prognosen für einen Zeitraum abrufen.
 
         Args:
             db: Datenbank-Session
@@ -308,7 +308,7 @@ class CashflowForecastService:
         """Zahlungsverhalten-Analyse.
 
         Analysiert historisches Zahlungsverhalten von Kunden/Lieferanten
-        fuer bessere Cashflow-Prognosen.
+        für bessere Cashflow-Prognosen.
 
         Args:
             db: Datenbank-Session
@@ -348,7 +348,7 @@ class CashflowForecastService:
                 "durchschnittliche_zahlungsdauer_tage": 0,
                 "median_zahlungsdauer_tage": 0,
                 "puenktlich_bezahlt_prozent": 0.0,
-                "ueberfaellig_bezahlt_prozent": 0.0,
+                "überfällig_bezahlt_prozent": 0.0,
                 "message": "Keine bezahlten Rechnungen im Analysezeitraum",
             }
 
@@ -398,7 +398,7 @@ class CashflowForecastService:
             "durchschnittliche_zahlungsdauer_tage": round(avg_days, 1),
             "median_zahlungsdauer_tage": round(median_days, 1),
             "puenktlich_bezahlt_prozent": round(puenktlich_pct, 1),
-            "ueberfaellig_bezahlt_prozent": round(100.0 - puenktlich_pct, 1),
+            "überfällig_bezahlt_prozent": round(100.0 - puenktlich_pct, 1),
         }
 
     async def compare_forecast_accuracy(
@@ -425,13 +425,13 @@ class CashflowForecastService:
 
         if end_date > date.today():
             return {
-                "status": "zu_frueh",
+                "status": "zu_früh",
                 "message": f"Zeitraum endet am {end_date.isoformat()}",
             }
 
         return {
             "forecast_id": str(forecast_id),
-            "status": "verfuegbar",
+            "status": "verfügbar",
             "predicted_balance": forecast.predicted_balance,
             "einnahmen_prognose": forecast.einnahmen_prognose,
             "ausgaben_prognose": forecast.ausgaben_prognose,
@@ -525,7 +525,7 @@ class CashflowForecastService:
         company_id: UUID,
         target_month: int,
     ) -> float:
-        """Berechnet saisonalen Faktor fuer einen Monat."""
+        """Berechnet saisonalen Faktor für einen Monat."""
         from app.db.models import InvoiceTracking
 
         lookback_start = date.today() - timedelta(days=730)

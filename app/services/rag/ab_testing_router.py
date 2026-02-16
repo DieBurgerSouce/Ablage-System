@@ -1,12 +1,12 @@
-"""A/B Testing Traffic-Router fuer Vector Search.
+"""A/B Testing Traffic-Router für Vector Search.
 
 Entscheidet, welches Backend (pgvector vs Qdrant) und welches
-Embedding-Modell (E5 vs Jina) fuer eine Anfrage verwendet wird.
+Embedding-Modell (E5 vs Jina) für eine Anfrage verwendet wird.
 
 Features:
-- Konsistentes Hashing fuer reproduzierbare Zuordnung
+- Konsistentes Hashing für reproduzierbare Zuordnung
 - User/Session-basiertes Bucketing
-- Prometheus-Metriken fuer Experiment-Tracking
+- Prometheus-Metriken für Experiment-Tracking
 - Graduelle Traffic-Splits (0-100%)
 
 Config-Settings (in config.py):
@@ -70,7 +70,7 @@ ablage_ab_testing_enabled = Gauge(
 # Gauge: Aktueller Traffic-Split Prozentsatz (0-100)
 ablage_ab_testing_traffic_split = Gauge(
     'ablage_ab_testing_traffic_split',
-    'Traffic-Split Prozentsatz fuer Treatment-Variante (0-100)'
+    'Traffic-Split Prozentsatz für Treatment-Variante (0-100)'
 )
 
 
@@ -86,7 +86,7 @@ class ExperimentVariant(str, Enum):
 
 
 class VectorBackend(str, Enum):
-    """Verfuegbare Vector Backends."""
+    """Verfügbare Vector Backends."""
     PGVECTOR = "pgvector"
     QDRANT = "qdrant"
 
@@ -101,7 +101,7 @@ class ABAssignment(NamedTuple):
 
 
 class ABTestResult(TypedDict, total=False):
-    """Ergebnis einer A/B Test Suche fuer Metriken."""
+    """Ergebnis einer A/B Test Suche für Metriken."""
     variant: str
     backend: str
     embedding_model: str
@@ -147,10 +147,10 @@ class ABTestMetrics:
 
 
 class ABTestingRouter:
-    """Router fuer A/B Testing zwischen Vector-Backends.
+    """Router für A/B Testing zwischen Vector-Backends.
 
-    Verwendet konsistentes Hashing fuer deterministische Zuordnung:
-    - Gleicher User -> Gleiche Variante (fuer konsistente UX)
+    Verwendet konsistentes Hashing für deterministische Zuordnung:
+    - Gleicher User -> Gleiche Variante (für konsistente UX)
     - Traffic-Split konfigurierbar (0-100%)
     - Fallback auf Control bei Fehlern
     """
@@ -186,13 +186,13 @@ class ABTestingRouter:
             settings.VECTOR_AB_TREATMENT_EMBEDDING
         )
 
-        # In-Memory Metriken (fuer schnellen Zugriff, Redis fuer Persistenz)
+        # In-Memory Metriken (für schnellen Zugriff, Redis für Persistenz)
         self._metrics: Dict[ExperimentVariant, ABTestMetrics] = {
             ExperimentVariant.CONTROL: ABTestMetrics(variant=ExperimentVariant.CONTROL),
             ExperimentVariant.TREATMENT: ABTestMetrics(variant=ExperimentVariant.TREATMENT),
         }
         self._metrics_lock = threading.Lock()
-        self._config_lock = threading.Lock()  # Lock fuer Konfigurationsaenderungen
+        self._config_lock = threading.Lock()  # Lock für Konfigurationsänderungen
 
         # Prometheus Gauges initialisieren
         ablage_ab_testing_enabled.set(1 if self._enabled else 0)
@@ -225,9 +225,9 @@ class ABTestingRouter:
         Returns:
             Bucket-Nummer (0-99)
         """
-        # SHA256 fuer gleichmaessige Verteilung
+        # SHA256 für gleichmaessige Verteilung
         hash_bytes = hashlib.sha256(identifier.encode()).digest()
-        # Erste 4 Bytes als Integer, modulo 100 fuer Bucket
+        # Erste 4 Bytes als Integer, modulo 100 für Bucket
         bucket = int.from_bytes(hash_bytes[:4], byteorder='big') % 100
         return bucket
 
@@ -238,19 +238,19 @@ class ABTestingRouter:
         document_id: Optional[str] = None,
         force_variant: Optional[ExperimentVariant] = None
     ) -> ABAssignment:
-        """A/B Test Zuordnung fuer eine Anfrage ermitteln.
+        """A/B Test Zuordnung für eine Anfrage ermitteln.
 
-        Prioritaet fuer Identifier:
-        1. force_variant (fuer Testing/Debugging)
+        Priorität für Identifier:
+        1. force_variant (für Testing/Debugging)
         2. user_id (stabiles User-Bucketing)
         3. session_id (Session-Konsistenz)
         4. document_id (Query-Konsistenz)
-        5. Random (fuer anonyme Anfragen)
+        5. Random (für anonyme Anfragen)
 
         Args:
             user_id: User-Identifier (bevorzugt)
             session_id: Session-Identifier
-            document_id: Dokument-ID fuer Query
+            document_id: Dokument-ID für Query
             force_variant: Erzwungene Variante (Testing)
 
         Returns:
@@ -298,8 +298,8 @@ class ABTestingRouter:
             identifier = f"doc:{document_id}"
             reason_prefix = "document_bucket"
         else:
-            # Deterministischer Bucket fuer anonyme Anfragen basierend auf Timestamp
-            # Verwendet time_ns fuer Nanosekunden-Praezision und hashlib fuer deterministische Verteilung
+            # Deterministischer Bucket für anonyme Anfragen basierend auf Timestamp
+            # Verwendet time_ns für Nanosekunden-Praezision und hashlib für deterministische Verteilung
             import hashlib
             import time
             ts_seed = f"anon:{time.time_ns()}"
@@ -333,9 +333,9 @@ class ABTestingRouter:
         user_id: Optional[str] = None,
         session_id: Optional[str] = None
     ) -> bool:
-        """Schnelle Pruefung ob Treatment-Variante.
+        """Schnelle Prüfung ob Treatment-Variante.
 
-        Convenience-Methode fuer einfache Checks.
+        Convenience-Methode für einfache Checks.
         """
         assignment = self.get_assignment(user_id=user_id, session_id=session_id)
         return assignment.variant == ExperimentVariant.TREATMENT
@@ -348,12 +348,12 @@ class ABTestingRouter:
         avg_score: float,
         error: bool = False
     ) -> None:
-        """Suchergebnis fuer Metriken aufzeichnen.
+        """Suchergebnis für Metriken aufzeichnen.
 
         Args:
             assignment: A/B Zuordnung
             query_time_ms: Query-Dauer in Millisekunden
-            result_count: Anzahl zurueckgegebener Ergebnisse
+            result_count: Anzahl zurückgegebener Ergebnisse
             avg_score: Durchschnittlicher Relevanz-Score
             error: True wenn Fehler aufgetreten
         """
@@ -419,7 +419,7 @@ class ABTestingRouter:
             }
 
     def reset_metrics(self) -> None:
-        """Metriken zuruecksetzen (fuer neue Experiment-Phase)."""
+        """Metriken zurücksetzen (für neue Experiment-Phase)."""
         with self._metrics_lock:
             self._metrics = {
                 ExperimentVariant.CONTROL: ABTestMetrics(variant=ExperimentVariant.CONTROL),
@@ -428,13 +428,13 @@ class ABTestingRouter:
         logger.info("ab_test_metrics_reset")
 
     def update_traffic_split(self, new_split: int) -> None:
-        """Traffic-Split zur Laufzeit aendern (0-100).
+        """Traffic-Split zur Laufzeit ändern (0-100).
 
-        Ermoeglicht graduelle Rollouts ohne Restart.
+        Ermöglicht graduelle Rollouts ohne Restart.
         Thread-safe durch Config-Lock.
 
         Args:
-            new_split: Neuer Prozentsatz fuer Treatment (0-100)
+            new_split: Neuer Prozentsatz für Treatment (0-100)
         """
         if not 0 <= new_split <= 100:
             raise ValueError(f"Traffic-Split muss zwischen 0 und 100 liegen: {new_split}")
@@ -469,12 +469,12 @@ class ABTestingRouter:
 
 
 # ============================================================================
-# Context Manager fuer A/B Test Timing
+# Context Manager für A/B Test Timing
 # ============================================================================
 
 
 class ABTestContext:
-    """Context Manager fuer A/B Test Tracking.
+    """Context Manager für A/B Test Tracking.
 
     Automatisches Timing und Metrik-Recording.
 
@@ -533,7 +533,7 @@ class ABTestContext:
         result_count: int,
         avg_score: float = 0.0
     ) -> None:
-        """Ergebnisse setzen fuer Metriken."""
+        """Ergebnisse setzen für Metriken."""
         self.result_count = result_count
         self.avg_score = avg_score
 

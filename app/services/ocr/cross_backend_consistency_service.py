@@ -233,7 +233,7 @@ class CrossBackendConsistencyService:
         Erkennung von handschriftlichen Regionen.
 
         Wenn ein Backend Handschrift-Confidence > 0.5 meldet,
-        werden alle Backends fuer diese Region aktiviert.
+        werden alle Backends für diese Region aktiviert.
         """
         handwriting_regions: List[Dict[str, float]] = []
 

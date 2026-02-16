@@ -150,7 +150,7 @@ class ESGService:
         months: int = 12,
     ) -> List[Dict[str, Any]]:
         """
-        Hole CO2-Fussabdruck-Trend ueber Zeit.
+        Hole CO2-Fussabdruck-Trend über Zeit.
         """
         result = await self.db.execute(
             select(
@@ -206,7 +206,7 @@ class ESGService:
         # Validiere Kategorie
         valid_categories = [c.value for c in ESGCategory]
         if category not in valid_categories:
-            raise ValueError(f"Ungueltige Kategorie. Erlaubt: {valid_categories}")
+            raise ValueError(f"Ungültige Kategorie. Erlaubt: {valid_categories}")
 
         goal = ESGGoal(
             company_id=company_id,
@@ -352,5 +352,5 @@ class ESGService:
 
 
 def get_esg_service(db: AsyncSession) -> ESGService:
-    """Factory-Funktion fuer ESGService."""
+    """Factory-Funktion für ESGService."""
     return ESGService(db)

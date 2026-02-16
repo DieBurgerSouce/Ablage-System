@@ -1,4 +1,4 @@
-"""Schema Introspector - Stellt DB-Schema-Kontext fuer LLM bereit."""
+"""Schema Introspector - Stellt DB-Schema-Kontext für LLM bereit."""
 
 from typing import Dict, List, Set
 

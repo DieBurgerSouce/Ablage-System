@@ -56,8 +56,8 @@ def process_document_zero_touch(
     Pipeline-Schritte:
     1. OCR-Extraktion validieren
     2. Confidence-Score berechnen
-    3. Entity-Matching durchfuehren
-    4. Schwellenwerte pruefen
+    3. Entity-Matching durchführen
+    4. Schwellenwerte prüfen
     5. Auto-Freigabe oder Review-Queue
 
     Args:
@@ -173,10 +173,10 @@ def process_pending_documents(
     batch_size: int = 50,
     created_within_hours: int = 24,
 ) -> Dict[str, Any]:
-    """Pruefe und verarbeite neue Dokumente im Zero-Touch Modus.
+    """Prüfe und verarbeite neue Dokumente im Zero-Touch Modus.
 
     Findet COMPLETED Dokumente ohne ZeroTouchResult und queued sie
-    fuer die automatische Verarbeitung.
+    für die automatische Verarbeitung.
 
     Args:
         batch_size: Maximale Anzahl zu verarbeitender Dokumente
@@ -272,7 +272,7 @@ def recalculate_thresholds(
     die Balance zwischen Automatisierung und Genauigkeit zu optimieren.
 
     Args:
-        lookback_days: Anzahl der Tage fuer historische Analyse
+        lookback_days: Anzahl der Tage für historische Analyse
 
     Returns:
         Dict mit neuen Schwellenwerten und Metriken
@@ -298,7 +298,7 @@ def recalculate_thresholds(
             results = result.scalars().all()
 
             if len(results) < 100:
-                # Zu wenig Daten fuer zuverlaessige Schwellenwerte
+                # Zu wenig Daten für zuverlässige Schwellenwerte
                 logger.warning(
                     "zero_touch_threshold_insufficient_data",
                     sample_size=len(results),
@@ -346,7 +346,7 @@ def recalculate_thresholds(
             new_review_threshold = 0.70  # Default
 
             if high_accuracy >= 0.95:
-                # High bracket ist zuverlaessig genug
+                # High bracket ist zuverlässig genug
                 new_auto_threshold = 0.90
             elif high_accuracy >= 0.90:
                 # Etwas restriktiver
@@ -438,12 +438,12 @@ def generate_zero_touch_statistics(
     self,
     days: int = 30,
 ) -> Dict[str, Any]:
-    """Generiert Statistiken ueber Zero-Touch Verarbeitung.
+    """Generiert Statistiken über Zero-Touch Verarbeitung.
 
-    Wird regelmaessig fuer Reporting und Monitoring ausgefuehrt.
+    Wird regelmäßig für Reporting und Monitoring ausgeführt.
 
     Args:
-        days: Anzahl der Tage fuer Statistik-Zeitraum
+        days: Anzahl der Tage für Statistik-Zeitraum
 
     Returns:
         Dict mit Zero-Touch Statistiken

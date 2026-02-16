@@ -1,6 +1,6 @@
 """RAG Intelligence Layer API.
 
-Enthaelt alle API-Endpoints fuer:
+Enthält alle API-Endpoints für:
 - RAG Search (Chunk-basierte Suche)
 - Document Chunking
 - Chat Sessions

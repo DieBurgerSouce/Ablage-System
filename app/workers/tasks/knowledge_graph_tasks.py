@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Knowledge Graph periodic tasks (F5).
 
-Phase 12: Vollstaendige Integration mit KnowledgeGraphService.
+Phase 12: Vollständige Integration mit KnowledgeGraphService.
 """
 
 import asyncio
@@ -25,7 +25,7 @@ def build_graph_incremental() -> dict:
 
     Verarbeitet:
     - Neue BusinessEntities -> Graph-Knoten
-    - Neue Dokumente -> Verknuepfungen
+    - Neue Dokumente -> Verknüpfungen
     - Neue Rechnungen -> Zahlungsbeziehungen
     """
     logger.info("knowledge_graph_build_start")
@@ -43,7 +43,7 @@ def build_graph_incremental() -> dict:
 
 
 async def _build_graph_incremental() -> Dict[str, Any]:
-    """Async Implementation fuer Incremental Graph Build."""
+    """Async Implementation für Incremental Graph Build."""
     from app.services.knowledge_graph.graph_service import KnowledgeGraphService
 
     total_nodes = 0
@@ -63,7 +63,7 @@ async def _build_graph_incremental() -> Dict[str, Any]:
 
         for company_id in company_ids:
             try:
-                # 1. Neue Entities zaehlen
+                # 1. Neue Entities zählen
                 new_entities_result = await db.execute(
                     select(BusinessEntity)
                     .where(
@@ -76,7 +76,7 @@ async def _build_graph_incremental() -> Dict[str, Any]:
                 new_entities = new_entities_result.scalars().all()
                 total_nodes += len(new_entities)
 
-                # 2. Neue Dokumente zaehlen
+                # 2. Neue Dokumente zählen
                 new_docs_result = await db.execute(
                     select(Document)
                     .where(
@@ -89,7 +89,7 @@ async def _build_graph_incremental() -> Dict[str, Any]:
                 new_docs = new_docs_result.scalars().all()
                 total_nodes += len(new_docs)
 
-                # 3. Neue Entity-Links (Edges) zaehlen
+                # 3. Neue Entity-Links (Edges) zählen
                 new_links_result = await db.execute(
                     select(DocumentEntityLink)
                     .where(
@@ -102,8 +102,8 @@ async def _build_graph_incremental() -> Dict[str, Any]:
                 new_links = new_links_result.scalars().all()
                 total_edges += len(new_links)
 
-                # Fuer jede neue Entity: Graph laden zur Verifikation
-                for entity in new_entities[:5]:  # Limit auf 5 fuer Performance
+                # Für jede neue Entity: Graph laden zur Verifikation
+                for entity in new_entities[:5]:  # Limit auf 5 für Performance
                     try:
                         graph = await graph_service.get_entity_graph(
                             entity_id=entity.id,

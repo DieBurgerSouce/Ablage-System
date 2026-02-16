@@ -1,15 +1,15 @@
 """GoBD Archive API Router - Revisionssichere Dokumentenarchivierung.
 
-API-Endpoints fuer die GoBD-konforme Archivierung:
+API-Endpoints für die GoBD-konforme Archivierung:
 - Dokumente archivieren mit SHA-256 Signatur
-- Integritaetspruefung (Hash-Verifikation)
+- Integritaetsprüfung (Hash-Verifikation)
 - Aufbewahrungsfristen verwalten
 - Statistiken und Ablaufwarnungen
 
 Erfuellt GoBD-Kriterien:
-- Nachvollziehbarkeit: Vollstaendiger Audit-Trail
-- Unveraenderbarkeit: SHA-256 Hash-Signatur
-- Vollstaendigkeit: Aufbewahrungsfristen-Management
+- Nachvollziehbarkeit: Vollständiger Audit-Trail
+- Unveränderbarkeit: SHA-256 Hash-Signatur
+- Vollständigkeit: Aufbewahrungsfristen-Management
 - Ordnung: Kategorisierung nach Dokumenttyp
 """
 
@@ -55,11 +55,11 @@ class ArchiveDocumentRequest(BaseModel):
     )
     signature_certificate: Optional[str] = Field(
         default=None,
-        description="Optionales TSA-Zertifikat fuer qualifizierte Zeitstempel"
+        description="Optionales TSA-Zertifikat für qualifizierte Zeitstempel"
     )
     metadata: Optional[dict] = Field(
         default=None,
-        description="Zusaetzliche Metadaten"
+        description="Zusätzliche Metadaten"
     )
 
 
@@ -81,7 +81,7 @@ class ArchiveResponse(BaseModel):
 
 
 class VerificationResponse(BaseModel):
-    """Response der Integritaetspruefung."""
+    """Response der Integritaetsprüfung."""
 
     document_id: uuid.UUID
     is_verified: bool
@@ -91,7 +91,7 @@ class VerificationResponse(BaseModel):
 
 
 class RetentionSettingResponse(BaseModel):
-    """Response fuer Aufbewahrungsfristen-Einstellung."""
+    """Response für Aufbewahrungsfristen-Einstellung."""
 
     id: uuid.UUID
     category: str
@@ -110,12 +110,12 @@ class RetentionSettingUpdateRequest(BaseModel):
     """Request zum Aktualisieren einer Aufbewahrungsfristen-Einstellung."""
 
     retention_years: int = Field(..., ge=1, le=30, description="Aufbewahrungsdauer in Jahren")
-    reminder_days_before: int = Field(..., ge=0, le=365, description="Tage vor Ablauf fuer Warnung")
-    auto_delete_enabled: bool = Field(default=False, description="Auto-Loeschung aktivieren")
+    reminder_days_before: int = Field(..., ge=0, le=365, description="Tage vor Ablauf für Warnung")
+    auto_delete_enabled: bool = Field(default=False, description="Auto-Löschung aktivieren")
 
 
 class ArchiveStatisticsResponse(BaseModel):
-    """Response fuer Archiv-Statistiken."""
+    """Response für Archiv-Statistiken."""
 
     total_archived: int
     by_category: dict
@@ -124,7 +124,7 @@ class ArchiveStatisticsResponse(BaseModel):
 
 
 class ExpiringArchiveResponse(BaseModel):
-    """Response fuer bald ablaufendes Archiv."""
+    """Response für bald ablaufendes Archiv."""
 
     id: uuid.UUID
     document_id: uuid.UUID
@@ -155,7 +155,7 @@ async def archive_document(
 
     - Berechnet SHA-256 Hash des Dokument-Inhalts
     - Setzt Aufbewahrungsfrist basierend auf Kategorie
-    - Markiert Dokument als unveraenderbar
+    - Markiert Dokument als unveränderbar
 
     Args:
         request: Archivierungsanfrage mit Dokument-ID und Kategorie
@@ -169,7 +169,7 @@ async def archive_document(
     Raises:
         404: Dokument nicht gefunden
         400: Dokument bereits archiviert
-        403: Keine Berechtigung fuer dieses Dokument
+        403: Keine Berechtigung für dieses Dokument
     """
     # SECURITY: IDOR-Schutz - Dokument muss zur Company gehoeren
     from sqlalchemy import select
@@ -188,7 +188,7 @@ async def archive_document(
     if document.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument"
+            detail="Keine Berechtigung für dieses Dokument"
         )
 
     try:
@@ -217,7 +217,7 @@ async def archive_document(
     "/documents/{document_id}",
     response_model=ArchiveResponse,
     summary="Archiv-Informationen abrufen",
-    description="Holt die Archiv-Informationen fuer ein Dokument"
+    description="Holt die Archiv-Informationen für ein Dokument"
 )
 async def get_archive(
     document_id: uuid.UUID,
@@ -225,7 +225,7 @@ async def get_archive(
     current_user: User = Depends(get_current_user),
     company: Company = Depends(require_company),
 ) -> ArchiveResponse:
-    """Holt die Archiv-Informationen fuer ein Dokument.
+    """Holt die Archiv-Informationen für ein Dokument.
 
     Args:
         document_id: ID des Dokuments
@@ -250,7 +250,7 @@ async def get_archive(
     if archive.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Archiv"
+            detail="Keine Berechtigung für dieses Archiv"
         )
 
     return ArchiveResponse.model_validate(archive)
@@ -259,7 +259,7 @@ async def get_archive(
 @router.post(
     "/documents/{document_id}/verify",
     response_model=VerificationResponse,
-    summary="Integritaet pruefen",
+    summary="Integritaet prüfen",
     description="Verifiziert die Integritaet eines archivierten Dokuments durch Hash-Vergleich"
 )
 async def verify_document_integrity(
@@ -286,12 +286,12 @@ async def verify_document_integrity(
         400: Dokument nicht archiviert
     """
     try:
-        # IDOR-Schutz: Zuerst pruefen ob das Dokument zur Company gehoert
+        # IDOR-Schutz: Zuerst prüfen ob das Dokument zur Company gehoert
         archive = await archive_service.get_archive(db, document_id)
         if archive and archive.company_id != company.id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Keine Berechtigung fuer dieses Archiv"
+                detail="Keine Berechtigung für dieses Archiv"
             )
 
         is_verified = await archive_service.verify_document_integrity(db, document_id)
@@ -299,9 +299,9 @@ async def verify_document_integrity(
         archive = await archive_service.get_archive(db, document_id)
 
         if is_verified:
-            message = "Dokumentintegritaet bestaetigt - Hash stimmt ueberein"
+            message = "Dokumentintegritaet bestätigt - Hash stimmt überein"
         else:
-            message = "WARNUNG: Dokumentintegritaet moeglicherweise kompromittiert!"
+            message = "WARNUNG: Dokumentintegritaet möglicherweise kompromittiert!"
 
         return VerificationResponse(
             document_id=document_id,
@@ -326,14 +326,14 @@ async def verify_document_integrity(
     "/statistics",
     response_model=ArchiveStatisticsResponse,
     summary="Archiv-Statistiken",
-    description="Holt Statistiken zur Archivierung fuer die aktuelle Firma"
+    description="Holt Statistiken zur Archivierung für die aktuelle Firma"
 )
 async def get_archive_statistics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     company: Company = Depends(require_company),
 ) -> ArchiveStatisticsResponse:
-    """Holt Archiv-Statistiken fuer die aktuelle Firma.
+    """Holt Archiv-Statistiken für die aktuelle Firma.
 
     Args:
         db: Datenbank-Session
@@ -429,7 +429,7 @@ async def update_retention_setting(
 ) -> RetentionSettingResponse:
     """Aktualisiert eine Aufbewahrungsfristen-Einstellung.
 
-    Nur fuer Administratoren.
+    Nur für Administratoren.
 
     Args:
         category: Kategorie-Name
@@ -468,11 +468,11 @@ async def update_retention_setting(
 @router.get(
     "/categories",
     response_model=dict,
-    summary="Verfuegbare Kategorien",
-    description="Listet alle verfuegbaren Aufbewahrungskategorien auf"
+    summary="Verfügbare Kategorien",
+    description="Listet alle verfügbaren Aufbewahrungskategorien auf"
 )
 async def get_categories() -> dict:
-    """Gibt alle verfuegbaren Aufbewahrungskategorien zurueck.
+    """Gibt alle verfügbaren Aufbewahrungskategorien zurück.
 
     Returns:
         Dictionary mit Kategorien und deren Beschreibung
@@ -489,14 +489,14 @@ async def get_categories() -> dict:
             {
                 "value": RetentionCategory.CONTRACT.value,
                 "display_name": "Vertrag",
-                "description": "Vertraege und Vereinbarungen",
+                "description": "Verträge und Vereinbarungen",
                 "default_years": 10,
                 "legal_basis": "§147 AO, §257 HGB"
             },
             {
                 "value": RetentionCategory.CORRESPONDENCE.value,
-                "display_name": "Geschaeftsbrief",
-                "description": "Handels- und Geschaeftsbriefe",
+                "display_name": "Geschäftsbrief",
+                "description": "Handels- und Geschäftsbriefe",
                 "default_years": 6,
                 "legal_basis": "§257 HGB"
             },
@@ -517,7 +517,7 @@ async def get_categories() -> dict:
             {
                 "value": RetentionCategory.TAX_DOCUMENT.value,
                 "display_name": "Steuerbeleg",
-                "description": "Steuerbescheide und -erklaerungen",
+                "description": "Steuerbescheide und -erklärungen",
                 "default_years": 10,
                 "legal_basis": "§147 AO"
             },
@@ -545,7 +545,7 @@ async def get_categories() -> dict:
 
 
 class ProcedureDocVersionResponse(BaseModel):
-    """Response fuer Verfahrensdokumentation-Version."""
+    """Response für Verfahrensdokumentation-Version."""
 
     id: uuid.UUID
     version: str
@@ -580,10 +580,10 @@ async def generate_procedure_documentation(
 ) -> ProcedureDocVersionResponse:
     """Generiert eine neue Version der Verfahrensdokumentation.
 
-    Nur fuer Administratoren.
+    Nur für Administratoren.
 
     Args:
-        change_summary: Zusammenfassung der Aenderungen
+        change_summary: Zusammenfassung der Änderungen
         db: Datenbank-Session
         current_user: Admin-Benutzer
         company: Aktuelle Firma
@@ -699,7 +699,7 @@ async def get_procedure_documentation_version(
     if version.company_id and version.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Version"
+            detail="Keine Berechtigung für diese Version"
         )
 
     return ProcedureDocDetailResponse.model_validate(version)
@@ -744,7 +744,7 @@ async def export_procedure_documentation_markdown(
     if version.company_id and version.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Version"
+            detail="Keine Berechtigung für diese Version"
         )
 
     try:
@@ -764,24 +764,24 @@ async def export_procedure_documentation_markdown(
 
 
 # =============================================================================
-# GDPdU Export Endpoints (Betriebspruefung)
+# GDPdU Export Endpoints (Betriebsprüfung)
 # =============================================================================
 
 
 class GDPdUExportRequest(BaseModel):
-    """Request fuer GDPdU-Export."""
+    """Request für GDPdU-Export."""
 
     start_date: date = Field(..., description="Startdatum des Exportzeitraums")
     end_date: date = Field(..., description="Enddatum des Exportzeitraums")
     include_documents: bool = Field(default=True, description="Dokumente exportieren")
     include_archives: bool = Field(default=True, description="Archive exportieren")
     include_invoices: bool = Field(default=True, description="Rechnungen exportieren")
-    include_contracts: bool = Field(default=True, description="Vertraege exportieren")
-    comment: Optional[str] = Field(default=None, description="Optionaler Kommentar fuer den Export")
+    include_contracts: bool = Field(default=True, description="Verträge exportieren")
+    comment: Optional[str] = Field(default=None, description="Optionaler Kommentar für den Export")
 
 
 class GDPdUExportPreviewResponse(BaseModel):
-    """Response fuer GDPdU-Export Vorschau."""
+    """Response für GDPdU-Export Vorschau."""
 
     zeitraum: dict
     anzahl: dict
@@ -793,7 +793,7 @@ class GDPdUExportPreviewResponse(BaseModel):
     "/export/gdpdu/preview",
     response_model=GDPdUExportPreviewResponse,
     summary="GDPdU-Export Vorschau",
-    description="Zeigt eine Vorschau des GDPdU-Exports an (Anzahl Datensaetze, geschaetzte Groesse)"
+    description="Zeigt eine Vorschau des GDPdU-Exports an (Anzahl Datensätze, geschätzte Größe)"
 )
 async def preview_gdpdu_export(
     request: GDPdUExportRequest,
@@ -803,8 +803,8 @@ async def preview_gdpdu_export(
 ) -> GDPdUExportPreviewResponse:
     """Zeigt eine Vorschau des GDPdU-Exports an.
 
-    Zeigt an, wie viele Datensaetze exportiert werden und die geschaetzte Groesse.
-    Nur fuer Administratoren.
+    Zeigt an, wie viele Datensätze exportiert werden und die geschätzte Größe.
+    Nur für Administratoren.
 
     Args:
         request: Export-Optionen
@@ -837,7 +837,7 @@ async def preview_gdpdu_export(
 @router.post(
     "/export/gdpdu",
     summary="GDPdU-Export erstellen",
-    description="Erstellt einen GDPdU-konformen Export fuer Betriebspruefungen (ZIP-Archiv)"
+    description="Erstellt einen GDPdU-konformen Export für Betriebsprüfungen (ZIP-Archiv)"
 )
 async def create_gdpdu_export(
     request: GDPdUExportRequest,
@@ -847,13 +847,13 @@ async def create_gdpdu_export(
 ):
     """Erstellt einen GDPdU-Export als ZIP-Archiv.
 
-    Erstellt einen vollstaendigen GDPdU-Export mit:
+    Erstellt einen vollständigen GDPdU-Export mit:
     - index.xml: GDPdU-Strukturbeschreibung
     - DTD-Datei: Dokumenttyp-Definition
-    - CSV-Datendateien: Dokumente, Archive, Rechnungen, Vertraege
-    - README: Erklaerungen und rechtliche Grundlagen
+    - CSV-Datendateien: Dokumente, Archive, Rechnungen, Verträge
+    - README: Erklärungen und rechtliche Grundlagen
 
-    Nur fuer Administratoren.
+    Nur für Administratoren.
 
     Args:
         request: Export-Optionen
@@ -906,14 +906,14 @@ async def create_gdpdu_export(
 
 
 class TaxExportRequest(BaseModel):
-    """Anfrage fuer Tax Authority Export nach §90 III AO."""
+    """Anfrage für Tax Authority Export nach §90 III AO."""
 
-    period_start: date = Field(..., description="Beginn Pruefungszeitraum")
-    period_end: date = Field(..., description="Ende Pruefungszeitraum")
-    include_invoices: bool = Field(True, description="Rechnungen einschliessen")
-    include_transactions: bool = Field(True, description="Bankbewegungen einschliessen")
-    include_documents: bool = Field(True, description="Belege einschliessen")
-    include_audit_log: bool = Field(True, description="Aenderungsprotokoll einschliessen")
+    period_start: date = Field(..., description="Beginn Prüfungszeitraum")
+    period_end: date = Field(..., description="Ende Prüfungszeitraum")
+    include_invoices: bool = Field(True, description="Rechnungen einschließen")
+    include_transactions: bool = Field(True, description="Bankbewegungen einschließen")
+    include_documents: bool = Field(True, description="Belege einschließen")
+    include_audit_log: bool = Field(True, description="Änderungsprotokoll einschließen")
     output_dir: Optional[str] = Field(None, description="Optionales Ausgabeverzeichnis")
 
 
@@ -922,9 +922,9 @@ class TaxExportPreviewResponse(BaseModel):
 
     period_start: date
     period_end: date
-    estimated_records: int = Field(..., description="Geschaetzte Anzahl Datensaetze")
-    categories: dict = Field(default_factory=dict, description="Datensaetze pro Kategorie")
-    tables: list = Field(default_factory=list, description="Verfuegbare Tabellen")
+    estimated_records: int = Field(..., description="Geschätzte Anzahl Datensätze")
+    categories: dict = Field(default_factory=dict, description="Datensätze pro Kategorie")
+    tables: list = Field(default_factory=list, description="Verfügbare Tabellen")
 
 
 class TaxExportResultResponse(BaseModel):
@@ -946,20 +946,20 @@ class TaxExportResultResponse(BaseModel):
 @router.get(
     "/export/tax-authority/tables",
     response_model=dict,
-    summary="Verfuegbare Export-Tabellen",
-    description="Listet alle verfuegbaren Tabellen fuer den Steuerpruefer-Export auf."
+    summary="Verfügbare Export-Tabellen",
+    description="Listet alle verfügbaren Tabellen für den Steuerprüfer-Export auf."
 )
 async def list_tax_export_tables(
     current_user: User = Depends(get_current_superuser),
 ) -> dict:
     """
-    Listet alle Tabellendefinitionen fuer den Tax Authority Export.
+    Listet alle Tabellendefinitionen für den Tax Authority Export.
 
     Tabellen:
     - rechnungen: Ausgangs- und Eingangsrechnungen
-    - bankbewegungen: Kontoumsaetze
+    - bankbewegungen: Kontoumsätze
     - belege: Archivierte Dokumente
-    - aenderungsprotokoll: Audit-Trail
+    - änderungsprotokoll: Audit-Trail
     """
     from app.services.compliance.tax_authority_export_service import (
         get_invoice_table_definition,
@@ -1003,7 +1003,7 @@ async def list_tax_export_tables(
     "/export/tax-authority/preview",
     response_model=TaxExportPreviewResponse,
     summary="Tax Authority Export Vorschau",
-    description="Zeigt eine Vorschau des Exports fuer Betriebspruefungen nach §90 III AO."
+    description="Zeigt eine Vorschau des Exports für Betriebsprüfungen nach §90 III AO."
 )
 async def preview_tax_authority_export(
     request: TaxExportRequest,
@@ -1015,9 +1015,9 @@ async def preview_tax_authority_export(
     Erstellt eine Vorschau des Tax Authority Exports.
 
     Zeigt:
-    - Geschaetzte Anzahl Datensaetze
+    - Geschätzte Anzahl Datensätze
     - Aufschluesselung nach Kategorien
-    - Verfuegbare Tabellen
+    - Verfügbare Tabellen
     """
     from app.services.compliance.tax_authority_export_service import (
         get_tax_authority_export_service,
@@ -1025,7 +1025,7 @@ async def preview_tax_authority_export(
 
     service = get_tax_authority_export_service(db)
 
-    # Datensaetze zaehlen
+    # Datensätze zaehlen
     categories = await service.count_records_by_category(
         company_id=company.id,
         period_start=request.period_start,
@@ -1040,7 +1040,7 @@ async def preview_tax_authority_export(
     if request.include_documents:
         tables.append("belege")
     if request.include_audit_log:
-        tables.append("aenderungsprotokoll")
+        tables.append("änderungsprotokoll")
 
     return TaxExportPreviewResponse(
         period_start=request.period_start,
@@ -1054,7 +1054,7 @@ async def preview_tax_authority_export(
 @router.post(
     "/export/tax-authority",
     summary="Tax Authority Export erstellen",
-    description="Erstellt einen GDPdU-konformen Export fuer Betriebspruefungen nach §90 III AO."
+    description="Erstellt einen GDPdU-konformen Export für Betriebsprüfungen nach §90 III AO."
 )
 async def create_tax_authority_export(
     request: TaxExportRequest,
@@ -1063,16 +1063,16 @@ async def create_tax_authority_export(
     company: Company = Depends(require_company),
 ):
     """
-    Erstellt einen vollstaendigen Export fuer die Datenueberlassung
+    Erstellt einen vollständigen Export für die Datenüberlassung
     an Finanzbehroeden nach §90 III AO / §147 VI AO.
 
-    Der Export enthaelt:
+    Der Export enthält:
     - index.xml: Strukturbeschreibung (GDPdU-konform)
     - DTD-Datei: Validierungsschema
     - CSV-Dateien: Tabellarische Daten
-    - MD5-Pruefsummen: Integritaetssicherung
+    - MD5-Prüfsummen: Integritaetssicherung
 
-    Hinweis: Dieser Endpoint ist nur fuer Superuser zugaenglich.
+    Hinweis: Dieser Endpoint ist nur für Superuser zugaenglich.
     """
     from app.services.compliance.tax_authority_export_service import (
         get_tax_authority_export_service,
@@ -1094,7 +1094,7 @@ async def create_tax_authority_export(
                 detail=result.error or "Export fehlgeschlagen",
             )
 
-        # ZIP-Archiv zurueckgeben
+        # ZIP-Archiv zurückgeben
         if result.archive_path:
             with open(result.archive_path, "rb") as f:
                 zip_content = f.read()
@@ -1114,7 +1114,7 @@ async def create_tax_authority_export(
                 }
             )
 
-        # Falls kein Archiv, Metadaten zurueckgeben
+        # Falls kein Archiv, Metadaten zurückgeben
         return TaxExportResultResponse(
             success=result.success,
             export_id=result.export_id,
@@ -1147,7 +1147,7 @@ async def create_tax_authority_export(
 
 
 class DocumentAccessLogResponse(BaseModel):
-    """Response fuer einen einzelnen Dokumentzugriff."""
+    """Response für einen einzelnen Dokumentzugriff."""
 
     id: uuid.UUID
     document_id: uuid.UUID
@@ -1168,7 +1168,7 @@ class DocumentAccessLogResponse(BaseModel):
 
 
 class DocumentAuditTrailResponse(BaseModel):
-    """Response fuer Dokument-Audit-Trail."""
+    """Response für Dokument-Audit-Trail."""
 
     document_id: uuid.UUID
     access_logs: list[DocumentAccessLogResponse]
@@ -1180,7 +1180,7 @@ class DocumentAuditTrailResponse(BaseModel):
 
 
 class AccessStatisticsResponse(BaseModel):
-    """Response fuer Zugriffs-Statistiken."""
+    """Response für Zugriffs-Statistiken."""
 
     total_accesses: int
     by_access_type: dict
@@ -1191,7 +1191,7 @@ class AccessStatisticsResponse(BaseModel):
 
 
 class AuditTrailIntegrityResponse(BaseModel):
-    """Response fuer Audit-Trail Integritaetspruefung."""
+    """Response für Audit-Trail Integritaetsprüfung."""
 
     is_valid: bool
     total_records: int
@@ -1214,7 +1214,7 @@ class AccessLogListResponse(BaseModel):
     "/documents/{document_id}/audit-trail",
     response_model=DocumentAuditTrailResponse,
     summary="Dokument-Zugriffshistorie",
-    description="Holt die vollstaendige Zugriffshistorie fuer ein Dokument (GoBD Nachvollziehbarkeit)"
+    description="Holt die vollständige Zugriffshistorie für ein Dokument (GoBD Nachvollziehbarkeit)"
 )
 async def get_document_audit_trail(
     document_id: uuid.UUID,
@@ -1227,17 +1227,17 @@ async def get_document_audit_trail(
     current_user: User = Depends(get_current_user),
     company: Company = Depends(require_company),
 ) -> DocumentAuditTrailResponse:
-    """Holt die Zugriffshistorie fuer ein Dokument.
+    """Holt die Zugriffshistorie für ein Dokument.
 
     GoBD-Anforderung: Nachvollziehbarkeit - Wer hat wann was mit dem Dokument gemacht?
 
     Args:
         document_id: ID des Dokuments
-        access_type: Optionaler Filter fuer Zugriffstyp
+        access_type: Optionaler Filter für Zugriffstyp
         start_date: Optionaler Filter - Startdatum
         end_date: Optionaler Filter - Enddatum
         limit: Maximale Anzahl Ergebnisse (default: 100)
-        offset: Offset fuer Paginierung (default: 0)
+        offset: Offset für Paginierung (default: 0)
         db: Datenbank-Session
         current_user: Aktueller Benutzer
         company: Aktuelle Firma
@@ -1249,7 +1249,7 @@ async def get_document_audit_trail(
         404: Dokument nicht gefunden
         403: Keine Berechtigung
     """
-    # IDOR-Schutz: Pruefen ob Dokument zur Firma gehoert
+    # IDOR-Schutz: Prüfen ob Dokument zur Firma gehoert
     from sqlalchemy import select
     from app.db.models import Document
 
@@ -1266,7 +1266,7 @@ async def get_document_audit_trail(
     if document.company_id != company.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument"
+            detail="Keine Berechtigung für dieses Dokument"
         )
 
     # Audit Trail abrufen
@@ -1296,7 +1296,7 @@ async def get_document_audit_trail(
     "/access-statistics",
     response_model=AccessStatisticsResponse,
     summary="Zugriffs-Statistiken",
-    description="Holt aggregierte Zugriffs-Statistiken fuer die aktuelle Firma"
+    description="Holt aggregierte Zugriffs-Statistiken für die aktuelle Firma"
 )
 async def get_access_statistics(
     start_date: Optional[datetime] = None,
@@ -1305,9 +1305,9 @@ async def get_access_statistics(
     current_user: User = Depends(get_current_user),
     company: Company = Depends(require_company),
 ) -> AccessStatisticsResponse:
-    """Holt Zugriffs-Statistiken fuer die aktuelle Firma.
+    """Holt Zugriffs-Statistiken für die aktuelle Firma.
 
-    Zeigt aggregierte Statistiken ueber Dokumentzugriffe:
+    Zeigt aggregierte Statistiken über Dokumentzugriffe:
     - Gesamtzugriffe
     - Aufschluesselung nach Zugriffstyp
     - Tages-Verlauf
@@ -1336,8 +1336,8 @@ async def get_access_statistics(
 @router.post(
     "/verify-audit-trail",
     response_model=AuditTrailIntegrityResponse,
-    summary="Audit-Trail Integritaet pruefen",
-    description="Prueft die Integritaet des Audit-Trails auf Luecken (GoBD Vollstaendigkeit)"
+    summary="Audit-Trail Integritaet prüfen",
+    description="Prüft die Integritaet des Audit-Trails auf Lücken (GoBD Vollständigkeit)"
 )
 async def verify_audit_trail_integrity(
     start_date: Optional[datetime] = None,
@@ -1346,12 +1346,12 @@ async def verify_audit_trail_integrity(
     current_user: User = Depends(get_current_superuser),
     company: Company = Depends(require_company),
 ) -> AuditTrailIntegrityResponse:
-    """Prueft die Integritaet des Audit-Trails.
+    """Prüft die Integritaet des Audit-Trails.
 
-    GoBD-Anforderung: Vollstaendigkeit - Der Audit-Trail muss lueckenlos sein.
-    Diese Pruefung erkennt fehlende Sequenznummern.
+    GoBD-Anforderung: Vollständigkeit - Der Audit-Trail muss lückenlos sein.
+    Diese Prüfung erkennt fehlende Sequenznummern.
 
-    Nur fuer Administratoren.
+    Nur für Administratoren.
 
     Args:
         start_date: Optionaler Filter - Startdatum
@@ -1361,7 +1361,7 @@ async def verify_audit_trail_integrity(
         company: Aktuelle Firma
 
     Returns:
-        AuditTrailIntegrityResponse mit Integritaetspruefung
+        AuditTrailIntegrityResponse mit Integritaetsprüfung
     """
     integrity = await document_access_service.verify_audit_trail_integrity(
         db=db,
@@ -1371,11 +1371,11 @@ async def verify_audit_trail_integrity(
     )
 
     if integrity["is_valid"]:
-        message = "Audit-Trail ist vollstaendig - keine Luecken gefunden"
+        message = "Audit-Trail ist vollständig - keine Lücken gefunden"
     else:
         message = (
-            f"WARNUNG: {len(integrity['gaps'])} Luecken im Audit-Trail gefunden! "
-            f"GoBD-Vollstaendigkeit moeglicherweise verletzt."
+            f"WARNUNG: {len(integrity['gaps'])} Lücken im Audit-Trail gefunden! "
+            f"GoBD-Vollständigkeit möglicherweise verletzt."
         )
 
     return AuditTrailIntegrityResponse(
@@ -1409,14 +1409,14 @@ async def list_access_logs(
     """Listet alle Zugriffsprotokolle der Firma auf.
 
     Paginierte Liste mit umfangreichen Filtermoglichkeiten.
-    Nur fuer Administratoren.
+    Nur für Administratoren.
 
     Args:
         page: Seitennummer (default: 1)
-        page_size: Eintraege pro Seite (default: 50, max: 200)
-        access_type: Optionaler Filter fuer Zugriffstyp
-        user_id: Optionaler Filter fuer Benutzer
-        document_id: Optionaler Filter fuer Dokument
+        page_size: Einträge pro Seite (default: 50, max: 200)
+        access_type: Optionaler Filter für Zugriffstyp
+        user_id: Optionaler Filter für Benutzer
+        document_id: Optionaler Filter für Dokument
         success_only: Optionaler Filter - nur erfolgreiche Zugriffe
         start_date: Optionaler Filter - Startdatum
         end_date: Optionaler Filter - Enddatum
@@ -1483,7 +1483,7 @@ async def list_access_logs(
 
 
 class ComplianceReportResponse(BaseModel):
-    """Response fuer GoBD-Compliance-Bericht."""
+    """Response für GoBD-Compliance-Bericht."""
 
     report_id: str
     company_id: str
@@ -1499,7 +1499,7 @@ class ComplianceReportResponse(BaseModel):
 
 
 class QuickComplianceResponse(BaseModel):
-    """Response fuer schnellen Compliance-Status."""
+    """Response für schnellen Compliance-Status."""
 
     status: str
     failed_verifications: int
@@ -1511,7 +1511,7 @@ class QuickComplianceResponse(BaseModel):
     "/compliance/report",
     response_model=ComplianceReportResponse,
     summary="GoBD-Compliance-Bericht",
-    description="Generiert einen vollstaendigen GoBD-Compliance-Bericht"
+    description="Generiert einen vollständigen GoBD-Compliance-Bericht"
 )
 async def get_compliance_report(
     report_date: Optional[date] = None,
@@ -1525,19 +1525,19 @@ async def get_compliance_report(
     Der Bericht umfasst:
     - Archivierungsstatus (Anteil archivierter Dokumente, Hash-Signaturen)
     - Aufbewahrungsfristen-Compliance (abgelaufen, bald ablaufend)
-    - Audit-Trail-Vollstaendigkeit (Nachvollziehbarkeit)
-    - Integritaetspruefungen (Unveraenderbarkeit)
+    - Audit-Trail-Vollständigkeit (Nachvollziehbarkeit)
+    - Integritaetsprüfungen (Unveränderbarkeit)
     - Gesamt-Score und Handlungsempfehlungen
 
     Args:
-        report_date: Stichtag fuer den Bericht (default: heute)
-        include_details: Detaillierte Metriken einschliessen
+        report_date: Stichtag für den Bericht (default: heute)
+        include_details: Detaillierte Metriken einschließen
         db: Datenbank-Session
         current_user: Aktueller Benutzer
         company: Aktuelle Firma
 
     Returns:
-        ComplianceReportResponse mit vollstaendigem Bericht
+        ComplianceReportResponse mit vollständigem Bericht
     """
     report = await gobd_compliance_service.generate_compliance_report(
         db=db,
@@ -1553,17 +1553,17 @@ async def get_compliance_report(
     "/compliance/status",
     response_model=QuickComplianceResponse,
     summary="Schneller Compliance-Status",
-    description="Gibt einen schnellen Compliance-Status zurueck (fuer Dashboard)"
+    description="Gibt einen schnellen Compliance-Status zurück (für Dashboard)"
 )
 async def get_quick_compliance_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     company: Company = Depends(require_company),
 ) -> QuickComplianceResponse:
-    """Gibt einen schnellen Compliance-Status zurueck.
+    """Gibt einen schnellen Compliance-Status zurück.
 
-    Fuer Dashboard-Widgets und Uebersichten.
-    Prueft nur die kritischsten Metriken.
+    Für Dashboard-Widgets und Übersichten.
+    Prüft nur die kritischsten Metriken.
 
     Args:
         db: Datenbank-Session
@@ -1584,7 +1584,7 @@ async def get_quick_compliance_status(
 @router.get(
     "/compliance/export",
     summary="Compliance-Bericht als PDF exportieren",
-    description="Exportiert den GoBD-Compliance-Bericht als PDF (fuer Steuerberater)"
+    description="Exportiert den GoBD-Compliance-Bericht als PDF (für Steuerberater)"
 )
 async def export_compliance_report_pdf(
     report_date: Optional[date] = None,
@@ -1594,10 +1594,10 @@ async def export_compliance_report_pdf(
 ):
     """Exportiert den Compliance-Bericht als PDF.
 
-    Fuer Steuerberater und Betriebspruefungen.
+    Für Steuerberater und Betriebsprüfungen.
 
     Args:
-        report_date: Stichtag fuer den Bericht
+        report_date: Stichtag für den Bericht
         db: Datenbank-Session
         current_user: Aktueller Benutzer
         company: Aktuelle Firma
@@ -1615,7 +1615,7 @@ async def export_compliance_report_pdf(
         include_details=True,
     )
 
-    # Erzeuge Markdown-Inhalt (PDF-Generierung wuerde externe Library benoetigen)
+    # Erzeuge Markdown-Inhalt (PDF-Generierung wuerde externe Library benötigen)
     markdown = _generate_compliance_markdown(report, company.name)
 
     filename = (
@@ -1633,7 +1633,7 @@ async def export_compliance_report_pdf(
 
 
 def _generate_compliance_markdown(report: dict, company_name: str) -> str:
-    """Generiert Markdown-Inhalt fuer den Compliance-Bericht."""
+    """Generiert Markdown-Inhalt für den Compliance-Bericht."""
     lines = [
         f"# GoBD-Compliance-Bericht",
         f"",
@@ -1651,7 +1651,7 @@ def _generate_compliance_markdown(report: dict, company_name: str) -> str:
         f"| **Compliance-Score** | {report['overall_score']}/100 |",
         f"| **Bewertung** | {report['score_description']} |",
         f"",
-        f"### Bereichs-Uebersicht",
+        f"### Bereichs-Übersicht",
         f"",
         f"| Bereich | Status | Compliant | Warnung | Non-Compliant |",
         f"|---------|--------|-----------|---------|---------------|",
@@ -1679,7 +1679,7 @@ def _generate_compliance_markdown(report: dict, company_name: str) -> str:
             severity_emoji = "🔴" if rec['severity'] == 'non_compliant' else "🟡"
             lines.append(f"{rec['priority']}. {severity_emoji} **{rec['metric']}**: {rec['recommendation']}")
     else:
-        lines.append("✅ Keine Handlungsempfehlungen - alle Pruefungen bestanden!")
+        lines.append("✅ Keine Handlungsempfehlungen - alle Prüfungen bestanden!")
 
     lines.extend([
         f"",

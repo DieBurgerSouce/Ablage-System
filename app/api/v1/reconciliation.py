@@ -2,11 +2,11 @@
 """
 Payment Reconciliation API Endpoints.
 
-REST API fuer erweiterten Zahlungsabgleich:
-- Auto-Match fuer alle ungematchten Transaktionen
+REST API für erweiterten Zahlungsabgleich:
+- Auto-Match für alle ungematchten Transaktionen
 - Unabgeglichene Transaktionen mit Filterung
 - Manuelle Zuordnung
-- Match-Vorschlaege pro Transaktion
+- Match-Vorschläge pro Transaktion
 - Match ablehnen mit Begruendung
 - Reconciliation-Statistiken
 
@@ -90,7 +90,7 @@ class RejectMatchRequest(BaseModel):
 
 
 class ManualMatchRequest(BaseModel):
-    """Request fuer manuelles Matching."""
+    """Request für manuelles Matching."""
     document_id: UUID
     notes: Optional[str] = Field(None, max_length=500)
     is_partial: bool = Field(False, description="Teilzahlung")
@@ -109,19 +109,19 @@ class UnmatchedTransactionResponse(BaseModel):
     counterparty_iban: Optional[str]
     reference_text: Optional[str]
     transaction_type: Optional[str]
-    suggestion_count: int = Field(0, description="Anzahl verfuegbarer Vorschlaege")
+    suggestion_count: int = Field(0, description="Anzahl verfügbarer Vorschläge")
     best_match_confidence: Optional[float] = Field(None, description="Hoechste Match-Konfidenz")
     days_since_booking: int = Field(0, description="Tage seit Buchung")
 
 
 class BulkAutoMatchResponse(BaseModel):
-    """Response fuer Bulk Auto-Match."""
+    """Response für Bulk Auto-Match."""
     total_processed: int
     matched_count: int
     high_confidence_matches: int = Field(..., description="Matches mit >95% Konfidenz")
     partial_count: int
     unmatched_count: int
-    queued_for_review: int = Field(..., description="Fuer manuelle Pruefung vorgemerkt")
+    queued_for_review: int = Field(..., description="Für manuelle Prüfung vorgemerkt")
     processing_time_ms: int
     results: List[dict]
 
@@ -136,26 +136,26 @@ class BulkAutoMatchResponse(BaseModel):
     "/auto-match",
     response_model=BulkAutoMatchResponse,
     summary="Auto-Abgleich starten",
-    description="Fuehrt automatisches Matching fuer alle unabgeglichenen Transaktionen durch."
+    description="Führt automatisches Matching für alle unabgeglichenen Transaktionen durch."
 )
 async def auto_match_transactions(
     request: Request,
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
-    min_confidence: float = Query(0.9, ge=0.5, le=1.0, description="Mindest-Konfidenz fuer Auto-Match"),
+    min_confidence: float = Query(0.9, ge=0.5, le=1.0, description="Mindest-Konfidenz für Auto-Match"),
     limit: int = Query(100, ge=1, le=500, description="Max. Transaktionen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> BulkAutoMatchResponse:
     """
-    Startet automatischen Abgleich fuer alle unabgeglichenen Transaktionen.
+    Startet automatischen Abgleich für alle unabgeglichenen Transaktionen.
 
     **Match-Typen:**
-    - **exact**: IBAN + Betrag + Referenz stimmen exakt ueberein (100% Konfidenz)
-    - **fuzzy**: Betrag aehnlich (5% Toleranz) + Name enthaelt Keywords (70-90%)
+    - **exact**: IBAN + Betrag + Referenz stimmen exakt überein (100% Konfidenz)
+    - **fuzzy**: Betrag ähnlich (5% Toleranz) + Name enthält Keywords (70-90%)
     - **partial**: Nur Betrag stimmt (50%)
 
     **Auto-Match**: Nur Matches mit Konfidenz >= min_confidence werden automatisch gesetzt.
-    Niedrigere werden fuer manuelle Pruefung vorgemerkt.
+    Niedrigere werden für manuelle Prüfung vorgemerkt.
     """
     import time
     start_time = time.time()
@@ -236,7 +236,7 @@ async def auto_match_transactions(
     "/unmatched",
     response_model=List[UnmatchedTransactionResponse],
     summary="Unabgeglichene Transaktionen",
-    description="Listet Transaktionen die manuelle Pruefung benoetigen."
+    description="Listet Transaktionen die manuelle Prüfung benötigen."
 )
 async def list_unmatched_transactions(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
@@ -251,12 +251,12 @@ async def list_unmatched_transactions(
     db: AsyncSession = Depends(get_db),
 ) -> List[UnmatchedTransactionResponse]:
     """
-    Listet alle Transaktionen die manuelle Pruefung benoetigen.
+    Listet alle Transaktionen die manuelle Prüfung benötigen.
 
-    Enthaelt fuer jede Transaktion:
-    - Anzahl verfuegbarer Match-Vorschlaege
-    - Hoechste verfuegbare Match-Konfidenz
-    - Tage seit Buchung (fuer Priorisierung)
+    Enthält für jede Transaktion:
+    - Anzahl verfügbarer Match-Vorschläge
+    - Hoechste verfügbare Match-Konfidenz
+    - Tage seit Buchung (für Priorisierung)
     """
     from sqlalchemy import desc, asc
     from datetime import timedelta
@@ -312,7 +312,7 @@ async def list_unmatched_transactions(
     response_list = []
 
     for tx in transactions:
-        # Hole Match-Vorschlaege fuer Zusatzinfos
+        # Hole Match-Vorschläge für Zusatzinfos
         try:
             suggestions = await reconciliation_service.find_matches(
                 db=db,
@@ -370,7 +370,7 @@ async def create_manual_match(
     Ordnet eine Transaktion manuell einem Dokument zu.
 
     Bei Teilzahlungen (is_partial=true) kann ein Teilbetrag zugewiesen werden.
-    Der verbleibende Betrag bleibt fuer weitere Zuordnungen offen.
+    Der verbleibende Betrag bleibt für weitere Zuordnungen offen.
     """
     try:
         if match_request.is_partial and match_request.allocated_amount:
@@ -394,7 +394,7 @@ async def create_manual_match(
                 "message": "Teilzahlung erfolgreich zugeordnet.",
             }
         else:
-            # Vollstaendige Zuordnung
+            # Vollständige Zuordnung
             result = await reconciliation_service.manual_match(
                 db=db,
                 user_id=current_user.id,
@@ -441,21 +441,21 @@ async def create_manual_match(
 @router.get(
     "/suggestions/{transaction_id}",
     response_model=List[MatchSuggestionResponse],
-    summary="Match-Vorschlaege",
-    description="Gibt moegliche Matches fuer eine Transaktion zurueck."
+    summary="Match-Vorschläge",
+    description="Gibt mögliche Matches für eine Transaktion zurück."
 )
 async def get_match_suggestions(
     transaction_id: UUID,
-    limit: int = Query(10, ge=1, le=20, description="Max. Vorschlaege"),
+    limit: int = Query(10, ge=1, le=20, description="Max. Vorschläge"),
     min_confidence: float = Query(0.3, ge=0.0, le=1.0, description="Mindest-Konfidenz"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[MatchSuggestionResponse]:
     """
-    Gibt moegliche Match-Vorschlaege fuer eine Transaktion zurueck.
+    Gibt mögliche Match-Vorschläge für eine Transaktion zurück.
 
-    Vorschlaege sind nach Konfidenz sortiert (hoechste zuerst).
-    Enthaelt detaillierte Gruende fuer das Match.
+    Vorschläge sind nach Konfidenz sortiert (hoechste zuerst).
+    Enthält detaillierte Gruende für das Match.
     """
     try:
         candidates = await reconciliation_service.find_matches(
@@ -468,7 +468,7 @@ async def get_match_suggestions(
         # Filtere nach Mindest-Konfidenz
         filtered = [c for c in candidates if c.confidence >= min_confidence]
 
-        # Hole Transaktionsbetrag fuer Diskrepanz-Berechnung
+        # Hole Transaktionsbetrag für Diskrepanz-Berechnung
         tx_query = (
             select(BankTransaction)
             .join(BankAccount)
@@ -537,8 +537,8 @@ async def reject_match(
     """
     Lehnt einen Match-Vorschlag ab.
 
-    Der Ablehnungsgrund wird fuer Audit-Zwecke gespeichert.
-    Bei never_suggest_again=true wird das Dokument fuer diese Transaktion blockiert.
+    Der Ablehnungsgrund wird für Audit-Zwecke gespeichert.
+    Bei never_suggest_again=true wird das Dokument für diese Transaktion blockiert.
     """
     # Verifiziere Transaktion gehoert User
     tx_query = (
@@ -644,7 +644,7 @@ async def get_reconciliation_stats(
     """
     Liefert umfassende Reconciliation-Statistiken.
 
-    **Enthaelt:**
+    **Enthält:**
     - Gesamtzahlen nach Status
     - Abgleichquote
     - Auto-Match Erfolgsrate
@@ -773,16 +773,16 @@ def _determine_match_type(confidence: float) -> str:
 
 
 def _build_match_reasons(candidate: MatchCandidate) -> List[str]:
-    """Erstellt Liste von Match-Gruenden fuer UI-Anzeige."""
+    """Erstellt Liste von Match-Gruenden für UI-Anzeige."""
     reasons = []
     details = candidate.match_details or {}
 
     if details.get("iban_match"):
-        reasons.append("IBAN stimmt ueberein")
+        reasons.append("IBAN stimmt überein")
     if details.get("amount_exact"):
         reasons.append("Betrag exakt gleich")
     elif details.get("amount_similar"):
-        reasons.append("Betrag aehnlich (innerhalb Toleranz)")
+        reasons.append("Betrag ähnlich (innerhalb Toleranz)")
     if details.get("invoice_match") or "invoice" in candidate.match_method.lower():
         reasons.append("Rechnungsnummer im Verwendungszweck gefunden")
     if details.get("customer_match") or "customer" in candidate.match_method.lower():
@@ -790,20 +790,20 @@ def _build_match_reasons(candidate: MatchCandidate) -> List[str]:
     if details.get("name_similarity"):
         sim = details.get("name_similarity", 0)
         if sim >= 0.9:
-            reasons.append("Name sehr aehnlich")
+            reasons.append("Name sehr ähnlich")
         elif sim >= 0.7:
-            reasons.append("Name aehnlich")
+            reasons.append("Name ähnlich")
     if details.get("date_proximity"):
-        reasons.append("Datum nahe am Faelligkeitsdatum")
+        reasons.append("Datum nahe am Fälligkeitsdatum")
 
     if not reasons:
         # Fallback basierend auf match_method
         method_reasons = {
-            "iban_amount": "IBAN und Betrag stimmen ueberein",
+            "iban_amount": "IBAN und Betrag stimmen überein",
             "invoice_number": "Rechnungsnummer gefunden",
             "customer_number": "Kundennummer erkannt",
             "amount_date": "Betrag und Datum passen",
-            "fuzzy_name": "Name aehnlich",
+            "fuzzy_name": "Name ähnlich",
             "manual": "Manuell zugeordnet",
         }
         if candidate.match_method in method_reasons:

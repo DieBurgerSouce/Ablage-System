@@ -7,7 +7,7 @@ Verwaltet Vertragspflichten und -verpflichtungen:
 - Status-Tracking (pending, fulfilled, overdue)
 - Wiederkehrende Obligations
 - Automatische Erinnerungen
-- Zustaendigkeits-Management
+- Zuständigkeits-Management
 
 Feinpoliert und durchdacht.
 """
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 class ContractObligationTracker:
     """
-    Service fuer das Tracking von Vertragspflichten.
+    Service für das Tracking von Vertragspflichten.
 
     Verwaltet den Lebenszyklus von Obligations von der
     Erstellung bis zur Erfuellung oder Eskalation.
@@ -82,16 +82,16 @@ class ContractObligationTracker:
             obligation_type: Art der Pflicht
             title: Titel der Pflicht
             description: Detaillierte Beschreibung
-            responsible_party: Zustaendige Partei (us, them, both)
+            responsible_party: Zuständige Partei (us, them, both)
             assignee_id: ID des zugewiesenen Benutzers
-            due_date: Faelligkeitsdatum
+            due_date: Fälligkeitsdatum
             recurring: Ob die Pflicht wiederkehrend ist
             recurrence_pattern: Wiederholungsmuster
             recurrence_end_date: Ende der Wiederholung
-            reminder_days: Tage vor Faelligkeit fuer Erinnerung
+            reminder_days: Tage vor Fälligkeit für Erinnerung
             amount: Optionaler Betrag
-            currency: Waehrung
-            metadata: Zusaetzliche Metadaten
+            currency: Währung
+            metadata: Zusätzliche Metadaten
 
         Returns:
             Erstellte ContractObligation
@@ -139,7 +139,7 @@ class ContractObligationTracker:
         include_completed: bool = True,
     ) -> List[ContractObligation]:
         """
-        Hole alle Obligations fuer einen Vertrag.
+        Hole alle Obligations für einen Vertrag.
 
         Args:
             contract_id: ID des Vertrags
@@ -222,13 +222,13 @@ class ContractObligationTracker:
         company_id: UUID,
     ) -> List[ContractObligation]:
         """
-        Hole ueberfaellige Obligations.
+        Hole überfällige Obligations.
 
         Args:
             company_id: ID der Firma
 
         Returns:
-            Liste von ueberfaelligen ContractObligations
+            Liste von überfälligen ContractObligations
         """
         today = date.today()
 
@@ -267,12 +267,12 @@ class ContractObligationTracker:
         """
         Markiere Obligation als erfuellt.
 
-        Bei wiederkehrenden Obligations wird die naechste
+        Bei wiederkehrenden Obligations wird die nächste
         Occurrence erstellt.
 
         Args:
             obligation_id: ID der Obligation
-            completed_by_id: ID des Benutzers der abschliesst
+            completed_by_id: ID des Benutzers der abschließt
             notes: Optionale Notizen
 
         Returns:
@@ -291,7 +291,7 @@ class ContractObligationTracker:
             current_metadata["completion_notes"] = notes
             obligation.obligation_metadata = current_metadata
 
-        # Bei wiederkehrenden: Naechste Occurrence berechnen
+        # Bei wiederkehrenden: Nächste Occurrence berechnen
         if obligation.recurring and obligation.recurrence_pattern:
             next_date = self._calculate_next_occurrence(
                 current_date=obligation.next_occurrence_date or obligation.due_date,
@@ -321,7 +321,7 @@ class ContractObligationTracker:
                     company_id=obligation.company_id,
                 )
                 self.db.add(new_obligation)
-                logger.info(f"Naechste Occurrence erstellt fuer: {next_date}")
+                logger.info(f"Nächste Occurrence erstellt für: {next_date}")
 
         await self.db.commit()
         await self.db.refresh(obligation)
@@ -331,7 +331,7 @@ class ContractObligationTracker:
 
     async def mark_as_overdue(self, obligation_id: UUID) -> ContractObligation:
         """
-        Markiere Obligation als ueberfaellig.
+        Markiere Obligation als überfällig.
 
         Args:
             obligation_id: ID der Obligation
@@ -348,7 +348,7 @@ class ContractObligationTracker:
         await self.db.commit()
         await self.db.refresh(obligation)
 
-        logger.info(f"Obligation als ueberfaellig markiert: {obligation_id}")
+        logger.info(f"Obligation als überfällig markiert: {obligation_id}")
         return obligation
 
     async def assign_to_user(
@@ -415,7 +415,7 @@ class ContractObligationTracker:
 
     async def delete_obligation(self, obligation_id: UUID) -> bool:
         """
-        Loesche Obligation.
+        Lösche Obligation.
 
         Args:
             obligation_id: ID der Obligation
@@ -430,7 +430,7 @@ class ContractObligationTracker:
         await self.db.delete(obligation)
         await self.db.commit()
 
-        logger.info(f"Obligation geloescht: {obligation_id}")
+        logger.info(f"Obligation gelöscht: {obligation_id}")
         return True
 
     async def get_obligations_needing_reminder(
@@ -438,13 +438,13 @@ class ContractObligationTracker:
         company_id: UUID,
     ) -> List[ContractObligation]:
         """
-        Hole Obligations die eine Erinnerung benoetigen.
+        Hole Obligations die eine Erinnerung benötigen.
 
         Args:
             company_id: ID der Firma
 
         Returns:
-            Liste von Obligations fuer Erinnerung
+            Liste von Obligations für Erinnerung
         """
         today = date.today()
 
@@ -503,15 +503,15 @@ class ContractObligationTracker:
         company_id: UUID,
     ) -> List[ContractObligation]:
         """
-        Pruefe und markiere ueberfaellige Obligations.
+        Prüfe und markiere überfällige Obligations.
 
-        Sollte taeglich als Celery-Task laufen.
+        Sollte täglich als Celery-Task laufen.
 
         Args:
             company_id: ID der Firma
 
         Returns:
-            Liste der als ueberfaellig markierten Obligations
+            Liste der als überfällig markierten Obligations
         """
         today = date.today()
 
@@ -536,7 +536,7 @@ class ContractObligationTracker:
 
         if marked:
             await self.db.commit()
-            logger.info(f"{len(marked)} Obligations als ueberfaellig markiert")
+            logger.info(f"{len(marked)} Obligations als überfällig markiert")
 
         return marked
 
@@ -613,7 +613,7 @@ class ContractObligationTracker:
         end_date: Optional[date],
     ) -> Optional[date]:
         """
-        Berechne naechstes Vorkommen einer wiederkehrenden Obligation.
+        Berechne nächstes Vorkommen einer wiederkehrenden Obligation.
 
         Args:
             current_date: Aktuelles Datum
@@ -621,7 +621,7 @@ class ContractObligationTracker:
             end_date: Ende der Wiederholung
 
         Returns:
-            Naechstes Datum oder None wenn beendet
+            Nächstes Datum oder None wenn beendet
         """
         if not current_date:
             return None
@@ -637,7 +637,7 @@ class ContractObligationTracker:
 
         next_date = current_date + timedelta(days=days)
 
-        # Pruefe Enddatum
+        # Prüfe Enddatum
         if end_date and next_date > end_date:
             return None
 

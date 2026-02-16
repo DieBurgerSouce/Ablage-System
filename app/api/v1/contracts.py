@@ -258,10 +258,10 @@ async def create_contract(
     """
     Erstelle einen neuen Vertrag.
 
-    Erstellt einen Geschaeftsvertrag mit:
-    - Automatischer Berechnung der Kuendigungsfrist
+    Erstellt einen Geschäftsvertrag mit:
+    - Automatischer Berechnung der Kündigungsfrist
     - Standard-Meilensteinen
-    - Verlaengerungsoptionen bei automatischer Verlaengerung
+    - Verlängerungsoptionen bei automatischer Verlängerung
     """
     service = get_contract_service()
 
@@ -315,7 +315,7 @@ async def list_contracts(
     status: Optional[ContractStatus] = Query(None, description="Filter nach Status"),
     contract_type: Optional[ContractType] = Query(None, description="Filter nach Vertragsart"),
     party_id: Optional[UUID] = Query(None, description="Filter nach Vertragspartner"),
-    expiring_within_days: Optional[int] = Query(None, ge=1, le=365, description="Ablaufende Vertraege innerhalb X Tagen"),
+    expiring_within_days: Optional[int] = Query(None, ge=1, le=365, description="Ablaufende Verträge innerhalb X Tagen"),
     search: Optional[str] = Query(None, max_length=200, description="Suche in Vertragsnr, Titel, Parteien"),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -326,13 +326,13 @@ async def list_contracts(
     company: Company = Depends(require_company),
 ) -> ContractListResponse:
     """
-    Liste aller Vertraege mit Filteroptionen.
+    Liste aller Verträge mit Filteroptionen.
 
     Filter:
     - status: Vertragsstatus
     - contract_type: Vertragsart
     - party_id: Vertragspartner-ID
-    - expiring_within_days: Nur ablaufende Vertraege
+    - expiring_within_days: Nur ablaufende Verträge
     - search: Volltextsuche
     """
     service = get_contract_service()
@@ -366,12 +366,12 @@ async def get_contract_summary(
     company: Company = Depends(require_company),
 ) -> ContractSummaryResponse:
     """
-    Portfolio-Zusammenfassung aller Vertraege.
+    Portfolio-Zusammenfassung aller Verträge.
 
     Liefert:
-    - Gesamtzahl Vertraege
-    - Aktive Vertraege
-    - Bald ablaufende Vertraege (90 Tage)
+    - Gesamtzahl Verträge
+    - Aktive Verträge
+    - Bald ablaufende Verträge (90 Tage)
     - Kritische Fristen (30 Tage)
     - Gesamtwert und monatliche Verpflichtungen
     """
@@ -399,9 +399,9 @@ async def get_upcoming_deadlines(
     Alle anstehenden Fristen und Deadlines.
 
     Liefert:
-    - Kuendigungsfristen
+    - Kündigungsfristen
     - Vertragsenden
-    - Verlaengerungsfristen
+    - Verlängerungsfristen
 
     Sortiert nach Dringlichkeit.
     """
@@ -440,11 +440,11 @@ async def get_contract(
     """
     Vertrag mit allen Details abrufen.
 
-    Enthaelt:
+    Enthält:
     - Vertragsdaten
     - Meilensteine
-    - Verlaengerungsoptionen
-    - Aenderungen/Nachtraege
+    - Verlängerungsoptionen
+    - Änderungen/Nachtraege
     """
     service = get_contract_service()
     contract = await service.get_contract(
@@ -482,8 +482,8 @@ async def get_contract_timeline(
     Zeigt chronologisch:
     - Vertragsbeginn
     - Meilensteine
-    - Kuendigungsfristen
-    - Verlaengerungsoptionen
+    - Kündigungsfristen
+    - Verlängerungsoptionen
     - Vertragsende
     """
     service = get_contract_service()
@@ -536,7 +536,7 @@ async def update_contract(
     Vertrag aktualisieren.
 
     Aktualisiert nur die angegebenen Felder.
-    Kuendigungsfrist wird automatisch neu berechnet.
+    Kündigungsfrist wird automatisch neu berechnet.
     """
     service = get_contract_service()
 
@@ -573,9 +573,9 @@ async def delete_contract(
     company: Company = Depends(require_company),
 ) -> None:
     """
-    Vertrag loeschen (Soft-Delete).
+    Vertrag löschen (Soft-Delete).
 
-    Setzt Status auf TERMINATED statt physischem Loeschen.
+    Setzt Status auf TERMINATED statt physischem Löschen.
     """
     service = get_contract_service()
 
@@ -695,7 +695,7 @@ async def delete_milestone(
     company: Company = Depends(require_company),
 ) -> None:
     """
-    Meilenstein loeschen.
+    Meilenstein löschen.
     """
     from sqlalchemy import select, and_
 
@@ -742,7 +742,7 @@ async def list_renewal_options(
     company: Company = Depends(require_company),
 ) -> List[ContractRenewalOptionResponse]:
     """
-    Verlaengerungsoptionen eines Vertrags auflisten.
+    Verlängerungsoptionen eines Vertrags auflisten.
     """
     service = get_contract_service()
     contract = await service.get_contract(db, contract_id, company.company_id)
@@ -766,7 +766,7 @@ async def make_renewal_decision(
     company: Company = Depends(require_company),
 ) -> ContractRenewalOptionResponse:
     """
-    Verlaengerungsoption ausueben oder ablehnen.
+    Verlängerungsoption ausueben oder ablehnen.
 
     Decision: "exercise" oder "decline"
     """
@@ -811,7 +811,7 @@ async def create_amendment(
     company: Company = Depends(require_company),
 ) -> ContractAmendmentResponse:
     """
-    Nachtrag/Aenderung zu einem Vertrag hinzufuegen.
+    Nachtrag/Änderung zu einem Vertrag hinzufuegen.
     """
     from sqlalchemy import select, func
 
@@ -924,7 +924,7 @@ async def delete_amendment(
     company: Company = Depends(require_company),
 ) -> None:
     """
-    Nachtrag loeschen (nur im DRAFT-Status).
+    Nachtrag löschen (nur im DRAFT-Status).
     """
     from sqlalchemy import select, and_
 
@@ -958,7 +958,7 @@ async def delete_amendment(
     if amendment.status != DBAmendmentStatus.DRAFT:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nur Nachtraege im Entwurf-Status koennen geloescht werden",
+            detail="Nur Nachtraege im Entwurf-Status können gelöscht werden",
         )
 
     await db.delete(amendment)
@@ -984,10 +984,10 @@ async def analyze_contract_text(
 
     Extrahiert:
     - Vertragstyp
-    - Laufzeit und Kuendigungsfristen
+    - Laufzeit und Kündigungsfristen
     - Zahlungsbedingungen (inkl. Skonto)
     - Haftungsklauseln
-    - Gewaehrleistung
+    - Gewährleistung
     - Gerichtsstand
     - Vertragsparteien
     - Vertragswert
@@ -1006,7 +1006,7 @@ async def analyze_contract_text(
         if not doc.extracted_text:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Dokument hat keinen extrahierten Text. Bitte OCR durchfuehren.",
+                detail="Dokument hat keinen extrahierten Text. Bitte OCR durchführen.",
             )
         text = doc.extracted_text
     elif not text:
@@ -1143,16 +1143,16 @@ async def get_contract_risks(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Risiko-Analyse fuer einen Vertrag.
+    Risiko-Analyse für einen Vertrag.
 
     Bewertet:
     - Finanzielle Exposition
-    - Kuendigungsflexibilitaet
+    - Kündigungsflexibilitaet
     - Haftungsabdeckung
     - Vertragslaufzeit
     - Gegenpartei-Risiko
     - Klausel-Komplexitaet
-    - Verlaengerungsrisiko
+    - Verlängerungsrisiko
 
     Liefert Score (0-100) und Empfehlungen.
     """
@@ -1222,7 +1222,7 @@ async def get_high_risk_contracts(
     company: Company = Depends(require_company),
 ) -> List[dict]:
     """
-    Liste aller Vertraege mit hohem Risiko.
+    Liste aller Verträge mit hohem Risiko.
     """
     from app.services.contracts import ContractRiskScorer
 
@@ -1252,7 +1252,7 @@ async def get_risk_distribution(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Risiko-Verteilung ueber alle Vertraege.
+    Risiko-Verteilung über alle Verträge.
     """
     from app.services.contracts import ContractRiskScorer
 
@@ -1276,15 +1276,15 @@ async def compare_contracts(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Vergleiche zwei Vertraege.
+    Vergleiche zwei Verträge.
 
     Identifiziert:
-    - Geaenderte Felder
+    - Geänderte Felder
     - Hinzugefuegte/Entfernte Klauseln
     - Modifizierte Klauseln
-    - Risiko-Impact der Aenderungen
+    - Risiko-Impact der Änderungen
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Versionsvergleich
     - Benchmarking
     - Due Diligence
@@ -1317,7 +1317,7 @@ async def get_contract_comparisons(
     company: Company = Depends(require_company),
 ) -> List[dict]:
     """
-    Alle Vergleiche fuer einen Vertrag.
+    Alle Vergleiche für einen Vertrag.
     """
     from app.services.contracts import ContractComparisonService
     from app.db.models_contract import Contract
@@ -1394,7 +1394,7 @@ async def get_upcoming_ai_obligations(
     company: Company = Depends(require_company),
 ) -> List[dict]:
     """
-    Bevorstehende Pflichten aus allen Vertraegen.
+    Bevorstehende Pflichten aus allen Verträgen.
     """
     from app.services.contracts import ContractObligationTracker
 
@@ -1414,7 +1414,7 @@ async def get_overdue_ai_obligations(
     company: Company = Depends(require_company),
 ) -> List[dict]:
     """
-    Ueberfaellige Pflichten.
+    Überfällige Pflichten.
     """
     from app.services.contracts import ContractObligationTracker
 
@@ -1499,7 +1499,7 @@ async def get_upcoming_ai_deadlines(
     company: Company = Depends(require_company),
 ) -> List[dict]:
     """
-    Bevorstehende Fristen aus allen Vertraegen.
+    Bevorstehende Fristen aus allen Verträgen.
     """
     from app.services.contracts import ContractDeadlineService
 
@@ -1521,7 +1521,7 @@ async def get_expiring_contracts(
     company: Company = Depends(require_company),
 ) -> List[dict]:
     """
-    Ablaufende Vertraege.
+    Ablaufende Verträge.
     """
     from app.services.contracts import ContractDeadlineService
 
@@ -1559,7 +1559,7 @@ async def complete_ai_deadline(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=safe_error_detail(e, "Fristen-Vervollstaendigung"),
+            detail=safe_error_detail(e, "Fristen-Vervollständigung"),
         )
 
 
@@ -1588,18 +1588,18 @@ async def get_ai_deadline_statistics(
 @router.get("/upcoming-renewals", response_model=List[dict])
 async def get_upcoming_renewals(
     days_ahead: int = Query(90, ge=1, le=365, description="Tage voraus"),
-    include_auto_renewal: bool = Query(True, description="Auto-Verlaengerungen einbeziehen"),
+    include_auto_renewal: bool = Query(True, description="Auto-Verlängerungen einbeziehen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> List[dict]:
     """
-    Liste aller Vertraege mit bevorstehenden Verlaengerungen/Ablauf.
+    Liste aller Verträge mit bevorstehenden Verlängerungen/Ablauf.
 
     Liefert:
-    - Vertraege mit Ablaufdatum in den naechsten X Tagen
-    - Kuendigungsfristen
-    - Automatische Verlaengerungen
+    - Verträge mit Ablaufdatum in den nächsten X Tagen
+    - Kündigungsfristen
+    - Automatische Verlängerungen
     - Dringlichkeitsstufe
 
     Sortiert nach Dringlichkeit (kritisch zuerst).
@@ -1630,15 +1630,15 @@ async def set_contract_deadline(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Manuelle Frist fuer einen Vertrag setzen oder ueberschreiben.
+    Manuelle Frist für einen Vertrag setzen oder überschreiben.
 
     Erstellt eine neue Frist oder aktualisiert eine bestehende.
     Automatische Erinnerungen werden geplant (30/60/90 Tage).
 
     Frist-Typen:
-    - termination_notice: Kuendigungsfrist
+    - termination_notice: Kündigungsfrist
     - contract_expiry: Vertragsablauf
-    - renewal_decision: Verlaengerungsentscheidung
+    - renewal_decision: Verlängerungsentscheidung
     """
     from app.services.contracts import get_contract_renewal_service
     from app.db.models_contract import Contract
@@ -1656,7 +1656,7 @@ async def set_contract_deadline(
     if deadline_type not in valid_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Frist-Typ. Erlaubt: {', '.join(valid_types)}",
+            detail=f"Ungültiger Frist-Typ. Erlaubt: {', '.join(valid_types)}",
         )
 
     renewal_service = get_contract_renewal_service(db)
@@ -1685,12 +1685,12 @@ async def get_contract_reminders(
     company: Company = Depends(require_company),
 ) -> List[dict]:
     """
-    Erinnerungsplan fuer einen Vertrag abrufen.
+    Erinnerungsplan für einen Vertrag abrufen.
 
     Liefert alle geplanten Erinnerungen mit:
     - Datum
-    - Typ (Kuendigung, Ablauf, Verlaengerung)
-    - Status (ausstehend, gesendet, ueberfaellig)
+    - Typ (Kündigung, Ablauf, Verlängerung)
+    - Status (ausstehend, gesendet, überfällig)
     - Prioritaet
     """
     from app.services.contracts import get_contract_renewal_service
@@ -1718,12 +1718,12 @@ async def extract_contract_dates(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Extrahiert Vertragsfristen aus dem verknuepften Dokument.
+    Extrahiert Vertragsfristen aus dem verknüpften Dokument.
 
     Analysiert den OCR-Text und erkennt:
     - Vertragsbeginn
     - Vertragsende/Ablaufdatum
-    - Kuendigungsfristen
+    - Kündigungsfristen
     - Laufzeiten
 
     Die erkannten Daten werden zum Vertrag hinzugefuegt
@@ -1743,7 +1743,7 @@ async def extract_contract_dates(
     if not contract.document_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Kein Dokument mit diesem Vertrag verknuepft",
+            detail="Kein Dokument mit diesem Vertrag verknüpft",
         )
 
     renewal_service = get_contract_renewal_service(db)
@@ -1802,7 +1802,7 @@ async def schedule_contract_reminders(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Plant Erinnerungen fuer einen Vertrag.
+    Plant Erinnerungen für einen Vertrag.
 
     Falls kein Datum angegeben, wird das Vertragsende verwendet.
     Standard-Erinnerungen: 90, 60, 30 Tage vor Ablauf.
@@ -1874,7 +1874,7 @@ async def get_contract_clauses(
     Extrahierte Klauseln eines Vertrags abrufen.
 
     Liefert alle erkannten Klauseln mit:
-    - Klauseltyp (Preisanpassung, Kuendigung, etc.)
+    - Klauseltyp (Preisanpassung, Kündigung, etc.)
     - Extrahierter Wert
     - Konfidenz-Score
     - Risikobewertung
@@ -1921,13 +1921,13 @@ async def extract_contract_clauses(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Extrahiert Klauseln aus dem verknuepften Dokument.
+    Extrahiert Klauseln aus dem verknüpften Dokument.
 
     Analysiert OCR-Text und erkennt:
     - Preisanpassungsklauseln
     - Mindestlaufzeiten
-    - Kuendigungsfristen
-    - Automatische Verlaengerung
+    - Kündigungsfristen
+    - Automatische Verlängerung
     - Vertragsstrafen
     - Haftungsbegrenzungen
     - Gerichtsstand
@@ -1946,7 +1946,7 @@ async def extract_contract_clauses(
     if not contract.document_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Kein Dokument mit diesem Vertrag verknuepft",
+            detail="Kein Dokument mit diesem Vertrag verknüpft",
         )
 
     document = await db.get(Document, contract.document_id)
@@ -1985,7 +1985,7 @@ async def verify_contract_clause(
     """
     Klausel als verifiziert markieren.
 
-    Erlaubt manuelle Ueberpruefung der automatisch erkannten Klauseln.
+    Erlaubt manuelle Überprüfung der automatisch erkannten Klauseln.
     """
     from app.services.contracts import get_clause_recognition_service
     from app.db.models_contract import Contract
@@ -2086,7 +2086,7 @@ async def get_benchmark_categories(
     company: Company = Depends(require_company),
 ) -> List[str]:
     """
-    Verfuegbare Benchmark-Kategorien abrufen.
+    Verfügbare Benchmark-Kategorien abrufen.
     """
     from app.services.contracts import get_contract_benchmark_service
 
@@ -2106,7 +2106,7 @@ async def prepare_contract_cancellation(
     contract_id: UUID,
     cancellation_type: str = Query(
         "standard",
-        description="Art der Kuendigung: standard, extraordinary, mutual, non_renewal"
+        description="Art der Kündigung: standard, extraordinary, mutual, non_renewal"
     ),
     reason: Optional[str] = None,
     effective_date: Optional[date] = None,
@@ -2115,9 +2115,9 @@ async def prepare_contract_cancellation(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Bereitet Vertragskuendigung vor.
+    Bereitet Vertragskündigung vor.
 
-    Erstellt Kuendigungsschreiben-Entwurf mit:
+    Erstellt Kündigungsschreiben-Entwurf mit:
     - Deutschem Brief-Template
     - Automatischer Fristberechnung
     - Versandoptionen (Email, Post)
@@ -2137,7 +2137,7 @@ async def prepare_contract_cancellation(
     if cancellation_type not in valid_types:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Kuendigungstyp. Erlaubt: {', '.join(valid_types)}",
+            detail=f"Ungültiger Kündigungstyp. Erlaubt: {', '.join(valid_types)}",
         )
 
     service = get_auto_cancellation_service(db)
@@ -2164,7 +2164,7 @@ async def prepare_contract_cancellation(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=safe_error_detail(e, "Kuendigungs-Vorbereitung"),
+            detail=safe_error_detail(e, "Kündigungs-Vorbereitung"),
         )
 
 
@@ -2176,7 +2176,7 @@ async def get_contract_cancellations(
     company: Company = Depends(require_company),
 ) -> List[dict]:
     """
-    Alle Kuendigungen fuer einen Vertrag abrufen.
+    Alle Kündigungen für einen Vertrag abrufen.
     """
     from app.db.models_contract import Contract, ContractCancellation
     from sqlalchemy import select
@@ -2221,9 +2221,9 @@ async def approve_cancellation(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Kuendigung genehmigen.
+    Kündigung genehmigen.
 
-    Nach Genehmigung kann die Kuendigung versendet werden.
+    Nach Genehmigung kann die Kündigung versendet werden.
     """
     from app.services.contracts import get_auto_cancellation_service
     from app.db.models_contract import Contract
@@ -2253,7 +2253,7 @@ async def approve_cancellation(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=safe_error_detail(e, "Kuendigungs-Genehmigung"),
+            detail=safe_error_detail(e, "Kündigungs-Genehmigung"),
         )
 
 
@@ -2267,9 +2267,9 @@ async def send_cancellation(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Kuendigung versenden.
+    Kündigung versenden.
 
-    Sendet das Kuendigungsschreiben per Email und/oder Post.
+    Sendet das Kündigungsschreiben per Email und/oder Post.
     """
     from app.services.contracts import get_auto_cancellation_service
     from app.db.models_contract import Contract
@@ -2285,7 +2285,7 @@ async def send_cancellation(
     if send_method not in valid_methods:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltige Versandmethode. Erlaubt: {', '.join(valid_methods)}",
+            detail=f"Ungültige Versandmethode. Erlaubt: {', '.join(valid_methods)}",
         )
 
     service = get_auto_cancellation_service(db)
@@ -2306,7 +2306,7 @@ async def send_cancellation(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=safe_error_detail(e, "Kuendigungs-Versand"),
+            detail=safe_error_detail(e, "Kündigungs-Versand"),
         )
 
 
@@ -2324,14 +2324,14 @@ async def get_contract_cost_analysis(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Kostenanalyse fuer einen Vertrag.
+    Kostenanalyse für einen Vertrag.
 
     Liefert:
-    - Gesamtkosten und jaehrliche Kosten
+    - Gesamtkosten und jährliche Kosten
     - Kostenaufschluesselung nach Kategorie
     - Trend-Analyse
     - Zukunftsprognosen
-    - Optimierungsvorschlaege
+    - Optimierungsvorschläge
     """
     from app.services.contracts import get_contract_cost_analyzer
     from app.db.models_contract import Contract
@@ -2372,10 +2372,10 @@ async def get_cost_portfolio_summary(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Kosten-Zusammenfassung fuer alle Vertraege.
+    Kosten-Zusammenfassung für alle Verträge.
 
     Liefert:
-    - Gesamtkosten aller Vertraege
+    - Gesamtkosten aller Verträge
     - Aufschluesselung nach Vertragstyp
     - Optimierungspotenzial
     """
@@ -2398,7 +2398,7 @@ async def get_cost_trends(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Kostentrends ueber Zeit.
+    Kostentrends über Zeit.
 
     Zeigt monatliche Kostenentwicklung.
     """
@@ -2426,12 +2426,12 @@ async def get_cost_optimization_suggestions(
     company: Company = Depends(require_company),
 ) -> List[dict]:
     """
-    Optimierungsvorschlaege fuer alle Vertraege.
+    Optimierungsvorschläge für alle Verträge.
 
     Findet Einsparpotenziale basierend auf:
     - Benchmark-Vergleichen
     - Vertragskonditionen
-    - Kuendigungsmoeglichkeiten
+    - Kündigungsmöglichkeiten
     """
     from app.services.contracts import get_contract_cost_analyzer
 

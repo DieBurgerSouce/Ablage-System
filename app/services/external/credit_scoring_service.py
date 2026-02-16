@@ -42,19 +42,19 @@ class CreditDecision(str, Enum):
     """Kreditentscheidungen."""
     APPROVE = "approve"              # Genehmigt
     APPROVE_REDUCED = "approve_reduced"  # Mit reduziertem Limit
-    REVIEW = "review"                # Manuelle Pruefung
+    REVIEW = "review"                # Manuelle Prüfung
     REJECT = "reject"                # Abgelehnt
 
 
 class CreditScoringService:
     """
-    Service fuer internes Kredit-Scoring.
+    Service für internes Kredit-Scoring.
 
     Kombiniert:
     - Externe Bonitaetsdaten (Creditreform)
     - Interne Zahlungshistorie
     - Beziehungsdauer
-    - Dokumentenhaeufigkeit
+    - Dokumentenhäufigkeit
     """
 
     # Faktor-Gewichtungen
@@ -63,7 +63,7 @@ class CreditScoringService:
         "payment_history": 0.30,    # Zahlungsverhalten
         "relationship": 0.15,       # Beziehungsdauer
         "volume": 0.10,             # Transaktionsvolumen
-        "documents": 0.10,          # Dokumentenqualitaet
+        "documents": 0.10,          # Dokumentenqualität
     }
 
     # Kreditlimit-Multiplikatoren nach Risikostufe
@@ -85,7 +85,7 @@ class CreditScoringService:
         Initialisiere Service.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
             creditreform: Optional Creditreform-Service
         """
         self.db = db
@@ -98,7 +98,7 @@ class CreditScoringService:
         include_external: bool = True,
     ) -> Dict[str, Any]:
         """
-        Berechne Kredit-Score fuer eine Entity.
+        Berechne Kredit-Score für eine Entity.
 
         Args:
             entity_id: Business-Entity ID
@@ -143,7 +143,7 @@ class CreditScoringService:
         # 4. Transaktionsvolumen
         factors["volume"] = await self._calculate_volume_score(entity_id, company_id)
 
-        # 5. Dokumentenqualitaet
+        # 5. Dokumentenqualität
         factors["documents"] = await self._calculate_document_score(entity_id, company_id)
 
         # Gewichteten Gesamt-Score berechnen
@@ -243,7 +243,7 @@ class CreditScoringService:
         if not stats.total or stats.total == 0:
             return {
                 "score": 70,  # Neutral bei fehlenden Daten
-                "reason": "Keine Zahlungshistorie verfuegbar",
+                "reason": "Keine Zahlungshistorie verfügbar",
                 "invoices_total": 0,
             }
 
@@ -255,11 +255,11 @@ class CreditScoringService:
         # Score-Berechnung
         base_score = payment_rate * 100
 
-        # Abzuege fuer Verzoegerungen
+        # Abzuege für Verzögerungen
         if avg_delay > 30:
             base_score -= min(30, avg_delay - 30)
 
-        # Abzuege fuer ueberfaellige
+        # Abzuege für überfällige
         base_score -= overdue_rate * 50
 
         score = max(0, min(100, base_score))
@@ -341,7 +341,7 @@ class CreditScoringService:
         if transaction_count == 0:
             return {"score": 50, "volume": 0, "transactions": 0}
 
-        # Hoehere Volumen = besserer Score (bis zu einem Punkt)
+        # Höhere Volumen = besserer Score (bis zu einem Punkt)
         if total_volume >= 1000000:
             score = 100
         elif total_volume >= 500000:
@@ -367,10 +367,10 @@ class CreditScoringService:
         entity_id: UUID,
         company_id: UUID,
     ) -> Dict[str, Any]:
-        """Berechne Score basierend auf Dokumentenqualitaet."""
+        """Berechne Score basierend auf Dokumentenqualität."""
         from app.db.models import Document
 
-        # Pruefe Dokumente der letzten 12 Monate
+        # Prüfe Dokumente der letzten 12 Monate
         since = datetime.utcnow() - timedelta(days=365)
 
         result = await self.db.execute(
@@ -397,7 +397,7 @@ class CreditScoringService:
         # Mehr Dokumente = bessere Datenbasis
         doc_score = min(100, 50 + (document_count * 2))
 
-        # Hohe OCR-Confidence = bessere Qualitaet
+        # Hohe OCR-Confidence = bessere Qualität
         confidence_score = avg_confidence * 100
 
         score = (doc_score * 0.6) + (confidence_score * 0.4)
@@ -438,13 +438,13 @@ class CreditScoringService:
         if risk_level == RiskLevel.MODERATE:
             return CreditDecision.APPROVE_REDUCED, "Moderates Risiko - reduziertes Kreditlimit"
 
-        # Manuelle Pruefung bei erhoehtem Risiko
+        # Manuelle Prüfung bei erhöhtem Risiko
         if risk_level == RiskLevel.ELEVATED:
-            # Pruefe ob harte Ausschlusskriterien
+            # Prüfe ob harte Ausschlusskriterien
             external = factors.get("external_score", {})
             if external.get("negative_features"):
-                return CreditDecision.REVIEW, "Negative Merkmale gefunden - manuelle Pruefung erforderlich"
-            return CreditDecision.REVIEW, "Erhoehtes Risiko - manuelle Pruefung empfohlen"
+                return CreditDecision.REVIEW, "Negative Merkmale gefunden - manuelle Prüfung erforderlich"
+            return CreditDecision.REVIEW, "Erhöhtes Risiko - manuelle Prüfung empfohlen"
 
         # Ablehnung bei hohem/kritischem Risiko
         if risk_level == RiskLevel.HIGH:
@@ -466,14 +466,14 @@ class CreditScoringService:
         # Zahlungsverhalten
         payment = factors.get("payment_history", {})
         if payment.get("overdue_rate", 0) > 0.1:
-            warnings.append("Hohe Rate an ueberfaelligen Rechnungen")
+            warnings.append("Hohe Rate an überfälligen Rechnungen")
         if payment.get("avg_delay_days", 0) > 14:
-            warnings.append(f"Durchschnittliche Zahlungsverzoegerung: {payment['avg_delay_days']:.0f} Tage")
+            warnings.append(f"Durchschnittliche Zahlungsverzögerung: {payment['avg_delay_days']:.0f} Tage")
 
         # Beziehung
         relationship = factors.get("relationship", {})
         if relationship.get("months", 0) < 6:
-            warnings.append("Kurze Geschaeftsbeziehung")
+            warnings.append("Kurze Geschäftsbeziehung")
 
         return warnings
 
@@ -484,7 +484,7 @@ class CreditScoringService:
         include_external: bool = False,
     ) -> List[Dict[str, Any]]:
         """
-        Batch-Berechnung fuer mehrere Entities.
+        Batch-Berechnung für mehrere Entities.
 
         Args:
             entity_ids: Liste von Entity-IDs

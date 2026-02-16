@@ -1,4 +1,4 @@
-"""Notification Template Engine - Rendering-System fuer Benachrichtigungsvorlagen.
+"""Notification Template Engine - Rendering-System für Benachrichtigungsvorlagen.
 
 Dieser Service rendert Jinja2-Templates mit Variablen und integriert
 mit dem UnifiedNotificationHub.
@@ -35,7 +35,7 @@ from app.core.safe_errors import safe_error_log
 logger = structlog.get_logger(__name__)
 
 
-# Preset-Vorlagen fuer haeufige Benachrichtigungen
+# Preset-Vorlagen für häufige Benachrichtigungen
 PRESET_TEMPLATES = {
     "APPROVAL_REQUESTED": {
         "name": "approval_requested",
@@ -43,9 +43,9 @@ PRESET_TEMPLATES = {
         "subject": "Genehmigung angefordert: {{ document_title }}",
         "body": """Hallo {{ user_name }},
 
-fuer das Dokument "{{ document_title }}" wurde eine Genehmigung angefordert.
+für das Dokument "{{ document_title }}" wurde eine Genehmigung angefordert.
 
-Bitte pruefen Sie das Dokument und geben Sie Ihre Genehmigung oder Ablehnung ab.
+Bitte prüfen Sie das Dokument und geben Sie Ihre Genehmigung oder Ablehnung ab.
 
 Mit freundlichen Gruessen,
 Ablage-System
@@ -85,7 +85,7 @@ Ablage-System
 Eine Eskalation wurde ausgeloest:
 
 Grund: {{ escalation_reason }}
-Prioritaet: {{ priority }}
+Priorität: {{ priority }}
 {% if document_title %}Dokument: {{ document_title }}{% endif %}
 
 Bitte kuemmern Sie sich umgehend um diese Angelegenheit.
@@ -105,12 +105,12 @@ Ablage-System
         "subject": "Zahlungserinnerung: {{ invoice_number }}",
         "body": """Hallo {{ user_name }},
 
-dies ist eine Erinnerung fuer die ausstehende Rechnung:
+dies ist eine Erinnerung für die ausstehende Rechnung:
 
 Rechnungsnummer: {{ invoice_number }}
 Betrag: {{ amount }} EUR
-Faelligkeitsdatum: {{ due_date }}
-{% if skonto_deadline %}Skonto moeglich bis: {{ skonto_deadline }} ({{ skonto_percent }}%){% endif %}
+Fälligkeitsdatum: {{ due_date }}
+{% if skonto_deadline %}Skonto möglich bis: {{ skonto_deadline }} ({{ skonto_percent }}%){% endif %}
 
 Bitte veranlassen Sie die Zahlung.
 
@@ -150,7 +150,7 @@ Ablage-System
 
 
 class NotificationTemplateEngine:
-    """Template-Engine fuer Benachrichtigungsvorlagen.
+    """Template-Engine für Benachrichtigungsvorlagen.
 
     Rendert Jinja2-Templates sicher in einer Sandbox und validiert
     Variablen vor dem Rendering.
@@ -172,7 +172,7 @@ class NotificationTemplateEngine:
 
     @staticmethod
     def _currency_filter(value: float) -> str:
-        """Formatiert Betrag als EUR-Waehrung."""
+        """Formatiert Betrag als EUR-Währung."""
         return f"{value:,.2f} EUR".replace(",", "X").replace(".", ",").replace("X", ".")
 
     @staticmethod
@@ -247,7 +247,7 @@ class NotificationTemplateEngine:
         template_id: uuid.UUID,
         variables: Dict[str, str],
     ) -> Dict[str, object]:
-        """Prueft ob alle erforderlichen Variablen vorhanden sind.
+        """Prüft ob alle erforderlichen Variablen vorhanden sind.
 
         Args:
             template_id: UUID der Vorlage
@@ -291,7 +291,7 @@ class NotificationTemplateEngine:
         if not template:
             raise ValueError(f"Vorlage mit ID {template_id} nicht gefunden")
 
-        # Generiere Platzhalter fuer alle Variablen
+        # Generiere Platzhalter für alle Variablen
         template_vars = template.variables or {}
         required_vars: List[str] = template_vars.get("required", [])
         optional_vars: List[str] = template_vars.get("optional", [])
@@ -300,7 +300,7 @@ class NotificationTemplateEngine:
         for var in required_vars + optional_vars:
             placeholders[var] = f"[{var.upper()}]"
 
-        # Ueberschreibe mit sample_data falls vorhanden
+        # Überschreibe mit sample_data falls vorhanden
         if sample_data:
             placeholders.update(sample_data)
 
@@ -384,10 +384,10 @@ class NotificationTemplateEngine:
         Args:
             name: Eindeutiger Name
             category: Kategorie
-            subject_template: Jinja2-Template fuer Betreff
-            body_template: Jinja2-Template fuer Body
+            subject_template: Jinja2-Template für Betreff
+            body_template: Jinja2-Template für Body
             variables: Dict mit 'required' und 'optional' Listen
-            channels: Liste unterstuetzter Channels
+            channels: Liste unterstützter Channels
             created_by_id: Ersteller-User-ID
 
         Returns:
@@ -453,7 +453,7 @@ class NotificationTemplateEngine:
         if not template:
             return None
 
-        # Validiere Template-Syntax wenn geaendert
+        # Validiere Template-Syntax wenn geändert
         if subject_template is not None:
             try:
                 self._env.from_string(subject_template)
@@ -493,7 +493,7 @@ class NotificationTemplateEngine:
         self,
         template_id: uuid.UUID,
     ) -> bool:
-        """Loescht eine Vorlage (Soft-Delete via is_active=False).
+        """Löscht eine Vorlage (Soft-Delete via is_active=False).
 
         Args:
             template_id: UUID der Vorlage
@@ -523,13 +523,13 @@ class NotificationTemplateEngine:
         channels: Optional[List[str]] = None,
         severity: str = "info",
     ) -> Dict[str, object]:
-        """Rendert Vorlage und sendet ueber UnifiedNotificationHub.
+        """Rendert Vorlage und sendet über UnifiedNotificationHub.
 
         Args:
             template_id: UUID der Vorlage
             variables: Dict mit Variablenwerten
-            recipient_id: Empfaenger-User-ID
-            channels: Optionale Channel-Ueberschreibung
+            recipient_id: Empfänger-User-ID
+            channels: Optionale Channel-Überschreibung
             severity: Severity-Level (info, low, medium, high, critical)
 
         Returns:
@@ -556,7 +556,7 @@ class NotificationTemplateEngine:
         # Bestimme Channels
         target_channels = channels or template.channels or ["email", "in_app"]
 
-        # Sende ueber UnifiedNotificationHub
+        # Sende über UnifiedNotificationHub
         hub = UnifiedNotificationHub(self.db)
 
         try:
@@ -565,7 +565,7 @@ class NotificationTemplateEngine:
         except (ValueError, TypeError) as e:
             return {
                 "success": False,
-                "message": "Ungueltiger Severity- oder Kategorie-Wert",
+                "message": "Ungültiger Severity- oder Kategorie-Wert",
                 "results": {},
             }
 
@@ -609,7 +609,7 @@ class NotificationTemplateEngine:
 
 
 def get_template_engine(db: AsyncSession) -> NotificationTemplateEngine:
-    """Factory-Funktion fuer NotificationTemplateEngine.
+    """Factory-Funktion für NotificationTemplateEngine.
 
     Args:
         db: Async SQLAlchemy Session

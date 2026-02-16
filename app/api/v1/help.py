@@ -378,7 +378,7 @@ Ja! Ablage-System ist speziell für deutsche Dokumente optimiert.
 
 ## Beispiel-Erkennung
 - Straße → ✅ korrekt
-- Gebuehren → wird zu "Gebühren" korrigiert
+- Gebühren → wird zu "Gebühren" korrigiert
 - Muenchen → wird zu "München" korrigiert
 """,
         "category": "faq",

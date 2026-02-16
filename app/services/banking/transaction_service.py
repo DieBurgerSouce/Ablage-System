@@ -34,7 +34,7 @@ logger = structlog.get_logger(__name__)
 
 
 class TransactionService:
-    """Service fuer Banktransaktions-Verwaltung."""
+    """Service für Banktransaktions-Verwaltung."""
 
     async def get_transactions(
         self,
@@ -54,8 +54,8 @@ class TransactionService:
             user_id: Benutzer-ID
             bank_account_id: Optionaler Filter auf Bankkonto
             filters: Optionale Filter
-            offset: Offset fuer Paginierung
-            limit: Limit fuer Paginierung
+            offset: Offset für Paginierung
+            limit: Limit für Paginierung
             sort_by: Sortierfeld
             sort_order: Sortierrichtung (asc/desc)
 
@@ -82,7 +82,7 @@ class TransactionService:
                 BankTransaction.bank_account_id == bank_account_id
             )
 
-        # Zusaetzliche Filter
+        # Zusätzliche Filter
         if filters:
             if filters.date_from:
                 base_query = base_query.where(
@@ -141,7 +141,7 @@ class TransactionService:
         # Paginierung
         base_query = base_query.offset(offset).limit(limit)
 
-        # Ausfuehren
+        # Ausführen
         result = await db.execute(base_query)
         transactions = result.scalars().all()
 
@@ -183,7 +183,7 @@ class TransactionService:
         bank_account_id: Optional[UUID] = None,
         limit: int = 100,
     ) -> List[BankTransactionResponse]:
-        """Hole unabgeglichene Transaktionen fuer Reconciliation."""
+        """Hole unabgeglichene Transaktionen für Reconciliation."""
         from app.db.models import BankTransaction, BankAccount
 
         query = (
@@ -220,7 +220,7 @@ class TransactionService:
         """Aktualisiere Transaktions-Metadaten."""
         from app.db.models import BankTransaction, BankAccount
 
-        # Hole Transaktion mit Berechtigungspruefung
+        # Hole Transaktion mit Berechtigungsprüfung
         query = (
             select(BankTransaction)
             .join(BankAccount)
@@ -425,7 +425,7 @@ class TransactionService:
         direction: str = "both",  # "in", "out", "both"
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
-        """Hole Top-Geschaeftspartner nach Umsatz."""
+        """Hole Top-Geschäftspartner nach Umsatz."""
         from app.db.models import BankTransaction, BankAccount
 
         base_conditions = [

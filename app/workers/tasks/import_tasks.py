@@ -8,7 +8,7 @@ Enterprise-Level Import-Automatisierung:
 - Import-Log Cleanup
 - Statistik-Reset
 
-Feinpoliert und durchdacht - Zuverlaessige Import-Automatisierung.
+Feinpoliert und durchdacht - Zuverlässige Import-Automatisierung.
 """
 
 import structlog
@@ -78,7 +78,7 @@ def sync_all_email_configs(self) -> Dict[str, Any]:
             configs = result.scalars().all()
 
             for config in configs:
-                # Check ob Sync faellig ist
+                # Check ob Sync fällig ist
                 if config.last_sync_at:
                     next_sync = config.last_sync_at + timedelta(
                         minutes=config.sync_interval_minutes
@@ -197,7 +197,7 @@ def sync_email_config(self, config_id: str, user_id: str, max_emails: int = 100)
 def poll_all_folder_configs(self) -> Dict[str, Any]:
     """Pollt alle aktiven Folder-Konfigurationen.
 
-    Dient als Fallback wenn Watchdog nicht laeuft
+    Dient als Fallback wenn Watchdog nicht läuft
     (z.B. bei Netzwerklaufwerken).
 
     Typisches Schedule: Alle 5 Minuten.
@@ -219,12 +219,12 @@ def poll_all_folder_configs(self) -> Dict[str, Any]:
         async with get_async_session_context() as db:
             now = datetime.now(timezone.utc)
 
-            # Configs laden die nicht via Watchdog ueberwacht werden
+            # Configs laden die nicht via Watchdog überwacht werden
             result = await db.execute(
                 select(FolderImportConfig).where(
                     and_(
                         FolderImportConfig.is_active == True,
-                        # Nur wenn Watcher nicht laeuft
+                        # Nur wenn Watcher nicht läuft
                         FolderImportConfig.watcher_status != "running",
                     )
                 )
@@ -232,7 +232,7 @@ def poll_all_folder_configs(self) -> Dict[str, Any]:
             configs = result.scalars().all()
 
             for config in configs:
-                # Check ob Polling faellig ist
+                # Check ob Polling fällig ist
                 if config.last_poll_at:
                     next_poll = config.last_poll_at + timedelta(
                         seconds=config.poll_interval_seconds
@@ -386,7 +386,7 @@ def retry_failed_imports(self) -> Dict[str, Any]:
                     stats["retried"] += 1
 
                     if log.source_type == "email" and log.email_config_id:
-                        # Email-Import: Trigger Celery Task fuer einzelne Email
+                        # Email-Import: Trigger Celery Task für einzelne Email
                         from app.workers.celery_app import celery_app as celery
                         celery.send_task(
                             "app.workers.tasks.import_tasks.retry_single_email",
@@ -401,7 +401,7 @@ def retry_failed_imports(self) -> Dict[str, Any]:
                         await db.commit()
 
                     elif log.source_type == "folder" and log.original_path:
-                        # Folder-Import: Trigger Celery Task fuer einzelne Datei
+                        # Folder-Import: Trigger Celery Task für einzelne Datei
                         from app.workers.celery_app import celery_app as celery
                         celery.send_task(
                             "app.workers.tasks.import_tasks.retry_single_file",
@@ -419,7 +419,7 @@ def retry_failed_imports(self) -> Dict[str, Any]:
                         # Unbekannter Source-Type - nur Status aktualisieren
                         log.retry_count += 1
                         log.status = "failed"
-                        log.error_message = "Unbekannter Import-Typ fuer Retry"
+                        log.error_message = "Unbekannter Import-Typ für Retry"
                         await db.commit()
                         stats["failed"] += 1
                         continue
@@ -522,7 +522,7 @@ def retry_single_email(
     Args:
         config_id: UUID der EmailImportConfig
         email_uid: IMAP UID der E-Mail
-        log_id: UUID des Import-Logs fuer Status-Update
+        log_id: UUID des Import-Logs für Status-Update
 
     Returns:
         Dict mit Import-Ergebnis
@@ -593,7 +593,7 @@ def retry_single_email(
                 )
 
                 try:
-                    # Ordner auswaehlen
+                    # Ordner auswählen
                     folder = config.imap_folder or "INBOX"
                     client.select_folder(folder, readonly=True)
 
@@ -601,7 +601,7 @@ def retry_single_email(
                     raw_messages = client.fetch([email_uid], ["RFC822"])
                     if email_uid not in raw_messages:
                         log.status = "failed"
-                        log.error_message = "E-Mail nicht mehr verfuegbar (UID nicht gefunden)"
+                        log.error_message = "E-Mail nicht mehr verfügbar (UID nicht gefunden)"
                         await db.commit()
                         return {"success": False, "error": "E-Mail nicht gefunden"}
 
@@ -681,7 +681,7 @@ def retry_single_file(
     Args:
         config_id: UUID der FolderImportConfig (optional)
         file_path: Pfad zur Datei
-        log_id: UUID des Import-Logs fuer Status-Update
+        log_id: UUID des Import-Logs für Status-Update
 
     Returns:
         Dict mit Import-Ergebnis
@@ -702,7 +702,7 @@ def retry_single_file(
             if not log:
                 return {"success": False, "error": "Import-Log nicht gefunden"}
 
-            # Pruefen ob Datei noch existiert
+            # Prüfen ob Datei noch existiert
             if not os.path.exists(file_path):
                 log.status = "failed"
                 log.error_message = "Datei existiert nicht mehr"
@@ -821,12 +821,12 @@ def retry_single_file(
 
 @celery_app.task(name="app.workers.tasks.import_tasks.cleanup_old_import_logs")
 def cleanup_old_import_logs(retention_days: int = 90) -> Dict[str, Any]:
-    """Loescht alte Import-Logs.
+    """Löscht alte Import-Logs.
 
-    Typisches Schedule: Taeglich um 03:00.
+    Typisches Schedule: Täglich um 03:00.
 
     Args:
-        retention_days: Tage nach denen Logs geloescht werden
+        retention_days: Tage nach denen Logs gelöscht werden
 
     Returns:
         Dict mit Cleanup-Statistiken
@@ -849,7 +849,7 @@ def cleanup_old_import_logs(retention_days: int = 90) -> Dict[str, Any]:
             count = count_result.scalar() or 0
 
             if count > 0:
-                # Loeschen
+                # Löschen
                 await db.execute(
                     delete(ImportLog).where(
                         and_(
@@ -873,9 +873,9 @@ def cleanup_old_import_logs(retention_days: int = 90) -> Dict[str, Any]:
 
 @celery_app.task(name="app.workers.tasks.import_tasks.reset_daily_folder_stats")
 def reset_daily_folder_stats() -> Dict[str, Any]:
-    """Setzt taegliche Folder-Statistiken zurueck.
+    """Setzt tägliche Folder-Statistiken zurück.
 
-    Typisches Schedule: Taeglich um 00:00.
+    Typisches Schedule: Täglich um 00:00.
 
     Returns:
         Dict mit Reset-Statistiken
@@ -910,7 +910,7 @@ def reset_daily_folder_stats() -> Dict[str, Any]:
 
 @celery_app.task(name="app.workers.tasks.import_tasks.check_email_connection_health")
 def check_email_connection_health() -> Dict[str, Any]:
-    """Prueft Gesundheit aller Email-Verbindungen.
+    """Prüft Gesundheit aller Email-Verbindungen.
 
     Typisches Schedule: Alle 30 Minuten.
 

@@ -4,11 +4,11 @@ EscalationService - Eskalation und Stellvertretung.
 
 Feature #3: Approval Workflow Depth
 Verwaltet:
-- Ueberfaellige Genehmigungen erkennen und eskalieren
+- Überfällige Genehmigungen erkennen und eskalieren
 - Stellvertretungsregeln aktivieren/deaktivieren
 - Aktive Stellvertretungen finden
 
-Nutzt models_approval_extended fuer EscalationRule und SubstitutionRule.
+Nutzt models_approval_extended für EscalationRule und SubstitutionRule.
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ class EscalationResult:
 
 @dataclass
 class SubstitutionInfo:
-    """Information ueber eine aktive Stellvertretung."""
+    """Information über eine aktive Stellvertretung."""
 
     original_user_id: UUID
     substitute_user_id: UUID
@@ -70,11 +70,11 @@ class SubstitutionInfo:
 
 
 class EscalationService:
-    """Service fuer Eskalation und Stellvertretung.
+    """Service für Eskalation und Stellvertretung.
 
-    Verantwortlich fuer:
-    1. Erkennung ueberfaelliger Genehmigungen
-    2. Eskalation an definierte Empfaenger
+    Verantwortlich für:
+    1. Erkennung überfälliger Genehmigungen
+    2. Eskalation an definierte Empfänger
     3. Verwaltung von Stellvertretungsregeln
     4. Automatische Aktivierung/Deaktivierung von Vertretungen
     """
@@ -91,14 +91,14 @@ class EscalationService:
         db: AsyncSession,
         company_id: UUID,
     ) -> List[ApprovalRequest]:
-        """Findet ueberfaellige Genehmigungsanfragen.
+        """Findet überfällige Genehmigungsanfragen.
 
         Args:
             db: Async Database Session
             company_id: ID der Firma
 
         Returns:
-            Liste ueberfaelliger ApprovalRequests
+            Liste überfälliger ApprovalRequests
         """
         now = utc_now()
 
@@ -134,7 +134,7 @@ class EscalationService:
         approval_id: UUID,
         escalation_rule: EscalationRule,
     ) -> EscalationResult:
-        """Eskaliert eine Genehmigungsanfrage gemaess einer Eskalationsregel.
+        """Eskaliert eine Genehmigungsanfrage gemäß einer Eskalationsregel.
 
         Args:
             db: Async Database Session
@@ -209,7 +209,7 @@ class EscalationService:
             approval_request_id=approval_id,
             escalated=True,
             escalation_target=escalation_target,
-            message=f"Eskaliert gemaess Regel '{escalation_rule.name}'",
+            message=f"Eskaliert gemäß Regel '{escalation_rule.name}'",
         )
 
     async def get_escalation_rules(
@@ -217,7 +217,7 @@ class EscalationService:
         company_id: UUID,
         active_only: bool = True,
     ) -> Sequence[EscalationRule]:
-        """Holt Eskalationsregeln fuer eine Firma.
+        """Holt Eskalationsregeln für eine Firma.
 
         Args:
             company_id: ID der Firma
@@ -248,7 +248,7 @@ class EscalationService:
         user_id: UUID,
         company_id: UUID,
     ) -> Optional[SubstitutionInfo]:
-        """Findet eine aktive Stellvertretung fuer einen User.
+        """Findet eine aktive Stellvertretung für einen User.
 
         Args:
             db: Async Database Session
@@ -294,7 +294,7 @@ class EscalationService:
         db: AsyncSession,
         company_id: UUID,
     ) -> int:
-        """Aktiviert faellige Stellvertretungsregeln basierend auf Datum.
+        """Aktiviert fällige Stellvertretungsregeln basierend auf Datum.
 
         Args:
             db: Async Database Session
@@ -305,7 +305,7 @@ class EscalationService:
         """
         now = utc_now()
 
-        # Regeln finden die jetzt gueltig aber noch nicht aktiviert sind
+        # Regeln finden die jetzt gültig aber noch nicht aktiviert sind
         stmt = (
             select(SubstitutionRule)
             .where(
@@ -393,7 +393,7 @@ class EscalationService:
         company_id: UUID,
         active_only: bool = True,
     ) -> Sequence[SubstitutionRule]:
-        """Holt Stellvertretungsregeln fuer eine Firma.
+        """Holt Stellvertretungsregeln für eine Firma.
 
         Args:
             company_id: ID der Firma
@@ -437,10 +437,10 @@ class EscalationService:
             Erstellte SubstitutionRule
 
         Raises:
-            ValueError: Bei ungueltigen Parametern
+            ValueError: Bei ungültigen Parametern
         """
         if user_id == substitute_user_id:
-            raise ValueError("User und Stellvertreter muessen unterschiedlich sein")
+            raise ValueError("User und Stellvertreter müssen unterschiedlich sein")
 
         if valid_until <= valid_from:
             raise ValueError("Endzeitpunkt muss nach Startzeitpunkt liegen")
@@ -481,14 +481,14 @@ class EscalationService:
         rule_id: UUID,
         company_id: UUID,
     ) -> bool:
-        """Loescht eine Stellvertretungsregel.
+        """Löscht eine Stellvertretungsregel.
 
         Args:
             rule_id: ID der Regel
             company_id: ID der Firma (Multi-Tenant Isolation)
 
         Returns:
-            True wenn erfolgreich geloescht
+            True wenn erfolgreich gelöscht
         """
         stmt = select(SubstitutionRule).where(
             and_(

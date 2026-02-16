@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Document Integrity Service fuer Ablage-System.
+Document Integrity Service für Ablage-System.
 
-Kryptographische Integritaetssicherung:
+Kryptographische Integritätssicherung:
 - SHA-256 Hashes pro Dokument
-- Taegliche Merkle-Baeume
+- Tägliche Merkle-Baeume
 - Verifizierung und Manipulationserkennung
-- Integritaetsberichte fuer Compliance
+- Integritätsberichte für Compliance
 
 Feinpoliert und durchdacht - Enterprise-grade Document Integrity.
 """
@@ -32,14 +32,14 @@ logger = structlog.get_logger(__name__)
 
 class DocumentIntegrityService:
     """
-    Service fuer Dokument-Integritaet mit Hash-Chains und Merkle-Baeumen.
+    Service für Dokument-Integrität mit Hash-Chains und Merkle-Baeumen.
 
     Stellt sicher, dass Dokumente nach dem Upload nicht manipuliert wurden.
-    Unterstuetzt Einzel- und Massenverifizierung sowie Merkle-Beweise.
+    Unterstützt Einzel- und Massenverifizierung sowie Merkle-Beweise.
     """
 
     def __init__(self) -> None:
-        """Initialisiert den Integritaets-Service."""
+        """Initialisiert den Integritäts-Service."""
         pass
 
     # =========================================================================
@@ -81,7 +81,7 @@ class DocumentIntegrityService:
         file_size = len(file_content)
         now = datetime.now(timezone.utc)
 
-        # Pruefen ob bereits ein Hash existiert
+        # Prüfen ob bereits ein Hash existiert
         stmt = select(DocumentHash).where(
             and_(
                 DocumentHash.document_id == document_id,
@@ -146,7 +146,7 @@ class DocumentIntegrityService:
             file_content: Aktueller Dateiinhalt
 
         Returns:
-            Tuple aus (ist_gueltig, deutsche_meldung)
+            Tuple aus (ist_gültig, deutsche_meldung)
         """
         stmt = select(DocumentHash).where(
             and_(
@@ -158,7 +158,7 @@ class DocumentIntegrityService:
         doc_hash = result.scalar_one_or_none()
 
         if doc_hash is None:
-            return False, "Kein Hash fuer dieses Dokument gespeichert"
+            return False, "Kein Hash für dieses Dokument gespeichert"
 
         current_hash = self._compute_sha256(file_content)
         now = datetime.now(timezone.utc)
@@ -167,7 +167,7 @@ class DocumentIntegrityService:
         if is_valid:
             doc_hash.verification_status = VerificationStatus.VERIFIED.value
             doc_hash.verified_at = now
-            message = "Dokument-Integritaet bestaetigt - Hash stimmt ueberein"
+            message = "Dokument-Integrität bestätigt - Hash stimmt überein"
             logger.info(
                 "Dokument verifiziert",
                 document_id=str(document_id),
@@ -206,7 +206,7 @@ class DocumentIntegrityService:
             file_contents: Mapping von Dokument-ID zu Dateiinhalt
 
         Returns:
-            Mapping von Dokument-ID zu (ist_gueltig, meldung)
+            Mapping von Dokument-ID zu (ist_gültig, meldung)
         """
         results: Dict[UUID, Tuple[bool, str]] = {}
 
@@ -215,7 +215,7 @@ class DocumentIntegrityService:
             if content is None:
                 results[doc_id] = (
                     False,
-                    "Kein Dateiinhalt fuer Verifizierung bereitgestellt",
+                    "Kein Dateiinhalt für Verifizierung bereitgestellt",
                 )
                 continue
 
@@ -237,7 +237,7 @@ class DocumentIntegrityService:
         document_id: UUID,
     ) -> Optional[DocumentHash]:
         """
-        Gibt den aktuellen Integritaetsstatus eines Dokuments zurueck.
+        Gibt den aktuellen Integritätsstatus eines Dokuments zurück.
 
         Args:
             db: Datenbank-Session
@@ -270,7 +270,7 @@ class DocumentIntegrityService:
             hashes: Liste von Hex-Hashes der aktuellen Ebene
 
         Returns:
-            Liste von Hex-Hashes der naechsten Ebene
+            Liste von Hex-Hashes der nächsten Ebene
         """
         if len(hashes) % 2 == 1:
             hashes = hashes + [hashes[-1]]  # Letzten Hash duplizieren
@@ -312,17 +312,17 @@ class DocumentIntegrityService:
         tree_date: date,
     ) -> str:
         """
-        Baut den taeglichen Merkle-Baum fuer alle Dokument-Hashes.
+        Baut den täglichen Merkle-Baum für alle Dokument-Hashes.
 
         Args:
             db: Datenbank-Session
             company_id: ID des Unternehmens
-            tree_date: Tag fuer den Merkle-Baum
+            tree_date: Tag für den Merkle-Baum
 
         Returns:
             Merkle-Root Hash
         """
-        # Alle Hashes des Tages laden (sortiert fuer Determinismus)
+        # Alle Hashes des Tages laden (sortiert für Determinismus)
         stmt = (
             select(DocumentHash)
             .where(
@@ -339,13 +339,13 @@ class DocumentIntegrityService:
 
         if not doc_hashes:
             logger.info(
-                "Keine Dokument-Hashes fuer Merkle-Baum",
+                "Keine Dokument-Hashes für Merkle-Baum",
                 company_id=str(company_id),
                 tree_date=tree_date.isoformat(),
             )
             return self._compute_merkle_root([])
 
-        # Alte Merkle-Knoten fuer diesen Tag loeschen
+        # Alte Merkle-Knoten für diesen Tag löschen
         old_nodes_stmt = select(MerkleTreeNode).where(
             and_(
                 MerkleTreeNode.company_id == company_id,
@@ -365,7 +365,7 @@ class DocumentIntegrityService:
                 company_id=company_id,
                 tree_date=tree_date,
                 node_hash=doc_hash.file_hash,
-                parent_hash=None,  # Wird spaeter gesetzt
+                parent_hash=None,  # Wird später gesetzt
                 level=0,
                 position=position,
                 document_hash_id=doc_hash.id,
@@ -464,7 +464,7 @@ class DocumentIntegrityService:
 
         while current_hash is not None:
             proof_path.append(current_hash)
-            # Naechsten Eltern-Knoten finden
+            # Nächsten Eltern-Knoten finden
             parent_stmt = select(MerkleTreeNode).where(
                 and_(
                     MerkleTreeNode.company_id == leaf_node.company_id,
@@ -479,7 +479,7 @@ class DocumentIntegrityService:
                 break
             current_hash = parent_node.parent_hash
 
-        # Root-Knoten pruefen
+        # Root-Knoten prüfen
         root_stmt = select(MerkleTreeNode).where(
             and_(
                 MerkleTreeNode.company_id == leaf_node.company_id,
@@ -493,7 +493,7 @@ class DocumentIntegrityService:
         if root_node is None:
             return False, proof_path
 
-        # Pruefen ob der Beweis-Pfad zum Root fuehrt
+        # Prüfen ob der Beweis-Pfad zum Root führt
         is_included = proof_path[-1] == root_node.merkle_root or \
             root_node.node_hash in proof_path
 
@@ -511,7 +511,7 @@ class DocumentIntegrityService:
         report_date: Optional[date] = None,
     ) -> IntegrityReport:
         """
-        Generiert einen Integritaetsbericht fuer ein Unternehmen.
+        Generiert einen Integritätsbericht für ein Unternehmen.
 
         Args:
             db: Datenbank-Session
@@ -578,11 +578,11 @@ class DocumentIntegrityService:
                 "gesamt": total_documents,
                 "verifiziert": verified_count,
                 "manipuliert": tampered_count,
-                "nicht_geprueft": unverified_count,
+                "nicht_geprüft": unverified_count,
             },
             "merkle_root": merkle_root,
             "berichtsdatum": report_date.isoformat(),
-            "integritaetsquote": (
+            "integritätsquote": (
                 round(verified_count / total_documents * 100, 2)
                 if total_documents > 0
                 else 0.0
@@ -628,7 +628,7 @@ class DocumentIntegrityService:
         await db.flush()
 
         logger.info(
-            "Integritaetsbericht generiert",
+            "Integritätsbericht generiert",
             company_id=str(company_id),
             report_date=report_date.isoformat(),
             total=total_documents,

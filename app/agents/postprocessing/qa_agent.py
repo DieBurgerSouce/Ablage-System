@@ -440,9 +440,9 @@ class QAAgent(PostprocessingAgent):
             likely_errors = [
                 p for p in ae_patterns
                 if any(pattern in p.lower() for pattern in [
-                    'aend', 'aerzt', 'aehn', 'aerger', 'baeck', 'geraet',
-                    'hoehe', 'koennen', 'moeglich', 'oeffn',
-                    'fuer', 'muessen', 'pruef', 'ueber', 'zurueck',
+                    'aend', 'aerzt', 'aehn', 'ärger', 'baeck', 'geraet',
+                    'höhe', 'können', 'möglich', 'öffn',
+                    'für', 'müssen', 'prüf', 'über', 'zurück',
                 ])
             ]
             if likely_errors:

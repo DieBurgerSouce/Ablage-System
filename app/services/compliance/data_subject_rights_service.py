@@ -6,12 +6,12 @@ PHASE 7: Compliance & Audit - GDPR Erweiterungen
 Implementiert die Betroffenenrechte nach DSGVO:
 - Art. 15: Auskunftsrecht (Right of Access)
 - Art. 16: Recht auf Berichtigung (Right to Rectification)
-- Art. 17: Recht auf Loeschung (Right to Erasure / "Right to be Forgotten")
-- Art. 18: Recht auf Einschraenkung der Verarbeitung (Right to Restriction)
-- Art. 20: Recht auf Datenuebertragbarkeit (Right to Data Portability)
+- Art. 17: Recht auf Löschung (Right to Erasure / "Right to be Forgotten")
+- Art. 18: Recht auf Einschränkung der Verarbeitung (Right to Restriction)
+- Art. 20: Recht auf Datenübertragbarkeit (Right to Data Portability)
 - Art. 21: Widerspruchsrecht (Right to Object)
 
-WICHTIG: 30-Tage-Frist fuer Bearbeitung von Anfragen!
+WICHTIG: 30-Tage-Frist für Bearbeitung von Anfragen!
 """
 
 import hashlib
@@ -41,20 +41,20 @@ class DSRType(str, Enum):
     """Typen von Betroffenenrechte-Anfragen (DSGVO Art. 15-21)."""
     ACCESS = "access"                # Art. 15 - Auskunftsrecht
     RECTIFICATION = "rectification"  # Art. 16 - Berichtigung
-    ERASURE = "erasure"              # Art. 17 - Loeschung
-    RESTRICTION = "restriction"      # Art. 18 - Einschraenkung
-    PORTABILITY = "portability"      # Art. 20 - Datenuebertragbarkeit
+    ERASURE = "erasure"              # Art. 17 - Löschung
+    RESTRICTION = "restriction"      # Art. 18 - Einschränkung
+    PORTABILITY = "portability"      # Art. 20 - Datenübertragbarkeit
     OBJECTION = "objection"          # Art. 21 - Widerspruch
 
 
 class DSRStatus(str, Enum):
     """Status einer Betroffenenrechte-Anfrage."""
     PENDING = "pending"          # Eingegangen, noch nicht bearbeitet
-    VERIFICATION = "verification"  # Identitaetspruefung laeuft
+    VERIFICATION = "verification"  # Identitätsprüfung laeuft
     IN_PROGRESS = "in_progress"  # In Bearbeitung
     COMPLETED = "completed"      # Abgeschlossen
     REJECTED = "rejected"        # Abgelehnt (mit Begruendung)
-    CANCELLED = "cancelled"      # Vom Antragsteller zurueckgezogen
+    CANCELLED = "cancelled"      # Vom Antragsteller zurückgezogen
 
 
 class DataCategory(str, Enum):
@@ -62,13 +62,13 @@ class DataCategory(str, Enum):
     PERSONAL = "personal"          # Name, Email, Adresse
     FINANCIAL = "financial"        # Rechnungen, Zahlungen
     DOCUMENTS = "documents"        # Hochgeladene Dokumente
-    ACTIVITY = "activity"          # Aktivitaets-Logs
+    ACTIVITY = "activity"          # Aktivitäts-Logs
     PREFERENCES = "preferences"    # Einstellungen
     COMMUNICATIONS = "communications"  # Kommentare, Nachrichten
     AUTHENTICATION = "authentication"  # Login-Daten, Sessions
 
 
-# DSGVO Frist: 30 Tage (erweiterbar auf 60 bei Komplexitaet)
+# DSGVO Frist: 30 Tage (erweiterbar auf 60 bei Komplexität)
 DEFAULT_RESPONSE_DAYS = 30
 EXTENDED_RESPONSE_DAYS = 60
 
@@ -103,7 +103,7 @@ class DSRRequest:
 
     @property
     def is_overdue(self) -> bool:
-        """Prueft ob die Frist ueberschritten ist."""
+        """Prüft ob die Frist überschritten ist."""
         if self.status in [DSRStatus.COMPLETED, DSRStatus.REJECTED, DSRStatus.CANCELLED]:
             return False
         return datetime.now(timezone.utc) > self.due_date
@@ -134,7 +134,7 @@ class DSRCreateResult:
 
 @dataclass
 class DSRVerificationResult:
-    """Ergebnis der Identitaetsverifizierung."""
+    """Ergebnis der Identitätsverifizierung."""
     success: bool
     request_id: uuid.UUID
     verified: bool
@@ -159,7 +159,7 @@ class PersonalDataExport:
 
 @dataclass
 class PersonalDataSummary:
-    """Zusammenfassung personenbezogener Daten fuer Art. 15 Auskunft."""
+    """Zusammenfassung personenbezogener Daten für Art. 15 Auskunft."""
     user_id: uuid.UUID
     export_date: datetime
     data_categories: List[DataCategory]
@@ -169,7 +169,7 @@ class PersonalDataSummary:
 
 @dataclass
 class DataCategory_Info:
-    """Information ueber eine Datenkategorie."""
+    """Information über eine Datenkategorie."""
     category: DataCategory
     record_count: int
     sample_fields: List[str]
@@ -179,7 +179,7 @@ class DataCategory_Info:
 
 @dataclass
 class ErasureResult:
-    """Ergebnis einer Loeschanfrage."""
+    """Ergebnis einer Löschanfrage."""
     success: bool
     request_id: uuid.UUID
     records_deleted: Dict[str, int]
@@ -207,15 +207,15 @@ class RectificationResult:
 # =============================================================================
 
 class DataSubjectRightsService:
-    """Service fuer DSGVO Betroffenenrechte (Art. 15-21).
+    """Service für DSGVO Betroffenenrechte (Art. 15-21).
 
     Implementiert:
     - Anfrage-Management mit 30-Tage-Frist-Tracking
-    - Identitaetsverifizierung
-    - Datenexport (Portabilitaet)
-    - Datenloeschung mit Aufbewahrungspflichten
+    - Identitätsverifizierung
+    - Datenexport (Portabilität)
+    - Datenlöschung mit Aufbewahrungspflichten
     - Datenberichtigung
-    - Audit-Trail fuer alle Aktionen
+    - Audit-Trail für alle Aktionen
     """
 
     _instance: Optional["DataSubjectRightsService"] = None
@@ -263,7 +263,7 @@ class DataSubjectRightsService:
             company_id: Optional - Company-ID
             description: Optional - Beschreibung der Anfrage
             affected_data_categories: Optional - Betroffene Datenkategorien
-            rectification_details: Optional - Details fuer Berichtigungsanfragen
+            rectification_details: Optional - Details für Berichtigungsanfragen
 
         Returns:
             DSRCreateResultExtended
@@ -312,7 +312,7 @@ class DataSubjectRightsService:
             request_id=request.id,
             verification_token=verification_token,
             due_date=due_date,
-            message=f"Anfrage erfolgreich erstellt. Bitte verifizieren Sie Ihre Identitaet. "
+            message=f"Anfrage erfolgreich erstellt. Bitte verifizieren Sie Ihre Identität. "
                     f"Bearbeitungsfrist: {due_date.strftime('%d.%m.%Y')}",
             status=DSRStatus.PENDING,
             verification_required=verification_required,
@@ -324,7 +324,7 @@ class DataSubjectRightsService:
         request_id: uuid.UUID,
         verification_token: str,
     ) -> DSRVerificationResult:
-        """Verifiziert die Identitaet des Antragstellers.
+        """Verifiziert die Identität des Antragstellers.
 
         Args:
             db: Datenbank-Session
@@ -356,8 +356,8 @@ class DataSubjectRightsService:
                 success=False,
                 request_id=request_id,
                 verified=False,
-                message="Ungueltiger Verifizierungstoken",
-                error_message="Ungueltiger Verifizierungstoken",
+                message="Ungültiger Verifizierungstoken",
+                error_message="Ungültiger Verifizierungstoken",
             )
 
         if request.verified_at:
@@ -365,7 +365,7 @@ class DataSubjectRightsService:
                 success=True,
                 request_id=request_id,
                 verified=True,
-                message="Identitaet bereits verifiziert",
+                message="Identität bereits verifiziert",
                 verified_at=request.verified_at,
             )
 
@@ -385,7 +385,7 @@ class DataSubjectRightsService:
             success=True,
             request_id=request_id,
             verified=True,
-            message="Identitaet erfolgreich verifiziert. Ihre Anfrage wird bearbeitet.",
+            message="Identität erfolgreich verifiziert. Ihre Anfrage wird bearbeitet.",
             verified_at=now,
         )
 
@@ -400,7 +400,7 @@ class DataSubjectRightsService:
         Args:
             db: Datenbank-Session
             request_id: Anfrage-ID
-            user_id: Optional - User-ID fuer Berechtigungspruefung
+            user_id: Optional - User-ID für Berechtigungsprüfung
 
         Returns:
             DSRRequest oder None
@@ -411,7 +411,7 @@ class DataSubjectRightsService:
             GDPRDataSubjectRequest.id == request_id
         )
 
-        # Filter nach User wenn angegeben (fuer Berechtigungspruefung)
+        # Filter nach User wenn angegeben (für Berechtigungsprüfung)
         if user_id:
             query = query.where(GDPRDataSubjectRequest.user_id == user_id)
 
@@ -458,13 +458,13 @@ class DataSubjectRightsService:
 
         Args:
             db: Datenbank-Session
-            user_id: Optional - Filter nach User (fuer Benutzer-Sicht)
+            user_id: Optional - Filter nach User (für Benutzer-Sicht)
             company_id: Optional - Filter nach Company
             status: Optional - Filter nach Status
             request_type: Optional - Filter nach Typ
-            overdue_only: Nur ueberfaellige Anfragen
+            overdue_only: Nur überfällige Anfragen
             limit: Maximale Anzahl
-            offset: Offset fuer Pagination
+            offset: Offset für Pagination
 
         Returns:
             Liste von DSRRequest
@@ -499,7 +499,7 @@ class DataSubjectRightsService:
         if conditions:
             query = query.where(and_(*conditions))
 
-        # Sortierung: Ueberfaellige zuerst, dann nach due_date
+        # Sortierung: Überfällige zuerst, dann nach due_date
         query = query.order_by(
             GDPRDataSubjectRequest.due_date.asc()
         ).offset(offset).limit(limit)
@@ -579,14 +579,14 @@ class DataSubjectRightsService:
         """Erstellt eine Zusammenfassung aller personenbezogenen Daten.
 
         Art. 15 DSGVO: Recht auf Auskunft - leichtgewichtige Version
-        fuer direkte API-Antwort ohne Datei-Export.
+        für direkte API-Antwort ohne Datei-Export.
 
         Args:
             db: Datenbank-Session
             user_id: User-ID
-            company_id: Optional - Company-ID fuer zusaetzlichen Filter
-            include_documents: Dokumente einschliessen
-            include_activity: Aktivitaeten einschliessen
+            company_id: Optional - Company-ID für zusätzlichen Filter
+            include_documents: Dokumente einschließen
+            include_activity: Aktivitäten einschließen
 
         Returns:
             PersonalDataSummary
@@ -630,7 +630,7 @@ class DataSubjectRightsService:
                     }
                     for d in documents[:50]  # Max 50 in Zusammenfassung
                 ],
-                "hinweis": "Vollstaendige Liste ueber Datenexport (Art. 20) verfuegbar" if len(documents) > 50 else None,
+                "hinweis": "Vollständige Liste über Datenexport (Art. 20) verfügbar" if len(documents) > 50 else None,
             }
             total_records += len(documents)
 
@@ -665,9 +665,9 @@ class DataSubjectRightsService:
                 .limit(50)
             )
             activities = activity_result.scalars().all()
-            personal_data["aktivitaeten"] = {
+            personal_data["aktivitäten"] = {
                 "anzahl": len(activities),
-                "letzte_aktivitaeten": [
+                "letzte_aktivitäten": [
                     {
                         "aktion": a.action,
                         "ressource": a.resource_type,
@@ -693,10 +693,10 @@ class DataSubjectRightsService:
             },
             "aufbewahrungsfristen": {
                 "dokumente": "10 Jahre (GoBD, §147 AO, §257 HGB)",
-                "aktivitaetsprotokolle": "90 Tage",
-                "kontodaten": "Bis zur Kontoloeschung",
+                "aktivitätsprotokolle": "90 Tage",
+                "kontodaten": "Bis zur Kontolöschung",
             },
-            "empfaenger": "Keine Weitergabe an Dritte ohne Einwilligung",
+            "empfänger": "Keine Weitergabe an Dritte ohne Einwilligung",
         }
 
         logger.info(
@@ -721,7 +721,7 @@ class DataSubjectRightsService:
         """Erstellt ein Inventar der gespeicherten Daten eines Users.
 
         Art. 15 DSGVO: Der Betroffene hat das Recht zu erfahren,
-        welche Daten ueber ihn verarbeitet werden.
+        welche Daten über ihn verarbeitet werden.
 
         Args:
             db: Datenbank-Session
@@ -742,7 +742,7 @@ class DataSubjectRightsService:
                 category=DataCategory.PERSONAL,
                 record_count=1,
                 sample_fields=["email", "name", "phone", "address"],
-                retention_period="Bis zur Kontoloeschung",
+                retention_period="Bis zur Kontolöschung",
                 legal_basis="Art. 6 Abs. 1 lit. b DSGVO (Vertragserfuellung)",
             ))
 
@@ -794,7 +794,7 @@ class DataSubjectRightsService:
         return inventory
 
     # =========================================================================
-    # Art. 20 - Datenuebertragbarkeit (Right to Data Portability)
+    # Art. 20 - Datenübertragbarkeit (Right to Data Portability)
     # =========================================================================
 
     async def export_personal_data(
@@ -807,7 +807,7 @@ class DataSubjectRightsService:
     ) -> PersonalDataExport:
         """Exportiert personenbezogene Daten im maschinenlesbaren Format.
 
-        Art. 20 DSGVO: Recht auf Datenuebertragbarkeit.
+        Art. 20 DSGVO: Recht auf Datenübertragbarkeit.
 
         Args:
             db: Datenbank-Session
@@ -898,7 +898,7 @@ class DataSubjectRightsService:
             with open(export_path, "w", encoding="utf-8") as f:
                 f.write(json.dumps(export_data, ensure_ascii=False))
 
-        # Berechne Hash und Groesse
+        # Berechne Hash und Größe
         file_size = export_path.stat().st_size
         file_hash = self._calculate_file_hash(export_path)
         expires_at = now + timedelta(days=EXPORT_EXPIRY_DAYS)
@@ -956,7 +956,7 @@ class DataSubjectRightsService:
         )
 
     # =========================================================================
-    # Art. 17 - Recht auf Loeschung (Right to Erasure)
+    # Art. 17 - Recht auf Löschung (Right to Erasure)
     # =========================================================================
 
     async def request_erasure(
@@ -966,18 +966,18 @@ class DataSubjectRightsService:
         request_id: uuid.UUID,
         categories: Optional[List[DataCategory]] = None,
     ) -> ErasureResult:
-        """Fuehrt eine Loeschanfrage durch.
+        """Führt eine Löschanfrage durch.
 
-        Art. 17 DSGVO: Recht auf Loeschung ("Recht auf Vergessenwerden").
+        Art. 17 DSGVO: Recht auf Löschung ("Recht auf Vergessenwerden").
 
-        WICHTIG: Einige Daten muessen aufgrund gesetzlicher Aufbewahrungspflichten
-        behalten werden (z.B. Rechnungen fuer 10 Jahre nach GoBD).
+        WICHTIG: Einige Daten müssen aufgrund gesetzlicher Aufbewahrungspflichten
+        behalten werden (z.B. Rechnungen für 10 Jahre nach GoBD).
 
         Args:
             db: Datenbank-Session
             user_id: User-ID
             request_id: DSR-Anfrage-ID
-            categories: Optional - Zu loeschende Kategorien
+            categories: Optional - Zu löschende Kategorien
 
         Returns:
             ErasureResult
@@ -995,7 +995,7 @@ class DataSubjectRightsService:
         retained_categories: List[str] = []
         retention_reasons: Dict[str, str] = {}
 
-        # Activity Logs - Anonymisieren statt Loeschen (fuer Audit-Trail)
+        # Activity Logs - Anonymisieren statt Löschen (für Audit-Trail)
         if DataCategory.ACTIVITY in categories:
             result = await db.execute(
                 update(AuditLog)
@@ -1013,13 +1013,13 @@ class DataSubjectRightsService:
                 update(DocumentComment)
                 .where(DocumentComment.user_id == user_id)
                 .values(
-                    content="[Inhalt geloescht auf Anfrage des Nutzers]",
+                    content="[Inhalt gelöscht auf Anfrage des Nutzers]",
                     user_id=None,
                 )
             )
             records_anonymized["comments"] = result.rowcount
 
-        # Documents - NICHT loeschen wegen GoBD (10 Jahre Aufbewahrungspflicht)
+        # Documents - NICHT löschen wegen GoBD (10 Jahre Aufbewahrungspflicht)
         if DataCategory.DOCUMENTS in categories:
             doc_count_result = await db.execute(
                 select(func.count()).select_from(Document)
@@ -1039,14 +1039,14 @@ class DataSubjectRightsService:
                 )
                 records_anonymized["documents"] = doc_count
 
-        # Notifications - Loeschen
+        # Notifications - Löschen
         result = await db.execute(
             delete(Notification)
             .where(Notification.user_id == user_id)
         )
         records_deleted["notifications"] = result.rowcount
 
-        # Personal Data - Anonymisieren (Account behalten fuer Audit)
+        # Personal Data - Anonymisieren (Account behalten für Audit)
         if DataCategory.PERSONAL in categories:
             user_result = await db.execute(select(User).where(User.id == user_id))
             user = user_result.scalar_one_or_none()
@@ -1054,7 +1054,7 @@ class DataSubjectRightsService:
                 # Anonymisiere User-Daten
                 anonymized_email = f"deleted_{uuid.uuid4().hex[:8]}@anonymized.local"
                 user.email = anonymized_email
-                user.name = "Geloeschter Benutzer"
+                user.name = "Gelöschter Benutzer"
                 user.password_hash = None
                 user.is_active = False
                 records_anonymized["user_account"] = 1
@@ -1093,8 +1093,8 @@ class DataSubjectRightsService:
             retained_categories=retained_categories,
             retention_reasons=retention_reasons,
             completed_at=now,
-            message="Loeschanfrage bearbeitet. Einige Daten wurden aufgrund "
-                    "gesetzlicher Aufbewahrungspflichten anonymisiert statt geloescht.",
+            message="Löschanfrage bearbeitet. Einige Daten wurden aufgrund "
+                    "gesetzlicher Aufbewahrungspflichten anonymisiert statt gelöscht.",
         )
 
     # =========================================================================
@@ -1109,7 +1109,7 @@ class DataSubjectRightsService:
         reason: Optional[str] = None,
         request_id: Optional[uuid.UUID] = None,
     ) -> RectificationResult:
-        """Fuehrt eine Berichtigungsanfrage durch.
+        """Führt eine Berichtigungsanfrage durch.
 
         Art. 16 DSGVO: Recht auf Berichtigung unrichtiger Daten.
 
@@ -1117,8 +1117,8 @@ class DataSubjectRightsService:
             db: Datenbank-Session
             user_id: User-ID
             corrections: Dict mit Feldname -> neuer Wert
-            reason: Optional - Begruendung fuer Berichtigung
-            request_id: Optional - DSR-Anfrage-ID wenn ueber DSR-Prozess
+            reason: Optional - Begruendung für Berichtigung
+            request_id: Optional - DSR-Anfrage-ID wenn über DSR-Prozess
 
         Returns:
             RectificationResult
@@ -1130,9 +1130,9 @@ class DataSubjectRightsService:
         skipped_fields: List[str] = []
         protected_fields: List[str] = []
 
-        # Erlaubte Felder fuer Berichtigung
+        # Erlaubte Felder für Berichtigung
         allowed_fields = {"name", "phone", "address", "display_name"}
-        # Geschuetzte Felder die nicht geaendert werden duerfen
+        # Geschuetzte Felder die nicht geändert werden duerfen
         protected_field_names = {"id", "email", "password_hash", "is_superuser", "created_at", "company_id"}
 
         user_result = await db.execute(select(User).where(User.id == user_id))
@@ -1158,7 +1158,7 @@ class DataSubjectRightsService:
                 skipped_fields.append(field_name)
                 continue
 
-            # Pruefe ob Feld existiert
+            # Prüfe ob Feld existiert
             if not hasattr(user, field_name):
                 skipped_fields.append(field_name)
                 continue
@@ -1169,7 +1169,7 @@ class DataSubjectRightsService:
                 setattr(user, field_name, new_value)
                 corrected_fields.append(field_name)
             else:
-                skipped_fields.append(field_name)  # Wert unveraendert
+                skipped_fields.append(field_name)  # Wert unverändert
 
         # Update DSR-Request falls vorhanden
         if request_id:
@@ -1220,12 +1220,12 @@ class DataSubjectRightsService:
     ) -> None:
         """Storniert eine DSR-Anfrage.
 
-        Nur moeglich wenn die Anfrage noch nicht abgeschlossen ist.
+        Nur möglich wenn die Anfrage noch nicht abgeschlossen ist.
 
         Args:
             db: Datenbank-Session
             request_id: Anfrage-ID
-            user_id: User-ID (fuer Berechtigungspruefung)
+            user_id: User-ID (für Berechtigungsprüfung)
 
         Raises:
             ValueError: Wenn Anfrage nicht storniert werden kann
@@ -1292,14 +1292,14 @@ class DataSubjectRightsService:
         db: AsyncSession,
         company_id: Optional[uuid.UUID] = None,
     ) -> int:
-        """Zaehlt ueberfaellige DSR-Anfragen.
+        """Zaehlt überfällige DSR-Anfragen.
 
         Args:
             db: Datenbank-Session
             company_id: Optional - Company-ID
 
         Returns:
-            Anzahl ueberfaelliger Anfragen
+            Anzahl überfälliger Anfragen
         """
         from app.db.models import GDPRDataSubjectRequest
 
@@ -1406,7 +1406,7 @@ class DataSubjectRightsService:
 # =============================================================================
 
 def get_data_subject_rights_service() -> DataSubjectRightsService:
-    """Factory-Funktion fuer DataSubjectRightsService."""
+    """Factory-Funktion für DataSubjectRightsService."""
     return DataSubjectRightsService()
 
 

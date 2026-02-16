@@ -29,7 +29,7 @@ router = APIRouter(prefix="/company", tags=["Admin - Firmendaten"])
 # ==================== Schemas ====================
 
 class CompanySettingsResponse(BaseModel):
-    """Response schema fuer Firmendaten."""
+    """Response schema für Firmendaten."""
     id: str
     company_name: str
     alternative_names: List[str] = []
@@ -58,9 +58,9 @@ class CompanySettingsUpdate(BaseModel):
     company_name: str = Field(..., min_length=1, max_length=255, description="Offizieller Firmenname")
     alternative_names: List[str] = Field(
         default=[],
-        description="Alternative Schreibweisen fuer Dokumentenerkennung"
+        description="Alternative Schreibweisen für Dokumentenerkennung"
     )
-    street: Optional[str] = Field(None, max_length=255, description="Strasse mit Hausnummer")
+    street: Optional[str] = Field(None, max_length=255, description="Straße mit Hausnummer")
     postal_code: Optional[str] = Field(None, max_length=20, description="PLZ")
     city: Optional[str] = Field(None, max_length=100, description="Stadt")
     country: str = Field(default="Deutschland", max_length=100, description="Land")
@@ -88,7 +88,7 @@ class CompanySettingsUpdate(BaseModel):
     @field_validator("iban")
     @classmethod
     def validate_iban(cls, v: Optional[str]) -> Optional[str]:
-        """Validiert IBAN-Format (vereinfacht fuer DE)."""
+        """Validiert IBAN-Format (vereinfacht für DE)."""
         if v is None or v == "":
             return None
         v = v.strip().upper().replace(" ", "")
@@ -140,9 +140,9 @@ async def get_company_settings(
     Die Firmendaten werden verwendet um zu bestimmen, ob eine
     hochgeladene Rechnung eine Eingangs- oder Ausgangsrechnung ist.
 
-    Falls keine Firmendaten konfiguriert sind, wird ein Hinweis zurueckgegeben.
+    Falls keine Firmendaten konfiguriert sind, wird ein Hinweis zurückgegeben.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     settings = await get_company_settings_or_none(db)
 
@@ -186,15 +186,15 @@ async def update_company_settings(
     """
     Erstellt oder aktualisiert die Firmendaten.
 
-    Die Firmendaten werden verwendet fuer:
+    Die Firmendaten werden verwendet für:
     - Erkennung von Eingangs- vs. Ausgangsrechnungen
-    - Abgleich von Absender/Empfaenger gegen eigene Firmendaten
-    - Alternative Firmennamen fuer flexible Erkennung
+    - Abgleich von Absender/Empfänger gegen eigene Firmendaten
+    - Alternative Firmennamen für flexible Erkennung
 
     Falls noch keine Firmendaten existieren, werden sie erstellt.
     Falls bereits Firmendaten existieren, werden sie aktualisiert.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     settings = await get_company_settings_or_none(db)
 
@@ -281,27 +281,27 @@ async def update_company_settings(
     "",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Firmendaten loeschen",
-    description="Loescht alle konfigurierten Firmendaten"
+    summary="Firmendaten löschen",
+    description="Löscht alle konfigurierten Firmendaten"
 )
 async def delete_company_settings(
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
     """
-    Loescht die Firmendaten.
+    Löscht die Firmendaten.
 
-    Nach dem Loeschen ist keine automatische Erkennung von
-    Eingangs-/Ausgangsrechnungen mehr moeglich.
+    Nach dem Löschen ist keine automatische Erkennung von
+    Eingangs-/Ausgangsrechnungen mehr möglich.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
     """
     settings = await get_company_settings_or_none(db)
 
     if settings is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine Firmendaten zum Loeschen vorhanden"
+            detail="Keine Firmendaten zum Löschen vorhanden"
         )
 
     await db.delete(settings)

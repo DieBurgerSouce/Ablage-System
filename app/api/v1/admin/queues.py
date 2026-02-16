@@ -54,13 +54,13 @@ class WorkerStatus(BaseModel):
     current_task_id: Optional[str] = Field(None, description="Aktuelle Task-ID")
     last_heartbeat: Optional[datetime] = Field(None, description="Letzter Heartbeat")
     tasks_processed: int = Field(0, description="Verarbeitete Tasks seit Start")
-    pool_size: int = Field(1, description="Worker Pool Groesse")
+    pool_size: int = Field(1, description="Worker Pool Größe")
     prefetch_count: int = Field(1, description="Prefetch Count")
 
 
 class GPUStatus(BaseModel):
     """GPU-Status."""
-    available: bool = Field(False, description="GPU verfuegbar")
+    available: bool = Field(False, description="GPU verfügbar")
     name: Optional[str] = Field(None, description="GPU-Name")
     memory_used_mb: int = Field(0, description="Verwendeter Speicher (MB)")
     memory_total_mb: int = Field(0, description="Gesamtspeicher (MB)")
@@ -202,7 +202,7 @@ async def list_queues(
     "/{queue_name}/stats",
     response_model=QueueStatsResponse,
     summary="Queue-Statistiken",
-    description="Ruft detaillierte Statistiken fuer eine Queue ab"
+    description="Ruft detaillierte Statistiken für eine Queue ab"
 )
 async def get_queue_stats(
     queue_name: str,
@@ -210,10 +210,10 @@ async def get_queue_stats(
     db: AsyncSession = Depends(get_db),
 ) -> QueueStatsResponse:
     """
-    Ruft detaillierte Statistiken fuer eine bestimmte Queue ab.
+    Ruft detaillierte Statistiken für eine bestimmte Queue ab.
 
     Zeigt:
-    - Aktuelle Laenge
+    - Aktuelle Länge
     - Durchsatz pro Minute
     - Durchschnittliche Verarbeitungszeit
     - Erfolge/Fehler in der letzten Stunde

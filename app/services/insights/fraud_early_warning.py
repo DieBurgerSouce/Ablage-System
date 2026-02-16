@@ -2,15 +2,15 @@
 """
 Fraud Early Warning Service - Proaktive Betrugserkennung.
 
-Enterprise Feature: Fruehwarnsystem fuer potenzielle Betrugsfaelle.
+Enterprise Feature: Frühwarnsystem für potenzielle Betrugsfaelle.
 
 Features:
-- Duplikate-Erkennung (aehnliche Rechnungen)
+- Duplikate-Erkennung (ähnliche Rechnungen)
 - Preisanomalien (historischer Vergleich)
 - Phantom-Lieferanten-Erkennung
 - Ungewoehnliche Zahlungsmuster
 - Round-Amount Detection
-- Velocity Checks (ploetzliche Aktivitaetsspitzen)
+- Velocity Checks (ploetzliche Aktivitätsspitzen)
 
 SECURITY: Alle Alerts werden OHNE PII geloggt (nur IDs).
 """
@@ -87,8 +87,8 @@ class FraudAlertType(str, Enum):
 class FraudSeverity(str, Enum):
     """Schweregrad des Fraud-Alerts."""
     CRITICAL = "critical"   # Sofortige Untersuchung
-    HIGH = "high"           # Innerhalb 24h pruefen
-    MEDIUM = "medium"       # Innerhalb 7 Tage pruefen
+    HIGH = "high"           # Innerhalb 24h prüfen
+    MEDIUM = "medium"       # Innerhalb 7 Tage prüfen
     LOW = "low"             # Zur Kenntnis
 
 
@@ -149,7 +149,7 @@ class FraudIndicator:
 
 @dataclass
 class FraudAlert:
-    """Ein Fraud-Fruehwarnungs-Alert."""
+    """Ein Fraud-Frühwarnungs-Alert."""
     id: UUID = field(default_factory=uuid4)
     alert_type: FraudAlertType = FraudAlertType.UNUSUAL_PATTERN
     severity: FraudSeverity = FraudSeverity.MEDIUM
@@ -231,14 +231,14 @@ class FraudScanResult:
 
 class FraudEarlyWarningService:
     """
-    Proaktives Fruehwarnsystem fuer Betrug.
+    Proaktives Frühwarnsystem für Betrug.
 
     Analysiert Transaktionen, Rechnungen und Entities
     auf verdaechtige Muster.
     """
 
     # Schwellenwerte
-    DUPLICATE_SIMILARITY_THRESHOLD = 0.85  # 85% Aehnlichkeit = Duplikat-Verdacht
+    DUPLICATE_SIMILARITY_THRESHOLD = 0.85  # 85% Ähnlichkeit = Duplikat-Verdacht
     PRICE_DEVIATION_THRESHOLD = 0.3  # 30% Abweichung = Anomalie
     ROUND_AMOUNT_THRESHOLD = 100  # Betraege wie 100, 500, 1000
     VELOCITY_MULTIPLIER = 3.0  # 3x normales Volumen = Spike
@@ -256,12 +256,12 @@ class FraudEarlyWarningService:
         scan_days: int = 30,
     ) -> FraudScanResult:
         """
-        Fuehrt vollstaendigen Fraud-Scan durch.
+        Führt vollständigen Fraud-Scan durch.
 
         Args:
             db: Database Session
             company_id: Company-ID
-            scan_days: Zeitraum fuer Scan (letzte X Tage)
+            scan_days: Zeitraum für Scan (letzte X Tage)
 
         Returns:
             FraudScanResult mit allen Alerts
@@ -401,7 +401,7 @@ class FraudEarlyWarningService:
                 invoice_groups[key] = []
             invoice_groups[key].append(inv)
 
-        # Pruefen auf Duplikate
+        # Prüfen auf Duplikate
         for key, group in invoice_groups.items():
             if len(group) < 2:
                 continue
@@ -423,8 +423,8 @@ class FraudEarlyWarningService:
                             entity_id=inv1.entity_id,
                             invoice_id=inv1.id,
                             title="Potenzielle Duplikat-Rechnung",
-                            summary=f"Rechnung mit {similarity*100:.0f}% Aehnlichkeit gefunden.",
-                            detail=f"Beide Rechnungen haben aehnliche Betraege und Zeitpunkte.",
+                            summary=f"Rechnung mit {similarity*100:.0f}% Ähnlichkeit gefunden.",
+                            detail=f"Beide Rechnungen haben ähnliche Betraege und Zeitpunkte.",
                             risk_score=risk_score,
                             confidence=similarity,
                             indicators=[
@@ -460,7 +460,7 @@ class FraudEarlyWarningService:
         inv1: InvoiceTracking,
         inv2: InvoiceTracking,
     ) -> float:
-        """Berechnet Aehnlichkeit zwischen zwei Rechnungen."""
+        """Berechnet Ähnlichkeit zwischen zwei Rechnungen."""
         score = 0.0
         weights_total = 0.0
 
@@ -476,7 +476,7 @@ class FraudEarlyWarningService:
         # Datum (30% Gewicht)
         if inv1.invoice_date and inv2.invoice_date:
             days_diff = abs((inv1.invoice_date - inv2.invoice_date).days)
-            date_similarity = max(0, 1 - (days_diff / 30))  # 30 Tage = 0 Aehnlichkeit
+            date_similarity = max(0, 1 - (days_diff / 30))  # 30 Tage = 0 Ähnlichkeit
             score += date_similarity * 0.3
             weights_total += 0.3
 
@@ -485,7 +485,7 @@ class FraudEarlyWarningService:
             score += 0.2
         weights_total += 0.2
 
-        # Rechnungsnummer-Aehnlichkeit (10% Gewicht)
+        # Rechnungsnummer-Ähnlichkeit (10% Gewicht)
         if inv1.invoice_number and inv2.invoice_number:
             # Levenshtein-Distanz vereinfacht
             if inv1.invoice_number == inv2.invoice_number:
@@ -517,7 +517,7 @@ class FraudEarlyWarningService:
         result = await db.execute(query)
         recent_invoices = result.scalars().all()
 
-        # Fuer jede Entity historischen Durchschnitt berechnen
+        # Für jede Entity historischen Durchschnitt berechnen
         entity_invoices: Dict[UUID, List[InvoiceTracking]] = {}
         for inv in recent_invoices:
             if inv.entity_id:
@@ -544,7 +544,7 @@ class FraudEarlyWarningService:
             if not historical_avg or historical_avg == 0:
                 continue
 
-            # Aktuelle Betraege pruefen
+            # Aktuelle Betraege prüfen
             for inv in invoices:
                 if not inv.amount:
                     continue
@@ -555,7 +555,7 @@ class FraudEarlyWarningService:
                     risk_score = min(100, int(abs(deviation) * 100))
                     severity = FraudSeverity.HIGH if abs(deviation) > 0.5 else FraudSeverity.MEDIUM
 
-                    direction = "hoeher" if deviation > 0 else "niedriger"
+                    direction = "höher" if deviation > 0 else "niedriger"
 
                     alerts.append(FraudAlert(
                         alert_type=FraudAlertType.PRICE_ANOMALY,
@@ -581,7 +581,7 @@ class FraudEarlyWarningService:
                             ),
                         ],
                         recommended_actions=[
-                            "Rechnung auf Korrektheit pruefen",
+                            "Rechnung auf Korrektheit prüfen",
                             "Preise mit Vertrag abgleichen",
                             "Lieferant nach Begruendung fragen",
                         ],
@@ -597,7 +597,7 @@ class FraudEarlyWarningService:
         """Erkennt potenzielle Phantom-Lieferanten."""
         alerts = []
 
-        # Lieferanten ohne vollstaendige Daten
+        # Lieferanten ohne vollständige Daten
         query = select(BusinessEntity).where(
             and_(
                 BusinessEntity.company_id == company_id,
@@ -631,14 +631,14 @@ class FraudEarlyWarningService:
             if not supplier.address_street or not supplier.address_city:
                 risk_indicators.append(FraudIndicator(
                     indicator_type="incomplete_address",
-                    description="Unvollstaendige Adresse",
+                    description="Unvollständige Adresse",
                     weight=0.2,
                     evidence={},
                 ))
 
-            # Zahlungen pruefen (nur IBAN-Wechsel)
+            # Zahlungen prüfen (nur IBAN-Wechsel)
             if supplier.iban:
-                # Pruefen ob IBAN in anderen Entities vorkommt
+                # Prüfen ob IBAN in anderen Entities vorkommt
                 iban_query = select(func.count()).where(
                     and_(
                         BusinessEntity.company_id == company_id,
@@ -672,13 +672,13 @@ class FraudEarlyWarningService:
                         entity_id=supplier.id,
                         title="Verdaechtiger Lieferant",
                         summary=f"{len(risk_indicators)} Risiko-Indikatoren gefunden.",
-                        detail="Unvollstaendige oder verdaechtige Stammdaten.",
+                        detail="Unvollständige oder verdaechtige Stammdaten.",
                         risk_score=risk_score,
                         confidence=0.7,
                         indicators=risk_indicators,
                         recommended_actions=[
                             "Lieferanten-Daten verifizieren",
-                            "Existenz des Unternehmens pruefen (Handelsregister)",
+                            "Existenz des Unternehmens prüfen (Handelsregister)",
                             "Kontaktdaten validieren",
                             "Zahlungen temporaer aussetzen",
                         ],
@@ -696,7 +696,7 @@ class FraudEarlyWarningService:
         alerts = []
         cutoff = datetime.now(timezone.utc) - timedelta(days=scan_days)
 
-        # Ungewoehnliche Uhrzeiten (ausserhalb Geschaeftszeiten)
+        # Ungewoehnliche Uhrzeiten (ausserhalb Geschäftszeiten)
         query = select(Document).where(
             and_(
                 Document.company_id == company_id,
@@ -716,22 +716,22 @@ class FraudEarlyWarningService:
                 alert_type=FraudAlertType.UNUSUAL_TIMING,
                 severity=FraudSeverity.LOW,
                 company_id=company_id,
-                title="Aktivitaet ausserhalb Geschaeftszeiten",
-                summary=f"{len(unusual_time_docs)} Dokumente ausserhalb normaler Geschaeftszeiten erstellt.",
+                title="Aktivität ausserhalb Geschäftszeiten",
+                summary=f"{len(unusual_time_docs)} Dokumente ausserhalb normaler Geschäftszeiten erstellt.",
                 detail="Dokumente wurden zwischen 22:00 und 06:00 hochgeladen.",
                 risk_score=30,
                 confidence=0.5,
                 indicators=[
                     FraudIndicator(
                         indicator_type="unusual_timing",
-                        description="Erstellung ausserhalb Geschaeftszeiten",
+                        description="Erstellung ausserhalb Geschäftszeiten",
                         weight=0.3,
                         evidence={"count": len(unusual_time_docs)},
                     ),
                 ],
                 recommended_actions=[
-                    "Aktivitaetsprotokoll pruefen",
-                    "Benutzerkonten auf Kompromittierung pruefen",
+                    "Aktivitätsprotokoll prüfen",
+                    "Benutzerkonten auf Kompromittierung prüfen",
                 ],
             ))
 
@@ -762,7 +762,7 @@ class FraudEarlyWarningService:
         for inv in invoices:
             if inv.amount:
                 amount = float(inv.amount)
-                # Pruefen ob runder Betrag (ohne Cents, teilbar durch 100)
+                # Prüfen ob runder Betrag (ohne Cents, teilbar durch 100)
                 if amount >= self.ROUND_AMOUNT_THRESHOLD and amount % 100 == 0:
                     round_invoices.append(inv)
 
@@ -774,9 +774,9 @@ class FraudEarlyWarningService:
                 alert_type=FraudAlertType.ROUND_AMOUNT,
                 severity=FraudSeverity.MEDIUM,
                 company_id=company_id,
-                title="Ueberdurchschnittlich viele runde Betraege",
+                title="Überdurchschnittlich viele runde Betraege",
                 summary=f"{len(round_invoices)} von {len(invoices)} Rechnungen ({round_ratio*100:.0f}%) haben runde Betraege.",
-                detail="Runde Betraege koennen auf geschaetzte oder fingierte Rechnungen hindeuten.",
+                detail="Runde Betraege können auf geschätzte oder fingierte Rechnungen hindeuten.",
                 risk_score=int(round_ratio * 70),
                 confidence=0.6,
                 indicators=[
@@ -792,7 +792,7 @@ class FraudEarlyWarningService:
                     ),
                 ],
                 recommended_actions=[
-                    "Runde Rechnungen einzeln pruefen",
+                    "Runde Rechnungen einzeln prüfen",
                     "Zugrundeliegende Leistungen verifizieren",
                 ],
             ))
@@ -805,7 +805,7 @@ class FraudEarlyWarningService:
         company_id: UUID,
         scan_days: int,
     ) -> List[FraudAlert]:
-        """Erkennt ploetzliche Aktivitaetsspitzen."""
+        """Erkennt ploetzliche Aktivitätsspitzen."""
         alerts = []
 
         # Vergleiche aktuelle Woche mit historischem Durchschnitt
@@ -843,15 +843,15 @@ class FraudEarlyWarningService:
                 alert_type=FraudAlertType.VELOCITY_SPIKE,
                 severity=FraudSeverity.HIGH if spike_factor > 5 else FraudSeverity.MEDIUM,
                 company_id=company_id,
-                title=f"Aktivitaetsspitze: {spike_factor:.1f}x normal",
+                title=f"Aktivitätsspitze: {spike_factor:.1f}x normal",
                 summary=f"Diese Woche: {current_count} Rechnungen, Durchschnitt: {avg_per_week:.1f}",
-                detail="Ploetzliche Aktivitaetsspitzen koennen auf Betrug oder Systemmanipulation hindeuten.",
+                detail="Ploetzliche Aktivitätsspitzen können auf Betrug oder Systemmanipulation hindeuten.",
                 risk_score=min(100, int(spike_factor * 20)),
                 confidence=0.7,
                 indicators=[
                     FraudIndicator(
                         indicator_type="velocity_spike",
-                        description=f"{spike_factor:.1f}x normale Aktivitaet",
+                        description=f"{spike_factor:.1f}x normale Aktivität",
                         weight=0.6,
                         evidence={
                             "current_week": current_count,
@@ -861,9 +861,9 @@ class FraudEarlyWarningService:
                     ),
                 ],
                 recommended_actions=[
-                    "Rechnungen dieser Woche pruefen",
-                    "Benutzeraktivitaet analysieren",
-                    "Automatische Uploads pruefen",
+                    "Rechnungen dieser Woche prüfen",
+                    "Benutzeraktivität analysieren",
+                    "Automatische Uploads prüfen",
                 ],
             ))
 
@@ -904,7 +904,7 @@ class FraudEarlyWarningService:
             if not group.entity_id:
                 continue
 
-            # Pruefen ob Einzelbetraege unter einer Schwelle liegen
+            # Prüfen ob Einzelbetraege unter einer Schwelle liegen
             detail_query = select(InvoiceTracking.amount).where(
                 and_(
                     InvoiceTracking.company_id == company_id,
@@ -944,8 +944,8 @@ class FraudEarlyWarningService:
                         ),
                     ],
                     recommended_actions=[
-                        "Rechnungen konsolidieren oder Grund pruefen",
-                        "Genehmigungsschwellen pruefen",
+                        "Rechnungen konsolidieren oder Grund prüfen",
+                        "Genehmigungsschwellen prüfen",
                         "Lieferant kontaktieren",
                     ],
                 ))
@@ -974,7 +974,7 @@ class FraudEarlyWarningService:
         new_entities = result.scalars().all()
 
         for entity in new_entities:
-            # Summe der Rechnungen fuer diese Entity
+            # Summe der Rechnungen für diese Entity
             sum_query = select(func.sum(InvoiceTracking.amount)).where(
                 and_(
                     InvoiceTracking.company_id == company_id,
@@ -992,7 +992,7 @@ class FraudEarlyWarningService:
                     entity_id=entity.id,
                     title="Neue Entity mit hohem Volumen",
                     summary=f"Neuer Partner mit {float(total):,.2f} EUR in {scan_days} Tagen.",
-                    detail="Neue Geschaeftsbeziehungen mit hohen Betraegen sollten geprueft werden.",
+                    detail="Neue Geschäftsbeziehungen mit hohen Betraegen sollten geprüft werden.",
                     risk_score=50,
                     confidence=0.5,
                     indicators=[
@@ -1008,7 +1008,7 @@ class FraudEarlyWarningService:
                     ],
                     recommended_actions=[
                         "Entity-Daten verifizieren",
-                        "Handelsregister-Eintrag pruefen",
+                        "Handelsregister-Eintrag prüfen",
                         "Referenzen einholen",
                     ],
                 ))
@@ -1026,8 +1026,8 @@ class FraudEarlyWarningService:
         cutoff = datetime.now(timezone.utc) - timedelta(days=scan_days)
         dormant_cutoff = cutoff - timedelta(days=self.DORMANT_DAYS)
 
-        # Entities mit Aktivitaet nach langer Pause
-        # Subquery: Letzte Aktivitaet vor dormant_cutoff
+        # Entities mit Aktivität nach langer Pause
+        # Subquery: Letzte Aktivität vor dormant_cutoff
         subquery = select(
             InvoiceTracking.entity_id,
             func.max(InvoiceTracking.created_at).label("last_activity_before"),
@@ -1038,7 +1038,7 @@ class FraudEarlyWarningService:
             )
         ).group_by(InvoiceTracking.entity_id).subquery()
 
-        # Aktuelle Aktivitaet
+        # Aktuelle Aktivität
         recent_query = select(
             InvoiceTracking.entity_id,
             func.count().label("recent_count"),
@@ -1053,7 +1053,7 @@ class FraudEarlyWarningService:
         recent_result = await db.execute(recent_query)
         recent_entities = {r.entity_id: {"count": r.recent_count, "total": r.recent_total} for r in recent_result.all()}
 
-        # Pruefen auf dormant + reactivation
+        # Prüfen auf dormant + reactivation
         dormant_query = select(subquery).where(
             subquery.c.entity_id.in_(list(recent_entities.keys()))
         )
@@ -1090,7 +1090,7 @@ class FraudEarlyWarningService:
                             ),
                         ],
                         recommended_actions=[
-                            "Kontaktdaten auf Aktualitaet pruefen",
+                            "Kontaktdaten auf Aktualitaet prüfen",
                             "Bankverbindung verifizieren",
                             "Bestellung legitimieren",
                         ],
@@ -1135,7 +1135,7 @@ _fraud_service: Optional[FraudEarlyWarningService] = None
 
 
 def get_fraud_early_warning_service() -> FraudEarlyWarningService:
-    """Gibt die Singleton-Instanz zurueck."""
+    """Gibt die Singleton-Instanz zurück."""
     global _fraud_service
     if _fraud_service is None:
         _fraud_service = FraudEarlyWarningService()

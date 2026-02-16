@@ -2,7 +2,7 @@
 """
 Creditreform Integration Service.
 
-Anbindung an Creditreform fuer Bonitaetspruefungen:
+Anbindung an Creditreform für Bonitaetsprüfungen:
 - Unternehmensdaten abrufen
 - Bonitaets-Scores
 - Insolvenz-Monitoring
@@ -43,7 +43,7 @@ class CreditRating(str, Enum):
 
 
 class CreditCheckResult(BaseModel):
-    """Ergebnis einer Bonitaetspruefung."""
+    """Ergebnis einer Bonitaetsprüfung."""
     crefo_id: str = Field(..., description="Creditreform ID")
     company_name: str
     legal_form: Optional[str] = None
@@ -81,13 +81,13 @@ class CreditMonitoringEvent(BaseModel):
 
 class CreditreformService:
     """
-    Service fuer Creditreform-Anbindung.
+    Service für Creditreform-Anbindung.
 
-    Unterstuetzt:
+    Unterstützt:
     - Einzelabfragen
     - Batch-Abfragen
     - Monitoring-Alerts
-    - Caching fuer Kostenoptimierung
+    - Caching für Kostenoptimierung
     """
 
     # API-Konfiguration
@@ -102,7 +102,7 @@ class CreditreformService:
         Initialisiere Service.
 
         Args:
-            redis_client: Optional Redis fuer Caching
+            redis_client: Optional Redis für Caching
         """
         self.redis = redis_client
         self.api_key = getattr(settings, "CREDITREFORM_API_KEY", None)
@@ -123,13 +123,13 @@ class CreditreformService:
         use_cache: bool = True,
     ) -> CreditCheckResult:
         """
-        Fuehre Bonitaetspruefung durch.
+        Führe Bonitaetsprüfung durch.
 
         Args:
             company_name: Firmenname
             crefo_id: Creditreform-ID (falls bekannt)
             vat_id: USt-ID
-            address: Adresse fuer Identifikation
+            address: Adresse für Identifikation
             use_cache: Cache nutzen
 
         Returns:
@@ -145,7 +145,7 @@ class CreditreformService:
         # Cache-Key generieren
         cache_key = self._generate_cache_key(company_name, crefo_id, vat_id)
 
-        # Cache pruefen
+        # Cache prüfen
         if use_cache and self.redis:
             cached = await self._get_cached(cache_key)
             if cached:
@@ -170,7 +170,7 @@ class CreditreformService:
         crefo_id: str,
     ) -> Dict[str, Any]:
         """
-        Pruefe Insolvenz-Status.
+        Prüfe Insolvenz-Status.
 
         Args:
             crefo_id: Creditreform-ID
@@ -202,7 +202,7 @@ class CreditreformService:
         entities: List[Dict[str, str]],
     ) -> List[CreditCheckResult]:
         """
-        Batch-Bonitaetspruefung fuer mehrere Unternehmen.
+        Batch-Bonitaetsprüfung für mehrere Unternehmen.
 
         Args:
             entities: Liste von Identifikationsdaten
@@ -251,7 +251,7 @@ class CreditreformService:
                 CreditMonitoringEvent(
                     event_type="address_change",
                     event_date=datetime.utcnow() - timedelta(days=30),
-                    description="Adressaenderung registriert",
+                    description="Adressänderung registriert",
                     severity="info",
                 ),
             ]
@@ -275,11 +275,11 @@ class CreditreformService:
         webhook_url: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Starte Monitoring fuer ein Unternehmen.
+        Starte Monitoring für ein Unternehmen.
 
         Args:
             crefo_id: Creditreform-ID
-            webhook_url: URL fuer Benachrichtigungen
+            webhook_url: URL für Benachrichtigungen
 
         Returns:
             Monitoring-Konfiguration
@@ -380,16 +380,16 @@ class CreditreformService:
         # Risiko-Level
         if final_score >= 80:
             risk_level = "low"
-            recommendation = "Normale Geschaeftsbeziehung empfohlen"
+            recommendation = "Normale Geschäftsbeziehung empfohlen"
         elif final_score >= 60:
             risk_level = "medium"
-            recommendation = "Regelmaessige Ueberwachung empfohlen"
+            recommendation = "Regelmäßige Überwachung empfohlen"
         elif final_score >= 40:
             risk_level = "high"
             recommendation = "Vorkasse oder Kreditlimit reduzieren"
         else:
             risk_level = "critical"
-            recommendation = "Geschaeftsbeziehung nicht empfohlen"
+            recommendation = "Geschäftsbeziehung nicht empfohlen"
 
         return {
             "internal_score": round(final_score, 2),
@@ -439,7 +439,7 @@ class CreditreformService:
             if data:
                 return json.loads(data)
         except Exception as e:
-            # SECURITY: Keine Exception-Details in Logs (CWE-532) - koennte PII enthalten
+            # SECURITY: Keine Exception-Details in Logs (CWE-532) - könnte PII enthalten
             logger.warning("creditreform_cache_read_error", error_type=type(e).__name__)
 
         return None
@@ -453,7 +453,7 @@ class CreditreformService:
             import json
             await self.redis.setex(key, self.CACHE_TTL, json.dumps(data, default=str))
         except Exception as e:
-            # SECURITY: Keine Exception-Details in Logs (CWE-532) - koennte PII enthalten
+            # SECURITY: Keine Exception-Details in Logs (CWE-532) - könnte PII enthalten
             logger.warning("creditreform_cache_write_error", error_type=type(e).__name__)
 
     async def _api_check_credit(
@@ -487,7 +487,7 @@ class CreditreformService:
         crefo_id: Optional[str],
         vat_id: Optional[str],
     ) -> CreditCheckResult:
-        """Generiere Mock-Ergebnis fuer Tests."""
+        """Generiere Mock-Ergebnis für Tests."""
         import random
 
         # Deterministischer "Zufall" basierend auf Namen
@@ -520,9 +520,9 @@ class CreditreformService:
         negative = []
 
         if credit_index >= 300:
-            warnings.append("Erhoehtes Ausfallrisiko")
+            warnings.append("Erhöhtes Ausfallrisiko")
         if credit_index >= 350:
-            negative.append("Zahlungsstoerungen gemeldet")
+            negative.append("Zahlungsstörungen gemeldet")
 
         return CreditCheckResult(
             crefo_id=crefo_id or f"DE{abs(name_hash) % 100000000:08d}",
@@ -564,5 +564,5 @@ class CreditreformService:
             last_updated=datetime.utcnow(),
             # SECURITY: Keine Exception-Details in User-Facing Responses (CWE-209)
             warnings=["Abfrage fehlgeschlagen"],
-            negative_features=["Keine Bonitaetsdaten verfuegbar"],
+            negative_features=["Keine Bonitaetsdaten verfügbar"],
         )

@@ -3,12 +3,12 @@
 Lexware Synchronisation Celery Tasks.
 
 Automatische Synchronisation mit Lexware:
-- Delta-Sync fuer Kunden, Lieferanten, Rechnungen
+- Delta-Sync für Kunden, Lieferanten, Rechnungen
 - Change-Tracking und Konfliktbehandlung
 - Webhook-basierte Real-time Updates
 - Offline-Queue Processing
 
-Feinpoliert und durchdacht - Zuverlaessige ERP-Synchronisation.
+Feinpoliert und durchdacht - Zuverlässige ERP-Synchronisation.
 """
 
 from datetime import timedelta
@@ -53,9 +53,9 @@ def sync_customers_task(
     Synchronisiert Kunden mit Lexware.
 
     Args:
-        company_id: Optional Company UUID (fuer Multi-Tenant)
+        company_id: Optional Company UUID (für Multi-Tenant)
         direction: Sync-Richtung (pull, push, bidirectional)
-        since_hours: Zeitraum fuer Delta-Sync
+        since_hours: Zeitraum für Delta-Sync
 
     Returns:
         Sync-Ergebnis
@@ -129,7 +129,7 @@ def sync_suppliers_task(
     Args:
         company_id: Optional Company UUID
         direction: Sync-Richtung
-        since_hours: Zeitraum fuer Delta-Sync
+        since_hours: Zeitraum für Delta-Sync
 
     Returns:
         Sync-Ergebnis
@@ -202,7 +202,7 @@ def sync_invoices_task(
     Args:
         company_id: Optional Company UUID
         direction: Sync-Richtung (meist nur pull)
-        since_hours: Zeitraum fuer Delta-Sync
+        since_hours: Zeitraum für Delta-Sync
 
     Returns:
         Sync-Ergebnis
@@ -274,9 +274,9 @@ def full_sync_task(
     company_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Fuehrt eine vollstaendige Synchronisation durch.
+    Führt eine vollständige Synchronisation durch.
 
-    Wird taeglich ausgefuehrt fuer Daten-Konsistenz.
+    Wird täglich ausgeführt für Daten-Konsistenz.
 
     Args:
         company_id: Optional Company UUID
@@ -381,7 +381,7 @@ def process_offline_queue_task(self) -> Dict[str, Any]:
     """
     Verarbeitet die Offline-Queue.
 
-    Wird regelmaessig ausgefuehrt um fehlgeschlagene Requests
+    Wird regelmäßig ausgeführt um fehlgeschlagene Requests
     erneut zu versuchen.
 
     Returns:
@@ -732,7 +732,7 @@ def push_entity_to_lexware_task(
         entity_type: customer, supplier
         operation: create, update
         data: Entitaetsdaten
-        erp_id: ERP-ID fuer update
+        erp_id: ERP-ID für update
 
     Returns:
         Ergebnis mit ERP-ID
@@ -800,7 +800,7 @@ def push_entity_to_lexware_task(
 
 
 # =============================================================================
-# Combined Sync Task (fuer Beat Schedule)
+# Combined Sync Task (für Beat Schedule)
 # =============================================================================
 
 
@@ -822,14 +822,14 @@ def sync_all_entities(
     """
     Synchronisiert alle aktivierten Entity-Typen mit Lexware.
 
-    Wird taeglich um 06:40 Uhr automatisch ausgefuehrt.
+    Wird täglich um 06:40 Uhr automatisch ausgeführt.
     Kombiniert Kunden-, Lieferanten- und optional Rechnungs-Sync.
 
     Args:
         sync_customers: Kunden synchronisieren
         sync_suppliers: Lieferanten synchronisieren
         sync_invoices: Rechnungen synchronisieren (optional)
-        since_hours: Zeitraum fuer Delta-Sync (default 24h)
+        since_hours: Zeitraum für Delta-Sync (default 24h)
 
     Returns:
         Dict mit aggregierten Sync-Ergebnissen
@@ -981,7 +981,7 @@ def sync_all_entities(
 )
 def health_check_task(self) -> Dict[str, Any]:
     """
-    Prueft die Verbindung zu Lexware.
+    Prüft die Verbindung zu Lexware.
 
     Returns:
         Verbindungsstatus

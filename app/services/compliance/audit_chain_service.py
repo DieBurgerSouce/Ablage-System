@@ -1,15 +1,15 @@
-"""GoBD Audit Chain Service - Blockchain-aehnliche Ereignis-Verkettung.
+"""GoBD Audit Chain Service - Blockchain-ähnliche Ereignis-Verkettung.
 
-Implementiert eine unveraenderbare Hash-Kette fuer GoBD-konforme
+Implementiert eine unveränderbare Hash-Kette für GoBD-konforme
 Nachvollziehbarkeit aller Dokumenten-Operationen.
 
 Eigenschaften:
-- APPEND-ONLY: Neue Eintraege werden nur angehaengt
-- IMMUTABLE: Bestehende Eintraege werden nie geaendert
+- APPEND-ONLY: Neue Einträge werden nur angehaengt
+- IMMUTABLE: Bestehende Einträge werden nie geändert
 - VERIFIABLE: Jeder Eintrag kann durch Hash-Vergleich verifiziert werden
 - TAMPER-EVIDENT: Manipulationen werden durch Kettenbruch erkannt
 
-Die Kette ist aehnlich einer Blockchain aufgebaut:
+Die Kette ist ähnlich einer Blockchain aufgebaut:
 - Jeder Eintrag hat einen Hash des vorherigen Eintrags
 - Der kombinierte Hash ist: SHA256(previous_hash + content_hash)
 - Der erste Eintrag (Genesis) hat keinen previous_hash
@@ -54,7 +54,7 @@ class ChainVerificationResult:
 
 @dataclass
 class ChainEntry:
-    """Datenstruktur fuer einen neuen Chain-Eintrag."""
+    """Datenstruktur für einen neuen Chain-Eintrag."""
     event_type: AuditChainEventType
     event_data: Dict[str, Any]
     document_id: Optional[uuid.UUID] = None
@@ -62,14 +62,14 @@ class ChainEntry:
 
 
 class AuditChainService:
-    """Service fuer die Verwaltung der GoBD Audit-Chain.
+    """Service für die Verwaltung der GoBD Audit-Chain.
 
-    Die Audit-Chain ist eine unveraenderbare Ereigniskette,
+    Die Audit-Chain ist eine unveränderbare Ereigniskette,
     die alle relevanten Dokumenten-Operationen protokolliert.
     """
 
     HASH_ALGORITHM = "sha256"
-    GENESIS_PREVIOUS_HASH = "0" * 64  # 64 Nullen fuer Genesis-Block
+    GENESIS_PREVIOUS_HASH = "0" * 64  # 64 Nullen für Genesis-Block
 
     async def append_entry(
         self,
@@ -94,7 +94,7 @@ class AuditChainService:
             Der erstellte AuditChainEntry
 
         Raises:
-            ValueError: Bei ungueltigem Entry
+            ValueError: Bei ungültigem Entry
         """
         # 1. Hole den letzten Eintrag der Company
         last_entry = await self._get_last_entry(db, company_id)
@@ -151,9 +151,9 @@ class AuditChainService:
         start_sequence: int = 1,
         end_sequence: Optional[int] = None,
     ) -> ChainVerificationResult:
-        """Verifiziert die Integritaet der Audit-Chain.
+        """Verifiziert die Integrität der Audit-Chain.
 
-        Prueft ob alle Hashes korrekt sind und die Kette nicht
+        Prüft ob alle Hashes korrekt sind und die Kette nicht
         manipuliert wurde.
 
         Args:
@@ -167,7 +167,7 @@ class AuditChainService:
         """
         start_time = datetime.utcnow()
 
-        # Hole alle Eintraege im Bereich
+        # Hole alle Einträge im Bereich
         query = (
             select(AuditChainEntry)
             .where(
@@ -214,14 +214,14 @@ class AuditChainService:
                     verified_entries=verified_count,
                     broken_at_sequence=entry.sequence_number,
                     broken_entry_id=entry.id,
-                    error_message=f"Content-Hash stimmt nicht ueberein bei Sequenz {entry.sequence_number}",
+                    error_message=f"Content-Hash stimmt nicht überein bei Sequenz {entry.sequence_number}",
                     verification_time_ms=duration,
                 )
 
             # 2. Verifiziere Verkettung (ausser Genesis)
             if entry.sequence_number > 1:
                 if previous_entry is None:
-                    # Wir haben nicht bei 1 angefangen - pruefe Vorherigen
+                    # Wir haben nicht bei 1 angefangen - prüfe Vorherigen
                     prev_result = await db.execute(
                         select(AuditChainEntry)
                         .where(
@@ -245,7 +245,7 @@ class AuditChainService:
                         verification_time_ms=duration,
                     )
 
-                # Pruefe ob previous_hash korrekt ist
+                # Prüfe ob previous_hash korrekt ist
                 if entry.previous_hash != previous_entry.combined_hash:
                     duration = (datetime.utcnow() - start_time).total_seconds() * 1000
                     return ChainVerificationResult(
@@ -305,7 +305,7 @@ class AuditChainService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> Dict[str, Any]:
-        """Holt Statistiken ueber die Audit-Chain.
+        """Holt Statistiken über die Audit-Chain.
 
         Args:
             db: Datenbank-Session
@@ -382,13 +382,13 @@ class AuditChainService:
         document_id: uuid.UUID,
         limit: int = 100,
     ) -> List[AuditChainEntry]:
-        """Holt alle Chain-Eintraege fuer ein Dokument.
+        """Holt alle Chain-Einträge für ein Dokument.
 
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
             document_id: Dokument-ID
-            limit: Maximale Anzahl Eintraege
+            limit: Maximale Anzahl Einträge
 
         Returns:
             Liste von AuditChainEntry
@@ -497,7 +497,7 @@ class AuditChainService:
 
         combined_hash = SHA256(previous_hash + content_hash)
 
-        Fuer Genesis-Block wird ein spezieller Null-Hash verwendet.
+        Für Genesis-Block wird ein spezieller Null-Hash verwendet.
         """
         if previous_hash is None:
             previous_hash = self.GENESIS_PREVIOUS_HASH

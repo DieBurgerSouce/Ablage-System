@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """SEPA-Lastschrift Service.
 
-Ermoeglicht das automatische Einziehen von Zahlungen von Kunden via SEPA-Lastschrift.
+Ermöglicht das automatische Einziehen von Zahlungen von Kunden via SEPA-Lastschrift.
 
 Features:
 - Mandate-Verwaltung (SEPA-Mandat)
 - Lastschrift-Erstellung (CORE/B2B)
 - Batch-Einzug mehrerer Lastschriften
 - Pre-Notification Handling
-- Ruecklauf-Bearbeitung (R-Transaktionen)
+- Rücklauf-Bearbeitung (R-Transaktionen)
 - XML-Generierung (pain.008)
 """
 
@@ -44,7 +44,7 @@ class DirectDebitType(str, Enum):
 class MandateStatus(str, Enum):
     """Status eines SEPA-Mandats."""
     ACTIVE = "active"
-    PENDING = "pending"  # Noch nicht bestaetigt
+    PENDING = "pending"  # Noch nicht bestätigt
     REVOKED = "revoked"  # Widerrufen
     EXPIRED = "expired"  # Abgelaufen (36 Monate ohne Nutzung)
 
@@ -63,7 +63,7 @@ class DirectDebitStatus(str, Enum):
     PENDING = "pending"  # Wartet auf Einreichung
     SUBMITTED = "submitted"  # Bei Bank eingereicht
     BOOKED = "booked"  # Erfolgreich gebucht
-    RETURNED = "returned"  # Zurueckgegeben (R-Transaktion)
+    RETURNED = "returned"  # Zurückgegeben (R-Transaktion)
     CANCELLED = "cancelled"  # Storniert
 
 
@@ -77,15 +77,15 @@ class ReturnReasonCode(str, Enum):
     AG02 = "AG02"  # Falsche Transaktionscode
     AM04 = "AM04"  # Nicht genug Deckung
     AM05 = "AM05"  # Doppelte Einreichung
-    FF01 = "FF01"  # Ungueltige Datei
-    MD01 = "MD01"  # Kein gueltiges Mandat
+    FF01 = "FF01"  # Ungültige Datei
+    MD01 = "MD01"  # Kein gültiges Mandat
     MD02 = "MD02"  # Mandat abgelaufen
-    MD06 = "MD06"  # Rueckgabe auf Kundenwunsch
+    MD06 = "MD06"  # Rückgabe auf Kundenwunsch
     MD07 = "MD07"  # Kontoinhaber verstorben
     MS02 = "MS02"  # Unbekannter Grund
     MS03 = "MS03"  # Unbekannter Grund
-    SL01 = "SL01"  # Service nicht verfuegbar
-    RC01 = "RC01"  # Ungueltige BIC
+    SL01 = "SL01"  # Service nicht verfügbar
+    RC01 = "RC01"  # Ungültige BIC
 
 
 # Gruende auf Deutsch
@@ -94,19 +94,19 @@ RETURN_REASON_LABELS: Dict[str, str] = {
     "AC04": "Konto geschlossen",
     "AC06": "Konto gesperrt",
     "AC13": "Kontoinhaber verstorben",
-    "AG01": "Transaktion fuer Kontoart nicht erlaubt",
+    "AG01": "Transaktion für Kontoart nicht erlaubt",
     "AG02": "Falscher Transaktionscode",
     "AM04": "Nicht ausreichend Deckung",
     "AM05": "Doppelte Einreichung",
-    "FF01": "Ungueltige Datei",
-    "MD01": "Kein gueltiges Mandat vorhanden",
-    "MD02": "Mandat abgelaufen oder ungueltig",
-    "MD06": "Rueckgabe auf Kundenwunsch",
+    "FF01": "Ungültige Datei",
+    "MD01": "Kein gültiges Mandat vorhanden",
+    "MD02": "Mandat abgelaufen oder ungültig",
+    "MD06": "Rückgabe auf Kundenwunsch",
     "MD07": "Kontoinhaber verstorben",
     "MS02": "Grund nicht angegeben",
     "MS03": "Grund nicht angegeben",
-    "SL01": "Service nicht verfuegbar",
-    "RC01": "Ungueltige BIC",
+    "SL01": "Service nicht verfügbar",
+    "RC01": "Ungültige BIC",
 }
 
 
@@ -175,7 +175,7 @@ class DirectDebitEntry:
     # Beschreibung
     remittance_info: str = ""  # Verwendungszweck
 
-    # Ruecklauf
+    # Rücklauf
     return_reason: Optional[ReturnReasonCode] = None
     return_date: Optional[date] = None
 
@@ -187,7 +187,7 @@ class DirectDebitEntry:
 
 @dataclass
 class DirectDebitBatch:
-    """Batch von Lastschriften fuer gemeinsame Einreichung."""
+    """Batch von Lastschriften für gemeinsame Einreichung."""
     # Pflichtfelder (keine Defaults)
     id: UUID
     company_id: UUID
@@ -233,7 +233,7 @@ class PreNotification:
 
 @dataclass
 class DirectDebitStatistics:
-    """Statistiken ueber Lastschriften."""
+    """Statistiken über Lastschriften."""
     company_id: UUID
     period_start: date
     period_end: date
@@ -267,10 +267,10 @@ class DirectDebitStatistics:
 # =============================================================================
 
 class SEPADirectDebitService:
-    """Service fuer SEPA-Lastschriften."""
+    """Service für SEPA-Lastschriften."""
 
     # Konfiguration
-    MIN_PRENOTIFICATION_DAYS = 14  # Mindestens 14 Tage Vorlauf fuer Pre-Notification
+    MIN_PRENOTIFICATION_DAYS = 14  # Mindestens 14 Tage Vorlauf für Pre-Notification
     MANDATE_EXPIRY_MONTHS = 36  # Mandat verfaellt nach 36 Monaten ohne Nutzung
 
     # Mindest-Vorlaufzeiten (Werktage)
@@ -321,7 +321,7 @@ class SEPADirectDebitService:
         """
         # Validiere IBAN
         if not self._validate_iban(debtor_iban):
-            raise ValueError("Ungueltige IBAN")
+            raise ValueError("Ungültige IBAN")
 
         # Generiere eindeutige Mandatsreferenz
         mandate_reference = self._generate_mandate_reference(company_id, entity_id)
@@ -391,7 +391,7 @@ class SEPADirectDebitService:
         self,
         mandate: SEPAMandate,
     ) -> bool:
-        """Prueft ob Mandat abgelaufen ist (36 Monate ohne Nutzung).
+        """Prüft ob Mandat abgelaufen ist (36 Monate ohne Nutzung).
 
         Returns:
             True wenn abgelaufen, sonst False
@@ -428,10 +428,10 @@ class SEPADirectDebitService:
             db: Datenbank-Session
             mandate: SEPA-Mandat
             amount: Einzugsbetrag
-            collection_date: Gewuenschtes Einzugsdatum
+            collection_date: Gewünschtes Einzugsdatum
             remittance_info: Verwendungszweck
             invoice_reference: Rechnungsnummer (optional)
-            linked_invoice_id: Verknuepfte Rechnungs-ID (optional)
+            linked_invoice_id: Verknüpfte Rechnungs-ID (optional)
 
         Returns:
             Erstellte DirectDebitEntry
@@ -443,14 +443,14 @@ class SEPADirectDebitService:
         if amount <= 0:
             raise ValueError("Betrag muss positiv sein")
 
-        # Pruefe Vorlaufzeit
+        # Prüfe Vorlaufzeit
         min_lead_days = self._get_min_lead_days(mandate.mandate_type, self._get_sequence_type(mandate))
         min_collection_date = self._add_business_days(date.today(), min_lead_days)
 
         if collection_date < min_collection_date:
             raise ValueError(
                 f"Einzugsdatum muss mindestens {min_lead_days} Werktage in der Zukunft liegen "
-                f"(fruehestens {min_collection_date})"
+                f"(frühestens {min_collection_date})"
             )
 
         # Sequenztyp bestimmen
@@ -513,7 +513,7 @@ class SEPADirectDebitService:
         """
         # Validiere Glaeubiger-ID (Format: DExxZZZ...)
         if not self._validate_creditor_id(creditor_id):
-            raise ValueError("Ungueltige Glaeubiger-Identifikationsnummer")
+            raise ValueError("Ungültige Glaeubiger-Identifikationsnummer")
 
         batch = DirectDebitBatch(
             id=uuid4(),
@@ -550,9 +550,9 @@ class SEPADirectDebitService:
         if entry.status != DirectDebitStatus.DRAFT:
             raise ValueError("Lastschrift wurde bereits eingereicht")
 
-        # Pruefe Konsistenz
+        # Prüfe Konsistenz
         if entry.requested_collection_date != batch.requested_collection_date:
-            raise ValueError("Einzugsdatum stimmt nicht mit Batch ueberein")
+            raise ValueError("Einzugsdatum stimmt nicht mit Batch überein")
 
         batch.entries.append(entry)
         batch.entry_count = len(batch.entries)
@@ -575,7 +575,7 @@ class SEPADirectDebitService:
         batch: DirectDebitBatch,
         mandates: Dict[UUID, SEPAMandate],
     ) -> List[PreNotification]:
-        """Generiert Pre-Notifications fuer alle Eintraege im Batch.
+        """Generiert Pre-Notifications für alle Einträge im Batch.
 
         Args:
             batch: Lastschrift-Batch
@@ -627,7 +627,7 @@ class SEPADirectDebitService:
         batch: DirectDebitBatch,
         mandates: Dict[UUID, SEPAMandate],
     ) -> str:
-        """Generiert SEPA pain.008 XML fuer Batch.
+        """Generiert SEPA pain.008 XML für Batch.
 
         Args:
             batch: Lastschrift-Batch
@@ -637,7 +637,7 @@ class SEPADirectDebitService:
             XML-String
         """
         if not batch.entries:
-            raise ValueError("Batch enthaelt keine Eintraege")
+            raise ValueError("Batch enthält keine Einträge")
 
         message_id = self._generate_message_id()
         creation_datetime = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
@@ -777,7 +777,7 @@ class SEPADirectDebitService:
         return xml_content
 
     # -------------------------------------------------------------------------
-    # Ruecklauf-Bearbeitung
+    # Rücklauf-Bearbeitung
     # -------------------------------------------------------------------------
 
     async def process_return(
@@ -786,12 +786,12 @@ class SEPADirectDebitService:
         reason_code: ReturnReasonCode,
         return_date: date,
     ) -> DirectDebitEntry:
-        """Verarbeitet R-Transaktion (Ruecklauf).
+        """Verarbeitet R-Transaktion (Rücklauf).
 
         Args:
             entry: Lastschrift-Eintrag
             reason_code: R-Code
-            return_date: Datum der Rueckgabe
+            return_date: Datum der Rückgabe
 
         Returns:
             Aktualisierter Eintrag
@@ -824,12 +824,12 @@ class SEPADirectDebitService:
         period_start: date,
         period_end: date,
     ) -> DirectDebitStatistics:
-        """Berechnet Statistiken ueber Lastschriften.
+        """Berechnet Statistiken über Lastschriften.
 
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
-            entries: Liste der Lastschrift-Eintraege
+            entries: Liste der Lastschrift-Einträge
             period_start: Periodenstart
             period_end: Periodenende
 
@@ -885,11 +885,11 @@ class SEPADirectDebitService:
         if len(iban) < 15 or len(iban) > 34:
             return False
 
-        # Grundformat pruefen
+        # Grundformat prüfen
         if not re.match(r'^[A-Z]{2}[0-9]{2}[A-Z0-9]+$', iban):
             return False
 
-        # Checksum pruefen
+        # Checksum prüfen
         check_iban = iban[4:] + iban[:4]
         numeric = ''
         for char in check_iban:
@@ -907,7 +907,7 @@ class SEPADirectDebitService:
     def _validate_creditor_id(self, creditor_id: str) -> bool:
         """Validiert Glaeubiger-Identifikationsnummer.
 
-        Format: DExxZZZ... (Laendercode + Pruefziffer + Geschaeftsbereichskennung + Nationales Kennzeichen)
+        Format: DExxZZZ... (Ländercode + Prüfziffer + Geschäftsbereichskennung + Nationales Kennzeichen)
         """
         if not creditor_id or len(creditor_id) < 8:
             return False
@@ -929,7 +929,7 @@ class SEPADirectDebitService:
         return f"E2E-{uuid4().hex[:16].upper()}"
 
     def _generate_message_id(self) -> str:
-        """Generiert Message-ID fuer XML."""
+        """Generiert Message-ID für XML."""
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
         return f"MSG-{timestamp}-{uuid4().hex[:8].upper()}"
 
@@ -951,7 +951,7 @@ class SEPADirectDebitService:
         return SequenceType.RCUR
 
     def _get_min_lead_days(self, debit_type: DirectDebitType, sequence_type: SequenceType) -> int:
-        """Gibt minimale Vorlaufzeit in Werktagen zurueck."""
+        """Gibt minimale Vorlaufzeit in Werktagen zurück."""
         return self.LEAD_TIMES[debit_type][sequence_type]
 
     def _add_business_days(self, start_date: date, days: int) -> date:
@@ -981,7 +981,7 @@ _sepa_direct_debit_service: Optional[SEPADirectDebitService] = None
 
 
 def get_sepa_direct_debit_service() -> SEPADirectDebitService:
-    """Gibt Singleton-Instanz zurueck."""
+    """Gibt Singleton-Instanz zurück."""
     global _sepa_direct_debit_service
     if _sepa_direct_debit_service is None:
         _sepa_direct_debit_service = SEPADirectDebitService()

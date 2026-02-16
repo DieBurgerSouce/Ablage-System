@@ -2,12 +2,12 @@
 """
 AIMentorService - Proaktive Hilfe und personalisierte Tipps.
 
-Verantwortlich fuer:
+Verantwortlich für:
 - Kontextuelle Tipps basierend auf aktueller Seite
 - Verhaltensmuster-Analyse
 - Personalisierte Empfehlungen
 - Progressive Disclosure (Anfaenger -> Fortgeschrittener)
-- Shortcut-Vorschlaege
+- Shortcut-Vorschläge
 
 Vision 2.0 - Feature #9 (Januar 2026)
 """
@@ -44,7 +44,7 @@ class TipCategory(str, Enum):
 
 
 class TipPriority(str, Enum):
-    """Prioritaet eines Tipps."""
+    """Priorität eines Tipps."""
 
     LOW = "low"
     MEDIUM = "medium"
@@ -93,7 +93,7 @@ class BehaviorPattern:
 
 @dataclass
 class MentorPreferences:
-    """Benutzer-Praeferenzen fuer den AI-Mentor."""
+    """Benutzer-Praeferenzen für den AI-Mentor."""
 
     enabled: bool = True
     show_shortcuts: bool = True
@@ -114,7 +114,7 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
     {
         "id": "tip_shortcut_search",
         "title": "Schnellsuche",
-        "content": "Druecken Sie Ctrl+K oder Cmd+K, um die Schnellsuche zu oeffnen. "
+        "content": "Drücken Sie Ctrl+K oder Cmd+K, um die Schnellsuche zu öffnen. "
                    "So finden Sie Dokumente in Sekunden.",
         "category": TipCategory.SHORTCUT,
         "priority": TipPriority.HIGH,
@@ -125,7 +125,7 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
     {
         "id": "tip_shortcut_upload",
         "title": "Schnell-Upload",
-        "content": "Mit Ctrl+U koennen Sie direkt ein neues Dokument hochladen, "
+        "content": "Mit Ctrl+U können Sie direkt ein neues Dokument hochladen, "
                    "ohne den Upload-Button zu suchen.",
         "category": TipCategory.SHORTCUT,
         "priority": TipPriority.MEDIUM,
@@ -147,7 +147,7 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
     {
         "id": "tip_shortcut_approve",
         "title": "Schnelles Genehmigen",
-        "content": "In der Validierungsansicht: A fuer Genehmigen, R fuer Ablehnen. "
+        "content": "In der Validierungsansicht: A für Genehmigen, R für Ablehnen. "
                    "Das spart viele Klicks!",
         "category": TipCategory.SHORTCUT,
         "priority": TipPriority.HIGH,
@@ -160,12 +160,12 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
         "id": "tip_auto_tagging",
         "title": "Automatische Tags",
         "content": "Wussten Sie, dass das System automatisch Tags basierend auf dem "
-                   "Dokumentinhalt vorschlaegt? Aktivieren Sie dies in den Einstellungen.",
+                   "Dokumentinhalt vorschlägt? Aktivieren Sie dies in den Einstellungen.",
         "category": TipCategory.AUTOMATION,
         "priority": TipPriority.HIGH,
         "context_pages": ["documents", "settings", "tags"],
         "action_url": "/settings/ocr",
-        "action_label": "Einstellungen oeffnen",
+        "action_label": "Einstellungen öffnen",
         "experience_level": UserExperience.BEGINNER,
     },
     {
@@ -194,9 +194,9 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
     },
     {
         "id": "tip_folder_watch",
-        "title": "Ordner-Ueberwachung",
+        "title": "Ordner-Überwachung",
         "content": "Lassen Sie Dokumente automatisch aus einem Ordner importieren. "
-                   "Ideal fuer Scanner-Ausgabe-Ordner!",
+                   "Ideal für Scanner-Ausgabe-Ordner!",
         "category": TipCategory.AUTOMATION,
         "priority": TipPriority.MEDIUM,
         "context_pages": ["settings", "imports"],
@@ -208,7 +208,7 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
     {
         "id": "tip_ocr_template",
         "title": "OCR-Templates erstellen",
-        "content": "Fuer wiederkehrende Lieferanten: Erstellen Sie ein OCR-Template "
+        "content": "Für wiederkehrende Lieferanten: Erstellen Sie ein OCR-Template "
                    "und erreichen Sie 99%+ Genauigkeit statt 95%.",
         "category": TipCategory.OPTIMIZATION,
         "priority": TipPriority.HIGH,
@@ -220,7 +220,7 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
     {
         "id": "tip_batch_processing",
         "title": "Stapelverarbeitung",
-        "content": "Verarbeiten Sie mehrere Dokumente gleichzeitig! Waehlen Sie "
+        "content": "Verarbeiten Sie mehrere Dokumente gleichzeitig! Wählen Sie "
                    "mehrere Dateien beim Upload aus.",
         "category": TipCategory.OPTIMIZATION,
         "priority": TipPriority.MEDIUM,
@@ -236,7 +236,7 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
         "priority": TipPriority.HIGH,
         "context_pages": ["invoices", "banking", "dashboard"],
         "action_url": "/banking/skonto",
-        "action_label": "Skonto-Uebersicht",
+        "action_label": "Skonto-Übersicht",
         "experience_level": UserExperience.BEGINNER,
     },
     # Features
@@ -244,7 +244,7 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
         "id": "tip_feature_search_syntax",
         "title": "Erweiterte Suchsyntax",
         "content": "Nutzen Sie Suchoperatoren: 'betrag:>1000', 'datum:2024-01', "
-                   "'lieferant:Mueller' fuer praezise Ergebnisse.",
+                   "'lieferant:Mueller' für praezise Ergebnisse.",
         "category": TipCategory.FEATURE,
         "priority": TipPriority.MEDIUM,
         "context_pages": ["documents", "search"],
@@ -254,19 +254,19 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
         "id": "tip_feature_communication_hub",
         "title": "360-Grad Kundensicht",
         "content": "Im Kommunikations-Hub sehen Sie alle Interaktionen mit einem "
-                   "Geschaeftspartner: Emails, Rechnungen, Mahnungen, Notizen.",
+                   "Geschäftspartner: Emails, Rechnungen, Mahnungen, Notizen.",
         "category": TipCategory.FEATURE,
         "priority": TipPriority.HIGH,
         "context_pages": ["entities", "customers", "suppliers"],
         "action_url": "/entities",
-        "action_label": "Geschaeftspartner oeffnen",
+        "action_label": "Geschäftspartner öffnen",
         "experience_level": UserExperience.BEGINNER,
     },
     {
         "id": "tip_feature_risk_score",
         "title": "Risiko-Score verstehen",
-        "content": "Jeder Geschaeftspartner hat einen Risiko-Score (0-100). "
-                   "Hohe Werte bedeuten erhoehtes Ausfallrisiko.",
+        "content": "Jeder Geschäftspartner hat einen Risiko-Score (0-100). "
+                   "Hohe Werte bedeuten erhöhtes Ausfallrisiko.",
         "category": TipCategory.FEATURE,
         "priority": TipPriority.MEDIUM,
         "context_pages": ["entities", "risk", "invoices"],
@@ -275,8 +275,8 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
     {
         "id": "tip_feature_document_chains",
         "title": "Dokumenten-Ketten",
-        "content": "Verknuepfen Sie Angebot -> Auftrag -> Lieferschein -> Rechnung "
-                   "fuer lueckenlose Nachverfolgung.",
+        "content": "Verknüpfen Sie Angebot -> Auftrag -> Lieferschein -> Rechnung "
+                   "für lückenlose Nachverfolgung.",
         "category": TipCategory.FEATURE,
         "priority": TipPriority.MEDIUM,
         "context_pages": ["documents", "chains"],
@@ -287,8 +287,8 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
     # Best Practices
     {
         "id": "tip_bp_regular_backup",
-        "title": "Regelmaessige Exports",
-        "content": "Exportieren Sie regelmaessig wichtige Daten fuer Ihr Backup. "
+        "title": "Regelmäßige Exports",
+        "content": "Exportieren Sie regelmäßig wichtige Daten für Ihr Backup. "
                    "Nutzen Sie den Steuerberater-Export monatlich.",
         "category": TipCategory.BEST_PRACTICE,
         "priority": TipPriority.LOW,
@@ -297,9 +297,9 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
     },
     {
         "id": "tip_bp_entity_cleanup",
-        "title": "Dubletten-Pruefung",
-        "content": "Pruefen Sie regelmaessig auf doppelte Geschaeftspartner. "
-                   "Das verbessert Ihre Datenqualitaet und Reports.",
+        "title": "Dubletten-Prüfung",
+        "content": "Prüfen Sie regelmäßig auf doppelte Geschäftspartner. "
+                   "Das verbessert Ihre Datenqualität und Reports.",
         "category": TipCategory.BEST_PRACTICE,
         "priority": TipPriority.LOW,
         "context_pages": ["entities", "admin"],
@@ -308,25 +308,25 @@ TIP_LIBRARY: List[Dict[str, Any]] = [
     # Warnings
     {
         "id": "tip_warn_incomplete_profile",
-        "title": "Firmenprofil vervollstaendigen",
-        "content": "Ihr Firmenprofil ist unvollstaendig. Fuer korrekte Mahnungen "
+        "title": "Firmenprofil vervollständigen",
+        "content": "Ihr Firmenprofil ist unvollständig. Für korrekte Mahnungen "
                    "und Exporte sollten alle Angaben gepflegt sein.",
         "category": TipCategory.WARNING,
         "priority": TipPriority.HIGH,
         "context_pages": ["settings", "admin", "company"],
         "action_url": "/settings/company",
-        "action_label": "Profil vervollstaendigen",
+        "action_label": "Profil vervollständigen",
         "experience_level": UserExperience.BEGINNER,
     },
 ]
 
 
 class AIMentorService:
-    """Service fuer proaktive Hilfe und personalisierte Tipps.
+    """Service für proaktive Hilfe und personalisierte Tipps.
 
     Analysiert Benutzerverhalten und gibt kontextuelle Empfehlungen:
-    - Shortcuts fuer haeufige Aktionen
-    - Automatisierungsmoeglichkeiten
+    - Shortcuts für häufige Aktionen
+    - Automatisierungsmöglichkeiten
     - Feature-Entdeckung
     - Best Practices
     """
@@ -334,7 +334,7 @@ class AIMentorService:
     # Pattern Detection Thresholds
     REPETITIVE_ACTION_THRESHOLD = 5  # Gleiche Aktion X mal = Pattern
     PATTERN_ANALYSIS_DAYS = 7  # Letzte X Tage analysieren
-    MIN_ACTIONS_FOR_PATTERN = 10  # Mindestaktionen fuer Analyse
+    MIN_ACTIONS_FOR_PATTERN = 10  # Mindestaktionen für Analyse
 
     def __init__(self, db: AsyncSession):
         """Initialisiert den Service.
@@ -370,7 +370,7 @@ class AIMentorService:
         preferences: Optional[MentorPreferences] = None,
         max_tips: int = 3,
     ) -> List[Tip]:
-        """Holt kontextuelle Tipps fuer die aktuelle Seite.
+        """Holt kontextuelle Tipps für die aktuelle Seite.
 
         Args:
             user_id: Benutzer-ID
@@ -414,7 +414,7 @@ class AIMentorService:
 
             matching_tips.append(tip)
 
-        # Nach Prioritaet sortieren
+        # Nach Priorität sortieren
         priority_order = {
             TipPriority.HIGH: 0,
             TipPriority.MEDIUM: 1,
@@ -433,7 +433,7 @@ class AIMentorService:
         return matching_tips[:max_tips]
 
     def _matches_context(self, tip: Tip, context_page: str) -> bool:
-        """Prueft ob Tipp zum Kontext passt."""
+        """Prüft ob Tipp zum Kontext passt."""
         if not tip.context_pages:
             return True  # Universeller Tipp
 
@@ -447,7 +447,7 @@ class AIMentorService:
         return False
 
     def _matches_experience(self, tip: Tip, user_level: UserExperience) -> bool:
-        """Prueft ob Tipp zur Erfahrungsstufe passt.
+        """Prüft ob Tipp zur Erfahrungsstufe passt.
 
         Fortgeschrittene sehen alle Tipps.
         Anfaenger sehen nur Anfaenger-Tipps.
@@ -546,7 +546,7 @@ class AIMentorService:
             return BehaviorPattern(
                 id=f"pattern_frequent_view_{context_page}",
                 pattern_type="frequent_view",
-                description=f"Sie besuchen '{context_page}' haeufig ({frequency}x)",
+                description=f"Sie besuchen '{context_page}' häufig ({frequency}x)",
                 frequency=frequency,
                 last_occurrence=last_at,
                 recommendation="Erwaegen Sie, diese Seite als Startseite festzulegen.",
@@ -557,10 +557,10 @@ class AIMentorService:
             return BehaviorPattern(
                 id="pattern_frequent_upload",
                 pattern_type="frequent_upload",
-                description=f"Sie laden haeufig Dokumente hoch ({frequency}x)",
+                description=f"Sie laden häufig Dokumente hoch ({frequency}x)",
                 frequency=frequency,
                 last_occurrence=last_at,
-                recommendation="Nutzen Sie den Ordner-Import fuer automatische Uploads.",
+                recommendation="Nutzen Sie den Ordner-Import für automatische Uploads.",
                 potential_savings_minutes=frequency * 2,
             )
 
@@ -572,7 +572,7 @@ class AIMentorService:
                            f"{int(avg_time_ms / 1000)} Sekunden",
                 frequency=frequency,
                 last_occurrence=last_at,
-                recommendation="Nutzen Sie Keyboard-Shortcuts fuer schnellere Bearbeitung.",
+                recommendation="Nutzen Sie Keyboard-Shortcuts für schnellere Bearbeitung.",
                 potential_savings_minutes=int((avg_time_ms / 1000) * frequency / 60),
             )
 
@@ -596,9 +596,9 @@ class AIMentorService:
         if pattern.pattern_type == "frequent_upload":
             return Tip(
                 id=f"tip_dynamic_{pattern.id}",
-                title="Automatischer Import moeglich",
+                title="Automatischer Import möglich",
                 content=f"Sie haben {pattern.frequency}x manuell Dokumente hochgeladen. "
-                       f"Mit dem Ordner-Import koennten Sie etwa {pattern.potential_savings_minutes} "
+                       f"Mit dem Ordner-Import könnten Sie etwa {pattern.potential_savings_minutes} "
                        f"Minuten pro Woche sparen.",
                 category=TipCategory.AUTOMATION,
                 priority=TipPriority.HIGH,
@@ -613,7 +613,7 @@ class AIMentorService:
                 title="Schneller arbeiten mit Shortcuts",
                 content=f"Ihre durchschnittliche Bearbeitungszeit betraegt "
                        f"{int(pattern.potential_savings_minutes / pattern.frequency * 60)} Sekunden. "
-                       f"Mit Shortcuts koennten Sie schneller werden.",
+                       f"Mit Shortcuts könnten Sie schneller werden.",
                 category=TipCategory.SHORTCUT,
                 priority=TipPriority.MEDIUM,
                 action_url="/help/shortcuts",
@@ -778,7 +778,7 @@ class AIMentorService:
         return await self.get_mentor_preferences(user_id)
 
     async def get_all_tips(self) -> List[Tip]:
-        """Holt alle verfuegbaren Tipps.
+        """Holt alle verfügbaren Tipps.
 
         Returns:
             Liste aller Tipps
@@ -803,7 +803,7 @@ class AIMentorService:
 
 
 async def get_mentor_service(db: AsyncSession) -> AIMentorService:
-    """Factory-Funktion fuer AIMentorService.
+    """Factory-Funktion für AIMentorService.
 
     Args:
         db: Async Database Session

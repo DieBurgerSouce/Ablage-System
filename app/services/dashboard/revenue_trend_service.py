@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """Revenue Trend Service.
 
-Liefert Daten fuer das Umsatz-Trend Widget:
+Liefert Daten für das Umsatz-Trend Widget:
 - Umsatz nach Kategorie/Monat
 - Vergleichszeitraeume (Vorperiode, YoY)
-- Zeitreihen-Daten fuer Recharts
+- Zeitreihen-Daten für Recharts
 
 Enterprise Feature: Februar 2026
 """
@@ -50,9 +50,9 @@ class RevenueTrendResult:
 
 
 class RevenueTrendService:
-    """Service fuer Umsatz-Trend-Analysen im Dashboard."""
+    """Service für Umsatz-Trend-Analysen im Dashboard."""
 
-    # Geschaetzter Aufwandsanteil nach Dokumenttyp
+    # Geschätzter Aufwandsanteil nach Dokumenttyp
     EXPENSE_RATIOS: Dict[str, float] = {
         "eingangsrechnung": 0.65,
         "ausgangsrechnung": 0.45,
@@ -68,13 +68,13 @@ class RevenueTrendService:
         date_to: Optional[date] = None,
         compare_period: Optional[str] = None,
     ) -> RevenueTrendResult:
-        """Erstelle Umsatz-Trend fuer Dashboard-Widget.
+        """Erstelle Umsatz-Trend für Dashboard-Widget.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            company_id: Firmen-ID fuer Multi-Tenant
-            date_from: Startdatum (Standard: 6 Monate zurueck)
+            company_id: Firmen-ID für Multi-Tenant
+            date_from: Startdatum (Standard: 6 Monate zurück)
             date_to: Enddatum (Standard: heute)
             compare_period: Vergleichszeitraum (previous_period, yoy)
 
@@ -87,7 +87,7 @@ class RevenueTrendService:
             date_to = now.date()
         if date_from is None:
             date_from = (date_to.replace(day=1) - timedelta(days=1)).replace(day=1)
-            # 6 Monate zurueck
+            # 6 Monate zurück
             for _ in range(5):
                 date_from = (date_from - timedelta(days=1)).replace(day=1)
 
@@ -131,7 +131,7 @@ class RevenueTrendService:
             total_expenses = 0.0
 
             for row in rows:
-                revenue = float(row[1]) * 1000  # Skalierung fuer Demo
+                revenue = float(row[1]) * 1000  # Skalierung für Demo
                 expense_ratio = self.EXPENSE_RATIOS.get("default", 0.60)
                 expense = revenue * expense_ratio
                 net = revenue - expense
@@ -190,7 +190,7 @@ class RevenueTrendService:
         total_revenue: float,
         total_expenses: float,
     ) -> Optional[Dict[str, str]]:
-        """Erstelle Vergleichsdaten fuer vorherige Periode."""
+        """Erstelle Vergleichsdaten für vorherige Periode."""
         if compare_period is None:
             return None
 

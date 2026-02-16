@@ -2,12 +2,12 @@
 """
 Ad-Hoc Report Service.
 
-Kernlogik fuer Feature #12: Ad-Hoc Reporting.
-Erstellt, validiert und fuehrt benutzerdefinierte Reports aus.
+Kernlogik für Feature #12: Ad-Hoc Reporting.
+Erstellt, validiert und führt benutzerdefinierte Reports aus.
 
 SICHERHEIT:
 - Alle Spalten-/Tabellennamen werden gegen Whitelists validiert
-- Keine rohen SQL-Injections moeglich (parametrisierte Queries)
+- Keine rohen SQL-Injections möglich (parametrisierte Queries)
 - Company-Isolation via company_id Filter
 """
 
@@ -216,12 +216,12 @@ def _validate_column_name(name: str) -> bool:
 
 
 def get_available_data_sources() -> List[Dict[str, str]]:
-    """Gibt die verfuegbaren Datenquellen mit Beschreibung zurueck."""
+    """Gibt die verfügbaren Datenquellen mit Beschreibung zurück."""
     return [
         {
             "id": DataSourceType.INVOICES.value,
             "name": "Rechnungen",
-            "description": "Rechnungsdaten mit Betraegen, Faelligkeiten und Status",
+            "description": "Rechnungsdaten mit Betraegen, Fälligkeiten und Status",
         },
         {
             "id": DataSourceType.DOCUMENTS.value,
@@ -230,7 +230,7 @@ def get_available_data_sources() -> List[Dict[str, str]]:
         },
         {
             "id": DataSourceType.ENTITIES.value,
-            "name": "Geschaeftspartner",
+            "name": "Geschäftspartner",
             "description": "Kunden und Lieferanten mit Risiko-Scores",
         },
         {
@@ -242,7 +242,7 @@ def get_available_data_sources() -> List[Dict[str, str]]:
 
 
 def get_available_columns(data_source: str) -> List[Dict[str, str]]:
-    """Gibt die verfuegbaren Spalten fuer eine Datenquelle zurueck.
+    """Gibt die verfügbaren Spalten für eine Datenquelle zurück.
 
     SECURITY: Returns only whitelisted columns.
     """
@@ -281,7 +281,7 @@ def get_available_columns(data_source: str) -> List[Dict[str, str]]:
 
 
 class AdHocReportService:
-    """Service fuer Ad-Hoc Report CRUD und Ausfuehrung."""
+    """Service für Ad-Hoc Report CRUD und Ausführung."""
 
     # ------------------------------------------------------------------
     # VALIDATION
@@ -313,9 +313,9 @@ class AdHocReportService:
         for ds_config in data_sources:
             source = ds_config.get("source", "")
             if source not in valid_sources:
-                errors.append(f"Ungueltige Datenquelle: {source}")
+                errors.append(f"Ungültige Datenquelle: {source}")
             elif source not in registry or not registry[source]:
-                errors.append(f"Datenquelle nicht verfuegbar: {source}")
+                errors.append(f"Datenquelle nicht verfügbar: {source}")
             else:
                 source_names.append(source)
 
@@ -332,7 +332,7 @@ class AdHocReportService:
             col_source = col.get("source", source_names[0] if source_names else "")
 
             if not _validate_column_name(col_name):
-                errors.append(f"Ungueltiger Spaltenname: {col_name}")
+                errors.append(f"Ungültiger Spaltenname: {col_name}")
                 continue
 
             if col_source not in source_names:
@@ -348,7 +348,7 @@ class AdHocReportService:
             if agg:
                 valid_aggs = {a.value for a in AggregationType}
                 if agg not in valid_aggs:
-                    errors.append(f"Ungueltige Aggregation '{agg}' fuer Spalte '{col_name}'")
+                    errors.append(f"Ungültige Aggregation '{agg}' für Spalte '{col_name}'")
 
         # Validate filters
         for flt in filters:
@@ -357,11 +357,11 @@ class AdHocReportService:
             flt_source = flt.get("source", source_names[0] if source_names else "")
 
             if not _validate_column_name(str(flt_column)):
-                errors.append(f"Ungueltiger Filter-Spaltenname: {flt_column}")
+                errors.append(f"Ungültiger Filter-Spaltenname: {flt_column}")
                 continue
 
             if flt_operator not in ALLOWED_OPERATORS:
-                errors.append(f"Ungueltiger Operator: {flt_operator}")
+                errors.append(f"Ungültiger Operator: {flt_operator}")
 
             if isinstance(flt_source, str) and flt_source in registry:
                 source_cols = registry[flt_source]
@@ -374,7 +374,7 @@ class AdHocReportService:
         if group_by:
             for gb_col in group_by:
                 if not _validate_column_name(gb_col):
-                    errors.append(f"Ungueltiger GROUP BY Spaltenname: {gb_col}")
+                    errors.append(f"Ungültiger GROUP BY Spaltenname: {gb_col}")
 
         # Validate order_by
         if order_by:
@@ -382,9 +382,9 @@ class AdHocReportService:
                 ob_col = ob.get("column", "")
                 ob_dir = ob.get("direction", "asc")
                 if not _validate_column_name(ob_col):
-                    errors.append(f"Ungueltiger ORDER BY Spaltenname: {ob_col}")
+                    errors.append(f"Ungültiger ORDER BY Spaltenname: {ob_col}")
                 if ob_dir not in ("asc", "desc"):
-                    errors.append(f"Ungueltige Sortierrichtung: {ob_dir}")
+                    errors.append(f"Ungültige Sortierrichtung: {ob_dir}")
 
         return errors
 
@@ -484,7 +484,7 @@ class AdHocReportService:
         limit: int = 100,
         offset: int = 0,
     ) -> List[AdHocReport]:
-        """Listet oeffentlich geteilte Reports auf."""
+        """Listet öffentlich geteilte Reports auf."""
         result = await db.execute(
             select(AdHocReport)
             .where(
@@ -628,7 +628,7 @@ class AdHocReportService:
         SECURITY:
         - Alle Spalten werden gegen das Whitelist-Registry validiert
         - Company-Isolation wird IMMER erzwungen
-        - Keine Raw-SQL, nur SQLAlchemy-Ausdruecke
+        - Keine Raw-SQL, nur SQLAlchemy-Ausdrücke
 
         Returns:
             Tuple of (sqlalchemy select statement, list of column aliases)
@@ -660,7 +660,7 @@ class AdHocReportService:
 
             # SECURITY: Validate against whitelist
             if not _validate_column_name(col_name):
-                raise ValueError(f"Ungueltiger Spaltenname: {col_name}")
+                raise ValueError(f"Ungültiger Spaltenname: {col_name}")
 
             source_cols = registry.get(col_source, {})
             if col_name not in source_cols:
@@ -690,7 +690,7 @@ class AdHocReportService:
             column_aliases.append(col_alias)
 
         if not select_columns:
-            raise ValueError("Keine gueltigen Spalten konfiguriert")
+            raise ValueError("Keine gültigen Spalten konfiguriert")
 
         # Build base query
         stmt = select(*select_columns).select_from(primary_model)
@@ -891,7 +891,7 @@ class AdHocReportService:
         user_id: Optional[uuid.UUID] = None,
         export_format: Optional[str] = None,
     ) -> Dict[str, Union[List[RowData], List[str], int, str]]:
-        """Fuehrt einen Report aus und gibt die Ergebnisse zurueck.
+        """Führt einen Report aus und gibt die Ergebnisse zurück.
 
         Returns:
             Dict mit keys: rows, columns, row_count, execution_time_ms
@@ -1004,7 +1004,7 @@ class AdHocReportService:
     ) -> bytes:
         """Generiert Excel-Bytes aus den Report-Daten.
 
-        Verwendet openpyxl fuer native XLSX-Generierung.
+        Verwendet openpyxl für native XLSX-Generierung.
         """
         try:
             from openpyxl import Workbook

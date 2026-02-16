@@ -1,7 +1,7 @@
 """
-WebSocket Endpoint fuer Chat Collaboration.
+WebSocket Endpoint für Chat Collaboration.
 
-Real-time Kommunikation fuer:
+Real-time Kommunikation für:
 - Nachrichten-Synchronisation
 - Typing-Indikatoren
 - Presence-Tracking
@@ -43,7 +43,7 @@ async def authenticate_websocket(token: str) -> tuple[User | None, str | None]:
         Tuple von (User, error_message)
     """
     try:
-        # Explizite Expiration-Pruefung fuer Enterprise Security
+        # Explizite Expiration-Prüfung für Enterprise Security
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
@@ -76,7 +76,7 @@ async def check_session_access(
     session_id: str,
 ) -> tuple[bool, str | None]:
     """
-    Prueft ob ein User Zugriff auf eine Chat Session hat.
+    Prüft ob ein User Zugriff auf eine Chat Session hat.
 
     Args:
         user_id: User ID
@@ -104,7 +104,7 @@ async def chat_websocket(
     token: str = Query(..., description="JWT Access Token"),
 ):
     """
-    WebSocket Endpoint fuer Chat Real-time Collaboration.
+    WebSocket Endpoint für Chat Real-time Collaboration.
 
     **Verbindung herstellen:**
     ```
@@ -140,7 +140,7 @@ async def chat_websocket(
         await websocket.close(code=4001)
         return
 
-    # 2. Zugriffspruefung
+    # 2. Zugriffsprüfung
     has_access, access_level = await check_session_access(user.id, session_id)
     if not has_access:
         await websocket.accept()

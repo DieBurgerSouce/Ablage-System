@@ -222,7 +222,7 @@ async def run_drift_detection(
         report = detector.detect_drift()
 
         logger.info(
-            "drift_detection_durchgefuehrt",
+            "drift_detection_durchgeführt",
             user_id=str(current_user.id),
             drift_score=report.overall_drift_score,
             severity=report.severity.value,
@@ -342,7 +342,7 @@ async def reset_drift_reference(
         detector.reset_reference_window()
 
         logger.info(
-            "drift_reference_zurueckgesetzt",
+            "drift_reference_zurückgesetzt",
             admin_user_id=str(admin_user.id),
         )
 
@@ -416,7 +416,7 @@ async def explain_routing_decision(
 
     except Exception as e:
         logger.error(
-            "routing_erklaerung_fehler",
+            "routing_erklärung_fehler",
             user_id=str(current_user.id),
             document_id=body.document_id,
             **safe_error_log(e),
@@ -481,7 +481,7 @@ async def get_routing_explanation(
         raise
     except Exception as e:
         logger.error(
-            "erklaerung_abruf_fehler",
+            "erklärung_abruf_fehler",
             user_id=str(current_user.id),
             document_id=document_id,
             **safe_error_log(e),
@@ -585,7 +585,7 @@ async def create_experiment(
 
     except ValueError as e:
         # SECURITY FIX 28-26: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="Ungueltige Experiment-Konfiguration.")
+        raise HTTPException(status_code=400, detail="Ungültige Experiment-Konfiguration.")
     except Exception as e:
         logger.error(
             "experiment_erstellung_fehler",
@@ -793,7 +793,7 @@ async def record_experiment_result(
 
     except ValueError as e:
         # SECURITY FIX 28-26: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="Ungueltige Experiment-Ergebnisdaten.")
+        raise HTTPException(status_code=400, detail="Ungültige Experiment-Ergebnisdaten.")
     except Exception as e:
         logger.error(
             "experiment_ergebnis_fehler",

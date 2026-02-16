@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-KI-Pipeline Satellite Models fuer Ablage-System.
+KI-Pipeline Satellite Models für Ablage-System.
 
 Intelligente Extraktion mit Confidence-Scoring, Lern-Profilen,
 Cross-Dokument-Matching und automatischer Zusammenfassung.
@@ -8,7 +8,7 @@ Cross-Dokument-Matching und automatischer Zusammenfassung.
 Modelle:
 - ExtractionConfidence: Confidence-Score pro extrahiertem Feld
 - LearningProfile: Per-Lieferant / Per-Dokumenttyp Lernprofile
-- CrossDocumentMatch: Verknuepfung und Abweichungen zwischen Dokumenten
+- CrossDocumentMatch: Verknüpfung und Abweichungen zwischen Dokumenten
 - DocumentSummary: Deutsche Zusammenfassungen
 
 Feinpoliert und durchdacht - KI-gestuetzte Dokumentenverarbeitung.
@@ -45,10 +45,10 @@ from app.db.models import Base, CrossDBJSON
 
 
 class ConfidenceLevel(str, Enum):
-    """Confidence-Stufen fuer extrahierte Felder.
+    """Confidence-Stufen für extrahierte Felder.
 
     HIGH (>90%): Auto-Akzeptieren (gruen)
-    MEDIUM (60-90%): Gelb markiert, manuell pruefen
+    MEDIUM (60-90%): Gelb markiert, manuell prüfen
     LOW (<60%): Rot markiert, manuell eingeben
     """
     HIGH = "high"
@@ -71,14 +71,14 @@ class MatchStatus(str, Enum):
 
 class ExtractionConfidence(Base):
     """
-    Confidence-Score fuer ein einzelnes extrahiertes Feld.
+    Confidence-Score für ein einzelnes extrahiertes Feld.
 
     Speichert den extrahierten Wert, Confidence-Score, die verwendete
     Extraktionsmethode und ggf. die manuelle Korrektur.
 
     Farbcodierung im Frontend:
     - Score > 0.9: Gruen (auto-akzeptiert)
-    - Score 0.6-0.9: Gelb (manuell pruefen)
+    - Score 0.6-0.9: Gelb (manuell prüfen)
     - Score < 0.6: Rot (manuell eingeben)
     """
     __tablename__ = "extraction_confidences"
@@ -124,7 +124,7 @@ class ExtractionConfidence(Base):
     # Extraktionsmethode
     extraction_method = Column(String(50), nullable=False)
 
-    # Zusaetzliche Metadaten (Model-Name, Verarbeitungszeit etc.)
+    # Zusätzliche Metadaten (Model-Name, Verarbeitungszeit etc.)
     extraction_metadata = Column(CrossDBJSON, default=dict)
 
     # Zeitstempel
@@ -157,7 +157,7 @@ class ExtractionConfidence(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertiert zu Dictionary fuer API-Responses."""
+        """Konvertiert zu Dictionary für API-Responses."""
         return {
             "id": str(self.id),
             "document_id": str(self.document_id),
@@ -178,9 +178,9 @@ class ExtractionConfidence(Base):
 
 class LearningProfile(Base):
     """
-    Lernprofil fuer Lieferanten oder Dokumenttypen.
+    Lernprofil für Lieferanten oder Dokumenttypen.
 
-    Speichert Korrekturhistorie und gelernte Feld-Ueberschreibungen.
+    Speichert Korrekturhistorie und gelernte Feld-Überschreibungen.
     Ab 3 identischen Korrekturen wird eine automatische Regel erstellt.
 
     'Wenn ich 3x den gleichen Lieferanten korrigiere, merke es dir.'
@@ -239,7 +239,7 @@ class LearningProfile(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertiert zu Dictionary fuer API-Responses."""
+        """Konvertiert zu Dictionary für API-Responses."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),
@@ -259,7 +259,7 @@ class LearningProfile(Base):
 
 class CrossDocumentMatch(Base):
     """
-    Cross-Dokument-Verknuepfung mit Abweichungsanalyse.
+    Cross-Dokument-Verknüpfung mit Abweichungsanalyse.
 
     Speichert Vergleichsergebnisse zwischen zwei Dokumenten:
     Bestellung <-> Lieferschein <-> Rechnung
@@ -354,7 +354,7 @@ class CrossDocumentMatch(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertiert zu Dictionary fuer API-Responses."""
+        """Konvertiert zu Dictionary für API-Responses."""
         return {
             "id": str(self.id),
             "company_id": str(self.company_id),
@@ -372,7 +372,7 @@ class CrossDocumentMatch(Base):
 
 class DocumentSummary(Base):
     """
-    Deutsche Zusammenfassung fuer ein Dokument.
+    Deutsche Zusammenfassung für ein Dokument.
 
     Format-Beispiel: 'Rechnung #4711 von Mueller GmbH, 3.450 EUR netto,
     Zahlungsziel 30 Tage, 2% Skonto bei 10 Tagen'
@@ -419,7 +419,7 @@ class DocumentSummary(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertiert zu Dictionary fuer API-Responses."""
+        """Konvertiert zu Dictionary für API-Responses."""
         return {
             "id": str(self.id),
             "document_id": str(self.document_id),

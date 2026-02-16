@@ -1,4 +1,4 @@
-"""Approval Service fuer Enterprise Genehmigungsworkflows.
+"""Approval Service für Enterprise Genehmigungsworkflows.
 
 Enterprise Feature: Verwaltet Genehmigungsanfragen mit:
 - Multi-Step Approval Chains
@@ -40,7 +40,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class ApprovalSummary:
-    """Zusammenfassung der Genehmigungen fuer ein Dashboard."""
+    """Zusammenfassung der Genehmigungen für ein Dashboard."""
 
     total_pending: int
     total_approved: int
@@ -48,7 +48,7 @@ class ApprovalSummary:
     total_escalated: int
     avg_resolution_hours: float
     overdue_count: int
-    my_pending: int  # Fuer aktuellen User
+    my_pending: int  # Für aktuellen User
 
 
 @dataclass
@@ -62,7 +62,7 @@ class ApprovalDecision:
 
 
 class ApprovalService:
-    """Service fuer Genehmigungsanfragen.
+    """Service für Genehmigungsanfragen.
 
     Verwaltet den kompletten Lebenszyklus von Genehmigungsanfragen
     inklusive Multi-Step Chains, Eskalation und Delegation.
@@ -98,19 +98,19 @@ class ApprovalService:
 
         Args:
             company_id: ID der Firma
-            entity_type: Typ der zu genehmigenden Entitaet
-            entity_id: ID der Entitaet
+            entity_type: Typ der zu genehmigenden Entität
+            entity_id: ID der Entität
             title: Titel der Anfrage
             approval_chain: Genehmiger-Kette
             requested_by_id: ID des Antragstellers
             description: Beschreibung
             amount: Betrag falls relevant
-            currency: Waehrung
-            priority: Prioritaet
+            currency: Währung
+            priority: Priorität
             triggered_by_rule_id: ID der ausloesenden Regel
-            workflow_execution_id: ID der Workflow-Ausfuehrung
+            workflow_execution_id: ID der Workflow-Ausführung
             sla_hours: Max. Bearbeitungszeit
-            metadata: Zusaetzliche Daten
+            metadata: Zusätzliche Daten
 
         Returns:
             Erstellte ApprovalRequest
@@ -166,7 +166,7 @@ class ApprovalService:
 
         logger.info(
             f"Genehmigungsanfrage erstellt: {title} (ID: {request.id}) "
-            f"fuer {entity_type}/{entity_id}, {len(approval_chain)} Schritte"
+            f"für {entity_type}/{entity_id}, {len(approval_chain)} Schritte"
         )
 
         return request
@@ -183,9 +183,9 @@ class ApprovalService:
 
         Args:
             company_id: ID der Firma
-            entity_type: Typ der Entitaet
-            entity_id: ID der Entitaet
-            entity_data: Daten der Entitaet
+            entity_type: Typ der Entität
+            entity_id: ID der Entität
+            entity_data: Daten der Entität
             requested_by_id: ID des Antragstellers
 
         Returns:
@@ -200,11 +200,11 @@ class ApprovalService:
 
         if not matched_rules:
             logger.debug(
-                f"Keine Genehmigungsregel fuer {entity_type}/{entity_id}"
+                f"Keine Genehmigungsregel für {entity_type}/{entity_id}"
             )
             return None
 
-        # Erste (hoechste Prioritaet) Regel verwenden
+        # Erste (hoechste Priorität) Regel verwenden
         best_match = matched_rules[0]
         rule = best_match.rule
 
@@ -248,11 +248,11 @@ class ApprovalService:
     ) -> Optional[ApprovalRequest]:
         """Holt eine Genehmigungsanfrage.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation angegeben werden.
 
         Args:
             request_id: ID der Anfrage
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
             include_steps: Steps mit laden
 
         Returns:
@@ -274,7 +274,7 @@ class ApprovalService:
 
         # SECURITY: Log Cross-Tenant Zugriffsversuch wenn company_id angegeben aber nicht gefunden
         if company_id and not request:
-            # Pruefen ob Request existiert aber zu anderer Company gehoert
+            # Prüfen ob Request existiert aber zu anderer Company gehoert
             check_query = select(ApprovalRequest.company_id).where(ApprovalRequest.id == request_id)
             check_result = await self.db.execute(check_query)
             actual_company_id = check_result.scalar_one_or_none()
@@ -293,7 +293,7 @@ class ApprovalService:
         user_id: UUID,
         company_id: Optional[UUID] = None,
     ) -> Sequence[ApprovalRequest]:
-        """Holt alle ausstehenden Genehmigungen fuer einen User.
+        """Holt alle ausstehenden Genehmigungen für einen User.
 
         Args:
             user_id: ID des Users
@@ -341,12 +341,12 @@ class ApprovalService:
     ) -> ApprovalDecision:
         """Genehmigt den aktuellen Schritt einer Anfrage.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation angegeben werden.
 
         Args:
             request_id: ID der Anfrage
             user_id: ID des genehmigenden Users
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
             notes: Optionale Notizen
 
         Returns:
@@ -381,13 +381,13 @@ class ApprovalService:
                 message="Kein aktueller Schritt gefunden",
             )
 
-        # Pruefen ob User berechtigt ist
+        # Prüfen ob User berechtigt ist
         if not await self._can_approve(current_step, user_id):
             return ApprovalDecision(
                 success=False,
                 request_status=request.status,
                 next_step=request.current_step,
-                message="Keine Berechtigung fuer diesen Schritt",
+                message="Keine Berechtigung für diesen Schritt",
             )
 
         # Schritt genehmigen
@@ -398,12 +398,12 @@ class ApprovalService:
         current_step.decision_by_id = user_id
         current_step.decision_notes = notes
 
-        # Naechsten Schritt oder abschliessen
+        # Nächsten Schritt oder abschließen
         if request.current_step < request.total_steps:
             request.current_step += 1
             next_step_num = request.current_step
 
-            # Naechsten Step aktivieren
+            # Nächsten Step aktivieren
             next_step = next(
                 (s for s in request.approval_steps if s.step_number == next_step_num),
                 None
@@ -418,13 +418,13 @@ class ApprovalService:
             request.resolved_at = now
             request.resolved_by_id = user_id
             next_step_num = None
-            message = "Anfrage vollstaendig genehmigt"
+            message = "Anfrage vollständig genehmigt"
 
         await self.db.commit()
         await self.db.refresh(request)
 
         logger.info(
-            f"Genehmigung erteilt fuer Anfrage {request_id} "
+            f"Genehmigung erteilt für Anfrage {request_id} "
             f"von User {user_id}: {message}"
         )
 
@@ -444,13 +444,13 @@ class ApprovalService:
     ) -> ApprovalDecision:
         """Lehnt eine Genehmigungsanfrage ab.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation angegeben werden.
 
         Args:
             request_id: ID der Anfrage
             user_id: ID des ablehnenden Users
             notes: Begruendung (Pflicht bei Ablehnung)
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
 
         Returns:
             ApprovalDecision mit Ergebnis
@@ -484,16 +484,16 @@ class ApprovalService:
                 message="Kein aktueller Schritt gefunden",
             )
 
-        # Pruefen ob User berechtigt ist
+        # Prüfen ob User berechtigt ist
         if not await self._can_approve(current_step, user_id):
             return ApprovalDecision(
                 success=False,
                 request_status=request.status,
                 next_step=request.current_step,
-                message="Keine Berechtigung fuer diesen Schritt",
+                message="Keine Berechtigung für diesen Schritt",
             )
 
-        # Ablehnung durchfuehren
+        # Ablehnung durchführen
         now = utc_now()
         current_step.status = ApprovalStatus.REJECTED
         current_step.decision = "rejected"
@@ -531,14 +531,14 @@ class ApprovalService:
     ) -> ApprovalDecision:
         """Delegiert eine Genehmigung an einen anderen User.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation angegeben werden.
 
         Args:
             request_id: ID der Anfrage
             user_id: ID des delegierenden Users
             delegate_to_id: ID des neuen Genehmigers
             reason: Begruendung
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
 
         Returns:
             ApprovalDecision mit Ergebnis
@@ -563,7 +563,7 @@ class ApprovalService:
                 message="Kein aktueller Schritt gefunden",
             )
 
-        # Delegation durchfuehren
+        # Delegation durchführen
         current_step.delegated_to_id = delegate_to_id
         current_step.delegated_at = utc_now()
         current_step.delegation_reason = reason
@@ -584,12 +584,12 @@ class ApprovalService:
         )
 
     async def escalate_overdue(self, company_id: Optional[UUID] = None) -> int:
-        """Eskaliert ueberfaellige Genehmigungen.
+        """Eskaliert überfällige Genehmigungen.
 
         Uses bulk UPDATE for performance (avoids N+1 queries).
 
         Args:
-            company_id: Optional: Nur fuer diese Firma
+            company_id: Optional: Nur für diese Firma
 
         Returns:
             Anzahl eskalierter Anfragen
@@ -620,7 +620,7 @@ class ApprovalService:
         for request_id, due_date in overdue_info:
             logger.warning(
                 f"Genehmigungsanfrage {request_id} eskaliert - "
-                f"Faellig seit {due_date}"
+                f"Fällig seit {due_date}"
             )
 
         # Bulk UPDATE instead of fetch-and-loop pattern
@@ -640,7 +640,7 @@ class ApprovalService:
         await self.db.commit()
 
         if count > 0:
-            logger.info(f"{count} ueberfaellige Genehmigungen eskaliert")
+            logger.info(f"{count} überfällige Genehmigungen eskaliert")
 
         return count
 
@@ -653,7 +653,7 @@ class ApprovalService:
 
         Args:
             company_id: ID der Firma
-            user_id: Optional: User fuer my_pending
+            user_id: Optional: User für my_pending
 
         Returns:
             ApprovalSummary
@@ -691,7 +691,7 @@ class ApprovalService:
         )
         avg_hours = result.scalar() or 0
 
-        # Ueberfaellige
+        # Überfällige
         result = await self.db.execute(
             select(func.count(ApprovalRequest.id))
             .where(
@@ -738,7 +738,7 @@ class ApprovalService:
         )
 
     async def _can_approve(self, step: ApprovalStep, user_id: UUID) -> bool:
-        """Prueft ob ein User einen Schritt genehmigen kann.
+        """Prüft ob ein User einen Schritt genehmigen kann.
 
         Args:
             step: Der zu genehmigende Schritt
@@ -755,9 +755,9 @@ class ApprovalService:
         if step.delegated_to_id == user_id:
             return True
 
-        # Rollenbasierte Pruefung
+        # Rollenbasierte Prüfung
         if step.approver_type == "role":
-            # Pruefe ob User die erforderliche Rolle hat
+            # Prüfe ob User die erforderliche Rolle hat
             required_role_name = step.approver_value
             user_role_query = (
                 select(Role.name)
@@ -782,10 +782,10 @@ class ApprovalService:
                 )
                 return True
 
-        # Gruppenbasierte Pruefung (wenn implementiert)
+        # Gruppenbasierte Prüfung (wenn implementiert)
         if step.approver_type == "group":
-            # Hier koennte man Gruppenmitgliedschaft pruefen
-            # Aktuell nicht implementiert - als Platzhalter fuer zukuenftige Erweiterung
+            # Hier könnte man Gruppenmitgliedschaft prüfen
+            # Aktuell nicht implementiert - als Platzhalter für zukünftige Erweiterung
             pass
 
         return False
@@ -799,13 +799,13 @@ class ApprovalService:
     ) -> ApprovalDecision:
         """Storniert eine Genehmigungsanfrage.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation angegeben werden.
 
         Args:
             request_id: ID der Anfrage
             user_id: ID des stornierenden Users
             reason: Begruendung
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
 
         Returns:
             ApprovalDecision mit Ergebnis
@@ -847,7 +847,7 @@ class ApprovalService:
         )
 
     # =========================================================================
-    # API-COMPATIBLE METHODS (fuer app/api/v1/approvals.py)
+    # API-COMPATIBLE METHODS (für app/api/v1/approvals.py)
     # =========================================================================
 
     async def get_requests_for_company(
@@ -859,14 +859,14 @@ class ApprovalService:
         offset: int = 0,
         limit: int = 50,
     ) -> Sequence[ApprovalRequest]:
-        """Holt Genehmigungsanfragen fuer eine Firma mit Filtern.
+        """Holt Genehmigungsanfragen für eine Firma mit Filtern.
 
         Args:
             company_id: ID der Firma
             status_filter: Optional: Nach Status filtern
-            entity_type: Optional: Nach Entitaetstyp filtern
-            for_user_id: Optional: Nur Anfragen fuer diesen User
-            offset: Offset fuer Pagination
+            entity_type: Optional: Nach Entitätstyp filtern
+            for_user_id: Optional: Nur Anfragen für diesen User
+            offset: Offset für Pagination
             limit: Max. Anzahl Ergebnisse
 
         Returns:
@@ -918,13 +918,13 @@ class ApprovalService:
         entity_type: Optional[str] = None,
         for_user_id: Optional[UUID] = None,
     ) -> int:
-        """Zaehlt Genehmigungsanfragen fuer eine Firma.
+        """Zaehlt Genehmigungsanfragen für eine Firma.
 
         Args:
             company_id: ID der Firma
             status_filter: Optional: Nach Status filtern
-            entity_type: Optional: Nach Entitaetstyp filtern
-            for_user_id: Optional: Nur Anfragen fuer diesen User
+            entity_type: Optional: Nach Entitätstyp filtern
+            for_user_id: Optional: Nur Anfragen für diesen User
 
         Returns:
             Anzahl der Anfragen
@@ -965,7 +965,7 @@ class ApprovalService:
         user: User,
         step_number: int,
     ) -> bool:
-        """Prueft ob ein User einen bestimmten Schritt genehmigen kann.
+        """Prüft ob ein User einen bestimmten Schritt genehmigen kann.
 
         Args:
             request: Die ApprovalRequest
@@ -998,13 +998,13 @@ class ApprovalService:
     ) -> ApprovalDecision:
         """Verarbeitet eine Genehmigungsentscheidung (approve/reject).
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation angegeben werden.
 
         Args:
             request_id: ID der Anfrage
             user_id: ID des entscheidenden Users
             decision: "approved" oder "rejected"
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
             notes: Optionale Notizen
 
         Returns:
@@ -1026,7 +1026,7 @@ class ApprovalService:
                 success=False,
                 request_status=ApprovalStatus.PENDING,
                 next_step=None,
-                message=f"Ungueltige Entscheidung: {decision}",
+                message=f"Ungültige Entscheidung: {decision}",
             )
 
     async def escalate_request(
@@ -1039,12 +1039,12 @@ class ApprovalService:
     ) -> bool:
         """Eskaliert eine einzelne Genehmigungsanfrage manuell.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation angegeben werden.
 
         Args:
             request_id: ID der Anfrage
             reason: Eskalationsgrund
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
             escalate_to_role: Optional: An diese Rolle eskalieren
             escalated_by_id: Optional: ID des eskalierenden Users
 
@@ -1054,7 +1054,7 @@ class ApprovalService:
         request = await self.get_request(request_id, company_id=company_id)
 
         if not request:
-            logger.warning(f"Anfrage {request_id} nicht gefunden fuer Eskalation")
+            logger.warning(f"Anfrage {request_id} nicht gefunden für Eskalation")
             return False
 
         if request.status != ApprovalStatus.PENDING:
@@ -1090,11 +1090,11 @@ class ApprovalService:
     ) -> Optional[ApprovalStep]:
         """Holt einen einzelnen Genehmigungsschritt.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation angegeben werden.
 
         Args:
             step_id: ID des Schritts
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
 
         Returns:
             ApprovalStep oder None
@@ -1146,13 +1146,13 @@ class ApprovalService:
     ) -> Optional[ApprovalStep]:
         """Delegiert einen Genehmigungsschritt an einen anderen User.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation angegeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation angegeben werden.
 
         Args:
             step_id: ID des Schritts
             delegate_to_id: ID des neuen Genehmigers
             delegated_by_id: ID des delegierenden Users
-            company_id: ID der Firma (REQUIRED fuer Multi-Tenant Isolation)
+            company_id: ID der Firma (REQUIRED für Multi-Tenant Isolation)
             reason: Optionale Begruendung
 
         Returns:
@@ -1161,7 +1161,7 @@ class ApprovalService:
         step = await self.get_step(step_id, company_id=company_id)
 
         if not step:
-            logger.warning(f"Step {step_id} nicht gefunden fuer Delegation")
+            logger.warning(f"Step {step_id} nicht gefunden für Delegation")
             return None
 
         step.delegated_to_id = delegate_to_id
@@ -1183,11 +1183,11 @@ class ApprovalService:
         company_id: UUID,
         user_id: Optional[UUID] = None,
     ) -> ApprovalSummary:
-        """Alias fuer get_summary (API-Kompatibilitaet).
+        """Alias für get_summary (API-Kompatibilität).
 
         Args:
             company_id: ID der Firma
-            user_id: Optional: User fuer my_pending
+            user_id: Optional: User für my_pending
 
         Returns:
             ApprovalSummary

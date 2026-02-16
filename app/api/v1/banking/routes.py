@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile, Fil
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
-# SECURITY FIX 27-4: Rate Limiting fuer Banking Endpoints
+# SECURITY FIX 27-4: Rate Limiting für Banking Endpoints
 from app.core.rate_limiting import limiter, get_user_identifier
 
 # SECURITY FIX: PII leakage prevention (CWE-532)
@@ -154,10 +154,10 @@ payment_automation_service = PaymentAutomationService()
 
 # ==================== SECURITY: File Upload Validation ====================
 
-# Maximale Dateigroesse: 10 MB
+# Maximale Dateigröße: 10 MB
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024
 
-# Erlaubte Dateiendungen fuer Bank-Imports
+# Erlaubte Dateiendungen für Bank-Imports
 ALLOWED_EXTENSIONS = {".mt940", ".sta", ".xml", ".csv", ".txt", ".940", ".pdf"}
 
 # Erlaubte Content-Types
@@ -167,10 +167,10 @@ ALLOWED_CONTENT_TYPES = {
     "text/xml",
     "application/xml",
     "application/pdf",
-    "application/octet-stream",  # Fuer generische Uploads
+    "application/octet-stream",  # Für generische Uploads
 }
 
-# Magic-Bytes fuer Dateiformat-Erkennung
+# Magic-Bytes für Dateiformat-Erkennung
 MAGIC_BYTES = {
     "xml": [b"<?xml", b"<Document", b"<BkToCstmrStmt"],  # CAMT.053, ZUGFeRD
     "pdf": [b"%PDF-"],
@@ -182,13 +182,13 @@ async def validate_upload_file(
     file: UploadFile,
     max_size: int = MAX_UPLOAD_SIZE_BYTES,
 ) -> bytes:
-    """Validiere hochgeladene Datei fuer Sicherheit.
+    """Validiere hochgeladene Datei für Sicherheit.
 
-    SECURITY: Prueft Dateigroesse, Endung, Content-Type und Magic-Bytes.
+    SECURITY: Prüft Dateigröße, Endung, Content-Type und Magic-Bytes.
 
     Args:
         file: Hochgeladene Datei
-        max_size: Maximale Dateigroesse in Bytes
+        max_size: Maximale Dateigröße in Bytes
 
     Returns:
         Datei-Inhalt als Bytes
@@ -203,7 +203,7 @@ async def validate_upload_file(
             detail="Dateiname fehlt.",
         )
 
-    # Endung pruefen
+    # Endung prüfen
     filename_lower = file.filename.lower()
     ext = None
     for allowed_ext in ALLOWED_EXTENSIONS:
@@ -222,7 +222,7 @@ async def validate_upload_file(
             detail=f"Dateiendung nicht erlaubt. Erlaubt: {', '.join(ALLOWED_EXTENSIONS)}",
         )
 
-    # 2. Content-Type pruefen (wenn vorhanden)
+    # 2. Content-Type prüfen (wenn vorhanden)
     if file.content_type and file.content_type not in ALLOWED_CONTENT_TYPES:
         logger.warning(
             "upload_rejected_content_type",
@@ -231,10 +231,10 @@ async def validate_upload_file(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nicht unterstuetzter Dateityp.",
+            detail="Nicht unterstützter Dateityp.",
         )
 
-    # 3. Dateigroesse pruefen (lese in Chunks)
+    # 3. Dateigröße prüfen (lese in Chunks)
     content = b""
     chunk_size = 8192  # 8KB Chunks
 
@@ -252,10 +252,10 @@ async def validate_upload_file(
             )
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                detail=f"Datei zu gross. Maximum: {max_size / 1024 / 1024:.0f} MB",
+                detail=f"Datei zu groß. Maximum: {max_size / 1024 / 1024:.0f} MB",
             )
 
-    # 4. Magic-Bytes pruefen (grundlegende Validierung)
+    # 4. Magic-Bytes prüfen (grundlegende Validierung)
     if ext == ".xml" or ext == ".pdf":
         content_start = content[:100]  # Erste 100 Bytes
 
@@ -268,7 +268,7 @@ async def validate_upload_file(
                 )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Datei ist keine gueltige PDF.",
+                    detail="Datei ist keine gültige PDF.",
                 )
 
         if ext == ".xml":
@@ -282,7 +282,7 @@ async def validate_upload_file(
                 )
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Datei ist kein gueltiges XML.",
+                    detail="Datei ist kein gültiges XML.",
                 )
 
     logger.info(
@@ -297,14 +297,14 @@ async def validate_upload_file(
 
 # ==================== Account Endpoints ====================
 
-# SECURITY FIX 27-4: Rate-Limit fuer Account-Erstellung
+# SECURITY FIX 27-4: Rate-Limit für Account-Erstellung
 @limiter.limit("10/minute", key_func=get_user_identifier)
 @accounts_router.post(
     "",
     response_model=BankAccountResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Bankkonto registrieren",
-    description="Erstellt ein neues Bankkonto fuer manuellen Import."
+    description="Erstellt ein neues Bankkonto für manuellen Import."
 )
 async def create_account(
     request: Request,  # SECURITY FIX 27-4: Required for rate limiter
@@ -315,8 +315,8 @@ async def create_account(
     """
     Registriere ein neues Bankkonto.
 
-    Das Konto wird fuer manuellen Datei-Import verwendet.
-    Die IBAN wird automatisch validiert (MOD-97 Pruefung).
+    Das Konto wird für manuellen Datei-Import verwendet.
+    Die IBAN wird automatisch validiert (MOD-97 Prüfung).
 
     Hinweis: FinTS-Verbindung ist optional und erfordert
     eine Produkt-ID bei der Deutschen Kreditwirtschaft.
@@ -351,7 +351,7 @@ async def create_account(
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Konto konnte nicht erstellt werden. Bitte ueberpruefen Sie die IBAN und Kontodaten.",
+            detail="Konto konnte nicht erstellt werden. Bitte überprüfen Sie die IBAN und Kontodaten.",
         )
 
 
@@ -359,10 +359,10 @@ async def create_account(
     "",
     response_model=List[BankAccountResponse],
     summary="Bankkonten auflisten",
-    description="Gibt alle Bankkonten des aktuellen Benutzers zurueck."
+    description="Gibt alle Bankkonten des aktuellen Benutzers zurück."
 )
 async def list_accounts(
-    include_inactive: bool = Query(False, description="Inaktive Konten einschliessen"),
+    include_inactive: bool = Query(False, description="Inaktive Konten einschließen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[BankAccountResponse]:
@@ -379,7 +379,7 @@ async def list_accounts(
     "/with-stats",
     response_model=List[BankAccountWithStats],
     summary="Bankkonten mit Statistiken",
-    description="Gibt Bankkonten mit Transaktions- und Abgleich-Statistiken zurueck."
+    description="Gibt Bankkonten mit Transaktions- und Abgleich-Statistiken zurück."
 )
 async def list_accounts_with_stats(
     db: AsyncSession = Depends(get_db),
@@ -396,7 +396,7 @@ async def list_accounts_with_stats(
     "/{account_id}",
     response_model=BankAccountResponse,
     summary="Bankkonto abrufen",
-    description="Gibt ein einzelnes Bankkonto zurueck."
+    description="Gibt ein einzelnes Bankkonto zurück."
 )
 async def get_account(
     account_id: UUID,
@@ -458,8 +458,8 @@ async def update_account(
     "/{account_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Bankkonto loeschen",
-    description="Loescht ein Bankkonto (Soft-Delete)."
+    summary="Bankkonto löschen",
+    description="Löscht ein Bankkonto (Soft-Delete)."
 )
 async def delete_account(
     account_id: UUID,
@@ -467,10 +467,10 @@ async def delete_account(
     current_user: User = Depends(get_current_active_user),
 ) -> Response:
     """
-    Loesche ein Bankkonto.
+    Lösche ein Bankkonto.
 
-    Das Konto wird nicht physisch geloescht, sondern nur als
-    geloescht markiert (Soft-Delete). Transaktionen bleiben erhalten.
+    Das Konto wird nicht physisch gelöscht, sondern nur als
+    gelöscht markiert (Soft-Delete). Transaktionen bleiben erhalten.
     """
     deleted = await account_service.delete_account(
         db=db,
@@ -497,18 +497,18 @@ async def delete_account(
 @imports_router.get(
     "/formats",
     response_model=SupportedFormatsResponse,
-    summary="Unterstuetzte Formate",
-    description="Gibt alle unterstuetzten Import-Formate zurueck."
+    summary="Unterstützte Formate",
+    description="Gibt alle unterstützten Import-Formate zurück."
 )
 async def get_supported_formats(
     current_user: User = Depends(get_current_active_user),  # X.4 SECURITY FIX: Auth required
 ) -> SupportedFormatsResponse:
     """
-    Hole Liste aller unterstuetzten Import-Formate.
+    Hole Liste aller unterstützten Import-Formate.
 
     **REQUIRES AUTHENTICATION**
 
-    Unterstuetzt werden:
+    Unterstützt werden:
     - MT940 (SWIFT) - Universelles Bankformat
     - CAMT.053 (ISO 20022) - Modernes XML-Format
     - Bank-spezifische CSV-Formate (Sparkasse, VR, DKB, etc.)
@@ -519,7 +519,7 @@ async def get_supported_formats(
     return await import_service.get_supported_formats()
 
 
-# SECURITY FIX 27-4: Rate-Limit fuer Import-Vorschau
+# SECURITY FIX 27-4: Rate-Limit für Import-Vorschau
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @imports_router.post(
     "/preview",
@@ -539,11 +539,11 @@ async def preview_import(
     """
     Erstelle Vorschau eines Kontoauszugs.
 
-    Analysiert die Datei und gibt zurueck:
+    Analysiert die Datei und gibt zurück:
     - Erkanntes Format und Konfidenz
     - Anzahl Transaktionen
     - Zeitraum (von/bis)
-    - Summe Eingaenge/Ausgaenge
+    - Summe Eingänge/Ausgänge
     - Erste Beispiel-Transaktionen
 
     Der eigentliche Import erfolgt noch nicht.
@@ -585,11 +585,11 @@ async def preview_import(
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Datei konnte nicht analysiert werden. Bitte ueberpruefen Sie das Dateiformat.",
+            detail="Datei konnte nicht analysiert werden. Bitte überprüfen Sie das Dateiformat.",
         )
 
 
-# SECURITY FIX 27-4: Rate-Limit fuer Import - ressourcenintensiv!
+# SECURITY FIX 27-4: Rate-Limit für Import - ressourcenintensiv!
 @limiter.limit("20/minute", key_func=get_user_identifier)
 @imports_router.post(
     "",
@@ -615,12 +615,12 @@ async def import_file(
     """
     Importiere Kontoauszug in das System.
 
-    Unterstuetzte Formate:
+    Unterstützte Formate:
     - MT940 (SWIFT) - Universal von allen Banken
     - CAMT.053 (ISO 20022) - Modernes XML-Format
     - Bank-spezifische CSV (Sparkasse, VR, DKB, N26, etc.)
 
-    Duplikate werden automatisch erkannt und uebersprungen.
+    Duplikate werden automatisch erkannt und übersprungen.
     SECURITY: Datei wird vor Verarbeitung validiert.
     """
     # SECURITY: Validiere Datei vor Verarbeitung
@@ -664,7 +664,7 @@ async def import_file(
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Import fehlgeschlagen. Bitte ueberpruefen Sie das Dateiformat und die Daten.",
+            detail="Import fehlgeschlagen. Bitte überprüfen Sie das Dateiformat und die Daten.",
         )
     except Exception as e:
         logger.error(
@@ -675,7 +675,7 @@ async def import_file(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Import fehlgeschlagen. Bitte ueberpruefen Sie das Dateiformat.",
+            detail="Import fehlgeschlagen. Bitte überprüfen Sie das Dateiformat.",
         )
 
 
@@ -683,7 +683,7 @@ async def import_file(
     "/history",
     response_model=List[BankImportResponse],
     summary="Import-Historie",
-    description="Gibt die Import-Historie zurueck."
+    description="Gibt die Import-Historie zurück."
 )
 async def get_import_history(
     bank_account_id: Optional[UUID] = Query(
@@ -709,7 +709,7 @@ async def get_import_history(
     "",
     response_model=dict,
     summary="Transaktionen auflisten",
-    description="Gibt Transaktionen mit optionaler Filterung und Paginierung zurueck."
+    description="Gibt Transaktionen mit optionaler Filterung und Paginierung zurück."
 )
 async def list_transactions(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
@@ -730,7 +730,7 @@ async def list_transactions(
     """
     Hole Transaktionen mit Filterung.
 
-    Unterstuetzt Paginierung und verschiedene Filteroptionen.
+    Unterstützt Paginierung und verschiedene Filteroptionen.
     SECURITY: sort_by nutzt Enum-Whitelist zur SQL-Injection Prevention.
     """
     from decimal import Decimal
@@ -768,7 +768,7 @@ async def list_transactions(
     "/unmatched",
     response_model=List[BankTransactionResponse],
     summary="Unabgeglichene Transaktionen",
-    description="Gibt alle unabgeglichenen Transaktionen zurueck."
+    description="Gibt alle unabgeglichenen Transaktionen zurück."
 )
 async def get_unmatched_transactions(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
@@ -776,7 +776,7 @@ async def get_unmatched_transactions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[BankTransactionResponse]:
-    """Hole unabgeglichene Transaktionen fuer Reconciliation."""
+    """Hole unabgeglichene Transaktionen für Reconciliation."""
     return await transaction_service.get_unmatched_transactions(
         db=db,
         user_id=current_user.id,
@@ -789,7 +789,7 @@ async def get_unmatched_transactions(
     "/stats",
     response_model=TransactionStats,
     summary="Transaktions-Statistiken",
-    description="Gibt aggregierte Statistiken zurueck."
+    description="Gibt aggregierte Statistiken zurück."
 )
 async def get_transaction_stats(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
@@ -812,7 +812,7 @@ async def get_transaction_stats(
     "/monthly",
     response_model=List[dict],
     summary="Monatliche Zusammenfassung",
-    description="Gibt monatliche Ein-/Ausgaben der letzten Monate zurueck."
+    description="Gibt monatliche Ein-/Ausgaben der letzten Monate zurück."
 )
 async def get_monthly_summary(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
@@ -832,8 +832,8 @@ async def get_monthly_summary(
 @transactions_router.get(
     "/counterparties",
     response_model=List[dict],
-    summary="Top Geschaeftspartner",
-    description="Gibt die wichtigsten Geschaeftspartner nach Umsatz zurueck."
+    summary="Top Geschäftspartner",
+    description="Gibt die wichtigsten Geschäftspartner nach Umsatz zurück."
 )
 async def get_top_counterparties(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
@@ -842,7 +842,7 @@ async def get_top_counterparties(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
-    """Hole Top-Geschaeftspartner."""
+    """Hole Top-Geschäftspartner."""
     return await transaction_service.get_top_counterparties(
         db=db,
         user_id=current_user.id,
@@ -856,7 +856,7 @@ async def get_top_counterparties(
     "/{transaction_id}",
     response_model=BankTransactionResponse,
     summary="Transaktion abrufen",
-    description="Gibt eine einzelne Transaktion zurueck."
+    description="Gibt eine einzelne Transaktion zurück."
 )
 async def get_transaction(
     transaction_id: UUID,
@@ -956,23 +956,23 @@ async def reconcile_transaction(
 @reconciliation_router.get(
     "/suggestions/{transaction_id}",
     response_model=List[dict],
-    summary="Match-Vorschlaege",
-    description="Gibt moegliche Matches fuer eine Transaktion zurueck."
+    summary="Match-Vorschläge",
+    description="Gibt mögliche Matches für eine Transaktion zurück."
 )
 async def get_match_suggestions(
     transaction_id: UUID,
-    limit: int = Query(5, ge=1, le=20, description="Max. Vorschlaege"),
+    limit: int = Query(5, ge=1, le=20, description="Max. Vorschläge"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
     """
-    Finde moegliche Match-Kandidaten fuer eine Transaktion.
+    Finde mögliche Match-Kandidaten für eine Transaktion.
 
     Nutzt verschiedene Matching-Strategien:
-    - IBAN + Betrag (hoechste Konfidenz)
+    - IBAN + Betrag (höchste Konfidenz)
     - Rechnungsnummer im Verwendungszweck
     - Kundennummer + Betrag + Datum
-    - Betrag + Datum-Naehe
+    - Betrag + Datum-Nähe
     - Fuzzy Name-Matching
     """
     candidates = await reconciliation_service.find_matches(
@@ -1017,7 +1017,7 @@ async def manual_match(
     """
     Manuelles Matching einer Transaktion mit einem Dokument.
 
-    Setzt Konfidenz auf 100% (manuell bestaetigt).
+    Setzt Konfidenz auf 100% (manuell bestätigt).
     """
     try:
         result = await reconciliation_service.manual_match(
@@ -1054,7 +1054,7 @@ async def manual_match(
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Abgleich konnte nicht durchgefuehrt werden. Transaktion oder Dokument nicht gefunden.",
+            detail="Abgleich konnte nicht durchgeführt werden. Transaktion oder Dokument nicht gefunden.",
         )
 
 
@@ -1110,8 +1110,8 @@ async def split_transaction(
     """
     Teile eine Transaktion auf mehrere Dokumente auf.
 
-    Fuer Sammelzahlungen oder Teilzahlungen.
-    Summe der Split-Betraege muss dem Transaktionsbetrag entsprechen.
+    Für Sammelzahlungen oder Teilzahlungen.
+    Summe der Split-Beträge muss dem Transaktionsbetrag entsprechen.
     """
     try:
         results = await reconciliation_service.split_transaction(
@@ -1148,17 +1148,17 @@ async def split_transaction(
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Aufteilung fehlgeschlagen. Bitte ueberpruefen Sie die Betraege und Dokumente.",
+            detail="Aufteilung fehlgeschlagen. Bitte überprüfen Sie die Beträge und Dokumente.",
         )
 
 
-# SECURITY FIX 28-6: Rate-Limit fuer Batch-Operationen
+# SECURITY FIX 28-6: Rate-Limit für Batch-Operationen
 @limiter.limit("10/minute", key_func=get_user_identifier)
 @reconciliation_router.post(
     "/batch",
     response_model=dict,
     summary="Batch-Abgleich",
-    description="Fuehrt automatischen Abgleich fuer ungematchte Transaktionen durch."
+    description="Führt automatischen Abgleich für ungematchte Transaktionen durch."
 )
 async def batch_reconcile(
     request: Request,  # SECURITY FIX 28-6: Required for rate limiter
@@ -1201,13 +1201,13 @@ async def batch_reconcile(
     }
 
 
-# SECURITY FIX 28-6: Rate-Limit fuer Auto-Abgleich
+# SECURITY FIX 28-6: Rate-Limit für Auto-Abgleich
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @reconciliation_router.post(
     "/auto/{transaction_id}",
     response_model=dict,
     summary="Auto-Abgleich einzeln",
-    description="Versucht automatischen Abgleich fuer eine einzelne Transaktion."
+    description="Versucht automatischen Abgleich für eine einzelne Transaktion."
 )
 async def auto_reconcile_single(
     request: Request,  # SECURITY FIX 28-6: Required for rate limiter
@@ -1250,7 +1250,7 @@ async def auto_reconcile_single(
     response_model=PaymentOrderResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Zahlung erstellen",
-    description="Erstellt einen neuen Zahlungsauftrag (SEPA-Ueberweisung)."
+    description="Erstellt einen neuen Zahlungsauftrag (SEPA-Überweisung)."
 )
 async def create_payment(
     request: Request,  # SECURITY FIX 28-5: Required for rate limiter
@@ -1280,7 +1280,7 @@ async def create_payment(
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Zahlung konnte nicht erstellt werden. Bitte ueberpruefen Sie die Zahlungsdaten.",
+            detail="Zahlung konnte nicht erstellt werden. Bitte überprüfen Sie die Zahlungsdaten.",
         )
 
 
@@ -1288,7 +1288,7 @@ async def create_payment(
     "",
     response_model=dict,
     summary="Zahlungen auflisten",
-    description="Listet alle Zahlungsauftraege des Benutzers."
+    description="Listet alle Zahlungsaufträge des Benutzers."
 )
 async def list_payments(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
@@ -1298,7 +1298,7 @@ async def list_payments(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
-    """Liste Zahlungsauftraege."""
+    """Liste Zahlungsaufträge."""
     payments, total = await payment_service.list_payments(
         db=db,
         user_id=current_user.id,
@@ -1320,7 +1320,7 @@ async def list_payments(
     "/pending",
     response_model=List[PaymentOrderResponse],
     summary="Ausstehende Zahlungen",
-    description="Listet alle ausstehenden Zahlungsauftraege."
+    description="Listet alle ausstehenden Zahlungsaufträge."
 )
 async def get_pending_payments(
     db: AsyncSession = Depends(get_db),
@@ -1336,8 +1336,8 @@ async def get_pending_payments(
 @payments_router.get(
     "/skonto-opportunities",
     response_model=List[dict],
-    summary="Skonto-Moeglichkeiten",
-    description="Findet Rechnungen mit Skonto-Option innerhalb der naechsten Tage."
+    summary="Skonto-Möglichkeiten",
+    description="Findet Rechnungen mit Skonto-Option innerhalb der nächsten Tage."
 )
 async def get_skonto_opportunities(
     days_ahead: int = Query(14, ge=1, le=60, description="Tage vorausschauen"),
@@ -1345,7 +1345,7 @@ async def get_skonto_opportunities(
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
     """
-    Finde Skonto-Moeglichkeiten.
+    Finde Skonto-Möglichkeiten.
 
     Zeigt Rechnungen bei denen Skonto noch genutzt werden kann.
     """
@@ -1385,7 +1385,7 @@ async def get_payment(
     "/{payment_id}/approve",
     response_model=PaymentOrderResponse,
     summary="Zahlung genehmigen",
-    description="Genehmigt einen Zahlungsauftrag fuer den Versand."
+    description="Genehmigt einen Zahlungsauftrag für den Versand."
 )
 async def approve_payment(
     request: Request,  # SECURITY FIX 28-5: Required for rate limiter
@@ -1454,7 +1454,7 @@ async def cancel_payment(
         )
 
 
-# SECURITY FIX 28-5: Rate-Limit fuer kritische Zahlungsaktionen
+# SECURITY FIX 28-5: Rate-Limit für kritische Zahlungsaktionen
 @limiter.limit("10/minute", key_func=get_user_identifier)
 @payments_router.post(
     "/{payment_id}/submit",
@@ -1471,7 +1471,7 @@ async def submit_payment(
     """
     Sende Zahlung an Bank.
 
-    Initiiert TAN-Challenge zur Bestaetigung.
+    Initiiert TAN-Challenge zur Bestätigung.
     """
     try:
         return await payment_service.submit_payment(
@@ -1489,17 +1489,17 @@ async def submit_payment(
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Zahlung konnte nicht gesendet werden. Bitte ueberpruefen Sie den Status.",
+            detail="Zahlung konnte nicht gesendet werden. Bitte überprüfen Sie den Status.",
         )
 
 
-# SECURITY FIX 28-5: Rate-Limit fuer TAN-Bestaetigung (Brute-Force Prevention)
+# SECURITY FIX 28-5: Rate-Limit für TAN-Bestätigung (Brute-Force Prevention)
 @limiter.limit("5/minute", key_func=get_user_identifier)
 @payments_router.post(
     "/{payment_id}/confirm-tan",
     response_model=PaymentOrderResponse,
-    summary="TAN bestaetigen",
-    description="Bestaetigt Zahlung mit TAN."
+    summary="TAN bestätigen",
+    description="Bestätigt Zahlung mit TAN."
 )
 async def confirm_payment_tan(
     request: Request,  # SECURITY FIX 28-5: Required for rate limiter
@@ -1509,9 +1509,9 @@ async def confirm_payment_tan(
     current_user: User = Depends(get_current_active_user),
 ) -> PaymentOrderResponse:
     """
-    Bestaetige Zahlung mit TAN.
+    Bestätige Zahlung mit TAN.
 
-    Nach erfolgreicher Bestaetigung wird die Zahlung ausgefuehrt.
+    Nach erfolgreicher Bestätigung wird die Zahlung ausgeführt.
     """
     try:
         return await payment_service.confirm_with_tan(
@@ -1530,7 +1530,7 @@ async def confirm_payment_tan(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="TAN-Bestaetigung fehlgeschlagen. Bitte versuchen Sie es erneut.",
+            detail="TAN-Bestätigung fehlgeschlagen. Bitte versuchen Sie es erneut.",
         )
 
 
@@ -1540,12 +1540,12 @@ async def confirm_payment_tan(
     "/tan/methods",
     response_model=List[dict],
     summary="TAN-Verfahren",
-    description="Listet verfuegbare TAN-Verfahren."
+    description="Listet verfügbare TAN-Verfahren."
 )
 async def get_tan_methods(
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
-    """Hole verfuegbare TAN-Verfahren."""
+    """Hole verfügbare TAN-Verfahren."""
     return tan_handler_service.get_available_methods(current_user.id)
 
 
@@ -1555,7 +1555,7 @@ async def get_tan_methods(
     "/forecast",
     response_model=dict,
     summary="Cash-Flow-Prognose",
-    description="Erstellt Cash-Flow-Prognose fuer die naechsten Tage."
+    description="Erstellt Cash-Flow-Prognose für die nächsten Tage."
 )
 async def get_cash_flow_forecast(
     days_ahead: int = Query(90, ge=7, le=365, description="Tage voraus"),
@@ -1606,7 +1606,7 @@ async def get_cash_flow_forecast(
     "/summary",
     response_model=dict,
     summary="Cash-Flow-Zusammenfassung",
-    description="Kurz-, mittel- und langfristige Cash-Flow-Uebersicht."
+    description="Kurz-, mittel- und langfristige Cash-Flow-Übersicht."
 )
 async def get_cash_flow_summary(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
@@ -1624,8 +1624,8 @@ async def get_cash_flow_summary(
 @cashflow_router.get(
     "/daily",
     response_model=List[dict],
-    summary="Taegliche Prognose",
-    description="Taegliche Cash-Flow-Werte fuer Diagramme."
+    summary="Tägliche Prognose",
+    description="Tägliche Cash-Flow-Werte für Diagramme."
 )
 async def get_daily_forecast(
     days: int = Query(30, ge=7, le=90, description="Anzahl Tage"),
@@ -1633,7 +1633,7 @@ async def get_daily_forecast(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
-    """Hole taegliche Cash-Flow-Werte."""
+    """Hole tägliche Cash-Flow-Werte."""
     return await cash_flow_service.get_daily_forecast(
         db=db,
         user_id=current_user.id,
@@ -1668,16 +1668,16 @@ async def compare_scenarios(
 @dunning_router.get(
     "/overdue",
     response_model=List[dict],
-    summary="Ueberfaellige Rechnungen",
-    description="Listet alle ueberfaelligen Rechnungen mit Mahnempfehlungen."
+    summary="Überfällige Rechnungen",
+    description="Listet alle überfälligen Rechnungen mit Mahnempfehlungen."
 )
 async def get_overdue_invoices(
-    min_days: int = Query(1, ge=1, description="Mind. Tage ueberfaellig"),
-    max_days: Optional[int] = Query(None, description="Max. Tage ueberfaellig"),
+    min_days: int = Query(1, ge=1, description="Mind. Tage überfällig"),
+    max_days: Optional[int] = Query(None, description="Max. Tage überfällig"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
-    """Hole ueberfaellige Rechnungen."""
+    """Hole überfällige Rechnungen."""
     candidates = await dunning_service.get_overdue_invoices(
         db=db,
         user_id=current_user.id,
@@ -1703,14 +1703,14 @@ async def get_overdue_invoices(
     ]
 
 
-# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+# SECURITY FIX 28-7: Rate-Limit für Mahnwesen-Operationen
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "",
     response_model=DunningRecordResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Mahnvorgang erstellen",
-    description="Startet einen neuen Mahnvorgang fuer eine Rechnung."
+    description="Startet einen neuen Mahnvorgang für eine Rechnung."
 )
 async def create_dunning(
     request: Request,  # SECURITY FIX 28-7: Required for rate limiter
@@ -1739,29 +1739,29 @@ async def create_dunning(
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Mahnvorgang konnte nicht erstellt werden. Bitte ueberpruefen Sie die Rechnung.",
+            detail="Mahnvorgang konnte nicht erstellt werden. Bitte überprüfen Sie die Rechnung.",
         )
 
 
 @dunning_router.get(
     "",
     response_model=dict,
-    summary="Mahnvorgaenge auflisten",
-    description="Listet alle Mahnvorgaenge mit optionaler Filterung."
+    summary="Mahnvorgänge auflisten",
+    description="Listet alle Mahnvorgänge mit optionaler Filterung."
 )
 async def list_dunnings(
     status_filter: Optional[str] = Query(None, alias="status", description="Status-Filter (active, pending, paid, etc.)"),
     level_filter: Optional[DunningLevel] = Query(None, alias="level"),
     dunning_level: Optional[int] = Query(None, ge=0, le=5, description="Mahnstufe (0-5)"),
-    mahnstopp: Optional[bool] = Query(None, description="Nur Mahnstopp-Vorgaenge"),
+    mahnstopp: Optional[bool] = Query(None, description="Nur Mahnstopp-Vorgänge"),
     is_b2b: Optional[bool] = Query(None, description="B2B oder B2C Filter"),
-    business_entity_id: Optional[UUID] = Query(None, description="Geschaeftspartner-ID"),
+    business_entity_id: Optional[UUID] = Query(None, description="Geschäftspartner-ID"),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
-    """Liste Mahnvorgaenge."""
+    """Liste Mahnvorgänge."""
     # Verwende dunning_level falls level_filter nicht gesetzt
     effective_level = level_filter
     if effective_level is None and dunning_level is not None:
@@ -1769,9 +1769,9 @@ async def list_dunnings(
         try:
             effective_level = DunningLevel(dunning_level)
         except ValueError:
-            pass  # Ungueltige Level werden ignoriert
+            pass  # Ungültige Level werden ignoriert
 
-    # Behandle "active" als Spezialfall fuer alle aktiven (nicht abgeschlossenen) Mahnungen
+    # Behandle "active" als Spezialfall für alle aktiven (nicht abgeschlossenen) Mahnungen
     effective_status: Optional[DunningStatus] = None
     active_only = False
     if status_filter:
@@ -1823,13 +1823,13 @@ async def get_dunning_stats(
     )
 
 
-# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+# SECURITY FIX 28-7: Rate-Limit für Mahnwesen-Operationen
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/{dunning_id}/escalate",
     response_model=DunningRecordResponse,
     summary="Mahnvorgang eskalieren",
-    description="Eskaliert Mahnvorgang zur naechsten Stufe."
+    description="Eskaliert Mahnvorgang zur nächsten Stufe."
 )
 async def escalate_dunning(
     request: Request,  # SECURITY FIX 28-7: Required for rate limiter
@@ -1856,17 +1856,17 @@ async def escalate_dunning(
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Mahnvorgang konnte nicht eskaliert werden. Bitte ueberpruefen Sie den Status.",
+            detail="Mahnvorgang konnte nicht eskaliert werden. Bitte überprüfen Sie den Status.",
         )
 
 
-# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+# SECURITY FIX 28-7: Rate-Limit für Mahnwesen-Operationen
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/{dunning_id}/close",
     response_model=DunningRecordResponse,
-    summary="Mahnvorgang schliessen",
-    description="Schliesst einen Mahnvorgang ab (bezahlt, storniert, abgeschrieben)."
+    summary="Mahnvorgang schließen",
+    description="Schließt einen Mahnvorgang ab (bezahlt, storniert, abgeschrieben)."
 )
 async def close_dunning(
     request: Request,  # SECURITY FIX 28-7: Required for rate limiter
@@ -1876,7 +1876,7 @@ async def close_dunning(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> DunningRecordResponse:
-    """Schliesse Mahnvorgang."""
+    """Schließe Mahnvorgang."""
     try:
         return await dunning_service.close_dunning(
             db=db,
@@ -1896,25 +1896,25 @@ async def close_dunning(
         # SECURITY: Generische Fehlermeldung - keine internen Details exponieren
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Mahnvorgang konnte nicht abgeschlossen werden. Bitte ueberpruefen Sie den Status.",
+            detail="Mahnvorgang konnte nicht abgeschlossen werden. Bitte überprüfen Sie den Status.",
         )
 
 
-# SECURITY FIX 28-7: Rate-Limit fuer Batch-Mahnverfahren
+# SECURITY FIX 28-7: Rate-Limit für Batch-Mahnverfahren
 @limiter.limit("10/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/process-automatic",
     response_model=List[dict],
     summary="Automatisches Mahnverfahren",
-    description="Fuehrt automatisches Mahnverfahren durch (optional Dry-Run)."
+    description="Führt automatisches Mahnverfahren durch (optional Dry-Run)."
 )
 async def process_automatic_dunning(
     request: Request,  # SECURITY FIX 28-7: Required for rate limiter
-    dry_run: bool = Query(True, description="Nur simulieren, nicht ausfuehren"),
+    dry_run: bool = Query(True, description="Nur simulieren, nicht ausführen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
-    """Fuehre automatisches Mahnverfahren durch."""
+    """Führe automatisches Mahnverfahren durch."""
     return await dunning_service.process_automatic_dunning(
         db=db,
         user_id=current_user.id,
@@ -1928,12 +1928,12 @@ async def process_automatic_dunning(
     "/{dunning_id}/history",
     response_model=MahnungHistoryListResponse,
     summary="Mahnung-Historie",
-    description="Gibt die Historie eines Mahnvorgangs zurueck (Audit-Log)."
+    description="Gibt die Historie eines Mahnvorgangs zurück (Audit-Log)."
 )
 async def get_dunning_history(
     dunning_id: UUID,
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset fuer Pagination"),
+    offset: int = Query(0, ge=0, description="Offset für Pagination"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> MahnungHistoryListResponse:
@@ -1948,7 +1948,7 @@ async def get_dunning_history(
     return MahnungHistoryListResponse(items=items, total=total)
 
 
-# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+# SECURITY FIX 28-7: Rate-Limit für Mahnwesen-Operationen
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/{dunning_id}/mahnstopp",
@@ -1963,7 +1963,7 @@ async def set_mahnstopp(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> DunningRecordResponse:
-    """Setze Mahnstopp fuer einen Mahnvorgang."""
+    """Setze Mahnstopp für einen Mahnvorgang."""
     try:
         return await dunning_service.set_mahnstopp(
             db=db,
@@ -1985,7 +1985,7 @@ async def set_mahnstopp(
         )
 
 
-# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+# SECURITY FIX 28-7: Rate-Limit für Mahnwesen-Operationen
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.delete(
     "/{dunning_id}/mahnstopp",
@@ -2021,7 +2021,7 @@ async def lift_mahnstopp(
         )
 
 
-# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+# SECURITY FIX 28-7: Rate-Limit für Mahnwesen-Operationen
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/{dunning_id}/b2b-pauschale",
@@ -2055,13 +2055,13 @@ async def claim_b2b_pauschale(
         )
 
 
-# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+# SECURITY FIX 28-7: Rate-Limit für Mahnwesen-Operationen
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @dunning_router.put(
     "/{dunning_id}/b2b-status",
     response_model=DunningRecordResponse,
     summary="B2B-Status setzen",
-    description="Setzt den B2B/B2C-Status fuer Verzugszinsenberechnung."
+    description="Setzt den B2B/B2C-Status für Verzugszinsenberechnung."
 )
 async def set_b2b_status(
     request: Request,  # SECURITY FIX 28-7: Required for rate limiter
@@ -2103,7 +2103,7 @@ async def calculate_verzugszinsen(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> VerzugszinsenCalculation:
-    """Berechne Verzugszinsen fuer Mahnvorgang."""
+    """Berechne Verzugszinsen für Mahnvorgang."""
     from datetime import date as date_type
     calc_date = as_of_date or date_type.today()
 
@@ -2115,7 +2115,7 @@ async def calculate_verzugszinsen(
         limit=1,
     )
 
-    # Filter fuer dunning_id (vereinfacht)
+    # Filter für dunning_id (vereinfacht)
     dunning = None
     dunnings_list, _ = await dunning_service.list_dunnings(
         db=db, user_id=current_user.id, offset=0, limit=1000
@@ -2131,7 +2131,7 @@ async def calculate_verzugszinsen(
     if not dunning.due_date or not dunning.outstanding_amount:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Faelligkeitsdatum oder Betrag fehlt."
+            detail="Fälligkeitsdatum oder Betrag fehlt."
         )
 
     interest_amount = dunning_service.calculate_verzugszinsen(
@@ -2155,7 +2155,7 @@ async def calculate_verzugszinsen(
     )
 
 
-# SECURITY FIX 28-7: Rate-Limit fuer Mahnwesen-Operationen
+# SECURITY FIX 28-7: Rate-Limit für Mahnwesen-Operationen
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/{dunning_id}/phone-call",
@@ -2202,12 +2202,12 @@ async def log_phone_call(
     "/{dunning_id}/phone-calls",
     response_model=PhoneCallLogListResponse,
     summary="Telefonkontakte abrufen",
-    description="Gibt Telefonkontakte zu einem Mahnvorgang zurueck (paginiert)."
+    description="Gibt Telefonkontakte zu einem Mahnvorgang zurück (paginiert)."
 )
 async def get_phone_calls(
     dunning_id: UUID,
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset fuer Pagination"),
+    offset: int = Query(0, ge=0, description="Offset für Pagination"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> PhoneCallLogListResponse:
@@ -2222,13 +2222,13 @@ async def get_phone_calls(
     return PhoneCallLogListResponse(items=items, total=total)
 
 
-# SECURITY FIX 28-7: Rate-Limit fuer Bulk-Operationen
+# SECURITY FIX 28-7: Rate-Limit für Bulk-Operationen
 @limiter.limit("10/minute", key_func=get_user_identifier)
 @dunning_router.post(
     "/bulk-escalate",
     response_model=BulkEscalateResponse,
     summary="Masseneskalation",
-    description="Eskaliert mehrere Mahnvorgaenge gleichzeitig."
+    description="Eskaliert mehrere Mahnvorgänge gleichzeitig."
 )
 async def bulk_escalate_dunnings(
     request: Request,  # Required for rate limiter
@@ -2236,7 +2236,7 @@ async def bulk_escalate_dunnings(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> BulkEscalateResponse:
-    """Eskaliere mehrere Mahnvorgaenge."""
+    """Eskaliere mehrere Mahnvorgänge."""
     return await dunning_service.bulk_escalate(
         db=db,
         user_id=current_user.id,
@@ -2248,14 +2248,14 @@ async def bulk_escalate_dunnings(
 @dunning_router.get(
     "/with-mahnstopp",
     response_model=List[DunningRecordResponse],
-    summary="Mahnvorgaenge mit Mahnstopp",
-    description="Listet alle Mahnvorgaenge mit aktivem Mahnstopp."
+    summary="Mahnvorgänge mit Mahnstopp",
+    description="Listet alle Mahnvorgänge mit aktivem Mahnstopp."
 )
 async def get_dunnings_with_mahnstopp(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[DunningRecordResponse]:
-    """Hole Mahnvorgaenge mit Mahnstopp."""
+    """Hole Mahnvorgänge mit Mahnstopp."""
     return await dunning_service.get_dunnings_with_mahnstopp(
         db=db,
         user_id=current_user.id,
@@ -2268,7 +2268,7 @@ async def get_dunnings_with_mahnstopp(
 @dunning_router.get(
     "/{dunning_id}/letter/preview",
     summary="Mahnbrief-Vorschau (HTML)",
-    description="Generiert eine HTML-Vorschau des Mahnbriefs fuer die angegebene Mahnstufe."
+    description="Generiert eine HTML-Vorschau des Mahnbriefs für die angegebene Mahnstufe."
 )
 async def preview_dunning_letter(
     dunning_id: UUID,
@@ -2280,15 +2280,15 @@ async def preview_dunning_letter(
     """
     Generiert eine HTML-Vorschau des Mahnbriefs.
 
-    Nuetzlich fuer:
-    - Vorab-Pruefung vor PDF-Generierung
+    Nützlich für:
+    - Vorab-Prüfung vor PDF-Generierung
     - Anzeige im Browser
 
     **Mahnstufen:**
-    - 1: Freundliche Zahlungserinnerung (keine Gebuehr)
-    - 2: 1. Mahnung (5 EUR Gebuehr)
-    - 3: 2. Mahnung (10 EUR Gebuehr)
-    - 4: Letzte Mahnung (15 EUR Gebuehr)
+    - 1: Freundliche Zahlungserinnerung (keine Gebühr)
+    - 2: 1. Mahnung (5 EUR Gebühr)
+    - 3: 2. Mahnung (10 EUR Gebühr)
+    - 4: Letzte Mahnung (15 EUR Gebühr)
     """
     from app.services.banking.dunning_letter_service import dunning_letter_service
 
@@ -2338,10 +2338,10 @@ async def download_dunning_letter_pdf(
     """
     Generiert einen Mahnbrief als PDF.
 
-    Der PDF-Download enthaelt:
+    Der PDF-Download enthält:
     - Professionelles Brieflayout nach DIN 5008
     - BGB-konforme Verzugszinsberechnung
-    - Korrekte Mahngebuehren je Stufe
+    - Korrekte Mahngebühren je Stufe
     - B2B-Pauschale (40 EUR) ab Stufe 2
 
     **Dateiname:** `mahnung_{invoice_number}_stufe{level}.pdf`
@@ -2349,7 +2349,7 @@ async def download_dunning_letter_pdf(
     from app.services.banking.dunning_letter_service import dunning_letter_service
 
     try:
-        # Hole Daten fuer Dateinamen
+        # Hole Daten für Dateinamen
         data = await dunning_letter_service.prepare_letter_data(
             db=db,
             dunning_record_id=dunning_id,
@@ -2365,7 +2365,7 @@ async def download_dunning_letter_pdf(
             output_format="pdf",
         )
 
-        # Sanitize invoice number fuer Dateinamen
+        # Sanitize invoice number für Dateinamen
         safe_invoice_number = "".join(
             c if c.isalnum() or c in "-_" else "_"
             for c in (data.invoice_number or "unknown")
@@ -2413,7 +2413,7 @@ async def download_dunning_letter_pdf(
 async def batch_generate_dunning_letters(
     request: Request,  # Required for rate limiter
     dunning_ids: List[UUID] = Query(..., description="Liste der Mahnvorgang-IDs"),
-    dunning_level: int = Query(..., ge=1, le=4, description="Mahnstufe fuer alle"),
+    dunning_level: int = Query(..., ge=1, le=4, description="Mahnstufe für alle"),
     is_b2b: bool = Query(True, description="B2B-Kunden"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -2421,7 +2421,7 @@ async def batch_generate_dunning_letters(
     """
     Generiert mehrere Mahnbriefe als ZIP-Archiv.
 
-    Nuetzlich fuer:
+    Nützlich für:
     - Massenversand per Post
     - Archivierung
     - Batch-Verarbeitung
@@ -2482,7 +2482,7 @@ async def batch_generate_dunning_letters(
             else:
                 error_count += 1
 
-        # Fehlerprotokoll hinzufuegen
+        # Fehlerprotokoll hinzufügen
         if error_count > 0:
             error_log = "Fehlgeschlagene Mahnbriefe:\n\n"
             for result in results:
@@ -2515,18 +2515,18 @@ async def batch_generate_dunning_letters(
 
 @dunning_router.get(
     "/letter-templates",
-    summary="Verfuegbare Mahnbrief-Vorlagen",
-    description="Listet alle verfuegbaren Mahnbrief-Vorlagen mit Konfiguration."
+    summary="Verfügbare Mahnbrief-Vorlagen",
+    description="Listet alle verfügbaren Mahnbrief-Vorlagen mit Konfiguration."
 )
 async def list_dunning_letter_templates(
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
     """
-    Listet alle verfuegbaren Mahnbrief-Vorlagen.
+    Listet alle verfügbaren Mahnbrief-Vorlagen.
 
-    Gibt fuer jede Mahnstufe zurueck:
+    Gibt für jede Mahnstufe zurück:
     - Name und Titel
-    - Standardgebuehr
+    - Standardgebühr
     - Zahlungsfrist
     - Eskalationswarnung
     """
@@ -2550,20 +2550,20 @@ async def list_dunning_letter_templates(
 
 @dunning_router.get(
     "/interest-rates",
-    summary="Aktuelle Verzugszinssaetze",
-    description="Gibt die aktuellen Verzugszinssaetze nach BGB §288 zurueck."
+    summary="Aktuelle Verzugszinssätze",
+    description="Gibt die aktuellen Verzugszinssätze nach BGB §288 zurück."
 )
 async def get_current_interest_rates(
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
     """
-    Gibt aktuelle Verzugszinssaetze zurueck.
+    Gibt aktuelle Verzugszinssätze zurück.
 
     Berechnung nach BGB §288:
     - B2B: Basiszins + 9 Prozentpunkte
     - B2C: Basiszins + 5 Prozentpunkte
 
-    Nutzt den BundesbankRateService fuer aktuelle Basiszinssaetze
+    Nutzt den BundesbankRateService für aktuelle Basiszinssätze
     mit Caching (6 Monate TTL) und Fallback.
     """
     from app.services.bundesbank_rate_service import (
@@ -2586,23 +2586,23 @@ async def get_current_interest_rates(
         "legal_basis": "BGB §288",
         "b2b_pauschale": 40.0,
         "b2b_pauschale_legal_basis": "BGB §288 Abs. 5",
-        "note": "Basiszinssatz der Deutschen Bundesbank (halbjaehrliche Anpassung)",
+        "note": "Basiszinssatz der Deutschen Bundesbank (halbjährliche Anpassung)",
         "fetched_at": basiszins_data.fetched_at,
     }
 
 
 @dunning_router.get(
     "/interest-rates/history",
-    summary="Historische Basiszinssaetze",
-    description="Gibt die historischen Basiszinssaetze der Bundesbank zurueck."
+    summary="Historische Basiszinssätze",
+    description="Gibt die historischen Basiszinssätze der Bundesbank zurück."
 )
 async def get_interest_rate_history(
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
     """
-    Gibt historische Basiszinssaetze zurueck.
+    Gibt historische Basiszinssätze zurück.
 
-    Die Bundesbank passt den Basiszins halbjaehrlich an (01.01. und 01.07.).
+    Die Bundesbank passt den Basiszins halbjährlich an (01.01. und 01.07.).
     """
     from app.services.bundesbank_rate_service import get_bundesbank_rate_service
 
@@ -2626,16 +2626,16 @@ async def get_interest_rate_history(
 @dunning_router.get(
     "/interest-rates/calculate",
     summary="Verzugszins berechnen",
-    description="Berechnet Verzugszinsen fuer einen bestimmten Zeitraum."
+    description="Berechnet Verzugszinsen für einen bestimmten Zeitraum."
 )
 async def calculate_interest_for_period(
     amount: float = Query(..., gt=0, description="Rechnungsbetrag in EUR"),
     days_overdue: int = Query(..., ge=0, description="Anzahl Verzugstage"),
-    is_b2b: bool = Query(True, description="B2B-Geschaeft (True) oder B2C (False)"),
+    is_b2b: bool = Query(True, description="B2B-Geschäft (True) oder B2C (False)"),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
     """
-    Berechnet Verzugszinsen fuer einen bestimmten Betrag und Zeitraum.
+    Berechnet Verzugszinsen für einen bestimmten Betrag und Zeitraum.
 
     Formel: Betrag × Verzugszins × Tage / 365
     """
@@ -2669,10 +2669,10 @@ async def list_mahn_tasks(
     task_type: Optional[MahnTaskType] = Query(None, description="Aufgabentyp"),
     task_status: Optional[MahnTaskStatus] = Query(None, alias="status", description="Status"),
     assigned_user_id: Optional[UUID] = Query(None, description="Zugewiesener Benutzer"),
-    due_date_from: Optional[date] = Query(None, description="Faellig ab"),
-    due_date_to: Optional[date] = Query(None, description="Faellig bis"),
-    priority: Optional[int] = Query(None, ge=1, le=5, description="Prioritaet"),
-    include_snoozed: bool = Query(False, description="Zurueckgestellte einschliessen"),
+    due_date_from: Optional[date] = Query(None, description="Fällig ab"),
+    due_date_to: Optional[date] = Query(None, description="Fällig bis"),
+    priority: Optional[int] = Query(None, ge=1, le=5, description="Priorität"),
+    include_snoozed: bool = Query(False, description="Zurückgestellte einschließen"),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -2709,7 +2709,7 @@ async def list_mahn_tasks(
     "/summary",
     response_model=MahnTaskSummary,
     summary="Aufgaben-Zusammenfassung",
-    description="Gibt eine Zusammenfassung aller ausstehenden Aufgaben zurueck."
+    description="Gibt eine Zusammenfassung aller ausstehenden Aufgaben zurück."
 )
 async def get_mahn_task_summary(
     db: AsyncSession = Depends(get_db),
@@ -2722,7 +2722,7 @@ async def get_mahn_task_summary(
     )
 
 
-# SECURITY FIX 28-8: Rate-Limit fuer Mahnaufgaben-Operationen
+# SECURITY FIX 28-8: Rate-Limit für Mahnaufgaben-Operationen
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @mahn_tasks_router.post(
     "",
@@ -2759,7 +2759,7 @@ async def create_mahn_task(
         )
 
 
-# SECURITY FIX 28-8: Rate-Limit fuer Mahnaufgaben-Operationen
+# SECURITY FIX 28-8: Rate-Limit für Mahnaufgaben-Operationen
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @mahn_tasks_router.post(
     "/{task_id}/assign",
@@ -2795,13 +2795,13 @@ async def assign_mahn_task(
         )
 
 
-# SECURITY FIX 28-8: Rate-Limit fuer Mahnaufgaben-Operationen
+# SECURITY FIX 28-8: Rate-Limit für Mahnaufgaben-Operationen
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @mahn_tasks_router.post(
     "/{task_id}/snooze",
     response_model=MahnTaskResponse,
-    summary="Aufgabe zurueckstellen",
-    description="Stellt eine Aufgabe zurueck (max. 3x)."
+    summary="Aufgabe zurückstellen",
+    description="Stellt eine Aufgabe zurück (max. 3x)."
 )
 async def snooze_mahn_task(
     request: Request,  # Required for rate limiter
@@ -2810,7 +2810,7 @@ async def snooze_mahn_task(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> MahnTaskResponse:
-    """Stelle Mahnaufgabe zurueck."""
+    """Stelle Mahnaufgabe zurück."""
     try:
         return await mahn_task_service.snooze_task(
             db=db,
@@ -2829,17 +2829,17 @@ async def snooze_mahn_task(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Snooze fehlgeschlagen. Bitte Eingaben pruefen.",
+            detail="Snooze fehlgeschlagen. Bitte Eingaben prüfen.",
         )
 
 
-# SECURITY FIX 28-8: Rate-Limit fuer Mahnaufgaben-Operationen
+# SECURITY FIX 28-8: Rate-Limit für Mahnaufgaben-Operationen
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @mahn_tasks_router.post(
     "/{task_id}/complete",
     response_model=MahnTaskResponse,
-    summary="Aufgabe abschliessen",
-    description="Schliesst eine Aufgabe ab."
+    summary="Aufgabe abschließen",
+    description="Schließt eine Aufgabe ab."
 )
 async def complete_mahn_task(
     request: Request,  # Required for rate limiter
@@ -2848,7 +2848,7 @@ async def complete_mahn_task(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> MahnTaskResponse:
-    """Schliesse Mahnaufgabe ab."""
+    """Schließe Mahnaufgabe ab."""
     try:
         return await mahn_task_service.complete_task(
             db=db,
@@ -2869,13 +2869,13 @@ async def complete_mahn_task(
         )
 
 
-# SECURITY FIX 28-8: Rate-Limit fuer Bulk-Operationen
+# SECURITY FIX 28-8: Rate-Limit für Bulk-Operationen
 @limiter.limit("10/minute", key_func=get_user_identifier)
 @mahn_tasks_router.post(
     "/bulk-complete",
     response_model=dict,
     summary="Massenabschluss",
-    description="Schliesst mehrere Aufgaben gleichzeitig ab."
+    description="Schließt mehrere Aufgaben gleichzeitig ab."
 )
 async def bulk_complete_mahn_tasks(
     request: Request,  # Required for rate limiter
@@ -2883,7 +2883,7 @@ async def bulk_complete_mahn_tasks(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
-    """Schliesse mehrere Mahnaufgaben ab."""
+    """Schließe mehrere Mahnaufgaben ab."""
     completed = 0
     failed = 0
     errors = []
@@ -2915,7 +2915,7 @@ async def bulk_complete_mahn_tasks(
     "/dunning-stages",
     response_model=DunningStagesListResponse,
     summary="Mahnstufen abrufen",
-    description="Gibt alle konfigurierten Mahnstufen zurueck."
+    description="Gibt alle konfigurierten Mahnstufen zurück."
 )
 async def get_dunning_stages(
     db: AsyncSession = Depends(get_db),
@@ -3056,7 +3056,7 @@ async def reorder_dunning_stages(
     "/auto-dunning",
     response_model=AutoDunningSettingsResponse,
     summary="Auto-Mahnlauf-Einstellungen abrufen",
-    description="Gibt die Einstellungen fuer den automatischen Mahnlauf zurueck."
+    description="Gibt die Einstellungen für den automatischen Mahnlauf zurück."
 )
 async def get_auto_dunning_settings(
     db: AsyncSession = Depends(get_db),
@@ -3084,7 +3084,7 @@ async def get_auto_dunning_settings(
     "/auto-dunning",
     response_model=AutoDunningSettingsResponse,
     summary="Auto-Mahnlauf-Einstellungen aktualisieren",
-    description="Aktualisiert die Einstellungen fuer den automatischen Mahnlauf."
+    description="Aktualisiert die Einstellungen für den automatischen Mahnlauf."
 )
 async def update_auto_dunning_settings(
     request: AutoDunningSettingsUpdate,
@@ -3116,7 +3116,7 @@ async def update_auto_dunning_settings(
     "/{business_entity_id}/dunning-settings",
     response_model=CustomerDunningOverrideResponse,
     summary="Kundenspezifische Mahneinstellungen",
-    description="Gibt kundenspezifische Mahneinstellungen zurueck."
+    description="Gibt kundenspezifische Mahneinstellungen zurück."
 )
 async def get_customer_dunning_settings(
     business_entity_id: UUID,
@@ -3291,7 +3291,7 @@ async def get_payables_aging(
     "/summary",
     response_model=dict,
     summary="Altersanalyse-Zusammenfassung",
-    description="Kombinierte Uebersicht Forderungen und Verbindlichkeiten."
+    description="Kombinierte Übersicht Forderungen und Verbindlichkeiten."
 )
 async def get_aging_summary(
     db: AsyncSession = Depends(get_db),
@@ -3308,7 +3308,7 @@ async def get_aging_summary(
     "/top-debtors",
     response_model=List[dict],
     summary="Top-Schuldner",
-    description="Die groessten Schuldner nach Forderungshoehe."
+    description="Die größten Schuldner nach Forderungshöhe."
 )
 async def get_top_debtors(
     limit: int = Query(10, ge=1, le=50, description="Anzahl"),
@@ -3326,15 +3326,15 @@ async def get_top_debtors(
 @aging_router.get(
     "/top-creditors",
     response_model=List[dict],
-    summary="Top-Glaeubiger",
-    description="Die groessten Glaeubiger nach Verbindlichkeitenhoehe."
+    summary="Top-Gläubiger",
+    description="Die größten Gläubiger nach Verbindlichkeitenhöhe."
 )
 async def get_top_creditors(
     limit: int = Query(10, ge=1, le=50, description="Anzahl"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
-    """Hole Top-Glaeubiger."""
+    """Hole Top-Gläubiger."""
     return await aging_report_service.get_top_creditors(
         db=db,
         user_id=current_user.id,
@@ -3463,8 +3463,8 @@ class GenerateSepaRequest(BaseModel):
 @payment_automation_router.get(
     "/suggestions",
     response_model=List[PaymentSuggestionResponse],
-    summary="Zahlungsvorschlaege generieren",
-    description="Generiert intelligente Zahlungsvorschlaege basierend auf offenen Rechnungen, "
+    summary="Zahlungsvorschläge generieren",
+    description="Generiert intelligente Zahlungsvorschläge basierend auf offenen Rechnungen, "
                 "Skonto-Fristen und Cashflow-Optimierung."
 )
 async def get_payment_suggestions(
@@ -3473,14 +3473,14 @@ async def get_payment_suggestions(
         description="Optimierungsstrategie"
     ),
     lookahead_days: int = Query(14, ge=1, le=90, description="Vorausschau in Tagen"),
-    include_overdue: bool = Query(True, description="Ueberfaellige einbeziehen"),
+    include_overdue: bool = Query(True, description="Überfällige einbeziehen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[PaymentSuggestionResponse]:
-    """Generiere Zahlungsvorschlaege.
+    """Generiere Zahlungsvorschläge.
 
-    Analysiert offene Rechnungen und erstellt priorisierte Vorschlaege
-    basierend auf der gewaehlten Strategie.
+    Analysiert offene Rechnungen und erstellt priorisierte Vorschläge
+    basierend auf der gewählten Strategie.
     """
     suggestions = await payment_automation_service.generate_payment_suggestions(
         db=db,
@@ -3514,12 +3514,12 @@ async def get_payment_suggestions(
     "/batches",
     response_model=List[PaymentBatchResponse],
     summary="Zahlungs-Batches auflisten",
-    description="Listet alle Zahlungs-Batches mit Filtermoeglichkeiten auf."
+    description="Listet alle Zahlungs-Batches mit Filtermöglichkeiten auf."
 )
 async def list_payment_batches(
     status: Optional[PaymentBatchStatus] = Query(None, description="Nach Status filtern"),
     limit: int = Query(20, ge=1, le=100, description="Anzahl der Ergebnisse"),
-    offset: int = Query(0, ge=0, description="Offset fuer Pagination"),
+    offset: int = Query(0, ge=0, description="Offset für Pagination"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[PaymentBatchResponse]:
@@ -3558,7 +3558,7 @@ async def list_payment_batches(
     response_model=PaymentBatchResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Zahlungs-Batch erstellen",
-    description="Erstellt einen neuen Zahlungs-Batch aus ausgewaehlten Rechnungen."
+    description="Erstellt einen neuen Zahlungs-Batch aus ausgewählten Rechnungen."
 )
 async def create_payment_batch(
     request: CreateBatchRequest,
@@ -3566,7 +3566,7 @@ async def create_payment_batch(
     current_user: User = Depends(get_current_active_user),
 ) -> PaymentBatchResponse:
     """Erstelle einen neuen Zahlungs-Batch."""
-    # Hole Suggestions fuer die angegebenen Rechnungen
+    # Hole Suggestions für die angegebenen Rechnungen
     suggestions = await payment_automation_service.get_suggestions_for_invoices(
         db=db,
         company_id=current_user.company_id,
@@ -3576,7 +3576,7 @@ async def create_payment_batch(
     if not suggestions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine gueltigen Rechnungen fuer Batch gefunden.",
+            detail="Keine gültigen Rechnungen für Batch gefunden.",
         )
 
     batch = await payment_automation_service.create_payment_batch(
@@ -3633,7 +3633,7 @@ async def create_optimized_batch(
     if not batch:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Zahlungen fuer optimierten Batch gefunden.",
+            detail="Keine Zahlungen für optimierten Batch gefunden.",
         )
 
     return PaymentBatchResponse(
@@ -3700,7 +3700,7 @@ async def get_payment_batch(
     "/batches/{batch_id}/approve",
     response_model=PaymentBatchResponse,
     summary="Batch genehmigen",
-    description="Genehmigt einen Zahlungs-Batch fuer die Ausfuehrung."
+    description="Genehmigt einen Zahlungs-Batch für die Ausführung."
 )
 async def approve_payment_batch(
     batch_id: UUID,
@@ -3810,7 +3810,7 @@ async def reject_payment_batch(
     "/batches/{batch_id}/sepa",
     response_model=dict,
     summary="SEPA-Datei generieren",
-    description="Generiert eine SEPA pain.001 Datei fuer den genehmigten Batch."
+    description="Generiert eine SEPA pain.001 Datei für den genehmigten Batch."
 )
 async def generate_sepa_file(
     batch_id: UUID,
@@ -3818,7 +3818,7 @@ async def generate_sepa_file(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
-    """Generiere SEPA-Datei fuer einen Batch."""
+    """Generiere SEPA-Datei für einen Batch."""
     batch = await payment_automation_service.get_batch(
         db=db,
         batch_id=batch_id,
@@ -3834,7 +3834,7 @@ async def generate_sepa_file(
     if batch.status != PaymentBatchStatus.APPROVED:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="SEPA-Datei kann nur fuer genehmigte Batches erstellt werden.",
+            detail="SEPA-Datei kann nur für genehmigte Batches erstellt werden.",
         )
 
     sepa_content, file_name = await payment_automation_service.generate_sepa_file(
@@ -3843,7 +3843,7 @@ async def generate_sepa_file(
         execution_date=request.execution_date,
     )
 
-    # Batch als ausgefuehrt markieren
+    # Batch als ausgeführt markieren
     batch.status = PaymentBatchStatus.EXECUTED
     batch.executed_at = datetime.utcnow()
     batch.sepa_file_path = file_name
@@ -3862,7 +3862,7 @@ async def generate_sepa_file(
     "/schedule",
     response_model=PaymentScheduleResponse,
     summary="Zahlungsplan erstellen",
-    description="Erstellt einen optimierten Zahlungsplan fuer die naechsten Tage."
+    description="Erstellt einen optimierten Zahlungsplan für die nächsten Tage."
 )
 async def get_payment_schedule(
     period_days: int = Query(30, ge=7, le=90, description="Planungszeitraum in Tagen"),
@@ -3991,7 +3991,7 @@ async def update_automation_config(
         if not all(1 <= d <= 31 for d in preferred_payment_days):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Bevorzugte Zahlungstage muessen zwischen 1 und 31 liegen.",
+                detail="Bevorzugte Zahlungstage müssen zwischen 1 und 31 liegen.",
             )
         updates["preferred_payment_days"] = preferred_payment_days
     if max_batch_size is not None:
@@ -4029,7 +4029,7 @@ async def get_skonto_alerts(
 ) -> List[dict]:
     """Hole Rechnungen mit ablaufenden Skonto-Fristen.
 
-    Gibt Alerts mit folgenden Feldern zurueck:
+    Gibt Alerts mit folgenden Feldern zurück:
     - invoice_id: Rechnungs-ID
     - invoice_number: Rechnungsnummer
     - entity_id: Entity-ID (optional)
@@ -4037,7 +4037,7 @@ async def get_skonto_alerts(
     - skonto_percentage: Skonto-Prozentsatz
     - skonto_deadline: Skonto-Frist
     - days_remaining: Verbleibende Tage
-    - potential_savings: Moegliche Ersparnis
+    - potential_savings: Mögliche Ersparnis
     - urgency: Dringlichkeit (critical/warning/info)
     - message: Meldung
     """

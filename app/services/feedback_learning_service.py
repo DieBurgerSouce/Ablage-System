@@ -166,7 +166,7 @@ class FeedbackLearningService:
         logger.info("feedback_learning_service_initialized")
 
     async def _get_redis(self):
-        """Lazy-load Redis connection fuer Distributed Locking."""
+        """Lazy-load Redis connection für Distributed Locking."""
         if self._redis is None:
             from app.core.redis_state import RedisStateManager
             self._redis = RedisStateManager.get_instance()
@@ -177,7 +177,7 @@ class FeedbackLearningService:
         """Versucht Distributed Lock zu erwerben.
 
         Args:
-            lock_key: Redis Key fuer Lock
+            lock_key: Redis Key für Lock
             ttl_seconds: Lock Timeout in Sekunden
 
         Returns:
@@ -263,7 +263,7 @@ class FeedbackLearningService:
             elif corr_type == CorrectionType.DATE.value:
                 pattern.date_errors += 1
             elif corr_type == CorrectionType.AMOUNT.value:
-                # AMOUNT deckt sowohl Zahlen als auch Waehrungen ab
+                # AMOUNT deckt sowohl Zahlen als auch Währungen ab
                 pattern.number_errors += 1
                 pattern.currency_errors += 1
 
@@ -288,7 +288,7 @@ class FeedbackLearningService:
         """
         Berechnet optimale Backend-Gewichtungen basierend auf Korrektur-Historie.
 
-        Thread-safe mit Lock fuer Cache-Zugriff.
+        Thread-safe mit Lock für Cache-Zugriff.
 
         Args:
             db: Datenbank-Session
@@ -299,7 +299,7 @@ class FeedbackLearningService:
         """
         now = datetime.now(timezone.utc)
 
-        # Thread-safe Cache pruefen
+        # Thread-safe Cache prüfen
         with self._cache_lock:
             if (
                 not force_refresh
@@ -428,7 +428,7 @@ class FeedbackLearningService:
         batch_size: int = 100
     ) -> int:
         """
-        Verarbeitet noch nicht verarbeitete Korrekturen fuer Self-Learning.
+        Verarbeitet noch nicht verarbeitete Korrekturen für Self-Learning.
 
         Diese Methode wird periodisch von einem Celery Task aufgerufen.
         Verwendet Distributed Locking um Race Conditions zu vermeiden.
@@ -521,7 +521,7 @@ class FeedbackLearningService:
                     correction.learning_processed = True
                     correction.learning_processed_at = now
 
-                    # Flush nach jedem Sample - ermoeglicht Rollback bei Fehler
+                    # Flush nach jedem Sample - ermöglicht Rollback bei Fehler
                     await db.flush()
                     processed += 1
 
@@ -547,7 +547,7 @@ class FeedbackLearningService:
                         correction_id=str(correction.id)[:8],
                         **safe_error_log(e)
                     )
-                    # Rollback nur fuer dieses Sample, nicht den ganzen Batch
+                    # Rollback nur für dieses Sample, nicht den ganzen Batch
                     await db.rollback()
 
             await db.commit()
@@ -743,13 +743,13 @@ class FeedbackLearningService:
         unprocessed_only: bool = True,
     ) -> List[OCRValidationCorrection]:
         """
-        Holt Surya-spezifische Korrekturen fuer Training.
+        Holt Surya-spezifische Korrekturen für Training.
 
         Filtert nach Surya und Surya-GPU Backends.
 
         Args:
             db: Datenbank-Session
-            days: Anzahl Tage zurueck
+            days: Anzahl Tage zurück
             min_confidence: Minimale Confidence vor Korrektur
             unprocessed_only: Nur unverarbeitete Korrekturen
 
@@ -798,11 +798,11 @@ class FeedbackLearningService:
         Detaillierte Analyse von Surya Umlaut-Fehlern.
 
         Kategorisiert Fehler nach Umlaut-Typ und identifiziert
-        haeufige Verwechslungen.
+        häufige Verwechslungen.
 
         Args:
             db: Datenbank-Session
-            days: Anzahl Tage fuer Analyse
+            days: Anzahl Tage für Analyse
 
         Returns:
             Umlaut-Fehler-Analyse mit Statistiken
@@ -855,7 +855,7 @@ class FeedbackLearningService:
             )[:5]
             umlaut_stats["per_umlaut"][umlaut]["confusions"] = dict(top_confusions)
 
-        # Identifiziere haeufigste Muster
+        # Identifiziere häufigste Muster
         all_patterns = []
         for umlaut, confusions in confusion_patterns.items():
             for wrong_char, count in confusions.items():
@@ -888,13 +888,13 @@ class FeedbackLearningService:
         """
         Konvertiert Surya-Korrektionen zu Training Samples.
 
-        Erstellt oder aktualisiert OCRTrainingSample Eintraege
+        Erstellt oder aktualisiert OCRTrainingSample Einträge
         mit korrigiertem Text als Ground Truth.
 
         Args:
             db: Datenbank-Session
             corrections: Liste der zu konvertierenden Korrektionen
-            verify_quality: Qualitaetspruefung aktivieren
+            verify_quality: Qualitätsprüfung aktivieren
 
         Returns:
             Konvertierungs-Statistiken
@@ -914,7 +914,7 @@ class FeedbackLearningService:
 
         for correction in corrections:
             try:
-                # Qualitaetspruefung
+                # Qualitätsprüfung
                 if verify_quality:
                     if not correction.corrected_text:
                         stats["skipped_low_quality"] += 1
@@ -923,7 +923,7 @@ class FeedbackLearningService:
                         stats["skipped_low_quality"] += 1
                         continue
 
-                # Pruefe ob Sample mit diesem Dokument existiert
+                # Prüfe ob Sample mit diesem Dokument existiert
                 if correction.document_id:
                     existing_result = await db.execute(
                         select(OCRTrainingSample).where(
@@ -995,7 +995,7 @@ class FeedbackLearningService:
         db: AsyncSession,
     ) -> Dict[str, Any]:
         """
-        Empfehlung fuer Surya-Retraining basierend auf Feedback.
+        Empfehlung für Surya-Retraining basierend auf Feedback.
 
         Analysiert aktuelle Korrektur-Trends und gibt
         Retraining-Empfehlung mit Dringlichkeit.

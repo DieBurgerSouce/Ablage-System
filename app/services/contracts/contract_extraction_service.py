@@ -4,14 +4,14 @@ Contract Extraction Service.
 
 NLP-basierte Extraktion von Vertragsklauseln und Metadaten
 aus OCR-Text. Extrahiert:
-- Laufzeit & Kuendigungsfristen
+- Laufzeit & Kündigungsfristen
 - Zahlungsbedingungen (Skonto, Zahlungsziele)
 - Haftungsklauseln (Limits, Ausschluesse)
 - Preisanpassungsklauseln (Indexierung)
 - Parteien & Unterschriften
 - Geheimhaltung (NDA)
 - Lieferbedingungen (Incoterms)
-- Garantien & Gewaehrleistungen
+- Garantien & Gewährleistungen
 - Gerichtsstand
 
 Feinpoliert und durchdacht.
@@ -42,29 +42,29 @@ logger = logging.getLogger(__name__)
 
 class ContractExtractionService:
     """
-    Service fuer die automatische Extraktion von Vertragsklauseln.
+    Service für die automatische Extraktion von Vertragsklauseln.
 
     Verwendet regelbasierte Pattern-Matching kombiniert mit
-    NLP-Heuristiken fuer die Extraktion strukturierter Daten.
+    NLP-Heuristiken für die Extraktion strukturierter Daten.
     """
 
-    # Deutsche Patterns fuer Vertragsklauseln
+    # Deutsche Patterns für Vertragsklauseln
     PATTERNS = {
         # Laufzeit
         "duration": [
             r"(?:Laufzeit|Vertragsdauer|Mietdauer)[:\s]+(\d+)\s*(?:Jahre?|Monate?|Wochen?)",
-            r"(?:fuer|ueber)\s+(?:einen?\s+)?(?:Zeitraum\s+von\s+)?(\d+)\s*(?:Jahre?|Monate?)",
+            r"(?:für|über)\s+(?:einen?\s+)?(?:Zeitraum\s+von\s+)?(\d+)\s*(?:Jahre?|Monate?)",
             r"(?:befristet\s+(?:auf|bis)\s+)?(\d{1,2})[./](\d{1,2})[./](\d{2,4})",
         ],
-        # Kuendigungsfrist
+        # Kündigungsfrist
         "notice_period": [
-            r"(?:Kuendigungsfrist|Kuendigung)[:\s]+(\d+)\s*(?:Tage?|Wochen?|Monate?)",
+            r"(?:Kündigungsfrist|Kündigung)[:\s]+(\d+)\s*(?:Tage?|Wochen?|Monate?)",
             r"(?:mit\s+einer?\s+Frist\s+von)\s+(\d+)\s*(?:Tagen?|Wochen?|Monaten?)",
             r"(\d+)\s*(?:Tage?|Wochen?|Monate?)\s+(?:vor\s+)?(?:Vertragsende|Ablauf)",
         ],
         # Zahlungsbedingungen
         "payment_terms": [
-            r"(?:Zahlungsziel|Zahlungsfrist|faellig)[:\s]+(\d+)\s*(?:Tage?|Werktage?)",
+            r"(?:Zahlungsziel|Zahlungsfrist|fällig)[:\s]+(\d+)\s*(?:Tage?|Werktage?)",
             r"(?:innerhalb\s+von)\s+(\d+)\s*(?:Tagen?|Werktagen?)",
             r"(?:netto|rein\s+netto)[:\s]+(\d+)\s*(?:Tage?)",
         ],
@@ -80,17 +80,17 @@ class ContractExtractionService:
             r"(?:maximal|hoechstens|begrenzt\s+auf)[:\s]+(?:EUR|€)?\s*([\d.,]+)",
             r"(?:bis\s+zu\s+einem\s+Betrag\s+von)\s+(?:EUR|€)?\s*([\d.,]+)",
         ],
-        # Gewaehrleistung/Garantie
+        # Gewährleistung/Garantie
         "warranty": [
-            r"(?:Gewaehrleistung|Garantie|Gewaehrleistungsfrist)[:\s]+(\d+)\s*(?:Jahre?|Monate?)",
-            r"(?:Gewaehrleistungsansprueche\s+verjaehren\s+nach)\s+(\d+)\s*(?:Jahren?|Monaten?)",
-            r"(\d+)\s*(?:Jahre?|Monate?)\s+(?:Gewaehrleistung|Garantie)",
+            r"(?:Gewährleistung|Garantie|Gewährleistungsfrist)[:\s]+(\d+)\s*(?:Jahre?|Monate?)",
+            r"(?:Gewährleistungsansprueche\s+verjaehren\s+nach)\s+(\d+)\s*(?:Jahren?|Monaten?)",
+            r"(\d+)\s*(?:Jahre?|Monate?)\s+(?:Gewährleistung|Garantie)",
         ],
         # Gerichtsstand
         "jurisdiction": [
             r"(?:Gerichtsstand|Erfuellungsort)[:\s]+(\w+(?:\s+\w+)?)",
-            r"(?:zustaendig\s+ist\s+das\s+(?:Gericht|Landgericht|Amtsgericht)\s+)(\w+)",
-            r"(?:ausschliesslicher?\s+Gerichtsstand)[:\s]+(\w+)",
+            r"(?:zuständig\s+ist\s+das\s+(?:Gericht|Landgericht|Amtsgericht)\s+)(\w+)",
+            r"(?:ausschließlicher?\s+Gerichtsstand)[:\s]+(\w+)",
         ],
         # Incoterms
         "incoterms": [
@@ -98,9 +98,9 @@ class ContractExtractionService:
         ],
         # Preisanpassung
         "price_adjustment": [
-            r"(?:Preisanpassung|Preiserhoehung|Indexierung)[:\s]+(\w+)",
+            r"(?:Preisanpassung|Preiserhöhung|Indexierung)[:\s]+(\w+)",
             r"(?:Anpassung\s+an\s+den?)\s+(\w+(?:-?\w+)?-?Index)",
-            r"(\d+(?:[,.]\d+)?)\s*%\s*(?:jaehrlich|pro\s+Jahr)",
+            r"(\d+(?:[,.]\d+)?)\s*%\s*(?:jährlich|pro\s+Jahr)",
         ],
         # Vertragswert
         "value": [
@@ -111,14 +111,14 @@ class ContractExtractionService:
         # Vertragsparteien
         "parties": [
             r"(?:zwischen|Vertragspartner)[:\s]*\n?\s*1[.)]\s*(.+?)(?:\n|,|und)",
-            r"(?:Auftraggeber|Kaeufer|Mieter|Arbeitgeber)[:\s]+(.+?)(?:\n|,)",
-            r"(?:Auftragnehmer|Verkaeufer|Vermieter|Arbeitnehmer)[:\s]+(.+?)(?:\n|,)",
+            r"(?:Auftraggeber|Käufer|Mieter|Arbeitgeber)[:\s]+(.+?)(?:\n|,)",
+            r"(?:Auftragnehmer|Verkäufer|Vermieter|Arbeitnehmer)[:\s]+(.+?)(?:\n|,)",
         ],
         # NDA/Geheimhaltung
         "confidentiality": [
             r"(?:Geheimhaltung|Vertraulichkeit|NDA)[:\s]+(\d+)\s*(?:Jahre?|Monate?)",
-            r"(?:vertraulich\s+zu\s+behandeln\s+fuer)\s+(\d+)\s*(?:Jahre?)",
-            r"(?:Geheimhaltungspflicht\s+(?:gilt|besteht)\s+fuer)\s+(\d+)\s*(?:Jahre?)",
+            r"(?:vertraulich\s+zu\s+behandeln\s+für)\s+(\d+)\s*(?:Jahre?)",
+            r"(?:Geheimhaltungspflicht\s+(?:gilt|besteht)\s+für)\s+(\d+)\s*(?:Jahre?)",
         ],
     }
 
@@ -130,7 +130,7 @@ class ContractExtractionService:
         ],
         ContractType.CUSTOMER_SLA: [
             "Service Level Agreement", "SLA", "Dienstguetevereinbarung",
-            "Reaktionszeit", "Verfuegbarkeit",
+            "Reaktionszeit", "Verfügbarkeit",
         ],
         ContractType.LEASE_PROPERTY: [
             "Mietvertrag", "Mietobjekt", "Mieter", "Vermieter",
@@ -142,11 +142,11 @@ class ContractExtractionService:
         ],
         ContractType.LEASE_EQUIPMENT: [
             "Maschinenleasing", "Equipment", "Anlagenleasing",
-            "Geraeteleasin", "Mietkauf",
+            "Geräteleasin", "Mietkauf",
         ],
         ContractType.EMPLOYMENT_PERMANENT: [
             "Arbeitsvertrag", "Arbeitnehmer", "Arbeitgeber",
-            "Gehalt", "unbefristet", "Kuendigungsschutz",
+            "Gehalt", "unbefristet", "Kündigungsschutz",
         ],
         ContractType.EMPLOYMENT_FIXED: [
             "befristeter Arbeitsvertrag", "Befristung", "endet am",
@@ -182,13 +182,13 @@ class ContractExtractionService:
         Args:
             text: Der zu analysierende Vertragstext
             document_id: Optional ID des Quelldokuments
-            company_id: ID der Firma fuer Multi-Tenant
+            company_id: ID der Firma für Multi-Tenant
 
         Returns:
             Dictionary mit extrahierten Klauseln und Metadaten
         """
         if not text or len(text.strip()) < 50:
-            logger.warning("Text zu kurz fuer Vertragsextraktion")
+            logger.warning("Text zu kurz für Vertragsextraktion")
             return {"error": "Text zu kurz", "clauses": {}}
 
         # Normalisiere Text
@@ -294,8 +294,8 @@ class ContractExtractionService:
         return contract
 
     def _normalize_text(self, text: str) -> str:
-        """Normalisiere Text fuer besseres Pattern-Matching."""
-        # Ersetze Umlaute durch ASCII-Aequivalente fuer Regex
+        """Normalisiere Text für besseres Pattern-Matching."""
+        # Ersetze Umlaute durch ASCII-Äquivalente für Regex
         replacements = {
             "ä": "ae", "ö": "oe", "ü": "ue",
             "Ä": "Ae", "Ö": "Oe", "Ü": "Ue",
@@ -351,7 +351,7 @@ class ContractExtractionService:
         return {}
 
     def _extract_notice_period(self, text: str) -> Dict[str, Any]:
-        """Extrahiere Kuendigungsfrist."""
+        """Extrahiere Kündigungsfrist."""
         for pattern in self.PATTERNS["notice_period"]:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
@@ -419,7 +419,7 @@ class ContractExtractionService:
         # Suche nach Haftungsausschluessen
         exclusion_patterns = [
             r"(?:Haftungsausschluss|ausgeschlossen)[:\s]*(.+?)(?:\.|;|\n)",
-            r"(?:haftet\s+nicht\s+fuer)[:\s]*(.+?)(?:\.|;|\n)",
+            r"(?:haftet\s+nicht\s+für)[:\s]*(.+?)(?:\.|;|\n)",
         ]
         exclusions = []
         for pattern in exclusion_patterns:
@@ -431,7 +431,7 @@ class ContractExtractionService:
         return result
 
     def _extract_warranty(self, text: str) -> Dict[str, Any]:
-        """Extrahiere Gewaehrleistung/Garantie."""
+        """Extrahiere Gewährleistung/Garantie."""
         for pattern in self.PATTERNS["warranty"]:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
@@ -452,7 +452,7 @@ class ContractExtractionService:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
                 court = match.group(1).strip()
-                # Entferne unerwuenschte Zeichen
+                # Entferne unerwünschte Zeichen
                 court = re.sub(r'[.,;]', '', court)
                 if len(court) > 2:
                     return {"court": court, "law": "German"}
@@ -560,7 +560,7 @@ class ContractExtractionService:
 
     def _calculate_confidence(self, extraction: Dict[str, Any]) -> float:
         """Berechne Extraktions-Confidence."""
-        # Gewichte fuer verschiedene Felder
+        # Gewichte für verschiedene Felder
         weights = {
             "contract_type": 0.15,
             "duration": 0.1,
@@ -592,7 +592,7 @@ class ContractExtractionService:
         risk_score = 50  # Basis
 
         # Risiko-Faktoren
-        # Kurze Kuendigungsfrist = hoeher Risiko
+        # Kurze Kündigungsfrist = höher Risiko
         notice = extraction.get("notice_period", {})
         if notice:
             days = notice.get("days", 30)
@@ -601,12 +601,12 @@ class ContractExtractionService:
             elif days < 30:
                 risk_score += 5
 
-        # Keine Haftungsbegrenzung = hoeher Risiko
+        # Keine Haftungsbegrenzung = höher Risiko
         liability = extraction.get("liability", {})
         if not liability.get("limit"):
             risk_score += 10
 
-        # Keine Gewaehrleistung = hoeher Risiko
+        # Keine Gewährleistung = höher Risiko
         warranty = extraction.get("warranty", {})
         if not warranty:
             risk_score += 5
@@ -629,7 +629,7 @@ class ContractExtractionService:
             ContractType.SUPPLIER_FRAMEWORK: "Rahmenvertrag",
             ContractType.SUPPLIER_PURCHASE: "Einkaufsvertrag",
             ContractType.CUSTOMER_SLA: "Service Level Agreement",
-            ContractType.CUSTOMER_WARRANTY: "Gewaehrleistungsvertrag",
+            ContractType.CUSTOMER_WARRANTY: "Gewährleistungsvertrag",
             ContractType.CUSTOMER_SALES: "Verkaufsvertrag",
             ContractType.LEASE_PROPERTY: "Mietvertrag",
             ContractType.LEASE_VEHICLE: "Fahrzeugleasing",
@@ -674,15 +674,15 @@ class ContractExtractionService:
             self.db.add(deadline)
             deadlines.append(deadline)
 
-            # Kuendigungsfrist-Erinnerung
+            # Kündigungsfrist-Erinnerung
             if contract.notice_period_days:
                 notice_deadline = contract.expiration_date - timedelta(days=contract.notice_period_days)
                 if notice_deadline > date.today():
                     deadline = ContractDeadline(
                         contract_id=contract.id,
                         deadline_type="termination_notice",
-                        title="Kuendigungsfrist",
-                        description=f"Letzte Moeglichkeit zur Kuendigung (Frist: {contract.notice_period_days} Tage)",
+                        title="Kündigungsfrist",
+                        description=f"Letzte Möglichkeit zur Kündigung (Frist: {contract.notice_period_days} Tage)",
                         deadline_date=notice_deadline,
                         priority="critical",
                         company_id=contract.company_id,
@@ -690,15 +690,15 @@ class ContractExtractionService:
                     self.db.add(deadline)
                     deadlines.append(deadline)
 
-        # Gewaehrleistungsende
+        # Gewährleistungsende
         warranty = extraction.get("warranty", {})
         if warranty.get("period_months") and contract.effective_date:
             warranty_end = contract.effective_date + timedelta(days=warranty["period_months"] * 30)
             deadline = ContractDeadline(
                 contract_id=contract.id,
                 deadline_type="warranty_expiry",
-                title="Gewaehrleistungsende",
-                description=f"Gewaehrleistung endet nach {warranty['period_months']} Monaten",
+                title="Gewährleistungsende",
+                description=f"Gewährleistung endet nach {warranty['period_months']} Monaten",
                 deadline_date=warranty_end,
                 priority="medium",
                 company_id=contract.company_id,

@@ -1,4 +1,4 @@
-"""Service fuer die Verwaltung privater Ordner."""
+"""Service für die Verwaltung privater Ordner."""
 
 import uuid
 from datetime import datetime
@@ -21,7 +21,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PrivatFolderService:
-    """Service fuer Privat-Ordner CRUD und Baumstruktur."""
+    """Service für Privat-Ordner CRUD und Baumstruktur."""
 
     async def create(
         self,
@@ -103,11 +103,11 @@ class PrivatFolderService:
     ) -> Optional[PrivatFolder]:
         """IDOR-sichere Methode: Holt Ordner nur wenn User Zugriff hat.
 
-        SECURITY: Gibt einheitlich None zurueck bei:
+        SECURITY: Gibt einheitlich None zurück bei:
         - Ordner existiert nicht
         - User hat keinen Zugriff
 
-        Dies verhindert Information Disclosure ueber Existenz von Ordnern.
+        Dies verhindert Information Disclosure über Existenz von Ordnern.
 
         Args:
             db: Datenbank-Session
@@ -119,7 +119,7 @@ class PrivatFolderService:
         """
         from app.db.models import PrivatSpace, PrivatSpaceAccess
 
-        # Join mit Space um Owner zu pruefen
+        # Join mit Space um Owner zu prüfen
         result = await db.execute(
             select(PrivatFolder, PrivatSpace)
             .join(PrivatSpace, PrivatFolder.space_id == PrivatSpace.id)
@@ -136,7 +136,7 @@ class PrivatFolderService:
         if space.owner_id == requesting_user_id:
             return folder
 
-        # Pruefe explizite Berechtigung
+        # Prüfe explizite Berechtigung
         now = utc_now()
         access_result = await db.execute(
             select(PrivatSpaceAccess)
@@ -173,7 +173,7 @@ class PrivatFolderService:
         Args:
             db: Datenbank-Session
             space_id: Space-ID
-            parent_id: Optional Parent-ID fuer Unterordner
+            parent_id: Optional Parent-ID für Unterordner
 
         Returns:
             Liste von Ordnern
@@ -253,7 +253,7 @@ class PrivatFolderService:
         db: AsyncSession,
         space_id: uuid.UUID,
     ) -> dict[uuid.UUID, int]:
-        """Holt Dokumentenzaehler pro Ordner.
+        """Holt Dokumentenzähler pro Ordner.
 
         Args:
             db: Datenbank-Session
@@ -286,8 +286,8 @@ class PrivatFolderService:
         """Aktualisiert einen Ordner.
 
         SECURITY FIX 23-1: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelen Updates zu verhindern. Ohne Row Lock koennte:
-        - Lost Updates bei gleichzeitigen Aenderungen auftreten
+        bei parallelen Updates zu verhindern. Ohne Row Lock könnte:
+        - Lost Updates bei gleichzeitigen Änderungen auftreten
         - Inkonsistente Ordnerstrukturen entstehen
 
         Args:
@@ -302,7 +302,7 @@ class PrivatFolderService:
         result = await db.execute(
             select(PrivatFolder)
             .where(PrivatFolder.id == folder_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Ordnerstruktur!
+            .with_for_update()  # ROW LOCK - kritisch für Ordnerstruktur!
         )
         folder = result.scalar_one_or_none()
         if not folder:
@@ -310,7 +310,7 @@ class PrivatFolderService:
 
         update_data = data.model_dump(exclude_unset=True)
 
-        # Bei Parent-Aenderung Pfad und Level neu berechnen
+        # Bei Parent-Änderung Pfad und Level neu berechnen
         if "parent_id" in update_data:
             new_parent_id = update_data["parent_id"]
             if new_parent_id:
@@ -344,17 +344,17 @@ class PrivatFolderService:
         folder_id: uuid.UUID,
         recursive: bool = False,
     ) -> bool:
-        """Loescht einen Ordner.
+        """Löscht einen Ordner.
 
         SECURITY FIX 23-2: Row Lock mit with_for_update() um TOCTOU Race Conditions
-        bei parallelem Delete zu verhindern. Ohne Row Lock koennte:
+        bei parallelem Delete zu verhindern. Ohne Row Lock könnte:
         - Double-Delete auftreten
         - Inkonsistente Zustaende entstehen
 
         Args:
             db: Datenbank-Session
             folder_id: Ordner-ID
-            recursive: Auch Unterordner und Dokumente loeschen?
+            recursive: Auch Unterordner und Dokumente löschen?
 
         Returns:
             True wenn erfolgreich
@@ -366,27 +366,27 @@ class PrivatFolderService:
         result = await db.execute(
             select(PrivatFolder)
             .where(PrivatFolder.id == folder_id)
-            .with_for_update()  # ROW LOCK - kritisch fuer Datenintegritaet!
+            .with_for_update()  # ROW LOCK - kritisch für Datenintegrität!
         )
         folder = result.scalar_one_or_none()
         if not folder:
             return False
 
-        # Pruefe auf Unterordner
+        # Prüfe auf Unterordner
         children = await self.get_space_folders(db, folder.space_id, folder_id)
         if children and not recursive:
-            raise ValueError("Ordner enthaelt Unterordner. Nutze recursive=True")
+            raise ValueError("Ordner enthält Unterordner. Nutze recursive=True")
 
-        # Pruefe auf Dokumente
+        # Prüfe auf Dokumente
         doc_count = await db.execute(
             select(func.count(PrivatDocument.id))
             .where(PrivatDocument.folder_id == folder_id)
         )
         if doc_count.scalar() > 0 and not recursive:
-            raise ValueError("Ordner enthaelt Dokumente. Nutze recursive=True")
+            raise ValueError("Ordner enthält Dokumente. Nutze recursive=True")
 
         if recursive:
-            # Rekursiv loeschen
+            # Rekursiv löschen
             for child in children:
                 await self.delete(db, child.id, recursive=True)
 
@@ -423,14 +423,14 @@ class PrivatFolderService:
         Args:
             db: Datenbank-Session
             folder_id: Ordner-ID
-            new_parent_id: Neuer Parent (None fuer Root)
+            new_parent_id: Neuer Parent (None für Root)
             requesting_user_id: ID des anfragenden Users
 
         Returns:
             Aktualisierter Ordner oder None wenn kein Zugriff
 
         Raises:
-            ValueError: Bei ungueltigem Zielordner oder Zirkularitaet
+            ValueError: Bei ungültigem Zielordner oder Zirkularitaet
         """
         # SECURITY: Hole Quell-Ordner mit Access-Check (atomar)
         folder = await self.get_by_id_with_access_check(db, folder_id, requesting_user_id)
@@ -443,7 +443,7 @@ class PrivatFolderService:
             if not new_parent:
                 raise ValueError("Zielordner nicht gefunden")
 
-            # SECURITY FIX 20-3: Pruefe dass new_parent im GLEICHEN Space liegt
+            # SECURITY FIX 20-3: Prüfe dass new_parent im GLEICHEN Space liegt
             # Verhindert IDOR - User kann keine Ordner in fremde Spaces verschieben
             if new_parent.space_id != folder.space_id:
                 logger.warning(
@@ -455,7 +455,7 @@ class PrivatFolderService:
                 )
                 raise ValueError("Zielordner nicht gefunden oder in anderem Space")
 
-            # Pruefe Zirkularitaet
+            # Prüfe Zirkularitaet
             if new_parent_id == folder_id:
                 raise ValueError("Ordner kann nicht in sich selbst verschoben werden")
 

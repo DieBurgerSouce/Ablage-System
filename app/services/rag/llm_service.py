@@ -1,8 +1,8 @@
-"""LLM Service fuer RAG Intelligence Layer.
+"""LLM Service für RAG Intelligence Layer.
 
-Integration mit Ollama fuer lokale LLM-Inference:
-- Qwen3-8B fuer Realtime-Anfragen (<15s)
-- Qwen3-14B fuer detaillierte Analysen
+Integration mit Ollama für lokale LLM-Inference:
+- Qwen3-8B für Realtime-Anfragen (<15s)
+- Qwen3-14B für detaillierte Analysen
 - Streaming Support
 - Thinking Mode Control
 """
@@ -37,7 +37,7 @@ RETRYABLE_ERRORS = (
 
 
 class LLMContextType(str, Enum):
-    """Kontext-Typ fuer LLM-Anfragen."""
+    """Kontext-Typ für LLM-Anfragen."""
     GENERAL = "general"  # Allgemeine Dokumenten-Fragen
     CUSTOMER = "customer"  # Kunden-bezogene Anfragen
     REPORT = "report"  # Report-Generierung
@@ -47,7 +47,7 @@ class LLMContextType(str, Enum):
 
 @dataclass
 class LLMMessage:
-    """Einzelne Nachricht fuer LLM."""
+    """Einzelne Nachricht für LLM."""
     role: Literal["system", "user", "assistant"]
     content: str
 
@@ -66,7 +66,7 @@ class LLMResponse:
 
 @dataclass
 class ModelConfig:
-    """Konfiguration fuer ein LLM-Modell."""
+    """Konfiguration für ein LLM-Modell."""
     name: str
     context_window: int = 8192
     max_output_tokens: int = 4096
@@ -84,7 +84,7 @@ class ModelRouter:
                 name=settings.DEFAULT_LLM_REALTIME,
                 context_window=8192,
                 max_output_tokens=2048,
-                temperature=0.5,  # Weniger kreativ fuer schnelle Antworten
+                temperature=0.5,  # Weniger kreativ für schnelle Antworten
                 use_case=LLMContextType.REALTIME
             ),
             "analysis": ModelConfig(
@@ -108,13 +108,13 @@ class ModelRouter:
             require_fast: Schnelle Antwort erforderlich (<15s)
 
         Returns:
-            ModelConfig fuer das ausgewaehlte Modell
+            ModelConfig für das ausgewaehlte Modell
         """
         # Realtime-Anfragen immer mit schnellem Modell
         if require_fast or context_type == LLMContextType.REALTIME:
             return self.models["realtime"]
 
-        # Extraktion und Reports mit groesserem Modell
+        # Extraktion und Reports mit größerem Modell
         if context_type in (LLMContextType.EXTRACTION, LLMContextType.REPORT):
             return self.models["analysis"]
 
@@ -123,11 +123,11 @@ class ModelRouter:
 
 
 class LLMService:
-    """Service fuer LLM-Inference mit Ollama.
+    """Service für LLM-Inference mit Ollama.
 
     Features:
     - Model-Routing basierend auf Kontext
-    - Streaming-Support fuer Real-Time Responses
+    - Streaming-Support für Real-Time Responses
     - Thinking Mode Control (/think, /no_think)
     - Retry-Logic bei Fehlern
     """
@@ -148,7 +148,7 @@ class LLMService:
         return self._client
 
     async def close(self) -> None:
-        """Schliesst den HTTP Client."""
+        """Schließt den HTTP Client."""
         if self._client:
             await self._client.aclose()
             self._client = None
@@ -158,14 +158,14 @@ class LLMService:
         messages: List[LLMMessage],
         enable_thinking: bool = True
     ) -> List[Dict[str, str]]:
-        """Bereitet Nachrichten fuer Ollama vor.
+        """Bereitet Nachrichten für Ollama vor.
 
         Args:
             messages: Liste von LLMMessage
             enable_thinking: Thinking-Modus aktivieren
 
         Returns:
-            Liste von Dictionaries fuer Ollama API
+            Liste von Dictionaries für Ollama API
         """
         prepared = []
 
@@ -174,7 +174,7 @@ class LLMService:
 
             # Thinking Mode Control (Qwen3 specific)
             if msg.role == "user" and not enable_thinking:
-                # Deaktiviere Thinking fuer schnellere Antworten
+                # Deaktiviere Thinking für schnellere Antworten
                 if not content.strip().startswith("/no_think"):
                     content = "/no_think\n" + content
 
@@ -188,7 +188,7 @@ class LLMService:
     def _extract_thinking(self, content: str) -> tuple[str, Optional[str]]:
         """Extrahiert Thinking-Content aus der Antwort.
 
-        Qwen3 verwendet <think>...</think> Tags fuer Chain-of-Thought.
+        Qwen3 verwendet <think>...</think> Tags für Chain-of-Thought.
 
         Args:
             content: Rohe LLM-Antwort
@@ -223,7 +223,7 @@ class LLMService:
         Args:
             messages: Chat-Nachrichten
             model: Optionales Modell (sonst automatisch gewaehlt)
-            context_type: Kontext-Typ fuer Model-Routing
+            context_type: Kontext-Typ für Model-Routing
             enable_thinking: Chain-of-Thought aktivieren
             temperature: Optionale Temperature-Override
             max_tokens: Optionales Token-Limit
@@ -233,7 +233,7 @@ class LLMService:
         """
         start_time = datetime.now(timezone.utc)
 
-        # Modell waehlen
+        # Modell wählen
         if model:
             model_config = ModelConfig(name=model)
         else:
@@ -367,7 +367,7 @@ class LLMService:
         messages: List[LLMMessage],
         model: Optional[str] = None,
         context_type: LLMContextType = LLMContextType.GENERAL,
-        enable_thinking: bool = False,  # Meist deaktiviert fuer Streaming
+        enable_thinking: bool = False,  # Meist deaktiviert für Streaming
         max_tokens: Optional[int] = None  # Optionales Token-Limit
     ) -> AsyncGenerator[str, None]:
         """Generiert eine Streaming-LLM-Antwort.
@@ -382,7 +382,7 @@ class LLMService:
         Yields:
             Text-Chunks der Antwort
         """
-        # Modell waehlen
+        # Modell wählen
         if model:
             model_config = ModelConfig(name=model)
         else:
@@ -445,10 +445,10 @@ class LLMService:
             raise
 
     async def check_health(self) -> Dict[str, Any]:
-        """Prueft die Verbindung zu Ollama.
+        """Prüft die Verbindung zu Ollama.
 
         Returns:
-            Health-Status mit verfuegbaren Modellen
+            Health-Status mit verfügbaren Modellen
         """
         try:
             client = await self._get_client()
@@ -474,7 +474,7 @@ class LLMService:
             }
 
     async def list_models(self) -> List[str]:
-        """Listet alle verfuegbaren Modelle.
+        """Listet alle verfügbaren Modelle.
 
         Returns:
             Liste von Modellnamen
@@ -505,7 +505,7 @@ class LLMService:
             response = await client.post(
                 "/api/pull",
                 json={"name": model_name},
-                timeout=httpx.Timeout(3600.0)  # 1 Stunde fuer Download
+                timeout=httpx.Timeout(3600.0)  # 1 Stunde für Download
             )
             response.raise_for_status()
 
@@ -522,7 +522,7 @@ _llm_service: Optional[LLMService] = None
 
 
 def get_llm_service() -> LLMService:
-    """Gibt die LLM-Service-Instanz zurueck."""
+    """Gibt die LLM-Service-Instanz zurück."""
     global _llm_service
     if _llm_service is None:
         _llm_service = LLMService()

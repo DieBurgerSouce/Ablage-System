@@ -2,7 +2,7 @@
 """
 DATEV Export Service.
 
-Hauptservice fuer den DATEV Buchungsstapel-Export.
+Hauptservice für den DATEV Buchungsstapel-Export.
 Orchestriert Mapping, Validierung und CSV-Generierung.
 """
 
@@ -29,16 +29,16 @@ MAX_WARNINGS_PER_EXPORT = 50
 """Maximale Anzahl an Warnungen die pro Export gespeichert werden."""
 
 MAX_DOCUMENTS_PER_QUERY = 1000
-"""Sicherheitslimit fuer Dokumente pro Query."""
+"""Sicherheitslimit für Dokumente pro Query."""
 
 THREADPOOL_MAX_WORKERS = 4
-"""Maximale Anzahl an Worker-Threads fuer paralleles Mapping."""
+"""Maximale Anzahl an Worker-Threads für paralleles Mapping."""
 
 ASYNC_THRESHOLD_DOCUMENTS = 20
 """Ab dieser Anzahl wird async mit ThreadPool verarbeitet."""
 
 CHUNK_SIZE_DOCUMENTS = 50
-"""Chunk-Groesse fuer ThreadPool-Verarbeitung (Memory Leak Prevention)."""
+"""Chunk-Größe für ThreadPool-Verarbeitung (Memory Leak Prevention)."""
 
 from app.api.schemas.datev import (
     DATEVExportPreview,
@@ -80,7 +80,7 @@ class DATEVExportService:
         )
     """
 
-    # Thread-Pool fuer CPU-intensive Operationen (Mapping, CSV-Generierung)
+    # Thread-Pool für CPU-intensive Operationen (Mapping, CSV-Generierung)
     _executor: Optional[ThreadPoolExecutor] = None
     _executor_lock: threading.Lock = threading.Lock()
 
@@ -101,7 +101,7 @@ class DATEVExportService:
         """
         Lazy-initialisiert ThreadPoolExecutor (Thread-Safe Singleton).
 
-        Verwendet Double-Checked Locking Pattern fuer Performance
+        Verwendet Double-Checked Locking Pattern für Performance
         bei gleichzeitiger Thread-Safety.
         """
         if cls._executor is None:
@@ -117,10 +117,10 @@ class DATEVExportService:
     @classmethod
     def shutdown_executor(cls) -> None:
         """
-        Beendet den ThreadPoolExecutor ordnungsgemaess.
+        Beendet den ThreadPoolExecutor ordnungsgemäß.
 
         Wird automatisch via atexit aufgerufen beim Prozess-Ende.
-        Kann auch manuell fuer Tests aufgerufen werden.
+        Kann auch manuell für Tests aufgerufen werden.
         """
         with cls._executor_lock:
             if cls._executor is not None:
@@ -148,7 +148,7 @@ class DATEVExportService:
             period_from: Zeitraum-Start (optional)
             period_to: Zeitraum-Ende (optional)
             config_id: Konfiguration (sonst Standard)
-            include_already_exported: Bereits exportierte einschliessen
+            include_already_exported: Bereits exportierte einschließen
 
         Returns:
             Tuple aus CSV-Bytes (CP1252) und Export-Record
@@ -215,7 +215,7 @@ class DATEVExportService:
         actual_period_to = max(b.belegdatum for b in buchungen)
 
         # MEDIUM-9 FIX: Document Existence Check vor Export-Record Erstellung
-        # Zwischen Document-Read und Export-Write koennen Dokumente geloescht werden
+        # Zwischen Document-Read und Export-Write können Dokumente gelöscht werden
         if included_docs:
             existing_check = await db.execute(
                 select(models.Document.id).where(
@@ -227,7 +227,7 @@ class DATEVExportService:
             deleted_during_export = [doc_id for doc_id in included_docs if doc_id not in still_existing]
 
             if deleted_during_export:
-                # Dokumente wurden waehrend des Exports geloescht
+                # Dokumente wurden während des Exports gelöscht
                 logger.warning(
                     "datev_documents_deleted_during_export",
                     deleted_count=len(deleted_during_export),
@@ -237,14 +237,14 @@ class DATEVExportService:
                 included_docs = [d for d in included_docs if d in still_existing]
                 skipped_docs.extend(deleted_during_export)
                 all_warnings.extend([
-                    f"Dokument {d}: Waehrend Export geloescht"
+                    f"Dokument {d}: Während Export gelöscht"
                     for d in deleted_during_export
                 ])
 
                 # Wenn keine Dokumente mehr uebrig, Fehler
                 if not included_docs:
                     raise ValueError(
-                        "Alle Dokumente wurden waehrend des Exports geloescht. "
+                        "Alle Dokumente wurden während des Exports gelöscht. "
                         "Bitte Export erneut starten."
                     )
 
@@ -402,7 +402,7 @@ class DATEVExportService:
     ) -> Optional[models.DATEVConfiguration]:
         """Laedt Konfiguration (spezifisch oder Standard)."""
         if config_id:
-            # SECURITY FIX: user_id MUSS geprueft werden (OWASP A07:2021)
+            # SECURITY FIX: user_id MUSS geprüft werden (OWASP A07:2021)
             result = await db.execute(
                 select(models.DATEVConfiguration).where(
                     models.DATEVConfiguration.id == config_id,
@@ -482,7 +482,7 @@ class DATEVExportService:
             query = query.where(models.Document.id.in_(document_ids))
 
         # Nur Dokumente mit extracted_data.invoice
-        # (Filterung erfolgt spaeter beim Mappen)
+        # (Filterung erfolgt später beim Mappen)
 
         result = await db.execute(query.limit(MAX_DOCUMENTS_PER_QUERY))
         documents = list(result.scalars().all())
@@ -540,7 +540,7 @@ class DATEVExportService:
         Bei grossen Dokumentmengen werden Batches in Chunks verarbeitet.
 
         WICHTIG (Thread-Safety):
-        - ORM-Objekte werden NICHT direkt an Worker-Threads uebergeben
+        - ORM-Objekte werden NICHT direkt an Worker-Threads übergeben
         - Stattdessen werden serialisierte Daten-Dicts verwendet
         - Dies verhindert DetachedInstanceError bei Lazy-Loading
 
@@ -566,7 +566,7 @@ class DATEVExportService:
             for doc in documents
         ]
 
-        # Fuer kleine Mengen (<20) synchron mappen (Overhead vermeiden)
+        # Für kleine Mengen (<20) synchron mappen (Overhead vermeiden)
         if len(doc_data_list) < ASYNC_THRESHOLD_DOCUMENTS:
             for doc_data in doc_data_list:
                 result = self._map_document_from_dict(
@@ -577,11 +577,11 @@ class DATEVExportService:
                 )
             return buchungen, included_docs, skipped_docs, all_warnings
 
-        # Fuer groessere Mengen: async mit ThreadPoolExecutor in Chunks
+        # Für größere Mengen: async mit ThreadPoolExecutor in Chunks
         loop = asyncio.get_event_loop()
         executor = self._get_executor()
 
-        # Mapping-Funktion fuer ThreadPool vorbereiten
+        # Mapping-Funktion für ThreadPool vorbereiten
         # MEDIUM-6 FIX: Arbeitet mit Dict statt ORM-Objekt
         def map_single_doc_from_dict(doc_data: Dict) -> Tuple[
             uuid.UUID,
@@ -598,7 +598,7 @@ class DATEVExportService:
             chunk_end = min(chunk_start + CHUNK_SIZE_DOCUMENTS, len(doc_data_list))
             chunk = doc_data_list[chunk_start:chunk_end]
 
-            # Futures nur fuer aktuellen Chunk erstellen
+            # Futures nur für aktuellen Chunk erstellen
             futures = [
                 loop.run_in_executor(executor, map_single_doc_from_dict, doc_data)
                 for doc_data in chunk
@@ -611,7 +611,7 @@ class DATEVExportService:
             for i, result in enumerate(chunk_results):
                 doc_id = chunk[i]["id"]
 
-                # Exception-Handling fuer fehlgeschlagene Mappings
+                # Exception-Handling für fehlgeschlagene Mappings
                 if isinstance(result, Exception):
                     logger.error(
                         "datev_mapping_exception",
@@ -759,9 +759,9 @@ class DATEVExportService:
         vendor_mappings: Dict[str, models.DATEVVendorMapping],
     ) -> Optional[models.DATEVVendorMapping]:
         """
-        Sucht passendes Vendor-Mapping fuer eine Eingangsrechnung.
+        Sucht passendes Vendor-Mapping für eine Eingangsrechnung.
 
-        Match-Prioritaet (erste Übereinstimmung gewinnt):
+        Match-Priorität (erste Übereinstimmung gewinnt):
         1. USt-IdNr (exakt, case-sensitive)
         2. IBAN (exakt, case-sensitive)
         3. Firmenname (case-insensitiv, exakter String-Vergleich nach lowercase)
@@ -809,9 +809,9 @@ _service_lock: threading.Lock = threading.Lock()
 
 def get_datev_export_service() -> DATEVExportService:
     """
-    Factory-Funktion fuer DATEVExportService (Thread-Safe).
+    Factory-Funktion für DATEVExportService (Thread-Safe).
 
-    Verwendet Double-Checked Locking Pattern fuer Performance
+    Verwendet Double-Checked Locking Pattern für Performance
     bei gleichzeitiger Thread-Safety.
     """
     global _datev_export_service
@@ -825,10 +825,10 @@ def get_datev_export_service() -> DATEVExportService:
 
 def _shutdown_datev_service() -> None:
     """
-    Shutdown-Handler fuer sauberes Beenden.
+    Shutdown-Handler für sauberes Beenden.
 
     Wird automatisch beim Prozess-Ende via atexit aufgerufen.
-    Stellt sicher dass ThreadPoolExecutor ordnungsgemaess beendet wird.
+    Stellt sicher dass ThreadPoolExecutor ordnungsgemäß beendet wird.
     """
     DATEVExportService.shutdown_executor()
 

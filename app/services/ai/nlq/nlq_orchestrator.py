@@ -1,4 +1,4 @@
-"""NLQ Orchestrator - Hauptorchestrator fuer Natural Language Query 2.0."""
+"""NLQ Orchestrator - Hauptorchestrator für Natural Language Query 2.0."""
 
 import time
 from dataclasses import dataclass

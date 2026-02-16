@@ -1,9 +1,9 @@
-"""Reranker-Service fuer RAG Search mit GPU/CPU Dual-Stack.
+"""Reranker-Service für RAG Search mit GPU/CPU Dual-Stack.
 
-GPU-beschleunigtes Reranking mit BGE-Reranker-v2-m3 (primaer)
+GPU-beschleunigtes Reranking mit BGE-Reranker-v2-m3 (primär)
 und CPU-Fallback mit MiniLM Cross-Encoder.
 
-Singleton-Muster fuer effiziente Modellnutzung.
+Singleton-Muster für effiziente Modellnutzung.
 """
 
 from typing import List, Optional, TypedDict, Dict, Any, TYPE_CHECKING, Union
@@ -20,7 +20,7 @@ except ImportError:
     TORCH_AVAILABLE = False
     torch = None
 
-# Type hint fuer CrossEncoder (importiert nur fuer Type-Checking)
+# Type hint für CrossEncoder (importiert nur für Type-Checking)
 if TYPE_CHECKING:
     from sentence_transformers import CrossEncoder
 
@@ -71,7 +71,7 @@ class RerankedResult:
 
 
 class RerankerService:
-    """Service fuer Cross-Encoder Reranking mit GPU/CPU Fallback.
+    """Service für Cross-Encoder Reranking mit GPU/CPU Fallback.
 
     Implementiert Dual-Stack:
     - GPU: BGE-Reranker-v2-m3 (~1GB VRAM)
@@ -96,7 +96,7 @@ class RerankerService:
     GPU_VRAM_REQUIREMENT_GB = getattr(settings, 'RERANKER_GPU_VRAM_GB', 1.0)
 
     def __new__(cls) -> 'RerankerService':
-        """Singleton-Instanz zurueckgeben."""
+        """Singleton-Instanz zurückgeben."""
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -141,7 +141,7 @@ class RerankerService:
         self._initialized = True
 
     def _check_gpu_vram(self, required_gb: float) -> bool:
-        """Pruefe ob genuegend VRAM fuer Reranker verfuegbar ist."""
+        """Prüfe ob genuegend VRAM für Reranker verfügbar ist."""
         if not TORCH_AVAILABLE or torch is None or not torch.cuda.is_available():
             return False
 
@@ -158,7 +158,7 @@ class RerankerService:
             return False
 
     def _ensure_gpu_model_loaded(self) -> bool:
-        """GPU-Modell laden falls moeglich und noch nicht geladen."""
+        """GPU-Modell laden falls möglich und noch nicht geladen."""
         if not self._gpu_available:
             return False
 
@@ -260,8 +260,8 @@ class RerankerService:
     ) -> List[RerankedResult]:
         """Dokumente mit Cross-Encoder reranken.
 
-        Versucht zuerst GPU, faellt auf CPU zurueck bei:
-        - GPU nicht verfuegbar
+        Versucht zuerst GPU, faellt auf CPU zurück bei:
+        - GPU nicht verfügbar
         - VRAM-Knappheit
         - GPU-Modell-Fehler
 
@@ -342,7 +342,7 @@ class RerankerService:
         documents: List[str],
         backend: str
     ) -> List[RerankedResult]:
-        """Reranking mit spezifischem Modell durchfuehren."""
+        """Reranking mit spezifischem Modell durchführen."""
         import time
         start_time = time.time()
 
@@ -392,7 +392,7 @@ class RerankerService:
         documents: List[str],
         top_k: Optional[int] = None
     ) -> List[RerankedResult]:
-        """Async-Wrapper fuer Reranking."""
+        """Async-Wrapper für Reranking."""
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None,
@@ -431,7 +431,7 @@ class RerankerService:
         return info
 
     def unload_gpu_model(self) -> None:
-        """GPU-Modell aus Speicher entfernen (fuer OCR VRAM-Freigabe)."""
+        """GPU-Modell aus Speicher entfernen (für OCR VRAM-Freigabe)."""
         with self._lock:
             if self._gpu_model is not None:
                 del self._gpu_model
@@ -456,12 +456,12 @@ class RerankerService:
                 logger.info("cpu_reranker_unloaded")
 
     def is_available(self) -> bool:
-        """Pruefe ob Reranking verfuegbar ist (min. ein Backend)."""
+        """Prüfe ob Reranking verfügbar ist (min. ein Backend)."""
         if not getattr(settings, 'RAG_RERANK_ENABLED', True):
             return False
 
         # GPU oder CPU muss ladbar sein
-        return self._gpu_available or True  # CPU ist immer verfuegbar
+        return self._gpu_available or True  # CPU ist immer verfügbar
 
 
 # Singleton-Instanz

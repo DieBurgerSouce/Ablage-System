@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-AI Conversation Models fuer Finance Assistant Persistierung.
+AI Conversation Models für Finance Assistant Persistierung.
 
-Ermoeglicht:
+Ermöglicht:
 - Chat-History Speicherung
 - Aktions-Tracking
 - Benutzer-Feedback Sammlung
@@ -10,7 +10,7 @@ Ermoeglicht:
 
 Migration: 120_add_ai_conversations
 
-Feinpoliert und durchdacht - Deutsche Praezision.
+Feinpoliert und durchdacht - Deutsche Präzision.
 """
 
 import uuid
@@ -88,8 +88,8 @@ class AIConversation(Base):
     """
     Konversations-Session mit dem KI-Finanzassistenten.
 
-    Speichert den gesamten Kontext einer Chat-Session fuer
-    spaetere Referenz und Kontext-Bewahrung.
+    Speichert den gesamten Kontext einer Chat-Session für
+    spätere Referenz und Kontext-Bewahrung.
     """
     __tablename__ = "ai_conversations"
 
@@ -98,7 +98,7 @@ class AIConversation(Base):
         String(64),
         nullable=False,
         unique=True,
-        comment="Eindeutige Session-ID fuer Frontend-Zuordnung"
+        comment="Eindeutige Session-ID für Frontend-Zuordnung"
     )
 
     # Beziehungen
@@ -148,19 +148,19 @@ class AIConversation(Base):
     total_tokens = Column(
         Integer,
         nullable=True,
-        comment="Gesamte Token-Nutzung (fuer Kosten-Tracking)"
+        comment="Gesamte Token-Nutzung (für Kosten-Tracking)"
     )
 
     # Kontext-Daten
     context_data = Column(
         JSONB,
         nullable=True,
-        comment="Zusaetzlicher Kontext (ausgewaehlte Dokumente, etc.)"
+        comment="Zusätzlicher Kontext (ausgewaehlte Dokumente, etc.)"
     )
     preferences = Column(
         JSONB,
         nullable=True,
-        comment="Benutzer-Praeferenzen fuer diese Session"
+        comment="Benutzer-Praeferenzen für diese Session"
     )
 
     # Timestamps
@@ -203,7 +203,7 @@ class AIConversation(Base):
         )
 
     def to_summary_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Uebersichts-Dictionary fuer ConversationSummary."""
+        """Konvertiere zu Übersichts-Dictionary für ConversationSummary."""
         return {
             "id": str(self.id),
             "session_id": self.session_id,
@@ -220,7 +220,7 @@ class AIConversation(Base):
         }
 
     def to_detail_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu vollstaendigem Dictionary fuer ConversationDetail."""
+        """Konvertiere zu vollständigem Dictionary für ConversationDetail."""
         return {
             "id": str(self.id),
             "session_id": self.session_id,
@@ -267,7 +267,7 @@ class AIConversationMessage(Base):
     intent = Column(
         String(50),
         nullable=True,
-        comment="Erkannte Absicht (nur fuer user-Nachrichten)"
+        comment="Erkannte Absicht (nur für user-Nachrichten)"
     )
     confidence = Column(
         Float,
@@ -275,7 +275,7 @@ class AIConversationMessage(Base):
         comment="Konfidenz der Intent-Erkennung (0.0-1.0)"
     )
 
-    # Antwort-Metadaten (nur fuer assistant-Nachrichten)
+    # Antwort-Metadaten (nur für assistant-Nachrichten)
     search_results_count = Column(Integer, nullable=True)
     actions_proposed = Column(Integer, nullable=True)
     processing_time_ms = Column(Integer, nullable=True)
@@ -290,7 +290,7 @@ class AIConversationMessage(Base):
     extra_data = Column(
         JSONB,
         nullable=True,
-        comment="Zusaetzliche Metadaten (Insights, Suggestions, etc.)"
+        comment="Zusätzliche Metadaten (Insights, Suggestions, etc.)"
     )
     referenced_documents = Column(
         JSONB,
@@ -324,7 +324,7 @@ class AIConversationMessage(Base):
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "id": str(self.id),
             "role": self.role,
@@ -344,10 +344,10 @@ class AIConversationMessage(Base):
 
 class AIConversationAction(Base):
     """
-    Vorgeschlagene oder ausgefuehrte Aktion durch den Assistenten.
+    Vorgeschlagene oder ausgeführte Aktion durch den Assistenten.
 
-    Ermoeglicht vollstaendiges Tracking aller Aktionen
-    fuer Audit und Rueckverfolgbarkeit.
+    Ermöglicht vollständiges Tracking aller Aktionen
+    für Audit und Rückverfolgbarkeit.
     """
     __tablename__ = "ai_conversation_actions"
 
@@ -388,11 +388,11 @@ class AIConversationAction(Base):
     result = Column(
         JSONB,
         nullable=True,
-        comment="Ergebnis nach Ausfuehrung"
+        comment="Ergebnis nach Ausführung"
     )
     error_message = Column(Text, nullable=True)
 
-    # Betroffene Entitaeten
+    # Betroffene Entitäten
     affected_documents = Column(
         JSONB,
         nullable=True,
@@ -435,7 +435,7 @@ class AIConversationAction(Base):
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "id": str(self.id),
             "action_type": self.action_type,
@@ -458,8 +458,8 @@ class AIConversationFeedback(Base):
     """
     Benutzer-Feedback zu einer Assistenten-Antwort.
 
-    Ermoeglicht kontinuierliche Verbesserung des Assistenten
-    basierend auf Benutzer-Rueckmeldungen.
+    Ermöglicht kontinuierliche Verbesserung des Assistenten
+    basierend auf Benutzer-Rückmeldungen.
     """
     __tablename__ = "ai_conversation_feedbacks"
 
@@ -523,7 +523,7 @@ class AIConversationFeedback(Base):
         )
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API."""
+        """Konvertiere zu Dictionary für API."""
         return {
             "id": str(self.id),
             "feedback_type": self.feedback_type,

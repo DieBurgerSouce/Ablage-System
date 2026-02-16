@@ -29,7 +29,7 @@ try:
     from app.core.german_messages import BackupMessages
 except ImportError:
     class BackupMessages:
-        DAILY_REPORT = "Taeglicher Sicherungsbericht"
+        DAILY_REPORT = "Täglicher Sicherungsbericht"
         WEEKLY_REPORT = "Woechentlicher Sicherungsbericht"
         MONTHLY_REPORT = "Monatlicher Sicherungsbericht"
         REPORT_GENERATED = "Sicherungsbericht erstellt: {filename}"
@@ -338,7 +338,7 @@ class BackupReportService:
                 f"Letzte Sicherung ist {report.newest_backup_hours:.1f} Stunden alt"
             )
             report.recommendations.append(
-                "Backup-Zeitplan ueberpruefen"
+                "Backup-Zeitplan überprüfen"
             )
 
         # Check disk space
@@ -347,7 +347,7 @@ class BackupReportService:
                 f"Speicherplatz kritisch: {report.disk_usage_percent}% belegt"
             )
             report.recommendations.append(
-                "Dringend: Speicherplatz erweitern oder alte Backups loeschen"
+                "Dringend: Speicherplatz erweitern oder alte Backups löschen"
             )
         elif report.disk_usage_percent > 80:
             report.warnings.append(
@@ -357,10 +357,10 @@ class BackupReportService:
         # Check encryption
         if not report.encryption_enabled:
             report.warnings.append(
-                "Backup-Verschluesselung ist nicht aktiviert"
+                "Backup-Verschlüsselung ist nicht aktiviert"
             )
             report.recommendations.append(
-                "GPG-Verschluesselung fuer Backups aktivieren"
+                "GPG-Verschlüsselung für Backups aktivieren"
             )
 
         # Check for no backups
@@ -369,7 +369,7 @@ class BackupReportService:
                 "Keine Backups im Berichtszeitraum"
             )
             report.recommendations.append(
-                "Backup-Service und Zeitplan ueberpruefen"
+                "Backup-Service und Zeitplan überprüfen"
             )
 
     def _save_report(self, report: BackupReportData, filename: str) -> Path:
@@ -451,7 +451,7 @@ class BackupReportService:
             "",
             f"| Metrik | Wert |",
             f"|--------|------|",
-            f"| Gesamt Backup-Groesse | {report.total_backup_size_gb} GB |",
+            f"| Gesamt Backup-Größe | {report.total_backup_size_gb} GB |",
             f"| Speicher belegt | {report.disk_usage_percent}% |",
             f"| Speicher frei | {report.disk_free_gb} GB |",
             f"| Aeltestes Backup | {report.oldest_backup_days} Tage |",
@@ -461,7 +461,7 @@ class BackupReportService:
             "",
             f"| Einstellung | Status |",
             f"|-------------|--------|",
-            f"| Verschluesselung | {'Aktiviert' if report.encryption_enabled else 'Deaktiviert'} |",
+            f"| Verschlüsselung | {'Aktiviert' if report.encryption_enabled else 'Deaktiviert'} |",
             "",
         ])
 
@@ -566,7 +566,7 @@ async def main():
         issues_count=len(report.issues),
         warnings_count=len(report.warnings)
     )
-    # CLI-Ausgabe fuer interaktive Nutzung
+    # CLI-Ausgabe für interaktive Nutzung
     sys.stdout.write(f"\nBericht generiert:\n")
     sys.stdout.write(f"  Typ: {report.report_type}\n")
     sys.stdout.write(f"  Zeitraum: {report.period_start.date()} - {report.period_end.date()}\n")

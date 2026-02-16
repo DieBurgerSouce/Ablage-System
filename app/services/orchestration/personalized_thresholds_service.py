@@ -11,9 +11,9 @@ Das System lernt und passt Schwellenwerte an:
 - Self-Learning aus User-Feedback
 
 Beispiele:
-- DTI-Schwelle: 36% Standard → 40% fuer Freelancer mit variablem Einkommen
-- Notgroschen: 6 Monate Standard → 3 Monate fuer Beamte mit Job-Sicherheit
-- Rendite: 5% Standard → 8% fuer risikofreudige Investoren
+- DTI-Schwelle: 36% Standard → 40% für Freelancer mit variablem Einkommen
+- Notgroschen: 6 Monate Standard → 3 Monate für Beamte mit Job-Sicherheit
+- Rendite: 5% Standard → 8% für risikofreudige Investoren
 
 TRUE Enterprise: Das System passt sich dem User an, nicht umgekehrt.
 """
@@ -80,7 +80,7 @@ class ThresholdType(str, Enum):
 
 
 class ThresholdCategory(str, Enum):
-    """Kategorien fuer Schwellenwerte."""
+    """Kategorien für Schwellenwerte."""
     DEBT = "debt"  # Schulden
     SAVINGS = "savings"  # Ersparnisse
     INVESTMENT = "investment"  # Investments
@@ -123,7 +123,7 @@ class ThresholdDefinition:
 
 @dataclass
 class UserThreshold:
-    """Ein personalisierter Schwellenwert fuer einen User."""
+    """Ein personalisierter Schwellenwert für einen User."""
     id: UUID
     user_id: UUID
     threshold_type: ThresholdType
@@ -147,7 +147,7 @@ class UserThreshold:
 
 @dataclass
 class UserProfile:
-    """User-Profil fuer Schwellenwert-Personalisierung."""
+    """User-Profil für Schwellenwert-Personalisierung."""
     user_id: UUID
     profession_type: ProfessionType
     risk_tolerance: RiskTolerance
@@ -186,7 +186,7 @@ class ThresholdAdjustment:
 
 @dataclass
 class ThresholdRecommendation:
-    """Empfehlung fuer eine Schwellenwert-Anpassung."""
+    """Empfehlung für eine Schwellenwert-Anpassung."""
     id: UUID
     user_id: UUID
     threshold_type: ThresholdType
@@ -207,7 +207,7 @@ class ThresholdRecommendation:
 # =============================================================================
 
 class ThresholdRegistry:
-    """Registry aller verfuegbaren Schwellenwerte mit Defaults."""
+    """Registry aller verfügbaren Schwellenwerte mit Defaults."""
 
     def __init__(self):
         self._thresholds: Dict[ThresholdType, ThresholdDefinition] = {}
@@ -229,7 +229,7 @@ class ThresholdRegistry:
             profession_defaults={
                 ProfessionType.CIVIL_SERVANT: 40.0,  # Sichere Jobs
                 ProfessionType.FREELANCER: 32.0,  # Variable Einkommen
-                ProfessionType.ENTREPRENEUR: 45.0,  # Hoehere Schulden normal
+                ProfessionType.ENTREPRENEUR: 45.0,  # Höhere Schulden normal
                 ProfessionType.RETIRED: 30.0,  # Konservativer
                 ProfessionType.STUDENT: 25.0,  # Sehr konservativ
             },
@@ -377,7 +377,7 @@ class ThresholdRegistry:
             threshold_type=ThresholdType.EXPECTED_RETURN,
             category=ThresholdCategory.INVESTMENT,
             name="Erwartete Rendite",
-            description="Erwartete jaehrliche Portfolio-Rendite",
+            description="Erwartete jährliche Portfolio-Rendite",
             unit="%",
             default_value=5.0,
             min_allowed=0.0,
@@ -429,7 +429,7 @@ class ThresholdRegistry:
             max_allowed=80.0,
             profession_defaults={},
             risk_modifiers={
-                RiskTolerance.VERY_CONSERVATIVE: 1.1,  # Frueher warnen
+                RiskTolerance.VERY_CONSERVATIVE: 1.1,  # Früher warnen
                 RiskTolerance.CONSERVATIVE: 1.05,
                 RiskTolerance.MODERATE: 1.0,
                 RiskTolerance.AGGRESSIVE: 0.95,
@@ -462,7 +462,7 @@ class ThresholdRegistry:
             threshold_type=ThresholdType.RENT_VS_INCOME_MAX,
             category=ThresholdCategory.HOUSING,
             name="Max Mietanteil",
-            description="Maximaler Anteil des Einkommens fuer Miete",
+            description="Maximaler Anteil des Einkommens für Miete",
             unit="%",
             default_value=30.0,
             min_allowed=15.0,
@@ -470,7 +470,7 @@ class ThresholdRegistry:
             profession_defaults={
                 ProfessionType.CIVIL_SERVANT: 35.0,  # Stabiles Einkommen
                 ProfessionType.FREELANCER: 25.0,  # Konservativer
-                ProfessionType.STUDENT: 40.0,  # Typischerweise hoeher
+                ProfessionType.STUDENT: 40.0,  # Typischerweise höher
             },
             risk_modifiers={
                 RiskTolerance.VERY_CONSERVATIVE: 0.85,
@@ -532,14 +532,14 @@ class ThresholdRegistry:
             threshold_type=ThresholdType.LOAN_INTEREST_WARNING,
             category=ThresholdCategory.DEBT,
             name="Kreditzins Warnschwelle",
-            description="Zinssatz ab dem Refinanzierung geprueft wird",
+            description="Zinssatz ab dem Refinanzierung geprüft wird",
             unit="%",
             default_value=5.0,
             min_allowed=2.0,
             max_allowed=15.0,
             profession_defaults={},
             risk_modifiers={
-                RiskTolerance.VERY_CONSERVATIVE: 0.8,  # Frueher warnen
+                RiskTolerance.VERY_CONSERVATIVE: 0.8,  # Früher warnen
                 RiskTolerance.CONSERVATIVE: 0.9,
                 RiskTolerance.MODERATE: 1.0,
                 RiskTolerance.AGGRESSIVE: 1.1,
@@ -548,15 +548,15 @@ class ThresholdRegistry:
         )
 
     def get_threshold(self, threshold_type: ThresholdType) -> Optional[ThresholdDefinition]:
-        """Gibt Threshold-Definition zurueck."""
+        """Gibt Threshold-Definition zurück."""
         return self._thresholds.get(threshold_type)
 
     def get_all_thresholds(self) -> List[ThresholdDefinition]:
-        """Gibt alle Threshold-Definitionen zurueck."""
+        """Gibt alle Threshold-Definitionen zurück."""
         return list(self._thresholds.values())
 
     def get_thresholds_by_category(self, category: ThresholdCategory) -> List[ThresholdDefinition]:
-        """Gibt Thresholds einer Kategorie zurueck."""
+        """Gibt Thresholds einer Kategorie zurück."""
         return [t for t in self._thresholds.values() if t.category == category]
 
 
@@ -566,7 +566,7 @@ class ThresholdRegistry:
 
 class PersonalizedThresholdsService:
     """
-    Service fuer personalisierte Schwellenwerte.
+    Service für personalisierte Schwellenwerte.
 
     Features:
     - Berufsprofilbasierte Defaults
@@ -612,7 +612,7 @@ class PersonalizedThresholdsService:
         Bereinigt alte Daten um Memory-Leaks zu verhindern.
 
         Returns:
-            Anzahl entfernter Eintraege.
+            Anzahl entfernter Einträge.
         """
         removed = 0
 
@@ -671,7 +671,7 @@ class PersonalizedThresholdsService:
         )
         self._user_profiles[user_id] = profile
 
-        # Initialisiere Thresholds fuer neuen User
+        # Initialisiere Thresholds für neuen User
         await self._initialize_user_thresholds(user_id, profile)
 
         logger.info(
@@ -730,7 +730,7 @@ class PersonalizedThresholdsService:
         user_id: UUID,
         profile: UserProfile,
     ) -> None:
-        """Initialisiert Thresholds fuer einen neuen User."""
+        """Initialisiert Thresholds für einen neuen User."""
         if user_id not in self._user_thresholds:
             self._user_thresholds[user_id] = {}
 
@@ -783,7 +783,7 @@ class PersonalizedThresholdsService:
         user_id: UUID,
         profile: UserProfile,
     ) -> None:
-        """Berechnet alle Thresholds nach Profil-Aenderung neu."""
+        """Berechnet alle Thresholds nach Profil-Änderung neu."""
         if user_id not in self._user_thresholds:
             await self._initialize_user_thresholds(user_id, profile)
             return
@@ -939,7 +939,7 @@ class PersonalizedThresholdsService:
         user_id: UUID,
         threshold_type: ThresholdType,
     ) -> UserThreshold:
-        """Setzt einen Schwellenwert auf den profil-basierten Default zurueck."""
+        """Setzt einen Schwellenwert auf den profil-basierten Default zurück."""
         profile = await self.get_or_create_profile(user_id)
 
         definition = self.registry.get_threshold(threshold_type)
@@ -953,11 +953,11 @@ class PersonalizedThresholdsService:
             user_id=user_id,
             threshold_type=threshold_type,
             value=default_value,
-            reason="Zurueckgesetzt auf Profil-Default",
+            reason="Zurückgesetzt auf Profil-Default",
         )
 
     async def reset_all_thresholds(self, user_id: UUID) -> List[UserThreshold]:
-        """Setzt alle Schwellenwerte zurueck."""
+        """Setzt alle Schwellenwerte zurück."""
         profile = await self.get_or_create_profile(user_id)
 
         results = []
@@ -1016,7 +1016,7 @@ class PersonalizedThresholdsService:
         user_id: UUID,
         current_kpis: Dict[str, float],
     ) -> List[ThresholdRecommendation]:
-        """Generiert Empfehlungen fuer Schwellenwert-Anpassungen."""
+        """Generiert Empfehlungen für Schwellenwert-Anpassungen."""
         profile = await self.get_or_create_profile(user_id)
         recommendations: List[ThresholdRecommendation] = []
         now = datetime.now(timezone.utc)
@@ -1031,7 +1031,7 @@ class PersonalizedThresholdsService:
             if dti_warning:
                 # User ist chronisch nah am Threshold
                 if dti > dti_warning.current_value * 0.9 and dti < dti_warning.current_value:
-                    # Vielleicht Threshold erhoehen wenn stabil
+                    # Vielleicht Threshold erhöhen wenn stabil
                     if profile.income_stability > 0.8:
                         recommendations.append(ThresholdRecommendation(
                             id=uuid4(),
@@ -1041,8 +1041,8 @@ class PersonalizedThresholdsService:
                             recommended_value=min(dti_warning.current_value + 3, 50),
                             reason=(
                                 f"Ihr DTI liegt stabil bei {dti:.1f}%. "
-                                f"Bei Ihrer Einkommensstabilitaet koennte der Warnschwellenwert "
-                                f"leicht erhoeht werden."
+                                f"Bei Ihrer Einkommensstabilität könnte der Warnschwellenwert "
+                                f"leicht erhöht werden."
                             ),
                             confidence=0.7,
                             potential_impact="Weniger Warnungen bei stabilem Einkommen",
@@ -1065,12 +1065,12 @@ class PersonalizedThresholdsService:
                         current_value=ef_target.current_value,
                         recommended_value=min(ef_months * 0.8, 12),
                         reason=(
-                            f"Ihr Notgroschen ({ef_months:.1f} Monate) ist deutlich ueber "
+                            f"Ihr Notgroschen ({ef_months:.1f} Monate) ist deutlich über "
                             f"dem Ziel ({ef_target.current_value:.1f} Monate). "
-                            f"Ueberschuessige Liquiditaet koennte investiert werden."
+                            f"Überschuessige Liquiditaet könnte investiert werden."
                         ),
                         confidence=0.75,
-                        potential_impact="Mehr Kapital fuer Investments verfuegbar",
+                        potential_impact="Mehr Kapital für Investments verfügbar",
                         created_at=now,
                         expires_at=now + timedelta(days=60),
                     ))
@@ -1246,7 +1246,7 @@ _service_lock = threading.Lock()
 
 
 def get_personalized_thresholds_service() -> PersonalizedThresholdsService:
-    """Gibt die Singleton-Instanz des Service zurueck."""
+    """Gibt die Singleton-Instanz des Service zurück."""
     global _service_instance
 
     if _service_instance is None:

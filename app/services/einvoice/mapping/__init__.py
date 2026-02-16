@@ -10,7 +10,7 @@ Die Mapper garantieren bidirektionale Konvertierung:
 - Parsen: XML/PDF -> ExtractedInvoiceData
 - Generieren: ExtractedInvoiceData -> XML/PDF
 
-Verfuegbare Mapper:
+Verfügbare Mapper:
 - ZUGFeRDMapper: ZUGFeRD 2.x (CII-basiert)
 - XRechnungUBLMapper: XRechnung 3.0.2 im UBL 2.1 Format
 """

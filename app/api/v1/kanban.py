@@ -28,7 +28,7 @@ router = APIRouter(prefix="/kanban", tags=["Kanban Board"])
 # =============================================================================
 
 class KanbanItemSchema(BaseModel):
-    """Schema fuer Kanban-Item."""
+    """Schema für Kanban-Item."""
     id: UUID
     document_id: UUID
     document_name: Optional[str] = None
@@ -44,7 +44,7 @@ class KanbanItemSchema(BaseModel):
 
 
 class KanbanStageSchema(BaseModel):
-    """Schema fuer Kanban-Stage."""
+    """Schema für Kanban-Stage."""
     id: UUID
     stage_key: str
     stage_name: str
@@ -59,26 +59,26 @@ class KanbanStageSchema(BaseModel):
 
 
 class KanbanBoardSchema(BaseModel):
-    """Schema fuer vollstaendiges Kanban-Board."""
+    """Schema für vollständiges Kanban-Board."""
     workflow_type: str
     stages: List[KanbanStageSchema]
     total_items: int
 
 
 class MoveItemRequest(BaseModel):
-    """Request fuer Item-Verschiebung."""
+    """Request für Item-Verschiebung."""
     target_stage_id: UUID = Field(..., description="Ziel-Stage ID")
 
 
 class AddItemRequest(BaseModel):
-    """Request fuer neues Item."""
+    """Request für neues Item."""
     document_id: UUID = Field(..., description="Dokument ID")
     priority: str = Field(default="normal", description="Prioritaet (low, normal, high, urgent)")
     assigned_to: Optional[UUID] = Field(None, description="Zugewiesener User ID")
 
 
 class StageConfigRequest(BaseModel):
-    """Request fuer Stage-Konfiguration."""
+    """Request für Stage-Konfiguration."""
     stage_key: str = Field(..., description="Eindeutiger Stage-Key")
     stage_name: str = Field(..., description="Anzeigename")
     stage_order: int = Field(..., description="Reihenfolge")
@@ -90,7 +90,7 @@ class StageConfigRequest(BaseModel):
 
 
 class StageStatisticsSchema(BaseModel):
-    """Schema fuer Stage-Statistiken."""
+    """Schema für Stage-Statistiken."""
     stage_key: str
     stage_name: str
     item_count: int
@@ -167,7 +167,7 @@ async def get_board(
     user: User = Depends(get_current_active_user),
 ) -> KanbanBoardSchema:
     """
-    Gibt vollstaendiges Kanban-Board mit allen Stages und Items zurueck.
+    Gibt vollständiges Kanban-Board mit allen Stages und Items zurück.
 
     **Workflow-Typen:**
     - `document`: Standard-Dokumentenworkflow
@@ -283,7 +283,7 @@ async def get_stages(
     user: User = Depends(get_current_active_user),
 ) -> List[KanbanStageSchema]:
     """
-    Gibt alle Stages fuer einen Workflow-Typ zurueck.
+    Gibt alle Stages für einen Workflow-Typ zurück.
 
     Erstellt Default-Stages falls keine existieren.
 
@@ -331,13 +331,13 @@ async def update_stages(
     user: User = Depends(get_current_active_user),
 ) -> List[KanbanStageSchema]:
     """
-    Admin: Aktualisiert Stage-Konfiguration fuer einen Workflow-Typ.
+    Admin: Aktualisiert Stage-Konfiguration für einen Workflow-Typ.
 
-    **WARNUNG:** Loescht alle existierenden Stages und Items!
+    **WARNUNG:** Löscht alle existierenden Stages und Items!
 
     **German Error Messages:**
     - 403: "Kein Zugriff auf diese Firma" oder "Nur Administratoren"
-    - 400: "Stage-Orders muessen eindeutig sein"
+    - 400: "Stage-Orders müssen eindeutig sein"
     - 500: "Fehler beim Aktualisieren der Stages"
     """
     validate_company_access(company_id, user)
@@ -346,7 +346,7 @@ async def update_stages(
     if not user.is_superuser:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Stages konfigurieren"
+            detail="Nur Administratoren können Stages konfigurieren"
         )
 
     try:
@@ -396,7 +396,7 @@ async def get_statistics(
     user: User = Depends(get_current_active_user),
 ) -> List[StageStatisticsSchema]:
     """
-    Gibt Statistiken fuer alle Stages eines Workflows zurueck.
+    Gibt Statistiken für alle Stages eines Workflows zurück.
 
     Beinhaltet:
     - Anzahl Items pro Stage
@@ -439,7 +439,7 @@ async def remove_item(
     """
     Entfernt ein Item vom Kanban-Board.
 
-    Das Dokument selbst wird nicht geloescht, nur die Workflow-Zuordnung.
+    Das Dokument selbst wird nicht gelöscht, nur die Workflow-Zuordnung.
 
     **German Error Messages:**
     - 403: "Kein Zugriff auf diese Firma"

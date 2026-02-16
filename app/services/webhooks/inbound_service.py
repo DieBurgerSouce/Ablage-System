@@ -2,16 +2,16 @@
 """
 Inbound Webhook Service.
 
-Generischer Service fuer den Empfang und die Verarbeitung
+Generischer Service für den Empfang und die Verarbeitung
 eingehender Webhooks von externen Providern (DATEV, DHL, DPD, UPS, GLS).
 
 Implementiert den 9-Schritt-Flow (analog zu Odoo-Webhooks):
-1. Payload-Groesse validieren
+1. Payload-Größe validieren
 2. Webhook-Secret holen
 3. Signatur verifizieren (HMAC-SHA256)
 4. Timestamp validieren (Replay-Schutz)
 5. Payload parsen
-6. Idempotenz pruefen
+6. Idempotenz prüfen
 7. Payload hashen + PII sanitisieren
 8. Event speichern
 9. Celery-Task einreihen
@@ -73,7 +73,7 @@ def verify_webhook_signature(
         webhook_secret: Webhook Secret
 
     Returns:
-        True wenn Signatur gueltig
+        True wenn Signatur gültig
     """
     try:
         message = f"{timestamp}.".encode() + payload
@@ -100,7 +100,7 @@ def validate_timestamp(timestamp_str: str) -> bool:
 
 def sanitize_payload_for_preview(data: dict, pii_fields: set) -> dict:
     """
-    Entfernt PII aus Payload fuer sichere Speicherung.
+    Entfernt PII aus Payload für sichere Speicherung.
 
     SECURITY: Entfernt Namen, Adressen, IBANs, etc.
 
@@ -128,7 +128,7 @@ def sanitize_payload_for_preview(data: dict, pii_fields: set) -> dict:
 
 
 class InboundWebhookService:
-    """Service fuer die Verarbeitung eingehender Webhooks."""
+    """Service für die Verarbeitung eingehender Webhooks."""
 
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
@@ -148,7 +148,7 @@ class InboundWebhookService:
 
         Args:
             provider: Provider-Name (datev, dhl, etc.)
-            config_id: ERP-Verbindungs-ID (fuer DATEV) oder Platzhalter
+            config_id: ERP-Verbindungs-ID (für DATEV) oder Platzhalter
             request: FastAPI Request
             signature: Signatur aus Header
             timestamp: Timestamp aus Header
@@ -203,7 +203,7 @@ class InboundWebhookService:
             )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Ungueltige Webhook-Signatur",
+                detail="Ungültige Webhook-Signatur",
             )
 
         # 4. Validate timestamp (replay protection)
@@ -215,7 +215,7 @@ class InboundWebhookService:
             )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Webhook-Timestamp abgelaufen oder ungueltig",
+                detail="Webhook-Timestamp abgelaufen oder ungültig",
             )
 
         # 5. Parse payload
@@ -225,7 +225,7 @@ class InboundWebhookService:
         except json.JSONDecodeError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ungueltiges JSON-Format",
+                detail="Ungültiges JSON-Format",
             )
         except Exception as e:
             logger.error(
@@ -235,7 +235,7 @@ class InboundWebhookService:
             )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ungueltiges Payload-Format",
+                detail="Ungültiges Payload-Format",
             )
 
         # 6. Check idempotency
@@ -321,15 +321,15 @@ class InboundWebhookService:
                 provider=provider,
                 **safe_error_log(e),
             )
-            # Event ist gespeichert, kann spaeter retried werden
+            # Event ist gespeichert, kann später retried werden
             return InboundWebhookResponse(
                 success=True,
                 event_id=webhook_payload.event_id,
-                message="Webhook empfangen, wird spaeter verarbeitet",
+                message="Webhook empfangen, wird später verarbeitet",
             )
 
     async def _get_webhook_secret(self, provider: str, config_id: UUID) -> Optional[str]:
-        """Holt das Webhook-Secret fuer einen Provider.
+        """Holt das Webhook-Secret für einen Provider.
 
         DATEV: Secret aus ERPConnection (wie Odoo)
         Carrier: Secret aus Settings
@@ -349,7 +349,7 @@ class InboundWebhookService:
         return secret
 
     async def _get_erp_connection_secret(self, config_id: UUID) -> Optional[str]:
-        """Holt Webhook-Secret aus ERPConnection (fuer DATEV/Odoo)."""
+        """Holt Webhook-Secret aus ERPConnection (für DATEV/Odoo)."""
         from app.db.models import ERPConnection
         from app.core.encryption import decrypt_data, DecryptionError
 
@@ -383,7 +383,7 @@ class InboundWebhookService:
             return None
 
     async def _check_idempotency(self, provider: str, event_id: str) -> bool:
-        """Prueft ob ein Event bereits verarbeitet wurde."""
+        """Prüft ob ein Event bereits verarbeitet wurde."""
         result = await self.db.execute(
             select(InboundWebhookEvent).where(
                 and_(
@@ -413,7 +413,7 @@ class InboundWebhookService:
         external_ref: Optional[str],
         internal_event_type: Optional[str],
     ) -> UUID:
-        """Speichert Webhook-Event fuer Tracking und Idempotenz."""
+        """Speichert Webhook-Event für Tracking und Idempotenz."""
         event = InboundWebhookEvent(
             id=uuid.uuid4(),
             provider=provider,

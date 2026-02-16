@@ -1,4 +1,4 @@
-"""Vehicle KPI Service fuer Fahrzeug-Berechnungen.
+"""Vehicle KPI Service für Fahrzeug-Berechnungen.
 
 Berechnet alle Fahrzeug-bezogenen KPIs:
 - TCO (Total Cost of Ownership)
@@ -54,9 +54,9 @@ class VehicleKPIResult:
 
 
 class VehicleKPIService:
-    """Service fuer Fahrzeug-KPI-Berechnungen.
+    """Service für Fahrzeug-KPI-Berechnungen.
 
-    Berechnet automatisch alle relevanten KPIs fuer Fahrzeuge
+    Berechnet automatisch alle relevanten KPIs für Fahrzeuge
     basierend auf Kaufpreis, Alter, Kilometerstand und Betriebskosten.
     """
 
@@ -74,7 +74,7 @@ class VehicleKPIService:
         space_id: UUID,
         persist: bool = True
     ) -> VehicleKPIResult:
-        """Berechnet alle KPIs fuer ein Fahrzeug.
+        """Berechnet alle KPIs für ein Fahrzeug.
 
         Args:
             vehicle_id: UUID des Fahrzeugs
@@ -146,7 +146,7 @@ class VehicleKPIService:
         )
 
     def _calc_current_value(self, vehicle: PrivatVehicle) -> Decimal:
-        """Berechnet den geschaetzten aktuellen Restwert.
+        """Berechnet den geschätzten aktuellen Restwert.
 
         Verwendet eine degressive Abschreibung:
         - Jahr 1: 15% Wertverlust
@@ -185,14 +185,14 @@ class VehicleKPIService:
 
         TCO = Kaufpreis + Betriebskosten - Restwert
 
-        Note: Das DB-Model hat insurance_premium (jaehrlich) aber keine
-        separaten Felder fuer Steuer/Wartung/Kraftstoff.
+        Note: Das DB-Model hat insurance_premium (jährlich) aber keine
+        separaten Felder für Steuer/Wartung/Kraftstoff.
         Wir verwenden die Versicherungspraemie als einzige bekannte Betriebskosten.
         """
         if not vehicle.purchase_price or not vehicle.purchase_date:
             return Decimal("0")
 
-        # Jaehrliche Betriebskosten aus bekannten Feldern
+        # Jährliche Betriebskosten aus bekannten Feldern
         # insurance_premium ist die Versicherungspraemie
         insurance_annual = Decimal(str(vehicle.insurance_premium or 0))
 
@@ -204,7 +204,7 @@ class VehicleKPIService:
 
         operating_costs_annual = insurance_annual + leasing_annual
 
-        # Gesamte Betriebskosten ueber Besitzdauer
+        # Gesamte Betriebskosten über Besitzdauer
         age_years = self._calc_age_months(vehicle.purchase_date) / 12
         total_operating = operating_costs_annual * Decimal(str(max(age_years, 1)))
 
@@ -274,7 +274,7 @@ class VehicleKPIService:
         return result.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def _calc_next_service(self, vehicle: PrivatVehicle) -> Optional[date]:
-        """Berechnet das naechste Service-Datum."""
+        """Berechnet das nächste Service-Datum."""
         last_service = getattr(vehicle, 'last_service_date', None)
         service_interval_months = getattr(vehicle, 'service_interval_months', 12)
 
@@ -285,7 +285,7 @@ class VehicleKPIService:
         return last_service + timedelta(days=service_interval_months * 30)
 
     def _calc_days_until_service(self, vehicle: PrivatVehicle) -> int:
-        """Berechnet Tage bis zum naechsten Service."""
+        """Berechnet Tage bis zum nächsten Service."""
         next_service = self._calc_next_service(vehicle)
         if not next_service:
             return 365
@@ -351,7 +351,7 @@ class VehicleKPIService:
         Returns:
             Liste von PrivatFuelLog Objekten sortiert nach Datum
         """
-        # Join ueber Vehicle um Multi-Tenant zu pruefen
+        # Join über Vehicle um Multi-Tenant zu prüfen
         stmt = (
             select(PrivatFuelLog)
             .join(PrivatVehicle, PrivatFuelLog.vehicle_id == PrivatVehicle.id)
@@ -370,9 +370,9 @@ class VehicleKPIService:
         space_id: UUID,
         persist: bool = True
     ) -> dict[UUID, VehicleKPIResult]:
-        """Berechnet KPIs fuer alle Fahrzeuge eines Space.
+        """Berechnet KPIs für alle Fahrzeuge eines Space.
 
-        Batch-Methode fuer Celery Tasks.
+        Batch-Methode für Celery Tasks.
 
         Args:
             space_id: UUID des Space

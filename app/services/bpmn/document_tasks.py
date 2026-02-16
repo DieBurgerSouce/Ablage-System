@@ -1,6 +1,6 @@
 """Document Classification Workflow Task Implementations.
 
-Service Tasks fuer den Dokumenten-Klassifizierungs-Workflow.
+Service Tasks für den Dokumenten-Klassifizierungs-Workflow.
 Diese Funktionen werden von der BPMN Engine aufgerufen.
 
 Enterprise-Grade: Echte OCR/Classifier/Entity-Integration statt Platzhalter.
@@ -70,7 +70,7 @@ async def extract_document_text(
 
     company_id = variables.get("company_id")
     if not company_id:
-        ocr_error = "Keine company_id fuer Multi-Tenant-Isolation"
+        ocr_error = "Keine company_id für Multi-Tenant-Isolation"
         logger.error("ocr_missing_company_id", instance_id=instance_id)
         return {
             "text_extracted": False,
@@ -108,7 +108,7 @@ async def extract_document_text(
                     local_path = tmp_file.name
 
                 if local_path and os.path.exists(local_path):
-                    # OCR durchfuehren
+                    # OCR durchführen
                     ocr_service = OCRService(enable_german_correction=True)
                     backend_to_use = ocr_backend if ocr_backend != "auto" else None
 
@@ -218,7 +218,7 @@ async def classify_document(
             "document_type": "other",
             "classification_confidence": 0.0,
             "needs_review": True,
-            "error": "Keine company_id fuer Multi-Tenant-Isolation",
+            "error": "Keine company_id für Multi-Tenant-Isolation",
             "classified_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -243,12 +243,12 @@ async def classify_document(
         async with async_session_maker() as db_session:
             classifier = get_quick_classification_service()
 
-            # QuickClassificationService nutzen fuer Richtungserkennung
+            # QuickClassificationService nutzen für Richtungserkennung
             classification_result = await classifier.classify_document(
                 document_id=UUID(str(document_id)),
                 ocr_text=extracted_text,
                 db=db_session,
-                auto_assign_tag=False  # Wir assignen Tags in einem spaeteren Schritt
+                auto_assign_tag=False  # Wir assignen Tags in einem späteren Schritt
             )
 
             # Ergebnis auswerten
@@ -315,7 +315,7 @@ async def classify_document(
             document_type = "other"
             confidence = 0.40
 
-    # Threshold fuer automatische Verarbeitung
+    # Threshold für automatische Verarbeitung
     auto_threshold = 0.85
     needs_review = confidence < auto_threshold
 
@@ -346,7 +346,7 @@ async def extract_entities(
     instance_id: str,
     variables: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Extrahiert Entitaeten aus dem Dokument.
+    """Extrahiert Entitäten aus dem Dokument.
 
     Erkennt Firmen, Betraege, Daten, etc.
 
@@ -355,7 +355,7 @@ async def extract_entities(
         variables: Prozess-Variablen
 
     Returns:
-        Extrahierte Entitaeten
+        Extrahierte Entitäten
     """
     from app.db.session import async_session_maker
     from app.db.bpmn_models.bpmn import ProcessHistory
@@ -381,7 +381,7 @@ async def extract_entities(
             "entities_extracted": False,
             "entities": {},
             "entity_count": 0,
-            "error": "Keine company_id fuer Multi-Tenant-Isolation",
+            "error": "Keine company_id für Multi-Tenant-Isolation",
             "extracted_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -401,7 +401,7 @@ async def extract_entities(
 
     try:
         # VAT-IDs extrahieren (deutsches und EU-Format)
-        # Pattern: DE + 9 Ziffern oder andere EU-Laendercodes + Ziffern
+        # Pattern: DE + 9 Ziffern oder andere EU-Ländercodes + Ziffern
         vat_pattern = re.compile(
             r'\b(DE\d{9}|AT[U]\d{8}|CH[E]?\d{9}|[A-Z]{2}\d{8,12})\b'
         )
@@ -416,7 +416,7 @@ async def extract_entities(
         )
         iban_matches = iban_pattern.findall(extracted_text)
         if iban_matches:
-            # Einfache IBAN-Validierung: Mindestlaenge 15 (z.B. NO)
+            # Einfache IBAN-Validierung: Mindestlänge 15 (z.B. NO)
             valid_ibans = [iban for iban in iban_matches if len(iban) >= 15]
             if valid_ibans:
                 entities["iban"] = valid_ibans[0]
@@ -506,7 +506,7 @@ async def extract_entities(
         history = ProcessHistory(
             instance_id=UUID(instance_id),
             event_type="ENTITIES_EXTRACTED",
-            message=f"{entity_count} Entitaeten extrahiert",
+            message=f"{entity_count} Entitäten extrahiert",
             actor_type="system",
             company_id=UUID(str(company_id)),  # Bereits validiert
             timestamp=datetime.now(timezone.utc)
@@ -526,7 +526,7 @@ async def match_business_entity(
     instance_id: str,
     variables: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Ordnet das Dokument einem Geschaeftspartner zu.
+    """Ordnet das Dokument einem Geschäftspartner zu.
 
     Verwendet verschiedene Matching-Strategien.
 
@@ -553,7 +553,7 @@ async def match_business_entity(
             "match_strategy": "none",
             "matched_entity_id": None,
             "matched_entity_name": None,
-            "error": "Keine company_id fuer Multi-Tenant-Isolation",
+            "error": "Keine company_id für Multi-Tenant-Isolation",
             "matched_at": datetime.now(timezone.utc).isoformat(),
         }
 
@@ -581,7 +581,7 @@ async def match_business_entity(
         async with async_session_maker() as db_session:
             search_service = EntitySearchService(db_session)
 
-            # Prioritaet 1: VAT-ID Matching (hoechste Praezision)
+            # Priorität 1: VAT-ID Matching (hoechste Praezision)
             if vendor_vat_id:
                 entity = await search_service.find_by_vat_id(vendor_vat_id)
                 if entity:
@@ -597,7 +597,7 @@ async def match_business_entity(
                         strategy="vat_id"
                     )
 
-            # Prioritaet 2: IBAN Matching
+            # Priorität 2: IBAN Matching
             if not entity_matched and vendor_iban:
                 entity = await search_service.find_by_iban(vendor_iban)
                 if entity:
@@ -613,7 +613,7 @@ async def match_business_entity(
                         strategy="iban"
                     )
 
-            # Prioritaet 3: Fuzzy Name Matching
+            # Priorität 3: Fuzzy Name Matching
             if not entity_matched and vendor_name:
                 matches = await search_service.find_by_matchcode(
                     matchcode=vendor_name,
@@ -671,7 +671,7 @@ async def route_to_folder(
 ) -> Dict[str, Any]:
     """Routet das Dokument in den passenden Ordner.
 
-    Basierend auf Dokumenttyp und Geschaeftspartner.
+    Basierend auf Dokumenttyp und Geschäftspartner.
 
     Args:
         instance_id: BPMN Prozess-Instanz ID
@@ -701,7 +701,7 @@ async def route_to_folder(
         logger.error("routing_missing_company_id", instance_id=instance_id)
         return {
             "routed": False,
-            "error": "Keine company_id fuer Multi-Tenant-Isolation",
+            "error": "Keine company_id für Multi-Tenant-Isolation",
             "target_folder": None,
             "routed_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -718,14 +718,14 @@ async def route_to_folder(
         "invoice": "Eingangsrechnungen",
         "quote": "Angebote",
         "delivery_note": "Lieferscheine",
-        "contract": "Vertraege",
+        "contract": "Verträge",
         "dunning_notice": "Mahnungen",
         "other": "Sonstiges",
     }
 
     target_folder = folder_mapping.get(document_type, "Sonstiges")
 
-    # Bei Entity-Match: Unterordner nach Geschaeftspartner
+    # Bei Entity-Match: Unterordner nach Geschäftspartner
     if matched_entity_id:
         target_folder = f"{target_folder}/Lieferant-{matched_entity_id[:8]}"
 
@@ -747,7 +747,7 @@ async def route_to_folder(
                 # Dokumenttyp aktualisieren basierend auf Klassifizierung
                 doc.document_type = document_type
 
-                # Target-Folder in Metadaten speichern fuer spaetere Verarbeitung
+                # Target-Folder in Metadaten speichern für spätere Verarbeitung
                 if not doc.document_metadata:
                     doc.document_metadata = {}
                 doc.document_metadata["target_folder"] = target_folder
@@ -820,7 +820,7 @@ async def trigger_workflow(
         logger.error("workflow_trigger_missing_company_id", instance_id=instance_id)
         return {
             "workflow_triggered": False,
-            "error": "Keine company_id fuer Multi-Tenant-Isolation",
+            "error": "Keine company_id für Multi-Tenant-Isolation",
             "follow_up_workflow": None,
             "child_instance_id": None,
             "triggered_at": None,
@@ -852,7 +852,7 @@ async def trigger_workflow(
 
                 exec_service = ProcessExecutionService(db_session)
 
-                # Workflow-Definition finden (MIT company_id Filter fuer Multi-Tenant!)
+                # Workflow-Definition finden (MIT company_id Filter für Multi-Tenant!)
                 from app.db.bpmn_models.bpmn import ProcessDefinition
                 definition_result = await db_session.execute(
                     select(ProcessDefinition).where(
@@ -923,7 +923,7 @@ async def complete_classification(
     instance_id: str,
     variables: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Schliesst den Klassifizierungs-Workflow ab.
+    """Schließt den Klassifizierungs-Workflow ab.
 
     Args:
         instance_id: BPMN Prozess-Instanz ID
@@ -946,7 +946,7 @@ async def complete_classification(
         logger.error("complete_classification_missing_company_id", instance_id=instance_id)
         return {
             "classification_completed": False,
-            "error": "Keine company_id fuer Multi-Tenant-Isolation",
+            "error": "Keine company_id für Multi-Tenant-Isolation",
             "final_document_type": document_type,
             "entity_linked": entity_matched,
             "completed_at": datetime.now(timezone.utc).isoformat(),
@@ -979,7 +979,7 @@ async def complete_classification(
 
 
 def get_document_type_display_name(document_type: str) -> str:
-    """Gibt den deutschen Anzeigenamen fuer einen Dokumenttyp zurueck.
+    """Gibt den deutschen Anzeigenamen für einen Dokumenttyp zurück.
 
     Args:
         document_type: Interner Dokumenttyp-Schluessel
@@ -993,7 +993,7 @@ def get_document_type_display_name(document_type: str) -> str:
         "delivery_note": "Lieferschein",
         "contract": "Vertrag",
         "dunning_notice": "Mahnung",
-        "order_confirmation": "Auftragsbestaetigung",
+        "order_confirmation": "Auftragsbestätigung",
         "credit_note": "Gutschrift",
         "other": "Sonstiges",
     }

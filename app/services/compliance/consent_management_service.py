@@ -7,11 +7,11 @@ Verwaltet granulare Einwilligungen nach DSGVO:
 - Einwilligungs-Scopes (personal_data, financial_data, document_processing, etc.)
 - Versionierte Consent-Texte mit SHA-256 Hash
 - Consent-Widerruf mit Audit-Trail
-- Historie aller Einwilligungsaenderungen
+- Historie aller Einwilligungsänderungen
 
 Gesetzliche Grundlagen:
 - Art. 6 DSGVO: Rechtmaessigkeit der Verarbeitung
-- Art. 7 DSGVO: Bedingungen fuer die Einwilligung
+- Art. 7 DSGVO: Bedingungen für die Einwilligung
 - Art. 13/14 DSGVO: Informationspflichten
 """
 
@@ -35,7 +35,7 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 class ConsentScope(str, Enum):
-    """Verfuegbare Einwilligungs-Scopes nach DSGVO."""
+    """Verfügbare Einwilligungs-Scopes nach DSGVO."""
     PERSONAL_DATA = "personal_data"
     FINANCIAL_DATA = "financial_data"
     DOCUMENT_PROCESSING = "document_processing"
@@ -77,12 +77,12 @@ DEFAULT_CONSENT_DESCRIPTIONS: Dict[str, Dict[str, str]] = {
     "personal_data": {
         "title": "Verarbeitung personenbezogener Daten",
         "description": "Einwilligung zur Verarbeitung Ihrer personenbezogenen Daten "
-                       "(Name, E-Mail, Adresse) fuer die Erbringung unserer Dienstleistungen.",
+                       "(Name, E-Mail, Adresse) für die Erbringung unserer Dienstleistungen.",
     },
     "financial_data": {
         "title": "Verarbeitung finanzieller Daten",
         "description": "Einwilligung zur Verarbeitung Ihrer finanziellen Daten "
-                       "(Rechnungen, Zahlungsinformationen, Bankdaten) fuer die Buchhaltung.",
+                       "(Rechnungen, Zahlungsinformationen, Bankdaten) für die Buchhaltung.",
     },
     "document_processing": {
         "title": "Automatische Dokumentenverarbeitung",
@@ -97,7 +97,7 @@ DEFAULT_CONSENT_DESCRIPTIONS: Dict[str, Dict[str, str]] = {
     "marketing": {
         "title": "Marketing-Kommunikation",
         "description": "Einwilligung zum Erhalt von Marketing-Mitteilungen "
-                       "ueber neue Funktionen und Angebote.",
+                       "über neue Funktionen und Angebote.",
     },
     "third_party_sharing": {
         "title": "Weitergabe an Dritte",
@@ -111,7 +111,7 @@ DEFAULT_CONSENT_DESCRIPTIONS: Dict[str, Dict[str, str]] = {
     },
 }
 
-# Pflicht-Scopes die fuer die Nutzung erforderlich sind
+# Pflicht-Scopes die für die Nutzung erforderlich sind
 MANDATORY_SCOPES = [ConsentScope.PERSONAL_DATA, ConsentScope.DOCUMENT_PROCESSING]
 
 
@@ -166,7 +166,7 @@ class ConsentRecord:
 
 @dataclass
 class ConsentVersionInfo:
-    """Information ueber eine Consent-Version."""
+    """Information über eine Consent-Version."""
     id: uuid.UUID
     scope: str
     version: str
@@ -205,7 +205,7 @@ class ConsentWithdrawalResult:
 
 @dataclass
 class ConsentCheckResult:
-    """Ergebnis einer Consent-Pruefung."""
+    """Ergebnis einer Consent-Prüfung."""
     scope: ConsentScope
     status: ConsentStatus
     consent_given: bool
@@ -249,12 +249,12 @@ class ConsentSummary:
 # =============================================================================
 
 class ConsentManagementService:
-    """Service fuer DSGVO-konforme Einwilligungsverwaltung.
+    """Service für DSGVO-konforme Einwilligungsverwaltung.
 
     Implementiert:
     - Granulare Consent-Scopes
     - Versionierte Consent-Texte
-    - Vollstaendiger Audit-Trail
+    - Vollständiger Audit-Trail
     - Consent-Widerruf mit Impact-Analyse
     """
 
@@ -312,21 +312,21 @@ class ConsentManagementService:
             version: Versionsnummer (z.B. "1.0", "2.0")
             title: Titel der Einwilligung
             description: Kurzbeschreibung
-            full_text: Vollstaendiger Consent-Text
+            full_text: Vollständiger Consent-Text
             language: Sprache (default: "de")
-            effective_from: Ab wann gueltig (default: jetzt)
+            effective_from: Ab wann gültig (default: jetzt)
             created_by_id: ID des Erstellers
 
         Returns:
             ConsentVersionInfo mit der erstellten Version
         """
-        # Import hier um zirkulaere Imports zu vermeiden
+        # Import hier um zirkuläre Imports zu vermeiden
         from app.db.models import GDPRConsentVersion
 
         text_hash = self.calculate_text_hash(full_text)
         effective = effective_from or datetime.now(timezone.utc)
 
-        # Deaktiviere vorherige aktive Versionen fuer diesen Scope
+        # Deaktiviere vorherige aktive Versionen für diesen Scope
         await db.execute(
             update(GDPRConsentVersion)
             .where(
@@ -385,12 +385,12 @@ class ConsentManagementService:
         scope: ConsentScope,
         language: str = "de",
     ) -> Optional[ConsentVersionInfo]:
-        """Holt die aktive Consent-Version fuer einen Scope.
+        """Holt die aktive Consent-Version für einen Scope.
 
         Args:
             db: Datenbank-Session
             scope: Consent-Scope
-            language: Gewuenschte Sprache
+            language: Gewünschte Sprache
 
         Returns:
             ConsentVersionInfo oder None
@@ -499,12 +499,12 @@ class ConsentManagementService:
             user_id: User-ID
             scope: Consent-Scope
             consent_given: True wenn Einwilligung erteilt
-            company_id: Optional - Company-ID fuer Multi-Tenant
+            company_id: Optional - Company-ID für Multi-Tenant
             consent_version_id: Optional - Version des Consent-Textes
             consent_method: Methode der Einwilligung
             valid_until: Optional - Ablaufdatum
-            ip_address: IP-Adresse des Users (fuer Audit)
-            user_agent: User-Agent (fuer Audit)
+            ip_address: IP-Adresse des Users (für Audit)
+            user_agent: User-Agent (für Audit)
 
         Returns:
             ConsentGrantResult
@@ -528,7 +528,7 @@ class ConsentManagementService:
                 consent_version_id = active_version.id
                 text_hash = active_version.text_hash
 
-        # Pruefe ob bereits ein Consent-Eintrag existiert
+        # Prüfe ob bereits ein Consent-Eintrag existiert
         existing_result = await db.execute(
             select(GDPRConsentScope)
             .where(
@@ -712,7 +712,7 @@ class ConsentManagementService:
         scope: ConsentScope,
         company_id: Optional[uuid.UUID] = None,
     ) -> ConsentCheckResult:
-        """Prueft den Consent-Status fuer einen Scope.
+        """Prüft den Consent-Status für einen Scope.
 
         Args:
             db: Datenbank-Session
@@ -776,13 +776,13 @@ class ConsentManagementService:
             status = ConsentStatus.NOT_GIVEN
             message = "Einwilligung wurde nicht erteilt"
 
-        # Pruefe ob Version aktuell ist
+        # Prüfe ob Version aktuell ist
         version_current = True
         active_version = await self.get_active_consent_version(db, scope)
         if active_version and consent.consent_text_hash != active_version.text_hash:
             version_current = False
             requires_renewal = True
-            message += " (neue Version verfuegbar)"
+            message += " (neue Version verfügbar)"
 
         return ConsentCheckResult(
             scope=scope,
@@ -801,7 +801,7 @@ class ConsentManagementService:
         user_id: uuid.UUID,
         company_id: Optional[uuid.UUID] = None,
     ) -> Dict[ConsentScope, ConsentCheckResult]:
-        """Prueft alle Consent-Scopes fuer einen User.
+        """Prüft alle Consent-Scopes für einen User.
 
         Args:
             db: Datenbank-Session
@@ -822,7 +822,7 @@ class ConsentManagementService:
         user_id: uuid.UUID,
         company_id: Optional[uuid.UUID] = None,
     ) -> Tuple[bool, List[ConsentScope]]:
-        """Prueft ob alle Pflicht-Einwilligungen vorliegen.
+        """Prüft ob alle Pflicht-Einwilligungen vorliegen.
 
         Args:
             db: Datenbank-Session
@@ -861,7 +861,7 @@ class ConsentManagementService:
             user_id: User-ID
             scope: Consent-Scope
             company_id: Optional - Company-ID
-            reason: Optional - Grund fuer Widerruf
+            reason: Optional - Grund für Widerruf
             ip_address: IP-Adresse
             user_agent: User-Agent
 
@@ -897,7 +897,7 @@ class ConsentManagementService:
                 scope=scope,
                 withdrawn_at=now,
                 was_active=False,
-                message="Keine Einwilligung fuer diesen Scope gefunden",
+                message="Keine Einwilligung für diesen Scope gefunden",
             )
 
         was_active = consent.consent_given and not consent.withdrawn_at
@@ -955,11 +955,11 @@ class ConsentManagementService:
         impacts_map = {
             ConsentScope.PERSONAL_DATA: [
                 "Zugriff auf personenbezogene Daten wird eingeschraenkt",
-                "Account-Funktionen koennten eingeschraenkt sein",
+                "Account-Funktionen könnten eingeschraenkt sein",
             ],
             ConsentScope.FINANCIAL_DATA: [
                 "Finanzauswertungen werden deaktiviert",
-                "Automatische Buchungsvorschlaege werden gestoppt",
+                "Automatische Buchungsvorschläge werden gestoppt",
             ],
             ConsentScope.DOCUMENT_PROCESSING: [
                 "Automatische OCR-Verarbeitung wird gestoppt",
@@ -1001,7 +1001,7 @@ class ConsentManagementService:
             db: Datenbank-Session
             user_id: User-ID
             scope: Optional - Filter nach Scope
-            limit: Maximale Anzahl Eintraege
+            limit: Maximale Anzahl Einträge
 
         Returns:
             Liste von ConsentHistoryEntry
@@ -1088,7 +1088,7 @@ class ConsentManagementService:
         company_id: uuid.UUID,
         scope: Optional[ConsentScope] = None,
     ) -> List[uuid.UUID]:
-        """Findet User die ihre Einwilligung erneuern muessen.
+        """Findet User die ihre Einwilligung erneuern müssen.
 
         Args:
             db: Datenbank-Session
@@ -1102,7 +1102,7 @@ class ConsentManagementService:
 
         now = datetime.now(timezone.utc)
 
-        # Subquery fuer aktuelle Versionen
+        # Subquery für aktuelle Versionen
         active_versions_subq = (
             select(GDPRConsentVersion.scope, GDPRConsentVersion.text_hash)
             .where(GDPRConsentVersion.is_active == True)
@@ -1157,16 +1157,16 @@ class ConsentManagementService:
         created = []
 
         for scope in ConsentScope:
-            # Pruefe ob bereits aktive Version existiert
+            # Prüfe ob bereits aktive Version existiert
             existing = await self.get_active_consent_version(db, scope)
             if existing:
                 continue
 
             defaults = self.default_descriptions.get(scope.value, {})
             title = defaults.get("title", scope.value)
-            description = defaults.get("description", f"Einwilligung fuer {scope.value}")
+            description = defaults.get("description", f"Einwilligung für {scope.value}")
 
-            # Erstelle vollstaendigen Consent-Text
+            # Erstelle vollständigen Consent-Text
             full_text = f"""
 {title}
 
@@ -1203,7 +1203,7 @@ Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO
 # =============================================================================
 
 def get_consent_management_service() -> ConsentManagementService:
-    """Factory-Funktion fuer ConsentManagementService."""
+    """Factory-Funktion für ConsentManagementService."""
     return ConsentManagementService()
 
 

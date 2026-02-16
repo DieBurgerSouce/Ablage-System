@@ -1,13 +1,13 @@
 """FinTS/HBCI Banking Service.
 
-Direkter Kontoumsatz-Abruf ueber FinTS (Financial Transaction Services).
-Unterstuetzt FinTS 3.0 und HBCI 2.2/3.0.
+Direkter Kontoumsatz-Abruf über FinTS (Financial Transaction Services).
+Unterstützt FinTS 3.0 und HBCI 2.2/3.0.
 
 SECURITY HINWEIS:
-- Alle Zugangsdaten werden verschluesselt gespeichert (AES-256)
-- TAN-Verfahren werden unterstuetzt (mTAN, pushTAN, photoTAN)
+- Alle Zugangsdaten werden verschlüsselt gespeichert (AES-256)
+- TAN-Verfahren werden unterstützt (mTAN, pushTAN, photoTAN)
 - Keine Passwoerter oder PINs werden geloggt
-- Session-Daten werden nach Verwendung geloescht
+- Session-Daten werden nach Verwendung gelöscht
 """
 
 import asyncio
@@ -46,7 +46,7 @@ class FinTSConnectionStatus(str, Enum):
 
 
 class TANMethod(str, Enum):
-    """Unterstuetzte TAN-Verfahren."""
+    """Unterstützte TAN-Verfahren."""
     CHIP_TAN = "chip_tan"
     CHIP_TAN_QR = "chip_tan_qr"
     CHIP_TAN_USB = "chip_tan_usb"
@@ -60,7 +60,7 @@ class TANMethod(str, Enum):
 
 class FinTSSyncType(str, Enum):
     """Typ der Synchronisation."""
-    STATEMENT = "statement"  # Kontoumsaetze
+    STATEMENT = "statement"  # Kontoumsätze
     BALANCE = "balance"  # Nur Kontostand
     SEPA_INFO = "sepa_info"  # SEPA-Informationen
     TAN_METHODS = "tan_methods"  # TAN-Verfahren abrufen
@@ -130,13 +130,13 @@ class TANChallenge:
     tan_method: TANMethod
     challenge_text: str
     challenge_data: Optional[bytes] = None  # QR-Code, Flickercode
-    challenge_image: Optional[bytes] = None  # Bild fuer photoTAN
+    challenge_image: Optional[bytes] = None  # Bild für photoTAN
     expires_at: datetime = field(default_factory=lambda: utc_now() + timedelta(minutes=5))
-    hhduc: Optional[str] = None  # HHDuc fuer Flickercode
+    hhduc: Optional[str] = None  # HHDuc für Flickercode
 
 
 class FinTSConnectionConfig(BaseModel):
-    """Konfiguration fuer FinTS-Verbindung."""
+    """Konfiguration für FinTS-Verbindung."""
     blz: str = Field(..., min_length=8, max_length=8)
     fints_url: str = Field(...)
     login_id: str = Field(..., min_length=1)  # Benutzerkennung
@@ -152,14 +152,14 @@ class FinTSConnectionConfig(BaseModel):
 
 
 class FinTSService:
-    """Service fuer FinTS/HBCI Banking-Verbindungen.
+    """Service für FinTS/HBCI Banking-Verbindungen.
 
-    Ermoeglicht:
-    - Kontoabruf (Umsaetze, Saldo)
+    Ermöglicht:
+    - Kontoabruf (Umsätze, Saldo)
     - TAN-Verfahren-Auswahl
-    - SEPA-Ueberweisungen ausloesen
+    - SEPA-Überweisungen ausloesen
 
-    Verwendet python-fints Bibliothek fuer das Protokoll.
+    Verwendet python-fints Bibliothek für das Protokoll.
     """
 
     # Bekannte FinTS-URLs deutscher Banken
@@ -187,7 +187,7 @@ class FinTSService:
         "10019610": "https://fints.norisbank.de/fints",  # norisbank
     }
 
-    # Session-Cache fuer aktive Verbindungen
+    # Session-Cache für aktive Verbindungen
     _sessions: Dict[str, Any] = {}
     _pending_tans: Dict[str, TANChallenge] = {}
 
@@ -196,7 +196,7 @@ class FinTSService:
         self._check_dependencies()
 
     def _check_dependencies(self) -> bool:
-        """Pruefe ob python-fints installiert ist."""
+        """Prüfe ob python-fints installiert ist."""
         try:
             import fints  # noqa: F401
             return True
@@ -209,7 +209,7 @@ class FinTSService:
             return False
 
     def get_fints_url(self, blz: str) -> Optional[str]:
-        """Ermittle FinTS-URL fuer eine BLZ.
+        """Ermittle FinTS-URL für eine BLZ.
 
         Args:
             blz: Bankleitzahl (8-stellig)
@@ -276,7 +276,7 @@ class FinTSService:
 
         try:
             # In Produktion: Echte BPD-Abfrage via python-fints
-            # Hier: Mock-Response fuer Entwicklung
+            # Hier: Mock-Response für Entwicklung
 
             return FinTSBankInfo(
                 bank_name=self._get_bank_name_from_blz(blz),
@@ -332,22 +332,22 @@ class FinTSService:
         if not account.blz or not account.fints_url:
             return False, None, "FinTS-Konfiguration fehlt (BLZ, URL)"
 
-        # Hole verschluesselte Login-ID
+        # Hole verschlüsselte Login-ID
         login_id = await account_service.get_decrypted_login_id(db, user_id, account_id)
         if not login_id:
             return False, None, "Login-ID nicht konfiguriert"
 
         try:
             # In Produktion: Echte FinTS-Verbindung
-            # Hier: Mock fuer Entwicklung
+            # Hier: Mock für Entwicklung
 
             session_id = f"fints_{account_id}_{uuid4().hex[:8]}"
 
-            # Simuliere TAN-Anforderung fuer Dialog-Initialisierung
+            # Simuliere TAN-Anforderung für Dialog-Initialisierung
             tan_challenge = TANChallenge(
                 challenge_id=uuid4().hex,
                 tan_method=TANMethod.PUSH_TAN,
-                challenge_text="Bitte bestaetigen Sie den Kontozugriff in Ihrer Banking-App.",
+                challenge_text="Bitte bestätigen Sie den Kontozugriff in Ihrer Banking-App.",
                 expires_at=utc_now() + timedelta(minutes=5),
             )
 
@@ -389,7 +389,7 @@ class FinTSService:
         tan: str,
         user_id: UUID,
     ) -> Tuple[bool, Optional[str]]:
-        """Bestaetigt TAN-Challenge.
+        """Bestätigt TAN-Challenge.
 
         Args:
             db: Datenbank-Session
@@ -422,7 +422,7 @@ class FinTSService:
 
         try:
             # In Produktion: TAN an FinTS-Server senden
-            # Hier: Mock - TAN "123456" ist immer gueltig
+            # Hier: Mock - TAN "123456" ist immer gültig
 
             if tan == "123456" or len(tan) >= 6:
                 # Erfolg
@@ -445,7 +445,7 @@ class FinTSService:
 
                 return True, None
             else:
-                return False, "Ungueltige TAN"
+                return False, "Ungültige TAN"
 
         except Exception as e:
             logger.error(
@@ -453,7 +453,7 @@ class FinTSService:
                 challenge_id=challenge_id,
                 **safe_error_log(e)
             )
-            return False, safe_error_detail(e, "TAN-Bestaetigung")
+            return False, safe_error_detail(e, "TAN-Bestätigung")
 
     async def sync_transactions(
         self,
@@ -464,14 +464,14 @@ class FinTSService:
         date_from: Optional[date] = None,
         date_to: Optional[date] = None,
     ) -> FinTSSyncResult:
-        """Synchronisiert Kontoumsaetze via FinTS.
+        """Synchronisiert Kontoumsätze via FinTS.
 
         Args:
             db: Datenbank-Session
             account_id: Bankkonto-ID
             user_id: Benutzer-ID
             pin: Online-Banking PIN
-            date_from: Start-Datum (default: 90 Tage zurueck)
+            date_from: Start-Datum (default: 90 Tage zurück)
             date_to: End-Datum (default: heute)
 
         Returns:
@@ -495,7 +495,7 @@ class FinTSService:
 
         try:
             # In Produktion: python-fints Statement-Abruf
-            # Hier: Mock-Daten fuer Entwicklung
+            # Hier: Mock-Daten für Entwicklung
 
             mock_transactions = self._generate_mock_transactions(
                 account.iban, date_from, date_to
@@ -607,19 +607,19 @@ class FinTSService:
         reference: str,
         execution_date: Optional[date] = None,
     ) -> Tuple[bool, Optional[TANChallenge], Optional[str]]:
-        """Initiiert SEPA-Ueberweisung.
+        """Initiiert SEPA-Überweisung.
 
         Args:
             db: Datenbank-Session
             account_id: Auftraggeber-Konto
             user_id: Benutzer-ID
             pin: Online-Banking PIN
-            beneficiary_name: Empfaengername
-            beneficiary_iban: Empfaenger-IBAN
-            beneficiary_bic: Empfaenger-BIC (optional)
+            beneficiary_name: Empfängername
+            beneficiary_iban: Empfänger-IBAN
+            beneficiary_bic: Empfänger-BIC (optional)
             amount: Betrag
             reference: Verwendungszweck
-            execution_date: Ausfuehrungsdatum (optional)
+            execution_date: Ausführungsdatum (optional)
 
         Returns:
             Tuple aus (success, tan_challenge, error_message)
@@ -649,7 +649,7 @@ class FinTSService:
             tan_challenge = TANChallenge(
                 challenge_id=uuid4().hex,
                 tan_method=TANMethod.PUSH_TAN,
-                challenge_text=f"Bitte bestaetigen Sie die Ueberweisung von {amount:.2f} EUR "
+                challenge_text=f"Bitte bestätigen Sie die Überweisung von {amount:.2f} EUR "
                                f"an {beneficiary_name}.",
                 expires_at=utc_now() + timedelta(minutes=5),
             )
@@ -678,7 +678,7 @@ class FinTSService:
                 "fints_sepa_transfer_initiated",
                 account_id=str(account_id),
                 amount=str(amount),
-                # SECURITY: Keine Empfaengerdaten loggen!
+                # SECURITY: Keine Empfängerdaten loggen!
             )
 
             return True, tan_challenge, None
@@ -689,7 +689,7 @@ class FinTSService:
                 account_id=str(account_id),
                 **safe_error_log(e)
             )
-            return False, None, safe_error_detail(e, "SEPA-Ueberweisung")
+            return False, None, safe_error_detail(e, "SEPA-Überweisung")
 
     async def get_available_tan_methods(
         self,
@@ -697,7 +697,7 @@ class FinTSService:
         account_id: UUID,
         user_id: UUID,
     ) -> List[Dict[str, Any]]:
-        """Gibt verfuegbare TAN-Verfahren zurueck.
+        """Gibt verfügbare TAN-Verfahren zurück.
 
         Args:
             db: Datenbank-Session
@@ -742,7 +742,7 @@ class FinTSService:
                 "id": "920",
                 "name": "photoTAN",
                 "type": TANMethod.PHOTO_TAN.value,
-                "description": "Grafik mit App/Geraet scannen",
+                "description": "Grafik mit App/Gerät scannen",
                 "is_default": False,
             },
         ]
@@ -838,9 +838,9 @@ class FinTSService:
         date_to: date,
     ) -> List[FinTSTransaction]:
         """
-        Generiere Mock-Transaktionen fuer Tests.
+        Generiere Mock-Transaktionen für Tests.
 
-        DETERMINISTIC: Verwendet hash-basiertes Seeding fuer Reproduzierbarkeit.
+        DETERMINISTIC: Verwendet hash-basiertes Seeding für Reproduzierbarkeit.
         """
         transactions = []
         current_date = date_from
@@ -895,7 +895,7 @@ class FinTSService:
                     counterparty_iban=cp_iban,
                     counterparty_bic=None,
                     reference_text=f"Rechnung {ref_number}",
-                    booking_text="SEPA-Ueberweisung" if amount > 0 else "SEPA-Lastschrift",
+                    booking_text="SEPA-Überweisung" if amount > 0 else "SEPA-Lastschrift",
                     end_to_end_reference=f"E2E-{hashlib.md5(f'{tx_seed}'.encode()).hexdigest()[:8].upper()}",
                     mandate_reference=None,
                     creditor_id=None,
@@ -928,7 +928,7 @@ class FinTSService:
         saved = 0
 
         for tx in transactions:
-            # Pruefe auf Duplikate
+            # Prüfe auf Duplikate
             existing = await db.execute(
                 select(BankTransaction).where(
                     and_(

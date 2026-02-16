@@ -1,7 +1,7 @@
-"""Document Chunking Service fuer RAG Intelligence Layer.
+"""Document Chunking Service für RAG Intelligence Layer.
 
-Semantisches Chunking von Dokumenten fuer optimale Retrieval-Performance.
-Unterstuetzt dokumenttyp-spezifische Chunking-Strategien mit Layout-Erhalt.
+Semantisches Chunking von Dokumenten für optimale Retrieval-Performance.
+Unterstützt dokumenttyp-spezifische Chunking-Strategien mit Layout-Erhalt.
 """
 
 import re
@@ -29,7 +29,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class ChunkConfig:
-    """Konfiguration fuer Chunking einer spezifischen Dokumentart."""
+    """Konfiguration für Chunking einer spezifischen Dokumentart."""
     chunk_size: int = 512
     overlap: int = 50
     min_chunk_size: int = 100
@@ -55,14 +55,14 @@ class Chunk:
 
 
 class DocumentChunkingService:
-    """Service fuer intelligentes Document Chunking.
+    """Service für intelligentes Document Chunking.
 
     Implementiert dokumenttyp-spezifisches semantisches Chunking mit:
-    - Respektierung natuerlicher Textgrenzen (Saetze, Absaetze)
+    - Respektierung natürlicher Textgrenzen (Sätze, Absätze)
     - Tabellen-Erhalt
     - Section-Erkennung
-    - Token-basierte Chunk-Groessen
-    - Overlap fuer Kontext-Kontinuitaet
+    - Token-basierte Chunk-Größen
+    - Overlap für Kontext-Kontinuität
     """
 
     def __init__(self) -> None:
@@ -93,7 +93,7 @@ class DocumentChunkingService:
         return self._config
 
     def _default_config(self) -> Dict[str, Any]:
-        """Gibt die Default-Konfiguration zurueck."""
+        """Gibt die Default-Konfiguration zurück."""
         return {
             "global": {
                 "default_strategy": "semantic",
@@ -121,7 +121,7 @@ class DocumentChunkingService:
         }
 
     def _get_tokenizer(self) -> tiktoken.Encoding:
-        """Gibt den Tokenizer zurueck (Lazy Loading)."""
+        """Gibt den Tokenizer zurück (Lazy Loading)."""
         if self._tokenizer is None:
             config = self._load_config()
             model = config.get("global", {}).get("tokenizer_model", "cl100k_base")
@@ -134,7 +134,7 @@ class DocumentChunkingService:
         return len(tokenizer.encode(text))
 
     def _get_chunk_config(self, document_type: Optional[str]) -> ChunkConfig:
-        """Gibt die Chunk-Konfiguration fuer einen Dokumenttyp zurueck."""
+        """Gibt die Chunk-Konfiguration für einen Dokumenttyp zurück."""
         config = self._load_config()
         doc_types = config.get("document_types", {})
 
@@ -201,8 +201,8 @@ class DocumentChunkingService:
         return RAGSectionType.PARAGRAPH
 
     def _split_into_sentences(self, text: str) -> List[str]:
-        """Teilt Text in Saetze (deutsch-optimiert)."""
-        # Deutsche Satzenden: . ! ? plus Abkuerzungen beruecksichtigen
+        """Teilt Text in Sätze (deutsch-optimiert)."""
+        # Deutsche Satzenden: . ! ? plus Abkürzungen berücksichtigen
         # Nicht trennen bei: Dr. Prof. Str. Nr. z.B. u.a. etc.
         abbreviations = r'(?<!Dr)(?<!Prof)(?<!Str)(?<!Nr)(?<!z\.B)(?<!u\.a)(?<!etc)(?<!bzw)(?<!usw)'
         sentence_endings = abbreviations + r'[.!?]\s+'
@@ -211,7 +211,7 @@ class DocumentChunkingService:
         return [s.strip() for s in sentences if s.strip()]
 
     def _split_into_paragraphs(self, text: str) -> List[str]:
-        """Teilt Text in Absaetze."""
+        """Teilt Text in Absätze."""
         # Doppelte Zeilenumbrueche als Paragraph-Grenzen
         paragraphs = re.split(r'\n\s*\n', text)
         return [p.strip() for p in paragraphs if p.strip()]
@@ -284,7 +284,7 @@ class DocumentChunkingService:
                     ))
                     chunk_index += 1
 
-                # Paragraph in Saetze aufteilen
+                # Paragraph in Sätze aufteilen
                 sentences = self._split_into_sentences(para)
                 current_chunk = ""
                 current_tokens = 0
@@ -308,7 +308,7 @@ class DocumentChunkingService:
                             ))
                             chunk_index += 1
 
-                        # Overlap: Letzte Saetze mitnehmen
+                        # Overlap: Letzte Sätze mitnehmen
                         if config.overlap > 0 and current_chunk:
                             overlap_text = self._get_overlap(current_chunk, config.overlap)
                             current_chunk = overlap_text + " " + sentence
@@ -381,7 +381,7 @@ class DocumentChunkingService:
             db: Datenbank-Session
             document_id: ID des Dokuments
             strategy: Chunking-Strategie (semantic, fixed, document_type)
-            generate_embeddings: Embeddings fuer Chunks generieren
+            generate_embeddings: Embeddings für Chunks generieren
 
         Returns:
             Liste der erstellten RAGDocumentChunk-Objekte
@@ -413,7 +413,7 @@ class DocumentChunkingService:
             doc_type = None
         config = self._get_chunk_config(doc_type)
 
-        # Chunking durchfuehren
+        # Chunking durchführen
         if strategy == "fixed":
             chunks = self._fixed_split(document.extracted_text, config)
         else:  # semantic oder document_type
@@ -426,7 +426,7 @@ class DocumentChunkingService:
             total_tokens=sum(c.tokens for c in chunks)
         )
 
-        # Existierende Chunks loeschen
+        # Existierende Chunks löschen
         await db.execute(
             RAGDocumentChunk.__table__.delete().where(
                 RAGDocumentChunk.document_id == document_id
@@ -465,7 +465,7 @@ class DocumentChunkingService:
         return db_chunks
 
     def _fixed_split(self, text: str, config: ChunkConfig) -> List[Chunk]:
-        """Fixes Chunking mit konstanter Groesse."""
+        """Fixes Chunking mit konstanter Größe."""
         chunks: List[Chunk] = []
         tokenizer = self._get_tokenizer()
         tokens = tokenizer.encode(text)
@@ -490,7 +490,7 @@ class DocumentChunkingService:
                 ))
                 chunk_index += 1
 
-            # Naechste Position mit Overlap
+            # Nächste Position mit Overlap
             i += chunk_size - overlap
 
         return chunks
@@ -499,7 +499,7 @@ class DocumentChunkingService:
         self,
         chunks: List[RAGDocumentChunk]
     ) -> None:
-        """Generiert Embeddings fuer alle Chunks.
+        """Generiert Embeddings für alle Chunks.
 
         Args:
             chunks: Liste von RAGDocumentChunk-Objekten
@@ -562,14 +562,14 @@ class DocumentChunkingService:
         db: AsyncSession,
         document_id: UUID
     ) -> int:
-        """Loescht alle Chunks eines Dokuments.
+        """Löscht alle Chunks eines Dokuments.
 
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
 
         Returns:
-            Anzahl geloeschter Chunks
+            Anzahl gelöschter Chunks
         """
         result = await db.execute(
             RAGDocumentChunk.__table__.delete().where(
@@ -593,7 +593,7 @@ class DocumentChunkingService:
         document_id: UUID,
         strategy: str = "semantic"
     ) -> List[RAGDocumentChunk]:
-        """Chunked ein Dokument neu (loescht existierende Chunks).
+        """Chunked ein Dokument neu (löscht existierende Chunks).
 
         Args:
             db: Datenbank-Session
@@ -603,7 +603,7 @@ class DocumentChunkingService:
         Returns:
             Neue Chunks
         """
-        # Existierende Chunks loeschen
+        # Existierende Chunks löschen
         await self.delete_document_chunks(db, document_id)
 
         # Neu chunken
@@ -617,7 +617,7 @@ _chunking_service: Optional[DocumentChunkingService] = None
 
 
 def get_chunking_service() -> DocumentChunkingService:
-    """Gibt die Chunking-Service-Instanz zurueck."""
+    """Gibt die Chunking-Service-Instanz zurück."""
     global _chunking_service
     if _chunking_service is None:
         _chunking_service = DocumentChunkingService()

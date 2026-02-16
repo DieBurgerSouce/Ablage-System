@@ -37,6 +37,7 @@ import { Route as RecurringInvoicesRouteImport } from './app/routes/recurring-in
 import { Route as ProzesseRouteImport } from './app/routes/prozesse'
 import { Route as ProactiveAssistantRouteImport } from './app/routes/proactive-assistant'
 import { Route as PrivatRouteImport } from './app/routes/privat'
+import { Route as PredictiveRouteImport } from './app/routes/predictive'
 import { Route as PortalRouteImport } from './app/routes/portal'
 import { Route as PoMatchingRouteImport } from './app/routes/po-matching'
 import { Route as PersonalRouteImport } from './app/routes/personal'
@@ -74,6 +75,7 @@ import { Route as CashflowRouteImport } from './app/routes/cashflow'
 import { Route as BerichteRouteImport } from './app/routes/berichte'
 import { Route as AutomationRouteImport } from './app/routes/automation'
 import { Route as ApprovalsRouteImport } from './app/routes/approvals'
+import { Route as AnalyticsRouteImport } from './app/routes/analytics'
 import { Route as AlertsRouteImport } from './app/routes/alerts'
 import { Route as AdminRouteImport } from './app/routes/admin'
 import { Route as AdhocReportingRouteImport } from './app/routes/adhoc-reporting'
@@ -439,6 +441,11 @@ const PrivatRoute = PrivatRouteImport.update({
   path: '/privat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PredictiveRoute = PredictiveRouteImport.update({
+  id: '/predictive',
+  path: '/predictive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PortalRoute = PortalRouteImport.update({
   id: '/portal',
   path: '/portal',
@@ -622,6 +629,11 @@ const AutomationRoute = AutomationRouteImport.update({
 const ApprovalsRoute = ApprovalsRouteImport.update({
   id: '/approvals',
   path: '/approvals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AlertsRoute = AlertsRouteImport.update({
@@ -1787,6 +1799,7 @@ export interface FileRoutesByFullPath {
   '/adhoc-reporting': typeof AdhocReportingRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/alerts': typeof AlertsRoute
+  '/analytics': typeof AnalyticsRoute
   '/approvals': typeof ApprovalsRoute
   '/automation': typeof AutomationRoute
   '/berichte': typeof BerichteRouteWithChildren
@@ -1824,6 +1837,7 @@ export interface FileRoutesByFullPath {
   '/personal': typeof PersonalRouteWithChildren
   '/po-matching': typeof PoMatchingRoute
   '/portal': typeof PortalRouteWithChildren
+  '/predictive': typeof PredictiveRoute
   '/privat': typeof PrivatRouteWithChildren
   '/proactive-assistant': typeof ProactiveAssistantRouteWithChildren
   '/prozesse': typeof ProzesseRouteWithChildren
@@ -2077,6 +2091,7 @@ export interface FileRoutesByTo {
   '/activity': typeof ActivityRoute
   '/adhoc-reporting': typeof AdhocReportingRouteWithChildren
   '/alerts': typeof AlertsRoute
+  '/analytics': typeof AnalyticsRoute
   '/approvals': typeof ApprovalsRoute
   '/automation': typeof AutomationRoute
   '/cashflow': typeof CashflowRoute
@@ -2107,6 +2122,7 @@ export interface FileRoutesByTo {
   '/ocr-suite': typeof OcrSuiteRoute
   '/open-file': typeof OpenFileRoute
   '/po-matching': typeof PoMatchingRoute
+  '/predictive': typeof PredictiveRoute
   '/proactive-assistant': typeof ProactiveAssistantRouteWithChildren
   '/recurring-invoices': typeof RecurringInvoicesRoute
   '/relationships': typeof RelationshipsRoute
@@ -2340,6 +2356,7 @@ export interface FileRoutesById {
   '/adhoc-reporting': typeof AdhocReportingRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
   '/alerts': typeof AlertsRoute
+  '/analytics': typeof AnalyticsRoute
   '/approvals': typeof ApprovalsRoute
   '/automation': typeof AutomationRoute
   '/berichte': typeof BerichteRouteWithChildren
@@ -2377,6 +2394,7 @@ export interface FileRoutesById {
   '/personal': typeof PersonalRouteWithChildren
   '/po-matching': typeof PoMatchingRoute
   '/portal': typeof PortalRouteWithChildren
+  '/predictive': typeof PredictiveRoute
   '/privat': typeof PrivatRouteWithChildren
   '/proactive-assistant': typeof ProactiveAssistantRouteWithChildren
   '/prozesse': typeof ProzesseRouteWithChildren
@@ -2633,6 +2651,7 @@ export interface FileRouteTypes {
     | '/adhoc-reporting'
     | '/admin'
     | '/alerts'
+    | '/analytics'
     | '/approvals'
     | '/automation'
     | '/berichte'
@@ -2670,6 +2689,7 @@ export interface FileRouteTypes {
     | '/personal'
     | '/po-matching'
     | '/portal'
+    | '/predictive'
     | '/privat'
     | '/proactive-assistant'
     | '/prozesse'
@@ -2923,6 +2943,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/adhoc-reporting'
     | '/alerts'
+    | '/analytics'
     | '/approvals'
     | '/automation'
     | '/cashflow'
@@ -2953,6 +2974,7 @@ export interface FileRouteTypes {
     | '/ocr-suite'
     | '/open-file'
     | '/po-matching'
+    | '/predictive'
     | '/proactive-assistant'
     | '/recurring-invoices'
     | '/relationships'
@@ -3185,6 +3207,7 @@ export interface FileRouteTypes {
     | '/adhoc-reporting'
     | '/admin'
     | '/alerts'
+    | '/analytics'
     | '/approvals'
     | '/automation'
     | '/berichte'
@@ -3222,6 +3245,7 @@ export interface FileRouteTypes {
     | '/personal'
     | '/po-matching'
     | '/portal'
+    | '/predictive'
     | '/privat'
     | '/proactive-assistant'
     | '/prozesse'
@@ -3477,6 +3501,7 @@ export interface RootRouteChildren {
   AdhocReportingRoute: typeof AdhocReportingRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
   AlertsRoute: typeof AlertsRoute
+  AnalyticsRoute: typeof AnalyticsRoute
   ApprovalsRoute: typeof ApprovalsRoute
   AutomationRoute: typeof AutomationRoute
   BerichteRoute: typeof BerichteRouteWithChildren
@@ -3514,6 +3539,7 @@ export interface RootRouteChildren {
   PersonalRoute: typeof PersonalRouteWithChildren
   PoMatchingRoute: typeof PoMatchingRoute
   PortalRoute: typeof PortalRouteWithChildren
+  PredictiveRoute: typeof PredictiveRoute
   PrivatRoute: typeof PrivatRouteWithChildren
   ProactiveAssistantRoute: typeof ProactiveAssistantRouteWithChildren
   ProzesseRoute: typeof ProzesseRouteWithChildren
@@ -3750,6 +3776,13 @@ declare module '@tanstack/react-router' {
       path: '/privat'
       fullPath: '/privat'
       preLoaderRoute: typeof PrivatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/predictive': {
+      id: '/predictive'
+      path: '/predictive'
+      fullPath: '/predictive'
+      preLoaderRoute: typeof PredictiveRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portal': {
@@ -4009,6 +4042,13 @@ declare module '@tanstack/react-router' {
       path: '/approvals'
       fullPath: '/approvals'
       preLoaderRoute: typeof ApprovalsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/alerts': {
@@ -6507,6 +6547,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdhocReportingRoute: AdhocReportingRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
   AlertsRoute: AlertsRoute,
+  AnalyticsRoute: AnalyticsRoute,
   ApprovalsRoute: ApprovalsRoute,
   AutomationRoute: AutomationRoute,
   BerichteRoute: BerichteRouteWithChildren,
@@ -6544,6 +6585,7 @@ const rootRouteChildren: RootRouteChildren = {
   PersonalRoute: PersonalRouteWithChildren,
   PoMatchingRoute: PoMatchingRoute,
   PortalRoute: PortalRouteWithChildren,
+  PredictiveRoute: PredictiveRoute,
   PrivatRoute: PrivatRouteWithChildren,
   ProactiveAssistantRoute: ProactiveAssistantRouteWithChildren,
   ProzesseRoute: ProzesseRouteWithChildren,

@@ -84,7 +84,7 @@ INVESTMENT_TYPE_RISK_SCORES: Dict[str, int] = {
 
     # Sehr hohes Risiko
     "krypto": 95,
-    "kryptowaehrung": 95,
+    "kryptowährung": 95,
     "bitcoin": 95,
     "rohstoffe": 80,
     "optionen": 90,
@@ -132,7 +132,7 @@ RISK_CATEGORIES: Dict[str, List[str]] = {
                "rentenversicherung"],
     "moderat": ["etf", "indexfonds", "mischfonds", "immobilienfonds"],
     "riskant": ["aktie", "aktienfonds", "einzelaktie", "aktien", "krypto",
-                "kryptowaehrung", "bitcoin", "rohstoffe", "optionen", "derivate",
+                "kryptowährung", "bitcoin", "rohstoffe", "optionen", "derivate",
                 "beteiligung", "crowdfunding", "p2p_kredit"],
 }
 
@@ -192,7 +192,7 @@ class DiversificationAnalysis:
     # Herfindahl-Hirschman Index (0-10000, niedriger = besser diversifiziert)
     herfindahl_index: Decimal
 
-    # Normalisierter Diversifikations-Score (0-100, hoeher = besser)
+    # Normalisierter Diversifikations-Score (0-100, höher = besser)
     diversification_score: Decimal
 
     # Anzahl verschiedener Investment-Typen
@@ -245,7 +245,7 @@ class RebalancingRecommendation:
 
 @dataclass
 class PortfolioAnalytics:
-    """Vollstaendige Portfolio-Analyse."""
+    """Vollständige Portfolio-Analyse."""
     space_id: UUID
 
     # Performance
@@ -283,7 +283,7 @@ class PortfolioAnalytics:
 
 class InvestmentIntelligenceService:
     """
-    Singleton Service fuer Investment-Intelligence.
+    Singleton Service für Investment-Intelligence.
 
     Berechnet:
     - Investment-Performance (Absolut, %, CAGR)
@@ -318,7 +318,7 @@ class InvestmentIntelligenceService:
         db: AsyncSession,
         investment_id: UUID,
     ) -> Optional[InvestmentPerformance]:
-        """Berechnet Performance-Kennzahlen fuer ein einzelnes Investment."""
+        """Berechnet Performance-Kennzahlen für ein einzelnes Investment."""
         from app.db.models import PrivatInvestment
 
         INVESTMENT_INTEL_CALCULATIONS.labels(calculation_type="performance").inc()
@@ -616,13 +616,13 @@ class InvestmentIntelligenceService:
 
         if unique_types < 3:
             recommendations.append(
-                f"Erhoehen Sie die Anzahl verschiedener Investment-Typen (aktuell: {unique_types}). "
+                f"Erhöhen Sie die Anzahl verschiedener Investment-Typen (aktuell: {unique_types}). "
                 "Empfohlen sind mindestens 5 verschiedene Kategorien."
             )
 
         if largest_pct > 40:
             recommendations.append(
-                f"Die groesste Position macht {largest_pct}% des Portfolios aus. "
+                f"Die größte Position macht {largest_pct}% des Portfolios aus. "
                 "Empfohlen: Maximal 20-25% pro Position."
             )
 
@@ -640,7 +640,7 @@ class InvestmentIntelligenceService:
         if not recommendations:
             recommendations.append(
                 "Gute Diversifikation! Behalten Sie die aktuelle Struktur bei und "
-                "ueberpruefen Sie regelmaessig die Balance."
+                "überprüfen Sie regelmäßig die Balance."
             )
 
         return recommendations
@@ -727,7 +727,7 @@ class InvestmentIntelligenceService:
             "riskant": risky_pct / 100 - ideal["riskant"],
         }
 
-        # Volatilitaets-Schaetzung
+        # Volatilitäts-Schätzung
         volatility = self._estimate_volatility(weighted_risk_score)
 
         return RiskProfile(
@@ -752,7 +752,7 @@ class InvestmentIntelligenceService:
             return "aggressiv"
 
     def _estimate_volatility(self, risk_score: Decimal) -> str:
-        """Schaetzt die erwartete Volatilitaet."""
+        """Schätzt die erwartete Volatilität."""
         if risk_score < 20:
             return "niedrig"
         elif risk_score < 45:
@@ -786,13 +786,13 @@ class InvestmentIntelligenceService:
         ideal = IDEAL_ALLOCATIONS.get(target_profile, IDEAL_ALLOCATIONS["ausgewogen"])
         recommendations: List[RebalancingRecommendation] = []
 
-        # Fuer jede Risiko-Kategorie pruefen
+        # Für jede Risiko-Kategorie prüfen
         for category in ["sicher", "moderat", "riskant"]:
             current_pct = allocation.by_risk_category_percentages.get(category, Decimal("0"))
             target_pct = ideal[category] * 100
             difference = current_pct - target_pct
 
-            # Nur empfehlen wenn Abweichung ueber Schwellenwert
+            # Nur empfehlen wenn Abweichung über Schwellenwert
             if abs(difference) >= threshold_pct:
                 action = "verkaufen" if difference > 0 else "kaufen"
                 amount = abs(difference) / 100 * allocation.total_value
@@ -814,7 +814,7 @@ class InvestmentIntelligenceService:
         return recommendations
 
     # =========================================================================
-    # Vollstaendige Portfolio-Analyse
+    # Vollständige Portfolio-Analyse
     # =========================================================================
 
     async def get_full_portfolio_analytics(
@@ -823,7 +823,7 @@ class InvestmentIntelligenceService:
         space_id: UUID,
         target_risk_profile: str = "ausgewogen",
     ) -> PortfolioAnalytics:
-        """Fuehrt eine vollstaendige Portfolio-Analyse durch."""
+        """Führt eine vollständige Portfolio-Analyse durch."""
         import time
         from app.db.models import PrivatInvestment
 
@@ -932,7 +932,7 @@ class InvestmentIntelligenceService:
         gain_pct: Decimal,
         investment_count: int,
     ) -> Decimal:
-        """Berechnet einen Gesundheits-Score fuer das Portfolio (0-100)."""
+        """Berechnet einen Gesundheits-Score für das Portfolio (0-100)."""
         score = Decimal("0")
 
         # Diversifikation (max 40 Punkte)
@@ -970,14 +970,14 @@ class InvestmentIntelligenceService:
         return min(Decimal("100"), score).quantize(Decimal("0.1"))
 
     # =========================================================================
-    # Batch-Operationen fuer Celery
+    # Batch-Operationen für Celery
     # =========================================================================
 
     async def recalculate_all_portfolios(
         self,
         db: AsyncSession,
     ) -> Dict[str, Any]:
-        """Berechnet alle Portfolio-Analysen neu (fuer Celery Beat)."""
+        """Berechnet alle Portfolio-Analysen neu (für Celery Beat)."""
         from app.db.models import PrivatSpace
 
 
@@ -1020,5 +1020,5 @@ class InvestmentIntelligenceService:
 # =============================================================================
 
 def get_investment_intelligence_service() -> InvestmentIntelligenceService:
-    """Gibt die Singleton-Instanz des Investment Intelligence Service zurueck."""
+    """Gibt die Singleton-Instanz des Investment Intelligence Service zurück."""
     return InvestmentIntelligenceService()

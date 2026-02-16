@@ -1,8 +1,8 @@
 """
 Zero-Touch OCR Orchestrator.
 
-Haupt-Orchestrator fuer die Zero-Touch-Pipeline:
-1. Prueft ob OCR abgeschlossen ist
+Haupt-Orchestrator für die Zero-Touch-Pipeline:
+1. Prüft ob OCR abgeschlossen ist
 2. Holt Classification- und Extraction-Ergebnisse
 3. Aggregiert Confidence-Scores
 4. Erstellt Business-Objekte (falls auto-processable)
@@ -78,7 +78,7 @@ class ZeroTouchResult:
 
 @dataclass
 class ZeroTouchStats:
-    """Statistiken fuer Zero-Touch-Processing."""
+    """Statistiken für Zero-Touch-Processing."""
 
     total_processed: int
     auto_processed: int
@@ -90,7 +90,7 @@ class ZeroTouchStats:
 
 @dataclass
 class ZeroTouchResultResponse:
-    """Response-DTO fuer API."""
+    """Response-DTO für API."""
 
     document_id: UUID
     success: bool
@@ -110,7 +110,7 @@ class ZeroTouchResultResponse:
 
 class ZeroTouchOrchestrator:
     """
-    Haupt-Orchestrator fuer Zero-Touch-Verarbeitung.
+    Haupt-Orchestrator für Zero-Touch-Verarbeitung.
 
     Koordiniert alle Schritte von OCR-Completion bis zur Business-Object-Erstellung.
     """
@@ -123,7 +123,7 @@ class ZeroTouchOrchestrator:
         Initialisiert den Orchestrator.
 
         Args:
-            confidence_threshold: Schwellwert fuer automatische Verarbeitung (0.0 - 1.0)
+            confidence_threshold: Schwellwert für automatische Verarbeitung (0.0 - 1.0)
         """
         self._confidence_aggregator = ConfidenceAggregator(
             auto_threshold=confidence_threshold,
@@ -143,7 +143,7 @@ class ZeroTouchOrchestrator:
 
         Args:
             document_id: ID des zu verarbeitenden Dokuments
-            company_id: Firmen-ID fuer Multi-Tenant
+            company_id: Firmen-ID für Multi-Tenant
             db: Datenbank-Session
 
         Returns:
@@ -182,7 +182,7 @@ class ZeroTouchOrchestrator:
                     start_time=start_time,
                 )
 
-            # 2. Pruefen ob OCR abgeschlossen
+            # 2. Prüfen ob OCR abgeschlossen
             if document.status != ProcessingStatus.COMPLETED.value:
                 error_msg = f"OCR noch nicht abgeschlossen (Status: {document.status})"
                 logger.warning(
@@ -320,7 +320,7 @@ class ZeroTouchOrchestrator:
                 start_time=start_time,
             )
 
-            # Metriken fuer Fehler
+            # Metriken für Fehler
             zero_touch_metrics.record_processing(
                 result="failed",
                 doc_type="unknown",
@@ -337,11 +337,11 @@ class ZeroTouchOrchestrator:
         db: AsyncSession,
     ) -> Optional[ZeroTouchResultResponse]:
         """
-        Holt das Zero-Touch-Ergebnis fuer ein Dokument.
+        Holt das Zero-Touch-Ergebnis für ein Dokument.
 
         Args:
             document_id: ID des Dokuments
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Datenbank-Session
 
         Returns:
@@ -386,7 +386,7 @@ class ZeroTouchOrchestrator:
         db: AsyncSession,
     ) -> ZeroTouchStats:
         """
-        Holt Statistiken fuer Zero-Touch-Processing einer Firma.
+        Holt Statistiken für Zero-Touch-Processing einer Firma.
 
         Args:
             company_id: Firmen-ID
@@ -459,7 +459,7 @@ class ZeroTouchOrchestrator:
         db: AsyncSession,
     ) -> None:
         """
-        Aktualisiert Zero-Touch-Schwellwerte fuer eine Firma.
+        Aktualisiert Zero-Touch-Schwellwerte für eine Firma.
 
         Args:
             company_id: Firmen-ID
@@ -487,7 +487,7 @@ class ZeroTouchOrchestrator:
             config = AppConfig(
                 key=config_key,
                 value=thresholds,
-                description=f"Zero-Touch Schwellwerte fuer Company {company_id}",
+                description=f"Zero-Touch Schwellwerte für Company {company_id}",
             )
             db.add(config)
 
@@ -536,7 +536,7 @@ class ZeroTouchOrchestrator:
         self,
         aggregated: AggregatedConfidence,
     ) -> dict[str, Any]:
-        """Serialisiert Confidence Breakdown fuer JSON-Speicherung."""
+        """Serialisiert Confidence Breakdown für JSON-Speicherung."""
         return {
             "overall": aggregated.overall,
             "threshold": aggregated.threshold,
@@ -590,7 +590,7 @@ class ZeroTouchOrchestrator:
         await db.commit()
 
     async def _emit_event(self, result: ZeroTouchResult) -> None:
-        """Emittiert Event fuer Zero-Touch-Completion."""
+        """Emittiert Event für Zero-Touch-Completion."""
         try:
             await self._event_bus.publish_event(
                 event_type=EventType.DOCUMENT_OCR_COMPLETED,  # Oder neues ZERO_TOUCH_COMPLETED

@@ -5,7 +5,7 @@ Smart Escalation Service for Ablage-System.
 KI-gestuetzte intelligente Eskalation:
 - Expertise-Score (Dokumenttyp-Historie)
 - Workload-Score (offene Validation-Queue Items)
-- Verfuegbarkeits-Score (Urlaub, Abwesenheit)
+- Verfügbarkeits-Score (Urlaub, Abwesenheit)
 - Relationship-Score (vorherige Bearbeitung desselben Kunden)
 
 Phase 2.3 der Feature-Roadmap (Januar 2026)
@@ -45,7 +45,7 @@ logger = structlog.get_logger(__name__)
 
 
 class AssignmentFactor(str, Enum):
-    """Faktoren fuer intelligente Zuweisung."""
+    """Faktoren für intelligente Zuweisung."""
     EXPERTISE = "expertise"
     WORKLOAD = "workload"
     AVAILABILITY = "availability"
@@ -53,7 +53,7 @@ class AssignmentFactor(str, Enum):
 
 
 class UnavailabilityReason(str, Enum):
-    """Gruende fuer Nichtverfuegbarkeit."""
+    """Gruende für Nichtverfügbarkeit."""
     VACATION = "vacation"
     SICK_LEAVE = "sick_leave"
     TRAINING = "training"
@@ -63,10 +63,10 @@ class UnavailabilityReason(str, Enum):
 
 @dataclass
 class FactorWeights:
-    """Gewichtung der Faktoren fuer Score-Berechnung."""
+    """Gewichtung der Faktoren für Score-Berechnung."""
     expertise: float = 0.35      # 35% - Expertise ist am wichtigsten
     workload: float = 0.25       # 25% - Auslastung
-    availability: float = 0.25   # 25% - Verfuegbarkeit
+    availability: float = 0.25   # 25% - Verfügbarkeit
     relationship: float = 0.15   # 15% - Beziehung zum Kunden
 
     def validate(self) -> bool:
@@ -77,7 +77,7 @@ class FactorWeights:
 
 @dataclass
 class CandidateScore:
-    """Score eines Kandidaten fuer Aufgabenzuweisung."""
+    """Score eines Kandidaten für Aufgabenzuweisung."""
     user_id: UUID
     user_email: str
     user_name: str
@@ -91,20 +91,20 @@ class CandidateScore:
     # Gewichteter Gesamtscore
     total_score: float = 0.0
 
-    # Details fuer Erklaerbarkeit
+    # Details für Erklärbarkeit
     expertise_details: Dict[str, Any] = field(default_factory=dict)
     workload_details: Dict[str, Any] = field(default_factory=dict)
     availability_details: Dict[str, Any] = field(default_factory=dict)
     relationship_details: Dict[str, Any] = field(default_factory=dict)
 
-    # Verfuegbarkeitsstatus
+    # Verfügbarkeitsstatus
     is_available: bool = True
     unavailability_reason: Optional[str] = None
 
 
 @dataclass
 class AssignmentRecommendation:
-    """Empfehlung fuer Aufgabenzuweisung."""
+    """Empfehlung für Aufgabenzuweisung."""
     recommended_user_id: UUID
     recommended_user_name: str
     confidence: float  # 0-100
@@ -116,7 +116,7 @@ class AssignmentRecommendation:
     factors_used: List[AssignmentFactor]
     weights_used: FactorWeights
 
-    # Erklaerung
+    # Erklärung
     explanation: str
     explanation_details: Dict[str, Any]
 
@@ -127,22 +127,22 @@ class AssignmentRecommendation:
 
 
 class SmartEscalationService:
-    """Service fuer KI-gestuetzte intelligente Aufgabenzuweisung."""
+    """Service für KI-gestuetzte intelligente Aufgabenzuweisung."""
 
     # Standardkonfiguration
     DEFAULT_WEIGHTS = FactorWeights()
 
     # Thresholds
-    MIN_EXPERTISE_TASKS = 3       # Mindestanzahl fuer Expertise-Bewertung
+    MIN_EXPERTISE_TASKS = 3       # Mindestanzahl für Expertise-Bewertung
     MAX_WORKLOAD_ITEMS = 20       # Max Items bevor Workload-Score = 0
-    RECENT_DAYS_EXPERTISE = 90    # Tage fuer Expertise-Berechnung
-    RECENT_DAYS_RELATIONSHIP = 180  # Tage fuer Relationship-Berechnung
+    RECENT_DAYS_EXPERTISE = 90    # Tage für Expertise-Berechnung
+    RECENT_DAYS_RELATIONSHIP = 180  # Tage für Relationship-Berechnung
 
     def __init__(self, db: AsyncSession):
         """Initialisiert den SmartEscalationService.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
         """
         self.db = db
 
@@ -161,15 +161,15 @@ class SmartEscalationService:
         weights: Optional[FactorWeights] = None,
         max_candidates: int = 10,
     ) -> Optional[AssignmentRecommendation]:
-        """Ermittelt die beste Zuweisung fuer eine Aufgabe.
+        """Ermittelt die beste Zuweisung für eine Aufgabe.
 
-        SECURITY: company_id MUSS fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: company_id MUSS für Multi-Tenant Isolation übergeben werden.
 
         Args:
             company_id: ID des Unternehmens (PFLICHT)
-            document_id: ID des Dokuments (optional, fuer Kontext)
-            document_type: Dokumenttyp (fuer Expertise-Matching)
-            entity_id: ID des verknuepften Geschaeftspartners
+            document_id: ID des Dokuments (optional, für Kontext)
+            document_type: Dokumenttyp (für Expertise-Matching)
+            entity_id: ID des verknüpften Geschäftspartners
             task_type: Typ der Aufgabe (validation, review, etc.)
             exclude_user_ids: User-IDs die ausgeschlossen werden sollen
             weights: Gewichtung der Faktoren (optional)
@@ -203,7 +203,7 @@ class SmartEscalationService:
             if doc_context and not entity_id:
                 entity_id = doc_context.get("entity_id")
 
-        # 3. Berechne Scores fuer jeden Kandidaten
+        # 3. Berechne Scores für jeden Kandidaten
         scored_candidates: List[CandidateScore] = []
 
         for user in candidates:
@@ -252,7 +252,7 @@ class SmartEscalationService:
             else:
                 # Neutral wenn keine Entity
                 score.relationship_score = 50.0
-                score.relationship_details = {"reason": "Keine Entity-Verknuepfung"}
+                score.relationship_details = {"reason": "Keine Entity-Verknüpfung"}
 
             # Gewichteter Gesamtscore
             score.total_score = (
@@ -279,7 +279,7 @@ class SmartEscalationService:
         # Confidence basierend auf Score-Differenz zum Zweitplatzierten
         confidence = self._calculate_recommendation_confidence(scored_candidates)
 
-        # Erklaerung generieren
+        # Erklärung generieren
         explanation, explanation_details = self._generate_explanation(
             best_candidate=best_candidate,
             candidates=scored_candidates,
@@ -322,13 +322,13 @@ class SmartEscalationService:
         document_type: Optional[str] = None,
         entity_id: Optional[UUID] = None,
     ) -> CandidateScore:
-        """Holt die Scores eines einzelnen Users (fuer Debugging/Analyse).
+        """Holt die Scores eines einzelnen Users (für Debugging/Analyse).
 
         Args:
             user_id: ID des Benutzers
             company_id: ID des Unternehmens
-            document_type: Dokumenttyp fuer Expertise
-            entity_id: Entity fuer Relationship
+            document_type: Dokumenttyp für Expertise
+            entity_id: Entity für Relationship
 
         Returns:
             CandidateScore mit allen Scores
@@ -387,7 +387,7 @@ class SmartEscalationService:
         self,
         company_id: UUID,
     ) -> Dict[str, Any]:
-        """Gibt einen Ueberblick ueber die Team-Auslastung.
+        """Gibt einen Überblick über die Team-Auslastung.
 
         Args:
             company_id: ID des Unternehmens
@@ -414,7 +414,7 @@ class SmartEscalationService:
                 "availability_score": availability["score"],
             })
 
-        # Sortiere nach Auslastung (niedrig zuerst = mehr Kapazitaet)
+        # Sortiere nach Auslastung (niedrig zuerst = mehr Kapazität)
         team_stats.sort(key=lambda x: x["open_items"])
 
         total_open = sum(s["open_items"] for s in team_stats)
@@ -437,11 +437,11 @@ class SmartEscalationService:
         company_id: UUID,
         exclude_user_ids: List[UUID],
     ) -> List[Dict[str, Any]]:
-        """Holt alle berechtigten Kandidaten fuer Zuweisung.
+        """Holt alle berechtigten Kandidaten für Zuweisung.
 
         Args:
             company_id: ID des Unternehmens
-            exclude_user_ids: Auszuschliessende User-IDs
+            exclude_user_ids: Auszuschließende User-IDs
 
         Returns:
             Liste von User-Dicts
@@ -473,7 +473,7 @@ class SmartEscalationService:
         document_id: UUID,
         company_id: UUID,
     ) -> Optional[Dict[str, Any]]:
-        """Holt Dokumentkontext fuer Score-Berechnung.
+        """Holt Dokumentkontext für Score-Berechnung.
 
         Args:
             document_id: ID des Dokuments
@@ -678,7 +678,7 @@ class SmartEscalationService:
         # Score-Berechnung: linear von 100 (0 items) bis 0 (MAX items)
         score = max(0.0, 100.0 - (total_open / self.MAX_WORKLOAD_ITEMS * 100))
 
-        # Kapazitaetslevel
+        # Kapazitätslevel
         if total_open == 0:
             capacity_level = "frei"
         elif total_open <= 5:
@@ -688,7 +688,7 @@ class SmartEscalationService:
         elif total_open <= 15:
             capacity_level = "hoch"
         else:
-            capacity_level = "ueberlastet"
+            capacity_level = "überlastet"
 
         return {
             "score": score,
@@ -705,11 +705,11 @@ class SmartEscalationService:
         self,
         user_id: UUID,
     ) -> Dict[str, Any]:
-        """Berechnet Verfuegbarkeits-Score.
+        """Berechnet Verfügbarkeits-Score.
 
-        Prueft:
+        Prüft:
         - User.is_active Status
-        - Abwesenheitseintraege (falls implementiert)
+        - Abwesenheitseinträge (falls implementiert)
         - Letzter Login (falls getrackt)
 
         Args:
@@ -718,12 +718,12 @@ class SmartEscalationService:
         Returns:
             Dict mit score, is_available und details
         """
-        # User-Status pruefen
+        # User-Status prüfen
         result = await self.db.execute(
             select(
                 User.is_active,
                 User.last_login_at,
-                # Hier koennten weitere Felder wie absence_until geprueft werden
+                # Hier könnten weitere Felder wie absence_until geprüft werden
             )
             .where(User.id == user_id)
         )
@@ -745,7 +745,7 @@ class SmartEscalationService:
                 "details": {"is_active": False},
             }
 
-        # Letzter Login - Score basierend auf Aktivitaet
+        # Letzter Login - Score basierend auf Aktivität
         score = 100.0
         is_available = True
         details: Dict[str, Any] = {"is_active": True}
@@ -755,7 +755,7 @@ class SmartEscalationService:
             details["last_login_days_ago"] = days_since_login
 
             if days_since_login > 30:
-                # Lange nicht eingeloggt - vermutlich nicht verfuegbar
+                # Lange nicht eingeloggt - vermutlich nicht verfügbar
                 score = 20.0
                 is_available = False
                 details["status"] = "inaktiv"
@@ -773,7 +773,7 @@ class SmartEscalationService:
             score = 70.0
             details["status"] = "unbekannt"
 
-        # Pruefe Abwesenheit (Out of Office)
+        # Prüfe Abwesenheit (Out of Office)
         absence_info = await self._check_user_absence(user_id)
         if absence_info.get("is_absent", False):
             score = 0.0
@@ -794,7 +794,7 @@ class SmartEscalationService:
         user_id: UUID,
     ) -> Dict[str, Any]:
         """
-        Prueft ob User abwesend ist (Urlaub, Krankheit, etc.).
+        Prüft ob User abwesend ist (Urlaub, Krankheit, etc.).
 
         Args:
             user_id: User-ID
@@ -802,7 +802,7 @@ class SmartEscalationService:
         Returns:
             Dict mit is_absent, reason, until, deputy_id
         """
-        # Pruefe User-Einstellungen fuer Abwesenheit
+        # Prüfe User-Einstellungen für Abwesenheit
         user_query = select(User).where(User.id == user_id)
         result = await self.db.execute(user_query)
         user = result.scalar_one_or_none()
@@ -810,13 +810,13 @@ class SmartEscalationService:
         if not user:
             return {"is_absent": False}
 
-        # Pruefe is_out_of_office Flag (wenn vorhanden im User-Model)
+        # Prüfe is_out_of_office Flag (wenn vorhanden im User-Model)
         is_out_of_office = getattr(user, "is_out_of_office", False)
         absence_until = getattr(user, "absence_until", None)
         absence_reason = getattr(user, "absence_reason", None)
         deputy_id = getattr(user, "deputy_user_id", None)
 
-        # Pruefe ob Abwesenheit aktiv und nicht abgelaufen
+        # Prüfe ob Abwesenheit aktiv und nicht abgelaufen
         if is_out_of_office:
             if absence_until:
                 # Abwesenheit hat ein Ende-Datum
@@ -838,7 +838,7 @@ class SmartEscalationService:
                     "deputy_id": str(deputy_id) if deputy_id else None,
                 }
 
-        # Pruefe User-Settings/Preferences (JSONB) wenn vorhanden
+        # Prüfe User-Settings/Preferences (JSONB) wenn vorhanden
         user_settings = getattr(user, "settings", None) or {}
         if isinstance(user_settings, dict):
             absence_settings = user_settings.get("absence", {})
@@ -945,8 +945,8 @@ class SmartEscalationService:
 
         Basiert auf:
         - Abstand zum Zweitplatzierten
-        - Absolute Hoehe des Top-Scores
-        - Verfuegbarkeit des Kandidaten
+        - Absolute Höhe des Top-Scores
+        - Verfügbarkeit des Kandidaten
 
         Args:
             candidates: Sortierte Kandidatenliste
@@ -971,7 +971,7 @@ class SmartEscalationService:
         gap = best.total_score - second.total_score
         confidence += gap * 0.3
 
-        # Bonus: Verfuegbarkeit
+        # Bonus: Verfügbarkeit
         if best.is_available:
             confidence += 10.0
 
@@ -989,7 +989,7 @@ class SmartEscalationService:
         document_type: Optional[str],
         entity_id: Optional[UUID],
     ) -> Tuple[str, Dict[str, Any]]:
-        """Generiert Erklaerung fuer die Empfehlung.
+        """Generiert Erklärung für die Empfehlung.
 
         Args:
             best_candidate: Bester Kandidat
@@ -999,7 +999,7 @@ class SmartEscalationService:
             entity_id: Entity-ID
 
         Returns:
-            Tuple von (erklaerung_text, details_dict)
+            Tuple von (erklärung_text, details_dict)
         """
         name = best_candidate.user_name
 
@@ -1010,7 +1010,7 @@ class SmartEscalationService:
         if best_candidate.expertise_score >= 80:
             level = best_candidate.expertise_details.get("experience_level", "")
             if document_type:
-                reasons.append(f"hohe Expertise fuer {document_type}-Dokumente ({level})")
+                reasons.append(f"hohe Expertise für {document_type}-Dokumente ({level})")
             else:
                 reasons.append(f"hohe allgemeine Expertise ({level})")
 
@@ -1024,11 +1024,11 @@ class SmartEscalationService:
             docs = best_candidate.relationship_details.get("documents_processed", 0)
             reasons.append(f"vorherige Erfahrung mit diesem Kunden ({docs} Dokumente)")
 
-        # Verfuegbarkeit
+        # Verfügbarkeit
         if best_candidate.is_available and best_candidate.availability_score >= 90:
             reasons.append("aktuell sehr aktiv im System")
 
-        # Erklaerungstext
+        # Erklärungstext
         if reasons:
             explanation = f"{name} empfohlen wegen: {', '.join(reasons[:3])}"
         else:
@@ -1063,10 +1063,10 @@ class SmartEscalationService:
 
 
 def get_smart_escalation_service(db: AsyncSession) -> SmartEscalationService:
-    """Factory-Funktion fuer SmartEscalationService.
+    """Factory-Funktion für SmartEscalationService.
 
     Args:
-        db: AsyncSession fuer Datenbankoperationen
+        db: AsyncSession für Datenbankoperationen
 
     Returns:
         SmartEscalationService Instanz

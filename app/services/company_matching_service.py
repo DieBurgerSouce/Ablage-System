@@ -41,10 +41,10 @@ class CompanyMatchingService:
     """
     Service zur Erkennung von Eingangs-/Ausgangsrechnungen.
 
-    Vergleicht den extrahierten Empfaenger/Absender mit den
+    Vergleicht den extrahierten Empfänger/Absender mit den
     Admin-Firmendaten und bestimmt die Rechnungsrichtung.
 
-    Matching-Prioritaet (hoechste zuerst):
+    Matching-Priorität (hoechste zuerst):
     1. VAT-ID exakt: 0.99 Confidence
     2. IBAN exakt: 0.95 Confidence
     3. Name exakt (inkl. alternative_names): 0.90 Confidence
@@ -63,7 +63,7 @@ class CompanyMatchingService:
         r"\s*gmbh\s*$",
         r"\s+ag\s*$",    # \s+ um "...dag" nicht zu matchen
         r"\s+kg\s*$",    # \s+ um "...ekg" nicht zu matchen
-        r"\s+ohg\s*$",   # \s+ fuer Konsistenz
+        r"\s+ohg\s*$",   # \s+ für Konsistenz
         r"\s*ug\s*(?:\(haftungsbeschraenkt\))?\s*$",
         r"\s*mbh\s*$",
         r"\s+se\s*$",    # \s+ um "Spargelmesse" nicht zu matchen
@@ -103,11 +103,11 @@ class CompanyMatchingService:
                 "Keine Firmendaten konfiguriert"
             )
 
-        # 2. Empfaenger pruefen (Eingangsrechnung = Rechnung AN uns)
+        # 2. Empfänger prüfen (Eingangsrechnung = Rechnung AN uns)
         recipient_match = self._match_address_to_company(
             address=invoice.recipient,
             vat_id=invoice.recipient_vat_id,
-            iban=None,  # Empfaenger-IBAN nicht relevant
+            iban=None,  # Empfänger-IBAN nicht relevant
             company=company
         )
 
@@ -124,7 +124,7 @@ class CompanyMatchingService:
                 recipient_match.reason
             )
 
-        # 3. Absender pruefen (Ausgangsrechnung = Rechnung VON uns)
+        # 3. Absender prüfen (Ausgangsrechnung = Rechnung VON uns)
         sender_iban = None
         if invoice.sender_bank and invoice.sender_bank.iban:
             sender_iban = invoice.sender_bank.iban
@@ -178,7 +178,7 @@ class CompanyMatchingService:
         """
         Vergleicht eine extrahierte Adresse mit den Firmendaten.
 
-        Matching-Prioritaet:
+        Matching-Priorität:
         1. VAT-ID exakt: 0.99
         2. IBAN exakt: 0.95
         3. Name exakt: 0.90
@@ -194,7 +194,7 @@ class CompanyMatchingService:
         Returns:
             MatchResult mit matched, confidence, reason
         """
-        # 1. VAT-ID Vergleich (hoechste Prioritaet)
+        # 1. VAT-ID Vergleich (hoechste Priorität)
         if vat_id and company.vat_id:
             normalized_extracted = self._normalize_vat_id(vat_id)
             normalized_company = self._normalize_vat_id(company.vat_id)
@@ -202,7 +202,7 @@ class CompanyMatchingService:
                 return MatchResult(
                     matched=True,
                     confidence=0.99,
-                    reason="USt-IdNr stimmt ueberein"
+                    reason="USt-IdNr stimmt überein"
                 )
 
         # 2. IBAN Vergleich
@@ -213,10 +213,10 @@ class CompanyMatchingService:
                 return MatchResult(
                     matched=True,
                     confidence=0.95,
-                    reason="IBAN stimmt ueberein"
+                    reason="IBAN stimmt überein"
                 )
 
-        # Fuer weitere Checks brauchen wir eine Adresse
+        # Für weitere Checks brauchen wir eine Adresse
         if not address:
             return MatchResult(
                 matched=False,
@@ -233,7 +233,7 @@ class CompanyMatchingService:
                 reason="Kein Firmenname extrahiert"
             )
 
-        # Alle moeglichen Firmennamen sammeln
+        # Alle möglichen Firmennamen sammeln
         company_names = [company.company_name]
         if company.alternative_names:
             company_names.extend(company.alternative_names)
@@ -244,7 +244,7 @@ class CompanyMatchingService:
                 return MatchResult(
                     matched=True,
                     confidence=0.90,
-                    reason="Firmenname stimmt exakt ueberein"
+                    reason="Firmenname stimmt exakt überein"
                 )
 
         # 3b. Fuzzy Name-Match
@@ -254,20 +254,20 @@ class CompanyMatchingService:
             best_similarity = max(best_similarity, similarity)
 
         if best_similarity >= 0.90:
-            # PLZ-Vergleich fuer hoehere Confidence
+            # PLZ-Vergleich für höhere Confidence
             if address.zip_code and company.postal_code:
                 if address.zip_code.strip() == company.postal_code.strip():
                     return MatchResult(
                         matched=True,
                         confidence=0.85,
-                        reason=f"Firmenname aehnlich ({best_similarity:.0%}) und PLZ stimmt"
+                        reason=f"Firmenname ähnlich ({best_similarity:.0%}) und PLZ stimmt"
                     )
 
             # Nur Name-Match (niedrigere Confidence)
             return MatchResult(
                 matched=True,
                 confidence=0.70,
-                reason=f"Firmenname aehnlich ({best_similarity:.0%})"
+                reason=f"Firmenname ähnlich ({best_similarity:.0%})"
             )
 
         # Kein Match
@@ -278,22 +278,22 @@ class CompanyMatchingService:
         )
 
     def _normalize_vat_id(self, vat_id: str) -> str:
-        """Normalisiert eine USt-IdNr fuer den Vergleich."""
+        """Normalisiert eine USt-IdNr für den Vergleich."""
         return vat_id.replace(" ", "").replace(".", "").replace("-", "").upper()
 
     def _normalize_iban(self, iban: str) -> str:
-        """Normalisiert eine IBAN fuer den Vergleich."""
+        """Normalisiert eine IBAN für den Vergleich."""
         return iban.replace(" ", "").upper()
 
     def _names_match_exact(self, name1: str, name2: str) -> bool:
-        """Prueft ob zwei Firmennamen exakt uebereinstimmen (nach Normalisierung)."""
+        """Prüft ob zwei Firmennamen exakt übereinstimmen (nach Normalisierung)."""
         n1 = self._normalize_company_name(name1)
         n2 = self._normalize_company_name(name2)
         return n1 == n2
 
     def _normalize_company_name(self, name: str) -> str:
         """
-        Normalisiert einen Firmennamen fuer den Vergleich.
+        Normalisiert einen Firmennamen für den Vergleich.
 
         - Kleinbuchstaben
         - Rechtsformen entfernen
@@ -312,7 +312,7 @@ class CompanyMatchingService:
 
     def _calculate_name_similarity(self, name1: str, name2: str) -> float:
         """
-        Berechnet die Aehnlichkeit zweier Firmennamen (0.0-1.0).
+        Berechnet die Ähnlichkeit zweier Firmennamen (0.0-1.0).
 
         Verwendet Levenshtein-Distanz nach Normalisierung.
         """
@@ -354,12 +354,12 @@ class CompanyMatchingService:
         return previous_row[-1]
 
 
-# Singleton-Instanz fuer Performance
+# Singleton-Instanz für Performance
 _company_matching_service: Optional[CompanyMatchingService] = None
 
 
 def get_company_matching_service() -> CompanyMatchingService:
-    """Gibt die Singleton-Instanz des CompanyMatchingService zurueck."""
+    """Gibt die Singleton-Instanz des CompanyMatchingService zurück."""
     global _company_matching_service
     if _company_matching_service is None:
         _company_matching_service = CompanyMatchingService()

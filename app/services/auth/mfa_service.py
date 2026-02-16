@@ -1,14 +1,14 @@
 """
-MFA (Multi-Factor Authentication) Service fuer TOTP-basierte 2FA.
+MFA (Multi-Factor Authentication) Service für TOTP-basierte 2FA.
 
 Features:
 - TOTP (Time-based One-Time Password) nach RFC 6238
-- Verschluesselte Secret-Speicherung (AES-256-GCM)
+- Verschlüsselte Secret-Speicherung (AES-256-GCM)
 - Backup-Codes mit bcrypt-Hashing
-- QR-Code-Generierung fuer Authenticator-Apps
-- Rate Limiting fuer Brute-Force-Schutz
+- QR-Code-Generierung für Authenticator-Apps
+- Rate Limiting für Brute-Force-Schutz
 
-Unterstuetzte Authenticator-Apps:
+Unterstützte Authenticator-Apps:
 - Google Authenticator
 - Microsoft Authenticator
 - Authy
@@ -58,7 +58,7 @@ LOCKOUT_DURATION_MINUTES = 15
 
 
 class MFAServiceError(Exception):
-    """Base exception fuer MFA-Service-Fehler."""
+    """Base exception für MFA-Service-Fehler."""
     pass
 
 
@@ -73,7 +73,7 @@ class MFANotEnabledError(MFAServiceError):
 
 
 class InvalidTOTPCodeError(MFAServiceError):
-    """Ungueltiger TOTP-Code."""
+    """Ungültiger TOTP-Code."""
     pass
 
 
@@ -84,7 +84,7 @@ class RateLimitExceededError(MFAServiceError):
 
 class MFAService:
     """
-    Service fuer Multi-Factor Authentication mit TOTP.
+    Service für Multi-Factor Authentication mit TOTP.
 
     Beispiel:
         mfa_service = MFAService(db)
@@ -92,7 +92,7 @@ class MFAService:
         # Setup starten
         qr_data, backup_codes = await mfa_service.setup_totp(user_id)
 
-        # Mit Code bestaetigen
+        # Mit Code bestätigen
         await mfa_service.verify_and_enable_totp(user_id, totp_code)
 
         # Bei Login verifizieren
@@ -107,7 +107,7 @@ class MFAService:
         """
         Leitet den AES-256 Schluessel aus dem SECRET_KEY ab.
 
-        Verwendet HKDF-aehnliche Ableitung fuer Schluesseltrennung.
+        Verwendet HKDF-ähnliche Ableitung für Schluesseltrennung.
         """
         # Verwende SHA-256 um einen 32-byte Schluessel abzuleiten
         key_material = f"{settings.SECRET_KEY}:totp:encryption".encode()
@@ -115,7 +115,7 @@ class MFAService:
 
     def _encrypt_secret(self, secret: str) -> str:
         """
-        Verschluesselt das TOTP-Secret mit AES-256-GCM.
+        Verschlüsselt das TOTP-Secret mit AES-256-GCM.
 
         Format: Base64(nonce || ciphertext || tag)
 
@@ -123,10 +123,10 @@ class MFAService:
             secret: Das Klartext-TOTP-Secret
 
         Returns:
-            Base64-encoded verschluesselter String
+            Base64-encoded verschlüsselter String
         """
         aesgcm = AESGCM(self._encryption_key)
-        nonce = secrets.token_bytes(12)  # 96-bit nonce fuer GCM
+        nonce = secrets.token_bytes(12)  # 96-bit nonce für GCM
 
         ciphertext = aesgcm.encrypt(
             nonce,
@@ -140,10 +140,10 @@ class MFAService:
 
     def _decrypt_secret(self, encrypted: str) -> str:
         """
-        Entschluesselt das TOTP-Secret.
+        Entschlüsselt das TOTP-Secret.
 
         Args:
-            encrypted: Base64-encoded verschluesselter String
+            encrypted: Base64-encoded verschlüsselter String
 
         Returns:
             Klartext-TOTP-Secret
@@ -168,15 +168,15 @@ class MFAService:
         Generiert Backup-Codes und deren Hashes.
 
         Returns:
-            Tuple von (Klartext-Codes fuer User, bcrypt-Hashes fuer DB)
+            Tuple von (Klartext-Codes für User, bcrypt-Hashes für DB)
         """
         codes = []
         hashed_codes = []
 
         for _ in range(BACKUP_CODE_COUNT):
-            # Generiere zufaelligen Code (Hex-String)
+            # Generiere zufälligen Code (Hex-String)
             code = secrets.token_hex(BACKUP_CODE_LENGTH // 2).upper()
-            # Format: XXXX-XXXX fuer bessere Lesbarkeit
+            # Format: XXXX-XXXX für bessere Lesbarkeit
             formatted_code = f"{code[:4]}-{code[4:]}"
             codes.append(formatted_code)
 
@@ -210,7 +210,7 @@ class MFAService:
             user_id: UUID des Users
 
         Returns:
-            Tuple von (QR-Code als Data-URI, Secret fuer manuelle Eingabe, Backup-Codes)
+            Tuple von (QR-Code als Data-URI, Secret für manuelle Eingabe, Backup-Codes)
 
         Raises:
             MFAAlreadyEnabledError: Wenn 2FA bereits aktiviert ist
@@ -235,7 +235,7 @@ class MFAService:
             issuer=TOTP_ISSUER
         )
 
-        # Generiere Provisioning-URI fuer QR-Code
+        # Generiere Provisioning-URI für QR-Code
         # Format: otpauth://totp/Issuer:account?secret=...&issuer=...
         account_name = user.email or user.username
         provisioning_uri = totp.provisioning_uri(
@@ -263,7 +263,7 @@ class MFAService:
         # Generiere Backup-Codes
         backup_codes, hashed_codes = self._generate_backup_codes()
 
-        # Speichere verschluesseltes Secret und gehashte Backup-Codes
+        # Speichere verschlüsseltes Secret und gehashte Backup-Codes
         # ABER aktiviere 2FA noch nicht (totp_enabled bleibt False)
         encrypted_secret = self._encrypt_secret(secret)
 
@@ -293,7 +293,7 @@ class MFAService:
         """
         Verifiziert den TOTP-Code und aktiviert 2FA.
 
-        Dieser Schritt bestaetigt dass der User die Authenticator-App
+        Dieser Schritt bestätigt dass der User die Authenticator-App
         korrekt eingerichtet hat.
 
         Args:
@@ -304,7 +304,7 @@ class MFAService:
             True wenn erfolgreich aktiviert
 
         Raises:
-            InvalidTOTPCodeError: Bei ungueltigem Code
+            InvalidTOTPCodeError: Bei ungültigem Code
             MFAAlreadyEnabledError: Wenn 2FA bereits aktiviert ist
         """
         user = await self._get_user(user_id)
@@ -321,7 +321,7 @@ class MFAService:
                 "TOTP-Setup wurde nicht gestartet. Bitte zuerst setup_totp aufrufen."
             )
 
-        # Entschluessele Secret und verifiziere Code
+        # Entschlüssele Secret und verifiziere Code
         secret = self._decrypt_secret(user.totp_secret)
         totp = pyotp.TOTP(
             secret,
@@ -329,7 +329,7 @@ class MFAService:
             interval=TOTP_INTERVAL
         )
 
-        # Verifiziere mit Toleranz fuer Zeitdrift
+        # Verifiziere mit Toleranz für Zeitdrift
         is_valid = totp.verify(totp_code, valid_window=TOTP_VALID_WINDOW)
 
         if not is_valid:
@@ -338,7 +338,7 @@ class MFAService:
                 user_id=str(user_id)
             )
             raise InvalidTOTPCodeError(
-                "Ungueltiger Verifizierungscode. Bitte versuchen Sie es erneut."
+                "Ungültiger Verifizierungscode. Bitte versuchen Sie es erneut."
             )
 
         # Aktiviere 2FA
@@ -361,7 +361,7 @@ class MFAService:
 
     async def _check_rate_limit(self, user: User) -> None:
         """
-        Prueft ob User wegen zu vieler fehlgeschlagener Versuche gesperrt ist.
+        Prüft ob User wegen zu vieler fehlgeschlagener Versuche gesperrt ist.
 
         Raises:
             RateLimitExceededError: Wenn User gesperrt ist
@@ -376,7 +376,7 @@ class MFAService:
                     f"Bitte warten Sie {remaining_minutes} Minute(n)."
                 )
             else:
-                # Lockout abgelaufen - zuruecksetzen
+                # Lockout abgelaufen - zurücksetzen
                 await self.db.execute(
                     update(User)
                     .where(User.id == user.id)
@@ -395,7 +395,7 @@ class MFAService:
         if not user:
             return
 
-        # Inkrementiere Zaehler
+        # Inkrementiere Zähler
         new_count = (user.totp_failed_attempts or 0) + 1
 
         values = {"totp_failed_attempts": new_count}
@@ -419,7 +419,7 @@ class MFAService:
         await self.db.commit()
 
     async def _reset_failed_attempts(self, user_id: UUID) -> None:
-        """Setzt den Zaehler nach erfolgreichem Login zurueck."""
+        """Setzt den Zähler nach erfolgreichem Login zurück."""
         await self.db.execute(
             update(User)
             .where(User.id == user_id)
@@ -436,22 +436,22 @@ class MFAService:
         totp_code: str
     ) -> bool:
         """
-        Verifiziert einen TOTP-Code waehrend des Logins.
+        Verifiziert einen TOTP-Code während des Logins.
 
         Implementiert Rate Limiting:
         - Max 5 fehlgeschlagene Versuche
-        - 15 Minuten Sperre nach Ueberschreitung
+        - 15 Minuten Sperre nach Überschreitung
 
         Args:
             user_id: UUID des Users
             totp_code: 6-stelliger Code aus der Authenticator-App
 
         Returns:
-            True wenn Code gueltig
+            True wenn Code gültig
 
         Raises:
             MFANotEnabledError: Wenn 2FA nicht aktiviert ist
-            InvalidTOTPCodeError: Bei ungueltigem Code
+            InvalidTOTPCodeError: Bei ungültigem Code
             RateLimitExceededError: Zu viele fehlgeschlagene Versuche
         """
         user = await self._get_user(user_id)
@@ -466,10 +466,10 @@ class MFAService:
         if not user.totp_secret:
             raise MFAServiceError("TOTP-Secret nicht gefunden")
 
-        # RATE LIMITING: Pruefe ob gesperrt
+        # RATE LIMITING: Prüfe ob gesperrt
         await self._check_rate_limit(user)
 
-        # Entschluessele Secret und verifiziere Code
+        # Entschlüssele Secret und verifiziere Code
         secret = self._decrypt_secret(user.totp_secret)
         totp = pyotp.TOTP(
             secret,
@@ -487,9 +487,9 @@ class MFAService:
                 user_id=str(user_id),
                 failed_attempts=(user.totp_failed_attempts or 0) + 1
             )
-            raise InvalidTOTPCodeError("Ungueltiger Code")
+            raise InvalidTOTPCodeError("Ungültiger Code")
 
-        # Erfolg: Zaehler zuruecksetzen
+        # Erfolg: Zähler zurücksetzen
         await self._reset_failed_attempts(user_id)
 
         logger.info(
@@ -511,18 +511,18 @@ class MFAService:
 
         Implementiert Rate Limiting (gleiche Regeln wie TOTP):
         - Max 5 fehlgeschlagene Versuche
-        - 15 Minuten Sperre nach Ueberschreitung
+        - 15 Minuten Sperre nach Überschreitung
 
         Args:
             user_id: UUID des Users
             backup_code: Der Backup-Code (Format: XXXX-XXXX)
 
         Returns:
-            True wenn Code gueltig und verbraucht
+            True wenn Code gültig und verbraucht
 
         Raises:
             MFANotEnabledError: Wenn 2FA nicht aktiviert ist
-            InvalidTOTPCodeError: Bei ungueltigem Backup-Code
+            InvalidTOTPCodeError: Bei ungültigem Backup-Code
             RateLimitExceededError: Zu viele fehlgeschlagene Versuche
         """
         user = await self._get_user(user_id)
@@ -537,13 +537,13 @@ class MFAService:
         if not user.totp_backup_codes:
             raise InvalidTOTPCodeError("Keine Backup-Codes vorhanden")
 
-        # RATE LIMITING: Pruefe ob gesperrt (gleicher Zaehler wie TOTP)
+        # RATE LIMITING: Prüfe ob gesperrt (gleicher Zähler wie TOTP)
         await self._check_rate_limit(user)
 
         # Entferne Formatierung (Bindestriche)
         clean_code = backup_code.replace("-", "").upper()
 
-        # Pruefe jeden gespeicherten Hash
+        # Prüfe jeden gespeicherten Hash
         remaining_codes = list(user.totp_backup_codes)
         code_used = False
 
@@ -562,9 +562,9 @@ class MFAService:
                 user_id=str(user_id),
                 failed_attempts=(user.totp_failed_attempts or 0) + 1
             )
-            raise InvalidTOTPCodeError("Ungueltiger Backup-Code")
+            raise InvalidTOTPCodeError("Ungültiger Backup-Code")
 
-        # Erfolg: Zaehler zuruecksetzen UND verbleibende Codes speichern
+        # Erfolg: Zähler zurücksetzen UND verbleibende Codes speichern
         await self.db.execute(
             update(User)
             .where(User.id == user_id)
@@ -590,13 +590,13 @@ class MFAService:
         totp_code: str
     ) -> bool:
         """
-        Deaktiviert 2FA fuer einen User.
+        Deaktiviert 2FA für einen User.
 
-        Erfordert einen gueltigen TOTP-Code zur Bestaetigung.
+        Erfordert einen gültigen TOTP-Code zur Bestätigung.
 
         Args:
             user_id: UUID des Users
-            totp_code: Aktueller TOTP-Code zur Bestaetigung
+            totp_code: Aktueller TOTP-Code zur Bestätigung
 
         Returns:
             True wenn erfolgreich deaktiviert
@@ -604,7 +604,7 @@ class MFAService:
         # Verifiziere zuerst den Code
         await self.verify_totp(user_id, totp_code)
 
-        # Deaktiviere 2FA und loesche alle Daten
+        # Deaktiviere 2FA und lösche alle Daten
         await self.db.execute(
             update(User)
             .where(User.id == user_id)
@@ -636,7 +636,7 @@ class MFAService:
 
         Args:
             user_id: UUID des Users
-            totp_code: Aktueller TOTP-Code zur Bestaetigung
+            totp_code: Aktueller TOTP-Code zur Bestätigung
 
         Returns:
             Liste der neuen Backup-Codes
@@ -664,7 +664,7 @@ class MFAService:
 
     async def get_mfa_status(self, user_id: UUID) -> dict:
         """
-        Gibt den MFA-Status eines Users zurueck.
+        Gibt den MFA-Status eines Users zurück.
 
         Args:
             user_id: UUID des Users
@@ -689,5 +689,5 @@ class MFAService:
 
 
 def get_mfa_service(db: AsyncSession) -> MFAService:
-    """Factory-Funktion fuer MFA-Service."""
+    """Factory-Funktion für MFA-Service."""
     return MFAService(db)

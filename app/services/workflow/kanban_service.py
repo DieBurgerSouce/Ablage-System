@@ -5,7 +5,7 @@ KanbanService - Generalisierter Dokument-Workflow.
 Default-Stages:
 1. Eingang - Neue Dokumente
 2. OCR-Verarbeitung - Automatische Texterkennung
-3. Pruefung - Manuelle Kontrolle
+3. Prüfung - Manuelle Kontrolle
 4. Freigabe - Zur Freigabe bereit
 5. Gebucht - Buchung erfasst
 6. Archiv - Abgeschlossen
@@ -38,7 +38,7 @@ logger = structlog.get_logger(__name__)
 DEFAULT_DOCUMENT_STAGES = [
     {"stage_key": "eingang", "stage_name": "Eingang", "stage_order": 1, "color": "#6B7280", "icon": "inbox"},
     {"stage_key": "ocr", "stage_name": "OCR-Verarbeitung", "stage_order": 2, "color": "#3B82F6", "icon": "scan"},
-    {"stage_key": "pruefung", "stage_name": "Pruefung", "stage_order": 3, "color": "#F59E0B", "icon": "search"},
+    {"stage_key": "prüfung", "stage_name": "Prüfung", "stage_order": 3, "color": "#F59E0B", "icon": "search"},
     {"stage_key": "freigabe", "stage_name": "Freigabe", "stage_order": 4, "color": "#8B5CF6", "icon": "check-circle"},
     {"stage_key": "gebucht", "stage_name": "Gebucht", "stage_order": 5, "color": "#10B981", "icon": "book-open"},
     {"stage_key": "archiv", "stage_name": "Archiv", "stage_order": 6, "color": "#6B7280", "icon": "archive", "is_final": True},
@@ -47,7 +47,7 @@ DEFAULT_DOCUMENT_STAGES = [
 
 @dataclass
 class KanbanBoardData:
-    """Vollstaendige Kanban-Board-Daten."""
+    """Vollständige Kanban-Board-Daten."""
     workflow_type: str
     stages: List[KanbanStageData]
     total_items: int
@@ -84,7 +84,7 @@ class KanbanItemData:
 
 @dataclass
 class StageStatistics:
-    """Statistiken fuer eine einzelne Stage."""
+    """Statistiken für eine einzelne Stage."""
     stage_key: str
     stage_name: str
     item_count: int
@@ -92,14 +92,14 @@ class StageStatistics:
 
 
 class KanbanService:
-    """Service fuer Kanban-Workflow-Management."""
+    """Service für Kanban-Workflow-Management."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
 
     async def ensure_default_stages(self, company_id: UUID, workflow_type: str) -> List[WorkflowStage]:
         """
-        Erstellt Default-Stages fuer Company falls keine existieren.
+        Erstellt Default-Stages für Company falls keine existieren.
 
         Args:
             company_id: Company ID
@@ -165,7 +165,7 @@ class KanbanService:
 
     async def get_board(self, company_id: UUID, workflow_type: str) -> KanbanBoardData:
         """
-        Gibt vollstaendiges Kanban-Board mit allen Stages und Items zurueck.
+        Gibt vollständiges Kanban-Board mit allen Stages und Items zurück.
 
         Args:
             company_id: Company ID
@@ -255,7 +255,7 @@ class KanbanService:
         Args:
             item_id: Item ID
             target_stage_id: Ziel-Stage ID
-            user_id: User ID (fuer Audit)
+            user_id: User ID (für Audit)
 
         Returns:
             Aktualisiertes Item
@@ -343,7 +343,7 @@ class KanbanService:
             company_id: Company ID
             document_id: Dokument ID
             workflow_type: Workflow-Typ
-            priority: Prioritaet
+            priority: Priorität
             assigned_to: Optional zugewiesener User
 
         Returns:
@@ -369,7 +369,7 @@ class KanbanService:
         # Get first stage (lowest stage_order)
         stages = await self.ensure_default_stages(company_id, workflow_type)
         if not stages:
-            raise ValueError(f"Keine Stages fuer Workflow '{workflow_type}' gefunden")
+            raise ValueError(f"Keine Stages für Workflow '{workflow_type}' gefunden")
 
         first_stage = min(stages, key=lambda s: s.stage_order)
 
@@ -411,7 +411,7 @@ class KanbanService:
 
     async def configure_stages(self, company_id: UUID, workflow_type: str, stages: List[Dict[str, object]]) -> List[WorkflowStage]:
         """
-        Admin-Funktion: Stages fuer einen Workflow konfigurieren.
+        Admin-Funktion: Stages für einen Workflow konfigurieren.
 
         Args:
             company_id: Company ID
@@ -427,7 +427,7 @@ class KanbanService:
         # Validate stage ordering
         stage_orders = [s["stage_order"] for s in stages]
         if len(stage_orders) != len(set(stage_orders)):
-            raise ValueError("Stage-Orders muessen eindeutig sein")
+            raise ValueError("Stage-Orders müssen eindeutig sein")
 
         # Delete existing stages (CASCADE deletes items)
         await self.db.execute(
@@ -473,7 +473,7 @@ class KanbanService:
 
     async def get_statistics(self, company_id: UUID, workflow_type: str) -> List[StageStatistics]:
         """
-        Gibt Statistiken pro Stage zurueck.
+        Gibt Statistiken pro Stage zurück.
 
         Args:
             company_id: Company ID
@@ -594,5 +594,5 @@ class KanbanService:
 
 
 def get_kanban_service(db: AsyncSession) -> KanbanService:
-    """Factory-Funktion fuer KanbanService."""
+    """Factory-Funktion für KanbanService."""
     return KanbanService(db)

@@ -448,7 +448,7 @@ class FinanceAssistantService:
             status: Neuer Status
             result: Ergebnis-Daten (optional)
             error_message: Fehlermeldung (optional)
-            confirmed_by_id: User-ID bei Bestaetigung (optional)
+            confirmed_by_id: User-ID bei Bestätigung (optional)
 
         Returns:
             Aktualisierte Aktion oder None
@@ -611,7 +611,7 @@ class FinanceAssistantService:
                 # Commit der Persistenz
                 await self.db.commit()
 
-            # Audit-Log (zusaetzlich zu DB-Persistenz)
+            # Audit-Log (zusätzlich zu DB-Persistenz)
             await self._log_interaction(message, response, context)
 
             logger.info(
@@ -1021,7 +1021,7 @@ class FinanceAssistantService:
         Args:
             action: Die auszuführende Aktion
             context: Benutzerkontext
-            action_id: DB-ID der Aktion (fuer Status-Updates)
+            action_id: DB-ID der Aktion (für Status-Updates)
 
         Returns:
             AssistantResponse mit Ergebnis
@@ -1045,7 +1045,7 @@ class FinanceAssistantService:
             )
 
         try:
-            # Aktion als bestaetigt markieren
+            # Aktion als bestätigt markieren
             if action_id:
                 await self.update_action_status(
                     action_id=action_id,
@@ -1053,10 +1053,10 @@ class FinanceAssistantService:
                     confirmed_by_id=context.user_id,
                 )
 
-            # Aktion ausfuehren
+            # Aktion ausführen
             result = await handler(action, context)
 
-            # Status-Update nach Ausfuehrung
+            # Status-Update nach Ausführung
             if action_id:
                 if result.success:
                     await self.update_action_status(
@@ -1915,7 +1915,7 @@ _Hinweis: Dies ist eine vereinfachte Trendfortschreibung._"""
         self,
         context: AssistantContext,
     ) -> List[AIConversationAction]:
-        """Holt alle offenen Aktionen fuer einen Benutzer.
+        """Holt alle offenen Aktionen für einen Benutzer.
 
         Args:
             context: Benutzerkontext
@@ -1947,7 +1947,7 @@ _Hinweis: Dies ist eine vereinfachte Trendfortschreibung._"""
     ) -> None:
         """Protokolliert die Interaktion."""
         try:
-            # Audit-Log eintrag (zusaetzlich zu DB-Persistenz)
+            # Audit-Log eintrag (zusätzlich zu DB-Persistenz)
             logger.info(
                 "finance_assistant_interaction",
                 user_id=str(context.user_id),

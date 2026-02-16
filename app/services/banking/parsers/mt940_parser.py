@@ -1,7 +1,7 @@
 """MT940 Bank Statement Parser.
 
 Parst MT940 (SWIFT) Kontoauszuege, das universelle Format
-das von fast allen deutschen Banken unterstuetzt wird.
+das von fast allen deutschen Banken unterstützt wird.
 
 Verwendet die mt-940 Bibliothek.
 """
@@ -24,7 +24,7 @@ logger = structlog.get_logger(__name__)
 
 @ParserRegistry.register
 class MT940Parser(BaseParser):
-    """Parser fuer MT940 (SWIFT) Kontoauszuege."""
+    """Parser für MT940 (SWIFT) Kontoauszuege."""
 
     FORMAT = ImportFormat.MT940
     FORMAT_VARIANT = None
@@ -32,7 +32,7 @@ class MT940Parser(BaseParser):
 
     @classmethod
     def can_parse(cls, content: Union[str, bytes], filename: Optional[str] = None) -> float:
-        """Pruefe ob Inhalt MT940-Format ist."""
+        """Prüfe ob Inhalt MT940-Format ist."""
         if isinstance(content, bytes):
             try:
                 content = content.decode("utf-8", errors="replace")
@@ -40,7 +40,7 @@ class MT940Parser(BaseParser):
                 content = content.decode("latin-1", errors="replace")
 
         # MT940 beginnt typischerweise mit :20: oder :940:
-        # und enthaelt charakteristische Feldkennungen
+        # und enthält charakteristische Feldkennungen
         content_start = content[:2000]
 
         # Starke Indikatoren
@@ -161,7 +161,7 @@ class MT940Parser(BaseParser):
         """Parse einzelne MT940-Transaktion.
 
         Die mt940 Bibliothek speichert Transaktionsdaten im `data` Dictionary.
-        Zugriff erfolgt ueber tx.data.get('key') statt tx.key.
+        Zugriff erfolgt über tx.data.get('key') statt tx.key.
         """
         try:
             # mt940 Bibliothek: Daten sind in tx.data Dictionary
@@ -192,7 +192,7 @@ class MT940Parser(BaseParser):
                 # extra_details kann String sein (z.B. Name)
                 extra_details = {"name": extra_details}
 
-            # Empfaenger/Auftraggeber
+            # Empfänger/Auftraggeber
             counterparty_name = None
             counterparty_iban = None
             counterparty_bic = None
@@ -249,7 +249,7 @@ class MT940Parser(BaseParser):
                     reference_text or ""
                 )
 
-            # Waehrung aus tx_data oder Fallback auf EUR
+            # Währung aus tx_data oder Fallback auf EUR
             currency = tx_data.get("currency", "EUR")
 
             return ParsedTransaction(

@@ -2,8 +2,8 @@
 """
 Inbound Webhook Receive Endpoints.
 
-Generischer Empfaenger fuer eingehende Webhooks von externen Providern
-(DATEV, DHL, DPD, UPS, GLS). Verwendet ein Provider-Registry fuer
+Generischer Empfänger für eingehende Webhooks von externen Providern
+(DATEV, DHL, DPD, UPS, GLS). Verwendet ein Provider-Registry für
 DRY Event-Verarbeitung.
 
 Endpunkt-Pattern:
@@ -47,12 +47,12 @@ router = APIRouter(prefix="/webhooks/receive", tags=["webhooks-inbound"])
     response_model=InboundWebhookResponse,
     summary="Inbound Webhook empfangen",
     description=(
-        "Empfaengt eingehende Webhooks von externen Providern. "
-        "Verifiziert HMAC-SHA256 Signatur, prueft Idempotenz und "
+        "Empfängt eingehende Webhooks von externen Providern. "
+        "Verifiziert HMAC-SHA256 Signatur, prüft Idempotenz und "
         "reiht Event zur asynchronen Verarbeitung ein."
     ),
     responses={
-        401: {"description": "Ungueltige Signatur oder Timestamp"},
+        401: {"description": "Ungültige Signatur oder Timestamp"},
         404: {"description": "Provider-Konfiguration nicht gefunden"},
         413: {"description": "Payload zu gross"},
     },
@@ -63,7 +63,7 @@ async def receive_webhook(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> InboundWebhookResponse:
-    """Empfaengt und verarbeitet einen eingehenden Webhook."""
+    """Empfängt und verarbeitet einen eingehenden Webhook."""
     adapter = PROVIDER_REGISTRY.get(provider.value)
     if not adapter:
         raise HTTPException(
@@ -97,7 +97,7 @@ async def receive_webhook(
     "/{provider}/events",
     response_model=InboundWebhookEventList,
     summary="Inbound Webhook-Events auflisten",
-    description="Listet empfangene Webhook-Events fuer einen Provider auf.",
+    description="Listet empfangene Webhook-Events für einen Provider auf.",
 )
 async def list_inbound_events(
     provider: InboundWebhookProvider,

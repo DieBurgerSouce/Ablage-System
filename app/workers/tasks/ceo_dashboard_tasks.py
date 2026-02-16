@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """CEO Dashboard / Digital Twin periodic tasks (F4).
 
-Phase 12: Vollstaendige Integration mit HealthScoreCalculator und TrendAnalyzer.
+Phase 12: Vollständige Integration mit HealthScoreCalculator und TrendAnalyzer.
 """
 
 import asyncio
@@ -20,12 +20,12 @@ logger = structlog.get_logger(__name__)
 
 @celery_app.task(name="app.workers.tasks.ceo_dashboard_tasks.create_daily_snapshot")
 def create_daily_snapshot() -> dict:
-    """Erstelle taeglichen Company Health Snapshot.
+    """Erstelle täglichen Company Health Snapshot.
 
-    Berechnet Health-Scores fuer alle Companies:
+    Berechnet Health-Scores für alle Companies:
     - Financial Health (Umsatz, Cash-Flow, offene Rechnungen)
     - Operations Health (OCR-Durchsatz, Fehlerrate, Verarbeitungszeit)
-    - Risk Health (High-Risk Entities, ueberfaellige Rechnungen)
+    - Risk Health (High-Risk Entities, überfällige Rechnungen)
     - Compliance Health (GDPR, GoBD, Audit-Status)
     """
     logger.info("ceo_dashboard_daily_snapshot_start")
@@ -42,7 +42,7 @@ def create_daily_snapshot() -> dict:
 
 
 async def _create_daily_snapshot() -> Dict[str, Any]:
-    """Async Implementation fuer Daily Snapshot."""
+    """Async Implementation für Daily Snapshot."""
     from app.services.ceo_dashboard.health_score_calculator import HealthScoreCalculator
 
     snapshots: List[Dict[str, Any]] = []
@@ -88,7 +88,7 @@ async def _create_daily_snapshot() -> Dict[str, Any]:
     return {
         "status": "success",
         "snapshots_created": len(snapshots),
-        "message": f"Daily snapshots fuer {len(snapshots)} Companies erstellt",
+        "message": f"Daily snapshots für {len(snapshots)} Companies erstellt",
     }
 
 
@@ -109,7 +109,7 @@ def detect_anomalies() -> dict:
 
 
 async def _detect_anomalies() -> Dict[str, Any]:
-    """Async Implementation fuer Anomaly Detection."""
+    """Async Implementation für Anomaly Detection."""
     from app.services.ceo_dashboard.trend_analyzer import TrendAnalyzer
     from app.services.ceo_dashboard.health_score_calculator import HealthScoreCalculator
 

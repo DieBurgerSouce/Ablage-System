@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-OCR Correction Feedback Models fuer ML-Persistenz.
+OCR Correction Feedback Models für ML-Persistenz.
 
 Phase 1.3: Self-Learning speichert Korrekturen persistent in DB statt Redis.
 

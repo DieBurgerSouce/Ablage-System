@@ -1,7 +1,7 @@
 """
 RAG Intelligence Layer Schemas.
 
-Pydantic Schemas fuer:
+Pydantic Schemas für:
 - Document Chunks
 - Customer Cards
 - Chat Sessions/Messages
@@ -83,7 +83,7 @@ class RAGSearchType(str, Enum):
 # ============================================================================
 
 class RAGChunkBase(BaseModel):
-    """Basis Schema fuer Document Chunks."""
+    """Basis Schema für Document Chunks."""
     chunk_text: str = Field(..., min_length=1, description="Text-Inhalt des Chunks")
     page_number: Optional[int] = Field(None, ge=1, description="Seitennummer im Dokument")
     section_type: Optional[RAGSectionType] = Field(None, description="Typ der Sektion")
@@ -98,7 +98,7 @@ class RAGChunkCreate(RAGChunkBase):
 
 
 class RAGChunkResponse(RAGChunkBase):
-    """Schema fuer Chunk Response."""
+    """Schema für Chunk Response."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -111,7 +111,7 @@ class RAGChunkResponse(RAGChunkBase):
 
 
 class RAGChunkSearchResult(BaseModel):
-    """Suchergebnis fuer Chunks."""
+    """Suchergebnis für Chunks."""
     chunk_id: UUID
     document_id: UUID
     chunk_text: str
@@ -127,7 +127,7 @@ class RAGChunkSearchResult(BaseModel):
 # ============================================================================
 
 class RAGCustomerCardBase(BaseModel):
-    """Basis Schema fuer Customer Cards."""
+    """Basis Schema für Customer Cards."""
     customer_id: str = Field(..., min_length=1, max_length=100)
     customer_name: str = Field(..., min_length=1, max_length=255)
     customer_type: Optional[str] = Field(None, max_length=50)
@@ -146,7 +146,7 @@ class RAGCustomerCardCreate(RAGCustomerCardBase):
 
 
 class RAGCustomerCardResponse(RAGCustomerCardBase):
-    """Schema fuer Customer Card Response."""
+    """Schema für Customer Card Response."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -183,7 +183,7 @@ class RAGCustomerCardSummary(BaseModel):
 # ============================================================================
 
 class RAGChatMessageBase(BaseModel):
-    """Basis Schema fuer Chat Messages."""
+    """Basis Schema für Chat Messages."""
     role: RAGChatRole
     content: str = Field(..., min_length=1)
 
@@ -194,13 +194,13 @@ class RAGChatMessageCreate(RAGChatMessageBase):
 
 
 class AttachedDocumentInfo(BaseModel):
-    """Embedded Info ueber angehaengtes Dokument."""
+    """Embedded Info über angehaengtes Dokument."""
     id: UUID
     name: str
 
 
 class RAGChatMessageResponse(RAGChatMessageBase):
-    """Schema fuer Chat Message Response."""
+    """Schema für Chat Message Response."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -223,7 +223,7 @@ class RAGChatSessionCreate(BaseModel):
 
 
 class RAGChatSessionResponse(BaseModel):
-    """Schema fuer Chat Session Response."""
+    """Schema für Chat Session Response."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -249,17 +249,17 @@ class RAGChatSessionWithMessages(RAGChatSessionResponse):
 # ============================================================================
 
 class RAGChatRequest(BaseModel):
-    """Request fuer Chat-Nachricht."""
+    """Request für Chat-Nachricht."""
     message: str = Field(..., min_length=1, max_length=10000)
     session_id: Optional[UUID] = None
     context_type: RAGContextType = Field(default=RAGContextType.GENERAL)
     context_id: Optional[str] = Field(None, max_length=255)
-    realtime: bool = Field(default=False, description="Fuer schnellen Telefon-Support")
+    realtime: bool = Field(default=False, description="Für schnellen Telefon-Support")
     stream: bool = Field(default=False, description="Streaming Response aktivieren")
 
 
 class RAGChatResponse(BaseModel):
-    """Response fuer Chat-Nachricht."""
+    """Response für Chat-Nachricht."""
     session_id: UUID
     message: str
     thinking_content: Optional[str] = None
@@ -273,7 +273,7 @@ class RAGChatResponse(BaseModel):
 # ============================================================================
 
 class RAGSearchRequest(BaseModel):
-    """Request fuer semantische Suche."""
+    """Request für semantische Suche."""
     query: str = Field(..., min_length=1, max_length=1000)
     limit: int = Field(default=20, ge=1, le=100)
     threshold: float = Field(default=0.7, ge=0.0, le=1.0)
@@ -285,7 +285,7 @@ class RAGSearchRequest(BaseModel):
 
 
 class RAGSearchResponse(BaseModel):
-    """Response fuer Suche."""
+    """Response für Suche."""
     query: str
     search_type: RAGSearchType
     results: List[RAGChunkSearchResult]
@@ -308,7 +308,7 @@ class RAGBatchJobCreate(BaseModel):
 
 
 class RAGBatchJobResponse(BaseModel):
-    """Schema fuer Batch Job Response."""
+    """Schema für Batch Job Response."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -365,9 +365,9 @@ class RAGChunkDocumentResponse(BaseModel):
 
 
 class RAGBulkChunkRequest(BaseModel):
-    """Request fuer Bulk-Chunking."""
+    """Request für Bulk-Chunking."""
     document_ids: Optional[List[UUID]] = Field(None, description="Spezifische Dokumente oder alle")
-    force: bool = Field(default=False, description="Bereits gechunkte Dokumente ueberschreiben")
+    force: bool = Field(default=False, description="Bereits gechunkte Dokumente überschreiben")
     strategy: str = Field(default="semantic")
 
 
@@ -406,7 +406,7 @@ class RAGAnalyticsSummary(BaseModel):
 # ============================================================================
 
 class RAGLLMModelResponse(BaseModel):
-    """Schema fuer LLM Model Response."""
+    """Schema für LLM Model Response."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -427,7 +427,7 @@ class RAGLLMModelResponse(BaseModel):
 # ============================================================================
 
 class ChatSessionAccessLevel(str, Enum):
-    """Zugriffsebenen fuer Chat Session Sharing."""
+    """Zugriffsebenen für Chat Session Sharing."""
     VIEW = "view"
     CONTRIBUTE = "contribute"
     MANAGE = "manage"
@@ -435,7 +435,7 @@ class ChatSessionAccessLevel(str, Enum):
 
 class ChatSessionShareRequest(BaseModel):
     """Request zum Teilen einer Chat Session."""
-    user_id: UUID = Field(..., description="ID des Benutzers der Zugriff erhaelt")
+    user_id: UUID = Field(..., description="ID des Benutzers der Zugriff erhält")
     access_level: ChatSessionAccessLevel = Field(
         default=ChatSessionAccessLevel.VIEW,
         description="Zugriffsebene: view, contribute, manage"
@@ -443,7 +443,7 @@ class ChatSessionShareRequest(BaseModel):
 
 
 class ChatSessionCollaboratorResponse(BaseModel):
-    """Response fuer einen Collaborator."""
+    """Response für einen Collaborator."""
     user_id: str
     username: str
     email: Optional[str]
@@ -487,14 +487,14 @@ class BITimeRange(str, Enum):
 
 
 class BIQueryRequest(BaseModel):
-    """Request fuer eine Business Intelligence Anfrage."""
-    query: str = Field(..., min_length=3, max_length=1000, description="Natuerlichsprachige Anfrage")
-    time_range: Optional[BITimeRange] = Field(default=BITimeRange.THIS_YEAR, description="Zeitraum fuer Analyse")
+    """Request für eine Business Intelligence Anfrage."""
+    query: str = Field(..., min_length=3, max_length=1000, description="Natürlichsprachige Anfrage")
+    time_range: Optional[BITimeRange] = Field(default=BITimeRange.THIS_YEAR, description="Zeitraum für Analyse")
     custom_start_date: Optional[datetime] = Field(None, description="Start-Datum bei custom time_range")
     custom_end_date: Optional[datetime] = Field(None, description="End-Datum bei custom time_range")
     entity_id: Optional[UUID] = Field(None, description="Optional: Filter auf spezifische Entitaet")
-    entity_name: Optional[str] = Field(None, max_length=255, description="Optional: Entitaetsname fuer Suche")
-    include_suggestions: bool = Field(default=True, description="Follow-up Vorschlaege einschliessen")
+    entity_name: Optional[str] = Field(None, max_length=255, description="Optional: Entitätsname für Suche")
+    include_suggestions: bool = Field(default=True, description="Follow-up Vorschläge einschließen")
 
 
 class BIDocumentResult(BaseModel):
@@ -524,7 +524,7 @@ class BIInvoiceAnalysis(BaseModel):
 
 
 class BIEntityStatistics(BaseModel):
-    """Statistiken fuer eine Geschaeftsentitaet."""
+    """Statistiken für eine Geschäftsentität."""
     entity_id: UUID
     entity_name: str
     entity_type: str
@@ -538,7 +538,7 @@ class BIEntityStatistics(BaseModel):
 
 
 class BIPaymentPrediction(BaseModel):
-    """Zahlungsvorhersage fuer eine Entitaet."""
+    """Zahlungsvorhersage für eine Entität."""
     entity_id: Optional[UUID]
     entity_name: Optional[str]
     predicted_days: int = Field(ge=0)
@@ -585,7 +585,7 @@ class BIChatRequest(BaseModel):
     context_type: Optional[RAGContextType] = None
     context_id: Optional[str] = None
     enable_bi: bool = Field(default=True, description="Business Intelligence aktivieren")
-    time_range: Optional[BITimeRange] = Field(default=None, description="Zeitraum fuer BI-Anfragen")
+    time_range: Optional[BITimeRange] = Field(default=None, description="Zeitraum für BI-Anfragen")
     realtime: bool = Field(default=False, description="Realtime-Modus verwenden")
 
 
@@ -634,17 +634,17 @@ class AIActionType(str, Enum):
 
 
 class AIActionAutonomyLevel(str, Enum):
-    """Autonomie-Stufen fuer AI-Aktionen."""
+    """Autonomie-Stufen für AI-Aktionen."""
     VIEWER = "viewer"      # Read-Only
-    EDITOR = "editor"      # Supervised (Vorschlag + Bestaetigung)
-    ADMIN = "admin"        # Autonomous (selbststaendig)
+    EDITOR = "editor"      # Supervised (Vorschlag + Bestätigung)
+    ADMIN = "admin"        # Autonomous (selbstständig)
 
 
 class AIActionStatus(str, Enum):
     """Status einer AI-Aktion."""
     PENDING = "pending"
-    SUGGESTED = "suggested"     # Wartet auf User-Bestaetigung
-    CONFIRMED = "confirmed"     # User hat bestaetigt
+    SUGGESTED = "suggested"     # Wartet auf User-Bestätigung
+    CONFIRMED = "confirmed"     # User hat bestätigt
     EXECUTING = "executing"
     COMPLETED = "completed"
     REJECTED = "rejected"       # User hat abgelehnt
@@ -656,20 +656,20 @@ class AIActionParameter(BaseModel):
     name: str = Field(..., description="Parameter-Name")
     value: Union[str, int, float, bool] = Field(..., description="Parameter-Wert")
     label: str = Field(..., description="Anzeige-Label auf Deutsch")
-    editable: bool = Field(default=False, description="Kann vom User geaendert werden")
+    editable: bool = Field(default=False, description="Kann vom User geändert werden")
 
 
 class AIActionRequest(BaseModel):
-    """Request fuer eine AI-Aktion."""
+    """Request für eine AI-Aktion."""
     action_type: AIActionType
     context_type: Optional[str] = Field(None, description="Kontext-Typ (document, entity, etc.)")
     context_id: Optional[UUID] = Field(None, description="Kontext-ID (Document-ID, Entity-ID)")
     parameters: Dict[str, Any] = Field(default_factory=dict, description="Aktions-Parameter")
-    auto_execute: bool = Field(default=False, description="Direkt ausfuehren ohne Bestaetigung")
+    auto_execute: bool = Field(default=False, description="Direkt ausführen ohne Bestätigung")
 
 
 class AIActionSuggestion(BaseModel):
-    """Vorgeschlagene AI-Aktion (fuer Editor-Level)."""
+    """Vorgeschlagene AI-Aktion (für Editor-Level)."""
     action_id: UUID
     action_type: AIActionType
     title: str = Field(..., description="Titel der Aktion auf Deutsch")
@@ -677,14 +677,14 @@ class AIActionSuggestion(BaseModel):
     parameters: List[AIActionParameter] = Field(default_factory=list)
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence-Score")
     requires_confirmation: bool = Field(default=True)
-    estimated_impact: str = Field(..., description="Geschaetzter Einfluss")
+    estimated_impact: str = Field(..., description="Geschätzter Einfluss")
 
 
 class AIActionConfirmRequest(BaseModel):
-    """Bestaetigung einer vorgeschlagenen Aktion."""
+    """Bestätigung einer vorgeschlagenen Aktion."""
     action_id: UUID
-    confirmed: bool = Field(..., description="True = bestaetigen, False = ablehnen")
-    modified_parameters: Optional[Dict[str, Any]] = Field(None, description="Geaenderte Parameter")
+    confirmed: bool = Field(..., description="True = bestätigen, False = ablehnen")
+    modified_parameters: Optional[Dict[str, Any]] = Field(None, description="Geänderte Parameter")
 
 
 class AIActionResult(BaseModel):
@@ -693,22 +693,22 @@ class AIActionResult(BaseModel):
     action_type: AIActionType
     status: AIActionStatus
     message: str = Field(..., description="Ergebnis-Nachricht auf Deutsch")
-    details: Optional[Dict[str, Any]] = Field(None, description="Zusaetzliche Details")
+    details: Optional[Dict[str, Any]] = Field(None, description="Zusätzliche Details")
     affected_items: List[UUID] = Field(default_factory=list, description="Betroffene IDs")
     execution_time_ms: int = Field(ge=0)
 
 
 class AIActionListResponse(BaseModel):
-    """Liste verfuegbarer AI-Aktionen basierend auf Rolle."""
+    """Liste verfügbarer AI-Aktionen basierend auf Rolle."""
     available_actions: List[Dict[str, Any]] = Field(default_factory=list)
     autonomy_level: AIActionAutonomyLevel
-    pending_suggestions: int = Field(ge=0, description="Anzahl wartender Vorschlaege")
+    pending_suggestions: int = Field(ge=0, description="Anzahl wartender Vorschläge")
 
 
 class AIContextInfo(BaseModel):
-    """Kontext-Information fuer AI-Assistent."""
+    """Kontext-Information für AI-Assistent."""
     page_type: str = Field(..., description="Aktueller Seitentyp")
     document_id: Optional[UUID] = Field(None)
     entity_id: Optional[UUID] = Field(None)
-    suggestions: List[str] = Field(default_factory=list, description="Kontext-spezifische Vorschlaege")
+    suggestions: List[str] = Field(default_factory=list, description="Kontext-spezifische Vorschläge")
     available_actions: List[AIActionType] = Field(default_factory=list)

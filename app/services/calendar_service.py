@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Calendar & Deadline Service.
 
-Zentralisierte Fristenverwaltung fuer das Ablage-System:
+Zentralisierte Fristenverwaltung für das Ablage-System:
 - Zahlungsfristen (Eingang + Ausgang)
 - Skonto-Fristen
 - Steuertermine
@@ -31,7 +31,7 @@ logger = structlog.get_logger(__name__)
 
 
 class DeadlineCategory(str, Enum):
-    """Kategorien fuer Fristen."""
+    """Kategorien für Fristen."""
     SKONTO = "skonto"
     PAYMENT_INCOMING = "payment_incoming"  # Zahlungseingang
     PAYMENT_OUTGOING = "payment_outgoing"  # Zahlungsausgang
@@ -44,7 +44,7 @@ class DeadlineCategory(str, Enum):
 
 class DeadlineUrgency(str, Enum):
     """Dringlichkeitsstufen."""
-    CRITICAL = "critical"    # Heute oder ueberfaellig
+    CRITICAL = "critical"    # Heute oder überfällig
     WARNING = "warning"      # Innerhalb 3 Tagen
     UPCOMING = "upcoming"    # Innerhalb 7 Tagen
     SCHEDULED = "scheduled"  # Mehr als 7 Tage
@@ -80,7 +80,7 @@ class DeadlineItem:
     amount: Optional[Decimal] = None
     currency: str = "EUR"
 
-    # Zusaetzliche Metadaten
+    # Zusätzliche Metadaten
     metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -140,9 +140,9 @@ class DeadlineSummary:
 
 
 class CalendarService:
-    """Service fuer Kalender und Fristenverwaltung."""
+    """Service für Kalender und Fristenverwaltung."""
 
-    # Standard-Steuertermine (jaehrlich wiederkehrend)
+    # Standard-Steuertermine (jährlich wiederkehrend)
     STANDARD_TAX_DEADLINES = [
         # USt-Voranmeldung
         {"day": 10, "name": "USt-Voranmeldung", "monthly": True},
@@ -154,7 +154,7 @@ class CalendarService:
         {"day": 10, "months": [3, 6, 9, 12], "name": "KSt-Vorauszahlung", "quarterly": True},
         # Gewerbesteuer-Vorauszahlung
         {"day": 15, "months": [2, 5, 8, 11], "name": "GewSt-Vorauszahlung", "quarterly": True},
-        # Jahresabschluss (31.12. Geschaeftsjahr)
+        # Jahresabschluss (31.12. Geschäftsjahr)
         {"day": 31, "month": 7, "name": "Jahresabschluss Einreichung", "annual": True},
     ]
 
@@ -168,7 +168,7 @@ class CalendarService:
         include_completed: bool = False,
         limit: int = 100,
     ) -> List[DeadlineItem]:
-        """Hole alle Fristen fuer einen Zeitraum.
+        """Hole alle Fristen für einen Zeitraum.
 
         Args:
             db: Datenbank-Session
@@ -176,7 +176,7 @@ class CalendarService:
             start_date: Startdatum (default: heute)
             end_date: Enddatum (default: heute + 90 Tage)
             categories: Filter nach Kategorien
-            include_completed: Erledigte Fristen einschliessen
+            include_completed: Erledigte Fristen einschließen
             limit: Maximale Anzahl
 
         Returns:
@@ -186,7 +186,7 @@ class CalendarService:
         today = now.date()
 
         if start_date is None:
-            start_date = today - timedelta(days=7)  # Auch kuerzlich ueberfaellige
+            start_date = today - timedelta(days=7)  # Auch kürzlich überfällige
         if end_date is None:
             end_date = today + timedelta(days=90)
 
@@ -198,13 +198,13 @@ class CalendarService:
         )
         all_deadlines.extend(skonto_deadlines)
 
-        # 2. Zahlungsfristen (Ausgang - wir muessen zahlen)
+        # 2. Zahlungsfristen (Ausgang - wir müssen zahlen)
         payment_outgoing = await self._get_payment_deadlines_outgoing(
             db, company_id, start_date, end_date
         )
         all_deadlines.extend(payment_outgoing)
 
-        # 3. Zahlungsfristen (Eingang - Kunden muessen zahlen)
+        # 3. Zahlungsfristen (Eingang - Kunden müssen zahlen)
         payment_incoming = await self._get_payment_deadlines_incoming(
             db, company_id, start_date, end_date
         )
@@ -236,7 +236,7 @@ class CalendarService:
         if not include_completed:
             all_deadlines = [d for d in all_deadlines if d.status != DeadlineStatus.COMPLETED]
 
-        # Sortieren nach Dringlichkeit (ueberfaellig zuerst, dann nach Datum)
+        # Sortieren nach Dringlichkeit (überfällig zuerst, dann nach Datum)
         all_deadlines.sort(key=lambda x: (x.days_until >= 0, x.days_until))
 
         # Limit
@@ -249,7 +249,7 @@ class CalendarService:
         year: int,
         month: int,
     ) -> CalendarMonth:
-        """Hole Kalender-Ansicht fuer einen Monat.
+        """Hole Kalender-Ansicht für einen Monat.
 
         Args:
             db: Datenbank-Session
@@ -267,7 +267,7 @@ class CalendarService:
         _, last_day_num = monthrange(year, month)
         last_day = date(year, month, last_day_num)
 
-        # Alle Fristen fuer den Monat holen
+        # Alle Fristen für den Monat holen
         deadlines = await self.get_all_deadlines(
             db, company_id,
             start_date=first_day,
@@ -363,7 +363,7 @@ class CalendarService:
         # Alle Fristen holen
         deadlines = await self.get_all_deadlines(
             db, company_id,
-            start_date=today - timedelta(days=30),  # Auch ueberfaellige
+            start_date=today - timedelta(days=30),  # Auch überfällige
             end_date=today + timedelta(days=90),
             limit=1000
         )
@@ -391,13 +391,13 @@ class CalendarService:
             else:
                 scheduled += 1
 
-            # Ueberfaellig
+            # Überfällig
             if deadline.days_until < 0:
                 overdue += 1
                 if deadline.amount:
                     amount_at_risk += deadline.amount
 
-        # Naechste Frist
+        # Nächste Frist
         pending_deadlines = [d for d in deadlines if d.status == DeadlineStatus.PENDING and d.days_until >= 0]
         next_deadline = pending_deadlines[0] if pending_deadlines else None
 
@@ -419,7 +419,7 @@ class CalendarService:
         company_id: UUID,
         days_ahead: int = 7,
     ) -> List[DeadlineItem]:
-        """Hole dringende Fristen fuer Benachrichtigungen.
+        """Hole dringende Fristen für Benachrichtigungen.
 
         Args:
             db: Datenbank-Session
@@ -448,7 +448,7 @@ class CalendarService:
         return alerts
 
     # =========================================================================
-    # Private Methoden fuer verschiedene Fristentypen
+    # Private Methoden für verschiedene Fristentypen
     # =========================================================================
 
     async def _get_skonto_deadlines(
@@ -537,7 +537,7 @@ class CalendarService:
         start_date: date,
         end_date: date,
     ) -> List[DeadlineItem]:
-        """Hole Zahlungsfristen fuer ausgehende Zahlungen (wir muessen zahlen)."""
+        """Hole Zahlungsfristen für ausgehende Zahlungen (wir müssen zahlen)."""
         from app.db.models import InvoiceTracking, Document
 
         now = utc_now()
@@ -577,7 +577,7 @@ class CalendarService:
             deadlines.append(DeadlineItem(
                 id=f"payment-out-{invoice.id}",
                 category=DeadlineCategory.PAYMENT_OUTGOING,
-                title=f"Zahlung faellig: {invoice.invoice_number or document.original_filename}",
+                title=f"Zahlung fällig: {invoice.invoice_number or document.original_filename}",
                 description=f"Lieferantenrechnung - {amount}EUR ausstehend",
                 deadline=deadline_date,
                 urgency=urgency,
@@ -602,7 +602,7 @@ class CalendarService:
         start_date: date,
         end_date: date,
     ) -> List[DeadlineItem]:
-        """Hole Zahlungsfristen fuer eingehende Zahlungen (Kunden muessen zahlen)."""
+        """Hole Zahlungsfristen für eingehende Zahlungen (Kunden müssen zahlen)."""
         from app.db.models import InvoiceTracking, Document
 
         now = utc_now()
@@ -744,7 +744,7 @@ class CalendarService:
                         deadlines.append(DeadlineItem(
                             id=f"tax-payment-{doc.id}",
                             category=DeadlineCategory.TAX,
-                            title=f"Steuerzahlung faellig: {doc.original_filename}",
+                            title=f"Steuerzahlung fällig: {doc.original_filename}",
                             description=f"Steuerzahlung {extracted.get('steuerart', '')} - {amount}EUR",
                             deadline=deadline_date,
                             urgency=urgency,
@@ -765,7 +765,7 @@ class CalendarService:
             # Iteriere durch alle Monate im Zeitraum
             current = start_date.replace(day=1)
             while current <= end_date:
-                # Pruefen ob dieser Monat relevant ist
+                # Prüfen ob dieser Monat relevant ist
                 is_relevant = False
                 if tax_deadline.get("monthly"):
                     is_relevant = True
@@ -808,7 +808,7 @@ class CalendarService:
                     except (ValueError, TypeError) as e:
                         logger.debug("tax_deadline_recurring_parse_failed", deadline_name=tax_deadline.get('name'), error_type=type(e).__name__)
 
-                # Naechster Monat
+                # Nächster Monat
                 if current.month == 12:
                     current = current.replace(year=current.year + 1, month=1)
                 else:
@@ -823,7 +823,7 @@ class CalendarService:
         start_date: date,
         end_date: date,
     ) -> List[DeadlineItem]:
-        """Hole Vertragsfristen (Kuendigung, Verlaengerung)."""
+        """Hole Vertragsfristen (Kündigung, Verlängerung)."""
         from app.db.models import Document
 
         now = utc_now()
@@ -850,8 +850,8 @@ class CalendarService:
         for doc in documents:
             extracted = doc.extracted_data or {}
 
-            # Kuendigungsfrist
-            kuendigungsfrist_str = extracted.get("kuendigungsfrist") or extracted.get("cancellation_deadline")
+            # Kündigungsfrist
+            kuendigungsfrist_str = extracted.get("kündigungsfrist") or extracted.get("cancellation_deadline")
             if kuendigungsfrist_str:
                 try:
                     deadline_date = datetime.fromisoformat(kuendigungsfrist_str.replace("Z", "+00:00"))
@@ -865,7 +865,7 @@ class CalendarService:
                         deadlines.append(DeadlineItem(
                             id=f"contract-cancel-{doc.id}",
                             category=DeadlineCategory.CONTRACT,
-                            title=f"Kuendigungsfrist: {doc.original_filename}",
+                            title=f"Kündigungsfrist: {doc.original_filename}",
                             description=f"Vertrag kuendbar bis {deadline_dt.strftime('%d.%m.%Y')}",
                             deadline=deadline_date,
                             urgency=urgency,
@@ -878,9 +878,9 @@ class CalendarService:
                             },
                         ))
                 except (ValueError, TypeError) as e:
-                    logger.debug("contract_deadline_kuendigungsfrist_parse_failed", document_id=str(doc.id), error_type=type(e).__name__)
+                    logger.debug("contract_deadline_kündigungsfrist_parse_failed", document_id=str(doc.id), error_type=type(e).__name__)
 
-            # Vertragsende/Verlaengerung
+            # Vertragsende/Verlängerung
             vertragsende_str = extracted.get("vertragsende") or extracted.get("contract_end")
             if vertragsende_str:
                 try:
@@ -905,7 +905,7 @@ class CalendarService:
                             metadata={
                                 "contract_type": extracted.get("vertrag_typ"),
                                 "partner": extracted.get("vertragspartner"),
-                                "auto_renewal": extracted.get("auto_verlaengerung", False),
+                                "auto_renewal": extracted.get("auto_verlängerung", False),
                             },
                         ))
                 except (ValueError, TypeError) as e:
@@ -972,7 +972,7 @@ class CalendarService:
                         id=f"dunning-{invoice.id}-{next_level}",
                         category=DeadlineCategory.DUNNING,
                         title=f"Mahnung #{next_level}: {invoice.invoice_number or document.original_filename}",
-                        description=f"Naechste Mahnstufe faellig - {amount}EUR ausstehend",
+                        description=f"Nächste Mahnstufe fällig - {amount}EUR ausstehend",
                         deadline=next_dunning_date,
                         urgency=urgency,
                         status=status,
@@ -1006,5 +1006,5 @@ calendar_service = CalendarService()
 
 
 def get_calendar_service() -> CalendarService:
-    """Factory-Funktion fuer CalendarService."""
+    """Factory-Funktion für CalendarService."""
     return calendar_service

@@ -5,10 +5,10 @@ AutoMatchingService - Automatisches Dokumenten-Matching.
 Feature #7: Automation 2.0
 - Automatisches Matching von Bestellung <-> Lieferschein <-> Rechnung
 - Confidence-Berechnung basierend auf Feldvergleichen
-- Bestaetigung/Ablehnung von Matches
+- Bestätigung/Ablehnung von Matches
 - Match-Statistiken
 
-Nutzt models_approval_extended fuer AutoMatchResult.
+Nutzt models_approval_extended für AutoMatchResult.
 """
 
 from __future__ import annotations
@@ -89,9 +89,9 @@ class MatchStatistics:
 
 
 class AutoMatchingService:
-    """Service fuer automatisches Dokumenten-Matching.
+    """Service für automatisches Dokumenten-Matching.
 
-    Verknuepft zusammengehoerige Dokumente automatisch:
+    Verknüpft zusammengehoerige Dokumente automatisch:
     Bestellung <-> Lieferschein <-> Rechnung basierend auf
     gemeinsamen Feldern wie PO-Nummer, Betrag, Lieferant.
     """
@@ -108,7 +108,7 @@ class AutoMatchingService:
         document_id: UUID,
         confidence_threshold: float = 0.7,
     ) -> MatchResult:
-        """Findet Matching-Kandidaten fuer ein Dokument.
+        """Findet Matching-Kandidaten für ein Dokument.
 
         Args:
             db: Async Database Session
@@ -198,7 +198,7 @@ class AutoMatchingService:
             db: Async Database Session
             company_id: ID der Firma
             document_id: ID des Dokuments
-            confidence_threshold: Mindest-Confidence fuer Speicherung
+            confidence_threshold: Mindest-Confidence für Speicherung
 
         Returns:
             Liste der gespeicherten AutoMatchResults
@@ -210,7 +210,7 @@ class AutoMatchingService:
         saved_results: List[AutoMatchResult] = []
 
         for candidate in match_result.candidates:
-            # Pruefen ob Match bereits existiert
+            # Prüfen ob Match bereits existiert
             existing = await self._check_existing_match(
                 db, candidate.document_id, candidate.matched_document_id
             )
@@ -340,13 +340,13 @@ class AutoMatchingService:
         match_id: UUID,
         user_id: UUID,
     ) -> Optional[AutoMatchResult]:
-        """Bestaetigt ein automatisches Match.
+        """Bestätigt ein automatisches Match.
 
         Args:
             db: Async Database Session
             company_id: ID der Firma
             match_id: ID des AutoMatchResult
-            user_id: ID des bestaetigenden Users
+            user_id: ID des bestätigenden Users
 
         Returns:
             Aktualisiertes AutoMatchResult oder None
@@ -384,7 +384,7 @@ class AutoMatchingService:
         company_id: UUID,
         match_id: UUID,
     ) -> bool:
-        """Lehnt ein automatisches Match ab (loescht es).
+        """Lehnt ein automatisches Match ab (löscht es).
 
         Args:
             db: Async Database Session
@@ -392,7 +392,7 @@ class AutoMatchingService:
             match_id: ID des AutoMatchResult
 
         Returns:
-            True wenn erfolgreich geloescht
+            True wenn erfolgreich gelöscht
         """
         stmt = select(AutoMatchResult).where(
             and_(
@@ -438,7 +438,7 @@ class AutoMatchingService:
         total_result = await db.execute(total_stmt)
         total_matches = total_result.scalar() or 0
 
-        # Bestaetigte
+        # Bestätigte
         confirmed_stmt = select(func.count(AutoMatchResult.id)).where(
             and_(
                 AutoMatchResult.company_id == company_id,
@@ -491,7 +491,7 @@ class AutoMatchingService:
         company_id: UUID,
         document_id: UUID,
     ) -> Sequence[AutoMatchResult]:
-        """Holt alle Matches fuer ein Dokument.
+        """Holt alle Matches für ein Dokument.
 
         Args:
             db: Async Database Session
@@ -528,7 +528,7 @@ class AutoMatchingService:
         doc_id: UUID,
         matched_id: UUID,
     ) -> bool:
-        """Prueft ob ein Match bereits existiert."""
+        """Prüft ob ein Match bereits existiert."""
         stmt = select(func.count(AutoMatchResult.id)).where(
             or_(
                 and_(
@@ -675,7 +675,7 @@ class AutoMatchingService:
 
     def _get_reference(self, document: Document) -> Optional[str]:
         """Extrahiert Referenznummer aus einem Dokument."""
-        # Verschiedene moegliche Felder pruefen
+        # Verschiedene mögliche Felder prüfen
         for field_name in (
             "po_number",
             "reference_number",
@@ -686,7 +686,7 @@ class AutoMatchingService:
             if value:
                 return str(value)
 
-        # Fallback: Metadaten pruefen
+        # Fallback: Metadaten prüfen
         metadata = getattr(document, "metadata_extracted", None)
         if metadata and isinstance(metadata, dict):
             for key in ("po_number", "reference", "order_number"):

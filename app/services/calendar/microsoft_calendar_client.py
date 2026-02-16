@@ -2,7 +2,7 @@
 """
 Microsoft Graph Calendar API Client.
 
-Verwendet httpx.AsyncClient fuer Microsoft 365 Kalender-Integration.
+Verwendet httpx.AsyncClient für Microsoft 365 Kalender-Integration.
 Mappt zwischen dem einheitlichen CalendarEvent-Format und dem
 Microsoft Graph API Event-Format.
 
@@ -25,7 +25,7 @@ BASE_URL = "https://graph.microsoft.com/v1.0"
 
 class MicrosoftCalendarClient:
     """
-    Asynchroner Client fuer die Microsoft Graph Calendar API.
+    Asynchroner Client für die Microsoft Graph Calendar API.
 
     Microsoft verwendet andere Feld-Namen als Google:
     - subject statt summary
@@ -43,7 +43,7 @@ class MicrosoftCalendarClient:
         Initialisiert den Microsoft Calendar Client.
 
         Args:
-            access_token: OAuth2 Access Token fuer Microsoft Graph API
+            access_token: OAuth2 Access Token für Microsoft Graph API
         """
         self._token = access_token
         self._client = httpx.AsyncClient(
@@ -56,7 +56,7 @@ class MicrosoftCalendarClient:
         )
 
     async def close(self) -> None:
-        """Schliesst den HTTP-Client."""
+        """Schließt den HTTP-Client."""
         await self._client.aclose()
 
     async def __aenter__(self) -> "MicrosoftCalendarClient":
@@ -69,7 +69,7 @@ class MicrosoftCalendarClient:
         exc_val: Optional[BaseException],
         exc_tb: Optional[object],
     ) -> None:
-        """Context-Manager Exit - schliesst HTTP-Client."""
+        """Context-Manager Exit - schließt HTTP-Client."""
         await self.close()
 
     # =========================================================================
@@ -78,7 +78,7 @@ class MicrosoftCalendarClient:
 
     async def list_calendars(self) -> List[CalendarInfo]:
         """
-        Listet alle verfuegbaren Kalender des Benutzers auf.
+        Listet alle verfügbaren Kalender des Benutzers auf.
 
         Returns:
             Liste von CalendarInfo-Objekten
@@ -225,7 +225,7 @@ class MicrosoftCalendarClient:
         event_id: str,
     ) -> bool:
         """
-        Loescht ein Ereignis aus dem Kalender.
+        Löscht ein Ereignis aus dem Kalender.
 
         Args:
             calendar_id: Kalender-ID
@@ -251,7 +251,7 @@ class MicrosoftCalendarClient:
                 )
                 return True
 
-            # 404 = bereits geloescht
+            # 404 = bereits gelöscht
             if response.status_code == 404:
                 logger.info(
                     "ms_event_already_deleted",
@@ -396,7 +396,7 @@ class MicrosoftCalendarClient:
             start_str = start_data.get("dateTime", "") if isinstance(start_data, dict) else ""
             end_str = end_data.get("dateTime", "") if isinstance(end_data, dict) else ""
 
-            # Microsoft gibt dateTime ohne Timezone-Offset zurueck
+            # Microsoft gibt dateTime ohne Timezone-Offset zurück
             start = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
             end = datetime.fromisoformat(end_str.replace("Z", "+00:00"))
 

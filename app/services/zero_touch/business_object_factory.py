@@ -2,7 +2,7 @@
 Business Object Factory.
 
 Erstellt Business-Objekte (z.B. InvoiceTracking) aus OCR-Extraktionsdaten.
-Unterstuetzt verschiedene Dokumententypen mit spezifischen Datenmodellen.
+Unterstützt verschiedene Dokumententypen mit spezifischen Datenmodellen.
 """
 
 from dataclasses import dataclass
@@ -35,12 +35,12 @@ class BusinessObjectFactory:
     """
     Factory zum Erstellen von Business-Objekten aus Extraktionsdaten.
 
-    Unterstuetzt:
+    Unterstützt:
     - invoice -> InvoiceTracking
-    - contract -> (zukuenftig)
-    - delivery_note -> (zukuenftig)
-    - order -> (zukuenftig)
-    - offer -> (zukuenftig)
+    - contract -> (zukünftig)
+    - delivery_note -> (zukünftig)
+    - order -> (zukünftig)
+    - offer -> (zukünftig)
     """
 
     async def create_business_object(
@@ -59,8 +59,8 @@ class BusinessObjectFactory:
             document_id: ID des Dokuments
             classification_type: Dokumententyp (invoice, contract, etc.)
             extracted_fields: Extrahierte Felder mit {field_name: {value, confidence}}
-            entity_id: Optional Geschaeftspartner-ID
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            entity_id: Optional Geschäftspartner-ID
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Datenbank-Session
 
         Returns:
@@ -84,7 +84,7 @@ class BusinessObjectFactory:
                     db=db,
                 )
             elif classification_type in ("contract", "delivery_note", "order", "offer"):
-                # Zukuenftige Implementierung
+                # Zukünftige Implementierung
                 logger.info(
                     "business_object_type_not_yet_implemented",
                     type=classification_type,
@@ -133,8 +133,8 @@ class BusinessObjectFactory:
         Args:
             document_id: ID des Dokuments
             extracted_fields: Extrahierte Felder
-            entity_id: Optional Geschaeftspartner-ID
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            entity_id: Optional Geschäftspartner-ID
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Datenbank-Session
 
         Returns:
@@ -165,7 +165,7 @@ class BusinessObjectFactory:
                 error="Dokument nicht gefunden",
             )
 
-        # SECURITY FIX: Pruefen ob bereits InvoiceTracking existiert mit company_id Filter
+        # SECURITY FIX: Prüfen ob bereits InvoiceTracking existiert mit company_id Filter
         existing_result = await db.execute(
             select(InvoiceTracking).where(
                 and_(

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Proaktiver Assistent API Endpoints fuer Ablage-System.
+Proaktiver Assistent API Endpoints für Ablage-System.
 
-API fuer das proaktive Hint-System:
+API für das proaktive Hint-System:
 - Dashboard-Widget Daten
 - Hint-Liste mit Filterung
-- Status-Updates (gesehen, bestaetigt, abgelehnt, bearbeitet)
-- Kontext-Hints fuer Dokument/Entity Sidebar
+- Status-Updates (gesehen, bestätigt, abgelehnt, bearbeitet)
+- Kontext-Hints für Dokument/Entity Sidebar
 - Statistiken und Regelkonfiguration
 
 Feinpoliert und durchdacht - Enterprise-grade Proactive Intelligence.
@@ -91,7 +91,7 @@ class DashboardSummaryResponse(BaseModel):
 
 
 class HintStatusUpdateRequest(BaseModel):
-    """Request fuer Hint-Status Update."""
+    """Request für Hint-Status Update."""
     status: HintStatus
 
 
@@ -112,7 +112,7 @@ class HintRuleResponse(BaseModel):
 
 
 class HintRuleUpdateRequest(BaseModel):
-    """Request fuer Hint-Regel Update."""
+    """Request für Hint-Regel Update."""
     is_active: Optional[bool] = None
     threshold_config: Optional[JSONDict] = None
     schedule: Optional[str] = None
@@ -135,7 +135,7 @@ class HintStatisticsResponse(BaseModel):
 
 
 class GenerateHintsResponse(BaseModel):
-    """Response fuer manuelle Hint-Generierung."""
+    """Response für manuelle Hint-Generierung."""
     hints_created: int
     message: str
 
@@ -185,7 +185,7 @@ async def get_dashboard_summary(
     session: AsyncSession = Depends(get_db),
 ) -> DashboardSummaryResponse:
     """
-    Dashboard-Widget: Tagesuebersicht der proaktiven Hinweise.
+    Dashboard-Widget: Tagesübersicht der proaktiven Hinweise.
 
     Liefert Zaehler pro Kategorie, Top-5 dringendste Hints
     und potenzielle Ersparnisse.
@@ -241,7 +241,7 @@ async def update_hint_status(
     """
     Hint-Status aktualisieren.
 
-    Moegliche Status-Uebergaenge:
+    Mögliche Status-Übergaenge:
     - new -> seen, acknowledged, dismissed, acted_on
     - seen -> acknowledged, dismissed, acted_on
     - acknowledged -> acted_on, dismissed
@@ -267,8 +267,8 @@ async def update_hint_status(
 
 @router.get("/hints/context", response_model=List[HintResponse])
 async def get_context_hints(
-    document_id: Optional[UUID] = Query(None, description="Dokument-ID fuer Kontext"),
-    entity_id: Optional[UUID] = Query(None, description="Entity-ID fuer Kontext"),
+    document_id: Optional[UUID] = Query(None, description="Dokument-ID für Kontext"),
+    entity_id: Optional[UUID] = Query(None, description="Entity-ID für Kontext"),
     current_user: User = Depends(get_current_user),
     company_id: UUID = Depends(get_company_id),
     session: AsyncSession = Depends(get_db),
@@ -303,9 +303,9 @@ async def get_statistics(
     session: AsyncSession = Depends(get_db),
 ) -> HintStatisticsResponse:
     """
-    Hint-Statistiken fuer einen Zeitraum.
+    Hint-Statistiken für einen Zeitraum.
 
-    Berechnet Zaehler, Action-Rate, Reaktionszeit und geschaetzte Ersparnisse.
+    Berechnet Zaehler, Action-Rate, Reaktionszeit und geschätzte Ersparnisse.
     """
     service = get_proactive_assistant_service()
     stats = await service.calculate_statistics(
@@ -339,7 +339,7 @@ async def trigger_hint_generation(
     """
     Manuelle Hint-Generierung ausloesen (Admin).
 
-    Fuehrt sofort eine vollstaendige Analyse fuer die aktuelle Firma durch.
+    Führt sofort eine vollständige Analyse für die aktuelle Firma durch.
     """
     service = get_proactive_assistant_service()
     hints = await service.generate_daily_hints(session, company_id)
@@ -393,7 +393,7 @@ async def update_rule(
     """
     Hint-Regel konfigurieren.
 
-    Ermoeglicht das Aktivieren/Deaktivieren von Regeln und
+    Ermöglicht das Aktivieren/Deaktivieren von Regeln und
     die Anpassung von Schwellwerten.
     """
     service = get_proactive_assistant_service()

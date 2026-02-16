@@ -48,14 +48,14 @@ router = APIRouter(prefix="/gobd", tags=["GoBD Compliance"])
 
 
 class CheckTypeInfo(BaseModel):
-    """Information ueber einen Check-Typ."""
+    """Information über einen Check-Typ."""
     check_type: str
     name: str
     description: str
 
 
 class ComplianceCheckResponse(BaseModel):
-    """Antwort fuer einen Compliance-Check."""
+    """Antwort für einen Compliance-Check."""
     id: UUID
     check_type: str
     check_name: str
@@ -71,7 +71,7 @@ class ComplianceCheckResponse(BaseModel):
 
 
 class CheckResultResponse(BaseModel):
-    """Antwort fuer ein Check-Ergebnis."""
+    """Antwort für ein Check-Ergebnis."""
     check_type: str
     status: str
     score: int
@@ -83,7 +83,7 @@ class CheckResultResponse(BaseModel):
 
 
 class ComplianceDashboardResponse(BaseModel):
-    """Antwort fuer das Compliance-Dashboard."""
+    """Antwort für das Compliance-Dashboard."""
     overall_score: int
     overall_status: str
     overall_status_color: str
@@ -98,7 +98,7 @@ class ComplianceDashboardResponse(BaseModel):
 
 
 class ComplianceHistoryResponse(BaseModel):
-    """Antwort fuer Historie-Eintrag."""
+    """Antwort für Historie-Eintrag."""
     id: UUID
     check_type: str
     status: str
@@ -111,7 +111,7 @@ class ComplianceHistoryResponse(BaseModel):
 
 
 class ComplianceReportResponse(BaseModel):
-    """Antwort fuer einen Compliance-Bericht."""
+    """Antwort für einen Compliance-Bericht."""
     id: UUID
     report_type: str
     title: str
@@ -129,7 +129,7 @@ class ComplianceReportResponse(BaseModel):
 
 
 class GenerateReportRequest(BaseModel):
-    """Request fuer Berichtsgenerierung."""
+    """Request für Berichtsgenerierung."""
     report_type: str = Field(ComplianceReportType.FULL.value, description="Berichtstyp")
     period_start: Optional[date] = Field(None, description="Periodenstart")
     period_end: Optional[date] = Field(None, description="Periodenende")
@@ -157,9 +157,9 @@ def _check_type_name(check_type: str) -> str:
     """Get German name for check type."""
     names = {
         GoBDCheckType.NACHVOLLZIEHBARKEIT.value: "Nachvollziehbarkeit",
-        GoBDCheckType.NACHPRUEFBARKEIT.value: "Nachpruefbarkeit",
-        GoBDCheckType.UNVERAENDERBARKEIT.value: "Unveraenderbarkeit",
-        GoBDCheckType.VOLLSTAENDIGKEIT.value: "Vollstaendigkeit",
+        GoBDCheckType.NACHPRUEFBARKEIT.value: "Nachprüfbarkeit",
+        GoBDCheckType.UNVERAENDERBARKEIT.value: "Unveränderbarkeit",
+        GoBDCheckType.VOLLSTAENDIGKEIT.value: "Vollständigkeit",
         GoBDCheckType.ORDNUNG.value: "Ordnung",
         GoBDCheckType.ZEITGERECHTE_BUCHUNG.value: "Zeitgerechte Buchung",
         GoBDCheckType.AUFBEWAHRUNG.value: "Aufbewahrung",
@@ -228,19 +228,19 @@ async def get_compliance_dashboard(
 async def list_check_types(
     current_user: User = Depends(get_current_active_user),
 ) -> List[CheckTypeInfo]:
-    """Verfuegbare GoBD-Check-Typen auflisten."""
+    """Verfügbare GoBD-Check-Typen auflisten."""
     descriptions = {
-        GoBDCheckType.NACHVOLLZIEHBARKEIT.value: "Prueft Audit-Trail fuer alle Aktionen",
-        GoBDCheckType.NACHPRUEFBARKEIT.value: "Prueft Datenintegritaet",
+        GoBDCheckType.NACHVOLLZIEHBARKEIT.value: "Prüft Audit-Trail für alle Aktionen",
+        GoBDCheckType.NACHPRUEFBARKEIT.value: "Prüft Datenintegritaet",
         GoBDCheckType.UNVERAENDERBARKEIT.value: "Verifiziert Hash-Signaturen",
-        GoBDCheckType.VOLLSTAENDIGKEIT.value: "Prueft auf lueckenlose Belegnummern",
-        GoBDCheckType.ORDNUNG.value: "Prueft systematische Ablage",
-        GoBDCheckType.ZEITGERECHTE_BUCHUNG.value: "Prueft Erfassungsfristen",
-        GoBDCheckType.AUFBEWAHRUNG.value: "Prueft Aufbewahrungsfristen (10 Jahre)",
-        GoBDCheckType.MASCHINELLE_AUSWERTBARKEIT.value: "Prueft Export-Faehigkeit",
-        GoBDCheckType.VERFAHRENSDOKUMENTATION.value: "Prueft Verfahrensdokumentation",
-        GoBDCheckType.DATENSICHERUNG.value: "Prueft Backup-Status",
-        GoBDCheckType.ZUGANGSKONTROLLE.value: "Prueft Berechtigungen",
+        GoBDCheckType.VOLLSTAENDIGKEIT.value: "Prüft auf lückenlose Belegnummern",
+        GoBDCheckType.ORDNUNG.value: "Prüft systematische Ablage",
+        GoBDCheckType.ZEITGERECHTE_BUCHUNG.value: "Prüft Erfassungsfristen",
+        GoBDCheckType.AUFBEWAHRUNG.value: "Prüft Aufbewahrungsfristen (10 Jahre)",
+        GoBDCheckType.MASCHINELLE_AUSWERTBARKEIT.value: "Prüft Export-Faehigkeit",
+        GoBDCheckType.VERFAHRENSDOKUMENTATION.value: "Prüft Verfahrensdokumentation",
+        GoBDCheckType.DATENSICHERUNG.value: "Prüft Backup-Status",
+        GoBDCheckType.ZUGANGSKONTROLLE.value: "Prüft Berechtigungen",
     }
 
     return [
@@ -264,7 +264,7 @@ async def run_all_checks(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> List[CheckResultResponse]:
-    """Alle GoBD-Compliance-Checks durchfuehren."""
+    """Alle GoBD-Compliance-Checks durchführen."""
     logger.info(
         "Starte alle Compliance-Checks",
         company_id=str(company.id),
@@ -301,13 +301,13 @@ async def run_single_check(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> CheckResultResponse:
-    """Einzelnen GoBD-Compliance-Check durchfuehren."""
+    """Einzelnen GoBD-Compliance-Check durchführen."""
     # Validate check type
     valid_types = [ct.value for ct in GoBDCheckType]
     if check_type not in valid_types:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltiger Check-Typ: {check_type}. Gueltige Typen: {valid_types}"
+            detail=f"Ungültiger Check-Typ: {check_type}. Gültige Typen: {valid_types}"
         )
 
     logger.info(
@@ -547,7 +547,7 @@ async def export_report(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> dict:
-    """Compliance-Bericht exportieren (fuer Steuerberater/Pruefer)."""
+    """Compliance-Bericht exportieren (für Steuerberater/Prüfer)."""
     from sqlalchemy import select, and_
 
     result = await db.execute(

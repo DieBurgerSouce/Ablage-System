@@ -1,7 +1,7 @@
 """
 Document Template Service
 
-Service fuer Dokumenten-Vorlagen mit:
+Service für Dokumenten-Vorlagen mit:
 - Template-CRUD
 - Dokumentengenerierung mit Jinja2
 - PDF-Rendering
@@ -43,7 +43,7 @@ class TemplateRenderError(Exception):
 
 
 class DocumentTemplateService:
-    """Service fuer Dokumenten-Vorlagen."""
+    """Service für Dokumenten-Vorlagen."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -60,7 +60,7 @@ class DocumentTemplateService:
         """Registriere benutzerdefinierte Jinja2-Filter."""
 
         def format_currency(value: float, currency: str = "EUR") -> str:
-            """Formatiert Waehrungswerte deutsch."""
+            """Formatiert Währungswerte deutsch."""
             if value is None:
                 return ""
             formatted = f"{value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -113,7 +113,7 @@ class DocumentTemplateService:
         if variables:
             self._validate_variables_schema(variables)
 
-        # Pruefe ob Code bereits existiert
+        # Prüfe ob Code bereits existiert
         existing = await self.get_template_by_code(company_id, code)
         if existing:
             raise TemplateValidationError(f"Template mit Code '{code}' existiert bereits")
@@ -319,7 +319,7 @@ class DocumentTemplateService:
         template_id: uuid.UUID,
         company_id: uuid.UUID | None = None,
     ) -> bool:
-        """Loescht eine Vorlage (Soft-Delete via is_active)."""
+        """Löscht eine Vorlage (Soft-Delete via is_active)."""
         template = await self.get_template(template_id, company_id)
         if not template:
             return False
@@ -360,7 +360,7 @@ class DocumentTemplateService:
         if not preview:
             self._validate_variables(template.variables, variables)
 
-        # Snippets laden und einfuegen
+        # Snippets laden und einfügen
         rendered_content = await self._resolve_snippets(template.company_id, template.content)
 
         # Header und Footer verarbeiten
@@ -460,7 +460,7 @@ class DocumentTemplateService:
         extension = template.output_format.value
         filename = f"{safe_title}_{timestamp}.{extension}"
 
-        # PDF generieren falls gewuenscht
+        # PDF generieren falls gewünscht
         file_content: bytes | None = None
         file_size: int | None = None
         storage_path: str | None = None
@@ -533,7 +533,7 @@ class DocumentTemplateService:
         category: str | None = None,
         search: str | None = None,
     ) -> list[TemplateSnippet]:
-        """Listet verfuegbare Snippets."""
+        """Listet verfügbare Snippets."""
         query = select(TemplateSnippet).where(
             and_(
                 TemplateSnippet.company_id == company_id,
@@ -674,7 +674,7 @@ class DocumentTemplateService:
         self,
         company_id: uuid.UUID,
     ) -> list[dict[str, object]]:
-        """Gibt eine Zusammenfassung der Vorlagen pro Kategorie zurueck."""
+        """Gibt eine Zusammenfassung der Vorlagen pro Kategorie zurück."""
         # Get all categories with counts
         result = await self.db.execute(
             select(
@@ -735,7 +735,7 @@ class DocumentTemplateService:
         """
         Validiert Variablen gegen das Template-Schema.
 
-        Gibt zurueck: (is_valid, list_of_error_messages)
+        Gibt zurück: (is_valid, list_of_error_messages)
         """
         errors: list[str] = []
 
@@ -759,7 +759,7 @@ class DocumentTemplateService:
                         errors.append(f"'{label}' muss eine Zahl sein")
                 elif var_type == VariableType.CURRENCY.value:
                     if not isinstance(value, (int, float)):
-                        errors.append(f"'{label}' muss ein Waehrungsbetrag sein")
+                        errors.append(f"'{label}' muss ein Währungsbetrag sein")
                 elif var_type == VariableType.DATE.value:
                     if not isinstance(value, (datetime, str)):
                         errors.append(f"'{label}' muss ein Datum sein")
@@ -805,7 +805,7 @@ class DocumentTemplateService:
         try:
             self._jinja_env.parse(content)
         except TemplateSyntaxError as e:
-            raise TemplateValidationError(f"Ungueltige Template-Syntax: {e}")
+            raise TemplateValidationError(f"Ungültige Template-Syntax: {e}")
 
     def _validate_variables_schema(self, variables: list[dict[str, object]]) -> None:
         """Validiert das Variablen-Schema."""
@@ -821,11 +821,11 @@ class DocumentTemplateService:
                 raise TemplateValidationError(f"Fehlende Felder in Variable: {missing}")
 
             if var["type"] not in valid_types:
-                raise TemplateValidationError(f"Ungueltiger Variablentyp: {var['type']}")
+                raise TemplateValidationError(f"Ungültiger Variablentyp: {var['type']}")
 
             # Name validieren (nur alphanumerisch und Unterstrich)
             if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", var["name"]):
-                raise TemplateValidationError(f"Ungueltiger Variablenname: {var['name']}")
+                raise TemplateValidationError(f"Ungültiger Variablenname: {var['name']}")
 
     def _validate_variables(
         self,
@@ -850,7 +850,7 @@ class DocumentTemplateService:
                         raise TemplateValidationError(f"{name} muss eine Zahl sein")
                 elif var_type == VariableType.CURRENCY.value:
                     if not isinstance(value, (int, float)):
-                        raise TemplateValidationError(f"{name} muss ein Waehrungsbetrag sein")
+                        raise TemplateValidationError(f"{name} muss ein Währungsbetrag sein")
                 elif var_type == VariableType.DATE.value:
                     if not isinstance(value, (datetime, str)):
                         raise TemplateValidationError(f"{name} muss ein Datum sein")
@@ -867,7 +867,7 @@ class DocumentTemplateService:
         schema: list[dict[str, object]],
         values: dict[str, object],
     ) -> dict[str, object]:
-        """Fuegt Platzhalter-Werte fuer Preview hinzu."""
+        """Fuegt Platzhalter-Werte für Preview hinzu."""
         result = dict(values)
 
         for var_def in schema:
@@ -902,7 +902,7 @@ class DocumentTemplateService:
     # =========================================================================
 
     async def _get_company_data(self, company_id: uuid.UUID) -> dict[str, object]:
-        """Laedt Firmendaten fuer Template-Variablen."""
+        """Laedt Firmendaten für Template-Variablen."""
         from app.db.models.company import Company
 
         result = await self.db.execute(
@@ -933,7 +933,7 @@ class DocumentTemplateService:
         orientation: str = "portrait",
         margins: dict[str, int] | None = None,
     ) -> str:
-        """Baut ein vollstaendiges HTML-Dokument zusammen."""
+        """Baut ein vollständiges HTML-Dokument zusammen."""
         margins = margins or {"top": 20, "right": 15, "bottom": 20, "left": 15}
 
         # Page-Size CSS
@@ -1010,10 +1010,10 @@ class DocumentTemplateService:
         """
         Speichert generiertes Dokument in MinIO.
 
-        Phase 11.4: Vollstaendige MinIO-Integration fuer Template-Output.
+        Phase 11.4: Vollständige MinIO-Integration für Template-Output.
 
         Args:
-            company_id: Firmen-ID fuer Bucket-Isolierung
+            company_id: Firmen-ID für Bucket-Isolierung
             filename: Dateiname des generierten Dokuments
             file_content: PDF-Bytes
 
@@ -1086,8 +1086,8 @@ class DocumentTemplateService:
             pdf_bytes = HTML(string=html_content).write_pdf()
             return pdf_bytes
         except ImportError:
-            logger.warning("WeasyPrint nicht verfuegbar, PDF-Rendering deaktiviert")
-            # Fallback: HTML als bytes zurueckgeben
+            logger.warning("WeasyPrint nicht verfügbar, PDF-Rendering deaktiviert")
+            # Fallback: HTML als bytes zurückgeben
             return html_content.encode("utf-8")
         except Exception as e:
             logger.error(f"PDF-Rendering fehlgeschlagen: {e}")
@@ -1099,7 +1099,7 @@ _template_service: DocumentTemplateService | None = None
 
 
 def get_template_service() -> DocumentTemplateService:
-    """Gibt die Template-Service-Instanz zurueck."""
+    """Gibt die Template-Service-Instanz zurück."""
     global _template_service
     if _template_service is None:
         raise RuntimeError("TemplateService nicht initialisiert")

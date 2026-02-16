@@ -3,8 +3,8 @@
 Synchronisiert Embeddings zwischen pgvector und Qdrant:
 - Dual-Write bei neuen Dokumenten
 - Batch-Migration von bestehenden Embeddings
-- Retry-Logik fuer fehlgeschlagene Syncs
-- Progress-Tracking fuer Migrationen
+- Retry-Logik für fehlgeschlagene Syncs
+- Progress-Tracking für Migrationen
 
 Config-Settings (in config.py):
 - VECTOR_DUAL_WRITE_ENABLED: bool
@@ -107,9 +107,9 @@ class SyncBatch:
 
 
 class VectorSyncService:
-    """Service fuer Dual-Write und Migration zwischen Vector-Backends.
+    """Service für Dual-Write und Migration zwischen Vector-Backends.
 
-    Unterstuetzt:
+    Unterstützt:
     - Synchrones Dual-Write (blockierend)
     - Asynchrones Dual-Write (Celery Task)
     - Batch-Migration mit Progress-Tracking
@@ -146,7 +146,7 @@ class VectorSyncService:
         self._migration_cancel = False
         self._migration_lock = threading.Lock()
 
-        # Failed Syncs fuer Retry
+        # Failed Syncs für Retry
         self._failed_batches: List[SyncBatch] = []
 
         self._initialized = True
@@ -196,7 +196,7 @@ class VectorSyncService:
             # Embedding generieren falls nicht vorhanden
             if embedding is None:
                 provider = self._get_embedding_provider()
-                # Jina fuer Treatment, E5 fuer Control
+                # Jina für Treatment, E5 für Control
                 if settings.JINA_EMBEDDING_ENABLED:
                     embedding = provider.generate_document_embedding(
                         chunk.chunk_text,
@@ -215,7 +215,7 @@ class VectorSyncService:
                 payload={
                     "document_id": str(chunk.document_id),
                     "chunk_index": chunk.chunk_index,
-                    "chunk_text": chunk.chunk_text[:500],  # Truncated fuer Payload
+                    "chunk_text": chunk.chunk_text[:500],  # Truncated für Payload
                     "page_number": chunk.page_number,
                     "section_type": chunk.section_type,
                     "created_at": chunk.created_at.isoformat() if chunk.created_at else None,
@@ -381,7 +381,7 @@ class VectorSyncService:
         Args:
             db: Datenbank-Session
             collection_name: Optionaler Collection-Name
-            progress_callback: Optionaler Callback fuer Progress-Updates
+            progress_callback: Optionaler Callback für Progress-Updates
 
         Returns:
             MigrationProgress mit Endergebnis
@@ -536,14 +536,14 @@ class VectorSyncService:
         chunk_ids: List[str],
         collection_name: Optional[str] = None
     ) -> int:
-        """Chunks aus Qdrant loeschen.
+        """Chunks aus Qdrant löschen.
 
         Args:
-            chunk_ids: Liste von Chunk-IDs zum Loeschen
+            chunk_ids: Liste von Chunk-IDs zum Löschen
             collection_name: Optionaler Collection-Name
 
         Returns:
-            Anzahl geloeschter Chunks
+            Anzahl gelöschter Chunks
         """
         if not self._enabled:
             return 0

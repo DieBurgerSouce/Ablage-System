@@ -13,7 +13,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# SECURITY FIX 28-13: Rate Limiting fuer Search Endpoints
+# SECURITY FIX 28-13: Rate Limiting für Search Endpoints
 from app.core.rate_limiting import limiter, get_user_identifier
 
 from app.db.models import User, RAGSectionType
@@ -33,17 +33,17 @@ router = APIRouter(prefix="/search", tags=["rag-search"])
 
 
 def get_search_service_dep() -> RAGSearchService:
-    """Dependency fuer RAGSearchService."""
+    """Dependency für RAGSearchService."""
     return get_rag_search_service()
 
 
-# SECURITY FIX 28-13: Rate-Limit fuer Suche (Embedding-intensiv)
+# SECURITY FIX 28-13: Rate-Limit für Suche (Embedding-intensiv)
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post(
     "",
     response_model=RAGSearchResponse,
-    summary="RAG Suche durchfuehren",
-    description="Fuehrt eine Chunk-basierte semantische Suche durch."
+    summary="RAG Suche durchführen",
+    description="Führt eine Chunk-basierte semantische Suche durch."
 )
 async def search_chunks(
     request: Request,  # SECURITY FIX: Required for rate limiter
@@ -55,7 +55,7 @@ async def search_chunks(
     """
     Semantische Suche in Document Chunks.
 
-    Unterstuetzte Suchtypen:
+    Unterstützte Suchtypen:
     - **semantic**: Reine Vektor-Suche (Standard)
     - **hybrid**: Kombination aus Semantic + Keyword
     - **keyword**: Reine Volltext-Suche
@@ -159,7 +159,7 @@ async def semantic_search_get(
     """
     Semantische Suche via GET-Parameter.
 
-    Fuer einfache Suchanfragen ohne Filter.
+    Für einfache Suchanfragen ohne Filter.
     """
     try:
         response = await search_service.semantic_search(

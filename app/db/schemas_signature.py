@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Pydantic Schemas fuer QES/eIDAS Signaturen.
+Pydantic Schemas für QES/eIDAS Signaturen.
 
-Validierung und Serialisierung fuer:
+Validierung und Serialisierung für:
 - Signaturanfragen (Create, Response, List)
-- Signatureintraege (Sign, Reject, Response)
+- Signatureinträge (Sign, Reject, Response)
 - Verifikation und Audit-Trail
 """
 
@@ -96,7 +96,7 @@ class RejectSignatureRequest(BaseModel):
 
 
 class SignatureEntryResponse(BaseModel):
-    """Response-Schema fuer einen Signatureintrag."""
+    """Response-Schema für einen Signatureintrag."""
     id: UUID
     signer_email: str
     signer_name: str
@@ -111,7 +111,7 @@ class SignatureEntryResponse(BaseModel):
 
 
 class SignatureRequestResponse(BaseModel):
-    """Response-Schema fuer eine Signaturanfrage."""
+    """Response-Schema für eine Signaturanfrage."""
     id: UUID
     document_id: UUID
     title: str
@@ -148,7 +148,7 @@ class SignatureVerificationResponse(BaseModel):
 
 
 class SignatureAuditResponse(BaseModel):
-    """Response-Schema fuer einen Audit-Eintrag."""
+    """Response-Schema für einen Audit-Eintrag."""
     id: UUID
     action: str
     performed_at: datetime

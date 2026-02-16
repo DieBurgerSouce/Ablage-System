@@ -6,10 +6,10 @@ Automatisierte OCR-Verarbeitung mit intelligentem Auto-Processing:
 - Dokument durch vollautomatische Pipeline verarbeiten
 - Confidence-basierte Entscheidungen (Auto-Process vs. Review)
 - Batch-Verarbeitung mehrerer Dokumente
-- Review-Queue fuer niedrige Confidence
+- Review-Queue für niedrige Confidence
 - Schwellwert-Verwaltung (Admin)
 
-Feinpoliert und durchdacht - Deutsche Geschaeftsdokumente.
+Feinpoliert und durchdacht - Deutsche Geschäftsdokumente.
 """
 
 from typing import Optional, List, Dict
@@ -58,7 +58,7 @@ async def require_admin(
     current_user: User = Depends(get_current_active_user)
 ) -> User:
     """
-    Dependency: Pruefe ob User Admin ist.
+    Dependency: Prüfe ob User Admin ist.
 
     Raises:
         HTTPException: Falls User kein Admin
@@ -66,7 +66,7 @@ async def require_admin(
     if not current_user.is_superuser and not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren duerfen diese Aktion ausfuehren"
+            detail="Nur Administratoren duerfen diese Aktion ausführen"
         )
     return current_user
 
@@ -77,7 +77,7 @@ async def require_admin(
 
 
 class ZeroTouchProcessRequest(BaseModel):
-    """Request fuer einzelnes Dokument."""
+    """Request für einzelnes Dokument."""
 
     document_id: UUID = Field(..., description="UUID des zu verarbeitenden Dokuments")
 
@@ -85,7 +85,7 @@ class ZeroTouchProcessRequest(BaseModel):
 
 
 class ZeroTouchBatchRequest(BaseModel):
-    """Request fuer Batch-Verarbeitung."""
+    """Request für Batch-Verarbeitung."""
 
     document_ids: List[UUID] = Field(
         ...,
@@ -96,7 +96,7 @@ class ZeroTouchBatchRequest(BaseModel):
     @field_validator("document_ids")
     @classmethod
     def validate_unique_ids(cls, v: List[UUID]) -> List[UUID]:
-        """Pruefe auf Duplikate."""
+        """Prüfe auf Duplikate."""
         if len(v) != len(set(v)):
             raise ValueError("Duplikate in document_ids nicht erlaubt")
         return v
@@ -105,7 +105,7 @@ class ZeroTouchBatchRequest(BaseModel):
 
 
 class ZeroTouchBatchResponse(BaseModel):
-    """Response fuer Batch-Verarbeitung."""
+    """Response für Batch-Verarbeitung."""
 
     queued: int = Field(..., description="Anzahl erfolgreich eingereihter Dokumente")
     errors: List[JSONDict] = Field(
@@ -114,17 +114,17 @@ class ZeroTouchBatchResponse(BaseModel):
     )
     task_ids: List[str] = Field(
         default_factory=list,
-        description="Celery Task-IDs fuer Batch-Jobs"
+        description="Celery Task-IDs für Batch-Jobs"
     )
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class ZeroTouchResultResponse(BaseModel):
-    """Response fuer Zero-Touch Ergebnis."""
+    """Response für Zero-Touch Ergebnis."""
 
     id: UUID = Field(..., description="UUID des Zero-Touch Results")
-    document_id: UUID = Field(..., description="Verknuepftes Dokument")
+    document_id: UUID = Field(..., description="Verknüpftes Dokument")
 
     # Confidence-Scores
     ocr_confidence: float = Field(..., ge=0.0, le=1.0, description="OCR Confidence")
@@ -134,12 +134,12 @@ class ZeroTouchResultResponse(BaseModel):
     overall_confidence: float = Field(..., ge=0.0, le=1.0, description="Gesamte Confidence")
 
     # Entity-Zuordnung
-    entity_id: Optional[UUID] = Field(None, description="Verknuepfte Business-Entity")
+    entity_id: Optional[UUID] = Field(None, description="Verknüpfte Business-Entity")
     entity_match_confidence: Optional[float] = Field(None, ge=0.0, le=1.0)
 
     # Status
     auto_processed: bool = Field(..., description="Wurde automatisch verarbeitet")
-    requires_review: bool = Field(..., description="Benoetigt manuelle Review")
+    requires_review: bool = Field(..., description="Benötigt manuelle Review")
     review_completed: bool = Field(default=False, description="Review abgeschlossen")
 
     # Business Objects
@@ -165,7 +165,7 @@ class ZeroTouchResultResponse(BaseModel):
 
 
 class ZeroTouchStatsResponse(BaseModel):
-    """Statistiken fuer Company."""
+    """Statistiken für Company."""
 
     total_processed: int = Field(..., description="Gesamt verarbeitete Dokumente")
     auto_processed: int = Field(..., description="Automatisch verarbeitet (kein Review)")
@@ -193,7 +193,7 @@ class ZeroTouchStatsResponse(BaseModel):
 
 
 class ZeroTouchReviewRequest(BaseModel):
-    """Request fuer Review-Submission."""
+    """Request für Review-Submission."""
 
     approved: bool = Field(..., description="Ergebnis genehmigt oder abgelehnt")
     corrections: Optional[JSONDict] = Field(
@@ -210,25 +210,25 @@ class ZeroTouchReviewRequest(BaseModel):
 
 
 class ZeroTouchThresholdRequest(BaseModel):
-    """Request fuer Schwellwert-Anpassung (Admin)."""
+    """Request für Schwellwert-Anpassung (Admin)."""
 
     auto_process_threshold: float = Field(
         default=0.90,
         ge=0.0,
         le=1.0,
-        description="Minimum Confidence fuer Auto-Processing"
+        description="Minimum Confidence für Auto-Processing"
     )
     review_threshold: float = Field(
         default=0.70,
         ge=0.0,
         le=1.0,
-        description="Minimum Confidence fuer Review (darunter: Ablehnung)"
+        description="Minimum Confidence für Review (darunter: Ablehnung)"
     )
 
     @field_validator("review_threshold")
     @classmethod
     def validate_threshold_order(cls, v: float, info) -> float:
-        """Pruefe dass review_threshold < auto_process_threshold."""
+        """Prüfe dass review_threshold < auto_process_threshold."""
         auto_threshold = info.data.get("auto_process_threshold", 0.90)
         if v >= auto_threshold:
             raise ValueError(
@@ -240,7 +240,7 @@ class ZeroTouchThresholdRequest(BaseModel):
 
 
 class ZeroTouchThresholdResponse(BaseModel):
-    """Response fuer Schwellwert-Update."""
+    """Response für Schwellwert-Update."""
 
     success: bool
     thresholds: Dict[str, float] = Field(
@@ -253,7 +253,7 @@ class ZeroTouchThresholdResponse(BaseModel):
 
 
 class PendingReviewResponse(BaseModel):
-    """Response fuer Pending-Review Liste."""
+    """Response für Pending-Review Liste."""
 
     total: int = Field(..., description="Gesamtanzahl pending reviews")
     items: List[ZeroTouchResultResponse]
@@ -277,7 +277,7 @@ class PendingReviewResponse(BaseModel):
     description="""
     Verarbeitet ein einzelnes Dokument durch die vollautomatische Zero-Touch Pipeline:
 
-    1. OCR-Verarbeitung mit bestem verfuegbaren Backend
+    1. OCR-Verarbeitung mit bestem verfügbaren Backend
     2. Dokumentklassifikation
     3. Metadaten-Extraktion
     4. Entity-Matching
@@ -297,7 +297,7 @@ async def process_document(
 ) -> ZeroTouchResultResponse:
     """Verarbeite einzelnes Dokument."""
     try:
-        # Import hier um zirkulaere Abhaengigkeiten zu vermeiden
+        # Import hier um zirkuläre Abhängigkeiten zu vermeiden
         from app.services.zero_touch.zero_touch_orchestrator import ZeroTouchOrchestrator
 
         orchestrator = ZeroTouchOrchestrator()
@@ -336,7 +336,7 @@ async def process_document(
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument"
+            detail="Keine Berechtigung für dieses Dokument"
         )
     except Exception as e:
         logger.error(
@@ -360,9 +360,9 @@ async def process_document(
     Verarbeitet mehrere Dokumente asynchron durch die Zero-Touch Pipeline.
 
     Die Verarbeitung erfolgt im Hintergrund via Celery.
-    Maximale Batch-Groesse: 100 Dokumente.
+    Maximale Batch-Größe: 100 Dokumente.
 
-    Returns Celery Task-IDs fuer Status-Tracking.
+    Returns Celery Task-IDs für Status-Tracking.
     """
 )
 async def process_batch(
@@ -373,7 +373,7 @@ async def process_batch(
 ) -> ZeroTouchBatchResponse:
     """Batch-Verarbeitung."""
     try:
-        # Import hier um zirkulaere Abhaengigkeiten zu vermeiden
+        # Import hier um zirkuläre Abhängigkeiten zu vermeiden
         from app.services.zero_touch.zero_touch_orchestrator import ZeroTouchOrchestrator
 
         orchestrator = ZeroTouchOrchestrator()
@@ -416,7 +416,7 @@ async def process_batch(
     response_model=ZeroTouchResultResponse,
     status_code=status.HTTP_200_OK,
     summary="Zero-Touch Ergebnis abrufen",
-    description="Ruft das Zero-Touch Verarbeitungsergebnis fuer ein Dokument ab."
+    description="Ruft das Zero-Touch Verarbeitungsergebnis für ein Dokument ab."
 )
 async def get_result(
     document_id: UUID,
@@ -439,7 +439,7 @@ async def get_result(
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Kein Zero-Touch Ergebnis fuer dieses Dokument gefunden"
+                detail="Kein Zero-Touch Ergebnis für dieses Dokument gefunden"
             )
 
         return ZeroTouchResultResponse.model_validate(result)
@@ -464,7 +464,7 @@ async def get_result(
     response_model=ZeroTouchStatsResponse,
     status_code=status.HTTP_200_OK,
     summary="Statistiken abrufen",
-    description="Ruft Zero-Touch Statistiken fuer die Company ab."
+    description="Ruft Zero-Touch Statistiken für die Company ab."
 )
 async def get_stats(
     db: AsyncSession = Depends(get_db),
@@ -502,10 +502,10 @@ async def get_stats(
     description="""
     Passt die Auto-Processing und Review Schwellwerte an.
 
-    Nur fuer Administratoren.
+    Nur für Administratoren.
 
-    - auto_process_threshold: Minimum Confidence fuer automatische Verarbeitung
-    - review_threshold: Minimum Confidence fuer manuelle Review
+    - auto_process_threshold: Minimum Confidence für automatische Verarbeitung
+    - review_threshold: Minimum Confidence für manuelle Review
     """
 )
 async def update_thresholds(
@@ -564,11 +564,11 @@ async def update_thresholds(
     response_model=PendingReviewResponse,
     status_code=status.HTTP_200_OK,
     summary="Dokumente mit ausstehender Review",
-    description="Ruft alle Dokumente ab, die eine manuelle Review benoetigen."
+    description="Ruft alle Dokumente ab, die eine manuelle Review benötigen."
 )
 async def get_pending_review(
     limit: int = Query(default=20, ge=1, le=100, description="Anzahl Ergebnisse"),
-    offset: int = Query(default=0, ge=0, description="Offset fuer Paginierung"),
+    offset: int = Query(default=0, ge=0, description="Offset für Paginierung"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_company_id),
@@ -612,7 +612,7 @@ async def get_pending_review(
     status_code=status.HTTP_200_OK,
     summary="Review absenden",
     description="""
-    Sendet eine Review fuer ein Zero-Touch Ergebnis ab.
+    Sendet eine Review für ein Zero-Touch Ergebnis ab.
 
     Der Reviewer kann:
     - Das Ergebnis genehmigen (approved=true)
@@ -669,7 +669,7 @@ async def submit_review(
     except PermissionError:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument"
+            detail="Keine Berechtigung für dieses Dokument"
         )
     except Exception as e:
         logger.error(

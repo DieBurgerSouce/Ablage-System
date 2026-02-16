@@ -1,7 +1,7 @@
 """
 Portal Invoices API.
 
-Rechnungsansicht fuer Kundenportal.
+Rechnungsansicht für Kundenportal.
 """
 
 from datetime import date
@@ -60,12 +60,12 @@ async def list_invoices(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Liste alle Rechnungen fuer den Kunden.
+    Liste alle Rechnungen für den Kunden.
     """
     if not portal_user.can_view_invoices:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer Rechnungsansicht",
+            detail="Keine Berechtigung für Rechnungsansicht",
         )
 
     service = get_portal_invoice_service(db)
@@ -94,12 +94,12 @@ async def get_invoice_summary(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Hole Rechnungs-Zusammenfassung fuer Dashboard.
+    Hole Rechnungs-Zusammenfassung für Dashboard.
     """
     if not portal_user.can_view_invoices:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer Rechnungsansicht",
+            detail="Keine Berechtigung für Rechnungsansicht",
         )
 
     service = get_portal_invoice_service(db)
@@ -123,7 +123,7 @@ async def get_open_invoices(
     if not portal_user.can_view_invoices:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer Rechnungsansicht",
+            detail="Keine Berechtigung für Rechnungsansicht",
         )
 
     service = get_portal_invoice_service(db)
@@ -148,7 +148,7 @@ async def get_invoice_detail(
     if not portal_user.can_view_invoices:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer Rechnungsansicht",
+            detail="Keine Berechtigung für Rechnungsansicht",
         )
 
     service = get_portal_invoice_service(db)

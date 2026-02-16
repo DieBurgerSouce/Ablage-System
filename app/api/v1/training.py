@@ -92,15 +92,15 @@ async def list_training_samples(
     ),
     sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sortierreihenfolge"),
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset fuer Paginierung"),
+    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
     current_user: User = Depends(require_any_role("admin", "editor")),
     db: AsyncSession = Depends(get_db)
 ):
     """
     Listet Training Samples mit optionalen Filtern auf.
 
-    Unterstuetzt Volltextsuche in file_path und ground_truth_text.
-    Sortierung ueber sort_by und sort_order Parameter.
+    Unterstützt Volltextsuche in file_path und ground_truth_text.
+    Sortierung über sort_by und sort_order Parameter.
 
     Erfordert Editor- oder Admin-Rolle.
     """
@@ -176,7 +176,7 @@ async def get_sample_preview(
     """
     Liefert eine Bildvorschau des Training Sample Dokuments.
 
-    Konvertiert TIFF, PDF und andere Formate zu PNG fuer Browser-Anzeige.
+    Konvertiert TIFF, PDF und andere Formate zu PNG für Browser-Anzeige.
     Bei PDFs kann eine bestimmte Seite ausgewaehlt werden.
     """
     from app.db.models import OCRTrainingSample
@@ -191,7 +191,7 @@ async def get_sample_preview(
         raise HTTPException(status_code=404, detail="Training Sample nicht gefunden")
 
     if not sample.file_path:
-        raise HTTPException(status_code=404, detail="Kein Dateipfad fuer dieses Sample")
+        raise HTTPException(status_code=404, detail="Kein Dateipfad für dieses Sample")
 
     file_path = FilePath(sample.file_path)
 
@@ -218,11 +218,11 @@ async def get_sample_preview(
             # Bilder direkt laden (TIFF, PNG, JPG, etc.)
             pil_image = Image.open(file_path)
 
-        # Konvertiere zu RGB falls noetig
+        # Konvertiere zu RGB falls nötig
         if pil_image.mode in ("CMYK", "P", "LA", "RGBA", "I"):
             pil_image = pil_image.convert("RGB")
 
-        # Resize fuer schnellere Uebertragung (max 1200px)
+        # Resize für schnellere Übertragung (max 1200px)
         max_size = 1200
         if max(pil_image.size) > max_size:
             pil_image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
@@ -340,9 +340,9 @@ async def get_sample_benchmarks(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Holt alle Benchmark-Ergebnisse fuer ein spezifisches Sample.
+    Holt alle Benchmark-Ergebnisse für ein spezifisches Sample.
 
-    Gibt die OCR-Ergebnisse aller Backends fuer dieses Sample zurueck.
+    Gibt die OCR-Ergebnisse aller Backends für dieses Sample zurück.
     """
     from app.db.models import OCRBackendBenchmark
     from sqlalchemy import select
@@ -595,7 +595,7 @@ async def start_training_batch(
         return BatchResponse.model_validate(batch)
     except ValueError as e:
         # SECURITY FIX 28-28: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="Batch-Start fehlgeschlagen. Bitte Eingaben pruefen.")
+        raise HTTPException(status_code=400, detail="Batch-Start fehlgeschlagen. Bitte Eingaben prüfen.")
 
 
 @router.post("/batches/{batch_id}/complete", response_model=BatchResponse)
@@ -1004,7 +1004,7 @@ async def pause_bulk_processing_job(
         # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Job-Pause fehlgeschlagen. Bitte Eingaben pruefen."
+            detail="Job-Pause fehlgeschlagen. Bitte Eingaben prüfen."
         )
 
     remaining = job.total_documents - job.processed_documents
@@ -1097,7 +1097,7 @@ async def cancel_bulk_processing_job(
         # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Job-Abbruch fehlgeschlagen. Bitte Eingaben pruefen."
+            detail="Job-Abbruch fehlgeschlagen. Bitte Eingaben prüfen."
         )
 
     return schemas.BulkProcessingCancelResponse(
@@ -1300,7 +1300,7 @@ async def activate_model_deployment(
         # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Deployment-Aktivierung fehlgeschlagen. Bitte Eingaben pruefen."
+            detail="Deployment-Aktivierung fehlgeschlagen. Bitte Eingaben prüfen."
         )
 
     return {
@@ -1334,7 +1334,7 @@ async def rollback_model_deployment(
         # SECURITY FIX 28-28: Generische Fehlermeldung
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Rollback fehlgeschlagen. Bitte Eingaben pruefen."
+            detail="Rollback fehlgeschlagen. Bitte Eingaben prüfen."
         )
 
     return {
@@ -1358,9 +1358,9 @@ async def get_backend_quality_report(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Generiert einen Qualitaetsbericht fuer ein Backend.
+    Generiert einen Qualitaetsbericht für ein Backend.
 
-    Enthaelt:
+    Enthält:
     - Performance-Metriken (CER, WER, Umlaut-Accuracy)
     - Erkannte Schwaechen
     - Fehlermuster
@@ -1447,8 +1447,8 @@ async def get_backend_comparison_report(
 
     Zeigt:
     - Bestes Backend insgesamt
-    - Bestes Backend fuer Umlaute
-    - Bestes Backend fuer Geschwindigkeit
+    - Bestes Backend für Umlaute
+    - Bestes Backend für Geschwindigkeit
     - Empfehlungen
 
     Erfordert Admin-Rolle.
@@ -1477,7 +1477,7 @@ async def get_backend_weaknesses(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Gibt nur die Schwaechen eines Backends zurueck.
+    Gibt nur die Schwaechen eines Backends zurück.
 
     Erfordert Admin-Rolle.
     """
@@ -1510,7 +1510,7 @@ async def get_retraining_recommendations(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Gibt Retraining-Empfehlungen fuer ein Backend zurueck.
+    Gibt Retraining-Empfehlungen für ein Backend zurück.
 
     Erfordert Admin-Rolle.
     """
@@ -1552,7 +1552,7 @@ async def validate_umlauts(
     """
     Validiert Umlaute in einem Text.
 
-    Erkennt potentielle Umlaut-Fehler und gibt Korrekturvorschlaege.
+    Erkennt potentielle Umlaut-Fehler und gibt Korrekturvorschläge.
 
     Erfordert Admin- oder Editor-Rolle.
     """
@@ -2139,22 +2139,22 @@ async def get_alert_history(
 
 @router.get(
     "/verification-queue/next",
-    summary="Naechstes Sample zur Verifikation",
+    summary="Nächstes Sample zur Verifikation",
     tags=["verification-queue"]
 )
 async def get_next_verification_item(
     document_type: Optional[str] = Query(default=None, description="Dokumenttyp-Filter"),
-    include_spot_checks: bool = Query(default=True, description="Stichproben-Reviews einschliessen"),
+    include_spot_checks: bool = Query(default=True, description="Stichproben-Reviews einschließen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
-    Holt das naechste Sample zur Verifikation aus der priorisierten Queue.
+    Holt das nächste Sample zur Verifikation aus der priorisierten Queue.
 
     Priorisierung:
-    1. Coverage-Luecken (Typen unter 90% Abdeckung)
+    1. Coverage-Lücken (Typen unter 90% Abdeckung)
     2. Stichproben-Reviews (10% der auto-accepted)
-    3. Business-kritische Typen (Rechnungen > Vertraege)
+    3. Business-kritische Typen (Rechnungen > Verträge)
     4. Niedrige Confidence
 
     Erfordert Admin- oder Editor-Rolle.
@@ -2224,7 +2224,7 @@ async def get_next_verification_item(
                 document_id=str(item.sample_id),
                 db=db,
             )
-            # Konvertiere zu dict fuer JSON Response
+            # Konvertiere zu dict für JSON Response
             if extraction_result:
                 extracted_data = extraction_result.model_dump(mode="json", exclude_none=True)
                 logger.info(
@@ -2267,12 +2267,12 @@ async def get_verification_queue_stats(
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
-    Gibt detaillierte Statistiken der Verifikations-Queue zurueck.
+    Gibt detaillierte Statistiken der Verifikations-Queue zurück.
 
-    Enthaelt:
+    Enthält:
     - Gesamtzahl pending Samples
     - Verteilung nach Prioritaet und Dokumenttyp
-    - Coverage-Luecken
+    - Coverage-Lücken
     - Aeltestes Sample und durchschnittliche Wartezeit
 
     Erfordert Admin- oder Editor-Rolle.
@@ -2358,7 +2358,7 @@ async def get_queue_items_by_type(
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
-    Holt Queue-Items fuer einen bestimmten Dokumenttyp.
+    Holt Queue-Items für einen bestimmten Dokumenttyp.
 
     Erfordert Admin- oder Editor-Rolle.
     """
@@ -2404,12 +2404,12 @@ async def get_coverage_status(
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
-    Gibt den aktuellen Coverage-Status fuer alle Business-Dokumenttypen zurueck.
+    Gibt den aktuellen Coverage-Status für alle Business-Dokumenttypen zurück.
 
     Zeigt:
     - Aktuelle Coverage pro Typ (% des Ziels)
     - Verifizierte und auto-akzeptierte Samples
-    - Luecken unter 90% Ziel
+    - Lücken unter 90% Ziel
 
     Erfordert Admin- oder Editor-Rolle.
     """
@@ -2462,14 +2462,14 @@ async def get_coverage_status(
     tags=["coverage"]
 )
 async def get_coverage_history(
-    days: int = Query(default=30, ge=1, le=365, description="Tage zurueck"),
+    days: int = Query(default=30, ge=1, le=365, description="Tage zurück"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
-    Gibt die Coverage-Historie der letzten Tage zurueck.
+    Gibt die Coverage-Historie der letzten Tage zurück.
 
-    Basiert auf taeglichen Snapshots fuer Trend-Analyse.
+    Basiert auf täglichen Snapshots für Trend-Analyse.
 
     Erfordert Admin- oder Editor-Rolle.
     """
@@ -2514,11 +2514,11 @@ async def get_business_profiles(
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
-    Gibt alle Business Document Profiles zurueck.
+    Gibt alle Business Document Profiles zurück.
 
     Profile definieren:
     - Dokumenttyp und Anzeigename
-    - Geschaetzte taegliche Volumen
+    - Geschätzte tägliche Volumen
     - Auto-Accept Schwellenwerte
     - Coverage-Ziele
 
@@ -2566,7 +2566,7 @@ async def get_business_profiles(
 
 @router.post(
     "/samples/{sample_id}/llm-review",
-    summary="LLM-Review fuer Sample",
+    summary="LLM-Review für Sample",
     tags=["llm-review"]
 )
 async def trigger_llm_review(
@@ -2576,7 +2576,7 @@ async def trigger_llm_review(
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
-    Fuehrt eine LLM-Review fuer ein einzelnes Training Sample durch.
+    Führt eine LLM-Review für ein einzelnes Training Sample durch.
 
     Das LLM analysiert den OCR-Text und:
     1. Bewertet die semantische Korrektheit
@@ -2633,9 +2633,9 @@ async def get_llm_review_stats(
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
-    Gibt Statistiken ueber LLM-Reviews zurueck.
+    Gibt Statistiken über LLM-Reviews zurück.
 
-    Enthaelt:
+    Enthält:
     - Anzahl reviewed/pending Samples
     - Verteilung nach Recommendation (accept/reject/needs_human)
     - Durchschnittlicher Quality Score
@@ -2683,7 +2683,7 @@ async def trigger_llm_review_batch(
 
     return {
         "success": True,
-        "message": f"LLM-Review Batch gestartet fuer {max_samples} Samples",
+        "message": f"LLM-Review Batch gestartet für {max_samples} Samples",
         "task_id": task.id,
         "document_type_filter": document_type,
     }
@@ -2700,7 +2700,7 @@ async def get_llm_review_result(
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
-    Ruft das LLM-Review Ergebnis fuer ein Sample ab.
+    Ruft das LLM-Review Ergebnis für ein Sample ab.
 
     Erfordert Admin- oder Editor-Rolle.
     """
@@ -2746,7 +2746,7 @@ async def accept_llm_correction(
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
     """
-    Akzeptiert die LLM-Korrektur und uebernimmt sie als Ground-Truth.
+    Akzeptiert die LLM-Korrektur und übernimmt sie als Ground-Truth.
 
     Setzt llm_corrected_text als ground_truth_text und aktualisiert Status.
 
@@ -2772,7 +2772,7 @@ async def accept_llm_correction(
             detail="Keine LLM-Korrektur vorhanden"
         )
 
-    # Korrektur uebernehmen
+    # Korrektur übernehmen
     old_text = sample.ground_truth_text
     sample.ground_truth_text = sample.llm_corrected_text
     sample.llm_review_status = "accepted"
@@ -2786,7 +2786,7 @@ async def accept_llm_correction(
     return {
         "success": True,
         "sample_id": str(sample_id),
-        "message": "LLM-Korrektur als Ground-Truth uebernommen",
+        "message": "LLM-Korrektur als Ground-Truth übernommen",
         "old_text_preview": old_text[:100] + "..." if old_text and len(old_text) > 100 else old_text,
         "new_text_preview": sample.ground_truth_text[:100] + "..." if len(sample.ground_truth_text) > 100 else sample.ground_truth_text,
     }

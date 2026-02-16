@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-TrustLevelService - Multi-Level Trust System fuer autonome Aktionen.
+TrustLevelService - Multi-Level Trust System für autonome Aktionen.
 
 Implementiert ein 4-stufiges Trust-System:
-- Level 1 (ASSISTANCE): Alle Aktionen erfordern Bestaetigung
+- Level 1 (ASSISTANCE): Alle Aktionen erfordern Bestätigung
 - Level 2 (AUTO_ACCEPT): >90% Confidence, 24h Auto-Accept
-- Level 3 (CONFIDENCE): >95% sofort, 80-95% verzoegert (4h)
+- Level 3 (CONFIDENCE): >95% sofort, 80-95% verzögert (4h)
 - Level 4 (AUTONOMOUS): Volle Autonomie, nur Exceptions
 
 Trust-Level werden basierend auf Erfolgsmetriken angepasst:
@@ -41,11 +41,11 @@ logger = structlog.get_logger(__name__)
 
 
 class TrustLevel(str, Enum):
-    """Trust-Level fuer autonome Aktionen."""
+    """Trust-Level für autonome Aktionen."""
 
-    LEVEL_1_ASSISTANCE = "assistance"     # Alle Aktionen erfordern Bestaetigung
+    LEVEL_1_ASSISTANCE = "assistance"     # Alle Aktionen erfordern Bestätigung
     LEVEL_2_AUTO_ACCEPT = "auto_accept"   # >90% Confidence, 24h Auto-Accept
-    LEVEL_3_CONFIDENCE = "confidence"     # >95% sofort, 80-95% verzoegert (4h)
+    LEVEL_3_CONFIDENCE = "confidence"     # >95% sofort, 80-95% verzögert (4h)
     LEVEL_4_AUTONOMOUS = "autonomous"     # Volle Autonomie, nur Exceptions
 
 
@@ -56,13 +56,13 @@ class TrustLevel(str, Enum):
 
 @dataclass
 class TrustLevelConfig:
-    """Konfiguration fuer ein Trust-Level."""
+    """Konfiguration für ein Trust-Level."""
 
     level: TrustLevel
     immediate_threshold: float  # Ab hier sofortige Aktion
-    delayed_threshold: float    # Ab hier verzoegerte Aktion
-    delay_hours: int            # Wartezeit bei Verzoegerung
-    require_confirmation: bool  # Immer Bestaetigung erfordern
+    delayed_threshold: float    # Ab hier verzögerte Aktion
+    delay_hours: int            # Wartezeit bei Verzögerung
+    require_confirmation: bool  # Immer Bestätigung erfordern
     allow_auto_apply: bool      # Automatische Anwendung erlaubt
 
 
@@ -84,7 +84,7 @@ class TrustMetrics:
 
 @dataclass
 class TrustLevelRecommendation:
-    """Empfehlung fuer Trust-Level Aenderung."""
+    """Empfehlung für Trust-Level Änderung."""
 
     current_level: TrustLevel
     recommended_level: TrustLevel
@@ -103,7 +103,7 @@ TRUST_LEVEL_CONFIGS: Dict[TrustLevel, TrustLevelConfig] = {
     TrustLevel.LEVEL_1_ASSISTANCE: TrustLevelConfig(
         level=TrustLevel.LEVEL_1_ASSISTANCE,
         immediate_threshold=1.0,   # Nie automatisch
-        delayed_threshold=1.0,     # Nie verzoegert
+        delayed_threshold=1.0,     # Nie verzögert
         delay_hours=0,
         require_confirmation=True,
         allow_auto_apply=False,
@@ -119,7 +119,7 @@ TRUST_LEVEL_CONFIGS: Dict[TrustLevel, TrustLevelConfig] = {
     TrustLevel.LEVEL_3_CONFIDENCE: TrustLevelConfig(
         level=TrustLevel.LEVEL_3_CONFIDENCE,
         immediate_threshold=0.95,  # Ab 95% sofort
-        delayed_threshold=0.80,    # 80-95% -> 4h verzoegert
+        delayed_threshold=0.80,    # 80-95% -> 4h verzögert
         delay_hours=4,
         require_confirmation=False,
         allow_auto_apply=True,
@@ -127,7 +127,7 @@ TRUST_LEVEL_CONFIGS: Dict[TrustLevel, TrustLevelConfig] = {
     TrustLevel.LEVEL_4_AUTONOMOUS: TrustLevelConfig(
         level=TrustLevel.LEVEL_4_AUTONOMOUS,
         immediate_threshold=0.70,  # Ab 70% sofort
-        delayed_threshold=0.50,    # 50-70% verzoegert
+        delayed_threshold=0.50,    # 50-70% verzögert
         delay_hours=1,
         require_confirmation=False,
         allow_auto_apply=True,
@@ -164,7 +164,7 @@ UPGRADE_REQUIREMENTS: Dict[TrustLevel, Dict[str, Any]] = {
 
 
 class TrustLevelService:
-    """Service fuer Trust-Level Management.
+    """Service für Trust-Level Management.
 
     Verwaltet Trust-Level pro Company und Dokumenttyp.
     Berechnet Empfehlungen basierend auf Erfolgsmetriken.
@@ -183,20 +183,20 @@ class TrustLevelService:
         company_id: uuid.UUID,
         document_type: Optional[str] = None,
     ) -> TrustLevel:
-        """Holt das aktuelle Trust-Level fuer eine Company.
+        """Holt das aktuelle Trust-Level für eine Company.
 
         Args:
             company_id: ID der Company
-            document_type: Optional Dokumenttyp fuer spezifisches Level
+            document_type: Optional Dokumenttyp für spezifisches Level
 
         Returns:
             Aktuelles TrustLevel
         """
         try:
-            # Import hier um zirkulaere Imports zu vermeiden
+            # Import hier um zirkuläre Imports zu vermeiden
             from app.db.models import AutonomousTrustConfig
 
-            # Suche spezifisches Level fuer Dokumenttyp
+            # Suche spezifisches Level für Dokumenttyp
             if document_type:
                 result = await self.db.execute(
                     select(AutonomousTrustConfig).where(
@@ -210,7 +210,7 @@ class TrustLevelService:
                 if config:
                     return TrustLevel(config.trust_level)
 
-            # Suche globales Level fuer Company
+            # Suche globales Level für Company
             result = await self.db.execute(
                 select(AutonomousTrustConfig).where(
                     and_(
@@ -243,14 +243,14 @@ class TrustLevelService:
         updated_by_id: Optional[uuid.UUID] = None,
         reason: Optional[str] = None,
     ) -> bool:
-        """Setzt das Trust-Level fuer eine Company.
+        """Setzt das Trust-Level für eine Company.
 
         Args:
             company_id: ID der Company
             trust_level: Neues Trust-Level
             document_type: Optional Dokumenttyp
             updated_by_id: ID des Benutzers
-            reason: Grund fuer Aenderung
+            reason: Grund für Änderung
 
         Returns:
             True bei Erfolg
@@ -340,12 +340,12 @@ class TrustLevelService:
         document_type: Optional[str] = None,
         days: int = 30,
     ) -> TrustMetrics:
-        """Berechnet Trust-Metriken fuer eine Company.
+        """Berechnet Trust-Metriken für eine Company.
 
         Args:
             company_id: ID der Company
             document_type: Optional Dokumenttyp
-            days: Anzahl Tage fuer Analyse
+            days: Anzahl Tage für Analyse
 
         Returns:
             TrustMetrics
@@ -471,7 +471,7 @@ class TrustLevelService:
         current_level = await self.get_trust_level(company_id, document_type)
         metrics = await self.get_trust_metrics(company_id, document_type)
 
-        # Pruefe ob Downgrade erforderlich
+        # Prüfe ob Downgrade erforderlich
         if metrics.error_rate > 0.10:  # >10% Fehlerrate
             if current_level != TrustLevel.LEVEL_1_ASSISTANCE:
                 return TrustLevelRecommendation(
@@ -483,7 +483,7 @@ class TrustLevelService:
                     upgrade_requirements={},
                 )
 
-        # Pruefe ob Upgrade moeglich
+        # Prüfe ob Upgrade möglich
         next_level = self._get_next_level(current_level)
         if next_level is None:
             return TrustLevelRecommendation(
@@ -502,7 +502,7 @@ class TrustLevelService:
             return TrustLevelRecommendation(
                 current_level=current_level,
                 recommended_level=next_level,
-                reason=f"Alle Anforderungen fuer {next_level.value} erfuellt. Upgrade moeglich.",
+                reason=f"Alle Anforderungen für {next_level.value} erfuellt. Upgrade möglich.",
                 confidence=0.90,
                 can_upgrade=True,
                 upgrade_requirements=requirements,
@@ -512,7 +512,7 @@ class TrustLevelService:
             return TrustLevelRecommendation(
                 current_level=current_level,
                 recommended_level=current_level,
-                reason=f"Anforderungen fuer Upgrade nicht erfuellt: {missing}",
+                reason=f"Anforderungen für Upgrade nicht erfuellt: {missing}",
                 confidence=0.80,
                 can_upgrade=False,
                 upgrade_requirements=requirements,
@@ -526,7 +526,7 @@ class TrustLevelService:
         was_corrected: bool,
         document_type: Optional[str] = None,
     ) -> None:
-        """Reagiert auf Entscheidungs-Outcome fuer Trust-Anpassung.
+        """Reagiert auf Entscheidungs-Outcome für Trust-Anpassung.
 
         Args:
             company_id: ID der Company
@@ -541,7 +541,7 @@ class TrustLevelService:
             current_level = await self.get_trust_level(company_id, document_type)
             metrics = await self.get_trust_metrics(company_id, document_type, days=7)
 
-            # Bei Ablehnung: Sofortiger Downgrade moeglich
+            # Bei Ablehnung: Sofortiger Downgrade möglich
             if not was_approved and not was_corrected:
                 # Kritischer Fehler: Downgrade erwaegen
                 if metrics.error_rate > 0.15:
@@ -561,7 +561,7 @@ class TrustLevelService:
                             error_rate=metrics.error_rate,
                         )
 
-            # Bei hoher Erfolgsrate: Upgrade pruefen
+            # Bei hoher Erfolgsrate: Upgrade prüfen
             elif was_approved and metrics.approval_rate > 0.98:
                 recommendation = await self.evaluate_trust_level(
                     company_id, document_type
@@ -583,7 +583,7 @@ class TrustLevelService:
             )
 
     def _get_next_level(self, current: TrustLevel) -> Optional[TrustLevel]:
-        """Gibt das naechste Trust-Level zurueck."""
+        """Gibt das nächste Trust-Level zurück."""
         levels = list(TrustLevel)
         try:
             idx = levels.index(current)
@@ -594,7 +594,7 @@ class TrustLevelService:
         return None
 
     def _get_previous_level(self, current: TrustLevel) -> Optional[TrustLevel]:
-        """Gibt das vorherige Trust-Level zurueck."""
+        """Gibt das vorherige Trust-Level zurück."""
         levels = list(TrustLevel)
         try:
             idx = levels.index(current)
@@ -609,7 +609,7 @@ class TrustLevelService:
         metrics: TrustMetrics,
         requirements: Dict[str, Any],
     ) -> bool:
-        """Prueft ob Upgrade-Anforderungen erfuellt sind."""
+        """Prüft ob Upgrade-Anforderungen erfuellt sind."""
         if not requirements:
             return False
 
@@ -629,7 +629,7 @@ class TrustLevelService:
         metrics: TrustMetrics,
         requirements: Dict[str, Any],
     ) -> str:
-        """Gibt fehlende Anforderungen als String zurueck."""
+        """Gibt fehlende Anforderungen als String zurück."""
         missing = []
 
         min_decisions = requirements.get("min_decisions", 0)
@@ -665,7 +665,7 @@ class TrustLevelService:
 
 
 def get_trust_level_service(db: AsyncSession) -> TrustLevelService:
-    """Factory-Funktion fuer TrustLevelService.
+    """Factory-Funktion für TrustLevelService.
 
     Args:
         db: Async Database Session

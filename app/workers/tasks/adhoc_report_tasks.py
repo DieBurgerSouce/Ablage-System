@@ -2,14 +2,14 @@
 """
 Ad-Hoc Report Celery Tasks.
 
-Hintergrund-Tasks fuer Feature #12: Ad-Hoc Reporting.
-- Asynchrone Report-Ausfuehrung fuer grosse Reports
+Hintergrund-Tasks für Feature #12: Ad-Hoc Reporting.
+- Asynchrone Report-Ausführung für grosse Reports
 - Asynchroner Export (PDF, Excel, CSV)
-- Geplante Report-Ausfuehrung (Celery Beat, stuendlich)
+- Geplante Report-Ausführung (Celery Beat, stündlich)
 - E-Mail-Versand von Report-Exporten
-- Aufraeum-Task fuer alte Export-Dateien
+- Aufraeum-Task für alte Export-Dateien
 
-Feinpoliert und durchdacht - Zuverlaessige Report-Automatisierung.
+Feinpoliert und durchdacht - Zuverlässige Report-Automatisierung.
 """
 
 from __future__ import annotations
@@ -50,19 +50,19 @@ def execute_report_async_task(
     user_id: str,
     export_format: Optional[str] = None,
 ) -> TaskResult:
-    """Fuehrt einen Ad-Hoc Report asynchron im Hintergrund aus.
+    """Führt einen Ad-Hoc Report asynchron im Hintergrund aus.
 
-    Wird fuer grosse Reports verwendet, bei denen die Ausfuehrung
-    laenger als wenige Sekunden dauern kann.
+    Wird für grosse Reports verwendet, bei denen die Ausführung
+    länger als wenige Sekunden dauern kann.
 
     Args:
         report_id: UUID des Reports
         company_id: UUID des Mandanten
-        user_id: UUID des ausfuehrenden Benutzers
+        user_id: UUID des ausführenden Benutzers
         export_format: Optionales Export-Format (pdf, excel, csv)
 
     Returns:
-        Dict mit Ausfuehrungs-Ergebnis
+        Dict mit Ausführungs-Ergebnis
     """
     from app.services.adhoc_report_service import get_adhoc_report_service
 
@@ -144,11 +144,11 @@ def export_report_async_task(
     Args:
         report_id: UUID des Reports
         company_id: UUID des Mandanten
-        user_id: UUID des ausfuehrenden Benutzers
+        user_id: UUID des ausführenden Benutzers
         export_format: Export-Format (pdf, excel, csv)
 
     Returns:
-        Dict mit Export-Ergebnis (Dateipfad, Groesse)
+        Dict mit Export-Ergebnis (Dateipfad, Größe)
     """
     from app.services.adhoc_report_service import get_adhoc_report_service
     from app.db.models_adhoc_report import AdHocExportFormat
@@ -226,7 +226,7 @@ def export_report_async_task(
 
 
 # =============================================================================
-# Scheduled Reports (Celery Beat - stuendlich)
+# Scheduled Reports (Celery Beat - stündlich)
 # =============================================================================
 
 
@@ -237,14 +237,14 @@ def export_report_async_task(
     default_retry_delay=300,
 )
 def run_scheduled_reports_task(self) -> TaskResult:
-    """Prueft und fuehrt faellige geplante Ad-Hoc Reports aus.
+    """Prüft und führt fällige geplante Ad-Hoc Reports aus.
 
-    Typisches Schedule: Stuendlich via Celery Beat.
-    Sucht nach ReportSchedule-Eintraegen, deren next_run_at <= jetzt ist,
-    fuehrt den zugehoerigen Report aus und versendet die Ergebnisse per E-Mail.
+    Typisches Schedule: Stündlich via Celery Beat.
+    Sucht nach ReportSchedule-Einträgen, deren next_run_at <= jetzt ist,
+    führt den zugehoerigen Report aus und versendet die Ergebnisse per E-Mail.
 
     Returns:
-        Dict mit Ausfuehrungs-Statistiken
+        Dict mit Ausführungs-Statistiken
     """
     from app.services.adhoc_report_service import get_adhoc_report_service
     from app.db.models_adhoc_report import AdHocExportFormat
@@ -272,12 +272,12 @@ def run_scheduled_reports_task(self) -> TaskResult:
                     except ValueError:
                         fmt = AdHocExportFormat.EXCEL
 
-                    # Report ausfuehren und exportieren
+                    # Report ausführen und exportieren
                     file_bytes, content_type = await service.export_report(
                         db=db,
                         report_id=schedule.report_id,
                         company_id=schedule.company_id,
-                        user_id=schedule.report_id,  # System-Ausfuehrung
+                        user_id=schedule.report_id,  # System-Ausführung
                         export_format=fmt,
                     )
 
@@ -368,10 +368,10 @@ def send_scheduled_report_email_task(
     """Sendet einen generierten Ad-Hoc Report per E-Mail.
 
     Args:
-        report_id: UUID des Reports (fuer Logging)
+        report_id: UUID des Reports (für Logging)
         recipients: Liste der E-Mail-Adressen
         file_path: Pfad zur Export-Datei
-        filename: Dateiname fuer den Anhang
+        filename: Dateiname für den Anhang
         content_type: MIME-Type der Datei
 
     Returns:
@@ -467,10 +467,10 @@ def send_scheduled_report_email_task(
     name="app.workers.tasks.adhoc_report_tasks.cleanup_old_report_exports_task",
 )
 def cleanup_old_report_exports_task(retention_days: int = 7) -> TaskResult:
-    """Loescht alte Ad-Hoc Report Export-Dateien.
+    """Löscht alte Ad-Hoc Report Export-Dateien.
 
-    Typisches Schedule: Taeglich um 03:00 Uhr.
-    Entfernt Dateien, die aelter als retention_days Tage sind.
+    Typisches Schedule: Täglich um 03:00 Uhr.
+    Entfernt Dateien, die älter als retention_days Tage sind.
 
     Args:
         retention_days: Maximales Alter der Dateien in Tagen

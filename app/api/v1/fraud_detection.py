@@ -27,7 +27,7 @@ router = APIRouter(prefix="/fraud", tags=["Fraud Detection"])
 
 
 class FraudAlertSchema(BaseModel):
-    """Schema fuer einzelne Fraud-Alerts."""
+    """Schema für einzelne Fraud-Alerts."""
     type: str
     risk_level: str
     title: str
@@ -53,7 +53,7 @@ class FraudSummarySchema(BaseModel):
 
 
 class FraudAnalysisResponse(BaseModel):
-    """Response fuer vollstaendige Fraud-Analyse."""
+    """Response für vollständige Fraud-Analyse."""
     company_id: str
     analysis_period: dict
     summary: FraudSummarySchema
@@ -62,7 +62,7 @@ class FraudAnalysisResponse(BaseModel):
 
 
 class FraudDashboardStats(BaseModel):
-    """Dashboard-Statistiken fuer Fraud Detection."""
+    """Dashboard-Statistiken für Fraud Detection."""
     total_alerts_30d: int
     critical_alerts: int
     high_risk_amount: float
@@ -71,18 +71,18 @@ class FraudDashboardStats(BaseModel):
 
 
 class FraudConfigSchema(BaseModel):
-    """Konfiguration fuer Fraud Detection."""
+    """Konfiguration für Fraud Detection."""
     price_deviation_threshold: float = Field(
         0.30, ge=0.1, le=1.0, description="Max. Preisabweichung (0.30 = 30%)"
     )
     duplicate_similarity_threshold: float = Field(
-        0.85, ge=0.5, le=1.0, description="Duplikat-Aehnlichkeit (0.85 = 85%)"
+        0.85, ge=0.5, le=1.0, description="Duplikat-Ähnlichkeit (0.85 = 85%)"
     )
     phantom_supplier_days: int = Field(
         90, ge=30, le=365, description="Tage ohne Lieferung"
     )
     expense_pattern_threshold: int = Field(
-        5, ge=3, le=20, description="Min. Anzahl fuer Muster"
+        5, ge=3, le=20, description="Min. Anzahl für Muster"
     )
     approval_threshold: float = Field(
         5000, ge=100, description="Genehmigungsgrenze in EUR"
@@ -90,7 +90,7 @@ class FraudConfigSchema(BaseModel):
 
 
 class AlertActionRequest(BaseModel):
-    """Request fuer Alert-Aktionen."""
+    """Request für Alert-Aktionen."""
     action: str = Field(..., description="dismiss, investigate, escalate, false_positive")
     comment: Optional[str] = None
 
@@ -105,7 +105,7 @@ async def analyze_fraud(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Fuehrt vollstaendige Fraud-Analyse durch.
+    Führt vollständige Fraud-Analyse durch.
 
     Analysiert alle Betrugsarten:
     - Duplikat-Rechnungen
@@ -140,12 +140,12 @@ async def get_fraud_dashboard(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Liefert Dashboard-Statistiken fuer Fraud Detection.
+    Liefert Dashboard-Statistiken für Fraud Detection.
 
     Zeigt:
     - Gesamtzahl Alerts (30 Tage)
     - Kritische Alerts
-    - Geschaetzter Risikobetrag
+    - Geschätzter Risikobetrag
     - Top Betrugsarten
     - Trend
     """
@@ -163,7 +163,7 @@ async def get_fraud_dashboard(
         end_date=end_date,
     )
 
-    # Vorherige 30 Tage fuer Trend
+    # Vorherige 30 Tage für Trend
     prev_end = start_date
     prev_start = prev_end - timedelta(days=30)
     previous = await service.analyze_all(
@@ -254,11 +254,11 @@ async def get_fraud_alert_detail(
     Liefert Details zu einem spezifischen Alert.
 
     Hinweis: Alerts werden on-the-fly generiert und nicht persistent gespeichert.
-    Diese Route ist fuer zukuenftige Erweiterung mit persistenter Alert-Speicherung.
+    Diese Route ist für zukuenftige Erweiterung mit persistenter Alert-Speicherung.
     """
     raise HTTPException(
         status_code=501,
-        detail="Alert-Persistierung noch nicht implementiert. Nutzen Sie /analyze fuer aktuelle Alerts."
+        detail="Alert-Persistierung noch nicht implementiert. Nutzen Sie /analyze für aktuelle Alerts."
     )
 
 
@@ -270,7 +270,7 @@ async def take_alert_action(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Fuehrt Aktion auf Alert aus.
+    Führt Aktion auf Alert aus.
 
     Aktionen:
     - dismiss: Alert verwerfen
@@ -280,7 +280,7 @@ async def take_alert_action(
     """
     raise HTTPException(
         status_code=501,
-        detail="Alert-Aktionen noch nicht implementiert. Geplant fuer zukuenftige Version."
+        detail="Alert-Aktionen noch nicht implementiert. Geplant für zukuenftige Version."
     )
 
 
@@ -311,10 +311,10 @@ async def update_fraud_config(
     """
     Aktualisiert Fraud Detection Konfiguration.
 
-    Nur fuer Admins verfuegbar.
+    Nur für Admins verfügbar.
     """
     if current_user.role not in ["admin", "owner"]:
-        raise HTTPException(status_code=403, detail="Nur Admins koennen Konfiguration aendern")
+        raise HTTPException(status_code=403, detail="Nur Admins können Konfiguration ändern")
 
     # In Zukunft: Speicherung in DB pro Company
     # Aktuell: Nur Validierung, keine Persistenz
@@ -324,13 +324,13 @@ async def update_fraud_config(
 @router.get("/types", response_model=list[dict])
 async def get_fraud_types():
     """
-    Listet alle unterstuetzten Betrugsarten.
+    Listet alle unterstützten Betrugsarten.
     """
     return [
         {
             "type": FraudType.DUPLICATE_INVOICE,
             "name": "Duplikat-Rechnung",
-            "description": "Mehrfach eingereichte oder aehnliche Rechnungen",
+            "description": "Mehrfach eingereichte oder ähnliche Rechnungen",
         },
         {
             "type": FraudType.PRICE_ANOMALY,
@@ -350,7 +350,7 @@ async def get_fraud_types():
         {
             "type": FraudType.KICKBACK,
             "name": "Kickback",
-            "description": "Konsistente Preisaufschlaege als moegliche Rueckverguetung",
+            "description": "Konsistente Preisaufschlaege als mögliche Rückverguetung",
         },
         {
             "type": FraudType.SHELL_COMPANY,
@@ -390,13 +390,13 @@ async def get_risk_levels():
         {
             "level": RiskLevel.HIGH,
             "name": "Hoch",
-            "description": "Zeitnahe Ueberpruefung empfohlen",
+            "description": "Zeitnahe Überprüfung empfohlen",
             "color": "#ea580c",
         },
         {
             "level": RiskLevel.MEDIUM,
             "name": "Mittel",
-            "description": "Bei Gelegenheit pruefen",
+            "description": "Bei Gelegenheit prüfen",
             "color": "#ca8a04",
         },
         {
@@ -415,14 +415,14 @@ async def get_entity_risk_profile(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Liefert Fraud-Risikoprofil fuer eine Entity (Kunde/Lieferant).
+    Liefert Fraud-Risikoprofil für eine Entity (Kunde/Lieferant).
     """
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="Keine Firma zugewiesen")
 
     service = FraudDetectionService(db)
 
-    # Analyse fuer letztes Jahr
+    # Analyse für letztes Jahr
     end_date = datetime.utcnow()
     start_date = end_date - timedelta(days=365)
 
@@ -432,7 +432,7 @@ async def get_entity_risk_profile(
         end_date=end_date,
     )
 
-    # Alerts fuer diese Entity filtern
+    # Alerts für diese Entity filtern
     entity_alerts = [
         a for a in result["alerts"]
         if a.get("entity_id") == str(entity_id)
@@ -465,9 +465,9 @@ async def get_entity_risk_profile(
         "alerts_by_type": {},
         "recent_alerts": entity_alerts[:5],
         "recommendation": (
-            "Sofortige Ueberpruefung erforderlich" if risk_score >= 75
-            else "Erhoehte Aufmerksamkeit empfohlen" if risk_score >= 50
-            else "Regelmaessige Ueberpruefung" if risk_score >= 25
+            "Sofortige Überprüfung erforderlich" if risk_score >= 75
+            else "Erhöhte Aufmerksamkeit empfohlen" if risk_score >= 50
+            else "Regelmäßige Überprüfung" if risk_score >= 25
             else "Keine besonderen Massnahmen erforderlich"
         ),
     }

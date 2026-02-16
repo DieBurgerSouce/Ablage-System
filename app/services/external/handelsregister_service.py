@@ -38,7 +38,7 @@ from app.core.config import settings
 from app.core.safe_errors import safe_error_log
 
 # SECURITY: HTMLParser mit XXE-Praevention (CWE-611)
-# - no_network=True: Verhindert das Laden externer DTDs ueber Netzwerk
+# - no_network=True: Verhindert das Laden externer DTDs über Netzwerk
 # - resolve_entities=False: KRITISCH! Verhindert Entity-Expansion-Attacks
 #   (Billion Laughs, Quadratic Blowup) auch bei lokalen Entities
 # NOTE: resolve_entities was removed in lxml 5.x, use try/except for compatibility
@@ -62,11 +62,11 @@ logger = structlog.get_logger(__name__)
 # SECURITY: Input Validation Patterns (CWE-20, CWE-80, CWE-918)
 # =============================================================================
 
-# Erlaubte Zeichen fuer Firmennamen (deutsch-freundlich)
+# Erlaubte Zeichen für Firmennamen (deutsch-freundlich)
 NAME_PATTERN = re.compile(r"^[\w\s\-äöüßÄÖÜ\.&,\'\"()]+$", re.UNICODE)
-# Max Laenge fuer Firmennamen
+# Max Länge für Firmennamen
 MAX_NAME_LENGTH = 255
-# Max Laenge fuer Ortsangaben
+# Max Länge für Ortsangaben
 MAX_LOCATION_LENGTH = 100
 # Registernummer-Pattern: HRB/HRA/GnR/PR/VR + Leerzeichen + Nummer
 REGISTER_PATTERN = re.compile(r"^(HRB|HRA|GnR|PR|VR)\s+(\d{1,7})$")
@@ -83,7 +83,7 @@ def _validate_search_input(name: str, location: Optional[str]) -> None:
         location: Optional Ort
 
     Raises:
-        ValueError: Bei ungueltigen Eingaben
+        ValueError: Bei ungültigen Eingaben
     """
     if not name or not isinstance(name, str):
         raise ValueError("Firmenname ist erforderlich")
@@ -93,7 +93,7 @@ def _validate_search_input(name: str, location: Optional[str]) -> None:
 
     # SECURITY: Null-Byte Injection verhindern (CWE-158)
     if "\x00" in name:
-        raise ValueError("Firmenname enthaelt ungueltige Zeichen (Null-Byte)")
+        raise ValueError("Firmenname enthält ungültige Zeichen (Null-Byte)")
 
     if len(name) > MAX_NAME_LENGTH:
         raise ValueError(f"Firmenname zu lang (max {MAX_NAME_LENGTH} Zeichen)")
@@ -102,20 +102,20 @@ def _validate_search_input(name: str, location: Optional[str]) -> None:
         raise ValueError("Firmenname zu kurz (min 2 Zeichen)")
 
     if not NAME_PATTERN.match(name):
-        raise ValueError("Firmenname enthaelt ungueltige Zeichen")
+        raise ValueError("Firmenname enthält ungültige Zeichen")
 
     if location:
-        # SECURITY: Unicode-Normalisierung fuer Location
+        # SECURITY: Unicode-Normalisierung für Location
         location = unicodedata.normalize("NFKC", location.strip())
 
         # SECURITY: Null-Byte Injection verhindern (CWE-158)
         if "\x00" in location:
-            raise ValueError("Ortsangabe enthaelt ungueltige Zeichen (Null-Byte)")
+            raise ValueError("Ortsangabe enthält ungültige Zeichen (Null-Byte)")
 
         if len(location) > MAX_LOCATION_LENGTH:
             raise ValueError(f"Ortsangabe zu lang (max {MAX_LOCATION_LENGTH} Zeichen)")
         if not NAME_PATTERN.match(location):
-            raise ValueError("Ortsangabe enthaelt ungueltige Zeichen")
+            raise ValueError("Ortsangabe enthält ungültige Zeichen")
 
 
 def _validate_register_id(register_id: str) -> Tuple[str, str]:
@@ -130,7 +130,7 @@ def _validate_register_id(register_id: str) -> Tuple[str, str]:
         Tuple (register_type, register_number)
 
     Raises:
-        ValueError: Bei ungueltiger Registernummer
+        ValueError: Bei ungültiger Registernummer
     """
     if not register_id or not isinstance(register_id, str):
         raise ValueError("Registernummer ist erforderlich")
@@ -140,7 +140,7 @@ def _validate_register_id(register_id: str) -> Tuple[str, str]:
 
     if not match:
         raise ValueError(
-            "Ungueltiges Registernummer-Format. "
+            "Ungültiges Registernummer-Format. "
             "Erwartet: 'HRB 123456' oder 'HRA 12345'"
         )
 
@@ -180,7 +180,7 @@ class CompanyRecord:
 
 @dataclass
 class CompanyHistoryEntry:
-    """Einzelner Eintrag in der Firmen-Aenderungshistorie."""
+    """Einzelner Eintrag in der Firmen-Änderungshistorie."""
 
     date: str
     type: str
@@ -194,7 +194,7 @@ class CompanyDetails:
     record: CompanyRecord
     shareholders: Optional[List[str]] = None
     business_purpose: Optional[str] = None
-    history: Optional[List[CompanyHistoryEntry]] = None  # Aenderungshistorie
+    history: Optional[List[CompanyHistoryEntry]] = None  # Änderungshistorie
 
 
 # ============================================================================
@@ -342,18 +342,18 @@ class HandelsregisterService:
 
         Args:
             name: Firmenname (oder Teil davon)
-            location: Optional Ort zur Einschraenkung
+            location: Optional Ort zur Einschränkung
 
         Returns:
             Liste von CompanyRecord-Objekten
 
         Raises:
-            ValueError: Bei ungueltigen Eingaben
+            ValueError: Bei ungültigen Eingaben
         """
         # SECURITY: Input-Validierung (CWE-20, CWE-80)
         _validate_search_input(name, location)
 
-        # SECURITY: Keine PII (Firmennamen) in Logs - nur Laenge loggen
+        # SECURITY: Keine PII (Firmennamen) in Logs - nur Länge loggen
         logger.info(
             "handelsregister_search_requested",
             name_length=len(name),
@@ -924,13 +924,13 @@ class HandelsregisterService:
                 ),
                 CompanyHistoryEntry(
                     date="2018-06-20",
-                    type="Kapitalerhoehung",
-                    description="Stammkapital von 10.000 auf 25.000 EUR erhoeht",
+                    type="Kapitalerhöhung",
+                    description="Stammkapital von 10.000 auf 25.000 EUR erhöht",
                 ),
                 CompanyHistoryEntry(
                     date="2020-11-05",
-                    type="Geschaeftsfuehrerwechsel",
-                    description="Erika Musterfrau zur Geschaeftsfuehrerin bestellt",
+                    type="Geschäftsführerwechsel",
+                    description="Erika Musterfrau zur Geschäftsführerin bestellt",
                 ),
             ],
         )

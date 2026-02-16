@@ -2,13 +2,13 @@
 """
 Notifications API Endpoints - Enterprise Notification Center.
 
-Vollstaendiges Benachrichtigungssystem:
-- CRUD fuer Benachrichtigungen (GET, DELETE, mark as read)
+Vollständiges Benachrichtigungssystem:
+- CRUD für Benachrichtigungen (GET, DELETE, mark as read)
 - Prioritaeten: critical, warning, info
 - Read/Unread Status Tracking
 - Bulk Actions (mark all as read, dismiss multiple)
 - Filterung nach Typ, Prioritaet, Zeitraum
-- WebSocket-Support fuer Echtzeit-Updates
+- WebSocket-Support für Echtzeit-Updates
 - Per-User Notification Settings
 
 Feinpoliert und durchdacht - Real-time Benachrichtigungen auf Enterprise-Niveau.
@@ -47,7 +47,7 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
 # =============================================================================
-# Pydantic Schemas fuer Notification Center
+# Pydantic Schemas für Notification Center
 # =============================================================================
 
 
@@ -59,7 +59,7 @@ class NotificationPriority(str):
 
 
 class NotificationFilter(BaseModel):
-    """Filter fuer Benachrichtigungen."""
+    """Filter für Benachrichtigungen."""
     notification_type: Optional[str] = Field(None, description="Filter nach Typ")
     priority: Optional[str] = Field(None, description="Filter nach Prioritaet (critical/warning/info)")
     read: Optional[bool] = Field(None, description="Filter nach Gelesen-Status")
@@ -191,11 +191,11 @@ def _build_notification_response(
     "/system",
     response_model=NotificationsListResponseExtended,
     summary="System-Benachrichtigungen auflisten",
-    description="Gibt System-Benachrichtigungen mit erweiterten Filtern zurueck."
+    description="Gibt System-Benachrichtigungen mit erweiterten Filtern zurück."
 )
 async def list_system_notifications(
     limit: int = Query(50, ge=1, le=100, description="Anzahl Benachrichtigungen"),
-    offset: int = Query(0, ge=0, description="Offset fuer Pagination"),
+    offset: int = Query(0, ge=0, description="Offset für Pagination"),
     unread_only: bool = Query(False, description="Nur ungelesene Benachrichtigungen"),
     notification_type: Optional[str] = Query(None, description="Filter nach Typ"),
     priority: Optional[str] = Query(None, description="Filter nach Prioritaet (critical/warning/info)"),
@@ -332,15 +332,15 @@ async def get_system_notification(
     "/system/{notification_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="System-Benachrichtigung loeschen",
-    description="Loescht eine System-Benachrichtigung."
+    summary="System-Benachrichtigung löschen",
+    description="Löscht eine System-Benachrichtigung."
 )
 async def delete_system_notification(
     notification_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """System-Benachrichtigung loeschen."""
+    """System-Benachrichtigung löschen."""
     result = await db.execute(
         select(Notification).where(
             and_(
@@ -453,15 +453,15 @@ async def mark_all_system_notifications_read(
 @router.post(
     "/system/bulk-dismiss",
     status_code=status.HTTP_200_OK,
-    summary="Mehrere System-Benachrichtigungen loeschen",
-    description="Loescht mehrere System-Benachrichtigungen auf einmal."
+    summary="Mehrere System-Benachrichtigungen löschen",
+    description="Löscht mehrere System-Benachrichtigungen auf einmal."
 )
 async def bulk_dismiss_system_notifications(
     request: BulkDismissRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    """Mehrere System-Benachrichtigungen loeschen."""
+    """Mehrere System-Benachrichtigungen löschen."""
     # Convert to UUIDs
     notification_uuids = [UUID(nid) for nid in request.notification_ids]
 
@@ -484,7 +484,7 @@ async def bulk_dismiss_system_notifications(
     )
 
     return {
-        "message": f"{deleted_count} Benachrichtigungen geloescht",
+        "message": f"{deleted_count} Benachrichtigungen gelöscht",
         "success": True,
         "count": deleted_count
     }
@@ -493,7 +493,7 @@ async def bulk_dismiss_system_notifications(
 @router.get(
     "/unread-count",
     summary="Anzahl ungelesener Benachrichtigungen",
-    description="Gibt die Anzahl ungelesener System- und User-Benachrichtigungen zurueck."
+    description="Gibt die Anzahl ungelesener System- und User-Benachrichtigungen zurück."
 )
 async def get_unread_count(
     current_user: User = Depends(get_current_user),
@@ -581,7 +581,7 @@ async def get_notification_settings(
     "/settings",
     response_model=NotificationSettingsResponse,
     summary="Benachrichtigungs-Einstellungen aktualisieren",
-    description="Aktualisiert die Benachrichtigungs-Einstellungen fuer einen Typ."
+    description="Aktualisiert die Benachrichtigungs-Einstellungen für einen Typ."
 )
 async def update_notification_settings(
     settings: NotificationSettingsUpdate,
@@ -635,7 +635,7 @@ async def update_notification_settings(
     "/",
     response_model=NotificationsListResponse,
     summary="User-Benachrichtigungen auflisten",
-    description="Gibt User-zu-User Benachrichtigungen zurueck."
+    description="Gibt User-zu-User Benachrichtigungen zurück."
 )
 async def list_notifications(
     limit: int = Query(50, ge=1, le=100),
@@ -739,6 +739,62 @@ async def mark_as_read(
     return _build_notification_response(notification, notification.from_user, notification.document)
 
 
+# =============================================================================
+# Snooze Endpoint
+# =============================================================================
+
+
+class SnoozeRequest(BaseModel):
+    """Request für Benachrichtigung snoozen."""
+    snoozed_until: datetime = Field(..., description="Zeitpunkt bis wann die Benachrichtigung gesnoozed wird")
+
+
+@router.patch(
+    "/{notification_id}/snooze",
+    response_model=NotificationResponse,
+    summary="Benachrichtigung snoozen",
+    description="Benachrichtigung bis zum angegebenen Zeitpunkt snoozen."
+)
+async def snooze_notification(
+    notification_id: UUID,
+    payload: SnoozeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> NotificationResponse:
+    """Benachrichtigung snoozen bis zum angegebenen Zeitpunkt."""
+    result = await db.execute(
+        select(UserNotification)
+        .options(selectinload(UserNotification.from_user))
+        .options(selectinload(UserNotification.document))
+        .where(
+            and_(
+                UserNotification.id == notification_id,
+                UserNotification.user_id == current_user.id,
+            )
+        )
+    )
+    notification = result.scalar_one_or_none()
+
+    if not notification:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Benachrichtigung nicht gefunden"
+        )
+
+    notification.snoozed_until = payload.snoozed_until
+    await db.commit()
+    await db.refresh(notification)
+
+    logger.info(
+        "notification_snoozed",
+        notification_id=str(notification_id),
+        user_id=str(current_user.id),
+        snoozed_until=payload.snoozed_until.isoformat(),
+    )
+
+    return _build_notification_response(notification, notification.from_user, notification.document)
+
+
 @router.post(
     "/mark-all-read",
     summary="Alle User-Benachrichtigungen als gelesen markieren",
@@ -775,15 +831,15 @@ async def mark_all_as_read(
     "/{notification_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="User-Benachrichtigung loeschen",
-    description="Loescht eine User-Benachrichtigung."
+    summary="User-Benachrichtigung löschen",
+    description="Löscht eine User-Benachrichtigung."
 )
 async def delete_notification(
     notification_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """User-Benachrichtigung loeschen."""
+    """User-Benachrichtigung löschen."""
     result = await db.execute(
         select(UserNotification).where(
             and_(
@@ -816,15 +872,15 @@ async def delete_notification(
     "/",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Alle User-Benachrichtigungen loeschen",
-    description="Loescht alle User-Benachrichtigungen des Benutzers."
+    summary="Alle User-Benachrichtigungen löschen",
+    description="Löscht alle User-Benachrichtigungen des Benutzers."
 )
 async def delete_all_notifications(
-    read_only: bool = Query(False, description="Nur gelesene Benachrichtigungen loeschen"),
+    read_only: bool = Query(False, description="Nur gelesene Benachrichtigungen löschen"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Alle User-Benachrichtigungen loeschen."""
+    """Alle User-Benachrichtigungen löschen."""
     filter_cond = UserNotification.user_id == current_user.id
     if read_only:
         filter_cond = and_(filter_cond, UserNotification.is_read == True)
@@ -844,7 +900,7 @@ async def delete_all_notifications(
 
 
 # =============================================================================
-# WebSocket Endpoint fuer Real-time Benachrichtigungen
+# WebSocket Endpoint für Real-time Benachrichtigungen
 # =============================================================================
 
 
@@ -861,16 +917,16 @@ async def notification_websocket(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """
-    WebSocket-Endpoint fuer Real-time Benachrichtigungen.
+    WebSocket-Endpoint für Real-time Benachrichtigungen.
 
-    WICHTIG: Auth VOR accept() - Token muss als Query-Parameter uebergeben werden!
+    WICHTIG: Auth VOR accept() - Token muss als Query-Parameter übergeben werden!
 
     Verbindungsaufbau:
     1. Client verbindet sich zu /api/v1/notifications/ws?token=jwt_token
     2. Server validiert Token VOR accept() (Security Best Practice)
     3. Nach erfolgreicher Auth werden Benachrichtigungen in Echtzeit gesendet
 
-    Alternativ (Legacy, wird unterstuetzt):
+    Alternativ (Legacy, wird unterstützt):
     1. Client verbindet sich zu /api/v1/notifications/ws
     2. Client sendet {type: "auth", token: "jwt_token"} zur Authentifizierung
     3. Nach erfolgreicher Auth werden Benachrichtigungen in Echtzeit gesendet
@@ -942,7 +998,7 @@ async def notification_websocket(
 
         else:
             # =========================================================================
-            # LEGACY: Accept first, then auth via message (fuer Rueckwaertskompatibilitaet)
+            # LEGACY: Accept first, then auth via message (für Rückwärtskompatibilität)
             # =========================================================================
             try:
                 await websocket.accept()

@@ -1,15 +1,15 @@
 """Retention Enforcement Service - Aktive Durchsetzung von Aufbewahrungsfristen.
 
 Erweitert den bestehenden RetentionService um:
-- Loeschsperre waehrend aktiver Aufbewahrungsfrist
+- Löschsperre während aktiver Aufbewahrungsfrist
 - GDPR vs. Retention Konflikt-Aufloesung (§17 DSGVO vs §147 AO)
-- Automatische Pruefung bei Document-Delete-Anfragen
+- Automatische Prüfung bei Document-Delete-Anfragen
 - Compliance-Dashboard-Daten
 
 Gesetzliche Grundlagen:
-- §147 AO (Abgabenordnung): 10 Jahre Aufbewahrungspflicht fuer Buchfuehrungsunterlagen
+- §147 AO (Abgabenordnung): 10 Jahre Aufbewahrungspflicht für Buchführungsunterlagen
 - §257 HGB (Handelsgesetzbuch): 6-10 Jahre je nach Dokumenttyp
-- §17 DSGVO: Recht auf Loeschung (Ausnahme: §17 Abs. 3 lit. b - rechtliche Verpflichtung)
+- §17 DSGVO: Recht auf Löschung (Ausnahme: §17 Abs. 3 lit. b - rechtliche Verpflichtung)
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ class EnforcementStatus(str, Enum):
     """Status der Durchsetzung von Aufbewahrungsfristen."""
     ACTIVE = "active"  # Aufbewahrungsfrist aktiv
     EXPIRED = "expired"  # Frist abgelaufen
-    GDPR_CONFLICT = "gdpr_conflict"  # GDPR-Loeschanfrage mit aktiver Frist
+    GDPR_CONFLICT = "gdpr_conflict"  # GDPR-Löschanfrage mit aktiver Frist
     EXCEPTION_GRANTED = "exception_granted"  # Ausnahmegenehmigung
 
 
@@ -42,13 +42,13 @@ class ConflictResolutionAction(str, Enum):
     """Massnahmen bei GDPR vs. Retention Konflikt."""
     RETENTION_WINS = "retention_wins"  # Aufbewahrungspflicht hat Vorrang
     ANONYMIZE_METADATA = "anonymize_metadata"  # Metadaten anonymisieren
-    SCHEDULE_POST_RETENTION = "schedule_post_retention"  # Nach Fristablauf loeschen
+    SCHEDULE_POST_RETENTION = "schedule_post_retention"  # Nach Fristablauf löschen
     EXCEPTION_REQUIRED = "exception_required"  # Admin-Genehmigung erforderlich
 
 
 @dataclass
 class RetentionCheckResult:
-    """Ergebnis einer Aufbewahrungsfristen-Pruefung."""
+    """Ergebnis einer Aufbewahrungsfristen-Prüfung."""
     can_delete: bool
     reason: str
     enforcement_status: EnforcementStatus
@@ -72,7 +72,7 @@ class ConflictResolution:
 
 @dataclass
 class ComplianceDashboard:
-    """Compliance-Dashboard Daten fuer Uebersicht."""
+    """Compliance-Dashboard Daten für Übersicht."""
     total_archives: int
     active_retention: int
     expired_retention: int
@@ -97,10 +97,10 @@ class EnforcementResult:
 
 
 class RetentionEnforcementService:
-    """Service fuer aktive Durchsetzung von Aufbewahrungsfristen.
+    """Service für aktive Durchsetzung von Aufbewahrungsfristen.
 
-    Verwaltet die Loeschsperre waehrend Aufbewahrungsfristen und
-    loest Konflikte zwischen GDPR-Loeschanspruch und Aufbewahrungspflicht.
+    Verwaltet die Löschsperre während Aufbewahrungsfristen und
+    loest Konflikte zwischen GDPR-Löschanspruch und Aufbewahrungspflicht.
     """
 
     async def can_delete_document(
@@ -108,13 +108,13 @@ class RetentionEnforcementService:
         db: AsyncSession,
         document_id: uuid.UUID,
     ) -> RetentionCheckResult:
-        """Prueft ob ein Dokument geloescht werden darf.
+        """Prüft ob ein Dokument gelöscht werden darf.
 
-        Prueft ob eine aktive Aufbewahrungsfrist die Loeschung verhindert.
+        Prüft ob eine aktive Aufbewahrungsfrist die Löschung verhindert.
 
         Args:
             db: Datenbank-Session
-            document_id: ID des zu pruefenden Dokuments
+            document_id: ID des zu prüfenden Dokuments
 
         Returns:
             RetentionCheckResult mit Entscheidung und Begruendung
@@ -137,7 +137,7 @@ class RetentionEnforcementService:
                 archive_id=None,
             )
 
-        # Pruefe ob Dokument archiviert ist
+        # Prüfe ob Dokument archiviert ist
         if not document.is_archived:
             return RetentionCheckResult(
                 can_delete=True,
@@ -176,7 +176,7 @@ class RetentionEnforcementService:
         today = date.today()
         days_remaining = (archive.retention_expires_at - today).days
 
-        # Pruefe ob Aufbewahrungsfrist abgelaufen ist
+        # Prüfe ob Aufbewahrungsfrist abgelaufen ist
         if archive.retention_expires_at < today:
             return RetentionCheckResult(
                 can_delete=True,
@@ -215,37 +215,37 @@ class RetentionEnforcementService:
         document_id: uuid.UUID,
         gdpr_request_id: Optional[uuid.UUID] = None,
     ) -> ConflictResolution:
-        """Loest Konflikt zwischen GDPR-Loeschanspruch und Aufbewahrungspflicht.
+        """Loest Konflikt zwischen GDPR-Löschanspruch und Aufbewahrungspflicht.
 
-        Nach §17 Abs. 3 lit. b DSGVO besteht kein Loeschanspruch,
+        Nach §17 Abs. 3 lit. b DSGVO besteht kein Löschanspruch,
         wenn eine rechtliche Aufbewahrungspflicht besteht (§147 AO, §257 HGB).
 
         Loesung:
         - Aufbewahrungspflicht hat Vorrang (deutsches Recht)
-        - Personenbezogene Metadaten koennen anonymisiert werden
-        - Automatische Loeschung nach Fristablauf planen
+        - Personenbezogene Metadaten können anonymisiert werden
+        - Automatische Löschung nach Fristablauf planen
 
         Args:
             db: Datenbank-Session
             document_id: ID des betroffenen Dokuments
-            gdpr_request_id: Optional - ID der GDPR-Loeschanfrage
+            gdpr_request_id: Optional - ID der GDPR-Löschanfrage
 
         Returns:
             ConflictResolution mit Massnahmen und Begruendung
         """
-        # Pruefe Loeschbarkeit
+        # Prüfe Löschbarkeit
         check_result = await self.can_delete_document(db, document_id)
 
         if check_result.can_delete:
-            # Kein Konflikt - Dokument kann geloescht werden
+            # Kein Konflikt - Dokument kann gelöscht werden
             return ConflictResolution(
                 action=ConflictResolutionAction.RETENTION_WINS,
-                reason="Aufbewahrungsfrist abgelaufen, GDPR-Loeschung kann erfolgen",
+                reason="Aufbewahrungsfrist abgelaufen, GDPR-Löschung kann erfolgen",
                 retention_expires_at=check_result.retention_expires_at or date.today(),
                 can_anonymize=False,
                 scheduled_deletion_at=None,
                 requires_admin_approval=False,
-                legal_justification="§17 DSGVO - Recht auf Loeschung",
+                legal_justification="§17 DSGVO - Recht auf Löschung",
             )
 
         # Konflikt: Aufbewahrungspflicht vs. GDPR
@@ -255,16 +255,16 @@ class RetentionEnforcementService:
         return ConflictResolution(
             action=ConflictResolutionAction.RETENTION_WINS,
             reason=(
-                f"Aufbewahrungspflicht hat Vorrang gemaess {check_result.legal_basis}. "
-                f"GDPR-Loeschung nach Fristablauf ({check_result.retention_expires_at}) geplant. "
-                f"Metadaten-Anonymisierung moeglich."
+                f"Aufbewahrungspflicht hat Vorrang gemäß {check_result.legal_basis}. "
+                f"GDPR-Löschung nach Fristablauf ({check_result.retention_expires_at}) geplant. "
+                f"Metadaten-Anonymisierung möglich."
             ),
             retention_expires_at=check_result.retention_expires_at,
             can_anonymize=True,
             scheduled_deletion_at=scheduled_deletion,
             requires_admin_approval=False,
             legal_justification=(
-                f"§17 Abs. 3 lit. b DSGVO: Ausnahme vom Loeschanspruch bei rechtlicher Verpflichtung. "
+                f"§17 Abs. 3 lit. b DSGVO: Ausnahme vom Löschanspruch bei rechtlicher Verpflichtung. "
                 f"Aufbewahrungspflicht: {check_result.legal_basis}"
             ),
         )
@@ -274,7 +274,7 @@ class RetentionEnforcementService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> ComplianceDashboard:
-        """Holt Compliance-Dashboard Daten fuer Uebersicht.
+        """Holt Compliance-Dashboard Daten für Übersicht.
 
         Args:
             db: Datenbank-Session
@@ -361,11 +361,11 @@ class RetentionEnforcementService:
         }
 
         # GDPR-Konflikte - zaehle Archive mit GDPR conflict flag
-        # (Aktuell simuliert - in Production wuerde gdpr_conflict_resolved_at geprueft)
+        # (Aktuell simuliert - in Production wuerde gdpr_conflict_resolved_at geprüft)
         gdpr_conflicts = 0
 
-        # Geplante Post-Retention Loeschungen
-        # (Aktuell simuliert - in Production wuerde post_retention_review_scheduled geprueft)
+        # Geplante Post-Retention Löschungen
+        # (Aktuell simuliert - in Production wuerde post_retention_review_scheduled geprüft)
         scheduled_post_retention = 0
 
         return ComplianceDashboard(
@@ -387,21 +387,21 @@ class RetentionEnforcementService:
         document_id: uuid.UUID,
         user_id: uuid.UUID,
     ) -> EnforcementResult:
-        """Durchsetzt Aufbewahrungsfristen beim Loeschversuch.
+        """Durchsetzt Aufbewahrungsfristen beim Löschversuch.
 
-        Wird vom Loeschpfad aufgerufen um zu pruefen ob Loeschung erlaubt ist.
+        Wird vom Löschpfad aufgerufen um zu prüfen ob Löschung erlaubt ist.
         Wirft Exception wenn Aufbewahrungsfrist aktiv ist.
 
         Args:
             db: Datenbank-Session
-            document_id: ID des zu loeschenden Dokuments
-            user_id: ID des loeschenden Users
+            document_id: ID des zu löschenden Dokuments
+            user_id: ID des löschenden Users
 
         Returns:
             EnforcementResult mit Ergebnis
 
         Raises:
-            ValueError: Wenn Loeschung nicht erlaubt ist
+            ValueError: Wenn Löschung nicht erlaubt ist
         """
         check_result = await self.can_delete_document(db, document_id)
 
@@ -415,7 +415,7 @@ class RetentionEnforcementService:
             )
 
             raise ValueError(
-                f"Loeschung nicht erlaubt: {check_result.reason}"
+                f"Löschung nicht erlaubt: {check_result.reason}"
             )
 
         logger.info(
@@ -439,10 +439,10 @@ class RetentionEnforcementService:
         db: AsyncSession,
         archive_id: uuid.UUID,
     ) -> None:
-        """Plant eine Pruefung nach Ablauf der Aufbewahrungsfrist.
+        """Plant eine Prüfung nach Ablauf der Aufbewahrungsfrist.
 
         Setzt das Flag post_retention_review_scheduled=True und berechnet
-        das Datum fuer die automatische Pruefung.
+        das Datum für die automatische Prüfung.
 
         Args:
             db: Datenbank-Session

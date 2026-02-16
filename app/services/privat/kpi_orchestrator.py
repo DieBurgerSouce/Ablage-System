@@ -5,9 +5,9 @@ KPIOrchestrationService - Koordiniert alle bestehenden Calculation Services.
 Dieser Service orchestriert KEINE eigenen Berechnungen, sondern:
 - Koordiniert PropertyCalculationService, VehicleCalculationService,
   LoanScenarioService, InvestmentIntelligenceService, FinancialHealthService
-- Stellt korrekte Abhaengigkeitsreihenfolge sicher
-- Publiziert Events bei Aenderungen
-- Bietet Batch-Operationen fuer periodische Neuberechnung
+- Stellt korrekte Abhängigkeitsreihenfolge sicher
+- Publiziert Events bei Änderungen
+- Bietet Batch-Operationen für periodische Neuberechnung
 
 Enterprise Feature - Singleton Pattern.
 """
@@ -60,7 +60,7 @@ KPI_ENTITIES_PROCESSED = Gauge(
 
 @dataclass
 class EntityKPIResult:
-    """Ergebnis der KPI-Berechnung fuer eine Entity."""
+    """Ergebnis der KPI-Berechnung für eine Entity."""
     entity_type: str  # "property", "vehicle", "loan", "investment", "insurance"
     entity_id: UUID
     success: bool
@@ -71,7 +71,7 @@ class EntityKPIResult:
 
 @dataclass
 class SpaceKPIResult:
-    """Ergebnis der KPI-Berechnung fuer einen Space."""
+    """Ergebnis der KPI-Berechnung für einen Space."""
     space_id: UUID
 
     # Ergebnisse pro Entity-Typ
@@ -81,7 +81,7 @@ class SpaceKPIResult:
     investment_results: List[EntityKPIResult] = field(default_factory=list)
     insurance_results: List[EntityKPIResult] = field(default_factory=list)
 
-    # Financial Health Score (abhaengig von allen anderen)
+    # Financial Health Score (abhängig von allen anderen)
     financial_health_score: Optional[Decimal] = None
     financial_health_dimensions: Dict[str, Decimal] = field(default_factory=dict)
 
@@ -124,10 +124,10 @@ class KPIOrchestrationService:
     """
     Koordiniert alle bestehenden Calculation Services.
 
-    Fuehrt KEINE eigenen Berechnungen durch, sondern:
+    Führt KEINE eigenen Berechnungen durch, sondern:
     - Ruft bestehende Services in korrekter Reihenfolge auf
     - Stellt sicher dass Financial Health NACH allen anderen laeuft
-    - Publiziert Events bei Aenderungen
+    - Publiziert Events bei Änderungen
     - Bietet Batch-Operationen
 
     Thread-safe Singleton mit Double-Checked Locking.
@@ -149,7 +149,7 @@ class KPIOrchestrationService:
                     instance._investment_service = None
                     instance._insurance_service = None
                     instance._financial_health_service = None
-                    instance._service_lock = threading.RLock()  # Lock fuer Lazy Loading
+                    instance._service_lock = threading.RLock()  # Lock für Lazy Loading
                     instance._initialized = True
                     cls._instance = instance
                     logger.info("kpi_orchestration_service_initialized")
@@ -246,22 +246,22 @@ class KPIOrchestrationService:
         defer_events: bool = False,
     ) -> SpaceKPIResult:
         """
-        Berechnet alle KPIs fuer einen Space in korrekter Reihenfolge.
+        Berechnet alle KPIs für einen Space in korrekter Reihenfolge.
 
         Reihenfolge:
-        1. Properties (unabhaengig)
-        2. Vehicles (unabhaengig)
-        3. Loans (unabhaengig)
-        4. Investments (unabhaengig)
-        5. Insurances (unabhaengig)
+        1. Properties (unabhängig)
+        2. Vehicles (unabhängig)
+        3. Loans (unabhängig)
+        4. Investments (unabhängig)
+        5. Insurances (unabhängig)
         6. Financial Health (ABHAENGIG von allen anderen!)
 
         Args:
             db: Datenbank-Session
             space_id: Space-ID
             include_*: Welche Entity-Typen berechnet werden sollen
-            defer_events: Wenn True, Events nicht publizieren (fuer Batch-Operationen,
-                         wo Events NACH db.commit() publiziert werden muessen)
+            defer_events: Wenn True, Events nicht publizieren (für Batch-Operationen,
+                         wo Events NACH db.commit() publiziert werden müssen)
 
         Returns:
             SpaceKPIResult mit allen Ergebnissen
@@ -544,7 +544,7 @@ class KPIOrchestrationService:
             # Insurance Intelligence liefert Space-Level Ergebnis
             analysis = await service.get_full_analysis(db, space_id, persist=True)
 
-            # Ein "virtuelles" Ergebnis fuer den ganzen Space
+            # Ein "virtuelles" Ergebnis für den ganzen Space
             results.append(EntityKPIResult(
                 entity_type="insurance",
                 entity_id=space_id,  # Space-ID als "Entity"
@@ -620,7 +620,7 @@ class KPIOrchestrationService:
 
             event_bus = get_event_bus()
 
-            # System-Event fuer KPI-Neuberechnung
+            # System-Event für KPI-Neuberechnung
             await event_bus.publish(
                 EventType.SYSTEM_KPI_RECALCULATION,
                 {
@@ -653,10 +653,10 @@ class KPIOrchestrationService:
         space_ids: Optional[List[UUID]] = None,
     ) -> BatchKPIResult:
         """
-        Berechnet KPIs fuer alle (oder ausgewaehlte) Spaces.
+        Berechnet KPIs für alle (oder ausgewaehlte) Spaces.
 
         WICHTIG: Events werden NACH db.commit() publiziert um
-        transaktionale Konsistenz zu gewaehrleisten.
+        transaktionale Konsistenz zu gewährleisten.
 
         Args:
             db: Datenbank-Session
@@ -683,12 +683,12 @@ class KPIOrchestrationService:
         result = BatchKPIResult(total_spaces=len(spaces))
         total_health_scores: List[Decimal] = []
 
-        # Sammle Events fuer spaetere Publikation (NACH db.commit!)
+        # Sammle Events für spätere Publikation (NACH db.commit!)
         pending_events: List[tuple[UUID, SpaceKPIResult]] = []
 
         for space in spaces:
             try:
-                # defer_events=True: Events werden spaeter publiziert
+                # defer_events=True: Events werden später publiziert
                 space_result = await self.recalculate_all_for_space(
                     db, space.id, defer_events=True
                 )
@@ -706,7 +706,7 @@ class KPIOrchestrationService:
                 if space_result.financial_health_score:
                     total_health_scores.append(space_result.financial_health_score)
 
-                # Event fuer spaetere Publikation merken
+                # Event für spätere Publikation merken
                 pending_events.append((space.id, space_result))
 
             except Exception as e:
@@ -733,7 +733,7 @@ class KPIOrchestrationService:
         await db.commit()
 
         # DANN Events publizieren - NACH erfolgreichem Commit!
-        # So werden nur Events fuer tatsaechlich persistierte Daten gesendet
+        # So werden nur Events für tatsaechlich persistierte Daten gesendet
         for space_id, space_result in pending_events:
             await self._publish_recalculation_events(db, space_id, space_result)
 
@@ -762,9 +762,9 @@ class KPIOrchestrationService:
         recalculate_health: bool = True,
     ) -> EntityKPIResult:
         """
-        Berechnet KPIs fuer eine einzelne Entity.
+        Berechnet KPIs für eine einzelne Entity.
 
-        Nuetzlich wenn sich Daten einer Entity geaendert haben und
+        Nützlich wenn sich Daten einer Entity geändert haben und
         nur diese neu berechnet werden soll.
 
         Args:
@@ -835,7 +835,7 @@ class KPIOrchestrationService:
                     error=f"Unbekannter Entity-Typ: {entity_type}",
                 )
 
-            # Financial Health neu berechnen (wenn gewuenscht)
+            # Financial Health neu berechnen (wenn gewünscht)
             if recalculate_health and result.success:
                 # Space-ID holen
                 space_id = await self._get_space_id_for_entity(db, entity_type, entity_id)
@@ -874,7 +874,7 @@ class KPIOrchestrationService:
         entity_type: str,
         entity_id: UUID,
     ) -> Optional[UUID]:
-        """Ermittelt die Space-ID fuer eine Entity."""
+        """Ermittelt die Space-ID für eine Entity."""
         from app.db.models import PrivatProperty, PrivatVehicle, PrivatLoan, PrivatInvestment
 
 
@@ -901,7 +901,7 @@ class KPIOrchestrationService:
 
 
 def get_kpi_orchestration_service() -> KPIOrchestrationService:
-    """Factory fuer KPIOrchestrationService Singleton.
+    """Factory für KPIOrchestrationService Singleton.
 
     Die Klasse selbst implementiert Thread-safe Singleton mit Double-Checked Locking.
     Diese Factory delegiert einfach an den Konstruktor.

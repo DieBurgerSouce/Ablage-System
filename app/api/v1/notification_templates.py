@@ -1,6 +1,6 @@
 """Notification Template API - CRUD und Preview-Endpunkte.
 
-Dieser Router stellt API-Endpunkte fuer die Verwaltung von
+Dieser Router stellt API-Endpunkte für die Verwaltung von
 Benachrichtigungsvorlagen bereit.
 """
 
@@ -31,7 +31,7 @@ router = APIRouter(prefix="/notification-templates", tags=["notification-templat
 
 
 class TemplateVariables(BaseModel):
-    """Schema fuer Template-Variablen."""
+    """Schema für Template-Variablen."""
 
     required: List[str] = Field(default_factory=list)
     optional: List[str] = Field(default_factory=list)
@@ -113,7 +113,7 @@ class NotificationTemplateUpdate(BaseModel):
 
 
 class NotificationTemplateResponse(BaseModel):
-    """Schema fuer Vorlage-Response."""
+    """Schema für Vorlage-Response."""
 
     id: uuid.UUID
     name: str
@@ -132,13 +132,13 @@ class NotificationTemplateResponse(BaseModel):
 
 
 class TemplatePreviewRequest(BaseModel):
-    """Schema fuer Preview-Anfrage."""
+    """Schema für Preview-Anfrage."""
 
     sample_data: Optional[Dict[str, str]] = None
 
 
 class TemplatePreviewResponse(BaseModel):
-    """Schema fuer Preview-Response."""
+    """Schema für Preview-Response."""
 
     subject: str
     body: str
@@ -162,7 +162,7 @@ class TemplateSendRequest(BaseModel):
 
 
 class TemplateSendResponse(BaseModel):
-    """Schema fuer Send-Response."""
+    """Schema für Send-Response."""
 
     success: bool
     message: str
@@ -170,7 +170,7 @@ class TemplateSendResponse(BaseModel):
 
 
 class PresetTemplateResponse(BaseModel):
-    """Schema fuer Preset-Template."""
+    """Schema für Preset-Template."""
 
     key: str
     name: str
@@ -286,12 +286,12 @@ async def create_template(
 @router.get(
     "/presets/list",
     response_model=List[PresetTemplateResponse],
-    summary="Liste verfuegbare Preset-Vorlagen",
+    summary="Liste verfügbare Preset-Vorlagen",
 )
 async def list_preset_templates(
     current_user: User = Depends(get_current_active_user),
 ) -> List[PresetTemplateResponse]:
-    """Listet alle verfuegbaren Preset-Vorlagen auf.
+    """Listet alle verfügbaren Preset-Vorlagen auf.
 
     Args:
         current_user: Aktueller User
@@ -483,14 +483,14 @@ async def update_template(
 @router.delete(
     "/{template_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Loesche Vorlage (Soft-Delete)",
+    summary="Lösche Vorlage (Soft-Delete)",
 )
 async def delete_template(
     template_id: uuid.UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Loescht eine Benachrichtigungsvorlage (Soft-Delete).
+    """Löscht eine Benachrichtigungsvorlage (Soft-Delete).
 
     Args:
         template_id: UUID der Vorlage
@@ -513,7 +513,7 @@ async def delete_template(
         logger.error("delete_template_failed", **safe_error_log(e), template_id=str(template_id))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Loeschen der Vorlage",
+            detail="Fehler beim Löschen der Vorlage",
         )
 
 
@@ -580,7 +580,7 @@ async def send_with_template(
 
     Args:
         template_id: UUID der Vorlage
-        request: Send-Request mit Variablen und Empfaenger
+        request: Send-Request mit Variablen und Empfänger
         current_user: Aktueller User
         db: Datenbank-Session
 

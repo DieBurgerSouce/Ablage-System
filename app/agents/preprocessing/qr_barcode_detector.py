@@ -2,7 +2,7 @@
 """
 QR-Code & Barcode Detection Agent.
 
-Ermoeglicht:
+Ermöglicht:
 - SEPA-QR Code Erkennung (EPC-Standard)
 - EAN-13/EAN-8 Barcode Erkennung
 - Code-128, Code-39, QR-Codes
@@ -33,7 +33,7 @@ logger = structlog.get_logger(__name__)
 class CodeType(str, Enum):
     """Typen von erkannten Codes."""
     QR_CODE = "qr_code"
-    SEPA_QR = "sepa_qr"           # EPC QR-Code fuer Ueberweisungen
+    SEPA_QR = "sepa_qr"           # EPC QR-Code für Überweisungen
     EAN_13 = "ean_13"             # 13-stelliger Produktcode
     EAN_8 = "ean_8"               # 8-stelliger Produktcode
     CODE_128 = "code_128"         # Logistik-Barcode
@@ -62,8 +62,8 @@ class CodeCategory(str, Enum):
 class SEPAPaymentData:
     """SEPA-Zahlungsdaten aus EPC QR-Code."""
     bic: Optional[str] = None          # Bank Identifier Code
-    iban: str = ""                      # IBAN des Empfaengers
-    recipient_name: str = ""            # Name des Empfaengers
+    iban: str = ""                      # IBAN des Empfängers
+    recipient_name: str = ""            # Name des Empfängers
     amount: Optional[float] = None      # Betrag in EUR
     currency: str = "EUR"
     reference: str = ""                 # Verwendungszweck/Referenz
@@ -73,7 +73,7 @@ class SEPAPaymentData:
 
     @property
     def is_valid(self) -> bool:
-        """Pruefen ob minimale SEPA-Daten vorhanden."""
+        """Prüfen ob minimale SEPA-Daten vorhanden."""
         return bool(self.iban and self.recipient_name)
 
     def to_dict(self) -> Dict[str, Union[str, float, bool, None]]:
@@ -146,7 +146,7 @@ class CodeDetectionResult:
 
     @property
     def primary_sepa_payment(self) -> Optional[SEPAPaymentData]:
-        """Erstes gueltiges SEPA-Payment."""
+        """Erstes gültiges SEPA-Payment."""
         for payment in self.sepa_payments:
             if payment.is_valid:
                 return payment
@@ -160,7 +160,7 @@ class CodeDetectionResult:
 
 class SEPAQRParser:
     """
-    Parser fuer SEPA EPC QR-Codes (European Payments Council).
+    Parser für SEPA EPC QR-Codes (European Payments Council).
 
     EPC QR-Code Format:
     - Service Tag: BCD
@@ -199,16 +199,16 @@ class SEPAQRParser:
 
         lines = qr_data.strip().split(self.SEPARATOR)
 
-        # Mindestens 4 Zeilen fuer gueltigen EPC QR
+        # Mindestens 4 Zeilen für gültigen EPC QR
         if len(lines) < 4:
             return None
 
         try:
-            # Service Tag pruefen
+            # Service Tag prüfen
             if lines[0].upper() != self.SERVICE_TAG:
                 return None
 
-            # Version pruefen
+            # Version prüfen
             version = lines[1] if len(lines) > 1 else ""
             if version not in self.VERSIONS:
                 return None
@@ -259,7 +259,7 @@ class SEPAQRParser:
             # Validiere IBAN
             if payment.iban and not self._validate_iban(payment.iban):
                 logger.warning("sepa_qr_invalid_iban", iban=payment.iban[:4] + "****")
-                # Trotzdem zurueckgeben, IBAN koennte korrigiert werden
+                # Trotzdem zurückgeben, IBAN könnte korrigiert werden
 
             return payment
 
@@ -297,15 +297,15 @@ class SEPAQRParser:
         """Einfache IBAN-Validierung."""
         iban = iban.replace(" ", "").upper()
 
-        # Laenge pruefen (DE = 22 Zeichen)
+        # Länge prüfen (DE = 22 Zeichen)
         if len(iban) < 15 or len(iban) > 34:
             return False
 
-        # Laendercode pruefen
+        # Ländercode prüfen
         if not iban[:2].isalpha():
             return False
 
-        # Pruefziffer pruefen (vereinfacht)
+        # Prüfziffer prüfen (vereinfacht)
         if not iban[2:4].isdigit():
             return False
 
@@ -322,7 +322,7 @@ class BarcodeValidator:
 
     @staticmethod
     def validate_ean13(code: str) -> bool:
-        """Validiere EAN-13 Pruefsumme."""
+        """Validiere EAN-13 Prüfsumme."""
         if not code or len(code) != 13 or not code.isdigit():
             return False
 
@@ -336,7 +336,7 @@ class BarcodeValidator:
 
     @staticmethod
     def validate_ean8(code: str) -> bool:
-        """Validiere EAN-8 Pruefsumme."""
+        """Validiere EAN-8 Prüfsumme."""
         if not code or len(code) != 8 or not code.isdigit():
             return False
 
@@ -358,13 +358,13 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
     """
     Agent zur Erkennung von QR-Codes und Barcodes.
 
-    Unterstuetzte Formate:
+    Unterstützte Formate:
     - QR-Code (inkl. SEPA EPC)
     - EAN-13, EAN-8
     - Code-128, Code-39
     - DataMatrix, PDF-417
 
-    Verwendet pyzbar fuer Barcode-Decoding.
+    Verwendet pyzbar für Barcode-Decoding.
     """
 
     # Mapping von pyzbar Typen zu CodeType
@@ -386,7 +386,7 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
         self._sepa_parser = SEPAQRParser()
         self._barcode_validator = BarcodeValidator()
 
-        # Pruefe Verfuegbarkeit
+        # Prüfe Verfügbarkeit
         try:
             import pyzbar.pyzbar  # noqa: F401
             self._pyzbar_available = True
@@ -536,7 +536,7 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
         try:
             from pyzbar import pyzbar
 
-            # Konvertiere zu Grayscale falls noetig
+            # Konvertiere zu Grayscale falls nötig
             if len(image.shape) == 3:
                 if self._cv2_available:
                     import cv2
@@ -569,7 +569,7 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
                 parsed_data: Optional[Dict[str, Union[str, float, bool, None]]] = None
                 sepa_payment: Optional[SEPAPaymentData] = None
 
-                # QR-Code: SEPA EPC pruefen
+                # QR-Code: SEPA EPC prüfen
                 if code_type == CodeType.QR_CODE and detect_sepa:
                     sepa_payment = self._sepa_parser.parse(data)
                     if sepa_payment and sepa_payment.is_valid:
@@ -597,14 +597,14 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
 
                 # Code-128/39: oft Logistik
                 if code_type in (CodeType.CODE_128, CodeType.CODE_39):
-                    # Pruefe auf Tracking-Nummern Muster
+                    # Prüfe auf Tracking-Nummern Muster
                     if self._is_tracking_number(data):
                         category = CodeCategory.LOGISTICS
                     else:
                         category = CodeCategory.DOCUMENT
 
-                # Confidence basierend auf Qualitaet
-                # pyzbar gibt keine direkte Qualitaet, nutze Groesse als Proxy
+                # Confidence basierend auf Qualität
+                # pyzbar gibt keine direkte Qualität, nutze Größe als Proxy
                 min_size = 20
                 quality_factor = min(1.0, (w * h) / (min_size * min_size * 10))
                 confidence = 0.8 + 0.2 * quality_factor
@@ -629,18 +629,18 @@ class QRBarcodeDetectorAgent(PreprocessingAgent):
 
     async def _detect_fallback(self, image: np.ndarray) -> List[DetectedCode]:
         """Fallback-Erkennung ohne pyzbar (sehr eingeschraenkt)."""
-        # Ohne pyzbar koennen wir nur versuchen, QR-Code-Muster zu finden
-        # Dies ist ein Stub fuer den Fall dass pyzbar nicht verfuegbar ist
+        # Ohne pyzbar können wir nur versuchen, QR-Code-Muster zu finden
+        # Dies ist ein Stub für den Fall dass pyzbar nicht verfügbar ist
         logger.warning("qr_barcode_detection_fallback_no_pyzbar")
         return []
 
     def _is_url(self, data: str) -> bool:
-        """Pruefen ob Daten eine URL sind."""
+        """Prüfen ob Daten eine URL sind."""
         data_lower = data.lower()
         return data_lower.startswith(("http://", "https://", "www."))
 
     def _is_tracking_number(self, data: str) -> bool:
-        """Pruefen ob Daten eine Tracking-Nummer sein koennten."""
+        """Prüfen ob Daten eine Tracking-Nummer sein könnten."""
         # Typische Tracking-Nummer-Muster
         import re
 
@@ -755,7 +755,7 @@ async def extract_sepa_payment(image: Union[str, np.ndarray, object]) -> Optiona
 
 
 async def has_payment_codes(image: Union[str, np.ndarray, object]) -> bool:
-    """Schnelle Pruefung ob Bild Zahlungs-relevante Codes enthaelt."""
+    """Schnelle Prüfung ob Bild Zahlungs-relevante Codes enthält."""
     detector = get_qr_barcode_detector()
     result = await detector.execute({
         "image": image,

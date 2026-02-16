@@ -349,7 +349,7 @@ class PSD2IntegrationService:
         """
         config = self.get_bank_config(bank_code)
         if not config:
-            return None, f"Bank {bank_code} nicht unterstuetzt"
+            return None, f"Bank {bank_code} nicht unterstützt"
 
         if valid_until is None:
             valid_until = date.today() + timedelta(days=90)
@@ -474,7 +474,7 @@ class PSD2IntegrationService:
         """
         config = self.get_bank_config(bank_code)
         if not config:
-            return None, f"Bank {bank_code} nicht unterstuetzt"
+            return None, f"Bank {bank_code} nicht unterstützt"
 
         base_url = config.sandbox_url if self.use_sandbox else config.base_url
         url = f"{base_url}{PSD2Endpoint.CONSENTS_STATUS.value.format(consent_id=consent_id)}"
@@ -521,7 +521,7 @@ class PSD2IntegrationService:
         """
         config = self.get_bank_config(bank_code)
         if not config:
-            return [], f"Bank {bank_code} nicht unterstuetzt"
+            return [], f"Bank {bank_code} nicht unterstützt"
 
         base_url = config.sandbox_url if self.use_sandbox else config.base_url
         url = f"{base_url}{PSD2Endpoint.ACCOUNTS.value}"
@@ -612,7 +612,7 @@ class PSD2IntegrationService:
         """
         config = self.get_bank_config(bank_code)
         if not config:
-            return [], f"Bank {bank_code} nicht unterstuetzt"
+            return [], f"Bank {bank_code} nicht unterstützt"
 
         base_url = config.sandbox_url if self.use_sandbox else config.base_url
         url = f"{base_url}{PSD2Endpoint.BALANCES.value.format(account_id=account_id)}"
@@ -697,7 +697,7 @@ class PSD2IntegrationService:
         """
         config = self.get_bank_config(bank_code)
         if not config:
-            return TransactionPage(transactions=[], has_more=False, next_page_token=None), f"Bank {bank_code} nicht unterstuetzt"
+            return TransactionPage(transactions=[], has_more=False, next_page_token=None), f"Bank {bank_code} nicht unterstützt"
 
         # Default: last 90 days
         if date_from is None:
@@ -817,7 +817,7 @@ class PSD2IntegrationService:
         """
         config = self.get_bank_config(bank_code)
         if not config:
-            return None, f"Bank {bank_code} nicht unterstuetzt"
+            return None, f"Bank {bank_code} nicht unterstützt"
 
         payload = {
             "debtorAccount": {
@@ -938,7 +938,7 @@ class PSD2IntegrationService:
         """
         config = self.get_bank_config(bank_code)
         if not config:
-            return None, f"Bank {bank_code} nicht unterstuetzt"
+            return None, f"Bank {bank_code} nicht unterstützt"
 
         base_url = config.sandbox_url if self.use_sandbox else config.base_url
         url = f"{base_url}{PSD2Endpoint.PAYMENT_STATUS.value.format(payment_id=payment_id)}"

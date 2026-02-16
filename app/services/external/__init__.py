@@ -1,7 +1,7 @@
 """
 External Services Module.
 
-Stellt Services fuer externe API-Integrationen bereit.
+Stellt Services für externe API-Integrationen bereit.
 WICHTIG: Nur kostenlose APIs, nur auf manuelle Anfrage (Button-Klick).
 """
 

@@ -4,11 +4,11 @@ AutoFilingService - Automatische Dokumentenablage.
 
 Feature #7: Automation 2.0
 - ML-basierte oder regelbasierte Dokumentenklassifizierung
-- Confidence-Schwelle fuer automatische Ablage
+- Confidence-Schwelle für automatische Ablage
 - Trainingsstatistiken und Accuracy-Tracking
-- Vorschlaege fuer Ordner/Kategorie
+- Vorschläge für Ordner/Kategorie
 
-Nutzt models_approval_extended fuer AutoFilingRule.
+Nutzt models_approval_extended für AutoFilingRule.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class FilingSuggestion:
-    """Vorschlag fuer automatische Ablage."""
+    """Vorschlag für automatische Ablage."""
 
     rule_id: UUID
     rule_name: str
@@ -59,7 +59,7 @@ class FilingResult:
 
 @dataclass
 class AccuracyStats:
-    """Accuracy-Statistiken fuer Filing-Modelle."""
+    """Accuracy-Statistiken für Filing-Modelle."""
 
     total_rules: int
     active_rules: int
@@ -76,7 +76,7 @@ class AccuracyStats:
 
 
 class AutoFilingService:
-    """Service fuer automatische Dokumentenablage.
+    """Service für automatische Dokumentenablage.
 
     Klassifiziert Dokumente anhand von ML- oder regelbasierten Modellen
     und legt sie automatisch in den richtigen Ordner/Kategorie ab.
@@ -91,7 +91,7 @@ class AutoFilingService:
         company_id: UUID,
         document_id: UUID,
     ) -> List[FilingSuggestion]:
-        """Klassifiziert ein Dokument und liefert Ablage-Vorschlaege.
+        """Klassifiziert ein Dokument und liefert Ablage-Vorschläge.
 
         Args:
             db: Async Database Session
@@ -99,7 +99,7 @@ class AutoFilingService:
             document_id: ID des Dokuments
 
         Returns:
-            Liste von Ablage-Vorschlaegen sortiert nach Confidence
+            Liste von Ablage-Vorschlägen sortiert nach Confidence
         """
         # Dokument laden
         doc_stmt = select(Document).where(
@@ -161,7 +161,7 @@ class AutoFilingService:
         company_id: UUID,
         document_id: UUID,
     ) -> Optional[FilingSuggestion]:
-        """Liefert den besten Ablage-Vorschlag fuer ein Dokument.
+        """Liefert den besten Ablage-Vorschlag für ein Dokument.
 
         Args:
             db: Async Database Session
@@ -302,7 +302,7 @@ class AutoFilingService:
         else:
             sample_count = 0
 
-        # Accuracy simulieren basierend auf Sample-Groesse
+        # Accuracy simulieren basierend auf Sample-Größe
         # In Produktion wuerde hier ein echtes ML-Modell trainiert
         accuracy = min(0.99, 0.5 + (sample_count / 1000.0) * 0.4)
 
@@ -336,7 +336,7 @@ class AutoFilingService:
         db: AsyncSession,
         company_id: UUID,
     ) -> AccuracyStats:
-        """Liefert Accuracy-Statistiken fuer alle Filing-Modelle.
+        """Liefert Accuracy-Statistiken für alle Filing-Modelle.
 
         Args:
             db: Async Database Session
@@ -409,11 +409,11 @@ class AutoFilingService:
             company_id: ID der Firma
             name: Name der Regel
             model_type: "ml" oder "rule"
-            confidence_threshold: Schwelle fuer automatische Ablage (0-1)
+            confidence_threshold: Schwelle für automatische Ablage (0-1)
             target_folder_id: Ziel-Ordner
             target_category: Ziel-Kategorie
             description: Beschreibung
-            config: Zusaetzliche Konfiguration
+            config: Zusätzliche Konfiguration
 
         Returns:
             Erstellte AutoFilingRule
@@ -460,7 +460,7 @@ class AutoFilingService:
         company_id: UUID,
         active_only: bool = True,
     ) -> Sequence[AutoFilingRule]:
-        """Holt Filing-Regeln fuer eine Firma.
+        """Holt Filing-Regeln für eine Firma.
 
         Args:
             db: Async Database Session
@@ -538,7 +538,7 @@ class AutoFilingService:
         company_id: UUID,
         rule_id: UUID,
     ) -> bool:
-        """Loescht eine Filing-Regel.
+        """Löscht eine Filing-Regel.
 
         Args:
             db: Async Database Session
@@ -546,7 +546,7 @@ class AutoFilingService:
             rule_id: ID der Regel
 
         Returns:
-            True wenn erfolgreich geloescht
+            True wenn erfolgreich gelöscht
         """
         stmt = select(AutoFilingRule).where(
             and_(
@@ -648,7 +648,7 @@ class AutoFilingService:
                 # Keine Checks konfiguriert, Accuracy als Fallback
                 confidence = rule.accuracy
             else:
-                confidence = 0.5  # Default fuer unkonfigurierte Regeln
+                confidence = 0.5  # Default für unkonfigurierte Regeln
 
         elif rule.model_type == "ml":
             # ML-basierte Auswertung: Accuracy als Proxy

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""BPMN 2.0 Import/Export Converter fuer Ablage-System Workflows.
+"""BPMN 2.0 Import/Export Converter für Ablage-System Workflows.
 
 Bidirektionale Konvertierung zwischen internem Workflow-Format und BPMN 2.0 XML.
 Kompatibel mit:
@@ -320,7 +320,7 @@ class ProcessDefinition:
 
 @dataclass
 class WorkflowDefinition:
-    """Vollstaendige Workflow-Definition."""
+    """Vollständige Workflow-Definition."""
     id: str
     name: str
     description: Optional[str] = None
@@ -396,7 +396,7 @@ class BPMNValidator:
     """Validiert BPMN 2.0 XML Struktur und Semantik."""
 
     def validate(self, xml_content: str) -> ValidationResult:
-        """Validiert BPMN XML und gibt Validierungsergebnis zurueck.
+        """Validiert BPMN XML und gibt Validierungsergebnis zurück.
 
         Args:
             xml_content: BPMN 2.0 XML String
@@ -411,11 +411,11 @@ class BPMNValidator:
         if schema_errors:
             return result
 
-        # XML parsen fuer semantische Validierung
+        # XML parsen für semantische Validierung
         try:
             root = DefusedET.fromstring(xml_content)
         except ET.ParseError as e:
-            result.add_error("PARSE_ERROR", f"Ungueltiges XML: {e}")
+            result.add_error("PARSE_ERROR", f"Ungültiges XML: {e}")
             return result
 
         # Semantische Validierung
@@ -432,10 +432,10 @@ class BPMNValidator:
         try:
             root = DefusedET.fromstring(xml_content)
         except ET.ParseError as e:
-            result.add_error("SCHEMA_PARSE_ERROR", f"Ungueltiges BPMN-Format: {e}")
+            result.add_error("SCHEMA_PARSE_ERROR", f"Ungültiges BPMN-Format: {e}")
             return True
 
-        # Pruefen ob Root-Element "definitions" ist
+        # Prüfen ob Root-Element "definitions" ist
         root_tag = root.tag.replace(f"{{{BPMN_NS}}}", "").replace("{http://www.omg.org/spec/BPMN/20100524/MODEL}", "")
         if root_tag != "definitions" and not root_tag.endswith("definitions"):
             result.add_error(
@@ -444,7 +444,7 @@ class BPMNValidator:
             )
             return True
 
-        # Pruefen ob mindestens ein Process vorhanden
+        # Prüfen ob mindestens ein Process vorhanden
         ns = {"bpmn": BPMN_NS}
         processes = root.findall(".//bpmn:process", ns) or root.findall(".//{http://www.omg.org/spec/BPMN/20100524/MODEL}process")
         if not processes:
@@ -475,7 +475,7 @@ class BPMNValidator:
         for process in processes:
             process_id = process.get("id", "unknown")
 
-            # Start-Event pruefen
+            # Start-Event prüfen
             start_events = (
                 process.findall(".//bpmn:startEvent", ns) or
                 process.findall(".//{http://www.omg.org/spec/BPMN/20100524/MODEL}startEvent") or
@@ -488,7 +488,7 @@ class BPMNValidator:
                     process_id
                 )
 
-            # End-Event pruefen
+            # End-Event prüfen
             end_events = (
                 process.findall(".//bpmn:endEvent", ns) or
                 process.findall(".//{http://www.omg.org/spec/BPMN/20100524/MODEL}endEvent") or
@@ -501,11 +501,11 @@ class BPMNValidator:
                     process_id
                 )
 
-            # Erreichbarkeit pruefen
+            # Erreichbarkeit prüfen
             self._validate_reachability(process, result)
 
     def _validate_reachability(self, process: ET.Element, result: ValidationResult) -> None:
-        """Prueft ob alle Elemente erreichbar sind.
+        """Prüft ob alle Elemente erreichbar sind.
 
         Args:
             process: Process XML Element
@@ -567,7 +567,7 @@ class BPMNParser:
     """Parst BPMN 2.0 XML zu internem Workflow-Format."""
 
     def parse(self, xml_content: str) -> WorkflowDefinition:
-        """Parst BPMN XML und gibt WorkflowDefinition zurueck.
+        """Parst BPMN XML und gibt WorkflowDefinition zurück.
 
         Args:
             xml_content: BPMN 2.0 XML String
@@ -576,14 +576,14 @@ class BPMNParser:
             WorkflowDefinition
 
         Raises:
-            ValueError: Bei ungueltigem XML
+            ValueError: Bei ungültigem XML
         """
         try:
             # SECURITY: Use defusedxml to prevent XXE attacks (CWE-611)
             root = DefusedET.fromstring(xml_content)
         except ET.ParseError as e:
             logger.error("bpmn_parse_error", **safe_error_log(e))
-            raise ValueError(f"Ungueltiges BPMN-Format: {e}") from e
+            raise ValueError(f"Ungültiges BPMN-Format: {e}") from e
 
         # Definitions-Attribute extrahieren
         definitions_id = root.get("id", f"definitions_{uuid.uuid4().hex[:8]}")
@@ -1147,7 +1147,7 @@ class BPMNExporter:
             plane.set("id", f"BPMNPlane_{process.id}")
             plane.set("bpmnElement", process.id)
 
-            # Shapes fuer Events
+            # Shapes für Events
             for event in process.events:
                 shape = self._create_shape(
                     event.id,
@@ -1158,7 +1158,7 @@ class BPMNExporter:
                 )
                 plane.append(shape)
 
-            # Shapes fuer Tasks
+            # Shapes für Tasks
             for task in process.tasks:
                 shape = self._create_shape(
                     task.id,
@@ -1169,7 +1169,7 @@ class BPMNExporter:
                 )
                 plane.append(shape)
 
-            # Shapes fuer Gateways
+            # Shapes für Gateways
             for gateway in process.gateways:
                 shape = self._create_shape(
                     gateway.id,
@@ -1180,7 +1180,7 @@ class BPMNExporter:
                 )
                 plane.append(shape)
 
-            # Edges fuer Flows
+            # Edges für Flows
             for flow in process.flows:
                 edge = self._create_edge(flow)
                 plane.append(edge)
@@ -1237,7 +1237,7 @@ class BPMNExporter:
 # =============================================================================
 
 class BPMNConverter:
-    """Hauptklasse fuer BPMN 2.0 Import/Export.
+    """Hauptklasse für BPMN 2.0 Import/Export.
 
     Handles bidirektionale Konvertierung zwischen internem
     Workflow-Format und BPMN 2.0 XML.
@@ -1268,7 +1268,7 @@ class BPMNConverter:
         self.validator = BPMNValidator()
 
     def import_bpmn(self, xml_content: str) -> WorkflowDefinition:
-        """Importiert BPMN 2.0 XML und gibt WorkflowDefinition zurueck.
+        """Importiert BPMN 2.0 XML und gibt WorkflowDefinition zurück.
 
         Args:
             xml_content: BPMN 2.0 XML String
@@ -1277,7 +1277,7 @@ class BPMNConverter:
             WorkflowDefinition
 
         Raises:
-            ValueError: Bei ungueltigem BPMN-Format
+            ValueError: Bei ungültigem BPMN-Format
         """
         return self.parser.parse(xml_content)
 
@@ -1636,20 +1636,20 @@ class BPMNConverter:
 # =============================================================================
 
 def get_bpmn_converter() -> BPMNConverter:
-    """Factory Function fuer BPMNConverter."""
+    """Factory Function für BPMNConverter."""
     return BPMNConverter()
 
 
 def get_bpmn_parser() -> BPMNParser:
-    """Factory Function fuer BPMNParser."""
+    """Factory Function für BPMNParser."""
     return BPMNParser()
 
 
 def get_bpmn_exporter() -> BPMNExporter:
-    """Factory Function fuer BPMNExporter."""
+    """Factory Function für BPMNExporter."""
     return BPMNExporter()
 
 
 def get_bpmn_validator() -> BPMNValidator:
-    """Factory Function fuer BPMNValidator."""
+    """Factory Function für BPMNValidator."""
     return BPMNValidator()

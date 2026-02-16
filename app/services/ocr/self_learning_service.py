@@ -45,12 +45,12 @@ class LearningMode(str, Enum):
     """Learning-Modus des Systems."""
     AGGRESSIVE = "aggressive"  # Jede Korrektur fliesst sofort ein
     CAUTIOUS = "cautious"      # Nur verifizierte Korrekturen
-    BATCH = "batch"            # Batch-Learning (taeglich)
+    BATCH = "batch"            # Batch-Learning (täglich)
     REALTIME = "realtime"      # Sofortige Verarbeitung ohne Batching
 
 
 class ModelVersion(str, Enum):
-    """OCR-Modell Versionen fuer A/B Testing."""
+    """OCR-Modell Versionen für A/B Testing."""
     BASELINE = "baseline"
     CANDIDATE_A = "candidate_a"
     CANDIDATE_B = "candidate_b"
@@ -71,10 +71,10 @@ class CorrectionFeedback:
 
     @property
     def is_major_correction(self) -> bool:
-        """Pruefen ob es eine grosse Korrektur ist."""
+        """Prüfen ob es eine grosse Korrektur ist."""
         if not self.original_value or not self.corrected_value:
             return True
-        # Levenshtein-aehnliche Heuristik
+        # Levenshtein-ähnliche Heuristik
         len_diff = abs(len(self.original_value) - len(self.corrected_value))
         max_len = max(len(self.original_value), len(self.corrected_value), 1)
         return len_diff / max_len > 0.3
@@ -82,7 +82,7 @@ class CorrectionFeedback:
 
 @dataclass
 class ModelPerformanceMetrics:
-    """Performance-Metriken fuer ein Modell."""
+    """Performance-Metriken für ein Modell."""
     version: ModelVersion
     total_documents: int = 0
     corrections_count: int = 0
@@ -102,7 +102,7 @@ class ModelPerformanceMetrics:
 
     @property
     def quality_score(self) -> float:
-        """Gesamtqualitaets-Score (0-1)."""
+        """Gesamtqualitäts-Score (0-1)."""
         # Gewichtete Kombination aus mehreren Faktoren
         accuracy_weight = 0.4
         confidence_weight = 0.3
@@ -111,7 +111,7 @@ class ModelPerformanceMetrics:
 
         accuracy_score = self.accuracy_rate
         confidence_score = self.avg_confidence
-        # Speed: Normalisiert auf 0-1 (unter 2s = 1.0, ueber 10s = 0)
+        # Speed: Normalisiert auf 0-1 (unter 2s = 1.0, über 10s = 0)
         speed_score = max(0, min(1.0, 1.0 - (self.processing_time_avg_ms - 2000) / 8000))
         # Calibration: Niedriger ECE ist besser
         calibration_score = max(0, 1.0 - self.confidence_calibration_error * 2)
@@ -126,11 +126,11 @@ class ModelPerformanceMetrics:
 
 @dataclass
 class ABTestConfig:
-    """Konfiguration fuer A/B Test."""
+    """Konfiguration für A/B Test."""
     test_id: str
     baseline_version: ModelVersion
     candidate_version: ModelVersion
-    traffic_split: float = 0.1  # 10% Traffic fuer Kandidat
+    traffic_split: float = 0.1  # 10% Traffic für Kandidat
     min_samples: int = 100
     max_duration_days: int = 7
     significance_threshold: float = 0.05
@@ -139,7 +139,7 @@ class ABTestConfig:
 
     @property
     def is_expired(self) -> bool:
-        """Pruefen ob Test abgelaufen."""
+        """Prüfen ob Test abgelaufen."""
         max_end = self.started_at + timedelta(days=self.max_duration_days)
         return datetime.now(timezone.utc) > max_end
 
@@ -396,7 +396,7 @@ class SelfLearningOCRService:
                 "value": confidence_adjustment,
             })
 
-            # 3. Training Sample erstellen (fuer spaeteren Batch-Train)
+            # 3. Training Sample erstellen (für späteren Batch-Train)
             if self._learning_mode == LearningMode.AGGRESSIVE:
                 sample_id = await self._create_training_sample(feedback)
                 result["training_sample_id"] = str(sample_id) if sample_id else None
@@ -404,13 +404,13 @@ class SelfLearningOCRService:
             # 4. A/B Test Metriken aktualisieren
             await self._update_ab_test_metrics(feedback)
 
-            # 5. Pruefe ob Rollback noetig
+            # 5. Prüfe ob Rollback noetig
             rollback_needed = await self._check_rollback_conditions()
             if rollback_needed:
                 result["rollback_triggered"] = True
                 await self._perform_rollback()
 
-            # 6. Persistiere Aenderungen
+            # 6. Persistiere Änderungen
             await self._persist_adjustments()
 
             logger.info(
@@ -447,7 +447,7 @@ class SelfLearningOCRService:
             adjustment = -0.05 * (1 - feedback.original_confidence)
 
         # Skalierung basierend auf urspruenglicher Confidence
-        # Hohe Confidence + Korrektur = staerkere Anpassung
+        # Hohe Confidence + Korrektur = stärkere Anpassung
         if feedback.original_confidence > 0.9:
             adjustment *= 1.5
         elif feedback.original_confidence > 0.8:
@@ -468,7 +468,7 @@ class SelfLearningOCRService:
             if self._field_adjustments is None:
                 self._field_adjustments = {}
 
-            # Exponential Moving Average fuer sanfte Anpassung
+            # Exponential Moving Average für sanfte Anpassung
             alpha = 0.1  # Learning Rate
 
             # Backend-Level Adjustment
@@ -486,10 +486,10 @@ class SelfLearningOCRService:
         feedback: CorrectionFeedback,
     ) -> Optional[UUID]:
         """
-        Speichere Korrektur-Feedback fuer spaeteres Training.
+        Speichere Korrektur-Feedback für späteres Training.
 
-        Persistiert sowohl in Redis (fuer schnelle Batch-Verarbeitung)
-        als auch in PostgreSQL (fuer langfristige ML-Analyse).
+        Persistiert sowohl in Redis (für schnelle Batch-Verarbeitung)
+        als auch in PostgreSQL (für langfristige ML-Analyse).
         """
         feedback_id: Optional[UUID] = None
 
@@ -497,7 +497,7 @@ class SelfLearningOCRService:
             # 1. Persistiere in PostgreSQL (langfristig, keine TTL)
             feedback_id = await self._persist_feedback_to_db(feedback)
 
-            # 2. Speichere auch in Redis fuer schnelle Batch-Verarbeitung
+            # 2. Speichere auch in Redis für schnelle Batch-Verarbeitung
             redis = RedisStateManager.get_instance()
             await redis.connect()
 
@@ -505,7 +505,7 @@ class SelfLearningOCRService:
             feedback_data = {
                 "document_id": str(feedback.document_id),
                 "field_name": feedback.field_name,
-                "original_value": feedback.original_value[:1000],  # Limit fuer Redis
+                "original_value": feedback.original_value[:1000],  # Limit für Redis
                 "corrected_value": feedback.corrected_value[:1000],
                 "ocr_backend": feedback.ocr_backend,
                 "original_confidence": feedback.original_confidence,
@@ -530,23 +530,23 @@ class SelfLearningOCRService:
 
         except Exception as e:
             logger.warning("failed_to_queue_training_feedback", **safe_error_log(e))
-            return feedback_id  # Rueckgabe DB-ID wenn verfuegbar
+            return feedback_id  # Rückgabe DB-ID wenn verfügbar
 
     async def _persist_feedback_to_db(
         self,
         feedback: CorrectionFeedback,
     ) -> Optional[UUID]:
         """
-        Persistiere OCR-Korrektur in PostgreSQL fuer langfristige Analyse.
+        Persistiere OCR-Korrektur in PostgreSQL für langfristige Analyse.
 
-        Ermoeglicht:
+        Ermöglicht:
         - ML-Training auf historischen Daten (kein 30d Redis TTL)
         - SQL-Analysen pro Backend/Dokumenttyp
         - Compliance-Anforderungen (Audit-Trail)
         """
         import uuid
         try:
-            # Hole Document fuer company_id und document_type
+            # Hole Document für company_id und document_type
             doc_query = select(Document).where(Document.id == feedback.document_id)
             doc_result = await self._db.execute(doc_query)
             doc = doc_result.scalar_one_or_none()
@@ -657,7 +657,7 @@ class SelfLearningOCRService:
         """
         Berechne Levenshtein Edit-Distance.
 
-        Vereinfachte Implementierung fuer Performance.
+        Vereinfachte Implementierung für Performance.
         """
         if not original:
             return len(corrected) if corrected else 0
@@ -671,7 +671,7 @@ class SelfLearningOCRService:
         if abs(m - n) > 50:
             return abs(m - n)
 
-        # Begrenze auf max 200 Zeichen fuer Performance
+        # Begrenze auf max 200 Zeichen für Performance
         original = original[:200]
         corrected = corrected[:200]
         m, n = len(original), len(corrected)
@@ -837,7 +837,7 @@ class SelfLearningOCRService:
         Args:
             test_id: Eindeutige Test-ID
             candidate_version: Zu testende Modell-Version
-            traffic_split: Anteil Traffic fuer Kandidat (0.0 - 0.5)
+            traffic_split: Anteil Traffic für Kandidat (0.0 - 0.5)
             min_samples: Minimale Samples vor Auswertung
             max_duration_days: Maximale Test-Dauer
 
@@ -859,7 +859,7 @@ class SelfLearningOCRService:
             self._active_ab_tests = {}
         self._active_ab_tests[test_id] = config
 
-        # Initialisiere Metriken fuer Kandidat
+        # Initialisiere Metriken für Kandidat
         if self._model_metrics is None:
             self._model_metrics = {}
         if candidate_version not in self._model_metrics:
@@ -882,15 +882,15 @@ class SelfLearningOCRService:
         document_id: Optional[UUID] = None,
     ) -> ModelVersion:
         """
-        Waehle Modell-Version (fuer A/B Testing).
+        Wähle Modell-Version (für A/B Testing).
 
         Verwendet deterministisches Hashing basierend auf document_id,
-        um konsistente A/B-Zuweisung pro Dokument zu gewaehrleisten.
-        Dies ermoeglicht reproduzierbare Tests.
+        um konsistente A/B-Zuweisung pro Dokument zu gewährleisten.
+        Dies ermöglicht reproduzierbare Tests.
 
         Args:
             test_id: Optional - Spezifischer Test
-            document_id: Optional - Dokument-ID fuer deterministisches Routing
+            document_id: Optional - Dokument-ID für deterministisches Routing
 
         Returns:
             Zu verwendende Modell-Version
@@ -907,7 +907,7 @@ class SelfLearningOCRService:
             hash_value = int(hashlib.md5(hash_input).hexdigest()[:8], 16) % 100
         else:
             # Fallback: Hash basierend auf aktuellem Timestamp (weniger deterministisch)
-            # Nur verwenden wenn keine document_id verfuegbar
+            # Nur verwenden wenn keine document_id verfügbar
             import time
             hash_input = f"{time.time_ns()}".encode()
             hash_value = int(hashlib.md5(hash_input).hexdigest()[:8], 16) % 100
@@ -936,7 +936,7 @@ class SelfLearningOCRService:
                 ModelVersion.BASELINE: ModelPerformanceMetrics(version=ModelVersion.BASELINE),
             }
 
-        # Fuer Baseline (immer aktualisieren)
+        # Für Baseline (immer aktualisieren)
         baseline = self._model_metrics.get(ModelVersion.BASELINE)
         if baseline is None:
             baseline = ModelPerformanceMetrics(version=ModelVersion.BASELINE)
@@ -980,7 +980,7 @@ class SelfLearningOCRService:
         if not baseline_metrics or not candidate_metrics:
             return None
 
-        # Pruefe Mindestsamples
+        # Prüfe Mindestsamples
         total_samples = baseline_metrics.total_documents + candidate_metrics.total_documents
         if total_samples < config.min_samples:
             return ABTestResult(
@@ -1030,7 +1030,7 @@ class SelfLearningOCRService:
         action: str = "rollback",  # "promote" oder "rollback"
     ) -> Dict[str, Any]:
         """
-        Beende A/B Test und fuehre Aktion aus.
+        Beende A/B Test und führe Aktion aus.
 
         Args:
             test_id: Test-ID
@@ -1079,7 +1079,7 @@ class SelfLearningOCRService:
 
     async def _check_rollback_conditions(self) -> bool:
         """
-        Pruefe ob automatischer Rollback noetig.
+        Prüfe ob automatischer Rollback noetig.
 
         Returns:
             True wenn Rollback empfohlen
@@ -1099,7 +1099,7 @@ class SelfLearningOCRService:
         return False
 
     async def _perform_rollback(self) -> None:
-        """Fuehre Rollback durch."""
+        """Führe Rollback durch."""
         if self._active_ab_tests is None:
             return
 
@@ -1282,7 +1282,7 @@ class SelfLearningOCRService:
             result = await self._db.execute(query)
             rows = result.all()
 
-            # Aggregiere Dokument-Zaehler pro Backend/Dokumenttyp fuer correction_rate
+            # Aggregiere Dokument-Zähler pro Backend/Dokumenttyp für correction_rate
             doc_count_query = (
                 select(
                     Document.ocr_backend_used,
@@ -1316,7 +1316,7 @@ class SelfLearningOCRService:
                 # Mehr Korrekturen = niedrigere Confidence
                 adjustment = -0.05 * (total / 100)  # -5% pro 100 Korrekturen
 
-                # Hole Dokument-Anzahl fuer Backend/Dokumenttyp aus aggregierten Counts
+                # Hole Dokument-Anzahl für Backend/Dokumenttyp aus aggregierten Counts
                 total_docs = doc_counts.get((row.backend, row.document_type), 0)
                 # Berechne Korrekturrate (Korrekturen / Dokumente)
                 correction_rate = (total / total_docs) if total_docs > 0 else 0.0
@@ -1444,7 +1444,7 @@ class SelfLearningOCRService:
         backend: Optional[str] = None,
     ) -> List[OCRCorrectionFeedback]:
         """
-        Hole ausstehende Feedbacks fuer Batch-Verarbeitung.
+        Hole ausstehende Feedbacks für Batch-Verarbeitung.
 
         Args:
             limit: Maximale Anzahl

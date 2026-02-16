@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-API-Endpunkte fuer OCR-Operationen.
+API-Endpunkte für OCR-Operationen.
 
-Bietet schnelle OCR-Vorschau fuer Dokument-Klassifikation
-und Text-Extraktion ohne vollstaendige Verarbeitung.
+Bietet schnelle OCR-Vorschau für Dokument-Klassifikation
+und Text-Extraktion ohne vollständige Verarbeitung.
 
 Feinpoliert und durchdacht - Enterprise OCR API.
 """
@@ -38,19 +38,19 @@ router = APIRouter(prefix="/ocr", tags=["ocr"])
 
 
 class OCRPreviewResponse(BaseModel):
-    """Antwort fuer OCR-Vorschau."""
+    """Antwort für OCR-Vorschau."""
 
     erfolg: bool = Field(..., description="War Extraktion erfolgreich?")
     text: str = Field(..., description="Extrahierter Text")
     zeichen_anzahl: int = Field(..., description="Anzahl extrahierter Zeichen")
-    abgeschnitten: bool = Field(False, description="Wurde Text gekuerzt?")
+    abgeschnitten: bool = Field(False, description="Wurde Text gekürzt?")
     dateiname: Optional[str] = Field(None, description="Original-Dateiname")
     methode: str = Field("unbekannt", description="Verwendete Extraktionsmethode")
     fehler: Optional[str] = Field(None, description="Fehlermeldung bei Misserfolg")
 
 
 class OCRPreviewRequest(BaseModel):
-    """Anfrage fuer OCR-Vorschau mit Dokument-ID."""
+    """Anfrage für OCR-Vorschau mit Dokument-ID."""
 
     dokument_id: UUID = Field(..., description="ID des Dokuments")
     max_pages: int = Field(1, ge=1, le=5, description="Max. Seiten zu extrahieren")
@@ -60,11 +60,11 @@ class OCRPreviewRequest(BaseModel):
 class OCRStatusResponse(BaseModel):
     """Status des OCR-Systems."""
 
-    verfuegbar: bool = Field(..., description="Ist OCR-System verfuegbar?")
+    verfuegbar: bool = Field(..., description="Ist OCR-System verfügbar?")
     backends: JSONDict = Field(..., description="Status der OCR-Backends")
-    gpu_verfuegbar: bool = Field(..., description="Ist GPU verfuegbar?")
-    pymupdf_verfuegbar: bool = Field(..., description="Ist PyMuPDF verfuegbar?")
-    tesseract_verfuegbar: bool = Field(..., description="Ist Tesseract verfuegbar?")
+    gpu_verfuegbar: bool = Field(..., description="Ist GPU verfügbar?")
+    pymupdf_verfuegbar: bool = Field(..., description="Ist PyMuPDF verfügbar?")
+    tesseract_verfuegbar: bool = Field(..., description="Ist Tesseract verfügbar?")
 
 
 # =============================================================================
@@ -86,12 +86,12 @@ async def ocr_preview_upload(
 ) -> OCRPreviewResponse:
     """Schnelle OCR-Vorschau aus hochgeladener Datei.
 
-    Ideal fuer:
-    - Dokument-Klassifikation vor vollstaendiger Verarbeitung
-    - Schnelle Inhalts-Ueberpruefung
+    Ideal für:
+    - Dokument-Klassifikation vor vollständiger Verarbeitung
+    - Schnelle Inhalts-Überprüfung
     - Sprach-Erkennung
 
-    Unterstuetzte Formate: PDF, PNG, JPG, JPEG, TIFF, BMP
+    Unterstützte Formate: PDF, PNG, JPG, JPEG, TIFF, BMP
     """
     logger.info(
         "ocr_preview_upload_angefordert",
@@ -129,7 +129,7 @@ async def ocr_preview_upload(
     if suffix not in allowed_formats:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Format {suffix} nicht unterstuetzt. Erlaubt: {', '.join(allowed_formats)}",
+            detail=f"Format {suffix} nicht unterstützt. Erlaubt: {', '.join(allowed_formats)}",
         )
 
     # Temporaere Datei erstellen
@@ -147,7 +147,7 @@ async def ocr_preview_upload(
         async with aiofiles.open(tmp_path, "wb") as f:
             await f.write(content)
 
-        # OCR-Vorschau durchfuehren
+        # OCR-Vorschau durchführen
         text = await quick_ocr_preview(
             file_path=tmp_path,
             max_pages=max_pages,
@@ -199,7 +199,7 @@ async def ocr_preview_upload(
         )
 
     finally:
-        # Temporaere Datei loeschen
+        # Temporaere Datei löschen
         if tmp_path.exists():
             try:
                 tmp_path.unlink()
@@ -218,7 +218,7 @@ async def ocr_preview_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> OCRPreviewResponse:
-    """OCR-Vorschau fuer bereits hochgeladenes Dokument.
+    """OCR-Vorschau für bereits hochgeladenes Dokument.
 
     Verwendet das in MinIO gespeicherte Original-Dokument.
     """
@@ -260,7 +260,7 @@ async def ocr_preview_document(
                 detail="Dokument-Datei nicht gefunden",
             )
 
-        # OCR-Vorschau durchfuehren
+        # OCR-Vorschau durchführen
         text = await quick_ocr_preview(
             file_path=file_path,
             max_pages=request.max_pages,
@@ -315,7 +315,7 @@ async def ocr_preview_document(
         )
 
     finally:
-        # Temporaere Datei loeschen
+        # Temporaere Datei löschen
         if file_path and file_path.exists():
             try:
                 file_path.unlink()
@@ -327,18 +327,18 @@ async def ocr_preview_document(
     "/status",
     response_model=OCRStatusResponse,
     summary="OCR-System Status",
-    description="Zeigt Status und Verfuegbarkeit des OCR-Systems.",
+    description="Zeigt Status und Verfügbarkeit des OCR-Systems.",
 )
 async def ocr_status(
     current_user: User = Depends(get_current_active_user),
 ) -> OCRStatusResponse:
-    """Pruefe OCR-System Verfuegbarkeit."""
+    """Prüfe OCR-System Verfügbarkeit."""
     logger.info(
         "ocr_status_angefordert",
         user_id=str(current_user.id),
     )
 
-    # PyMuPDF pruefen
+    # PyMuPDF prüfen
     try:
         import fitz  # noqa: F401
 
@@ -346,7 +346,7 @@ async def ocr_status(
     except ImportError:
         pymupdf_verfuegbar = False
 
-    # Tesseract pruefen
+    # Tesseract prüfen
     try:
         import pytesseract
 
@@ -356,7 +356,7 @@ async def ocr_status(
         logger.debug("tesseract_not_available", **safe_error_log(e))
         tesseract_verfuegbar = False
 
-    # GPU pruefen
+    # GPU prüfen
     try:
         import torch
 
@@ -367,30 +367,30 @@ async def ocr_status(
     # Backend-Status sammeln
     backends: JSONDict = {
         "pymupdf": {
-            "verfuegbar": pymupdf_verfuegbar,
+            "verfügbar": pymupdf_verfuegbar,
             "beschreibung": "PDF-Text-Extraktion (schnell)",
         },
         "tesseract": {
-            "verfuegbar": tesseract_verfuegbar,
+            "verfügbar": tesseract_verfuegbar,
             "beschreibung": "Bild-OCR (universell)",
         },
     }
 
-    # DeepSeek Backend pruefen (optional)
+    # DeepSeek Backend prüfen (optional)
     try:
         from app.agents.ocr.deepseek_agent import DeepSeekAgent
 
-        # DeepSeek erfordert GPU - Verfuegbarkeit basiert auf CUDA
+        # DeepSeek erfordert GPU - Verfügbarkeit basiert auf CUDA
         deepseek_verfuegbar = gpu_verfuegbar
         backends["deepseek"] = {
-            "verfuegbar": deepseek_verfuegbar,
-            "beschreibung": "GPU-OCR (beste Qualitaet)" if deepseek_verfuegbar else "GPU-OCR (GPU nicht verfuegbar)",
+            "verfügbar": deepseek_verfuegbar,
+            "beschreibung": "GPU-OCR (beste Qualität)" if deepseek_verfuegbar else "GPU-OCR (GPU nicht verfügbar)",
             "gpu_erforderlich": True,
         }
     except ImportError as e:
         logger.warning("deepseek_import_failed", **safe_error_log(e))
         backends["deepseek"] = {
-            "verfuegbar": False,
+            "verfügbar": False,
             "beschreibung": "GPU-OCR (nicht installiert)",
             "gpu_erforderlich": True,
         }
@@ -573,7 +573,7 @@ async def start_ocr_processing(
                 "priority": int_to_priority_str(request.priority),
             },
             task_id=job_id,
-            priority=10 - request.priority,  # Celery: niedrigere Zahl = hoehere Prioritaet
+            priority=10 - request.priority,  # Celery: niedrigere Zahl = höhere Prioritaet
         )
 
         logger.info(
@@ -788,31 +788,31 @@ async def change_ocr_backend(
 @router.get(
     "/documents/{document_id}/cache",
     summary="OCR-Cache Status",
-    description="Zeigt den Cache-Status fuer ein Dokument."
+    description="Zeigt den Cache-Status für ein Dokument."
 )
 async def get_ocr_cache_status(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Zeigt den OCR-Cache-Status fuer ein Dokument.
+    """Zeigt den OCR-Cache-Status für ein Dokument.
 
-    Gibt Informationen ueber gecachte OCR-Ergebnisse zurueck:
+    Gibt Informationen über gecachte OCR-Ergebnisse zurück:
     - Ob ein Cache-Eintrag existiert
     - Wann der Cache erstellt wurde
     - Welches Backend verwendet wurde
-    - Cache-Groesse
+    - Cache-Größe
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Debugging von OCR-Problemen
-    - Verstaendnis warum bestimmte Ergebnisse zurueckgegeben werden
+    - Verstaendnis warum bestimmte Ergebnisse zurückgegeben werden
     - Cache-Management und Invalidierung
     """
     from sqlalchemy import select
     from app.db.models import Document
     from app.services.ocr_cache_service import get_ocr_cache_service
 
-    # Dokument laden und Berechtigung pruefen
+    # Dokument laden und Berechtigung prüfen
     doc_query = select(Document).where(Document.id == document_id)
     result = await db.execute(doc_query)
     document = result.scalar_one_or_none()
@@ -823,7 +823,7 @@ async def get_ocr_cache_status(
     if document.owner_id != current_user.id:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer dieses Dokument"
+            detail="Keine Berechtigung für dieses Dokument"
         )
 
     cache_service = get_ocr_cache_service()
@@ -835,15 +835,15 @@ async def get_ocr_cache_status(
     }
 
     try:
-        # Cache-Keys fuer dieses Dokument abrufen
+        # Cache-Keys für dieses Dokument abrufen
         # Format: ocr_cache:{file_hash}:{backend}:{language}
-        # Wir pruefen auch den document_id basierten Cache
+        # Wir prüfen auch den document_id basierten Cache
 
         from app.core.redis_state import RedisStateManager
         redis_manager = RedisStateManager.get_instance()
         await redis_manager._ensure_connection()
 
-        # Suche nach Cache-Eintraegen fuer dieses Dokument
+        # Suche nach Cache-Einträgen für dieses Dokument
         pattern = f"ocr_result:{document_id}:*"
         cursor = 0
         cache_keys = []
@@ -868,7 +868,7 @@ async def get_ocr_cache_status(
 
         cache_status["total_cached"] = len(cache_keys)
 
-        # Zusaetzlich: File-Hash basierten Cache pruefen
+        # Zusätzlich: File-Hash basierten Cache prüfen
         if document.file_hash:
             hash_pattern = f"ocr_cache:{document.file_hash}:*"
             cursor = 0
@@ -923,20 +923,20 @@ async def get_ocr_cache_status(
 
 @router.delete(
     "/documents/{document_id}/cache",
-    summary="OCR-Cache loeschen",
-    description="Loescht den OCR-Cache fuer ein Dokument."
+    summary="OCR-Cache löschen",
+    description="Löscht den OCR-Cache für ein Dokument."
 )
 async def invalidate_ocr_cache(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Loescht den OCR-Cache fuer ein Dokument.
+    """Löscht den OCR-Cache für ein Dokument.
 
     Nuetzlich wenn:
     - OCR-Ergebnisse fehlerhaft waren
     - Dokument aktualisiert wurde
-    - Neuverarbeitung mit anderem Backend gewuenscht
+    - Neuverarbeitung mit anderem Backend gewünscht
     """
     from sqlalchemy import select
     from app.db.models import Document
@@ -953,7 +953,7 @@ async def invalidate_ocr_cache(
     if document.owner_id != current_user.id:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer dieses Dokument"
+            detail="Keine Berechtigung für dieses Dokument"
         )
 
     deleted_count = 0
@@ -963,7 +963,7 @@ async def invalidate_ocr_cache(
         redis_manager = RedisStateManager.get_instance()
         await redis_manager._ensure_connection()
 
-        # Document-ID basierte Cache-Keys loeschen
+        # Document-ID basierte Cache-Keys löschen
         pattern = f"ocr_result:{document_id}:*"
         cursor = 0
 
@@ -975,7 +975,7 @@ async def invalidate_ocr_cache(
             if cursor == 0:
                 break
 
-        # File-Hash basierte Cache-Keys loeschen
+        # File-Hash basierte Cache-Keys löschen
         if document.file_hash:
             hash_pattern = f"ocr_cache:{document.file_hash}:*"
             cursor = 0
@@ -1011,7 +1011,7 @@ async def invalidate_ocr_cache(
         "document_id": str(document_id),
         "cache_cleared": True,
         "entries_deleted": deleted_count,
-        "message": f"OCR-Cache geloescht ({deleted_count} Eintraege)"
+        "message": f"OCR-Cache gelöscht ({deleted_count} Einträge)"
     }
 
 
@@ -1021,7 +1021,7 @@ async def invalidate_ocr_cache(
 
 
 class BatchReprocessRequest(BaseModel):
-    """Anfrage fuer Batch-OCR-Neuverarbeitung."""
+    """Anfrage für Batch-OCR-Neuverarbeitung."""
     document_ids: list[UUID] = Field(
         ...,
         min_length=1,
@@ -1048,7 +1048,7 @@ class BatchReprocessResponse(BaseModel):
     """Antwort auf Batch-OCR-Neuverarbeitung."""
     total_requested: int = Field(..., description="Anzahl angeforderter Dokumente")
     jobs_created: int = Field(..., description="Anzahl erstellter Jobs")
-    skipped: int = Field(..., description="Anzahl uebersprungener Dokumente")
+    skipped: int = Field(..., description="Anzahl übersprungener Dokumente")
     failed: int = Field(..., description="Anzahl fehlgeschlagener Dokumente")
     job_ids: list[str] = Field(default=[], description="Liste der Job-IDs")
     details: list[dict] = Field(default=[], description="Details pro Dokument")
@@ -1058,14 +1058,14 @@ class BatchReprocessResponse(BaseModel):
     "/documents/batch/reprocess",
     response_model=BatchReprocessResponse,
     summary="Batch-OCR-Neuverarbeitung",
-    description="Startet die OCR-Verarbeitung fuer mehrere Dokumente gleichzeitig."
+    description="Startet die OCR-Verarbeitung für mehrere Dokumente gleichzeitig."
 )
 async def batch_reprocess_ocr(
     request: BatchReprocessRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ) -> BatchReprocessResponse:
-    """Batch-OCR-Neuverarbeitung fuer mehrere Dokumente.
+    """Batch-OCR-Neuverarbeitung für mehrere Dokumente.
 
     **Anwendungsfaelle:**
     - Neuverarbeitung nach Backend-Update
@@ -1074,7 +1074,7 @@ async def batch_reprocess_ocr(
 
     **Limits:**
     - Maximal 100 Dokumente pro Anfrage
-    - Rate-Limiting gilt fuer jeden erstellten Job
+    - Rate-Limiting gilt für jeden erstellten Job
 
     **Beispiel:**
     ```
@@ -1087,7 +1087,7 @@ async def batch_reprocess_ocr(
     }
     ```
 
-    **Rueckgabe:**
+    **Rückgabe:**
     - job_ids: Liste der erstellten Celery-Job-IDs
     - details: Status pro Dokument (created, skipped, failed)
     """
@@ -1101,7 +1101,7 @@ async def batch_reprocess_ocr(
     if request.backend not in valid_backends:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiges Backend. Erlaubt: {', '.join(valid_backends)}"
+            detail=f"Ungültiges Backend. Erlaubt: {', '.join(valid_backends)}"
         )
 
     jobs_created = 0
@@ -1148,12 +1148,12 @@ async def batch_reprocess_ocr(
                 details.append({
                     "document_id": str(doc_id),
                     "status": "skipped",
-                    "reason": "Dokument geloescht"
+                    "reason": "Dokument gelöscht"
                 })
                 skipped += 1
                 continue
 
-            # Pruefen ob bereits in Verarbeitung
+            # Prüfen ob bereits in Verarbeitung
             job_query = select(ProcessingJob).where(
                 ProcessingJob.document_id == doc_id,
                 ProcessingJob.status.in_(["queued", "processing"])
@@ -1170,7 +1170,7 @@ async def batch_reprocess_ocr(
                 skipped += 1
                 continue
 
-            # Pruefen ob bereits verarbeitet (wenn force=false)
+            # Prüfen ob bereits verarbeitet (wenn force=false)
             if document.status == "completed" and not request.force:
                 details.append({
                     "document_id": str(doc_id),
@@ -1235,7 +1235,7 @@ async def batch_reprocess_ocr(
             })
             failed += 1
 
-    # Alle Aenderungen speichern
+    # Alle Änderungen speichern
     await db.commit()
 
     logger.info(
@@ -1259,7 +1259,7 @@ async def batch_reprocess_ocr(
 @router.get(
     "/documents/batch/status",
     summary="Batch-Job-Status abfragen",
-    description="Gibt den Status mehrerer OCR-Jobs zurueck."
+    description="Gibt den Status mehrerer OCR-Jobs zurück."
 )
 async def batch_job_status(
     job_ids: str = Query(
@@ -1362,7 +1362,7 @@ async def batch_job_status(
 
 @router.post(
     "/documents/{document_id}/semantic-validate",
-    summary="Semantische Validierung durchfuehren",
+    summary="Semantische Validierung durchführen",
     description="Validiert OCR-Ergebnisse gegen Stammdaten und Business Rules.",
 )
 async def semantic_validate_document(
@@ -1370,7 +1370,7 @@ async def semantic_validate_document(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Fuehrt semantische Validierung fuer ein Dokument durch.
+    """Führt semantische Validierung für ein Dokument durch.
 
     **Phase 2.1: OCR Evolution - Semantic Validation**
 
@@ -1379,18 +1379,18 @@ async def semantic_validate_document(
     - **Betragsplausibilitaet**: Negative Betraege, ungewoehnlich hohe Werte
     - **Betragskonsistenz**: Brutto = Netto + MwSt
     - **MwSt-Berechnung**: Korrekte Steuerberechnung
-    - **Formatvalidierung**: IBAN-Pruefsumme, USt-ID Format, Datumsformate
+    - **Formatvalidierung**: IBAN-Prüfsumme, USt-ID Format, Datumsformate
 
-    **Rueckgabe:**
+    **Rückgabe:**
     - overall_score: Gesamtbewertung (0.0 - 1.0)
     - errors/warnings/passed: Anzahl der jeweiligen Validierungen
     - results: Detaillierte Validierungsergebnisse
     - matched_entity: Gefundene Entity aus Stammdaten
-    - suggestions: Verbesserungsvorschlaege
+    - suggestions: Verbesserungsvorschläge
 
     **Anwendungsfaelle:**
-    - Automatische Qualitaetspruefung nach OCR
-    - Entity-Linking Vorschlaege
+    - Automatische Qualitaetsprüfung nach OCR
+    - Entity-Linking Vorschläge
     - Compliance-Checks vor Buchung
     """
     from sqlalchemy import select
@@ -1408,10 +1408,10 @@ async def semantic_validate_document(
     if document.owner_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer dieses Dokument"
+            detail="Keine Berechtigung für dieses Dokument"
         )
 
-    # Semantische Validierung durchfuehren
+    # Semantische Validierung durchführen
     service = SemanticValidationService(db)
     report = await service.validate_document(str(document_id))
 
@@ -1435,20 +1435,20 @@ async def semantic_validate_document(
 async def get_validation_report(
     document_id: UUID,
     revalidate: bool = Query(
-        False, description="Wenn True, wird Validierung erneut durchgefuehrt"
+        False, description="Wenn True, wird Validierung erneut durchgeführt"
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Ruft den Validierungsbericht fuer ein Dokument ab.
+    """Ruft den Validierungsbericht für ein Dokument ab.
 
     **Parameter:**
-    - revalidate: Bei True wird eine neue Validierung durchgefuehrt
+    - revalidate: Bei True wird eine neue Validierung durchgeführt
 
     **Anwendungsfaelle:**
     - Anzeige des Validierungsstatus in der UI
-    - Pruefung vor Freigabe/Buchung
-    - Qualitaetsuebersicht
+    - Prüfung vor Freigabe/Buchung
+    - Qualitaetsübersicht
     """
     from sqlalchemy import select
     from app.db.models import Document
@@ -1465,10 +1465,10 @@ async def get_validation_report(
     if document.owner_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer dieses Dokument"
+            detail="Keine Berechtigung für dieses Dokument"
         )
 
-    # Validierung durchfuehren (cached oder neu)
+    # Validierung durchführen (cached oder neu)
     service = SemanticValidationService(db)
     report = await service.validate_document(str(document_id))
 
@@ -1493,17 +1493,17 @@ async def batch_semantic_validate(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Batch-Validierung fuer mehrere Dokumente.
+    """Batch-Validierung für mehrere Dokumente.
 
     **Limit:** Maximal 50 Dokumente pro Anfrage.
 
-    **Rueckgabe:**
-    - summary: Zusammenfassung ueber alle Dokumente
+    **Rückgabe:**
+    - summary: Zusammenfassung über alle Dokumente
     - results: Validierungsergebnisse pro Dokument
 
     **Anwendungsfaelle:**
-    - Qualitaetspruefung einer Dokumentencharge
-    - Uebersicht vor Batch-Freigabe
+    - Qualitaetsprüfung einer Dokumentencharge
+    - Übersicht vor Batch-Freigabe
     """
     from sqlalchemy import select
     from app.db.models import Document
@@ -1524,7 +1524,7 @@ async def batch_semantic_validate(
 
     for doc_id in document_ids:
         try:
-            # Dokument pruefen
+            # Dokument prüfen
             doc_query = select(Document).where(Document.id == doc_id)
             result = await db.execute(doc_query)
             document = result.scalar_one_or_none()
@@ -1643,13 +1643,13 @@ async def analyze_document_handwriting(
     Analysiert ein Dokument auf handschriftliche Inhalte.
 
     Erkennt:
-    - Unterschriften auf Vertraegen
+    - Unterschriften auf Verträgen
     - Handschriftliche Notizen/Anmerkungen
-    - Formular-Ausfuellungen
+    - Formular-Ausfüllungen
     - Komplett handgeschriebene Dokumente
 
-    Gibt ausserdem eine Confidence-Penalty zurueck, die bei der OCR-Verarbeitung
-    beruecksichtigt werden sollte (Handschrift ist schwerer zu erkennen).
+    Gibt ausserdem eine Confidence-Penalty zurück, die bei der OCR-Verarbeitung
+    berücksichtigt werden sollte (Handschrift ist schwerer zu erkennen).
     """
     from datetime import datetime, timezone
     from sqlalchemy import select
@@ -1709,13 +1709,13 @@ async def analyze_document_handwriting(
                 import fitz  # PyMuPDF
                 pdf_doc = fitz.open(stream=file_content, filetype="pdf")
                 page = pdf_doc[0]
-                pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0))  # 2x Zoom fuer bessere Qualitaet
+                pix = page.get_pixmap(matrix=fitz.Matrix(2.0, 2.0))  # 2x Zoom für bessere Qualitaet
                 image = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
                 pdf_doc.close()
             except ImportError:
                 raise HTTPException(
                     status_code=500,
-                    detail="PyMuPDF nicht verfuegbar fuer PDF-Analyse"
+                    detail="PyMuPDF nicht verfügbar für PDF-Analyse"
                 )
         else:
             # Bild direkt laden
@@ -1737,7 +1737,7 @@ async def analyze_document_handwriting(
             detail=safe_error_detail(e, "Vorgang")
         )
 
-    # Handschrift-Analyse durchfuehren
+    # Handschrift-Analyse durchführen
     try:
         analysis: HandwritingAnalysis = await detect_handwriting(
             image_array,
@@ -1816,9 +1816,9 @@ async def get_handwriting_report(
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
-    Ruft den letzten Handschrift-Analyse-Report fuer ein Dokument ab.
+    Ruft den letzten Handschrift-Analyse-Report für ein Dokument ab.
 
-    Falls keine Analyse vorhanden ist, wird eine neue durchgefuehrt.
+    Falls keine Analyse vorhanden ist, wird eine neue durchgeführt.
     """
     from sqlalchemy import select
     from app.db.models import Document
@@ -1875,7 +1875,7 @@ async def analyze_upload_handwriting(
     Analysiert eine hochgeladene Datei auf handschriftliche Inhalte.
 
     Diese Methode speichert das Dokument nicht in der Datenbank,
-    sondern fuehrt nur eine temporaere Analyse durch.
+    sondern führt nur eine temporaere Analyse durch.
     """
     from app.agents.preprocessing.handwriting_detector import detect_handwriting
     import numpy as np
@@ -1897,7 +1897,7 @@ async def analyze_upload_handwriting(
         except PathTraversalError:
             raise HTTPException(
                 status_code=400,
-                detail="Ungueltiger Dateiname"
+                detail="Ungültiger Dateiname"
             )
     else:
         file_ext = ""
@@ -1906,7 +1906,7 @@ async def analyze_upload_handwriting(
     if file_ext not in allowed_extensions:
         raise HTTPException(
             status_code=400,
-            detail=f"Nicht unterstuetztes Format. Erlaubt: {', '.join(allowed_extensions)}"
+            detail=f"Nicht unterstütztes Format. Erlaubt: {', '.join(allowed_extensions)}"
         )
 
     # Datei lesen
@@ -1924,7 +1924,7 @@ async def analyze_upload_handwriting(
             except ImportError:
                 raise HTTPException(
                     status_code=500,
-                    detail="PyMuPDF nicht verfuegbar fuer PDF-Analyse"
+                    detail="PyMuPDF nicht verfügbar für PDF-Analyse"
                 )
         else:
             image = Image.open(io.BytesIO(file_content))
@@ -1939,7 +1939,7 @@ async def analyze_upload_handwriting(
             detail=safe_error_detail(e, "Vorgang")
         )
 
-    # Analyse durchfuehren
+    # Analyse durchführen
     try:
         analysis = await detect_handwriting(
             image_array,
@@ -1987,7 +1987,7 @@ async def analyze_upload_handwriting(
         "recommended_backend": analysis.recommended_backend,
         "confidence_penalty": analysis.confidence_penalty,
         "recommendation": (
-            "Dieses Dokument enthaelt handschriftliche Inhalte. "
+            "Dieses Dokument enthält handschriftliche Inhalte. "
             f"Empfohlenes Backend: {analysis.recommended_backend}. "
             f"Die OCR-Confidence sollte um {abs(analysis.confidence_penalty)*100:.0f}% reduziert werden."
             if analysis.has_handwriting
@@ -2002,7 +2002,7 @@ async def analyze_upload_handwriting(
 
 
 class TableCellResponse(BaseModel):
-    """Response-Model fuer eine Tabellenzelle."""
+    """Response-Model für eine Tabellenzelle."""
     row: int
     col: int
     text: str
@@ -2015,7 +2015,7 @@ class TableCellResponse(BaseModel):
 
 
 class TableColumnResponse(BaseModel):
-    """Response-Model fuer Spalten-Metadaten."""
+    """Response-Model für Spalten-Metadaten."""
     index: int
     header_text: str
     data_type: str
@@ -2026,7 +2026,7 @@ class TableColumnResponse(BaseModel):
 
 
 class ExtractedTableResponse(BaseModel):
-    """Response-Model fuer eine extrahierte Tabelle."""
+    """Response-Model für eine extrahierte Tabelle."""
     table_id: str
     page_number: int
     num_rows: int
@@ -2041,7 +2041,7 @@ class ExtractedTableResponse(BaseModel):
 
 
 class TableExtractionResultResponse(BaseModel):
-    """Response-Model fuer Table Extraction Ergebnis."""
+    """Response-Model für Table Extraction Ergebnis."""
     document_id: str
     total_tables: int
     page_count: int
@@ -2075,7 +2075,7 @@ async def extract_document_tables(
         get_table_extraction_service,
     )
 
-    # Dokument laden und Berechtigung pruefen
+    # Dokument laden und Berechtigung prüfen
     doc_query = select(Document).where(Document.id == str(document_id))
     result = await db.execute(doc_query)
     document = result.scalar_one_or_none()
@@ -2086,11 +2086,11 @@ async def extract_document_tables(
             detail="Dokument nicht gefunden.",
         )
 
-    # Berechtigung pruefen
+    # Berechtigung prüfen
     if document.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument.",
+            detail="Keine Berechtigung für dieses Dokument.",
         )
 
     # Table Extraction Service
@@ -2117,7 +2117,7 @@ async def extract_document_tables(
         layout=layout,
     )
 
-    # In Metadata speichern fuer spaetere Abfragen
+    # In Metadata speichern für spätere Abfragen
     if document.metadata is None:
         document.metadata = {}
     document.metadata["tables_extracted"] = True
@@ -2164,10 +2164,10 @@ async def get_document_tables(
     if document.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument.",
+            detail="Keine Berechtigung für dieses Dokument.",
         )
 
-    # Gecachte Extraktion pruefen
+    # Gecachte Extraktion prüfen
     if not document.metadata or not document.metadata.get("table_extraction_result"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -2197,15 +2197,15 @@ async def export_document_table(
     current_user: User = Depends(get_current_active_user),
 ) -> Response:
     """
-    Exportiert eine Tabelle in das gewuenschte Format.
+    Exportiert eine Tabelle in das gewünschte Format.
 
-    Unterstuetzte Formate:
+    Unterstützte Formate:
     - markdown: Markdown-Tabelle
     - csv: CSV mit Semikolon-Trenner
     - json: JSON-Array
     - json_ld: Schema.org JSON-LD
     - html: HTML-Tabelle
-    - excel_compatible: CSV mit BOM fuer Excel
+    - excel_compatible: CSV mit BOM für Excel
     """
     from app.services.ocr.table_extraction_service import (
         TableExportFormat,
@@ -2219,7 +2219,7 @@ async def export_document_table(
     if format not in valid_formats:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiges Format. Erlaubt: {', '.join(valid_formats)}",
+            detail=f"Ungültiges Format. Erlaubt: {', '.join(valid_formats)}",
         )
 
     # Dokument laden
@@ -2236,10 +2236,10 @@ async def export_document_table(
     if document.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument.",
+            detail="Keine Berechtigung für dieses Dokument.",
         )
 
-    # Gecachte Extraktion pruefen
+    # Gecachte Extraktion prüfen
     if not document.metadata or not document.metadata.get("table_extraction_result"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -2252,7 +2252,7 @@ async def export_document_table(
     if table_index < 0 or table_index >= len(tables_data):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Tabelle {table_index} nicht gefunden. Verfuegbar: 0-{len(tables_data)-1}",
+            detail=f"Tabelle {table_index} nicht gefunden. Verfügbar: 0-{len(tables_data)-1}",
         )
 
     # Tabelle rekonstruieren
@@ -2307,7 +2307,7 @@ async def export_document_table(
         overall_confidence=table_data.get("overall_confidence", 0.0),
     )
 
-    # Export durchfuehren
+    # Export durchführen
     service = get_table_extraction_service()
     export_format = TableExportFormat(format)
     exported = service.export_table(table, export_format, include_metadata)
@@ -2357,7 +2357,7 @@ async def extract_upload_tables(
     Extrahiert Tabellen aus einer hochgeladenen Datei.
 
     Die Datei wird nicht gespeichert - nur temporaer verarbeitet.
-    Unterstuetzt: PDF, PNG, JPG
+    Unterstützt: PDF, PNG, JPG
     """
     from app.services.ocr.table_extraction_service import (
         TableExtractionService,
@@ -2366,14 +2366,14 @@ async def extract_upload_tables(
     from app.agents.ocr.docling_layout_analyzer import get_docling_layout_analyzer
     import time
 
-    # Dateiformat pruefen
+    # Dateiformat prüfen
     allowed_extensions = [".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".tif"]
     file_ext = "." + file.filename.split(".")[-1].lower() if file.filename and "." in file.filename else ""
 
     if file_ext not in allowed_extensions:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Nicht unterstuetztes Dateiformat. Erlaubt: {', '.join(allowed_extensions)}",
+            detail=f"Nicht unterstütztes Dateiformat. Erlaubt: {', '.join(allowed_extensions)}",
         )
 
     # Datei lesen
@@ -2387,7 +2387,7 @@ async def extract_upload_tables(
 
     start_time = time.time()
 
-    # Layout-Analyse durchfuehren
+    # Layout-Analyse durchführen
     try:
         layout_analyzer = get_docling_layout_analyzer()
         layout = await layout_analyzer.analyze_layout(content)
@@ -2465,7 +2465,7 @@ async def export_all_document_tables(
     if format not in valid_formats:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiges Format. Erlaubt: {', '.join(valid_formats)}",
+            detail=f"Ungültiges Format. Erlaubt: {', '.join(valid_formats)}",
         )
 
     # Dokument laden
@@ -2482,10 +2482,10 @@ async def export_all_document_tables(
     if document.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument.",
+            detail="Keine Berechtigung für dieses Dokument.",
         )
 
-    # Gecachte Extraktion pruefen
+    # Gecachte Extraktion prüfen
     if not document.metadata or not document.metadata.get("table_extraction_result"):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -2547,7 +2547,7 @@ async def export_all_document_tables(
         metadata=extraction_data.get("metadata", {}),
     )
 
-    # Export durchfuehren
+    # Export durchführen
     service = get_table_extraction_service()
     export_format = TableExportFormat(format)
     exported = service.export_all_tables(extraction_result, export_format, include_metadata)
@@ -2588,7 +2588,7 @@ async def export_all_document_tables(
 
 
 class InconsistentRegionResponse(BaseModel):
-    """Response-Model fuer inkonsistente Region."""
+    """Response-Model für inkonsistente Region."""
     region_id: str
     region_type: str
     start_position: int
@@ -2606,7 +2606,7 @@ class InconsistentRegionResponse(BaseModel):
 
 
 class ConsistencyReportResponse(BaseModel):
-    """Response-Model fuer Consistency Report."""
+    """Response-Model für Consistency Report."""
     document_id: str
     backends_used: List[str]
     overall_agreement: float
@@ -2628,7 +2628,7 @@ class ConsistencyReportResponse(BaseModel):
 @router.post(
     "/documents/{document_id}/check-consistency",
     response_model=ConsistencyReportResponse,
-    summary="Cross-Backend Konsistenz pruefen",
+    summary="Cross-Backend Konsistenz prüfen",
     description="Vergleicht OCR-Ergebnisse verschiedener Backends und identifiziert Inkonsistenzen.",
 )
 async def check_document_consistency(
@@ -2641,7 +2641,7 @@ async def check_document_consistency(
     current_user: User = Depends(get_current_active_user),
 ) -> JSONDict:
     """
-    Prueft die Konsistenz zwischen OCR-Backend-Ergebnissen.
+    Prüft die Konsistenz zwischen OCR-Backend-Ergebnissen.
 
     - Token-Level Vergleich zwischen Backends
     - Identifiziert inkonsistente Regionen
@@ -2667,7 +2667,7 @@ async def check_document_consistency(
     if document.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument.",
+            detail="Keine Berechtigung für dieses Dokument.",
         )
 
     # OCR-Ergebnisse aus Metadata laden
@@ -2706,7 +2706,7 @@ async def check_document_consistency(
     # Consistency Service
     service = get_cross_backend_consistency_service(db=db)
 
-    # Analyse durchfuehren
+    # Analyse durchführen
     report = await service.analyze_consistency(
         document_id=str(document_id),
         results=ocr_results,
@@ -2759,7 +2759,7 @@ async def get_consistency_report(
     if document.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument.",
+            detail="Keine Berechtigung für dieses Dokument.",
         )
 
     if not document.metadata or not document.metadata.get("consistency_report"):
@@ -2774,7 +2774,7 @@ async def get_consistency_report(
 @router.get(
     "/documents/{document_id}/inconsistent-regions",
     summary="Inkonsistente Regionen abrufen",
-    description="Ruft Regionen mit Inkonsistenzen fuer manuelles Review ab.",
+    description="Ruft Regionen mit Inkonsistenzen für manuelles Review ab.",
 )
 async def get_inconsistent_regions(
     document_id: UUID,
@@ -2790,7 +2790,7 @@ async def get_inconsistent_regions(
     current_user: User = Depends(get_current_active_user),
 ) -> JSONDict:
     """
-    Ruft inkonsistente Regionen fuer Review ab.
+    Ruft inkonsistente Regionen für Review ab.
 
     Filtert nach:
     - Minimale Prioritaet (immediate > high > normal > low)
@@ -2803,7 +2803,7 @@ async def get_inconsistent_regions(
     if min_priority not in valid_priorities:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltige Prioritaet. Erlaubt: {', '.join(valid_priorities)}",
+            detail=f"Ungültige Prioritaet. Erlaubt: {', '.join(valid_priorities)}",
         )
 
     # Dokument laden
@@ -2820,7 +2820,7 @@ async def get_inconsistent_regions(
     if document.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument.",
+            detail="Keine Berechtigung für dieses Dokument.",
         )
 
     if not document.metadata or not document.metadata.get("consistency_report"):
@@ -2879,8 +2879,8 @@ async def compare_backend_texts(
     """
     Vergleicht OCR-Texte verschiedener Backends.
 
-    Nuetzlich fuer:
-    - Schnelle Konsistenzpruefung ohne Dokument-Upload
+    Nuetzlich für:
+    - Schnelle Konsistenzprüfung ohne Dokument-Upload
     - Testing und Debugging
     - API-Integration
     """
@@ -2910,12 +2910,12 @@ async def compare_backend_texts(
         OCRResult(
             backend=name,
             text=text,
-            confidence=1.0,  # Keine Confidence-Info verfuegbar
+            confidence=1.0,  # Keine Confidence-Info verfügbar
         )
         for name, text in zip(backend_names, texts)
     ]
 
-    # Analyse durchfuehren
+    # Analyse durchführen
     service = get_cross_backend_consistency_service()
     report = await service.analyze_consistency(
         document_id="direct_comparison",
@@ -2937,7 +2937,7 @@ async def compare_backend_texts(
 @router.get(
     "/consistency/statistics",
     summary="Konsistenz-Statistiken",
-    description="Globale Statistiken ueber Backend-Konsistenz.",
+    description="Globale Statistiken über Backend-Konsistenz.",
 )
 async def get_consistency_statistics(
     days: int = Query(
@@ -2950,11 +2950,11 @@ async def get_consistency_statistics(
     current_user: User = Depends(get_current_active_user),
 ) -> JSONDict:
     """
-    Ruft Konsistenz-Statistiken fuer den Mandanten ab.
+    Ruft Konsistenz-Statistiken für den Mandanten ab.
 
     Zeigt:
     - Durchschnittliche Agreement-Scores
-    - Haeufige Inkonsistenz-Typen
+    - Häufige Inkonsistenz-Typen
     - Backend-Performance-Vergleich
     """
     from datetime import timedelta
@@ -3017,10 +3017,10 @@ async def get_consistency_statistics(
 
 
 class FormulaExtractionRequest(BaseModel):
-    """Anfrage fuer Formelextraktion aus Text."""
+    """Anfrage für Formelextraktion aus Text."""
 
     text: str = Field(..., min_length=1, max_length=50000, description="OCR-Text mit Formeln")
-    include_mathml: bool = Field(False, description="MathML-Konvertierung einschliessen")
+    include_mathml: bool = Field(False, description="MathML-Konvertierung einschließen")
 
 
 class FormulaParsRequest(BaseModel):
@@ -3051,7 +3051,7 @@ class ExtractedFormulaResponse(BaseModel):
 
 
 class FormulaExtractionResponse(BaseModel):
-    """Antwort fuer Formelextraktion."""
+    """Antwort für Formelextraktion."""
 
     erfolg: bool = Field(..., description="War Extraktion erfolgreich?")
     formeln_gefunden: int = Field(..., description="Anzahl gefundener Formeln")
@@ -3060,12 +3060,12 @@ class FormulaExtractionResponse(BaseModel):
 
 
 class FormulaValidationResponse(BaseModel):
-    """Antwort fuer Formel-Validierung."""
+    """Antwort für Formel-Validierung."""
 
     is_valid: bool = Field(..., description="Formel syntaktisch korrekt?")
     issues: List[JSONDict] = Field(default_factory=list, description="Gefundene Probleme")
     severity: str = Field(..., description="Hoechster Schweregrad: error, warning, info")
-    suggestions: List[str] = Field(default_factory=list, description="Korrekturvorschlaege")
+    suggestions: List[str] = Field(default_factory=list, description="Korrekturvorschläge")
 
 
 @router.post(
@@ -3222,7 +3222,7 @@ async def validate_formula(
     """
     Validiert LaTeX-Formel-Syntax.
 
-    Prueft:
+    Prüft:
     - Ausgeglichene Klammern
     - Bekannte LaTeX-Befehle
     - Typische OCR-Fehler (z.B. l statt f in \\frac)
@@ -3250,15 +3250,15 @@ async def validate_formula(
             elif issue.severity.value == "warning" and severity != "error":
                 severity = "warning"
 
-        # Korrekturvorschlaege generieren
+        # Korrekturvorschläge generieren
         suggestions: List[str] = []
         for issue in issues:
             if "OCR" in issue.message:
-                suggestions.append("Moeglicherweise OCR-Fehler - bitte Originaltext pruefen")
+                suggestions.append("Möglicherweise OCR-Fehler - bitte Originaltext prüfen")
             if "Klammer" in issue.message:
-                suggestions.append("Klammern pruefen und ergaenzen")
+                suggestions.append("Klammern prüfen und ergänzen")
             if "Unbekannter LaTeX-Befehl" in issue.message:
-                suggestions.append(f"Befehl pruefen: {issue.message}")
+                suggestions.append(f"Befehl prüfen: {issue.message}")
 
         return FormulaValidationResponse(
             is_valid=is_valid,
@@ -3292,7 +3292,7 @@ class PreprocessingStatusResponse(BaseModel):
 
 
 class PreprocessingConfigRequest(BaseModel):
-    """Konfiguration fuer Bildvorverarbeitung."""
+    """Konfiguration für Bildvorverarbeitung."""
     modus: str = Field(
         ...,
         description="Vorverarbeitungs-Modus: none, light, standard, aggressive",
@@ -3330,13 +3330,13 @@ async def get_preprocessing_status(
     "/preprocessing/config",
     response_model=PreprocessingStatusResponse,
     summary="Vorverarbeitungs-Konfiguration",
-    description="Aendert den Vorverarbeitungs-Modus.",
+    description="Ändert den Vorverarbeitungs-Modus.",
 )
 async def update_preprocessing_config(
     request: PreprocessingConfigRequest,
     current_user: User = Depends(get_current_active_user),
 ) -> PreprocessingStatusResponse:
-    """Vorverarbeitungs-Modus aendern."""
+    """Vorverarbeitungs-Modus ändern."""
     from app.services.image_preprocessor import (
         PreprocessingMode,
         PreprocessingConfig,

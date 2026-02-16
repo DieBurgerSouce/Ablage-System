@@ -2,8 +2,8 @@
 """
 E-Invoice Schemas Module.
 
-Interne Schemas fuer E-Invoice Verarbeitung.
-Die oeffentlichen API-Schemas befinden sich in app/api/schemas/einvoice.py.
+Interne Schemas für E-Invoice Verarbeitung.
+Die öffentlichen API-Schemas befinden sich in app/api/schemas/einvoice.py.
 """
 
 __all__ = []

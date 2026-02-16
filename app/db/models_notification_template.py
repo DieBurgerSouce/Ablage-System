@@ -1,6 +1,6 @@
-"""Notification Template Model - Satellitenmodell fuer Benachrichtigungsvorlagen.
+"""Notification Template Model - Satellitenmodell für Benachrichtigungsvorlagen.
 
-Dieses Modul enthaelt das Datenmodell fuer wiederverwendbare
+Dieses Modul enthält das Datenmodell für wiederverwendbare
 Benachrichtigungsvorlagen mit Jinja2-Templates.
 
 Satellite Pattern: Separate Datei, NICHT in models.py.
@@ -27,19 +27,19 @@ from app.db.models import Base, CrossDBJSON
 
 
 class NotificationMessageTemplate(Base):
-    """Vorlage fuer Benachrichtigungen mit Variablenunterstuetzung.
+    """Vorlage für Benachrichtigungen mit Variablenunterstützung.
 
-    Jinja2-basierte Template-Engine fuer Multi-Channel Benachrichtigungen.
+    Jinja2-basierte Template-Engine für Multi-Channel Benachrichtigungen.
     Getrennt von NotificationTemplate (Push-Notifications) in models.py.
 
     Attributes:
         id: Eindeutige UUID
         name: Eindeutiger Name der Vorlage
         category: Kategorie (approval, document, escalation, system)
-        subject_template: Jinja2-Template fuer Betreff
-        body_template: Jinja2-Template fuer Nachrichtentext
+        subject_template: Jinja2-Template für Betreff
+        body_template: Jinja2-Template für Nachrichtentext
         variables: JSON mit required/optional Variablenlisten
-        channels: JSON-Array mit unterstuetzten Kanaelen
+        channels: JSON-Array mit unterstützten Kanaelen
         is_active: Ob Vorlage aktiv ist (Soft-Delete)
         created_by_id: Ersteller-User-ID
         created_at: Erstellungszeitpunkt
@@ -81,7 +81,7 @@ class NotificationMessageTemplate(Base):
     channels = Column(
         CrossDBJSON,
         nullable=True,
-        comment="JSON-Array mit unterstuetzten Notification-Channels",
+        comment="JSON-Array mit unterstützten Notification-Channels",
     )
     is_active = Column(
         Boolean,
@@ -121,7 +121,7 @@ class NotificationMessageTemplate(Base):
         )
 
 
-# Index fuer Abfragen nach Kategorie + Aktiv-Status
+# Index für Abfragen nach Kategorie + Aktiv-Status
 Index(
     "ix_notification_msg_templates_category_active",
     NotificationMessageTemplate.category,

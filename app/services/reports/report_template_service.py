@@ -2,7 +2,7 @@
 """
 Report Template Service.
 
-CRUD-Operationen fuer Report-Templates, Columns, Filters und Charts.
+CRUD-Operationen für Report-Templates, Columns, Filters und Charts.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ReportTemplateService:
-    """Service fuer Report-Template CRUD-Operationen."""
+    """Service für Report-Template CRUD-Operationen."""
 
     _instance: Optional["ReportTemplateService"] = None
 
@@ -109,7 +109,7 @@ class ReportTemplateService:
         template = result.scalar_one_or_none()
 
         if template and user_id:
-            # Pruefe Zugriffsberechtigung
+            # Prüfe Zugriffsberechtigung
             if not await self._can_access_template(db, template, user_id):
                 return None
 
@@ -126,12 +126,12 @@ class ReportTemplateService:
         limit: int = 100,
         offset: int = 0,
     ) -> List[ReportTemplate]:
-        """Listet Templates fuer einen User."""
+        """Listet Templates für einen User."""
         # Basis: Eigene Templates
         conditions = [ReportTemplate.user_id == user_id]
 
         if include_public:
-            # Oeffentliche Templates (von anderen Usern)
+            # Öffentliche Templates (von anderen Usern)
             conditions.append(ReportTemplate.is_public == True)
 
         query = select(ReportTemplate).where(or_(*conditions))
@@ -185,7 +185,7 @@ class ReportTemplateService:
         if not template:
             return None
 
-        # Pruefe Berechtigung
+        # Prüfe Berechtigung
         if not await self._can_edit_template(db, template, user_id):
             logger.warning(
                 "template_update_forbidden",
@@ -223,7 +223,7 @@ class ReportTemplateService:
         template_id: uuid.UUID,
         user_id: uuid.UUID,
     ) -> bool:
-        """Loescht ein Template."""
+        """Löscht ein Template."""
         template = await self.get_template(db, template_id, include_relations=False)
 
         if not template:
@@ -409,7 +409,7 @@ class ReportTemplateService:
         db: AsyncSession,
         column_id: uuid.UUID,
     ) -> bool:
-        """Loescht eine Spalte."""
+        """Löscht eine Spalte."""
         result = await db.execute(
             delete(ReportColumn).where(ReportColumn.id == column_id)
         )
@@ -501,7 +501,7 @@ class ReportTemplateService:
         db: AsyncSession,
         filter_id: uuid.UUID,
     ) -> bool:
-        """Loescht einen Filter."""
+        """Löscht einen Filter."""
         result = await db.execute(
             delete(ReportFilter).where(ReportFilter.id == filter_id)
         )
@@ -585,7 +585,7 @@ class ReportTemplateService:
         db: AsyncSession,
         chart_id: uuid.UUID,
     ) -> bool:
-        """Loescht einen Chart."""
+        """Löscht einen Chart."""
         result = await db.execute(
             delete(ReportChart).where(ReportChart.id == chart_id)
         )
@@ -608,12 +608,12 @@ class ReportTemplateService:
         can_delete: bool = False,
     ) -> Optional[ReportShare]:
         """Teilt ein Template mit einem anderen User."""
-        # Pruefe ob Template existiert und User der Owner ist
+        # Prüfe ob Template existiert und User der Owner ist
         template = await self.get_template(db, template_id, include_relations=False)
         if not template or template.user_id != shared_by_id:
             return None
 
-        # Pruefe ob bereits geteilt
+        # Prüfe ob bereits geteilt
         existing = await self._get_share(db, template_id, shared_with_user_id)
         if existing:
             # Update existing share
@@ -703,7 +703,7 @@ class ReportTemplateService:
         template: ReportTemplate,
         user_id: uuid.UUID,
     ) -> bool:
-        """Prueft ob ein User auf ein Template zugreifen darf."""
+        """Prüft ob ein User auf ein Template zugreifen darf."""
         if template.user_id == user_id:
             return True
         if template.is_public:
@@ -718,7 +718,7 @@ class ReportTemplateService:
         template: ReportTemplate,
         user_id: uuid.UUID,
     ) -> bool:
-        """Prueft ob ein User ein Template bearbeiten darf."""
+        """Prüft ob ein User ein Template bearbeiten darf."""
         if template.user_id == user_id:
             return True
 

@@ -2,7 +2,7 @@
 """
 DATEVconnect API Connector.
 
-Implementiert ERPConnector fuer vollstaendige DATEV Integration:
+Implementiert ERPConnector für vollständige DATEV Integration:
 - OAuth2 Authentifizierung (DATEVconnect)
 - REST API Client
 - Stammdaten Synchronisation
@@ -74,7 +74,7 @@ class DATEVConnectionConfig(ERPConnectionConfig):
     kontenrahmen: str = "SKR03"
     sachkontenlange: int = 4
     personenkontenlange: int = 5
-    buchungsmodus: str = "manuell"  # automatisch, manuell, bestaetigung
+    buchungsmodus: str = "manuell"  # automatisch, manuell, bestätigung
 
     # Standard-Konten
     sammelkonto_debitoren: str = "1400"
@@ -115,7 +115,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
     """
     DATEVconnect API Connector.
 
-    Implementiert vollstaendige bidirektionale Integration mit DATEV:
+    Implementiert vollständige bidirektionale Integration mit DATEV:
     - OAuth2 Authentifizierung
     - Stammdaten Sync (Kunden/Lieferanten)
     - Kontenplan Abruf
@@ -253,7 +253,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
 
     async def get_version(self) -> str:
         """
-        Gibt die API-Version zurueck.
+        Gibt die API-Version zurück.
 
         Returns:
             Versionsstring
@@ -275,7 +275,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
 
         Args:
             direction: Sync-Richtung
-            since: Nur Aenderungen seit diesem Zeitpunkt
+            since: Nur Änderungen seit diesem Zeitpunkt
             batch_size: Anzahl pro Batch
 
         Returns:
@@ -301,7 +301,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
                 result.records_synced = len(customers)
 
             if direction in (ERPSyncDirection.PUSH, ERPSyncDirection.BIDIRECTIONAL):
-                # Push wird ueber separate Methoden behandelt
+                # Push wird über separate Methoden behandelt
                 pass
 
             result.success = True
@@ -459,7 +459,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
 
         Args:
             direction: Sync-Richtung
-            since: Nur Aenderungen seit diesem Zeitpunkt
+            since: Nur Änderungen seit diesem Zeitpunkt
             batch_size: Anzahl pro Batch
 
         Returns:
@@ -527,7 +527,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
 
         Args:
             direction: Sync-Richtung
-            since: Nur Aenderungen seit diesem Zeitpunkt
+            since: Nur Änderungen seit diesem Zeitpunkt
             batch_size: Anzahl pro Batch
 
         Returns:
@@ -544,7 +544,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
                 result.error_message = "Rate Limit erreicht"
                 return self._complete_sync_result(result)
 
-            # DATEV Buchungen werden ueber Buchungsstapel-Export gepusht
+            # DATEV Buchungen werden über Buchungsstapel-Export gepusht
             # Hier nur Status-Sync
             result.success = True
 
@@ -570,7 +570,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
         """
         Aktualisiert den Zahlungsstatus einer Buchung.
 
-        Hinweis: In DATEV erfolgt dies ueber Zahlungsbuchungen.
+        Hinweis: In DATEV erfolgt dies über Zahlungsbuchungen.
         """
         logger.warning("datev_payment_status_via_buchung")
         return False
@@ -591,7 +591,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
         Laedt ein Dokument als Beleg in DATEV Unternehmen Online.
 
         Args:
-            entity: Entitaetstyp (wird ignoriert, Belege sind Buchungs-bezogen)
+            entity: Entitätstyp (wird ignoriert, Belege sind Buchungs-bezogen)
             erp_id: Buchungs-GUID oder Beleglink-ID
             document_data: Dokumentinhalt als Bytes
             filename: Dateiname
@@ -652,8 +652,8 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
         Holt Belegbilder zu einer Buchung.
 
         Args:
-            entity: Entitaetstyp
-            erp_id: ID der Entitaet
+            entity: Entitätstyp
+            erp_id: ID der Entität
 
         Returns:
             Liste der Belege mit Metadaten
@@ -728,7 +728,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
         Pusht einen Buchungsstapel zu DATEV.
 
         Args:
-            buchungen: Liste der Buchungssaetze
+            buchungen: Liste der Buchungssätze
 
         Returns:
             Tuple aus (Erfolg, Stapel-ID, Fehlermeldungen)
@@ -789,8 +789,8 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
         Holt offene Posten aus DATEV.
 
         Args:
-            debitor_kreditor: Optional: Nur fuer bestimmten Debitor/Kreditor
-            stichtag: Stichtag fuer OP-Liste
+            debitor_kreditor: Optional: Nur für bestimmten Debitor/Kreditor
+            stichtag: Stichtag für OP-Liste
 
         Returns:
             Liste der offenen Posten
@@ -827,7 +827,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
     # =========================================================================
 
     def _token_needs_refresh(self) -> bool:
-        """Prueft ob Token-Refresh noetig ist."""
+        """Prüft ob Token-Refresh noetig ist."""
         if not self.config.access_token:
             return True
         if not self.config.token_expires_at:
@@ -889,7 +889,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
 
     def get_oauth_authorization_url(self, state: str) -> str:
         """
-        Generiert OAuth2 Authorization URL fuer User-Consent.
+        Generiert OAuth2 Authorization URL für User-Consent.
 
         Args:
             state: CSRF-Token
@@ -1106,7 +1106,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
         if not buchung.get("belegdatum"):
             errors.append("Belegdatum fehlt")
         if buchung.get("soll_haben") not in ("S", "H"):
-            errors.append("Soll/Haben ungueltig (S oder H)")
+            errors.append("Soll/Haben ungültig (S oder H)")
 
         return errors
 
@@ -1114,7 +1114,7 @@ class DATEVConnector(ERPConnector[DATEVConnectionConfig]):
         self,
         buchungen: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        """Bereitet Buchungsstapel fuer DATEV API vor."""
+        """Bereitet Buchungsstapel für DATEV API vor."""
         return {
             "consultant_number": self.config.beraternummer,
             "client_number": self.config.mandantennummer,
@@ -1154,9 +1154,9 @@ def get_datev_connector(
     force_new: bool = False,
 ) -> DATEVConnector:
     """
-    Factory fuer DATEVConnector (Thread-Safe).
+    Factory für DATEVConnector (Thread-Safe).
 
-    Cached Connectoren nach Mandant fuer Wiederverwendung.
+    Cached Connectoren nach Mandant für Wiederverwendung.
 
     Args:
         config: Verbindungskonfiguration
@@ -1175,6 +1175,6 @@ def get_datev_connector(
 
 
 def clear_connector_cache() -> None:
-    """Leert den Connector-Cache (fuer Tests)."""
+    """Leert den Connector-Cache (für Tests)."""
     with _cache_lock:
         _connector_cache.clear()

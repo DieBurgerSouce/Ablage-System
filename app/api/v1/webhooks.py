@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, R
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, update
 
-# SECURITY FIX 27-8: Rate Limiting fuer Webhook Endpoints
+# SECURITY FIX 27-8: Rate Limiting für Webhook Endpoints
 from app.core.rate_limiting import limiter, get_user_identifier
 
 from app.db.models import User, WebhookSubscription, WebhookDelivery
@@ -54,7 +54,7 @@ def generate_webhook_secret() -> str:
     return f"whsec_{secrets.token_urlsafe(32)}"
 
 
-# SECURITY FIX 27-8: Rate-Limit fuer Webhook-Erstellung
+# SECURITY FIX 27-8: Rate-Limit für Webhook-Erstellung
 @limiter.limit("20/minute", key_func=get_user_identifier)
 @router.post(
     "/",

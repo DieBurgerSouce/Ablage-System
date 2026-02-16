@@ -4,10 +4,10 @@ Smart Search Service.
 
 Intelligente Suche mit automatischer Erkennung von NLQ vs. Keyword-Suche.
 Kombiniert:
-- NLQ Service fuer natuerlichsprachliche Fragen
-- Unified Search Service fuer Keyword/Hybrid/Semantic-Suche
-- Entity Search Service fuer Kunden/Lieferanten-Suche
-- Query Expansion Service fuer deutsche Synonyme
+- NLQ Service für natürlichsprachliche Fragen
+- Unified Search Service für Keyword/Hybrid/Semantic-Suche
+- Entity Search Service für Kunden/Lieferanten-Suche
+- Query Expansion Service für deutsche Synonyme
 
 Feature #1 der Feature-Roadmap (Phase 2026 Q1)
 """
@@ -71,7 +71,7 @@ SMART_SEARCH_AUTO_DETECTION = Counter(
 
 class DetectedQueryType(str, Enum):
     """Auto-erkannter Query-Typ."""
-    NLQ = "nlq"  # Natuerlichsprachliche Frage
+    NLQ = "nlq"  # Natürlichsprachliche Frage
     KEYWORD = "keyword"  # Keyword-Suche
     MIXED = "mixed"  # Gemischter Typ
 
@@ -92,7 +92,7 @@ NLQ_AGGREGATION_WORDS = [
     "maximum", "minimum", "hoechste", "niedrigste",
 ]
 
-# Verbs-Pattern fuer natuerliche Satzstruktur
+# Verbs-Pattern für natürliche Satzstruktur
 VERB_PATTERN = re.compile(
     r'\b(sind|ist|haben|hat|war|waren|wurde|wurden|'
     r'kosten|kostet|betraegt|betragen|zeig|zeige|finde|suche)\b',
@@ -128,7 +128,7 @@ class SmartSearchInterpretation:
 
 @dataclass
 class SmartSearchFacets:
-    """Verfuegbare Facetten/Filter."""
+    """Verfügbare Facetten/Filter."""
     document_types: Dict[str, int]  # {"invoice": 5, "contract": 2}
     statuses: Dict[str, int]  # {"pending": 3, "completed": 2}
     date_ranges: Dict[str, int]  # {"last_7_days": 5, "last_30_days": 10}
@@ -175,7 +175,7 @@ class SmartSearchService:
     """
     Intelligenter Such-Service mit Auto-Detection.
 
-    Erkennt automatisch ob Anfrage eine natuerlichsprachliche Frage
+    Erkennt automatisch ob Anfrage eine natürlichsprachliche Frage
     oder eine Keyword-Suche ist und routet entsprechend.
     """
 
@@ -202,13 +202,13 @@ class SmartSearchService:
         force_mode: Optional[DetectedQueryType] = None,
     ) -> SmartSearchResponse:
         """
-        Fuehrt eine intelligente Suche durch.
+        Führt eine intelligente Suche durch.
 
         Args:
             db: Datenbank-Session
             query: Suchanfrage
             user_id: Benutzer-ID
-            company_id: Optional Company-ID fuer Multi-Tenant
+            company_id: Optional Company-ID für Multi-Tenant
             filters: Optional Filter (Dokumenttyp, Datum, etc.)
             limit: Maximale Anzahl Ergebnisse
             include_suggestions: Query-Suggestions generieren
@@ -251,7 +251,7 @@ class SmartSearchService:
         nlq_time: Optional[float] = None
 
         try:
-            # 2. Parallel: Entity-Suche (immer durchfuehren)
+            # 2. Parallel: Entity-Suche (immer durchführen)
             entity_start = time.perf_counter()
             entities_result = await self._search_entities(
                 db=db,
@@ -265,7 +265,7 @@ class SmartSearchService:
 
             # 3. Haupt-Suche basierend auf erkanntem Typ
             if detected_type == DetectedQueryType.NLQ:
-                # NLQ-Modus: Natuerlichsprachliche Verarbeitung
+                # NLQ-Modus: Natürlichsprachliche Verarbeitung
                 nlq_start = time.perf_counter()
                 nlq_result = await self._execute_nlq_search(
                     db=db,
@@ -417,13 +417,13 @@ class SmartSearchService:
                     f"Aggregation erkannt: '{agg_word}'"
                 )
 
-        # Heuristik 4: Verben in der Query = NLQ (natuerliche Satzstruktur)
+        # Heuristik 4: Verben in der Query = NLQ (natürliche Satzstruktur)
         if VERB_PATTERN.search(query_lower):
             if query_len >= 5:  # Mindestens 5 Woerter mit Verb = Satz
                 return (
                     DetectedQueryType.NLQ,
                     0.85,
-                    "Natuerliche Satzstruktur erkannt (Verb + mehrere Woerter)"
+                    "Natürliche Satzstruktur erkannt (Verb + mehrere Woerter)"
                 )
 
         # Heuristik 5: Lange Queries (6+ Woerter) ohne Operatoren = NLQ
@@ -436,7 +436,7 @@ class SmartSearchService:
                 return (
                     DetectedQueryType.NLQ,
                     0.75,
-                    "Lange Query ohne Boolean-Operatoren - natuerliche Sprache"
+                    "Lange Query ohne Boolean-Operatoren - natürliche Sprache"
                 )
 
         # Default: Keyword-Suche
@@ -458,7 +458,7 @@ class SmartSearchService:
         user_id: UUID,
         limit: int,
     ) -> "NLQResult":
-        """Fuehrt NLQ-Suche durch."""
+        """Führt NLQ-Suche durch."""
         nlq_service = await self._get_nlq_service(db)
         result = await nlq_service.process_query(
             query=query,
@@ -507,7 +507,7 @@ class SmartSearchService:
         filters: Optional[SearchFilters],
         limit: int,
     ) -> "UnifiedSearchResponse":
-        """Fuehrt Unified Search durch (Keyword/Hybrid)."""
+        """Führt Unified Search durch (Keyword/Hybrid)."""
         unified_search = self._get_unified_search()
         result = await unified_search.search(
             db=db,
@@ -544,7 +544,7 @@ class SmartSearchService:
         """Sucht Business Entities (Kunden/Lieferanten)."""
         entity_search = self._get_entity_search(db)
 
-        # Smart-Suche ueber alle Felder
+        # Smart-Suche über alle Felder
         results = await entity_search.smart_search(
             query=query,
             entity_type=None,  # Beide Typen durchsuchen
@@ -581,27 +581,27 @@ class SmartSearchService:
         detected_type: DetectedQueryType,
         has_results: bool,
     ) -> List[str]:
-        """Generiert Query-Vorschlaege."""
+        """Generiert Query-Vorschläge."""
         suggestions = []
 
         if not has_results:
-            # Keine Ergebnisse: Alternative Vorschlaege
+            # Keine Ergebnisse: Alternative Vorschläge
             if detected_type == DetectedQueryType.NLQ:
                 suggestions.append("Versuchen Sie eine einfachere Formulierung")
-                suggestions.append("Nutzen Sie Schlagwoerter statt ganzer Saetze")
+                suggestions.append("Nutzen Sie Schlagwoerter statt ganzer Sätze")
             else:
                 suggestions.append("Verwenden Sie weniger spezifische Suchbegriffe")
                 suggestions.append("Probieren Sie verwandte Begriffe")
         else:
-            # Ergebnisse vorhanden: Verfeinerungs-Vorschlaege
+            # Ergebnisse vorhanden: Verfeinerungs-Vorschläge
             if detected_type == DetectedQueryType.KEYWORD:
                 suggestions.append("Verfeinern Sie mit Dokumenttyp-Filter")
                 suggestions.append("Filtern Sie nach Datum oder Status")
             else:
-                suggestions.append("Fragen Sie nach zusaetzlichen Details")
+                suggestions.append("Fragen Sie nach zusätzlichen Details")
                 suggestions.append("Kombinieren Sie mit Zeitangaben")
 
-        return suggestions[:3]  # Max 3 Vorschlaege
+        return suggestions[:3]  # Max 3 Vorschläge
 
     def _calculate_facets(
         self,
@@ -625,7 +625,7 @@ class SmartSearchService:
         for entity in entities:
             entities_map[entity.entity_id] = entities_map.get(entity.entity_id, 0) + 1
 
-        # Dummy date_ranges (koennte aus created_at berechnet werden)
+        # Dummy date_ranges (könnte aus created_at berechnet werden)
         date_ranges = {
             "last_7_days": len([d for d in documents if d.created_at]),
             "last_30_days": len(documents),
@@ -650,22 +650,22 @@ class SmartSearchService:
         limit: int = 10,
     ) -> List[str]:
         """
-        Generiert Autocomplete-Vorschlaege.
+        Generiert Autocomplete-Vorschläge.
 
         Args:
             db: Datenbank-Session
             query: Teilweise eingegebene Query
-            limit: Maximale Anzahl Vorschlaege
+            limit: Maximale Anzahl Vorschläge
 
         Returns:
-            Liste von Autocomplete-Vorschlaegen
+            Liste von Autocomplete-Vorschlägen
         """
         suggestions = []
 
-        # Haeufige NLQ-Patterns
+        # Häufige NLQ-Patterns
         nlq_templates = [
             "Zeige alle Rechnungen von",
-            "Wie viel haben wir ausgegeben fuer",
+            "Wie viel haben wir ausgegeben für",
             "Finde Dokumente vom",
             "Liste alle offenen Rechnungen",
             "Welche Lieferanten haben wir",
@@ -673,13 +673,13 @@ class SmartSearchService:
 
         query_lower = query.lower()
 
-        # Pattern-Matching fuer Autocomplete
+        # Pattern-Matching für Autocomplete
         for template in nlq_templates:
             if template.lower().startswith(query_lower) and len(query) >= 3:
                 suggestions.append(template)
 
-        # Koennte erweitert werden mit:
-        # - Haeufige Queries aus History
+        # Könnte erweitert werden mit:
+        # - Häufige Queries aus History
         # - Entity-Namen Autocomplete
         # - Dokumenttyp-Namen
 
@@ -695,7 +695,7 @@ _smart_search_service: Optional[SmartSearchService] = None
 
 
 def get_smart_search_service() -> SmartSearchService:
-    """Factory-Funktion fuer Dependency Injection."""
+    """Factory-Funktion für Dependency Injection."""
     global _smart_search_service
     if _smart_search_service is None:
         _smart_search_service = SmartSearchService()

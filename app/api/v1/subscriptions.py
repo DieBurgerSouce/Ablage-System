@@ -1,15 +1,15 @@
 """
 Subscription Management API Endpoints.
 
-API fuer Multi-Tenant Subscription-Verwaltung und Billing-Vorbereitung.
+API für Multi-Tenant Subscription-Verwaltung und Billing-Vorbereitung.
 
 Endpoints:
 - GET /subscriptions - Eigene Subscription abrufen
 - GET /subscriptions/{company_id} - Admin: Subscription einer Company
-- PATCH /subscriptions/{company_id}/tier - Admin: Tier aendern
+- PATCH /subscriptions/{company_id}/tier - Admin: Tier ändern
 - PATCH /subscriptions/{company_id}/billing - Admin: Billing-Infos aktualisieren
-- POST /subscriptions/{company_id}/extend - Admin: Subscription verlaengern
-- GET /subscriptions/tiers - Verfuegbare Tiers mit Features
+- POST /subscriptions/{company_id}/extend - Admin: Subscription verlängern
+- GET /subscriptions/tiers - Verfügbare Tiers mit Features
 - GET /subscriptions/statistics - Admin: Globale Subscription-Statistiken
 
 Created: 2026-01-19
@@ -78,7 +78,7 @@ class TierInfoResponse(BaseModel):
 
 
 class ChangeTierRequest(BaseModel):
-    """Request zum Aendern des Subscription-Tiers."""
+    """Request zum Ändern des Subscription-Tiers."""
     new_tier: str = Field(..., pattern="^(free|basic|professional|enterprise)$")
     reason: Optional[str] = Field(None, max_length=500)
 
@@ -91,7 +91,7 @@ class UpdateBillingRequest(BaseModel):
 
 
 class ExtendSubscriptionRequest(BaseModel):
-    """Request zum Verlaengern einer Subscription."""
+    """Request zum Verlängern einer Subscription."""
     months: int = Field(..., ge=1, le=36)
     reason: Optional[str] = Field(None, max_length=500)
 
@@ -101,7 +101,7 @@ class SubscriptionStatisticsResponse(BaseModel):
     total_companies: int
     by_tier: dict
     active_subscriptions: int
-    expiring_soon: int  # In naechsten 30 Tagen
+    expiring_soon: int  # In nächsten 30 Tagen
     expired: int
 
 
@@ -153,7 +153,7 @@ async def get_own_subscription(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Hole Subscription fuer die Company des aktuellen Users."""
+    """Hole Subscription für die Company des aktuellen Users."""
     if not current_user.current_company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -177,23 +177,23 @@ async def get_own_subscription(
 @router.get(
     "/tiers",
     response_model=List[TierInfoResponse],
-    summary="Verfuegbare Subscription-Tiers",
-    description="Listet alle verfuegbaren Tiers mit Features und Preisen."
+    summary="Verfügbare Subscription-Tiers",
+    description="Listet alle verfügbaren Tiers mit Features und Preisen."
 )
 async def get_available_tiers(
     db: AsyncSession = Depends(get_db),
 ):
-    """Hole alle verfuegbaren Subscription-Tiers."""
+    """Hole alle verfügbaren Subscription-Tiers."""
     # Versuche aus DB zu laden, sonst Default-Config
     result = await db.execute(select(SubscriptionTierDefaults))
     db_tiers = {t.tier: t for t in result.scalars().all()}
 
     tiers = []
     tier_display = {
-        "free": ("Free", "Kostenloser Einstieg fuer kleine Teams"),
-        "basic": ("Basic", "Fuer wachsende Unternehmen"),
-        "professional": ("Professional", "Fuer professionelle Anforderungen"),
-        "enterprise": ("Enterprise", "Massgeschneidert fuer Grossunternehmen"),
+        "free": ("Free", "Kostenloser Einstieg für kleine Teams"),
+        "basic": ("Basic", "Für wachsende Unternehmen"),
+        "professional": ("Professional", "Für professionelle Anforderungen"),
+        "enterprise": ("Enterprise", "Massgeschneidert für Grossunternehmen"),
     }
 
     for tier_key, config in DEFAULT_TIER_CONFIG.items():
@@ -230,7 +230,7 @@ async def get_available_tiers(
     "/statistics",
     response_model=SubscriptionStatisticsResponse,
     summary="Subscription-Statistiken (Admin)",
-    description="Globale Uebersicht ueber alle Subscriptions."
+    description="Globale Übersicht über alle Subscriptions."
 )
 async def get_subscription_statistics(
     current_user: User = Depends(get_current_user),
@@ -240,7 +240,7 @@ async def get_subscription_statistics(
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Statistiken einsehen"
+            detail="Nur Administratoren können Statistiken einsehen"
         )
 
     now = datetime.now(timezone.utc)
@@ -310,11 +310,11 @@ async def get_company_subscription(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Hole Subscription fuer eine spezifische Company (Admin only)."""
+    """Hole Subscription für eine spezifische Company (Admin only)."""
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen fremde Subscriptions einsehen"
+            detail="Nur Administratoren können fremde Subscriptions einsehen"
         )
 
     result = await db.execute(
@@ -334,8 +334,8 @@ async def get_company_subscription(
 @router.patch(
     "/{company_id}/tier",
     response_model=SubscriptionResponse,
-    summary="Tier aendern (Admin)",
-    description="Admin: Aendert den Subscription-Tier einer Company."
+    summary="Tier ändern (Admin)",
+    description="Admin: Ändert den Subscription-Tier einer Company."
 )
 async def change_subscription_tier(
     company_id: UUID,
@@ -343,11 +343,11 @@ async def change_subscription_tier(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Aendere den Subscription-Tier (Admin only)."""
+    """Ändere den Subscription-Tier (Admin only)."""
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Tiers aendern"
+            detail="Nur Administratoren können Tiers ändern"
         )
 
     result = await db.execute(
@@ -399,7 +399,7 @@ async def update_billing_info(
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Billing-Infos aendern"
+            detail="Nur Administratoren können Billing-Infos ändern"
         )
 
     result = await db.execute(
@@ -431,8 +431,8 @@ async def update_billing_info(
 @router.post(
     "/{company_id}/extend",
     response_model=SubscriptionResponse,
-    summary="Subscription verlaengern (Admin)",
-    description="Admin: Verlaengert die Subscription einer Company."
+    summary="Subscription verlängern (Admin)",
+    description="Admin: Verlängert die Subscription einer Company."
 )
 async def extend_subscription(
     company_id: UUID,
@@ -440,11 +440,11 @@ async def extend_subscription(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Verlaengere Subscription (Admin only)."""
+    """Verlängere Subscription (Admin only)."""
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Subscriptions verlaengern"
+            detail="Nur Administratoren können Subscriptions verlängern"
         )
 
     result = await db.execute(
@@ -462,10 +462,10 @@ async def extend_subscription(
 
     # Berechne neues Ablaufdatum
     if company.subscription_expires_at and company.subscription_expires_at > now:
-        # Verlaengere ab aktuellem Ablaufdatum
+        # Verlängere ab aktuellem Ablaufdatum
         new_expires = company.subscription_expires_at + timedelta(days=30 * request.months)
     else:
-        # Verlaengere ab jetzt
+        # Verlängere ab jetzt
         new_expires = now + timedelta(days=30 * request.months)
 
     company.subscription_expires_at = new_expires

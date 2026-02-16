@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-InsuranceAnalysisService - Versicherungsanalyse und Deckungsluecken.
+InsuranceAnalysisService - Versicherungsanalyse und Deckungslücken.
 
 Berechnet automatisch:
-- Deckungsluecken-Analyse
-- Kuendigungsfristen
-- Jaehrliche Praemien
+- Deckungslücken-Analyse
+- Kündigungsfristen
+- Jährliche Praemien
 - Deckungsadaequanz-Score
 
 Enterprise Feature - feinpoliert und durchdacht.
@@ -71,9 +71,9 @@ RECOMMENDED_COVERAGE = {
         "recommended_coverage": Decimal("500000"),
         "essential": False,
     },
-    # Berufsunfaehigkeit
-    "berufsunfaehigkeit": {
-        "name": "Berufsunfaehigkeit",
+    # Berufsunfähigkeit
+    "berufsunfähigkeit": {
+        "name": "Berufsunfähigkeit",
         "min_coverage": Decimal("1000"),  # Monatliche Rente
         "recommended_coverage": Decimal("2000"),
         "essential": True,
@@ -83,7 +83,7 @@ RECOMMENDED_COVERAGE = {
         "name": "Risikoleben",
         "min_coverage": Decimal("100000"),
         "recommended_coverage": Decimal("300000"),
-        "essential": False,  # Abhaengig von Familiensituation
+        "essential": False,  # Abhängig von Familiensituation
     },
     # Unfallversicherung
     "unfall": {
@@ -95,9 +95,9 @@ RECOMMENDED_COVERAGE = {
     # Wohngebaeudeversicherung
     "wohngebaeude": {
         "name": "Wohngebaeude",
-        "min_coverage": Decimal("500000"),  # Abhaengig vom Gebaeudewert
+        "min_coverage": Decimal("500000"),  # Abhängig vom Gebaeudewert
         "recommended_coverage": Decimal("1000000"),
-        "essential": True,  # Fuer Eigentuemer
+        "essential": True,  # Für Eigentuemer
     },
     # KFZ-Haftpflicht
     "kfz_haftpflicht": {
@@ -129,7 +129,7 @@ RECOMMENDED_COVERAGE = {
     },
 }
 
-# Severity-Levels fuer Deckungsluecken
+# Severity-Levels für Deckungslücken
 SEVERITY_LEVELS = {
     "critical": {"threshold": 0.5, "label": "Kritisch"},  # <50% der empfohlenen Deckung
     "high": {"threshold": 0.7, "label": "Hoch"},          # 50-70%
@@ -144,7 +144,7 @@ SEVERITY_LEVELS = {
 
 @dataclass
 class CoverageGap:
-    """Eine einzelne Deckungsluecke."""
+    """Eine einzelne Deckungslücke."""
     insurance_type: str
     insurance_name: str
     recommended_coverage: Decimal
@@ -158,7 +158,7 @@ class CoverageGap:
 
 @dataclass
 class CoverageGapAnalysisResult:
-    """Ergebnis der Deckungsluecken-Analyse."""
+    """Ergebnis der Deckungslücken-Analyse."""
     space_id: UUID
     gaps: List[CoverageGap]
     total_gap_count: int
@@ -171,7 +171,7 @@ class CoverageGapAnalysisResult:
 
 @dataclass
 class CancellationDeadlineResult:
-    """Ergebnis der Kuendigungsfrist-Berechnung."""
+    """Ergebnis der Kündigungsfrist-Berechnung."""
     insurance_id: UUID
     insurance_name: str
     contract_end: Optional[date]
@@ -196,7 +196,7 @@ class InsurancePremiumSummary:
 
 @dataclass
 class InsuranceKPIs:
-    """Alle berechneten KPIs fuer Versicherungen eines Spaces."""
+    """Alle berechneten KPIs für Versicherungen eines Spaces."""
     space_id: UUID
     coverage_analysis: Optional[CoverageGapAnalysisResult] = None
     cancellation_deadlines: List[CancellationDeadlineResult] = field(default_factory=list)
@@ -210,12 +210,12 @@ class InsuranceKPIs:
 
 class InsuranceAnalysisService:
     """
-    Service fuer Versicherungsanalyse.
+    Service für Versicherungsanalyse.
 
     Analysiert:
-    - Deckungsluecken vs. Empfehlungen
-    - Kuendigungsfristen
-    - Praemien-Uebersicht
+    - Deckungslücken vs. Empfehlungen
+    - Kündigungsfristen
+    - Praemien-Übersicht
     - Deckungsadaequanz-Score
     """
 
@@ -224,7 +224,7 @@ class InsuranceAnalysisService:
         pass
 
     # =========================================================================
-    # Deckungsluecken-Analyse
+    # Deckungslücken-Analyse
     # =========================================================================
 
     async def analyze_coverage_gaps(
@@ -233,9 +233,9 @@ class InsuranceAnalysisService:
         space_id: UUID,
     ) -> CoverageGapAnalysisResult:
         """
-        Analysiert Deckungsluecken fuer alle Versicherungen eines Spaces.
+        Analysiert Deckungslücken für alle Versicherungen eines Spaces.
 
-        Vergleicht vorhandene Deckung mit Empfehlungen und identifiziert Luecken.
+        Vergleicht vorhandene Deckung mit Empfehlungen und identifiziert Lücken.
 
         Args:
             db: Datenbank-Session
@@ -269,7 +269,7 @@ class InsuranceAnalysisService:
                 current += insurance.coverage_amount
             coverage_by_type[ins_type] = current
 
-        # Luecken identifizieren
+        # Lücken identifizieren
         gaps: List[CoverageGap] = []
         missing_essential: List[str] = []
 
@@ -281,7 +281,7 @@ class InsuranceAnalysisService:
             if recommendation["essential"] and current_coverage == 0:
                 missing_essential.append(recommendation["name"])
 
-            # Deckungsluecke berechnen
+            # Deckungslücke berechnen
             if recommended > 0 and current_coverage < recommended:
                 gap_amount = recommended - current_coverage
                 gap_percentage = ((recommended - current_coverage) / recommended) * 100
@@ -330,7 +330,7 @@ class InsuranceAnalysisService:
         total_score = (covered_types / total_types * 40) if total_types > 0 else 40
         coverage_score = Decimal(str(essential_score + total_score))
 
-        # Abzuege fuer kritische Luecken
+        # Abzuege für kritische Lücken
         coverage_score -= Decimal(str(critical_gaps * 10))
         coverage_score -= Decimal(str(high_gaps * 5))
         coverage_score = max(Decimal("0"), min(Decimal("100"), coverage_score))
@@ -362,8 +362,8 @@ class InsuranceAnalysisService:
             "hausratversicherung": "hausrat",
             "rechtsschutz": "rechtsschutz",
             "rechtsschutzversicherung": "rechtsschutz",
-            "berufsunfaehigkeit": "berufsunfaehigkeit",
-            "bu": "berufsunfaehigkeit",
+            "berufsunfähigkeit": "berufsunfähigkeit",
+            "bu": "berufsunfähigkeit",
             "risikoleben": "risikoleben",
             "risiko-leben": "risikoleben",
             "lebensversicherung": "risikoleben",
@@ -388,7 +388,7 @@ class InsuranceAnalysisService:
         return type_mapping.get(normalized, insurance_type.lower())
 
     # =========================================================================
-    # Kuendigungsfristen
+    # Kündigungsfristen
     # =========================================================================
 
     async def calculate_cancellation_deadlines(
@@ -397,7 +397,7 @@ class InsuranceAnalysisService:
         space_id: UUID,
     ) -> List[CancellationDeadlineResult]:
         """
-        Berechnet Kuendigungsfristen fuer alle Versicherungen.
+        Berechnet Kündigungsfristen für alle Versicherungen.
 
         Args:
             db: Datenbank-Session
@@ -425,15 +425,15 @@ class InsuranceAnalysisService:
         deadlines: List[CancellationDeadlineResult] = []
 
         for insurance in insurances:
-            # Kuendigungsfrist berechnen
+            # Kündigungsfrist berechnen
             cancellation_months = insurance.cancellation_period_months or 3  # Default: 3 Monate
 
             # Vertragsende bestimmen
             contract_end = insurance.end_date
 
-            # Bei Auto-Renewal: naechstes Vertragsende = 1 Jahr nach Start
+            # Bei Auto-Renewal: nächstes Vertragsende = 1 Jahr nach Start
             if contract_end is None and insurance.is_auto_renew and insurance.start_date:
-                # Naechstes Vertragsende berechnen
+                # Nächstes Vertragsende berechnen
                 years_since_start = (today.year - insurance.start_date.year)
                 if today.month < insurance.start_date.month or \
                    (today.month == insurance.start_date.month and today.day < insurance.start_date.day):
@@ -445,7 +445,7 @@ class InsuranceAnalysisService:
             if contract_end is None:
                 continue
 
-            # Kuendigungsfrist berechnen
+            # Kündigungsfrist berechnen
             cancellation_deadline = contract_end - timedelta(days=cancellation_months * 30)
 
             days_until = (cancellation_deadline - today).days
@@ -483,7 +483,7 @@ class InsuranceAnalysisService:
         space_id: UUID,
     ) -> InsurancePremiumSummary:
         """
-        Berechnet die jaehrlichen Gesamtpraemien.
+        Berechnet die jährlichen Gesamtpraemien.
 
         Args:
             db: Datenbank-Session
@@ -514,7 +514,7 @@ class InsuranceAnalysisService:
             if not insurance.premium_amount:
                 continue
 
-            # Auf jaehrlich umrechnen
+            # Auf jährlich umrechnen
             annual_premium = insurance.premium_amount
             frequency = insurance.premium_frequency or "yearly"
 
@@ -557,7 +557,7 @@ class InsuranceAnalysisService:
         persist: bool = True,
     ) -> InsuranceKPIs:
         """
-        Fuehrt alle Versicherungs-Analysen durch.
+        Führt alle Versicherungs-Analysen durch.
 
         Args:
             db: Datenbank-Session
@@ -599,7 +599,7 @@ class InsuranceAnalysisService:
         """
         from app.db.models import PrivatInsurance
 
-        # Kuendigungsfristen in einzelne Versicherungen speichern
+        # Kündigungsfristen in einzelne Versicherungen speichern
         for deadline in kpis.cancellation_deadlines:
             result = await db.execute(
                 select(PrivatInsurance).where(PrivatInsurance.id == deadline.insurance_id)
@@ -616,7 +616,7 @@ class InsuranceAnalysisService:
                     if ins_type in kpis.premium_summary.by_type:
                         insurance.annual_premium_total = kpis.premium_summary.by_type[ins_type]
 
-                # Coverage Score fuer diese Versicherung
+                # Coverage Score für diese Versicherung
                 if kpis.coverage_analysis:
                     insurance.coverage_adequacy_score = kpis.coverage_analysis.coverage_score
 
@@ -698,7 +698,7 @@ class InsuranceAnalysisService:
                 analysis["recommended_coverage"] = float(recommended)
                 analysis["current_coverage"] = float(current)
 
-        # Kuendigungsfrist
+        # Kündigungsfrist
         today = date.today()
         if insurance.end_date or insurance.is_auto_renew:
             contract_end = insurance.end_date
@@ -721,7 +721,7 @@ class InsuranceAnalysisService:
                 analysis["days_until_deadline"] = days_until
                 analysis["is_urgent"] = days_until <= 30
 
-        # Jaehrliche Praemie
+        # Jährliche Praemie
         if insurance.premium_amount:
             annual = insurance.premium_amount
             frequency = insurance.premium_frequency or "yearly"
@@ -757,7 +757,7 @@ _service_lock = threading.Lock()
 
 
 def get_insurance_analysis_service() -> InsuranceAnalysisService:
-    """Factory fuer InsuranceAnalysisService Singleton (Thread-safe)."""
+    """Factory für InsuranceAnalysisService Singleton (Thread-safe)."""
     global _insurance_analysis_service
     if _insurance_analysis_service is None:
         with _service_lock:

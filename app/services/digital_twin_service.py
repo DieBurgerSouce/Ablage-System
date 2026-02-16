@@ -2,7 +2,7 @@
 """
 Digital Twin Service - 360° Unternehmensansicht.
 
-Bietet einen vollstaendigen Schnappschuss des Unternehmens:
+Bietet einen vollständigen Schnappschuss des Unternehmens:
 - Financial Health Status
 - Risk Overview
 - Document Pipeline
@@ -104,7 +104,7 @@ class KeyMetricsSection:
 
 @dataclass
 class TrendSection:
-    """Trend Data fuer Charts."""
+    """Trend Data für Charts."""
     document_volume_trend: List[Dict[str, int]]  # [{month, count}]
     revenue_trend: List[Dict[str, float]]  # [{month, amount}]
     risk_trend: List[Dict[str, float]]  # [{month, avg_score}]
@@ -112,7 +112,7 @@ class TrendSection:
 
 @dataclass
 class DigitalTwinSnapshot:
-    """Vollstaendiges Unternehmens-Abbild."""
+    """Vollständiges Unternehmens-Abbild."""
     timestamp: datetime
     financial_health: FinancialHealthSection
     risk_overview: RiskOverviewSection
@@ -178,9 +178,9 @@ class DigitalTwinSnapshot:
 
 class DigitalTwinService:
     """
-    Service fuer Digital Twin Snapshot-Generierung.
+    Service für Digital Twin Snapshot-Generierung.
 
-    Kombiniert Daten aus verschiedenen Services fuer 360° Sicht.
+    Kombiniert Daten aus verschiedenen Services für 360° Sicht.
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -194,7 +194,7 @@ class DigitalTwinService:
         company_id: UUID,
     ) -> DigitalTwinSnapshot:
         """
-        Erstellt vollstaendigen Digital Twin Snapshot.
+        Erstellt vollständigen Digital Twin Snapshot.
 
         Args:
             company_id: Company ID

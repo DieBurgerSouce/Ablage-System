@@ -403,7 +403,3 @@ export function useFormShortcuts(options: UseFormShortcutsOptions): UseFormShort
   };
 }
 
-// ==================== Exports ====================
-
-export type { UseDocumentShortcutsOptions, UseDocumentShortcutsReturn, UseFormShortcutsOptions, UseFormShortcutsReturn };
-export { useDocumentShortcuts, useFormShortcuts };

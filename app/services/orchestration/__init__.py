@@ -2,7 +2,7 @@
 """
 Orchestration Services.
 
-Dieses Modul bietet Services fuer intelligente Cross-Module Orchestrierung:
+Dieses Modul bietet Services für intelligente Cross-Module Orchestrierung:
 
 - CrossModuleOrchestrator: Das Gehirn des Systems
   - Reagiert automatisch auf Events aus allen Modulen

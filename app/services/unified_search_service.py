@@ -3,7 +3,7 @@
 Unified Search Service.
 
 Vereint Dokument-Suche und Chunk-basierte RAG-Suche in einem Service.
-Ermoeglicht sowohl separate als auch kombinierte Suche.
+Ermöglicht sowohl separate als auch kombinierte Suche.
 """
 
 from typing import List, Optional, Dict, Any, Set
@@ -33,7 +33,7 @@ logger = structlog.get_logger(__name__)
 # ==================== Enums ====================
 
 class UnifiedSearchMode(str, Enum):
-    """Suchmodi fuer die Unified Search."""
+    """Suchmodi für die Unified Search."""
     DOCUMENT = "document"      # Nur Dokument-Suche
     CHUNK = "chunk"           # Nur Chunk-basierte RAG-Suche
     COMBINED = "combined"     # Beide kombiniert
@@ -92,7 +92,7 @@ class UnifiedSearchResponse:
 
 class UnifiedSearchService:
     """
-    Service fuer vereinheitlichte Suche.
+    Service für vereinheitlichte Suche.
 
     Kombiniert:
     - SearchService: Dokument-basierte Suche (FTS + Semantic + Hybrid)
@@ -136,16 +136,16 @@ class UnifiedSearchService:
         document_ids: Optional[List[UUID]] = None,
     ) -> UnifiedSearchResponse:
         """
-        Fuehrt eine vereinheitlichte Suche durch.
+        Führt eine vereinheitlichte Suche durch.
 
         Args:
             db: Datenbank-Session
             query: Suchbegriff
-            user_id: Benutzer-ID fuer Zugriffsrechte
+            user_id: Benutzer-ID für Zugriffsrechte
             mode: Suchmodus (document, chunk, combined)
             search_type: Typ der Dokumentensuche (fts, semantic, hybrid)
-            filters: Filter fuer Dokumentensuche
-            page: Seite fuer Dokumentensuche
+            filters: Filter für Dokumentensuche
+            page: Seite für Dokumentensuche
             per_page: Ergebnisse pro Seite
             sort_by: Sortierfeld
             sort_order: Sortierrichtung
@@ -254,7 +254,7 @@ class UnifiedSearchService:
                     **safe_error_log(e),
                     query=query,
                 )
-                # Bei Fehler in Chunk-Suche trotzdem Dokument-Ergebnisse zurueckgeben
+                # Bei Fehler in Chunk-Suche trotzdem Dokument-Ergebnisse zurückgeben
                 chunk_search_time = (time.perf_counter() - chunk_start) * 1000
 
         total_time = (time.perf_counter() - start_time) * 1000
@@ -302,7 +302,7 @@ _unified_search_service: Optional[UnifiedSearchService] = None
 
 
 def get_unified_search_service() -> UnifiedSearchService:
-    """Gibt Singleton-Instanz des UnifiedSearchService zurueck."""
+    """Gibt Singleton-Instanz des UnifiedSearchService zurück."""
     global _unified_search_service
     if _unified_search_service is None:
         _unified_search_service = UnifiedSearchService()

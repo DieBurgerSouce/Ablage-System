@@ -1,19 +1,19 @@
 """GoBD Verfahrensdokumentation Auto-Generator.
 
 Generiert automatisch die gesetzlich vorgeschriebene Verfahrensdokumentation
-fuer das DMS gemaess GoBD.
+für das DMS gemäß GoBD.
 
 Die Verfahrensdokumentation besteht aus:
-1. Allgemeine Beschreibung (Systemueberblick)
+1. Allgemeine Beschreibung (Systemüberblick)
 2. Anwenderdokumentation (Benutzerhandbuch)
 3. Technische Systemdokumentation (Architektur)
 4. Betriebsdokumentation (Ablaufbeschreibungen)
 5. Internes Kontrollsystem (IKS)
 
 Ausgabeformate:
-- PDF (fuer Steuerberater/Pruefer)
-- HTML (fuer interne Dokumentation)
-- Markdown (fuer Versionskontrolle)
+- PDF (für Steuerberater/Prüfer)
+- HTML (für interne Dokumentation)
+- Markdown (für Versionskontrolle)
 """
 
 import io
@@ -38,7 +38,7 @@ logger = structlog.get_logger(__name__)
 
 
 class DocumentFormat(str, Enum):
-    """Ausgabeformate fuer die Verfahrensdokumentation."""
+    """Ausgabeformate für die Verfahrensdokumentation."""
     PDF = "pdf"
     HTML = "html"
     MARKDOWN = "markdown"
@@ -55,7 +55,7 @@ class DocumentSection(str, Enum):
 
 @dataclass
 class DocumentationMetadata:
-    """Metadaten fuer die Verfahrensdokumentation."""
+    """Metadaten für die Verfahrensdokumentation."""
     company_name: str
     company_id: uuid.UUID
     generated_at: datetime
@@ -70,7 +70,7 @@ class DocumentationMetadata:
 
 @dataclass
 class SystemStatistics:
-    """Statistiken fuer die Dokumentation."""
+    """Statistiken für die Dokumentation."""
     total_documents: int = 0
     total_users: int = 0
     active_workflows: int = 0
@@ -82,7 +82,7 @@ class SystemStatistics:
 
 @dataclass
 class ProcedureDocumentation:
-    """Die vollstaendige Verfahrensdokumentation."""
+    """Die vollständige Verfahrensdokumentation."""
     metadata: DocumentationMetadata
     statistics: SystemStatistics
     sections: Dict[DocumentSection, str] = field(default_factory=dict)
@@ -102,7 +102,7 @@ class ProcedureDocumentationService:
         generated_by_user_id: uuid.UUID,
         include_sections: Optional[List[DocumentSection]] = None,
     ) -> ProcedureDocumentation:
-        """Generiert die vollstaendige Verfahrensdokumentation.
+        """Generiert die vollständige Verfahrensdokumentation.
 
         Args:
             db: Datenbank-Session
@@ -161,7 +161,7 @@ class ProcedureDocumentationService:
                 db, company_id, statistics
             )
 
-        # Change History (letzte Aenderungen)
+        # Change History (letzte Änderungen)
         change_history = await self._get_change_history(db, company_id)
 
         logger.info(
@@ -186,7 +186,7 @@ class ProcedureDocumentationService:
 
         Args:
             documentation: Die zu exportierende Dokumentation
-            format: Gewuenschtes Ausgabeformat
+            format: Gewünschtes Ausgabeformat
 
         Returns:
             Bytes des exportierten Dokuments
@@ -215,17 +215,17 @@ class ProcedureDocumentationService:
 ## 1.1 Zweck des Systems
 
 Das Ablage-System OCR ist ein Dokumentenmanagementsystem (DMS) zur
-revisionssicheren Archivierung und Verarbeitung von Geschaeftsdokumenten.
-Es erfuellt die Anforderungen der GoBD (Grundsaetze zur ordnungsmaessigen
-Fuehrung und Aufbewahrung von Buechern, Aufzeichnungen und Unterlagen
+revisionssicheren Archivierung und Verarbeitung von Geschäftsdokumenten.
+Es erfuellt die Anforderungen der GoBD (Grundsätze zur ordnungsmaessigen
+Führung und Aufbewahrung von Buechern, Aufzeichnungen und Unterlagen
 in elektronischer Form sowie zum Datenzugriff).
 
-## 1.2 Systemueberblick
+## 1.2 Systemüberblick
 
 **Firmenname:** {metadata.company_name}
 **Dokumentationsversion:** {metadata.version}
 **Systemversion:** {self.SYSTEM_VERSION}
-**Gueltig ab:** {metadata.valid_from.strftime('%d.%m.%Y')}
+**Gültig ab:** {metadata.valid_from.strftime('%d.%m.%Y')}
 **Erstellt am:** {metadata.generated_at.strftime('%d.%m.%Y %H:%M')}
 **Erstellt von:** {metadata.generated_by}
 
@@ -236,7 +236,7 @@ in elektronischer Form sowie zum Datenzugriff).
 | Gespeicherte Dokumente | {statistics.total_documents:,} |
 | Aktive Benutzer | {statistics.total_users} |
 | Aufbewahrungsrichtlinien | {statistics.retention_policies_count} |
-| Audit-Chain Eintraege | {statistics.audit_chain_entries:,} |
+| Audit-Chain Einträge | {statistics.audit_chain_entries:,} |
 | Qualifizierte Zeitstempel | {'Konfiguriert' if statistics.tsa_configured else 'Nicht konfiguriert'} |
 
 ## 1.4 Gesetzliche Grundlagen
@@ -249,7 +249,7 @@ Das System erfuellt die Anforderungen folgender Vorschriften:
 
 ## 1.5 Geltungsbereich
 
-Diese Verfahrensdokumentation gilt fuer alle mit dem System verarbeiteten
+Diese Verfahrensdokumentation gilt für alle mit dem System verarbeiteten
 steuerrelevanten und aufbewahrungspflichtigen Dokumente.
 """
 
@@ -271,16 +271,16 @@ Das System unterscheidet folgende Benutzerrollen:
 | Manager | Abteilungsleitung | Freigaben, Reports |
 | Mitarbeiter | Standardnutzer | Dokumente erfassen/anzeigen |
 | Steuerberater | Externer Zugriff | Nur Lesen, Export |
-| Auditor | Pruefer | Nur Lesen, Audit-Logs |
+| Auditor | Prüfer | Nur Lesen, Audit-Logs |
 
 ## 2.2 Dokumentenerfassung
 
 ### 2.2.1 Upload-Verfahren
 
-Dokumente koennen auf folgende Arten erfasst werden:
+Dokumente können auf folgende Arten erfasst werden:
 1. **Manueller Upload:** Drag & Drop oder Datei-Dialog
 2. **Email-Import:** Automatischer Import aus konfigurierten Postfaechern
-3. **Ordner-Import:** Ueberwachung von Verzeichnissen
+3. **Ordner-Import:** Überwachung von Verzeichnissen
 4. **Scanner-Integration:** Direkte Erfassung via TWAIN
 
 ### 2.2.2 OCR-Verarbeitung
@@ -288,14 +288,14 @@ Dokumente koennen auf folgende Arten erfasst werden:
 Alle Dokumente werden automatisch per OCR verarbeitet:
 - Texterkennung (auch Frakturschrift)
 - Automatische Klassifizierung
-- Entitaets-Extraktion (Betraege, Daten, Nummern)
+- Entitäts-Extraktion (Betraege, Daten, Nummern)
 
 ## 2.3 Dokumentensuche
 
-Die Suche unterstuetzt:
+Die Suche unterstützt:
 - Volltextsuche in OCR-Text
 - Filterung nach Typ, Datum, Betrag
-- Suche nach Geschaeftspartner
+- Suche nach Geschäftspartner
 - Erweiterte Filteroptionen
 
 ## 2.4 Archivierung
@@ -308,9 +308,9 @@ Dokumente werden automatisch archiviert basierend auf:
 
 ### 2.4.2 Manuelle Archivierung
 
-Benutzer koennen Dokumente explizit archivieren ueber:
+Benutzer können Dokumente explizit archivieren über:
 - Kontextmenue → "Archivieren"
-- Batch-Archivierung ueber Selektion
+- Batch-Archivierung über Selektion
 """
 
     async def _generate_technical_section(
@@ -345,13 +345,13 @@ Benutzer koennen Dokumente explizit archivieren ueber:
 ### 3.2.1 Datenbank
 
 - **System:** PostgreSQL 16 mit pgvector Extension
-- **Verschluesselung:** TLS in Transit, AES-256 at Rest
-- **Backup:** Taeglich vollstaendig, stuendlich inkrementell
+- **Verschlüsselung:** TLS in Transit, AES-256 at Rest
+- **Backup:** Täglich vollständig, stuendlich inkrementell
 
 ### 3.2.2 Dokumentenspeicher
 
 - **System:** MinIO (S3-kompatibel)
-- **Verschluesselung:** AES-256-GCM
+- **Verschlüsselung:** AES-256-GCM
 - **Redundanz:** Erasure Coding
 
 ## 3.3 Sicherheitsarchitektur
@@ -366,29 +366,29 @@ Benutzer koennen Dokumente explizit archivieren ueber:
 
 - Rollenbasierte Zugriffskontrolle (RBAC)
 - Multi-Tenant Isolation (Row Level Security)
-- Attributbasierte Zugriffskontrolle fuer Dokumente
+- Attributbasierte Zugriffskontrolle für Dokumente
 
 ### 3.3.3 Audit-Trail
 
-- Blockchain-aehnliche Verkettung (Hash-Chain)
-- Unveraenderbare Protokollierung aller Zugriffe
+- Blockchain-ähnliche Verkettung (Hash-Chain)
+- Unveränderbare Protokollierung aller Zugriffe
 - Optionale RFC 3161 Zeitstempel
 
-## 3.4 Integritaetssicherung
+## 3.4 Integritätssicherung
 
 ### 3.4.1 Hash-Verfahren
 
 Alle Dokumente erhalten einen SHA-256 Hash der:
 - Bei Upload berechnet wird
 - Bei Archivierung erneut verifiziert wird
-- In regelmaessigen Integritaetspruefungen validiert wird
+- In regelmäßigen Integritätsprüfungen validiert wird
 
 ### 3.4.2 Audit-Chain
 
-Die Audit-Chain ist eine unveraenderbare Ereigniskette:
-- APPEND-ONLY: Nur neue Eintraege, keine Aenderungen
+Die Audit-Chain ist eine unveränderbare Ereigniskette:
+- APPEND-ONLY: Nur neue Einträge, keine Änderungen
 - Verkettete Hashes: Jeder Eintrag referenziert den vorherigen
-- Manipulationserkennung: Hash-Verifikation deckt Aenderungen auf
+- Manipulationserkennung: Hash-Verifikation deckt Änderungen auf
 
 ## 3.5 OCR-Verarbeitung
 
@@ -400,7 +400,7 @@ Die Audit-Chain ist eine unveraenderbare Ereigniskette:
 | GOT-OCR 2.0 | Tabellen, Formeln | 98%+ |
 | Surya | CPU-Fallback | 95%+ |
 
-### 3.5.2 Qualitaetssicherung
+### 3.5.2 Qualitätssicherung
 
 - Confidence-Score pro Feld
 - Automatische Nachverarbeitung bei niedriger Konfidenz
@@ -439,7 +439,7 @@ docker-compose down --timeout 5
 
 ### 4.2.1 Datenbank-Backup
 
-- **Frequenz:** Taeglich 02:00 Uhr (vollstaendig)
+- **Frequenz:** Täglich 02:00 Uhr (vollständig)
 - **Retention:** 30 Tage
 - **Speicherort:** Separater Backup-Server + Offsite
 
@@ -453,17 +453,17 @@ docker-compose down --timeout 5
 
 1. Datenbank aus Backup wiederherstellen
 2. Dokumentenspeicher synchronisieren
-3. Integritaetspruefung durchfuehren
+3. Integritätsprüfung durchführen
 4. System neu starten
 
 ## 4.3 Monitoring
 
-### 4.3.1 Ueberwachte Metriken
+### 4.3.1 Überwachte Metriken
 
 - CPU/RAM/Disk Auslastung
 - Datenbank-Performance
 - API-Antwortzeiten
-- OCR-Queue-Laenge
+- OCR-Queue-Länge
 - Fehlerrate
 
 ### 4.3.2 Alerting
@@ -478,20 +478,20 @@ docker-compose down --timeout 5
 
 ## 4.4 Wartung
 
-### 4.4.1 Regelmaessige Aufgaben
+### 4.4.1 Regelmäßige Aufgaben
 
 | Aufgabe | Frequenz | Verantwortlich |
 |---------|----------|----------------|
-| Integritaetspruefung | Taeglich | System (automatisch) |
+| Integritätsprüfung | Täglich | System (automatisch) |
 | Backup-Verifikation | Woechentlich | Administrator |
-| Log-Rotation | Taeglich | System (automatisch) |
+| Log-Rotation | Täglich | System (automatisch) |
 | Updates | Monatlich | Administrator |
 
 ### 4.4.2 Ungeplante Wartung
 
 Alle ungeplanten Wartungsarbeiten werden protokolliert:
 - Grund der Wartung
-- Durchgefuehrte Massnahmen
+- Durchgeführte Massnahmen
 - Ausfallzeit
 - Verantwortlicher
 
@@ -500,16 +500,16 @@ Alle ungeplanten Wartungsarbeiten werden protokolliert:
 ### 4.5.1 Systemausfall
 
 1. Support benachrichtigen
-2. Fehleranalyse durchfuehren
+2. Fehleranalyse durchführen
 3. Wiederherstellung aus Backup (falls erforderlich)
 4. Dokumentation des Vorfalls
 
 ### 4.5.2 Datenverlust
 
 1. Sofortiger Stop aller Schreiboperationen
-2. Backup-Status pruefen
+2. Backup-Status prüfen
 3. Wiederherstellung einleiten
-4. Integritaetspruefung nach Wiederherstellung
+4. Integritätsprüfung nach Wiederherstellung
 """
 
     async def _generate_controls_section(
@@ -528,8 +528,8 @@ Alle ungeplanten Wartungsarbeiten werden protokolliert:
 ## 5.1 Kontrollziele
 
 Das interne Kontrollsystem stellt sicher, dass:
-- Alle Dokumente vollstaendig erfasst werden
-- Keine unberechtigten Aenderungen moeglich sind
+- Alle Dokumente vollständig erfasst werden
+- Keine unberechtigten Änderungen möglich sind
 - Aufbewahrungsfristen eingehalten werden
 - Zugriffe nachvollziehbar sind
 
@@ -539,24 +539,24 @@ Das interne Kontrollsystem stellt sicher, dass:
 
 | Kontrolle | Beschreibung | Automatisierung |
 |-----------|--------------|-----------------|
-| Vollstaendigkeit | Alle Pflichtfelder geprueft | Automatisch |
+| Vollständigkeit | Alle Pflichtfelder geprüft | Automatisch |
 | Plausibilitaet | Betraege, Daten validiert | Automatisch |
-| Duplikatpruefung | Hash-basierte Erkennung | Automatisch |
+| Duplikatprüfung | Hash-basierte Erkennung | Automatisch |
 | Klassifizierung | KI-gestuetzte Zuordnung | Automatisch |
 
 ### 5.2.2 Verarbeitungskontrollen
 
 | Kontrolle | Beschreibung | Automatisierung |
 |-----------|--------------|-----------------|
-| OCR-Qualitaet | Confidence-Schwellwert | Automatisch |
-| Entitaets-Matching | Zuordnung zu Geschaeftspartnern | Semi-Automatisch |
+| OCR-Qualität | Confidence-Schwellwert | Automatisch |
+| Entitäts-Matching | Zuordnung zu Geschäftspartnern | Semi-Automatisch |
 | Workflow-Einhaltung | BPMN-Prozesse | Automatisch |
 
 ### 5.2.3 Ausgabekontrollen
 
 | Kontrolle | Beschreibung | Automatisierung |
 |-----------|--------------|-----------------|
-| Berechtigungspruefung | RBAC-Check bei Export | Automatisch |
+| Berechtigungsprüfung | RBAC-Check bei Export | Automatisch |
 | Audit-Logging | Protokollierung aller Exporte | Automatisch |
 | Wasserzeichen | Bei sensiblen Dokumenten | Konfigurierbar |
 
@@ -568,15 +568,15 @@ Das interne Kontrollsystem stellt sicher, dass:
 
 ### 5.4.1 Benutzerauthentifizierung
 
-- Starke Passwoerter (min. 12 Zeichen, Komplexitaet)
+- Starke Passwoerter (min. 12 Zeichen, Komplexität)
 - Optionale 2-Faktor-Authentifizierung
 - Account-Sperrung nach 5 Fehlversuchen
-- Automatische Abmeldung nach Inaktivitaet
+- Automatische Abmeldung nach Inaktivität
 
-### 5.4.2 Berechtigungspruefung
+### 5.4.2 Berechtigungsprüfung
 
-Jeder Zugriff wird geprueft auf:
-1. Authentifizierung (gueltiger Token)
+Jeder Zugriff wird geprüft auf:
+1. Authentifizierung (gültiger Token)
 2. Mandantenzugehoerigkeit (Multi-Tenant)
 3. Rollenbasierte Berechtigung (RBAC)
 4. Dokumentenspezifische Berechtigung
@@ -585,39 +585,39 @@ Jeder Zugriff wird geprueft auf:
 
 ### 5.5.1 Protokollierte Ereignisse
 
-- Dokumenten-Uploads und -Aenderungen
+- Dokumenten-Uploads und -Änderungen
 - Zugriffe und Downloads
 - Workflow-Aktionen
-- Administrationstaetigkeiten
+- Administrationstätigkeiten
 - System-Ereignisse
 
-### 5.5.2 Unveraenderlichkeit
+### 5.5.2 Unveränderlichkeit
 
-Die Audit-Chain garantiert Unveraenderlichkeit durch:
+Die Audit-Chain garantiert Unveränderlichkeit durch:
 - Hash-Verkettung (Blockchain-Prinzip)
-- Sequenznummern (Lueckenlosigkeit)
+- Sequenznummern (Lückenlosigkeit)
 - Optionale RFC 3161 Zeitstempel
 
-**Aktueller Stand:** {statistics.audit_chain_entries:,} Eintraege in der Audit-Chain
+**Aktueller Stand:** {statistics.audit_chain_entries:,} Einträge in der Audit-Chain
 
-## 5.6 Integritaetspruefungen
+## 5.6 Integritätsprüfungen
 
-### 5.6.1 Automatische Pruefungen
+### 5.6.1 Automatische Prüfungen
 
-- **Taeglich:** Vollstaendige Kettenverifikation
-- **Bei Zugriff:** Hash-Pruefung archivierter Dokumente
+- **Täglich:** Vollständige Kettenverifikation
+- **Bei Zugriff:** Hash-Prüfung archivierter Dokumente
 - **Woechentlich:** Stichproben-Verifikation
 
-### 5.6.2 Letzte Pruefung
+### 5.6.2 Letzte Prüfung
 
-**Datum:** {statistics.last_integrity_check.strftime('%d.%m.%Y %H:%M') if statistics.last_integrity_check else 'Keine Pruefung durchgefuehrt'}
+**Datum:** {statistics.last_integrity_check.strftime('%d.%m.%Y %H:%M') if statistics.last_integrity_check else 'Keine Prüfung durchgeführt'}
 
-## 5.7 Aenderungsmanagement
+## 5.7 Änderungsmanagement
 
-Alle Aenderungen am System werden dokumentiert:
+Alle Änderungen am System werden dokumentiert:
 1. Change Request erstellen
 2. Genehmigung einholen
-3. Aenderung durchfuehren
+3. Änderung durchführen
 4. Testen und Verifizieren
 5. Dokumentation aktualisieren
 """
@@ -710,7 +710,7 @@ Alle Aenderungen am System werden dokumentiert:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> datetime:
-        """Holt Zeitpunkt der letzten Integritaetspruefung."""
+        """Holt Zeitpunkt der letzten Integritätsprüfung."""
         # Suche nach letztem integrity_check Audit-Eintrag
         query = (
             select(AuditLog.created_at)
@@ -732,7 +732,7 @@ Alle Aenderungen am System werden dokumentiert:
         if last_check:
             return last_check
 
-        # Fallback: Aktuelle Zeit (keine Pruefung bisher)
+        # Fallback: Aktuelle Zeit (keine Prüfung bisher)
         return datetime.now(timezone.utc)
 
     async def _get_retention_policies(
@@ -760,13 +760,13 @@ Alle Aenderungen am System werden dokumentiert:
             return "Keine Aufbewahrungsrichtlinien konfiguriert."
 
         lines = [
-            "| Dokumentkategorie | Aufbewahrungsdauer | Gesetzliche Grundlage | Auto-Loeschung |",
+            "| Dokumentkategorie | Aufbewahrungsdauer | Gesetzliche Grundlage | Auto-Löschung |",
             "|-------------------|--------------------|-----------------------|----------------|",
         ]
 
         category_names = {
             "invoice": "Rechnungen",
-            "contract": "Vertraege",
+            "contract": "Verträge",
             "receipt": "Belege",
             "correspondence": "Korrespondenz",
             "tax": "Steuerdokumente",
@@ -787,8 +787,8 @@ Alle Aenderungen am System werden dokumentiert:
         company_id: uuid.UUID,
         limit: int = 10,
     ) -> List[Dict[str, Any]]:
-        """Holt die letzten System-Aenderungen aus AuditLog."""
-        # Relevante Aktionen fuer Verfahrensdokumentation
+        """Holt die letzten System-Änderungen aus AuditLog."""
+        # Relevante Aktionen für Verfahrensdokumentation
         relevant_actions = [
             "system_config_changed",
             "retention_policy_created",
@@ -801,7 +801,7 @@ Alle Aenderungen am System werden dokumentiert:
             "bpmn_process_created",
         ]
 
-        # Lade AuditLog-Eintraege
+        # Lade AuditLog-Einträge
         query = (
             select(AuditLog)
             .where(
@@ -840,7 +840,7 @@ Alle Aenderungen am System werden dokumentiert:
             })
             version_counter += 0.1
 
-        # Falls keine Logs vorhanden, Standard-Eintraege
+        # Falls keine Logs vorhanden, Standard-Einträge
         if not changes:
             changes = [
                 {
@@ -876,7 +876,7 @@ Alle Aenderungen am System werden dokumentiert:
                 lines.append("")
 
         # Change History
-        lines.append("# 6. Aenderungshistorie")
+        lines.append("# 6. Änderungshistorie")
         lines.append("")
         lines.append("| Datum | Version | Beschreibung | Autor |")
         lines.append("|-------|---------|--------------|-------|")
@@ -938,7 +938,7 @@ Alle Aenderungen am System werden dokumentiert:
         documentation: ProcedureDocumentation,
     ) -> bytes:
         """Exportiert als PDF."""
-        # PDF-Generierung erfordert zusaetzliche Bibliothek
+        # PDF-Generierung erfordert zusätzliche Bibliothek
         # (weasyprint, reportlab oder pdfkit)
 
         # Fallback: HTML-zu-PDF Konvertierung
@@ -951,7 +951,7 @@ Alle Aenderungen am System werden dokumentiert:
             return pdf_bytes
         except ImportError:
             logger.warning("weasyprint_not_installed", fallback="html")
-            # Fallback: HTML zurueckgeben mit Hinweis
+            # Fallback: HTML zurückgeben mit Hinweis
             return self._export_html(documentation)
 
 
@@ -972,7 +972,7 @@ async def generate_procedure_documentation(
         format: Ausgabeformat (PDF, HTML, Markdown)
 
     Returns:
-        Bytes des Dokuments im gewuenschten Format
+        Bytes des Dokuments im gewünschten Format
     """
     service = ProcedureDocumentationService()
     documentation = await service.generate_documentation(db, company_id, user_id)

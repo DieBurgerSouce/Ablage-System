@@ -1,8 +1,8 @@
 """Folder Import Service (Hotfolder).
 
-Orchestriert den Import von Dateien aus ueberwachten Ordnern:
-- Watchdog-basierte Dateisystem-Ueberwachung
-- Polling als Fallback fuer Netzwerk-Laufwerke
+Orchestriert den Import von Dateien aus überwachten Ordnern:
+- Watchdog-basierte Dateisystem-Überwachung
+- Polling als Fallback für Netzwerk-Laufwerke
 - Path-Traversal-Schutz
 - Integration mit Document-Pipeline
 
@@ -52,7 +52,7 @@ except ImportError:
 # Constants
 # ============================================================================
 
-# Maximale Dateigroesse (50 MB)
+# Maximale Dateigröße (50 MB)
 MAX_FILE_SIZE = 50 * 1024 * 1024
 
 # Erlaubte Dateiendungen
@@ -80,7 +80,7 @@ IGNORE_PATTERNS = [
     "*.crdownload",
 ]
 
-# Verzoegerung nach Dateierstellung (um unvollstaendige Uploads zu vermeiden)
+# Verzögerung nach Dateierstellung (um unvollständige Uploads zu vermeiden)
 FILE_SETTLE_DELAY_SECONDS = 2
 
 
@@ -131,7 +131,7 @@ class FolderImportResult:
 # ============================================================================
 
 class FolderWatchHandler(FileSystemEventHandler if WATCHDOG_AVAILABLE else object):
-    """Handler fuer Dateisystem-Events."""
+    """Handler für Dateisystem-Events."""
 
     def __init__(
         self,
@@ -148,27 +148,27 @@ class FolderWatchHandler(FileSystemEventHandler if WATCHDOG_AVAILABLE else objec
         self._pending_files: Set[str] = set()
 
     def _matches_pattern(self, filename: str, patterns: List[str]) -> bool:
-        """Prueft ob Dateiname auf mindestens ein Pattern matched."""
+        """Prüft ob Dateiname auf mindestens ein Pattern matched."""
         return any(fnmatch(filename.lower(), p.lower()) for p in patterns)
 
     def _should_process(self, path: str) -> bool:
-        """Prueft ob Datei verarbeitet werden soll."""
+        """Prüft ob Datei verarbeitet werden soll."""
         filename = os.path.basename(path)
 
-        # Exclude-Patterns pruefen
+        # Exclude-Patterns prüfen
         if self._matches_pattern(filename, self.exclude_patterns):
             return False
         if self._matches_pattern(filename, IGNORE_PATTERNS):
             return False
 
-        # Include-Patterns pruefen
+        # Include-Patterns prüfen
         if self.include_patterns:
             return self._matches_pattern(filename, self.include_patterns)
 
         return True
 
     def on_created(self, event):
-        """Handler fuer neue Dateien."""
+        """Handler für neue Dateien."""
         if event.is_directory:
             return
 
@@ -199,11 +199,11 @@ class FolderWatchHandler(FileSystemEventHandler if WATCHDOG_AVAILABLE else objec
 # ============================================================================
 
 class FolderImportService:
-    """Service fuer Hotfolder-basiertes Dokument-Import.
+    """Service für Hotfolder-basiertes Dokument-Import.
 
     Features:
-    - Watchdog-basierte Echtzeit-Ueberwachung
-    - Polling als Fallback fuer Netzwerklaufwerke
+    - Watchdog-basierte Echtzeit-Überwachung
+    - Polling als Fallback für Netzwerklaufwerke
     - Path-Traversal-Schutz
     - Pattern-basierte Filter (include/exclude)
     - Automatisches Verschieben nach Verarbeitung
@@ -237,31 +237,31 @@ class FolderImportService:
     def _validate_path(self, path: str) -> bool:
         """Validiert einen Pfad auf Sicherheit.
 
-        Prueft:
+        Prüft:
         - Keine Path-Traversal-Angriffe (..)
         - Pfad ist unter erlaubtem Basis-Pfad
         - Pfad existiert und ist zugaenglich
 
         Args:
-            path: Zu pruefender Pfad
+            path: Zu prüfender Pfad
 
         Returns:
             True wenn Pfad sicher und erlaubt
 
         Raises:
-            ValueError: Bei ungueltigem Pfad
+            ValueError: Bei ungültigem Pfad
         """
         # Normalisieren
         try:
             normalized = os.path.normpath(os.path.abspath(path))
         except Exception as e:
-            raise ValueError(f"Ungueltiger Pfad: {e}")
+            raise ValueError(f"Ungültiger Pfad: {e}")
 
-        # Path-Traversal pruefen
+        # Path-Traversal prüfen
         if ".." in path:
             raise ValueError("Path-Traversal nicht erlaubt")
 
-        # Gegen erlaubte Basis-Pfade pruefen
+        # Gegen erlaubte Basis-Pfade prüfen
         is_allowed = False
         for base in self._allowed_base_paths:
             base_normalized = os.path.normpath(os.path.abspath(base))
@@ -289,10 +289,10 @@ class FolderImportService:
         # Entferne gefaehrliche Zeichen
         safe = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', filename)
 
-        # Entferne fuehrende/trailing Punkte und Leerzeichen
+        # Entferne führende/trailing Punkte und Leerzeichen
         safe = safe.strip('. ')
 
-        # Begrenze Laenge
+        # Begrenze Länge
         if len(safe) > 255:
             name, ext = os.path.splitext(safe)
             safe = name[:255 - len(ext)] + ext
@@ -308,11 +308,11 @@ class FolderImportService:
         config_id: UUID,
         user_id: UUID,
     ) -> Dict:
-        """Startet einen Folder-Watcher fuer eine Konfiguration.
+        """Startet einen Folder-Watcher für eine Konfiguration.
 
         Args:
             config_id: Folder-Import-Konfigurations-ID
-            user_id: User-ID fuer Berechtigungspruefung
+            user_id: User-ID für Berechtigungsprüfung
 
         Returns:
             Dict mit Status
@@ -333,7 +333,7 @@ class FolderImportService:
                 "message": "Konfiguration nicht gefunden",
             }
 
-        # Pruefen ob bereits aktiv
+        # Prüfen ob bereits aktiv
         if config_id in self._active_watchers:
             return {
                 "success": True,
@@ -344,7 +344,7 @@ class FolderImportService:
             # Pfad validieren
             self._validate_path(config.watch_path)
 
-            # Pruefen ob Pfad existiert
+            # Prüfen ob Pfad existiert
             if not os.path.isdir(config.watch_path):
                 return {
                     "success": False,
@@ -381,7 +381,7 @@ class FolderImportService:
 
             return {
                 "success": True,
-                "message": f"Watcher gestartet fuer: {config.watch_path}",
+                "message": f"Watcher gestartet für: {config.watch_path}",
             }
 
         except ValueError as e:
@@ -409,12 +409,12 @@ class FolderImportService:
 
         Args:
             config_id: Config-ID
-            user_id: User-ID fuer Berechtigungspruefung
+            user_id: User-ID für Berechtigungsprüfung
 
         Returns:
             Dict mit Status
         """
-        # Config pruefen (fuer Berechtigung)
+        # Config prüfen (für Berechtigung)
         config = await self._get_config(config_id, user_id)
         if not config:
             return {
@@ -465,9 +465,9 @@ class FolderImportService:
         config_id: UUID,
         user_id: UUID,
     ) -> FolderImportResult:
-        """Fuehrt manuellen Scan eines Ordners durch.
+        """Führt manuellen Scan eines Ordners durch.
 
-        Diese Methode wird auch als Fallback fuer Netzwerklaufwerke
+        Diese Methode wird auch als Fallback für Netzwerklaufwerke
         verwendet, die nicht mit Watchdog kompatibel sind.
 
         Args:
@@ -627,7 +627,7 @@ class FolderImportService:
             if exclude_patterns and matches_pattern(filename, exclude_patterns):
                 return False
 
-            # Dateiendung pruefen
+            # Dateiendung prüfen
             ext = filepath.suffix.lower()
             if ext not in ALLOWED_EXTENSIONS:
                 return False
@@ -656,7 +656,7 @@ class FolderImportService:
     # ========================================================================
 
     async def _handle_new_file(self, config_id: UUID, file_path: str) -> None:
-        """Callback fuer Watchdog - verarbeitet neue Datei.
+        """Callback für Watchdog - verarbeitet neue Datei.
 
         Args:
             config_id: Config-ID
@@ -717,7 +717,7 @@ class FolderImportService:
         file_size = stat.st_size
         modified_at = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
 
-        # Groesse pruefen
+        # Größe prüfen
         if file_size > MAX_FILE_SIZE:
             return {
                 "success": False,
@@ -839,7 +839,7 @@ class FolderImportService:
             except Exception:
                 pass
 
-            # Datei verschieben oder loeschen
+            # Datei verschieben oder löschen
             moved = False
             if config.delete_after_processing:
                 try:
@@ -894,7 +894,7 @@ class FolderImportService:
     async def _check_duplicate_by_hash(
         self, user_id: UUID, file_hash: str
     ) -> Optional[UUID]:
-        """Prueft ob ein Dokument mit gleichem Hash bereits existiert."""
+        """Prüft ob ein Dokument mit gleichem Hash bereits existiert."""
         from app.db.models import Document
 
         result = await self.db.execute(
@@ -944,7 +944,7 @@ class FolderImportService:
             config: FolderImportConfig
             file_path: Pfad zur Datei
             file_hash: SHA256 Hash
-            file_size: Dateigroesse
+            file_size: Dateigröße
             mime_type: MIME-Type
 
         Returns:
@@ -965,7 +965,7 @@ class FolderImportService:
             ext = file_path.suffix
             filename = f"{uuid4()}{ext}"
 
-        # Storage Service fuer MinIO Upload
+        # Storage Service für MinIO Upload
         storage = StorageService()
         storage_path = await storage.upload_document(
             content=content,
@@ -974,7 +974,7 @@ class FolderImportService:
             mime_type=mime_type,
         )
 
-        # Document Service fuer DB-Eintrag
+        # Document Service für DB-Eintrag
         doc_service = DocumentService(self.db)
 
         # Metadaten
@@ -1017,7 +1017,7 @@ class FolderImportService:
             config: FolderImportConfig
             user_id: User-ID
             mime_type: MIME-Type der Datei
-            file_size: Dateigroesse in Bytes
+            file_size: Dateigröße in Bytes
         """
         from app.services.imports import ImportRuleService
         from app.db.models import Document
@@ -1025,7 +1025,7 @@ class FolderImportService:
         try:
             rule_service = ImportRuleService(self.db)
 
-            # Metadaten fuer Rule-Matching aufbauen
+            # Metadaten für Rule-Matching aufbauen
             metadata = {
                 "filename": file_path.name,
                 "file_extension": file_path.suffix.lower(),
@@ -1099,7 +1099,7 @@ class FolderImportService:
         actions: Dict,
         user_id: UUID,
     ) -> None:
-        """Fuehrt die konsolidierten Rule-Actions aus.
+        """Führt die konsolidierten Rule-Actions aus.
 
         Args:
             document_id: Dokument-ID
@@ -1300,19 +1300,19 @@ class FolderImportService:
         Args:
             user_id: User-ID
             name: Konfigurations-Name
-            watch_path: Zu ueberwachender Pfad
+            watch_path: Zu überwachender Pfad
             is_network_path: Ist ein Netzwerkpfad
-            network_credentials: Optional verschluesselte Netzwerk-Credentials
+            network_credentials: Optional verschlüsselte Netzwerk-Credentials
             recursive: Unterordner einbeziehen
             include_patterns: Include-Pattern (z.B. ["*.pdf"])
             exclude_patterns: Exclude-Pattern
             move_after_processing: Nach Verarbeitung verschieben
-            processed_subfolder: Unterordner fuer verarbeitete Dateien
-            error_subfolder: Unterordner fuer fehlerhafte Dateien
-            delete_after_processing: Nach Verarbeitung loeschen
+            processed_subfolder: Unterordner für verarbeitete Dateien
+            error_subfolder: Unterordner für fehlerhafte Dateien
+            delete_after_processing: Nach Verarbeitung löschen
             auto_classify: Automatisch klassifizieren
-            auto_ocr: Automatisch OCR ausfuehren
-            default_folder_id: Standard-Ordner fuer Dokumente
+            auto_ocr: Automatisch OCR ausführen
+            default_folder_id: Standard-Ordner für Dokumente
             preserve_filename: Original-Dateinamen beibehalten
             poll_interval_seconds: Polling-Intervall
             company_id: Firma-ID
@@ -1327,7 +1327,7 @@ class FolderImportService:
 
         config_id = uuid4()
 
-        # Network-Credentials verschluesseln wenn vorhanden
+        # Network-Credentials verschlüsseln wenn vorhanden
         network_credentials_encrypted = None
         if network_credentials:
             network_credentials_encrypted = encrypt_data(
@@ -1388,11 +1388,11 @@ class FolderImportService:
         if not config:
             return False
 
-        # Pfad validieren wenn geaendert
+        # Pfad validieren wenn geändert
         if "watch_path" in updates:
             self._validate_path(updates["watch_path"])
 
-        # Network-Credentials verschluesseln wenn vorhanden
+        # Network-Credentials verschlüsseln wenn vorhanden
         if "network_credentials" in updates:
             creds = updates.pop("network_credentials")
             if creds:
@@ -1421,7 +1421,7 @@ class FolderImportService:
         config_id: UUID,
         user_id: UUID,
     ) -> bool:
-        """Loescht eine Folder-Import-Konfiguration."""
+        """Löscht eine Folder-Import-Konfiguration."""
         config = await self._get_config(config_id, user_id)
         if not config:
             return False
@@ -1521,7 +1521,7 @@ class FolderImportService:
     # ========================================================================
 
     async def _get_config(self, config_id: UUID, user_id: UUID):
-        """Holt Config mit Berechtigungspruefung."""
+        """Holt Config mit Berechtigungsprüfung."""
         from app.db.models import FolderImportConfig
 
         result = await self.db.execute(

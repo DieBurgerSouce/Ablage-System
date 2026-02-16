@@ -1,8 +1,8 @@
 """
 Event Bus Service.
 
-Redis PubSub-basierter Event Bus fuer interne Kommunikation zwischen Services.
-Ermoeglicht Event-Driven Architecture im Ablage-System.
+Redis PubSub-basierter Event Bus für interne Kommunikation zwischen Services.
+Ermöglicht Event-Driven Architecture im Ablage-System.
 
 Features:
 - Async Event Publishing
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 
 class EventType(str, Enum):
-    """Alle verfuegbaren Event-Typen."""
+    """Alle verfügbaren Event-Typen."""
 
     # Document Events
     DOCUMENT_OCR_COMPLETED = "document.ocr_completed"
@@ -158,7 +158,7 @@ class Event:
         return cls.from_dict(json.loads(json_str))
 
 
-# Type alias fuer Event Handler
+# Type alias für Event Handler
 EventHandler = Callable[[Event], Coroutine[Any, Any, None]]
 
 
@@ -166,7 +166,7 @@ class EventBus:
     """
     Redis PubSub-basierter Event Bus.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Publish/Subscribe Pattern
     - Pattern-basiertes Matching (z.B. "document.*")
     - Event History
@@ -222,7 +222,7 @@ class EventBus:
         handler: EventHandler,
     ) -> None:
         """
-        Registriert einen Handler fuer einen Event-Typ.
+        Registriert einen Handler für einen Event-Typ.
 
         Args:
             event_type: Der Event-Typ, auf den reagiert werden soll
@@ -232,7 +232,7 @@ class EventBus:
         if channel not in self._handlers:
             self._handlers[channel] = []
         self._handlers[channel].append(handler)
-        logger.debug(f"Handler registriert fuer {channel}")
+        logger.debug(f"Handler registriert für {channel}")
 
     def subscribe_pattern(
         self,
@@ -240,7 +240,7 @@ class EventBus:
         handler: EventHandler,
     ) -> None:
         """
-        Registriert einen Handler fuer ein Event-Pattern.
+        Registriert einen Handler für ein Event-Pattern.
 
         Beispiel: "document.*" matched alle document Events.
 
@@ -251,7 +251,7 @@ class EventBus:
         if pattern not in self._pattern_handlers:
             self._pattern_handlers[pattern] = []
         self._pattern_handlers[pattern].append(handler)
-        logger.debug(f"Pattern-Handler registriert fuer {pattern}")
+        logger.debug(f"Pattern-Handler registriert für {pattern}")
 
     def unsubscribe(
         self,
@@ -427,7 +427,7 @@ class EventBus:
                 except Exception as e:
                     self._metrics["handler_errors"] += 1
                     logger.error(
-                        f"Fehler bei Handler fuer {event_type}: {e}",
+                        f"Fehler bei Handler für {event_type}: {e}",
                         exc_info=True
                     )
 
@@ -436,9 +436,9 @@ class EventBus:
 
     def _match_pattern(self, pattern: str, event_type: str) -> bool:
         """
-        Prueft ob ein Pattern auf einen Event-Typ matched.
+        Prüft ob ein Pattern auf einen Event-Typ matched.
 
-        Unterstuetzt:
+        Unterstützt:
         - "*" matched alles
         - "prefix.*" matched alles mit prefix
         - "*.suffix" matched alles mit suffix
@@ -490,15 +490,15 @@ class EventBus:
         return events
 
     def get_metrics(self) -> Dict[str, int]:
-        """Gibt aktuelle Metriken zurueck."""
+        """Gibt aktuelle Metriken zurück."""
         return self._metrics.copy()
 
     async def clear_history(self) -> int:
         """
-        Loescht die Event History.
+        Löscht die Event History.
 
         Returns:
-            Anzahl der geloeschten Events
+            Anzahl der gelöschten Events
         """
         await self.connect()
         count = await self._redis.llen(self.HISTORY_KEY)
@@ -512,7 +512,7 @@ _event_bus_instance: Optional[EventBus] = None
 
 def get_event_bus() -> EventBus:
     """
-    Factory-Funktion fuer EventBus Singleton.
+    Factory-Funktion für EventBus Singleton.
 
     Returns:
         Die globale EventBus-Instanz
@@ -524,7 +524,7 @@ def get_event_bus() -> EventBus:
 
 
 async def reset_event_bus() -> None:
-    """Setzt den EventBus zurueck (fuer Tests)."""
+    """Setzt den EventBus zurück (für Tests)."""
     global _event_bus_instance
     if _event_bus_instance:
         await _event_bus_instance.disconnect()

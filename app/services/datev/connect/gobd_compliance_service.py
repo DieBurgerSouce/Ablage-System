@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-GoBD-Compliance Service fuer DATEV Integration.
+GoBD-Compliance Service für DATEV Integration.
 
-Gewaehrleistet GoBD-konforme Buchungsfuehrung:
-- Unveraenderliche Buchungs-GUIDs
+Gewährleistet GoBD-konforme Buchungsführung:
+- Unveränderliche Buchungs-GUIDs
 - Festschreibung mit SHA-256 Hash
-- Vollstaendiger Audit-Trail
-- Beleglink-Integritaet
+- Vollständiger Audit-Trail
+- Beleglink-Integrität
 - Verfahrensdokumentation
 
 Feinpoliert und durchdacht - Rechtssichere Buchhaltung.
@@ -59,7 +59,7 @@ class FestschreibungResult:
 
 @dataclass
 class GoBDValidationResult:
-    """Ergebnis einer GoBD-Pruefung."""
+    """Ergebnis einer GoBD-Prüfung."""
 
     is_compliant: bool
     pruefung_datum: datetime = field(default_factory=utc_now)
@@ -70,7 +70,7 @@ class GoBDValidationResult:
         """Konvertiert zu Dictionary."""
         return {
             "is_compliant": self.is_compliant,
-            "pruefung_datum": self.pruefung_datum.isoformat(),
+            "prüfung_datum": self.pruefung_datum.isoformat(),
             "findings": self.findings,
             "statistics": self.statistics,
         }
@@ -86,15 +86,15 @@ class GoBDComplianceService:
 
     Stellt die Einhaltung der GoBD-Anforderungen sicher:
 
-    1. **Unveraenderlichkeit**: Buchungen koennen nach Festschreibung
-       nicht mehr geaendert werden. Der Hash garantiert Integritaet.
+    1. **Unveränderlichkeit**: Buchungen können nach Festschreibung
+       nicht mehr geändert werden. Der Hash garantiert Integrität.
 
-    2. **Nachvollziehbarkeit**: Vollstaendiger Audit-Trail aller
-       Aenderungen vor Festschreibung.
+    2. **Nachvollziehbarkeit**: Vollständiger Audit-Trail aller
+       Änderungen vor Festschreibung.
 
-    3. **Pruefbarkeit**: Export-Funktion fuer Betriebspruefer.
+    3. **Prüfbarkeit**: Export-Funktion für Betriebsprüfer.
 
-    4. **Belegverknuepfung**: Eindeutige Beleglinks zu Originalbelegen.
+    4. **Belegverknüpfung**: Eindeutige Beleglinks zu Originalbelegen.
 
     Usage:
         service = GoBDComplianceService()
@@ -106,7 +106,7 @@ class GoBDComplianceService:
             bis_datum=date(2024, 12, 31)
         )
 
-        # Compliance pruefen
+        # Compliance prüfen
         validation = await service.validate_gobd_compliance(
             db=session,
             connection_id=conn_uuid
@@ -119,7 +119,7 @@ class GoBDComplianceService:
         )
     """
 
-    # GoBD-relevante Felder fuer Hash-Berechnung
+    # GoBD-relevante Felder für Hash-Berechnung
     HASH_FIELDS = [
         "buchungs_guid",
         "umsatz",
@@ -146,7 +146,7 @@ class GoBDComplianceService:
         """
         Schreibt Buchungen bis zum angegebenen Datum fest.
 
-        Nach Festschreibung sind die Buchungen unveraenderlich und
+        Nach Festschreibung sind die Buchungen unveränderlich und
         mit einem SHA-256 Hash versehen.
 
         Args:
@@ -246,19 +246,19 @@ class GoBDComplianceService:
         pruefzeitraum_bis: Optional[date] = None,
     ) -> GoBDValidationResult:
         """
-        Prueft GoBD-Compliance fuer eine Verbindung.
+        Prüft GoBD-Compliance für eine Verbindung.
 
-        Prueft:
-        - Integritaet festgeschriebener Buchungen (Hash-Pruefung)
-        - Lueckenlose Buchungs-GUIDs
-        - Beleglink-Verknuepfungen
+        Prüft:
+        - Integrität festgeschriebener Buchungen (Hash-Prüfung)
+        - Lückenlose Buchungs-GUIDs
+        - Beleglink-Verknüpfungen
         - Zeitstempel-Konsistenz
 
         Args:
             db: Datenbank-Session
             connection_id: DATEV-Verbindungs-ID
-            pruefzeitraum_von: Optional: Start des Pruefzeitraums
-            pruefzeitraum_bis: Optional: Ende des Pruefzeitraums
+            prüfzeitraum_von: Optional: Start des Prüfzeitraums
+            prüfzeitraum_bis: Optional: Ende des Prüfzeitraums
 
         Returns:
             GoBDValidationResult
@@ -290,7 +290,7 @@ class GoBDComplianceService:
             guid_duplikate: Dict[str, int] = {}
 
             for buchung in buchungen:
-                # 1. Hash-Integritaet pruefen (nur festgeschriebene)
+                # 1. Hash-Integrität prüfen (nur festgeschriebene)
                 if buchung.ist_festgeschrieben:
                     expected_hash = self._calculate_buchung_hash(buchung)
                     if buchung.festschreibung_hash != expected_hash:
@@ -300,10 +300,10 @@ class GoBDComplianceService:
                             "severity": "CRITICAL",
                             "buchung_id": str(buchung.id),
                             "belegfeld_1": buchung.belegfeld_1,
-                            "message": "Hash-Integritaet verletzt - Daten wurden veraendert!",
+                            "message": "Hash-Integrität verletzt - Daten wurden verändert!",
                         })
 
-                # 2. GUID-Eindeutigkeit pruefen
+                # 2. GUID-Eindeutigkeit prüfen
                 if buchung.buchungs_guid in guid_duplikate:
                     guid_duplikate[buchung.buchungs_guid] += 1
                     findings.append({
@@ -320,7 +320,7 @@ class GoBDComplianceService:
                 if buchung.document_id:
                     mit_beleglink += 1
 
-            # 4. Nicht-festgeschriebene alte Buchungen pruefen
+            # 4. Nicht-festgeschriebene alte Buchungen prüfen
             alte_nicht_festgeschrieben = await db.execute(
                 select(func.count(models.DATEVBuchung.id)).where(
                     models.DATEVBuchung.connection_id == connection_id,
@@ -365,7 +365,7 @@ class GoBDComplianceService:
             result.findings.append({
                 "type": "VALIDATION_ERROR",
                 "severity": "CRITICAL",
-                "message": f"Pruefung fehlgeschlagen: {str(e)}",
+                "message": f"Prüfung fehlgeschlagen: {str(e)}",
             })
             logger.error(
                 "gobd_validation_failed",
@@ -380,7 +380,7 @@ class GoBDComplianceService:
         buchung_id: UUID,
     ) -> Tuple[bool, Optional[str]]:
         """
-        Prueft Integritaet einer einzelnen Buchung.
+        Prüft Integrität einer einzelnen Buchung.
 
         Args:
             db: Datenbank-Session
@@ -406,7 +406,7 @@ class GoBDComplianceService:
 
         expected_hash = self._calculate_buchung_hash(buchung)
         if buchung.festschreibung_hash != expected_hash:
-            return False, "Hash-Mismatch: Daten wurden nach Festschreibung veraendert"
+            return False, "Hash-Mismatch: Daten wurden nach Festschreibung verändert"
 
         return True, None
 
@@ -419,7 +419,7 @@ class GoBDComplianceService:
         Exportiert Verfahrensdokumentation als JSON.
 
         Die Verfahrensdokumentation beschreibt das eingesetzte
-        Buchungssystem gemaess GoBD-Anforderungen.
+        Buchungssystem gemäß GoBD-Anforderungen.
 
         Args:
             db: Datenbank-Session
@@ -470,21 +470,21 @@ class GoBDComplianceService:
                 "mandantennummer": connection.mandantennummer,
                 "kontenrahmen": connection.kontenrahmen,
             },
-            "gobd_konformitaet": {
-                "unveraenderlichkeit": {
+            "gobd_konformität": {
+                "unveränderlichkeit": {
                     "beschreibung": "Buchungen werden nach Festschreibung durch SHA-256 Hash gesichert",
                     "hash_algorithmus": "SHA-256",
                     "hash_felder": self.HASH_FIELDS,
                 },
                 "nachvollziehbarkeit": {
-                    "beschreibung": "Vollstaendiger Audit-Trail aller Aenderungen",
+                    "beschreibung": "Vollständiger Audit-Trail aller Änderungen",
                     "protokollierung": "Strukturierte Logs mit Zeitstempel und User-ID",
                 },
-                "pruefbarkeit": {
-                    "beschreibung": "Export-Funktionen fuer Betriebspruefer",
+                "prüfbarkeit": {
+                    "beschreibung": "Export-Funktionen für Betriebsprüfer",
                     "export_formate": ["DATEV Buchungsstapel CSV", "GDPdU/GoBD XML"],
                 },
-                "belegverknuepfung": {
+                "belegverknüpfung": {
                     "beschreibung": "Eindeutige Beleglinks zu Originalbelegen",
                     "link_format": "UUID-basiert mit URL-Prefix",
                 },
@@ -501,15 +501,15 @@ class GoBDComplianceService:
                     "beschreibung": "OCR-gestuetzte Erfassung von Eingangsrechnungen",
                     "schritte": [
                         "Dokument-Upload oder Email-Import",
-                        "OCR-Verarbeitung mit KI-Unterstuetzung",
+                        "OCR-Verarbeitung mit KI-Unterstützung",
                         "Automatische Datenextraktion",
                         "Kontierungsvorschlag",
-                        "Manuelle Pruefung und Freigabe",
+                        "Manuelle Prüfung und Freigabe",
                     ],
                 },
                 {
                     "name": "Buchungserstellung",
-                    "beschreibung": "Erstellung von DATEV-konformen Buchungssaetzen",
+                    "beschreibung": "Erstellung von DATEV-konformen Buchungssätzen",
                     "schritte": [
                         "Mapping auf DATEV-Format",
                         "Validierung gegen Kontenrahmen",
@@ -519,9 +519,9 @@ class GoBDComplianceService:
                 },
                 {
                     "name": "Festschreibung",
-                    "beschreibung": "Periodenabschluss mit Unveraenderlichkeit",
+                    "beschreibung": "Periodenabschluss mit Unveränderlichkeit",
                     "schritte": [
-                        "Vollstaendigkeitspruefung",
+                        "Vollständigkeitsprüfung",
                         "Hash-Berechnung aller Buchungen",
                         "Markierung als festgeschrieben",
                         "Protokollierung im Audit-Trail",
@@ -543,14 +543,14 @@ class GoBDComplianceService:
         buchung_id: UUID,
     ) -> Tuple[bool, Optional[str]]:
         """
-        Prueft ob eine Buchung noch geaendert werden darf.
+        Prüft ob eine Buchung noch geändert werden darf.
 
         Args:
             db: Datenbank-Session
             buchung_id: Buchungs-ID
 
         Returns:
-            Tuple aus (ist_aenderbar, Grund_wenn_nicht)
+            Tuple aus (ist_änderbar, Grund_wenn_nicht)
         """
         from app.db import models
 
@@ -580,10 +580,10 @@ class GoBDComplianceService:
         """
         Berechnet SHA-256 Hash einer Buchung.
 
-        Der Hash wird ueber die GoBD-relevanten Felder berechnet
-        und garantiert die Integritaet der Buchung.
+        Der Hash wird über die GoBD-relevanten Felder berechnet
+        und garantiert die Integrität der Buchung.
         """
-        # Daten fuer Hash sammeln
+        # Daten für Hash sammeln
         hash_data = {
             "buchungs_guid": buchung.buchungs_guid,
             "umsatz": str(buchung.umsatz),
@@ -613,7 +613,7 @@ class GoBDComplianceService:
             errors.append("Fehlende Buchungs-GUID")
 
         if not buchung.umsatz or buchung.umsatz <= 0:
-            errors.append("Ungueltige Umsatzsumme")
+            errors.append("Ungültige Umsatzsumme")
 
         if not buchung.konto:
             errors.append("Fehlendes Konto")
@@ -625,7 +625,7 @@ class GoBDComplianceService:
             errors.append("Fehlendes Belegdatum")
 
         if buchung.soll_haben not in ("S", "H"):
-            errors.append("Ungueltiges Soll/Haben-Kennzeichen")
+            errors.append("Ungültiges Soll/Haben-Kennzeichen")
 
         return errors
 
@@ -640,7 +640,7 @@ _service_lock = threading.Lock()
 
 def get_gobd_service() -> GoBDComplianceService:
     """
-    Factory fuer GoBDComplianceService (Thread-Safe Singleton).
+    Factory für GoBDComplianceService (Thread-Safe Singleton).
     """
     global _gobd_service
     if _gobd_service is None:

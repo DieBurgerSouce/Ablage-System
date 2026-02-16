@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Partial Payment Service.
 
-Verwaltet Teilzahlungen fuer Rechnungen:
+Verwaltet Teilzahlungen für Rechnungen:
 - Erfassung von Teilzahlungen
 - Berechnung ausstehender Betraege
 - Automatische Status-Updates (partial -> paid)
@@ -26,7 +26,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class PaymentTransactionCreate:
-    """Daten fuer neue Teilzahlung."""
+    """Daten für neue Teilzahlung."""
     amount: Decimal
     transaction_date: Optional[datetime] = None
     payment_reference: Optional[str] = None
@@ -38,7 +38,7 @@ class PaymentTransactionCreate:
 
 @dataclass
 class PaymentTransactionResponse:
-    """Response fuer Teilzahlung."""
+    """Response für Teilzahlung."""
     id: UUID
     invoice_tracking_id: UUID
     amount: Decimal
@@ -52,7 +52,7 @@ class PaymentTransactionResponse:
 
 @dataclass
 class InvoicePaymentSummary:
-    """Zusammenfassung der Zahlungen fuer eine Rechnung."""
+    """Zusammenfassung der Zahlungen für eine Rechnung."""
     invoice_tracking_id: UUID
     invoice_number: Optional[str]
     total_amount: Decimal
@@ -66,17 +66,17 @@ class InvoicePaymentSummary:
 
 
 class PartialPaymentService:
-    """Service fuer Teilzahlungs-Management.
+    """Service für Teilzahlungs-Management.
 
     Features:
     - Mehrere Zahlungen pro Rechnung
     - Automatische Berechnung des ausstehenden Betrags
-    - Status-Update wenn vollstaendig bezahlt
+    - Status-Update wenn vollständig bezahlt
     - Skonto-Integration
     - Bank-Reconciliation Support
     """
 
-    # Toleranz fuer "vollstaendig bezahlt" (Rundungsdifferenzen)
+    # Toleranz für "vollständig bezahlt" (Rundungsdifferenzen)
     PAYMENT_TOLERANCE = Decimal("0.05")  # 5 Cent
 
     async def record_payment(
@@ -101,7 +101,7 @@ class PartialPaymentService:
         """
         from app.db.models import InvoiceTracking, PaymentTransaction
 
-        # Invoice laden - SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        # Invoice laden - SECURITY: company_id Filter für Multi-Tenant Isolation
         stmt = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.id == invoice_tracking_id,
@@ -122,7 +122,7 @@ class PartialPaymentService:
             raise ValueError("Rechnung nicht gefunden")
 
         if invoice.status == "cancelled":
-            raise ValueError("Rechnung wurde storniert - keine Zahlung moeglich")
+            raise ValueError("Rechnung wurde storniert - keine Zahlung möglich")
 
         # Validierung: Betrag positiv
         if payment_data.amount <= Decimal("0"):
@@ -133,13 +133,13 @@ class PartialPaymentService:
         total_amount = Decimal(str(invoice.amount))
         outstanding = total_amount - current_paid
 
-        # Warnung bei Ueberzahlung
+        # Warnung bei Überzahlung
         message = ""
         if payment_data.amount > outstanding + self.PAYMENT_TOLERANCE:
             overpaid = payment_data.amount - outstanding
-            message = f"Hinweis: Ueberzahlung von {overpaid}EUR"
+            message = f"Hinweis: Überzahlung von {overpaid}EUR"
             logger.warning(
-                "Ueberzahlung erfasst",
+                "Überzahlung erfasst",
                 invoice_id=str(invoice_tracking_id),
                 amount=str(payment_data.amount),
                 outstanding=str(outstanding),
@@ -179,7 +179,7 @@ class PartialPaymentService:
             invoice.status = "paid"
             invoice.paid_at = utc_now()
             if not message:
-                message = "Rechnung vollstaendig bezahlt"
+                message = "Rechnung vollständig bezahlt"
         else:
             invoice.status = "partial"
             remaining = total_amount - new_paid
@@ -213,14 +213,14 @@ class PartialPaymentService:
         invoice_tracking_id: UUID,
         company_id: UUID,
     ) -> InvoicePaymentSummary:
-        """Hole Zahlungsuebersicht fuer eine Rechnung.
+        """Hole Zahlungsübersicht für eine Rechnung.
 
-        SECURITY: company_id ist REQUIRED fuer Multi-Tenant Isolation.
+        SECURITY: company_id ist REQUIRED für Multi-Tenant Isolation.
 
         Args:
             db: Datenbank-Session
             invoice_tracking_id: ID des Invoice-Trackings
-            company_id: Firmen-ID (REQUIRED fuer Multi-Tenant)
+            company_id: Firmen-ID (REQUIRED für Multi-Tenant)
 
         Returns:
             InvoicePaymentSummary
@@ -230,7 +230,7 @@ class PartialPaymentService:
         """
         from app.db.models import InvoiceTracking, PaymentTransaction
 
-        # Invoice laden - SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        # Invoice laden - SECURITY: company_id Filter für Multi-Tenant Isolation
         stmt = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.id == invoice_tracking_id,
@@ -243,7 +243,7 @@ class PartialPaymentService:
         if not invoice:
             raise ValueError("Rechnung nicht gefunden")
 
-        # Alle Zahlungen laden - SECURITY: company_id Filter fuer Defense-in-Depth
+        # Alle Zahlungen laden - SECURITY: company_id Filter für Defense-in-Depth
         payments_stmt = (
             select(PaymentTransaction)
             .where(
@@ -302,11 +302,11 @@ class PartialPaymentService:
         user_id: UUID,
         company_id: UUID,
     ) -> Tuple[bool, str]:
-        """Loesche eine Teilzahlung.
+        """Lösche eine Teilzahlung.
 
-        SECURITY: company_id ist REQUIRED fuer Multi-Tenant Isolation.
+        SECURITY: company_id ist REQUIRED für Multi-Tenant Isolation.
 
-        Nur moeglich wenn:
+        Nur möglich wenn:
         - Zahlung noch nicht reconciled
         - Benutzer berechtigt
         - company_id stimmt
@@ -315,14 +315,14 @@ class PartialPaymentService:
             db: Datenbank-Session
             payment_transaction_id: ID der Transaktion
             user_id: Benutzer-ID
-            company_id: Firmen-ID (REQUIRED fuer Multi-Tenant)
+            company_id: Firmen-ID (REQUIRED für Multi-Tenant)
 
         Returns:
             Tuple: (Erfolg, Meldung)
         """
         from app.db.models import InvoiceTracking, PaymentTransaction
 
-        # Transaktion laden - SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        # Transaktion laden - SECURITY: company_id Filter für Multi-Tenant Isolation
         stmt = select(PaymentTransaction).where(
             and_(
                 PaymentTransaction.id == payment_transaction_id,
@@ -342,15 +342,15 @@ class PartialPaymentService:
             return False, "Transaktion nicht gefunden"
 
         if transaction.reconciliation_status == "matched":
-            return False, "Bereits abgestimmte Zahlung kann nicht geloescht werden"
+            return False, "Bereits abgestimmte Zahlung kann nicht gelöscht werden"
 
         invoice_tracking_id = transaction.invoice_tracking_id
         deleted_amount = Decimal(str(transaction.amount))
 
-        # Transaktion loeschen
+        # Transaktion löschen
         await db.delete(transaction)
 
-        # Invoice aktualisieren - SECURITY: company_id Filter fuer Defense-in-Depth
+        # Invoice aktualisieren - SECURITY: company_id Filter für Defense-in-Depth
         invoice_stmt = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.id == invoice_tracking_id,
@@ -382,13 +382,13 @@ class PartialPaymentService:
         await db.flush()
 
         logger.info(
-            "Teilzahlung geloescht",
+            "Teilzahlung gelöscht",
             payment_id=str(payment_transaction_id),
             invoice_id=str(invoice_tracking_id),
             deleted_amount=str(deleted_amount),
         )
 
-        return True, f"Zahlung ueber {deleted_amount}EUR geloescht"
+        return True, f"Zahlung über {deleted_amount}EUR gelöscht"
 
     async def get_partially_paid_invoices(
         self,
@@ -427,7 +427,7 @@ class PartialPaymentService:
 
         summaries = []
         for invoice in invoices:
-            # SECURITY: company_id durchreichen fuer Defense-in-Depth
+            # SECURITY: company_id durchreichen für Defense-in-Depth
             summary = await self.get_payment_summary(db, invoice.id, company_id)
             summaries.append(summary)
 
@@ -441,23 +441,23 @@ class PartialPaymentService:
         user_id: UUID,
         company_id: UUID,
     ) -> bool:
-        """Verknuepfe Teilzahlung mit Bank-Transaktion.
+        """Verknüpfe Teilzahlung mit Bank-Transaktion.
 
-        SECURITY: company_id ist REQUIRED fuer Multi-Tenant Isolation.
+        SECURITY: company_id ist REQUIRED für Multi-Tenant Isolation.
 
         Args:
             db: Datenbank-Session
             payment_transaction_id: ID der Teilzahlung
             bank_transaction_id: ID der Bank-Transaktion
             user_id: Benutzer-ID
-            company_id: Firmen-ID (REQUIRED fuer Multi-Tenant)
+            company_id: Firmen-ID (REQUIRED für Multi-Tenant)
 
         Returns:
             True bei Erfolg
         """
         from app.db.models import PaymentTransaction
 
-        # SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        # SECURITY: company_id Filter für Multi-Tenant Isolation
         stmt = select(PaymentTransaction).where(
             and_(
                 PaymentTransaction.id == payment_transaction_id,
@@ -484,7 +484,7 @@ class PartialPaymentService:
         await db.flush()
 
         logger.info(
-            "Teilzahlung mit Bank-Transaktion verknuepft",
+            "Teilzahlung mit Bank-Transaktion verknüpft",
             payment_id=str(payment_transaction_id),
             bank_transaction_id=str(bank_transaction_id),
         )
@@ -497,21 +497,21 @@ class PartialPaymentService:
         invoice_tracking_id: UUID,
         company_id: UUID,
     ) -> Decimal:
-        """Berechne Summe aller Zahlungen fuer eine Rechnung.
+        """Berechne Summe aller Zahlungen für eine Rechnung.
 
-        SECURITY: company_id ist REQUIRED fuer Multi-Tenant Isolation.
+        SECURITY: company_id ist REQUIRED für Multi-Tenant Isolation.
 
         Args:
             db: Datenbank-Session
             invoice_tracking_id: ID des Invoice-Trackings
-            company_id: Firmen-ID (REQUIRED fuer Multi-Tenant)
+            company_id: Firmen-ID (REQUIRED für Multi-Tenant)
 
         Returns:
             Summe der Zahlungen
         """
         from app.db.models import PaymentTransaction
 
-        # SECURITY: company_id Filter fuer Multi-Tenant Isolation
+        # SECURITY: company_id Filter für Multi-Tenant Isolation
         stmt = select(func.coalesce(func.sum(PaymentTransaction.amount), 0)).where(
             and_(
                 PaymentTransaction.invoice_tracking_id == invoice_tracking_id,

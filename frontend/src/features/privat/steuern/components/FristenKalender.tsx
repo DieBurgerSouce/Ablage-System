@@ -59,7 +59,7 @@ const DEADLINE_TYPE_METADATA: Record<TaxDeadlineType, DeadlineTypeMetadata> = {
     color: 'text-green-700',
     bgColor: 'bg-green-100',
   },
-  umsatzsteuer_erklärung: {
+  umsatzsteuer_erklaerung: {
     label: 'USt-Erklärung',
     color: 'text-emerald-700',
     bgColor: 'bg-emerald-100',

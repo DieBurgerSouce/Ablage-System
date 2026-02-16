@@ -14,14 +14,23 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Check, Trash2, AlertCircle } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import { Check, Trash2, AlertCircle, Clock, ChevronDown, ChevronUp, History } from 'lucide-react';
 import { NotificationItem } from './NotificationItem';
 import {
   useNotifications,
   useMarkAllAsRead,
-  useBulkDismiss
+  useBulkDismiss,
+  useGroupedNotifications,
+  useSnoozeNotification
 } from '../hooks/useNotifications';
 import { NotificationPriority } from '../types';
+import type { NotificationGroup } from '../types';
 import { cn } from '@/lib/utils';
 
 interface NotificationCenterProps {
@@ -35,6 +44,8 @@ export function NotificationCenter({
 }: NotificationCenterProps) {
   const [activeTab, setActiveTab] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [showHistory, setShowHistory] = useState(false);
 
   // Query basierend auf aktivem Tab
   const filter =
@@ -58,10 +69,31 @@ export function NotificationCenter({
 
   const markAllAsReadMutation = useMarkAllAsRead();
   const bulkDismissMutation = useBulkDismiss();
+  const snoozeMutation = useSnoozeNotification();
 
-  const notifications = data?.pages.flatMap((page) => page.items) ?? [];
+  const allNotifications = data?.pages.flatMap((page) => page.items) ?? [];
+
+  // Gesnoozede Benachrichtigungen filtern
+  const now = new Date();
+  const notifications = allNotifications.filter((n) => {
+    if (n.snoozed_until && new Date(n.snoozed_until) > now) {
+      return false;
+    }
+    return true;
+  });
+
+  // Verlaufsfilter: nur letzte 7 Tage
+  const filteredNotifications = showHistory
+    ? notifications
+    : notifications.filter((n) => {
+        const created = new Date(n.created_at);
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        return created >= sevenDaysAgo;
+      });
+
+  const groupedNotifications = useGroupedNotifications(filteredNotifications);
   const unreadCount =
-    notifications.filter((n) => !n.read).length;
+    filteredNotifications.filter((n) => !n.read).length;
 
   const handleMarkAllAsRead = () => {
     markAllAsReadMutation.mutate();
@@ -77,6 +109,36 @@ export function NotificationCenter({
         }
       }
     );
+  };
+
+  const handleSnooze = (notificationId: string, duration: string) => {
+    const snoozeUntil = new Date();
+    switch (duration) {
+      case '1h':
+        snoozeUntil.setHours(snoozeUntil.getHours() + 1);
+        break;
+      case 'tomorrow':
+        snoozeUntil.setDate(snoozeUntil.getDate() + 1);
+        snoozeUntil.setHours(9, 0, 0, 0);
+        break;
+      case 'next_week':
+        snoozeUntil.setDate(snoozeUntil.getDate() + 7);
+        snoozeUntil.setHours(9, 0, 0, 0);
+        break;
+    }
+    snoozeMutation.mutate({ id: notificationId, until: snoozeUntil.toISOString() });
+  };
+
+  const toggleGroup = (groupKey: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) {
+        next.delete(groupKey);
+      } else {
+        next.add(groupKey);
+      }
+      return next;
+    });
   };
 
   const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
@@ -128,13 +190,24 @@ export function NotificationCenter({
           onValueChange={setActiveTab}
           className="flex-1 flex flex-col min-h-0"
         >
-          <div className="px-6 pt-4">
+          <div className="px-6 pt-4 space-y-3">
             <TabsList className="w-full grid grid-cols-4">
               <TabsTrigger value="all">Alle</TabsTrigger>
               <TabsTrigger value="critical">Kritisch</TabsTrigger>
               <TabsTrigger value="warning">Warnungen</TabsTrigger>
               <TabsTrigger value="info">Info</TabsTrigger>
             </TabsList>
+            <div className="flex items-center justify-end">
+              <Button
+                variant={showHistory ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setShowHistory(!showHistory)}
+                className="h-7 text-xs"
+              >
+                <History className="h-3.5 w-3.5 mr-1.5" />
+                {showHistory ? 'Letzte 7 Tage' : 'Alle anzeigen'}
+              </Button>
+            </div>
           </div>
 
           <TabsContent
@@ -157,7 +230,7 @@ export function NotificationCenter({
                   </p>
                 )}
               </div>
-            ) : notifications.length === 0 ? (
+            ) : filteredNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2 px-6">
                 <Check className="h-12 w-12 mb-2" />
                 <p className="text-sm font-medium">Keine Benachrichtigungen</p>
@@ -179,28 +252,155 @@ export function NotificationCenter({
                 onScrollCapture={handleScroll}
               >
                 <div className="space-y-2 pb-4">
-                  {notifications.map((notification) => (
-                    <NotificationItem
-                      key={notification.id}
-                      notification={notification}
-                      selected={selectedIds.has(notification.id)}
-                      onSelect={(selected) => {
-                        setSelectedIds((prev) => {
-                          const next = new Set(prev);
-                          if (selected) {
-                            next.add(notification.id);
-                          } else {
-                            next.delete(notification.id);
-                          }
-                          return next;
-                        });
-                      }}
-                      onClose={() => onOpenChange(false)}
-                    />
+                  {groupedNotifications.map((group) => (
+                    <div key={group.group_key} className="space-y-1">
+                      {/* Gruppenkopf mit Zaehler */}
+                      {group.count > 1 && (
+                        <button
+                          type="button"
+                          className="flex items-center gap-2 w-full text-left px-2 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors rounded"
+                          onClick={() => toggleGroup(group.group_key)}
+                        >
+                          {expandedGroups.has(group.group_key) ? (
+                            <ChevronUp className="h-3 w-3" />
+                          ) : (
+                            <ChevronDown className="h-3 w-3" />
+                          )}
+                          <span className="font-medium">
+                            {group.count} zusammengehoerige Benachrichtigungen
+                          </span>
+                        </button>
+                      )}
+
+                      {/* Erste (neueste) Benachrichtigung immer anzeigen */}
+                      <div className="flex items-start gap-1">
+                        <div className="flex-1 min-w-0">
+                          <NotificationItem
+                            key={group.latest.id}
+                            notification={group.latest}
+                            selected={selectedIds.has(group.latest.id)}
+                            onSelect={(selected) => {
+                              setSelectedIds((prev) => {
+                                const next = new Set(prev);
+                                if (selected) {
+                                  next.add(group.latest.id);
+                                } else {
+                                  next.delete(group.latest.id);
+                                }
+                                return next;
+                              });
+                            }}
+                            onClose={() => onOpenChange(false)}
+                          />
+                        </div>
+                        {/* Snooze-Dropdown */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 mt-3 flex-shrink-0"
+                              title="Spaeter erinnern"
+                            >
+                              <Clock className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => handleSnooze(group.latest.id, '1h')}
+                            >
+                              <Clock className="h-4 w-4 mr-2" />
+                              1 Stunde
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleSnooze(group.latest.id, 'tomorrow')}
+                            >
+                              <Clock className="h-4 w-4 mr-2" />
+                              Morgen
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleSnooze(group.latest.id, 'next_week')}
+                            >
+                              <Clock className="h-4 w-4 mr-2" />
+                              Naechste Woche
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      {/* Weitere Benachrichtigungen in der Gruppe (aufklappbar) */}
+                      {group.count > 1 &&
+                        expandedGroups.has(group.group_key) &&
+                        group.notifications.slice(1).map((notification) => (
+                          <div key={notification.id} className="flex items-start gap-1 ml-4">
+                            <div className="flex-1 min-w-0">
+                              <NotificationItem
+                                notification={notification}
+                                selected={selectedIds.has(notification.id)}
+                                onSelect={(selected) => {
+                                  setSelectedIds((prev) => {
+                                    const next = new Set(prev);
+                                    if (selected) {
+                                      next.add(notification.id);
+                                    } else {
+                                      next.delete(notification.id);
+                                    }
+                                    return next;
+                                  });
+                                }}
+                                onClose={() => onOpenChange(false)}
+                              />
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 mt-3 flex-shrink-0"
+                                  title="Spaeter erinnern"
+                                >
+                                  <Clock className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleSnooze(notification.id, '1h')}
+                                >
+                                  <Clock className="h-4 w-4 mr-2" />
+                                  1 Stunde
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleSnooze(notification.id, 'tomorrow')}
+                                >
+                                  <Clock className="h-4 w-4 mr-2" />
+                                  Morgen
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleSnooze(notification.id, 'next_week')}
+                                >
+                                  <Clock className="h-4 w-4 mr-2" />
+                                  Naechste Woche
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        ))}
+
+                      {/* "X weitere" Hinweis wenn nicht aufgeklappt */}
+                      {group.count > 1 && !expandedGroups.has(group.group_key) && (
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground hover:text-foreground ml-6 py-1 transition-colors"
+                          onClick={() => toggleGroup(group.group_key)}
+                        >
+                          {group.count - 1} weitere
+                        </button>
+                      )}
+                    </div>
                   ))}
                   {isFetchingNextPage && (
                     <div className="py-4 text-center text-sm text-muted-foreground">
-                      Lädt weitere...
+                      Laedt weitere...
                     </div>
                   )}
                 </div>

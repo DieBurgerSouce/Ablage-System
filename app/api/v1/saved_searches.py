@@ -2,9 +2,9 @@
 """
 Saved Searches API Endpoint.
 
-Verwaltet gespeicherte Such-Konfigurationen fuer Benutzer:
-- Erstellen, Aendern, Loeschen von gespeicherten Suchen
-- Ausfuehren von gespeicherten Suchen mit Statistik-Tracking
+Verwaltet gespeicherte Such-Konfigurationen für Benutzer:
+- Erstellen, Ändern, Löschen von gespeicherten Suchen
+- Ausführen von gespeicherten Suchen mit Statistik-Tracking
 - Standard-Suche pro Benutzer
 """
 
@@ -17,7 +17,7 @@ from app.core.types import JSONDict
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select, update, delete, and_, func
+from sqlalchemy import select, update, delete, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
@@ -41,7 +41,7 @@ router = APIRouter(prefix="/saved-searches", tags=["Gespeicherte Suchen"])
 # ==================== Pydantic Schemas ====================
 
 class SavedSearchFilters(BaseModel):
-    """Filter-Konfiguration fuer gespeicherte Suchen."""
+    """Filter-Konfiguration für gespeicherte Suchen."""
     document_type: Optional[str] = None
     status: Optional[str] = None
     date_from: Optional[str] = None
@@ -61,6 +61,7 @@ class SavedSearchCreate(BaseModel):
     sort_field: Optional[str] = Field(default=None, max_length=50, description="Sortierfeld")
     sort_order: Optional[str] = Field(default=None, pattern="^(asc|desc)$", description="Sortierreihenfolge")
     is_default: bool = Field(default=False, description="Als Standard-Suche markieren")
+    is_shared: bool = Field(default=False, description="Mit Team teilen")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -74,12 +75,13 @@ class SavedSearchUpdate(BaseModel):
     sort_field: Optional[str] = Field(None, max_length=50)
     sort_order: Optional[str] = Field(None, pattern="^(asc|desc)$")
     is_default: Optional[bool] = None
+    is_shared: Optional[bool] = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class SavedSearchResponse(BaseModel):
-    """Schema fuer gespeicherte Such-Antworten."""
+    """Schema für gespeicherte Such-Antworten."""
     id: UUID
     user_id: UUID
     name: str
@@ -89,6 +91,7 @@ class SavedSearchResponse(BaseModel):
     sort_field: Optional[str] = None
     sort_order: Optional[str] = None
     is_default: bool
+    is_shared: bool = False
     use_count: int
     last_used_at: Optional[datetime] = None
     created_at: datetime
@@ -98,7 +101,7 @@ class SavedSearchResponse(BaseModel):
 
 
 class SavedSearchListResponse(BaseModel):
-    """Schema fuer Listen-Antworten."""
+    """Schema für Listen-Antworten."""
     searches: List[SavedSearchResponse]
     total: int
 
@@ -138,7 +141,7 @@ async def _get_saved_search_or_404(
 
 async def _unset_other_defaults(user_id: UUID, db: AsyncSession) -> None:
     """
-    Setzt alle anderen Standard-Suchen des Benutzers zurueck.
+    Setzt alle anderen Standard-Suchen des Benutzers zurück.
 
     Nur eine Suche kann Standard sein.
     """
@@ -164,14 +167,22 @@ async def list_saved_searches(
     """
     Listet alle gespeicherten Suchen des Benutzers.
 
-    Sortierung: Nach Nutzungshaeufigkeit (use_count) absteigend,
+    Sortierung: Nach Nutzungshäufigkeit (use_count) absteigend,
     dann nach Erstellungsdatum absteigend.
     """
     try:
-        # Query mit Sortierung
+        # Eigene Suchen + geteilte Suchen aus derselben Firma
+        conditions = [SavedSearch.user_id == current_user.id]
+        if hasattr(current_user, 'company_id') and current_user.company_id is not None:
+            conditions.append(
+                and_(
+                    SavedSearch.is_shared == True,
+                    SavedSearch.company_id == current_user.company_id,
+                )
+            )
         result = await db.execute(
             select(SavedSearch)
-            .where(SavedSearch.user_id == current_user.id)
+            .where(or_(*conditions))
             .order_by(SavedSearch.use_count.desc(), SavedSearch.created_at.desc())
         )
         searches = result.scalars().all()
@@ -203,15 +214,19 @@ async def create_saved_search(
     """
     Erstellt eine neue gespeicherte Suche.
 
-    Der Name muss fuer den Benutzer eindeutig sein.
-    Wenn is_default=True, werden alle anderen Standard-Suchen zurueckgesetzt.
+    Der Name muss für den Benutzer eindeutig sein.
+    Wenn is_default=True, werden alle anderen Standard-Suchen zurückgesetzt.
     """
     try:
-        # Wenn diese Suche Standard wird, andere zuruecksetzen
+        # Wenn diese Suche Standard wird, andere zurücksetzen
         if data.is_default:
             await _unset_other_defaults(current_user.id, db)
 
         # Neue Suche erstellen
+        company_id = None
+        if data.is_shared and hasattr(current_user, 'company_id'):
+            company_id = current_user.company_id
+
         saved_search = SavedSearch(
             user_id=current_user.id,
             name=data.name,
@@ -221,6 +236,8 @@ async def create_saved_search(
             sort_field=data.sort_field,
             sort_order=data.sort_order,
             is_default=data.is_default,
+            is_shared=data.is_shared,
+            company_id=company_id,
         )
 
         db.add(saved_search)
@@ -294,7 +311,7 @@ async def update_saved_search(
     saved_search = await _get_saved_search_or_404(search_id, current_user.id, db)
 
     try:
-        # Wenn diese Suche Standard wird, andere zuruecksetzen
+        # Wenn diese Suche Standard wird, andere zurücksetzen
         if data.is_default is True and not saved_search.is_default:
             await _unset_other_defaults(current_user.id, db)
 
@@ -339,15 +356,15 @@ async def update_saved_search(
 @router.delete(
     "/{search_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Gespeicherte Suche loeschen",
-    description="Loescht eine gespeicherte Suche"
+    summary="Gespeicherte Suche löschen",
+    description="Löscht eine gespeicherte Suche"
 )
 async def delete_saved_search(
     search_id: UUID,
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loescht eine gespeicherte Suche."""
+    """Löscht eine gespeicherte Suche."""
     saved_search = await _get_saved_search_or_404(search_id, current_user.id, db)
 
     try:
@@ -355,24 +372,24 @@ async def delete_saved_search(
         await db.commit()
 
         logger.info(
-            "Gespeicherte Suche geloescht",
+            "Gespeicherte Suche gelöscht",
             saved_search_id=str(search_id),
             user_id=str(current_user.id)
         )
     except Exception as e:
         await db.rollback()
-        logger.error("Fehler beim Loeschen", **safe_error_log(e))
+        logger.error("Fehler beim Löschen", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Loeschen der gespeicherten Suche"
+            detail="Fehler beim Löschen der gespeicherten Suche"
         )
 
 
 @router.post(
     "/{search_id}/execute",
     response_model=JSONDict,
-    summary="Gespeicherte Suche ausfuehren",
-    description="Fuehrt eine gespeicherte Suche aus und aktualisiert Statistiken"
+    summary="Gespeicherte Suche ausführen",
+    description="Führt eine gespeicherte Suche aus und aktualisiert Statistiken"
 )
 async def execute_saved_search(
     search_id: UUID,
@@ -383,7 +400,7 @@ async def execute_saved_search(
     service: UnifiedSearchService = Depends(get_unified_search_service),
 ) -> JSONDict:
     """
-    Fuehrt eine gespeicherte Suche aus.
+    Führt eine gespeicherte Suche aus.
 
     Inkrementiert use_count und aktualisiert last_used_at.
     Delegiert die eigentliche Suche an den UnifiedSearchService.
@@ -415,7 +432,7 @@ async def execute_saved_search(
                 date_to=filters_dict.get("date_to"),
             )
 
-        # Suche ausfuehren
+        # Suche ausführen
         response = await service.search(
             db=db,
             query=saved_search.query,
@@ -432,7 +449,7 @@ async def execute_saved_search(
         )
 
         logger.info(
-            "Gespeicherte Suche ausgefuehrt",
+            "Gespeicherte Suche ausgeführt",
             saved_search_id=str(search_id),
             user_id=str(current_user.id),
             query=saved_search.query,
@@ -484,8 +501,57 @@ async def execute_saved_search(
 
     except Exception as e:
         await db.rollback()
-        logger.error("Fehler beim Ausfuehren der gespeicherten Suche", **safe_error_log(e))
+        logger.error("Fehler beim Ausführen der gespeicherten Suche", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Fehler beim Ausfuehren der gespeicherten Suche"
+            detail="Fehler beim Ausführen der gespeicherten Suche"
+        )
+
+
+class ShareToggleRequest(BaseModel):
+    """Schema zum Teilen/Entteilen einer Suche."""
+    is_shared: bool = Field(..., description="True = mit Team teilen, False = privat")
+
+
+@router.patch(
+    "/{search_id}/share",
+    response_model=SavedSearchResponse,
+    summary="Suche teilen/entteilen",
+    description="Schaltet die Team-Sichtbarkeit einer gespeicherten Suche um"
+)
+async def toggle_share_saved_search(
+    search_id: UUID,
+    data: ShareToggleRequest,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user),
+) -> SavedSearchResponse:
+    """Teilt oder entteilt eine gespeicherte Suche mit dem Team."""
+    saved_search = await _get_saved_search_or_404(search_id, current_user.id, db)
+
+    try:
+        saved_search.is_shared = data.is_shared
+        if data.is_shared and hasattr(current_user, 'company_id'):
+            saved_search.company_id = current_user.company_id
+        elif not data.is_shared:
+            saved_search.company_id = None
+
+        await db.commit()
+        await db.refresh(saved_search)
+
+        action = "geteilt" if data.is_shared else "privat gesetzt"
+        logger.info(
+            f"Gespeicherte Suche {action}",
+            saved_search_id=str(search_id),
+            user_id=str(current_user.id),
+            is_shared=data.is_shared,
+        )
+
+        return SavedSearchResponse.model_validate(saved_search)
+
+    except Exception as e:
+        await db.rollback()
+        logger.error("Fehler beim Teilen der Suche", **safe_error_log(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Teilen der gespeicherten Suche"
         )

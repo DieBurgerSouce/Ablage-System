@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Qdrant Vector Database Service fuer Ablage-System.
+Qdrant Vector Database Service für Ablage-System.
 
 Enterprise-grade Vector-DB-Integration mit:
 - Connection Pooling und Health Checks
 - Collection Management mit HNSW-Indexierung
-- Batch Operations fuer effiziente Inserts
+- Batch Operations für effiziente Inserts
 - Hybrid Search (Dense + Sparse)
 - A/B Testing Support mit pgvector
 
@@ -53,13 +53,13 @@ def async_retry_with_backoff(
     backoff_multiplier: float = QDRANT_BACKOFF_MULTIPLIER,
     retryable_exceptions: tuple = (Exception,),
 ) -> Callable:
-    """Decorator fuer async Funktionen mit Retry und Exponential Backoff.
+    """Decorator für async Funktionen mit Retry und Exponential Backoff.
 
     Args:
         max_retries: Maximale Anzahl Versuche
         base_delay: Initiale Wartezeit in Sekunden
         max_delay: Maximale Wartezeit in Sekunden
-        backoff_multiplier: Multiplikator fuer Backoff
+        backoff_multiplier: Multiplikator für Backoff
         retryable_exceptions: Tuple von Exceptions die retried werden sollen
 
     Returns:
@@ -129,7 +129,7 @@ except ImportError:
 
 
 class QdrantPointData(TypedDict, total=False):
-    """Typisierte Punkt-Daten fuer Qdrant."""
+    """Typisierte Punkt-Daten für Qdrant."""
     id: str
     vector: List[float]
     payload: Dict[str, object]
@@ -155,7 +155,7 @@ class QdrantCollectionInfo:
 
 
 class QdrantService:
-    """Service fuer Qdrant Vector Database Operations.
+    """Service für Qdrant Vector Database Operations.
 
     Implementiert:
     - Lazy Connection mit Health Checks
@@ -174,7 +174,7 @@ class QdrantService:
     _initialized = False
 
     def __new__(cls) -> 'QdrantService':
-        """Singleton-Instanz zurueckgeben."""
+        """Singleton-Instanz zurückgeben."""
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -221,7 +221,7 @@ class QdrantService:
 
     @property
     def enabled(self) -> bool:
-        """Gibt zurueck ob Qdrant aktiviert ist."""
+        """Gibt zurück ob Qdrant aktiviert ist."""
         return self._enabled
 
     def _get_sync_client(self) -> QdrantClient:
@@ -269,7 +269,7 @@ class QdrantService:
     # =========================================================================
 
     async def health_check(self) -> Dict[str, object]:
-        """Prueft Qdrant-Verbindung und gibt Status zurueck."""
+        """Prüft Qdrant-Verbindung und gibt Status zurück."""
         if not self._enabled:
             return {"status": "disabled", "message": "Qdrant nicht aktiviert"}
 
@@ -291,7 +291,7 @@ class QdrantService:
             }
 
     async def get_collection_info(self, collection_name: str) -> Optional[QdrantCollectionInfo]:
-        """Holt Informationen ueber eine Collection."""
+        """Holt Informationen über eine Collection."""
         if not self._enabled:
             return None
 
@@ -338,7 +338,7 @@ class QdrantService:
         try:
             client = await self._get_async_client()
 
-            # Pruefe ob Collection existiert
+            # Prüfe ob Collection existiert
             collections = await client.get_collections()
             existing = [c.name for c in collections.collections]
 
@@ -382,7 +382,7 @@ class QdrantService:
             return False
 
     async def delete_collection(self, collection_name: str) -> bool:
-        """Loescht eine Collection."""
+        """Löscht eine Collection."""
         if not self._enabled:
             return False
 
@@ -491,15 +491,15 @@ class QdrantService:
         ids: List[str],
         wait: bool = True
     ) -> int:
-        """Loescht Vektoren nach IDs.
+        """Löscht Vektoren nach IDs.
 
         Args:
             collection_name: Collection
             ids: Liste von Punkt-IDs
-            wait: Auf Loeschung warten
+            wait: Auf Löschung warten
 
         Returns:
-            Anzahl geloeschter Punkte
+            Anzahl gelöschter Punkte
         """
         if not self._enabled or not ids:
             return 0
@@ -567,16 +567,16 @@ class QdrantService:
         with_vectors: bool = False,
         with_payload: bool = True,
     ) -> List[QdrantSearchResult]:
-        """Fuehrt Vektor-Suche durch.
+        """Führt Vektor-Suche durch.
 
         Args:
             collection_name: Collection zum Suchen
             query_vector: Query-Embedding
             limit: Max Ergebnisse
-            score_threshold: Min Score (0-1 fuer Cosine)
+            score_threshold: Min Score (0-1 für Cosine)
             filter_conditions: Filter dict, z.B. {"document_type": "invoice"}
-            with_vectors: Vektoren zurueckgeben
-            with_payload: Payload zurueckgeben
+            with_vectors: Vektoren zurückgeben
+            with_payload: Payload zurückgeben
 
         Returns:
             Liste von QdrantSearchResult
@@ -593,7 +593,7 @@ class QdrantService:
                 must_conditions = []
                 for key, value in filter_conditions.items():
                     if value is not None:
-                        # Spezial-Behandlung fuer IN-Filter (document_ids)
+                        # Spezial-Behandlung für IN-Filter (document_ids)
                         if key == "_document_ids_in" and isinstance(value, list):
                             must_conditions.append(
                                 FieldCondition(
@@ -611,7 +611,7 @@ class QdrantService:
                 if must_conditions:
                     search_filter = Filter(must=must_conditions)
 
-            # Suche mit Retry ausfuehren
+            # Suche mit Retry ausführen
             results = await self._search_with_retry(
                 client=client,
                 collection_name=collection_name,
@@ -661,9 +661,9 @@ class QdrantService:
         limit: int = 20,
         score_threshold: float = 0.7,
     ) -> List[QdrantSearchResult]:
-        """Convenience-Methode fuer gefilterte Suche.
+        """Convenience-Methode für gefilterte Suche.
 
-        Spezialisiert fuer RAG-Chunk-Suche mit typischen Filtern.
+        Spezialisiert für RAG-Chunk-Suche mit typischen Filtern.
         """
         filter_conditions: Dict[str, object] = {}
 
@@ -674,7 +674,7 @@ class QdrantService:
 
         # Document IDs mit MatchAny (IN-Filter) zur filter_conditions hinzufuegen
         if document_ids:
-            # Spezial-Schluessel fuer IN-Filter (wird in search() behandelt)
+            # Spezial-Schluessel für IN-Filter (wird in search() behandelt)
             filter_conditions["_document_ids_in"] = document_ids
 
         return await self.search(
@@ -696,12 +696,12 @@ class QdrantService:
         points: List[QdrantPointData],
         batch_size: int = 100,
     ) -> int:
-        """Batch-Upsert fuer grosse Datenmengen.
+        """Batch-Upsert für grosse Datenmengen.
 
         Args:
             collection_name: Ziel-Collection
             points: Alle Punkte
-            batch_size: Batch-Groesse
+            batch_size: Batch-Größe
 
         Returns:
             Anzahl erfolgreich eingefuegter Punkte
@@ -735,7 +735,7 @@ class QdrantService:
     # =========================================================================
 
     def close(self) -> None:
-        """Schliesst Verbindungen."""
+        """Schließt Verbindungen."""
         with self._lock:
             if self._client:
                 try:
@@ -764,7 +764,7 @@ _qdrant_service: Optional[QdrantService] = None
 
 
 def get_qdrant_service() -> QdrantService:
-    """Gibt QdrantService-Singleton zurueck."""
+    """Gibt QdrantService-Singleton zurück."""
     global _qdrant_service
     if _qdrant_service is None:
         _qdrant_service = QdrantService()

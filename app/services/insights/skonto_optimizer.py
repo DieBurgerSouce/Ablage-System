@@ -6,8 +6,8 @@ Enterprise Feature: KI-basierte Optimierung von Skonto-Nutzung.
 
 Features:
 - Priorisierung nach ROI (Skonto-Ersparnis vs. Liquiditaetskosten)
-- Cash-Buffer Beruecksichtigung
-- Batch-Zahlungsvorschlaege
+- Cash-Buffer Berücksichtigung
+- Batch-Zahlungsvorschläge
 - Seasonal Payment Planning
 - Vendor Payment Terms Learning
 
@@ -69,14 +69,14 @@ SKONTO_OPTIMIZATION_TIME = Histogram(
 class RecommendationType(str, Enum):
     """Typ der Zahlungsempfehlung."""
     PAY_NOW = "pay_now"           # Sofort zahlen (Skonto nutzen)
-    PAY_LATER = "pay_later"       # Spaeter zahlen (Liquiditaet priorisieren)
+    PAY_LATER = "pay_later"       # Später zahlen (Liquiditaet priorisieren)
     BATCH_PAYMENT = "batch_payment"  # Sammelzahlung am optimalen Tag
     NEGOTIATE = "negotiate"       # Bessere Konditionen verhandeln
-    REVIEW = "review"             # Manuelle Pruefung empfohlen
+    REVIEW = "review"             # Manuelle Prüfung empfohlen
 
 
 class Priority(str, Enum):
-    """Prioritaet der Empfehlung."""
+    """Priorität der Empfehlung."""
     CRITICAL = "critical"   # Frist laeuft ab
     HIGH = "high"           # Hohe Ersparnis
     MEDIUM = "medium"       # Moderate Ersparnis
@@ -146,13 +146,13 @@ class OptimizationResultDict(TypedDict):
 
 @dataclass
 class SkontoInvoice:
-    """Rechnung mit Skonto-Moeglichkeit."""
+    """Rechnung mit Skonto-Möglichkeit."""
     invoice_id: UUID
     entity_id: Optional[UUID]
     entity_name: str
     amount: Decimal
     outstanding_amount: Decimal
-    skonto_percentage: Decimal  # z.B. 2.0 fuer 2%
+    skonto_percentage: Decimal  # z.B. 2.0 für 2%
     skonto_amount: Decimal
     skonto_deadline: datetime
     due_date: datetime
@@ -248,8 +248,8 @@ class SkontoOptimizer:
     """
     KI-basierter Skonto-Optimierer.
 
-    Analysiert offene Rechnungen mit Skonto-Moeglichkeit und
-    erstellt optimierte Zahlungsvorschlaege basierend auf:
+    Analysiert offene Rechnungen mit Skonto-Möglichkeit und
+    erstellt optimierte Zahlungsvorschläge basierend auf:
     - Liquiditaetslage
     - ROI der Skonto-Nutzung
     - Vendor-Beziehungen
@@ -259,7 +259,7 @@ class SkontoOptimizer:
     # Konfiguration
     MIN_SKONTO_PERCENTAGE = Decimal("0.5")  # Mindestens 0.5% Skonto
     ANNUALIZED_ROI_THRESHOLD = 15.0  # 15% annualisierter ROI = lohnenswert
-    SAFETY_BUFFER_DAYS = 2  # Sicherheitspuffer fuer Zahlung
+    SAFETY_BUFFER_DAYS = 2  # Sicherheitspuffer für Zahlung
     LIQUIDITY_SAFETY_FACTOR = 1.5  # 1.5x Monat Reserve halten
 
     def __init__(self) -> None:
@@ -297,10 +297,10 @@ class SkontoOptimizer:
         # 1. Aktuelle Liquiditaet laden
         current_balance = await self._get_current_balance(db, company_id)
 
-        # 2. Skonto-faehige Rechnungen laden
+        # 2. Skonto-fähige Rechnungen laden
         skonto_invoices = await self._get_skonto_invoices(db, company_id, days_ahead)
 
-        # 3. Erwartete Ein-/Ausgaenge fuer Liquiditaetsprognose
+        # 3. Erwartete Ein-/Ausgaenge für Liquiditaetsprognose
         expected_inflows = await self._get_expected_inflows(db, company_id, days_ahead)
         expected_outflows = await self._get_expected_outflows(db, company_id, days_ahead)
 
@@ -383,7 +383,7 @@ class SkontoOptimizer:
         company_id: UUID,
         days_ahead: int,
     ) -> List[SkontoInvoice]:
-        """Laedt Rechnungen mit Skonto-Moeglichkeit."""
+        """Laedt Rechnungen mit Skonto-Möglichkeit."""
         now = datetime.now(timezone.utc)
         deadline_cutoff = now + timedelta(days=days_ahead)
 
@@ -462,7 +462,7 @@ class SkontoOptimizer:
         inflows: Dict[datetime, Decimal] = {}
 
         for inv in invoices:
-            # Zahlungswahrscheinlichkeit schaetzen (vereinfacht: 70%)
+            # Zahlungswahrscheinlichkeit schätzen (vereinfacht: 70%)
             expected_amount = (inv.outstanding_amount or inv.amount) * Decimal("0.7")
             date_key = inv.due_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -482,7 +482,7 @@ class SkontoOptimizer:
         now = datetime.now(timezone.utc)
         cutoff = now + timedelta(days=days_ahead)
 
-        # Andere faellige Verbindlichkeiten
+        # Andere fällige Verbindlichkeiten
         query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.company_id == company_id,
@@ -539,11 +539,11 @@ class SkontoOptimizer:
         invoices_with_roi.sort(key=lambda x: x[1], reverse=True)
 
         for inv, annualized_roi in invoices_with_roi:
-            # Pruefen ob Ersparnis Minimum erreicht
+            # Prüfen ob Ersparnis Minimum erreicht
             if inv.skonto_amount < min_savings:
                 continue
 
-            # Pruefen ob genuegend Liquiditaet
+            # Prüfen ob genuegend Liquiditaet
             net_amount = inv.outstanding_amount - inv.skonto_amount
             projected_balance = self._project_balance_at_date(
                 current_balance=available_balance,
@@ -576,8 +576,8 @@ class SkontoOptimizer:
                 liquidity_impact = LiquidityImpact.CRITICAL
                 rec_type = RecommendationType.PAY_LATER
                 reasoning = [
-                    "Zahlung wuerde zu negativem Saldo fuehren",
-                    f"Verfuegbar: {float(projected_balance):,.2f} EUR, Benoetigt: {float(net_amount):,.2f} EUR",
+                    "Zahlung wuerde zu negativem Saldo führen",
+                    f"Verfügbar: {float(projected_balance):,.2f} EUR, Benötigt: {float(net_amount):,.2f} EUR",
                 ]
             elif remaining_after_payment < safety_reserve:
                 liquidity_impact = LiquidityImpact.NEGATIVE
@@ -592,7 +592,7 @@ class SkontoOptimizer:
                     rec_type = RecommendationType.REVIEW
                     reasoning = [
                         "Liquiditaetsreserve wird unterschritten",
-                        "Manuelle Pruefung empfohlen",
+                        "Manuelle Prüfung empfohlen",
                     ]
             else:
                 liquidity_impact = LiquidityImpact.NEUTRAL
@@ -624,7 +624,7 @@ class SkontoOptimizer:
                 reasoning=reasoning,
             ))
 
-            # Balance fuer weitere Berechnungen aktualisieren (wenn PAY_NOW)
+            # Balance für weitere Berechnungen aktualisieren (wenn PAY_NOW)
             if rec_type == RecommendationType.PAY_NOW:
                 available_balance -= net_amount
 
@@ -657,7 +657,7 @@ class SkontoOptimizer:
         self,
         recommendations: List[PaymentRecommendation],
     ) -> List[PaymentRecommendation]:
-        """Identifiziert Moeglichkeiten fuer Sammelzahlungen."""
+        """Identifiziert Möglichkeiten für Sammelzahlungen."""
         batch_recommendations = []
 
         # Gruppieren nach Zahlungsdatum
@@ -670,7 +670,7 @@ class SkontoOptimizer:
                     by_date[date_key] = []
                 by_date[date_key].append(rec)
 
-        # Batch-Empfehlungen fuer Tage mit >1 Zahlung
+        # Batch-Empfehlungen für Tage mit >1 Zahlung
         for date_key, recs in by_date.items():
             if len(recs) > 1:
                 total_amount = sum(r.total_amount for r in recs)
@@ -693,7 +693,7 @@ class SkontoOptimizer:
                     reasoning=[
                         f"{len(recs)} Zahlungen am gleichen Tag",
                         "Sammelzahlung reduziert Transaktionskosten",
-                        "Bessere Uebersicht ueber Zahlungsausgaenge",
+                        "Bessere Übersicht über Zahlungsausgaenge",
                     ],
                 ))
 
@@ -721,7 +721,7 @@ class SkontoOptimizer:
                     recommended_payments[date_key] = Decimal("0")
                 recommended_payments[date_key] += rec.total_amount
 
-        # Tag fuer Tag
+        # Tag für Tag
         for day_offset in range(1, days_ahead + 1):
             target_date = now + timedelta(days=day_offset)
             date_key = target_date.strftime("%Y-%m-%d")
@@ -752,7 +752,7 @@ _skonto_optimizer: Optional[SkontoOptimizer] = None
 
 
 def get_skonto_optimizer() -> SkontoOptimizer:
-    """Gibt die Singleton-Instanz zurueck."""
+    """Gibt die Singleton-Instanz zurück."""
     global _skonto_optimizer
     if _skonto_optimizer is None:
         _skonto_optimizer = SkontoOptimizer()

@@ -208,7 +208,7 @@ class PaymentTermsExtractor:
                     diff = abs((explicit_due - result.due_date).days)
                     if diff > self.config.due_date_tolerance_days:
                         result.extraction_warnings.append(
-                            f"Berechnetes Faelligkeitsdatum ({result.due_date}) "
+                            f"Berechnetes Fälligkeitsdatum ({result.due_date}) "
                             f"weicht von explizitem ({explicit_due}) ab ({diff} Tage)"
                         )
                         result.needs_review = True
@@ -331,7 +331,7 @@ class PaymentTermsExtractor:
             today = date.today()
             if result.due_date < today - timedelta(days=365):
                 result.extraction_warnings.append(
-                    f"Faelligkeitsdatum liegt mehr als 1 Jahr in der Vergangenheit"
+                    f"Fälligkeitsdatum liegt mehr als 1 Jahr in der Vergangenheit"
                 )
                 result.needs_review = True
 

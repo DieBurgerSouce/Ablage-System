@@ -1,8 +1,8 @@
-"""Insurance KPI Service fuer Versicherungs-Berechnungen.
+"""Insurance KPI Service für Versicherungs-Berechnungen.
 
 Berechnet alle Versicherungs-bezogenen KPIs:
-- Deckungsluecken-Analyse
-- Kuendigungsfristen
+- Deckungslücken-Analyse
+- Kündigungsfristen
 - Praemienentwicklung
 - Risikobewertung
 
@@ -29,14 +29,14 @@ from app.core.safe_errors import safe_error_log
 logger = structlog.get_logger(__name__)
 
 
-# Type alias fuer Premium History (falls kein separates Model existiert)
+# Type alias für Premium History (falls kein separates Model existiert)
 # In Zukunft sollte ein dediziertes InsurancePremiumHistory Model erstellt werden
 PremiumHistoryEntry = PrivatInsurance  # Workaround: Wir nutzen aeltere Versicherungsdaten
 
 
 @dataclass
 class InsuranceGapResult:
-    """Ergebnis der Deckungsluecken-Analyse."""
+    """Ergebnis der Deckungslücken-Analyse."""
 
     insurance_type: str
     current_coverage: Decimal
@@ -49,7 +49,7 @@ class InsuranceGapResult:
 
 @dataclass
 class CancellationInfo:
-    """Informationen zur Kuendigungsfrist."""
+    """Informationen zur Kündigungsfrist."""
 
     insurance_id: UUID
     cancellation_deadline: date
@@ -60,7 +60,7 @@ class CancellationInfo:
 
 @dataclass
 class PremiumTrend:
-    """Praemienentwicklung ueber Zeit."""
+    """Praemienentwicklung über Zeit."""
 
     insurance_type: str
     current_premium: Decimal
@@ -71,11 +71,11 @@ class PremiumTrend:
 
 
 class InsuranceKPIService:
-    """Service fuer Versicherungs-KPI-Berechnungen.
+    """Service für Versicherungs-KPI-Berechnungen.
 
     Analysiert Versicherungen auf:
-    - Deckungsluecken nach Empfehlungen
-    - Kuendigungsfristen
+    - Deckungslücken nach Empfehlungen
+    - Kündigungsfristen
     - Praemienentwicklung
     - Risiko-Exposure
     """
@@ -86,12 +86,12 @@ class InsuranceKPIService:
         "haftpflicht_kfz": Decimal("100000000"),    # 100 Mio Euro (gesetzlich)
         "hausrat": None,  # Wird basierend auf Wohnflaeche berechnet
         "rechtsschutz": Decimal("500000"),
-        "berufsunfaehigkeit": None,  # Basierend auf Einkommen
+        "berufsunfähigkeit": None,  # Basierend auf Einkommen
         "risikoleben": None,  # Basierend auf Verbindlichkeiten
         "wohngebaeude": None,  # Basierend auf Wert
     }
 
-    # Empfohlene Deckung pro m2 fuer Hausrat
+    # Empfohlene Deckung pro m2 für Hausrat
     HAUSRAT_PER_SQM = Decimal("650")  # 650 Euro pro m2
 
     # BU-Empfehlung: X% des Bruttoeinkommens
@@ -111,7 +111,7 @@ class InsuranceKPIService:
         space_id: UUID,
         persist: bool = True
     ) -> InsuranceGapResult:
-        """Berechnet Deckungsluecken fuer eine Versicherung.
+        """Berechnet Deckungslücken für eine Versicherung.
 
         Args:
             insurance_id: UUID der Versicherung
@@ -164,7 +164,7 @@ class InsuranceKPIService:
         space_id: UUID,
         persist: bool = True
     ) -> CancellationInfo:
-        """Berechnet die naechste Kuendigungsfrist.
+        """Berechnet die nächste Kündigungsfrist.
 
         Args:
             insurance_id: UUID der Versicherung
@@ -188,11 +188,11 @@ class InsuranceKPIService:
         # Standard: 3 Monate vor Ablauf (cancellation_period_months im Model)
         notice_period_months = insurance.cancellation_period_months or 3
 
-        # Naechstes Ablaufdatum finden
+        # Nächstes Ablaufdatum finden
         if insurance.end_date:
             next_end = insurance.end_date
         elif insurance.start_date:
-            # Jaehrliche Verlaengerung ab Startdatum
+            # Jährliche Verlängerung ab Startdatum
             next_end = self._calc_next_anniversary(insurance.start_date)
         else:
             # Fallback: 1 Jahr ab heute
@@ -222,7 +222,7 @@ class InsuranceKPIService:
         return result
 
     async def calculate_premium_trends(self, space_id: UUID) -> List[PremiumTrend]:
-        """Berechnet Praemientrends fuer alle Versicherungen.
+        """Berechnet Praemientrends für alle Versicherungen.
 
         Args:
             space_id: UUID des Privat-Space
@@ -264,13 +264,13 @@ class InsuranceKPIService:
             living_space = Decimal(str(details.get("living_space_sqm", 100)))
             return living_space * self.HAUSRAT_PER_SQM
 
-        if ins_type == "berufsunfaehigkeit":
+        if ins_type == "berufsunfähigkeit":
             annual_income = Decimal(str(details.get("annual_income", 50000)))
             monthly_need = (annual_income * self.BU_INCOME_PERCENT) / 12
             return monthly_need.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
         if ins_type == "risikoleben":
-            # Empfehlung: Summe aller Verbindlichkeiten + 3 Jahresgehaelter
+            # Empfehlung: Summe aller Verbindlichkeiten + 3 Jahresgehälter
             debts = Decimal(str(details.get("total_debts", 0)))
             annual_income = Decimal(str(details.get("annual_income", 50000)))
             return debts + (annual_income * 3)
@@ -283,7 +283,7 @@ class InsuranceKPIService:
         return insurance.coverage_amount or Decimal("100000")
 
     def _calc_severity(self, gap: Decimal, recommended: Decimal) -> str:
-        """Berechnet den Schweregrad der Deckungsluecke."""
+        """Berechnet den Schweregrad der Deckungslücke."""
         if gap <= 0:
             return "none"
 
@@ -302,39 +302,39 @@ class InsuranceKPIService:
             return "critical"
 
     def _estimate_premium_increase(self, insurance: PrivatInsurance, gap: Decimal) -> Decimal:
-        """Schaetzt die zusaetzliche Praemie fuer Gap-Schliessung.
+        """Schätzt die zusätzliche Praemie für Gap-Schließung.
 
         Args:
             insurance: Versicherungs-Objekt
-            gap: Deckungsluecke in EUR
+            gap: Deckungslücke in EUR
 
         Returns:
-            Geschaetzte zusaetzliche Jahrespraemie
+            Geschätzte zusätzliche Jahrespraemie
         """
         if gap <= 0:
             return Decimal("0")
 
-        # Berechne jaehrliche Praemie aus premium_amount und premium_frequency
+        # Berechne jährliche Praemie aus premium_amount und premium_frequency
         annual_premium = self._calc_annual_premium(insurance)
         current_coverage = insurance.coverage_amount or Decimal("100000")
 
         if current_coverage <= 0:
             return Decimal("0")
 
-        # Lineare Schaetzung (vereinfacht)
+        # Lineare Schätzung (vereinfacht)
         premium_per_coverage = annual_premium / current_coverage
         additional = gap * premium_per_coverage
 
         return additional.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     def _calc_annual_premium(self, insurance: PrivatInsurance) -> Decimal:
-        """Berechnet die jaehrliche Praemie aus Betrag und Frequenz.
+        """Berechnet die jährliche Praemie aus Betrag und Frequenz.
 
         Args:
             insurance: Versicherungs-Objekt
 
         Returns:
-            Jaehrliche Gesamtpraemie
+            Jährliche Gesamtpraemie
         """
         premium = insurance.premium_amount or Decimal("0")
         frequency = insurance.premium_frequency or "yearly"
@@ -350,25 +350,25 @@ class InsuranceKPIService:
         return premium * multiplier
 
     def _calc_risk_exposure(self, insurance_type: str, gap: Decimal) -> str:
-        """Bewertet das Risiko-Exposure bei Deckungsluecke."""
+        """Bewertet das Risiko-Exposure bei Deckungslücke."""
         if gap <= 0:
-            return "Vollstaendig abgedeckt"
+            return "Vollständig abgedeckt"
 
         risk_descriptions = {
-            "haftpflicht_privat": f"Bei Schaeden ueber der Deckungssumme haften Sie persoenlich mit {gap:,.0f} EUR",
+            "haftpflicht_privat": f"Bei Schaeden über der Deckungssumme haften Sie persoenlich mit {gap:,.0f} EUR",
             "hausrat": f"Hausrat im Wert von {gap:,.0f} EUR ist nicht versichert",
-            "berufsunfaehigkeit": f"Monatliche Versorgungsluecke von {gap:,.0f} EUR bei Berufsunfaehigkeit",
+            "berufsunfähigkeit": f"Monatliche Versorgungslücke von {gap:,.0f} EUR bei Berufsunfähigkeit",
             "risikoleben": f"Hinterbliebene waeren mit {gap:,.0f} EUR unterversorgt",
             "wohngebaeude": f"Gebaeudeteil im Wert von {gap:,.0f} EUR ist nicht versichert",
         }
 
         return risk_descriptions.get(
             insurance_type,
-            f"Deckungsluecke von {gap:,.0f} EUR"
+            f"Deckungslücke von {gap:,.0f} EUR"
         )
 
     def _calc_next_anniversary(self, start_date: date) -> date:
-        """Berechnet das naechste Vertragsjubilaeum."""
+        """Berechnet das nächste Vertragsjubilaeum."""
         today = date.today()
         anniversary = start_date.replace(year=today.year)
 
@@ -383,7 +383,7 @@ class InsuranceKPIService:
         insurances: list[PrivatInsurance],
         history: list[PrivatInsurance]
     ) -> Optional[PremiumTrend]:
-        """Berechnet den Praemientrend fuer einen Versicherungstyp.
+        """Berechnet den Praemientrend für einen Versicherungstyp.
 
         Args:
             insurance_type: Versicherungstyp
@@ -409,7 +409,7 @@ class InsuranceKPIService:
                 self._calc_annual_premium(h) for h in type_history
             )
         else:
-            previous_premium = current_premium  # Kein Vergleich moeglich
+            previous_premium = current_premium  # Kein Vergleich möglich
 
         change = current_premium - previous_premium
         change_percent = Decimal("0")
@@ -441,7 +441,7 @@ class InsuranceKPIService:
         insurance: PrivatInsurance,
         result: InsuranceGapResult
     ) -> None:
-        """Persistiert Deckungsluecken-Analyse in der Datenbank."""
+        """Persistiert Deckungslücken-Analyse in der Datenbank."""
         insurance.coverage_gap_analysis = {
             "gap_amount": str(result.gap_amount),
             "gap_severity": result.gap_severity,
@@ -467,7 +467,7 @@ class InsuranceKPIService:
         insurance: PrivatInsurance,
         result: CancellationInfo
     ) -> None:
-        """Persistiert Kuendigungsfrist in der Datenbank."""
+        """Persistiert Kündigungsfrist in der Datenbank."""
         insurance.cancellation_deadline = result.cancellation_deadline
         insurance.last_kpi_calculation = datetime.now(timezone.utc)
 
@@ -555,7 +555,7 @@ class InsuranceKPIService:
         """Laedt Praemienhistorie (aeltere Versicherungsdaten).
 
         Da wir kein dediziertes PremiumHistory Model haben, nutzen wir
-        inaktive/geloeschte Versicherungen als historische Referenz.
+        inaktive/gelöschte Versicherungen als historische Referenz.
 
         Args:
             space_id: UUID des Space (Multi-Tenant Security!)
@@ -563,17 +563,17 @@ class InsuranceKPIService:
         Returns:
             Liste von historischen PrivatInsurance Objekten
         """
-        # Fuer echte Premium-Historie sollte ein dediziertes Model erstellt werden
-        # Vorerst: Leere Liste zurueckgeben (kein historischer Vergleich)
+        # Für echte Premium-Historie sollte ein dediziertes Model erstellt werden
+        # Vorerst: Leere Liste zurückgeben (kein historischer Vergleich)
         logger.debug(
             "premium_history_not_available",
             space_id=str(space_id),
-            note="Dediziertes PremiumHistory Model erforderlich fuer echte Historie",
+            note="Dediziertes PremiumHistory Model erforderlich für echte Historie",
         )
         return []
 
     # =========================================================================
-    # Batch Processing Methods (fuer Celery Tasks)
+    # Batch Processing Methods (für Celery Tasks)
     # =========================================================================
 
     async def calculate_all_insurance_kpis_for_space(
@@ -581,9 +581,9 @@ class InsuranceKPIService:
         space_id: UUID,
         persist: bool = True
     ) -> dict[UUID, InsuranceGapResult]:
-        """Berechnet Deckungsluecken fuer alle Versicherungen eines Space.
+        """Berechnet Deckungslücken für alle Versicherungen eines Space.
 
-        Batch-Methode fuer Celery Tasks.
+        Batch-Methode für Celery Tasks.
 
         Args:
             space_id: UUID des Space
@@ -613,7 +613,7 @@ class InsuranceKPIService:
                 results[insurance.id] = result
                 success_count += 1
 
-                # Auch Kuendigungsfrist berechnen
+                # Auch Kündigungsfrist berechnen
                 await self.calculate_cancellation_deadline(
                     insurance_id=insurance.id,
                     space_id=space_id,

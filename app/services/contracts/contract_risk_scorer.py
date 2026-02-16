@@ -4,11 +4,11 @@ Contract Risk Scorer Service.
 
 Bewertet Vertragsrisiken basierend auf:
 - Finanzielle Exposition
-- Kuendigungsfristen und Flexibilitaet
+- Kündigungsfristen und Flexibilitaet
 - Haftungsklauseln
 - Laufzeiten
 - Gegenpartei-Risiko
-- Vertragskomplexitaet
+- Vertragskomplexität
 
 Feinpoliert und durchdacht.
 """
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 class ContractRiskScorer:
     """
-    Service fuer die Risikobewertung von Vertraegen.
+    Service für die Risikobewertung von Verträgen.
 
     Berechnet einen Score von 0-100 basierend auf
     gewichteten Risikofaktoren.
@@ -42,15 +42,15 @@ class ContractRiskScorer:
     # Risikofaktoren mit Gewichtungen
     RISK_FACTORS = {
         "financial_exposure": 0.25,      # Finanzielles Risiko
-        "termination_flexibility": 0.15,  # Kuendigungsflexibilitaet
+        "termination_flexibility": 0.15,  # Kündigungsflexibilitaet
         "liability_coverage": 0.15,       # Haftungsabdeckung
         "contract_duration": 0.10,        # Vertragslaufzeit
         "counterparty_risk": 0.15,        # Gegenpartei-Risiko
-        "clause_complexity": 0.10,        # Klausel-Komplexitaet
-        "renewal_risk": 0.10,             # Verlaengerungsrisiko
+        "clause_complexity": 0.10,        # Klausel-Komplexität
+        "renewal_risk": 0.10,             # Verlängerungsrisiko
     }
 
-    # Schwellenwerte fuer Risikokategorien
+    # Schwellenwerte für Risikokategorien
     RISK_THRESHOLDS = {
         "low": 30,
         "medium": 60,
@@ -68,7 +68,7 @@ class ContractRiskScorer:
         include_factors: bool = True,
     ) -> Dict[str, Any]:
         """
-        Berechne Risiko-Score fuer einen Vertrag.
+        Berechne Risiko-Score für einen Vertrag.
 
         Args:
             contract: Der zu bewertende Vertrag
@@ -85,7 +85,7 @@ class ContractRiskScorer:
         factors["financial_exposure"] = financial_detail
         weighted_score += financial_score * self.RISK_FACTORS["financial_exposure"]
 
-        # 2. Kuendigungsflexibilitaet
+        # 2. Kündigungsflexibilitaet
         termination_score, termination_detail = self._assess_termination_flexibility(contract)
         factors["termination_flexibility"] = termination_detail
         weighted_score += termination_score * self.RISK_FACTORS["termination_flexibility"]
@@ -105,12 +105,12 @@ class ContractRiskScorer:
         factors["counterparty_risk"] = counterparty_detail
         weighted_score += counterparty_score * self.RISK_FACTORS["counterparty_risk"]
 
-        # 6. Klausel-Komplexitaet
+        # 6. Klausel-Komplexität
         complexity_score, complexity_detail = self._assess_clause_complexity(contract)
         factors["clause_complexity"] = complexity_detail
         weighted_score += complexity_score * self.RISK_FACTORS["clause_complexity"]
 
-        # 7. Verlaengerungsrisiko
+        # 7. Verlängerungsrisiko
         renewal_score, renewal_detail = self._assess_renewal_risk(contract)
         factors["renewal_risk"] = renewal_detail
         weighted_score += renewal_score * self.RISK_FACTORS["renewal_risk"]
@@ -128,7 +128,7 @@ class ContractRiskScorer:
             "recommendations": self._generate_recommendations(factors, final_score),
         }
 
-        logger.info(f"Risiko-Score berechnet: {final_score} ({risk_category}) fuer Vertrag {contract.id}")
+        logger.info(f"Risiko-Score berechnet: {final_score} ({risk_category}) für Vertrag {contract.id}")
 
         return result
 
@@ -173,14 +173,14 @@ class ContractRiskScorer:
         threshold: int = 70,
     ) -> List[Contract]:
         """
-        Hole Vertraege mit hohem Risiko.
+        Hole Verträge mit hohem Risiko.
 
         Args:
             company_id: ID der Firma
             threshold: Risiko-Schwellenwert
 
         Returns:
-            Liste von Vertraegen
+            Liste von Verträgen
         """
         query = select(Contract).where(
             Contract.company_id == company_id,
@@ -196,7 +196,7 @@ class ContractRiskScorer:
         company_id: UUID,
     ) -> Dict[str, int]:
         """
-        Hole Risiko-Verteilung fuer eine Firma.
+        Hole Risiko-Verteilung für eine Firma.
 
         Args:
             company_id: ID der Firma
@@ -312,7 +312,7 @@ class ContractRiskScorer:
         return score, details
 
     def _assess_termination_flexibility(self, contract: Contract) -> tuple[int, Dict[str, Any]]:
-        """Bewerte Kuendigungsflexibilitaet."""
+        """Bewerte Kündigungsflexibilitaet."""
         score = 50
         details = {"score": score, "description": ""}
 
@@ -322,22 +322,22 @@ class ContractRiskScorer:
             # Kurze Frist = weniger Risiko (mehr Flexibilitaet)
             if days > 180:
                 score = 90
-                details["description"] = f"Lange Kuendigungsfrist ({days} Tage)"
+                details["description"] = f"Lange Kündigungsfrist ({days} Tage)"
             elif days > 90:
                 score = 70
-                details["description"] = f"Mittlere Kuendigungsfrist ({days} Tage)"
+                details["description"] = f"Mittlere Kündigungsfrist ({days} Tage)"
             elif days > 30:
                 score = 50
-                details["description"] = f"Normale Kuendigungsfrist ({days} Tage)"
+                details["description"] = f"Normale Kündigungsfrist ({days} Tage)"
             elif days > 14:
                 score = 30
-                details["description"] = f"Kurze Kuendigungsfrist ({days} Tage)"
+                details["description"] = f"Kurze Kündigungsfrist ({days} Tage)"
             else:
                 score = 20
-                details["description"] = f"Sehr kurze Kuendigungsfrist ({days} Tage)"
+                details["description"] = f"Sehr kurze Kündigungsfrist ({days} Tage)"
         else:
             score = 60
-            details["description"] = "Keine Kuendigungsfrist definiert"
+            details["description"] = "Keine Kündigungsfrist definiert"
 
         details["score"] = score
         return score, details
@@ -366,7 +366,7 @@ class ContractRiskScorer:
                     score = 30
                     details["description"] = "Hohes Haftungslimit"
 
-                # Ausschluesse erhoehen Risiko
+                # Ausschluesse erhöhen Risiko
                 if exclusions:
                     score += len(exclusions) * 5
                     details["description"] += f", {len(exclusions)} Ausschluesse"
@@ -423,7 +423,7 @@ class ContractRiskScorer:
         if contract.counterparty_entity_id:
             entity = await self.db.get(BusinessEntity, contract.counterparty_entity_id)
             if entity:
-                # Nutze Entity Risk-Score wenn verfuegbar
+                # Nutze Entity Risk-Score wenn verfügbar
                 entity_risk = getattr(entity, "risk_score", None)
                 if entity_risk is not None:
                     # Invertiere: Niedriger Risk Score = niedrigeres Risiko
@@ -440,38 +440,38 @@ class ContractRiskScorer:
             score = 60
             details["description"] = "Keine Gegenpartei-Informationen"
 
-        # Vertragshistorie pruefen
+        # Vertragshistorie prüfen
         if contract.parent_contract_id:
-            # Verlaengerung = bessere Beziehung
+            # Verlängerung = bessere Beziehung
             score -= 10
-            details["description"] += ", Vertragsverlaengerung"
+            details["description"] += ", Vertragsverlängerung"
 
         details["score"] = max(0, score)
         return max(0, score), details
 
     def _assess_clause_complexity(self, contract: Contract) -> tuple[int, Dict[str, Any]]:
-        """Bewerte Klausel-Komplexitaet."""
+        """Bewerte Klausel-Komplexität."""
         score = 50
         details = {"score": score, "description": ""}
 
         clauses = contract.clauses or {}
         num_clauses = len(clauses)
 
-        # Mehr Klauseln = komplexer = hoeher Risiko
+        # Mehr Klauseln = komplexer = höher Risiko
         if num_clauses > 10:
             score = 80
-            details["description"] = f"Hohe Komplexitaet ({num_clauses} Klauseln)"
+            details["description"] = f"Hohe Komplexität ({num_clauses} Klauseln)"
         elif num_clauses > 5:
             score = 60
-            details["description"] = f"Mittlere Komplexitaet ({num_clauses} Klauseln)"
+            details["description"] = f"Mittlere Komplexität ({num_clauses} Klauseln)"
         elif num_clauses > 0:
             score = 40
-            details["description"] = f"Geringe Komplexitaet ({num_clauses} Klauseln)"
+            details["description"] = f"Geringe Komplexität ({num_clauses} Klauseln)"
         else:
             score = 70
             details["description"] = "Keine Klauseln extrahiert"
 
-        # Spezielle Klauseln pruefen
+        # Spezielle Klauseln prüfen
         if clauses.get("price_adjustment"):
             score += 10
             details["description"] += ", Preisanpassung"
@@ -484,13 +484,13 @@ class ContractRiskScorer:
         return min(100, score), details
 
     def _assess_renewal_risk(self, contract: Contract) -> tuple[int, Dict[str, Any]]:
-        """Bewerte Verlaengerungsrisiko."""
+        """Bewerte Verlängerungsrisiko."""
         score = 50
         details = {"score": score, "description": ""}
 
         if contract.auto_renewal:
             score = 70
-            details["description"] = "Automatische Verlaengerung aktiv"
+            details["description"] = "Automatische Verlängerung aktiv"
 
             if contract.renewal_notice_days:
                 if contract.renewal_notice_days < 30:
@@ -498,7 +498,7 @@ class ContractRiskScorer:
                     details["description"] += f", kurze Widerrufsfrist ({contract.renewal_notice_days} Tage)"
         else:
             score = 30
-            details["description"] = "Keine automatische Verlaengerung"
+            details["description"] = "Keine automatische Verlängerung"
 
         # Naehe zum Ablaufdatum
         if contract.expiration_date:
@@ -532,25 +532,25 @@ class ContractRiskScorer:
         # Finanzielle Empfehlungen
         financial = factors.get("financial_exposure", {})
         if financial.get("score", 0) > 70:
-            recommendations.append("Risikobegrenzung durch Teilzahlungen oder Meilensteine pruefen")
+            recommendations.append("Risikobegrenzung durch Teilzahlungen oder Meilensteine prüfen")
 
-        # Kuendigungsfrist
+        # Kündigungsfrist
         termination = factors.get("termination_flexibility", {})
         if termination.get("score", 0) > 70:
-            recommendations.append("Kuerzere Kuendigungsfristen bei Verlaengerung verhandeln")
+            recommendations.append("Kürzere Kündigungsfristen bei Verlängerung verhandeln")
 
         # Haftung
         liability = factors.get("liability_coverage", {})
         if liability.get("score", 0) > 70:
-            recommendations.append("Haftungsbegrenzung oder Versicherung pruefen")
+            recommendations.append("Haftungsbegrenzung oder Versicherung prüfen")
 
         # Auto-Renewal
         renewal = factors.get("renewal_risk", {})
         if renewal.get("score", 0) > 70:
-            recommendations.append("Automatische Verlaengerung ueberpruefen, Erinnerung setzen")
+            recommendations.append("Automatische Verlängerung überprüfen, Erinnerung setzen")
 
         # Allgemeine Empfehlung bei hohem Risiko
         if score >= 80:
-            recommendations.insert(0, "ACHTUNG: Hoher Risiko-Score - Vertrag priorisiert pruefen")
+            recommendations.insert(0, "ACHTUNG: Hoher Risiko-Score - Vertrag priorisiert prüfen")
 
         return recommendations[:5]  # Max 5 Empfehlungen

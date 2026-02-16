@@ -1,9 +1,9 @@
 """Privat-Modul Services.
 
-Dieses Modul bietet Services fuer das persoenliche Dokumentenmanagement:
+Dieses Modul bietet Services für das persoenliche Dokumentenmanagement:
 - SpaceService: Verwaltung privater Bereiche
 - FolderService: Ordnerstruktur-Verwaltung
-- DocumentService: Dokument-CRUD mit Verschluesselung
+- DocumentService: Dokument-CRUD mit Verschlüsselung
 - PropertyService: Immobilienverwaltung
 - VehicleService: Fahrzeugverwaltung
 - InsuranceService: Versicherungsverwaltung
@@ -12,12 +12,12 @@ Dieses Modul bietet Services fuer das persoenliche Dokumentenmanagement:
 - DeadlineService: Fristenmanagement + iCal
 - EmergencyService: Notfallzugriff
 - AccessService: Zugriffsberechtigungen
-- EncryptionService: Extra-Verschluesselung
+- EncryptionService: Extra-Verschlüsselung
 
 Enterprise KPI-Berechnungs-Services:
 - PropertyCalculationService: Mietrendite, ROI, Wertsteigerung
 - VehicleCalculationService: TCO, Abschreibung, Verbrauch
-- InsuranceAnalysisService: Deckungsluecken, Kuendigungsfristen
+- InsuranceAnalysisService: Deckungslücken, Kündigungsfristen
 - LoanAmortizationService: Tilgungsplan, Zinsersparnis
 
 Enterprise Analytics-Services:
@@ -26,7 +26,7 @@ Enterprise Analytics-Services:
 Personal Finance Services (7.2-7.4):
 - TaxOptimizationService: Steueroptimierung, Abzuege, Fristen
 - EstatePlanningService: Nachlassplanung, Erbschaftsteuer, Vollmachten
-- RetirementService: Altersvorsorge, Rentenluecke, Monte-Carlo
+- RetirementService: Altersvorsorge, Rentenlücke, Monte-Carlo
 """
 
 from app.services.privat.space_service import PrivatSpaceService
@@ -231,7 +231,7 @@ __all__ = [
     "WithdrawalStrategy",
     "RiskProfile",
     "PensionSource",
-    "RentenlueckeResult",
+    "RentenlückeResult",
     "WithdrawalPlan",
     "MonteCarloResult",
     "RetirementSummary",

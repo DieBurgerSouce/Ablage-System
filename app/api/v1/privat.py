@@ -169,12 +169,12 @@ async def get_user_space_or_403(
     user: User,
     required_level: PrivatAccessLevel = PrivatAccessLevel.READ,
 ) -> PrivatSpace:
-    """Prueft ob User Zugriff auf Space hat und gibt Space zurueck.
+    """Prüft ob User Zugriff auf Space hat und gibt Space zurück.
 
     SECURITY FIX (Iteration 19):
     - TOCTOU-sicher: Check und Abruf sind atomar kombiniert
     - CWE-200 Prevention: KEINE Unterscheidung zwischen "nicht gefunden"
-      und "kein Zugriff" - verhindert Information Disclosure ueber
+      und "kein Zugriff" - verhindert Information Disclosure über
       Existenz fremder Spaces
 
     Args:
@@ -200,7 +200,7 @@ async def get_user_space_or_403(
         # SECURITY FIX (Iteration 19): CWE-200 Information Disclosure Prevention
         # KEINE Unterscheidung zwischen "nicht gefunden" und "kein Zugriff"!
         # Ein Angreifer darf NICHT erfahren, ob ein Space existiert.
-        # Vorher: Separater Check auf Existenz → ermoeglichte Enumeration
+        # Vorher: Separater Check auf Existenz → ermöglichte Enumeration
         # Jetzt: Einheitliche 404-Meldung in allen Faellen
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -216,9 +216,9 @@ async def get_user_space_with_owner_info(
     user: User,
     required_level: PrivatAccessLevel = PrivatAccessLevel.READ,
 ) -> tuple[PrivatSpace, bool]:
-    """Prueft Zugriff und gibt Space + Owner-Status zurueck.
+    """Prüft Zugriff und gibt Space + Owner-Status zurück.
 
-    SECURITY FIX 21-4: Ermoeglicht es Endpoints zu entscheiden, ob sensitive
+    SECURITY FIX 21-4: Ermöglicht es Endpoints zu entscheiden, ob sensitive
     Felder (account_number, policy_number) angezeigt werden sollen.
     Nur Owner sehen diese Felder, Shared-Access-User bekommen maskierte Werte.
 
@@ -240,17 +240,17 @@ async def get_user_space_with_owner_info(
 
 
 def mask_sensitive_field(value: Optional[str], is_owner: bool) -> Optional[str]:
-    """Maskiert sensitive Felder fuer Nicht-Owner.
+    """Maskiert sensitive Felder für Nicht-Owner.
 
     SECURITY FIX 21-4: PII Protection - account_number, policy_number etc.
-    werden fuer Shared-Access-User maskiert.
+    werden für Shared-Access-User maskiert.
 
     Args:
         value: Original-Wert
         is_owner: True wenn User der Owner ist
 
     Returns:
-        Original-Wert fuer Owner, maskierter Wert fuer andere
+        Original-Wert für Owner, maskierter Wert für andere
     """
     if value is None:
         return None
@@ -375,21 +375,21 @@ async def create_space(
 ) -> PrivatSpaceWithStats:
     """Erstellt einen neuen persoenlichen oder geteilten Space.
 
-    Fuer persoenliche Spaces wird kein Company-Kontext benoetigt.
-    Fuer geteilte Spaces muss ein Company-Kontext (X-Company-ID Header) gesetzt sein.
+    Für persoenliche Spaces wird kein Company-Kontext benötigt.
+    Für geteilte Spaces muss ein Company-Kontext (X-Company-ID Header) gesetzt sein.
     """
     if data.space_type == PrivatSpaceType.PERSONAL:
         space = await space_service.create_personal_space(
             db, current_user.id, data
         )
     else:
-        # Geteilte Spaces benoetigen Company-Kontext
+        # Geteilte Spaces benötigen Company-Kontext
         from app.middleware.company_context import get_current_company_id
         company_id = get_current_company_id()
         if not company_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Fuer geteilte Spaces muss eine Firma ausgewaehlt sein (X-Company-ID Header)"
+                detail="Für geteilte Spaces muss eine Firma ausgewaehlt sein (X-Company-ID Header)"
             )
         space = await space_service.create_shared_space(
             db, company_id, current_user.id, data
@@ -456,9 +456,9 @@ async def get_space(
     current_user: User = Depends(get_current_active_user),
 ) -> PrivatSpaceWithStats:
     """Holt Details eines Spaces."""
-    # SECURITY FIX (Iteration 19): TOCTOU-sicher - Space wird direkt zurueckgegeben
+    # SECURITY FIX (Iteration 19): TOCTOU-sicher - Space wird direkt zurückgegeben
     space = await get_user_space_or_403(db, space_id, current_user)
-    # KEIN separater get_by_id() mehr noetig - TOCTOU verhindert!
+    # KEIN separater get_by_id() mehr nötig - TOCTOU verhindert!
 
     stats = await space_service.get_space_stats(db, space.id)
 
@@ -725,7 +725,7 @@ async def move_folder(
     """Verschiebt einen Ordner.
 
     SECURITY FIX 20-2/20-3: Atomare TOCTOU-sichere Operation.
-    Prueft dass Zielordner im gleichen Space liegt (IDOR-Prevention).
+    Prüft dass Zielordner im gleichen Space liegt (IDOR-Prevention).
     """
     try:
         # SECURITY FIX 20-2: Atomare Operation - Access-Check + Move in einem Schritt
@@ -740,11 +740,11 @@ async def move_folder(
             )
     except ValueError as e:
         # SECURITY FIX 29: Generic error message - no internal details
-        # ValueError wird bei ungueltigem Zielordner oder Zirkularitaet geworfen
+        # ValueError wird bei ungültigem Zielordner oder Zirkularitaet geworfen
         logger.warning("privat_folder_update_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen.",
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen.",
         )
 
     return PrivatFolderResponse(
@@ -814,12 +814,12 @@ async def create_document(
     x_privat_password: Optional[str] = Header(
         None,
         alias="X-Privat-Password",
-        description="Extra-Passwort fuer Verschluesselung (Security: Header statt URL)"
+        description="Extra-Passwort für Verschluesselung (Security: Header statt URL)"
     ),
 ) -> PrivatDocumentResponse:
     """Erstellt ein neues Dokument mit optionaler Extra-Verschluesselung.
 
-    Das Passwort wird aus Sicherheitsgruenden per Header uebermittelt,
+    Das Passwort wird aus Sicherheitsgruenden per Header übermittelt,
     nicht als URL-Parameter (vermeidet Logging in Browser History/Server Logs).
     """
     await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.WRITE)
@@ -886,7 +886,7 @@ async def get_document(
 
     SECURITY:
         - IDOR Protection: Access-Check erfolgt VOR dem Abrufen
-        - Password Hint: Nur an Space-Owner zurueckgegeben
+        - Password Hint: Nur an Space-Owner zurückgegeben
         - TOCTOU-sicher (Iteration 19): Document + Space in einer atomaren Operation
     """
     # SECURITY FIX (Iteration 19): TOCTOU-sicher - Document + Space atomar holen
@@ -902,9 +902,9 @@ async def get_document(
 
     document, space = result  # TOCTOU-sicher: Beide aus EINER Query
 
-    # SECURITY FIX 20-10: Password Hint NUR an direkten Owner (nicht ueber Shared Access)
+    # SECURITY FIX 20-10: Password Hint NUR an direkten Owner (nicht über Shared Access)
     # Verhindert Information Disclosure bei geteilten Dokumenten
-    # KEIN separater space_service.get_by_id() noetig - Space bereits vorhanden!
+    # KEIN separater space_service.get_by_id() nötig - Space bereits vorhanden!
     password_hint = None
     if document.is_extra_encrypted and document.password_hint:
         # Nur der direkte Owner sieht den Hint (nicht Shared-Access-User)
@@ -924,7 +924,7 @@ async def get_document(
         description=document.description,
         tags=document.tags,
         is_extra_encrypted=document.is_extra_encrypted,
-        password_hint=password_hint,  # SECURITY: Nur fuer Owner
+        password_hint=password_hint,  # SECURITY: Nur für Owner
         is_active=document.is_active,
         created_at=document.created_at,
         updated_at=document.updated_at,
@@ -944,12 +944,12 @@ async def download_document(
     x_privat_password: Optional[str] = Header(
         None,
         alias="X-Privat-Password",
-        description="Passwort fuer verschluesselte Dokumente (Security: Header statt URL)"
+        description="Passwort für verschluesselte Dokumente (Security: Header statt URL)"
     ),
 ) -> Response:
     """Laedt den Dokumentinhalt herunter.
 
-    Das Passwort wird aus Sicherheitsgruenden per Header uebermittelt,
+    Das Passwort wird aus Sicherheitsgruenden per Header übermittelt,
     nicht als URL-Parameter (vermeidet Logging in Browser History/Server Logs).
 
     Security:
@@ -1029,7 +1029,7 @@ async def update_document(
 
     updated = await document_service.update(db, document_id, data)
 
-    # SECURITY FIX 20-13: Password Hint Konsistenz - nur fuer Owner
+    # SECURITY FIX 20-13: Password Hint Konsistenz - nur für Owner
     password_hint = None
     if updated.is_extra_encrypted and updated.password_hint:
         is_direct_owner = space.owner_id == current_user.id
@@ -1048,7 +1048,7 @@ async def update_document(
         description=updated.description,
         tags=updated.tags,
         is_extra_encrypted=updated.is_extra_encrypted,
-        password_hint=password_hint,  # SECURITY: Nur fuer Owner
+        password_hint=password_hint,  # SECURITY: Nur für Owner
         is_active=updated.is_active,
         created_at=updated.created_at,
         updated_at=updated.updated_at,
@@ -1061,14 +1061,14 @@ async def update_document(
     response_class=Response,
     summary="Dokument löschen",
 )
-@limiter.limit("10/minute", key_func=get_user_identifier)  # Rate Limit: Max 10 Loeschungen/Minute
+@limiter.limit("10/minute", key_func=get_user_identifier)  # Rate Limit: Max 10 Löschungen/Minute
 async def delete_document(
     request: Request,  # Required for rate limiter
     document_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Response:
-    """Loescht ein Dokument (soft delete).
+    """Löscht ein Dokument (soft delete).
 
     SECURITY: IDOR-sicher - Access-Check VOR get_by_id
     """
@@ -1132,16 +1132,16 @@ async def list_properties(
 ) -> PrivatPropertyListResponse:
     """Listet alle Immobilien eines Spaces.
 
-    SECURITY FIX 25-8: PII Masking - Adressen werden fuer Nicht-Owner maskiert.
+    SECURITY FIX 25-8: PII Masking - Adressen werden für Nicht-Owner maskiert.
     """
     space = await get_user_space_or_403(db, space_id, current_user)
 
-    # SECURITY FIX 25-8: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 25-8: Prüfe Owner-Status für PII-Masking
     is_owner = space.owner_id == current_user.id
 
     result = await property_service.list_properties(db, space_id, page, page_size)
 
-    # SECURITY FIX 25-8: PII Masking - Adressen fuer Nicht-Owner maskieren
+    # SECURITY FIX 25-8: PII Masking - Adressen für Nicht-Owner maskieren
     for item in result.items:
         item.street = mask_sensitive_field(item.street, is_owner)
         item.city = mask_sensitive_field(item.city, is_owner)
@@ -1164,7 +1164,7 @@ async def get_property(
 ) -> PrivatPropertyWithDetails:
     """Holt Immobilien-Details mit Mietern und Statistiken.
 
-    SECURITY FIX 25-9: PII Masking - Adressen und Tenant-PII werden fuer Nicht-Owner maskiert.
+    SECURITY FIX 25-9: PII Masking - Adressen und Tenant-PII werden für Nicht-Owner maskiert.
     """
     # SECURITY: IDOR-sichere Methode - Access-Check integriert
     prop = await property_service.get_property_with_access_check(
@@ -1176,16 +1176,16 @@ async def get_property(
             detail="Immobilie nicht gefunden",
         )
 
-    # SECURITY FIX 25-9: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 25-9: Prüfe Owner-Status für PII-Masking
     space = await space_service.get_by_id(db, prop.space_id)
     is_owner = space and space.owner_id == current_user.id
 
-    # Hole zusaetzliche Details (Mieter, Statistiken)
+    # Hole zusätzliche Details (Mieter, Statistiken)
     tenants = await property_service.list_tenants(db, property_id)
     total_income = await property_service.get_total_rental_income(db, property_id)
     pending_payment_count = await property_service.get_pending_payments_count(db, property_id)
 
-    # SECURITY FIX 25-9: PII Masking fuer Tenants
+    # SECURITY FIX 25-9: PII Masking für Tenants
     tenant_responses = []
     for t in tenants:
         tenant_resp = PrivatTenantResponse.model_validate(t)
@@ -1196,7 +1196,7 @@ async def get_property(
     # Use model_validate for base fields, then create with extra fields
     prop_response = PrivatPropertyResponse.model_validate(prop)
 
-    # SECURITY FIX 25-9: Adress-Masking fuer Nicht-Owner
+    # SECURITY FIX 25-9: Adress-Masking für Nicht-Owner
     prop_response.street = mask_sensitive_field(prop_response.street, is_owner)
     prop_response.city = mask_sensitive_field(prop_response.city, is_owner)
     prop_response.postal_code = mask_sensitive_field(prop_response.postal_code, is_owner)
@@ -1296,7 +1296,7 @@ async def create_tenant(
 
     tenant = await property_service.create_tenant(db, property_id, data)
 
-    # SECURITY FIX 26-3: PII Masking fuer Nicht-Owner
+    # SECURITY FIX 26-3: PII Masking für Nicht-Owner
     is_owner = prop.space.owner_id == current_user.id if prop.space else True
 
     return PrivatTenantResponse(
@@ -1329,13 +1329,13 @@ async def list_tenants(
     property_id: uuid.UUID,
     active_only: bool = Query(True, description="Nur aktive Mieter"),
     page: int = Query(1, ge=1, description="Seite"),  # SECURITY FIX 22-6: Pagination
-    page_size: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),  # Max 100
+    page_size: int = Query(50, ge=1, le=100, description="Einträge pro Seite"),  # Max 100
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[PrivatTenantResponse]:
     """Listet alle Mieter einer Immobilie.
 
-    SECURITY FIX 24-7: PII Masking - phone und email werden fuer Nicht-Owner maskiert.
+    SECURITY FIX 24-7: PII Masking - phone und email werden für Nicht-Owner maskiert.
     """
     # SECURITY: IDOR-sichere Methode - Access-Check integriert
     prop = await property_service.get_property_with_access_check(
@@ -1347,7 +1347,7 @@ async def list_tenants(
             detail="Immobilie nicht gefunden",
         )
 
-    # SECURITY FIX 24-7: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 24-7: Prüfe Owner-Status für PII-Masking
     space = await space_service.get_by_id(db, prop.space_id)
     is_owner = space and space.owner_id == current_user.id
 
@@ -1356,7 +1356,7 @@ async def list_tenants(
         db, property_id, active_only, page=page, page_size=page_size
     )
 
-    # SECURITY FIX 24-7: PII Masking - phone/email fuer Nicht-Owner maskieren
+    # SECURITY FIX 24-7: PII Masking - phone/email für Nicht-Owner maskieren
     for tenant in tenants:
         tenant.phone = mask_sensitive_field(tenant.phone, is_owner)
         tenant.email = mask_sensitive_field(tenant.email, is_owner)
@@ -1478,16 +1478,16 @@ async def list_vehicles(
 ) -> PrivatVehicleListResponse:
     """Listet alle Fahrzeuge eines Spaces.
 
-    SECURITY FIX 24-6: PII Masking - VIN wird fuer Nicht-Owner maskiert.
+    SECURITY FIX 24-6: PII Masking - VIN wird für Nicht-Owner maskiert.
     """
     space = await get_user_space_or_403(db, space_id, current_user)
 
-    # SECURITY FIX 24-6: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 24-6: Prüfe Owner-Status für PII-Masking
     is_owner = space.owner_id == current_user.id
 
     result = await vehicle_service.list_vehicles(db, space_id, vehicle_type, page, page_size)
 
-    # SECURITY FIX 24-6: PII Masking - VIN fuer Nicht-Owner maskieren
+    # SECURITY FIX 24-6: PII Masking - VIN für Nicht-Owner maskieren
     for item in result.items:
         item.vin = mask_sensitive_field(item.vin, is_owner)
 
@@ -1508,7 +1508,7 @@ async def get_vehicle(
 ) -> PrivatVehicleWithStats:
     """Holt Fahrzeug-Details mit Statistiken.
 
-    SECURITY FIX 23-19: PII Masking - insurance_number und VIN werden fuer
+    SECURITY FIX 23-19: PII Masking - insurance_number und VIN werden für
     Nicht-Owner maskiert um PII-Exposure zu verhindern.
     """
     # SECURITY: IDOR-sichere Methode - Access-Check integriert
@@ -1521,11 +1521,11 @@ async def get_vehicle(
             detail="Fahrzeug nicht gefunden",
         )
 
-    # SECURITY FIX 23-19: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 23-19: Prüfe Owner-Status für PII-Masking
     space = await space_service.get_by_id(db, vehicle.space_id)
     is_owner = space and space.owner_id == current_user.id
 
-    # Hole zusaetzliche Details (Tankbelege, Statistiken)
+    # Hole zusätzliche Details (Tankbelege, Statistiken)
     fuel_logs = await vehicle_service.list_fuel_logs(db, vehicle_id, limit=5)
     fuel_stats = await vehicle_service.get_fuel_statistics(db, vehicle_id)
 
@@ -1536,7 +1536,7 @@ async def get_vehicle(
         model=vehicle.model,
         year=vehicle.year,
         license_plate=vehicle.license_plate,
-        # SECURITY FIX 23-19: VIN teilweise maskieren fuer Nicht-Owner
+        # SECURITY FIX 23-19: VIN teilweise maskieren für Nicht-Owner
         vin=mask_sensitive_field(vehicle.vin, is_owner),
         vehicle_type=vehicle.vehicle_type,
         fuel_type=vehicle.fuel_type,
@@ -1545,7 +1545,7 @@ async def get_vehicle(
         purchase_price=vehicle.purchase_price,
         current_value=vehicle.current_value,
         insurance_company=vehicle.insurance_company,
-        # SECURITY FIX 23-19: insurance_number maskieren fuer Nicht-Owner
+        # SECURITY FIX 23-19: insurance_number maskieren für Nicht-Owner
         insurance_number=mask_sensitive_field(vehicle.insurance_number, is_owner),
         tuev_due=vehicle.tuev_due,
         notes=vehicle.notes,
@@ -1751,7 +1751,7 @@ async def create_insurance(
     current_user: User = Depends(get_current_active_user),
 ) -> PrivatInsuranceWithDeadlines:
     """Erstellt eine neue Versicherung."""
-    # SECURITY FIX 26-10: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 26-10: Prüfe Owner-Status für PII-Masking
     space, is_owner = await get_user_space_with_owner_info(db, space_id, current_user, PrivatAccessLevel.WRITE)
 
     insurance = await insurance_service.create(db, space_id, data)
@@ -1805,14 +1805,14 @@ async def list_insurances(
     current_user: User = Depends(get_current_active_user),
 ) -> PrivatInsuranceListResponse:
     """Listet alle Versicherungen eines Spaces."""
-    # SECURITY FIX 21-4: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 21-4: Prüfe Owner-Status für PII-Masking
     space, is_owner = await get_user_space_with_owner_info(db, space_id, current_user)
 
     result = await insurance_service.list_insurances(
         db, space_id, insurance_type, True, page, page_size
     )
 
-    # SECURITY FIX 21-4: Maskiere policy_number fuer Nicht-Owner
+    # SECURITY FIX 21-4: Maskiere policy_number für Nicht-Owner
     if not is_owner:
         for item in result.items:
             item.policy_number = mask_sensitive_field(item.policy_number, is_owner)
@@ -1834,7 +1834,7 @@ async def get_insurance(
 ) -> PrivatInsuranceWithDeadlines:
     """Holt Versicherungs-Details mit Deadline-Informationen.
 
-    SECURITY: IDOR-sichere Methode mit PII-Masking fuer Nicht-Owner.
+    SECURITY: IDOR-sichere Methode mit PII-Masking für Nicht-Owner.
     """
     insurance = await insurance_service.get_by_id_with_access_check(
         db, insurance_id, current_user.id
@@ -1845,7 +1845,7 @@ async def get_insurance(
             detail="Versicherung nicht gefunden",
         )
 
-    # SECURITY: PII Masking - pruefe Owner-Status ueber Space
+    # SECURITY: PII Masking - prüfe Owner-Status über Space
     space, is_owner = await get_user_space_with_owner_info(db, insurance.space_id, current_user)
 
     # Deadline-Berechnung
@@ -1913,7 +1913,7 @@ async def update_insurance(
 
     annual_cost = insurance_service._calculate_annual_cost(updated)
 
-    # SECURITY FIX 26-11: PII Masking - pruefe Owner-Status ueber Space
+    # SECURITY FIX 26-11: PII Masking - prüfe Owner-Status über Space
     space, is_owner = await get_user_space_with_owner_info(db, insurance.space_id, current_user)
 
     return PrivatInsuranceWithDeadlines(
@@ -1987,7 +1987,7 @@ async def create_loan(
     current_user: User = Depends(get_current_active_user),
 ) -> PrivatLoanWithStats:
     """Erstellt einen neuen Kredit."""
-    # SECURITY FIX 26-4: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 26-4: Prüfe Owner-Status für PII-Masking
     space, is_owner = await get_user_space_with_owner_info(db, space_id, current_user, PrivatAccessLevel.WRITE)
 
     loan = await loan_service.create(db, space_id, data)
@@ -2031,12 +2031,12 @@ async def list_loans(
     current_user: User = Depends(get_current_active_user),
 ) -> PrivatLoanListResponse:
     """Listet alle Kredite eines Spaces."""
-    # SECURITY FIX 21-4: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 21-4: Prüfe Owner-Status für PII-Masking
     space, is_owner = await get_user_space_with_owner_info(db, space_id, current_user)
 
     result = await loan_service.list_loans(db, space_id, loan_type, True, page, page_size)
 
-    # SECURITY FIX 21-4: Maskiere account_number fuer Nicht-Owner
+    # SECURITY FIX 21-4: Maskiere account_number für Nicht-Owner
     if not is_owner:
         for item in result.items:
             item.account_number = mask_sensitive_field(item.account_number, is_owner)
@@ -2058,7 +2058,7 @@ async def get_loan(
 ) -> PrivatLoanWithStats:
     """Holt Kredit-Details mit Statistiken.
 
-    SECURITY: IDOR-sichere Methode mit PII-Masking fuer Nicht-Owner.
+    SECURITY: IDOR-sichere Methode mit PII-Masking für Nicht-Owner.
     """
     loan = await loan_service.get_by_id_with_access_check(
         db, loan_id, current_user.id
@@ -2069,7 +2069,7 @@ async def get_loan(
             detail="Kredit nicht gefunden",
         )
 
-    # SECURITY: PII Masking - pruefe Owner-Status ueber Space
+    # SECURITY: PII Masking - prüfe Owner-Status über Space
     space, is_owner = await get_user_space_with_owner_info(db, loan.space_id, current_user)
 
     # Statistik-Berechnung
@@ -2125,7 +2125,7 @@ async def record_loan_payment(
     updated = await loan_service.record_payment(db, loan_id, amount, payment_date)
     stats = loan_service._calculate_loan_stats(updated)
 
-    # SECURITY FIX 26-5: PII Masking - pruefe Owner-Status ueber Space
+    # SECURITY FIX 26-5: PII Masking - prüfe Owner-Status über Space
     space, is_owner = await get_user_space_with_owner_info(db, loan.space_id, current_user)
 
     return PrivatLoanWithStats(
@@ -2177,7 +2177,7 @@ async def update_loan(
     updated = await loan_service.update(db, loan_id, data)
     stats = loan_service._calculate_loan_stats(updated)
 
-    # SECURITY FIX 26-6: PII Masking - pruefe Owner-Status ueber Space
+    # SECURITY FIX 26-6: PII Masking - prüfe Owner-Status über Space
     space, is_owner = await get_user_space_with_owner_info(db, loan.space_id, current_user)
 
     return PrivatLoanWithStats(
@@ -2248,7 +2248,7 @@ async def create_investment(
     current_user: User = Depends(get_current_active_user),
 ) -> PrivatInvestmentWithStats:
     """Erstellt eine neue Geldanlage."""
-    # SECURITY FIX 26-7: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 26-7: Prüfe Owner-Status für PII-Masking
     space, is_owner = await get_user_space_with_owner_info(db, space_id, current_user, PrivatAccessLevel.WRITE)
 
     investment = await investment_service.create(db, space_id, data)
@@ -2291,14 +2291,14 @@ async def list_investments(
     current_user: User = Depends(get_current_active_user),
 ) -> PrivatInvestmentListResponse:
     """Listet alle Geldanlagen eines Spaces."""
-    # SECURITY FIX 21-4: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 21-4: Prüfe Owner-Status für PII-Masking
     space, is_owner = await get_user_space_with_owner_info(db, space_id, current_user)
 
     result = await investment_service.list_investments(
         db, space_id, investment_type, True, page, page_size
     )
 
-    # SECURITY FIX 21-4: Maskiere account_number fuer Nicht-Owner
+    # SECURITY FIX 21-4: Maskiere account_number für Nicht-Owner
     if not is_owner:
         for item in result.items:
             item.account_number = mask_sensitive_field(item.account_number, is_owner)
@@ -2320,7 +2320,7 @@ async def get_investment(
 ) -> PrivatInvestmentWithStats:
     """Holt Geldanlage-Details mit Statistiken.
 
-    SECURITY: IDOR-sichere Methode mit PII-Masking fuer Nicht-Owner.
+    SECURITY: IDOR-sichere Methode mit PII-Masking für Nicht-Owner.
     """
     investment = await investment_service.get_by_id_with_access_check(
         db, investment_id, current_user.id
@@ -2331,7 +2331,7 @@ async def get_investment(
             detail="Geldanlage nicht gefunden",
         )
 
-    # SECURITY: PII Masking - pruefe Owner-Status ueber Space
+    # SECURITY: PII Masking - prüfe Owner-Status über Space
     space, is_owner = await get_user_space_with_owner_info(db, investment.space_id, current_user)
 
     # Statistik-Berechnung
@@ -2385,7 +2385,7 @@ async def update_investment_value(
     updated = await investment_service.update_value(db, investment_id, new_value)
     stats = investment_service._calculate_investment_stats(updated)
 
-    # SECURITY FIX 26-8: PII Masking - pruefe Owner-Status ueber Space
+    # SECURITY FIX 26-8: PII Masking - prüfe Owner-Status über Space
     space, is_owner = await get_user_space_with_owner_info(db, investment.space_id, current_user)
 
     return PrivatInvestmentWithStats(
@@ -2455,7 +2455,7 @@ async def update_investment(
     updated = await investment_service.update(db, investment_id, data)
     stats = investment_service._calculate_investment_stats(updated)
 
-    # SECURITY FIX 26-9: PII Masking - pruefe Owner-Status ueber Space
+    # SECURITY FIX 26-9: PII Masking - prüfe Owner-Status über Space
     space, is_owner = await get_user_space_with_owner_info(db, investment.space_id, current_user)
 
     return PrivatInvestmentWithStats(
@@ -2734,17 +2734,17 @@ async def list_emergency_contacts(
     request: Request,  # Required for rate limiter
     space_id: uuid.UUID,
     page: int = Query(1, ge=1, description="Seite"),  # SECURITY FIX 22-4: Pagination
-    page_size: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),  # Max 100
+    page_size: int = Query(50, ge=1, le=100, description="Einträge pro Seite"),  # Max 100
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[PrivatEmergencyContactResponse]:
     """Listet alle Vertrauenspersonen eines Spaces.
 
-    SECURITY FIX 25-10: PII Masking - phone und email werden fuer Nicht-Owner maskiert.
+    SECURITY FIX 25-10: PII Masking - phone und email werden für Nicht-Owner maskiert.
     """
     space = await get_user_space_or_403(db, space_id, current_user, PrivatAccessLevel.MANAGE)
 
-    # SECURITY FIX 25-10: Pruefe Owner-Status fuer PII-Masking
+    # SECURITY FIX 25-10: Prüfe Owner-Status für PII-Masking
     is_owner = space.owner_id == current_user.id
 
     # SECURITY FIX 22-4: Pagination um DoS zu verhindern
@@ -2752,7 +2752,7 @@ async def list_emergency_contacts(
         db, space_id, page=page, page_size=page_size
     )
 
-    # SECURITY FIX 25-10: PII Masking - phone/email fuer Nicht-Owner maskieren
+    # SECURITY FIX 25-10: PII Masking - phone/email für Nicht-Owner maskieren
     for contact in contacts:
         contact.phone = mask_sensitive_field(contact.phone, is_owner)
         contact.email = mask_sensitive_field(contact.email, is_owner)
@@ -2878,7 +2878,7 @@ async def list_emergency_requests(
     space_id: uuid.UUID,
     status_filter: Optional[PrivatEmergencyAccessStatus] = Query(None, description="Filter nach Status"),
     page: int = Query(1, ge=1, description="Seite"),  # SECURITY FIX 22-5: Pagination
-    page_size: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),  # Max 100
+    page_size: int = Query(50, ge=1, le=100, description="Einträge pro Seite"),  # Max 100
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[PrivatEmergencyAccessRequestResponse]:
@@ -3030,11 +3030,11 @@ async def revoke_emergency_access(
 async def get_portfolio_dashboard(
     request: Request,
     space_id: uuid.UUID,
-    months: int = Query(default=12, ge=1, le=60, description="Anzahl Monate fuer Historie"),
+    months: int = Query(default=12, ge=1, le=60, description="Anzahl Monate für Historie"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> PortfolioDashboardResponse:
-    """Holt das vollstaendige Portfolio-Dashboard mit Snapshots und Zielen."""
+    """Holt das vollständige Portfolio-Dashboard mit Snapshots und Zielen."""
     from app.services.privat.portfolio_service import PortfolioService
     from app.services.privat.financial_goals_service import FinancialGoalsService
 
@@ -3216,7 +3216,7 @@ async def create_portfolio_snapshot(
 async def list_portfolio_snapshots(
     request: Request,
     space_id: uuid.UUID,
-    months: int = Query(default=12, ge=1, le=60, description="Anzahl Monate zurueck"),
+    months: int = Query(default=12, ge=1, le=60, description="Anzahl Monate zurück"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> PortfolioSnapshotListResponse:
@@ -3568,7 +3568,7 @@ async def update_goal_progress(
 @router.delete(
     "/spaces/{space_id}/goals/{goal_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Finanzielles Ziel loeschen",
+    summary="Finanzielles Ziel löschen",
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)
 async def delete_financial_goal(
@@ -3578,7 +3578,7 @@ async def delete_financial_goal(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> Response:
-    """Loescht ein finanzielles Ziel."""
+    """Löscht ein finanzielles Ziel."""
     from app.db.models import FinancialGoal as FinancialGoalModel
     from sqlalchemy import select, delete
 

@@ -2,7 +2,7 @@
 """
 DATEV OAuth2 Authentifizierungs-Service.
 
-Verwaltet OAuth2-Flow fuer DATEVconnect:
+Verwaltet OAuth2-Flow für DATEVconnect:
 - Authorization URL Generation
 - Code Exchange
 - Token Refresh
@@ -47,7 +47,7 @@ DATEV_SCOPES = [
 ]
 
 TOKEN_REFRESH_BUFFER_MINUTES = 5
-"""Token wird erneuert wenn weniger als 5 Minuten gueltig."""
+"""Token wird erneuert wenn weniger als 5 Minuten gültig."""
 
 
 # =============================================================================
@@ -59,7 +59,7 @@ class DATEVAuthService:
     DATEV OAuth2 Authentifizierungs-Service.
 
     Verwaltet den kompletten OAuth2-Flow:
-    - Authorization URL fuer User-Consent
+    - Authorization URL für User-Consent
     - Code-Exchange nach Redirect
     - Token-Refresh
     - Sichere Credential-Speicherung
@@ -81,13 +81,13 @@ class DATEVAuthService:
             code="auth_code_from_callback"
         )
 
-        # 4. Tokens werden verschluesselt gespeichert
+        # 4. Tokens werden verschlüsselt gespeichert
     """
 
     def __init__(self) -> None:
         """Initialisiert den Auth Service."""
         self._http_timeout = httpx.Timeout(30.0)
-        # State-Cache fuer CSRF-Schutz (In-Memory, fuer Production Redis verwenden)
+        # State-Cache für CSRF-Schutz (In-Memory, für Production Redis verwenden)
         self._state_cache: dict[str, dict] = {}
         self._state_lock = threading.Lock()
 
@@ -105,7 +105,7 @@ class DATEVAuthService:
             client_id: DATEVconnect Client ID
             redirect_uri: Callback URL nach Authorization
             environment: API-Umgebung (production/sandbox)
-            connection_id: Optional Connection ID fuer State-Zuordnung
+            connection_id: Optional Connection ID für State-Zuordnung
 
         Returns:
             Tuple aus (Authorization URL, State-Token)
@@ -155,7 +155,7 @@ class DATEVAuthService:
             state: State-Token aus Callback
 
         Returns:
-            State-Metadaten oder None wenn ungueltig
+            State-Metadaten oder None wenn ungültig
         """
         with self._state_lock:
             state_data = self._state_cache.get(state)
@@ -167,7 +167,7 @@ class DATEVAuthService:
             # State verbrauchen (einmalig verwendbar)
             del self._state_cache[state]
 
-            # Timeout pruefen (15 Minuten)
+            # Timeout prüfen (15 Minuten)
             created_at = state_data.get("created_at")
             if created_at and utc_now() - created_at > timedelta(minutes=15):
                 logger.warning("datev_state_expired")
@@ -194,7 +194,7 @@ class DATEVAuthService:
             code: Authorization Code
             client_id: Client ID
             client_secret: Client Secret
-            redirect_uri: Redirect URI (muss mit Authorization uebereinstimmen)
+            redirect_uri: Redirect URI (muss mit Authorization übereinstimmen)
             environment: API-Umgebung
 
         Returns:
@@ -225,7 +225,7 @@ class DATEVAuthService:
 
                 token_data = response.json()
 
-                # Tokens verschluesseln und speichern
+                # Tokens verschlüsseln und speichern
                 access_token = token_data.get("access_token", "")
                 refresh_token = token_data.get("refresh_token", "")
                 expires_in = token_data.get("expires_in", 3600)
@@ -270,7 +270,7 @@ class DATEVAuthService:
         Args:
             db: Datenbank-Session
             connection_id: ID der DATEV-Verbindung
-            refresh_token_encrypted: Verschluesselter Refresh Token
+            refresh_token_encrypted: Verschlüsselter Refresh Token
             client_id: Client ID
             client_secret: Client Secret
             environment: API-Umgebung
@@ -281,7 +281,7 @@ class DATEVAuthService:
         auth_base = DATEV_AUTH_URLS.get(environment, DATEV_AUTH_URLS["production"])
 
         try:
-            # Refresh Token entschluesseln
+            # Refresh Token entschlüsseln
             refresh_token = decrypt_value(refresh_token_encrypted)
             if not refresh_token:
                 logger.error(
@@ -344,7 +344,7 @@ class DATEVAuthService:
         token_expires_at: Optional[datetime],
     ) -> bool:
         """
-        Prueft ob Token-Refresh noetig ist.
+        Prüft ob Token-Refresh noetig ist.
 
         Args:
             token_expires_at: Ablaufzeitpunkt des Tokens
@@ -373,7 +373,7 @@ class DATEVAuthService:
         Args:
             db: Datenbank-Session
             connection_id: ID der DATEV-Verbindung
-            access_token_encrypted: Verschluesselter Access Token
+            access_token_encrypted: Verschlüsselter Access Token
             client_id: Client ID
             client_secret: Client Secret
             environment: API-Umgebung
@@ -398,7 +398,7 @@ class DATEVAuthService:
                     },
                 )
 
-                # Tokens in DB loeschen
+                # Tokens in DB löschen
                 await self._clear_tokens(db, connection_id)
 
                 if response.status_code in (200, 204):
@@ -408,12 +408,12 @@ class DATEVAuthService:
                     )
                     return True
                 else:
-                    # Trotzdem lokal loeschen
+                    # Trotzdem lokal löschen
                     logger.warning(
                         "datev_revoke_api_failed",
                         status=response.status_code,
                     )
-                    return True  # Lokal geloescht
+                    return True  # Lokal gelöscht
 
         except Exception as e:
             logger.error(
@@ -434,14 +434,14 @@ class DATEVAuthService:
         refresh_token: str,
         token_expires_at: datetime,
     ) -> None:
-        """Speichert verschluesselte Tokens in der DB."""
+        """Speichert verschlüsselte Tokens in der DB."""
         from app.db import models
 
-        # Tokens verschluesseln
+        # Tokens verschlüsseln
         access_encrypted = encrypt_value(access_token)
         refresh_encrypted = encrypt_value(refresh_token)
 
-        # Update durchfuehren
+        # Update durchführen
         await db.execute(
             update(models.DATEVConnection)
             .where(models.DATEVConnection.id == connection_id)
@@ -461,7 +461,7 @@ class DATEVAuthService:
         db: AsyncSession,
         connection_id: UUID,
     ) -> None:
-        """Loescht Tokens aus der DB."""
+        """Löscht Tokens aus der DB."""
         from app.db import models
 
         await db.execute(
@@ -487,7 +487,7 @@ _service_lock = threading.Lock()
 
 def get_datev_auth_service() -> DATEVAuthService:
     """
-    Factory fuer DATEVAuthService (Thread-Safe Singleton).
+    Factory für DATEVAuthService (Thread-Safe Singleton).
     """
     global _auth_service
     if _auth_service is None:

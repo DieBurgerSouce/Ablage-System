@@ -25,7 +25,7 @@ logger = structlog.get_logger(__name__)
 
 
 class EnhancedAnnotationService:
-    """Erweiterter Service fuer Dokument-Annotationen.
+    """Erweiterter Service für Dokument-Annotationen.
 
     Ergaenzt den bestehenden AnnotationService um:
     - Typisierte Annotationstypen (Bounding Box, Pfeile, Stempel)
@@ -59,8 +59,8 @@ class EnhancedAnnotationService:
             page_number: Seitennummer
             x: X-Position (0.0-1.0 normalisiert)
             y: Y-Position (0.0-1.0 normalisiert)
-            width: Breite fuer Bounding Box (optional)
-            height: Hoehe fuer Bounding Box (optional)
+            width: Breite für Bounding Box (optional)
+            height: Höhe für Bounding Box (optional)
             text: Annotationstext (optional)
             color: Hex-Farbe (Standard: #FFD700)
 
@@ -103,7 +103,7 @@ class EnhancedAnnotationService:
         document_id: UUID,
         page_number: Optional[int] = None,
     ) -> List[DocumentAnnotation]:
-        """Alle Annotationen fuer ein Dokument/eine Seite abrufen.
+        """Alle Annotationen für ein Dokument/eine Seite abrufen.
 
         Args:
             db: Datenbank-Session
@@ -137,7 +137,7 @@ class EnhancedAnnotationService:
         Args:
             db: Datenbank-Session
             annotation_id: Annotation-ID
-            user_id: Benutzer-ID (fuer Berechtigungspruefung)
+            user_id: Benutzer-ID (für Berechtigungsprüfung)
             **updates: Zu aktualisierende Felder
 
         Returns:
@@ -218,7 +218,7 @@ class EnhancedAnnotationService:
         annotation_id: UUID,
         user_id: UUID,
     ) -> bool:
-        """Annotation loeschen (nur Autor oder Admin).
+        """Annotation löschen (nur Autor oder Admin).
 
         Args:
             db: Datenbank-Session
@@ -226,7 +226,7 @@ class EnhancedAnnotationService:
             user_id: Benutzer-ID (muss Autor sein)
 
         Returns:
-            True wenn erfolgreich geloescht
+            True wenn erfolgreich gelöscht
         """
         result = await db.execute(
             select(DocumentAnnotation).where(
@@ -257,7 +257,7 @@ _enhanced_annotation_service: Optional[EnhancedAnnotationService] = None
 
 
 def get_enhanced_annotation_service() -> EnhancedAnnotationService:
-    """Factory-Funktion fuer EnhancedAnnotationService Singleton."""
+    """Factory-Funktion für EnhancedAnnotationService Singleton."""
     global _enhanced_annotation_service
     if _enhanced_annotation_service is None:
         _enhanced_annotation_service = EnhancedAnnotationService()

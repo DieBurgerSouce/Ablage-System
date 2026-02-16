@@ -50,7 +50,7 @@ router = APIRouter(prefix="/audit", tags=["Admin - Audit-Logs"])
 )
 async def list_audit_logs(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
+    per_page: int = Query(50, ge=1, le=200, description="Einträge pro Seite"),
     user_id: Optional[UUID] = Query(None, description="Nach Benutzer filtern"),
     action: Optional[str] = Query(None, description="Nach Aktion filtern (Teilsuche)"),
     resource_type: Optional[str] = Query(None, description="Nach Ressourcentyp filtern"),
@@ -67,7 +67,7 @@ async def list_audit_logs(
     """
     Listet alle Audit-Logs im System auf.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
 
     **Filter:**
     - **user_id**: Logs eines bestimmten Benutzers
@@ -118,7 +118,7 @@ async def get_audit_log(
     """
     Ruft einen einzelnen Audit-Log-Eintrag ab.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugänglich.
     """
     log = await AuditService.get_audit_log(db, log_id)
 
@@ -136,12 +136,12 @@ async def get_audit_log(
 @router.get(
     "/actions",
     summary="Admin-Aktionen auflisten",
-    description="Listet alle Admin-Aktionen auf (Benutzerverwaltung, Konfigurationsaenderungen)"
+    description="Listet alle Admin-Aktionen auf (Benutzerverwaltung, Konfigurationsänderungen)"
 )
 async def list_admin_actions(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
-    admin_id: Optional[UUID] = Query(None, description="Nach ausfuehrendem Admin filtern"),
+    per_page: int = Query(50, ge=1, le=200, description="Einträge pro Seite"),
+    admin_id: Optional[UUID] = Query(None, description="Nach ausführendem Admin filtern"),
     target_user_id: Optional[UUID] = Query(None, description="Nach Zielbenutzer filtern"),
     action: Optional[str] = Query(None, description="Nach Aktionstyp filtern"),
     from_date: Optional[datetime] = Query(None, description="Ab Datum (ISO-Format)"),
@@ -154,11 +154,11 @@ async def list_admin_actions(
     Listet alle Admin-Aktionen auf.
 
     Zeigt Aktionen wie:
-    - Benutzererstellung/-aenderung/-loeschung
-    - Rollenaenderungen
+    - Benutzererstellung/-änderung/-löschung
+    - Rollenänderungen
     - Passwort-Resets
-    - Rate-Limit-Aenderungen
-    - Job-Abbrueche
+    - Rate-Limit-Änderungen
+    - Job-Abbrüche
 
     **Filter:**
     - **admin_id**: Aktionen eines bestimmten Administrators
@@ -183,23 +183,23 @@ async def list_admin_actions(
 @router.get(
     "/users/{user_id}/trail",
     summary="Benutzer-Audit-Trail",
-    description="Ruft den vollstaendigen Audit-Trail eines Benutzers ab"
+    description="Ruft den vollständigen Audit-Trail eines Benutzers ab"
 )
 async def get_user_audit_trail(
     user_id: UUID,
-    limit: int = Query(100, ge=1, le=500, description="Maximale Anzahl Eintraege"),
+    limit: int = Query(100, ge=1, le=500, description="Maximale Anzahl Einträge"),
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Ruft den vollstaendigen Audit-Trail eines Benutzers ab.
+    Ruft den vollständigen Audit-Trail eines Benutzers ab.
 
     Kombiniert:
     - Aktionen des Benutzers (Logins, Dokumentenoperationen)
     - Admin-Aktionen, die den Benutzer betreffen
 
-    Nuetzlich fuer:
-    - Sicherheitsueberpruefungen
+    Nützlich für:
+    - Sicherheitsüberprüfungen
     - Compliance-Anforderungen
     - Fehlerbehebung
     """
@@ -235,7 +235,7 @@ async def export_audit_logs(
     - **csv**: Komma-separierte Werte (Excel-kompatibel)
     - **json**: JSON-Array
 
-    **Limit:** Maximal 10.000 Eintraege pro Export
+    **Limit:** Maximal 10.000 Einträge pro Export
 
     Die Datei wird als Download bereitgestellt.
     """
@@ -283,7 +283,7 @@ async def export_audit_logs(
 @router.get(
     "/stats",
     summary="Audit-Statistiken",
-    description="Ruft zusammenfassende Statistiken ueber Audit-Logs ab"
+    description="Ruft zusammenfassende Statistiken über Audit-Logs ab"
 )
 async def get_audit_statistics(
     days: int = Query(30, ge=1, le=365, description="Analysezeitraum in Tagen"),
@@ -291,12 +291,12 @@ async def get_audit_statistics(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Ruft zusammenfassende Statistiken ueber Audit-Logs ab.
+    Ruft zusammenfassende Statistiken über Audit-Logs ab.
 
     Zeigt:
-    - Gesamtzahl der Eintraege
-    - Eintraege nach Aktionstyp
-    - Eintraege nach Ressourcentyp
+    - Gesamtzahl der Einträge
+    - Einträge nach Aktionstyp
+    - Einträge nach Ressourcentyp
     - Erfolgs-/Fehlerquote
     - Aktivste Benutzer
     - Anzahl Admin-Aktionen
@@ -318,7 +318,7 @@ async def get_audit_statistics(
 async def search_audit_logs(
     q: str = Query(..., min_length=2, description="Suchbegriff"),
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
+    per_page: int = Query(50, ge=1, le=200, description="Einträge pro Seite"),
     from_date: Optional[datetime] = Query(None, description="Ab Datum (ISO-Format)"),
     to_date: Optional[datetime] = Query(None, description="Bis Datum (ISO-Format)"),
     admin: User = Depends(get_current_superuser),

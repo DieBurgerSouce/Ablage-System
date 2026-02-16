@@ -1,8 +1,8 @@
 """
 Trend Analyzer
 
-Analysiert Trends ueber Zeit fuer CEO Dashboard Sparklines.
-Aggregiert Daten fuer Charts und Visualisierungen.
+Analysiert Trends über Zeit für CEO Dashboard Sparklines.
+Aggregiert Daten für Charts und Visualisierungen.
 
 Feinpoliert und durchdacht - Enterprise Trend Analysis.
 """
@@ -23,7 +23,7 @@ logger = structlog.get_logger(__name__)
 
 
 class TrendAnalyzer:
-    """Analysiert Trends fuer Sparklines."""
+    """Analysiert Trends für Sparklines."""
 
     def __init__(self) -> None:
         """Initialisiert Analyzer."""
@@ -36,7 +36,7 @@ class TrendAnalyzer:
         db: AsyncSession,
     ) -> TrendData:
         """
-        Analysiert Trends ueber angegebenen Zeitraum.
+        Analysiert Trends über angegebenen Zeitraum.
 
         Args:
             company_id: Company UUID
@@ -44,7 +44,7 @@ class TrendAnalyzer:
             db: Database session
 
         Returns:
-            TrendData mit Datenpunkten fuer Charts
+            TrendData mit Datenpunkten für Charts
         """
         logger.info("trend_analyzer.analyze", company_id=str(company_id), days=days)
 
@@ -73,7 +73,7 @@ class TrendAnalyzer:
         db: AsyncSession,
     ) -> List[TrendDataPoint]:
         """
-        Analysiert Dokument-Verarbeitung ueber Zeit.
+        Analysiert Dokument-Verarbeitung über Zeit.
 
         Returns:
             Liste von TrendDataPoints mit Anzahl verarbeiteter Dokumente pro Tag
@@ -115,7 +115,7 @@ class TrendAnalyzer:
         db: AsyncSession,
     ) -> List[TrendDataPoint]:
         """
-        Analysiert Rechnungsvolumen ueber Zeit.
+        Analysiert Rechnungsvolumen über Zeit.
 
         Returns:
             Liste von TrendDataPoints mit Summe der Rechnungsbetraege pro Tag
@@ -159,7 +159,7 @@ class TrendAnalyzer:
         db: AsyncSession,
     ) -> List[TrendDataPoint]:
         """
-        Analysiert Auto-Process Rate ueber Zeit.
+        Analysiert Auto-Process Rate über Zeit.
 
         Returns:
             Liste von TrendDataPoints mit Rate (0-1) pro Tag
@@ -210,7 +210,7 @@ class TrendAnalyzer:
         db: AsyncSession,
     ) -> List[TrendDataPoint]:
         """
-        Analysiert Alert-Count ueber Zeit.
+        Analysiert Alert-Count über Zeit.
 
         Returns:
             Liste von TrendDataPoints mit Anzahl neuer Alerts pro Tag

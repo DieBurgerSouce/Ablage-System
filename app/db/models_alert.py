@@ -2,7 +2,7 @@
 """
 Alert database models for Ablage-System.
 
-Zentrales Alert-Management fuer:
+Zentrales Alert-Management für:
 - Fraud Detection Alerts
 - Risk Intelligence Alerts
 - Compliance Violations
@@ -50,9 +50,9 @@ class AlertCategory(str, Enum):
 class AlertSeverity(str, Enum):
     """Alert severity levels."""
     INFO = "info"          # Informativ - keine Aktion erforderlich
-    LOW = "low"            # Niedrig - bei Gelegenheit pruefen
-    MEDIUM = "medium"      # Mittel - zeitnah pruefen
-    HIGH = "high"          # Hoch - dringend pruefen
+    LOW = "low"            # Niedrig - bei Gelegenheit prüfen
+    MEDIUM = "medium"      # Mittel - zeitnah prüfen
+    HIGH = "high"          # Hoch - dringend prüfen
     CRITICAL = "critical"  # Kritisch - sofortige Aktion erforderlich
 
 

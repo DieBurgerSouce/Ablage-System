@@ -1,7 +1,7 @@
 """
 Microsoft Teams Integration Service.
 
-Ermoeglicht Benachrichtigungen an Microsoft Teams-Kanaele ueber:
+Ermöglicht Benachrichtigungen an Microsoft Teams-Kanaele über:
 - Incoming Webhooks (einfach, keine App-Installation noetig)
 - Adaptive Cards (reichhaltige Formatierung)
 
@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
 
 
 class TeamsMessagePriority(str, Enum):
-    """Prioritaet einer Teams-Nachricht."""
+    """Priorität einer Teams-Nachricht."""
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -55,12 +55,12 @@ class TeamsAction(BaseModel):
     """Teams Adaptive Card Action."""
     type: str = Field(default="Action.OpenUrl", description="Action-Typ")
     title: str = Field(..., description="Button-Text")
-    url: Optional[str] = Field(default=None, description="URL fuer OpenUrl Actions")
-    data: Optional[dict[str, Any]] = Field(default=None, description="Daten fuer Submit Actions")
+    url: Optional[str] = Field(default=None, description="URL für OpenUrl Actions")
+    data: Optional[dict[str, Any]] = Field(default=None, description="Daten für Submit Actions")
 
 
 class TeamsSection(BaseModel):
-    """Teams Nachricht Section (fuer Message Cards)."""
+    """Teams Nachricht Section (für Message Cards)."""
     title: Optional[str] = Field(default=None, description="Section-Titel")
     text: Optional[str] = Field(default=None, description="Section-Text")
     facts: list[dict[str, str]] = Field(default_factory=list, description="Fakten-Liste")
@@ -97,10 +97,10 @@ class TeamsService:
 
     Features:
     - Webhook-basierte Benachrichtigungen
-    - Adaptive Cards fuer reichhaltige Nachrichten
+    - Adaptive Cards für reichhaltige Nachrichten
     - Rate Limiting mit Sliding Window (30/min)
     - Retry-Logik mit exponentiellem Backoff
-    - Attachment-Support fuer Bilder
+    - Attachment-Support für Bilder
 
     Verwendung:
         teams = TeamsService()
@@ -120,7 +120,7 @@ class TeamsService:
     _rate_limit_per_minute: int
 
     def __new__(cls) -> "TeamsService":
-        """Singleton-Pattern fuer Thread-Safety."""
+        """Singleton-Pattern für Thread-Safety."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialized = False
@@ -193,11 +193,11 @@ class TeamsService:
 
     def _check_rate_limit(self) -> bool:
         """
-        Prueft ob Rate Limit erreicht ist.
+        Prüft ob Rate Limit erreicht ist.
 
         Sliding Window Algorithmus:
         - Entfernt Timestamps aelter als 60 Sekunden
-        - Prueft ob Limit erreicht
+        - Prüft ob Limit erreicht
         """
         now = time.time()
         window_start = now - 60
@@ -209,16 +209,16 @@ class TeamsService:
         return len(self._rate_limit_window) < self._rate_limit_per_minute
 
     def _record_message(self) -> None:
-        """Zeichnet eine gesendete Nachricht fuer Rate Limiting auf."""
+        """Zeichnet eine gesendete Nachricht für Rate Limiting auf."""
         self._rate_limit_window.append(time.time())
 
     @property
     def is_enabled(self) -> bool:
-        """Gibt zurueck ob Teams-Integration aktiv ist."""
+        """Gibt zurück ob Teams-Integration aktiv ist."""
         return self._enabled and bool(self._webhook_url)
 
     def should_send_notification(self, notification_type: str) -> bool:
-        """Prueft ob ein Notification-Typ an Teams gesendet werden soll."""
+        """Prüft ob ein Notification-Typ an Teams gesendet werden soll."""
         if not self.is_enabled:
             return False
         return notification_type in self._notification_types
@@ -233,13 +233,13 @@ class TeamsService:
         theme_color: str = "0076D7",
     ) -> dict[str, Any]:
         """
-        Erstellt eine Adaptive Card fuer Teams.
+        Erstellt eine Adaptive Card für Teams.
 
         Args:
             title: Titel der Nachricht
             message: Haupttext
             notification_type: Typ der Benachrichtigung
-            context: Zusaetzliche Kontext-Daten
+            context: Zusätzliche Kontext-Daten
             actions: Optionale Aktions-Buttons
             theme_color: Farbthema (Hex ohne #)
 
@@ -361,15 +361,15 @@ class TeamsService:
         theme_color: str = "0076D7",
     ) -> dict[str, Any]:
         """
-        Erstellt eine Legacy Message Card (O365 Connector Card) fuer Teams.
+        Erstellt eine Legacy Message Card (O365 Connector Card) für Teams.
 
-        Fallback fuer aeltere Webhooks die keine Adaptive Cards unterstuetzen.
+        Fallback für aeltere Webhooks die keine Adaptive Cards unterstützen.
 
         Args:
             title: Titel der Nachricht
             message: Haupttext
             notification_type: Typ der Benachrichtigung
-            context: Zusaetzliche Kontext-Daten
+            context: Zusätzliche Kontext-Daten
             actions: Optionale Aktions-Buttons
             theme_color: Farbthema (Hex ohne #)
 
@@ -446,8 +446,8 @@ class TeamsService:
         notification_type: str,
         priority: TeamsMessagePriority,
     ) -> str:
-        """Bestimmt die Farbe basierend auf Typ und Prioritaet."""
-        # Prioritaet ueberschreibt
+        """Bestimmt die Farbe basierend auf Typ und Priorität."""
+        # Priorität überschreibt
         if priority == TeamsMessagePriority.URGENT:
             return "FF0000"  # Rot
         if priority == TeamsMessagePriority.HIGH:
@@ -529,7 +529,7 @@ class TeamsService:
                     headers={"Content-Type": "application/json"},
                 )
 
-                # Teams Webhook gibt 200 bei Erfolg zurueck
+                # Teams Webhook gibt 200 bei Erfolg zurück
                 if response.status_code == 200:
                     self._record_message()
                     logger.debug(
@@ -595,10 +595,10 @@ class TeamsService:
             notification_type: Typ der Benachrichtigung
             title: Titel der Nachricht
             message: Haupttext
-            context: Zusaetzliche Kontext-Daten
-            priority: Prioritaet der Nachricht
+            context: Zusätzliche Kontext-Daten
+            priority: Priorität der Nachricht
             actions: Optionale Aktions-Buttons
-            use_adaptive_card: True fuer Adaptive Cards, False fuer Message Cards
+            use_adaptive_card: True für Adaptive Cards, False für Message Cards
 
         Returns:
             True wenn erfolgreich
@@ -610,7 +610,7 @@ class TeamsService:
         # Typ als String
         type_str = notification_type.value if isinstance(notification_type, TeamsNotificationType) else notification_type
 
-        # Pruefen ob Typ aktiviert
+        # Prüfen ob Typ aktiviert
         if not self.should_send_notification(type_str):
             logger.debug(
                 "teams_notification_type_disabled",
@@ -618,7 +618,7 @@ class TeamsService:
             )
             return False
 
-        # Farbe basierend auf Prioritaet und Typ
+        # Farbe basierend auf Priorität und Typ
         color = self._get_notification_color(type_str, priority)
 
         # Payload erstellen (Adaptive Card oder Message Card)
@@ -681,13 +681,13 @@ class TeamsService:
             if error_message:
                 context["fehler"] = error_message[:100]
 
-        # Aktion: Dokument oeffnen
+        # Aktion: Dokument öffnen
         actions = None
         if document_url:
             actions = [
                 TeamsAction(
                     type="Action.OpenUrl",
-                    title="Dokument oeffnen",
+                    title="Dokument öffnen",
                     url=document_url,
                 )
             ]
@@ -772,12 +772,12 @@ class TeamsService:
             title: Alert-Titel
             message: Alert-Nachricht
             severity: Schweregrad (low, medium, high, critical)
-            alert_url: URL fuer weitere Details
+            alert_url: URL für weitere Details
 
         Returns:
             True wenn erfolgreich
         """
-        # Prioritaet basierend auf Schweregrad
+        # Priorität basierend auf Schweregrad
         priority_map = {
             "low": TeamsMessagePriority.LOW,
             "medium": TeamsMessagePriority.NORMAL,
@@ -825,8 +825,8 @@ class TeamsService:
         Args:
             invoice_number: Rechnungsnummer
             amount: Rechnungsbetrag
-            due_date: Faelligkeitsdatum
-            days_overdue: Tage ueberfaellig
+            due_date: Fälligkeitsdatum
+            days_overdue: Tage überfällig
             customer_name: Kundenname
             invoice_url: URL zur Rechnung
 
@@ -834,13 +834,13 @@ class TeamsService:
             True wenn erfolgreich
         """
         title = f"Zahlungserinnerung: Rechnung {invoice_number}"
-        message = f"Die Rechnung **{invoice_number}** ist seit **{days_overdue} Tagen** ueberfaellig."
+        message = f"Die Rechnung **{invoice_number}** ist seit **{days_overdue} Tagen** überfällig."
 
         context = {
             "rechnungsnummer": invoice_number,
             "betrag": f"{amount:.2f} EUR",
-            "faellig_am": due_date.strftime("%d.%m.%Y"),
-            "tage_ueberfaellig": days_overdue,
+            "fällig_am": due_date.strftime("%d.%m.%Y"),
+            "tage_überfällig": days_overdue,
             "kunde": customer_name,
         }
 
@@ -849,12 +849,12 @@ class TeamsService:
             actions = [
                 TeamsAction(
                     type="Action.OpenUrl",
-                    title="Rechnung oeffnen",
+                    title="Rechnung öffnen",
                     url=invoice_url,
                 )
             ]
 
-        # Prioritaet basierend auf Ueberfaelligkeit
+        # Priorität basierend auf Überfälligkeit
         if days_overdue > 30:
             priority = TeamsMessagePriority.URGENT
         elif days_overdue > 14:
@@ -906,7 +906,7 @@ class TeamsService:
         return result
 
     async def close(self) -> None:
-        """Schliesst den HTTP-Client."""
+        """Schließt den HTTP-Client."""
         if self._client:
             await self._client.aclose()
             self._client = None
@@ -917,7 +917,7 @@ _teams_service: Optional[TeamsService] = None
 
 
 def get_teams_service() -> TeamsService:
-    """Factory-Funktion fuer Teams-Service Dependency Injection."""
+    """Factory-Funktion für Teams-Service Dependency Injection."""
     global _teams_service
     if _teams_service is None:
         _teams_service = TeamsService()
@@ -933,7 +933,7 @@ async def send_teams_notification(
     actions: Optional[list[dict[str, Any]]] = None,
 ) -> bool:
     """
-    Convenience-Funktion fuer einfaches Senden von Teams-Benachrichtigungen.
+    Convenience-Funktion für einfaches Senden von Teams-Benachrichtigungen.
 
     Kann aus jedem Teil der Anwendung aufgerufen werden.
 
@@ -941,7 +941,7 @@ async def send_teams_notification(
         notification_type: Typ (document_processed, approval_required, etc.)
         title: Titel der Nachricht
         message: Haupttext
-        context: Zusaetzliche Kontext-Daten
+        context: Zusätzliche Kontext-Daten
         priority: low, normal, high, urgent
         actions: Optionale Aktions-Buttons
 

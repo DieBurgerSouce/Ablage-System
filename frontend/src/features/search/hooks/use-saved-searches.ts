@@ -18,9 +18,11 @@
  * ```
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { logger } from '@/lib/logger';
+import { apiClient } from '@/lib/api/client';
 import {
   type SavedSearch,
   type CreateSavedSearchInput,
@@ -28,6 +30,7 @@ import {
   validateSavedSearches,
   SAVED_SEARCHES_STORAGE_KEY,
 } from '../types/saved-search';
+import type { SearchParams } from '../types/search-params';
 
 // ==================== Storage Helpers ====================
 
@@ -75,7 +78,7 @@ function saveToStorage(searches: SavedSearch[]): boolean {
 // ==================== Hook ====================
 
 export interface UseSavedSearchesReturn {
-  /** Alle gespeicherten Suchen */
+  /** Alle gespeicherten Suchen (lokal + Team) */
   savedSearches: SavedSearch[];
 
   /** Gepinnte Suchen (für Sidebar) */
@@ -104,12 +107,64 @@ export interface UseSavedSearchesReturn {
 
   /** Ob Limit erreicht ist */
   isLimitReached: boolean;
+
+  /** Suche mit Team teilen */
+  shareSearch: (search: SavedSearch) => void;
+
+  /** Team-Sharing aufheben */
+  unshareSearch: (id: string) => void;
 }
 
 const MAX_SAVED_SEARCHES = 50;
 
+// Backend shared search response
+interface BackendSavedSearch {
+  id: string;
+  user_id: string;
+  name: string;
+  query: string;
+  search_type: string;
+  filters: Record<string, unknown> | null;
+  is_shared: boolean;
+  is_default: boolean;
+  use_count: number;
+  created_at: string;
+}
+
+function mapBackendToSavedSearch(item: BackendSavedSearch): SavedSearch {
+  return {
+    id: item.id,
+    name: item.name,
+    params: {
+      q: item.query,
+      mode: (item.search_type as SearchParams['mode']) || 'hybrid',
+    },
+    createdAt: item.created_at,
+    accessCount: item.use_count,
+    pinned: false,
+    isShared: true,
+    sharedBy: 'Team',
+  };
+}
+
 export function useSavedSearches(): UseSavedSearchesReturn {
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
+  const queryClient = useQueryClient();
+
+  // Fetch team-shared searches from backend
+  const { data: sharedSearches } = useQuery({
+    queryKey: ['saved-searches-shared'],
+    queryFn: async () => {
+      const response = await apiClient.get<{ searches: BackendSavedSearch[]; total: number }>(
+        '/saved-searches'
+      );
+      return response.data.searches
+        .filter((s) => s.is_shared)
+        .map(mapBackendToSavedSearch);
+    },
+    staleTime: 60000,
+    gcTime: 300000,
+  });
 
   // Debounce timer for recordAccess to prevent excessive writes
   const accessDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -276,13 +331,56 @@ export function useSavedSearches(): UseSavedSearchesReturn {
     [savedSearches]
   );
 
+  // ==================== Share Operations ====================
+
+  const shareSearch = useCallback((search: SavedSearch) => {
+    apiClient.post('/saved-searches', {
+      name: search.name,
+      query: search.params.q || '',
+      search_type: search.params.mode || 'hybrid',
+      filters: null,
+      is_shared: true,
+    }).then(() => {
+      toast.success('Suche mit Team geteilt', {
+        description: `"${search.name}" ist jetzt fuer das Team sichtbar.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['saved-searches-shared'] });
+    }).catch((err) => {
+      logger.error('Fehler beim Teilen der Suche', err);
+      toast.error('Teilen fehlgeschlagen', {
+        description: 'Die Suche konnte nicht mit dem Team geteilt werden.',
+      });
+    });
+  }, [queryClient]);
+
+  const unshareSearch = useCallback((id: string) => {
+    apiClient.patch(`/saved-searches/${id}/share`, { is_shared: false }).then(() => {
+      toast.success('Teilen aufgehoben', {
+        description: 'Die Suche ist jetzt wieder privat.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['saved-searches-shared'] });
+    }).catch((err) => {
+      logger.error('Fehler beim Aufheben des Teilens', err);
+      toast.error('Fehler', {
+        description: 'Das Teilen konnte nicht aufgehoben werden.',
+      });
+    });
+  }, [queryClient]);
+
   // ==================== Derived State ====================
 
-  const pinnedSearches = savedSearches.filter((s) => s.pinned);
+  // Merge local searches with team-shared searches (deduplicate by name)
+  const allSearches = useMemo(() => {
+    const localIds = new Set(savedSearches.map((s) => s.id));
+    const teamSearches = (sharedSearches ?? []).filter((s) => !localIds.has(s.id));
+    return [...savedSearches, ...teamSearches];
+  }, [savedSearches, sharedSearches]);
+
+  const pinnedSearches = allSearches.filter((s) => s.pinned);
   const isLimitReached = savedSearches.length >= MAX_SAVED_SEARCHES;
 
   return {
-    savedSearches,
+    savedSearches: allSearches,
     pinnedSearches,
     saveSearch,
     deleteSearch,
@@ -292,6 +390,8 @@ export function useSavedSearches(): UseSavedSearchesReturn {
     clearAll,
     getSearchById,
     isLimitReached,
+    shareSearch,
+    unshareSearch,
   };
 }
 

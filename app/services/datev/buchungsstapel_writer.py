@@ -39,8 +39,8 @@ from .constants import (
 )
 from .mapping.invoice_mapper import DATEVBuchung
 
-# HIGH-8 FIX: CSV-Groessenlimit
-# DATEV akzeptiert praktisch max. ~100MB, groessere Dateien werden oft abgelehnt
+# HIGH-8 FIX: CSV-Größenlimit
+# DATEV akzeptiert praktisch max. ~100MB, größere Dateien werden oft abgelehnt
 MAX_CSV_SIZE_BYTES = 100_000_000  # 100 MB
 
 logger = structlog.get_logger(__name__)
@@ -50,7 +50,7 @@ class BuchungsstapelWriter:
     """
     DATEV Buchungsstapel CSV Writer.
 
-    Erzeugt eine DATEV-kompatible CSV-Datei aus einer Liste von Buchungssaetzen.
+    Erzeugt eine DATEV-kompatible CSV-Datei aus einer Liste von Buchungssätzen.
 
     Verwendung:
         writer = BuchungsstapelWriter()
@@ -72,7 +72,7 @@ class BuchungsstapelWriter:
         Schreibt Buchungsstapel als DATEV-CSV.
 
         Args:
-            buchungen: Liste der Buchungssaetze
+            buchungen: Liste der Buchungssätze
             config: DATEV-Konfiguration
             export_date: Export-Zeitstempel (Default: jetzt)
 
@@ -90,7 +90,7 @@ class BuchungsstapelWriter:
         # Zeile 2: Spaltenkoepfe
         lines.append(self._write_column_headers())
 
-        # Zeile 3+: Buchungssaetze
+        # Zeile 3+: Buchungssätze
         for buchung in buchungen:
             lines.append(self._write_buchung_line(buchung, config))
 
@@ -123,7 +123,7 @@ class BuchungsstapelWriter:
                 f"Unerwarteter Fehler beim Kodieren der DATEV-Datei: {type(e).__name__}"
             ) from e
 
-        # HIGH-8 FIX: CSV-Groessenlimit pruefen
+        # HIGH-8 FIX: CSV-Größenlimit prüfen
         # DATEV akzeptiert praktisch max. ~100MB
         if len(csv_bytes) > MAX_CSV_SIZE_BYTES:
             size_mb = len(csv_bytes) / 1024 / 1024
@@ -154,7 +154,7 @@ class BuchungsstapelWriter:
 
         Format (27 Felder):
         "EXTF";700;21;"Buchungsstapel";7;YYYYMMDDHHMMSS000;
-        "Berater";"Mandant";WJ-Beginn;Sachkontenlänge;;;Waehrung;...
+        "Berater";"Mandant";WJ-Beginn;Sachkontenlänge;;;Währung;...
         """
         # Zeitstempel: YYYYMMDDHHMMSS + 3 Ziffern
         timestamp = export_date.strftime("%Y%m%d%H%M%S") + "000"
@@ -162,7 +162,7 @@ class BuchungsstapelWriter:
         # WJ-Beginn als YYYYMMDD
         wj_beginn = config.wj_beginn.strftime("%Y%m%d")
 
-        # Header-Felder (32 Felder gemaess DATEV Version 700)
+        # Header-Felder (32 Felder gemäß DATEV Version 700)
         header_fields = [
             self._quote(DATEV_FORMAT_HEADER),   # 1: "EXTF"
             str(DATEV_VERSION),                  # 2: 700
@@ -189,7 +189,7 @@ class BuchungsstapelWriter:
             "",                                  # 23: reserviert
             "",                                  # 24: reserviert
             "",                                  # 25: reserviert
-            self._quote("EUR"),                  # 26: Waehrung
+            self._quote("EUR"),                  # 26: Währung
             "",                                  # 27: reserviert
             "",                                  # 28: Herkunfts-Kennung (leer)
             "",                                  # 29: reserviert
@@ -204,7 +204,7 @@ class BuchungsstapelWriter:
         """
         Schreibt Spaltenkoepfe (Zeile 2).
 
-        Die Spaltenkoepfe muessen in Anfuehrungszeichen stehen.
+        Die Spaltenkoepfe müssen in Anführungszeichen stehen.
         """
         quoted_headers = [self._quote(col) for col in BUCHUNGSSTAPEL_COLUMNS]
         return DATEV_DELIMITER.join(quoted_headers)
@@ -228,7 +228,7 @@ class BuchungsstapelWriter:
         # Feld 2: Soll/Haben-Kennzeichen
         fields[1] = self._quote(buchung.soll_haben)
 
-        # Feld 3: WKZ Umsatz (Waehrung)
+        # Feld 3: WKZ Umsatz (Währung)
         fields[2] = self._quote(buchung.wkz_umsatz)
 
         # Feld 4: Kurs (Wechselkurs, optional)
@@ -307,10 +307,10 @@ class BuchungsstapelWriter:
         Normalisiert Belegfeld-Werte.
 
         MEDIUM-12 FIX:
-        - Entfernt fuehrende/folgende Whitespace
+        - Entfernt führende/folgende Whitespace
         - Ersetzt mehrfache Leerzeichen durch einzelne
-        - Gibt None zurueck bei leeren/whitespace-only Werten
-        - Kuerzt auf max_len
+        - Gibt None zurück bei leeren/whitespace-only Werten
+        - Kürzt auf max_len
         """
         if not value:
             return None
@@ -322,14 +322,14 @@ class BuchungsstapelWriter:
         if not normalized:
             return None
 
-        # Auf maximale Laenge kuerzen
+        # Auf maximale Länge kürzen
         return normalized[:max_len]
 
     def _quote(self, value: str) -> str:
         """
-        Setzt Text in Anfuehrungszeichen.
+        Setzt Text in Anführungszeichen.
 
-        Entfernt vorhandene Anfuehrungszeichen und Semikolons.
+        Entfernt vorhandene Anführungszeichen und Semikolons.
         """
         if not value:
             return '""'
@@ -339,5 +339,5 @@ class BuchungsstapelWriter:
 
 
 def create_buchungsstapel_writer() -> BuchungsstapelWriter:
-    """Factory-Funktion fuer BuchungsstapelWriter."""
+    """Factory-Funktion für BuchungsstapelWriter."""
     return BuchungsstapelWriter()

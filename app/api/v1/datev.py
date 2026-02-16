@@ -2,7 +2,7 @@
 """
 DATEV Export API Endpoints.
 
-Endpunkte fuer:
+Endpunkte für:
 - /api/v1/datev/config - Konfiguration verwalten
 - /api/v1/datev/config/{id}/vendors - Vendor-Mappings verwalten
 - /api/v1/datev/export/preview - Export-Vorschau
@@ -60,7 +60,7 @@ router = APIRouter(prefix="/datev", tags=["DATEV Export"])
     status_code=status.HTTP_201_CREATED,
     summary="DATEV-Konfiguration erstellen",
     description="""
-    Erstellt eine neue DATEV-Konfiguration fuer den Buchungsstapel-Export.
+    Erstellt eine neue DATEV-Konfiguration für den Buchungsstapel-Export.
 
     **Pflichtfelder:**
     - berater_nr: Beraternummer (max. 7 Stellen)
@@ -252,14 +252,14 @@ async def update_config(
     "/config/{config_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Konfiguration loeschen",
+    summary="Konfiguration löschen",
 )
 async def delete_config(
     config_id: uuid_module.UUID,
     db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user),
 ) -> Response:
-    """Loescht eine DATEV-Konfiguration (Soft-Delete)."""
+    """Löscht eine DATEV-Konfiguration (Soft-Delete)."""
     result = await db.execute(
         select(models.DATEVConfiguration).where(
             models.DATEVConfiguration.id == config_id,
@@ -303,8 +303,8 @@ async def delete_config(
     description="""
     Erstellt eine lieferantenspezifische Kontozuordnung.
 
-    Ermoeglicht individuelle Konten pro Lieferant statt Standardkonten.
-    Matching erfolgt ueber: USt-IdNr > IBAN > Firmenname
+    Ermöglicht individuelle Konten pro Lieferant statt Standardkonten.
+    Matching erfolgt über: USt-IdNr > IBAN > Firmenname
     """
 )
 async def create_vendor_mapping(
@@ -314,7 +314,7 @@ async def create_vendor_mapping(
     current_user: models.User = Depends(get_current_active_user),
 ) -> DATEVVendorMappingResponse:
     """Erstellt ein Vendor-Mapping."""
-    # Konfiguration pruefen
+    # Konfiguration prüfen
     result = await db.execute(
         select(models.DATEVConfiguration).where(
             models.DATEVConfiguration.id == config_id,
@@ -351,7 +351,7 @@ async def create_vendor_mapping(
         if vies_validation_result.status == VIESValidationStatus.INVALID:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"USt-IdNr ungueltig: {vies_validation_result.error_message or 'VIES-Pruefung fehlgeschlagen'}"
+                detail=f"USt-IdNr ungültig: {vies_validation_result.error_message or 'VIES-Prüfung fehlgeschlagen'}"
             )
         elif vies_validation_result.status == VIESValidationStatus.ERROR:
             # Bei Service-Fehlern nur warnen, nicht blockieren
@@ -403,7 +403,7 @@ async def list_vendor_mappings(
     current_user: models.User = Depends(get_current_active_user),
 ) -> List[DATEVVendorMappingResponse]:
     """Listet alle Vendor-Mappings einer Konfiguration."""
-    # Konfiguration pruefen
+    # Konfiguration prüfen
     result = await db.execute(
         select(models.DATEVConfiguration).where(
             models.DATEVConfiguration.id == config_id,
@@ -433,8 +433,8 @@ async def list_vendor_mappings(
     description="""
     Aktualisiert ein bestehendes Vendor-Mapping.
 
-    Ermoeglicht Aenderung von Kontozuordnungen, Identifikationsmerkmalen
-    und Kostenstellen fuer einen Lieferanten.
+    Ermöglicht Änderung von Kontozuordnungen, Identifikationsmerkmalen
+    und Kostenstellen für einen Lieferanten.
     """
 )
 async def update_vendor_mapping(
@@ -445,7 +445,7 @@ async def update_vendor_mapping(
     current_user: models.User = Depends(get_current_active_user),
 ) -> DATEVVendorMappingResponse:
     """Aktualisiert ein Vendor-Mapping."""
-    # Config-Ownership pruefen
+    # Config-Ownership prüfen
     config_result = await db.execute(
         select(models.DATEVConfiguration).where(
             models.DATEVConfiguration.id == config_id,
@@ -499,7 +499,7 @@ async def update_vendor_mapping(
     "/config/{config_id}/vendors/{mapping_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Vendor-Mapping loeschen",
+    summary="Vendor-Mapping löschen",
 )
 async def delete_vendor_mapping(
     config_id: uuid_module.UUID,
@@ -507,8 +507,8 @@ async def delete_vendor_mapping(
     db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user),
 ) -> Response:
-    """Loescht ein Vendor-Mapping."""
-    # SECURITY FIX: Zuerst Config-Ownership pruefen (OWASP A07:2021)
+    """Löscht ein Vendor-Mapping."""
+    # SECURITY FIX: Zuerst Config-Ownership prüfen (OWASP A07:2021)
     config_result = await db.execute(
         select(models.DATEVConfiguration).where(
             models.DATEVConfiguration.id == config_id,
@@ -521,7 +521,7 @@ async def delete_vendor_mapping(
             detail="Konfiguration nicht gefunden"
         )
 
-    # Mapping pruefen
+    # Mapping prüfen
     result = await db.execute(
         select(models.DATEVVendorMapping).where(
             models.DATEVVendorMapping.id == mapping_id,
@@ -563,10 +563,10 @@ async def delete_vendor_mapping(
     description="""
     Zeigt Vorschau des Exports ohne tatsaechlichen Download.
 
-    Nuetzlich um zu pruefen:
+    Nuetzlich um zu prüfen:
     - Welche Dokumente exportiert werden
-    - Welche uebersprungen werden (und warum)
-    - Beispiel-Buchungssaetze
+    - Welche übersprungen werden (und warum)
+    - Beispiel-Buchungssätze
     """
 )
 async def preview_export(
@@ -599,7 +599,7 @@ async def preview_export(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Eingabedaten. Bitte pruefen Sie Ihre Angaben."
+            detail="Ungültige Eingabedaten. Bitte prüfen Sie Ihre Angaben."
         )
 
 
@@ -617,9 +617,9 @@ async def preview_export(
     - 116 Spalten gemaess DATEV-Standard
 
     **Voraussetzungen:**
-    - Dokumente muessen extrahierte Rechnungsdaten haben
+    - Dokumente müssen extrahierte Rechnungsdaten haben
     - Rechnungsrichtung muss bekannt sein (Eingang/Ausgang)
-    - Gueltige DATEV-Konfiguration erforderlich
+    - Gültige DATEV-Konfiguration erforderlich
     """
 )
 async def export_buchungsstapel(
@@ -668,7 +668,7 @@ async def export_buchungsstapel(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Eingabedaten. Bitte pruefen Sie Ihre Angaben."
+            detail="Ungültige Eingabedaten. Bitte prüfen Sie Ihre Angaben."
         )
     except Exception as e:
         # SECURITY FIX: Keine Exception-Details an Client senden (Information Disclosure)
@@ -692,7 +692,7 @@ async def export_buchungsstapel(
 )
 async def get_export_history(
     page: int = Query(1, ge=1, description="Seite"),
-    page_size: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    page_size: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     db: AsyncSession = Depends(get_async_db),
     current_user: models.User = Depends(get_current_active_user),
 ) -> DATEVExportHistoryResponse:
@@ -736,15 +736,15 @@ async def get_export_history(
     description="""
     Validiert eine EU USt-IdNr gegen die VIES-Datenbank der EU-Kommission.
 
-    **Format:** 2 Buchstaben Laendercode + Nummer (z.B. DE123456789)
+    **Format:** 2 Buchstaben Ländercode + Nummer (z.B. DE123456789)
 
     **Antwort:**
-    - valid: USt-IdNr ist gueltig und aktiv
-    - invalid: USt-IdNr ist ungueltig oder nicht registriert
-    - error: VIES-Service nicht erreichbar (Ergebnis gecached falls moeglich)
+    - valid: USt-IdNr ist gültig und aktiv
+    - invalid: USt-IdNr ist ungültig oder nicht registriert
+    - error: VIES-Service nicht erreichbar (Ergebnis gecached falls möglich)
 
     **Hinweis:** VIES kann gelegentlich nicht erreichbar sein. Bei Fehlern
-    wird empfohlen, es spaeter erneut zu versuchen.
+    wird empfohlen, es später erneut zu versuchen.
     """
 )
 async def validate_vat_id(
@@ -778,12 +778,12 @@ async def validate_vat_id(
 @router.get(
     "/kontenrahmen",
     response_model=List[KontenrahmenInfo],
-    summary="Verfuegbare Kontenrahmen",
+    summary="Verfügbare Kontenrahmen",
 )
 async def get_kontenrahmen_info(
     current_user: models.User = Depends(get_current_active_user),  # X.3 SECURITY FIX: Auth required
 ) -> List[KontenrahmenInfo]:
-    """Listet verfuegbare Kontenrahmen mit Standardkonten.
+    """Listet verfügbare Kontenrahmen mit Standardkonten.
 
     **REQUIRES AUTHENTICATION**
 

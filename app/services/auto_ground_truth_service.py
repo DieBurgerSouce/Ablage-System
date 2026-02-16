@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Auto Ground-Truth Service fuer Ablage-System OCR.
+Auto Ground-Truth Service für Ablage-System OCR.
 
-Automatische Ground-Truth-Generierung aus High-Confidence OCR fuer Enterprise-Scale.
+Automatische Ground-Truth-Generierung aus High-Confidence OCR für Enterprise-Scale.
 
 Bei 500+ Dokumenten/Tag ist manuelle Annotation unrealistisch.
 Dieser Service implementiert die "Smart Ground-Truth Pipeline":
 
 1. OCR-Ergebnisse mit Confidence >= 95% werden automatisch als Ground-Truth akzeptiert
 2. Umlaut-Validierung vor Auto-Accept (keine "ae" statt "ae" durchlassen)
-3. Strukturelle Validierung fuer Rechnungen (Betrag, Datum, Rechnungsnummer)
-4. 10% Stichproben-Review fuer Qualitaetssicherung
-5. Business-Prioritaet basierend auf Dokumenttyp
+3. Strukturelle Validierung für Rechnungen (Betrag, Datum, Rechnungsnummer)
+4. 10% Stichproben-Review für Qualitätssicherung
+5. Business-Priorität basierend auf Dokumenttyp
 
 Feinpoliert und durchdacht - Enterprise-grade Auto-Annotation.
 """
@@ -85,19 +85,19 @@ class ProcessingResult:
 
 class AutoGroundTruthService:
     """
-    Service fuer automatische Ground-Truth-Generierung aus High-Confidence OCR.
+    Service für automatische Ground-Truth-Generierung aus High-Confidence OCR.
 
     Bei 500+ Docs/Tag: OCR-Ergebnisse mit Confidence > 95% werden
-    automatisch als Ground-Truth akzeptiert (mit Flagging fuer Stichproben-Review).
+    automatisch als Ground-Truth akzeptiert (mit Flagging für Stichproben-Review).
     """
 
-    # Stichproben-Rate fuer Auto-Accepted Samples (10%)
+    # Stichproben-Rate für Auto-Accepted Samples (10%)
     SPOT_CHECK_RATE = 0.10
 
-    # Minimale Textlaenge fuer valide Ground-Truth
+    # Minimale Textlänge für valide Ground-Truth
     MIN_TEXT_LENGTH = 50
 
-    # Default Auto-Accept Confidence (wird von Profile ueberschrieben)
+    # Default Auto-Accept Confidence (wird von Profile überschrieben)
     DEFAULT_CONFIDENCE_THRESHOLD = 0.95
 
     # Strukturelle Validierung: Pflichtfelder pro Dokumenttyp
@@ -109,7 +109,7 @@ class AutoGroundTruthService:
         "order_confirmation": ["date", "order_number"],
     }
 
-    # Regex-Pattern fuer Feld-Erkennung
+    # Regex-Pattern für Feld-Erkennung
     FIELD_PATTERNS = {
         "invoice_number": [
             r"Rechnungs?-?Nr\.?\s*:?\s*([\w\-/]+)",
@@ -184,10 +184,10 @@ class AutoGroundTruthService:
             text_length=len(ocr_text) if ocr_text else 0,
         )
 
-        # Hole Business-Profil fuer Dokumenttyp
+        # Hole Business-Profil für Dokumenttyp
         profile = await self._get_document_profile(db, document_type)
 
-        # Validiere fuer Auto-Accept
+        # Validiere für Auto-Accept
         accept_result = await self.validate_for_auto_accept(
             text=ocr_text,
             document_type=document_type,
@@ -250,9 +250,9 @@ class AutoGroundTruthService:
         extracted_fields: Optional[Dict[str, Any]] = None,
     ) -> AutoAcceptResult:
         """
-        Validiert ob Text fuer Auto-Accept geeignet.
+        Validiert ob Text für Auto-Accept geeignet.
 
-        Prueft:
+        Prüft:
         - Confidence >= Schwellenwert
         - Umlaut-Konsistenz (keine "ae" statt "ae")
         - Strukturelle Felder (Rechnungsnummer, Datum bei Invoices)
@@ -294,7 +294,7 @@ class AutoGroundTruthService:
             else 1.0
         )
 
-        # 1. Text-Laenge pruefen
+        # 1. Text-Länge prüfen
         if not text or len(text) < min_text_length:
             reasons.append(f"Text zu kurz ({len(text) if text else 0} < {min_text_length})")
             should_accept = False
@@ -302,7 +302,7 @@ class AutoGroundTruthService:
         else:
             validation_details["text_length_valid"] = True
 
-        # 2. Confidence pruefen
+        # 2. Confidence prüfen
         if confidence < confidence_threshold:
             reasons.append(f"Confidence zu niedrig ({confidence:.2%} < {confidence_threshold:.2%})")
             should_accept = False
@@ -329,7 +329,7 @@ class AutoGroundTruthService:
                 if len(umlaut_result.suggestions) > 5:
                     should_accept = False
 
-        # 4. OCR-Artefakt-Pruefung
+        # 4. OCR-Artefakt-Prüfung
         artifact_check = self._check_ocr_artifacts(text)
         validation_details["artifacts"] = artifact_check
         if artifact_check["has_artifacts"]:
@@ -371,7 +371,7 @@ class AutoGroundTruthService:
         max_documents: int = 100,
     ) -> Dict[str, Any]:
         """
-        Verarbeitet einen Batch von Dokumenten fuer Auto-Ground-Truth.
+        Verarbeitet einen Batch von Dokumenten für Auto-Ground-Truth.
 
         Args:
             db: Datenbank-Session
@@ -435,7 +435,7 @@ class AutoGroundTruthService:
         db: AsyncSession,
         document_type: Optional[str],
     ) -> Optional[BusinessDocumentProfile]:
-        """Holt Business-Profil fuer Dokumenttyp."""
+        """Holt Business-Profil für Dokumenttyp."""
         if not document_type:
             return None
 
@@ -486,8 +486,8 @@ class AutoGroundTruthService:
         if not file_hash and file_path:
             file_hash = hashlib.sha256(file_path.encode()).hexdigest()
 
-        # Entscheide ob Stichprobe - DETERMINISTIC: Hash-basiert fuer Reproduzierbarkeit
-        # Verwende file_hash oder document_id fuer deterministische Entscheidung
+        # Entscheide ob Stichprobe - DETERMINISTIC: Hash-basiert für Reproduzierbarkeit
+        # Verwende file_hash oder document_id für deterministische Entscheidung
         spot_check_seed = file_hash or str(document_id) or ""
         spot_check_hash = int(hashlib.md5(spot_check_seed.encode()).hexdigest()[:8], 16)
         needs_spot_check = (spot_check_hash % 100) < (self.SPOT_CHECK_RATE * 100)
@@ -588,7 +588,7 @@ class AutoGroundTruthService:
         return self.umlaut_validator.validate_text(text)
 
     def _check_ocr_artifacts(self, text: str) -> Dict[str, Any]:
-        """Prueft auf typische OCR-Artefakte."""
+        """Prüft auf typische OCR-Artefakte."""
         artifact_types = []
 
         # Zu viele Sonderzeichen in Folge
@@ -619,12 +619,12 @@ class AutoGroundTruthService:
         document_type: str,
         extracted_fields: Optional[Dict[str, Any]] = None,
     ) -> StructuralValidationResult:
-        """Validiert strukturelle Anforderungen fuer Dokumenttyp."""
+        """Validiert strukturelle Anforderungen für Dokumenttyp."""
         required_fields = self.REQUIRED_FIELDS.get(document_type, [])
         found_fields = {}
         missing_fields = []
 
-        # Pruefe bereits extrahierte Felder
+        # Prüfe bereits extrahierte Felder
         if extracted_fields:
             for field in required_fields:
                 if field in extracted_fields and extracted_fields[field]:
@@ -659,7 +659,7 @@ class AutoGroundTruthService:
         )
 
     def _detect_umlauts(self, text: str) -> bool:
-        """Erkennt ob Text deutsche Umlaute enthaelt."""
+        """Erkennt ob Text deutsche Umlaute enthält."""
         umlaut_pattern = r'[äöüÄÖÜß]'
         return bool(re.search(umlaut_pattern, text))
 

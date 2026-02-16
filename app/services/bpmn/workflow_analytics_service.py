@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Workflow Analytics Service fuer BPMN Engine.
+"""Workflow Analytics Service für BPMN Engine.
 
 Enterprise-Grade Analytics mit:
 - Bottleneck-Analyse
@@ -37,7 +37,7 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 class WorkflowAnalyticsService:
-    """Service fuer Workflow-Analysen und Metriken.
+    """Service für Workflow-Analysen und Metriken.
 
     Bietet Einblicke in:
     - Workflow-Performance
@@ -62,8 +62,8 @@ class WorkflowAnalyticsService:
     ) -> Dict[str, Any]:
         """Identifiziert Workflow-Engpaesse.
 
-        Analysiert welche Tasks/Schritte am laengsten dauern
-        und wo Workflows am haeufigsten haengen bleiben.
+        Analysiert welche Tasks/Schritte am längsten dauern
+        und wo Workflows am häufigsten haengen bleiben.
 
         Args:
             company_id: Mandant
@@ -210,23 +210,23 @@ class WorkflowAnalyticsService:
         if slow_tasks and slow_tasks[0].get("avg_duration_hours", 0) > 24:
             task_name = slow_tasks[0].get("element_name", "Unbekannt")
             recommendations.append(
-                f"Task '{task_name}' dauert durchschnittlich ueber 24 Stunden. "
-                f"Ueberpruefen Sie den Prozess auf Optimierungsmoeglichkeiten."
+                f"Task '{task_name}' dauert durchschnittlich über 24 Stunden. "
+                f"Überprüfen Sie den Prozess auf Optimierungsmöglichkeiten."
             )
 
         # Blockierte Tasks
         if blocked_tasks and blocked_tasks[0].get("blocked_count", 0) > 10:
             task_name = blocked_tasks[0].get("element_name", "Unbekannt")
             recommendations.append(
-                f"Ueber 10 Tasks vom Typ '{task_name}' warten auf Bearbeitung. "
-                f"Erwaegen Sie zusaetzliche Ressourcen oder Automatisierung."
+                f"Über 10 Tasks vom Typ '{task_name}' warten auf Bearbeitung. "
+                f"Erwaegen Sie zusätzliche Ressourcen oder Automatisierung."
             )
 
         # Eskalationen
         if escalation_hotspots and escalation_hotspots[0].get("escalation_count", 0) > 5:
             task_name = escalation_hotspots[0].get("element_name", "Unbekannt")
             recommendations.append(
-                f"Task '{task_name}' wird haeufig eskaliert. "
+                f"Task '{task_name}' wird häufig eskaliert. "
                 f"Schulung oder Prozessanpassung empfohlen."
             )
 
@@ -248,7 +248,7 @@ class WorkflowAnalyticsService:
         time_range_days: int = 30,
         group_by: str = "day",  # day, week, month
     ) -> Dict[str, Any]:
-        """Gibt Durchsatz-Metriken zurueck.
+        """Gibt Durchsatz-Metriken zurück.
 
         Args:
             company_id: Mandant
@@ -356,7 +356,7 @@ class WorkflowAnalyticsService:
         company_id: UUID,
         time_range_days: int = 30,
     ) -> Dict[str, Any]:
-        """Gibt Produktivitaetsmetriken fuer einen User zurueck.
+        """Gibt Produktivitaetsmetriken für einen User zurück.
 
         Args:
             user_id: User-ID
@@ -420,7 +420,7 @@ class WorkflowAnalyticsService:
         )
         pending_count = await self.session.scalar(pending_query) or 0
 
-        # Ueberfaellige Tasks
+        # Überfällige Tasks
         overdue_query = (
             select(func.count(ProcessTask.id))
             .where(
@@ -476,8 +476,8 @@ class WorkflowAnalyticsService:
             "performance_score": performance_score,
             "score_breakdown": {
                 "completion_rate": "Basierend auf abgeschlossenen Tasks",
-                "overdue_penalty": "Abzug fuer ueberfaellige Tasks",
-                "escalation_penalty": "Abzug fuer eskalierte Tasks",
+                "overdue_penalty": "Abzug für überfällige Tasks",
+                "escalation_penalty": "Abzug für eskalierte Tasks",
             },
         }
 
@@ -488,14 +488,14 @@ class WorkflowAnalyticsService:
         overdue: int,
         escalated: int,
     ) -> Dict[str, Any]:
-        """Berechnet Performance-Score fuer User."""
+        """Berechnet Performance-Score für User."""
         # Basis-Score
         base_score = 100
 
         # Completion Bonus (bis zu +20)
         completion_bonus = min(completed * 2, 20)
 
-        # Overdue Penalty (-5 pro ueberfaelligem Task)
+        # Overdue Penalty (-5 pro überfälligem Task)
         overdue_penalty = min(overdue * 5, 30)
 
         # Escalation Penalty (-3 pro eskaliertem Task)
@@ -536,7 +536,7 @@ class WorkflowAnalyticsService:
         company_id: UUID,
         time_range_days: int = 30,
     ) -> Dict[str, Any]:
-        """Gibt durchschnittliche Dauer pro Workflow-Typ zurueck.
+        """Gibt durchschnittliche Dauer pro Workflow-Typ zurück.
 
         Args:
             company_id: Mandant
@@ -640,7 +640,7 @@ class WorkflowAnalyticsService:
             time_range_days: Zeitraum in Tagen
 
         Returns:
-            Vollstaendiges Dashboard
+            Vollständiges Dashboard
         """
         # Alle Metriken parallel sammeln
         bottlenecks = await self.get_bottleneck_analysis(

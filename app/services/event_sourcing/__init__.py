@@ -1,4 +1,4 @@
-"""Event-Sourcing - Hybrid-Ansatz fuer kritische Geschaeftspfade."""
+"""Event-Sourcing - Hybrid-Ansatz für kritische Geschäftspfade."""
 
 from .event_store import EventStore, StoredEvent
 from .snapshot_service import SnapshotService, SnapshotData

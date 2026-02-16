@@ -7,7 +7,7 @@ Enterprise-Level ERP-Synchronisation:
 - Konflikt-Benachrichtigungen
 - Sync-Status-Tracking
 
-Feinpoliert und durchdacht - Zuverlaessige ERP-Sync-Automatisierung.
+Feinpoliert und durchdacht - Zuverlässige ERP-Sync-Automatisierung.
 """
 
 import structlog
@@ -72,10 +72,10 @@ async def get_connection_config(db: AsyncSession, connection_id: UUID) -> Option
                 connection_id=str(connection.id),
                 **safe_error_log(e)
             )
-            # Bei Entschluesselungsfehler: Key ist nicht verfuegbar
+            # Bei Entschluesselungsfehler: Key ist nicht verfügbar
             api_key = None
         except Exception as e:
-            # Fallback: Wenn Key nicht verschluesselt ist (Legacy-Daten)
+            # Fallback: Wenn Key nicht verschlüsselt ist (Legacy-Daten)
             logger.debug(
                 "erp_api_key_plaintext_fallback",
                 connection_id=str(connection.id)
@@ -382,7 +382,7 @@ def sync_entity(
 
 @celery_app.task(name="app.workers.tasks.erp_sync_tasks.scheduled_sync_all")
 def scheduled_sync_all() -> Dict[str, Any]:
-    """Periodischer Task: Synchronisiert alle faelligen Verbindungen.
+    """Periodischer Task: Synchronisiert alle fälligen Verbindungen.
 
     Wird vom Celery Beat Schedule aufgerufen.
     """
@@ -488,9 +488,9 @@ def test_connection(connection_id: str) -> Dict[str, Any]:
 
 @celery_app.task(name="app.workers.tasks.erp_sync_tasks.notify_conflicts")
 def notify_conflicts() -> Dict[str, Any]:
-    """Benachrichtigt ueber offene Konflikte.
+    """Benachrichtigt über offene Konflikte.
 
-    Wird periodisch ausgefuehrt um Admins ueber
+    Wird periodisch ausgeführt um Admins über
     ungeloeste Konflikte zu informieren.
     """
     import asyncio
@@ -582,10 +582,10 @@ def cleanup_old_history(days: int = 90) -> Dict[str, Any]:
     """Bereinigt alte Sync-Historie.
 
     Args:
-        days: Eintraege aelter als X Tage loeschen
+        days: Einträge älter als X Tage löschen
 
     Returns:
-        Anzahl geloeschter Eintraege
+        Anzahl gelöschter Einträge
     """
     import asyncio
     from sqlalchemy import delete

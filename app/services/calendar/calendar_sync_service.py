@@ -22,7 +22,7 @@ class CalendarProvider(str, Enum):
 
 @dataclass
 class CalendarEvent:
-    """Kalender-Ereignis fuer Export."""
+    """Kalender-Ereignis für Export."""
     uid: str
     summary: str
     description: str
@@ -36,7 +36,7 @@ class CalendarEvent:
 
 @dataclass
 class SyncConfig:
-    """Konfiguration fuer Kalender-Synchronisation."""
+    """Konfiguration für Kalender-Synchronisation."""
     provider: CalendarProvider
     calendar_url: Optional[str] = None  # CalDAV URL
     username: Optional[str] = None
@@ -138,7 +138,7 @@ class CalendarSyncService:
 
     @staticmethod
     def _ical_escape(text: str) -> str:
-        """Escaped Sonderzeichen fuer iCalendar."""
+        """Escaped Sonderzeichen für iCalendar."""
         return text.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")
 
     @staticmethod
@@ -216,7 +216,7 @@ class CalendarSyncService:
 
         if config.provider == CalendarProvider.ICAL_FILE:
             return ExecutorSyncResult(
-                errors=["iCal-Export benoetigt keine Synchronisierung."]
+                errors=["iCal-Export benötigt keine Synchronisierung."]
             )
 
         executor = CalendarSyncExecutor()
@@ -247,7 +247,7 @@ class CalendarSyncService:
 
         config = await self.get_sync_config(company_id)
 
-        # Sync-State laden fuer Event-Zaehler
+        # Sync-State laden für Event-Zähler
         stmt = select(CompanySettings).where(CompanySettings.id == company_id)
         result = await db.execute(stmt)
         settings_row = result.scalar_one_or_none()
@@ -280,9 +280,9 @@ class CalendarSyncService:
             db: Datenbank-Session
             company_id: Firmen-ID
             provider: Provider-Name
-            calendar_url: CalDAV-URL (nur fuer CalDAV)
-            username: Benutzername (nur fuer CalDAV)
-            password: Passwort (nur fuer CalDAV)
+            calendar_url: CalDAV-URL (nur für CalDAV)
+            username: Benutzername (nur für CalDAV)
+            password: Passwort (nur für CalDAV)
 
         Returns:
             Tuple aus (Erfolg, Statusmeldung auf Deutsch)
@@ -290,7 +290,7 @@ class CalendarSyncService:
         try:
             if provider == "caldav":
                 if not calendar_url or not username or not password:
-                    return False, "CalDAV benoetigt URL, Benutzername und Passwort."
+                    return False, "CalDAV benötigt URL, Benutzername und Passwort."
 
                 from app.services.calendar.caldav_client import CaldavClient
 
@@ -315,7 +315,7 @@ class CalendarSyncService:
                 )
 
                 if not token:
-                    return False, "Keine gueltige Google-OAuth-Verbindung. Bitte zuerst autorisieren."
+                    return False, "Keine gültige Google-OAuth-Verbindung. Bitte zuerst autorisieren."
 
                 from app.services.calendar.google_calendar_client import GoogleCalendarClient
 
@@ -337,7 +337,7 @@ class CalendarSyncService:
                 )
 
                 if not token:
-                    return False, "Keine gueltige Outlook-OAuth-Verbindung. Bitte zuerst autorisieren."
+                    return False, "Keine gültige Outlook-OAuth-Verbindung. Bitte zuerst autorisieren."
 
                 from app.services.calendar.microsoft_calendar_client import MicrosoftCalendarClient
 
@@ -354,4 +354,4 @@ class CalendarSyncService:
                 provider=provider,
                 **safe_error_log(e),
             )
-            return False, "Verbindungstest fehlgeschlagen. Bitte Konfiguration pruefen."
+            return False, "Verbindungstest fehlgeschlagen. Bitte Konfiguration prüfen."

@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Email Service fuer Ablage-System.
+Email Service für Ablage-System.
 
-Zentrale Email-Versand-Komponente fuer:
+Zentrale Email-Versand-Komponente für:
 - Zahlungserinnerungen und Mahnungen (Dunning)
 - Willkommenspakete (Onboarding)
 - System-Benachrichtigungen
 
-Unterstuetzt:
+Unterstützt:
 - SMTP mit TLS
 - HTML und Text Email Templates
 - Asynchroner Versand via aiosmtplib
@@ -67,8 +67,8 @@ class EmailResult:
 
 @dataclass
 class DunningEmailData:
-    """Daten fuer Mahnungs-Emails."""
-    # Empfaenger
+    """Daten für Mahnungs-Emails."""
+    # Empfänger
     recipient_email: str
     recipient_name: str
     customer_number: Optional[str] = None
@@ -103,7 +103,7 @@ class DunningEmailData:
 
 @dataclass
 class WelcomeEmailData:
-    """Daten fuer Willkommens-Emails."""
+    """Daten für Willkommens-Emails."""
     recipient_email: str
     recipient_name: str
     customer_number: str
@@ -192,7 +192,7 @@ class EmailService:
 
     @property
     def is_configured(self) -> bool:
-        """Prueft ob SMTP konfiguriert ist."""
+        """Prüft ob SMTP konfiguriert ist."""
         return self._is_configured
 
     def _get_jinja_env(self) -> Environment:
@@ -208,7 +208,7 @@ class EmailService:
                 lstrip_blocks=True,
             )
 
-            # Custom Filter fuer Formatierung
+            # Custom Filter für Formatierung
             self._jinja_env.filters["currency"] = self._format_currency
             self._jinja_env.filters["date"] = self._format_date
             self._jinja_env.filters["date_short"] = self._format_date_short
@@ -217,7 +217,7 @@ class EmailService:
 
     @staticmethod
     def _format_currency(value: Decimal | float, currency: str = "EUR") -> str:
-        """Formatiert Betrag als Waehrung."""
+        """Formatiert Betrag als Währung."""
         if isinstance(value, float):
             value = Decimal(str(value))
         symbols = {"EUR": "€", "USD": "$", "GBP": "£", "CHF": "CHF"}
@@ -256,7 +256,7 @@ class EmailService:
         Sendet eine Email.
 
         Args:
-            to: Empfaenger-Adresse
+            to: Empfänger-Adresse
             subject: Betreff
             html_body: HTML-Inhalt
             text_body: Plain-Text-Inhalt (optional)
@@ -268,7 +268,7 @@ class EmailService:
             EmailResult mit Status
         """
         if aiosmtplib is None:
-            logger.warning("aiosmtplib_not_installed", message="Email-Versand nicht verfuegbar")
+            logger.warning("aiosmtplib_not_installed", message="Email-Versand nicht verfügbar")
             return EmailResult(success=False, error="aiosmtplib nicht installiert")
 
         # Wenn nicht konfiguriert, nur loggen
@@ -371,7 +371,7 @@ class EmailService:
                     await asyncio.sleep(2 ** attempt)
 
         logger.error(
-            "email_versand_endgueltig_fehlgeschlagen",
+            "email_versand_endgültig_fehlgeschlagen",
             to=to,
             subject=subject,
             error=last_error,
@@ -399,7 +399,7 @@ class EmailService:
         Sendet freundliche Zahlungserinnerung (Mahnstufe 0).
 
         Args:
-            entity: Geschaeftspartner
+            entity: Geschäftspartner
             invoice: Rechnungsverfolgung
             company: Absender-Firma
 
@@ -411,7 +411,7 @@ class EmailService:
                 success=False,
                 recipient="",
                 subject="",
-                error="Keine Email-Adresse fuer Entity vorhanden",
+                error="Keine Email-Adresse für Entity vorhanden",
             )
 
         # Daten aufbereiten
@@ -442,7 +442,7 @@ class EmailService:
         Sendet Mahnung (Mahnstufe 1-3).
 
         Args:
-            entity: Geschaeftspartner
+            entity: Geschäftspartner
             invoice: Rechnungsverfolgung
             company: Absender-Firma
             dunning_level: Mahnstufe (1, 2 oder 3)
@@ -455,7 +455,7 @@ class EmailService:
                 success=False,
                 recipient="",
                 subject="",
-                error="Keine Email-Adresse fuer Entity vorhanden",
+                error="Keine Email-Adresse für Entity vorhanden",
             )
 
         if dunning_level < 1:
@@ -466,7 +466,7 @@ class EmailService:
         # Daten aufbereiten
         data = self._prepare_dunning_data(entity, invoice, company, dunning_level=dunning_level)
 
-        # Template waehlen
+        # Template wählen
         template_map = {
             1: "dunning_level_1.html",
             2: "dunning_level_2.html",
@@ -501,14 +501,14 @@ class EmailService:
         company: "Company",
         dunning_level: int,
     ) -> DunningEmailData:
-        """Bereitet Daten fuer Mahnungs-Email auf."""
+        """Bereitet Daten für Mahnungs-Email auf."""
         from datetime import timedelta
 
-        # Mahngebuehren je Stufe
+        # Mahngebühren je Stufe
         dunning_fees = {0: Decimal("0.00"), 1: Decimal("5.00"), 2: Decimal("10.00"), 3: Decimal("15.00")}
         dunning_fee = dunning_fees.get(dunning_level, Decimal("0.00"))
 
-        # Tage ueberfaellig berechnen
+        # Tage überfällig berechnen
         days_overdue = 0
         if invoice.due_date:
             delta = datetime.now(timezone.utc) - invoice.due_date
@@ -587,13 +587,13 @@ zur folgenden Rechnung steht noch eine Zahlung aus:
 
 Rechnung:       {data.invoice_number}
 Rechnungsdatum: {self._format_date(data.invoice_date)}
-Faelligkeit:    {self._format_date(data.due_date)}
+Fälligkeit:    {self._format_date(data.due_date)}
 
 Offener Betrag: {self._format_currency(data.outstanding_amount)}
 """
 
         if data.dunning_fee > 0:
-            text += f"Mahngebuehr:    {self._format_currency(data.dunning_fee)}\n"
+            text += f"Mahngebühr:    {self._format_currency(data.dunning_fee)}\n"
 
         if data.interest_amount > 0:
             text += f"Verzugszinsen:  {self._format_currency(data.interest_amount)}\n"
@@ -601,7 +601,7 @@ Offener Betrag: {self._format_currency(data.outstanding_amount)}
         text += f"""
 Gesamtbetrag:   {self._format_currency(data.total_amount)}
 
-Bitte ueberweisen Sie den Gesamtbetrag bis zum {self._format_date(data.payment_deadline)}.
+Bitte überweisen Sie den Gesamtbetrag bis zum {self._format_date(data.payment_deadline)}.
 
 Bankverbindung:
 IBAN: {data.company_iban}
@@ -657,7 +657,7 @@ Mit freundlichen Gruessen
             <td>Rechnung {data.invoice_number} vom {self._format_date(data.invoice_date)}</td>
             <td class="amount">{self._format_currency(data.outstanding_amount)}</td>
         </tr>
-        {"<tr><td>Mahngebuehr</td><td class='amount'>" + self._format_currency(data.dunning_fee) + "</td></tr>" if data.dunning_fee > 0 else ""}
+        {"<tr><td>Mahngebühr</td><td class='amount'>" + self._format_currency(data.dunning_fee) + "</td></tr>" if data.dunning_fee > 0 else ""}
         {"<tr><td>Verzugszinsen</td><td class='amount'>" + self._format_currency(data.interest_amount) + "</td></tr>" if data.interest_amount > 0 else ""}
         <tr class="total">
             <td>Gesamtbetrag</td>
@@ -665,7 +665,7 @@ Mit freundlichen Gruessen
         </tr>
     </table>
 
-    <p>Bitte ueberweisen Sie den Gesamtbetrag bis zum <strong>{self._format_date(data.payment_deadline)}</strong>.</p>
+    <p>Bitte überweisen Sie den Gesamtbetrag bis zum <strong>{self._format_date(data.payment_deadline)}</strong>.</p>
 
     <div class="bank">
         <strong>Bankverbindung:</strong><br>
@@ -695,7 +695,7 @@ Mit freundlichen Gruessen
         Sendet Willkommenspaket an neuen Kunden.
 
         Args:
-            entity: Neuer Geschaeftspartner
+            entity: Neuer Geschäftspartner
             company: Unsere Firma
             credit_limit: Kreditlimit
             payment_terms_days: Zahlungsziel in Tagen
@@ -708,7 +708,7 @@ Mit freundlichen Gruessen
                 success=False,
                 recipient="",
                 subject="",
-                error="Keine Email-Adresse fuer Entity vorhanden",
+                error="Keine Email-Adresse für Entity vorhanden",
             )
 
         # Daten aufbereiten
@@ -755,7 +755,7 @@ Willkommen bei {data.company_name}!
 
 Sehr geehrte(r) {data.recipient_name},
 
-vielen Dank fuer Ihr Vertrauen! Ihr Kundenkonto wurde erfolgreich eingerichtet.
+vielen Dank für Ihr Vertrauen! Ihr Kundenkonto wurde erfolgreich eingerichtet.
 
 Ihre Kundennummer: {data.customer_number}
 
@@ -763,7 +763,7 @@ Konditionen:
 - Kreditlimit: {self._format_currency(data.credit_limit)}
 - Zahlungsziel: {data.payment_terms_days} Tage netto
 
-Bei Fragen stehen wir Ihnen gerne zur Verfuegung:
+Bei Fragen stehen wir Ihnen gerne zur Verfügung:
 Tel: {data.contact_phone}
 Email: {data.contact_email}
 
@@ -772,7 +772,7 @@ Mit freundlichen Gruessen
 """.strip()
 
     def _generate_fallback_welcome_html(self, data: WelcomeEmailData) -> str:
-        """Generiert Fallback-HTML fuer Welcome-Email."""
+        """Generiert Fallback-HTML für Welcome-Email."""
         return f"""
 <!DOCTYPE html>
 <html lang="de">
@@ -791,7 +791,7 @@ Mit freundlichen Gruessen
 
     <p>Sehr geehrte(r) {data.recipient_name},</p>
 
-    <p>vielen Dank fuer Ihr Vertrauen! Ihr Kundenkonto wurde erfolgreich eingerichtet.</p>
+    <p>vielen Dank für Ihr Vertrauen! Ihr Kundenkonto wurde erfolgreich eingerichtet.</p>
 
     <div class="info-box">
         <p><strong>Ihre Kundennummer:</strong> <span class="highlight">{data.customer_number}</span></p>
@@ -799,7 +799,7 @@ Mit freundlichen Gruessen
         <p><strong>Zahlungsziel:</strong> {data.payment_terms_days} Tage netto</p>
     </div>
 
-    <p>Bei Fragen stehen wir Ihnen gerne zur Verfuegung:</p>
+    <p>Bei Fragen stehen wir Ihnen gerne zur Verfügung:</p>
     <p>Tel: {data.contact_phone}<br>Email: {data.contact_email}</p>
 
     <p>Mit freundlichen Gruessen<br><strong>{data.company_name}</strong></p>
@@ -823,7 +823,7 @@ Mit freundlichen Gruessen
         company_id: UUID,
     ) -> EmailResult:
         """
-        Sendet Email-Erinnerung fuer Vertragsfristen.
+        Sendet Email-Erinnerung für Vertragsfristen.
 
         Args:
             contract_id: Vertrags-ID
@@ -832,25 +832,25 @@ Mit freundlichen Gruessen
             deadline_type: 'notice_deadline' oder 'end_date'
             deadline_date: Datum der Frist
             days_remaining: Tage bis zur Frist
-            recipient_user_id: User-ID des Empfaengers
+            recipient_user_id: User-ID des Empfängers
             company_id: Firmen-ID
 
         Returns:
             EmailResult
         """
-        # Empfaenger-Email ermitteln
+        # Empfänger-Email ermitteln
         recipient_email = await self._get_user_email(recipient_user_id)
         if not recipient_email:
             return EmailResult(
                 success=False,
                 recipient="",
                 subject="",
-                error="Keine Email-Adresse fuer Benutzer gefunden",
+                error="Keine Email-Adresse für Benutzer gefunden",
             )
 
         # Deadline-Typ formatieren
         deadline_type_de = (
-            "Kuendigungsfrist" if deadline_type == "notice_deadline"
+            "Kündigungsfrist" if deadline_type == "notice_deadline"
             else "Vertragsende"
         )
         deadline_date_str = (
@@ -871,7 +871,7 @@ Verbleibende Tage: {days_remaining}
 
 {'DRINGEND: Die Frist laeuft in weniger als 7 Tagen ab!' if days_remaining <= 7 else ''}
 
-Bitte pruefen Sie den Vertrag und ergreifen Sie ggf. erforderliche Massnahmen.
+Bitte prüfen Sie den Vertrag und ergreifen Sie ggf. erforderliche Massnahmen.
 
 ---
 Diese Nachricht wurde automatisch vom Ablage-System generiert.
@@ -898,7 +898,7 @@ Diese Nachricht wurde automatisch vom Ablage-System generiert.
 
     {'<p style="color: #dc2626; font-weight: bold;">⚠️ DRINGEND: Die Frist laeuft in weniger als 7 Tagen ab!</p>' if days_remaining <= 7 else ''}
 
-    <p>Bitte pruefen Sie den Vertrag und ergreifen Sie ggf. erforderliche Massnahmen.</p>
+    <p>Bitte prüfen Sie den Vertrag und ergreifen Sie ggf. erforderliche Massnahmen.</p>
 
     <hr style="margin-top: 30px; border: none; border-top: 1px solid #e5e7eb;">
     <p style="font-size: 0.8em; color: #6b7280;">Diese Nachricht wurde automatisch vom Ablage-System generiert.</p>
@@ -924,15 +924,15 @@ Diese Nachricht wurde automatisch vom Ablage-System generiert.
         company_id: UUID,
     ) -> EmailResult:
         """
-        Sendet Email-Erinnerung fuer Vertrags-Meilensteine.
+        Sendet Email-Erinnerung für Vertrags-Meilensteine.
 
         Args:
             contract_id: Vertrags-ID
             contract_title: Vertragstitel
             milestone_title: Meilenstein-Titel
-            scheduled_date: Faelligkeitsdatum
-            days_remaining: Tage bis zur Faelligkeit
-            recipient_user_id: User-ID des Empfaengers
+            scheduled_date: Fälligkeitsdatum
+            days_remaining: Tage bis zur Fälligkeit
+            recipient_user_id: User-ID des Empfängers
             company_id: Firmen-ID
 
         Returns:
@@ -944,14 +944,14 @@ Diese Nachricht wurde automatisch vom Ablage-System generiert.
                 success=False,
                 recipient="",
                 subject="",
-                error="Keine Email-Adresse fuer Benutzer gefunden",
+                error="Keine Email-Adresse für Benutzer gefunden",
             )
 
         scheduled_date_str = (
             scheduled_date.strftime("%d.%m.%Y") if scheduled_date else "unbekannt"
         )
 
-        subject = f"Meilenstein faellig in {days_remaining} Tagen - {milestone_title}"
+        subject = f"Meilenstein fällig in {days_remaining} Tagen - {milestone_title}"
 
         text_body = f"""
 MEILENSTEIN-ERINNERUNG
@@ -959,10 +959,10 @@ MEILENSTEIN-ERINNERUNG
 Vertrag: {contract_title}
 Meilenstein: {milestone_title}
 
-Faelligkeitsdatum: {scheduled_date_str}
+Fälligkeitsdatum: {scheduled_date_str}
 Verbleibende Tage: {days_remaining}
 
-{'DRINGEND: Der Meilenstein ist in weniger als 7 Tagen faellig!' if days_remaining <= 7 else ''}
+{'DRINGEND: Der Meilenstein ist in weniger als 7 Tagen fällig!' if days_remaining <= 7 else ''}
 
 Bitte stellen Sie sicher, dass alle erforderlichen Arbeiten rechtzeitig abgeschlossen werden.
 
@@ -984,11 +984,11 @@ Diese Nachricht wurde automatisch vom Ablage-System generiert.
     <div style="background: #fef3c7; padding: 15px; margin: 20px 0; border-radius: 8px; border-left: 4px solid {urgency_color};">
         <p><strong>Vertrag:</strong> {contract_title}</p>
         <p><strong>Meilenstein:</strong> {milestone_title}</p>
-        <p><strong>Faelligkeitsdatum:</strong> {scheduled_date_str}</p>
+        <p><strong>Fälligkeitsdatum:</strong> {scheduled_date_str}</p>
         <p><strong>Verbleibende Tage:</strong> <span style="color: {urgency_color}; font-weight: bold;">{days_remaining}</span></p>
     </div>
 
-    {'<p style="color: #dc2626; font-weight: bold;">⚠️ DRINGEND: Der Meilenstein ist in weniger als 7 Tagen faellig!</p>' if days_remaining <= 7 else ''}
+    {'<p style="color: #dc2626; font-weight: bold;">⚠️ DRINGEND: Der Meilenstein ist in weniger als 7 Tagen fällig!</p>' if days_remaining <= 7 else ''}
 
     <p>Bitte stellen Sie sicher, dass alle erforderlichen Arbeiten rechtzeitig abgeschlossen werden.</p>
 
@@ -1038,7 +1038,7 @@ _email_service_instance: Optional[EmailService] = None
 
 def get_email_service() -> EmailService:
     """
-    Factory-Funktion fuer EmailService (Singleton).
+    Factory-Funktion für EmailService (Singleton).
 
     Returns:
         EmailService Instanz

@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Communication Hub Service - 360° Geschaeftspartner-Ansicht.
+Communication Hub Service - 360° Geschäftspartner-Ansicht.
 
 Vision 2026+ Feature #1: Kommunikations-Hub
-Aggregiert alle Interaktionen mit einem Geschaeftspartner:
+Aggregiert alle Interaktionen mit einem Geschäftspartner:
 - Emails (aus Email-Import)
 - Mahnungen & Zahlungshistorie
 - Telefon-Notizen
@@ -101,7 +101,7 @@ class InvoiceSummary:
 
 @dataclass
 class RiskTrend:
-    """Risiko-Trend fuer einen Partner."""
+    """Risiko-Trend für einen Partner."""
     current_score: Optional[float] = None
     previous_score: Optional[float] = None
     trend_direction: str = "stable"  # improving, stable, declining
@@ -112,7 +112,7 @@ class RiskTrend:
 
 @dataclass
 class CommunicationHubData:
-    """Vollstaendige 360°-Ansicht eines Geschaeftspartners."""
+    """Vollständige 360°-Ansicht eines Geschäftspartners."""
     entity: Dict[str, Any]
     timeline: List[CommunicationTimelineItem]
     invoice_summary: InvoiceSummary
@@ -125,9 +125,9 @@ class CommunicationHubData:
 
 class CommunicationHubService:
     """
-    Service fuer die 360° Geschaeftspartner-Ansicht.
+    Service für die 360° Geschäftspartner-Ansicht.
 
-    Aggregiert alle relevanten Daten fuer eine zentrale Uebersicht.
+    Aggregiert alle relevanten Daten für eine zentrale Übersicht.
     """
 
     def __init__(self, db: AsyncSession):
@@ -143,12 +143,12 @@ class CommunicationHubService:
         include_sections: Optional[List[str]] = None,
     ) -> CommunicationHubData:
         """
-        Holt die vollstaendige 360°-Ansicht eines Geschaeftspartners.
+        Holt die vollständige 360°-Ansicht eines Geschäftspartners.
 
         Args:
-            entity_id: ID des Geschaeftspartners
+            entity_id: ID des Geschäftspartners
             company_id: Company-ID (Multi-Tenant)
-            timeline_limit: Max. Anzahl Timeline-Eintraege
+            timeline_limit: Max. Anzahl Timeline-Einträge
             documents_limit: Max. Anzahl Dokumente
             include_sections: Welche Sektionen geladen werden sollen
 
@@ -165,7 +165,7 @@ class CommunicationHubService:
                 "stats", "documents", "tasks", "phone_notes"
             ]
 
-        # Error-Tracking fuer partielle Fehler
+        # Error-Tracking für partielle Fehler
         errors: List[str] = []
 
         # Lade Entity - Kritisch, ohne Entity kein Hub
@@ -326,11 +326,11 @@ class CommunicationHubService:
         """Laedt die Entity-Basisdaten.
 
         SECURITY: Multi-Tenant Isolation via Document.company_id Check.
-        BusinessEntity hat kein eigenes company_id, daher pruefen wir
+        BusinessEntity hat kein eigenes company_id, daher prüfen wir
         ob mindestens ein Dokument dieser Entity zur Company gehoert.
         """
-        # Erst pruefen ob Entity existiert und mindestens ein Dokument
-        # dieser Company mit dieser Entity verknuepft ist
+        # Erst prüfen ob Entity existiert und mindestens ein Dokument
+        # dieser Company mit dieser Entity verknüpft ist
         access_check = await self.db.execute(
             select(func.count(Document.id))
             .where(
@@ -421,7 +421,7 @@ class CommunicationHubService:
                 },
             ))
 
-        # 2. Dokumente (mit Aktivitaeten)
+        # 2. Dokumente (mit Aktivitäten)
         doc_result = await self.db.execute(
             select(Document)
             .where(
@@ -589,7 +589,7 @@ class CommunicationHubService:
             if level in dunning_breakdown:
                 dunning_breakdown[level] += 1
 
-            # Zahlungstage berechnen (nur fuer bezahlte)
+            # Zahlungstage berechnen (nur für bezahlte)
             if invoice.status == "paid" and invoice.invoice_date and invoice.paid_at:
                 days = (invoice.paid_at.date() - invoice.invoice_date).days
                 if 0 <= days <= 365:  # Sinnvolle Werte
@@ -621,8 +621,8 @@ class CommunicationHubService:
     ) -> RiskTrend:
         """Berechnet den Risiko-Trend.
 
-        HINWEIS: Zugriffspruefung erfolgt bereits in _load_entity().
-        Diese Methode wird nur fuer bereits validierte Entities aufgerufen.
+        HINWEIS: Zugriffsprüfung erfolgt bereits in _load_entity().
+        Diese Methode wird nur für bereits validierte Entities aufgerufen.
         """
         result = await self.db.execute(
             select(BusinessEntity).where(
@@ -662,7 +662,7 @@ class CommunicationHubService:
         prev_period_end = period_start
         prev_period_start = prev_period_end - timedelta(days=90)
 
-        # Aktuelle Periode: Durchschnittliche Zahlungsverzoegerung
+        # Aktuelle Periode: Durchschnittliche Zahlungsverzögerung
         current_payment_stats = await self.db.execute(
             select(
                 func.avg(
@@ -700,9 +700,9 @@ class CommunicationHubService:
         )
         prev_avg_delay = prev_payment_stats.scalar() or 0
 
-        # Trend berechnen (negative Verzoegerung = besser)
+        # Trend berechnen (negative Verzögerung = besser)
         if prev_avg_delay != 0:
-            # Wenn aktuelle Verzoegerung geringer ist, verbessert sich der Trend
+            # Wenn aktuelle Verzögerung geringer ist, verbessert sich der Trend
             change = current_avg_delay - prev_avg_delay
             trend.trend_percentage = round(abs(change / prev_avg_delay) * 100, 1) if prev_avg_delay else 0
 
@@ -713,10 +713,10 @@ class CommunicationHubService:
             else:
                 trend.trend_direction = "stable"
 
-            # Schaetze vorherigen Score basierend auf Verzoegerungsaenderung
+            # Schätze vorherigen Score basierend auf Verzögerungsänderung
             if entity.risk_score is not None:
-                # Rueckrechnung: Wenn sich Verzoegerung geaendert hat, war Score anders
-                score_impact = change * 2  # ~2 Punkte pro Tag Verzoegerungsaenderung
+                # Rückrechnung: Wenn sich Verzögerung geändert hat, war Score anders
+                score_impact = change * 2  # ~2 Punkte pro Tag Verzögerungsänderung
                 trend.previous_score = max(0, min(100, entity.risk_score - score_impact))
 
         return trend
@@ -783,7 +783,7 @@ class CommunicationHubService:
         )
         sentiment_dist = {row[0]: row[1] for row in sentiment_result.all()}
 
-        # Zeitbasierte Statistiken fuer die letzten 30 Tage
+        # Zeitbasierte Statistiken für die letzten 30 Tage
         now = datetime.now(timezone.utc)
         thirty_days_ago = now - timedelta(days=30)
 
@@ -820,7 +820,7 @@ class CommunicationHubService:
             )
             weekly_docs[f"week_{week_offset + 1}"] = week_doc_result.scalar() or 0
 
-        # Aktivitaetstrend (Vergleich letzte 15 Tage vs. vorherige 15 Tage)
+        # Aktivitätstrend (Vergleich letzte 15 Tage vs. vorherige 15 Tage)
         first_half_start = thirty_days_ago
         first_half_end = now - timedelta(days=15)
         second_half_start = first_half_end
@@ -1053,7 +1053,7 @@ class CommunicationHubService:
         note_id: uuid.UUID,
         company_id: uuid.UUID,
     ) -> bool:
-        """Loescht eine Telefon-Notiz."""
+        """Löscht eine Telefon-Notiz."""
         result = await self.db.execute(
             select(PhoneNote).where(
                 PhoneNote.id == note_id,

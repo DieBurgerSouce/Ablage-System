@@ -2,7 +2,7 @@
 // Configurable wrapper with title, actions menu (maximize, configure, remove)
 
 import { ReactNode, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/cards/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

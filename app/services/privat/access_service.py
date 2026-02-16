@@ -1,4 +1,4 @@
-"""Service fuer Zugriffsverwaltung auf Privat-Spaces."""
+"""Service für Zugriffsverwaltung auf Privat-Spaces."""
 
 import uuid
 from datetime import datetime
@@ -21,7 +21,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PrivatAccessService:
-    """Service fuer Zugriffsberechtigungen auf Privat-Spaces."""
+    """Service für Zugriffsberechtigungen auf Privat-Spaces."""
 
     async def grant_access(
         self,
@@ -30,18 +30,18 @@ class PrivatAccessService:
         data: PrivatSpaceAccessCreate,
         granted_by: uuid.UUID,
     ) -> PrivatSpaceAccess:
-        """Gewaehrt einem Benutzer Zugriff auf einen Space.
+        """Gewährt einem Benutzer Zugriff auf einen Space.
 
         Args:
             db: Datenbank-Session
             space_id: Space-ID
             data: Zugriffs-Daten
-            granted_by: ID des gewaehrenden Benutzers
+            granted_by: ID des gewährenden Benutzers
 
         Returns:
             Erstellte Berechtigung
         """
-        # Pruefe ob bereits Zugriff existiert
+        # Prüfe ob bereits Zugriff existiert
         existing = await self.get_access(db, space_id, data.user_id)
         if existing:
             # Update bestehende Berechtigung
@@ -81,7 +81,7 @@ class PrivatAccessService:
         space_id: uuid.UUID,
         user_id: uuid.UUID,
     ) -> Optional[PrivatSpaceAccess]:
-        """Holt die Berechtigung eines Benutzers fuer einen Space.
+        """Holt die Berechtigung eines Benutzers für einen Space.
 
         SECURITY: Validiert expires_at - abgelaufene Berechtigungen werden ignoriert!
 
@@ -101,7 +101,7 @@ class PrivatAccessService:
             select(PrivatSpaceAccess).where(
                 PrivatSpaceAccess.space_id == space_id,
                 PrivatSpaceAccess.user_id == user_id,
-                # SECURITY: expires_at check - None = kein Ablauf, sonst Datum pruefen
+                # SECURITY: expires_at check - None = kein Ablauf, sonst Datum prüfen
                 or_(
                     PrivatSpaceAccess.expires_at == None,
                     PrivatSpaceAccess.expires_at > now
@@ -115,7 +115,7 @@ class PrivatAccessService:
         db: AsyncSession,
         space_id: uuid.UUID,
     ) -> List[PrivatSpaceAccessResponse]:
-        """Listet alle aktiven Berechtigungen fuer einen Space.
+        """Listet alle aktiven Berechtigungen für einen Space.
 
         SECURITY: Filtert abgelaufene Zugriffe aus (CWE-200 Prevention)!
 
@@ -129,7 +129,7 @@ class PrivatAccessService:
         from datetime import timezone
         now = datetime.now(timezone.utc)
 
-        # SECURITY: Nur aktive (nicht-abgelaufene) Zugriffe zurueckgeben
+        # SECURITY: Nur aktive (nicht-abgelaufene) Zugriffe zurückgeben
         result = await db.execute(
             select(PrivatSpaceAccess)
             .where(
@@ -153,7 +153,7 @@ class PrivatAccessService:
                 granted_by=access.granted_by,
                 created_at=access.created_at,
                 expires_at=access.expires_at,
-                is_active=True,  # Nur aktive (nicht-abgelaufene) werden zurueckgegeben
+                is_active=True,  # Nur aktive (nicht-abgelaufene) werden zurückgegeben
             )
             for access in accesses
         ]
@@ -203,10 +203,10 @@ class PrivatAccessService:
     ) -> bool:
         """Entzieht einem Benutzer den Zugriff (Soft-Revoke via expires_at).
 
-        SECURITY: Verwendet Soft-Revoke statt Hard-Delete fuer:
+        SECURITY: Verwendet Soft-Revoke statt Hard-Delete für:
         - Audit-Trail Compliance (GDPR)
         - Wiederherstellbarkeit
-        - Nachvollziehbarkeit von Zugriffsaenderungen
+        - Nachvollziehbarkeit von Zugriffsänderungen
 
         Args:
             db: Datenbank-Session
@@ -222,7 +222,7 @@ class PrivatAccessService:
             return False
 
         # SECURITY: Soft-Revoke - setze expires_at auf jetzt
-        # Dadurch wird der Zugriff sofort ungueltig, aber der Record bleibt erhalten
+        # Dadurch wird der Zugriff sofort ungültig, aber der Record bleibt erhalten
         access.expires_at = datetime.now(timezone.utc)
         await db.commit()
 
@@ -242,7 +242,7 @@ class PrivatAccessService:
         user_id: uuid.UUID,
         required_level: PrivatAccessLevel,
     ) -> bool:
-        """Prueft ob ein Benutzer die erforderliche Berechtigung hat.
+        """Prüft ob ein Benutzer die erforderliche Berechtigung hat.
 
         Args:
             db: Datenbank-Session
@@ -253,7 +253,7 @@ class PrivatAccessService:
         Returns:
             True wenn Zugriff erlaubt
         """
-        # Pruefe ob Owner
+        # Prüfe ob Owner
         space_result = await db.execute(
             select(PrivatSpace).where(PrivatSpace.id == space_id)
         )
@@ -265,7 +265,7 @@ class PrivatAccessService:
         if space.owner_id == user_id:
             return True
 
-        # Pruefe explizite Berechtigung
+        # Prüfe explizite Berechtigung
         access = await self.get_access(db, space_id, user_id)
         if not access:
             return False
@@ -289,7 +289,7 @@ class PrivatAccessService:
     ) -> List[uuid.UUID]:
         """Holt alle Space-IDs auf die ein Benutzer Zugriff hat.
 
-        SECURITY: Nur nicht-abgelaufene Zugriffe werden beruecksichtigt!
+        SECURITY: Nur nicht-abgelaufene Zugriffe werden berücksichtigt!
 
         Args:
             db: Datenbank-Session
@@ -312,7 +312,7 @@ class PrivatAccessService:
             select(PrivatSpaceAccess.space_id)
             .where(
                 PrivatSpaceAccess.user_id == user_id,
-                # SECURITY: expires_at check - nur gueltige Zugriffe
+                # SECURITY: expires_at check - nur gültige Zugriffe
                 or_(
                     PrivatSpaceAccess.expires_at == None,
                     PrivatSpaceAccess.expires_at > now

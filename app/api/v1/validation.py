@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Validation Queue API fuer Ablage-System OCR.
+Validation Queue API für Ablage-System OCR.
 
-Endpoints fuer das Enterprise-Grade Validierungssystem:
+Endpoints für das Enterprise-Grade Validierungssystem:
 - Queue-Management (CRUD, Assignment, Approval/Rejection)
 - Batch-Operationen
 - Field Reviews und Validierung
-- Regeln fuer automatische Stichprobenauswahl
+- Regeln für automatische Stichprobenauswahl
 - Sample Config
 - Analytics und Statistiken
 
@@ -51,7 +51,7 @@ from app.db.schemas import (
     BatchApproveRequest,
     BatchRejectRequest,
     BatchAssignRequest,
-    ValidationBatchOperationResult as BatchOperationResult,  # Alias fuer Rueckwaertskompatibilitaet
+    ValidationBatchOperationResult as BatchOperationResult,  # Alias für Rückwärtskompatibilität
     # Analytics Schemas
     ValidationAnalyticsOverview,
     EditorStatsListResponse,
@@ -98,7 +98,7 @@ async def list_queue_items(
     sort_by: Optional[str] = Query("created_at", description="Sortierfeld"),
     sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset fuer Paginierung"),
+    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
     # Auth
     current_user: User = Depends(require_permission("validation:read")),
     db: AsyncSession = Depends(get_db)
@@ -110,7 +110,7 @@ async def list_queue_items(
     """
     service = get_validation_queue_service(db)
 
-    # Einzelne Query-Parameter in Listen wrappen fuer ValidationQueueFilters
+    # Einzelne Query-Parameter in Listen wrappen für ValidationQueueFilters
     # Input Sanitization: Search-Parameter gegen SQL-Injection schützen
     sanitized_search = None
     if search:
@@ -177,7 +177,7 @@ async def get_queue_stats(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Holt Uebersichtsstatistiken zur Warteschlange.
+    Holt Übersichtsstatistiken zur Warteschlange.
 
     Erfordert `validation:read` Berechtigung.
     """
@@ -191,7 +191,7 @@ async def get_queue_stats(
 async def get_my_assigned_items(
     status: Optional[ValidationStatusEnum] = Query(None, description="Filter nach Status"),
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset fuer Paginierung"),
+    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
     current_user: User = Depends(require_permission("validation:write")),
     db: AsyncSession = Depends(get_db)
 ):
@@ -275,7 +275,7 @@ async def get_queue_item(
             detail="Validierungs-Item nicht gefunden"
         )
 
-    # Lade Felder fuer Detailansicht
+    # Lade Felder für Detailansicht
     field_service = get_validation_field_service(db)
     fields = await field_service.get_fields_for_review(item_id)
 
@@ -317,7 +317,7 @@ async def delete_queue_item(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Loescht ein Queue-Item.
+    Löscht ein Queue-Item.
 
     Erfordert `validation:manage` Berechtigung (nur Admins).
     """
@@ -363,7 +363,7 @@ async def assign_queue_item(
         )
     except ValueError as e:
         # SECURITY FIX 28-22: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="Zuweisung fehlgeschlagen. Bitte Eingaben pruefen.")
+        raise HTTPException(status_code=400, detail="Zuweisung fehlgeschlagen. Bitte Eingaben prüfen.")
 
     if not item:
         raise HTTPException(
@@ -437,7 +437,7 @@ async def approve_queue_item(
         )
     except ValueError as e:
         # SECURITY FIX 28-22: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="Genehmigung fehlgeschlagen. Bitte Eingaben pruefen.")
+        raise HTTPException(status_code=400, detail="Genehmigung fehlgeschlagen. Bitte Eingaben prüfen.")
 
     if not item:
         raise HTTPException(
@@ -482,7 +482,7 @@ async def reject_queue_item(
         )
     except ValueError as e:
         # SECURITY FIX 28-22: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="Ablehnung fehlgeschlagen. Bitte Eingaben pruefen.")
+        raise HTTPException(status_code=400, detail="Ablehnung fehlgeschlagen. Bitte Eingaben prüfen.")
 
     if not item:
         raise HTTPException(
@@ -602,11 +602,11 @@ async def get_queue_item_fields(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Holt alle Feld-Reviews fuer ein Queue-Item.
+    Holt alle Feld-Reviews für ein Queue-Item.
 
     Erfordert `validation:read` Berechtigung.
     """
-    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership pruefen
+    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership prüfen
     queue_service = get_validation_queue_service(db)
     item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
     if not item:
@@ -633,7 +633,7 @@ async def update_field(
 
     Erfordert `validation:write` Berechtigung.
     """
-    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership pruefen
+    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership prüfen
     queue_service = get_validation_queue_service(db)
     item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
     if not item:
@@ -667,11 +667,11 @@ async def validate_field(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Validiert ein einzelnes Feld (Umlaut-Pruefung, Format-Validierung).
+    Validiert ein einzelnes Feld (Umlaut-Prüfung, Format-Validierung).
 
     Erfordert `validation:write` Berechtigung.
     """
-    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership pruefen
+    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership prüfen
     queue_service = get_validation_queue_service(db)
     item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
     if not item:
@@ -702,7 +702,7 @@ async def validate_all_fields(
 
     Erfordert `validation:write` Berechtigung.
     """
-    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership pruefen
+    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership prüfen
     queue_service = get_validation_queue_service(db)
     item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
     if not item:
@@ -727,7 +727,7 @@ async def get_field_stats(
 
     Erfordert `validation:read` Berechtigung.
     """
-    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership pruefen
+    # SECURITY: Multi-Tenant Isolation - zuerst Queue-Item Ownership prüfen
     queue_service = get_validation_queue_service(db)
     item = await queue_service.get_queue_item(item_id, company_id=current_user.company_id)
     if not item:
@@ -823,7 +823,7 @@ async def update_rule(
     Aktualisiert eine Regel.
 
     Erfordert `validation:manage` Berechtigung.
-    System-Regeln koennen nicht bearbeitet werden.
+    System-Regeln können nicht bearbeitet werden.
     """
     service = get_validation_sample_service(db)
 
@@ -831,7 +831,7 @@ async def update_rule(
         rule = await service.update_rule(rule_id, update_data)
     except ValueError as e:
         # SECURITY FIX 28-22: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="Regelaktualisierung fehlgeschlagen. Bitte Eingaben pruefen.")
+        raise HTTPException(status_code=400, detail="Regelaktualisierung fehlgeschlagen. Bitte Eingaben prüfen.")
 
     if not rule:
         raise HTTPException(
@@ -849,10 +849,10 @@ async def delete_rule(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Loescht eine Regel.
+    Löscht eine Regel.
 
     Erfordert `validation:manage` Berechtigung.
-    System-Regeln koennen nicht geloescht werden.
+    System-Regeln können nicht gelöscht werden.
     """
     service = get_validation_sample_service(db)
 
@@ -860,7 +860,7 @@ async def delete_rule(
         deleted = await service.delete_rule(rule_id)
     except ValueError as e:
         # SECURITY FIX 28-22: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="Regel-Loeschung fehlgeschlagen. Bitte Eingaben pruefen.")
+        raise HTTPException(status_code=400, detail="Regel-Löschung fehlgeschlagen. Bitte Eingaben prüfen.")
 
     if not deleted:
         raise HTTPException(
@@ -935,7 +935,7 @@ async def get_analytics_overview(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Holt Uebersichtsstatistiken zur Validierung.
+    Holt Übersichtsstatistiken zur Validierung.
 
     Erfordert `validation:read` Berechtigung.
     """
@@ -959,7 +959,7 @@ async def get_editor_stats(
     Erfordert `validation:manage` Berechtigung.
     """
     service = get_validation_analytics_service(db)
-    # Service gibt bereits EditorStatsListResponse zurueck
+    # Service gibt bereits EditorStatsListResponse zurück
     return await service.get_editor_stats(date_from, date_to)
 
 
@@ -973,12 +973,12 @@ async def get_trends(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Holt Trend-Daten ueber Zeit.
+    Holt Trend-Daten über Zeit.
 
     Erfordert `validation:read` Berechtigung.
     """
     service = get_validation_analytics_service(db)
-    # Service gibt bereits TrendDataResponse zurueck (group_by immer "day")
+    # Service gibt bereits TrendDataResponse zurück (group_by immer "day")
     return await service.get_trend_data(days)
 
 
@@ -995,7 +995,7 @@ async def get_document_type_stats(
     Erfordert `validation:read` Berechtigung.
     """
     service = get_validation_analytics_service(db)
-    # Service gibt bereits DocumentTypeStatsResponse zurueck
+    # Service gibt bereits DocumentTypeStatsResponse zurück
     return await service.get_document_type_stats()
 
 
@@ -1048,6 +1048,6 @@ async def queue_document_for_validation(
         )
     except ValueError as e:
         # SECURITY FIX 28-22: Generische Fehlermeldung
-        raise HTTPException(status_code=400, detail="Hinzufuegen zur Queue fehlgeschlagen. Bitte Eingaben pruefen.")
+        raise HTTPException(status_code=400, detail="Hinzufuegen zur Queue fehlgeschlagen. Bitte Eingaben prüfen.")
 
     return ValidationQueueItemResponse.model_validate(item)

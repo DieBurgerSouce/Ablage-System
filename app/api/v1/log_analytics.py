@@ -2,7 +2,7 @@
 """
 Log Analytics API Endpoints.
 
-Bietet Admin-Endpoints fuer:
+Bietet Admin-Endpoints für:
 - Log-Metriken und Statistiken
 - Trend-Analyse
 - Health-Reports
@@ -35,7 +35,7 @@ router = APIRouter(prefix="/log-analytics", tags=["log-analytics"])
 
 
 class LogMetricsResponse(BaseModel):
-    """Response fuer Log-Metriken."""
+    """Response für Log-Metriken."""
 
     total_entries: int
     by_level: Dict[str, int]
@@ -46,7 +46,7 @@ class LogMetricsResponse(BaseModel):
 
 
 class TrendResponse(BaseModel):
-    """Response fuer Trend-Analyse."""
+    """Response für Trend-Analyse."""
 
     metric_name: str
     direction: str
@@ -58,7 +58,7 @@ class TrendResponse(BaseModel):
 
 
 class AlertResponse(BaseModel):
-    """Response fuer Alert."""
+    """Response für Alert."""
 
     severity: str
     type: str
@@ -66,7 +66,7 @@ class AlertResponse(BaseModel):
 
 
 class HealthReportResponse(BaseModel):
-    """Response fuer Health Report."""
+    """Response für Health Report."""
 
     timestamp: str
     period_minutes: int
@@ -77,7 +77,7 @@ class HealthReportResponse(BaseModel):
 
 
 class TopErrorResponse(BaseModel):
-    """Response fuer Top Error."""
+    """Response für Top Error."""
 
     message: str
     source: str
@@ -87,7 +87,7 @@ class TopErrorResponse(BaseModel):
 
 
 class SourceStatsResponse(BaseModel):
-    """Response fuer Source-Statistiken."""
+    """Response für Source-Statistiken."""
 
     source: str
     total: int
@@ -97,7 +97,7 @@ class SourceStatsResponse(BaseModel):
 
 
 class VolumeTimelineEntry(BaseModel):
-    """Entry fuer Volume Timeline."""
+    """Entry für Volume Timeline."""
 
     timestamp: str
     count: int
@@ -114,7 +114,7 @@ class DashboardSummary(BaseModel):
 
 
 class DashboardDataResponse(BaseModel):
-    """Response fuer Dashboard-Daten."""
+    """Response für Dashboard-Daten."""
 
     timestamp: str
     period_minutes: int
@@ -139,9 +139,9 @@ async def get_log_metrics(
     last_minutes: int = Query(60, ge=1, le=1440, description="Zeitfenster in Minuten"),
 ) -> LogMetricsResponse:
     """
-    Gibt aktuelle Log-Metriken zurueck.
+    Gibt aktuelle Log-Metriken zurück.
 
-    Aggregiert Logs nach Level und Quelle fuer den angegebenen Zeitraum.
+    Aggregiert Logs nach Level und Quelle für den angegebenen Zeitraum.
 
     **Erfordert Superuser-Authentifizierung.**
     """
@@ -191,7 +191,7 @@ async def get_log_health(
     current_user: User = Depends(get_current_superuser),
 ) -> HealthReportResponse:
     """
-    Gibt vollstaendigen Log-Health-Report zurueck.
+    Gibt vollständigen Log-Health-Report zurück.
 
     Inkludiert Metriken, Trends, Alerts und Empfehlungen.
 
@@ -234,7 +234,7 @@ async def get_top_errors(
     limit: int = Query(10, ge=1, le=50, description="Anzahl der Top-Errors"),
 ) -> List[TopErrorResponse]:
     """
-    Gibt die haeufigsten Errors zurueck.
+    Gibt die häufigsten Errors zurück.
 
     Gruppiert nach Nachricht und zeigt Anzahl der Vorkommen.
 
@@ -260,7 +260,7 @@ async def get_source_statistics(
     current_user: User = Depends(get_current_superuser),
 ) -> List[SourceStatsResponse]:
     """
-    Gibt Statistiken nach Log-Quelle zurueck.
+    Gibt Statistiken nach Log-Quelle zurück.
 
     Zeigt welche Services/Module die meisten Logs und Errors produzieren.
 
@@ -288,9 +288,9 @@ async def get_volume_timeline(
     periods: int = Query(12, ge=2, le=48, description="Anzahl der Perioden"),
 ):
     """
-    Gibt Log-Volumen ueber Zeit zurueck.
+    Gibt Log-Volumen über Zeit zurück.
 
-    Ideal fuer Zeitreihen-Charts in Dashboards.
+    Ideal für Zeitreihen-Charts in Dashboards.
 
     **Erfordert Superuser-Authentifizierung.**
     """
@@ -309,9 +309,9 @@ async def get_dashboard_data(
     current_user: User = Depends(get_current_superuser),
 ) -> DashboardDataResponse:
     """
-    Gibt alle Dashboard-relevanten Daten in einem Request zurueck.
+    Gibt alle Dashboard-relevanten Daten in einem Request zurück.
 
-    Optimiert fuer Monitoring-Dashboards - alle Daten in einem Call.
+    Optimiert für Monitoring-Dashboards - alle Daten in einem Call.
 
     **Erfordert Superuser-Authentifizierung.**
     """
@@ -347,7 +347,7 @@ async def record_log_entry(
     """
     Zeichnet manuell einen Log-Eintrag auf.
 
-    Nuetzlich fuer Tests und manuelle Log-Injektion.
+    Nuetzlich für Tests und manuelle Log-Injektion.
 
     **Erfordert Superuser-Authentifizierung.**
     """
@@ -358,7 +358,7 @@ async def record_log_entry(
         from fastapi import HTTPException
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltiger Log-Level. Erlaubt: {[l.value for l in LogLevel]}"
+            detail=f"Ungültiger Log-Level. Erlaubt: {[l.value for l in LogLevel]}"
         )
 
     service = get_log_analytics_service()
@@ -382,7 +382,7 @@ async def store_metrics_snapshot(
     current_user: User = Depends(get_current_superuser),
 ):
     """
-    Speichert aktuellen Metriken-Snapshot fuer Trend-Analyse.
+    Speichert aktuellen Metriken-Snapshot für Trend-Analyse.
 
     Wird normalerweise automatisch aufgerufen, kann aber auch manuell getriggert werden.
 
@@ -402,9 +402,9 @@ async def get_active_alerts(
     current_user: User = Depends(get_current_superuser),
 ):
     """
-    Gibt nur aktive Alerts zurueck.
+    Gibt nur aktive Alerts zurück.
 
-    Fuer Alerting-Systeme und Benachrichtigungen.
+    Für Alerting-Systeme und Benachrichtigungen.
 
     **Erfordert Superuser-Authentifizierung.**
     """

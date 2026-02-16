@@ -1,7 +1,7 @@
 """
 Import Services Package.
 
-E-Mail- und Ordner-Import fuer das Ablage-System.
+E-Mail- und Ordner-Import für das Ablage-System.
 """
 
 from .email_import_service import EmailImportService

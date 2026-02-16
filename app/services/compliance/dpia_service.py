@@ -2,14 +2,14 @@
 """
 Data Protection Impact Assessment (DPIA) Service.
 
-Implementierung gemaess Art. 35 DSGVO.
+Implementierung gemäß Art. 35 DSGVO.
 
 Features:
 - DPIA Template Generierung
 - Risiko-Kategorisierung (hoch/mittel/niedrig)
 - Automatische Empfehlungen basierend auf Risikoprofil
-- Audit-Trail fuer alle DPIA-Aenderungen
-- PDF Export fuer Dokumentation
+- Audit-Trail für alle DPIA-Änderungen
+- PDF Export für Dokumentation
 
 Feinpoliert und durchdacht - DSGVO-konform.
 """
@@ -49,7 +49,7 @@ logger = structlog.get_logger(__name__)
 
 
 class RiskLevel(str, Enum):
-    """Risiko-Stufen gemaess DSGVO."""
+    """Risiko-Stufen gemäß DSGVO."""
     VERY_HIGH = "very_high"      # Erfordert sofortige Massnahmen
     HIGH = "high"                # Erfordert DPO-Konsultation
     MEDIUM = "medium"            # Erfordert Risikobehandlung
@@ -63,7 +63,7 @@ class ProcessingBasis(str, Enum):
     CONTRACT = "contract"                  # 6(1)(b) - Vertragserfuellung
     LEGAL_OBLIGATION = "legal_obligation"  # 6(1)(c) - Rechtliche Verpflichtung
     VITAL_INTERESTS = "vital_interests"    # 6(1)(d) - Lebenswichtige Interessen
-    PUBLIC_INTEREST = "public_interest"    # 6(1)(e) - Oeffentliches Interesse
+    PUBLIC_INTEREST = "public_interest"    # 6(1)(e) - Öffentliches Interesse
     LEGITIMATE_INTEREST = "legitimate_interest"  # 6(1)(f) - Berechtigtes Interesse
 
 
@@ -72,12 +72,12 @@ class DataCategory(str, Enum):
     BASIC_IDENTITY = "basic_identity"      # Name, Adresse, etc.
     CONTACT = "contact"                    # Email, Telefon
     FINANCIAL = "financial"                # Bankdaten, Zahlungen
-    EMPLOYMENT = "employment"              # Beschaeftigungsdaten
+    EMPLOYMENT = "employment"              # Beschäftigungsdaten
     HEALTH = "health"                      # Gesundheitsdaten (Art. 9)
     BIOMETRIC = "biometric"                # Biometrische Daten (Art. 9)
     GENETIC = "genetic"                    # Genetische Daten (Art. 9)
     POLITICAL = "political"                # Politische Meinungen (Art. 9)
-    RELIGIOUS = "religious"                # Religioese Ueberzeugungen (Art. 9)
+    RELIGIOUS = "religious"                # Religioese Überzeugungen (Art. 9)
     SEXUAL_ORIENTATION = "sexual_orientation"  # Sexuelle Orientierung (Art. 9)
     CRIMINAL = "criminal"                  # Strafrechtliche Verurteilungen (Art. 10)
     LOCATION = "location"                  # Standortdaten
@@ -104,13 +104,13 @@ class DataSubjectGroup:
     name: str
     description: str
     estimated_count: Optional[int] = None
-    includes_vulnerable: bool = False  # Kinder, Kranke, Beschaeftigte
+    includes_vulnerable: bool = False  # Kinder, Kranke, Beschäftigte
     includes_children: bool = False
 
 
 @dataclass
 class ProcessingOperation:
-    """Eine Verarbeitungstaetigkeit."""
+    """Eine Verarbeitungstätigkeit."""
     name: str
     description: str
     purpose: str
@@ -125,10 +125,10 @@ class ProcessingOperation:
 
 @dataclass
 class RiskAssessment:
-    """Risikobewertung fuer ein einzelnes Risiko."""
+    """Risikobewertung für ein einzelnes Risiko."""
     risk_id: str
     description: str
-    affected_rights: List[str]  # z.B. ["Vertraulichkeit", "Integritaet"]
+    affected_rights: List[str]  # z.B. ["Vertraulichkeit", "Integrität"]
     likelihood: int  # 1-5
     impact: int      # 1-5
     inherent_risk: RiskLevel = RiskLevel.MEDIUM
@@ -181,7 +181,7 @@ class DPOConsultation:
 
 @dataclass
 class DPIA:
-    """Vollstaendige Data Protection Impact Assessment."""
+    """Vollständige Data Protection Impact Assessment."""
     id: UUID
     title: str
     description: str
@@ -200,7 +200,7 @@ class DPIA:
     processing_operations: List[ProcessingOperation]
     data_subject_groups: List[DataSubjectGroup]
 
-    # Notwendigkeit und Verhaeltnismaessigkeit
+    # Notwendigkeit und Verhältnismaessigkeit
     necessity_assessment: str
     proportionality_assessment: str
 
@@ -225,7 +225,7 @@ class DPIA:
     audit_trail: List[Dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiere zu Dictionary fuer API/Export."""
+        """Konvertiere zu Dictionary für API/Export."""
         return {
             "id": str(self.id),
             "title": self.title,
@@ -320,27 +320,27 @@ class DPIA:
 
 
 class DPIATemplates:
-    """Vordefinierte DPIA-Templates fuer haeufige Szenarien."""
+    """Vordefinierte DPIA-Templates für häufige Szenarien."""
 
     @staticmethod
     def ocr_document_processing() -> Dict[str, Any]:
-        """Template fuer OCR-Dokumentenverarbeitung."""
+        """Template für OCR-Dokumentenverarbeitung."""
         return {
             "title": "DPIA - OCR-basierte Dokumentenverarbeitung",
-            "description": "Datenschutz-Folgenabschaetzung fuer die automatisierte "
-                          "Verarbeitung von Geschaeftsdokumenten mittels OCR.",
+            "description": "Datenschutz-Folgenabschätzung für die automatisierte "
+                          "Verarbeitung von Geschäftsdokumenten mittels OCR.",
             "processing_operations": [
                 {
                     "name": "Dokumentendigitalisierung",
                     "description": "Scannen und OCR-Verarbeitung von Papierdokumenten",
-                    "purpose": "Digitalisierung und Archivierung von Geschaeftsdokumenten",
+                    "purpose": "Digitalisierung und Archivierung von Geschäftsdokumenten",
                     "legal_basis": ProcessingBasis.LEGITIMATE_INTEREST,
                     "data_categories": [
                         DataCategory.BASIC_IDENTITY,
                         DataCategory.CONTACT,
                         DataCategory.FINANCIAL,
                     ],
-                    "retention_period": "10 Jahre gemaess HGB/AO",
+                    "retention_period": "10 Jahre gemäß HGB/AO",
                 },
                 {
                     "name": "Automatische Datenextraktion",
@@ -351,14 +351,14 @@ class DPIATemplates:
                         DataCategory.BASIC_IDENTITY,
                         DataCategory.FINANCIAL,
                     ],
-                    "retention_period": "10 Jahre gemaess HGB/AO",
+                    "retention_period": "10 Jahre gemäß HGB/AO",
                     "automated_decision_making": True,
                 },
             ],
             "data_subject_groups": [
                 {
-                    "name": "Geschaeftskunden",
-                    "description": "Ansprechpartner bei Geschaeftskunden",
+                    "name": "Geschäftskunden",
+                    "description": "Ansprechpartner bei Geschäftskunden",
                     "includes_vulnerable": False,
                 },
                 {
@@ -367,22 +367,22 @@ class DPIATemplates:
                     "includes_vulnerable": False,
                 },
                 {
-                    "name": "Beschaeftigte",
+                    "name": "Beschäftigte",
                     "description": "Mitarbeiter deren Namen auf Dokumenten erscheinen",
-                    "includes_vulnerable": True,  # Beschaeftigte = schutzbeduerftiger
+                    "includes_vulnerable": True,  # Beschäftigte = schutzbedürftiger
                 },
             ],
             "standard_risks": [
                 {
                     "risk_id": "R1",
-                    "description": "Unbefugter Zugriff auf sensible Geschaeftsdokumente",
+                    "description": "Unbefugter Zugriff auf sensible Geschäftsdokumente",
                     "affected_rights": ["Vertraulichkeit"],
                     "likelihood": 2,
                     "impact": 4,
                 },
                 {
                     "risk_id": "R2",
-                    "description": "Fehlerhafte OCR-Erkennung fuehrt zu falschen Daten",
+                    "description": "Fehlerhafte OCR-Erkennung führt zu falschen Daten",
                     "affected_rights": ["Richtigkeit"],
                     "likelihood": 3,
                     "impact": 3,
@@ -390,7 +390,7 @@ class DPIATemplates:
                 {
                     "risk_id": "R3",
                     "description": "Datenverlust durch Systemausfall",
-                    "affected_rights": ["Verfuegbarkeit"],
+                    "affected_rights": ["Verfügbarkeit"],
                     "likelihood": 2,
                     "impact": 3,
                 },
@@ -413,7 +413,7 @@ class DPIATemplates:
                 {
                     "measure_id": "M3",
                     "name": "Backup-Strategie",
-                    "description": "Taeglich inkrementelle, woechentlich volle Backups",
+                    "description": "Täglich inkrementelle, woechentlich volle Backups",
                     "measure_type": MitigationMeasureType.TECHNICAL,
                     "addresses_risks": ["R3"],
                 },
@@ -422,34 +422,34 @@ class DPIATemplates:
 
     @staticmethod
     def lexware_customer_import() -> Dict[str, Any]:
-        """Template fuer Lexware-Kundenimport."""
+        """Template für Lexware-Kundenimport."""
         return {
             "title": "DPIA - Import von Kundendaten aus Lexware",
-            "description": "Datenschutz-Folgenabschaetzung fuer den Import von "
+            "description": "Datenschutz-Folgenabschätzung für den Import von "
                           "Kunden- und Lieferantendaten aus Lexware-Systemen.",
             "processing_operations": [
                 {
                     "name": "Datenimport aus Lexware",
                     "description": "Import von Kunden- und Lieferantenstammdaten",
-                    "purpose": "Synchronisation der Stammdaten fuer Dokumentenzuordnung",
+                    "purpose": "Synchronisation der Stammdaten für Dokumentenzuordnung",
                     "legal_basis": ProcessingBasis.LEGITIMATE_INTEREST,
                     "data_categories": [
                         DataCategory.BASIC_IDENTITY,
                         DataCategory.CONTACT,
                         DataCategory.FINANCIAL,
                     ],
-                    "retention_period": "Solange Geschaeftsbeziehung besteht, dann 10 Jahre",
+                    "retention_period": "Solange Geschäftsbeziehung besteht, dann 10 Jahre",
                 },
             ],
             "data_subject_groups": [
                 {
                     "name": "Kunden",
-                    "description": "Natuerliche Personen als Kunden",
+                    "description": "Natürliche Personen als Kunden",
                     "includes_vulnerable": False,
                 },
                 {
                     "name": "Ansprechpartner",
-                    "description": "Kontaktpersonen bei Geschaeftskunden",
+                    "description": "Kontaktpersonen bei Geschäftskunden",
                     "includes_vulnerable": False,
                 },
             ],
@@ -463,8 +463,8 @@ class DPIATemplates:
                 },
                 {
                     "risk_id": "R2",
-                    "description": "Veraltete Daten nach Loeschung in Quellsystem",
-                    "affected_rights": ["Loeschung"],
+                    "description": "Veraltete Daten nach Löschung in Quellsystem",
+                    "affected_rights": ["Löschung"],
                     "likelihood": 3,
                     "impact": 2,
                 },
@@ -472,8 +472,8 @@ class DPIATemplates:
             "standard_measures": [
                 {
                     "measure_id": "M1",
-                    "name": "Regelmaessiger Datenabgleich",
-                    "description": "Woechentlicher Sync mit Quellsystem inkl. Loeschprüfung",
+                    "name": "Regelmäßiger Datenabgleich",
+                    "description": "Woechentlicher Sync mit Quellsystem inkl. Löschprüfung",
                     "measure_type": MitigationMeasureType.TECHNICAL,
                     "addresses_risks": ["R1", "R2"],
                 },
@@ -482,10 +482,10 @@ class DPIATemplates:
 
     @staticmethod
     def email_import() -> Dict[str, Any]:
-        """Template fuer Email-Import."""
+        """Template für Email-Import."""
         return {
             "title": "DPIA - Automatischer Email-Import",
-            "description": "Datenschutz-Folgenabschaetzung fuer den automatischen "
+            "description": "Datenschutz-Folgenabschätzung für den automatischen "
                           "Import von Dokumenten aus Emails.",
             "processing_operations": [
                 {
@@ -510,7 +510,7 @@ class DPIATemplates:
             "standard_risks": [
                 {
                     "risk_id": "R1",
-                    "description": "Verarbeitung unerwuenschter Emails (Spam/Phishing)",
+                    "description": "Verarbeitung unerwünschter Emails (Spam/Phishing)",
                     "affected_rights": ["Sicherheit"],
                     "likelihood": 3,
                     "impact": 3,
@@ -533,8 +533,8 @@ class DPIATemplates:
                 },
                 {
                     "measure_id": "M2",
-                    "name": "Verschluesselte Speicherung",
-                    "description": "Email-Passwoerter AES-256-GCM verschluesselt",
+                    "name": "Verschlüsselte Speicherung",
+                    "description": "Email-Passwoerter AES-256-GCM verschlüsselt",
                     "measure_type": MitigationMeasureType.TECHNICAL,
                     "addresses_risks": ["R2"],
                 },
@@ -549,10 +549,10 @@ class DPIATemplates:
 
 class DPIAService:
     """
-    Service fuer Data Protection Impact Assessments (DPIA).
+    Service für Data Protection Impact Assessments (DPIA).
 
-    Gemaess Art. 35 DSGVO erforderlich bei:
-    - Systematischer Ueberwachung
+    Gemäß Art. 35 DSGVO erforderlich bei:
+    - Systematischer Überwachung
     - Verarbeitung besonderer Kategorien (Art. 9)
     - Automatisierter Entscheidungsfindung mit rechtlicher Wirkung
     - Neuen Technologien
@@ -563,12 +563,12 @@ class DPIAService:
     DPIA_TRIGGERS = {
         "automated_decisions": "Automatisierte Entscheidungsfindung mit rechtlicher Wirkung",
         "special_categories": "Verarbeitung besonderer Kategorien personenbezogener Daten",
-        "criminal_data": "Verarbeitung von Daten ueber Straftaten",
+        "criminal_data": "Verarbeitung von Daten über Straftaten",
         "large_scale": "Grossflaechige Verarbeitung personenbezogener Daten",
-        "systematic_monitoring": "Systematische Ueberwachung oeffentlicher Bereiche",
-        "vulnerable_groups": "Verarbeitung von Daten schutzbeduerftiger Personen",
+        "systematic_monitoring": "Systematische Überwachung öffentlicher Bereiche",
+        "vulnerable_groups": "Verarbeitung von Daten schutzbedürftiger Personen",
         "new_technology": "Einsatz neuer Technologien",
-        "cross_matching": "Abgleich oder Zusammenfuehrung von Datensaetzen",
+        "cross_matching": "Abgleich oder Zusammenführung von Datensätzen",
         "prevents_rights": "Verarbeitung verhindert Ausuebung von Rechten",
     }
 
@@ -593,10 +593,10 @@ class DPIAService:
         data_subject_groups: List[DataSubjectGroup],
     ) -> Dict[str, Any]:
         """
-        Pruefe ob eine DPIA erforderlich ist.
+        Prüfe ob eine DPIA erforderlich ist.
 
         Args:
-            processing_operations: Geplante Verarbeitungstaetigkeiten
+            processing_operations: Geplante Verarbeitungstätigkeiten
             data_subject_groups: Betroffene Personengruppen
 
         Returns:
@@ -611,7 +611,7 @@ class DPIAService:
 
             # Profiling
             if op.profiling:
-                reasons.append("Profiling wird durchgefuehrt")
+                reasons.append("Profiling wird durchgeführt")
 
             # Besondere Kategorien
             special = set(op.data_categories) & self.SPECIAL_CATEGORIES
@@ -628,7 +628,7 @@ class DPIAService:
             # Datentransfer ausserhalb EU
             if op.data_transfer_outside_eu:
                 reasons.append(
-                    f"Datentransfer in Drittlaender: {', '.join(op.transfer_countries)}"
+                    f"Datentransfer in Drittländer: {', '.join(op.transfer_countries)}"
                 )
 
         # Schutzbeduertige Gruppen
@@ -665,7 +665,7 @@ class DPIAService:
             controller_contact: Kontakt des Verantwortlichen
             dpo_name: Name des DSB
             dpo_contact: Kontakt des DSB
-            assessor_name: Name des Durchfuehrenden
+            assessor_name: Name des Durchführenden
             company_id: Company-ID
             created_by_id: Optional User-ID des Erstellers
 
@@ -947,7 +947,7 @@ class DPIAService:
             dpia_model,
             "STATUS_CHANGE",
             user_name,
-            f"Status geaendert von {old_status} zu {new_status.value}. {comment}".strip()
+            f"Status geändert von {old_status} zu {new_status.value}. {comment}".strip()
         )
 
         await db.commit()
@@ -994,7 +994,7 @@ class DPIAService:
         if not dpia_model:
             raise ValueError(f"DPIA nicht gefunden: {dpia_id}")
 
-        # Bestehende Konsultation loeschen falls vorhanden
+        # Bestehende Konsultation löschen falls vorhanden
         if dpia_model.consultation:
             await db.delete(dpia_model.consultation)
 
@@ -1055,7 +1055,7 @@ class DPIAService:
                 "category": "consultation",
                 "title": "DPO-Konsultation erforderlich",
                 "description": (
-                    "Bei hohem Risiko ist gemaess Art. 35 Abs. 2 DSGVO "
+                    "Bei hohem Risiko ist gemäß Art. 35 Abs. 2 DSGVO "
                     "die Konsultation des Datenschutzbeauftragten erforderlich."
                 ),
                 "action": "DPO zur Stellungnahme einladen",
@@ -1066,12 +1066,12 @@ class DPIAService:
             recommendations.append({
                 "priority": "critical",
                 "category": "regulatory",
-                "title": "Konsultation der Aufsichtsbehoerde pruefen",
+                "title": "Konsultation der Aufsichtsbehoerde prüfen",
                 "description": (
-                    "Gemaess Art. 36 DSGVO ist bei sehr hohem Restrisiko "
+                    "Gemäß Art. 36 DSGVO ist bei sehr hohem Restrisiko "
                     "die Aufsichtsbehoerde vor Verarbeitungsbeginn zu konsultieren."
                 ),
-                "action": "Kontakt mit zustaendiger Aufsichtsbehoerde aufnehmen",
+                "action": "Kontakt mit zuständiger Aufsichtsbehoerde aufnehmen",
             })
 
         # Besondere Datenkategorien
@@ -1085,12 +1085,12 @@ class DPIAService:
             recommendations.append({
                 "priority": "high",
                 "category": "legal",
-                "title": "Rechtsgrundlage fuer Art. 9 Daten dokumentieren",
+                "title": "Rechtsgrundlage für Art. 9 Daten dokumentieren",
                 "description": (
                     "Die Verarbeitung besonderer Kategorien erfordert "
-                    "eine zusaetzliche Rechtsgrundlage nach Art. 9 Abs. 2 DSGVO."
+                    "eine zusätzliche Rechtsgrundlage nach Art. 9 Abs. 2 DSGVO."
                 ),
-                "action": "Rechtliche Pruefung der Verarbeitungsgrundlage",
+                "action": "Rechtliche Prüfung der Verarbeitungsgrundlage",
             })
 
         # Datentransfer Drittland
@@ -1099,7 +1099,7 @@ class DPIAService:
                 recommendations.append({
                     "priority": "medium",
                     "category": "legal",
-                    "title": "Garantien fuer Drittlandtransfer dokumentieren",
+                    "title": "Garantien für Drittlandtransfer dokumentieren",
                     "description": (
                         f"Der Transfer nach {', '.join(op.transfer_countries)} "
                         "erfordert geeignete Garantien (z.B. SCC, BCR, Angemessenheitsbeschluss)."
@@ -1114,12 +1114,12 @@ class DPIAService:
                 recommendations.append({
                     "priority": "medium",
                     "category": "rights",
-                    "title": "Information ueber automatisierte Entscheidungen",
+                    "title": "Information über automatisierte Entscheidungen",
                     "description": (
-                        "Betroffene muessen gemaess Art. 13/14 DSGVO "
-                        "ueber automatisierte Entscheidungsfindung informiert werden."
+                        "Betroffene müssen gemäß Art. 13/14 DSGVO "
+                        "über automatisierte Entscheidungsfindung informiert werden."
                     ),
-                    "action": "Datenschutzerklaerung aktualisieren",
+                    "action": "Datenschutzerklärung aktualisieren",
                 })
                 break
 
@@ -1268,22 +1268,22 @@ class DPIAService:
         )
 
     def get_available_templates(self) -> List[Dict[str, str]]:
-        """Liste verfuegbarer Templates."""
+        """Liste verfügbarer Templates."""
         return [
             {
                 "name": "ocr_document_processing",
                 "title": "OCR-basierte Dokumentenverarbeitung",
-                "description": "Template fuer automatisierte Dokumentenverarbeitung mit OCR",
+                "description": "Template für automatisierte Dokumentenverarbeitung mit OCR",
             },
             {
                 "name": "lexware_customer_import",
                 "title": "Import von Kundendaten aus Lexware",
-                "description": "Template fuer Synchronisation von Stammdaten",
+                "description": "Template für Synchronisation von Stammdaten",
             },
             {
                 "name": "email_import",
                 "title": "Automatischer Email-Import",
-                "description": "Template fuer automatischen Dokumenteneingang per Email",
+                "description": "Template für automatischen Dokumenteneingang per Email",
             },
         ]
 

@@ -1,6 +1,6 @@
 """Erweiterte Annotationen & Kommentar-Aufgaben API.
 
-Endpoints fuer:
+Endpoints für:
 - Bounding-Box-Annotationen (PDF-Markierungen)
 - Verschachtelte Kommentar-Antworten mit @Mentions
 - Aufgaben aus Kommentar-Threads
@@ -35,7 +35,7 @@ router = APIRouter(
 
 
 class BoundingBoxCreate(BaseModel):
-    """Schema fuer neue Bounding-Box-Annotation."""
+    """Schema für neue Bounding-Box-Annotation."""
 
     document_id: UUID
     page_number: int = Field(..., ge=1, description="Seitennummer (1-basiert)")
@@ -45,7 +45,7 @@ class BoundingBoxCreate(BaseModel):
         ..., ge=0.0, le=1.0, description="Breite (0.0 - 1.0)"
     )
     height: float = Field(
-        ..., ge=0.0, le=1.0, description="Hoehe (0.0 - 1.0)"
+        ..., ge=0.0, le=1.0, description="Höhe (0.0 - 1.0)"
     )
     annotation_type: str = Field(
         default="bounding_box",
@@ -57,7 +57,7 @@ class BoundingBoxCreate(BaseModel):
 
 
 class BoundingBoxResponse(BaseModel):
-    """Schema fuer Bounding-Box-Antwort."""
+    """Schema für Bounding-Box-Antwort."""
 
     id: UUID
     document_id: UUID
@@ -78,7 +78,7 @@ class BoundingBoxResponse(BaseModel):
 
 
 class ReplyCreate(BaseModel):
-    """Schema fuer neue Kommentar-Antwort."""
+    """Schema für neue Kommentar-Antwort."""
 
     content: str = Field(..., min_length=1, max_length=5000)
     mentions: Optional[List[str]] = Field(
@@ -87,12 +87,12 @@ class ReplyCreate(BaseModel):
     )
     parent_reply_id: Optional[UUID] = Field(
         default=None,
-        description="Eltern-Antwort fuer verschachtelte Antworten",
+        description="Eltern-Antwort für verschachtelte Antworten",
     )
 
 
 class ReplyResponse(BaseModel):
-    """Schema fuer Kommentar-Antwort."""
+    """Schema für Kommentar-Antwort."""
 
     id: UUID
     thread_id: UUID
@@ -108,7 +108,7 @@ class ReplyResponse(BaseModel):
 
 
 class TaskCreate(BaseModel):
-    """Schema fuer neue Kommentar-Aufgabe."""
+    """Schema für neue Kommentar-Aufgabe."""
 
     assigned_to_user_id: UUID
     title: str = Field(..., min_length=1, max_length=500)
@@ -117,7 +117,7 @@ class TaskCreate(BaseModel):
 
 
 class TaskResponse(BaseModel):
-    """Schema fuer Kommentar-Aufgabe."""
+    """Schema für Kommentar-Aufgabe."""
 
     id: UUID
     thread_id: UUID
@@ -135,7 +135,7 @@ class TaskResponse(BaseModel):
 
 
 class TaskStatusUpdate(BaseModel):
-    """Schema fuer Statusaenderung einer Aufgabe."""
+    """Schema für Statusänderung einer Aufgabe."""
 
     status: str = Field(
         ...,
@@ -279,7 +279,7 @@ async def create_bounding_box(
 @router.get(
     "/document/{document_id}/page/{page_number}",
     response_model=List[BoundingBoxResponse],
-    summary="Annotationen fuer Seite abrufen",
+    summary="Annotationen für Seite abrufen",
 )
 async def get_page_annotations(
     document_id: UUID,
@@ -287,7 +287,7 @@ async def get_page_annotations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ) -> List[BoundingBoxResponse]:
-    """Holt alle Bounding-Box-Annotationen fuer eine Dokumentseite."""
+    """Holt alle Bounding-Box-Annotationen für eine Dokumentseite."""
     service = ExtendedAnnotationService(db)
 
     annotations = await service.get_page_annotations(
@@ -317,7 +317,7 @@ async def create_reply(
 ) -> ReplyResponse:
     """Erstellt eine verschachtelte Antwort auf einen Kommentar-Thread.
 
-    Unterstuetzt @Mentions - erwaehnte Benutzer erhalten Benachrichtigungen.
+    Unterstützt @Mentions - erwaehnte Benutzer erhalten Benachrichtigungen.
     """
     service = ExtendedAnnotationService(db)
 
@@ -430,7 +430,7 @@ async def get_my_tasks(
 @router.patch(
     "/tasks/{task_id}/status",
     response_model=TaskResponse,
-    summary="Aufgaben-Status aendern",
+    summary="Aufgaben-Status ändern",
 )
 async def update_task_status(
     task_id: UUID,
@@ -476,14 +476,14 @@ async def update_task_status(
     "/{annotation_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_model=None,
-    summary="Annotation loeschen",
+    summary="Annotation löschen",
 )
 async def delete_annotation(
     annotation_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ) -> None:
-    """Loescht eine Bounding-Box-Annotation (nur eigene, Soft-Delete)."""
+    """Löscht eine Bounding-Box-Annotation (nur eigene, Soft-Delete)."""
     service = ExtendedAnnotationService(db)
 
     deleted = await service.delete_annotation(

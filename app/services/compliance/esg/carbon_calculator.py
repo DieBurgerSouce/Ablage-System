@@ -56,7 +56,7 @@ class CarbonCalculator:
 
     @staticmethod
     def get_emission_factors() -> Dict[str, Dict[str, Any]]:
-        """Gebe verfuegbare Emissionsfaktoren zurueck."""
+        """Gebe verfügbare Emissionsfaktoren zurück."""
         return EMISSION_FACTORS
 
     @staticmethod
@@ -66,7 +66,7 @@ class CarbonCalculator:
         custom_factor: Optional[float] = None,
     ) -> Dict[str, Any]:
         """
-        Berechne CO2-Emissionen fuer einen Verbrauchswert.
+        Berechne CO2-Emissionen für einen Verbrauchswert.
         """
         if custom_factor is not None:
             return {
@@ -320,5 +320,5 @@ class CarbonCalculator:
 
 
 def get_carbon_calculator(db: AsyncSession) -> CarbonCalculator:
-    """Factory-Funktion fuer CarbonCalculator."""
+    """Factory-Funktion für CarbonCalculator."""
     return CarbonCalculator(db)

@@ -2,8 +2,8 @@
 """
 Ad-Hoc Reporting satellite models.
 
-Separate Modelle fuer Feature #12: Ad-Hoc Reporting.
-Ermoeglicht Nutzern, eigene Reports mit beliebigen Datenquellen zu erstellen.
+Separate Modelle für Feature #12: Ad-Hoc Reporting.
+Ermöglicht Nutzern, eigene Reports mit beliebigen Datenquellen zu erstellen.
 """
 
 import uuid
@@ -32,7 +32,7 @@ from app.db.models import Base, CrossDBJSON
 
 
 class DataSourceType(str, Enum):
-    """Verfuegbare Datenquellen fuer Ad-Hoc Reports."""
+    """Verfügbare Datenquellen für Ad-Hoc Reports."""
     INVOICES = "invoices"
     DOCUMENTS = "documents"
     ENTITIES = "entities"
@@ -44,7 +44,7 @@ class DataSourceType(str, Enum):
 
 
 class AggregationType(str, Enum):
-    """Aggregationstypen fuer Spalten."""
+    """Aggregationstypen für Spalten."""
     COUNT = "count"
     SUM = "sum"
     AVG = "avg"
@@ -54,14 +54,14 @@ class AggregationType(str, Enum):
 
 
 class ExportFormat(str, Enum):
-    """Unterstuetzte Export-Formate."""
+    """Unterstützte Export-Formate."""
     PDF = "pdf"
     EXCEL = "excel"
     CSV = "csv"
 
 
 class ScheduleFrequency(str, Enum):
-    """Frequenz fuer geplante Reports."""
+    """Frequenz für geplante Reports."""
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
@@ -75,7 +75,7 @@ class ScheduleFrequency(str, Enum):
 class AdHocReport(Base):
     """Ad-Hoc Report Definition.
 
-    Speichert die vollstaendige Konfiguration eines benutzerdefinierten
+    Speichert die vollständige Konfiguration eines benutzerdefinierten
     Ad-Hoc Reports mit Datenquellen, Spalten, Filtern und Diagrammen.
     """
     __tablename__ = "adhoc_reports"
@@ -86,7 +86,7 @@ class AdHocReport(Base):
         ForeignKey("companies.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        comment="Mandanten-Zuordnung fuer Multi-Company Isolation",
+        comment="Mandanten-Zuordnung für Multi-Company Isolation",
     )
     name = Column(String(300), nullable=False)
     description = Column(Text, nullable=True)
@@ -121,7 +121,7 @@ class AdHocReport(Base):
         CrossDBJSON,
         nullable=False,
         default=list,
-        comment="Filter-Bedingungen fuer die Datenabfrage",
+        comment="Filter-Bedingungen für die Datenabfrage",
     )
 
     # Gruppierung
@@ -129,7 +129,7 @@ class AdHocReport(Base):
     group_by = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Spalten fuer GROUP BY",
+        comment="Spalten für GROUP BY",
     )
 
     # Sortierung
@@ -144,7 +144,7 @@ class AdHocReport(Base):
     limit_rows = Column(
         Integer,
         nullable=True,
-        comment="Maximale Anzahl zurueckgegebener Zeilen",
+        comment="Maximale Anzahl zurückgegebener Zeilen",
     )
 
     # Chart-Konfiguration
@@ -193,7 +193,7 @@ class AdHocReport(Base):
     __table_args__ = (
         Index("ix_adhoc_reports_company_user", "company_id", "created_by_user_id"),
         Index("ix_adhoc_reports_is_shared", "company_id", "is_shared"),
-        {"comment": "Ad-Hoc Report Definitionen fuer Feature #12"},
+        {"comment": "Ad-Hoc Report Definitionen für Feature #12"},
     )
 
     def __repr__(self) -> str:
@@ -203,7 +203,7 @@ class AdHocReport(Base):
 class ScheduledReport(Base):
     """Geplanter Report-Versand.
 
-    Ermoeglicht das automatische Ausfuehren und Versenden von
+    Ermöglicht das automatische Ausführen und Versenden von
     Ad-Hoc Reports nach Zeitplan.
     """
     __tablename__ = "scheduled_reports"
@@ -227,12 +227,12 @@ class ScheduledReport(Base):
     day_of_week = Column(
         Integer,
         nullable=True,
-        comment="0=Montag, 6=Sonntag (nur fuer weekly)",
+        comment="0=Montag, 6=Sonntag (nur für weekly)",
     )
     day_of_month = Column(
         Integer,
         nullable=True,
-        comment="1-28 (nur fuer monthly)",
+        comment="1-28 (nur für monthly)",
     )
     time_of_day = Column(
         String(5),
@@ -273,7 +273,7 @@ class ScheduledReport(Base):
 
     __table_args__ = (
         Index("ix_scheduled_reports_active_next", "is_active", "next_send_at"),
-        {"comment": "Geplante Report-Ausfuehrungen fuer Ad-Hoc Reports"},
+        {"comment": "Geplante Report-Ausführungen für Ad-Hoc Reports"},
     )
 
     def __repr__(self) -> str:
@@ -281,9 +281,9 @@ class ScheduledReport(Base):
 
 
 class ReportExecutionLog(Base):
-    """Ausfuehrungs-Protokoll fuer Ad-Hoc Reports.
+    """Ausführungs-Protokoll für Ad-Hoc Reports.
 
-    Protokolliert jede Ausfuehrung eines Ad-Hoc Reports mit
+    Protokolliert jede Ausführung eines Ad-Hoc Reports mit
     Performance-Metriken und optionalem Dateipfad.
     """
     __tablename__ = "adhoc_report_execution_logs"
@@ -304,7 +304,7 @@ class ReportExecutionLog(Base):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
-        comment="NULL fuer geplante Ausfuehrungen",
+        comment="NULL für geplante Ausführungen",
     )
 
     # Ergebnis
@@ -327,7 +327,7 @@ class ReportExecutionLog(Base):
 
     __table_args__ = (
         Index("ix_adhoc_exec_log_report_date", "report_id", "created_at"),
-        {"comment": "Ausfuehrungs-Protokoll fuer Ad-Hoc Reports"},
+        {"comment": "Ausführungs-Protokoll für Ad-Hoc Reports"},
     )
 
     def __repr__(self) -> str:

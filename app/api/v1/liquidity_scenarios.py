@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """Liquidity Scenario API Endpoints.
 
-API fuer What-If Analyse und Liquiditaets-Szenarien.
+API für What-If Analyse und Liquiditaets-Szenarien.
 
 Endpoints:
 - POST /cashflow/scenarios - Szenario erstellen
 - GET /cashflow/scenarios - Szenarien auflisten
 - GET /cashflow/scenarios/{id} - Szenario abrufen
-- DELETE /cashflow/scenarios/{id} - Szenario loeschen
+- DELETE /cashflow/scenarios/{id} - Szenario löschen
 - GET /cashflow/scenarios/standard - Standard-Szenarien (Best/Worst/Expected)
 - POST /cashflow/scenarios/monte-carlo - Monte-Carlo-Simulation
 - POST /cashflow/scenarios/compare - Szenarien vergleichen
@@ -47,7 +47,7 @@ router = APIRouter(prefix="/cashflow/scenarios", tags=["liquidity-scenarios"])
 
 
 class ScenarioAssumptionCreate(BaseModel):
-    """Annahme fuer ein Szenario."""
+    """Annahme für ein Szenario."""
 
     name: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = None
@@ -58,7 +58,7 @@ class ScenarioAssumptionCreate(BaseModel):
 
 
 class ScenarioCreate(BaseModel):
-    """Anfrage fuer Szenario-Erstellung."""
+    """Anfrage für Szenario-Erstellung."""
 
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
@@ -131,7 +131,7 @@ class LiquidityCorridorPoint(BaseModel):
 
 
 class MonteCarloRequest(BaseModel):
-    """Anfrage fuer Monte-Carlo-Simulation."""
+    """Anfrage für Monte-Carlo-Simulation."""
 
     forecast_days: int = Field(default=30, ge=7, le=90)
     iterations: int = Field(default=1000, ge=100, le=10000)
@@ -152,13 +152,13 @@ class MonteCarloResponse(BaseModel):
 
 
 class CompareRequest(BaseModel):
-    """Anfrage fuer Szenario-Vergleich."""
+    """Anfrage für Szenario-Vergleich."""
 
     scenario_ids: List[str] = Field(..., min_length=2, max_length=10)
 
 
 class ComparisonMetric(BaseModel):
-    """Vergleichs-Metrik fuer ein Szenario."""
+    """Vergleichs-Metrik für ein Szenario."""
 
     min_balance: float
     min_balance_diff: float
@@ -204,13 +204,13 @@ async def create_scenario(
 ) -> ScenarioResponse:
     """Erstellt ein neues Liquiditaets-Szenario.
 
-    Annahmen koennen sein:
-    - payment_delay: Zahlungsverzoegerung in Tagen
-    - payment_speed: Faktor fuer Zahlungsgeschwindigkeit (1.0 = normal)
+    Annahmen können sein:
+    - payment_delay: Zahlungsverzögerung in Tagen
+    - payment_speed: Faktor für Zahlungsgeschwindigkeit (1.0 = normal)
     - default_rate: Ausfallrate (1.0 = normal, 2.0 = doppelt)
-    - extra_costs: Zusaetzliche Kosten in EUR
-    - inflow_change: Aenderung der Eingaenge (multiplikativ oder additiv)
-    - outflow_change: Aenderung der Ausgaenge (multiplikativ oder additiv)
+    - extra_costs: Zusätzliche Kosten in EUR
+    - inflow_change: Änderung der Eingaenge (multiplikativ oder additiv)
+    - outflow_change: Änderung der Ausgaenge (multiplikativ oder additiv)
     """
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
@@ -296,7 +296,7 @@ async def get_standard_scenarios(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> StandardScenariosResponse:
-    """Erstellt und gibt Standard-Szenarien zurueck.
+    """Erstellt und gibt Standard-Szenarien zurück.
 
     Generiert automatisch:
     - Base Case (aktuelle Prognose)
@@ -390,14 +390,14 @@ async def get_scenario(
     "/{scenario_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_model=None,
-    summary="Szenario loeschen",
+    summary="Szenario löschen",
 )
 async def delete_scenario(
     scenario_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Loescht ein gespeichertes Szenario."""
+    """Löscht ein gespeichertes Szenario."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
@@ -426,9 +426,9 @@ async def run_monte_carlo(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> MonteCarloResponse:
-    """Fuehrt Monte-Carlo-Simulation fuer Cashflow-Prognose durch.
+    """Führt Monte-Carlo-Simulation für Cashflow-Prognose durch.
 
-    Simuliert viele zufaellige Szenarien um:
+    Simuliert viele zufällige Szenarien um:
     - Wahrscheinlichkeitsverteilung des Minimum-Saldos zu berechnen
     - Risiko eines negativen Saldos zu quantifizieren
     - Konfidenz-Korridor zu erstellen
@@ -473,7 +473,7 @@ async def compare_scenarios(
 ) -> CompareResponse:
     """Vergleicht mehrere Szenarien miteinander.
 
-    Das erste Szenario in der Liste wird als Basis fuer den Vergleich verwendet.
+    Das erste Szenario in der Liste wird als Basis für den Vergleich verwendet.
     """
     company_id = await get_user_company_id(db, current_user)
     if not company_id:

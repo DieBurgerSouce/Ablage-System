@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Celery Tasks fuer Annotationen und Kommentare.
+Celery Tasks für Annotationen und Kommentare.
 
 Tasks:
 - process_mention_notifications_task: Benachrichtigungen bei @mentions versenden
-- check_overdue_comment_tasks_task: Taeglich ueberfaellige Aufgaben pruefen
-- cleanup_orphaned_annotations_task: Woechentlich verwaiste Annotationen bereinigen
-- cleanup_resolved_annotations_task: Alte erledigte Annotationen aufraeumen
+- check_overdue_comment_tasks_task: Täglich überfällige Aufgaben prüfen
+- cleanup_orphaned_annotations_task: Wöchentlich verwaiste Annotationen bereinigen
+- cleanup_resolved_annotations_task: Alte erledigte Annotationen aufräumen
 
-Feinpoliert und durchdacht - Zuverlaessige Annotation-Verwaltung.
+Feinpoliert und durchdacht - Zuverlässige Annotation-Verwaltung.
 """
 
 import asyncio
@@ -26,7 +26,7 @@ logger = structlog.get_logger(__name__)
 
 
 def _run_async(coro):
-    """Hilfsfunktion um async Code in sync Celery Tasks auszufuehren."""
+    """Hilfsfunktion um async Code in sync Celery Tasks auszuführen."""
     return asyncio.run(coro)
 
 
@@ -135,13 +135,13 @@ def process_mention_notifications_task(
     time_limit=600,
 )
 def check_overdue_comment_tasks_task(self) -> Dict[str, object]:
-    """Prueft taeglich auf ueberfaellige Kommentar-Aufgaben.
+    """Prüft täglich auf überfällige Kommentar-Aufgaben.
 
-    Findet offene Aufgaben deren Faelligkeitsdatum ueberschritten ist
+    Findet offene Aufgaben deren Fälligkeitsdatum überschritten ist
     und sendet Erinnerungen an die zugewiesenen Benutzer.
 
     Returns:
-        Dict mit Anzahl ueberfaelliger Aufgaben und versendeter Benachrichtigungen
+        Dict mit Anzahl überfälliger Aufgaben und versendeter Benachrichtigungen
     """
     logger.info(
         "check_overdue_tasks_gestartet",
@@ -160,7 +160,7 @@ def check_overdue_comment_tasks_task(self) -> Dict[str, object]:
         async with get_async_session_context() as db:
             now = datetime.now(timezone.utc)
 
-            # Finde ueberfaellige offene Aufgaben
+            # Finde überfällige offene Aufgaben
             result = await db.execute(
                 select(CommentTask).where(
                     and_(
@@ -176,7 +176,7 @@ def check_overdue_comment_tasks_task(self) -> Dict[str, object]:
             overdue_tasks = result.scalars().all()
 
             stats: Dict[str, int] = {
-                "ueberfaellig": len(overdue_tasks),
+                "überfällig": len(overdue_tasks),
                 "benachrichtigt": 0,
                 "fehler": 0,
             }
@@ -192,10 +192,10 @@ def check_overdue_comment_tasks_task(self) -> Dict[str, object]:
                         user_id=str(task.assigned_to_user_id),
                         notification={
                             "type": "task_overdue",
-                            "title": "Ueberfaellige Aufgabe",
+                            "title": "Überfällige Aufgabe",
                             "message": (
                                 f"Die Aufgabe '{task.title}' ist seit "
-                                f"{days_overdue} Tag(en) ueberfaellig."
+                                f"{days_overdue} Tag(en) überfällig."
                             ),
                             "priority": "high",
                             "task_id": str(task.id),
@@ -241,9 +241,9 @@ def check_overdue_comment_tasks_task(self) -> Dict[str, object]:
     time_limit=900,
 )
 def cleanup_orphaned_annotations_task(self) -> Dict[str, object]:
-    """Bereinigt woechentlich verwaiste Annotationen.
+    """Bereinigt wöchentlich verwaiste Annotationen.
 
-    Soft-Deleted Annotationen die zu geloeschten Dokumenten gehoeren.
+    Soft-Deleted Annotationen die zu gelöschten Dokumenten gehören.
 
     Returns:
         Dict mit Anzahl bereinigter Annotationen
@@ -261,7 +261,7 @@ def cleanup_orphaned_annotations_task(self) -> Dict[str, object]:
         cleaned_bbox = 0
 
         async with get_async_session_context() as db:
-            # BoundingBox-Annotationen fuer geloeschte Dokumente
+            # BoundingBox-Annotationen für gelöschte Dokumente
             orphaned_query = (
                 select(BoundingBoxAnnotation.id)
                 .join(
@@ -321,10 +321,10 @@ def cleanup_orphaned_annotations_task(self) -> Dict[str, object]:
     time_limit=600,
 )
 def cleanup_resolved_annotations_task(self, days: int = 180) -> Dict[str, object]:
-    """Aufraeumen alter erledigter DocumentAnnotations.
+    """Aufräumen alter erledigter DocumentAnnotations.
 
-    Entfernt erledigte Annotationen die aelter als X Tage sind.
-    Wird monatlich ausgefuehrt.
+    Entfernt erledigte Annotationen die älter als X Tage sind.
+    Wird monatlich ausgeführt.
 
     Args:
         days: Anzahl Tage nach denen erledigte Annotationen entfernt werden

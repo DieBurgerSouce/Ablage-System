@@ -56,7 +56,7 @@ class FraudDetectionService:
     Umfassender Fraud Detection Service.
 
     Kombiniert regelbasierte und ML-basierte Erkennung
-    fuer verschiedene Betrugsarten.
+    für verschiedene Betrugsarten.
     """
 
     def __init__(self, db: AsyncSession):
@@ -64,9 +64,9 @@ class FraudDetectionService:
         # Konfigurations-Schwellwerte
         self.config = {
             "price_deviation_threshold": 0.30,  # 30% Abweichung
-            "duplicate_similarity_threshold": 0.85,  # 85% Aehnlichkeit
+            "duplicate_similarity_threshold": 0.85,  # 85% Ähnlichkeit
             "phantom_supplier_days": 90,  # Keine Lieferung seit 90 Tagen
-            "expense_pattern_threshold": 5,  # Min. 5 aehnliche Buchungen
+            "expense_pattern_threshold": 5,  # Min. 5 ähnliche Buchungen
             "kickback_percentage_range": (0.05, 0.15),  # 5-15% Kickback-Muster
             "round_amount_threshold": 1000,  # Runde Betraege ab 1000 EUR
             "split_invoice_window_days": 7,  # Split innerhalb 7 Tagen
@@ -80,7 +80,7 @@ class FraudDetectionService:
         end_date: Optional[datetime] = None,
     ) -> dict[str, Any]:
         """
-        Fuehrt alle Fraud-Detection-Analysen durch.
+        Führt alle Fraud-Detection-Analysen durch.
 
         Returns:
             Umfassender Fraud-Report mit allen Erkennungen
@@ -108,7 +108,7 @@ class FraudDetectionService:
             "analyzed_at": datetime.utcnow().isoformat(),
         }
 
-        # Alle Analysen parallel ausfuehren
+        # Alle Analysen parallel ausführen
         analyses = [
             self._detect_duplicate_invoices(company_id, start_date, end_date),
             self._detect_price_anomalies(company_id, start_date, end_date),
@@ -152,7 +152,7 @@ class FraudDetectionService:
 
         Methoden:
         - Exakter Hash-Match (Rechnungsnummer + Betrag + Lieferant)
-        - Fuzzy-Match (aehnliche Betraege, aehnliches Datum)
+        - Fuzzy-Match (ähnliche Betraege, ähnliches Datum)
         """
         alerts = []
 
@@ -189,9 +189,9 @@ class FraudDetectionService:
                     alerts.append({
                         "type": FraudType.DUPLICATE_INVOICE,
                         "risk_level": RiskLevel.HIGH,
-                        "title": "Moegliche Duplikat-Rechnung",
+                        "title": "Mögliche Duplikat-Rechnung",
                         "description": f"Rechnung {dupe.invoice_number or dupe.id} "
-                                       f"ist moeglicherweise ein Duplikat von {first.invoice_number or first.id}",
+                                       f"ist möglicherweise ein Duplikat von {first.invoice_number or first.id}",
                         "invoice_id": str(dupe.id),
                         "related_invoice_id": str(first.id),
                         "amount": float(dupe.total_amount) if dupe.total_amount else None,
@@ -199,7 +199,7 @@ class FraudDetectionService:
                         "confidence": 0.95,
                     })
 
-        # Fuzzy-Match fuer aehnliche Betraege am gleichen Tag
+        # Fuzzy-Match für ähnliche Betraege am gleichen Tag
         by_date: dict[str, list[InvoiceTracking]] = {}
         for invoice in invoices:
             date_key = invoice.created_at.date().isoformat() if invoice.created_at else "unknown"
@@ -219,9 +219,9 @@ class FraudDetectionService:
                         alerts.append({
                             "type": FraudType.DUPLICATE_INVOICE,
                             "risk_level": RiskLevel.MEDIUM,
-                            "title": "Aehnliche Rechnungen am gleichen Tag",
+                            "title": "Ähnliche Rechnungen am gleichen Tag",
                             "description": f"Rechnungen {inv1.invoice_number or inv1.id} "
-                                           f"und {inv2.invoice_number or inv2.id} haben aehnliche Betraege",
+                                           f"und {inv2.invoice_number or inv2.id} haben ähnliche Betraege",
                             "invoice_id": str(inv1.id),
                             "related_invoice_id": str(inv2.id),
                             "amount": float(inv1.total_amount) if inv1.total_amount else None,
@@ -238,7 +238,7 @@ class FraudDetectionService:
         end_date: datetime,
     ) -> list[dict[str, Any]]:
         """
-        Erkennt Preis-Anomalien gegenueber historischen Daten.
+        Erkennt Preis-Anomalien gegenüber historischen Daten.
 
         Vergleicht aktuelle Preise mit:
         - Historischem Durchschnitt pro Lieferant
@@ -267,7 +267,7 @@ class FraudDetectionService:
         hist_result = await self.db.execute(hist_query)
         historical = {row.entity_id: row for row in hist_result}
 
-        # Aktuelle Rechnungen pruefen
+        # Aktuelle Rechnungen prüfen
         current_query = (
             select(InvoiceTracking)
             .where(
@@ -375,7 +375,7 @@ class FraudDetectionService:
             alerts.append({
                 "type": FraudType.PHANTOM_SUPPLIER,
                 "risk_level": RiskLevel.HIGH,
-                "title": "Moeglicher Phantom-Lieferant",
+                "title": "Möglicher Phantom-Lieferant",
                 "description": f"Lieferant '{suspect.entity_name}' hat {suspect.invoice_count} Rechnungen "
                                f"aber keine Lieferscheine/Bestellungen",
                 "entity_id": str(suspect.entity_id),
@@ -398,7 +398,7 @@ class FraudDetectionService:
         Erkennt Spesen-Betrug durch Muster-Analyse.
 
         Muster:
-        - Haeufige gleiche Betraege
+        - Häufige gleiche Betraege
         - Runde Betraege unter Genehmigungsgrenze
         - Wochenend-Buchungen
         """
@@ -419,7 +419,7 @@ class FraudDetectionService:
         result = await self.db.execute(query)
         expenses = result.scalars().all()
 
-        # Betrags-Haeufigkeit analysieren
+        # Betrags-Häufigkeit analysieren
         amount_frequency: dict[float, list[Document]] = {}
         for expense in expenses:
             amount = expense.extracted_data.get("amount") if expense.extracted_data else None
@@ -429,7 +429,7 @@ class FraudDetectionService:
                     amount_frequency[amount] = []
                 amount_frequency[amount].append(expense)
 
-        # Verdaechtig haeufige Betraege
+        # Verdaechtig häufige Betraege
         for amount, docs in amount_frequency.items():
             if len(docs) >= self.config["expense_pattern_threshold"]:
                 alerts.append({
@@ -545,7 +545,7 @@ class FraudDetectionService:
                 alerts.append({
                     "type": FraudType.KICKBACK,
                     "risk_level": RiskLevel.HIGH,
-                    "title": "Moegliches Kickback-Muster",
+                    "title": "Mögliches Kickback-Muster",
                     "description": f"Lieferant '{patterns[0]['name']}' zeigt konsistente "
                                    f"Preisaufschlaege von ca. {avg_ratio*100:.1f}%",
                     "entity_id": str(entity_id),
@@ -567,7 +567,7 @@ class FraudDetectionService:
         Indikatoren:
         - Gleiche Bankverbindung bei verschiedenen Lieferanten
         - Gleiche Adresse
-        - Aehnliche Namen
+        - Ähnliche Namen
         """
         alerts = []
 
@@ -648,7 +648,7 @@ class FraudDetectionService:
         """
         Erkennt verdaechtig viele runde Betraege.
 
-        Runde Betraege sind ungewoehnlich bei echten Geschaeftsvorgaengen.
+        Runde Betraege sind ungewoehnlich bei echten Geschäftsvorgaengen.
         """
         alerts = []
         threshold = self.config["round_amount_threshold"]
@@ -699,7 +699,7 @@ class FraudDetectionService:
         Erkennt Invoice-Splitting zur Umgehung von Genehmigungsgrenzen.
 
         Mehrere Rechnungen vom gleichen Lieferanten in kurzem Zeitraum,
-        die zusammen die Genehmigungsgrenze ueberschreiten.
+        die zusammen die Genehmigungsgrenze überschreiten.
         """
         alerts = []
         window_days = self.config["split_invoice_window_days"]
@@ -759,7 +759,7 @@ class FraudDetectionService:
             alerts.append({
                 "type": FraudType.SPLIT_INVOICE,
                 "risk_level": RiskLevel.HIGH,
-                "title": "Moegliches Invoice-Splitting",
+                "title": "Mögliches Invoice-Splitting",
                 "description": f"Lieferant '{row.entity_name}' hat {row.invoice_count} Rechnungen "
                                f"in {window_days} Tagen mit Gesamtsumme {float(row.rolling_total):.2f} EUR",
                 "entity_id": str(row.entity_id),
@@ -782,7 +782,7 @@ class FraudDetectionService:
         """
         Erkennt Rechnungen die am Wochenende erstellt wurden.
 
-        Wochenend-Rechnungen koennen auf manuelle Manipulation hindeuten.
+        Wochenend-Rechnungen können auf manuelle Manipulation hindeuten.
         """
         alerts = []
 
@@ -844,7 +844,7 @@ class FraudDetectionService:
         amount2: Optional[Decimal],
         tolerance: float = 0.02,  # 2% Toleranz
     ) -> bool:
-        """Prueft ob zwei Betraege aehnlich sind."""
+        """Prüft ob zwei Betraege ähnlich sind."""
         if not amount1 or not amount2:
             return False
         a1, a2 = float(amount1), float(amount2)
@@ -854,7 +854,7 @@ class FraudDetectionService:
         return diff <= tolerance
 
     def _is_round_amount(self, amount: float) -> bool:
-        """Prueft ob ein Betrag verdaechtig rund ist."""
+        """Prüft ob ein Betrag verdaechtig rund ist."""
         # Rund auf 100, 500, 1000 etc.
         return (
             amount >= 100 and (
@@ -867,5 +867,5 @@ class FraudDetectionService:
 
 # Singleton-artige Factory
 async def get_fraud_detection_service(db: AsyncSession) -> FraudDetectionService:
-    """Factory fuer FraudDetectionService."""
+    """Factory für FraudDetectionService."""
     return FraudDetectionService(db)

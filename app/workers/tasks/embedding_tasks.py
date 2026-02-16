@@ -472,7 +472,7 @@ def batch_generate_embeddings(
                 task_id,
                 total_docs,
                 total_docs,
-                f"Abgeschlossen: {successful} erfolgreich, {skipped} uebersprungen, {failed} fehlgeschlagen"
+                f"Abgeschlossen: {successful} erfolgreich, {skipped} übersprungen, {failed} fehlgeschlagen"
             )
 
             logger.info(
@@ -687,7 +687,7 @@ def sync_document_to_qdrant(
     embedding_model: Optional[str] = None,
     force_reindex: bool = False
 ) -> Dict[str, Any]:
-    """Sync single document to Qdrant (Dual-Write fuer A/B Testing).
+    """Sync single document to Qdrant (Dual-Write für A/B Testing).
 
     Wird nach pgvector-Indexierung getriggert wenn Dual-Write aktiviert.
     Generiert Embedding mit konfiguriertem Modell und indexiert in Qdrant.
@@ -704,7 +704,7 @@ def sync_document_to_qdrant(
     doc_uuid = UUID(document_id)
     task_id = self.request.id
 
-    # Import hier um zirkulaere Importe zu vermeiden
+    # Import hier um zirkuläre Importe zu vermeiden
     from app.services.vector.qdrant_service import get_qdrant_service
     from app.services.vector.embedding_factory import get_embedding_factory, EmbeddingModel
 
@@ -715,7 +715,7 @@ def sync_document_to_qdrant(
         model=embedding_model
     )
 
-    # Default zu Jina-DE fuer A/B Testing (Treatment-Variante)
+    # Default zu Jina-DE für A/B Testing (Treatment-Variante)
     model = embedding_model or settings.VECTOR_AB_TREATMENT_EMBEDDING
 
     async def process_async() -> Dict[str, Any]:
@@ -733,7 +733,7 @@ def sync_document_to_qdrant(
                 if not document.extracted_text:
                     raise ValueError(f"Dokument {document_id} hat keinen Text")
 
-                # Pruefe ob bereits in Qdrant (wenn nicht force)
+                # Prüfe ob bereits in Qdrant (wenn nicht force)
                 if document.qdrant_indexed_at and not force_reindex:
                     logger.info(
                         "qdrant_sync_skipped_already_indexed",
@@ -749,7 +749,7 @@ def sync_document_to_qdrant(
                 # Qdrant Service initialisieren
                 qdrant = await get_qdrant_service()
                 if not await qdrant.initialize():
-                    raise ValueError("Qdrant nicht verfuegbar")
+                    raise ValueError("Qdrant nicht verfügbar")
 
                 # Embedding Factory initialisieren
                 embedding_factory = get_embedding_factory()
@@ -761,9 +761,9 @@ def sync_document_to_qdrant(
                 )
 
                 if not embedding:
-                    raise ValueError(f"Embedding-Generierung fehlgeschlagen fuer {document_id}")
+                    raise ValueError(f"Embedding-Generierung fehlgeschlagen für {document_id}")
 
-                # Payload fuer Qdrant
+                # Payload für Qdrant
                 payload = {
                     "document_id": str(document.id),
                     "owner_id": str(document.owner_id) if document.owner_id else None,
@@ -783,7 +783,7 @@ def sync_document_to_qdrant(
                 )
 
                 if not success:
-                    raise ValueError(f"Qdrant upsert fehlgeschlagen fuer {document_id}")
+                    raise ValueError(f"Qdrant upsert fehlgeschlagen für {document_id}")
 
                 # Dokument-Timestamp aktualisieren
                 document.qdrant_indexed_at = datetime.now(timezone.utc)
@@ -839,7 +839,7 @@ def migrate_embeddings_to_qdrant(
     """Batch-Migration bestehender Dokumente zu Qdrant.
 
     Migriert alle Dokumente mit Text zu Qdrant Vector DB.
-    Fuer initiale Sync nach Qdrant-Aktivierung.
+    Für initiale Sync nach Qdrant-Aktivierung.
 
     Args:
         batch_size: Dokumente pro Batch (default: settings.VECTOR_MIGRATION_BATCH_SIZE)
@@ -871,7 +871,7 @@ def migrate_embeddings_to_qdrant(
             # Qdrant initialisieren
             qdrant = await get_qdrant_service()
             if not await qdrant.initialize():
-                raise ValueError("Qdrant nicht verfuegbar - Migration abgebrochen")
+                raise ValueError("Qdrant nicht verfügbar - Migration abgebrochen")
 
             embedding_factory = get_embedding_factory()
 
@@ -1063,10 +1063,10 @@ def generate_jina_embedding(
     document_id: str,
     sync_to_qdrant: bool = True
 ) -> Dict[str, Any]:
-    """Generiere Jina-DE Embedding fuer ein Dokument.
+    """Generiere Jina-DE Embedding für ein Dokument.
 
-    Spezifische Task fuer jina-embeddings-v2-base-de Modell.
-    Optimiert fuer deutsche Dokumente mit 8k Token-Kontext.
+    Spezifische Task für jina-embeddings-v2-base-de Modell.
+    Optimiert für deutsche Dokumente mit 8k Token-Kontext.
 
     Args:
         document_id: Document UUID als String
@@ -1181,14 +1181,14 @@ def analyze_ab_test_metrics(
     experiment_id: Optional[str] = None,
     days: int = 7
 ) -> Dict[str, Any]:
-    """Analysiere A/B Test Metriken fuer Vector Search.
+    """Analysiere A/B Test Metriken für Vector Search.
 
     Berechnet statistische Signifikanz und Latenz-Vergleiche
     zwischen pgvector (Control) und Qdrant (Treatment).
 
     Args:
         experiment_id: Optional spezifisches Experiment
-        days: Anzahl Tage zurueck fuer Analyse
+        days: Anzahl Tage zurück für Analyse
 
     Returns:
         Dictionary mit A/B Test Analyse-Ergebnissen
@@ -1276,7 +1276,7 @@ def sync_pending_to_qdrant(
     """Sync ausstehende Dokumente zu Qdrant (Periodic Task).
 
     Findet Dokumente die in PostgreSQL aber nicht in Qdrant indexiert sind
-    und synchronisiert diese. Fuer Celery Beat Scheduling.
+    und synchronisiert diese. Für Celery Beat Scheduling.
 
     Args:
         limit: Maximale Anzahl pro Durchlauf
@@ -1311,7 +1311,7 @@ def sync_pending_to_qdrant(
                     "message": "Keine ausstehenden Dokumente"
                 }
 
-            # Jobs fuer Sync erstellen
+            # Jobs für Sync erstellen
             from celery import group
 
             sync_tasks = group([
@@ -1319,7 +1319,7 @@ def sync_pending_to_qdrant(
                 for doc_id in pending_ids
             ])
 
-            # Async ausfuehren
+            # Async ausführen
             result = sync_tasks.apply_async()
 
             processing_time = (datetime.now(timezone.utc) - start_time).total_seconds()
@@ -1349,13 +1349,13 @@ def sync_pending_to_qdrant(
     name="app.workers.tasks.embedding_tasks.refresh_search_analytics"
 )
 def refresh_search_analytics(self) -> Dict[str, Any]:
-    """Aktualisiert die materialisierte View fuer Such-Analytics.
+    """Aktualisiert die materialisierte View für Such-Analytics.
 
-    Diese Task sollte taeglich ausgefuehrt werden (via Celery Beat),
-    idealerweise waehrend Zeiten geringer Auslastung (z.B. 2 Uhr nachts).
+    Diese Task sollte täglich ausgeführt werden (via Celery Beat),
+    idealerweise während Zeiten geringer Auslastung (z.B. 2 Uhr nachts).
 
     Die materialisierte View aggregiert Suchstatistiken nach Tag und
-    Suchtyp fuer schnellere Analytics-Abfragen.
+    Suchtyp für schnellere Analytics-Abfragen.
 
     Returns:
         Dictionary mit Refresh-Status und Zeitstempel

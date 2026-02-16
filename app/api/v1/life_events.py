@@ -1,6 +1,6 @@
 """Life Events API Router.
 
-Endpoints fuer den proaktiven Lebensberater.
+Endpoints für den proaktiven Lebensberater.
 """
 from __future__ import annotations
 
@@ -20,20 +20,20 @@ router = APIRouter(prefix="/privat/life-events", tags=["life-events"])
 
 
 class LifeEventCreate(BaseModel):
-    """Schema fuer neues Lebensereignis."""
+    """Schema für neues Lebensereignis."""
     event_type: str = Field(..., pattern="^(umzug|heirat|kind|jobwechsel|ruhestand|todesfall|immobilienkauf|scheidung)$")
     event_date: Optional[datetime] = None
     notes: Optional[str] = Field(None, max_length=2000)
 
 
 class ChecklistItemUpdate(BaseModel):
-    """Schema fuer Checklist-Update."""
+    """Schema für Checklist-Update."""
     item_id: str = Field(..., pattern="^[a-z_]{1,64}$")
     done: bool
 
 
 class LifeEventResponse(BaseModel):
-    """Schema fuer Lebensereignis-Antwort."""
+    """Schema für Lebensereignis-Antwort."""
     id: UUID
     event_type: str
     title: str
@@ -54,7 +54,7 @@ async def get_event_types(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ) -> dict[str, dict[str, str]]:
-    """Gibt alle verfuegbaren Event-Typen zurueck."""
+    """Gibt alle verfügbaren Event-Typen zurück."""
     service = LifeEventEngine(db)
     return await service.get_event_types()
 

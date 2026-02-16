@@ -2,7 +2,7 @@
 """
 AI Autonomy API - KI-Entscheidungen und Self-Learning.
 
-Endpoints fuer:
+Endpoints für:
 - KI-Entscheidungen einsehen und reviewen
 - Konfidenz-Schwellenwerte verwalten
 - Accuracy-Statistiken und Reports
@@ -117,7 +117,7 @@ class ThresholdResponse(BaseModel):
 
 
 class ThresholdUpdateRequest(BaseModel):
-    """Update fuer Schwellenwerte."""
+    """Update für Schwellenwerte."""
     auto_threshold: Optional[float] = Field(None, ge=0.0, le=1.0)
     suggest_threshold: Optional[float] = Field(None, ge=0.0, le=1.0)
     is_enabled: Optional[bool] = None
@@ -340,7 +340,7 @@ async def review_decision(
     """
     Reviewed eine KI-Entscheidung.
 
-    Moegliche Aktionen: approved, rejected, modified
+    Mögliche Aktionen: approved, rejected, modified
     """
     service = get_ai_decision_service()
 
@@ -349,7 +349,7 @@ async def review_decision(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Review-Aktion",
+            detail="Ungültige Review-Aktion",
         )
 
     success = await service.review_decision(
@@ -411,7 +411,7 @@ async def update_threshold(
     """
     Aktualisiert Konfidenz-Schwellenwerte.
 
-    Nur fuer Admins.
+    Nur für Admins.
     """
     from sqlalchemy import select
     from app.db.models import AIConfidenceThreshold
@@ -422,7 +422,7 @@ async def update_threshold(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Entscheidungstyp: {decision_type}",
+            detail=f"Ungültiger Entscheidungstyp: {decision_type}",
         )
 
     # SECURITY: Multi-Tenant via UserCompany
@@ -464,7 +464,7 @@ async def update_threshold(
 
     return {
         "success": True,
-        "message": f"Schwellenwerte fuer {decision_type} aktualisiert",
+        "message": f"Schwellenwerte für {decision_type} aktualisiert",
     }
 
 
@@ -527,7 +527,7 @@ async def get_category_suggestions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[CategorySuggestion]:
-    """Gibt Kategorie-Vorschlaege ohne Persistenz zurueck."""
+    """Gibt Kategorie-Vorschläge ohne Persistenz zurück."""
     from sqlalchemy import select
     from app.db.models import Document
 
@@ -593,7 +593,7 @@ async def check_document_anomalies(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AnomalyCheckResponse:
-    """Prueft Dokument auf Anomalien."""
+    """Prüft Dokument auf Anomalien."""
     service = get_anomaly_detection_service()
 
     company_id = await get_user_company_id(db, current_user)
@@ -629,7 +629,7 @@ async def check_document_duplicates(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DuplicateCheckResponse:
-    """Prueft Dokument auf Duplikate."""
+    """Prüft Dokument auf Duplikate."""
     service = get_duplicate_detection_service()
 
     company_id = await get_user_company_id(db, current_user)
@@ -668,7 +668,7 @@ async def get_accuracy_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[AccuracyStatsResponse]:
-    """Gibt Genauigkeits-Statistiken zurueck."""
+    """Gibt Genauigkeits-Statistiken zurück."""
     pipeline = get_ai_learning_pipeline()
 
     company_id = await get_user_company_id(db, current_user)
@@ -702,7 +702,7 @@ async def get_learning_progress(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
-    """Gibt Self-Learning Fortschritt zurueck."""
+    """Gibt Self-Learning Fortschritt zurück."""
     pipeline = get_ai_learning_pipeline()
 
     company_id = await get_user_company_id(db, current_user)
@@ -722,7 +722,7 @@ async def get_threshold_suggestions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_permission("admin:full")),
 ) -> List[ThresholdAdjustmentSuggestion]:
-    """Gibt Vorschlaege fuer Threshold-Anpassungen zurueck."""
+    """Gibt Vorschläge für Threshold-Anpassungen zurück."""
     pipeline = get_ai_learning_pipeline()
 
     company_id = await get_user_company_id(db, current_user)
@@ -757,7 +757,7 @@ async def apply_threshold_suggestion(
 
     company_id = await get_user_company_id(db, current_user)
 
-    # Hole aktuelle Vorschlaege
+    # Hole aktuelle Vorschläge
     adjustments = await pipeline.suggest_threshold_adjustments(
         db=db,
         company_id=company_id,
@@ -772,7 +772,7 @@ async def apply_threshold_suggestion(
     if not adjustment:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Kein Vorschlag fuer {decision_type} gefunden",
+            detail=f"Kein Vorschlag für {decision_type} gefunden",
         )
 
     success = await pipeline.apply_threshold_adjustment(
@@ -784,7 +784,7 @@ async def apply_threshold_suggestion(
 
     return {
         "success": success,
-        "message": f"Schwellenwerte fuer {decision_type} angepasst",
+        "message": f"Schwellenwerte für {decision_type} angepasst",
         "new_auto_threshold": adjustment.suggested_auto,
         "new_suggest_threshold": adjustment.suggested_suggest,
     }
@@ -815,7 +815,7 @@ async def get_pending_review_count(
 
 class NLQQueryRequest(BaseModel):
     """NLQ-Abfrage-Request."""
-    query: str = Field(..., min_length=3, max_length=500, description="Die Abfrage in natuerlicher Sprache")
+    query: str = Field(..., min_length=3, max_length=500, description="Die Abfrage in natürlicher Sprache")
     limit: int = Field(50, ge=1, le=200, description="Maximale Anzahl Ergebnisse")
 
 
@@ -847,19 +847,19 @@ async def process_nlq_query(
     current_user: User = Depends(get_current_user),
 ) -> NLQResultResponse:
     """
-    Verarbeitet eine natuerlichsprachliche Abfrage.
+    Verarbeitet eine natürlichsprachliche Abfrage.
 
     Beispiele:
-    - "Zeige alle Rechnungen von Mueller GmbH ueber 1000 EUR"
-    - "Wie viel haben wir letzten Monat fuer Bueroartikel ausgegeben?"
+    - "Zeige alle Rechnungen von Mueller GmbH über 1000 EUR"
+    - "Wie viel haben wir letzten Monat für Bueroartikel ausgegeben?"
     - "Welche Rechnungen sind seit mehr als 30 Tagen offen?"
 
     Der Service erkennt automatisch:
     - Firmennamen (validiert gegen DB)
-    - Geldbetraege (mit Operatoren: ueber, unter, etc.)
+    - Geldbetraege (mit Operatoren: über, unter, etc.)
     - Zeitraeume (letzter Monat, diese Woche, etc.)
     - Dokumenttypen (Rechnung, Angebot, etc.)
-    - Status (offen, bezahlt, ueberfaellig)
+    - Status (offen, bezahlt, überfällig)
     """
     from app.services.ai.nlq_service import get_nlq_service
 
@@ -899,7 +899,7 @@ async def get_nlq_examples(
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
     """
-    Gibt Beispiel-Abfragen fuer NLQ zurueck.
+    Gibt Beispiel-Abfragen für NLQ zurück.
 
     Hilft Benutzern, die Syntax zu verstehen.
     """
@@ -910,7 +910,7 @@ async def get_nlq_examples(
                 "queries": [
                     "Zeige alle Rechnungen von letzter Woche",
                     "Finde Dokumente von Mueller GmbH",
-                    "Alle offenen Rechnungen ueber 500 EUR",
+                    "Alle offenen Rechnungen über 500 EUR",
                 ]
             },
             {
@@ -931,15 +931,15 @@ async def get_nlq_examples(
             {
                 "category": "Status",
                 "queries": [
-                    "Ueberfaellige Rechnungen",
+                    "Überfällige Rechnungen",
                     "Bezahlte Rechnungen diesen Monat",
                     "Offene Betraege von Lieferanten",
                 ]
             },
         ],
         "tips": [
-            "Verwenden Sie deutsche Begriffe fuer Dokumenttypen (Rechnung, Angebot, etc.)",
-            "Betraege koennen mit 'ueber', 'unter', 'mindestens' eingeschraenkt werden",
+            "Verwenden Sie deutsche Begriffe für Dokumenttypen (Rechnung, Angebot, etc.)",
+            "Betraege können mit 'über', 'unter', 'mindestens' eingeschraenkt werden",
             "Zeitraeume: 'heute', 'gestern', 'letzte Woche', 'dieser Monat', 'letztes Jahr'",
             "Firmennamen werden automatisch mit der Datenbank abgeglichen",
         ]
@@ -952,13 +952,13 @@ async def get_nlq_examples(
 
 
 class RoutingRequest(BaseModel):
-    """Request fuer Dokument-Routing."""
+    """Request für Dokument-Routing."""
 
     document_id: uuid.UUID = Field(..., description="ID des zu routenden Dokuments")
 
 
 class RoutingDecisionResponse(BaseModel):
-    """Response fuer Routing-Entscheidung."""
+    """Response für Routing-Entscheidung."""
 
     document_id: str
     target_type: str  # workflow, department, user, queue
@@ -974,7 +974,7 @@ class RoutingDecisionResponse(BaseModel):
 
 
 class RoutingStatisticsResponse(BaseModel):
-    """Response fuer Routing-Statistiken."""
+    """Response für Routing-Statistiken."""
 
     period_days: int
     folder_distribution: List[JSONDict]
@@ -991,7 +991,7 @@ async def route_document(
     current_user: User = Depends(get_current_user),
 ) -> RoutingDecisionResponse:
     """
-    Bestimmt das Routing fuer ein Dokument.
+    Bestimmt das Routing für ein Dokument.
 
     Analysiert:
     - Dokumenttyp
@@ -1000,7 +1000,7 @@ async def route_document(
     - Keywords im Text
     - Historische Muster
 
-    Gibt Ziel-Abteilung/Workflow und Prioritaet zurueck.
+    Gibt Ziel-Abteilung/Workflow und Prioritaet zurück.
     """
     from app.services.ai.routing_intelligence_service import get_routing_intelligence_service
 
@@ -1029,12 +1029,12 @@ async def route_document(
 
 @router.get("/routing/statistics", response_model=RoutingStatisticsResponse)
 async def get_routing_statistics(
-    days: int = Query(30, ge=1, le=365, description="Anzahl Tage fuer Statistik"),
+    days: int = Query(30, ge=1, le=365, description="Anzahl Tage für Statistik"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> RoutingStatisticsResponse:
     """
-    Gibt Routing-Statistiken zurueck.
+    Gibt Routing-Statistiken zurück.
 
     Zeigt:
     - Verteilung nach Ordner
@@ -1067,7 +1067,7 @@ async def get_routing_statistics(
 
 
 class AutonomyThresholdsResponse(BaseModel):
-    """Response fuer Autonomie-Thresholds."""
+    """Response für Autonomie-Thresholds."""
 
     document_classification: float
     entity_linking: float
@@ -1092,12 +1092,12 @@ async def get_autonomy_thresholds(
     current_user: User = Depends(get_current_user),
 ) -> AutonomyThresholdsResponse:
     """
-    Gibt die aktuellen Autonomie-Thresholds zurueck.
+    Gibt die aktuellen Autonomie-Thresholds zurück.
 
     Diese Thresholds bestimmen, ab welcher Confidence-Stufe
     das System automatisch handelt:
     - >= Threshold: Automatische Aktion
-    - < Threshold: User-Bestaetigung erforderlich
+    - < Threshold: User-Bestätigung erforderlich
     """
     from app.core.config import settings
 

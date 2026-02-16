@@ -1,6 +1,6 @@
 """Visual Version Diff API Router.
 
-Endpoints fuer Seite-an-Seite Dokumentenvergleich.
+Endpoints für Seite-an-Seite Dokumentenvergleich.
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/visual-diff", tags=["visual-diff"])
 
 
 class DiffRequest(BaseModel):
-    """Schema fuer Vergleichsanfrage."""
+    """Schema für Vergleichsanfrage."""
     text_a: str = Field(..., min_length=1, max_length=500000)
     text_b: str = Field(..., min_length=1, max_length=500000)
     document_a_id: Optional[str] = None
@@ -29,7 +29,7 @@ class DiffRequest(BaseModel):
 
 
 class DiffBlockResponse(BaseModel):
-    """Schema fuer einen Diff-Block."""
+    """Schema für einen Diff-Block."""
     diff_type: str
     old_text: str = ""
     new_text: str = ""
@@ -41,7 +41,7 @@ class DiffBlockResponse(BaseModel):
 
 
 class DiffResponse(BaseModel):
-    """Schema fuer Vergleichsergebnis."""
+    """Schema für Vergleichsergebnis."""
     document_a_id: str
     document_b_id: str
     total_changes: int
@@ -54,7 +54,7 @@ class DiffResponse(BaseModel):
 
 
 class ChangeSummaryResponse(BaseModel):
-    """Schema fuer Aenderungszusammenfassung."""
+    """Schema für Änderungszusammenfassung."""
     total_changes: int
     additions: int
     deletions: int
@@ -69,7 +69,7 @@ async def compare_texts(
     data: DiffRequest,
     current_user: dict = Depends(get_current_user),
 ) -> DiffResponse:
-    """Vergleicht zwei Texte und gibt Diff zurueck."""
+    """Vergleicht zwei Texte und gibt Diff zurück."""
     service = VisualDiffService()
     result = service.compare_texts(
         text_a=data.text_a,
@@ -108,7 +108,7 @@ async def compare_texts_summary(
     data: DiffRequest,
     current_user: dict = Depends(get_current_user),
 ) -> ChangeSummaryResponse:
-    """Vergleicht zwei Texte und gibt nur die Zusammenfassung zurueck."""
+    """Vergleicht zwei Texte und gibt nur die Zusammenfassung zurück."""
     service = VisualDiffService()
     result = service.compare_texts(
         text_a=data.text_a,

@@ -3,7 +3,7 @@
 Implementiert Abteilungs-Operationen mit Hierarchie-Support:
 - CRUD mit Audit-Trail
 - Hierarchie-Validierung (keine Zyklen)
-- Tree-Struktur fuer Frontend
+- Tree-Struktur für Frontend
 """
 
 from datetime import datetime, timezone
@@ -24,10 +24,10 @@ logger = structlog.get_logger(__name__)
 
 
 class DepartmentService:
-    """Service fuer Abteilungs-Verwaltung.
+    """Service für Abteilungs-Verwaltung.
 
     Security Features:
-    - Audit-Logging fuer alle CRUD-Operationen
+    - Audit-Logging für alle CRUD-Operationen
     - Input-Sanitization
     - Company Context Enforcement
     - Hierarchie-Validierung
@@ -51,7 +51,7 @@ class DepartmentService:
             db: Datenbank-Session
             company_id: Firmen-ID
             page: Seitennummer
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
             search: Suchbegriff
             parent_id: Filter nach Eltern-Abteilung
             include_inactive: Auch inaktive Abteilungen
@@ -94,7 +94,7 @@ class DepartmentService:
 
         department_dicts = [self._department_to_dict(d) for d in departments]
 
-        # A.1 CRITICAL: Audit-Logging fuer List-Operationen (GDPR Art. 30)
+        # A.1 CRITICAL: Audit-Logging für List-Operationen (GDPR Art. 30)
         audit = get_audit_logger(db)
         await audit.log_event(
             event_type=SecurityEventType.DEPARTMENTS_LISTED,
@@ -327,7 +327,7 @@ class DepartmentService:
                 resource_id=str(department.id),
                 details={
                     "company_id": str(company_id),
-                    # H.6 MEDIUM: name ENTFERNT - koennte sensible Info enthalten
+                    # H.6 MEDIUM: name ENTFERNT - könnte sensible Info enthalten
                 },
             )
 
@@ -420,9 +420,9 @@ class DepartmentService:
             if new_parent_id == department_id:
                 raise ValueError("Eine Abteilung kann nicht ihr eigenes Elternteil sein.")
 
-            # Pruefen auf Zyklen
+            # Prüfen auf Zyklen
             if await self._would_create_cycle(db, department_id, new_parent_id, company_id):
-                raise ValueError("Diese Aenderung wuerde eine zyklische Hierarchie erzeugen.")
+                raise ValueError("Diese Änderung wuerde eine zyklische Hierarchie erzeugen.")
 
         # H.3 HIGH: manager_id Cross-Company Validierung auch bei Update
         manager_id = sanitized_data.get('manager_id')
@@ -513,7 +513,7 @@ class DepartmentService:
         user_id: UUID,
         ip_address: Optional[str] = None,
     ) -> bool:
-        """Loescht eine Abteilung (Soft-Delete).
+        """Löscht eine Abteilung (Soft-Delete).
 
         Args:
             db: Datenbank-Session
@@ -542,15 +542,15 @@ class DepartmentService:
         if not department:
             return False
 
-        # Pruefen auf Kinder
+        # Prüfen auf Kinder
         active_children = [c for c in department.children if c.deleted_at is None]
         if active_children:
             raise ValueError(
                 f"Abteilung hat {len(active_children)} aktive Unterabteilungen. "
-                "Bitte zuerst diese loeschen oder verschieben."
+                "Bitte zuerst diese löschen oder verschieben."
             )
 
-        # Pruefen auf Mitarbeiter
+        # Prüfen auf Mitarbeiter
         emp_count = await db.execute(
             select(func.count(Employee.id))
             .where(Employee.department_id == department_id)
@@ -579,7 +579,7 @@ class DepartmentService:
                 resource_id=str(department_id),
                 details={
                     "company_id": str(company_id),
-                    # H.6 MEDIUM: name ENTFERNT - koennte sensible Info enthalten
+                    # H.6 MEDIUM: name ENTFERNT - könnte sensible Info enthalten
                 },
                 severity="warning",
             )
@@ -604,7 +604,7 @@ class DepartmentService:
                 company_id=str(company_id),
                 user_id=str(user_id),
             )
-            raise ValueError("Die Abteilung kann nicht geloescht werden (Referenzen vorhanden).")
+            raise ValueError("Die Abteilung kann nicht gelöscht werden (Referenzen vorhanden).")
         except (DataError, OperationalError) as e:
             await db.rollback()
             logger.error(
@@ -636,7 +636,7 @@ class DepartmentService:
         new_parent_id: UUID,
         company_id: UUID,
     ) -> bool:
-        """Prueft ob ein neues Parent eine Zyklus erzeugen wuerde.
+        """Prüft ob ein neues Parent eine Zyklus erzeugen wuerde.
 
         Args:
             db: Datenbank-Session
@@ -687,7 +687,7 @@ class DepartmentService:
 
     def _sanitize_input(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Sanitiert Eingaben."""
-        # B.3 HIGH: description hinzugefuegt fuer vollstaendige Sanitization
+        # B.3 HIGH: description hinzugefuegt für vollständige Sanitization
         text_fields = {'name', 'short_name', 'cost_center', 'description'}
         sanitized = {}
 

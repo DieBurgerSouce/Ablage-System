@@ -1,7 +1,7 @@
 """
-Realtime Services fuer Live-Updates.
+Realtime Services für Live-Updates.
 
-Ermoeglicht Echtzeit-Kommunikation zwischen Backend und Frontend.
+Ermöglicht Echtzeit-Kommunikation zwischen Backend und Frontend.
 """
 
 from app.services.realtime.event_broadcaster import (

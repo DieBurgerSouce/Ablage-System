@@ -46,7 +46,7 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 
 
 class ProjectCreate(BaseModel):
-    """Schema fuer Projekt-Erstellung."""
+    """Schema für Projekt-Erstellung."""
     code: str = Field(..., min_length=1, max_length=50, description="Eindeutiger Projekt-Code")
     name: str = Field(..., min_length=1, max_length=255, description="Projektname")
     description: Optional[str] = Field(None, description="Projektbeschreibung")
@@ -54,7 +54,7 @@ class ProjectCreate(BaseModel):
     start_date: Optional[date] = Field(None, description="Geplanter Starttermin")
     end_date: Optional[date] = Field(None, description="Geplanter Endtermin")
     budget: Optional[Decimal] = Field(None, ge=0, description="Budget")
-    currency: str = Field("EUR", max_length=3, description="Waehrung")
+    currency: str = Field("EUR", max_length=3, description="Währung")
     kostenstelle_id: Optional[UUID] = Field(None, description="Kostenstellen-ID")
     manager_id: Optional[UUID] = Field(None, description="Projektleiter-ID")
     priority: str = Field(ProjectPriority.MEDIUM.value, description="Prioritaet")
@@ -63,7 +63,7 @@ class ProjectCreate(BaseModel):
 
 
 class ProjectUpdate(BaseModel):
-    """Schema fuer Projekt-Update."""
+    """Schema für Projekt-Update."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
     client_id: Optional[UUID] = None
@@ -83,7 +83,7 @@ class ProjectUpdate(BaseModel):
 
 
 class ProjectResponse(BaseModel):
-    """Schema fuer Projekt-Antwort."""
+    """Schema für Projekt-Antwort."""
     id: UUID
     code: str
     name: str
@@ -117,7 +117,7 @@ class ProjectResponse(BaseModel):
 
 
 class ProjectListResponse(BaseModel):
-    """Schema fuer Projekt-Liste."""
+    """Schema für Projekt-Liste."""
     items: List[ProjectResponse]
     total: int
     limit: int
@@ -125,17 +125,17 @@ class ProjectListResponse(BaseModel):
 
 
 class MemberCreate(BaseModel):
-    """Schema fuer Mitglied-Hinzufuegung."""
+    """Schema für Mitglied-Hinzufuegung."""
     user_id: UUID = Field(..., description="Benutzer-ID")
     role: str = Field(ProjectMemberRole.MEMBER.value, description="Rolle")
-    permissions: List[str] = Field(default_factory=list, description="Zusaetzliche Berechtigungen")
-    valid_from: Optional[date] = Field(None, description="Gueltig ab")
-    valid_until: Optional[date] = Field(None, description="Gueltig bis")
+    permissions: List[str] = Field(default_factory=list, description="Zusätzliche Berechtigungen")
+    valid_from: Optional[date] = Field(None, description="Gültig ab")
+    valid_until: Optional[date] = Field(None, description="Gültig bis")
     allocation_percent: Optional[int] = Field(None, ge=0, le=100, description="Allokation in Prozent")
 
 
 class MemberResponse(BaseModel):
-    """Schema fuer Mitglied-Antwort."""
+    """Schema für Mitglied-Antwort."""
     id: UUID
     project_id: UUID
     user_id: UUID
@@ -154,13 +154,13 @@ class MemberResponse(BaseModel):
 
 
 class DocumentAssignRequest(BaseModel):
-    """Schema fuer Dokument-Zuweisung."""
+    """Schema für Dokument-Zuweisung."""
     document_id: UUID = Field(..., description="Dokument-ID")
     assignment_type: str = Field(DocumentAssignmentType.GENERAL.value, description="Zuweisungstyp")
 
 
 class DocumentAssignmentResponse(BaseModel):
-    """Schema fuer Dokument-Zuweisungs-Antwort."""
+    """Schema für Dokument-Zuweisungs-Antwort."""
     id: UUID
     document_id: UUID
     document_filename: Optional[str] = None
@@ -176,7 +176,7 @@ class DocumentAssignmentResponse(BaseModel):
 
 
 class AutoAssignSuggestion(BaseModel):
-    """Schema fuer Auto-Zuweisungs-Vorschlag."""
+    """Schema für Auto-Zuweisungs-Vorschlag."""
     project_id: UUID
     project_code: str
     project_name: str
@@ -186,7 +186,7 @@ class AutoAssignSuggestion(BaseModel):
 
 
 class ProjectSummaryResponse(BaseModel):
-    """Schema fuer Projekt-Zusammenfassung."""
+    """Schema für Projekt-Zusammenfassung."""
     total_projects: int
     active_projects: int
     completed_projects: int
@@ -197,7 +197,7 @@ class ProjectSummaryResponse(BaseModel):
 
 
 class ProjectDocumentStatsResponse(BaseModel):
-    """Schema fuer Dokumenten-Statistiken."""
+    """Schema für Dokumenten-Statistiken."""
     total_documents: int
     invoices: int
     contracts: int
@@ -372,7 +372,7 @@ async def get_project_summary(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> ProjectSummaryResponse:
-    """Projekt-Zusammenfassung fuer Company."""
+    """Projekt-Zusammenfassung für Company."""
     summary = await project_service.get_project_summary(db, company.id)
     return ProjectSummaryResponse(
         total_projects=summary.total_projects,
@@ -425,12 +425,12 @@ async def update_project(
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
 async def delete_project(
     project_id: UUID,
-    hard_delete: bool = Query(False, description="Endgueltig loeschen statt archivieren"),
+    hard_delete: bool = Query(False, description="Endgültig löschen statt archivieren"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ):
-    """Projekt loeschen (archivieren)."""
+    """Projekt löschen (archivieren)."""
     existing = await project_service.get_project(db, project_id)
     if not existing or existing.company_id != company.id:
         raise HTTPException(status_code=404, detail="Projekt nicht gefunden")
@@ -439,7 +439,7 @@ async def delete_project(
         db, project_id, soft_delete=not hard_delete
     )
     if not success:
-        raise HTTPException(status_code=500, detail="Projekt konnte nicht geloescht werden")
+        raise HTTPException(status_code=500, detail="Projekt konnte nicht gelöscht werden")
 
     await db.commit()
 
@@ -474,7 +474,7 @@ async def complete_project(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> ProjectResponse:
-    """Projekt abschliessen."""
+    """Projekt abschließen."""
     existing = await project_service.get_project(db, project_id)
     if not existing or existing.company_id != company.id:
         raise HTTPException(status_code=404, detail="Projekt nicht gefunden")
@@ -671,7 +671,7 @@ async def suggest_projects_for_document(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> List[AutoAssignSuggestion]:
-    """KI-basierte Projekt-Vorschlaege fuer ein Dokument."""
+    """KI-basierte Projekt-Vorschläge für ein Dokument."""
     suggestions = await project_service.suggest_project_for_document(
         db, document_id, company.id
     )
@@ -700,7 +700,7 @@ async def auto_assign_document(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> Optional[DocumentAssignmentResponse]:
-    """Automatische Projekt-Zuweisung fuer ein Dokument."""
+    """Automatische Projekt-Zuweisung für ein Dokument."""
     result = await project_service.auto_assign_document(
         db, document_id, company.id,
         min_confidence=min_confidence,
@@ -726,7 +726,7 @@ async def auto_assign_document(
 
 
 class ProjectChainCreate(BaseModel):
-    """Schema fuer Chain-Projekt-Verknuepfung."""
+    """Schema für Chain-Projekt-Verknüpfung."""
     chain_id: str = Field(..., min_length=1, max_length=100, description="Chain-ID")
     chain_name: Optional[str] = Field(None, max_length=255, description="Chain-Name")
     chain_description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
@@ -735,7 +735,7 @@ class ProjectChainCreate(BaseModel):
         description="Erwartete Dokumenttypen"
     )
     allocated_budget: Optional[Decimal] = Field(None, ge=0, description="Zugewiesenes Budget")
-    entity_id: Optional[UUID] = Field(None, description="Geschaeftspartner-ID")
+    entity_id: Optional[UUID] = Field(None, description="Geschäftspartner-ID")
     order_number: Optional[str] = Field(None, max_length=100, description="Bestellnummer")
     notes: Optional[str] = Field(None, max_length=2000, description="Notizen")
 
@@ -743,7 +743,7 @@ class ProjectChainCreate(BaseModel):
 
 
 class ProjectChainUpdate(BaseModel):
-    """Schema fuer Chain-Update."""
+    """Schema für Chain-Update."""
     chain_name: Optional[str] = Field(None, max_length=255)
     chain_description: Optional[str] = Field(None, max_length=2000)
     chain_status: Optional[str] = Field(None, description="active, completed, cancelled")
@@ -756,7 +756,7 @@ class ProjectChainUpdate(BaseModel):
 
 
 class ProjectChainResponse(BaseModel):
-    """Response fuer eine Projekt-Chain."""
+    """Response für eine Projekt-Chain."""
     id: UUID
     project_id: UUID
     chain_id: str
@@ -785,7 +785,7 @@ class ProjectChainResponse(BaseModel):
 
 
 class ProjectChainListResponse(BaseModel):
-    """Response fuer Chain-Liste."""
+    """Response für Chain-Liste."""
     items: List[ProjectChainResponse]
     total: int
     project_id: UUID
@@ -794,7 +794,7 @@ class ProjectChainListResponse(BaseModel):
 
 
 class ProjectChainStatsResponse(BaseModel):
-    """Statistiken fuer Projekt-Chains."""
+    """Statistiken für Projekt-Chains."""
     total_chains: int
     active_chains: int
     completed_chains: int
@@ -903,7 +903,7 @@ async def add_chain_to_project(
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Diese Chain ist bereits mit dem Projekt verknuepft"
+            detail="Diese Chain ist bereits mit dem Projekt verknüpft"
         )
 
     # Create chain assignment
@@ -992,7 +992,7 @@ async def update_project_chain(
         if request.chain_status not in valid_statuses:
             raise HTTPException(
                 status_code=400,
-                detail=f"Ungueltiger Status. Erlaubt: {valid_statuses}"
+                detail=f"Ungültiger Status. Erlaubt: {valid_statuses}"
             )
 
     # Update fields
@@ -1053,7 +1053,7 @@ async def get_project_chain_stats(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> ProjectChainStatsResponse:
-    """Holt Statistiken ueber alle Chains eines Projekts."""
+    """Holt Statistiken über alle Chains eines Projekts."""
     from sqlalchemy import select, func
     from app.db.models_project import ProjectDocumentChain
 

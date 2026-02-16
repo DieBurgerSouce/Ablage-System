@@ -6,7 +6,7 @@ Vision 2.0 Feature: Intelligente Dokumentenklassifikation
 Klassifiziert Dokumente nach mehreren Dimensionen:
 - Dokumenttyp (Invoice, Contract, Order, etc.)
 - Dringlichkeit (Immediate, Normal, CanWait)
-- Abteilung/Zustaendigkeit (Buchhaltung, Einkauf, Vertrieb, etc.)
+- Abteilung/Zuständigkeit (Buchhaltung, Einkauf, Vertrieb, etc.)
 - Vertraulichkeit (Public, Internal, Confidential, StrictlyConfidential)
 
 Feinpoliert und durchdacht.

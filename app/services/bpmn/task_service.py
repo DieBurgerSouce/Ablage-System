@@ -1,11 +1,11 @@
 """Process Task Service.
 
 Verwaltet BPMN User Tasks:
-- Claim/Unclaim: Task uebernehmen/freigeben
-- Complete: Task abschliessen
+- Claim/Unclaim: Task übernehmen/freigeben
+- Complete: Task abschließen
 - Delegate: Task delegieren
 - List: Meine Tasks, Gruppen-Tasks
-- Escalation: Eskalation bei Ueberfaelligkeit
+- Escalation: Eskalation bei Überfälligkeit
 """
 
 from datetime import datetime, timezone
@@ -31,13 +31,13 @@ logger = structlog.get_logger(__name__)
 
 
 class ProcessTaskService:
-    """Service fuer User Task Management.
+    """Service für User Task Management.
 
-    Ermoeglicht Benutzern das Bearbeiten von Workflow-Aufgaben:
+    Ermöglicht Benutzern das Bearbeiten von Workflow-Aufgaben:
     - Tasks abrufen (eigene, Gruppen, alle)
-    - Tasks uebernehmen und abschliessen
+    - Tasks übernehmen und abschließen
     - Tasks delegieren
-    - Prioritaet und Faelligkeit verwalten
+    - Priorität und Fälligkeit verwalten
     """
 
     def __init__(self, db: AsyncSession):
@@ -72,11 +72,11 @@ class ProcessTaskService:
         page: int = 1,
         per_page: int = 20,
     ) -> tuple[List[ProcessTask], int]:
-        """Gibt Tasks fuer einen Benutzer zurueck.
+        """Gibt Tasks für einen Benutzer zurück.
 
         Beinhaltet:
         - Direkt zugewiesene Tasks
-        - Optional: Tasks fuer Benutzer-Gruppen
+        - Optional: Tasks für Benutzer-Gruppen
 
         Args:
             user_id: Benutzer ID
@@ -85,7 +85,7 @@ class ProcessTaskService:
             include_group_tasks: Gruppen-Tasks einbeziehen
             user_groups: Gruppen des Benutzers
             page: Seite
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
 
         Returns:
             (Liste der Tasks, Gesamtanzahl)
@@ -149,7 +149,7 @@ class ProcessTaskService:
         page: int = 1,
         per_page: int = 20,
     ) -> tuple[List[ProcessTask], int]:
-        """Gibt unzugewiesene Tasks fuer eine Gruppe zurueck."""
+        """Gibt unzugewiesene Tasks für eine Gruppe zurück."""
         conditions = [
             ProcessTask.company_id == company_id,
             ProcessTask.assignee_group == group_name,
@@ -186,27 +186,27 @@ class ProcessTaskService:
         user_id: UUID,
         company_id: UUID
     ) -> ProcessTask:
-        """Uebernimmt einen Task.
+        """Übernimmt einen Task.
 
         Der Task muss ACTIVE und nicht bereits zugewiesen sein.
 
         Args:
             task_id: Task ID
-            user_id: Uebernehmender User
+            user_id: Übernehmender User
             company_id: Mandant
 
         Returns:
-            Uebernommener Task
+            Übernommener Task
 
         Raises:
-            ValueError: Wenn Task nicht verfuegbar
+            ValueError: Wenn Task nicht verfügbar
         """
         task = await self.get_task(task_id, company_id)
         if not task:
             raise ValueError("Task nicht gefunden")
 
         if task.status not in (TaskStatus.ACTIVE, TaskStatus.PENDING):
-            raise ValueError(f"Task kann nicht uebernommen werden (Status: {task.status})")
+            raise ValueError(f"Task kann nicht übernommen werden (Status: {task.status})")
 
         if task.assignee_id and task.assignee_id != user_id:
             raise ValueError("Task ist bereits einem anderen Benutzer zugewiesen")
@@ -218,7 +218,7 @@ class ProcessTaskService:
         await self._add_task_history(
             task=task,
             event_type="TASK_CLAIMED",
-            message=f"Task uebernommen",
+            message=f"Task übernommen",
             actor_id=user_id
         )
 
@@ -309,13 +309,13 @@ class ProcessTaskService:
         company_id: UUID,
         variables: Optional[Dict[str, Any]] = None
     ) -> ProcessTask:
-        """Schliesst einen Task ab.
+        """Schließt einen Task ab.
 
         Args:
             task_id: Task ID
-            user_id: Abschliessender User
+            user_id: Abschließender User
             company_id: Mandant
-            variables: Output-Variablen fuer den Prozess
+            variables: Output-Variablen für den Prozess
 
         Returns:
             Abgeschlossener Task
@@ -329,7 +329,7 @@ class ProcessTaskService:
             task.assignee_id = user_id
             task.claimed_at = datetime.now(timezone.utc)
         elif task.assignee_id != user_id:
-            raise ValueError("Nur der zugewiesene Benutzer kann den Task abschliessen")
+            raise ValueError("Nur der zugewiesene Benutzer kann den Task abschließen")
 
         if task.status not in (
             TaskStatus.ASSIGNED,
@@ -394,7 +394,7 @@ class ProcessTaskService:
         Args:
             task_id: Task ID
             from_user_id: Delegierender User
-            to_user_id: Empfaenger
+            to_user_id: Empfänger
             company_id: Mandant
             comment: Optionaler Kommentar
 
@@ -444,7 +444,7 @@ class ProcessTaskService:
         company_id: UUID,
         due_date: datetime
     ) -> ProcessTask:
-        """Setzt das Faelligkeitsdatum."""
+        """Setzt das Fälligkeitsdatum."""
         task = await self.get_task(task_id, company_id)
         if not task:
             raise ValueError("Task nicht gefunden")
@@ -455,7 +455,7 @@ class ProcessTaskService:
         await self._add_task_history(
             task=task,
             event_type="TASK_DUE_DATE_CHANGED",
-            message=f"Faelligkeit geaendert",
+            message=f"Fälligkeit geändert",
             actor_id=user_id,
             old_value={"due_date": str(old_due) if old_due else None},
             new_value={"due_date": str(due_date)}
@@ -470,13 +470,13 @@ class ProcessTaskService:
         company_id: UUID,
         priority: int
     ) -> ProcessTask:
-        """Setzt die Prioritaet (0-100)."""
+        """Setzt die Priorität (0-100)."""
         task = await self.get_task(task_id, company_id)
         if not task:
             raise ValueError("Task nicht gefunden")
 
         if not 0 <= priority <= 100:
-            raise ValueError("Prioritaet muss zwischen 0 und 100 liegen")
+            raise ValueError("Priorität muss zwischen 0 und 100 liegen")
 
         old_priority = task.priority
         task.priority = priority
@@ -484,7 +484,7 @@ class ProcessTaskService:
         await self._add_task_history(
             task=task,
             event_type="TASK_PRIORITY_CHANGED",
-            message=f"Prioritaet geaendert: {old_priority} -> {priority}",
+            message=f"Priorität geändert: {old_priority} -> {priority}",
             actor_id=user_id
         )
 
@@ -499,7 +499,7 @@ class ProcessTaskService:
     ) -> ProcessTask:
         """Eskaliert einen Task.
 
-        Erhoeht Eskalationsstufe und markiert Zeitpunkt.
+        Erhöht Eskalationsstufe und markiert Zeitpunkt.
 
         Args:
             task_id: Task ID
@@ -540,7 +540,7 @@ class ProcessTaskService:
         company_id: UUID,
         limit: int = 100
     ) -> List[ProcessTask]:
-        """Gibt alle ueberfaelligen Tasks zurueck."""
+        """Gibt alle überfälligen Tasks zurück."""
         now = datetime.now(timezone.utc)
 
         query = (
@@ -568,7 +568,7 @@ class ProcessTaskService:
         company_id: UUID,
         user_id: Optional[UUID] = None
     ) -> Dict[str, Any]:
-        """Gibt Task-Statistiken zurueck."""
+        """Gibt Task-Statistiken zurück."""
         conditions = [ProcessTask.company_id == company_id]
 
         if user_id:
@@ -591,7 +591,7 @@ class ProcessTaskService:
         status_result = await self.db.execute(status_query)
         by_status = {row.status: row.count for row in status_result}
 
-        # Ueberfaellig
+        # Überfällig
         now = datetime.now(timezone.utc)
         overdue_conditions = conditions + [
             ProcessTask.due_date < now,
@@ -645,7 +645,7 @@ class ProcessTaskService:
         old_value: Optional[Dict] = None,
         new_value: Optional[Dict] = None,
     ) -> ProcessHistory:
-        """Fuegt History-Eintrag fuer Task hinzu."""
+        """Fuegt History-Eintrag für Task hinzu."""
         history = ProcessHistory(
             instance_id=task.instance_id,
             task_id=task.id,
@@ -672,24 +672,24 @@ class ProcessTaskService:
 
         Benachrichtigt:
         - Den urspruenglich zugewiesenen Benutzer (wenn delegiert)
-        - Slack-Kanal fuer wichtige Tasks (approval, review)
+        - Slack-Kanal für wichtige Tasks (approval, review)
 
         Args:
             task: Der abgeschlossene Task
-            completed_by_id: ID des abschliessenden Benutzers
+            completed_by_id: ID des abschließenden Benutzers
             company_id: Firmen-ID
         """
         try:
             # Tasks die Slack-Benachrichtigung erhalten
             SLACK_WORTHY_TASK_TYPES = {
                 "approval", "review", "sign", "escalation",
-                "genehmigung", "pruefung", "unterschrift",
+                "genehmigung", "prüfung", "unterschrift",
             }
 
             task_name = task.name or task.element_id
             task_name_lower = task_name.lower()
 
-            # In-App Benachrichtigung fuer delegierte Tasks
+            # In-App Benachrichtigung für delegierte Tasks
             if task.delegated_from_id and task.delegated_from_id != completed_by_id:
                 try:
                     from app.services.notification_service import (
@@ -717,7 +717,7 @@ class ProcessTaskService:
                         error_type=type(e).__name__,
                     )
 
-            # Slack-Benachrichtigung fuer wichtige Tasks
+            # Slack-Benachrichtigung für wichtige Tasks
             is_slack_worthy = any(
                 t in task_name_lower for t in SLACK_WORTHY_TASK_TYPES
             )
@@ -756,5 +756,5 @@ class ProcessTaskService:
 
 
 def get_task_service(db: AsyncSession) -> ProcessTaskService:
-    """Factory Function fuer ProcessTaskService."""
+    """Factory Function für ProcessTaskService."""
     return ProcessTaskService(db)

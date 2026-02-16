@@ -2,15 +2,15 @@
 """
 Contract Cost Analyzer Service for Contract Management V2.
 
-Analysiert die Gesamtkosten von Vertraegen:
-- Monatliche/jaehrliche Kostenprojektion
+Analysiert die Gesamtkosten von Verträgen:
+- Monatliche/jährliche Kostenprojektion
 - Kostentrendanalyse
 - Kategorieaufschluesselung
-- Optimierungsvorschlaege
+- Optimierungsvorschläge
 - Benchmark-Vergleich
 
 SECURITY:
-- NIEMALS Kostendaten in Logs (Geschaeftsgeheimnisse)
+- NIEMALS Kostendaten in Logs (Geschäftsgeheimnisse)
 - Multi-Tenant via company_id Filter
 
 Feinpoliert und durchdacht - Enterprise Contract Management V2.
@@ -47,7 +47,7 @@ COST_CATEGORIES = {
     "base": "Grundkosten",
     "maintenance": "Wartung/Service",
     "support": "Support",
-    "fees": "Gebuehren",
+    "fees": "Gebühren",
     "licenses": "Lizenzen",
     "insurance": "Versicherung",
     "utilities": "Nebenkosten",
@@ -745,7 +745,7 @@ class ContractCostAnalyzer:
                 potential = annual_cost * Decimal("0.10")
                 suggestions.append(OptimizationSuggestion(
                     optimization_type="renegotiate",
-                    title="Neuverhandlung bei Verlaengerung",
+                    title="Neuverhandlung bei Verlängerung",
                     description=(
                         f"Vertrag laeuft in {int(months_until_expiry)} Monaten ab. "
                         f"Nutzen Sie die Gelegenheit zur Neuverhandlung."
@@ -761,10 +761,10 @@ class ContractCostAnalyzer:
             potential = annual_cost * Decimal("0.05")
             suggestions.append(OptimizationSuggestion(
                 optimization_type="reduce_scope",
-                title="Kostenentwicklung ueberpruefen",
+                title="Kostenentwicklung überprüfen",
                 description=(
-                    "Die Kosten steigen. Pruefen Sie, ob alle Leistungen "
-                    "noch benoetigt werden oder der Umfang reduziert werden kann."
+                    "Die Kosten steigen. Prüfen Sie, ob alle Leistungen "
+                    "noch benötigt werden oder der Umfang reduziert werden kann."
                 ),
                 potential_savings=potential,
                 savings_percent=5.0,
@@ -777,10 +777,10 @@ class ContractCostAnalyzer:
             potential = annual_cost * Decimal("0.15")
             suggestions.append(OptimizationSuggestion(
                 optimization_type="term_optimization",
-                title="Automatische Verlaengerung ueberpruefen",
+                title="Automatische Verlängerung überprüfen",
                 description=(
-                    "Automatische Verlaengerung ist aktiv. "
-                    "Vor der Verlaengerung Konditionen am Markt vergleichen."
+                    "Automatische Verlängerung ist aktiv. "
+                    "Vor der Verlängerung Konditionen am Markt vergleichen."
                 ),
                 potential_savings=potential,
                 savings_percent=15.0,
@@ -812,8 +812,8 @@ class ContractCostAnalyzer:
                 optimization_type="consolidate",
                 title="Konsolidierungspotenzial",
                 description=(
-                    "Bei diesem Vertragsvolumen koennte durch Buendelung "
-                    "mit aehnlichen Vertraegen ein besserer Preis erzielt werden."
+                    "Bei diesem Vertragsvolumen könnte durch Buendelung "
+                    "mit ähnlichen Verträgen ein besserer Preis erzielt werden."
                 ),
                 potential_savings=potential,
                 savings_percent=10.0,
@@ -846,7 +846,7 @@ class ContractCostAnalyzer:
         if not benchmarks:
             return {
                 "available": False,
-                "message": "Keine Benchmark-Daten fuer diese Kategorie",
+                "message": "Keine Benchmark-Daten für diese Kategorie",
             }
 
         # Find relevant benchmark
@@ -858,7 +858,7 @@ class ContractCostAnalyzer:
         if not avg_cost_bm:
             return {
                 "available": False,
-                "message": "Keine Kosten-Benchmarks verfuegbar",
+                "message": "Keine Kosten-Benchmarks verfügbar",
             }
 
         bm_value = float(avg_cost_bm.value) if avg_cost_bm.value else 0

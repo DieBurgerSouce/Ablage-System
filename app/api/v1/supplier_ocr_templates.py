@@ -3,7 +3,7 @@
 Supplier OCR Templates API.
 
 Vision 2026+ Feature #2: Dokumenten-Template-System (Lieferanten-spezifisch)
-API fuer Lieferanten-spezifische OCR-Templates.
+API für Lieferanten-spezifische OCR-Templates.
 """
 
 from __future__ import annotations
@@ -43,7 +43,7 @@ router = APIRouter(
 # =============================================================================
 
 class FieldDefinitionSchema(BaseModel):
-    """Schema fuer eine Feld-Definition."""
+    """Schema für eine Feld-Definition."""
     name: str = Field(..., min_length=1, max_length=100, description="Feldname")
     label: str = Field(..., min_length=1, max_length=255, description="Anzeigename")
     type: str = Field(
@@ -65,7 +65,7 @@ class FieldDefinitionSchema(BaseModel):
 
 
 class TemplateCreate(BaseModel):
-    """Schema fuer Template-Erstellung."""
+    """Schema für Template-Erstellung."""
     entity_id: uuid.UUID = Field(..., description="Lieferanten-ID")
     name: str = Field(..., min_length=1, max_length=255, description="Template-Name")
     description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
@@ -74,7 +74,7 @@ class TemplateCreate(BaseModel):
         default=TemplateMatchingStrategy.COMBINED.value,
         description="Matching-Strategie"
     )
-    text_anchors: List[str] = Field(default_factory=list, description="Text-Anker fuer Matching")
+    text_anchors: List[str] = Field(default_factory=list, description="Text-Anker für Matching")
     header_patterns: List[str] = Field(default_factory=list, description="Header-Patterns (Regex)")
     field_definitions: List[FieldDefinitionSchema] = Field(
         default_factory=list,
@@ -83,7 +83,7 @@ class TemplateCreate(BaseModel):
 
 
 class TemplateUpdate(BaseModel):
-    """Schema fuer Template-Aktualisierung."""
+    """Schema für Template-Aktualisierung."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=2000)
     document_type: Optional[str] = None
@@ -97,7 +97,7 @@ class TemplateUpdate(BaseModel):
 
 
 class TemplateResponse(BaseModel):
-    """Response fuer ein Template."""
+    """Response für ein Template."""
     id: str
     entity_id: str
     company_id: str
@@ -125,7 +125,7 @@ class TemplateResponse(BaseModel):
 
 
 class TrainFromDocumentRequest(BaseModel):
-    """Request fuer Template-Training."""
+    """Request für Template-Training."""
     document_id: uuid.UUID = Field(..., description="Dokument-ID")
     corrected_values: JSONDict = Field(..., description="Korrigierte Feldwerte")
     entity_id: Optional[uuid.UUID] = Field(None, description="Lieferanten-ID")
@@ -133,14 +133,14 @@ class TrainFromDocumentRequest(BaseModel):
 
 
 class TemplateMatchRequest(BaseModel):
-    """Request fuer Template-Matching."""
+    """Request für Template-Matching."""
     document_id: uuid.UUID = Field(..., description="Dokument-ID")
     entity_id: Optional[uuid.UUID] = Field(None, description="Optionale Entity-ID")
-    ocr_text: Optional[str] = Field(None, description="OCR-Text fuer Matching")
+    ocr_text: Optional[str] = Field(None, description="OCR-Text für Matching")
 
 
 class TemplateMatchResponse(BaseModel):
-    """Response fuer Template-Matching."""
+    """Response für Template-Matching."""
     matched: bool
     template_id: Optional[str] = None
     template_name: Optional[str] = None
@@ -150,7 +150,7 @@ class TemplateMatchResponse(BaseModel):
 
 
 class TemplateStatisticsResponse(BaseModel):
-    """Response fuer Template-Statistiken."""
+    """Response für Template-Statistiken."""
     total_templates: int
     total_usage: int
     total_successful: int
@@ -159,7 +159,7 @@ class TemplateStatisticsResponse(BaseModel):
 
 
 class TemplateCandidateResponse(BaseModel):
-    """Response fuer einen Template-Kandidaten."""
+    """Response für einen Template-Kandidaten."""
     entity_id: str
     company_id: str
     document_count: int
@@ -170,21 +170,21 @@ class TemplateCandidateResponse(BaseModel):
 
 
 class GenerateFromCandidateRequest(BaseModel):
-    """Request fuer Template-Generierung aus Kandidat."""
+    """Request für Template-Generierung aus Kandidat."""
     entity_id: uuid.UUID = Field(..., description="Entity-ID des Kandidaten")
     document_ids: List[uuid.UUID] = Field(
-        ..., min_length=3, description="Dokument-IDs fuer Template-Generierung"
+        ..., min_length=3, description="Dokument-IDs für Template-Generierung"
     )
     name: Optional[str] = Field(None, max_length=255, description="Template-Name")
 
 
 class TemplateTestRequest(BaseModel):
-    """Request fuer Template-Test gegen ein Dokument."""
+    """Request für Template-Test gegen ein Dokument."""
     document_id: uuid.UUID = Field(..., description="Dokument-ID zum Testen")
 
 
 class TemplateTestResponse(BaseModel):
-    """Response fuer Template-Test."""
+    """Response für Template-Test."""
     template_id: str
     template_name: str
     document_id: str
@@ -244,7 +244,7 @@ async def list_templates(
     response_model=TemplateResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Template erstellen",
-    description="Erstellt ein neues OCR-Template fuer einen Lieferanten.",
+    description="Erstellt ein neues OCR-Template für einen Lieferanten.",
 )
 async def create_template(
     data: TemplateCreate,
@@ -257,7 +257,7 @@ async def create_template(
     if data.matching_strategy not in valid_strategies:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltige matching_strategy. Erlaubt: {valid_strategies}"
+            detail=f"Ungültige matching_strategy. Erlaubt: {valid_strategies}"
         )
 
     # Validiere Feld-Typen
@@ -266,7 +266,7 @@ async def create_template(
         if field_def.type not in valid_types:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Feldtyp '{field_def.type}'. Erlaubt: {valid_types}"
+                detail=f"Ungültiger Feldtyp '{field_def.type}'. Erlaubt: {valid_types}"
             )
 
     service = SupplierTemplateService(db)
@@ -331,7 +331,7 @@ async def update_template(
         if data.matching_strategy not in valid_strategies:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltige matching_strategy. Erlaubt: {valid_strategies}"
+                detail=f"Ungültige matching_strategy. Erlaubt: {valid_strategies}"
             )
 
     if data.field_definitions:
@@ -340,7 +340,7 @@ async def update_template(
             if field_def.type not in valid_types:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Ungueltiger Feldtyp '{field_def.type}'. Erlaubt: {valid_types}"
+                    detail=f"Ungültiger Feldtyp '{field_def.type}'. Erlaubt: {valid_types}"
                 )
 
     update_data = data.model_dump(exclude_unset=True)
@@ -370,7 +370,7 @@ async def update_template(
     "/{template_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_model=None,
-    summary="Template loeschen",
+    summary="Template löschen",
     description="Deaktiviert ein OCR-Template (Soft-Delete).",
 )
 async def delete_template(
@@ -378,7 +378,7 @@ async def delete_template(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Loescht ein Template (Soft-Delete)."""
+    """Löscht ein Template (Soft-Delete)."""
     service = SupplierTemplateService(db)
     deleted = await service.delete_template(
         template_id=template_id,
@@ -427,15 +427,15 @@ async def train_from_document(
 @router.post(
     "/match",
     response_model=TemplateMatchResponse,
-    summary="Template-Matching durchfuehren",
-    description="Findet das passende Template fuer ein Dokument.",
+    summary="Template-Matching durchführen",
+    description="Findet das passende Template für ein Dokument.",
 )
 async def match_template(
     data: TemplateMatchRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> TemplateMatchResponse:
-    """Fuehrt Template-Matching fuer ein Dokument durch."""
+    """Führt Template-Matching für ein Dokument durch."""
     service = SupplierTemplateService(db)
 
     result = await service.find_matching_template(
@@ -459,7 +459,7 @@ async def match_template(
     "/statistics/overview",
     response_model=TemplateStatisticsResponse,
     summary="Template-Statistiken",
-    description="Holt Uebersichtsstatistiken zu allen Templates.",
+    description="Holt Übersichtsstatistiken zu allen Templates.",
 )
 async def get_statistics(
     db: AsyncSession = Depends(get_db),
@@ -497,11 +497,11 @@ async def get_entity_templates(
 
 @router.get(
     "/field-types",
-    summary="Verfuegbare Feldtypen",
-    description="Listet alle verfuegbaren Extraktions-Typen auf.",
+    summary="Verfügbare Feldtypen",
+    description="Listet alle verfügbaren Extraktions-Typen auf.",
 )
 async def get_field_types() -> JSONDict:
-    """Listet verfuegbare Feld-Extraktions-Typen auf."""
+    """Listet verfügbare Feld-Extraktions-Typen auf."""
     return {
         "field_types": [
             {
@@ -550,7 +550,7 @@ async def get_field_types() -> JSONDict:
     "/candidates",
     response_model=List[TemplateCandidateResponse],
     summary="Template-Kandidaten auflisten",
-    description="Listet alle Lieferanten auf, die genug Dokumente fuer eine automatische Template-Generierung haben.",
+    description="Listet alle Lieferanten auf, die genug Dokumente für eine automatische Template-Generierung haben.",
 )
 async def list_template_candidates(
     min_documents: int = Query(3, ge=2, le=50, description="Mindestanzahl Dokumente"),
@@ -625,7 +625,7 @@ async def generate_template_from_candidate(
             name=data.name,
         )
 
-        # Auto-Aktivierung pruefen
+        # Auto-Aktivierung prüfen
         await service.check_and_auto_activate(db, template)
 
         await db.commit()
@@ -689,7 +689,7 @@ async def test_template(
     if not ocr_result_row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Kein OCR-Ergebnis fuer dieses Dokument gefunden",
+            detail="Kein OCR-Ergebnis für dieses Dokument gefunden",
         )
 
     # OCR-Daten aufbereiten

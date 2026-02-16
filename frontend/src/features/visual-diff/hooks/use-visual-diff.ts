@@ -61,3 +61,34 @@ export function useComputeHash() {
     },
   });
 }
+
+/**
+ * Mutation fuer Dokumenten-Vergleich (zwei Dokument-IDs)
+ */
+export function useCompareDocuments() {
+  return useMutation({
+    mutationFn: async ({
+      documentId1,
+      documentId2,
+    }: {
+      documentId1: string;
+      documentId2: string;
+    }) => {
+      const { compareDocuments } = await import(
+        '@/features/documents/compare/api'
+      );
+      return compareDocuments({
+        documentId1,
+        documentId2,
+        comparisonType: 'hybrid',
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Dokumenten-Vergleich fehlgeschlagen', {
+        description:
+          error.message ||
+          'Der Vergleich konnte nicht durchgefuehrt werden.',
+      });
+    },
+  });
+}

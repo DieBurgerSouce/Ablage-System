@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Decision Explainer Service - Erklaerbare KI-Entscheidungen.
+Decision Explainer Service - Erklärbare KI-Entscheidungen.
 
 Enterprise Feature: Transparenz bei allen KI-Entscheidungen.
 
 Features:
-- Faktor-basierte Erklaerungen
+- Faktor-basierte Erklärungen
 - Feature-Importance Visualisierung
-- Kontrafaktische Erklaerungen ("Wenn X anders waere...")
+- Kontrafaktische Erklärungen ("Wenn X anders waere...")
 - Audit-Trail Integration
 
 Vision: "Warum wurde dieses Dokument als Betrug markiert?"
@@ -58,17 +58,17 @@ EXPLANATION_GENERATION_TIME = Histogram(
 # =============================================================================
 
 class ExplanationType(str, Enum):
-    """Typ der Erklaerung."""
-    FACTOR_BASED = "factor_based"       # Faktor-gewichtete Erklaerung
-    RULE_BASED = "rule_based"           # Regel-basierte Erklaerung
-    EXAMPLE_BASED = "example_based"     # Beispiel-basierte Erklaerung
-    COUNTERFACTUAL = "counterfactual"   # Kontrafaktische Erklaerung
-    NATURAL_LANGUAGE = "natural_language"  # Natuerlichsprachliche Erklaerung
+    """Typ der Erklärung."""
+    FACTOR_BASED = "factor_based"       # Faktor-gewichtete Erklärung
+    RULE_BASED = "rule_based"           # Regel-basierte Erklärung
+    EXAMPLE_BASED = "example_based"     # Beispiel-basierte Erklärung
+    COUNTERFACTUAL = "counterfactual"   # Kontrafaktische Erklärung
+    NATURAL_LANGUAGE = "natural_language"  # Natürlichsprachliche Erklärung
 
 
 class FactorDirection(str, Enum):
     """Richtung des Einflusses."""
-    POSITIVE = "positive"   # Unterstuetzt die Entscheidung
+    POSITIVE = "positive"   # Unterstützt die Entscheidung
     NEGATIVE = "negative"   # Spricht gegen die Entscheidung
     NEUTRAL = "neutral"     # Kein signifikanter Einfluss
 
@@ -89,7 +89,7 @@ class ConfidenceImpact(str, Enum):
 # =============================================================================
 
 class ExplanationFactorDict(TypedDict):
-    """Ein Erklaerungsfaktor."""
+    """Ein Erklärungsfaktor."""
     factor_name: str
     factor_value: str
     weight: float
@@ -100,7 +100,7 @@ class ExplanationFactorDict(TypedDict):
 
 
 class CounterfactualDict(TypedDict):
-    """Kontrafaktische Erklaerung."""
+    """Kontrafaktische Erklärung."""
     condition: str
     original_value: str
     alternative_value: str
@@ -109,7 +109,7 @@ class CounterfactualDict(TypedDict):
 
 
 class DecisionExplanationDict(TypedDict):
-    """Vollstaendige Erklaerung einer Entscheidung."""
+    """Vollständige Erklärung einer Entscheidung."""
     id: str
     decision_id: str
     explanation_type: str
@@ -155,12 +155,12 @@ class ExplanationFactor:
 
 @dataclass
 class Counterfactual:
-    """Eine kontrafaktische Erklaerung."""
+    """Eine kontrafaktische Erklärung."""
     condition: str
     original_value: str
     alternative_value: str
     result_change: str
-    confidence_change: float  # Wie wuerde sich Confidence aendern
+    confidence_change: float  # Wie wuerde sich Confidence ändern
 
     def to_dict(self) -> CounterfactualDict:
         """Konvertiert zu Dictionary."""
@@ -175,7 +175,7 @@ class Counterfactual:
 
 @dataclass
 class DecisionExplanation:
-    """Vollstaendige Erklaerung einer KI-Entscheidung."""
+    """Vollständige Erklärung einer KI-Entscheidung."""
     id: UUID = field(default_factory=uuid4)
     decision_id: Optional[UUID] = None
     explanation_type: ExplanationType = ExplanationType.FACTOR_BASED
@@ -183,7 +183,7 @@ class DecisionExplanation:
     decision_value: JSONDict = field(default_factory=dict)
     confidence: float = 0.0
 
-    # Erklaerungen
+    # Erklärungen
     summary: str = ""
     detailed_explanation: str = ""
     factors: List[ExplanationFactor] = field(default_factory=list)
@@ -221,9 +221,9 @@ class DecisionExplanation:
 
 class DecisionExplainer:
     """
-    Service zur Erklaerung von KI-Entscheidungen.
+    Service zur Erklärung von KI-Entscheidungen.
 
-    Generiert verstaendliche Erklaerungen fuer:
+    Generiert verstaendliche Erklärungen für:
     - Kategorisierungen
     - Anomalie-Erkennungen
     - Matching-Entscheidungen
@@ -231,11 +231,11 @@ class DecisionExplainer:
 
     Prinzipien:
     - Transparenz: Alle Faktoren werden offengelegt
-    - Verstaendlichkeit: Deutsche natuerlichsprachliche Erklaerungen
-    - Nachvollziehbarkeit: Audit-Trail fuer Compliance
+    - Verstaendlichkeit: Deutsche natürlichsprachliche Erklärungen
+    - Nachvollziehbarkeit: Audit-Trail für Compliance
     """
 
-    # Faktor-Gewichte fuer verschiedene Entscheidungstypen
+    # Faktor-Gewichte für verschiedene Entscheidungstypen
     FACTOR_WEIGHTS = {
         "categorization": {
             "document_type_keywords": 0.35,
@@ -282,13 +282,13 @@ class DecisionExplainer:
         include_similar_cases: bool = True,
     ) -> DecisionExplanation:
         """
-        Generiert Erklaerung fuer eine Entscheidung.
+        Generiert Erklärung für eine Entscheidung.
 
         Args:
             db: Database Session
-            decision_id: ID der zu erklaerenden Entscheidung
-            include_counterfactuals: Kontrafaktische Erklaerungen generieren
-            include_similar_cases: Aehnliche Faelle einbeziehen
+            decision_id: ID der zu erklärenden Entscheidung
+            include_counterfactuals: Kontrafaktische Erklärungen generieren
+            include_similar_cases: Ähnliche Faelle einbeziehen
 
         Returns:
             DecisionExplanation mit allen Details
@@ -313,15 +313,15 @@ class DecisionExplainer:
         # Zusammenfassung generieren
         summary = self._generate_summary(decision, factors)
 
-        # Detaillierte Erklaerung
+        # Detaillierte Erklärung
         detailed = self._generate_detailed_explanation(decision, factors)
 
-        # Kontrafaktische Erklaerungen
+        # Kontrafaktische Erklärungen
         counterfactuals = []
         if include_counterfactuals:
             counterfactuals = self._generate_counterfactuals(decision, factors)
 
-        # Aehnliche Faelle
+        # Ähnliche Faelle
         similar_count = 0
         if include_similar_cases:
             similar_count = await self._count_similar_cases(db, decision)
@@ -369,7 +369,7 @@ class DecisionExplainer:
         db: AsyncSession,
         decision_ids: List[UUID],
     ) -> List[DecisionExplanation]:
-        """Erklaert mehrere Entscheidungen."""
+        """Erklärt mehrere Entscheidungen."""
         explanations = []
         for decision_id in decision_ids:
             explanation = await self.explain(
@@ -391,7 +391,7 @@ class DecisionExplainer:
         return result.scalar_one_or_none()
 
     def _extract_factors(self, decision: AIDecision) -> List[ExplanationFactor]:
-        """Extrahiert Erklaerungsfaktoren aus einer Entscheidung."""
+        """Extrahiert Erklärungsfaktoren aus einer Entscheidung."""
         factors = []
 
         # Faktoren aus stored explanation
@@ -458,42 +458,42 @@ class DecisionExplainer:
             return ConfidenceImpact.NO_CHANGE
 
     def _translate_feature_name(self, feature_name: str) -> str:
-        """Uebersetzt technische Feature-Namen ins Deutsche."""
+        """Übersetzt technische Feature-Namen ins Deutsche."""
         translations = {
             "document_type_keywords": "Dokumenttyp-Schluesselwoerter",
-            "entity_match": "Geschaeftspartner-Uebereinstimmung",
+            "entity_match": "Geschäftspartner-Übereinstimmung",
             "historical_pattern": "Historisches Muster",
             "amount_range": "Betragsbereich",
             "date_pattern": "Datumsmuster",
             "account_suggestion": "Kontovorschlag",
-            "tax_rate_match": "Steuersatz-Uebereinstimmung",
+            "tax_rate_match": "Steuersatz-Übereinstimmung",
             "historical_booking": "Historische Buchung",
             "amount_validation": "Betragsvalidierung",
-            "amount_match": "Betrags-Uebereinstimmung",
+            "amount_match": "Betrags-Übereinstimmung",
             "date_proximity": "Datumsnaehe",
-            "reference_match": "Referenz-Uebereinstimmung",
+            "reference_match": "Referenz-Übereinstimmung",
             "statistical_deviation": "Statistische Abweichung",
             "pattern_break": "Musterbruch",
-            "frequency_anomaly": "Haeufigkeitsanomalie",
+            "frequency_anomaly": "Häufigkeitsanomalie",
             "context_mismatch": "Kontext-Diskrepanz",
-            "content_similarity": "Inhaltsaehnlichkeit",
-            "metadata_match": "Metadaten-Uebereinstimmung",
+            "content_similarity": "Inhaltsähnlichkeit",
+            "metadata_match": "Metadaten-Übereinstimmung",
             "timing_proximity": "Zeitliche Naehe",
         }
         return translations.get(feature_name, feature_name)
 
     def _generate_factor_description(self, feature_name: str, feature_value: JSONValue) -> str:
-        """Generiert eine natuerlichsprachliche Beschreibung fuer einen Faktor."""
+        """Generiert eine natürlichsprachliche Beschreibung für einen Faktor."""
         descriptions = {
             "document_type_keywords": f"Schluesselwoerter im Dokument deuten auf diesen Typ hin: {feature_value}",
-            "entity_match": f"Geschaeftspartner wurde mit {feature_value}% Sicherheit erkannt",
-            "historical_pattern": f"Aehnliche Dokumente wurden historisch so kategorisiert: {feature_value}",
+            "entity_match": f"Geschäftspartner wurde mit {feature_value}% Sicherheit erkannt",
+            "historical_pattern": f"Ähnliche Dokumente wurden historisch so kategorisiert: {feature_value}",
             "amount_range": f"Betrag liegt im erwarteten Bereich: {feature_value}",
-            "amount_match": f"Betraege stimmen zu {feature_value}% ueberein",
+            "amount_match": f"Betraege stimmen zu {feature_value}% überein",
             "date_proximity": f"Datumsnaehe: {feature_value} Tage Differenz",
             "statistical_deviation": f"Statistische Abweichung: {feature_value} Standardabweichungen",
             "pattern_break": f"Musterbruch erkannt: {feature_value}",
-            "content_similarity": f"Inhaltsaehnlichkeit: {feature_value}%",
+            "content_similarity": f"Inhaltsähnlichkeit: {feature_value}%",
         }
         return descriptions.get(feature_name, f"Wert: {feature_value}")
 
@@ -528,7 +528,7 @@ class DecisionExplainer:
         decision: AIDecision,
         factors: List[ExplanationFactor],
     ) -> str:
-        """Generiert eine ausfuehrliche Erklaerung."""
+        """Generiert eine ausführliche Erklärung."""
         lines = []
 
         decision_value = decision.decision_value or {}
@@ -557,10 +557,10 @@ class DecisionExplainer:
             lines.append("Diese Entscheidung wurde automatisch angewendet, da die Konfidenz sehr hoch ist.")
         elif decision.confidence >= 0.8:
             lines.append("### Bewertung")
-            lines.append("Diese Entscheidung wird als Vorschlag angezeigt und wartet auf Bestaetigung.")
+            lines.append("Diese Entscheidung wird als Vorschlag angezeigt und wartet auf Bestätigung.")
         else:
             lines.append("### Bewertung")
-            lines.append("Diese Entscheidung erfordert manuelle Pruefung aufgrund niedriger Konfidenz.")
+            lines.append("Diese Entscheidung erfordert manuelle Prüfung aufgrund niedriger Konfidenz.")
 
         return "\n".join(lines)
 
@@ -569,10 +569,10 @@ class DecisionExplainer:
         decision: AIDecision,
         factors: List[ExplanationFactor],
     ) -> List[Counterfactual]:
-        """Generiert kontrafaktische Erklaerungen."""
+        """Generiert kontrafaktische Erklärungen."""
         counterfactuals = []
 
-        # Fuer jeden wichtigen negativen Faktor
+        # Für jeden wichtigen negativen Faktor
         negative_factors = [f for f in factors if f.direction == FactorDirection.NEGATIVE]
 
         for factor in negative_factors[:2]:
@@ -580,16 +580,16 @@ class DecisionExplainer:
             counterfactuals.append(Counterfactual(
                 condition=f"Wenn {factor.factor_name} besser waere",
                 original_value=factor.factor_value,
-                alternative_value="hoeherer Wert",
+                alternative_value="höherer Wert",
                 result_change="Konfidenz wuerde steigen",
-                confidence_change=abs(factor.weight) * 0.5,  # Geschaetzte Aenderung
+                confidence_change=abs(factor.weight) * 0.5,  # Geschätzte Änderung
             ))
 
         # Konfidenz-Schwelle
         if 0.8 <= decision.confidence < 0.95:
             needed_increase = 0.95 - decision.confidence
             counterfactuals.append(Counterfactual(
-                condition="Fuer automatische Anwendung",
+                condition="Für automatische Anwendung",
                 original_value=f"{decision.confidence*100:.0f}%",
                 alternative_value="95%+",
                 result_change="Entscheidung wuerde automatisch angewendet",
@@ -603,10 +603,10 @@ class DecisionExplainer:
         db: AsyncSession,
         decision: AIDecision,
     ) -> int:
-        """Zaehlt aehnliche historische Faelle."""
+        """Zaehlt ähnliche historische Faelle."""
         from sqlalchemy import func
 
-        # Gleicher Entscheidungstyp, aehnliches Ergebnis
+        # Gleicher Entscheidungstyp, ähnliches Ergebnis
         query = select(func.count()).where(
             and_(
                 AIDecision.decision_type == decision.decision_type,
@@ -620,7 +620,7 @@ class DecisionExplainer:
         return result.scalar_one_or_none() or 0
 
     def _build_audit_trail(self, decision: AIDecision) -> List[JSONDict]:
-        """Erstellt den Audit-Trail fuer die Entscheidung."""
+        """Erstellt den Audit-Trail für die Entscheidung."""
         trail = []
 
         # Erstellung
@@ -675,7 +675,7 @@ class DecisionExplainer:
         return translations.get(decision_type, "Entscheidung")
 
     def _create_not_found_explanation(self, decision_id: UUID) -> DecisionExplanation:
-        """Erstellt eine Erklaerung fuer nicht gefundene Entscheidungen."""
+        """Erstellt eine Erklärung für nicht gefundene Entscheidungen."""
         return DecisionExplanation(
             decision_id=decision_id,
             explanation_type=ExplanationType.NATURAL_LANGUAGE,
@@ -692,7 +692,7 @@ _decision_explainer: Optional[DecisionExplainer] = None
 
 
 def get_decision_explainer() -> DecisionExplainer:
-    """Gibt die Singleton-Instanz zurueck."""
+    """Gibt die Singleton-Instanz zurück."""
     global _decision_explainer
     if _decision_explainer is None:
         _decision_explainer = DecisionExplainer()

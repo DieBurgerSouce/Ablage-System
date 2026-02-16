@@ -1,10 +1,10 @@
 """BPMN Celery Tasks.
 
-Hintergrund-Tasks fuer die BPMN Process Engine:
-- Timer-Verarbeitung (regelmaessig)
-- Task-Eskalation (regelmaessig)
-- Service Task Ausfuehrung (on-demand)
-- Prozess-Cleanup (taeglich)
+Hintergrund-Tasks für die BPMN Process Engine:
+- Timer-Verarbeitung (regelmäßig)
+- Task-Eskalation (regelmäßig)
+- Service Task Ausführung (on-demand)
+- Prozess-Cleanup (täglich)
 
 Beat Schedule (in celery_config.py hinzufuegen):
     'bpmn.process_due_timers': {
@@ -17,7 +17,7 @@ Beat Schedule (in celery_config.py hinzufuegen):
     },
     'bpmn.cleanup_old_timers': {
         'task': 'app.workers.bpmn_tasks.cleanup_old_timers',
-        'schedule': crontab(hour=3, minute=0),  # Taeglich 03:00
+        'schedule': crontab(hour=3, minute=0),  # Täglich 03:00
     },
 """
 
@@ -50,12 +50,12 @@ logger = structlog.get_logger(__name__)
     queue="maintenance"
 )
 def process_due_timers(self, company_id: Optional[str] = None):
-    """Verarbeitet alle faelligen Timer-Jobs.
+    """Verarbeitet alle fälligen Timer-Jobs.
 
-    Wird regelmaessig von Celery Beat aufgerufen (z.B. jede Minute).
+    Wird regelmäßig von Celery Beat aufgerufen (z.B. jede Minute).
 
     Args:
-        company_id: Optional Filter nach Mandant (fuer alle wenn None)
+        company_id: Optional Filter nach Mandant (für alle wenn None)
     """
     import asyncio
 
@@ -95,10 +95,10 @@ def process_due_timers(self, company_id: Optional[str] = None):
     queue="maintenance"
 )
 def escalate_overdue_tasks(self, company_id: Optional[str] = None):
-    """Eskaliert ueberfaellige Tasks.
+    """Eskaliert überfällige Tasks.
 
-    Wird regelmaessig aufgerufen (z.B. alle 15 Minuten).
-    Erhoeht Eskalationsstufe und benachrichtigt ggf.
+    Wird regelmäßig aufgerufen (z.B. alle 15 Minuten).
+    Erhöht Eskalationsstufe und benachrichtigt ggf.
 
     Args:
         company_id: Optional Filter nach Mandant
@@ -111,7 +111,7 @@ def escalate_overdue_tasks(self, company_id: Optional[str] = None):
 
             service = get_task_service(db)
 
-            # Ueberfaellige Tasks laden
+            # Überfällige Tasks laden
             cid = UUID(company_id) if company_id else None
 
             if cid:
@@ -135,7 +135,7 @@ def escalate_overdue_tasks(self, company_id: Optional[str] = None):
                     await service.escalate(
                         task_id=task.id,
                         company_id=task.company_id,
-                        reason="Automatische Eskalation - Task ueberfaellig"
+                        reason="Automatische Eskalation - Task überfällig"
                     )
                     escalated += 1
 
@@ -170,7 +170,7 @@ def escalate_overdue_tasks(self, company_id: Optional[str] = None):
 def cleanup_old_timers(self, days_old: int = 30):
     """Entfernt alte, inaktive Timer.
 
-    Wird taeglich aufgerufen.
+    Wird täglich aufgerufen.
 
     Args:
         days_old: Alter in Tagen (Default: 30)
@@ -215,7 +215,7 @@ def execute_service_task(
     implementation: str,
     company_id: str
 ):
-    """Fuehrt einen Service Task aus.
+    """Führt einen Service Task aus.
 
     Wird asynchron aufgerufen wenn ein Service Task im Prozess aktiviert wird.
 
@@ -241,7 +241,7 @@ def execute_service_task(
 
             result_variables = {}
 
-            # Python-Implementierung ausfuehren
+            # Python-Implementierung ausführen
             if implementation.startswith("python:"):
                 module_func = implementation[7:]
                 try:
@@ -321,7 +321,7 @@ def execute_service_task(
     queue="maintenance"
 )
 def check_process_timeouts(self, timeout_hours: int = 24):
-    """Prueft auf haengende Prozesse.
+    """Prüft auf haengende Prozesse.
 
     Markiert Prozesse als FAILED wenn sie zu lange laufen.
 
@@ -383,7 +383,7 @@ def send_task_reminder(
     task_id: str,
     company_id: str
 ):
-    """Sendet Erinnerung fuer einen Task.
+    """Sendet Erinnerung für einen Task.
 
     Wird von Timer oder Scheduler aufgerufen.
 

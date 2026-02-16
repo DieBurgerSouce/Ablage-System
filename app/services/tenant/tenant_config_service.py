@@ -1,5 +1,5 @@
 """
-Service fuer Mandanten-Konfiguration und Feature-Verwaltung.
+Service für Mandanten-Konfiguration und Feature-Verwaltung.
 
 Verwaltet Feature-Flags, Kontingente und Mandanten-Status.
 """
@@ -18,11 +18,11 @@ logger = structlog.get_logger(__name__)
 
 class TenantConfigService:
     """
-    Service fuer Mandanten-Konfiguration und Feature-Verwaltung.
+    Service für Mandanten-Konfiguration und Feature-Verwaltung.
 
     Verwaltet:
     - Feature-Flags pro Mandant
-    - Kontingente und Quota-Pruefung
+    - Kontingente und Quota-Prüfung
     - Branding-Einstellungen
     - Mandanten-Aktivierung/-Deaktivierung
     """
@@ -88,7 +88,7 @@ class TenantConfigService:
             Aktualisierte TenantConfig
 
         Raises:
-            ValueError: Bei ungueltigen Eingaben
+            ValueError: Bei ungültigen Eingaben
         """
         try:
             # Hole existierende Konfiguration
@@ -139,7 +139,7 @@ class TenantConfigService:
 
     async def get_tenant_features(self, company_id: UUID) -> Dict[str, bool]:
         """
-        Gibt die Feature-Flags eines Mandanten zurueck.
+        Gibt die Feature-Flags eines Mandanten zurück.
 
         Args:
             company_id: UUID des Mandanten
@@ -157,7 +157,7 @@ class TenantConfigService:
                 )
                 return {}
 
-            # Nur boolean Features zurueckgeben
+            # Nur boolean Features zurückgeben
             features = config.features or {}
             return {k: bool(v) for k, v in features.items() if isinstance(v, bool)}
 
@@ -176,7 +176,7 @@ class TenantConfigService:
         current_usage: int,
     ) -> Dict[str, object]:
         """
-        Prueft ob ein Mandant innerhalb seiner Kontingente liegt.
+        Prüft ob ein Mandant innerhalb seiner Kontingente liegt.
 
         Args:
             company_id: UUID des Mandanten
@@ -221,7 +221,7 @@ class TenantConfigService:
                     "remaining": -1,
                 }
 
-            # Pruefe ob innerhalb des Limits
+            # Prüfe ob innerhalb des Limits
             limit_int = int(limit)
             within_quota = current_usage <= limit_int
             remaining = max(0, limit_int - current_usage)
@@ -249,7 +249,7 @@ class TenantConfigService:
                 company_id=str(company_id),
                 resource=resource,
             )
-            # Bei Fehler: Quota verweigern (fail-closed fuer Enterprise Security)
+            # Bei Fehler: Quota verweigern (fail-closed für Enterprise Security)
             return {
                 "within_quota": False,
                 "limit": -1,
@@ -353,7 +353,7 @@ class TenantConfigService:
 
 def get_tenant_config_service(db: AsyncSession) -> TenantConfigService:
     """
-    Factory fuer TenantConfigService.
+    Factory für TenantConfigService.
 
     Args:
         db: Async Database Session

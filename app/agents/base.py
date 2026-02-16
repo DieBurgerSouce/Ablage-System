@@ -187,9 +187,9 @@ class BaseAgent(ABC):
 @dataclass
 class OCRResult:
     """
-    Standardisiertes OCR-Ergebnis fuer alle Backends.
+    Standardisiertes OCR-Ergebnis für alle Backends.
 
-    Alle OCR-Agents sollten dieses Format zurueckgeben fuer Konsistenz.
+    Alle OCR-Agents sollten dieses Format zurückgeben für Konsistenz.
     """
 
     success: bool
@@ -330,7 +330,7 @@ class OCRAgent(BaseAgent):
             text: Extrahierter Text
             confidence: Confidence Score (0-1)
             processing_time_ms: Verarbeitungszeit
-            **kwargs: Zusaetzliche Metadata
+            **kwargs: Zusätzliche Metadata
 
         Returns:
             Standardisiertes OCRResult

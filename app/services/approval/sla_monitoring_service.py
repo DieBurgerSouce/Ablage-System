@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-SLAMonitoringService - SLA-Ueberwachung fuer Genehmigungsworkflows.
+SLAMonitoringService - SLA-Überwachung für Genehmigungsworkflows.
 
 Feature #3: Approval Workflow Depth
 - SLA-Metriken pro Genehmigungsschritt erfassen
@@ -8,7 +8,7 @@ Feature #3: Approval Workflow Depth
 - Dashboard-Daten (Durchschnitt, Bottlenecks, Compliance-Rate)
 - Bottleneck-Analyse (langsamste Genehmiger)
 
-Nutzt models_approval_extended fuer ApprovalSLAMetric.
+Nutzt models_approval_extended für ApprovalSLAMetric.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class SLADashboard:
-    """Dashboard-Daten fuer SLA-Monitoring."""
+    """Dashboard-Daten für SLA-Monitoring."""
 
     avg_approval_hours: float
     median_approval_hours: float
@@ -68,10 +68,10 @@ class BottleneckEntry:
 
 
 class SLAMonitoringService:
-    """Service fuer SLA-Ueberwachung von Genehmigungsworkflows.
+    """Service für SLA-Überwachung von Genehmigungsworkflows.
 
     Trackt SLA-Metriken pro Genehmigungsschritt, erkennt Verletzungen
-    und liefert Dashboard-Daten fuer das Management.
+    und liefert Dashboard-Daten für das Management.
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -83,7 +83,7 @@ class SLAMonitoringService:
         approval_request_id: UUID,
         step: ApprovalStep,
     ) -> ApprovalSLAMetric:
-        """Erfasst SLA-Metrik fuer einen abgeschlossenen Schritt.
+        """Erfasst SLA-Metrik für einen abgeschlossenen Schritt.
 
         Args:
             db: Async Database Session
@@ -93,7 +93,7 @@ class SLAMonitoringService:
         Returns:
             Erstellte ApprovalSLAMetric
         """
-        # Anfrage laden fuer company_id und SLA-Ziel
+        # Anfrage laden für company_id und SLA-Ziel
         request_stmt = select(ApprovalRequest).where(
             ApprovalRequest.id == approval_request_id
         )
@@ -119,7 +119,7 @@ class SLAMonitoringService:
                     )
                     break
 
-        # SLA-Verletzung pruefen
+        # SLA-Verletzung prüfen
         duration_hours = (
             (completed_at - assigned_at).total_seconds() / 3600.0
         )
@@ -160,7 +160,7 @@ class SLAMonitoringService:
         db: AsyncSession,
         company_id: UUID,
     ) -> List[Dict[str, object]]:
-        """Findet aktuell verletzte SLAs (offene Genehmigungen ueber dem Limit).
+        """Findet aktuell verletzte SLAs (offene Genehmigungen über dem Limit).
 
         Args:
             db: Async Database Session
@@ -171,7 +171,7 @@ class SLAMonitoringService:
         """
         now = utc_now()
 
-        # Offene Genehmigungen die ihr due_date ueberschritten haben
+        # Offene Genehmigungen die ihr due_date überschritten haben
         stmt = (
             select(ApprovalRequest)
             .where(
@@ -248,7 +248,7 @@ class SLAMonitoringService:
         Args:
             db: Async Database Session
             company_id: ID der Firma
-            period_days: Zeitraum in Tagen fuer die Berechnung
+            period_days: Zeitraum in Tagen für die Berechnung
 
         Returns:
             SLADashboard mit allen Metriken
@@ -288,7 +288,7 @@ class SLAMonitoringService:
                 ).total_seconds() / 3600.0
                 durations_hours.append(duration)
 
-                # SLA-Verletzung: ueber due_date
+                # SLA-Verletzung: über due_date
                 if request.due_date and request.resolved_at > request.due_date:
                     sla_breaches += 1
 
@@ -308,7 +308,7 @@ class SLAMonitoringService:
                 (total_completed - sla_breaches) / total_completed
             ) * 100.0
 
-        # Ueberfaellige
+        # Überfällige
         overdue_stmt = select(func.count(ApprovalRequest.id)).where(
             and_(
                 ApprovalRequest.company_id == company_id,
@@ -349,7 +349,7 @@ class SLAMonitoringService:
             period_days: Zeitraum in Tagen
 
         Returns:
-            Liste mit Bottleneck-Eintraegen sortiert nach Verzoegerung
+            Liste mit Bottleneck-Einträgen sortiert nach Verzögerung
         """
         now = utc_now()
         period_start = now - timedelta(days=period_days)

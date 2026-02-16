@@ -111,7 +111,7 @@ if PROMETHEUS_AVAILABLE:
 
     OCR_CER = Histogram(
         "ocr_character_error_rate",
-        "Character Error Rate (CER) fuer OCR-Ergebnisse",
+        "Character Error Rate (CER) für OCR-Ergebnisse",
         ["backend", "document_type"],
         buckets=[0.01, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
         registry=ML_REGISTRY,
@@ -119,7 +119,7 @@ if PROMETHEUS_AVAILABLE:
 
     OCR_WER = Histogram(
         "ocr_word_error_rate",
-        "Word Error Rate (WER) fuer OCR-Ergebnisse",
+        "Word Error Rate (WER) für OCR-Ergebnisse",
         ["backend", "document_type"],
         buckets=[0.01, 0.05, 0.1, 0.15, 0.2, 0.3, 0.5],
         registry=ML_REGISTRY,
@@ -212,7 +212,7 @@ if PROMETHEUS_AVAILABLE:
 
     CALIBRATION_OVERCONFIDENCE = Gauge(
         "ocr_calibration_overconfidence_ratio",
-        "Anteil ueberconfidenter Vorhersagen pro Backend",
+        "Anteil überconfidenter Vorhersagen pro Backend",
         ["backend"],
         registry=ML_REGISTRY,
     )
@@ -346,7 +346,7 @@ if PROMETHEUS_AVAILABLE:
         registry=ML_REGISTRY,
     )
 
-    # Qualitaets-Gauges fuer aktives Modell
+    # Qualitäts-Gauges für aktives Modell
     SURYA_CER_GAUGE = Gauge(
         "surya_cer",
         "Character Error Rate des aktiven Surya-Modells",
@@ -422,7 +422,7 @@ if PROMETHEUS_AVAILABLE:
 
     SURYA_CORRECTIONS_PENDING = Gauge(
         "surya_corrections_pending",
-        "Anzahl ausstehender Korrekturen fuer Surya",
+        "Anzahl ausstehender Korrekturen für Surya",
         registry=ML_REGISTRY,
     )
 
@@ -492,7 +492,7 @@ if PROMETHEUS_AVAILABLE:
 
     SURYA_CHECKPOINT_SIZE_MB = Gauge(
         "surya_checkpoint_size_mb",
-        "Gesamtgroesse aller Surya Checkpoints in MB",
+        "Gesamtgröße aller Surya Checkpoints in MB",
         registry=ML_REGISTRY,
     )
 
@@ -662,7 +662,7 @@ class MLMetrics:
         difficulty: str = "medium",
     ) -> None:
         """
-        Erfasse Ground-Truth-basierte Qualitaetsmetriken.
+        Erfasse Ground-Truth-basierte Qualitätsmetriken.
 
         Args:
             backend: Backend-Name
@@ -848,14 +848,14 @@ class MLMetrics:
         overconfidence_ratio: float,
     ) -> None:
         """
-        Aktualisiere Calibration-Metriken fuer ein Backend.
+        Aktualisiere Calibration-Metriken für ein Backend.
 
         Args:
             backend: Backend-Name
             ece: Expected Calibration Error
             mce: Maximum Calibration Error
             brier_score: Brier Score
-            overconfidence_ratio: Anteil ueberconfidenter Vorhersagen
+            overconfidence_ratio: Anteil überconfidenter Vorhersagen
         """
         if self.enabled:
             CALIBRATION_ECE.labels(backend=backend).set(ece)
@@ -997,7 +997,7 @@ class MLMetrics:
         is_production: bool = False,
     ) -> None:
         """
-        Aktualisiere Surya Model-Qualitaetsmetriken.
+        Aktualisiere Surya Model-Qualitätsmetriken.
 
         Args:
             version: Model-Version (z.B. "v1.2.3_20241215")
@@ -1015,7 +1015,7 @@ class MLMetrics:
             })
             SURYA_MODEL_VERSION_ACTIVE.labels(version=version).set(1 if is_production else 0)
 
-            # Qualitaetsmetriken
+            # Qualitätsmetriken
             SURYA_CER_GAUGE.set(cer)
             SURYA_WER_GAUGE.set(wer)
             SURYA_UMLAUT_ACCURACY_GAUGE.set(umlaut_accuracy)
@@ -1123,7 +1123,7 @@ class MLMetrics:
             )
 
     def record_surya_retraining_check(self) -> None:
-        """Erfasse dass ein Retraining-Condition-Check durchgefuehrt wurde."""
+        """Erfasse dass ein Retraining-Condition-Check durchgeführt wurde."""
         if self.enabled:
             SURYA_RETRAINING_CHECKS_TOTAL.inc()
 
@@ -1178,7 +1178,7 @@ class MLMetrics:
         group: str,
     ) -> None:
         """
-        Erfasse Sample fuer Surya A/B Test.
+        Erfasse Sample für Surya A/B Test.
 
         Args:
             test_id: Test-ID
@@ -1263,7 +1263,7 @@ class MLMetrics:
 
         Args:
             total_versions: Gesamtzahl der Model-Versionen
-            total_checkpoint_size_mb: Gesamtgroesse aller Checkpoints in MB
+            total_checkpoint_size_mb: Gesamtgröße aller Checkpoints in MB
         """
         if self.enabled:
             SURYA_VERSIONS_TOTAL.set(total_versions)
@@ -1306,7 +1306,7 @@ class MLMetrics:
         vram_bytes: int,
     ) -> None:
         """
-        Setze aktuell allokierten VRAM fuer OCR Backend.
+        Setze aktuell allokierten VRAM für OCR Backend.
 
         Args:
             backend: Backend-Name

@@ -2,10 +2,10 @@
 """
 Process Mining API Endpoints.
 
-Endpoints fuer Process Mining und Automatisierungsvorschlaege:
+Endpoints für Process Mining und Automatisierungsvorschläge:
 - Event-Tracking und -Analyse
 - Bottleneck-Erkennung
-- Automatisierungsvorschlaege
+- Automatisierungsvorschläge
 - Prozess-Metriken und -Visualisierung
 
 Vision 2.0 Feature: Process Mining & Autonome Automatisierung
@@ -49,7 +49,7 @@ router = APIRouter(prefix="/process-mining", tags=["Process Mining"])
 # =============================================================================
 
 class EventCreateRequest(BaseModel):
-    """Schema fuer Event-Erstellung."""
+    """Schema für Event-Erstellung."""
     document_id: Optional[UUID] = None
     entity_id: Optional[UUID] = None
     event_type: str = Field(..., description="Event-Typ (z.B. document_uploaded)")
@@ -65,7 +65,7 @@ class EventCreateRequest(BaseModel):
 
 
 class EventResponse(BaseModel):
-    """Schema fuer Event-Antwort."""
+    """Schema für Event-Antwort."""
     id: UUID
     document_id: Optional[UUID]
     entity_id: Optional[UUID]
@@ -93,7 +93,7 @@ class EventListResponse(BaseModel):
 
 
 class BottleneckResponse(BaseModel):
-    """Schema fuer Bottleneck-Details."""
+    """Schema für Bottleneck-Details."""
     type: str
     location: str
     score: float
@@ -103,7 +103,7 @@ class BottleneckResponse(BaseModel):
 
 
 class BottleneckAnalysisResponse(BaseModel):
-    """Vollstaendige Bottleneck-Analyse."""
+    """Vollständige Bottleneck-Analyse."""
     bottlenecks: List[BottleneckResponse]
     overall_score: float
     overall_severity: str
@@ -122,7 +122,7 @@ class ProcessHealthResponse(BaseModel):
 
 
 class SuggestionResponse(BaseModel):
-    """Schema fuer Automatisierungsvorschlag."""
+    """Schema für Automatisierungsvorschlag."""
     id: UUID
     suggestion_type: str
     title: str
@@ -143,25 +143,25 @@ class SuggestionResponse(BaseModel):
 
 
 class SuggestionListResponse(BaseModel):
-    """Liste von Vorschlaegen."""
+    """Liste von Vorschlägen."""
     items: List[SuggestionResponse]
     total: int
 
 
 class SuggestionActivateRequest(BaseModel):
-    """Request fuer Vorschlags-Aktivierung."""
-    # Optional: Parameter fuer die erstellte Automatisierungsregel
+    """Request für Vorschlags-Aktivierung."""
+    # Optional: Parameter für die erstellte Automatisierungsregel
     rule_name: Optional[str] = None
     rule_priority: int = Field(default=50, ge=1, le=100)
 
 
 class SuggestionRejectRequest(BaseModel):
-    """Request fuer Vorschlags-Ablehnung."""
+    """Request für Vorschlags-Ablehnung."""
     reason: Optional[str] = Field(None, max_length=500)
 
 
 class MetricResponse(BaseModel):
-    """Schema fuer Prozess-Metrik."""
+    """Schema für Prozess-Metrik."""
     id: UUID
     metric_date: date
     metric_type: str
@@ -182,7 +182,7 @@ class MetricResponse(BaseModel):
 
 
 class FlowDiagramResponse(BaseModel):
-    """Prozessfluss-Daten fuer Visualisierung."""
+    """Prozessfluss-Daten für Visualisierung."""
     nodes: List[dict]
     edges: List[dict]
     variants: List[dict]
@@ -273,14 +273,14 @@ async def create_event(
     """
     Erstelle ein neues Prozess-Event.
 
-    Wird automatisch fuer Tracking verwendet, kann aber auch manuell aufgerufen werden.
-    Events werden fuer Process Mining und Analyse verwendet.
+    Wird automatisch für Tracking verwendet, kann aber auch manuell aufgerufen werden.
+    Events werden für Process Mining und Analyse verwendet.
     """
     # Validiere Event-Typ
     valid_event_types = [e.value for e in EventType]
     if data.event_type not in valid_event_types:
         logger.warning(f"Unbekannter Event-Typ: {data.event_type}")
-        # Erlauben wir auch unbekannte Typen fuer Erweiterbarkeit
+        # Erlauben wir auch unbekannte Typen für Erweiterbarkeit
 
     tracker = EventTracker(db)
 
@@ -328,9 +328,9 @@ async def list_events(
     """
     Liste alle Prozess-Events mit Filteroptionen.
 
-    Unterstuetzte Filter:
-    - document_id: Nur Events fuer ein bestimmtes Dokument
-    - entity_id: Nur Events fuer eine bestimmte Entity
+    Unterstützte Filter:
+    - document_id: Nur Events für ein bestimmtes Dokument
+    - entity_id: Nur Events für eine bestimmte Entity
     - event_type: Nur bestimmter Event-Typ
     - actor_type: Nur bestimmter Akteur-Typ (system, user, automation)
     - success: Nur erfolgreiche/fehlgeschlagene Events
@@ -420,7 +420,7 @@ async def get_document_timeline(
     company: Company = Depends(require_company),
 ) -> List[EventResponse]:
     """
-    Vollstaendige Event-Timeline fuer ein Dokument.
+    Vollständige Event-Timeline für ein Dokument.
 
     Chronologisch sortiert, zeigt den kompletten Lebenszyklus.
     """
@@ -488,7 +488,7 @@ async def get_bottleneck_heatmap(
     company: Company = Depends(require_company),
 ) -> HeatmapResponse:
     """
-    Heatmap-Daten fuer Bottleneck-Visualisierung.
+    Heatmap-Daten für Bottleneck-Visualisierung.
 
     Zeigt Lastverteilung nach Wochentag und Stunde.
     """
@@ -560,10 +560,10 @@ async def list_suggestions(
     company: Company = Depends(require_company),
 ) -> SuggestionListResponse:
     """
-    Liste Automatisierungsvorschlaege.
+    Liste Automatisierungsvorschläge.
 
-    Vorschlaege werden basierend auf Process Mining generiert und
-    zeigen potenzielle Automatisierungsmoeglichkeiten.
+    Vorschläge werden basierend auf Process Mining generiert und
+    zeigen potenzielle Automatisierungsmöglichkeiten.
     """
     from sqlalchemy import select, and_, desc
 
@@ -596,13 +596,13 @@ async def list_suggestions(
 @router.post("/suggestions/generate", response_model=SuggestionListResponse)
 async def generate_suggestions(
     days: int = Query(30, ge=7, le=90, description="Analysezeitraum"),
-    save: bool = Query(True, description="Vorschlaege speichern"),
+    save: bool = Query(True, description="Vorschläge speichern"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> SuggestionListResponse:
     """
-    Generiere neue Automatisierungsvorschlaege.
+    Generiere neue Automatisierungsvorschläge.
 
     Analysiert manuelle Aktionen und identifiziert:
     - Wiederkehrende Klassifikations-Korrekturen
@@ -611,11 +611,11 @@ async def generate_suggestions(
     - Entity-Linking Verbesserungen
     - Workflow-Optimierungen
 
-    Berechnet ROI (Stunden/Kosten) fuer jeden Vorschlag.
+    Berechnet ROI (Stunden/Kosten) für jeden Vorschlag.
     """
     suggester = AutomationSuggester(db)
 
-    # Generiere Vorschlaege
+    # Generiere Vorschläge
     suggestions_data = await suggester.generate_suggestions(
         company_id=company.company_id,
         days=days,
@@ -639,7 +639,7 @@ async def generate_suggestions(
             total=len(saved),
         )
 
-    # Ohne Speichern: direkte Rueckgabe
+    # Ohne Speichern: direkte Rückgabe
     return SuggestionListResponse(
         items=[
             SuggestionResponse(
@@ -782,7 +782,7 @@ async def get_suggestion_statistics(
     company: Company = Depends(require_company),
 ) -> SuggestionStatsResponse:
     """
-    Statistiken ueber Automatisierungsvorschlaege.
+    Statistiken über Automatisierungsvorschläge.
 
     Zeigt:
     - Anzahl nach Status
@@ -812,7 +812,7 @@ async def list_metrics(
     """
     Liste Prozess-Metriken.
 
-    Taeglich aggregierte Statistiken fuer Dashboard und Reporting.
+    Täglich aggregierte Statistiken für Dashboard und Reporting.
     """
     from sqlalchemy import select, and_, desc
 
@@ -849,7 +849,7 @@ async def get_metrics_summary(
     """
     Zusammenfassung der Prozess-Metriken.
 
-    Aggregiert Kennzahlen fuer das Dashboard:
+    Aggregiert Kennzahlen für das Dashboard:
     - Gesamtdokumente
     - Durchschnittliche Durchlaufzeit
     - Erfolgsrate
@@ -916,7 +916,7 @@ async def get_metrics_summary(
 @router.get("/flow-diagram", response_model=FlowDiagramResponse)
 async def get_flow_diagram(
     days: int = Query(30, ge=1, le=365),
-    min_frequency: int = Query(5, ge=1, description="Mindestanzahl fuer Kanten"),
+    min_frequency: int = Query(5, ge=1, description="Mindestanzahl für Kanten"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -926,7 +926,7 @@ async def get_flow_diagram(
 
     Liefert:
     - Knoten (Event-Typen)
-    - Kanten (Uebergaenge zwischen Events)
+    - Kanten (Übergaenge zwischen Events)
     - Varianten (verschiedene Prozesspfade)
     - Statistiken
     """
@@ -958,7 +958,7 @@ async def get_process_variants(
     Prozessvarianten analysieren.
 
     Zeigt die verschiedenen Wege, die Dokumente durch den Prozess nehmen.
-    Sortiert nach Haeufigkeit.
+    Sortiert nach Häufigkeit.
     """
     discovery_service = ProcessDiscoveryService(db)
 
@@ -982,7 +982,7 @@ async def trigger_metric_calculation(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Loesche taegliche Metrik-Berechnung aus (Admin).
+    Lösche tägliche Metrik-Berechnung aus (Admin).
 
     Normalerweise automatisch per Celery-Task.
     """
@@ -1001,7 +1001,7 @@ async def list_event_types(
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
     """
-    Liste alle verfuegbaren Event-Typen (Admin).
+    Liste alle verfügbaren Event-Typen (Admin).
     """
     return [
         {"value": e.value, "name": e.name}
@@ -1014,7 +1014,7 @@ async def list_suggestion_types(
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
     """
-    Liste alle verfuegbaren Vorschlags-Typen (Admin).
+    Liste alle verfügbaren Vorschlags-Typen (Admin).
     """
     return [
         {"value": t.value, "name": t.name}

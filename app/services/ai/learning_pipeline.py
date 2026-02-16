@@ -46,13 +46,13 @@ logger = structlog.get_logger(__name__)
 
 FEEDBACK_PROCESSED = Counter(
     "ai_feedback_processed_total",
-    "Anzahl verarbeiteter Feedback-Eintraege",
+    "Anzahl verarbeiteter Feedback-Einträge",
     ["decision_type", "feedback_type"]
 )
 
 LEARNING_BATCH_SIZE = Histogram(
     "ai_learning_batch_size",
-    "Groesse der Learning-Batches",
+    "Größe der Learning-Batches",
     buckets=[1, 5, 10, 50, 100, 500]
 )
 
@@ -75,7 +75,7 @@ ACCURACY_RATE = Gauge(
 
 @dataclass
 class LearningStats:
-    """Statistiken fuer Self-Learning."""
+    """Statistiken für Self-Learning."""
     decision_type: DecisionType
     total_decisions: int = 0
     auto_applied: int = 0
@@ -113,7 +113,7 @@ class LearningBatchResult:
 
 class AILearningPipeline:
     """
-    Self-Learning Pipeline fuer KI-Entscheidungen.
+    Self-Learning Pipeline für KI-Entscheidungen.
 
     Verarbeitet Feedback und passt Thresholds dynamisch an.
     """
@@ -121,7 +121,7 @@ class AILearningPipeline:
     # Konfiguration
     MIN_SAMPLES_FOR_ADJUSTMENT = 20  # Min Samples bevor Threshold angepasst wird
     ACCURACY_TARGET = 0.90  # Ziel-Accuracy
-    MAX_THRESHOLD_CHANGE = 0.05  # Max Aenderung pro Iteration
+    MAX_THRESHOLD_CHANGE = 0.05  # Max Änderung pro Iteration
     FEEDBACK_WEIGHT_DECAY = 0.95  # Aelteres Feedback hat weniger Gewicht
 
     def __init__(self) -> None:
@@ -237,11 +237,11 @@ class AILearningPipeline:
         batch_size: int = 100,
     ) -> LearningBatchResult:
         """
-        Verarbeitet unverarbeitete Feedback-Eintraege.
+        Verarbeitet unverarbeitete Feedback-Einträge.
 
         Args:
             db: Database Session
-            batch_size: Max Anzahl zu verarbeitender Eintraege
+            batch_size: Max Anzahl zu verarbeitender Einträge
 
         Returns:
             LearningBatchResult
@@ -328,14 +328,14 @@ class AILearningPipeline:
         auto_decisions = [d for d in decisions if d.auto_applied]
         reviewed_decisions = [d for d in decisions if d.reviewed_by_id]
 
-        # Berechne Accuracy fuer Auto-Applied
+        # Berechne Accuracy für Auto-Applied
         auto_correct = sum(
             1 for d in auto_decisions
             if d.review_action is None or d.review_action == ReviewAction.APPROVED.value
         )
         auto_accuracy = auto_correct / len(auto_decisions) if auto_decisions else 1.0
 
-        # Berechne Accuracy fuer Suggested
+        # Berechne Accuracy für Suggested
         suggested = [d for d in reviewed_decisions if d.confidence >= current_suggest and d.confidence < current_auto]
         suggested_correct = sum(
             1 for d in suggested
@@ -347,7 +347,7 @@ class AILearningPipeline:
         new_suggest = current_suggest
         reason = "Keine Anpassung erforderlich"
 
-        # Wenn Auto-Accuracy zu niedrig -> Threshold erhoehen
+        # Wenn Auto-Accuracy zu niedrig -> Threshold erhöhen
         if auto_accuracy < self.ACCURACY_TARGET and auto_decisions:
             # Finde Confidence bei der Accuracy gut ist
             sorted_by_conf = sorted(auto_decisions, key=lambda d: d.confidence, reverse=True)
@@ -367,7 +367,7 @@ class AILearningPipeline:
         # Wenn Suggested gut funktioniert -> Threshold senken
         elif suggested_accuracy > self.ACCURACY_TARGET and len(suggested) > 10:
             new_suggest = max(current_suggest - 0.02, 0.5)
-            reason = f"Suggested-Accuracy ({suggested_accuracy:.1%}) ueber Ziel"
+            reason = f"Suggested-Accuracy ({suggested_accuracy:.1%}) über Ziel"
 
         return new_auto, new_suggest, reason
 
@@ -383,10 +383,10 @@ class AILearningPipeline:
         Args:
             db: Database Session
             company_id: Optional Company-Filter
-            days: Zeitraum fuer Analyse
+            days: Zeitraum für Analyse
 
         Returns:
-            Liste von ThresholdAdjustment Vorschlaegen
+            Liste von ThresholdAdjustment Vorschlägen
         """
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
@@ -429,7 +429,7 @@ class AILearningPipeline:
                 decisions, current_auto, current_suggest
             )
 
-            # Nur hinzufuegen wenn Aenderung vorgeschlagen
+            # Nur hinzufuegen wenn Änderung vorgeschlagen
             if new_auto != current_auto or new_suggest != current_suggest:
                 adjustments.append(
                     ThresholdAdjustment(
@@ -439,7 +439,7 @@ class AILearningPipeline:
                         suggested_auto=round(new_auto, 3),
                         suggested_suggest=round(new_suggest, 3),
                         reason=reason,
-                        confidence=0.7,  # Basis-Confidence fuer Vorschlag
+                        confidence=0.7,  # Basis-Confidence für Vorschlag
                     )
                 )
 
@@ -459,7 +459,7 @@ class AILearningPipeline:
             db: Database Session
             adjustment: Anzuwendende Anpassung
             company_id: Company-ID
-            updated_by_id: User-ID des Ausfuehrenden
+            updated_by_id: User-ID des Ausführenden
 
         Returns:
             True bei Erfolg
@@ -579,7 +579,7 @@ class AILearningPipeline:
                 "avg_confidence": s.avg_confidence,
             })
 
-        # Anpassungs-Vorschlaege
+        # Anpassungs-Vorschläge
         for a in adjustments:
             report["suggested_adjustments"].append({
                 "decision_type": a.decision_type.value,
@@ -599,11 +599,11 @@ _ai_learning_pipeline_lock = threading.Lock()
 
 
 def get_ai_learning_pipeline() -> AILearningPipeline:
-    """Factory fuer AILearningPipeline Singleton mit Thread-Safety (Double-Check Locking)."""
+    """Factory für AILearningPipeline Singleton mit Thread-Safety (Double-Check Locking)."""
     global _ai_learning_pipeline
     if _ai_learning_pipeline is None:
         with _ai_learning_pipeline_lock:
-            # Double-Check Locking: Erneut pruefen nach Lock-Erwerb
+            # Double-Check Locking: Erneut prüfen nach Lock-Erwerb
             if _ai_learning_pipeline is None:
                 _ai_learning_pipeline = AILearningPipeline()
     return _ai_learning_pipeline

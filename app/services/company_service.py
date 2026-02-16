@@ -2,11 +2,11 @@
 """
 CompanyService - Multi-Tenant Company Management.
 
-Zentraler Service fuer Firmen-bezogene Operationen:
+Zentraler Service für Firmen-bezogene Operationen:
 - Dynamisches Laden von Firmen (ersetzt hardcoded "folie"/"messer")
 - Company-Lookups per short_name, name, oder ID
 - Firmen-spezifische Konfigurationen
-- Legacy-Kompatibilitaet fuer Altdaten
+- Legacy-Kompatibilität für Altdaten
 
 Feinpoliert und durchdacht - Enterprise Multi-Tenant Support.
 """
@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
 
 
 # =============================================================================
-# LEGACY MAPPING (fuer Migration von hardcoded Werten)
+# LEGACY MAPPING (für Migration von hardcoded Werten)
 # =============================================================================
 
 # Legacy short_names die in Altdaten verwendet wurden
@@ -37,7 +37,7 @@ LEGACY_COMPANY_ALIASES: Dict[str, str] = {
     "spargelmesser": "messer",  # Alias
 }
 
-# Legacy Display-Namen fuer UI
+# Legacy Display-Namen für UI
 LEGACY_DISPLAY_NAMES: Dict[str, str] = {
     "folie": "Folie",
     "messer": "Spargelmesser",
@@ -50,12 +50,12 @@ LEGACY_DISPLAY_NAMES: Dict[str, str] = {
 
 class CompanyService:
     """
-    Service fuer Multi-Tenant Firmen-Operationen.
+    Service für Multi-Tenant Firmen-Operationen.
 
     Bietet:
     - Dynamische Firmen-Abfragen statt hardcoded Werte
-    - Legacy-Kompatibilitaet fuer "folie"/"messer" Altdaten
-    - Caching fuer Performance
+    - Legacy-Kompatibilität für "folie"/"messer" Altdaten
+    - Caching für Performance
     - Firmen-spezifische Konfigurationen
     """
 
@@ -65,7 +65,7 @@ class CompanyService:
         include_inactive: bool = False
     ) -> List[Company]:
         """
-        Laedt alle verfuegbaren Firmen.
+        Laedt alle verfügbaren Firmen.
 
         Args:
             db: Datenbank-Session
@@ -114,7 +114,7 @@ class CompanyService:
         """
         Laedt eine Firma per short_name.
 
-        Beruecksichtigt Legacy-Aliase (z.B. "spargelmesser" -> "messer").
+        Berücksichtigt Legacy-Aliase (z.B. "spargelmesser" -> "messer").
 
         Args:
             db: Datenbank-Session
@@ -123,7 +123,7 @@ class CompanyService:
         Returns:
             Company oder None
         """
-        # Normalisiere und pruefe Legacy-Aliase
+        # Normalisiere und prüfe Legacy-Aliase
         normalized = short_name.lower().strip()
         actual_short_name = LEGACY_COMPANY_ALIASES.get(normalized, normalized)
 
@@ -223,7 +223,7 @@ class CompanyService:
         db: AsyncSession
     ) -> List[str]:
         """
-        Gibt alle verfuegbaren Firmen-short_names zurueck.
+        Gibt alle verfügbaren Firmen-short_names zurück.
 
         Ersetzt hardcoded ["folie", "messer"] Listen.
 
@@ -247,7 +247,7 @@ class CompanyService:
         db: AsyncSession
     ) -> Dict[str, str]:
         """
-        Gibt ein Mapping von short_name -> display_name zurueck.
+        Gibt ein Mapping von short_name -> display_name zurück.
 
         Ersetzt hardcoded FOLDER_NAMES Dictionaries.
 
@@ -288,9 +288,9 @@ class CompanyService:
 
     def get_legacy_display_name(self, short_name: str) -> str:
         """
-        Gibt den Legacy Display-Namen fuer einen short_name zurueck.
+        Gibt den Legacy Display-Namen für einen short_name zurück.
 
-        Fallback fuer Faelle wo keine DB-Abfrage moeglich ist.
+        Fallback für Faelle wo keine DB-Abfrage möglich ist.
 
         Args:
             short_name: Kurzname der Firma
@@ -322,7 +322,7 @@ class CompanyService:
         """
         Validiert eine Liste von company_presence Werten.
 
-        Prueft ob alle short_names existieren und gibt valide/invalide zurueck.
+        Prüft ob alle short_names existieren und gibt valide/invalide zurück.
 
         Args:
             db: Datenbank-Session
@@ -334,7 +334,7 @@ class CompanyService:
         if not company_presence:
             return [], []
 
-        # Alle verfuegbaren short_names laden
+        # Alle verfügbaren short_names laden
         valid_short_names = set(await self.get_company_short_names(db))
 
         valid = []
@@ -355,7 +355,7 @@ class CompanyService:
         short_names: List[str],
     ) -> Dict[str, Optional[Company]]:
         """
-        Stellt sicher dass Firmen existieren und gibt ein Mapping zurueck.
+        Stellt sicher dass Firmen existieren und gibt ein Mapping zurück.
 
         Args:
             db: Datenbank-Session
@@ -375,7 +375,7 @@ class CompanyService:
 
     async def get_default_company(self, db: AsyncSession) -> Optional[Company]:
         """
-        Gibt die Standard-Firma zurueck.
+        Gibt die Standard-Firma zurück.
 
         Args:
             db: Datenbank-Session
@@ -402,7 +402,7 @@ _company_service: Optional[CompanyService] = None
 
 
 def get_company_service() -> CompanyService:
-    """Gibt die Singleton-Instanz des CompanyService zurueck."""
+    """Gibt die Singleton-Instanz des CompanyService zurück."""
     global _company_service
     if _company_service is None:
         _company_service = CompanyService()

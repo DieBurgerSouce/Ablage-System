@@ -313,7 +313,7 @@ class DeepSeekAgent(OCRAgent):
                 confidence=result.confidence,
             )
 
-            # Rueckgabe als standardisiertes Dictionary
+            # Rückgabe als standardisiertes Dictionary
             return result.to_dict()
 
         except torch.cuda.OutOfMemoryError as e:
@@ -461,11 +461,11 @@ class DeepSeekAgent(OCRAgent):
             self.logger.error(
                 "deepseek_model_lock_timeout",
                 timeout_seconds=self.LOCK_ACQUISITION_TIMEOUT,
-                message="Lock-Akquisition Timeout - moeglicherweise haengt ein anderer Ladevorgang"
+                message="Lock-Akquisition Timeout - möglicherweise hängt ein anderer Ladevorgang"
             )
             raise AgentResourceError(
                 f"Model-Lock Timeout nach {self.LOCK_ACQUISITION_TIMEOUT / 60:.0f} Minuten. "
-                "Ein anderer Ladevorgang haengt moeglicherweise."
+                "Ein anderer Ladevorgang hängt möglicherweise."
             )
 
         try:
@@ -500,7 +500,7 @@ class DeepSeekAgent(OCRAgent):
                 )
                 raise AgentResourceError(
                     f"Model-Loading Timeout nach {self.MODEL_LOADING_TIMEOUT / 60:.0f} Minuten. "
-                    "Ueberpruefen Sie die Netzwerkverbindung und den verfuegbaren Speicher."
+                    "Überprüfen Sie die Netzwerkverbindung und den verfügbaren Speicher."
                 )
             except Exception as e:
                 # Mark as permanently failed to prevent infinite retry loops
@@ -762,12 +762,12 @@ class DeepSeekAgent(OCRAgent):
         """Load, validate and resize image for optimal Janus processing.
 
         Janus arbeitet am besten mit Bildern bis 1536x1536 Pixel.
-        Groessere Bilder werden proportional skaliert.
+        Größere Bilder werden proportional skaliert.
         """
         if not image_path.exists():
             raise FileNotFoundError(f"Image not found: {image_path}")
 
-        # Maximale Bildgroesse fuer Janus (verhindert OOM und lange Inference)
+        # Maximale Bildgröße für Janus (verhindert OOM und lange Inference)
         MAX_SIZE = 1536
 
         try:
@@ -1085,7 +1085,7 @@ class DeepSeekAgent(OCRAgent):
             inputs = {k: v.to(self.model.device) if torch.is_tensor(v) else v
                      for k, v in inputs.items()}
 
-            # Run inference - OPTIMIERT fuer schnelle Generation
+            # Run inference - OPTIMIERT für schnelle Generation
             # VRAM Monitoring: Check every 100 tokens for memory pressure
             vram_monitor = VRAMMonitorLogitsProcessor(
                 check_interval=100,
@@ -1182,7 +1182,7 @@ class DeepSeekAgent(OCRAgent):
         Janus arbeitet am besten mit kurzen, direkten Prompts.
         """
         if language == "de":
-            return "Lies den gesamten Text aus diesem Dokument vor. Gib nur den Text zurueck, keine Erklaerungen."
+            return "Lies den gesamten Text aus diesem Dokument vor. Gib nur den Text zurück, keine Erklärungen."
         else:
             return "Read all the text from this document. Return only the text, no explanations."
 
@@ -1192,7 +1192,7 @@ class DeepSeekAgent(OCRAgent):
         """Post-process OCR results with German text optimization.
 
         Returns:
-            Standardisiertes OCRResult-Objekt fuer konsistente API.
+            Standardisiertes OCRResult-Objekt für konsistente API.
         """
         text = ocr_result["text"]
 
@@ -1213,7 +1213,7 @@ class DeepSeekAgent(OCRAgent):
                 text = german_result["text"]
                 german_corrections = german_result.get("corrections", [])
 
-                # Extrahiere deutsche Qualitaetsmetriken
+                # Extrahiere deutsche Qualitätsmetriken
                 stats = german_result.get("stats", {})
                 german_validation_score = stats.get("quality_score", 0.0)
                 has_umlauts = any(c in text for c in "äöüÄÖÜß")

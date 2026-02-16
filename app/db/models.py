@@ -3,12 +3,12 @@
 HINWEIS ZU RELATIONSHIPS:
 =========================
 Dieses Modul verwendet eine Mischung aus `backref` und `back_populates`.
-Beide sind funktional aequivalent.
+Beide sind funktional äquivalent.
 
-KONVENTION FUER NEUE RELATIONSHIPS:
-- Verwende `back_populates` fuer explizite bidirektionale Beziehungen
+KONVENTION FÜR NEUE RELATIONSHIPS:
+- Verwende `back_populates` für explizite bidirektionale Beziehungen
 - Definiere die Relationship auf BEIDEN Seiten der Beziehung
-- `backref` ist weiterhin akzeptabel fuer einfache unidirektionale Referenzen
+- `backref` ist weiterhin akzeptabel für einfache unidirektionale Referenzen
 
 Beispiel:
     # Parent-Seite
@@ -105,7 +105,7 @@ class OCRBackend(str, Enum):
 
 
 class DocumentType(str, Enum):
-    """Document type classification - 15 Types fuer Enterprise-Klassifikation.
+    """Document type classification - 15 Types für Enterprise-Klassifikation.
 
     Phase 1.2: Erweitert um Bank Statement, Tax Document, Dunning Letter,
     Purchase Order, Credit Note.
@@ -212,7 +212,7 @@ class Document(Base):
         ForeignKey("companies.id", ondelete="RESTRICT"),
         nullable=False,
         index=True,
-        comment="Mandanten-Zuordnung fuer Multi-Company Isolation"
+        comment="Mandanten-Zuordnung für Multi-Company Isolation"
     )
 
     # Search vectors (Full-Text Search + Semantic Search)
@@ -238,7 +238,7 @@ class Document(Base):
         index=True
     )
     page_number_in_group = Column(Integer, nullable=True)  # Seitennummer innerhalb der Gruppe
-    is_group_primary = Column(Boolean, default=False)  # Ist das primaere Dokument der Gruppe
+    is_group_primary = Column(Boolean, default=False)  # Ist das primäre Dokument der Gruppe
 
     # =========================================================================
     # Document Chain (Auftragsketten-Tracking)
@@ -265,13 +265,13 @@ class Document(Base):
     # Structured extracted data (from OCR)
     extracted_data = Column(CrossDBJSON, default=dict)  # Strukturierte OCR-Daten (Rechnungsnr., Datum, etc.)
 
-    # Scan metadata (fuer Gruppierungserkennung)
+    # Scan metadata (für Gruppierungserkennung)
     scan_timestamp = Column(DateTime(timezone=True), nullable=True)  # Wann wurde gescannt
     scan_batch_id = Column(String(100), nullable=True)  # Scan-Batch ID
     original_filename_sequence = Column(Integer, nullable=True)  # Sequenznummer aus Original-Dateinamen
 
     # Quick Classification (schnelle Klassifizierung in 2-5 Sekunden)
-    # Laeuft PARALLEL zum vollstaendigen OCR, um sofort Tags zuzuweisen
+    # Läuft PARALLEL zum vollständigen OCR, um sofort Tags zuzuweisen
     quick_classification_status = Column(
         String(20),
         default="pending",
@@ -331,9 +331,9 @@ class Document(Base):
         Index("ix_documents_upload_date", "upload_date"),
         Index("ix_documents_owner_id", "owner_id"),
         Index("ix_documents_checksum", "checksum"),
-        # Phase 2.3: Index fuer Soft-Delete Queries
+        # Phase 2.3: Index für Soft-Delete Queries
         Index("ix_documents_deleted_at", "deleted_at"),
-        # Phase 3: Compound Index fuer Owner + Created (haeufige Query)
+        # Phase 3: Compound Index für Owner + Created (häufige Query)
         Index("ix_documents_owner_created", "owner_id", "created_at"),
         # Phase 8: Additional compound indexes for common query patterns
         Index("ix_documents_status_created", "status", "created_at"),
@@ -422,12 +422,12 @@ class User(Base):
     # User preferences (display, OCR, notifications, privacy settings)
     preferences = Column(CrossDBJSON, nullable=True)
 
-    # GoBD: Steuerberater/Pruefer zeitlich begrenzter Zugang
+    # GoBD: Steuerberater/Prüfer zeitlich begrenzter Zugang
     access_until = Column(
         DateTime(timezone=True),
         nullable=True,
         index=True,
-        comment="Zeitliche Begrenzung des Zugangs (fuer Steuerberater/Pruefer)"
+        comment="Zeitliche Begrenzung des Zugangs (für Steuerberater/Prüfer)"
     )
     invited_by_id = Column(
         UUID(as_uuid=True),
@@ -443,7 +443,7 @@ class User(Base):
     access_scope = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Eingeschraenkter Zugriff (z.B. nur bestimmte Firmen, Zeitraeume)"
+        comment="Eingeschraenkter Zugriff (z.B. nur bestimmte Firmen, Zeiträume)"
     )
 
     # Relationships
@@ -842,7 +842,7 @@ class AuditLog(Base):
     company_id = Column(
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
-        nullable=True,  # NULL fuer System-Events (Migrations, Cron-Jobs)
+        nullable=True,  # NULL für System-Events (Migrations, Cron-Jobs)
         index=True
     )
 
@@ -1914,11 +1914,11 @@ class DocumentAccess(Base):
 
 class ChatSessionAccessLevel(str, Enum):
     """
-    Zugriffsebenen fuer Chat Session Sharing.
+    Zugriffsebenen für Chat Session Sharing.
 
     - VIEW: Nur lesen (Chat und Nachrichten ansehen)
     - CONTRIBUTE: Mitarbeiten (Nachrichten senden, mit KI interagieren)
-    - MANAGE: Verwalten (Alles + User einladen/entfernen, Chat loeschen)
+    - MANAGE: Verwalten (Alles + User einladen/entfernen, Chat löschen)
     """
     VIEW = "view"
     CONTRIBUTE = "contribute"
@@ -1927,12 +1927,12 @@ class ChatSessionAccessLevel(str, Enum):
 
 class ChatSessionAccess(Base):
     """
-    Chat Session Zugriff fuer Real-time Collaboration.
+    Chat Session Zugriff für Real-time Collaboration.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Chats mit anderen Benutzern teilen
     - Verschiedene Zugriffsebenen (view, contribute, manage)
-    - Real-time Zusammenarbeit ueber WebSocket
+    - Real-time Zusammenarbeit über WebSocket
     - Audit-Trail wer geteilt hat
     """
     __tablename__ = "rag_chat_session_access"
@@ -1992,7 +1992,7 @@ class ChatSessionAccess(Base):
         return True
 
     def can_contribute(self) -> bool:
-        """Hat Contribute- oder hoehere Berechtigung."""
+        """Hat Contribute- oder höhere Berechtigung."""
         return self.access_level in [
             ChatSessionAccessLevel.CONTRIBUTE.value,
             ChatSessionAccessLevel.MANAGE.value
@@ -2030,10 +2030,10 @@ class BackupRecord(Base):
     """
     Backup-Verlauf und -Tracking.
 
-    Speichert Informationen ueber durchgefuehrte Backups:
+    Speichert Informationen über durchgeführte Backups:
     - Zeitpunkt und Dauer
     - Typ (Full, Incremental, Component)
-    - Groesse und Speicherort
+    - Größe und Speicherort
     - Status und Fehler
     """
     __tablename__ = "backup_records"
@@ -2058,14 +2058,14 @@ class BackupRecord(Base):
     started_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Groesse in Bytes
+    # Größe in Bytes
     size_bytes = Column(BigInteger, nullable=True)
 
     # Speicherort (lokal oder remote)
     storage_path = Column(String(500), nullable=True)
     remote_path = Column(String(500), nullable=True)
 
-    # Checksumme fuer Integritaet
+    # Checksumme für Integrität
     checksum = Column(String(64), nullable=True)
 
     # Retention bis wann aufbewahren
@@ -2104,7 +2104,7 @@ class BackupRecord(Base):
 
     @property
     def size_human(self) -> str:
-        """Gibt Groesse in lesbarem Format zurueck."""
+        """Gibt Größe in lesbarem Format zurück."""
         if not self.size_bytes:
             return "N/A"
         for unit in ["B", "KB", "MB", "GB", "TB"]:
@@ -2142,7 +2142,7 @@ class Notification(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Empfaenger
+    # Empfänger
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="CASCADE"),
@@ -2170,7 +2170,7 @@ class Notification(Base):
     email_sent = Column(Boolean, default=False)
     email_sent_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Zusaetzliche Daten
+    # Zusätzliche Daten
     data = Column(JSON, default=dict)
 
     # Timestamps
@@ -2188,7 +2188,7 @@ class Notification(Base):
 
     @property
     def is_expired(self) -> bool:
-        """Prueft ob Benachrichtigung abgelaufen ist."""
+        """Prüft ob Benachrichtigung abgelaufen ist."""
         if self.expires_at is None:
             return False
         from datetime import datetime, timezone
@@ -2197,12 +2197,12 @@ class Notification(Base):
 
 class FeatureFlag(Base):
     """
-    Feature Flags fuer A/B Testing und Rollouts.
+    Feature Flags für A/B Testing und Rollouts.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Graduelle Feature-Rollouts
     - A/B Tests mit Benutzergruppen
-    - Kill-Switches fuer kritische Features
+    - Kill-Switches für kritische Features
     - Benutzer-spezifische Overrides
     """
     __tablename__ = "feature_flags"
@@ -2231,7 +2231,7 @@ class FeatureFlag(Base):
     starts_at = Column(DateTime(timezone=True), nullable=True)
     ends_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Zusaetzliche Konfiguration
+    # Zusätzliche Konfiguration
     config = Column(JSON, default=dict)
 
     # Audit
@@ -2259,7 +2259,7 @@ class FeatureFlag(Base):
     )
 
     def is_active(self) -> bool:
-        """Prueft ob Feature Flag aktiv ist (zeitlich)."""
+        """Prüft ob Feature Flag aktiv ist (zeitlich)."""
         if not self.enabled:
             return False
 
@@ -2274,7 +2274,7 @@ class FeatureFlag(Base):
         return True
 
     def is_enabled_for_user(self, user_id: str, user_tier: Optional[str] = None) -> bool:
-        """Prueft ob Feature fuer bestimmten Benutzer aktiviert ist."""
+        """Prüft ob Feature für bestimmten Benutzer aktiviert ist."""
         if not self.is_active():
             return False
 
@@ -2297,7 +2297,7 @@ class FeatureFlag(Base):
         return False
 
     def get_variant_for_user(self, user_id: str) -> Optional[str]:
-        """Ermittelt A/B Test Variante fuer Benutzer."""
+        """Ermittelt A/B Test Variante für Benutzer."""
         if not self.variants:
             return None
 
@@ -2320,19 +2320,19 @@ class FeatureFlag(Base):
 # ============================================================================
 
 class EntityType(str, Enum):
-    """Geschaeftspartner-Typ."""
+    """Geschäftspartner-Typ."""
     CUSTOMER = "customer"      # Kunde - erhaelt Dokumente VON uns
     SUPPLIER = "supplier"      # Lieferant - sendet Dokumente AN uns
     BOTH = "both"             # Kann beides sein
-    INTERNAL = "internal"      # Interne Entitaet
+    INTERNAL = "internal"      # Interne Entität
 
 
 class BusinessEntity(Base):
     """
-    Geschaeftspartner (Kunde/Lieferant).
+    Geschäftspartner (Kunde/Lieferant).
 
-    Zentrale Entitaet fuer alle Geschaeftsbeziehungen.
-    Unterstuetzt automatische Erkennung aus OCR-Text mit 99%+ Praezision.
+    Zentrale Entität für alle Geschäftsbeziehungen.
+    Unterstützt automatische Erkennung aus OCR-Text mit 99%+ Präzision.
     """
     __tablename__ = "business_entities"
 
@@ -2342,9 +2342,9 @@ class BusinessEntity(Base):
     entity_type = Column(String(20), nullable=False, default=EntityType.SUPPLIER.value)
     name = Column(String(255), nullable=False, index=True)
     display_name = Column(String(255))
-    short_name = Column(String(50))  # Kurzname fuer Anzeige
+    short_name = Column(String(50))  # Kurzname für Anzeige
 
-    # German business identifiers (fuer 99%+ Praezision)
+    # German business identifiers (für 99%+ Präzision)
     vat_id = Column(String(20), unique=True, index=True, nullable=True)  # USt-IdNr (DE123456789)
     tax_number = Column(String(30), nullable=True)  # Steuernummer
     trade_register = Column(String(50), nullable=True)  # HRB 12345
@@ -2365,7 +2365,7 @@ class BusinessEntity(Base):
     email = Column(String(255), nullable=True)
     website = Column(String(255), nullable=True)
 
-    # Matching patterns (fuer Auto-Detection)
+    # Matching patterns (für Auto-Detection)
     name_aliases = Column(CrossDBJSON, default=list)  # ["ACME GmbH", "ACME AG", "Acme"]
     address_patterns = Column(CrossDBJSON, default=list)  # Alternative Adressen
     email_domains = Column(CrossDBJSON, default=list)  # ["acme.de", "acme.com"]
@@ -2407,7 +2407,7 @@ class BusinessEntity(Base):
         comment="Primary supplier number for display"
     )
 
-    # Risk Scoring (fuer Zahlungsverhalten-Analyse)
+    # Risk Scoring (für Zahlungsverhalten-Analyse)
     risk_score = Column(
         Float,
         nullable=True,
@@ -2493,11 +2493,11 @@ class BusinessEntity(Base):
 # ============================================================================
 
 class InvoiceStatus(str, Enum):
-    """Rechnungsstatus fuer Zahlungsverfolgung."""
+    """Rechnungsstatus für Zahlungsverfolgung."""
     OPEN = "open"           # Neu erstellt, noch nicht versandt
-    SENT = "sent"           # Versandt, noch nicht faellig
-    PAID = "paid"           # Vollstaendig bezahlt
-    OVERDUE = "overdue"     # Faellig und nicht bezahlt
+    SENT = "sent"           # Versandt, noch nicht fällig
+    PAID = "paid"           # Vollständig bezahlt
+    OVERDUE = "overdue"     # Fällig und nicht bezahlt
     DUNNING = "dunning"     # Im Mahnverfahren
     CANCELLED = "cancelled" # Storniert
     PARTIAL = "partial"     # Teilweise bezahlt
@@ -2505,10 +2505,10 @@ class InvoiceStatus(str, Enum):
 
 class InvoiceTracking(Base):
     """
-    Rechnungsverfolgung fuer Risk Scoring, Skonto und Teilzahlungen.
+    Rechnungsverfolgung für Risk Scoring, Skonto und Teilzahlungen.
 
-    Verknuepft Dokumente (Rechnungen) mit Zahlungsinformationen
-    fuer die Berechnung von Risiko-Scores.
+    Verknüpft Dokumente (Rechnungen) mit Zahlungsinformationen
+    für die Berechnung von Risiko-Scores.
 
     Enterprise Features (Januar 2026):
     - Skonto-Tracking mit Deadline-Alerts
@@ -2554,12 +2554,12 @@ class InvoiceTracking(Base):
     skonto_percentage = Column(
         Float,
         nullable=True,
-        comment="Skonto-Prozentsatz (z.B. 2.0 fuer 2%)"
+        comment="Skonto-Prozentsatz (z.B. 2.0 für 2%)"
     )
     skonto_days = Column(
         Integer,
         nullable=True,
-        comment="Tage fuer Skonto-Frist ab Rechnungsdatum"
+        comment="Tage für Skonto-Frist ab Rechnungsdatum"
     )
     skonto_deadline = Column(
         DateTime(timezone=True),
@@ -2646,7 +2646,7 @@ class InvoiceTracking(Base):
 
     @property
     def is_overdue(self) -> bool:
-        """Prueft ob Rechnung ueberfaellig ist."""
+        """Prüft ob Rechnung überfällig ist."""
         if self.status in (InvoiceStatus.PAID.value, InvoiceStatus.CANCELLED.value):
             return False
         if self.due_date:
@@ -2655,7 +2655,7 @@ class InvoiceTracking(Base):
 
     @property
     def days_overdue(self) -> int:
-        """Anzahl Tage ueberfaellig (0 wenn nicht ueberfaellig)."""
+        """Anzahl Tage überfällig (0 wenn nicht überfällig)."""
         if not self.is_overdue or not self.due_date:
             return 0
         delta = datetime.now(self.due_date.tzinfo) - self.due_date
@@ -2663,14 +2663,14 @@ class InvoiceTracking(Base):
 
     @property
     def skonto_still_valid(self) -> bool:
-        """Prueft ob Skonto noch nutzbar ist."""
+        """Prüft ob Skonto noch nutzbar ist."""
         if not self.skonto_deadline or self.skonto_used:
             return False
         return datetime.now(self.skonto_deadline.tzinfo) <= self.skonto_deadline
 
     @property
     def days_until_skonto_expires(self) -> Optional[int]:
-        """Tage bis Skonto ablaeuft (None wenn kein Skonto oder abgelaufen)."""
+        """Tage bis Skonto abläuft (None wenn kein Skonto oder abgelaufen)."""
         if not self.skonto_deadline or self.skonto_used:
             return None
         delta = self.skonto_deadline - datetime.now(self.skonto_deadline.tzinfo)
@@ -2679,9 +2679,9 @@ class InvoiceTracking(Base):
 
 class PaymentTransaction(Base):
     """
-    Teilzahlung fuer eine Rechnung.
+    Teilzahlung für eine Rechnung.
 
-    Ermoeglicht mehrere Zahlungen pro Rechnung mit:
+    Ermöglicht mehrere Zahlungen pro Rechnung mit:
     - Skonto-Abzug Tracking
     - Bank-Reconciliation
     - Audit Trail
@@ -2720,7 +2720,7 @@ class PaymentTransaction(Base):
         UUID(as_uuid=True),
         nullable=True,
         index=True,
-        comment="Verknuepfte Bank-Transaktion ID"
+        comment="Verknüpfte Bank-Transaktion ID"
     )
     reconciliation_status = Column(
         String(20),
@@ -2776,7 +2776,7 @@ class DocumentChainDiscrepancy(Base):
     """
     Abweichungen in Dokumentenketten.
 
-    Erfasst Unterschiede zwischen verknuepften Dokumenten:
+    Erfasst Unterschiede zwischen verknüpften Dokumenten:
     - Betragsabweichungen (Angebot vs Rechnung)
     - Mengenabweichungen
     - Preisabweichungen
@@ -2873,14 +2873,14 @@ class DocumentGroupType(str, Enum):
 
 class DocumentGroup(Base):
     """
-    Dokumentgruppe fuer zusammengehoerige Dokumente.
+    Dokumentgruppe für zusammengehoerige Dokumente.
 
     Gruppiert:
     - Physisch geheftete Seiten (waren mit Heftklammer zusammen)
     - Mehrseitige Scans
     - Logisch zusammengehoerige Dokumente (gleiche Transaktion)
 
-    Erkennung mit 99%+ Praezision durch Mehrfach-Validierung.
+    Erkennung mit 99%+ Präzision durch Mehrfach-Validierung.
     """
     __tablename__ = "document_groups"
 
@@ -2896,14 +2896,14 @@ class DocumentGroup(Base):
 
     # Detection metadata
     detection_method = Column(String(50), nullable=True)  # "filename_sequence", "timestamp", "content_similarity"
-    detection_confidence = Column(Float, default=0.0)  # 0.0-1.0, muss >= 0.99 sein fuer Auto-Gruppierung
+    detection_confidence = Column(Float, default=0.0)  # 0.0-1.0, muss >= 0.99 sein für Auto-Gruppierung
     detection_details = Column(CrossDBJSON, default=dict)  # Details zur Erkennung
     detection_signals = Column(CrossDBJSON, default=list)  # Alle Erkennungssignale
 
     # Content aggregation
     total_pages = Column(Integer, default=1)
     combined_text = Column(Text, nullable=True)  # Kombinierter OCR-Text aller Dokumente
-    combined_text_hash = Column(String(64), nullable=True)  # SHA-256 fuer Deduplizierung
+    combined_text_hash = Column(String(64), nullable=True)  # SHA-256 für Deduplizierung
 
     # Business context
     business_entity_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id", ondelete="SET NULL"), nullable=True)
@@ -2914,14 +2914,14 @@ class DocumentGroup(Base):
     extracted_data = Column(CrossDBJSON, default=dict)
 
     # User interaction
-    user_confirmed = Column(Boolean, default=False)  # Benutzer hat Gruppierung bestaetigt
+    user_confirmed = Column(Boolean, default=False)  # Benutzer hat Gruppierung bestätigt
     user_split = Column(Boolean, default=False)  # Benutzer hat Gruppe aufgeteilt
     confirmation_date = Column(DateTime(timezone=True), nullable=True)
     confirmed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Validation queue
-    needs_review = Column(Boolean, default=False)  # In Warteschlange fuer manuelle Pruefung
-    review_priority = Column(Integer, default=5)  # 1=hoechste Prioritaet
+    needs_review = Column(Boolean, default=False)  # In Warteschlange für manuelle Prüfung
+    review_priority = Column(Integer, default=5)  # 1=hoechste Priorität
 
     # Audit
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
@@ -2978,13 +2978,13 @@ class DocumentRelationship(Base):
     """
     Beziehung zwischen zwei Dokumenten.
 
-    Ermoeglicht Tracking von:
+    Ermöglicht Tracking von:
     - Seitenreihenfolge in mehrseitigen Dokumenten
     - Verweise zwischen Dokumenten (Rechnung -> Vertrag)
     - Duplikat-Erkennung
     - Auftragsketten (Angebot -> Auftrag -> Lieferschein -> Rechnung)
 
-    Bidirektionale Beziehungen werden als zwei separate Eintraege gespeichert.
+    Bidirektionale Beziehungen werden als zwei separate Einträge gespeichert.
     """
     __tablename__ = "document_relationships"
 
@@ -3007,7 +3007,7 @@ class DocumentRelationship(Base):
     confidence = Column(Float, default=1.0)  # 0.0-1.0 (legacy)
     confidence_score = Column(Float, nullable=True, comment="Konfidenz bei Auto-Detection (0.0-1.0)")
 
-    # Chain reference (fuer Auftragsketten)
+    # Chain reference (für Auftragsketten)
     chain_id = Column(
         String(100),
         nullable=True,
@@ -3015,7 +3015,7 @@ class DocumentRelationship(Base):
         comment="Auftragsketten-ID (z.B. CHAIN-2026-00001)"
     )
 
-    # Ordering (fuer CHILD_OF Beziehungen)
+    # Ordering (für CHILD_OF Beziehungen)
     sequence_number = Column(Integer, nullable=True)  # Seitennummer/Reihenfolge
 
     # Detection metadata
@@ -3049,7 +3049,7 @@ class DocumentRelationship(Base):
         ForeignKey("companies.id", ondelete="CASCADE"),
         nullable=True,
         index=True,
-        comment="Firmen-Zuordnung fuer Multi-Tenant"
+        comment="Firmen-Zuordnung für Multi-Tenant"
     )
 
     # Audit
@@ -3104,10 +3104,10 @@ class TrainingSampleStatus(str, Enum):
 
 class OCRTrainingSample(Base):
     """
-    Ground Truth Training Sample fuer OCR-Benchmarking.
+    Ground Truth Training Sample für OCR-Benchmarking.
 
     Speichert Dokumente mit manuell verifiziertem Referenztext
-    fuer die Qualitaetsmessung aller OCR-Backends.
+    für die Qualitaetsmessung aller OCR-Backends.
 
     Workflow:
     1. Dokument wird als Sample ausgewaehlt (PENDING)
@@ -3140,10 +3140,10 @@ class OCRTrainingSample(Base):
     has_stamps = Column(Boolean, default=False)
     has_signatures = Column(Boolean, default=False)
 
-    # Umlaut-Tracking (kritisch fuer Deutsche Dokumente)
-    umlaut_words = Column(CrossDBJSON, default=list)  # ["Muenchen", "Groesse", "uebergeben"]
+    # Umlaut-Tracking (kritisch für Deutsche Dokumente)
+    umlaut_words = Column(CrossDBJSON, default=list)  # ["Muenchen", "Größe", "übergeben"]
 
-    # Extrahierte Felder (fuer Field-Accuracy)
+    # Extrahierte Felder (für Field-Accuracy)
     extracted_fields = Column(CrossDBJSON, default=dict)  # {invoice_number, date, amount, vat, sender, recipient}
 
     # Workflow Status
@@ -3154,7 +3154,7 @@ class OCRTrainingSample(Base):
     auto_accepted = Column(Boolean, default=False)  # True wenn durch Auto-Accept Pipeline erstellt
     auto_acceptance_confidence = Column(Float, nullable=True)  # OCR Confidence bei Auto-Accept
     source = Column(String(30), default="manual")  # "manual", "auto_accepted", "correction"
-    needs_spot_check = Column(Boolean, default=False)  # True fuer 10% Stichproben-Review
+    needs_spot_check = Column(Boolean, default=False)  # True für 10% Stichproben-Review
     spot_check_passed = Column(Boolean, nullable=True)  # Ergebnis des Stichproben-Reviews
     spot_checked_at = Column(DateTime(timezone=True), nullable=True)
     spot_checked_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -3274,7 +3274,7 @@ class CorrectionType(str, Enum):
     """Typ der OCR-Korrektur."""
     UMLAUT = "umlaut"           # Umlaut-Fehler (a->ae, etc.)
     DATE = "date"               # Datumsformat
-    AMOUNT = "amount"           # Betrag/Waehrung
+    AMOUNT = "amount"           # Betrag/Währung
     NAME = "name"               # Firmen-/Personenname
     IBAN = "iban"               # IBAN/Bankdaten
     VAT_ID = "vat_id"           # USt-IdNr
@@ -3286,7 +3286,7 @@ class OCRValidationCorrection(Base):
     Feedback-Korrektur aus der Produktion.
 
     Wenn Benutzer OCR-Fehler korrigieren, wird das Feedback
-    gesammelt und fuer Self-Learning verwendet.
+    gesammelt und für Self-Learning verwendet.
 
     Self-Learning Workflow:
     1. Benutzer korrigiert OCR-Fehler
@@ -3319,7 +3319,7 @@ class OCRValidationCorrection(Base):
 
     # Self-Learning Status
     applies_to_training = Column(Boolean, default=False)  # Soll in Training einfliessen
-    learning_processed = Column(Boolean, default=False)  # Wurde fuer Learning verarbeitet
+    learning_processed = Column(Boolean, default=False)  # Wurde für Learning verarbeitet
     learning_processed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Audit
@@ -3346,7 +3346,7 @@ class OCRValidationCorrection(Base):
 
 class BatchType(str, Enum):
     """Typ des Stichproben-Batches."""
-    RANDOM = "random"               # Zufaellige Auswahl
+    RANDOM = "random"               # Zufällige Auswahl
     STRATIFIED = "stratified"       # Stratifiziert nach Typ/Sprache
     TARGETED = "targeted"           # Gezielt nach Kriterien
     LOW_CONFIDENCE = "low_confidence"  # Niedrige Konfidenz-Dokumente
@@ -3364,9 +3364,9 @@ class BatchStatus(str, Enum):
 
 class OCRTrainingBatch(Base):
     """
-    Stichproben-Batch fuer systematische Validierung.
+    Stichproben-Batch für systematische Validierung.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Stratifizierte Zufallsauswahl
     - Zuweisung an Bearbeiter
     - Fortschrittsverfolgung
@@ -3381,13 +3381,13 @@ class OCRTrainingBatch(Base):
     description = Column(Text, nullable=True)
     batch_type = Column(String(30), default=BatchType.STRATIFIED.value)
 
-    # Backend-spezifische Validierung (fuer Pro-Backend Stichproben)
+    # Backend-spezifische Validierung (für Pro-Backend Stichproben)
     target_backend = Column(String(50), nullable=True)
 
     # Stratifikations-Konfiguration
     stratification_config = Column(CrossDBJSON, default=dict)  # {by_type: true, by_language: true, type_weights: {...}}
 
-    # Groesse
+    # Größe
     target_size = Column(Integer, default=100)  # Ziel-Anzahl
     actual_size = Column(Integer, default=0)    # Tatsaechliche Anzahl
 
@@ -3439,7 +3439,7 @@ class OCRTrainingBatchItem(Base):
     """
     Einzelnes Item in einem Stichproben-Batch.
 
-    Verknuepft Batch mit Training Sample und trackt
+    Verknüpft Batch mit Training Sample und trackt
     den Validierungs-Fortschritt.
     """
     __tablename__ = "ocr_training_batch_items"
@@ -3497,10 +3497,10 @@ class OCRTrainingBatchItem(Base):
 
 class OCRBackendStatsDaily(Base):
     """
-    Taegliche aggregierte Statistiken pro Backend.
+    Tägliche aggregierte Statistiken pro Backend.
 
     Wird automatisch von Celery Beat generiert.
-    Ermoeglicht Trend-Analyse und Performance-Vergleich.
+    Ermöglicht Trend-Analyse und Performance-Vergleich.
     """
     __tablename__ = "ocr_backend_stats_daily"
 
@@ -3520,7 +3520,7 @@ class OCRBackendStatsDaily(Base):
     avg_umlaut_accuracy = Column(Float, nullable=True)
     avg_processing_time_ms = Column(Float, nullable=True)
 
-    # Percentile fuer CER
+    # Percentile für CER
     p50_cer = Column(Float, nullable=True)
     p90_cer = Column(Float, nullable=True)
     p95_cer = Column(Float, nullable=True)
@@ -3643,9 +3643,9 @@ class OCRBulkProcessingJob(Base):
 
 class OCRDocumentOutput(Base):
     """
-    OCR Output fuer ein Dokument durch ein spezifisches Backend.
+    OCR Output für ein Dokument durch ein spezifisches Backend.
 
-    Speichert den OCR-Output aller Backends fuer spaetere
+    Speichert den OCR-Output aller Backends für spätere
     Vergleiche und Ground-Truth-Erstellung.
     """
     __tablename__ = "ocr_document_outputs"
@@ -3701,8 +3701,8 @@ class OCRQualitySnapshot(Base):
     """
     Stuendliche Qualitaets-Snapshots pro Backend.
 
-    Ermoeglicht Trend-Analyse und Quality-Degradation-Erkennung
-    fuer das Continuous-Learning-System.
+    Ermöglicht Trend-Analyse und Quality-Degradation-Erkennung
+    für das Continuous-Learning-System.
     """
     __tablename__ = "ocr_quality_snapshots"
 
@@ -3754,10 +3754,10 @@ class ModelType(str, Enum):
 
 class OCRModelDeployment(Base):
     """
-    Modell-Deployment-Tracking fuer A/B Testing.
+    Modell-Deployment-Tracking für A/B Testing.
 
-    Ermoeglicht Versionskontrolle und Rollback
-    fuer fine-getunte Modelle.
+    Ermöglicht Versionskontrolle und Rollback
+    für fine-getunte Modelle.
     """
     __tablename__ = "ocr_model_deployments"
 
@@ -3771,7 +3771,7 @@ class OCRModelDeployment(Base):
     # Deployment Info
     is_active = Column(Boolean, default=False)
     is_default = Column(Boolean, default=False)
-    traffic_percentage = Column(Float, default=0.0)  # Fuer A/B Testing
+    traffic_percentage = Column(Float, default=0.0)  # Für A/B Testing
 
     # Performance Metrics
     performance_metrics = Column(CrossDBJSON, default=dict)
@@ -3812,7 +3812,7 @@ class OCRModelDeployment(Base):
 # ============================================================================
 
 class RAGSectionType(str, Enum):
-    """Chunk Section Types fuer RAG."""
+    """Chunk Section Types für RAG."""
     HEADER = "header"
     PARAGRAPH = "paragraph"
     TABLE = "table"
@@ -3822,7 +3822,7 @@ class RAGSectionType(str, Enum):
 
 
 class RAGSyncStatus(str, Enum):
-    """Synchronisations-Status fuer Customer Cards."""
+    """Synchronisations-Status für Customer Cards."""
     PENDING = "pending"
     SYNCING = "syncing"
     COMPLETED = "completed"
@@ -3846,7 +3846,7 @@ class RAGLLMModelType(str, Enum):
 class RAGJobType(str, Enum):
     """RAG Batch Job Typen."""
     CUSTOMER_CARD_SYNC = "customer_card_sync"
-    SYNC_CARDS = "sync_cards"  # Alias fuer CUSTOMER_CARD_SYNC
+    SYNC_CARDS = "sync_cards"  # Alias für CUSTOMER_CARD_SYNC
     REPORT_GENERATION = "report_generation"
     REEMBEDDING = "reembedding"
     CHUNK_DOCUMENTS = "chunk_documents"
@@ -3863,7 +3863,7 @@ class RAGJobStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
-# Aliase fuer API-Kompatibilitaet
+# Aliase für API-Kompatibilität
 RAGBatchJobType = RAGJobType
 RAGBatchJobStatus = RAGJobStatus
 RAGCardSyncStatus = RAGSyncStatus
@@ -3878,7 +3878,7 @@ class RAGCardPriorityLevel(str, Enum):
 
 
 class RAGContextType(str, Enum):
-    """Chat Context Types fuer RAG-Kontext."""
+    """Chat Context Types für RAG-Kontext."""
     GENERAL = "general"
     CUSTOMER = "customer"
     DOCUMENT = "document"
@@ -3887,9 +3887,9 @@ class RAGContextType(str, Enum):
 
 class RAGDocumentChunk(Base):
     """
-    Chunked Document fuer RAG Retrieval.
+    Chunked Document für RAG Retrieval.
 
-    Speichert Text-Chunks mit Embeddings fuer semantische Suche.
+    Speichert Text-Chunks mit Embeddings für semantische Suche.
     Jedes Dokument wird in mehrere Chunks aufgeteilt basierend auf
     Dokumenttyp und Inhalt (semantic chunking).
     """
@@ -3941,9 +3941,9 @@ class RAGDocumentChunk(Base):
 
 class RAGCustomerCard(Base):
     """
-    Pre-computed Kunden-Zusammenfassung fuer Real-Time Zugriff.
+    Pre-computed Kunden-Zusammenfassung für Real-Time Zugriff.
 
-    Ermoeglicht Instant-Zugriff (< 100ms) auf Kundendaten am Telefon.
+    Ermöglicht Instant-Zugriff (< 100ms) auf Kundendaten am Telefon.
     Wird naechtlich per Batch-Job aktualisiert oder bei Bedarf manuell.
     """
     __tablename__ = "rag_customer_cards"
@@ -3976,11 +3976,11 @@ class RAGCustomerCard(Base):
     total_revenue_ytd = Column(Float, nullable=True)
     total_revenue_last_year = Column(Float, nullable=True)
     average_order_value = Column(Float, nullable=True)
-    payment_behavior = Column(String(50), nullable=True)  # Puenktlich, Verzoegert, Problematisch
+    payment_behavior = Column(String(50), nullable=True)  # Puenktlich, Verzögert, Problematisch
 
     # Flags und Alerts
-    flags = Column(CrossDBJSON, default=list)  # ["Zahlungsverzug", "Vertrag laeuft aus"]
-    priority_level = Column(Integer, default=0)  # 0-10, hoeher = wichtiger
+    flags = Column(CrossDBJSON, default=list)  # ["Zahlungsverzug", "Vertrag läuft aus"]
+    priority_level = Column(Integer, default=0)  # 0-10, höher = wichtiger
 
     # Synchronisation
     last_full_sync_at = Column(DateTime(timezone=True), nullable=True)
@@ -3992,13 +3992,13 @@ class RAGCustomerCard(Base):
     source_document_count = Column(Integer, default=0)
     source_document_ids = Column(CrossDBJSON, nullable=True)  # List of UUID strings
 
-    # Alias fuer last_sync_at Kompatibilitaet
+    # Alias für last_sync_at Kompatibilität
     @property
     def last_sync_at(self):
-        """Alias fuer last_full_sync_at."""
+        """Alias für last_full_sync_at."""
         return self.last_full_sync_at
 
-    # Embedding fuer semantische Kundensuche
+    # Embedding für semantische Kundensuche
     card_embedding = Column(CrossDBVector(1024), nullable=True)
 
     # Timestamps
@@ -4018,9 +4018,9 @@ class RAGCustomerCard(Base):
 
 class RAGChatSession(Base):
     """
-    Chat Session fuer RAG-basierte Dokumenten-Interaktion.
+    Chat Session für RAG-basierte Dokumenten-Interaktion.
 
-    Speichert Konversationskontext fuer:
+    Speichert Konversationskontext für:
     - Allgemeine Dokumentenfragen
     - Kundenspezifische Anfragen (Telefon-Support)
     - Dokumentenanalyse
@@ -4068,7 +4068,7 @@ class RAGChatMessage(Base):
     Einzelne Nachricht in einer RAG Chat Session.
 
     Speichert User-Fragen und LLM-Antworten mit Quellen-Referenzen
-    fuer Nachvollziehbarkeit.
+    für Nachvollziehbarkeit.
     """
     __tablename__ = "rag_chat_messages"
 
@@ -4081,7 +4081,7 @@ class RAGChatMessage(Base):
         nullable=False
     )
 
-    # Optionales angehaengtes Dokument (fuer User-Nachrichten)
+    # Optionales angehaengtes Dokument (für User-Nachrichten)
     attached_document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
@@ -4092,10 +4092,10 @@ class RAGChatMessage(Base):
     role = Column(String(20), nullable=False)  # user, assistant, system
     content = Column(Text, nullable=False)
 
-    # Thinking Content (fuer LLMs mit Thinking Mode)
+    # Thinking Content (für LLMs mit Thinking Mode)
     thinking_content = Column(Text, nullable=True)
 
-    # Fuer Assistant Messages: Quellen
+    # Für Assistant Messages: Quellen
     confidence_score = Column(Float, nullable=True)
 
     # Model Information
@@ -4120,10 +4120,10 @@ class RAGChatMessage(Base):
 
 class RAGLLMModel(Base):
     """
-    LLM Model Registry fuer RAG Intelligence Layer.
+    LLM Model Registry für RAG Intelligence Layer.
 
     Speichert Konfiguration und Performance-Metriken
-    fuer alle verwendeten Modelle (Embedding, Chat, Reranking).
+    für alle verwendeten Modelle (Embedding, Chat, Reranking).
     """
     __tablename__ = "rag_llm_models"
 
@@ -4169,7 +4169,7 @@ class RAGLLMModel(Base):
 
 class RAGBatchJob(Base):
     """
-    Batch Job Tracking fuer RAG-Operationen.
+    Batch Job Tracking für RAG-Operationen.
 
     Trackt langwierige Jobs wie:
     - Customer Card Synchronisation (naechtlich)
@@ -4242,15 +4242,15 @@ class RAGBatchJob(Base):
 
     @property
     def is_finished(self) -> bool:
-        """Prueft ob Job abgeschlossen ist."""
+        """Prüft ob Job abgeschlossen ist."""
         return self.status in [RAGJobStatus.COMPLETED.value, RAGJobStatus.FAILED.value, RAGJobStatus.CANCELLED.value]
 
 
 class RAGAnalytics(Base):
     """
-    Analytics und Metriken fuer RAG-Nutzung.
+    Analytics und Metriken für RAG-Nutzung.
 
-    Trackt Performance und User-Interaktionen fuer:
+    Trackt Performance und User-Interaktionen für:
     - Optimierung der Suche
     - Modell-Vergleiche
     - Feedback-Auswertung
@@ -4310,13 +4310,13 @@ class RAGAnalytics(Base):
 
 # ============================================================================
 # COMPANY/SYSTEM SETTINGS MODELS
-# Firmeneinstellungen fuer Rechnungserkennung und Systemkonfiguration
+# Firmeneinstellungen für Rechnungserkennung und Systemkonfiguration
 # ============================================================================
 
 
 class CompanySettings(Base):
     """
-    Singleton-Tabelle fuer Firmendetails.
+    Singleton-Tabelle für Firmendetails.
 
     Wird verwendet um zu bestimmen, ob eine hochgeladene Rechnung
     eine Eingangsrechnung (an uns) oder Ausgangsrechnung (von uns) ist.
@@ -4332,7 +4332,7 @@ class CompanySettings(Base):
     alternative_names = Column(
         CrossDBJSON,
         default=[],
-        comment="Alternative Schreibweisen fuer Dokumentenerkennung"
+        comment="Alternative Schreibweisen für Dokumentenerkennung"
     )
 
     # Adresse
@@ -4383,7 +4383,7 @@ class CompanySettings(Base):
 
 # ============================================================================
 # SURYA MODEL VERSIONING
-# Continuous Improvement System fuer Surya OCR
+# Continuous Improvement System für Surya OCR
 # ============================================================================
 
 class SuryaModelStatus(str, Enum):
@@ -4394,7 +4394,7 @@ class SuryaModelStatus(str, Enum):
     ACTIVE = "active"           # Aktiv in Produktion
     INACTIVE = "inactive"       # Deaktiviert
     FAILED = "failed"           # Training fehlgeschlagen
-    ROLLED_BACK = "rolled_back" # Zurueckgerollt
+    ROLLED_BACK = "rolled_back" # Zurückgerollt
 
 
 class SuryaTrainingRunStatus(str, Enum):
@@ -4416,7 +4416,7 @@ class SuryaABTestStatus(str, Enum):
 
 class SuryaModelVersion(Base):
     """
-    Versioniertes Surya OCR Model fuer Continuous Improvement.
+    Versioniertes Surya OCR Model für Continuous Improvement.
 
     Speichert:
     - Checkpoint-Pfade und Versionen
@@ -4519,12 +4519,12 @@ class SuryaModelVersion(Base):
 
     @property
     def full_version(self) -> str:
-        """Gibt vollstaendige Version zurueck."""
+        """Gibt vollständige Version zurück."""
         return f"v{self.version_major}.{self.version_minor}.{self.version_patch}"
 
     @property
     def is_quality_sufficient(self) -> bool:
-        """Prueft ob Qualitaetsziele erreicht sind."""
+        """Prüft ob Qualitaetsziele erreicht sind."""
         if self.cer is None or self.umlaut_accuracy is None:
             return False
         return self.cer < 0.03 and self.umlaut_accuracy >= 1.0
@@ -4532,7 +4532,7 @@ class SuryaModelVersion(Base):
 
 class SuryaTrainingRun(Base):
     """
-    Training-Durchlauf fuer Surya Fine-Tuning.
+    Training-Durchlauf für Surya Fine-Tuning.
 
     Dokumentiert:
     - Training-Konfiguration und Dataset
@@ -4562,7 +4562,7 @@ class SuryaTrainingRun(Base):
 
     # Trigger-Informationen
     trigger_reason = Column(String(100), nullable=True)  # scheduled, correction_threshold, manual, quality_degradation
-    trigger_metrics = Column(CrossDBJSON, default=dict)  # Metriken die zum Trigger fuehrten
+    trigger_metrics = Column(CrossDBJSON, default=dict)  # Metriken die zum Trigger führten
 
     # Training-Konfiguration
     config = Column(CrossDBJSON, nullable=False, default=dict)
@@ -4588,7 +4588,7 @@ class SuryaTrainingRun(Base):
     best_validation_loss = Column(Float, nullable=True)
     loss_history = Column(CrossDBJSON, default=list)  # [{epoch: 1, train_loss: 0.5, val_loss: 0.6}]
 
-    # Metriken waehrend Training
+    # Metriken während Training
     metrics_history = Column(CrossDBJSON, default=list)  # Checkpoint-Metriken
 
     # Ressourcen-Nutzung
@@ -4642,9 +4642,9 @@ class SuryaTrainingRun(Base):
 
 class SuryaABTest(Base):
     """
-    A/B Test fuer Surya Model-Vergleich.
+    A/B Test für Surya Model-Vergleich.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Traffic-Splitting zwischen Control und Treatment
     - Statistische Signifikanz-Berechnung
     - Automatische Entscheidung und Deployment
@@ -4740,7 +4740,7 @@ class SuryaABTest(Base):
 
     @property
     def is_ready_for_decision(self) -> bool:
-        """Prueft ob Test bereit fuer Entscheidung ist."""
+        """Prüft ob Test bereit für Entscheidung ist."""
         if self.control_samples < self.minimum_samples:
             return False
         if self.treatment_samples < self.minimum_samples:
@@ -4760,10 +4760,10 @@ class SuryaABTest(Base):
 
 class SuryaBenchmarkHistory(Base):
     """
-    Benchmark-History fuer Surya Model Versionen.
+    Benchmark-History für Surya Model Versionen.
 
-    Speichert detaillierte Benchmark-Ergebnisse fuer:
-    - Trendanalyse ueber Zeit
+    Speichert detaillierte Benchmark-Ergebnisse für:
+    - Trendanalyse über Zeit
     - Vergleich zwischen Versionen
     - Identifikation von Regressionen
     """
@@ -4830,13 +4830,13 @@ class SuryaBenchmarkHistory(Base):
 
 class BusinessDocumentProfile(Base):
     """
-    Business Document Profile fuer priorisierte Training-Pipeline.
+    Business Document Profile für priorisierte Training-Pipeline.
 
     Bei 500+ Dokumenten/Tag ist manuelle Annotation unrealistisch.
     Dieses Model definiert:
-    - Geschaeftskritische Dokumenttypen (Rechnungen, Vertraege, Briefe)
-    - Taegliche Volumen-Schaetzungen
-    - Auto-Accept Schwellenwerte fuer High-Confidence OCR
+    - Geschäftskritische Dokumenttypen (Rechnungen, Verträge, Briefe)
+    - Tägliche Volumen-Schätzungen
+    - Auto-Accept Schwellenwerte für High-Confidence OCR
 
     Beispiel:
         Invoice: daily_volume=300, business_criticality=1.5, auto_accept_confidence=0.95
@@ -4853,12 +4853,12 @@ class BusinessDocumentProfile(Base):
     description = Column(Text, nullable=True)
 
     # Business-Gewichtung
-    estimated_daily_volume = Column(Integer, default=100)  # Geschaetzte Dokumente pro Tag
+    estimated_daily_volume = Column(Integer, default=100)  # Geschätzte Dokumente pro Tag
     business_criticality = Column(Float, default=1.0)  # 1.5 = hoch, 1.0 = normal, 0.5 = niedrig
 
     # Auto-Annotation Schwellenwerte
-    auto_accept_confidence = Column(Float, default=0.95)  # Minimum Confidence fuer Auto-Accept
-    min_text_length = Column(Integer, default=50)  # Minimum Textlaenge fuer gueltige Samples
+    auto_accept_confidence = Column(Float, default=0.95)  # Minimum Confidence für Auto-Accept
+    min_text_length = Column(Integer, default=50)  # Minimum Textlänge für gültige Samples
     require_umlaut_validation = Column(Boolean, default=True)  # Umlaut-Check vor Auto-Accept
 
     # Training-Gewichtung (berechnet)
@@ -4906,10 +4906,10 @@ class BusinessDocumentProfile(Base):
 
 class CoverageSnapshot(Base):
     """
-    Taeglicher Coverage-Snapshot fuer Trend-Analyse.
+    Täglicher Coverage-Snapshot für Trend-Analyse.
 
-    Celery Beat Task speichert taeglich den Stand der Ground-Truth-Abdeckung
-    fuer alle Business-Dokumenttypen.
+    Celery Beat Task speichert täglich den Stand der Ground-Truth-Abdeckung
+    für alle Business-Dokumenttypen.
     """
     __tablename__ = "coverage_snapshots"
 
@@ -4950,7 +4950,7 @@ class CoverageSnapshot(Base):
 # =============================================================================
 
 class EInvoiceFormat(str, Enum):
-    """Unterstuetzte E-Rechnungsformate."""
+    """Unterstützte E-Rechnungsformate."""
     ZUGFERD = "zugferd"
     XRECHNUNG_CII = "xrechnung_cii"  # UN/CEFACT Cross Industry Invoice
     XRECHNUNG_UBL = "xrechnung_ubl"  # Universal Business Language
@@ -4975,7 +4975,7 @@ class EInvoiceDocument(Base):
     - Extrahiertes oder generiertes XML (ZUGFeRD/XRechnung)
     - Validierungsergebnisse (KoSIT Validator)
     - Generierungsmetadaten
-    - Leitweg-ID fuer schnellen B2G-Lookup
+    - Leitweg-ID für schnellen B2G-Lookup
 
     Jedes Dokument kann null oder eine zugehoerige E-Rechnung haben.
     """
@@ -4998,7 +4998,7 @@ class EInvoiceDocument(Base):
 
     # XML Speicherung
     xml_content = Column(Text, nullable=True)  # Der extrahierte oder generierte XML-Inhalt
-    xml_hash = Column(String(64), nullable=True)  # SHA256 fuer Integritaetspruefung
+    xml_hash = Column(String(64), nullable=True)  # SHA256 für Integritätsprüfung
 
     # Validierung
     is_valid = Column(Boolean, nullable=True)  # null = nicht validiert
@@ -5068,7 +5068,7 @@ class EInvoiceDocument(Base):
             self.schematron_valid = schematron_valid
 
     def get_validation_summary(self) -> Dict[str, Any]:
-        """Gibt eine Zusammenfassung der Validierung zurueck."""
+        """Gibt eine Zusammenfassung der Validierung zurück."""
         return {
             "is_valid": self.is_valid,
             "validator": self.validator_used,
@@ -5086,7 +5086,7 @@ class EInvoiceDocument(Base):
 # =============================================================================
 
 class BankAccount(Base):
-    """Bankkonto fuer Transaktions-Import und Zahlungen."""
+    """Bankkonto für Transaktions-Import und Zahlungen."""
     __tablename__ = "bank_accounts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -5119,7 +5119,7 @@ class BankAccount(Base):
     sync_interval_hours = Column(Integer, default=24)
 
     # Saldo
-    current_balance = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
+    current_balance = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric für Geldbetraege
     balance_date = Column(DateTime(timezone=True), nullable=True)
     currency = Column(String(3), default="EUR")
 
@@ -5140,7 +5140,7 @@ class BankAccount(Base):
 
 
 class BankImport(Base):
-    """Import-Historie fuer Kontoauszuege."""
+    """Import-Historie für Kontoauszuege."""
     __tablename__ = "bank_imports"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -5190,7 +5190,7 @@ class BankTransaction(Base):
     value_date = Column(DateTime(timezone=True), nullable=False)
 
     # Betrag
-    amount = Column(Numeric(15, 2), nullable=False)  # SECURITY: Numeric fuer Geldbetraege
+    amount = Column(Numeric(15, 2), nullable=False)  # SECURITY: Numeric für Geldbetraege
     currency = Column(String(3), default="EUR")
 
     # Gegenpartei
@@ -5225,8 +5225,8 @@ class BankTransaction(Base):
     matched_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Teilzahlungen
-    allocated_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
-    remaining_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
+    allocated_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric für Geldbetraege
+    remaining_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric für Geldbetraege
     is_partial_payment = Column(Boolean, default=False)
     parent_transaction_id = Column(UUID(as_uuid=True), ForeignKey("bank_transactions.id", ondelete="SET NULL"), nullable=True)
 
@@ -5256,10 +5256,10 @@ class PaymentBatch(Base):
     batch_name = Column(String(255), nullable=True)
     batch_type = Column(String(50), nullable=False)
     payment_count = Column(Integer, default=0)
-    total_amount = Column(Numeric(15, 2), default=0)  # SECURITY: Numeric fuer Geldbetraege
+    total_amount = Column(Numeric(15, 2), default=0)  # SECURITY: Numeric für Geldbetraege
     currency = Column(String(3), default="EUR")
 
-    # Ausfuehrung
+    # Ausführung
     requested_execution_date = Column(DateTime(timezone=True), nullable=True)
 
     # Status
@@ -5305,7 +5305,7 @@ class PaymentOrder(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     bank_account_id = Column(UUID(as_uuid=True), ForeignKey("bank_accounts.id", ondelete="CASCADE"), nullable=False)
 
-    # Verknuepfte Rechnung
+    # Verknüpfte Rechnung
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
     invoice_number = Column(String(100), nullable=True)
 
@@ -5313,13 +5313,13 @@ class PaymentOrder(Base):
     payment_type = Column(String(50), nullable=False)
     sepa_type = Column(String(50), nullable=True)
 
-    # Empfaenger
+    # Empfänger
     beneficiary_name = Column(String(140), nullable=False)
     beneficiary_iban = Column(String(34), nullable=False)
     beneficiary_bic = Column(String(11), nullable=True)
 
     # Betrag
-    amount = Column(Numeric(15, 2), nullable=False)  # SECURITY: Numeric fuer Geldbetraege
+    amount = Column(Numeric(15, 2), nullable=False)  # SECURITY: Numeric für Geldbetraege
     currency = Column(String(3), default="EUR")
 
     # Zahlungsdetails
@@ -5350,7 +5350,7 @@ class PaymentOrder(Base):
     approved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Uebermittlung
+    # Übermittlung
     submitted_at = Column(DateTime(timezone=True), nullable=True)
     bank_reference = Column(String(100), nullable=True)
 
@@ -5360,8 +5360,8 @@ class PaymentOrder(Base):
 
     # Skonto
     uses_skonto = Column(Boolean, default=False)
-    skonto_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
-    original_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
+    skonto_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric für Geldbetraege
+    original_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric für Geldbetraege
     skonto_deadline = Column(DateTime(timezone=True), nullable=True)
 
     # Audit
@@ -5387,11 +5387,11 @@ class DunningRecord(Base):
     invoice_number = Column(String(100), nullable=True)
     invoice_date = Column(DateTime(timezone=True), nullable=True)
     due_date = Column(DateTime(timezone=True), nullable=True)
-    gross_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
-    outstanding_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
+    gross_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric für Geldbetraege
+    outstanding_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric für Geldbetraege
     currency = Column(String(3), default="EUR")
 
-    # Geschaeftspartner
+    # Geschäftspartner
     business_entity_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id", ondelete="SET NULL"), nullable=True)
     debtor_name = Column(String(255), nullable=True)
     debtor_email = Column(String(255), nullable=True)
@@ -5399,11 +5399,11 @@ class DunningRecord(Base):
     # Mahnstufe
     dunning_level = Column(Integer, default=0)
 
-    # Gebuehren
-    reminder_fee = Column(Numeric(15, 2), default=0)  # SECURITY: Numeric fuer Geldbetraege
+    # Gebühren
+    reminder_fee = Column(Numeric(15, 2), default=0)  # SECURITY: Numeric für Geldbetraege
     late_interest_rate = Column(Numeric(7, 4), nullable=True)  # Prozentsatz mit 4 Nachkommastellen
-    accrued_interest = Column(Numeric(15, 2), default=0)  # SECURITY: Numeric fuer Geldbetraege
-    total_outstanding = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
+    accrued_interest = Column(Numeric(15, 2), default=0)  # SECURITY: Numeric für Geldbetraege
+    total_outstanding = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric für Geldbetraege
 
     # Timeline
     first_reminder_at = Column(DateTime(timezone=True), nullable=True)
@@ -5418,7 +5418,7 @@ class DunningRecord(Base):
     is_b2b = Column(Boolean, default=True, comment="B2B: +9% Zinsen, B2C: +5% Zinsen")
     b2b_pauschale_claimed = Column(Boolean, default=False, comment="EUR40 Pauschale nach §288 Abs. 5 BGB")
 
-    # Mahnstopp (fuer Reklamationen/Disputes)
+    # Mahnstopp (für Reklamationen/Disputes)
     mahnstopp = Column(Boolean, default=False, comment="Stoppt automatische Mahnung")
     mahnstopp_reason = Column(String(255), nullable=True)
     mahnstopp_until = Column(DateTime(timezone=True), nullable=True)
@@ -5451,7 +5451,7 @@ class DunningRecord(Base):
 
 
 class MahnungHistory(Base):
-    """Immutable Audit-Log fuer Mahnvorgaenge.
+    """Immutable Audit-Log für Mahnvorgaenge.
 
     WICHTIG: Diese Tabelle ist append-only!
     Ein Datenbank-Trigger sollte UPDATE und DELETE verhindern.
@@ -5471,7 +5471,7 @@ class MahnungHistory(Base):
     mahn_stufe = Column(Integer, nullable=False, comment="Mahnstufe zum Zeitpunkt der Aktion")
     action_timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    # Ausfuehrender
+    # Ausführender
     performed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Details
@@ -5479,7 +5479,7 @@ class MahnungHistory(Base):
     outcome = Column(String(50), nullable=True, comment="success, failed, pending, etc.")
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
 
-    # Zusaetzliche Metadaten (JSON)
+    # Zusätzliche Metadaten (JSON)
     # HINWEIS: 'metadata' ist in SQLAlchemy reserviert, daher 'action_metadata'
     action_metadata = Column(CrossDBJSON, default=dict)
 
@@ -5496,9 +5496,9 @@ class MahnungHistory(Base):
 
 
 class MahnTask(Base):
-    """Aufgaben fuer das Mahnungswesen.
+    """Aufgaben für das Mahnungswesen.
 
-    Tasks werden vom taeglichen Mahnlauf erstellt und erscheinen
+    Tasks werden vom täglichen Mahnlauf erstellt und erscheinen
     im Dashboard zur manuellen Bearbeitung.
     """
     __tablename__ = "mahn_tasks"
@@ -5517,7 +5517,7 @@ class MahnTask(Base):
     # Zuweisung
     assigned_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    # Faelligkeit
+    # Fälligkeit
     due_date = Column(Date, nullable=False)
 
     # Status
@@ -5533,7 +5533,7 @@ class MahnTask(Base):
     completed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     completion_notes = Column(Text, nullable=True)
 
-    # Prioritaet (1=hoechste, 5=niedrigste)
+    # Priorität (1=hoechste, 5=niedrigste)
     priority = Column(Integer, default=3)
 
     # Audit
@@ -5554,7 +5554,7 @@ class MahnTask(Base):
 
 
 class PhoneCallLog(Base):
-    """Telefonkontakt-Protokoll fuer Mahnungswesen.
+    """Telefonkontakt-Protokoll für Mahnungswesen.
 
     Dokumentiert alle telefonischen Kontaktversuche und deren Ergebnis.
     """
@@ -5601,9 +5601,9 @@ class DunningStageConfig(Base):
     """Konfigurierbare Mahnstufen.
 
     Admin kann eigene Mahnstufen definieren mit:
-    - Tagen nach Faelligkeit
+    - Tagen nach Fälligkeit
     - Aktionstyp (Email, Brief, Telefon)
-    - Mahngebuehr
+    - Mahngebühr
     - Template
     """
     __tablename__ = "dunning_stage_configs"
@@ -5616,19 +5616,19 @@ class DunningStageConfig(Base):
     stage_name = Column(String(100), nullable=False, comment="z.B. Zahlungserinnerung, 1. Mahnung")
 
     # Trigger
-    trigger_days_after_due = Column(Integer, nullable=False, comment="Tage nach Faelligkeit")
+    trigger_days_after_due = Column(Integer, nullable=False, comment="Tage nach Fälligkeit")
 
     # Aktion
     action_type = Column(String(50), nullable=False, comment="email, letter, phone, escalation")
-    template_id = Column(UUID(as_uuid=True), nullable=True, comment="Template-ID fuer Dokument-Generierung")
+    template_id = Column(UUID(as_uuid=True), nullable=True, comment="Template-ID für Dokument-Generierung")
 
-    # Gebuehren
-    fee_amount = Column(Numeric(10, 2), default=0, comment="Mahngebuehr in EUR")
+    # Gebühren
+    fee_amount = Column(Numeric(10, 2), default=0, comment="Mahngebühr in EUR")
 
     # Status
     is_active = Column(Boolean, default=True)
 
-    # Sortierung (fuer Drag-and-Drop Reorder)
+    # Sortierung (für Drag-and-Drop Reorder)
     sort_order = Column(Integer, default=0)
 
     # Audit
@@ -5648,7 +5648,7 @@ class DunningStageConfig(Base):
 class CustomerDunningOverride(Base):
     """Kundenspezifische Mahneinstellungen.
 
-    Ermoeglicht Sonderbehandlung fuer bestimmte Kunden:
+    Ermöglicht Sonderbehandlung für bestimmte Kunden:
     - Eigene Zahlungsfristen
     - Max. Mahnstufe
     - Ausschluss von automatischer Mahnung
@@ -5712,8 +5712,8 @@ class CashFlowEntry(Base):
     actual_date = Column(DateTime(timezone=True), nullable=True)
 
     # Betrag
-    expected_amount = Column(Numeric(15, 2), nullable=False)  # SECURITY: Numeric fuer Geldbetraege
-    actual_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric fuer Geldbetraege
+    expected_amount = Column(Numeric(15, 2), nullable=False)  # SECURITY: Numeric für Geldbetraege
+    actual_amount = Column(Numeric(15, 2), nullable=True)  # SECURITY: Numeric für Geldbetraege
     currency = Column(String(3), default="EUR")
 
     # Wahrscheinlichkeit
@@ -5752,9 +5752,9 @@ class DATEVConfiguration(Base):
     DATEV Export Konfiguration.
 
     Speichert Steuerberater-Zugangsdaten und Konteneinstellungen
-    fuer den DATEV Buchungsstapel-Export.
+    für den DATEV Buchungsstapel-Export.
 
-    Jeder Benutzer kann mehrere Konfigurationen haben (z.B. fuer verschiedene
+    Jeder Benutzer kann mehrere Konfigurationen haben (z.B. für verschiedene
     Mandanten oder Testumgebungen).
     """
 
@@ -5833,12 +5833,12 @@ class DATEVConfiguration(Base):
     sachkontenlange = Column(
         Integer,
         default=4,
-        comment="Laenge Sachkonten (4-8 Stellen)"
+        comment="Länge Sachkonten (4-8 Stellen)"
     )
     buchungstext_format = Column(
         String(100),
         default="{invoice_number}",
-        comment="Format fuer Buchungstext"
+        comment="Format für Buchungstext"
     )
 
     # Status
@@ -5881,8 +5881,8 @@ class DATEVVendorMapping(Base):
     """
     Lieferanten-spezifische Kontozuordnung.
 
-    Ermoeglicht individuelle Konten pro Lieferant statt Standardkonten.
-    Matching erfolgt ueber verschiedene Kriterien (Name, USt-IdNr, IBAN, Entity).
+    Ermöglicht individuelle Konten pro Lieferant statt Standardkonten.
+    Matching erfolgt über verschiedene Kriterien (Name, USt-IdNr, IBAN, Entity).
     """
 
     __tablename__ = "datev_vendor_mappings"
@@ -5914,7 +5914,7 @@ class DATEVVendorMapping(Base):
         UUID(as_uuid=True),
         ForeignKey("business_entities.id", ondelete="SET NULL"),
         nullable=True,
-        comment="Verknuepfter Geschaeftspartner"
+        comment="Verknüpfter Geschäftspartner"
     )
 
     # Kontozuordnung
@@ -5959,7 +5959,7 @@ class DATEVExport(Base):
     """
     DATEV Export Historie.
 
-    Protokolliert alle Exporte fuer Audit und Nachvollziehbarkeit.
+    Protokolliert alle Exporte für Audit und Nachvollziehbarkeit.
     Speichert welche Dokumente wann in welchen Export einbezogen wurden.
     """
 
@@ -6018,7 +6018,7 @@ class DATEVExport(Base):
         CrossDBJSON,
         nullable=True,
         default=list,
-        comment="Array von uebersprungenen Dokument-UUIDs"
+        comment="Array von übersprungenen Dokument-UUIDs"
     )
     warnings = Column(
         CrossDBJSON,
@@ -6084,8 +6084,8 @@ class DATEVConnection(Base):
     """
     DATEVconnect API Connection.
 
-    Verwaltet OAuth2-Verbindung zu DATEVconnect fuer bidirektionale Synchronisation.
-    Unterstuetzt Buchungsstapel, Belegbilder und Stammdaten-Sync.
+    Verwaltet OAuth2-Verbindung zu DATEVconnect für bidirektionale Synchronisation.
+    Unterstützt Buchungsstapel, Belegbilder und Stammdaten-Sync.
 
     SECURITY: Alle Credentials werden verschluesselt gespeichert (AES-256-GCM).
     """
@@ -6145,7 +6145,7 @@ class DATEVConnection(Base):
     webhook_url = Column(String(500), nullable=True, comment="Callback URL for notifications")
 
     # Sync Configuration
-    auto_kontierung = Column(Boolean, default=False, comment="Automatische Kontierungsvorschlaege")
+    auto_kontierung = Column(Boolean, default=False, comment="Automatische Kontierungsvorschläge")
     auto_beleg_upload = Column(Boolean, default=True, comment="Automatischer Belegbilder-Upload")
     sync_interval_minutes = Column(Integer, default=60, comment="Sync-Intervall in Minuten")
     last_buchung_nr = Column(Integer, nullable=True, comment="Letzte verwendete Buchungsnummer")
@@ -6187,7 +6187,7 @@ class DATEVKontenplan(Base):
     """
     DATEV Kontenplan Cache.
 
-    Lokaler Cache des DATEV Kontenplans fuer schnelle Kontierungsvorschlaege.
+    Lokaler Cache des DATEV Kontenplans für schnelle Kontierungsvorschläge.
     Wird periodisch mit DATEV synchronisiert.
     """
 
@@ -6243,8 +6243,8 @@ class DATEVBuchung(Base):
     """
     DATEV Buchungssatz.
 
-    Repraesentiert einen Buchungssatz fuer den DATEV Export.
-    GoBD-konform mit SHA-256 Hash fuer Unveraenderbarkeit nach Festschreibung.
+    Repraesentiert einen Buchungssatz für den DATEV Export.
+    GoBD-konform mit SHA-256 Hash für Unveränderbarkeit nach Festschreibung.
 
     SECURITY: Festgeschriebene Buchungen sind immutable (gobd_festgeschrieben=True).
     """
@@ -6262,13 +6262,13 @@ class DATEVBuchung(Base):
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
         nullable=True,
-        comment="Verknuepftes Quelldokument"
+        comment="Verknüpftes Quelldokument"
     )
     entity_id = Column(
         UUID(as_uuid=True),
         ForeignKey("business_entities.id", ondelete="SET NULL"),
         nullable=True,
-        comment="Verknuepfter Geschaeftspartner"
+        comment="Verknüpfter Geschäftspartner"
     )
 
     # Buchungssatz
@@ -6298,9 +6298,9 @@ class DATEVBuchung(Base):
     gobd_festgeschrieben = Column(
         Boolean,
         default=False,
-        comment="True = unveraenderbar (GoBD-konform)"
+        comment="True = unveränderbar (GoBD-konform)"
     )
-    gobd_hash = Column(String(64), nullable=True, comment="SHA-256 Hash fuer Unveraenderbarkeit")
+    gobd_hash = Column(String(64), nullable=True, comment="SHA-256 Hash für Unveränderbarkeit")
     festgeschrieben_at = Column(DateTime(timezone=True), nullable=True)
     festgeschrieben_by = Column(
         UUID(as_uuid=True),
@@ -6349,10 +6349,10 @@ class DATEVBuchung(Base):
 
 class DATEVBeleglink(Base):
     """
-    DATEV Belegbild-Verknuepfung.
+    DATEV Belegbild-Verknüpfung.
 
-    Verknuepft hochgeladene Belegbilder mit DATEV-Buchungen.
-    Ermoeglicht den Upload zu DATEV Unternehmen Online (DUO).
+    Verknüpft hochgeladene Belegbilder mit DATEV-Buchungen.
+    Ermöglicht den Upload zu DATEV Unternehmen Online (DUO).
     """
 
     __tablename__ = "datev_beleglinks"
@@ -6368,7 +6368,7 @@ class DATEVBeleglink(Base):
         UUID(as_uuid=True),
         ForeignKey("datev_buchungen.id", ondelete="CASCADE"),
         nullable=True,
-        comment="Verknuepfte Buchung"
+        comment="Verknüpfte Buchung"
     )
     document_id = Column(
         UUID(as_uuid=True),
@@ -6420,7 +6420,7 @@ class DATEVKontierungPattern(Base):
     ML-basierte Kontierungsmuster.
 
     Lernt aus historischen Buchungen und User-Korrekturen um
-    intelligente Kontierungsvorschlaege zu generieren.
+    intelligente Kontierungsvorschläge zu generieren.
 
     Matching-Kriterien: Lieferant, Betrag-Range, Stichwort.
     """
@@ -6440,14 +6440,14 @@ class DATEVKontierungPattern(Base):
         UUID(as_uuid=True),
         ForeignKey("business_entities.id", ondelete="CASCADE"),
         nullable=True,
-        comment="Optionaler Geschaeftspartner-Match"
+        comment="Optionaler Geschäftspartner-Match"
     )
     pattern_type = Column(
         String(50),
         nullable=False,
         comment="entity, keyword, amount_range, document_type"
     )
-    keyword_pattern = Column(String(200), nullable=True, comment="Regex-Pattern fuer Buchungstext")
+    keyword_pattern = Column(String(200), nullable=True, comment="Regex-Pattern für Buchungstext")
     amount_min = Column(Float, nullable=True)
     amount_max = Column(Float, nullable=True)
     document_type = Column(String(50), nullable=True, comment="Dokumenttyp-Filter")
@@ -6485,7 +6485,7 @@ class DATEVSyncHistory(Base):
     """
     DATEV Sync-Historie.
 
-    Protokolliert alle Sync-Operationen fuer Audit und Debugging.
+    Protokolliert alle Sync-Operationen für Audit und Debugging.
     """
 
     __tablename__ = "datev_sync_history"
@@ -6533,7 +6533,7 @@ class DATEVSyncHistory(Base):
     error_details = Column(CrossDBJSON, nullable=True, default=dict)
 
     # Metadata
-    sync_metadata = Column(CrossDBJSON, nullable=True, default=dict, comment="Zusaetzliche Sync-Infos")  # Renamed: 'metadata' is reserved in SQLAlchemy
+    sync_metadata = Column(CrossDBJSON, nullable=True, default=dict, comment="Zusätzliche Sync-Infos")  # Renamed: 'metadata' is reserved in SQLAlchemy
 
     # Relationships
     connection = relationship("DATEVConnection", back_populates="sync_history")
@@ -6561,12 +6561,12 @@ class DATEVSyncHistory(Base):
 
 
 class FinanceDocumentHistory(Base):
-    """Immutable Audit-Log fuer Finanz-Dokumente.
+    """Immutable Audit-Log für Finanz-Dokumente.
 
-    Trackt alle Aenderungen an Finanz-Dokumenten fuer Enterprise-Compliance:
-    - Erstellung, Bearbeitung, Loeschung
-    - Kategorie- und Jahr-Aenderungen
-    - Frist-Aenderungen
+    Trackt alle Änderungen an Finanz-Dokumenten für Enterprise-Compliance:
+    - Erstellung, Bearbeitung, Löschung
+    - Kategorie- und Jahr-Änderungen
+    - Frist-Änderungen
     - OCR-Verarbeitung
 
     WICHTIG: Diese Tabelle ist append-only!
@@ -6584,7 +6584,7 @@ class FinanceDocumentHistory(Base):
         index=True
     )
 
-    # Benutzer, der die Aenderung vorgenommen hat
+    # Benutzer, der die Änderung vorgenommen hat
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -6599,7 +6599,7 @@ class FinanceDocumentHistory(Base):
         comment="created, updated, deleted, restored, category_changed, year_changed, etc."
     )
 
-    # Aenderungsdetails
+    # Änderungsdetails
     old_values = Column(
         CrossDBJSON,
         nullable=True,
@@ -6618,14 +6618,14 @@ class FinanceDocumentHistory(Base):
         CrossDBJSON,
         nullable=True,
         default=list,
-        comment="Liste der geaenderten Felder"
+        comment="Liste der geänderten Felder"
     )
 
     # Kontext
     ip_address = Column(String(45), nullable=True, comment="IP-Adresse des Benutzers")
     user_agent = Column(String(500), nullable=True, comment="Browser/Client Info")
 
-    # Zusaetzliche Metadaten
+    # Zusätzliche Metadaten
     # Note: DB column is 'metadata', but we use 'extra_metadata' as Python attribute
     # because 'metadata' is reserved in SQLAlchemy's Declarative API
     extra_metadata = Column(
@@ -6633,14 +6633,14 @@ class FinanceDocumentHistory(Base):
         CrossDBJSON,
         nullable=True,
         default=dict,
-        comment="Zusaetzliche Kontext-Informationen"
+        comment="Zusätzliche Kontext-Informationen"
     )
 
     # Beschreibung (menschenlesbar, auf Deutsch)
     description = Column(
         Text,
         nullable=True,
-        comment="Menschenlesbare Beschreibung der Aenderung"
+        comment="Menschenlesbare Beschreibung der Änderung"
     )
 
     # Zeitstempel (immutable)
@@ -6686,7 +6686,7 @@ class CashEntryType(str, Enum):
     TRAVEL = "travel"                    # Reisekosten
     OFFICE = "office"                    # Buerobedarf
     FUEL = "fuel"                        # Tankkosten
-    PARKING = "parking"                  # Parkgebuehren
+    PARKING = "parking"                  # Parkgebühren
     POSTAGE = "postage"                  # Porto
     TIPS = "tips"                        # Trinkgeld
     GIFTS = "gifts"                      # Geschenke
@@ -6695,7 +6695,7 @@ class CashEntryType(str, Enum):
     DIFFERENCE_PLUS = "difference_plus"   # Kassenmehrbestand
     DIFFERENCE_MINUS = "difference_minus" # Kassenfehlbestand
     CANCELLATION = "cancellation"         # Stornobuchung (Gegenbuchung)
-    OPENING = "opening"                   # Eroeffnungsbuchung
+    OPENING = "opening"                   # Eröffnungsbuchung
 
 
 class ExpenseReportStatus(str, Enum):
@@ -6703,7 +6703,7 @@ class ExpenseReportStatus(str, Enum):
 
     DRAFT = "draft"           # Entwurf
     SUBMITTED = "submitted"   # Eingereicht
-    IN_REVIEW = "in_review"   # In Pruefung
+    IN_REVIEW = "in_review"   # In Prüfung
     APPROVED = "approved"     # Genehmigt
     REJECTED = "rejected"     # Abgelehnt
     PAID = "paid"             # Ausgezahlt
@@ -6724,9 +6724,9 @@ class ExpenseType(str, Enum):
 
 
 class Company(Base):
-    """Firma/Mandant fuer Multi-Company Support.
+    """Firma/Mandant für Multi-Company Support.
 
-    Ersetzt das bisherige CompanySettings-Singleton und ermoeglicht
+    Ersetzt das bisherige CompanySettings-Singleton und ermöglicht
     die Verwaltung mehrerer Firmen pro Installation.
 
     Jede Firma hat eigene Kassen, Spesenfreigaben und Einstellungen.
@@ -6768,7 +6768,7 @@ class Company(Base):
     bic = Column(String(11), nullable=True)
     bank_name = Column(String(100), nullable=True)
 
-    # Alternative Namen fuer OCR-Erkennung
+    # Alternative Namen für OCR-Erkennung
     alternative_names = Column(CrossDBJSON, default=list)
 
     # Einstellungen
@@ -6791,7 +6791,7 @@ class Company(Base):
     billing_address = Column(CrossDBJSON, default=dict)
     payment_method = Column(String(50), nullable=True)  # invoice, sepa, card
 
-    # Tenant-Limits (ueberschreibbar pro Tier)
+    # Tenant-Limits (überschreibbar pro Tier)
     max_users = Column(Integer, nullable=False, default=5)
     max_documents_per_month = Column(Integer, nullable=False, default=100)
     max_storage_gb = Column(Integer, nullable=False, default=5)
@@ -6842,7 +6842,7 @@ class Company(Base):
 class UserCompany(Base):
     """Zuordnung User <-> Company mit granularen Berechtigungen.
 
-    Ermoeglicht Multi-Mandanten-Faehigkeit: Ein User kann
+    Ermöglicht Multi-Mandanten-Fähigkeit: Ein User kann
     Zugriff auf mehrere Firmen haben, mit unterschiedlichen Rechten.
     """
 
@@ -6855,13 +6855,13 @@ class UserCompany(Base):
     # Rolle
     role = Column(String(50), default="member")  # owner, admin, member, viewer
 
-    # Granulare Berechtigungen fuer Kasse-Modul
+    # Granulare Berechtigungen für Kasse-Modul
     can_manage_cash = Column(Boolean, default=False)      # Kassenbuchungen erstellen
     can_approve_expenses = Column(Boolean, default=False) # Spesen genehmigen
     can_export_datev = Column(Boolean, default=False)     # DATEV-Export
     can_manage_settings = Column(Boolean, default=False)  # Firmeneinstellungen
 
-    # Aktive Firma fuer Session
+    # Aktive Firma für Session
     is_current = Column(Boolean, default=False)
 
     # Audit
@@ -6892,7 +6892,7 @@ class CashRegister(Base):
     """Kasse/Bargeldbestand.
 
     Eine Firma kann mehrere Kassen haben (Hauptkasse, Portokasse, Nebenkasse).
-    Jede Kasse fuehrt ein eigenes Kassenbuch mit fortlaufender Nummerierung.
+    Jede Kasse führt ein eigenes Kassenbuch mit fortlaufender Nummerierung.
     """
 
     __tablename__ = "cash_registers"
@@ -6905,17 +6905,17 @@ class CashRegister(Base):
     description = Column(Text, nullable=True)
     register_number = Column(String(50), nullable=True)  # Interne Kassennummer
 
-    # Waehrung & Limits
+    # Währung & Limits
     currency = Column(String(3), default="EUR")
     max_balance = Column(Numeric(15, 2), nullable=True)  # Maximaler Kassenbestand
     warning_threshold = Column(Numeric(15, 2), nullable=True)  # Warnschwelle
 
-    # Aktueller Stand (denormalisiert fuer Performance)
+    # Aktueller Stand (denormalisiert für Performance)
     current_balance = Column(Numeric(15, 2), default=0)
     balance_date = Column(DateTime(timezone=True), nullable=True)
     last_reconciliation_date = Column(DateTime(timezone=True), nullable=True)
 
-    # Banking-Verknuepfung (fuer Entnahmen/Einlagen)
+    # Banking-Verknüpfung (für Entnahmen/Einlagen)
     linked_bank_account_id = Column(
         UUID(as_uuid=True),
         ForeignKey("bank_accounts.id", ondelete="SET NULL"),
@@ -6951,16 +6951,16 @@ class CashRegister(Base):
 
 
 class CashEntry(Base):
-    """Kassenbucheintrag - APPEND-ONLY fuer GoBD-Compliance!
+    """Kassenbucheintrag - APPEND-ONLY für GoBD-Compliance!
 
     WICHTIG: Diese Tabelle erlaubt KEINE Updates oder Deletes!
-    Nach GoBD muessen Kassenbuchungen unveraenderbar sein.
+    Nach GoBD müssen Kassenbuchungen unveränderbar sein.
     Stornierungen erfolgen durch Gegenbuchung mit Verweis auf Original.
 
     Constraints:
     - entry_date darf NICHT in der Zukunft liegen
     - amount darf NICHT 0 sein
-    - entry_number ist fortlaufend pro Kasse/Jahr - KEINE Luecken!
+    - entry_number ist fortlaufend pro Kasse/Jahr - KEINE Lücken!
     - balance_after muss bei JEDER Buchung korrekt berechnet werden
     """
 
@@ -6990,7 +6990,7 @@ class CashEntry(Base):
     amount = Column(Numeric(15, 2), nullable=False)
     currency = Column(String(3), default="EUR")
 
-    # Saldo NACH dieser Buchung (fuer Kassensturz)
+    # Saldo NACH dieser Buchung (für Kassensturz)
     balance_after = Column(Numeric(15, 2), nullable=False)
 
     # Kategorisierung
@@ -7008,16 +7008,16 @@ class CashEntry(Base):
     description = Column(Text, nullable=False)
     reference_number = Column(String(100), nullable=True)  # Belegnummer
 
-    # Geschaeftspartner
+    # Geschäftspartner
     counterparty_name = Column(String(255), nullable=True)
     counterparty_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True)
 
-    # Verknuepfungen
+    # Verknüpfungen
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)
     bank_transaction_id = Column(UUID(as_uuid=True), ForeignKey("bank_transactions.id"), nullable=True)
     expense_report_id = Column(UUID(as_uuid=True), ForeignKey("expense_reports.id"), nullable=True)
 
-    # Storno-Handling (Gegenbuchung statt Loeschung!)
+    # Storno-Handling (Gegenbuchung statt Löschung!)
     is_cancelled = Column(Boolean, default=False)
     cancelled_by_entry_id = Column(UUID(as_uuid=True), ForeignKey("cash_entries.id"), nullable=True)
     cancellation_reason = Column(Text, nullable=True)
@@ -7081,10 +7081,10 @@ class CashEntry(Base):
 
 
 class CashCategory(Base):
-    """Kategorie fuer Kassenausgaben mit SKR-Kontenzuordnung.
+    """Kategorie für Kassenausgaben mit SKR-Kontenzuordnung.
 
     Vordefinierte Kategorien mit Mapping zu SKR03/SKR04 Konten.
-    Unterstuetzt hierarchische Kategorien fuer detaillierte Auswertungen.
+    Unterstützt hierarchische Kategorien für detaillierte Auswertungen.
     """
 
     __tablename__ = "cash_categories"
@@ -7124,7 +7124,7 @@ class CashCategory(Base):
 
     # Status
     is_active = Column(Boolean, default=True)
-    is_system = Column(Boolean, default=False)  # System-Kategorie (nicht loeschbar)
+    is_system = Column(Boolean, default=False)  # System-Kategorie (nicht löschbar)
     sort_order = Column(Integer, default=0)
 
     # Audit
@@ -7147,7 +7147,7 @@ class CashCategory(Base):
 
 
 class CashCount(Base):
-    """Zaehlprotokoll fuer Kassensturz.
+    """Zaehlprotokoll für Kassensturz.
 
     Dokumentiert den physischen Bargeldbestand bei Kassensturz.
     Berechnet Differenz zu Soll-Bestand aus Kassenbuch.
@@ -7172,7 +7172,7 @@ class CashCount(Base):
     count_date = Column(Date, nullable=False)
     count_time = Column(Time, nullable=False)
 
-    # Muenzen (Stueckzahl)
+    # Muenzen (Stückzahl)
     coins_1_cent = Column(Integer, default=0)
     coins_2_cent = Column(Integer, default=0)
     coins_5_cent = Column(Integer, default=0)
@@ -7182,7 +7182,7 @@ class CashCount(Base):
     coins_1_euro = Column(Integer, default=0)
     coins_2_euro = Column(Integer, default=0)
 
-    # Scheine (Stueckzahl)
+    # Scheine (Stückzahl)
     notes_5_euro = Column(Integer, default=0)
     notes_10_euro = Column(Integer, default=0)
     notes_20_euro = Column(Integer, default=0)
@@ -7270,7 +7270,7 @@ class ExpenseReport(Base):
     """Spesenabrechnung eines Mitarbeiters.
 
     Sammelt alle Spesenpositionen eines Zeitraums mit Workflow:
-    Entwurf -> Eingereicht -> In Pruefung -> Genehmigt/Abgelehnt -> Ausgezahlt
+    Entwurf -> Eingereicht -> In Prüfung -> Genehmigt/Abgelehnt -> Ausgezahlt
     """
 
     __tablename__ = "expense_reports"
@@ -7331,7 +7331,7 @@ class ExpenseReport(Base):
     payment_method = Column(String(50), nullable=True)
     payment_reference = Column(String(100), nullable=True)
 
-    # Verknuepfung zu Kassenbuch
+    # Verknüpfung zu Kassenbuch
     cash_entry_id = Column(UUID(as_uuid=True), ForeignKey("cash_entries.id"), nullable=True)
 
     # DATEV
@@ -7372,7 +7372,7 @@ class ExpenseReport(Base):
 class ExpenseItem(Base):
     """Einzelposition einer Spesenabrechnung.
 
-    Unterstuetzt verschiedene Typen:
+    Unterstützt verschiedene Typen:
     - RECEIPT: Belegausgabe (mit gescanntem Beleg)
     - MILEAGE: Kilometergeld (0,30 EUR/km)
     - PER_DIEM: Verpflegungspauschale (14/28 EUR)
@@ -7404,7 +7404,7 @@ class ExpenseItem(Base):
     tax_amount = Column(Numeric(15, 2), nullable=True)
     net_amount = Column(Numeric(15, 2), nullable=True)
 
-    # Abzugsfaehigkeit
+    # Abzugsfähigkeit
     is_deductible = Column(Boolean, default=True)
     deductible_percentage = Column(Integer, default=100)
     deductible_amount = Column(Numeric(15, 2), nullable=True)
@@ -7416,7 +7416,7 @@ class ExpenseItem(Base):
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)
     receipt_number = Column(String(100), nullable=True)
 
-    # Geschaeftspartner
+    # Geschäftspartner
     vendor_name = Column(String(255), nullable=True)
     vendor_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True)
 
@@ -7726,7 +7726,7 @@ class ProofDocument(Base):
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"),
                         nullable=True)
 
-    # Proof type: invoice, delivery_note, cmr, gelangensbestaetigung, speditionsauftrag, vat_id_proof
+    # Proof type: invoice, delivery_note, cmr, gelangensbestätigung, speditionsauftrag, vat_id_proof
     proof_type = Column(String(50), nullable=False)
 
     is_present = Column(Boolean, default=False)
@@ -7787,7 +7787,7 @@ class DatevStreckengeschaeftAccount(Base):
     DATEV account mapping configuration for drop shipment transactions.
     Maps company role and transaction type to SKR03/SKR04 accounts.
     """
-    __tablename__ = "datev_streckengeschaeft_accounts"
+    __tablename__ = "datev_streckengeschäft_accounts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
@@ -7813,7 +7813,7 @@ class DatevStreckengeschaeftAccount(Base):
     )
 
     def __repr__(self) -> str:
-        return f"<DatevStreckengeschaeftAccount {self.kontenrahmen} {self.transaction_type}>"
+        return f"<DatevStreckengeschäftAccount {self.kontenrahmen} {self.transaction_type}>"
 
 
 class ClassificationIndicator(Base):
@@ -7928,7 +7928,7 @@ class ZmSubmission(Base):
 
 
 class EmploymentType(str, Enum):
-    """Beschaeftigungsart."""
+    """Beschäftigungsart."""
     FULL_TIME = "full_time"               # Vollzeit
     PART_TIME = "part_time"               # Teilzeit
     MINI_JOB = "mini_job"                 # Minijob (520 EUR)
@@ -7945,7 +7945,7 @@ class EmployeeStatus(str, Enum):
     ACTIVE = "active"                     # Aktiv
     ON_LEAVE = "on_leave"                 # Beurlaubt
     SICK = "sick"                         # Langzeitkrank
-    NOTICE_PERIOD = "notice_period"       # In Kuendigung
+    NOTICE_PERIOD = "notice_period"       # In Kündigung
     TERMINATED = "terminated"             # Ausgeschieden
 
 
@@ -8001,12 +8001,12 @@ class OnboardingTaskStatus(str, Enum):
     PENDING = "pending"                   # Ausstehend
     IN_PROGRESS = "in_progress"           # In Bearbeitung
     COMPLETED = "completed"               # Erledigt
-    SKIPPED = "skipped"                   # Uebersprungen
+    SKIPPED = "skipped"                   # Übersprungen
 
 
 class HRDocumentCategory(str, Enum):
     """HR-Dokument Kategorien."""
-    VERTRAEGE = "vertraege"               # Vertraege & Stammdaten
+    VERTRAEGE = "verträge"               # Verträge & Stammdaten
     STAMMDATEN = "stammdaten"             # Stammdaten
     LOHN = "lohn"                         # Lohn & Gehalt
     URLAUB = "urlaub"                     # Urlaub & Abwesenheit
@@ -8018,7 +8018,7 @@ class HRDocumentCategory(str, Enum):
 class Department(Base):
     """Abteilung mit hierarchischer Struktur.
 
-    Ermoeglicht die Abbildung einer Organisationsstruktur mit
+    Ermöglicht die Abbildung einer Organisationsstruktur mit
     beliebig tiefer Verschachtelung (parent_id).
     """
 
@@ -8042,7 +8042,7 @@ class Department(Base):
     description = Column(Text, nullable=True)
     cost_center = Column(String(50), nullable=True)
 
-    # Manager (wird spaeter gesetzt, da Employee noch nicht existiert)
+    # Manager (wird später gesetzt, da Employee noch nicht existiert)
     manager_id = Column(UUID(as_uuid=True), nullable=True)
 
     # Sortierung
@@ -8133,8 +8133,8 @@ class Position(Base):
 class Employee(Base):
     """Mitarbeiter-Stammdaten.
 
-    Zentrale Entitaet fuer alle HR-Daten eines Mitarbeiters.
-    Kann optional mit einem User-Account verknuepft sein.
+    Zentrale Entität für alle HR-Daten eines Mitarbeiters.
+    Kann optional mit einem User-Account verknüpft sein.
     """
 
     __tablename__ = "employees"
@@ -8146,7 +8146,7 @@ class Employee(Base):
         nullable=False
     )
 
-    # Verknuepfung zum User (falls Mitarbeiter auch Systemzugang hat)
+    # Verknüpfung zum User (falls Mitarbeiter auch Systemzugang hat)
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
@@ -8167,7 +8167,7 @@ class Employee(Base):
     nationality = Column(String(50), nullable=True)
     gender = Column(String(20), nullable=True)
 
-    # Kontakt (geschaeftlich)
+    # Kontakt (geschäftlich)
     email = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
     mobile = Column(String(50), nullable=True)
@@ -8205,7 +8205,7 @@ class Employee(Base):
         nullable=True
     )
 
-    # Beschaeftigung
+    # Beschäftigung
     employment_type = Column(String(30), default=EmploymentType.FULL_TIME.value)
     status = Column(String(30), default=EmployeeStatus.ACTIVE.value)
     hire_date = Column(Date, nullable=True)
@@ -8275,7 +8275,7 @@ class Employee(Base):
 
     @property
     def full_name(self) -> str:
-        """Vollstaendiger Name."""
+        """Vollständiger Name."""
         parts = []
         if self.title:
             parts.append(self.title)
@@ -8285,7 +8285,7 @@ class Employee(Base):
 
     @property
     def is_deleted(self) -> bool:
-        """Prueft ob Mitarbeiter geloescht ist."""
+        """Prüft ob Mitarbeiter gelöscht ist."""
         return self.deleted_at is not None
 
     def __repr__(self) -> str:
@@ -8295,8 +8295,8 @@ class Employee(Base):
 class EmploymentContract(Base):
     """Arbeitsvertrag mit Versionshistorie.
 
-    Jede Vertragsaenderung erzeugt eine neue Version.
-    is_current markiert den aktuell gueltigen Vertrag.
+    Jede Vertragsänderung erzeugt eine neue Version.
+    is_current markiert den aktuell gültigen Vertrag.
     """
 
     __tablename__ = "employment_contracts"
@@ -8345,7 +8345,7 @@ class EmploymentContract(Base):
     # Zusatzleistungen
     benefits = Column(CrossDBJSON, default=list)  # ["company_car", "phone", "pension"]
 
-    # Kuendigung
+    # Kündigung
     notice_period_employee = Column(String(50), nullable=True)  # z.B. "1 Monat zum Monatsende"
     notice_period_employer = Column(String(50), nullable=True)
 
@@ -8467,7 +8467,7 @@ class Absence(Base):
     """Tatsaechliche Abwesenheit (aus genehmigtem Antrag oder Krankheit).
 
     Wird automatisch aus genehmigten LeaveRequests erzeugt oder
-    manuell fuer Krankheitsfaelle angelegt.
+    manuell für Krankheitsfaelle angelegt.
     """
 
     __tablename__ = "absences"
@@ -8489,7 +8489,7 @@ class Absence(Base):
     end_date = Column(Date, nullable=False)
     total_days = Column(Numeric(5, 2), nullable=False)
 
-    # Verknuepfung zum Urlaubsantrag (optional)
+    # Verknüpfung zum Urlaubsantrag (optional)
     leave_request_id = Column(
         UUID(as_uuid=True),
         ForeignKey("leave_requests.id", ondelete="SET NULL"),
@@ -8753,9 +8753,9 @@ class PerformanceReview(Base):
 
 
 class OnboardingTask(Base):
-    """Onboarding-Aufgabe fuer neue Mitarbeiter.
+    """Onboarding-Aufgabe für neue Mitarbeiter.
 
-    Definiert Checklisten-Elemente fuer den Onboarding-Prozess.
+    Definiert Checklisten-Elemente für den Onboarding-Prozess.
     """
 
     __tablename__ = "onboarding_tasks"
@@ -8819,7 +8819,7 @@ class OnboardingTask(Base):
 class HRDocument(Base):
     """HR-Dokument-Zuordnung mit Kategorien.
 
-    Verknuepft Dokumente mit Mitarbeitern und kategorisiert sie
+    Verknüpft Dokumente mit Mitarbeitern und kategorisiert sie
     nach HR-spezifischen Kategorien.
     """
 
@@ -8878,7 +8878,7 @@ class PrivatSpaceType(str, Enum):
 
 
 class PrivatAccessLevel(str, Enum):
-    """Zugriffsebenen fuer Privat-Bereiche."""
+    """Zugriffsebenen für Privat-Bereiche."""
     NONE = "none"
     VIEW = "view"
     EDIT = "edit"
@@ -8933,7 +8933,7 @@ class PrivatEmergencyAccessStatus(str, Enum):
 
 
 class PrivatSpace(Base):
-    """Privater Bereich - Container fuer private Dokumente."""
+    """Privater Bereich - Container für private Dokumente."""
     __tablename__ = "privat_spaces"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -9006,7 +9006,7 @@ class PrivatSpace(Base):
 
 
 class PrivatSpaceAccess(Base):
-    """Zugriffsberechtigung fuer Privat-Bereiche."""
+    """Zugriffsberechtigung für Privat-Bereiche."""
     __tablename__ = "privat_space_access"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -9045,7 +9045,7 @@ class PrivatSpaceAccess(Base):
 
 
 class PrivatFolder(Base):
-    """Flexible Ordnerstruktur fuer private Dokumente."""
+    """Flexible Ordnerstruktur für private Dokumente."""
     __tablename__ = "privat_folders"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -9094,14 +9094,14 @@ class PrivatFolder(Base):
 
 
 class PrivatDocument(Base):
-    """Privates Dokument mit optionaler zusaetzlicher Verschluesselung."""
+    """Privates Dokument mit optionaler zusätzlicher Verschluesselung."""
     __tablename__ = "privat_documents"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
     folder_id = Column(UUID(as_uuid=True), ForeignKey("privat_folders.id", ondelete="SET NULL"), nullable=True)
 
-    # Verknuepfung zum System-Dokument
+    # Verknüpfung zum System-Dokument
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
 
     # Dokument-Info
@@ -9115,7 +9115,7 @@ class PrivatDocument(Base):
     file_size = Column(BigInteger, nullable=True)
     mime_type = Column(String(100), nullable=True)
 
-    # Zusaetzliche Verschluesselung
+    # Zusätzliche Verschluesselung
     extra_encrypted = Column(Boolean, default=False)
     encryption_salt = Column(String(64), nullable=True)
     encryption_hint = Column(String(255), nullable=True)
@@ -9137,7 +9137,7 @@ class PrivatDocument(Base):
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    # Status - konsistent mit anderen Privat-Entitaeten
+    # Status - konsistent mit anderen Privat-Entitäten
     is_active = Column(Boolean, default=True)
 
     # Relationships
@@ -9212,7 +9212,7 @@ class PrivatProperty(Base):
     value_appreciation_rate = Column(Numeric(6, 2), nullable=True)  # Wertzuwachs %
     total_costs_ytd = Column(Numeric(12, 2), nullable=True)  # Nebenkosten Year-to-Date
     calculated_roi = Column(Numeric(8, 2), nullable=True)  # Gesamt-ROI %
-    annual_roi = Column(Numeric(6, 2), nullable=True)  # Jaehrlicher ROI %
+    annual_roi = Column(Numeric(6, 2), nullable=True)  # Jährlicher ROI %
     last_kpi_calculation = Column(DateTime(timezone=True), nullable=True)  # Letzte Berechnung
 
     # Audit
@@ -9370,11 +9370,11 @@ class PrivatVehicle(Base):
     # =========================================================================
     # Berechnete KPIs (Enterprise Feature)
     # =========================================================================
-    current_estimated_value = Column(Numeric(12, 2), nullable=True)  # Geschaetzter Restwert
+    current_estimated_value = Column(Numeric(12, 2), nullable=True)  # Geschätzter Restwert
     depreciation_monthly = Column(Numeric(10, 2), nullable=True)  # Monatliche Abschreibung
     tco_total = Column(Numeric(12, 2), nullable=True)  # Total Cost of Ownership
     tco_per_km = Column(Numeric(6, 3), nullable=True)  # Kosten pro Kilometer
-    next_service_date = Column(Date, nullable=True)  # Naechster geplanter Service
+    next_service_date = Column(Date, nullable=True)  # Nächster geplanter Service
     next_service_km = Column(Integer, nullable=True)  # Service bei km-Stand
     average_fuel_consumption = Column(Numeric(5, 2), nullable=True)  # Durchschnittsverbrauch l/100km
     last_kpi_calculation = Column(DateTime(timezone=True), nullable=True)  # Letzte Berechnung
@@ -9464,10 +9464,10 @@ class PrivatInsurance(Base):
     # =========================================================================
     # Berechnete KPIs (Enterprise Feature)
     # =========================================================================
-    coverage_gap_analysis = Column(CrossDBJSON, nullable=True)  # Deckungsluecken-Analyse
+    coverage_gap_analysis = Column(CrossDBJSON, nullable=True)  # Deckungslücken-Analyse
     # Format: {"gaps": [{"type": "haftpflicht", "recommended": 10000000, "current": 5000000, "gap": 5000000, "severity": "high"}]}
-    cancellation_deadline = Column(Date, nullable=True)  # Berechnete Kuendigungsfrist
-    annual_premium_total = Column(Numeric(10, 2), nullable=True)  # Jaehrliche Gesamtpraemie
+    cancellation_deadline = Column(Date, nullable=True)  # Berechnete Kündigungsfrist
+    annual_premium_total = Column(Numeric(10, 2), nullable=True)  # Jährliche Gesamtpraemie
     coverage_adequacy_score = Column(Numeric(5, 2), nullable=True)  # Deckungsadaequanz-Score 0-100
     last_kpi_calculation = Column(DateTime(timezone=True), nullable=True)  # Letzte Berechnung
 
@@ -9529,7 +9529,7 @@ class PrivatLoan(Base):
     # =========================================================================
     amortization_schedule = Column(CrossDBJSON, nullable=True)  # Tilgungsplan
     # Format: [{"date": "2024-01", "payment": 1000, "principal": 300, "interest": 700, "balance": 99000}, ...]
-    projected_payoff_date = Column(Date, nullable=True)  # Voraussichtliches Rueckzahlungsdatum
+    projected_payoff_date = Column(Date, nullable=True)  # Voraussichtliches Rückzahlungsdatum
     total_interest_projected = Column(Numeric(15, 2), nullable=True)  # Erwartete Gesamtzinsen
     interest_saved_with_extra = Column(Numeric(12, 2), nullable=True)  # Ersparnis bei Sondertilgung
     effective_annual_rate = Column(Numeric(5, 3), nullable=True)  # Effektiver Jahreszins
@@ -9605,7 +9605,7 @@ class PrivatDeadline(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
 
-    # Verknuepfungen
+    # Verknüpfungen
     document_id = Column(UUID(as_uuid=True), ForeignKey("privat_documents.id", ondelete="CASCADE"), nullable=True)
     property_id = Column(UUID(as_uuid=True), ForeignKey("privat_properties.id", ondelete="CASCADE"), nullable=True)
     vehicle_id = Column(UUID(as_uuid=True), ForeignKey("privat_vehicles.id", ondelete="CASCADE"), nullable=True)
@@ -9688,7 +9688,7 @@ class PrivatDeadlineNotification(Base):
 
 
 class PrivatEmergencyContact(Base):
-    """Vertrauenspersonen fuer Notfallzugriff/Vererbung."""
+    """Vertrauenspersonen für Notfallzugriff/Vererbung."""
     __tablename__ = "privat_emergency_contacts"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -9776,7 +9776,7 @@ class PrivatEmergencyAccessRequest(Base):
 
 # =============================================================================
 # VALIDATION QUEUE SYSTEM
-# Enterprise-Grade Validierungssystem fuer OCR-Ergebnisse und extrahierte Daten
+# Enterprise-Grade Validierungssystem für OCR-Ergebnisse und extrahierte Daten
 # =============================================================================
 
 class ValidationStatus(str, Enum):
@@ -9806,7 +9806,7 @@ class ValidationRuleType(str, Enum):
 
 
 class ValidationSampleConfig(Base):
-    """Konfiguration fuer prozent-basierte Stichproben."""
+    """Konfiguration für prozent-basierte Stichproben."""
     __tablename__ = "validation_sample_configs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -9851,7 +9851,7 @@ class ValidationRule(Base):
     rule_type = Column(String(50), nullable=False)
     conditions = Column(CrossDBJSON, nullable=False, default=dict)
 
-    # Prioritaet und Status
+    # Priorität und Status
     priority = Column(Integer, nullable=False, default=5)
     is_active = Column(Boolean, default=True)
     is_system = Column(Boolean, default=False)
@@ -9877,7 +9877,7 @@ class ValidationRule(Base):
 
 
 class ValidationQueueItem(Base):
-    """Warteschlangen-Eintrag fuer Validierung."""
+    """Warteschlangen-Eintrag für Validierung."""
     __tablename__ = "validation_queue_items"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -9901,7 +9901,7 @@ class ValidationQueueItem(Base):
     fields_below_threshold = Column(Integer, default=0)
     total_fields = Column(Integer, default=0)
 
-    # Dokumenttyp (kopiert fuer Filterung ohne Join)
+    # Dokumenttyp (kopiert für Filterung ohne Join)
     document_type = Column(String(50), nullable=True)
     document_name = Column(String(255), nullable=True)
 
@@ -9951,17 +9951,17 @@ class ValidationQueueItem(Base):
 
     @property
     def is_pending(self) -> bool:
-        """Prueft ob Item noch ausstehend ist."""
+        """Prüft ob Item noch ausstehend ist."""
         return self.status == ValidationStatus.PENDING.value
 
     @property
     def is_completed(self) -> bool:
-        """Prueft ob Item abgeschlossen ist."""
+        """Prüft ob Item abgeschlossen ist."""
         return self.status in [ValidationStatus.APPROVED.value, ValidationStatus.REJECTED.value]
 
 
 class ValidationFieldReview(Base):
-    """Feld-Review fuer ein Validierungs-Item."""
+    """Feld-Review für ein Validierungs-Item."""
     __tablename__ = "validation_field_reviews"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -9990,7 +9990,7 @@ class ValidationFieldReview(Base):
     umlaut_issues = Column(CrossDBJSON, default=list)
     format_issues = Column(CrossDBJSON, default=list)
 
-    # OCR-Metadaten fuer PDF-Highlighting
+    # OCR-Metadaten für PDF-Highlighting
     bounding_box = Column(CrossDBJSON, nullable=True)
     ocr_backend = Column(String(50), nullable=True)
 
@@ -10013,12 +10013,12 @@ class ValidationFieldReview(Base):
 
     @property
     def needs_review(self) -> bool:
-        """Prueft ob Feld Review benoetigt."""
+        """Prüft ob Feld Review benötigt."""
         return self.is_below_threshold or len(self.validation_errors) > 0
 
 
 class ValidationAnalytics(Base):
-    """Aggregierte Statistiken fuer Validierungen."""
+    """Aggregierte Statistiken für Validierungen."""
     __tablename__ = "validation_analytics"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -10077,18 +10077,18 @@ class ValidationAnalytics(Base):
 
 
 class DocumentComment(Base):
-    """Kommentare zu Dokumenten fuer Collaboration.
+    """Kommentare zu Dokumenten für Collaboration.
 
     Multi-Tenant Support:
     - company_id: Firmenzugehoerigkeit (Migration 103)
 
     Feld-Referenz (Inline-Kommentare):
-    - field_reference: Optionaler Feldname fuer Inline-Kommentare auf Extraktionsfeldern
+    - field_reference: Optionaler Feldname für Inline-Kommentare auf Extraktionsfeldern
       (z.B. "invoice_number", "total_amount", "vendor_name")
 
     Soft Delete mit Timestamp:
-    - deleted_at: Zeitpunkt des Loeschens (NULL = nicht geloescht)
-    - deleted_by_id: User der den Kommentar geloescht hat
+    - deleted_at: Zeitpunkt des Löschens (NULL = nicht gelöscht)
+    - deleted_by_id: User der den Kommentar gelöscht hat
     - is_deleted: Legacy-Flag (wird parallel gepflegt)
     """
     __tablename__ = "document_comments"
@@ -10101,7 +10101,7 @@ class DocumentComment(Base):
     # Multi-Tenant Support (Migration 103)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
 
-    # Feld-Referenz fuer Inline-Kommentare (Migration 103)
+    # Feld-Referenz für Inline-Kommentare (Migration 103)
     field_reference = Column(String(100), nullable=True)
 
     content = Column(Text, nullable=False)
@@ -10139,7 +10139,7 @@ class DocumentComment(Base):
 
 
 class ActivityType(str, Enum):
-    """Aktivitaetstypen fuer Document Activity Log."""
+    """Aktivitaetstypen für Document Activity Log."""
     DOCUMENT_CREATED = "document_created"
     DOCUMENT_UPDATED = "document_updated"
     DOCUMENT_VIEWED = "document_viewed"
@@ -10153,7 +10153,7 @@ class ActivityType(str, Enum):
 
 
 class DocumentActivity(Base):
-    """Aktivitaetslog fuer Dokumente."""
+    """Aktivitaetslog für Dokumente."""
     __tablename__ = "document_activities"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -10243,7 +10243,7 @@ class TaskStatus(str, Enum):
 
 
 class TaskPriority(str, Enum):
-    """Prioritaet einer Aufgabe."""
+    """Priorität einer Aufgabe."""
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -10251,13 +10251,13 @@ class TaskPriority(str, Enum):
 
 
 class DocumentTask(Base):
-    """Aufgaben-Zuweisung fuer Dokumente.
+    """Aufgaben-Zuweisung für Dokumente.
 
-    Ermoeglicht Team-Collaboration durch:
-    - Zuweisung von Aufgaben an Benutzer ("Bitte pruefen")
+    Ermöglicht Team-Collaboration durch:
+    - Zuweisung von Aufgaben an Benutzer ("Bitte prüfen")
     - Deadlines mit automatischer Eskalation
     - Status-Tracking
-    - Benachrichtigungen bei Aenderungen
+    - Benachrichtigungen bei Änderungen
     """
     __tablename__ = "document_tasks"
 
@@ -10295,14 +10295,14 @@ class DocumentTask(Base):
         index=True
     )
 
-    # Status und Prioritaet
+    # Status und Priorität
     status = Column(String(20), nullable=False, default=TaskStatus.OPEN.value)
     priority = Column(String(20), nullable=False, default=TaskPriority.NORMAL.value)
 
     # Deadlines
     due_date = Column(DateTime(timezone=True), nullable=True, index=True)
-    reminder_sent = Column(Boolean, default=False)  # "Bald faellig" Erinnerung gesendet
-    last_reminder_at = Column(DateTime(timezone=True), nullable=True)  # Letzte Ueberfaellig-Erinnerung
+    reminder_sent = Column(Boolean, default=False)  # "Bald fällig" Erinnerung gesendet
+    last_reminder_at = Column(DateTime(timezone=True), nullable=True)  # Letzte Überfällig-Erinnerung
     escalated = Column(Boolean, default=False)
     escalated_at = Column(DateTime(timezone=True), nullable=True)
     escalated_to_id = Column(
@@ -10354,7 +10354,7 @@ class DocumentTask(Base):
 
 
 class NotificationChannel(str, Enum):
-    """Verfuegbare Benachrichtigungskanaele."""
+    """Verfügbare Benachrichtigungskanaele."""
     IN_APP = "in_app"        # In-App Benachrichtigung (Glocke)
     EMAIL = "email"          # Email
     WEBSOCKET = "websocket"  # Real-time WebSocket
@@ -10363,21 +10363,21 @@ class NotificationChannel(str, Enum):
 
 
 class DigestFrequency(str, Enum):
-    """Haeufigkeit fuer Email-Digest."""
+    """Häufigkeit für Email-Digest."""
     IMMEDIATE = "immediate"  # Sofort senden
     HOURLY = "hourly"        # Stuendlich
-    DAILY = "daily"          # Taeglich
+    DAILY = "daily"          # Täglich
     WEEKLY = "weekly"        # Woechentlich
     DISABLED = "disabled"    # Deaktiviert
 
 
 class NotificationPreference(Base):
-    """Benutzer-Praeferenzen fuer Benachrichtigungen.
+    """Benutzer-Praeferenzen für Benachrichtigungen.
 
-    Ermoeglicht granulare Kontrolle ueber:
+    Ermöglicht granulare Kontrolle über:
     - Welche Benachrichtigungstypen empfangen werden
-    - Ueber welche Kanaele (In-App, Email, Slack, etc.)
-    - Digest-Einstellungen (sofort, taeglich, woechentlich)
+    - Über welche Kanaele (In-App, Email, Slack, etc.)
+    - Digest-Einstellungen (sofort, täglich, woechentlich)
     """
     __tablename__ = "notification_preferences"
 
@@ -10401,7 +10401,7 @@ class NotificationPreference(Base):
         "sms": False
     })
 
-    # Digest-Einstellung fuer diesen Typ
+    # Digest-Einstellung für diesen Typ
     digest_frequency = Column(String(20), default=DigestFrequency.IMMEDIATE.value)
 
     # Timestamps
@@ -10422,9 +10422,9 @@ class NotificationPreference(Base):
 
 
 class NotificationDigestQueue(Base):
-    """Queue fuer Digest-Benachrichtigungen.
+    """Queue für Digest-Benachrichtigungen.
 
-    Sammelt Benachrichtigungen fuer spaetere Zustellung als Digest.
+    Sammelt Benachrichtigungen für spätere Zustellung als Digest.
     Wird von einem Celery Task periodisch verarbeitet.
     """
     __tablename__ = "notification_digest_queue"
@@ -10476,7 +10476,7 @@ class NotificationDigestQueue(Base):
 
 
 class EscalationRule(Base):
-    """Eskalationsregeln fuer automatische Weiterleitung.
+    """Eskalationsregeln für automatische Weiterleitung.
 
     Definiert wann und an wen Aufgaben eskaliert werden:
     - Nach X Stunden/Tagen ohne Reaktion
@@ -10499,7 +10499,7 @@ class EscalationRule(Base):
 
     # Trigger-Bedingungen
     task_type = Column(String(50), nullable=True)  # null = alle Typen
-    priority = Column(String(20), nullable=True)   # null = alle Prioritaeten
+    priority = Column(String(20), nullable=True)   # null = alle Prioritäten
 
     # Eskalations-Timeout (in Stunden)
     timeout_hours = Column(Integer, nullable=False, default=24)
@@ -10520,7 +10520,7 @@ class EscalationRule(Base):
     # Status
     is_active = Column(Boolean, default=True)
 
-    # Prioritaet der Regel (niedrigere Zahl = hoehere Prioritaet)
+    # Priorität der Regel (niedrigere Zahl = höhere Priorität)
     rule_priority = Column(Integer, default=100)
 
     # Timestamps
@@ -10543,7 +10543,7 @@ class EscalationRule(Base):
 # =============================================================================
 # GoBD COMPLIANCE MODELS (Feature 02)
 # =============================================================================
-# GoBD (Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung von
+# GoBD (Grundsätze zur ordnungsmäßigen Führung und Aufbewahrung von
 # Buechern, Aufzeichnungen und Unterlagen in elektronischer Form sowie
 # zum Datenzugriff) - German legal requirements for electronic document
 # archiving and retention.
@@ -10553,8 +10553,8 @@ class EscalationRule(Base):
 class RetentionCategory(str, Enum):
     """GoBD Aufbewahrungskategorien nach deutschem Recht."""
     INVOICE = "invoice"                    # Rechnungen - 10 Jahre (§147 AO, §14b UStG)
-    CONTRACT = "contract"                  # Vertraege - 10 Jahre (§147 AO, §257 HGB)
-    CORRESPONDENCE = "correspondence"      # Geschaeftsbriefe - 6 Jahre (§257 HGB)
+    CONTRACT = "contract"                  # Verträge - 10 Jahre (§147 AO, §257 HGB)
+    CORRESPONDENCE = "correspondence"      # Geschäftsbriefe - 6 Jahre (§257 HGB)
     BOOKING_DOCUMENT = "booking_document"  # Buchungsbelege - 10 Jahre (§147 AO)
     ANNUAL_REPORT = "annual_report"        # Jahresabschluesse - 10 Jahre (§257 HGB)
     TAX_DOCUMENT = "tax_document"          # Steuerbelege - 10 Jahre (§147 AO)
@@ -10563,14 +10563,14 @@ class RetentionCategory(str, Enum):
 
 
 class HashAlgorithm(str, Enum):
-    """Unterstuetzte Hash-Algorithmen fuer Dokumentensignaturen."""
+    """Unterstützte Hash-Algorithmen für Dokumentensignaturen."""
     SHA256 = "SHA-256"
     SHA384 = "SHA-384"
     SHA512 = "SHA-512"
 
 
 class DocumentAccessType(str, Enum):
-    """Typen von Dokumentzugriffen fuer GoBD Audit-Trail."""
+    """Typen von Dokumentzugriffen für GoBD Audit-Trail."""
     VIEW = "view"                    # Dokument angesehen (Metadaten)
     DOWNLOAD = "download"            # Dokument heruntergeladen
     PREVIEW = "preview"              # Vorschau/Thumbnail angezeigt
@@ -10579,14 +10579,14 @@ class DocumentAccessType(str, Enum):
     SHARE = "share"                  # Dokument geteilt
     SEARCH_HIT = "search_hit"        # In Suchergebnis aufgetaucht
     OCR_ACCESS = "ocr_access"        # OCR-Text abgerufen
-    METADATA_UPDATE = "metadata_update"  # Metadaten geaendert (erlaubt!)
+    METADATA_UPDATE = "metadata_update"  # Metadaten geändert (erlaubt!)
     ANNOTATION = "annotation"        # Anmerkung hinzugefuegt
 
 
 class DocumentAccessLog(Base):
     """GoBD-konformes Dokumenten-Zugriffsprotokoll.
 
-    Erfasst JEDEN Zugriff auf ein Dokument fuer:
+    Erfasst JEDEN Zugriff auf ein Dokument für:
     - GoBD-Nachvollziehbarkeit: Wer hat wann was zugegriffen?
     - DSGVO Art. 30: Verarbeitungsverzeichnis
     - Interne Compliance: Zugriffskontrolle und Reporting
@@ -10629,7 +10629,7 @@ class DocumentAccessLog(Base):
         comment="Optionaler Grund/Kontext des Zugriffs"
     )
 
-    # Request-Kontext (fuer Audit)
+    # Request-Kontext (für Audit)
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(String(500), nullable=True)
     request_id = Column(
@@ -10644,7 +10644,7 @@ class DocumentAccessLog(Base):
     bytes_transferred = Column(
         BigInteger,
         nullable=True,
-        comment="Uebertragene Bytes (bei Download/Export)"
+        comment="Übertragene Bytes (bei Download/Export)"
     )
 
     # Zeitstempel (immutable!)
@@ -10654,19 +10654,19 @@ class DocumentAccessLog(Base):
         nullable=False
     )
 
-    # Zusaetzliche Metadaten
+    # Zusätzliche Metadaten
     access_metadata = Column(
         CrossDBJSON,
         default=dict,
-        comment="Zusaetzliche Kontext-Infos (Format, Export-Typ, etc.)"
+        comment="Zusätzliche Kontext-Infos (Format, Export-Typ, etc.)"
     )
 
-    # Sequenznummer fuer Immutabilitaets-Nachweis
+    # Sequenznummer für Immutabilitaets-Nachweis
     sequence_number = Column(
         BigInteger,
         unique=True,
         nullable=True,
-        comment="Aufsteigende Sequenz fuer Lueckendetektion"
+        comment="Aufsteigende Sequenz für Lückendetektion"
     )
 
     # Relationships
@@ -10681,7 +10681,7 @@ class DocumentAccessLog(Base):
         Index("ix_document_access_logs_accessed_at", "accessed_at"),
         Index("ix_document_access_logs_access_type", "access_type"),
         Index("ix_document_access_logs_sequence", "sequence_number"),
-        # Composite index fuer typische Abfragen
+        # Composite index für typische Abfragen
         Index(
             "ix_document_access_logs_doc_time",
             "document_id", "accessed_at"
@@ -10697,16 +10697,16 @@ class DocumentArchive(Base):
     """GoBD-konforme Archivierung: Revisionssichere Speicherung mit Hash-Signatur.
 
     Erfuellt GoBD-Kriterien:
-    - Nachvollziehbarkeit: Vollstaendiger Audit-Trail
-    - Unveraenderbarkeit: SHA-256 Hash-Signatur des Dokument-Inhalts
-    - Vollstaendigkeit: Aufbewahrungsfristen-Management
+    - Nachvollziehbarkeit: Vollständiger Audit-Trail
+    - Unveränderbarkeit: SHA-256 Hash-Signatur des Dokument-Inhalts
+    - Vollständigkeit: Aufbewahrungsfristen-Management
     - Ordnung: Kategorisierung nach Dokumenttyp
     """
     __tablename__ = "document_archives"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Referenzen (RESTRICT: Archivierte Dokumente duerfen nicht geloescht werden)
+    # Referenzen (RESTRICT: Archivierte Dokumente dürfen nicht gelöscht werden)
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="RESTRICT"),
@@ -10719,7 +10719,7 @@ class DocumentArchive(Base):
         nullable=False
     )
 
-    # Signatur (GoBD: Unveraenderbarkeit)
+    # Signatur (GoBD: Unveränderbarkeit)
     content_hash = Column(
         String(128),
         nullable=False,
@@ -10734,7 +10734,7 @@ class DocumentArchive(Base):
     signature_certificate = Column(
         Text,
         nullable=True,
-        comment="TSA-Zertifikat (optional fuer qualifizierte Zeitstempel)"
+        comment="TSA-Zertifikat (optional für qualifizierte Zeitstempel)"
     )
 
     # Aufbewahrungsfristen (GoBD: Ordnung + Aufbewahrung)
@@ -10793,7 +10793,7 @@ class ProcedureDocumentationVersion(Base):
     - Wie Dokumente im System verarbeitet werden
     - Welche Sicherheitsmassnahmen implementiert sind
     - Wie die Aufbewahrungsfristen eingehalten werden
-    - Aenderungshistorie des Systems
+    - Änderungshistorie des Systems
 
     Wird automatisch bei relevanten Systemupdates generiert.
     """
@@ -10821,14 +10821,14 @@ class ProcedureDocumentationVersion(Base):
     )
     generated_by = Column(String(50), nullable=False, default="system")
 
-    # Signatur fuer Unveraenderbarkeit
+    # Signatur für Unveränderbarkeit
     content_hash = Column(String(128), nullable=False)
 
-    # Aenderungshistorie
+    # Änderungshistorie
     change_summary = Column(
         Text,
         nullable=True,
-        comment="Zusammenfassung der Aenderungen zur Vorversion"
+        comment="Zusammenfassung der Änderungen zur Vorversion"
     )
     change_details = Column(CrossDBJSON, nullable=True)
 
@@ -10857,9 +10857,9 @@ class RetentionSetting(Base):
     """GoBD Aufbewahrungsfristen-Konfiguration pro Dokumentkategorie.
 
     Definiert die gesetzlichen Aufbewahrungsfristen nach deutschem Recht:
-    - §147 AO (Abgabenordnung): 10 Jahre fuer Buchfuehrungsunterlagen
+    - §147 AO (Abgabenordnung): 10 Jahre für Buchführungsunterlagen
     - §257 HGB (Handelsgesetzbuch): 6-10 Jahre je nach Dokumenttyp
-    - §14b UStG (Umsatzsteuergesetz): 10 Jahre fuer Rechnungen
+    - §14b UStG (Umsatzsteuergesetz): 10 Jahre für Rechnungen
     """
     __tablename__ = "retention_settings"
 
@@ -10892,7 +10892,7 @@ class RetentionSetting(Base):
         Integer,
         nullable=False,
         default=90,
-        comment="Tage vor Ablauf fuer Erinnerung"
+        comment="Tage vor Ablauf für Erinnerung"
     )
     auto_delete_enabled = Column(Boolean, nullable=False, default=False)
     requires_approval_for_delete = Column(Boolean, nullable=False, default=True)
@@ -10939,28 +10939,28 @@ class TaxAdvisorInviteStatus(str, Enum):
 
 
 class TaxAdvisorInvite(Base):
-    """GoBD Steuerberater-Einladungen fuer temporaeren Prueferzugang.
+    """GoBD Steuerberater-Einladungen für temporaeren Prüferzugang.
 
-    Ermoeglicht Administratoren, Steuerberatern zeitlich begrenzten
-    Lesezugriff auf archivierte Dokumente zu gewaehren.
+    Ermöglicht Administratoren, Steuerberatern zeitlich begrenzten
+    Lesezugriff auf archivierte Dokumente zu gewähren.
 
     Flow:
     1. Admin erstellt Einladung mit E-Mail des Steuerberaters
     2. Steuerberater erhaelt E-Mail mit Einladungslink
-    3. Steuerberater registriert sich ueber den Link
+    3. Steuerberater registriert sich über den Link
     4. Nach Registrierung hat Steuerberater access_duration_days Tage Zugang
     5. Nach Ablauf wird Zugang automatisch deaktiviert
 
     GoBD-Konformitaet:
     - Nachvollziehbarkeit: Alle Aktivitaeten werden protokolliert
-    - Zeitliche Begrenzung: Zugang laeuft automatisch ab
+    - Zeitliche Begrenzung: Zugang läuft automatisch ab
     - Eingeschraenkter Zugriff: Nur Lesezugriff auf relevante Dokumente
     """
     __tablename__ = "tax_advisor_invites"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Invite-Token (SHA-256 Hash fuer Sicherheit)
+    # Invite-Token (SHA-256 Hash für Sicherheit)
     token_hash = Column(
         String(128),
         unique=True,
@@ -10974,7 +10974,7 @@ class TaxAdvisorInvite(Base):
         ForeignKey("companies.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        comment="Firma, fuer die der Zugang gilt"
+        comment="Firma, für die der Zugang gilt"
     )
     invited_by_id = Column(
         UUID(as_uuid=True),
@@ -11016,7 +11016,7 @@ class TaxAdvisorInvite(Base):
     access_scope = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Eingeschraenkter Zugriff (z.B. nur bestimmte Zeitraeume, Dokumenttypen)"
+        comment="Eingeschraenkter Zugriff (z.B. nur bestimmte Zeiträume, Dokumenttypen)"
     )
 
     # Status
@@ -11066,7 +11066,7 @@ class TaxAdvisorInvite(Base):
 
     __table_args__ = (
         Index("ix_tax_advisor_invites_status_expires", "status", "expires_at"),
-        {"comment": "GoBD Steuerberater-Einladungen fuer temporaeren Prueferzugang"}
+        {"comment": "GoBD Steuerberater-Einladungen für temporaeren Prüferzugang"}
     )
 
     def __repr__(self) -> str:
@@ -11076,12 +11076,12 @@ class TaxAdvisorInvite(Base):
 class TaxAdvisorAccessLog(Base):
     """GoBD Steuerberater-Zugriffsprotokolle (revisionssicher).
 
-    Protokolliert alle Aktivitaeten von Steuerberatern fuer:
+    Protokolliert alle Aktivitaeten von Steuerberatern für:
     - GoBD-konforme Nachvollziehbarkeit
-    - Pruefungsrelevante Dokumentation
+    - Prüfungsrelevante Dokumentation
     - Sicherheitsmonitoring
 
-    Diese Logs sind revisionssicher und koennen nicht geaendert werden.
+    Diese Logs sind revisionssicher und können nicht geändert werden.
     """
     __tablename__ = "tax_advisor_access_logs"
 
@@ -11123,7 +11123,7 @@ class TaxAdvisorAccessLog(Base):
     details = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Zusaetzliche Metadaten (Dateiname, Exportformat, etc.)"
+        comment="Zusätzliche Metadaten (Dateiname, Exportformat, etc.)"
     )
     ip_address = Column(String(45), nullable=True)
     user_agent = Column(String(500), nullable=True)
@@ -11156,7 +11156,7 @@ class TaxAdvisorAccessLog(Base):
 
 
 class ERPType(str, Enum):
-    """Unterstuetzte ERP-Systeme."""
+    """Unterstützte ERP-Systeme."""
     ODOO = "odoo"
     LEXWARE = "lexware"
     SAP_B1 = "sap_b1"
@@ -11203,7 +11203,7 @@ class ERPConflictResolution(str, Enum):
 
 
 class ERPEntityType(str, Enum):
-    """Synchronisierbare Entitaetstypen."""
+    """Synchronisierbare Entitätstypen."""
     CUSTOMER = "customer"
     SUPPLIER = "supplier"
     INVOICE = "invoice"
@@ -11217,7 +11217,7 @@ class ERPConnection(Base):
     """ERP-Verbindungskonfiguration pro Firma.
 
     Speichert alle Verbindungsdetails und Sync-Einstellungen
-    fuer die Integration mit externen ERP-Systemen.
+    für die Integration mit externen ERP-Systemen.
     """
     __tablename__ = "erp_connections"
 
@@ -11294,7 +11294,7 @@ class ERPConnection(Base):
 class ERPSyncHistory(Base):
     """Protokoll aller ERP-Sync-Vorgaenge.
 
-    Speichert Details zu jedem Sync-Lauf fuer Auditing,
+    Speichert Details zu jedem Sync-Lauf für Auditing,
     Debugging und Monitoring.
     """
     __tablename__ = "erp_sync_history"
@@ -11404,7 +11404,7 @@ class ERPConflict(Base):
 
     Speichert Konflikte die bei der bidirektionalen
     Synchronisation auftreten und manuelle Intervention
-    benoetigen.
+    benötigen.
     """
     __tablename__ = "erp_conflicts"
 
@@ -11444,7 +11444,7 @@ class ERPConflict(Base):
     resolved_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
     resolution_notes = Column(Text, nullable=True)
 
-    # Prioritaet
+    # Priorität
     priority = Column(String(20), nullable=False, default="normal", index=True)
 
     # Relationships
@@ -11461,10 +11461,10 @@ class ERPConflict(Base):
 
 
 class ERPEntityMapping(Base):
-    """Verknuepfung lokaler Entitaeten mit ERP-IDs.
+    """Verknüpfung lokaler Entitäten mit ERP-IDs.
 
     Speichert die Zuordnung zwischen lokalen und
-    Remote-Entitaeten fuer Delta-Sync und Konflikt-Erkennung.
+    Remote-Entitäten für Delta-Sync und Konflikt-Erkennung.
     """
     __tablename__ = "erp_entity_mappings"
 
@@ -11475,7 +11475,7 @@ class ERPEntityMapping(Base):
         nullable=False
     )
 
-    # Entitaets-Verknuepfung
+    # Entitäts-Verknüpfung
     entity_type = Column(String(50), nullable=False)
     local_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     remote_id = Column(String(100), nullable=False, index=True)
@@ -11500,7 +11500,7 @@ class ERPEntityMapping(Base):
         UniqueConstraint("connection_id", "entity_type", "local_id", name="uq_erp_entity_mappings_local"),
         UniqueConstraint("connection_id", "entity_type", "remote_id", name="uq_erp_entity_mappings_remote"),
         Index("ix_erp_entity_mappings_connection_entity", "connection_id", "entity_type"),
-        {"comment": "Verknuepfung lokaler Entitaeten mit ERP-IDs"}
+        {"comment": "Verknüpfung lokaler Entitäten mit ERP-IDs"}
     )
 
     def __repr__(self) -> str:
@@ -11513,10 +11513,10 @@ class ERPEntityMapping(Base):
 
 
 class OdooWebhookEvent(Base):
-    """Odoo Webhook Events fuer idempotente Verarbeitung.
+    """Odoo Webhook Events für idempotente Verarbeitung.
 
-    Speichert empfangene Webhooks fuer:
-    - Idempotenz-Pruefung (doppelte Events ignorieren)
+    Speichert empfangene Webhooks für:
+    - Idempotenz-Prüfung (doppelte Events ignorieren)
     - Retry-Logik bei Fehlern
     - Audit-Trail
     """
@@ -11530,7 +11530,7 @@ class OdooWebhookEvent(Base):
         index=True
     )
 
-    # Event-Identifikation (fuer Idempotenz)
+    # Event-Identifikation (für Idempotenz)
     event_id = Column(String(255), nullable=False, index=True, comment="Odoo webhook event ID")
     event_type = Column(String(100), nullable=False, index=True, comment="customer, supplier, invoice, etc.")
     action = Column(String(50), nullable=False, comment="create, update, delete")
@@ -11568,15 +11568,15 @@ class OdooWebhookEvent(Base):
 
 
 class OdooSyncStatus(Base):
-    """Sync-Status pro Datentyp fuer erweiterte Odoo-Synchronisation.
+    """Sync-Status pro Datentyp für erweiterte Odoo-Synchronisation.
 
-    Trackt den Sync-Zustand fuer:
+    Trackt den Sync-Zustand für:
     - Projects
     - Timesheet
     - Inventory/Stock Moves
     - Products
 
-    Ermoeglicht Delta-Sync und Fehler-Tracking.
+    Ermöglicht Delta-Sync und Fehler-Tracking.
     """
     __tablename__ = "odoo_sync_status"
 
@@ -11631,7 +11631,7 @@ class OdooAIFeedback(Base):
     - Payment Suggestions
     - Skonto Predictions
 
-    Fuer Tracking und Retry-Logik.
+    Für Tracking und Retry-Logik.
     """
     __tablename__ = "odoo_ai_feedback"
 
@@ -11688,10 +11688,10 @@ class OdooAIFeedback(Base):
 
 
 class EmailImportConfig(Base):
-    """IMAP Server-Konfigurationen fuer E-Mail-Import.
+    """IMAP Server-Konfigurationen für E-Mail-Import.
 
     Speichert verschluesselte Credentials und Sync-Einstellungen
-    fuer automatischen E-Mail-Import.
+    für automatischen E-Mail-Import.
     """
     __tablename__ = "email_import_configs"
 
@@ -11758,7 +11758,7 @@ class EmailImportConfig(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "name", name="uq_email_import_configs_user_name"),
-        {"comment": "IMAP Server-Konfigurationen fuer E-Mail-Import"}
+        {"comment": "IMAP Server-Konfigurationen für E-Mail-Import"}
     )
 
     def __repr__(self) -> str:
@@ -11766,9 +11766,9 @@ class EmailImportConfig(Base):
 
 
 class FolderImportConfig(Base):
-    """Hotfolder-Konfigurationen fuer Ordner-Import.
+    """Hotfolder-Konfigurationen für Ordner-Import.
 
-    Ueberwacht lokale Ordner oder Netzwerkpfade auf neue Dateien
+    Überwacht lokale Ordner oder Netzwerkpfade auf neue Dateien
     und importiert diese automatisch.
     """
     __tablename__ = "folder_import_configs"
@@ -11803,7 +11803,7 @@ class FolderImportConfig(Base):
     default_folder_id = Column(UUID(as_uuid=True), ForeignKey("folders.id", ondelete="SET NULL"), nullable=True)
     preserve_filename = Column(Boolean, default=True)
 
-    # Polling (Backup fuer Watchdog)
+    # Polling (Backup für Watchdog)
     poll_interval_seconds = Column(Integer, default=60)
     last_poll_at = Column(DateTime(timezone=True), nullable=True)
 
@@ -11830,7 +11830,7 @@ class FolderImportConfig(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "watch_path", name="uq_folder_import_configs_user_path"),
-        {"comment": "Hotfolder-Konfigurationen fuer Ordner-Import"}
+        {"comment": "Hotfolder-Konfigurationen für Ordner-Import"}
     )
 
     def __repr__(self) -> str:
@@ -11838,9 +11838,9 @@ class FolderImportConfig(Base):
 
 
 class ImportRule(Base):
-    """Filter- und Routing-Regeln fuer Import.
+    """Filter- und Routing-Regeln für Import.
 
-    Ermoeglicht automatische Klassifizierung, Ordner-Zuweisung
+    Ermöglicht automatische Klassifizierung, Ordner-Zuweisung
     und weitere Aktionen basierend auf Bedingungen.
     """
     __tablename__ = "import_rules"
@@ -11848,7 +11848,7 @@ class ImportRule(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    # Regel-Identitaet
+    # Regel-Identität
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     priority = Column(Integer, default=100, index=True)
@@ -11858,7 +11858,7 @@ class ImportRule(Base):
     applies_to_folder_configs = Column(CrossDBJSON, default=list)
     applies_to_all = Column(Boolean, default=False)
 
-    # Bedingungen (JSON-Struktur fuer flexible Matching)
+    # Bedingungen (JSON-Struktur für flexible Matching)
     # Format:
     # {
     #   "operator": "AND" | "OR",
@@ -11895,7 +11895,7 @@ class ImportRule(Base):
     matched_logs = relationship("ImportLog", back_populates="matched_rule")
 
     __table_args__ = (
-        {"comment": "Filter- und Routing-Regeln fuer Import"}
+        {"comment": "Filter- und Routing-Regeln für Import"}
     )
 
     def __repr__(self) -> str:
@@ -11905,7 +11905,7 @@ class ImportRule(Base):
 class ImportLog(Base):
     """Import-Historie mit Status-Tracking.
 
-    Protokolliert jeden Import-Vorgang fuer Audit und Fehleranalyse.
+    Protokolliert jeden Import-Vorgang für Audit und Fehleranalyse.
     """
     __tablename__ = "import_logs"
 
@@ -11936,7 +11936,7 @@ class ImportLog(Base):
     # Verarbeitungs-Ergebnis
     status = Column(String(50), nullable=False, index=True)  # pending, processing, completed, failed, skipped
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
-    file_hash = Column(String(64), nullable=True, index=True)  # SHA256 fuer Deduplizierung
+    file_hash = Column(String(64), nullable=True, index=True)  # SHA256 für Deduplizierung
     file_size = Column(Integer, nullable=True)
     mime_type = Column(String(100), nullable=True)
 
@@ -11978,7 +11978,7 @@ class AIConfidenceThreshold(Base):
 
     Definiert pro Entscheidungstyp ab welcher Konfidenz automatisch
     angewendet wird (auto), nur vorgeschlagen (suggest) oder
-    manuell geprueft werden muss (manual).
+    manuell geprüft werden muss (manual).
     """
     __tablename__ = "ai_confidence_thresholds"
 
@@ -11998,7 +11998,7 @@ class AIConfidenceThreshold(Base):
     is_enabled = Column(Boolean, default=True)
     allow_auto_apply = Column(Boolean, default=True)
 
-    # Beschreibung fuer Admin-UI
+    # Beschreibung für Admin-UI
     display_name = Column(String(100), nullable=True)
     description = Column(Text, nullable=True)
 
@@ -12021,10 +12021,10 @@ class AIConfidenceThreshold(Base):
 
 
 class AIDecision(Base):
-    """KI-Entscheidung mit vollstaendigem Audit-Trail.
+    """KI-Entscheidung mit vollständigem Audit-Trail.
 
-    Speichert jede KI-Entscheidung mit Konfidenz, Erklaerung und
-    Review-Status fuer GoBD-Compliance und Self-Learning.
+    Speichert jede KI-Entscheidung mit Konfidenz, Erklärung und
+    Review-Status für GoBD-Compliance und Self-Learning.
     """
     __tablename__ = "ai_decisions"
 
@@ -12051,11 +12051,11 @@ class AIDecision(Base):
     explanation = Column(CrossDBJSON, nullable=True)
     # Beispiel: {"reasons": ["Keyword 'Rechnung' gefunden", "Lieferant bekannt"], "features": {...}}
     features_used = Column(CrossDBJSON, nullable=True)  # Welche Features verwendet
-    model_version = Column(String(50), nullable=True)  # Modell-Version fuer Reproduzierbarkeit
+    model_version = Column(String(50), nullable=True)  # Modell-Version für Reproduzierbarkeit
 
     # Autonomie-Status
     auto_applied = Column(Boolean, default=False)  # Automatisch angewendet?
-    requires_review = Column(Boolean, default=True, index=True)  # Muss geprueft werden?
+    requires_review = Column(Boolean, default=True, index=True)  # Muss geprüft werden?
     is_final = Column(Boolean, default=False)  # Wurde final entschieden?
 
     # Review-Informationen
@@ -12064,7 +12064,7 @@ class AIDecision(Base):
     review_action = Column(String(20), nullable=True)  # approved, rejected, modified
     review_comment = Column(Text, nullable=True)
 
-    # Bei Modifikation: Was wurde geaendert?
+    # Bei Modifikation: Was wurde geändert?
     modified_value = Column(CrossDBJSON, nullable=True)
 
     # Timing
@@ -12082,7 +12082,7 @@ class AIDecision(Base):
 
     __table_args__ = (
         Index("ix_ai_decisions_pending_review", "decision_type", "requires_review", "is_final"),
-        {"comment": "KI-Entscheidungen mit vollstaendigem Audit-Trail"}
+        {"comment": "KI-Entscheidungen mit vollständigem Audit-Trail"}
     )
 
     def __repr__(self) -> str:
@@ -12121,8 +12121,8 @@ class AILearningFeedback(Base):
     processed_at = Column(DateTime(timezone=True), nullable=True)
     learning_batch_id = Column(String(50), nullable=True)
 
-    # Gewichtung fuer Learning
-    learning_weight = Column(Float, default=1.0)  # Hoeher = wichtiger
+    # Gewichtung für Learning
+    learning_weight = Column(Float, default=1.0)  # Höher = wichtiger
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -12165,12 +12165,12 @@ class DocumentMatch(Base):
     match_features = Column(CrossDBJSON, nullable=True)
     # Beispiel: {"order_number": 0.95, "customer": 0.90, "amount": 0.85, "date": 0.70}
 
-    # Verknuepfungs-Status
+    # Verknüpfungs-Status
     auto_linked = Column(Boolean, default=False)
     is_confirmed = Column(Boolean, default=False, index=True)
     is_rejected = Column(Boolean, default=False)
 
-    # Wer hat verknuepft/bestaetigt
+    # Wer hat verknüpft/bestätigt
     linked_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     linked_at = Column(DateTime(timezone=True), nullable=True)
     confirmed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
@@ -12201,10 +12201,10 @@ class DocumentMatch(Base):
 
 
 class PaymentPrediction(Base):
-    """Zahlungsvorhersagen fuer Rechnungen.
+    """Zahlungsvorhersagen für Rechnungen.
 
     Prognostiziert basierend auf Historie wann eine Rechnung
-    bezahlt wird fuer Cashflow-Planung.
+    bezahlt wird für Cashflow-Planung.
     """
     __tablename__ = "payment_predictions"
 
@@ -12226,7 +12226,7 @@ class PaymentPrediction(Base):
     model_version = Column(String(50), nullable=True)
     prediction_date = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    # Tatsaechliche Zahlung (fuer Learning)
+    # Tatsaechliche Zahlung (für Learning)
     actual_payment_date = Column(Date, nullable=True)
     actual_days = Column(Integer, nullable=True)
     prediction_error_days = Column(Integer, nullable=True)  # Differenz
@@ -12249,7 +12249,7 @@ class PaymentPrediction(Base):
     ai_decision = relationship("AIDecision", backref="payment_prediction")
 
     __table_args__ = (
-        {"comment": "Zahlungsvorhersagen fuer Cashflow-Planung"}
+        {"comment": "Zahlungsvorhersagen für Cashflow-Planung"}
     )
 
     def __repr__(self) -> str:
@@ -12258,20 +12258,20 @@ class PaymentPrediction(Base):
 
 # =============================================================================
 # AUTONOMOUS TRUST SYSTEM MODELS (Phase 2.1)
-# Multi-Level Trust fuer autonome KI-Aktionen
+# Multi-Level Trust für autonome KI-Aktionen
 # =============================================================================
 
 
 class AutonomousTrustConfig(Base):
     """Trust-Level Konfiguration pro Company.
 
-    Speichert das aktuelle Trust-Level und Konfiguration fuer
+    Speichert das aktuelle Trust-Level und Konfiguration für
     autonome KI-Aktionen. Kann global oder pro Dokumenttyp sein.
 
     Trust-Level:
-    - LEVEL_1_ASSISTANCE: Alle Aktionen erfordern Bestaetigung
+    - LEVEL_1_ASSISTANCE: Alle Aktionen erfordern Bestätigung
     - LEVEL_2_AUTO_ACCEPT: >90% Confidence, 24h Auto-Accept
-    - LEVEL_3_CONFIDENCE: >95% sofort, 80-95% verzoegert (4h)
+    - LEVEL_3_CONFIDENCE: >95% sofort, 80-95% verzögert (4h)
     - LEVEL_4_AUTONOMOUS: Volle Autonomie, nur Exceptions
     """
     __tablename__ = "autonomous_trust_config"
@@ -12292,11 +12292,11 @@ class AutonomousTrustConfig(Base):
         comment="Trust-Level: assistance, auto_accept, confidence, autonomous"
     )
 
-    # Optional: Spezifisch fuer Dokumenttyp
+    # Optional: Spezifisch für Dokumenttyp
     document_type = Column(
         String(50),
         nullable=True,
-        comment="Optional: Spezifisches Level fuer diesen Dokumenttyp"
+        comment="Optional: Spezifisches Level für diesen Dokumenttyp"
     )
 
     # Konfiguration
@@ -12311,7 +12311,7 @@ class AutonomousTrustConfig(Base):
     delayed_threshold = Column(
         Float,
         nullable=True,
-        comment="Ab hier verzoegerte Aktion (Override)"
+        comment="Ab hier verzögerte Aktion (Override)"
     )
     delay_hours = Column(
         Integer,
@@ -12327,16 +12327,16 @@ class AutonomousTrustConfig(Base):
     )
     metrics_updated_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Trust-Level Aenderungshistorie
+    # Trust-Level Änderungshistorie
     level_changed_at = Column(
         DateTime(timezone=True),
         nullable=True,
-        comment="Zeitpunkt der letzten Level-Aenderung"
+        comment="Zeitpunkt der letzten Level-Änderung"
     )
     change_reason = Column(
         Text,
         nullable=True,
-        comment="Grund fuer letzte Level-Aenderung"
+        comment="Grund für letzte Level-Änderung"
     )
 
     # Audit
@@ -12354,7 +12354,7 @@ class AutonomousTrustConfig(Base):
 
     __table_args__ = (
         UniqueConstraint("company_id", "document_type", name="uq_trust_config_company_doctype"),
-        {"comment": "Trust-Level Konfiguration fuer autonome KI-Aktionen"}
+        {"comment": "Trust-Level Konfiguration für autonome KI-Aktionen"}
     )
 
     def __repr__(self) -> str:
@@ -12362,16 +12362,16 @@ class AutonomousTrustConfig(Base):
 
 
 class AutonomousProposalQueue(Base):
-    """Queue fuer verzoegerte Auto-Akzeptanz.
+    """Queue für verzögerte Auto-Akzeptanz.
 
-    Speichert Vorschlaege, die nicht sofort ausgefuehrt werden:
+    Speichert Vorschläge, die nicht sofort ausgeführt werden:
     - Level 2: 24h Wartezeit bei >90% Confidence
     - Level 3: 4h Wartezeit bei 80-95% Confidence
 
     Features:
-    - Timeout-Handling mit automatischer Ausfuehrung
+    - Timeout-Handling mit automatischer Ausführung
     - User-Intervention (vorzeitige Genehmigung/Ablehnung)
-    - Rollback-Faehigkeit fuer 7 Tage
+    - Rollback-Fähigkeit für 7 Tage
     """
     __tablename__ = "autonomous_proposal_queue"
 
@@ -12407,13 +12407,13 @@ class AutonomousProposalQueue(Base):
     delay_hours = Column(
         Integer,
         nullable=False,
-        comment="Urspruengliche Verzoegerung in Stunden"
+        comment="Urspruengliche Verzögerung in Stunden"
     )
     scheduled_at = Column(
         DateTime(timezone=True),
         nullable=False,
         index=True,
-        comment="Geplante Ausfuehrungszeit"
+        comment="Geplante Ausführungszeit"
     )
 
     # Status
@@ -12425,11 +12425,11 @@ class AutonomousProposalQueue(Base):
         comment="pending, approved, rejected, auto_accepted, expired, rolled_back, cancelled"
     )
 
-    # Ausfuehrung
+    # Ausführung
     executed_at = Column(
         DateTime(timezone=True),
         nullable=True,
-        comment="Zeitpunkt der Ausfuehrung"
+        comment="Zeitpunkt der Ausführung"
     )
     executed_by = Column(
         String(100),
@@ -12441,7 +12441,7 @@ class AutonomousProposalQueue(Base):
     rollback_until = Column(
         DateTime(timezone=True),
         nullable=True,
-        comment="Bis wann Rollback moeglich ist"
+        comment="Bis wann Rollback möglich ist"
     )
 
     # Referenzen
@@ -12459,7 +12459,7 @@ class AutonomousProposalQueue(Base):
     proposal_metadata = Column(
         CrossDBJSON,
         nullable=True,
-        comment="Zusaetzliche Metadaten"
+        comment="Zusätzliche Metadaten"
     )
 
     # Audit
@@ -12471,7 +12471,7 @@ class AutonomousProposalQueue(Base):
     ai_decision = relationship("AIDecision", backref="proposal_queue_items")
 
     __table_args__ = (
-        {"comment": "Queue fuer verzoegerte Auto-Akzeptanz mit Rollback"}
+        {"comment": "Queue für verzögerte Auto-Akzeptanz mit Rollback"}
     )
 
     def __repr__(self) -> str:
@@ -12532,7 +12532,7 @@ class ReportTemplate(Base):
     shares = relationship("ReportShare", back_populates="template", cascade="all, delete-orphan")
 
     __table_args__ = (
-        {"comment": "Report-Template Definitionen fuer Report Builder"}
+        {"comment": "Report-Template Definitionen für Report Builder"}
     )
 
     def __repr__(self) -> str:
@@ -12540,7 +12540,7 @@ class ReportTemplate(Base):
 
 
 class ReportColumn(Base):
-    """Spalten-Konfiguration fuer Report-Templates.
+    """Spalten-Konfiguration für Report-Templates.
 
     Definiert welche Felder im Report angezeigt werden und wie.
     """
@@ -12576,7 +12576,7 @@ class ReportColumn(Base):
 
     __table_args__ = (
         Index("ix_report_columns_sort_order", "template_id", "sort_order"),
-        {"comment": "Spalten-Konfiguration fuer Report-Templates"}
+        {"comment": "Spalten-Konfiguration für Report-Templates"}
     )
 
     def __repr__(self) -> str:
@@ -12584,7 +12584,7 @@ class ReportColumn(Base):
 
 
 class ReportFilter(Base):
-    """Filter-Bedingungen fuer Report-Templates.
+    """Filter-Bedingungen für Report-Templates.
 
     Definiert Filterbedingungen die auf die Daten angewendet werden.
     """
@@ -12598,9 +12598,9 @@ class ReportFilter(Base):
     operator = Column(String(50), nullable=False)  # eq|ne|gt|lt|gte|lte|contains|in|between|is_null
     value = Column(CrossDBJSON, nullable=True)  # Wert(e) je nach Operator
 
-    # Logische Verknuepfung
+    # Logische Verknüpfung
     logic_operator = Column(String(10), nullable=False, default="AND")  # AND|OR
-    group_id = Column(Integer, nullable=True)  # Fuer verschachtelte Gruppen
+    group_id = Column(Integer, nullable=True)  # Für verschachtelte Gruppen
 
     # Reihenfolge
     sort_order = Column(Integer, nullable=False, default=0)
@@ -12616,7 +12616,7 @@ class ReportFilter(Base):
     template = relationship("ReportTemplate", back_populates="filters")
 
     __table_args__ = (
-        {"comment": "Filter-Bedingungen fuer Report-Templates"}
+        {"comment": "Filter-Bedingungen für Report-Templates"}
     )
 
     def __repr__(self) -> str:
@@ -12624,7 +12624,7 @@ class ReportFilter(Base):
 
 
 class ReportChart(Base):
-    """Chart-Konfiguration fuer Report-Templates.
+    """Chart-Konfiguration für Report-Templates.
 
     Definiert Visualisierungen die im Report angezeigt werden.
     """
@@ -12639,7 +12639,7 @@ class ReportChart(Base):
 
     # Daten-Mapping
     x_axis_field = Column(String(255), nullable=True)  # Kategorie/X-Achse
-    y_axis_fields = Column(CrossDBJSON, nullable=False)  # Liste von Feldern fuer Y-Achse
+    y_axis_fields = Column(CrossDBJSON, nullable=False)  # Liste von Feldern für Y-Achse
     group_by_field = Column(String(255), nullable=True)  # Optional: Gruppierung
 
     # Styling
@@ -12662,7 +12662,7 @@ class ReportChart(Base):
     template = relationship("ReportTemplate", back_populates="charts")
 
     __table_args__ = (
-        {"comment": "Chart-Konfiguration fuer Report-Templates"}
+        {"comment": "Chart-Konfiguration für Report-Templates"}
     )
 
     def __repr__(self) -> str:
@@ -12670,9 +12670,9 @@ class ReportChart(Base):
 
 
 class ReportExecution(Base):
-    """Ausfuehrungs-Historie fuer Report-Templates.
+    """Ausführungs-Historie für Report-Templates.
 
-    Speichert wann ein Report ausgefuehrt wurde und das Ergebnis.
+    Speichert wann ein Report ausgeführt wurde und das Ergebnis.
     """
     __tablename__ = "report_executions"
 
@@ -12680,7 +12680,7 @@ class ReportExecution(Base):
     template_id = Column(UUID(as_uuid=True), ForeignKey("report_templates.id", ondelete="CASCADE"), nullable=False, index=True)
     executed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
 
-    # Ausfuehrung
+    # Ausführung
     status = Column(String(50), nullable=False, default="pending", index=True)  # pending|running|completed|failed
     format = Column(String(20), nullable=False)  # pdf|excel|csv|json
     trigger_type = Column(String(50), nullable=False)  # manual|scheduled|api
@@ -12712,7 +12712,7 @@ class ReportExecution(Base):
     executed_by = relationship("User", backref="report_executions")
 
     __table_args__ = (
-        {"comment": "Ausfuehrungs-Historie fuer Report-Templates"}
+        {"comment": "Ausführungs-Historie für Report-Templates"}
     )
 
     def __repr__(self) -> str:
@@ -12720,9 +12720,9 @@ class ReportExecution(Base):
 
 
 class ReportShare(Base):
-    """Freigaben fuer Report-Templates.
+    """Freigaben für Report-Templates.
 
-    Ermoeglicht das Teilen von Reports mit anderen Benutzern.
+    Ermöglicht das Teilen von Reports mit anderen Benutzern.
     """
     __tablename__ = "report_shares"
 
@@ -12750,7 +12750,7 @@ class ReportShare(Base):
 
     __table_args__ = (
         Index("uq_report_shares_template_user", "template_id", "shared_with_user_id", unique=True),
-        {"comment": "Freigaben fuer Report-Templates"}
+        {"comment": "Freigaben für Report-Templates"}
     )
 
 
@@ -12760,9 +12760,9 @@ class ReportShare(Base):
 
 
 class Workflow(Base):
-    """Workflow-Definitionen fuer Automatisierung.
+    """Workflow-Definitionen für Automatisierung.
 
-    Ermoeglicht das Erstellen von Multi-Step-Workflows mit:
+    Ermöglicht das Erstellen von Multi-Step-Workflows mit:
     - Trigger (Document Events, Schedule, Condition, Manual, Webhook)
     - Conditions (AND/OR-Logik, wiederverwendet ImportRule Pattern)
     - Actions (20+ Aktionstypen)
@@ -12798,7 +12798,7 @@ class Workflow(Base):
     webhook_secret = Column(String(64), nullable=True)
     webhook_path = Column(String(100), nullable=True, unique=True)
 
-    # Ausfuehrungs-Einstellungen
+    # Ausführungs-Einstellungen
     max_concurrent_executions = Column(Integer, default=10, nullable=False)
     timeout_seconds = Column(Integer, default=3600, nullable=False)
     retry_config = Column(CrossDBJSON, nullable=True)
@@ -12812,7 +12812,7 @@ class Workflow(Base):
     last_executed_at = Column(DateTime(timezone=True), nullable=True)
     avg_execution_time_ms = Column(Integer, nullable=True)
 
-    # Naechste geplante Ausfuehrung
+    # Nächste geplante Ausführung
     next_run_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     # Audit
@@ -12828,7 +12828,7 @@ class Workflow(Base):
     executions = relationship("WorkflowExecution", back_populates="workflow", cascade="all, delete-orphan")
 
     __table_args__ = (
-        {"comment": "Workflow-Definitionen fuer Automatisierung"}
+        {"comment": "Workflow-Definitionen für Automatisierung"}
     )
 
 
@@ -12836,11 +12836,11 @@ class WorkflowStep(Base):
     """Einzelne Schritte pro Workflow.
 
     Schritt-Typen:
-    - condition: Bedingungspruefung mit AND/OR-Logik
-    - action: Aktion ausfuehren (move_folder, send_notification, etc.)
+    - condition: Bedingungsprüfung mit AND/OR-Logik
+    - action: Aktion ausführen (move_folder, send_notification, etc.)
     - branch: If-Then-Else Verzweigung
-    - delay: Zeitverzoegerung
-    - parallel: Parallele Ausfuehrung
+    - delay: Zeitverzögerung
+    - parallel: Parallele Ausführung
     - loop: Schleife (optional)
     """
     __tablename__ = "workflow_steps"
@@ -12888,7 +12888,7 @@ class WorkflowStep(Base):
 
 
 class WorkflowExecution(Base):
-    """Ausfuehrungs-Historie fuer Workflows.
+    """Ausführungs-Historie für Workflows.
 
     Trackt jeden Workflow-Lauf mit:
     - Trigger-Kontext
@@ -12911,7 +12911,7 @@ class WorkflowExecution(Base):
     trigger_data = Column(CrossDBJSON, nullable=True)
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True, index=True)
 
-    # Ausfuehrungs-Status
+    # Ausführungs-Status
     status = Column(String(20), nullable=False, default="pending", index=True)
     # Status: pending, running, completed, failed, cancelled, paused
     current_step_id = Column(UUID(as_uuid=True), ForeignKey("workflow_steps.id", ondelete="SET NULL"), nullable=True)
@@ -12948,12 +12948,12 @@ class WorkflowExecution(Base):
     step_executions = relationship("WorkflowStepExecution", back_populates="workflow_execution", cascade="all, delete-orphan", order_by="WorkflowStepExecution.execution_order")
 
     __table_args__ = (
-        {"comment": "Ausfuehrungs-Historie fuer Workflows"}
+        {"comment": "Ausführungs-Historie für Workflows"}
     )
 
 
 class WorkflowStepExecution(Base):
-    """Schritt-Level Audit Trail fuer Workflow-Ausfuehrungen.
+    """Schritt-Level Audit Trail für Workflow-Ausführungen.
 
     Trackt jeden einzelnen Schritt mit:
     - Input/Output-Daten
@@ -12967,7 +12967,7 @@ class WorkflowStepExecution(Base):
     workflow_execution_id = Column(UUID(as_uuid=True), ForeignKey("workflow_executions.id", ondelete="CASCADE"), nullable=False, index=True)
     workflow_step_id = Column(UUID(as_uuid=True), ForeignKey("workflow_steps.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    # Ausfuehrungs-Reihenfolge
+    # Ausführungs-Reihenfolge
     execution_order = Column(Integer, nullable=False)
 
     # Status
@@ -13005,7 +13005,7 @@ class WorkflowStepExecution(Base):
 
     __table_args__ = (
         Index("ix_workflow_step_execs_order", "workflow_execution_id", "execution_order"),
-        {"comment": "Schritt-Level Audit Trail fuer Workflow-Ausfuehrungen"}
+        {"comment": "Schritt-Level Audit Trail für Workflow-Ausführungen"}
     )
 
 
@@ -13014,10 +13014,10 @@ class WorkflowStepExecution(Base):
 # ==================================================
 
 class PushSubscription(Base):
-    """Push Subscription fuer Web Push Notifications.
+    """Push Subscription für Web Push Notifications.
 
     Speichert Web Push Subscription Daten pro Geraet/Browser.
-    Ermoeglicht Benachrichtigungen auch wenn App nicht geoeffnet ist.
+    Ermöglicht Benachrichtigungen auch wenn App nicht geöffnet ist.
     """
 
     __tablename__ = "push_subscriptions"
@@ -13056,14 +13056,14 @@ class PushSubscription(Base):
     notification_history = relationship("NotificationHistory", back_populates="subscription", cascade="all, delete-orphan")
 
     __table_args__ = (
-        {"comment": "Web Push Subscriptions fuer PWA Notifications"}
+        {"comment": "Web Push Subscriptions für PWA Notifications"}
     )
 
 
 class NotificationTemplate(Base):
-    """Notification Template fuer vordefinierte Benachrichtigungen.
+    """Notification Template für vordefinierte Benachrichtigungen.
 
-    Ermoeglicht wiederverwendbare Notification-Vorlagen mit Variablen.
+    Ermöglicht wiederverwendbare Notification-Vorlagen mit Variablen.
     """
 
     __tablename__ = "notification_templates"
@@ -13111,9 +13111,9 @@ class NotificationTemplate(Base):
 
 
 class NotificationHistory(Base):
-    """History fuer gesendete Push Notifications.
+    """History für gesendete Push Notifications.
 
-    Ermoeglicht Tracking von Delivery und Click-Through.
+    Ermöglicht Tracking von Delivery und Click-Through.
     """
 
     __tablename__ = "notification_history"
@@ -13142,12 +13142,12 @@ class NotificationHistory(Base):
     template = relationship("NotificationTemplate", back_populates="notification_history")
 
     __table_args__ = (
-        {"comment": "Tracking fuer gesendete Push Notifications"}
+        {"comment": "Tracking für gesendete Push Notifications"}
     )
 
 
 class NotificationRulePriority(str, Enum):
-    """Prioritaet einer Notification Rule."""
+    """Priorität einer Notification Rule."""
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -13155,7 +13155,7 @@ class NotificationRulePriority(str, Enum):
 
 
 class NotificationRuleActionType(str, Enum):
-    """Aktionstyp fuer Notification Rules."""
+    """Aktionstyp für Notification Rules."""
     IN_APP = "in_app"
     PUSH = "push"
     EMAIL = "email"
@@ -13163,9 +13163,9 @@ class NotificationRuleActionType(str, Enum):
 
 
 class NotificationRule(Base):
-    """Notification Rules fuer Event-basierte Benachrichtigungen.
+    """Notification Rules für Event-basierte Benachrichtigungen.
 
-    Ermoeglicht benutzerdefinierte Regeln, wann und wie Benachrichtigungen
+    Ermöglicht benutzerdefinierte Regeln, wann und wie Benachrichtigungen
     ausgeloest werden sollen. Teil des Enterprise Notification Rule Engine.
 
     Beispiel-Conditions:
@@ -13203,13 +13203,13 @@ class NotificationRule(Base):
     event_source = Column(String(50), nullable=True,
                           comment="Optional: Quelle filtern (z.B. privat, business)")
 
-    # Conditions (JSONB fuer komplexe Filter)
+    # Conditions (JSONB für komplexe Filter)
     conditions = Column(CrossDBJSON, nullable=False, default=dict,
                         comment="JSON-Bedingungen mit Operatoren (AND, OR, NOT)")
 
-    # Actions (JSONB fuer mehrere Aktionen)
+    # Actions (JSONB für mehrere Aktionen)
     actions = Column(CrossDBJSON, nullable=False, default=list,
-                     comment="Liste von auszufuehrenden Aktionen")
+                     comment="Liste von auszuführenden Aktionen")
 
     # Scheduling
     quiet_hours_start = Column(Time, nullable=True,
@@ -13242,7 +13242,7 @@ class NotificationRule(Base):
     __table_args__ = (
         Index("ix_notification_rules_user_enabled", "user_id", "enabled"),
         Index("ix_notification_rules_event_type", "event_type"),
-        {"comment": "Benutzerdefinierte Notification-Regeln fuer Events"}
+        {"comment": "Benutzerdefinierte Notification-Regeln für Events"}
     )
 
     def __repr__(self) -> str:
@@ -13255,7 +13255,7 @@ class NotificationRule(Base):
 # =============================================================================
 
 class RecurringPaymentFrequency(str, Enum):
-    """Haeufigkeit wiederkehrender Zahlungen."""
+    """Häufigkeit wiederkehrender Zahlungen."""
     DAILY = "daily"
     WEEKLY = "weekly"
     BIWEEKLY = "biweekly"
@@ -13278,7 +13278,7 @@ class RecurringPaymentCategory(str, Enum):
 
 
 class CoverageGapType(str, Enum):
-    """Typ der Versicherungsluecke."""
+    """Typ der Versicherungslücke."""
     MISSING = "missing"
     UNDERCOVERED = "undercovered"
     EXPIRED = "expired"
@@ -13286,7 +13286,7 @@ class CoverageGapType(str, Enum):
 
 
 class CoverageGapSeverity(str, Enum):
-    """Schweregrad der Versicherungsluecke."""
+    """Schweregrad der Versicherungslücke."""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -13294,10 +13294,10 @@ class CoverageGapSeverity(str, Enum):
 
 
 class LLMCache(Base):
-    """Semantisches Caching fuer LLM-Antworten.
+    """Semantisches Caching für LLM-Antworten.
 
-    Reduziert LLM-Aufrufe durch Wiederverwendung aehnlicher Antworten.
-    Nutzt Embedding-basierte Aehnlichkeitssuche.
+    Reduziert LLM-Aufrufe durch Wiederverwendung ähnlicher Antworten.
+    Nutzt Embedding-basierte Ähnlichkeitssuche.
     """
 
     __tablename__ = "llm_cache"
@@ -13307,7 +13307,7 @@ class LLMCache(Base):
                          comment="SHA-256 Hash des normalisierten Prompts")
     prompt_text = Column(Text, nullable=False, comment="Originaler Prompt-Text")
     prompt_embedding = Column(CrossDBJSON, nullable=True,
-                              comment="Embedding-Vektor fuer semantische Suche")
+                              comment="Embedding-Vektor für semantische Suche")
     response = Column(Text, nullable=False, comment="LLM-Antwort")
     model = Column(String(50), nullable=False, index=True,
                    comment="Verwendetes Modell")
@@ -13324,7 +13324,7 @@ class LLMCache(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=True,
                         comment="Ablaufzeitpunkt")
-    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusaetzliche Metadaten")
+    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusätzliche Metadaten")
 
     __table_args__ = (
         Index("ix_llm_cache_created_at", "created_at"),
@@ -13335,9 +13335,9 @@ class LLMCache(Base):
 
 
 class EventLog(Base):
-    """Event Log fuer Event Bus Historie.
+    """Event Log für Event Bus Historie.
 
-    Persistiert alle Events fuer Audit, Replay und Debugging.
+    Persistiert alle Events für Audit, Replay und Debugging.
     """
 
     __tablename__ = "event_log"
@@ -13371,15 +13371,15 @@ class EventLog(Base):
         Index("ix_event_log_created_at", "created_at"),
         Index("ix_event_log_unprocessed", "event_type", "created_at",
               postgresql_where=text("processed = false")),
-        {"comment": "Event Bus Historie fuer Audit und Replay"}
+        {"comment": "Event Bus Historie für Audit und Replay"}
     )
 
 
 class PrivatRecurringPayment(Base):
     """Erkannte wiederkehrende Zahlungen.
 
-    Automatisch erkannte oder manuell definierte regelmaessige Zahlungen
-    fuer Cashflow-Prognosen und Anomalie-Erkennung.
+    Automatisch erkannte oder manuell definierte regelmäßige Zahlungen
+    für Cashflow-Prognosen und Anomalie-Erkennung.
     """
 
     __tablename__ = "privat_recurring_payments"
@@ -13388,19 +13388,19 @@ class PrivatRecurringPayment(Base):
     space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"),
                       nullable=False, index=True)
     name = Column(String(255), nullable=False, comment="Name der Zahlung")
-    payee = Column(String(255), nullable=True, comment="Zahlungsempfaenger")
+    payee = Column(String(255), nullable=True, comment="Zahlungsempfänger")
     expected_amount = Column(Numeric(10, 2), nullable=False,
                              comment="Erwarteter Betrag")
     amount_variance = Column(Numeric(10, 2), nullable=True,
                              comment="Tolerierte Abweichung")
     frequency = Column(String(20), nullable=False, index=True,
-                       comment="Haeufigkeit")
+                       comment="Häufigkeit")
     expected_day = Column(Integer, nullable=True,
                           comment="Erwarteter Tag im Zyklus")
     category = Column(String(50), nullable=True, index=True,
                       comment="Kategorie")
     last_occurrence = Column(Date, nullable=True, comment="Letztes Auftreten")
-    next_expected = Column(Date, nullable=True, comment="Naechstes erwartetes Datum")
+    next_expected = Column(Date, nullable=True, comment="Nächstes erwartetes Datum")
     occurrence_count = Column(Integer, nullable=False, default=0,
                               comment="Anzahl Vorkommen")
     confidence = Column(Numeric(3, 2), nullable=False, default=0.0,
@@ -13410,11 +13410,11 @@ class PrivatRecurringPayment(Base):
     is_income = Column(Boolean, nullable=False, default=False,
                        comment="Ist Einnahme?")
     linked_account_id = Column(UUID(as_uuid=True), nullable=True,
-                               comment="Verknuepftes Bankkonto")
+                               comment="Verknüpftes Bankkonto")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(),
                         onupdate=func.now(), nullable=False)
-    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusaetzliche Metadaten")
+    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusätzliche Metadaten")
 
     # Relationships
     space = relationship("PrivatSpace", back_populates="recurring_payments")
@@ -13427,9 +13427,9 @@ class PrivatRecurringPayment(Base):
 
 
 class PrivatCoverageGap(Base):
-    """Versicherungsluecken-Analyse.
+    """Versicherungslücken-Analyse.
 
-    Identifizierte Deckungsluecken mit Empfehlungen.
+    Identifizierte Deckungslücken mit Empfehlungen.
     """
 
     __tablename__ = "privat_coverage_gaps"
@@ -13443,7 +13443,7 @@ class PrivatCoverageGap(Base):
     insurance_type = Column(String(50), nullable=False, index=True,
                             comment="Versicherungstyp")
     gap_type = Column(String(50), nullable=False,
-                      comment="Lueckentyp")
+                      comment="Lückentyp")
     recommended_coverage = Column(Numeric(15, 2), nullable=True,
                                   comment="Empfohlene Deckungssumme")
     current_coverage = Column(Numeric(15, 2), nullable=True,
@@ -13457,9 +13457,9 @@ class PrivatCoverageGap(Base):
     recommendation = Column(Text, nullable=True,
                             comment="Handlungsempfehlung")
     estimated_monthly_cost = Column(Numeric(10, 2), nullable=True,
-                                    comment="Geschaetzte Monatskosten")
+                                    comment="Geschätzte Monatskosten")
     priority_score = Column(Integer, nullable=True,
-                            comment="Prioritaets-Score 1-100")
+                            comment="Prioritäts-Score 1-100")
     is_resolved = Column(Boolean, nullable=False, default=False,
                          comment="Behoben?")
     resolved_at = Column(DateTime(timezone=True), nullable=True,
@@ -13467,7 +13467,7 @@ class PrivatCoverageGap(Base):
     last_analysis_at = Column(DateTime(timezone=True), server_default=func.now(),
                               nullable=False, comment="Letzte Analyse")
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusaetzliche Metadaten")
+    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusätzliche Metadaten")
 
     # Relationships
     space = relationship("PrivatSpace", back_populates="coverage_gaps")
@@ -13477,7 +13477,7 @@ class PrivatCoverageGap(Base):
         Index("ix_coverage_gaps_unresolved", "space_id", "severity",
               postgresql_where=text("is_resolved = false")),
         Index("ix_coverage_gaps_priority", "priority_score"),
-        {"comment": "Versicherungsluecken-Analyse"}
+        {"comment": "Versicherungslücken-Analyse"}
     )
 
 
@@ -13487,7 +13487,7 @@ class PrivatCoverageGap(Base):
 
 
 class KPIUnit(str, Enum):
-    """Einheit fuer KPIs."""
+    """Einheit für KPIs."""
     PERCENT = "percent"
     CURRENCY = "currency"
     RATIO = "ratio"
@@ -13500,7 +13500,7 @@ class KPIUnit(str, Enum):
 
 
 class ProjectionMethod(str, Enum):
-    """Methode fuer KPI-Projektionen."""
+    """Methode für KPI-Projektionen."""
     LINEAR = "linear"
     EXPONENTIAL = "exponential"
     SEASONAL = "seasonal"
@@ -13532,7 +13532,7 @@ class WarningType(str, Enum):
 
 
 class ProfessionType(str, Enum):
-    """Berufstypen fuer personalisierte Schwellenwerte."""
+    """Berufstypen für personalisierte Schwellenwerte."""
     EMPLOYEE = "employee"
     CIVIL_SERVANT = "civil_servant"
     FREELANCER = "freelancer"
@@ -13548,9 +13548,9 @@ class RiskProfile(str, Enum):
 
 
 class PrivatKPIHistory(Base):
-    """KPI History - Taegliche Snapshots aller KPIs fuer Trend-Analyse.
+    """KPI History - Tägliche Snapshots aller KPIs für Trend-Analyse.
 
-    Ermoeglicht die Projektion von KPIs in die Zukunft basierend auf
+    Ermöglicht die Projektion von KPIs in die Zukunft basierend auf
     historischen Trends. Ein Eintrag pro KPI pro Space pro Tag.
     """
 
@@ -13571,7 +13571,7 @@ class PrivatKPIHistory(Base):
     source = Column(String(50), nullable=False, default="automated",
                     comment="Quelle: automated, manual, recalculated")
     extra_data = Column(CrossDBJSON, nullable=True,
-                        comment="Zusaetzliche Kontextdaten")
+                        comment="Zusätzliche Kontextdaten")
 
     # Relationships
     space = relationship("PrivatSpace", back_populates="kpi_history")
@@ -13582,15 +13582,15 @@ class PrivatKPIHistory(Base):
         # Note: UniqueConstraint auf space_id + kpi_name + recorded_at (Tag-Ebene wird in Migration gehandhabt)
         UniqueConstraint("space_id", "kpi_name", "recorded_at",
                          name="uq_kpi_history_space_kpi_date"),
-        {"comment": "Taegliche KPI-Snapshots fuer Trend-Analyse"}
+        {"comment": "Tägliche KPI-Snapshots für Trend-Analyse"}
     )
 
 
 class PrivatProjection(Base):
     """KPI Projections Cache - Vorausberechnete Prognosen.
 
-    Gecachte Projektionen fuer 3/6/12 Monate in die Zukunft.
-    Werden taeglich neu berechnet und invalidiert.
+    Gecachte Projektionen für 3/6/12 Monate in die Zukunft.
+    Werden täglich neu berechnet und invalidiert.
     """
 
     __tablename__ = "privat_projections"
@@ -13613,7 +13613,7 @@ class PrivatProjection(Base):
     trend_direction = Column(String(20), nullable=False,
                              comment="Trendrichtung: rising, falling, stable, volatile")
     trend_strength = Column(Numeric(5, 4), nullable=True,
-                            comment="Trendstaerke 0-1 (R-squared)")
+                            comment="Trendstärke 0-1 (R-squared)")
     seasonality_detected = Column(Boolean, nullable=False, default=False,
                                   comment="Wurde Saisonalitaet erkannt?")
     confidence_overall = Column(Numeric(3, 2), nullable=False,
@@ -13623,8 +13623,8 @@ class PrivatProjection(Base):
     calculated_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False,
                            comment="Zeitpunkt der Berechnung")
     valid_until = Column(DateTime(timezone=True), nullable=False,
-                         comment="Gueltig bis")
-    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusaetzliche Metadaten")
+                         comment="Gültig bis")
+    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusätzliche Metadaten")
 
     # Relationships
     space = relationship("PrivatSpace", back_populates="projections")
@@ -13642,7 +13642,7 @@ class PrivatProjection(Base):
 
     @property
     def is_valid(self) -> bool:
-        """Prueft ob Projektion noch gueltig ist."""
+        """Prüft ob Projektion noch gültig ist."""
         from datetime import datetime, timezone
         return self.valid_until > datetime.now(timezone.utc)
 
@@ -13673,7 +13673,7 @@ class PrivatEarlyWarning(Base):
     projected_value = Column(Numeric(15, 4), nullable=False,
                              comment="Projizierter Wert zum Breach-Zeitpunkt")
     threshold_value = Column(Numeric(15, 4), nullable=True,
-                             comment="Schwellenwert der ueberschritten wird")
+                             comment="Schwellenwert der überschritten wird")
     threshold_name = Column(String(100), nullable=True,
                             comment="Name des Schwellenwerts")
     breach_date = Column(Date, nullable=False, index=True,
@@ -13687,7 +13687,7 @@ class PrivatEarlyWarning(Base):
     recommendation = Column(Text, nullable=True,
                             comment="Handlungsempfehlung")
     potential_impact = Column(Numeric(15, 2), nullable=True,
-                              comment="Geschaetzter finanzieller Impact")
+                              comment="Geschätzter finanzieller Impact")
     action_url = Column(String(255), nullable=True,
                         comment="Link zur entsprechenden Aktion")
     confidence = Column(Numeric(3, 2), nullable=False,
@@ -13702,7 +13702,7 @@ class PrivatEarlyWarning(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=True,
                         comment="Warnung verfaellt")
-    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusaetzliche Metadaten")
+    extra_data = Column(CrossDBJSON, nullable=True, comment="Zusätzliche Metadaten")
 
     # Relationships
     space = relationship("PrivatSpace", back_populates="early_warnings")
@@ -13718,7 +13718,7 @@ class PrivatEarlyWarning(Base):
 
     @property
     def is_active(self) -> bool:
-        """Prueft ob die Warnung aktiv ist."""
+        """Prüft ob die Warnung aktiv ist."""
         return not self.is_dismissed and not self.is_resolved
 
 
@@ -13744,21 +13744,21 @@ class PrivatTask(Base):
     title = Column(String(255), nullable=False,
                    comment="Kurzer Titel der Aufgabe")
     description = Column(Text, nullable=True,
-                         comment="Ausfuehrliche Beschreibung")
+                         comment="Ausführliche Beschreibung")
     category = Column(String(50), nullable=True, index=True,
                       comment="Kategorie: financial, insurance, property, loan, general")
 
-    # Prioritaet und Dringlichkeit
+    # Priorität und Dringlichkeit
     priority = Column(String(20), nullable=False, default="medium",
-                      comment="Prioritaet: low, medium, high, critical")
+                      comment="Priorität: low, medium, high, critical")
     due_date = Column(DateTime(timezone=True), nullable=True,
-                      comment="Faelligkeitsdatum")
+                      comment="Fälligkeitsdatum")
 
     # Herkunft aus Orchestration
     source_action_id = Column(UUID(as_uuid=True), nullable=True,
                               comment="ID der ausloesenden OrchestrationAction")
     source_reason = Column(Text, nullable=True,
-                           comment="Grund fuer Task-Erstellung")
+                           comment="Grund für Task-Erstellung")
     source_module = Column(String(50), nullable=True,
                            comment="Ausloesendes Modul: financial_health, insurance, loan, etc.")
 
@@ -13781,17 +13781,17 @@ class PrivatTask(Base):
     result_action_taken = Column(String(100), nullable=True,
                                  comment="Getroffene Massnahme")
 
-    # Verknuepfte Entitaeten
+    # Verknüpfte Entitäten
     related_entity_type = Column(String(50), nullable=True,
-                                 comment="Typ der verknuepften Entitaet: property, loan, insurance")
+                                 comment="Typ der verknüpften Entität: property, loan, insurance")
     related_entity_id = Column(UUID(as_uuid=True), nullable=True,
-                               comment="ID der verknuepften Entitaet")
+                               comment="ID der verknüpften Entität")
 
     # Metadaten
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     extra_data = Column(CrossDBJSON, nullable=True,
-                        comment="Zusaetzliche Metadaten vom Orchestrator")
+                        comment="Zusätzliche Metadaten vom Orchestrator")
 
     # Relationships
     space = relationship("PrivatSpace", back_populates="tasks")
@@ -13807,12 +13807,12 @@ class PrivatTask(Base):
                         name="chk_privat_task_status"),
         CheckConstraint("priority IN ('low', 'medium', 'high', 'critical')",
                         name="chk_privat_task_priority"),
-        {"comment": "Orchestrator-generierte Tasks fuer Benutzeraktionen"}
+        {"comment": "Orchestrator-generierte Tasks für Benutzeraktionen"}
     )
 
     @property
     def is_overdue(self) -> bool:
-        """Prueft ob Task ueberfaellig ist."""
+        """Prüft ob Task überfällig ist."""
         from datetime import datetime, timezone
         if self.due_date and self.status in ("pending", "in_progress"):
             return self.due_date < datetime.now(timezone.utc)
@@ -13820,7 +13820,7 @@ class PrivatTask(Base):
 
     @property
     def is_snoozed(self) -> bool:
-        """Prueft ob Task zur Zeit snoozt."""
+        """Prüft ob Task zur Zeit snoozt."""
         from datetime import datetime, timezone
         if self.snoozed_until and self.status == "snoozed":
             return self.snoozed_until > datetime.now(timezone.utc)
@@ -13832,10 +13832,10 @@ class PrivatTask(Base):
 # =============================================================================
 
 class PortfolioSnapshot(Base):
-    """Monatlicher Snapshot der Vermoegensuebersicht.
+    """Monatlicher Snapshot der Vermögensübersicht.
 
-    Speichert aggregierte Vermoegensstaende zu bestimmten Zeitpunkten
-    fuer historische Analyse und Reporting.
+    Speichert aggregierte Vermögensstaende zu bestimmten Zeitpunkten
+    für historische Analyse und Reporting.
     """
     __tablename__ = "portfolio_snapshots"
 
@@ -13843,7 +13843,7 @@ class PortfolioSnapshot(Base):
     space_id = Column(UUID(as_uuid=True), ForeignKey("privat_spaces.id", ondelete="CASCADE"), nullable=False)
     snapshot_date = Column(Date, nullable=False, index=True, comment="Datum des Snapshots")
 
-    # Vermoegenswerte (Assets)
+    # Vermögenswerte (Assets)
     total_real_estate = Column(Numeric(14, 2), nullable=False, default=0,
                                comment="Gesamtwert Immobilien")
     total_vehicles = Column(Numeric(14, 2), nullable=False, default=0,
@@ -13853,7 +13853,7 @@ class PortfolioSnapshot(Base):
     total_cash = Column(Numeric(14, 2), nullable=False, default=0,
                         comment="Barvermoegen und Bankguthaben")
     total_other_assets = Column(Numeric(14, 2), nullable=False, default=0,
-                                comment="Sonstige Vermoegenswerte")
+                                comment="Sonstige Vermögenswerte")
 
     # Verbindlichkeiten (Liabilities)
     total_mortgages = Column(Numeric(14, 2), nullable=False, default=0,
@@ -13865,17 +13865,17 @@ class PortfolioSnapshot(Base):
 
     # Aggregierte Werte
     total_assets = Column(Numeric(14, 2), nullable=False, default=0,
-                          comment="Summe aller Vermoegenswerte")
+                          comment="Summe aller Vermögenswerte")
     total_liabilities = Column(Numeric(14, 2), nullable=False, default=0,
                                comment="Summe aller Verbindlichkeiten")
     net_worth = Column(Numeric(14, 2), nullable=False, default=0,
                        comment="Nettovermoegen (Assets - Liabilities)")
 
-    # Veraenderungen zum Vormonat
+    # Veränderungen zum Vormonat
     net_worth_change_absolute = Column(Numeric(14, 2), nullable=True,
-                                       comment="Absolute Aenderung zum Vormonat in EUR")
+                                       comment="Absolute Änderung zum Vormonat in EUR")
     net_worth_change_percent = Column(Numeric(8, 4), nullable=True,
-                                      comment="Prozentuale Aenderung zum Vormonat")
+                                      comment="Prozentuale Änderung zum Vormonat")
 
     # Kennzahlen
     debt_to_assets_ratio = Column(Numeric(8, 4), nullable=False, default=0,
@@ -13885,7 +13885,7 @@ class PortfolioSnapshot(Base):
 
     # Asset Allocation als JSON
     asset_allocation = Column(CrossDBJSON, nullable=True,
-                              comment="Vermoegensverteilung als JSON (z.B. {'real_estate': 45, 'investments': 30, ...})")
+                              comment="Vermögensverteilung als JSON (z.B. {'real_estate': 45, 'investments': 30, ...})")
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -13896,7 +13896,7 @@ class PortfolioSnapshot(Base):
     __table_args__ = (
         Index("ix_portfolio_snapshots_space_date", "space_id", "snapshot_date"),
         UniqueConstraint("space_id", "snapshot_date", name="uq_portfolio_snapshot_space_date"),
-        {"comment": "Monatliche Vermoegenssnapshots fuer historische Analyse"}
+        {"comment": "Monatliche Vermögenssnapshots für historische Analyse"}
     )
 
     @property
@@ -13936,7 +13936,7 @@ class FinancialGoalStatus(str, Enum):
 class FinancialGoal(Base):
     """Finanzielle Ziele mit Progress-Tracking.
 
-    Ermoeglicht das Setzen von Sparzielen mit automatischer
+    Ermöglicht das Setzen von Sparzielen mit automatischer
     Fortschrittsverfolgung und Prognosen.
     """
     __tablename__ = "financial_goals"
@@ -13949,8 +13949,8 @@ class FinancialGoal(Base):
     description = Column(Text, nullable=True, comment="Beschreibung")
     goal_type = Column(String(50), nullable=False, default=FinancialGoalType.CUSTOM.value,
                        comment="Typ des Ziels")
-    icon = Column(String(50), nullable=True, default="Target", comment="Icon fuer UI")
-    color = Column(String(7), nullable=True, default="#10B981", comment="Farbe fuer UI")
+    icon = Column(String(50), nullable=True, default="Target", comment="Icon für UI")
+    color = Column(String(7), nullable=True, default="#10B981", comment="Farbe für UI")
 
     # Zielwerte
     target_value = Column(Numeric(14, 2), nullable=False, comment="Zielbetrag in EUR")
@@ -13972,13 +13972,13 @@ class FinancialGoal(Base):
     projected_completion_date = Column(Date, nullable=True,
                                        comment="Prognostiziertes Erreichen basierend auf aktuellem Tempo")
 
-    # Verknuepfte Assets (optional)
+    # Verknüpfte Assets (optional)
     linked_assets = Column(CrossDBJSON, nullable=True,
-                           comment="Verknuepfte Assets als JSON (z.B. [{'type': 'investment', 'id': '...'}])")
+                           comment="Verknüpfte Assets als JSON (z.B. [{'type': 'investment', 'id': '...'}])")
 
-    # Status und Prioritaet
+    # Status und Priorität
     status = Column(String(20), nullable=False, default=FinancialGoalStatus.ACTIVE.value)
-    priority = Column(Integer, nullable=False, default=1, comment="Prioritaet (1=hoechste)")
+    priority = Column(Integer, nullable=False, default=1, comment="Priorität (1=hoechste)")
 
     # Automatische Aktualisierung
     auto_update_enabled = Column(Boolean, nullable=False, default=True,
@@ -13990,7 +13990,7 @@ class FinancialGoal(Base):
     notify_on_milestone = Column(Boolean, nullable=False, default=True,
                                  comment="Benachrichtigung bei Meilensteinen?")
     notify_on_delay = Column(Boolean, nullable=False, default=True,
-                             comment="Benachrichtigung bei Verzoegerung?")
+                             comment="Benachrichtigung bei Verzögerung?")
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -14012,13 +14012,13 @@ class FinancialGoal(Base):
 
     @property
     def is_completed(self) -> bool:
-        """Prueft ob Ziel erreicht wurde."""
+        """Prüft ob Ziel erreicht wurde."""
         return self.status == FinancialGoalStatus.COMPLETED.value or \
                (self.current_value >= self.target_value if self.target_value else False)
 
     @property
     def is_overdue(self) -> bool:
-        """Prueft ob Zieldatum ueberschritten."""
+        """Prüft ob Zieldatum überschritten."""
         from datetime import date
         return date.today() > self.target_date and not self.is_completed
 
@@ -14047,9 +14047,9 @@ class FinancialGoalContribution(Base):
     source_type = Column(String(50), nullable=True, comment="Quelle (manual, automatic, transfer)")
     source_description = Column(String(255), nullable=True, comment="Beschreibung der Quelle")
 
-    # Verknuepfte Transaktion (optional)
+    # Verknüpfte Transaktion (optional)
     linked_transaction_id = Column(UUID(as_uuid=True), nullable=True,
-                                   comment="Verknuepfte Transaktion falls automatisch")
+                                   comment="Verknüpfte Transaktion falls automatisch")
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
@@ -14095,7 +14095,7 @@ class ApprovalStatus(str, Enum):
 
 
 class ApprovalPriority(str, Enum):
-    """Prioritaet einer Genehmigung."""
+    """Priorität einer Genehmigung."""
     LOW = "low"
     NORMAL = "normal"
     HIGH = "high"
@@ -14103,7 +14103,7 @@ class ApprovalPriority(str, Enum):
 
 
 class ApprovalRule(Base):
-    """Regeln fuer automatisches Approval-Routing.
+    """Regeln für automatisches Approval-Routing.
 
     Enterprise Feature: Definiert wann und wer genehmigen muss basierend auf:
     - Betragsschwellen
@@ -14121,7 +14121,7 @@ class ApprovalRule(Base):
     description = Column(Text, nullable=True)
     rule_type = Column(SQLAlchemyEnum(ApprovalRuleType), nullable=False, index=True)
 
-    # Entitaets-Typen, auf die Regel angewendet wird
+    # Entitäts-Typen, auf die Regel angewendet wird
     entity_types = Column(CrossDBJSON, nullable=False, default=list)
     # z.B.: ["invoice", "expense", "purchase_order", "document"]
 
@@ -14148,8 +14148,8 @@ class ApprovalRule(Base):
     # SLA
     sla_hours = Column(Integer, nullable=True, default=48)  # Max. Bearbeitungszeit
 
-    # Prioritaet und Reihenfolge
-    priority = Column(Integer, default=100, nullable=False)  # Niedrig = Hoehere Prioritaet
+    # Priorität und Reihenfolge
+    priority = Column(Integer, default=100, nullable=False)  # Niedrig = Höhere Priorität
     is_active = Column(Boolean, default=True, nullable=False, index=True)
 
     # Audit
@@ -14165,7 +14165,7 @@ class ApprovalRule(Base):
     __table_args__ = (
         Index("ix_approval_rules_company_active", "company_id", "is_active"),
         Index("ix_approval_rules_priority", "priority"),
-        {"comment": "Regeln fuer automatisches Approval-Routing"}
+        {"comment": "Regeln für automatisches Approval-Routing"}
     )
 
 
@@ -14175,7 +14175,7 @@ class ApprovalRequest(Base):
     Enterprise Feature: Trackt den kompletten Genehmigungsprozess mit:
     - Multi-Level Genehmigungen
     - Eskalation bei Zeitüberschreitung
-    - Vollstaendiger Audit Trail
+    - Vollständiger Audit Trail
     - Integration mit Workflows
     """
     __tablename__ = "approval_requests"
@@ -14183,12 +14183,12 @@ class ApprovalRequest(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
 
-    # Entitaet, die genehmigt werden soll
+    # Entität, die genehmigt werden soll
     entity_type = Column(String(50), nullable=False, index=True)
     # z.B.: "invoice", "expense", "document", "purchase_order", "contract"
     entity_id = Column(UUID(as_uuid=True), nullable=False, index=True)
 
-    # Optionale Workflow-Verknuepfung
+    # Optionale Workflow-Verknüpfung
     workflow_execution_id = Column(UUID(as_uuid=True), ForeignKey("workflow_executions.id", ondelete="SET NULL"), nullable=True)
 
     # Regel, die diese Anfrage ausgeloest hat
@@ -14223,7 +14223,7 @@ class ApprovalRequest(Base):
     # Wer hat die Anfrage erstellt
     requested_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    # Zusaetzliche Daten
+    # Zusätzliche Daten
     request_metadata = Column(CrossDBJSON, nullable=True)
 
     # Audit
@@ -14303,7 +14303,7 @@ class ApprovalStep(Base):
 class ApprovalDelegation(Base):
     """Genehmigungsdelegation / Stellvertretung.
 
-    Ermoeglicht es Benutzern, ihre Genehmigungsrechte
+    Ermöglicht es Benutzern, ihre Genehmigungsrechte
     temporaer an Stellvertreter zu delegieren.
     """
     __tablename__ = "approval_delegations"
@@ -14344,10 +14344,10 @@ class ApprovalDelegation(Base):
 # =============================================================================
 
 class PrivatUserProfile(Base):
-    """User-Profil fuer personalisierte Schwellenwert-Berechnung.
+    """User-Profil für personalisierte Schwellenwert-Berechnung.
 
     Speichert Berufsprofil, Risikotoleranz und Praeferenzen
-    fuer die automatische Anpassung von Schwellenwerten.
+    für die automatische Anpassung von Schwellenwerten.
     """
     __tablename__ = "privat_user_profiles"
 
@@ -14384,15 +14384,15 @@ class PrivatUserProfile(Base):
     thresholds = relationship("PrivatUserThreshold", back_populates="profile", cascade="all, delete-orphan")
 
     __table_args__ = (
-        {"comment": "User-Profile fuer personalisierte Schwellenwerte (Privat-Modul)"}
+        {"comment": "User-Profile für personalisierte Schwellenwerte (Privat-Modul)"}
     )
 
 
 class PrivatUserThreshold(Base):
-    """Personalisierter Schwellenwert fuer einen User.
+    """Personalisierter Schwellenwert für einen User.
 
     Speichert sowohl Default- als auch aktuellen Wert,
-    sowie Tracking-Daten fuer Effektivitaetsmessung.
+    sowie Tracking-Daten für Effektivitaetsmessung.
     """
     __tablename__ = "privat_user_thresholds"
 
@@ -14434,9 +14434,9 @@ class PrivatUserThreshold(Base):
 
 
 class PrivatThresholdAdjustment(Base):
-    """Audit-Log fuer Schwellenwert-Anpassungen.
+    """Audit-Log für Schwellenwert-Anpassungen.
 
-    Trackt alle Aenderungen an Schwellenwerten mit Rollback-Support.
+    Trackt alle Änderungen an Schwellenwerten mit Rollback-Support.
     """
     __tablename__ = "privat_threshold_adjustments"
 
@@ -14464,14 +14464,14 @@ class PrivatThresholdAdjustment(Base):
 
     __table_args__ = (
         Index("ix_threshold_adjustments_user_type", "user_id", "threshold_type"),
-        {"comment": "Audit-Log fuer Schwellenwert-Aenderungen (Privat-Modul)"}
+        {"comment": "Audit-Log für Schwellenwert-Änderungen (Privat-Modul)"}
     )
 
 
 class PrivatThresholdRecommendation(Base):
-    """AI-generierte Empfehlung fuer Schwellenwert-Anpassung.
+    """AI-generierte Empfehlung für Schwellenwert-Anpassung.
 
-    Empfehlungen haben ein Ablaufdatum und koennen akzeptiert
+    Empfehlungen haben ein Ablaufdatum und können akzeptiert
     oder abgelehnt werden.
     """
     __tablename__ = "privat_threshold_recommendations"
@@ -14499,7 +14499,7 @@ class PrivatThresholdRecommendation(Base):
 
     __table_args__ = (
         Index("ix_threshold_recommendations_pending", "user_id", "accepted", postgresql_where=text("accepted IS NULL")),
-        {"comment": "AI-Empfehlungen fuer Schwellenwert-Anpassungen (Privat-Modul)"}
+        {"comment": "AI-Empfehlungen für Schwellenwert-Anpassungen (Privat-Modul)"}
     )
 
 
@@ -14508,7 +14508,7 @@ class PrivatThresholdRecommendation(Base):
 # =============================================================================
 
 class TemplateCategory(str, Enum):
-    """Kategorien fuer Dokumentvorlagen."""
+    """Kategorien für Dokumentvorlagen."""
     INVOICE = "invoice"
     OFFER = "offer"
     CONTRACT = "contract"
@@ -14522,7 +14522,7 @@ class TemplateCategory(str, Enum):
 
 
 class TemplateOutputFormat(str, Enum):
-    """Ausgabeformate fuer generierte Dokumente."""
+    """Ausgabeformate für generierte Dokumente."""
     PDF = "pdf"
     DOCX = "docx"
     HTML = "html"
@@ -14530,7 +14530,7 @@ class TemplateOutputFormat(str, Enum):
 
 
 class VariableType(str, Enum):
-    """Typen fuer Template-Variablen."""
+    """Typen für Template-Variablen."""
     TEXT = "text"
     NUMBER = "number"
     CURRENCY = "currency"
@@ -14546,8 +14546,8 @@ class DocumentTemplate(Base):
     """
     Dokumentvorlage mit Platzhaltern und Metadaten.
 
-    Unterstuetzt:
-    - Jinja2-Syntax fuer Platzhalter: {{ variable_name }}
+    Unterstützt:
+    - Jinja2-Syntax für Platzhalter: {{ variable_name }}
     - Bedingte Bloecke: {% if condition %}...{% endif %}
     - Schleifen: {% for item in items %}...{% endfor %}
     """
@@ -14587,7 +14587,7 @@ class DocumentTemplate(Base):
 
     # Status
     is_active = Column(Boolean, default=True)
-    is_default = Column(Boolean, default=False)  # Default fuer Kategorie
+    is_default = Column(Boolean, default=False)  # Default für Kategorie
 
     # Nutzungsstatistik
     usage_count = Column(Integer, default=0)
@@ -14660,7 +14660,7 @@ class GeneratedDocument(Base):
     linked_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True, index=True)
 
     # Status
-    is_finalized = Column(Boolean, default=False)  # Unveraenderbar
+    is_finalized = Column(Boolean, default=False)  # Unveränderbar
     is_sent = Column(Boolean, default=False)  # Per Email versendet
     sent_at = Column(DateTime(timezone=True), nullable=True)
     sent_to = Column(CrossDBJSON, default=list)  # Email-Adressen
@@ -14692,7 +14692,7 @@ class GeneratedDocument(Base):
 
 class TemplateSnippet(Base):
     """
-    Wiederverwendbare Textbausteine fuer Templates.
+    Wiederverwendbare Textbausteine für Templates.
 
     z.B. Standard-Fusszeilen, AGBs, Grussformeln.
     """
@@ -14722,7 +14722,7 @@ class TemplateSnippet(Base):
         Index("ix_snippet_company", "company_id"),
         Index("ix_snippet_category", "category"),
         Index("ix_snippet_is_active", "is_active"),
-        {"comment": "Wiederverwendbare Textbausteine fuer Templates (Vorlagen-System)"}
+        {"comment": "Wiederverwendbare Textbausteine für Templates (Vorlagen-System)"}
     )
 
     def __repr__(self) -> str:
@@ -14762,7 +14762,7 @@ class KnowledgeLinkType(str, Enum):
     REPLACES = "replaces"  # Ersetzt
     CONTINUES = "continues"  # Fortsetzung
     CONTRADICTS = "contradicts"  # Widerspricht
-    EXPLAINS = "explains"  # Erklaert
+    EXPLAINS = "explains"  # Erklärt
 
 
 class LinkableType(str, Enum):
@@ -14781,8 +14781,8 @@ class KnowledgeNote(Base):
     Features:
     - Markdown-Content
     - Hierarchische Struktur (parent_note_id)
-    - Polymorph verknuepfbar (Document, Entity, Company)
-    - Tags fuer Kategorisierung
+    - Polymorph verknüpfbar (Document, Entity, Company)
+    - Tags für Kategorisierung
     - Full-Text-Suche (via DB Index)
     """
 
@@ -14798,7 +14798,7 @@ class KnowledgeNote(Base):
     # Kategorisierung
     note_type = Column(String(50), nullable=False, default=NoteType.GENERAL.value)
 
-    # Polymorph Verknuepfungen
+    # Polymorph Verknüpfungen
     linked_document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
@@ -14889,8 +14889,8 @@ class KnowledgeChecklist(Base):
 
     Features:
     - Titel und Beschreibung
-    - Verknuepfbar mit Documents, Entities, Notes
-    - Template-Funktion fuer wiederverwendbare Checklisten
+    - Verknüpfbar mit Documents, Entities, Notes
+    - Template-Funktion für wiederverwendbare Checklisten
     """
 
     __tablename__ = "knowledge_checklists"
@@ -14901,7 +14901,7 @@ class KnowledgeChecklist(Base):
     title = Column(String(500), nullable=False)
     description = Column(Text, nullable=True)
 
-    # Polymorph Verknuepfungen
+    # Polymorph Verknüpfungen
     linked_document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
@@ -14965,7 +14965,7 @@ class KnowledgeChecklist(Base):
 
     @property
     def is_completed(self) -> bool:
-        """Prueft ob alle Items abgehakt sind."""
+        """Prüft ob alle Items abgehakt sind."""
         if not self.items:
             return False
         return all(item.is_completed for item in self.items)
@@ -15031,9 +15031,9 @@ class KnowledgeChecklistItem(Base):
 
 class KnowledgeLink(Base):
     """
-    Verknuepfung im Knowledge Graph.
+    Verknüpfung im Knowledge Graph.
 
-    Ermoeglicht die Verbindung verschiedener Objekte:
+    Ermöglicht die Verbindung verschiedener Objekte:
     - Note <-> Note
     - Note <-> Document
     - Note <-> Entity
@@ -15057,7 +15057,7 @@ class KnowledgeLink(Base):
 
     # Metadaten
     description = Column(String(500), nullable=True)
-    confidence = Column(Float, nullable=True)  # Fuer automatisch erstellte Links
+    confidence = Column(Float, nullable=True)  # Für automatisch erstellte Links
     is_bidirectional = Column(Boolean, default=True)
 
     # Audit
@@ -15087,7 +15087,7 @@ class KnowledgeLink(Base):
 
 
 class KnowledgeTag(Base):
-    """Tag fuer Kategorisierung von Knowledge Items."""
+    """Tag für Kategorisierung von Knowledge Items."""
 
     __tablename__ = "knowledge_tags"
 
@@ -15101,7 +15101,7 @@ class KnowledgeTag(Base):
     __table_args__ = (
         Index("ix_knowledge_tags_name", "name"),
         Index("ix_knowledge_tags_usage_count", "usage_count"),
-        {"comment": "Tags fuer Knowledge Items (Knowledge Management)"}
+        {"comment": "Tags für Knowledge Items (Knowledge Management)"}
     )
 
     def __repr__(self) -> str:
@@ -15123,12 +15123,12 @@ class SlackChannelType(str, Enum):
 
 class SlackChannel(Base):
     """
-    Slack-Kanal-Konfiguration fuer Benachrichtigungen.
+    Slack-Kanal-Konfiguration für Benachrichtigungen.
 
-    Ermoeglicht Multi-Kanal-Routing basierend auf:
+    Ermöglicht Multi-Kanal-Routing basierend auf:
     - Notification-Typ (document_processed, approval_required, etc.)
     - Firma (Multi-Tenant)
-    - Prioritaet
+    - Priorität
     """
 
     __tablename__ = "slack_channels"
@@ -15161,12 +15161,12 @@ class SlackChannel(Base):
     min_priority = Column(
         String(20),
         default="normal",
-        comment="Mindest-Prioritaet: low, normal, high, urgent"
+        comment="Mindest-Priorität: low, normal, high, urgent"
     )
-    is_default = Column(Boolean, default=False, comment="Standard-Kanal fuer nicht-routbare Nachrichten")
+    is_default = Column(Boolean, default=False, comment="Standard-Kanal für nicht-routbare Nachrichten")
 
     # Formatierung
-    include_context = Column(Boolean, default=True, comment="Kontext-Details einschliessen")
+    include_context = Column(Boolean, default=True, comment="Kontext-Details einschließen")
     mention_users = Column(
         CrossDBJSON,
         default=[],
@@ -15198,7 +15198,7 @@ class SlackChannel(Base):
         Index("ix_slack_channels_active", "is_active"),
         Index("ix_slack_channels_channel_id", "channel_id"),
         UniqueConstraint("channel_id", "company_id", name="uq_slack_channels_channel_company"),
-        {"comment": "Slack-Kanal-Konfiguration fuer Benachrichtigungen"}
+        {"comment": "Slack-Kanal-Konfiguration für Benachrichtigungen"}
     )
 
     def __repr__(self) -> str:
@@ -15215,9 +15215,9 @@ class SlackMessageStatus(str, Enum):
 
 class SlackMessageLog(Base):
     """
-    Log fuer gesendete Slack-Nachrichten.
+    Log für gesendete Slack-Nachrichten.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Nachverfolgung von Benachrichtigungen
     - Rate Limit Monitoring
     - Fehleranalyse
@@ -15269,7 +15269,7 @@ class SlackMessageLog(Base):
         Index("ix_slack_messages_created", "created_at"),
         Index("ix_slack_messages_notification_type", "notification_type"),
         Index("ix_slack_messages_reference", "reference_type", "reference_id"),
-        {"comment": "Log fuer gesendete Slack-Nachrichten"}
+        {"comment": "Log für gesendete Slack-Nachrichten"}
     )
 
     def __repr__(self) -> str:
@@ -15280,10 +15280,10 @@ class SlackUserMapping(Base):
     """
     Mapping zwischen Ablage-System Benutzern und Slack User-IDs.
 
-    Ermoeglicht:
+    Ermöglicht:
     - Direkte Benachrichtigungen an Benutzer
     - @mentions in Kanal-Nachrichten
-    - Berechtigungs-Pruefung fuer Slack-Aktionen
+    - Berechtigungs-Prüfung für Slack-Aktionen
     """
 
     __tablename__ = "slack_user_mappings"
@@ -15336,7 +15336,7 @@ class SlackUserMapping(Base):
 
 
 class ShipmentCarrier(str, Enum):
-    """Unterstuetzte Paketdienste."""
+    """Unterstützte Paketdienste."""
     DHL = "dhl"
     DPD = "dpd"
     HERMES = "hermes"
@@ -15364,19 +15364,19 @@ class ShipmentStatusEnum(str, Enum):
     DELIVERED = "delivered"                  # Zugestellt
     DELIVERY_ATTEMPT = "delivery_attempt"    # Zustellversuch (nicht angetroffen)
     HELD_AT_LOCATION = "held_at_location"    # Liegt zur Abholung bereit
-    RETURNED = "returned"                    # Zurueck an Absender
+    RETURNED = "returned"                    # Zurück an Absender
     EXCEPTION = "exception"                  # Problem/Ausnahme
     CUSTOMS = "customs"                      # Im Zoll
 
 
 class Shipment(Base):
     """
-    Sendungsverfolgung fuer Paketdienste.
+    Sendungsverfolgung für Paketdienste.
 
     Features:
     - Multi-Carrier Support (DHL, DPD, Hermes, UPS, GLS, FedEx, Deutsche Post)
     - Automatische Carrier-Erkennung anhand Tracking-Nummer
-    - Verknuepfung mit Business Entities und Dokumenten
+    - Verknüpfung mit Business Entities und Dokumenten
     - Kosten-Tracking und Analyse
 
     Multi-Tenant: Alle Abfragen MUESSEN company_id filtern!
@@ -15401,7 +15401,7 @@ class Shipment(Base):
     status = Column(String(30), nullable=False, default=ShipmentStatusEnum.UNKNOWN.value)
     status_description = Column(String(255), nullable=True)
 
-    # Tracking URL (oeffentlich)
+    # Tracking URL (öffentlich)
     tracking_url = Column(String(500), nullable=True)
 
     # Zeitpunkte
@@ -15423,21 +15423,21 @@ class Shipment(Base):
     shipping_cost = Column(Numeric(10, 2), nullable=True)
     currency = Column(String(3), default="EUR")
 
-    # Verknuepfungen
+    # Verknüpfungen
     entity_id = Column(
         UUID(as_uuid=True),
         ForeignKey("business_entities.id", ondelete="SET NULL"),
         nullable=True,
-        comment="Verknuepfter Kunde/Lieferant"
+        comment="Verknüpfter Kunde/Lieferant"
     )
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
         nullable=True,
-        comment="Verknuepfter Lieferschein/Rechnung"
+        comment="Verknüpfter Lieferschein/Rechnung"
     )
 
-    # Raw API Response (fuer Debugging)
+    # Raw API Response (für Debugging)
     raw_tracking_data = Column(CrossDBJSON, default={})
 
     # Soft Delete
@@ -15460,7 +15460,7 @@ class Shipment(Base):
     creator = relationship("User")
 
     __table_args__ = (
-        # Composite Index fuer Multi-Tenant
+        # Composite Index für Multi-Tenant
         Index("ix_shipments_company_status", "company_id", "status"),
         Index("ix_shipments_company_carrier", "company_id", "carrier"),
         Index("ix_shipments_company_direction", "company_id", "direction"),
@@ -15471,7 +15471,7 @@ class Shipment(Base):
         Index("ix_shipments_created", "created_at"),
         # Unique: Tracking-Nummer pro Company
         UniqueConstraint("company_id", "tracking_number", name="uq_shipments_company_tracking"),
-        {"comment": "Sendungsverfolgung fuer Paketdienste"}
+        {"comment": "Sendungsverfolgung für Paketdienste"}
     )
 
     def __repr__(self) -> str:
@@ -15480,9 +15480,9 @@ class Shipment(Base):
 
 class ShipmentEvent(Base):
     """
-    Einzelnes Tracking-Event fuer eine Sendung.
+    Einzelnes Tracking-Event für eine Sendung.
 
-    Chronologischer Verlauf aller Status-Aenderungen.
+    Chronologischer Verlauf aller Status-Änderungen.
     """
 
     __tablename__ = "shipment_events"
@@ -15521,7 +15521,7 @@ class ShipmentEvent(Base):
         Index("ix_shipment_events_status", "status"),
         # Unique: Ein Event pro Sendung und Zeitstempel
         UniqueConstraint("shipment_id", "timestamp", name="uq_shipment_events_shipment_timestamp"),
-        {"comment": "Tracking-Events fuer Sendungen"}
+        {"comment": "Tracking-Events für Sendungen"}
     )
 
 
@@ -15536,7 +15536,7 @@ class ContractType(str, Enum):
     FRAMEWORK = "framework"  # Rahmenvertrag
     MAINTENANCE = "maintenance"  # Wartungsvertrag
     LICENSE = "license"  # Lizenzvertrag
-    LEASE = "lease"  # Mietvertrag (Geschaeftsraeume)
+    LEASE = "lease"  # Mietvertrag (Geschäftsräume)
     CONSULTING = "consulting"  # Beratungsvertrag
     COOPERATION = "cooperation"  # Kooperationsvertrag
     NDA = "nda"  # Geheimhaltungsvereinbarung
@@ -15550,15 +15550,15 @@ class ContractStatus(str, Enum):
     PENDING_SIGNATURE = "pending_signature"  # Unterschrift ausstehend
     ACTIVE = "active"  # Aktiv
     SUSPENDED = "suspended"  # Ausgesetzt
-    EXPIRING_SOON = "expiring_soon"  # Laeuft bald ab
+    EXPIRING_SOON = "expiring_soon"  # Läuft bald ab
     EXPIRED = "expired"  # Abgelaufen
-    TERMINATED = "terminated"  # Gekuendigt
-    RENEWED = "renewed"  # Verlaengert
+    TERMINATED = "terminated"  # Gekündigt
+    RENEWED = "renewed"  # Verlängert
 
 
 class RenewalOptionStatus(str, Enum):
     """Status of renewal options."""
-    AVAILABLE = "available"  # Verfuegbar
+    AVAILABLE = "available"  # Verfügbar
     PENDING = "pending"  # Entscheidung ausstehend
     EXERCISED = "exercised"  # Ausgeubt
     DECLINED = "declined"  # Abgelehnt
@@ -16017,7 +16017,7 @@ def contract_before_save(mapper, connection, target: BusinessContract):
 
 
 class SubscriptionTier(str, Enum):
-    """Abonnement-Stufen fuer Multi-Tenant SaaS."""
+    """Abonnement-Stufen für Multi-Tenant SaaS."""
     FREE = "free"
     BASIC = "basic"
     PROFESSIONAL = "professional"
@@ -16027,7 +16027,7 @@ class SubscriptionTier(str, Enum):
 class TenantRateLimit(Base):
     """Tenant-spezifische Rate Limit Konfiguration.
 
-    Ermoeglicht individuelle Rate-Limits pro Mandant und Endpoint-Pattern.
+    Ermöglicht individuelle Rate-Limits pro Mandant und Endpoint-Pattern.
     Wird durch SubscriptionTierDefaults mit Defaults befuellt.
     """
     __tablename__ = "tenant_rate_limits"
@@ -16095,7 +16095,7 @@ class TenantRateLimit(Base):
 
 
 class TenantUsageMetrics(Base):
-    """Aggregierte Nutzungsmetriken pro Tenant fuer Dashboard und Analytics.
+    """Aggregierte Nutzungsmetriken pro Tenant für Dashboard und Analytics.
 
     Wird automatisch durch Celery-Tasks befuellt (hourly, daily, monthly).
     """
@@ -16163,9 +16163,9 @@ class TenantUsageMetrics(Base):
 
 
 class RateLimitViolation(Base):
-    """Log fuer Rate-Limit-Verletzungen.
+    """Log für Rate-Limit-Verletzungen.
 
-    Wird fuer Security-Monitoring und Abuse-Detection verwendet.
+    Wird für Security-Monitoring und Abuse-Detection verwendet.
     """
     __tablename__ = "rate_limit_violations"
 
@@ -16216,7 +16216,7 @@ class RateLimitViolation(Base):
 
 
 class SubscriptionTierDefaults(Base):
-    """Default-Konfiguration fuer Subscription Tiers.
+    """Default-Konfiguration für Subscription Tiers.
 
     Definiert die Standard-Limits und Features pro Tier.
     Admin kann diese anpassen.
@@ -16241,7 +16241,7 @@ class SubscriptionTierDefaults(Base):
     # Features
     features_enabled = Column(CrossDBJSON, nullable=False)
 
-    # Pricing (fuer Billing-Vorbereitung)
+    # Pricing (für Billing-Vorbereitung)
     price_monthly_eur = Column(Numeric(10, 2), nullable=True)
     price_yearly_eur = Column(Numeric(10, 2), nullable=True)
 
@@ -16257,7 +16257,7 @@ class SubscriptionTierDefaults(Base):
 
 
 class ContactType(str, Enum):
-    """Kontakttyp fuer BusinessContact."""
+    """Kontakttyp für BusinessContact."""
     CUSTOMER = "customer"      # Kunde
     SUPPLIER = "supplier"      # Lieferant
     PARTNER = "partner"        # Partner
@@ -16268,17 +16268,17 @@ class ContactType(str, Enum):
 class ContactRole(str, Enum):
     """Rolle eines Kontakts bei einem Dokument."""
     SENDER = "sender"          # Absender
-    RECIPIENT = "recipient"    # Empfaenger
+    RECIPIENT = "recipient"    # Empfänger
     MENTIONED = "mentioned"    # Erwaehnt
     CC = "cc"                  # CC
 
 
 class DocumentContact(Base):
     """
-    Verknuepfung zwischen Dokumenten und Geschaeftskontakten.
+    Verknüpfung zwischen Dokumenten und Geschäftskontakten.
 
-    Ermoeglicht:
-    - Mehrere Kontakte pro Dokument (Sender, Empfaenger, Erwaehnt)
+    Ermöglicht:
+    - Mehrere Kontakte pro Dokument (Sender, Empfänger, Erwaehnt)
     - Mehrere Dokumente pro Kontakt
     - Automatische Erkennung mit Confidence-Score
     """
@@ -16290,7 +16290,7 @@ class DocumentContact(Base):
 
     # Role and detection
     role = Column(String(20), nullable=False, default=ContactRole.MENTIONED.value)
-    confidence = Column(Float, nullable=True)  # 0.0-1.0 fuer auto-detected
+    confidence = Column(Float, nullable=True)  # 0.0-1.0 für auto-detected
     is_auto_detected = Column(Boolean, default=False)
 
     # Metadata
@@ -16316,13 +16316,13 @@ class DocumentContact(Base):
 
 class BusinessContact(Base):
     """
-    Geschaeftskontakt mit automatischer Erkennung.
+    Geschäftskontakt mit automatischer Erkennung.
 
-    Zentrales Model fuer alle Geschaeftskontakte mit:
+    Zentrales Model für alle Geschäftskontakte mit:
     - Automatischer Erkennung aus Dokumenten (OCR)
-    - Deduplizierung und Zusammenfuehrung
+    - Deduplizierung und Zusammenführung
     - Umfangreichen Kontaktinformationen
-    - Verknuepfung zu Dokumenten
+    - Verknüpfung zu Dokumenten
     """
     __tablename__ = "business_contacts"
 
@@ -16330,7 +16330,7 @@ class BusinessContact(Base):
 
     # Basic identification
     name = Column(String(255), nullable=False, index=True)
-    name_normalized = Column(String(255), nullable=True, index=True)  # Fuer Fuzzy-Matching
+    name_normalized = Column(String(255), nullable=True, index=True)  # Für Fuzzy-Matching
     contact_type = Column(String(20), nullable=False, default=ContactType.CUSTOMER.value)
     company_form = Column(String(50), nullable=True)  # GmbH, AG, etc.
 
@@ -16441,7 +16441,7 @@ class BusinessContact(Base):
 # =============================================================================
 
 class DLPActionType(str, Enum):
-    """Moegliche DLP-Aktionen."""
+    """Mögliche DLP-Aktionen."""
     ALLOW = "allow"
     BLOCK = "block"
     WATERMARK = "watermark"
@@ -16450,7 +16450,7 @@ class DLPActionType(str, Enum):
 
 
 class SensitiveDataTypeEnum(str, Enum):
-    """Typen sensibler Daten fuer DLP-Erkennung."""
+    """Typen sensibler Daten für DLP-Erkennung."""
     CREDIT_CARD = "credit_card"
     IBAN = "iban"
     SSN = "ssn"
@@ -16467,12 +16467,12 @@ class DLPPolicyModel(Base):
     DLP Policy Datenbank-Modell.
 
     Persistiert DLP-Policies in der Datenbank statt nur im Memory.
-    Ermoeglicht Multi-Tenant Isolation und Audit-Trail.
+    Ermöglicht Multi-Tenant Isolation und Audit-Trail.
 
     SECURITY:
     - Policies werden serverseitig validiert
-    - company_id ist Pflichtfeld fuer Multi-Tenant Isolation
-    - Alle Aenderungen werden im Audit-Log protokolliert
+    - company_id ist Pflichtfeld für Multi-Tenant Isolation
+    - Alle Änderungen werden im Audit-Log protokolliert
     """
     __tablename__ = "dlp_policies"
 
@@ -16491,7 +16491,7 @@ class DLPPolicyModel(Base):
         ForeignKey("companies.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        comment="Mandanten-Zuordnung - PFLICHT fuer Isolation"
+        comment="Mandanten-Zuordnung - PFLICHT für Isolation"
     )
 
     # Zugriffsbedingungen
@@ -16500,7 +16500,7 @@ class DLPPolicyModel(Base):
     blocked_roles = Column(CrossDBJSON, default=[],
                           comment="Rollen die explizit blockiert sind")
 
-    # Zeit-basierte Einschraenkungen
+    # Zeit-basierte Einschränkungen
     time_restrictions = Column(CrossDBJSON, nullable=True,
                               comment="{'start': '09:00', 'end': '18:00', 'weekdays': [0-6]}")
 
@@ -16523,7 +16523,7 @@ class DLPPolicyModel(Base):
     notify_user = Column(Boolean, default=False, nullable=False)
     log_access = Column(Boolean, default=True, nullable=False)
 
-    # Prioritaet (niedrigere Zahl = hoehere Prioritaet)
+    # Priorität (niedrigere Zahl = höhere Priorität)
     priority = Column(Integer, default=100, nullable=False, index=True)
 
     # Audit
@@ -16539,7 +16539,7 @@ class DLPPolicyModel(Base):
         UniqueConstraint("company_id", "policy_id", name="uq_dlp_policy_company_id"),
         Index("ix_dlp_policies_company_enabled", "company_id", "enabled"),
         Index("ix_dlp_policies_company_priority", "company_id", "priority"),
-        {"comment": "DLP Policies fuer Enterprise Security"}
+        {"comment": "DLP Policies für Enterprise Security"}
     )
 
     def __repr__(self) -> str:
@@ -16551,15 +16551,15 @@ class DLPAuditLog(Base):
     DLP-spezifisches Audit-Log.
 
     Protokolliert alle DLP-relevanten Events:
-    - Zugriffspruefungen (erlaubt/blockiert)
-    - Policy-Aenderungen
+    - Zugriffsprüfungen (erlaubt/blockiert)
+    - Policy-Änderungen
     - Wasserzeichen-Anwendung
     - Sensible Daten gefunden
 
     SECURITY:
     - Keine sensiblen Daten werden geloggt (nur Typen und Counts)
     - Immutable (nur INSERT erlaubt)
-    - company_id fuer Multi-Tenant Isolation
+    - company_id für Multi-Tenant Isolation
     """
     __tablename__ = "dlp_audit_logs"
 
@@ -16615,7 +16615,7 @@ class DLPAuditLog(Base):
         Index("ix_dlp_audit_company_event", "company_id", "event_type"),
         Index("ix_dlp_audit_user_created", "user_id", "created_at"),
         Index("ix_dlp_audit_document", "document_id"),
-        {"comment": "DLP Audit-Log fuer Compliance und Forensik"}
+        {"comment": "DLP Audit-Log für Compliance und Forensik"}
     )
 
     def __repr__(self) -> str:
@@ -16693,7 +16693,7 @@ class EventTrigger(str, Enum):
     COMPENSATION = "compensation"
 
 
-# Verfuegbare BPMN Modelle in app/db/models/bpmn.py:
+# Verfügbare BPMN Modelle in app/db/models/bpmn.py:
 # - ProcessDefinition, ProcessInstance, ProcessTask
 # - ProcessHistory, ProcessTimerJob, ProcessVariableHistory
 
@@ -16704,7 +16704,7 @@ class EventTrigger(str, Enum):
 
 
 class GDPRConsentVersion(Base):
-    """Versionierte Consent-Texte fuer DSGVO-konforme Einwilligungen.
+    """Versionierte Consent-Texte für DSGVO-konforme Einwilligungen.
 
     Speichert verschiedene Versionen von Einwilligungstexten mit SHA-256 Hash
     zur Nachweisbarkeit welchen Text der User akzeptiert hat.
@@ -16725,7 +16725,7 @@ class GDPRConsentVersion(Base):
     description = Column(Text, nullable=False,
                          comment="Kurzbeschreibung")
     full_text = Column(Text, nullable=False,
-                       comment="Vollstaendiger Consent-Text")
+                       comment="Vollständiger Consent-Text")
     text_hash = Column(String(64), nullable=False, index=True,
                        comment="SHA-256 Hash des Textes")
 
@@ -16733,14 +16733,14 @@ class GDPRConsentVersion(Base):
     language = Column(String(10), nullable=False, default="de",
                       comment="Sprachcode (de, en, etc.)")
     is_active = Column(Boolean, nullable=False, default=True, index=True,
-                       comment="Aktive Version fuer diesen Scope")
+                       comment="Aktive Version für diesen Scope")
 
-    # Gueltigkeit
+    # Gültigkeit
     effective_from = Column(DateTime(timezone=True), nullable=False,
                             default=func.now(),
-                            comment="Ab wann gueltig")
+                            comment="Ab wann gültig")
     effective_until = Column(DateTime(timezone=True), nullable=True,
-                             comment="Bis wann gueltig (NULL = unbegrenzt)")
+                             comment="Bis wann gültig (NULL = unbegrenzt)")
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -16766,8 +16766,8 @@ class GDPRConsentVersion(Base):
 class GDPRConsentScope(Base):
     """Granulare Einwilligungen pro User und Scope.
 
-    Speichert fuer jeden User welche Einwilligungen erteilt oder
-    widerrufen wurden, mit vollstaendigem Audit-Trail.
+    Speichert für jeden User welche Einwilligungen erteilt oder
+    widerrufen wurden, mit vollständigem Audit-Trail.
     """
     __tablename__ = "gdpr_consent_scopes"
 
@@ -16780,7 +16780,7 @@ class GDPRConsentScope(Base):
     company_id = Column(UUID(as_uuid=True),
                         ForeignKey("companies.id", ondelete="CASCADE"),
                         nullable=True, index=True,
-                        comment="Optional fuer company-spezifische Consents")
+                        comment="Optional für company-spezifische Consents")
 
     # Scope und Status
     scope = Column(String(100), nullable=False, index=True,
@@ -16842,9 +16842,9 @@ class GDPRDataSubjectRequest(Base):
     Trackt Anfragen von Betroffenen zu:
     - Art. 15: Auskunftsrecht
     - Art. 16: Recht auf Berichtigung
-    - Art. 17: Recht auf Loeschung
-    - Art. 18: Recht auf Einschraenkung
-    - Art. 20: Recht auf Datenuebertragbarkeit
+    - Art. 17: Recht auf Löschung
+    - Art. 18: Recht auf Einschränkung
+    - Art. 20: Recht auf Datenübertragbarkeit
     - Art. 21: Widerspruchsrecht
     """
     __tablename__ = "gdpr_data_subject_requests"
@@ -16870,7 +16870,7 @@ class GDPRDataSubjectRequest(Base):
                              comment="Email des Antragstellers")
     requester_name = Column(String(255), nullable=True)
     verification_token = Column(String(255), nullable=True,
-                                comment="Token zur Verifizierung der Identitaet")
+                                comment="Token zur Verifizierung der Identität")
     verified_at = Column(DateTime(timezone=True), nullable=True)
 
     # Details
@@ -16879,7 +16879,7 @@ class GDPRDataSubjectRequest(Base):
     affected_data_categories = Column(CrossDBJSON, nullable=True,
                                       comment='["personal", "financial", "documents"]')
     rectification_details = Column(CrossDBJSON, nullable=True,
-                                   comment="Details fuer Art. 16 Berichtigung")
+                                   comment="Details für Art. 16 Berichtigung")
 
     # Bearbeitung
     assigned_to_id = Column(UUID(as_uuid=True),
@@ -16892,7 +16892,7 @@ class GDPRDataSubjectRequest(Base):
 
     # Ergebnis
     export_file_path = Column(String(500), nullable=True,
-                              comment="Pfad zum Export bei Portabilitaet")
+                              comment="Pfad zum Export bei Portabilität")
     export_format = Column(String(20), nullable=True,
                            comment="json, csv, xml")
 
@@ -16926,7 +16926,7 @@ class GDPRDataSubjectRequest(Base):
 
 
 class GDPRDataExport(Base):
-    """Datenexport-Logs fuer DSGVO Art. 20 Portabilitaet.
+    """Datenexport-Logs für DSGVO Art. 20 Portabilität.
 
     Trackt alle Datenexporte die im Rahmen von Betroffenenrechte-Anfragen
     oder auf Userwunsch erstellt wurden.
@@ -16986,7 +16986,7 @@ class GDPRDataExport(Base):
     __table_args__ = (
         Index("ix_gdpr_exports_expired", "expires_at", "status",
               postgresql_where=text("status = 'completed'")),
-        {"comment": "DSGVO Datenexport-Logs (Art. 20 Portabilitaet)"}
+        {"comment": "DSGVO Datenexport-Logs (Art. 20 Portabilität)"}
     )
 
     def __repr__(self) -> str:
@@ -16994,10 +16994,10 @@ class GDPRDataExport(Base):
 
 
 class GDPRConsentHistory(Base):
-    """Audit-Trail fuer Einwilligungsaenderungen.
+    """Audit-Trail für Einwilligungsänderungen.
 
-    Dokumentiert jede Aenderung an Einwilligungen fuer
-    vollstaendige Nachweisbarkeit (DSGVO Art. 7).
+    Dokumentiert jede Änderung an Einwilligungen für
+    vollständige Nachweisbarkeit (DSGVO Art. 7).
     """
     __tablename__ = "gdpr_consent_history"
 
@@ -17011,7 +17011,7 @@ class GDPRConsentHistory(Base):
                      ForeignKey("users.id", ondelete="SET NULL"),
                      nullable=True, index=True)
 
-    # Aenderung
+    # Änderung
     action = Column(String(50), nullable=False, index=True,
                     comment="granted, withdrawn, updated, expired, version_changed")
     previous_value = Column(Boolean, nullable=True,
@@ -17038,7 +17038,7 @@ class GDPRConsentHistory(Base):
 
     __table_args__ = (
         Index("ix_gdpr_consent_history_created_at", "created_at"),
-        {"comment": "Audit-Trail fuer DSGVO Einwilligungsaenderungen"}
+        {"comment": "Audit-Trail für DSGVO Einwilligungsänderungen"}
     )
 
     def __repr__(self) -> str:
@@ -17051,7 +17051,7 @@ class GDPRConsentHistory(Base):
 # ============================================================================
 
 class SavedFilter(Base):
-    """Gespeicherte Filter fuer Server-seitige Persistenz mit Sharing.
+    """Gespeicherte Filter für Server-seitige Persistenz mit Sharing.
 
     Ersetzt die LocalStorage-basierte Implementierung durch eine
     persistente Loesung mit Multi-Tenant-Isolation und Sharing-Option.
@@ -17060,7 +17060,7 @@ class SavedFilter(Base):
     - Pro Feature (documents, invoices, entities, transactions)
     - Sharing innerhalb einer Company
     - Default-Filter pro User
-    - Usage-Tracking fuer Sortierung nach Haeufigkeit
+    - Usage-Tracking für Sortierung nach Häufigkeit
 
     Usage:
         # Eigene Filter
@@ -17177,7 +17177,7 @@ class SavedFilter(Base):
 class AppConfig(Base):
     """System-weite Konfigurationsspeicherung als Key-Value Store.
 
-    Flexibler JSONB-basierter Speicher fuer:
+    Flexibler JSONB-basierter Speicher für:
     - MLOps Model Registry
     - OCR Confidence Adjustments
     - Feature Flags
@@ -17204,7 +17204,7 @@ class AppConfig(Base):
         String(255),
         primary_key=True,
         nullable=False,
-        comment="Eindeutiger Schluessel fuer die Konfiguration"
+        comment="Eindeutiger Schluessel für die Konfiguration"
     )
     value = Column(
         CrossDBJSON,
@@ -17291,7 +17291,7 @@ class DPIA(Base):
     """
     Data Protection Impact Assessment (Art. 35 DSGVO).
 
-    Vollstaendige DPIA-Dokumentation mit Risikobewertung,
+    Vollständige DPIA-Dokumentation mit Risikobewertung,
     Massnahmen und DPO-Konsultation.
     """
     __tablename__ = "dpias"
@@ -17390,7 +17390,7 @@ class DPIA(Base):
 
 
 class DPIAProcessingOperation(Base):
-    """Verarbeitungstaetigkeit innerhalb einer DPIA."""
+    """Verarbeitungstätigkeit innerhalb einer DPIA."""
     __tablename__ = "dpia_processing_operations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -17532,7 +17532,7 @@ class DPIAConsultation(Base):
 
 
 class DPIAAuditLog(Base):
-    """Audit-Trail fuer DPIA-Aenderungen."""
+    """Audit-Trail für DPIA-Änderungen."""
     __tablename__ = "dpia_audit_log"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -17798,7 +17798,7 @@ class SmartInboxItem(Base):
 
 
 class UserBehaviorLog(Base):
-    """User Behavior Log - Lerndaten fuer ML-Priorisierung."""
+    """User Behavior Log - Lerndaten für ML-Priorisierung."""
     __tablename__ = "user_behavior_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -17851,7 +17851,7 @@ class UserBehaviorLog(Base):
 # ============================================================================
 
 class CompanyHealthSnapshot(Base):
-    """Taeglicher Gesundheits-Snapshot eines Unternehmens."""
+    """Täglicher Gesundheits-Snapshot eines Unternehmens."""
     __tablename__ = "company_health_snapshots"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -17903,7 +17903,7 @@ class CompanyHealthSnapshot(Base):
 # ============================================================================
 
 class GraphEdge(Base):
-    """Knowledge Graph Kante - Beziehung zwischen Entitaeten."""
+    """Knowledge Graph Kante - Beziehung zwischen Entitäten."""
     __tablename__ = "graph_edges"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -17953,7 +17953,7 @@ class GraphEdge(Base):
 # ============================================================================
 
 class MerkleTreeNode(Base):
-    """Merkle Tree Knoten fuer kryptografischen Audit-Trail."""
+    """Merkle Tree Knoten für kryptografischen Audit-Trail."""
     __tablename__ = "merkle_tree_nodes"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -17997,7 +17997,7 @@ class MerkleTreeNode(Base):
 # ============================================================================
 
 class AIEthicsAudit(Base):
-    """KI-Ethik Audit - Protokollierung ethischer Pruefungen."""
+    """KI-Ethik Audit - Protokollierung ethischer Prüfungen."""
     __tablename__ = "ai_ethics_audits"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -18041,7 +18041,7 @@ class AIEthicsAudit(Base):
 
 
 class BiasReport(Base):
-    """Bias-Bericht - Erkennungsergebnisse fuer Voreingenommenheit."""
+    """Bias-Bericht - Erkennungsergebnisse für Voreingenommenheit."""
     __tablename__ = "bias_reports"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -18079,7 +18079,7 @@ class BiasReport(Base):
 # ============================================================================
 
 class DomainEvent(Base):
-    """Domain Event fuer Event-Sourcing (Hybrid-Ansatz)."""
+    """Domain Event für Event-Sourcing (Hybrid-Ansatz)."""
     __tablename__ = "domain_events"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -18123,7 +18123,7 @@ class DomainEvent(Base):
 
 
 class EventSnapshot(Base):
-    """Snapshot des Aggregatzustands fuer Performance."""
+    """Snapshot des Aggregatzustands für Performance."""
     __tablename__ = "event_snapshots"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -18384,17 +18384,17 @@ class LifeEvent(Base):
 
 
 class DocumentEntityLink(Base):
-    """Verknuepfung zwischen Document und BusinessEntity.
+    """Verknüpfung zwischen Document und BusinessEntity.
 
-    Ermoeglicht M:N Beziehungen zwischen Dokumenten und Geschaeftspartnern
+    Ermöglicht M:N Beziehungen zwischen Dokumenten und Geschäftspartnern
     mit Typ-Klassifikation und Confidence-Score.
 
     Link Types:
     - invoice_sender: Entity hat Rechnung gesendet
-    - invoice_recipient: Entity ist Rechnungsempfaenger
+    - invoice_recipient: Entity ist Rechnungsempfänger
     - mentioned: Entity wird im Dokument erwaehnt
     - extracted: Entity wurde aus OCR-Text extrahiert
-    - manual: Manuell vom Benutzer verknuepft
+    - manual: Manuell vom Benutzer verknüpft
     """
     __tablename__ = "document_entity_links"
 
@@ -18439,7 +18439,7 @@ class DocumentEntityLink(Base):
 
     __table_args__ = (
         Index("ix_doc_entity_links_company_type", "company_id", "link_type"),
-        # Ein Document kann mit einem Entity nur einmal pro Link-Type verknuepft sein
+        # Ein Document kann mit einem Entity nur einmal pro Link-Type verknüpft sein
         # Note: Constraint created in migration
     )
 
@@ -18448,15 +18448,15 @@ class DocumentEntityLink(Base):
 
 
 class RiskScoreHistory(Base):
-    """Historische Risk-Scores fuer Geschaeftspartner.
+    """Historische Risk-Scores für Geschäftspartner.
 
-    Ermoeglicht Trend-Analyse und Explainability fuer AI Ethics.
+    Ermöglicht Trend-Analyse und Explainability für AI Ethics.
     Jeder Eintrag speichert den Score mit allen Faktoren.
 
     Triggers:
-    - scheduled: Taegliche/woechentliche Berechnung
+    - scheduled: Tägliche/woechentliche Berechnung
     - invoice_paid: Nach Zahlungseingang
-    - dunning_increased: Nach Mahnstufe-Erhoehung
+    - dunning_increased: Nach Mahnstufe-Erhöhung
     - manual: Manuelle Neuberechnung
     """
     __tablename__ = "risk_score_history"

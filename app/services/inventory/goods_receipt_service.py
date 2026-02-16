@@ -1,7 +1,7 @@
 """
 Goods Receipt Service - Wareneingang aus Lieferscheinen
 
-Verknuepft Lieferschein-Dokumente mit Bestandsbuchungen.
+Verknüpft Lieferschein-Dokumente mit Bestandsbuchungen.
 """
 
 import uuid
@@ -27,7 +27,7 @@ from app.services.inventory.stock_service import StockService
 
 
 class GoodsReceiptService:
-    """Service fuer Wareneingang"""
+    """Service für Wareneingang"""
 
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -57,7 +57,7 @@ class GoodsReceiptService:
         Returns:
             Erstellter GoodsReceipt
         """
-        # Dokument pruefen
+        # Dokument prüfen
         doc_query = select(Document).where(
             and_(
                 Document.id == document_id,
@@ -73,13 +73,13 @@ class GoodsReceiptService:
         if document.document_type != DocumentType.DELIVERY_NOTE:
             raise ValueError("Dokument ist kein Lieferschein")
 
-        # Pruefen ob bereits Wareneingang existiert
+        # Prüfen ob bereits Wareneingang existiert
         existing_query = select(GoodsReceipt).where(
             GoodsReceipt.delivery_note_id == document_id
         )
         existing = await self.session.execute(existing_query)
         if existing.scalar_one_or_none():
-            raise ValueError("Wareneingang fuer diesen Lieferschein bereits vorhanden")
+            raise ValueError("Wareneingang für diesen Lieferschein bereits vorhanden")
 
         # Wareneingang erstellen
         goods_receipt = GoodsReceipt(
@@ -118,7 +118,7 @@ class GoodsReceiptService:
                 description=item_data.get("description"),
                 quantity_expected=self._parse_quantity(item_data.get("quantity")),
                 quantity_received=self._parse_quantity(item_data.get("quantity")) or Decimal("0"),
-                unit=item_data.get("unit", "Stueck"),
+                unit=item_data.get("unit", "Stück"),
                 is_matched=False,
             )
             self.session.add(line)
@@ -129,7 +129,7 @@ class GoodsReceiptService:
         """Extrahiert Lieferscheinnummer aus Dokumentdaten"""
         extracted_data = document.extracted_data or {}
 
-        # Verschiedene Felder pruefen
+        # Verschiedene Felder prüfen
         for field in ["delivery_note_number", "lieferschein_nr", "delivery_number", "reference"]:
             if field in extracted_data and extracted_data[field]:
                 return str(extracted_data[field])
@@ -181,7 +181,7 @@ class GoodsReceiptService:
         document_id: uuid.UUID,
         company_id: uuid.UUID,
     ) -> Optional[GoodsReceipt]:
-        """Wareneingang fuer Lieferschein abrufen"""
+        """Wareneingang für Lieferschein abrufen"""
         query = (
             select(GoodsReceipt)
             .options(selectinload(GoodsReceipt.lines))
@@ -245,7 +245,7 @@ class GoodsReceiptService:
         if not line:
             raise ValueError("Wareneingangszeile nicht gefunden")
 
-        # Artikel pruefen
+        # Artikel prüfen
         item = await self.item_service.get_by_id(item_id, company_id)
         if not item:
             raise ValueError("Artikel nicht gefunden")
@@ -269,7 +269,7 @@ class GoodsReceiptService:
         Args:
             receipt_id: Wareneingangs-ID
             company_id: Unternehmen
-            min_confidence: Mindest-Confidence fuer automatisches Matching
+            min_confidence: Mindest-Confidence für automatisches Matching
 
         Returns:
             Dict mit matched, unmatched, total
@@ -345,7 +345,7 @@ class GoodsReceiptService:
         created_by: Optional[uuid.UUID] = None,
     ) -> dict:
         """
-        Verarbeitet Wareneingang und bucht Bestaende.
+        Verarbeitet Wareneingang und bucht Bestände.
 
         Alle gematchten Zeilen werden als Bestandszugaenge gebucht.
 
@@ -409,7 +409,7 @@ class GoodsReceiptService:
         limit: int = 50,
     ) -> list[Document]:
         """Lieferscheine ohne Wareneingang finden"""
-        # Subquery fuer bereits verarbeitete
+        # Subquery für bereits verarbeitete
         processed_subq = select(GoodsReceipt.delivery_note_id).where(
             GoodsReceipt.company_id == company_id
         )

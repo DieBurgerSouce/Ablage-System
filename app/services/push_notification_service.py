@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Push Notification Service fuer PWA Web Push.
+"""Push Notification Service für PWA Web Push.
 
 Dieser Service verwaltet:
 - Push Subscriptions (registrieren, aktualisieren, entfernen)
@@ -7,7 +7,7 @@ Dieser Service verwaltet:
 - Push Nachrichtenversand (einzeln, batch, broadcast)
 - Delivery Tracking (status, analytics)
 
-Nutzt pywebpush fuer VAPID-signierte Web Push Nachrichten.
+Nutzt pywebpush für VAPID-signierte Web Push Nachrichten.
 """
 
 from datetime import datetime, timezone
@@ -36,7 +36,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PushNotificationService:
-    """Service fuer Push Notifications."""
+    """Service für Push Notifications."""
 
     def __init__(self, db: AsyncSession):
         """Initialisiert den Service.
@@ -74,10 +74,10 @@ class PushNotificationService:
         Args:
             user_id: ID des Benutzers
             endpoint: Push Service Endpoint URL
-            p256dh_key: Public Key fuer Verschluesselung
+            p256dh_key: Public Key für Verschlüsselung
             auth_key: Auth Secret
             expiration_time: Optional expiration timestamp
-            device_name: Optionaler Geraetename
+            device_name: Optionaler Gerätename
             device_type: mobile, tablet, desktop
             browser: Browser Name
             os: Betriebssystem
@@ -87,7 +87,7 @@ class PushNotificationService:
         Returns:
             Erstellte PushSubscription
         """
-        # Pruefe ob Subscription bereits existiert
+        # Prüfe ob Subscription bereits existiert
         existing = await self.db.execute(
             select(PushSubscription).where(PushSubscription.endpoint == endpoint)
         )
@@ -255,12 +255,12 @@ class PushNotificationService:
             icon: Icon URL
             badge: Badge URL
             image: Image URL
-            tag: Tag fuer Replacement
+            tag: Tag für Replacement
             data: Custom Data Payload
             actions: Action Buttons
             require_interaction: Muss interagiert werden
             silent: Stille Notification
-            template_id: Optional Template ID fuer History
+            template_id: Optional Template ID für History
 
         Returns:
             True wenn erfolgreich gesendet
@@ -354,14 +354,14 @@ class PushNotificationService:
         category: Optional[str] = None,
         **kwargs,
     ) -> tuple[int, int]:
-        """Sendet Notification an alle Geraete eines Benutzers.
+        """Sendet Notification an alle Geräte eines Benutzers.
 
         Args:
             user_id: Benutzer ID
             title: Notification Titel
             body: Notification Body
-            category: Optional category fuer preference filtering
-            **kwargs: Weitere Parameter fuer send_notification
+            category: Optional category für preference filtering
+            **kwargs: Weitere Parameter für send_notification
 
         Returns:
             Tuple (erfolgreich, fehlgeschlagen)
@@ -396,9 +396,9 @@ class PushNotificationService:
         Args:
             title: Notification Titel
             body: Notification Body
-            category: Optional category fuer preference filtering
+            category: Optional category für preference filtering
             user_filter: Optional liste von User IDs
-            **kwargs: Weitere Parameter fuer send_notification
+            **kwargs: Weitere Parameter für send_notification
 
         Returns:
             Tuple (erfolgreich, fehlgeschlagen)
@@ -466,7 +466,7 @@ class PushNotificationService:
             user_id: Benutzer ID
             template_name: Template Name
             variables: Template Variablen (z.B. {"document_name": "Rechnung.pdf"})
-            extra_data: Zusaetzliche Data Payload
+            extra_data: Zusätzliche Data Payload
 
         Returns:
             Tuple (erfolgreich, fehlgeschlagen)
@@ -523,7 +523,7 @@ class PushNotificationService:
         """Holt Subscription Statistiken.
 
         Args:
-            user_id: Optional User ID fuer Filterung
+            user_id: Optional User ID für Filterung
 
         Returns:
             Statistik Dictionary

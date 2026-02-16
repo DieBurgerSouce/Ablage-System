@@ -1,10 +1,10 @@
 """
 Holding KPI Service.
 
-Aggregierte KPIs fuer Multi-Company Holding-Sicht.
+Aggregierte KPIs für Multi-Company Holding-Sicht.
 
 Features:
-- Konsolidierte Finanzkennzahlen ueber alle Firmen
+- Konsolidierte Finanzkennzahlen über alle Firmen
 - Intercompany-Verrechnungen Tracking
 - Darlehen zwischen Firmen
 - Konzernabschluss-Vorbereitung
@@ -35,7 +35,7 @@ logger = structlog.get_logger(__name__)
 
 
 class HoldingKPIService:
-    """Service fuer Holding-Level KPIs und Analytics."""
+    """Service für Holding-Level KPIs und Analytics."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -45,10 +45,10 @@ class HoldingKPIService:
         user_id: UUID,
         company_ids: Optional[List[UUID]] = None,
     ) -> Dict[str, Any]:
-        """Hole konsolidierte Uebersicht ueber alle/ausgewaehlte Firmen.
+        """Hole konsolidierte Übersicht über alle/ausgewaehlte Firmen.
 
         Args:
-            user_id: User-ID fuer Berechtigungspruefung
+            user_id: User-ID für Berechtigungsprüfung
             company_ids: Optional - Nur diese Firmen einbeziehen
 
         Returns:
@@ -86,7 +86,7 @@ class HoldingKPIService:
     async def _get_company_summaries(
         self, company_ids: List[UUID]
     ) -> List[Dict[str, Any]]:
-        """Hole Zusammenfassung fuer jede Firma."""
+        """Hole Zusammenfassung für jede Firma."""
         result = await self.db.execute(
             select(Company).where(Company.id.in_(company_ids))
         )
@@ -130,7 +130,7 @@ class HoldingKPIService:
         )
         total_payables = payables_result.scalar() or Decimal("0")
 
-        # Ueberfaellige Forderungen
+        # Überfällige Forderungen
         now = datetime.now(timezone.utc)
         overdue_receivables_result = await self.db.execute(
             select(func.sum(InvoiceTracking.amount))
@@ -143,7 +143,7 @@ class HoldingKPIService:
         )
         overdue_receivables = overdue_receivables_result.scalar() or Decimal("0")
 
-        # Ueberfaellige Verbindlichkeiten
+        # Überfällige Verbindlichkeiten
         overdue_payables_result = await self.db.execute(
             select(func.sum(InvoiceTracking.amount))
             .where(
@@ -310,13 +310,13 @@ class HoldingKPIService:
     ) -> Dict[str, Any]:
         """Hole Intercompany-Metriken (Verrechnungen zwischen Firmen).
 
-        Identifiziert Transaktionen wo Sender und Empfaenger
+        Identifiziert Transaktionen wo Sender und Empfänger
         beide zur Holding gehoeren.
         """
         # Finde Intercompany-Rechnungen
         # Eine Rechnung ist Intercompany wenn:
         # - Aussteller (company_id) in company_ids
-        # - Empfaenger (entity) gehoert zu einer anderen Firma in company_ids
+        # - Empfänger (entity) gehoert zu einer anderen Firma in company_ids
 
         # Hole alle Entity-IDs die zu unseren Firmen gehoeren
         entity_result = await self.db.execute(
@@ -340,7 +340,7 @@ class HoldingKPIService:
             }
 
         # Intercompany Forderungen/Verbindlichkeiten
-        # (vereinfacht - muesste noch verfeinert werden fuer echte Intercompany-Erkennung)
+        # (vereinfacht - müsste noch verfeinert werden für echte Intercompany-Erkennung)
         intercompany_result = await self.db.execute(
             select(
                 InvoiceTracking.invoice_type,
@@ -368,7 +368,7 @@ class HoldingKPIService:
         }
 
     def _empty_overview(self) -> Dict[str, Any]:
-        """Leere Uebersicht wenn keine Firmen vorhanden."""
+        """Leere Übersicht wenn keine Firmen vorhanden."""
         return {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "company_count": 0,

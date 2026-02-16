@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Document Processing Tasks - Celery Tasks fuer Dokumentverarbeitung.
+Document Processing Tasks - Celery Tasks für Dokumentverarbeitung.
 
 Tasks:
 - document_bulk_export_task: Bulk-Export von Dokumenten (ZIP, PDF, CSV)
-- document_cleanup_task: Alte Dokumente aufraumen
+- document_cleanup_task: Alte Dokumente aufräumen
 - document_reprocess_task: Dokumente neu verarbeiten
 """
 
@@ -58,7 +58,7 @@ def document_bulk_export_task(
 
     Args:
         document_ids: Liste der Dokument-UUIDs als Strings
-        user_id: User-UUID fuer Berechtigungspruefung
+        user_id: User-UUID für Berechtigungsprüfung
         export_format: "zip" | "pdf" | "csv"
         include_metadata: Metadaten-JSON beilegen (bei zip)
 
@@ -66,7 +66,7 @@ def document_bulk_export_task(
         dict mit:
         - success: bool
         - download_url: Temporaere Download-URL
-        - file_size: Groesse in Bytes
+        - file_size: Größe in Bytes
         - document_count: Anzahl exportierter Dokumente
         - errors: Liste fehlgeschlagener Dokumente
     """
@@ -109,7 +109,7 @@ async def _execute_bulk_export(
     task,
 ) -> dict:
     """
-    Fuehrt den eigentlichen Export aus.
+    Führt den eigentlichen Export aus.
     """
     storage = get_storage_service()
     errors: List[dict] = []
@@ -250,7 +250,7 @@ async def _export_as_zip(
             metadata={"export_type": "bulk", "document_count": exported_count}
         )
 
-        # Temporaere Download-URL generieren (1 Stunde gueltig)
+        # Temporaere Download-URL generieren (1 Stunde gültig)
         download_url = await storage.get_presigned_url(export_path, expires_in=3600)
 
         return {
@@ -292,7 +292,7 @@ async def _export_as_csv(
         "Dateiname",
         "Dokumenttyp",
         "MIME-Type",
-        "Groesse (Bytes)",
+        "Größe (Bytes)",
         "Erstellt am",
         "Status",
         "Tags",
@@ -313,7 +313,7 @@ async def _export_as_csv(
             doc.ocr_confidence or "",
         ])
 
-    csv_content = csv_buffer.getvalue().encode("utf-8-sig")  # BOM fuer Excel
+    csv_content = csv_buffer.getvalue().encode("utf-8-sig")  # BOM für Excel
 
     # CSV speichern
     export_filename = f"export_{user_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.csv"
@@ -490,13 +490,13 @@ def document_reprocess_task(
     Args:
         document_ids: Liste der Dokument-UUIDs
         user_id: User-UUID
-        reprocess_ocr: OCR erneut ausfuehren
+        reprocess_ocr: OCR erneut ausführen
         reprocess_embeddings: Embeddings neu generieren
 
     Returns:
         dict mit Verarbeitungsergebnis
     """
-    # Hier koennte man OCR-Tasks triggern
+    # Hier könnte man OCR-Tasks triggern
     from app.workers.tasks.ocr_tasks import process_document_task
     from app.workers.tasks.embedding_tasks import generate_document_embedding
 

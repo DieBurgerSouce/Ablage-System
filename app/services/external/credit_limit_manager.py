@@ -6,7 +6,7 @@ Automatische Verwaltung von Kreditlimits:
 - Limit-Berechnung basierend auf Score
 - Automatische Anpassungen
 - Limit-Historie
-- Ueberwachung und Alerts
+- Überwachung und Alerts
 
 Vision 2.0 Feature: Erweiterte Integrationen
 Feinpoliert und durchdacht.
@@ -29,11 +29,11 @@ logger = logging.getLogger(__name__)
 
 
 class LimitChangeReason(str, Enum):
-    """Gruende fuer Limit-Aenderungen."""
+    """Gruende für Limit-Änderungen."""
     INITIAL = "initial"                    # Erstmalige Festlegung
     SCORE_UPDATE = "score_update"          # Score-basierte Aktualisierung
     PAYMENT_BEHAVIOR = "payment_behavior"  # Zahlungsverhalten
-    MANUAL_INCREASE = "manual_increase"    # Manuelle Erhoehung
+    MANUAL_INCREASE = "manual_increase"    # Manuelle Erhöhung
     MANUAL_DECREASE = "manual_decrease"    # Manuelle Reduzierung
     RISK_ALERT = "risk_alert"              # Risiko-Alert
     INSOLVENCY = "insolvency"              # Insolvenz
@@ -41,7 +41,7 @@ class LimitChangeReason(str, Enum):
 
 
 class CreditLimitChange(BaseModel):
-    """Schema fuer Limit-Aenderung."""
+    """Schema für Limit-Änderung."""
     entity_id: UUID
     previous_limit: Decimal
     new_limit: Decimal
@@ -54,19 +54,19 @@ class CreditLimitChange(BaseModel):
 
 class CreditLimitManager:
     """
-    Service fuer automatisches Kreditlimit-Management.
+    Service für automatisches Kreditlimit-Management.
 
     Features:
     - Automatische Limit-Berechnung
-    - Regelmaessige Neuberechnung
+    - Regelmäßige Neuberechnung
     - Limit-Historie
-    - Genehmigungsworkflow fuer grosse Aenderungen
+    - Genehmigungsworkflow für grosse Änderungen
     """
 
-    # Schwellwerte fuer automatische Anpassungen
-    AUTO_INCREASE_THRESHOLD = 0.1    # Max 10% automatische Erhoehung
+    # Schwellwerte für automatische Anpassungen
+    AUTO_INCREASE_THRESHOLD = 0.1    # Max 10% automatische Erhöhung
     AUTO_DECREASE_THRESHOLD = 0.2    # Max 20% automatische Reduzierung
-    REVIEW_THRESHOLD = 0.3           # Ab 30% manuelle Pruefung
+    REVIEW_THRESHOLD = 0.3           # Ab 30% manuelle Prüfung
 
     # Basis-Limits nach Risikostufe
     BASE_LIMITS = {
@@ -87,7 +87,7 @@ class CreditLimitManager:
         Initialisiere Manager.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
             scoring_service: Optional Credit-Scoring-Service
         """
         self.db = db
@@ -99,7 +99,7 @@ class CreditLimitManager:
         company_id: UUID,
     ) -> Dict[str, Any]:
         """
-        Hole aktuelles Kreditlimit fuer Entity.
+        Hole aktuelles Kreditlimit für Entity.
 
         Args:
             entity_id: Business-Entity ID
@@ -158,7 +158,7 @@ class CreditLimitManager:
         Args:
             entity_id: Business-Entity ID
             company_id: Mandanten-ID
-            user_id: Optional ausfuehrender User
+            user_id: Optional ausführender User
             include_external: Externe Daten einbeziehen
 
         Returns:
@@ -207,7 +207,7 @@ class CreditLimitManager:
         old_credit_data = metadata.get("credit_limit", {})
         old_limit = Decimal(str(old_credit_data.get("amount", 0)))
 
-        # Berechne Aenderung
+        # Berechne Änderung
         if old_limit > 0:
             change_percent = float((new_limit - old_limit) / old_limit)
         else:
@@ -252,7 +252,7 @@ class CreditLimitManager:
             "changed_at": now.isoformat(),
             "changed_by": str(user_id) if user_id else "system",
         })
-        # Nur letzte 20 Eintraege behalten
+        # Nur letzte 20 Einträge behalten
         metadata["credit_limit_history"] = history[-20:]
 
         entity.metadata = metadata
@@ -291,7 +291,7 @@ class CreditLimitManager:
             company_id: Mandanten-ID
             new_limit: Neues Limit
             user_id: Genehmigender User
-            reason: Grund fuer Aenderung
+            reason: Grund für Änderung
             reason_details: Details
 
         Returns:
@@ -378,10 +378,10 @@ class CreditLimitManager:
         Args:
             entity_id: Business-Entity ID
             company_id: Mandanten-ID
-            limit: Max Anzahl Eintraege
+            limit: Max Anzahl Einträge
 
         Returns:
-            Historie-Eintraege
+            Historie-Einträge
         """
         from app.db.models import BusinessEntity
 
@@ -406,13 +406,13 @@ class CreditLimitManager:
         company_id: UUID,
     ) -> List[Dict[str, Any]]:
         """
-        Hole Entities die Review benoetigen.
+        Hole Entities die Review benötigen.
 
         Args:
             company_id: Mandanten-ID
 
         Returns:
-            Liste von Entities fuer Review
+            Liste von Entities für Review
         """
         from app.db.models import BusinessEntity
 
@@ -440,7 +440,7 @@ class CreditLimitManager:
                 })
                 continue
 
-            # Pruefe ob Review erforderlich
+            # Prüfe ob Review erforderlich
             requires_review = credit_data.get("requires_review", False)
             next_review_str = credit_data.get("next_review")
 

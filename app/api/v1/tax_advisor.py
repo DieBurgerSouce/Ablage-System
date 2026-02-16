@@ -1,12 +1,12 @@
 """GoBD Steuerberater-Zugang API Endpoints.
 
-API fuer Steuerberater-Management:
+API für Steuerberater-Management:
 - Einladungen erstellen, auflisten, widerrufen
-- Einladungen akzeptieren (oeffentlich)
-- Zugangszeiten verlaengern oder widerrufen
+- Einladungen akzeptieren (öffentlich)
+- Zugangszeiten verlängern oder widerrufen
 - Zugriffslogs abrufen
 
-GoBD-Konformitaet:
+GoBD-Konformität:
 - Nachvollziehbarkeit: Alle Aktionen werden protokolliert
 - Zeitliche Begrenzung: Zugang laeuft automatisch ab
 - Eingeschraenkter Zugriff: Nur Lesezugriff auf relevante Dokumente
@@ -53,7 +53,7 @@ class TaxAdvisorInviteCreate(BaseModel):
 
 
 class TaxAdvisorInviteResponse(BaseModel):
-    """Antwort-Schema fuer Einladungen."""
+    """Antwort-Schema für Einladungen."""
     id: UUID
     email: str
     full_name: Optional[str]
@@ -83,7 +83,7 @@ class TaxAdvisorAcceptRequest(BaseModel):
 
 
 class TaxAdvisorUserResponse(BaseModel):
-    """Antwort-Schema fuer Steuerberater-Benutzer."""
+    """Antwort-Schema für Steuerberater-Benutzer."""
     id: UUID
     email: str
     username: str
@@ -97,8 +97,8 @@ class TaxAdvisorUserResponse(BaseModel):
 
 
 class TaxAdvisorExtendRequest(BaseModel):
-    """Schema zum Verlaengern des Zugangs."""
-    additional_days: int = Field(..., ge=1, le=365, description="Zusaetzliche Tage (1-365)")
+    """Schema zum Verlängern des Zugangs."""
+    additional_days: int = Field(..., ge=1, le=365, description="Zusätzliche Tage (1-365)")
 
 
 class TaxAdvisorRevokeRequest(BaseModel):
@@ -107,7 +107,7 @@ class TaxAdvisorRevokeRequest(BaseModel):
 
 
 class TaxAdvisorAccessLogResponse(BaseModel):
-    """Antwort-Schema fuer Zugriffslogs."""
+    """Antwort-Schema für Zugriffslogs."""
     id: UUID
     user_id: UUID
     action: str
@@ -133,7 +133,7 @@ class MessageResponse(BaseModel):
     response_model=TaxAdvisorInviteCreateResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Steuerberater einladen",
-    description="Erstellt eine neue Einladung fuer einen Steuerberater"
+    description="Erstellt eine neue Einladung für einen Steuerberater"
 )
 async def create_invite(
     data: TaxAdvisorInviteCreate,
@@ -145,7 +145,7 @@ async def create_invite(
     """
     Erstellt eine neue Steuerberater-Einladung.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
 
     **Pflichtfelder:**
     - **email**: E-Mail des Steuerberaters
@@ -199,7 +199,7 @@ async def create_invite(
     "/invites",
     response_model=List[TaxAdvisorInviteResponse],
     summary="Einladungen auflisten",
-    description="Listet alle Einladungen fuer die aktuelle Firma auf"
+    description="Listet alle Einladungen für die aktuelle Firma auf"
 )
 async def list_invites(
     include_expired: bool = Query(False, description="Abgelaufene Einladungen einbeziehen"),
@@ -208,9 +208,9 @@ async def list_invites(
     db: AsyncSession = Depends(get_db),
 ) -> List[TaxAdvisorInviteResponse]:
     """
-    Listet Steuerberater-Einladungen fuer die aktuelle Firma auf.
+    Listet Steuerberater-Einladungen für die aktuelle Firma auf.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     if include_expired:
         from sqlalchemy import select
@@ -241,10 +241,10 @@ async def revoke_invite(
     """
     Widerruft eine ausstehende Steuerberater-Einladung.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     Die Einladung muss noch ausstehend (pending) sein.
     """
-    # Pruefen ob Einladung zur Firma gehoert
+    # Prüfen ob Einladung zur Firma gehoert
     invite = await db.get(TaxAdvisorInvite, invite_id)
     if not invite:
         raise HTTPException(
@@ -255,7 +255,7 @@ async def revoke_invite(
     if invite.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Einladung"
+            detail="Keine Berechtigung für diese Einladung"
         )
 
     try:
@@ -276,7 +276,7 @@ async def revoke_invite(
     "/users",
     response_model=List[TaxAdvisorUserResponse],
     summary="Steuerberater auflisten",
-    description="Listet alle aktiven Steuerberater fuer die aktuelle Firma auf"
+    description="Listet alle aktiven Steuerberater für die aktuelle Firma auf"
 )
 async def list_tax_advisors(
     company_id: UUID = Depends(require_company),
@@ -284,9 +284,9 @@ async def list_tax_advisors(
     db: AsyncSession = Depends(get_db),
 ) -> List[TaxAdvisorUserResponse]:
     """
-    Listet aktive Steuerberater fuer die aktuelle Firma auf.
+    Listet aktive Steuerberater für die aktuelle Firma auf.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     users = await tax_advisor_service.get_active_tax_advisors(db, company_id)
     return [TaxAdvisorUserResponse.model_validate(u) for u in users]
@@ -295,8 +295,8 @@ async def list_tax_advisors(
 @router.post(
     "/users/{user_id}/extend",
     response_model=TaxAdvisorUserResponse,
-    summary="Zugang verlaengern",
-    description="Verlaengert den Zugang eines Steuerberaters"
+    summary="Zugang verlängern",
+    description="Verlängert den Zugang eines Steuerberaters"
 )
 async def extend_access(
     user_id: UUID,
@@ -306,9 +306,9 @@ async def extend_access(
     db: AsyncSession = Depends(get_db),
 ) -> TaxAdvisorUserResponse:
     """
-    Verlaengert den Zugang eines Steuerberaters.
+    Verlängert den Zugang eines Steuerberaters.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     """
     try:
         user = await tax_advisor_service.extend_access(
@@ -320,10 +320,10 @@ async def extend_access(
         return TaxAdvisorUserResponse.model_validate(user)
 
     except ValueError as e:
-        logger.error("tax_advisor_extend_access_failed", **safe_error_log(e, context="Zugang verlaengern"))
+        logger.error("tax_advisor_extend_access_failed", **safe_error_log(e, context="Zugang verlängern"))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=safe_error_detail(e, "Zugang verlaengern")
+            detail=safe_error_detail(e, "Zugang verlängern")
         )
 
 
@@ -343,7 +343,7 @@ async def revoke_access(
     """
     Widerruft den Zugang eines Steuerberaters sofort.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     Der Benutzer wird deaktiviert und kann sich nicht mehr anmelden.
     """
     try:
@@ -369,7 +369,7 @@ async def revoke_access(
     "/logs",
     response_model=List[TaxAdvisorAccessLogResponse],
     summary="Zugriffslogs abrufen",
-    description="Ruft Steuerberater-Zugriffslogs fuer die aktuelle Firma ab"
+    description="Ruft Steuerberater-Zugriffslogs für die aktuelle Firma ab"
 )
 async def get_access_logs(
     user_id: Optional[UUID] = Query(None, description="Nach Benutzer filtern"),
@@ -377,7 +377,7 @@ async def get_access_logs(
     from_date: Optional[datetime] = Query(None, description="Start-Datum"),
     to_date: Optional[datetime] = Query(None, description="End-Datum"),
     limit: int = Query(100, ge=1, le=1000, description="Max. Ergebnisse"),
-    offset: int = Query(0, ge=0, description="Offset fuer Paginierung"),
+    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
     company_id: UUID = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
@@ -385,7 +385,7 @@ async def get_access_logs(
     """
     Ruft Steuerberater-Zugriffslogs ab.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
     Diese Logs sind revisionssicher und dokumentieren alle Steuerberater-Aktivitaeten.
     """
     logs = await tax_advisor_service.get_access_logs(
@@ -418,7 +418,7 @@ async def accept_invite(
     """
     Akzeptiert eine Steuerberater-Einladung.
 
-    Dieser Endpoint ist oeffentlich zugaenglich (kein Login erforderlich).
+    Dieser Endpoint ist öffentlich zugaenglich (kein Login erforderlich).
     Der Steuerberater erhaelt einen Link mit Token per E-Mail und
     kann sich damit registrieren.
 
@@ -427,7 +427,7 @@ async def accept_invite(
     - **password**: Gewaehltes Passwort (min. 8 Zeichen)
     """
     try:
-        # IP und User-Agent fuer Audit
+        # IP und User-Agent für Audit
         ip_address = request.client.host if request.client else None
         user_agent = request.headers.get("user-agent", "")[:500]
 
@@ -460,7 +460,7 @@ async def accept_invite(
     "/validate/{token}",
     response_model=TaxAdvisorInviteResponse,
     summary="Token validieren",
-    description="Validiert ein Einladungs-Token (oeffentlich)"
+    description="Validiert ein Einladungs-Token (öffentlich)"
 )
 async def validate_token(
     token: str,
@@ -469,9 +469,9 @@ async def validate_token(
     """
     Validiert ein Einladungs-Token.
 
-    Dieser Endpoint ist oeffentlich zugaenglich.
-    Wird verwendet, um vor der Registrierung zu pruefen,
-    ob das Token gueltig ist.
+    Dieser Endpoint ist öffentlich zugaenglich.
+    Wird verwendet, um vor der Registrierung zu prüfen,
+    ob das Token gültig ist.
     """
     import hashlib
     from sqlalchemy import select

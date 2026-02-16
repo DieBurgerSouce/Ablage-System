@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""MahnTask Service - Aufgabenverwaltung fuer Mahnungswesen.
+"""MahnTask Service - Aufgabenverwaltung für Mahnungswesen.
 
-Verwaltet Tasks fuer das Mahnungswesen:
+Verwaltet Tasks für das Mahnungswesen:
 - Erstellen von Mahn-Aufgaben
 - Snooze-Funktion (max 3x)
 - Bulk-Operationen
@@ -43,10 +43,10 @@ JSONDict = Dict[str, JSONValue]
 class MahnTaskType(str, Enum):
     """Mahn-Aufgabentyp."""
     REMINDER = "reminder"           # Zahlungserinnerung senden
-    ESCALATE = "escalate"           # Zur naechsten Stufe eskalieren
+    ESCALATE = "escalate"           # Zur nächsten Stufe eskalieren
     PHONE_CALL = "phone_call"       # Telefonkontakt herstellen
-    REVIEW = "review"               # Fall pruefen
-    COLLECTION = "collection"       # An Inkasso uebergeben
+    REVIEW = "review"               # Fall prüfen
+    COLLECTION = "collection"       # An Inkasso übergeben
 
 
 class MahnTaskStatus(str, Enum):
@@ -54,7 +54,7 @@ class MahnTaskStatus(str, Enum):
     PENDING = "pending"             # Ausstehend
     IN_PROGRESS = "in_progress"     # In Bearbeitung
     COMPLETED = "completed"         # Erledigt
-    SNOOZED = "snoozed"             # Zurueckgestellt
+    SNOOZED = "snoozed"             # Zurückgestellt
     CANCELLED = "cancelled"         # Abgebrochen
 
 
@@ -63,14 +63,14 @@ class PhoneCallOutcome(str, Enum):
     REACHED = "reached"                     # Erreicht
     NOT_REACHED = "not_reached"             # Nicht erreicht
     VOICEMAIL = "voicemail"                 # Mailbox
-    CALLBACK_REQUESTED = "callback_requested"  # Rueckruf erbeten
+    CALLBACK_REQUESTED = "callback_requested"  # Rückruf erbeten
     PAYMENT_PROMISED = "payment_promised"   # Zahlung zugesagt
     DISPUTE_RAISED = "dispute_raised"       # Reklamation erhoben
 
 
 @dataclass
 class MahnTaskFilter:
-    """Filter fuer Mahn-Aufgaben."""
+    """Filter für Mahn-Aufgaben."""
     status: Optional[MahnTaskStatus] = None
     task_type: Optional[MahnTaskType] = None
     assigned_user_id: Optional[UUID] = None
@@ -81,9 +81,9 @@ class MahnTaskFilter:
 
 
 class MahnTaskService:
-    """Service fuer Mahn-Aufgaben."""
+    """Service für Mahn-Aufgaben."""
 
-    MAX_SNOOZE_COUNT = 3  # Maximale Anzahl Zurueckstellungen
+    MAX_SNOOZE_COUNT = 3  # Maximale Anzahl Zurückstellungen
 
     async def list_tasks(
         self,
@@ -97,10 +97,10 @@ class MahnTaskService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID (fuer Zugriffspruefung)
+            user_id: Benutzer-ID (für Zugriffsprüfung)
             filters: Optionale Filter
             limit: Max. Ergebnisse
-            offset: Offset fuer Pagination
+            offset: Offset für Pagination
 
         Returns:
             Tuple (Liste der Tasks, Gesamtanzahl)
@@ -164,7 +164,7 @@ class MahnTaskService:
         """
         today = date.today()
 
-        # Basis-Query fuer User
+        # Basis-Query für User
         base_query = (
             select(MahnTask)
             .join(DunningRecord, MahnTask.dunning_record_id == DunningRecord.id)
@@ -175,12 +175,12 @@ class MahnTaskService:
             ]))
         )
 
-        # Heute faellig
+        # Heute fällig
         due_today_query = base_query.where(MahnTask.due_date == today)
         due_today_result = await db.execute(select(func.count()).select_from(due_today_query.subquery()))
         due_today = due_today_result.scalar() or 0
 
-        # Ueberfaellig
+        # Überfällig
         overdue_query = base_query.where(MahnTask.due_date < today)
         overdue_result = await db.execute(select(func.count()).select_from(overdue_query.subquery()))
         overdue = overdue_result.scalar() or 0
@@ -199,7 +199,7 @@ class MahnTaskService:
         type_result = await db.execute(type_query)
         by_type = {row[0]: row[1] for row in type_result}
 
-        # Zurueckgestellte
+        # Zurückgestellte
         snoozed_query = (
             select(func.count())
             .select_from(MahnTask)
@@ -233,9 +233,9 @@ class MahnTaskService:
             db: Datenbank-Session
             dunning_record_id: Mahnvorgang-ID
             task_type: Aufgabentyp
-            due_date: Faelligkeitsdatum
+            due_date: Fälligkeitsdatum
             assigned_user_id: Optionaler Bearbeiter
-            priority: Prioritaet (1=hoechste, 5=niedrigste)
+            priority: Priorität (1=hoechste, 5=niedrigste)
 
         Returns:
             Erstellte Aufgabe als Dictionary
@@ -278,7 +278,7 @@ class MahnTaskService:
 
         Args:
             db: Datenbank-Session
-            user_id: Aktueller Benutzer (fuer Zugriffspruefung)
+            user_id: Aktueller Benutzer (für Zugriffsprüfung)
             task_id: Aufgaben-ID
             assigned_user_id: Ziel-Benutzer
 
@@ -312,7 +312,7 @@ class MahnTaskService:
         snooze_until: date,
         reason: Optional[str] = None,
     ) -> JSONDict:
-        """Stelle Aufgabe zurueck (max 3x).
+        """Stelle Aufgabe zurück (max 3x).
 
         Args:
             db: Datenbank-Session
@@ -325,7 +325,7 @@ class MahnTaskService:
             Aktualisierte Aufgabe
 
         Raises:
-            ValueError: Wenn max. Zurueckstellungen erreicht
+            ValueError: Wenn max. Zurückstellungen erreicht
         """
         task = await self._get_task_for_user(db, user_id, task_id)
         if not task:
@@ -333,7 +333,7 @@ class MahnTaskService:
 
         if task.snooze_count >= self.MAX_SNOOZE_COUNT:
             raise ValueError(
-                f"Maximale Anzahl Zurueckstellungen ({self.MAX_SNOOZE_COUNT}) erreicht"
+                f"Maximale Anzahl Zurückstellungen ({self.MAX_SNOOZE_COUNT}) erreicht"
             )
 
         if snooze_until <= date.today():
@@ -497,8 +497,8 @@ class MahnTaskService:
             phone_number: Angerufene Nummer
             notes: Gespraechsnotizen
             follow_up_required: Nachfassen erforderlich?
-            follow_up_date: Datum fuer Nachfassen
-            follow_up_notes: Notizen fuer Nachfassen
+            follow_up_date: Datum für Nachfassen
+            follow_up_notes: Notizen für Nachfassen
 
         Returns:
             Erstelltes Protokoll
@@ -558,19 +558,19 @@ class MahnTaskService:
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[JSONDict], int]:
-        """Hole Telefon-Historie fuer Mahnvorgang (paginiert).
+        """Hole Telefon-Historie für Mahnvorgang (paginiert).
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID (fuer Zugriffspruefung)
+            user_id: Benutzer-ID (für Zugriffsprüfung)
             dunning_record_id: Mahnvorgang-ID
-            limit: Maximale Anzahl Eintraege
-            offset: Offset fuer Pagination
+            limit: Maximale Anzahl Einträge
+            offset: Offset für Pagination
 
         Returns:
             Tuple aus (Liste von Telefonprotokollen, Gesamtanzahl)
         """
-        # Zugriffspruefung
+        # Zugriffsprüfung
         dunning_query = select(DunningRecord).where(
             and_(
                 DunningRecord.id == dunning_record_id,
@@ -581,7 +581,7 @@ class MahnTaskService:
         if not dunning_result.scalar_one_or_none():
             raise ValueError("Mahnvorgang nicht gefunden")
 
-        # Count-Query fuer Gesamtanzahl
+        # Count-Query für Gesamtanzahl
         count_query = (
             select(func.count())
             .select_from(PhoneCallLog)
@@ -610,7 +610,7 @@ class MahnTaskService:
     ) -> int:
         """Reaktiviere abgelaufene Snooze-Aufgaben.
 
-        Wird vom Celery Beat Task taeglich aufgerufen.
+        Wird vom Celery Beat Task täglich aufgerufen.
 
         Returns:
             Anzahl reaktivierter Aufgaben
@@ -654,7 +654,7 @@ class MahnTaskService:
         user_id: UUID,
         task_id: UUID,
     ) -> Optional[MahnTask]:
-        """Hole Aufgabe mit Zugriffspruefung."""
+        """Hole Aufgabe mit Zugriffsprüfung."""
         query = (
             select(MahnTask)
             .join(DunningRecord, MahnTask.dunning_record_id == DunningRecord.id)

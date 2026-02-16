@@ -5,14 +5,14 @@ Enhanced Natural Language Query Service.
 Vision 2026 Q3: Erweiterte NLQ mit Power-User Features.
 
 Erweitert den bestehenden NLQService um:
-- SQL-Preview fuer Power-User
+- SQL-Preview für Power-User
 - Query-Suggestions basierend auf Kontext
-- Interpretation-Erklaerung ("Ich verstehe Ihre Anfrage als...")
-- Query-History fuer Verbesserungsvorschlaege
-- Fuzzy-Matching fuer Entity-Namen
-- Auto-Completion Vorschlaege
+- Interpretation-Erklärung ("Ich verstehe Ihre Anfrage als...")
+- Query-History für Verbesserungsvorschläge
+- Fuzzy-Matching für Entity-Namen
+- Auto-Completion Vorschläge
 
-Feinpoliert und durchdacht - Deutsche Qualitaet.
+Feinpoliert und durchdacht - Deutsche Qualität.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ ENHANCED_NLQ_REQUESTS = Counter(
 
 NLQ_SUGGESTION_USAGE = Counter(
     "nlq_suggestion_usage_total",
-    "Nutzung von Query-Vorschlaegen",
+    "Nutzung von Query-Vorschlägen",
     ["suggestion_type"]
 )
 
@@ -70,7 +70,7 @@ NLQ_SUGGESTION_USAGE = Counter(
 
 @dataclass
 class QueryInterpretation:
-    """Erklaerung wie die Query interpretiert wurde."""
+    """Erklärung wie die Query interpretiert wurde."""
     original_query: str
     interpreted_as: str
     entities_found: List[JSONDict]
@@ -81,7 +81,7 @@ class QueryInterpretation:
 
 @dataclass
 class SQLPreview:
-    """SQL-Vorschau fuer Power-User."""
+    """SQL-Vorschau für Power-User."""
     sql_query: str
     parameters: JSONDict
     estimated_rows: Optional[int]
@@ -116,7 +116,7 @@ class EnhancedNLQResult:
 EXAMPLE_QUERIES: Dict[str, List[str]] = {
     "documents": [
         "Zeige alle Rechnungen von letztem Monat",
-        "Finde Dokumente mit Betrag ueber 1000 EUR",
+        "Finde Dokumente mit Betrag über 1000 EUR",
         "Liste offene Rechnungen von Mueller GmbH",
     ],
     "aggregation": [
@@ -125,12 +125,12 @@ EXAMPLE_QUERIES: Dict[str, List[str]] = {
         "Wie viele Dokumente wurden diese Woche verarbeitet?",
     ],
     "comparison": [
-        "Vergleiche Umsaetze Januar mit Februar",
+        "Vergleiche Umsätze Januar mit Februar",
         "Zeige Unterschied letzte 30 Tage vs. vorherige 30 Tage",
     ],
     "trend": [
         "Wie entwickeln sich die monatlichen Ausgaben?",
-        "Zeige Trend offener Posten ueber 6 Monate",
+        "Zeige Trend offener Posten über 6 Monate",
     ],
 }
 
@@ -138,10 +138,10 @@ COMMON_QUERY_PATTERNS: List[Tuple[str, str, str]] = [
     # (Pattern, Beschreibung, Kategorie)
     ("offene rechnungen", "Zeigt alle unbezahlten Rechnungen", "finance"),
     ("rechnungen von {firma}", "Rechnungen eines bestimmten Lieferanten", "documents"),
-    ("umsatz {zeitraum}", "Umsatzuebersicht fuer einen Zeitraum", "aggregation"),
+    ("umsatz {zeitraum}", "Umsatzübersicht für einen Zeitraum", "aggregation"),
     ("dokumente heute", "Heute verarbeitete Dokumente", "documents"),
     ("hoechste rechnung", "Rechnung mit dem hoechsten Betrag", "aggregation"),
-    ("ueberfaellige rechnungen", "Alle ueberfaelligen Rechnungen", "finance"),
+    ("überfällige rechnungen", "Alle überfälligen Rechnungen", "finance"),
     ("anzahl {dokumenttyp}", "Anzahl eines bestimmten Dokumenttyps", "aggregation"),
 ]
 
@@ -151,7 +151,7 @@ class EnhancedNLQService:
     Erweiterter NLQ-Service mit Power-User Features.
 
     Nutzt den bestehenden NLQService und reichert
-    die Ergebnisse mit zusaetzlichen Informationen an.
+    die Ergebnisse mit zusätzlichen Informationen an.
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -180,11 +180,11 @@ class EnhancedNLQService:
         Verarbeitet eine Abfrage mit erweiterten Features.
 
         Args:
-            query: Die Abfrage in natuerlicher Sprache
+            query: Die Abfrage in natürlicher Sprache
             company_id: Optional Company-ID
             user_id: Optional User-ID
             include_sql_preview: SQL-Preview generieren
-            include_suggestions: Vorschlaege generieren
+            include_suggestions: Vorschläge generieren
             limit: Maximale Anzahl Ergebnisse
 
         Returns:
@@ -207,7 +207,7 @@ class EnhancedNLQService:
             query, base_result
         )
 
-        # SQL-Preview wenn gewuenscht
+        # SQL-Preview wenn gewünscht
         sql_preview: Optional[SQLPreview] = None
         if include_sql_preview:
             sql_preview = await self._generate_sql_preview(
@@ -255,12 +255,12 @@ class EnhancedNLQService:
         limit: int = 10,
     ) -> List[QuerySuggestion]:
         """
-        Gibt Auto-Complete Vorschlaege fuer eine teilweise Eingabe.
+        Gibt Auto-Complete Vorschläge für eine teilweise Eingabe.
 
         Args:
             partial_query: Teilweise eingegebene Abfrage
             company_id: Optional Company-ID
-            limit: Maximale Anzahl Vorschlaege
+            limit: Maximale Anzahl Vorschläge
 
         Returns:
             Liste von QuerySuggestion
@@ -276,7 +276,7 @@ class EnhancedNLQService:
             if partial_lower in history_entry["query"].lower():
                 suggestions.append(QuerySuggestion(
                     suggestion_text=history_entry["query"],
-                    description="Basierend auf frueherer Suche",
+                    description="Basierend auf früherer Suche",
                     category="history",
                     confidence=0.8,
                 ))
@@ -323,7 +323,7 @@ class EnhancedNLQService:
         category: Optional[str] = None,
     ) -> Dict[str, List[str]]:
         """
-        Gibt Beispiel-Abfragen zurueck.
+        Gibt Beispiel-Abfragen zurück.
 
         Args:
             category: Optional Kategorie-Filter
@@ -419,7 +419,7 @@ class EnhancedNLQService:
                 for e in result.extracted_entities
             )
             if not has_date:
-                ambiguities.append("Kein Zeitraum angegeben - alle Daten werden beruecksichtigt")
+                ambiguities.append("Kein Zeitraum angegeben - alle Daten werden berücksichtigt")
 
         return QueryInterpretation(
             original_query=query,
@@ -436,7 +436,7 @@ class EnhancedNLQService:
         result: NLQResult,
         company_id: Optional[uuid.UUID],
     ) -> SQLPreview:
-        """Generiert eine SQL-Vorschau fuer Power-User."""
+        """Generiert eine SQL-Vorschau für Power-User."""
         # Basis-SQL je nach Intent
         tables: List[str] = []
         params: Dict[str, Any] = {}
@@ -521,7 +521,7 @@ class EnhancedNLQService:
         result: NLQResult,
         company_id: Optional[uuid.UUID],
     ) -> List[QuerySuggestion]:
-        """Generiert Vorschlaege zur Verfeinerung der Abfrage."""
+        """Generiert Vorschläge zur Verfeinerung der Abfrage."""
         suggestions: List[QuerySuggestion] = []
 
         # 1. Zeitraum-Verfeinerung wenn kein Zeitraum
@@ -562,8 +562,8 @@ class EnhancedNLQService:
             current_type = doc_types[0].original_text
             related_types = {
                 "rechnungen": ["Lieferscheine", "Angebote"],
-                "lieferscheine": ["Rechnungen", "Auftraege"],
-                "angebote": ["Auftraege", "Rechnungen"],
+                "lieferscheine": ["Rechnungen", "Aufträge"],
+                "angebote": ["Aufträge", "Rechnungen"],
             }
             for related in related_types.get(current_type, []):
                 suggestions.append(QuerySuggestion(
@@ -588,14 +588,14 @@ class EnhancedNLQService:
                 confidence=0.65,
             ))
 
-        return suggestions[:5]  # Maximal 5 Vorschlaege
+        return suggestions[:5]  # Maximal 5 Vorschläge
 
     def _get_related_queries(
         self,
         query: str,
         intent: QueryIntent,
     ) -> List[str]:
-        """Gibt verwandte haeufige Abfragen zurueck."""
+        """Gibt verwandte häufige Abfragen zurück."""
         related: List[str] = []
 
         # Basierend auf Intent
@@ -658,5 +658,5 @@ class EnhancedNLQService:
 # =============================================================================
 
 async def get_enhanced_nlq_service(db: AsyncSession) -> EnhancedNLQService:
-    """Factory fuer EnhancedNLQService."""
+    """Factory für EnhancedNLQService."""
     return EnhancedNLQService(db)

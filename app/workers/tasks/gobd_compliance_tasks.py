@@ -1,11 +1,11 @@
-"""GoBD Compliance Tasks - Celery Tasks fuer GoBD-konforme Dokumentenverarbeitung.
+"""GoBD Compliance Tasks - Celery Tasks für GoBD-konforme Dokumentenverarbeitung.
 
-Automatisierte Tasks fuer:
-- Audit-Chain Verifikation (Blockchain-aehnliche Hash-Kette)
-- Integritaetspruefungen der Archive
+Automatisierte Tasks für:
+- Audit-Chain Verifikation (Blockchain-ähnliche Hash-Kette)
+- Integritätsprüfungen der Archive
 - RFC 3161 Zeitstempel-Anforderungen (batched)
 
-GoBD = Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung
+GoBD = Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung
        von Buechern, Aufzeichnungen und Unterlagen in elektronischer
        Form sowie zum Datenzugriff
 """
@@ -41,17 +41,17 @@ def verify_audit_chain_task(
     self,
     company_id: Optional[str] = None,
 ) -> dict:
-    """Verifiziert die Integritaet der Audit-Chain.
+    """Verifiziert die Integrität der Audit-Chain.
 
-    Prueft ob:
-    - Alle Sequenznummern lueckenlos sind
+    Prüft ob:
+    - Alle Sequenznummern lückenlos sind
     - Alle Hashes korrekt verkette sind
-    - Keine Eintraege manipuliert wurden
+    - Keine Einträge manipuliert wurden
 
-    Wird woechentlich via Celery Beat ausgefuehrt.
+    Wird wöchentlich via Celery Beat ausgeführt.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
 
     Returns:
         Dictionary mit Verifikationsergebnis
@@ -86,7 +86,7 @@ async def _verify_audit_chains(
     db,
     company_id: Optional[uuid.UUID],
 ) -> dict:
-    """Interne Funktion fuer Audit-Chain Verifikation."""
+    """Interne Funktion für Audit-Chain Verifikation."""
     from app.services.compliance import audit_chain_service
 
     results = {
@@ -96,11 +96,11 @@ async def _verify_audit_chains(
         "failures": [],
     }
 
-    # Companies zum Pruefen finden
+    # Companies zum Prüfen finden
     if company_id:
         company_ids = [company_id]
     else:
-        # Alle aktiven Companies pruefen
+        # Alle aktiven Companies prüfen
         result = await db.execute(
             select(Company.id).where(Company.is_active == True)
         )
@@ -162,16 +162,16 @@ def batch_integrity_check_task(
     company_id: Optional[str] = None,
     batch_size: int = 50,
 ) -> dict:
-    """Batch-Integritaetspruefung mit Audit-Chain-Logging.
+    """Batch-Integritätsprüfung mit Audit-Chain-Logging.
 
-    Prueft Archive und protokolliert Ergebnisse in der Audit-Chain.
+    Prüft Archive und protokolliert Ergebnisse in der Audit-Chain.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
         batch_size: Anzahl Archive pro Batch
 
     Returns:
-        Dictionary mit Pruefungsergebnis
+        Dictionary mit Prüfungsergebnis
     """
     import asyncio
 
@@ -205,19 +205,19 @@ async def _batch_integrity_check(
     company_id: Optional[uuid.UUID],
     batch_size: int
 ) -> dict:
-    """Interne Funktion fuer Batch-Integritaetspruefung."""
+    """Interne Funktion für Batch-Integritätsprüfung."""
     from app.db.models import DocumentArchive
     from app.services.compliance import gobd_archive_service, audit_chain_service
     from app.services.compliance.audit_chain_service import ChainEntry
     from app.db.bpmn_models.gobd import AuditChainEventType
 
-    # Query fuer Archive die geprueft werden sollen
+    # Query für Archive die geprüft werden sollen
     query = select(DocumentArchive)
 
     if company_id:
         query = query.where(DocumentArchive.company_id == company_id)
 
-    # Priorisiere Archive, die laenger nicht geprueft wurden
+    # Priorisiere Archive, die länger nicht geprüft wurden
     stale_threshold = datetime.now() - timedelta(days=7)
     query = query.where(
         (DocumentArchive.last_verification_at == None) |
@@ -231,7 +231,7 @@ async def _batch_integrity_check(
     failed = 0
     errors = []
 
-    # Storage Service fuer MinIO-Zugriff
+    # Storage Service für MinIO-Zugriff
     from app.services.storage_service import StorageService
     storage = StorageService()
 
@@ -253,7 +253,7 @@ async def _batch_integrity_check(
                     )
                     # Continue with None - integrity check will use stored hash
 
-            # Integritaetspruefung durchfuehren
+            # Integritätsprüfung durchführen
             check_result = await gobd_archive_service.verify_archive_integrity(
                 db,
                 archive.id,
@@ -323,7 +323,7 @@ async def _batch_integrity_check(
     max_retries=2,
 )
 def generate_chain_statistics_task(self, company_id: str) -> dict:
-    """Generiert Statistiken fuer die Audit-Chain.
+    """Generiert Statistiken für die Audit-Chain.
 
     Args:
         company_id: Firmen-ID
@@ -363,7 +363,7 @@ def generate_chain_statistics_task(self, company_id: str) -> dict:
     max_retries=3,
 )
 def check_retention_warnings_task(self) -> dict:
-    """Prueft auf Archive mit bevorstehenden Aufbewahrungsfristen.
+    """Prüft auf Archive mit bevorstehenden Aufbewahrungsfristen.
 
     Sendet Warnungen entsprechend der RetentionPolicy-Einstellungen.
 
@@ -386,7 +386,7 @@ def check_retention_warnings_task(self) -> dict:
 
 
 async def _check_retention_warnings(db) -> dict:
-    """Interne Funktion fuer Retention-Warnungen."""
+    """Interne Funktion für Retention-Warnungen."""
     from app.services.compliance import retention_service
 
     results = {
@@ -425,7 +425,7 @@ async def _check_retention_warnings(db) -> dict:
                         priority = SlackMessagePriority.URGENT if archive_info.get("is_critical") else SlackMessagePriority.HIGH
                         await slack.send_notification(
                             notification_type=SlackNotificationType.SYSTEM_ALERT,
-                            title="GoBD Aufbewahrungsfrist laeuft ab",
+                            title="GoBD Aufbewahrungsfrist läuft ab",
                             message=f"Archiv {archive_info.get('archive_id', 'N/A')} erreicht Ende der Aufbewahrungsfrist in {archive_info.get('days_remaining', 0)} Tagen.",
                             priority=priority,
                             context={
@@ -464,16 +464,16 @@ async def _check_retention_warnings(db) -> dict:
     default_retry_delay=60,
 )
 def check_breach_deadlines_task(self) -> dict:
-    """Prueft alle 72-Stunden-Deadlines fuer Datenschutzverletzungen.
+    """Prüft alle 72-Stunden-Deadlines für Datenschutzverletzungen.
 
-    KRITISCH: Muss regelmaessig laufen um DSGVO-Fristen einzuhalten!
+    KRITISCH: Muss regelmäßig laufen um DSGVO-Fristen einzuhalten!
 
-    Prueft:
+    Prüft:
     - Abgelaufene Deadlines (SOFORT Alarm)
     - Kritische Deadlines (<12h)
     - Warnungen (<24h)
 
-    Wird stuendlich via Celery Beat ausgefuehrt.
+    Wird stündlich via Celery Beat ausgeführt.
 
     Returns:
         Dictionary mit Deadline-Status
@@ -505,7 +505,7 @@ def check_breach_deadlines_task(self) -> dict:
 
 
 async def _check_all_breach_deadlines(db) -> dict:
-    """Interne Funktion fuer Breach-Deadline-Pruefung."""
+    """Interne Funktion für Breach-Deadline-Prüfung."""
     from app.services.compliance import get_breach_notification_service
 
     service = get_breach_notification_service()
@@ -550,7 +550,7 @@ async def _send_breach_deadline_notification(db, alert: dict) -> None:
         service = NotificationService()
         await service.send_admin_alert(
             subject=f"DSGVO FRISTWARNUNG: Breach {alert['breach_id']}",
-            message=alert.get("message", "72-Stunden-Frist laeuft ab!"),
+            message=alert.get("message", "72-Stunden-Frist läuft ab!"),
             priority="critical",
         )
     except Exception as e:
@@ -568,15 +568,15 @@ async def _send_breach_deadline_notification(db, alert: dict) -> None:
     default_retry_delay=300,
 )
 def daily_breach_report_task(self) -> dict:
-    """Erstellt taeglichen Bericht ueber Datenschutzverletzungen.
+    """Erstellt täglichen Bericht über Datenschutzverletzungen.
 
-    Enthaelt:
+    Enthält:
     - Offene Breaches
     - Status-Zusammenfassung
     - Ausstehende Deadlines
     - Abgeschlossene Breaches (letzte 24h)
 
-    Wird taeglich via Celery Beat ausgefuehrt.
+    Wird täglich via Celery Beat ausgeführt.
 
     Returns:
         Dictionary mit Tagesbericht
@@ -597,7 +597,7 @@ def daily_breach_report_task(self) -> dict:
 
 
 async def _generate_daily_breach_report(db) -> dict:
-    """Generiert taeglichen Breach-Bericht."""
+    """Generiert täglichen Breach-Bericht."""
     from app.services.compliance import get_breach_notification_service, BreachStatus
 
     service = get_breach_notification_service()
@@ -618,11 +618,11 @@ async def _generate_daily_breach_report(db) -> dict:
     cutoff = datetime.now() - timedelta(hours=24)
 
     for breach in all_breaches:
-        # Nach Status zaehlen
+        # Nach Status zählen
         status = breach.status.value
         report["by_status"][status] = report["by_status"].get(status, 0) + 1
 
-        # Nach Schweregrad zaehlen
+        # Nach Schweregrad zählen
         severity = breach.severity.value
         report["by_severity"][severity] = report["by_severity"].get(severity, 0) + 1
 
@@ -630,7 +630,7 @@ async def _generate_daily_breach_report(db) -> dict:
         if breach.authority_notification.value == "pending":
             report["pending_deadlines"] += 1
 
-            # Ueberfaellig?
+            # Überfällig?
             if breach.deadline_72h < datetime.now():
                 report["overdue"] += 1
 

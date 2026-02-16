@@ -2,7 +2,7 @@
 """
 PO-Matching API Endpoints.
 
-REST API fuer 3-Way Purchase Order Matching:
+REST API für 3-Way Purchase Order Matching:
 - Bestellung <-> Lieferschein <-> Rechnung
 - Automatisches Matching und Abweichungserkennung
 - Freigabe-Workflow
@@ -48,7 +48,7 @@ router = APIRouter(prefix="/po-matching", tags=["PO-Matching"])
 
 
 class MatchCreateSchema(BaseModel):
-    """Schema fuer Match-Erstellung."""
+    """Schema für Match-Erstellung."""
     purchase_order_id: Optional[UUID] = Field(None, description="Bestellungs-Dokument-ID")
     delivery_note_id: Optional[UUID] = Field(None, description="Lieferschein-Dokument-ID")
     invoice_id: Optional[UUID] = Field(None, description="Rechnungs-Dokument-ID")
@@ -75,12 +75,12 @@ class AddDocumentSchema(BaseModel):
 
 
 class ApproveMatchSchema(BaseModel):
-    """Schema fuer Match-Freigabe."""
+    """Schema für Match-Freigabe."""
     notes: Optional[str] = Field(None, max_length=2000, description="Freigabe-Notizen")
 
 
 class DiscrepancyResponse(BaseModel):
-    """Response-Schema fuer Abweichung."""
+    """Response-Schema für Abweichung."""
     id: UUID
     match_id: UUID
     category: DiscrepancyCategory
@@ -101,7 +101,7 @@ class DiscrepancyResponse(BaseModel):
 
 
 class MatchResponse(BaseModel):
-    """Response-Schema fuer PO-Match."""
+    """Response-Schema für PO-Match."""
     id: UUID
     company_id: UUID
     purchase_order_id: Optional[UUID]
@@ -133,7 +133,7 @@ class MatchResponse(BaseModel):
 
 
 class MatchDetailResponse(MatchResponse):
-    """Response-Schema fuer Match mit Abweichungen."""
+    """Response-Schema für Match mit Abweichungen."""
     discrepancies: List[DiscrepancyResponse] = Field(default_factory=list)
 
 
@@ -164,7 +164,7 @@ class MatchStatisticsResponse(BaseModel):
 
 
 class UnmatchedDocumentResponse(BaseModel):
-    """Response fuer ungematchtes Dokument."""
+    """Response für ungematchtes Dokument."""
     id: UUID
     filename: Optional[str]
     document_type: Optional[str]
@@ -175,7 +175,7 @@ class UnmatchedDocumentResponse(BaseModel):
 
 
 class AutoMatchResponse(BaseModel):
-    """Response fuer Auto-Matching."""
+    """Response für Auto-Matching."""
     matches_updated: int
     matches: List[MatchResponse]
 
@@ -271,7 +271,7 @@ async def list_matches(
     date_to: Optional[date] = Query(None, description="Bis Datum"),
     order_number: Optional[str] = Query(None, description="Bestellnummer-Suche"),
     page: int = Query(0, ge=0, description="Seite (0-basiert)"),
-    page_size: int = Query(25, ge=1, le=100, description="Eintraege pro Seite"),
+    page_size: int = Query(25, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> MatchListResponse:
@@ -337,7 +337,7 @@ async def get_unmatched_documents(
     "/statistics",
     response_model=MatchStatisticsResponse,
     summary="Matching-Statistiken",
-    description="Berechnet Matching-Statistiken fuer einen Zeitraum"
+    description="Berechnet Matching-Statistiken für einen Zeitraum"
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_matching_statistics(
@@ -347,7 +347,7 @@ async def get_matching_statistics(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> MatchStatisticsResponse:
-    """Gibt Matching-Statistiken zurueck."""
+    """Gibt Matching-Statistiken zurück."""
     service = get_po_matching_service()
 
     try:
@@ -457,8 +457,8 @@ async def create_match(
 @router.post(
     "/auto-detect",
     response_model=AutoMatchResponse,
-    summary="Auto-Matching ausfuehren",
-    description="Fuehrt automatisches Matching nach Bestellnummer und Lieferant aus"
+    summary="Auto-Matching ausführen",
+    description="Führt automatisches Matching nach Bestellnummer und Lieferant aus"
 )
 @limiter.limit("10/minute", key_func=get_user_identifier)
 async def auto_detect_matches(
@@ -466,7 +466,7 @@ async def auto_detect_matches(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> AutoMatchResponse:
-    """Fuehrt Auto-Matching aus."""
+    """Führt Auto-Matching aus."""
     service = get_po_matching_service()
 
     try:
@@ -516,7 +516,7 @@ async def add_document_to_match(
         return _match_to_response(match)
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Dokument-Verknuepfung"))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Dokument-Verknüpfung"))
     except Exception as e:
         logger.exception("add_document_to_match_failed", **safe_error_log(e))
         raise HTTPException(status_code=500, detail="Fehler beim Hinzufuegen des Dokuments")

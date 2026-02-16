@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""API Endpoints fuer Saved Filters.
+"""API Endpoints für Saved Filters.
 
 Phase 4.5: Frontend UX Enhancement - Saved Filters + Sharing
 
 Endpoints:
-- GET /api/v1/saved-filters?feature=documents - Liste Filter fuer Feature
+- GET /api/v1/saved-filters?feature=documents - Liste Filter für Feature
 - GET /api/v1/saved-filters/{id} - Einzelner Filter
 - POST /api/v1/saved-filters - Neuen Filter erstellen
 - PATCH /api/v1/saved-filters/{id} - Filter aktualisieren
-- DELETE /api/v1/saved-filters/{id} - Filter loeschen
+- DELETE /api/v1/saved-filters/{id} - Filter löschen
 - POST /api/v1/saved-filters/{id}/use - Nutzung aufzeichnen
 - POST /api/v1/saved-filters/{id}/duplicate - Filter duplizieren
 - POST /api/v1/saved-filters/{id}/set-default - Als Default setzen
@@ -36,10 +36,10 @@ router = APIRouter(prefix="/saved-filters", tags=["Saved Filters"])
 # =============================================================================
 
 class FilterConfigSchema(BaseModel):
-    """Schema fuer Filter-Konfiguration (flexibel)."""
+    """Schema für Filter-Konfiguration (flexibel)."""
 
     class Config:
-        extra = "allow"  # Erlaube beliebige zusaetzliche Felder
+        extra = "allow"  # Erlaube beliebige zusätzliche Felder
 
 
 class SavedFilterCreate(BaseModel):
@@ -62,7 +62,7 @@ class SavedFilterUpdate(BaseModel):
 
 
 class SavedFilterResponse(BaseModel):
-    """Schema fuer Filter-Response."""
+    """Schema für Filter-Response."""
     id: UUID
     name: str
     description: Optional[str]
@@ -81,7 +81,7 @@ class SavedFilterResponse(BaseModel):
 
 
 class SavedFilterListResponse(BaseModel):
-    """Schema fuer Filter-Listen-Response."""
+    """Schema für Filter-Listen-Response."""
     filters: List[SavedFilterResponse]
     total: int
 
@@ -123,14 +123,14 @@ def _filter_to_response(
 @router.get("", response_model=SavedFilterListResponse)
 async def list_saved_filters(
     feature: str = Query(..., description=f"Feature: {', '.join(sorted(ALLOWED_FEATURES))}"),
-    include_shared: bool = Query(True, description="Geteilte Filter einschliessen"),
+    include_shared: bool = Query(True, description="Geteilte Filter einschließen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SavedFilterListResponse:
-    """Liste alle gespeicherten Filter fuer ein Feature.
+    """Liste alle gespeicherten Filter für ein Feature.
 
-    Gibt eigene Filter und (optional) geteilte Filter der Company zurueck.
-    Sortiert nach: Default > Eigene > Geteilte, dann nach Nutzungshaeufigkeit.
+    Gibt eigene Filter und (optional) geteilte Filter der Company zurück.
+    Sortiert nach: Default > Eigene > Geteilte, dann nach Nutzungshäufigkeit.
     """
     service = SavedFilterService(db)
 
@@ -165,7 +165,7 @@ async def get_saved_filter(
 ) -> SavedFilterResponse:
     """Hole einen einzelnen gespeicherten Filter.
 
-    Gibt den Filter zurueck wenn:
+    Gibt den Filter zurück wenn:
     - Der User der Eigentuemer ist, ODER
     - Der Filter geteilt ist und zur gleichen Company gehoert
     """
@@ -272,14 +272,14 @@ async def update_saved_filter(
 @router.delete("/{filter_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_saved_filter(
     filter_id: UUID,
-    hard_delete: bool = Query(False, description="Permanent loeschen statt Soft-Delete"),
+    hard_delete: bool = Query(False, description="Permanent löschen statt Soft-Delete"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loesche einen gespeicherten Filter.
+    """Lösche einen gespeicherten Filter.
 
     Standardmaessig Soft-Delete (wiederherstellbar).
-    Mit hard_delete=true wird der Filter permanent geloescht.
+    Mit hard_delete=true wird der Filter permanent gelöscht.
     """
     service = SavedFilterService(db)
 
@@ -310,8 +310,8 @@ async def record_filter_usage(
 ) -> None:
     """Zeichne Nutzung eines Filters auf.
 
-    Erhoeht den use_count und aktualisiert last_used_at.
-    Kann fuer eigene und geteilte Filter aufgerufen werden.
+    Erhöht den use_count und aktualisiert last_used_at.
+    Kann für eigene und geteilte Filter aufgerufen werden.
     """
     service = SavedFilterService(db)
 
@@ -343,8 +343,8 @@ async def duplicate_saved_filter(
 ) -> SavedFilterResponse:
     """Dupliziere einen Filter.
 
-    Erstellt eine Kopie des Filters fuer den aktuellen User.
-    Funktioniert auch fuer geteilte Filter.
+    Erstellt eine Kopie des Filters für den aktuellen User.
+    Funktioniert auch für geteilte Filter.
     Die Kopie ist initial privat (nicht geteilt).
     """
     service = SavedFilterService(db)
@@ -382,10 +382,10 @@ async def set_default_filter(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SavedFilterResponse:
-    """Setze einen Filter als Standard fuer das Feature.
+    """Setze einen Filter als Standard für das Feature.
 
-    Der bisherige Standard-Filter (falls vorhanden) wird zurueckgesetzt.
-    Funktioniert fuer eigene und geteilte Filter.
+    Der bisherige Standard-Filter (falls vorhanden) wird zurückgesetzt.
+    Funktioniert für eigene und geteilte Filter.
     """
     service = SavedFilterService(db)
 
@@ -416,9 +416,9 @@ async def clear_default_filter(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Entferne den Standard-Filter fuer ein Feature.
+    """Entferne den Standard-Filter für ein Feature.
 
-    Nach dem Aufruf hat der User keinen Standard-Filter mehr fuer dieses Feature.
+    Nach dem Aufruf hat der User keinen Standard-Filter mehr für dieses Feature.
     """
     service = SavedFilterService(db)
 
@@ -437,10 +437,10 @@ async def clear_default_filter(
 
 @router.get("/features/list", response_model=List[str])
 async def list_available_features() -> List[str]:
-    """Liste aller verfuegbaren Features fuer Filter.
+    """Liste aller verfügbaren Features für Filter.
 
-    Gibt die erlaubten Feature-Namen zurueck, die beim Erstellen
-    von Filtern verwendet werden koennen.
+    Gibt die erlaubten Feature-Namen zurück, die beim Erstellen
+    von Filtern verwendet werden können.
     """
     return sorted(ALLOWED_FEATURES)
 
@@ -454,7 +454,7 @@ async def share_saved_filter(
     """Teile einen Filter mit der Company.
 
     Nur der Eigentuemer kann einen Filter teilen.
-    Geteilte Filter sind fuer alle User der gleichen Company sichtbar.
+    Geteilte Filter sind für alle User der gleichen Company sichtbar.
     """
     service = SavedFilterService(db)
 
@@ -487,7 +487,7 @@ async def list_shared_filters(
 ) -> SavedFilterListResponse:
     """Liste alle mit mir geteilte Filter.
 
-    Gibt Filter zurueck die von anderen Usern der gleichen Company
+    Gibt Filter zurück die von anderen Usern der gleichen Company
     geteilt wurden.
     """
     service = SavedFilterService(db)

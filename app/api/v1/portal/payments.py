@@ -1,7 +1,7 @@
 """
 Portal Payments API.
 
-Zahlungsbestaetigungen fuer Kundenportal.
+Zahlungsbestätigungen für Kundenportal.
 """
 
 from datetime import datetime
@@ -21,7 +21,7 @@ router = APIRouter(prefix="/payments", tags=["Portal-Zahlungen"])
 
 
 class PaymentConfirmationRequest(BaseModel):
-    """Zahlungsbestaetigungs-Anfrage."""
+    """Zahlungsbestätigungs-Anfrage."""
     invoice_tracking_id: UUID
     payment_date: datetime
     payment_amount: str
@@ -38,12 +38,12 @@ async def submit_payment_confirmation(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Reiche eine Zahlungsbestaetigung ein.
+    Reiche eine Zahlungsbestätigung ein.
     """
     if not portal_user.can_confirm_payments:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer Zahlungsbestaetigungen",
+            detail="Keine Berechtigung für Zahlungsbestätigungen",
         )
 
     service = get_portal_payment_service(db)
@@ -63,7 +63,7 @@ async def submit_payment_confirmation(
         return {
             "success": True,
             "confirmation_id": str(confirmation.id),
-            "message": "Zahlungsbestaetigung erfolgreich eingereicht",
+            "message": "Zahlungsbestätigung erfolgreich eingereicht",
         }
 
     except ValueError as e:
@@ -83,7 +83,7 @@ async def list_payment_confirmations(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Liste alle Zahlungsbestaetigungen.
+    Liste alle Zahlungsbestätigungen.
     """
     service = get_portal_payment_service(db)
 
@@ -111,7 +111,7 @@ async def get_payment_confirmation_detail(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Hole Details einer Zahlungsbestaetigung.
+    Hole Details einer Zahlungsbestätigung.
     """
     service = get_portal_payment_service(db)
 
@@ -124,7 +124,7 @@ async def get_payment_confirmation_detail(
     if not detail:
         raise HTTPException(
             status_code=404,
-            detail="Zahlungsbestaetigung nicht gefunden",
+            detail="Zahlungsbestätigung nicht gefunden",
         )
 
     return detail
@@ -137,7 +137,7 @@ async def cancel_payment_confirmation(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Storniere eine ausstehende Zahlungsbestaetigung.
+    Storniere eine ausstehende Zahlungsbestätigung.
     """
     service = get_portal_payment_service(db)
 
@@ -149,10 +149,10 @@ async def cancel_payment_confirmation(
     if not success:
         raise HTTPException(
             status_code=400,
-            detail="Stornierung nicht moeglich (nicht gefunden oder bereits bearbeitet)",
+            detail="Stornierung nicht möglich (nicht gefunden oder bereits bearbeitet)",
         )
 
     return {
         "success": True,
-        "message": "Zahlungsbestaetigung storniert",
+        "message": "Zahlungsbestätigung storniert",
     }

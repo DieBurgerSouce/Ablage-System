@@ -3,14 +3,14 @@
 Approval Enhanced + Automation 2.0 Celery Tasks.
 
 Feature #3: Approval Workflow Depth
-- check_approval_timeouts_task: Ueberfaellige Genehmigungen erkennen + eskalieren
-- calculate_approval_sla_task: SLA-Metriken berechnen (taeglich)
+- check_approval_timeouts_task: Überfällige Genehmigungen erkennen + eskalieren
+- calculate_approval_sla_task: SLA-Metriken berechnen (täglich)
 - activate_substitutions_task: Stellvertretungen aktivieren/deaktivieren
 
 Feature #7: Automation 2.0
-- run_auto_matching_task: Auto-Matching fuer einzelnes Dokument
-- run_batch_auto_matching_task: Batch-Matching fuer alle ungematchten Dokumente
-- run_auto_filing_task: Auto-Filing fuer einzelnes Dokument
+- run_auto_matching_task: Auto-Matching für einzelnes Dokument
+- run_batch_auto_matching_task: Batch-Matching für alle ungematchten Dokumente
+- run_auto_filing_task: Auto-Filing für einzelnes Dokument
 
 Feinpoliert und durchdacht - Enterprise Workflow Automation.
 """
@@ -43,10 +43,10 @@ def check_approval_timeouts_task(
     self,
     company_id: Optional[str] = None,
 ) -> Dict[str, object]:
-    """Prueft ueberfaellige Genehmigungen und eskaliert automatisch.
+    """Prüft überfällige Genehmigungen und eskaliert automatisch.
 
-    Wird stuendlich per Celery Beat ausgefuehrt.
-    Findet alle pending Requests mit ueberschrittenem due_date
+    Wird stündlich per Celery Beat ausgeführt.
+    Findet alle pending Requests mit überschrittenem due_date
     und wendet passende Eskalationsregeln an.
 
     Args:
@@ -91,7 +91,7 @@ def check_approval_timeouts_task(
                     total_substitutions_activated += activated
                     total_substitutions_deactivated += deactivated
 
-                    # 2. Ueberfaellige Genehmigungen finden
+                    # 2. Überfällige Genehmigungen finden
                     overdue = await escalation_service.check_overdue_approvals(
                         db, cid
                     )
@@ -160,14 +160,14 @@ def calculate_approval_sla_task(
     company_id: Optional[str] = None,
     period_days: int = 30,
 ) -> Dict[str, object]:
-    """Berechnet SLA-Metriken fuer abgeschlossene Genehmigungsschritte.
+    """Berechnet SLA-Metriken für abgeschlossene Genehmigungsschritte.
 
-    Wird taeglich um 03:00 Uhr per Celery Beat ausgefuehrt.
-    Erfasst Metriken fuer Schritte die in den letzten 24h abgeschlossen wurden.
+    Wird täglich um 03:00 Uhr per Celery Beat ausgeführt.
+    Erfasst Metriken für Schritte die in den letzten 24h abgeschlossen wurden.
 
     Args:
         company_id: Optionale Company-ID (sonst alle Companies)
-        period_days: Zeitraum fuer Dashboard-Berechnung
+        period_days: Zeitraum für Dashboard-Berechnung
 
     Returns:
         Dict mit SLA-Statistiken
@@ -187,7 +187,7 @@ def calculate_approval_sla_task(
         async with get_async_session_context() as db:
             sla_service = SLAMonitoringService(db)
             now = utc_now()
-            since = now - timedelta(hours=25)  # Etwas mehr als 24h fuer Overlap
+            since = now - timedelta(hours=25)  # Etwas mehr als 24h für Overlap
 
             companies_to_check: List[UUID] = []
 
@@ -204,7 +204,7 @@ def calculate_approval_sla_task(
 
             for cid in companies_to_check:
                 try:
-                    # Kuerzlich abgeschlossene Steps finden
+                    # Kürzlich abgeschlossene Steps finden
                     stmt = (
                         select(ApprovalStep)
                         .join(
@@ -234,7 +234,7 @@ def calculate_approval_sla_task(
                             if metric.is_breached:
                                 total_breaches += 1
                         except ValueError:
-                            # Request nicht gefunden - ueberspringe
+                            # Request nicht gefunden - überspringe
                             pass
 
                     await db.commit()
@@ -289,7 +289,7 @@ def run_auto_matching_task(
     company_id: str,
     document_id: str,
 ) -> Dict[str, object]:
-    """Auto-Matching fuer ein einzelnes Dokument ausfuehren.
+    """Auto-Matching für ein einzelnes Dokument ausführen.
 
     Wird nach OCR-Abschluss oder Dokument-Upload getriggert.
     Sucht passende Dokumente (Bestellung <-> Lieferschein <-> Rechnung).
@@ -345,9 +345,9 @@ def run_batch_auto_matching_task(
     company_id: Optional[str] = None,
     limit: int = 500,
 ) -> Dict[str, object]:
-    """Batch-Matching fuer alle ungematchten Dokumente.
+    """Batch-Matching für alle ungematchten Dokumente.
 
-    Wird naechtlich per Celery Beat ausgefuehrt.
+    Wird naechtlich per Celery Beat ausgeführt.
     Verarbeitet alle Dokumente ohne bestehendes Matching.
 
     Args:
@@ -433,7 +433,7 @@ def run_auto_filing_task(
     company_id: str,
     document_id: str,
 ) -> Dict[str, object]:
-    """Auto-Filing fuer ein einzelnes Dokument ausfuehren.
+    """Auto-Filing für ein einzelnes Dokument ausführen.
 
     Wird nach OCR-Abschluss getriggert.
     Klassifiziert das Dokument und ordnet es automatisch ein.

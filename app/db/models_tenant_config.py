@@ -1,5 +1,5 @@
 """
-Tenant-Konfigurations-Modell fuer Multi-Tenancy.
+Tenant-Konfigurations-Modell für Multi-Tenancy.
 
 Verwaltet Feature-Flags, Kontingente und Branding pro Mandant.
 """
@@ -23,15 +23,15 @@ from app.db.models import Base, CrossDBJSON
 
 class TenantConfig(Base):
     """
-    Mandanten-Konfiguration fuer Feature-Flags und Kontingente.
+    Mandanten-Konfiguration für Feature-Flags und Kontingente.
 
     Jeder Mandant (Company) kann eigene Konfigurationen haben:
     - Feature-Flags (z.B. OCR aktiviert, DATEV-Integration)
     - Kontingente (z.B. max. Dokumente pro Monat, Speicherplatz)
     - Branding (z.B. Logo-URL, Farben)
 
-    RLS: Diese Tabelle selbst benoetigt keine RLS, da sie nur von
-    System-Admins verwaltet wird. Der Zugriff erfolgt ueber die
+    RLS: Diese Tabelle selbst benötigt keine RLS, da sie nur von
+    System-Admins verwaltet wird. Der Zugriff erfolgt über die
     Admin-API mit Superuser-Berechtigung.
     """
 

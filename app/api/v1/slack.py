@@ -1,7 +1,7 @@
 """
 Slack Integration API Endpoints.
 
-Ermoeglicht:
+Ermöglicht:
 - Slack-Kanal-Konfiguration (CRUD)
 - Verbindungstest
 - Nachrichten-Verlauf einsehen
@@ -52,15 +52,15 @@ router = APIRouter(prefix="/slack", tags=["slack"])
 
 
 class SlackChannelCreate(BaseModel):
-    """Schema fuer Kanal-Erstellung."""
+    """Schema für Kanal-Erstellung."""
     channel_id: str = Field(..., min_length=1, max_length=50, description="Slack Channel ID")
     channel_name: str = Field(..., min_length=1, max_length=100, description="Kanal-Name ohne #")
     channel_type: str = Field(default="public", description="public, private, dm")
-    company_id: Optional[UUID] = Field(default=None, description="Firmen-ID fuer Multi-Tenant")
+    company_id: Optional[UUID] = Field(default=None, description="Firmen-ID für Multi-Tenant")
     notification_types: list[str] = Field(default_factory=list, description="Notification-Typen")
     min_priority: str = Field(default="normal", description="Mindest-Prioritaet")
     is_default: bool = Field(default=False, description="Standard-Kanal")
-    include_context: bool = Field(default=True, description="Kontext einschliessen")
+    include_context: bool = Field(default=True, description="Kontext einschließen")
     mention_users: list[str] = Field(default_factory=list, description="Slack User-IDs")
     custom_icon: Optional[str] = Field(default=None, description="Custom Emoji")
 
@@ -69,7 +69,7 @@ class SlackChannelCreate(BaseModel):
     def validate_channel_id(cls, v: str) -> str:
         """Validiert Slack Channel ID Format."""
         if not re.match(r"^[A-Z0-9]{9,11}$", v):
-            raise ValueError("Ungueltige Slack Channel ID (Format: C01234567)")
+            raise ValueError("Ungültige Slack Channel ID (Format: C01234567)")
         return v
 
     @field_validator("channel_type")
@@ -92,7 +92,7 @@ class SlackChannelCreate(BaseModel):
 
 
 class SlackChannelUpdate(BaseModel):
-    """Schema fuer Kanal-Update."""
+    """Schema für Kanal-Update."""
     channel_name: Optional[str] = Field(default=None, max_length=100)
     notification_types: Optional[list[str]] = None
     min_priority: Optional[str] = None
@@ -115,7 +115,7 @@ class SlackChannelUpdate(BaseModel):
 
 
 class SlackChannelResponse(BaseModel):
-    """Schema fuer Kanal-Response."""
+    """Schema für Kanal-Response."""
     id: UUID
     channel_id: str
     channel_name: str
@@ -143,7 +143,7 @@ class SlackChannelListResponse(BaseModel):
 
 
 class SlackMessageLogResponse(BaseModel):
-    """Schema fuer Nachrichten-Log Response."""
+    """Schema für Nachrichten-Log Response."""
     id: UUID
     slack_channel_id: str
     message_ts: Optional[str]
@@ -169,7 +169,7 @@ class SlackMessageListResponse(BaseModel):
 
 
 class SlackUserMappingCreate(BaseModel):
-    """Schema fuer User-Mapping Erstellung."""
+    """Schema für User-Mapping Erstellung."""
     slack_user_id: str = Field(..., min_length=1, max_length=50)
     slack_username: Optional[str] = Field(default=None, max_length=100)
     dm_enabled: bool = Field(default=False)
@@ -183,7 +183,7 @@ class SlackUserMappingCreate(BaseModel):
     def validate_slack_user_id(cls, v: str) -> str:
         """Validiert Slack User ID Format."""
         if not re.match(r"^[A-Z0-9]{9,11}$", v):
-            raise ValueError("Ungueltige Slack User ID (Format: U01234567)")
+            raise ValueError("Ungültige Slack User ID (Format: U01234567)")
         return v
 
     @field_validator("quiet_hours_start", "quiet_hours_end")
@@ -198,7 +198,7 @@ class SlackUserMappingCreate(BaseModel):
 
 
 class SlackUserMappingResponse(BaseModel):
-    """Schema fuer User-Mapping Response."""
+    """Schema für User-Mapping Response."""
     id: UUID
     user_id: UUID
     slack_user_id: str
@@ -217,7 +217,7 @@ class SlackUserMappingResponse(BaseModel):
 
 
 class SlackTestMessageRequest(BaseModel):
-    """Schema fuer Test-Nachricht."""
+    """Schema für Test-Nachricht."""
     channel_id: Optional[UUID] = Field(default=None, description="Kanal-ID (optional)")
     message: str = Field(default="Dies ist eine Test-Nachricht vom Ablage-System.")
     notification_type: str = Field(default="system_alert")
@@ -225,14 +225,14 @@ class SlackTestMessageRequest(BaseModel):
 
 
 class SlackTestMessageResponse(BaseModel):
-    """Schema fuer Test-Nachricht Response."""
+    """Schema für Test-Nachricht Response."""
     success: bool
     message_ts: Optional[str] = None
     error: Optional[str] = None
 
 
 class SlackConnectionStatus(BaseModel):
-    """Schema fuer Verbindungs-Status."""
+    """Schema für Verbindungs-Status."""
     enabled: bool
     webhook_configured: bool
     bot_token_configured: bool
@@ -242,7 +242,7 @@ class SlackConnectionStatus(BaseModel):
 
 
 class SlackStatistics(BaseModel):
-    """Schema fuer Slack-Statistiken."""
+    """Schema für Slack-Statistiken."""
     total_channels: int
     active_channels: int
     total_messages_sent: int
@@ -260,13 +260,13 @@ class SlackStatistics(BaseModel):
 @router.get(
     "/status",
     response_model=SlackConnectionStatus,
-    summary="Verbindungs-Status pruefen",
-    description="Prueft den Status der Slack-Integration.",
+    summary="Verbindungs-Status prüfen",
+    description="Prüft den Status der Slack-Integration.",
 )
 async def get_slack_status(
     current_user: User = Depends(require_admin),
 ) -> SlackConnectionStatus:
-    """Gibt den aktuellen Slack-Verbindungsstatus zurueck."""
+    """Gibt den aktuellen Slack-Verbindungsstatus zurück."""
     service = get_slack_service()
     status_data = await service.test_connection()
     return SlackConnectionStatus(**status_data)
@@ -349,7 +349,7 @@ async def create_slack_channel(
     db: AsyncSession = Depends(get_db),
 ) -> SlackChannelResponse:
     """Erstellt eine neue Slack-Kanal-Konfiguration."""
-    # Pruefen ob Kanal bereits existiert
+    # Prüfen ob Kanal bereits existiert
     existing = await db.execute(
         select(SlackChannel).where(
             SlackChannel.channel_id == channel_data.channel_id,
@@ -359,7 +359,7 @@ async def create_slack_channel(
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Kanal existiert bereits fuer diese Firma",
+            detail="Kanal existiert bereits für diese Firma",
         )
 
     channel = SlackChannel(
@@ -500,7 +500,7 @@ async def delete_slack_channel(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Loescht einen Slack-Kanal."""
+    """Löscht einen Slack-Kanal."""
     result = await db.execute(
         select(SlackChannel).where(SlackChannel.id == channel_id)
     )
@@ -681,18 +681,18 @@ async def create_my_slack_mapping(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SlackUserMappingResponse:
-    """Erstellt ein Slack-Mapping fuer den aktuellen Benutzer."""
-    # Pruefen ob bereits Mapping existiert
+    """Erstellt ein Slack-Mapping für den aktuellen Benutzer."""
+    # Prüfen ob bereits Mapping existiert
     existing = await db.execute(
         select(SlackUserMapping).where(SlackUserMapping.user_id == current_user.id)
     )
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Slack-Verknuepfung existiert bereits",
+            detail="Slack-Verknüpfung existiert bereits",
         )
 
-    # Pruefen ob Slack-User bereits verwendet
+    # Prüfen ob Slack-User bereits verwendet
     existing_slack = await db.execute(
         select(SlackUserMapping).where(
             SlackUserMapping.slack_user_id == mapping_data.slack_user_id
@@ -701,7 +701,7 @@ async def create_my_slack_mapping(
     if existing_slack.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Diese Slack-ID ist bereits mit einem anderen Benutzer verknuepft",
+            detail="Diese Slack-ID ist bereits mit einem anderen Benutzer verknüpft",
         )
 
     mapping = SlackUserMapping(
@@ -732,13 +732,13 @@ async def create_my_slack_mapping(
     "/user-mapping",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="User-Mapping entfernen",
-    description="Entfernt die Slack-Verknuepfung des aktuellen Benutzers.",
+    description="Entfernt die Slack-Verknüpfung des aktuellen Benutzers.",
 )
 async def delete_my_slack_mapping(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Loescht das Slack-Mapping des aktuellen Benutzers."""
+    """Löscht das Slack-Mapping des aktuellen Benutzers."""
     result = await db.execute(
         select(SlackUserMapping).where(SlackUserMapping.user_id == current_user.id)
     )
@@ -747,7 +747,7 @@ async def delete_my_slack_mapping(
     if not mapping:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Keine Slack-Verknuepfung gefunden",
+            detail="Keine Slack-Verknüpfung gefunden",
         )
 
     await db.delete(mapping)
@@ -759,12 +759,12 @@ async def delete_my_slack_mapping(
     )
 
 
-# Admin-Endpoint fuer alle User-Mappings
+# Admin-Endpoint für alle User-Mappings
 @router.get(
     "/user-mappings",
     response_model=list[SlackUserMappingResponse],
     summary="Alle User-Mappings (Admin)",
-    description="Listet alle Slack-User-Mappings auf (nur fuer Admins).",
+    description="Listet alle Slack-User-Mappings auf (nur für Admins).",
 )
 async def list_all_user_mappings(
     current_user: User = Depends(require_admin),
@@ -787,13 +787,13 @@ async def list_all_user_mappings(
 @router.get(
     "/notification-types",
     response_model=list[dict],
-    summary="Verfuegbare Notification-Typen",
-    description="Listet alle verfuegbaren Slack-Notification-Typen auf.",
+    summary="Verfügbare Notification-Typen",
+    description="Listet alle verfügbaren Slack-Notification-Typen auf.",
 )
 async def get_notification_types(
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    """Gibt alle verfuegbaren Notification-Typen zurueck."""
+    """Gibt alle verfügbaren Notification-Typen zurück."""
     types = [
         {
             "type": "document_processed",
@@ -828,13 +828,13 @@ async def get_notification_types(
         {
             "type": "high_risk_entity",
             "name": "Hochrisiko-Partner",
-            "description": "Wenn ein Geschaeftspartner hohen Risikowert erreicht",
+            "description": "Wenn ein Geschäftspartner hohen Risikowert erreicht",
             "icon": ":warning:",
         },
         {
             "type": "dunning_escalation",
             "name": "Mahneskalation",
-            "description": "Wenn eine Mahnstufe erhoeht wird",
+            "description": "Wenn eine Mahnstufe erhöht wird",
             "icon": ":warning:",
         },
         {

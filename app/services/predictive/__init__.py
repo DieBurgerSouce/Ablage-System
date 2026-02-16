@@ -3,10 +3,10 @@
 Predictive Services.
 
 Vision 2.0 Feature: Predictive Intelligence (Phase 5)
-Bietet proaktive Ueberwachung und Vorhersagen:
+Bietet proaktive Überwachung und Vorhersagen:
 - GPU VRAM Overflow Vorhersage
 - Queue Overflow Vorhersage
-- OCR Qualitaets-Degradation Erkennung
+- OCR Qualitäts-Degradation Erkennung
 - Ressourcen-Forecasting
 - Cashflow Prediction (Phase 2.2)
 

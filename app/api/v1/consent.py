@@ -2,9 +2,9 @@
 """
 Consent Management API Endpoints.
 
-Endpoints fuer Einwilligungsverwaltung nach DSGVO:
+Endpoints für Einwilligungsverwaltung nach DSGVO:
 - Einwilligungen erstellen, erteilen, widerrufen
-- Auftragsverarbeitungsvertraege (AVV)
+- Auftragsverarbeitungsverträge (AVV)
 - Aufbewahrungsrichtlinien
 - Audit-Trail
 
@@ -47,7 +47,7 @@ router = APIRouter(prefix="/consent", tags=["Consent Management"])
 # =============================================================================
 
 class ConsentRequestCreate(BaseModel):
-    """Schema fuer Einwilligungsanfrage."""
+    """Schema für Einwilligungsanfrage."""
     consent_type: str = Field(..., description="Typ der Einwilligung")
     entity_id: Optional[UUID] = None
     user_id: Optional[UUID] = None
@@ -59,7 +59,7 @@ class ConsentRequestCreate(BaseModel):
 
 
 class ConsentGrantRequest(BaseModel):
-    """Schema fuer Einwilligungserteilung."""
+    """Schema für Einwilligungserteilung."""
     grantor_name: Optional[str] = Field(None, max_length=200)
     grantor_role: Optional[str] = Field(None, max_length=100)
     conditions: Optional[str] = None
@@ -69,13 +69,13 @@ class ConsentGrantRequest(BaseModel):
 
 
 class ConsentWithdrawRequest(BaseModel):
-    """Schema fuer Einwilligungswiderruf."""
+    """Schema für Einwilligungswiderruf."""
     reason: Optional[str] = Field(None, max_length=500)
     method: Optional[str] = Field(None, max_length=50)
 
 
 class ConsentResponse(BaseModel):
-    """Schema fuer Einwilligungs-Antwort."""
+    """Schema für Einwilligungs-Antwort."""
     id: UUID
     entity_id: Optional[UUID]
     user_id: Optional[UUID]
@@ -113,7 +113,7 @@ class ConsentListResponse(BaseModel):
 
 
 class DPACreate(BaseModel):
-    """Schema fuer AVV-Erstellung."""
+    """Schema für AVV-Erstellung."""
     controller_name: str = Field(..., max_length=255)
     processor_name: str = Field(..., max_length=255)
     title: str = Field(..., max_length=255)
@@ -133,7 +133,7 @@ class DPACreate(BaseModel):
 
 
 class DPAResponse(BaseModel):
-    """Schema fuer AVV-Antwort."""
+    """Schema für AVV-Antwort."""
     id: UUID
     controller_name: str
     processor_name: str
@@ -171,7 +171,7 @@ class DPAListResponse(BaseModel):
 
 
 class RetentionPolicyCreate(BaseModel):
-    """Schema fuer Aufbewahrungsrichtlinie."""
+    """Schema für Aufbewahrungsrichtlinie."""
     name: str = Field(..., max_length=100)
     description: Optional[str] = None
     document_type: Optional[str] = Field(None, max_length=50)
@@ -185,7 +185,7 @@ class RetentionPolicyCreate(BaseModel):
 
 
 class RetentionPolicyResponse(BaseModel):
-    """Schema fuer Aufbewahrungsrichtlinie-Antwort."""
+    """Schema für Aufbewahrungsrichtlinie-Antwort."""
     id: UUID
     name: str
     description: Optional[str]
@@ -204,7 +204,7 @@ class RetentionPolicyResponse(BaseModel):
 
 
 class AuditLogResponse(BaseModel):
-    """Schema fuer Audit-Log-Antwort."""
+    """Schema für Audit-Log-Antwort."""
     id: UUID
     consent_record_id: UUID
     action: str
@@ -314,7 +314,7 @@ async def list_consents(
     user_id: Optional[UUID] = Query(None, description="Filter nach User"),
     consent_type: Optional[str] = Query(None, description="Filter nach Typ"),
     status_filter: Optional[str] = Query(None, alias="status", description="Filter nach Status"),
-    only_valid: bool = Query(False, description="Nur gueltige Einwilligungen"),
+    only_valid: bool = Query(False, description="Nur gültige Einwilligungen"),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
@@ -374,7 +374,7 @@ async def check_consent(
     company: Company = Depends(require_company),
 ) -> dict:
     """
-    Pruefe ob gueltige Einwilligung vorliegt.
+    Prüfe ob gültige Einwilligung vorliegt.
     """
     service = ConsentService(db)
 
@@ -398,7 +398,7 @@ async def list_consent_types(
     current_user: User = Depends(get_current_active_user),
 ) -> List[dict]:
     """
-    Liste alle verfuegbaren Einwilligungstypen.
+    Liste alle verfügbaren Einwilligungstypen.
     """
     return [
         {"value": t.value, "name": t.name}
@@ -575,7 +575,7 @@ async def get_consent_audit_trail(
     company: Company = Depends(require_company),
 ) -> List[AuditLogResponse]:
     """
-    Audit-Trail fuer eine Einwilligung.
+    Audit-Trail für eine Einwilligung.
     """
     service = ConsentService(db)
 
@@ -650,7 +650,7 @@ async def list_dpas(
     company: Company = Depends(require_company),
 ) -> DPAListResponse:
     """
-    Liste Auftragsverarbeitungsvertraege.
+    Liste Auftragsverarbeitungsverträge.
     """
     service = ConsentService(db)
 
@@ -695,13 +695,13 @@ async def get_dpa(
 @router.post("/dpas/{dpa_id}/terminate", response_model=DPAResponse)
 async def terminate_dpa(
     dpa_id: UUID,
-    reason: Optional[str] = Query(None, max_length=500, description="Kuendigungsgrund"),
+    reason: Optional[str] = Query(None, max_length=500, description="Kündigungsgrund"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> DPAResponse:
     """
-    Kuendige AVV.
+    Kündige AVV.
     """
     service = ConsentService(db)
 

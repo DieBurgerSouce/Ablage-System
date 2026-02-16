@@ -5,7 +5,7 @@ Auto-Template Generation Service.
 Automatische Erkennung und Generierung von OCR-Templates
 basierend auf wiederkehrenden Dokumenten eines Lieferanten.
 
-Wenn 3+ Dokumente vom selben Lieferanten aehnliche Layouts haben,
+Wenn 3+ Dokumente vom selben Lieferanten ähnliche Layouts haben,
 wird automatisch ein Template generiert.
 """
 
@@ -55,7 +55,7 @@ class TemplateCandidateResult:
 
 
 class AutoTemplateService:
-    """Service fuer automatische Template-Generierung."""
+    """Service für automatische Template-Generierung."""
 
     async def detect_template_candidate(
         self,
@@ -64,7 +64,7 @@ class AutoTemplateService:
         company_id: UUID,
     ) -> Optional[TemplateCandidateResult]:
         """
-        Pruefe ob ein Lieferant genug aehnliche Dokumente hat fuer ein Template.
+        Prüfe ob ein Lieferant genug ähnliche Dokumente hat für ein Template.
 
         Analysiert OCR-Ergebnisse der letzten Dokumente und vergleicht
         Feld-Positionen (Bounding Boxes) auf Konsistenz.
@@ -156,7 +156,7 @@ class AutoTemplateService:
 
         if len(all_positions) < MIN_DOCUMENTS_FOR_TEMPLATE:
             raise ValueError(
-                f"Mindestens {MIN_DOCUMENTS_FOR_TEMPLATE} Dokumente mit OCR-Ergebnissen benoetigt"
+                f"Mindestens {MIN_DOCUMENTS_FOR_TEMPLATE} Dokumente mit OCR-Ergebnissen benötigt"
             )
 
         # Build averaged field definitions
@@ -214,7 +214,7 @@ class AutoTemplateService:
         company_id: UUID,
         min_documents: int = MIN_DOCUMENTS_FOR_TEMPLATE,
     ) -> List[TemplateCandidateResult]:
-        """Liste alle Template-Kandidaten fuer eine Company."""
+        """Liste alle Template-Kandidaten für eine Company."""
         # Find entities with enough documents that don't have a template yet
         stmt = (
             select(
@@ -306,7 +306,7 @@ class AutoTemplateService:
         ]
 
     def _calculate_position_variance(self, positions: List[FieldPosition]) -> float:
-        """Berechne die Positionsvarianz fuer eine Liste von Feld-Positionen."""
+        """Berechne die Positionsvarianz für eine Liste von Feld-Positionen."""
         if len(positions) < 2:
             return 0.0
 
@@ -347,7 +347,7 @@ class AutoTemplateService:
             field_labels: Dict[str, str] = {
                 "invoice_number": "Rechnungsnummer",
                 "invoice_date": "Rechnungsdatum",
-                "due_date": "Faelligkeitsdatum",
+                "due_date": "Fälligkeitsdatum",
                 "total_amount": "Gesamtbetrag",
                 "net_amount": "Nettobetrag",
                 "vat_amount": "Mehrwertsteuer",
@@ -413,7 +413,7 @@ class AutoTemplateService:
         """
         Aktualisiere Template-Feldpositionen basierend auf User-Korrektur.
 
-        Wenn ein Benutzer ein OCR-Feld korrigiert und ein Template fuer
+        Wenn ein Benutzer ein OCR-Feld korrigiert und ein Template für
         diese Entity existiert, werden die Koordinaten per gewichtetem
         Durchschnitt aktualisiert.
 
@@ -428,7 +428,7 @@ class AutoTemplateService:
         Returns:
             Aktualisiertes Template oder None
         """
-        # Template fuer diese Entity laden
+        # Template für diese Entity laden
         stmt = (
             select(SupplierOCRTemplate)
             .where(
@@ -504,7 +504,7 @@ class AutoTemplateService:
             field_labels: Dict[str, str] = {
                 "invoice_number": "Rechnungsnummer",
                 "invoice_date": "Rechnungsdatum",
-                "due_date": "Faelligkeitsdatum",
+                "due_date": "Fälligkeitsdatum",
                 "total_amount": "Gesamtbetrag",
                 "net_amount": "Nettobetrag",
                 "vat_amount": "Mehrwertsteuer",
@@ -545,7 +545,7 @@ class AutoTemplateService:
 
         await db.flush()
 
-        # Auto-Aktivierung pruefen
+        # Auto-Aktivierung prüfen
         await self.check_and_auto_activate(db, template)
 
         logger.info(
@@ -564,7 +564,7 @@ class AutoTemplateService:
         template: SupplierOCRTemplate,
     ) -> bool:
         """
-        Pruefe ob Template automatisch aktiviert werden soll.
+        Prüfe ob Template automatisch aktiviert werden soll.
 
         Aktiviert auto_apply wenn:
         - auto_confidence >= 0.85
@@ -573,7 +573,7 @@ class AutoTemplateService:
 
         Args:
             db: Datenbank-Session
-            template: Das zu pruefende Template
+            template: Das zu prüfende Template
 
         Returns:
             True wenn auto_apply aktiviert wurde
@@ -602,5 +602,5 @@ class AutoTemplateService:
 
 
 def get_auto_template_service() -> AutoTemplateService:
-    """Factory fuer AutoTemplateService."""
+    """Factory für AutoTemplateService."""
     return AutoTemplateService()

@@ -149,7 +149,7 @@ class PerformanceProcessor:
             import torch
             if torch.cuda.is_available():
                 gpu_metrics: GPUMetricsDict = {
-                    "verfuegbar": True,
+                    "verfügbar": True,
                     "speicher_verwendet": torch.cuda.memory_allocated() / 1024**3,
                     "speicher_gesamt": torch.cuda.get_device_properties(0).total_memory / 1024**3
                 }

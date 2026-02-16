@@ -154,7 +154,7 @@ BUILT_IN_TEMPLATES = {
             "kunde_ort",
             "angebotsnummer",
             "angebotsdatum",
-            "gueltig_bis",
+            "gültig_bis",
             "positionen",
             "nettobetrag",
             "umsatzsteuer",
@@ -175,9 +175,9 @@ BUILT_IN_TEMPLATES = {
             "kunde_ort",
             "rechnungsnummer",
             "rechnungsdatum",
-            "faelligkeit",
+            "fälligkeit",
             "betrag",
-            "mahngebuehr",
+            "mahngebühr",
             "gesamtbetrag",
             "bankverbindung",
         ],
@@ -196,9 +196,9 @@ BUILT_IN_TEMPLATES = {
             "kunde_ort",
             "rechnungsnummer",
             "rechnungsdatum",
-            "faelligkeit",
+            "fälligkeit",
             "betrag",
-            "mahngebuehr",
+            "mahngebühr",
             "verzugszinsen",
             "gesamtbetrag",
             "bankverbindung",
@@ -218,9 +218,9 @@ BUILT_IN_TEMPLATES = {
             "kunde_ort",
             "rechnungsnummer",
             "rechnungsdatum",
-            "faelligkeit",
+            "fälligkeit",
             "betrag",
-            "mahngebuehr",
+            "mahngebühr",
             "verzugszinsen",
             "inkassokosten",
             "gesamtbetrag",
@@ -591,7 +591,7 @@ class TemplateEngineService:
             f"zu unserer Rechnung Nr. {data.get('rechnungsnummer', '')} vom "
             f"{data.get('rechnungsdatum', '')} konnten wir bisher keinen Zahlungseingang "
             f"feststellen.\n\n"
-            f"Fälligkeit: {data.get('faelligkeit', '')}\n"
+            f"Fälligkeit: {data.get('fälligkeit', '')}\n"
             f"Offener Betrag: {self._format_currency(data.get('betrag', 0))}\n\n"
             f"Bitte überweisen Sie den Betrag umgehend auf unser Konto.\n\n"
             f"Mit freundlichen Grüßen"

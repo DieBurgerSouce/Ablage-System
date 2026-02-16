@@ -2,7 +2,7 @@
 """
 Teams API Endpoints.
 
-REST API fuer Team-Verwaltung:
+REST API für Team-Verwaltung:
 - Team CRUD
 - Mitgliedschaften verwalten
 - Team-Aktivitaeten
@@ -52,12 +52,12 @@ router = APIRouter(prefix="/teams", tags=["Teams"])
 
 
 class TeamCreate(BaseModel):
-    """Schema fuer Team-Erstellung."""
+    """Schema für Team-Erstellung."""
     name: str = Field(..., min_length=1, max_length=255, description="Team-Name")
     team_type: TeamType = Field(TeamType.DEPARTMENT, description="Team-Typ")
     description: Optional[str] = Field(None, max_length=2000, description="Beschreibung")
     code: Optional[str] = Field(None, max_length=50, description="Kurzcode")
-    parent_team_id: Optional[UUID] = Field(None, description="Parent-Team fuer Hierarchie")
+    parent_team_id: Optional[UUID] = Field(None, description="Parent-Team für Hierarchie")
     visibility: TeamVisibility = Field(TeamVisibility.COMPANY, description="Sichtbarkeit")
     start_date: Optional[datetime] = Field(None, description="Startdatum (Projektteams)")
     end_date: Optional[datetime] = Field(None, description="Enddatum (Projektteams)")
@@ -67,7 +67,7 @@ class TeamCreate(BaseModel):
 
 
 class TeamUpdate(BaseModel):
-    """Schema fuer Team-Aktualisierung."""
+    """Schema für Team-Aktualisierung."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=2000)
     code: Optional[str] = Field(None, max_length=50)
@@ -83,17 +83,17 @@ class TeamUpdate(BaseModel):
 
 
 class TeamMemberAdd(BaseModel):
-    """Schema fuer Mitglied hinzufuegen."""
+    """Schema für Mitglied hinzufuegen."""
     user_id: UUID = Field(..., description="User UUID")
     role: TeamMemberRole = Field(TeamMemberRole.MEMBER, description="Rolle")
     title: Optional[str] = Field(None, max_length=100, description="Funktion im Team")
     allocation_percent: int = Field(100, ge=0, le=100, description="Prozentuale Zuordnung")
-    valid_until: Optional[datetime] = Field(None, description="Gueltig bis")
+    valid_until: Optional[datetime] = Field(None, description="Gültig bis")
     reason: Optional[str] = Field(None, max_length=500, description="Grund")
 
 
 class TeamMemberUpdate(BaseModel):
-    """Schema fuer Mitglied aktualisieren."""
+    """Schema für Mitglied aktualisieren."""
     role: Optional[TeamMemberRole] = None
     title: Optional[str] = Field(None, max_length=100)
     allocation_percent: Optional[int] = Field(None, ge=0, le=100)
@@ -101,21 +101,21 @@ class TeamMemberUpdate(BaseModel):
 
 
 class TeamInvitationCreate(BaseModel):
-    """Schema fuer Einladung erstellen."""
+    """Schema für Einladung erstellen."""
     user_id: Optional[UUID] = Field(None, description="User UUID (wenn bekannt)")
-    email: Optional[str] = Field(None, max_length=255, description="Email (fuer externe)")
+    email: Optional[str] = Field(None, max_length=255, description="Email (für externe)")
     role: TeamMemberRole = Field(TeamMemberRole.MEMBER, description="Geplante Rolle")
     personal_message: Optional[str] = Field(None, max_length=1000, description="Nachricht")
-    expires_in_days: int = Field(7, ge=1, le=30, description="Gueltigkeitsdauer in Tagen")
+    expires_in_days: int = Field(7, ge=1, le=30, description="Gültigkeitsdauer in Tagen")
 
 
 class TeamDocumentShare(BaseModel):
-    """Schema fuer Dokument-Freigabe."""
+    """Schema für Dokument-Freigabe."""
     document_id: UUID = Field(..., description="Dokument UUID")
     permission: TeamDocumentPermission = Field(
         TeamDocumentPermission.READ, description="Berechtigung"
     )
-    valid_until: Optional[datetime] = Field(None, description="Gueltig bis")
+    valid_until: Optional[datetime] = Field(None, description="Gültig bis")
     note: Optional[str] = Field(None, max_length=500, description="Notiz")
 
 
@@ -125,7 +125,7 @@ class TeamDocumentShare(BaseModel):
 
 
 class TeamMemberResponse(BaseModel):
-    """Response fuer Team-Mitglied."""
+    """Response für Team-Mitglied."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -143,7 +143,7 @@ class TeamMemberResponse(BaseModel):
 
 
 class TeamResponse(BaseModel):
-    """Response fuer Team."""
+    """Response für Team."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -174,7 +174,7 @@ class TeamDetailResponse(TeamResponse):
 
 
 class TeamListResponse(BaseModel):
-    """Response fuer Team-Liste."""
+    """Response für Team-Liste."""
     items: List[TeamResponse]
     total: int
     page: int
@@ -183,7 +183,7 @@ class TeamListResponse(BaseModel):
 
 
 class TeamActivityResponse(BaseModel):
-    """Response fuer Team-Aktivitaet."""
+    """Response für Team-Aktivitaet."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -199,7 +199,7 @@ class TeamActivityResponse(BaseModel):
 
 
 class TeamActivityListResponse(BaseModel):
-    """Response fuer Aktivitaeten-Liste."""
+    """Response für Aktivitaeten-Liste."""
     items: List[TeamActivityResponse]
     total: int
     page: int
@@ -207,7 +207,7 @@ class TeamActivityListResponse(BaseModel):
 
 
 class TeamInvitationResponse(BaseModel):
-    """Response fuer Einladung."""
+    """Response für Einladung."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -284,13 +284,13 @@ async def create_team(
 )
 async def list_teams(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     search: Optional[str] = Query(None, max_length=100, description="Suchbegriff"),
     team_type: Optional[TeamType] = Query(None, description="Nach Typ filtern"),
     status: Optional[TeamStatus] = Query(None, description="Nach Status filtern"),
     parent_team_id: Optional[UUID] = Query(None, description="Nach Parent filtern"),
     my_teams_only: bool = Query(False, description="Nur eigene Teams"),
-    include_inactive: bool = Query(False, description="Inaktive einschliessen"),
+    include_inactive: bool = Query(False, description="Inaktive einschließen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> TeamListResponse:
@@ -325,7 +325,7 @@ async def list_teams(
     description="Listet alle Teams in denen der aktuelle User Mitglied ist"
 )
 async def get_my_teams(
-    include_inactive: bool = Query(False, description="Inaktive einschliessen"),
+    include_inactive: bool = Query(False, description="Inaktive einschließen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[TeamResponse]:
@@ -362,14 +362,14 @@ async def get_team(
             detail="Team nicht gefunden"
         )
 
-    # Zugangspruefung
+    # Zugangsprüfung
     if team.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Kein Zugriff auf dieses Team"
         )
 
-    # Bei privaten Teams: Mitgliedschaft pruefen
+    # Bei privaten Teams: Mitgliedschaft prüfen
     if team.visibility == TeamVisibility.PRIVATE:
         is_member = await service.check_permission(team_id, current_user.id)
         if not is_member:
@@ -426,7 +426,7 @@ async def get_team(
     "/{team_id}",
     response_model=TeamResponse,
     summary="Team aktualisieren",
-    description="Aktualisiert ein Team (nur fuer Team-Admins)"
+    description="Aktualisiert ein Team (nur für Team-Admins)"
 )
 async def update_team(
     team_id: UUID,
@@ -437,12 +437,12 @@ async def update_team(
     """Aktualisiert ein Team."""
     service = get_team_service(db)
 
-    # Admin-Berechtigung pruefen
+    # Admin-Berechtigung prüfen
     is_admin = await service.is_team_admin(team_id, current_user.id)
     if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Team-Admins koennen das Team aktualisieren"
+            detail="Nur Team-Admins können das Team aktualisieren"
         )
 
     updates = data.model_dump(exclude_unset=True)
@@ -461,7 +461,7 @@ async def update_team(
     "/{team_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Team archivieren",
-    description="Archiviert ein Team (nur fuer Team-Admins)"
+    description="Archiviert ein Team (nur für Team-Admins)"
 )
 async def archive_team(
     team_id: UUID,
@@ -471,12 +471,12 @@ async def archive_team(
     """Archiviert ein Team."""
     service = get_team_service(db)
 
-    # Admin-Berechtigung pruefen
+    # Admin-Berechtigung prüfen
     is_admin = await service.is_team_admin(team_id, current_user.id)
     if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Team-Admins koennen das Team archivieren"
+            detail="Nur Team-Admins können das Team archivieren"
         )
 
     team = await service.archive_team(team_id, current_user.id)
@@ -501,14 +501,14 @@ async def archive_team(
 async def list_members(
     team_id: UUID,
     role: Optional[TeamMemberRole] = Query(None, description="Nach Rolle filtern"),
-    include_inactive: bool = Query(False, description="Inaktive einschliessen"),
+    include_inactive: bool = Query(False, description="Inaktive einschließen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[TeamMemberResponse]:
     """Listet Team-Mitglieder."""
     service = get_team_service(db)
 
-    # Zugriffspruefung
+    # Zugriffsprüfung
     team = await service.get_team(team_id)
     if not team or team.company_id != current_user.company_id:
         raise HTTPException(
@@ -546,7 +546,7 @@ async def list_members(
     response_model=TeamMemberResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Mitglied hinzufuegen",
-    description="Fuegt ein Mitglied zum Team hinzu (nur fuer Team-Admins)"
+    description="Fuegt ein Mitglied zum Team hinzu (nur für Team-Admins)"
 )
 async def add_member(
     team_id: UUID,
@@ -557,12 +557,12 @@ async def add_member(
     """Fuegt ein Mitglied hinzu."""
     service = get_team_service(db)
 
-    # Admin-Berechtigung pruefen
+    # Admin-Berechtigung prüfen
     is_admin = await service.is_team_admin(team_id, current_user.id)
     if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Team-Admins koennen Mitglieder hinzufuegen"
+            detail="Nur Team-Admins können Mitglieder hinzufuegen"
         )
 
     try:
@@ -620,12 +620,12 @@ async def update_member(
     """Aktualisiert ein Mitglied."""
     service = get_team_service(db)
 
-    # Admin-Berechtigung pruefen
+    # Admin-Berechtigung prüfen
     is_admin = await service.is_team_admin(team_id, current_user.id)
     if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Team-Admins koennen Mitglieder aktualisieren"
+            detail="Nur Team-Admins können Mitglieder aktualisieren"
         )
 
     membership = await service.get_membership(team_id, user_id)
@@ -673,14 +673,14 @@ async def remove_member(
     """Entfernt ein Mitglied."""
     service = get_team_service(db)
 
-    # Admin-Berechtigung pruefen (oder selbst austreten)
+    # Admin-Berechtigung prüfen (oder selbst austreten)
     is_admin = await service.is_team_admin(team_id, current_user.id)
     is_self = user_id == current_user.id
 
     if not is_admin and not is_self:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Team-Admins koennen Mitglieder entfernen"
+            detail="Nur Team-Admins können Mitglieder entfernen"
         )
 
     success = await service.remove_member(
@@ -720,7 +720,7 @@ async def get_team_activity(
     """Holt Team-Aktivitaeten."""
     service = get_team_service(db)
 
-    # Zugriffspruefung
+    # Zugriffsprüfung
     is_member = await service.check_permission(team_id, current_user.id)
     if not is_member:
         raise HTTPException(
@@ -770,7 +770,7 @@ async def get_team_activity(
     response_model=TeamInvitationResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Einladung erstellen",
-    description="Erstellt eine Team-Einladung (nur fuer Team-Admins)"
+    description="Erstellt eine Team-Einladung (nur für Team-Admins)"
 )
 async def create_invitation(
     team_id: UUID,
@@ -781,12 +781,12 @@ async def create_invitation(
     """Erstellt eine Einladung."""
     service = get_team_service(db)
 
-    # Admin-Berechtigung pruefen
+    # Admin-Berechtigung prüfen
     is_admin = await service.is_team_admin(team_id, current_user.id)
     if not is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Team-Admins koennen Einladungen erstellen"
+            detail="Nur Team-Admins können Einladungen erstellen"
         )
 
     try:
@@ -900,12 +900,12 @@ async def share_document_with_team(
     """Teilt ein Dokument mit dem Team."""
     service = get_team_service(db)
 
-    # Mitgliedschaftspruefung
+    # Mitgliedschaftsprüfung
     is_member = await service.check_permission(team_id, current_user.id)
     if not is_member:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Team-Mitglieder koennen Dokumente teilen"
+            detail="Nur Team-Mitglieder können Dokumente teilen"
         )
 
     await service.share_document(

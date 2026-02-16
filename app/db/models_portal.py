@@ -1,7 +1,7 @@
 """
-SQLAlchemy Models fuer Kundenportal (Phase 5.2).
+SQLAlchemy Models für Kundenportal (Phase 5.2).
 
-Separate Authentifizierung und Datenhaltung fuer Kunden-Self-Service.
+Separate Authentifizierung und Datenhaltung für Kunden-Self-Service.
 """
 
 from datetime import datetime, timezone, timedelta
@@ -55,16 +55,16 @@ class MessageDirection(str, Enum):
 
 class PortalUser(Base):
     """
-    Kunden-Account fuer das Self-Service Portal.
+    Kunden-Account für das Self-Service Portal.
 
     Separater Account-Typ von internen Users.
-    Wird mit einem Entity (Kunde/Lieferant) verknuepft.
+    Wird mit einem Entity (Kunde/Lieferant) verknüpft.
     """
     __tablename__ = "portal_users"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verknuepfung mit Entity (Kunde oder Lieferant)
+    # Verknüpfung mit Entity (Kunde oder Lieferant)
     entity_id = Column(
         UUID(as_uuid=True),
         ForeignKey("business_entities.id", ondelete="CASCADE"),
@@ -72,7 +72,7 @@ class PortalUser(Base):
         index=True
     )
 
-    # Verknuepfung mit Company
+    # Verknüpfung mit Company
     company_id = Column(
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
@@ -137,7 +137,7 @@ class PortalUser(Base):
 
 class PortalSession(Base):
     """
-    Session-Tracking fuer Portal-Benutzer.
+    Session-Tracking für Portal-Benutzer.
 
     Separate Session-Verwaltung von internen Users.
     """
@@ -160,7 +160,7 @@ class PortalSession(Base):
     user_agent = Column(String(500))
     ip_address = Column(String(45))  # IPv6-kompatibel
 
-    # Gueltigkeiten
+    # Gültigkeiten
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     expires_at = Column(DateTime(timezone=True), nullable=False)
     refresh_expires_at = Column(DateTime(timezone=True))
@@ -182,13 +182,13 @@ class PortalComplaint(Base):
     """
     Reklamationen von Kunden.
 
-    Ermoeglicht Self-Service Reklamationseinreichung mit Tracking.
+    Ermöglicht Self-Service Reklamationseinreichung mit Tracking.
     """
     __tablename__ = "portal_complaints"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verknuepfungen
+    # Verknüpfungen
     company_id = Column(
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
@@ -207,7 +207,7 @@ class PortalComplaint(Base):
         index=True
     )
 
-    # Optionale Verknuepfung mit Dokument/Rechnung
+    # Optionale Verknüpfung mit Dokument/Rechnung
     document_id = Column(
         UUID(as_uuid=True),
         ForeignKey("documents.id", ondelete="SET NULL"),
@@ -236,7 +236,7 @@ class PortalComplaint(Base):
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL")
     )
-    internal_notes = Column(Text)  # Nur fuer interne Bearbeiter sichtbar
+    internal_notes = Column(Text)  # Nur für interne Bearbeiter sichtbar
     resolution = Column(Text)      # Loesung/Antwort
 
     # Zeitstempel
@@ -246,8 +246,8 @@ class PortalComplaint(Base):
     resolved_at = Column(DateTime(timezone=True))
     closed_at = Column(DateTime(timezone=True))
 
-    # Zusaetzliche Daten
-    complaint_metadata = Column("metadata", CrossDBJSON, default=dict)  # Flexible zusaetzliche Daten
+    # Zusätzliche Daten
+    complaint_metadata = Column("metadata", CrossDBJSON, default=dict)  # Flexible zusätzliche Daten
 
     # Relationships
     company = relationship("Company")
@@ -267,13 +267,13 @@ class PortalMessage(Base):
     """
     Kommunikation zwischen Kunde und Unternehmen.
 
-    Kann mit Reklamation verknuepft sein oder allgemeine Kommunikation.
+    Kann mit Reklamation verknüpft sein oder allgemeine Kommunikation.
     """
     __tablename__ = "portal_messages"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verknuepfungen
+    # Verknüpfungen
     company_id = Column(
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
@@ -287,14 +287,14 @@ class PortalMessage(Base):
         index=True
     )
 
-    # Optional: Verknuepfung mit Reklamation
+    # Optional: Verknüpfung mit Reklamation
     complaint_id = Column(
         UUID(as_uuid=True),
         ForeignKey("portal_complaints.id", ondelete="CASCADE"),
         index=True
     )
 
-    # Absender/Empfaenger
+    # Absender/Empfänger
     portal_user_id = Column(
         UUID(as_uuid=True),
         ForeignKey("portal_users.id", ondelete="SET NULL"),
@@ -337,13 +337,13 @@ class PortalDocument(Base):
     """
     Vom Kunden hochgeladene Dokumente.
 
-    Separate Tabelle fuer klare Trennung und Tracking.
+    Separate Tabelle für klare Trennung und Tracking.
     """
     __tablename__ = "portal_documents"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verknuepfungen
+    # Verknüpfungen
     company_id = Column(
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
@@ -362,7 +362,7 @@ class PortalDocument(Base):
         index=True
     )
 
-    # Optionale Verknuepfung mit Reklamation oder Nachricht
+    # Optionale Verknüpfung mit Reklamation oder Nachricht
     complaint_id = Column(
         UUID(as_uuid=True),
         ForeignKey("portal_complaints.id", ondelete="SET NULL")
@@ -410,15 +410,15 @@ class PortalDocument(Base):
 
 class PortalPaymentConfirmation(Base):
     """
-    Zahlungsbestaetigungen von Kunden.
+    Zahlungsbestätigungen von Kunden.
 
-    Kunden koennen im Portal angeben, dass sie bezahlt haben.
+    Kunden können im Portal angeben, dass sie bezahlt haben.
     """
     __tablename__ = "portal_payment_confirmations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Verknuepfungen
+    # Verknüpfungen
     company_id = Column(
         UUID(as_uuid=True),
         ForeignKey("companies.id", ondelete="CASCADE"),
@@ -437,7 +437,7 @@ class PortalPaymentConfirmation(Base):
         index=True
     )
 
-    # Verknuepfung mit Rechnung
+    # Verknüpfung mit Rechnung
     invoice_tracking_id = Column(
         UUID(as_uuid=True),
         ForeignKey("invoice_tracking.id", ondelete="CASCADE"),
@@ -447,7 +447,7 @@ class PortalPaymentConfirmation(Base):
 
     # Zahlungsdetails (vom Kunden angegeben)
     payment_date = Column(DateTime(timezone=True), nullable=False)
-    payment_amount = Column(String(50), nullable=False)  # Als String fuer Flexibilitaet
+    payment_amount = Column(String(50), nullable=False)  # Als String für Flexibilitaet
     payment_reference = Column(String(255))  # Verwendungszweck
     payment_method = Column(String(50))  # bank_transfer, paypal, etc.
 

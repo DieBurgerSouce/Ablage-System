@@ -64,7 +64,7 @@ class CommentTaskStatus(str, Enum):
 class CommentReply(Base):
     """Verschachtelte Antwort auf einen Kommentar-Thread.
 
-    Unterstuetzt beliebig tiefe Verschachtelung ueber parent_reply_id.
+    Unterstützt beliebig tiefe Verschachtelung über parent_reply_id.
     @Mentions werden als UUID-Liste in mentions gespeichert.
     """
 
@@ -84,7 +84,7 @@ class CommentReply(Base):
         UUID(as_uuid=True),
         ForeignKey("comment_replies.id", ondelete="CASCADE"),
         nullable=True,
-        comment="Eltern-Antwort fuer verschachtelte Antworten",
+        comment="Eltern-Antwort für verschachtelte Antworten",
     )
     author_id = Column(
         UUID(as_uuid=True),
@@ -148,10 +148,10 @@ class CommentReply(Base):
 class BoundingBoxAnnotation(Base):
     """Bounding-Box-Annotation auf einer PDF-Seite.
 
-    Speichert praezise Positionsdaten fuer Markierungen:
+    Speichert praezise Positionsdaten für Markierungen:
     - Koordinaten (x, y) und Dimensionen (width, height)
     - Verschiedene Annotationstypen (Highlight, Box, Pin, etc.)
-    - Optionale Verknuepfung mit einem Kommentar-Thread
+    - Optionale Verknüpfung mit einem Kommentar-Thread
     """
 
     __tablename__ = "bounding_box_annotations"
@@ -181,7 +181,7 @@ class BoundingBoxAnnotation(Base):
     y = Column(
         Float,
         nullable=False,
-        comment="Y-Position (0.0 - 1.0 relativ zur Seitenhoehe)",
+        comment="Y-Position (0.0 - 1.0 relativ zur Seitenhöhe)",
     )
     width = Column(
         Float,
@@ -191,7 +191,7 @@ class BoundingBoxAnnotation(Base):
     height = Column(
         Float,
         nullable=False,
-        comment="Hoehe der Markierung (0.0 - 1.0)",
+        comment="Höhe der Markierung (0.0 - 1.0)",
     )
 
     # Annotation-Metadaten
@@ -222,7 +222,7 @@ class BoundingBoxAnnotation(Base):
         UUID(as_uuid=True),
         ForeignKey("comment_threads.id", ondelete="SET NULL"),
         nullable=True,
-        comment="Verknuepfter Kommentar-Thread",
+        comment="Verknüpfter Kommentar-Thread",
     )
 
     # Soft-Delete
@@ -273,8 +273,8 @@ class BoundingBoxAnnotation(Base):
 class CommentTask(Base):
     """Aufgabe erstellt aus einem Kommentar-Thread.
 
-    Ermoeglicht es, direkt aus Kommentaren Aufgaben zu erstellen
-    und diese Benutzern zuzuweisen mit Faelligkeitsdatum.
+    Ermöglicht es, direkt aus Kommentaren Aufgaben zu erstellen
+    und diese Benutzern zuzuweisen mit Fälligkeitsdatum.
     """
 
     __tablename__ = "comment_tasks"
@@ -308,7 +308,7 @@ class CommentTask(Base):
     due_date = Column(
         DateTime(timezone=True),
         nullable=True,
-        comment="Faelligkeitsdatum der Aufgabe",
+        comment="Fälligkeitsdatum der Aufgabe",
     )
     completed_at = Column(
         DateTime(timezone=True),

@@ -1,7 +1,7 @@
 """
 Portal-Zahlungsservice.
 
-Kunden koennen Zahlungsbestaetigungen einreichen.
+Kunden können Zahlungsbestätigungen einreichen.
 """
 
 from datetime import datetime, timezone, date
@@ -23,9 +23,9 @@ logger = structlog.get_logger(__name__)
 
 class PortalPaymentService:
     """
-    Service fuer Zahlungsbestaetigungen im Kundenportal.
+    Service für Zahlungsbestätigungen im Kundenportal.
 
-    Kunden koennen mitteilen, dass sie bezahlt haben.
+    Kunden können mitteilen, dass sie bezahlt haben.
     """
 
     def __init__(self, db: AsyncSession):
@@ -43,7 +43,7 @@ class PortalPaymentService:
         notes: Optional[str] = None,
     ) -> PortalPaymentConfirmation:
         """
-        Reiche eine Zahlungsbestaetigung ein.
+        Reiche eine Zahlungsbestätigung ein.
         """
         # Validiere dass Rechnung existiert und zum Entity gehoert
         result = await self.db.execute(
@@ -63,7 +63,7 @@ class PortalPaymentService:
         if invoice.status == "paid":
             raise ValueError("Rechnung ist bereits als bezahlt markiert")
 
-        # Erstelle Zahlungsbestaetigung
+        # Erstelle Zahlungsbestätigung
         confirmation = PortalPaymentConfirmation(
             company_id=portal_user.company_id,
             entity_id=portal_user.entity_id,
@@ -101,7 +101,7 @@ class PortalPaymentService:
         offset: int = 0,
     ) -> tuple[List[dict], int]:
         """
-        Hole alle Zahlungsbestaetigungen fuer einen Entity.
+        Hole alle Zahlungsbestätigungen für einen Entity.
         """
         query = select(PortalPaymentConfirmation).where(
             and_(
@@ -151,7 +151,7 @@ class PortalPaymentService:
         company_id: UUID,
     ) -> Optional[dict]:
         """
-        Hole Details einer Zahlungsbestaetigung.
+        Hole Details einer Zahlungsbestätigung.
         """
         result = await self.db.execute(
             select(PortalPaymentConfirmation).where(
@@ -198,9 +198,9 @@ class PortalPaymentService:
         portal_user: PortalUser,
     ) -> bool:
         """
-        Storniere eine ausstehende Zahlungsbestaetigung.
+        Storniere eine ausstehende Zahlungsbestätigung.
 
-        Nur moeglich wenn Status noch "pending".
+        Nur möglich wenn Status noch "pending".
         """
         result = await self.db.execute(
             select(PortalPaymentConfirmation).where(
@@ -232,5 +232,5 @@ class PortalPaymentService:
 
 
 def get_portal_payment_service(db: AsyncSession) -> PortalPaymentService:
-    """Factory-Funktion fuer PortalPaymentService."""
+    """Factory-Funktion für PortalPaymentService."""
     return PortalPaymentService(db)

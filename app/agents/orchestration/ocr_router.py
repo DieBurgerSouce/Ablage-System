@@ -154,7 +154,7 @@ class OCRBackendRouter(OrchestrationAgent):
                 logger.info("ML-Routing initialisiert - Modell wird trainiert wenn Daten verfügbar")
 
         except ImportError as e:
-            logger.warning("ml_routing_nicht_verfuegbar", **safe_error_log(e))
+            logger.warning("ml_routing_nicht_verfügbar", **safe_error_log(e))
             self.use_ml_routing = False
         except Exception as e:
             logger.error("ml_routing_init_fehler", **safe_error_log(e))
@@ -592,7 +592,7 @@ class OCRBackendRouter(OrchestrationAgent):
         doc_type = metadata.get("document_type", "unknown")
 
         if doc_type == "contract":
-            # Vertraege: Hoechste Genauigkeit (rechtlich relevant)
+            # Verträge: Höchste Genauigkeit (rechtlich relevant)
             return select_best_backend(
                 ["hybrid", "deepseek"],
                 {"hybrid": 0.98, "deepseek": 0.95},
@@ -600,7 +600,7 @@ class OCRBackendRouter(OrchestrationAgent):
             )
 
         if doc_type == "tax_document":
-            # Steuerdokumente: Hoechste Genauigkeit (Finanzamt!)
+            # Steuerdokumente: Höchste Genauigkeit (Finanzamt!)
             return select_best_backend(
                 ["hybrid", "deepseek"],
                 {"hybrid": 0.98, "deepseek": 0.96},

@@ -1,6 +1,6 @@
 """Customer Onboarding Workflow Task Implementations.
 
-Service Tasks fuer den Kunden-Onboarding-Workflow.
+Service Tasks für den Kunden-Onboarding-Workflow.
 Diese Funktionen werden von der BPMN Engine aufgerufen.
 """
 
@@ -46,7 +46,7 @@ async def generate_customer_number(db, company_id: UUID) -> str:
 
     year = datetime.now().year
 
-    # Finde hoechste Kundennummer fuer dieses Jahr
+    # Finde hoechste Kundennummer für dieses Jahr
     result = await db.execute(
         select(BusinessEntity.primary_customer_number)
         .where(BusinessEntity.entity_type == EntityType.CUSTOMER.value)
@@ -75,7 +75,7 @@ async def verify_customer_data(
 ) -> Dict[str, Any]:
     """Verifiziert die Kundenstammdaten.
 
-    Prueft Vollstaendigkeit und Plausibilitaet der Daten.
+    Prüft Vollständigkeit und Plausibilitaet der Daten.
 
     Args:
         instance_id: BPMN Prozess-Instanz ID
@@ -100,7 +100,7 @@ async def verify_customer_data(
 
     validation_errors = []
 
-    # Pflichtfeld-Pruefung
+    # Pflichtfeld-Prüfung
     if not customer_name:
         validation_errors.append("Kundenname fehlt")
     if not contact_email:
@@ -112,10 +112,10 @@ async def verify_customer_data(
     if not address.get("postal_code"):
         validation_errors.append("PLZ fehlt")
 
-    # Geschaeftskunden-spezifische Pruefung
+    # Geschäftskunden-spezifische Prüfung
     if customer_type == "business":
         if not variables.get("vat_id"):
-            validation_errors.append("USt-IdNr. fehlt (Geschaeftskunde)")
+            validation_errors.append("USt-IdNr. fehlt (Geschäftskunde)")
         if not variables.get("company_registration"):
             validation_errors.append("Handelsregisternummer fehlt")
 
@@ -125,7 +125,7 @@ async def verify_customer_data(
         history = ProcessHistory(
             instance_id=UUID(instance_id),
             event_type="CUSTOMER_DATA_VERIFIED" if data_valid else "CUSTOMER_DATA_INVALID",
-            message=f"Kundendaten {'validiert' if data_valid else 'unvollstaendig'}: {', '.join(validation_errors) if validation_errors else 'OK'}",
+            message=f"Kundendaten {'validiert' if data_valid else 'unvollständig'}: {', '.join(validation_errors) if validation_errors else 'OK'}",
             actor_type="system",
             company_id=variables.get("company_id"),
             timestamp=datetime.now(timezone.utc)
@@ -144,9 +144,9 @@ async def check_credit_rating(
     instance_id: str,
     variables: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Fuehrt eine Bonitaetspruefung durch.
+    """Führt eine Bonitaetsprüfung durch.
 
-    Prueft Kreditwuerdigkeit bei externen Anbietern
+    Prüft Kreditwuerdigkeit bei externen Anbietern
     (Creditreform, Buergel, SCHUFA).
 
     Args:
@@ -264,7 +264,7 @@ async def check_credit_rating(
                     risk_category = RiskLevel.ELEVATED.value
                     recommended_payment_terms = "net_7"
                     check_source = "fallback"
-                    warnings = ["Bonitaetspruefung konnte nicht durchgefuehrt werden"]
+                    warnings = ["Bonitaetsprüfung konnte nicht durchgeführt werden"]
 
         except Exception as e:
             logger.exception(
@@ -278,7 +278,7 @@ async def check_credit_rating(
             risk_category = RiskLevel.ELEVATED.value
             recommended_payment_terms = "net_7"
             check_source = "fallback"
-            warnings = ["Bonitaetspruefung nicht verfuegbar"]
+            warnings = ["Bonitaetsprüfung nicht verfügbar"]
 
         credit_approved = credit_score >= 40  # Threshold for approval
 
@@ -286,7 +286,7 @@ async def check_credit_rating(
         history = ProcessHistory(
             instance_id=UUID(instance_id),
             event_type="CREDIT_CHECK_COMPLETED",
-            message=f"Bonitaetspruefung abgeschlossen - Score: {credit_score:.1f}, Risiko: {risk_category} (Quelle: {check_source})",
+            message=f"Bonitaetsprüfung abgeschlossen - Score: {credit_score:.1f}, Risiko: {risk_category} (Quelle: {check_source})",
             actor_type="system",
             company_id=company_id_str,
             timestamp=datetime.now(timezone.utc)
@@ -351,7 +351,7 @@ async def setup_customer_account(
             company_id = UUID(company_id_str) if company_id_str else None
             customer_number = await generate_customer_number(db, company_id)
 
-            # Erstelle BusinessEntity fuer den Kunden
+            # Erstelle BusinessEntity für den Kunden
             entity = BusinessEntity(
                 name=customer_name,
                 entity_type=EntityType.CUSTOMER.value,
@@ -367,7 +367,7 @@ async def setup_customer_account(
                 auto_detected=False,  # Manuell via Onboarding erstellt
             )
 
-            # Setze company_id falls vorhanden (fuer Multi-Tenant-Systeme)
+            # Setze company_id falls vorhanden (für Multi-Tenant-Systeme)
             if hasattr(entity, 'company_id') and company_id:
                 entity.company_id = company_id
 
@@ -463,7 +463,7 @@ async def send_welcome_package(
 
     async with async_session_maker() as db:
         try:
-            # Lade Entity und Company fuer Email
+            # Lade Entity und Company für Email
             entity = None
             company = None
 
@@ -740,9 +740,9 @@ async def complete_onboarding(
     instance_id: str,
     variables: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Schliesst das Onboarding ab.
+    """Schließt das Onboarding ab.
 
-    Aktiviert den Kunden fuer den Geschaeftsbetrieb.
+    Aktiviert den Kunden für den Geschäftsbetrieb.
 
     Args:
         instance_id: BPMN Prozess-Instanz ID
@@ -820,14 +820,14 @@ def calculate_onboarding_priority(
     customer_type: str,
     expected_revenue: float | None = None
 ) -> str:
-    """Berechnet die Onboarding-Prioritaet.
+    """Berechnet die Onboarding-Priorität.
 
     Args:
         customer_type: 'business' oder 'private'
         expected_revenue: Erwarteter Jahresumsatz
 
     Returns:
-        Prioritaet: 'high', 'medium', 'low'
+        Priorität: 'high', 'medium', 'low'
     """
     if customer_type == "business":
         if expected_revenue and expected_revenue >= 100000:

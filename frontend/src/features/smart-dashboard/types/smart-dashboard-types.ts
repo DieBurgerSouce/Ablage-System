@@ -1,7 +1,9 @@
 // Smart Dashboard Type Definitions
 // Backend snake_case responses + Frontend camelCase types + Transform functions
 
-import { LucideIcon, TrendingUp, TrendingDown, FileText, Clock, CheckCircle, AlertCircle, DollarSign, Folder, Zap, Settings } from 'lucide-react';
+import { TrendingUp, TrendingDown, FileText, Clock, CheckCircle, AlertCircle, DollarSign, Folder, Zap, Settings } from 'lucide-react';
+
+type LucideIcon = React.ComponentType<{ className?: string }>;
 
 // ============================================================================
 // BACKEND RESPONSE TYPES (snake_case from API)

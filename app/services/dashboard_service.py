@@ -8,7 +8,7 @@ Enterprise-grade dashboard management service:
 - Permission-based widget filtering
 - Dashboard template support
 
-Feinpoliert und durchdacht - Personalisierte Dashboards fuer jeden Benutzer.
+Feinpoliert und durchdacht - Personalisierte Dashboards für jeden Benutzer.
 """
 
 from datetime import datetime, timezone
@@ -1095,7 +1095,7 @@ class DashboardService:
             "roles": json.dumps(updated_roles),
         })
 
-        # FUTURE: dashboard_shares Tabelle fuer User-spezifisches Sharing
+        # FUTURE: dashboard_shares Tabelle für User-spezifisches Sharing
         # Migration erforderlich:
         #   CREATE TABLE dashboard_shares (
         #       dashboard_id UUID REFERENCES user_dashboards(id),
@@ -1136,7 +1136,7 @@ class DashboardService:
 
         # FUTURE: User-spezifisches Unsharing via dashboard_shares Tabelle
         # DELETE FROM dashboard_shares WHERE dashboard_id = :id AND shared_with_user_id = :user_id
-        # Aktuell: Placeholder (nur Rollen-basiert moeglich)
+        # Aktuell: Placeholder (nur Rollen-basiert möglich)
 
         logger.info(
             "dashboard_unshared",

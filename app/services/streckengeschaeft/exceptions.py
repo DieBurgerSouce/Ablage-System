@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Custom exceptions for Streckengeschaeft (Drop Shipment) module.
+Custom exceptions for Streckengeschäft (Drop Shipment) module.
 
 Enterprise-grade exception hierarchy for:
 - Clear error categorization
@@ -15,7 +15,7 @@ from typing import Optional
 
 
 class DropShipmentError(Exception):
-    """Base exception for all Streckengeschaeft operations.
+    """Base exception for all Streckengeschäft operations.
 
     Attributes:
         message: Technical error message (English, for logs)
@@ -95,7 +95,7 @@ class ValidationConflictError(DropShipmentError):
         super().__init__(
             message=f"Concurrent modification detected for classification: {classification_id}",
             error_code="CONCURRENT_MODIFICATION",
-            user_message="Klassifikation wurde zwischenzeitlich geaendert. Bitte Seite neu laden.",
+            user_message="Klassifikation wurde zwischenzeitlich geändert. Bitte Seite neu laden.",
             details=details,
         )
 
@@ -124,7 +124,7 @@ class ViesServiceError(DropShipmentError):
         super().__init__(
             message=f"VIES service unavailable for VAT ID: {vat_id}",
             error_code="VIES_SERVICE_UNAVAILABLE",
-            user_message="USt-IdNr.-Validierungsdienst nicht erreichbar. Bitte spaeter erneut versuchen.",
+            user_message="USt-IdNr.-Validierungsdienst nicht erreichbar. Bitte später erneut versuchen.",
             details=details,
         )
 
@@ -139,7 +139,7 @@ class InvalidVatIdError(DropShipmentError):
         super().__init__(
             message=f"Invalid VAT ID format: {vat_id}",
             error_code="INVALID_VAT_ID",
-            user_message=f"Ungueltiges USt-IdNr.-Format: {vat_id}",
+            user_message=f"Ungültiges USt-IdNr.-Format: {vat_id}",
             details=details,
         )
 
@@ -213,6 +213,6 @@ class RateLimitExceededError(DropShipmentError):
         super().__init__(
             message=f"Rate limit exceeded: {limit} requests per {window_seconds}s",
             error_code="RATE_LIMIT_EXCEEDED",
-            user_message=f"Anfragelimit ueberschritten. Bitte warten Sie {retry_after} Sekunden.",
+            user_message=f"Anfragelimit überschritten. Bitte warten Sie {retry_after} Sekunden.",
             details=details,
         )

@@ -1,8 +1,8 @@
 """
 Holding Services Module.
 
-Services fuer Multi-Company/Holding-Funktionen:
-- Konsolidierte KPIs ueber alle Firmen
+Services für Multi-Company/Holding-Funktionen:
+- Konsolidierte KPIs über alle Firmen
 - Intercompany-Abstimmung und -Eliminierung
 - Konzernabschluss-Vorbereitung
 

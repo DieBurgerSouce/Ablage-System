@@ -1,6 +1,6 @@
 """Document Export Service - Export in verschiedene Formate.
 
-Enthaelt:
+Enthält:
 - batch_export: Mehrere Dokumente exportieren
 - _export_json: JSON-Export
 - _export_csv: CSV-Export
@@ -32,9 +32,9 @@ logger = structlog.get_logger(__name__)
 
 
 class DocumentExportService:
-    """Service fuer Dokumentenexport in verschiedene Formate.
+    """Service für Dokumentenexport in verschiedene Formate.
 
-    Unterstuetzt JSON, CSV, ZIP und PDF-Exporte mit
+    Unterstützt JSON, CSV, ZIP und PDF-Exporte mit
     konfigurierbarem Umfang (Text, Metadaten).
     """
 
@@ -54,8 +54,8 @@ class DocumentExportService:
             document_ids: Liste der Dokument-IDs
             user_id: ID des Benutzers
             format: Export-Format (JSON, CSV, ZIP, PDF)
-            include_text: Extrahierten Text einschliessen
-            include_metadata: Metadaten einschliessen
+            include_text: Extrahierten Text einschließen
+            include_metadata: Metadaten einschließen
 
         Returns:
             Tuple von (export_bytes, content_type, BatchExportResult)
@@ -84,7 +84,7 @@ class DocumentExportService:
             for doc_id in not_found
         ]
 
-        # Export durchfuehren
+        # Export durchführen
         if format == ExportFormat.JSON:
             export_data, content_type = self._export_json(
                 documents, include_text, include_metadata
@@ -136,8 +136,8 @@ class DocumentExportService:
 
         Args:
             documents: Liste der Dokumente
-            include_text: Extrahierten Text einschliessen
-            include_metadata: Metadaten einschliessen
+            include_text: Extrahierten Text einschließen
+            include_metadata: Metadaten einschließen
 
         Returns:
             Tuple von (bytes, content_type)
@@ -178,8 +178,8 @@ class DocumentExportService:
 
         Args:
             documents: Liste der Dokumente
-            include_text: Extrahierten Text einschliessen
-            include_metadata: Metadaten einschliessen
+            include_text: Extrahierten Text einschließen
+            include_metadata: Metadaten einschließen
 
         Returns:
             Tuple von (bytes, content_type)
@@ -212,7 +212,7 @@ class DocumentExportService:
             }
 
             if include_text:
-                # Text kuerzen fuer CSV
+                # Text kürzen für CSV
                 text = doc.extracted_text or ""
                 row["extracted_text"] = text[:1000] + "..." if len(text) > 1000 else text
 
@@ -234,8 +234,8 @@ class DocumentExportService:
 
         Args:
             documents: Liste der Dokumente
-            include_text: Extrahierten Text einschliessen
-            include_metadata: Metadaten einschliessen
+            include_text: Extrahierten Text einschließen
+            include_metadata: Metadaten einschließen
 
         Returns:
             Tuple von (bytes, content_type)
@@ -280,8 +280,8 @@ class DocumentExportService:
 
         Args:
             documents: Liste der Dokumente
-            include_text: Extrahierten Text einschliessen
-            include_metadata: Metadaten einschliessen
+            include_text: Extrahierten Text einschließen
+            include_metadata: Metadaten einschließen
 
         Returns:
             Tuple von (bytes, content_type)
@@ -357,7 +357,7 @@ class DocumentExportService:
                 ["Typ", document.document_type or "Sonstiges"],
                 ["Status", document.status or "Unbekannt"],
                 ["Erstellt", document.created_at.strftime("%d.%m.%Y %H:%M") if document.created_at else "-"],
-                ["Groesse", f"{(document.file_size or 0) / 1024:.1f} KB"],
+                ["Größe", f"{(document.file_size or 0) / 1024:.1f} KB"],
                 ["Seiten", str(document.page_count or "-")],
                 ["OCR-Konfidenz", f"{(document.ocr_confidence or 0) * 100:.1f}%"],
             ]
@@ -401,9 +401,9 @@ class DocumentExportService:
                 elements.append(Paragraph("Extrahierter Text:", heading_style))
 
                 # Text aufbereiten (HTML-Entities und Zeilenumbrueche)
-                text = document.extracted_text[:10000]  # Limit fuer sehr lange Texte
+                text = document.extracted_text[:10000]  # Limit für sehr lange Texte
                 if len(document.extracted_text) > 10000:
-                    text += "... [Text gekuerzt]"
+                    text += "... [Text gekürzt]"
 
                 # Sonderzeichen escapen
                 text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')

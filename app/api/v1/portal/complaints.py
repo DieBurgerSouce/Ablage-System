@@ -1,7 +1,7 @@
 """
 Portal Complaints API.
 
-Reklamationen fuer Kundenportal.
+Reklamationen für Kundenportal.
 """
 
 from typing import Optional, List
@@ -31,7 +31,7 @@ class ComplaintCreateRequest(BaseModel):
 
 
 class ComplaintAddInfoRequest(BaseModel):
-    """Zusaetzliche Information hinzufuegen."""
+    """Zusätzliche Information hinzufuegen."""
     additional_info: str
     attachment_ids: Optional[List[str]] = None
 
@@ -39,7 +39,7 @@ class ComplaintAddInfoRequest(BaseModel):
 @router.get("/types")
 async def get_complaint_types():
     """
-    Hole verfuegbare Reklamationstypen.
+    Hole verfügbare Reklamationstypen.
     """
     return {
         "types": PortalComplaintService.get_complaint_types(),
@@ -58,7 +58,7 @@ async def create_complaint(
     if not portal_user.can_submit_complaints:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer Reklamationen",
+            detail="Keine Berechtigung für Reklamationen",
         )
 
     service = get_portal_complaint_service(db)
@@ -170,12 +170,12 @@ async def add_complaint_info(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Fuege zusaetzliche Informationen zu einer Reklamation hinzu.
+    Fuege zusätzliche Informationen zu einer Reklamation hinzu.
     """
     if not portal_user.can_submit_complaints:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer Reklamationen",
+            detail="Keine Berechtigung für Reklamationen",
         )
 
     service = get_portal_complaint_service(db)

@@ -1,9 +1,9 @@
 """
 Natural Language Query (NLQ) Celery Tasks.
 
-Wartungs-Tasks fuer NLQ-System:
+Wartungs-Tasks für NLQ-System:
 - Cleanup alter Query-Logs
-- Cache-Warming fuer haeufige Queries
+- Cache-Warming für häufige Queries
 - Query-Pattern-Analyse
 - Performance-Optimierung
 
@@ -51,13 +51,13 @@ def cleanup_old_logs(
     retention_days: int = 90,
     batch_size: int = 1000,
 ) -> Dict[str, Any]:
-    """Loesche alte NLQ Query-Logs.
+    """Lösche alte NLQ Query-Logs.
 
-    Behaelt nur Logs der letzten X Tage fuer Performance und Privacy.
-    Archiviert aggregierte Statistiken vor dem Loeschen.
+    Behaelt nur Logs der letzten X Tage für Performance und Privacy.
+    Archiviert aggregierte Statistiken vor dem Löschen.
 
     Args:
-        retention_days: Behalte Logs fuer X Tage (default: 90)
+        retention_days: Behalte Logs für X Tage (default: 90)
         batch_size: Anzahl der Logs pro Batch-Delete
 
     Returns:
@@ -70,7 +70,7 @@ def cleanup_old_logs(
         async with get_async_session_context() as db:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
-            # 1. Aggregiere Statistiken vor dem Loeschen
+            # 1. Aggregiere Statistiken vor dem Löschen
             stats_query = select(
                 func.count(NLQLog.id).label("total_logs"),
                 func.count(
@@ -130,7 +130,7 @@ def cleanup_old_logs(
             # 2. Batch-Delete alte Logs
             total_deleted = 0
             while True:
-                # Finde IDs zum Loeschen
+                # Finde IDs zum Löschen
                 id_query = (
                     select(NLQLog.id)
                     .where(NLQLog.created_at < cutoff_date)
@@ -142,7 +142,7 @@ def cleanup_old_logs(
                 if not ids_to_delete:
                     break
 
-                # Loesche Batch
+                # Lösche Batch
                 delete_stmt = delete(NLQLog).where(
                     NLQLog.id.in_(ids_to_delete)
                 )
@@ -203,14 +203,14 @@ def warm_cache(
     top_n: int = 50,
     lookback_days: int = 7,
 ) -> Dict[str, Any]:
-    """Pre-cache haeufige NLQ-Queries fuer bessere Performance.
+    """Pre-cache häufige NLQ-Queries für bessere Performance.
 
-    Analysiert die Top N haeufigsten Queries der letzten Tage
+    Analysiert die Top N häufigsten Queries der letzten Tage
     und cached deren Ergebnisse vorab.
 
     Args:
         top_n: Anzahl der Top-Queries zum Cachen
-        lookback_days: Tage fuer Query-Haeufigkeitsanalyse
+        lookback_days: Tage für Query-Häufigkeitsanalyse
 
     Returns:
         Dict mit Cache-Warming-Statistiken
@@ -222,7 +222,7 @@ def warm_cache(
         async with get_async_session_context() as db:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=lookback_days)
 
-            # Finde Top N haeufigste Queries
+            # Finde Top N häufigste Queries
             query = (
                 select(
                     NLQLog.query_text,
@@ -261,7 +261,7 @@ def warm_cache(
                 try:
                     start_time = datetime.now(timezone.utc)
 
-                    # Fuehre Query aus und cache Ergebnis
+                    # Führe Query aus und cache Ergebnis
                     # NLQService nutzt automatisch Redis-Cache
                     _ = await nlq_service.process_query(
                         query_text=query_text,
@@ -332,16 +332,16 @@ def analyze_query_patterns(
     self,
     lookback_days: int = 30,
 ) -> Dict[str, Any]:
-    """Analysiere Query-Patterns fuer Optimierung.
+    """Analysiere Query-Patterns für Optimierung.
 
     Identifiziert:
-    - Haeufige Query-Typen
+    - Häufige Query-Typen
     - Langsame Queries (>5s)
     - Fehlgeschlagene Queries
     - Peak-Nutzungszeiten
 
     Args:
-        lookback_days: Anzahl der Tage fuer Analyse
+        lookback_days: Anzahl der Tage für Analyse
 
     Returns:
         Dict mit Pattern-Analyse

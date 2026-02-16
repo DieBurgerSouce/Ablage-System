@@ -3,7 +3,7 @@
 Communication Hub Database Models.
 
 Vision 2026+ Feature #1: Kommunikations-Hub (360° Entity View)
-Modelle fuer Telefon-Notizen und Kommunikationshistorie.
+Modelle für Telefon-Notizen und Kommunikationshistorie.
 """
 
 import uuid
@@ -51,7 +51,7 @@ class CommunicationDirection(str, Enum):
 
 class CommunicationSentiment(str, Enum):
     """Stimmung/Ergebnis der Kommunikation."""
-    POSITIVE = "positive"     # Positiv (zufrieden, Lob, Bestaetigung)
+    POSITIVE = "positive"     # Positiv (zufrieden, Lob, Bestätigung)
     NEUTRAL = "neutral"       # Neutral (Informationsaustausch)
     NEGATIVE = "negative"     # Negativ (Beschwerde, Problem)
     ESCALATION = "escalation" # Eskalation erforderlich
@@ -59,7 +59,7 @@ class CommunicationSentiment(str, Enum):
 
 class PhoneNote(Base):
     """
-    Telefon-Notiz fuer Geschaeftspartner.
+    Telefon-Notiz für Geschäftspartner.
 
     Erfasst alle Telefonkontakte mit Kunden/Lieferanten
     inklusive Gespraechsnotizen und Follow-ups.
@@ -68,7 +68,7 @@ class PhoneNote(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    # Entity Reference (Geschaeftspartner)
+    # Entity Reference (Geschäftspartner)
     entity_id = Column(
         UUID(as_uuid=True),
         ForeignKey("business_entities.id", ondelete="CASCADE"),
@@ -206,7 +206,7 @@ class CommunicationSummary(Base):
     """
     Aggregierte Kommunikations-Zusammenfassung pro Entity.
 
-    Wird automatisch aktualisiert fuer schnelle Dashboard-Anzeigen.
+    Wird automatisch aktualisiert für schnelle Dashboard-Anzeigen.
     """
     __tablename__ = "communication_summaries"
 

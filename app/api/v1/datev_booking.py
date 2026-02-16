@@ -2,9 +2,9 @@
 """
 DATEV Booking Suggestion API.
 
-Endpunkte fuer Buchungsvorschlaege:
-- Einzelne Buchungsvorschlaege
-- Batch-Vorschlaege
+Endpunkte für Buchungsvorschläge:
+- Einzelne Buchungsvorschläge
+- Batch-Vorschläge
 - DATEV-Export
 
 Vision 2.0 Feature: Erweiterte Integrationen
@@ -43,19 +43,19 @@ router = APIRouter(prefix="/datev/bookings", tags=["DATEV Buchungsvorschläge"])
 
 
 class SuggestBookingRequest(BaseModel):
-    """Request fuer einzelnen Buchungsvorschlag."""
+    """Request für einzelnen Buchungsvorschlag."""
 
     ocr_text: str = Field(..., min_length=1, description="OCR-Volltext")
     extracted_data: dict = Field(default_factory=dict, description="Strukturierte OCR-Daten")
     document_type: Optional[str] = Field(None, description="Dokumenttyp")
-    entity_name: Optional[str] = Field(None, description="Geschaeftspartner-Name")
-    entity_id: Optional[UUID] = Field(None, description="Geschaeftspartner-ID")
+    entity_name: Optional[str] = Field(None, description="Geschäftspartner-Name")
+    entity_id: Optional[UUID] = Field(None, description="Geschäftspartner-ID")
     kontenrahmen: str = Field("skr03", pattern="^(skr03|skr04)$", description="SKR03 oder SKR04")
     custom_account_mappings: Optional[dict] = Field(None, description="Benutzerdefinierte Konten-Zuordnungen")
 
 
 class SuggestFromDocumentRequest(BaseModel):
-    """Request fuer Buchungsvorschlag aus Dokument."""
+    """Request für Buchungsvorschlag aus Dokument."""
 
     document_id: UUID = Field(..., description="Dokument-ID")
     kontenrahmen: str = Field("skr03", pattern="^(skr03|skr04)$")
@@ -63,7 +63,7 @@ class SuggestFromDocumentRequest(BaseModel):
 
 
 class BatchSuggestRequest(BaseModel):
-    """Request fuer Batch-Vorschlaege."""
+    """Request für Batch-Vorschläge."""
 
     document_ids: List[UUID] = Field(..., min_length=1, max_length=100)
     kontenrahmen: str = Field("skr03", pattern="^(skr03|skr04)$")
@@ -71,18 +71,18 @@ class BatchSuggestRequest(BaseModel):
 
 
 class ExportRequest(BaseModel):
-    """Request fuer DATEV-Export."""
+    """Request für DATEV-Export."""
 
     document_ids: List[UUID] = Field(..., min_length=1, max_length=500)
     mandant_nr: str = Field(..., min_length=1, max_length=5, pattern="^[0-9]+$")
     berater_nr: str = Field(..., min_length=1, max_length=7, pattern="^[0-9]+$")
     wirtschaftsjahr: int = Field(..., ge=2000, le=2100)
     kontenrahmen: str = Field("skr03", pattern="^(skr03|skr04)$")
-    include_uncertain: bool = Field(False, description="Unsichere Vorschlaege einbeziehen")
+    include_uncertain: bool = Field(False, description="Unsichere Vorschläge einbeziehen")
 
 
 class BookingSuggestionResponse(BaseModel):
-    """Response fuer Buchungsvorschlag."""
+    """Response für Buchungsvorschlag."""
 
     belegart: str
     belegdatum: date
@@ -135,7 +135,7 @@ class BookingSuggestionResponse(BaseModel):
 
 
 class BatchSuggestionResponse(BaseModel):
-    """Response fuer Batch-Vorschlaege."""
+    """Response für Batch-Vorschläge."""
 
     total: int
     successful: int
@@ -145,7 +145,7 @@ class BatchSuggestionResponse(BaseModel):
 
 
 class ExportResponse(BaseModel):
-    """Response fuer DATEV-Export."""
+    """Response für DATEV-Export."""
 
     content: str
     filename: str
@@ -165,14 +165,14 @@ class AccountInfo(BaseModel):
 
 
 class KontenrahmenResponse(BaseModel):
-    """Response fuer Kontenrahmen-Abruf."""
+    """Response für Kontenrahmen-Abruf."""
 
     kontenrahmen: str
     accounts: List[AccountInfo]
 
 
 class BelegartResponse(BaseModel):
-    """Response fuer Belegarten."""
+    """Response für Belegarten."""
 
     code: str
     name: str
@@ -350,7 +350,7 @@ async def batch_suggest(
             )
             suggestions.append(BookingSuggestionResponse.from_suggestion(suggestion))
         except Exception as e:
-            logger.error(f"Buchungsvorschlag fehlgeschlagen fuer {doc_id}: {e}")
+            logger.error(f"Buchungsvorschlag fehlgeschlagen für {doc_id}: {e}")
             errors.append({
                 "document_id": str(doc_id),
                 "error": safe_error_detail(e, "Vorgang"),
@@ -411,7 +411,7 @@ async def export_to_datev(
 
     service = BookingSuggestionService(kontenrahmen=request.kontenrahmen)
 
-    # Vorschlaege generieren
+    # Vorschläge generieren
     suggestions = []
     for doc in documents:
         entity = entities.get(doc.entity_id) if doc.entity_id else None
@@ -426,9 +426,9 @@ async def export_to_datev(
             )
             suggestions.append(suggestion)
         except Exception as e:
-            logger.warning(f"Ueberspringe Dokument {doc.id}: {e}")
+            logger.warning(f"Überspringe Dokument {doc.id}: {e}")
 
-    # Unsichere filtern wenn nicht gewuenscht
+    # Unsichere filtern wenn nicht gewünscht
     if not request.include_uncertain:
         original_count = len(suggestions)
         suggestions = [s for s in suggestions if s.confidence >= 0.5 or not s.requires_review]
@@ -477,7 +477,7 @@ async def get_kontenrahmen(
     """
     Rufe Konten eines Kontenrahmens ab.
 
-    Gibt alle vordefinierten Konten fuer SKR03 oder SKR04 zurueck.
+    Gibt alle vordefinierten Konten für SKR03 oder SKR04 zurück.
     """
     service = BookingSuggestionService(kontenrahmen=kontenrahmen)
 
@@ -508,7 +508,7 @@ async def get_belegarten(
     current_user: User = Depends(get_current_user),
 ) -> List[BelegartResponse]:
     """
-    Rufe alle verfuegbaren Belegarten ab.
+    Rufe alle verfügbaren Belegarten ab.
     """
     belegarten = [
         BelegartResponse(
@@ -529,7 +529,7 @@ async def get_belegarten(
         BelegartResponse(
             code=Belegart.GUTSCHRIFT_AUSGANG.value,
             name="Gutschrift Ausgang",
-            beschreibung="Erstellte Gutschrift fuer Kunden",
+            beschreibung="Erstellte Gutschrift für Kunden",
         ),
         BelegartResponse(
             code=Belegart.BANK.value,
@@ -560,7 +560,7 @@ async def get_steuercodes(
     current_user: User = Depends(get_current_user),
 ) -> List[dict]:
     """
-    Rufe alle verfuegbaren DATEV-Steuercodes ab.
+    Rufe alle verfügbaren DATEV-Steuercodes ab.
     """
     return [
         {"code": "9", "satz": 19, "beschreibung": "19% USt/VSt"},

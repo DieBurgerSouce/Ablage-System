@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Belegpruefung und Vollstaendigkeitskontrolle.
+Belegprüfung und Vollständigkeitskontrolle.
 
-Prueft die Vollstaendigkeit von Buchhaltungsbelegen:
+Prüft die Vollständigkeit von Buchhaltungsbelegen:
 - Buchungen ohne Beleg
 - Fehlende Monate in Rechnungssequenzen
-- Luecken in Rechnungsnummern
-- Plausibilitaetspruefung (ungewoehnliche Betraege, Datumsinkonsistenzen)
+- Lücken in Rechnungsnummern
+- Plausibilitaetsprüfung (ungewoehnliche Betraege, Datumsinkonsistenzen)
 
 Rechtliche Grundlage:
-- GoBD (Grundsaetze zur ordnungsmaessigen Fuehrung von Buechern)
-- § 146 AO (Ordnungsvorschriften fuer die Buchfuehrung)
+- GoBD (Grundsätze zur ordnungsmaessigen Führung von Buechern)
+- § 146 AO (Ordnungsvorschriften für die Buchführung)
 """
 
 import re
@@ -55,7 +55,7 @@ class UnmatchedBooking:
 
 @dataclass
 class InvoiceGap:
-    """Luecke in einer Rechnungsnummern-Sequenz."""
+    """Lücke in einer Rechnungsnummern-Sequenz."""
 
     vendor_name: str
     vendor_entity_id: Optional[uuid.UUID]
@@ -104,7 +104,7 @@ class DateIssue:
 
 @dataclass
 class CompletenessReport:
-    """Vollstaendiger Belegcheck-Report."""
+    """Vollständiger Belegcheck-Report."""
 
     company_id: uuid.UUID
     period_start: date
@@ -126,13 +126,13 @@ class CompletenessReport:
 
 
 class DocumentCompletenessService:
-    """Belegpruefung und Vollstaendigkeitskontrolle.
+    """Belegprüfung und Vollständigkeitskontrolle.
 
-    Prueft:
+    Prüft:
     - Buchungen ohne Beleg
     - Fehlende Monate in Rechnungssequenzen
-    - Luecken in Rechnungsnummern
-    - Plausibilitaetspruefung (ungewoehnliche Betraege, Datumsinkonsistenzen)
+    - Lücken in Rechnungsnummern
+    - Plausibilitaetsprüfung (ungewoehnliche Betraege, Datumsinkonsistenzen)
     """
 
     # Schwellenwerte
@@ -153,14 +153,14 @@ class DocumentCompletenessService:
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID (Multi-Tenant)
-            period_start: Beginn des Pruefzeitraums
-            period_end: Ende des Pruefzeitraums
+            period_start: Beginn des Prüfzeitraums
+            period_end: Ende des Prüfzeitraums
 
         Returns:
             Liste von Buchungen ohne Beleg
         """
         # BankTransaction hat kein company_id direkt.
-        # Filtere ueber BankAccount -> user_id -> User -> company_id
+        # Filtere über BankAccount -> user_id -> User -> company_id
         # oder verwende die matched_document_id == NULL Logik
         from app.db.models import BankAccount
 
@@ -226,16 +226,16 @@ class DocumentCompletenessService:
         vendor_entity_id: Optional[uuid.UUID] = None,
         year: Optional[int] = None,
     ) -> List[InvoiceGap]:
-        """Prueft Luecken in Rechnungsnummern-Sequenzen pro Lieferant.
+        """Prüft Lücken in Rechnungsnummern-Sequenzen pro Lieferant.
 
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID (Multi-Tenant)
-            vendor_entity_id: Optional - nur fuer einen Lieferanten
-            year: Optional - nur fuer ein Jahr
+            vendor_entity_id: Optional - nur für einen Lieferanten
+            year: Optional - nur für ein Jahr
 
         Returns:
-            Liste von Rechnungsnummern-Luecken
+            Liste von Rechnungsnummern-Lücken
         """
         conditions = [
             InvoiceTracking.company_id == company_id,
@@ -244,7 +244,7 @@ class DocumentCompletenessService:
         ]
 
         if vendor_entity_id is not None:
-            # Filter ueber Document -> business_entity_id
+            # Filter über Document -> business_entity_id
             conditions.append(Document.business_entity_id == vendor_entity_id)
 
         if year is not None:
@@ -328,7 +328,7 @@ class DocumentCompletenessService:
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID (Multi-Tenant)
-            year: Pruef-Jahr
+            year: Prüf-Jahr
 
         Returns:
             Liste fehlender monatlicher Rechnungen
@@ -390,7 +390,7 @@ class DocumentCompletenessService:
 
         for vid, data in vendor_months.items():
             months_present = set(data["months"])
-            # Nur pruefen wenn Lieferant in genug Monaten vorkommt
+            # Nur prüfen wenn Lieferant in genug Monaten vorkommt
             if len(months_present) < self.MIN_MONTHLY_OCCURRENCES:
                 continue
 
@@ -442,18 +442,18 @@ class DocumentCompletenessService:
         period_start: date,
         period_end: date,
     ) -> List[PlausibilityIssue]:
-        """Prueft Plausibilitaet von Betraegen.
+        """Prüft Plausibilitaet von Betraegen.
 
         Erkennt:
-        - Betraege deutlich ueber Durchschnitt pro Lieferant
-        - Runde Betraege (Schaetzungen)
+        - Betraege deutlich über Durchschnitt pro Lieferant
+        - Runde Betraege (Schätzungen)
         - Doppelte Betraege am gleichen Tag vom gleichen Lieferanten
 
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID (Multi-Tenant)
-            period_start: Beginn des Pruefzeitraums
-            period_end: Ende des Pruefzeitraums
+            period_start: Beginn des Prüfzeitraums
+            period_end: Ende des Prüfzeitraums
 
         Returns:
             Liste von Plausibilitaetsproblemen
@@ -506,8 +506,8 @@ class DocumentCompletenessService:
             stddev = variance ** 0.5
             vendor_stats[vid] = (avg, stddev)
 
-        # 3. Pruefe jede Rechnung
-        # Gruppiere nach (vendor, date, amount) fuer Duplikat-Erkennung
+        # 3. Prüfe jede Rechnung
+        # Gruppiere nach (vendor, date, amount) für Duplikat-Erkennung
         seen_combos: Dict[
             Tuple[Optional[uuid.UUID], str, float], List[uuid.UUID]
         ] = defaultdict(list)
@@ -516,7 +516,7 @@ class DocumentCompletenessService:
             amount_val = float(inv.amount or 0)
             doc_id = inv.document_id
 
-            # Runde Betraege pruefen
+            # Runde Betraege prüfen
             if amount_val > 0:
                 dec_amount = Decimal(str(amount_val))
                 if (
@@ -529,7 +529,7 @@ class DocumentCompletenessService:
                             issue_type="round_number",
                             description=(
                                 f"Runder Betrag ({amount_val:.2f} EUR) - "
-                                f"moeglicherweise Schaetzung"
+                                f"möglicherweise Schätzung"
                             ),
                             severity="info",
                             amount=dec_amount,
@@ -538,7 +538,7 @@ class DocumentCompletenessService:
                         )
                     )
 
-            # Ungewoehnlicher Betrag pruefen
+            # Ungewoehnlicher Betrag prüfen
             vid = inv.business_entity_id
             if vid in vendor_stats:
                 avg, stddev = vendor_stats[vid]
@@ -552,7 +552,7 @@ class DocumentCompletenessService:
                                 issue_type="unusual_amount",
                                 description=(
                                     f"Ungewoehnlicher Betrag ({amount_val:.2f} EUR) - "
-                                    f"{abs(dev_pct):.0f}% ueber Durchschnitt "
+                                    f"{abs(dev_pct):.0f}% über Durchschnitt "
                                     f"({avg:.2f} EUR)"
                                 ),
                                 severity="warning",
@@ -584,7 +584,7 @@ class DocumentCompletenessService:
                             document_id=doc_id,
                             issue_type="duplicate_suspected",
                             description=(
-                                f"Moegliches Duplikat: {len(doc_ids)} Rechnungen "
+                                f"Mögliches Duplikat: {len(doc_ids)} Rechnungen "
                                 f"mit gleichem Betrag ({combo_key[2]:.2f} EUR) "
                                 f"am gleichen Tag"
                             ),
@@ -610,7 +610,7 @@ class DocumentCompletenessService:
         period_start: date,
         period_end: date,
     ) -> List[DateIssue]:
-        """Prueft Datumskonsistenz.
+        """Prüft Datumskonsistenz.
 
         Erkennt:
         - Rechnungsdatum in der Zukunft
@@ -620,8 +620,8 @@ class DocumentCompletenessService:
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID (Multi-Tenant)
-            period_start: Beginn des Pruefzeitraums
-            period_end: Ende des Pruefzeitraums
+            period_start: Beginn des Prüfzeitraums
+            period_end: Ende des Prüfzeitraums
 
         Returns:
             Liste von Datumsproblemen
@@ -671,7 +671,7 @@ class DocumentCompletenessService:
                 else row.invoice_date
             )
 
-            # Zukunftsdatum pruefen
+            # Zukunftsdatum prüfen
             if inv_date > today:
                 issues.append(
                     DateIssue(
@@ -687,7 +687,7 @@ class DocumentCompletenessService:
                     )
                 )
 
-            # Buchungsdatum-Abweichung pruefen
+            # Buchungsdatum-Abweichung prüfen
             if row.tx_booking_date is not None:
                 booking_dt = (
                     row.tx_booking_date.date()
@@ -711,7 +711,7 @@ class DocumentCompletenessService:
                         )
                     )
 
-            # Falscher Zeitraum pruefen (Rechnung ausserhalb des
+            # Falscher Zeitraum prüfen (Rechnung ausserhalb des
             # Buchungsjahres)
             if inv_date < period_start or inv_date > period_end:
                 issues.append(
@@ -720,7 +720,7 @@ class DocumentCompletenessService:
                         issue_type="wrong_period",
                         description=(
                             f"Rechnungsdatum ({inv_date.isoformat()}) "
-                            f"ausserhalb des Pruefzeitraums "
+                            f"ausserhalb des Prüfzeitraums "
                             f"({period_start.isoformat()} bis "
                             f"{period_end.isoformat()})"
                         ),
@@ -746,7 +746,7 @@ class DocumentCompletenessService:
         quarter: Optional[int] = None,
         month: Optional[int] = None,
     ) -> CompletenessReport:
-        """Generiert vollstaendigen Belegcheck-Report.
+        """Generiert vollständigen Belegcheck-Report.
 
         Args:
             db: Datenbank-Session
@@ -756,11 +756,11 @@ class DocumentCompletenessService:
             month: Optional - Monat (1-12)
 
         Returns:
-            Vollstaendiger Belegcheck-Report mit Score und Ergebnissen
+            Vollständiger Belegcheck-Report mit Score und Ergebnissen
         """
         period_start, period_end = self._calculate_period(year, quarter, month)
 
-        # Fuehre alle Checks aus
+        # Führe alle Checks aus
         unmatched = await self.check_bookings_without_receipts(
             db, company_id, period_start, period_end
         )
@@ -827,15 +827,15 @@ class DocumentCompletenessService:
         period_start: date,
         period_end: date,
     ) -> float:
-        """Berechnet Vollstaendigkeits-Score (0-100).
+        """Berechnet Vollständigkeits-Score (0-100).
 
-        Schnelle Variante ohne vollstaendigen Report.
+        Schnelle Variante ohne vollständigen Report.
 
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID (Multi-Tenant)
-            period_start: Beginn des Pruefzeitraums
-            period_end: Ende des Pruefzeitraums
+            period_start: Beginn des Prüfzeitraums
+            period_end: Ende des Prüfzeitraums
 
         Returns:
             Score von 0 bis 100
@@ -913,20 +913,20 @@ class DocumentCompletenessService:
     def _suggest_action_for_unmatched(
         self, tx: BankTransaction
     ) -> str:
-        """Schlaegt eine Aktion fuer eine unzugeordnete Buchung vor."""
+        """Schlaegt eine Aktion für eine unzugeordnete Buchung vor."""
         amount = float(tx.amount or 0)
         if amount < 0:
-            return "Beleg fuer Ausgabe suchen und zuordnen"
+            return "Beleg für Ausgabe suchen und zuordnen"
         if amount > 0:
-            return "Zahlungseingang pruefen und Rechnung zuordnen"
-        return "Buchung mit Betrag 0 pruefen"
+            return "Zahlungseingang prüfen und Rechnung zuordnen"
+        return "Buchung mit Betrag 0 prüfen"
 
     def _detect_number_gaps(
         self, numbers: List[str]
     ) -> List[Dict[str, str]]:
-        """Erkennt Luecken in Nummernsequenzen.
+        """Erkennt Lücken in Nummernsequenzen.
 
-        Versucht numerische Suffixe zu extrahieren und Luecken zu finden.
+        Versucht numerische Suffixe zu extrahieren und Lücken zu finden.
         """
         gaps: List[Dict[str, str]] = []
 
@@ -972,14 +972,14 @@ class DocumentCompletenessService:
     def _calculate_period(
         self, year: int, quarter: Optional[int], month: Optional[int]
     ) -> Tuple[date, date]:
-        """Berechnet Start- und End-Datum fuer den Pruefzeitraum."""
+        """Berechnet Start- und End-Datum für den Prüfzeitraum."""
         if month is not None:
             start = date(year, month, 1)
             if month == 12:
                 end = date(year, 12, 31)
             else:
                 end = date(year, month + 1, 1)
-                # Tag vor dem naechsten Monat
+                # Tag vor dem nächsten Monat
                 from datetime import timedelta
 
                 end = end - timedelta(days=1)
@@ -1009,14 +1009,14 @@ class DocumentCompletenessService:
         plausibility: List[PlausibilityIssue],
         date_issues: List[DateIssue],
     ) -> float:
-        """Berechnet den Vollstaendigkeits-Score.
+        """Berechnet den Vollständigkeits-Score.
 
         Gewichtung:
-        - Unmatched Buchungen: -3 Punkte pro Stueck (max -30)
-        - Rechnungsnummern-Luecken: -5 Punkte pro Stueck (max -20)
-        - Fehlende Monatsrechnungen: -2 Punkte pro Stueck (max -15)
-        - Plausibilitaetsprobleme (warning/error): -2 Punkte pro Stueck (max -15)
-        - Datumsprobleme: -2 Punkte pro Stueck (max -20)
+        - Unmatched Buchungen: -3 Punkte pro Stück (max -30)
+        - Rechnungsnummern-Lücken: -5 Punkte pro Stück (max -20)
+        - Fehlende Monatsrechnungen: -2 Punkte pro Stück (max -15)
+        - Plausibilitaetsprobleme (warning/error): -2 Punkte pro Stück (max -15)
+        - Datumsprobleme: -2 Punkte pro Stück (max -20)
         """
         score = 100.0
 
@@ -1047,13 +1047,13 @@ class DocumentCompletenessService:
         if unmatched:
             recommendations.append(
                 f"{len(unmatched)} Bankbuchungen haben keinen zugeordneten Beleg. "
-                f"Bitte pruefen Sie diese Buchungen und ordnen Sie die "
+                f"Bitte prüfen Sie diese Buchungen und ordnen Sie die "
                 f"entsprechenden Belege zu."
             )
 
         if gaps:
             recommendations.append(
-                f"{len(gaps)} Luecken in Rechnungsnummern-Sequenzen gefunden. "
+                f"{len(gaps)} Lücken in Rechnungsnummern-Sequenzen gefunden. "
                 f"Bitte klaren Sie mit den Lieferanten, ob fehlende "
                 f"Rechnungen existieren."
             )
@@ -1061,8 +1061,8 @@ class DocumentCompletenessService:
         if missing:
             vendors = set(m.vendor_name for m in missing)
             recommendations.append(
-                f"Fuer {len(vendors)} Lieferanten fehlen monatliche Rechnungen. "
-                f"Pruefen Sie, ob wiederkehrende Rechnungen eingegangen sind."
+                f"Für {len(vendors)} Lieferanten fehlen monatliche Rechnungen. "
+                f"Prüfen Sie, ob wiederkehrende Rechnungen eingegangen sind."
             )
 
         duplicates = [
@@ -1070,8 +1070,8 @@ class DocumentCompletenessService:
         ]
         if duplicates:
             recommendations.append(
-                f"{len(duplicates)} moegliche Duplikat-Rechnungen erkannt. "
-                f"Bitte pruefen Sie, ob doppelte Zahlungen vorliegen."
+                f"{len(duplicates)} mögliche Duplikat-Rechnungen erkannt. "
+                f"Bitte prüfen Sie, ob doppelte Zahlungen vorliegen."
             )
 
         unusual = [
@@ -1080,7 +1080,7 @@ class DocumentCompletenessService:
         if unusual:
             recommendations.append(
                 f"{len(unusual)} Rechnungen mit ungewoehnlich hohen Betraegen. "
-                f"Bitte pruefen Sie die Plausibilitaet dieser Betraege."
+                f"Bitte prüfen Sie die Plausibilitaet dieser Betraege."
             )
 
         future_dates = [
@@ -1098,14 +1098,14 @@ class DocumentCompletenessService:
         if large_gaps:
             recommendations.append(
                 f"{len(large_gaps)} Rechnungen mit grossem Abstand zwischen "
-                f"Rechnungs- und Buchungsdatum. Pruefen Sie die zeitnahe "
+                f"Rechnungs- und Buchungsdatum. Prüfen Sie die zeitnahe "
                 f"Erfassung."
             )
 
         if not recommendations:
             recommendations.append(
-                "Keine Auffaelligkeiten gefunden. "
-                "Die Belegvollstaendigkeit ist gut."
+                "Keine Auffälligkeiten gefunden. "
+                "Die Belegvollständigkeit ist gut."
             )
 
         return recommendations

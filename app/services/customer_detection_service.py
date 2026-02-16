@@ -1,10 +1,10 @@
 """Customer Detection Service.
 
-Automatische Erkennung und Extraktion von Geschaeftskontakten aus Dokumenten:
+Automatische Erkennung und Extraktion von Geschäftskontakten aus Dokumenten:
 - Kunden und Lieferanten aus Rechnungen
-- Vertragsparteien aus Vertraegen
+- Vertragsparteien aus Verträgen
 - Kontaktpersonen aus Korrespondenz
-- Deduplizierung ueber Name-Matching
+- Deduplizierung über Name-Matching
 - Optionales Auto-Create
 
 Feinpoliert und durchdacht - Intelligente Kontakterkennung.
@@ -31,7 +31,7 @@ logger = structlog.get_logger(__name__)
 
 
 def normalize_company_name(name: str) -> str:
-    """Normalisiert Firmennamen fuer Vergleiche.
+    """Normalisiert Firmennamen für Vergleiche.
 
     - Entfernt Rechtsformen (GmbH, AG, etc.)
     - Konvertiert zu Kleinbuchstaben
@@ -239,12 +239,12 @@ def extract_address_from_text(text: str) -> Dict[str, Optional[str]]:
     return result
 
 
-# Singleton-Pattern fuer EntityExtractionAgent (spaCy-Model-Caching)
+# Singleton-Pattern für EntityExtractionAgent (spaCy-Model-Caching)
 _entity_extraction_agent: Optional["EntityExtractionAgent"] = None  # type: ignore
 
 
 def _get_entity_extraction_agent() -> "EntityExtractionAgent":
-    """Gibt gecachte EntityExtractionAgent-Instanz zurueck.
+    """Gibt gecachte EntityExtractionAgent-Instanz zurück.
 
     Verhindert wiederholtes Laden des spaCy-Models (~500MB, ~30s Ladezeit).
     Thread-safe durch GIL bei Python-Objektzuweisung.
@@ -261,7 +261,7 @@ def _get_entity_extraction_agent() -> "EntityExtractionAgent":
 def extract_name_from_text(text: str) -> Optional[Dict[str, Any]]:
     """Extrahiert Namen (Personen/Organisationen) aus Text via NER.
 
-    Nutzt EntityExtractionAgent mit spaCy (falls verfuegbar) oder Pattern-Matching.
+    Nutzt EntityExtractionAgent mit spaCy (falls verfügbar) oder Pattern-Matching.
     PERFORMANCE: Agent wird als Singleton gecacht (spaCy-Model-Loading ~30s).
 
     Args:
@@ -276,17 +276,17 @@ def extract_name_from_text(text: str) -> Optional[Dict[str, Any]]:
         # Text limitieren
         text_limited = text[:5000]
 
-        # Extrahiere Named Entities ueber oeffentliche API
+        # Extrahiere Named Entities über öffentliche API
         all_entities = agent.extract_named_entities(text_limited)
 
-        # Zusaetzlich: Organisationen via Pattern-Matching
+        # Zusätzlich: Organisationen via Pattern-Matching
         org_entities = _extract_organizations_pattern(text_limited)
         all_entities.extend(org_entities)
 
         if not all_entities:
             return None
 
-        # Priorisierung: Organisation vor Person (bei Geschaeftsdokumenten)
+        # Priorisierung: Organisation vor Person (bei Geschäftsdokumenten)
         orgs = [e for e in all_entities if e.get("type") == "ORGANIZATION"]
         persons = [e for e in all_entities if e.get("type") == "PERSON"]
 
@@ -320,7 +320,7 @@ def _extract_organizations_pattern(text: str) -> List[Dict[str, Any]]:
     """
     entities = []
 
-    # Muster fuer deutsche Firmen mit Rechtsform
+    # Muster für deutsche Firmen mit Rechtsform
     company_patterns = [
         # GmbH & Co. KG/OHG
         r"\b([A-ZÄÖÜ][a-zäöüß]+(?:\s+[A-ZÄÖÜ]?[a-zäöüß]+)*)\s+GmbH\s*&\s*Co\.?\s*(?:KG|OHG)\b",
@@ -339,7 +339,7 @@ def _extract_organizations_pattern(text: str) -> List[Dict[str, Any]]:
         for match in matches:
             full_match = match.group(0)
 
-            # Vollstaendigen Firmennamen mit Rechtsform verwenden (Deduplizierung)
+            # Vollständigen Firmennamen mit Rechtsform verwenden (Deduplizierung)
             if not any(e["value"] == full_match for e in entities):
                 entities.append({
                     "type": "ORGANIZATION",
@@ -365,7 +365,7 @@ def extract_contact_from_invoice(document_metadata: Dict[str, Any]) -> Optional[
     """
     # Typische Felder in Rechnungs-Metadaten
     sender_fields = ["sender", "vendor", "supplier", "absender", "lieferant", "rechnungssteller"]
-    recipient_fields = ["recipient", "buyer", "customer", "empfaenger", "kunde", "rechnungsempfaenger"]
+    recipient_fields = ["recipient", "buyer", "customer", "empfänger", "kunde", "rechnungsempfänger"]
 
     result = {
         "sender": None,
@@ -471,13 +471,13 @@ def extract_contact_from_contract(document_metadata: Dict[str, Any]) -> Optional
 
 
 class CustomerDetectionService:
-    """Service fuer automatische Kundenerkennung und -verwaltung."""
+    """Service für automatische Kundenerkennung und -verwaltung."""
 
     def __init__(self, similarity_threshold: float = 0.85):
         """Initialisiert den Service.
 
         Args:
-            similarity_threshold: Schwellwert fuer Name-Matching (0.0-1.0)
+            similarity_threshold: Schwellwert für Name-Matching (0.0-1.0)
         """
         self.similarity_threshold = similarity_threshold
 
@@ -489,12 +489,12 @@ class CustomerDetectionService:
         company_id: Optional[UUID] = None,
         contact_type: Optional[ContactType] = None,
     ) -> List[Tuple[BusinessContact, float]]:
-        """Findet aehnliche Kontakte basierend auf Name.
+        """Findet ähnliche Kontakte basierend auf Name.
 
         Args:
             db: Database session
             name: Name zum Suchen
-            owner_id: DEPRECATED - nur noch fuer Abwaertskompatibilitaet
+            owner_id: DEPRECATED - nur noch für Abwärtskompatibilität
             company_id: Optional - nur Kontakte dieser Company (Multi-Tenant)
             contact_type: Optional - nur bestimmter Kontakttyp
 
@@ -512,7 +512,7 @@ class CustomerDetectionService:
         if company_id:
             query = query.where(BusinessContact.company_id == company_id)
         elif owner_id:
-            # DEPRECATED: Fallback fuer alte Aufrufe
+            # DEPRECATED: Fallback für alte Aufrufe
             query = query.where(BusinessContact.owner_id == owner_id)
 
         if contact_type:
@@ -551,7 +551,7 @@ class CustomerDetectionService:
             owner_id: User-ID (wird als creator gespeichert)
             company_id: Company-ID (Multi-Tenant Isolation)
             source: Quelle (manual, auto_invoice, auto_contract)
-            document_id: Optional - verknuepftes Dokument
+            document_id: Optional - verknüpftes Dokument
             auto_create: Automatisch erstellen wenn nicht gefunden
 
         Returns:
@@ -564,8 +564,8 @@ class CustomerDetectionService:
 
         name = name.strip()
 
-        # Multi-Tenant: company_id ist erforderlich fuer sichere Isolation
-        # Falls nicht uebergeben, Fallback auf owner_id (deprecated)
+        # Multi-Tenant: company_id ist erforderlich für sichere Isolation
+        # Falls nicht übergeben, Fallback auf owner_id (deprecated)
         isolation_condition = (
             BusinessContact.company_id == company_id if company_id
             else BusinessContact.owner_id == owner_id
@@ -676,7 +676,7 @@ class CustomerDetectionService:
         company_id: Optional[UUID] = None,
         auto_create: bool = True,
     ) -> List[Dict[str, Any]]:
-        """Verarbeitet ein Dokument und extrahiert/verknuepft Kontakte.
+        """Verarbeitet ein Dokument und extrahiert/verknüpft Kontakte.
 
         Args:
             db: Database session
@@ -691,7 +691,7 @@ class CustomerDetectionService:
         results = []
         metadata = document.document_metadata or {}
 
-        # Multi-Tenant: company_id aus Dokument holen falls nicht uebergeben
+        # Multi-Tenant: company_id aus Dokument holen falls nicht übergeben
         effective_company_id = company_id or document.company_id
 
         # Je nach Dokumenttyp extrahieren
@@ -712,7 +712,7 @@ class CustomerDetectionService:
                         auto_create=auto_create,
                     )
                     if contact:
-                        # Verknuepfung erstellen
+                        # Verknüpfung erstellen
                         await self._link_contact_to_document(
                             db, document.id, contact.id, "sender"
                         )
@@ -828,7 +828,7 @@ class CustomerDetectionService:
                     logger.info(
                         "contact_ner_extraction_success",
                         document_id=str(document.id),
-                        name=name_result["name"][:50],  # Truncate fuer Log
+                        name=name_result["name"][:50],  # Truncate für Log
                         entity_type=name_result.get("entity_type"),
                         confidence=name_result.get("confidence"),
                     )
@@ -860,11 +860,11 @@ class CustomerDetectionService:
         contact_id: UUID,
         role: str,
     ) -> DocumentContact:
-        """Erstellt Verknuepfung zwischen Dokument und Kontakt.
+        """Erstellt Verknüpfung zwischen Dokument und Kontakt.
 
-        Prueft ob Verknuepfung bereits existiert.
+        Prüft ob Verknüpfung bereits existiert.
         """
-        # Pruefen ob bereits verknuepft
+        # Prüfen ob bereits verknüpft
         existing = await db.execute(
             select(DocumentContact).where(
                 and_(
@@ -911,19 +911,19 @@ class CustomerDetectionService:
         """Merged zwei Kontakte (source -> target).
 
         Source wird deaktiviert und verweist auf target.
-        Alle Dokumentverknuepfungen werden uebertragen.
+        Alle Dokumentverknüpfungen werden übertragen.
 
         Args:
             db: Database session
             source_id: Kontakt der gemergt wird
             target_id: Zielkontakt
-            user_id: User der die Aktion ausfuehrt
-            company_id: Company-ID fuer Multi-Tenant Isolation (Defense-in-Depth)
+            user_id: User der die Aktion ausführt
+            company_id: Company-ID für Multi-Tenant Isolation (Defense-in-Depth)
 
         Returns:
             True wenn erfolgreich
         """
-        # Multi-Tenant: company_id Filter fuer Defense-in-Depth
+        # Multi-Tenant: company_id Filter für Defense-in-Depth
         if company_id:
             source_condition = and_(
                 BusinessContact.id == source_id,
@@ -934,7 +934,7 @@ class CustomerDetectionService:
                 BusinessContact.company_id == company_id,
             )
         else:
-            # DEPRECATED: Fallback ohne company_id (Legacy-Kompatibilitaet)
+            # DEPRECATED: Fallback ohne company_id (Legacy-Kompatibilität)
             source_condition = BusinessContact.id == source_id
             target_condition = BusinessContact.id == target_id
 
@@ -961,14 +961,14 @@ class CustomerDetectionService:
             logger.error("merge_contact_not_found", source_id=str(source_id), target_id=str(target_id))
             return False
 
-        # Dokumentverknuepfungen uebertragen
+        # Dokumentverknüpfungen übertragen
         links_result = await db.execute(
             select(DocumentContact).where(DocumentContact.contact_id == source_id)
         )
         links = links_result.scalars().all()
 
         for link in links:
-            # Pruefen ob bereits verknuepft
+            # Prüfen ob bereits verknüpft
             existing = await db.execute(
                 select(DocumentContact).where(
                     and_(
@@ -1009,7 +1009,7 @@ _customer_detection_service: Optional[CustomerDetectionService] = None
 
 
 def get_customer_detection_service() -> CustomerDetectionService:
-    """Gibt Singleton-Instanz des Services zurueck."""
+    """Gibt Singleton-Instanz des Services zurück."""
     global _customer_detection_service
     if _customer_detection_service is None:
         _customer_detection_service = CustomerDetectionService()

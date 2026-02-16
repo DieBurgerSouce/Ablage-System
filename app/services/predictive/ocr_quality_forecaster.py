@@ -2,9 +2,9 @@
 """
 OCR Quality Forecaster.
 
-Erkennt Qualitaets-Degradation bei OCR-Backends:
+Erkennt Qualitäts-Degradation bei OCR-Backends:
 - CER/WER Trend-Analyse
-- Backend-spezifische Ueberwachung
+- Backend-spezifische Überwachung
 - Automatische Retraining-Empfehlungen
 
 Vision 2.0 Feature: Predictive Maintenance (Phase 5)
@@ -58,7 +58,7 @@ class QualitySummaryDict(TypedDict):
 
 
 class QualityMetric(str, Enum):
-    """OCR Qualitaetsmetriken."""
+    """OCR Qualitätsmetriken."""
     CER = "cer"  # Character Error Rate
     WER = "wer"  # Word Error Rate
     CONFIDENCE = "confidence"
@@ -66,7 +66,7 @@ class QualityMetric(str, Enum):
 
 
 class OCRBackend(str, Enum):
-    """Unterstuetzte OCR-Backends."""
+    """Unterstützte OCR-Backends."""
     DEEPSEEK = "deepseek"
     GOT_OCR = "got_ocr"
     SURYA = "surya"
@@ -75,7 +75,7 @@ class OCRBackend(str, Enum):
 
 @dataclass
 class QualityDataPoint:
-    """Ein einzelner Qualitaets-Datenpunkt."""
+    """Ein einzelner Qualitäts-Datenpunkt."""
     timestamp: datetime
     value: float
     backend: OCRBackend
@@ -85,7 +85,7 @@ class QualityDataPoint:
 
 @dataclass
 class DegradationAlert:
-    """Warnung bei Qualitaets-Degradation."""
+    """Warnung bei Qualitäts-Degradation."""
     backend: OCRBackend
     metric: QualityMetric
     current_value: float
@@ -116,7 +116,7 @@ class DegradationAlert:
 
 @dataclass
 class QualityForecastConfig:
-    """Konfiguration fuer den Forecaster."""
+    """Konfiguration für den Forecaster."""
     # Datensammlung
     max_history_days: int = 30
     samples_per_day: int = 24  # Stuendliche Aggregation
@@ -131,11 +131,11 @@ class QualityForecastConfig:
 
     # Analyse
     min_samples_for_forecast: int = 24  # Mindestens 24 Stunden Daten
-    trend_window_hours: int = 168  # 7 Tage fuer Trend
+    trend_window_hours: int = 168  # 7 Tage für Trend
 
 
 class QualityHistory:
-    """Speichert Qualitaets-Historie fuer ein Backend."""
+    """Speichert Qualitäts-Historie für ein Backend."""
 
     def __init__(self, max_samples: int = 720) -> None:  # 30 Tage * 24
         """Initialisiert die History."""
@@ -164,7 +164,7 @@ class QualityHistory:
         metric: QualityMetric,
         hours: Optional[int] = None
     ) -> List[float]:
-        """Gibt Werte zurueck, optional gefiltert nach Zeit."""
+        """Gibt Werte zurück, optional gefiltert nach Zeit."""
         data = self._data[metric]
 
         if hours is None:
@@ -178,7 +178,7 @@ class QualityHistory:
         metric: QualityMetric,
         hours: Optional[int] = None
     ) -> List[QualityDataPoint]:
-        """Gibt vollstaendige Datenpunkte zurueck."""
+        """Gibt vollständige Datenpunkte zurück."""
         data = self._data[metric]
 
         if hours is None:
@@ -193,7 +193,7 @@ class QualityHistory:
 
 class OCRQualityForecaster:
     """
-    Prognostiziert OCR-Qualitaets-Degradation.
+    Prognostiziert OCR-Qualitäts-Degradation.
 
     Analysiert Trends in CER/WER/Confidence und warnt vor Problemen.
     """
@@ -224,7 +224,7 @@ class OCRQualityForecaster:
         document_count: int = 1
     ) -> None:
         """
-        Zeichnet Qualitaets-Metriken auf.
+        Zeichnet Qualitäts-Metriken auf.
 
         Args:
             backend: OCR-Backend
@@ -302,7 +302,7 @@ class OCRQualityForecaster:
         backend: OCRBackend
     ) -> List[DegradationAlert]:
         """
-        Erkennt Qualitaets-Degradation fuer ein Backend.
+        Erkennt Qualitäts-Degradation für ein Backend.
 
         Args:
             backend: OCR-Backend zu analysieren
@@ -406,18 +406,18 @@ class OCRQualityForecaster:
         Returns:
             DegradationAlert oder None
         """
-        # Rolling Average fuer Glaettung
+        # Rolling Average für Glaettung
         smoothed = self._rolling_average(values)
         current = smoothed[-1]
 
         # Trend berechnen
         trend_per_day, r_squared = self._calculate_trend(smoothed)
 
-        # Fuer "niedriger ist schlechter" Metriken: negieren wir die Logik
+        # Für "niedriger ist schlechter" Metriken: negieren wir die Logik
         if not higher_is_worse:
             # z.B. Confidence: Wert faellt = schlecht
             is_degrading = trend_per_day < 0
-            trend_for_calc = -trend_per_day  # Positiv machen fuer Berechnung
+            trend_for_calc = -trend_per_day  # Positiv machen für Berechnung
         else:
             # z.B. CER: Wert steigt = schlecht
             is_degrading = trend_per_day > 0
@@ -434,7 +434,7 @@ class OCRQualityForecaster:
             distance = current - critical_threshold
 
         if distance <= 0:
-            # Bereits ueberschritten
+            # Bereits überschritten
             days_to_threshold = 0.0
         elif trend_for_calc > 0:
             days_to_threshold = distance / trend_for_calc
@@ -455,17 +455,17 @@ class OCRQualityForecaster:
         # Empfehlung generieren
         if severity == "critical":
             recommendation = (
-                f"KRITISCH: {metric.value.upper()} fuer {backend.value} degradiert schnell. "
+                f"KRITISCH: {metric.value.upper()} für {backend.value} degradiert schnell. "
                 f"Sofortiges Retraining oder Backend-Wechsel empfohlen."
             )
         elif severity == "warning":
             recommendation = (
-                f"WARNUNG: {metric.value.upper()} fuer {backend.value} verschlechtert sich. "
+                f"WARNUNG: {metric.value.upper()} für {backend.value} verschlechtert sich. "
                 f"Retraining planen oder Ursache analysieren."
             )
         else:
             recommendation = (
-                f"INFO: Leichte Degradation bei {metric.value.upper()} fuer {backend.value}. "
+                f"INFO: Leichte Degradation bei {metric.value.upper()} für {backend.value}. "
                 f"Beobachten."
             )
 
@@ -483,7 +483,7 @@ class OCRQualityForecaster:
 
     async def get_all_degradation_alerts(self) -> List[DegradationAlert]:
         """
-        Prueft alle Backends auf Degradation.
+        Prüft alle Backends auf Degradation.
 
         Returns:
             Liste aller Alerts
@@ -505,13 +505,13 @@ class OCRQualityForecaster:
         backend: OCRBackend
     ) -> QualitySummaryDict:
         """
-        Gibt Qualitaets-Zusammenfassung fuer ein Backend zurueck.
+        Gibt Qualitäts-Zusammenfassung für ein Backend zurück.
 
         Args:
             backend: OCR-Backend
 
         Returns:
-            Dict mit Qualitaets-Metriken
+            Dict mit Qualitäts-Metriken
         """
         history = self._histories[backend]
 
@@ -539,7 +539,7 @@ _quality_forecaster: Optional[OCRQualityForecaster] = None
 
 
 def get_quality_forecaster() -> OCRQualityForecaster:
-    """Gibt Singleton-Instanz des Quality Forecasters zurueck."""
+    """Gibt Singleton-Instanz des Quality Forecasters zurück."""
     global _quality_forecaster
     if _quality_forecaster is None:
         _quality_forecaster = OCRQualityForecaster()

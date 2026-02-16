@@ -3,7 +3,7 @@
 Inbound Webhook Event satellite model.
 
 Speichert empfangene Webhooks von externen Providern (DATEV, DHL, DPD, UPS, GLS)
-fuer idempotente Verarbeitung, Retry-Logik und Audit-Trail.
+für idempotente Verarbeitung, Retry-Logik und Audit-Trail.
 
 Feinpoliert und durchdacht - Enterprise-grade Inbound Webhook Tracking.
 """
@@ -28,13 +28,13 @@ from app.db.models import Base, CrossDBJSON
 
 
 class InboundWebhookEvent(Base):
-    """Inbound Webhook Events fuer idempotente Verarbeitung.
+    """Inbound Webhook Events für idempotente Verarbeitung.
 
-    Speichert empfangene Webhooks von externen Providern fuer:
-    - Idempotenz-Pruefung (doppelte Events ignorieren)
+    Speichert empfangene Webhooks von externen Providern für:
+    - Idempotenz-Prüfung (doppelte Events ignorieren)
     - Retry-Logik bei Fehlern
     - Audit-Trail
-    - Provider-uebergreifende Event-Normalisierung
+    - Provider-übergreifende Event-Normalisierung
     """
     __tablename__ = "inbound_webhook_events"
 
@@ -45,10 +45,10 @@ class InboundWebhookEvent(Base):
         ForeignKey("erp_connections.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
-        comment="ERP-Verbindung (fuer DATEV), nullable fuer Carrier-Provider"
+        comment="ERP-Verbindung (für DATEV), nullable für Carrier-Provider"
     )
 
-    # Event-Identifikation (fuer Idempotenz)
+    # Event-Identifikation (für Idempotenz)
     event_id = Column(String(255), nullable=False, comment="Externe Event-ID (Idempotenz)")
     event_type = Column(String(100), nullable=False, comment="Provider-spezifischer Event-Typ")
     action = Column(String(50), nullable=False, comment="create, update, delete, status_change")

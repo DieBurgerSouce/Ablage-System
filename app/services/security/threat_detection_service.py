@@ -1,5 +1,5 @@
 """
-Erweiterte Bedrohungserkennung fuer Security Monitoring.
+Erweiterte Bedrohungserkennung für Security Monitoring.
 
 Implementiert ML-basierte Anomalieerkennung auf Zugriffslogs,
 Datenexfiltrationserkennung und Insider-Threat-Monitoring.
@@ -43,7 +43,7 @@ class SecurityReport:
 
 class ThreatDetectionService:
     """
-    Service fuer erweiterte Bedrohungserkennung.
+    Service für erweiterte Bedrohungserkennung.
 
     Funktionen:
     - ML-basierte Anomalieerkennung auf Zugriffslogs
@@ -53,7 +53,7 @@ class ThreatDetectionService:
     - Sicherheitsberichterstattung
     """
 
-    # Schwellwerte fuer Anomalieerkennung
+    # Schwellwerte für Anomalieerkennung
     NORMAL_WORK_HOURS = (8, 18)  # 8:00 - 18:00
     MAX_DOWNLOADS_PER_HOUR = 50
     MAX_EXPORTS_PER_HOUR = 20
@@ -100,7 +100,7 @@ class ThreatDetectionService:
 
         since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
-        # Aktivitaeten abfragen
+        # Aktivitäten abfragen
         stmt = (
             select(DocumentActivity)
             .join(Document)
@@ -156,7 +156,7 @@ class ThreatDetectionService:
                         anomalies.append(ThreatIndicator(
                             indicator_type="bulk_downloads",
                             severity="hoch",
-                            description=f"User {user_id} hat {len(downloads)} Downloads in 5min durchgefuehrt",
+                            description=f"User {user_id} hat {len(downloads)} Downloads in 5min durchgeführt",
                             user_id=user_id,
                             details={"count": len(downloads), "timeframe": "5min"}
                         ))
@@ -227,7 +227,7 @@ class ThreatDetectionService:
         """
         Erkennt Datenexfiltrationsversuche.
 
-        Prueft:
+        Prüft:
         - Massen-Export-Versuche
         - Ungewoehnliche Download-Volumina
         - Zugriff auf sensible Dokumente ausserhalb der Arbeitszeiten
@@ -250,7 +250,7 @@ class ThreatDetectionService:
 
         since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
-        # Aktivitaeten filtern
+        # Aktivitäten filtern
         stmt = (
             select(DocumentActivity)
             .join(Document)
@@ -293,7 +293,7 @@ class ThreatDetectionService:
                 indicators.append(ThreatIndicator(
                     indicator_type="mass_export",
                     severity="hoch",
-                    description=f"User {uid} hat {export_count} Exports durchgefuehrt",
+                    description=f"User {uid} hat {export_count} Exports durchgeführt",
                     user_id=uid,
                     details={"export_count": export_count, "hours": hours}
                 ))
@@ -305,7 +305,7 @@ class ThreatDetectionService:
                 indicators.append(ThreatIndicator(
                     indicator_type="high_volume_download",
                     severity="mittel",
-                    description=f"User {uid} hat {download_count} Downloads durchgefuehrt",
+                    description=f"User {uid} hat {download_count} Downloads durchgeführt",
                     user_id=uid,
                     details={"download_count": download_count, "hours": hours}
                 ))
@@ -341,7 +341,7 @@ class ThreatDetectionService:
             ])
         elif exfiltration_risk >= 0.5:
             recommended_actions.extend([
-                "Erhoehte Ueberwachung verdaechtiger Accounts",
+                "Erhöhte Überwachung verdaechtiger Accounts",
                 "Review der Export-Berechtigungen",
                 "Benachrichtigung des Security-Teams"
             ])
@@ -369,10 +369,10 @@ class ThreatDetectionService:
         user_id: int
     ) -> Dict:
         """
-        Berechnet Insider-Threat-Score fuer einen User.
+        Berechnet Insider-Threat-Score für einen User.
 
         Analysiert:
-        - Zugriffshaeufigkeit
+        - Zugriffshäufigkeit
         - Dokumenttypen
         - Zeitmuster
         - Permission-Escalation-Versuche
@@ -394,7 +394,7 @@ class ThreatDetectionService:
         risk_score = 0.0
         contributing_factors: List[str] = []
 
-        # 1. Zugriffshaeufigkeit (letzte 7 Tage)
+        # 1. Zugriffshäufigkeit (letzte 7 Tage)
         since_week = datetime.now(timezone.utc) - timedelta(days=7)
         stmt = (
             select(func.count(DocumentActivity.id))
@@ -409,11 +409,11 @@ class ThreatDetectionService:
         )
         activity_count = (await db.execute(stmt)).scalar() or 0
 
-        if activity_count > 200:  # >200 Aktivitaeten/Woche
+        if activity_count > 200:  # >200 Aktivitäten/Woche
             risk_score += 0.2
-            contributing_factors.append(f"Hohe Aktivitaet ({activity_count}/Woche)")
+            contributing_factors.append(f"Hohe Aktivität ({activity_count}/Woche)")
 
-        # 2. After-hours Aktivitaet
+        # 2. After-hours Aktivität
         after_hours_stmt = (
             select(func.count(DocumentActivity.id))
             .join(Document)
@@ -433,7 +433,7 @@ class ThreatDetectionService:
 
         if after_hours_count > 20:
             risk_score += 0.3
-            contributing_factors.append(f"After-hours Aktivitaet ({after_hours_count})")
+            contributing_factors.append(f"After-hours Aktivität ({after_hours_count})")
 
         # 3. Fehlzugriffe (Permission-Escalation-Versuche)
         failed_stmt = (
@@ -452,7 +452,7 @@ class ThreatDetectionService:
             risk_score += 0.4
             contributing_factors.append(f"Wiederholte Fehlzugriffe ({failed_count})")
 
-        # 4. Export-Aktivitaet
+        # 4. Export-Aktivität
         export_stmt = (
             select(func.count(DocumentActivity.id))
             .join(Document)
@@ -469,7 +469,7 @@ class ThreatDetectionService:
 
         if export_count > 20:
             risk_score += 0.3
-            contributing_factors.append(f"Haeufige Exports ({export_count})")
+            contributing_factors.append(f"Häufige Exports ({export_count})")
 
         risk_score = min(risk_score, 1.0)
 
@@ -524,7 +524,7 @@ class ThreatDetectionService:
         hours_map = {"tag": 24, "woche": 168, "monat": 720}
         hours = hours_map.get(period, 168)
 
-        # Alle Analysen durchfuehren
+        # Alle Analysen durchführen
         access_analysis = await self.analyze_access_patterns(db, company_id, hours)
         exfiltration_analysis = await self.detect_data_exfiltration(db, company_id, hours=hours)
         permission_anomalies = await self.check_permission_anomalies(db, company_id, hours)
@@ -583,7 +583,7 @@ class ThreatDetectionService:
         if gesamtrisiko == "kritisch":
             empfehlungen.append("Sofortiges Security-Review erforderlich")
         if anomalie_count > 50:
-            empfehlungen.append("Erhoehte Ueberwachung aktivieren")
+            empfehlungen.append("Erhöhte Überwachung aktivieren")
 
         report = SecurityReport(
             period=period,
@@ -608,7 +608,7 @@ class ThreatDetectionService:
         hours: int = 168
     ) -> List[Dict]:
         """
-        Erkennt ungewoehnliche Permission-Aenderungen.
+        Erkennt ungewoehnliche Permission-Änderungen.
 
         Args:
             db: Datenbank-Session
@@ -626,7 +626,7 @@ class ThreatDetectionService:
 
         since = datetime.now(timezone.utc) - timedelta(hours=hours)
 
-        # Permission-Aenderungen aus AuditLog
+        # Permission-Änderungen aus AuditLog
         stmt = (
             select(AuditLog)
             .where(
@@ -655,13 +655,13 @@ class ThreatDetectionService:
 
         # Erkenne Anomalien
         for user_id, changes in user_changes.items():
-            # Haeufige Permission-Aenderungen
+            # Häufige Permission-Änderungen
             if len(changes) > 10:
                 anomalies.append({
                     "user_id": user_id,
                     "anomaly_type": "frequent_permission_changes",
                     "severity": "mittel",
-                    "details": f"User {user_id} hat {len(changes)} Permission-Aenderungen durchgefuehrt",
+                    "details": f"User {user_id} hat {len(changes)} Permission-Änderungen durchgeführt",
                     "detected_at": datetime.now(timezone.utc).isoformat()
                 })
 
@@ -692,7 +692,7 @@ _service: Optional[ThreatDetectionService] = None
 
 
 def get_threat_detection_service() -> ThreatDetectionService:
-    """Gibt Singleton-Instanz zurueck."""
+    """Gibt Singleton-Instanz zurück."""
     global _service
     if _service is None:
         _service = ThreatDetectionService()

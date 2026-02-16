@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Explanation Collector - Sammelt KI-Erklaerungen fuer Dokumente und Entities.
+Explanation Collector - Sammelt KI-Erklärungen für Dokumente und Entities.
 
-Aggregiert Erklaerungen aus allen AI-Services, die ein Dokument
+Aggregiert Erklärungen aus allen AI-Services, die ein Dokument
 oder eine Entity verarbeitet haben:
 - Klassifikation (Auto-Kategorisierung)
 - OCR-Backend-Auswahl
 - Risikobewertung
-- Buchungsvorschlaege
+- Buchungsvorschläge
 - Entity-Linking
 - Anomalieerkennung
 - Betrugserkennung
@@ -68,14 +68,14 @@ _DECISION_TYPE_MAP: Dict[str, DecisionType] = {
 # German summaries for decision types
 _DECISION_SUMMARIES: Dict[DecisionType, str] = {
     DecisionType.CLASSIFICATION: "Dokument automatisch klassifiziert",
-    DecisionType.RISK_ASSESSMENT: "Risikobewertung durchgefuehrt",
+    DecisionType.RISK_ASSESSMENT: "Risikobewertung durchgeführt",
     DecisionType.OCR_EXTRACTION: "OCR-Texterkennung abgeschlossen",
     DecisionType.BOOKING_SUGGESTION: "Buchungsvorschlag erstellt",
     DecisionType.DUNNING_RECOMMENDATION: "Mahnempfehlung generiert",
     DecisionType.ANOMALY_DETECTION: "Anomalie erkannt",
-    DecisionType.ENTITY_LINKING: "Geschaeftspartner-Zuordnung vorgenommen",
-    DecisionType.DUPLICATE_DETECTION: "Duplikatpruefung durchgefuehrt",
-    DecisionType.FRAUD_DETECTION: "Betrugspruefung abgeschlossen",
+    DecisionType.ENTITY_LINKING: "Geschäftspartner-Zuordnung vorgenommen",
+    DecisionType.DUPLICATE_DETECTION: "Duplikatprüfung durchgeführt",
+    DecisionType.FRAUD_DETECTION: "Betrugsprüfung abgeschlossen",
     DecisionType.CASHFLOW_PREDICTION: "Cashflow-Vorhersage erstellt",
 }
 
@@ -95,7 +95,7 @@ _SERVICE_NAMES: Dict[DecisionType, str] = {
 
 
 class ExplanationCollector:
-    """Sammelt Erklaerungen aus allen AI-Services fuer Dokumente und Entities."""
+    """Sammelt Erklärungen aus allen AI-Services für Dokumente und Entities."""
 
     def __init__(self, db: AsyncSession) -> None:
         """Initialisiert den Collector mit einer Datenbank-Session."""
@@ -107,10 +107,10 @@ class ExplanationCollector:
         company_id: UUID,
     ) -> List[ExplanationResult]:
         """
-        Sammelt alle KI-Erklaerungen fuer ein Dokument.
+        Sammelt alle KI-Erklärungen für ein Dokument.
 
         Durchsucht die ai_decisions-Tabelle nach allen Entscheidungen,
-        die fuer dieses Dokument getroffen wurden, und konvertiert sie
+        die für dieses Dokument getroffen wurden, und konvertiert sie
         in das einheitliche ExplanationResult-Format.
 
         Args:
@@ -123,7 +123,7 @@ class ExplanationCollector:
         explanations: List[ExplanationResult] = []
 
         try:
-            # Alle AI-Entscheidungen fuer dieses Dokument abrufen
+            # Alle AI-Entscheidungen für dieses Dokument abrufen
             stmt = (
                 select(AIDecision)
                 .where(
@@ -142,7 +142,7 @@ class ExplanationCollector:
                 if explanation is not None:
                     explanations.append(explanation)
 
-            # Zusaetzlich: OCR-Erklaerung aus Dokument-Metadaten
+            # Zusätzlich: OCR-Erklärung aus Dokument-Metadaten
             ocr_explanation = await self._collect_ocr_explanation(
                 document_id, company_id
             )
@@ -176,10 +176,10 @@ class ExplanationCollector:
         company_id: UUID,
     ) -> List[ExplanationResult]:
         """
-        Sammelt alle KI-Erklaerungen fuer eine Entity (Geschaeftspartner).
+        Sammelt alle KI-Erklärungen für eine Entity (Geschäftspartner).
 
         Sucht nach Risikobewertungen, Mahnempfehlungen und
-        Anomalie-Erkennungen fuer die Entity.
+        Anomalie-Erkennungen für die Entity.
 
         Args:
             entity_id: ID der Entity
@@ -202,7 +202,7 @@ class ExplanationCollector:
                     )
                 )
                 .order_by(desc(AIDecision.created_at))
-                .limit(50)  # Begrenzung fuer Performance
+                .limit(50)  # Begrenzung für Performance
             )
             result = await self.db.execute(stmt)
             decisions = result.scalars().all()
@@ -280,7 +280,7 @@ class ExplanationCollector:
     def _extract_factors(
         self, decision: AIDecision
     ) -> List[ExplanationFactor]:
-        """Extrahiert Erklaerungsfaktoren aus einer AI-Entscheidung."""
+        """Extrahiert Erklärungsfaktoren aus einer AI-Entscheidung."""
         factors: List[ExplanationFactor] = []
 
         explanation_data = decision.explanation
@@ -403,7 +403,7 @@ class ExplanationCollector:
         company_id: UUID,
     ) -> Optional[ExplanationResult]:
         """
-        Erstellt eine OCR-Erklaerung aus den Dokument-Metadaten.
+        Erstellt eine OCR-Erklärung aus den Dokument-Metadaten.
 
         Liest das verwendete OCR-Backend und die Konfidenz
         direkt aus der documents-Tabelle.
@@ -430,7 +430,7 @@ class ExplanationCollector:
                     value=document.ocr_backend_used,
                     importance=0.9,
                     description=(
-                        f"Backend '{document.ocr_backend_used}' fuer die "
+                        f"Backend '{document.ocr_backend_used}' für die "
                         f"Texterkennung verwendet"
                     ),
                 )

@@ -5,9 +5,9 @@ Document Hints Service for Ablage-System.
 Aggregiert proaktive, kontextbezogene Hinweise für Dokumente:
 - Fehlende Dokumente in Auftragsketten
 - Ablaufende Skonto-Fristen
-- Risiko-Scores von Geschaeftspartnern
-- Ueberfaellige Zahlungen
-- OCR-Qualitaetswarnungen
+- Risiko-Scores von Geschäftspartnern
+- Überfällige Zahlungen
+- OCR-Qualitätswarnungen
 - Duplikatsverdacht
 - Compliance-Hinweise
 - Erforderliche Freigaben
@@ -76,10 +76,10 @@ class DocumentHint:
     action_type: Optional[str] = None  # z.B. "link_document", "approve_payment"
     action_data: Optional[Dict[str, str]] = None  # z.B. {"document_id": "...", "entity_id": "..."}
     confidence: float = 1.0  # 0-1
-    expires_at: Optional[datetime] = None  # Fuer zeitkritische Hints
+    expires_at: Optional[datetime] = None  # Für zeitkritische Hints
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert zu Dictionary fuer JSON-Serialisierung."""
+        """Konvertiert zu Dictionary für JSON-Serialisierung."""
         result: Dict[str, Any] = {
             "category": self.category.value,
             "severity": self.severity.value,
@@ -143,11 +143,11 @@ class DocumentHintsService:
         company_id: UUID,
     ) -> List[DocumentHint]:
         """
-        Holt alle Hints fuer ein einzelnes Dokument.
+        Holt alle Hints für ein einzelnes Dokument.
 
         Args:
             document_id: Dokument-ID
-            company_id: Firmen-ID (REQUIRED fuer Multi-Tenant)
+            company_id: Firmen-ID (REQUIRED für Multi-Tenant)
 
         Returns:
             Liste von DocumentHints
@@ -173,7 +173,7 @@ class DocumentHintsService:
 
         hints: List[DocumentHint] = []
 
-        # Verschiedene Hint-Quellen pruefen
+        # Verschiedene Hint-Quellen prüfen
         try:
             hints.extend(await self._check_missing_documents(document))
             hints.extend(await self._check_skonto_deadline(document))
@@ -198,7 +198,7 @@ class DocumentHintsService:
         company_id: UUID,
     ) -> Dict[UUID, List[DocumentHint]]:
         """
-        Holt Hints fuer mehrere Dokumente (Batch-Operation).
+        Holt Hints für mehrere Dokumente (Batch-Operation).
 
         Args:
             document_ids: Liste von Dokument-IDs
@@ -228,7 +228,7 @@ class DocumentHintsService:
         company_id: UUID,
     ) -> HintSummary:
         """
-        Erstellt eine Zusammenfassung aller Hints fuer das Dashboard.
+        Erstellt eine Zusammenfassung aller Hints für das Dashboard.
 
         Args:
             company_id: Firmen-ID
@@ -249,7 +249,7 @@ class DocumentHintsService:
         result = await self.session.execute(stmt)
         documents = result.scalars().all()
 
-        # Hints fuer alle Dokumente sammeln
+        # Hints für alle Dokumente sammeln
         for doc in documents:
             try:
                 hints = await self.get_hints_for_document(doc.id, company_id)
@@ -286,16 +286,16 @@ class DocumentHintsService:
         self,
         document: Document,
     ) -> List[DocumentHint]:
-        """Pruefen ob zugehoerige Dokumente in Kette fehlen."""
+        """Prüfen ob zugehoerige Dokumente in Kette fehlen."""
         hints: List[DocumentHint] = []
 
-        # Nur fuer Rechnungen relevant
+        # Nur für Rechnungen relevant
         if document.document_type != DocumentType.INVOICE.value:
             return hints
 
-        # Pruefe ob Lieferschein vorhanden (via chain_id oder business_entity)
+        # Prüfe ob Lieferschein vorhanden (via chain_id oder business_entity)
         if document.chain_id:
-            # Pruefe ob Lieferschein in Kette vorhanden
+            # Prüfe ob Lieferschein in Kette vorhanden
             stmt = select(func.count()).where(
                 and_(
                     Document.chain_id == document.chain_id,
@@ -328,7 +328,7 @@ class DocumentHintsService:
         self,
         document: Document,
     ) -> List[DocumentHint]:
-        """Pruefen ob Skonto-Frist bald ablaeuft."""
+        """Prüfen ob Skonto-Frist bald ablaeuft."""
         hints: List[DocumentHint] = []
 
         # Invoice Tracking laden
@@ -389,7 +389,7 @@ class DocumentHintsService:
         self,
         document: Document,
     ) -> List[DocumentHint]:
-        """Pruefen ob Geschaeftspartner hohen Risiko-Score hat."""
+        """Prüfen ob Geschäftspartner hohen Risiko-Score hat."""
         hints: List[DocumentHint] = []
 
         if not document.business_entity_id:
@@ -403,7 +403,7 @@ class DocumentHintsService:
         if not entity:
             return hints
 
-        # Risk Score pruefen
+        # Risk Score prüfen
         risk_score = entity.risk_score or 0.0
 
         if risk_score >= 75:
@@ -411,7 +411,7 @@ class DocumentHintsService:
             title = "Kritischer Risiko-Score"
         elif risk_score >= 50:
             severity = HintSeverity.WARNING
-            title = "Erhoehter Risiko-Score"
+            title = "Erhöhter Risiko-Score"
         else:
             return hints  # Kein Hint bei niedrigem Risiko
 
@@ -453,7 +453,7 @@ class DocumentHintsService:
         self,
         document: Document,
     ) -> List[DocumentHint]:
-        """Pruefen ob Zahlung ueberfaellig ist."""
+        """Prüfen ob Zahlung überfällig ist."""
         hints: List[DocumentHint] = []
 
         # Invoice Tracking laden
@@ -489,8 +489,8 @@ class DocumentHintsService:
                 DocumentHint(
                     category=HintCategory.PAYMENT_OVERDUE,
                     severity=severity,
-                    title=f"Rechnung seit {days_overdue} Tagen ueberfaellig",
-                    message=f"Diese Rechnung ist seit {days_overdue} Tagen ueberfaellig. Betrag: {invoice.amount:.2f} EUR",
+                    title=f"Rechnung seit {days_overdue} Tagen überfällig",
+                    message=f"Diese Rechnung ist seit {days_overdue} Tagen überfällig. Betrag: {invoice.amount:.2f} EUR",
                     action_label="Mahnung senden",
                     action_type="send_dunning",
                     action_data={
@@ -508,7 +508,7 @@ class DocumentHintsService:
         self,
         document: Document,
     ) -> List[DocumentHint]:
-        """Pruefen ob OCR-Qualitaet niedrig ist."""
+        """Prüfen ob OCR-Qualität niedrig ist."""
         hints: List[DocumentHint] = []
 
         confidence = document.ocr_confidence or 1.0
@@ -520,9 +520,9 @@ class DocumentHintsService:
                 DocumentHint(
                     category=HintCategory.OCR_QUALITY,
                     severity=severity,
-                    title="Niedrige OCR-Qualitaet",
-                    message=f"OCR-Erkennung unsicher ({confidence * 100:.0f}% Konfidenz) - Manuelle Pruefung empfohlen",
-                    action_label="Dokument pruefen",
+                    title="Niedrige OCR-Qualität",
+                    message=f"OCR-Erkennung unsicher ({confidence * 100:.0f}% Konfidenz) - Manuelle Prüfung empfohlen",
+                    action_label="Dokument prüfen",
                     action_type="review_ocr",
                     action_data={
                         "document_id": str(document.id),
@@ -539,10 +539,10 @@ class DocumentHintsService:
         document: Document,
         company_id: UUID,
     ) -> List[DocumentHint]:
-        """Pruefen ob Dokument moeglicherweise Duplikat ist."""
+        """Prüfen ob Dokument möglicherweise Duplikat ist."""
         hints: List[DocumentHint] = []
 
-        # Nur fuer Rechnungen mit extracted_data
+        # Nur für Rechnungen mit extracted_data
         if document.document_type != DocumentType.INVOICE.value:
             return hints
 
@@ -573,7 +573,7 @@ class DocumentHintsService:
                 DocumentHint(
                     category=HintCategory.DUPLICATE_SUSPECT,
                     severity=HintSeverity.WARNING,
-                    title="Moegliches Duplikat",
+                    title="Mögliches Duplikat",
                     message=f"Ein Dokument mit Rechnungsnummer {invoice_number} existiert bereits",
                     action_label="Dokumente vergleichen",
                     action_type="compare_documents",
@@ -591,17 +591,17 @@ class DocumentHintsService:
         self,
         document: Document,
     ) -> List[DocumentHint]:
-        """Pruefen ob Pflichtfelder fehlen (GoBD-Compliance)."""
+        """Prüfen ob Pflichtfelder fehlen (GoBD-Compliance)."""
         hints: List[DocumentHint] = []
 
-        # Nur fuer Rechnungen relevant
+        # Nur für Rechnungen relevant
         if document.document_type != DocumentType.INVOICE.value:
             return hints
 
         if not document.extracted_data:
             return hints
 
-        # GoBD Pflichtfelder fuer Rechnungen
+        # GoBD Pflichtfelder für Rechnungen
         required_fields = ["invoice_number", "invoice_date", "total_amount"]
         missing_fields: List[str] = []
 
@@ -640,10 +640,10 @@ class DocumentHintsService:
         self,
         document: Document,
     ) -> List[DocumentHint]:
-        """Pruefen ob Freigabe oder Aktion erforderlich ist."""
+        """Prüfen ob Freigabe oder Aktion erforderlich ist."""
         hints: List[DocumentHint] = []
 
-        # Beispiel: Rechnung ueber 10.000 EUR erfordert Freigabe
+        # Beispiel: Rechnung über 10.000 EUR erfordert Freigabe
         if document.document_type == DocumentType.INVOICE.value and document.extracted_data:
             total_amount = document.extracted_data.get("total_amount")
 
@@ -656,7 +656,7 @@ class DocumentHintsService:
                                 category=HintCategory.ACTION_REQUIRED,
                                 severity=HintSeverity.WARNING,
                                 title="Freigabe erforderlich",
-                                message=f"Rechnung ueber {amount:.2f} EUR erfordert Freigabe",
+                                message=f"Rechnung über {amount:.2f} EUR erfordert Freigabe",
                                 action_label="Freigabe anfordern",
                                 action_type="request_approval",
                                 action_data={
@@ -677,5 +677,5 @@ class DocumentHintsService:
 # =============================================================================
 
 def get_document_hints_service(session: AsyncSession) -> DocumentHintsService:
-    """Factory-Funktion fuer Dependency Injection."""
+    """Factory-Funktion für Dependency Injection."""
     return DocumentHintsService(session)

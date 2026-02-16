@@ -393,7 +393,7 @@ class UnifiedOCRRouter(OrchestrationAgent):
                 logger.info("ML-Routing: Modell nicht trainiert, nutze Regeln")
 
         except ImportError as e:
-            logger.warning("ml_routing_nicht_verfuegbar", **safe_error_log(e))
+            logger.warning("ml_routing_nicht_verfügbar", **safe_error_log(e))
             self.use_ml_routing = False
         except Exception as e:
             logger.error("ml_routing_init_fehler", **safe_error_log(e))

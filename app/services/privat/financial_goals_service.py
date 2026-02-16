@@ -1,4 +1,4 @@
-"""Financial Goals Service fuer Sparziele und Progress-Tracking.
+"""Financial Goals Service für Sparziele und Progress-Tracking.
 
 Enterprise Feature: Finanzielle Ziele mit:
 - Sparziele definieren
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class GoalProgress:
-    """Fortschrittsberechnung fuer ein Finanzziel."""
+    """Fortschrittsberechnung für ein Finanzziel."""
 
     current_value: Decimal
     target_value: Decimal
@@ -62,9 +62,9 @@ class GoalSummary:
 
 
 class FinancialGoalsService:
-    """Service fuer Finanzziel-Management und Progress-Tracking.
+    """Service für Finanzziel-Management und Progress-Tracking.
 
-    Ermoeglicht das Setzen von Sparzielen mit automatischer
+    Ermöglicht das Setzen von Sparzielen mit automatischer
     Fortschrittsverfolgung und Prognosen.
     """
 
@@ -102,9 +102,9 @@ class FinancialGoalsService:
             target_date: Zieldatum
             goal_type: Typ des Ziels
             description: Optionale Beschreibung
-            icon: Icon fuer UI
-            color: Farbe fuer UI
-            priority: Prioritaet (1=hoechste)
+            icon: Icon für UI
+            color: Farbe für UI
+            priority: Priorität (1=hoechste)
             initial_value: Startwert (bereits angespart)
 
         Returns:
@@ -161,19 +161,19 @@ class FinancialGoalsService:
     ) -> Optional[FinancialGoal]:
         """Holt ein Finanzziel nach ID.
 
-        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
-        Wenn space_id gegeben, wird zusaetzlich validiert.
+        SECURITY: space_id SOLLTE für Multi-Tenant Isolation übergeben werden.
+        Wenn space_id gegeben, wird zusätzlich validiert.
 
         Args:
             goal_id: ID des Ziels
-            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
+            space_id: Optional: ID des Privat-Space für Multi-Tenant Validierung
 
         Returns:
             FinancialGoal oder None
         """
         query = select(FinancialGoal).where(FinancialGoal.id == goal_id)
 
-        # SECURITY: space_id Filter fuer Multi-Tenant Isolation
+        # SECURITY: space_id Filter für Multi-Tenant Isolation
         if space_id is not None:
             query = query.where(FinancialGoal.space_id == space_id)
 
@@ -221,11 +221,11 @@ class FinancialGoalsService:
     ) -> Optional[FinancialGoal]:
         """Aktualisiert ein Finanzziel.
 
-        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: space_id SOLLTE für Multi-Tenant Isolation übergeben werden.
 
         Args:
             goal_id: ID des Ziels
-            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
+            space_id: Optional: ID des Privat-Space für Multi-Tenant Validierung
             **kwargs: Zu aktualisierende Felder
 
         Returns:
@@ -239,7 +239,7 @@ class FinancialGoalsService:
             if hasattr(goal, key):
                 setattr(goal, key, value)
 
-        # Progress neu berechnen falls target_value oder current_value geaendert
+        # Progress neu berechnen falls target_value oder current_value geändert
         if "target_value" in kwargs or "current_value" in kwargs:
             await self._recalculate_progress(goal)
 
@@ -255,13 +255,13 @@ class FinancialGoalsService:
         goal_id: UUID,
         space_id: Optional[UUID] = None,
     ) -> bool:
-        """Loescht ein Finanzziel.
+        """Löscht ein Finanzziel.
 
-        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: space_id SOLLTE für Multi-Tenant Isolation übergeben werden.
 
         Args:
             goal_id: ID des Ziels
-            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
+            space_id: Optional: ID des Privat-Space für Multi-Tenant Validierung
 
         Returns:
             True wenn erfolgreich
@@ -279,7 +279,7 @@ class FinancialGoalsService:
         await self.db.delete(goal)
         await self.db.commit()
 
-        logger.info(f"Finanzziel {goal_id} geloescht")
+        logger.info(f"Finanzziel {goal_id} gelöscht")
         return True
 
     # ==========================================================================
@@ -299,12 +299,12 @@ class FinancialGoalsService:
     ) -> Optional[FinancialGoalContribution]:
         """Fuegt einen Beitrag zu einem Finanzziel hinzu.
 
-        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: space_id SOLLTE für Multi-Tenant Isolation übergeben werden.
 
         Args:
             goal_id: ID des Ziels
             amount: Beitragsbetrag
-            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
+            space_id: Optional: ID des Privat-Space für Multi-Tenant Validierung
             contribution_date: Datum (Standard: heute)
             source_type: Quelle (manual, automatic, transfer)
             source_description: Beschreibung der Quelle
@@ -345,7 +345,7 @@ class FinancialGoalsService:
             goal.current_value = (goal.current_value or Decimal("0")) + amount
             await self._recalculate_progress(goal)
 
-            # Pruefen ob Ziel erreicht
+            # Prüfen ob Ziel erreicht
             if goal.current_value >= goal.target_value:
                 goal.status = FinancialGoalStatus.COMPLETED.value
                 goal.completed_at = utc_now()
@@ -366,11 +366,11 @@ class FinancialGoalsService:
     ) -> Sequence[FinancialGoalContribution]:
         """Holt alle Beitraege zu einem Finanzziel.
 
-        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: space_id SOLLTE für Multi-Tenant Isolation übergeben werden.
 
         Args:
             goal_id: ID des Ziels
-            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
+            space_id: Optional: ID des Privat-Space für Multi-Tenant Validierung
             limit: Max Anzahl
 
         Returns:
@@ -478,13 +478,13 @@ class FinancialGoalsService:
         goal_id: UUID,
         space_id: Optional[UUID] = None,
     ) -> GoalProgress:
-        """Berechnet detaillierten Fortschritt fuer ein Ziel.
+        """Berechnet detaillierten Fortschritt für ein Ziel.
 
-        SECURITY: space_id SOLLTE fuer Multi-Tenant Isolation uebergeben werden.
+        SECURITY: space_id SOLLTE für Multi-Tenant Isolation übergeben werden.
 
         Args:
             goal_id: ID des Ziels
-            space_id: Optional: ID des Privat-Space fuer Multi-Tenant Validierung
+            space_id: Optional: ID des Privat-Space für Multi-Tenant Validierung
 
         Returns:
             GoalProgress mit allen Details
@@ -604,13 +604,13 @@ class FinancialGoalsService:
 
         await self.db.commit()
 
-        logger.info(f"{count} Finanzziele fuer Space {space_id} neu berechnet")
+        logger.info(f"{count} Finanzziele für Space {space_id} neu berechnet")
         return count
 
     async def recalculate_all_spaces_goals(self) -> int:
         """Berechnet alle Ziele aller Spaces neu.
 
-        Wird typischerweise taeglich via Celery Beat ausgefuehrt.
+        Wird typischerweise täglich via Celery Beat ausgeführt.
 
         Returns:
             Anzahl der aktualisierten Ziele
@@ -636,7 +636,7 @@ class FinancialGoalsService:
         """Holt alle gefaehrdeten Ziele.
 
         Args:
-            space_id: Optional: Nur fuer bestimmten Space
+            space_id: Optional: Nur für bestimmten Space
 
         Returns:
             Liste von gefaehrdeten FinancialGoals

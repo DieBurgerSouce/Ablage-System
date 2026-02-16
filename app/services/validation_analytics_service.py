@@ -1,6 +1,6 @@
 """ValidationAnalyticsService - Statistiken und Analysen.
 
-Dieser Service aggregiert und berechnet Statistiken fuer das
+Dieser Service aggregiert und berechnet Statistiken für das
 Validierungs-Dashboard.
 
 Verwendung:
@@ -40,7 +40,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ValidationAnalyticsService:
-    """Service fuer Validierungs-Statistiken und -Analysen."""
+    """Service für Validierungs-Statistiken und -Analysen."""
 
     def __init__(self, db: AsyncSession):
         """Initialisiere den Service."""
@@ -55,7 +55,7 @@ class ValidationAnalyticsService:
         date_from: Optional[date] = None,
         date_to: Optional[date] = None
     ) -> ValidationAnalyticsOverview:
-        """Holt Uebersichts-Statistiken.
+        """Holt Übersichts-Statistiken.
 
         Args:
             date_from: Startdatum (optional)
@@ -183,7 +183,7 @@ class ValidationAnalyticsService:
         avg_before = before_result.scalar()
 
         # Berechne avg_after aus approved items mit korrigierten Werten
-        # Annahme: Items mit Korrekturen haben hoehere finale Confidence
+        # Annahme: Items mit Korrekturen haben höhere finale Confidence
         approved_result = await self.db.execute(
             select(func.avg(ValidationQueueItem.overall_confidence)).where(
                 and_(
@@ -206,7 +206,7 @@ class ValidationAnalyticsService:
                 if avg_before > 0:
                     improvement = round((avg_after - avg_before) / avg_before * 100, 1)
             else:
-                # Fallback: Schaetzung basierend auf Korrekturen
+                # Fallback: Schätzung basierend auf Korrekturen
                 avg_corrections = await self._get_avg_corrections()
                 if avg_corrections:
                     improvement = round(avg_corrections * 1.0, 1)  # 1% pro Korrektur
@@ -218,7 +218,7 @@ class ValidationAnalyticsService:
         }
 
     async def _get_top_rejection_categories(self, limit: int = 5) -> List[Dict[str, Any]]:
-        """Holt die haeufigsten Ablehnungskategorien."""
+        """Holt die häufigsten Ablehnungskategorien."""
         result = await self.db.execute(
             select(
                 ValidationQueueItem.rejection_category,
@@ -332,7 +332,7 @@ class ValidationAnalyticsService:
         self,
         days: int = 30
     ) -> TrendDataResponse:
-        """Holt Trend-Daten fuer Charts.
+        """Holt Trend-Daten für Charts.
 
         Args:
             days: Anzahl der Tage
@@ -519,7 +519,7 @@ class ValidationAnalyticsService:
     ) -> None:
         """Zeichnet eine abgeschlossene Validierung auf.
 
-        Aktualisiert die Analytics-Tabelle fuer Dashboard-Berichte.
+        Aktualisiert die Analytics-Tabelle für Dashboard-Berichte.
 
         Args:
             queue_item: Das abgeschlossene Queue-Item
@@ -610,7 +610,7 @@ class ValidationAnalyticsService:
 
 
 def get_validation_analytics_service(db: AsyncSession) -> ValidationAnalyticsService:
-    """Factory-Funktion fuer den ValidationAnalyticsService.
+    """Factory-Funktion für den ValidationAnalyticsService.
 
     Args:
         db: Async-Datenbankverbindung

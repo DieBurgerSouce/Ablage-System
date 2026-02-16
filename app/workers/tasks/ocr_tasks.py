@@ -91,34 +91,34 @@ def _is_oom_error(exception: Exception) -> bool:
 
 def secure_delete_file(file_path: Union[str, Path], passes: int = 1) -> bool:
     """
-    Sicheres Loeschen einer Datei durch Ueberschreiben mit Zufallsdaten.
+    Sicheres Löschen einer Datei durch Überschreiben mit Zufallsdaten.
 
     SECURITY FIX: Verhindert Wiederherstellung sensibler Dokumentdaten
     von Temp-Dateien durch forensische Tools.
 
     Args:
-        file_path: Pfad zur zu loeschenden Datei
-        passes: Anzahl der Ueberschreibdurchgaenge (Default: 1)
+        file_path: Pfad zur zu löschenden Datei
+        passes: Anzahl der Überschreibdurchgaenge (Default: 1)
 
     Returns:
-        True wenn erfolgreich geloescht, False bei Fehler
+        True wenn erfolgreich gelöscht, False bei Fehler
 
     Security:
-        - Ueberschreibt Dateiinhalt mit kryptografisch sicheren Zufallsdaten
-        - Fsync nach jedem Schreibvorgang fuer sofortiges Schreiben auf Disk
-        - Geeignet fuer sensitive Dokumente (GDPR Art. 17)
+        - Überschreibt Dateiinhalt mit kryptografisch sicheren Zufallsdaten
+        - Fsync nach jedem Schreibvorgang für sofortiges Schreiben auf Disk
+        - Geeignet für sensitive Dokumente (GDPR Art. 17)
     """
     path = Path(file_path)
     if not path.exists():
-        return True  # Bereits geloescht
+        return True  # Bereits gelöscht
 
     try:
         file_size = path.stat().st_size
 
-        # Ueberschreibe mit Zufallsdaten
+        # Überschreibe mit Zufallsdaten
         for pass_num in range(passes):
             with open(path, 'rb+') as f:
-                # Schreibe in Bloecken fuer grosse Dateien
+                # Schreibe in Bloecken für grosse Dateien
                 block_size = 64 * 1024  # 64KB Bloecke
                 remaining = file_size
 
@@ -132,7 +132,7 @@ def secure_delete_file(file_path: Union[str, Path], passes: int = 1) -> bool:
                 f.flush()
                 os.fsync(f.fileno())
 
-        # Loesche Datei
+        # Lösche Datei
         path.unlink()
 
         logger.debug(
@@ -149,7 +149,7 @@ def secure_delete_file(file_path: Union[str, Path], passes: int = 1) -> bool:
             file_path=str(path),
             **safe_error_log(e)
         )
-        # Fallback: Normales Loeschen
+        # Fallback: Normales Löschen
         try:
             path.unlink()
             return True
@@ -163,7 +163,7 @@ def secure_delete_file(file_path: Union[str, Path], passes: int = 1) -> bool:
 
 
 # GPU Lock Refresh Konfiguration
-GPU_LOCK_REFRESH_INTERVAL = 25  # Sekunden (Lock laeuft nach 60s ab, refreshe alle 25s)
+GPU_LOCK_REFRESH_INTERVAL = 25  # Sekunden (Lock läuft nach 60s ab, refreshe alle 25s)
 
 
 async def _periodic_lock_refresh(
@@ -171,7 +171,7 @@ async def _periodic_lock_refresh(
     interval: int = GPU_LOCK_REFRESH_INTERVAL,
     logger_context: Optional[Dict[str, Any]] = None
 ) -> None:
-    """Background-Task fuer periodisches GPU-Lock-Refresh.
+    """Background-Task für periodisches GPU-Lock-Refresh.
 
     Verhindert Lock-Ablauf bei langen OCR-Tasks (> 60s).
     Wird als asyncio.Task gestartet und nach OCR gecancelt.
@@ -423,7 +423,7 @@ def process_document_task(
                 # Start OCR processing
                 update_task_progress(task_id, 20, 100, "OCR-Verarbeitung läuft...")
 
-                # Starte Background-Task fuer periodisches GPU-Lock-Refresh
+                # Starte Background-Task für periodisches GPU-Lock-Refresh
                 # Verhindert Lock-Ablauf bei langen OCR-Tasks (> 60s)
                 log_context = {"document_id": str(document_id), "backend": backend}
                 lock_refresh_task = asyncio.create_task(
@@ -534,7 +534,7 @@ def process_document_task(
                         error=str(cache_error)
                     )
 
-                # Perceptual Hash berechnen fuer Bild-Dokumente
+                # Perceptual Hash berechnen für Bild-Dokumente
                 if document.mime_type and document.mime_type.startswith("image/"):
                     try:
                         import imagehash as _imagehash
@@ -548,7 +548,7 @@ def process_document_task(
                     except Exception:
                         pass  # pHash-Berechnung ist optional
 
-                # Post-OCR: Vollstaendiger Duplikat-Check (Text steht jetzt zur Verfuegung)
+                # Post-OCR: Vollständiger Duplikat-Check (Text steht jetzt zur Verfügung)
                 try:
                     from app.services.ai.duplicate_detection_service import get_duplicate_detection_service
                     dup_service = get_duplicate_detection_service()
@@ -677,7 +677,7 @@ def process_document_task(
                             **safe_error_log(e)
                         )
 
-                # Queue RAG chunking as background task (fuer Chat/Suche)
+                # Queue RAG chunking as background task (für Chat/Suche)
                 rag_chunking_task_id = None
                 if settings.AUTO_RAG_CHUNKING_ENABLED and document.extracted_text:
                     try:
@@ -737,7 +737,7 @@ def process_document_task(
                         qc_result = quick_classify_document.apply_async(
                             kwargs={"document_id": document_id},
                             countdown=1,  # Start 1 second after OCR completes
-                            priority=1,   # Hohe Prioritaet fuer schnelle Badge-Anzeige
+                            priority=1,   # Hohe Priorität für schnelle Badge-Anzeige
                         )
                         quick_classification_task_id = qc_result.id
                         logger.info(
@@ -987,7 +987,7 @@ def process_document_task(
                 )
 
             finally:
-                # SECURITY FIX: Secure cleanup temp file - ueberschreibe vor Loeschung
+                # SECURITY FIX: Secure cleanup temp file - überschreibe vor Löschung
                 # Verhindert Wiederherstellung sensibler Dokumentdaten
                 if local_file_path and Path(local_file_path).exists():
                     if not secure_delete_file(local_file_path):
@@ -995,7 +995,7 @@ def process_document_task(
                             "temp_file_secure_cleanup_failed",
                             task_id=task_id,
                             file_path=local_file_path,
-                            message="Konnte Temp-Datei nicht sicher loeschen"
+                            message="Konnte Temp-Datei nicht sicher löschen"
                         )
 
                 # GPU-Speicher immer aufräumen nach Verarbeitung
@@ -1769,7 +1769,7 @@ def process_pending_ocr_feedbacks(
     """
     Verarbeite ausstehende OCR-Feedbacks und markiere als processed.
 
-    Dieser Task wird regelmaessig ausgefuehrt um:
+    Dieser Task wird regelmäßig ausgeführt um:
     1. Pending Feedbacks zu holen
     2. Confidence-Adjustments zu aktualisieren
     3. Feedbacks als processed zu markieren

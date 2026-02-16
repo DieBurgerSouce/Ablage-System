@@ -2,7 +2,7 @@
 """
 Document Chain Celery Tasks.
 
-Automatische Verknuepfung von Dokumenten zu Auftragsketten:
+Automatische Verknüpfung von Dokumenten zu Auftragsketten:
 - Angebot -> Auftrag -> Lieferschein -> Rechnung -> Gutschrift
 - Auto-Matching basierend auf Referenznummern, Betraegen, Kunden
 - Automatischer Lauf nach OCR-Completion
@@ -42,10 +42,10 @@ def auto_link_document_task(
     min_confidence: float = 0.85,
     auto_create_chain: bool = True,
 ) -> Dict[str, Any]:
-    """Sucht automatisch passende Ketten fuer ein Dokument.
+    """Sucht automatisch passende Ketten für ein Dokument.
 
     Wird nach OCR-Completion aufgerufen um das Dokument
-    automatisch mit verwandten Dokumenten zu verknuepfen.
+    automatisch mit verwandten Dokumenten zu verknüpfen.
 
     Matching-Strategien:
     1. Referenznummern (95%+ Confidence)
@@ -55,8 +55,8 @@ def auto_link_document_task(
     Args:
         document_id: UUID des Dokuments
         company_id: UUID der Firma
-        min_confidence: Minimale Confidence fuer automatische Verknuepfung
-        auto_create_chain: Bei hoher Confidence automatisch verknuepfen
+        min_confidence: Minimale Confidence für automatische Verknüpfung
+        auto_create_chain: Bei hoher Confidence automatisch verknüpfen
 
     Returns:
         Dict mit Match-Ergebnissen und ggf. erstellter Chain
@@ -67,7 +67,7 @@ def auto_link_document_task(
         async with get_async_session_context() as db:
             service = DocumentChainService()
 
-            # Auto-Matching durchfuehren
+            # Auto-Matching durchführen
             matches = await service.auto_match_documents(
                 db=db,
                 document_id=UUID(document_id),
@@ -95,7 +95,7 @@ def auto_link_document_task(
                     "chain_id": match.chain_id,
                 })
 
-            # Beste Match pruefen
+            # Beste Match prüfen
             best_match = max(matches, key=lambda m: m.confidence)
 
             if auto_create_chain and best_match.confidence >= min_confidence:
@@ -127,7 +127,7 @@ def auto_link_document_task(
                     # Neue Chain erstellen mit gematchten Dokumenten
                     all_doc_ids = [UUID(document_id)] + best_match.matched_documents
 
-                    # System-User fuer automatische Verknuepfung
+                    # System-User für automatische Verknüpfung
                     from app.db.models import User
                     from sqlalchemy import select
 
@@ -153,7 +153,7 @@ def auto_link_document_task(
                             confidence=best_match.confidence,
                         )
             else:
-                # Nur Vorschlaege speichern, keine automatische Verknuepfung
+                # Nur Vorschläge speichern, keine automatische Verknüpfung
                 result["action"] = "suggestions_only"
                 result["best_confidence"] = best_match.confidence
                 result["reason"] = (
@@ -208,13 +208,13 @@ def auto_link_all_documents_task(
     batch_size: int = 100,
     only_unchained: bool = True,
 ) -> Dict[str, Any]:
-    """Versucht alle Dokumente automatisch zu Ketten zu verknuepfen.
+    """Versucht alle Dokumente automatisch zu Ketten zu verknüpfen.
 
     Kann periodisch oder manuell gestartet werden.
 
     Args:
-        company_id: Optional - nur fuer diese Firma
-        min_confidence: Minimale Confidence fuer automatische Verknuepfung
+        company_id: Optional - nur für diese Firma
+        min_confidence: Minimale Confidence für automatische Verknüpfung
         batch_size: Anzahl Dokumente pro Batch
         only_unchained: Nur Dokumente ohne chain_id
 
@@ -347,7 +347,7 @@ def check_chain_discrepancies_task(
     chain_id: str,
     company_id: str,
 ) -> Dict[str, Any]:
-    """Prueft eine Chain auf Abweichungen zwischen Dokumenten.
+    """Prüft eine Chain auf Abweichungen zwischen Dokumenten.
 
     Wird nach Hinzufuegen eines Dokuments zur Chain aufgerufen.
 
@@ -413,10 +413,10 @@ def check_chain_discrepancies_task(
 
 @celery_app.task(name="app.workers.tasks.chain_tasks.on_ocr_completed_auto_link")
 def on_ocr_completed_auto_link(document_id: str, company_id: str) -> Dict[str, Any]:
-    """Handler fuer OCR-Completion Events.
+    """Handler für OCR-Completion Events.
 
     Wird von OCR-Tasks aufgerufen nachdem Text extrahiert wurde.
-    Versucht automatisch, das Dokument mit einer Chain zu verknuepfen.
+    Versucht automatisch, das Dokument mit einer Chain zu verknüpfen.
 
     Args:
         document_id: UUID des Dokuments
@@ -440,10 +440,10 @@ def on_ocr_completed_auto_link(document_id: str, company_id: str) -> Dict[str, A
 
 @celery_app.task(name="app.workers.tasks.chain_tasks.generate_chain_statistics_task")
 def generate_chain_statistics_task(company_id: Optional[str] = None) -> Dict[str, Any]:
-    """Generiert Statistiken ueber Document Chains.
+    """Generiert Statistiken über Document Chains.
 
     Args:
-        company_id: Optional - nur fuer diese Firma
+        company_id: Optional - nur für diese Firma
 
     Returns:
         Dict mit Chain-Statistiken
@@ -496,7 +496,7 @@ def generate_chain_statistics_task(company_id: Optional[str] = None) -> Dict[str
             )
             stats["total_chains"] = chain_count
 
-            # Durchschnittliche Chain-Laenge
+            # Durchschnittliche Chain-Länge
             if chain_count and chain_count > 0:
                 stats["avg_chain_length"] = round(chained_docs / chain_count, 1)
             else:
@@ -543,19 +543,19 @@ def validate_document_chains(
     check_discrepancies: bool = True,
 ) -> Dict[str, Any]:
     """
-    Validiert Document Chains auf Integritaet und Vollstaendigkeit.
+    Validiert Document Chains auf Integrität und Vollständigkeit.
 
-    Wird taeglich um 03:15 Uhr automatisch ausgefuehrt.
-    Prueft:
-    - Chain-Struktur (Position, Verknuepfung)
+    Wird täglich um 03:15 Uhr automatisch ausgeführt.
+    Prüft:
+    - Chain-Struktur (Position, Verknüpfung)
     - Dokumenten-Konsistenz innerhalb der Chain
     - Abweichungen zwischen Dokumenten
     - Verwaiste Dokumente (chain_id aber keine anderen in Chain)
 
     Args:
-        company_id: Optional - nur fuer spezifische Firma
-        max_chains: Maximale Anzahl zu pruefender Chains
-        check_discrepancies: Abweichungen pruefen (performance-intensiv)
+        company_id: Optional - nur für spezifische Firma
+        max_chains: Maximale Anzahl zu prüfender Chains
+        check_discrepancies: Abweichungen prüfen (performance-intensiv)
 
     Returns:
         Dict mit Validierungsergebnissen und Statistiken
@@ -577,7 +577,7 @@ def validate_document_chains(
                 "errors": [],
             }
 
-            # Base query fuer distinct chains
+            # Base query für distinct chains
             base_condition = Document.deleted_at.is_(None)
 
             if company_id:
@@ -619,15 +619,15 @@ def validate_document_chains(
                 try:
                     chain_issues: List[Dict[str, Any]] = []
 
-                    # 1. Pruefe ob Chain nur 1 Dokument hat (verwaist)
+                    # 1. Prüfe ob Chain nur 1 Dokument hat (verwaist)
                     if doc_count == 1:
                         stats["orphaned_documents"] += 1
                         chain_issues.append({
                             "type": "orphaned",
-                            "message": "Chain enthaelt nur ein Dokument",
+                            "message": "Chain enthält nur ein Dokument",
                         })
 
-                    # 2. Hole alle Dokumente der Chain fuer weitere Pruefungen
+                    # 2. Hole alle Dokumente der Chain für weitere Prüfungen
                     if doc_count > 1:
                         docs_query = (
                             select(Document)
@@ -643,17 +643,17 @@ def validate_document_chains(
                         docs_result = await db.execute(docs_query)
                         docs = docs_result.scalars().all()
 
-                        # 3. Pruefe Position-Kontinuitaet
+                        # 3. Prüfe Position-Kontinuitaet
                         positions = [d.chain_position for d in docs if d.chain_position is not None]
                         if positions:
-                            # Gaps in Positionen pruefen
+                            # Gaps in Positionen prüfen
                             sorted_positions = sorted(positions)
                             for i in range(1, len(sorted_positions)):
                                 gap = sorted_positions[i] - sorted_positions[i - 1]
-                                if gap > 10:  # Tolerance fuer Luecken
+                                if gap > 10:  # Tolerance für Lücken
                                     chain_issues.append({
                                         "type": "position_gap",
-                                        "message": f"Grosse Luecke in Positionen: {sorted_positions[i - 1]} -> {sorted_positions[i]}",
+                                        "message": f"Grosse Lücke in Positionen: {sorted_positions[i - 1]} -> {sorted_positions[i]}",
                                     })
 
                         # 4. Discrepancy-Check (optional, performance-intensiv)
@@ -670,7 +670,7 @@ def validate_document_chains(
                                             pass
 
                             if len(amounts) >= 2:
-                                # Pruefen ob Betraege stark abweichen
+                                # Prüfen ob Betraege stark abweichen
                                 avg_amount = sum(amounts) / len(amounts)
                                 for amount in amounts:
                                     if avg_amount > 0:
@@ -683,10 +683,10 @@ def validate_document_chains(
                                             })
                                             break
 
-                    # Zusammenfassung fuer diese Chain
+                    # Zusammenfassung für diese Chain
                     if chain_issues:
                         stats["chains_with_issues"] += 1
-                        if len(stats["issues"]) < 100:  # Limit fuer Issues
+                        if len(stats["issues"]) < 100:  # Limit für Issues
                             stats["issues"].append({
                                 "chain_id": chain_id,
                                 "company_id": str(chain_company_id),

@@ -2,10 +2,10 @@
 """
 Resilience Patterns: Circuit Breaker, Retry, Bulkhead.
 
-Implementiert Enterprise Resilience Patterns fuer das Ablage-System:
-- Circuit Breaker fuer Fehlerisolierung
+Implementiert Enterprise Resilience Patterns für das Ablage-System:
+- Circuit Breaker für Fehlerisolierung
 - Retry mit Exponential Backoff
-- Bulkhead fuer Ressourcen-Limitierung
+- Bulkhead für Ressourcen-Limitierung
 - OCR-spezifische Resilience-Helper
 
 Features:
@@ -32,7 +32,7 @@ from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
-# Type variable fuer generische Decorators
+# Type variable für generische Decorators
 T = TypeVar("T")
 F = TypeVar("F", bound=Callable)
 
@@ -77,13 +77,13 @@ bulkhead_rejections = Counter(
 # =============================================================================
 
 class CircuitBreakerOpenError(Exception):
-    """Circuit Breaker ist geoeffnet (Service nicht verfuegbar)."""
+    """Circuit Breaker ist geöffnet (Service nicht verfügbar)."""
 
     def __init__(self, service_name: str, retry_after_seconds: float):
         self.service_name = service_name
         self.retry_after_seconds = retry_after_seconds
         message = (
-            f"Service '{service_name}' ist voruebergehend nicht verfuegbar. "
+            f"Service '{service_name}' ist vorübergehend nicht verfügbar. "
             f"Bitte versuchen Sie es in {int(retry_after_seconds)} Sekunden erneut."
         )
         super().__init__(message)
@@ -97,7 +97,7 @@ class BulkheadFullError(Exception):
         self.max_concurrent = max_concurrent
         message = (
             f"Service '{service_name}' hat das Limit von {max_concurrent} "
-            f"gleichzeitigen Anfragen erreicht. Bitte versuchen Sie es spaeter erneut."
+            f"gleichzeitigen Anfragen erreicht. Bitte versuchen Sie es später erneut."
         )
         super().__init__(message)
 
@@ -128,7 +128,7 @@ class CircuitBreaker:
     - HALF_OPEN -> OPEN: On any failure in HALF_OPEN state
 
     Args:
-        name: Circuit Breaker Name (fuer Metrics/Logging)
+        name: Circuit Breaker Name (für Metrics/Logging)
         failure_threshold: Anzahl Fehler bis OPEN (default: 5)
         recovery_timeout_seconds: Zeit bis HALF_OPEN Test (default: 60s)
         half_open_max_calls: Erfolgreiche Calls bis CLOSED (default: 3)
@@ -185,7 +185,7 @@ class CircuitBreaker:
             return self._success_count
 
     def can_execute(self) -> bool:
-        """Prueft ob Call ausgefuehrt werden darf.
+        """Prüft ob Call ausgeführt werden darf.
 
         Returns:
             True wenn Call erlaubt, False wenn Circuit OPEN
@@ -242,7 +242,7 @@ class CircuitBreaker:
         """Zeichne fehlgeschlagenen Call auf.
 
         Args:
-            exception: Optional Exception fuer Logging
+            exception: Optional Exception für Logging
         """
         with self._lock:
             self._failure_count += 1
@@ -282,7 +282,7 @@ class CircuitBreaker:
             logger.info("circuit_breaker_reset", name=self.name)
 
     def _transition_to(self, new_state: CircuitBreakerState) -> None:
-        """Fuehre State Transition aus (internal, requires lock).
+        """Führe State Transition aus (internal, requires lock).
 
         Args:
             new_state: Ziel-State
@@ -330,7 +330,7 @@ class CircuitBreaker:
 # =============================================================================
 
 class CircuitBreakerRegistry:
-    """Singleton Registry fuer Circuit Breakers.
+    """Singleton Registry für Circuit Breakers.
 
     Verwaltet alle Circuit Breaker Instances zentral.
     """
@@ -404,7 +404,7 @@ def circuit_breaker(
     recovery_timeout_seconds: float = 60.0,
     half_open_max_calls: int = 3
 ) -> Callable[[F], F]:
-    """Circuit Breaker Decorator fuer Funktionen.
+    """Circuit Breaker Decorator für Funktionen.
 
     Works on both sync and async functions.
 
@@ -557,7 +557,7 @@ def retry_with_backoff(
         max_retries: Maximale Anzahl Retries (default: 3)
         base_delay: Basis-Delay in Sekunden (default: 1.0)
         max_delay: Maximaler Delay in Sekunden (default: 60.0)
-        exponential_base: Basis fuer Exponential Backoff (default: 2.0)
+        exponential_base: Basis für Exponential Backoff (default: 2.0)
         jitter: Random Jitter hinzufuegen (default: True)
         retryable_exceptions: Tuple von Exception-Typen die retried werden
 
@@ -695,7 +695,7 @@ def retry_with_backoff(
 # =============================================================================
 
 class Bulkhead:
-    """Bulkhead Pattern fuer Ressourcen-Limitierung.
+    """Bulkhead Pattern für Ressourcen-Limitierung.
 
     Limitiert die Anzahl gleichzeitiger Calls mit asyncio.Semaphore.
 
@@ -765,11 +765,11 @@ OCR_CIRCUIT_BREAKER_CONFIG = {
 
 
 def get_ocr_circuit_breaker(backend_name: str) -> CircuitBreaker:
-    """Hole oder erstelle Circuit Breaker fuer OCR Backend.
+    """Hole oder erstelle Circuit Breaker für OCR Backend.
 
-    Pre-configured fuer OCR:
+    Pre-configured für OCR:
     - failure_threshold: 3 (schnelleres OPEN bei OCR-Fehlern)
-    - recovery_timeout: 120s (mehr Zeit fuer GPU-Recovery)
+    - recovery_timeout: 120s (mehr Zeit für GPU-Recovery)
     - half_open_max_calls: 2
 
     Args:

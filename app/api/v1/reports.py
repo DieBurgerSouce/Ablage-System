@@ -2,7 +2,7 @@
 """
 Report Builder API Endpoints.
 
-Ermoeglicht Nutzern, eigene Reports zu erstellen, zu verwalten und auszufuehren.
+Ermöglicht Nutzern, eigene Reports zu erstellen, zu verwalten und auszuführen.
 """
 
 from __future__ import annotations
@@ -154,12 +154,12 @@ class ReportColumnResponse(BaseModel):
 class ReportFilterCreate(BaseModel):
     field_path: str = Field(..., description="Pfad zum Feld")
     operator: FilterOperator = Field(..., description="Filter-Operator")
-    value: Optional[FilterValue] = Field(None, description="Wert fuer den Filter")
-    logic_operator: str = Field("AND", description="Logische Verknuepfung: AND|OR")
-    group_id: Optional[int] = Field(None, description="Gruppen-ID fuer verschachtelte Filter")
+    value: Optional[FilterValue] = Field(None, description="Wert für den Filter")
+    logic_operator: str = Field("AND", description="Logische Verknüpfung: AND|OR")
+    group_id: Optional[int] = Field(None, description="Gruppen-ID für verschachtelte Filter")
     sort_order: int = Field(0, description="Reihenfolge")
     is_dynamic: bool = Field(False, description="Dynamischer Wert?")
-    dynamic_source: Optional[str] = Field(None, description="Quelle fuer dynamischen Wert")
+    dynamic_source: Optional[str] = Field(None, description="Quelle für dynamischen Wert")
 
 
 class ReportFilterUpdate(BaseModel):
@@ -191,15 +191,15 @@ class ReportFilterResponse(BaseModel):
 class ReportChartCreate(BaseModel):
     chart_type: ChartType = Field(..., description="Chart-Typ")
     title: Optional[str] = Field(None, description="Chart-Titel")
-    x_axis_field: Optional[str] = Field(None, description="Feld fuer X-Achse")
-    y_axis_fields: List[str] = Field(..., description="Felder fuer Y-Achse")
+    x_axis_field: Optional[str] = Field(None, description="Feld für X-Achse")
+    y_axis_fields: List[str] = Field(..., description="Felder für Y-Achse")
     group_by_field: Optional[str] = Field(None, description="Gruppierungsfeld")
     colors: Optional[List[str]] = Field(None, description="Benutzerdefinierte Farben")
     show_legend: bool = Field(True, description="Legende anzeigen?")
     show_labels: bool = Field(False, description="Datenlabels anzeigen?")
     position: str = Field("bottom", description="Position: top|bottom|separate_sheet")
     width_percent: int = Field(100, description="Breite in Prozent")
-    height_px: int = Field(300, description="Hoehe in Pixel")
+    height_px: int = Field(300, description="Höhe in Pixel")
     sort_order: int = Field(0, description="Reihenfolge")
 
 
@@ -244,7 +244,7 @@ class ReportTemplateCreate(BaseModel):
     data_source: DataSource = Field(..., description="Datenquelle")
     default_format: ExportFormat = Field(ExportFormat.EXCEL, description="Standard-Exportformat")
     company_id: Optional[uuid.UUID] = Field(None, description="Mandanten-ID (optional)")
-    is_public: bool = Field(False, description="Oeffentlich sichtbar?")
+    is_public: bool = Field(False, description="Öffentlich sichtbar?")
     layout_config: Optional[Dict[str, JSONValue]] = Field(None, description="Layout-Konfiguration")
     sort_config: Optional[List[Dict[str, JSONValue]]] = Field(None, description="Sortierung")
     group_by_config: Optional[List[str]] = Field(None, description="Gruppierung")
@@ -290,9 +290,9 @@ class ReportTemplateResponse(BaseModel):
 class ReportShareCreate(BaseModel):
     shared_with_user_id: uuid.UUID = Field(..., description="User-ID mit dem geteilt wird")
     can_view: bool = Field(True, description="Kann ansehen?")
-    can_execute: bool = Field(True, description="Kann ausfuehren?")
+    can_execute: bool = Field(True, description="Kann ausführen?")
     can_edit: bool = Field(False, description="Kann bearbeiten?")
-    can_delete: bool = Field(False, description="Kann loeschen?")
+    can_delete: bool = Field(False, description="Kann löschen?")
 
 
 class ReportShareResponse(BaseModel):
@@ -312,7 +312,7 @@ class ReportShareResponse(BaseModel):
 class ScheduleConfigCreate(BaseModel):
     cron_expression: str = Field(..., description="Cron-Ausdruck, z.B. '0 8 * * *'")
     timezone: str = Field("Europe/Berlin", description="Zeitzone")
-    recipients: Optional[List[str]] = Field(None, description="E-Mail-Empfaenger")
+    recipients: Optional[List[str]] = Field(None, description="E-Mail-Empfänger")
     format: ExportFormat = Field(ExportFormat.EXCEL, description="Export-Format")
 
 
@@ -527,8 +527,8 @@ async def get_prebuilt_template(template_id: str) -> PreBuiltTemplateResponse:
 @router.get("/templates", response_model=List[ReportTemplateResponse])
 async def list_templates(
     report_type: Optional[ReportType] = Query(None, description="Filter nach Report-Typ"),
-    include_public: bool = Query(True, description="Oeffentliche Templates einschliessen?"),
-    include_shared: bool = Query(True, description="Geteilte Templates einschliessen?"),
+    include_public: bool = Query(True, description="Öffentliche Templates einschließen?"),
+    include_shared: bool = Query(True, description="Geteilte Templates einschließen?"),
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
@@ -635,7 +635,7 @@ async def delete_template(
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
 ) -> Response:
-    """Loescht ein Report-Template."""
+    """Löscht ein Report-Template."""
     success = await service.delete_template(
         db=db,
         template_id=template_id,
@@ -649,7 +649,7 @@ async def delete_template(
 @router.post("/templates/{template_id}/clone", response_model=ReportTemplateResponse, status_code=status.HTTP_201_CREATED)
 async def clone_template(
     template_id: uuid.UUID,
-    new_name: Optional[str] = Query(None, description="Name fuer die Kopie"),
+    new_name: Optional[str] = Query(None, description="Name für die Kopie"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
@@ -744,7 +744,7 @@ async def delete_column(
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
 ) -> Response:
-    """Loescht eine Spalte."""
+    """Löscht eine Spalte."""
     template = await service.get_template(db, template_id, current_user.id, include_relations=False)
     if not template:
         raise HTTPException(status_code=404, detail="Template nicht gefunden")
@@ -811,7 +811,7 @@ async def delete_filter(
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
 ) -> Response:
-    """Loescht einen Filter."""
+    """Löscht einen Filter."""
     template = await service.get_template(db, template_id, current_user.id, include_relations=False)
     if not template:
         raise HTTPException(status_code=404, detail="Template nicht gefunden")
@@ -867,7 +867,7 @@ async def delete_chart(
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
 ) -> Response:
-    """Loescht einen Chart."""
+    """Löscht einen Chart."""
     template = await service.get_template(db, template_id, current_user.id, include_relations=False)
     if not template:
         raise HTTPException(status_code=404, detail="Template nicht gefunden")
@@ -919,9 +919,9 @@ async def execute_report(
     pdf_service: PdfExportService = Depends(get_pdf_export_service),
 ) -> ReportExecutionResponse:
     """
-    Fuehrt einen Report aus und exportiert ihn im gewuenschten Format.
+    Führt einen Report aus und exportiert ihn im gewünschten Format.
 
-    Unterstuetzt Excel, CSV, JSON und PDF (mit report_templates.py für PDF-Formatierung).
+    Unterstützt Excel, CSV, JSON und PDF (mit report_templates.py für PDF-Formatierung).
     """
     template = await template_service.get_template(db, template_id, current_user.id, include_relations=True)
     if not template:
@@ -941,7 +941,7 @@ async def execute_report(
         # Status auf running setzen
         await scheduler_service.update_execution_status(db, execution.id, "running")
 
-        # Report ausfuehren
+        # Report ausführen
         result = await builder_service.execute_report(
             db=db,
             template=template,
@@ -1020,7 +1020,7 @@ async def execute_report(
                 size_bytes=file_size_bytes,
             )
 
-        # Execution aktualisieren (ohne Datei-Upload fuer jetzt)
+        # Execution aktualisieren (ohne Datei-Upload für jetzt)
         execution = await scheduler_service.update_execution_status(
             db=db,
             execution_id=execution.id,
@@ -1052,7 +1052,7 @@ async def list_executions(
     current_user: User = Depends(get_current_user),
     scheduler_service: ReportSchedulerService = Depends(get_scheduler_service),
 ) -> List[ReportExecutionResponse]:
-    """Listet Report-Ausfuehrungen."""
+    """Listet Report-Ausführungen."""
     executions = await scheduler_service.list_executions(
         db=db,
         template_id=template_id,
@@ -1071,7 +1071,7 @@ async def get_execution(
     current_user: User = Depends(get_current_user),
     scheduler_service: ReportSchedulerService = Depends(get_scheduler_service),
 ) -> ReportExecutionResponse:
-    """Holt Details einer Report-Ausfuehrung."""
+    """Holt Details einer Report-Ausführung."""
     execution = await scheduler_service.get_execution(db, execution_id)
     if not execution:
         raise HTTPException(status_code=404, detail="Execution nicht gefunden")
@@ -1154,7 +1154,7 @@ async def enable_schedule(
     template_service: ReportTemplateService = Depends(get_template_service),
     scheduler_service: ReportSchedulerService = Depends(get_scheduler_service),
 ) -> ReportTemplateResponse:
-    """Aktiviert einen Zeitplan fuer einen Report."""
+    """Aktiviert einen Zeitplan für einen Report."""
     template = await scheduler_service.enable_schedule(
         db=db,
         template_id=template_id,
@@ -1165,7 +1165,7 @@ async def enable_schedule(
         format=data.format.value,
     )
     if not template:
-        raise HTTPException(status_code=400, detail="Ungueltige Cron-Expression oder Template nicht gefunden")
+        raise HTTPException(status_code=400, detail="Ungültige Cron-Expression oder Template nicht gefunden")
 
     return ReportTemplateResponse.model_validate(template)
 
@@ -1188,7 +1188,7 @@ async def disable_schedule(
 async def get_schedule_presets(
     scheduler_service: ReportSchedulerService = Depends(get_scheduler_service),
 ) -> List[Dict[str, JSONValue]]:
-    """Gibt vordefinierte Zeitplan-Optionen zurueck."""
+    """Gibt vordefinierte Zeitplan-Optionen zurück."""
     return scheduler_service.get_schedule_presets()
 
 
@@ -1201,7 +1201,7 @@ async def get_schedule_presets(
 async def get_data_sources(
     builder_service: ReportBuilderService = Depends(get_builder_service),
 ) -> List[DataSourceDefinition]:
-    """Gibt verfuegbare Datenquellen zurueck."""
+    """Gibt verfügbare Datenquellen zurück."""
     sources = builder_service.get_available_data_sources()
     return [DataSourceDefinition(**s) for s in sources]
 
@@ -1211,7 +1211,7 @@ async def get_data_source_fields(
     source: DataSource,
     builder_service: ReportBuilderService = Depends(get_builder_service),
 ) -> List[FieldDefinition]:
-    """Gibt verfuegbare Felder fuer eine Datenquelle zurueck."""
+    """Gibt verfügbare Felder für eine Datenquelle zurück."""
     fields = builder_service.get_available_fields(source.value)
     return [FieldDefinition(**f) for f in fields]
 
@@ -1220,7 +1220,7 @@ async def get_data_source_fields(
 async def get_operators(
     builder_service: ReportBuilderService = Depends(get_builder_service),
 ) -> List[OperatorDefinition]:
-    """Gibt verfuegbare Filter-Operatoren zurueck."""
+    """Gibt verfügbare Filter-Operatoren zurück."""
     operators = builder_service.get_available_operators()
     return [OperatorDefinition(**o) for o in operators]
 
@@ -1229,7 +1229,7 @@ async def get_operators(
 async def get_aggregations(
     builder_service: ReportBuilderService = Depends(get_builder_service),
 ) -> List[AggregationDefinition]:
-    """Gibt verfuegbare Aggregationen zurueck."""
+    """Gibt verfügbare Aggregationen zurück."""
     aggs = builder_service.get_available_aggregations()
     return [AggregationDefinition(**a) for a in aggs]
 
@@ -1238,7 +1238,7 @@ async def get_aggregations(
 async def get_formats(
     renderer_service: ReportRendererService = Depends(get_renderer_service),
 ) -> List[Dict[str, JSONValue]]:
-    """Gibt unterstuetzte Export-Formate zurueck."""
+    """Gibt unterstützte Export-Formate zurück."""
     return renderer_service.get_supported_formats()
 
 
@@ -1288,7 +1288,7 @@ class CatalogListResponse(BaseModel):
 
 
 class InstantiateRequest(BaseModel):
-    name: Optional[str] = Field(None, description="Name fuer den neuen Report")
+    name: Optional[str] = Field(None, description="Name für den neuen Report")
 
 
 # =============================================================================
@@ -1301,7 +1301,7 @@ async def get_catalog(
     category: Optional[str] = Query(None, description="Filter nach Kategorie"),
     catalog_service: ReportCatalogService = Depends(get_catalog_service),
 ) -> CatalogListResponse:
-    """Gibt den Template-Katalog zurueck."""
+    """Gibt den Template-Katalog zurück."""
     templates = catalog_service.get_catalog(category=category)
     categories = catalog_service.get_categories()
 
@@ -1317,7 +1317,7 @@ async def get_catalog_template(
     template_id: str,
     catalog_service: ReportCatalogService = Depends(get_catalog_service),
 ) -> CatalogTemplateResponse:
-    """Gibt Details eines Katalog-Templates zurueck."""
+    """Gibt Details eines Katalog-Templates zurück."""
     template = catalog_service.get_template_preview(template_id)
     if not template:
         raise HTTPException(status_code=404, detail="Template nicht gefunden")

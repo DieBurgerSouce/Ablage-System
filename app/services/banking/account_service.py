@@ -4,7 +4,7 @@ Verwaltet Bankkonten:
 - CRUD-Operationen
 - IBAN-Validierung
 - Statistik-Aggregation
-- Sichere Verschluesselung von Banking-Credentials
+- Sichere Verschlüsselung von Banking-Credentials
 """
 
 from datetime import datetime, timedelta
@@ -43,7 +43,7 @@ def _get_encryption_key() -> bytes:
     Der Key wird aus ENCRYPTION_KEY oder SECRET_KEY abgeleitet.
 
     Returns:
-        32-Byte Key fuer Fernet (URL-safe Base64 encoded)
+        32-Byte Key für Fernet (URL-safe Base64 encoded)
 
     Raises:
         ValueError: Wenn kein Key konfiguriert ist
@@ -53,9 +53,9 @@ def _get_encryption_key() -> bytes:
     # Versuche zuerst ENCRYPTION_KEY
     if settings.ENCRYPTION_KEY:
         key_value = settings.ENCRYPTION_KEY.get_secret_value()
-        # Key muss Base64-encoded sein fuer Fernet
+        # Key muss Base64-encoded sein für Fernet
         try:
-            # Pruefe ob bereits valides Fernet-Format (32 Bytes Base64)
+            # Prüfe ob bereits valides Fernet-Format (32 Bytes Base64)
             if len(base64.urlsafe_b64decode(key_value)) == 32:
                 return key_value.encode()
         except (ValueError, TypeError, UnicodeDecodeError) as e:
@@ -78,13 +78,13 @@ def _get_encryption_key() -> bytes:
 
 
 def _encrypt_sensitive_data(plaintext: str) -> str:
-    """Verschluesselt sensible Daten mit Fernet (AES-128-CBC).
+    """Verschlüsselt sensible Daten mit Fernet (AES-128-CBC).
 
     Args:
-        plaintext: Zu verschluesselnder Text
+        plaintext: Zu verschlüsselnder Text
 
     Returns:
-        Verschluesselter Text (Base64-encoded)
+        Verschlüsselter Text (Base64-encoded)
     """
     if not plaintext:
         return ""
@@ -96,13 +96,13 @@ def _encrypt_sensitive_data(plaintext: str) -> str:
 
 
 def _decrypt_sensitive_data(ciphertext: str) -> Optional[str]:
-    """Entschluesselt sensible Daten.
+    """Entschlüsselt sensible Daten.
 
     Args:
-        ciphertext: Verschluesselter Text
+        ciphertext: Verschlüsselter Text
 
     Returns:
-        Entschluesselter Text oder None bei Fehler
+        Entschlüsselter Text oder None bei Fehler
     """
     if not ciphertext:
         return None
@@ -115,7 +115,7 @@ def _decrypt_sensitive_data(ciphertext: str) -> Optional[str]:
     except InvalidToken:
         logger.warning(
             "encryption_decryption_failed",
-            error="InvalidToken - Key moeglicherweise rotiert"
+            error="InvalidToken - Key möglicherweise rotiert"
         )
         return None
     except Exception as e:
@@ -127,7 +127,7 @@ def _decrypt_sensitive_data(ciphertext: str) -> Optional[str]:
 
 
 class AccountService:
-    """Service fuer Bankkonto-Verwaltung."""
+    """Service für Bankkonto-Verwaltung."""
 
     async def create_account(
         self,
@@ -149,9 +149,9 @@ class AccountService:
 
         # IBAN validieren
         if not self.validate_iban(data.iban):
-            raise ValueError("Ungueltige IBAN")
+            raise ValueError("Ungültige IBAN")
 
-        # Pruefe ob IBAN bereits existiert
+        # Prüfe ob IBAN bereits existiert
         existing = await db.execute(
             select(BankAccount).where(
                 and_(
@@ -181,7 +181,7 @@ class AccountService:
             connection_status="manual",  # Manueller Import als Default
         )
 
-        # Login-ID sicher verschluesseln (wenn FinTS genutzt wird)
+        # Login-ID sicher verschlüsseln (wenn FinTS genutzt wird)
         if data.login_id:
             account.login_id_encrypted = _encrypt_sensitive_data(data.login_id)
             logger.info(
@@ -343,7 +343,7 @@ class AccountService:
         user_id: UUID,
         account_id: UUID,
     ) -> bool:
-        """Loesche Bankkonto (Soft-Delete)."""
+        """Lösche Bankkonto (Soft-Delete)."""
         from app.db.models import BankAccount
 
         account = await db.get(BankAccount, account_id)
@@ -375,18 +375,18 @@ class AccountService:
             await db.commit()
 
     def validate_iban(self, iban: str) -> bool:
-        """Validiere IBAN mit MOD-97 Pruefung.
+        """Validiere IBAN mit MOD-97 Prüfung.
 
         Args:
             iban: IBAN zu validieren
 
         Returns:
-            True wenn gueltig
+            True wenn gültig
         """
         # Normalisieren
         iban = iban.replace(" ", "").upper()
 
-        # Laengen-Check (15-34 Zeichen)
+        # Längen-Check (15-34 Zeichen)
         if len(iban) < 15 or len(iban) > 34:
             return False
 
@@ -394,7 +394,7 @@ class AccountService:
         if not re.match(r"^[A-Z]{2}\d{2}[A-Z0-9]+$", iban):
             return False
 
-        # MOD-97 Pruefung
+        # MOD-97 Prüfung
         # Verschiebe erste 4 Zeichen ans Ende
         rearranged = iban[4:] + iban[:4]
 
@@ -413,7 +413,7 @@ class AccountService:
             return False
 
     def _get_bank_name_from_iban(self, iban: str) -> Optional[str]:
-        """Ermittle Bankname aus IBAN (BLZ-basiert fuer DE)."""
+        """Ermittle Bankname aus IBAN (BLZ-basiert für DE)."""
         iban = iban.replace(" ", "").upper()
 
         if not iban.startswith("DE"):
@@ -447,18 +447,18 @@ class AccountService:
         user_id: UUID,
         account_id: UUID,
     ) -> Optional[str]:
-        """Hole entschluesselte Login-ID fuer FinTS-Verbindungen.
+        """Hole entschlüsselte Login-ID für FinTS-Verbindungen.
 
-        SECURITY: Diese Methode sollte nur fuer tatsaechliche
-        FinTS-Verbindungen verwendet werden, nie fuer API-Responses!
+        SECURITY: Diese Methode sollte nur für tatsaechliche
+        FinTS-Verbindungen verwendet werden, nie für API-Responses!
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID (fuer Authorization-Check)
+            user_id: Benutzer-ID (für Authorization-Check)
             account_id: Konto-ID
 
         Returns:
-            Entschluesselte Login-ID oder None
+            Entschlüsselte Login-ID oder None
         """
         from app.db.models import BankAccount
 

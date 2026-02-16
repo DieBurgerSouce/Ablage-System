@@ -738,10 +738,10 @@ def run_bulk_processing_job(
     resume_from_checkpoint: bool = False,
 ) -> Dict[str, Any]:
     """
-    Fuehre Bulk OCR Processing Job aus.
+    Führe Bulk OCR Processing Job aus.
 
     Verarbeitet alle Trainings-Dokumente durch alle OCR-Backends.
-    Laeuft typischerweise ueber Nacht (geschaetzte Zeit: 32 Stunden).
+    Läuft typischerweise über Nacht (geschätzte Zeit: 32 Stunden).
 
     Args:
         job_id: Bulk Processing Job ID
@@ -858,10 +858,10 @@ def run_bulk_processing_job_cpu(
     resume_from_checkpoint: bool = False,
 ) -> Dict[str, Any]:
     """
-    Fuehre Bulk OCR Processing Job aus - CPU-only Version.
+    Führe Bulk OCR Processing Job aus - CPU-only Version.
 
     Identisch zu run_bulk_processing_job, aber ohne GPU-Lock.
-    Fuer CPU-only Backends wie 'surya' (ohne GPU).
+    Für CPU-only Backends wie 'surya' (ohne GPU).
 
     Args:
         job_id: Bulk Processing Job ID
@@ -1059,7 +1059,7 @@ def process_document_batch(
     Args:
         sample_ids: Liste der Training Sample IDs
         backend_name: OCR Backend Name
-        job_id: Optionale Bulk Job ID fuer Tracking
+        job_id: Optionale Bulk Job ID für Tracking
 
     Returns:
         Batch-Verarbeitungsergebnis
@@ -1188,7 +1188,7 @@ def create_quality_snapshot(
     backend_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Erstelle Quality Snapshot fuer Monitoring.
+    Erstelle Quality Snapshot für Monitoring.
 
     Args:
         backend_name: Optionaler Backend-Name (default: alle Backends)
@@ -1588,7 +1588,7 @@ def check_retraining_conditions(self) -> Dict[str, Any]:
 
         async def check_conditions():
             async with get_async_session_context() as session:
-                # Vollständiger QualityMonitoringService fuer Retraining-Empfehlung
+                # Vollständiger QualityMonitoringService für Retraining-Empfehlung
 
                 monitoring_service = QualityMonitoringService(db=session)
                 recommendation = await monitoring_service.get_retraining_recommendation()
@@ -1664,12 +1664,12 @@ def run_quality_monitoring(self) -> Dict[str, Any]:
 
         async def run_monitoring():
             async with get_async_session_context() as session:
-                # Vollständiger QualityMonitoringService fuer Qualitaetspruefung
+                # Vollständiger QualityMonitoringService für Qualitätsprüfung
 
                 monitoring_service = QualityMonitoringService(db=session)
                 quality_alerts = await monitoring_service.run_quality_check()
 
-                # Konvertiere QualityAlert Objekte zu Dict-Format fuer Celery-Response
+                # Konvertiere QualityAlert Objekte zu Dict-Format für Celery-Response
                 alerts = [
                     {
                         "type": alert.alert_type.value,
@@ -1734,15 +1734,15 @@ def process_auto_ground_truth_batch(
     min_confidence: float = 0.95,
 ) -> Dict[str, Any]:
     """
-    Verarbeitet Batch von Dokumenten fuer Auto-Ground-Truth.
+    Verarbeitet Batch von Dokumenten für Auto-Ground-Truth.
 
-    Holt Dokumente ohne Training-Sample und prueft auf Auto-Accept.
-    Laeuft alle 30 Minuten via Celery Beat.
+    Holt Dokumente ohne Training-Sample und prüft auf Auto-Accept.
+    Läuft alle 30 Minuten via Celery Beat.
 
     Args:
         document_type: Optional Dokumenttyp-Filter (invoice, contract, etc.)
         max_documents: Maximale Anzahl zu verarbeitender Dokumente
-        min_confidence: Minimum OCR Confidence fuer Auto-Accept
+        min_confidence: Minimum OCR Confidence für Auto-Accept
 
     Returns:
         Batch-Ergebnis-Zusammenfassung
@@ -1848,7 +1848,7 @@ def process_auto_ground_truth_batch(
                     "spot_check_flagged": spot_check,
                 }
 
-        # asyncio.run() fuer sauberes Event-Loop Cleanup
+        # asyncio.run() für sauberes Event-Loop Cleanup
         result = asyncio.run(process_batch())
 
         logger.info(
@@ -1881,10 +1881,10 @@ def process_auto_ground_truth_batch(
 )
 def generate_coverage_snapshot(self) -> Dict[str, Any]:
     """
-    Generiert taeglichen Coverage-Snapshot fuer Trend-Analyse.
+    Generiert täglichen Coverage-Snapshot für Trend-Analyse.
 
-    Laeuft taeglich um 01:00 via Celery Beat.
-    Speichert Coverage-Metriken fuer alle Business-Dokumenttypen.
+    Läuft täglich um 01:00 via Celery Beat.
+    Speichert Coverage-Metriken für alle Business-Dokumenttypen.
 
     Returns:
         Coverage-Snapshot-Zusammenfassung
@@ -1995,7 +1995,7 @@ def generate_coverage_snapshot(self) -> Dict[str, Any]:
                     "total_auto_accepted": total_auto_accepted,
                 }
 
-        # asyncio.run() fuer sauberes Event-Loop Cleanup
+        # asyncio.run() für sauberes Event-Loop Cleanup
         result = asyncio.run(create_snapshot())
 
         logger.info(
@@ -2036,15 +2036,15 @@ def llm_review_batch(
     document_type: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    LLM-Review fuer pending/rejected Samples.
+    LLM-Review für pending/rejected Samples.
 
-    Prueft rejected Samples mit LLM (Qwen3-8B/14B):
+    Prüft rejected Samples mit LLM (Qwen3-8B/14B):
     1. Semantische Validierung
     2. Fehlerkorrektur
-    3. Qualitaetsbewertung (Score 1-10)
+    3. Qualitätsbewertung (Score 1-10)
     4. Entscheidung: accept|reject|needs_human
 
-    Laeuft alle 2 Stunden via Celery Beat.
+    Läuft alle 2 Stunden via Celery Beat.
 
     Args:
         max_samples: Maximale Anzahl zu verarbeitender Samples
@@ -2085,7 +2085,7 @@ def llm_review_batch(
                     "avg_quality_score": result.avg_quality_score,
                 }
 
-        # asyncio.run() fuer sauberes Event-Loop Cleanup
+        # asyncio.run() für sauberes Event-Loop Cleanup
         result = asyncio.run(run_batch_review())
 
         logger.info(
@@ -2150,7 +2150,7 @@ def auto_trigger_retraining(
             async with get_async_session_context() as session:
                 retrain_service = RetrainingService(session)
 
-                # Schwellwert nochmals pruefen (Race-Condition vermeiden)
+                # Schwellwert nochmals prüfen (Race-Condition vermeiden)
                 should_retrain, trigger = await retrain_service.should_retrain(
                     model_type=retrain_service.registry.ModelType.OCR_SURYA
                 )

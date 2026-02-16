@@ -2,8 +2,8 @@
 """
 Profiling Middleware.
 
-Automatisches Request-Timing fuer alle API-Endpoints.
-Integriert sich mit dem ProfilingService fuer:
+Automatisches Request-Timing für alle API-Endpoints.
+Integriert sich mit dem ProfilingService für:
 - Latenz-Tracking
 - Slow-Request-Erkennung
 - Memory-Profiling (optional)
@@ -24,7 +24,7 @@ logger = structlog.get_logger(__name__)
 
 class ProfilingMiddleware:
     """
-    Middleware fuer automatisches Performance-Profiling.
+    Middleware für automatisches Performance-Profiling.
 
     Features:
     - Misst Latenz aller Requests

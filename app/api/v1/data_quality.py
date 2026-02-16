@@ -29,7 +29,7 @@ from app.services.data_quality_service import (
 
 logger = structlog.get_logger(__name__)
 
-router = APIRouter(prefix="/data-quality", tags=["Datenqualitaet"])
+router = APIRouter(prefix="/data-quality", tags=["Datenqualität"])
 
 
 # =============================================================================
@@ -55,14 +55,14 @@ class FixActionResponse(BaseModel):
     "",
     response_model=Dict[str, Any],
     summary="Datenqualitaets-Bericht abrufen",
-    description="Vollstaendiger Datenqualitaets-Bericht mit allen erkannten Issues und Gesamt-Score.",
+    description="Vollständiger Datenqualitaets-Bericht mit allen erkannten Issues und Gesamt-Score.",
 )
 async def get_data_quality_report(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
     """
-    Ruft vollstaendigen Datenqualitaets-Bericht ab.
+    Ruft vollständigen Datenqualitaets-Bericht ab.
 
     Returns:
         Data Quality Report mit Issues und Score
@@ -118,7 +118,7 @@ async def get_data_quality_report(
     "/trend",
     response_model=List[Dict[str, Any]],
     summary="Datenqualitaets-Trend abrufen",
-    description="Historischer Trend des Datenqualitaets-Scores ueber mehrere Monate.",
+    description="Historischer Trend des Datenqualitaets-Scores über mehrere Monate.",
 )
 async def get_data_quality_trend(
     months: int = Query(6, ge=1, le=24, description="Anzahl Monate"),
@@ -168,7 +168,7 @@ async def get_data_quality_trend(
 @router.get(
     "/suggestions",
     response_model=List[Dict[str, str]],
-    summary="Korrekturvorschlaege abrufen",
+    summary="Korrekturvorschläge abrufen",
     description="Priorisierte Handlungsempfehlungen basierend auf aktuellen Datenqualitaets-Issues.",
 )
 async def get_correction_suggestions(
@@ -176,10 +176,10 @@ async def get_correction_suggestions(
     db: AsyncSession = Depends(get_db),
 ) -> List[Dict[str, str]]:
     """
-    Gibt priorisierte Korrekturvorschlaege zurueck.
+    Gibt priorisierte Korrekturvorschläge zurück.
 
     Returns:
-        Liste von Vorschlaegen mit Prioritaet, Titel und Beschreibung
+        Liste von Vorschlägen mit Prioritaet, Titel und Beschreibung
     """
     if not current_user.company_id:
         raise HTTPException(
@@ -210,7 +210,7 @@ async def get_correction_suggestions(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail(e, "Fehler beim Abrufen der Vorschlaege"),
+            detail=safe_error_detail(e, "Fehler beim Abrufen der Vorschläge"),
         )
 
 
@@ -218,7 +218,7 @@ async def get_correction_suggestions(
     "/{category}/fix",
     response_model=FixActionResponse,
     summary="Datenqualitaets-Issue beheben",
-    description="Fuehrt Cleanup-Aktion fuer eine bestimmte Issue-Kategorie aus.",
+    description="Führt Cleanup-Aktion für eine bestimmte Issue-Kategorie aus.",
 )
 async def fix_data_quality_issue(
     category: str,
@@ -227,7 +227,7 @@ async def fix_data_quality_issue(
     db: AsyncSession = Depends(get_db),
 ) -> FixActionResponse:
     """
-    Fuehrt Cleanup-Aktion fuer Issue-Kategorie aus.
+    Führt Cleanup-Aktion für Issue-Kategorie aus.
 
     Args:
         category: Issue category (uncategorized, duplicates, orphaned_entities, etc.)
@@ -248,7 +248,7 @@ async def fix_data_quality_issue(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltige Kategorie: {category}",
+            detail=f"Ungültige Kategorie: {category}",
         )
 
     try:
@@ -270,7 +270,7 @@ async def fix_data_quality_issue(
 
         return FixActionResponse(
             fixed_count=fixed_count,
-            message=f"{fixed_count} Eintraege wurden bereinigt",
+            message=f"{fixed_count} Einträge wurden bereinigt",
         )
 
     except ValueError as e:

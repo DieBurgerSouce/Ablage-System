@@ -1,7 +1,7 @@
 """CAMT.053 Bank Statement Parser.
 
 Parst CAMT.053 (ISO 20022) Kontoauszuege, das moderne XML-Format
-das von vielen deutschen Banken unterstuetzt wird.
+das von vielen deutschen Banken unterstützt wird.
 
 Verwendet die pyiso20022 Bibliothek.
 """
@@ -32,7 +32,7 @@ CAMT_NS = {
 
 @ParserRegistry.register
 class CAMT053Parser(BaseParser):
-    """Parser fuer CAMT.053 (ISO 20022) Kontoauszuege."""
+    """Parser für CAMT.053 (ISO 20022) Kontoauszuege."""
 
     FORMAT = ImportFormat.CAMT053
     FORMAT_VARIANT = None
@@ -40,7 +40,7 @@ class CAMT053Parser(BaseParser):
 
     @classmethod
     def can_parse(cls, content: Union[str, bytes], filename: Optional[str] = None) -> float:
-        """Pruefe ob Inhalt CAMT.053-Format ist."""
+        """Prüfe ob Inhalt CAMT.053-Format ist."""
         if isinstance(content, bytes):
             try:
                 content = content.decode("utf-8", errors="replace")
@@ -93,7 +93,7 @@ class CAMT053Parser(BaseParser):
             if not ns:
                 result.errors.append({
                     "type": "parse_error",
-                    "message": "Kein unterstuetzter CAMT.053 Namespace gefunden",
+                    "message": "Kein unterstützter CAMT.053 Namespace gefunden",
                 })
                 return result
 
@@ -195,7 +195,7 @@ class CAMT053Parser(BaseParser):
             if "camt.053" in ns or "20022" in ns:
                 return ns
 
-        # Pruefe bekannte Namespaces
+        # Prüfe bekannte Namespaces
         for ns in CAMT_NS.values():
             if root.find(f".//{{{ns}}}Stmt") is not None:
                 return ns

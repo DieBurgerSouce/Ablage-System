@@ -1,11 +1,11 @@
 """
 Folder hierarchy satellite model.
 
-Separates Ordner-Modell fuer die geschaeftliche Dokumentenablage.
-Unterstuetzt hierarchische Ordnerstrukturen mit Materialized Path,
+Separates Ordner-Modell für die geschäftliche Dokumentenablage.
+Unterstützt hierarchische Ordnerstrukturen mit Materialized Path,
 Berechtigungsvererbung und Drag-Drop Reorganisation.
 
-Nicht zu verwechseln mit PrivatFolder (models.py) - dieser ist fuer
+Nicht zu verwechseln mit PrivatFolder (models.py) - dieser ist für
 den privaten Bereich (PrivatSpace) gedacht.
 """
 
@@ -36,8 +36,8 @@ from app.db.models import Base, CrossDBJSON
 
 
 class FolderType(str, Enum):
-    """Ordner-Typen fuer die geschaeftliche Ablage."""
-    GESCHAEFTLICH = "geschaeftlich"
+    """Ordner-Typen für die geschäftliche Ablage."""
+    GESCHAEFTLICH = "geschäftlich"
     ARCHIV = "archiv"
     PROJEKT = "projekt"
     EINGANG = "eingang"
@@ -46,7 +46,7 @@ class FolderType(str, Enum):
 
 
 class FolderPermissionLevel(str, Enum):
-    """Berechtigungsstufen fuer Ordner."""
+    """Berechtigungsstufen für Ordner."""
     READ = "read"
     WRITE = "write"
     ADMIN = "admin"
@@ -58,14 +58,14 @@ class FolderPermissionLevel(str, Enum):
 
 
 class Folder(Base):
-    """Geschaeftliche Ordnerstruktur mit Materialized Path.
+    """Geschäftliche Ordnerstruktur mit Materialized Path.
 
-    Bietet hierarchische Ordner fuer die Dokumentenablage mit:
-    - Verschachtelung ueber parent_id (Self-Referential FK)
-    - Materialized Path fuer schnelle Ancestor/Descendant Queries
-    - Berechtigungsvererbung ueber FolderPermission
+    Bietet hierarchische Ordner für die Dokumentenablage mit:
+    - Verschachtelung über parent_id (Self-Referential FK)
+    - Materialized Path für schnelle Ancestor/Descendant Queries
+    - Berechtigungsvererbung über FolderPermission
     - Soft Delete (deleted_at)
-    - Company-Scoping fuer Multi-Tenancy
+    - Company-Scoping für Multi-Tenancy
     """
     __tablename__ = "folders"
 
@@ -93,7 +93,7 @@ class Folder(Base):
     path = Column(
         String(4000),
         nullable=False,
-        comment="Materialized Path fuer schnelle Hierarchie-Queries",
+        comment="Materialized Path für schnelle Hierarchie-Queries",
     )
     level = Column(Integer, default=0, comment="Verschachtelungstiefe (0 = Root)")
 
@@ -108,7 +108,7 @@ class Folder(Base):
     )
     folder_metadata = Column(CrossDBJSON, default=dict, comment="Erweiterbare Metadaten")
 
-    # Statistiken (denormalisiert fuer Performance)
+    # Statistiken (denormalisiert für Performance)
     document_count = Column(Integer, default=0)
     subfolder_count = Column(Integer, default=0)
 
@@ -116,7 +116,7 @@ class Folder(Base):
     is_locked = Column(
         Boolean,
         default=False,
-        comment="Gesperrte Ordner koennen nicht veraendert werden",
+        comment="Gesperrte Ordner können nicht verändert werden",
     )
 
     # Audit
@@ -174,11 +174,11 @@ class Folder(Base):
 
 
 class FolderPermission(Base):
-    """Berechtigungen fuer Ordner-Zugriff.
+    """Berechtigungen für Ordner-Zugriff.
 
-    Unterstuetzt direkte und vererbte Berechtigungen:
-    - Direkte: Explizit fuer diesen Ordner gesetzt
-    - Vererbt: Von einem uebergeordneten Ordner geerbt
+    Unterstützt direkte und vererbte Berechtigungen:
+    - Direkte: Explizit für diesen Ordner gesetzt
+    - Vererbt: Von einem übergeordneten Ordner geerbt
     """
     __tablename__ = "folder_permissions"
 
@@ -201,7 +201,7 @@ class FolderPermission(Base):
     inherited = Column(
         Boolean,
         default=False,
-        comment="True wenn von uebergeordnetem Ordner geerbt",
+        comment="True wenn von übergeordnetem Ordner geerbt",
     )
     inherited_from_id = Column(
         UUID(as_uuid=True),
@@ -263,7 +263,7 @@ class FolderDocument(Base):
     is_primary = Column(
         Boolean,
         default=True,
-        comment="Primaerer Ordner fuer dieses Dokument",
+        comment="Primaerer Ordner für dieses Dokument",
     )
 
     # Audit

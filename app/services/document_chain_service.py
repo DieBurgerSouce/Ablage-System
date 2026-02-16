@@ -2,11 +2,11 @@
 """Document Chain Service.
 
 Verwaltet Auftragsketten (Document Chains):
-Angebot → Auftragsbestaetigung → Lieferschein → Rechnung → Gutschrift
+Angebot → Auftragsbestätigung → Lieferschein → Rechnung → Gutschrift
 
 Features:
 - Automatische Erkennung zusammengehoeriger Dokumente
-- Manuelle Verknuepfung von Dokumenten
+- Manuelle Verknüpfung von Dokumenten
 - Differenz-Erkennung zwischen Dokumenten
 - Chain-Visualisierung
 """
@@ -54,8 +54,8 @@ class DiscrepancyType(str, Enum):
 class DiscrepancySeverity(str, Enum):
     """Schweregrad von Abweichungen."""
     INFO = "info"  # Harmlos
-    WARNING = "warning"  # Pruefung empfohlen
-    ERROR = "error"  # Muss geprueft werden
+    WARNING = "warning"  # Prüfung empfohlen
+    ERROR = "error"  # Muss geprüft werden
     CRITICAL = "critical"  # Blockiert Workflow
 
 
@@ -84,7 +84,7 @@ class ChainDocument:
 
 @dataclass
 class DocumentChain:
-    """Eine vollstaendige Auftragskette."""
+    """Eine vollständige Auftragskette."""
     chain_id: str
     company_id: UUID
     documents: List[ChainDocument]
@@ -129,9 +129,9 @@ class ChainMatchResult:
 
 
 class DiscrepancyData(TypedDict):
-    """Typisierte Datenstruktur fuer Discrepancy-Erkennung.
+    """Typisierte Datenstruktur für Discrepancy-Erkennung.
 
-    Ersetzt Dict[str, Any] fuer Type-Safety (Critical Rule #4).
+    Ersetzt Dict[str, Any] für Type-Safety (Critical Rule #4).
     """
     type: str
     field: str
@@ -142,17 +142,17 @@ class DiscrepancyData(TypedDict):
 
 
 class DocumentChainService:
-    """Service fuer Auftragsketten-Management.
+    """Service für Auftragsketten-Management.
 
     Automatische Erkennung:
-    - Ueber Referenznummern (Bestellnummer, Angebotsnummer, etc.)
-    - Ueber Kundennummer + aehnliche Betraege
-    - Ueber OCR-Text-Analyse
+    - Über Referenznummern (Bestellnummer, Angebotsnummer, etc.)
+    - Über Kundennummer + ähnliche Betraege
+    - Über OCR-Text-Analyse
     """
 
-    # Schwellenwerte fuer Auto-Matching
+    # Schwellenwerte für Auto-Matching
     AMOUNT_TOLERANCE_PERCENT = 1.0  # 1% Toleranz bei Betraegen
-    MIN_CONFIDENCE_AUTO = 0.85  # Min 85% Konfidenz fuer Auto-Link
+    MIN_CONFIDENCE_AUTO = 0.85  # Min 85% Konfidenz für Auto-Link
 
     async def create_chain(
         self,
@@ -235,7 +235,7 @@ class DocumentChainService:
         auto_detected: bool = False,
         confidence_score: Optional[float] = None,
     ) -> UUID:
-        """Verknuepfe zwei Dokumente.
+        """Verknüpfe zwei Dokumente.
 
         Args:
             db: Datenbank-Session
@@ -252,7 +252,7 @@ class DocumentChainService:
         """
         from app.db.models import DocumentRelationship, Document
 
-        # Dokumente pruefen
+        # Dokumente prüfen
         source = await db.get(Document, source_document_id)
         target = await db.get(Document, target_document_id)
 
@@ -294,11 +294,11 @@ class DocumentChainService:
         db.add(relationship)
         await db.flush()
 
-        # Differenzen pruefen
+        # Differenzen prüfen
         await self._check_discrepancies(db, source, target, chain_id, company_id)
 
         logger.info(
-            "Dokumente verknuepft",
+            "Dokumente verknüpft",
             source_id=str(source_document_id),
             target_id=str(target_document_id),
             relationship=relationship_type.value,
@@ -313,7 +313,7 @@ class DocumentChainService:
         chain_id: str,
         company_id: UUID,
     ) -> Optional[DocumentChain]:
-        """Hole eine vollstaendige Auftragskette.
+        """Hole eine vollständige Auftragskette.
 
         Args:
             db: Datenbank-Session
@@ -417,7 +417,7 @@ class DocumentChainService:
         document_id: UUID,
         company_id: UUID,
     ) -> Optional[DocumentChain]:
-        """Hole Auftragskette fuer ein bestimmtes Dokument.
+        """Hole Auftragskette für ein bestimmtes Dokument.
 
         Args:
             db: Datenbank-Session
@@ -445,7 +445,7 @@ class DocumentChainService:
 
         Matching-Strategien:
         1. Referenznummern (Bestellnummer, Angebotsnummer)
-        2. Kundennummer + aehnlicher Betrag + Zeitraum
+        2. Kundennummer + ähnlicher Betrag + Zeitraum
         3. Textanalyse
 
         Args:
@@ -454,7 +454,7 @@ class DocumentChainService:
             company_id: Firmen-ID
 
         Returns:
-            Liste moeglicher Matches mit Konfidenz
+            Liste möglicher Matches mit Konfidenz
         """
         from app.db.models import Document
 
@@ -476,13 +476,13 @@ class DocumentChainService:
             }
             refs = {k: v for k, v in refs.items() if v}
 
-        # 1. Matching ueber Referenznummern
+        # 1. Matching über Referenznummern
         if refs:
             for ref_type, ref_value in refs.items():
                 matches = await self._match_by_reference(db, ref_type, ref_value, document_id, company_id)
                 results.extend(matches)
 
-        # 2. Matching ueber Kundennummer + Betrag
+        # 2. Matching über Kundennummer + Betrag
         customer_number = None
         amount = None
         if doc.document_metadata:
@@ -626,7 +626,7 @@ class DocumentChainService:
         chain_id: str,
         company_id: UUID,
     ) -> None:
-        """Pruefe Abweichungen zwischen zwei Dokumenten.
+        """Prüfe Abweichungen zwischen zwei Dokumenten.
 
         Args:
             db: Datenbank-Session
@@ -711,7 +711,7 @@ class DocumentChainService:
             db: Datenbank-Session
             ref_type: Typ der Referenz (order_number, etc.)
             ref_value: Wert der Referenz
-            exclude_document_id: Auszuschliessendes Dokument
+            exclude_document_id: Auszuschließendes Dokument
             company_id: Firmen-ID
 
         Returns:
@@ -753,13 +753,13 @@ class DocumentChainService:
         exclude_document_id: UUID,
         company_id: UUID,
     ) -> List[ChainMatchResult]:
-        """Suche Dokumente mit gleicher Kundennummer und aehnlichem Betrag.
+        """Suche Dokumente mit gleicher Kundennummer und ähnlichem Betrag.
 
         Args:
             db: Datenbank-Session
             customer_number: Kundennummer
             amount: Rechnungsbetrag
-            exclude_document_id: Auszuschliessendes Dokument
+            exclude_document_id: Auszuschließendes Dokument
             company_id: Firmen-ID
 
         Returns:
@@ -767,7 +767,7 @@ class DocumentChainService:
         """
         from app.db.models import Document
 
-        # Toleranzbereich fuer Betrag
+        # Toleranzbereich für Betrag
         tolerance = amount * Decimal(str(self.AMOUNT_TOLERANCE_PERCENT / 100))
         min_amount = amount - tolerance
         max_amount = amount + tolerance
@@ -802,7 +802,7 @@ class DocumentChainService:
                             relationship_type=RelationshipType.RELATED,
                             confidence=confidence,
                             matched_documents=[doc.id],
-                            match_reason=f"Gleicher Kunde {customer_number}, aehnlicher Betrag",
+                            match_reason=f"Gleicher Kunde {customer_number}, ähnlicher Betrag",
                         ))
                 except (ValueError, TypeError) as e:
                     logger.debug("customer_amount_match_parse_failed", document_id=str(doc.id), error_type=type(e).__name__)

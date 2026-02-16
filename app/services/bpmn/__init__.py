@@ -1,11 +1,11 @@
 """BPMN 2.0 Process Engine Services.
 
-Enterprise-Grade Workflow Engine fuer das Ablage-System.
+Enterprise-Grade Workflow Engine für das Ablage-System.
 
 Services:
 - BPMNParserService: BPMN 2.0 XML Parser/Generator
 - ProcessDefinitionService: Prozess-Definitionen verwalten
-- ProcessExecutionService: Prozess-Instanzen ausfuehren
+- ProcessExecutionService: Prozess-Instanzen ausführen
 - ProcessTaskService: User Tasks verwalten
 - TimerService: Timer Events verarbeiten
 

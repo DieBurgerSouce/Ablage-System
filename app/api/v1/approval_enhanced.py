@@ -9,8 +9,8 @@ Feature #3: Approval Workflow Depth
 - SLA-Dashboard und Bottleneck-Analyse
 
 Feature #7: Automation 2.0
-- Auto-Filing (Regeln + Ausfuehrung)
-- Auto-Matching (Ausfuehrung + Bestaetigung)
+- Auto-Filing (Regeln + Ausführung)
+- Auto-Matching (Ausführung + Bestätigung)
 
 Feinpoliert und durchdacht - Enterprise Workflow Automation.
 """
@@ -40,14 +40,14 @@ router = APIRouter(prefix="/approval-enhanced", tags=["approval-enhanced"])
 
 
 class ConditionSchema(BaseModel):
-    """Schema fuer eine einzelne Bedingung."""
+    """Schema für eine einzelne Bedingung."""
     field: str = Field(..., min_length=1, description="Feldname (z.B. amount, supplier_risk_score)")
     operator: str = Field(..., description="Operator: gt, lt, gte, lte, eq, neq, in, not_in, between, contains")
     value: object = Field(..., description="Schwellenwert")
 
 
 class ApproverSchema(BaseModel):
-    """Schema fuer einen zusaetzlichen Genehmiger."""
+    """Schema für einen zusätzlichen Genehmiger."""
     type: str = Field(..., description="Typ: user oder role")
     value: str = Field(..., min_length=1, description="User-ID oder Rollenname")
 
@@ -57,13 +57,13 @@ class ConditionalRuleCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="Name der Regel")
     description: Optional[str] = Field(None, description="Beschreibung")
     conditions: List[ConditionSchema] = Field(
-        ..., min_length=1, description="Liste der Bedingungen (alle muessen erfuellt sein)"
+        ..., min_length=1, description="Liste der Bedingungen (alle müssen erfuellt sein)"
     )
     additional_approvers: List[ApproverSchema] = Field(
-        ..., min_length=1, description="Zusaetzliche Genehmiger bei Match"
+        ..., min_length=1, description="Zusätzliche Genehmiger bei Match"
     )
     priority_override: Optional[str] = Field(
-        None, description="Prioritaets-Ueberschreibung (low, normal, high, urgent)"
+        None, description="Prioritaets-Überschreibung (low, normal, high, urgent)"
     )
     is_active: bool = Field(True, description="Ob die Regel aktiv ist")
 
@@ -79,7 +79,7 @@ class ConditionalRuleUpdateRequest(BaseModel):
 
 
 class ConditionalRuleResponse(BaseModel):
-    """Response fuer eine bedingte Genehmigungsregel."""
+    """Response für eine bedingte Genehmigungsregel."""
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -115,7 +115,7 @@ class EscalationRuleCreateRequest(BaseModel):
 
 
 class EscalationRuleResponse(BaseModel):
-    """Response fuer eine Eskalationsregel."""
+    """Response für eine Eskalationsregel."""
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -148,7 +148,7 @@ class SubstitutionCreateRequest(BaseModel):
 
 
 class SubstitutionResponse(BaseModel):
-    """Response fuer eine Stellvertretungsregel."""
+    """Response für eine Stellvertretungsregel."""
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -170,7 +170,7 @@ class SubstitutionResponse(BaseModel):
 
 
 class SLADashboardResponse(BaseModel):
-    """Response fuer SLA-Dashboard."""
+    """Response für SLA-Dashboard."""
     avg_approval_hours: float
     median_approval_hours: float
     total_requests_period: int
@@ -191,7 +191,7 @@ class AutoFilingRuleCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=200, description="Name der Regel")
     description: Optional[str] = Field(None, description="Beschreibung")
     model_type: str = Field("rule", description="Modelltyp: ml oder rule")
-    confidence_threshold: float = Field(0.95, ge=0.0, le=1.0, description="Schwelle fuer Auto-Filing")
+    confidence_threshold: float = Field(0.95, ge=0.0, le=1.0, description="Schwelle für Auto-Filing")
     target_folder_id: Optional[str] = Field(None, description="Zielordner-ID")
     target_category: Optional[str] = Field(None, max_length=100, description="Zielkategorie")
     config: Optional[JSONDict] = Field(None, description="Regelkonfiguration")
@@ -206,7 +206,7 @@ class AutoFilingRuleCreateRequest(BaseModel):
 
 
 class AutoFilingRuleResponse(BaseModel):
-    """Response fuer eine Auto-Filing-Regel."""
+    """Response für eine Auto-Filing-Regel."""
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -231,7 +231,7 @@ class AutoFilingRuleResponse(BaseModel):
 
 
 class AutoMatchResponse(BaseModel):
-    """Response fuer ein Auto-Match-Ergebnis."""
+    """Response für ein Auto-Match-Ergebnis."""
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -247,7 +247,7 @@ class AutoMatchResponse(BaseModel):
 
 
 class AutoMatchConfirmRequest(BaseModel):
-    """Request zum Bestaetigen eines Matches."""
+    """Request zum Bestätigen eines Matches."""
     match_id: str = Field(..., description="Match-ID")
 
 
@@ -468,14 +468,14 @@ async def update_conditional_rule(
 @router.delete(
     "/conditions/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Bedingte Genehmigungsregel loeschen",
+    summary="Bedingte Genehmigungsregel löschen",
 )
 async def delete_conditional_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loescht eine bedingte Genehmigungsregel."""
+    """Löscht eine bedingte Genehmigungsregel."""
     from app.db.models_approval_extended import ConditionalApprovalRule
     from sqlalchemy import select, and_
 
@@ -508,7 +508,7 @@ async def evaluate_conditions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[ConditionalRuleResponse]:
-    """Evaluiert alle aktiven bedingten Regeln gegen uebergebene Dokumentdaten."""
+    """Evaluiert alle aktiven bedingten Regeln gegen übergebene Dokumentdaten."""
     from app.services.approval.conditional_logic_engine import ConditionalLogicEngine
 
     engine = ConditionalLogicEngine(db)
@@ -589,14 +589,14 @@ async def create_escalation_rule(
 @router.delete(
     "/escalation-rules/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Eskalationsregel loeschen",
+    summary="Eskalationsregel löschen",
 )
 async def delete_escalation_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loescht eine Eskalationsregel."""
+    """Löscht eine Eskalationsregel."""
     from app.db.models_approval_extended import EscalationRule
     from sqlalchemy import select, and_
 
@@ -682,14 +682,14 @@ async def create_substitution(
 @router.delete(
     "/substitutions/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Stellvertretung loeschen",
+    summary="Stellvertretung löschen",
 )
 async def delete_substitution(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loescht eine Stellvertretungsregel."""
+    """Löscht eine Stellvertretungsregel."""
     from app.services.approval.escalation_service import EscalationService
 
     service = EscalationService(db)
@@ -746,7 +746,7 @@ async def get_sla_breaches(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[Dict[str, object]]:
-    """Liefert alle aktuell verletzten SLAs (offene Genehmigungen ueber Limit)."""
+    """Liefert alle aktuell verletzten SLAs (offene Genehmigungen über Limit)."""
     from app.services.approval.sla_monitoring_service import SLAMonitoringService
 
     service = SLAMonitoringService(db)
@@ -848,14 +848,14 @@ async def create_auto_filing_rule(
 @router.delete(
     "/auto-filing/rules/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Auto-Filing-Regel loeschen",
+    summary="Auto-Filing-Regel löschen",
 )
 async def delete_auto_filing_rule(
     rule_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loescht eine Auto-Filing-Regel."""
+    """Löscht eine Auto-Filing-Regel."""
     from app.db.models_approval_extended import AutoFilingRule
     from sqlalchemy import select, and_
 
@@ -923,7 +923,7 @@ async def auto_file_document(
 )
 async def list_auto_match_results(
     document_id: Optional[UUID] = Query(None, description="Filter nach Dokument-ID"),
-    confirmed_only: Optional[bool] = Query(None, description="Nur bestaetigte Matches"),
+    confirmed_only: Optional[bool] = Query(None, description="Nur bestätigte Matches"),
     limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -956,14 +956,14 @@ async def list_auto_match_results(
 @router.post(
     "/auto-matching/run/{document_id}",
     response_model=List[AutoMatchResponse],
-    summary="Auto-Matching fuer ein Dokument ausfuehren",
+    summary="Auto-Matching für ein Dokument ausführen",
 )
 async def run_auto_matching(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[AutoMatchResponse]:
-    """Fuehrt Auto-Matching fuer ein spezifisches Dokument aus."""
+    """Führt Auto-Matching für ein spezifisches Dokument aus."""
     from app.services.auto_matching_service import AutoMatchingService
 
     service = AutoMatchingService(db)
@@ -989,14 +989,14 @@ async def run_auto_matching(
 @router.post(
     "/auto-matching/confirm/{match_id}",
     response_model=AutoMatchResponse,
-    summary="Auto-Match bestaetigen",
+    summary="Auto-Match bestätigen",
 )
 async def confirm_auto_match(
     match_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AutoMatchResponse:
-    """Bestaetigt ein Auto-Match-Ergebnis manuell."""
+    """Bestätigt ein Auto-Match-Ergebnis manuell."""
     from app.services.auto_matching_service import AutoMatchingService
 
     service = AutoMatchingService(db)

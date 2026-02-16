@@ -2,7 +2,7 @@
 """
 Alerts Services Package.
 
-Enthaelt:
+Enthält:
 - ExtendedAlertsService: Erweiterte Alert-Typen (Cashflow, Contract, Compliance, Supplier)
 
 Feinpoliert und durchdacht.

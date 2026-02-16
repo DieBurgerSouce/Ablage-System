@@ -105,7 +105,7 @@ def generate_daily_cashflow_predictions() -> Dict[str, Any]:
                             category=AlertCategory.RISK,
                             severity=AlertSeverity.HIGH if risk_level == "high" else AlertSeverity.CRITICAL,
                             title="Cashflow-Risiko erkannt",
-                            message=f"Die Cashflow-Prognose zeigt ein {risk_level}-Risiko in den naechsten 30 Tagen.",
+                            message=f"Die Cashflow-Prognose zeigt ein {risk_level}-Risiko in den nächsten 30 Tagen.",
                             source_type="cashflow_predictor",
                             metadata={
                                 "predicted_balance": prediction.get("predicted_balance"),
@@ -589,9 +589,9 @@ def generate_all_daily_insights() -> Dict[str, Any]:
 )
 def generate_daily_briefing_insights() -> Dict[str, Any]:
     """
-    Generiert taegliche Briefing-Insights via DailyInsightsEngine.
+    Generiert tägliche Briefing-Insights via DailyInsightsEngine.
 
-    Wird taeglich um 06:00 via Celery Beat ausgefuehrt.
+    Wird täglich um 06:00 via Celery Beat ausgeführt.
     Nutzt echte DB-Daten (Cashflow, Skonto, Risiko, Mahnungen)
     und generiert proaktive Warnungen BEVOR Probleme entstehen.
 
@@ -740,7 +740,7 @@ def check_urgent_skonto_deadlines() -> Dict[str, Any]:
                         skonto_amount = rec.get("skonto_amount", 0)
                         stats["total_urgent_savings"] += skonto_amount
 
-                        # Alert Center Integration fuer dringende Skonto-Fristen
+                        # Alert Center Integration für dringende Skonto-Fristen
                         from app.services.alert_center_service import (
                             AlertCenterService, AlertCategory, AlertSeverity
                         )
@@ -750,7 +750,7 @@ def check_urgent_skonto_deadlines() -> Dict[str, Any]:
                             alert_code="DEAD_001",
                             category=AlertCategory.DEADLINE,
                             severity=AlertSeverity.HIGH,
-                            title="Skonto-Frist laeuft ab",
+                            title="Skonto-Frist läuft ab",
                             message=f"Rechnung {rec.get('invoice_number', 'N/A')}: Skonto von {skonto_amount:.2f} EUR verfaellt in {rec.get('days_remaining', 0)} Tagen.",
                             source_type="skonto_optimizer",
                             document_id=rec.get("invoice_id"),

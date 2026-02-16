@@ -5,10 +5,10 @@ Lexware REST API Connector.
 Enterprise-Level Integration mit Lexware Office/Buchhaltung:
 - REST API v1 Client
 - Bidirektionale Synchronisation
-- Webhook-Handler fuer Real-time Updates
+- Webhook-Handler für Real-time Updates
 - Change-Tracking und Delta-Sync
 
-Feinpoliert und durchdacht - Vollstaendige Lexware-Integration.
+Feinpoliert und durchdacht - Vollständige Lexware-Integration.
 
 API Dokumentation: https://developers.lexware.de/
 """
@@ -49,7 +49,7 @@ logger = structlog.get_logger(__name__)
 
 
 class LexwareAPIVersion(str, Enum):
-    """Unterstuetzte Lexware API Versionen."""
+    """Unterstützte Lexware API Versionen."""
 
     V1 = "v1"
     V2 = "v2"  # Noch in Beta
@@ -175,7 +175,7 @@ class LexwareWebhookEvent:
 
 @dataclass
 class LexwareSyncState:
-    """Sync-Status fuer Change-Tracking."""
+    """Sync-Status für Change-Tracking."""
 
     entity: ERPEntity
     last_sync_at: Optional[datetime] = None
@@ -197,10 +197,10 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
     Features:
     - OAuth2 Authentifizierung mit Token-Refresh
     - Bidirektionale Synchronisation (Push/Pull)
-    - Delta-Sync fuer effiziente Updates
-    - Webhook-Handler fuer Real-time Events
+    - Delta-Sync für effiziente Updates
+    - Webhook-Handler für Real-time Events
     - Retry-Logik und Rate-Limiting
-    - Offline-Queue fuer fehlgeschlagene Requests
+    - Offline-Queue für fehlgeschlagene Requests
 
     Usage:
         config = LexwareConnectionConfig(
@@ -226,7 +226,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
 
     @property
     def base_url(self) -> str:
-        """Basis-URL fuer API-Requests."""
+        """Basis-URL für API-Requests."""
         return f"{self.config.url}/{self.config.api_version.value}"
 
     # =========================================================================
@@ -259,7 +259,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
                 },
             )
 
-            # Pruefe ob Token vorhanden und gueltig
+            # Prüfe ob Token vorhanden und gültig
             if self.config.access_token and self._is_token_valid():
                 self._client.headers["Authorization"] = f"Bearer {self.config.access_token}"
                 self._status = ERPConnectionStatus.CONNECTED
@@ -323,7 +323,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
 
     async def get_version(self) -> str:
         """
-        Gibt die Lexware API Version zurueck.
+        Gibt die Lexware API Version zurück.
 
         Returns:
             Versionsstring
@@ -341,7 +341,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
     # =========================================================================
 
     def _is_token_valid(self) -> bool:
-        """Prueft ob Access Token noch gueltig ist."""
+        """Prüft ob Access Token noch gültig ist."""
         if not self.config.token_expires_at:
             return False
 
@@ -458,14 +458,14 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
         retry_count: int = 0,
     ) -> Optional[Dict[str, Any]]:
         """
-        Fuehrt API-Request aus mit Retry-Logik.
+        Führt API-Request aus mit Retry-Logik.
 
         Args:
             method: HTTP Method (GET, POST, PUT, DELETE)
             endpoint: API Endpoint
             data: Request Body
             params: Query Parameter
-            retry_count: Aktueller Retry-Zaehler
+            retry_count: Aktueller Retry-Zähler
 
         Returns:
             Response als Dictionary oder None bei Fehler
@@ -474,7 +474,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
             logger.error("lexware_no_client")
             return None
 
-        # Rate Limit pruefen
+        # Rate Limit prüfen
         if not self._check_rate_limit():
             if retry_count < self.config.max_retries:
                 await asyncio.sleep(60)  # Warte auf Reset
@@ -588,7 +588,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
 
         Args:
             direction: Sync-Richtung
-            since: Nur Aenderungen seit diesem Zeitpunkt
+            since: Nur Änderungen seit diesem Zeitpunkt
             batch_size: Anzahl pro Batch
 
         Returns:
@@ -667,7 +667,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
                 result.records.append(customer_data)
                 result.records_synced += 1
 
-            # Naechste Seite
+            # Nächste Seite
             if len(items) < batch_size:
                 break
             params["offset"] += batch_size
@@ -688,7 +688,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
         """Pusht Kunden zu Lexware."""
         result = self._create_sync_result(ERPEntity.CUSTOMER, ERPSyncDirection.PUSH)
 
-        # Hole lokale Kunden mit Aenderungen
+        # Hole lokale Kunden mit Änderungen
         sync_state = self._sync_states.get(ERPEntity.CUSTOMER)
         pending = sync_state.pending_changes if sync_state else []
 
@@ -1188,7 +1188,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
         filename: str,
         mime_type: str,
     ) -> bool:
-        """Haengt ein Dokument an eine Lexware-Entitaet an."""
+        """Haengt ein Dokument an eine Lexware-Entität an."""
         if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", erp_id):
             logger.warning("lexware_invalid_entity_id", erp_id=erp_id[:20])
             return False
@@ -1228,7 +1228,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
         entity: ERPEntity,
         erp_id: str,
     ) -> List[Dict[str, Any]]:
-        """Holt Anhaenge einer Lexware-Entitaet."""
+        """Holt Anhaenge einer Lexware-Entität."""
         if not re.match(r"^[a-zA-Z0-9_-]{1,64}$", erp_id):
             return []
 
@@ -1264,7 +1264,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
             signature: X-Lexware-Signature Header
 
         Returns:
-            True wenn Signatur gueltig
+            True wenn Signatur gültig
         """
         if not self.config.webhook_secret:
             logger.warning("lexware_webhook_no_secret")
@@ -1386,7 +1386,7 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
         self.config.last_sync_at = state.last_sync_at
 
     def _invalidate_sync_cache(self, entity: ERPEntity) -> None:
-        """Invalidiert den Sync-Cache fuer eine Entitaet."""
+        """Invalidiert den Sync-Cache für eine Entität."""
         if entity in self._sync_states:
             # Force re-sync on next run
             self._sync_states[entity].last_sync_at = None
@@ -1399,13 +1399,13 @@ class LexwareConnector(ERPConnector[LexwareConnectionConfig]):
         erp_id: Optional[str] = None,
     ) -> None:
         """
-        Fuegt eine lokale Aenderung zur Sync-Queue hinzu.
+        Fuegt eine lokale Änderung zur Sync-Queue hinzu.
 
         Args:
-            entity: Entitaetstyp
+            entity: Entitätstyp
             operation: create, update, delete
             data: Datensatz
-            erp_id: ERP-ID (fuer update/delete)
+            erp_id: ERP-ID (für update/delete)
         """
         if entity not in self._sync_states:
             self._sync_states[entity] = LexwareSyncState(entity=entity)
@@ -1461,7 +1461,7 @@ def get_lexware_connector(
     config: Optional[LexwareConnectionConfig] = None,
 ) -> Optional[LexwareConnector]:
     """
-    Gibt den Lexware Connector zurueck (Singleton).
+    Gibt den Lexware Connector zurück (Singleton).
 
     Args:
         config: Optionale Konfiguration
@@ -1497,10 +1497,10 @@ async def create_lexware_connector_from_db(
     Erstellt Connector aus Datenbank-Konfiguration.
 
     Liest ERP-Verbindungsdaten aus der ERPConnection-Tabelle und
-    erstellt einen vollstaendig konfigurierten LexwareConnector.
+    erstellt einen vollständig konfigurierten LexwareConnector.
 
     SECURITY:
-    - Credentials werden verschluesselt gespeichert (AES-256-GCM)
+    - Credentials werden verschlüsselt gespeichert (AES-256-GCM)
     - Multi-Tenant Isolation via company_id
     - Keine PII in Logs (CWE-532)
 
@@ -1517,7 +1517,7 @@ async def create_lexware_connector_from_db(
 
     async with async_session_maker() as db:
         try:
-            # Query ERPConnection fuer Lexware-Konfiguration
+            # Query ERPConnection für Lexware-Konfiguration
             query = select(ERPConnection).where(
                 and_(
                     ERPConnection.company_id == company_id,
@@ -1551,7 +1551,7 @@ async def create_lexware_connector_from_db(
                 )
                 return None
 
-            # Parse JSONB enabled_entities fuer Extra-Konfiguration
+            # Parse JSONB enabled_entities für Extra-Konfiguration
             extra_config = connection.enabled_entities or {}
 
             # Bestimme Environment aus URL

@@ -5,7 +5,7 @@ Bottleneck Detector Service.
 Erkennt Engpaesse im Dokumenten-Verarbeitungsprozess:
 - Lange Wartezeiten identifizieren
 - Stau-Punkte erkennen
-- Kapazitaetsengpaesse analysieren
+- Kapazitätsengpaesse analysieren
 - Empfehlungen generieren
 
 Feinpoliert und durchdacht.
@@ -35,10 +35,10 @@ class BottleneckDetector:
     """
     Service zur Erkennung von Prozess-Engpaessen.
 
-    Analysiert Wartezeiten, Durchsatz und Kapazitaet.
+    Analysiert Wartezeiten, Durchsatz und Kapazität.
     """
 
-    # Schwellwerte fuer Bottleneck-Erkennung
+    # Schwellwerte für Bottleneck-Erkennung
     DURATION_THRESHOLD_FACTOR = 2.0  # X-fache des Durchschnitts
     QUEUE_THRESHOLD = 10  # Dokumente in Warteschlange
     FAILURE_RATE_THRESHOLD = 0.1  # 10% Fehlerrate
@@ -56,7 +56,7 @@ class BottleneckDetector:
         Initialisiere Detector.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
         """
         self.db = db
 
@@ -201,7 +201,7 @@ class BottleneckDetector:
 
         # Identifiziere Warteschlangen-Bottlenecks
         for event_type, data in wait_times.items():
-            if data.avg_wait > global_avg_wait * 3:  # 3x laenger als Durchschnitt
+            if data.avg_wait > global_avg_wait * 3:  # 3x länger als Durchschnitt
                 ratio = data.avg_wait / global_avg_wait
                 score = min(1.0, ratio / 10)
 
@@ -218,7 +218,7 @@ class BottleneckDetector:
                         "affected_documents": data.count,
                     },
                     "recommendation": f"Vor '{event_type}' stauen sich Dokumente. "
-                                      f"Erhoehen Sie die Verarbeitungskapazitaet.",
+                                      f"Erhöhen Sie die Verarbeitungskapazität.",
                 })
 
         return bottlenecks
@@ -263,7 +263,7 @@ class BottleneckDetector:
                             "failure_rate": round(failure_rate, 4),
                         },
                         "recommendation": f"Hohe Fehlerrate bei '{row.event_type}'. "
-                                          f"Pruefen Sie die Konfiguration und Eingabedaten.",
+                                          f"Prüfen Sie die Konfiguration und Eingabedaten.",
                     })
 
         return bottlenecks
@@ -327,12 +327,12 @@ class BottleneckDetector:
     def _get_duration_recommendation(self, event_type: str, ratio: float) -> str:
         """Generiere Empfehlung basierend auf Event-Typ."""
         recommendations = {
-            EventType.OCR_STARTED.value: "OCR-Verarbeitung ist langsam. GPU-Ressourcen pruefen.",
-            EventType.OCR_COMPLETED.value: "OCR dauert laenger als erwartet. Backend wechseln?",
+            EventType.OCR_STARTED.value: "OCR-Verarbeitung ist langsam. GPU-Ressourcen prüfen.",
+            EventType.OCR_COMPLETED.value: "OCR dauert länger als erwartet. Backend wechseln?",
             EventType.CLASSIFICATION_COMPLETED.value: "Klassifikation ist langsam. Modell optimieren.",
             EventType.VALIDATION_COMPLETED.value: "Validierung dauert lange. Regeln vereinfachen.",
             EventType.APPROVAL_GRANTED.value: "Freigaben dauern lange. Workflow optimieren.",
-            EventType.APPROVAL_REJECTED.value: "Ablehnungen verzoegern den Prozess.",
+            EventType.APPROVAL_REJECTED.value: "Ablehnungen verzögern den Prozess.",
         }
 
         return recommendations.get(
@@ -346,7 +346,7 @@ class BottleneckDetector:
         days: int = 7,
     ) -> Dict[str, Any]:
         """
-        Erstelle Heatmap-Daten fuer Bottleneck-Visualisierung.
+        Erstelle Heatmap-Daten für Bottleneck-Visualisierung.
 
         Args:
             company_id: Mandanten-ID
@@ -386,7 +386,7 @@ class BottleneckDetector:
                 int(row.avg_duration) if row.avg_duration else 0
             )
 
-        # Formatiere fuer Frontend
+        # Formatiere für Frontend
         formatted_data = []
         day_names = ["Sonntag", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag"]
 
@@ -502,7 +502,7 @@ class BottleneckDetector:
         company_id: UUID,
     ) -> None:
         """
-        Speichere taegliche Bottleneck-Metriken.
+        Speichere tägliche Bottleneck-Metriken.
 
         Wird von Celery-Task aufgerufen.
 

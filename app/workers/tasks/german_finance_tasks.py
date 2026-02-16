@@ -6,9 +6,9 @@ Feature #11: Deutsche Finanz-Features
 Tasks:
 - Monatliche USt-Voranmeldung berechnen
 - Monatliche BWA generieren
-- Taegliche Cashflow-Prognose aktualisieren
-- Taegliche Liquiditaetswarnungen pruefen
-- Woechentliche Prognose-Genauigkeit evaluieren
+- Tägliche Cashflow-Prognose aktualisieren
+- Tägliche Liquiditätswarnungen prüfen
+- Wöchentliche Prognose-Genauigkeit evaluieren
 
 Feinpoliert und durchdacht - Enterprise-grade Deutsche Finanzberichterstattung.
 """
@@ -51,11 +51,11 @@ def calculate_monthly_ust_task(
     """
     Berechnet die monatliche USt-Voranmeldung.
 
-    Wird am 1. jeden Monats via Celery Beat ausgefuehrt.
+    Wird am 1. jeden Monats via Celery Beat ausgeführt.
     Aggregiert Vorsteuer und Umsatzsteuer des Vormonats.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
         year: Optional - Steuerjahr (Standard: Vormonat)
         month: Optional - Steuermonat (Standard: Vormonat)
 
@@ -188,13 +188,13 @@ def generate_monthly_bwa_task(
     """
     Generiert die monatliche BWA.
 
-    Wird am 1. jeden Monats via Celery Beat ausgefuehrt.
+    Wird am 1. jeden Monats via Celery Beat ausgeführt.
     Aggregiert Buchungsdaten des Vormonats nach SKR03/SKR04.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
-        year: Optional - Geschaeftsjahr (Standard: Vormonat)
-        month: Optional - Geschaeftsmonat (Standard: Vormonat)
+        company_id: Optional - nur für bestimmte Firma
+        year: Optional - Geschäftsjahr (Standard: Vormonat)
+        month: Optional - Geschäftsmonat (Standard: Vormonat)
         skr_schema: SKR03 oder SKR04
 
     Returns:
@@ -328,11 +328,11 @@ def update_cashflow_forecast_task(
     """
     Aktualisiert die Cashflow-Prognose.
 
-    Wird taeglich um 06:00 via Celery Beat ausgefuehrt.
-    Erstellt Basis-Szenario fuer alle aktiven Firmen.
+    Wird täglich um 06:00 via Celery Beat ausgeführt.
+    Erstellt Basis-Szenario für alle aktiven Firmen.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
         horizon_days: Prognosehorizont in Tagen
 
     Returns:
@@ -457,13 +457,13 @@ def check_liquidity_warnings_task(
     company_id: Optional[str] = None,
 ) -> TaskResult:
     """
-    Prueft auf drohende Liquiditaetsengpaesse.
+    Prüft auf drohende Liquiditätsengpaesse.
 
-    Wird taeglich um 07:00 via Celery Beat ausgefuehrt.
+    Wird täglich um 07:00 via Celery Beat ausgeführt.
     Erstellt Alerts bei kritischen Situationen.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
 
     Returns:
         Dict mit Task-Ergebnissen
@@ -587,11 +587,11 @@ def compare_forecast_accuracy_task(
     """
     Evaluiert die Genauigkeit der Cashflow-Prognosen.
 
-    Wird woechentlich (Sonntag 04:00) via Celery Beat ausgefuehrt.
-    Vergleicht historische Prognosen mit tatsaechlichen Werten.
+    Wird wöchentlich (Sonntag 04:00) via Celery Beat ausgeführt.
+    Vergleicht historische Prognosen mit tatsächlichen Werten.
 
     Args:
-        company_id: Optional - nur fuer bestimmte Firma
+        company_id: Optional - nur für bestimmte Firma
 
     Returns:
         Dict mit Evaluations-Metriken
@@ -637,7 +637,7 @@ def compare_forecast_accuracy_task(
 
                 for cid in company_ids:
                     try:
-                        # Abgelaufene Prognosen finden (Horizont ueberschritten)
+                        # Abgelaufene Prognosen finden (Horizont überschritten)
                         today = date.today()
                         expired_stmt = (
                             select(CashflowForecast.id)
@@ -660,7 +660,7 @@ def compare_forecast_accuracy_task(
                                     company_id=cid,
                                     forecast_id=fid,
                                 )
-                                if comparison.get("status") == "verfuegbar":
+                                if comparison.get("status") == "verfügbar":
                                     eval_result["forecasts_compared"] += 1
                             except ValueError:
                                 pass

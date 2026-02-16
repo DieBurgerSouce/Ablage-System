@@ -45,7 +45,7 @@ class PaymentMeansCode(str, Enum):
     """Payment means codes per UN/EDIFACT 4461."""
     CASH = "10"
     CHEQUE = "20"
-    CREDIT_TRANSFER = "30"  # Ueberweisung
+    CREDIT_TRANSFER = "30"  # Überweisung
     DEBIT_TRANSFER = "31"
     CARD_PAYMENT = "48"
     DIRECT_DEBIT = "49"  # Lastschrift
@@ -133,7 +133,7 @@ class InvoiceLineItem(BaseModel):
 class PaymentTerms(BaseModel):
     """Payment terms and instructions."""
     note: Optional[str] = Field(None, max_length=500, description="Zahlungsbedingungen Text")
-    due_date: Optional[date] = Field(None, description="Faelligkeitsdatum")
+    due_date: Optional[date] = Field(None, description="Fälligkeitsdatum")
 
     # Discount
     discount_percent: Optional[Decimal] = Field(None, ge=0, le=100, description="Skonto Prozent")
@@ -149,13 +149,13 @@ class InvoiceData(BaseModel):
     invoice_number: str = Field(..., max_length=50, description="Rechnungsnummer")
     invoice_type: InvoiceType = Field(InvoiceType.INVOICE, description="Rechnungsart")
     issue_date: date = Field(..., description="Rechnungsdatum")
-    due_date: Optional[date] = Field(None, description="Faelligkeitsdatum")
+    due_date: Optional[date] = Field(None, description="Fälligkeitsdatum")
 
     # Currency
-    currency_code: str = Field("EUR", pattern="^[A-Z]{3}$", description="ISO 4217 Waehrungscode")
+    currency_code: str = Field("EUR", pattern="^[A-Z]{3}$", description="ISO 4217 Währungscode")
 
     # Reference
-    buyer_reference: Optional[str] = Field(None, max_length=100, description="Leitweg-ID / Kaeuferreferenz")
+    buyer_reference: Optional[str] = Field(None, max_length=100, description="Leitweg-ID / Käuferreferenz")
     contract_reference: Optional[str] = Field(None, max_length=100, description="Vertragsnummer")
     order_reference: Optional[str] = Field(None, max_length=100, description="Bestellnummer")
     project_reference: Optional[str] = Field(None, max_length=100, description="Projektreferenz")
@@ -166,7 +166,7 @@ class InvoiceData(BaseModel):
 
     # Parties
     seller: InvoiceParty = Field(..., description="Rechnungssteller")
-    buyer: InvoiceParty = Field(..., description="Rechnungsempfaenger")
+    buyer: InvoiceParty = Field(..., description="Rechnungsempfänger")
 
     # Delivery (if different from buyer)
     delivery_address: Optional[Address] = Field(None, description="Lieferadresse")
@@ -198,7 +198,7 @@ class InvoiceData(BaseModel):
         """Ensure unique line IDs."""
         line_ids = [item.line_id for item in v]
         if len(line_ids) != len(set(line_ids)):
-            raise ValueError("Positions-IDs muessen eindeutig sein")
+            raise ValueError("Positions-IDs müssen eindeutig sein")
         return v
 
 
@@ -209,7 +209,7 @@ class EInvoiceRequest(BaseModel):
     invoice_data: InvoiceData = Field(..., description="Rechnungsdaten")
     format: EInvoiceFormat = Field(EInvoiceFormat.UBL_21, description="Ausgabeformat")
     embed_in_pdf: bool = Field(False, description="XML in PDF/A-3 einbetten")
-    document_id: Optional[UUID] = Field(None, description="Dokument-ID fuer PDF-Embedding")
+    document_id: Optional[UUID] = Field(None, description="Dokument-ID für PDF-Embedding")
 
 
 class EInvoiceResponse(BaseModel):

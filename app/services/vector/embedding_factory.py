@@ -1,7 +1,7 @@
 """
 Embedding Factory Service.
 
-Multi-Model Embedding Generation fuer A/B Testing:
+Multi-Model Embedding Generation für A/B Testing:
 - intfloat/multilingual-e5-large (Standard, 1024D)
 - jinaai/jina-embeddings-v2-base-de (Deutsch-optimiert, 8k Kontext)
 
@@ -35,13 +35,13 @@ logger = structlog.get_logger(__name__)
 
 
 class EmbeddingModel(str, Enum):
-    """Verfuegbare Embedding-Modelle."""
+    """Verfügbare Embedding-Modelle."""
     E5_LARGE = "intfloat/multilingual-e5-large"
     JINA_DE = "jinaai/jina-embeddings-v2-base-de"
 
 
 class ModelConfig:
-    """Konfiguration fuer ein Embedding-Modell."""
+    """Konfiguration für ein Embedding-Modell."""
 
     def __init__(
         self,
@@ -79,7 +79,7 @@ MODEL_CONFIGS: Dict[str, ModelConfig] = {
         max_length=8192,  # 8k Token-Kontext!
         query_prefix="",  # Jina braucht keine Prefixes
         passage_prefix="",
-        trust_remote_code=True,  # Required fuer Jina
+        trust_remote_code=True,  # Required für Jina
         gpu_memory_mb=1500,
     ),
 }
@@ -180,11 +180,11 @@ class EmbeddingFactory:
                 trust_remote_code=config.trust_remote_code,
             )
 
-            # Auf GPU verschieben falls verfuegbar
+            # Auf GPU verschieben falls verfügbar
             if self._device == "cuda":
                 model = model.to(self._device)
                 # Warmup
-                _ = model.encode(["Warmup-Text fuer GPU-Initialisierung"])
+                _ = model.encode(["Warmup-Text für GPU-Initialisierung"])
 
             self._models[model_id] = model
             self._current_model = model_id
@@ -246,12 +246,12 @@ class EmbeddingFactory:
         is_query: bool = False,
     ) -> Optional[List[float]]:
         """
-        Generiere Embedding fuer einen Text.
+        Generiere Embedding für einen Text.
 
         Args:
             text: Zu embeddenber Text
             model_name: Modell-Name
-            is_query: True fuer Query-Embedding (mit query: Prefix)
+            is_query: True für Query-Embedding (mit query: Prefix)
 
         Returns:
             Embedding-Vektor als Liste oder None bei Fehler
@@ -293,13 +293,13 @@ class EmbeddingFactory:
         batch_size: int = 8,
     ) -> List[Optional[List[float]]]:
         """
-        Generiere Embeddings fuer mehrere Texte.
+        Generiere Embeddings für mehrere Texte.
 
         Args:
             texts: Liste von Texten
             model_name: Modell-Name
-            is_query: True fuer Query-Embeddings
-            batch_size: Batch-Groesse
+            is_query: True für Query-Embeddings
+            batch_size: Batch-Größe
 
         Returns:
             Liste von Embedding-Vektoren
@@ -382,7 +382,7 @@ class EmbeddingFactory:
 
     def get_model_info(self, model_name: str) -> Dict[str, Any]:
         """
-        Hole Informationen ueber ein Modell.
+        Hole Informationen über ein Modell.
 
         Args:
             model_name: Modell-Name
@@ -406,7 +406,7 @@ class EmbeddingFactory:
         }
 
     def get_available_models(self) -> List[Dict[str, Any]]:
-        """Hole Liste aller verfuegbaren Modelle."""
+        """Hole Liste aller verfügbaren Modelle."""
         return [
             self.get_model_info(model.value)
             for model in EmbeddingModel
@@ -427,7 +427,7 @@ _embedding_factory: Optional[EmbeddingFactory] = None
 
 
 def get_embedding_factory() -> EmbeddingFactory:
-    """Factory Function fuer EmbeddingFactory."""
+    """Factory Function für EmbeddingFactory."""
     global _embedding_factory
     if _embedding_factory is None:
         _embedding_factory = EmbeddingFactory.get_instance()

@@ -2,9 +2,9 @@
 """
 Magic Buttons API Endpoints.
 
-Ein-Klick-Aktionen fuer Enterprise-Workflows:
+Ein-Klick-Aktionen für Enterprise-Workflows:
 - POST /magic/daily-close/preview - Vorschau Tages-Abschluss
-- POST /magic/daily-close/execute - Tages-Abschluss ausfuehren
+- POST /magic/daily-close/execute - Tages-Abschluss ausführen
 - POST /magic/monthly-report/preview - Vorschau Monats-Report
 - POST /magic/monthly-report/execute - Monats-Report erstellen
 - POST /magic/clear-open-items/preview - Vorschau Offene Posten
@@ -53,7 +53,7 @@ class PreviewItemResponse(BaseModel):
 
 
 class MagicPreviewResponse(BaseModel):
-    """API Response fuer Magic-Button-Vorschau."""
+    """API Response für Magic-Button-Vorschau."""
     button_type: str
     title: str
     description: str
@@ -75,7 +75,7 @@ class MagicPreviewResponse(BaseModel):
 
 
 class MagicResultDetailResponse(BaseModel):
-    """Detail einer ausgefuehrten Aktion."""
+    """Detail einer ausgeführten Aktion."""
     step: str
     processed: Optional[int] = None
     matched: Optional[int] = None
@@ -92,7 +92,7 @@ class MagicResultDetailResponse(BaseModel):
 
 
 class MagicResultResponse(BaseModel):
-    """API Response fuer Magic-Button-Ergebnis."""
+    """API Response für Magic-Button-Ergebnis."""
     button_type: str
     status: str
     title: str
@@ -128,14 +128,14 @@ class MagicButtonInfoResponse(BaseModel):
 # =============================================================================
 
 class DailyCloseRequest(BaseModel):
-    """Request fuer Tages-Abschluss."""
+    """Request für Tages-Abschluss."""
     target_date: Optional[date] = Field(None, description="Zieldatum (default: heute)")
     auto_match: bool = Field(True, description="Transaktionen automatisch abgleichen")
     auto_assign: bool = Field(True, description="Dokumente automatisch zuordnen")
 
 
 class MonthlyReportRequest(BaseModel):
-    """Request fuer Monats-Report."""
+    """Request für Monats-Report."""
     year: int = Field(..., ge=2020, le=2100, description="Jahr")
     month: int = Field(..., ge=1, le=12, description="Monat")
     include_datev: bool = Field(True, description="DATEV-Export erstellen")
@@ -143,17 +143,17 @@ class MonthlyReportRequest(BaseModel):
 
 
 class ClearOpenItemsRequest(BaseModel):
-    """Request fuer Offene Posten bereinigen."""
+    """Request für Offene Posten bereinigen."""
     auto_reconcile: bool = Field(True, description="Automatisch abgleichen")
     send_reminders: bool = Field(False, description="Zahlungserinnerungen senden")
-    increase_dunning: bool = Field(False, description="Mahnstufen erhoehen")
+    increase_dunning: bool = Field(False, description="Mahnstufen erhöhen")
 
 
 class CreateContactRequest(BaseModel):
-    """Request fuer Kontakt erstellen."""
+    """Request für Kontakt erstellen."""
     document_id: UUID = Field(..., description="Dokument-ID")
     entity_type: str = Field("supplier", description="Entity-Typ (supplier/customer)")
-    override_name: Optional[str] = Field(None, description="Name ueberschreiben")
+    override_name: Optional[str] = Field(None, description="Name überschreiben")
 
 
 # =============================================================================
@@ -173,9 +173,9 @@ def _preview_to_response(preview: MagicButtonPreview) -> MagicPreviewResponse:
             label=item.get("label", ""),
         ))
 
-    message = "Bereit zur Ausfuehrung"
+    message = "Bereit zur Ausführung"
     if not preview.can_execute:
-        message = preview.block_reason or "Kann nicht ausgefuehrt werden"
+        message = preview.block_reason or "Kann nicht ausgeführt werden"
     elif preview.warnings:
         message = f"Warnung: {preview.warnings[0]}"
 
@@ -242,8 +242,8 @@ def _result_to_response(result: MagicButtonResult) -> MagicResultResponse:
 @router.get(
     "/buttons",
     response_model=List[MagicButtonInfoResponse],
-    summary="Verfuegbare Magic Buttons",
-    description="Liste aller verfuegbaren Ein-Klick-Aktionen"
+    summary="Verfügbare Magic Buttons",
+    description="Liste aller verfügbaren Ein-Klick-Aktionen"
 )
 async def list_magic_buttons(
     current_user: User = Depends(get_current_active_user),
@@ -260,7 +260,7 @@ async def list_magic_buttons(
         MagicButtonInfoResponse(
             type="monthly_report",
             title="Monats-Report",
-            description="Erstellt DATEV-Export und Zusammenfassung fuer Steuerberater",
+            description="Erstellt DATEV-Export und Zusammenfassung für Steuerberater",
             icon="FileText",
             color="blue",
         ),
@@ -296,7 +296,7 @@ async def preview_daily_close(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> MagicPreviewResponse:
-    """Vorschau fuer Tages-Abschluss."""
+    """Vorschau für Tages-Abschluss."""
     company_id = getattr(current_user, 'company_id', None)
     if not company_id:
         raise HTTPException(
@@ -325,15 +325,15 @@ async def preview_daily_close(
 @router.post(
     "/daily-close/execute",
     response_model=MagicResultResponse,
-    summary="Tages-Abschluss ausfuehren",
-    description="Fuehrt den Tages-Abschluss aus"
+    summary="Tages-Abschluss ausführen",
+    description="Führt den Tages-Abschluss aus"
 )
 async def execute_daily_close(
     request: DailyCloseRequest = Body(...),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> MagicResultResponse:
-    """Fuehrt Tages-Abschluss aus."""
+    """Führt Tages-Abschluss aus."""
     company_id = getattr(current_user, 'company_id', None)
     if not company_id:
         raise HTTPException(
@@ -378,7 +378,7 @@ async def preview_monthly_report(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> MagicPreviewResponse:
-    """Vorschau fuer Monats-Report."""
+    """Vorschau für Monats-Report."""
     company_id = getattr(current_user, 'company_id', None)
     if not company_id:
         raise HTTPException(
@@ -460,7 +460,7 @@ async def preview_clear_open_items(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> MagicPreviewResponse:
-    """Vorschau fuer Offene-Posten-Bereinigung."""
+    """Vorschau für Offene-Posten-Bereinigung."""
     company_id = getattr(current_user, 'company_id', None)
     if not company_id:
         raise HTTPException(
@@ -533,14 +533,14 @@ async def execute_clear_open_items(
     "/create-contact/preview",
     response_model=MagicPreviewResponse,
     summary="Vorschau Kontakt erstellen",
-    description="Zeigt extrahierte Daten fuer neuen Kontakt"
+    description="Zeigt extrahierte Daten für neuen Kontakt"
 )
 async def preview_create_contact(
     document_id: UUID = Query(..., description="Dokument-ID"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> MagicPreviewResponse:
-    """Vorschau fuer Kontakt-Erstellung."""
+    """Vorschau für Kontakt-Erstellung."""
     company_id = getattr(current_user, 'company_id', None)
     if not company_id:
         raise HTTPException(

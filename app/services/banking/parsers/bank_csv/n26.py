@@ -13,14 +13,14 @@ from ...models import ImportFormat
 
 @ParserRegistry.register
 class N26CSVParser(GenericCSVParser):
-    """Parser fuer N26 CSV-Kontoauszuege."""
+    """Parser für N26 CSV-Kontoauszuege."""
 
     FORMAT = ImportFormat.CSV_N26
     FORMAT_VARIANT = "n26"
 
     @classmethod
     def can_parse(cls, content: Union[str, bytes], filename: Optional[str] = None) -> float:
-        """Pruefe auf N26-Format."""
+        """Prüfe auf N26-Format."""
         text = cls._decode_content(content)
         if not text:
             return 0.0

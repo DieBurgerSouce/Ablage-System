@@ -20,7 +20,7 @@ DEFAULT_TIMEOUT = 30.0
 
 # Endpoint-spezifische Timeouts
 ENDPOINT_TIMEOUTS: Dict[str, float] = {
-    # OCR-Verarbeitung braucht laenger
+    # OCR-Verarbeitung braucht länger
     "/api/v1/ocr": 300.0,  # 5 Minuten
     "/api/v1/ocr/process": 300.0,
 

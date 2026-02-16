@@ -2,13 +2,13 @@
 Tenant Rate Limit Service.
 
 Multi-Tenant Rate Limiting mit Subscription-Tier-basierter Konfiguration.
-Ermoeglicht individuelle Rate-Limits pro Company/Mandant.
+Ermöglicht individuelle Rate-Limits pro Company/Mandant.
 
 Features:
 - Tenant-spezifische Rate Limits (pro Endpoint-Pattern)
 - Subscription-Tier-Defaults (Free, Basic, Professional, Enterprise)
-- Usage-Metriken fuer Dashboard
-- Rate-Limit-Violation-Logging fuer Security
+- Usage-Metriken für Dashboard
+- Rate-Limit-Violation-Logging für Security
 
 Created: 2026-01-19
 """
@@ -105,7 +105,7 @@ DEFAULT_TIER_CONFIG: Dict[str, Dict[str, Any]] = {
 
 
 class TenantRateLimitService:
-    """Service fuer Tenant-spezifisches Rate Limiting."""
+    """Service für Tenant-spezifisches Rate Limiting."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -122,7 +122,7 @@ class TenantRateLimitService:
         user_agent: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Pruefe Rate Limit fuer einen Request.
+        Prüfe Rate Limit für einen Request.
 
         Args:
             company_id: Mandanten-ID
@@ -140,7 +140,7 @@ class TenantRateLimitService:
             - reset_at: str - Zeitpunkt des Resets
             - limit_type: str - Art des Limits (minute, hour, day)
         """
-        # 1. Hole Rate Limit Konfiguration fuer Company
+        # 1. Hole Rate Limit Konfiguration für Company
         rate_config = await self._get_rate_limit_config(company_id, endpoint)
 
         # 2. Hole Redis Storage
@@ -153,7 +153,7 @@ class TenantRateLimitService:
                     endpoint=endpoint
                 )
                 raise RateLimitStorageError(
-                    "Rate-Limiting-Service voruebergehend nicht verfuegbar."
+                    "Rate-Limiting-Service vorübergehend nicht verfügbar."
                 )
             # Fail-open: Erlaube Request
             return {
@@ -163,7 +163,7 @@ class TenantRateLimitService:
                 "limit": -1,
             }
 
-        # 3. Pruefe Limits (Minute -> Hour -> Day)
+        # 3. Prüfe Limits (Minute -> Hour -> Day)
         for limit_type, window_seconds, limit_key_suffix in [
             ("minute", 60, self._get_minute_key()),
             ("hour", 3600, self._get_hour_key()),
@@ -179,7 +179,7 @@ class TenantRateLimitService:
                 current_count = int(current_count) if current_count else 0
 
                 if current_count >= limit_value:
-                    # Rate Limit ueberschritten - logge Violation
+                    # Rate Limit überschritten - logge Violation
                     await self._log_violation(
                         company_id=company_id,
                         user_id=user_id,
@@ -208,7 +208,7 @@ class TenantRateLimitService:
                     **safe_error_log(e)
                 )
                 if settings.RATE_LIMIT_FAIL_CLOSED:
-                    raise RateLimitStorageError("Rate-Limit-Pruefung fehlgeschlagen.") from e
+                    raise RateLimitStorageError("Rate-Limit-Prüfung fehlgeschlagen.") from e
 
         # Request erlaubt - berechne remaining
         remaining = rate_config.get("requests_per_minute", 100) - current_count
@@ -227,7 +227,7 @@ class TenantRateLimitService:
         endpoint: str,
     ) -> bool:
         """
-        Inkrementiere Rate-Limit-Zaehler nach erfolgreichem Request.
+        Inkrementiere Rate-Limit-Zähler nach erfolgreichem Request.
 
         Args:
             company_id: Mandanten-ID
@@ -272,7 +272,7 @@ class TenantRateLimitService:
         company_id: UUID,
     ) -> Dict[str, Any]:
         """
-        Hole alle Rate Limit Konfigurationen fuer eine Company.
+        Hole alle Rate Limit Konfigurationen für eine Company.
 
         Args:
             company_id: Mandanten-ID
@@ -342,7 +342,7 @@ class TenantRateLimitService:
         created_by_id: Optional[UUID] = None,
     ) -> TenantRateLimit:
         """
-        Erstelle oder aktualisiere Custom Rate Limit fuer Company.
+        Erstelle oder aktualisiere Custom Rate Limit für Company.
 
         Args:
             company_id: Mandanten-ID
@@ -351,7 +351,7 @@ class TenantRateLimitService:
             requests_per_hour: Limit pro Stunde
             requests_per_day: Limit pro Tag
             burst_limit: Burst-Limit
-            created_by_id: User der die Aenderung macht
+            created_by_id: User der die Änderung macht
 
         Returns:
             TenantRateLimit Model
@@ -420,13 +420,13 @@ class TenantRateLimitService:
         company_id: UUID,
     ) -> int:
         """
-        Setze alle Custom Limits auf Tier-Defaults zurueck.
+        Setze alle Custom Limits auf Tier-Defaults zurück.
 
         Args:
             company_id: Mandanten-ID
 
         Returns:
-            Anzahl geloeschter Custom-Limits
+            Anzahl gelöschter Custom-Limits
         """
         result = await self.db.execute(
             select(TenantRateLimit).where(
@@ -458,12 +458,12 @@ class TenantRateLimitService:
         days_back: int = 30,
     ) -> Dict[str, Any]:
         """
-        Hole Nutzungs-Summary fuer eine Company.
+        Hole Nutzungs-Summary für eine Company.
 
         Args:
             company_id: Mandanten-ID
             period_type: hourly, daily, monthly
-            days_back: Anzahl Tage zurueck
+            days_back: Anzahl Tage zurück
 
         Returns:
             Usage-Summary mit Metriken
@@ -525,11 +525,11 @@ class TenantRateLimitService:
         limit: int = 100,
     ) -> List[Dict[str, Any]]:
         """
-        Hole Rate-Limit-Violations fuer eine Company.
+        Hole Rate-Limit-Violations für eine Company.
 
         Args:
             company_id: Mandanten-ID
-            hours_back: Stunden zurueck
+            hours_back: Stunden zurück
             limit: Max Anzahl Ergebnisse
 
         Returns:
@@ -568,7 +568,7 @@ class TenantRateLimitService:
         company_id: UUID,
         endpoint: str,
     ) -> Dict[str, int]:
-        """Hole Rate Limit Config fuer Company + Endpoint."""
+        """Hole Rate Limit Config für Company + Endpoint."""
         # Custom Limit suchen (Pattern-Match)
         result = await self.db.execute(
             select(TenantRateLimit).where(
@@ -672,5 +672,5 @@ class TenantRateLimitService:
 async def get_tenant_rate_limit_service(
     db: AsyncSession,
 ) -> TenantRateLimitService:
-    """FastAPI Dependency fuer TenantRateLimitService."""
+    """FastAPI Dependency für TenantRateLimitService."""
     return TenantRateLimitService(db)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Document Grouping Service fuer zusammengehoerige Dokumente.
+Document Grouping Service für zusammengehoerige Dokumente.
 
 Erkennt Dokumente die zusammengehoeren:
 - Physisch geheftete Seiten (waren mit Heftklammer zusammen)
@@ -11,7 +11,7 @@ Erkennt Dokumente die zusammengehoeren:
 Erkennungsstrategien:
 1. Dateinamen-Sequenz (hex-Pattern aus Trainings-Daten)
 2. Zeitstempel-Naehe (Scan-Zeitpunkt)
-3. Inhaltsaehnlichkeit (Seitennummerierung, Header)
+3. Inhaltsähnlichkeit (Seitennummerierung, Header)
 4. Referenz-Matching (Bezugsdokumente)
 
 99%+ Praezision durch Mehrfach-Validierung.
@@ -49,7 +49,7 @@ class GroupingSignal:
 
 @dataclass
 class GroupCandidate:
-    """Kandidat fuer eine Dokumentgruppe."""
+    """Kandidat für eine Dokumentgruppe."""
     document_ids: List[UUID]
     group_type: str  # "stapled", "multi_page", "transaction", etc.
     signals: List[GroupingSignal] = field(default_factory=list)
@@ -62,7 +62,7 @@ class GroupCandidate:
 
 @dataclass
 class RelationshipCandidate:
-    """Kandidat fuer eine Dokumentbeziehung."""
+    """Kandidat für eine Dokumentbeziehung."""
     source_document_id: UUID
     target_document_id: UUID
     relationship_type: str  # "child_of", "references", "replies_to", etc.
@@ -81,22 +81,22 @@ class GroupDetectionResult:
 
 
 # =============================================================================
-# CONFIDENCE WEIGHTS (fuer 99%+ Praezision)
+# CONFIDENCE WEIGHTS (für 99%+ Praezision)
 # =============================================================================
 
 CONFIDENCE_WEIGHTS = {
     "filename_sequence": 0.90,      # Fortlaufende Dateinamen (sehr stark)
     "page_numbering": 0.95,         # "Seite X von Y" (sehr stark)
-    "timestamp_proximity": 0.60,    # Zeitnaehe (unterstuetzend)
-    "content_similarity": 0.70,     # Inhaltsaehnlichkeit
+    "timestamp_proximity": 0.60,    # Zeitnaehe (unterstützend)
+    "content_similarity": 0.70,     # Inhaltsähnlichkeit
     "same_sender": 0.80,            # Gleicher Absender
     "reference_match": 0.85,        # Explizite Referenz
     "header_match": 0.75,           # Gleicher Briefkopf
 }
 
-# Schwellenwerte fuer automatische Gruppierung
+# Schwellenwerte für automatische Gruppierung
 AUTO_GROUP_THRESHOLD = 0.99  # Nur bei > 99% Konfidenz automatisch gruppieren
-REVIEW_THRESHOLD = 0.80      # Bei 80-99% zur Ueberpruefung markieren
+REVIEW_THRESHOLD = 0.80      # Bei 80-99% zur Überprüfung markieren
 MIN_CONFIDENCE = 0.60        # Unter 60% ignorieren
 
 
@@ -105,7 +105,7 @@ MIN_CONFIDENCE = 0.60        # Unter 60% ignorieren
 # =============================================================================
 
 class GroupingPatterns:
-    """Regex-Muster fuer Gruppierungserkennung."""
+    """Regex-Muster für Gruppierungserkennung."""
 
     # Seitennummerierung
     PAGE_NUMBERING = re.compile(
@@ -158,10 +158,10 @@ class DocumentGroupingService:
     """
     Service zur Erkennung zusammengehoeriger Dokumente.
 
-    Verwendet Mehrfach-Validierung fuer 99%+ Praezision:
-    1. Mindestens 2 unabhaengige Signale fuer Auto-Gruppierung
-    2. Hohe Schwellenwerte fuer Konfidenz
-    3. Validation Queue fuer unsichere Faelle
+    Verwendet Mehrfach-Validierung für 99%+ Praezision:
+    1. Mindestens 2 unabhängige Signale für Auto-Gruppierung
+    2. Hohe Schwellenwerte für Konfidenz
+    3. Validation Queue für unsichere Faelle
 
     Usage:
         service = DocumentGroupingService(db)
@@ -199,7 +199,7 @@ class DocumentGroupingService:
 
         Args:
             document_ids: Liste von Dokument-IDs
-            owner_id: Optionale Owner-ID fuer Filterung
+            owner_id: Optionale Owner-ID für Filterung
 
         Returns:
             GroupDetectionResult mit erkannten Gruppen und Beziehungen
@@ -216,7 +216,7 @@ class DocumentGroupingService:
         if not documents:
             return result
 
-        # 1. Dateinamen-Sequenz-Erkennung (hoechste Prioritaet)
+        # 1. Dateinamen-Sequenz-Erkennung (hoechste Priorität)
         filename_groups = await self._detect_filename_sequence(documents)
         result.groups.extend(filename_groups)
 
@@ -233,7 +233,7 @@ class DocumentGroupingService:
             for group in timestamp_groups:
                 grouped_ids.update(group.document_ids)
 
-        # 3. Inhalts-Aehnlichkeit (Seitennummerierung, etc.)
+        # 3. Inhalts-Ähnlichkeit (Seitennummerierung, etc.)
         remaining_docs = [d for d in documents if d.id not in grouped_ids]
         if remaining_docs:
             content_groups = await self._detect_content_similarity(remaining_docs)
@@ -338,11 +338,11 @@ class DocumentGroupingService:
             doc, seq = docs_with_sequence[i]
             prev_doc, prev_seq = current_group[-1]
 
-            # Sequenz fortlaufend? (Luecke von max 1 erlaubt)
+            # Sequenz fortlaufend? (Lücke von max 1 erlaubt)
             if seq - prev_seq <= 1:
                 current_group.append((doc, seq))
             else:
-                # Gruppe abschliessen wenn >= 2 Dokumente
+                # Gruppe abschließen wenn >= 2 Dokumente
                 if len(current_group) >= 2:
                     groups.append(self._create_filename_group(current_group))
                 current_group = [(doc, seq)]
@@ -360,11 +360,11 @@ class DocumentGroupingService:
         """Erstellt eine GroupCandidate aus einer Dateinamen-Sequenz."""
         document_ids = [doc.id for doc, _ in docs_with_sequence]
 
-        # Konfidenz basierend auf Sequenzlaenge
+        # Konfidenz basierend auf Sequenzlänge
         seq_len = len(docs_with_sequence)
         base_confidence = 0.90
 
-        # Bonus fuer laengere Sequenzen
+        # Bonus für längere Sequenzen
         if seq_len >= 5:
             base_confidence = 0.95
         if seq_len >= 10:
@@ -407,7 +407,7 @@ class DocumentGroupingService:
 
         Args:
             documents: Liste von Dokumenten
-            max_gap_seconds: Maximale Zeitluecke zwischen Scans
+            max_gap_seconds: Maximale Zeitlücke zwischen Scans
 
         Returns:
             Liste von GroupCandidates
@@ -442,7 +442,7 @@ class DocumentGroupingService:
             if curr_time - prev_time <= max_gap:
                 current_group.append(doc)
             else:
-                # Gruppe abschliessen
+                # Gruppe abschließen
                 if len(current_group) >= 2:
                     groups.append(self._create_timestamp_group(current_group))
                 current_group = [doc]
@@ -462,7 +462,7 @@ class DocumentGroupingService:
         time_span = (max(timestamps) - min(timestamps)).total_seconds()
 
         # Konfidenz basierend auf Zeitspanne und Anzahl
-        # Je kuerzer die Zeitspanne, desto hoeher die Konfidenz
+        # Je kürzer die Zeitspanne, desto höher die Konfidenz
         if time_span < 30 and len(docs) >= 3:
             confidence = 0.75
         elif time_span < 60:
@@ -488,7 +488,7 @@ class DocumentGroupingService:
             combined_confidence=confidence,
             primary_document_id=document_ids[0],
             suggested_name=f"Scan-Gruppe ({len(docs)} Seiten)",
-            needs_review=True,  # Zeitstempel allein reicht nicht fuer 99%+
+            needs_review=True,  # Zeitstempel allein reicht nicht für 99%+
             detection_details={
                 "detection_method": "timestamp_proximity",
                 "time_span_seconds": time_span,
@@ -500,12 +500,12 @@ class DocumentGroupingService:
         documents: List[Any]
     ) -> List[GroupCandidate]:
         """
-        Gruppiert Dokumente nach Inhaltsaehnlichkeit.
+        Gruppiert Dokumente nach Inhaltsähnlichkeit.
 
         Erkennt:
         - Seitennummerierung ("Seite X von Y")
         - Fortsetzungshinweise
-        - Gleicher Absender/Empfaenger
+        - Gleicher Absender/Empfänger
 
         Args:
             documents: Liste von Dokumenten
@@ -552,7 +552,7 @@ class DocumentGroupingService:
                     docs_with_pages[key] = []
                 docs_with_pages[key].append((doc, page_num, total_pages))
 
-        # Gruppen mit vollstaendigen Seitensequenzen finden
+        # Gruppen mit vollständigen Seitensequenzen finden
         for key, page_docs in docs_with_pages.items():
             if len(page_docs) < 2:
                 continue
@@ -563,7 +563,7 @@ class DocumentGroupingService:
             total_pages = page_docs[0][2]
             found_pages = [p[1] for p in page_docs]
 
-            # Ist die Sequenz vollstaendig oder fast vollstaendig?
+            # Ist die Sequenz vollständig oder fast vollständig?
             expected_pages = set(range(1, total_pages + 1))
             found_set = set(found_pages)
             completeness = len(found_set & expected_pages) / total_pages
@@ -640,7 +640,7 @@ class DocumentGroupingService:
             if any(refs.values()):
                 doc_references[doc.id] = refs
 
-        # Referenz-Ueberschneidungen finden
+        # Referenz-Überschneidungen finden
         doc_ids = list(doc_references.keys())
         for i, source_id in enumerate(doc_ids):
             source_refs = doc_references[source_id]
@@ -648,7 +648,7 @@ class DocumentGroupingService:
             for target_id in doc_ids[i+1:]:
                 target_refs = doc_references[target_id]
 
-                # Ueberschneidungen pruefen
+                # Überschneidungen prüfen
                 for ref_type in ["invoice", "order", "general"]:
                     common = set(source_refs[ref_type]) & set(target_refs[ref_type])
                     if common:
@@ -677,7 +677,7 @@ class DocumentGroupingService:
         Wendet Konfidenz-Filterung und Review-Queue an.
 
         - >= 99%: Auto-Gruppierung
-        - 80-99%: Zur Ueberpruefung markieren
+        - 80-99%: Zur Überprüfung markieren
         - < 60%: Ignorieren
         """
         filtered_groups = []
@@ -685,7 +685,7 @@ class DocumentGroupingService:
         for group in result.groups:
             # Kombinierte Konfidenz berechnen
             if len(group.signals) > 1:
-                # Mehrere Signale erhoehen Konfidenz
+                # Mehrere Signale erhöhen Konfidenz
                 group.combined_confidence = self._calculate_combined_confidence(group.signals)
 
             # Filterung
@@ -719,7 +719,7 @@ class DocumentGroupingService:
         """
         Berechnet kombinierte Konfidenz aus mehreren Signalen.
 
-        Mehrere unabhaengige Signale erhoehen die Konfidenz.
+        Mehrere unabhängige Signale erhöhen die Konfidenz.
         """
         if not signals:
             return 0.0
@@ -760,7 +760,7 @@ class DocumentGroupingService:
         Args:
             candidate: GroupCandidate
             owner_id: Owner-ID
-            auto_confirm: Automatisch bestaetigen wenn Konfidenz >= 99%
+            auto_confirm: Automatisch bestätigen wenn Konfidenz >= 99%
 
         Returns:
             ID der erstellten Gruppe oder None
@@ -825,14 +825,14 @@ class DocumentGroupingService:
         owner_id: UUID,
     ) -> bool:
         """
-        Bestaetigt eine Gruppe manuell.
+        Bestätigt eine Gruppe manuell.
 
-        SECURITY: owner_id ist REQUIRED fuer Multi-Tenant Isolation.
+        SECURITY: owner_id ist REQUIRED für Multi-Tenant Isolation.
 
         Args:
             group_id: Gruppen-ID
-            user_id: User-ID der bestaetigt
-            owner_id: Owner-ID (REQUIRED fuer Multi-Tenant)
+            user_id: User-ID der bestätigt
+            owner_id: Owner-ID (REQUIRED für Multi-Tenant)
 
         Returns:
             True wenn erfolgreich
@@ -842,7 +842,7 @@ class DocumentGroupingService:
 
         from app.db.models import DocumentGroup
 
-        # SECURITY: owner_id Filter fuer Multi-Tenant Isolation
+        # SECURITY: owner_id Filter für Multi-Tenant Isolation
         result = await self.db.execute(
             select(DocumentGroup).where(
                 and_(
@@ -887,13 +887,13 @@ class DocumentGroupingService:
         """
         Teilt eine Gruppe in mehrere neue Gruppen.
 
-        SECURITY: owner_id ist REQUIRED fuer Multi-Tenant Isolation.
+        SECURITY: owner_id ist REQUIRED für Multi-Tenant Isolation.
 
         Args:
             group_id: Urspruengliche Gruppen-ID
             user_id: User-ID
-            new_groups: Liste von Dokument-ID-Listen fuer neue Gruppen
-            owner_id: Owner-ID (REQUIRED fuer Multi-Tenant)
+            new_groups: Liste von Dokument-ID-Listen für neue Gruppen
+            owner_id: Owner-ID (REQUIRED für Multi-Tenant)
 
         Returns:
             Liste der neuen Gruppen-IDs
@@ -903,7 +903,7 @@ class DocumentGroupingService:
 
         from app.db.models import DocumentGroup, Document
 
-        # Alte Gruppe laden - SECURITY: owner_id Filter fuer Multi-Tenant Isolation
+        # Alte Gruppe laden - SECURITY: owner_id Filter für Multi-Tenant Isolation
         result = await self.db.execute(
             select(DocumentGroup).where(
                 and_(
@@ -985,12 +985,12 @@ class DocumentGroupingService:
         limit: int = 50
     ) -> List[Any]:
         """
-        Gibt Gruppen zurueck die auf Ueberpruefung warten.
+        Gibt Gruppen zurück die auf Überprüfung warten.
 
-        SECURITY: owner_id ist REQUIRED fuer Multi-Tenant Isolation.
+        SECURITY: owner_id ist REQUIRED für Multi-Tenant Isolation.
 
         Args:
-            owner_id: Owner-ID (REQUIRED fuer Multi-Tenant)
+            owner_id: Owner-ID (REQUIRED für Multi-Tenant)
             limit: Maximale Anzahl
 
         Returns:
@@ -1001,7 +1001,7 @@ class DocumentGroupingService:
 
         from app.db.models import DocumentGroup
 
-        # SECURITY: IMMER nach owner_id filtern fuer Multi-Tenant Isolation
+        # SECURITY: IMMER nach owner_id filtern für Multi-Tenant Isolation
         query = select(DocumentGroup).where(
             and_(
                 DocumentGroup.needs_review == True,
@@ -1023,11 +1023,11 @@ class DocumentGroupingService:
     # =========================================================================
 
     def get_detection_stats(self) -> Dict[str, int]:
-        """Gibt Erkennungs-Statistiken zurueck."""
+        """Gibt Erkennungs-Statistiken zurück."""
         return self._detection_stats.copy()
 
     def reset_stats(self) -> None:
-        """Setzt Statistiken zurueck."""
+        """Setzt Statistiken zurück."""
         self._detection_stats = {
             "total_detections": 0,
             "groups_found": 0,

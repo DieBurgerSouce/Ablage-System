@@ -13,7 +13,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ProjectionService:
-    """Service fuer Event-Replay und Projektion.
+    """Service für Event-Replay und Projektion.
 
     Rekonstruiert den aktuellen Zustand eines Aggregats durch Replay
     aller Events ab dem letzten Snapshot.
@@ -35,7 +35,7 @@ class ProjectionService:
         Args:
             aggregate_type: Typ des Aggregats
             aggregate_id: ID des Aggregats
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Datenbank-Session
 
         Returns:
@@ -92,7 +92,7 @@ class ProjectionService:
         return state
 
     def _get_initial_state(self, aggregate_type: str) -> Dict[str, Any]:
-        """Gibt den initialen Zustand fuer einen Aggregat-Typ zurueck.
+        """Gibt den initialen Zustand für einen Aggregat-Typ zurück.
 
         Args:
             aggregate_type: Typ des Aggregats
@@ -245,7 +245,7 @@ class ProjectionService:
             state["completed_at"] = event_data.get("completed_at")
 
         else:
-            # Generisches Update fuer unbekannte Event-Typen
+            # Generisches Update für unbekannte Event-Typen
             logger.warning(
                 "unknown_event_type_in_projection",
                 event_type=event_type,
@@ -265,13 +265,13 @@ class ProjectionService:
     ) -> Dict[str, Any]:
         """Projiziert den Zustand bis zu einer bestimmten Sequenznummer.
 
-        Nuetzlich fuer Zeitreisen (Temporal Queries).
+        Nützlich für Zeitreisen (Temporal Queries).
 
         Args:
             aggregate_type: Typ des Aggregats
             aggregate_id: ID des Aggregats
             target_sequence: Ziel-Sequenznummer
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Datenbank-Session
 
         Returns:

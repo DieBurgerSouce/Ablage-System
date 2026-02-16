@@ -9,11 +9,11 @@ Implementiert den OIDC Authorization Code Flow:
 
 SECURITY:
 - PKCE (Proof Key for Code Exchange) standardmaessig aktiviert
-- State Parameter fuer CSRF-Schutz
-- Nonce fuer Replay-Schutz
+- State Parameter für CSRF-Schutz
+- Nonce für Replay-Schutz
 - Token-Validierung mit JWKS
 
-Unterstuetzte Provider:
+Unterstützte Provider:
 - Microsoft Entra ID (Azure AD)
 - Google Workspace
 - Okta
@@ -50,10 +50,10 @@ logger = structlog.get_logger(__name__)
 
 
 class OIDCState(BaseModel):
-    """OIDC State fuer Authorization Flow."""
+    """OIDC State für Authorization Flow."""
 
     state: str = Field(..., description="State Parameter")
-    nonce: str = Field(..., description="Nonce fuer ID Token Validierung")
+    nonce: str = Field(..., description="Nonce für ID Token Validierung")
     code_verifier: Optional[str] = Field(None, description="PKCE Code Verifier")
     provider_id: UUID = Field(..., description="Provider ID")
     redirect_uri: str = Field(..., description="Redirect URI")
@@ -88,7 +88,7 @@ class OIDCUserInfo(BaseModel):
 
 
 class OIDCService:
-    """Service fuer OIDC Authentication."""
+    """Service für OIDC Authentication."""
 
     def __init__(
         self,
@@ -131,7 +131,7 @@ class OIDCService:
             provider_id: Provider-ID
             company_id: Firma-ID
             redirect_uri: Callback-URL
-            additional_params: Zusaetzliche URL-Parameter
+            additional_params: Zusätzliche URL-Parameter
 
         Returns:
             Tuple aus (authorization_url, state)
@@ -208,7 +208,7 @@ class OIDCService:
         # Validate state (from Redis, deleted after retrieval for one-time use)
         oidc_state = await self.state_manager.get_oidc_state(state, delete=True)
         if not oidc_state:
-            raise ValueError("Ungueltiger oder abgelaufener State")
+            raise ValueError("Ungültiger oder abgelaufener State")
 
         if datetime.utcnow() > oidc_state.expires_at:
             raise ValueError("Authorization Flow ist abgelaufen")
@@ -371,7 +371,7 @@ class OIDCService:
 
             # Validate nonce
             if claims.get("nonce") != nonce:
-                raise ValueError("Nonce stimmt nicht ueberein")
+                raise ValueError("Nonce stimmt nicht überein")
 
             return claims
 
@@ -469,7 +469,7 @@ class OIDCService:
         id_token_hint: Optional[str] = None,
         post_logout_redirect_uri: Optional[str] = None,
     ) -> Optional[str]:
-        """Generiert die Logout-URL (falls vom IdP unterstuetzt)."""
+        """Generiert die Logout-URL (falls vom IdP unterstützt)."""
         provider = await self.config_service.get_provider(provider_id, company_id)
         if not provider or not provider.oidc_config:
             return None
@@ -492,7 +492,7 @@ class OIDCService:
         return end_session_endpoint
 
     async def close(self):
-        """Schliesst HTTP-Client."""
+        """Schließt HTTP-Client."""
         if self._http_client:
             await self._http_client.aclose()
             self._http_client = None

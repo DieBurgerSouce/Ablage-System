@@ -362,7 +362,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
                     pil_image = Image.open(image)
                     return np.array(pil_image)
                 except ImportError:
-                    logger.warning("PIL nicht verfuegbar, Bild konnte nicht geladen werden")
+                    logger.warning("PIL nicht verfügbar, Bild konnte nicht geladen werden")
                     return None
                 except Exception as e:
                     logger.warning("image_load_error", path=image, **safe_error_log(e))
@@ -959,7 +959,7 @@ class HandwritingDetectorAgent(PreprocessingAgent):
             feature=HandwritingFeature.CONNECTED_STROKES,
             detected=stroke_score > 0.6,
             confidence=stroke_score,
-            description="Verbundene Striche typisch fuer Kursivschrift"
+            description="Verbundene Striche typisch für Kursivschrift"
         ))
 
         features.append(HandwritingFeatureScore(

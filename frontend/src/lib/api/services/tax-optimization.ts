@@ -67,7 +67,7 @@ export type TaxDeadlineType =
   | 'einkommensteuer'
   | 'gewerbesteuer'
   | 'umsatzsteuer_voranmeldung'
-  | 'umsatzsteuer_erklärung'
+  | 'umsatzsteuer_erklaerung'
   | 'grundsteuer'
   | 'koerperschaftsteuer'
   | 'lohnsteuer'

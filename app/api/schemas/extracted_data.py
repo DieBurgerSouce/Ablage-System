@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Pydantic-Modelle fuer strukturierte Datenextraktion.
+Pydantic-Modelle für strukturierte Datenextraktion.
 
-Dieses Modul definiert die Datenstrukturen fuer:
+Dieses Modul definiert die Datenstrukturen für:
 - Rechnungen (InvoiceData)
 - Bestellungen (OrderData)
-- Vertraege (ContractData)
+- Verträge (ContractData)
 
 Diese werden automatisch bei JEDEM Dokument-Upload extrahiert
 und in documents.extracted_data (JSONB) gespeichert.
 
-Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Genauigkeit.
+Feinpoliert und durchdacht - Deutsche Dokumente mit höchster Genauigkeit.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # =============================================================================
 
 class ExtractedDocumentType(str, Enum):
-    """Klassifizierter Dokumenttyp - 15 Types fuer Enterprise-Klassifikation.
+    """Klassifizierter Dokumenttyp - 15 Types für Enterprise-Klassifikation.
 
     Phase 1.2: Erweitert um Bank Statement, Tax Document, Dunning Letter,
     Purchase Order, Credit Note.
@@ -48,7 +48,7 @@ class ExtractedDocumentType(str, Enum):
     OFFER = "offer"                  # Angebot
     DELIVERY_NOTE = "delivery_note"  # Lieferschein
 
-    # === VERTRAEGE & DOKUMENTE ===
+    # === VERTRÄGE & DOKUMENTE ===
     CONTRACT = "contract"            # Vertrag
     FORM = "form"                    # Formular
     LETTER = "letter"                # Brief/Korrespondenz
@@ -64,7 +64,7 @@ class ExtractedDocumentType(str, Enum):
 
 
 class Currency(str, Enum):
-    """Unterstuetzte Waehrungen."""
+    """Unterstützte Währungen."""
     EUR = "EUR"
     USD = "USD"
     GBP = "GBP"
@@ -72,27 +72,27 @@ class Currency(str, Enum):
 
 
 class AmountSource(str, Enum):
-    """Quelle eines extrahierten Betrags fuer Audit-Trail."""
+    """Quelle eines extrahierten Betrags für Audit-Trail."""
     DOCUMENT = "document"      # Direkt aus Rechnung extrahiert
     COMPUTED = "computed"      # Berechnet (z.B. gross = net + vat)
     NOT_FOUND = "not_found"    # Nicht gefunden
 
 
 class ValidationStatus(str, Enum):
-    """Status einer Validierungspruefung."""
+    """Status einer Validierungsprüfung."""
     VALID = "valid"
     INVALID = "invalid"
-    SKIPPED = "skipped"        # Nicht durchgefuehrt (fehlende Daten)
-    PENDING = "pending"        # Async-Pruefung ausstehend (z.B. VIES)
+    SKIPPED = "skipped"        # Nicht durchgeführt (fehlende Daten)
+    PENDING = "pending"        # Async-Prüfung ausstehend (z.B. VIES)
 
 
 class InvoiceDirection(str, Enum):
     """
     Richtung einer Rechnung basierend auf Admin-Firmendaten.
 
-    INCOMING: Eingangsrechnung - Empfaenger ist die eigene Firma
+    INCOMING: Eingangsrechnung - Empfänger ist die eigene Firma
     OUTGOING: Ausgangsrechnung - Absender ist die eigene Firma
-    UNKNOWN: Keine eindeutige Zuordnung moeglich
+    UNKNOWN: Keine eindeutige Zuordnung möglich
     """
     INCOMING = "incoming"      # Eingangsrechnung (an uns)
     OUTGOING = "outgoing"      # Ausgangsrechnung (von uns)
@@ -107,7 +107,7 @@ class ExtractedAddress(BaseModel):
     """
     Extrahierte Adresse aus einem Dokument.
 
-    Unterstuetzt deutsche Adressformate:
+    Unterstützt deutsche Adressformate:
     - Firma / Person
     - Strasse mit Hausnummer
     - PLZ + Stadt
@@ -115,11 +115,11 @@ class ExtractedAddress(BaseModel):
     """
     company: Optional[str] = Field(None, description="Firmenname")
     person: Optional[str] = Field(None, description="Ansprechpartner / Name")
-    street: Optional[str] = Field(None, description="Strasse")
+    street: Optional[str] = Field(None, description="Straße")
     street_number: Optional[str] = Field(None, description="Hausnummer")
     zip_code: Optional[str] = Field(None, description="Postleitzahl")
     city: Optional[str] = Field(None, description="Stadt")
-    country: str = Field("DE", description="Laendercode (ISO 3166-1 alpha-2)")
+    country: str = Field("DE", description="Ländercode (ISO 3166-1 alpha-2)")
 
     @field_validator("zip_code")
     @classmethod
@@ -131,11 +131,11 @@ class ExtractedAddress(BaseModel):
         # Deutsche PLZ: 5 Ziffern
         if len(cleaned) == 5 and cleaned.isdigit():
             return cleaned
-        # Andere Laender: Original zurueckgeben
+        # Andere Länder: Original zurückgeben
         return cleaned
 
     def is_complete(self) -> bool:
-        """Pruefe ob Adresse vollstaendig ist."""
+        """Prüfe ob Adresse vollständig ist."""
         return bool(self.zip_code and self.city)
 
     def to_single_line(self) -> str:
@@ -158,7 +158,7 @@ class ExtractedAddress(BaseModel):
         'ALPAC Sales - Invoice kunststof bakken en pallets Alpac - kunststof...'
 
         Problem: Logo + Dokumenttyp + echter Firmenname vermischt.
-        Loesung:
+        Lösung:
         1. Entferne Dokumenttyp-Indikatoren (Sales - Invoice, Rechnung, etc.)
         2. Finde duplizierten Firmennamen und behalte den besseren Teil
         """
@@ -182,7 +182,7 @@ class ExtractedAddress(BaseModel):
                 cleaned = cleaned[:idx] + cleaned[idx + len(pattern):]
                 cleaned = cleaned.strip(' -')
 
-        # 2. Deduplizierung: Wenn erstes Wort spaeter nochmal auftaucht
+        # 2. Deduplizierung: Wenn erstes Wort später nochmal auftaucht
         words = cleaned.split()
         if len(words) >= 4:
             first_word_lower = words[0].lower()
@@ -192,13 +192,13 @@ class ExtractedAddress(BaseModel):
                     first_part = ' '.join(words[:i]).rstrip(' -')
                     second_part = ' '.join(words[i:])
 
-                    # Praeferiere den Teil mit Rechtsform-Suffix
+                    # Präferiere den Teil mit Rechtsform-Suffix
                     if any(suffix in second_part for suffix in ['BV', 'B.V.', 'GmbH', 'AG', 'Ltd', 'Inc', 'e.V.']):
                         return second_part
                     if any(suffix in first_part for suffix in ['BV', 'B.V.', 'GmbH', 'AG', 'Ltd', 'Inc', 'e.V.']):
                         return first_part
 
-                    # Praeferiere "Name - Beschreibung" Format (echter Firmenname)
+                    # Präferiere "Name - Beschreibung" Format (echter Firmenname)
                     # "Alpac - kunststof" ist besser als "ALPAC kunststof"
                     if ' - ' in second_part:
                         return second_part
@@ -208,7 +208,7 @@ class ExtractedAddress(BaseModel):
         return cleaned if cleaned else name
 
     def to_multiline(self) -> List[str]:
-        """Formatiere als mehrzeilige Adresse fuer PDF."""
+        """Formatiere als mehrzeilige Adresse für PDF."""
         lines = []
 
         # Bereinigung: OCR-Artefakte entfernen (Logo, Dokumenttyp, Duplikate)
@@ -224,7 +224,7 @@ class ExtractedAddress(BaseModel):
             if p_lower in c_lower or c_lower in p_lower:
                 person_text = ""
             else:
-                # 2. Wort-basierte Pruefung fuer aehnliche Namen
+                # 2. Wort-basierte Prüfung für ähnliche Namen
                 c_words = set(c_lower.split())
                 p_words = set(p_lower.split())
 
@@ -234,7 +234,7 @@ class ExtractedAddress(BaseModel):
 
                 if c_first == p_first and len(c_first) > 2:
                     person_text = ""
-                # Oder: >50% Wort-Ueberlappung
+                # Oder: >50% Wort-Überlappung
                 elif c_words and p_words:
                     overlap = len(c_words & p_words)
                     smaller = min(len(c_words), len(p_words))
@@ -253,7 +253,7 @@ class ExtractedAddress(BaseModel):
         if street_line:
             lines.append(street_line)
 
-        # PLZ und Stadt (immer mit Laendercode fuer Konsistenz)
+        # PLZ und Stadt (immer mit Ländercode für Konsistenz)
         if self.zip_code or self.city:
             city_line = f"{self.zip_code or ''} {self.city or ''}".strip()
             country_code = self.country.upper() if self.country else "DE"
@@ -281,9 +281,9 @@ class ExtractedBankAccount(BaseModel):
 
 class ExtractionValidations(BaseModel):
     """
-    Strukturierte Validierungsergebnisse fuer Audit und Qualitaetssicherung.
+    Strukturierte Validierungsergebnisse für Audit und Qualitätssicherung.
 
-    Enthaelt Pruefungsergebnisse fuer:
+    Enthält Prüfungsergebnisse für:
     - IBAN-Checksum (MOD-97)
     - IBAN-Land vs. Absender-Land
     - USt-IdNr-Land vs. Absender-Land
@@ -303,7 +303,7 @@ class ExtractionValidations(BaseModel):
         None, description="True wenn USt-IdNr-Land = Absender-Land"
     )
     vies_vat_valid: Optional[bool] = Field(
-        None, description="True wenn VIES-Abfrage erfolgreich (null = nicht geprueft)"
+        None, description="True wenn VIES-Abfrage erfolgreich (null = nicht geprüft)"
     )
 
     # === Summen-Konsistenz ===
@@ -323,9 +323,9 @@ class ExtractionValidations(BaseModel):
 
 class TaxBreakdownItem(BaseModel):
     """
-    MwSt-Aufschluesselung fuer eine Steuerkategorie.
+    MwSt-Aufschlüsselung für eine Steuerkategorie.
 
-    Erforderlich fuer ZUGFeRD/XRechnung wenn mehrere MwSt-Saetze
+    Erforderlich für ZUGFeRD/XRechnung wenn mehrere MwSt-Sätze
     auf einer Rechnung vorkommen (z.B. 7% + 19%).
     """
     tax_category_code: str = Field(
@@ -340,7 +340,7 @@ class TaxBreakdownItem(BaseModel):
     )
     taxable_amount: Decimal = Field(
         ...,
-        description="Bemessungsgrundlage (Nettobetrag fuer diese Kategorie)"
+        description="Bemessungsgrundlage (Nettobetrag für diese Kategorie)"
     )
     tax_amount: Decimal = Field(
         ...,
@@ -352,7 +352,7 @@ class TaxBreakdownItem(BaseModel):
     )
     exemption_reason_code: Optional[str] = Field(
         None,
-        description="Code fuer Steuerbefreiung (BT-121, z.B. vatex-eu-ic)"
+        description="Code für Steuerbefreiung (BT-121, z.B. vatex-eu-ic)"
     )
 
 
@@ -381,7 +381,7 @@ class ExtractedLineItem(BaseModel):
 
     @model_validator(mode="after")
     def validate_price_calculation(self) -> "ExtractedLineItem":
-        """Pruefe Plausibilitaet: total_price ~= quantity * unit_price."""
+        """Prüfe Plausibilität: total_price ~= quantity * unit_price."""
         if self.quantity and self.unit_price and self.total_price:
             expected = self.quantity * self.unit_price
             tolerance = Decimal("0.02")  # 2 Cent Toleranz
@@ -401,13 +401,13 @@ class ExtractedInvoiceData(BaseModel):
 
     Extrahiert aus deutschen Rechnungen:
     - Rechnungsnummer, Bestellnummer, Kundennummer
-    - Rechnungsdatum, Faelligkeitsdatum
+    - Rechnungsdatum, Fälligkeitsdatum
     - Absender (Rechnungssteller) mit USt-ID, IBAN
-    - Empfaenger
-    - Betraege: Netto, MwSt, Brutto
+    - Empfänger
+    - Beträge: Netto, MwSt, Brutto
     - Positionen (optional)
 
-    Alle Felder sind optional, da nicht jede Rechnung vollstaendig ist.
+    Alle Felder sind optional, da nicht jede Rechnung vollständig ist.
     """
     document_type: Literal["invoice"] = "invoice"
 
@@ -417,7 +417,7 @@ class ExtractedInvoiceData(BaseModel):
     customer_number: Optional[str] = Field(None, description="Kundennummer")
     delivery_note_number: Optional[str] = Field(None, description="Lieferscheinnummer")
     supplier_number: Optional[str] = Field(
-        None, description="Lieferantennummer/Kreditorennummer fuer ERP-Integration"
+        None, description="Lieferantennummer/Kreditorennummer für ERP-Integration"
     )
 
     # === Daten ===
@@ -425,9 +425,9 @@ class ExtractedInvoiceData(BaseModel):
     invoice_date_raw: Optional[str] = Field(
         None, description="Rechnungsdatum Original-String (z.B. '06.04.2020')"
     )
-    due_date: Optional[date] = Field(None, description="Faelligkeitsdatum")
+    due_date: Optional[date] = Field(None, description="Fälligkeitsdatum")
     due_date_raw: Optional[str] = Field(
-        None, description="Faelligkeitsdatum Original-String"
+        None, description="Fälligkeitsdatum Original-String"
     )
     service_period_start: Optional[date] = Field(None, description="Leistungszeitraum Beginn")
     service_period_end: Optional[date] = Field(None, description="Leistungszeitraum Ende")
@@ -441,11 +441,11 @@ class ExtractedInvoiceData(BaseModel):
     sender_phone: Optional[str] = Field(None, description="Telefon des Absenders")
     sender_contact: Optional[str] = Field(None, description="Ansprechpartner des Absenders")
 
-    # === Empfaenger ===
-    recipient: Optional[ExtractedAddress] = Field(None, description="Empfaenger / Rechnungsadresse")
-    recipient_vat_id: Optional[str] = Field(None, description="USt-IdNr des Empfaengers")
+    # === Empfänger ===
+    recipient: Optional[ExtractedAddress] = Field(None, description="Empfänger / Rechnungsadresse")
+    recipient_vat_id: Optional[str] = Field(None, description="USt-IdNr des Empfängers")
 
-    # === Zusaetzliche Lieferanteninformationen ===
+    # === Zusätzliche Lieferanteninformationen ===
     sender_tax_number_alternative: Optional[str] = Field(
         None, description="Alternative Steuernummer des Absenders (z.B. NL-Nummer 85xxxxxx)"
     )
@@ -471,10 +471,10 @@ class ExtractedInvoiceData(BaseModel):
         None, description="Grund für Steuerbefreiung (z.B. 'Intra-Community supply', 'Reverse Charge')"
     )
     intra_community_supply: bool = Field(
-        False, description="True bei innergemeinschaftlicher Lieferung (EU-Grenzueberschreitend)"
+        False, description="True bei innergemeinschaftlicher Lieferung (EU-Grenzüberschreitend)"
     )
 
-    # === Betraege ===
+    # === Beträge ===
     net_amount: Optional[Decimal] = Field(None, ge=0, description="Nettobetrag")
     vat_rate: Optional[Decimal] = Field(None, ge=0, le=100, description="MwSt-Satz in % (7, 19)")
     vat_amount: Optional[Decimal] = Field(None, ge=0, description="MwSt-Betrag")
@@ -485,7 +485,7 @@ class ExtractedInvoiceData(BaseModel):
     gross_amount_source: AmountSource = Field(
         AmountSource.NOT_FOUND, description="Quelle des Bruttobetrags"
     )
-    currency: Currency = Field(Currency.EUR, description="Waehrung")
+    currency: Currency = Field(Currency.EUR, description="Währung")
     vat_reason: Optional[str] = Field(
         None, description="Grund für MwSt-Höhe (z.B. 'intra-community supply / reverse charge')"
     )
@@ -498,23 +498,23 @@ class ExtractedInvoiceData(BaseModel):
     payment_terms_days: Optional[int] = Field(
         None,
         ge=0,
-        description="Zahlungsfrist in Tagen (strukturiert fuer Berechnungen)"
+        description="Zahlungsfrist in Tagen (strukturiert für Berechnungen)"
     )
-    payment_method: Optional[str] = Field(None, description="Zahlungsart (Ueberweisung, Lastschrift, etc.)")
+    payment_method: Optional[str] = Field(None, description="Zahlungsart (Überweisung, Lastschrift, etc.)")
 
     # Skonto-Daten
     discount_percent: Optional[Decimal] = Field(None, ge=0, le=100, description="Skonto-Prozentsatz")
     discount_days: Optional[int] = Field(None, ge=0, description="Skonto-Frist in Tagen")
     discount_amount: Optional[Decimal] = Field(None, ge=0, description="Berechneter Skonto-Betrag")
-    discount_due_date: Optional[date] = Field(None, description="Skonto-Faelligkeitsdatum")
+    discount_due_date: Optional[date] = Field(None, description="Skonto-Fälligkeitsdatum")
 
     # Volltext-Infos
     early_payment_info: Optional[str] = Field(None, description="Skonto-Volltext (z.B. '2% Skonto bei Zahlung innerhalb 10 Tagen')")
-    late_payment_info: Optional[str] = Field(None, description="Verzugszinsen-Info (z.B. '9% ueber Basiszinssatz')")
+    late_payment_info: Optional[str] = Field(None, description="Verzugszinsen-Info (z.B. '9% über Basiszinssatz')")
 
     # === Meta ===
     extraction_confidence: float = Field(0.0, ge=0.0, le=1.0, description="Extraktions-Konfidenz (0-1)")
-    needs_review: bool = Field(False, description="Manuelle Pruefung erforderlich")
+    needs_review: bool = Field(False, description="Manuelle Prüfung erforderlich")
     extraction_warnings: List[str] = Field(default_factory=list, description="Warnungen bei der Extraktion")
 
     # === OCR Metadaten ===
@@ -548,27 +548,27 @@ class ExtractedInvoiceData(BaseModel):
     # === XRechnung Pflichtfelder (B2G) ===
     buyer_reference: Optional[str] = Field(
         None,
-        description="Leitweg-ID / Buyer Reference (BT-10) - PFLICHT fuer B2G-Rechnungen"
+        description="Leitweg-ID / Buyer Reference (BT-10) - PFLICHT für B2G-Rechnungen"
     )
     business_process_type: Optional[str] = Field(
         None,
-        description="Geschaeftsprozesstyp (BT-23) - z.B. 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0'"
+        description="Geschäftsprozesstyp (BT-23) - z.B. 'urn:fdc:peppol.eu:2017:poacc:billing:01:1.0'"
     )
     seller_electronic_address: Optional[str] = Field(
         None,
-        description="Elektronische Adresse Verkaeufer (BT-34) - z.B. GLN, PEPPOL-ID, E-Mail"
+        description="Elektronische Adresse Verkäufer (BT-34) - z.B. GLN, PEPPOL-ID, E-Mail"
     )
     seller_electronic_address_scheme: Optional[str] = Field(
         None,
-        description="Schema der elektronischen Adresse (BT-34-1) - z.B. '0088' fuer GLN, '0204' fuer Leitweg-ID"
+        description="Schema der elektronischen Adresse (BT-34-1) - z.B. '0088' für GLN, '0204' für Leitweg-ID"
     )
     buyer_electronic_address: Optional[str] = Field(
         None,
-        description="Elektronische Adresse Kaeufer (BT-49)"
+        description="Elektronische Adresse Käufer (BT-49)"
     )
     buyer_electronic_address_scheme: Optional[str] = Field(
         None,
-        description="Schema der elektronischen Adresse Kaeufer (BT-49-1)"
+        description="Schema der elektronischen Adresse Käufer (BT-49-1)"
     )
 
     # === Rechnungstyp und Kontext ===
@@ -590,23 +590,23 @@ class ExtractedInvoiceData(BaseModel):
     )
     purchase_order_reference: Optional[str] = Field(
         None,
-        description="Bestellnummer des Kaeufers (BT-13) - Referenz auf Bestellung"
+        description="Bestellnummer des Käufers (BT-13) - Referenz auf Bestellung"
     )
 
-    # === Zahlungsdetails (erweitert fuer E-Invoice) ===
+    # === Zahlungsdetails (erweitert für E-Invoice) ===
     payment_means_code: Optional[str] = Field(
         None,
-        description="UN/CEFACT Payment Means Code (BT-81) - 30=Ueberweisung, 58=SEPA, 59=SEPA-Lastschrift"
+        description="UN/CEFACT Payment Means Code (BT-81) - 30=Überweisung, 58=SEPA, 59=SEPA-Lastschrift"
     )
     payment_reference: Optional[str] = Field(
         None,
         description="Verwendungszweck (BT-83) - Strukturierte Zahlungsreferenz"
     )
 
-    # === MwSt-Aufschluesselung (mehrere Saetze) ===
+    # === MwSt-Aufschlüsselung (mehrere Sätze) ===
     tax_breakdown: List[TaxBreakdownItem] = Field(
         default_factory=list,
-        description="MwSt-Aufschluesselung fuer mehrere Steuersaetze (BG-23)"
+        description="MwSt-Aufschlüsselung für mehrere Steuersätze (BG-23)"
     )
 
     # === E-Invoice Metadaten ===
@@ -633,7 +633,7 @@ class ExtractedInvoiceData(BaseModel):
 
     @model_validator(mode="after")
     def validate_amounts(self) -> "ExtractedInvoiceData":
-        """Pruefe Plausibilitaet: Netto + MwSt = Brutto."""
+        """Prüfe Plausibilität: Netto + MwSt = Brutto."""
         if self.net_amount and self.vat_amount and self.gross_amount:
             expected_gross = self.net_amount + self.vat_amount
             tolerance = Decimal("0.02")  # 2 Cent Toleranz
@@ -663,7 +663,7 @@ class ExtractedOrderData(BaseModel):
     """
     Strukturierte Bestelldaten.
 
-    Extrahiert aus deutschen Bestellungen/Auftragsbestaetigungen.
+    Extrahiert aus deutschen Bestellungen/Auftragsbestätigungen.
     """
     document_type: Literal["order"] = "order"
 
@@ -674,8 +674,8 @@ class ExtractedOrderData(BaseModel):
 
     # === Daten ===
     order_date: Optional[date] = Field(None, description="Bestelldatum")
-    delivery_date: Optional[date] = Field(None, description="Gewuenschter Liefertermin")
-    confirmation_date: Optional[date] = Field(None, description="Auftragsbestaetigungsdatum")
+    delivery_date: Optional[date] = Field(None, description="Gewünschter Liefertermin")
+    confirmation_date: Optional[date] = Field(None, description="Auftragsbestätigungsdatum")
 
     # === Besteller ===
     orderer: Optional[ExtractedAddress] = Field(None, description="Besteller")
@@ -691,9 +691,9 @@ class ExtractedOrderData(BaseModel):
     # === Positionen ===
     line_items: List[ExtractedLineItem] = Field(default_factory=list, description="Bestellpositionen")
 
-    # === Betraege ===
+    # === Beträge ===
     total_amount: Optional[Decimal] = Field(None, ge=0, description="Gesamtbetrag")
-    currency: Currency = Field(Currency.EUR, description="Waehrung")
+    currency: Currency = Field(Currency.EUR, description="Währung")
 
     # === Bedingungen ===
     payment_terms: Optional[str] = Field(None, description="Zahlungsbedingungen")
@@ -713,13 +713,13 @@ class ExtractedContractData(BaseModel):
     """
     Strukturierte Vertragsdaten.
 
-    Extrahiert aus deutschen Vertraegen.
+    Extrahiert aus deutschen Verträgen.
     """
     document_type: Literal["contract"] = "contract"
 
     # === Referenznummern ===
     contract_number: Optional[str] = Field(None, description="Vertragsnummer")
-    previous_contract_number: Optional[str] = Field(None, description="Vorheriger Vertrag (bei Verlaengerung)")
+    previous_contract_number: Optional[str] = Field(None, description="Vorheriger Vertrag (bei Verlängerung)")
 
     # === Daten ===
     contract_date: Optional[date] = Field(None, description="Vertragsdatum / Unterzeichnung")
@@ -728,9 +728,9 @@ class ExtractedContractData(BaseModel):
 
     # === Laufzeit ===
     duration_months: Optional[int] = Field(None, ge=0, description="Vertragslaufzeit in Monaten")
-    notice_period: Optional[str] = Field(None, description="Kuendigungsfrist (z.B. '3 Monate')")
-    auto_renewal: Optional[bool] = Field(None, description="Automatische Verlaengerung")
-    renewal_period: Optional[str] = Field(None, description="Verlaengerungszeitraum")
+    notice_period: Optional[str] = Field(None, description="Kündigungsfrist (z.B. '3 Monate')")
+    auto_renewal: Optional[bool] = Field(None, description="Automatische Verlängerung")
+    renewal_period: Optional[str] = Field(None, description="Verlängerungszeitraum")
 
     # === Vertragspartner ===
     party_a: Optional[ExtractedAddress] = Field(None, description="Vertragspartner A")
@@ -741,7 +741,7 @@ class ExtractedContractData(BaseModel):
     # === Werte ===
     contract_value: Optional[Decimal] = Field(None, ge=0, description="Vertragswert gesamt")
     monthly_value: Optional[Decimal] = Field(None, ge=0, description="Monatlicher Betrag")
-    currency: Currency = Field(Currency.EUR, description="Waehrung")
+    currency: Currency = Field(Currency.EUR, description="Währung")
 
     # === Vertragsgegenstand ===
     subject: Optional[str] = Field(None, description="Vertragsgegenstand (Zusammenfassung)")
@@ -772,9 +772,9 @@ class DocumentClassificationResult(BaseModel):
 
 class ExtractedDocumentData(BaseModel):
     """
-    Wrapper fuer alle extrahierten Daten eines Dokuments.
+    Wrapper für alle extrahierten Daten eines Dokuments.
 
-    Dies ist das Schema fuer das documents.extracted_data JSONB-Feld.
+    Dies ist das Schema für das documents.extracted_data JSONB-Feld.
     """
     # === Klassifizierung ===
     classification: Optional[DocumentClassificationResult] = Field(
@@ -786,11 +786,11 @@ class ExtractedDocumentData(BaseModel):
     order: Optional[ExtractedOrderData] = Field(None, description="Bestelldaten")
     contract: Optional[ExtractedContractData] = Field(None, description="Vertragsdaten")
 
-    # === Allgemeine extrahierte Entitaeten ===
+    # === Allgemeine extrahierte Entitäten ===
     vat_ids: List[str] = Field(default_factory=list, description="Alle gefundenen USt-IdNr")
     ibans: List[str] = Field(default_factory=list, description="Alle gefundenen IBANs")
     dates: List[date] = Field(default_factory=list, description="Alle gefundenen Daten")
-    amounts: List[Decimal] = Field(default_factory=list, description="Alle gefundenen Betraege")
+    amounts: List[Decimal] = Field(default_factory=list, description="Alle gefundenen Beträge")
     companies: List[str] = Field(default_factory=list, description="Alle gefundenen Firmennamen")
 
     # === Meta ===
@@ -801,19 +801,19 @@ class ExtractedDocumentData(BaseModel):
         None, description="SHA256 Hash des Originaldokuments (sha256:...)"
     )
 
-    # === Uebersetzungs-Metadaten (NEU fuer Mehrsprachigkeit) ===
+    # === Übersetzungs-Metadaten (NEU für Mehrsprachigkeit) ===
     original_language: Optional[str] = Field(
         None, description="Originalsprache des Dokuments (ISO 639-1, z.B. 'ru', 'pl')"
     )
     was_translated: bool = Field(
-        False, description="Ob der Text vor der Extraktion uebersetzt wurde"
+        False, description="Ob der Text vor der Extraktion übersetzt wurde"
     )
     translation_confidence: Optional[float] = Field(
-        None, ge=0.0, le=1.0, description="Konfidenz der Uebersetzung (0.0-1.0)"
+        None, ge=0.0, le=1.0, description="Konfidenz der Übersetzung (0.0-1.0)"
     )
 
     def get_primary_data(self) -> Optional[Union[ExtractedInvoiceData, ExtractedOrderData, ExtractedContractData]]:
-        """Gibt die typspezifischen Daten zurueck."""
+        """Gibt die typspezifischen Daten zurück."""
         if self.invoice:
             return self.invoice
         if self.order:

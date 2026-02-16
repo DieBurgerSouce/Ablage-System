@@ -4,7 +4,7 @@ Dieses Modul bietet Funktionen zur:
 - Protokollierung von Suchanfragen
 - Analyse von Suchmustern
 - Generierung von Nutzungsstatistiken
-- Verbesserung der Suchqualitaet
+- Verbesserung der Suchqualität
 """
 
 import structlog
@@ -40,12 +40,12 @@ def calculate_position_weight(position: int, decay_rate: float = 0.15) -> float:
     - Position 20: ~0.07 (sehr niedrige Relevanz)
 
     Die Idee: Ein Klick auf Position 1 zeigt starke Relevanz an,
-    waehrend ein Klick auf Position 10 weniger aussagekraeftig ist
+    während ein Klick auf Position 10 weniger aussagekraeftig ist
     (User musste weit scrollen).
 
     Args:
         position: 1-basierte Klick-Position (1 = erstes Ergebnis)
-        decay_rate: Abklingrate (Standard: 0.15, hoeher = schnellerer Abfall)
+        decay_rate: Abklingrate (Standard: 0.15, höher = schnellerer Abfall)
 
     Returns:
         Gewicht zwischen 0 und 1
@@ -63,7 +63,7 @@ def calculate_weighted_ctr(
 ) -> float:
     """Berechnet die gewichtete Click-Through-Rate.
 
-    Im Gegensatz zur einfachen CTR (Klicks / Suchen) beruecksichtigt
+    Im Gegensatz zur einfachen CTR (Klicks / Suchen) berücksichtigt
     die gewichtete CTR die Position der Klicks.
 
     Args:
@@ -72,7 +72,7 @@ def calculate_weighted_ctr(
         max_possible_score: Maximaler Score (default: total_searches * 1.0)
 
     Returns:
-        Gewichtete CTR zwischen 0 und 1 (oder hoeher bei Mehrfachklicks)
+        Gewichtete CTR zwischen 0 und 1 (oder höher bei Mehrfachklicks)
     """
     if total_searches == 0:
         return 0.0
@@ -85,32 +85,32 @@ def calculate_weighted_ctr(
 
 
 class SearchAnalyticsService:
-    """Service fuer Such-Analytics und Reporting.
+    """Service für Such-Analytics und Reporting.
 
     Bietet Funktionen zur:
     - Protokollierung von Suchanfragen mit Metadaten
     - Klick-Tracking auf Suchergebnisse
-    - Aggregierte Statistiken (taegliche, woechentliche Auswertungen)
+    - Aggregierte Statistiken (tägliche, woechentliche Auswertungen)
     - Analyse von Suchmustern und Filter-Nutzung
     - Identifikation von Suchanfragen ohne Ergebnisse
 
     Der Service anonymisiert IP-Adressen (DSGVO-konform) und
-    verwendet eine materialisierte View fuer performante Abfragen.
+    verwendet eine materialisierte View für performante Abfragen.
 
     Hinweis: Alle zeitbasierten Abfragen verwenden UTC.
     """
 
     def _anonymize_ip(self, ip_address: Optional[str]) -> Optional[str]:
-        """Anonymisiert eine IP-Adresse fuer DSGVO-Konformitaet.
+        """Anonymisiert eine IP-Adresse für DSGVO-Konformität.
 
-        IPv4: Behaelt erste zwei Oktetts (x.x.0.0)
-        IPv6: Behaelt erste 48 Bits / 3 Segmente (xxxx:xxxx:xxxx::)
+        IPv4: Behält erste zwei Oktetts (x.x.0.0)
+        IPv6: Behält erste 48 Bits / 3 Segmente (xxxx:xxxx:xxxx::)
 
         Args:
             ip_address: Zu anonymisierende IP-Adresse
 
         Returns:
-            Anonymisierte IP-Adresse oder None bei ungueltigem Format
+            Anonymisierte IP-Adresse oder None bei ungültigem Format
         """
         if not ip_address:
             return None
@@ -123,7 +123,7 @@ class SearchAnalyticsService:
                 return f"{parts[0]}.{parts[1]}.0.0"
             elif isinstance(ip, ipaddress.IPv6Address):
                 # Behalte erste 48 Bits (3 Segmente): xxxx:xxxx:xxxx::
-                # Expandiere zuerst zu vollem Format fuer konsistente Verarbeitung
+                # Expandiere zuerst zu vollem Format für konsistente Verarbeitung
                 expanded = ip.exploded.split(":")
                 return f"{expanded[0]}:{expanded[1]}:{expanded[2]}::"
         except ValueError:
@@ -160,17 +160,17 @@ class SearchAnalyticsService:
             query: Suchbegriff
             search_type: Art der Suche (fts, semantic, hybrid)
             total_results: Anzahl der Treffer
-            execution_time_ms: Gesamtausfuehrungszeit
+            execution_time_ms: Gesamtausführungszeit
             user_id: Benutzer-ID (optional)
             filters: Angewendete Filter (optional)
             page: Aktuelle Seite
             per_page: Ergebnisse pro Seite
-            fts_time_ms: FTS-Ausfuehrungszeit (optional)
-            semantic_time_ms: Semantic-Ausfuehrungszeit (optional)
-            session_id: Session-ID fuer Gruppierung (optional)
+            fts_time_ms: FTS-Ausführungszeit (optional)
+            semantic_time_ms: Semantic-Ausführungszeit (optional)
+            session_id: Session-ID für Gruppierung (optional)
             previous_query_id: Vorherige Anfrage bei Verfeinerung (optional)
             user_agent: Browser User-Agent (optional)
-            ip_address: IP-Adresse fuer Aggregation (optional)
+            ip_address: IP-Adresse für Aggregation (optional)
 
         Returns:
             UUID der erstellten Analytics-Eintrag
@@ -275,14 +275,14 @@ class SearchAnalyticsService:
             logger.warning("analytics_not_found", analytics_id=str(analytics_id))
             return
 
-        # Klick-Zaehler aktualisieren
+        # Klick-Zähler aktualisieren
         analytics.clicked_results = (analytics.clicked_results or 0) + 1
 
         # Erste Klick-Position merken
         if analytics.first_click_position is None:
             analytics.first_click_position = result_position
 
-        # Download-Zaehler
+        # Download-Zähler
         if is_download:
             analytics.downloaded_count = (analytics.downloaded_count or 0) + 1
 
@@ -324,8 +324,8 @@ class SearchAnalyticsService:
 
         Args:
             db: Datenbank-Session
-            days: Anzahl der Tage fuer die Statistik
-            user_id: Optional - nur Statistiken fuer diesen Benutzer
+            days: Anzahl der Tage für die Statistik
+            user_id: Optional - nur Statistiken für diesen Benutzer
 
         Returns:
             Dictionary mit Statistiken
@@ -399,7 +399,7 @@ class SearchAnalyticsService:
             func.sum(func.cast(SearchAnalytics.has_status_filter, Integer)).label("status_filter"),
         ).where(and_(*base_filter))
 
-        # Verwende raw SQL fuer Boolean-Summe
+        # Verwende raw SQL für Boolean-Summe
         filter_usage_sql = text("""
             SELECT
                 SUM(CASE WHEN has_document_type_filter THEN 1 ELSE 0 END) as type_filter,
@@ -456,16 +456,16 @@ class SearchAnalyticsService:
         db: AsyncSession,
         days: int = 30,
     ) -> List[Dict[str, Any]]:
-        """Liefert taegliche Suchstatistiken.
+        """Liefert tägliche Suchstatistiken.
 
-        Verwendet die materialisierte View fuer Performance.
+        Verwendet die materialisierte View für Performance.
 
         Args:
             db: Datenbank-Session
             days: Anzahl der Tage
 
         Returns:
-            Liste mit taeglichen Statistiken
+            Liste mit täglichen Statistiken
         """
         since = datetime.now(timezone.utc) - timedelta(days=days)
 
@@ -601,7 +601,7 @@ class SearchAnalyticsService:
     ) -> List[Dict[str, Any]]:
         """Liefert Suchanfragen ohne Ergebnisse.
 
-        Nuetzlich fuer die Verbesserung der Suchqualitaet.
+        Nützlich für die Verbesserung der Suchqualität.
 
         Args:
             db: Datenbank-Session
@@ -640,7 +640,7 @@ class SearchAnalyticsService:
         ]
 
     async def refresh_daily_statistics(self, db: AsyncSession) -> bool:
-        """Aktualisiert die materialisierte View fuer taegliche Statistiken.
+        """Aktualisiert die materialisierte View für tägliche Statistiken.
 
         Sollte periodisch aufgerufen werden (z.B. via Celery Beat).
 
@@ -672,14 +672,14 @@ class SearchAnalyticsService:
     ) -> Dict[str, Any]:
         """Liefert Position-Weighted CTR Statistiken.
 
-        Die gewichtete CTR beruecksichtigt die Position der Klicks:
+        Die gewichtete CTR berücksichtigt die Position der Klicks:
         - Ein Klick auf Position 1 ist wertvoller als auf Position 10
-        - Ermoeglicht bessere Bewertung der Suchqualitaet
+        - Ermöglicht bessere Bewertung der Suchqualität
 
         Args:
             db: Datenbank-Session
             days: Analysezeitraum in Tagen
-            min_searches: Mindestanzahl Suchen fuer Einbeziehung
+            min_searches: Mindestanzahl Suchen für Einbeziehung
             limit: Maximale Anzahl Ergebnisse
 
         Returns:

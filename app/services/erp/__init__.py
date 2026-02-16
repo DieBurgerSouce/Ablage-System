@@ -2,7 +2,7 @@
 ERP Integration Module.
 
 Enterprise-Level ERP-Anbindung:
-- Abstrakte Basisklasse fuer alle ERP-Systeme
+- Abstrakte Basisklasse für alle ERP-Systeme
 - Odoo-spezifische Implementierung
 - Bidirektionale Synchronisation
 - Konflikt-Management

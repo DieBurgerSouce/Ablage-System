@@ -2,7 +2,7 @@
 """
 Dashboard Widgets API Endpoints.
 
-API-Endpoints fuer Dashboard-Widget-Daten:
+API-Endpoints für Dashboard-Widget-Daten:
 - Cash-Flow Forecast (30/60/90 Tage Prognose)
 - Supplier Performance (Lieferanten-Metriken)
 - Customer Lifetime Value (Kundenwert-Analyse)
@@ -56,7 +56,7 @@ class ForecastDataPointResponse(BaseModel):
 
 
 class PeriodForecastResponse(BaseModel):
-    """Zusammenfassung fuer einen Prognosezeitraum."""
+    """Zusammenfassung für einen Prognosezeitraum."""
     periodDays: int = Field(..., description="Anzahl Tage")
     totalIncome: float = Field(..., description="Gesamt erwartete Einnahmen")
     totalExpenses: float = Field(..., description="Gesamt erwartete Ausgaben")
@@ -91,7 +91,7 @@ class CashFlowForecastResponse(BaseModel):
 
 
 class SupplierMetricsResponse(BaseModel):
-    """Metriken fuer einen Lieferanten."""
+    """Metriken für einen Lieferanten."""
     id: str = Field(..., description="Lieferanten-ID")
     name: str = Field(..., description="Lieferantenname")
     punctuality: float = Field(..., description="Puenktlichkeit (%)")
@@ -105,7 +105,7 @@ class SupplierMetricsResponse(BaseModel):
 class PriceTrendDataResponse(BaseModel):
     """Preistrend-Datenpunkt."""
     period: str = Field(..., description="Periode (YYYY-MM)")
-    change: float = Field(..., description="Aenderung (%)")
+    change: float = Field(..., description="Änderung (%)")
     orders: int = Field(..., description="Anzahl Bestellungen")
 
 
@@ -129,7 +129,7 @@ class SupplierPerformanceResponse(BaseModel):
 
 
 class CustomerMetricsResponse(BaseModel):
-    """Metriken fuer einen Kunden."""
+    """Metriken für einen Kunden."""
     id: str = Field(..., description="Kunden-ID")
     name: str = Field(..., description="Kundenname")
     ltv: float = Field(..., description="Lifetime Value")
@@ -198,7 +198,7 @@ async def get_cash_flow_forecast(
     current_user: User = Depends(get_current_active_user),
 ) -> CashFlowForecastResponse:
     """
-    Ruft Cash-Flow Prognose fuer Dashboard-Widget ab.
+    Ruft Cash-Flow Prognose für Dashboard-Widget ab.
 
     Die Prognose basiert auf:
     - Offenen Forderungen (erwartete Einnahmen)
@@ -207,7 +207,7 @@ async def get_cash_flow_forecast(
 
     **Returns:**
     - 30/60/90 Tage Prognosen
-    - Taegliche Datenpunkte fuer Chart
+    - Tägliche Datenpunkte für Chart
     - Skonto-Auswirkungen
     - Risikowanrungen bei kritischer Liquiditaet
     """
@@ -292,7 +292,7 @@ async def get_cash_flow_forecast(
     "/cash-flow-forecast/chart",
     response_model=List[ForecastDataPointResponse],
     summary="Cash-Flow Chart-Daten",
-    description="Liefert taegliche Datenpunkte fuer Chart-Visualisierung.",
+    description="Liefert tägliche Datenpunkte für Chart-Visualisierung.",
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_cash_flow_chart_data(
@@ -302,10 +302,10 @@ async def get_cash_flow_chart_data(
     current_user: User = Depends(get_current_active_user),
 ) -> List[ForecastDataPointResponse]:
     """
-    Liefert Chart-Daten fuer Cash-Flow Visualisierung.
+    Liefert Chart-Daten für Cash-Flow Visualisierung.
 
-    Optimiert fuer Frontend-Charts mit:
-    - Taeglichen Datenpunkten
+    Optimiert für Frontend-Charts mit:
+    - Täglichen Datenpunkten
     - Einnahmen vs Ausgaben
     - Kumulativem Saldo
     """
@@ -349,7 +349,7 @@ async def get_cash_flow_chart_data(
     "/supplier-performance",
     response_model=SupplierPerformanceResponse,
     summary="Lieferanten-Performance abrufen",
-    description="Liefert Lieferanten-Metriken fuer Dashboard-Widget.",
+    description="Liefert Lieferanten-Metriken für Dashboard-Widget.",
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_supplier_performance(
@@ -359,7 +359,7 @@ async def get_supplier_performance(
     current_user: User = Depends(get_current_active_user),
 ) -> SupplierPerformanceResponse:
     """
-    Ruft Lieferanten-Performance fuer Dashboard-Widget ab.
+    Ruft Lieferanten-Performance für Dashboard-Widget ab.
 
     Metriken:
     - Puenktlichkeit (On-Time %)
@@ -370,7 +370,7 @@ async def get_supplier_performance(
     **Returns:**
     - Aggregierte Metriken
     - Top-Lieferanten-Liste
-    - Preistrend-Daten fuer Chart
+    - Preistrend-Daten für Chart
     - Anzahl kritischer Lieferanten
     """
     try:
@@ -424,7 +424,7 @@ async def get_supplier_performance(
     "/customer-ltv",
     response_model=CustomerLTVResponse,
     summary="Customer Lifetime Value abrufen",
-    description="Liefert Kundenwert-Metriken fuer Dashboard-Widget.",
+    description="Liefert Kundenwert-Metriken für Dashboard-Widget.",
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_customer_ltv(
@@ -434,11 +434,11 @@ async def get_customer_ltv(
     current_user: User = Depends(get_current_active_user),
 ) -> CustomerLTVResponse:
     """
-    Ruft Customer Lifetime Value fuer Dashboard-Widget ab.
+    Ruft Customer Lifetime Value für Dashboard-Widget ab.
 
     Metriken:
     - Kumulativer Umsatz pro Kunde
-    - Trend-Analyse (wachsend/ruecklaeufig)
+    - Trend-Analyse (wachsend/rücklaeufig)
     - Churn-Risiko-Indikator
     - Top-Kunden-Ranking
 
@@ -446,7 +446,7 @@ async def get_customer_ltv(
     - Aggregierte LTV-Metriken
     - Top-Kunden-Liste
     - Risiko-Kunden-Liste
-    - Trend-Daten fuer Chart
+    - Trend-Daten für Chart
     """
     try:
         service = get_customer_ltv_service()
@@ -540,8 +540,8 @@ class DSODataPointResponse(BaseModel):
 
 
 class AgingBucketResponse(BaseModel):
-    """Faelligkeitsklasse fuer ausstehende Rechnungen."""
-    label: str = Field(..., description="Bezeichnung der Faelligkeitsklasse")
+    """Fälligkeitsklasse für ausstehende Rechnungen."""
+    label: str = Field(..., description="Bezeichnung der Fälligkeitsklasse")
     count: int = Field(..., description="Anzahl Rechnungen")
     amount: float = Field(..., description="Gesamtbetrag")
     percentage: float = Field(..., description="Anteil in Prozent")
@@ -558,11 +558,11 @@ class DSOTrackerResponse(BaseModel):
         default_factory=list, description="DSO-Trend-Datenpunkte"
     )
     agingBuckets: List[AgingBucketResponse] = Field(
-        default_factory=list, description="Faelligkeitsverteilung"
+        default_factory=list, description="Fälligkeitsverteilung"
     )
     totalOutstanding: float = Field(..., description="Gesamt ausstehender Betrag")
     totalReceivables: float = Field(..., description="Gesamtforderungen")
-    overdueCount: int = Field(..., description="Anzahl ueberfaelliger Rechnungen")
+    overdueCount: int = Field(..., description="Anzahl überfälliger Rechnungen")
     comparison: Optional[Dict[str, str]] = Field(
         None, description="Vergleich mit Vorperiode"
     )
@@ -574,7 +574,7 @@ class DSOTrackerResponse(BaseModel):
 
 
 class CategoryMarginResponse(BaseModel):
-    """Margen-Daten fuer eine Kategorie."""
+    """Margen-Daten für eine Kategorie."""
     category: str = Field(..., description="Dokumentkategorie")
     revenue: float = Field(..., description="Umsatz")
     costs: float = Field(..., description="Kosten")
@@ -621,13 +621,13 @@ class MarginAnalyzerResponse(BaseModel):
     "/revenue-trend",
     response_model=RevenueTrendResponse,
     summary="Umsatz-Trend abrufen",
-    description="Liefert Umsatz-Trend-Daten fuer Dashboard-Widget mit Zeitreihen.",
+    description="Liefert Umsatz-Trend-Daten für Dashboard-Widget mit Zeitreihen.",
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_revenue_trend(
     request: Request,  # Required for rate limiter
     date_from: Optional[date] = Query(
-        None, description="Startdatum (Standard: 6 Monate zurueck)"
+        None, description="Startdatum (Standard: 6 Monate zurück)"
     ),
     date_to: Optional[date] = Query(
         None, description="Enddatum (Standard: heute)"
@@ -639,7 +639,7 @@ async def get_revenue_trend(
     current_user: User = Depends(get_current_active_user),
 ) -> RevenueTrendResponse:
     """
-    Ruft Umsatz-Trend fuer Dashboard-Widget ab.
+    Ruft Umsatz-Trend für Dashboard-Widget ab.
 
     Metriken:
     - Monatlicher Umsatz und Ausgaben
@@ -647,7 +647,7 @@ async def get_revenue_trend(
     - Optionaler Periodenvergleich
 
     **Returns:**
-    - Zeitreihen-Datenpunkte fuer Chart
+    - Zeitreihen-Datenpunkte für Chart
     - Aggregierte Gesamtwerte
     - Vergleichsdaten (optional)
     """
@@ -707,13 +707,13 @@ async def get_revenue_trend(
     "/dso-tracker",
     response_model=DSOTrackerResponse,
     summary="DSO-Tracker abrufen",
-    description="Liefert Days Sales Outstanding Metriken fuer Dashboard-Widget.",
+    description="Liefert Days Sales Outstanding Metriken für Dashboard-Widget.",
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_dso_tracker(
     request: Request,  # Required for rate limiter
     date_from: Optional[date] = Query(
-        None, description="Startdatum (Standard: 6 Monate zurueck)"
+        None, description="Startdatum (Standard: 6 Monate zurück)"
     ),
     date_to: Optional[date] = Query(
         None, description="Enddatum (Standard: heute)"
@@ -725,17 +725,17 @@ async def get_dso_tracker(
     current_user: User = Depends(get_current_active_user),
 ) -> DSOTrackerResponse:
     """
-    Ruft DSO-Metriken fuer Dashboard-Widget ab.
+    Ruft DSO-Metriken für Dashboard-Widget ab.
 
     Metriken:
     - Aktueller DSO-Wert
     - 6-Monats-Trend
-    - Faelligkeitsverteilung (Aging Buckets)
+    - Fälligkeitsverteilung (Aging Buckets)
     - Branchenbenchmark
 
     **Returns:**
     - DSO-Trend-Datenpunkte
-    - Faelligkeitsklassen
+    - Fälligkeitsklassen
     - Ausstehende Betraege
     - Vergleichsdaten (optional)
     """
@@ -805,13 +805,13 @@ async def get_dso_tracker(
     "/margin-analyzer",
     response_model=MarginAnalyzerResponse,
     summary="Margen-Analyse abrufen",
-    description="Liefert Margen-Analyse-Daten nach Kategorie fuer Dashboard-Widget.",
+    description="Liefert Margen-Analyse-Daten nach Kategorie für Dashboard-Widget.",
 )
 @limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_margin_analyzer(
     request: Request,  # Required for rate limiter
     date_from: Optional[date] = Query(
-        None, description="Startdatum (Standard: 6 Monate zurueck)"
+        None, description="Startdatum (Standard: 6 Monate zurück)"
     ),
     date_to: Optional[date] = Query(
         None, description="Enddatum (Standard: heute)"
@@ -823,7 +823,7 @@ async def get_margin_analyzer(
     current_user: User = Depends(get_current_active_user),
 ) -> MarginAnalyzerResponse:
     """
-    Ruft Margen-Analyse fuer Dashboard-Widget ab.
+    Ruft Margen-Analyse für Dashboard-Widget ab.
 
     Metriken:
     - Umsatz vs. Kosten nach Kategorie
@@ -833,7 +833,7 @@ async def get_margin_analyzer(
 
     **Returns:**
     - Margen nach Dokumentkategorie
-    - Trend-Datenpunkte fuer Chart
+    - Trend-Datenpunkte für Chart
     - Gesamtmarge
     - Vergleichsdaten (optional)
     """

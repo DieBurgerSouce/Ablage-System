@@ -3,24 +3,24 @@
 XRechnung 3.0 Generator - EN 16931 Compliant E-Invoice Generation.
 
 Generiert XRechnung 3.0.2 konforme XML-Dateien mit:
-- Vollstaendige EN 16931 Struktur
-- Alle Pflicht-BT-Felder fuer Deutschland (BR-DE)
+- Vollständige EN 16931 Struktur
+- Alle Pflicht-BT-Felder für Deutschland (BR-DE)
 - Seller/Buyer Information
 - Line Items mit korrektem Coding
 - Payment Terms und IBAN
 - Steueraufschluesselung (USt)
 - XRechnung Schema 3.0.1 Validierung
 
-Unterstuetzt:
+Unterstützt:
 - XRechnung CII (UN/CEFACT Cross Industry Invoice) - empfohlen
 - XRechnung UBL (Universal Business Language 2.1)
 
 Referenzen:
 - XRechnung 3.0.2 Spezifikation
 - EN 16931-1:2017
-- BR-DE Geschaeftsregeln
+- BR-DE Geschäftsregeln
 
-HINWEIS: Dieser Generator erzeugt vollstaendig konforme XRechnung-XMLs
+HINWEIS: Dieser Generator erzeugt vollständig konforme XRechnung-XMLs
          im Gegensatz zum vereinfachten Template im einvoice_tasks.py
 """
 
@@ -68,7 +68,7 @@ class VATCategoryCode(str, Enum):
     REDUCED = "AA"  # Ermaessigter Satz (7% DE) - Hinweis: AA statt "R"!
     ZERO_RATED = "Z"  # Nullsatz
     EXEMPT = "E"  # Steuerbefreit
-    REVERSE_CHARGE = "AE"  # Reverse Charge (Steuerschuldnerschaft Empfaenger)
+    REVERSE_CHARGE = "AE"  # Reverse Charge (Steuerschuldnerschaft Empfänger)
     INTRA_COMMUNITY = "K"  # Innergemeinschaftliche Lieferung
     EXPORT = "G"  # Ausfuhr
     NOT_SUBJECT = "O"  # Nicht steuerbar
@@ -76,7 +76,7 @@ class VATCategoryCode(str, Enum):
 
 # Unit Codes (UN/ECE Recommendation 20)
 COMMON_UNIT_CODES = {
-    "stueck": "C62",  # Unit/Piece
+    "stück": "C62",  # Unit/Piece
     "stk": "C62",
     "stück": "C62",
     "pc": "C62",
@@ -114,17 +114,17 @@ COMMON_UNIT_CODES = {
 # =============================================================================
 
 class XRechnungAddress(BaseModel):
-    """Adresse fuer XRechnung (BG-5, BG-8, BG-15)."""
+    """Adresse für XRechnung (BG-5, BG-8, BG-15)."""
     line1: str = Field(..., max_length=200, description="Strasse und Hausnummer (BT-35)")
     line2: Optional[str] = Field(None, max_length=200, description="Adresszusatz (BT-36)")
     city: str = Field(..., max_length=100, description="Stadt (BT-37)")
     postal_code: str = Field(..., max_length=20, description="PLZ (BT-38)")
-    country_code: str = Field("DE", pattern=r"^[A-Z]{2}$", description="Laendercode ISO 3166-1 (BT-40)")
+    country_code: str = Field("DE", pattern=r"^[A-Z]{2}$", description="Ländercode ISO 3166-1 (BT-40)")
     country_subdivision: Optional[str] = Field(None, max_length=50, description="Bundesland (BT-39)")
 
 
 class XRechnungParty(BaseModel):
-    """Partei (Seller/Buyer) fuer XRechnung (BG-4, BG-7)."""
+    """Partei (Seller/Buyer) für XRechnung (BG-4, BG-7)."""
     name: str = Field(..., max_length=200, description="Name (BT-27/BT-44)")
     trading_name: Optional[str] = Field(None, max_length=200, description="Handelsname (BT-28/BT-45)")
     address: XRechnungAddress
@@ -143,14 +143,14 @@ class XRechnungParty(BaseModel):
     electronic_address: Optional[str] = Field(None, description="Elektronische Adresse")
     electronic_address_scheme: str = Field("EM", description="Scheme (EM=Email, 0204=Leitweg-ID)")
 
-    # Bank Account (BG-17) - nur fuer Seller
+    # Bank Account (BG-17) - nur für Seller
     bank_iban: Optional[str] = Field(None, pattern=r"^[A-Z]{2}\d{2}[A-Z0-9]{1,30}$", description="IBAN (BT-84)")
     bank_bic: Optional[str] = Field(None, pattern=r"^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$", description="BIC (BT-86)")
     bank_name: Optional[str] = Field(None, max_length=100, description="Bankname (BT-85)")
 
 
 class XRechnungLineItem(BaseModel):
-    """Rechnungsposition fuer XRechnung (BG-25)."""
+    """Rechnungsposition für XRechnung (BG-25)."""
     line_id: str = Field(..., max_length=50, description="Positions-ID (BT-126)")
     description: str = Field(..., max_length=1000, description="Beschreibung (BT-154)")
     name: Optional[str] = Field(None, max_length=200, description="Artikelname (BT-153)")
@@ -166,7 +166,7 @@ class XRechnungLineItem(BaseModel):
 
     # Optional identifiers
     seller_item_id: Optional[str] = Field(None, max_length=50, description="Artikelnr Lieferant (BT-155)")
-    buyer_item_id: Optional[str] = Field(None, max_length=50, description="Artikelnr Kaeufer (BT-156)")
+    buyer_item_id: Optional[str] = Field(None, max_length=50, description="Artikelnr Käufer (BT-156)")
 
     # Service period
     period_start: Optional[date] = Field(None, description="Leistungsbeginn (BT-134)")
@@ -193,18 +193,18 @@ class XRechnungTaxBreakdown(BaseModel):
 
 
 class XRechnungData(BaseModel):
-    """Vollstaendige XRechnung Daten."""
+    """Vollständige XRechnung Daten."""
     # Document Level (BG-1)
     invoice_number: str = Field(..., max_length=50, description="Rechnungsnummer (BT-1)")
     invoice_type: InvoiceTypeCode = Field(InvoiceTypeCode.INVOICE, description="Rechnungsart (BT-3)")
     invoice_date: date = Field(..., description="Rechnungsdatum (BT-2)")
-    due_date: Optional[date] = Field(None, description="Faelligkeitsdatum (BT-9)")
+    due_date: Optional[date] = Field(None, description="Fälligkeitsdatum (BT-9)")
 
     # Currency
-    currency: str = Field("EUR", pattern=r"^[A-Z]{3}$", description="Waehrung (BT-5)")
+    currency: str = Field("EUR", pattern=r"^[A-Z]{3}$", description="Währung (BT-5)")
 
     # References
-    buyer_reference: str = Field(..., max_length=100, description="Leitweg-ID / Kaeuferreferenz (BT-10) - PFLICHT!")
+    buyer_reference: str = Field(..., max_length=100, description="Leitweg-ID / Käuferreferenz (BT-10) - PFLICHT!")
     order_reference: Optional[str] = Field(None, max_length=100, description="Bestellnummer (BT-13)")
     contract_reference: Optional[str] = Field(None, max_length=100, description="Vertragsnummer (BT-12)")
     project_reference: Optional[str] = Field(None, max_length=100, description="Projektnummer (BT-11)")
@@ -215,7 +215,7 @@ class XRechnungData(BaseModel):
 
     # Parties
     seller: XRechnungParty = Field(..., description="Rechnungssteller (BG-4)")
-    buyer: XRechnungParty = Field(..., description="Rechnungsempfaenger (BG-7)")
+    buyer: XRechnungParty = Field(..., description="Rechnungsempfänger (BG-7)")
 
     # Delivery (BG-13) - optional
     delivery_date: Optional[date] = Field(None, description="Lieferdatum (BT-72)")
@@ -249,9 +249,9 @@ class XRechnungData(BaseModel):
 
 class XRechnungGenerator:
     """
-    Generator fuer XRechnung 3.0.2 konforme XML-Dateien.
+    Generator für XRechnung 3.0.2 konforme XML-Dateien.
 
-    Unterstuetzt CII (UN/CEFACT) und UBL Syntax.
+    Unterstützt CII (UN/CEFACT) und UBL Syntax.
 
     Usage:
         generator = XRechnungGenerator()
@@ -334,7 +334,7 @@ class XRechnungGenerator:
             XML als UTF-8 String
         """
         # UBL Implementation ist bereits in xrechnung_ubl_mapper.py
-        # Hier nur Wrapper fuer Konsistenz
+        # Hier nur Wrapper für Konsistenz
         from app.services.einvoice.mapping.xrechnung_ubl_mapper import get_ubl_mapper
 
         mapper = get_ubl_mapper()
@@ -350,7 +350,7 @@ class XRechnungGenerator:
 
         # BR-DE-01: Leitweg-ID Pflicht
         if not data.buyer_reference:
-            errors.append("Leitweg-ID (BT-10) fehlt - Pflicht fuer XRechnung B2G")
+            errors.append("Leitweg-ID (BT-10) fehlt - Pflicht für XRechnung B2G")
 
         # BR-DE-15: Seller Electronic Address Pflicht ab 3.0.1
         if not data.seller.electronic_address:
@@ -359,7 +359,7 @@ class XRechnungGenerator:
                 data.seller.electronic_address = data.seller.contact_email
                 data.seller.electronic_address_scheme = "EM"
             else:
-                errors.append("Elektronische Adresse des Verkaeufers (BT-34) fehlt - Pflicht ab XRechnung 3.0.1")
+                errors.append("Elektronische Adresse des Verkäufers (BT-34) fehlt - Pflicht ab XRechnung 3.0.1")
 
         # BR-DE-16: Buyer Electronic Address oder Leitweg-ID
         if not data.buyer.electronic_address:
@@ -369,7 +369,7 @@ class XRechnungGenerator:
 
         # Seller VAT-ID oder Tax Number Pflicht
         if not data.seller.vat_id and not data.seller.tax_number:
-            errors.append("USt-IdNr (BT-31) oder Steuernummer (BT-32) des Verkaeufers fehlt")
+            errors.append("USt-IdNr (BT-31) oder Steuernummer (BT-32) des Verkäufers fehlt")
 
         if errors:
             raise ValueError(f"XRechnung Validierungsfehler: {'; '.join(errors)}")
@@ -511,7 +511,7 @@ class XRechnungGenerator:
 
         agreement = etree.SubElement(parent, f"{{{ns_ram}}}ApplicableHeaderTradeAgreement")
 
-        # BuyerReference (BT-10) - PFLICHT fuer XRechnung
+        # BuyerReference (BT-10) - PFLICHT für XRechnung
         ref = etree.SubElement(agreement, f"{{{ns_ram}}}BuyerReference")
         ref.text = data.buyer_reference
 
@@ -804,7 +804,7 @@ class XRechnungGenerator:
         date_str.text = date_value.strftime("%Y%m%d")
 
     def _convert_to_extracted_data(self, data: XRechnungData):
-        """Konvertiert XRechnungData zu ExtractedInvoiceData fuer UBL-Mapper."""
+        """Konvertiert XRechnungData zu ExtractedInvoiceData für UBL-Mapper."""
         from app.api.schemas.extracted_data import (
             ExtractedInvoiceData, ExtractedAddress, ExtractedBankAccount,
             TaxBreakdownItem, Currency
@@ -883,7 +883,7 @@ _xrechnung_generator_instance: Optional[XRechnungGenerator] = None
 
 def get_xrechnung_generator() -> XRechnungGenerator:
     """
-    Factory-Funktion fuer XRechnungGenerator (Singleton).
+    Factory-Funktion für XRechnungGenerator (Singleton).
 
     Returns:
         XRechnungGenerator: Globale Instanz

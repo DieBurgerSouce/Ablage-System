@@ -56,7 +56,7 @@ _signature_service = SignatureService()
     response_model=SignatureRequestResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Signaturanfrage erstellen",
-    description="Erstellt eine neue Signaturanfrage fuer ein Dokument.",
+    description="Erstellt eine neue Signaturanfrage für ein Dokument.",
 )
 async def create_signature_request(
     body: SignatureRequestCreate,
@@ -114,7 +114,7 @@ async def create_signature_request(
 )
 async def list_signature_requests(
     page: int = Query(1, ge=1, description="Seite"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     status_filter: Optional[str] = Query(
         None, alias="status", description="Statusfilter"
     ),
@@ -125,7 +125,7 @@ async def list_signature_requests(
     current_user=Depends(get_current_active_user),
     company=Depends(require_company),
 ):
-    """Listet Signaturanfragen fuer den aktuellen Mandanten."""
+    """Listet Signaturanfragen für den aktuellen Mandanten."""
     try:
         items, total = await _signature_service.list_signature_requests(
             db=db,
@@ -179,7 +179,7 @@ async def get_signature_request(
 
 
 # =============================================================================
-# Signatureintraege
+# Signatureinträge
 # =============================================================================
 
 
@@ -187,7 +187,7 @@ async def get_signature_request(
     "/entries/{entry_id}/sign",
     response_model=SignatureEntryResponse,
     summary="Dokument signieren",
-    description="Signiert ein Dokument fuer den aktuellen Benutzer.",
+    description="Signiert ein Dokument für den aktuellen Benutzer.",
 )
 async def sign_document(
     entry_id: UUID,
@@ -302,7 +302,7 @@ async def verify_document_signatures(
 
         if result.is_fully_signed:
             message = (
-                f"Dokument vollstaendig signiert "
+                f"Dokument vollständig signiert "
                 f"({result.completed_signatures}/{result.total_signatures} "
                 f"Signaturen)"
             )
@@ -350,7 +350,7 @@ async def get_signature_audit_trail(
     current_user=Depends(get_current_active_user),
     company=Depends(require_company),
 ):
-    """Ruft den vollstaendigen Audit-Trail ab."""
+    """Ruft den vollständigen Audit-Trail ab."""
     try:
         result = await _signature_service.get_audit_trail(
             db=db,

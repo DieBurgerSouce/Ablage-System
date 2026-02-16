@@ -1,8 +1,8 @@
 """
-API Endpoints fuer One-Click-Validierung.
+API Endpoints für One-Click-Validierung.
 
-Schnelle Entscheidungs-Queue fuer mobile und Desktop-Nutzung.
-Optimiert fuer Swipe-UI und Keyboard-Shortcuts.
+Schnelle Entscheidungs-Queue für mobile und Desktop-Nutzung.
+Optimiert für Swipe-UI und Keyboard-Shortcuts.
 """
 
 from datetime import datetime
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/oneclick", tags=["oneclick"])
 
 
 class OneClickItemResponse(BaseModel):
-    """Response fuer ein One-Click-Item."""
+    """Response für ein One-Click-Item."""
 
     id: UUID
     action_type: str
@@ -62,7 +62,7 @@ class OneClickItemResponse(BaseModel):
 
 
 class OneClickDecisionRequest(BaseModel):
-    """Request fuer eine Entscheidung."""
+    """Request für eine Entscheidung."""
 
     item_id: UUID
     decision: str = Field(..., pattern="^(approve|reject|skip)$")
@@ -72,13 +72,13 @@ class OneClickDecisionRequest(BaseModel):
 
 
 class BatchDecisionRequest(BaseModel):
-    """Request fuer Batch-Entscheidungen."""
+    """Request für Batch-Entscheidungen."""
 
     decisions: List[OneClickDecisionRequest]
 
 
 class DecisionResponse(BaseModel):
-    """Response fuer eine Entscheidung."""
+    """Response für eine Entscheidung."""
 
     success: bool
     item_id: str
@@ -88,7 +88,7 @@ class DecisionResponse(BaseModel):
 
 
 class BatchDecisionResponse(BaseModel):
-    """Response fuer Batch-Entscheidungen."""
+    """Response für Batch-Entscheidungen."""
 
     success_count: int
     error_count: int
@@ -97,7 +97,7 @@ class BatchDecisionResponse(BaseModel):
 
 
 class QueueStatsResponse(BaseModel):
-    """Response fuer Queue-Statistiken."""
+    """Response für Queue-Statistiken."""
 
     total_pending: int
     by_type: dict
@@ -107,7 +107,7 @@ class QueueStatsResponse(BaseModel):
 
 
 class ShortcutsResponse(BaseModel):
-    """Response fuer Keyboard-Shortcuts."""
+    """Response für Keyboard-Shortcuts."""
 
     shortcuts: dict
 
@@ -127,12 +127,12 @@ async def get_validation_queue(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Holt die naechsten Items zur One-Click-Validierung.
+    """Holt die nächsten Items zur One-Click-Validierung.
 
-    Optimiert fuer schnelle Entscheidungen:
+    Optimiert für schnelle Entscheidungen:
     - Sortiert nach Prioritaet
     - Vorformatierte Fragen und Labels
-    - Confidence-Scores fuer KI-Vorschlaege
+    - Confidence-Scores für KI-Vorschläge
     """
     service = await get_oneclick_validation_service(db, current_user.id)
 
@@ -148,7 +148,7 @@ async def get_validation_queue(
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Aktionstyp: {e}"
+                detail=f"Ungültiger Aktionstyp: {e}"
             )
 
     items = await service.get_next_items(action_types=types_filter, limit=limit)
@@ -188,7 +188,7 @@ async def process_decision(
     Entscheidungs-Optionen:
     - approve: Freigeben/Genehmigen
     - reject: Ablehnen
-    - skip: Ueberspringen (fuer spaeter)
+    - skip: Überspringen (für später)
     """
     service = await get_oneclick_validation_service(db, current_user.id)
 
@@ -219,7 +219,7 @@ async def process_batch_decisions(
 ):
     """Verarbeitet mehrere Entscheidungen gleichzeitig.
 
-    Optimiert fuer Batch-Genehmigungen wie:
+    Optimiert für Batch-Genehmigungen wie:
     - "Alle sichtbaren genehmigen" (Ctrl+Enter)
     - "Alle mit Confidence > 95% genehmigen"
     """
@@ -262,7 +262,7 @@ async def get_queue_stats(
 ):
     """Holt Statistiken zur Validierungs-Queue.
 
-    Enthaelt:
+    Enthält:
     - Anzahl offener Items
     - Aufschluesselung nach Typ
     - Durchschnittliche Entscheidungszeit
@@ -285,12 +285,12 @@ async def get_queue_stats(
 async def get_keyboard_shortcuts(
     current_user: User = Depends(get_current_user),
 ):
-    """Gibt alle verfuegbaren Keyboard-Shortcuts zurueck.
+    """Gibt alle verfügbaren Keyboard-Shortcuts zurück.
 
-    Fuer Desktop-Integration:
+    Für Desktop-Integration:
     - Y/Enter: Genehmigen
     - N/Backspace: Ablehnen
-    - Space/Tab: Ueberspringen
+    - Space/Tab: Überspringen
     - Ctrl+Enter: Batch-Genehmigung
     """
     return ShortcutsResponse(shortcuts=KeyboardShortcuts.get_shortcut_map())
@@ -300,7 +300,7 @@ async def get_keyboard_shortcuts(
 async def get_action_types(
     current_user: User = Depends(get_current_user),
 ):
-    """Gibt alle verfuegbaren Aktionstypen zurueck."""
+    """Gibt alle verfügbaren Aktionstypen zurück."""
     return {
         "action_types": [
             {
@@ -308,7 +308,7 @@ async def get_action_types(
                 "label": {
                     OneClickActionType.INVOICE_APPROVAL: "Rechnungsfreigabe",
                     OneClickActionType.FILING_SUGGESTION: "Ablagevorschlag",
-                    OneClickActionType.DUPLICATE_MERGE: "Duplikat-Zusammenfuehrung",
+                    OneClickActionType.DUPLICATE_MERGE: "Duplikat-Zusammenführung",
                     OneClickActionType.MASTER_DATA_UPDATE: "Stammdaten-Korrektur",
                     OneClickActionType.OCR_CORRECTION: "OCR-Korrektur",
                     OneClickActionType.ENTITY_ASSIGNMENT: "Entity-Zuweisung",
@@ -331,7 +331,7 @@ async def process_swipe(
     Mobile-optimiert:
     - Rechts: Genehmigen
     - Links: Ablehnen
-    - Oben: Ueberspringen
+    - Oben: Überspringen
     - Unten: Details anzeigen (keine Aktion)
     """
     service = await get_oneclick_validation_service(db, current_user.id)

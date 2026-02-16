@@ -1,17 +1,17 @@
 """
 One-Click Validierungs-Service.
 
-Schnelle Entscheidungs-Queue fuer mobile und Desktop-Nutzung.
-Optimiert fuer "maximal 2 Sekunden pro Entscheidung".
+Schnelle Entscheidungs-Queue für mobile und Desktop-Nutzung.
+Optimiert für "maximal 2 Sekunden pro Entscheidung".
 
 Validierungstypen:
 - Rechnungsfreigabe: "Betrag X an Lieferant Y - OK?"
 - Ablage-Vorschlag: "Dokument -> Kunde X, Kategorie Y - stimmt?"
-- Duplikat-Erkennung: "Zusammenfuehren?"
+- Duplikat-Erkennung: "Zusammenführen?"
 - Stammdaten-Korrektur: "Adresse aktualisieren?"
 
 UI-Patterns:
-- Swipe-faehig auf Mobile (links=ablehnen, rechts=genehmigen)
+- Swipe-fähig auf Mobile (links=ablehnen, rechts=genehmigen)
 - Keyboard-Shortcuts am Desktop (Y/N, Enter, 1-9)
 - Batch-Verarbeitung in Queue
 """
@@ -59,11 +59,11 @@ class OneClickActionType(str, Enum):
 
 
 class SwipeDirection(str, Enum):
-    """Swipe-Richtungen fuer Mobile."""
+    """Swipe-Richtungen für Mobile."""
 
     LEFT = "left"  # Ablehnen
     RIGHT = "right"  # Genehmigen
-    UP = "up"  # Ueberspringen
+    UP = "up"  # Überspringen
     DOWN = "down"  # Details anzeigen
 
 
@@ -87,17 +87,17 @@ class OneClickItem:
     # Optionen
     primary_action_label: str  # z.B. "Freigeben"
     secondary_action_label: str  # z.B. "Ablehnen"
-    skip_label: str = "Ueberspringen"
+    skip_label: str = "Überspringen"
 
     # Kontext-Daten
     document_id: Optional[uuid.UUID] = None
     entity_id: Optional[uuid.UUID] = None
     invoice_id: Optional[uuid.UUID] = None
 
-    # Zusaetzliche Daten
+    # Zusätzliche Daten
     metadata: Optional[Dict[str, Any]] = None
 
-    # Confidence fuer KI-Vorschlag
+    # Confidence für KI-Vorschlag
     confidence: Optional[float] = None
     confidence_reason: Optional[str] = None
 
@@ -130,9 +130,9 @@ class OneClickQueueStats:
 
 
 class OneClickValidationService:
-    """Service fuer schnelle One-Click-Validierungen.
+    """Service für schnelle One-Click-Validierungen.
 
-    Optimiert fuer:
+    Optimiert für:
     - Mobiles Swipe-Interface
     - Desktop Keyboard-Shortcuts
     - Batch-Verarbeitung
@@ -158,14 +158,14 @@ class OneClickValidationService:
         action_types: Optional[List[OneClickActionType]] = None,
         limit: int = 10,
     ) -> List[OneClickItem]:
-        """Holt die naechsten Items zur Validierung.
+        """Holt die nächsten Items zur Validierung.
 
         Args:
-            action_types: Optional Filter fuer Aktionstypen
+            action_types: Optional Filter für Aktionstypen
             limit: Maximale Anzahl Items
 
         Returns:
-            Liste von OneClickItem sortiert nach Prioritaet
+            Liste von OneClickItem sortiert nach Priorität
         """
         items: List[OneClickItem] = []
 
@@ -191,7 +191,7 @@ class OneClickValidationService:
             master_items = await self._get_master_data_items(limit)
             items.extend(master_items)
 
-        # Nach Prioritaet sortieren und limitieren
+        # Nach Priorität sortieren und limitieren
         items.sort(key=lambda x: (x.priority, x.created_at))
         return items[:limit]
 
@@ -380,7 +380,7 @@ class OneClickValidationService:
         self, item: ValidationQueueItem
     ) -> Optional[OneClickItem]:
         """Konvertiert ValidationQueueItem zu OneClickItem."""
-        # Dokument laden fuer mehr Kontext
+        # Dokument laden für mehr Kontext
         stmt = select(Document).where(Document.id == item.document_id)
         result = await self.db.execute(stmt)
         document = result.scalar_one_or_none()
@@ -396,7 +396,7 @@ class OneClickValidationService:
             action_type = OneClickActionType.FILING_SUGGESTION
 
         # Frage formulieren
-        question = "OCR-Ergebnis pruefen?"
+        question = "OCR-Ergebnis prüfen?"
         if action_type == OneClickActionType.INVOICE_APPROVAL:
             question = "Rechnung freigeben?"
         elif action_type == OneClickActionType.FILING_SUGGESTION:
@@ -454,7 +454,7 @@ class OneClickValidationService:
                     title=f"Rechnung {invoice.invoice_number or 'N/A'}",
                     subtitle=entity_name,
                     description=f"Betrag: {invoice.amount:,.2f} EUR",
-                    question=f"Rechnung ueber {invoice.amount:,.2f} EUR freigeben?",
+                    question=f"Rechnung über {invoice.amount:,.2f} EUR freigeben?",
                     primary_action_label="Freigeben",
                     secondary_action_label="Ablehnen",
                     invoice_id=invoice.id,
@@ -498,10 +498,10 @@ class OneClickValidationService:
                     created_at=doc.created_at,
                     title=doc.original_filename or "Dokument",
                     subtitle=doc.document_type or "Unbekannt",
-                    description="Keine Geschaeftspartner-Zuordnung",
-                    question="Geschaeftspartner zuweisen?",
+                    description="Keine Geschäftspartner-Zuordnung",
+                    question="Geschäftspartner zuweisen?",
                     primary_action_label="Zuweisen",
-                    secondary_action_label="Ueberspringen",
+                    secondary_action_label="Überspringen",
                     document_id=doc.id,
                     metadata={
                         "document_type": doc.document_type,
@@ -518,10 +518,10 @@ class OneClickValidationService:
         return []
 
     def _calculate_invoice_priority(self, invoice: InvoiceTracking) -> int:
-        """Berechnet Prioritaet einer Rechnung.
+        """Berechnet Priorität einer Rechnung.
 
         Faktoren:
-        - Faelligkeitsdatum (ueberfaellig = hohe Prioritaet)
+        - Fälligkeitsdatum (überfällig = hohe Priorität)
         - Mahnstufe
         - Betrag
         """
@@ -531,13 +531,13 @@ class OneClickValidationService:
             days_until_due = (invoice.due_date - utc_now().date()).days
 
             if days_until_due < 0:
-                priority = 1  # Ueberfaellig
+                priority = 1  # Überfällig
             elif days_until_due < 7:
-                priority = 2  # Bald faellig
+                priority = 2  # Bald fällig
             elif days_until_due < 14:
                 priority = 3
 
-        # Mahnstufe erhoehen Prioritaet
+        # Mahnstufe erhöhen Priorität
         if invoice.dunning_level:
             priority = min(priority, 5 - invoice.dunning_level)
 
@@ -552,7 +552,7 @@ class OneClickValidationService:
         item: ValidationQueueItem,
         decision: OneClickDecision,
     ) -> Dict[str, Any]:
-        """Verarbeitet Entscheidung fuer Validation Item."""
+        """Verarbeitet Entscheidung für Validation Item."""
         now = utc_now()
 
         if decision.decision == "approve":
@@ -563,7 +563,7 @@ class OneClickValidationService:
         elif decision.decision == "skip":
             item.status = ValidationStatus.SKIPPED.value
         else:
-            return {"success": False, "error": f"Ungueltige Entscheidung: {decision.decision}"}
+            return {"success": False, "error": f"Ungültige Entscheidung: {decision.decision}"}
 
         item.validated_by_id = self.user_id
         item.validated_at = now
@@ -594,7 +594,7 @@ class OneClickValidationService:
         invoice: InvoiceTracking,
         decision: OneClickDecision,
     ) -> Dict[str, Any]:
-        """Verarbeitet Entscheidung fuer Invoice Item."""
+        """Verarbeitet Entscheidung für Invoice Item."""
         now = utc_now()
 
         if decision.decision == "approve":
@@ -603,10 +603,10 @@ class OneClickValidationService:
             invoice.status = "rejected"
             invoice.notes = decision.notes
         elif decision.decision == "skip":
-            # Nichts aendern, nur loggen
+            # Nichts ändern, nur loggen
             pass
         else:
-            return {"success": False, "error": f"Ungueltige Entscheidung: {decision.decision}"}
+            return {"success": False, "error": f"Ungültige Entscheidung: {decision.decision}"}
 
         invoice.updated_at = now
 
@@ -633,13 +633,13 @@ class OneClickValidationService:
 
 
 class KeyboardShortcuts:
-    """Desktop Keyboard Shortcuts fuer One-Click-Validierung.
+    """Desktop Keyboard Shortcuts für One-Click-Validierung.
 
     Standard-Shortcuts:
     - Y / Enter: Genehmigen
     - N / Backspace: Ablehnen
-    - Space / Tab: Ueberspringen
-    - 1-9: Quick-Select fuer Kategorien
+    - Space / Tab: Überspringen
+    - 1-9: Quick-Select für Kategorien
     - Ctrl+Enter: Batch-Genehmigung aller sichtbaren Items
     """
 
@@ -654,7 +654,7 @@ class KeyboardShortcuts:
 
     @classmethod
     def get_shortcut_map(cls) -> Dict[str, List[str]]:
-        """Gibt alle Shortcuts als Map zurueck."""
+        """Gibt alle Shortcuts als Map zurück."""
         return {
             "approve": cls.APPROVE,
             "reject": cls.REJECT,
@@ -676,7 +676,7 @@ async def get_oneclick_validation_service(
     db: AsyncSession,
     user_id: uuid.UUID,
 ) -> OneClickValidationService:
-    """Factory-Funktion fuer OneClickValidationService.
+    """Factory-Funktion für OneClickValidationService.
 
     Args:
         db: Async Database Session

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Kontenrahmen fuer DATEV Export.
+Kontenrahmen für DATEV Export.
 
-Unterstuetzt SKR03 und SKR04 Kontenrahmen.
+Unterstützt SKR03 und SKR04 Kontenrahmen.
 """
 
 from .base import BaseKontenrahmen

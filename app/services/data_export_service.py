@@ -149,7 +149,7 @@ class DataExportService:
 
                 # Aktivitätslog
                 zipf.writestr(
-                    'aktivitaet.json',
+                    'aktivität.json',
                     json.dumps(export_data['activity_log'], indent=2, ensure_ascii=False)
                 )
 
@@ -209,7 +209,7 @@ class DataExportService:
             "benutzer_id": str(user.id),
             "email": user.email,
             "benutzername": user.username,
-            "vollstaendiger_name": user.full_name,
+            "vollständiger_name": user.full_name,
             "erstellt_am": user.created_at.isoformat() if user.created_at else None,
             "letzter_login": user.last_login.isoformat() if user.last_login else None,
             "zwei_faktor_aktiviert": user.totp_enabled,
@@ -235,7 +235,7 @@ class DataExportService:
                 "status": doc.status,
                 "extrahierter_text": doc.extracted_text,
                 "ocr_konfidenz": doc.ocr_confidence,
-                "dateigroesse_bytes": doc.file_size,
+                "dateigröße_bytes": doc.file_size,
                 "hochgeladen_am": doc.upload_date.isoformat() if doc.upload_date else None,
                 "verarbeitet_am": doc.processed_date.isoformat() if doc.processed_date else None,
             })
@@ -264,7 +264,7 @@ class DataExportService:
             "export_metadaten": {
                 "exportiert_am": datetime.now(timezone.utc).isoformat(),
                 "dokumente_gesamt": len(documents),
-                "aktivitaeten_gesamt": len(activity_log),
+                "aktivitäten_gesamt": len(activity_log),
             }
         }
 
@@ -298,7 +298,7 @@ Inhalt dieses Exports:
 ----------------------
 - profil.json: Ihre Benutzerdaten und Kontoeinstellungen
 - dokumente.{export.format if isinstance(export.format, str) else export.format.value}: Ihre hochgeladenen Dokumente und deren Metadaten
-- aktivitaet.json: Ihre Aktivitäten im System (letzte 1000 Einträge)
+- aktivität.json: Ihre Aktivitäten im System (letzte 1000 Einträge)
 - LIESMICH.txt: Diese Datei
 
 Datenschutzhinweise:

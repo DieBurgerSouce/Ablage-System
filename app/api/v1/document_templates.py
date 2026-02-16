@@ -155,8 +155,8 @@ async def create_template(
     Erstelle eine neue Dokumentvorlage.
 
     Erstellt eine Vorlage mit:
-    - Jinja2-Syntax fuer Platzhalter
-    - Variablen-Schema fuer Formular-Generierung
+    - Jinja2-Syntax für Platzhalter
+    - Variablen-Schema für Formular-Generierung
     - Optionalem Header/Footer
     """
     service = DocumentTemplateService(db)
@@ -195,7 +195,7 @@ async def create_template(
 async def list_templates(
     category: Optional[TemplateCategoryEnum] = Query(None, description="Filter nach Kategorie"),
     search: Optional[str] = Query(None, max_length=200, description="Suche in Name, Code, Beschreibung"),
-    include_inactive: bool = Query(False, description="Inaktive Vorlagen einschliessen"),
+    include_inactive: bool = Query(False, description="Inaktive Vorlagen einschließen"),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
@@ -264,7 +264,7 @@ async def list_templates_brief(
     """
     Kurzliste der Vorlagen (ohne Content).
 
-    Optimiert fuer Dropdown-Auswahl und schnelles Laden.
+    Optimiert für Dropdown-Auswahl und schnelles Laden.
     """
     service = DocumentTemplateService(db)
 
@@ -361,7 +361,7 @@ async def delete_template(
     """
     Vorlage deaktivieren (Soft-Delete).
 
-    Setzt is_active=False statt physischem Loeschen.
+    Setzt is_active=False statt physischem Löschen.
     """
     service = DocumentTemplateService(db)
 
@@ -435,7 +435,7 @@ async def validate_variables(
     """
     Validiere Variablen gegen Vorlage.
 
-    Prueft ob alle erforderlichen Variablen vorhanden sind.
+    Prüft ob alle erforderlichen Variablen vorhanden sind.
     """
     service = DocumentTemplateService(db)
 
@@ -522,7 +522,7 @@ async def generate_document(
 @router.get("/generated", response_model=GeneratedDocumentListResponse)
 async def list_generated_documents(
     template_id: Optional[UUID] = Query(None, description="Filter nach Vorlage"),
-    entity_id: Optional[UUID] = Query(None, description="Filter nach verknuepfter Entity"),
+    entity_id: Optional[UUID] = Query(None, description="Filter nach verknüpfter Entity"),
     search: Optional[str] = Query(None, max_length=200, description="Suche in Titel, Dateiname"),
     offset: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
@@ -648,7 +648,7 @@ async def create_snippet(
     """
     Erstelle einen neuen Textbaustein.
 
-    Textbausteine koennen in Vorlagen wiederverwendet werden.
+    Textbausteine können in Vorlagen wiederverwendet werden.
     """
     service = DocumentTemplateService(db)
 

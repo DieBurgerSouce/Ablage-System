@@ -2,14 +2,14 @@
 """
 Surya OCR Continuous Improvement Celery Tasks.
 
-Enterprise-Grade Self-Improvement Loop fuer Surya OCR:
-- Taegliche Benchmark-Messung
+Enterprise-Grade Self-Improvement Loop für Surya OCR:
+- Tägliche Benchmark-Messung
 - Automatische Retraining-Erkennung
 - Feedback-zu-Training Konvertierung
 - Modell-Deployment mit A/B Testing
-- Automatisches Rollback bei Qualitaetsverlust
+- Automatisches Rollback bei Qualitätsverlust
 
-Feinpoliert und durchdacht - Surya Improvement fuer Enterprise.
+Feinpoliert und durchdacht - Surya Improvement für Enterprise.
 """
 
 import asyncio
@@ -48,16 +48,16 @@ def run_surya_benchmark(
     include_gpu: bool = True,
 ) -> Dict[str, Any]:
     """
-    Fuehre Surya-spezifischen Benchmark durch.
+    Führe Surya-spezifischen Benchmark durch.
 
-    Misst CER, WER und Umlaut-Accuracy fuer Surya Backends.
+    Misst CER, WER und Umlaut-Accuracy für Surya Backends.
     Kritischer Teil des Continuous Improvement Loops.
 
     Args:
-        sample_ids: Spezifische Sample IDs (oder None fuer automatische Auswahl)
+        sample_ids: Spezifische Sample IDs (oder None für automatische Auswahl)
         max_samples: Maximale Anzahl Samples
-        include_cpu: Surya CPU Backend einschliessen
-        include_gpu: Surya GPU Backend einschliessen
+        include_cpu: Surya CPU Backend einschließen
+        include_gpu: Surya GPU Backend einschließen
 
     Returns:
         Benchmark-Ergebnis mit Metriken
@@ -102,7 +102,7 @@ def run_surya_benchmark(
                 if not request_ids:
                     return {
                         "success": True,
-                        "message": "Keine Samples fuer Benchmark gefunden",
+                        "message": "Keine Samples für Benchmark gefunden",
                         "samples_processed": 0,
                     }
 
@@ -113,7 +113,7 @@ def run_surya_benchmark(
                 if include_gpu:
                     backends.append("surya-gpu")
 
-                # Fuehre Benchmark durch
+                # Führe Benchmark durch
                 request = BenchmarkRunRequest(
                     sample_ids=request_ids,
                     backends=backends,
@@ -177,12 +177,12 @@ def run_surya_benchmark(
 )
 def check_surya_retraining_conditions(self) -> Dict[str, Any]:
     """
-    Pruefe ob Surya-Retraining erforderlich ist.
+    Prüfe ob Surya-Retraining erforderlich ist.
 
     Triggert automatisches Fine-Tuning wenn:
-    1. > 30 User-Korrektionen fuer Surya in 7 Tagen
+    1. > 30 User-Korrektionen für Surya in 7 Tagen
     2. Umlaut-Accuracy < 95%
-    3. CER Anstieg > 5% gegenueber letzter Woche
+    3. CER Anstieg > 5% gegenüber letzter Woche
     4. > 50 neue verifizierte Samples seit letztem Training
     5. NEU: 90% Coverage erreicht mit genug neuen Samples
 
@@ -227,10 +227,10 @@ def check_surya_retraining_conditions(self) -> Dict[str, Any]:
 
                 if correction_count >= 30:
                     should_retrain = True
-                    reasons.append(f"{correction_count} Korrektionen fuer Surya in 7 Tagen")
+                    reasons.append(f"{correction_count} Korrektionen für Surya in 7 Tagen")
                     urgency = "medium"
 
-                # 2. Pruefe aktuelle Umlaut-Accuracy
+                # 2. Prüfe aktuelle Umlaut-Accuracy
                 benchmark_result = await session.execute(
                     select(
                         func.avg(OCRBackendBenchmark.umlaut_accuracy).label("avg_umlaut"),
@@ -251,7 +251,7 @@ def check_surya_retraining_conditions(self) -> Dict[str, Any]:
                     )
                     urgency = "high" if current_umlaut_accuracy < 0.90 else "medium"
 
-                # 3. Pruefe CER-Trend (Vergleich mit Vorwoche)
+                # 3. Prüfe CER-Trend (Vergleich mit Vorwoche)
                 fourteen_days_ago = now - timedelta(days=14)
                 cer_current_result = await session.execute(
                     select(func.avg(OCRBackendBenchmark.cer).label("avg_cer")).where(
@@ -288,7 +288,7 @@ def check_surya_retraining_conditions(self) -> Dict[str, Any]:
                     limit=100,
                 )
 
-                # Schaetze neue Samples (vereinfacht)
+                # Schätze neue Samples (vereinfacht)
                 new_samples_estimate = len([
                     s for s in samples
                     if s.created_at and s.created_at >= seven_days_ago
@@ -397,13 +397,13 @@ def export_surya_training_dataset(
     output_dir: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Exportiere Training-Dataset fuer Surya Fine-Tuning.
+    Exportiere Training-Dataset für Surya Fine-Tuning.
 
     Erstellt stratifiziertes Dataset mit Umlaut-Fokus.
 
     Args:
-        include_corrections: User-Korrektionen einschliessen
-        correction_days: Anzahl Tage fuer Korrektionen
+        include_corrections: User-Korrektionen einschließen
+        correction_days: Anzahl Tage für Korrektionen
         umlaut_focused: Umlaut-gewichteter Export
         output_dir: Output-Verzeichnis (optional)
 
@@ -509,7 +509,7 @@ def run_surya_german_finetuning(
     config_overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
-    Fuehre deutsches Surya Fine-Tuning mit Umlaut-Fokus durch.
+    Führe deutsches Surya Fine-Tuning mit Umlaut-Fokus durch.
 
     Nutzt SuryaGermanTrainer mit UmlautWeightedCrossEntropy.
 
@@ -519,9 +519,9 @@ def run_surya_german_finetuning(
         config_preset: Konfigurationsvoreinstellung
             - "default": Standard-Konfiguration
             - "aggressive": Maximaler Umlaut-Fokus
-            - "fraktur": Optimiert fuer Frakturschrift
+            - "fraktur": Optimiert für Frakturschrift
             - "quick": Schnelles inkrementelles Training
-        config_overrides: Optionale Konfigurationsueberschreibungen
+        config_overrides: Optionale Konfigurationsüberschreibungen
 
     Returns:
         Training-Ergebnis mit Metriken
@@ -542,7 +542,7 @@ def run_surya_german_finetuning(
         )
         from app.ml.finetuning.checkpoint_manager import CheckpointManager
 
-        # Waehle Konfiguration basierend auf Preset
+        # Wähle Konfiguration basierend auf Preset
         if config_preset == "aggressive":
             trainer = SuryaGermanTrainer.create_aggressive()
         elif config_preset == "fraktur":
@@ -629,7 +629,7 @@ def evaluate_surya_model(
     """
     Evaluiere ein trainiertes Surya-Modell.
 
-    Fuehrt detaillierte Umlaut-Performance-Analyse durch.
+    Führt detaillierte Umlaut-Performance-Analyse durch.
 
     Args:
         model_path: Pfad zum trainierten Modell
@@ -844,7 +844,7 @@ def evaluate_surya_ab_test(
     version: str,
 ) -> Dict[str, Any]:
     """
-    Evaluiere A/B Test und entscheide ueber Full Rollout oder Rollback.
+    Evaluiere A/B Test und entscheide über Full Rollout oder Rollback.
 
     Vergleicht Metriken der neuen Version mit der alten.
 
@@ -875,7 +875,7 @@ def evaluate_surya_ab_test(
                 now = datetime.now(timezone.utc)
                 ab_test_start = now - timedelta(hours=48)
 
-                # Hole Metriken fuer beide Versionen
+                # Hole Metriken für beide Versionen
                 # (Hier vereinfacht - in Produktion wuerde man nach Version filtern)
                 result = await session.execute(
                     select(
@@ -974,10 +974,10 @@ def rollback_surya_model(
     reason: str = "Manual rollback",
 ) -> Dict[str, Any]:
     """
-    Fuehre Rollback zu einer frueheren Surya-Version durch.
+    Führe Rollback zu einer früheren Surya-Version durch.
 
     Args:
-        target_version: Ziel-Version fuer Rollback
+        target_version: Ziel-Version für Rollback
         reason: Grund für Rollback
 
     Returns:
@@ -1051,13 +1051,13 @@ def process_surya_corrections(
     batch_size: int = 100,
 ) -> Dict[str, Any]:
     """
-    Verarbeite Surya-Korrektionen fuer Training.
+    Verarbeite Surya-Korrektionen für Training.
 
     Konvertiert User-Korrektionen zu Training Samples.
 
     Args:
-        days: Anzahl Tage zurueck
-        batch_size: Batch-Groesse
+        days: Anzahl Tage zurück
+        batch_size: Batch-Größe
 
     Returns:
         Verarbeitungs-Statistiken
@@ -1160,9 +1160,9 @@ def process_surya_corrections(
 )
 def update_surya_metrics(self) -> Dict[str, Any]:
     """
-    Aktualisiere Surya-Metriken fuer Prometheus Monitoring.
+    Aktualisiere Surya-Metriken für Prometheus Monitoring.
 
-    Wird alle 15 Minuten ausgefuehrt um aktuelle Metriken zu exportieren.
+    Wird alle 15 Minuten ausgeführt um aktuelle Metriken zu exportieren.
 
     Returns:
         Aktuelle Metriken-Werte
@@ -1214,7 +1214,7 @@ def update_surya_metrics(self) -> Dict[str, Any]:
                 metrics.set_surya_ab_tests_active(active_ab_tests)
                 result["active_ab_tests"] = active_ab_tests
 
-                # Gesamtzahl Versionen und Checkpoint-Groesse
+                # Gesamtzahl Versionen und Checkpoint-Größe
                 version_count_query = await session.execute(
                     select(func.count(SuryaModelVersion.id))
                 )
@@ -1273,7 +1273,7 @@ def generate_surya_improvement_report(
     Generiere monatlichen Surya Improvement Report.
 
     Fasst Training-Fortschritt, Benchmark-Ergebnisse und
-    Qualitaetsentwicklung zusammen.
+    Qualitätsentwicklung zusammen.
 
     Args:
         period_days: Berichtszeitraum in Tagen
@@ -1340,7 +1340,7 @@ def generate_surya_improvement_report(
                     "by_status": ab_stats,
                 }
 
-                # Aktuelle Qualitaet vs. vor 30 Tagen
+                # Aktuelle Qualität vs. vor 30 Tagen
                 current_model = await session.execute(
                     select(SuryaModelVersion).where(
                         SuryaModelVersion.is_production == True
@@ -1418,20 +1418,20 @@ def generate_surya_improvement_report(
 # ==================== Celery Beat Schedule ====================
 
 CELERY_BEAT_SURYA_IMPROVEMENT_SCHEDULE = {
-    # Taeglich: Surya Benchmark
+    # Täglich: Surya Benchmark
     "surya-daily-benchmark": {
         "task": "app.workers.tasks.surya_improvement_tasks.run_surya_benchmark",
         "schedule": 86400.0,  # 24 Stunden
         "options": {"queue": "gpu"},
         "kwargs": {"max_samples": 50, "include_cpu": True, "include_gpu": True},
     },
-    # Taeglich: Retraining-Bedingungen pruefen
+    # Täglich: Retraining-Bedingungen prüfen
     "surya-check-retraining-daily": {
         "task": "app.workers.tasks.surya_improvement_tasks.check_surya_retraining_conditions",
         "schedule": 86400.0,  # 24 Stunden um 02:00
         "options": {"queue": "default"},
     },
-    # Stuendlich: Surya-Korrektionen verarbeiten
+    # Stündlich: Surya-Korrektionen verarbeiten
     "surya-process-corrections-hourly": {
         "task": "app.workers.tasks.surya_improvement_tasks.process_surya_corrections",
         "schedule": 3600.0,  # 1 Stunde

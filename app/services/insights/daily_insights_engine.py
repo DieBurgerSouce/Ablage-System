@@ -5,16 +5,16 @@ Daily Insights Engine - Proaktive Warnungen VOR Problemen.
 Vision 2026 Q4: System das proaktiv warnt BEVOR Probleme entstehen.
 
 Unterschied zum ProactiveInsightsService:
-- ProactiveInsightsService: Kontext-sensitive Insights waehrend Chat/UI-Interaktion
-- DailyInsightsEngine: Batch-generierte Insights die taeglich erstellt werden
+- ProactiveInsightsService: Kontext-sensitive Insights während Chat/UI-Interaktion
+- DailyInsightsEngine: Batch-generierte Insights die täglich erstellt werden
 
 Insight-Typen:
-- cashflow_warning: "In 2 Wochen koennte Liquiditaet eng werden"
+- cashflow_warning: "In 2 Wochen könnte Liquiditaet eng werden"
 - contract_expiring: "Vertrag X laeuft in 30 Tagen aus"
-- payment_risk: "Kunde Y hat 3 ueberfaellige Rechnungen"
-- skonto_deadline: "Skonto fuer Rechnung Z verfaellt morgen"
-- unusual_pattern: "Ausgaben diesen Monat 40% hoeher als ueblich"
-- compliance_reminder: "Aufbewahrungsfrist fuer Dokumente 2015 endet bald"
+- payment_risk: "Kunde Y hat 3 überfällige Rechnungen"
+- skonto_deadline: "Skonto für Rechnung Z verfaellt morgen"
+- unusual_pattern: "Ausgaben diesen Monat 40% höher als ueblich"
+- compliance_reminder: "Aufbewahrungsfrist für Dokumente 2015 endet bald"
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ INSIGHTS_ACTIVE = Gauge(
 # =============================================================================
 
 class DailyInsightType(str, Enum):
-    """Typ des taeglichen Insights."""
+    """Typ des täglichen Insights."""
     CASHFLOW_WARNING = "cashflow_warning"
     CONTRACT_EXPIRING = "contract_expiring"
     PAYMENT_RISK = "payment_risk"
@@ -111,7 +111,7 @@ class InsightFactorDict(TypedDict, total=False):
 
 
 class HistoricalComparisonDict(TypedDict, total=False):
-    """Historischer Vergleich fuer Insights."""
+    """Historischer Vergleich für Insights."""
     previous_value: str
     current_value: str
     change_percent: float
@@ -120,7 +120,7 @@ class HistoricalComparisonDict(TypedDict, total=False):
 
 
 class DailyInsightDict(TypedDict):
-    """Typisiertes Dictionary fuer DailyInsight.to_dict()."""
+    """Typisiertes Dictionary für DailyInsight.to_dict()."""
     id: str
     insight_type: str
     severity: str
@@ -147,7 +147,7 @@ class DailyInsightDict(TypedDict):
 
 
 class CashflowDataDict(TypedDict, total=False):
-    """Cashflow-Daten fuer Insight-Generierung."""
+    """Cashflow-Daten für Insight-Generierung."""
     current_balance: float
     projected_balance: float
     incoming_payments: List[Dict[str, Union[str, float]]]
@@ -155,44 +155,44 @@ class CashflowDataDict(TypedDict, total=False):
 
 
 class ContractDataDict(TypedDict, total=False):
-    """Vertragsdaten fuer Insight-Generierung."""
+    """Vertragsdaten für Insight-Generierung."""
     contracts: List[Dict[str, Union[str, int, float]]]
 
 
 class PaymentRiskDataDict(TypedDict, total=False):
-    """Zahlungsrisiko-Daten fuer Insight-Generierung."""
+    """Zahlungsrisiko-Daten für Insight-Generierung."""
     entities: List[Dict[str, Union[str, int, float]]]
     overdue_invoices: List[Dict[str, Union[str, float]]]
 
 
 class SkontoDataDict(TypedDict, total=False):
-    """Skonto-Daten fuer Insight-Generierung."""
+    """Skonto-Daten für Insight-Generierung."""
     invoices: List[Dict[str, Union[str, float]]]
 
 
 class PatternDataDict(TypedDict, total=False):
-    """Muster-Daten fuer Insight-Generierung."""
+    """Muster-Daten für Insight-Generierung."""
     patterns: List[Dict[str, Union[str, float]]]
     baselines: Dict[str, float]
 
 
 class ComplianceDataDict(TypedDict, total=False):
-    """Compliance-Daten fuer Insight-Generierung."""
+    """Compliance-Daten für Insight-Generierung."""
     deadlines: List[Dict[str, Union[str, int]]]
     documents: List[Dict[str, Union[str, int]]]
 
 
 class RiskDataDict(TypedDict, total=False):
-    """Risiko-Daten fuer Insight-Generierung."""
+    """Risiko-Daten für Insight-Generierung."""
     entities: List[Dict[str, Union[str, int, float]]]
 
 
 class DunningDataDict(TypedDict, total=False):
-    """Mahnungs-Daten fuer Insight-Generierung."""
+    """Mahnungs-Daten für Insight-Generierung."""
     invoices: List[Dict[str, Union[str, float, int]]]
 
 
-# Union type fuer alle Insight-Daten (fuer Generator-Signaturen)
+# Union type für alle Insight-Daten (für Generator-Signaturen)
 InsightDataDict = Union[
     CashflowDataDict,
     ContractDataDict,
@@ -208,7 +208,7 @@ InsightDataDict = Union[
 
 class DataProvidersResult(TypedDict, total=False):
     """
-    Typisiertes Dictionary fuer alle Data Provider Ergebnisse.
+    Typisiertes Dictionary für alle Data Provider Ergebnisse.
 
     Alle Keys sind optional (total=False), da nicht alle Provider
     bei jedem Aufruf verwendet werden.
@@ -252,7 +252,7 @@ class DataProvidersResult(TypedDict, total=False):
 
 @dataclass
 class DailyInsight:
-    """Ein taeglicher proaktiver Insight."""
+    """Ein täglicher proaktiver Insight."""
     id: UUID = field(default_factory=uuid4)
     insight_type: DailyInsightType = DailyInsightType.CASHFLOW_WARNING
     severity: InsightSeverity = InsightSeverity.MEDIUM
@@ -330,7 +330,7 @@ class InsightGenerationResult:
 
 @dataclass
 class InsightGeneratorConfig:
-    """Konfiguration fuer Insight-Generatoren."""
+    """Konfiguration für Insight-Generatoren."""
     # Cashflow
     cashflow_warning_days: int = 14  # Warnung X Tage im Voraus
     cashflow_critical_threshold: Decimal = Decimal("0")  # Unter 0 = kritisch
@@ -374,7 +374,7 @@ class InsightGeneratorConfig:
 # =============================================================================
 
 class BaseInsightGenerator:
-    """Basis-Klasse fuer Insight-Generatoren."""
+    """Basis-Klasse für Insight-Generatoren."""
 
     insight_type: DailyInsightType
 
@@ -386,7 +386,7 @@ class BaseInsightGenerator:
         company_id: UUID,
         data: DataProvidersResult,
     ) -> List[DailyInsight]:
-        """Generiert Insights. Muss ueberschrieben werden."""
+        """Generiert Insights. Muss überschrieben werden."""
         raise NotImplementedError
 
 
@@ -483,17 +483,17 @@ class ContractExpiringGenerator(BaseInsightGenerator):
                 insight_type=self.insight_type,
                 severity=severity,
                 company_id=company_id,
-                title=f"Kuendigungsfrist: {contract.get('title', 'Vertrag')}",
-                summary=f"Kuendigungsfrist endet in {days_remaining} Tagen ({notice_date.strftime('%d.%m.%Y')}).",
-                detail=f"Monatliche Kosten: {monthly_cost:,.2f} EUR. Vertrag verlaengert sich automatisch.",
-                recommendation="Vertrag pruefen und ggf. kuendigen oder neu verhandeln.",
+                title=f"Kündigungsfrist: {contract.get('title', 'Vertrag')}",
+                summary=f"Kündigungsfrist endet in {days_remaining} Tagen ({notice_date.strftime('%d.%m.%Y')}).",
+                detail=f"Monatliche Kosten: {monthly_cost:,.2f} EUR. Vertrag verlängert sich automatisch.",
+                recommendation="Vertrag prüfen und ggf. kündigen oder neu verhandeln.",
                 related_document_id=UUID(contract["id"]) if contract.get("id") else None,
                 predicted_date=notice_date,
-                predicted_amount=monthly_cost * 12,  # Jaehrliche Kosten
+                predicted_amount=monthly_cost * 12,  # Jährliche Kosten
                 confidence=1.0,  # Sicher, da vertraglich festgelegt
                 available_actions=["view_contract", "cancel", "renew", "negotiate"],
                 primary_action_url=f"/contracts/{contract.get('id')}",
-                primary_action_label="Vertrag pruefen",
+                primary_action_label="Vertrag prüfen",
             ))
 
         return insights
@@ -591,9 +591,9 @@ class PaymentRiskGenerator(BaseInsightGenerator):
                 severity=severity,
                 company_id=company_id,
                 title=f"Hohes Zahlungsrisiko: {entity.get('name', 'Kunde')}",
-                summary=f"Risiko-Score: {risk_score}/100, {entity.get('overdue_count', 0)} ueberfaellige Rechnungen.",
+                summary=f"Risiko-Score: {risk_score}/100, {entity.get('overdue_count', 0)} überfällige Rechnungen.",
                 detail=f"Ausstehender Betrag: {overdue_amount:,.2f} EUR.",
-                recommendation="Zahlungsbedingungen ueberpruefen, ggf. Mahnung oder Inkasso einleiten.",
+                recommendation="Zahlungsbedingungen überprüfen, ggf. Mahnung oder Inkasso einleiten.",
                 related_entity_id=UUID(entity["entity_id"]) if entity.get("entity_id") else None,
                 related_entity_name=entity.get("name"),
                 predicted_amount=overdue_amount,
@@ -603,7 +603,7 @@ class PaymentRiskGenerator(BaseInsightGenerator):
                 primary_action_label="Risiko analysieren",
                 factors=[
                     {"name": "Risiko-Score", "value": f"{risk_score}/100"},
-                    {"name": "Ueberfaellige Rechnungen", "value": str(entity.get("overdue_count", 0))},
+                    {"name": "Überfällige Rechnungen", "value": str(entity.get("overdue_count", 0))},
                     {"name": "Ausstehend", "value": f"{overdue_amount:,.2f} EUR"},
                 ],
             ))
@@ -636,7 +636,7 @@ class UnusualPatternGenerator(BaseInsightGenerator):
             avg = Decimal(str(pattern.get("avg_amount", 0)))
 
             if deviation > 0:
-                direction = "hoeher"
+                direction = "höher"
                 severity = InsightSeverity.HIGH if deviation > 50 else InsightSeverity.MEDIUM
             else:
                 direction = "niedriger"
@@ -649,7 +649,7 @@ class UnusualPatternGenerator(BaseInsightGenerator):
                 title=f"Ungewoehnliches Muster: {pattern.get('category', 'Ausgaben')}",
                 summary=f"Ausgaben {abs(deviation):.0f}% {direction} als ueblich ({current:,.2f} EUR vs. {avg:,.2f} EUR Durchschnitt).",
                 detail=f"Kategorie: {pattern.get('category')}, Zeitraum: {pattern.get('period', 'dieser Monat')}.",
-                recommendation="Ueberpruefen ob die Abweichung beabsichtigt ist.",
+                recommendation="Überprüfen ob die Abweichung beabsichtigt ist.",
                 predicted_amount=current - avg,
                 confidence=0.75,
                 available_actions=["view_details", "set_alert", "mark_expected"],
@@ -693,15 +693,15 @@ class ComplianceReminderGenerator(BaseInsightGenerator):
             months_remaining = (end_date.year - now.year) * 12 + (end_date.month - now.month)
 
             if months_remaining < 0:
-                # Bereits abgelaufen - Dokumente koennen geloescht werden
+                # Bereits abgelaufen - Dokumente können gelöscht werden
                 severity = InsightSeverity.LOW
                 title = f"Aufbewahrungsfrist abgelaufen: Dokumente {item.get('year')}"
-                summary = f"{item.get('document_count', 0)} Dokumente koennen geloescht werden."
-                recommendation = "Dokumente archivieren oder sicher loeschen."
+                summary = f"{item.get('document_count', 0)} Dokumente können gelöscht werden."
+                recommendation = "Dokumente archivieren oder sicher löschen."
             elif months_remaining <= self.config.retention_warning_months:
                 severity = InsightSeverity.MEDIUM
                 title = f"Aufbewahrungsfrist endet bald: Dokumente {item.get('year')}"
-                summary = f"Aufbewahrungsfrist fuer {item.get('document_count', 0)} Dokumente endet in {months_remaining} Monaten."
+                summary = f"Aufbewahrungsfrist für {item.get('document_count', 0)} Dokumente endet in {months_remaining} Monaten."
                 recommendation = "Archivierung vorbereiten."
             else:
                 continue
@@ -725,7 +725,7 @@ class ComplianceReminderGenerator(BaseInsightGenerator):
 
 
 class OverdueInvoiceGenerator(BaseInsightGenerator):
-    """Generiert Warnungen fuer ueberfaellige Rechnungen."""
+    """Generiert Warnungen für überfällige Rechnungen."""
 
     insight_type = DailyInsightType.OVERDUE_INVOICE
 
@@ -757,19 +757,19 @@ class OverdueInvoiceGenerator(BaseInsightGenerator):
                 insight_type=self.insight_type,
                 severity=severity,
                 company_id=company_id,
-                title=f"Ueberfaellige Rechnung: {invoice.get('invoice_number')}",
-                summary=f"{days_overdue} Tage ueberfaellig, Kunde: {invoice.get('customer_name')}.",
+                title=f"Überfällige Rechnung: {invoice.get('invoice_number')}",
+                summary=f"{days_overdue} Tage überfällig, Kunde: {invoice.get('customer_name')}.",
                 detail=f"Betrag: {amount:,.2f} EUR, Mahnstufe: {invoice.get('dunning_level', 0)}.",
-                recommendation="Zahlungserinnerung senden oder Mahnstufe erhoehen.",
+                recommendation="Zahlungserinnerung senden oder Mahnstufe erhöhen.",
                 related_invoice_id=UUID(invoice["invoice_id"]) if invoice.get("invoice_id") else None,
                 related_entity_name=invoice.get("customer_name"),
                 predicted_amount=amount,
                 confidence=1.0,
                 available_actions=["send_reminder", "increase_dunning", "mark_paid", "view_invoice"],
                 primary_action_url=f"/invoices/{invoice.get('invoice_id')}",
-                primary_action_label="Rechnung oeffnen",
+                primary_action_label="Rechnung öffnen",
                 factors=[
-                    {"name": "Tage ueberfaellig", "value": str(days_overdue)},
+                    {"name": "Tage überfällig", "value": str(days_overdue)},
                     {"name": "Mahnstufe", "value": str(invoice.get("dunning_level", 0))},
                 ],
             ))
@@ -778,7 +778,7 @@ class OverdueInvoiceGenerator(BaseInsightGenerator):
 
 
 class DunningRequiredGenerator(BaseInsightGenerator):
-    """Generiert Mahnungs-Empfehlungen fuer ueberfaellige Rechnungen."""
+    """Generiert Mahnungs-Empfehlungen für überfällige Rechnungen."""
 
     insight_type = DailyInsightType.DUNNING_REQUIRED
 
@@ -808,7 +808,7 @@ class DunningRequiredGenerator(BaseInsightGenerator):
                 title = "Sofortige Mahnung erforderlich"
             elif days_overdue > self.config.dunning_warning_days_overdue and dunning_level < 2:
                 severity = InsightSeverity.HIGH
-                title = "Mahnstufe erhoehen"
+                title = "Mahnstufe erhöhen"
             elif days_overdue > self.config.dunning_reminder_days_overdue and dunning_level == 0:
                 severity = InsightSeverity.MEDIUM
                 title = "Erste Zahlungserinnerung senden"
@@ -819,7 +819,7 @@ class DunningRequiredGenerator(BaseInsightGenerator):
             if dunning_level == 0:
                 recommendation = "Zahlungserinnerung senden"
             elif dunning_level == 1:
-                recommendation = "Zweite Mahnung mit Mahngebuehr senden"
+                recommendation = "Zweite Mahnung mit Mahngebühr senden"
             elif dunning_level == 2:
                 recommendation = "Letzte Mahnung mit Inkasso-Androhung senden"
             else:
@@ -827,7 +827,7 @@ class DunningRequiredGenerator(BaseInsightGenerator):
 
             # Faktoren sammeln
             factors: List[InsightFactorDict] = [
-                {"name": "Tage ueberfaellig", "value": str(days_overdue)},
+                {"name": "Tage überfällig", "value": str(days_overdue)},
                 {"name": "Aktuelle Mahnstufe", "value": str(dunning_level)},
                 {"name": "Ausstehender Betrag", "value": f"{outstanding_amount:,.2f} EUR"},
             ]
@@ -841,7 +841,7 @@ class DunningRequiredGenerator(BaseInsightGenerator):
                 severity=severity,
                 company_id=company_id,
                 title=f"{title}: {invoice.get('customer_name', 'Kunde')}",
-                summary=f"Rechnung {invoice.get('invoice_number')} seit {days_overdue} Tagen ueberfaellig (Mahnstufe {dunning_level}).",
+                summary=f"Rechnung {invoice.get('invoice_number')} seit {days_overdue} Tagen überfällig (Mahnstufe {dunning_level}).",
                 detail=f"Ausstehend: {outstanding_amount:,.2f} EUR, Kunde: {invoice.get('customer_name')}.",
                 recommendation=recommendation,
                 related_invoice_id=UUID(invoice["dunning_record_id"]) if invoice.get("dunning_record_id") else None,
@@ -859,7 +859,7 @@ class DunningRequiredGenerator(BaseInsightGenerator):
 
 
 class BankReconciliationGenerator(BaseInsightGenerator):
-    """Generiert Warnungen fuer nicht-zugeordnete Banktransaktionen."""
+    """Generiert Warnungen für nicht-zugeordnete Banktransaktionen."""
 
     insight_type = DailyInsightType.BANK_RECONCILIATION
 
@@ -879,7 +879,7 @@ class BankReconciliationGenerator(BaseInsightGenerator):
             # Severity Logic
             if days_pending > self.config.reconciliation_critical_days:
                 severity = InsightSeverity.CRITICAL
-                title = "Kontobewegung seit ueber 30 Tagen offen"
+                title = "Kontobewegung seit über 30 Tagen offen"
             elif days_pending > self.config.reconciliation_warning_days:
                 severity = InsightSeverity.HIGH
                 title = "Nicht-zugeordnete Kontobewegung"
@@ -894,7 +894,7 @@ class BankReconciliationGenerator(BaseInsightGenerator):
 
             # Recommendation basierend auf match_confidence
             if match_confidence > 0.8:
-                recommendation = "Auto-Matching pruefen"
+                recommendation = "Auto-Matching prüfen"
             else:
                 recommendation = "Kontobewegung einem Beleg zuordnen"
 
@@ -905,10 +905,10 @@ class BankReconciliationGenerator(BaseInsightGenerator):
                 {"name": "Gegenseite", "value": transaction.get("counterparty_name", "Unbekannt")},
             ]
 
-            # Moegliche Zuordnung gefunden
+            # Mögliche Zuordnung gefunden
             if match_confidence > 0.8:
                 factors.append({
-                    "name": "Moegliche Zuordnung",
+                    "name": "Mögliche Zuordnung",
                     "value": f"Konfidenz: {match_confidence * 100:.0f}%"
                 })
 
@@ -917,7 +917,7 @@ class BankReconciliationGenerator(BaseInsightGenerator):
                 severity=severity,
                 company_id=company_id,
                 title=title,
-                summary=f"Kontobewegung von {transaction.get('counterparty_name', 'Unbekannt')} ueber {amount:,.2f} EUR seit {days_pending} Tagen offen.",
+                summary=f"Kontobewegung von {transaction.get('counterparty_name', 'Unbekannt')} über {amount:,.2f} EUR seit {days_pending} Tagen offen.",
                 detail=f"Buchungsdatum: {transaction.get('booking_date')}, Verwendungszweck: {transaction.get('reference_text', 'N/A')}.",
                 recommendation=recommendation,
                 predicted_amount=amount,
@@ -932,7 +932,7 @@ class BankReconciliationGenerator(BaseInsightGenerator):
 
 
 class MissingDocumentGenerator(BaseInsightGenerator):
-    """Generiert Warnungen fuer fehlende Belege und Belegnummern-Luecken."""
+    """Generiert Warnungen für fehlende Belege und Belegnummern-Lücken."""
 
     insight_type = DailyInsightType.MISSING_DOCUMENT
 
@@ -954,10 +954,10 @@ class MissingDocumentGenerator(BaseInsightGenerator):
             # Severity Logic
             if gaps_count >= self.config.document_gap_critical_count:
                 severity = InsightSeverity.CRITICAL
-                title = "Erhebliche Belegnummern-Luecken festgestellt"
+                title = "Erhebliche Belegnummern-Lücken festgestellt"
             elif gaps_count >= self.config.document_gap_warning_count:
                 severity = InsightSeverity.HIGH
-                title = "Belegnummern-Luecken gefunden"
+                title = "Belegnummern-Lücken gefunden"
             elif unmatched_count > 10:
                 severity = InsightSeverity.HIGH
                 title = "Viele Transaktionen ohne Beleg"
@@ -973,7 +973,7 @@ class MissingDocumentGenerator(BaseInsightGenerator):
             ]
 
             if gaps_count > 0:
-                factors.append({"name": "Anzahl Luecken", "value": str(gaps_count)})
+                factors.append({"name": "Anzahl Lücken", "value": str(gaps_count)})
 
                 # Fehlende Nummern (max 5)
                 missing_numbers = gap_data.get("missing_numbers", [])
@@ -993,13 +993,13 @@ class MissingDocumentGenerator(BaseInsightGenerator):
                 severity=severity,
                 company_id=company_id,
                 title=f"{title}: {document_type}",
-                summary=f"{gaps_count} Belegnummern-Luecken, {unmatched_count} Transaktionen ohne Beleg (Zeitraum: {gap_data.get('period', 'N/A')}).",
+                summary=f"{gaps_count} Belegnummern-Lücken, {unmatched_count} Transaktionen ohne Beleg (Zeitraum: {gap_data.get('period', 'N/A')}).",
                 detail=f"Gesamt {gap_data.get('total_documents', 0)} Belege im Zeitraum {gap_data.get('period', 'N/A')}.",
                 recommendation="Fehlende Belege nachscannen oder manuell erfassen",
                 confidence=1.0,
                 available_actions=["view_gaps", "upload_document", "scan_folder", "ignore_gap"],
                 primary_action_url=f"/documents/gaps/{document_type}",
-                primary_action_label="Luecken anzeigen",
+                primary_action_label="Lücken anzeigen",
                 factors=factors,
             ))
 
@@ -1012,9 +1012,9 @@ class MissingDocumentGenerator(BaseInsightGenerator):
 
 class DailyInsightsEngine:
     """
-    Engine fuer taegliche proaktive Insights.
+    Engine für tägliche proaktive Insights.
 
-    Generiert Batch-Insights fuer alle Companies basierend auf:
+    Generiert Batch-Insights für alle Companies basierend auf:
     - Cashflow-Prognosen
     - Vertragsfristen
     - Skonto-Deadlines
@@ -1049,7 +1049,7 @@ class DailyInsightsEngine:
         ]
 
     def register_generator(self, generator: BaseInsightGenerator) -> None:
-        """Registriert einen zusaetzlichen Generator."""
+        """Registriert einen zusätzlichen Generator."""
         self._generators.append(generator)
         logger.info(
             "insight_generator_registered",
@@ -1062,7 +1062,7 @@ class DailyInsightsEngine:
         data_providers: Dict[str, Callable[[], List[Dict[str, Union[str, int, float]]]]],
     ) -> InsightGenerationResult:
         """
-        Generiert alle taeglichen Insights fuer eine Company.
+        Generiert alle täglichen Insights für eine Company.
 
         Args:
             company_id: Company-ID
@@ -1101,7 +1101,7 @@ class DailyInsightsEngine:
                 )
                 data[key] = []
 
-        # Alle Generatoren ausfuehren
+        # Alle Generatoren ausführen
         for generator in self._generators:
             try:
                 insights = await generator.generate(company_id, data)
@@ -1167,7 +1167,7 @@ class DailyInsightsEngine:
         max_insights: int = 10,
     ) -> List[DailyInsight]:
         """
-        Holt nur die kritischsten Insights (fuer Dashboard).
+        Holt nur die kritischsten Insights (für Dashboard).
 
         Args:
             company_id: Company-ID
@@ -1187,7 +1187,7 @@ class DailyInsightsEngine:
         insight_types: Optional[List[DailyInsightType]] = None,
     ) -> List[DailyInsight]:
         """
-        Holt Insights mit verfuegbaren Aktionen.
+        Holt Insights mit verfügbaren Aktionen.
 
         Args:
             company_id: Company-ID
@@ -1274,7 +1274,7 @@ async def _build_data_providers_from_db(
             return []
 
     async def _get_skonto_invoices() -> List[Dict[str, Union[str, int, float]]]:
-        """Rechnungen mit ablaufenden Skonto-Fristen (naechste 7 Tage)."""
+        """Rechnungen mit ablaufenden Skonto-Fristen (nächste 7 Tage)."""
         try:
             from app.db.models import InvoiceTracking
 
@@ -1311,7 +1311,7 @@ async def _build_data_providers_from_db(
         try:
             from app.db.models import BusinessEntity, InvoiceTracking, Document
 
-            # Entities mit ueberfaelligen Rechnungen
+            # Entities mit überfälligen Rechnungen
             # Join: InvoiceTracking -> Document -> BusinessEntity
             result = await db.execute(
                 select(
@@ -1352,7 +1352,7 @@ async def _build_data_providers_from_db(
             return []
 
     async def _get_dunning_invoices() -> List[Dict[str, Union[str, int, float, bool]]]:
-        """Rechnungen die eine Mahnung benoetigen."""
+        """Rechnungen die eine Mahnung benötigen."""
         try:
             from app.db.models import InvoiceTracking, BusinessEntity, Document
 
@@ -1407,7 +1407,7 @@ async def _build_data_providers_from_db(
             return []
 
     async def _get_overdue_invoices() -> List[Dict[str, Union[str, int, float]]]:
-        """Ueberfaellige Rechnungen fuer OverdueInvoiceGenerator."""
+        """Überfällige Rechnungen für OverdueInvoiceGenerator."""
         try:
             from app.db.models import InvoiceTracking, BusinessEntity, Document
 
@@ -1471,7 +1471,7 @@ async def generate_all_insights_from_db(
     company_id: UUID,
 ) -> List[DailyInsight]:
     """
-    Generiert alle Insights fuer eine Company aus der DB.
+    Generiert alle Insights für eine Company aus der DB.
 
     Convenience-Funktion die von den API-Endpoints genutzt wird.
     Erstellt Data Provider aus der DB und ruft die Engine auf.
@@ -1488,7 +1488,7 @@ async def generate_insights_by_type_from_db(
     insight_type: DailyInsightType,
 ) -> List[DailyInsight]:
     """
-    Generiert Insights eines bestimmten Typs fuer eine Company.
+    Generiert Insights eines bestimmten Typs für eine Company.
 
     Filtert die generierten Insights nach dem angegebenen Typ.
     """
@@ -1507,7 +1507,7 @@ def get_daily_insights_engine(
     config: Optional[InsightGeneratorConfig] = None,
 ) -> DailyInsightsEngine:
     """
-    Factory-Funktion fuer DailyInsightsEngine.
+    Factory-Funktion für DailyInsightsEngine.
 
     Args:
         config: Optional Konfiguration

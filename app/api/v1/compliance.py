@@ -1,12 +1,12 @@
 """GoBD Compliance API Endpoints.
 
-Stellt REST-Endpoints fuer GoBD-konforme Dokumentenverarbeitung bereit:
+Stellt REST-Endpoints für GoBD-konforme Dokumentenverarbeitung bereit:
 - Archivierung
 - Aufbewahrungsfristen
 - Audit-Chain
-- Integritaetspruefungen
+- Integritaetsprüfungen
 
-GoBD = Grundsaetze zur ordnungsmaessigen Fuehrung und Aufbewahrung
+GoBD = Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung
        von Buechern, Aufzeichnungen und Unterlagen in elektronischer
        Form sowie zum Datenzugriff
 """
@@ -54,7 +54,7 @@ router = APIRouter(prefix="/compliance", tags=["GoBD Compliance"])
 class ArchiveDocumentRequest(BaseModel):
     """Request zum Archivieren eines Dokuments."""
     document_id: uuid.UUID
-    category: str = Field(..., description="Dokumentkategorie fuer Aufbewahrungsfrist")
+    category: str = Field(..., description="Dokumentkategorie für Aufbewahrungsfrist")
     document_date: Optional[date] = Field(None, description="Datum des Dokuments")
     use_tsa: bool = Field(False, description="RFC 3161 Zeitstempel anfordern")
     metadata: Optional[dict] = Field(None, description="Optionale Metadaten")
@@ -71,12 +71,12 @@ class ArchiveDocumentResponse(BaseModel):
 
 
 class IntegrityCheckRequest(BaseModel):
-    """Request fuer Integritaetspruefung."""
+    """Request für Integritaetsprüfung."""
     archive_id: uuid.UUID
 
 
 class IntegrityCheckResponse(BaseModel):
-    """Response der Integritaetspruefung."""
+    """Response der Integritaetsprüfung."""
     archive_id: uuid.UUID
     status: str
     hash_match: bool
@@ -87,7 +87,7 @@ class IntegrityCheckResponse(BaseModel):
 
 
 class AuditChainEntryResponse(BaseModel):
-    """Response fuer einen Audit-Chain Eintrag."""
+    """Response für einen Audit-Chain Eintrag."""
     id: uuid.UUID
     sequence_number: int
     event_type: str
@@ -119,7 +119,7 @@ class ChainStatisticsResponse(BaseModel):
 
 
 class RetentionAlertResponse(BaseModel):
-    """Alert fuer ablaufende Aufbewahrungsfrist."""
+    """Alert für ablaufende Aufbewahrungsfrist."""
     archive_id: uuid.UUID
     document_id: uuid.UUID
     category: str
@@ -139,13 +139,13 @@ class RetentionStatsResponse(BaseModel):
 
 
 class DeletionRequestCreate(BaseModel):
-    """Request zum Erstellen einer Loeschanfrage."""
+    """Request zum Erstellen einer Löschanfrage."""
     archive_id: uuid.UUID
-    reason: str = Field(..., min_length=10, description="Begruendung fuer die Loeschung")
+    reason: str = Field(..., min_length=10, description="Begruendung für die Löschung")
 
 
 class DeletionRequestResponse(BaseModel):
-    """Response einer Loeschanfrage."""
+    """Response einer Löschanfrage."""
     id: uuid.UUID
     archive_id: uuid.UUID
     status: str
@@ -155,12 +155,12 @@ class DeletionRequestResponse(BaseModel):
 
 
 class DeletionApprovalRequest(BaseModel):
-    """Request zum Genehmigen/Ablehnen einer Loeschanfrage."""
+    """Request zum Genehmigen/Ablehnen einer Löschanfrage."""
     comment: Optional[str] = None
 
 
 class ComplianceReportResponse(BaseModel):
-    """Vollstaendiger GoBD-Compliance-Bericht."""
+    """Vollständiger GoBD-Compliance-Bericht."""
     report_id: str
     company_id: str
     report_date: str
@@ -224,7 +224,7 @@ class VerfahrensdokumentationPDFResponse(BaseModel):
 
 @router.get("/report", response_model=ComplianceReportResponse)
 async def generate_compliance_report(
-    include_details: bool = Query(True, description="Details einschliessen"),
+    include_details: bool = Query(True, description="Details einschließen"),
     report_date: Optional[date] = Query(None, description="Stichtag"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -234,8 +234,8 @@ async def generate_compliance_report(
     Der Bericht bewertet:
     - Archivierungsrate
     - Aufbewahrungsfristen-Compliance
-    - Audit-Trail-Vollstaendigkeit
-    - Integritaetspruefungen
+    - Audit-Trail-Vollständigkeit
+    - Integritaetsprüfungen
 
     Ergebnis: Score 0-100 mit Empfehlungen.
     """
@@ -253,7 +253,7 @@ async def get_quick_compliance_status(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Schneller Compliance-Status fuer Dashboard-Widgets."""
+    """Schneller Compliance-Status für Dashboard-Widgets."""
     return await gobd_compliance_service.get_quick_compliance_status(
         db=db,
         company_id=current_user.company_id,
@@ -303,7 +303,7 @@ async def archive_document(
         if not storage.available:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Storage-Service nicht verfuegbar",
+                detail="Storage-Service nicht verfügbar",
             )
 
         document_content = await storage.download_document(document.file_path)
@@ -380,7 +380,7 @@ async def get_document_archive(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Holt die Archiv-Informationen fuer ein Dokument."""
+    """Holt die Archiv-Informationen für ein Dokument."""
     archive = await gobd_archive_service.get_archive_by_document(
         db=db,
         document_id=document_id,
@@ -390,7 +390,7 @@ async def get_document_archive(
     if not archive:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Kein Archiv fuer dieses Dokument gefunden",
+            detail="Kein Archiv für dieses Dokument gefunden",
         )
 
     return {
@@ -428,7 +428,7 @@ async def verify_archive_integrity(
     """Verifiziert die Integritaet eines archivierten Dokuments.
 
     Vergleicht den gespeicherten Hash mit dem aktuellen Hash.
-    Bei Abweichung: KRITISCHER FEHLER - moegliche Manipulation!
+    Bei Abweichung: KRITISCHER FEHLER - mögliche Manipulation!
     """
     from app.db.bpmn_models.gobd import DocumentArchive
 
@@ -474,7 +474,7 @@ async def verify_archive_integrity(
         if not storage.available:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Storage-Service nicht verfuegbar",
+                detail="Storage-Service nicht verfügbar",
             )
 
         document_content = await storage.download_document(document.file_path)
@@ -548,7 +548,7 @@ async def get_failed_verifications(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Holt alle Archive mit fehlgeschlagener Integritaetspruefung.
+    """Holt alle Archive mit fehlgeschlagener Integritaetsprüfung.
 
     KRITISCH: Diese Liste sollte immer leer sein!
     """
@@ -581,7 +581,7 @@ async def get_audit_chain_entries(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Holt Eintraege der Audit-Chain.
+    """Holt Einträge der Audit-Chain.
 
     Optional gefiltert nach Dokument.
     """
@@ -593,7 +593,7 @@ async def get_audit_chain_entries(
             limit=limit,
         )
     else:
-        # Hole allgemeine Eintraege (neueste zuerst)
+        # Hole allgemeine Einträge (neueste zuerst)
         from sqlalchemy import select, desc
         from app.db.bpmn_models.gobd import AuditChainEntry
 
@@ -661,7 +661,7 @@ async def verify_audit_chain(
 ):
     """Verifiziert die Integritaet der Audit-Chain.
 
-    Prueft alle Hash-Verkettungen auf Korrektheit.
+    Prüft alle Hash-Verkettungen auf Korrektheit.
     Bei Bruch: Die Kette wurde manipuliert!
     """
     result = await audit_chain_service.verify_chain(
@@ -688,7 +688,7 @@ async def get_audit_chain_statistics(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Holt Statistiken ueber die Audit-Chain."""
+    """Holt Statistiken über die Audit-Chain."""
     stats = await audit_chain_service.get_chain_statistics(
         db=db,
         company_id=current_user.company_id,
@@ -700,11 +700,11 @@ async def get_audit_chain_statistics(
 
 @router.get("/retention/alerts", response_model=List[RetentionAlertResponse])
 async def get_retention_alerts(
-    days_ahead: int = Query(180, ge=1, le=365, description="Tage voraus pruefen"),
+    days_ahead: int = Query(180, ge=1, le=365, description="Tage voraus prüfen"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Holt Warnungen fuer bald ablaufende Aufbewahrungsfristen."""
+    """Holt Warnungen für bald ablaufende Aufbewahrungsfristen."""
     alerts = await retention_service.get_expiring_archives(
         db=db,
         company_id=current_user.company_id,
@@ -873,7 +873,7 @@ async def create_deletion_request(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Erstellt eine Loeschanfrage fuer ein abgelaufenes Archiv."""
+    """Erstellt eine Löschanfrage für ein abgelaufenes Archiv."""
     try:
         deletion_request = await retention_service.request_deletion(
             db=db,
@@ -907,7 +907,7 @@ async def get_deletion_requests(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Holt alle Loeschanfragen."""
+    """Holt alle Löschanfragen."""
     from sqlalchemy import select
 
     query = select(RetentionDeletionRequest).where(
@@ -942,7 +942,7 @@ async def approve_deletion_request(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Genehmigt eine Loeschanfrage."""
+    """Genehmigt eine Löschanfrage."""
     try:
         deletion_request = await retention_service.approve_deletion(
             db=db,
@@ -955,7 +955,7 @@ async def approve_deletion_request(
         await db.commit()
 
         return {
-            "message": "Loeschanfrage genehmigt",
+            "message": "Löschanfrage genehmigt",
             "request_id": str(deletion_request.id),
             "status": deletion_request.status,
         }
@@ -974,7 +974,7 @@ async def reject_deletion_request(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Lehnt eine Loeschanfrage ab."""
+    """Lehnt eine Löschanfrage ab."""
     try:
         deletion_request = await retention_service.reject_deletion(
             db=db,
@@ -987,7 +987,7 @@ async def reject_deletion_request(
         await db.commit()
 
         return {
-            "message": "Loeschanfrage abgelehnt",
+            "message": "Löschanfrage abgelehnt",
             "request_id": str(deletion_request.id),
             "status": deletion_request.status,
         }
@@ -1004,8 +1004,8 @@ async def reject_deletion_request(
 
 @router.get("/verfahrensdokumentation", response_model=VerfahrensdokumentationResponse)
 async def get_verfahrensdokumentation(
-    include_full_history: bool = Query(False, description="Vollstaendige Aenderungshistorie einschliessen"),
-    history_limit: int = Query(50, ge=10, le=500, description="Max. Anzahl Historie-Eintraege"),
+    include_full_history: bool = Query(False, description="Vollständige Änderungshistorie einschließen"),
+    history_limit: int = Query(50, ge=10, le=500, description="Max. Anzahl Historie-Einträge"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1020,9 +1020,9 @@ async def get_verfahrensdokumentation(
     - Systemarchitektur
     - Prozessbeschreibungen
     - Benutzer- und Rollendokumentation
-    - Aenderungshistorie
+    - Änderungshistorie
 
-    Diese Dokumentation kann als Nachweis gegenueber Pruefern dienen.
+    Diese Dokumentation kann als Nachweis gegenüber Prüfern dienen.
     """
     try:
         doc = await gobd_compliance_service.generate_verfahrensdokumentation(
@@ -1049,10 +1049,10 @@ async def export_verfahrensdokumentation_pdf(
 ):
     """Exportiert die Verfahrensdokumentation als PDF.
 
-    Generiert ein druckbares PDF-Dokument fuer die Vorlage
-    bei Steuerberatern, Wirtschaftspruefern oder Finanzamt.
+    Generiert ein druckbares PDF-Dokument für die Vorlage
+    bei Steuerberatern, Wirtschaftsprüfern oder Finanzamt.
 
-    Das PDF enthaelt:
+    Das PDF enthält:
     - Titelseite mit Firmendaten
     - Inhaltsverzeichnis
     - Alle Sektionen der Verfahrensdokumentation
@@ -1096,7 +1096,7 @@ async def export_verfahrensdokumentation_markdown(
 ):
     """Exportiert die Verfahrensdokumentation als Markdown.
 
-    Ideal fuer Versionskontrolle und interne Dokumentation.
+    Ideal für Versionskontrolle und interne Dokumentation.
     """
     from fastapi.responses import Response
     from app.services.compliance import (
@@ -1168,17 +1168,17 @@ async def get_steuerberater_export(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Exportiert Daten fuer den Steuerberater-Zugang.
+    """Exportiert Daten für den Steuerberater-Zugang.
 
     Stellt alle relevanten Compliance-Daten in einem
-    strukturierten Format fuer externe Pruefer bereit.
+    strukturierten Format für externe Prüfer bereit.
 
-    Enthaelt:
+    Enthält:
     - Verfahrensdokumentation (Zusammenfassung)
     - Archivierungsstatistiken
-    - Aufbewahrungsfristen-Uebersicht
+    - Aufbewahrungsfristen-Übersicht
     - Audit-Trail-Statistiken
-    - Integritaetspruefungs-Protokoll
+    - Integritaetsprüfungs-Protokoll
     """
     try:
         # Verfahrensdokumentation (Kurzfassung)
@@ -1254,8 +1254,8 @@ async def get_steuerberater_export(
                 "tsa_timestamped": chain_stats.get("tsa_timestamped_count", 0),
             },
             "hinweise": [
-                "Diese Daten dienen als Nachweis der GoBD-Konformitaet.",
-                "Die Integritaet der Dokumente kann ueber die API verifiziert werden.",
+                "Diese Daten dienen als Nachweis der GoBD-Konformität.",
+                "Die Integritaet der Dokumente kann über die API verifiziert werden.",
                 "Bei Fragen wenden Sie sich an den Systemadministrator.",
             ],
         }
@@ -1271,10 +1271,10 @@ async def get_steuerberater_export(
 # ================== GDPR Breach Notification (Art. 33-34) ==================
 
 class AffectedDataCategorySchema(BaseModel):
-    """Schema fuer betroffene Datenkategorie."""
+    """Schema für betroffene Datenkategorie."""
     category: str = Field(..., description="Kategorie (z.B. 'name', 'email', 'iban')")
     description: str = Field(..., description="Beschreibung der Daten")
-    count: int = Field(0, ge=0, description="Anzahl betroffener Datensaetze")
+    count: int = Field(0, ge=0, description="Anzahl betroffener Datensätze")
     is_sensitive: bool = Field(False, description="Besondere Kategorie nach Art. 9 DSGVO")
 
 
@@ -1288,7 +1288,7 @@ class BreachReportRequest(BaseModel):
         ..., min_length=1, description="Betroffene Datenkategorien"
     )
     occurred_at: Optional[str] = Field(None, description="Zeitpunkt des Vorfalls (ISO 8601)")
-    is_estimate: bool = Field(False, description="True wenn Anzahl geschaetzt ist")
+    is_estimate: bool = Field(False, description="True wenn Anzahl geschätzt ist")
 
 
 class BreachReportResponse(BaseModel):
@@ -1313,13 +1313,13 @@ class BreachMeasureRequest(BaseModel):
 
 
 class BreachRootCauseRequest(BaseModel):
-    """Request fuer Root-Cause-Analyse."""
+    """Request für Root-Cause-Analyse."""
     root_cause: str = Field(..., min_length=20, description="Root-Cause-Analyse")
     impact_assessment: str = Field(..., min_length=20, description="Impact-Assessment")
 
 
 class AuthorityNotificationRequest(BaseModel):
-    """Request fuer Behoerdenbenachrichtigung."""
+    """Request für Behoerdenbenachrichtigung."""
     state_code: str = Field("DE-DEFAULT", description="Bundesland-Code (DE-BW, DE-BY, etc.)")
     company_name: Optional[str] = None
     company_address: Optional[str] = None
@@ -1328,7 +1328,7 @@ class AuthorityNotificationRequest(BaseModel):
 
 
 class BreachListResponse(BaseModel):
-    """Response fuer Breach-Liste."""
+    """Response für Breach-Liste."""
     breaches: List[dict]
     total: int
     limit: int
@@ -1343,7 +1343,7 @@ async def report_data_breach(
 ):
     """Meldet eine Datenschutzverletzung nach Art. 33 DSGVO.
 
-    WICHTIG: Die 72-Stunden-Frist fuer die Meldung an die Aufsichtsbehoerde
+    WICHTIG: Die 72-Stunden-Frist für die Meldung an die Aufsichtsbehoerde
     beginnt mit dem Zeitpunkt der Erkennung der Verletzung.
 
     Schweregrade:
@@ -1357,7 +1357,7 @@ async def report_data_breach(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Breach-Typ. Erlaubt: {[t.value for t in BreachType]}",
+            detail=f"Ungültiger Breach-Typ. Erlaubt: {[t.value for t in BreachType]}",
         )
 
     try:
@@ -1365,7 +1365,7 @@ async def report_data_breach(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Schweregrad. Erlaubt: {[s.value for s in BreachSeverity]}",
+            detail=f"Ungültiger Schweregrad. Erlaubt: {[s.value for s in BreachSeverity]}",
         )
 
     # Konvertiere Datenkategorien
@@ -1388,7 +1388,7 @@ async def report_data_breach(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ungueltiges Datumsformat fuer occurred_at. Erwartet: ISO 8601",
+                detail="Ungültiges Datumsformat für occurred_at. Erwartet: ISO 8601",
             )
 
     service = get_breach_notification_service()
@@ -1451,7 +1451,7 @@ async def list_breaches(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Status. Erlaubt: {[s.value for s in BreachStatus]}",
+                detail=f"Ungültiger Status. Erlaubt: {[s.value for s in BreachStatus]}",
             )
 
     severity_enum = None
@@ -1461,7 +1461,7 @@ async def list_breaches(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Schweregrad. Erlaubt: {[s.value for s in BreachSeverity]}",
+                detail=f"Ungültiger Schweregrad. Erlaubt: {[s.value for s in BreachSeverity]}",
             )
 
     service = get_breach_notification_service()
@@ -1501,9 +1501,9 @@ async def get_breach_deadlines(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Gibt alle Breaches mit anstehenden 72-Stunden-Deadlines zurueck.
+    """Gibt alle Breaches mit anstehenden 72-Stunden-Deadlines zurück.
 
-    KRITISCH: Diese Deadlines muessen eingehalten werden!
+    KRITISCH: Diese Deadlines müssen eingehalten werden!
     """
     service = get_breach_notification_service()
     deadlines = await service.get_pending_deadlines(
@@ -1533,12 +1533,12 @@ async def get_breach_details(
             detail=f"Breach {breach_id} nicht gefunden",
         )
 
-    # Pruefe Company-Zugehoerigkeit
+    # Prüfe Company-Zugehoerigkeit
     if breach.company_id and current_user.company_id:
         if breach.company_id != str(current_user.company_id):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Keine Berechtigung fuer diesen Breach",
+                detail="Keine Berechtigung für diesen Breach",
             )
 
     return {
@@ -1604,7 +1604,7 @@ async def update_breach_status(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Status. Erlaubt: {[s.value for s in BreachStatus]}",
+            detail=f"Ungültiger Status. Erlaubt: {[s.value for s in BreachStatus]}",
         )
 
     service = get_breach_notification_service()
@@ -1717,7 +1717,7 @@ async def generate_authority_notification(
 ):
     """Generiert die Behoerdenbenachrichtigung nach Art. 33 DSGVO.
 
-    Die Benachrichtigung enthaelt alle Pflichtangaben nach Art. 33 Abs. 3 DSGVO:
+    Die Benachrichtigung enthält alle Pflichtangaben nach Art. 33 Abs. 3 DSGVO:
     - Art der Verletzung
     - Kategorien und Anzahl der Betroffenen
     - Wahrscheinliche Folgen
@@ -1763,11 +1763,11 @@ async def generate_subject_notification(
     """Generiert die Betroffenenbenachrichtigung nach Art. 34 DSGVO.
 
     Die Benachrichtigung ist in klarer, verstaendlicher Sprache verfasst
-    und enthaelt:
+    und enthält:
     - Art der Verletzung
     - Wahrscheinliche Folgen
     - Ergriffene Massnahmen
-    - Empfehlungen fuer Betroffene
+    - Empfehlungen für Betroffene
     """
     service = get_breach_notification_service()
     template = await service.generate_subject_notification(
@@ -1795,7 +1795,7 @@ async def generate_subject_notification(
 async def get_supervisory_authorities(
     current_user: User = Depends(get_current_user),
 ):
-    """Gibt Liste aller konfigurierten Aufsichtsbehoerden zurueck."""
+    """Gibt Liste aller konfigurierten Aufsichtsbehoerden zurück."""
     return {
         "authorities": [
             {

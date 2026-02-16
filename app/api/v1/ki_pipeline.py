@@ -2,14 +2,14 @@
 """
 KI-Pipeline API Endpoints.
 
-REST API fuer die KI-Pipeline Intelligence (Feature #4):
+REST API für die KI-Pipeline Intelligence (Feature #4):
 - Confidence-Reports und -Reviews
 - Benutzer-Korrekturen mit Lern-Trigger
 - Cross-Dokument-Matching und Diskrepanzen
 - Dokumenten-Zusammenfassungen
 - Lernstatistiken
 
-Feinpoliert und durchdacht - Deutsche Praezision.
+Feinpoliert und durchdacht - Deutsche Präzision.
 """
 
 import structlog
@@ -48,7 +48,7 @@ class FieldConfidenceResponse(BaseModel):
 
 
 class ConfidenceReportResponse(BaseModel):
-    """Gesamter Confidence-Report fuer ein Dokument."""
+    """Gesamter Confidence-Report für ein Dokument."""
     document_id: str
     total_fields: int
     auto_accepted: int
@@ -59,7 +59,7 @@ class ConfidenceReportResponse(BaseModel):
 
 
 class CorrectionRequest(BaseModel):
-    """Anfrage fuer eine Feld-Korrektur."""
+    """Anfrage für eine Feld-Korrektur."""
     field_name: str = Field(
         ...,
         description="Name des zu korrigierenden Feldes",
@@ -163,15 +163,15 @@ class GenerateSummaryRequest(BaseModel):
 @router.get(
     "/confidence/{document_id}",
     response_model=ConfidenceReportResponse,
-    summary="Confidence-Report fuer Dokument",
-    description="Gibt den vollstaendigen Confidence-Report mit allen Feldern zurueck.",
+    summary="Confidence-Report für Dokument",
+    description="Gibt den vollständigen Confidence-Report mit allen Feldern zurück.",
 )
 async def get_confidence_report(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> ConfidenceReportResponse:
-    """Confidence-Report fuer ein Dokument abrufen."""
+    """Confidence-Report für ein Dokument abrufen."""
     from app.services.confidence_extraction_service import (
         get_confidence_extraction_service,
     )
@@ -220,15 +220,15 @@ async def get_confidence_report(
 @router.get(
     "/confidence/{document_id}/review",
     response_model=List[FieldConfidenceResponse],
-    summary="Felder zur manuellen Pruefung",
-    description="Gibt Felder zurueck die manuelle Pruefung benoetigen (Score < 90%).",
+    summary="Felder zur manuellen Prüfung",
+    description="Gibt Felder zurück die manuelle Prüfung benötigen (Score < 90%).",
 )
 async def get_fields_for_review(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[FieldConfidenceResponse]:
-    """Felder die manuelle Pruefung benoetigen abrufen."""
+    """Felder die manuelle Prüfung benötigen abrufen."""
     from app.services.confidence_extraction_service import (
         get_confidence_extraction_service,
     )
@@ -257,7 +257,7 @@ async def get_fields_for_review(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Pruefungsfelder konnten nicht geladen werden",
+            detail="Prüfungsfelder konnten nicht geladen werden",
         )
 
 
@@ -265,7 +265,7 @@ async def get_fields_for_review(
     "/confidence/{document_id}/correct",
     response_model=CorrectionResponse,
     summary="Korrektur einreichen",
-    description="Reicht eine Korrektur fuer ein extrahiertes Feld ein und triggert das Lernsystem.",
+    description="Reicht eine Korrektur für ein extrahiertes Feld ein und triggert das Lernsystem.",
 )
 async def submit_correction(
     document_id: UUID,
@@ -273,7 +273,7 @@ async def submit_correction(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> CorrectionResponse:
-    """Korrektur fuer ein extrahiertes Feld einreichen."""
+    """Korrektur für ein extrahiertes Feld einreichen."""
     from app.services.confidence_extraction_service import (
         get_confidence_extraction_service,
     )
@@ -359,7 +359,7 @@ async def accept_all_high_confidence(
     "/learning/profiles",
     response_model=List[LearningProfileResponse],
     summary="Lernprofile auflisten",
-    description="Listet alle Lernprofile fuer die aktuelle Firma auf.",
+    description="Listet alle Lernprofile für die aktuelle Firma auf.",
 )
 async def list_learning_profiles(
     profile_type: Optional[str] = Query(
@@ -421,7 +421,7 @@ async def list_learning_profiles(
     "/learning/statistics",
     response_model=LearningStatisticsResponse,
     summary="Lernstatistiken",
-    description="Gibt Statistiken zum Lernfortschritt der aktuellen Firma zurueck.",
+    description="Gibt Statistiken zum Lernfortschritt der aktuellen Firma zurück.",
 )
 async def get_learning_statistics(
     db: AsyncSession = Depends(get_db),
@@ -470,7 +470,7 @@ async def get_learning_statistics(
     "/cross-doc/{document_id}/matches",
     response_model=List[CrossDocMatchResponse],
     summary="Cross-Document Matches",
-    description="Gibt alle Cross-Document-Matches fuer ein Dokument zurueck.",
+    description="Gibt alle Cross-Document-Matches für ein Dokument zurück.",
 )
 async def get_cross_doc_matches(
     document_id: UUID,
@@ -478,7 +478,7 @@ async def get_cross_doc_matches(
     current_user: User = Depends(get_current_active_user),
     company_id: Optional[UUID] = Depends(get_current_company_id),
 ) -> List[CrossDocMatchResponse]:
-    """Cross-Document-Matches fuer ein Dokument abrufen."""
+    """Cross-Document-Matches für ein Dokument abrufen."""
     from app.services.cross_document_intelligence_service import (
         get_cross_document_intelligence_service,
     )
@@ -526,8 +526,8 @@ async def get_cross_doc_matches(
 @router.get(
     "/cross-doc/{document_id}/discrepancies",
     response_model=List[DiscrepancyResponse],
-    summary="Diskrepanzen fuer Dokument",
-    description="Gibt alle erkannten Diskrepanzen fuer ein Dokument zurueck.",
+    summary="Diskrepanzen für Dokument",
+    description="Gibt alle erkannten Diskrepanzen für ein Dokument zurück.",
 )
 async def get_discrepancies(
     document_id: UUID,
@@ -535,7 +535,7 @@ async def get_discrepancies(
     current_user: User = Depends(get_current_active_user),
     company_id: Optional[UUID] = Depends(get_current_company_id),
 ) -> List[DiscrepancyResponse]:
-    """Diskrepanzen fuer ein Dokument abrufen."""
+    """Diskrepanzen für ein Dokument abrufen."""
     from app.services.cross_document_intelligence_service import (
         get_cross_document_intelligence_service,
     )
@@ -587,14 +587,14 @@ async def get_discrepancies(
     "/summary/{document_id}",
     response_model=DocumentSummaryResponse,
     summary="Dokumenten-Zusammenfassung",
-    description="Gibt die Zusammenfassung fuer ein Dokument zurueck.",
+    description="Gibt die Zusammenfassung für ein Dokument zurück.",
 )
 async def get_document_summary(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> DocumentSummaryResponse:
-    """Zusammenfassung fuer ein Dokument abrufen."""
+    """Zusammenfassung für ein Dokument abrufen."""
     from app.services.document_summary_service import (
         get_document_summary_service,
     )
@@ -606,7 +606,7 @@ async def get_document_summary(
         if not summary:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Keine Zusammenfassung fuer dieses Dokument vorhanden",
+                detail="Keine Zusammenfassung für dieses Dokument vorhanden",
             )
 
         return DocumentSummaryResponse(
@@ -639,7 +639,7 @@ async def get_document_summary(
     "/summary/{document_id}/generate",
     response_model=DocumentSummaryResponse,
     summary="Zusammenfassung generieren",
-    description="Generiert oder regeneriert die Zusammenfassung fuer ein Dokument.",
+    description="Generiert oder regeneriert die Zusammenfassung für ein Dokument.",
 )
 async def generate_summary(
     document_id: UUID,
@@ -648,7 +648,7 @@ async def generate_summary(
     current_user: User = Depends(get_current_active_user),
     company_id: Optional[UUID] = Depends(get_current_company_id),
 ) -> DocumentSummaryResponse:
-    """Zusammenfassung fuer ein Dokument generieren/regenerieren."""
+    """Zusammenfassung für ein Dokument generieren/regenerieren."""
     from app.services.document_summary_service import (
         get_document_summary_service,
     )

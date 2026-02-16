@@ -4,7 +4,7 @@ LoanAmortizationService - Kredit-Tilgungsplaene und Analysen.
 
 Berechnet automatisch:
 - Tilgungsplan (Annuitaet)
-- Voraussichtliches Rueckzahlungsdatum
+- Voraussichtliches Rückzahlungsdatum
 - Gesamtzinsen
 - Zinsersparnis bei Sondertilgung
 
@@ -109,7 +109,7 @@ class LoanSummary:
 
 @dataclass
 class LoanKPIs:
-    """Alle berechneten KPIs fuer einen Kredit."""
+    """Alle berechneten KPIs für einen Kredit."""
     loan_id: UUID
     schedule: Optional[AmortizationScheduleResult] = None
     summary: Optional[LoanSummary] = None
@@ -123,10 +123,10 @@ class LoanKPIs:
 
 class LoanAmortizationService:
     """
-    Service fuer Kredit-Tilgungsplaene.
+    Service für Kredit-Tilgungsplaene.
 
     Berechnet:
-    - Vollstaendigen Tilgungsplan
+    - Vollständigen Tilgungsplan
     - Restlaufzeit und Auszahlungsdatum
     - Zinsersparnis bei Sondertilgung
     - Effektiven Jahreszins
@@ -147,7 +147,7 @@ class LoanAmortizationService:
         include_past: bool = False,
     ) -> Optional[AmortizationScheduleResult]:
         """
-        Generiert einen vollstaendigen Tilgungsplan.
+        Generiert einen vollständigen Tilgungsplan.
 
         Berechnet Annuitaeten-Tilgung mit monatlichen Raten.
 
@@ -172,7 +172,7 @@ class LoanAmortizationService:
             logger.warning("loan_not_found", loan_id=str(loan_id))
             return None
 
-        # Pflichtfelder pruefen
+        # Pflichtfelder prüfen
         if not loan.principal_amount or loan.principal_amount <= 0:
             return None
         if not loan.interest_rate:
@@ -201,9 +201,9 @@ class LoanAmortizationService:
         while balance > Decimal("0.01") and period < max_periods:
             period += 1
 
-            # Naechsten Monat berechnen
+            # Nächsten Monat berechnen
             if period > 1:
-                # Zum naechsten Monat
+                # Zum nächsten Monat
                 if current_date.month == 12:
                     current_date = current_date.replace(year=current_date.year + 1, month=1)
                 else:
@@ -288,7 +288,7 @@ class LoanAmortizationService:
         Args:
             db: Datenbank-Session
             loan_id: Kredit-ID
-            extra_amount: Hoehe der Sondertilgung
+            extra_amount: Höhe der Sondertilgung
 
         Returns:
             ExtraPaymentAnalysis oder None
@@ -412,7 +412,7 @@ class LoanAmortizationService:
         if not loan.principal_amount or not loan.interest_rate or not loan.monthly_payment:
             return None
 
-        # Tilgungsplan fuer Prognose
+        # Tilgungsplan für Prognose
         schedule = await self.generate_amortization_schedule(db, loan_id)
         if not schedule:
             return None
@@ -453,12 +453,12 @@ class LoanAmortizationService:
         persist: bool = True,
     ) -> LoanKPIs:
         """
-        Berechnet alle KPIs fuer einen Kredit.
+        Berechnet alle KPIs für einen Kredit.
 
         Args:
             db: Datenbank-Session
             loan_id: Kredit-ID
-            extra_payment_amount: Optionale Sondertilgung fuer Analyse
+            extra_payment_amount: Optionale Sondertilgung für Analyse
             persist: Ob die Werte in der Datenbank gespeichert werden sollen
 
         Returns:
@@ -507,7 +507,7 @@ class LoanAmortizationService:
         if not loan:
             return
 
-        # Tilgungsplan als JSON speichern (nur Zusammenfassung, nicht alle Eintraege)
+        # Tilgungsplan als JSON speichern (nur Zusammenfassung, nicht alle Einträge)
         if kpis.schedule:
             # Nur wichtige Meilensteine speichern (erstes, letztes, jedes 12. Jahr)
             summary_entries = []
@@ -559,7 +559,7 @@ class LoanAmortizationService:
         space_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """
-        Berechnet KPIs fuer alle Kredite (oder alle in einem Space).
+        Berechnet KPIs für alle Kredite (oder alle in einem Space).
 
         Args:
             db: Datenbank-Session
@@ -698,7 +698,7 @@ _service_lock = threading.Lock()
 
 
 def get_loan_amortization_service() -> LoanAmortizationService:
-    """Factory fuer LoanAmortizationService Singleton (Thread-safe)."""
+    """Factory für LoanAmortizationService Singleton (Thread-safe)."""
     global _loan_amortization_service
     if _loan_amortization_service is None:
         with _service_lock:

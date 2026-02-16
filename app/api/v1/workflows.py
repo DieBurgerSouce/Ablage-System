@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Workflow API Endpoints.
 
-32 Endpoints fuer Workflow-Automation:
+32 Endpoints für Workflow-Automation:
 - Workflow CRUD (8)
 - Workflow Steps (6)
 - Execution (8)
@@ -88,7 +88,7 @@ async def get_user_company_id(db: AsyncSession, user: User) -> Optional[UUID]:
 
 
 class WorkflowCreate(BaseModel):
-    """Schema fuer Workflow-Erstellung."""
+    """Schema für Workflow-Erstellung."""
 
     name: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = None
@@ -118,7 +118,7 @@ class WorkflowCreate(BaseModel):
 
 
 class WorkflowUpdate(BaseModel):
-    """Schema fuer Workflow-Update."""
+    """Schema für Workflow-Update."""
 
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = None
@@ -149,7 +149,7 @@ class WorkflowUpdate(BaseModel):
 
 
 class WorkflowResponse(BaseModel):
-    """Schema fuer Workflow-Antwort."""
+    """Schema für Workflow-Antwort."""
 
     id: UUID
     user_id: UUID
@@ -175,7 +175,7 @@ class WorkflowResponse(BaseModel):
 
 
 class WorkflowListResponse(BaseModel):
-    """Schema fuer Workflow-Liste."""
+    """Schema für Workflow-Liste."""
 
     items: List[WorkflowResponse]
     total: int
@@ -184,7 +184,7 @@ class WorkflowListResponse(BaseModel):
 
 
 class StepCreate(BaseModel):
-    """Schema fuer Step-Erstellung."""
+    """Schema für Step-Erstellung."""
 
     step_order: int = Field(..., ge=0)
     step_type: str = Field(..., pattern="^(condition|action|branch|delay|parallel|loop)$")
@@ -197,7 +197,7 @@ class StepCreate(BaseModel):
 
 
 class StepUpdate(BaseModel):
-    """Schema fuer Step-Update."""
+    """Schema für Step-Update."""
 
     step_order: Optional[int] = Field(None, ge=0)
     step_type: Optional[str] = Field(None, pattern="^(condition|action|branch|delay|parallel|loop)$")
@@ -210,7 +210,7 @@ class StepUpdate(BaseModel):
 
 
 class StepResponse(BaseModel):
-    """Schema fuer Step-Antwort."""
+    """Schema für Step-Antwort."""
 
     id: UUID
     workflow_id: UUID
@@ -229,21 +229,21 @@ class StepResponse(BaseModel):
 
 
 class StepReorderItem(BaseModel):
-    """Schema fuer Step-Neuordnung."""
+    """Schema für Step-Neuordnung."""
 
     step_id: UUID
     step_order: int
 
 
 class ExecutionStart(BaseModel):
-    """Schema fuer Execution-Start."""
+    """Schema für Execution-Start."""
 
     document_id: Optional[UUID] = None
     variables: Optional[Dict[str, object]] = None
 
 
 class ExecutionResponse(BaseModel):
-    """Schema fuer Execution-Antwort."""
+    """Schema für Execution-Antwort."""
 
     id: UUID
     workflow_id: UUID
@@ -263,7 +263,7 @@ class ExecutionResponse(BaseModel):
 
 
 class ExecutionListResponse(BaseModel):
-    """Schema fuer Execution-Liste."""
+    """Schema für Execution-Liste."""
 
     items: List[ExecutionResponse]
     total: int
@@ -272,7 +272,7 @@ class ExecutionListResponse(BaseModel):
 
 
 class StepExecutionResponse(BaseModel):
-    """Schema fuer Step-Execution-Antwort."""
+    """Schema für Step-Execution-Antwort."""
 
     id: UUID
     execution_id: UUID
@@ -288,20 +288,20 @@ class StepExecutionResponse(BaseModel):
 
 
 class TemplateInstantiate(BaseModel):
-    """Schema fuer Template-Instanziierung."""
+    """Schema für Template-Instanziierung."""
 
     name: Optional[str] = None
     company_id: Optional[UUID] = None
 
 
 class WebhookPayload(BaseModel):
-    """Schema fuer Webhook-Payload."""
+    """Schema für Webhook-Payload."""
 
     data: Dict[str, object] = Field(default_factory=dict)
 
 
 class ValidationResult(BaseModel):
-    """Schema fuer Validierungsergebnis."""
+    """Schema für Validierungsergebnis."""
 
     valid: bool
     errors: List[str]
@@ -309,7 +309,7 @@ class ValidationResult(BaseModel):
 
 
 class WorkflowStats(BaseModel):
-    """Schema fuer Workflow-Statistiken."""
+    """Schema für Workflow-Statistiken."""
 
     workflow_id: UUID
     name: str
@@ -320,7 +320,7 @@ class WorkflowStats(BaseModel):
 
 
 class OverviewStats(BaseModel):
-    """Schema fuer Gesamt-Statistiken."""
+    """Schema für Gesamt-Statistiken."""
 
     total_workflows: int
     active_workflows: int
@@ -420,7 +420,7 @@ async def get_workflow(
     current_user: User = Depends(get_current_user),
 ) -> WorkflowResponse:
     """Ruft einen Workflow nach ID ab."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
@@ -452,7 +452,7 @@ async def update_workflow(
     current_user: User = Depends(get_current_user),
 ) -> WorkflowResponse:
     """Aktualisiert einen Workflow."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
@@ -477,15 +477,15 @@ async def update_workflow(
     "/{workflow_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Workflow loeschen",
+    summary="Workflow löschen",
 )
 async def delete_workflow(
     workflow_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    """Loescht einen Workflow."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    """Löscht einen Workflow."""
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
@@ -513,12 +513,12 @@ async def delete_workflow(
 )
 async def duplicate_workflow(
     workflow_id: UUID,
-    new_name: Optional[str] = Query(None, description="Name fuer Kopie"),
+    new_name: Optional[str] = Query(None, description="Name für Kopie"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> WorkflowResponse:
     """Dupliziert einen Workflow."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
@@ -550,7 +550,7 @@ async def toggle_workflow(
     current_user: User = Depends(get_current_user),
 ) -> WorkflowResponse:
     """Aktiviert oder deaktiviert einen Workflow."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
@@ -581,7 +581,7 @@ async def validate_workflow(
     current_user: User = Depends(get_current_user),
 ) -> ValidationResult:
     """Validiert einen Workflow."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
@@ -611,12 +611,12 @@ async def get_workflow_steps(
     current_user: User = Depends(get_current_user),
 ) -> List[StepResponse]:
     """Ruft alle Steps eines Workflows ab."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen (mit company_id)
+    # Workflow-Zugriff prüfen (mit company_id)
     workflow = await service.get_workflow(
         workflow_id, current_user.id, company_id=company_id, include_steps=False
     )
@@ -644,12 +644,12 @@ async def create_step(
     current_user: User = Depends(get_current_user),
 ) -> StepResponse:
     """Erstellt einen neuen Step."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen (mit company_id)
+    # Workflow-Zugriff prüfen (mit company_id)
     workflow = await service.get_workflow(
         workflow_id, current_user.id, company_id=company_id, include_steps=False
     )
@@ -689,12 +689,12 @@ async def update_step(
     current_user: User = Depends(get_current_user),
 ) -> StepResponse:
     """Aktualisiert einen Step."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen (mit company_id)
+    # Workflow-Zugriff prüfen (mit company_id)
     workflow = await service.get_workflow(
         workflow_id, current_user.id, company_id=company_id, include_steps=False
     )
@@ -724,7 +724,7 @@ async def update_step(
     "/{workflow_id}/steps/{step_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
-    summary="Step loeschen",
+    summary="Step löschen",
 )
 async def delete_step(
     workflow_id: UUID,
@@ -732,13 +732,13 @@ async def delete_step(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    """Loescht einen Step."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    """Löscht einen Step."""
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen (mit company_id)
+    # Workflow-Zugriff prüfen (mit company_id)
     workflow = await service.get_workflow(
         workflow_id, current_user.id, company_id=company_id, include_steps=False
     )
@@ -771,12 +771,12 @@ async def reorder_steps(
     current_user: User = Depends(get_current_user),
 ) -> List[StepResponse]:
     """Ordnet Steps neu an."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen (mit company_id)
+    # Workflow-Zugriff prüfen (mit company_id)
     workflow = await service.get_workflow(
         workflow_id, current_user.id, company_id=company_id, include_steps=False
     )
@@ -810,12 +810,12 @@ async def batch_update_steps(
     current_user: User = Depends(get_current_user),
 ) -> List[StepResponse]:
     """Aktualisiert mehrere Steps (ReactFlow Bulk-Update)."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
 
-    # Workflow-Zugriff pruefen (mit company_id)
+    # Workflow-Zugriff prüfen (mit company_id)
     workflow = await service.get_workflow(
         workflow_id, current_user.id, company_id=company_id, include_steps=False
     )
@@ -844,7 +844,7 @@ async def batch_update_steps(
     "/{workflow_id}/execute",
     response_model=ExecutionResponse,
     status_code=status.HTTP_202_ACCEPTED,
-    summary="Workflow ausfuehren",
+    summary="Workflow ausführen",
 )
 async def execute_workflow(
     workflow_id: UUID,
@@ -852,8 +852,8 @@ async def execute_workflow(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ExecutionResponse:
-    """Startet eine Workflow-Ausfuehrung."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    """Startet eine Workflow-Ausführung."""
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     step_executor = WorkflowStepExecutor(db)
@@ -880,7 +880,7 @@ async def execute_workflow(
 @router.get(
     "/{workflow_id}/executions",
     response_model=ExecutionListResponse,
-    summary="Ausfuehrungen abrufen",
+    summary="Ausführungen abrufen",
 )
 async def get_workflow_executions(
     workflow_id: UUID,
@@ -890,8 +890,8 @@ async def get_workflow_executions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ExecutionListResponse:
-    """Ruft Ausfuehrungen eines Workflows ab."""
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    """Ruft Ausführungen eines Workflows ab."""
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
     execution_service = WorkflowExecutionService(db)
 
@@ -915,15 +915,15 @@ async def get_workflow_executions(
 @router.get(
     "/executions/{execution_id}",
     response_model=ExecutionResponse,
-    summary="Ausfuehrung abrufen",
+    summary="Ausführung abrufen",
 )
 async def get_execution(
     execution_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ExecutionResponse:
-    """Ruft eine Ausfuehrung nach ID ab."""
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    """Ruft eine Ausführung nach ID ab."""
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
     execution_service = WorkflowExecutionService(db)
 
@@ -936,7 +936,7 @@ async def get_execution(
     if not execution:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ausfuehrung nicht gefunden",
+            detail="Ausführung nicht gefunden",
         )
 
     return ExecutionResponse.model_validate(execution)
@@ -945,26 +945,26 @@ async def get_execution(
 @router.get(
     "/executions/{execution_id}/steps",
     response_model=List[StepExecutionResponse],
-    summary="Step-Ausfuehrungen abrufen",
+    summary="Step-Ausführungen abrufen",
 )
 async def get_step_executions(
     execution_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[StepExecutionResponse]:
-    """Ruft Step-Ausfuehrungen ab."""
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    """Ruft Step-Ausführungen ab."""
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
     execution_service = WorkflowExecutionService(db)
 
-    # Execution-Zugriff pruefen (mit company_id Validierung)
+    # Execution-Zugriff prüfen (mit company_id Validierung)
     execution = await execution_service.get_execution(
         execution_id, current_user.id, company_id=company_id
     )
     if not execution:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ausfuehrung nicht gefunden",
+            detail="Ausführung nicht gefunden",
         )
 
     step_executions = await execution_service.get_step_executions(
@@ -977,15 +977,15 @@ async def get_step_executions(
 @router.post(
     "/executions/{execution_id}/pause",
     response_model=Dict[str, bool],
-    summary="Ausfuehrung pausieren",
+    summary="Ausführung pausieren",
 )
 async def pause_execution(
     execution_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, bool]:
-    """Pausiert eine laufende Ausfuehrung."""
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    """Pausiert eine laufende Ausführung."""
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
     execution_service = WorkflowExecutionService(db)
 
@@ -998,7 +998,7 @@ async def pause_execution(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ausfuehrung kann nicht pausiert werden",
+            detail="Ausführung kann nicht pausiert werden",
         )
 
     return {"paused": True}
@@ -1007,15 +1007,15 @@ async def pause_execution(
 @router.post(
     "/executions/{execution_id}/resume",
     response_model=Dict[str, bool],
-    summary="Ausfuehrung fortsetzen",
+    summary="Ausführung fortsetzen",
 )
 async def resume_execution(
     execution_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, bool]:
-    """Setzt eine pausierte Ausfuehrung fort."""
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    """Setzt eine pausierte Ausführung fort."""
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
     step_executor = WorkflowStepExecutor(db)
     execution_service = WorkflowExecutionService(db, step_executor)
@@ -1029,7 +1029,7 @@ async def resume_execution(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ausfuehrung kann nicht fortgesetzt werden",
+            detail="Ausführung kann nicht fortgesetzt werden",
         )
 
     return {"resumed": True}
@@ -1038,15 +1038,15 @@ async def resume_execution(
 @router.post(
     "/executions/{execution_id}/cancel",
     response_model=Dict[str, bool],
-    summary="Ausfuehrung abbrechen",
+    summary="Ausführung abbrechen",
 )
 async def cancel_execution(
     execution_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, bool]:
-    """Bricht eine Ausfuehrung ab."""
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    """Bricht eine Ausführung ab."""
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
     execution_service = WorkflowExecutionService(db)
 
@@ -1059,7 +1059,7 @@ async def cancel_execution(
     if not success:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ausfuehrung kann nicht abgebrochen werden",
+            detail="Ausführung kann nicht abgebrochen werden",
         )
 
     return {"cancelled": True}
@@ -1069,15 +1069,15 @@ async def cancel_execution(
     "/executions/{execution_id}/retry",
     response_model=ExecutionResponse,
     status_code=status.HTTP_202_ACCEPTED,
-    summary="Ausfuehrung wiederholen",
+    summary="Ausführung wiederholen",
 )
 async def retry_execution(
     execution_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ExecutionResponse:
-    """Wiederholt eine fehlgeschlagene Ausfuehrung."""
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    """Wiederholt eine fehlgeschlagene Ausführung."""
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
     step_executor = WorkflowStepExecutor(db)
     execution_service = WorkflowExecutionService(db, step_executor)
@@ -1091,7 +1091,7 @@ async def retry_execution(
     if not new_execution:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ausfuehrung kann nicht wiederholt werden",
+            detail="Ausführung kann nicht wiederholt werden",
         )
 
     return ExecutionResponse.model_validate(new_execution)
@@ -1112,8 +1112,8 @@ async def list_templates(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[WorkflowResponse]:
-    """Listet verfuegbare Workflow-Templates."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    """Listet verfügbare Workflow-Templates."""
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
@@ -1134,8 +1134,8 @@ async def get_template(
     current_user: User = Depends(get_current_user),
 ) -> WorkflowResponse:
     """Ruft ein Template nach ID ab."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
-    # Templates koennen company-spezifisch oder global (NULL) sein
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
+    # Templates können company-spezifisch oder global (NULL) sein
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
@@ -1264,7 +1264,7 @@ async def webhook_trigger(
     request: Request,
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, object]:
-    """Empfaengt Webhook-Trigger von externen Systemen."""
+    """Empfängt Webhook-Trigger von externen Systemen."""
     step_executor = WorkflowStepExecutor(db)
     execution_service = WorkflowExecutionService(db, step_executor)
     trigger_service = WorkflowTriggerService(db, execution_service)
@@ -1281,7 +1281,7 @@ async def webhook_trigger(
     if not execution_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Kein Workflow fuer diesen Webhook gefunden",
+            detail="Kein Workflow für diesen Webhook gefunden",
         )
 
     return {
@@ -1301,7 +1301,7 @@ async def get_webhook_config(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, object]:
     """Ruft die Webhook-Konfiguration eines Workflows ab."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     trigger_service = WorkflowTriggerService(db)
@@ -1332,7 +1332,7 @@ async def regenerate_webhook_secret(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, str]:
     """Generiert ein neues Webhook-Secret."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     trigger_service = WorkflowTriggerService(db)
@@ -1367,8 +1367,8 @@ async def get_workflow_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> WorkflowStats:
-    """Ruft Statistiken fuer einen Workflow ab."""
-    # SECURITY FIX: company_id fuer Multi-Tenant Isolation
+    """Ruft Statistiken für einen Workflow ab."""
+    # SECURITY FIX: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     service = WorkflowService(db)
@@ -1401,7 +1401,7 @@ async def get_overview_stats(
     from sqlalchemy import func, and_, or_
     from app.db.models import Workflow, WorkflowExecution
 
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     # Workflows zaehlen - filtert nach user_id UND company_id
@@ -1419,10 +1419,10 @@ async def get_overview_stats(
     result = await db.execute(workflow_query)
     workflow_row = result.one()
 
-    # SECURITY: Subquery fuer Workflow-IDs mit company_id Filter
+    # SECURITY: Subquery für Workflow-IDs mit company_id Filter
     workflow_ids_subquery = select(Workflow.id).where(and_(*workflow_conditions)).scalar_subquery()
 
-    # Executions zaehlen - nur fuer Workflows der eigenen Company
+    # Executions zaehlen - nur für Workflows der eigenen Company
     exec_conditions = [WorkflowExecution.user_id == current_user.id]
     if company_id:
         exec_conditions.append(WorkflowExecution.workflow_id.in_(workflow_ids_subquery))
@@ -1469,19 +1469,19 @@ async def get_overview_stats(
 @router.get(
     "/stats/execution-history",
     response_model=List[Dict[str, object]],
-    summary="Ausfuehrungs-Historie",
+    summary="Ausführungs-Historie",
 )
 async def get_execution_history(
     days: int = Query(30, ge=1, le=365, description="Anzahl Tage"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[Dict[str, object]]:
-    """Ruft Ausfuehrungs-Historie ab."""
+    """Ruft Ausführungs-Historie ab."""
     from sqlalchemy import func, and_, Integer
     from datetime import datetime, timedelta, timezone
     from app.db.models import Workflow, WorkflowExecution
 
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     start_date = datetime.now(timezone.utc) - timedelta(days=days)
@@ -1539,12 +1539,12 @@ async def get_execution_history(
 @router.get(
     "/operators",
     response_model=List[Dict[str, str]],
-    summary="Verfuegbare Operatoren",
+    summary="Verfügbare Operatoren",
 )
 async def get_available_operators(
     current_user: User = Depends(get_current_user),
 ) -> List[Dict[str, str]]:
-    """Gibt verfuegbare Bedingungs-Operatoren zurueck."""
+    """Gibt verfügbare Bedingungs-Operatoren zurück."""
     evaluator = ConditionEvaluator()
     return evaluator.get_available_operators()
 
@@ -1552,12 +1552,12 @@ async def get_available_operators(
 @router.get(
     "/fields",
     response_model=Dict[str, str],
-    summary="Verfuegbare Felder",
+    summary="Verfügbare Felder",
 )
 async def get_available_fields(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, str]:
-    """Gibt verfuegbare Bedingungs-Felder zurueck."""
+    """Gibt verfügbare Bedingungs-Felder zurück."""
     evaluator = ConditionEvaluator()
     return evaluator.get_available_fields()
 
@@ -1583,7 +1583,7 @@ class NodeState(BaseModel):
 
 
 class ExecutionStateResponse(BaseModel):
-    """Aktueller Ausfuehrungsstatus eines Workflows."""
+    """Aktueller Ausführungsstatus eines Workflows."""
 
     instance_id: UUID
     workflow_id: UUID
@@ -1592,12 +1592,12 @@ class ExecutionStateResponse(BaseModel):
     progress_percent: int
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    nodes: List[NodeState]  # Alle Knoten mit ihrem Ausfuehrungsstatus
-    active_step_ids: List[str]  # Aktuell ausgefuehrte Schritte
+    nodes: List[NodeState]  # Alle Knoten mit ihrem Ausführungsstatus
+    active_step_ids: List[str]  # Aktuell ausgeführte Schritte
 
 
 class TimelineEntry(BaseModel):
-    """Einzelner Eintrag in der Ausfuehrungs-Zeitleiste."""
+    """Einzelner Eintrag in der Ausführungs-Zeitleiste."""
 
     step_id: str
     step_name: str
@@ -1612,7 +1612,7 @@ class TimelineEntry(BaseModel):
 
 
 class ExecutionMetrics(BaseModel):
-    """Performance-Metriken einer Workflow-Ausfuehrung."""
+    """Performance-Metriken einer Workflow-Ausführung."""
 
     instance_id: UUID
     total_duration_ms: Optional[int] = None
@@ -1622,13 +1622,13 @@ class ExecutionMetrics(BaseModel):
     avg_step_duration_ms: Optional[float] = None
     slowest_step: Optional[str] = None
     slowest_step_duration_ms: Optional[int] = None
-    bottleneck_step: Optional[str] = None  # Step mit laengster Wartezeit
+    bottleneck_step: Optional[str] = None  # Step mit längster Wartezeit
 
 
 @router.get(
     "/executions/{instance_id}/state",
     response_model=ExecutionStateResponse,
-    summary="Aktuellen Ausfuehrungsstatus abrufen",
+    summary="Aktuellen Ausführungsstatus abrufen",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_execution_state(
@@ -1638,16 +1638,16 @@ async def get_execution_state(
     current_user: User = Depends(get_current_user),
 ) -> ExecutionStateResponse:
     """
-    Ruft den aktuellen Ausfuehrungsstatus ab.
+    Ruft den aktuellen Ausführungsstatus ab.
 
-    Gibt detaillierte Informationen ueber alle Knoten/Schritte zurueck,
+    Gibt detaillierte Informationen über alle Knoten/Schritte zurück,
     inklusive Status, Timing und Fehler.
     """
     from sqlalchemy import select, and_
     from sqlalchemy.orm import selectinload
     from app.db.models import WorkflowExecution, WorkflowStepExecution, Workflow, WorkflowStep
 
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     # Lade Execution mit allen Beziehungen
@@ -1665,21 +1665,21 @@ async def get_execution_state(
     if not execution:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ausfuehrung nicht gefunden",
+            detail="Ausführung nicht gefunden",
         )
 
     # SECURITY: Verify ownership
     if execution.triggered_by_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Ausfuehrung",
+            detail="Keine Berechtigung für diese Ausführung",
         )
 
     # SECURITY: Verify company_id if set
     if company_id and execution.workflow.company_id != company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Ausfuehrung",
+            detail="Keine Berechtigung für diese Ausführung",
         )
 
     # Build node states from step executions
@@ -1745,7 +1745,7 @@ async def get_execution_state(
 @router.get(
     "/executions/{instance_id}/timeline",
     response_model=List[TimelineEntry],
-    summary="Ausfuehrungs-Zeitleiste abrufen",
+    summary="Ausführungs-Zeitleiste abrufen",
 )
 @limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_execution_timeline(
@@ -1755,15 +1755,15 @@ async def get_execution_timeline(
     current_user: User = Depends(get_current_user),
 ) -> List[TimelineEntry]:
     """
-    Ruft die geordnete Ausfuehrungs-Zeitleiste ab.
+    Ruft die geordnete Ausführungs-Zeitleiste ab.
 
-    Gibt alle Schritte in chronologischer Reihenfolge zurueck.
+    Gibt alle Schritte in chronologischer Reihenfolge zurück.
     """
     from sqlalchemy import select, and_
     from sqlalchemy.orm import selectinload
     from app.db.models import WorkflowExecution, WorkflowStepExecution, WorkflowStep
 
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     # Lade Execution mit Step-Executions
@@ -1782,14 +1782,14 @@ async def get_execution_timeline(
     if not execution:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ausfuehrung nicht gefunden",
+            detail="Ausführung nicht gefunden",
         )
 
     # SECURITY: Verify ownership
     if execution.triggered_by_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Ausfuehrung",
+            detail="Keine Berechtigung für diese Ausführung",
         )
 
     # Build timeline entries
@@ -1840,15 +1840,15 @@ async def get_execution_metrics(
     current_user: User = Depends(get_current_user),
 ) -> ExecutionMetrics:
     """
-    Ruft Performance-Metriken der Ausfuehrung ab.
+    Ruft Performance-Metriken der Ausführung ab.
 
-    Gibt Timing-Informationen, Engpaesse und Statistiken zurueck.
+    Gibt Timing-Informationen, Engpaesse und Statistiken zurück.
     """
     from sqlalchemy import select, func
     from sqlalchemy.orm import selectinload
     from app.db.models import WorkflowExecution, WorkflowStepExecution
 
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    # SECURITY: company_id für Multi-Tenant Isolation
     company_id = await get_user_company_id(db, current_user)
 
     # Lade Execution mit Step-Executions
@@ -1863,14 +1863,14 @@ async def get_execution_metrics(
     if not execution:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Ausfuehrung nicht gefunden",
+            detail="Ausführung nicht gefunden",
         )
 
     # SECURITY: Verify ownership
     if execution.triggered_by_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Ausfuehrung",
+            detail="Keine Berechtigung für diese Ausführung",
         )
 
     # Calculate metrics

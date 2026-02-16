@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-# SECURITY FIX 28-12: Rate Limiting fuer Chat Endpoints
+# SECURITY FIX 28-12: Rate Limiting für Chat Endpoints
 from app.core.rate_limiting import limiter, get_user_identifier
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -71,16 +71,16 @@ router = APIRouter(prefix="/chat", tags=["rag-chat"])
 
 
 def get_llm_service_dep() -> LLMService:
-    """Dependency fuer LLMService."""
+    """Dependency für LLMService."""
     return get_llm_service()
 
 
 def get_search_service_dep() -> RAGSearchService:
-    """Dependency fuer RAGSearchService."""
+    """Dependency für RAGSearchService."""
     return get_rag_search_service()
 
 
-# SECURITY FIX 28-12: Rate-Limit fuer Chat-Nachrichten (LLM-intensiv)
+# SECURITY FIX 28-12: Rate-Limit für Chat-Nachrichten (LLM-intensiv)
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @router.post(
     "",
@@ -214,7 +214,7 @@ async def send_chat_message(
             RAGChunkSearchResult(
                 chunk_id=UUID(c["chunk_id"]),
                 document_id=UUID(c["document_id"]),
-                chunk_text=c["text"][:500],  # Gekuerzt
+                chunk_text=c["text"][:500],  # Gekürzt
                 chunk_index=0,
                 page_number=c.get("page_number"),
                 section_type=c.get("section_type"),
@@ -246,7 +246,7 @@ async def send_chat_message(
         )
 
 
-# SECURITY FIX 28-12: Rate-Limit fuer Streaming-Chat (LLM-intensiv)
+# SECURITY FIX 28-12: Rate-Limit für Streaming-Chat (LLM-intensiv)
 @limiter.limit("20/minute", key_func=get_user_identifier)
 @router.post(
     "/stream",
@@ -264,7 +264,7 @@ async def send_chat_message_stream(
     """
     Chat mit Dokumenten-Kontext (Streaming).
 
-    Verwendet SSE (Server-Sent Events) fuer Echtzeit-Streaming der Antwort.
+    Verwendet SSE (Server-Sent Events) für Echtzeit-Streaming der Antwort.
 
     Event-Typen:
     - chunk: Text-Chunk der Antwort
@@ -275,7 +275,7 @@ async def send_chat_message_stream(
     """
 
     async def generate_stream():
-        """Generator fuer SSE-Events."""
+        """Generator für SSE-Events."""
         try:
             # 1. Relevante Chunks finden
             document_ids = None
@@ -330,11 +330,11 @@ async def send_chat_message_stream(
                 doc = doc_result.scalar_one_or_none()
 
                 if doc and doc.extracted_text:
-                    # Text ggf. kuerzen (LLM-Context-Limit beachten)
+                    # Text ggf. kürzen (LLM-Context-Limit beachten)
                     max_chars = 15000  # ~4000 Tokens
                     text = doc.extracted_text[:max_chars]
                     if len(doc.extracted_text) > max_chars:
-                        text += "\n\n[... Text gekuerzt, Dokument hat mehr Inhalt ...]"
+                        text += "\n\n[... Text gekürzt, Dokument hat mehr Inhalt ...]"
 
                     context = text
                     fallback_used = True
@@ -359,14 +359,14 @@ async def send_chat_message_stream(
                             storage = get_storage_service()
                             file_bytes = await storage.download_document(doc.file_path)
 
-                            # Temporaere Datei fuer Text-Extraktion
+                            # Temporaere Datei für Text-Extraktion
                             suffix = FilePath(doc.original_filename).suffix or ".pdf"
                             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
                                 tmp.write(file_bytes)
                                 tmp_path = FilePath(tmp.name)
 
                             try:
-                                # Schnelle Text-Extraktion (PyMuPDF fuer embedded text)
+                                # Schnelle Text-Extraktion (PyMuPDF für embedded text)
                                 preview_text = await quick_ocr_preview(
                                     tmp_path,
                                     max_pages=10,
@@ -384,7 +384,7 @@ async def send_chat_message_stream(
                                         text_length=len(preview_text),
                                     )
                                 else:
-                                    context = "HINWEIS: Das Dokument wurde noch nicht verarbeitet und enthaelt keinen extrahierbaren Text. Bitte warten Sie einen Moment."
+                                    context = "HINWEIS: Das Dokument wurde noch nicht verarbeitet und enthält keinen extrahierbaren Text. Bitte warten Sie einen Moment."
                                     logger.warning("chat_fallback_quick_ocr_empty", document_id=str(doc.id))
                             finally:
                                 # Cleanup temp file
@@ -402,7 +402,7 @@ async def send_chat_message_stream(
                             has_text=doc.extracted_text is not None if doc else False,
                         )
             elif not context:
-                context = "HINWEIS: Es wurden keine relevanten Dokumente zu dieser Anfrage gefunden. Der Benutzer fragt moeglicherweise nach Dokumenten, die noch nicht indexiert wurden, oder die Suchanfrage ist zu allgemein."
+                context = "HINWEIS: Es wurden keine relevanten Dokumente zu dieser Anfrage gefunden. Der Benutzer fragt möglicherweise nach Dokumenten, die noch nicht indexiert wurden, oder die Suchanfrage ist zu allgemein."
                 logger.warning(
                     "rag_chat_no_context",
                     query=body.message[:50],
@@ -479,7 +479,7 @@ Antworte auf Deutsch.
 DOKUMENTINHALT:
 {context}"""
             else:
-                system_content = f"""Du bist ein hilfreicher Assistent fuer ein Dokumentenmanagementsystem.
+                system_content = f"""Du bist ein hilfreicher Assistent für ein Dokumentenmanagementsystem.
 Beantworte Fragen basierend auf dem folgenden Kontext aus den Dokumenten.
 Wenn du etwas nicht weisst, sage es ehrlich.
 Antworte auf Deutsch.
@@ -622,7 +622,7 @@ KONTEXT:
     )
 
 
-# SECURITY FIX 28-12: Rate-Limit fuer Session-Erstellung
+# SECURITY FIX 28-12: Rate-Limit für Session-Erstellung
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @router.post(
     "/sessions",
@@ -768,7 +768,7 @@ async def get_shared_sessions(
     "/sessions/{session_id}",
     response_model=RAGChatSessionWithMessages,
     summary="Chat-Session mit Verlauf abrufen",
-    description="Gibt eine Session mit allen Nachrichten zurueck."
+    description="Gibt eine Session mit allen Nachrichten zurück."
 )
 async def get_chat_session(
     session_id: UUID,
@@ -776,11 +776,11 @@ async def get_chat_session(
     db: AsyncSession = Depends(get_db)
 ) -> RAGChatSessionWithMessages:
     """
-    Ruft eine Chat-Session mit vollstaendigem Verlauf ab.
+    Ruft eine Chat-Session mit vollständigem Verlauf ab.
 
-    Unterstuetzt sowohl eigene als auch geteilte Sessions.
+    Unterstützt sowohl eigene als auch geteilte Sessions.
     """
-    # Session laden (ohne User-Filter, Zugriff wird separat geprueft)
+    # Session laden (ohne User-Filter, Zugriff wird separat geprüft)
     session = await db.get(RAGChatSession, session_id)
 
     if not session:
@@ -789,7 +789,7 @@ async def get_chat_session(
             detail="Session nicht gefunden"
         )
 
-    # Zugriffspruefung: Owner oder Shared Access
+    # Zugriffsprüfung: Owner oder Shared Access
     if session.user_id != current_user.id:
         sharing_service = get_chat_sharing_service(db)
         has_access = await sharing_service.check_access(
@@ -847,7 +847,7 @@ async def get_chat_session(
     )
 
 
-# SECURITY FIX 28-12: Rate-Limit fuer Session-Updates
+# SECURITY FIX 28-12: Rate-Limit für Session-Updates
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @router.put(
     "/sessions/{session_id}",
@@ -865,7 +865,7 @@ async def update_chat_session(
     """
     Aktualisiert eine Chat-Session.
 
-    Ermoeglicht das Setzen eines benutzerdefinierten Titels.
+    Ermöglicht das Setzen eines benutzerdefinierten Titels.
     """
     result = await db.execute(
         select(RAGChatSession).where(
@@ -907,12 +907,12 @@ async def update_chat_session(
     )
 
 
-# SECURITY FIX 28-12: Rate-Limit fuer Session-Loeschung
+# SECURITY FIX 28-12: Rate-Limit für Session-Löschung
 @limiter.limit("30/minute", key_func=get_user_identifier)
 @router.delete(
     "/sessions/{session_id}",
-    summary="Chat-Session loeschen",
-    description="Loescht eine Chat-Session und alle Nachrichten."
+    summary="Chat-Session löschen",
+    description="Löscht eine Chat-Session und alle Nachrichten."
 )
 async def delete_chat_session(
     request: Request,  # SECURITY FIX 28-12: Required for rate limiter
@@ -921,11 +921,11 @@ async def delete_chat_session(
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
-    Loescht eine Chat-Session.
+    Löscht eine Chat-Session.
 
-    Alle zugehoerigen Nachrichten werden ebenfalls geloescht.
+    Alle zugehoerigen Nachrichten werden ebenfalls gelöscht.
     """
-    # Session pruefen
+    # Session prüfen
     result = await db.execute(
         select(RAGChatSession).where(
             RAGChatSession.id == session_id,
@@ -940,14 +940,14 @@ async def delete_chat_session(
             detail="Session nicht gefunden"
         )
 
-    # Nachrichten loeschen
+    # Nachrichten löschen
     await db.execute(
         RAGChatMessage.__table__.delete().where(
             RAGChatMessage.session_id == session_id
         )
     )
 
-    # Session loeschen
+    # Session löschen
     await db.delete(session)
     await db.commit()
 
@@ -960,7 +960,7 @@ async def delete_chat_session(
     return {
         "success": True,
         "session_id": str(session_id),
-        "message": "Session geloescht"
+        "message": "Session gelöscht"
     }
 
 
@@ -975,7 +975,7 @@ async def _generate_chat_title(
     """
     Generiert einen kurzen Chat-Titel aus der ersten User-Nachricht.
 
-    Nutzt das lokale LLM fuer intelligente Titel-Generierung.
+    Nutzt das lokale LLM für intelligente Titel-Generierung.
     Fallback auf erste 50 Zeichen bei Fehlern.
 
     Args:
@@ -986,7 +986,7 @@ async def _generate_chat_title(
         Kurzer Titel (max 50 Zeichen)
     """
     try:
-        # Thematischer Prompt fuer bessere Titel wie bei Claude Desktop
+        # Thematischer Prompt für bessere Titel wie bei Claude Desktop
         prompt = f"""Du bist ein Titel-Generator für Chat-Konversationen.
 
 Erstelle einen prägnanten, thematischen Titel der:
@@ -1009,7 +1009,7 @@ Titel (NUR der Titel, ohne Anführungszeichen):"""
             LLMMessage(role="user", content=prompt)
         ]
 
-        # Generierung mit ausreichend Tokens fuer thematische Titel
+        # Generierung mit ausreichend Tokens für thematische Titel
         title = ""
         async for chunk in llm_service.generate_stream(
             messages=messages,
@@ -1080,7 +1080,7 @@ async def _get_chat_history(
     session_id: UUID,
     max_messages: int = None
 ) -> List[dict]:
-    """Laedt Chat-Historie fuer Kontext."""
+    """Laedt Chat-Historie für Kontext."""
     max_messages = max_messages or settings.RAG_CHAT_MAX_HISTORY
 
     result = await db.execute(
@@ -1091,7 +1091,7 @@ async def _get_chat_history(
     )
     messages = result.scalars().all()
 
-    # Umkehren fuer chronologische Reihenfolge
+    # Umkehren für chronologische Reihenfolge
     return [
         {"role": m.role.value, "content": m.content}
         for m in reversed(messages)
@@ -1102,12 +1102,12 @@ async def _get_chat_history(
 # TOOL ACTION CONFIRMATION ENDPOINTS
 # =============================================================================
 
-# SECURITY FIX 28-12: Rate-Limit fuer Action-Bestaetigung
+# SECURITY FIX 28-12: Rate-Limit für Action-Bestätigung
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post(
     "/actions/{action_id}/confirm",
-    summary="Tool-Aktion bestaetigen",
-    description="Bestaetigt eine ausstehende Tool-Aktion aus dem Chat."
+    summary="Tool-Aktion bestätigen",
+    description="Bestätigt eine ausstehende Tool-Aktion aus dem Chat."
 )
 async def confirm_chat_action(
     request: Request,  # SECURITY FIX: Required for rate limiter
@@ -1116,9 +1116,9 @@ async def confirm_chat_action(
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
-    Bestaetigt eine ausstehende Tool-Aktion.
+    Bestätigt eine ausstehende Tool-Aktion.
 
-    Fuer Aktionen die requires_confirmation=True haben.
+    Für Aktionen die requires_confirmation=True haben.
     """
     try:
         # Action laden
@@ -1180,11 +1180,11 @@ async def confirm_chat_action(
         logger.error("chat_action_confirm_failed", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Bestaetigung fehlgeschlagen. Bitte versuchen Sie es erneut."
+            detail="Bestätigung fehlgeschlagen. Bitte versuchen Sie es erneut."
         )
 
 
-# SECURITY FIX 28-12: Rate-Limit fuer Action-Ablehnung
+# SECURITY FIX 28-12: Rate-Limit für Action-Ablehnung
 @limiter.limit("60/minute", key_func=get_user_identifier)
 @router.post(
     "/actions/{action_id}/reject",
@@ -1200,7 +1200,7 @@ async def reject_chat_action(
     """
     Lehnt eine ausstehende Tool-Aktion ab.
 
-    Fuer Aktionen die requires_confirmation=True haben.
+    Für Aktionen die requires_confirmation=True haben.
     """
     try:
         # Action laden
@@ -1262,9 +1262,9 @@ async def reject_chat_action(
 # SHARING ENDPOINTS
 # =============================================================================
 # HINWEIS: /sessions/shared wurde nach oben verschoben (vor /sessions/{session_id})
-# um korrekte Route-Priorisierung zu gewaehrleisten
+# um korrekte Route-Priorisierung zu gewährleisten
 
-# SECURITY FIX 28-12: Rate-Limit fuer Session-Sharing
+# SECURITY FIX 28-12: Rate-Limit für Session-Sharing
 @limiter.limit("20/minute", key_func=get_user_identifier)
 @router.post(
     "/sessions/{session_id}/share",
@@ -1315,11 +1315,11 @@ async def share_chat_session(
         logger.warning("chat_session_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
 
-# SECURITY FIX 28-12: Rate-Limit fuer Zugriffsentzug
+# SECURITY FIX 28-12: Rate-Limit für Zugriffsentzug
 @limiter.limit("20/minute", key_func=get_user_identifier)
 @router.delete(
     "/sessions/{session_id}/share/{user_id}",
@@ -1366,7 +1366,7 @@ async def revoke_chat_session_access(
         logger.warning("chat_session_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )
 
 
@@ -1404,5 +1404,5 @@ async def get_chat_session_collaborators(
         logger.warning("chat_session_validation_error", **safe_error_log(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ungueltige Anfrage. Bitte Eingaben pruefen."
+            detail="Ungültige Anfrage. Bitte Eingaben prüfen."
         )

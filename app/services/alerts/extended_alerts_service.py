@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Extended Alerts Service fuer Ablage-System.
+Extended Alerts Service für Ablage-System.
 
-Erweitert das bestehende Alert-System um zusaetzliche Alert-Typen:
+Erweitert das bestehende Alert-System um zusätzliche Alert-Typen:
 - CASH_001/002: Liquiditaetswarnungen (integriert mit CashflowPredictionService)
-- CONT_001/002: Vertragswarnungen (Ablauf, Kuendigungsfristen)
-- COMP_006/007: Compliance-Warnungen (GDPR-Loeschfristen, Aufbewahrungsfristen)
+- CONT_001/002: Vertragswarnungen (Ablauf, Kündigungsfristen)
+- COMP_006/007: Compliance-Warnungen (GDPR-Löschfristen, Aufbewahrungsfristen)
 - SUPP_001/002: Lieferanten-Warnungen (Insolvenz, Ownership-Change)
 
 SECURITY:
@@ -42,19 +42,19 @@ logger = structlog.get_logger(__name__)
 
 
 class ExtendedAlertCodes:
-    """Erweiterte Alert-Codes fuer neue Alert-Typen."""
+    """Erweiterte Alert-Codes für neue Alert-Typen."""
 
     # Cashflow/Liquiditaet
     CASH_SHORTFALL = "CASH_001"  # Liquiditaetsengpass in X Tagen
     CASH_UNEXPECTED_OUTGOING = "CASH_002"  # Unerwarteter Zahlungsausgang
 
-    # Vertraege
+    # Verträge
     CONTRACT_EXPIRING = "CONT_001"  # Vertrag laeuft aus in X Tagen
-    CONTRACT_NOTICE_DEADLINE = "CONT_002"  # Kuendigungsfrist in X Tagen
-    CONTRACT_AUTO_RENEWAL_WARNING = "CONT_003"  # Automatische Verlaengerung steht bevor
+    CONTRACT_NOTICE_DEADLINE = "CONT_002"  # Kündigungsfrist in X Tagen
+    CONTRACT_AUTO_RENEWAL_WARNING = "CONT_003"  # Automatische Verlängerung steht bevor
 
     # Compliance
-    GDPR_DELETION_DUE = "COMP_006"  # GDPR-Loeschfrist erreicht
+    GDPR_DELETION_DUE = "COMP_006"  # GDPR-Löschfrist erreicht
     RETENTION_EXPIRY = "COMP_007"  # Aufbewahrungsfrist endet
 
     # Lieferanten
@@ -63,7 +63,7 @@ class ExtendedAlertCodes:
 
     # Payment-related
     PAYMENT_SKONTO_EXPIRING = "PAY_001"  # Skonto-Frist laeuft ab
-    PAYMENT_OVERDUE_CRITICAL = "PAY_002"  # Kritisch ueberfaellige Zahlung
+    PAYMENT_OVERDUE_CRITICAL = "PAY_002"  # Kritisch überfällige Zahlung
 
 
 # =============================================================================
@@ -75,56 +75,56 @@ EXTENDED_ALERT_TEMPLATES: Dict[str, Dict[str, str]] = {
     ExtendedAlertCodes.CASH_SHORTFALL: {
         "title": "Liquiditaetsengpass in {days} Tagen erwartet",
         "message": "Basierend auf der Cashflow-Prognose wird am {date} ein Liquiditaetsengpass "
-                   "von voraussichtlich {amount} EUR erwartet. Empfohlene Massnahmen pruefen.",
+                   "von voraussichtlich {amount} EUR erwartet. Empfohlene Massnahmen prüfen.",
     },
     ExtendedAlertCodes.CASH_UNEXPECTED_OUTGOING: {
         "title": "Unerwarteter Zahlungsausgang erkannt",
-        "message": "Ein unerwarteter Zahlungsausgang von {amount} EUR wurde fuer {date} "
+        "message": "Ein unerwarteter Zahlungsausgang von {amount} EUR wurde für {date} "
                    "identifiziert. Dieser Betrag weicht signifikant von den ueblichen Mustern ab.",
     },
     ExtendedAlertCodes.CONTRACT_EXPIRING: {
         "title": "Vertrag laeuft in {days} Tagen ab",
         "message": "Der Vertrag '{contract_title}' (Nr. {contract_number}) laeuft am {end_date} ab. "
-                   "Bitte pruefen Sie, ob eine Verlaengerung oder Kuendigung erforderlich ist.",
+                   "Bitte prüfen Sie, ob eine Verlängerung oder Kündigung erforderlich ist.",
     },
     ExtendedAlertCodes.CONTRACT_NOTICE_DEADLINE: {
-        "title": "Kuendigungsfrist in {days} Tagen",
-        "message": "Die Kuendigungsfrist fuer Vertrag '{contract_title}' (Nr. {contract_number}) "
-                   "endet am {notice_date}. Bei Nichtkuendigung erfolgt ggf. automatische Verlaengerung.",
+        "title": "Kündigungsfrist in {days} Tagen",
+        "message": "Die Kündigungsfrist für Vertrag '{contract_title}' (Nr. {contract_number}) "
+                   "endet am {notice_date}. Bei Nichtkündigung erfolgt ggf. automatische Verlängerung.",
     },
     ExtendedAlertCodes.CONTRACT_AUTO_RENEWAL_WARNING: {
-        "title": "Automatische Vertragsverlaengerung steht bevor",
-        "message": "Der Vertrag '{contract_title}' wird am {renewal_date} automatisch verlaengert, "
-                   "wenn keine Kuendigung erfolgt. Neue Laufzeit: {renewal_months} Monate.",
+        "title": "Automatische Vertragsverlängerung steht bevor",
+        "message": "Der Vertrag '{contract_title}' wird am {renewal_date} automatisch verlängert, "
+                   "wenn keine Kündigung erfolgt. Neue Laufzeit: {renewal_months} Monate.",
     },
     ExtendedAlertCodes.GDPR_DELETION_DUE: {
-        "title": "GDPR-Loeschfrist erreicht",
-        "message": "Die DSGVO-Loeschfrist fuer {document_count} Dokument(e) ist erreicht. "
-                   "Eine Loeschung oder begruendete Verlaengerung ist erforderlich.",
+        "title": "GDPR-Löschfrist erreicht",
+        "message": "Die DSGVO-Löschfrist für {document_count} Dokument(e) ist erreicht. "
+                   "Eine Löschung oder begruendete Verlängerung ist erforderlich.",
     },
     ExtendedAlertCodes.RETENTION_EXPIRY: {
         "title": "Aufbewahrungsfrist endet",
-        "message": "Die gesetzliche Aufbewahrungsfrist fuer {document_count} Dokument(e) endet "
-                   "am {expiry_date}. Eine Archivierung oder Loeschung kann erfolgen.",
+        "message": "Die gesetzliche Aufbewahrungsfrist für {document_count} Dokument(e) endet "
+                   "am {expiry_date}. Eine Archivierung oder Löschung kann erfolgen.",
     },
     ExtendedAlertCodes.SUPPLIER_INSOLVENCY: {
-        "title": "Moegliche Lieferanten-Insolvenz erkannt",
+        "title": "Mögliche Lieferanten-Insolvenz erkannt",
         "message": "Es gibt Hinweise auf finanzielle Schwierigkeiten bei einem Lieferanten. "
-                   "Offene Bestellungen und Rechnungen sollten geprueft werden.",
+                   "Offene Bestellungen und Rechnungen sollten geprüft werden.",
     },
     ExtendedAlertCodes.SUPPLIER_OWNERSHIP_CHANGE: {
         "title": "Ownership-Change bei Lieferant erkannt",
         "message": "Bei einem Ihrer Lieferanten wurde ein Eigentuemerwechsel festgestellt. "
-                   "Vertraege und Konditionen sollten ueberprueft werden.",
+                   "Verträge und Konditionen sollten überprüft werden.",
     },
     ExtendedAlertCodes.PAYMENT_SKONTO_EXPIRING: {
         "title": "Skonto-Frist laeuft in {days} Tagen ab",
-        "message": "Die Skonto-Frist fuer eine Rechnung ueber {amount} EUR laeuft am {deadline} ab. "
+        "message": "Die Skonto-Frist für eine Rechnung über {amount} EUR laeuft am {deadline} ab. "
                    "Potenzielle Ersparnis: {savings} EUR ({percentage}%).",
     },
     ExtendedAlertCodes.PAYMENT_OVERDUE_CRITICAL: {
-        "title": "Kritisch ueberfaellige Zahlung",
-        "message": "Eine Rechnung ist seit {days} Tagen ueberfaellig. "
+        "title": "Kritisch überfällige Zahlung",
+        "message": "Eine Rechnung ist seit {days} Tagen überfällig. "
                    "Ausstehender Betrag: {amount} EUR. Mahnstufe: {dunning_level}.",
     },
 }
@@ -137,7 +137,7 @@ EXTENDED_ALERT_TEMPLATES: Dict[str, Dict[str, str]] = {
 
 @dataclass
 class CashflowAlertData:
-    """Daten fuer Cashflow-bezogene Alerts."""
+    """Daten für Cashflow-bezogene Alerts."""
 
     date: date
     predicted_balance: Decimal
@@ -149,7 +149,7 @@ class CashflowAlertData:
 
 @dataclass
 class ContractAlertData:
-    """Daten fuer Vertrags-bezogene Alerts."""
+    """Daten für Vertrags-bezogene Alerts."""
 
     contract_id: UUID
     contract_number: Optional[str]
@@ -163,7 +163,7 @@ class ContractAlertData:
 
 @dataclass
 class ComplianceAlertData:
-    """Daten fuer Compliance-bezogene Alerts."""
+    """Daten für Compliance-bezogene Alerts."""
 
     document_count: int
     expiry_date: date
@@ -174,7 +174,7 @@ class ComplianceAlertData:
 
 @dataclass
 class SupplierAlertData:
-    """Daten fuer Lieferanten-bezogene Alerts."""
+    """Daten für Lieferanten-bezogene Alerts."""
 
     entity_id: UUID
     alert_type: str  # "insolvency", "ownership_change"
@@ -191,7 +191,7 @@ class SupplierAlertData:
 
 class ExtendedAlertsService:
     """
-    Service fuer erweiterte Alert-Typen.
+    Service für erweiterte Alert-Typen.
 
     Erweitert den AlertCenterService um:
     - Cashflow-basierte Alerts (Integration mit CashflowPredictionService)
@@ -210,7 +210,7 @@ class ExtendedAlertsService:
         Initialisiere Service mit Datenbankverbindung.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
         """
         self.db = db
         self._alert_center: Optional[AlertCenterService] = None
@@ -232,9 +232,9 @@ class ExtendedAlertsService:
         days_ahead: int = 30,
     ) -> List[Alert]:
         """
-        Prueft auf Cashflow-bezogene Alert-Bedingungen.
+        Prüft auf Cashflow-bezogene Alert-Bedingungen.
 
-        Integriert mit CashflowPredictionService fuer:
+        Integriert mit CashflowPredictionService für:
         - Liquiditaetsengpaesse (CASH_001)
         - Unerwartete Zahlungsausgaenge (CASH_002)
 
@@ -275,7 +275,7 @@ class ExtendedAlertsService:
                 elif warning.severity == CashWarningSeverity.WARNING:
                     severity = AlertSeverity.HIGH
 
-                # Recurrence Key fuer Deduplizierung
+                # Recurrence Key für Deduplizierung
                 recurrence_key = f"cash_{alert_code}_{warning.date.isoformat()}_{company_id}"
 
                 # Template-Daten (SECURITY: Keine Entity-Namen)
@@ -344,12 +344,12 @@ class ExtendedAlertsService:
         days_ahead: int = 90,
     ) -> List[Alert]:
         """
-        Prueft auf Vertrags-bezogene Alert-Bedingungen.
+        Prüft auf Vertrags-bezogene Alert-Bedingungen.
 
-        Alerts fuer:
+        Alerts für:
         - Vertragsablauf (CONT_001)
-        - Kuendigungsfristen (CONT_002)
-        - Automatische Verlaengerungen (CONT_003)
+        - Kündigungsfristen (CONT_002)
+        - Automatische Verlängerungen (CONT_003)
 
         Args:
             company_id: Mandanten-ID
@@ -363,7 +363,7 @@ class ExtendedAlertsService:
         cutoff_date = today + timedelta(days=days_ahead)
 
         try:
-            # Aktive Vertraege mit bevorstehenden Fristen
+            # Aktive Verträge mit bevorstehenden Fristen
             result = await self.db.execute(
                 select(Contract).where(
                     and_(
@@ -379,7 +379,7 @@ class ExtendedAlertsService:
                                 Contract.expiration_date <= cutoff_date,
                                 Contract.expiration_date >= today,
                             ),
-                            # Kuendigungsfrist innerhalb des Zeitraums (berechnet)
+                            # Kündigungsfrist innerhalb des Zeitraums (berechnet)
                             and_(
                                 Contract.expiration_date.isnot(None),
                                 Contract.notice_period_days.isnot(None),
@@ -390,7 +390,7 @@ class ExtendedAlertsService:
             )
             contracts = result.scalars().all()
 
-            # Reminder-Tage fuer verschiedene Dringlichkeitsstufen
+            # Reminder-Tage für verschiedene Dringlichkeitsstufen
             reminder_days = [90, 60, 30, 14, 7, 1]
 
             for contract in contracts:
@@ -408,7 +408,7 @@ class ExtendedAlertsService:
                             if alert:
                                 created_alerts.append(alert)
 
-                    # 2. Kuendigungsfrist-Alert (CONT_002)
+                    # 2. Kündigungsfrist-Alert (CONT_002)
                     if contract.expiration_date and contract.notice_period_days:
                         notice_deadline = contract.expiration_date - timedelta(
                             days=contract.notice_period_days
@@ -429,7 +429,7 @@ class ExtendedAlertsService:
                     if contract.auto_renewal and contract.expiration_date:
                         days_until_renewal = (contract.expiration_date - today).days
 
-                        # Warnung 30 Tage vor automatischer Verlaengerung
+                        # Warnung 30 Tage vor automatischer Verlängerung
                         if days_until_renewal == 30:
                             alert = await self._create_auto_renewal_alert(
                                 company_id=company_id,
@@ -466,7 +466,7 @@ class ExtendedAlertsService:
         contract: Contract,
         days_remaining: int,
     ) -> Optional[Alert]:
-        """Erstellt Alert fuer Vertragsablauf."""
+        """Erstellt Alert für Vertragsablauf."""
         recurrence_key = f"cont_expiry_{contract.id}_{days_remaining}d"
 
         # Severity basierend auf verbleibenden Tagen
@@ -514,7 +514,7 @@ class ExtendedAlertsService:
         notice_deadline: date,
         days_remaining: int,
     ) -> Optional[Alert]:
-        """Erstellt Alert fuer Kuendigungsfrist."""
+        """Erstellt Alert für Kündigungsfrist."""
         recurrence_key = f"cont_notice_{contract.id}_{days_remaining}d"
 
         # Severity basierend auf verbleibenden Tagen
@@ -559,7 +559,7 @@ class ExtendedAlertsService:
         company_id: UUID,
         contract: Contract,
     ) -> Optional[Alert]:
-        """Erstellt Alert fuer bevorstehende automatische Verlaengerung."""
+        """Erstellt Alert für bevorstehende automatische Verlängerung."""
         recurrence_key = f"cont_renewal_{contract.id}"
 
         template = EXTENDED_ALERT_TEMPLATES[ExtendedAlertCodes.CONTRACT_AUTO_RENEWAL_WARNING]
@@ -598,10 +598,10 @@ class ExtendedAlertsService:
         days_ahead: int = 30,
     ) -> List[Alert]:
         """
-        Prueft auf Compliance-bezogene Alert-Bedingungen.
+        Prüft auf Compliance-bezogene Alert-Bedingungen.
 
-        Alerts fuer:
-        - GDPR-Loeschfristen (COMP_006)
+        Alerts für:
+        - GDPR-Löschfristen (COMP_006)
         - Aufbewahrungsfristen (COMP_007)
 
         Args:
@@ -616,11 +616,11 @@ class ExtendedAlertsService:
         cutoff_date = today + timedelta(days=days_ahead)
 
         try:
-            # GDPR-Loeschfristen pruefen
+            # GDPR-Löschfristen prüfen
             gdpr_alerts = await self._check_gdpr_deletion_due(company_id, today, cutoff_date)
             created_alerts.extend(gdpr_alerts)
 
-            # Aufbewahrungsfristen pruefen
+            # Aufbewahrungsfristen prüfen
             retention_alerts = await self._check_retention_expiry(company_id, today, cutoff_date)
             created_alerts.extend(retention_alerts)
 
@@ -645,10 +645,10 @@ class ExtendedAlertsService:
         today: date,
         cutoff_date: date,
     ) -> List[Alert]:
-        """Prueft auf GDPR-Loeschfristen."""
+        """Prüft auf GDPR-Löschfristen."""
         alerts: List[Alert] = []
 
-        # Dokumente mit GDPR-Loeschfrist finden
+        # Dokumente mit GDPR-Löschfrist finden
         # Annahme: Document hat ein Feld 'gdpr_deletion_date' oder 'retention_until'
         result = await self.db.execute(
             select(func.count(Document.id), func.min(Document.retention_until))
@@ -701,7 +701,7 @@ class ExtendedAlertsService:
         today: date,
         cutoff_date: date,
     ) -> List[Alert]:
-        """Prueft auf ablaufende Aufbewahrungsfristen."""
+        """Prüft auf ablaufende Aufbewahrungsfristen."""
         alerts: List[Alert] = []
 
         # Dokumente mit ablaufender Aufbewahrungsfrist (nicht GDPR-relevant)
@@ -768,7 +768,7 @@ class ExtendedAlertsService:
         open_invoices_amount: Decimal = Decimal("0"),
     ) -> Optional[Alert]:
         """
-        Erstellt Alert fuer moegliche Lieferanten-Insolvenz.
+        Erstellt Alert für mögliche Lieferanten-Insolvenz.
 
         Wird typischerweise von externen Diensten oder manuell getriggert.
 
@@ -842,7 +842,7 @@ class ExtendedAlertsService:
         change_details: Optional[Dict[str, Any]] = None,
     ) -> Optional[Alert]:
         """
-        Erstellt Alert fuer Lieferanten-Eigentuemerwechsel.
+        Erstellt Alert für Lieferanten-Eigentuemerwechsel.
 
         Args:
             company_id: Mandanten-ID
@@ -902,7 +902,7 @@ class ExtendedAlertsService:
         days_ahead: int = 30,
     ) -> Dict[str, Any]:
         """
-        Fuehrt alle Alert-Checks aus.
+        Führt alle Alert-Checks aus.
 
         Args:
             company_id: Mandanten-ID
@@ -980,5 +980,5 @@ class ExtendedAlertsService:
 
 
 def get_extended_alerts_service(db: AsyncSession) -> ExtendedAlertsService:
-    """Factory-Funktion fuer ExtendedAlertsService."""
+    """Factory-Funktion für ExtendedAlertsService."""
     return ExtendedAlertsService(db)

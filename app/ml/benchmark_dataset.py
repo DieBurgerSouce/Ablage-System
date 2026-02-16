@@ -453,7 +453,7 @@ class BenchmarkDataset:
         samples = list(self.get_samples(**filter_kwargs))
 
         if not samples:
-            logger.warning("keine_samples_fuer_evaluierung")
+            logger.warning("keine_samples_für_evaluierung")
             return results
 
         logger.info(

@@ -10,7 +10,7 @@ Tasks:
 - emit_system_event: Emittiert ein System-Event
 - analyze_cascading_impacts: Analysiert kaskadierende Auswirkungen
 
-Diese Tasks sind das Rueckgrat der proaktiven System-Intelligenz.
+Diese Tasks sind das Rückgrat der proaktiven System-Intelligenz.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ logger = structlog.get_logger(__name__)
 
 ORCHESTRATION_TASK_COUNTER = Counter(
     "orchestration_tasks_total",
-    "Anzahl ausgefuehrter Orchestration Tasks",
+    "Anzahl ausgeführter Orchestration Tasks",
     ["task_name", "status"]
 )
 
@@ -48,11 +48,11 @@ ORCHESTRATION_TASK_DURATION = Histogram(
 
 
 # =============================================================================
-# Hilfsfunktion fuer async in Celery
+# Hilfsfunktion für async in Celery
 # =============================================================================
 
 def run_async(coro):
-    """Fuehrt eine Coroutine in einem neuen Event Loop aus."""
+    """Führt eine Coroutine in einem neuen Event Loop aus."""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -82,7 +82,7 @@ def process_pending_orchestration_actions(
     """
     Verarbeitet ausstehende Orchestrierungs-Aktionen.
 
-    Sollte regelmaessig (z.B. alle 1-5 Minuten) via Celery Beat ausgefuehrt werden.
+    Sollte regelmäßig (z.B. alle 1-5 Minuten) via Celery Beat ausgeführt werden.
     Priorisiert kritische Aktionen und verarbeitet sie in der richtigen Reihenfolge.
 
     Args:
@@ -170,9 +170,9 @@ def emit_system_event(
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Emittiert ein System-Event ueber den Event Bus.
+    Emittiert ein System-Event über den Event Bus.
 
-    Ermoeglicht das Senden von Events aus Celery Tasks heraus,
+    Ermöglicht das Senden von Events aus Celery Tasks heraus,
     die dann vom CrossModuleOrchestrator verarbeitet werden.
 
     Args:
@@ -259,15 +259,15 @@ def check_and_emit_threshold_events(
     space_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Prueft KPIs auf Schwellenwert-Ueberschreitungen und emittiert entsprechende Events.
+    Prüft KPIs auf Schwellenwert-Überschreitungen und emittiert entsprechende Events.
 
     Diese Task verbindet Predictive Intelligence mit dem Event Bus:
     - Liest Early Warnings aus der DB
-    - Emittiert passende Events fuer jede Warnung
+    - Emittiert passende Events für jede Warnung
     - Der Orchestrator kann dann darauf reagieren
 
     Args:
-        space_id: Optional - nur fuer diesen Space pruefen
+        space_id: Optional - nur für diesen Space prüfen
 
     Returns:
         Anzahl emittierter Events
@@ -317,7 +317,7 @@ def check_and_emit_threshold_events(
                     EventType.SYSTEM_KPI_RECALCULATION
                 )
 
-                # Space laden fuer User-ID
+                # Space laden für User-ID
                 space_result = await db.execute(
                     select(PrivatSpace).where(PrivatSpace.id == warning.space_id)
                 )
@@ -383,7 +383,7 @@ def get_orchestration_metrics(self) -> Dict[str, Any]:
     """
     Holt aktuelle Orchestrierungs-Metriken.
 
-    Kann on-demand oder periodisch aufgerufen werden fuer Monitoring.
+    Kann on-demand oder periodisch aufgerufen werden für Monitoring.
 
     Returns:
         Orchestrierungs-Metriken
@@ -444,15 +444,15 @@ def cleanup_old_decisions(
     days_to_keep: int = 30,
 ) -> Dict[str, Any]:
     """
-    Raeumt alte Orchestrierungs-Entscheidungen auf.
+    Räumt alte Orchestrierungs-Entscheidungen auf.
 
-    Sollte woechentlich via Celery Beat ausgefuehrt werden.
+    Sollte wöchentlich via Celery Beat ausgeführt werden.
 
     Args:
         days_to_keep: Anzahl Tage, die Entscheidungen behalten werden
 
     Returns:
-        Anzahl geloeschter Entscheidungen
+        Anzahl gelöschter Entscheidungen
     """
     logger.info(
         "cleanup_old_decisions_started",
@@ -461,7 +461,7 @@ def cleanup_old_decisions(
     )
 
     # In-Memory Decisions werden automatisch durch max_decision_history begrenzt
-    # Diese Task koennte in Zukunft DB-persistierte Decisions aufraeumen
+    # Diese Task könnte in Zukunft DB-persistierte Decisions aufräumen
 
     logger.info(
         "cleanup_old_decisions_completed",

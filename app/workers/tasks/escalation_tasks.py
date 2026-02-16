@@ -1,7 +1,7 @@
 """Escalation Chain Advancement Tasks.
 
-Celery-Beat-Task fuer automatische Eskalationsfortschritt-Pruefung.
-Prueft alle aktiven Eskalationen und fuehrt faellige Eskalationsstufen aus.
+Celery-Beat-Task für automatische Eskalationsfortschritt-Prüfung.
+Prüft alle aktiven Eskalationen und führt fällige Eskalationsstufen aus.
 """
 
 from __future__ import annotations
@@ -23,11 +23,11 @@ logger = structlog.get_logger(__name__)
     default_retry_delay=120,
 )
 def advance_pending_escalations_task(self) -> Dict[str, object]:
-    """Prueft und eskaliert faellige Benachrichtigungen.
+    """Prüft und eskaliert fällige Benachrichtigungen.
 
-    Wird alle 15 Minuten via Celery Beat ausgefuehrt.
+    Wird alle 15 Minuten via Celery Beat ausgeführt.
     Ruft den EscalationChainService auf um alle aktiven
-    Eskalationen zu pruefen und ggf. zur naechsten Stufe zu eskalieren.
+    Eskalationen zu prüfen und ggf. zur nächsten Stufe zu eskalieren.
 
     Returns:
         Dictionary mit Statistiken

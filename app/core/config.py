@@ -62,10 +62,10 @@ class Settings(BaseSettings):
     API_PORT: int = 8000
     API_RELOAD: bool = False
     
-    # System User (fuer automatisierte Operationen wie Auto-Posting)
+    # System User (für automatisierte Operationen wie Auto-Posting)
     SYSTEM_USER_ID: str = Field(
         default="00000000-0000-0000-0000-000000000001",
-        description="System-User UUID fuer automatisierte Operationen (Auto-Posting)"
+        description="System-User UUID für automatisierte Operationen (Auto-Posting)"
     )
 
     # Logging
@@ -95,7 +95,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     
     # CORS - Sicherheitskonfiguration
-    # J.5 SECURITY FIX: Production-Origins muessen explizit gesetzt werden
+    # J.5 SECURITY FIX: Production-Origins müssen explizit gesetzt werden
     # In Development: localhost erlaubt, in Production: CORS_ORIGINS MUSS gesetzt sein
     # Beispiel: CORS_ORIGINS=["https://app.ablage-system.local","https://admin.ablage-system.local"]
     CORS_ORIGINS: List[str] = Field(
@@ -109,7 +109,7 @@ class Settings(BaseSettings):
     # J.5 SECURITY FIX: Development-Only Origins (werden nur in non-production verwendet)
     CORS_DEVELOPMENT_ORIGINS: List[str] = Field(
         default=["http://localhost:3000", "http://localhost:8080", "http://localhost:80", "http://localhost"],
-        description="Zusaetzliche Origins NUR fuer Development - werden in Production ignoriert!"
+        description="Zusätzliche Origins NUR für Development - werden in Production ignoriert!"
     )
     # Eingeschränkte Methods - nur was benötigt wird
     CORS_ALLOW_METHODS: List[str] = Field(
@@ -259,11 +259,11 @@ class Settings(BaseSettings):
     # =============================================================================
     MALWARE_SCAN_ENABLED: bool = Field(
         default=True,
-        description="Malware-Scanning fuer Document Uploads aktivieren"
+        description="Malware-Scanning für Document Uploads aktivieren"
     )
     MALWARE_SCAN_FAIL_CLOSED: bool = Field(
         default=True,
-        description="Bei Scanner-Fehler Upload blockieren (fail-closed, empfohlen fuer Production)"
+        description="Bei Scanner-Fehler Upload blockieren (fail-closed, empfohlen für Production)"
     )
     CLAMAV_HOST: str = Field(
         default="clamav",
@@ -281,7 +281,7 @@ class Settings(BaseSettings):
     CLAMAV_MAX_SIZE_MB: int = Field(
         default=100,
         ge=1, le=500,
-        description="Maximale Dateigroesse fuer ClamAV-Scan in MB"
+        description="Maximale Dateigröße für ClamAV-Scan in MB"
     )
     
     # OCR Settings
@@ -303,7 +303,7 @@ class Settings(BaseSettings):
     GPU_LOCK_RETRY_INTERVAL: float = Field(default=0.1, description="Seconds between lock acquisition retries")
 
     # Model Pre-Loading Settings
-    # Laedt OCR-Modelle beim Startup vor fuer schnellere erste Anfragen
+    # Laedt OCR-Modelle beim Startup vor für schnellere erste Anfragen
     MODEL_PRELOAD_ENABLED: bool = True
     MODEL_PRELOAD_GPU_MODELS: bool = True  # Ob GPU-Modelle vorgeladen werden
     MODEL_PRELOAD_TIMEOUT_SECONDS: int = 600  # Timeout pro Model (10 Min)
@@ -387,11 +387,11 @@ class Settings(BaseSettings):
     EMBEDDING_SERVICE_URL: Optional[str] = None  # HuggingFace TEI Service URL
     EMBEDDING_MODEL: str = "intfloat/multilingual-e5-large"
     EMBEDDING_DIMENSION: int = 1024
-    EMBEDDING_BATCH_SIZE: int = 16  # Optimiert fuer RTX 4080 16GB VRAM
+    EMBEDDING_BATCH_SIZE: int = 16  # Optimiert für RTX 4080 16GB VRAM
     EMBEDDING_MAX_LENGTH: int = 512  # Max tokens per text
 
     # Dynamisches Batching (GPU-Speicher-basiert)
-    EMBEDDING_DYNAMIC_BATCH_ENABLED: bool = True  # Dynamische Batch-Groesse
+    EMBEDDING_DYNAMIC_BATCH_ENABLED: bool = True  # Dynamische Batch-Größe
     EMBEDDING_MIN_BATCH_SIZE: int = 4  # Minimum bei Speicherknappheit
     EMBEDDING_MAX_BATCH_SIZE: int = 32  # Maximum bei ausreichend Speicher
     EMBEDDING_GPU_MEMORY_THRESHOLD: float = 0.75  # Max 75% GPU-Speicher nutzen
@@ -401,19 +401,19 @@ class Settings(BaseSettings):
     HYBRID_FTS_WEIGHT: float = 0.3
     HYBRID_SEMANTIC_WEIGHT: float = 0.7
 
-    # Field-Level Boosting fuer FTS (Filename-Treffer ranken hoeher)
+    # Field-Level Boosting für FTS (Filename-Treffer ranken höher)
     FTS_FIELD_BOOST_FILENAME: float = 2.0  # Treffer im Dateinamen
     FTS_FIELD_BOOST_ORIGINAL_FILENAME: float = 1.8  # Treffer im Original-Dateinamen
     FTS_FIELD_BOOST_EXTRACTED_TEXT: float = 1.0  # Treffer im extrahierten Text (Basis)
 
-    # Adaptive RRF-Gewichte basierend auf Query-Laenge
+    # Adaptive RRF-Gewichte basierend auf Query-Länge
     ADAPTIVE_RRF_WEIGHTS_ENABLED: bool = True  # Dynamische Gewichtung aktivieren
-    HYBRID_WEIGHTS_SHORT_FTS: float = 0.5  # FTS-Gewicht fuer 1-2 Woerter
-    HYBRID_WEIGHTS_SHORT_SEMANTIC: float = 0.5  # Semantic-Gewicht fuer 1-2 Woerter
-    HYBRID_WEIGHTS_MEDIUM_FTS: float = 0.3  # FTS-Gewicht fuer 3-5 Woerter (Standard)
-    HYBRID_WEIGHTS_MEDIUM_SEMANTIC: float = 0.7  # Semantic-Gewicht fuer 3-5 Woerter
-    HYBRID_WEIGHTS_LONG_FTS: float = 0.2  # FTS-Gewicht fuer 6+ Woerter
-    HYBRID_WEIGHTS_LONG_SEMANTIC: float = 0.8  # Semantic-Gewicht fuer 6+ Woerter
+    HYBRID_WEIGHTS_SHORT_FTS: float = 0.5  # FTS-Gewicht für 1-2 Woerter
+    HYBRID_WEIGHTS_SHORT_SEMANTIC: float = 0.5  # Semantic-Gewicht für 1-2 Woerter
+    HYBRID_WEIGHTS_MEDIUM_FTS: float = 0.3  # FTS-Gewicht für 3-5 Woerter (Standard)
+    HYBRID_WEIGHTS_MEDIUM_SEMANTIC: float = 0.7  # Semantic-Gewicht für 3-5 Woerter
+    HYBRID_WEIGHTS_LONG_FTS: float = 0.2  # FTS-Gewicht für 6+ Woerter
+    HYBRID_WEIGHTS_LONG_SEMANTIC: float = 0.8  # Semantic-Gewicht für 6+ Woerter
 
     # Search Caching Settings
     SEARCH_CACHE_ENABLED: bool = True
@@ -432,7 +432,7 @@ class Settings(BaseSettings):
     RAG_TASK_PRIORITY: int = 7  # Celery priority (0-9, 9=lowest)
 
     # =============================================================================
-    # Qdrant Vector Database (Parallel zu pgvector fuer A/B Testing)
+    # Qdrant Vector Database (Parallel zu pgvector für A/B Testing)
     # =============================================================================
     QDRANT_ENABLED: bool = Field(
         default=False,
@@ -447,16 +447,16 @@ class Settings(BaseSettings):
     )
     QDRANT_API_KEY: Optional[SecretStr] = Field(
         default=None,
-        description="Qdrant API Key (optional, fuer Cloud)"
+        description="Qdrant API Key (optional, für Cloud)"
     )
     # Collection Names
     QDRANT_COLLECTION_DOCUMENTS: str = Field(
         default="ablage_documents",
-        description="Collection fuer Document-Embeddings"
+        description="Collection für Document-Embeddings"
     )
     QDRANT_COLLECTION_CHUNKS: str = Field(
         default="ablage_chunks",
-        description="Collection fuer RAG-Chunk-Embeddings"
+        description="Collection für RAG-Chunk-Embeddings"
     )
     # HNSW Index Konfiguration
     QDRANT_HNSW_M: int = Field(
@@ -480,7 +480,7 @@ class Settings(BaseSettings):
     )
 
     # =============================================================================
-    # Jina Embeddings (Spezialisiert fuer deutsche Dokumente)
+    # Jina Embeddings (Spezialisiert für deutsche Dokumente)
     # =============================================================================
     JINA_EMBEDDING_ENABLED: bool = Field(
         default=False,
@@ -500,7 +500,7 @@ class Settings(BaseSettings):
     )
     JINA_TRUST_REMOTE_CODE: bool = Field(
         default=True,
-        description="trust_remote_code fuer HuggingFace (required fuer Jina)"
+        description="trust_remote_code für HuggingFace (required für Jina)"
     )
 
     # =============================================================================
@@ -525,15 +525,15 @@ class Settings(BaseSettings):
     )
     VECTOR_AB_CONTROL_EMBEDDING: str = Field(
         default="intfloat/multilingual-e5-large",
-        description="Embedding-Modell fuer Control"
+        description="Embedding-Modell für Control"
     )
     VECTOR_AB_TREATMENT_EMBEDDING: str = Field(
         default="jinaai/jina-embeddings-v2-base-de",
-        description="Embedding-Modell fuer Treatment"
+        description="Embedding-Modell für Treatment"
     )
     VECTOR_AB_METRICS_ENABLED: bool = Field(
         default=True,
-        description="Metriken fuer A/B Test sammeln"
+        description="Metriken für A/B Test sammeln"
     )
 
     # =============================================================================
@@ -550,7 +550,7 @@ class Settings(BaseSettings):
     VECTOR_MIGRATION_BATCH_SIZE: int = Field(
         default=1000,
         ge=100, le=10000,
-        description="Batch-Groesse fuer Embedding-Migration"
+        description="Batch-Größe für Embedding-Migration"
     )
 
     # Auto Ground-Truth Pipeline Settings
@@ -580,11 +580,11 @@ class Settings(BaseSettings):
     )
 
     # Prometheus Metrics Scraping
-    # Token fuer interne Metrics-Endpoints (Prometheus, Grafana)
+    # Token für interne Metrics-Endpoints (Prometheus, Grafana)
     # Generieren: python -c "import secrets; print(secrets.token_urlsafe(32))"
     METRICS_SCRAPE_TOKEN: Optional[str] = Field(
         default=None,
-        description="Token fuer Prometheus/Grafana Metrics-Scraping (wenn gesetzt, /internal/metrics erfordert diesen Token)"
+        description="Token für Prometheus/Grafana Metrics-Scraping (wenn gesetzt, /internal/metrics erfordert diesen Token)"
     )
 
     # Email (optional, for notifications)
@@ -601,18 +601,18 @@ class Settings(BaseSettings):
     # Webhook-URL: Erstellen unter https://api.slack.com/apps -> Incoming Webhooks
     SLACK_WEBHOOK_URL: Optional[SecretStr] = Field(
         default=None,
-        description="Slack Incoming Webhook URL fuer Benachrichtigungen"
+        description="Slack Incoming Webhook URL für Benachrichtigungen"
     )
     # Bot Token: Erstellen unter https://api.slack.com/apps -> OAuth & Permissions
     # Scopes: chat:write, files:write, users:read
     SLACK_BOT_TOKEN: Optional[SecretStr] = Field(
         default=None,
-        description="Slack Bot OAuth Token (xoxb-...) fuer erweiterte Funktionen"
+        description="Slack Bot OAuth Token (xoxb-...) für erweiterte Funktionen"
     )
-    # Standard-Kanal fuer Benachrichtigungen (ohne #)
+    # Standard-Kanal für Benachrichtigungen (ohne #)
     SLACK_DEFAULT_CHANNEL: str = Field(
         default="ablage-notifications",
-        description="Standard-Slack-Kanal fuer Benachrichtigungen"
+        description="Standard-Slack-Kanal für Benachrichtigungen"
     )
     # Aktivierung der Slack-Integration
     SLACK_ENABLED: bool = Field(
@@ -632,7 +632,7 @@ class Settings(BaseSettings):
         ],
         description="Notification-Typen die an Slack weitergeleitet werden"
     )
-    # Rate Limiting fuer Slack (max Nachrichten pro Minute)
+    # Rate Limiting für Slack (max Nachrichten pro Minute)
     SLACK_RATE_LIMIT_PER_MINUTE: int = Field(
         default=30,
         ge=1, le=100,
@@ -646,12 +646,12 @@ class Settings(BaseSettings):
     # Oder via Power Automate: https://flow.microsoft.com
     TEAMS_WEBHOOK_URL: Optional[SecretStr] = Field(
         default=None,
-        description="Microsoft Teams Incoming Webhook URL fuer Benachrichtigungen"
+        description="Microsoft Teams Incoming Webhook URL für Benachrichtigungen"
     )
-    # Standard-Kanal Name (nur fuer Logging/Anzeige, nicht fuer Routing)
+    # Standard-Kanal Name (nur für Logging/Anzeige, nicht für Routing)
     TEAMS_DEFAULT_CHANNEL: Optional[str] = Field(
         default=None,
-        description="Standard-Teams-Kanal Name (fuer Anzeige)"
+        description="Standard-Teams-Kanal Name (für Anzeige)"
     )
     # Aktivierung der Teams-Integration
     TEAMS_ENABLED: bool = Field(
@@ -674,7 +674,7 @@ class Settings(BaseSettings):
         ],
         description="Notification-Typen die an Teams weitergeleitet werden"
     )
-    # Rate Limiting fuer Teams (max Nachrichten pro Minute)
+    # Rate Limiting für Teams (max Nachrichten pro Minute)
     TEAMS_RATE_LIMIT_PER_MINUTE: int = Field(
         default=30,
         ge=1, le=100,
@@ -693,7 +693,7 @@ class Settings(BaseSettings):
         default=None,
         description="Twilio Auth Token"
     )
-    # Telefonnummern fuer SMS und WhatsApp
+    # Telefonnummern für SMS und WhatsApp
     TWILIO_PHONE_NUMBER: Optional[str] = Field(
         default=None,
         description="Twilio Absender-Telefonnummer (E.164 Format: +49...)"
@@ -747,12 +747,12 @@ class Settings(BaseSettings):
     VAULT_SECRET_REFRESH_INTERVAL: int = 300  # Refresh secrets every 5 minutes
 
     # =============================================================================
-    # Translation Settings (fuer mehrsprachige Dokumentenextraktion)
+    # Translation Settings (für mehrsprachige Dokumentenextraktion)
     # =============================================================================
     # Provider: "argos" (offline, empfohlen), "libretranslate" (self-hosted), "deepl" (cloud), "disabled"
     TRANSLATION_PROVIDER: str = "argos"
-    TRANSLATION_TARGET_LANGUAGE: str = "de"  # Zielsprache fuer Extraktion
-    TRANSLATION_CACHE_ENABLED: bool = True  # Uebersetzungen cachen
+    TRANSLATION_TARGET_LANGUAGE: str = "de"  # Zielsprache für Extraktion
+    TRANSLATION_CACHE_ENABLED: bool = True  # Übersetzungen cachen
 
     # LibreTranslate (self-hosted) - nur wenn TRANSLATION_PROVIDER="libretranslate"
     LIBRETRANSLATE_URL: Optional[str] = "http://localhost:5000"
@@ -765,17 +765,17 @@ class Settings(BaseSettings):
     # =============================================================================
     # Document Chunking
     RAG_CHUNK_SIZE: int = 512  # Default Tokens pro Chunk
-    RAG_CHUNK_OVERLAP: int = 50  # Ueberlappung zwischen Chunks
-    RAG_CHUNK_MIN_SIZE: int = 100  # Minimum Chunk-Groesse
-    RAG_CHUNK_MAX_SIZE: int = 2048  # Maximum Chunk-Groesse
+    RAG_CHUNK_OVERLAP: int = 50  # Überlappung zwischen Chunks
+    RAG_CHUNK_MIN_SIZE: int = 100  # Minimum Chunk-Größe
+    RAG_CHUNK_MAX_SIZE: int = 2048  # Maximum Chunk-Größe
     RAG_CHUNKING_STRATEGY: str = "semantic"  # semantic, fixed, document_type
 
     # LLM Inference (Ollama)
     OLLAMA_URL: str = "http://localhost:11434"
     OLLAMA_TIMEOUT: int = 120  # Timeout in Sekunden
     OLLAMA_KEEP_ALIVE: str = "24h"  # Modell im Speicher halten
-    DEFAULT_LLM_REALTIME: str = "qwen2.5:7b"  # Fuer schnelle Antworten (<15s)
-    DEFAULT_LLM_ANALYSIS: str = "qwen2.5:14b"  # Fuer detaillierte Analyse
+    DEFAULT_LLM_REALTIME: str = "qwen2.5:7b"  # Für schnelle Antworten (<15s)
+    DEFAULT_LLM_ANALYSIS: str = "qwen2.5:14b"  # Für detaillierte Analyse
     LLM_MAX_CONCURRENT_REQUESTS: int = 4
 
     # RAG Search
@@ -795,16 +795,16 @@ class Settings(BaseSettings):
     ASSISTANT_MAX_CONTEXT_DOCS: int = Field(
         default=5,
         ge=1, le=20,
-        description="Maximale Anzahl Dokumente fuer RAG-Kontext"
+        description="Maximale Anzahl Dokumente für RAG-Kontext"
     )
     ASSISTANT_OLLAMA_MODEL: str = Field(
         default="llama3.1",
-        description="Ollama-Modell fuer Conversational Assistant"
+        description="Ollama-Modell für Conversational Assistant"
     )
     ASSISTANT_TEMPERATURE: float = Field(
         default=0.3,
         ge=0.0, le=2.0,
-        description="Temperatur fuer LLM-Antworten (0=deterministisch, 2=kreativ)"
+        description="Temperatur für LLM-Antworten (0=deterministisch, 2=kreativ)"
     )
     ASSISTANT_MAX_HISTORY: int = Field(
         default=50,
@@ -820,7 +820,7 @@ class Settings(BaseSettings):
     # =============================================================================
     # E-Invoice Settings (ZUGFeRD / XRechnung)
     # =============================================================================
-    # Mustang Microservice fuer XRechnung UBL und KoSIT-Validierung
+    # Mustang Microservice für XRechnung UBL und KoSIT-Validierung
     MUSTANG_SERVICE_URL: str = Field(
         default="http://einvoice-mustang:8091",
         description="URL des Mustang E-Invoice Microservices"
@@ -828,11 +828,11 @@ class Settings(BaseSettings):
     MUSTANG_SERVICE_TIMEOUT: int = Field(
         default=60,
         ge=10, le=300,
-        description="Timeout fuer Mustang-Anfragen in Sekunden"
+        description="Timeout für Mustang-Anfragen in Sekunden"
     )
     EINVOICE_TEMP_DIR: Path = Field(
         default=Path("/app/temp/einvoice"),
-        description="Temporaeres Verzeichnis fuer E-Invoice Verarbeitung"
+        description="Temporaeres Verzeichnis für E-Invoice Verarbeitung"
     )
 
     # Reranker Dual-Stack Configuration (GPU + CPU Fallback)
@@ -849,12 +849,12 @@ class Settings(BaseSettings):
     RERANKER_BATCH_SIZE: int = Field(
         default=8,
         ge=1, le=64,
-        description="Batch-Groesse fuer Reranking"
+        description="Batch-Größe für Reranking"
     )
     RERANKER_MAX_LENGTH: int = Field(
         default=512,
         ge=64, le=1024,
-        description="Max Token-Laenge pro Dokument"
+        description="Max Token-Länge pro Dokument"
     )
     RERANKER_GPU_VRAM_GB: float = Field(
         default=1.0,
@@ -862,9 +862,9 @@ class Settings(BaseSettings):
     )
     RERANKER_PREFER_GPU: bool = Field(
         default=True,
-        description="GPU bevorzugen wenn verfuegbar"
+        description="GPU bevorzugen wenn verfügbar"
     )
-    # Legacy: Externer HTTP-Service (optional, fuer Kompatibilitaet)
+    # Legacy: Externer HTTP-Service (optional, für Kompatibilität)
     RERANKER_SERVICE_URL: Optional[str] = Field(
         default=None,
         description="Optionaler externer Reranker Service (nicht empfohlen)"
@@ -873,9 +873,9 @@ class Settings(BaseSettings):
 
     # Customer Cards
     RAG_CUSTOMER_CARD_CACHE_TTL: int = 3600  # 1 Stunde
-    RAG_CUSTOMER_CARD_SYNC_CRON: str = "0 3 * * *"  # Taeglich 03:00 Uhr
+    RAG_CUSTOMER_CARD_SYNC_CRON: str = "0 3 * * *"  # Täglich 03:00 Uhr
     RAG_CUSTOMER_CARD_BATCH_SIZE: int = 50
-    RAG_CUSTOMER_CARD_CONTEXT_CHUNKS: int = 10  # Anzahl Chunks fuer Card-Generierung
+    RAG_CUSTOMER_CARD_CONTEXT_CHUNKS: int = 10  # Anzahl Chunks für Card-Generierung
 
     # Chat
     RAG_CHAT_MAX_HISTORY: int = 20  # Maximale Anzahl Nachrichten pro Session
@@ -888,49 +888,49 @@ class Settings(BaseSettings):
     # =============================================================================
     # KI-Autonomie Settings (Confidence-basierte Auto-Aktionen)
     # =============================================================================
-    # Bei Confidence >= Threshold fuehrt das System automatisch Aktionen aus
-    # ohne User-Interaktion. Darunter wird User-Bestaetiuung angefordert.
+    # Bei Confidence >= Threshold führt das System automatisch Aktionen aus
+    # ohne User-Interaktion. Darunter wird User-Bestätiuung angefordert.
 
     # Auto-Classification: Dokumente automatisch klassifizieren
     AUTONOMY_DOCUMENT_CLASSIFICATION_THRESHOLD: float = Field(
         default=0.95,
         ge=0.5, le=1.0,
-        description="Confidence-Threshold fuer automatische Dokumentenklassifizierung"
+        description="Confidence-Threshold für automatische Dokumentenklassifizierung"
     )
 
-    # Auto-Entity-Linking: Dokumente automatisch mit Entities verknuepfen
+    # Auto-Entity-Linking: Dokumente automatisch mit Entities verknüpfen
     AUTONOMY_ENTITY_LINKING_THRESHOLD: float = Field(
         default=0.90,
         ge=0.5, le=1.0,
-        description="Confidence-Threshold fuer automatisches Entity-Linking"
+        description="Confidence-Threshold für automatisches Entity-Linking"
     )
 
     # Auto-Invoice-Approval: Rechnungen automatisch freigeben
     AUTONOMY_INVOICE_APPROVAL_THRESHOLD: float = Field(
         default=0.95,
         ge=0.5, le=1.0,
-        description="Confidence-Threshold fuer automatische Rechnungsfreigabe"
+        description="Confidence-Threshold für automatische Rechnungsfreigabe"
     )
 
     # Auto-Payment-Matching: Zahlungen automatisch zuordnen
     AUTONOMY_PAYMENT_MATCHING_THRESHOLD: float = Field(
         default=0.95,
         ge=0.5, le=1.0,
-        description="Confidence-Threshold fuer automatische Zahlungszuordnung"
+        description="Confidence-Threshold für automatische Zahlungszuordnung"
     )
 
     # Auto-OCR-Correction: OCR-Ergebnisse automatisch korrigieren
     AUTONOMY_OCR_CORRECTION_THRESHOLD: float = Field(
         default=0.90,
         ge=0.5, le=1.0,
-        description="Confidence-Threshold fuer automatische OCR-Korrekturen"
+        description="Confidence-Threshold für automatische OCR-Korrekturen"
     )
 
-    # Auto-Approval Limits (zusaetzlich zu Confidence)
+    # Auto-Approval Limits (zusätzlich zu Confidence)
     AUTONOMY_AUTO_APPROVAL_MAX_AMOUNT: float = Field(
         default=5000.0,
         ge=0.0,
-        description="Maximaler Betrag (EUR) fuer automatische Rechnungsfreigabe"
+        description="Maximaler Betrag (EUR) für automatische Rechnungsfreigabe"
     )
     AUTONOMY_AUTO_APPROVAL_ENABLED: bool = Field(
         default=True,
@@ -945,7 +945,7 @@ class Settings(BaseSettings):
     AUTONOMY_ROUTING_MIN_CONFIDENCE: float = Field(
         default=0.85,
         ge=0.5, le=1.0,
-        description="Minimale Confidence fuer automatisches Routing"
+        description="Minimale Confidence für automatisches Routing"
     )
 
     # Anomalie-Erkennung: Automatische Alerts
@@ -959,7 +959,7 @@ class Settings(BaseSettings):
         description="Anomalie-Score ab dem Alerts generiert werden"
     )
 
-    # Smart Suggestions: Vorschlaege fuer User
+    # Smart Suggestions: Vorschläge für User
     AUTONOMY_SUGGESTIONS_ENABLED: bool = Field(
         default=True,
         description="Smart Suggestions aktivieren"
@@ -967,7 +967,7 @@ class Settings(BaseSettings):
     AUTONOMY_MAX_SUGGESTIONS_PER_DOCUMENT: int = Field(
         default=5,
         ge=1, le=20,
-        description="Maximale Anzahl Vorschlaege pro Dokument"
+        description="Maximale Anzahl Vorschläge pro Dokument"
     )
 
     # Natural Language Queries: NLQ aktivieren
@@ -1040,8 +1040,8 @@ class Settings(BaseSettings):
         if self.DEBUG and self.ENVIRONMENT.lower() in ("production", "prod"):
             raise ValueError(
                 "KRITISCHER SICHERHEITSFEHLER: DEBUG=True ist in Production nicht erlaubt! "
-                "Setze DEBUG=False oder aendere ENVIRONMENT auf 'development'. "
-                "DEBUG in Production kann zu Information Leakage und CORS-Problemen fuehren."
+                "Setze DEBUG=False oder ändere ENVIRONMENT auf 'development'. "
+                "DEBUG in Production kann zu Information Leakage und CORS-Problemen führen."
             )
 
         # ========== SECRET_KEY Validierung ==========
@@ -1186,7 +1186,7 @@ class Settings(BaseSettings):
                 infrastructure_warnings.append(
                     f"DB_SSL_MODE={self.DB_SSL_MODE} in Production! "
                     "Datenbankverbindungen sind unverschluesselt oder unsicher. "
-                    "Setze DB_SSL_MODE=require oder hoeher."
+                    "Setze DB_SSL_MODE=require oder höher."
                 )
 
             if self.REDIS_HOST in localhost_hosts:
@@ -1230,7 +1230,7 @@ class Settings(BaseSettings):
                     "Bitte setze ein starkes Secret Key mit mindestens 12 Zeichen."
                 )
 
-            # Prüfe MinIO Secret Key Komplexität (min 12 Zeichen fuer Production)
+            # Prüfe MinIO Secret Key Komplexität (min 12 Zeichen für Production)
             if len(minio_secret) < 12:
                 raise ValueError(
                     f"MINIO_SECRET_KEY ist zu kurz ({len(minio_secret)} Zeichen). "
@@ -1245,7 +1245,7 @@ class Settings(BaseSettings):
                 )
 
         # ========== Rate Limit Tier Validierung ==========
-        # Daily limits muessen >= Hourly limits sein
+        # Daily limits müssen >= Hourly limits sein
         if self.RATE_LIMIT_FREE_DAILY < self.RATE_LIMIT_FREE_HOURLY:
             raise ValueError(
                 f"RATE_LIMIT_FREE_DAILY ({self.RATE_LIMIT_FREE_DAILY}) muss >= "
@@ -1259,7 +1259,7 @@ class Settings(BaseSettings):
 
         # ========== Vault Konfiguration Validierung ==========
         if self.VAULT_ENABLED:
-            # Wenn Vault aktiviert ist, muessen Authentifizierungs-Credentials gesetzt sein
+            # Wenn Vault aktiviert ist, müssen Authentifizierungs-Credentials gesetzt sein
             has_token = bool(self.VAULT_TOKEN)
             has_approle = bool(self.VAULT_ROLE_ID and self.VAULT_SECRET_ID)
 
@@ -1275,11 +1275,11 @@ class Settings(BaseSettings):
                     "Setze die Vault Server-Adresse (z.B. https://vault.example.com:8200)."
                 )
 
-            # Production: HTTPS fuer Vault erzwingen
+            # Production: HTTPS für Vault erzwingen
             if not self.DEBUG and self.VAULT_ADDR and not self.VAULT_ADDR.startswith("https://"):
                 raise ValueError(
                     f"VAULT_ADDR '{self.VAULT_ADDR}' verwendet kein HTTPS in Production! "
-                    "Vault-Verbindungen muessen in Production verschluesselt sein."
+                    "Vault-Verbindungen müssen in Production verschluesselt sein."
                 )
 
             logger.info(

@@ -2,8 +2,8 @@
 """
 Mustang REST Client.
 
-HTTP-Client fuer den Mustang E-Invoice Microservice.
-Ermoeglicht XRechnung UBL-Generierung und KoSIT-Validierung.
+HTTP-Client für den Mustang E-Invoice Microservice.
+Ermöglicht XRechnung UBL-Generierung und KoSIT-Validierung.
 
 Mustang-Service laeuft als Docker Container auf Port 8091.
 """
@@ -71,11 +71,11 @@ class ExtractResult:
 
 class MustangClient:
     """
-    Async HTTP-Client fuer den Mustang E-Invoice Service.
+    Async HTTP-Client für den Mustang E-Invoice Service.
 
     Der Mustang-Service bietet:
-    - XRechnung UBL-Generierung (nicht moeglich mit factur-x)
-    - KoSIT-Validierung fuer XRechnung
+    - XRechnung UBL-Generierung (nicht möglich mit factur-x)
+    - KoSIT-Validierung für XRechnung
     - ZUGFeRD XML-Extraktion aus PDF
     - Format-Konvertierung
 
@@ -95,7 +95,7 @@ class MustangClient:
 
         Args:
             base_url: Basis-URL des Mustang-Service (default: aus settings)
-            timeout: Timeout fuer HTTP-Anfragen in Sekunden
+            timeout: Timeout für HTTP-Anfragen in Sekunden
         """
         self.base_url = base_url or getattr(
             settings, "MUSTANG_SERVICE_URL", "http://einvoice-mustang:8091"
@@ -118,7 +118,7 @@ class MustangClient:
             self._client = None
 
     def _get_client(self) -> httpx.AsyncClient:
-        """Gibt den HTTP-Client zurueck oder erstellt einen neuen."""
+        """Gibt den HTTP-Client zurück oder erstellt einen neuen."""
         if self._client is None:
             self._client = httpx.AsyncClient(
                 base_url=self.base_url,
@@ -128,7 +128,7 @@ class MustangClient:
 
     async def is_available(self) -> bool:
         """
-        Prueft ob der Mustang-Service erreichbar ist.
+        Prüft ob der Mustang-Service erreichbar ist.
 
         Returns:
             True wenn Service erreichbar
@@ -169,7 +169,7 @@ class MustangClient:
 
     async def get_supported_formats(self) -> dict:
         """
-        Ruft unterstuetzte Formate vom Service ab.
+        Ruft unterstützte Formate vom Service ab.
 
         Returns:
             Dictionary mit Formaten und Profilen
@@ -281,12 +281,12 @@ class MustangClient:
         """
         Generiert XRechnung im UBL-Format.
 
-        Dies ist die Hauptfunktion fuer B2G-Rechnungen,
-        da UBL nur ueber Mustang generiert werden kann.
+        Dies ist die Hauptfunktion für B2G-Rechnungen,
+        da UBL nur über Mustang generiert werden kann.
 
         Args:
             invoice_data: Rechnungsdaten als Dictionary
-            leitweg_id: Leitweg-ID (BT-10) - Pflichtfeld fuer B2G
+            leitweg_id: Leitweg-ID (BT-10) - Pflichtfeld für B2G
 
         Returns:
             XRechnung XML im UBL-Format
@@ -310,7 +310,7 @@ class MustangClient:
             )
 
             if response.status_code == 501:
-                # Service noch nicht vollstaendig implementiert
+                # Service noch nicht vollständig implementiert
                 data = response.json()
                 raise MustangError(data.get("message", "UBL-Generierung nicht verfügbar"))
 
@@ -384,13 +384,13 @@ class MustangClient:
             ) from e
 
 
-# Singleton-Instanz fuer einfachen Zugriff
+# Singleton-Instanz für einfachen Zugriff
 _mustang_client: Optional[MustangClient] = None
 
 
 def get_mustang_client() -> MustangClient:
     """
-    Gibt eine Singleton-Instanz des Mustang-Clients zurueck.
+    Gibt eine Singleton-Instanz des Mustang-Clients zurück.
 
     Usage:
         client = get_mustang_client()
@@ -405,9 +405,9 @@ def get_mustang_client() -> MustangClient:
 
 async def check_mustang_availability() -> bool:
     """
-    Prueft ob der Mustang-Service verfuegbar ist.
+    Prüft ob der Mustang-Service verfügbar ist.
 
-    Utility-Funktion fuer Health-Checks.
+    Utility-Funktion für Health-Checks.
 
     Returns:
         True wenn Service erreichbar

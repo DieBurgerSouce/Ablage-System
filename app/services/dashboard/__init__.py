@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Dashboard Services Package.
 
-Enterprise Dashboard-Widgets fuer Business Intelligence:
+Enterprise Dashboard-Widgets für Business Intelligence:
 - Cash-Flow Forecast (30/60/90 Tage Prognose)
 - Supplier Performance (Lieferanten-Metriken)
 - Customer Lifetime Value (Kundenwert-Analyse)

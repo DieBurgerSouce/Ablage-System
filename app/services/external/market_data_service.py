@@ -1,8 +1,8 @@
 """
 Market Data Service.
 
-Service fuer externe Marktdaten-Abfragen.
-Ermoeglicht Schaetzung von Immobilien- und Fahrzeugwerten.
+Service für externe Marktdaten-Abfragen.
+Ermöglicht Schätzung von Immobilien- und Fahrzeugwerten.
 
 WICHTIG:
 - Nur kostenlose APIs
@@ -11,10 +11,10 @@ WICHTIG:
 - Rate-Limiting beachten
 
 Features:
-- Immobilienwert-Schaetzung basierend auf Lage/Groesse
-- Fahrzeugwert-Schaetzung basierend auf Marke/Modell/Alter
+- Immobilienwert-Schätzung basierend auf Lage/Größe
+- Fahrzeugwert-Schätzung basierend auf Marke/Modell/Alter
 - Caching um API-Calls zu reduzieren
-- Fallback auf lokale Schaetzung wenn API nicht verfuegbar
+- Fallback auf lokale Schätzung wenn API nicht verfügbar
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 
 class DataSource(str, Enum):
-    """Datenquellen fuer Marktwerte."""
+    """Datenquellen für Marktwerte."""
 
     LOCAL_ESTIMATE = "local_estimate"
     CACHED = "cached"
@@ -48,7 +48,7 @@ class DataSource(str, Enum):
 
 @dataclass
 class PropertyMarketData:
-    """Marktdaten fuer eine Immobilie."""
+    """Marktdaten für eine Immobilie."""
 
     property_id: UUID
     estimated_value: Decimal
@@ -86,7 +86,7 @@ class PropertyMarketData:
 
 @dataclass
 class VehicleMarketData:
-    """Marktdaten fuer ein Fahrzeug."""
+    """Marktdaten für ein Fahrzeug."""
 
     vehicle_id: UUID
     estimated_value: Decimal
@@ -124,7 +124,7 @@ class VehicleMarketData:
 
 # Durchschnittspreise pro qm nach Bundesland (Stand 2024)
 PROPERTY_PRICES_BY_REGION: Dict[str, Decimal] = {
-    # Bundeslaender
+    # Bundesländer
     "bayern": Decimal("4500"),
     "baden-wuerttemberg": Decimal("4200"),
     "hessen": Decimal("4000"),
@@ -151,7 +151,7 @@ PROPERTY_PRICES_BY_REGION: Dict[str, Decimal] = {
     "default": Decimal("3000"),
 }
 
-# Abschreibungstabelle fuer Fahrzeuge (% pro Jahr)
+# Abschreibungstabelle für Fahrzeuge (% pro Jahr)
 VEHICLE_DEPRECIATION_TABLE: Dict[int, float] = {
     0: 0.00,    # Neuwagen
     1: 0.25,    # 1 Jahr: -25%
@@ -185,15 +185,15 @@ VEHICLE_BASE_PRICES: Dict[str, Decimal] = {
 
 class MarketDataService:
     """
-    Service fuer Marktdaten-Abfragen.
+    Service für Marktdaten-Abfragen.
 
-    Ermoeglicht Schaetzung von Immobilien- und Fahrzeugwerten
+    Ermöglicht Schätzung von Immobilien- und Fahrzeugwerten
     basierend auf lokalen Algorithmen und optionalen externen APIs.
 
     WICHTIG: Externe APIs werden nur auf explizite Anfrage aufgerufen.
     """
 
-    CACHE_TTL_HOURS = 24  # Cache-Gueltigkeit in Stunden
+    CACHE_TTL_HOURS = 24  # Cache-Gültigkeit in Stunden
 
     def __init__(self) -> None:
         """Initialisiert den Service."""
@@ -208,7 +208,7 @@ class MarketDataService:
         }
 
     async def _get_http_client(self) -> httpx.AsyncClient:
-        """Gibt HTTP-Client zurueck (Lazy Initialization)."""
+        """Gibt HTTP-Client zurück (Lazy Initialization)."""
         if self._http_client is None:
             self._http_client = httpx.AsyncClient(
                 timeout=30.0,
@@ -218,7 +218,7 @@ class MarketDataService:
         return self._http_client
 
     async def close(self) -> None:
-        """Schliesst den HTTP-Client."""
+        """Schließt den HTTP-Client."""
         if self._http_client:
             await self._http_client.aclose()
             self._http_client = None
@@ -253,13 +253,13 @@ class MarketDataService:
         city: Optional[str],
         state: Optional[str],
         living_space_sqm: Decimal,
-        property_type: str,  # "wohnung", "haus", "grundstueck"
+        property_type: str,  # "wohnung", "haus", "grundstück"
         year_built: Optional[int] = None,
-        condition: str = "normal",  # "neu", "gut", "normal", "renovierungsbeduerftig"
+        condition: str = "normal",  # "neu", "gut", "normal", "renovierungsbedürftig"
         use_external_api: bool = False,
     ) -> PropertyMarketData:
         """
-        Schaetzt den Marktwert einer Immobilie.
+        Schätzt den Marktwert einer Immobilie.
 
         Args:
             property_id: Immobilien-ID
@@ -273,7 +273,7 @@ class MarketDataService:
             use_external_api: Ob externe API verwendet werden soll
 
         Returns:
-            PropertyMarketData mit Schaetzwerten
+            PropertyMarketData mit Schätzwerten
         """
         self._metrics["property_estimates"] += 1
 
@@ -305,7 +305,7 @@ class MarketDataService:
             "neu": 1.15,
             "gut": 1.05,
             "normal": 1.0,
-            "renovierungsbeduerftig": 0.75,
+            "renovierungsbedürftig": 0.75,
         }
         condition_factor = condition_factors.get(condition, 1.0)
 
@@ -315,7 +315,7 @@ class MarketDataService:
             "haus": 1.10,
             "reihenhaus": 0.95,
             "doppelhaushaelfte": 1.0,
-            "grundstueck": 0.6,
+            "grundstück": 0.6,
         }
         type_factor = type_factors.get(property_type, 1.0)
 
@@ -358,7 +358,7 @@ class MarketDataService:
             value_range_max=value_range_max.quantize(Decimal("1")),
             comparable_count=0,  # Keine echten Vergleichsobjekte ohne API
             data_source=DataSource.LOCAL_ESTIMATE,
-            confidence=0.6,  # Lokale Schaetzung = 60% Konfidenz
+            confidence=0.6,  # Lokale Schätzung = 60% Konfidenz
             location_factor=location_factor,
             condition_factor=condition_factor,
             market_trend=market_trend,
@@ -369,7 +369,7 @@ class MarketDataService:
         self._set_cache(cache_key, result)
 
         logger.info(
-            f"Immobilienwert geschaetzt: {estimated_value:.0f} EUR "
+            f"Immobilienwert geschätzt: {estimated_value:.0f} EUR "
             f"(PLZ: {postal_code}, {living_space_sqm} qm)"
         )
 
@@ -389,7 +389,7 @@ class MarketDataService:
         use_external_api: bool = False,
     ) -> VehicleMarketData:
         """
-        Schaetzt den Marktwert eines Fahrzeugs.
+        Schätzt den Marktwert eines Fahrzeugs.
 
         Args:
             vehicle_id: Fahrzeug-ID
@@ -404,7 +404,7 @@ class MarketDataService:
             use_external_api: Ob externe API verwendet werden soll
 
         Returns:
-            VehicleMarketData mit Schaetzwerten
+            VehicleMarketData mit Schätzwerten
         """
         self._metrics["vehicle_estimates"] += 1
 
@@ -467,7 +467,7 @@ class MarketDataService:
         }
         condition_factor = condition_factors.get(condition, 0.95)
 
-        # Kraftstoff-Faktor (Elektro/Hybrid aktuell hoeher)
+        # Kraftstoff-Faktor (Elektro/Hybrid aktuell höher)
         fuel_factors = {
             "elektro": 1.10,
             "hybrid": 1.05,
@@ -511,14 +511,14 @@ class MarketDataService:
         self._set_cache(cache_key, result)
 
         logger.info(
-            f"Fahrzeugwert geschaetzt: {estimated_value:.0f} EUR "
+            f"Fahrzeugwert geschätzt: {estimated_value:.0f} EUR "
             f"({brand} {model}, {year}, {mileage_km} km)"
         )
 
         return result
 
     def _normalize_location(self, city: Optional[str], state: Optional[str]) -> str:
-        """Normalisiert Ortsangabe fuer Lookup."""
+        """Normalisiert Ortsangabe für Lookup."""
         if city:
             city_lower = city.lower().replace(" ", "").replace("-", "")
             # Direkter Stadt-Match
@@ -566,11 +566,11 @@ class MarketDataService:
         return factors.get(first_digit, 1.0)
 
     def get_metrics(self) -> Dict[str, int]:
-        """Gibt Metriken zurueck."""
+        """Gibt Metriken zurück."""
         return self._metrics.copy()
 
     def clear_cache(self) -> int:
-        """Loescht den Cache und gibt Anzahl geloeschter Eintraege zurueck."""
+        """Löscht den Cache und gibt Anzahl gelöschter Einträge zurück."""
         count = len(self._cache)
         self._cache.clear()
         return count
@@ -581,7 +581,7 @@ _market_data_service_instance: Optional[MarketDataService] = None
 
 
 def get_market_data_service() -> MarketDataService:
-    """Factory-Funktion fuer MarketDataService Singleton."""
+    """Factory-Funktion für MarketDataService Singleton."""
     global _market_data_service_instance
     if _market_data_service_instance is None:
         _market_data_service_instance = MarketDataService()

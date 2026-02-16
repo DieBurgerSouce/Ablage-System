@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Database models fuer Fremdwaehrungs-Management."""
+"""Database models für Fremdwährungs-Management."""
 
 from datetime import date, datetime
 from decimal import Decimal

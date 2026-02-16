@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Contract Service V2 - Erweiterte Vertragsverwaltung fuer Ablage-System.
+Contract Service V2 - Erweiterte Vertragsverwaltung für Ablage-System.
 
 Vision 2.0 Features:
 - Automatische Datumserkennung aus OCR-Text
 - Kalendar-Integration (iCal Export)
 - Erweiterte Erinnerungs-Workflows
-- Vertragskettenverknuepfung
+- Vertragskettenverknüpfung
 - Dokumenten-Linking (Many-to-Many)
 
 SECURITY:
-- NIEMALS Vertragsdetails oder Parteinamen in Logs (PII/Geschaeftsgeheimnisse)
+- NIEMALS Vertragsdetails oder Parteinamen in Logs (PII/Geschäftsgeheimnisse)
 - Multi-Tenant via company_id Filter
 - Sichere OCR-Text-Extraktion
 
@@ -55,18 +55,18 @@ logger = structlog.get_logger(__name__)
 class DeadlineType(str, Enum):
     """Typen von Vertragsfristen."""
 
-    TERMINATION_NOTICE = "termination_notice"  # Kuendigungsfrist
+    TERMINATION_NOTICE = "termination_notice"  # Kündigungsfrist
     CONTRACT_EXPIRY = "contract_expiry"  # Vertragsablauf
-    RENEWAL_DECISION = "renewal_decision"  # Verlaengerungsentscheidung
+    RENEWAL_DECISION = "renewal_decision"  # Verlängerungsentscheidung
     PRICE_ADJUSTMENT = "price_adjustment"  # Preisanpassung
-    WARRANTY_EXPIRY = "warranty_expiry"  # Gewaehrleistungsende
-    AUDIT_DUE = "audit_due"  # Audit faellig
-    REVIEW_DUE = "review_due"  # Pruefung faellig
+    WARRANTY_EXPIRY = "warranty_expiry"  # Gewährleistungsende
+    AUDIT_DUE = "audit_due"  # Audit fällig
+    REVIEW_DUE = "review_due"  # Prüfung fällig
     CUSTOM = "custom"  # Benutzerdefiniert
 
 
 class ReminderPriority(str, Enum):
-    """Prioritaet von Erinnerungen."""
+    """Priorität von Erinnerungen."""
 
     LOW = "low"
     MEDIUM = "medium"
@@ -77,7 +77,7 @@ class ReminderPriority(str, Enum):
 # Standard-Erinnerungstage vor Fristablauf
 DEFAULT_REMINDER_DAYS = [90, 60, 30, 14, 7, 3, 1]
 
-# Regex-Pattern fuer Datumserkennung (German Format)
+# Regex-Pattern für Datumserkennung (German Format)
 DATE_PATTERNS: List[Tuple[Pattern, str]] = [
     # DD.MM.YYYY
     (re.compile(r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b"), "%d.%m.%Y"),
@@ -91,42 +91,42 @@ DATE_PATTERNS: List[Tuple[Pattern, str]] = [
     (re.compile(r"\b(\d{1,2})\.\s*(Januar|Februar|Maerz|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s+(\d{4})\b", re.IGNORECASE), None),
 ]
 
-# Monate fuer deutsche Datumserkennung
+# Monate für deutsche Datumserkennung
 GERMAN_MONTHS = {
     "januar": 1, "februar": 2, "maerz": 3, "märz": 3, "april": 4,
     "mai": 5, "juni": 6, "juli": 7, "august": 8,
     "september": 9, "oktober": 10, "november": 11, "dezember": 12,
 }
 
-# Keywords fuer Vertragsklauseln
+# Keywords für Vertragsklauseln
 CONTRACT_KEYWORDS = {
     "notice_period": [
-        r"kuendigungsfrist\s*(?:von\s*)?(\d+)\s*(tage|wochen|monate)",
+        r"kündigungsfrist\s*(?:von\s*)?(\d+)\s*(tage|wochen|monate)",
         r"kündigungsfrist\s*(?:von\s*)?(\d+)\s*(tage|wochen|monate)",
         r"notice\s*period\s*(?:of\s*)?(\d+)\s*(days|weeks|months)",
         r"mit\s*einer\s*frist\s*von\s*(\d+)\s*(tagen|wochen|monaten)",
     ],
     "auto_renewal": [
-        r"verlaengert\s*sich\s*automatisch",
         r"verlängert\s*sich\s*automatisch",
-        r"automatische\s*verlaengerung",
+        r"verlängert\s*sich\s*automatisch",
+        r"automatische\s*verlängerung",
         r"automatische\s*verlängerung",
         r"auto[- ]?renewal",
-        r"stillschweigend[e]?\s*verlaengerung",
+        r"stillschweigend[e]?\s*verlängerung",
     ],
     "duration": [
         r"laufzeit\s*(?:von\s*)?(\d+)\s*(monate|jahre)",
         r"vertragsdauer\s*(?:von\s*)?(\d+)\s*(monate|jahre)",
-        r"gueltig\s*(?:fuer\s*)?(\d+)\s*(monate|jahre)",
+        r"gültig\s*(?:für\s*)?(\d+)\s*(monate|jahre)",
         r"gültig\s*(?:für\s*)?(\d+)\s*(monate|jahre)",
     ],
     "effective_date": [
-        r"(?:gueltig|gültig|wirksam)\s*(?:ab|vom)\s*(\d{1,2}\.\d{1,2}\.\d{2,4})",
+        r"(?:gültig|gültig|wirksam)\s*(?:ab|vom)\s*(\d{1,2}\.\d{1,2}\.\d{2,4})",
         r"(?:in\s*kraft|inkrafttreten)\s*(?:ab|am|zum)\s*(\d{1,2}\.\d{1,2}\.\d{2,4})",
         r"beginn[t]?\s*(?:ab|am|zum)\s*(\d{1,2}\.\d{1,2}\.\d{2,4})",
     ],
     "expiration_date": [
-        r"(?:endet|laeuft\s*(?:ab|aus)|gueltig\s*bis)\s*(?:am|zum)?\s*(\d{1,2}\.\d{1,2}\.\d{2,4})",
+        r"(?:endet|laeuft\s*(?:ab|aus)|gültig\s*bis)\s*(?:am|zum)?\s*(\d{1,2}\.\d{1,2}\.\d{2,4})",
         r"(?:läuft\s*(?:ab|aus)|gültig\s*bis)\s*(?:am|zum)?\s*(\d{1,2}\.\d{1,2}\.\d{2,4})",
         r"(?:vertragsende|ablaufdatum)\s*(?:am|ist|:)?\s*(\d{1,2}\.\d{1,2}\.\d{2,4})",
     ],
@@ -156,7 +156,7 @@ class ExtractedContractDates:
 
 @dataclass
 class ICalEvent:
-    """Event-Daten fuer iCal-Export."""
+    """Event-Daten für iCal-Export."""
 
     uid: str
     summary: str
@@ -171,7 +171,7 @@ class ICalEvent:
 
 @dataclass
 class ContractWithDocuments:
-    """Vertrag mit verknuepften Dokumenten."""
+    """Vertrag mit verknüpften Dokumenten."""
 
     contract: Contract
     primary_document: Optional[Document]
@@ -181,7 +181,7 @@ class ContractWithDocuments:
 
 @dataclass
 class ContractSearchResult:
-    """Suchergebnis fuer Vertraege."""
+    """Suchergebnis für Verträge."""
 
     contracts: List[Contract]
     total_count: int
@@ -200,14 +200,14 @@ class ContractServiceV2:
 
     Features:
     - Automatische Datumserkennung aus OCR-Text
-    - iCal-Export fuer Kalender-Integration
+    - iCal-Export für Kalender-Integration
     - Erweiterte Erinnerungs-Workflows
     - Document-Linking (Many-to-Many)
-    - Vertragskettenverknuepfung
+    - Vertragskettenverknüpfung
 
     SECURITY:
     - Multi-Tenant via company_id Filter
-    - Keine PII/Geschaeftsgeheimnisse in Logs
+    - Keine PII/Geschäftsgeheimnisse in Logs
     - Sichere OCR-Text-Verarbeitung
     """
 
@@ -218,7 +218,7 @@ class ContractServiceV2:
         Initialisiere Service mit Datenbankverbindung.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
         """
         self.db = db
 
@@ -255,13 +255,13 @@ class ContractServiceV2:
             company_id: Mandanten-ID
             title: Vertragstitel
             contract_type: Vertragstyp
-            document_id: Optional - Verknuepftes Dokument
+            document_id: Optional - Verknüpftes Dokument
             contract_number: Vertragsnummer
             effective_date: Startdatum
             expiration_date: Enddatum
-            notice_period_days: Kuendigungsfrist in Tagen
-            auto_renewal: Automatische Verlaengerung
-            renewal_period_months: Verlaengerungszeitraum
+            notice_period_days: Kündigungsfrist in Tagen
+            auto_renewal: Automatische Verlängerung
+            renewal_period_months: Verlängerungszeitraum
             total_value: Vertragswert
             counterparty_entity_id: Vertragspartner-ID
             our_role: Unsere Rolle (buyer, seller, etc.)
@@ -275,7 +275,7 @@ class ContractServiceV2:
         Returns:
             Erstellter Vertrag
         """
-        # Optional: Daten aus verknuepftem Dokument extrahieren
+        # Optional: Daten aus verknüpftem Dokument extrahieren
         extracted_data = None
         if extract_from_document and document_id:
             extracted_data = await self.extract_dates_from_document(document_id, company_id)
@@ -411,7 +411,7 @@ class ContractServiceV2:
         contract.updated_at = utc_now()
         contract.updated_by_id = updated_by_id
 
-        # Deadlines aktualisieren wenn Enddatum geaendert
+        # Deadlines aktualisieren wenn Enddatum geändert
         if "expiration_date" in updates:
             await self._update_deadlines_for_expiration_change(contract)
 
@@ -545,7 +545,7 @@ class ContractServiceV2:
                     extracted.extraction_notes.append(f"Enddatum gefunden: {date_str}")
                     break
 
-        # 3. Kuendigungsfrist
+        # 3. Kündigungsfrist
         for pattern in CONTRACT_KEYWORDS["notice_period"]:
             match = re.search(pattern, text_lower)
             if match:
@@ -560,14 +560,14 @@ class ContractServiceV2:
                 else:
                     extracted.notice_period_days = value
 
-                extracted.extraction_notes.append(f"Kuendigungsfrist: {value} {unit}")
+                extracted.extraction_notes.append(f"Kündigungsfrist: {value} {unit}")
                 break
 
-        # 4. Automatische Verlaengerung
+        # 4. Automatische Verlängerung
         for pattern in CONTRACT_KEYWORDS["auto_renewal"]:
             if re.search(pattern, text_lower):
                 extracted.auto_renewal = True
-                extracted.extraction_notes.append("Automatische Verlaengerung erkannt")
+                extracted.extraction_notes.append("Automatische Verlängerung erkannt")
                 break
 
         # 5. Laufzeit/Dauer
@@ -593,7 +593,7 @@ class ContractServiceV2:
                     extracted.extraction_notes.append("Enddatum aus Laufzeit berechnet")
                 break
 
-        # 6. Kuendigungsfrist berechnen
+        # 6. Kündigungsfrist berechnen
         if extracted.expiration_date and extracted.notice_period_days:
             extracted.notice_deadline = (
                 extracted.expiration_date - timedelta(days=extracted.notice_period_days)
@@ -643,7 +643,7 @@ class ContractServiceV2:
                         month = GERMAN_MONTHS.get(month_name, 1)
                         parsed = date(year, month, day)
 
-                    # Plausibilitaetspruefung
+                    # Plausibilitaetsprüfung
                     if date(1990, 1, 1) <= parsed <= date(2100, 12, 31):
                         dates.append(parsed)
                 except (ValueError, KeyError):
@@ -669,7 +669,7 @@ class ContractServiceV2:
         year = d.year + month // 12
         month = month % 12 + 1
 
-        # Korrektur fuer Tage die im Zielmonat nicht existieren
+        # Korrektur für Tage die im Zielmonat nicht existieren
         import calendar
         max_day = calendar.monthrange(year, month)[1]
         day = min(d.day, max_day)
@@ -681,7 +681,7 @@ class ContractServiceV2:
     # =========================================================================
 
     async def _create_standard_deadlines(self, contract: Contract) -> List[ContractDeadline]:
-        """Erstellt Standard-Deadlines fuer einen Vertrag."""
+        """Erstellt Standard-Deadlines für einen Vertrag."""
         deadlines: List[ContractDeadline] = []
 
         if not contract.expiration_date:
@@ -701,7 +701,7 @@ class ContractServiceV2:
         self.db.add(expiry_deadline)
         deadlines.append(expiry_deadline)
 
-        # 2. Kuendigungsfrist-Deadline
+        # 2. Kündigungsfrist-Deadline
         if contract.notice_period_days:
             notice_date = contract.expiration_date - timedelta(days=contract.notice_period_days)
 
@@ -710,8 +710,8 @@ class ContractServiceV2:
                     contract_id=contract.id,
                     company_id=contract.company_id,
                     deadline_type=DeadlineType.TERMINATION_NOTICE.value,
-                    title="Kuendigungsfrist",
-                    description=f"Kuendigung muss bis {notice_date.strftime('%d.%m.%Y')} erfolgen.",
+                    title="Kündigungsfrist",
+                    description=f"Kündigung muss bis {notice_date.strftime('%d.%m.%Y')} erfolgen.",
                     deadline_date=notice_date,
                     priority="critical",
                     reminder_days_before=[30, 14, 7, 3, 1],
@@ -719,10 +719,10 @@ class ContractServiceV2:
                 self.db.add(notice_deadline)
                 deadlines.append(notice_deadline)
 
-        # 3. Verlaengerungsentscheidung-Deadline (wenn auto_renewal)
+        # 3. Verlängerungsentscheidung-Deadline (wenn auto_renewal)
         if contract.auto_renewal and contract.notice_period_days:
             decision_date = contract.expiration_date - timedelta(
-                days=contract.notice_period_days + 14  # 2 Wochen vor Kuendigungsfrist
+                days=contract.notice_period_days + 14  # 2 Wochen vor Kündigungsfrist
             )
 
             if decision_date > date.today():
@@ -730,8 +730,8 @@ class ContractServiceV2:
                     contract_id=contract.id,
                     company_id=contract.company_id,
                     deadline_type=DeadlineType.RENEWAL_DECISION.value,
-                    title="Verlaengerungsentscheidung",
-                    description="Entscheidung ueber Kuendigung oder Verlaengerung erforderlich.",
+                    title="Verlängerungsentscheidung",
+                    description="Entscheidung über Kündigung oder Verlängerung erforderlich.",
                     deadline_date=decision_date,
                     priority="high",
                     reminder_days_before=[14, 7, 3],
@@ -750,8 +750,8 @@ class ContractServiceV2:
         return deadlines
 
     async def _update_deadlines_for_expiration_change(self, contract: Contract) -> None:
-        """Aktualisiert Deadlines nach Aenderung des Enddatums."""
-        # Bestehende automatische Deadlines loeschen
+        """Aktualisiert Deadlines nach Änderung des Enddatums."""
+        # Bestehende automatische Deadlines löschen
         await self.db.execute(
             update(ContractDeadline)
             .where(
@@ -783,7 +783,7 @@ class ContractServiceV2:
         Args:
             company_id: Mandanten-ID
             days_ahead: Vorausschau in Tagen
-            deadline_types: Filter fuer Fristtypen
+            deadline_types: Filter für Fristtypen
 
         Returns:
             Liste von Deadlines
@@ -830,8 +830,8 @@ class ContractServiceV2:
         Args:
             deadline_id: Deadline-ID
             company_id: Mandanten-ID
-            completed_by_id: ID des abschliessenden Benutzers
-            action_taken: Beschreibung der durchgefuehrten Aktion
+            completed_by_id: ID des abschließenden Benutzers
+            action_taken: Beschreibung der durchgeführten Aktion
 
         Returns:
             Aktualisierte Deadline oder None
@@ -881,7 +881,7 @@ class ContractServiceV2:
         Args:
             company_id: Mandanten-ID
             days_ahead: Vorausschau in Tagen
-            contract_ids: Optional - nur bestimmte Vertraege
+            contract_ids: Optional - nur bestimmte Verträge
 
         Returns:
             iCal-String
@@ -929,7 +929,7 @@ class ContractServiceV2:
         return self._generate_ical_string(events, "Ablage-System Vertragsfristen")
 
     def _generate_ical_uid(self, deadline: ContractDeadline) -> str:
-        """Generiert eindeutige UID fuer iCal-Event."""
+        """Generiert eindeutige UID für iCal-Event."""
         data = f"{deadline.id}_{deadline.contract_id}_{deadline.deadline_date}"
         return f"{hashlib.md5(data.encode()).hexdigest()}@ablage-system"
 
@@ -978,7 +978,7 @@ class ContractServiceV2:
 
     @staticmethod
     def _escape_ical_text(text: str) -> str:
-        """Escaped Text fuer iCal-Format."""
+        """Escaped Text für iCal-Format."""
         return (
             text.replace("\\", "\\\\")
             .replace("\n", "\\n")
@@ -998,7 +998,7 @@ class ContractServiceV2:
         is_primary: bool = False,
     ) -> bool:
         """
-        Verknuepft ein Dokument mit einem Vertrag.
+        Verknüpft ein Dokument mit einem Vertrag.
 
         Args:
             contract_id: Vertrags-ID
@@ -1009,7 +1009,7 @@ class ContractServiceV2:
         Returns:
             True bei Erfolg
         """
-        # Vertrag und Dokument pruefen
+        # Vertrag und Dokument prüfen
         contract = await self.get_contract(contract_id, company_id)
         if not contract:
             return False
@@ -1031,7 +1031,7 @@ class ContractServiceV2:
         if is_primary:
             contract.document_id = document_id
         else:
-            # Zu zusaetzlichen Dokumenten hinzufuegen (via JSONB)
+            # Zu zusätzlichen Dokumenten hinzufuegen (via JSONB)
             linked_docs = contract.clauses.get("linked_documents", []) if contract.clauses else []
             if str(document_id) not in linked_docs:
                 linked_docs.append(str(document_id))
@@ -1057,7 +1057,7 @@ class ContractServiceV2:
         company_id: UUID,
     ) -> List[Document]:
         """
-        Ruft alle verknuepften Dokumente eines Vertrags ab.
+        Ruft alle verknüpften Dokumente eines Vertrags ab.
 
         Args:
             contract_id: Vertrags-ID
@@ -1076,7 +1076,7 @@ class ContractServiceV2:
         if contract.document_id:
             document_ids.append(contract.document_id)
 
-        # Zusaetzliche Dokumente aus clauses
+        # Zusätzliche Dokumente aus clauses
         if contract.clauses:
             linked_docs = contract.clauses.get("linked_documents", [])
             for doc_id_str in linked_docs:
@@ -1121,7 +1121,7 @@ class ContractServiceV2:
         order_desc: bool = False,
     ) -> ContractSearchResult:
         """
-        Sucht Vertraege mit erweiterten Filteroptionen.
+        Sucht Verträge mit erweiterten Filteroptionen.
 
         Args:
             company_id: Mandanten-ID
@@ -1134,7 +1134,7 @@ class ContractServiceV2:
             max_value: Maximalwert
             tags: Tag-Filter
             page: Seitennummer
-            page_size: Eintraege pro Seite
+            page_size: Einträge pro Seite
             order_by: Sortierfeld
             order_desc: Absteigende Sortierung
 
@@ -1289,10 +1289,10 @@ class ContractServiceV2:
 
 
 def get_contract_service_v2(db: AsyncSession) -> ContractServiceV2:
-    """Factory-Funktion fuer ContractServiceV2."""
+    """Factory-Funktion für ContractServiceV2."""
     return ContractServiceV2(db)
 
 
-# Alias fuer Kompatibilitaet
+# Alias für Kompatibilität
 ContractService = ContractServiceV2
 get_contract_service = get_contract_service_v2

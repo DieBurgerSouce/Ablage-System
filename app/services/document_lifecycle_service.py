@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Document Lifecycle Service - Lebenszyklus-Verwaltung mit SLA-Ueberwachung.
+Document Lifecycle Service - Lebenszyklus-Verwaltung mit SLA-Überwachung.
 
 Verwaltet den Lebenszyklus von Dokumenten durch definierte Stufen:
-Eingang -> OCR -> Klassifizierung -> Pruefung -> Freigabe -> Buchung -> Archivierung
+Eingang -> OCR -> Klassifizierung -> Prüfung -> Freigabe -> Buchung -> Archivierung
 
 Features:
-- Stufen-Uebergaenge mit Benutzer-Zuordnung
+- Stufen-Übergaenge mit Benutzer-Zuordnung
 - SLA-Konfiguration pro Dokumenttyp und Stufe
 - SLA-Verletzungserkennung
-- Kanban-Uebersicht (Stufen-Zaehler)
+- Kanban-Übersicht (Stufen-Zähler)
 - Stufen-Metriken (Durchschnittszeiten)
 
 Feinpoliert und durchdacht - Enterprise-grade Document Lifecycle.
@@ -74,7 +74,7 @@ class SLAViolation:
 
 @dataclass
 class StageMetric:
-    """Metriken fuer eine einzelne Lebenszyklus-Stufe."""
+    """Metriken für eine einzelne Lebenszyklus-Stufe."""
 
     stage: str
     avg_duration_seconds: float
@@ -102,10 +102,10 @@ class StageMetric:
 
 class DocumentLifecycleService:
     """
-    Verwaltet den Dokument-Lebenszyklus mit SLA-Ueberwachung.
+    Verwaltet den Dokument-Lebenszyklus mit SLA-Überwachung.
 
-    Bietet Methoden fuer Stufen-Uebergaenge, SLA-Pruefung,
-    Kanban-Uebersicht und Stufen-Metriken.
+    Bietet Methoden für Stufen-Übergaenge, SLA-Prüfung,
+    Kanban-Übersicht und Stufen-Metriken.
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -121,33 +121,33 @@ class DocumentLifecycleService:
         note: Optional[str] = None,
     ) -> DocumentLifecycleEvent:
         """
-        Fuehrt einen Stufen-Uebergang fuer ein Dokument durch.
+        Führt einen Stufen-Übergang für ein Dokument durch.
 
         Args:
             document_id: ID des Dokuments
             company_id: ID des Mandanten
             to_stage: Ziel-Stufe
-            user_id: ID des ausfuehrenden Benutzers
-            note: Optionale Notiz zum Uebergang
+            user_id: ID des ausführenden Benutzers
+            note: Optionale Notiz zum Übergang
 
         Returns:
-            DocumentLifecycleEvent fuer den Uebergang
+            DocumentLifecycleEvent für den Übergang
 
         Raises:
-            ValueError: Bei ungueltiger Stufen-Kombination
+            ValueError: Bei ungültiger Stufen-Kombination
         """
         # Aktuelle Stufe ermitteln
         current_stage = await self.get_current_stage(document_id)
         from_stage_value = current_stage.value if current_stage else None
 
-        # Validierung: Stufe darf nicht zurueckgehen
+        # Validierung: Stufe darf nicht zurückgehen
         if current_stage is not None:
             current_idx = STAGE_ORDER.index(current_stage)
             target_idx = STAGE_ORDER.index(to_stage)
             if target_idx <= current_idx:
                 raise ValueError(
-                    f"Ungueltiger Uebergang: '{current_stage.value}' -> "
-                    f"'{to_stage.value}'. Stufe kann nicht zurueckgesetzt werden."
+                    f"Ungültiger Übergang: '{current_stage.value}' -> "
+                    f"'{to_stage.value}'. Stufe kann nicht zurückgesetzt werden."
                 )
 
         # Dauer in der vorherigen Stufe berechnen
@@ -161,7 +161,7 @@ class DocumentLifecycleService:
                 delta = now - last_event.transitioned_at
                 duration_seconds = int(delta.total_seconds())
 
-                # SLA pruefen
+                # SLA prüfen
                 sla_met = await self._check_stage_sla(
                     company_id=company_id,
                     document_id=document_id,
@@ -226,7 +226,7 @@ class DocumentLifecycleService:
         company_id: UUID,
     ) -> List[SLAViolation]:
         """
-        Prueft alle Dokumente eines Mandanten auf SLA-Verletzungen.
+        Prüft alle Dokumente eines Mandanten auf SLA-Verletzungen.
 
         Vergleicht die aktuelle Verweildauer in einer Stufe mit
         der konfigurierten maximalen Dauer.
@@ -241,7 +241,7 @@ class DocumentLifecycleService:
         now = datetime.now(timezone.utc)
 
         try:
-            # Alle SLA-Konfigurationen fuer diesen Mandanten laden
+            # Alle SLA-Konfigurationen für diesen Mandanten laden
             config_stmt = select(DocumentLifecycleConfig).where(
                 and_(
                     DocumentLifecycleConfig.company_id == company_id,
@@ -260,7 +260,7 @@ class DocumentLifecycleService:
                 config_map[(config.document_type, config.stage)] = config
 
             # Letzte Events pro Dokument finden (Subquery)
-            # Wir nutzen eine korrelierte Subquery fuer das letzte Event
+            # Wir nutzen eine korrelierte Subquery für das letzte Event
             latest_event_subq = (
                 select(
                     DocumentLifecycleEvent.document_id,
@@ -292,7 +292,7 @@ class DocumentLifecycleService:
                 .where(
                     and_(
                         DocumentLifecycleEvent.company_id == company_id,
-                        # Archivierte Dokumente ausschliessen
+                        # Archivierte Dokumente ausschließen
                         DocumentLifecycleEvent.to_stage
                         != DocumentLifecycleStage.ARCHIVIERUNG.value,
                     )
@@ -357,7 +357,7 @@ class DocumentLifecycleService:
         company_id: UUID,
     ) -> Dict[str, int]:
         """
-        Gibt eine Kanban-Uebersicht zurueck: Anzahl Dokumente pro Stufe.
+        Gibt eine Kanban-Übersicht zurück: Anzahl Dokumente pro Stufe.
 
         Args:
             company_id: ID des Mandanten
@@ -494,7 +494,7 @@ class DocumentLifecycleService:
         company_id: UUID,
     ) -> List[DocumentLifecycleEvent]:
         """
-        Gibt die vollstaendige Lebenszyklus-Historie eines Dokuments zurueck.
+        Gibt die vollständige Lebenszyklus-Historie eines Dokuments zurück.
 
         Args:
             document_id: ID des Dokuments
@@ -524,7 +524,7 @@ class DocumentLifecycleService:
     async def _get_last_event(
         self, document_id: UUID
     ) -> Optional[DocumentLifecycleEvent]:
-        """Letztes Lifecycle-Event fuer ein Dokument abrufen."""
+        """Letztes Lifecycle-Event für ein Dokument abrufen."""
         stmt = (
             select(DocumentLifecycleEvent)
             .where(DocumentLifecycleEvent.document_id == document_id)
@@ -541,7 +541,7 @@ class DocumentLifecycleService:
         stage: DocumentLifecycleStage,
         duration_seconds: int,
     ) -> bool:
-        """Prueft ob die SLA fuer eine Stufe eingehalten wurde."""
+        """Prüft ob die SLA für eine Stufe eingehalten wurde."""
         # Dokumenttyp ermitteln
         doc_stmt = select(Document.document_type).where(
             Document.id == document_id
@@ -572,5 +572,5 @@ class DocumentLifecycleService:
 def get_document_lifecycle_service(
     db: AsyncSession,
 ) -> DocumentLifecycleService:
-    """Factory-Funktion fuer den DocumentLifecycleService."""
+    """Factory-Funktion für den DocumentLifecycleService."""
     return DocumentLifecycleService(db)

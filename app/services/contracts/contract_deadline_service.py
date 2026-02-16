@@ -3,11 +3,11 @@
 Contract Deadline Service.
 
 Verwaltet Vertragsfristen und wichtige Termine:
-- Kuendigungsfristen
+- Kündigungsfristen
 - Vertragsablauf
-- Verlaengerungsentscheidungen
+- Verlängerungsentscheidungen
 - Preisanpassungen
-- Gewaehrleistungsende
+- Gewährleistungsende
 - Automatische Erinnerungen
 
 Feinpoliert und durchdacht.
@@ -32,16 +32,16 @@ logger = logging.getLogger(__name__)
 
 class ContractDeadlineService:
     """
-    Service fuer das Management von Vertragsfristen.
+    Service für das Management von Vertragsfristen.
 
-    Verwaltet alle wichtigen Termine und Fristen aus Vertraegen
+    Verwaltet alle wichtigen Termine und Fristen aus Verträgen
     mit automatischen Erinnerungen und Eskalation.
     """
 
     # Standard-Erinnerungsintervalle (Tage vor Frist)
     DEFAULT_REMINDERS = [90, 30, 14, 7, 1]
 
-    # Prioritaet basierend auf Deadline-Typ
+    # Priorität basierend auf Deadline-Typ
     TYPE_PRIORITIES = {
         "termination_notice": "critical",
         "contract_expiry": "high",
@@ -78,11 +78,11 @@ class ContractDeadlineService:
             company_id: ID der Firma
             deadline_type: Art der Frist
             title: Titel der Frist
-            deadline_date: Faelligkeitsdatum
+            deadline_date: Fälligkeitsdatum
             description: Detaillierte Beschreibung
-            priority: Prioritaet (low, medium, high, critical)
+            priority: Priorität (low, medium, high, critical)
             reminder_days_before: Erinnerungstage
-            assignee_id: Zustaendiger Benutzer
+            assignee_id: Zuständiger Benutzer
 
         Returns:
             Erstellte ContractDeadline
@@ -92,7 +92,7 @@ class ContractDeadlineService:
         if not contract:
             raise ValueError(f"Vertrag {contract_id} nicht gefunden")
 
-        # Bestimme Prioritaet
+        # Bestimme Priorität
         if not priority:
             priority = self.TYPE_PRIORITIES.get(deadline_type, "medium")
 
@@ -130,7 +130,7 @@ class ContractDeadlineService:
         include_completed: bool = False,
     ) -> List[ContractDeadline]:
         """
-        Hole alle Deadlines fuer einen Vertrag.
+        Hole alle Deadlines für einen Vertrag.
 
         Args:
             contract_id: ID des Vertrags
@@ -164,7 +164,7 @@ class ContractDeadlineService:
         Args:
             company_id: ID der Firma
             days_ahead: Tage in die Zukunft
-            priority: Optional Filter auf Prioritaet
+            priority: Optional Filter auf Priorität
             assignee_id: Optional Filter auf Benutzer
 
         Returns:
@@ -188,7 +188,7 @@ class ContractDeadlineService:
         if assignee_id:
             query = query.where(ContractDeadline.assignee_id == assignee_id)
 
-        # Sortiere nach Prioritaet und Datum
+        # Sortiere nach Priorität und Datum
         priority_order = {
             "critical": 0,
             "high": 1,
@@ -202,7 +202,7 @@ class ContractDeadlineService:
         result = await self.db.execute(query)
         deadlines = list(result.scalars().all())
 
-        # Python-seitige Sortierung nach Prioritaet
+        # Python-seitige Sortierung nach Priorität
         deadlines.sort(key=lambda d: (priority_order.get(d.priority, 4), d.deadline_date))
 
         return deadlines
@@ -213,14 +213,14 @@ class ContractDeadlineService:
         days_ahead: int = 90,
     ) -> List[Dict[str, Any]]:
         """
-        Hole ablaufende Vertraege.
+        Hole ablaufende Verträge.
 
         Args:
             company_id: ID der Firma
             days_ahead: Tage in die Zukunft
 
         Returns:
-            Liste von Vertraegen mit Ablauf-Infos
+            Liste von Verträgen mit Ablauf-Infos
         """
         today = date.today()
         cutoff_date = today + timedelta(days=days_ahead)
@@ -268,7 +268,7 @@ class ContractDeadlineService:
         Args:
             deadline_id: ID der Deadline
             completed_by_id: ID des Benutzers
-            action_taken: Beschreibung der durchgefuehrten Aktion
+            action_taken: Beschreibung der durchgeführten Aktion
 
         Returns:
             Aktualisierte ContractDeadline
@@ -324,7 +324,7 @@ class ContractDeadlineService:
 
     async def delete_deadline(self, deadline_id: UUID) -> bool:
         """
-        Loesche Deadline.
+        Lösche Deadline.
 
         Args:
             deadline_id: ID der Deadline
@@ -339,7 +339,7 @@ class ContractDeadlineService:
         await self.db.delete(deadline)
         await self.db.commit()
 
-        logger.info(f"Deadline geloescht: {deadline_id}")
+        logger.info(f"Deadline gelöscht: {deadline_id}")
         return True
 
     async def get_deadlines_needing_reminder(
@@ -347,9 +347,9 @@ class ContractDeadlineService:
         company_id: UUID,
     ) -> List[Dict[str, Any]]:
         """
-        Hole Deadlines die eine Erinnerung benoetigen.
+        Hole Deadlines die eine Erinnerung benötigen.
 
-        Prueft fuer jede Deadline ob heute ein Erinnerungstag ist.
+        Prüft für jede Deadline ob heute ein Erinnerungstag ist.
 
         Args:
             company_id: ID der Firma
@@ -359,7 +359,7 @@ class ContractDeadlineService:
         """
         today = date.today()
 
-        # Hole alle unerledigten Deadlines in den naechsten 90 Tagen
+        # Hole alle unerledigten Deadlines in den nächsten 90 Tagen
         cutoff_date = today + timedelta(days=90)
 
         query = select(ContractDeadline).where(
@@ -380,7 +380,7 @@ class ContractDeadlineService:
             reminder_days = deadline.reminder_days_before or self.DEFAULT_REMINDERS
 
             if days_until in reminder_days:
-                # Pruefe ob Erinnerung heute schon gesendet wurde
+                # Prüfe ob Erinnerung heute schon gesendet wurde
                 if deadline.last_reminder_sent:
                     if deadline.last_reminder_sent.date() == today:
                         continue
@@ -422,13 +422,13 @@ class ContractDeadlineService:
         contract: Contract,
     ) -> List[ContractDeadline]:
         """
-        Erstelle automatisch Deadlines fuer einen Vertrag.
+        Erstelle automatisch Deadlines für einen Vertrag.
 
         Analysiert den Vertrag und erstellt relevante Fristen:
         - Vertragsablauf
-        - Kuendigungsfrist
-        - Verlaengerungsentscheidung (bei auto_renewal)
-        - Gewaehrleistung (wenn in clauses)
+        - Kündigungsfrist
+        - Verlängerungsentscheidung (bei auto_renewal)
+        - Gewährleistung (wenn in clauses)
 
         Args:
             contract: Der Vertrag
@@ -452,7 +452,7 @@ class ContractDeadlineService:
             )
             deadlines.append(deadline)
 
-        # 2. Kuendigungsfrist
+        # 2. Kündigungsfrist
         if contract.expiration_date and contract.notice_period_days:
             notice_date = contract.expiration_date - timedelta(days=contract.notice_period_days)
             if notice_date > today:
@@ -460,16 +460,16 @@ class ContractDeadlineService:
                     contract_id=contract.id,
                     company_id=contract.company_id,
                     deadline_type="termination_notice",
-                    title=f"Kuendigungsfrist: {contract.title}",
+                    title=f"Kündigungsfrist: {contract.title}",
                     deadline_date=notice_date,
-                    description=f"Letzte Moeglichkeit zur Kuendigung. "
-                                f"Kuendigungsfrist: {contract.notice_period_days} Tage.",
+                    description=f"Letzte Möglichkeit zur Kündigung. "
+                                f"Kündigungsfrist: {contract.notice_period_days} Tage.",
                     priority="critical",
                     reminder_days_before=[60, 30, 14, 7, 3, 1],
                 )
                 deadlines.append(deadline)
 
-        # 3. Verlaengerungsentscheidung bei auto_renewal
+        # 3. Verlängerungsentscheidung bei auto_renewal
         if contract.auto_renewal and contract.expiration_date and contract.renewal_notice_days:
             renewal_decision_date = contract.expiration_date - timedelta(days=contract.renewal_notice_days)
             if renewal_decision_date > today:
@@ -477,14 +477,14 @@ class ContractDeadlineService:
                     contract_id=contract.id,
                     company_id=contract.company_id,
                     deadline_type="renewal_decision",
-                    title=f"Verlaengerungsentscheidung: {contract.title}",
+                    title=f"Verlängerungsentscheidung: {contract.title}",
                     deadline_date=renewal_decision_date,
-                    description="Entscheidung ueber automatische Verlaengerung erforderlich.",
+                    description="Entscheidung über automatische Verlängerung erforderlich.",
                     priority="high",
                 )
                 deadlines.append(deadline)
 
-        # 4. Gewaehrleistung aus Klauseln
+        # 4. Gewährleistung aus Klauseln
         clauses = contract.clauses or {}
         warranty = clauses.get("warranty", {})
         if warranty.get("period_months") and contract.effective_date:
@@ -494,9 +494,9 @@ class ContractDeadlineService:
                     contract_id=contract.id,
                     company_id=contract.company_id,
                     deadline_type="warranty_expiry",
-                    title=f"Gewaehrleistungsende: {contract.title}",
+                    title=f"Gewährleistungsende: {contract.title}",
                     deadline_date=warranty_end,
-                    description=f"Gewaehrleistung endet nach {warranty['period_months']} Monaten.",
+                    description=f"Gewährleistung endet nach {warranty['period_months']} Monaten.",
                     priority="medium",
                 )
                 deadlines.append(deadline)
@@ -504,7 +504,7 @@ class ContractDeadlineService:
         # 5. Preisanpassung
         price_adjustment = clauses.get("price_adjustment", {})
         if price_adjustment.get("interval") == "annual" and contract.effective_date:
-            # Naechste jaehrliche Anpassung
+            # Nächste jährliche Anpassung
             next_adjustment = contract.effective_date.replace(year=today.year + 1)
             if next_adjustment <= today:
                 next_adjustment = next_adjustment.replace(year=today.year + 1)
@@ -515,12 +515,12 @@ class ContractDeadlineService:
                 deadline_type="price_adjustment",
                 title=f"Preisanpassung: {contract.title}",
                 deadline_date=next_adjustment,
-                description="Jaehrliche Preisanpassung steht an.",
+                description="Jährliche Preisanpassung steht an.",
                 priority="medium",
             )
             deadlines.append(deadline)
 
-        logger.info(f"{len(deadlines)} Deadlines fuer Vertrag {contract.id} erstellt")
+        logger.info(f"{len(deadlines)} Deadlines für Vertrag {contract.id} erstellt")
         return deadlines
 
     async def get_statistics(
@@ -548,7 +548,7 @@ class ContractDeadlineService:
         total_result = await self.db.execute(total_query)
         total = total_result.scalar() or 0
 
-        # Nach Prioritaet
+        # Nach Priorität
         priority_counts = {}
         for priority in ["critical", "high", "medium", "low"]:
             query = select(func.count(ContractDeadline.id)).where(
@@ -561,7 +561,7 @@ class ContractDeadlineService:
             result = await self.db.execute(query)
             priority_counts[priority] = result.scalar() or 0
 
-        # Ueberfaellig
+        # Überfällig
         overdue_query = select(func.count(ContractDeadline.id)).where(
             and_(
                 ContractDeadline.company_id == company_id,
@@ -608,7 +608,7 @@ class ContractDeadlineService:
         }
 
     def _get_reminders_for_priority(self, priority: str) -> List[int]:
-        """Bestimme Erinnerungstage basierend auf Prioritaet."""
+        """Bestimme Erinnerungstage basierend auf Priorität."""
         if priority == "critical":
             return [90, 60, 30, 14, 7, 3, 1]
         elif priority == "high":

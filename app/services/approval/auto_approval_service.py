@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-AutoApprovalService - Automatische Genehmigung fuer Niedrig-Risiko-Dokumente.
+AutoApprovalService - Automatische Genehmigung für Niedrig-Risiko-Dokumente.
 
-Implementiert konfigurierbare Regeln fuer automatische Genehmigungen:
+Implementiert konfigurierbare Regeln für automatische Genehmigungen:
 - Betragsschwellen (z.B. Rechnungen < 500€)
 - Bekannte Lieferanten mit gutem Risiko-Score
 - Dokumenttyp-basierte Regeln
 - Entity-Beziehungshistorie
 
 Human-in-the-Loop Pattern:
-- Opt-out pro User/Dokumenttyp moeglich
-- Vollstaendiger Audit-Trail fuer Compliance
-- Integration mit AIDecisionService fuer Erklaerbarkeit
+- Opt-out pro User/Dokumenttyp möglich
+- Vollständiger Audit-Trail für Compliance
+- Integration mit AIDecisionService für Erklärbarkeit
 """
 
 from __future__ import annotations
@@ -49,7 +49,7 @@ logger = structlog.get_logger(__name__)
 
 
 class AutoApprovalReason(str, Enum):
-    """Gruende fuer automatische Genehmigung."""
+    """Gruende für automatische Genehmigung."""
 
     AMOUNT_BELOW_THRESHOLD = "amount_below_threshold"
     TRUSTED_SUPPLIER = "trusted_supplier"
@@ -75,13 +75,13 @@ class AutoApprovalDecision(str, Enum):
 
 @dataclass
 class AutoApprovalRule:
-    """Konfigurierbare Regel fuer automatische Genehmigung."""
+    """Konfigurierbare Regel für automatische Genehmigung."""
 
     id: str
     name: str
     description: str
     enabled: bool = True
-    priority: int = 100  # Niedrigere Zahl = hoehere Prioritaet
+    priority: int = 100  # Niedrigere Zahl = höhere Priorität
 
     # Bedingungen
     max_amount: Optional[Decimal] = None
@@ -96,7 +96,7 @@ class AutoApprovalRule:
     excluded_companies: Set[str] = field(default_factory=set)
     excluded_document_types: Set[str] = field(default_factory=set)
 
-    # Zeitliche Einschraenkungen
+    # Zeitliche Einschränkungen
     valid_from: Optional[datetime] = None
     valid_until: Optional[datetime] = None
     business_hours_only: bool = False
@@ -109,7 +109,7 @@ class AutoApprovalRule:
 
 @dataclass
 class AutoApprovalResult:
-    """Ergebnis der automatischen Genehmigungspruefung."""
+    """Ergebnis der automatischen Genehmigungsprüfung."""
 
     decision: AutoApprovalDecision
     reasons: List[AutoApprovalReason]
@@ -132,7 +132,7 @@ class AutoApprovalResult:
 
 @dataclass
 class AutoApprovalConfig:
-    """Globale Konfiguration fuer Auto-Approval."""
+    """Globale Konfiguration für Auto-Approval."""
 
     # Allgemeine Schwellen
     default_max_amount: Decimal = Decimal("500.00")
@@ -161,7 +161,7 @@ class AutoApprovalConfig:
 
 @dataclass
 class EntityTrustScore:
-    """Trust-Score fuer eine Entity (Kunde/Lieferant)."""
+    """Trust-Score für eine Entity (Kunde/Lieferant)."""
 
     entity_id: uuid.UUID
     trust_score: float  # 0.0 - 1.0
@@ -180,19 +180,19 @@ class EntityTrustScore:
 
 
 class AutoApprovalService:
-    """Service fuer automatische Genehmigungen mit konfigurierbaren Regeln.
+    """Service für automatische Genehmigungen mit konfigurierbaren Regeln.
 
     Workflow:
     1. Dokument/Rechnung wird eingereicht
-    2. Service prueft alle aktiven Auto-Approval-Regeln
+    2. Service prüft alle aktiven Auto-Approval-Regeln
     3. Bei Match: Automatische Genehmigung mit Audit-Trail
     4. Bei Unsicherheit: Weiterleitung an manuellen Review
     5. Bei Ausschluss: Eskalation an entsprechenden Approver
 
     Human-in-the-Loop:
-    - User koennen Opt-out konfigurieren
+    - User können Opt-out konfigurieren
     - Alle Auto-Approvals sind nachvollziehbar
-    - Feedback verbessert zukuenftige Entscheidungen
+    - Feedback verbessert zukünftige Entscheidungen
     """
 
     def __init__(
@@ -237,7 +237,7 @@ class AutoApprovalService:
             # Regel 3: Niedrig-Risiko Entities
             AutoApprovalRule(
                 id="low_risk_entity",
-                name="Niedrig-Risiko Geschaeftspartner",
+                name="Niedrig-Risiko Geschäftspartner",
                 description="Dokumente von Entities mit Risiko-Score < 20",
                 priority=20,
                 max_risk_score=20,
@@ -278,7 +278,7 @@ class AutoApprovalService:
         company_id: Optional[uuid.UUID] = None,
         user_id: Optional[uuid.UUID] = None,
     ) -> AutoApprovalResult:
-        """Prueft ob ein Dokument/Rechnung automatisch genehmigt werden kann.
+        """Prüft ob ein Dokument/Rechnung automatisch genehmigt werden kann.
 
         Args:
             document_id: Optional Dokument-ID
@@ -287,8 +287,8 @@ class AutoApprovalService:
             amount: Betrag (falls bekannt)
             document_type: Dokumenttyp
             category: Kategorie
-            company_id: Company-ID fuer Multi-Tenant
-            user_id: User-ID fuer Opt-out Pruefung
+            company_id: Company-ID für Multi-Tenant
+            user_id: User-ID für Opt-out Prüfung
 
         Returns:
             AutoApprovalResult mit Entscheidung und Begruendung
@@ -304,25 +304,25 @@ class AutoApprovalService:
             user_id=user_id,
         )
 
-        # Opt-out Pruefung
+        # Opt-out Prüfung
         if await self._is_opted_out(context):
             return AutoApprovalResult(
                 decision=AutoApprovalDecision.REQUIRES_REVIEW,
                 reasons=[],
                 matched_rules=[],
                 confidence=0.0,
-                explanation="Auto-Approval ist fuer diesen Kontext deaktiviert (Opt-out)",
+                explanation="Auto-Approval ist für diesen Kontext deaktiviert (Opt-out)",
                 audit_trail={"opted_out": True, "context": context},
             )
 
-        # Rate Limit Pruefung
+        # Rate Limit Prüfung
         if not await self._check_rate_limits(company_id):
             return AutoApprovalResult(
                 decision=AutoApprovalDecision.REQUIRES_REVIEW,
                 reasons=[],
                 matched_rules=[],
                 confidence=0.0,
-                explanation="Rate Limit fuer automatische Genehmigungen erreicht",
+                explanation="Rate Limit für automatische Genehmigungen erreicht",
                 audit_trail={"rate_limited": True},
             )
 
@@ -348,11 +348,11 @@ class AutoApprovalService:
                 reasons=[],
                 matched_rules=[],
                 confidence=0.0,
-                explanation="Keine Auto-Approval-Regel zutreffend - manuelle Pruefung erforderlich",
+                explanation="Keine Auto-Approval-Regel zutreffend - manuelle Prüfung erforderlich",
                 audit_trail={"no_matching_rules": True, "context": context},
             )
 
-        # Blockierung pruefen (z.B. excluded document types)
+        # Blockierung prüfen (z.B. excluded document types)
         blocking_rule = await self._check_blocking_rules(context)
         if blocking_rule:
             return AutoApprovalResult(
@@ -365,7 +365,7 @@ class AutoApprovalService:
                 audit_trail={"blocked_by": blocking_rule, "context": context},
             )
 
-        # Auto-Approval durchfuehren
+        # Auto-Approval durchführen
         result = await self._execute_auto_approval(
             context=context,
             matched_rules=matched_rules,
@@ -397,7 +397,7 @@ class AutoApprovalService:
 
         Args:
             entity_type: Typ (document, invoice, etc.)
-            entity_id: ID der Entitaet
+            entity_id: ID der Entität
             company_id: Company-ID
             amount: Optional Betrag
             title: Optional Titel
@@ -406,7 +406,7 @@ class AutoApprovalService:
         Returns:
             ApprovalRequest wenn erstellt, sonst None
         """
-        # Auto-Approval pruefen
+        # Auto-Approval prüfen
         result = await self.check_auto_approval(
             document_id=entity_id if entity_type == "document" else None,
             invoice_id=entity_id if entity_type == "invoice" else None,
@@ -477,7 +477,7 @@ class AutoApprovalService:
         self,
         entity_id: uuid.UUID,
     ) -> EntityTrustScore:
-        """Berechnet den Trust-Score fuer eine Entity.
+        """Berechnet den Trust-Score für eine Entity.
 
         Args:
             entity_id: ID der Entity
@@ -590,7 +590,7 @@ class AutoApprovalService:
         Args:
             rule: Die hinzuzufuegende Regel
         """
-        # Pruefen ob Regel mit ID existiert
+        # Prüfen ob Regel mit ID existiert
         existing = next((r for r in self._rules if r.id == rule.id), None)
         if existing:
             self._rules.remove(existing)
@@ -617,7 +617,7 @@ class AutoApprovalService:
         return False
 
     def get_rules(self) -> List[AutoApprovalRule]:
-        """Gibt alle konfigurierten Regeln zurueck.
+        """Gibt alle konfigurierten Regeln zurück.
 
         Returns:
             Liste aller Regeln
@@ -655,11 +655,11 @@ class AutoApprovalService:
         opt_out: bool,
         document_types: Optional[List[str]] = None,
     ) -> None:
-        """Setzt Opt-out fuer einen User.
+        """Setzt Opt-out für einen User.
 
         Args:
             user_id: User-ID
-            opt_out: True fuer Opt-out, False zum Opt-in
+            opt_out: True für Opt-out, False zum Opt-in
             document_types: Optional spezifische Dokumenttypen
         """
         stmt = select(User).where(User.id == user_id)
@@ -701,7 +701,7 @@ class AutoApprovalService:
         company_id: Optional[uuid.UUID],
         user_id: Optional[uuid.UUID],
     ) -> Dict[str, Any]:
-        """Baut den Kontext fuer die Regelauswertung.
+        """Baut den Kontext für die Regelauswertung.
 
         Returns:
             Dict mit allen relevanten Informationen
@@ -747,7 +747,7 @@ class AutoApprovalService:
         return context
 
     async def _is_opted_out(self, context: Dict[str, Any]) -> bool:
-        """Prueft ob Auto-Approval fuer diesen Kontext deaktiviert ist.
+        """Prüft ob Auto-Approval für diesen Kontext deaktiviert ist.
 
         Args:
             context: Der Auswertungs-Kontext
@@ -780,7 +780,7 @@ class AutoApprovalService:
         self,
         company_id: Optional[uuid.UUID],
     ) -> bool:
-        """Prueft ob Rate Limits eingehalten werden.
+        """Prüft ob Rate Limits eingehalten werden.
 
         Args:
             company_id: Company-ID
@@ -855,14 +855,14 @@ class AutoApprovalService:
             "confidence": 0.0,
         }
 
-        # Zeitliche Gueltigkeit pruefen
+        # Zeitliche Gültigkeit prüfen
         now = utc_now()
         if rule.valid_from and now < rule.valid_from:
             return result
         if rule.valid_until and now > rule.valid_until:
             return result
 
-        # Ausschluesse pruefen
+        # Ausschluesse prüfen
         user_id = context.get("user_id")
         if user_id and str(user_id) in rule.excluded_users:
             return result
@@ -875,7 +875,7 @@ class AutoApprovalService:
         if document_type and document_type in rule.excluded_document_types:
             return result
 
-        # Bedingungen pruefen
+        # Bedingungen prüfen
         conditions_met = 0
         total_conditions = 0
 
@@ -929,7 +929,7 @@ class AutoApprovalService:
         if rule.entity_types:
             total_conditions += 1
             entity_trust = context.get("entity_trust")
-            # Fuer jetzt immer als erfuellt betrachten wenn Entity existiert
+            # Für jetzt immer als erfuellt betrachten wenn Entity existiert
             if entity_trust:
                 conditions_met += 1
 
@@ -944,7 +944,7 @@ class AutoApprovalService:
         self,
         context: Dict[str, Any],
     ) -> Optional[str]:
-        """Prueft ob es blockierende Regeln gibt.
+        """Prüft ob es blockierende Regeln gibt.
 
         Args:
             context: Der Auswertungs-Kontext
@@ -954,14 +954,14 @@ class AutoApprovalService:
         """
         document_type = context.get("document_type")
 
-        # Immer manuelle Pruefung fuer bestimmte Typen
+        # Immer manuelle Prüfung für bestimmte Typen
         if document_type in {"contract", "legal", "confidential", "personal"}:
-            return f"Dokumenttyp '{document_type}' erfordert manuelle Pruefung"
+            return f"Dokumenttyp '{document_type}' erfordert manuelle Prüfung"
 
         # Hoher Betrag
         amount = context.get("amount")
         if amount and Decimal(str(amount)) > Decimal("10000.00"):
-            return f"Betrag {amount}€ ueberschreitet Maximalgrenze fuer Auto-Approval"
+            return f"Betrag {amount}€ überschreitet Maximalgrenze für Auto-Approval"
 
         # Hoher Risk Score
         entity_trust = context.get("entity_trust")
@@ -977,12 +977,12 @@ class AutoApprovalService:
         reasons: List[AutoApprovalReason],
         confidence: float,
     ) -> AutoApprovalResult:
-        """Fuehrt die Auto-Approval aus.
+        """Führt die Auto-Approval aus.
 
         Args:
             context: Der Auswertungs-Kontext
             matched_rules: Zutreffende Regeln
-            reasons: Gruende fuer die Genehmigung
+            reasons: Gruende für die Genehmigung
             confidence: Konfidenz-Score
 
         Returns:
@@ -1047,7 +1047,7 @@ def get_auto_approval_service(
     db: AsyncSession,
     config: Optional[AutoApprovalConfig] = None,
 ) -> AutoApprovalService:
-    """Factory fuer AutoApprovalService.
+    """Factory für AutoApprovalService.
 
     Args:
         db: Async Database Session

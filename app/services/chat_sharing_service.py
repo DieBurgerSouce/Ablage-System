@@ -1,7 +1,7 @@
 """
-Chat Sharing Service fuer Real-time Collaboration.
+Chat Sharing Service für Real-time Collaboration.
 
-Stellt Funktionen fuer:
+Stellt Funktionen für:
 - Chat Session Sharing mit anderen Benutzern
 - Zugriffsebenen-Verwaltung (View, Contribute, Manage)
 - Collaborator-Management
@@ -27,14 +27,14 @@ logger = structlog.get_logger(__name__)
 
 class ChatSharingService:
     """
-    Service fuer Chat Session Sharing.
+    Service für Chat Session Sharing.
 
     Bietet:
     - Sessions mit anderen Benutzern teilen
     - Zugriff entziehen
     - Collaborators auflisten
     - Geteilte Sessions abrufen
-    - Zugriffspruefung
+    - Zugriffsprüfung
     """
 
     def __init__(self, db: AsyncSession):
@@ -42,7 +42,7 @@ class ChatSharingService:
         Initialisiert den ChatSharingService.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
         """
         self.db = db
 
@@ -59,16 +59,16 @@ class ChatSharingService:
         Args:
             session_id: ID der Chat Session
             owner_id: ID des Owners (muss Owner oder MANAGE sein)
-            target_user_id: ID des Benutzers der Zugriff erhaelt
+            target_user_id: ID des Benutzers der Zugriff erhält
             access_level: Zugriffsebene (VIEW, CONTRIBUTE, MANAGE)
 
         Returns:
             ChatSessionAccess Objekt
 
         Raises:
-            ValueError: Bei ungueltigem Zugriff oder Session
+            ValueError: Bei ungültigem Zugriff oder Session
         """
-        # Session laden und pruefen
+        # Session laden und prüfen
         session = await self.db.get(RAGChatSession, session_id)
         if not session:
             logger.warning(
@@ -78,7 +78,7 @@ class ChatSharingService:
             )
             raise ValueError("Chat Session nicht gefunden")
 
-        # Zugriffspruefung: Owner oder MANAGE
+        # Zugriffsprüfung: Owner oder MANAGE
         has_access = await self._can_manage(session, owner_id)
         if not has_access:
             logger.warning(
@@ -92,12 +92,12 @@ class ChatSharingService:
         if target_user_id == session.user_id:
             raise ValueError("Session kann nicht mit dem Owner geteilt werden")
 
-        # Pruefen ob Ziel-User existiert
+        # Prüfen ob Ziel-User existiert
         target_user = await self.db.get(User, target_user_id)
         if not target_user:
             raise ValueError("Ziel-Benutzer nicht gefunden")
 
-        # Existierenden Zugriff pruefen/aktualisieren
+        # Existierenden Zugriff prüfen/aktualisieren
         existing = await self._get_access(session_id, target_user_id)
         if existing:
             # Update existing access level
@@ -149,12 +149,12 @@ class ChatSharingService:
         Returns:
             True wenn Zugriff entzogen wurde, False wenn kein Zugriff vorhanden war
         """
-        # Session laden und pruefen
+        # Session laden und prüfen
         session = await self.db.get(RAGChatSession, session_id)
         if not session:
             raise ValueError("Chat Session nicht gefunden")
 
-        # Zugriffspruefung: Owner oder MANAGE
+        # Zugriffsprüfung: Owner oder MANAGE
         has_access = await self._can_manage(session, owner_id)
         if not has_access:
             logger.warning(
@@ -164,7 +164,7 @@ class ChatSharingService:
             )
             raise ValueError("Keine Berechtigung zum Verwalten dieser Session")
 
-        # Zugriff loeschen
+        # Zugriff löschen
         result = await self.db.execute(
             delete(ChatSessionAccess).where(
                 ChatSessionAccess.session_id == session_id,
@@ -199,7 +199,7 @@ class ChatSharingService:
         Returns:
             Liste von Collaborator-Dicts mit user_id, username, email, access_level
         """
-        # Zugriffspruefung (mindestens VIEW)
+        # Zugriffsprüfung (mindestens VIEW)
         if not await self.check_access(session_id, user_id, ChatSessionAccessLevel.VIEW):
             raise ValueError("Kein Zugriff auf diese Session")
 
@@ -271,7 +271,7 @@ class ChatSharingService:
         required_level: ChatSessionAccessLevel = ChatSessionAccessLevel.VIEW,
     ) -> bool:
         """
-        Prueft ob ein User Zugriff auf eine Session hat.
+        Prüft ob ein User Zugriff auf eine Session hat.
 
         Args:
             session_id: ID der Chat Session
@@ -290,12 +290,12 @@ class ChatSharingService:
         if session.user_id == user_id:
             return True
 
-        # Shared Access pruefen
+        # Shared Access prüfen
         access = await self._get_access(session_id, user_id)
         if not access:
             return False
 
-        # Level pruefen
+        # Level prüfen
         level_hierarchy = {
             ChatSessionAccessLevel.VIEW.value: 1,
             ChatSessionAccessLevel.CONTRIBUTE.value: 2,
@@ -313,7 +313,7 @@ class ChatSharingService:
         user_id: UUID,
     ) -> Optional[str]:
         """
-        Holt das Zugriffslevel eines Users fuer eine Session.
+        Holt das Zugriffslevel eines Users für eine Session.
 
         Args:
             session_id: ID der Chat Session
@@ -331,7 +331,7 @@ class ChatSharingService:
         if session.user_id == user_id:
             return "owner"
 
-        # Shared Access pruefen
+        # Shared Access prüfen
         access = await self._get_access(session_id, user_id)
         if not access:
             return None
@@ -343,7 +343,7 @@ class ChatSharingService:
         session_id: UUID,
         user_id: UUID,
     ) -> Optional[ChatSessionAccess]:
-        """Holt ChatSessionAccess fuer User/Session Kombination."""
+        """Holt ChatSessionAccess für User/Session Kombination."""
         result = await self.db.execute(
             select(ChatSessionAccess).where(
                 ChatSessionAccess.session_id == session_id,
@@ -357,12 +357,12 @@ class ChatSharingService:
         session: RAGChatSession,
         user_id: UUID,
     ) -> bool:
-        """Prueft ob User MANAGE-Berechtigung hat (Owner oder MANAGE-Level)."""
+        """Prüft ob User MANAGE-Berechtigung hat (Owner oder MANAGE-Level)."""
         # Owner kann immer verwalten
         if session.user_id == user_id:
             return True
 
-        # Shared Access pruefen
+        # Shared Access prüfen
         access = await self._get_access(session.id, user_id)
         if not access:
             return False
@@ -370,7 +370,7 @@ class ChatSharingService:
         return access.access_level == ChatSessionAccessLevel.MANAGE.value
 
 
-# Singleton-Pattern fuer Service-Instanz (wird in Dependency Injection verwendet)
+# Singleton-Pattern für Service-Instanz (wird in Dependency Injection verwendet)
 def get_chat_sharing_service(db: AsyncSession) -> ChatSharingService:
-    """Factory-Funktion fuer ChatSharingService."""
+    """Factory-Funktion für ChatSharingService."""
     return ChatSharingService(db)

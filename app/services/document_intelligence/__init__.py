@@ -1,6 +1,6 @@
 """Document Intelligence Services.
 
-Dieses Modul bietet KI-basierte Services fuer intelligente Dokumentenanalyse:
+Dieses Modul bietet KI-basierte Services für intelligente Dokumentenanalyse:
 - LLMNERService: Named Entity Recognition via LLM (Qwen3-14B)
 - DeadlineExtractionService: Fristen-Erkennung aus OCR-Text
 """

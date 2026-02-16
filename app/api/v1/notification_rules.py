@@ -40,14 +40,14 @@ router = APIRouter(prefix="/notification-rules", tags=["notification-rules"])
 # =============================================================================
 
 class RuleConditionSchema(BaseModel):
-    """Schema fuer eine einzelne Bedingung."""
+    """Schema für eine einzelne Bedingung."""
     field: str = Field(..., description="Feld im Event-Payload")
     op: str = Field(..., description="Operator: eq, ne, gt, gte, lt, lte, contains, in, etc.")
     value: Union[str, int, float, bool, List[str]] = Field(..., description="Erwarteter Wert")
 
 
 class RuleConditionsSchema(BaseModel):
-    """Schema fuer Bedingungs-Gruppe."""
+    """Schema für Bedingungs-Gruppe."""
     operator: str = Field("AND", description="Logischer Operator: AND, OR, NOT")
     conditions: List[RuleConditionSchema] = Field(
         default_factory=list,
@@ -56,16 +56,16 @@ class RuleConditionsSchema(BaseModel):
 
 
 class RuleActionSchema(BaseModel):
-    """Schema fuer eine Aktion."""
+    """Schema für eine Aktion."""
     type: str = Field(..., description="Aktionstyp: in_app, push, email, webhook")
-    title: Optional[str] = Field(None, description="Titel (fuer in_app/push)")
-    body: Optional[str] = Field(None, description="Nachricht (fuer in_app/push)")
-    action_url: Optional[str] = Field(None, description="URL fuer Klick-Aktion")
+    title: Optional[str] = Field(None, description="Titel (für in_app/push)")
+    body: Optional[str] = Field(None, description="Nachricht (für in_app/push)")
+    action_url: Optional[str] = Field(None, description="URL für Klick-Aktion")
     template: Optional[str] = Field(None, description="Email-Template Name")
     subject: Optional[str] = Field(None, description="Email-Betreff")
     url: Optional[str] = Field(None, description="Webhook-URL")
     priority: str = Field("normal", description="Prioritaet: low, normal, high, urgent")
-    data: Optional[JSONDict] = Field(None, description="Zusaetzliche Daten")
+    data: Optional[JSONDict] = Field(None, description="Zusätzliche Daten")
 
 
 class NotificationRuleCreateRequest(BaseModel):
@@ -100,7 +100,7 @@ class NotificationRuleCreateRequest(BaseModel):
         pattern=r"^\d{2}:\d{2}$",
         description="Ende der Ruhezeit (HH:MM)"
     )
-    timezone: str = Field("Europe/Berlin", description="Zeitzone fuer Quiet Hours")
+    timezone: str = Field("Europe/Berlin", description="Zeitzone für Quiet Hours")
     cooldown_minutes: Optional[int] = Field(
         None,
         ge=0,
@@ -132,7 +132,7 @@ class NotificationRuleUpdateRequest(BaseModel):
 
 
 class NotificationRuleResponse(BaseModel):
-    """Response fuer eine Regel."""
+    """Response für eine Regel."""
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -156,13 +156,13 @@ class NotificationRuleResponse(BaseModel):
 
 
 class NotificationRulesListResponse(BaseModel):
-    """Response fuer Regelliste."""
+    """Response für Regelliste."""
     rules: List[NotificationRuleResponse]
     total: int
 
 
 class EventTypesResponse(BaseModel):
-    """Response mit verfuegbaren Event-Typen."""
+    """Response mit verfügbaren Event-Typen."""
     event_types: List[Dict[str, str]]
 
 
@@ -210,7 +210,7 @@ def _parse_time(time_str: Optional[str]) -> Optional[time]:
     "/",
     response_model=NotificationRulesListResponse,
     summary="Regeln auflisten",
-    description="Gibt alle Notification Rules des aktuellen Benutzers zurueck."
+    description="Gibt alle Notification Rules des aktuellen Benutzers zurück."
 )
 async def list_rules(
     enabled_only: bool = Query(False, description="Nur aktive Regeln"),
@@ -234,13 +234,13 @@ async def list_rules(
 @router.get(
     "/event-types",
     response_model=EventTypesResponse,
-    summary="Verfuegbare Event-Typen",
-    description="Gibt alle verfuegbaren Event-Typen fuer Regeln zurueck."
+    summary="Verfügbare Event-Typen",
+    description="Gibt alle verfügbaren Event-Typen für Regeln zurück."
 )
 async def list_event_types(
     current_user: User = Depends(get_current_user),
 ) -> EventTypesResponse:
-    """Liste aller Event-Typen fuer Trigger."""
+    """Liste aller Event-Typen für Trigger."""
     from app.services.events.event_bus import EventType
 
     event_types = []
@@ -306,7 +306,7 @@ async def create_rule(
     "/{rule_id}",
     response_model=NotificationRuleResponse,
     summary="Regel abrufen",
-    description="Gibt eine spezifische Regel zurueck."
+    description="Gibt eine spezifische Regel zurück."
 )
 async def get_rule(
     rule_id: UUID,
@@ -383,15 +383,15 @@ async def update_rule(
 @router.delete(
     "/{rule_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Regel loeschen",
-    description="Loescht eine Regel."
+    summary="Regel löschen",
+    description="Löscht eine Regel."
 )
 async def delete_rule(
     rule_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Loescht eine Regel."""
+    """Löscht eine Regel."""
     engine = get_notification_rule_engine()
 
     deleted = await engine.delete_rule(
@@ -457,14 +457,14 @@ async def toggle_rule(
 @router.get(
     "/{rule_id}/statistics",
     summary="Regel-Statistiken",
-    description="Gibt Statistiken fuer eine Regel zurueck."
+    description="Gibt Statistiken für eine Regel zurück."
 )
 async def get_rule_statistics(
     rule_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
-    """Ruft Statistiken fuer eine Regel ab."""
+    """Ruft Statistiken für eine Regel ab."""
     rule = await db.get(NotificationRule, rule_id)
 
     if not rule:
@@ -500,7 +500,7 @@ async def test_rule(
     event_data: JSONDict,
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
-    """Testet Bedingungen gegen Event-Daten (ohne Ausfuehrung)."""
+    """Testet Bedingungen gegen Event-Daten (ohne Ausführung)."""
     from app.services.notification.rule_engine import RuleConditionMatcher
 
     matcher = RuleConditionMatcher()

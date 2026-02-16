@@ -2,8 +2,8 @@
 """
 Security Audit API Endpoints.
 
-Bietet Admin-Endpoints fuer:
-- Security Audit durchfuehren
+Bietet Admin-Endpoints für:
+- Security Audit durchführen
 - Audit-Report abrufen
 - Sicherheitsempfehlungen
 
@@ -37,7 +37,7 @@ router = APIRouter(prefix="/security", tags=["security"])
 
 
 class AuditFindingResponse(BaseModel):
-    """Response fuer einzelnes Finding."""
+    """Response für einzelnes Finding."""
 
     id: str
     category: str
@@ -51,7 +51,7 @@ class AuditFindingResponse(BaseModel):
 
 
 class AuditSummaryResponse(BaseModel):
-    """Response fuer Audit-Summary."""
+    """Response für Audit-Summary."""
 
     total: int
     passed: int
@@ -63,7 +63,7 @@ class AuditSummaryResponse(BaseModel):
 
 
 class AuditReportResponse(BaseModel):
-    """Response fuer vollstaendigen Audit-Report."""
+    """Response für vollständigen Audit-Report."""
 
     timestamp: str
     score: float
@@ -76,7 +76,7 @@ class AuditReportResponse(BaseModel):
 
 
 class SecurityScoreResponse(BaseModel):
-    """Response fuer Security Score."""
+    """Response für Security Score."""
 
     score: float
     grade: str
@@ -96,9 +96,9 @@ async def run_security_audit(
     current_user: User = Depends(get_current_superuser),
 ) -> AuditReportResponse:
     """
-    Fuehrt einen vollstaendigen Security Audit durch.
+    Führt einen vollständigen Security Audit durch.
 
-    Prueft:
+    Prüft:
     - Konfigurationssicherheit
     - Credential-Management
     - Verschluesselung
@@ -110,7 +110,7 @@ async def run_security_audit(
     **Erfordert Superuser-Authentifizierung.**
 
     Returns:
-        Vollstaendiger Audit-Report mit Score und Findings
+        Vollständiger Audit-Report mit Score und Findings
     """
     service = get_security_audit_service()
     report = service.run_audit()
@@ -159,13 +159,13 @@ async def get_security_score(
     current_user: User = Depends(get_current_superuser),
 ) -> SecurityScoreResponse:
     """
-    Gibt den aktuellen Security Score zurueck.
+    Gibt den aktuellen Security Score zurück.
 
     Score-Bewertung:
     - A (90-100): Ausgezeichnet
     - B (80-89): Gut
     - C (70-79): Akzeptabel
-    - D (60-69): Verbesserung noetig
+    - D (60-69): Verbesserung nötig
     - F (<60): Kritisch
 
     **Erfordert Superuser-Authentifizierung.**
@@ -180,13 +180,13 @@ async def get_security_score(
         recommendation = "Ausgezeichnete Sicherheitskonfiguration. Weiter so!"
     elif score >= 80:
         grade = "B"
-        recommendation = "Gute Sicherheit. Behebe die verbleibenden Issues fuer optimalen Schutz."
+        recommendation = "Gute Sicherheit. Behebe die verbleibenden Issues für optimalen Schutz."
     elif score >= 70:
         grade = "C"
-        recommendation = "Akzeptable Sicherheit. Es gibt mehrere Verbesserungsmoeglichkeiten."
+        recommendation = "Akzeptable Sicherheit. Es gibt mehrere Verbesserungsmöglichkeiten."
     elif score >= 60:
         grade = "D"
-        recommendation = "Verbesserung noetig. Behebe HIGH und CRITICAL Issues prioritaer."
+        recommendation = "Verbesserung nötig. Behebe HIGH und CRITICAL Issues prioritaer."
     else:
         grade = "F"
         recommendation = "Kritische Sicherheitsprobleme! Sofortige Massnahmen erforderlich."
@@ -222,9 +222,9 @@ async def get_critical_findings(
     current_user: User = Depends(get_current_superuser),
 ):
     """
-    Gibt nur kritische und hohe Findings zurueck.
+    Gibt nur kritische und hohe Findings zurück.
 
-    Nuetzlich fuer schnelle Uebersicht der wichtigsten Probleme.
+    Nuetzlich für schnelle Übersicht der wichtigsten Probleme.
 
     **Erfordert Superuser-Authentifizierung.**
     """
@@ -249,9 +249,9 @@ async def get_security_checklist(
     current_user: User = Depends(get_current_superuser),
 ):
     """
-    Gibt eine Sicherheits-Checkliste zurueck.
+    Gibt eine Sicherheits-Checkliste zurück.
 
-    Zeigt alle Pruefpunkte mit Status (bestanden/nicht bestanden).
+    Zeigt alle Prüfpunkte mit Status (bestanden/nicht bestanden).
 
     **Erfordert Superuser-Authentifizierung.**
     """
@@ -291,7 +291,7 @@ async def get_security_recommendations(
     current_user: User = Depends(get_current_superuser),
 ):
     """
-    Gibt priorisierte Sicherheitsempfehlungen zurueck.
+    Gibt priorisierte Sicherheitsempfehlungen zurück.
 
     Empfehlungen sind nach Prioritaet (Severity) sortiert.
 
@@ -327,5 +327,5 @@ async def get_security_recommendations(
     return {
         "total_empfehlungen": len(recommendations),
         "empfehlungen": recommendations,
-        "naechste_aktion": recommendations[0] if recommendations else None,
+        "nächste_aktion": recommendations[0] if recommendations else None,
     }

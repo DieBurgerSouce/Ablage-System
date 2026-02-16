@@ -2,7 +2,7 @@
 """
 Inbound Webhook Schemas.
 
-Pydantic-Modelle fuer den generischen Inbound-Webhook-Empfaenger.
+Pydantic-Modelle für den generischen Inbound-Webhook-Empfänger.
 Validierung, Serialisierung und Response-Modelle.
 
 Feinpoliert und durchdacht - Type-safe Webhook Processing.
@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class InboundWebhookProvider(str, Enum):
-    """Unterstuetzte Inbound-Webhook-Provider."""
+    """Unterstützte Inbound-Webhook-Provider."""
     DATEV = "datev"
     DHL = "dhl"
     DPD = "dpd"
@@ -27,7 +27,7 @@ class InboundWebhookProvider(str, Enum):
 
 
 class InboundWebhookAction(str, Enum):
-    """Moegliche Webhook-Aktionen."""
+    """Mögliche Webhook-Aktionen."""
     CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
@@ -44,7 +44,7 @@ class InboundWebhookStatus(str, Enum):
 
 
 class InboundWebhookPayload(BaseModel):
-    """Eingehendes Webhook-Payload (generisch fuer alle Provider)."""
+    """Eingehendes Webhook-Payload (generisch für alle Provider)."""
     event_id: str = Field(
         ...,
         min_length=1,
@@ -82,7 +82,7 @@ class InboundWebhookPayload(BaseModel):
     def validate_event_id(cls, v: str) -> str:
         """Validiert Event-ID: Nur sichere Zeichen erlaubt."""
         if not re.match(r"^[A-Za-z0-9._\-:]+$", v):
-            raise ValueError("Event-ID enthaelt ungueltige Zeichen")
+            raise ValueError("Event-ID enthält ungültige Zeichen")
         return v
 
     @field_validator("action")
@@ -91,7 +91,7 @@ class InboundWebhookPayload(BaseModel):
         """Validiert Aktion gegen erlaubte Werte."""
         allowed = {"create", "update", "delete", "status_change"}
         if v not in allowed:
-            raise ValueError(f"Ungueltige Aktion: {v}. Erlaubt: {', '.join(sorted(allowed))}")
+            raise ValueError(f"Ungültige Aktion: {v}. Erlaubt: {', '.join(sorted(allowed))}")
         return v
 
 

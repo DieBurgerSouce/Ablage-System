@@ -2,12 +2,12 @@
 """
 DATEVconnect Integration Services.
 
-Vollstaendige bidirektionale Integration mit DATEVconnect API:
+Vollständige bidirektionale Integration mit DATEVconnect API:
 - OAuth2 Authentifizierung
 - Stammdaten Sync (Kunden/Lieferanten)
 - Buchungsstapel Push
 - Belegbilder Upload
-- Kontierungsvorschlaege (ML-gestuetzt)
+- Kontierungsvorschläge (ML-gestuetzt)
 
 Feinpoliert und durchdacht - Enterprise-Ready DATEV Integration.
 """

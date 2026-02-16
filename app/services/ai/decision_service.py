@@ -4,7 +4,7 @@ AIDecisionService - Zentraler Autonomie-Controller.
 
 Koordiniert alle KI-Entscheidungen mit Confidence-basierter Autonomie:
 - 95%+ Konfidenz: Automatisch verarbeiten (Audit-Log)
-- 80-95% Konfidenz: Vorschlag mit 1-Click Bestaetigung
+- 80-95% Konfidenz: Vorschlag mit 1-Click Bestätigung
 - <80% Konfidenz: Manuelle Review Queue
 
 Feinpoliert und durchdacht - Enterprise-Grade AI Governance.
@@ -76,7 +76,7 @@ AI_PENDING_REVIEWS = Gauge(
 
 AI_FEEDBACK_TOTAL = Counter(
     "ai_feedback_total",
-    "Anzahl der Feedback-Eintraege",
+    "Anzahl der Feedback-Einträge",
     ["decision_type", "feedback_type"]
 )
 
@@ -99,11 +99,11 @@ class ConfidenceLevel(str, Enum):
     """Autonomie-Level basierend auf Konfidenz."""
     AUTO = "auto"      # 95%+: Automatisch anwenden
     SUGGEST = "suggest"  # 80-95%: Vorschlagen
-    MANUAL = "manual"    # <80%: Manuelle Pruefung
+    MANUAL = "manual"    # <80%: Manuelle Prüfung
 
 
 class ReviewAction(str, Enum):
-    """Moegliche Review-Aktionen."""
+    """Mögliche Review-Aktionen."""
     APPROVED = "approved"
     REJECTED = "rejected"
     MODIFIED = "modified"
@@ -118,7 +118,7 @@ class FeedbackType(str, Enum):
 
 @dataclass
 class ThresholdConfig:
-    """Schwellenwert-Konfiguration fuer einen Decision-Type."""
+    """Schwellenwert-Konfiguration für einen Decision-Type."""
     decision_type: DecisionType
     auto_threshold: float  # Ab hier automatisch (default 0.95)
     suggest_threshold: float  # Ab hier vorschlagen (default 0.80)
@@ -156,7 +156,7 @@ class PendingReview:
 
 
 # =============================================================================
-# Default Thresholds (werden aus DB ueberschrieben)
+# Default Thresholds (werden aus DB überschrieben)
 # =============================================================================
 
 DEFAULT_THRESHOLDS: Dict[DecisionType, ThresholdConfig] = {
@@ -170,7 +170,7 @@ DEFAULT_THRESHOLDS: Dict[DecisionType, ThresholdConfig] = {
         decision_type=DecisionType.ACCOUNTING,
         auto_threshold=0.90,
         suggest_threshold=0.75,
-        allow_auto_apply=False,  # Buchhaltung braucht Bestaetigung
+        allow_auto_apply=False,  # Buchhaltung braucht Bestätigung
     ),
     DecisionType.MATCHING: ThresholdConfig(
         decision_type=DecisionType.MATCHING,
@@ -201,18 +201,18 @@ DEFAULT_THRESHOLDS: Dict[DecisionType, ThresholdConfig] = {
 
 class AIDecisionService:
     """
-    Zentraler Controller fuer KI-Autonomie.
+    Zentraler Controller für KI-Autonomie.
 
     Koordiniert Entscheidungen, speichert Audit-Trail und
     verarbeitet Self-Learning Feedback.
     """
 
-    # Cache fuer Thresholds (1 Minute TTL) - Thread-Safe
+    # Cache für Thresholds (1 Minute TTL) - Thread-Safe
     _threshold_cache: Dict[Optional[uuid.UUID], Dict[DecisionType, ThresholdConfig]] = {}
     _threshold_cache_time: Dict[Optional[uuid.UUID], datetime] = {}
-    _cache_lock = threading.Lock()  # THREAD-SAFETY FIX: Lock fuer Cache-Operationen
+    _cache_lock = threading.Lock()  # THREAD-SAFETY FIX: Lock für Cache-Operationen
     _CACHE_TTL_SECONDS = 60
-    _MAX_CACHE_SIZE = 1000  # MEMORY LEAK FIX: Max Cache-Eintraege
+    _MAX_CACHE_SIZE = 1000  # MEMORY LEAK FIX: Max Cache-Einträge
     _last_cleanup: datetime = datetime.min.replace(tzinfo=timezone.utc)
     _CLEANUP_INTERVAL_SECONDS = 300  # Cleanup alle 5 Minuten
 
@@ -222,10 +222,10 @@ class AIDecisionService:
 
     @classmethod
     def _cleanup_expired_cache(cls) -> None:
-        """MEMORY LEAK FIX: Entfernt abgelaufene Cache-Eintraege (Thread-Safe).
+        """MEMORY LEAK FIX: Entfernt abgelaufene Cache-Einträge (Thread-Safe).
 
         Wird periodisch aufgerufen um Memory Leaks zu verhindern.
-        Entfernt Eintraege die aelter als TTL sind.
+        Entfernt Einträge die aelter als TTL sind.
         """
         now = datetime.now(timezone.utc)
 
@@ -233,7 +233,7 @@ class AIDecisionService:
         if (now - cls._last_cleanup).total_seconds() < cls._CLEANUP_INTERVAL_SECONDS:
             return
 
-        # THREAD-SAFETY FIX: Lock fuer Cache-Modifikation
+        # THREAD-SAFETY FIX: Lock für Cache-Modifikation
         with cls._cache_lock:
             # Double-Check nach Lock-Erwerb
             if (now - cls._last_cleanup).total_seconds() < cls._CLEANUP_INTERVAL_SECONDS:
@@ -247,12 +247,12 @@ class AIDecisionService:
                 if (now - cache_time).total_seconds() >= cls._CACHE_TTL_SECONDS
             ]
 
-            # Abgelaufene Eintraege entfernen
+            # Abgelaufene Einträge entfernen
             for key in expired_keys:
                 cls._threshold_cache.pop(key, None)
                 cls._threshold_cache_time.pop(key, None)
 
-            # Falls Cache immer noch zu gross, aelteste Eintraege entfernen
+            # Falls Cache immer noch zu gross, aelteste Einträge entfernen
             if len(cls._threshold_cache) > cls._MAX_CACHE_SIZE:
                 # Sortiere nach Alter und entferne aelteste
                 sorted_keys = sorted(
@@ -285,7 +285,7 @@ class AIDecisionService:
 
         Args:
             db: Database Session
-            company_id: Optional Company-ID fuer mandantenspezifische Thresholds
+            company_id: Optional Company-ID für mandantenspezifische Thresholds
 
         Returns:
             Dict mit ThresholdConfig pro DecisionType
@@ -312,12 +312,12 @@ class AIDecisionService:
         result = await db.execute(query)
         db_thresholds = result.scalars().all()
 
-        # Merge mit Defaults (company-spezifisch ueberschreibt global)
+        # Merge mit Defaults (company-spezifisch überschreibt global)
         thresholds = dict(DEFAULT_THRESHOLDS)
         for t in db_thresholds:
             try:
                 dt = DecisionType(t.decision_type)
-                # Company-spezifische Thresholds haben Prioritaet
+                # Company-spezifische Thresholds haben Priorität
                 if t.company_id == company_id or dt not in thresholds:
                     thresholds[dt] = ThresholdConfig(
                         decision_type=dt,
@@ -391,7 +391,7 @@ class AIDecisionService:
             confidence: Konfidenz-Wert (0.0-1.0)
             document_id: Optional Dokument-ID
             company_id: Optional Company-ID
-            explanation: Optional Erklaerung (Explainable AI)
+            explanation: Optional Erklärung (Explainable AI)
             features_used: Optional verwendete Features
             calibrated_confidence: Optional kalibrierte Konfidenz
             apply_callback: Optional Callback zum automatischen Anwenden
@@ -441,14 +441,14 @@ class AIDecisionService:
 
         db.add(decision)
 
-        # DATA CONSISTENCY FIX: flush() vor Callback ausfuehren
+        # DATA CONSISTENCY FIX: flush() vor Callback ausführen
         # Dies stellt sicher, dass:
-        # 1. decision.id generiert ist (fuer Logging und Referenzen)
+        # 1. decision.id generiert ist (für Logging und Referenzen)
         # 2. Callback kann auf konsistenten DB-Zustand zugreifen
-        # 3. Bei Callback-Fehler kann die gesamte Transaktion zurueckgerollt werden
+        # 3. Bei Callback-Fehler kann die gesamte Transaktion zurückgerollt werden
         await db.flush()
 
-        # Wenn Auto-Apply und Callback vorhanden, ausfuehren
+        # Wenn Auto-Apply und Callback vorhanden, ausführen
         if auto_applied and apply_callback is not None:
             try:
                 await apply_callback(decision_value)
@@ -540,7 +540,7 @@ class AIDecisionService:
             company_id: Optional Filter nach Company
             decision_type: Optional Filter nach Typ
             limit: Max Anzahl
-            offset: Offset fuer Paginierung
+            offset: Offset für Paginierung
 
         Returns:
             Liste von PendingReview Items
@@ -783,7 +783,7 @@ _service_lock = threading.Lock()
 
 
 def get_ai_decision_service() -> AIDecisionService:
-    """Factory fuer AIDecisionService Singleton (Thread-safe)."""
+    """Factory für AIDecisionService Singleton (Thread-safe)."""
     global _ai_decision_service
     if _ai_decision_service is None:
         with _service_lock:

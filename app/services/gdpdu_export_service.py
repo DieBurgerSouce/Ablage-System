@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-GDPdU Export Service - Datenexport fuer Betriebspruefungen.
+GDPdU Export Service - Datenexport für Betriebsprüfungen.
 
-Implementiert den Export nach GDPdU (Grundsaetze zum Datenzugriff und zur
-Pruefbarkeit digitaler Unterlagen) gemaess BMF-Schreiben vom 28.11.2019.
+Implementiert den Export nach GDPdU (Grundsätze zum Datenzugriff und zur
+Prüfbarkeit digitaler Unterlagen) gemäß BMF-Schreiben vom 28.11.2019.
 
 Das GDPdU-Format besteht aus:
 1. index.xml - Strukturbeschreibung der Daten
 2. gdpdu-01-09-2004.dtd - DTD-Datei (Version 1.9)
 3. CSV/XML-Datendateien - Die eigentlichen Daten
 
-Dieses Modul erstellt einen vollstaendigen Export fuer Pruefungszwecke.
+Dieses Modul erstellt einen vollständigen Export für Prüfungszwecke.
 """
 
 import csv
@@ -49,7 +49,7 @@ logger = structlog.get_logger(__name__)
 GDPDU_VERSION = "1.0"
 GDPDU_DTD_VERSION = "gdpdu-01-09-2004.dtd"
 
-# GDPdU DTD (vereinfachte Version fuer Kompatibilitaet)
+# GDPdU DTD (vereinfachte Version für Kompatibilität)
 GDPDU_DTD_CONTENT = """<?xml version="1.0" encoding="UTF-8"?>
 <!ELEMENT DataSet (Version, DataSupplier?, Media+)>
 <!ELEMENT Version (#PCDATA)>
@@ -93,7 +93,7 @@ GDPDU_DTD_CONTENT = """<?xml version="1.0" encoding="UTF-8"?>
 
 @dataclass
 class GDPdUExportOptions:
-    """Optionen fuer den GDPdU-Export."""
+    """Optionen für den GDPdU-Export."""
     company_id: uuid.UUID
     start_date: date
     end_date: date
@@ -136,10 +136,10 @@ DOCUMENT_TABLE = GDPdUTable(
         GDPdUColumn("DokumentID", "Eindeutige Dokument-ID (UUID)", "AlphaNumeric", 36),
         GDPdUColumn("Dateiname", "Originaler Dateiname", "AlphaNumeric", 255),
         GDPdUColumn("MIMETyp", "MIME-Typ des Dokuments", "AlphaNumeric", 100),
-        GDPdUColumn("Dateigroesse", "Groesse in Bytes", "Numeric", accuracy=0),
+        GDPdUColumn("Dateigröße", "Größe in Bytes", "Numeric", accuracy=0),
         GDPdUColumn("Hochgeladen", "Zeitpunkt des Uploads", "Date", date_format="YYYY-MM-DD HH:MM:SS"),
         GDPdUColumn("Status", "Dokumentenstatus", "AlphaNumeric", 50),
-        GDPdUColumn("Pruefsumme", "SHA-256 Pruefsumme der Originaldatei", "AlphaNumeric", 64),
+        GDPdUColumn("Prüfsumme", "SHA-256 Prüfsumme der Originaldatei", "AlphaNumeric", 64),
     ]
 )
 
@@ -169,26 +169,26 @@ INVOICE_TABLE = GDPdUTable(
         GDPdUColumn("DokumentID", "Referenz auf Dokument", "AlphaNumeric", 36),
         GDPdUColumn("Rechnungsnummer", "Rechnungsnummer", "AlphaNumeric", 100),
         GDPdUColumn("Rechnungsdatum", "Datum der Rechnung", "Date", date_format="YYYY-MM-DD"),
-        GDPdUColumn("Faelligkeitsdatum", "Faelligkeitsdatum", "Date", date_format="YYYY-MM-DD"),
+        GDPdUColumn("Fälligkeitsdatum", "Fälligkeitsdatum", "Date", date_format="YYYY-MM-DD"),
         GDPdUColumn("AbsenderFirma", "Name des Absenders", "AlphaNumeric", 255),
         GDPdUColumn("AbsenderStrasse", "Strasse des Absenders", "AlphaNumeric", 255),
         GDPdUColumn("AbsenderPLZ", "PLZ des Absenders", "AlphaNumeric", 20),
         GDPdUColumn("AbsenderOrt", "Ort des Absenders", "AlphaNumeric", 100),
-        GDPdUColumn("EmpfaengerFirma", "Name des Empfaengers", "AlphaNumeric", 255),
+        GDPdUColumn("EmpfängerFirma", "Name des Empfängers", "AlphaNumeric", 255),
         GDPdUColumn("UStIdNr", "Umsatzsteuer-ID des Absenders", "AlphaNumeric", 30),
         GDPdUColumn("IBAN", "IBAN des Absenders", "AlphaNumeric", 34),
         GDPdUColumn("Nettobetrag", "Nettobetrag in EUR", "Numeric", accuracy=2),
         GDPdUColumn("MwStSatz", "Mehrwertsteuersatz in Prozent", "Numeric", accuracy=2),
         GDPdUColumn("MwStBetrag", "Mehrwertsteuerbetrag in EUR", "Numeric", accuracy=2),
         GDPdUColumn("Bruttobetrag", "Bruttobetrag in EUR", "Numeric", accuracy=2),
-        GDPdUColumn("Waehrung", "Waehrungscode (z.B. EUR)", "AlphaNumeric", 3),
+        GDPdUColumn("Währung", "Währungscode (z.B. EUR)", "AlphaNumeric", 3),
     ]
 )
 
 CONTRACT_TABLE = GDPdUTable(
-    name="Vertraege",
+    name="Verträge",
     description="Extrahierte Vertragsdaten",
-    filename="vertraege.csv",
+    filename="verträge.csv",
     columns=[
         GDPdUColumn("DokumentID", "Referenz auf Dokument", "AlphaNumeric", 36),
         GDPdUColumn("Vertragsnummer", "Vertragsnummer", "AlphaNumeric", 100),
@@ -208,7 +208,7 @@ CONTRACT_TABLE = GDPdUTable(
 # =============================================================================
 
 class GDPdUExportService:
-    """Service fuer GDPdU-konforme Datenexporte."""
+    """Service für GDPdU-konforme Datenexporte."""
 
     def __init__(self) -> None:
         """Initialisiert den GDPdU Export Service."""
@@ -220,7 +220,7 @@ class GDPdUExportService:
         options: GDPdUExportOptions,
         output_path: Optional[Path] = None,
     ) -> Union[bytes, Path]:
-        """Erstellt einen vollstaendigen GDPdU-Export als ZIP-Archiv.
+        """Erstellt einen vollständigen GDPdU-Export als ZIP-Archiv.
 
         MEMORY-OPTIMIERT: Bei grossen Exporten wird empfohlen, output_path zu
         verwenden, um das ZIP direkt auf die Festplatte zu schreiben und OOM
@@ -229,7 +229,7 @@ class GDPdUExportService:
         Args:
             db: Datenbank-Session
             options: Export-Optionen
-            output_path: Optionaler Pfad fuer die ZIP-Datei (Streaming-Modus).
+            output_path: Optionaler Pfad für die ZIP-Datei (Streaming-Modus).
                         Wenn nicht angegeben, wird das ZIP im Speicher erstellt.
 
         Returns:
@@ -237,7 +237,7 @@ class GDPdUExportService:
             Path: Pfad zur ZIP-Datei (wenn output_path angegeben)
 
         Raises:
-            ValueError: Bei ungueltigen Optionen
+            ValueError: Bei ungültigen Optionen
         """
         logger.info(
             "gdpdu_export_started",
@@ -253,7 +253,7 @@ class GDPdUExportService:
             raise ValueError(f"Firma mit ID {options.company_id} nicht gefunden")
 
         # =======================================================================
-        # MEMORY-OPTIMIERUNG: Streaming-Modus fuer grosse Exporte
+        # MEMORY-OPTIMIERUNG: Streaming-Modus für grosse Exporte
         # =======================================================================
         if output_path:
             # Streaming: Direkt auf Festplatte schreiben (verhindert OOM)
@@ -289,7 +289,7 @@ class GDPdUExportService:
                         zf.writestr(INVOICE_TABLE.filename, invoice_data)
                         self._tables.append(INVOICE_TABLE)
 
-                # Vertraege exportieren
+                # Verträge exportieren
                 if options.include_contracts:
                     contract_data = await self._export_contracts(db, options)
                     if contract_data:
@@ -318,10 +318,10 @@ class GDPdUExportService:
             )
 
             if output_path:
-                # Streaming-Modus: Pfad zurueckgeben
+                # Streaming-Modus: Pfad zurückgeben
                 return zip_path
             else:
-                # Legacy-Modus: Bytes zurueckgeben und temp-Datei aufraeuumen
+                # Legacy-Modus: Bytes zurückgeben und temp-Datei aufraeuumen
                 with open(zip_path, 'rb') as f:
                     result = f.read()
                 return result
@@ -340,7 +340,7 @@ class GDPdUExportService:
         db: AsyncSession,
         options: GDPdUExportOptions,
     ) -> dict:
-        """Gibt eine Vorschau des Exports zurueck (ohne Datengenerierung).
+        """Gibt eine Vorschau des Exports zurück (ohne Datengenerierung).
 
         Args:
             db: Datenbank-Session
@@ -395,7 +395,7 @@ class GDPdUExportService:
                 INVOICE_TABLE.name if options.include_invoices else None,
                 CONTRACT_TABLE.name if options.include_contracts else None,
             ],
-            "geschaetzte_groesse_kb": (doc_count * 0.5 + archive_count * 0.3) * 10,
+            "geschätzte_größe_kb": (doc_count * 0.5 + archive_count * 0.3) * 10,
         }
 
     # =========================================================================
@@ -638,7 +638,7 @@ class GDPdUExportService:
             comment = ET.SubElement(supplier, "Comment")
             comment.text = options.comment
 
-        # Media (Datentraeger)
+        # Media (Datenträger)
         media = ET.SubElement(root, "Media")
         media_name = ET.SubElement(media, "Name")
         media_name.text = f"GDPdU-Export {options.start_date.strftime('%Y-%m-%d')} bis {options.end_date.strftime('%Y-%m-%d')}"
@@ -679,7 +679,7 @@ class GDPdUExportService:
         desc = ET.SubElement(table_el, "Description")
         desc.text = table.description
 
-        # Validity (Gueltigkeitszeitraum)
+        # Validity (Gültigkeitszeitraum)
         validity = ET.SubElement(table_el, "Validity")
         range_el = ET.SubElement(validity, "Range")
         from_el = ET.SubElement(range_el, "From")
@@ -752,7 +752,7 @@ class GDPdUExportService:
         company: Company,
         options: GDPdUExportOptions,
     ) -> str:
-        """Generiert eine README-Datei fuer den Export."""
+        """Generiert eine README-Datei für den Export."""
         readme_lines = [
             "=" * 70,
             "GDPdU-EXPORT FUER BETRIEBSPRUEFUNG",
@@ -780,8 +780,8 @@ class GDPdUExportService:
             "RECHTLICHE GRUNDLAGEN",
             "-" * 70,
             "",
-            "Dieser Export entspricht den Grundsaetzen zum Datenzugriff und zur",
-            "Pruefbarkeit digitaler Unterlagen (GDPdU) gemaess BMF-Schreiben.",
+            "Dieser Export entspricht den Grundsätzen zum Datenzugriff und zur",
+            "Prüfbarkeit digitaler Unterlagen (GDPdU) gemäß BMF-Schreiben.",
             "",
             "Gesetzliche Basis:",
             "  - §147 AO (Abgabenordnung)",
@@ -802,10 +802,10 @@ class GDPdUExportService:
             "-" * 70,
             "",
             "Die exportierten Daten erfuellen die GoBD-Kriterien:",
-            "  - Nachvollziehbarkeit: Vollstaendiger Audit-Trail",
-            "  - Nachpruefbarkeit: Alle Daten sind strukturiert und validiert",
-            "  - Unveraenderbarkeit: SHA-256 Hash-Signaturen fuer Archive",
-            "  - Vollstaendigkeit: Alle relevanten Daten enthalten",
+            "  - Nachvollziehbarkeit: Vollständiger Audit-Trail",
+            "  - Nachprüfbarkeit: Alle Daten sind strukturiert und validiert",
+            "  - Unveränderbarkeit: SHA-256 Hash-Signaturen für Archive",
+            "  - Vollständigkeit: Alle relevanten Daten enthalten",
             "  - Ordnung: Kategorisierung nach Dokumenttyp",
             "",
             "=" * 70,
@@ -867,11 +867,11 @@ class GDPdUExportService:
             return ""
 
     def _translate_category(self, category: str) -> str:
-        """Uebersetzt Kategorie-Keys in deutsche Bezeichnungen."""
+        """Übersetzt Kategorie-Keys in deutsche Bezeichnungen."""
         translations = {
             RetentionCategory.INVOICE.value: "Rechnungen",
-            RetentionCategory.CONTRACT.value: "Vertraege",
-            RetentionCategory.CORRESPONDENCE.value: "Geschaeftsbriefe",
+            RetentionCategory.CONTRACT.value: "Verträge",
+            RetentionCategory.CORRESPONDENCE.value: "Geschäftsbriefe",
             RetentionCategory.BOOKING_DOCUMENT.value: "Buchungsbelege",
             RetentionCategory.ANNUAL_REPORT.value: "Jahresabschluesse",
             RetentionCategory.TAX_DOCUMENT.value: "Steuerbelege",

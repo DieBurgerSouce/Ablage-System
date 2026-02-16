@@ -1,10 +1,10 @@
 """Dokument-Zusammenfassungs-Service.
 
-Phase 4.1: AI-gesteuerte Zusammenfassungen fuer:
+Phase 4.1: AI-gesteuerte Zusammenfassungen für:
 - Einzeldokument-Summary (via Qwen3-14B oder konfiguriertes LLM)
 - Multi-Dokument-Vergleich (z.B. 3 Angebote vergleichen)
 - CEO-Dashboard Briefings (Tages/Wochen-Zusammenfassung)
-- Summary-Cache in DB fuer Wiederverwendung
+- Summary-Cache in DB für Wiederverwendung
 
 Feinpoliert und durchdacht - Enterprise AI Summarization.
 """
@@ -23,13 +23,13 @@ logger = structlog.get_logger(__name__)
 
 
 class SummarizationService:
-    """Service fuer AI-gesteuerte Dokumenten-Zusammenfassungen."""
+    """Service für AI-gesteuerte Dokumenten-Zusammenfassungen."""
 
-    # Standardmaessige Zusammenfassungs-Laengen
+    # Standardmaessige Zusammenfassungs-Längen
     SUMMARY_LENGTHS = {
-        "kurz": 50,     # 1-2 Saetze
+        "kurz": 50,     # 1-2 Sätze
         "mittel": 150,  # 1 Absatz
-        "lang": 400,    # Mehrere Absaetze
+        "lang": 400,    # Mehrere Absätze
     }
 
     async def summarize_document(
@@ -41,16 +41,16 @@ class SummarizationService:
         language: str = "de",
         force_refresh: bool = False,
     ) -> Dict:
-        """Erstellt eine Zusammenfassung fuer ein einzelnes Dokument.
+        """Erstellt eine Zusammenfassung für ein einzelnes Dokument.
 
-        Prueft zuerst den Cache (document_metadata.summary).
+        Prüft zuerst den Cache (document_metadata.summary).
         Bei Cache-Miss wird eine neue Zusammenfassung generiert.
 
         Args:
             db: Datenbank-Session
             document_id: Dokument-ID
             company_id: Firmen-ID
-            length: Zusammenfassungs-Laenge (kurz/mittel/lang)
+            length: Zusammenfassungs-Länge (kurz/mittel/lang)
             language: Sprache (de/en)
             force_refresh: Cache ignorieren
 
@@ -70,7 +70,7 @@ class SummarizationService:
         if not doc:
             return {"fehler": "Dokument nicht gefunden"}
 
-        # Cache pruefen
+        # Cache prüfen
         metadata = doc.document_metadata or {}
         cache_key = f"summary_{length}_{language}"
 
@@ -79,7 +79,7 @@ class SummarizationService:
             cache_age = datetime.now(timezone.utc) - datetime.fromisoformat(
                 cached.get("generated_at", "2000-01-01T00:00:00+00:00")
             )
-            if cache_age < timedelta(days=7):  # Cache 7 Tage gueltig
+            if cache_age < timedelta(days=7):  # Cache 7 Tage gültig
                 return {
                     "summary": cached["text"],
                     "confidence": cached.get("confidence", 0.0),
@@ -88,7 +88,7 @@ class SummarizationService:
                     "generated_at": cached.get("generated_at"),
                 }
 
-        # Text fuer Zusammenfassung vorbereiten
+        # Text für Zusammenfassung vorbereiten
         text = doc.extracted_text or ""
         if not text:
             return {"fehler": "Kein extrahierter Text vorhanden"}
@@ -132,13 +132,13 @@ class SummarizationService:
     ) -> Dict:
         """Vergleicht mehrere Dokumente und erstellt eine Vergleichs-Zusammenfassung.
 
-        Ideal fuer: Angebots-Vergleich, Vertrags-Versionen, Rechnung vs. Lieferschein.
+        Ideal für: Angebots-Vergleich, Vertrags-Versionen, Rechnung vs. Lieferschein.
 
         Args:
             db: Datenbank-Session
             document_ids: Liste der zu vergleichenden Dokument-IDs (2-5)
             company_id: Firmen-ID
-            comparison_type: Art des Vergleichs (allgemein/preis/inhalt/aenderungen)
+            comparison_type: Art des Vergleichs (allgemein/preis/inhalt/änderungen)
 
         Returns:
             Dict mit comparison, documents, differences, recommendation
@@ -184,16 +184,16 @@ class SummarizationService:
         period: str = "heute",
         focus: Optional[str] = None,
     ) -> Dict:
-        """CEO-Dashboard Briefing fuer einen Zeitraum.
+        """CEO-Dashboard Briefing für einen Zeitraum.
 
-        Aggregiert: Neue Dokumente, offene Rechnungen, ueberfaellige Posten,
-        wichtige Aenderungen.
+        Aggregiert: Neue Dokumente, offene Rechnungen, überfällige Posten,
+        wichtige Änderungen.
 
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
             period: Zeitraum (heute/woche/monat)
-            focus: Fokus-Bereich (rechnungen/vertraege/allgemein)
+            focus: Fokus-Bereich (rechnungen/verträge/allgemein)
 
         Returns:
             Dict mit briefing, highlights, actions_needed
@@ -260,7 +260,7 @@ class SummarizationService:
         """Generiert eine Zusammenfassung via LLM.
 
         Nutzt das konfigurierte LLM-Backend (Qwen3-14B, Ollama, etc.).
-        Fallback auf einfache Extraktion wenn LLM nicht verfuegbar.
+        Fallback auf einfache Extraktion wenn LLM nicht verfügbar.
 
         Returns:
             Dict mit summary, confidence, model_used
@@ -270,7 +270,7 @@ class SummarizationService:
         sentences = text.replace("\n", " ").split(".")
         sentences = [s.strip() for s in sentences if s.strip()]
 
-        # Erste N Saetze als Zusammenfassung
+        # Erste N Sätze als Zusammenfassung
         word_count = 0
         summary_sentences = []
         for sentence in sentences:
@@ -285,7 +285,7 @@ class SummarizationService:
             summary += "."
 
         return {
-            "summary": summary or "Keine Zusammenfassung moeglich.",
+            "summary": summary or "Keine Zusammenfassung möglich.",
             "confidence": 0.7 if summary else 0.0,
             "model_used": "extractive_fallback",
         }

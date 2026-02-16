@@ -2,12 +2,12 @@
 """
 Data Enrichment Insights Service.
 
-Enterprise Feature: Proaktive Erkennung von Datenanreicherungsmoeglichkeiten.
+Enterprise Feature: Proaktive Erkennung von Datenanreicherungsmöglichkeiten.
 
 Dieses Modul analysiert Stammdaten und erkennt:
 
 - Fehlende Stammdaten: "Lieferant XY hat keine IBAN hinterlegt"
-- Duplikate: "2 Lieferanten mit aehnlichem Namen gefunden"
+- Duplikate: "2 Lieferanten mit ähnlichem Namen gefunden"
 - Inkonsistenzen: "Adresse weicht in 3 Dokumenten ab"
 - Veraltete Daten: "Kontaktdaten nicht seit 2 Jahren aktualisiert"
 
@@ -46,13 +46,13 @@ class DataIssueType(str, Enum):
     INCONSISTENT = "inconsistent"             # Inkonsistente Daten
     OUTDATED = "outdated"                     # Veraltete Daten
     INVALID_FORMAT = "invalid_format"         # Unguelitges Format
-    UNLINKED = "unlinked"                     # Nicht verknuepft
+    UNLINKED = "unlinked"                     # Nicht verknüpft
 
 
 class DataQualitySeverity(str, Enum):
     """Schweregrad des Datenproblems."""
-    CRITICAL = "critical"   # Verhindert Geschaeftsprozesse
-    HIGH = "high"           # Kann zu Fehlern fuehren
+    CRITICAL = "critical"   # Verhindert Geschäftsprozesse
+    HIGH = "high"           # Kann zu Fehlern führen
     MEDIUM = "medium"       # Sollte korrigiert werden
     LOW = "low"             # Nice-to-have
 
@@ -113,18 +113,18 @@ class DataIssue:
         """Generiert Titel basierend auf Issue-Typ."""
         title_templates = {
             DataIssueType.MISSING_FIELD: f"Fehlende Daten: {self.entity_name}",
-            DataIssueType.DUPLICATE: f"Moegliches Duplikat: {self.entity_name}",
+            DataIssueType.DUPLICATE: f"Mögliches Duplikat: {self.entity_name}",
             DataIssueType.INCONSISTENT: f"Inkonsistente Daten: {self.entity_name}",
             DataIssueType.OUTDATED: f"Veraltete Daten: {self.entity_name}",
             DataIssueType.INVALID_FORMAT: f"Unguelitges Format: {self.entity_name}",
-            DataIssueType.UNLINKED: f"Nicht verknuepft: {self.entity_name}",
+            DataIssueType.UNLINKED: f"Nicht verknüpft: {self.entity_name}",
         }
         return title_templates.get(self.issue_type, f"Datenproblem: {self.entity_name}")
 
 
 @dataclass
 class DataEnrichmentResult:
-    """Ergebnis einer Datenanreicherungs-Pruefung."""
+    """Ergebnis einer Datenanreicherungs-Prüfung."""
     issue_type: DataIssueType
     title: str
     message: str
@@ -152,7 +152,7 @@ class DataEnrichmentResult:
 
 @dataclass
 class DataQualitySummary:
-    """Zusammenfassung der Datenqualitaet."""
+    """Zusammenfassung der Datenqualität."""
     total_entities: int = 0
     entities_with_issues: int = 0
     total_issues: int = 0
@@ -163,10 +163,10 @@ class DataQualitySummary:
 
 class DataEnrichmentInsightsService:
     """
-    Service fuer proaktive Daten-Anreicherungsvorschlaege.
+    Service für proaktive Daten-Anreicherungsvorschläge.
 
-    Analysiert Stammdaten und erkennt Verbesserungsmoeglichkeiten
-    fuer die Datenqualitaet.
+    Analysiert Stammdaten und erkennt Verbesserungsmöglichkeiten
+    für die Datenqualität.
     """
 
     def __init__(self) -> None:
@@ -178,7 +178,7 @@ class DataEnrichmentInsightsService:
 
         # Schwellwerte
         self._outdated_threshold_days = 365  # 1 Jahr ohne Update = veraltet
-        self._similarity_threshold = 0.85    # 85% Aehnlichkeit = potentielles Duplikat
+        self._similarity_threshold = 0.85    # 85% Ähnlichkeit = potentielles Duplikat
 
         logger.info("data_enrichment_insights_service_initialized")
 
@@ -188,14 +188,14 @@ class DataEnrichmentInsightsService:
         company_id: UUID,
     ) -> List[ProactiveInsight]:
         """
-        Prueft alle Datenprobleme und generiert Insights.
+        Prüft alle Datenprobleme und generiert Insights.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer alle Datenprobleme
+            Liste von ProactiveInsights für alle Datenprobleme
         """
         logger.info(
             "checking_all_data_issues",
@@ -204,7 +204,7 @@ class DataEnrichmentInsightsService:
 
         all_insights: List[ProactiveInsight] = []
 
-        # Parallel alle Data-Checks ausfuehren
+        # Parallel alle Data-Checks ausführen
         results = await asyncio.gather(
             self.detect_missing_master_data(db, company_id),
             self.detect_duplicates(db, company_id),
@@ -223,7 +223,7 @@ class DataEnrichmentInsightsService:
             elif isinstance(result, list):
                 all_insights.extend(result)
 
-        # Nach Prioritaet sortieren
+        # Nach Priorität sortieren
         priority_order = {
             InsightPriority.CRITICAL: 0,
             InsightPriority.HIGH: 1,
@@ -245,19 +245,19 @@ class DataEnrichmentInsightsService:
         company_id: UUID,
     ) -> List[ProactiveInsight]:
         """
-        Erkennt fehlende Stammdaten bei Entitaeten.
+        Erkennt fehlende Stammdaten bei Entitäten.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer fehlende Daten
+            Liste von ProactiveInsights für fehlende Daten
         """
         from app.db.models import BusinessEntity
 
         try:
-            # Alle aktiven Entitaeten laden
+            # Alle aktiven Entitäten laden
             query = select(BusinessEntity).where(
                 and_(
                     BusinessEntity.company_id == company_id,
@@ -304,7 +304,7 @@ class DataEnrichmentInsightsService:
                         entity_name=entity.name or "Unbekannt",
                         field_name=", ".join(missing_fields),
                         description=f"Fehlende Felder: {', '.join(missing_labels)}",
-                        suggestion="Bitte vervollstaendigen Sie die Stammdaten.",
+                        suggestion="Bitte vervollständigen Sie die Stammdaten.",
                         action_url=f"/entities/{entity.id}/edit",
                         action_label="Daten ergaenzen",
                         metadata={
@@ -338,19 +338,19 @@ class DataEnrichmentInsightsService:
         company_id: UUID,
     ) -> List[ProactiveInsight]:
         """
-        Erkennt potenzielle Duplikate bei Entitaeten.
+        Erkennt potenzielle Duplikate bei Entitäten.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer Duplikate
+            Liste von ProactiveInsights für Duplikate
         """
         from app.db.models import BusinessEntity
 
         try:
-            # Alle aktiven Entitaeten laden
+            # Alle aktiven Entitäten laden
             query = select(BusinessEntity).where(
                 and_(
                     BusinessEntity.company_id == company_id,
@@ -367,7 +367,7 @@ class DataEnrichmentInsightsService:
 
             for i, entity1 in enumerate(entities):
                 for entity2 in entities[i + 1:]:
-                    # Bereits verarbeitete Paare ueberspringen
+                    # Bereits verarbeitete Paare überspringen
                     pair_key = tuple(sorted([entity1.id, entity2.id]))
                     if pair_key in processed_pairs:
                         continue
@@ -380,7 +380,7 @@ class DataEnrichmentInsightsService:
                     if similarity >= self._similarity_threshold:
                         processed_pairs.add(pair_key)
 
-                        # Zusaetzliche Pruefungen
+                        # Zusätzliche Prüfungen
                         same_iban = (
                             entity1.iban and entity2.iban and
                             entity1.iban == entity2.iban
@@ -395,21 +395,21 @@ class DataEnrichmentInsightsService:
                             reason = "Gleiche IBAN" if same_iban else "Gleiche USt-IdNr."
                         elif similarity >= 0.95:
                             severity = DataQualitySeverity.HIGH
-                            reason = f"{similarity * 100:.0f}% Namensaehnlichkeit"
+                            reason = f"{similarity * 100:.0f}% Namensähnlichkeit"
                         else:
                             severity = DataQualitySeverity.MEDIUM
-                            reason = f"{similarity * 100:.0f}% Namensaehnlichkeit"
+                            reason = f"{similarity * 100:.0f}% Namensähnlichkeit"
 
                         issue = DataIssue(
                             issue_type=DataIssueType.DUPLICATE,
                             severity=severity,
                             entity_id=entity1.id,
                             entity_name=entity1.name or "Unbekannt",
-                            description=f"Aehnlich zu '{entity2.name}': {reason}",
-                            suggestion="Pruefen Sie, ob diese Eintraege zusammengefuehrt werden sollten.",
+                            description=f"Ähnlich zu '{entity2.name}': {reason}",
+                            suggestion="Prüfen Sie, ob diese Einträge zusammengeführt werden sollten.",
                             related_entities=[entity2.id],
                             action_url=f"/entities/merge?ids={entity1.id},{entity2.id}",
-                            action_label="Zusammenfuehren pruefen",
+                            action_label="Zusammenführen prüfen",
                             metadata={
                                 "similarity": similarity,
                                 "other_entity_id": str(entity2.id),
@@ -453,12 +453,12 @@ class DataEnrichmentInsightsService:
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer Inkonsistenzen
+            Liste von ProactiveInsights für Inkonsistenzen
         """
         from app.db.models import BusinessEntity, Document
 
         try:
-            # Entitaeten mit verknuepften Dokumenten finden
+            # Entitäten mit verknüpften Dokumenten finden
             query = select(
                 BusinessEntity.id,
                 BusinessEntity.name,
@@ -498,7 +498,7 @@ class DataEnrichmentInsightsService:
                         Document.linked_entity_id == entity_id,
                         Document.extracted_data.isnot(None),
                     )
-                ).limit(10)  # Nur die letzten 10 pruefen
+                ).limit(10)  # Nur die letzten 10 prüfen
 
                 doc_result = await db.execute(doc_query)
                 documents = doc_result.fetchall()
@@ -523,9 +523,9 @@ class DataEnrichmentInsightsService:
                         entity_name=name or "Unbekannt",
                         field_name="Adresse",
                         description=f"{len(address_variations)} verschiedene Adressen in Dokumenten gefunden.",
-                        suggestion="Pruefen Sie welche Adresse korrekt ist.",
+                        suggestion="Prüfen Sie welche Adresse korrekt ist.",
                         action_url=f"/entities/{entity_id}/documents",
-                        action_label="Dokumente pruefen",
+                        action_label="Dokumente prüfen",
                         metadata={
                             "variation_count": len(address_variations),
                             "master_address": master_address,
@@ -565,14 +565,14 @@ class DataEnrichmentInsightsService:
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer veraltete Daten
+            Liste von ProactiveInsights für veraltete Daten
         """
         from app.db.models import BusinessEntity
 
         try:
             cutoff = datetime.now(timezone.utc) - timedelta(days=self._outdated_threshold_days)
 
-            # Entitaeten ohne kuerzliche Updates finden
+            # Entitäten ohne kürzliche Updates finden
             query = select(BusinessEntity).where(
                 and_(
                     BusinessEntity.company_id == company_id,
@@ -597,7 +597,7 @@ class DataEnrichmentInsightsService:
                     days_since_update = self._outdated_threshold_days + 1
 
                 if days_since_update > self._outdated_threshold_days:
-                    # Pruefe ob es kuerzlich Dokumente gab
+                    # Prüfe ob es kürzlich Dokumente gab
                     from app.db.models import Document
                     recent_doc_query = select(func.count()).where(
                         and_(
@@ -609,7 +609,7 @@ class DataEnrichmentInsightsService:
                     recent_result = await db.execute(recent_doc_query)
                     recent_doc_count = recent_result.scalar() or 0
 
-                    # Nur warnen wenn es aktive Geschaeftsbeziehung gibt
+                    # Nur warnen wenn es aktive Geschäftsbeziehung gibt
                     if recent_doc_count > 0:
                         issue = DataIssue(
                             issue_type=DataIssueType.OUTDATED,
@@ -617,9 +617,9 @@ class DataEnrichmentInsightsService:
                             entity_id=entity.id,
                             entity_name=entity.name or "Unbekannt",
                             description=f"Stammdaten nicht aktualisiert seit {days_since_update} Tagen, aber {recent_doc_count} neue Dokumente.",
-                            suggestion="Pruefen Sie ob die Stammdaten noch aktuell sind.",
+                            suggestion="Prüfen Sie ob die Stammdaten noch aktuell sind.",
                             action_url=f"/entities/{entity.id}/edit",
-                            action_label="Daten pruefen",
+                            action_label="Daten prüfen",
                             metadata={
                                 "days_since_update": days_since_update,
                                 "recent_documents": recent_doc_count,
@@ -652,14 +652,14 @@ class DataEnrichmentInsightsService:
         company_id: UUID,
     ) -> List[ProactiveInsight]:
         """
-        Erkennt Dokumente ohne Entity-Verknuepfung.
+        Erkennt Dokumente ohne Entity-Verknüpfung.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer nicht verknuepfte Dokumente
+            Liste von ProactiveInsights für nicht verknüpfte Dokumente
         """
         from app.db.models import Document
 
@@ -689,7 +689,7 @@ class DataEnrichmentInsightsService:
                 if count >= 5:  # Nur bei relevanter Anzahl warnen
                     type_labels = {
                         "invoice": "Rechnungen",
-                        "contract": "Vertraege",
+                        "contract": "Verträge",
                         "quote": "Angebote",
                     }
                     type_label = type_labels.get(doc_type, doc_type)
@@ -699,10 +699,10 @@ class DataEnrichmentInsightsService:
                         severity=DataQualitySeverity.MEDIUM if count > 20 else DataQualitySeverity.LOW,
                         entity_id=company_id,
                         entity_name=f"{count} {type_label}",
-                        description=f"{count} {type_label} sind nicht mit einem Geschaeftspartner verknuepft.",
-                        suggestion="Verknuepfen Sie die Dokumente fuer bessere Auswertungen.",
+                        description=f"{count} {type_label} sind nicht mit einem Geschäftspartner verknüpft.",
+                        suggestion="Verknüpfen Sie die Dokumente für bessere Auswertungen.",
                         action_url=f"/documents?type={doc_type}&unlinked=true",
-                        action_label="Dokumente verknuepfen",
+                        action_label="Dokumente verknüpfen",
                         metadata={
                             "document_type": doc_type,
                             "unlinked_count": count,
@@ -730,7 +730,7 @@ class DataEnrichmentInsightsService:
 
     def _calculate_name_similarity(self, name1: str, name2: str) -> float:
         """
-        Berechnet die Aehnlichkeit zweier Namen.
+        Berechnet die Ähnlichkeit zweier Namen.
 
         Verwendet eine Kombination aus:
         - Levenshtein-Distanz
@@ -741,7 +741,7 @@ class DataEnrichmentInsightsService:
             name2: Zweiter Name
 
         Returns:
-            Aehnlichkeit zwischen 0.0 und 1.0
+            Ähnlichkeit zwischen 0.0 und 1.0
         """
         if not name1 or not name2:
             return 0.0
@@ -753,14 +753,14 @@ class DataEnrichmentInsightsService:
         if n1 == n2:
             return 1.0
 
-        # Einfache Token-basierte Aehnlichkeit
+        # Einfache Token-basierte Ähnlichkeit
         tokens1 = set(n1.split())
         tokens2 = set(n2.split())
 
         if not tokens1 or not tokens2:
             return 0.0
 
-        # Jaccard-Aehnlichkeit
+        # Jaccard-Ähnlichkeit
         intersection = tokens1 & tokens2
         union = tokens1 | tokens2
 
@@ -781,7 +781,7 @@ class DataEnrichmentInsightsService:
         company_id: UUID,
     ) -> Dict[str, Any]:
         """
-        Erstellt eine Zusammenfassung der Datenqualitaet.
+        Erstellt eine Zusammenfassung der Datenqualität.
 
         Args:
             db: Datenbank-Session
@@ -801,7 +801,7 @@ class DataEnrichmentInsightsService:
             by_type[rule_type] += 1
             by_severity[insight.priority.value] += 1
 
-        # Berechne Qualitaets-Score (100 = perfekt)
+        # Berechne Qualitäts-Score (100 = perfekt)
         penalty = (
             by_severity.get("critical", 0) * 20 +
             by_severity.get("high", 0) * 10 +
@@ -837,7 +837,7 @@ _data_enrichment_instance: Optional[DataEnrichmentInsightsService] = None
 
 
 def get_data_enrichment_insights_service() -> DataEnrichmentInsightsService:
-    """Gibt die Singleton-Instanz des Data Enrichment Insights Service zurueck."""
+    """Gibt die Singleton-Instanz des Data Enrichment Insights Service zurück."""
     global _data_enrichment_instance
     if _data_enrichment_instance is None:
         _data_enrichment_instance = DataEnrichmentInsightsService()

@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Carrier Service - Zentraler Service fuer Paketdienst-Integration.
+"""Carrier Service - Zentraler Service für Paketdienst-Integration.
 
 Features:
 - Automatische Carrier-Erkennung anhand Tracking-Nummer
-- Einheitliche Tracking-Abfrage fuer alle Carrier
+- Einheitliche Tracking-Abfrage für alle Carrier
 - Caching von Tracking-Daten
-- Batch-Tracking fuer mehrere Sendungen
+- Batch-Tracking für mehrere Sendungen
 - Kosten-Analyse
 
-Unterstuetzte Carrier:
-- DHL (Marktfuehrer Deutschland)
+Unterstützte Carrier:
+- DHL (Marktführer Deutschland)
 - DPD (sehr verbreitet B2B)
 - Hermes (B2C stark)
 - UPS (International)
@@ -50,7 +50,7 @@ logger = structlog.get_logger(__name__)
 
 
 class Carrier(str, Enum):
-    """Unterstuetzte Paketdienste."""
+    """Unterstützte Paketdienste."""
     DHL = "dhl"
     DPD = "dpd"
     HERMES = "hermes"
@@ -120,7 +120,7 @@ class CarrierService:
             Carrier.DEUTSCHE_POST: DeutschePostProvider(),
         }
 
-        # Reihenfolge fuer Carrier-Erkennung (haeufigste zuerst)
+        # Reihenfolge für Carrier-Erkennung (häufigste zuerst)
         self._detection_order = [
             Carrier.DHL,
             Carrier.DPD,
@@ -134,7 +134,7 @@ class CarrierService:
         logger.info("carrier_service_initialized", carriers=list(self._providers.keys()))
 
     async def close(self) -> None:
-        """Schliesst alle HTTP Clients."""
+        """Schließt alle HTTP Clients."""
         for provider in self._providers.values():
             await provider.close()
 
@@ -168,7 +168,7 @@ class CarrierService:
         return Carrier.UNKNOWN
 
     def get_tracking_url(self, tracking_number: str, carrier: Optional[Carrier] = None) -> Optional[str]:
-        """Gibt die oeffentliche Tracking-URL zurueck.
+        """Gibt die öffentliche Tracking-URL zurück.
 
         Args:
             tracking_number: Die Sendungsnummer
@@ -205,7 +205,7 @@ class CarrierService:
             db: Datenbank-Session
             tracking_number: Die Sendungsnummer
             carrier: Optional Carrier (sonst automatisch erkennen)
-            company_id: Company ID fuer Multi-Tenant
+            company_id: Company ID für Multi-Tenant
             save_to_db: Ob Ergebnis in DB gespeichert werden soll
 
         Returns:
@@ -244,7 +244,7 @@ class CarrierService:
         tracking_numbers: List[str],
         company_id: UUID,
     ) -> Dict[str, TrackingResult]:
-        """Fragt Tracking fuer mehrere Sendungen ab.
+        """Fragt Tracking für mehrere Sendungen ab.
 
         Args:
             db: Datenbank-Session
@@ -353,8 +353,8 @@ class CarrierService:
             tracking_number: Sendungsnummer
             direction: Eingehend/Ausgehend/Retoure
             carrier: Optional Carrier (sonst automatisch)
-            entity_id: Verknuepfte Entitaet (Kunde/Lieferant)
-            document_id: Verknuepftes Dokument (Lieferschein)
+            entity_id: Verknüpfte Entität (Kunde/Lieferant)
+            document_id: Verknüpftes Dokument (Lieferschein)
             reference: Referenz (Bestellnummer, etc.)
             notes: Notizen
 
@@ -471,9 +471,9 @@ class CarrierService:
             direction: Filter nach Richtung
             status: Filter nach Status
             carrier: Filter nach Carrier
-            entity_id: Filter nach Entitaet
+            entity_id: Filter nach Entität
             page: Seite (1-basiert)
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
 
         Returns:
             Tuple (Sendungen, Gesamt-Anzahl)
@@ -516,7 +516,7 @@ class CarrierService:
         company_id: UUID,
         shipment_id: UUID,
     ) -> bool:
-        """Loescht eine Sendung (soft delete).
+        """Löscht eine Sendung (soft delete).
 
         Args:
             db: Datenbank-Session
@@ -524,7 +524,7 @@ class CarrierService:
             shipment_id: Sendungs-ID
 
         Returns:
-            True wenn geloescht
+            True wenn gelöscht
         """
         shipment = await self.get_shipment(db, company_id, shipment_id)
         if not shipment:
@@ -673,7 +673,7 @@ class CarrierService:
                 )
             )).scalar() or 0
 
-            # Avg Delivery Days (nur fuer zugestellte)
+            # Avg Delivery Days (nur für zugestellte)
             avg_days_query = select(
                 func.avg(
                     func.extract('epoch', Shipment.actual_delivery - Shipment.created_at) / 86400
@@ -697,7 +697,7 @@ class CarrierService:
                 )
             )).scalar() or 0
 
-            # On-time Rate (geschaetzt anhand avg_days < 3)
+            # On-time Rate (geschätzt anhand avg_days < 3)
             on_time = (await db.execute(
                 select(func.count(Shipment.id)).where(
                     and_(
@@ -769,7 +769,7 @@ class CarrierService:
             await db.commit()
 
     def _create_unknown_result(self, tracking_number: str) -> TrackingResult:
-        """Erstellt Ergebnis fuer unbekannten Carrier."""
+        """Erstellt Ergebnis für unbekannten Carrier."""
         return {
             "tracking_number": tracking_number,
             "carrier": "unknown",
@@ -787,7 +787,7 @@ class CarrierService:
         }
 
 
-# Re-export fuer convenience
+# Re-export für convenience
 __all__ = [
     "CarrierService",
     "Carrier",

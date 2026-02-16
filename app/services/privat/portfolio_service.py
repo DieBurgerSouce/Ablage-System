@@ -1,9 +1,9 @@
-"""Portfolio Service fuer Vermoegensueberblick und Snapshots.
+"""Portfolio Service für Vermoegensüberblick und Snapshots.
 
 Enterprise Feature: Automatisierte Vermoegensverwaltung mit:
 - Monatliche Portfolio-Snapshots
 - Asset Allocation Tracking
-- Vermoegensentwicklung ueber Zeit
+- Vermoegensentwicklung über Zeit
 - Net Worth Berechnung
 """
 
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class NetWorthTrendItem(TypedDict):
-    """Typedefinition fuer Net Worth Trend Datenpunkt."""
+    """Typedefinition für Net Worth Trend Datenpunkt."""
     date: str
     net_worth: float
     total_assets: float
@@ -77,7 +77,7 @@ class LiabilitySummary:
 
 @dataclass
 class PortfolioAnalysis:
-    """Vollstaendige Portfolio-Analyse."""
+    """Vollständige Portfolio-Analyse."""
 
     assets: AssetSummary
     liabilities: LiabilitySummary
@@ -86,16 +86,16 @@ class PortfolioAnalysis:
     liquidity_ratio: Decimal = Decimal("0")
     asset_allocation: dict[str, float] = field(default_factory=dict)
 
-    # Veraenderungen
+    # Veränderungen
     net_worth_change_absolute: Optional[Decimal] = None
     net_worth_change_percent: Optional[Decimal] = None
 
 
 class PortfolioService:
-    """Service fuer Portfolio-Management und Snapshots.
+    """Service für Portfolio-Management und Snapshots.
 
-    Berechnet aggregierte Vermoegensueberblicke und erstellt
-    monatliche Snapshots fuer historische Analyse.
+    Berechnet aggregierte Vermoegensüberblicke und erstellt
+    monatliche Snapshots für historische Analyse.
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -109,7 +109,7 @@ class PortfolioService:
     async def calculate_current_portfolio(
         self, space_id: UUID
     ) -> PortfolioAnalysis:
-        """Berechnet die aktuelle Vermoegensaufteilung fuer einen Space.
+        """Berechnet die aktuelle Vermoegensaufteilung für einen Space.
 
         Args:
             space_id: ID des Privat-Space
@@ -275,7 +275,7 @@ class PortfolioService:
     async def _get_previous_snapshot(
         self, space_id: UUID
     ) -> Optional[PortfolioSnapshot]:
-        """Holt den letzten Snapshot fuer Vergleichszwecke.
+        """Holt den letzten Snapshot für Vergleichszwecke.
 
         Args:
             space_id: ID des Privat-Space
@@ -306,7 +306,7 @@ class PortfolioService:
         if snapshot_date is None:
             snapshot_date = date.today()
 
-        # Pruefen ob bereits ein Snapshot existiert
+        # Prüfen ob bereits ein Snapshot existiert
         existing = await self.db.execute(
             select(PortfolioSnapshot).where(
                 and_(
@@ -317,7 +317,7 @@ class PortfolioService:
         )
         if existing.scalar_one_or_none():
             logger.info(
-                f"Snapshot fuer Space {space_id} am {snapshot_date} existiert bereits"
+                f"Snapshot für Space {space_id} am {snapshot_date} existiert bereits"
             )
             # Aktualisiere bestehenden Snapshot
             return await self.update_snapshot(space_id, snapshot_date)
@@ -358,7 +358,7 @@ class PortfolioService:
         await self.db.refresh(snapshot)
 
         logger.info(
-            f"Portfolio-Snapshot erstellt fuer Space {space_id}: "
+            f"Portfolio-Snapshot erstellt für Space {space_id}: "
             f"Net Worth = {analysis.net_worth} EUR"
         )
 
@@ -414,14 +414,14 @@ class PortfolioService:
         await self.db.commit()
         await self.db.refresh(snapshot)
 
-        logger.info(f"Portfolio-Snapshot aktualisiert fuer Space {space_id}")
+        logger.info(f"Portfolio-Snapshot aktualisiert für Space {space_id}")
 
         return snapshot
 
     async def get_latest_snapshot(
         self, space_id: UUID
     ) -> Optional[PortfolioSnapshot]:
-        """Holt den neuesten Snapshot fuer einen Space.
+        """Holt den neuesten Snapshot für einen Space.
 
         Args:
             space_id: ID des Privat-Space
@@ -463,14 +463,14 @@ class PortfolioService:
     async def get_net_worth_trend(
         self, space_id: UUID, months: int = 12
     ) -> list[NetWorthTrendItem]:
-        """Holt den Net Worth Trend fuer Chart-Darstellung.
+        """Holt den Net Worth Trend für Chart-Darstellung.
 
         Args:
             space_id: ID des Privat-Space
             months: Anzahl der Monate
 
         Returns:
-            Liste mit Datum und Net Worth fuer jeden Monat
+            Liste mit Datum und Net Worth für jeden Monat
         """
         history = await self.get_portfolio_history(space_id, months)
 
@@ -485,9 +485,9 @@ class PortfolioService:
         ]
 
     async def create_snapshots_for_all_spaces(self) -> int:
-        """Erstellt Snapshots fuer alle aktiven Spaces.
+        """Erstellt Snapshots für alle aktiven Spaces.
 
-        Wird typischerweise monatlich via Celery Beat ausgefuehrt.
+        Wird typischerweise monatlich via Celery Beat ausgeführt.
 
         Returns:
             Anzahl der erstellten Snapshots
@@ -507,9 +507,9 @@ class PortfolioService:
                 count += 1
             except Exception as e:
                 logger.error(
-                    f"Fehler beim Erstellen des Snapshots fuer Space {space_id}: {e}"
+                    f"Fehler beim Erstellen des Snapshots für Space {space_id}: {e}"
                 )
                 continue
 
-        logger.info(f"Portfolio-Snapshots erstellt fuer {count} Spaces")
+        logger.info(f"Portfolio-Snapshots erstellt für {count} Spaces")
         return count

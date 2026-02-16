@@ -3,11 +3,11 @@
 Process Mining Services for Ablage-System.
 
 Vision 2.0 Feature: Process Mining & Autonome Automatisierung
-Unterstuetzt:
+Unterstützt:
 - Prozess-Discovery aus Event-Logs
 - Bottleneck-Erkennung
 - Varianten-Analyse
-- Automatisierungs-Vorschlaege
+- Automatisierungs-Vorschläge
 - KPI-Berechnung
 
 Feinpoliert und durchdacht.

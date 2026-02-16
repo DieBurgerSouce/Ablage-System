@@ -6,6 +6,77 @@ Created: 2024-11-22
 
 from typing import Optional, Dict, Any
 
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.core.types import JSONDict
+
+
+class ErrorResponseSchema(BaseModel):
+    """Standardisiertes Fehler-Response-Schema für die OpenAPI-Dokumentation.
+
+    Alle API-Fehlerantworten folgen diesem Format.
+    """
+
+    model_config = ConfigDict(
+        extra="forbid",
+        json_schema_extra={
+            "example": {
+                "fehler": "Validierungsfehler",
+                "nachricht": "Die Anfrage konnte nicht verarbeitet werden",
+                "status_code": 400,
+                "fehler_code": "VAL_003",
+                "zeitstempel": "2026-02-15T12:00:00+00:00",
+                "pfad": "/api/v1/documents",
+            }
+        }
+    )
+
+    fehler: str = Field(
+        ...,
+        description="Kurze Fehlerbezeichnung (z.B. 'Validierungsfehler', 'GPU-Fehler')",
+        examples=["Validierungsfehler"],
+    )
+    nachricht: str = Field(
+        ...,
+        description="Detaillierte Beschreibung auf Deutsch für den Benutzer",
+        examples=["Die Anfrage konnte nicht verarbeitet werden"],
+    )
+    status_code: int = Field(
+        ...,
+        description="HTTP Status Code",
+        examples=[400],
+    )
+    fehler_code: Optional[str] = Field(
+        None,
+        description="Interner Fehlercode (z.B. 'E001', 'GPU_001', 'OCR_004'). "
+        "Siehe Fehlercode-Katalog unten.",
+        examples=["VAL_003"],
+    )
+    zeitstempel: str = Field(
+        ...,
+        description="ISO 8601 Zeitstempel des Fehlers",
+        examples=["2026-01-15T12:00:00+00:00"],
+    )
+    pfad: Optional[str] = Field(
+        None,
+        description="Request-Pfad, der den Fehler ausgeloest hat",
+        examples=["/api/v1/documents"],
+    )
+    request_id: Optional[str] = Field(
+        None,
+        description="Eindeutige Request-ID für verteiltes Tracing",
+        examples=["req-abc123"],
+    )
+    details: Optional[JSONDict] = Field(
+        None,
+        description="Zusätzliche technische Details (nur im DEBUG-Modus)",
+    )
+    retry_after: Optional[int] = Field(
+        None,
+        description="Sekunden bis zum nächsten Versuch (bei 429/503)",
+        examples=[60],
+    )
+
 
 class AblageSystemException(Exception):
     """Base exception for all Ablage-System errors"""
@@ -183,7 +254,7 @@ class OCRGPUOutOfMemoryError(OCRException):
                 "fallback_available": True,
                 "fallback_backends": fallback_backends
             },
-            user_message_de=f"GPU-Speicher erschoepft bei {backend}. Fallback verfuegbar."
+            user_message_de=f"GPU-Speicher erschöpft bei {backend}. Fallback verfügbar."
         )
         self.backend = backend
         self.document_id = document_id
@@ -406,7 +477,7 @@ class StorageQuotaExceededError(StorageError):
                 "quota_gb": quota_gb
             }
         )
-        self.user_message_de = f"Speicherkontingent erschoepft: {used_gb:.1f}GB von {quota_gb:.1f}GB genutzt"
+        self.user_message_de = f"Speicherkontingent erschöpft: {used_gb:.1f}GB von {quota_gb:.1f}GB genutzt"
 
 
 # ==================== Webhook Exceptions (E016) ====================
@@ -616,7 +687,7 @@ class EmbeddingDimensionMismatchError(EmbeddingError):
                 "actual_dimension": actual
             }
         )
-        self.user_message_de = f"Embedding-Dimensionen stimmen nicht ueberein"
+        self.user_message_de = f"Embedding-Dimensionen stimmen nicht überein"
 
 
 # ==================== Notification Exceptions (E021) ====================
@@ -684,7 +755,7 @@ class InvalidCredentialsError(AuthenticationError):
             message="Invalid credentials provided",
             details={}
         )
-        self.user_message_de = "Ungueltige Anmeldedaten"
+        self.user_message_de = "Ungültige Anmeldedaten"
 
 
 class TokenExpiredError(AuthenticationError):
@@ -735,7 +806,7 @@ class VerificationError(ArchiveError):
                 "actual_hash": actual_hash[:16] + "..."
             }
         )
-        self.user_message_de = "Dokumentverifikation fehlgeschlagen - Integritaet moeglicherweise kompromittiert"
+        self.user_message_de = "Dokumentverifikation fehlgeschlagen - Integrität möglicherweise kompromittiert"
 
 
 class ImmutabilityViolationError(ArchiveError):
@@ -746,7 +817,7 @@ class ImmutabilityViolationError(ArchiveError):
             message=f"Immutability violation: Document {document_id} is archived and cannot be modified",
             details={"document_id": document_id}
         )
-        self.user_message_de = "Aenderung nicht moeglich: Dokument ist revisionssicher archiviert (GoBD)"
+        self.user_message_de = "Änderung nicht möglich: Dokument ist revisionssicher archiviert (GoBD)"
 
 
 class RetentionPolicyError(ArchiveError):

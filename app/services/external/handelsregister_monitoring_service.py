@@ -6,9 +6,9 @@ Vision 2026 Q4: Erweitertes Handelsregister-Monitoring.
 
 Features:
 - Automatische Firmen-Validierung bei Entity-Anlage
-- Insolvenz-Monitoring fuer Kunden/Lieferanten
+- Insolvenz-Monitoring für Kunden/Lieferanten
 - Jahresabschluss-Abruf
-- Aenderungs-Benachrichtigungen
+- Änderungs-Benachrichtigungen
 - Integration mit Risk-Scoring
 """
 
@@ -83,8 +83,8 @@ class InsolvencyType(str, Enum):
     """Art des Insolvenzverfahrens."""
     NONE = "none"
     APPLICATION = "application"        # Antrag gestellt
-    PRELIMINARY = "preliminary"        # Vorlaeufige Insolvenz
-    OPENED = "opened"                  # Eroeffnet
+    PRELIMINARY = "preliminary"        # Vorläufige Insolvenz
+    OPENED = "opened"                  # Eröffnet
     SELF_ADMIN = "self_administration"  # Eigenverwaltung
     REJECTED = "rejected"              # Mangels Masse abgewiesen
     CONCLUDED = "concluded"            # Abgeschlossen
@@ -117,7 +117,7 @@ class ValidationResult(str, Enum):
 
 
 class CompanyValidationDict(TypedDict):
-    """Typisiertes Dictionary fuer CompanyValidation.to_dict()."""
+    """Typisiertes Dictionary für CompanyValidation.to_dict()."""
     entity_id: str
     company_name: str
     result: str
@@ -133,7 +133,7 @@ class CompanyValidationDict(TypedDict):
 
 
 class InsolvencyRecordDict(TypedDict):
-    """Typisiertes Dictionary fuer InsolvencyRecord.to_dict()."""
+    """Typisiertes Dictionary für InsolvencyRecord.to_dict()."""
     company_name: str
     court: str
     case_number: str
@@ -154,7 +154,7 @@ class AlertDetailsDict(TypedDict, total=False):
 
 
 class MonitoringAlertDict(TypedDict):
-    """Typisiertes Dictionary fuer MonitoringAlert.to_dict()."""
+    """Typisiertes Dictionary für MonitoringAlert.to_dict()."""
     id: str
     entity_id: str
     company_id: str
@@ -171,7 +171,7 @@ class MonitoringAlertDict(TypedDict):
 
 
 class AnnualReportDict(TypedDict):
-    """Typisiertes Dictionary fuer AnnualReport.to_dict()."""
+    """Typisiertes Dictionary für AnnualReport.to_dict()."""
     company_name: str
     fiscal_year: int
     publication_date: str
@@ -187,14 +187,14 @@ class AnnualReportDict(TypedDict):
 
 
 class RiskImpactDict(TypedDict):
-    """Typisiertes Dictionary fuer calculate_risk_impact()."""
+    """Typisiertes Dictionary für calculate_risk_impact()."""
     entity_id: str
     risk_factor: int
     factors: List[str]
 
 
 class RiskImpactMinimalDict(TypedDict):
-    """Minimales Risk Impact Dictionary fuer nicht ueberwachte Entities."""
+    """Minimales Risk Impact Dictionary für nicht überwachte Entities."""
     risk_factor: int
     reason: str
 
@@ -355,7 +355,7 @@ class AnnualReport:
 
 @dataclass
 class MonitoredEntity:
-    """Eine ueberwachte Entity."""
+    """Eine überwachte Entity."""
     entity_id: UUID
     company_id: UUID
     entity_name: str
@@ -381,19 +381,19 @@ class MonitoredEntity:
 
 class HandelsregisterMonitoringService:
     """
-    Service fuer Handelsregister-Monitoring.
+    Service für Handelsregister-Monitoring.
 
     Features:
     - Automatische Validierung bei Entity-Anlage
     - Kontinuierliches Insolvenz-Monitoring
     - Jahresabschluss-Abruf
-    - Aenderungs-Benachrichtigungen
+    - Änderungs-Benachrichtigungen
     """
 
     def __init__(self) -> None:
         self._monitored_entities: Dict[UUID, MonitoredEntity] = {}
         self._alerts: Dict[UUID, MonitoringAlert] = {}
-        # SECURITY FIX: TTL-Cache mit max 1000 Eintraegen und 1h TTL
+        # SECURITY FIX: TTL-Cache mit max 1000 Einträgen und 1h TTL
         # Verhindert unbegrenztes Wachstum (Memory Leak)
         self._validation_cache: TTLCache[str, CompanyValidation] = TTLCache(
             maxsize=1000,
@@ -449,7 +449,7 @@ class HandelsregisterMonitoringService:
             result=validation.result.value,
         ).inc()
 
-        # Wenn Entity noch nicht ueberwacht wird, hinzufuegen
+        # Wenn Entity noch nicht überwacht wird, hinzufuegen
         if entity_id not in self._monitored_entities:
             await self.start_monitoring(
                 entity_id=entity_id,
@@ -468,7 +468,7 @@ class HandelsregisterMonitoringService:
         register_number: Optional[str],
     ) -> CompanyValidation:
         """
-        Fuehrt die eigentliche Validierung durch.
+        Führt die eigentliche Validierung durch.
 
         HINWEIS: Mock-Implementierung mit deterministischer Logik.
         In Produktion durch echte Handelsregister-API ersetzen.
@@ -509,7 +509,7 @@ class HandelsregisterMonitoringService:
                 legal_form=legal_form,
                 status=CompanyStatus.IN_LIQUIDATION,
                 insolvency_status=InsolvencyType.OPENED,
-                discrepancies=["Insolvenzverfahren eroeffnet"],
+                discrepancies=["Insolvenzverfahren eröffnet"],
             )
 
         if "LIQUIDATION" in company_name:
@@ -522,7 +522,7 @@ class HandelsregisterMonitoringService:
                 register_number=register_number or f"HRB {mock_hrb}",
                 legal_form=legal_form,
                 status=CompanyStatus.DISSOLVED,
-                discrepancies=["Firma geloescht"],
+                discrepancies=["Firma gelöscht"],
             )
 
         # Standard: Erfolgreiche Validierung mit deterministischen Checks
@@ -549,7 +549,7 @@ class HandelsregisterMonitoringService:
         company_name: str,
     ) -> Optional[InsolvencyRecord]:
         """
-        Prueft auf Insolvenzverfahren.
+        Prüft auf Insolvenzverfahren.
 
         Args:
             entity_id: Entity-ID
@@ -633,7 +633,7 @@ class HandelsregisterMonitoringService:
         """
         Generiert Mock-Jahresabschluss.
 
-        HINWEIS: Deterministisch fuer Testbarkeit.
+        HINWEIS: Deterministisch für Testbarkeit.
         In Produktion durch Bundesanzeiger-API ersetzen.
         """
         # Deterministisches Seeding basierend auf Name + Jahr
@@ -684,16 +684,16 @@ class HandelsregisterMonitoringService:
         monitor_annual_reports: bool = True,
     ) -> MonitoredEntity:
         """
-        Startet Monitoring fuer eine Entity.
+        Startet Monitoring für eine Entity.
 
         Args:
             entity_id: Entity-ID
             company_id: Company-ID (Tenant)
             entity_name: Firmenname
             register_number: Registernummer
-            monitor_insolvency: Insolvenz ueberwachen
-            monitor_changes: Aenderungen ueberwachen
-            monitor_annual_reports: Jahresabschluesse ueberwachen
+            monitor_insolvency: Insolvenz überwachen
+            monitor_changes: Änderungen überwachen
+            monitor_annual_reports: Jahresabschluesse überwachen
 
         Returns:
             MonitoredEntity
@@ -725,7 +725,7 @@ class HandelsregisterMonitoringService:
 
     async def stop_monitoring(self, entity_id: UUID) -> bool:
         """
-        Stoppt Monitoring fuer eine Entity.
+        Stoppt Monitoring für eine Entity.
 
         Args:
             entity_id: Entity-ID
@@ -750,7 +750,7 @@ class HandelsregisterMonitoringService:
 
     async def run_monitoring_check(self) -> List[MonitoringAlert]:
         """
-        Fuehrt Monitoring-Pruefung fuer alle faelligen Entities durch.
+        Führt Monitoring-Prüfung für alle fälligen Entities durch.
 
         Returns:
             Liste von generierten Alerts
@@ -759,7 +759,7 @@ class HandelsregisterMonitoringService:
         alerts: List[MonitoringAlert] = []
 
         for monitored in self._monitored_entities.values():
-            # Pruefen ob Check faellig
+            # Prüfen ob Check fällig
             if monitored.next_check_at and monitored.next_check_at > now:
                 continue
 
@@ -767,7 +767,7 @@ class HandelsregisterMonitoringService:
                 entity_alerts = await self._check_entity(monitored)
                 alerts.extend(entity_alerts)
 
-                # Naechsten Check planen
+                # Nächsten Check planen
                 monitored.last_check_at = now
                 monitored.next_check_at = now + timedelta(days=1)
 
@@ -785,7 +785,7 @@ class HandelsregisterMonitoringService:
         self,
         monitored: MonitoredEntity,
     ) -> List[MonitoringAlert]:
-        """Prueft eine einzelne Entity."""
+        """Prüft eine einzelne Entity."""
         alerts: List[MonitoringAlert] = []
 
         # 1. Insolvenz-Check
@@ -801,7 +801,7 @@ class HandelsregisterMonitoringService:
                 alert = MonitoringAlert(
                     entity_id=monitored.entity_id,
                     company_id=monitored.company_id,
-                    entity_name=monitored.entity_name,  # Bleibt fuer interne Verarbeitung
+                    entity_name=monitored.entity_name,  # Bleibt für interne Verarbeitung
                     event_type=MonitoringEvent.INSOLVENCY_NOTICE,
                     severity="critical",
                     title="Insolvenzverfahren gemeldet",  # SECURITY: Generischer Titel
@@ -833,11 +833,11 @@ class HandelsregisterMonitoringService:
                 alert = MonitoringAlert(
                     entity_id=monitored.entity_id,
                     company_id=monitored.company_id,
-                    entity_name=monitored.entity_name,  # Bleibt fuer interne Verarbeitung
+                    entity_name=monitored.entity_name,  # Bleibt für interne Verarbeitung
                     event_type=MonitoringEvent.STATUS_CHANGE,
                     severity="high",
-                    title="Handelsregister Status-Aenderung",  # SECURITY: Generischer Titel
-                    message=f"Status geaendert von {monitored.last_validation.status.value} zu {new_validation.status.value}",
+                    title="Handelsregister Status-Änderung",  # SECURITY: Generischer Titel
+                    message=f"Status geändert von {monitored.last_validation.status.value} zu {new_validation.status.value}",
                     old_value=monitored.last_validation.status.value,
                     new_value=new_validation.status.value,
                 )
@@ -880,17 +880,17 @@ class HandelsregisterMonitoringService:
         company_id: Optional[UUID] = None,
     ) -> bool:
         """
-        Bestaetigt einen Alert.
+        Bestätigt einen Alert.
 
         SECURITY: Validiert Company-Ownership um Cross-Company Access zu verhindern.
 
         Args:
             alert_id: Alert-ID
             user_id: Benutzer-ID
-            company_id: Company-ID fuer Ownership-Check (EMPFOHLEN)
+            company_id: Company-ID für Ownership-Check (EMPFOHLEN)
 
         Returns:
-            True wenn bestaetigt
+            True wenn bestätigt
 
         Raises:
             PermissionError: Wenn company_id nicht zum Alert passt
@@ -909,7 +909,7 @@ class HandelsregisterMonitoringService:
                 alert_company_id=str(alert.company_id),
             )
             raise PermissionError(
-                f"Keine Berechtigung fuer Alert {alert_id}. "
+                f"Keine Berechtigung für Alert {alert_id}. "
                 f"Alert gehoert zu anderer Firma."
             )
 
@@ -923,7 +923,7 @@ class HandelsregisterMonitoringService:
         company_id: Optional[UUID] = None,
     ) -> List[MonitoredEntity]:
         """
-        Listet ueberwachte Entities.
+        Listet überwachte Entities.
 
         Args:
             company_id: Optional Company-Filter
@@ -953,7 +953,7 @@ class HandelsregisterMonitoringService:
         """
         monitored = self._monitored_entities.get(entity_id)
         if not monitored:
-            return RiskImpactMinimalDict(risk_factor=0, reason="Nicht ueberwacht")
+            return RiskImpactMinimalDict(risk_factor=0, reason="Nicht überwacht")
 
         risk_factor = 0
         factors: List[str] = []
@@ -966,7 +966,7 @@ class HandelsregisterMonitoringService:
 
             elif monitored.last_validation.result == ValidationResult.INACTIVE:
                 risk_factor += 50
-                factors.append("Firma geloescht/aufgeloest")
+                factors.append("Firma gelöscht/aufgeloest")
 
             elif monitored.last_validation.result == ValidationResult.WARNING:
                 risk_factor += 15
@@ -1016,7 +1016,7 @@ _service_instance: Optional[HandelsregisterMonitoringService] = None
 
 def get_handelsregister_monitoring_service() -> HandelsregisterMonitoringService:
     """
-    Factory-Funktion fuer HandelsregisterMonitoringService.
+    Factory-Funktion für HandelsregisterMonitoringService.
 
     Returns:
         HandelsregisterMonitoringService Instanz

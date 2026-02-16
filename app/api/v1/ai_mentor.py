@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """AI Mentor API - Proaktive Hilfe und personalisierte Tipps.
 
-Stellt Endpoints bereit fuer:
+Stellt Endpoints bereit für:
 - Kontextuelle Tipps basierend auf Seite
 - Verhaltensmuster-Analyse
 - Tipp-Praeferenzen
@@ -49,7 +49,7 @@ class TipResponse(BaseModel):
     category: str = Field(..., description="Kategorie: shortcut, automation, pattern, etc.")
     priority: str = Field(..., description="Prioritaet: low, medium, high")
     context_pages: List[str] = Field(default_factory=list, description="Relevante Seiten")
-    action_url: Optional[str] = Field(None, description="URL fuer Aktion")
+    action_url: Optional[str] = Field(None, description="URL für Aktion")
     action_label: Optional[str] = Field(None, description="Button-Text")
     shortcut: Optional[str] = Field(None, description="Keyboard-Shortcut")
     experience_level: str = Field(..., description="Erfahrungsstufe: beginner, intermediate, advanced")
@@ -72,7 +72,7 @@ class PatternResponse(BaseModel):
     id: str = Field(..., description="Muster-ID")
     pattern_type: str = Field(..., description="Muster-Typ")
     description: str = Field(..., description="Beschreibung auf Deutsch")
-    frequency: int = Field(..., description="Haeufigkeit des Musters")
+    frequency: int = Field(..., description="Häufigkeit des Musters")
     last_occurrence: str = Field(..., description="Letztes Auftreten (ISO)")
     recommendation: str = Field(..., description="Empfehlung")
     potential_savings_minutes: int = Field(0, description="Potenzielle Zeitersparnis in Minuten")
@@ -177,7 +177,7 @@ async def get_tips(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> TipsListResponse:
-    """Holt kontextuelle Tipps fuer den aktuellen Benutzer."""
+    """Holt kontextuelle Tipps für den aktuellen Benutzer."""
     service = await get_mentor_service(db)
 
     # Praeferenzen laden
@@ -201,8 +201,8 @@ async def get_tips(
 @router.get(
     "/tips/context/{context_page}",
     response_model=TipsListResponse,
-    summary="Tipps fuer spezifischen Kontext",
-    description="Holt Tipps fuer eine spezifische Seite.",
+    summary="Tipps für spezifischen Kontext",
+    description="Holt Tipps für eine spezifische Seite.",
 )
 async def get_tips_by_context(
     context_page: str = Path(..., description="Seiten-Kontext"),
@@ -210,7 +210,7 @@ async def get_tips_by_context(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> TipsListResponse:
-    """Holt Tipps fuer eine spezifische Seite."""
+    """Holt Tipps für eine spezifische Seite."""
     service = await get_mentor_service(db)
     preferences = await service.get_mentor_preferences(current_user.id)
 
@@ -232,13 +232,13 @@ async def get_tips_by_context(
     "/tips/all",
     response_model=TipsListResponse,
     summary="Alle Tipps abrufen",
-    description="Holt alle verfuegbaren Tipps ohne Filterung.",
+    description="Holt alle verfügbaren Tipps ohne Filterung.",
 )
 async def get_all_tips(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> TipsListResponse:
-    """Holt alle verfuegbaren Tipps."""
+    """Holt alle verfügbaren Tipps."""
     service = await get_mentor_service(db)
     tips = await service.get_all_tips()
 
@@ -259,7 +259,7 @@ async def dismiss_tip(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> SuccessResponse:
-    """Verwirft einen Tipp fuer den aktuellen Benutzer."""
+    """Verwirft einen Tipp für den aktuellen Benutzer."""
     service = await get_mentor_service(db)
 
     success = await service.dismiss_tip(
@@ -270,7 +270,7 @@ async def dismiss_tip(
     if not success:
         raise HTTPException(
             status_code=400,
-            detail="Tipp konnte nicht verworfen werden. Ungueltige Tipp-ID.",
+            detail="Tipp konnte nicht verworfen werden. Ungültige Tipp-ID.",
         )
 
     return SuccessResponse(
@@ -354,7 +354,7 @@ async def update_preferences(
     """Aktualisiert die Mentor-Praeferenzen."""
     service = await get_mentor_service(db)
 
-    # Nur gesetzte Werte uebernehmen
+    # Nur gesetzte Werte übernehmen
     updates = {}
     if request.enabled is not None:
         updates["enabled"] = request.enabled
@@ -369,7 +369,7 @@ async def update_preferences(
         if request.experience_level not in ["beginner", "intermediate", "advanced"]:
             raise HTTPException(
                 status_code=400,
-                detail="Ungueltiger Erfahrungslevel. Erlaubt: beginner, intermediate, advanced",
+                detail="Ungültiger Erfahrungslevel. Erlaubt: beginner, intermediate, advanced",
             )
         updates["experience_level"] = request.experience_level
     if request.max_tips_per_session is not None:

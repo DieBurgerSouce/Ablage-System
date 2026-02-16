@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """Liquidity Scenario Service.
 
-What-If Analyse fuer Cashflow-Prognosen mit Monte-Carlo-Simulation.
+What-If Analyse für Cashflow-Prognosen mit Monte-Carlo-Simulation.
 
 Features:
 - Basis-Szenario (erwartete Zahlungen)
 - Benutzerdefinierte Szenarien
 - Automatische Best/Worst/Expected Case
-- Monte-Carlo-Simulation fuer Unsicherheit
+- Monte-Carlo-Simulation für Unsicherheit
 - Vergleichs-Visualisierung
 - Timeline mit Liquiditaets-Korridoren
 - Handlungsempfehlungen
@@ -74,7 +74,7 @@ class RiskLevel(str, Enum):
 
 @dataclass
 class ScenarioAssumption:
-    """Annahme fuer ein Szenario."""
+    """Annahme für ein Szenario."""
 
     name: str
     description: str
@@ -124,7 +124,7 @@ class MonteCarloResult:
 
 @dataclass
 class LiquidityCorridor:
-    """Liquiditaets-Korridor fuer einen Tag."""
+    """Liquiditaets-Korridor für einen Tag."""
 
     date: str
     p5: float  # 5. Perzentil (Worst Case)
@@ -159,17 +159,17 @@ SCENARIO_CACHE_KEY = "liquidity_scenarios"
 
 
 class LiquidityScenarioService:
-    """Service fuer Liquiditaets-Szenario-Analyse.
+    """Service für Liquiditaets-Szenario-Analyse.
 
-    Ermoeglicht What-If Analysen und Monte-Carlo-Simulationen
-    fuer Cashflow-Prognosen.
+    Ermöglicht What-If Analysen und Monte-Carlo-Simulationen
+    für Cashflow-Prognosen.
     """
 
     def __init__(self, db: AsyncSession) -> None:
         """Initialisiert den Service.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
         """
         self.db = db
         self.cashflow_service = PredictiveCashFlowService(db)
@@ -332,14 +332,14 @@ class LiquidityScenarioService:
             scenario_type=ScenarioType.WORST_CASE,
             assumptions=[
                 {
-                    "name": "Verzoegerte Zahlungen",
+                    "name": "Verzögerte Zahlungen",
                     "parameter": "payment_delay",
                     "value": 14,
                     "unit": "Tage",
-                    "description": "14 Tage Zahlungsverzoegerung",
+                    "description": "14 Tage Zahlungsverzögerung",
                 },
                 {
-                    "name": "Hoehere Ausfallrate",
+                    "name": "Höhere Ausfallrate",
                     "parameter": "default_rate",
                     "value": 2.0,
                     "description": "Doppelte Ausfallrate",
@@ -364,11 +364,11 @@ class LiquidityScenarioService:
             scenario_type=ScenarioType.EXPECTED,
             assumptions=[
                 {
-                    "name": "Normale Verzoegerung",
+                    "name": "Normale Verzögerung",
                     "parameter": "payment_delay",
                     "value": 5,
                     "unit": "Tage",
-                    "description": "5 Tage durchschnittliche Verzoegerung",
+                    "description": "5 Tage durchschnittliche Verzögerung",
                 },
                 {
                     "name": "Normale Ausfaelle",
@@ -394,7 +394,7 @@ class LiquidityScenarioService:
         iterations: int = 1000,
         confidence_level: float = 0.95,
     ) -> MonteCarloResult:
-        """Fuehrt Monte-Carlo-Simulation durch.
+        """Führt Monte-Carlo-Simulation durch.
 
         Args:
             company_id: Firmen-ID
@@ -417,14 +417,14 @@ class LiquidityScenarioService:
             company_id, forecast_days
         )
 
-        # Simulationen durchfuehren
+        # Simulationen durchführen
         min_balances: List[float] = []
         daily_results: Dict[int, List[float]] = {
             day: [] for day in range(forecast_days + 1)
         }
 
         for _ in range(iterations):
-            # Zufaellige Parameter (mit min-Guards gegen negative Werte)
+            # Zufällige Parameter (mit min-Guards gegen negative Werte)
             # Normalverteilung kann theoretisch negative Werte erzeugen bei >6σ
             payment_delay_factor = max(0.01, random.gauss(1.0, 0.15))
             inflow_factor = max(0.01, random.gauss(1.0, 0.1))
@@ -444,14 +444,14 @@ class LiquidityScenarioService:
                 outflows = day_data["outflows"]
                 adjusted_outflows = outflows * outflow_factor
 
-                # Zahlungsverzoegerung (Eingaenge verschieben)
-                # payment_delay_factor > 1.0 = mehr Verzoegerungen erwartet
+                # Zahlungsverzögerung (Eingaenge verschieben)
+                # payment_delay_factor > 1.0 = mehr Verzögerungen erwartet
                 # Korrigierte Logik: Wahrscheinlichkeit = (factor - 1.0) / factor
-                # bei factor=1.2 -> 0.2/1.2 = 16.7% Chance auf Verzoegerung
+                # bei factor=1.2 -> 0.2/1.2 = 16.7% Chance auf Verzögerung
                 if payment_delay_factor > 1.0:
                     delay_probability = (payment_delay_factor - 1.0) / payment_delay_factor
                     if random.random() < delay_probability:
-                        adjusted_inflows *= 0.5  # 50% verzoegert
+                        adjusted_inflows *= 0.5  # 50% verzögert
 
                 # Balance berechnen
                 running_balance += adjusted_inflows - adjusted_outflows
@@ -586,7 +586,7 @@ class LiquidityScenarioService:
         company_id: UUID,
         scenario_id: str,
     ) -> bool:
-        """Loescht ein Szenario.
+        """Löscht ein Szenario.
 
         Args:
             company_id: Firmen-ID
@@ -641,7 +641,7 @@ class LiquidityScenarioService:
         modified = dict(base_forecast)
         forecast = [dict(f) for f in base_forecast.get("forecast", [])]
 
-        # Standard-Modifikationen fuer Szenario-Typen
+        # Standard-Modifikationen für Szenario-Typen
         inflow_multiplier = 1.0
         outflow_multiplier = 1.0
         delay_days = 0
@@ -692,9 +692,9 @@ class LiquidityScenarioService:
             original_inflows = day.get("inflows_adjusted", day.get("inflows", 0))
             day["inflows"] = round(original_inflows * inflow_multiplier, 2)
 
-            # Zahlungsverzoegerung: Eingaenge um delay_days verschieben
+            # Zahlungsverzögerung: Eingaenge um delay_days verschieben
             if delay_days > 0 and i < len(forecast) - delay_days:
-                # Ein Teil der Eingaenge wird verzoegert
+                # Ein Teil der Eingaenge wird verzögert
                 delayed = day["inflows"] * 0.3
                 day["inflows"] -= delayed
                 forecast[i + delay_days]["inflows"] = forecast[i + delay_days].get("inflows", 0) + delayed
@@ -771,13 +771,13 @@ class LiquidityScenarioService:
         elif risk_level == RiskLevel.HIGH:
             recommendations.append("Liquiditaetsreserve aufbauen")
             recommendations.append("Forderungsmanagement intensivieren")
-            recommendations.append("Skonto-Nutzung bei Einkauf pruefen")
+            recommendations.append("Skonto-Nutzung bei Einkauf prüfen")
         elif risk_level == RiskLevel.MEDIUM:
-            recommendations.append("Cashflow-Monitoring verstaerken")
+            recommendations.append("Cashflow-Monitoring verstärken")
             recommendations.append("Zahlungsziele einhalten")
         else:
-            recommendations.append("Ueberschuessige Liquiditaet anlegen")
-            recommendations.append("Investitionsmoeglichkeiten pruefen")
+            recommendations.append("Überschuessige Liquiditaet anlegen")
+            recommendations.append("Investitionsmöglichkeiten prüfen")
 
         return recommendations
 
@@ -998,5 +998,5 @@ class LiquidityScenarioService:
 
 
 def get_liquidity_scenario_service(db: AsyncSession) -> LiquidityScenarioService:
-    """Factory-Funktion fuer LiquidityScenarioService."""
+    """Factory-Funktion für LiquidityScenarioService."""
     return LiquidityScenarioService(db)

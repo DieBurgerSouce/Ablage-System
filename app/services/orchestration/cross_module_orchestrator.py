@@ -87,8 +87,8 @@ class ActionType(str, Enum):
 
 
 class ActionPriority(str, Enum):
-    """Prioritaet von Aktionen."""
-    CRITICAL = "kritisch"      # Sofort ausfuehren
+    """Priorität von Aktionen."""
+    CRITICAL = "kritisch"      # Sofort ausführen
     HIGH = "hoch"              # Innerhalb von Minuten
     NORMAL = "normal"          # Normale Queue
     LOW = "niedrig"            # Batch-Verarbeitung
@@ -113,7 +113,7 @@ class ModuleType(str, Enum):
 
 @dataclass
 class OrchestrationAction:
-    """Eine auszufuehrende Orchestrierungs-Aktion."""
+    """Eine auszuführende Orchestrierungs-Aktion."""
     id: UUID = field(default_factory=uuid4)
     action_type: ActionType = ActionType.SEND_NOTIFICATION
     priority: ActionPriority = ActionPriority.NORMAL
@@ -136,7 +136,7 @@ class OrchestrationAction:
     status: str = "pending"  # pending, executing, completed, failed
     error: Optional[str] = None
 
-    # Erklaerung (fuer Explainability)
+    # Erklärung (für Explainability)
     reason: str = ""
     impact_description: str = ""
     confidence: float = 1.0
@@ -161,7 +161,7 @@ class CascadingImpact:
 
 @dataclass
 class OrchestrationDecision:
-    """Eine Orchestrierungs-Entscheidung mit Erklaerung."""
+    """Eine Orchestrierungs-Entscheidung mit Erklärung."""
     decision_id: UUID = field(default_factory=uuid4)
 
     # Event das die Entscheidung ausgeloest hat
@@ -170,7 +170,7 @@ class OrchestrationDecision:
     # Getroffene Entscheidung
     actions: List[OrchestrationAction] = field(default_factory=list)
 
-    # Erklaerung
+    # Erklärung
     reasoning: str = ""
     factors: List[Dict[str, Any]] = field(default_factory=list)
     confidence: float = 1.0
@@ -195,7 +195,7 @@ EventHandler = Callable[[Event], Coroutine[Any, Any, List[OrchestrationAction]]]
 
 class CrossModuleOrchestrator:
     """
-    Singleton Service fuer Cross-Module Event-Orchestrierung.
+    Singleton Service für Cross-Module Event-Orchestrierung.
 
     Das Gehirn des Systems - verbindet alle Module intelligent:
     - Anomalie erkannt → Auto-Workflow starten
@@ -231,10 +231,10 @@ class CrossModuleOrchestrator:
         self._pending_actions: Deque[OrchestrationAction] = deque(maxlen=self._max_pending_actions)
         self._action_lock = asyncio.Lock()
 
-        # Entscheidungs-History (fuer Explainability) - BOUNDED
+        # Entscheidungs-History (für Explainability) - BOUNDED
         self._decision_history: Deque[OrchestrationDecision] = deque(maxlen=1000)
 
-        # Aktive Konflikte verhindern - MIT TTL fuer automatisches Cleanup
+        # Aktive Konflikte verhindern - MIT TTL für automatisches Cleanup
         # Value ist jetzt Tuple[Set[str], datetime] - Actions + Timestamp
         self._active_entity_actions: Dict[str, Tuple[Set[str], datetime]] = {}
         self._entity_action_ttl = timedelta(hours=24)  # 24h TTL
@@ -294,7 +294,7 @@ class CrossModuleOrchestrator:
 
     async def _subscribe_to_events(self) -> None:
         """Abonniert alle relevanten Events."""
-        # Pattern-basierte Subscription fuer alle Module
+        # Pattern-basierte Subscription für alle Module
         self._event_bus.subscribe_pattern("document.*", self._on_event)
         self._event_bus.subscribe_pattern("finance.*", self._on_event)
         self._event_bus.subscribe_pattern("insurance.*", self._on_event)
@@ -315,11 +315,11 @@ class CrossModuleOrchestrator:
         start_time = datetime.now(timezone.utc)
 
         try:
-            # Handler fuer diesen Event-Typ suchen
+            # Handler für diesen Event-Typ suchen
             handler = self._handlers.get(event.event_type)
 
             if handler:
-                # Spezifischen Handler ausfuehren
+                # Spezifischen Handler ausführen
                 actions = await handler(event)
 
                 if actions:
@@ -336,7 +336,7 @@ class CrossModuleOrchestrator:
                     for action in actions:
                         await self._queue_action(action)
 
-                    # Kritische Aktionen sofort ausfuehren
+                    # Kritische Aktionen sofort ausführen
                     critical_actions = [a for a in actions if a.priority == ActionPriority.CRITICAL]
                     if critical_actions:
                         await self._execute_critical_actions(critical_actions)
@@ -377,7 +377,7 @@ class CrossModuleOrchestrator:
         document_id = payload.get("document_id")
         confidence = payload.get("confidence", 0.5)
 
-        # Pruefe ob bereits eine Aktion fuer dieses Dokument laeuft
+        # Prüfe ob bereits eine Aktion für dieses Dokument laeuft
         if self._is_action_active(f"document_{document_id}", "workflow"):
             logger.debug("document_anomaly_action_already_active", document_id=document_id)
             return actions
@@ -398,12 +398,12 @@ class CrossModuleOrchestrator:
                     "requires_review": True,
                 },
                 reason=f"Kritische Anomalie '{anomaly_type}' mit {confidence*100:.0f}% Konfidenz erkannt",
-                impact_description="Dokument wird zur manuellen Pruefung markiert",
+                impact_description="Dokument wird zur manuellen Prüfung markiert",
                 confidence=confidence,
             )
             actions.append(workflow_action)
 
-            # Benachrichtigung an zustaendige Person
+            # Benachrichtigung an zuständige Person
             notification_action = OrchestrationAction(
                 action_type=ActionType.SEND_NOTIFICATION,
                 priority=ActionPriority.HIGH,
@@ -412,11 +412,11 @@ class CrossModuleOrchestrator:
                 action_data={
                     "notification_type": "anomaly_detected",
                     "title": f"Anomalie erkannt: {anomaly_type}",
-                    "message": f"Im Dokument wurde eine {severity} Anomalie erkannt. Bitte pruefen.",
+                    "message": f"Im Dokument wurde eine {severity} Anomalie erkannt. Bitte prüfen.",
                     "priority": "high",
                     "action_url": f"/documents/{document_id}",
                 },
-                reason="Benutzer muss ueber kritische Anomalie informiert werden",
+                reason="Benutzer muss über kritische Anomalie informiert werden",
             )
             actions.append(notification_action)
 
@@ -434,10 +434,10 @@ class CrossModuleOrchestrator:
                     "category": "document_review",
                     "priority": "medium",
                     "title": f"Dokument-Anomalie: {anomaly_type}",
-                    "description": "Das System hat eine potenzielle Anomalie erkannt. Eine manuelle Pruefung wird empfohlen.",
-                    "suggested_actions": ["Dokument pruefen", "Kategorisierung verifizieren"],
+                    "description": "Das System hat eine potenzielle Anomalie erkannt. Eine manuelle Prüfung wird empfohlen.",
+                    "suggested_actions": ["Dokument prüfen", "Kategorisierung verifizieren"],
                 },
-                reason=f"Mittlere Anomalie '{anomaly_type}' erkannt - Empfehlung zur Pruefung",
+                reason=f"Mittlere Anomalie '{anomaly_type}' erkannt - Empfehlung zur Prüfung",
             )
             actions.append(rec_action)
 
@@ -470,21 +470,21 @@ class CrossModuleOrchestrator:
                 impact_description="Potenzielle Fehltransaktion oder Betrug",
             ))
 
-            # Task zur Pruefung erstellen
+            # Task zur Prüfung erstellen
             actions.append(OrchestrationAction(
                 action_type=ActionType.CREATE_TASK,
                 priority=ActionPriority.HIGH,
                 source_event=event,
                 action_data={
                     "task_type": "review_transaction",
-                    "title": "Ungewoehnliche Transaktion pruefen",
+                    "title": "Ungewoehnliche Transaktion prüfen",
                     "due_date": (datetime.now(timezone.utc) + timedelta(days=1)).isoformat(),
                 },
-                reason="Transaktion erfordert menschliche Pruefung",
+                reason="Transaktion erfordert menschliche Prüfung",
             ))
 
         elif deviation_pct > 20:  # 20-50% Abweichung
-            # Empfehlung zur Pruefung
+            # Empfehlung zur Prüfung
             actions.append(OrchestrationAction(
                 action_type=ActionType.CREATE_RECOMMENDATION,
                 priority=ActionPriority.NORMAL,
@@ -493,7 +493,7 @@ class CrossModuleOrchestrator:
                 action_data={
                     "category": "finance_review",
                     "priority": "medium",
-                    "title": f"Transaktion pruefen: {anomaly_type}",
+                    "title": f"Transaktion prüfen: {anomaly_type}",
                     "description": f"Transaktion weicht um {deviation_pct:.0f}% vom Erwartungswert ab.",
                 },
                 reason=f"Moderate Abweichung von {deviation_pct:.0f}% erkannt",
@@ -502,7 +502,7 @@ class CrossModuleOrchestrator:
         return actions
 
     async def _handle_budget_exceeded(self, event: Event) -> List[OrchestrationAction]:
-        """Behandelt Budgetueberschreitungen."""
+        """Behandelt Budgetüberschreitungen."""
         actions: List[OrchestrationAction] = []
         payload = event.payload
 
@@ -511,11 +511,11 @@ class CrossModuleOrchestrator:
         spent = Decimal(str(payload.get("spent", 0)))
         overage_pct = ((spent - budget) / budget * 100) if budget > 0 else 0
 
-        # Kaskadierende Auswirkung: Budget-Ueberschreitung beeinflusst Financial Health
+        # Kaskadierende Auswirkung: Budget-Überschreitung beeinflusst Financial Health
         cascading_impact = CascadingImpact(
             source_module=ModuleType.FINANCE,
             source_entity_id=event.correlation_id or uuid4(),
-            source_change=f"Budget '{category}' ueberschritten",
+            source_change=f"Budget '{category}' überschritten",
             target_module=ModuleType.FINANCE,
             target_entity_ids=[],
             impact_type="financial_health_degradation",
@@ -536,15 +536,15 @@ class CrossModuleOrchestrator:
             source_module=ModuleType.FINANCE,
             action_data={
                 "notification_type": "budget_exceeded",
-                "title": f"Budget ueberschritten: {category}",
-                "message": f"Das Budget fuer '{category}' wurde um {overage_pct:.1f}% ueberschritten ({spent:.2f} EUR von {budget:.2f} EUR).",
+                "title": f"Budget überschritten: {category}",
+                "message": f"Das Budget für '{category}' wurde um {overage_pct:.1f}% überschritten ({spent:.2f} EUR von {budget:.2f} EUR).",
                 "priority": "high" if overage_pct > 30 else "normal",
             },
-            reason=f"Budget um {overage_pct:.1f}% ueberschritten",
+            reason=f"Budget um {overage_pct:.1f}% überschritten",
             impact_description=cascading_impact.impact_description,
         ))
 
-        # Bei starker Ueberschreitung: Zahlungspause vorschlagen
+        # Bei starker Überschreitung: Zahlungspause vorschlagen
         if overage_pct > 50:
             actions.append(OrchestrationAction(
                 action_type=ActionType.CREATE_RECOMMENDATION,
@@ -554,21 +554,21 @@ class CrossModuleOrchestrator:
                     "category": "cost_control",
                     "priority": "hoch",
                     "title": "Zahlungspause empfohlen",
-                    "description": f"Die Kategorie '{category}' hat das Budget massiv ueberschritten. Pruefe ob Zahlungen aufgeschoben werden koennen.",
+                    "description": f"Die Kategorie '{category}' hat das Budget massiv überschritten. Prüfe ob Zahlungen aufgeschoben werden können.",
                     "suggested_actions": [
                         "Nicht dringende Zahlungen aufschieben",
-                        "Budget fuer naechsten Monat anpassen",
-                        "Ausgaben in dieser Kategorie einschraenken",
+                        "Budget für nächsten Monat anpassen",
+                        "Ausgaben in dieser Kategorie einschränken",
                     ],
                     "potential_savings": float(spent - budget),
                 },
-                reason="Massive Budgetueberschreitung erfordert Kostenkontrolle",
+                reason="Massive Budgetüberschreitung erfordert Kostenkontrolle",
             ))
 
         return actions
 
     async def _handle_insurance_gap(self, event: Event) -> List[OrchestrationAction]:
-        """Behandelt erkannte Versicherungsluecken."""
+        """Behandelt erkannte Versicherungslücken."""
         actions: List[OrchestrationAction] = []
         payload = event.payload
 
@@ -586,11 +586,11 @@ class CrossModuleOrchestrator:
                 source_module=ModuleType.INSURANCE,
                 action_data={
                     "notification_type": "insurance_gap_critical",
-                    "title": f"KRITISCH: Versicherungsluecke bei {affected_asset}",
+                    "title": f"KRITISCH: Versicherungslücke bei {affected_asset}",
                     "message": f"Dein {affected_asset} ist nicht ausreichend versichert. Empfohlene Deckung: {recommended_coverage}",
                     "priority": "critical",
                 },
-                reason=f"Kritische Deckungsluecke: {gap_type}",
+                reason=f"Kritische Deckungslücke: {gap_type}",
                 impact_description="Hohes finanzielles Risiko bei Schadensfall",
             ))
 
@@ -603,21 +603,21 @@ class CrossModuleOrchestrator:
             action_data={
                 "category": "versicherung",
                 "priority": severity,
-                "title": f"Versicherungsluecke schliessen: {gap_type}",
-                "description": f"Fuer {affected_asset} wurde eine Deckungsluecke erkannt. Empfehlung: {recommended_coverage}",
+                "title": f"Versicherungslücke schließen: {gap_type}",
+                "description": f"Für {affected_asset} wurde eine Deckungslücke erkannt. Empfehlung: {recommended_coverage}",
                 "suggested_actions": [
-                    "Aktuelle Police pruefen",
+                    "Aktuelle Police prüfen",
                     "Vergleichsangebote einholen",
-                    "Deckungssumme erhoehen",
+                    "Deckungssumme erhöhen",
                 ],
             },
-            reason=f"Versicherungsluecke '{gap_type}' erkannt",
+            reason=f"Versicherungslücke '{gap_type}' erkannt",
         ))
 
         return actions
 
     async def _handle_insurance_deadline(self, event: Event) -> List[OrchestrationAction]:
-        """Behandelt nahende Versicherungsfristen (Kuendigung, Wechsel)."""
+        """Behandelt nahende Versicherungsfristen (Kündigung, Wechsel)."""
         actions: List[OrchestrationAction] = []
         payload = event.payload
 
@@ -638,13 +638,13 @@ class CrossModuleOrchestrator:
             action_data={
                 "notification_type": "insurance_deadline",
                 "title": f"Versicherungsfrist: {policy_name}",
-                "message": f"In {days_remaining} Tagen: {deadline_type} fuer '{policy_name}'",
+                "message": f"In {days_remaining} Tagen: {deadline_type} für '{policy_name}'",
                 "priority": priority.value,
             },
             reason=f"Versicherungsfrist in {days_remaining} Tagen",
         ))
 
-        if deadline_type in ["kuendigung", "wechsel"]:
+        if deadline_type in ["kündigung", "wechsel"]:
             actions.append(OrchestrationAction(
                 action_type=ActionType.CREATE_RECOMMENDATION,
                 priority=priority,
@@ -652,22 +652,22 @@ class CrossModuleOrchestrator:
                 action_data={
                     "category": "versicherung",
                     "priority": priority.value,
-                    "title": f"Versicherungswechsel pruefen: {policy_name}",
-                    "description": f"Die Kuendigungsfrist fuer '{policy_name}' endet in {days_remaining} Tagen. Jetzt ist der ideale Zeitpunkt fuer einen Tarifvergleich.",
+                    "title": f"Versicherungswechsel prüfen: {policy_name}",
+                    "description": f"Die Kündigungsfrist für '{policy_name}' endet in {days_remaining} Tagen. Jetzt ist der ideale Zeitpunkt für einen Tarifvergleich.",
                     "suggested_actions": [
-                        "Aktuelle Konditionen pruefen",
+                        "Aktuelle Konditionen prüfen",
                         "Vergleichsangebote einholen",
-                        "Bei Wechsel: Rechtzeitig kuendigen",
+                        "Bei Wechsel: Rechtzeitig kündigen",
                     ],
                     "deadline": deadline_date,
                 },
-                reason=f"Optimaler Zeitpunkt fuer Versicherungswechsel-Pruefung",
+                reason=f"Optimaler Zeitpunkt für Versicherungswechsel-Prüfung",
             ))
 
         return actions
 
     async def _handle_loan_payment_due(self, event: Event) -> List[OrchestrationAction]:
-        """Behandelt faellige Kreditraten."""
+        """Behandelt fällige Kreditraten."""
         actions: List[OrchestrationAction] = []
         payload = event.payload
 
@@ -685,11 +685,11 @@ class CrossModuleOrchestrator:
                 source_module=ModuleType.LOAN,
                 action_data={
                     "notification_type": "loan_payment_due",
-                    "title": f"Kreditrate faellig: {loan_name}",
-                    "message": f"In {days_until} Tag(en) ist die Rate von {amount:.2f} EUR faellig.",
+                    "title": f"Kreditrate fällig: {loan_name}",
+                    "message": f"In {days_until} Tag(en) ist die Rate von {amount:.2f} EUR fällig.",
                     "priority": "critical" if days_until <= 1 else "high",
                 },
-                reason=f"Kreditrate in {days_until} Tag(en) faellig",
+                reason=f"Kreditrate in {days_until} Tag(en) fällig",
             ))
 
         # Kaskadierende Auswirkung auf Cash-Flow
@@ -724,7 +724,7 @@ class CrossModuleOrchestrator:
                     "current_allocation": current_allocation,
                     "target_allocation": target_allocation,
                     "suggested_actions": [
-                        "Uebergewichtete Positionen reduzieren",
+                        "Übergewichtete Positionen reduzieren",
                         "Untergewichtete Positionen aufstocken",
                         "Rebalancing-Zeitpunkt planen",
                     ],
@@ -759,7 +759,7 @@ class CrossModuleOrchestrator:
             reason="Investment-Ziel erfolgreich erreicht",
         ))
 
-        # Empfehlung fuer naechste Schritte
+        # Empfehlung für nächste Schritte
         actions.append(OrchestrationAction(
             action_type=ActionType.CREATE_RECOMMENDATION,
             priority=ActionPriority.LOW,
@@ -767,15 +767,15 @@ class CrossModuleOrchestrator:
             action_data={
                 "category": "optimierung",
                 "priority": "niedrig",
-                "title": f"Naechstes Ziel setzen: {investment_name}",
-                "description": "Herzlichen Glueckwunsch zum erreichten Ziel! Setze dir ein neues ambitioniertes Ziel.",
+                "title": f"Nächstes Ziel setzen: {investment_name}",
+                "description": "Herzlichen Glückwunsch zum erreichten Ziel! Setze dir ein neues ambitioniertes Ziel.",
                 "suggested_actions": [
                     "Neues Ziel definieren",
-                    "Sparrate ueberpruefen",
+                    "Sparrate überprüfen",
                     "Strategie anpassen",
                 ],
             },
-            reason="Ziel erreicht - Zeit fuer neues Ziel",
+            reason="Ziel erreicht - Zeit für neues Ziel",
         ))
 
         return actions
@@ -811,7 +811,7 @@ class CrossModuleOrchestrator:
         return actions
 
     async def _handle_deadline_overdue(self, event: Event) -> List[OrchestrationAction]:
-        """Behandelt ueberfaellige Fristen."""
+        """Behandelt überfällige Fristen."""
         actions: List[OrchestrationAction] = []
         payload = event.payload
 
@@ -826,10 +826,10 @@ class CrossModuleOrchestrator:
             action_data={
                 "notification_type": "deadline_overdue",
                 "title": f"UEBERFAELLIG: {deadline_name}",
-                "message": f"Die Frist '{deadline_name}' ist seit {days_overdue} Tag(en) ueberfaellig!",
+                "message": f"Die Frist '{deadline_name}' ist seit {days_overdue} Tag(en) überfällig!",
                 "priority": "critical",
             },
-            reason=f"Frist seit {days_overdue} Tagen ueberfaellig",
+            reason=f"Frist seit {days_overdue} Tagen überfällig",
         ))
 
         # Task zur Behandlung erstellen
@@ -839,16 +839,16 @@ class CrossModuleOrchestrator:
             source_event=event,
             action_data={
                 "task_type": "handle_overdue_deadline",
-                "title": f"Ueberfaellige Frist behandeln: {deadline_name}",
+                "title": f"Überfällige Frist behandeln: {deadline_name}",
                 "urgency": "critical",
             },
-            reason="Ueberfaellige Frist erfordert sofortige Aufmerksamkeit",
+            reason="Überfällige Frist erfordert sofortige Aufmerksamkeit",
         ))
 
         return actions
 
     async def _handle_property_kpi_update(self, event: Event) -> List[OrchestrationAction]:
-        """Behandelt KPI-Updates fuer Immobilien - prueft auf Anomalien."""
+        """Behandelt KPI-Updates für Immobilien - prüft auf Anomalien."""
         actions: List[OrchestrationAction] = []
         payload = event.payload
 
@@ -856,7 +856,7 @@ class CrossModuleOrchestrator:
         rental_yield = payload.get("rental_yield")
         vacancy_risk = payload.get("vacancy_risk")
 
-        # Pruefe auf problematische KPIs
+        # Prüfe auf problematische KPIs
         if vacancy_risk and vacancy_risk > 0.3:  # 30% Leerstandsrisiko
             actions.append(OrchestrationAction(
                 action_type=ActionType.CREATE_RECOMMENDATION,
@@ -867,11 +867,11 @@ class CrossModuleOrchestrator:
                 action_data={
                     "category": "risiko",
                     "priority": "hoch",
-                    "title": "Erhoehtes Leerstandsrisiko",
-                    "description": f"Fuer diese Immobilie besteht ein erhoehtes Leerstandsrisiko ({vacancy_risk*100:.0f}%). Praventive Massnahmen empfohlen.",
+                    "title": "Erhöhtes Leerstandsrisiko",
+                    "description": f"Für diese Immobilie besteht ein erhöhtes Leerstandsrisiko ({vacancy_risk*100:.0f}%). Praventive Massnahmen empfohlen.",
                     "suggested_actions": [
-                        "Mietpreis ueberpruefen",
-                        "Zustand der Immobilie pruefen",
+                        "Mietpreis überprüfen",
+                        "Zustand der Immobilie prüfen",
                         "Marketingmassnahmen vorbereiten",
                     ],
                 },
@@ -891,7 +891,7 @@ class CrossModuleOrchestrator:
                     "title": "Niedrige Mietrendite",
                     "description": f"Die aktuelle Mietrendite ({rental_yield*100:.1f}%) liegt unter dem Zielwert. Optimierungspotenzial vorhanden.",
                     "suggested_actions": [
-                        "Mietanpassung pruefen",
+                        "Mietanpassung prüfen",
                         "Nebenkosten optimieren",
                         "Wertsteigerungsmassnahmen",
                     ],
@@ -902,7 +902,7 @@ class CrossModuleOrchestrator:
         return actions
 
     async def _handle_vehicle_service_due(self, event: Event) -> List[OrchestrationAction]:
-        """Behandelt faellige Fahrzeug-Wartungen."""
+        """Behandelt fällige Fahrzeug-Wartungen."""
         actions: List[OrchestrationAction] = []
         payload = event.payload
 
@@ -923,10 +923,10 @@ class CrossModuleOrchestrator:
             action_data={
                 "notification_type": "vehicle_service_due",
                 "title": f"Fahrzeug-{service_type}: {vehicle_name}",
-                "message": f"{service_type} fuer '{vehicle_name}' {'ueberfaellig!' if days_until <= 0 else f'in {days_until} Tagen faellig.'}",
+                "message": f"{service_type} für '{vehicle_name}' {'überfällig!' if days_until <= 0 else f'in {days_until} Tagen fällig.'}",
                 "priority": priority.value,
             },
-            reason=f"Fahrzeugwartung {'ueberfaellig' if days_until <= 0 else 'faellig'}",
+            reason=f"Fahrzeugwartung {'überfällig' if days_until <= 0 else 'fällig'}",
         ))
 
         return actions
@@ -949,7 +949,7 @@ class CrossModuleOrchestrator:
         )
 
     async def _execute_critical_actions(self, actions: List[OrchestrationAction]) -> None:
-        """Fuehrt kritische Aktionen sofort aus."""
+        """Führt kritische Aktionen sofort aus."""
         for action in actions:
             try:
                 await self._execute_action(action)
@@ -961,7 +961,7 @@ class CrossModuleOrchestrator:
                 )
 
     async def _execute_action(self, action: OrchestrationAction) -> bool:
-        """Fuehrt eine einzelne Aktion aus."""
+        """Führt eine einzelne Aktion aus."""
         action.status = "executing"
 
         try:
@@ -1021,7 +1021,7 @@ class CrossModuleOrchestrator:
     async def _execute_create_recommendation(self, action: OrchestrationAction) -> None:
         """Erstellt eine Empfehlung und persistiert sie in AIDecision.
 
-        Nutzt das AIDecision-Model fuer vollstaendigen Audit-Trail.
+        Nutzt das AIDecision-Model für vollständigen Audit-Trail.
         """
         from app.db.session import get_async_session_context
         from app.db.models import AIDecision
@@ -1114,7 +1114,7 @@ class CrossModuleOrchestrator:
     async def _execute_trigger_workflow(self, action: OrchestrationAction) -> None:
         """Triggert einen Workflow.
 
-        Integriert mit WorkflowTriggerService fuer echte Workflow-Ausfuehrung.
+        Integriert mit WorkflowTriggerService für echte Workflow-Ausführung.
         """
         from app.db.session import get_async_session_context
         from app.services.workflow.workflow_trigger_service import WorkflowTriggerService
@@ -1183,7 +1183,7 @@ class CrossModuleOrchestrator:
                     logger.warning(
                         "workflow_trigger_returned_none",
                         workflow_id=str(workflow_id),
-                        reason="trigger_workflow_manually gab None zurueck",
+                        reason="trigger_workflow_manually gab None zurück",
                     )
 
         except Exception as e:
@@ -1271,7 +1271,7 @@ class CrossModuleOrchestrator:
     # =========================================================================
 
     def _is_action_active(self, entity_key: str, action_type: str) -> bool:
-        """Prueft ob bereits eine Aktion fuer diese Entity laeuft.
+        """Prüft ob bereits eine Aktion für diese Entity laeuft.
 
         SYNC Methode - keine async Operationen noetig.
         """
@@ -1286,7 +1286,7 @@ class CrossModuleOrchestrator:
         return action_type in actions
 
     async def _mark_action_active(self, entity_key: str, action_type: str) -> None:
-        """Markiert eine Aktion als aktiv fuer diese Entity."""
+        """Markiert eine Aktion als aktiv für diese Entity."""
         now = datetime.now(timezone.utc)
         if entity_key not in self._active_entity_actions:
             self._active_entity_actions[entity_key] = (set(), now)
@@ -1307,10 +1307,10 @@ class CrossModuleOrchestrator:
                 self._active_entity_actions[entity_key] = (actions, timestamp)
 
     async def _cleanup_stale_entity_actions(self) -> int:
-        """Entfernt veraltete Entity-Action Eintraege.
+        """Entfernt veraltete Entity-Action Einträge.
 
         Returns:
-            Anzahl entfernter Eintraege.
+            Anzahl entfernter Einträge.
         """
         cutoff = datetime.now(timezone.utc) - self._entity_action_ttl
         stale_keys = [
@@ -1328,7 +1328,7 @@ class CrossModuleOrchestrator:
         return len(stale_keys)
 
     # =========================================================================
-    # Decision Recording (fuer Explainability)
+    # Decision Recording (für Explainability)
     # =========================================================================
 
     async def _record_decision(self, decision: OrchestrationDecision) -> None:
@@ -1346,7 +1346,7 @@ class CrossModuleOrchestrator:
         )
 
     def _generate_reasoning(self, event: Event, actions: List[OrchestrationAction]) -> str:
-        """Generiert eine Begruendung fuer die Entscheidung."""
+        """Generiert eine Begruendung für die Entscheidung."""
         if not actions:
             return "Keine Aktion erforderlich."
 
@@ -1367,16 +1367,16 @@ class CrossModuleOrchestrator:
     # =========================================================================
 
     def get_pending_actions(self) -> List[OrchestrationAction]:
-        """Gibt ausstehende Aktionen zurueck."""
+        """Gibt ausstehende Aktionen zurück."""
         return list(self._pending_actions)
 
     def get_decision_history(self, limit: int = 100) -> List[OrchestrationDecision]:
-        """Gibt die Entscheidungs-History zurueck."""
-        # deque unterstuetzt kein Slicing, daher zu list konvertieren
+        """Gibt die Entscheidungs-History zurück."""
+        # deque unterstützt kein Slicing, daher zu list konvertieren
         return list(self._decision_history)[-limit:]
 
     async def get_metrics(self) -> Dict[str, Any]:
-        """Gibt Orchestrierungs-Metriken zurueck."""
+        """Gibt Orchestrierungs-Metriken zurück."""
         return {
             "pending_actions_count": len(self._pending_actions),
             "pending_actions_max": self._max_pending_actions,
@@ -1388,7 +1388,7 @@ class CrossModuleOrchestrator:
         }
 
     async def process_pending_actions(self, max_actions: int = 50) -> int:
-        """Verarbeitet ausstehende Aktionen (fuer Celery-Task).
+        """Verarbeitet ausstehende Aktionen (für Celery-Task).
 
         Returns:
             Anzahl verarbeiteter Aktionen
@@ -1399,7 +1399,7 @@ class CrossModuleOrchestrator:
             # Cleanup stale entity actions zuerst
             await self._cleanup_stale_entity_actions()
 
-            # Sortiere nach Prioritaet (kopiere zu Liste fuer Sortierung)
+            # Sortiere nach Priorität (kopiere zu Liste für Sortierung)
             sorted_actions = sorted(
                 list(self._pending_actions),
                 key=lambda a: list(ActionPriority).index(a.priority)
@@ -1431,7 +1431,7 @@ _orchestrator_lock = threading.Lock()
 
 
 def get_cross_module_orchestrator() -> CrossModuleOrchestrator:
-    """Factory-Funktion fuer CrossModuleOrchestrator Singleton."""
+    """Factory-Funktion für CrossModuleOrchestrator Singleton."""
     global _orchestrator_instance
     if _orchestrator_instance is None:
         with _orchestrator_lock:
@@ -1441,13 +1441,13 @@ def get_cross_module_orchestrator() -> CrossModuleOrchestrator:
 
 
 async def start_orchestrator() -> CrossModuleOrchestrator:
-    """Startet den Orchestrator (fuer Application Startup)."""
+    """Startet den Orchestrator (für Application Startup)."""
     orchestrator = get_cross_module_orchestrator()
     await orchestrator.start()
     return orchestrator
 
 
 async def stop_orchestrator() -> None:
-    """Stoppt den Orchestrator (fuer Application Shutdown)."""
+    """Stoppt den Orchestrator (für Application Shutdown)."""
     orchestrator = get_cross_module_orchestrator()
     await orchestrator.stop()

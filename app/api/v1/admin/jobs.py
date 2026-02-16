@@ -53,18 +53,18 @@ router = APIRouter(prefix="/jobs", tags=["Admin - Auftragsverwaltung"])
 @router.get(
     "",
     response_model=JobListResponse,
-    summary="Auftraege auflisten",
-    description="Listet alle Verarbeitungsauftraege mit Filter- und Paginierungsoptionen auf"
+    summary="Aufträge auflisten",
+    description="Listet alle Verarbeitungsaufträge mit Filter- und Paginierungsoptionen auf"
 )
 async def list_jobs(
     request: Request,
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     status_filter: Optional[ProcessingStatus] = Query(None, alias="status", description="Nach Status filtern"),
     backend: Optional[str] = Query(None, description="Nach Backend filtern"),
     user_id: Optional[UUID] = Query(None, description="Nach Benutzer filtern"),
-    priority: Optional[int] = Query(None, ge=1, le=10, description="Nach Prioritaet filtern"),
-    has_error: Optional[bool] = Query(None, description="Nur Auftraege mit/ohne Fehler"),
+    priority: Optional[int] = Query(None, ge=1, le=10, description="Nach Priorität filtern"),
+    has_error: Optional[bool] = Query(None, description="Nur Aufträge mit/ohne Fehler"),
     created_from: Optional[datetime] = Query(None, description="Erstellt ab (ISO-Format)"),
     created_to: Optional[datetime] = Query(None, description="Erstellt bis (ISO-Format)"),
     sort_by: JobSortField = Query(JobSortField.CREATED_AT, description="Sortierfeld"),
@@ -73,16 +73,16 @@ async def list_jobs(
     db: AsyncSession = Depends(get_db),
 ) -> JobListResponse:
     """
-    Listet alle Verarbeitungsauftraege im System auf.
+    Listet alle Verarbeitungsaufträge im System auf.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
 
     **Filter:**
     - **status**: pending, queued, processing, completed, failed, cancelled
     - **backend**: deepseek, got_ocr, surya, surya_gpu
     - **user_id**: UUID des Dokumenteigentuemers
-    - **priority**: 1-10 (1 = hoechste Prioritaet)
-    - **has_error**: true = nur fehlgeschlagene Auftraege
+    - **priority**: 1-10 (1 = hoechste Priorität)
+    - **has_error**: true = nur fehlgeschlagene Aufträge
     - **created_from/to**: Zeitraumfilter
 
     **Sortierung:**
@@ -90,7 +90,7 @@ async def list_jobs(
     - Sortierbare Felder: created_at, started_at, completed_at, priority
 
     **Audit Logging:**
-    - Alle Auflistungen werden fuer GDPR Art. 30 protokolliert
+    - Alle Auflistungen werden für GDPR Art. 30 protokolliert
     """
     # Case-insensitive sort_order parsing (accepts both "DESC" and "desc")
     sort_order = SortOrder.DESC if sort_order_raw.lower() == "desc" else SortOrder.ASC
@@ -114,8 +114,8 @@ async def list_jobs(
         sort_order=sort_order,
     )
 
-    # GDPR Art. 30: Audit Log fuer Admin-Zugriff auf Job-Liste
-    # Fix 6: Filter-Parameter maskieren - user_id nicht vollstaendig loggen
+    # GDPR Art. 30: Audit Log für Admin-Zugriff auf Job-Liste
+    # Fix 6: Filter-Parameter maskieren - user_id nicht vollständig loggen
     ip_address = request.client.host if request.client else None
     audit = SecurityAuditLogger(db)
     await audit.log_event(
@@ -161,10 +161,10 @@ async def get_job(
     """
     Ruft detaillierte Informationen zu einem bestimmten Auftrag ab.
 
-    Nur fuer Administratoren zugaenglich.
+    Nur für Administratoren zugaenglich.
 
     **Audit Logging:**
-    - Alle Einzelabrufe werden fuer GDPR Art. 30 protokolliert
+    - Alle Einzelabrufe werden für GDPR Art. 30 protokolliert
     """
     job = await JobAdminService.get_job(db, job_id)
 
@@ -174,7 +174,7 @@ async def get_job(
             detail="Auftrag nicht gefunden",
         )
 
-    # GDPR Art. 30: Audit Log fuer Admin-Zugriff auf einzelnen Job
+    # GDPR Art. 30: Audit Log für Admin-Zugriff auf einzelnen Job
     ip_address = request.client.host if request.client else None
     audit = SecurityAuditLogger(db)
     await audit.log_event(
@@ -215,7 +215,7 @@ async def cancel_job(
 
     Der Auftrag wird als 'cancelled' markiert und nicht weiter verarbeitet.
 
-    **Hinweis:** Bereits abgeschlossene Auftraege koennen nicht abgebrochen werden.
+    **Hinweis:** Bereits abgeschlossene Aufträge können nicht abgebrochen werden.
     """
     ip_address = request.client.host if request.client else None
 
@@ -239,7 +239,7 @@ async def cancel_job(
 async def retry_job(
     job_id: UUID,
     request: Request,
-    priority: Optional[int] = Query(None, ge=1, le=10, description="Neue Prioritaet"),
+    priority: Optional[int] = Query(None, ge=1, le=10, description="Neue Priorität"),
     backend: Optional[str] = Query(None, description="Anderes Backend verwenden"),
     admin: User = Depends(check_destructive_admin_rate_limit),
     db: AsyncSession = Depends(get_db),
@@ -247,14 +247,14 @@ async def retry_job(
     """
     Erstellt einen neuen Auftrag basierend auf einem fehlgeschlagenen Auftrag.
 
-    Der urspruengliche Auftrag bleibt unveraendert. Es wird ein neuer
+    Der urspruengliche Auftrag bleibt unverändert. Es wird ein neuer
     Auftrag mit denselben Parametern erstellt.
 
     **Optionen:**
-    - **priority**: Neue Prioritaet setzen (1-10)
+    - **priority**: Neue Priorität setzen (1-10)
     - **backend**: Anderes OCR-Backend verwenden
 
-    **Hinweis:** Nur fehlgeschlagene Auftraege koennen wiederholt werden.
+    **Hinweis:** Nur fehlgeschlagene Aufträge können wiederholt werden.
     """
     ip_address = request.client.host if request.client else None
 
@@ -277,31 +277,31 @@ CLEAR_QUEUE_TIMEOUT = 120  # 2 minutes
     "/queue/clear",
     response_model=QueueClearResponse,
     summary="Warteschlange leeren",
-    description="Loescht alle wartenden Auftraege aus der Warteschlange"
+    description="Löscht alle wartenden Aufträge aus der Warteschlange"
 )
 async def clear_queue(
     request: Request,
     status_filter: ProcessingStatus = Query(
         ProcessingStatus.PENDING,
         alias="status",
-        description="Status der zu loeschenden Auftraege"
+        description="Status der zu löschenden Aufträge"
     ),
     admin: User = Depends(check_destructive_admin_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> QueueClearResponse:
     """
-    Loescht alle Auftraege mit dem angegebenen Status aus der Warteschlange.
+    Löscht alle Aufträge mit dem angegebenen Status aus der Warteschlange.
 
-    **WARNUNG:** Diese Aktion kann nicht rueckgaengig gemacht werden!
+    **WARNUNG:** Diese Aktion kann nicht rückgängig gemacht werden!
 
     **Limits:**
     - Timeout: 120 Sekunden
     - Rate Limit: 10/Minute, 50/Stunde (destruktive Operation)
 
-    Standardmaessig werden nur wartende (pending) Auftraege geloescht.
-    Es koennen auch Auftraege im Status 'queued' geloescht werden.
+    Standardmaessig werden nur wartende (pending) Aufträge gelöscht.
+    Es können auch Aufträge im Status 'queued' gelöscht werden.
 
-    Laufende oder abgeschlossene Auftraege koennen nicht geloescht werden.
+    Laufende oder abgeschlossene Aufträge können nicht gelöscht werden.
     """
     ip_address = request.client.host if request.client else None
 
@@ -326,8 +326,8 @@ async def clear_queue(
 @router.post(
     "/bulk/cancel",
     response_model=dict,
-    summary="Mehrere Auftraege abbrechen",
-    description="Bricht mehrere Auftraege gleichzeitig ab (max. 100 Jobs)"
+    summary="Mehrere Aufträge abbrechen",
+    description="Bricht mehrere Aufträge gleichzeitig ab (max. 100 Jobs)"
 )
 async def bulk_cancel_jobs(
     job_ids: list[UUID],
@@ -337,21 +337,21 @@ async def bulk_cancel_jobs(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Bricht mehrere Auftraege gleichzeitig ab.
+    Bricht mehrere Aufträge gleichzeitig ab.
 
     **Limits:**
     - Maximal 100 Jobs pro Anfrage
     - Timeout: 60 Sekunden
     - Rate Limit: 10/Minute, 50/Stunde (destruktive Operation)
 
-    Gibt eine Zusammenfassung zurueck, welche Auftraege erfolgreich
+    Gibt eine Zusammenfassung zurück, welche Aufträge erfolgreich
     abgebrochen wurden und welche nicht.
     """
     # Enforce max batch size
     if len(job_ids) > MAX_BULK_JOBS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Maximal {MAX_BULK_JOBS} Auftraege pro Anfrage erlaubt. "
+            detail=f"Maximal {MAX_BULK_JOBS} Aufträge pro Anfrage erlaubt. "
                    f"Erhalten: {len(job_ids)}"
         )
 
@@ -393,7 +393,7 @@ async def bulk_cancel_jobs(
     results["success_count"] = len(results["success"])
     results["failed_count"] = len(results["failed"])
 
-    # GDPR Art. 30: Audit Log fuer Bulk-Cancel-Operation
+    # GDPR Art. 30: Audit Log für Bulk-Cancel-Operation
     audit = SecurityAuditLogger(db)
     await audit.log_event(
         event_type=SecurityEventType.ADMIN_JOBS_BULK_ACTION,
@@ -419,7 +419,7 @@ async def bulk_cancel_jobs(
 @router.get(
     "/stats/summary",
     summary="Auftragsstatistiken",
-    description="Ruft zusammenfassende Statistiken zu Auftraegen ab"
+    description="Ruft zusammenfassende Statistiken zu Aufträgen ab"
 )
 async def get_job_stats(
     request: Request,
@@ -427,20 +427,20 @@ async def get_job_stats(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Ruft zusammenfassende Statistiken zu Auftraegen ab.
+    Ruft zusammenfassende Statistiken zu Aufträgen ab.
 
     Zeigt:
-    - Anzahl Auftraege nach Status
+    - Anzahl Aufträge nach Status
     - Durchschnittliche Verarbeitungszeit
     - Durchschnittliche Wartezeit
-    - Auftraege nach Backend
+    - Aufträge nach Backend
 
     **Audit Logging:**
-    - Alle Statistik-Abfragen werden fuer GDPR Art. 30 protokolliert
+    - Alle Statistik-Abfragen werden für GDPR Art. 30 protokolliert
     """
     result = await JobAdminService.get_job_stats(db)
 
-    # GDPR Art. 30: Audit Log fuer Statistik-Abfragen (Fix 1)
+    # GDPR Art. 30: Audit Log für Statistik-Abfragen (Fix 1)
     ip_address = request.client.host if request.client else None
     audit = SecurityAuditLogger(db)
     await audit.log_event(
@@ -464,33 +464,33 @@ async def get_job_stats(
 @router.post(
     "/bulk/retry",
     response_model=dict,
-    summary="Mehrere Auftraege wiederholen",
-    description="Wiederholt mehrere fehlgeschlagene Auftraege gleichzeitig (max. 100 Jobs)"
+    summary="Mehrere Aufträge wiederholen",
+    description="Wiederholt mehrere fehlgeschlagene Aufträge gleichzeitig (max. 100 Jobs)"
 )
 async def bulk_retry_jobs(
     job_ids: list[UUID],
     request: Request,
-    priority: Optional[int] = Query(None, ge=1, le=10, description="Neue Prioritaet fuer alle"),
+    priority: Optional[int] = Query(None, ge=1, le=10, description="Neue Priorität für alle"),
     backend: Optional[str] = Query(None, description="Anderes Backend verwenden"),
     admin: User = Depends(check_destructive_admin_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Wiederholt mehrere fehlgeschlagene Auftraege gleichzeitig.
+    Wiederholt mehrere fehlgeschlagene Aufträge gleichzeitig.
 
     **Limits:**
     - Maximal 100 Jobs pro Anfrage
     - Timeout: 60 Sekunden
     - Rate Limit: 10/Minute, 50/Stunde (destruktive Operation)
 
-    Gibt eine Zusammenfassung zurueck, welche Auftraege erfolgreich
+    Gibt eine Zusammenfassung zurück, welche Aufträge erfolgreich
     wiederholt wurden und welche nicht.
     """
     # Enforce max batch size
     if len(job_ids) > MAX_BULK_JOBS:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Maximal {MAX_BULK_JOBS} Auftraege pro Anfrage erlaubt. "
+            detail=f"Maximal {MAX_BULK_JOBS} Aufträge pro Anfrage erlaubt. "
                    f"Erhalten: {len(job_ids)}"
         )
 
@@ -536,7 +536,7 @@ async def bulk_retry_jobs(
     results["success_count"] = len(results["success"])
     results["failed_count"] = len(results["failed"])
 
-    # GDPR Art. 30: Audit Log fuer Bulk-Retry-Operation
+    # GDPR Art. 30: Audit Log für Bulk-Retry-Operation
     audit = SecurityAuditLogger(db)
     await audit.log_event(
         event_type=SecurityEventType.ADMIN_JOBS_BULK_ACTION,
@@ -563,20 +563,20 @@ async def bulk_retry_jobs(
 @router.patch(
     "/{job_id}/priority",
     response_model=JobActionResponse,
-    summary="Prioritaet aendern",
-    description="Aendert die Prioritaet eines wartenden Auftrags"
+    summary="Priorität ändern",
+    description="Ändert die Priorität eines wartenden Auftrags"
 )
 async def change_job_priority(
     job_id: UUID,
-    priority: int = Query(..., ge=1, le=10, description="Neue Prioritaet (1-10, 1=hoechste)"),
+    priority: int = Query(..., ge=1, le=10, description="Neue Priorität (1-10, 1=hoechste)"),
     request: Request = None,
     admin: User = Depends(check_destructive_admin_rate_limit),
     db: AsyncSession = Depends(get_db),
 ) -> JobActionResponse:
     """
-    Aendert die Prioritaet eines wartenden oder in Warteschlange befindlichen Auftrags.
+    Ändert die Priorität eines wartenden oder in Warteschlange befindlichen Auftrags.
 
-    **Hinweis:** Nur Auftraege im Status 'pending' oder 'queued' koennen priorisiert werden.
+    **Hinweis:** Nur Aufträge im Status 'pending' oder 'queued' können priorisiert werden.
     """
     ip_address = request.client.host if request and request.client else None
 
@@ -639,7 +639,7 @@ async def pause_job(
     """
     Pausiert einen laufenden oder wartenden Auftrag.
 
-    Der Auftrag kann spaeter mit /resume fortgesetzt werden.
+    Der Auftrag kann später mit /resume fortgesetzt werden.
     """
     ip_address = request.client.host if request.client else None
 

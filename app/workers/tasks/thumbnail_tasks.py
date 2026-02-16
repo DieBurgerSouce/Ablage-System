@@ -1,6 +1,6 @@
 """Thumbnail Generation Tasks for Celery.
 
-Generiert Vorschaubilder fuer Dokumente nach dem Upload oder OCR.
+Generiert Vorschaubilder für Dokumente nach dem Upload oder OCR.
 """
 
 from datetime import datetime, timezone

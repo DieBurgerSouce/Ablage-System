@@ -1,7 +1,7 @@
 """
-WebSocket API Endpoints fuer Echtzeit-Updates.
+WebSocket API Endpoints für Echtzeit-Updates.
 
-Bietet WebSocket-Verbindungen fuer:
+Bietet WebSocket-Verbindungen für:
 - Dokument-Updates (Upload, OCR-Progress, Kategorisierung)
 - Validation Queue Updates
 - Approval Notifications
@@ -40,7 +40,7 @@ async def get_user_from_token(token: str) -> Optional[dict]:
         token: JWT Token
 
     Returns:
-        User-Dictionary mit id, email, company_id oder None bei ungueltigem Token
+        User-Dictionary mit id, email, company_id oder None bei ungültigem Token
     """
     try:
         payload = jwt.decode(
@@ -64,10 +64,10 @@ async def get_user_from_token(token: str) -> Optional[dict]:
 @router.websocket("/ws/realtime")
 async def websocket_realtime_endpoint(
     websocket: WebSocket,
-    token: Optional[str] = Query(None, description="JWT Token fuer Authentifizierung"),
+    token: Optional[str] = Query(None, description="JWT Token für Authentifizierung"),
 ):
     """
-    WebSocket-Endpoint fuer Echtzeit-Updates.
+    WebSocket-Endpoint für Echtzeit-Updates.
 
     ## Verbindung
 
@@ -162,13 +162,13 @@ async def websocket_realtime_endpoint(
     - `document.categorized` - Dokument kategorisiert
     - `validation.item_added` - Neues Item in Validation Queue
     - `validation.item_resolved` - Item aufgeloest
-    - `validation.queue_updated` - Queue-Status geaendert
+    - `validation.queue_updated` - Queue-Status geändert
     - `approval.requested` - Genehmigung angefordert
     - `approval.approved` - Genehmigt
     - `approval.rejected` - Abgelehnt
     - `invoice.created` - Rechnung erstellt
     - `invoice.paid` - Rechnung bezahlt
-    - `invoice.overdue` - Rechnung ueberfaellig
+    - `invoice.overdue` - Rechnung überfällig
     - `system.notification` - System-Benachrichtigung
     - `system.error` - Systemfehler
     """
@@ -179,7 +179,7 @@ async def websocket_realtime_endpoint(
 
     user = await get_user_from_token(token)
     if not user or not user.get("id"):
-        await websocket.close(code=4002, reason="Ungueltiges Token")
+        await websocket.close(code=4002, reason="Ungültiges Token")
         return
 
     user_id = user["id"]
@@ -221,9 +221,9 @@ async def websocket_realtime_endpoint(
 @router.get("/ws/stats")
 async def get_websocket_stats():
     """
-    Gibt Statistiken ueber aktive WebSocket-Verbindungen zurueck.
+    Gibt Statistiken über aktive WebSocket-Verbindungen zurück.
 
-    Nur fuer Admin-Zwecke.
+    Nur für Admin-Zwecke.
     """
     ws_manager = get_realtime_ws_manager()
     return ws_manager.get_stats()
@@ -232,9 +232,9 @@ async def get_websocket_stats():
 @router.get("/ws/event-types")
 async def get_event_types():
     """
-    Gibt alle verfuegbaren Echtzeit-Event-Typen zurueck.
+    Gibt alle verfügbaren Echtzeit-Event-Typen zurück.
 
-    Nuetzlich fuer Client-Side Subscribe/Unsubscribe.
+    Nuetzlich für Client-Side Subscribe/Unsubscribe.
     """
     return {
         "event_types": [
@@ -255,10 +255,10 @@ async def get_event_types():
 @router.get("/ws/presence/{document_id}")
 async def get_document_presence(
     document_id: str,
-    token: Optional[str] = Query(None, description="JWT Token fuer Authentifizierung"),
+    token: Optional[str] = Query(None, description="JWT Token für Authentifizierung"),
 ):
     """
-    Gibt alle User zurueck die ein Dokument gerade betrachten.
+    Gibt alle User zurück die ein Dokument gerade betrachten.
 
     Args:
         document_id: Dokument ID
@@ -272,7 +272,7 @@ async def get_document_presence(
 
     user = await get_user_from_token(token)
     if not user or not user.get("id"):
-        raise HTTPException(status_code=401, detail="Ungueltiges Token")
+        raise HTTPException(status_code=401, detail="Ungültiges Token")
 
     ws_manager = get_realtime_ws_manager()
     viewers = await ws_manager.get_document_viewers(document_id)
@@ -287,10 +287,10 @@ async def get_document_presence(
 @router.get("/ws/presence/company/{company_id}")
 async def get_company_presence_endpoint(
     company_id: str,
-    token: Optional[str] = Query(None, description="JWT Token fuer Authentifizierung"),
+    token: Optional[str] = Query(None, description="JWT Token für Authentifizierung"),
 ):
     """
-    Gibt Presence-Informationen aller User einer Company zurueck.
+    Gibt Presence-Informationen aller User einer Company zurück.
 
     Args:
         company_id: Company ID
@@ -304,7 +304,7 @@ async def get_company_presence_endpoint(
 
     user = await get_user_from_token(token)
     if not user or not user.get("id"):
-        raise HTTPException(status_code=401, detail="Ungueltiges Token")
+        raise HTTPException(status_code=401, detail="Ungültiges Token")
 
     # Verify user belongs to company
     if user.get("company_id") != company_id:
@@ -322,10 +322,10 @@ async def get_company_presence_endpoint(
 
 @router.get("/ws/rooms")
 async def get_user_rooms(
-    token: Optional[str] = Query(None, description="JWT Token fuer Authentifizierung"),
+    token: Optional[str] = Query(None, description="JWT Token für Authentifizierung"),
 ):
     """
-    Gibt alle Rooms zurueck in denen der User Mitglied ist.
+    Gibt alle Rooms zurück in denen der User Mitglied ist.
 
     Returns:
         Liste von Rooms
@@ -336,7 +336,7 @@ async def get_user_rooms(
 
     user = await get_user_from_token(token)
     if not user or not user.get("id"):
-        raise HTTPException(status_code=401, detail="Ungueltiges Token")
+        raise HTTPException(status_code=401, detail="Ungültiges Token")
 
     user_id = user["id"]
     ws_manager = get_realtime_ws_manager()

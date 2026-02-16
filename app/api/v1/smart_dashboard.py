@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Smart Dashboard API Endpoints fuer Ablage-System.
+Smart Dashboard API Endpoints für Ablage-System.
 
-REST API + WebSocket fuer:
+REST API + WebSocket für:
 - Echtzeit-KPIs mit Tab-Struktur
 - Rollen-basierte Widget-Filterung
 - Benutzerdefinierte Widget-Layouts
 - Dokument-Fortschritts-Tracking (DHL-Stil)
-- WebSocket fuer Live-Updates
+- WebSocket für Live-Updates
 
 Feinpoliert und durchdacht - Enterprise Smart Dashboard API.
 """
@@ -41,13 +41,13 @@ router = APIRouter(prefix="/smart-dashboard", tags=["Smart Dashboard"])
 
 
 class SaveLayoutRequest(BaseModel):
-    """Request-Schema fuer Layout-Speicherung."""
+    """Request-Schema für Layout-Speicherung."""
     tab: str = Field(..., description="Dashboard-Tab (overview, finance, documents, workflows, system)")
     layout: Dict[str, object] = Field(..., description="Widget-Layout Konfiguration")
 
 
 class SaveLayoutResponse(BaseModel):
-    """Response-Schema fuer Layout-Speicherung."""
+    """Response-Schema für Layout-Speicherung."""
     id: str
     active_tab: str
     message: str
@@ -62,7 +62,7 @@ class SaveLayoutResponse(BaseModel):
     "/kpis",
     response_model=JSONDict,
     summary="Echtzeit-KPIs",
-    description="Aktuelle KPI-Werte fuer das Dashboard",
+    description="Aktuelle KPI-Werte für das Dashboard",
 )
 async def get_kpis(
     current_user: User = Depends(get_current_active_user),
@@ -75,9 +75,9 @@ async def get_kpis(
     **KPIs:**
     - open_invoices_total: Anzahl offener Rechnungen
     - open_invoices_amount: Gesamtbetrag offener Rechnungen (EUR)
-    - overdue_invoices_count: Ueberfaellige Rechnungen
+    - overdue_invoices_count: Überfällige Rechnungen
     - documents_today: Heute verarbeitete Dokumente
-    - ocr_queue_length: OCR-Warteschlangen-Laenge
+    - ocr_queue_length: OCR-Warteschlangen-Länge
     - cashflow_current: Aktueller Cashflow (EUR)
     - active_alerts: Aktive Alerts
 
@@ -116,7 +116,7 @@ async def get_kpis(
     "/tabs/{tab}",
     response_model=JSONDict,
     summary="Tab-spezifische Daten",
-    description="Daten fuer einen spezifischen Dashboard-Tab",
+    description="Daten für einen spezifischen Dashboard-Tab",
 )
 async def get_tab_data(
     tab: str,
@@ -126,11 +126,11 @@ async def get_tab_data(
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
     """
-    Holt Daten fuer einen spezifischen Dashboard-Tab.
+    Holt Daten für einen spezifischen Dashboard-Tab.
 
     **Tabs:**
-    - overview: Uebersicht mit Top-KPIs und letzten Aktivitaeten
-    - finance: Cashflow, offene Rechnungen, Skonto-Moeglichkeiten
+    - overview: Übersicht mit Top-KPIs und letzten Aktivitaeten
+    - finance: Cashflow, offene Rechnungen, Skonto-Möglichkeiten
     - documents: Verarbeitungs-Queue, OCR-Statistiken, Qualitaetsmetriken
     - workflows: Aktive Workflows, Genehmigungen, SLA-Status
     - system: CPU/GPU-Auslastung, Warteschlangen-Tiefen, Fehlerraten
@@ -143,7 +143,7 @@ async def get_tab_data(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Tab: {tab}. Erlaubt: overview, finance, documents, workflows, system",
+            detail=f"Ungültiger Tab: {tab}. Erlaubt: overview, finance, documents, workflows, system",
         )
 
     logger.info(
@@ -186,7 +186,7 @@ async def get_tab_data(
     description="Widget-Liste basierend auf der Benutzerrolle",
 )
 async def get_widgets(
-    role: Optional[str] = Query(None, description="Benutzerrolle (z.B. buchhaltung, geschaeftsfuehrung)"),
+    role: Optional[str] = Query(None, description="Benutzerrolle (z.B. buchhaltung, geschäftsführung)"),
     current_user: User = Depends(get_current_active_user),
 ) -> JSONDict:
     """
@@ -194,7 +194,7 @@ async def get_widgets(
 
     **Rollen:**
     - buchhaltung: Rechnungen, Zahlungslaeufe, Mahnungen, Skonto
-    - geschaeftsfuehrung: KPIs, Cashflow, Anomalien, Trends
+    - geschäftsführung: KPIs, Cashflow, Anomalien, Trends
     - sachbearbeitung: Eingangs-Queue, Dokumente, Aufgaben
 
     Falls keine Rolle angegeben, wird sachbearbeitung als Standard verwendet.
@@ -248,7 +248,7 @@ async def save_layout(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Tab: {request.tab}",
+            detail=f"Ungültiger Tab: {request.tab}",
         )
 
     logger.info(
@@ -291,7 +291,7 @@ async def save_layout(
     "/trends",
     response_model=JSONDict,
     summary="KPI-Trends",
-    description="KPI-Trend-Daten fuer Sparklines und Charts",
+    description="KPI-Trend-Daten für Sparklines und Charts",
 )
 async def get_trends(
     current_user: User = Depends(get_current_active_user),
@@ -302,7 +302,7 @@ async def get_trends(
     Holt KPI-Trend-Daten.
 
     Vergleicht aktuelle KPI-Werte mit den Werten der Vorperiode
-    und liefert Richtung und prozentuale Aenderung.
+    und liefert Richtung und prozentuale Änderung.
 
     **Rollen:** Alle authentifizierten Benutzer
     """
@@ -402,12 +402,12 @@ async def get_batch_progress(
     """
     Holt den Gesamtfortschritt aller aktiven Dokumentenverarbeitungen.
 
-    **Enthaelt:**
+    **Enthält:**
     - Gesamtanzahl Dokumente
     - Abgeschlossene / In Bearbeitung / Fehler
     - Gesamtfortschritt in Prozent
     - Durchschnittliche Verarbeitungszeit
-    - Geschaetzte Restzeit
+    - Geschätzte Restzeit
     - Letzte Fehler
 
     **Rollen:** Alle authentifizierten Benutzer
@@ -446,10 +446,10 @@ async def dashboard_websocket(
     websocket: WebSocket,
     company_id: UUID,
 ) -> None:
-    """WebSocket fuer Echtzeit-KPI-Updates und Document-Progress.
+    """WebSocket für Echtzeit-KPI-Updates und Document-Progress.
 
     Sendet periodische KPI-Updates und reagiert auf
-    Dokument-Fortschritts-Aenderungen via Redis Pub/Sub.
+    Dokument-Fortschritts-Änderungen via Redis Pub/Sub.
 
     Nachrichten-Format:
     {
@@ -505,14 +505,14 @@ async def dashboard_websocket(
                 except Exception:
                     break
 
-            # Auf naechsten Zyklus oder Client-Nachricht warten
+            # Auf nächsten Zyklus oder Client-Nachricht warten
             try:
                 # receive_text mit Timeout, damit wir periodisch updaten
                 message = await asyncio.wait_for(
                     websocket.receive_text(),
                     timeout=float(refresh_interval),
                 )
-                # Client kann refresh_interval aendern
+                # Client kann refresh_interval ändern
                 try:
                     data = json.loads(message)
                     if "refresh_interval" in data:

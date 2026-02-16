@@ -152,7 +152,7 @@ def mask_customer_number(number: str) -> str:
 
 
 def mask_vat_id(vat_id: str) -> str:
-    """Maskiert VAT-ID, zeigt nur Laendercode.
+    """Maskiert VAT-ID, zeigt nur Ländercode.
 
     Args:
         vat_id: Die zu maskierende VAT-ID
@@ -200,7 +200,7 @@ def mask_pii(
         mask_emails: E-Mails maskieren
         mask_phones: Telefonnummern maskieren
         mask_credit_cards: Kreditkartennummern maskieren
-        custom_patterns: Zusaetzliche Patterns
+        custom_patterns: Zusätzliche Patterns
 
     Returns:
         Text mit maskierten PII-Daten
@@ -210,7 +210,7 @@ def mask_pii(
 
     result = text
 
-    # IBAN (vor Kundennummern, da laenger)
+    # IBAN (vor Kundennummern, da länger)
     if mask_ibans:
         result = IBAN_PATTERN.sub(
             lambda m: mask_iban(m.group(1)),
@@ -251,7 +251,7 @@ def mask_pii(
             result
         )
 
-    # Kundennummern (zuletzt, da am haeufigsten false positives)
+    # Kundennummern (zuletzt, da am häufigsten false positives)
     if mask_customer_numbers:
         # Nur wenn Kontext-Hinweis vorhanden
         result = re.sub(
@@ -278,7 +278,7 @@ def mask_dict_values(
 
     Args:
         data: Das zu bereinigende Dict
-        sensitive_keys: Zusaetzliche Keys die immer maskiert werden
+        sensitive_keys: Zusätzliche Keys die immer maskiert werden
         deep: Rekursiv in nested Dicts/Lists
 
     Returns:
@@ -305,7 +305,7 @@ def mask_dict_values(
     for key, value in data.items():
         key_lower = key.lower()
 
-        # Immer vollstaendig maskieren fuer bekannte sensitive Keys
+        # Immer vollständig maskieren für bekannte sensitive Keys
         if key_lower in default_sensitive_keys:
             if isinstance(value, str):
                 result[key] = "***REDACTED***"
@@ -354,8 +354,8 @@ class PIIMaskingLogger:
 
         Args:
             wrapped_logger: Der zu wrappende Logger
-            mask_all_strings: Alle String-Argumente auf PII pruefen
-            sensitive_keys: Zusaetzliche sensitive Keys
+            mask_all_strings: Alle String-Argumente auf PII prüfen
+            sensitive_keys: Zusätzliche sensitive Keys
         """
         self._logger = wrapped_logger
         self._mask_all_strings = mask_all_strings
@@ -389,7 +389,7 @@ class PIIMaskingLogger:
         """Critical log mit PII-Masking."""
         self._logger.critical(event, **self._mask_kwargs(kwargs))
 
-    # Alias fuer Kompatibilitaet
+    # Alias für Kompatibilität
     warn = warning
 
 
@@ -419,7 +419,7 @@ def mask_pii_in_logs(func: Callable[..., object]) -> Callable[..., object]:
     """
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
-        # Maskiere kwargs vor dem Aufruf (fuer logging innerhalb der Funktion)
+        # Maskiere kwargs vor dem Aufruf (für logging innerhalb der Funktion)
         masked_kwargs = mask_dict_values(kwargs)
         return func(*args, **masked_kwargs)
     return wrapper

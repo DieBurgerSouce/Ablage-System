@@ -62,7 +62,7 @@ class CommentTaskStatus(str, Enum):
 class CommentReply(Base):
     """Verschachtelte Antwort auf einen Kommentar-Thread.
 
-    Unterstuetzt beliebig tiefe Verschachtelung ueber parent_reply_id
+    Unterstützt beliebig tiefe Verschachtelung über parent_reply_id
     und @mentions mit Benachrichtigungen.
     """
     __tablename__ = "comment_replies"
@@ -77,7 +77,7 @@ class CommentReply(Base):
         UUID(as_uuid=True),
         ForeignKey("comment_replies.id", ondelete="CASCADE"),
         nullable=True,
-        comment="Eltern-Antwort fuer verschachtelte Antworten",
+        comment="Eltern-Antwort für verschachtelte Antworten",
     )
     author_id = Column(
         UUID(as_uuid=True),
@@ -128,8 +128,8 @@ class CommentReply(Base):
 class CommentTask(Base):
     """Aufgabe die aus einem Kommentar oder einer Antwort erstellt wird.
 
-    Ermoeglicht 'Bitte pruefen' -> erzeugt Task mit Zuweisung,
-    Faelligkeitsdatum und Status-Tracking.
+    Ermöglicht 'Bitte prüfen' -> erzeugt Task mit Zuweisung,
+    Fälligkeitsdatum und Status-Tracking.
     """
     __tablename__ = "comment_tasks"
 

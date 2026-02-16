@@ -1,12 +1,12 @@
 """
 Activity API Endpoints.
 
-Enterprise-level Activity-Tracking fuer Dokumente:
-- Aktivitaetsverlauf eines Dokuments abrufen
+Enterprise-level Activity-Tracking für Dokumente:
+- Aktivitätsverlauf eines Dokuments abrufen
 - Aktivitaeten nach Typ filtern
-- Paginierung fuer grosse Historien
+- Paginierung für grosse Historien
 
-Feinpoliert und durchdacht - Vollstaendige Audit-Trail auf Enterprise-Niveau.
+Feinpoliert und durchdacht - Vollständige Audit-Trail auf Enterprise-Niveau.
 """
 
 import structlog
@@ -53,8 +53,8 @@ def _build_activity_response(activity: DocumentActivity, user: Optional[User]) -
 @router.get(
     "/{document_id}/activity",
     response_model=ActivitiesListResponse,
-    summary="Aktivitaetsverlauf",
-    description="Gibt den Aktivitaetsverlauf eines Dokuments zurueck."
+    summary="Aktivitätsverlauf",
+    description="Gibt den Aktivitätsverlauf eines Dokuments zurück."
 )
 async def list_activities(
     document_id: UUID,
@@ -64,8 +64,8 @@ async def list_activities(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ActivitiesListResponse:
-    """Aktivitaetsverlauf eines Dokuments."""
-    # Pruefe ob Dokument existiert
+    """Aktivitätsverlauf eines Dokuments."""
+    # Prüfe ob Dokument existiert
     doc_result = await db.execute(
         select(Document).where(Document.id == document_id)
     )
@@ -123,7 +123,7 @@ async def list_activities(
     "/{document_id}/activity/view",
     status_code=status.HTTP_201_CREATED,
     summary="View-Aktivitaet loggen",
-    description="Loggt eine View-Aktivitaet fuer ein Dokument."
+    description="Loggt eine View-Aktivitaet für ein Dokument."
 )
 async def log_view_activity(
     document_id: UUID,
@@ -131,7 +131,7 @@ async def log_view_activity(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Loggt View-Aktivitaet."""
-    # Pruefe ob Dokument existiert
+    # Prüfe ob Dokument existiert
     doc_result = await db.execute(
         select(Document).where(Document.id == document_id)
     )
@@ -168,7 +168,7 @@ async def log_view_activity(
     "/{document_id}/activity/download",
     status_code=status.HTTP_201_CREATED,
     summary="Download-Aktivitaet loggen",
-    description="Loggt eine Download-Aktivitaet fuer ein Dokument."
+    description="Loggt eine Download-Aktivitaet für ein Dokument."
 )
 async def log_download_activity(
     document_id: UUID,
@@ -176,7 +176,7 @@ async def log_download_activity(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """Loggt Download-Aktivitaet."""
-    # Pruefe ob Dokument existiert
+    # Prüfe ob Dokument existiert
     doc_result = await db.execute(
         select(Document).where(Document.id == document_id)
     )

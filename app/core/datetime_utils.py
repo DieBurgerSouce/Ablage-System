@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Datetime Utilities - Zentrale Funktionen fuer Zeitstempel.
+"""Datetime Utilities - Zentrale Funktionen für Zeitstempel.
 
 Diese Utilities ersetzen datetime.utcnow() das seit Python 3.12
 deprecated ist. Die korrekte Alternative ist datetime.now(timezone.utc).
@@ -15,10 +15,10 @@ from typing import Optional
 
 
 def utc_now() -> datetime:
-    """Gibt aktuellen UTC-Zeitstempel zurueck.
+    """Gibt aktuellen UTC-Zeitstempel zurück.
 
     Ersetzt das deprecated datetime.utcnow() mit
-    datetime.now(timezone.utc) fuer timezone-aware datetimes.
+    datetime.now(timezone.utc) für timezone-aware datetimes.
 
     Returns:
         datetime: Aktueller UTC-Zeitstempel (timezone-aware)
@@ -33,7 +33,7 @@ def utc_now() -> datetime:
 
 
 def utc_today() -> datetime:
-    """Gibt Mitternacht des heutigen Tages in UTC zurueck.
+    """Gibt Mitternacht des heutigen Tages in UTC zurück.
 
     Returns:
         datetime: Heutiges Datum um 00:00:00 UTC (timezone-aware)
@@ -43,7 +43,7 @@ def utc_today() -> datetime:
 
 
 def utc_timestamp() -> float:
-    """Gibt aktuellen UTC-Zeitstempel als Unix-Timestamp zurueck.
+    """Gibt aktuellen UTC-Zeitstempel als Unix-Timestamp zurück.
 
     Returns:
         float: Sekunden seit Unix Epoch
@@ -52,7 +52,7 @@ def utc_timestamp() -> float:
 
 
 def utc_isoformat() -> str:
-    """Gibt aktuellen UTC-Zeitstempel im ISO-Format zurueck.
+    """Gibt aktuellen UTC-Zeitstempel im ISO-Format zurück.
 
     Returns:
         str: ISO 8601 formatierter Zeitstempel (z.B. "2024-01-15T10:30:00+00:00")

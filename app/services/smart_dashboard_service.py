@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Smart Dashboard Service fuer Ablage-System.
+Smart Dashboard Service für Ablage-System.
 
 Echtzeit-KPIs berechnet aus echten Tabellen:
 - InvoiceTracking: Offene Rechnungen, Betraege
 - Document: Heutige Dokumente, OCR-Stats
-- ProcessingJob: Queue-Laenge, Fehlerraten
+- ProcessingJob: Queue-Länge, Fehlerraten
 - ApprovalRequest: Ausstehende Genehmigungen
 - Alert: Aktive Alerts
 
-Tabs: Uebersicht | Finanzen | Dokumente | Workflows | System
-Jeder Tab hat spezifische Widgets die rollen-abhaengig gefiltert werden.
+Tabs: Übersicht | Finanzen | Dokumente | Workflows | System
+Jeder Tab hat spezifische Widgets die rollen-abhängig gefiltert werden.
 
 Feinpoliert und durchdacht - Enterprise Smart Dashboard.
 """
@@ -52,21 +52,21 @@ ROLE_WIDGETS: Dict[str, List[Dict[str, str]]] = {
         {"key": "open_invoices", "label": "Offene Rechnungen", "type": "kpi_card"},
         {"key": "payment_runs", "label": "Zahlungslaeufe", "type": "table"},
         {"key": "dunning_status", "label": "Mahnungen", "type": "kpi_card"},
-        {"key": "skonto_opportunities", "label": "Skonto-Moeglichkeiten", "type": "table"},
-        {"key": "aging_report", "label": "Faelligkeitsanalyse", "type": "chart_bar"},
+        {"key": "skonto_opportunities", "label": "Skonto-Möglichkeiten", "type": "table"},
+        {"key": "aging_report", "label": "Fälligkeitsanalyse", "type": "chart_bar"},
         {"key": "cashflow_overview", "label": "Cashflow", "type": "chart_line"},
     ],
-    "geschaeftsfuehrung": [
+    "geschäftsführung": [
         {"key": "health_score", "label": "Gesundheits-Score", "type": "kpi_card"},
         {"key": "cashflow_chart", "label": "Cashflow-Entwicklung", "type": "chart_line"},
         {"key": "anomaly_alerts", "label": "Anomalien", "type": "alert_summary"},
         {"key": "revenue_trend", "label": "Umsatz-Trend", "type": "chart_line"},
-        {"key": "kpi_overview", "label": "KPI-Uebersicht", "type": "kpi_card"},
-        {"key": "risk_entities", "label": "Risiko-Entitaeten", "type": "table"},
+        {"key": "kpi_overview", "label": "KPI-Übersicht", "type": "kpi_card"},
+        {"key": "risk_entities", "label": "Risiko-Entitäten", "type": "table"},
     ],
     "sachbearbeitung": [
         {"key": "inbox_queue", "label": "Eingangs-Warteschlange", "type": "queue_status"},
-        {"key": "pending_review", "label": "Zu pruefende Dokumente", "type": "table"},
+        {"key": "pending_review", "label": "Zu prüfende Dokumente", "type": "table"},
         {"key": "my_tasks", "label": "Meine Aufgaben", "type": "table"},
         {"key": "recent_documents", "label": "Letzte Dokumente", "type": "activity_feed"},
         {"key": "ocr_status", "label": "OCR-Status", "type": "progress_list"},
@@ -155,7 +155,7 @@ class SmartDashboardService:
             kpis["offene_rechnungen_anzahl"] = self._default_kpi("offene_rechnungen_anzahl", 0, "count", "Offene Rechnungen")
             kpis["offene_rechnungen_summe"] = self._default_kpi("offene_rechnungen_summe", 0, "EUR", "Offener Betrag")
 
-        # --- OCR Queue Laenge (ProcessingJob queued/processing) ---
+        # --- OCR Queue Länge (ProcessingJob queued/processing) ---
         try:
             queue_stmt = (
                 select(func.count(ProcessingJob.id))
@@ -173,8 +173,8 @@ class SmartDashboardService:
             result = await db.execute(queue_stmt)
             queue_len = result.scalar() or 0
 
-            kpis["ocr_queue_laenge"] = {
-                "kpi_key": "ocr_queue_laenge",
+            kpis["ocr_queue_länge"] = {
+                "kpi_key": "ocr_queue_länge",
                 "current_value": queue_len,
                 "unit": "count",
                 "trend_direction": "stable",
@@ -182,7 +182,7 @@ class SmartDashboardService:
             }
         except Exception as e:
             logger.warning("smart_dashboard.kpi_queue_error", error_type=type(e).__name__)
-            kpis["ocr_queue_laenge"] = self._default_kpi("ocr_queue_laenge", 0, "count", "OCR-Warteschlange")
+            kpis["ocr_queue_länge"] = self._default_kpi("ocr_queue_länge", 0, "count", "OCR-Warteschlange")
 
         # --- Cashflow (bezahlte Rechnungen letzte 30 Tage) ---
         try:
@@ -279,7 +279,7 @@ class SmartDashboardService:
         tab: DashboardTab,
         role: Optional[str] = None,
     ) -> Dict[str, object]:
-        """Daten fuer einen spezifischen Dashboard-Tab."""
+        """Daten für einen spezifischen Dashboard-Tab."""
         logger.info(
             "smart_dashboard.get_tab_data",
             company_id=str(company_id),
@@ -332,7 +332,7 @@ class SmartDashboardService:
             logger.warning("smart_dashboard.finance_status_error", error_type=type(e).__name__)
             status_breakdown = {}
 
-        # Ueberfaellige
+        # Überfällige
         try:
             overdue_stmt = (
                 select(
@@ -358,7 +358,7 @@ class SmartDashboardService:
             logger.warning("smart_dashboard.finance_overdue_error", error_type=type(e).__name__)
             overdue_data = {"count": 0, "total": 0.0}
 
-        # Skonto-Potential (naechste 7 Tage)
+        # Skonto-Potential (nächste 7 Tage)
         try:
             skonto_deadline = now + timedelta(days=7)
             skonto_stmt = (
@@ -405,11 +405,91 @@ class SmartDashboardService:
             logger.warning("smart_dashboard.finance_dunning_error", error_type=type(e).__name__)
             dunning_count = 0
 
+        # Aging Buckets (Fälligkeitsverteilung)
+        aging_buckets: List[Dict[str, object]] = []
+        try:
+            aging_stmt = (
+                select(
+                    case(
+                        (InvoiceTracking.due_date >= now, "nicht_fällig"),
+                        (func.extract("day", now - InvoiceTracking.due_date) <= 30, "1_30_tage"),
+                        (func.extract("day", now - InvoiceTracking.due_date) <= 60, "31_60_tage"),
+                        (func.extract("day", now - InvoiceTracking.due_date) <= 90, "61_90_tage"),
+                        else_="über_90_tage",
+                    ).label("bucket"),
+                    func.count(InvoiceTracking.id).label("count"),
+                    func.coalesce(func.sum(InvoiceTracking.amount), 0.0).label("amount"),
+                )
+                .join(Document, InvoiceTracking.document_id == Document.id)
+                .where(
+                    and_(
+                        Document.company_id == company_id,
+                        Document.deleted_at.is_(None),
+                        InvoiceTracking.paid_at.is_(None),
+                        InvoiceTracking.due_date.isnot(None),
+                        InvoiceTracking.status.in_([
+                            InvoiceStatus.OPEN.value,
+                            InvoiceStatus.SENT.value,
+                            InvoiceStatus.PARTIAL.value,
+                            InvoiceStatus.OVERDUE.value,
+                        ]),
+                    )
+                )
+                .group_by("bucket")
+            )
+            result = await db.execute(aging_stmt)
+            bucket_labels = {
+                "nicht_fällig": "Nicht fällig",
+                "1_30_tage": "1-30 Tage",
+                "31_60_tage": "31-60 Tage",
+                "61_90_tage": "61-90 Tage",
+                "über_90_tage": "Über 90 Tage",
+            }
+            for row in result.all():
+                aging_buckets.append({
+                    "bucket": bucket_labels.get(row.bucket, row.bucket),
+                    "count": row.count or 0,
+                    "amount": round(float(row.amount or 0.0), 2),
+                })
+        except Exception as e:
+            logger.warning("smart_dashboard.finance_aging_error", error_type=type(e).__name__)
+
+        # Dunning Stages (Mahnstufen-Verteilung)
+        dunning_stages: List[Dict[str, object]] = []
+        try:
+            from app.db.models import DunningRecord
+            stages_stmt = (
+                select(
+                    DunningRecord.dunning_level.label("stage"),
+                    func.count(DunningRecord.id).label("count"),
+                )
+                .join(Document, DunningRecord.document_id == Document.id)
+                .where(
+                    and_(
+                        Document.company_id == company_id,
+                        Document.deleted_at.is_(None),
+                        DunningRecord.status.notin_(["closed", "written_off"]),
+                    )
+                )
+                .group_by(DunningRecord.dunning_level)
+                .order_by(DunningRecord.dunning_level)
+            )
+            result = await db.execute(stages_stmt)
+            for row in result.all():
+                dunning_stages.append({
+                    "stage": row.stage or 0,
+                    "count": row.count or 0,
+                })
+        except Exception as e:
+            logger.warning("smart_dashboard.finance_dunning_stages_error", error_type=type(e).__name__)
+
         return {
             "offene_posten": status_breakdown,
-            "ueberfaellige_rechnungen": overdue_data,
-            "skonto_uebersicht": skonto_data,
+            "überfällige_rechnungen": overdue_data,
+            "skonto_übersicht": skonto_data,
             "mahnungen_aktiv": dunning_count,
+            "aging_buckets": aging_buckets,
+            "dunning_stages": dunning_stages,
         }
 
     async def get_documents_tab(
@@ -441,7 +521,7 @@ class SmartDashboardService:
             logger.warning("smart_dashboard.docs_queue_error", error_type=type(e).__name__)
             queue_breakdown = {}
 
-        # Kuerzlich verarbeitet (heute)
+        # Kürzlich verarbeitet (heute)
         try:
             recent_stmt = (
                 select(
@@ -511,7 +591,7 @@ class SmartDashboardService:
         return {
             "ocr_queue": queue_breakdown,
             "ocr_queue_gesamt": sum(queue_breakdown.values()),
-            "kuerzlich_verarbeitet": recently_processed,
+            "kürzlich_verarbeitet": recently_processed,
             "fehlerrate": {"rate_percent": error_rate, "total_jobs": total_jobs, "failed_jobs": failed_jobs, "zeitraum_tage": 7},
             "klassifikation": classification_stats,
         }
@@ -550,7 +630,7 @@ class SmartDashboardService:
 
         return {
             "ausstehende_genehmigungen": {"gesamt": total_pending, "nach_typ": pending_by_type},
-            "ueberfaellige_genehmigungen": overdue_approvals,
+            "überfällige_genehmigungen": overdue_approvals,
         }
 
     async def get_system_tab(
@@ -635,7 +715,7 @@ class SmartDashboardService:
     async def get_user_layout(
         self, db: AsyncSession, user_id: UUID, company_id: UUID, tab: DashboardTab,
     ) -> Dict[str, object]:
-        """Persoenliches Widget-Layout eines Users fuer einen Tab."""
+        """Persoenliches Widget-Layout eines Users für einen Tab."""
         stmt = select(DashboardLayout).where(
             and_(DashboardLayout.user_id == user_id, DashboardLayout.company_id == company_id, DashboardLayout.tab == tab.value)
         )
@@ -735,7 +815,7 @@ class SmartDashboardService:
         return trends
 
     async def get_available_widgets(self, db: AsyncSession, company_id: UUID) -> List[Dict[str, object]]:
-        """Alle verfuegbaren Widget-Typen fuer eine Firma."""
+        """Alle verfügbaren Widget-Typen für eine Firma."""
         stmt = select(DashboardWidget).where(and_(DashboardWidget.company_id == company_id, DashboardWidget.is_active.is_(True))).order_by(DashboardWidget.tab, DashboardWidget.position_y)
         result = await db.execute(stmt)
         widgets = result.scalars().all()
@@ -748,7 +828,7 @@ class SmartDashboardService:
     # =========================================================================
 
     async def _get_tab_widgets(self, db: AsyncSession, company_id: UUID, tab: DashboardTab, role: Optional[str]) -> List[DashboardWidget]:
-        """Widgets fuer einen Tab laden, gefiltert nach Rolle."""
+        """Widgets für einen Tab laden, gefiltert nach Rolle."""
         stmt = (
             select(DashboardWidget)
             .where(and_(DashboardWidget.company_id == company_id, DashboardWidget.tab == tab.value, DashboardWidget.is_active.is_(True)))
@@ -762,7 +842,7 @@ class SmartDashboardService:
         return widgets
 
     async def _get_overview_data(self, db: AsyncSession, company_id: UUID) -> Dict[str, object]:
-        """Uebersicht-Tab: Top-KPIs + letzte Aktivitaeten."""
+        """Übersicht-Tab: Top-KPIs + letzte Aktivitäten."""
         kpis = await self.get_realtime_kpis(db, company_id)
 
         recent_stmt = (
@@ -774,19 +854,19 @@ class SmartDashboardService:
 
         return {
             "kpis": kpis,
-            "letzte_aktivitaeten": recent_progress,
+            "letzte_aktivitäten": recent_progress,
             "zusammenfassung": {
                 "dokumente_heute": kpis.get("dokumente_heute", {}).get("current_value", 0),
                 "offene_rechnungen": kpis.get("offene_rechnungen_anzahl", {}).get("current_value", 0),
                 "offener_betrag": kpis.get("offene_rechnungen_summe", {}).get("current_value", 0),
-                "ocr_warteschlange": kpis.get("ocr_queue_laenge", {}).get("current_value", 0),
+                "ocr_warteschlange": kpis.get("ocr_queue_länge", {}).get("current_value", 0),
                 "genehmigungen": kpis.get("genehmigungen_ausstehend", {}).get("current_value", 0),
             },
         }
 
     @staticmethod
     async def _get_gpu_metrics() -> Dict[str, object]:
-        """GPU-Metriken via PyTorch (falls verfuegbar)."""
+        """GPU-Metriken via PyTorch (falls verfügbar)."""
         try:
             import torch
             if torch.cuda.is_available():
@@ -794,13 +874,13 @@ class SmartDashboardService:
                 total_mem = torch.cuda.get_device_properties(device).total_mem / (1024 ** 3)
                 allocated = torch.cuda.memory_allocated(device) / (1024 ** 3)
                 return {
-                    "verfuegbar": True, "name": torch.cuda.get_device_name(device),
+                    "verfügbar": True, "name": torch.cuda.get_device_name(device),
                     "speicher_gesamt_gb": round(total_mem, 2), "speicher_verwendet_gb": round(allocated, 2),
                     "auslastung_prozent": round((allocated / total_mem) * 100, 1) if total_mem > 0 else 0,
                 }
         except Exception:
             pass
-        return {"verfuegbar": False, "name": None, "speicher_gesamt_gb": 0, "speicher_verwendet_gb": 0, "auslastung_prozent": 0}
+        return {"verfügbar": False, "name": None, "speicher_gesamt_gb": 0, "speicher_verwendet_gb": 0, "auslastung_prozent": 0}
 
     @staticmethod
     def _default_kpi(key: str, value: float, unit: str, label: str) -> Dict[str, object]:
@@ -814,10 +894,10 @@ class SmartDashboardService:
             {"tab": "overview", "widget_type": "kpi_card", "title": "Offene Rechnungen", "data_source": "get_realtime_kpis"},
             {"tab": "overview", "widget_type": "kpi_card", "title": "Dokumente heute", "data_source": "get_realtime_kpis"},
             {"tab": "overview", "widget_type": "kpi_card", "title": "OCR-Warteschlange", "data_source": "get_realtime_kpis"},
-            {"tab": "overview", "widget_type": "activity_feed", "title": "Letzte Aktivitaeten", "data_source": "get_tab_data"},
+            {"tab": "overview", "widget_type": "activity_feed", "title": "Letzte Aktivitäten", "data_source": "get_tab_data"},
             {"tab": "finance", "widget_type": "kpi_card", "title": "Offener Betrag", "data_source": "get_finance_tab"},
-            {"tab": "finance", "widget_type": "chart_bar", "title": "Faelligkeitsanalyse", "data_source": "get_finance_tab"},
-            {"tab": "finance", "widget_type": "table", "title": "Skonto-Moeglichkeiten", "data_source": "get_finance_tab"},
+            {"tab": "finance", "widget_type": "chart_bar", "title": "Fälligkeitsanalyse", "data_source": "get_finance_tab"},
+            {"tab": "finance", "widget_type": "table", "title": "Skonto-Möglichkeiten", "data_source": "get_finance_tab"},
             {"tab": "documents", "widget_type": "queue_status", "title": "Verarbeitungs-Queue", "data_source": "get_documents_tab"},
             {"tab": "documents", "widget_type": "progress_list", "title": "Aktuelle Verarbeitung", "data_source": "get_documents_tab"},
             {"tab": "workflows", "widget_type": "kpi_card", "title": "Ausstehende Genehmigungen", "data_source": "get_workflows_tab"},

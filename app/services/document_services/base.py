@@ -1,6 +1,6 @@
-"""Base-Klasse und gemeinsame Utilities fuer Document Services.
+"""Base-Klasse und gemeinsame Utilities für Document Services.
 
-Enthaelt:
+Enthält:
 - SearchService-Integration (async-safe)
 - Konvertierungsmethoden (Document -> Response)
 - Tag-Verwaltung
@@ -68,7 +68,7 @@ def set_search_service(service: "SearchService") -> None:
 
 
 class DocumentServiceBase:
-    """Basis-Service mit gemeinsamer Funktionalitaet.
+    """Basis-Service mit gemeinsamer Funktionalität.
 
     Stellt Konvertierungsmethoden, Tag-Verwaltung und
     Cache-Invalidierung bereit.
@@ -79,7 +79,7 @@ class DocumentServiceBase:
         db: AsyncSession,
         tag_names: List[str]
     ) -> List[Tag]:
-        """Tags erstellen falls nicht vorhanden, vorhandene zurueckgeben."""
+        """Tags erstellen falls nicht vorhanden, vorhandene zurückgeben."""
         if not tag_names:
             return []
 
@@ -98,7 +98,7 @@ class DocumentServiceBase:
                 db.add(new_tag)
                 tags.append(new_tag)
 
-        await db.flush()  # IDs fuer neue Tags generieren
+        await db.flush()  # IDs für neue Tags generieren
         return tags
 
     async def _update_document_tags(
@@ -175,7 +175,7 @@ class DocumentServiceBase:
         user_id,
         reason: str
     ) -> None:
-        """Such-Cache fuer ein Dokument invalidieren."""
+        """Such-Cache für ein Dokument invalidieren."""
         try:
             search_service = _get_search_service()
             if search_service:
@@ -195,7 +195,7 @@ class DocumentServiceBase:
         user_id,
         reason: str
     ) -> None:
-        """Such-Cache fuer einen Benutzer invalidieren."""
+        """Such-Cache für einen Benutzer invalidieren."""
         try:
             search_service = _get_search_service()
             if search_service:

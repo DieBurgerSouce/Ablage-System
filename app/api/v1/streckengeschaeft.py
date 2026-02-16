@@ -37,7 +37,7 @@ from sqlalchemy import select
 # Higher rate limit for read operations (100/hour)
 check_read_rate_limit = RateLimitDependency(
     requests_per_hour=100,
-    key_prefix="streckengeschaeft_read"
+    key_prefix="streckengeschäft_read"
 )
 
 
@@ -116,7 +116,7 @@ from app.services.streckengeschaeft.exceptions import (
 )
 
 router = APIRouter(
-    prefix="/streckengeschaeft",
+    prefix="/streckengeschäft",
     tags=["Streckengeschäft Detection"],
 )
 
@@ -530,7 +530,7 @@ async def get_proof_documents(
     proofs = await service.get_proof_documents(classification_id)
 
     required_proofs = [p for p in proofs if p.proof_type in
-                      ('invoice', 'cmr', 'gelangensbestaetigung')]
+                      ('invoice', 'cmr', 'gelangensbestätigung')]
     complete_count = sum(1 for p in required_proofs if p.is_present and p.is_complete)
 
     return {
@@ -548,7 +548,7 @@ async def get_proof_documents(
 class LinkProofRequest(BaseModel):
     """Request to link a proof document."""
     document_id: UUID
-    proof_type: str = Field(..., pattern="^(invoice|cmr|gelangensbestaetigung|delivery_note|customs_declaration|vat_id_proof)$")
+    proof_type: str = Field(..., pattern="^(invoice|cmr|gelangensbestätigung|delivery_note|customs_declaration|vat_id_proof)$")
 
 
 @router.post("/classifications/{classification_id}/proofs")
@@ -593,7 +593,7 @@ async def link_proof_document(
         return {
             "success": True,
             "proof_document": result,
-            "message": "Belegnachweis erfolgreich verknuepft",
+            "message": "Belegnachweis erfolgreich verknüpft",
         }
     except ProofDocumentError as e:
         logger.warning("proof_link_error", classification_id=str(classification_id), **safe_error_log(e))
@@ -665,7 +665,7 @@ async def delete_classification(
             user_id=str(current_user.id),
         )
 
-        return {"success": True, "message": "Klassifikation geloescht"}
+        return {"success": True, "message": "Klassifikation gelöscht"}
     except ClassificationNotFoundError as e:
         logger.warning("classification_delete_not_found", classification_id=str(classification_id), **safe_error_log(e))
         raise HTTPException(status_code=404, detail=e.user_message)

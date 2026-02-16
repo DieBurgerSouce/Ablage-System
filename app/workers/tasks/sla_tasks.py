@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
-"""Celery Tasks fuer SLA Monitoring.
+"""Celery Tasks für SLA Monitoring.
 
 4 Tasks:
-- sla.check_all: Prueft alle aktiven Workflows auf SLA-Status (alle 15 Min)
-- sla.send_warning: Sendet SLA-Warnung an zustaendige User
-- sla.escalate: Eskaliert ueberfaellige Workflows
-- sla.generate_report: Generiert taeglichen SLA-Report
+- sla.check_all: Prüft alle aktiven Workflows auf SLA-Status (alle 15 Min)
+- sla.send_warning: Sendet SLA-Warnung an zuständige User
+- sla.escalate: Eskaliert überfällige Workflows
+- sla.generate_report: Generiert täglichen SLA-Report
 
 Celery Beat Integration:
 - sla.check_all: Alle 15 Minuten
-- sla.generate_report: Taeglich 07:00
+- sla.generate_report: Täglich 07:00
 
 Migration: 150_add_workflow_sla_monitoring.py
 """
@@ -46,16 +46,16 @@ def check_all_slas(
     self,
     company_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Prueft SLA-Status aller aktiven Workflows.
+    """Prüft SLA-Status aller aktiven Workflows.
 
     Wird alle 15 Minuten von Celery Beat aufgerufen.
-    Sendet automatisch Alerts bei Ueberschreitung von Schwellwerten.
+    Sendet automatisch Alerts bei Überschreitung von Schwellwerten.
 
     Args:
-        company_id: Optional: Nur fuer diese Firma pruefen
+        company_id: Optional: Nur für diese Firma prüfen
 
     Returns:
-        Statistiken der Pruefung
+        Statistiken der Prüfung
     """
     from app.db.session import async_session_factory
     from app.services.bpmn.sla_service import get_sla_service
@@ -115,13 +115,13 @@ def send_sla_warning(
     warning_level: str,  # info_50, warning_75, high_90
     metadata: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    """Sendet SLA-Warnung an zustaendige Benutzer.
+    """Sendet SLA-Warnung an zuständige Benutzer.
 
     Args:
         instance_id: Workflow-Instanz-ID
         company_id: Mandant-ID
         warning_level: Warnstufe
-        metadata: Zusaetzliche Metadaten
+        metadata: Zusätzliche Metadaten
 
     Returns:
         Ergebnis des Versands
@@ -161,7 +161,7 @@ def send_sla_warning(
                 # Notification senden
                 notification_service = get_notification_service()
 
-                # Prioritaet basierend auf Level
+                # Priorität basierend auf Level
                 priority_map = {
                     "info_50": NotificationPriority.NORMAL,
                     "warning_75": NotificationPriority.HIGH,
@@ -226,13 +226,13 @@ def escalate_overdue_workflows(
     self,
     company_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Eskaliert ueberfaellige Workflows.
+    """Eskaliert überfällige Workflows.
 
     Findet alle Workflows mit SLA-Verletzung und eskaliert sie
-    an die definierten Eskalationsempfaenger.
+    an die definierten Eskalationsempfänger.
 
     Args:
-        company_id: Optional: Nur fuer diese Firma
+        company_id: Optional: Nur für diese Firma
 
     Returns:
         Eskalationsstatistiken
@@ -272,14 +272,14 @@ def escalate_overdue_workflows(
                         no_sla += 1
                         continue
 
-                    # Status pruefen
+                    # Status prüfen
                     status = await sla_service.check_sla_status(
                         instance.id,
                         instance.company_id,
                     )
 
                     if status.get("status") == SLAStatus.BREACHED.value:
-                        # Pruefen ob bereits eskaliert
+                        # Prüfen ob bereits eskaliert
                         alerts_sent = sla_data.get("alerts_sent", [])
                         if "critical_100" in alerts_sent:
                             already_escalated += 1
@@ -340,12 +340,12 @@ def generate_sla_report(
 ) -> Dict[str, Any]:
     """Generiert SLA-Report.
 
-    Erstellt einen zusammenfassenden Bericht ueber SLA-Performance
+    Erstellt einen zusammenfassenden Bericht über SLA-Performance
     und sendet diesen optional per Email an Administratoren.
 
     Args:
-        company_id: Optional: Nur fuer diese Firma
-        time_range_days: Zeitraum fuer den Report
+        company_id: Optional: Nur für diese Firma
+        time_range_days: Zeitraum für den Report
         send_email: Email an Admins senden
 
     Returns:

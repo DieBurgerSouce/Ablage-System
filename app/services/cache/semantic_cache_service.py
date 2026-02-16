@@ -1,10 +1,10 @@
 """Semantic LLM-Cache Service.
 
-Intelligentes Caching fuer LLM-Antworten basierend auf semantischer
-Aehnlichkeit der Prompts. Reduziert LLM-Aufrufe um 40-60%.
+Intelligentes Caching für LLM-Antworten basierend auf semantischer
+Ähnlichkeit der Prompts. Reduziert LLM-Aufrufe um 40-60%.
 
 Features:
-- Embedding-basierte Aehnlichkeitssuche
+- Embedding-basierte Ähnlichkeitssuche
 - Konfigurierbarer Similarity-Threshold
 - TTL-basierte Cache-Invalidierung
 - Hit/Miss-Metriken
@@ -39,9 +39,9 @@ logger = structlog.get_logger(__name__)
 # ============================================================================
 
 # Cache-Konfiguration
-DEFAULT_SIMILARITY_THRESHOLD = 0.92  # Min-Aehnlichkeit fuer Cache-Hit
+DEFAULT_SIMILARITY_THRESHOLD = 0.92  # Min-Ähnlichkeit für Cache-Hit
 DEFAULT_CACHE_TTL = 3600 * 24  # 24 Stunden
-MAX_CACHE_ENTRIES = 10000  # Max Eintraege im Cache
+MAX_CACHE_ENTRIES = 10000  # Max Einträge im Cache
 EMBEDDING_DIMENSION = 1024  # Dimension der Embeddings (e5/jina)
 
 # Redis Keys
@@ -71,7 +71,7 @@ class CacheEntry:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert zu Dictionary fuer Redis."""
+        """Konvertiert zu Dictionary für Redis."""
         return {
             "prompt_hash": self.prompt_hash,
             "prompt": self.prompt,
@@ -135,10 +135,10 @@ class CacheStats:
 
 
 class SemanticCacheService:
-    """Service fuer semantisches LLM-Caching.
+    """Service für semantisches LLM-Caching.
 
-    Cached LLM-Antworten basierend auf semantischer Aehnlichkeit
-    der Prompts. Nutzt Embeddings fuer Similarity-Berechnung.
+    Cached LLM-Antworten basierend auf semantischer Ähnlichkeit
+    der Prompts. Nutzt Embeddings für Similarity-Berechnung.
     """
 
     def __init__(
@@ -150,8 +150,8 @@ class SemanticCacheService:
         """Initialisiert den Service.
 
         Args:
-            similarity_threshold: Min-Aehnlichkeit fuer Cache-Hit (0.0-1.0)
-            cache_ttl: TTL fuer Cache-Eintraege in Sekunden
+            similarity_threshold: Min-Ähnlichkeit für Cache-Hit (0.0-1.0)
+            cache_ttl: TTL für Cache-Einträge in Sekunden
             redis_url: Redis-URL (default: aus Settings)
         """
         self._similarity_threshold = similarity_threshold
@@ -161,15 +161,15 @@ class SemanticCacheService:
         self._embedding_service: Optional[EmbeddingService] = None
         self._initialized = False
 
-        # Lokaler In-Memory Cache fuer Hot-Entries
+        # Lokaler In-Memory Cache für Hot-Entries
         # SECURITY WARNING: Falls dieser Cache aktiviert wird, MUSS company_id im Key
-        # enthalten sein fuer Multi-Tenant Isolation (CWE-639)!
+        # enthalten sein für Multi-Tenant Isolation (CWE-639)!
         # Format: f"{company_id}:{prompt_hash}" statt nur prompt_hash
         self._local_cache: Dict[str, Tuple[List[float], str]] = {}
         self._local_cache_max = 100
 
     async def _get_redis(self) -> Optional[aioredis.Redis]:
-        """Gibt Redis-Verbindung zurueck (Lazy-Loading)."""
+        """Gibt Redis-Verbindung zurück (Lazy-Loading)."""
         if self._redis is None and self._redis_url:
             try:
                 self._redis = aioredis.from_url(
@@ -185,7 +185,7 @@ class SemanticCacheService:
         return self._redis
 
     async def _get_embedding_service(self) -> Optional[EmbeddingService]:
-        """Gibt Embedding-Service zurueck (Lazy-Loading)."""
+        """Gibt Embedding-Service zurück (Lazy-Loading)."""
         if self._embedding_service is None:
             try:
                 from app.services.embedding_service import EmbeddingService
@@ -199,7 +199,7 @@ class SemanticCacheService:
     def _compute_prompt_hash(
         self, prompt: str, model: str = "", company_id: str = ""
     ) -> str:
-        """Berechnet Hash fuer Prompt.
+        """Berechnet Hash für Prompt.
 
         SECURITY: Multi-Tenant Cache Isolation (CWE-639)
         Der Hash beinhaltet company_id um Cross-Tenant LLM Response Leaks zu verhindern.
@@ -207,12 +207,12 @@ class SemanticCacheService:
         Args:
             prompt: Der Prompt
             model: Optionales Modell
-            company_id: Company-ID fuer Multi-Tenant Isolation (PFLICHT fuer Production)
+            company_id: Company-ID für Multi-Tenant Isolation (PFLICHT für Production)
 
         Returns:
             SHA256 Hash
         """
-        # SECURITY: company_id MUSS im Hash enthalten sein fuer Multi-Tenant Isolation
+        # SECURITY: company_id MUSS im Hash enthalten sein für Multi-Tenant Isolation
         content = f"{company_id}:{model}:{prompt}".encode("utf-8")
         return hashlib.sha256(content).hexdigest()
 
@@ -243,7 +243,7 @@ class SemanticCacheService:
         return float(dot_product / (norm1 * norm2))
 
     async def _get_embedding(self, text: str) -> Optional[List[float]]:
-        """Generiert Embedding fuer Text.
+        """Generiert Embedding für Text.
 
         Args:
             text: Zu embedender Text
@@ -269,15 +269,15 @@ class SemanticCacheService:
         model: str = "",
         company_id: str = "",
     ) -> CacheHit:
-        """Sucht nach Cache-Hit basierend auf semantischer Aehnlichkeit.
+        """Sucht nach Cache-Hit basierend auf semantischer Ähnlichkeit.
 
         SECURITY: Multi-Tenant Cache Isolation (CWE-639)
-        company_id MUSS uebergeben werden fuer sichere Multi-Tenant Nutzung.
+        company_id MUSS übergeben werden für sichere Multi-Tenant Nutzung.
 
         Args:
             prompt: Der Prompt
             model: Optionales Modell
-            company_id: Company-ID fuer Multi-Tenant Isolation (PFLICHT fuer Production)
+            company_id: Company-ID für Multi-Tenant Isolation (PFLICHT für Production)
 
         Returns:
             CacheHit mit Ergebnis
@@ -285,7 +285,7 @@ class SemanticCacheService:
         start_time = time.time()
 
         # Exakter Hash-Match zuerst (schnell)
-        # SECURITY: company_id wird im Hash verwendet fuer Multi-Tenant Isolation
+        # SECURITY: company_id wird im Hash verwendet für Multi-Tenant Isolation
         prompt_hash = self._compute_prompt_hash(prompt, model, company_id)
 
         redis = await self._get_redis()
@@ -298,9 +298,9 @@ class SemanticCacheService:
                 if cached:
                     entry = CacheEntry.from_dict(cached)
 
-                    # Ablauf pruefen
+                    # Ablauf prüfen
                     if entry.expires_at > datetime.now(timezone.utc):
-                        # Hit-Count erhoehen
+                        # Hit-Count erhöhen
                         await redis.hincrby(cache_key, "hit_count", 1)
                         await redis.hset(
                             cache_key,
@@ -350,7 +350,7 @@ class SemanticCacheService:
 
                         entry = CacheEntry.from_dict(cached)
 
-                        # Ablauf pruefen
+                        # Ablauf prüfen
                         if entry.expires_at <= datetime.now(timezone.utc):
                             await redis.delete(key)
                             await redis.srem(CACHE_INDEX_KEY, key)
@@ -430,20 +430,20 @@ class SemanticCacheService:
         """Speichert Antwort im Cache.
 
         SECURITY: Multi-Tenant Cache Isolation (CWE-639)
-        company_id MUSS uebergeben werden fuer sichere Multi-Tenant Nutzung.
+        company_id MUSS übergeben werden für sichere Multi-Tenant Nutzung.
 
         Args:
             prompt: Der Prompt
             response: Die LLM-Antwort
             model: Verwendetes Modell
-            company_id: Company-ID fuer Multi-Tenant Isolation (PFLICHT fuer Production)
+            company_id: Company-ID für Multi-Tenant Isolation (PFLICHT für Production)
             ttl: Optionale TTL in Sekunden
             metadata: Optionale Metadaten
 
         Returns:
             True bei Erfolg
         """
-        # SECURITY: company_id wird im Hash verwendet fuer Multi-Tenant Isolation
+        # SECURITY: company_id wird im Hash verwendet für Multi-Tenant Isolation
         prompt_hash = self._compute_prompt_hash(prompt, model, company_id)
         prompt_embedding = await self._get_embedding(prompt)
 
@@ -496,17 +496,17 @@ class SemanticCacheService:
         """Invalidiert Cache-Eintrag.
 
         SECURITY: Multi-Tenant Cache Isolation (CWE-639)
-        company_id MUSS uebergeben werden fuer sichere Multi-Tenant Nutzung.
+        company_id MUSS übergeben werden für sichere Multi-Tenant Nutzung.
 
         Args:
             prompt: Der Prompt
             model: Verwendetes Modell
-            company_id: Company-ID fuer Multi-Tenant Isolation (PFLICHT fuer Production)
+            company_id: Company-ID für Multi-Tenant Isolation (PFLICHT für Production)
 
         Returns:
-            True wenn Eintrag gefunden und geloescht
+            True wenn Eintrag gefunden und gelöscht
         """
-        # SECURITY: company_id wird im Hash verwendet fuer Multi-Tenant Isolation
+        # SECURITY: company_id wird im Hash verwendet für Multi-Tenant Isolation
         prompt_hash = self._compute_prompt_hash(prompt, model, company_id)
         cache_key = f"{CACHE_KEY_PREFIX}:{prompt_hash}"
 
@@ -522,10 +522,10 @@ class SemanticCacheService:
         return False
 
     async def clear(self) -> int:
-        """Loescht alle Cache-Eintraege.
+        """Löscht alle Cache-Einträge.
 
         Returns:
-            Anzahl geloeschter Eintraege
+            Anzahl gelöschter Einträge
         """
         redis = await self._get_redis()
         if not redis:
@@ -536,13 +536,13 @@ class SemanticCacheService:
             keys = await redis.smembers(CACHE_INDEX_KEY)
 
             if keys:
-                # Keys loeschen
+                # Keys löschen
                 await redis.delete(*keys)
 
-            # Index loeschen
+            # Index löschen
             await redis.delete(CACHE_INDEX_KEY)
 
-            # Stats zuruecksetzen
+            # Stats zurücksetzen
             await redis.delete(CACHE_STATS_KEY)
 
             logger.info("semantic_cache_cleared", entries_deleted=len(keys))
@@ -571,7 +571,7 @@ class SemanticCacheService:
             if event == "hit":
                 await redis.hincrby(CACHE_STATS_KEY, "hits", 1)
                 if similarity > 0:
-                    # Rolling Average fuer Similarity
+                    # Rolling Average für Similarity
                     current_avg = await redis.hget(CACHE_STATS_KEY, "avg_similarity")
                     current_count = await redis.hget(CACHE_STATS_KEY, "hits")
                     if current_avg and current_count:
@@ -588,7 +588,7 @@ class SemanticCacheService:
             logger.debug("stats_update_error", **safe_error_log(e))
 
     async def get_stats(self) -> CacheStats:
-        """Gibt Cache-Statistiken zurueck.
+        """Gibt Cache-Statistiken zurück.
 
         Returns:
             CacheStats-Objekt
@@ -605,10 +605,10 @@ class SemanticCacheService:
             misses = int(stats_raw.get("misses", 0))
             total = hits + misses
 
-            # Anzahl Eintraege
+            # Anzahl Einträge
             entry_count = await redis.scard(CACHE_INDEX_KEY)
 
-            # Geschaetzte Token-Ersparnis (ca. 1000 Tokens pro Hit)
+            # Geschätzte Token-Ersparnis (ca. 1000 Tokens pro Hit)
             estimated_savings = hits * 1000
 
             return CacheStats(
@@ -625,7 +625,7 @@ class SemanticCacheService:
             return CacheStats()
 
     async def close(self) -> None:
-        """Schliesst Verbindungen."""
+        """Schließt Verbindungen."""
         if self._redis:
             await self._redis.close()
             self._redis = None
@@ -640,7 +640,7 @@ _semantic_cache_service_lock = threading.Lock()
 
 
 def get_semantic_cache_service() -> SemanticCacheService:
-    """Gibt die Singleton-Instanz des Semantic Cache Service zurueck.
+    """Gibt die Singleton-Instanz des Semantic Cache Service zurück.
 
     Returns:
         SemanticCacheService Singleton-Instanz

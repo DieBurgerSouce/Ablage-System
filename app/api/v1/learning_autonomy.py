@@ -2,9 +2,9 @@
 """
 Learning Autonomy API endpoints for Ablage-System.
 
-Zentrale API fuer lernende Autonomie:
+Zentrale API für lernende Autonomie:
 - Autonomie-Level pro User x Aktionstyp abrufen
-- Bestaetigungen, Ablehnungen, Korrekturen aufzeichnen
+- Bestätigungen, Ablehnungen, Korrekturen aufzeichnen
 - Autonomie-Level manuell setzen
 - Vertrauenskurve abrufen
 
@@ -165,7 +165,7 @@ async def get_autonomy_level(
     company_id: UUID = Depends(get_current_company_id),
 ) -> Dict:
     """
-    Autonomie-Level fuer eine bestimmte Aktion abrufen.
+    Autonomie-Level für eine bestimmte Aktion abrufen.
 
     Args:
         action_type: Aktionstyp (z.B. "kategorisierung", "ordner_zuweisung")
@@ -196,15 +196,15 @@ async def record_confirmation(
     company_id: UUID = Depends(get_current_company_id),
 ) -> ActionResultResponse:
     """
-    Bestaetigung eines Vorschlags aufzeichnen.
+    Bestätigung eines Vorschlags aufzeichnen.
 
-    Erhoeht den Streak und prueft ob ein Level-Upgrade faellig ist.
+    Erhöht den Streak und prüft ob ein Level-Upgrade fällig ist.
 
     Args:
-        request: Bestaetigungs-Details
+        request: Bestätigungs-Details
 
     Returns:
-        Ergebnis der Bestaetigung mit Level-Aenderungs-Status
+        Ergebnis der Bestätigung mit Level-Änderungs-Status
     """
     service: LearningAutonomyService = get_learning_autonomy_service()
 
@@ -233,13 +233,13 @@ async def record_rejection(
     """
     Ablehnung eines Vorschlags aufzeichnen.
 
-    Setzt den Streak zurueck und prueft ob ein Level-Downgrade noetig ist.
+    Setzt den Streak zurück und prüft ob ein Level-Downgrade nötig ist.
 
     Args:
         request: Ablehnungs-Details
 
     Returns:
-        Ergebnis der Ablehnung mit Level-Aenderungs-Status
+        Ergebnis der Ablehnung mit Level-Änderungs-Status
     """
     service: LearningAutonomyService = get_learning_autonomy_service()
 
@@ -267,7 +267,7 @@ async def record_correction(
     """
     Korrektur eines Vorschlags aufzeichnen.
 
-    Zaehlt als Teilbestaetigung (Richtung stimmte, Details nicht).
+    Zaehlt als Teilbestätigung (Richtung stimmte, Details nicht).
 
     Args:
         request: Korrektur-Details
@@ -300,15 +300,15 @@ async def record_undo(
     company_id: UUID = Depends(get_current_company_id),
 ) -> ActionResultResponse:
     """
-    Undo einer automatischen Ausfuehrung aufzeichnen.
+    Undo einer automatischen Ausführung aufzeichnen.
 
-    Zu viele Undos fuehren zu Level-Downgrade.
+    Zu viele Undos führen zu Level-Downgrade.
 
     Args:
         request: Undo-Details
 
     Returns:
-        Ergebnis des Undos mit Level-Aenderungs-Status
+        Ergebnis des Undos mit Level-Änderungs-Status
     """
     service: LearningAutonomyService = get_learning_autonomy_service()
 
@@ -334,10 +334,10 @@ async def set_level_manually(
     company_id: UUID = Depends(get_current_company_id),
 ) -> SetLevelResponse:
     """
-    Autonomie-Level fuer eine Aktion manuell setzen.
+    Autonomie-Level für eine Aktion manuell setzen.
 
-    Erlaubt dem User das Level fuer eine spezifische Aktion
-    manuell zu ueberschreiben (z.B. sofort auf full_auto setzen).
+    Erlaubt dem User das Level für eine spezifische Aktion
+    manuell zu überschreiben (z.B. sofort auf full_auto setzen).
 
     Args:
         action_type: Aktionstyp
@@ -370,9 +370,9 @@ async def get_trust_curve(
     company_id: UUID = Depends(get_current_company_id),
 ) -> TrustCurveResponse:
     """
-    Vertrauenskurve fuer eine Aktion abrufen.
+    Vertrauenskurve für eine Aktion abrufen.
 
-    Liefert eine Zeitreihe aller Entscheidungen fuer die Visualisierung
+    Liefert eine Zeitreihe aller Entscheidungen für die Visualisierung
     des Lernfortschritts und der Vertrauensentwicklung.
 
     Args:

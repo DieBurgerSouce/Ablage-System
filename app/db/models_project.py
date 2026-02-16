@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Project Management Models fuer Ablage-System (Vision 2026).
+Project Management Models für Ablage-System (Vision 2026).
 
 Projekt-/Kostenstellen-Erweiterung mit:
-- Project Model fuer Projektmanagement
-- ProjectMember fuer Team-Zuordnung
-- DocumentProjectAssignment fuer Dokument-Projekt-Verknuepfung
+- Project Model für Projektmanagement
+- ProjectMember für Team-Zuordnung
+- DocumentProjectAssignment für Dokument-Projekt-Verknüpfung
 - KI-basierte Auto-Zuweisung basierend auf Kunden/Entity-Patterns
 
 Phase 1 der Vision 2026 Feature-Roadmap (Q1 2026).
@@ -56,7 +56,7 @@ class ProjectStatus(str, Enum):
 
 
 class ProjectPriority(str, Enum):
-    """Projekt-Prioritaet."""
+    """Projekt-Priorität."""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -88,17 +88,17 @@ class DocumentAssignmentType(str, Enum):
 
 
 class Project(Base):
-    """Projekt fuer Dokument-Organisation und Kostenzuordnung.
+    """Projekt für Dokument-Organisation und Kostenzuordnung.
 
     Multi-Tenant Support:
     - company_id: Firmenzugehoerigkeit (immer erforderlich)
 
     Kostenstellen-Integration:
-    - kostenstelle_id: Optionale Verknuepfung zur Kostenstelle fuer Budgetierung
+    - kostenstelle_id: Optionale Verknüpfung zur Kostenstelle für Budgetierung
 
     KI-Features:
     - Auto-Zuweisung von Dokumenten basierend auf Kunden/Entity-Patterns
-    - Confidence-basierte Vorschlaege
+    - Confidence-basierte Vorschläge
     """
     __tablename__ = "projects"
 
@@ -247,12 +247,12 @@ class Project(Base):
 
 
 class ProjectMember(Base):
-    """Projektmitglied - Verknuepfung zwischen User und Project.
+    """Projektmitglied - Verknüpfung zwischen User und Project.
 
-    Unterstuetzt:
+    Unterstützt:
     - Rollen-basierte Berechtigungen
     - Zeitlich begrenzte Mitgliedschaft
-    - Prozentuale Allokation (fuer Matrix-Teams)
+    - Prozentuale Allokation (für Matrix-Teams)
     """
     __tablename__ = "project_members"
 
@@ -329,9 +329,9 @@ class ProjectMember(Base):
 
 
 class DocumentProjectAssignment(Base):
-    """Verknuepfung zwischen Dokument und Projekt.
+    """Verknüpfung zwischen Dokument und Projekt.
 
-    Unterstuetzt:
+    Unterstützt:
     - Mehrfach-Zuordnung (ein Dokument kann in mehreren Projekten sein)
     - Auto-Zuweisung durch KI mit Confidence-Score
     - Typisierte Zuordnung (Rechnung, Vertrag, etc.)
@@ -428,10 +428,10 @@ class DocumentProjectAssignment(Base):
 
 
 class ProjectDocumentChain(Base):
-    """Verknuepfung zwischen Projekt und Document Chain.
+    """Verknüpfung zwischen Projekt und Document Chain.
 
     Vision 2026+ Feature #3: Projekt-Kontext (Multi-Chain Bundling)
-    Ermoeglicht die Buendelung mehrerer Document Chains zu einem Projekt.
+    Ermöglicht die Buendelung mehrerer Document Chains zu einem Projekt.
 
     Features:
     - Mehrere Chains pro Projekt

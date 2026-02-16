@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Supplier Risk Monitor Service fuer Ablage-System.
+Supplier Risk Monitor Service für Ablage-System.
 
-Ueberwacht Lieferanten-Risiken durch:
+Überwacht Lieferanten-Risiken durch:
 - Integration mit Handelsregister
-- Insolvenz-Fruehwarnung
+- Insolvenz-Frühwarnung
 - Bonitaetsbewertung
 - Lieferanten-Verhaltensmuster
 
@@ -33,13 +33,13 @@ logger = logging.getLogger(__name__)
 
 supplier_risk_checks = Counter(
     "supplier_risk_checks_total",
-    "Anzahl der Lieferanten-Risikopruefungen",
+    "Anzahl der Lieferanten-Risikoprüfungen",
     ["company_id", "risk_level"]
 )
 
 supplier_risk_latency = Histogram(
     "supplier_risk_check_seconds",
-    "Latenz der Risikopruefung",
+    "Latenz der Risikoprüfung",
     buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
 )
 
@@ -68,19 +68,19 @@ class RiskFactorType(str, Enum):
     """Arten von Risikofaktoren."""
     INSOLVENCY = "insolvency"          # Insolvenzverfahren
     PAYMENT_HISTORY = "payment_history"  # Zahlungsverhalten
-    PAYMENT_DELAY = "payment_delay"      # Zahlungsverzoegerung
+    PAYMENT_DELAY = "payment_delay"      # Zahlungsverzögerung
     FINANCIAL_HEALTH = "financial_health"  # Finanzielle Gesundheit
-    MANAGEMENT_CHANGE = "management_change"  # Geschaeftsfuehrerwechsel
-    ADDRESS_CHANGE = "address_change"    # Adressaenderung
-    LEGAL_FORM_CHANGE = "legal_form_change"  # Rechtsformaenderung
-    DEPENDENCY = "dependency"           # Abhaengigkeitsrisiko
+    MANAGEMENT_CHANGE = "management_change"  # Geschäftsführerwechsel
+    ADDRESS_CHANGE = "address_change"    # Adressänderung
+    LEGAL_FORM_CHANGE = "legal_form_change"  # Rechtsformänderung
+    DEPENDENCY = "dependency"           # Abhängigkeitsrisiko
     MARKET_EXPOSURE = "market_exposure"  # Marktexposition
     LOW_VOLUME = "low_volume"           # Geringes Handelsvolumen
     HIGH_RISK_COUNTRY = "high_risk_country"  # Hochrisikoland
 
 
 class DataSource(str, Enum):
-    """Datenquellen fuer Risikobewertung."""
+    """Datenquellen für Risikobewertung."""
     HANDELSREGISTER = "handelsregister"
     INSOLVENZREGISTER = "insolvenzregister"
     CREDITREFORM = "creditreform"
@@ -109,7 +109,7 @@ class RiskFactor:
 
 @dataclass
 class SupplierRiskProfile:
-    """Vollstaendiges Risikoprofil eines Lieferanten."""
+    """Vollständiges Risikoprofil eines Lieferanten."""
     entity_id: UUID
     company_id: UUID
     supplier_name: str
@@ -135,7 +135,7 @@ class HandelsregisterInfo:
     registered_capital: Optional[float]
     registration_date: Optional[datetime]
     last_update: datetime
-    status: str  # aktiv, geloescht, in_liquidation
+    status: str  # aktiv, gelöscht, in_liquidation
     changes_detected: List[Dict[str, Any]]
 
 
@@ -161,13 +161,13 @@ class MonitoringAlert:
 
 class SupplierRiskMonitor:
     """
-    Ueberwacht Lieferanten-Risiken in Echtzeit.
+    Überwacht Lieferanten-Risiken in Echtzeit.
 
     Features:
     - Handelsregister-Integration
-    - Insolvenz-Fruehwarnung
+    - Insolvenz-Frühwarnung
     - Bonitaetsbewertung
-    - Aenderungs-Monitoring
+    - Änderungs-Monitoring
     """
 
     # Singleton instance
@@ -228,7 +228,7 @@ class SupplierRiskMonitor:
         Bewertet das Risiko eines Lieferanten.
 
         Args:
-            entity_id: ID des Geschaeftspartners
+            entity_id: ID des Geschäftspartners
             company_id: ID des Unternehmens
             supplier_name: Name des Lieferanten
             handelsregister_number: Handelsregisternummer (optional)
@@ -250,7 +250,7 @@ class SupplierRiskMonitor:
             if internal_factors:
                 data_sources.append(DataSource.INTERNAL_HISTORY)
 
-            # 2. Handelsregister pruefen (wenn Nummer vorhanden)
+            # 2. Handelsregister prüfen (wenn Nummer vorhanden)
             if handelsregister_number:
                 hr_factors = await self._check_handelsregister(
                     handelsregister_number, supplier_name
@@ -259,7 +259,7 @@ class SupplierRiskMonitor:
                 if hr_factors:
                     data_sources.append(DataSource.HANDELSREGISTER)
 
-            # 3. Insolvenzregister pruefen
+            # 3. Insolvenzregister prüfen
             insolvency_factors = await self._check_insolvency_register(
                 supplier_name, handelsregister_number
             )
@@ -267,7 +267,7 @@ class SupplierRiskMonitor:
             if insolvency_factors:
                 data_sources.append(DataSource.INSOLVENZREGISTER)
 
-            # 4. Abhaengigkeitsanalyse
+            # 4. Abhängigkeitsanalyse
             dependency_factors = await self._analyze_dependency(
                 entity_id, company_id
             )
@@ -277,7 +277,7 @@ class SupplierRiskMonitor:
             risk_score = self._calculate_risk_score(risk_factors)
             overall_level = self._score_to_level(risk_score)
 
-            # Naechste Pruefung berechnen
+            # Nächste Prüfung berechnen
             next_check = now + self.check_intervals[overall_level]
 
             # Empfehlungen generieren
@@ -331,7 +331,7 @@ class SupplierRiskMonitor:
 
         try:
             async with async_session_factory() as db:
-                # Hole Rechnungsstatistiken fuer diesen Lieferanten
+                # Hole Rechnungsstatistiken für diesen Lieferanten
                 stats_query = select(
                     func.count(InvoiceTracking.id).label("total_invoices"),
                     func.sum(
@@ -369,11 +369,11 @@ class SupplierRiskMonitor:
 
                     # Hohe Mahnquote
                     overdue_rate = overdue / total if total > 0 else 0
-                    if overdue_rate > 0.3:  # >30% ueberfaellig
+                    if overdue_rate > 0.3:  # >30% überfällig
                         factors.append(RiskFactor(
                             factor_type=RiskFactorType.PAYMENT_DELAY,
                             severity=SupplierRiskLevel.HIGH if overdue_rate > 0.5 else SupplierRiskLevel.MEDIUM,
-                            description=f"Hohe Mahnquote: {overdue_rate*100:.1f}% der Rechnungen ueberfaellig",
+                            description=f"Hohe Mahnquote: {overdue_rate*100:.1f}% der Rechnungen überfällig",
                             source=DataSource.INTERNAL,
                             detected_at=now,
                             confidence=0.95,
@@ -384,19 +384,19 @@ class SupplierRiskMonitor:
                             },
                         ))
 
-                    # Lange Zahlungsverzoegerung
+                    # Lange Zahlungsverzögerung
                     if avg_delay > 30:
                         factors.append(RiskFactor(
                             factor_type=RiskFactorType.PAYMENT_DELAY,
                             severity=SupplierRiskLevel.HIGH if avg_delay > 60 else SupplierRiskLevel.MEDIUM,
-                            description=f"Durchschnittliche Zahlungsverzoegerung: {avg_delay:.0f} Tage",
+                            description=f"Durchschnittliche Zahlungsverzögerung: {avg_delay:.0f} Tage",
                             source=DataSource.INTERNAL,
                             detected_at=now,
                             confidence=0.90,
                             raw_data={"avg_delay_days": round(avg_delay, 1)},
                         ))
 
-                    # Geringes Volumen (moeglicher Abbruch der Geschaeftsbeziehung)
+                    # Geringes Volumen (möglicher Abbruch der Geschäftsbeziehung)
                     if volume < 1000 and total >= 3:  # Wenig Umsatz trotz mehrerer Rechnungen
                         factors.append(RiskFactor(
                             factor_type=RiskFactorType.LOW_VOLUME,
@@ -428,7 +428,7 @@ class SupplierRiskMonitor:
         registry_number: str,
         company_name: str,
     ) -> List[RiskFactor]:
-        """Prueft Handelsregister auf Aenderungen."""
+        """Prüft Handelsregister auf Änderungen."""
         factors: List[RiskFactor] = []
         now = datetime.now(timezone.utc)
 
@@ -438,7 +438,7 @@ class SupplierRiskMonitor:
 
             handelsregister_queries.labels(status="success").inc()
 
-            # Placeholder fuer zukuenftige Integration
+            # Placeholder für zukünftige Integration
             # hr_info = await handelsregister_service.query(registry_number)
             #
             # if hr_info.status == "in_liquidation":
@@ -470,12 +470,12 @@ class SupplierRiskMonitor:
         company_name: str,
         registry_number: Optional[str],
     ) -> List[RiskFactor]:
-        """Prueft Insolvenzregister."""
+        """Prüft Insolvenzregister."""
         factors: List[RiskFactor] = []
         now = datetime.now(timezone.utc)
 
         # Hier wuerde die echte Insolvenzregister-API aufgerufen
-        # Placeholder fuer zukuenftige Integration
+        # Placeholder für zukünftige Integration
 
         return factors
 
@@ -484,20 +484,20 @@ class SupplierRiskMonitor:
         entity_id: UUID,
         company_id: UUID,
     ) -> List[RiskFactor]:
-        """Analysiert Abhaengigkeit von diesem Lieferanten."""
+        """Analysiert Abhängigkeit von diesem Lieferanten."""
         factors: List[RiskFactor] = []
         now = datetime.now(timezone.utc)
 
         # Analyse: Anteil dieses Lieferanten am Gesamteinkauf
-        # Wenn > 30%: Abhaengigkeitsrisiko
+        # Wenn > 30%: Abhängigkeitsrisiko
 
-        # Placeholder fuer zukuenftige Integration
+        # Placeholder für zukünftige Integration
         # purchase_share = await self._calculate_purchase_share(entity_id, company_id)
         # if purchase_share > 0.30:
         #     factors.append(RiskFactor(
         #         factor_type=RiskFactorType.DEPENDENCY,
         #         severity=SupplierRiskLevel.MEDIUM,
-        #         description=f"Lieferantenabhaengigkeit: {purchase_share*100:.1f}% des Einkaufs",
+        #         description=f"Lieferantenabhängigkeit: {purchase_share*100:.1f}% des Einkaufs",
         #         source=DataSource.INTERNAL_HISTORY,
         #         detected_at=now,
         #         details={"purchase_share": purchase_share},
@@ -554,7 +554,7 @@ class SupplierRiskMonitor:
 
         if overall_level == SupplierRiskLevel.CRITICAL:
             recommendations.append(
-                "Sofortige Ueberpruefung der Lieferantenbeziehung empfohlen"
+                "Sofortige Überprüfung der Lieferantenbeziehung empfohlen"
             )
             recommendations.append(
                 "Alternative Lieferanten identifizieren"
@@ -562,10 +562,10 @@ class SupplierRiskMonitor:
 
         if overall_level in [SupplierRiskLevel.HIGH, SupplierRiskLevel.CRITICAL]:
             recommendations.append(
-                "Zahlungsbedingungen ueberpruefen (ggf. Vorkasse)"
+                "Zahlungsbedingungen überprüfen (ggf. Vorkasse)"
             )
             recommendations.append(
-                "Liefervertraege auf Kuendigungsklauseln pruefen"
+                "Lieferverträge auf Kündigungsklauseln prüfen"
             )
 
         for factor in factors:
@@ -579,7 +579,7 @@ class SupplierRiskMonitor:
                 )
             elif factor.factor_type == RiskFactorType.MANAGEMENT_CHANGE:
                 recommendations.append(
-                    "Kontakt zur neuen Geschaeftsfuehrung aufnehmen"
+                    "Kontakt zur neuen Geschäftsführung aufnehmen"
                 )
 
         return list(set(recommendations))  # Duplikate entfernen
@@ -589,13 +589,13 @@ class SupplierRiskMonitor:
         company_id: UUID,
     ) -> List[MonitoringAlert]:
         """
-        Ueberwacht alle Lieferanten eines Unternehmens.
+        Überwacht alle Lieferanten eines Unternehmens.
 
         Args:
             company_id: ID des Unternehmens
 
         Returns:
-            Liste von Alerts fuer kritische Aenderungen
+            Liste von Alerts für kritische Änderungen
         """
         alerts: List[MonitoringAlert] = []
         now = datetime.now(timezone.utc)
@@ -631,7 +631,7 @@ class SupplierRiskMonitor:
         Returns:
             Liste der Hochrisiko-Lieferanten mit Details
         """
-        # Placeholder fuer zukuenftige Datenbankintegration
+        # Placeholder für zukünftige Datenbankintegration
         high_risk_suppliers: List[Dict[str, Any]] = []
 
         logger.info(
@@ -648,7 +648,7 @@ class SupplierRiskMonitor:
         profiles: List[SupplierRiskProfile],
     ) -> Dict[str, Any]:
         """
-        Erstellt Zusammenfassung ueber alle Lieferanten-Risiken.
+        Erstellt Zusammenfassung über alle Lieferanten-Risiken.
 
         Args:
             profiles: Liste der Risikoprofile
@@ -698,5 +698,5 @@ class SupplierRiskMonitor:
 
 
 def get_supplier_risk_monitor() -> SupplierRiskMonitor:
-    """Gibt die Singleton-Instanz des SupplierRiskMonitor zurueck."""
+    """Gibt die Singleton-Instanz des SupplierRiskMonitor zurück."""
     return SupplierRiskMonitor()

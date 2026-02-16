@@ -2,8 +2,8 @@
 """
 Process Event Tracker Service.
 
-Trackt alle Ereignisse im Dokumenten-Lebenszyklus fuer Process Mining.
-Unterstuetzt:
+Trackt alle Ereignisse im Dokumenten-Lebenszyklus für Process Mining.
+Unterstützt:
 - Event-Erfassung mit Timing
 - Event-Verkettung (previous_event)
 - Automatische Dauer-Berechnung
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 class ProcessEventTracker:
     """
-    Service fuer die Erfassung von Prozess-Ereignissen.
+    Service für die Erfassung von Prozess-Ereignissen.
 
     Trackt den gesamten Dokumenten-Lebenszyklus:
     Upload → OCR → Klassifikation → Validierung → Freigabe → Archiv
@@ -45,7 +45,7 @@ class ProcessEventTracker:
         Initialisiere Tracker.
 
         Args:
-            db: AsyncSession fuer Datenbankzugriff
+            db: AsyncSession für Datenbankzugriff
         """
         self.db = db
         self._timing_context: Dict[str, float] = {}
@@ -80,16 +80,16 @@ class ProcessEventTracker:
             duration_ms: Dauer der Aktion in ms
             success: War die Aktion erfolgreich
             error_message: Fehlermeldung bei Misserfolg
-            metadata: Zusaetzliche Daten
+            metadata: Zusätzliche Daten
             event_subtype: Untertyp des Events
             process_instance_id: ID der Prozessinstanz (XES)
-            activity_name: Name der Aktivitaet (XES)
+            activity_name: Name der Aktivität (XES)
             resource: Bearbeiter/System (XES)
 
         Returns:
             Das erstellte ProcessEvent
         """
-        # Finde vorheriges Event fuer dieses Dokument
+        # Finde vorheriges Event für dieses Dokument
         previous_event = None
         time_since_previous_ms = None
 
@@ -138,7 +138,7 @@ class ProcessEventTracker:
         document_id: UUID,
         company_id: UUID,
     ) -> Optional[ProcessEvent]:
-        """Hole letztes Event fuer ein Dokument."""
+        """Hole letztes Event für ein Dokument."""
         result = await self.db.execute(
             select(ProcessEvent)
             .where(
@@ -165,7 +165,7 @@ class ProcessEventTracker:
         **kwargs,
     ):
         """
-        Context Manager fuer automatisches Timing von Events.
+        Context Manager für automatisches Timing von Events.
 
         Usage:
             async with tracker.timed_event(company_id, EventType.OCR_STARTED, doc_id):
@@ -179,7 +179,7 @@ class ProcessEventTracker:
             entity_id: Optional Entity-Referenz
             actor_type: Wer hat die Aktion ausgeloest
             actor_id: User-ID wenn manuell
-            metadata: Zusaetzliche Daten
+            metadata: Zusätzliche Daten
             **kwargs: Weitere Event-Parameter
         """
         start_time = time.perf_counter()
@@ -391,7 +391,7 @@ class ProcessEventTracker:
         strategy: str,
         is_unlink: bool = False,
     ) -> ProcessEvent:
-        """Tracke Entity-Verknuepfung."""
+        """Tracke Entity-Verknüpfung."""
         event_type = EventType.ENTITY_UNLINKED if is_unlink else EventType.ENTITY_LINKED
 
         return await self.track_event(
@@ -434,7 +434,7 @@ class ProcessEventTracker:
         limit: int = 100,
     ) -> List[ProcessEvent]:
         """
-        Hole Event-Historie fuer ein Dokument.
+        Hole Event-Historie für ein Dokument.
 
         Args:
             document_id: Dokument-ID
@@ -463,7 +463,7 @@ class ProcessEventTracker:
         company_id: UUID,
     ) -> Dict[str, Any]:
         """
-        Erstelle Timeline-Ansicht fuer ein Dokument.
+        Erstelle Timeline-Ansicht für ein Dokument.
 
         Args:
             document_id: Dokument-ID
@@ -518,10 +518,10 @@ class ProcessEventTracker:
 
         Args:
             company_id: Mandanten-ID
-            days: Anzahl Tage zurueck
+            days: Anzahl Tage zurück
 
         Returns:
-            Statistiken ueber Events
+            Statistiken über Events
         """
         since = datetime.utcnow() - timedelta(days=days)
 

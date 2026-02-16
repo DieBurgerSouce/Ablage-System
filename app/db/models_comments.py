@@ -2,8 +2,8 @@
 Comment Enhancement satellite model.
 
 Erweitert das bestehende DocumentComment-System um:
-- PDF-Markup Positionierung (Seite, x, y, Breite, Hoehe)
-- CommentSuggestion: Vorgeschlagene Aenderungen
+- PDF-Markup Positionierung (Seite, x, y, Breite, Höhe)
+- CommentSuggestion: Vorgeschlagene Änderungen
 - CommentThread: Explizite Thread-Verwaltung mit Status
 - CommentAnchor: Verschiedene Anker-Typen (Text, Region, Feld)
 
@@ -47,7 +47,7 @@ class CommentAnchorType(str, Enum):
 
 
 class SuggestionStatus(str, Enum):
-    """Status einer vorgeschlagenen Aenderung."""
+    """Status einer vorgeschlagenen Änderung."""
     OFFEN = "offen"
     ANGENOMMEN = "angenommen"
     ABGELEHNT = "abgelehnt"
@@ -66,12 +66,12 @@ class ThreadStatus(str, Enum):
 
 
 class CommentAnchor(Base):
-    """PDF-Positionierung fuer einen Kommentar.
+    """PDF-Positionierung für einen Kommentar.
 
     Speichert die exakte Position eines Kommentars auf einer PDF-Seite:
     - Seitennummer
     - Position (x, y) in relativen Koordinaten (0.0 - 1.0)
-    - Groesse (width, height) fuer Rechteck-Markierungen
+    - Größe (width, height) für Rechteck-Markierungen
     - Anker-Typ (Pin, Highlight, Rechteck, Freihand)
     """
     __tablename__ = "comment_anchors"
@@ -87,9 +87,9 @@ class CommentAnchor(Base):
     # PDF-Position
     page_number = Column(Integer, nullable=False, comment="Seitennummer (1-basiert)")
     x = Column(Float, nullable=False, comment="X-Position (0.0 - 1.0 relativ zur Seitenbreite)")
-    y = Column(Float, nullable=False, comment="Y-Position (0.0 - 1.0 relativ zur Seitenhoehe)")
+    y = Column(Float, nullable=False, comment="Y-Position (0.0 - 1.0 relativ zur Seitenhöhe)")
     width = Column(Float, nullable=True, comment="Breite der Markierung (0.0 - 1.0)")
-    height = Column(Float, nullable=True, comment="Hoehe der Markierung (0.0 - 1.0)")
+    height = Column(Float, nullable=True, comment="Höhe der Markierung (0.0 - 1.0)")
 
     # Anker-Typ
     anchor_type = Column(
@@ -104,7 +104,7 @@ class CommentAnchor(Base):
     text_end_offset = Column(Integer, nullable=True, comment="End-Offset im extrahierten Text")
 
     # Freihand-Pfad (SVG path data)
-    freeform_path = Column(Text, nullable=True, comment="SVG path data fuer Freihand")
+    freeform_path = Column(Text, nullable=True, comment="SVG path data für Freihand")
 
     # Farbe der Markierung
     color = Column(String(7), default="#FBBF24", comment="Hex-Farbe der Markierung")
@@ -127,7 +127,7 @@ class CommentThread(Base):
     """Expliziter Kommentar-Thread mit Status.
 
     Fasst zusammengehoerige Kommentare zu einem Thread zusammen.
-    Unterstuetzt Resolve/Reopen-Workflow.
+    Unterstützt Resolve/Reopen-Workflow.
     """
     __tablename__ = "comment_threads"
 
@@ -192,15 +192,15 @@ class CommentThread(Base):
 
 
 # ============================================================================
-# Comment Suggestion (Vorgeschlagene Aenderungen)
+# Comment Suggestion (Vorgeschlagene Änderungen)
 # ============================================================================
 
 
 class CommentSuggestion(Base):
-    """Vorgeschlagene Aenderung an einem Dokument.
+    """Vorgeschlagene Änderung an einem Dokument.
 
-    Aehnlich wie Google Docs Suggestions - ein User kann eine
-    Aenderung vorschlagen, die dann angenommen oder abgelehnt wird.
+    Ähnlich wie Google Docs Suggestions - ein User kann eine
+    Änderung vorschlagen, die dann angenommen oder abgelehnt wird.
     """
     __tablename__ = "comment_suggestions"
 
@@ -216,7 +216,7 @@ class CommentSuggestion(Base):
         nullable=False,
     )
 
-    # Was soll geaendert werden
+    # Was soll geändert werden
     field_name = Column(
         String(100),
         nullable=True,
@@ -224,7 +224,7 @@ class CommentSuggestion(Base):
     )
     original_value = Column(Text, nullable=True, comment="Aktueller Wert")
     suggested_value = Column(Text, nullable=False, comment="Vorgeschlagener neuer Wert")
-    reason = Column(Text, nullable=True, comment="Begruendung fuer die Aenderung")
+    reason = Column(Text, nullable=True, comment="Begruendung für die Änderung")
 
     # Status
     status = Column(

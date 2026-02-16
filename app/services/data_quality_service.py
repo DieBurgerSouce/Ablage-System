@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Data Quality Service - Datenqualitaets-Cockpit.
+Data Quality Service - Datenqualitäts-Cockpit.
 
-Bietet proaktive Datenqualitaets-Ueberwachung und Cleanup:
+Bietet proaktive Datenqualitäts-Überwachung und Cleanup:
 - Uncat egorisierte Dokumente
 - Duplikate
 - Verwaiste Entities
 - Fehlende Metadaten
-- Niedrige OCR-Qualitaet
+- Niedrige OCR-Qualität
 - Nicht zugeordnete Dokumente
 - Veraltete Dokumente
 
@@ -48,19 +48,19 @@ class QualityCategory(str, Enum):
 
 @dataclass
 class DataQualityIssue:
-    """Einzelnes Datenqualitaets-Problem."""
+    """Einzelnes Datenqualitäts-Problem."""
     category: QualityCategory
     severity: str  # "info", "warning", "critical"
     title: str  # German
     description: str  # German
     count: int
-    action_label: str  # "Bereinigen", "Zuordnen", "Pruefen"
+    action_label: str  # "Bereinigen", "Zuordnen", "Prüfen"
     action_endpoint: str  # API endpoint to fix
 
 
 @dataclass
 class DataQualityReport:
-    """Vollstaendiger Datenqualitaets-Bericht."""
+    """Vollständiger Datenqualitäts-Bericht."""
     overall_score: float  # 0-100
     issues: List[DataQualityIssue]
     trend: str  # "improving", "stable", "worsening"
@@ -73,9 +73,9 @@ class DataQualityReport:
 
 class DataQualityService:
     """
-    Service fuer Datenqualitaets-Cockpit.
+    Service für Datenqualitäts-Cockpit.
 
-    Scannt die Datenbank nach Qualitaetsproblemen und bietet Cleanup-Aktionen.
+    Scannt die Datenbank nach Qualitätsproblemen und bietet Cleanup-Aktionen.
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -95,7 +95,7 @@ class DataQualityService:
         company_id: UUID,
     ) -> DataQualityReport:
         """
-        Erstellt vollstaendigen Datenqualitaets-Bericht.
+        Erstellt vollständigen Datenqualitäts-Bericht.
 
         Args:
             company_id: Company ID
@@ -107,7 +107,7 @@ class DataQualityService:
 
         issues: List[DataQualityIssue] = []
 
-        # Alle Issue-Checks parallel ausfuehren
+        # Alle Issue-Checks parallel ausführen
         issues.append(await self._check_uncategorized(company_id))
         issues.append(await self._check_duplicates(company_id))
         issues.append(await self._check_orphaned_entities(company_id))
@@ -156,7 +156,7 @@ class DataQualityService:
         report: DataQualityReport,
     ) -> None:
         """
-        Speichert einen Datenqualitaets-Snapshot in der History-Tabelle.
+        Speichert einen Datenqualitäts-Snapshot in der History-Tabelle.
 
         Args:
             company_id: Company ID
@@ -197,10 +197,10 @@ class DataQualityService:
         months: int = 6,
     ) -> List[Dict[str, str]]:
         """
-        Ruft Datenqualitaets-Trend ab.
+        Ruft Datenqualitäts-Trend ab.
 
-        Aggregiert History-Eintraege pro Monat und gibt den
-        Durchschnitts-Score pro Monat zurueck.
+        Aggregiert History-Einträge pro Monat und gibt den
+        Durchschnitts-Score pro Monat zurück.
 
         Args:
             company_id: Company ID
@@ -268,7 +268,7 @@ class DataQualityService:
         action: str,
     ) -> int:
         """
-        Fuehrt Cleanup-Aktion fuer eine Kategorie aus.
+        Führt Cleanup-Aktion für eine Kategorie aus.
 
         Args:
             company_id: Company ID
@@ -313,7 +313,7 @@ class DataQualityService:
     # =========================================================================
 
     async def _check_uncategorized(self, company_id: UUID) -> DataQualityIssue:
-        """Prueft auf unkategorisierte Dokumente."""
+        """Prüft auf unkategorisierte Dokumente."""
         query = select(func.count(Document.id)).where(
             and_(
                 Document.company_id == company_id,
@@ -344,7 +344,7 @@ class DataQualityService:
         )
 
     async def _check_duplicates(self, company_id: UUID) -> DataQualityIssue:
-        """Prueft auf moegliche Duplikate."""
+        """Prüft auf mögliche Duplikate."""
         # Simplified: Count documents with duplicate file hashes
         query = select(
             func.count(Document.id)
@@ -377,15 +377,15 @@ class DataQualityService:
         return DataQualityIssue(
             category=QualityCategory.DUPLICATES,
             severity=severity,
-            title="Moegliche Duplikate",
-            description=f"{count} Dokumente koennen Duplikate sein.",
+            title="Mögliche Duplikate",
+            description=f"{count} Dokumente können Duplikate sein.",
             count=count,
-            action_label="Pruefen",
+            action_label="Prüfen",
             action_endpoint="/api/v1/data-quality/duplicates/fix",
         )
 
     async def _check_orphaned_entities(self, company_id: UUID) -> DataQualityIssue:
-        """Prueft auf Entities ohne Dokumente."""
+        """Prüft auf Entities ohne Dokumente."""
         query = select(
             func.count(BusinessEntity.id)
         ).where(
@@ -415,15 +415,15 @@ class DataQualityService:
         return DataQualityIssue(
             category=QualityCategory.ORPHANED_ENTITIES,
             severity=severity,
-            title="Verwaiste Geschaeftspartner",
-            description=f"{count} Geschaeftspartner haben keine zugeordneten Dokumente.",
+            title="Verwaiste Geschäftspartner",
+            description=f"{count} Geschäftspartner haben keine zugeordneten Dokumente.",
             count=count,
             action_label="Bereinigen",
             action_endpoint="/api/v1/data-quality/orphaned-entities/fix",
         )
 
     async def _check_missing_metadata(self, company_id: UUID) -> DataQualityIssue:
-        """Prueft auf Dokumente mit fehlenden Metadaten."""
+        """Prüft auf Dokumente mit fehlenden Metadaten."""
         query = select(func.count(Document.id)).where(
             and_(
                 Document.company_id == company_id,
@@ -453,14 +453,14 @@ class DataQualityService:
             category=QualityCategory.MISSING_METADATA,
             severity=severity,
             title="Fehlende Metadaten",
-            description=f"{count} Dokumente haben unvollstaendige Metadaten.",
+            description=f"{count} Dokumente haben unvollständige Metadaten.",
             count=count,
-            action_label="Vervollstaendigen",
+            action_label="Vervollständigen",
             action_endpoint="/api/v1/data-quality/missing-metadata/fix",
         )
 
     async def _check_low_ocr_quality(self, company_id: UUID) -> DataQualityIssue:
-        """Prueft auf Dokumente mit niedriger OCR-Qualitaet."""
+        """Prüft auf Dokumente mit niedriger OCR-Qualität."""
         query = select(func.count(Document.id)).where(
             and_(
                 Document.company_id == company_id,
@@ -479,7 +479,7 @@ class DataQualityService:
         return DataQualityIssue(
             category=QualityCategory.LOW_OCR_QUALITY,
             severity=severity,
-            title="Niedrige OCR-Qualitaet",
+            title="Niedrige OCR-Qualität",
             description=f"{count} Dokumente haben eine OCR-Konfidenz unter 85%.",
             count=count,
             action_label="Neu verarbeiten",
@@ -487,7 +487,7 @@ class DataQualityService:
         )
 
     async def _check_unlinked_documents(self, company_id: UUID) -> DataQualityIssue:
-        """Prueft auf Rechnungen ohne Geschaeftspartner."""
+        """Prüft auf Rechnungen ohne Geschäftspartner."""
         query = select(
             func.count(Document.id)
         ).where(
@@ -511,14 +511,14 @@ class DataQualityService:
             category=QualityCategory.UNLINKED_DOCUMENTS,
             severity=severity,
             title="Nicht zugeordnete Rechnungen",
-            description=f"{count} Rechnungen sind keinem Geschaeftspartner zugeordnet.",
+            description=f"{count} Rechnungen sind keinem Geschäftspartner zugeordnet.",
             count=count,
             action_label="Zuordnen",
             action_endpoint="/api/v1/data-quality/unlinked-documents/fix",
         )
 
     async def _check_stale_documents(self, company_id: UUID) -> DataQualityIssue:
-        """Prueft auf veraltete Dokumente (nicht zugegriffen seit 1+ Jahr)."""
+        """Prüft auf veraltete Dokumente (nicht zugegriffen seit 1+ Jahr)."""
         one_year_ago = datetime.now(timezone.utc) - timedelta(days=365)
 
         query = select(func.count(Document.id)).where(
@@ -675,7 +675,7 @@ class DataQualityService:
         return 0
 
     async def _fix_low_ocr_quality(self, company_id: UUID, action: str) -> int:
-        """Behebt niedrige OCR-Qualitaet."""
+        """Behebt niedrige OCR-Qualität."""
         if action == "reprocess":
             query = select(func.count(Document.id)).where(
                 and_(
@@ -757,7 +757,7 @@ class DataQualityService:
         current_score: float,
     ) -> str:
         """
-        Berechnet Trend-Richtung basierend auf letzten History-Eintraegen.
+        Berechnet Trend-Richtung basierend auf letzten History-Einträgen.
 
         Vergleicht aktuellen Score mit dem Durchschnitt der letzten 30 Tage.
 
@@ -805,16 +805,16 @@ class DataQualityService:
         company_id: UUID,
     ) -> List[Dict[str, str]]:
         """
-        Gibt Korrekturvorschlaege basierend auf Issue-Mustern zurueck.
+        Gibt Korrekturvorschläge basierend auf Issue-Mustern zurück.
 
-        Analysiert die haeufigsten und schwerwiegendsten Issues und
-        gibt priorisierte Handlungsempfehlungen zurueck.
+        Analysiert die häufigsten und schwerwiegendsten Issues und
+        gibt priorisierte Handlungsempfehlungen zurück.
 
         Args:
             company_id: Company ID
 
         Returns:
-            Liste von Korrekturvorschlaegen mit Prioritaet und Beschreibung
+            Liste von Korrekturvorschlägen mit Priorität und Beschreibung
         """
         report = await self.get_quality_report(company_id)
         suggestions: List[Dict[str, str]] = []
@@ -837,39 +837,39 @@ class DataQualityService:
         self,
         issue: DataQualityIssue,
     ) -> Optional[Dict[str, str]]:
-        """Erstellt einen Korrekturvorschlag fuer ein Issue."""
+        """Erstellt einen Korrekturvorschlag für ein Issue."""
         suggestion_map = {
             QualityCategory.UNCATEGORIZED: {
-                "prioritaet": "hoch" if issue.count > 50 else "mittel",
+                "priorität": "hoch" if issue.count > 50 else "mittel",
                 "titel": "Dokumente kategorisieren",
                 "beschreibung": (
                     f"{issue.count} Dokumente ohne Kategorie. "
                     "Empfehlung: Auto-Kategorisierung aktivieren oder "
-                    "manuell im Datenqualitaets-Cockpit zuweisen."
+                    "manuell im Datenqualitäts-Cockpit zuweisen."
                 ),
                 "aktion": "auto_categorize",
             },
             QualityCategory.DUPLICATES: {
-                "prioritaet": "hoch" if issue.count > 30 else "mittel",
+                "priorität": "hoch" if issue.count > 30 else "mittel",
                 "titel": "Duplikate bereinigen",
                 "beschreibung": (
-                    f"{issue.count} moegliche Duplikate gefunden. "
-                    "Empfehlung: Duplikate pruefen und zusammenfuehren."
+                    f"{issue.count} mögliche Duplikate gefunden. "
+                    "Empfehlung: Duplikate prüfen und zusammenführen."
                 ),
                 "aktion": "merge",
             },
             QualityCategory.ORPHANED_ENTITIES: {
-                "prioritaet": "niedrig",
-                "titel": "Verwaiste Geschaeftspartner pruefen",
+                "priorität": "niedrig",
+                "titel": "Verwaiste Geschäftspartner prüfen",
                 "beschreibung": (
-                    f"{issue.count} Geschaeftspartner ohne Dokumente. "
-                    "Empfehlung: Nicht mehr benoetigte Partner deaktivieren."
+                    f"{issue.count} Geschäftspartner ohne Dokumente. "
+                    "Empfehlung: Nicht mehr benötigte Partner deaktivieren."
                 ),
                 "aktion": "deactivate",
             },
             QualityCategory.LOW_OCR_QUALITY: {
-                "prioritaet": "hoch",
-                "titel": "OCR-Qualitaet verbessern",
+                "priorität": "hoch",
+                "titel": "OCR-Qualität verbessern",
                 "beschreibung": (
                     f"{issue.count} Dokumente mit niedriger OCR-Konfidenz. "
                     "Empfehlung: Dokumente mit anderem OCR-Backend neu verarbeiten."
@@ -877,29 +877,29 @@ class DataQualityService:
                 "aktion": "reprocess",
             },
             QualityCategory.UNLINKED_DOCUMENTS: {
-                "prioritaet": "mittel",
+                "priorität": "mittel",
                 "titel": "Rechnungen zuordnen",
                 "beschreibung": (
-                    f"{issue.count} Rechnungen ohne Geschaeftspartner. "
+                    f"{issue.count} Rechnungen ohne Geschäftspartner. "
                     "Empfehlung: Auto-Linking aktivieren oder manuell zuordnen."
                 ),
                 "aktion": "auto_link",
             },
             QualityCategory.MISSING_METADATA: {
-                "prioritaet": "mittel",
-                "titel": "Metadaten vervollstaendigen",
+                "priorität": "mittel",
+                "titel": "Metadaten vervollständigen",
                 "beschreibung": (
                     f"{issue.count} Dokumente mit fehlenden Metadaten. "
-                    "Empfehlung: Metadaten-Extraktion erneut ausfuehren."
+                    "Empfehlung: Metadaten-Extraktion erneut ausführen."
                 ),
                 "aktion": "extract",
             },
             QualityCategory.STALE_DOCUMENTS: {
-                "prioritaet": "niedrig",
+                "priorität": "niedrig",
                 "titel": "Veraltete Dokumente archivieren",
                 "beschreibung": (
-                    f"{issue.count} Dokumente seit ueber einem Jahr nicht zugegriffen. "
-                    "Empfehlung: Archivierung pruefen und ausfuehren."
+                    f"{issue.count} Dokumente seit über einem Jahr nicht zugegriffen. "
+                    "Empfehlung: Archivierung prüfen und ausführen."
                 ),
                 "aktion": "archive",
             },
@@ -913,7 +913,7 @@ class DataQualityService:
         company_id: UUID,
     ) -> float:
         """
-        Berechnet Gesamt-Datenqualitaets-Score.
+        Berechnet Gesamt-Datenqualitäts-Score.
 
         Args:
             issues: List of data quality issues

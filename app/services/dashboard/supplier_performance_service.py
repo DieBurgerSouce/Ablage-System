@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """Supplier Performance Service.
 
-Liefert Daten fuer das Supplier Performance Widget:
+Liefert Daten für das Supplier Performance Widget:
 - Lieferpuenktlichkeit (On-Time %)
 - Rechnungsgenauigkeit (Korrekte Rechnungen %)
-- Preistrend (Preisentwicklung ueber Zeit)
+- Preistrend (Preisentwicklung über Zeit)
 - Top 5 Lieferanten-Ranking
 
 Enterprise Feature: Januar 2026
@@ -40,7 +40,7 @@ class TrendDirection(str, Enum):
 
 @dataclass
 class SupplierMetrics:
-    """Metriken fuer einen einzelnen Lieferanten."""
+    """Metriken für einen einzelnen Lieferanten."""
     entity_id: str
     entity_name: str
     punctuality_score: float = 0.0     # 0-100%
@@ -51,15 +51,15 @@ class SupplierMetrics:
     late_deliveries: int = 0
     correct_invoices: int = 0
     incorrect_invoices: int = 0
-    avg_price_trend: float = 0.0       # % Aenderung
+    avg_price_trend: float = 0.0       # % Änderung
     trend_direction: TrendDirection = TrendDirection.STABLE
 
 
 @dataclass
 class PriceTrendDataPoint:
-    """Datenpunkt fuer Preistrend-Analyse."""
+    """Datenpunkt für Preistrend-Analyse."""
     period: str  # YYYY-MM
-    avg_price_change: float  # % Aenderung
+    avg_price_change: float  # % Änderung
     order_count: int
 
 
@@ -87,7 +87,7 @@ class SupplierPerformanceResult:
 
 
 class SupplierPerformanceService:
-    """Service fuer Lieferanten-Performance-Metriken."""
+    """Service für Lieferanten-Performance-Metriken."""
 
     # Schwellenwerte
     PUNCTUALITY_CRITICAL = 70.0  # Unter 70% = kritisch
@@ -187,10 +187,10 @@ class SupplierPerformanceService:
         company_id: Optional[UUID] = None,
         period_days: int = 90,
     ) -> Dict[str, Any]:
-        """Liefert Widget-Daten fuer Frontend.
+        """Liefert Widget-Daten für Frontend.
 
         Returns:
-            Dict mit Metriken fuer Widget-Anzeige
+            Dict mit Metriken für Widget-Anzeige
         """
         result = await self.get_performance(
             db, user_id, company_id, period_days
@@ -252,7 +252,7 @@ class SupplierPerformanceService:
         cutoff_date: date,
         company_id: Optional[UUID],
     ) -> SupplierMetrics:
-        """Berechne Metriken fuer einen Lieferanten."""
+        """Berechne Metriken für einen Lieferanten."""
         # Hole alle Rechnungen dieses Lieferanten
         query = select(InvoiceTracking).where(
             and_(
@@ -282,13 +282,13 @@ class SupplierPerformanceService:
                 else:
                     late += 1
             else:
-                on_time += 1  # Keine Faelligkeit = on-time
+                on_time += 1  # Keine Fälligkeit = on-time
 
         total = on_time + late
         punctuality = (on_time / total * 100) if total > 0 else 0.0
 
         # Genauigkeit (simuliert - in echtem System: Reklamationen etc.)
-        # Hier nehmen wir an: 90% Basis + zufaellige Variation
+        # Hier nehmen wir an: 90% Basis + zufällige Variation
         correct = int(len(invoices) * 0.92)
         incorrect = len(invoices) - correct
         accuracy = (correct / len(invoices) * 100) if invoices else 0.0

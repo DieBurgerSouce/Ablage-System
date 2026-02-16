@@ -44,7 +44,7 @@ RATING_CRITERIA = {
         "criteria": {
             "compliance": {"weight": 0.35, "label": "Compliance"},
             "transparency": {"weight": 0.25, "label": "Transparenz"},
-            "ethics": {"weight": 0.20, "label": "Ethik & Integritaet"},
+            "ethics": {"weight": 0.20, "label": "Ethik & Integrität"},
             "risk_management": {"weight": 0.10, "label": "Risikomanagement"},
             "data_protection": {"weight": 0.10, "label": "Datenschutz"},
         },
@@ -54,7 +54,7 @@ RATING_CRITERIA = {
 
 class SupplierSustainabilityService:
     """
-    Service fuer Lieferanten-Nachhaltigkeitsbewertung.
+    Service für Lieferanten-Nachhaltigkeitsbewertung.
     """
 
     def __init__(self, db: AsyncSession):
@@ -62,7 +62,7 @@ class SupplierSustainabilityService:
 
     @staticmethod
     def get_rating_criteria() -> Dict[str, Any]:
-        """Gebe Bewertungskriterien zurueck."""
+        """Gebe Bewertungskriterien zurück."""
         return RATING_CRITERIA
 
     @staticmethod
@@ -256,7 +256,7 @@ class SupplierSustainabilityService:
         entity_id: UUID,
     ) -> Optional[dict]:
         """
-        Hole neueste Bewertung fuer einen Lieferanten.
+        Hole neueste Bewertung für einen Lieferanten.
         """
         result = await self.db.execute(
             select(ESGSupplierRating).where(
@@ -342,5 +342,5 @@ class SupplierSustainabilityService:
 
 
 def get_supplier_sustainability_service(db: AsyncSession) -> SupplierSustainabilityService:
-    """Factory-Funktion fuer SupplierSustainabilityService."""
+    """Factory-Funktion für SupplierSustainabilityService."""
     return SupplierSustainabilityService(db)

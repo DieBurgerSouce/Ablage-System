@@ -1,6 +1,6 @@
-"""Prompt Templates fuer RAG Intelligence Layer.
+"""Prompt Templates für RAG Intelligence Layer.
 
-Enthaelt alle System-Prompts und Template-Funktionen fuer:
+Enthält alle System-Prompts und Template-Funktionen für:
 - Allgemeine Dokumenten-Assistenz
 - Telefon-Support (Realtime)
 - Customer Card Generierung
@@ -17,7 +17,7 @@ from string import Template
 # SYSTEM PROMPTS
 # =============================================================================
 
-SYSTEM_PROMPT_GENERAL = """Du bist ein intelligenter Dokumenten-Assistent fuer ein deutsches Unternehmen.
+SYSTEM_PROMPT_GENERAL = """Du bist ein intelligenter Dokumenten-Assistent für ein deutsches Unternehmen.
 
 Deine Aufgabe:
 - Beantworte Fragen zu Dokumenten praezise und hilfreich
@@ -33,24 +33,24 @@ Stil:
 
 Wichtig:
 - Erfinde KEINE Informationen
-- Spekuliere NICHT ueber Inhalte die nicht in den Dokumenten stehen
+- Spekuliere NICHT über Inhalte die nicht in den Dokumenten stehen
 - Nenne die Quellen deiner Informationen"""
 
-SYSTEM_PROMPT_TELEFON = """Du bist ein schneller Support-Assistent fuer Telefon-Anfragen.
+SYSTEM_PROMPT_TELEFON = """Du bist ein schneller Support-Assistent für Telefon-Anfragen.
 
-KRITISCH: Antworte EXTREM KURZ (max 2-3 Saetze)!
+KRITISCH: Antworte EXTREM KURZ (max 2-3 Sätze)!
 
 Deine Aufgabe:
-- Beantworte Fragen zu Kunden, Rechnungen, Vertraegen SOFORT
+- Beantworte Fragen zu Kunden, Rechnungen, Verträgen SOFORT
 - Nutze die bereitgestellten Informationen
-- Keine langen Erklaerungen - nur die Fakten!
+- Keine langen Erklärungen - nur die Fakten!
 
 Format deiner Antworten:
 - Direkt die Information nennen
 - Bei Zahlen: klar und deutlich
 - Bei Unklarheit: "Muss ich nachschauen" sagen
 
-Beispiel gute Antwort: "Die Rechnung RE-2024-001 betraegt 1.234,56 EUR und ist am 15.03. faellig."
+Beispiel gute Antwort: "Die Rechnung RE-2024-001 betraegt 1.234,56 EUR und ist am 15.03. fällig."
 Beispiel schlechte Antwort: "Ich habe in unseren Unterlagen nachgeschaut und dabei festgestellt, dass..."
 
 IMMER auf Deutsch antworten!"""
@@ -64,15 +64,15 @@ Analysiere die bereitgestellten Dokumente und erstelle eine Zusammenfassung mit:
    - Umsatzklasse, Branche, Besonderheiten
 
 2. OFFENE POSTEN
-   - Liste offene Rechnungen mit Betraegen und Faelligkeiten
-   - Hinweis auf ueberfaellige Posten
+   - Liste offene Rechnungen mit Betraegen und Fälligkeiten
+   - Hinweis auf überfällige Posten
 
 3. AKTIVE VERTRAEGE
-   - Laufende Vertraege mit Laufzeit
-   - Kuendigungsfristen
+   - Laufende Verträge mit Laufzeit
+   - Kündigungsfristen
 
 4. ZAHLUNGSVERHALTEN
-   - Bewertung: zuverlaessig / gelegentlich verspaetet / problematisch
+   - Bewertung: zuverlaessig / gelegentlich verspätet / problematisch
    - Durchschnittliche Zahlungsdauer
 
 5. FLAGS/WARNUNGEN
@@ -85,7 +85,7 @@ Formatiere als JSON mit diesen Keys:
 - payment_behavior: str
 - flags: List[str]
 - priority_level: int (0-10)
-- summary_text: str (2-3 Saetze Zusammenfassung)"""
+- summary_text: str (2-3 Sätze Zusammenfassung)"""
 
 SYSTEM_PROMPT_REPORT_LIEFERANTEN = """Du erstellst einen Lieferanten-Analysebericht.
 
@@ -100,18 +100,18 @@ Analysiere alle Lieferanten-bezogenen Dokumente und erstelle:
    - Mit Trend (steigend/fallend/stabil)
 
 3. ZAHLUNGSBEDINGUNGEN
-   - Uebersicht der Konditionen
+   - Übersicht der Konditionen
    - Verhandlungspotenzial
 
 4. RISIKEN
    - Lieferanten mit Problemen
-   - Abhaengigkeiten (Single-Source)
+   - Abhängigkeiten (Single-Source)
 
 5. EMPFEHLUNGEN
    - Konsolidierungspotenzial
    - Verhandlungsempfehlungen
 
-Formatiere den Bericht strukturiert mit Ueberschriften und Aufzaehlungen.
+Formatiere den Bericht strukturiert mit Überschriften und Aufzaehlungen.
 Alle Zahlen mit deutschen Formatierungen (1.234,56 EUR)."""
 
 SYSTEM_PROMPT_REPORT_VERTRAEGE = """Du erstellst einen Vertrags-Analysebericht.
@@ -119,15 +119,15 @@ SYSTEM_PROMPT_REPORT_VERTRAEGE = """Du erstellst einen Vertrags-Analysebericht.
 Analysiere alle Vertragsdokumente und erstelle:
 
 1. VERTRAGSUEBERSICHT
-   - Aktive Vertraege nach Kategorie
+   - Aktive Verträge nach Kategorie
    - Gesamtvolumen pro Kategorie
 
 2. AUSLAUFENDE VERTRAEGE
-   - Naechste 90 Tage
-   - Mit Kuendigungsfristen
+   - Nächste 90 Tage
+   - Mit Kündigungsfristen
 
 3. VERLAENGERUNGEN
-   - Automatische Verlaengerungen
+   - Automatische Verlängerungen
    - Handlungsbedarf
 
 4. KONDITIONSANALYSE
@@ -175,15 +175,15 @@ Antworte IMMER als JSON:
   }
 }"""
 
-SYSTEM_PROMPT_QUERY_ENHANCEMENT = """Du verbesserst Suchanfragen fuer bessere Retrieval-Ergebnisse.
+SYSTEM_PROMPT_QUERY_ENHANCEMENT = """Du verbesserst Suchanfragen für bessere Retrieval-Ergebnisse.
 
 Deine Aufgabe:
 1. Analysiere die urspruengliche Suchanfrage
 2. Erstelle 2-3 verbesserte Varianten
 
-Verbesserungen koennen sein:
+Verbesserungen können sein:
 - Synonyme hinzufuegen (Rechnung -> Faktura, Invoice)
-- Umformulierung fuer besseres Matching
+- Umformulierung für besseres Matching
 - Fachbegriffe ergaenzen
 - Zeitliche Eingrenzung verdeutlichen
 
@@ -196,11 +196,11 @@ Output:
 
 Antworte als JSON-Array mit den erweiterten Queries."""
 
-SYSTEM_PROMPT_AGENT = """Du bist ein intelligenter Dokumenten-Assistent mit der Faehigkeit Aktionen auszufuehren.
+SYSTEM_PROMPT_AGENT = """Du bist ein intelligenter Dokumenten-Assistent mit der Fähigkeit Aktionen auszuführen.
 
 DEINE AUFGABEN:
 - Beantworte Fragen zu Dokumenten praezise und hilfreich
-- Fuehre Aktionen aus wenn der Benutzer darum bittet
+- Führe Aktionen aus wenn der Benutzer darum bittet
 - Verwende NUR die bereitgestellten Dokument-Auszuege als Quelle
 - Antworte IMMER auf Deutsch
 
@@ -208,22 +208,22 @@ VERFUEGBARE TOOLS:
 {tools_text}
 
 WIE DU TOOLS VERWENDEST:
-1. Wenn der Benutzer eine Aktion wuenscht (z.B. "Zeige mir alle Rechnungen von Mueller"),
-   ueberlege welches Tool passt
-2. Erklaere ZUERST was du tun wirst (z.B. "Ich suche nach allen Rechnungen von Mueller...")
+1. Wenn der Benutzer eine Aktion wünscht (z.B. "Zeige mir alle Rechnungen von Mueller"),
+   überlege welches Tool passt
+2. Erkläre ZUERST was du tun wirst (z.B. "Ich suche nach allen Rechnungen von Mueller...")
 3. Rufe dann das Tool auf mit diesem Format:
    <tool_call>{{"tool": "tool_name", "params": {{"param1": "value1"}}}}</tool_call>
 4. Warte auf das Ergebnis und praesentiere es dem Benutzer
 
 SICHERHEITSREGELN:
-- Bei destruktiven Aktionen (verschieben, loeschen): IMMER Bestaetigung einholen
-- Keine Massen-Operationen ohne explizite Bestaetigung
+- Bei destruktiven Aktionen (verschieben, löschen): IMMER Bestätigung einholen
+- Keine Massen-Operationen ohne explizite Bestätigung
 - Bei Unsicherheit: lieber nachfragen als raten
 
 STIL:
 - Professionell aber freundlich
 - Klar und praegnant
-- Erklaere was du tust BEVOR du es tust
+- Erkläre was du tust BEVOR du es tust
 
 WICHTIG:
 - Erfinde KEINE Informationen
@@ -283,7 +283,7 @@ def build_chat_prompt(
         realtime: Schnelle Telefon-Antwort
 
     Returns:
-        Liste von Nachrichten fuer LLM
+        Liste von Nachrichten für LLM
     """
     system_prompt = SYSTEM_PROMPT_TELEFON if realtime else SYSTEM_PROMPT_GENERAL
 
@@ -314,20 +314,20 @@ def build_customer_card_prompt(
     customer_name: str,
     context: str
 ) -> List[Dict[str, str]]:
-    """Baut einen Prompt fuer Customer Card Generierung.
+    """Baut einen Prompt für Customer Card Generierung.
 
     Args:
         customer_name: Name des Kunden
         context: Aggregierter Kontext aus Kundendokumenten
 
     Returns:
-        Nachrichten fuer LLM
+        Nachrichten für LLM
     """
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT_CUSTOMER_CARD},
         {
             "role": "user",
-            "content": f"""Erstelle eine Customer Card fuer: {customer_name}
+            "content": f"""Erstelle eine Customer Card für: {customer_name}
 
 Dokumente:
 {context}
@@ -343,18 +343,18 @@ def build_classification_prompt(
     document_text: str,
     max_text_length: int = 3000
 ) -> List[Dict[str, str]]:
-    """Baut einen Prompt fuer Dokumenten-Klassifikation.
+    """Baut einen Prompt für Dokumenten-Klassifikation.
 
     Args:
         document_text: Text des Dokuments
-        max_text_length: Maximale Textlaenge
+        max_text_length: Maximale Textlänge
 
     Returns:
-        Nachrichten fuer LLM
+        Nachrichten für LLM
     """
-    # Text kuerzen falls noetig
+    # Text kürzen falls noetig
     if len(document_text) > max_text_length:
-        document_text = document_text[:max_text_length] + "\n\n[... Text gekuerzt ...]"
+        document_text = document_text[:max_text_length] + "\n\n[... Text gekürzt ...]"
 
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT_CLASSIFICATION},
@@ -374,13 +374,13 @@ Antworte als JSON."""
 def build_query_enhancement_prompt(
     query: str
 ) -> List[Dict[str, str]]:
-    """Baut einen Prompt fuer Query Enhancement.
+    """Baut einen Prompt für Query Enhancement.
 
     Args:
         query: Urspruengliche Suchanfrage
 
     Returns:
-        Nachrichten fuer LLM
+        Nachrichten für LLM
     """
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT_QUERY_ENHANCEMENT},
@@ -397,14 +397,14 @@ def build_extraction_prompt(
     document_text: str,
     extraction_schema: Dict[str, object]
 ) -> List[Dict[str, str]]:
-    """Baut einen Prompt fuer strukturierte Datenextraktion.
+    """Baut einen Prompt für strukturierte Datenextraktion.
 
     Args:
         document_text: Text des Dokuments
         extraction_schema: Schema mit zu extrahierenden Feldern
 
     Returns:
-        Nachrichten fuer LLM
+        Nachrichten für LLM
     """
     schema_description = "\n".join([
         f"- {field}: {desc}"
@@ -439,23 +439,23 @@ def build_report_prompt(
     context: str,
     parameters: Optional[Dict[str, object]] = None
 ) -> List[Dict[str, str]]:
-    """Baut einen Prompt fuer Report-Generierung.
+    """Baut einen Prompt für Report-Generierung.
 
     Args:
-        report_type: Art des Reports (lieferanten, vertraege, etc.)
+        report_type: Art des Reports (lieferanten, verträge, etc.)
         context: Aggregierter Kontext
         parameters: Optionale Parameter (Zeitraum, Filter, etc.)
 
     Returns:
-        Nachrichten fuer LLM
+        Nachrichten für LLM
     """
     # System-Prompt basierend auf Report-Typ
     if report_type == "lieferanten":
         system_prompt = SYSTEM_PROMPT_REPORT_LIEFERANTEN
-    elif report_type == "vertraege":
+    elif report_type == "verträge":
         system_prompt = SYSTEM_PROMPT_REPORT_VERTRAEGE
     else:
-        system_prompt = f"Du erstellst einen {report_type}-Bericht. Strukturiere die Informationen klar und uebersichtlich."
+        system_prompt = f"Du erstellst einen {report_type}-Bericht. Strukturiere die Informationen klar und übersichtlich."
 
     # Parameter in Prompt einbauen
     param_text = ""
@@ -495,7 +495,7 @@ def build_agent_chat_prompt(
         realtime: Schnelle Telefon-Antwort
 
     Returns:
-        Liste von Nachrichten fuer LLM
+        Liste von Nachrichten für LLM
     """
     # System-Prompt mit Tools
     system_prompt = SYSTEM_PROMPT_AGENT.format(tools_text=tools_text)

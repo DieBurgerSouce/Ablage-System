@@ -233,7 +233,7 @@ class AutoTransactionImportService:
                     success=True,
                     connection_id=connection_id,
                     accounts_synced=0,
-                    error_message="Keine Konten fuer Auto-Import konfiguriert",
+                    error_message="Keine Konten für Auto-Import konfiguriert",
                     sync_log_id=sync_log.id,
                 )
 

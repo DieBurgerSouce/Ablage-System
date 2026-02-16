@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""API Endpoints fuer Push Notifications.
+"""API Endpoints für Push Notifications.
 
-Stellt Endpoints bereit fuer:
+Stellt Endpoints bereit für:
 - Subscription Management (registrieren, entfernen, auflisten)
 - Preference Management
 - VAPID Public Key Abruf
@@ -36,7 +36,7 @@ class PushSubscriptionKeys(BaseModel):
 
 
 class PushSubscriptionCreate(BaseModel):
-    """Request fuer Subscription Registrierung."""
+    """Request für Subscription Registrierung."""
 
     endpoint: str = Field(..., description="Push Service Endpoint URL")
     keys: PushSubscriptionKeys = Field(..., description="Subscription Keys")
@@ -48,7 +48,7 @@ class PushSubscriptionCreate(BaseModel):
 
 
 class PushSubscriptionResponse(BaseModel):
-    """Response fuer Subscription."""
+    """Response für Subscription."""
 
     id: UUID
     endpoint: str
@@ -63,7 +63,7 @@ class PushSubscriptionResponse(BaseModel):
 
 
 class PreferencesUpdate(BaseModel):
-    """Request fuer Preference Update."""
+    """Request für Preference Update."""
 
     preferences: dict[str, bool] = Field(
         ...,
@@ -74,7 +74,7 @@ class PreferencesUpdate(BaseModel):
 class VAPIDPublicKeyResponse(BaseModel):
     """Response mit VAPID Public Key."""
 
-    public_key: str = Field(..., description="VAPID Public Key fuer Subscription")
+    public_key: str = Field(..., description="VAPID Public Key für Subscription")
 
 
 class SubscriptionStatsResponse(BaseModel):
@@ -87,7 +87,7 @@ class SubscriptionStatsResponse(BaseModel):
 
 
 class NotificationClickRequest(BaseModel):
-    """Request fuer Notification Click Tracking."""
+    """Request für Notification Click Tracking."""
 
     tag: str = Field(..., description="Notification Tag")
 
@@ -100,10 +100,10 @@ class NotificationClickRequest(BaseModel):
     "/vapid-public-key",
     response_model=VAPIDPublicKeyResponse,
     summary="VAPID Public Key abrufen",
-    description="Gibt den VAPID Public Key zurueck, der fuer die Push Subscription benoetigt wird.",
+    description="Gibt den VAPID Public Key zurück, der für die Push Subscription benötigt wird.",
 )
 async def get_vapid_public_key() -> VAPIDPublicKeyResponse:
-    """Gibt den VAPID Public Key zurueck."""
+    """Gibt den VAPID Public Key zurück."""
     return VAPIDPublicKeyResponse(public_key=settings.VAPID_PUBLIC_KEY)
 
 
@@ -116,7 +116,7 @@ async def get_vapid_public_key() -> VAPIDPublicKeyResponse:
     response_model=PushSubscriptionResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Push Subscription registrieren",
-    description="Registriert eine neue Push Subscription fuer den aktuellen Benutzer.",
+    description="Registriert eine neue Push Subscription für den aktuellen Benutzer.",
 )
 async def register_subscription(
     data: PushSubscriptionCreate,
@@ -248,7 +248,7 @@ async def update_subscription_preferences(
     if subscription.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer diese Subscription",
+            detail="Keine Berechtigung für diese Subscription",
         )
 
     # Now safe to update
@@ -277,13 +277,13 @@ async def update_subscription_preferences(
     "/stats",
     response_model=SubscriptionStatsResponse,
     summary="Subscription Statistiken",
-    description="Gibt Statistiken ueber die eigenen Push Subscriptions zurueck.",
+    description="Gibt Statistiken über die eigenen Push Subscriptions zurück.",
 )
 async def get_subscription_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SubscriptionStatsResponse:
-    """Gibt Subscription Statistiken zurueck."""
+    """Gibt Subscription Statistiken zurück."""
     service = PushNotificationService(db)
 
     stats = await service.get_subscription_stats(user_id=current_user.id)
@@ -296,7 +296,7 @@ async def get_subscription_stats(
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
     summary="Notification Click tracken",
-    description="Markiert eine Notification als geklickt (fuer Analytics).",
+    description="Markiert eine Notification als geklickt (für Analytics).",
 )
 async def track_notification_click(
     data: NotificationClickRequest,
@@ -322,7 +322,7 @@ async def track_notification_click(
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
     summary="Test Notification senden",
-    description="Sendet eine Test-Notification an alle Geraete des aktuellen Benutzers. Nur in Entwicklung verfuegbar.",
+    description="Sendet eine Test-Notification an alle Geraete des aktuellen Benutzers. Nur in Entwicklung verfügbar.",
 )
 async def send_test_notification(
     db: AsyncSession = Depends(get_db),
@@ -332,7 +332,7 @@ async def send_test_notification(
     if not settings.DEBUG:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Test-Notifications nur in Entwicklung verfuegbar",
+            detail="Test-Notifications nur in Entwicklung verfügbar",
         )
 
     service = PushNotificationService(db)

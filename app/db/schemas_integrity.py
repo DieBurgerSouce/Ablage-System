@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Pydantic Schemas fuer Dokument-Integritaet (Hash-Chain).
+Pydantic Schemas für Dokument-Integrität (Hash-Chain).
 
-Request- und Response-Modelle fuer die Integritaets-API.
+Request- und Response-Modelle für die Integritäts-API.
 """
 
 from datetime import date, datetime
@@ -22,7 +22,7 @@ class VerificationStatusEnum(str, Enum):
 
 
 class IntegrityStatusResponse(BaseModel):
-    """Antwort mit dem Integritaetsstatus eines Dokuments."""
+    """Antwort mit dem Integritätsstatus eines Dokuments."""
 
     document_id: UUID
     file_hash: str
@@ -47,9 +47,9 @@ class IntegrityVerifyResponse(BaseModel):
 
 
 class MerkleBuildRequest(BaseModel):
-    """Anfrage zum Erstellen eines taeglichen Merkle-Baums."""
+    """Anfrage zum Erstellen eines täglichen Merkle-Baums."""
 
-    tree_date: date = Field(..., description="Datum fuer den Merkle-Baum")
+    tree_date: date = Field(..., description="Datum für den Merkle-Baum")
 
 
 class MerkleBuildResponse(BaseModel):
@@ -62,7 +62,7 @@ class MerkleBuildResponse(BaseModel):
 
 
 class MerkleProofResponse(BaseModel):
-    """Antwort mit Merkle-Beweis fuer ein Dokument."""
+    """Antwort mit Merkle-Beweis für ein Dokument."""
 
     document_id: UUID
     is_included: bool
@@ -73,7 +73,7 @@ class MerkleProofResponse(BaseModel):
 
 
 class IntegrityReportRequest(BaseModel):
-    """Anfrage zur Erstellung eines Integritaetsberichts."""
+    """Anfrage zur Erstellung eines Integritätsberichts."""
 
     report_date: Optional[date] = Field(
         None,
@@ -82,7 +82,7 @@ class IntegrityReportRequest(BaseModel):
 
 
 class IntegrityReportResponse(BaseModel):
-    """Antwort mit einem Integritaetsbericht."""
+    """Antwort mit einem Integritätsbericht."""
 
     id: UUID
     report_date: date

@@ -767,7 +767,7 @@ class OCRPipeline:
                     )
                     # Verwende Text ohne Historical Normalization bei Fehler
 
-        # Step 5: Entity Extraction (Geschaeftspartner-Erkennung)
+        # Step 5: Entity Extraction (Geschäftspartner-Erkennung)
         entity_extraction_applied = False
         extracted_entities = None
 
@@ -830,33 +830,33 @@ class OCRPipeline:
                     )
                     # Fortfahren ohne Entity Extraction bei Fehler
 
-        # Step 6: Structured Extraction (Rechnungen, Bestellungen, Vertraege)
-        # NEU: Unterstuetzt jetzt ALLE Sprachen durch automatische Uebersetzung nach Deutsch
+        # Step 6: Structured Extraction (Rechnungen, Bestellungen, Verträge)
+        # NEU: Unterstützt jetzt ALLE Sprachen durch automatische Übersetzung nach Deutsch
         structured_extraction_applied = False
         structured_data = None
         classified_document_type = None
 
         if (self.enable_structured_extraction and
-            corrected_text):  # Sprachfilter entfernt - Uebersetzung erfolgt im Service
+            corrected_text):  # Sprachfilter entfernt - Übersetzung erfolgt im Service
 
             structured_service = self._get_structured_extraction_service()
             if structured_service:
                 try:
-                    # Tabellen aus OCR-Ergebnis (Docling/Surya) fuer Line-Item-Extraktion
+                    # Tabellen aus OCR-Ergebnis (Docling/Surya) für Line-Item-Extraktion
                     ocr_tables = getattr(fallback_result, 'tables', None)
 
                     extraction_result = await structured_service.extract(
                         corrected_text,
                         document_id=document_id,
                         tables=ocr_tables,
-                        detected_language=language,  # NEU: Sprache fuer Uebersetzung uebergeben
+                        detected_language=language,  # NEU: Sprache für Übersetzung übergeben
                     )
 
                     if extraction_result and extraction_result.classification:
                         structured_extraction_applied = True
                         classified_document_type = extraction_result.classification.document_type.value
 
-                        # Zu Dict konvertieren fuer Speicherung
+                        # Zu Dict konvertieren für Speicherung
                         structured_data = {
                             "classification": {
                                 "document_type": extraction_result.classification.document_type.value,
@@ -866,7 +866,7 @@ class OCRPipeline:
                             "overall_confidence": extraction_result.overall_confidence,
                             "extraction_version": extraction_result.extraction_version,
                             "extracted_at": extraction_result.extracted_at,
-                            # Uebersetzungs-Metadaten (NEU fuer Mehrsprachigkeit)
+                            # Übersetzungs-Metadaten (NEU für Mehrsprachigkeit)
                             "original_language": extraction_result.original_language,
                             "was_translated": extraction_result.was_translated,
                             "translation_confidence": extraction_result.translation_confidence,

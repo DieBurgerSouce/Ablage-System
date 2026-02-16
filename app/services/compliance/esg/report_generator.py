@@ -23,7 +23,7 @@ logger = structlog.get_logger(__name__)
 # Berichtsvorlagen
 REPORT_TEMPLATES = {
     "annual": {
-        "name": "Jaehrlicher Nachhaltigkeitsbericht",
+        "name": "Jährlicher Nachhaltigkeitsbericht",
         "sections": [
             "executive_summary",
             "carbon_footprint",
@@ -34,7 +34,7 @@ REPORT_TEMPLATES = {
         ],
     },
     "quarterly": {
-        "name": "Quartalsueberblick",
+        "name": "Quartalsüberblick",
         "sections": [
             "summary",
             "carbon_footprint_quarterly",
@@ -68,7 +68,7 @@ REPORT_TEMPLATES = {
 
 class ESGReportGenerator:
     """
-    Generator fuer ESG-Berichte.
+    Generator für ESG-Berichte.
     """
 
     def __init__(self, db: AsyncSession):
@@ -76,7 +76,7 @@ class ESGReportGenerator:
 
     @staticmethod
     def get_report_templates() -> Dict[str, Dict[str, Any]]:
-        """Gebe verfuegbare Berichtsvorlagen zurueck."""
+        """Gebe verfügbare Berichtsvorlagen zurück."""
         return REPORT_TEMPLATES
 
     async def generate_report(
@@ -108,7 +108,7 @@ class ESGReportGenerator:
         # Erstelle Zusammenfassung
         summary = self._generate_summary(metrics, template)
 
-        # Bestimme Geschaeftsjahr
+        # Bestimme Geschäftsjahr
         fiscal_year = period_end.year
 
         # Default-Titel
@@ -445,10 +445,10 @@ class ESGReportGenerator:
         if not report:
             return False
 
-        # Validiere Status-Uebergang
+        # Validiere Status-Übergang
         valid_statuses = [s.value for s in ReportStatus]
         if new_status not in valid_statuses:
-            raise ValueError(f"Ungueltiger Status: {new_status}")
+            raise ValueError(f"Ungültiger Status: {new_status}")
 
         report.status = new_status
 
@@ -464,5 +464,5 @@ class ESGReportGenerator:
 
 
 def get_esg_report_generator(db: AsyncSession) -> ESGReportGenerator:
-    """Factory-Funktion fuer ESGReportGenerator."""
+    """Factory-Funktion für ESGReportGenerator."""
     return ESGReportGenerator(db)

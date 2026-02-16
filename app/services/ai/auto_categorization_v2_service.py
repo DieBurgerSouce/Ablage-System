@@ -5,11 +5,11 @@ AutoCategorizationV2Service - LLM-basierte Dokument-Kategorisierung 2.0.
 Erweitert die bestehende Pattern-basierte Kategorisierung um:
 - Ollama-basierte kontextuelle Analyse
 - Multi-Label-Klassifikation
-- Erklaerungen warum eine Kategorie gewaehlt wurde
+- Erklärungen warum eine Kategorie gewaehlt wurde
 - Lernen aus User-Korrekturen
 - Confidence-Kalibrierung
 
-On-Premises: Nutzt ausschliesslich lokales Ollama (keine Cloud-LLMs).
+On-Premises: Nutzt ausschließlich lokales Ollama (keine Cloud-LLMs).
 
 Feinpoliert und durchdacht - Enterprise Document Intelligence.
 """
@@ -103,7 +103,7 @@ class CategorizationMethod(str, Enum):
 
 
 class DocumentType(str, Enum):
-    """Erweiterte Dokumenttypen fuer Multi-Label."""
+    """Erweiterte Dokumenttypen für Multi-Label."""
     INVOICE = "invoice"
     CONTRACT = "contract"
     DELIVERY_NOTE = "delivery_note"
@@ -137,7 +137,7 @@ CATEGORY_MAPPING: Dict[str, DocumentType] = {
     DocumentCategory.OTHER: DocumentType.OTHER,
 }
 
-# Deutsche Namen fuer UI
+# Deutsche Namen für UI
 DOCUMENT_TYPE_LABELS_DE: Dict[DocumentType, str] = {
     DocumentType.INVOICE: "Rechnung",
     DocumentType.CONTRACT: "Vertrag",
@@ -170,7 +170,7 @@ class CategoryLabel:
 
 @dataclass
 class CategoryExplanation:
-    """Erklaerung fuer Kategorisierung."""
+    """Erklärung für Kategorisierung."""
     summary: str  # Kurzfassung auf Deutsch
     key_indicators: List[str]  # Gefundene Schluesselbegriffe
     context_clues: List[str]  # Kontextuelle Hinweise
@@ -193,7 +193,7 @@ class CategorizationV2Result:
 
 @dataclass
 class CorrectionEntry:
-    """Einzelner Korrektur-Eintrag fuer Lernen."""
+    """Einzelner Korrektur-Eintrag für Lernen."""
     document_id: uuid.UUID
     original_type: DocumentType
     corrected_type: DocumentType
@@ -206,7 +206,7 @@ class CorrectionEntry:
 
 @dataclass
 class CalibrationData:
-    """Kalibrierungsdaten fuer eine Kategorie."""
+    """Kalibrierungsdaten für eine Kategorie."""
     document_type: DocumentType
     total_predictions: int
     correct_predictions: int
@@ -219,14 +219,14 @@ class CalibrationData:
 # LLM Prompt Templates
 # =============================================================================
 
-CLASSIFICATION_SYSTEM_PROMPT = """Du bist ein Dokumenten-Klassifizierungssystem fuer deutsche Geschaeftsdokumente.
+CLASSIFICATION_SYSTEM_PROMPT = """Du bist ein Dokumenten-Klassifizierungssystem für deutsche Geschäftsdokumente.
 
 Deine Aufgabe:
 1. Analysiere den Dokumententext
 2. Bestimme den Dokumenttyp
-3. Erklaere deine Entscheidung
+3. Erkläre deine Entscheidung
 
-Verfuegbare Dokumenttypen:
+Verfügbare Dokumenttypen:
 - invoice: Rechnung (Eingangs- oder Ausgangsrechnung)
 - contract: Vertrag (Kauf-, Miet-, Dienstleistungsvertrag)
 - delivery_note: Lieferschein
@@ -285,18 +285,18 @@ class AutoCategorizationV2Service:
     - Ollama-basierte kontextuelle Analyse
     - Fallback auf Pattern-Matching bei LLM-Ausfall
     - Multi-Label-Klassifikation
-    - Erklaerungen fuer Entscheidungen
+    - Erklärungen für Entscheidungen
     - Lernen aus Korrekturen
     - Confidence-Kalibrierung
     """
 
     # Konfiguration
-    MIN_TEXT_LENGTH_FOR_LLM = 50  # Mindestlaenge fuer LLM-Analyse
-    MAX_TEXT_LENGTH_FOR_LLM = 4000  # Maximum Text fuer LLM (Token-Limit)
-    LLM_TIMEOUT_SECONDS = 30  # Timeout fuer LLM-Anfrage
-    CACHE_TTL_SECONDS = 3600  # 1 Stunde Cache fuer gleiche Texte
-    MIN_CORRECTIONS_FOR_LEARNING = 5  # Mindest-Korrekturen fuer Lernen
-    CALIBRATION_WINDOW_DAYS = 30  # Zeitfenster fuer Kalibrierung
+    MIN_TEXT_LENGTH_FOR_LLM = 50  # Mindestlänge für LLM-Analyse
+    MAX_TEXT_LENGTH_FOR_LLM = 4000  # Maximum Text für LLM (Token-Limit)
+    LLM_TIMEOUT_SECONDS = 30  # Timeout für LLM-Anfrage
+    CACHE_TTL_SECONDS = 3600  # 1 Stunde Cache für gleiche Texte
+    MIN_CORRECTIONS_FOR_LEARNING = 5  # Mindest-Korrekturen für Lernen
+    CALIBRATION_WINDOW_DAYS = 30  # Zeitfenster für Kalibrierung
 
     # AppConfig Keys
     CORRECTIONS_KEY = "categorization_v2_corrections"
@@ -336,16 +336,16 @@ class AutoCategorizationV2Service:
         return self._pattern_service
 
     def _compute_text_hash(self, text: str) -> str:
-        """Berechnet SHA-256 Hash fuer Text-Caching."""
+        """Berechnet SHA-256 Hash für Text-Caching."""
         normalized = re.sub(r'\s+', ' ', text.lower().strip())
         return hashlib.sha256(normalized.encode('utf-8')).hexdigest()[:16]
 
     def _truncate_text(self, text: str, max_length: int = 4000) -> str:
-        """Kuerzt Text fuer LLM unter Beibehaltung der Struktur."""
+        """Kürzt Text für LLM unter Beibehaltung der Struktur."""
         if len(text) <= max_length:
             return text
 
-        # Versuche sinnvoll zu kuerzen
+        # Versuche sinnvoll zu kürzen
         # Erste Haelfte (Header) + letzte Viertel (Footer/Summen)
         header_len = int(max_length * 0.6)
         footer_len = int(max_length * 0.35)
@@ -353,7 +353,7 @@ class AutoCategorizationV2Service:
         header = text[:header_len]
         footer = text[-footer_len:]
 
-        return f"{header}\n\n[...Text gekuerzt...]\n\n{footer}"
+        return f"{header}\n\n[...Text gekürzt...]\n\n{footer}"
 
     async def categorize_text(
         self,
@@ -363,23 +363,23 @@ class AutoCategorizationV2Service:
         min_confidence: float = 0.3,
     ) -> CategorizationV2Result:
         """
-        Kategorisiert einen Text mit LLM-Unterstuetzung.
+        Kategorisiert einen Text mit LLM-Unterstützung.
 
         Args:
             text: OCR-Text des Dokuments
             use_llm: Ob LLM verwendet werden soll
             use_cache: Ob Cache verwendet werden soll
-            min_confidence: Minimale Confidence fuer Ergebnis
+            min_confidence: Minimale Confidence für Ergebnis
 
         Returns:
-            CategorizationV2Result mit Multi-Label und Erklaerung
+            CategorizationV2Result mit Multi-Label und Erklärung
         """
         start_time = time.perf_counter()
 
-        # Text-Hash fuer Cache
+        # Text-Hash für Cache
         text_hash = self._compute_text_hash(text)
 
-        # Cache pruefen
+        # Cache prüfen
         if use_cache and text_hash in self._cache:
             cached_result, cached_at = self._cache[text_hash]
             if (datetime.now(timezone.utc) - cached_at).seconds < self.CACHE_TTL_SECONDS:
@@ -398,7 +398,7 @@ class AutoCategorizationV2Service:
 
         if should_use_llm:
             try:
-                # LLM verfuegbar pruefen
+                # LLM verfügbar prüfen
                 llm_available = await self.ollama.is_available()
                 if not llm_available:
                     LLM_FALLBACK_RATE.labels(reason="unavailable").inc()
@@ -442,8 +442,8 @@ class AutoCategorizationV2Service:
         pattern_result: CategorizationResult,
         start_time: float,
     ) -> CategorizationV2Result:
-        """Fuehrt LLM-basierte Kategorisierung durch."""
-        # Text fuer LLM vorbereiten
+        """Führt LLM-basierte Kategorisierung durch."""
+        # Text für LLM vorbereiten
         truncated_text = self._truncate_text(text, self.MAX_TEXT_LENGTH_FOR_LLM)
 
         # LLM Prompt erstellen
@@ -636,7 +636,7 @@ class AutoCategorizationV2Service:
         return ". ".join(parts) if parts else "Standardklassifizierung"
 
     def _confidence_level(self, confidence: float) -> str:
-        """Mappt Confidence zu Level-String fuer Metriken."""
+        """Mappt Confidence zu Level-String für Metriken."""
         if confidence >= 0.95:
             return "auto_apply"
         elif confidence >= 0.80:
@@ -708,7 +708,7 @@ class AutoCategorizationV2Service:
         corrected_by_id: Optional[uuid.UUID] = None,
     ) -> None:
         """
-        Zeichnet eine User-Korrektur fuer Lernen auf.
+        Zeichnet eine User-Korrektur für Lernen auf.
 
         Args:
             db: Database Session
@@ -855,13 +855,13 @@ class AutoCategorizationV2Service:
             # Wir brauchen auch die korrekten Vorhersagen aus AIDecision
 
             # Vereinfachte Heuristik: Wenn viele Korrekturen,
-            # reduziere Confidence fuer diese Kategorie
+            # reduziere Confidence für diese Kategorie
             correction_rate = total / max(total + 10, 1)  # Annahme: 10 korrekte
             adjustment = -correction_rate * 0.1  # Max -10% Anpassung
 
             calibration_updates[type_str] = {
                 "total": total,
-                "correct": 0,  # Muesste aus AIDecision geladen werden
+                "correct": 0,  # Müsste aus AIDecision geladen werden
                 "accuracy": 1.0 - correction_rate,
                 "adjustment": round(adjustment, 3),
                 "updated": datetime.now(timezone.utc).isoformat(),
@@ -945,7 +945,7 @@ class AutoCategorizationV2Service:
         if not self._calibration_data:
             await self.load_calibration_data(db)
 
-        # Kategorisierung durchfuehren
+        # Kategorisierung durchführen
         result = await self.categorize_text(text, use_llm=use_llm)
 
         # Decision Value erstellen
@@ -977,7 +977,7 @@ class AutoCategorizationV2Service:
             "reasoning": result.explanation.reasoning[:500],
         }
 
-        # Callback fuer Auto-Apply
+        # Callback für Auto-Apply
         async def apply_category(value: Dict[str, Any]) -> None:
             """Wendet Kategorie auf Dokument an."""
             if not auto_apply:
@@ -997,7 +997,7 @@ class AutoCategorizationV2Service:
                     method=value["method"],
                 )
 
-        # Confidence fuer Entscheidung
+        # Confidence für Entscheidung
         confidence = (
             result.calibrated_confidence
             if result.calibrated_confidence is not None
@@ -1032,15 +1032,15 @@ class AutoCategorizationV2Service:
         use_llm: bool = True,
     ) -> List[Dict[str, Any]]:
         """
-        Gibt Kategorie-Vorschlaege zurueck.
+        Gibt Kategorie-Vorschläge zurück.
 
         Args:
             text: OCR-Text
-            limit: Max Anzahl Vorschlaege
+            limit: Max Anzahl Vorschläge
             use_llm: Ob LLM verwendet werden soll
 
         Returns:
-            Liste von Vorschlaegen mit Kategorie und Konfidenz
+            Liste von Vorschlägen mit Kategorie und Konfidenz
         """
         result = await self.categorize_text(text, use_llm=use_llm)
 
@@ -1055,7 +1055,7 @@ class AutoCategorizationV2Service:
                 "is_primary": label.is_primary,
             })
 
-        # Erklaerung hinzufuegen
+        # Erklärung hinzufuegen
         if suggestions:
             suggestions[0]["explanation"] = result.explanation.summary
 
@@ -1077,7 +1077,7 @@ _service_lock = threading.Lock()
 
 
 def get_auto_categorization_v2_service() -> AutoCategorizationV2Service:
-    """Factory fuer AutoCategorizationV2Service Singleton (Thread-safe)."""
+    """Factory für AutoCategorizationV2Service Singleton (Thread-safe)."""
     global _auto_categorization_v2_service
     if _auto_categorization_v2_service is None:
         with _service_lock:
@@ -1087,6 +1087,6 @@ def get_auto_categorization_v2_service() -> AutoCategorizationV2Service:
 
 
 def reset_auto_categorization_v2_service() -> None:
-    """Reset fuer Tests."""
+    """Reset für Tests."""
     global _auto_categorization_v2_service
     _auto_categorization_v2_service = None

@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Business Rules API fuer Ablage-System.
+Business Rules API für Ablage-System.
 
-REST API fuer Geschaeftsregeln:
-- CRUD fuer Regeln
+REST API für Geschäftsregeln:
+- CRUD für Regeln
 - Regel-Testing (Dry-Run)
-- Regel-Auswertung fuer Dokumente
+- Regel-Auswertung für Dokumente
 - RuleSets verwalten
 
 Phase 4 der Strategischen Roadmap (Januar 2026).
@@ -53,7 +53,7 @@ router = APIRouter(prefix="/rules", tags=["Business Rules"])
 
 
 class ConditionSchema(BaseModel):
-    """Schema fuer eine Regel-Bedingung."""
+    """Schema für eine Regel-Bedingung."""
     field: str = Field(..., description="Feld-Pfad (z.B. 'amount', 'supplier.is_new')")
     op: ConditionOperator = Field(..., description="Operator")
     value: Union[str, int, float, bool, List[str], None] = Field(default=None, description="Vergleichswert")
@@ -62,7 +62,7 @@ class ConditionSchema(BaseModel):
 
 
 class CompositeConditionSchema(BaseModel):
-    """Schema fuer zusammengesetzte Bedingung."""
+    """Schema für zusammengesetzte Bedingung."""
     and_: Optional[List["ConditionOrComposite"]] = Field(default=None, alias="and")
     or_: Optional[List["ConditionOrComposite"]] = Field(default=None, alias="or")
     not_: Optional["ConditionOrComposite"] = Field(default=None, alias="not")
@@ -71,12 +71,12 @@ class CompositeConditionSchema(BaseModel):
         populate_by_name = True
 
 
-# Union type fuer verschachtelte Bedingungen
+# Union type für verschachtelte Bedingungen
 ConditionOrComposite = ConditionSchema | CompositeConditionSchema
 
 
 class ActionSchema(BaseModel):
-    """Schema fuer eine Regel-Aktion."""
+    """Schema für eine Regel-Aktion."""
     type: ActionType = Field(..., description="Aktions-Typ")
     params: JSONDict = Field(default_factory=dict, description="Parameter")
 
@@ -104,7 +104,7 @@ class RuleCreateRequest(BaseModel):
     applies_to_document_types: Optional[List[str]] = Field(default=None)
     applies_to_sources: Optional[List[str]] = Field(default=None)
 
-    # Zeitliche Einschraenkung
+    # Zeitliche Einschränkung
     valid_from: Optional[datetime] = None
     valid_until: Optional[datetime] = None
 
@@ -157,7 +157,7 @@ class RuleUpdateRequest(BaseModel):
 
 
 class RuleResponse(BaseModel):
-    """Response fuer eine Regel."""
+    """Response für eine Regel."""
     id: UUID
     name: str
     description: Optional[str] = None
@@ -186,7 +186,7 @@ class RuleResponse(BaseModel):
 
 
 class RuleListResponse(BaseModel):
-    """Response fuer Regel-Liste."""
+    """Response für Regel-Liste."""
     items: List[RuleResponse]
     total: int
     limit: int
@@ -202,7 +202,7 @@ class RuleTestRequest(BaseModel):
 
 
 class RuleTestResponse(BaseModel):
-    """Response fuer Regel-Test."""
+    """Response für Regel-Test."""
     matched: bool
     condition_details: JSONDict
     would_trigger_actions: List[RuleActionDict]
@@ -210,17 +210,17 @@ class RuleTestResponse(BaseModel):
 
 
 class DocumentEvaluationRequest(BaseModel):
-    """Request fuer Dokument-Auswertung."""
+    """Request für Dokument-Auswertung."""
     document_id: UUID
     rule_ids: Optional[List[UUID]] = Field(
         default=None, description="Spezifische Regeln (oder alle)"
     )
     additional_context: Optional[RuleContextDict] = Field(default=None)
-    dry_run: bool = Field(default=True, description="Aktionen nicht ausfuehren")
+    dry_run: bool = Field(default=True, description="Aktionen nicht ausführen")
 
 
 class EvaluationResultResponse(BaseModel):
-    """Response fuer Auswertungs-Ergebnis."""
+    """Response für Auswertungs-Ergebnis."""
     rule_id: UUID
     rule_name: str
     matched: bool
@@ -230,7 +230,7 @@ class EvaluationResultResponse(BaseModel):
 
 
 class DocumentEvaluationResponse(BaseModel):
-    """Response fuer Dokument-Auswertung."""
+    """Response für Dokument-Auswertung."""
     document_id: UUID
     total_rules_evaluated: int
     rules_matched: int
@@ -249,7 +249,7 @@ class RuleSetCreateRequest(BaseModel):
 
 
 class RuleSetResponse(BaseModel):
-    """Response fuer RuleSet."""
+    """Response für RuleSet."""
     id: UUID
     name: str
     description: Optional[str] = None
@@ -266,7 +266,7 @@ class RuleSetResponse(BaseModel):
 
 
 class ExecutionLogResponse(BaseModel):
-    """Response fuer Execution-Log."""
+    """Response für Execution-Log."""
     id: UUID
     rule_id: UUID
     document_id: Optional[UUID] = None
@@ -283,7 +283,7 @@ class ExecutionLogResponse(BaseModel):
 
 
 class OperatorsResponse(BaseModel):
-    """Response mit verfuegbaren Operatoren."""
+    """Response mit verfügbaren Operatoren."""
     operators: List[Dict[str, str]]
     action_types: List[Dict[str, str]]
     categories: List[str]
@@ -291,7 +291,7 @@ class OperatorsResponse(BaseModel):
 
 class GenerateRuleRequest(BaseModel):
     """Request zur KI-Regelgenerierung."""
-    prompt: str = Field(..., min_length=5, max_length=1000, description="Natuerlichsprachliche Beschreibung der Regel")
+    prompt: str = Field(..., min_length=5, max_length=1000, description="Natürlichsprachliche Beschreibung der Regel")
 
 
 class GenerateRuleResponse(BaseModel):
@@ -342,7 +342,7 @@ def _model_to_response(model: BusinessRuleModel) -> RuleResponse:
 
 
 def _db_rule_to_business_rule(model: BusinessRuleModel) -> BusinessRule:
-    """Konvertiert DB-Model zu BusinessRule fuer Engine."""
+    """Konvertiert DB-Model zu BusinessRule für Engine."""
     return BusinessRule(
         id=model.id,
         name=model.name,
@@ -419,7 +419,7 @@ async def create_rule(
     db: AsyncSession = Depends(get_db),
 ) -> RuleResponse:
     """Erstellt eine neue Regel."""
-    # Code-Eindeutigkeit pruefen
+    # Code-Eindeutigkeit prüfen
     if request.code:
         existing = await db.execute(
             select(BusinessRuleModel).where(
@@ -517,7 +517,7 @@ async def update_rule(
             detail="Regel nicht gefunden",
         )
 
-    # Code-Eindeutigkeit pruefen
+    # Code-Eindeutigkeit prüfen
     if request.code and request.code != rule.code:
         existing = await db.execute(
             select(BusinessRuleModel).where(
@@ -566,7 +566,7 @@ async def delete_rule(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Loescht eine Regel."""
+    """Löscht eine Regel."""
     result = await db.execute(
         select(BusinessRuleModel).where(
             and_(
@@ -639,7 +639,7 @@ async def evaluate_document(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentEvaluationResponse:
-    """Wertet Regeln fuer ein Dokument aus.
+    """Wertet Regeln für ein Dokument aus.
 
     Ladet automatisch Dokument-Daten als Kontext und wendet
     alle (oder spezifische) Regeln an.
@@ -669,7 +669,7 @@ async def evaluate_document(
     # Zu BusinessRule-Objekten konvertieren
     business_rules = [_db_rule_to_business_rule(r) for r in db_rules]
 
-    # Engine ausfuehren
+    # Engine ausführen
     engine = BusinessRulesEngine(db)
 
     start_time = time.time()
@@ -744,9 +744,9 @@ async def preview_document_evaluation(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DocumentEvaluationResponse:
-    """Preview: Zeigt welche Regeln fuer ein Dokument greifen wuerden.
+    """Preview: Zeigt welche Regeln für ein Dokument greifen wuerden.
 
-    Immer dry_run - keine Aktionen werden ausgefuehrt.
+    Immer dry_run - keine Aktionen werden ausgeführt.
     """
     return await evaluate_document(
         document_id=document_id,
@@ -861,7 +861,7 @@ async def delete_rule_set(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> None:
-    """Loescht ein RuleSet."""
+    """Löscht ein RuleSet."""
     result = await db.execute(
         select(RuleSet).where(
             and_(
@@ -897,8 +897,8 @@ async def list_execution_logs(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[ExecutionLogResponse]:
-    """Listet Ausfuehrungs-Logs."""
-    # Subquery fuer Company-Filter
+    """Listet Ausführungs-Logs."""
+    # Subquery für Company-Filter
     company_rules = select(BusinessRuleModel.id).where(
         BusinessRuleModel.company_id == current_user.company_id
     )
@@ -945,7 +945,7 @@ async def list_execution_logs(
 async def get_operators(
     current_user: User = Depends(get_current_user),
 ) -> OperatorsResponse:
-    """Gibt verfuegbare Operatoren und Aktionstypen zurueck."""
+    """Gibt verfügbare Operatoren und Aktionstypen zurück."""
     return OperatorsResponse(
         operators=[
             {"value": op.value, "name": op.name, "description": _get_operator_description(op)}
@@ -960,16 +960,16 @@ async def get_operators(
 
 
 def _get_operator_description(op: ConditionOperator) -> str:
-    """Gibt Beschreibung fuer Operator zurueck."""
+    """Gibt Beschreibung für Operator zurück."""
     descriptions = {
         ConditionOperator.EQUALS: "Exakte Gleichheit",
         ConditionOperator.NOT_EQUALS: "Ungleichheit",
-        ConditionOperator.GREATER_THAN: "Groesser als",
-        ConditionOperator.GREATER_EQUALS: "Groesser oder gleich",
+        ConditionOperator.GREATER_THAN: "Größer als",
+        ConditionOperator.GREATER_EQUALS: "Größer oder gleich",
         ConditionOperator.LESS_THAN: "Kleiner als",
         ConditionOperator.LESS_EQUALS: "Kleiner oder gleich",
-        ConditionOperator.CONTAINS: "Enthaelt Teilstring",
-        ConditionOperator.NOT_CONTAINS: "Enthaelt nicht",
+        ConditionOperator.CONTAINS: "Enthält Teilstring",
+        ConditionOperator.NOT_CONTAINS: "Enthält nicht",
         ConditionOperator.STARTS_WITH: "Beginnt mit",
         ConditionOperator.ENDS_WITH: "Endet mit",
         ConditionOperator.MATCHES: "Regex-Pattern Match",
@@ -991,7 +991,7 @@ def _get_operator_description(op: ConditionOperator) -> str:
 
 
 def _get_action_description(at: ActionType) -> str:
-    """Gibt Beschreibung fuer Aktionstyp zurueck."""
+    """Gibt Beschreibung für Aktionstyp zurück."""
     descriptions = {
         ActionType.REQUIRE_APPROVAL: "Genehmigung erforderlich",
         ActionType.REQUIRE_CFO_APPROVAL: "CFO-Genehmigung erforderlich",
@@ -1013,11 +1013,11 @@ def _get_action_description(at: ActionType) -> str:
         ActionType.REMOVE_TAG: "Tag entfernen",
         ActionType.ADD_COMMENT: "Kommentar hinzufuegen",
         ActionType.TRIGGER_OCR: "OCR ausloesen",
-        ActionType.FLAG_FOR_REVIEW: "Zur Pruefung markieren",
-        ActionType.MANUAL_REVIEW_REQUIRED: "Manuelle Pruefung erforderlich",
+        ActionType.FLAG_FOR_REVIEW: "Zur Prüfung markieren",
+        ActionType.MANUAL_REVIEW_REQUIRED: "Manuelle Prüfung erforderlich",
         ActionType.BLOCK_PROCESSING: "Verarbeitung blockieren",
         ActionType.FLAG_FOR_ARCHIVE: "Zur Archivierung markieren",
-        ActionType.FLAG_FOR_PERIOD_CLOSE: "Fuer Periodenabschluss markieren",
+        ActionType.FLAG_FOR_PERIOD_CLOSE: "Für Periodenabschluss markieren",
     }
     return descriptions.get(at, "")
 
@@ -1032,13 +1032,13 @@ async def generate_rule_from_prompt(
     request: GenerateRuleRequest,
     current_user: User = Depends(get_current_user),
 ) -> GenerateRuleResponse:
-    """Generiert eine Regel aus natuerlichsprachlicher Beschreibung.
+    """Generiert eine Regel aus natürlichsprachlicher Beschreibung.
 
     Nutzt lokalen LLM (Ollama) zur Generierung strukturierter Regeln
-    aus natuerlichsprachlichen Prompts wie:
-    - "Erstelle Regel fuer Skonto-Ueberwachung"
-    - "Rechnungen ueber 10000 EUR muessen vom CFO genehmigt werden"
-    - "Neue Lieferanten zur Pruefung markieren"
+    aus natürlichsprachlichen Prompts wie:
+    - "Erstelle Regel für Skonto-Überwachung"
+    - "Rechnungen über 10000 EUR müssen vom CFO genehmigt werden"
+    - "Neue Lieferanten zur Prüfung markieren"
 
     Die generierte Regel wird NICHT gespeichert - nur zur Vorschau.
     Der Nutzer kann sie danach bearbeiten und manuell speichern.

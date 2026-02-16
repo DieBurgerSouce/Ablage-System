@@ -44,7 +44,7 @@ class ScanJobStatus(str, Enum):
 
 @dataclass
 class ScannerDevice:
-    """Registriertes Scanner-Geraet."""
+    """Registriertes Scanner-Gerät."""
     id: str
     name: str
     scanner_type: ScannerType
@@ -82,7 +82,7 @@ class ScannerService:
     """Scanner-Verwaltungsdienst."""
 
     def register_scanner(self, device: ScannerDevice) -> ScannerDevice:
-        """Registriert ein Scanner-Geraet."""
+        """Registriert ein Scanner-Gerät."""
         _registered_scanners[device.id] = device
         logger.info("scanner_registered", scanner_id=device.id, name=device.name)
         return device
@@ -136,7 +136,7 @@ class ScannerService:
         return _scan_jobs.get(job_id)
 
     def list_jobs(self, company_id: str, limit: int = 20) -> List[ScanJob]:
-        """Listet Scan-Auftraege einer Firma."""
+        """Listet Scan-Aufträge einer Firma."""
         jobs = [j for j in _scan_jobs.values() if j.company_id == company_id]
         jobs.sort(key=lambda j: j.created_at, reverse=True)
         return jobs[:limit]

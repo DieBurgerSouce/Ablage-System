@@ -3,9 +3,9 @@
 AI Conversation Celery Tasks.
 
 Asynchrone Verarbeitung von KI-Konversationsnachrichten und Aktionen.
-Nutzt FinanceAssistantService fuer die eigentliche KI-Verarbeitung.
+Nutzt FinanceAssistantService für die eigentliche KI-Verarbeitung.
 
-Feinpoliert und durchdacht - Deutsche Praezision.
+Feinpoliert und durchdacht - Deutsche Präzision.
 """
 
 import uuid
@@ -181,7 +181,7 @@ def execute_ai_action(
     company_id: Optional[str] = None,
 ) -> dict:
     """
-    Fuehrt eine bestaetigte KI-Aktion aus.
+    Führt eine bestätigte KI-Aktion aus.
 
     Args:
         action_id: UUID der Aktion
@@ -190,7 +190,7 @@ def execute_ai_action(
         company_id: UUID der Company (optional)
 
     Returns:
-        Dict mit Ausfuehrungsergebnis
+        Dict mit Ausführungsergebnis
     """
     import asyncio
 
@@ -266,7 +266,7 @@ def execute_ai_action(
                 requires_confirmation=action.requires_confirmation,
             )
 
-            # Fuehre Aktion aus
+            # Führe Aktion aus
             service = FinanceAssistantService(db=db)
 
             try:

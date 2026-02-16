@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """Shipment Tracking API - Paketdienst-Integration.
 
-Endpoints fuer:
+Endpoints für:
 - Sendungsverfolgung (DHL, DPD, Hermes, UPS, GLS, FedEx, Deutsche Post)
-- CRUD fuer Sendungen
+- CRUD für Sendungen
 - Statistiken und Analysen
 - Carrier-Erkennung
 
@@ -42,7 +42,7 @@ _carrier_service: Optional[CarrierService] = None
 
 
 def get_carrier_service() -> CarrierService:
-    """Gibt Singleton CarrierService zurueck."""
+    """Gibt Singleton CarrierService zurück."""
     global _carrier_service
     if _carrier_service is None:
         _carrier_service = CarrierService()
@@ -57,8 +57,8 @@ class ShipmentCreate(BaseModel):
     tracking_number: str = Field(..., min_length=8, max_length=50, description="Sendungsnummer")
     direction: str = Field(default="inbound", description="Richtung: inbound, outbound, return")
     carrier: Optional[str] = Field(None, description="Carrier (optional, wird automatisch erkannt)")
-    entity_id: Optional[UUID] = Field(None, description="Verknuepfter Kunde/Lieferant")
-    document_id: Optional[UUID] = Field(None, description="Verknuepftes Dokument")
+    entity_id: Optional[UUID] = Field(None, description="Verknüpfter Kunde/Lieferant")
+    document_id: Optional[UUID] = Field(None, description="Verknüpftes Dokument")
     reference: Optional[str] = Field(None, max_length=100, description="Referenz (Bestellnummer)")
     notes: Optional[str] = Field(None, description="Notizen")
     shipping_cost: Optional[Decimal] = Field(None, ge=0, description="Versandkosten")
@@ -92,7 +92,7 @@ class ShipmentUpdate(BaseModel):
 
 
 class ShipmentEventResponse(BaseModel):
-    """Response fuer ein Tracking-Event."""
+    """Response für ein Tracking-Event."""
     id: UUID
     timestamp: datetime
     status: str
@@ -105,7 +105,7 @@ class ShipmentEventResponse(BaseModel):
 
 
 class ShipmentResponse(BaseModel):
-    """Response fuer eine Sendung."""
+    """Response für eine Sendung."""
     id: UUID
     tracking_number: str
     carrier: str
@@ -134,7 +134,7 @@ class ShipmentResponse(BaseModel):
 
 
 class ShipmentListResponse(BaseModel):
-    """Response fuer Sendungsliste."""
+    """Response für Sendungsliste."""
     items: List[ShipmentResponse]
     total: int
     page: int
@@ -143,7 +143,7 @@ class ShipmentListResponse(BaseModel):
 
 
 class TrackingResponse(BaseModel):
-    """Response fuer Tracking-Abfrage."""
+    """Response für Tracking-Abfrage."""
     tracking_number: str
     carrier: str
     current_status: str
@@ -160,7 +160,7 @@ class TrackingResponse(BaseModel):
 
 
 class CarrierDetectionResponse(BaseModel):
-    """Response fuer Carrier-Erkennung."""
+    """Response für Carrier-Erkennung."""
     tracking_number: str
     detected_carrier: str
     tracking_url: Optional[str]
@@ -168,7 +168,7 @@ class CarrierDetectionResponse(BaseModel):
 
 
 class ShipmentSummaryResponse(BaseModel):
-    """Response fuer Sendungs-Zusammenfassung."""
+    """Response für Sendungs-Zusammenfassung."""
     total: int
     by_carrier: Dict[str, int]
     by_status: Dict[str, int]
@@ -178,7 +178,7 @@ class ShipmentSummaryResponse(BaseModel):
 
 
 class CarrierStatisticsResponse(BaseModel):
-    """Response fuer Carrier-Statistiken."""
+    """Response für Carrier-Statistiken."""
     carrier: str
     total_shipments: int
     delivered: int
@@ -253,7 +253,7 @@ async def list_shipments(
     carrier: Optional[str] = Query(None, description="Filter nach Carrier"),
     entity_id: Optional[UUID] = Query(None, description="Filter nach Entity"),
     page: int = Query(1, ge=1, description="Seite"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
@@ -267,21 +267,21 @@ async def list_shipments(
         try:
             direction_filter = ServiceDirection(direction)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Ungueltige Richtung: {direction}")
+            raise HTTPException(status_code=400, detail=f"Ungültige Richtung: {direction}")
 
     status_filter = None
     if status:
         try:
             status_filter = ShipmentStatus(status)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Ungueltiger Status: {status}")
+            raise HTTPException(status_code=400, detail=f"Ungültiger Status: {status}")
 
     carrier_filter = None
     if carrier:
         try:
             carrier_filter = Carrier(carrier)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Ungueltiger Carrier: {carrier}")
+            raise HTTPException(status_code=400, detail=f"Ungültiger Carrier: {carrier}")
 
     shipments, total = await service.list_shipments(
         db=db,
@@ -309,7 +309,7 @@ async def get_shipment_summary(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
 ) -> ShipmentSummaryResponse:
-    """Gibt eine Zusammenfassung aller Sendungen zurueck."""
+    """Gibt eine Zusammenfassung aller Sendungen zurück."""
     service = get_carrier_service()
     summary = await service.get_shipment_summary(db, company_id)
     return ShipmentSummaryResponse(**summary)
@@ -322,7 +322,7 @@ async def get_carrier_statistics(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
 ) -> List[CarrierStatisticsResponse]:
-    """Gibt Statistiken pro Carrier zurueck."""
+    """Gibt Statistiken pro Carrier zurück."""
     service = get_carrier_service()
     stats = await service.get_carrier_statistics(db, company_id, days)
     return [CarrierStatisticsResponse(**s) for s in stats]
@@ -357,9 +357,9 @@ async def track_shipment(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
 ) -> TrackingResponse:
-    """Fragt Tracking-Informationen fuer eine Sendungsnummer ab.
+    """Fragt Tracking-Informationen für eine Sendungsnummer ab.
 
-    Funktioniert auch fuer Sendungen, die noch nicht im System erfasst sind.
+    Funktioniert auch für Sendungen, die noch nicht im System erfasst sind.
     """
     service = get_carrier_service()
 
@@ -368,7 +368,7 @@ async def track_shipment(
         try:
             carrier_enum = Carrier(carrier)
         except ValueError:
-            raise HTTPException(status_code=400, detail=f"Ungueltiger Carrier: {carrier}")
+            raise HTTPException(status_code=400, detail=f"Ungültiger Carrier: {carrier}")
 
     try:
         result = await service.track_shipment(
@@ -509,7 +509,7 @@ async def delete_shipment(
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
 ) -> None:
-    """Loescht eine Sendung (Soft Delete)."""
+    """Löscht eine Sendung (Soft Delete)."""
     service = get_carrier_service()
 
     deleted = await service.delete_shipment(db, company_id, shipment_id)
@@ -528,7 +528,7 @@ async def refresh_all_shipments(
 ) -> Dict[str, int]:
     """Aktualisiert alle aktiven Sendungen.
 
-    Nur nicht-zugestellte und nicht-zurueckgeschickte Sendungen werden aktualisiert.
+    Nur nicht-zugestellte und nicht-zurückgeschickte Sendungen werden aktualisiert.
     """
     service = get_carrier_service()
 
@@ -547,12 +547,12 @@ async def refresh_all_shipments(
 async def list_carriers(
     current_user: User = Depends(get_current_active_user),
 ) -> List[Dict[str, str]]:
-    """Listet alle unterstuetzten Carrier auf."""
+    """Listet alle unterstützten Carrier auf."""
     carriers = [
         {
             "id": "dhl",
             "name": "DHL",
-            "description": "DHL Paket Deutschland - Marktfuehrer",
+            "description": "DHL Paket Deutschland - Marktführer",
             "tracking_url_pattern": "https://www.dhl.de/de/privatkunden/pakete-empfangen/verfolgen.html?piececode={tracking_number}",
         },
         {

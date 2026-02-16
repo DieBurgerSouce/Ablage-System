@@ -3,7 +3,7 @@
 Multi-Dimensional Classification API Endpoints.
 
 Vision 2.0 Feature: Intelligente Dokumentenklassifikation
-Endpoints fuer:
+Endpoints für:
 - Multi-Label Klassifikation (Typ, Dringlichkeit, Abteilung, Vertraulichkeit)
 - Einzelne Dimensionen (Urgency, Department, Confidentiality)
 - Batch-Klassifikation
@@ -49,15 +49,15 @@ router = APIRouter(prefix="/classification", tags=["Classification"])
 # =============================================================================
 
 class ClassificationRequest(BaseModel):
-    """Request fuer Dokumenten-Klassifikation."""
+    """Request für Dokumenten-Klassifikation."""
     text: str = Field(..., min_length=1, max_length=100000, description="OCR-Text des Dokuments")
-    document_date: Optional[datetime] = Field(None, description="Dokumentdatum fuer Fristberechnung")
-    amount: Optional[Decimal] = Field(None, ge=0, description="Betrag fuer CFO-Approval Pruefung")
-    is_incoming: bool = Field(True, description="True fuer eingehende, False fuer ausgehende Dokumente")
+    document_date: Optional[datetime] = Field(None, description="Dokumentdatum für Fristberechnung")
+    amount: Optional[Decimal] = Field(None, ge=0, description="Betrag für CFO-Approval Prüfung")
+    is_incoming: bool = Field(True, description="True für eingehende, False für ausgehende Dokumente")
 
 
 class BatchClassificationRequest(BaseModel):
-    """Request fuer Batch-Klassifikation."""
+    """Request für Batch-Klassifikation."""
     documents: List[ClassificationRequest] = Field(..., min_length=1, max_length=50)
 
 
@@ -96,7 +96,7 @@ class ConfidentialityResponse(BaseModel):
 
 
 class MultiLabelClassificationResponse(BaseModel):
-    """Vollstaendige Multi-Label Klassifikation."""
+    """Vollständige Multi-Label Klassifikation."""
     document_type: DocumentTypeResponse
     urgency: UrgencyResponse
     department: DepartmentResponse
@@ -117,17 +117,17 @@ class ClassificationStatsResponse(BaseModel):
 
 
 class UrgencyLevelsResponse(BaseModel):
-    """Verfuegbare Dringlichkeitsstufen."""
+    """Verfügbare Dringlichkeitsstufen."""
     levels: List[Dict[str, str]]
 
 
 class DepartmentsResponse(BaseModel):
-    """Verfuegbare Abteilungen."""
+    """Verfügbare Abteilungen."""
     departments: List[Dict[str, str]]
 
 
 class ConfidentialityLevelsResponse(BaseModel):
-    """Verfuegbare Vertraulichkeitsstufen."""
+    """Verfügbare Vertraulichkeitsstufen."""
     levels: List[Dict[str, str]]
 
 
@@ -142,13 +142,13 @@ async def classify_multi_label(
     company: Company = Depends(require_company),
 ) -> MultiLabelClassificationResponse:
     """
-    Fuehre vollstaendige Multi-Label Klassifikation durch.
+    Führe vollständige Multi-Label Klassifikation durch.
 
     Klassifiziert ein Dokument nach allen Dimensionen:
     - **Dokumenttyp**: Rechnung, Vertrag, Bestellung, etc.
     - **Dringlichkeit**: Sofort, Normal, Kann warten
     - **Abteilung**: Buchhaltung, Einkauf, Vertrieb, etc.
-    - **Vertraulichkeit**: Oeffentlich, Intern, Vertraulich, Streng Vertraulich
+    - **Vertraulichkeit**: Öffentlich, Intern, Vertraulich, Streng Vertraulich
 
     Performance: < 50ms
     """
@@ -189,7 +189,7 @@ async def classify_multi_label(
             confidence=result.department_confidence,
             secondary=[d.value for d in result.secondary_departments],
             requires_cfo_approval=result.requires_cfo_approval,
-            reason=f"Zustaendig: {result.primary_department.value}",
+            reason=f"Zuständig: {result.primary_department.value}",
         ),
         confidentiality=ConfidentialityResponse(
             level=result.confidentiality_level.value,
@@ -255,7 +255,7 @@ async def classify_batch(
                 confidence=r.department_confidence,
                 secondary=[d.value for d in r.secondary_departments],
                 requires_cfo_approval=r.requires_cfo_approval,
-                reason=f"Zustaendig: {r.primary_department.value}",
+                reason=f"Zuständig: {r.primary_department.value}",
             ),
             confidentiality=ConfidentialityResponse(
                 level=r.confidentiality_level.value,
@@ -288,7 +288,7 @@ async def classify_urgency(
     Analysiert:
     - Erkannte Fristen und Deadlines
     - Mahnungen und Eskalationen
-    - Keywords fuer Dringlichkeit
+    - Keywords für Dringlichkeit
     """
     classifier = get_urgency_classifier()
 
@@ -312,9 +312,9 @@ async def route_to_department(
     current_user: User = Depends(get_current_active_user),
 ) -> DepartmentResponse:
     """
-    Route Dokument zur zustaendigen Abteilung.
+    Route Dokument zur zuständigen Abteilung.
 
-    Beruecksichtigt:
+    Berücksichtigt:
     - Dokumenttyp
     - Inhalt und Keywords
     - Betragsschwellen
@@ -347,7 +347,7 @@ async def classify_confidentiality(
     Erkennt:
     - Explizite Vertraulichkeits-Marker
     - PII (personenbezogene Daten)
-    - Geschaeftsgeheimnisse
+    - Geschäftsgeheimnisse
     """
     classifier = get_confidentiality_classifier()
 
@@ -369,7 +369,7 @@ async def classify_confidentiality(
 @router.get("/urgency-levels", response_model=UrgencyLevelsResponse)
 async def get_urgency_levels() -> UrgencyLevelsResponse:
     """
-    Liste alle verfuegbaren Dringlichkeitsstufen.
+    Liste alle verfügbaren Dringlichkeitsstufen.
     """
     level_descriptions = {
         UrgencyLevel.IMMEDIATE: "Sofort - Frist < 3 Tage oder kritisch",
@@ -388,7 +388,7 @@ async def get_urgency_levels() -> UrgencyLevelsResponse:
 @router.get("/departments", response_model=DepartmentsResponse)
 async def get_departments() -> DepartmentsResponse:
     """
-    Liste alle verfuegbaren Abteilungen.
+    Liste alle verfügbaren Abteilungen.
     """
     dept_descriptions = {
         Department.BUCHHALTUNG: "Finanzbuchhaltung, Rechnungswesen",
@@ -397,7 +397,7 @@ async def get_departments() -> DepartmentsResponse:
         Department.HR: "Personal, Mitarbeiter",
         Department.GESCHAEFTSFUEHRUNG: "Management, Strategie",
         Department.IT: "Technologie, Software",
-        Department.RECHT: "Vertraege, Compliance",
+        Department.RECHT: "Verträge, Compliance",
         Department.ALLGEMEIN: "Allgemein zugeordnet",
     }
 
@@ -412,11 +412,11 @@ async def get_departments() -> DepartmentsResponse:
 @router.get("/confidentiality-levels", response_model=ConfidentialityLevelsResponse)
 async def get_confidentiality_levels() -> ConfidentialityLevelsResponse:
     """
-    Liste alle verfuegbaren Vertraulichkeitsstufen.
+    Liste alle verfügbaren Vertraulichkeitsstufen.
     """
     level_descriptions = {
-        ConfidentialityLevel.PUBLIC: "Oeffentlich zugaenglich",
-        ConfidentialityLevel.INTERNAL: "Nur fuer Mitarbeiter",
+        ConfidentialityLevel.PUBLIC: "Öffentlich zugaenglich",
+        ConfidentialityLevel.INTERNAL: "Nur für Mitarbeiter",
         ConfidentialityLevel.CONFIDENTIAL: "Eingeschraenkter Zugriff",
         ConfidentialityLevel.STRICTLY_CONFIDENTIAL: "Nur autorisierte Personen",
     }
@@ -457,13 +457,13 @@ async def reset_classification_stats(
     current_user: User = Depends(get_current_active_user),
 ) -> None:
     """
-    Setze Klassifikations-Statistiken zurueck (Admin).
+    Setze Klassifikations-Statistiken zurück (Admin).
     """
-    # Admin-Check: Nur Admins oder Manager duerfen Statistiken zuruecksetzen
+    # Admin-Check: Nur Admins oder Manager duerfen Statistiken zurücksetzen
     if current_user.role not in ["admin", "manager"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Statistiken zuruecksetzen",
+            detail="Nur Administratoren können Statistiken zurücksetzen",
         )
 
     classifier = get_multi_label_classifier()

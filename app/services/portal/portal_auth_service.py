@@ -1,7 +1,7 @@
 """
 Portal-Authentifizierungsservice.
 
-Separate Authentifizierung fuer Kunden/Lieferanten-Portal.
+Separate Authentifizierung für Kunden/Lieferanten-Portal.
 """
 
 from datetime import datetime, timezone, timedelta
@@ -34,7 +34,7 @@ LOCKOUT_MINUTES = 30
 
 
 class PortalAuthError(Exception):
-    """Basis-Exception fuer Portal-Auth-Fehler."""
+    """Basis-Exception für Portal-Auth-Fehler."""
     pass
 
 
@@ -49,7 +49,7 @@ class PortalUserInactiveError(PortalAuthError):
 
 
 class InvalidPortalCredentialsError(PortalAuthError):
-    """Ungueltige Anmeldedaten."""
+    """Ungültige Anmeldedaten."""
     pass
 
 
@@ -59,13 +59,13 @@ class PortalAccountLockedError(PortalAuthError):
 
 
 class PortalAuthService:
-    """Service fuer Portal-Authentifizierung."""
+    """Service für Portal-Authentifizierung."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
 
     def _hash_token(self, token: str) -> str:
-        """Hash ein Token fuer sichere Speicherung."""
+        """Hash ein Token für sichere Speicherung."""
         return hashlib.sha256(token.encode()).hexdigest()
 
     def _verify_password(self, plain_password: str, hashed_password: str) -> bool:
@@ -87,12 +87,12 @@ class PortalAuthService:
         permissions: Optional[dict] = None,
     ) -> Tuple[PortalUser, str]:
         """
-        Erstelle eine Einladung fuer einen Portal-Benutzer.
+        Erstelle eine Einladung für einen Portal-Benutzer.
 
         Returns:
             Tuple aus PortalUser und Einladungs-Token (Klartext).
         """
-        # Pruefe ob bereits eingeladen
+        # Prüfe ob bereits eingeladen
         existing = await self.db.execute(
             select(PortalUser).where(
                 and_(
@@ -164,9 +164,9 @@ class PortalAuthService:
         portal_user = result.scalar_one_or_none()
 
         if not portal_user:
-            raise PortalUserNotFoundError("Ungueltige oder abgelaufene Einladung")
+            raise PortalUserNotFoundError("Ungültige oder abgelaufene Einladung")
 
-        # Pruefe Ablauf
+        # Prüfe Ablauf
         if portal_user.invitation_expires_at and portal_user.invitation_expires_at < datetime.now(timezone.utc):
             raise PortalAuthError("Einladung ist abgelaufen")
 
@@ -213,20 +213,20 @@ class PortalAuthService:
         if not portal_user:
             raise PortalUserNotFoundError("Benutzer nicht gefunden")
 
-        # Pruefe Lock
+        # Prüfe Lock
         if portal_user.locked_until and portal_user.locked_until > datetime.now(timezone.utc):
             remaining = (portal_user.locked_until - datetime.now(timezone.utc)).seconds // 60
             raise PortalAccountLockedError(
                 f"Account ist gesperrt. Bitte versuchen Sie es in {remaining} Minuten erneut."
             )
 
-        # Pruefe Status
+        # Prüfe Status
         if portal_user.status != PortalUserStatus.ACTIVE:
             raise PortalUserInactiveError("Account ist nicht aktiv")
 
         # Verifiziere Passwort
         if not self._verify_password(password, portal_user.hashed_password):
-            # Erhoehe Fehlversuche
+            # Erhöhe Fehlversuche
             portal_user.failed_login_attempts += 1
 
             if portal_user.failed_login_attempts >= MAX_FAILED_ATTEMPTS:
@@ -238,7 +238,7 @@ class PortalAuthService:
                 )
 
             await self.db.commit()
-            raise InvalidPortalCredentialsError("Ungueltige Anmeldedaten")
+            raise InvalidPortalCredentialsError("Ungültige Anmeldedaten")
 
         # Reset bei erfolgreichem Login
         portal_user.failed_login_attempts = 0
@@ -262,7 +262,7 @@ class PortalAuthService:
         ip_address: Optional[str] = None,
     ) -> Tuple[str, str, PortalSession]:
         """
-        Erstelle eine neue Session fuer einen Portal-Benutzer.
+        Erstelle eine neue Session für einen Portal-Benutzer.
 
         Returns:
             Tuple aus Access-Token, Refresh-Token und Session.
@@ -288,7 +288,7 @@ class PortalAuthService:
 
     async def validate_session(self, access_token: str) -> Optional[PortalUser]:
         """
-        Validiere einen Access-Token und gebe den Benutzer zurueck.
+        Validiere einen Access-Token und gebe den Benutzer zurück.
         """
         token_hash = self._hash_token(access_token)
 
@@ -345,7 +345,7 @@ class PortalAuthService:
         old_session = result.scalar_one_or_none()
 
         if not old_session:
-            raise PortalAuthError("Ungueltige oder abgelaufene Session")
+            raise PortalAuthError("Ungültige oder abgelaufene Session")
 
         # Revoke alte Session
         old_session.revoked_at = datetime.now(timezone.utc)
@@ -427,7 +427,7 @@ class PortalAuthService:
         new_password: str,
     ) -> bool:
         """
-        Aendere das Passwort eines Portal-Benutzers.
+        Ändere das Passwort eines Portal-Benutzers.
         """
         result = await self.db.execute(
             select(PortalUser).where(PortalUser.id == portal_user_id)
@@ -480,5 +480,5 @@ class PortalAuthService:
 
 
 def get_portal_auth_service(db: AsyncSession) -> PortalAuthService:
-    """Factory-Funktion fuer PortalAuthService."""
+    """Factory-Funktion für PortalAuthService."""
     return PortalAuthService(db)

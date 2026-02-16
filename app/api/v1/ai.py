@@ -1,6 +1,6 @@
-"""API Endpoints fuer KI-Funktionen (Ollama).
+"""API Endpoints für KI-Funktionen (Ollama).
 
-Enterprise Feature: Lokale LLM-Integration ohne Cloud-Abhaengigkeiten.
+Enterprise Feature: Lokale LLM-Integration ohne Cloud-Abhängigkeiten.
 
 Endpoints:
 - NER (Named Entity Recognition)
@@ -32,20 +32,20 @@ router = APIRouter(prefix="/ai", tags=["AI/LLM"])
 
 
 class HealthResponse(BaseModel):
-    """Antwort fuer Health-Check."""
+    """Antwort für Health-Check."""
 
     available: bool
     models: list[str]
 
 
 class EntityExtractionRequest(BaseModel):
-    """Anfrage fuer NER."""
+    """Anfrage für NER."""
 
     text: str = Field(..., min_length=1, max_length=50000)
 
 
 class EntityExtractionResponse(BaseModel):
-    """Antwort fuer NER."""
+    """Antwort für NER."""
 
     persons: list[str]
     organizations: list[str]
@@ -56,13 +56,13 @@ class EntityExtractionResponse(BaseModel):
 
 
 class ContractAnalysisRequest(BaseModel):
-    """Anfrage fuer Vertragsanalyse."""
+    """Anfrage für Vertragsanalyse."""
 
     text: str = Field(..., min_length=1, max_length=50000)
 
 
 class ContractAnalysisResponse(BaseModel):
-    """Antwort fuer Vertragsanalyse."""
+    """Antwort für Vertragsanalyse."""
 
     start_date: Optional[str] = None
     end_date: Optional[str] = None
@@ -75,21 +75,21 @@ class ContractAnalysisResponse(BaseModel):
 
 
 class CategorizeRequest(BaseModel):
-    """Anfrage fuer Dokumentenkategorisierung."""
+    """Anfrage für Dokumentenkategorisierung."""
 
     text: str = Field(..., min_length=1, max_length=20000)
     available_categories: list[str] = Field(..., min_length=1)
 
 
 class CategorizeResponse(BaseModel):
-    """Antwort fuer Dokumentenkategorisierung."""
+    """Antwort für Dokumentenkategorisierung."""
 
     category: str
     confidence: float = Field(..., ge=0.0, le=1.0)
 
 
 class SummarizeRequest(BaseModel):
-    """Anfrage fuer Textzusammenfassung."""
+    """Anfrage für Textzusammenfassung."""
 
     text: str = Field(..., min_length=1, max_length=50000)
     max_sentences: int = Field(default=3, ge=1, le=10)
@@ -97,39 +97,39 @@ class SummarizeRequest(BaseModel):
 
 
 class SummarizeResponse(BaseModel):
-    """Antwort fuer Textzusammenfassung."""
+    """Antwort für Textzusammenfassung."""
 
     summary: str
 
 
 class QuestionAnswerRequest(BaseModel):
-    """Anfrage fuer Frage-Antwort."""
+    """Anfrage für Frage-Antwort."""
 
     context: str = Field(..., min_length=1, max_length=50000)
     question: str = Field(..., min_length=1, max_length=1000)
 
 
 class QuestionAnswerResponse(BaseModel):
-    """Antwort fuer Frage-Antwort."""
+    """Antwort für Frage-Antwort."""
 
     answer: str
 
 
 class KeyValueExtractionRequest(BaseModel):
-    """Anfrage fuer Schluessel-Wert-Extraktion."""
+    """Anfrage für Schluessel-Wert-Extraktion."""
 
     text: str = Field(..., min_length=1, max_length=30000)
     expected_keys: Optional[list[str]] = None
 
 
 class KeyValueExtractionResponse(BaseModel):
-    """Antwort fuer Schluessel-Wert-Extraktion."""
+    """Antwort für Schluessel-Wert-Extraktion."""
 
     pairs: dict[str, str]
 
 
 class GenerateRequest(BaseModel):
-    """Anfrage fuer freie Textgenerierung."""
+    """Anfrage für freie Textgenerierung."""
 
     prompt: str = Field(..., min_length=1, max_length=10000)
     system_prompt: Optional[str] = Field(default=None, max_length=5000)
@@ -138,7 +138,7 @@ class GenerateRequest(BaseModel):
 
 
 class GenerateResponse(BaseModel):
-    """Antwort fuer Textgenerierung."""
+    """Antwort für Textgenerierung."""
 
     text: str
 
@@ -147,7 +147,7 @@ class GenerateResponse(BaseModel):
 
 
 def get_service() -> OllamaService:
-    """Dependency fuer OllamaService."""
+    """Dependency für OllamaService."""
     return get_ollama_service()
 
 
@@ -157,13 +157,13 @@ def get_service() -> OllamaService:
 @router.get(
     "/health",
     response_model=HealthResponse,
-    summary="Prueft Ollama-Verfuegbarkeit",
-    description="Prueft ob Ollama laeuft und welche Modelle verfuegbar sind.",
+    summary="Prüft Ollama-Verfügbarkeit",
+    description="Prüft ob Ollama laeuft und welche Modelle verfügbar sind.",
 )
 async def check_health(
     service: OllamaService = Depends(get_service),
 ) -> HealthResponse:
-    """Prueft ob Ollama verfuegbar ist."""
+    """Prüft ob Ollama verfügbar ist."""
     available = await service.is_available()
     models: list[str] = []
 
@@ -185,11 +185,11 @@ async def extract_entities(
     service: OllamaService = Depends(get_service),
 ) -> EntityExtractionResponse:
     """Extrahiert Named Entities aus Text."""
-    # Verfuegbarkeit pruefen
+    # Verfügbarkeit prüfen
     if not await service.is_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Ollama-Service ist nicht verfuegbar",
+            detail="Ollama-Service ist nicht verfügbar",
         )
 
     result: ExtractedEntities = await service.extract_entities(request.text)
@@ -208,7 +208,7 @@ async def extract_entities(
     "/contracts/analyze",
     response_model=ContractAnalysisResponse,
     summary="Vertragsanalyse",
-    description="Analysiert einen Vertragstext und extrahiert Laufzeiten, Kuendigungsfristen und andere Details.",
+    description="Analysiert einen Vertragstext und extrahiert Laufzeiten, Kündigungsfristen und andere Details.",
 )
 async def analyze_contract(
     request: ContractAnalysisRequest,
@@ -219,7 +219,7 @@ async def analyze_contract(
     if not await service.is_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Ollama-Service ist nicht verfuegbar",
+            detail="Ollama-Service ist nicht verfügbar",
         )
 
     result: ContractAnalysis = await service.analyze_contract(request.text)
@@ -240,7 +240,7 @@ async def analyze_contract(
     "/documents/categorize",
     response_model=CategorizeResponse,
     summary="Dokumentenkategorisierung",
-    description="Kategorisiert ein Dokument basierend auf verfuegbaren Kategorien.",
+    description="Kategorisiert ein Dokument basierend auf verfügbaren Kategorien.",
 )
 async def categorize_document(
     request: CategorizeRequest,
@@ -251,7 +251,7 @@ async def categorize_document(
     if not await service.is_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Ollama-Service ist nicht verfuegbar",
+            detail="Ollama-Service ist nicht verfügbar",
         )
 
     category, confidence = await service.categorize_document(
@@ -266,7 +266,7 @@ async def categorize_document(
     "/text/summarize",
     response_model=SummarizeResponse,
     summary="Textzusammenfassung",
-    description="Fasst einen Text auf eine bestimmte Anzahl Saetze zusammen.",
+    description="Fasst einen Text auf eine bestimmte Anzahl Sätze zusammen.",
 )
 async def summarize_text(
     request: SummarizeRequest,
@@ -277,7 +277,7 @@ async def summarize_text(
     if not await service.is_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Ollama-Service ist nicht verfuegbar",
+            detail="Ollama-Service ist nicht verfügbar",
         )
 
     summary = await service.summarize(
@@ -304,7 +304,7 @@ async def answer_question(
     if not await service.is_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Ollama-Service ist nicht verfuegbar",
+            detail="Ollama-Service ist nicht verfügbar",
         )
 
     answer = await service.answer_question(
@@ -330,7 +330,7 @@ async def extract_key_value_pairs(
     if not await service.is_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Ollama-Service ist nicht verfuegbar",
+            detail="Ollama-Service ist nicht verfügbar",
         )
 
     pairs = await service.extract_key_value_pairs(
@@ -356,7 +356,7 @@ async def generate_text(
     if not await service.is_available():
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Ollama-Service ist nicht verfuegbar",
+            detail="Ollama-Service ist nicht verfügbar",
         )
 
     text = await service.generate(

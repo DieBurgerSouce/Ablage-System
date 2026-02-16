@@ -1,7 +1,7 @@
 """
 Reporting Services Package
 
-Services fuer Geschaeftsfuehrung Dashboard und Reporting.
+Services für Geschäftsführung Dashboard und Reporting.
 Inklusive Ad-Hoc Reporting (Feature #12).
 """
 

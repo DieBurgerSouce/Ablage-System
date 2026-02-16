@@ -55,7 +55,7 @@ router = APIRouter(prefix="/approvals", tags=["approvals"])
 # =============================================================================
 
 class ApprovalChainStepSchema(BaseModel):
-    """Schema fuer einen Schritt in der Genehmiger-Kette."""
+    """Schema für einen Schritt in der Genehmiger-Kette."""
     step: int = Field(..., ge=1, description="Schritt-Nummer (1-basiert)")
     type: str = Field(..., description="Typ: user, role, group, department, any, all")
     value: str = Field(..., min_length=1, description="Wert: User-ID, Rollenname, etc.")
@@ -86,7 +86,7 @@ class ApprovalRuleCreateRequest(BaseModel):
     escalation_after_hours: Optional[int] = Field(None, ge=1, description="Eskalation nach X Stunden")
     escalation_to_role: Optional[str] = Field(None, description="Eskalation an Rolle")
     sla_hours: int = Field(48, ge=1, description="Max. Bearbeitungszeit")
-    priority: int = Field(100, ge=1, le=999, description="Prioritaet (niedriger = hoeher)")
+    priority: int = Field(100, ge=1, le=999, description="Prioritaet (niedriger = höher)")
     is_active: bool = Field(True, description="Ob die Regel aktiv ist")
 
     @field_validator("conditions")
@@ -139,7 +139,7 @@ class ApprovalRuleUpdateRequest(BaseModel):
 
 
 class ApprovalRuleResponse(BaseModel):
-    """Response fuer eine Approval-Regel."""
+    """Response für eine Approval-Regel."""
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -161,7 +161,7 @@ class ApprovalRuleResponse(BaseModel):
 
 
 class ApprovalRulesListResponse(BaseModel):
-    """Response fuer Regelliste."""
+    """Response für Regelliste."""
     rules: List[ApprovalRuleResponse]
     total: int
 
@@ -177,7 +177,7 @@ class ApprovalRequestCreateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=255, description="Titel")
     description: Optional[str] = Field(None, description="Beschreibung")
     amount: Optional[Decimal] = Field(None, description="Betrag")
-    currency: str = Field("EUR", max_length=3, description="Waehrung")
+    currency: str = Field("EUR", max_length=3, description="Währung")
     priority: ApprovalPriority = Field(ApprovalPriority.NORMAL, description="Prioritaet")
     approval_chain: List[ApprovalChainStepSchema] = Field(
         ...,
@@ -185,11 +185,11 @@ class ApprovalRequestCreateRequest(BaseModel):
         description="Genehmiger-Kette"
     )
     sla_hours: int = Field(48, ge=1, description="Max. Bearbeitungszeit")
-    metadata: Optional[JSONDict] = Field(None, description="Zusaetzliche Daten")
+    metadata: Optional[JSONDict] = Field(None, description="Zusätzliche Daten")
 
 
 class ApprovalRequestResponse(BaseModel):
-    """Response fuer eine Genehmigungsanfrage."""
+    """Response für eine Genehmigungsanfrage."""
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -216,20 +216,20 @@ class ApprovalRequestResponse(BaseModel):
 
 
 class ApprovalRequestsListResponse(BaseModel):
-    """Response fuer Anfragenliste."""
+    """Response für Anfragenliste."""
     requests: List[ApprovalRequestResponse]
     total: int
 
 
 class ApprovalDecisionRequest(BaseModel):
-    """Request fuer Genehmigungsentscheidung."""
+    """Request für Genehmigungsentscheidung."""
     decision: str = Field(..., pattern="^(approved|rejected)$", description="Entscheidung: approved oder rejected")
     notes: Optional[str] = Field(None, description="Optionale Notizen")
 
 
 class ApprovalEscalationRequest(BaseModel):
-    """Request fuer Eskalation."""
-    escalation_reason: str = Field(..., min_length=1, description="Grund fuer Eskalation")
+    """Request für Eskalation."""
+    escalation_reason: str = Field(..., min_length=1, description="Grund für Eskalation")
     escalate_to_role: Optional[str] = Field(None, description="An Rolle eskalieren")
 
 
@@ -238,7 +238,7 @@ class ApprovalEscalationRequest(BaseModel):
 # =============================================================================
 
 class ApprovalStepResponse(BaseModel):
-    """Response fuer einen Genehmigungsschritt."""
+    """Response für einen Genehmigungsschritt."""
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -260,7 +260,7 @@ class ApprovalStepResponse(BaseModel):
 class ApprovalStepUpdateRequest(BaseModel):
     """Request zum Aktualisieren eines Schritts (nur Delegation)."""
     delegate_to_user_id: Optional[str] = Field(None, description="An User delegieren")
-    delegation_reason: Optional[str] = Field(None, description="Grund fuer Delegation")
+    delegation_reason: Optional[str] = Field(None, description="Grund für Delegation")
 
 
 # =============================================================================
@@ -354,7 +354,7 @@ async def list_approval_rules(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ApprovalRulesListResponse:
-    """Listet alle Approval-Regeln fuer die aktuelle Firma."""
+    """Listet alle Approval-Regeln für die aktuelle Firma."""
     service = ApprovalRuleService(db)
 
     # Basis-Query
@@ -430,7 +430,7 @@ async def get_approval_rule(
     """Holt eine einzelne Approval-Regel."""
     service = ApprovalRuleService(db)
 
-    # SECURITY: company_id fuer Multi-Tenant Isolation (IDOR-Prevention)
+    # SECURITY: company_id für Multi-Tenant Isolation (IDOR-Prevention)
     rule = await service.get_rule(rule_id, company_id=current_user.company_id)
     if not rule:
         raise HTTPException(
@@ -458,7 +458,7 @@ async def update_approval_rule(
             step.model_dump() for step in request.approval_chain
         ]
 
-    # SECURITY: company_id fuer Multi-Tenant Isolation (IDOR-Prevention)
+    # SECURITY: company_id für Multi-Tenant Isolation (IDOR-Prevention)
     rule = await service.update_rule(
         rule_id,
         company_id=current_user.company_id,
@@ -486,10 +486,10 @@ async def delete_approval_rule(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loescht eine Approval-Regel (Soft-Delete via is_active=False)."""
+    """Löscht eine Approval-Regel (Soft-Delete via is_active=False)."""
     service = ApprovalRuleService(db)
 
-    # SECURITY: company_id fuer Multi-Tenant Isolation (IDOR-Prevention)
+    # SECURITY: company_id für Multi-Tenant Isolation (IDOR-Prevention)
     deleted = await service.delete_rule(rule_id, company_id=current_user.company_id)
     if not deleted:
         raise HTTPException(
@@ -515,7 +515,7 @@ async def preview_approval_rule(
     """Simuliert eine Regel gegen Testdaten (Preview/Dry-Run)."""
     service = ApprovalRuleService(db)
 
-    # SECURITY: company_id fuer Multi-Tenant Isolation (IDOR-Prevention)
+    # SECURITY: company_id für Multi-Tenant Isolation (IDOR-Prevention)
     rule = await service.get_rule(rule_id, company_id=current_user.company_id)
     if not rule:
         raise HTTPException(
@@ -605,7 +605,7 @@ async def approve_request(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ApprovalRequestResponse:
-    """Genehmigt eine Anfrage (fuer den aktuellen Schritt)."""
+    """Genehmigt eine Anfrage (für den aktuellen Schritt)."""
     if decision.decision != "approved":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -765,7 +765,7 @@ async def escalate_request(
     if request.status != ApprovalStatus.PENDING:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Nur ausstehende Anfragen koennen eskaliert werden",
+            detail="Nur ausstehende Anfragen können eskaliert werden",
         )
 
     # SECURITY: company_id an Service weitergeben
@@ -853,7 +853,7 @@ async def get_approval_summary(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
-    """Holt Zusammenfassung fuer Dashboard."""
+    """Holt Zusammenfassung für Dashboard."""
     service = ApprovalService(db)
 
     summary = await service.get_approval_summary(
@@ -876,7 +876,7 @@ async def get_approval_summary(
 async def list_rule_types(
     current_user: User = Depends(get_current_user),
 ) -> Dict[str, List[Dict[str, str]]]:
-    """Listet verfuegbare Regeltypen."""
+    """Listet verfügbare Regeltypen."""
     return {
         "rule_types": [
             {"value": rt.value, "label": _get_rule_type_label(rt)}
@@ -886,7 +886,7 @@ async def list_rule_types(
 
 
 def _get_rule_type_label(rt: ApprovalRuleType) -> str:
-    """Gibt deutsches Label fuer Regeltyp zurueck."""
+    """Gibt deutsches Label für Regeltyp zurück."""
     labels = {
         ApprovalRuleType.AMOUNT_THRESHOLD: "Betragsschwelle",
         ApprovalRuleType.CATEGORY: "Nach Kategorie",
@@ -905,7 +905,7 @@ def _get_rule_type_label(rt: ApprovalRuleType) -> str:
 
 
 class AutoApprovalCheckRequest(BaseModel):
-    """Request fuer Auto-Approval Pruefung."""
+    """Request für Auto-Approval Prüfung."""
     document_id: Optional[str] = Field(None, description="Dokument-ID (UUID)")
     invoice_id: Optional[str] = Field(None, description="Rechnungs-ID (UUID)")
     entity_id: Optional[str] = Field(None, description="Entity-ID (UUID)")
@@ -915,7 +915,7 @@ class AutoApprovalCheckRequest(BaseModel):
 
 
 class AutoApprovalRuleSchema(BaseModel):
-    """Schema fuer eine Auto-Approval-Regel."""
+    """Schema für eine Auto-Approval-Regel."""
     id: str
     name: str
     description: str
@@ -937,7 +937,7 @@ class AutoApprovalRuleUpdateRequest(BaseModel):
 
 
 class AutoApprovalResultResponse(BaseModel):
-    """Response fuer Auto-Approval Pruefung."""
+    """Response für Auto-Approval Prüfung."""
     decision: str
     reasons: List[str]
     matched_rules: List[str]
@@ -950,7 +950,7 @@ class AutoApprovalResultResponse(BaseModel):
 
 
 class EntityTrustScoreResponse(BaseModel):
-    """Response fuer Entity Trust Score."""
+    """Response für Entity Trust Score."""
     entity_id: str
     trust_score: float
     relationship_months: int
@@ -963,7 +963,7 @@ class EntityTrustScoreResponse(BaseModel):
 
 
 class AutoApprovalConfigResponse(BaseModel):
-    """Response fuer Auto-Approval Konfiguration."""
+    """Response für Auto-Approval Konfiguration."""
     default_max_amount: str
     default_max_risk_score: int
     default_min_relationship_months: int
@@ -975,8 +975,8 @@ class AutoApprovalConfigResponse(BaseModel):
 
 
 class AutoApprovalOptOutRequest(BaseModel):
-    """Request fuer User Opt-Out."""
-    opt_out: bool = Field(..., description="True fuer Opt-Out, False fuer Opt-In")
+    """Request für User Opt-Out."""
+    opt_out: bool = Field(..., description="True für Opt-Out, False für Opt-In")
     document_types: Optional[List[str]] = Field(None, description="Spezifische Dokumenttypen")
 
 
@@ -991,9 +991,9 @@ async def check_auto_approval(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AutoApprovalResultResponse:
-    """Prueft ob ein Dokument/Rechnung automatisch genehmigt werden kann.
+    """Prüft ob ein Dokument/Rechnung automatisch genehmigt werden kann.
 
-    Diese Pruefung fuehrt keine Genehmigung durch, sondern zeigt nur das Ergebnis.
+    Diese Prüfung führt keine Genehmigung durch, sondern zeigt nur das Ergebnis.
     """
     service = get_auto_approval_service(db)
 
@@ -1027,13 +1027,13 @@ async def apply_auto_approval(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AutoApprovalResultResponse:
-    """Prueft und wendet Auto-Approval an wenn moeglich.
+    """Prüft und wendet Auto-Approval an wenn möglich.
 
     Erstellt einen ApprovalRequest im Status APPROVED wenn alle Bedingungen erfuellt sind.
     """
     service = get_auto_approval_service(db)
 
-    # Erst pruefen
+    # Erst prüfen
     result = await service.check_auto_approval(
         document_id=UUID(request.document_id) if request.document_id else None,
         invoice_id=UUID(request.invoice_id) if request.invoice_id else None,
@@ -1157,7 +1157,7 @@ async def get_entity_trust_score(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntityTrustScoreResponse:
-    """Berechnet den Trust-Score fuer eine Entity (Kunde/Lieferant)."""
+    """Berechnet den Trust-Score für eine Entity (Kunde/Lieferant)."""
     service = get_auto_approval_service(db)
     trust_score = await service.calculate_entity_trust_score(entity_id)
 
@@ -1201,10 +1201,10 @@ async def set_user_opt_out(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
-    """Setzt Opt-Out fuer den aktuellen User.
+    """Setzt Opt-Out für den aktuellen User.
 
     Wenn opt_out=True, werden Dokumente des Users nicht automatisch genehmigt.
-    Optional koennen spezifische Dokumenttypen angegeben werden.
+    Optional können spezifische Dokumenttypen angegeben werden.
     """
     service = get_auto_approval_service(db)
 

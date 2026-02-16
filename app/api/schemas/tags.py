@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 
 class TagBase(BaseModel):
-    """Basis-Schema fuer Tags."""
+    """Basis-Schema für Tags."""
     name: str = Field(..., min_length=1, max_length=50)
     description: Optional[str] = Field(None, max_length=255)
     icon: Optional[str] = Field("Tag", max_length=50)
@@ -20,12 +20,12 @@ class TagBase(BaseModel):
 
 
 class TagCreate(TagBase):
-    """Schema fuer Tag-Erstellung."""
+    """Schema für Tag-Erstellung."""
     pass
 
 
 class TagUpdate(BaseModel):
-    """Schema fuer Tag-Aktualisierung (partial update)."""
+    """Schema für Tag-Aktualisierung (partial update)."""
     name: Optional[str] = Field(None, min_length=1, max_length=50)
     description: Optional[str] = Field(None, max_length=255)
     icon: Optional[str] = Field(None, max_length=50)
@@ -35,7 +35,7 @@ class TagUpdate(BaseModel):
 
 
 class TagResponse(TagBase):
-    """Response-Schema fuer Tags."""
+    """Response-Schema für Tags."""
     id: UUID
     is_system: bool
     created_at: datetime
@@ -45,6 +45,6 @@ class TagResponse(TagBase):
 
 
 class TagListResponse(BaseModel):
-    """Response-Schema fuer Tag-Liste."""
+    """Response-Schema für Tag-Liste."""
     tags: list[TagResponse]
     total: int

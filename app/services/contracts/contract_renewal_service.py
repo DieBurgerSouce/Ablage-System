@@ -2,10 +2,10 @@
 """
 Contract Renewal Service for Ablage-System.
 
-Phase 1.1: Vertragsverlaengerungs-Warnung (Contract Renewal Warning)
+Phase 1.1: Vertragsverlängerungs-Warnung (Contract Renewal Warning)
 
 Features:
-- Automatische Erkennung von Kuendigungsfristen aus OCR-Text
+- Automatische Erkennung von Kündigungsfristen aus OCR-Text
 - Benachrichtigungen 30/60/90 Tage vor Fristablauf
 - Integration mit Alert Center
 - Erinnerungs-Scheduling
@@ -53,9 +53,9 @@ DATE_PATTERNS: List[str] = [
 
 # German keywords indicating termination deadlines
 TERMINATION_KEYWORDS: List[str] = [
-    "kuendigungsfrist",
-    "kuendigung",
-    "kuendigbar",
+    "kündigungsfrist",
+    "kündigung",
+    "kündigbar",
     "vertragsende",
     "laufzeit",
     "beendet",
@@ -65,11 +65,11 @@ TERMINATION_KEYWORDS: List[str] = [
     "ablaufdatum",
     "mindestlaufzeit",
     "vertragslaufzeit",
-    "ordentliche kuendigung",
-    "ausserordentliche kuendigung",
+    "ordentliche kündigung",
+    "ausserordentliche kündigung",
     "fristgerecht",
     "befristet bis",
-    "gueltig bis",
+    "gültig bis",
     "zum",  # "zum 31.12.2026"
 ]
 
@@ -224,12 +224,12 @@ class ContractRenewalService:
 
             # Check for termination/expiration keywords
             is_termination = any(kw in context_lower for kw in [
-                "kuendig", "ablauf", "endet", "beendet", "laufzeit", "gueltig bis"
+                "kündig", "ablauf", "endet", "beendet", "laufzeit", "gültig bis"
             ])
 
             # Check for start date keywords
             is_start = any(kw in context_lower for kw in [
-                "beginn", "start", "ab dem", "gueltig ab", "wirksam ab"
+                "beginn", "start", "ab dem", "gültig ab", "wirksam ab"
             ])
 
             if is_termination and date_obj > date.today():
@@ -278,16 +278,16 @@ class ContractRenewalService:
         Extract notice period in days from text.
 
         Looks for patterns like:
-        - "Kuendigungsfrist von 3 Monaten"
-        - "30 Tage Kuendigungsfrist"
+        - "Kündigungsfrist von 3 Monaten"
+        - "30 Tage Kündigungsfrist"
         - "4 Wochen vor Vertragsende"
         """
         text_lower = text.lower()
 
         # Look for notice period patterns
         notice_patterns = [
-            r"kuendigungsfrist\s+(?:von\s+)?(\d+)\s+(tage?|wochen?|monate?|jahre?)",
-            r"(\d+)\s+(tage?|wochen?|monate?|jahre?)\s+(?:vor\s+)?kuendig",
+            r"kündigungsfrist\s+(?:von\s+)?(\d+)\s+(tage?|wochen?|monate?|jahre?)",
+            r"(\d+)\s+(tage?|wochen?|monate?|jahre?)\s+(?:vor\s+)?kündig",
             r"frist\s+(?:von\s+)?(\d+)\s+(tage?|wochen?|monate?|jahre?)",
             r"(\d+)\s+(tage?|wochen?|monate?|jahre?)\s+frist",
         ]
@@ -420,9 +420,9 @@ class ContractRenewalService:
     ) -> str:
         """Generate reminder title in German."""
         type_names = {
-            "termination_notice": "Kuendigungsfrist",
+            "termination_notice": "Kündigungsfrist",
             "contract_expiry": "Vertragsablauf",
-            "renewal_decision": "Verlaengerungsentscheidung",
+            "renewal_decision": "Verlängerungsentscheidung",
         }
         type_name = type_names.get(deadline_type, "Frist")
 
@@ -437,16 +437,16 @@ class ContractRenewalService:
     ) -> str:
         """Generate reminder description in German."""
         type_descriptions = {
-            "termination_notice": "Die Kuendigungsfrist fuer diesen Vertrag",
+            "termination_notice": "Die Kündigungsfrist für diesen Vertrag",
             "contract_expiry": "Dieser Vertrag",
-            "renewal_decision": "Die Entscheidung zur Vertragsverlaengerung",
+            "renewal_decision": "Die Entscheidung zur Vertragsverlängerung",
         }
         desc = type_descriptions.get(deadline_type, "Diese Frist")
 
         return (
             f"{desc} laeuft am {deadline.strftime('%d.%m.%Y')} ab. "
-            f"Bitte pruefen Sie rechtzeitig, ob eine Kuendigung oder "
-            f"Verlaengerung erforderlich ist."
+            f"Bitte prüfen Sie rechtzeitig, ob eine Kündigung oder "
+            f"Verlängerung erforderlich ist."
         )
 
     def _get_priority_for_days(self, days_before: int) -> str:
@@ -620,17 +620,17 @@ class ContractRenewalService:
 
         # Build title and message (German)
         if deadline_type == "notice":
-            title = f"Kuendigungsfrist in {days_remaining} Tagen"
+            title = f"Kündigungsfrist in {days_remaining} Tagen"
             message = (
-                f"Die Kuendigungsfrist fuer den Vertrag '{contract.title}' "
+                f"Die Kündigungsfrist für den Vertrag '{contract.title}' "
                 f"laeuft in {days_remaining} Tagen ab. "
-                f"Nach Ablauf verlaengert sich der Vertrag automatisch."
+                f"Nach Ablauf verlängert sich der Vertrag automatisch."
             )
         else:
             title = f"Vertragsablauf in {days_remaining} Tagen"
             message = (
                 f"Der Vertrag '{contract.title}' laeuft in {days_remaining} Tagen ab. "
-                f"Bitte pruefen Sie, ob eine Verlaengerung oder Kuendigung erforderlich ist."
+                f"Bitte prüfen Sie, ob eine Verlängerung oder Kündigung erforderlich ist."
             )
 
         # Create recurrence key for deduplication
@@ -657,7 +657,7 @@ class ContractRenewalService:
                 },
                 context={
                     "link": f"/contracts/{contract.id}",
-                    "link_text": "Vertrag oeffnen",
+                    "link_text": "Vertrag öffnen",
                 },
                 available_actions=["acknowledge", "dismiss", "view_contract"],
                 recurrence_key=recurrence_key,

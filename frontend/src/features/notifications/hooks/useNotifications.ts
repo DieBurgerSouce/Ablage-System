@@ -4,6 +4,7 @@
  * TanStack Query Hooks für State Management
  */
 
+import { useMemo } from 'react';
 import {
   useQuery,
   useMutation,
@@ -20,7 +21,8 @@ import {
   bulkDismiss,
   getUnreadCount,
   getSettings,
-  updateSettings
+  updateSettings,
+  snoozeNotification
 } from '../api';
 import type {
   Notification,
@@ -28,6 +30,7 @@ import type {
   NotificationSettings,
   NotificationSettingsUpdate,
   NotificationFilter,
+  NotificationGroup,
   BulkDismissPayload
 } from '../types';
 
@@ -302,4 +305,70 @@ export function useUpdateSettings() {
       queryClient.setQueryData(notificationKeys.settings(), data);
     }
   });
+}
+
+/**
+ * Hook fuer Notification Snooze
+ */
+export function useSnoozeNotification() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, until }: { id: string; until: string }) =>
+      snoozeNotification(id, until),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: notificationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: notificationKeys.unreadCount() });
+    },
+  });
+}
+
+/**
+ * Hook fuer gruppierte Benachrichtigungen (client-side)
+ */
+export function useGroupedNotifications(notifications: Notification[]): NotificationGroup[] {
+  return useMemo(() => {
+    const groups = new Map<string, Notification[]>();
+    const ungrouped: Notification[] = [];
+
+    for (const n of notifications) {
+      if (n.group_key) {
+        const existing = groups.get(n.group_key) || [];
+        groups.set(n.group_key, [...existing, n]);
+      } else {
+        ungrouped.push(n);
+      }
+    }
+
+    const result: NotificationGroup[] = [];
+
+    for (const [group_key, items] of groups.entries()) {
+      const sorted = items.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      result.push({
+        group_key,
+        count: sorted.length,
+        latest: sorted[0],
+        notifications: sorted,
+      });
+    }
+
+    // Nicht-gruppierte als einzelne Gruppen hinzufuegen
+    for (const n of ungrouped) {
+      result.push({
+        group_key: n.id,
+        count: 1,
+        latest: n,
+        notifications: [n],
+      });
+    }
+
+    // Alle Gruppen nach neuestem Datum sortieren
+    result.sort(
+      (a, b) => new Date(b.latest.created_at).getTime() - new Date(a.latest.created_at).getTime()
+    );
+
+    return result;
+  }, [notifications]);
 }

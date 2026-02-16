@@ -2,18 +2,18 @@
 """
 Contract Deadline Checker - Celery Periodic Task.
 
-Prueft taeglich alle aktiven Vertraege auf anstehende Fristen:
-- Kuendigungsfristen (30/60/90 Tage)
-- Automatische Verlaengerung
+Prüft täglich alle aktiven Verträge auf anstehende Fristen:
+- Kündigungsfristen (30/60/90 Tage)
+- Automatische Verlängerung
 - Preisanpassungstermine
 - Vertragsablauf
 
-Erstellt Alerts ueber den Alert Center Service.
+Erstellt Alerts über den Alert Center Service.
 
 Beat Schedule (in celery_app.py registriert):
     'check-contract-deadlines': {
         'task': 'app.workers.contract_deadline_checker.check_contract_deadlines',
-        'schedule': crontab(hour=6, minute=0),  # Taeglich um 06:00 Uhr
+        'schedule': crontab(hour=6, minute=0),  # Täglich um 06:00 Uhr
     }
 """
 
@@ -36,17 +36,17 @@ logger = structlog.get_logger(__name__)
     queue="metadata",
 )
 def check_contract_deadlines(self, company_id: Optional[str] = None) -> Dict[str, int]:
-    """Prueft alle aktiven Vertraege auf anstehende Fristen.
+    """Prüft alle aktiven Verträge auf anstehende Fristen.
 
-    Wird taeglich von Celery Beat aufgerufen (06:00 Uhr).
-    Nutzt den ContractRenewalService fuer die eigentliche Pruefung
-    und erstellt Alerts ueber den Alert Center Service.
+    Wird täglich von Celery Beat aufgerufen (06:00 Uhr).
+    Nutzt den ContractRenewalService für die eigentliche Prüfung
+    und erstellt Alerts über den Alert Center Service.
 
     Args:
-        company_id: Optional - nur fuer bestimmten Mandanten pruefen
+        company_id: Optional - nur für bestimmten Mandanten prüfen
 
     Returns:
-        Statistiken ueber geprueften Vertraege und erstellte Alerts
+        Statistiken über geprüften Verträge und erstellte Alerts
     """
     logger.info(
         "contract_deadline_check_started",
@@ -76,9 +76,9 @@ def check_contract_deadlines(self, company_id: Optional[str] = None) -> Dict[str
 async def _check_deadlines_async(
     company_id: Optional[str] = None,
 ) -> Dict[str, int]:
-    """Async-Implementierung der Vertragsfristen-Pruefung.
+    """Async-Implementierung der Vertragsfristen-Prüfung.
 
-    Oeffnet eine eigene DB-Session (Celery-Kontext) und delegiert
+    Öffnet eine eigene DB-Session (Celery-Kontext) und delegiert
     an den ContractRenewalService.
     """
     from uuid import UUID

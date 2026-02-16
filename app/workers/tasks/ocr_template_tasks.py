@@ -2,9 +2,9 @@
 """
 OCR Template Auto-Generation Celery Tasks.
 
-Hintergrund-Aufgaben fuer automatische Template-Erkennung:
-- Taeglich neue Template-Kandidaten scannen
-- Automatische Template-Generierung fuer qualifizierte Kandidaten
+Hintergrund-Aufgaben für automatische Template-Erkennung:
+- Täglich neue Template-Kandidaten scannen
+- Automatische Template-Generierung für qualifizierte Kandidaten
 
 Feinpoliert und durchdacht - Automatische OCR-Optimierung.
 """
@@ -37,10 +37,10 @@ def scan_template_candidates_task(
     Scanne nach neuen Template-Kandidaten und generiere Templates.
 
     Durchsucht alle Companies (oder eine spezifische) nach Entities
-    die genug aehnliche Dokumente haben, um automatisch ein Template
+    die genug ähnliche Dokumente haben, um automatisch ein Template
     zu generieren.
 
-    Typisches Schedule: Taeglich um 03:00 via Celery Beat.
+    Typisches Schedule: Täglich um 03:00 via Celery Beat.
 
     Args:
         company_id: Optionale Company-ID. Wenn None, werden alle Companies gescannt.
@@ -109,7 +109,7 @@ def scan_template_candidates_task(
                                 document_ids=candidate.document_ids,
                             )
 
-                            # Auto-Aktivierung pruefen
+                            # Auto-Aktivierung prüfen
                             await service.check_and_auto_activate(db, template)
 
                             result["templates_generated"] = (

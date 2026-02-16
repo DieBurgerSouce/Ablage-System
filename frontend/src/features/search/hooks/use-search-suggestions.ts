@@ -48,6 +48,7 @@ interface BackendSuggestResponse {
   query: string;
   suggestions: BackendSuggestItem[];
   total: number;
+  did_you_mean?: string;
 }
 
 // ==================== Debounce Hook ====================
@@ -99,7 +100,7 @@ async function fetchSuggestions(
 
   return {
     suggestions,
-    didYouMean: undefined, // Backend doesn't support did-you-mean yet
+    didYouMean: data.did_you_mean ?? undefined,
   };
 }
 

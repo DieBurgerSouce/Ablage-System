@@ -161,3 +161,22 @@ export { PresenceIndicator } from './components/PresenceIndicator';
 export { DocumentLockBanner } from './components/DocumentLockBanner';
 export { ActivityTimeline } from './components/ActivityTimeline';
 export { MentionsBadge } from './components/MentionsBadge';
+
+// Annotations (Feature 6.1 - Dokument-Annotationen)
+export { AnnotationOverlay } from './components/AnnotationOverlay';
+export { AnnotationSidebar } from './components/AnnotationSidebar';
+export {
+  useAnnotations,
+  useCreateAnnotation,
+  useUpdateAnnotation,
+  useResolveAnnotation,
+  useDeleteAnnotation,
+  annotationKeys,
+} from './hooks/use-annotations';
+export type {
+  Annotation,
+  AnnotationType,
+  AnnotationPosition,
+  AnnotationCreatePayload,
+  AnnotationUpdatePayload,
+} from './api/annotations-api';

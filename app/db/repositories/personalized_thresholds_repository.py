@@ -4,7 +4,7 @@ Personalized Thresholds Repository.
 
 PHASE 0 CRITICAL FIX: Ersetzt In-Memory Storage durch DB-Persistenz.
 
-Dieses Repository stellt die Datenschicht fuer den PersonalizedThresholdsService
+Dieses Repository stellt die Datenschicht für den PersonalizedThresholdsService
 bereit. Alle Operationen sind async und verwenden SQLAlchemy 2.0 Syntax.
 """
 
@@ -29,7 +29,7 @@ logger = structlog.get_logger(__name__)
 
 
 class PrivatUserProfileRepository(BaseRepository[PrivatUserProfile]):
-    """Repository fuer User-Profile."""
+    """Repository für User-Profile."""
 
     def __init__(self, db: AsyncSession):
         super().__init__(db, PrivatUserProfile)
@@ -70,7 +70,7 @@ class PrivatUserProfileRepository(BaseRepository[PrivatUserProfile]):
 
 
 class PrivatUserThresholdRepository(BaseRepository[PrivatUserThreshold]):
-    """Repository fuer User-Thresholds."""
+    """Repository für User-Thresholds."""
 
     def __init__(self, db: AsyncSession):
         super().__init__(db, PrivatUserThreshold)
@@ -181,7 +181,7 @@ class PrivatUserThresholdRepository(BaseRepository[PrivatUserThreshold]):
             await self.db.commit()
 
     async def delete_by_user(self, user_id: UUID) -> int:
-        """Loescht alle Thresholds eines Users (fuer GDPR)."""
+        """Löscht alle Thresholds eines Users (für GDPR)."""
         thresholds = await self.get_by_user_id(user_id)
         count = len(thresholds)
 
@@ -199,7 +199,7 @@ class PrivatUserThresholdRepository(BaseRepository[PrivatUserThreshold]):
 
 
 class PrivatThresholdAdjustmentRepository(BaseRepository[PrivatThresholdAdjustment]):
-    """Repository fuer Threshold-Adjustments (Audit Log)."""
+    """Repository für Threshold-Adjustments (Audit Log)."""
 
     def __init__(self, db: AsyncSession):
         super().__init__(db, PrivatThresholdAdjustment)
@@ -224,7 +224,7 @@ class PrivatThresholdAdjustmentRepository(BaseRepository[PrivatThresholdAdjustme
         threshold_type: str,
         limit: int = 10,
     ) -> List[PrivatThresholdAdjustment]:
-        """Holt Adjustments fuer einen spezifischen Threshold."""
+        """Holt Adjustments für einen spezifischen Threshold."""
         result = await self.db.execute(
             select(PrivatThresholdAdjustment)
             .where(
@@ -266,7 +266,7 @@ class PrivatThresholdAdjustmentRepository(BaseRepository[PrivatThresholdAdjustme
 
 
 class PrivatThresholdRecommendationRepository(BaseRepository[PrivatThresholdRecommendation]):
-    """Repository fuer Threshold-Recommendations."""
+    """Repository für Threshold-Recommendations."""
 
     def __init__(self, db: AsyncSession):
         super().__init__(db, PrivatThresholdRecommendation)
@@ -340,7 +340,7 @@ class PrivatThresholdRecommendationRepository(BaseRepository[PrivatThresholdReco
         return recommendation
 
     async def cleanup_expired(self) -> int:
-        """Loescht abgelaufene, nicht bearbeitete Empfehlungen."""
+        """Löscht abgelaufene, nicht bearbeitete Empfehlungen."""
         now = datetime.now(timezone.utc)
 
         result = await self.db.execute(

@@ -6,10 +6,10 @@ Enterprise Feature: Proaktive Erkennung von Anomalien und ungewoehnlichen Muster
 
 Dieses Modul erkennt verschiedene Anomalie-Typen:
 
-- Preisanomalien: "Lieferant X hat Preise um 50% erhoeht!"
-- Volumen-Anomalien: "Bestellvolumen bei Y ist 3x hoeher als ueblich"
+- Preisanomalien: "Lieferant X hat Preise um 50% erhöht!"
+- Volumen-Anomalien: "Bestellvolumen bei Y ist 3x höher als ueblich"
 - Timing-Anomalien: "Ungewoehnliche Rechnungsfrequenz erkannt"
-- Duplikat-Muster: "Moegliche Duplikat-Rechnungen gefunden"
+- Duplikat-Muster: "Mögliche Duplikat-Rechnungen gefunden"
 
 Integration mit: EntitySearchService, InvoiceTracking, FraudDetectionService
 """
@@ -54,7 +54,7 @@ class AnomalyType(str, Enum):
 
 class AnomalySeverity(str, Enum):
     """Schweregrad der Anomalie."""
-    CRITICAL = "critical"   # Sofort pruefen (>3 Standardabweichungen)
+    CRITICAL = "critical"   # Sofort prüfen (>3 Standardabweichungen)
     HIGH = "high"           # Dringend (2-3 Standardabweichungen)
     MEDIUM = "medium"       # Normal (1.5-2 Standardabweichungen)
     LOW = "low"             # Info (<1.5 Standardabweichungen)
@@ -114,7 +114,7 @@ class AnomalyAlert:
             AnomalyType.VOLUME_HIGH: f"Ungewoehnlich hohes Volumen: {self.entity_name}",
             AnomalyType.VOLUME_LOW: f"Ungewoehnlich niedriges Volumen: {self.entity_name}",
             AnomalyType.TIMING_UNUSUAL: f"Ungewoehnliches Timing: {self.entity_name}",
-            AnomalyType.DUPLICATE_PATTERN: f"Moegliche Duplikate: {self.entity_name}",
+            AnomalyType.DUPLICATE_PATTERN: f"Mögliche Duplikate: {self.entity_name}",
             AnomalyType.FREQUENCY_ANOMALY: f"Ungewoehnliche Frequenz: {self.entity_name}",
             AnomalyType.AMOUNT_ROUND: f"Verdaechtig runde Betraege: {self.entity_name}",
         }
@@ -159,7 +159,7 @@ def _calculate_z_score(value: float, mean: float, std: float) -> float:
 
 @dataclass
 class AnomalyCheckResult:
-    """Ergebnis einer Anomalie-Pruefung (Test-kompatibel)."""
+    """Ergebnis einer Anomalie-Prüfung (Test-kompatibel)."""
     anomaly_type: AnomalyType
     title: str
     message: str
@@ -187,19 +187,19 @@ class AnomalyCheckResult:
 
 class AnomalyInsightsService:
     """
-    Service fuer proaktive Anomalie-Erkennung.
+    Service für proaktive Anomalie-Erkennung.
 
     Analysiert historische Daten und erkennt ungewoehnliche
-    Muster, die auf Fehler, Betrug oder wichtige Veraenderungen
-    hinweisen koennten.
+    Muster, die auf Fehler, Betrug oder wichtige Veränderungen
+    hinweisen könnten.
     """
 
     def __init__(self) -> None:
-        # Schwellwerte fuer Anomalie-Erkennung
+        # Schwellwerte für Anomalie-Erkennung
         self._price_deviation_threshold = 0.2      # 20% Preisabweichung
         self._volume_deviation_threshold = 2.0     # 200% Volumenabweichung
         self._min_history_items = 5                # Mindestens 5 historische Werte
-        self._lookback_days = 365                  # 1 Jahr zurueck schauen
+        self._lookback_days = 365                  # 1 Jahr zurück schauen
 
         logger.info("anomaly_insights_service_initialized")
 
@@ -209,14 +209,14 @@ class AnomalyInsightsService:
         company_id: UUID,
     ) -> List[ProactiveInsight]:
         """
-        Prueft alle Anomalie-Typen und generiert Insights.
+        Prüft alle Anomalie-Typen und generiert Insights.
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer alle erkannten Anomalien
+            Liste von ProactiveInsights für alle erkannten Anomalien
         """
         logger.info(
             "checking_all_anomalies",
@@ -225,7 +225,7 @@ class AnomalyInsightsService:
 
         all_insights: List[ProactiveInsight] = []
 
-        # Parallel alle Anomalie-Checks ausfuehren
+        # Parallel alle Anomalie-Checks ausführen
         results = await asyncio.gather(
             self.detect_price_anomalies(db, company_id),
             self.detect_volume_anomalies(db, company_id),
@@ -243,7 +243,7 @@ class AnomalyInsightsService:
             elif isinstance(result, list):
                 all_insights.extend(result)
 
-        # Nach Prioritaet sortieren
+        # Nach Priorität sortieren
         priority_order = {
             InsightPriority.CRITICAL: 0,
             InsightPriority.HIGH: 1,
@@ -275,7 +275,7 @@ class AnomalyInsightsService:
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer Preisanomalien
+            Liste von ProactiveInsights für Preisanomalien
         """
         from app.db.models import Document, BusinessEntity
 
@@ -335,7 +335,7 @@ class AnomalyInsightsService:
                 hist_mean = statistics.mean(historical_amounts)
                 hist_std = statistics.stdev(historical_amounts) if len(historical_amounts) > 1 else 0
 
-                # Jede aktuelle Rechnung pruefen
+                # Jede aktuelle Rechnung prüfen
                 for doc_id, amount in recent_invoices:
                     if hist_std > 0:
                         z_score = _calculate_z_score(amount, hist_mean, hist_std)
@@ -354,13 +354,13 @@ class AnomalyInsightsService:
                             severity=severity,
                             entity_id=supplier.id,
                             entity_name=supplier.name or "Unbekannt",
-                            description=f"Rechnungsbetrag liegt {deviation_percent:+.1f}% {'ueber' if z_score > 0 else 'unter'} dem Durchschnitt.",
+                            description=f"Rechnungsbetrag liegt {deviation_percent:+.1f}% {'über' if z_score > 0 else 'unter'} dem Durchschnitt.",
                             deviation_percent=deviation_percent,
                             expected_value=hist_mean,
                             actual_value=amount,
                             confidence=min(0.95, 0.5 + abs(z_score) * 0.15),
                             action_url=f"/documents/{doc_id}",
-                            action_label="Rechnung pruefen",
+                            action_label="Rechnung prüfen",
                             related_documents=[doc_id],
                             metadata={
                                 "historical_mean": hist_mean,
@@ -405,7 +405,7 @@ class AnomalyInsightsService:
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer Volumenanomalien
+            Liste von ProactiveInsights für Volumenanomalien
         """
         from app.db.models import Document, BusinessEntity
 
@@ -486,7 +486,7 @@ class AnomalyInsightsService:
                         severity=severity,
                         entity_id=entity_id,
                         entity_name=supplier_name,
-                        description=f"Monatliches Volumen liegt {deviation_percent:+.1f}% {'ueber' if z_score > 0 else 'unter'} dem Durchschnitt.",
+                        description=f"Monatliches Volumen liegt {deviation_percent:+.1f}% {'über' if z_score > 0 else 'unter'} dem Durchschnitt.",
                         deviation_percent=deviation_percent,
                         expected_value=hist_mean,
                         actual_value=current_volume,
@@ -528,7 +528,7 @@ class AnomalyInsightsService:
         """
         Erkennt ungewoehnliche Rechnungsmuster.
 
-        Prueft auf:
+        Prüft auf:
         - Ungewoehnlich viele Rechnungen in kurzer Zeit
         - Verdaechtig runde Betraege
         - Ungewoehnliche Zeitpunkte (Wochenende, Feiertage)
@@ -538,7 +538,7 @@ class AnomalyInsightsService:
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer Muster-Anomalien
+            Liste von ProactiveInsights für Muster-Anomalien
         """
         from app.db.models import Document
 
@@ -581,7 +581,7 @@ class AnomalyInsightsService:
                     deviation_percent=(len(round_amount_docs) / len(documents)) * 100,
                     confidence=0.7,
                     action_url="/documents?filter=round_amounts",
-                    action_label="Rechnungen pruefen",
+                    action_label="Rechnungen prüfen",
                     related_documents=[d.id for d in round_amount_docs[:10]],
                     metadata={
                         "round_count": len(round_amount_docs),
@@ -607,7 +607,7 @@ class AnomalyInsightsService:
                     deviation_percent=(len(weekend_docs) / len(documents)) * 100,
                     confidence=0.6,
                     action_url="/documents?filter=weekend",
-                    action_label="Pruefen",
+                    action_label="Prüfen",
                     related_documents=[d.id for d in weekend_docs[:10]],
                     metadata={
                         "weekend_count": len(weekend_docs),
@@ -647,7 +647,7 @@ class AnomalyInsightsService:
                                 actual_value=float(len(docs)),
                                 confidence=min(0.9, 0.5 + z_score * 0.15),
                                 action_url=f"/documents?date={day}",
-                                action_label="Tag pruefen",
+                                action_label="Tag prüfen",
                                 related_documents=[d.id for d in docs[:10]],
                                 metadata={
                                     "date": day,
@@ -680,19 +680,19 @@ class AnomalyInsightsService:
         company_id: UUID,
     ) -> List[ProactiveInsight]:
         """
-        Erkennt moegliche Duplikat-Muster.
+        Erkennt mögliche Duplikat-Muster.
 
         Findet:
         - Gleiche Betraege am gleichen Tag
         - Gleiche Rechnungsnummern
-        - Sehr aehnliche Rechnungen
+        - Sehr ähnliche Rechnungen
 
         Args:
             db: Datenbank-Session
             company_id: ID der Company
 
         Returns:
-            Liste von ProactiveInsights fuer Duplikat-Muster
+            Liste von ProactiveInsights für Duplikat-Muster
         """
         from app.db.models import Document
 
@@ -741,7 +741,7 @@ class AnomalyInsightsService:
                     deviation_percent=0.0,
                     confidence=0.75,
                     action_url="/documents?filter=duplicates",
-                    action_label="Duplikate pruefen",
+                    action_label="Duplikate prüfen",
                     related_documents=doc_ids[:10] if doc_ids else [],
                     metadata={
                         "amount": float(amount),
@@ -799,7 +799,7 @@ class AnomalyInsightsService:
                 summary["by_type"][rule_type] = 0
             summary["by_type"][rule_type] += 1
 
-            # Nach Prioritaet zaehlen
+            # Nach Priorität zaehlen
             priority = insight.priority.value
             if priority not in summary["by_severity"]:
                 summary["by_severity"][priority] = 0
@@ -813,7 +813,7 @@ _anomaly_insights_instance: Optional[AnomalyInsightsService] = None
 
 
 def get_anomaly_insights_service() -> AnomalyInsightsService:
-    """Gibt die Singleton-Instanz des Anomaly Insights Service zurueck."""
+    """Gibt die Singleton-Instanz des Anomaly Insights Service zurück."""
     global _anomaly_insights_instance
     if _anomaly_insights_instance is None:
         _anomaly_insights_instance = AnomalyInsightsService()

@@ -4,7 +4,7 @@ AI Conversations API Endpoints.
 
 Vision 2.0 - Phase 1: Conversation Persistence
 
-Endpoints fuer den KI-Finanzassistenten:
+Endpoints für den KI-Finanzassistenten:
 
 Konversationen:
 - GET  /ai/conversations                    - Konversationen auflisten (paginiert)
@@ -12,25 +12,25 @@ Konversationen:
 - GET  /ai/conversations/session/{id}       - Konversation per Session-ID abrufen
 - GET  /ai/conversations/{id}               - Konversation abrufen
 - PATCH /ai/conversations/{id}              - Konversation aktualisieren
-- DELETE /ai/conversations/{id}             - Konversation loeschen
+- DELETE /ai/conversations/{id}             - Konversation löschen
 
 Nachrichten:
 - GET  /ai/conversations/{id}/messages      - Nachrichten abrufen
 - POST /ai/conversations/{id}/messages      - Nachricht senden
 
 Feedback:
-- POST /ai/conversations/messages/{id}/feedback  - Feedback zu Nachricht (primaer)
+- POST /ai/conversations/messages/{id}/feedback  - Feedback zu Nachricht (primär)
 - POST /ai/conversations/{id}/feedback           - Feedback (legacy)
 
 Aktionen:
 - GET  /ai/conversations/{id}/actions            - Aktionen abrufen
-- POST /ai/conversations/{id}/actions/{id}/confirm - Aktion bestaetigen
+- POST /ai/conversations/{id}/actions/{id}/confirm - Aktion bestätigen
 - POST /ai/conversations/{id}/actions/{id}/cancel  - Aktion abbrechen
 
 Statistiken:
 - GET /ai/conversations/stats               - Konversations-Statistiken
 
-Feinpoliert und durchdacht - Deutsche Praezision.
+Feinpoliert und durchdacht - Deutsche Präzision.
 """
 
 import re
@@ -66,14 +66,14 @@ from app.db.models_ai_conversation import (
 
 logger = structlog.get_logger(__name__)
 
-# Rate Limiter fuer AI Conversations Endpoints
+# Rate Limiter für AI Conversations Endpoints
 limiter = Limiter(key_func=get_remote_address)
 
 # =============================================================================
 # Security: Input Validation Patterns
 # =============================================================================
 
-# Pattern fuer sichere Suche (keine SQL Injection)
+# Pattern für sichere Suche (keine SQL Injection)
 SAFE_SEARCH_PATTERN = re.compile(r"^[a-zA-Z0-9äöüÄÖÜß\s\-_.,:;!?()]*$")
 MAX_SEARCH_LENGTH = 100
 MAX_TITLE_LENGTH = 255
@@ -88,7 +88,7 @@ def validate_search_input(search: Optional[str]) -> Optional[str]:
     if not search:
         return None
 
-    # Laengenbegrenzung
+    # Längenbegrenzung
     if len(search) > MAX_SEARCH_LENGTH:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -99,7 +99,7 @@ def validate_search_input(search: Optional[str]) -> Optional[str]:
     if not SAFE_SEARCH_PATTERN.match(search):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Suchbegriff enthaelt ungueltige Zeichen",
+            detail="Suchbegriff enthält ungültige Zeichen",
         )
 
     # Escape SQL Wildcards im Suchstring
@@ -121,7 +121,7 @@ class CreateConversationRequest(BaseModel):
         max_length=MAX_CONTEXT_PAGE_LENGTH,
         description="Seite auf der gestartet wurde"
     )
-    context_data: Optional[JSONDict] = Field(None, description="Zusaetzlicher Kontext")
+    context_data: Optional[JSONDict] = Field(None, description="Zusätzlicher Kontext")
     language: str = Field("de", max_length=5, description="Sprache (de/en)")
 
     @field_validator("language")
@@ -138,12 +138,12 @@ class CreateConversationRequest(BaseModel):
     def validate_context_page(cls, v: Optional[str]) -> Optional[str]:
         """Validiere context_page gegen Path Traversal."""
         if v and (".." in v or v.startswith("/")):
-            raise ValueError("Ungueltiger Seitenkontext")
+            raise ValueError("Ungültiger Seitenkontext")
         return v
 
 
 class ConversationSummary(BaseModel):
-    """Kurzuebersicht einer Konversation."""
+    """Kurzübersicht einer Konversation."""
     id: str
     session_id: str
     title: Optional[str]
@@ -159,7 +159,7 @@ class ConversationSummary(BaseModel):
 
 
 class ConversationDetail(BaseModel):
-    """Vollstaendige Konversation mit Nachrichten."""
+    """Vollständige Konversation mit Nachrichten."""
     id: str
     session_id: str
     title: Optional[str]
@@ -200,7 +200,7 @@ class MessageResponse(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    """Request fuer Feedback zu einer Nachricht."""
+    """Request für Feedback zu einer Nachricht."""
     message_id: str = Field(..., description="ID der Nachricht")
     feedback_type: str = Field(..., description="helpful, not_helpful, incorrect, confusing, other")
     rating: Optional[int] = Field(None, ge=1, le=5, description="1-5 Sterne")
@@ -210,7 +210,7 @@ class FeedbackRequest(BaseModel):
 
 
 class ActionConfirmRequest(BaseModel):
-    """Request zum Bestaetigen einer Aktion."""
+    """Request zum Bestätigen einer Aktion."""
     parameters: Optional[JSONDict] = Field(None, description="Angepasste Parameter")
 
 
@@ -224,9 +224,9 @@ class UpdateConversationRequest(BaseModel):
     @field_validator("title")
     @classmethod
     def validate_title(cls, v: Optional[str]) -> Optional[str]:
-        """Validiere Titel gegen gefaehrliche Zeichen."""
+        """Validiere Titel gegen gefährliche Zeichen."""
         if v and not SAFE_SEARCH_PATTERN.match(v):
-            raise ValueError("Titel enthaelt ungueltige Zeichen")
+            raise ValueError("Titel enthält ungültige Zeichen")
         return v
 
 
@@ -239,7 +239,7 @@ class ConversationListResponse(BaseModel):
 
 
 class ConversationStatsResponse(BaseModel):
-    """Statistiken ueber Konversationen."""
+    """Statistiken über Konversationen."""
     total_conversations: int
     active_conversations: int
     total_messages: int
@@ -253,13 +253,13 @@ class ConversationStatsResponse(BaseModel):
 
 
 class ConversationMessagesResponse(BaseModel):
-    """Response fuer Nachrichten einer Konversation."""
+    """Response für Nachrichten einer Konversation."""
     messages: List[MessageResponse]
     total: int
 
 
 class ActionResponse(BaseModel):
-    """Response fuer eine einzelne Aktion."""
+    """Response für eine einzelne Aktion."""
     id: str
     action_type: str
     description: str
@@ -277,13 +277,13 @@ class ActionResponse(BaseModel):
 
 
 class ConversationActionsResponse(BaseModel):
-    """Response fuer Aktionen einer Konversation."""
+    """Response für Aktionen einer Konversation."""
     actions: List[ActionResponse]
     total: int
 
 
 class FeedbackResponse(BaseModel):
-    """Response fuer Feedback."""
+    """Response für Feedback."""
     id: str
     feedback_type: str
     rating: Optional[int]
@@ -306,15 +306,15 @@ async def list_conversations(
     is_active: Optional[bool] = None,
     search: Optional[str] = Query(None, max_length=MAX_SEARCH_LENGTH),
     page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
-    page_size: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
+    page_size: int = Query(50, ge=1, le=100, description="Einträge pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConversationListResponse:
     """
     Liste Konversationen des aktuellen Benutzers.
 
-    Unterstuetzt Filterung nach starred/active Status und Suche im Titel.
-    Gibt paginierte Ergebnisse zurueck.
+    Unterstützt Filterung nach starred/active Status und Suche im Titel.
+    Gibt paginierte Ergebnisse zurück.
     """
     try:
         # Validiere und bereinige Sucheingabe
@@ -340,7 +340,7 @@ async def list_conversations(
                 AIConversation.title.ilike(f"%{validated_search}%", escape="\\")
             )
 
-        # Count Query fuer Pagination
+        # Count Query für Pagination
         count_query = select(func.count(AIConversation.id)).where(and_(*base_conditions))
         count_result = await db.execute(count_query)
         total = count_result.scalar() or 0
@@ -458,11 +458,11 @@ async def get_conversation_by_session(
     """
     Hole Konversation anhand der Session-ID.
 
-    Dies ermoeglicht das Wiederherstellen einer Konversation ueber die Session-ID
+    Dies ermöglicht das Wiederherstellen einer Konversation über die Session-ID
     anstelle der internen UUID.
     """
     try:
-        # Validiere Session-ID Laenge
+        # Validiere Session-ID Länge
         if len(session_id) > MAX_SESSION_ID_LENGTH:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -674,7 +674,7 @@ async def delete_conversation(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    """Loesche Konversation (Soft-Delete durch is_active=False)."""
+    """Lösche Konversation (Soft-Delete durch is_active=False)."""
     try:
         query = select(AIConversation).where(
             and_(
@@ -711,7 +711,7 @@ async def delete_conversation(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Datenbankfehler beim Loeschen der Konversation",
+            detail="Datenbankfehler beim Löschen der Konversation",
         )
 
 
@@ -727,7 +727,7 @@ async def get_messages(
 ) -> ConversationMessagesResponse:
     """Hole Nachrichten einer Konversation."""
     try:
-        # Pruefe Zugriff
+        # Prüfe Zugriff
         conv_query = select(AIConversation.id).where(
             and_(
                 AIConversation.id == conversation_id,
@@ -805,7 +805,7 @@ async def send_message(
     Die Antwort wird asynchron generiert und in der Datenbank gespeichert.
     """
     try:
-        # Pruefe Zugriff und hole Konversation
+        # Prüfe Zugriff und hole Konversation
         conv_query = select(AIConversation).where(
             and_(
                 AIConversation.id == conversation_id,
@@ -844,11 +844,11 @@ async def send_message(
         await db.commit()
         await db.refresh(user_message)
 
-        # KI-Verarbeitung ueber FinanceAssistantService triggern (async Celery Task)
+        # KI-Verarbeitung über FinanceAssistantService triggern (async Celery Task)
         # Die eigentliche Verarbeitung erfolgt asynchron, um die Response nicht zu blockieren
         from app.workers.tasks.ai_conversation_tasks import process_ai_message
 
-        # Celery Task fuer asynchrone KI-Verarbeitung triggern
+        # Celery Task für asynchrone KI-Verarbeitung triggern
         try:
             process_ai_message.delay(
                 conversation_id=str(conversation_id),
@@ -901,7 +901,7 @@ async def send_message(
 
 
 class MessageFeedbackRequest(BaseModel):
-    """Request fuer Message-Level Feedback (alternativer Pfad)."""
+    """Request für Message-Level Feedback (alternativer Pfad)."""
     feedback_type: str = Field(..., alias="feedbackType", description="helpful, not_helpful, incorrect, confusing, other")
     rating: Optional[int] = Field(None, ge=1, le=5, description="1-5 Sterne")
     comment: Optional[str] = Field(None, max_length=2000, description="Kommentar")
@@ -924,11 +924,11 @@ async def submit_message_feedback(
     """
     Gib Feedback zu einer spezifischen Nachricht (Message-Level-API).
 
-    Dies ist der primaere Feedback-Endpoint, der direkt auf Message-Ebene arbeitet.
+    Dies ist der primäre Feedback-Endpoint, der direkt auf Message-Ebene arbeitet.
     Das Frontend nutzt diesen Pfad: /ai/conversations/messages/{messageId}/feedback
     """
     try:
-        # Finde die Nachricht und pruefe Zugriff ueber die Konversation
+        # Finde die Nachricht und prüfe Zugriff über die Konversation
         msg_query = select(AIConversationMessage).join(
             AIConversation
         ).where(
@@ -952,7 +952,7 @@ async def submit_message_feedback(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Feedback-Typ: {body.feedback_type}",
+                detail=f"Ungültiger Feedback-Typ: {body.feedback_type}",
             )
 
         feedback = AIConversationFeedback(
@@ -1017,7 +1017,7 @@ async def submit_feedback(
     DEPRECATED: Bitte /messages/{message_id}/feedback verwenden.
     """
     try:
-        # Pruefe Zugriff
+        # Prüfe Zugriff
         conv_query = select(AIConversation.id).where(
             and_(
                 AIConversation.id == conversation_id,
@@ -1037,7 +1037,7 @@ async def submit_feedback(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Feedback-Typ: {body.feedback_type}",
+                detail=f"Ungültiger Feedback-Typ: {body.feedback_type}",
             )
 
         # Validiere message_id Format
@@ -1046,10 +1046,10 @@ async def submit_feedback(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ungueltige Nachrichten-ID",
+                detail="Ungültige Nachrichten-ID",
             )
 
-        # Pruefe ob Nachricht existiert
+        # Prüfe ob Nachricht existiert
         msg_query = select(AIConversationMessage.id).where(
             and_(
                 AIConversationMessage.id == message_uuid,
@@ -1121,7 +1121,7 @@ async def get_actions(
 ) -> ConversationActionsResponse:
     """Hole Aktionen einer Konversation."""
     try:
-        # Pruefe Zugriff
+        # Prüfe Zugriff
         conv_query = select(AIConversation.id).where(
             and_(
                 AIConversation.id == conversation_id,
@@ -1145,7 +1145,7 @@ async def get_actions(
             except ValueError:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Ungueltiger Status-Filter: {status_filter}",
+                    detail=f"Ungültiger Status-Filter: {status_filter}",
                 )
 
         # Count total
@@ -1206,9 +1206,9 @@ async def confirm_action(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ActionResponse:
-    """Bestaetigt eine vorgeschlagene Aktion."""
+    """Bestätigt eine vorgeschlagene Aktion."""
     try:
-        # Pruefe Zugriff und hole Aktion
+        # Prüfe Zugriff und hole Aktion
         action_query = select(AIConversationAction).join(
             AIConversation
         ).where(
@@ -1231,7 +1231,7 @@ async def confirm_action(
         if action.status != AIActionStatus.PROPOSED.value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Aktion kann nicht bestaetigt werden (Status: {action.status})",
+                detail=f"Aktion kann nicht bestätigt werden (Status: {action.status})",
             )
 
         # Aktualisiere Parameter wenn angegeben
@@ -1252,7 +1252,7 @@ async def confirm_action(
             action_type=action.action_type,
         )
 
-        # Aktion asynchron ausfuehren via Celery Task
+        # Aktion asynchron ausführen via Celery Task
         from app.workers.tasks.ai_conversation_tasks import execute_ai_action
 
         try:
@@ -1269,7 +1269,7 @@ async def confirm_action(
                 action_id=str(action_id),
                 error_type=type(task_error).__name__,
             )
-            # Fehler beim Task-Dispatch nicht fatal - Aktion wurde trotzdem bestaetigt
+            # Fehler beim Task-Dispatch nicht fatal - Aktion wurde trotzdem bestätigt
 
         return ActionResponse(
             id=str(action.id),
@@ -1298,7 +1298,7 @@ async def confirm_action(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Datenbankfehler beim Bestaetigen der Aktion",
+            detail="Datenbankfehler beim Bestätigen der Aktion",
         )
 
 
@@ -1313,7 +1313,7 @@ async def cancel_action(
 ) -> ActionResponse:
     """Bricht eine vorgeschlagene Aktion ab."""
     try:
-        # Pruefe Zugriff und hole Aktion
+        # Prüfe Zugriff und hole Aktion
         action_query = select(AIConversationAction).join(
             AIConversation
         ).where(
@@ -1390,9 +1390,9 @@ async def get_stats(
     current_user: User = Depends(get_current_user),
 ) -> ConversationStatsResponse:
     """
-    Hole umfassende Statistiken ueber Konversationen des Benutzers.
+    Hole umfassende Statistiken über Konversationen des Benutzers.
 
-    Dies ist der primaere Stats-Endpoint (Frontend erwartet /stats).
+    Dies ist der primäre Stats-Endpoint (Frontend erwartet /stats).
     """
     try:
         # Anzahl Konversationen (gesamt und aktiv)
@@ -1470,7 +1470,7 @@ async def get_stats(
             for row in conversations_by_day_result.all()
         ]
 
-        # Top Intents (haeufigste erkannte Absichten)
+        # Top Intents (häufigste erkannte Absichten)
         top_intents_query = select(
             AIConversationMessage.intent,
             func.count(AIConversationMessage.id).label("count")
@@ -1529,10 +1529,10 @@ async def get_conversation_stats_legacy(
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
     """
-    Hole Statistiken ueber Konversationen des Benutzers (Legacy-Endpoint).
+    Hole Statistiken über Konversationen des Benutzers (Legacy-Endpoint).
 
-    DEPRECATED: Bitte /stats verwenden. Dieser Endpoint bleibt fuer
-    Rueckwaertskompatibilitaet erhalten.
+    DEPRECATED: Bitte /stats verwenden. Dieser Endpoint bleibt für
+    Rückwärtskompatibilität erhalten.
     """
     try:
         # Anzahl Konversationen

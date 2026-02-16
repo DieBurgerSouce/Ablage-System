@@ -173,7 +173,7 @@ async def execute_nlq_query_stream(
             redis_client = await redis_manager.get_client()
             orchestrator = NLQOrchestrator(engine=engine, redis=redis_client)
 
-            # Streaming nicht nativ unterstuetzt - fallback auf regulaere Query
+            # Streaming nicht nativ unterstützt - fallback auf regulaere Query
             result = await orchestrator.query(
                 natural_query=request.query,
                 user_id=current_user.id,

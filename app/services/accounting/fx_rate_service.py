@@ -2,8 +2,8 @@
 """
 FX Rate Service - Wechselkurse von der EZB.
 
-Holt taegliche Referenzkurse der Europaeischen Zentralbank (ECB)
-und bietet Waehrungsumrechnung mit Caching.
+Holt tägliche Referenzkurse der Europaeischen Zentralbank (ECB)
+und bietet Währungsumrechnung mit Caching.
 
 ECB Datenquelle: https://data-api.ecb.europa.eu
 """
@@ -66,7 +66,7 @@ SUPPORTED_CURRENCIES = [
 
 @dataclass
 class ConversionResult:
-    """Ergebnis einer Waehrungsumrechnung."""
+    """Ergebnis einer Währungsumrechnung."""
     original_amount: Decimal
     original_currency: str
     converted_amount: Decimal
@@ -77,7 +77,7 @@ class ConversionResult:
 
 
 class FXRateService:
-    """Service fuer Wechselkurse und Waehrungsumrechnung."""
+    """Service für Wechselkurse und Währungsumrechnung."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -185,10 +185,10 @@ class FXRateService:
         rate_date: Optional[date] = None,
     ) -> ConversionResult:
         """
-        Waehrungsumrechnung mit aktuellem oder historischem Kurs.
+        Währungsumrechnung mit aktuellem oder historischem Kurs.
 
-        EUR -> Fremdwaehrung: amount * rate
-        Fremdwaehrung -> EUR: amount / rate
+        EUR -> Fremdwährung: amount * rate
+        Fremdwährung -> EUR: amount / rate
         """
         if from_currency == to_currency:
             return ConversionResult(
@@ -206,19 +206,19 @@ class FXRateService:
         if from_currency == "EUR":
             rate = await self.get_rate(to_currency, lookup_date)
             if rate is None:
-                raise ValueError(f"Kein Wechselkurs verfuegbar fuer {to_currency} am {lookup_date}")
+                raise ValueError(f"Kein Wechselkurs verfügbar für {to_currency} am {lookup_date}")
             converted = (amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         elif to_currency == "EUR":
             rate = await self.get_rate(from_currency, lookup_date)
             if rate is None:
-                raise ValueError(f"Kein Wechselkurs verfuegbar fuer {from_currency} am {lookup_date}")
+                raise ValueError(f"Kein Wechselkurs verfügbar für {from_currency} am {lookup_date}")
             converted = (amount / rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         else:
             # Cross-rate via EUR
             rate_from = await self.get_rate(from_currency, lookup_date)
             rate_to = await self.get_rate(to_currency, lookup_date)
             if rate_from is None or rate_to is None:
-                raise ValueError(f"Kein Wechselkurs verfuegbar fuer {from_currency}/{to_currency}")
+                raise ValueError(f"Kein Wechselkurs verfügbar für {from_currency}/{to_currency}")
             eur_amount = (amount / rate_from)
             converted = (eur_amount * rate_to).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
             rate = rate_to / rate_from
@@ -253,9 +253,9 @@ class FXRateService:
         db: AsyncSession,
     ) -> RevaluationSummary:
         """
-        Monatsabschluss-Stichtagsbewertung aller offenen Fremdwaehrungspositionen.
+        Monatsabschluss-Stichtagsbewertung aller offenen Fremdwährungspositionen.
 
-        Bewertet offene Forderungen und Verbindlichkeiten in Nicht-EUR-Waehrungen
+        Bewertet offene Forderungen und Verbindlichkeiten in Nicht-EUR-Währungen
         zum Stichtagskurs und bucht unrealisierte Kursgewinne/-verluste.
 
         Args:
@@ -274,7 +274,7 @@ class FXRateService:
             revaluation_date=str(revaluation_date),
         )
 
-        # 1. Offene Fremdwaehrungspositionen abfragen
+        # 1. Offene Fremdwährungspositionen abfragen
         open_positions = await self._get_open_fx_positions(company_id, db)
 
         if not open_positions:
@@ -296,7 +296,7 @@ class FXRateService:
         total_loss = Decimal("0.00")
         currency_breakdown: Dict[str, Dict[str, Decimal]] = {}
 
-        # 2. Fuer jede Position: Stichtagskurs holen und Differenz berechnen
+        # 2. Für jede Position: Stichtagskurs holen und Differenz berechnen
         for inv in open_positions:
             currency = inv.currency
             if not currency or currency == "EUR":
@@ -348,7 +348,7 @@ class FXRateService:
             if gl_result.gain_loss_amount == Decimal("0.00"):
                 continue
 
-            # 4. GL-Buchung erstellen (System-User fuer automatische Bewertung)
+            # 4. GL-Buchung erstellen (System-User für automatische Bewertung)
             await fx_gl_service.post_fx_gain_loss(
                 company_id=company_id,
                 result=gl_result,
@@ -374,7 +374,7 @@ class FXRateService:
             else:
                 total_loss += gl_result.gain_loss_amount
 
-            # Waehrungs-Aufschluesselung
+            # Währungs-Aufschluesselung
             if currency not in currency_breakdown:
                 currency_breakdown[currency] = {
                     "gain": Decimal("0.00"),
@@ -387,7 +387,7 @@ class FXRateService:
                 currency_breakdown[currency]["loss"] += gl_result.gain_loss_amount
             currency_breakdown[currency]["positions"] += Decimal("1")
 
-        # Breakdown-Werte zu Strings fuer Serialisierung
+        # Breakdown-Werte zu Strings für Serialisierung
         breakdown_str: Dict[str, Dict[str, str]] = {}
         for cur, vals in currency_breakdown.items():
             breakdown_str[cur] = {
@@ -420,7 +420,7 @@ class FXRateService:
         db: AsyncSession,
     ) -> List[InvoiceTracking]:
         """
-        Holt alle offenen Fremdwaehrungspositionen fuer eine Firma.
+        Holt alle offenen Fremdwährungspositionen für eine Firma.
 
         Returns:
             Liste von InvoiceTracking mit currency != 'EUR' und offenen Betraegen.
@@ -446,10 +446,10 @@ class FXRateService:
         db: AsyncSession,
     ) -> List[Dict[str, str]]:
         """
-        Berechnet aktuelle FX-Exposure pro Waehrung.
+        Berechnet aktuelle FX-Exposure pro Währung.
 
         Returns:
-            Liste mit Waehrungs-Exposure: currency, amount, eur_equivalent
+            Liste mit Währungs-Exposure: currency, amount, eur_equivalent
         """
         positions = await self._get_open_fx_positions(company_id, db)
 

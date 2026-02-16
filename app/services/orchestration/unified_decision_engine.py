@@ -6,7 +6,7 @@ Das "Grosshirn" des Systems:
 - Sammelt ALLE anstehenden Entscheidungen/Empfehlungen
 - Priorisiert nach GESAMT-IMPACT, nicht pro Modul
 - Erkennt und verhindert KONFLIKTE
-- Konsolidiert aehnliche Empfehlungen
+- Konsolidiert ähnliche Empfehlungen
 
 TRUE Enterprise-Level: EIN Punkt der ALLES koordiniert.
 """
@@ -80,15 +80,15 @@ class ConflictType(str, Enum):
 class DecisionStatus(str, Enum):
     """Status einer Entscheidung."""
     PENDING = "pending"             # Wartet auf Verarbeitung
-    APPROVED = "approved"           # Zur Ausfuehrung freigegeben
+    APPROVED = "approved"           # Zur Ausführung freigegeben
     REJECTED = "rejected"           # Abgelehnt (z.B. Konflikt)
-    MERGED = "merged"               # Mit anderer Entscheidung zusammengefuehrt
-    DEFERRED = "deferred"           # Aufgeschoben (z.B. niedrige Prioritaet)
-    EXECUTED = "executed"           # Ausgefuehrt
+    MERGED = "merged"               # Mit anderer Entscheidung zusammengeführt
+    DEFERRED = "deferred"           # Aufgeschoben (z.B. niedrige Priorität)
+    EXECUTED = "executed"           # Ausgeführt
 
 
 class ImpactDimension(str, Enum):
-    """Dimensionen fuer Impact-Berechnung."""
+    """Dimensionen für Impact-Berechnung."""
     FINANCIAL = "financial"          # Direkte finanzielle Auswirkung
     RISK_REDUCTION = "risk_reduction"  # Risikominimierung
     COMPLIANCE = "compliance"         # Compliance/Fristen
@@ -186,7 +186,7 @@ class UnifiedDecision:
     space_id: Optional[UUID] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        """Konvertiert zu Dictionary fuer API/Serialisierung."""
+        """Konvertiert zu Dictionary für API/Serialisierung."""
         return {
             "id": str(self.id),
             "title": self.title,
@@ -262,7 +262,7 @@ CONFLICT_RULES: List[ConflictRule] = [
 
 class UnifiedDecisionEngine:
     """
-    Singleton Service fuer zentrale Entscheidungskoordination.
+    Singleton Service für zentrale Entscheidungskoordination.
 
     Funktionen:
     - Sammelt Entscheidungen aus allen Quellen
@@ -308,7 +308,7 @@ class UnifiedDecisionEngine:
 
         # Configuration
         self._auto_resolve_duplicates = True
-        self._min_impact_threshold = 5.0  # Mindest-Score fuer Bearbeitung
+        self._min_impact_threshold = 5.0  # Mindest-Score für Bearbeitung
 
         logger.info("unified_decision_engine_initialized")
 
@@ -396,10 +396,10 @@ class UnifiedDecisionEngine:
         elif "amount" in data:
             score.financial_impact = Decimal(str(data["amount"]))
         elif action.action_type == ActionType.CREATE_RECOMMENDATION:
-            # Schaetze basierend auf Kategorie
+            # Schätze basierend auf Kategorie
             category = data.get("category", "")
             if category in ["refinanzierung", "versicherung", "cost_control"]:
-                score.financial_impact = Decimal("500")  # Geschaetzter Wert
+                score.financial_impact = Decimal("500")  # Geschätzter Wert
 
         # Risikoreduktion
         if action.action_type == ActionType.TRIGGER_WORKFLOW:
@@ -425,7 +425,7 @@ class UnifiedDecisionEngine:
         if "potential_gain" in data:
             score.opportunity_value = Decimal(str(data["potential_gain"]))
         if data.get("category") == "investment":
-            score.opportunity_value = Decimal("200")  # Geschaetzt
+            score.opportunity_value = Decimal("200")  # Geschätzt
 
         # Convenience
         if action.action_type == ActionType.AUTO_APPROVE:
@@ -441,14 +441,14 @@ class UnifiedDecisionEngine:
         """
         Erkennt Konflikte zwischen allen anstehenden Entscheidungen.
 
-        Prueft jedes Paar auf moegliche Konflikte.
+        Prüft jedes Paar auf mögliche Konflikte.
         """
         conflicts: List[ConflictPair] = []
 
         async with self._queue_lock:
             decisions = [d for d in self._decision_queue if d.status == DecisionStatus.PENDING]
 
-        # Paarweise Pruefung
+        # Paarweise Prüfung
         for i, decision_a in enumerate(decisions):
             for decision_b in decisions[i+1:]:
                 conflict = await self._check_pair_for_conflict(decision_a, decision_b)
@@ -465,9 +465,9 @@ class UnifiedDecisionEngine:
         a: UnifiedDecision,
         b: UnifiedDecision
     ) -> Optional[ConflictPair]:
-        """Prueft zwei Entscheidungen auf Konflikte."""
+        """Prüft zwei Entscheidungen auf Konflikte."""
 
-        # Schon bekannter Konflikt? Mit TTL-Pruefung
+        # Schon bekannter Konflikt? Mit TTL-Prüfung
         key_ab = (a.id, b.id)
         key_ba = (b.id, a.id)
         now = datetime.now(timezone.utc)
@@ -480,7 +480,7 @@ class UnifiedDecisionEngine:
                     # TTL abgelaufen - entfernen
                     del self._known_conflicts[key]
 
-        # Duplikat-Pruefung
+        # Duplikat-Prüfung
         if self._check_duplicate(a, b):
             return ConflictPair(
                 decision_a=a,
@@ -515,7 +515,7 @@ class UnifiedDecisionEngine:
         return None
 
     def _check_duplicate(self, a: UnifiedDecision, b: UnifiedDecision) -> bool:
-        """Prueft auf Duplikate."""
+        """Prüft auf Duplikate."""
         # Gleicher Titel und gleiches Modul
         if a.title == b.title and a.primary_module == b.primary_module:
             return True
@@ -537,7 +537,7 @@ class UnifiedDecisionEngine:
         a: UnifiedDecision,
         b: UnifiedDecision
     ) -> Optional[str]:
-        """Prueft auf gegensaetzliche Ziele."""
+        """Prüft auf gegensaetzliche Ziele."""
         # Sparen vs. Investieren
         a_categories = self._extract_categories(a)
         b_categories = self._extract_categories(b)
@@ -545,7 +545,7 @@ class UnifiedDecisionEngine:
         opposing_pairs = [
             ({"cost_control", "sparen"}, {"investment", "investition"}),
             ({"zahlungspause"}, {"vorzeitige_tilgung"}),
-            ({"versicherung_kuendigen"}, {"versicherung_erweitern"}),
+            ({"versicherung_kündigen"}, {"versicherung_erweitern"}),
         ]
 
         for cat_set_1, cat_set_2 in opposing_pairs:
@@ -560,7 +560,7 @@ class UnifiedDecisionEngine:
         a: UnifiedDecision,
         b: UnifiedDecision
     ) -> Optional[str]:
-        """Prueft auf Ressourcen-Konflikte (gleiches Geld, verschiedene Verwendungen)."""
+        """Prüft auf Ressourcen-Konflikte (gleiches Geld, verschiedene Verwendungen)."""
         # Beide erfordern signifikante finanzielle Mittel?
         a_cost = abs(float(a.impact_score.financial_impact))
         b_cost = abs(float(b.impact_score.financial_impact))
@@ -584,7 +584,7 @@ class UnifiedDecisionEngine:
         text = (decision.title + " " + decision.description).lower()
         keywords = [
             "sparen", "investition", "investment", "cost_control",
-            "zahlungspause", "tilgung", "kuendigen", "erweitern",
+            "zahlungspause", "tilgung", "kündigen", "erweitern",
             "versicherung", "refinanzierung"
         ]
         for kw in keywords:
@@ -602,8 +602,8 @@ class UnifiedDecisionEngine:
         Loest erkannte Konflikte auf.
 
         Strategien:
-        - merge: Duplikate zusammenfuehren
-        - keep_higher_impact: Hoeheren Impact behalten
+        - merge: Duplikate zusammenführen
+        - keep_higher_impact: Höheren Impact behalten
         - prioritize_by_urgency: Nach Dringlichkeit priorisieren
         - defer_both: Beide aufschieben und User fragen
         """
@@ -622,12 +622,12 @@ class UnifiedDecisionEngine:
             if a.impact_score.total_score >= b.impact_score.total_score:
                 b.status = DecisionStatus.REJECTED
                 b.conflict_type = conflict.conflict_type
-                b.conflict_resolution = f"Ersetzt durch Entscheidung {a.id} mit hoeherem Impact"
+                b.conflict_resolution = f"Ersetzt durch Entscheidung {a.id} mit höherem Impact"
                 DECISIONS_PROCESSED.labels(result="rejected").inc()
             else:
                 a.status = DecisionStatus.REJECTED
                 a.conflict_type = conflict.conflict_type
-                a.conflict_resolution = f"Ersetzt durch Entscheidung {b.id} mit hoeherem Impact"
+                a.conflict_resolution = f"Ersetzt durch Entscheidung {b.id} mit höherem Impact"
                 DECISIONS_PROCESSED.labels(result="rejected").inc()
 
         elif conflict.resolution_strategy == "prioritize_by_urgency":
@@ -653,12 +653,12 @@ class UnifiedDecisionEngine:
         )
 
     async def _merge_decisions(self, a: UnifiedDecision, b: UnifiedDecision) -> None:
-        """Fuehrt zwei Entscheidungen zusammen."""
+        """Führt zwei Entscheidungen zusammen."""
         # B wird zu A gemerged
         b.status = DecisionStatus.MERGED
-        b.conflict_resolution = f"Zusammengefuehrt mit Entscheidung {a.id}"
+        b.conflict_resolution = f"Zusammengeführt mit Entscheidung {a.id}"
 
-        # A erhaelt kombinierten Impact
+        # A erhält kombinierten Impact
         a.source_actions.extend(b.source_actions)
         a.affected_modules = list(set(a.affected_modules + b.affected_modules))
 
@@ -686,12 +686,12 @@ class UnifiedDecisionEngine:
         min_score: Optional[float] = None
     ) -> List[UnifiedDecision]:
         """
-        Gibt priorisierte Entscheidungsliste zurueck.
+        Gibt priorisierte Entscheidungsliste zurück.
 
         Workflow:
         1. Konflikte erkennen und loesen
         2. Nach Impact-Score sortieren
-        3. Nur PENDING/APPROVED zurueckgeben
+        3. Nur PENDING/APPROVED zurückgeben
         """
         # Konflikte erkennen und loesen
         conflicts = await self.detect_conflicts()
@@ -729,7 +729,7 @@ class UnifiedDecisionEngine:
     # =========================================================================
 
     async def approve_decision(self, decision_id: UUID) -> bool:
-        """Genehmigt eine Entscheidung zur Ausfuehrung."""
+        """Genehmigt eine Entscheidung zur Ausführung."""
         async with self._queue_lock:
             for decision in self._decision_queue:
                 if decision.id == decision_id:
@@ -755,9 +755,9 @@ class UnifiedDecisionEngine:
 
     async def execute_approved_decisions(self) -> int:
         """
-        Fuehrt alle genehmigten Entscheidungen aus.
+        Führt alle genehmigten Entscheidungen aus.
 
-        Gibt Anzahl ausgefuehrter Entscheidungen zurueck.
+        Gibt Anzahl ausgeführter Entscheidungen zurück.
         """
         executed = 0
 
@@ -777,7 +777,7 @@ class UnifiedDecisionEngine:
                 # Zu History verschieben
                 self._processed_decisions.append(decision)
 
-        # Ausgefuehrte aus Queue entfernen
+        # Ausgeführte aus Queue entfernen
         async with self._queue_lock:
             self._decision_queue = [
                 d for d in self._decision_queue
@@ -792,9 +792,9 @@ class UnifiedDecisionEngine:
         return executed
 
     async def _execute_decision(self, decision: UnifiedDecision) -> bool:
-        """Fuehrt eine einzelne Entscheidung aus."""
+        """Führt eine einzelne Entscheidung aus."""
         try:
-            # Hole Orchestrator und fuehre Source-Actions aus
+            # Hole Orchestrator und führe Source-Actions aus
             from app.services.orchestration import get_cross_module_orchestrator
 
 
@@ -828,9 +828,9 @@ class UnifiedDecisionEngine:
         space_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """
-        Gibt Zusammenfassung aller Entscheidungen zurueck.
+        Gibt Zusammenfassung aller Entscheidungen zurück.
 
-        Fuer Dashboard-Anzeige.
+        Für Dashboard-Anzeige.
         """
         async with self._queue_lock:
             decisions = list(self._decision_queue)
@@ -879,7 +879,7 @@ class UnifiedDecisionEngine:
         }
 
     async def get_metrics(self) -> Dict[str, Any]:
-        """Gibt Engine-Metriken zurueck."""
+        """Gibt Engine-Metriken zurück."""
         async with self._queue_lock:
             pending = len([d for d in self._decision_queue if d.status == DecisionStatus.PENDING])
             approved = len([d for d in self._decision_queue if d.status == DecisionStatus.APPROVED])
@@ -899,10 +899,10 @@ class UnifiedDecisionEngine:
     # =========================================================================
 
     async def cleanup_stale_conflicts(self) -> int:
-        """Entfernt veraltete Konflikt-Cache-Eintraege.
+        """Entfernt veraltete Konflikt-Cache-Einträge.
 
         Returns:
-            Anzahl entfernter Eintraege.
+            Anzahl entfernter Einträge.
         """
         cutoff = datetime.now(timezone.utc) - self._conflict_cache_ttl
         stale_keys = [
@@ -923,7 +923,7 @@ class UnifiedDecisionEngine:
         """Raeumt alte verarbeitete Entscheidungen auf.
 
         Note: Mit bounded deque ist manuelles Cleanup weniger kritisch,
-        aber wir behalten diese Methode fuer explizites Cleanup.
+        aber wir behalten diese Methode für explizites Cleanup.
         """
         cutoff = datetime.now(timezone.utc) - timedelta(days=days_to_keep)
 
@@ -956,7 +956,7 @@ _engine_lock = threading.Lock()
 
 
 def get_unified_decision_engine() -> UnifiedDecisionEngine:
-    """Factory-Funktion fuer UnifiedDecisionEngine Singleton."""
+    """Factory-Funktion für UnifiedDecisionEngine Singleton."""
     global _engine_instance
     if _engine_instance is None:
         with _engine_lock:

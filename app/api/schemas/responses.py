@@ -177,7 +177,7 @@ class PaginatedResponse(BaseModel):
             "items": [...],
             "gesamt": 100,
             "seite": 1,
-            "seiten_größe": 20,
+            "seiten_groesse": 20,
             "seiten_gesamt": 5
         }
     """
@@ -194,7 +194,7 @@ class PaginatedResponse(BaseModel):
         ge=1,
         examples=[1]
     )
-    seiten_größe: int = Field(
+    seiten_groesse: int = Field(
         ...,
         description="Anzahl der Einträge pro Seite",
         ge=1,

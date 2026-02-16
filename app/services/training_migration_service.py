@@ -180,7 +180,7 @@ class TrainingMigrationService:
                 "stats": dict(self._stats),
             }
 
-    # P.1 SECURITY FIX: Whitelist fuer erlaubte Tabellennamen (SQL Injection Prevention)
+    # P.1 SECURITY FIX: Whitelist für erlaubte Tabellennamen (SQL Injection Prevention)
     ALLOWED_MIGRATION_TABLES = frozenset({"training_samples", "documents"})
 
     async def _migrate_sqlite_samples(
@@ -212,13 +212,13 @@ class TrainingMigrationService:
                 table=table_name,
                 allowed=list(self.ALLOWED_MIGRATION_TABLES)
             )
-            raise ValueError(f"Ungueltige Tabelle: {table_name}")
+            raise ValueError(f"Ungültige Tabelle: {table_name}")
 
         logger.info("sqlite_migrating_table", table=table_name)
         # SECURITY NOTE (Phase 8.2): f-string hier ist SICHER weil:
-        # 1. table_name kommt NUR aus ALLOWED_MIGRATION_TABLES (frozenset, unveraenderbar)
+        # 1. table_name kommt NUR aus ALLOWED_MIGRATION_TABLES (frozenset, unveränderbar)
         # 2. Whitelist-Validierung erfolgt direkt oben (Zeile 208)
-        # 3. SQLite unterstuetzt keine parametrisierten Tabellennamen
+        # 3. SQLite unterstützt keine parametrisierten Tabellennamen
         # Alternative waere text(f"SELECT * FROM {table_name}") - gleiche Sicherheit
         cursor = conn.execute(f"SELECT * FROM {table_name}")
         rows = cursor.fetchall()

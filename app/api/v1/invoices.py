@@ -2,11 +2,11 @@
 """
 Invoice Tracking API Endpoints.
 
-REST API fuer Rechnungsverfolgung (Risk Scoring):
-- CRUD Operationen fuer InvoiceTracking
+REST API für Rechnungsverfolgung (Risk Scoring):
+- CRUD Operationen für InvoiceTracking
 - Zahlungsstatus-Updates
 - Mahnwesen-Integration
-- Verknuepfung mit Dokumenten
+- Verknüpfung mit Dokumenten
 
 Feinpoliert und durchdacht - Enterprise Risk Scoring.
 """
@@ -51,11 +51,11 @@ router = APIRouter(prefix="/invoices", tags=["Invoice Tracking"])
 )
 async def list_invoices(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     status_filter: Optional[InvoiceStatusEnum] = Query(
         None, alias="status", description="Nach Status filtern"
     ),
-    overdue_only: bool = Query(False, description="Nur ueberfaellige Rechnungen"),
+    overdue_only: bool = Query(False, description="Nur überfällige Rechnungen"),
     document_id: Optional[UUID] = Query(None, description="Nach Dokument filtern"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -65,7 +65,7 @@ async def list_invoices(
 
     **Filter:**
     - **status**: open, sent, paid, overdue, dunning, cancelled, partial
-    - **overdue_only**: Nur ueberfaellige Rechnungen
+    - **overdue_only**: Nur überfällige Rechnungen
     - **document_id**: Nur Rechnungen eines bestimmten Dokuments
     """
     # SECURITY: Multi-Tenant RLS - nur Rechnungen zu Dokumenten des aktuellen Users
@@ -128,7 +128,7 @@ async def list_invoices(
     "/statistics/summary",
     response_model=InvoiceStatisticsResponse,
     summary="Rechnungsstatistiken abrufen",
-    description="Liefert aggregierte Statistiken ueber alle Rechnungen"
+    description="Liefert aggregierte Statistiken über alle Rechnungen"
 )
 async def get_invoice_statistics(
     current_user: User = Depends(get_current_active_user),
@@ -140,9 +140,9 @@ async def get_invoice_statistics(
     **Response:**
     - Anzahl nach Status
     - Gesamtbetraege
-    - Durchschnittliche Zahlungsverzoegerung
+    - Durchschnittliche Zahlungsverzögerung
     """
-    # SECURITY: Multi-Tenant RLS - nur Statistiken fuer eigene Rechnungen
+    # SECURITY: Multi-Tenant RLS - nur Statistiken für eigene Rechnungen
     base_query = (
         select(
             func.count(InvoiceTracking.id).label("total"),
@@ -185,7 +185,7 @@ async def get_invoice_statistics(
         for row in status_result
     }
 
-    # Ueberfaellige Rechnungen (SECURITY: Multi-Tenant RLS)
+    # Überfällige Rechnungen (SECURITY: Multi-Tenant RLS)
     now = datetime.now(timezone.utc)
     overdue_query = (
         select(
@@ -277,7 +277,7 @@ async def get_invoice(
     response_model=InvoiceTrackingResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Rechnungsverfolgung erstellen",
-    description="Erstellt eine neue Rechnungsverfolgung fuer ein Dokument"
+    description="Erstellt eine neue Rechnungsverfolgung für ein Dokument"
 )
 async def create_invoice(
     invoice_data: InvoiceTrackingCreate,
@@ -287,9 +287,9 @@ async def create_invoice(
     """
     Erstellt eine neue Rechnungsverfolgung.
 
-    Das verknuepfte Dokument muss existieren.
+    Das verknüpfte Dokument muss existieren.
     """
-    # SECURITY: Pruefen ob Dokument existiert UND dem User gehoert
+    # SECURITY: Prüfen ob Dokument existiert UND dem User gehoert
     doc_result = await db.execute(
         select(Document).where(
             Document.id == invoice_data.document_id,
@@ -302,10 +302,10 @@ async def create_invoice(
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Verknuepftes Dokument nicht gefunden"
+            detail="Verknüpftes Dokument nicht gefunden"
         )
 
-    # Pruefen ob bereits InvoiceTracking existiert
+    # Prüfen ob bereits InvoiceTracking existiert
     existing_result = await db.execute(
         select(InvoiceTracking).where(
             InvoiceTracking.document_id == invoice_data.document_id,
@@ -315,7 +315,7 @@ async def create_invoice(
     if existing_result.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Fuer dieses Dokument existiert bereits eine Rechnungsverfolgung"
+            detail="Für dieses Dokument existiert bereits eine Rechnungsverfolgung"
         )
 
     # InvoiceTracking erstellen
@@ -364,7 +364,7 @@ async def update_invoice(
     Aktualisiert eine Rechnungsverfolgung.
 
     Triggert automatisch Neuberechnung des Risk Scores
-    wenn Status oder Zahlungsdaten geaendert werden.
+    wenn Status oder Zahlungsdaten geändert werden.
     """
     # SECURITY: Multi-Tenant RLS
     result = await db.execute(
@@ -440,8 +440,8 @@ async def mark_invoice_paid(
     Markiert eine Rechnung als bezahlt.
 
     - Setzt Status auf 'paid'
-    - Setzt paid_at auf aktuellen Zeitpunkt (oder uebergebenen Wert)
-    - Setzt paid_amount auf Rechnungsbetrag (oder uebergebenen Wert)
+    - Setzt paid_at auf aktuellen Zeitpunkt (oder übergebenen Wert)
+    - Setzt paid_amount auf Rechnungsbetrag (oder übergebenen Wert)
     - Triggert Risk Score Neuberechnung
     """
     # SECURITY: Multi-Tenant RLS
@@ -497,8 +497,8 @@ async def mark_invoice_paid(
 @router.post(
     "/{invoice_id}/increase-dunning",
     response_model=InvoiceTrackingResponse,
-    summary="Mahnstufe erhoehen",
-    description="Erhoeht die Mahnstufe einer Rechnung"
+    summary="Mahnstufe erhöhen",
+    description="Erhöht die Mahnstufe einer Rechnung"
 )
 async def increase_dunning_level(
     invoice_id: UUID,
@@ -506,7 +506,7 @@ async def increase_dunning_level(
     db: AsyncSession = Depends(get_db),
 ) -> InvoiceTrackingResponse:
     """
-    Erhoeht die Mahnstufe einer Rechnung.
+    Erhöht die Mahnstufe einer Rechnung.
 
     - Mahnstufe 0 -> 1: Zahlungserinnerung
     - Mahnstufe 1 -> 2: 1. Mahnung
@@ -538,7 +538,7 @@ async def increase_dunning_level(
     if invoice.status in (InvoiceStatus.PAID.value, InvoiceStatus.CANCELLED.value):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=f"Mahnstufe kann nicht erhoeht werden: Rechnung ist {invoice.status}"
+            detail=f"Mahnstufe kann nicht erhöht werden: Rechnung ist {invoice.status}"
         )
 
     if invoice.dunning_level >= 4:
@@ -576,8 +576,8 @@ async def increase_dunning_level(
 @router.delete(
     "/{invoice_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Rechnungsverfolgung loeschen",
-    description="Loescht eine Rechnungsverfolgung (Soft Delete)"
+    summary="Rechnungsverfolgung löschen",
+    description="Löscht eine Rechnungsverfolgung (Soft Delete)"
 )
 async def delete_invoice(
     invoice_id: UUID,
@@ -585,9 +585,9 @@ async def delete_invoice(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """
-    Loescht eine Rechnungsverfolgung (Soft Delete).
+    Löscht eine Rechnungsverfolgung (Soft Delete).
 
-    Die Daten werden nicht physisch geloescht, sondern nur als geloescht markiert.
+    Die Daten werden nicht physisch gelöscht, sondern nur als gelöscht markiert.
     Triggert Risk Score Neuberechnung.
     """
     # SECURITY: Multi-Tenant RLS
@@ -633,7 +633,7 @@ async def delete_invoice(
 @router.get(
     "/{invoice_id}/skonto",
     summary="Skonto-Informationen abrufen",
-    description="Liefert Skonto-Details und -Berechnung fuer eine Rechnung"
+    description="Liefert Skonto-Details und -Berechnung für eine Rechnung"
 )
 async def get_invoice_skonto(
     invoice_id: UUID,
@@ -641,12 +641,12 @@ async def get_invoice_skonto(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Liefert Skonto-Informationen fuer eine Rechnung.
+    Liefert Skonto-Informationen für eine Rechnung.
 
     **Response:**
     - skonto_percentage: Skonto-Prozentsatz
     - skonto_amount: Berechneter Skonto-Betrag
-    - skonto_deadline: Ablaufdatum fuer Skonto
+    - skonto_deadline: Ablaufdatum für Skonto
     - skonto_used: Ob Skonto bereits angewendet wurde
     - days_remaining: Verbleibende Tage
     - is_expired: Ob Skonto-Frist abgelaufen ist
@@ -709,18 +709,18 @@ async def get_invoice_skonto(
     "/{invoice_id}/skonto",
     response_model=InvoiceTrackingResponse,
     summary="Skonto-Konditionen setzen",
-    description="Setzt oder aktualisiert Skonto-Konditionen fuer eine Rechnung"
+    description="Setzt oder aktualisiert Skonto-Konditionen für eine Rechnung"
 )
 async def set_invoice_skonto(
     invoice_id: UUID,
     skonto_percentage: float = Query(..., ge=0, le=10, description="Skonto-Prozentsatz (0-10%)"),
-    skonto_days: int = Query(10, ge=1, le=60, description="Tage fuer Skonto-Berechtigung"),
+    skonto_days: int = Query(10, ge=1, le=60, description="Tage für Skonto-Berechtigung"),
     net_days: int = Query(30, ge=1, le=120, description="Zahlungsziel netto"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> InvoiceTrackingResponse:
     """
-    Setzt Skonto-Konditionen fuer eine Rechnung.
+    Setzt Skonto-Konditionen für eine Rechnung.
 
     Berechnet automatisch:
     - skonto_deadline
@@ -748,7 +748,7 @@ async def set_invoice_skonto(
         )
 
     skonto_service = SkontoService()
-    # SECURITY: company_id fuer Defense-in-Depth Multi-Tenant Isolation
+    # SECURITY: company_id für Defense-in-Depth Multi-Tenant Isolation
     success = await skonto_service.update_invoice_skonto_fields(
         db=db,
         invoice_tracking_id=invoice_id,
@@ -794,7 +794,7 @@ async def apply_invoice_skonto(
     """
     Wendet Skonto bei einer Zahlung an.
 
-    Prueft automatisch:
+    Prüft automatisch:
     - Ob Skonto-Konditionen vorhanden sind
     - Ob Skonto-Frist eingehalten wurde
     - Ob der Betrag zum Skonto-Abzug passt
@@ -823,7 +823,7 @@ async def apply_invoice_skonto(
         )
 
     skonto_service = SkontoService()
-    # SECURITY: company_id fuer Defense-in-Depth Multi-Tenant Isolation
+    # SECURITY: company_id für Defense-in-Depth Multi-Tenant Isolation
     applied, skonto_amount, message = await skonto_service.apply_skonto(
         db=db,
         invoice_tracking_id=invoice_id,
@@ -905,19 +905,19 @@ async def get_upcoming_skonto_deadlines(
 
 @router.get(
     "/skonto/missed",
-    summary="Verpasste Skonto-Moeglichkeiten",
+    summary="Verpasste Skonto-Möglichkeiten",
     description="Listet alle Rechnungen mit verpassten Skonto-Fristen"
 )
 async def get_missed_skonto(
     start_date: Optional[datetime] = Query(None, description="Startdatum (ISO 8601)"),
     end_date: Optional[datetime] = Query(None, description="Enddatum (ISO 8601)"),
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Listet alle Rechnungen mit verpassten Skonto-Moeglichkeiten.
+    Listet alle Rechnungen mit verpassten Skonto-Möglichkeiten.
 
     **Response:**
     - items: Liste der verpassten Skonto-Rechnungen
@@ -1014,7 +1014,7 @@ async def get_missed_skonto(
 @router.get(
     "/skonto/statistics",
     summary="Skonto-Statistiken",
-    description="Berechnet Skonto-Statistiken fuer einen Zeitraum"
+    description="Berechnet Skonto-Statistiken für einen Zeitraum"
 )
 async def get_skonto_statistics(
     start_date: datetime = Query(..., description="Startdatum (ISO 8601)"),
@@ -1023,7 +1023,7 @@ async def get_skonto_statistics(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Berechnet Skonto-Statistiken fuer einen Zeitraum.
+    Berechnet Skonto-Statistiken für einen Zeitraum.
 
     **Response:**
     - period_start/period_end: Zeitraum
@@ -1080,8 +1080,8 @@ async def get_skonto_statistics(
 
 @router.get(
     "/skonto/monthly-summary",
-    summary="Monatliche Skonto-Uebersicht",
-    description="Liefert monatliche Skonto-Zusammenfassung fuer Chart-Darstellung"
+    summary="Monatliche Skonto-Übersicht",
+    description="Liefert monatliche Skonto-Zusammenfassung für Chart-Darstellung"
 )
 async def get_monthly_skonto_summary(
     months: int = Query(12, ge=1, le=24, description="Anzahl Monate"),
@@ -1110,9 +1110,9 @@ async def get_monthly_skonto_summary(
     now = utc_now()
     results = []
 
-    # Fuer jeden Monat Statistiken berechnen
+    # Für jeden Monat Statistiken berechnen
     for i in range(months - 1, -1, -1):
-        # Monat berechnen (rueckwaerts)
+        # Monat berechnen (rückwärts)
         target_date = now - timedelta(days=i * 30)
         year = target_date.year
         month = target_date.month
@@ -1122,7 +1122,7 @@ async def get_monthly_skonto_summary(
         month_start = datetime(year, month, 1, tzinfo=timezone.utc)
         month_end = datetime(year, month, last_day, 23, 59, 59, tzinfo=timezone.utc)
 
-        # Query fuer diesen Monat
+        # Query für diesen Monat
         month_conditions = [
             InvoiceTracking.company_id == company_id,
             InvoiceTracking.skonto_percentage.isnot(None),
@@ -1239,7 +1239,7 @@ async def export_missed_skonto(
 
         data.append({
             "Rechnungsnummer": invoice.invoice_number or document.original_filename,
-            "Geschaeftspartner": entity.name if entity else "Unbekannt",
+            "Geschäftspartner": entity.name if entity else "Unbekannt",
             "Rechnungsdatum": invoice.invoice_date.strftime("%d.%m.%Y") if invoice.invoice_date else "",
             "Rechnungsbetrag": f"{invoice.amount:.2f}".replace(".", ","),
             "Skonto %": f"{invoice.skonto_percentage:.1f}".replace(".", ","),
@@ -1256,7 +1256,7 @@ async def export_missed_skonto(
             writer = csv.DictWriter(output, fieldnames=data[0].keys(), delimiter=";")
             writer.writeheader()
             writer.writerows(data)
-        content = output.getvalue().encode("utf-8-sig")  # BOM fuer Excel
+        content = output.getvalue().encode("utf-8-sig")  # BOM für Excel
         media_type = "text/csv; charset=utf-8"
         filename = f"verpasste_skonto_{now.strftime('%Y%m%d')}.csv"
     else:
@@ -1340,7 +1340,7 @@ async def export_missed_skonto(
     "/{invoice_id}/payments",
     status_code=status.HTTP_201_CREATED,
     summary="Teilzahlung erfassen",
-    description="Erfasst eine Teilzahlung fuer eine Rechnung"
+    description="Erfasst eine Teilzahlung für eine Rechnung"
 )
 async def record_partial_payment(
     invoice_id: UUID,
@@ -1448,7 +1448,7 @@ async def record_partial_payment(
 @router.get(
     "/{invoice_id}/payments",
     summary="Zahlungen einer Rechnung abrufen",
-    description="Listet alle Zahlungen fuer eine Rechnung"
+    description="Listet alle Zahlungen für eine Rechnung"
 )
 async def get_invoice_payments(
     invoice_id: UUID,
@@ -1456,7 +1456,7 @@ async def get_invoice_payments(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Liefert Zahlungsuebersicht fuer eine Rechnung.
+    Liefert Zahlungsübersicht für eine Rechnung.
 
     **Response:**
     - total_amount: Rechnungsbetrag
@@ -1464,7 +1464,7 @@ async def get_invoice_payments(
     - outstanding_amount: Ausstehender Betrag
     - payment_count: Anzahl Zahlungen
     - payments: Liste der einzelnen Zahlungen
-    - is_fully_paid: Ob vollstaendig bezahlt
+    - is_fully_paid: Ob vollständig bezahlt
     """
     from app.services.banking.partial_payment_service import PartialPaymentService
 
@@ -1489,17 +1489,17 @@ async def get_invoice_payments(
     payment_service = PartialPaymentService()
 
     try:
-        # SECURITY: company_id fuer Multi-Tenant Isolation
+        # SECURITY: company_id für Multi-Tenant Isolation
         summary = await payment_service.get_payment_summary(
             db=db,
             invoice_tracking_id=invoice_id,
             company_id=current_user.company_id,
         )
     except ValueError as e:
-        logger.error("payment_summary_failed", **safe_error_log(e, context="Zahlungsuebersicht abrufen"))
+        logger.error("payment_summary_failed", **safe_error_log(e, context="Zahlungsübersicht abrufen"))
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=safe_error_detail(e, "Zahlungsuebersicht abrufen")
+            detail=safe_error_detail(e, "Zahlungsübersicht abrufen")
         )
 
     return {
@@ -1531,8 +1531,8 @@ async def get_invoice_payments(
 @router.delete(
     "/{invoice_id}/payments/{payment_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    summary="Teilzahlung loeschen",
-    description="Loescht eine Teilzahlung (nur wenn nicht reconciled)"
+    summary="Teilzahlung löschen",
+    description="Löscht eine Teilzahlung (nur wenn nicht reconciled)"
 )
 async def delete_partial_payment(
     invoice_id: UUID,
@@ -1541,15 +1541,15 @@ async def delete_partial_payment(
     db: AsyncSession = Depends(get_db),
 ) -> None:
     """
-    Loescht eine Teilzahlung.
+    Löscht eine Teilzahlung.
 
-    Nur moeglich wenn:
-    - Zahlung noch nicht mit Bank-Transaktion verknuepft
+    Nur möglich wenn:
+    - Zahlung noch nicht mit Bank-Transaktion verknüpft
     - Benutzer berechtigt
     """
     from app.services.banking.partial_payment_service import PartialPaymentService
 
-    # SECURITY: Multi-Tenant RLS - Pruefen ob Invoice dem User gehoert
+    # SECURITY: Multi-Tenant RLS - Prüfen ob Invoice dem User gehoert
     result = await db.execute(
         select(InvoiceTracking)
         .join(Document, InvoiceTracking.document_id == Document.id)
@@ -1568,7 +1568,7 @@ async def delete_partial_payment(
         )
 
     payment_service = PartialPaymentService()
-    # SECURITY: company_id fuer Multi-Tenant Isolation
+    # SECURITY: company_id für Multi-Tenant Isolation
     success, message = await payment_service.delete_payment(
         db=db,
         payment_transaction_id=payment_id,

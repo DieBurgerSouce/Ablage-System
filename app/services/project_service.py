@@ -83,7 +83,7 @@ class AutoAssignmentResult:
 
 class ProjectService:
     """
-    Service fuer Projekt-Management.
+    Service für Projekt-Management.
 
     Features:
     - CRUD Operationen
@@ -284,7 +284,7 @@ class ProjectService:
         *,
         soft_delete: bool = True,
     ) -> bool:
-        """Projekt loeschen (soft delete = archivieren)."""
+        """Projekt löschen (soft delete = archivieren)."""
         project = await self.get_project(db, project_id)
         if not project:
             return False
@@ -296,7 +296,7 @@ class ProjectService:
         else:
             await db.delete(project)
             await db.flush()
-            logger.info("Projekt geloescht", project_id=str(project_id))
+            logger.info("Projekt gelöscht", project_id=str(project_id))
 
         return True
 
@@ -327,7 +327,7 @@ class ProjectService:
         db: AsyncSession,
         project_id: UUID,
     ) -> Optional[Project]:
-        """Projekt abschliessen."""
+        """Projekt abschließen."""
         project = await self.get_project(db, project_id)
         if not project:
             return None
@@ -589,7 +589,7 @@ class ProjectService:
         db: AsyncSession,
         project_id: UUID,
     ) -> None:
-        """Projekt-Zaehler aktualisieren."""
+        """Projekt-Zähler aktualisieren."""
         # Count documents
         count_query = select(func.count()).where(
             DocumentProjectAssignment.project_id == project_id
@@ -628,7 +628,7 @@ class ProjectService:
         company_id: UUID,
     ) -> List[AutoAssignmentResult]:
         """
-        KI-basierte Projekt-Vorschlaege fuer ein Dokument.
+        KI-basierte Projekt-Vorschläge für ein Dokument.
 
         Matching-Strategien:
         1. Entity-Match: Dokument-Entity = Projekt-Client (95% Confidence)
@@ -667,14 +667,14 @@ class ProjectService:
             if document.business_entity_id and project.client_id:
                 if document.business_entity_id == project.client_id:
                     confidence = max(confidence, 0.95)
-                    reasons.append("Kunde stimmt ueberein")
+                    reasons.append("Kunde stimmt überein")
 
             # Strategy 2: Kostenstelle Match (from document metadata)
             if project.kostenstelle_id:
                 doc_kostenstelle = document.document_metadata.get("kostenstelle_id")
                 if doc_kostenstelle and str(project.kostenstelle_id) == str(doc_kostenstelle):
                     confidence = max(confidence, 0.85)
-                    reasons.append("Kostenstelle stimmt ueberein")
+                    reasons.append("Kostenstelle stimmt überein")
 
             # Strategy 3: Tag Overlap
             if project.tags and hasattr(document, 'tags'):
@@ -685,7 +685,7 @@ class ProjectService:
                     tag_confidence = min(0.75, 0.5 + (len(overlap) * 0.1))
                     if tag_confidence > confidence:
                         confidence = tag_confidence
-                        reasons.append(f"Tags ueberlappen: {', '.join(overlap)}")
+                        reasons.append(f"Tags überlappen: {', '.join(overlap)}")
 
             # Strategy 4: Project Code in Document
             if document.extracted_text:
@@ -715,7 +715,7 @@ class ProjectService:
         suggestions.sort(key=lambda x: x.confidence, reverse=True)
 
         logger.info(
-            "Projekt-Vorschlaege generiert",
+            "Projekt-Vorschläge generiert",
             document_id=str(document_id),
             suggestion_count=len(suggestions)
         )
@@ -799,7 +799,7 @@ class ProjectService:
         db: AsyncSession,
         company_id: UUID,
     ) -> ProjectSummary:
-        """Projekt-Zusammenfassung fuer Company."""
+        """Projekt-Zusammenfassung für Company."""
         # Total and status counts
         status_counts = await db.execute(
             select(

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Kryptografischer Audit-Trail periodic tasks (F6).
 
-Phase 12: Vollstaendige Integration mit MerkleTreeService.
+Phase 12: Vollständige Integration mit MerkleTreeService.
 """
 
 import asyncio
@@ -22,12 +22,12 @@ logger = structlog.get_logger(__name__)
 
 @celery_app.task(name="app.workers.tasks.audit_chain_tasks.verify_integrity")
 def verify_integrity() -> dict:
-    """Verifiziere Integritaet der gesamten Audit-Kette.
+    """Verifiziere Integrität der gesamten Audit-Kette.
 
-    Prueft:
+    Prüft:
     - SHA-256 Hash-Kette Konsistenz
-    - Merkle-Tree Integritaet
-    - Fehlende oder manipulierte Eintraege
+    - Merkle-Tree Integrität
+    - Fehlende oder manipulierte Einträge
     """
     logger.info("audit_chain_integrity_check_start")
     try:
@@ -44,7 +44,7 @@ def verify_integrity() -> dict:
 
 
 async def _verify_integrity() -> Dict[str, Any]:
-    """Async Implementation fuer Integritaetspruefung."""
+    """Async Implementation für Integritätsprüfung."""
     from app.services.compliance.merkle_tree_service import MerkleTreeService
 
     total_entries = 0
@@ -78,7 +78,7 @@ async def _verify_integrity() -> Dict[str, Any]:
                 if not audit_logs:
                     continue
 
-                # Entries fuer Merkle Tree vorbereiten
+                # Entries für Merkle Tree vorbereiten
                 entries = [
                     json.dumps({
                         "id": str(log.id),
@@ -92,7 +92,7 @@ async def _verify_integrity() -> Dict[str, Any]:
 
                 total_entries += len(entries)
 
-                # Merkle Tree bauen und Integritaet pruefen
+                # Merkle Tree bauen und Integrität prüfen
                 tree = service.build_tree(entries)
 
                 if tree.leaf_count != len(entries):
@@ -122,7 +122,7 @@ async def _verify_integrity() -> Dict[str, Any]:
 
 @celery_app.task(name="app.workers.tasks.audit_chain_tasks.build_merkle_tree")
 def build_merkle_tree() -> dict:
-    """Erstelle neuen Merkle-Tree-Block fuer die aktuelle Woche."""
+    """Erstelle neuen Merkle-Tree-Block für die aktuelle Woche."""
     logger.info("audit_chain_merkle_build_start")
     try:
         result = asyncio.get_event_loop().run_until_complete(_build_merkle_tree())
@@ -137,7 +137,7 @@ def build_merkle_tree() -> dict:
 
 
 async def _build_merkle_tree() -> Dict[str, Any]:
-    """Async Implementation fuer Merkle Tree Build."""
+    """Async Implementation für Merkle Tree Build."""
     from app.services.compliance.merkle_tree_service import MerkleTreeService
 
     trees_built: List[Dict[str, Any]] = []

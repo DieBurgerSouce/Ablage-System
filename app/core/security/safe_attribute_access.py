@@ -327,7 +327,7 @@ class SafeAttributeAccess:
 
             if raise_on_denied:
                 raise SafeAttributeAccessError(
-                    f"Folgende Felder koennen nicht aktualisiert werden: {', '.join(denied)}"
+                    f"Folgende Felder können nicht aktualisiert werden: {', '.join(denied)}"
                 )
 
         return allowed, denied

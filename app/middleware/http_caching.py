@@ -1,6 +1,6 @@
 """HTTP Caching Middleware.
 
-Implementiert ETag und Cache-Control Header fuer effizientes
+Implementiert ETag und Cache-Control Header für effizientes
 Browser- und CDN-Caching.
 """
 
@@ -18,11 +18,11 @@ logger = structlog.get_logger(__name__)
 
 # Standard Cache-Dauern (in Sekunden)
 CACHE_DURATIONS: Dict[str, int] = {
-    "static": 86400 * 30,     # 30 Tage fuer statische Assets
-    "api_list": 60,           # 1 Minute fuer Listen
-    "api_detail": 300,        # 5 Minuten fuer Details
-    "health": 0,              # Kein Caching fuer Health
-    "search": 30,             # 30 Sekunden fuer Suche
+    "static": 86400 * 30,     # 30 Tage für statische Assets
+    "api_list": 60,           # 1 Minute für Listen
+    "api_detail": 300,        # 5 Minuten für Details
+    "health": 0,              # Kein Caching für Health
+    "search": 30,             # 30 Sekunden für Suche
 }
 
 # Pfade die gecacht werden
@@ -44,13 +44,13 @@ NO_CACHE_PATHS: Set[str] = {
 
 
 class HTTPCachingMiddleware(BaseHTTPMiddleware):
-    """Middleware fuer HTTP Caching mit ETag und Cache-Control.
+    """Middleware für HTTP Caching mit ETag und Cache-Control.
 
     Features:
     - ETag basierend auf Response-Body Hash
     - If-None-Match Support (304 Not Modified)
     - Konfigurierbare Cache-Control Header
-    - Vary Header fuer korrektes CDN-Verhalten
+    - Vary Header für korrektes CDN-Verhalten
     """
 
     def __init__(
@@ -64,7 +64,7 @@ class HTTPCachingMiddleware(BaseHTTPMiddleware):
         Args:
             app: ASGI Application
             default_max_age: Standard Cache-Dauer in Sekunden
-            private_by_default: True fuer private, False fuer public cache
+            private_by_default: True für private, False für public cache
         """
         super().__init__(app)
         self.default_max_age = default_max_age
@@ -89,7 +89,7 @@ class HTTPCachingMiddleware(BaseHTTPMiddleware):
             response.headers["cache-control"] = "no-store"
             return response
 
-        # If-None-Match Header (fuer 304 Responses)
+        # If-None-Match Header (für 304 Responses)
         if_none_match = request.headers.get("if-none-match")
 
         # Response holen
@@ -99,7 +99,7 @@ class HTTPCachingMiddleware(BaseHTTPMiddleware):
         if response.status_code != 200:
             return response
 
-        # Body extrahieren fuer ETag-Berechnung
+        # Body extrahieren für ETag-Berechnung
         body = b""
         async for chunk in response.body_iterator:
             body += chunk
@@ -139,13 +139,13 @@ class HTTPCachingMiddleware(BaseHTTPMiddleware):
     def _generate_etag(self, body: bytes) -> str:
         """Generiere ETag aus Body-Hash.
 
-        Verwendet MD5 fuer Geschwindigkeit (nicht kryptographisch).
+        Verwendet MD5 für Geschwindigkeit (nicht kryptographisch).
         """
         hash_value = hashlib.md5(body).hexdigest()[:16]
         return f'"{hash_value}"'
 
     def _get_cache_control(self, path: str) -> str:
-        """Ermittle Cache-Control Header fuer Pfad."""
+        """Ermittle Cache-Control Header für Pfad."""
         # Cache-Typ finden
         cache_type = None
         for pattern, ct in CACHEABLE_PATTERNS.items():
@@ -163,9 +163,9 @@ class HTTPCachingMiddleware(BaseHTTPMiddleware):
 
 
 class ConditionalCacheMiddleware(BaseHTTPMiddleware):
-    """Einfachere Middleware nur fuer ETag-basiertes Conditional GET.
+    """Einfachere Middleware nur für ETag-basiertes Conditional GET.
 
-    Weniger Overhead als HTTPCachingMiddleware, nur fuer 304-Support.
+    Weniger Overhead als HTTPCachingMiddleware, nur für 304-Support.
     """
 
     async def dispatch(
@@ -184,7 +184,7 @@ class ConditionalCacheMiddleware(BaseHTTPMiddleware):
         if response.status_code != 200:
             return response
 
-        # Body fuer ETag
+        # Body für ETag
         body = b""
         async for chunk in response.body_iterator:
             body += chunk
@@ -212,7 +212,7 @@ def create_http_caching_middleware(
     default_max_age: int = 60,
     private_by_default: bool = True
 ) -> Callable:
-    """Factory fuer HTTP Caching Middleware."""
+    """Factory für HTTP Caching Middleware."""
     class ConfiguredHTTPCachingMiddleware(HTTPCachingMiddleware):
         def __init__(self, app: ASGIApp):
             super().__init__(

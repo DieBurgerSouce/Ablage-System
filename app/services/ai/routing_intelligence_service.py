@@ -3,14 +3,14 @@
 RoutingIntelligenceService - KI-basiertes Dokumenten-Routing.
 
 Entscheidet automatisch:
-1. Welcher Workflow fuer ein Dokument zustaendig ist
+1. Welcher Workflow für ein Dokument zuständig ist
 2. Welche Abteilung/Person es bearbeiten soll
-3. Welche Prioritaet es hat
+3. Welche Priorität es hat
 4. Ob Eskalation erforderlich ist
 
 Basiert auf:
 - Dokumenttyp
-- Erkannte Entitaet (Kunde/Lieferant)
+- Erkannte Entität (Kunde/Lieferant)
 - Betrag
 - Historische Muster
 - OCR-Inhalt (Keywords)
@@ -55,7 +55,7 @@ class RoutingTarget(str, Enum):
 
 
 class Priority(str, Enum):
-    """Prioritaet eines Dokuments."""
+    """Priorität eines Dokuments."""
 
     CRITICAL = "critical"  # Sofortige Bearbeitung (heute)
     HIGH = "high"  # Dringend (24h)
@@ -70,15 +70,15 @@ class Department(str, Enum):
     EINKAUF = "einkauf"
     VERKAUF = "verkauf"
     PERSONAL = "personal"
-    GESCHAEFTSFUEHRUNG = "geschaeftsfuehrung"
+    GESCHAEFTSFUEHRUNG = "geschäftsführung"
     IT = "it"
     LAGER = "lager"
-    QUALITAET = "qualitaet"
+    QUALITAET = "qualität"
     ALLGEMEIN = "allgemein"
 
 
 class RoutingReason(str, Enum):
-    """Grund fuer das Routing."""
+    """Grund für das Routing."""
 
     DOCUMENT_TYPE = "document_type"  # Basierend auf Dokumenttyp
     AMOUNT_THRESHOLD = "amount_threshold"  # Basierend auf Betrag
@@ -101,7 +101,7 @@ class RoutingDecision:
     priority: Priority
     confidence: float
     reasons: List[RoutingReason]
-    explanation: str  # Erklaerung fuer den User
+    explanation: str  # Erklärung für den User
     requires_approval: bool = False
     suggested_deadline: Optional[datetime] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -114,19 +114,19 @@ class RoutingRule:
     id: uuid.UUID
     name: str
     description: str
-    priority: int  # Niedrig = hohe Prioritaet
+    priority: int  # Niedrig = hohe Priorität
     conditions: Dict[str, Any]  # z.B. {"document_type": "invoice", "amount_gt": 1000}
     action: Dict[str, Any]  # z.B. {"route_to": "buchhaltung", "priority": "high"}
     enabled: bool = True
 
 
 # ============================================================================
-# Keyword Mappings fuer Abteilungen
+# Keyword Mappings für Abteilungen
 # ============================================================================
 
 DEPARTMENT_KEYWORDS: Dict[Department, List[str]] = {
     Department.BUCHHALTUNG: [
-        "rechnung", "invoice", "mahnung", "zahlung", "skonto", "ueberweisung",
+        "rechnung", "invoice", "mahnung", "zahlung", "skonto", "überweisung",
         "lastschrift", "gutschrift", "steuern", "umsatzsteuer", "vorsteuer",
         "bilanz", "jahresabschluss", "buchhaltung", "konto", "beleg",
     ],
@@ -136,18 +136,18 @@ DEPARTMENT_KEYWORDS: Dict[Department, List[str]] = {
         "beschaffung", "procurement", "supplier",
     ],
     Department.VERKAUF: [
-        "kunde", "kundenauftrag", "auftragsbestaetigung", "angebot",
+        "kunde", "kundenauftrag", "auftragsbestätigung", "angebot",
         "verkauf", "sales", "vertrieb", "customer", "bestellung",
         "auftrag", "offerte",
     ],
     Department.PERSONAL: [
         "personal", "mitarbeiter", "gehalt", "lohn", "arbeitsvertrag",
-        "kuendigung", "bewerbung", "urlaub", "krankmeldung", "hr",
+        "kündigung", "bewerbung", "urlaub", "krankmeldung", "hr",
         "human resources", "einstellung",
     ],
     Department.GESCHAEFTSFUEHRUNG: [
-        "geschaeftsfuehrer", "vorstand", "aufsichtsrat", "strategie",
-        "management", "investition", "uebernahme", "merger", "board",
+        "geschäftsführer", "vorstand", "aufsichtsrat", "strategie",
+        "management", "investition", "übernahme", "merger", "board",
     ],
     Department.IT: [
         "software", "hardware", "server", "netzwerk", "it", "edv",
@@ -158,8 +158,8 @@ DEPARTMENT_KEYWORDS: Dict[Department, List[str]] = {
         "versand", "logistik", "warehouse", "stock",
     ],
     Department.QUALITAET: [
-        "qualitaet", "reklamation", "mangel", "pruefung", "zertifikat",
-        "audit", "iso", "quality", "defekt", "rueckgabe",
+        "qualität", "reklamation", "mangel", "prüfung", "zertifikat",
+        "audit", "iso", "quality", "defekt", "rückgabe",
     ],
 }
 
@@ -183,7 +183,7 @@ DOCUMENT_TYPE_DEPARTMENT: Dict[str, Department] = {
     "korrespondenz": Department.ALLGEMEIN,
 }
 
-# Betrags-Schwellen fuer Prioritaet und Eskalation
+# Betrags-Schwellen für Priorität und Eskalation
 AMOUNT_THRESHOLDS = {
     "critical": Decimal("50000"),  # >= 50k EUR -> Critical
     "high": Decimal("10000"),  # >= 10k EUR -> High
@@ -197,10 +197,10 @@ AMOUNT_THRESHOLDS = {
 
 
 class RoutingIntelligenceService:
-    """Service fuer intelligentes Dokumenten-Routing.
+    """Service für intelligentes Dokumenten-Routing.
 
-    Analysiert Dokumente und entscheidet automatisch ueber
-    Routing, Prioritaet und Eskalation.
+    Analysiert Dokumente und entscheidet automatisch über
+    Routing, Priorität und Eskalation.
 
     Settings werden aus app.core.config.settings geladen.
     """
@@ -234,21 +234,21 @@ class RoutingIntelligenceService:
         document_id: uuid.UUID,
         company_id: Optional[uuid.UUID] = None,
     ) -> RoutingDecision:
-        """Bestimmt das Routing fuer ein Dokument.
+        """Bestimmt das Routing für ein Dokument.
 
         Args:
             document_id: ID des Dokuments
-            company_id: Optional Company-ID fuer Multi-Tenant
+            company_id: Optional Company-ID für Multi-Tenant
 
         Returns:
-            RoutingDecision mit Ziel und Prioritaet
+            RoutingDecision mit Ziel und Priorität
         """
         if not self.enabled:
             return RoutingDecision(
                 document_id=document_id,
                 target_type=RoutingTarget.QUEUE,
                 target_id="manual_review",
-                target_name="Manuelle Pruefung",
+                target_name="Manuelle Prüfung",
                 priority=Priority.MEDIUM,
                 confidence=0.0,
                 reasons=[RoutingReason.DEFAULT],
@@ -273,7 +273,7 @@ class RoutingIntelligenceService:
                 explanation="Dokument nicht gefunden.",
             )
 
-        # Analyse durchfuehren
+        # Analyse durchführen
         decisions: List[Tuple[RoutingDecision, float]] = []
 
         # 1. Dokumenttyp-basiertes Routing
@@ -304,9 +304,9 @@ class RoutingIntelligenceService:
         # 6. Benutzerdefinierte Regeln
         custom_decision = await self._apply_custom_rules(document)
         if custom_decision:
-            decisions.append((custom_decision, 0.95))  # Hohe Prioritaet
+            decisions.append((custom_decision, 0.95))  # Hohe Priorität
 
-        # Beste Entscheidung waehlen
+        # Beste Entscheidung wählen
         if not decisions:
             return self._default_routing(document)
 
@@ -317,7 +317,7 @@ class RoutingIntelligenceService:
         # Confidence-Check
         if best_decision.confidence < self.min_confidence:
             best_decision.requires_approval = True
-            best_decision.explanation += " (Confidence unter Schwellenwert - manuelle Pruefung empfohlen)"
+            best_decision.explanation += " (Confidence unter Schwellenwert - manuelle Prüfung empfohlen)"
 
         # Audit-Logging
         if self.audit_logging:
@@ -345,7 +345,7 @@ class RoutingIntelligenceService:
         department = DOCUMENT_TYPE_DEPARTMENT.get(doc_type_lower)
 
         if not department:
-            # Versuche Teiluebereinstimmung
+            # Versuche Teilübereinstimmung
             for key, dept in DOCUMENT_TYPE_DEPARTMENT.items():
                 if key in doc_type_lower or doc_type_lower in key:
                     department = dept
@@ -384,11 +384,11 @@ class RoutingIntelligenceService:
         except Exception:
             return None
 
-        # Prioritaet basierend auf Betrag
+        # Priorität basierend auf Betrag
         if amount >= AMOUNT_THRESHOLDS["critical"]:
             priority = Priority.CRITICAL
             target = Department.GESCHAEFTSFUEHRUNG
-            explanation = f"Hoher Betrag ({amount:,.2f} EUR) - Geschaeftsfuehrung informiert."
+            explanation = f"Hoher Betrag ({amount:,.2f} EUR) - Geschäftsführung informiert."
         elif amount >= AMOUNT_THRESHOLDS["high"]:
             priority = Priority.HIGH
             target = Department.BUCHHALTUNG
@@ -415,7 +415,7 @@ class RoutingIntelligenceService:
     async def _route_by_entity(
         self, document: Document
     ) -> Optional[RoutingDecision]:
-        """Routing basierend auf verknuepfter Entity."""
+        """Routing basierend auf verknüpfter Entity."""
         entity_id = document.linked_entity_id
         if not entity_id:
             return None
@@ -431,13 +431,13 @@ class RoutingIntelligenceService:
         # Entity-Typ bestimmt Abteilung
         if entity.entity_type == "customer":
             department = Department.VERKAUF
-            explanation = f"Dokument von Kunde '{entity.name}' - Verkauf zustaendig."
+            explanation = f"Dokument von Kunde '{entity.name}' - Verkauf zuständig."
         elif entity.entity_type == "supplier":
             department = Department.EINKAUF
-            explanation = f"Dokument von Lieferant '{entity.name}' - Einkauf zustaendig."
+            explanation = f"Dokument von Lieferant '{entity.name}' - Einkauf zuständig."
         else:
             department = Department.ALLGEMEIN
-            explanation = f"Dokument verknuepft mit '{entity.name}'."
+            explanation = f"Dokument verknüpft mit '{entity.name}'."
 
         return RoutingDecision(
             document_id=document.id,
@@ -470,7 +470,7 @@ class RoutingIntelligenceService:
         if not department_scores:
             return None
 
-        # Beste Abteilung waehlen
+        # Beste Abteilung wählen
         best_dept = max(department_scores, key=department_scores.get)
         score = department_scores[best_dept]
         total_keywords = sum(len(kws) for kws in DEPARTMENT_KEYWORDS.values())
@@ -497,7 +497,7 @@ class RoutingIntelligenceService:
 
         NOTE: Deaktiviert - Folder-Model nicht implementiert.
         """
-        # Folder-System nicht verfuegbar
+        # Folder-System nicht verfügbar
         if Folder is None:
             return None
 
@@ -526,7 +526,7 @@ class RoutingIntelligenceService:
     def _rule_matches(
         self, document: Document, conditions: Dict[str, Any]
     ) -> bool:
-        """Prueft ob ein Dokument die Regel-Bedingungen erfuellt."""
+        """Prüft ob ein Dokument die Regel-Bedingungen erfuellt."""
         extracted = document.extracted_data or {}
 
         for key, value in conditions.items():
@@ -583,7 +583,7 @@ class RoutingIntelligenceService:
             priority=Priority.MEDIUM,
             confidence=0.5,
             reasons=[RoutingReason.DEFAULT],
-            explanation="Keine spezifische Zuordnung moeglich - manuelles Routing erforderlich.",
+            explanation="Keine spezifische Zuordnung möglich - manuelles Routing erforderlich.",
             requires_approval=True,
         )
 
@@ -610,11 +610,11 @@ class RoutingIntelligenceService:
         company_id: uuid.UUID,
         days: int = 30,
     ) -> Dict[str, Any]:
-        """Gibt Routing-Statistiken zurueck.
+        """Gibt Routing-Statistiken zurück.
 
         Args:
             company_id: Company-ID
-            days: Anzahl Tage fuer Statistik
+            days: Anzahl Tage für Statistik
 
         Returns:
             Dictionary mit Statistiken
@@ -622,7 +622,7 @@ class RoutingIntelligenceService:
         since = utc_now() - timedelta(days=days)
 
         # Dokumente nach Folder gruppieren (deaktiviert - Folder nicht implementiert)
-        folder_distribution: list = []  # Folder-System nicht verfuegbar
+        folder_distribution: list = []  # Folder-System nicht verfügbar
 
         # Dokumente nach Typ gruppieren
         type_stmt = (
@@ -664,7 +664,7 @@ class RoutingIntelligenceService:
 
 
 def get_routing_intelligence_service(db: AsyncSession) -> RoutingIntelligenceService:
-    """Factory-Funktion fuer RoutingIntelligenceService.
+    """Factory-Funktion für RoutingIntelligenceService.
 
     Args:
         db: Async Database Session

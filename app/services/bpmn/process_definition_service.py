@@ -26,7 +26,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ProcessDefinitionService:
-    """Service fuer Prozess-Definitionen.
+    """Service für Prozess-Definitionen.
 
     Verwaltet den Lifecycle von BPMN Prozess-Definitionen:
     - Versionierung (auto-increment bei Deploy)
@@ -63,8 +63,8 @@ class ProcessDefinitionService:
             bpmn_xml: Optional BPMN 2.0 XML
             process_data: Alternative: Bereits geparstes Process-Dict
             description: Beschreibung
-            category: Kategorie fuer Filterung
-            tags: Tags fuer Suche
+            category: Kategorie für Filterung
+            tags: Tags für Suche
             deployed_by_id: Deploying User
             activate: Direkt aktivieren (deaktiviert vorherige Version)
 
@@ -72,7 +72,7 @@ class ProcessDefinitionService:
             Neue ProcessDefinition
 
         Raises:
-            ValueError: Bei ungueltigem BPMN XML
+            ValueError: Bei ungültigem BPMN XML
         """
         # BPMN parsen falls angegeben
         parsed_data: Dict[str, Any] = {}
@@ -84,7 +84,7 @@ class ProcessDefinitionService:
         else:
             raise ValueError("Entweder bpmn_xml oder process_data erforderlich")
 
-        # Naechste Version ermitteln
+        # Nächste Version ermitteln
         next_version = await self._get_next_version(company_id, key)
 
         # Bei Aktivierung: Vorherige Version deaktivieren
@@ -140,7 +140,7 @@ class ProcessDefinitionService:
             company_id: Mandant
             process_json: React Flow JSON
             deployed_by_id: User
-            **kwargs: Weitere Argumente fuer deploy()
+            **kwargs: Weitere Argumente für deploy()
 
         Returns:
             ProcessDefinition
@@ -301,7 +301,7 @@ class ProcessDefinitionService:
             category: Filter nach Kategorie
             only_active: Nur aktive Versionen
             page: Seite (1-basiert)
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
 
         Returns:
             (Liste von Definitionen, Gesamtanzahl)
@@ -430,7 +430,7 @@ class ProcessDefinitionService:
         if not definition:
             raise ValueError("Prozess-Definition nicht gefunden")
 
-        # Wenn BPMN XML gespeichert, direkt zurueckgeben
+        # Wenn BPMN XML gespeichert, direkt zurückgeben
         if definition.bpmn_xml:
             return definition.bpmn_xml
 
@@ -442,7 +442,7 @@ class ProcessDefinitionService:
         self,
         company_id: UUID
     ) -> Dict[str, Any]:
-        """Gibt Statistiken zu Prozess-Definitionen zurueck."""
+        """Gibt Statistiken zu Prozess-Definitionen zurück."""
         # Anzahl Definitionen
         def_count = await self.db.scalar(
             select(func.count(ProcessDefinition.id)).where(
@@ -502,7 +502,7 @@ class ProcessDefinitionService:
         company_id: UUID,
         key: str
     ) -> int:
-        """Ermittelt die naechste Versionsnummer."""
+        """Ermittelt die nächste Versionsnummer."""
         max_version = await self.db.scalar(
             select(func.max(ProcessDefinition.version)).where(
                 and_(
@@ -533,5 +533,5 @@ class ProcessDefinitionService:
 
 
 def get_process_definition_service(db: AsyncSession) -> ProcessDefinitionService:
-    """Factory Function fuer ProcessDefinitionService."""
+    """Factory Function für ProcessDefinitionService."""
     return ProcessDefinitionService(db)

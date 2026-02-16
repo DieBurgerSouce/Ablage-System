@@ -1,7 +1,7 @@
-"""Tool-Calling Registry fuer RAG Agent Mode.
+"""Tool-Calling Registry für RAG Agent Mode.
 
-Definiert verfuegbare Tools die der LLM aufrufen kann.
-Bruecke zwischen LLM-Output und AIActionService.
+Definiert verfügbare Tools die der LLM aufrufen kann.
+Brücke zwischen LLM-Output und AIActionService.
 """
 
 import re
@@ -20,7 +20,7 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 class ToolParameterType(str, Enum):
-    """Parameter-Typen fuer Tool-Definitionen."""
+    """Parameter-Typen für Tool-Definitionen."""
     STRING = "string"
     INTEGER = "integer"
     BOOLEAN = "boolean"
@@ -35,7 +35,7 @@ class ToolParameter:
     type: ToolParameterType
     description: str
     required: bool = False
-    items_type: Optional[str] = None  # Fuer arrays
+    items_type: Optional[str] = None  # Für arrays
 
 
 @dataclass
@@ -48,7 +48,7 @@ class ToolDefinition:
     permission_level: str  # viewer, editor, admin
 
     def to_json_schema(self) -> Dict[str, object]:
-        """Konvertiert zu JSON Schema fuer LLM."""
+        """Konvertiert zu JSON Schema für LLM."""
         properties = {}
         required = []
 
@@ -82,12 +82,12 @@ class ToolDefinition:
 # TOOL REGISTRY
 # =============================================================================
 
-# Alle verfuegbaren Tools
+# Alle verfügbaren Tools
 ALL_TOOLS: List[ToolDefinition] = [
     # Read-Only Tools (Viewer+)
     ToolDefinition(
         name="search_documents",
-        description="Durchsucht alle Dokumente nach bestimmten Kriterien. Findet Rechnungen, Vertraege, Lieferscheine etc.",
+        description="Durchsucht alle Dokumente nach bestimmten Kriterien. Findet Rechnungen, Verträge, Lieferscheine etc.",
         parameters=[
             ToolParameter("query", ToolParameterType.STRING, "Suchbegriff oder Beschreibung", required=True),
             ToolParameter("document_type", ToolParameterType.STRING, "Filter nach Dokumenttyp (z.B. 'Rechnung', 'Vertrag')"),
@@ -100,7 +100,7 @@ ALL_TOOLS: List[ToolDefinition] = [
 
     ToolDefinition(
         name="get_invoice_status",
-        description="Ruft den Status von Rechnungen eines Geschaeftspartners ab (offen, bezahlt, ueberfaellig).",
+        description="Ruft den Status von Rechnungen eines Geschäftspartners ab (offen, bezahlt, überfällig).",
         parameters=[
             ToolParameter("entity_name", ToolParameterType.STRING, "Name des Kunden oder Lieferanten", required=True),
         ],
@@ -122,7 +122,7 @@ ALL_TOOLS: List[ToolDefinition] = [
 
     ToolDefinition(
         name="get_entity_summary",
-        description="Erstellt eine Zusammenfassung zu einem Geschaeftspartner (Umsatz, offene Posten, Zahlungsverhalten).",
+        description="Erstellt eine Zusammenfassung zu einem Geschäftspartner (Umsatz, offene Posten, Zahlungsverhalten).",
         parameters=[
             ToolParameter("entity_name", ToolParameterType.STRING, "Name des Kunden oder Lieferanten", required=True),
         ],
@@ -130,7 +130,7 @@ ALL_TOOLS: List[ToolDefinition] = [
         permission_level="viewer"
     ),
 
-    # Write Tools (Editor+ mit Bestaetigung)
+    # Write Tools (Editor+ mit Bestätigung)
     ToolDefinition(
         name="move_document",
         description="Verschiebt ein Dokument in einen anderen Ordner.",
@@ -169,8 +169,8 @@ ALL_TOOLS: List[ToolDefinition] = [
         description="Erstellt eine Erinnerung zu einem Dokument oder einer Aufgabe.",
         parameters=[
             ToolParameter("title", ToolParameterType.STRING, "Titel der Erinnerung", required=True),
-            ToolParameter("due_date", ToolParameterType.STRING, "Faelligkeitsdatum im Format YYYY-MM-DD", required=True),
-            ToolParameter("document_id", ToolParameterType.STRING, "Optional: Verknuepfte Dokument-UUID"),
+            ToolParameter("due_date", ToolParameterType.STRING, "Fälligkeitsdatum im Format YYYY-MM-DD", required=True),
+            ToolParameter("document_id", ToolParameterType.STRING, "Optional: Verknüpfte Dokument-UUID"),
         ],
         requires_confirmation=True,
         permission_level="editor"
@@ -179,9 +179,9 @@ ALL_TOOLS: List[ToolDefinition] = [
     # Read-Only Tools (Viewer+) - Agenda & Analyse
     ToolDefinition(
         name="get_daily_agenda",
-        description="Zeigt was heute ansteht: Fristen, offene Freigaben, Skonto-Deadlines, ueberfaellige Rechnungen.",
+        description="Zeigt was heute ansteht: Fristen, offene Freigaben, Skonto-Deadlines, überfällige Rechnungen.",
         parameters=[
-            ToolParameter("include_future_days", ToolParameterType.INTEGER, "Anzahl zukuenftiger Tage einbeziehen (Standard: 3)"),
+            ToolParameter("include_future_days", ToolParameterType.INTEGER, "Anzahl zukünftiger Tage einbeziehen (Standard: 3)"),
         ],
         requires_confirmation=False,
         permission_level="viewer"
@@ -201,7 +201,7 @@ ALL_TOOLS: List[ToolDefinition] = [
 
     ToolDefinition(
         name="get_skonto_opportunities",
-        description="Zeigt aktuelle Skonto-Moeglichkeiten mit Fristen und Ersparnissen.",
+        description="Zeigt aktuelle Skonto-Möglichkeiten mit Fristen und Ersparnissen.",
         parameters=[
             ToolParameter("days_ahead", ToolParameterType.INTEGER, "Vorschau in Tagen (Standard: 14)"),
         ],
@@ -211,16 +211,16 @@ ALL_TOOLS: List[ToolDefinition] = [
 
     ToolDefinition(
         name="get_overdue_invoices",
-        description="Listet alle ueberfaelligen Rechnungen mit Betrag und Tagen Verzug.",
+        description="Listet alle überfälligen Rechnungen mit Betrag und Tagen Verzug.",
         parameters=[
             ToolParameter("min_days_overdue", ToolParameterType.INTEGER, "Mindest-Verzugstage (Standard: 1)"),
-            ToolParameter("entity_name", ToolParameterType.STRING, "Optional: Filter nach Geschaeftspartner"),
+            ToolParameter("entity_name", ToolParameterType.STRING, "Optional: Filter nach Geschäftspartner"),
         ],
         requires_confirmation=False,
         permission_level="viewer"
     ),
 
-    # Write Tools (Admin mit Bestaetigung)
+    # Write Tools (Admin mit Bestätigung)
     ToolDefinition(
         name="book_invoice",
         description="Bucht eine Rechnung auf ein bestimmtes Konto (Sachkonto/Kostenstelle).",
@@ -247,20 +247,20 @@ ALL_TOOLS: List[ToolDefinition] = [
 
 
 class ToolRegistry:
-    """Registry fuer verfuegbare Tools."""
+    """Registry für verfügbare Tools."""
 
     def __init__(self) -> None:
         """Initialisiert die Tool Registry."""
         self._tools = {tool.name: tool for tool in ALL_TOOLS}
 
     def get_tools_for_user(self, user_level: str) -> List[ToolDefinition]:
-        """Gibt verfuegbare Tools basierend auf User-Level zurueck.
+        """Gibt verfügbare Tools basierend auf User-Level zurück.
 
         Args:
             user_level: viewer, editor, oder admin
 
         Returns:
-            Liste verfuegbarer Tools
+            Liste verfügbarer Tools
         """
         level_hierarchy = {
             "viewer": ["viewer"],
@@ -276,7 +276,7 @@ class ToolRegistry:
         ]
 
     def get_tool(self, name: str) -> Optional[ToolDefinition]:
-        """Gibt ein Tool nach Namen zurueck.
+        """Gibt ein Tool nach Namen zurück.
 
         Args:
             name: Tool-Name
@@ -287,7 +287,7 @@ class ToolRegistry:
         return self._tools.get(name)
 
     def format_tools_for_llm(self, user_level: str = "viewer") -> str:
-        """Formatiert Tool-Liste als Text fuer LLM System-Prompt.
+        """Formatiert Tool-Liste als Text für LLM System-Prompt.
 
         Args:
             user_level: viewer, editor, oder admin
@@ -298,7 +298,7 @@ class ToolRegistry:
         tools = self.get_tools_for_user(user_level)
 
         if not tools:
-            return "Keine Tools verfuegbar."
+            return "Keine Tools verfügbar."
 
         lines = ["VERFUEGBARE TOOLS:", ""]
 
@@ -312,7 +312,7 @@ class ToolRegistry:
                 lines.append(f"  - {param.name} ({param.type.value}){required}: {param.description}")
 
             if tool.requires_confirmation:
-                lines.append("⚠️  Bestaetigung erforderlich vor Ausfuehrung")
+                lines.append("⚠️  Bestätigung erforderlich vor Ausführung")
 
             lines.append("")
 
@@ -328,7 +328,7 @@ class ToolRegistry:
         Sucht nach <tool_call>...</tool_call> Bloecken.
 
         Args:
-            llm_output: Vollstaendige LLM-Antwort
+            llm_output: Vollständige LLM-Antwort
 
         Returns:
             ToolCall oder None wenn kein Tool-Call gefunden
@@ -366,7 +366,7 @@ class ToolRegistry:
                 logger.warning("tool_call_json_parse_failed", error=str(e), json_str=match.group(1))
                 continue
 
-        # Gib ersten Tool-Call zurueck (Rueckwaertskompatibilitaet)
+        # Gib ersten Tool-Call zurück (Rückwärtskompatibilität)
         return tool_calls[0] if tool_calls else None
 
     def parse_tool_calls(self, llm_output: str) -> List['ToolCall']:
@@ -375,7 +375,7 @@ class ToolRegistry:
         Sucht nach allen <tool_call>...</tool_call> Bloecken.
 
         Args:
-            llm_output: Vollstaendige LLM-Antwort
+            llm_output: Vollständige LLM-Antwort
 
         Returns:
             Liste aller geparsten ToolCalls (leer wenn keine gefunden)
@@ -435,7 +435,7 @@ _tool_registry: Optional[ToolRegistry] = None
 
 
 def get_tool_registry() -> ToolRegistry:
-    """Gibt Tool Registry Singleton zurueck.
+    """Gibt Tool Registry Singleton zurück.
 
     Returns:
         ToolRegistry Instanz

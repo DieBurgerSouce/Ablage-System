@@ -397,11 +397,11 @@ def rotate_encryption_key(
 
 # ========== Key Versioning System ==========
 
-# Key Version Prefix - ermoeglicht Identifikation der Key-Version
+# Key Version Prefix - ermöglicht Identifikation der Key-Version
 KEY_VERSION_PREFIX = "v"
 CURRENT_KEY_VERSION = 1
 
-# Speicher fuer alte Keys (fuer Rotation)
+# Speicher für alte Keys (für Rotation)
 _key_registry: dict = {}
 
 
@@ -418,8 +418,8 @@ class KeyVersionError(EncryptionError):
 def register_key(version: int, key: bytes) -> None:
     """Registriert einen Key mit Version im Registry.
 
-    Wird fuer Key-Rotation benoetigt, um alte Daten mit alten Keys
-    lesen zu koennen.
+    Wird für Key-Rotation benötigt, um alte Daten mit alten Keys
+    lesen zu können.
 
     Args:
         version: Key-Versionsnummer
@@ -433,7 +433,7 @@ def register_key(version: int, key: bytes) -> None:
 
 
 def get_key_by_version(version: int) -> bytes:
-    """Holt Key fuer eine bestimmte Version.
+    """Holt Key für eine bestimmte Version.
 
     Args:
         version: Key-Versionsnummer
@@ -553,10 +553,10 @@ def get_ciphertext_version(ciphertext: str) -> int:
 # ========== Key Rotation Service ==========
 
 class KeyRotationService:
-    """Service fuer sichere Key-Rotation.
+    """Service für sichere Key-Rotation.
 
-    Ermoeglicht das Rotieren von Encryption Keys ohne Datenverlust.
-    Verwaltet mehrere Key-Versionen fuer uebergangsloses Upgrade.
+    Ermöglicht das Rotieren von Encryption Keys ohne Datenverlust.
+    Verwaltet mehrere Key-Versionen für übergangsloses Upgrade.
     """
 
     def __init__(
@@ -567,8 +567,8 @@ class KeyRotationService:
         """Initialisiert Key Rotation Service.
 
         Args:
-            new_key: Neuer Key fuer Rotation (wird generiert wenn None)
-            new_version: Version fuer neuen Key
+            new_key: Neuer Key für Rotation (wird generiert wenn None)
+            new_version: Version für neuen Key
         """
         self.new_key = new_key or secrets.token_bytes(AES_KEY_SIZE)
         self.new_version = new_version
@@ -581,7 +581,7 @@ class KeyRotationService:
         }
 
     def get_new_key_base64(self) -> str:
-        """Gibt neuen Key als Base64 zurueck (fuer Konfiguration)."""
+        """Gibt neuen Key als Base64 zurück (für Konfiguration)."""
         return base64.b64encode(self.new_key).decode('utf-8')
 
     def prepare_rotation(self) -> None:
@@ -612,7 +612,7 @@ class KeyRotationService:
         """
         self._rotation_stats["total"] += 1
 
-        # Version pruefen
+        # Version prüfen
         current_version = get_ciphertext_version(ciphertext)
         if current_version >= self.new_version:
             self._rotation_stats["already_current"] += 1
@@ -642,14 +642,14 @@ class KeyRotationService:
             raise
 
     def get_stats(self) -> dict:
-        """Gibt Rotations-Statistiken zurueck."""
+        """Gibt Rotations-Statistiken zurück."""
         return self._rotation_stats.copy()
 
     def finalize_rotation(self) -> None:
-        """Schliesst Key-Rotation ab.
+        """Schließt Key-Rotation ab.
 
         Sollte aufgerufen werden nachdem alle Daten migriert wurden.
-        Loescht alten Key aus Registry (optional).
+        Löscht alten Key aus Registry (optional).
         """
         global CURRENT_KEY_VERSION
         CURRENT_KEY_VERSION = self.new_version
@@ -666,9 +666,9 @@ async def rotate_user_secrets(
     user_ids: list,
     rotation_service: KeyRotationService
 ) -> dict:
-    """Rotiert Encryption Keys fuer Benutzer-Secrets.
+    """Rotiert Encryption Keys für Benutzer-Secrets.
 
-    Beispiel-Implementierung fuer Batch-Rotation von TOTP-Secrets.
+    Beispiel-Implementierung für Batch-Rotation von TOTP-Secrets.
 
     Args:
         db_session: Datenbank-Session

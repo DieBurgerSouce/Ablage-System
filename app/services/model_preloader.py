@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Model Pre-Loading Service fuer OCR Backends.
+Model Pre-Loading Service für OCR Backends.
 
 Laedt ML-Modelle beim Application-Startup vor um Cold-Start-Latenz zu vermeiden.
 Die erste OCR-Anfrage wird dadurch deutlich schneller (10-30s weniger Wartezeit).
 
 Features:
 - Konfigurierbare Model-Auswahl
-- GPU-aware Loading (prueft VRAM vor dem Laden)
+- GPU-aware Loading (prüft VRAM vor dem Laden)
 - Background Loading mit Timeout
-- Health-Status fuer Monitoring
+- Health-Status für Monitoring
 """
 
 import asyncio
@@ -32,7 +32,7 @@ class PreloadStatus(str, Enum):
 
 
 class PreloadConfig:
-    """Konfiguration fuer Model Pre-Loading."""
+    """Konfiguration für Model Pre-Loading."""
 
     # Welche Modelle sollen vorgeladen werden?
     # Default: Nur leichtgewichtige Modelle die schnell laden
@@ -41,7 +41,7 @@ class PreloadConfig:
     # Mit GPU: Auch GPU-Modelle vorladen
     GPU_PRELOAD_MODELS = ["surya_gpu", "got_ocr"]
 
-    # Timeout fuer einzelnes Model Loading (10 Minuten)
+    # Timeout für einzelnes Model Loading (10 Minuten)
     MODEL_LOAD_TIMEOUT_SECONDS = 600
 
     # Minimaler freier VRAM (GB) vor GPU-Model-Loading
@@ -200,7 +200,7 @@ class ModelPreloader:
                 agent._load_models()
 
             elif model_name == "surya_gpu":
-                # Pruefe VRAM vor GPU-Model
+                # Prüfe VRAM vor GPU-Model
                 if not self._check_vram_available(8.0):
                     self._status[model_name] = PreloadStatus.SKIPPED
                     logger.warning(
@@ -215,7 +215,7 @@ class ModelPreloader:
                 agent._load_models()
 
             elif model_name == "got_ocr":
-                # Pruefe VRAM
+                # Prüfe VRAM
                 if not self._check_vram_available(10.0):
                     self._status[model_name] = PreloadStatus.SKIPPED
                     logger.warning(
@@ -250,7 +250,7 @@ class ModelPreloader:
                 self._status[model_name] = PreloadStatus.SKIPPED
                 return
 
-            # Agent-Referenz behalten fuer spaetere Nutzung
+            # Agent-Referenz behalten für spätere Nutzung
             if agent:
                 self._loaded_agents[model_name] = agent
 
@@ -264,7 +264,7 @@ class ModelPreloader:
             self._errors[model_name] = f"Import-Fehler: {e}"
 
     def _check_gpu_available(self) -> bool:
-        """Pruefe ob GPU verfuegbar ist."""
+        """Prüfe ob GPU verfügbar ist."""
         try:
             import torch
             return torch.cuda.is_available()
@@ -272,7 +272,7 @@ class ModelPreloader:
             return False
 
     def _check_vram_available(self, required_gb: float) -> bool:
-        """Pruefe ob genuegend VRAM verfuegbar ist."""
+        """Prüfe ob genuegend VRAM verfügbar ist."""
         try:
             import torch
             if not torch.cuda.is_available():
@@ -320,7 +320,7 @@ class ModelPreloader:
 
     def get_preloaded_agent(self, model_name: str) -> Optional[Any]:
         """
-        Hole vorgeladenen Agent (falls verfuegbar).
+        Hole vorgeladenen Agent (falls verfügbar).
 
         Args:
             model_name: Name des Models
@@ -331,7 +331,7 @@ class ModelPreloader:
         return self._loaded_agents.get(model_name)
 
     def is_model_loaded(self, model_name: str) -> bool:
-        """Pruefe ob Model geladen ist."""
+        """Prüfe ob Model geladen ist."""
         return self._status.get(model_name) == PreloadStatus.LOADED
 
     async def cleanup(self) -> None:

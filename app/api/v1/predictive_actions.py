@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-API Endpoints fuer PredictiveActionService.
+API Endpoints für PredictiveActionService.
 
-Proaktive Handlungsvorschlaege fuer Benutzer:
-- Aktionsvorschlaege abrufen
+Proaktive Handlungsvorschläge für Benutzer:
+- Aktionsvorschläge abrufen
 - Aktionen akzeptieren/ablehnen/verschieben
 - Statistiken und Feedback
 
@@ -46,7 +46,7 @@ router = APIRouter(prefix="/predictive-actions", tags=["Predictive Actions"])
 
 
 class ActionMetadata(BaseModel):
-    """Zusaetzliche Metadaten einer Aktion."""
+    """Zusätzliche Metadaten einer Aktion."""
 
     invoice_number: Optional[str] = None
     amount: Optional[float] = None
@@ -64,7 +64,7 @@ class ActionMetadata(BaseModel):
 
 
 class PredictiveActionResponse(BaseModel):
-    """Antwort-Schema fuer eine einzelne Aktion."""
+    """Antwort-Schema für eine einzelne Aktion."""
 
     id: str
     action_type: str
@@ -113,7 +113,7 @@ class PredictiveActionResponse(BaseModel):
 
 
 class PredictiveActionsListResponse(BaseModel):
-    """Liste von Aktionsvorschlaegen."""
+    """Liste von Aktionsvorschlägen."""
 
     actions: List[PredictiveActionResponse]
     total: int
@@ -125,7 +125,7 @@ class AcceptActionRequest(BaseModel):
 
     execute_immediately: bool = Field(
         default=False,
-        description="Aktion direkt ausfuehren wenn moeglich",
+        description="Aktion direkt ausführen wenn möglich",
     )
 
 
@@ -161,7 +161,7 @@ class ActionResultResponse(BaseModel):
 
 
 class ActionStatisticsResponse(BaseModel):
-    """Statistiken zu Aktionsvorschlaegen."""
+    """Statistiken zu Aktionsvorschlägen."""
 
     period_start: datetime
     period_end: datetime
@@ -182,7 +182,7 @@ class ActionStatisticsResponse(BaseModel):
 
 
 class UserPreferencesRequest(BaseModel):
-    """Benutzer-Praeferenzen fuer Aktionsvorschlaege."""
+    """Benutzer-Praeferenzen für Aktionsvorschläge."""
 
     enabled_triggers: Optional[List[str]] = None
     notification_channels: Optional[List[str]] = None
@@ -199,8 +199,8 @@ class UserPreferencesRequest(BaseModel):
 @router.get(
     "",
     response_model=PredictiveActionsListResponse,
-    summary="Aktionsvorschlaege abrufen",
-    description="Ruft alle relevanten Aktionsvorschlaege fuer die aktuelle Firma ab.",
+    summary="Aktionsvorschläge abrufen",
+    description="Ruft alle relevanten Aktionsvorschläge für die aktuelle Firma ab.",
 )
 async def get_predictive_actions(
     limit: int = Query(default=20, ge=1, le=100, description="Maximale Anzahl"),
@@ -216,7 +216,7 @@ async def get_predictive_actions(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> PredictiveActionsListResponse:
-    """Hole alle relevanten Aktionsvorschlaege."""
+    """Hole alle relevanten Aktionsvorschläge."""
     service = get_predictive_action_service()
 
     # Parse Filter
@@ -227,7 +227,7 @@ async def get_predictive_actions(
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltiger Aktionstyp: {e}",
+                detail=f"Ungültiger Aktionstyp: {e}",
             )
 
     priority_filter: Optional[ActionPriority] = None
@@ -237,7 +237,7 @@ async def get_predictive_actions(
         except ValueError:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Ungueltige Prioritaet: {min_priority}",
+                detail=f"Ungültige Prioritaet: {min_priority}",
             )
 
     # Aktionen generieren
@@ -277,7 +277,7 @@ async def get_critical_actions(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> PredictiveActionsListResponse:
-    """Hole kritische Aktionen fuer Dashboard-Widget."""
+    """Hole kritische Aktionen für Dashboard-Widget."""
     service = get_predictive_action_service()
 
     actions = await service.get_pending_actions(
@@ -303,8 +303,8 @@ async def get_critical_actions(
 @router.get(
     "/skonto",
     response_model=PredictiveActionsListResponse,
-    summary="Skonto-Vorschlaege abrufen",
-    description="Ruft nur Skonto-relevante Aktionsvorschlaege ab.",
+    summary="Skonto-Vorschläge abrufen",
+    description="Ruft nur Skonto-relevante Aktionsvorschläge ab.",
 )
 async def get_skonto_actions(
     limit: int = Query(default=20, ge=1, le=100),
@@ -312,7 +312,7 @@ async def get_skonto_actions(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> PredictiveActionsListResponse:
-    """Hole Skonto-spezifische Vorschlaege."""
+    """Hole Skonto-spezifische Vorschläge."""
     service = get_predictive_action_service()
 
     actions = await service.get_pending_actions(
@@ -345,8 +345,8 @@ async def get_skonto_actions(
 @router.get(
     "/dunning",
     response_model=PredictiveActionsListResponse,
-    summary="Mahnungs-Vorschlaege abrufen",
-    description="Ruft nur Mahnungs-relevante Aktionsvorschlaege ab.",
+    summary="Mahnungs-Vorschläge abrufen",
+    description="Ruft nur Mahnungs-relevante Aktionsvorschläge ab.",
 )
 async def get_dunning_actions(
     limit: int = Query(default=20, ge=1, le=100),
@@ -354,7 +354,7 @@ async def get_dunning_actions(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> PredictiveActionsListResponse:
-    """Hole Mahnungs-spezifische Vorschlaege."""
+    """Hole Mahnungs-spezifische Vorschläge."""
     service = get_predictive_action_service()
 
     actions = await service.get_pending_actions(
@@ -388,7 +388,7 @@ async def get_dunning_actions(
     "/{action_id}/accept",
     response_model=ActionResultResponse,
     summary="Aktion akzeptieren",
-    description="Akzeptiert einen Aktionsvorschlag. Optional kann die Aktion direkt ausgefuehrt werden.",
+    description="Akzeptiert einen Aktionsvorschlag. Optional kann die Aktion direkt ausgeführt werden.",
 )
 async def accept_action(
     action_id: str,
@@ -489,7 +489,7 @@ async def reject_action(
     "/{action_id}/snooze",
     response_model=ActionResultResponse,
     summary="Aktion verschieben",
-    description="Verschiebt einen Aktionsvorschlag auf spaeter.",
+    description="Verschiebt einen Aktionsvorschlag auf später.",
 )
 async def snooze_action(
     action_id: str,
@@ -498,7 +498,7 @@ async def snooze_action(
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> ActionResultResponse:
-    """Verschiebe eine Aktion auf spaeter."""
+    """Verschiebe eine Aktion auf später."""
     service = get_predictive_action_service()
 
     actions = await service.generate_actions_for_company(db, company.id, current_user.id)
@@ -539,15 +539,15 @@ async def snooze_action(
     "/statistics",
     response_model=ActionStatisticsResponse,
     summary="Aktions-Statistiken abrufen",
-    description="Ruft Statistiken zu Aktionsvorschlaegen ab.",
+    description="Ruft Statistiken zu Aktionsvorschlägen ab.",
 )
 async def get_action_statistics(
-    days: int = Query(default=30, ge=1, le=365, description="Anzahl Tage zurueck"),
+    days: int = Query(default=30, ge=1, le=365, description="Anzahl Tage zurück"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> ActionStatisticsResponse:
-    """Hole Statistiken zu Aktionsvorschlaegen."""
+    """Hole Statistiken zu Aktionsvorschlägen."""
     service = get_predictive_action_service()
 
     end_date = utc_now()
@@ -579,13 +579,13 @@ async def get_action_statistics(
 @router.get(
     "/types",
     response_model=Dict[str, List[str]],
-    summary="Verfuegbare Typen abrufen",
-    description="Listet alle verfuegbaren Aktions- und Trigger-Typen auf.",
+    summary="Verfügbare Typen abrufen",
+    description="Listet alle verfügbaren Aktions- und Trigger-Typen auf.",
 )
 async def get_action_types(
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, List[str]]:
-    """Hole verfuegbare Typen fuer Filter."""
+    """Hole verfügbare Typen für Filter."""
     return {
         "action_types": [t.value for t in ActionType],
         "trigger_types": [t.value for t in TriggerType],

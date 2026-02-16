@@ -289,7 +289,7 @@ class AccountConnectionService:
         if not self.psd2_service.is_bank_supported(bank_code):
             return ConnectionResult(
                 success=False,
-                error_message=f"Bank {bank_code} unterstuetzt kein PSD2"
+                error_message=f"Bank {bank_code} unterstützt kein PSD2"
             )
 
         config = self.psd2_service.get_bank_config(bank_code)
@@ -462,7 +462,7 @@ class AccountConnectionService:
         if not fints_url:
             return ConnectionResult(
                 success=False,
-                error_message=f"FinTS-URL fuer Bank {bank_code} nicht bekannt",
+                error_message=f"FinTS-URL für Bank {bank_code} nicht bekannt",
             )
 
         try:
@@ -501,7 +501,7 @@ class AccountConnectionService:
             tan_challenge = TANChallenge(
                 challenge_id=uuid4().hex,
                 tan_method=TANMethod(tan_method) if tan_method else TANMethod.PUSH_TAN,
-                challenge_text="Bitte bestaetigen Sie den Kontozugriff in Ihrer Banking-App.",
+                challenge_text="Bitte bestätigen Sie den Kontozugriff in Ihrer Banking-App.",
                 expires_at=utc_now() + timedelta(minutes=5),
             )
 
@@ -552,7 +552,7 @@ class AccountConnectionService:
         if connection.status != ConnectionStatus.AWAITING_TAN.value:
             return ConnectionResult(
                 success=False,
-                error_message=f"Ungueltiger Verbindungsstatus: {connection.status}",
+                error_message=f"Ungültiger Verbindungsstatus: {connection.status}",
             )
 
         try:
@@ -562,7 +562,7 @@ class AccountConnectionService:
                 return ConnectionResult(
                     success=False,
                     connection_id=connection_id,
-                    error_message="Ungueltige TAN",
+                    error_message="Ungültige TAN",
                 )
 
             # Mark as active
@@ -753,7 +753,7 @@ class AccountConnectionService:
             # This would redirect user to bank again
             return ConnectionResult(
                 success=False,
-                error_message="PSD2-Verbindungen muessen neu autorisiert werden",
+                error_message="PSD2-Verbindungen müssen neu autorisiert werden",
                 requires_sca=True,
             )
 

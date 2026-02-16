@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Celery Tasks fuer mTLS Certificate Management.
+Celery Tasks für mTLS Certificate Management.
 
 Geplante Tasks:
-- rotate_expiring_certificates_task: Taeglich 03:00 - Zertifikate rotieren
-- verify_all_certificates_task: Woechentlich Sonntag 04:00 - Zertifikat-Validierung
+- rotate_expiring_certificates_task: Täglich 03:00 - Zertifikate rotieren
+- verify_all_certificates_task: Wöchentlich Sonntag 04:00 - Zertifikat-Validierung
 - cleanup_revoked_certificates_task: Monatlich am 1. um 02:00 - Aufraumen
 - sync_certificate_registry_task: Alle 5 Minuten - Registry-Sync
-- generate_mtls_audit_report_task: Woechentlich Montag 06:00 - Audit-Bericht
+- generate_mtls_audit_report_task: Wöchentlich Montag 06:00 - Audit-Bericht
 
 Feinpoliert und durchdacht - Automatische Zertifikatsverwaltung.
 """
@@ -25,10 +25,10 @@ logger = structlog.get_logger(__name__)
 
 
 def run_async(coro):
-    """Hilfsfunktion um async Code in sync Celery Tasks auszufuehren.
+    """Hilfsfunktion um async Code in sync Celery Tasks auszuführen.
 
     MEMORY FIX: Verwendet asyncio.run() statt new_event_loop() um Memory Leaks
-    zu verhindern. asyncio.run() erstellt einen neuen Event-Loop, fuehrt die
+    zu verhindern. asyncio.run() erstellt einen neuen Event-Loop, führt die
     Coroutine aus und schließt den Loop korrekt inkl. aller pending Tasks.
     """
     return asyncio.run(coro)
@@ -50,13 +50,13 @@ def rotate_expiring_certificates_task(
     threshold_days: int = 7,
 ) -> Dict[str, Any]:
     """
-    Celery Task fuer automatische Zertifikat-Rotation.
+    Celery Task für automatische Zertifikat-Rotation.
 
-    Prueft alle registrierten Service-Zertifikate und rotiert jene,
+    Prüft alle registrierten Service-Zertifikate und rotiert jene,
     die innerhalb des Schwellenwerts ablaufen.
 
     Args:
-        threshold_days: Tage vor Ablauf fuer Rotation (Standard: 7)
+        threshold_days: Tage vor Ablauf für Rotation (Standard: 7)
 
     Returns:
         Dict mit Rotationsergebnis
@@ -119,7 +119,7 @@ def rotate_expiring_certificates_task(
 
         response = {
             "erfolg": len(failed) == 0,
-            "geprueft": len(needs_rotation),
+            "geprüft": len(needs_rotation),
             "rotiert": len(rotated),
             "fehlgeschlagen": len(failed),
             "rotierte_zertifikate": rotated,
@@ -156,10 +156,10 @@ def rotate_expiring_certificates_task(
 )
 def verify_all_certificates_task(self) -> Dict[str, Any]:
     """
-    Celery Task fuer woechentliche Zertifikat-Validierung.
+    Celery Task für wöchentliche Zertifikat-Validierung.
 
-    Prueft alle registrierten Zertifikate auf:
-    - Gueltigkeit
+    Prüft alle registrierten Zertifikate auf:
+    - Gültigkeit
     - Korrekte CA-Signatur
     - Widerrufsstatus
 
@@ -221,7 +221,7 @@ def verify_all_certificates_task(self) -> Dict[str, Any]:
                         "error": error_msg,
                     })
             else:
-                # Pruefe auf baldigen Ablauf
+                # Prüfe auf baldigen Ablauf
                 days_until_expiry = service_info["days_until_expiry"]
 
                 if days_until_expiry <= 7:
@@ -241,8 +241,8 @@ def verify_all_certificates_task(self) -> Dict[str, Any]:
         response = {
             "erfolg": len(results["invalid"]) == 0 and len(results["expired"]) == 0,
             "gesamt": len(stats.get("services", [])),
-            "gueltig": len(results["valid"]),
-            "ungueltig": len(results["invalid"]),
+            "gültig": len(results["valid"]),
+            "ungültig": len(results["invalid"]),
             "ablaufend": len(results["expiring_soon"]),
             "abgelaufen": len(results["expired"]),
             "details": results,
@@ -289,10 +289,10 @@ def cleanup_revoked_certificates_task(
     max_age_days: int = 90,
 ) -> Dict[str, Any]:
     """
-    Celery Task fuer Aufraumen widerrufener Zertifikate.
+    Celery Task für Aufraumen widerrufener Zertifikate.
 
-    Loescht Zertifikat-Dateien von widerrufenen Zertifikaten die
-    aelter als max_age_days sind.
+    Löscht Zertifikat-Dateien von widerrufenen Zertifikaten die
+    älter als max_age_days sind.
 
     Args:
         max_age_days: Maximales Alter in Tagen (Standard: 90)
@@ -325,7 +325,7 @@ def cleanup_revoked_certificates_task(
                 if not service_dir.is_dir():
                     continue
 
-                # Pruefe auf alte Backup-Dateien von Rotation
+                # Prüfe auf alte Backup-Dateien von Rotation
                 for old_file in service_dir.glob("*.old"):
                     try:
                         stat = old_file.stat()
@@ -386,10 +386,10 @@ def cleanup_revoked_certificates_task(
 )
 def sync_certificate_registry_task(self) -> Dict[str, Any]:
     """
-    Celery Task fuer Zertifikat-Registry-Synchronisation.
+    Celery Task für Zertifikat-Registry-Synchronisation.
 
     Laedt alle Zertifikate von Disk in das In-Memory-Registry.
-    Wird alle 5 Minuten ausgefuehrt um neue Zertifikate zu erkennen.
+    Wird alle 5 Minuten ausgeführt um neue Zertifikate zu erkennen.
 
     Returns:
         Dict mit Sync-Ergebnis
@@ -492,9 +492,9 @@ def generate_mtls_audit_report_task(
     days: int = 7,
 ) -> Dict[str, Any]:
     """
-    Celery Task fuer woechentlichen mTLS Audit-Bericht.
+    Celery Task für wöchentlichen mTLS Audit-Bericht.
 
-    Erstellt einen Bericht ueber alle mTLS-Aktivitaeten der letzten Woche:
+    Erstellt einen Bericht über alle mTLS-Aktivitäten der letzten Woche:
     - Authentifizierungsversuche
     - Zertifikat-Ausstellungen
     - Rotationen
@@ -538,16 +538,16 @@ def generate_mtls_audit_report_task(
             result = entry["result"]
             service_name = entry.get("service_name", "unknown")
 
-            # Event-Typ zaehlen
+            # Event-Typ zählen
             event_counts[event_type] = event_counts.get(event_type, 0) + 1
 
-            # Erfolg/Fehler zaehlen
+            # Erfolg/Fehler zählen
             if result == "success":
                 success_counts[event_type] = success_counts.get(event_type, 0) + 1
             else:
                 failure_counts[event_type] = failure_counts.get(event_type, 0) + 1
 
-            # Service-Aktivitaet zaehlen
+            # Service-Aktivität zählen
             if service_name:
                 service_activity[service_name] = service_activity.get(service_name, 0) + 1
 
@@ -617,13 +617,13 @@ def initialize_service_certificates_task(
     services: Optional[List[Dict[str, str]]] = None,
 ) -> Dict[str, Any]:
     """
-    Celery Task fuer initiale Zertifikat-Erstellung.
+    Celery Task für initiale Zertifikat-Erstellung.
 
-    Erstellt Zertifikate fuer alle Core-Services wenn nicht vorhanden.
-    Wird beim System-Start ausgefuehrt.
+    Erstellt Zertifikate für alle Core-Services wenn nicht vorhanden.
+    Wird beim System-Start ausgeführt.
 
     Args:
-        services: Liste von Services [{name, type}] oder None fuer Defaults
+        services: Liste von Services [{name, type}] oder None für Defaults
 
     Returns:
         Dict mit Erstellungsergebnis
@@ -662,7 +662,7 @@ def initialize_service_certificates_task(
                 continue
 
             try:
-                # Pruefe ob Zertifikat existiert
+                # Prüfe ob Zertifikat existiert
                 cert = mtls_service.load_service_certificate(
                     service_name=service_name,
                     service_type=service_type,
@@ -752,13 +752,13 @@ def revoke_certificate_task(
     reason: str = "unspecified",
 ) -> Dict[str, Any]:
     """
-    Celery Task fuer Zertifikat-Widerruf.
+    Celery Task für Zertifikat-Widerruf.
 
     Widerruft ein Zertifikat anhand der Seriennummer.
 
     Args:
         serial_number: Seriennummer des Zertifikats
-        reason: Grund fuer Widerruf
+        reason: Grund für Widerruf
 
     Returns:
         Dict mit Widerruf-Ergebnis
@@ -814,9 +814,9 @@ def revoke_certificate_task(
 )
 def get_ca_status_task(self) -> Dict[str, Any]:
     """
-    Celery Task fuer CA-Status-Abfrage.
+    Celery Task für CA-Status-Abfrage.
 
-    Gibt Informationen ueber die Certificate Authority zurueck.
+    Gibt Informationen über die Certificate Authority zurück.
 
     Returns:
         Dict mit CA-Status

@@ -1,10 +1,10 @@
 """
-Surya Checkpoint Manager fuer Continuous Improvement System
+Surya Checkpoint Manager für Continuous Improvement System
 
 Verwaltet Surya OCR Model Checkpoints mit:
 - Datenbank-Integration (SuryaModelVersion, SuryaTrainingRun, etc.)
 - A/B Testing Management
-- Automatisches Rollback bei Qualitaetsverlust
+- Automatisches Rollback bei Qualitätsverlust
 - Umlaut-fokussierte Metriken
 
 Author: Claude Code
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SuryaCheckpointInfo:
-    """Information ueber einen Surya Checkpoint."""
+    """Information über einen Surya Checkpoint."""
     id: str
     version: str
     checkpoint_path: str
@@ -49,7 +49,7 @@ class SuryaCheckpointInfo:
 
 @dataclass
 class SuryaABTestConfig:
-    """Konfiguration fuer einen A/B Test."""
+    """Konfiguration für einen A/B Test."""
     control_version_id: str
     treatment_version_id: str
     treatment_traffic_pct: float = 20.0
@@ -68,11 +68,11 @@ class SuryaCheckpointManager:
     Features:
     - Versionierung mit semantischen Versionen (v1.0.0)
     - A/B Testing mit automatischer Auswertung
-    - Rollback bei Qualitaetsverlust
+    - Rollback bei Qualitätsverlust
     - Umlaut-fokussierte Metriken-Tracking
     - Benchmark-History
 
-    Qualitaetsziele:
+    Qualitätsziele:
     - CER < 3%
     - WER < 8%
     - Umlaut-Accuracy = 100% (KRITISCH!)
@@ -95,14 +95,14 @@ class SuryaCheckpointManager:
         Initialisiert den Surya Checkpoint Manager.
 
         Args:
-            checkpoint_dir: Basis-Verzeichnis fuer Checkpoints
-            base_model: Basis-Modell fuer Fine-Tuning
+            checkpoint_dir: Basis-Verzeichnis für Checkpoints
+            base_model: Basis-Modell für Fine-Tuning
         """
         self.checkpoint_dir = Path(checkpoint_dir)
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
         self.base_model = base_model
 
-        # Qualitaetsziele
+        # Qualitätsziele
         self.target_cer = 0.03  # < 3%
         self.target_wer = 0.08  # < 8%
         self.target_umlaut_accuracy = 1.0  # 100%
@@ -344,8 +344,8 @@ class SuryaCheckpointManager:
         """Holt die beste Version nach Metrik."""
         from app.db.models import SuryaModelVersion
 
-        # Fuer Accuracy: hoeherer Wert besser
-        # Fuer Error Rates: niedrigerer Wert besser
+        # Für Accuracy: höherer Wert besser
+        # Für Error Rates: niedrigerer Wert besser
         if metric in ["cer", "wer"]:
             order = getattr(SuryaModelVersion, metric).asc()
         else:
@@ -404,12 +404,12 @@ class SuryaCheckpointManager:
         is_production: bool = True
     ) -> bool:
         """
-        Aktiviert eine Version fuer Production.
+        Aktiviert eine Version für Production.
 
         Args:
             db: Datenbank-Session
             version: Version zum Aktivieren
-            traffic_percentage: Traffic-Anteil (fuer A/B Testing)
+            traffic_percentage: Traffic-Anteil (für A/B Testing)
             is_production: Als Production-Modell markieren
 
         Returns:
@@ -617,7 +617,7 @@ class SuryaCheckpointManager:
         auto_deploy: bool = True
     ) -> bool:
         """
-        Schliesst einen A/B Test ab.
+        Schließt einen A/B Test ab.
 
         Args:
             db: Datenbank-Session
@@ -679,7 +679,7 @@ class SuryaCheckpointManager:
         reason: str = ""
     ) -> bool:
         """
-        Fuehrt Rollback zu einer frueheren Version durch.
+        Führt Rollback zu einer früheren Version durch.
 
         Args:
             db: Datenbank-Session
@@ -732,7 +732,7 @@ class SuryaCheckpointManager:
             target_model.rollback_reason = reason
 
         await db.commit()
-        logger.info(f"Rollback durchgefuehrt: {current.version if current else 'None'} -> {target_version}")
+        logger.info(f"Rollback durchgeführt: {current.version if current else 'None'} -> {target_version}")
 
         return True
 
@@ -742,14 +742,14 @@ class SuryaCheckpointManager:
         current_metrics: Dict[str, float]
     ) -> Optional[str]:
         """
-        Prueft ob automatischer Rollback noetig ist.
+        Prüft ob automatischer Rollback nötig ist.
 
         Args:
             db: Datenbank-Session
             current_metrics: Aktuelle Metriken
 
         Returns:
-            Rollback-Version wenn Rollback durchgefuehrt, sonst None
+            Rollback-Version wenn Rollback durchgeführt, sonst None
         """
         current = await self.get_active_version(db)
         if not current:
@@ -770,13 +770,13 @@ class SuryaCheckpointManager:
                 )
                 return best.version
 
-        if cer > 0.10:  # CER ueber 10%
+        if cer > 0.10:  # CER über 10%
             best = await self.get_best_version(db, "cer")
             if best and best.version != current.version:
                 await self.rollback_to_version(
                     db,
                     best.version,
-                    reason=f"Auto-Rollback: CER {cer:.2%} ueber 10%"
+                    reason=f"Auto-Rollback: CER {cer:.2%} über 10%"
                 )
                 return best.version
 
@@ -834,7 +834,7 @@ class SuryaCheckpointManager:
         db.add(benchmark)
         await db.commit()
 
-        logger.info(f"Benchmark-Ergebnis gespeichert fuer Version {version_id}")
+        logger.info(f"Benchmark-Ergebnis gespeichert für Version {version_id}")
         return str(benchmark.id)
 
     async def get_benchmark_history(
@@ -883,7 +883,7 @@ class SuryaCheckpointManager:
         keep_best_umlaut: bool = True
     ) -> int:
         """
-        Raeumt alte Versionen auf.
+        Räumt alte Versionen auf.
 
         Args:
             db: Datenbank-Session
@@ -892,7 +892,7 @@ class SuryaCheckpointManager:
             keep_best_umlaut: Beste Umlaut-Version behalten
 
         Returns:
-            Anzahl geloeschter Versionen
+            Anzahl gelöschter Versionen
         """
         from app.db.models import SuryaModelVersion
 
@@ -921,26 +921,26 @@ class SuryaCheckpointManager:
             if best:
                 keep_ids.add(uuid_module.UUID(best.id))
 
-        # Versionen loeschen
+        # Versionen löschen
         deleted_count = 0
         for v in all_versions:
             if v.id not in keep_ids:
-                # Dateien loeschen
+                # Dateien löschen
                 checkpoint_path = Path(v.checkpoint_path)
                 if checkpoint_path.exists():
                     shutil.rmtree(checkpoint_path)
 
-                # DB-Eintrag loeschen
+                # DB-Eintrag löschen
                 await db.delete(v)
                 deleted_count += 1
 
         await db.commit()
-        logger.info(f"Cleanup: {deleted_count} alte Surya-Versionen geloescht")
+        logger.info(f"Cleanup: {deleted_count} alte Surya-Versionen gelöscht")
 
         return deleted_count
 
     async def get_storage_stats(self, db: AsyncSession) -> Dict[str, Any]:
-        """Gibt Speicherstatistiken zurueck."""
+        """Gibt Speicherstatistiken zurück."""
         from app.db.models import SuryaModelVersion
 
         result = await db.execute(select(SuryaModelVersion))
@@ -978,14 +978,14 @@ class SuryaCheckpointManager:
         request_id: Optional[str] = None
     ) -> Optional[SuryaCheckpointInfo]:
         """
-        Waehlt Modell fuer eine Anfrage basierend auf A/B Testing.
+        Wählt Modell für eine Anfrage basierend auf A/B Testing.
 
         Args:
             db: Datenbank-Session
-            request_id: Request-ID fuer deterministische Auswahl
+            request_id: Request-ID für deterministische Auswahl
 
         Returns:
-            Ausgewaehlte Modell-Version
+            Ausgewählte Modell-Version
         """
         from app.db.models import SuryaModelVersion
 
@@ -1003,7 +1003,7 @@ class SuryaCheckpointManager:
         if not active_versions:
             return await self.get_latest_version(db)
 
-        # Bei nur einer aktiven Version: diese zurueckgeben
+        # Bei nur einer aktiven Version: diese zurückgeben
         if len(active_versions) == 1:
             return self._model_to_checkpoint_info(active_versions[0])
 
@@ -1018,7 +1018,7 @@ class SuryaCheckpointManager:
         else:
             selection_pct = random.random()
 
-        # Version basierend auf Traffic-Percentage auswaehlen
+        # Version basierend auf Traffic-Percentage auswählen
         cumulative_pct = 0.0
         for v in active_versions:
             cumulative_pct += v.traffic_percentage / 100.0
@@ -1029,9 +1029,9 @@ class SuryaCheckpointManager:
         return self._model_to_checkpoint_info(active_versions[0])
 
     def get_checkpoint_path(self, version: str) -> Path:
-        """Gibt den Checkpoint-Pfad fuer eine Version zurueck."""
+        """Gibt den Checkpoint-Pfad für eine Version zurück."""
         return self.checkpoint_dir / version
 
     def checkpoint_exists(self, version: str) -> bool:
-        """Prueft ob Checkpoint existiert."""
+        """Prüft ob Checkpoint existiert."""
         return self.get_checkpoint_path(version).exists()

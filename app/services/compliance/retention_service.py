@@ -3,13 +3,13 @@
 Verwaltet die gesetzlichen Aufbewahrungsfristen nach GoBD:
 - Automatische Fristberechnung bei Archivierung
 - Warnungen vor ablaufenden Fristen
-- Loeschfreigabe-Workflow
+- Löschfreigabe-Workflow
 - Compliance-Reporting
 
 Gesetzliche Grundlagen:
-- §147 AO (Abgabenordnung): 10 Jahre fuer Buchfuehrungsunterlagen
+- §147 AO (Abgabenordnung): 10 Jahre für Buchführungsunterlagen
 - §257 HGB (Handelsgesetzbuch): 6-10 Jahre je nach Dokumenttyp
-- §14b UStG (Umsatzsteuergesetz): 10 Jahre fuer Rechnungen
+- §14b UStG (Umsatzsteuergesetz): 10 Jahre für Rechnungen
 """
 
 import uuid
@@ -34,7 +34,7 @@ logger = structlog.get_logger(__name__)
 
 
 class RetentionAlertLevel(str, Enum):
-    """Alert-Level fuer ablaufende Aufbewahrungsfristen."""
+    """Alert-Level für ablaufende Aufbewahrungsfristen."""
     INFO = "info"  # >180 Tage
     WARNING = "warning"  # 90-180 Tage
     CRITICAL = "critical"  # <90 Tage
@@ -43,7 +43,7 @@ class RetentionAlertLevel(str, Enum):
 
 @dataclass
 class RetentionAlert:
-    """Alert fuer eine ablaufende Aufbewahrungsfrist."""
+    """Alert für eine ablaufende Aufbewahrungsfrist."""
     archive_id: uuid.UUID
     document_id: uuid.UUID
     category: str
@@ -83,17 +83,17 @@ DEFAULT_RETENTION_PERIODS: Dict[str, Dict[str, Any]] = {
     "contract": {
         "years": 10,
         "legal_basis": "§257 HGB",
-        "display_name": "Vertraege",
+        "display_name": "Verträge",
     },
     "correspondence": {
         "years": 6,
         "legal_basis": "§257 HGB",
-        "display_name": "Geschaeftsbriefe",
+        "display_name": "Geschäftsbriefe",
     },
     "accounting": {
         "years": 10,
         "legal_basis": "§147 AO, §257 HGB",
-        "display_name": "Buchfuehrungsunterlagen",
+        "display_name": "Buchführungsunterlagen",
     },
     "annual_report": {
         "years": 10,
@@ -144,13 +144,13 @@ DEFAULT_RETENTION_PERIODS: Dict[str, Dict[str, Any]] = {
 
 
 class RetentionService:
-    """Service fuer GoBD-konforme Aufbewahrungsfristen-Verwaltung."""
+    """Service für GoBD-konforme Aufbewahrungsfristen-Verwaltung."""
 
     def __init__(self):
         self.default_periods = DEFAULT_RETENTION_PERIODS
 
     def get_retention_years(self, category: str) -> int:
-        """Ermittelt die Aufbewahrungsfrist in Jahren fuer eine Kategorie.
+        """Ermittelt die Aufbewahrungsfrist in Jahren für eine Kategorie.
 
         Args:
             category: Dokumentkategorie
@@ -198,7 +198,7 @@ class RetentionService:
         company_id: uuid.UUID,
         category: str,
     ) -> Optional[RetentionPolicy]:
-        """Holt die Aufbewahrungsrichtlinie fuer eine Kategorie.
+        """Holt die Aufbewahrungsrichtlinie für eine Kategorie.
 
         Args:
             db: Datenbank-Session
@@ -240,9 +240,9 @@ class RetentionService:
             category: Dokumentkategorie
             retention_years: Aufbewahrungsdauer
             legal_basis: Gesetzliche Grundlage
-            warning_days_before: Tage vor Ablauf fuer Warnung
-            critical_days_before: Tage vor Ablauf fuer kritische Warnung
-            require_approval_for_delete: Freigabe vor Loeschung
+            warning_days_before: Tage vor Ablauf für Warnung
+            critical_days_before: Tage vor Ablauf für kritische Warnung
+            require_approval_for_delete: Freigabe vor Löschung
             created_by_id: ID des erstellenden Users
 
         Returns:
@@ -286,7 +286,7 @@ class RetentionService:
         Args:
             db: Datenbank-Session
             company_id: Firmen-ID
-            days_ahead: Wie viele Tage voraus pruefen
+            days_ahead: Wie viele Tage voraus prüfen
 
         Returns:
             Liste von RetentionAlert
@@ -369,7 +369,7 @@ class RetentionService:
         reason: str,
         requested_by_id: uuid.UUID,
     ) -> RetentionDeletionRequest:
-        """Erstellt eine Loeschanfrage fuer ein abgelaufenes Archiv.
+        """Erstellt eine Löschanfrage für ein abgelaufenes Archiv.
 
         Args:
             db: Datenbank-Session
@@ -384,7 +384,7 @@ class RetentionService:
         Raises:
             ValueError: Wenn Archiv nicht gefunden oder nicht abgelaufen
         """
-        # Pruefe ob Archiv existiert und abgelaufen ist
+        # Prüfe ob Archiv existiert und abgelaufen ist
         archive = await db.get(DocumentArchive, archive_id)
         if not archive or archive.company_id != company_id:
             raise ValueError("Archiv nicht gefunden")
@@ -437,7 +437,7 @@ class RetentionService:
         approved_by_id: uuid.UUID,
         comment: Optional[str] = None,
     ) -> RetentionDeletionRequest:
-        """Genehmigt eine Loeschanfrage.
+        """Genehmigt eine Löschanfrage.
 
         Args:
             db: Datenbank-Session
@@ -490,7 +490,7 @@ class RetentionService:
         rejected_by_id: uuid.UUID,
         reason: str,
     ) -> RetentionDeletionRequest:
-        """Lehnt eine Loeschanfrage ab.
+        """Lehnt eine Löschanfrage ab.
 
         Args:
             db: Datenbank-Session
@@ -547,7 +547,7 @@ class RetentionService:
             company_id: Firmen-ID
 
         Returns:
-            RetentionStats mit Uebersicht
+            RetentionStats mit Übersicht
         """
         today = date.today()
 
@@ -634,7 +634,7 @@ class RetentionService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> int:
-        """Sendet Erinnerungen fuer bald ablaufende Aufbewahrungsfristen.
+        """Sendet Erinnerungen für bald ablaufende Aufbewahrungsfristen.
 
         Aktualisiert den reminder_sent Status in DocumentArchive.
 
@@ -711,7 +711,7 @@ class RetentionService:
         company_id: uuid.UUID,
         created_by_id: Optional[uuid.UUID] = None,
     ) -> List[RetentionPolicy]:
-        """Initialisiert Standard-Aufbewahrungsrichtlinien fuer eine Company.
+        """Initialisiert Standard-Aufbewahrungsrichtlinien für eine Company.
 
         Args:
             db: Datenbank-Session
@@ -724,7 +724,7 @@ class RetentionService:
         created_policies = []
 
         for category, defaults in self.default_periods.items():
-            # Pruefe ob bereits existiert
+            # Prüfe ob bereits existiert
             existing = await self.get_retention_policy(db, company_id, category)
             if existing:
                 continue

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Credential Redaction Modul fuer Ablage-System.
+Credential Redaction Modul für Ablage-System.
 
 Umfassende Redaktion von Credentials in Logs und Outputs:
 - API Keys und Tokens
@@ -43,7 +43,7 @@ class RedactionLevel(Enum):
 
 @dataclass
 class RedactionConfig:
-    """Konfiguration fuer Credential-Redaktion."""
+    """Konfiguration für Credential-Redaktion."""
 
     level: RedactionLevel = RedactionLevel.STANDARD
     redaction_text: str = "[REDACTED]"
@@ -134,7 +134,7 @@ SENSITIVE_HEADERS = frozenset({
 
 @dataclass
 class CredentialPattern:
-    """Pattern fuer Credential-Erkennung."""
+    """Pattern für Credential-Erkennung."""
 
     name: str
     pattern: Pattern[str]
@@ -142,7 +142,7 @@ class CredentialPattern:
     replacement: Optional[str] = None
 
 
-# Kompilierte Regex Patterns fuer verschiedene Credential-Typen
+# Kompilierte Regex Patterns für verschiedene Credential-Typen
 CREDENTIAL_PATTERNS: List[CredentialPattern] = [
     # JWT Tokens
     CredentialPattern(
@@ -311,7 +311,7 @@ def redact_value(
     Redaktiere einen einzelnen Wert basierend auf Patterns.
 
     Args:
-        value: Zu pruefender Wert
+        value: Zu prüfender Wert
         config: Redaktions-Konfiguration
         context: Optionaler Kontext (z.B. Feldname)
 
@@ -349,7 +349,7 @@ def redact_dict(
     Args:
         data: Dictionary mit potentiell sensitiven Daten
         config: Redaktions-Konfiguration
-        path: Aktueller Pfad (fuer verschachtelte Dicts)
+        path: Aktueller Pfad (für verschachtelte Dicts)
 
     Returns:
         Redaktiertes Dictionary
@@ -360,7 +360,7 @@ def redact_dict(
         current_path = f"{path}.{key}" if path else key
         key_lower = key.lower()
 
-        # Prüfe ob Feldname sensitiv ist (nur fuer Nicht-Container-Typen)
+        # Prüfe ob Feldname sensitiv ist (nur für Nicht-Container-Typen)
         is_sensitive_field = any(
             sensitive in key_lower
             for sensitive in SENSITIVE_FIELD_NAMES
@@ -387,7 +387,7 @@ def redact_dict(
             else:
                 result[key] = config.redaction_text_de
         elif isinstance(value, str):
-            # String auf Patterns pruefen
+            # String auf Patterns prüfen
             if config.level in [RedactionLevel.STANDARD, RedactionLevel.PARANOID]:
                 result[key] = redact_value(value, config, current_path)
             else:
@@ -491,7 +491,7 @@ def redact_json_string(
 
 class CredentialRedactionProcessor:
     """
-    Structlog Processor fuer umfassende Credential-Redaktion.
+    Structlog Processor für umfassende Credential-Redaktion.
 
     Ersetzt den einfachen SensitiveDataFilter mit erweiterter
     Pattern-basierter Erkennung.
@@ -522,7 +522,7 @@ from starlette.responses import Response
 
 class CredentialRedactionMiddleware(BaseHTTPMiddleware):
     """
-    FastAPI Middleware fuer Credential-Redaktion in Request/Response Logs.
+    FastAPI Middleware für Credential-Redaktion in Request/Response Logs.
 
     Stellt sicher, dass keine Credentials in Request/Response Logs erscheinen.
     """
@@ -535,7 +535,7 @@ class CredentialRedactionMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """Verarbeite Request und redaktiere Logs."""
 
-        # Redaktiere Request-Daten fuer Logging
+        # Redaktiere Request-Daten für Logging
         safe_headers = redact_headers(dict(request.headers), self.config)
         safe_url = redact_url(str(request.url), self.config)
 
@@ -581,7 +581,7 @@ def get_redaction_processor(
 
 def setup_credential_redaction(app: object, level: RedactionLevel = RedactionLevel.STANDARD) -> None:
     """
-    Richte Credential-Redaktion fuer FastAPI App ein.
+    Richte Credential-Redaktion für FastAPI App ein.
 
     Args:
         app: FastAPI Application
@@ -597,14 +597,14 @@ def setup_credential_redaction(app: object, level: RedactionLevel = RedactionLev
 
 
 def is_sensitive_key(key: str) -> bool:
-    """Pruefe ob ein Key als sensitiv gilt."""
+    """Prüfe ob ein Key als sensitiv gilt."""
     key_lower = key.lower()
     return any(sensitive in key_lower for sensitive in SENSITIVE_FIELD_NAMES)
 
 
 def redact_for_logging(data: object) -> object:
     """
-    Convenience Function fuer schnelle Redaktion.
+    Convenience Function für schnelle Redaktion.
 
     Args:
         data: Beliebige Daten (dict, str, etc.)

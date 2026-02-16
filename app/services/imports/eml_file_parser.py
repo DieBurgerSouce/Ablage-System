@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-EML/MSG Datei-Parser fuer Drag&Drop E-Mail-Import.
+EML/MSG Datei-Parser für Drag&Drop E-Mail-Import.
 
 Parst .eml und .msg Dateien und extrahiert Metadaten und Anhaenge.
 """
@@ -70,7 +70,7 @@ def validate_eml_file(content: bytes) -> Tuple[bool, str]:
         content: Rohe Datei-Bytes
 
     Returns:
-        Tuple aus (ist_gueltig, fehlermeldung)
+        Tuple aus (ist_gültig, fehlermeldung)
     """
     if len(content) > MAX_FILE_SIZE:
         return False, f"Datei zu gro\u00df (max. {MAX_FILE_SIZE // (1024 * 1024)}MB)"

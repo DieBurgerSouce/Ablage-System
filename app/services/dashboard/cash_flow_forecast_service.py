@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """Cash-Flow Forecast Service.
 
-Liefert Daten fuer das Cash-Flow Forecast Widget:
+Liefert Daten für das Cash-Flow Forecast Widget:
 - 30/60/90 Tage Liquiditaetsprognose
 - Einnahmen vs Ausgaben basierend auf offenen Rechnungen
-- Skonto-Auswirkungen beruecksichtigt
+- Skonto-Auswirkungen berücksichtigt
 - Confidence-basierte Prognosen
 
 Enterprise Feature: Januar 2026
@@ -32,7 +32,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ForecastPeriod(str, Enum):
-    """Verfuegbare Prognose-Zeitraeume."""
+    """Verfügbare Prognose-Zeitraeume."""
     DAYS_30 = "30"
     DAYS_60 = "60"
     DAYS_90 = "90"
@@ -60,7 +60,7 @@ class SkontoImpact:
 
 @dataclass
 class PeriodForecast:
-    """Zusammenfassung fuer einen Prognosezeitraum."""
+    """Zusammenfassung für einen Prognosezeitraum."""
     period_days: int
     start_date: date
     end_date: date
@@ -87,14 +87,14 @@ class CashFlowForecastResult:
 
 
 class CashFlowForecastService:
-    """Service fuer Cash-Flow Prognosen im Dashboard."""
+    """Service für Cash-Flow Prognosen im Dashboard."""
 
     # Zahlungswahrscheinlichkeiten basierend auf Zahlungsziel
     PAYMENT_PROBABILITY = {
-        "overdue": 0.3,     # Ueberfaellig: 30% Wahrscheinlichkeit
-        "due_soon": 0.7,    # Bald faellig: 70%
+        "overdue": 0.3,     # Überfällig: 30% Wahrscheinlichkeit
+        "due_soon": 0.7,    # Bald fällig: 70%
         "on_time": 0.85,    # Im Rahmen: 85%
-        "early": 0.95,      # Frueh: 95%
+        "early": 0.95,      # Früh: 95%
     }
 
     async def get_forecast(
@@ -104,12 +104,12 @@ class CashFlowForecastService:
         company_id: Optional[UUID] = None,
         starting_balance: Optional[Decimal] = None,
     ) -> CashFlowForecastResult:
-        """Erstelle Cash-Flow Prognose fuer 30/60/90 Tage.
+        """Erstelle Cash-Flow Prognose für 30/60/90 Tage.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            company_id: Firmen-ID fuer Multi-Tenant
+            company_id: Firmen-ID für Multi-Tenant
             starting_balance: Anfangssaldo (optional)
 
         Returns:
@@ -132,7 +132,7 @@ class CashFlowForecastService:
             db, user_id, company_id, today, 90
         )
 
-        # 4. Taegliche Datenpunkte berechnen
+        # 4. Tägliche Datenpunkte berechnen
         daily_data = self._calculate_daily_forecast(
             today, 90, starting_balance, receivables, payables
         )
@@ -180,7 +180,7 @@ class CashFlowForecastService:
         days: int = 30,
         starting_balance: Optional[Decimal] = None,
     ) -> List[Dict[str, Any]]:
-        """Liefert Chart-Daten fuer Frontend-Visualisierung.
+        """Liefert Chart-Daten für Frontend-Visualisierung.
 
         Args:
             db: Datenbank-Session
@@ -190,7 +190,7 @@ class CashFlowForecastService:
             starting_balance: Anfangssaldo
 
         Returns:
-            Liste mit taeglichen Datenpunkten fuer Chart
+            Liste mit täglichen Datenpunkten für Chart
         """
         forecast = await self.get_forecast(
             db, user_id, company_id, starting_balance
@@ -346,7 +346,7 @@ class CashFlowForecastService:
         receivables: List[Dict[str, Any]],
         payables: List[Dict[str, Any]],
     ) -> List[ForecastDataPoint]:
-        """Berechne taegliche Prognose-Datenpunkte."""
+        """Berechne tägliche Prognose-Datenpunkte."""
         daily_data = []
         cumulative = starting_balance
 
@@ -412,7 +412,7 @@ class CashFlowForecastService:
         else:
             avg_confidence = 0.5
 
-        # Rechnungszaehler
+        # Rechnungszähler
         income_count = sum(1 for d in daily_data if d.expected_income > 0)
         expense_count = sum(1 for d in daily_data if d.expected_expenses > 0)
 
@@ -478,13 +478,13 @@ class CashFlowForecastService:
         forecast_90: PeriodForecast,
         current_balance: Decimal,
     ) -> Optional[str]:
-        """Pruefe auf Liquiditaetsrisiken."""
+        """Prüfe auf Liquiditaetsrisiken."""
         # Kritisch: Negativer Saldo erwartet
         if forecast_30.ending_balance < Decimal("-1000"):
-            return "Kritisch: Negativer Saldo in den naechsten 30 Tagen erwartet"
+            return "Kritisch: Negativer Saldo in den nächsten 30 Tagen erwartet"
 
         if forecast_60.ending_balance < Decimal("-1000"):
-            return "Warnung: Negativer Saldo in den naechsten 60 Tagen moeglich"
+            return "Warnung: Negativer Saldo in den nächsten 60 Tagen möglich"
 
         # Stark sinkender Trend
         if forecast_90.ending_balance < current_balance * Decimal("0.5"):

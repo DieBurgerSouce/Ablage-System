@@ -30,10 +30,10 @@ BUCHUNGSSTAPEL_COLUMNS = [
     # Feld 1-10
     "Umsatz (ohne Soll/Haben-Kz)",      # 1: Betrag (positiv)
     "Soll/Haben-Kennzeichen",            # 2: S oder H
-    "WKZ Umsatz",                        # 3: Waehrungscode
+    "WKZ Umsatz",                        # 3: Währungscode
     "Kurs",                              # 4: Wechselkurs (optional)
-    "Basis-Umsatz",                      # 5: Basis bei Fremdwaehrung
-    "WKZ Basis-Umsatz",                  # 6: Waehrungscode Basis
+    "Basis-Umsatz",                      # 5: Basis bei Fremdwährung
+    "WKZ Basis-Umsatz",                  # 6: Währungscode Basis
     "Konto",                             # 7: Sachkonto
     "Gegenkonto (ohne BU-Schlüssel)",    # 8: Gegenkonto
     "BU-Schlüssel",                      # 9: Steuerschluessel
@@ -182,8 +182,8 @@ FIELD_MAX_LENGTHS = {
     "gegenkonto": 8,        # Gegenkonto
     "bu_schluessel": 4,     # BU-Schluessel
     "kostenstelle": 20,     # Kostenstelle
-    "kostentraeger": 20,    # Kostentraeger
-    "waehrung": 3,          # ISO-Waehrungscode
+    "kostenträger": 20,    # Kostenträger
+    "währung": 3,          # ISO-Währungscode
 }
 
 
@@ -196,7 +196,7 @@ DATEV_DELIMITER = ";"            # Semikolon als Trennzeichen
 DATEV_DECIMAL_SEP = ","          # Komma als Dezimaltrenner
 DATEV_NEWLINE = "\r\n"           # Windows-Zeilenumbruch
 DATEV_DATE_FORMAT = "%d%m"       # DDMM ohne Punkte
-DATEV_QUOTE_CHAR = '"'           # Textfelder in Anfuehrungszeichen
+DATEV_QUOTE_CHAR = '"'           # Textfelder in Anführungszeichen
 
 
 # =============================================================================
@@ -204,7 +204,7 @@ DATEV_QUOTE_CHAR = '"'           # Textfelder in Anfuehrungszeichen
 # =============================================================================
 
 # Alle 27 EU-Mitgliedstaaten (Stand: 2025)
-# Verwendet fuer: Innergemeinschaftliche Lieferungen, Reverse Charge, etc.
+# Verwendet für: Innergemeinschaftliche Lieferungen, Reverse Charge, etc.
 EU_MEMBER_STATES: frozenset[str] = frozenset({
     "AT",  # Oesterreich
     "BE",  # Belgien
@@ -238,10 +238,10 @@ EU_MEMBER_STATES: frozenset[str] = frozenset({
 
 def is_eu_country(country_code: str) -> bool:
     """
-    Prueft ob ein Land EU-Mitglied ist.
+    Prüft ob ein Land EU-Mitglied ist.
 
     Args:
-        country_code: ISO 3166-1 alpha-2 Laendercode (z.B. "DE", "AT")
+        country_code: ISO 3166-1 alpha-2 Ländercode (z.B. "DE", "AT")
 
     Returns:
         True wenn EU-Mitglied, False sonst
@@ -253,10 +253,10 @@ def is_eu_country(country_code: str) -> bool:
 
 def is_third_country(country_code: str) -> bool:
     """
-    Prueft ob ein Land ein Drittland (nicht EU) ist.
+    Prüft ob ein Land ein Drittland (nicht EU) ist.
 
     Args:
-        country_code: ISO 3166-1 alpha-2 Laendercode
+        country_code: ISO 3166-1 alpha-2 Ländercode
 
     Returns:
         True wenn Drittland, False wenn EU-Mitglied oder leer

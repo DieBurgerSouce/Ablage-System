@@ -65,7 +65,7 @@ class DatabaseConfig:
         SECURITY: Z.2 Fix - URL-encode password to handle special characters
         (prevents connection string injection and parsing errors).
         """
-        # Prioritaet: settings.DATABASE_URL (korrekt mit Docker-Netzwerk)
+        # Priorität: settings.DATABASE_URL (korrekt mit Docker-Netzwerk)
         if settings.DATABASE_URL:
             return settings.DATABASE_URL
         # Fallback: Aus Komponenten bauen

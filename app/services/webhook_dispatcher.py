@@ -80,7 +80,7 @@ class CircuitState(str, Enum):
 
 class WebhookCircuitBreaker:
     """
-    Circuit Breaker fuer Webhook-Zustellungen.
+    Circuit Breaker für Webhook-Zustellungen.
 
     Schuetzt vor kaskadierten Fehlern durch automatisches
     Unterbrechen bei zu vielen Fehlschlaegen.
@@ -92,8 +92,8 @@ class WebhookCircuitBreaker:
     """
 
     # Configuration
-    FAILURE_THRESHOLD = 5      # Fehler bis zum Oeffnen
-    SUCCESS_THRESHOLD = 2      # Erfolge zum Schliessen
+    FAILURE_THRESHOLD = 5      # Fehler bis zum Öffnen
+    SUCCESS_THRESHOLD = 2      # Erfolge zum Schließen
     OPEN_TIMEOUT_SECONDS = 300  # 5 Minuten bis Half-Open
     HALF_OPEN_MAX_CALLS = 3    # Max gleichzeitige Test-Calls
 

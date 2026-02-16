@@ -1,12 +1,12 @@
 """
 Data Loss Prevention (DLP) Service.
 
-Enterprise-Sicherheitsfunktionen fuer Dokumentenschutz:
+Enterprise-Sicherheitsfunktionen für Dokumentenschutz:
 - Download-Restriktionen (role-based, time-based)
 - Wasserzeichen-Generierung (visible + invisible)
 - Sensitive Data Detection (PII, Kreditkarten, IBAN)
 - Policy-basierte Zugriffskontrolle
-- Audit-Trail fuer alle DLP-Events
+- Audit-Trail für alle DLP-Events
 
 SECURITY:
 - Alle Policies werden serverseitig validiert
@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 # ==================== Enums ====================
 
 class DLPAction(str, Enum):
-    """Moegliche DLP-Aktionen."""
+    """Mögliche DLP-Aktionen."""
     ALLOW = "allow"
     BLOCK = "block"
     WATERMARK = "watermark"
@@ -80,17 +80,17 @@ class DLPPolicy(BaseModel):
     # Zugriffsbedingungen
     allowed_roles: list[str] = Field(
         default=["admin"],
-        description="Rollen die diese Aktion ausfuehren duerfen"
+        description="Rollen die diese Aktion ausführen duerfen"
     )
     blocked_roles: list[str] = Field(
         default=[],
         description="Rollen die explizit blockiert sind"
     )
 
-    # Zeit-basierte Einschraenkungen
+    # Zeit-basierte Einschränkungen
     time_restrictions: Optional[dict[str, Any]] = Field(
         default=None,
-        description="Zeit-basierte Einschraenkungen {'start': '09:00', 'end': '18:00', 'weekdays': [0,1,2,3,4]}"
+        description="Zeit-basierte Einschränkungen {'start': '09:00', 'end': '18:00', 'weekdays': [0,1,2,3,4]}"
     )
 
     # Dokument-Filter
@@ -128,7 +128,7 @@ class DLPPolicy(BaseModel):
 
 
 class DLPCheckResult(BaseModel):
-    """Ergebnis einer DLP-Pruefung."""
+    """Ergebnis einer DLP-Prüfung."""
     allowed: bool
     action: DLPAction
     policy_id: Optional[str] = None
@@ -204,7 +204,7 @@ SENSITIVE_PATTERNS: dict[SensitiveDataType, list[re.Pattern[str]]] = {
         re.compile(r'\bkontonummer\s*[:=]?\s*\d{8,10}\b', re.IGNORECASE),
         # Bankleitzahl (BLZ)
         re.compile(r'\bblz\s*[:=]?\s*\d{8}\b', re.IGNORECASE),
-        # Betraege mit Waehrungssymbol
+        # Betraege mit Währungssymbol
         re.compile(r'(?:EUR|€|USD|\$)\s*[\d.,]+(?:\s*(?:EUR|€|USD|\$))?', re.IGNORECASE),
     ],
 }
@@ -213,7 +213,7 @@ SENSITIVE_PATTERNS: dict[SensitiveDataType, list[re.Pattern[str]]] = {
 # ==================== DLP Service ====================
 
 class DLPServiceError(Exception):
-    """Basis-Exception fuer DLP-Fehler."""
+    """Basis-Exception für DLP-Fehler."""
     pass
 
 
@@ -292,13 +292,13 @@ class DLPService:
         self._cache_loaded = True
 
     def _get_default_policies(self) -> list[DLPPolicy]:
-        """Gibt Standard-DLP-Policies zurueck (Fallback wenn DB leer)."""
+        """Gibt Standard-DLP-Policies zurück (Fallback wenn DB leer)."""
         return [
             # Policy 1: Vertrauliche Dokumente
             DLPPolicy(
                 id="confidential-docs",
                 name="Vertrauliche Dokumente",
-                description="Schutz fuer als vertraulich markierte Dokumente",
+                description="Schutz für als vertraulich markierte Dokumente",
                 allowed_roles=["admin", "manager"],
                 tags_required=["vertraulich"],
                 action=DLPAction.WATERMARK,
@@ -314,7 +314,7 @@ class DLPService:
             DLPPolicy(
                 id="financial-docs",
                 name="Finanzdokumente",
-                description="Schutz fuer Rechnungen, Kontoauszuege, etc.",
+                description="Schutz für Rechnungen, Kontoauszuege, etc.",
                 allowed_roles=["admin", "accountant", "manager"],
                 document_types=["invoice", "bank_statement", "financial"],
                 action=DLPAction.ALLOW,
@@ -330,7 +330,7 @@ class DLPService:
             DLPPolicy(
                 id="after-hours",
                 name="Ausserhalb Arbeitszeiten",
-                description="Einschraenkungen ausserhalb der Arbeitszeiten",
+                description="Einschränkungen ausserhalb der Arbeitszeiten",
                 allowed_roles=["admin"],
                 time_restrictions={
                     "start": "06:00",
@@ -359,7 +359,7 @@ class DLPService:
         action_type: str = "download",
     ) -> DLPCheckResult:
         """
-        Prueft ob ein Benutzer eine Aktion auf einem Dokument ausfuehren darf.
+        Prüft ob ein Benutzer eine Aktion auf einem Dokument ausführen darf.
 
         Args:
             user: Der anfragende Benutzer
@@ -388,16 +388,16 @@ class DLPService:
         # User-Rolle
         user_role = user.role if hasattr(user, 'role') else "viewer"
 
-        # Alle aktiven Policies pruefen
+        # Alle aktiven Policies prüfen
         for policy in self._policies_cache:
             if not policy.enabled:
                 continue
 
-            # Pruefen ob Policy auf dieses Dokument zutrifft
+            # Prüfen ob Policy auf dieses Dokument zutrifft
             if not self._policy_matches_document(policy, doc_tags, doc_type):
                 continue
 
-            # Zeit-Restriktionen pruefen
+            # Zeit-Restriktionen prüfen
             if policy.time_restrictions:
                 if not self._check_time_restrictions(policy.time_restrictions):
                     # Ausserhalb erlaubter Zeit
@@ -413,13 +413,13 @@ class DLPService:
                     elif policy.action == DLPAction.NOTIFY:
                         result.notifications.append("admin")
 
-            # Rollen-Restriktionen pruefen
+            # Rollen-Restriktionen prüfen
             if user_role in policy.blocked_roles:
                 result.allowed = False
                 result.action = DLPAction.BLOCK
                 result.policy_id = policy.id
                 result.policy_name = policy.name
-                result.reason = f"Rolle '{user_role}' ist fuer diese Aktion gesperrt"
+                result.reason = f"Rolle '{user_role}' ist für diese Aktion gesperrt"
                 if policy.notify_admin:
                     result.notifications.append("admin")
                 return result
@@ -451,18 +451,18 @@ class DLPService:
         doc_tags: list[str],
         doc_type: str,
     ) -> bool:
-        """Prueft ob eine Policy auf ein Dokument zutrifft."""
-        # Dokument-Typ pruefen
+        """Prüft ob eine Policy auf ein Dokument zutrifft."""
+        # Dokument-Typ prüfen
         if "all" not in policy.document_types:
             if doc_type not in policy.document_types:
                 return False
 
-        # Required Tags pruefen
+        # Required Tags prüfen
         if policy.tags_required:
             if not all(tag in doc_tags for tag in policy.tags_required):
                 return False
 
-        # Blocked Tags pruefen
+        # Blocked Tags prüfen
         if policy.tags_blocked:
             if any(tag in doc_tags for tag in policy.tags_blocked):
                 return False
@@ -470,15 +470,15 @@ class DLPService:
         return True
 
     def _check_time_restrictions(self, restrictions: dict[str, Any]) -> bool:
-        """Prueft ob aktuelle Zeit innerhalb der Einschraenkungen liegt."""
+        """Prüft ob aktuelle Zeit innerhalb der Einschränkungen liegt."""
         now = datetime.now()
 
-        # Wochentag pruefen (0 = Montag)
+        # Wochentag prüfen (0 = Montag)
         if "weekdays" in restrictions:
             if now.weekday() not in restrictions["weekdays"]:
                 return False
 
-        # Uhrzeit pruefen
+        # Uhrzeit prüfen
         if "start" in restrictions and "end" in restrictions:
             start_time = time.fromisoformat(restrictions["start"])
             end_time = time.fromisoformat(restrictions["end"])
@@ -498,8 +498,8 @@ class DLPService:
         Erkennt sensible Daten im Text.
 
         Args:
-            text: Zu pruefender Text
-            types: Zu pruefende Typen (None = alle)
+            text: Zu prüfender Text
+            types: Zu prüfende Typen (None = alle)
 
         Returns:
             Dict mit Typ -> Anzahl gefundener Matches
@@ -537,8 +537,8 @@ class DLPService:
         Args:
             image_bytes: Original-Bild als Bytes
             config: Wasserzeichen-Konfiguration
-            user: Benutzer fuer Personalisierung
-            document_id: Dokument-ID fuer Tracking
+            user: Benutzer für Personalisierung
+            document_id: Dokument-ID für Tracking
 
         Returns:
             Bild mit Wasserzeichen als Bytes
@@ -546,7 +546,7 @@ class DLPService:
         # Bild laden
         image = Image.open(io.BytesIO(image_bytes))
 
-        # In RGBA konvertieren fuer Transparenz
+        # In RGBA konvertieren für Transparenz
         if image.mode != 'RGBA':
             image = image.convert('RGBA')
 
@@ -584,7 +584,7 @@ class DLPService:
         # Layer zusammenfuegen
         watermarked = Image.alpha_composite(image, watermark_layer)
 
-        # Zurueck zu Bytes
+        # Zurück zu Bytes
         output = io.BytesIO()
         watermarked.save(output, format='PNG')
         output.seek(0)
@@ -610,7 +610,7 @@ class DLPService:
             parts.append(datetime.now().strftime("%Y-%m-%d %H:%M"))
 
         if config.include_document_id:
-            # Kurze ID fuer Tracking
+            # Kurze ID für Tracking
             short_id = str(document_id)[:8]
             parts.append(f"ID:{short_id}")
 
@@ -711,10 +711,10 @@ class DLPService:
         """
         Generiert einen unsichtbaren Wasserzeichen-Hash.
 
-        Kann fuer Steganographie oder Metadaten verwendet werden.
+        Kann für Steganographie oder Metadaten verwendet werden.
 
         Returns:
-            Hash-String fuer Tracking
+            Hash-String für Tracking
         """
         timestamp = datetime.now().isoformat()
         data = f"{document_id}:{user_id}:{timestamp}"
@@ -731,18 +731,18 @@ class DLPService:
         user_agent: Optional[str] = None,
     ) -> None:
         """
-        Loggt ein DLP-Event in der Datenbank fuer Audit-Zwecke.
+        Loggt ein DLP-Event in der Datenbank für Audit-Zwecke.
 
         SECURITY:
         - Keine sensiblen Daten werden geloggt!
-        - Nur Typen und Counts fuer sensitive_data
-        - company_id ist PFLICHT fuer Multi-Tenant Isolation
+        - Nur Typen und Counts für sensitive_data
+        - company_id ist PFLICHT für Multi-Tenant Isolation
 
         Args:
             user_id: ID des Benutzers
             document_id: ID des Dokuments
             action: Art der Aktion (download, view, etc.)
-            result: Ergebnis der DLP-Pruefung
+            result: Ergebnis der DLP-Prüfung
             company_id: Mandanten-ID (PFLICHT!)
             ip_address: Optional IP-Adresse
             user_agent: Optional User-Agent
@@ -819,7 +819,7 @@ class DLPService:
         )
 
     async def get_policies(self) -> list[DLPPolicy]:
-        """Gibt alle konfigurierten Policies zurueck (aus DB)."""
+        """Gibt alle konfigurierten Policies zurück (aus DB)."""
         await self._ensure_policies_loaded()
         return self._policies_cache
 
@@ -830,7 +830,7 @@ class DLPService:
         SECURITY: company_id ist PFLICHT!
         """
         if not self.company_id:
-            raise DLPServiceError("company_id ist erforderlich fuer neue Policies")
+            raise DLPServiceError("company_id ist erforderlich für neue Policies")
 
         # Duplikat-Check
         existing = await self.db.execute(
@@ -906,7 +906,7 @@ class DLPService:
 
         logger.info("DLP Policy updated: policy_id=%s", policy_id)
 
-        # Pydantic-Objekt zurueckgeben
+        # Pydantic-Objekt zurückgeben
         return DLPPolicy(
             id=db_policy.policy_id,
             name=db_policy.name,
@@ -927,7 +927,7 @@ class DLPService:
         )
 
     async def delete_policy(self, policy_id: str) -> None:
-        """Loescht eine Policy (aus DB)."""
+        """Löscht eine Policy (aus DB)."""
         if not self.company_id:
             raise DLPServiceError("company_id ist erforderlich")
 
@@ -960,7 +960,7 @@ class DLPService:
         if not self.company_id:
             raise DLPServiceError("company_id ist erforderlich")
 
-        # Pruefen ob schon Policies existieren
+        # Prüfen ob schon Policies existieren
         result = await self.db.execute(
             select(DLPPolicyModel).where(
                 DLPPolicyModel.company_id == self.company_id
@@ -1004,5 +1004,5 @@ class DLPService:
 
 
 def get_dlp_service(db: AsyncSession, company_id: Optional[UUID] = None) -> DLPService:
-    """Factory-Funktion fuer DLPService."""
+    """Factory-Funktion für DLPService."""
     return DLPService(db, company_id)

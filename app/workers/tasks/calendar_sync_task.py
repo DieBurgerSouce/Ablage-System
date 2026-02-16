@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Celery-Tasks fuer die Kalender-Synchronisierung.
+Celery-Tasks für die Kalender-Synchronisierung.
 
 Periodische und On-Demand Synchronisierung von Ablage-Fristen
 mit externen Kalendern (Google Calendar, Microsoft Outlook, CalDAV).
 
-Feinpoliert und durchdacht - Zuverlaessige Kalender-Automatisierung.
+Feinpoliert und durchdacht - Zuverlässige Kalender-Automatisierung.
 """
 
 import asyncio
@@ -136,7 +136,7 @@ def sync_all_calendars(self) -> Dict[str, object]:
 def sync_single_calendar(self, company_id: str) -> Dict[str, object]:
     """Synchronisiert den Kalender einer einzelnen Firma.
 
-    Wird on-demand aufgerufen (z.B. ueber API-Endpoint).
+    Wird on-demand aufgerufen (z.B. über API-Endpoint).
 
     Args:
         company_id: UUID der Firma als String
@@ -170,7 +170,7 @@ def sync_single_calendar(self, company_id: str) -> Dict[str, object]:
             if config.provider == CalendarProvider.ICAL_FILE:
                 return {
                     "success": False,
-                    "message": "iCal-Export benoetigt keine Synchronisierung.",
+                    "message": "iCal-Export benötigt keine Synchronisierung.",
                 }
 
             executor = CalendarSyncExecutor()

@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Delegation Models fuer Ablage-System.
+Delegation Models für Ablage-System.
 
-Ermoeglicht temporaere Rechte-Uebertragung:
+Ermöglicht temporaere Rechte-Übertragung:
 - Krankheitsvertretung
 - Urlaubsvertretung
 - Projektbasierte Delegation
-- Audit-Trail fuer Compliance
+- Audit-Trail für Compliance
 
 Phase 3.2 der Strategischen Roadmap (Januar 2026).
 """
@@ -53,7 +53,7 @@ class DelegationType(str, Enum):
 
 class DelegationStatus(str, Enum):
     """Status einer Delegation."""
-    PENDING = "pending"         # Wartet auf Bestaetigung
+    PENDING = "pending"         # Wartet auf Bestätigung
     ACTIVE = "active"           # Aktiv
     EXPIRED = "expired"         # Abgelaufen
     REVOKED = "revoked"         # Widerrufen
@@ -61,11 +61,11 @@ class DelegationStatus(str, Enum):
 
 
 class DelegationReason(str, Enum):
-    """Grund fuer die Delegation."""
+    """Grund für die Delegation."""
     VACATION = "vacation"       # Urlaub
     ILLNESS = "illness"         # Krankheit
     PARENTAL_LEAVE = "parental_leave"  # Elternzeit
-    BUSINESS_TRIP = "business_trip"    # Geschaeftsreise
+    BUSINESS_TRIP = "business_trip"    # Geschäftsreise
     PROJECT = "project"         # Projektbasiert
     TRAINING = "training"       # Weiterbildung
     OTHER = "other"             # Sonstiges
@@ -79,16 +79,16 @@ class DelegationReason(str, Enum):
 class Delegation(Base):
     """Delegation von Rechten zwischen Benutzern.
 
-    Ermoeglicht:
-    - Temporaere Rechte-Uebertragung
+    Ermöglicht:
+    - Temporaere Rechte-Übertragung
     - Granulare Berechtigungssteuerung
-    - Vollstaendiger Audit-Trail
+    - Vollständiger Audit-Trail
     - Automatische Aktivierung/Deaktivierung
 
     Beispiel-Use-Cases:
     - Urlaubsvertretung: User A delegiert alle Genehmigungsrechte an User B
-    - Projektteam: User A delegiert Dokumentzugriff fuer bestimmte Ordner
-    - Notfall: Automatische Delegation bei laengerer Inaktivitaet
+    - Projektteam: User A delegiert Dokumentzugriff für bestimmte Ordner
+    - Notfall: Automatische Delegation bei längerer Inaktivitaet
     """
     __tablename__ = "delegations"
 
@@ -134,12 +134,12 @@ class Delegation(Base):
     )
     # Format: ["approvals:*", "documents:read", "documents:comment"]
 
-    # Scope (Einschraenkung auf bestimmte Ressourcen)
+    # Scope (Einschränkung auf bestimmte Ressourcen)
     scope = Column(
         CrossDBJSON,
         nullable=True,
         default=dict,
-        comment="Einschraenkung auf bestimmte Ressourcen"
+        comment="Einschränkung auf bestimmte Ressourcen"
     )
     # Format: {"folders": ["uuid1", "uuid2"], "tags": ["wichtig"]}
 
@@ -163,9 +163,9 @@ class Delegation(Base):
     reason_text = Column(Text, nullable=True, comment="Freitext-Begruendung")
     notes = Column(Text, nullable=True, comment="Interne Notizen")
 
-    # Bestaetigung
+    # Bestätigung
     requires_acceptance = Column(Boolean, default=True,
-                                  comment="Muss Delegate bestaetigen?")
+                                  comment="Muss Delegate bestätigen?")
     accepted_at = Column(DateTime(timezone=True), nullable=True)
     declined_at = Column(DateTime(timezone=True), nullable=True)
     decline_reason = Column(Text, nullable=True)
@@ -193,7 +193,7 @@ class Delegation(Base):
     )
     last_used_at = Column(DateTime(timezone=True), nullable=True)
 
-    # Einschraenkungen
+    # Einschränkungen
     max_approvals = Column(
         Integer,
         nullable=True,
@@ -250,7 +250,7 @@ class Delegation(Base):
 
     @property
     def is_active(self) -> bool:
-        """Prueft ob Delegation aktuell aktiv ist."""
+        """Prüft ob Delegation aktuell aktiv ist."""
         if self.status != DelegationStatus.ACTIVE:
             return False
         now = datetime.utcnow()
@@ -258,7 +258,7 @@ class Delegation(Base):
 
     @property
     def is_pending(self) -> bool:
-        """Prueft ob auf Bestaetigung wartet."""
+        """Prüft ob auf Bestätigung wartet."""
         return self.status == DelegationStatus.PENDING
 
     @property
@@ -276,10 +276,10 @@ class Delegation(Base):
 
 
 class DelegationAuditLog(Base):
-    """Audit-Log fuer Delegations-Nutzung.
+    """Audit-Log für Delegations-Nutzung.
 
     Protokolliert jede Nutzung einer Delegation:
-    - Welche Aktion wurde durchgefuehrt
+    - Welche Aktion wurde durchgeführt
     - Auf welche Ressource
     - Mit welchem Ergebnis
     """
@@ -334,9 +334,9 @@ class DelegationAuditLog(Base):
 
 
 class DelegationTemplate(Base):
-    """Vorlage fuer wiederkehrende Delegationen.
+    """Vorlage für wiederkehrende Delegationen.
 
-    Ermoeglicht schnelle Erstellung von Standard-Delegationen:
+    Ermöglicht schnelle Erstellung von Standard-Delegationen:
     - Urlaubsvertretung Standard
     - Genehmigungs-Delegation
     - Lesezugriff-Delegation
@@ -374,7 +374,7 @@ class DelegationTemplate(Base):
     # Status
     is_active = Column(Boolean, default=True)
     is_system = Column(Boolean, default=False,
-                       comment="System-Template (nicht loeschbar)")
+                       comment="System-Template (nicht löschbar)")
 
     # Metadata
     created_at = Column(DateTime(timezone=True), server_default=func.now())

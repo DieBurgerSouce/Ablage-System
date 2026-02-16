@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """Payment Saga - Zahlungsabwicklung als Saga.
 
-Implementiert den vollstaendigen Zahlungs-Workflow:
+Implementiert den vollständigen Zahlungs-Workflow:
 1. request_approval - Freigabe anfordern
 2. generate_sepa - SEPA-XML erstellen
-3. submit_to_bank - An Bank uebermitteln
+3. submit_to_bank - An Bank übermitteln
 4. update_payment_status - Zahlungsstatus aktualisieren
 
-Jeder Schritt hat eine Compensation-Aktion fuer automatisches Rollback.
+Jeder Schritt hat eine Compensation-Aktion für automatisches Rollback.
 """
 
 from __future__ import annotations
@@ -47,8 +47,8 @@ PAYMENT_STEPS: List[Dict[str, object]] = [
         "max_retries": 3,
     },
     {
-        "name": "An Bank uebermitteln",
-        "description": "Uebertraegt SEPA-Datei an die Bank",
+        "name": "An Bank übermitteln",
+        "description": "Überträgt SEPA-Datei an die Bank",
         "action_type": "submit_to_bank",
         "compensation_type": "request_bank_cancellation",
         "timeout_seconds": 180,
@@ -75,7 +75,7 @@ async def handle_request_approval(
     context_data: Dict[str, object],
     step_id: str,
 ) -> Dict[str, object]:
-    """Fordert Freigabe fuer den Zahlungsauftrag an.
+    """Fordert Freigabe für den Zahlungsauftrag an.
 
     Args:
         action_params: {
@@ -177,10 +177,10 @@ async def handle_generate_sepa(
 
         sepa_service = SEPACreditTransferService(db)
 
-        # Daten fuer SEPA-Transfer zusammenbauen
+        # Daten für SEPA-Transfer zusammenbauen
         from dataclasses import dataclass
 
-        # CreditTransferCreate importieren wenn verfuegbar
+        # CreditTransferCreate importieren wenn verfügbar
         try:
             from app.api.schemas.banking import CreditTransferCreate
 
@@ -227,7 +227,7 @@ async def handle_submit_to_bank(
     context_data: Dict[str, object],
     step_id: str,
 ) -> Dict[str, object]:
-    """Uebermittelt SEPA-Datei an die Bank.
+    """Übermittelt SEPA-Datei an die Bank.
 
     Args:
         action_params: {
@@ -240,7 +240,7 @@ async def handle_submit_to_bank(
         step_id: Step-ID
 
     Returns:
-        Uebermittlungs-Ergebnis
+        Übermittlungs-Ergebnis
     """
     payment_id = str(action_params.get("payment_id", ""))
     company_id = str(action_params.get("company_id", ""))
@@ -303,7 +303,7 @@ async def handle_update_payment_status(
             from sqlalchemy import select, update
             from app.db.models import Invoice
 
-            # Vorherigen Status speichern fuer Compensation
+            # Vorherigen Status speichern für Compensation
             inv_query = select(Invoice.payment_status).where(
                 Invoice.id == UUID(invoice_id),
                 Invoice.company_id == UUID(company_id),
@@ -391,7 +391,7 @@ async def compensate_void_sepa_file(
     context_data: Dict[str, object],
     step_id: str,
 ) -> None:
-    """Erklaert SEPA-Datei fuer ungueltig.
+    """Erklärt SEPA-Datei für ungültig.
 
     Args:
         compensation_params: Compensation-Parameter
@@ -409,7 +409,7 @@ async def compensate_void_sepa_file(
         sepa_file_id=sepa_file_id,
         step_id=step_id,
     )
-    # SEPA-Datei wird als ungueltig markiert
+    # SEPA-Datei wird als ungültig markiert
     # Die Bank akzeptiert keine bereits gesendeten Dateien erneut
 
 
@@ -421,12 +421,12 @@ async def compensate_request_bank_cancellation(
 ) -> None:
     """Fordert Stornierung bei der Bank an.
 
-    ACHTUNG: Nach Bankuebermittlung ist eine Stornierung nur noch
-    bedingt moeglich (abhaengig von Bank und Zeitpunkt).
+    ACHTUNG: Nach Bankübermittlung ist eine Stornierung nur noch
+    bedingt möglich (abhängig von Bank und Zeitpunkt).
 
     Args:
         compensation_params: Compensation-Parameter
-        original_result: Ergebnis der Bank-Uebermittlung
+        original_result: Ergebnis der Bank-Übermittlung
         context_data: Saga-Kontext
         step_id: Step-ID
     """
@@ -471,7 +471,7 @@ async def compensate_revert_payment_status(
     context_data: Dict[str, object],
     step_id: str,
 ) -> None:
-    """Setzt den Zahlungsstatus auf den vorherigen Wert zurueck.
+    """Setzt den Zahlungsstatus auf den vorherigen Wert zurück.
 
     Args:
         compensation_params: Compensation-Parameter
@@ -519,7 +519,7 @@ async def compensate_revert_payment_status(
 def register_payment_handlers(
     registry: StepHandlerRegistry,
 ) -> None:
-    """Registriert alle Handler fuer die Zahlungs-Saga.
+    """Registriert alle Handler für die Zahlungs-Saga.
 
     Args:
         registry: StepHandlerRegistry-Instanz
@@ -567,8 +567,8 @@ async def create_payment_saga(
         payment_id: Zahlungsauftrags-ID
         bank_account_id: Bankkonto-ID
         amount: Betrag als String
-        recipient_name: Empfaenger-Name
-        recipient_iban: Empfaenger-IBAN
+        recipient_name: Empfänger-Name
+        recipient_iban: Empfänger-IBAN
         reference: Verwendungszweck
         invoice_id: Optionale Rechnungs-ID
         description: Optionale Beschreibung

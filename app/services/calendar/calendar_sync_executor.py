@@ -3,8 +3,8 @@
 Kalender-Sync-Executor: Orchestriert die Synchronisierung zwischen
 Ablage-Deadlines und externen Kalendern.
 
-Berechnet Diff (erstellen/aktualisieren/loeschen) und wendet
-Aenderungen ueber den entsprechenden Provider-Client an.
+Berechnet Diff (erstellen/aktualisieren/löschen) und wendet
+Änderungen über den entsprechenden Provider-Client an.
 
 Feinpoliert und durchdacht - Zuverlaessige Kalender-Synchronisation.
 """
@@ -55,7 +55,7 @@ if TYPE_CHECKING:
     from app.services.calendar.google_calendar_client import GoogleCalendarClient
     from app.services.calendar.microsoft_calendar_client import MicrosoftCalendarClient
 
-# Type alias fuer Provider-Clients
+# Type alias für Provider-Clients
 ProviderClient = Union[
     "GoogleCalendarClient",
     "MicrosoftCalendarClient",
@@ -69,13 +69,13 @@ ProviderClient = Union[
 
 
 class CalendarSyncExecutor:
-    """Fuehrt die Kalender-Synchronisierung durch.
+    """Führt die Kalender-Synchronisierung durch.
 
     Orchestriert den kompletten Sync-Zyklus:
     1. Aktuelle Deadlines aus CalendarService laden
     2. Letzten Sync-State aus CompanySettings laden
     3. Diff berechnen (create/update/delete)
-    4. Diff ueber Provider-Client anwenden
+    4. Diff über Provider-Client anwenden
     5. Neuen Sync-State speichern
     """
 
@@ -89,7 +89,7 @@ class CalendarSyncExecutor:
         days_ahead: int = 30,
     ) -> SyncResult:
         """
-        Hauptmethode: Holt Deadlines, berechnet Diff, wendet Aenderungen an.
+        Hauptmethode: Holt Deadlines, berechnet Diff, wendet Änderungen an.
 
         Args:
             db: Datenbank-Session
@@ -97,10 +97,10 @@ class CalendarSyncExecutor:
             provider: Provider-Name (google_calendar, outlook, caldav)
             calendar_id: Ziel-Kalender-ID
             categories: Zu synchronisierende Frist-Kategorien (None = alle)
-            days_ahead: Zeitraum in Tagen fuer Deadlines
+            days_ahead: Zeitraum in Tagen für Deadlines
 
         Returns:
-            SyncResult mit Zaehlerstaenden und ggf. Fehlern
+            SyncResult mit Zählerstaenden und ggf. Fehlern
         """
         result = SyncResult()
 
@@ -130,7 +130,7 @@ class CalendarSyncExecutor:
             if client is None:
                 result.errors.append(
                     "Provider-Client konnte nicht erstellt werden. "
-                    "Bitte Zugangsdaten pruefen."
+                    "Bitte Zugangsdaten prüfen."
                 )
                 return result
 
@@ -219,7 +219,7 @@ class CalendarSyncExecutor:
         sync_state: Dict[str, str],
     ) -> SyncDiff:
         """
-        Berechnet was erstellt/aktualisiert/geloescht werden muss.
+        Berechnet was erstellt/aktualisiert/gelöscht werden muss.
 
         Args:
             current_events: Aktuelle Deadlines als CalendarEvents
@@ -264,7 +264,7 @@ class CalendarSyncExecutor:
         calendar_id: str,
         sync_state: Dict[str, str],
     ) -> SyncResult:
-        """Wendet Diff ueber den Provider-Client an.
+        """Wendet Diff über den Provider-Client an.
 
         Args:
             diff: Berechneter Diff
@@ -273,7 +273,7 @@ class CalendarSyncExecutor:
             sync_state: Wird in-place aktualisiert mit neuen Mappings
 
         Returns:
-            SyncResult mit Zaehlerstaenden
+            SyncResult mit Zählerstaenden
         """
         result = SyncResult()
 
@@ -312,7 +312,7 @@ class CalendarSyncExecutor:
                     f"Aktualisierung fehlgeschlagen: {event.title}"
                 )
 
-        # Loeschen
+        # Löschen
         for external_id in diff.to_delete:
             try:
                 await client.delete_event(calendar_id, external_id)
@@ -331,7 +331,7 @@ class CalendarSyncExecutor:
                     **safe_error_log(e),
                 )
                 result.errors.append(
-                    f"Loeschen fehlgeschlagen: Event {external_id}"
+                    f"Löschen fehlgeschlagen: Event {external_id}"
                 )
 
         return result
@@ -375,7 +375,7 @@ class CalendarSyncExecutor:
         db: AsyncSession,
         company_id: UUID,
     ) -> Optional["GoogleCalendarClient"]:
-        """Erstellt Google Calendar Client mit gueltigem Token."""
+        """Erstellt Google Calendar Client mit gültigem Token."""
         from app.services.calendar.oauth_service import get_calendar_oauth_service
         from app.services.calendar.google_calendar_client import GoogleCalendarClient
         from app.core.config import settings
@@ -403,7 +403,7 @@ class CalendarSyncExecutor:
         db: AsyncSession,
         company_id: UUID,
     ) -> Optional["MicrosoftCalendarClient"]:
-        """Erstellt Microsoft Calendar Client mit gueltigem Token."""
+        """Erstellt Microsoft Calendar Client mit gültigem Token."""
         from app.services.calendar.oauth_service import get_calendar_oauth_service
         from app.services.calendar.microsoft_calendar_client import MicrosoftCalendarClient
         from app.core.config import settings
@@ -445,7 +445,7 @@ class CalendarSyncExecutor:
             )
             return None
 
-        # Passwort aus verschluesseltem Speicher laden
+        # Passwort aus verschlüsseltem Speicher laden
         from app.core.encryption import decrypt_data
         from app.db.models import CompanySettings
 

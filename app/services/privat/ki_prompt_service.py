@@ -1,8 +1,8 @@
 """Privat KI-Prompt Service.
 
 Privat-spezifische KI-Analysen auf Basis des bestehenden LLMService.
-Deutsche Prompt-Templates fuer:
-- Immobilien-Wertschaetzung
+Deutsche Prompt-Templates für:
+- Immobilien-Wertschätzung
 - Fahrzeug-Analyse
 - Anlage-Beratung
 - Versicherungs-Check
@@ -157,8 +157,8 @@ class FinancialQAResponse:
 class PrivatKIPromptService:
     """Privat-spezifische KI-Prompt-Analyse.
 
-    Nutzt den bestehenden LLMService fuer Inference.
-    Deutsche Jinja2-Templates fuer domainspezifische Prompts.
+    Nutzt den bestehenden LLMService für Inference.
+    Deutsche Jinja2-Templates für domainspezifische Prompts.
 
     Thread-safe Singleton Pattern mit Double-Checked Locking.
     """
@@ -172,10 +172,10 @@ class PrivatKIPromptService:
         WICHTIG: Alle Instanz-Attribute werden in __new__ initialisiert,
         nicht in __init__, um Race Conditions zu vermeiden.
         """
-        # Double-checked locking: Erst ohne Lock pruefen
+        # Double-checked locking: Erst ohne Lock prüfen
         if cls._instance is None:
             with cls._class_lock:
-                # Nochmal pruefen nachdem Lock erworben
+                # Nochmal prüfen nachdem Lock erworben
                 if cls._instance is None:
                     instance = super().__new__(cls)
 
@@ -228,7 +228,7 @@ class PrivatKIPromptService:
         Args:
             prefix: Praefix (z.B. "property")
             entity_id: Entity-ID
-            **kwargs: Zusaetzliche Faktoren
+            **kwargs: Zusätzliche Faktoren
 
         Returns:
             Cache-Key als Hash
@@ -239,7 +239,7 @@ class PrivatKIPromptService:
     def _get_from_cache(self, cache_key: str) -> Optional[object]:
         """Holt Wert aus Cache (Thread-safe).
 
-        WICHTIG: Gibt eine KOPIE zurueck um Cache-Mutation zu verhindern!
+        WICHTIG: Gibt eine KOPIE zurück um Cache-Mutation zu verhindern!
         """
         import copy
 
@@ -248,7 +248,7 @@ class PrivatKIPromptService:
                 entry = self._cache[cache_key]
                 if datetime.now(timezone.utc).timestamp() - entry["timestamp"] < self._cache_ttl_seconds:
                     KI_CACHE_HITS.inc()
-                    # KRITISCH: Kopie zurueckgeben um Mutation des gecachten Objekts zu verhindern
+                    # KRITISCH: Kopie zurückgeben um Mutation des gecachten Objekts zu verhindern
                     return copy.deepcopy(entry["data"])
                 else:
                     del self._cache[cache_key]
@@ -301,7 +301,7 @@ class PrivatKIPromptService:
         db: AsyncSession,
         space_id: UUID
     ) -> List[str]:
-        """Laedt Kontext aus dem Space fuer KI-Analysen.
+        """Laedt Kontext aus dem Space für KI-Analysen.
 
         Sammelt Informationen aus Properties, Vehicles, Investments, Loans
         und Insurances um der KI relevanten Kontext zu geben.
@@ -416,7 +416,7 @@ class PrivatKIPromptService:
                 space_id=str(space_id),
                 **safe_error_log(e)
             )
-            # Bei Fehler: Leere Kontext-Liste zurueckgeben
+            # Bei Fehler: Leere Kontext-Liste zurückgeben
             return []
 
         return context_parts
@@ -447,7 +447,7 @@ class PrivatKIPromptService:
         start_time = time.perf_counter()
         cache_key = self._get_cache_key("property", property_id)
 
-        # Cache pruefen
+        # Cache prüfen
         if use_cache:
             cached = self._get_from_cache(cache_key)
             if cached:
@@ -477,7 +477,7 @@ class PrivatKIPromptService:
             LLMMessage(
                 role="system",
                 content="Du bist ein erfahrener deutscher Immobilien-Gutachter. "
-                        "Analysiere Immobilien sachlich und gib realistische Einschaetzungen."
+                        "Analysiere Immobilien sachlich und gib realistische Einschätzungen."
             ),
             LLMMessage(role="user", content=prompt)
         ]
@@ -489,7 +489,7 @@ class PrivatKIPromptService:
                 messages=messages,
                 context_type=LLMContextType.EXTRACTION,
                 enable_thinking=False,
-                temperature=0.3  # Weniger kreativ fuer Fakten
+                temperature=0.3  # Weniger kreativ für Fakten
             )
 
             parsed = self._parse_json_response(response.content)
@@ -498,7 +498,7 @@ class PrivatKIPromptService:
                 property_id=property_id,
                 estimated_value_eur=float(parsed.get("estimated_value_eur", 0)),
                 confidence_percent=int(parsed.get("confidence_percent", 50)),
-                reasoning=parsed.get("reasoning", "Keine Begruendung verfuegbar"),
+                reasoning=parsed.get("reasoning", "Keine Begruendung verfügbar"),
                 market_comparison=parsed.get("market_comparison", ""),
                 value_trend=parsed.get("value_trend", "stabil"),
                 rental_potential_eur=parsed.get("rental_potential_eur"),
@@ -625,7 +625,7 @@ class PrivatKIPromptService:
         space_id: UUID,
         use_cache: bool = True
     ) -> InvestmentAdvice:
-        """Generiert Anlage-Beratung fuer einen Space.
+        """Generiert Anlage-Beratung für einen Space.
 
         Args:
             db: Database Session
@@ -727,7 +727,7 @@ class PrivatKIPromptService:
         space_id: UUID,
         use_cache: bool = True
     ) -> InsuranceCheckResult:
-        """Prueft Versicherungsdeckung eines Space.
+        """Prüft Versicherungsdeckung eines Space.
 
         Args:
             db: Database Session
@@ -776,7 +776,7 @@ class PrivatKIPromptService:
             LLMMessage(
                 role="system",
                 content="Du bist ein deutscher Versicherungsberater. "
-                        "Analysiere Deckung und identifiziere Luecken."
+                        "Analysiere Deckung und identifiziere Lücken."
             ),
             LLMMessage(role="user", content=prompt)
         ]
@@ -848,7 +848,7 @@ class PrivatKIPromptService:
         prompt = self._render_template(
             "financial_qa.j2",
             question=question,
-            context="\n".join(context_parts) if context_parts else "Kein zusaetzlicher Kontext verfuegbar.",
+            context="\n".join(context_parts) if context_parts else "Kein zusätzlicher Kontext verfügbar.",
         )
 
         messages = [
@@ -913,14 +913,14 @@ class PrivatKIPromptService:
             raise
 
     def clear_cache(self, entity_type: Optional[str] = None, entity_id: Optional[UUID] = None) -> int:
-        """Loescht Cache-Eintraege (Thread-safe).
+        """Löscht Cache-Einträge (Thread-safe).
 
         Args:
-            entity_type: Typ (property, vehicle, etc.) oder None fuer alle
-            entity_id: Spezifische Entity-ID oder None fuer alle
+            entity_type: Typ (property, vehicle, etc.) oder None für alle
+            entity_id: Spezifische Entity-ID oder None für alle
 
         Returns:
-            Anzahl geloeschter Eintraege
+            Anzahl gelöschter Einträge
         """
         with self._cache_lock:
             if entity_type is None and entity_id is None:
@@ -947,7 +947,7 @@ class PrivatKIPromptService:
 
 
 def get_privat_ki_prompt_service() -> PrivatKIPromptService:
-    """Factory-Funktion fuer PrivatKIPromptService Singleton.
+    """Factory-Funktion für PrivatKIPromptService Singleton.
 
     Returns:
         Die globale PrivatKIPromptService-Instanz

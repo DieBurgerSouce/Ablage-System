@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-RecurringInvoiceService - Abo-Verwaltung fuer Ablage-System.
+RecurringInvoiceService - Abo-Verwaltung für Ablage-System.
 
 Implementiert:
 - Automatische Erkennung wiederkehrender Rechnungsmuster
 - Manuelle Abo-Verwaltung (CRUD)
-- Soll/Ist-Vergleiche fuer erwartete vs. tatsaechliche Rechnungen
-- Preisaenderungs-Erkennung und Alerts
+- Soll/Ist-Vergleiche für erwartete vs. tatsaechliche Rechnungen
+- Preisänderungs-Erkennung und Alerts
 - Fehlende-Rechnungen-Erkennung
-- Kuendigungsfristen-Tracking
+- Kündigungsfristen-Tracking
 
 Phase 2.2 der Feature-Roadmap (Februar 2026).
 """
@@ -50,7 +50,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class RecurringInvoiceCreateRequest:
-    """Request fuer manuelle Abo-Erstellung."""
+    """Request für manuelle Abo-Erstellung."""
     company_id: uuid.UUID
     vendor_name: str
     interval_type: RecurringIntervalType
@@ -72,7 +72,7 @@ class RecurringInvoiceCreateRequest:
 
 @dataclass
 class RecurringInvoiceUpdateRequest:
-    """Request fuer Abo-Aktualisierung."""
+    """Request für Abo-Aktualisierung."""
     status: Optional[RecurringInvoiceStatus] = None
     expected_amount: Optional[Decimal] = None
     interval_type: Optional[RecurringIntervalType] = None
@@ -89,7 +89,7 @@ class RecurringInvoiceUpdateRequest:
 
 @dataclass
 class MatchInvoiceRequest:
-    """Request fuer manuelles Zuordnen einer Rechnung."""
+    """Request für manuelles Zuordnen einer Rechnung."""
     document_id: uuid.UUID
     vendor_name: str
     amount: Decimal
@@ -114,7 +114,7 @@ class DetectedPattern:
 
 @dataclass
 class MissingInvoiceInfo:
-    """Information ueber eine fehlende Rechnung."""
+    """Information über eine fehlende Rechnung."""
     recurring_invoice_id: uuid.UUID
     vendor_name: str
     expected_date: date
@@ -125,7 +125,7 @@ class MissingInvoiceInfo:
 
 @dataclass
 class PriceChangeInfo:
-    """Information ueber eine Preisaenderung."""
+    """Information über eine Preisänderung."""
     recurring_invoice_id: uuid.UUID
     vendor_name: str
     old_amount: Decimal
@@ -170,7 +170,7 @@ class SollIstReport:
 
 
 class RecurringInvoiceService:
-    """Service fuer Abo-Verwaltung und wiederkehrende Rechnungserkennung."""
+    """Service für Abo-Verwaltung und wiederkehrende Rechnungserkennung."""
 
     # ========================================================================
     # Detection
@@ -186,7 +186,7 @@ class RecurringInvoiceService:
         """Analysiert Rechnungshistorie und erkennt wiederkehrende Muster.
 
         Gruppiert Rechnungen nach Lieferant (aus Dokument-Metadaten),
-        prueft Intervalle und Betragsaehnlichkeit, um Abo-Muster zu identifizieren.
+        prüft Intervalle und Betragsähnlichkeit, um Abo-Muster zu identifizieren.
         """
         cutoff_date = date.today() - timedelta(days=lookback_months * 30)
 
@@ -238,7 +238,7 @@ class RecurringInvoiceService:
     def _extract_vendor_name(doc: Document) -> Optional[str]:
         """Extrahiert den Lieferantennamen aus Dokument-Metadaten."""
         metadata = doc.document_metadata or {}
-        # Pruefe verschiedene Felder in den Metadaten
+        # Prüfe verschiedene Felder in den Metadaten
         for field_name in ("vendor_name", "sender_name", "supplier_name", "absender"):
             value = metadata.get(field_name)
             if value and isinstance(value, str) and value.strip():
@@ -291,7 +291,7 @@ class RecurringInvoiceService:
         if interval_type is None:
             return None
 
-        # Pruefe Konsistenz der Intervalle (Standardabweichung)
+        # Prüfe Konsistenz der Intervalle (Standardabweichung)
         if len(intervals_days) > 1:
             variance = sum((d - avg_interval) ** 2 for d in intervals_days) / len(intervals_days)
             std_dev = variance ** 0.5
@@ -299,7 +299,7 @@ class RecurringInvoiceService:
         else:
             interval_consistency = 0.5
 
-        # Pruefe Betragsaehnlichkeit
+        # Prüfe Betragsähnlichkeit
         avg_amount = sum(amounts) / len(amounts)
         if avg_amount > 0:
             amount_deviations = [abs(a - avg_amount) / avg_amount for a in amounts]
@@ -498,7 +498,7 @@ class RecurringInvoiceService:
     ) -> Optional[RecurringInvoiceOccurrence]:
         """Versucht eine eingehende Rechnung einem Abo-Muster zuzuordnen.
 
-        Sucht aktive wiederkehrende Rechnungen des Lieferanten und prueft
+        Sucht aktive wiederkehrende Rechnungen des Lieferanten und prüft
         ob Betrag und Datum zur Erwartung passen.
         """
         vendor_lower = request.vendor_name.strip().lower()
@@ -545,7 +545,7 @@ class RecurringInvoiceService:
             request.invoice_date, best_match.interval_months,
         )
 
-        # Pruefe auf Preisaenderung
+        # Prüfe auf Preisänderung
         await self._check_price_change(db, best_match, request.amount)
 
         await db.commit()
@@ -567,7 +567,7 @@ class RecurringInvoiceService:
         invoice_date: date,
     ) -> float:
         """Berechnet die Zuordnungskonfidenz."""
-        # Betrags-Uebereinstimmung
+        # Betrags-Übereinstimmung
         if recurring.expected_amount and recurring.expected_amount > 0:
             deviation = abs(float(amount - recurring.expected_amount) / float(recurring.expected_amount)) * 100
             tolerance = recurring.tolerance_percent or 5.0
@@ -580,7 +580,7 @@ class RecurringInvoiceService:
         else:
             amount_score = 0.5
 
-        # Datums-Uebereinstimmung
+        # Datums-Übereinstimmung
         if recurring.next_expected_date:
             days_diff = abs((invoice_date - recurring.next_expected_date).days)
             if days_diff <= 5:
@@ -603,7 +603,7 @@ class RecurringInvoiceService:
         request: MatchInvoiceRequest,
         confidence: float,
     ) -> RecurringInvoiceOccurrence:
-        """Erstellt oder aktualisiert eine Occurrence fuer das Match."""
+        """Erstellt oder aktualisiert eine Occurrence für das Match."""
         # Suche bestehende erwartete Occurrence im Zeitfenster +/- 30 Tage
         existing_result = await db.execute(
             select(RecurringInvoiceOccurrence)
@@ -688,7 +688,7 @@ class RecurringInvoiceService:
         recurring: RecurringInvoice,
         new_amount: Decimal,
     ) -> None:
-        """Prueft auf Preisaenderung und aktualisiert Preis-History."""
+        """Prüft auf Preisänderung und aktualisiert Preis-History."""
         if not recurring.expected_amount or recurring.expected_amount == 0:
             return
 
@@ -710,7 +710,7 @@ class RecurringInvoiceService:
             recurring.last_price_change_date = date.today()
             recurring.price_change_percent = round(change_percent, 2)
             recurring.expected_amount = new_amount
-            recurring.price_increase_alerted = False  # Reset fuer neuen Alert
+            recurring.price_increase_alerted = False  # Reset für neuen Alert
 
             logger.info(
                 "recurring_price_change_detected",
@@ -723,11 +723,11 @@ class RecurringInvoiceService:
         from_date: date,
         interval_months: int,
     ) -> date:
-        """Berechnet das naechste erwartete Datum basierend auf dem Intervall."""
+        """Berechnet das nächste erwartete Datum basierend auf dem Intervall."""
         month = from_date.month + interval_months
         year = from_date.year + (month - 1) // 12
         month = ((month - 1) % 12) + 1
-        day = min(from_date.day, 28)  # Sicher fuer alle Monate
+        day = min(from_date.day, 28)  # Sicher für alle Monate
         return date(year, month, day)
 
     # ========================================================================
@@ -739,10 +739,10 @@ class RecurringInvoiceService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[MissingInvoiceInfo]:
-        """Findet ueberfaellige / fehlende erwartete Rechnungen."""
+        """Findet überfällige / fehlende erwartete Rechnungen."""
         today = date.today()
 
-        # Finde aktive Abos mit ueberfaelligem next_expected_date
+        # Finde aktive Abos mit überfälligem next_expected_date
         result = await db.execute(
             select(RecurringInvoice)
             .where(
@@ -764,7 +764,7 @@ class RecurringInvoiceService:
 
             days_overdue = (today - abo.next_expected_date).days
 
-            # Nur melden wenn mehr als 5 Tage ueberfaellig
+            # Nur melden wenn mehr als 5 Tage überfällig
             if days_overdue > 5:
                 missing.append(MissingInvoiceInfo(
                     recurring_invoice_id=abo.id,
@@ -787,7 +787,7 @@ class RecurringInvoiceService:
         db: AsyncSession,
         company_id: uuid.UUID,
     ) -> List[PriceChangeInfo]:
-        """Findet Abos mit nicht-alertierten Preisaenderungen."""
+        """Findet Abos mit nicht-alertierten Preisänderungen."""
         result = await db.execute(
             select(RecurringInvoice)
             .where(
@@ -833,7 +833,7 @@ class RecurringInvoiceService:
         year: int,
         month: int,
     ) -> SollIstReport:
-        """Erstellt Soll/Ist-Vergleichsbericht fuer einen Monat.
+        """Erstellt Soll/Ist-Vergleichsbericht für einen Monat.
 
         Vergleicht erwartete wiederkehrende Rechnungen mit
         tatsaechlich eingegangenen Rechnungen.
@@ -867,7 +867,7 @@ class RecurringInvoiceService:
         matched_count = 0
 
         for abo in abos:
-            # Pruefe ob dieses Abo im Zeitraum eine Rechnung erwartet
+            # Prüfe ob dieses Abo im Zeitraum eine Rechnung erwartet
             if not self._is_expected_in_period(abo, period_start, period_end):
                 continue
 
@@ -935,7 +935,7 @@ class RecurringInvoiceService:
         period_start: date,
         period_end: date,
     ) -> bool:
-        """Prueft ob ein Abo im gegebenen Zeitraum eine Rechnung erwartet."""
+        """Prüft ob ein Abo im gegebenen Zeitraum eine Rechnung erwartet."""
         if not recurring.first_seen_date:
             return True
 
@@ -943,11 +943,11 @@ class RecurringInvoiceService:
             return False
 
         interval = recurring.interval_months or 1
-        # Einfache Pruefung: monatlich = immer, vierteljaehrlich = Monat % 3, etc.
+        # Einfache Prüfung: monatlich = immer, vierteljährlich = Monat % 3, etc.
         if interval == 1:
             return True
 
-        # Pruefe ob der Monat ein Vielfaches des Intervalls vom Startmonat ist
+        # Prüfe ob der Monat ein Vielfaches des Intervalls vom Startmonat ist
         start_month = recurring.first_seen_date.month
         period_month = period_start.month
         months_diff = (period_start.year - recurring.first_seen_date.year) * 12 + (period_month - start_month)
@@ -995,7 +995,7 @@ class RecurringInvoiceService:
         deadline: date,
         notice_days: Optional[int] = None,
     ) -> RecurringInvoice:
-        """Aktualisiert die Kuendigungsfrist eines Abos."""
+        """Aktualisiert die Kündigungsfrist eines Abos."""
         recurring = await db.get(RecurringInvoice, recurring_id)
         if not recurring:
             raise ValueError(f"Wiederkehrende Rechnung {recurring_id} nicht gefunden")

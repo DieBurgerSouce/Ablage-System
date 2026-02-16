@@ -1,7 +1,7 @@
 """
 Portal Documents API.
 
-Dokument-Upload fuer Kundenportal.
+Dokument-Upload für Kundenportal.
 """
 
 from typing import Optional
@@ -22,7 +22,7 @@ router = APIRouter(prefix="/documents", tags=["Portal-Dokumente"])
 @router.get("/allowed-types")
 async def get_allowed_file_types():
     """
-    Hole erlaubte Dateitypen fuer Upload.
+    Hole erlaubte Dateitypen für Upload.
     """
     return {
         "types": PortalDocumentService.get_allowed_file_types(),
@@ -47,7 +47,7 @@ async def upload_document(
     if not portal_user.can_upload_documents:
         raise HTTPException(
             status_code=403,
-            detail="Keine Berechtigung fuer Dokument-Upload",
+            detail="Keine Berechtigung für Dokument-Upload",
         )
 
     # Lese Dateiinhalt
@@ -180,9 +180,9 @@ async def delete_document(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Loesche ein hochgeladenes Dokument.
+    Lösche ein hochgeladenes Dokument.
 
-    Nur moeglich wenn noch nicht verarbeitet.
+    Nur möglich wenn noch nicht verarbeitet.
     """
     service = get_portal_document_service(db)
 
@@ -194,10 +194,10 @@ async def delete_document(
     if not success:
         raise HTTPException(
             status_code=400,
-            detail="Loeschen nicht moeglich (nicht gefunden oder bereits verarbeitet)",
+            detail="Löschen nicht möglich (nicht gefunden oder bereits verarbeitet)",
         )
 
     return {
         "success": True,
-        "message": "Dokument geloescht",
+        "message": "Dokument gelöscht",
     }

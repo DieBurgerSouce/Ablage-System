@@ -11,7 +11,7 @@ import { FileText, AlertCircle } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { EditableField } from '../EditableField'
+import { EditableField } from './EditableField'
 
 // FlagReasonBanner und ValidationAlerts werden später integriert
 import {

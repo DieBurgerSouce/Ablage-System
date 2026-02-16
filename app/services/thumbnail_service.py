@@ -1,6 +1,6 @@
 """Thumbnail Generation Service.
 
-Generiert Vorschaubilder fuer Dokumente:
+Generiert Vorschaubilder für Dokumente:
 - PDF: Erste Seite als Bild (via pdf2image/poppler)
 - Bilder: Verkleinerte Version
 

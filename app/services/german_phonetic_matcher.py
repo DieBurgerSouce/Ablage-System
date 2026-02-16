@@ -14,7 +14,7 @@ Features:
 - Fuzzy matching with configurable thresholds
 - Batch matching for large datasets
 
-Feinpoliert und durchdacht - Deutsche Namens-Matching-Qualitaet.
+Feinpoliert und durchdacht - Deutsche Namens-Matching-Qualität.
 """
 
 from functools import lru_cache
@@ -50,7 +50,7 @@ class GermanPhoneticMatcher:
         "köhler": {"koehler", "kohler"},
         "krämer": {"kraemer", "kramer"},
         "schröder": {"schroeder", "schroder", "schroeter"},
-        "größmann": {"groessmann", "grossmann"},
+        "größmann": {"größmann", "grossmann"},
         "bäcker": {"baecker", "backer"},
         "jäger": {"jaeger", "jager"},
         "löffler": {"loeffler", "loffler"},

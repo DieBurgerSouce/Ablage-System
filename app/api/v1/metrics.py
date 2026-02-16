@@ -36,9 +36,9 @@ from app.core.safe_errors import safe_error_log
 router = APIRouter(prefix="/metrics", tags=["metrics"])
 
 
-# SECURITY FIX 27-10: PII Masking fuer Admin-Logs (GDPR-konform)
+# SECURITY FIX 27-10: PII Masking für Admin-Logs (GDPR-konform)
 def _mask_admin_email_for_log(email: Optional[str]) -> str:
-    """Maskiert Admin-Email-Adresse fuer Log-Ausgabe."""
+    """Maskiert Admin-Email-Adresse für Log-Ausgabe."""
     if not email or "@" not in email:
         return "[no-email]"
     local, domain = email.split("@", 1)
@@ -54,20 +54,20 @@ def _mask_admin_email_for_log(email: Optional[str]) -> str:
 
 def verify_metrics_token(authorization: str | None = None) -> bool:
     """
-    Verifiziert den Metrics-Scrape-Token fuer interne Endpunkte.
+    Verifiziert den Metrics-Scrape-Token für interne Endpunkte.
 
     Args:
         authorization: Authorization Header (Bearer token)
 
     Returns:
-        True wenn Token gueltig oder kein Token konfiguriert
+        True wenn Token gültig oder kein Token konfiguriert
 
     Raises:
-        HTTPException 401/403 wenn Token ungueltig
+        HTTPException 401/403 wenn Token ungültig
     """
     from app.core.config import settings
 
-    # Wenn kein Token konfiguriert, erlaube Zugriff (fuer Development)
+    # Wenn kein Token konfiguriert, erlaube Zugriff (für Development)
     if not settings.METRICS_SCRAPE_TOKEN:
         return True
 
@@ -174,7 +174,7 @@ async def search_metrics_prometheus(
     - search_cache_operations_total: Cache-Treffer/Miss
     - search_cache_invalidations_total: Cache-Invalidierungen
     - search_embedding_generation_seconds: Embedding-Generierung
-    - search_similar_requests_total: Aehnliche-Dokumente-Anfragen
+    - search_similar_requests_total: Ähnliche-Dokumente-Anfragen
     - search_filter_usage_total: Filter-Verwendung
 
     Example Prometheus config:
@@ -208,7 +208,7 @@ async def backup_metrics_prometheus(
     - ablage_backup_success_total: Erfolgreiche Backups
     - ablage_backup_failure_total: Fehlgeschlagene Backups
     - ablage_backup_duration_seconds: Backup-Dauer
-    - ablage_backup_size_bytes: Backup-Groesse
+    - ablage_backup_size_bytes: Backup-Größe
     - ablage_backup_validation_success_total: Erfolgreiche Validierungen
     - ablage_backup_validation_failure_total: Fehlgeschlagene Validierungen
     - ablage_backup_remote_sync_success_total: Remote-Sync Erfolge
@@ -241,7 +241,7 @@ async def backup_metrics_summary(
     **REQUIRES ADMIN AUTHENTICATION**
 
     Returns backup-specific metrics for dashboards:
-    - Speicherplatz-Nutzung und Verfuegbarkeit
+    - Speicherplatz-Nutzung und Verfügbarkeit
     - Anzahl Backup-Dateien nach Typ
     - Prometheus-Status
 
@@ -300,10 +300,10 @@ async def datev_metrics_summary(
     **REQUIRES ADMIN AUTHENTICATION**
 
     Returns DATEV-specific metrics for dashboards:
-    - Verfuegbare Metriken-Typen
+    - Verfügbare Metriken-Typen
     - Prometheus-Endpoint
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - DATEV-Monitoring Dashboards
     - Export-Tracking
     - Performance-Analyse
@@ -330,10 +330,10 @@ async def gpu_metrics_prometheus(
     - ablage_gpu_memory_used_bytes: VRAM-Nutzung
     - ablage_gpu_memory_total_bytes: VRAM gesamt
     - ablage_gpu_memory_percent: VRAM-Nutzung in Prozent
-    - ablage_gpu_available: GPU-Verfuegbarkeit
+    - ablage_gpu_available: GPU-Verfügbarkeit
     - ablage_ocr_requests_total: OCR-Anfragen nach Backend/Status
     - ablage_ocr_processing_duration_seconds: OCR-Verarbeitungszeit
-    - ablage_ocr_batch_size: Batch-Groessen
+    - ablage_ocr_batch_size: Batch-Größen
     - ablage_ocr_errors_total: OCR-Fehler nach Typ
     - ablage_gpu_oom_errors_total: OOM-Fehler
     - ablage_gpu_oom_recoveries_total: Erfolgreiche OOM-Recoveries
@@ -367,10 +367,10 @@ async def gpu_metrics_summary(
 
     Returns GPU-specific metrics for dashboards:
     - GPU-Speicher-Status
-    - Verfuegbarkeit
+    - Verfügbarkeit
     - Letzte Aktualisierung
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - GPU-Monitoring Dashboards
     - Kapazitaetsplanung
     - Performance-Analyse
@@ -396,7 +396,7 @@ async def gpu_metrics_detailed(
     - Model-Status
 
     **Hinweis**: Dieser Endpoint sammelt Metriken aus mehreren Quellen
-    und kann bei hoher Last etwas laenger dauern.
+    und kann bei hoher Last etwas länger dauern.
     """
     import structlog
     logger = structlog.get_logger(__name__)
@@ -511,13 +511,13 @@ async def business_metrics_prometheus(
 
     **Document Metrics:**
     - ablage_documents_uploaded_total: Hochgeladene Dokumente
-    - ablage_document_size_bytes: Dokumentengroesse
+    - ablage_document_size_bytes: Dokumentengröße
     - ablage_document_page_count: Seitenanzahl
-    - ablage_document_status_transitions_total: Status-Uebergaenge
+    - ablage_document_status_transitions_total: Status-Übergaenge
 
     **Backpressure Metrics:**
     - ablage_backpressure_status: Aktueller Status
-    - ablage_backpressure_queue_length_total: Queue-Laenge
+    - ablage_backpressure_queue_length_total: Queue-Länge
     - ablage_backpressure_rejected_total: Abgelehnte Anfragen
     - ablage_backpressure_degraded_total: Degradierte Anfragen
 
@@ -573,7 +573,7 @@ async def business_metrics_summary(
             "gpu_oom_errors": gpu_oom_errors,
         },
         "metrics_categories": get_metrics_summary(),
-        "hinweis": "Nutze /metrics/business/prometheus fuer Prometheus-Format"
+        "hinweis": "Nutze /metrics/business/prometheus für Prometheus-Format"
     }
 
 
@@ -625,7 +625,7 @@ async def ocr_cache_metrics(
     - **hit_rate_percent**: Trefferquote in Prozent
     - **default_ttl_seconds**: Standard-Cache-Lebenszeit
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Performance-Monitoring
     - Cache-Effizienz-Analyse
     - Ressourcen-Optimierung
@@ -641,11 +641,11 @@ async def clear_ocr_cache_stats(
     current_user: User = Depends(get_current_superuser)
 ):
     """
-    OCR Cache Statistiken zuruecksetzen.
+    OCR Cache Statistiken zurücksetzen.
 
     **REQUIRES ADMIN AUTHENTICATION**
 
-    Setzt nur die Statistik-Zaehler zurueck (hits/misses),
+    Setzt nur die Statistik-Zaehler zurück (hits/misses),
     nicht die gecacheten Ergebnisse selbst.
     """
     import structlog
@@ -653,7 +653,7 @@ async def clear_ocr_cache_stats(
 
     from app.services.ocr_cache_service import get_ocr_cache_service
 
-    # SECURITY FIX 27-10: PII Masking - Admin-Email nicht vollstaendig loggen!
+    # SECURITY FIX 27-10: PII Masking - Admin-Email nicht vollständig loggen!
     logger.warning(
         "ocr_cache_stats_reset_initiated",
         admin_user_id=str(current_user.id)[:8] + "...",
@@ -665,7 +665,7 @@ async def clear_ocr_cache_stats(
 
     return {
         "status": "erfolg" if success else "fehlgeschlagen",
-        "nachricht": "OCR-Cache-Statistiken wurden zurueckgesetzt" if success else "Zuruecksetzen fehlgeschlagen",
+        "nachricht": "OCR-Cache-Statistiken wurden zurückgesetzt" if success else "Zurücksetzen fehlgeschlagen",
         "durchgeführt_von": str(current_user.id)
     }
 
@@ -679,7 +679,7 @@ async def get_cache_hit_rate_metrics(
 
     **REQUIRES ADMIN AUTHENTICATION**
 
-    Zeigt Cache-Effizienz ueber alle Cache-Schichten:
+    Zeigt Cache-Effizienz über alle Cache-Schichten:
 
     **OCR Cache:**
     - L1 (Memory) und L2 (Redis) Hit-Raten
@@ -798,7 +798,7 @@ async def get_cache_hit_rate_metrics(
         recommendations.append({
             "type": "ocr_cache",
             "severity": "warning",
-            "message": "OCR Cache Hit-Rate unter 30% - pruefe Cache-TTL und Backend-Auswahl",
+            "message": "OCR Cache Hit-Rate unter 30% - prüfe Cache-TTL und Backend-Auswahl",
         })
 
     # Check API cache hit rate
@@ -806,7 +806,7 @@ async def get_cache_hit_rate_metrics(
         recommendations.append({
             "type": "api_cache",
             "severity": "info",
-            "message": "API Cache Hit-Rate unter 50% - pruefe Cache-Konfiguration",
+            "message": "API Cache Hit-Rate unter 50% - prüfe Cache-Konfiguration",
         })
 
     result["recommendations"] = recommendations
@@ -831,7 +831,7 @@ async def get_database_metrics(
     - Queries pro Operation
 
     **Connection Pool:**
-    - Pool-Groesse
+    - Pool-Größe
     - Aktive Connections
     - Overflow-Connections
 
@@ -931,7 +931,7 @@ async def get_database_metrics(
         recommendations.append({
             "type": "connection_pool",
             "severity": "warning",
-            "message": f"Connection Pool Auslastung bei {pool_util}% - erhoehe Pool-Groesse",
+            "message": f"Connection Pool Auslastung bei {pool_util}% - erhöhe Pool-Größe",
         })
 
     # Check slow queries
@@ -940,7 +940,7 @@ async def get_database_metrics(
         recommendations.append({
             "type": "slow_queries",
             "severity": "warning",
-            "message": f"{slow_total} langsame Queries (>100ms) - pruefe Indizes und Queries",
+            "message": f"{slow_total} langsame Queries (>100ms) - prüfe Indizes und Queries",
         })
 
     # Check error rate
@@ -949,7 +949,7 @@ async def get_database_metrics(
         recommendations.append({
             "type": "query_errors",
             "severity": "critical",
-            "message": f"Datenbank-Fehlerrate bei {error_rate}% - pruefe Verbindung und Logs",
+            "message": f"Datenbank-Fehlerrate bei {error_rate}% - prüfe Verbindung und Logs",
         })
 
     result["recommendations"] = recommendations
@@ -1025,7 +1025,7 @@ async def get_slo_metrics(
 
     Zeigt den aktuellen Status der definierten SLOs:
 
-    **Verfuegbarkeit:**
+    **Verfügbarkeit:**
     - Ziel: 99.5% Uptime
     - Messung: Erfolgreiche Requests / Gesamt-Requests
 
@@ -1046,7 +1046,7 @@ async def get_slo_metrics(
     - VRAM-Nutzung: <85%
     - OOM-Rate: <1%
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Compliance-Reporting
     - Performance-Dashboards
     - Alerting-Schwellwerte
@@ -1061,7 +1061,7 @@ async def get_slo_metrics(
     # SLO-Definitionen
     slo_definitions = {
         "availability": {
-            "name": "Verfuegbarkeit",
+            "name": "Verfügbarkeit",
             "target": 0.995,
             "unit": "Prozent",
             "description": "99.5% Uptime"
@@ -1159,7 +1159,7 @@ async def get_slo_metrics(
             logger.warning("slo_gpu_metrics_unavailable", **safe_error_log(e))
             sli_values["gpu_vram_usage"] = None
 
-        # Latenz-Perzentile (aus Redis Histogramm wenn verfuegbar)
+        # Latenz-Perzentile (aus Redis Histogramm wenn verfügbar)
         try:
             p50 = await redis.get("metrics:api_latency:p50")
             p95 = await redis.get("metrics:api_latency:p95")
@@ -1172,7 +1172,7 @@ async def get_slo_metrics(
             sli_values["api_latency_p95"] = None
             sli_values["api_latency_p99"] = None
 
-        # OCR-Verarbeitungszeiten (aus Redis wenn verfuegbar)
+        # OCR-Verarbeitungszeiten (aus Redis wenn verfügbar)
         try:
             ocr_under_5s = await redis.get("metrics:ocr:under_5s_rate")
             ocr_under_30s = await redis.get("metrics:ocr:under_30s_rate")
@@ -1182,7 +1182,7 @@ async def get_slo_metrics(
             sli_values["ocr_processing_5s"] = None
             sli_values["ocr_processing_30s"] = None
 
-        # Umlaut-Genauigkeit (aus Redis wenn verfuegbar)
+        # Umlaut-Genauigkeit (aus Redis wenn verfügbar)
         try:
             umlaut_acc = await redis.get("metrics:ocr:umlaut_accuracy_avg")
             sli_values["umlaut_accuracy"] = float(umlaut_acc) if umlaut_acc else None
@@ -1249,22 +1249,22 @@ async def get_slo_history(
     current_user: User = Depends(get_current_superuser)  # EE.3 SECURITY FIX: Admin only
 ):
     """
-    SLO-Verlauf ueber Zeit.
+    SLO-Verlauf über Zeit.
 
     **REQUIRES ADMIN AUTHENTICATION**
 
-    Zeigt historische SLO-Daten fuer Trend-Analyse und Reporting.
+    Zeigt historische SLO-Daten für Trend-Analyse und Reporting.
 
     **Parameter:**
     - days: Anzahl der Tage (1-30)
     - slo_key: Spezifisches SLO (optional, sonst alle)
 
-    **Rueckgabe:**
-    - Taegliche SLO-Werte
+    **Rückgabe:**
+    - Tägliche SLO-Werte
     - Trend-Richtung
     - Durchschnittswerte
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - SLO-Reports
     - Trend-Erkennung
     - Kapazitaetsplanung
@@ -1286,7 +1286,7 @@ async def get_slo_history(
         if slo_key not in tracked_slos:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unbekanntes SLO: {slo_key}. Verfuegbar: {tracked_slos}"
+                detail=f"Unbekanntes SLO: {slo_key}. Verfügbar: {tracked_slos}"
             )
         tracked_slos = [slo_key]
 
@@ -1347,7 +1347,7 @@ async def get_ocr_quality_metrics(
 
     **REQUIRES ADMIN AUTHENTICATION**
 
-    Zeigt aggregierte Qualitaetsmetriken ueber alle OCR-Verarbeitungen:
+    Zeigt aggregierte Qualitaetsmetriken über alle OCR-Verarbeitungen:
 
     **Character Error Rate (CER):**
     - Durchschnitt, Min, Max, Verteilung
@@ -1357,15 +1357,15 @@ async def get_ocr_quality_metrics(
 
     **Umlaut-Genauigkeit:**
     - Durchschnitt pro Backend
-    - Haeufigste Fehler
+    - Häufigste Fehler
 
     **Backend-Vergleich:**
     - Qualitaet nach OCR-Backend
     - Verarbeitungszeiten nach Backend
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Backend-Auswahl-Optimierung
-    - Qualitaetsueberwachung
+    - Qualitaetsüberwachung
     - Benchmarking
     """
     import structlog
@@ -1565,7 +1565,7 @@ async def get_webhook_metrics(
         recommendations.append({
             "type": "circuit_breaker",
             "severity": "warning",
-            "message": f"{open_count} Circuit Breaker offen - pruefe Webhook-Endpunkte",
+            "message": f"{open_count} Circuit Breaker offen - prüfe Webhook-Endpunkte",
         })
 
     if half_open_count > 0:
@@ -1581,7 +1581,7 @@ async def get_webhook_metrics(
         recommendations.append({
             "type": "delivery",
             "severity": "warning",
-            "message": f"Webhook-Erfolgsrate nur {success_rate}% - pruefe Endpunkt-Verfuegbarkeit",
+            "message": f"Webhook-Erfolgsrate nur {success_rate}% - prüfe Endpunkt-Verfügbarkeit",
         })
 
     result["recommendations"] = recommendations
@@ -1595,20 +1595,20 @@ async def reset_circuit_breaker(
     current_user: User = Depends(get_current_superuser)
 ):
     """
-    Circuit Breaker zuruecksetzen.
+    Circuit Breaker zurücksetzen.
 
     **REQUIRES ADMIN AUTHENTICATION**
 
-    Setzt Circuit Breaker zurueck:
-    - Mit URL-Parameter: Nur den Circuit Breaker fuer diese URL zuruecksetzen
-    - Ohne URL-Parameter: Alle Circuit Breaker zuruecksetzen
+    Setzt Circuit Breaker zurück:
+    - Mit URL-Parameter: Nur den Circuit Breaker für diese URL zurücksetzen
+    - Ohne URL-Parameter: Alle Circuit Breaker zurücksetzen
 
     Args:
-        url: Optional - Spezifische URL zum Zuruecksetzen
+        url: Optional - Spezifische URL zum Zurücksetzen
         current_user: Authentifizierter Admin-User
 
     Returns:
-        Erfolgs-Status mit Anzahl zurueckgesetzter Circuits
+        Erfolgs-Status mit Anzahl zurückgesetzter Circuits
     """
     import structlog
     logger = structlog.get_logger(__name__)
@@ -1617,7 +1617,7 @@ async def reset_circuit_breaker(
 
     circuit_breaker = get_webhook_circuit_breaker()
 
-    # SECURITY FIX 27-10: PII Masking - Admin-Email nicht vollstaendig loggen!
+    # SECURITY FIX 27-10: PII Masking - Admin-Email nicht vollständig loggen!
     logger.warning(
         "circuit_breaker_reset_initiated",
         admin_user_id=str(current_user.id)[:8] + "...",
@@ -1646,7 +1646,7 @@ async def reset_circuit_breaker(
 
     return {
         "status": "erfolg",
-        "nachricht": f"Circuit Breaker zurueckgesetzt",
+        "nachricht": f"Circuit Breaker zurückgesetzt",
         "circuits_reset": reset_count,
         "target": url[:50] if url else "alle",
         "durchgeführt_von": str(current_user.id),
@@ -1667,17 +1667,17 @@ async def get_dashboard_links(
 
     **REQUIRES AUTHENTICATION**
 
-    Gibt URLs zu allen verfuegbaren Grafana-Dashboards zurueck.
+    Gibt URLs zu allen verfügbaren Grafana-Dashboards zurück.
 
-    **Verfuegbare Dashboards:**
+    **Verfügbare Dashboards:**
     - **System Overview**: Allgemeine Systemmetriken, Container-Health
     - **OCR Pipeline**: OCR-Verarbeitungsmetriken, Backend-Vergleich
-    - **GPU Profiling**: VRAM-Nutzung, Batch-Groessen, OOM-Events
+    - **GPU Profiling**: VRAM-Nutzung, Batch-Größen, OOM-Events
     - **ML Routing**: Backend-Auswahl, Gewichtungen, A/B Testing
     - **Backup Monitoring**: Backup-Status, Speicherplatz, Sync-Status
 
     Returns:
-        Dictionary mit Dashboard-URLs und Verfuegbarkeitsstatus
+        Dictionary mit Dashboard-URLs und Verfügbarkeitsstatus
     """
     from app.core.config import settings
 
@@ -1706,7 +1706,7 @@ async def get_dashboard_links(
         "gpu_profiling": {
             "name": "GPU Profiling",
             "url": f"{base_url}/d/ablage-gpu-profiling",
-            "description": "VRAM-Nutzung, Batch-Groessen, OOM-Events, Model-Loading",
+            "description": "VRAM-Nutzung, Batch-Größen, OOM-Events, Model-Loading",
             "icon": "Cpu"
         },
         "ml_routing": {
@@ -1740,7 +1740,7 @@ async def get_ab_testing_metrics(
     current_user: User = Depends(get_current_superuser),  # W.2 SECURITY FIX: Admin required
 ) -> JSONDict:
     """
-    A/B Testing Status fuer Vector Search (pgvector vs Qdrant).
+    A/B Testing Status für Vector Search (pgvector vs Qdrant).
 
     **REQUIRES ADMIN AUTHENTICATION**
 
@@ -1748,7 +1748,7 @@ async def get_ab_testing_metrics(
 
     **Konfiguration:**
     - enabled: Ob A/B Testing aktiv ist
-    - traffic_split: Prozentsatz fuer Treatment (Qdrant)
+    - traffic_split: Prozentsatz für Treatment (Qdrant)
     - control_backend: Kontroll-Backend (pgvector)
     - treatment_backend: Treatment-Backend (qdrant)
 
@@ -1764,9 +1764,9 @@ async def get_ab_testing_metrics(
     - points_count: Anzahl Vektoren in Qdrant
     - collection_status: Collection-Status
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Performance-Vergleich pgvector vs Qdrant
-    - Entscheidung fuer Migration
+    - Entscheidung für Migration
     - Monitoring der Rollout-Phase
     """
     from app.services.rag.ab_testing_router import get_ab_testing_router
@@ -1833,57 +1833,57 @@ async def get_ab_testing_metrics(
 
                 collection_info = info.get("result", {})
                 result["qdrant_status"] = {
-                    "verfuegbar": True,
+                    "verfügbar": True,
                     "collection": collection_name,
                     "punkte_anzahl": collection_info.get("points_count", 0),
                     "vektoren_anzahl": collection_info.get("vectors_count", 0),
                     "status": collection_info.get("status", "unbekannt"),
                     "konfiguration": {
-                        "vektor_groesse": collection_info.get("config", {}).get("params", {}).get("vectors", {}).get("size"),
+                        "vektor_größe": collection_info.get("config", {}).get("params", {}).get("vectors", {}).get("size"),
                         "distanz": collection_info.get("config", {}).get("params", {}).get("vectors", {}).get("distance"),
                     },
                     "tls_aktiviert": protocol == "https"
                 }
             elif resp.status_code == 404:
                 result["qdrant_status"] = {
-                    "verfuegbar": True,
+                    "verfügbar": True,
                     "fehler": f"Collection '{collection_name}' existiert nicht. Führe Migration aus."
                 }
             else:
                 result["qdrant_status"] = {
-                    "verfuegbar": False,
+                    "verfügbar": False,
                     "fehler": f"Qdrant-Fehler: HTTP {resp.status_code}"
                 }
 
     except httpx.TimeoutException:
         logger.warning("qdrant_timeout", timeout_seconds=5.0)
         result["qdrant_status"] = {
-            "verfuegbar": False,
+            "verfügbar": False,
             "fehler": "Qdrant nicht erreichbar (Timeout nach 5 Sekunden)"
         }
     except httpx.ConnectError:
         logger.warning("qdrant_connection_error", host=settings.QDRANT_HOST)
         result["qdrant_status"] = {
-            "verfuegbar": False,
+            "verfügbar": False,
             "fehler": f"Verbindung zu Qdrant fehlgeschlagen ({settings.QDRANT_HOST}:{settings.QDRANT_HTTP_PORT})"
         }
     except ValueError as ve:
         logger.warning("qdrant_config_error", error=str(ve))
         result["qdrant_status"] = {
-            "verfuegbar": False,
+            "verfügbar": False,
             "fehler": str(ve)
         }
     except Exception as e:
         logger.error("qdrant_status_error", **safe_error_log(e), error_type=type(e).__name__)
         result["qdrant_status"] = {
-            "verfuegbar": False,
+            "verfügbar": False,
             "fehler": "Unerwarteter Fehler beim Qdrant-Statusabruf"
         }
 
     # Empfehlungen generieren
     empfehlungen = []
 
-    # Pruefen ob A/B Testing aktiviert aber noch keine Anfragen
+    # Prüfen ob A/B Testing aktiviert aber noch keine Anfragen
     control_requests = result.get("metriken", {}).get("control", {}).get("total_requests", 0)
     treatment_requests = result.get("metriken", {}).get("treatment", {}).get("total_requests", 0)
 
@@ -1939,11 +1939,11 @@ async def update_ab_testing_traffic_split(
     current_user: User = Depends(get_current_superuser)
 ) -> JSONDict:
     """
-    A/B Testing Traffic-Split aendern.
+    A/B Testing Traffic-Split ändern.
 
     **REQUIRES ADMIN AUTHENTICATION**
 
-    Aendert den Prozentsatz des Traffics, der an Qdrant (Treatment) geht.
+    Ändert den Prozentsatz des Traffics, der an Qdrant (Treatment) geht.
 
     **Parameter:**
     - new_split: Neuer Prozentsatz (0-100)
@@ -1956,11 +1956,11 @@ async def update_ab_testing_traffic_split(
     1. Start: 10% (validieren)
     2. Phase 2: 25% (mehr Daten sammeln)
     3. Phase 3: 50% (echte A/B Vergleichbarkeit)
-    4. Phase 4: 90% (fast vollstaendig)
+    4. Phase 4: 90% (fast vollständig)
     5. Final: 100% (Migration abgeschlossen)
 
     Returns:
-        Bestaetigung mit altem und neuem Split-Wert
+        Bestätigung mit altem und neuem Split-Wert
     """
     logger = structlog.get_logger(__name__)
 
@@ -1987,7 +1987,7 @@ async def update_ab_testing_traffic_split(
 
     return {
         "status": "erfolg",
-        "nachricht": f"Traffic-Split von {old_split}% auf {new_split}% geaendert",
+        "nachricht": f"Traffic-Split von {old_split}% auf {new_split}% geändert",
         "alter_split": old_split,
         "neuer_split": new_split,
         "durchgeführt_von": str(current_user.id)
@@ -1999,15 +1999,15 @@ async def reset_ab_testing_metrics(
     current_user: User = Depends(get_current_superuser)
 ) -> JSONDict:
     """
-    A/B Testing Metriken zuruecksetzen.
+    A/B Testing Metriken zurücksetzen.
 
     **REQUIRES ADMIN AUTHENTICATION**
 
-    Setzt alle gesammelten A/B Testing Metriken auf 0 zurueck.
-    Nuetzlich nach Konfigurationsaenderungen oder fuer neue Testphasen.
+    Setzt alle gesammelten A/B Testing Metriken auf 0 zurück.
+    Nuetzlich nach Konfigurationsänderungen oder für neue Testphasen.
 
     Returns:
-        Bestaetigung des Resets
+        Bestätigung des Resets
     """
     from app.services.rag.ab_testing_router import get_ab_testing_router
 
@@ -2025,6 +2025,6 @@ async def reset_ab_testing_metrics(
 
     return {
         "status": "erfolg",
-        "nachricht": "A/B Testing Metriken wurden zurueckgesetzt",
+        "nachricht": "A/B Testing Metriken wurden zurückgesetzt",
         "durchgeführt_von": str(current_user.id)
     }

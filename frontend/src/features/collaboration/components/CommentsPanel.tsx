@@ -20,10 +20,11 @@ import { useAuth } from '@/lib/auth/AuthContext';
 
 interface CommentsPanelProps {
   documentId: string;
+  onAnnotationClick?: (annotationId: string) => void;
   className?: string;
 }
 
-export function CommentsPanel({ documentId, className }: CommentsPanelProps) {
+export function CommentsPanel({ documentId, onAnnotationClick, className }: CommentsPanelProps) {
   const { data, isLoading, error, isError } = useComments(documentId);
   const createMutation = useCreateComment();
   const deleteMutation = useDeleteComment(documentId);
@@ -176,23 +177,31 @@ export function CommentsPanel({ documentId, className }: CommentsPanelProps) {
               </span>
             ) : null}
           </div>
-          {/* WebSocket Status Indicator */}
-          <Badge
-            variant={wsState === 'connected' ? 'default' : 'secondary'}
-            className="gap-1 text-xs"
-          >
-            {wsState === 'connected' ? (
-              <>
-                <Wifi className="h-3 w-3" />
-                Live
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-3 w-3" />
-                Offline
-              </>
+          <div className="flex items-center gap-1">
+            {/* WebSocket Status Indicator */}
+            <Badge
+              variant={wsState === 'connected' ? 'default' : 'secondary'}
+              className="gap-1 text-xs"
+            >
+              {wsState === 'connected' ? (
+                <>
+                  <Wifi className="h-3 w-3" />
+                  Live
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3 w-3" />
+                  Offline
+                </>
+              )}
+            </Badge>
+            {onAnnotationClick && (
+              <Badge variant="outline" className="gap-1 text-xs">
+                <MessageSquare className="h-3 w-3" />
+                Annotationen verknuepft
+              </Badge>
             )}
-          </Badge>
+          </div>
         </CardTitle>
       </CardHeader>
 

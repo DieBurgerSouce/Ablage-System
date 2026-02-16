@@ -1,11 +1,11 @@
 """Approval System Services.
 
-Enterprise Feature: Vollstaendiges Genehmigungssystem mit:
+Enterprise Feature: Vollständiges Genehmigungssystem mit:
 - Rule-basiertem Routing
 - Multi-Step Approval Chains
 - Eskalation und Delegation
 - Integration mit Workflows
-- Auto-Approval fuer Niedrig-Risiko-Dokumente
+- Auto-Approval für Niedrig-Risiko-Dokumente
 """
 
 from app.services.approval.approval_service import ApprovalService

@@ -1,6 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertCircle, AlertTriangle, Info, TrendingUp, TrendingDown } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info, TrendingUp, TrendingDown } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useHintsSummary } from '../hooks/use-document-hints';
 import { type HintCategory } from '../api/document-hints-api';
 

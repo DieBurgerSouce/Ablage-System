@@ -30,7 +30,7 @@ logger = structlog.get_logger(__name__)
 
 
 class ExcelReportGenerator:
-    """Generator fuer Excel-Reports."""
+    """Generator für Excel-Reports."""
 
     # Styles
     HEADER_FONT = Font(bold=True, size=12, color="FFFFFF") if OPENPYXL_AVAILABLE else None
@@ -340,7 +340,7 @@ class ExcelReportGenerator:
             },
             "sheets": {
                 "Rechnungen": {
-                    "headers": ["Rechnungsnr.", "Datum", "Betrag", "Status", "Faelligkeit"],
+                    "headers": ["Rechnungsnr.", "Datum", "Betrag", "Status", "Fälligkeit"],
                     "rows": [
                         [
                             inv.get("number", ""),
@@ -353,7 +353,7 @@ class ExcelReportGenerator:
                     ],
                     "currency_columns": [3]
                 },
-                "Vertraege": {
+                "Verträge": {
                     "headers": ["Vertragsnr.", "Titel", "Beginn", "Ende", "Wert"],
                     "rows": [
                         [
@@ -383,7 +383,7 @@ _excel_generator: Optional[ExcelReportGenerator] = None
 
 
 def get_excel_generator() -> ExcelReportGenerator:
-    """Gibt ExcelReportGenerator Singleton zurueck."""
+    """Gibt ExcelReportGenerator Singleton zurück."""
     global _excel_generator
     if _excel_generator is None:
         _excel_generator = ExcelReportGenerator()

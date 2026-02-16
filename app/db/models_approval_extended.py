@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Erweiterte Approval-Modelle fuer Features #3 und #7.
+Erweiterte Approval-Modelle für Features #3 und #7.
 
 Feature #3: Approval Workflow Depth
 - ConditionalApprovalRule: Bedingte Genehmigungsregeln
@@ -43,7 +43,7 @@ from app.db.models import Base, CrossDBJSON
 class ConditionalApprovalRule(Base):
     """Bedingte Genehmigungsregel.
 
-    Fuegt zusaetzliche Genehmiger hinzu wenn bestimmte Bedingungen
+    Fuegt zusätzliche Genehmiger hinzu wenn bestimmte Bedingungen
     erfuellt sind (z.B. Betrag > 5000 EUR oder Lieferanten-Risiko > 70).
 
     conditions-Format:
@@ -68,11 +68,11 @@ class ConditionalApprovalRule(Base):
     # Bedingungen als JSON-Array
     conditions = Column(CrossDBJSON, nullable=False, default=list)
 
-    # Zusaetzliche Genehmiger (User-IDs oder Rollen-Referenzen)
+    # Zusätzliche Genehmiger (User-IDs oder Rollen-Referenzen)
     additional_approvers = Column(CrossDBJSON, nullable=False, default=list)
     # Format: [{"type": "user", "value": "uuid..."}, {"type": "role", "value": "cfo"}]
 
-    # Optionale Prioritaets-Ueberschreibung
+    # Optionale Prioritäts-Überschreibung
     priority_override = Column(String(50), nullable=True)
 
     # Audit
@@ -95,7 +95,7 @@ class ConditionalApprovalRule(Base):
             "company_id",
             "is_active",
         ),
-        {"comment": "Bedingte Genehmigungsregeln mit zusaetzlichen Genehmigern"},
+        {"comment": "Bedingte Genehmigungsregeln mit zusätzlichen Genehmigern"},
     )
 
 
@@ -150,14 +150,14 @@ class EscalationRule(Base):
 
     __table_args__ = (
         Index("ix_escalation_rules_company_active", "company_id", "is_active"),
-        {"comment": "Eskalationsregeln fuer ueberfaellige Genehmigungen"},
+        {"comment": "Eskalationsregeln für überfällige Genehmigungen"},
     )
 
 
 class SubstitutionRule(Base):
     """Stellvertretungsregel.
 
-    Ermoeglicht automatische Weiterleitung von Genehmigungen
+    Ermöglicht automatische Weiterleitung von Genehmigungen
     an einen Stellvertreter bei Abwesenheit (Urlaub, Krankheit).
     """
     __tablename__ = "substitution_rules"
@@ -219,14 +219,14 @@ class SubstitutionRule(Base):
         Index("ix_substitution_rules_substitute", "substitute_user_id", "is_active"),
         Index("ix_substitution_rules_period", "valid_from", "valid_until"),
         {
-            "comment": "Stellvertretungsregeln fuer abwesende Genehmiger "
+            "comment": "Stellvertretungsregeln für abwesende Genehmiger "
             "(Urlaub, Krankheit)"
         },
     )
 
 
 class ApprovalSLAMetric(Base):
-    """SLA-Metrik fuer einen einzelnen Genehmigungsschritt.
+    """SLA-Metrik für einen einzelnen Genehmigungsschritt.
 
     Trackt die Zeit von Zuweisung bis Bearbeitung pro Schritt
     und erkennt SLA-Verletzungen.
@@ -286,7 +286,7 @@ class AutoFilingRule(Base):
     """Automatische Ablageregel (ML- oder regelbasiert).
 
     Lernt aus historischen Ablage-Entscheidungen und schlaegt
-    automatisch Ordner/Kategorie fuer neue Dokumente vor.
+    automatisch Ordner/Kategorie für neue Dokumente vor.
     """
     __tablename__ = "auto_filing_rules"
 
@@ -304,7 +304,7 @@ class AutoFilingRule(Base):
     # Modelltyp: "ml" (Machine Learning) oder "rule" (Regelbasiert)
     model_type = Column(String(50), nullable=False, default="rule")
 
-    # Confidence-Schwelle fuer automatische Ablage
+    # Confidence-Schwelle für automatische Ablage
     confidence_threshold = Column(Float, default=0.95, nullable=False)
 
     # Ziel
@@ -343,7 +343,7 @@ class AutoFilingRule(Base):
 class AutoMatchResult(Base):
     """Ergebnis eines automatischen Dokumenten-Matchings.
 
-    Verknuepft automatisch zusammengehoerige Dokumente:
+    Verknüpft automatisch zusammengehoerige Dokumente:
     Bestellung <-> Lieferschein <-> Rechnung
     """
     __tablename__ = "auto_match_results"
@@ -382,7 +382,7 @@ class AutoMatchResult(Base):
     match_details = Column(CrossDBJSON, nullable=True, default=dict)
     # Format: {"po_number": true, "amount": 0.95, "supplier": true, "date": 0.8}
 
-    # Bestaetigung
+    # Bestätigung
     is_confirmed = Column(Boolean, default=False, nullable=False)
     confirmed_by_user_id = Column(
         UUID(as_uuid=True),

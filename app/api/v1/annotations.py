@@ -1,6 +1,6 @@
 """Dokument-Annotationen API Router.
 
-Endpoints fuer PDF/Bild-Annotationen mit Threading und @-Mentions.
+Endpoints für PDF/Bild-Annotationen mit Threading und @-Mentions.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/annotations", tags=["annotations"])
 
 
 class AnnotationCreate(BaseModel):
-    """Schema fuer neue Annotation."""
+    """Schema für neue Annotation."""
     document_id: UUID
     annotation_type: str = Field(..., pattern="^(comment|highlight|drawing|approval|rejection)$")
     content: str = Field(..., min_length=1, max_length=5000)
@@ -31,13 +31,13 @@ class AnnotationCreate(BaseModel):
 
 
 class AnnotationUpdate(BaseModel):
-    """Schema fuer Annotation-Update."""
+    """Schema für Annotation-Update."""
     content: Optional[str] = Field(None, min_length=1, max_length=5000)
     is_resolved: Optional[bool] = None
 
 
 class AnnotationResponse(BaseModel):
-    """Schema fuer Annotation-Antwort."""
+    """Schema für Annotation-Antwort."""
     id: UUID
     document_id: UUID
     user_id: UUID
@@ -88,7 +88,7 @@ async def get_document_annotations(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ) -> list[AnnotationResponse]:
-    """Holt alle Annotationen fuer ein Dokument."""
+    """Holt alle Annotationen für ein Dokument."""
     service = AnnotationService(db)
     annotations = await service.get_annotations_for_document(
         document_id=document_id,
@@ -146,7 +146,7 @@ async def delete_annotation(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ):
-    """Loescht eine Annotation (nur eigene)."""
+    """Löscht eine Annotation (nur eigene)."""
     service = AnnotationService(db)
     deleted = await service.delete_annotation(
         annotation_id=annotation_id,
@@ -167,7 +167,7 @@ async def get_annotation_stats(
     current_user: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_session),
 ) -> dict[str, int]:
-    """Statistiken fuer Dokument-Annotationen."""
+    """Statistiken für Dokument-Annotationen."""
     service = AnnotationService(db)
     return await service.get_annotation_stats(
         document_id=document_id,

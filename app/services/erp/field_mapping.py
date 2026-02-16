@@ -29,11 +29,11 @@ logger = structlog.get_logger(__name__)
 
 
 class FieldTransformer(ABC):
-    """Abstrakte Basisklasse fuer Feld-Transformatoren."""
+    """Abstrakte Basisklasse für Feld-Transformatoren."""
 
     @abstractmethod
     def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> TransformedValue:
-        """Transformiert Wert fuer ERP-System."""
+        """Transformiert Wert für ERP-System."""
         pass
 
     @abstractmethod
@@ -93,10 +93,10 @@ class DateTransformer(FieldTransformer):
 
 
 class CurrencyTransformer(FieldTransformer):
-    """Waehrungs-Transformation (Decimal <-> Float)."""
+    """Währungs-Transformation (Decimal <-> Float)."""
 
     def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> Optional[float]:
-        """Konvertiert Decimal zu Float fuer ERP."""
+        """Konvertiert Decimal zu Float für ERP."""
         if value is None:
             return None
 
@@ -126,7 +126,7 @@ class BooleanTransformer(FieldTransformer):
     """Boolean-Transformation (Odoo False = None)."""
 
     def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> bool:
-        """Konvertiert zu Boolean fuer ERP."""
+        """Konvertiert zu Boolean für ERP."""
         if value is None:
             return False
         return bool(value)
@@ -139,7 +139,7 @@ class BooleanTransformer(FieldTransformer):
 
 
 class LookupTransformer(FieldTransformer):
-    """Lookup-Transformation fuer Related Fields (z.B. country_id)."""
+    """Lookup-Transformation für Related Fields (z.B. country_id)."""
 
     def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> Optional[int]:
         """Konvertiert UUID oder ID zu ERP-ID."""
@@ -192,7 +192,7 @@ class StringNormalizer(FieldTransformer):
     """String-Normalisierung (Trimmen, None-Handling)."""
 
     def to_erp(self, value: TransformedValue, config: Optional[Dict[str, object]] = None) -> str:
-        """Normalisiert String fuer ERP."""
+        """Normalisiert String für ERP."""
         if value is None or value is False:
             return ""
 
@@ -274,7 +274,7 @@ def get_transformer(name: str) -> FieldTransformer:
 
 
 class FieldMappingConfig:
-    """Konfiguration fuer ein einzelnes Feld-Mapping."""
+    """Konfiguration für ein einzelnes Feld-Mapping."""
 
     def __init__(
         self,
@@ -295,7 +295,7 @@ class FieldMappingConfig:
         self.default_value = default_value
 
     def to_erp(self, value: TransformedValue) -> TransformedValue:
-        """Transformiert Wert fuer ERP."""
+        """Transformiert Wert für ERP."""
         if value is None and self.default_value is not None:
             value = self.default_value
         return self.transformer.to_erp(value, self.transformer_config)
@@ -314,9 +314,9 @@ class FieldMappingConfig:
 
 
 class EntityMappingService:
-    """Service fuer Entity-Feld-Mappings.
+    """Service für Entity-Feld-Mappings.
 
-    Verwaltet Feld-Mappings pro Entity-Typ und fuehrt
+    Verwaltet Feld-Mappings pro Entity-Typ und führt
     bidirektionale Transformationen durch.
     """
 
@@ -363,7 +363,7 @@ class EntityMappingService:
         """Initialisiert den Mapping-Service.
 
         Args:
-            custom_mappings: Optionale Custom-Mappings die Default ueberschreiben
+            custom_mappings: Optionale Custom-Mappings die Default überschreiben
         """
         self._mappings: Dict[str, List[FieldMappingConfig]] = {}
         self._load_default_mappings()
@@ -398,7 +398,7 @@ class EntityMappingService:
                 self._mappings[entity].append(FieldMappingConfig(**mapping))
 
     def get_mappings(self, entity: str) -> List[FieldMappingConfig]:
-        """Gibt alle Mappings fuer eine Entity zurueck."""
+        """Gibt alle Mappings für eine Entity zurück."""
         return self._mappings.get(entity, [])
 
     def to_erp(self, entity: str, local_data: Dict[str, object]) -> Dict[str, TransformedValue]:
@@ -452,7 +452,7 @@ class EntityMappingService:
         return result
 
     def _get_nested_value(self, data: Dict[str, object], path: str) -> TransformedValue:
-        """Holt verschachtelten Wert ueber Punkt-Notation."""
+        """Holt verschachtelten Wert über Punkt-Notation."""
         parts = path.split(".")
         current = data
 
@@ -465,7 +465,7 @@ class EntityMappingService:
         return current
 
     def _set_nested_value(self, data: Dict[str, object], path: str, value: TransformedValue) -> None:
-        """Setzt verschachtelten Wert ueber Punkt-Notation."""
+        """Setzt verschachtelten Wert über Punkt-Notation."""
         parts = path.split(".")
 
         current = data
@@ -488,7 +488,7 @@ _mapping_service: Optional[EntityMappingService] = None
 def get_mapping_service(
     custom_mappings: Optional[Dict[str, List[Dict[str, object]]]] = None,
 ) -> EntityMappingService:
-    """Gibt den Mapping-Service zurueck (Singleton mit optionalen Custom-Mappings)."""
+    """Gibt den Mapping-Service zurück (Singleton mit optionalen Custom-Mappings)."""
     global _mapping_service
 
     if _mapping_service is None or custom_mappings:

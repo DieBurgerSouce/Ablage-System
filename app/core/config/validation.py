@@ -17,10 +17,10 @@ def calculate_entropy_bits(secret: str) -> float:
     """
     Berechne die Entropie eines Secrets in Bits.
 
-    Entropie = log2(Anzahl_einzigartiger_Zeichen ^ Laenge)
+    Entropie = log2(Anzahl_einzigartiger_Zeichen ^ Länge)
 
     Args:
-        secret: Der zu pruefende String
+        secret: Der zu prüfende String
 
     Returns:
         Entropie in Bits
@@ -47,9 +47,9 @@ def validate_secret_entropy(
     Validiere Entropie und Qualitaet eines Secrets.
 
     Args:
-        secret: Der zu pruefende String
-        min_entropy_bits: Mindest-Entropie in Bits (default: 128 fuer AES-128 Sicherheit)
-        min_unique_ratio: Mindest-Verhaeltnis einzigartiger Zeichen (default: 30%)
+        secret: Der zu prüfende String
+        min_entropy_bits: Mindest-Entropie in Bits (default: 128 für AES-128 Sicherheit)
+        min_unique_ratio: Mindest-Verhältnis einzigartiger Zeichen (default: 30%)
 
     Returns:
         Tuple von (is_valid, error_message)
@@ -62,22 +62,22 @@ def validate_secret_entropy(
     entropy = calculate_entropy_bits(secret)
     unique_ratio = unique_chars / length if length > 0 else 0
 
-    # Pruefe Entropie
+    # Prüfe Entropie
     if entropy < min_entropy_bits:
         return False, (
             f"Secret hat zu wenig Entropie ({entropy:.0f} Bits). "
             f"Mindestens {min_entropy_bits:.0f} Bits erforderlich. "
-            f"Verwende mehr einzigartige Zeichen oder eine laengere Zeichenkette."
+            f"Verwende mehr einzigartige Zeichen oder eine längere Zeichenkette."
         )
 
-    # Pruefe Einzigartigkeit (verhindert "aaaaaaa...")
+    # Prüfe Einzigartigkeit (verhindert "aaaaaaa...")
     if unique_ratio < min_unique_ratio:
         return False, (
             f"Secret hat zu wenig einzigartige Zeichen ({unique_ratio*100:.0f}%). "
             f"Mindestens {min_unique_ratio*100:.0f}% einzigartige Zeichen erforderlich."
         )
 
-    # Pruefe auf offensichtlich schwache Muster
+    # Prüfe auf offensichtlich schwache Muster
     weak_patterns = [
         "12345", "password", "secret", "admin", "test",
         "qwerty", "asdfgh", "00000", "11111", "abcde"
@@ -86,7 +86,7 @@ def validate_secret_entropy(
     for pattern in weak_patterns:
         if pattern in secret_lower:
             return False, (
-                f"Secret enthaelt schwaches Muster: '{pattern}'. "
+                f"Secret enthält schwaches Muster: '{pattern}'. "
                 "Verwende einen sicher generierten Schluessel: "
                 "python -c \"import secrets; print(secrets.token_urlsafe(64))\""
             )

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Payment Service.
 
-Verwaltet SEPA-Zahlungsauftraege:
-- Einzelueberweisungen (PAIN.001)
+Verwaltet SEPA-Zahlungsaufträge:
+- Einzelüberweisungen (PAIN.001)
 - Lastschriften (PAIN.008)
 - Sammelzahlungen (Batches)
 - Zahlungsstatus-Tracking
@@ -11,7 +11,7 @@ TAN-Workflow:
 1. Payment erstellen (draft)
 2. Payment freigeben (approved)
 3. An Bank senden → TAN-Challenge
-4. TAN eingeben → Bestaetigung
+4. TAN eingeben → Bestätigung
 5. Status: confirmed/rejected
 
 Hinweis: Verwendet 'beneficiary_*' Feldnamen (nicht 'creditor_*')
@@ -61,7 +61,7 @@ class PaymentValidationResult:
 
 @dataclass
 class SEPAPaymentData:
-    """SEPA-Zahlungsdaten fuer XML-Generierung."""
+    """SEPA-Zahlungsdaten für XML-Generierung."""
     payment_id: str
     creditor_name: str
     creditor_iban: str
@@ -75,7 +75,7 @@ class SEPAPaymentData:
 
 
 class PaymentService:
-    """Service fuer SEPA-Zahlungsauftraege."""
+    """Service für SEPA-Zahlungsaufträge."""
 
     # Maximale Betraege (konfigurierbar)
     MAX_SINGLE_PAYMENT = Decimal("50000.00")
@@ -132,7 +132,7 @@ class PaymentService:
                     document_id=str(data.linked_document_id),
                     user_id=str(user_id),
                 )
-                raise ValueError("Verknuepftes Dokument nicht gefunden oder keine Berechtigung")
+                raise ValueError("Verknüpftes Dokument nicht gefunden oder keine Berechtigung")
 
         # SECURITY: Validiere linked_transaction_id Ownership (falls vorhanden)
         if hasattr(data, 'linked_transaction_id') and data.linked_transaction_id:
@@ -154,7 +154,7 @@ class PaymentService:
                     transaction_id=str(data.linked_transaction_id),
                     user_id=str(user_id),
                 )
-                raise ValueError("Verknuepfte Transaktion nicht gefunden oder keine Berechtigung")
+                raise ValueError("Verknüpfte Transaktion nicht gefunden oder keine Berechtigung")
 
         # Validiere Zahlungsdaten
         validation = self._validate_payment(data)
@@ -242,7 +242,7 @@ class PaymentService:
         offset: int = 0,
         limit: int = 50,
     ) -> Tuple[List[PaymentOrderResponse], int]:
-        """Liste Zahlungsauftraege.
+        """Liste Zahlungsaufträge.
 
         Args:
             db: Datenbank-Session
@@ -384,7 +384,7 @@ class PaymentService:
         if not payment:
             raise ValueError("Zahlung nicht gefunden")
 
-        # Nur bestimmte Status koennen storniert werden
+        # Nur bestimmte Status können storniert werden
         cancellable_states = [
             PaymentStatus.DRAFT.value,
             PaymentStatus.APPROVED.value,
@@ -477,7 +477,7 @@ class PaymentService:
         payment_id: UUID,
         tan: str,
     ) -> PaymentOrderResponse:
-        """Bestaetige Zahlung mit TAN.
+        """Bestätige Zahlung mit TAN.
 
         Args:
             db: Datenbank-Session
@@ -510,20 +510,20 @@ class PaymentService:
         if payment.status != PaymentStatus.PENDING_TAN.value:
             raise ValueError(f"Zahlung wartet nicht auf TAN (Status: {payment.status})")
 
-        # TAN-Validierung (in Produktion ueber Bank-API)
+        # TAN-Validierung (in Produktion über Bank-API)
         if not self._validate_tan(tan):
             payment.tan_attempts = (payment.tan_attempts or 0) + 1
 
             if payment.tan_attempts >= 3:
                 payment.status = PaymentStatus.REJECTED.value
-                payment.error_message = "Maximale TAN-Versuche ueberschritten"
+                payment.error_message = "Maximale TAN-Versuche überschritten"
                 await db.commit()
-                raise ValueError("Maximale TAN-Versuche ueberschritten")
+                raise ValueError("Maximale TAN-Versuche überschritten")
 
             await db.commit()
-            raise ValueError("Ungueltige TAN")
+            raise ValueError("Ungültige TAN")
 
-        # Erfolgreiche Bestaetigung
+        # Erfolgreiche Bestätigung
         payment.status = PaymentStatus.CONFIRMED.value
         payment.confirmed_at = utc_now()
         payment.updated_at = utc_now()
@@ -584,7 +584,7 @@ class PaymentService:
         user_id: UUID,
         days_ahead: int = 14,
     ) -> List[Dict[str, Any]]:
-        """Finde Skonto-Moeglichkeiten.
+        """Finde Skonto-Möglichkeiten.
 
         Args:
             db: Datenbank-Session
@@ -592,7 +592,7 @@ class PaymentService:
             days_ahead: Tage vorausschauen
 
         Returns:
-            Liste von Skonto-Moeglichkeiten
+            Liste von Skonto-Möglichkeiten
         """
         from app.db.models import Document
 
@@ -714,7 +714,7 @@ class PaymentService:
 
         if total_amount > self.MAX_BATCH_TOTAL:
             raise ValueError(
-                f"Batch-Gesamtbetrag ({total_amount}) ueberschreitet Maximum ({self.MAX_BATCH_TOTAL})"
+                f"Batch-Gesamtbetrag ({total_amount}) überschreitet Maximum ({self.MAX_BATCH_TOTAL})"
             )
 
         # Erstelle Batch
@@ -792,40 +792,40 @@ class PaymentService:
         else:
             iban = self._normalize_iban(iban_value)
             if not IBAN_PATTERN.match(iban):
-                errors.append("Ungueltige IBAN")
+                errors.append("Ungültige IBAN")
             elif not self._validate_iban_checksum(iban):
-                errors.append("IBAN-Pruefziffer ungueltig")
+                errors.append("IBAN-Prüfziffer ungültig")
 
         # BIC validieren (optional)
         bic_value = getattr(data, 'beneficiary_bic', None) or getattr(data, 'creditor_bic', None)
         if bic_value:
             if not BIC_PATTERN.match(bic_value.upper()):
-                errors.append("Ungueltige BIC")
+                errors.append("Ungültige BIC")
 
         # Betrag validieren
         if data.amount <= 0:
             errors.append("Betrag muss positiv sein")
         elif data.amount > self.MAX_SINGLE_PAYMENT:
-            warnings.append(f"Betrag ueberschreitet {self.MAX_SINGLE_PAYMENT} EUR")
+            warnings.append(f"Betrag überschreitet {self.MAX_SINGLE_PAYMENT} EUR")
 
-        # Empfaengername validieren (beneficiary_name in Schema)
+        # Empfängername validieren (beneficiary_name in Schema)
         name_value = getattr(data, 'beneficiary_name', None) or getattr(data, 'creditor_name', None)
         if not name_value or len(name_value) < 2:
-            errors.append("Empfaengername fehlt oder zu kurz")
+            errors.append("Empfängername fehlt oder zu kurz")
         elif len(name_value) > 70:
-            errors.append("Empfaengername zu lang (max. 70 Zeichen)")
+            errors.append("Empfängername zu lang (max. 70 Zeichen)")
 
         # Verwendungszweck validieren (optional in Schema)
         reference_value = getattr(data, 'reference', None)
         if reference_value and len(reference_value) > 140:
             errors.append("Verwendungszweck zu lang (max. 140 Zeichen)")
 
-        # Ausfuehrungsdatum validieren
+        # Ausführungsdatum validieren
         if data.execution_date:
             if data.execution_date < date.today():
-                errors.append("Ausfuehrungsdatum liegt in der Vergangenheit")
+                errors.append("Ausführungsdatum liegt in der Vergangenheit")
             elif data.execution_date > date.today() + timedelta(days=365):
-                warnings.append("Ausfuehrungsdatum liegt weit in der Zukunft")
+                warnings.append("Ausführungsdatum liegt weit in der Zukunft")
 
         return PaymentValidationResult(
             valid=len(errors) == 0,
@@ -850,7 +850,7 @@ class PaymentService:
         return value  # Bereits ein date
 
     def _validate_iban_checksum(self, iban: str) -> bool:
-        """Validiere IBAN-Pruefziffer (MOD-97)."""
+        """Validiere IBAN-Prüfziffer (MOD-97)."""
         try:
             # Verschiebe ersten 4 Zeichen ans Ende
             rearranged = iban[4:] + iban[:4]
@@ -863,7 +863,7 @@ class PaymentService:
                 else:
                     numeric += char
 
-            # MOD 97 Pruefung
+            # MOD 97 Prüfung
             return int(numeric) % 97 == 1
         except (ValueError, TypeError):
             return False

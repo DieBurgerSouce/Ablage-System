@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Auto-Booking Service fuer Ablage-System.
+Auto-Booking Service für Ablage-System.
 
-ML-gestuetzte automatische Buchungsvorschlaege:
+ML-gestuetzte automatische Buchungsvorschläge:
 - Kontierung basierend auf historischen Buchungen
 - Lieferanten-spezifische Muster
 - Dokumenttyp-basierte Regeln
@@ -36,9 +36,9 @@ logger = logging.getLogger(__name__)
 
 
 class BookingConfidence(str, Enum):
-    """Confidence-Level fuer Buchungsvorschlaege."""
-    HIGH = "high"        # >90% - Auto-Booking moeglich
-    MEDIUM = "medium"    # 70-90% - Vorschlag mit Bestaetigung
+    """Confidence-Level für Buchungsvorschläge."""
+    HIGH = "high"        # >90% - Auto-Booking möglich
+    MEDIUM = "medium"    # 70-90% - Vorschlag mit Bestätigung
     LOW = "low"          # 50-70% - Vorschlag mit Warnung
     UNCERTAIN = "uncertain"  # <50% - Manuelle Kontierung erforderlich
 
@@ -53,7 +53,7 @@ class BookingType(str, Enum):
 
 
 class TaxCode(str, Enum):
-    """Steuerschluessel fuer DATEV."""
+    """Steuerschluessel für DATEV."""
     VST_19 = "9"      # Vorsteuer 19%
     VST_7 = "8"       # Vorsteuer 7%
     UST_19 = "3"      # Umsatzsteuer 19%
@@ -94,7 +94,7 @@ EXPENSE_CATEGORY_MAPPING = {
     "diesel": "4530",
     "kfz_reparatur": "4540",
     "kfz_versicherung": "4520",
-    "parkgebuehr": "4590",
+    "parkgebühr": "4590",
 
     # Personal (wenn keine Lohnbuchhaltung)
     "bewirtung": "4650",
@@ -102,16 +102,16 @@ EXPENSE_CATEGORY_MAPPING = {
     "reisekosten": "4660",
     "fortbildung": "4945",
 
-    # Versicherungen & Gebuehren
+    # Versicherungen & Gebühren
     "versicherung": "4360",
-    "gebuehren": "4970",
-    "bankgebuehren": "4970",
+    "gebühren": "4970",
+    "bankgebühren": "4970",
     "mitgliedsbeitrag": "4380",
 
     # Beratung
     "rechtsberatung": "4950",
     "steuerberatung": "4955",
-    "buchfuehrung": "4955",
+    "buchführung": "4955",
     "beratung": "4960",
 
     # Werbung & Marketing
@@ -149,10 +149,10 @@ class BookingSuggestion(BaseModel):
     confidence_level: BookingConfidence = Field(..., description="Konfidenz-Stufe")
     booking_type: BookingType = Field(..., description="Buchungstyp")
 
-    explanation: str = Field(..., description="Erklaerung fuer den Vorschlag")
-    similar_bookings_count: int = Field(default=0, description="Anzahl aehnlicher Buchungen")
+    explanation: str = Field(..., description="Erklärung für den Vorschlag")
+    similar_bookings_count: int = Field(default=0, description="Anzahl ähnlicher Buchungen")
     alternative_suggestions: List["BookingSuggestion"] = Field(
-        default_factory=list, description="Alternative Vorschlaege"
+        default_factory=list, description="Alternative Vorschläge"
     )
 
     # Metadaten
@@ -193,11 +193,11 @@ class AutoBookingResult(BaseModel):
 
 
 class AutoBookingService:
-    """Service fuer automatische Buchungsvorschlaege.
+    """Service für automatische Buchungsvorschläge.
 
     Analysiert Dokumente und schlaegt Kontierungen vor basierend auf:
     - Historischen Buchungen des gleichen Lieferanten
-    - Aehnlichen Dokumenttypen
+    - Ähnlichen Dokumenttypen
     - Betragskategorien
     - Text-Analyse (Schluesselwoerter)
     """
@@ -222,16 +222,16 @@ class AutoBookingService:
         include_alternatives: bool = True,
         max_alternatives: int = 3,
     ) -> AutoBookingResult:
-        """Erstellt Buchungsvorschlag fuer ein Dokument.
+        """Erstellt Buchungsvorschlag für ein Dokument.
 
         Args:
             document_id: Dokument-ID
-            company_id: Company-ID fuer Multi-Tenant
-            include_alternatives: Alternative Vorschlaege einbeziehen
+            company_id: Company-ID für Multi-Tenant
+            include_alternatives: Alternative Vorschläge einbeziehen
             max_alternatives: Maximale Anzahl Alternativen
 
         Returns:
-            AutoBookingResult mit Vorschlaegen
+            AutoBookingResult mit Vorschlägen
         """
         import time
         start_time = time.time()
@@ -253,7 +253,7 @@ class AutoBookingService:
         # Extrahierte Daten holen
         extracted_data = document.extracted_data or {}
 
-        # Analyse durchfuehren
+        # Analyse durchführen
         suggestions = []
         patterns_used = []
 
@@ -301,7 +301,7 @@ class AutoBookingService:
                 s for s in suggestions[1:max_alternatives + 1]
             ]
 
-        # Fallback wenn keine Vorschlaege
+        # Fallback wenn keine Vorschläge
         if not suggestions:
             suggestions.append(self._create_fallback_suggestion(document, extracted_data))
             patterns_used.append("fallback")
@@ -328,14 +328,14 @@ class AutoBookingService:
     ) -> None:
         """Lernt aus einer manuellen Buchung.
 
-        Speichert das Muster fuer zukuenftige Vorschlaege.
+        Speichert das Muster für zukünftige Vorschläge.
 
         Args:
             document_id: Dokument-ID
             company_id: Company-ID
             debit_account: Gewaehltes Soll-Konto
             credit_account: Gewaehltes Haben-Konto
-            user_id: User der die Buchung durchfuehrt
+            user_id: User der die Buchung durchführt
         """
         # Dokument laden
         result = await self.db.execute(
@@ -389,7 +389,7 @@ class AutoBookingService:
         supplier_name: Optional[str] = None,
         entity_id: Optional[UUID] = None,
     ) -> List[BookingPattern]:
-        """Holt gelernte Muster fuer einen Lieferanten.
+        """Holt gelernte Muster für einen Lieferanten.
 
         Args:
             company_id: Company-ID
@@ -504,7 +504,7 @@ class AutoBookingService:
             confidence=confidence,
             confidence_level=self._get_confidence_level(confidence),
             booking_type=BookingType.EXPENSE,
-            explanation=f"Basierend auf {best_pattern.frequency} frueheren Buchungen von {supplier_name or 'diesem Lieferanten'}",
+            explanation=f"Basierend auf {best_pattern.frequency} früheren Buchungen von {supplier_name or 'diesem Lieferanten'}",
             similar_bookings_count=best_pattern.frequency,
             source_factors={
                 "supplier_history": best_pattern.confidence_boost,
@@ -538,7 +538,7 @@ class AutoBookingService:
         account, account_name = doctype_mapping[doc_type]
         amount, net_amount, tax_amount, tax_rate = self._extract_amounts(extracted_data)
 
-        confidence = 0.55  # Basis-Konfidenz fuer Dokumenttyp
+        confidence = 0.55  # Basis-Konfidenz für Dokumenttyp
 
         # Booking Type basierend auf Dokumenttyp
         booking_type = BookingType.REVENUE if doc_type in ["ausgangsrechnung", "gutschrift"] else BookingType.EXPENSE
@@ -558,7 +558,7 @@ class AutoBookingService:
             confidence=confidence,
             confidence_level=self._get_confidence_level(confidence),
             booking_type=booking_type,
-            explanation=f"Typisches Konto fuer Dokumenttyp '{doc_type}'",
+            explanation=f"Typisches Konto für Dokumenttyp '{doc_type}'",
             source_factors={"document_type": 0.55},
         )
 
@@ -584,15 +584,15 @@ class AutoBookingService:
             typical_account = "4930"
             explanation = "Mittlerer Betrag"
         elif amount < Decimal("1000"):
-            category = "groesserer_betrag"
+            category = "größerer_betrag"
             typical_account = "3200"  # Wareneinkauf
-            explanation = "Groesserer Betrag - moeglicherweise Wareneinkauf"
+            explanation = "Größerer Betrag - möglicherweise Wareneinkauf"
         else:
             category = "hoher_betrag"
             typical_account = "3200"
             explanation = "Hoher Betrag - Wareneinkauf oder Anlage"
 
-        confidence = 0.35  # Niedrige Basis-Konfidenz fuer reine Betragsanalyse
+        confidence = 0.35  # Niedrige Basis-Konfidenz für reine Betragsanalyse
 
         return BookingSuggestion(
             debit_account=typical_account,
@@ -611,7 +611,7 @@ class AutoBookingService:
             booking_type=BookingType.EXPENSE,
             explanation=explanation,
             source_factors={"amount_category": 0.35},
-            warnings=["Nur betragsbasierte Analyse - manuelle Pruefung empfohlen"],
+            warnings=["Nur betragsbasierte Analyse - manuelle Prüfung empfohlen"],
         )
 
     async def _analyze_by_text(
@@ -678,7 +678,7 @@ class AutoBookingService:
         document: Document,
         extracted_data: Dict[str, Any],
     ) -> BookingSuggestion:
-        """Erstellt einen Fallback-Vorschlag wenn keine Analyse moeglich."""
+        """Erstellt einen Fallback-Vorschlag wenn keine Analyse möglich."""
         amount, net_amount, tax_amount, tax_rate = self._extract_amounts(extracted_data)
 
         return BookingSuggestion(
@@ -694,7 +694,7 @@ class AutoBookingService:
             confidence=0.2,
             confidence_level=BookingConfidence.UNCERTAIN,
             booking_type=BookingType.EXPENSE,
-            explanation="Keine spezifische Analyse moeglich - Fallback auf Fremdleistungen",
+            explanation="Keine spezifische Analyse möglich - Fallback auf Fremdleistungen",
             warnings=[
                 "Manuelle Kontierung erforderlich",
                 "Automatische Analyse konnte kein Muster erkennen",
@@ -738,7 +738,7 @@ class AutoBookingService:
 
     def _get_account_name(self, account: str) -> str:
         """Holt Kontobezeichnung."""
-        # Aus Kontenrahmen holen wenn verfuegbar
+        # Aus Kontenrahmen holen wenn verfügbar
         account_names = {
             "1400": "Forderungen aus Lieferungen und Leistungen",
             "1600": "Verbindlichkeiten aus Lieferungen und Leistungen",
@@ -763,7 +763,7 @@ class AutoBookingService:
             "4920": "Telefon/Internet",
             "4930": "Buerokosten",
             "4950": "Rechtsberatungskosten",
-            "4955": "Buchfuehrungskosten",
+            "4955": "Buchführungskosten",
             "4960": "Beratungskosten",
             "4964": "EDV-Kosten",
             "4970": "Nebenkosten des Geldverkehrs",
@@ -807,7 +807,7 @@ def get_auto_booking_service(
     db: AsyncSession,
     kontenrahmen_type: str = "SKR03",
 ) -> AutoBookingService:
-    """Factory fuer AutoBookingService.
+    """Factory für AutoBookingService.
 
     Args:
         db: Database Session

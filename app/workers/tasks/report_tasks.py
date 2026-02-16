@@ -3,12 +3,12 @@
 Report-Builder Celery Tasks.
 
 Enterprise-Level Report-Automatisierung:
-- Periodische Report-Ausfuehrung (Cron-basiert)
+- Periodische Report-Ausführung (Cron-basiert)
 - Async Report-Generierung
 - E-Mail-Versand von Reports
 - Execution Cleanup
 
-Feinpoliert und durchdacht - Zuverlaessige Report-Automatisierung.
+Feinpoliert und durchdacht - Zuverlässige Report-Automatisierung.
 """
 
 from __future__ import annotations
@@ -42,15 +42,15 @@ logger = structlog.get_logger(__name__)
     default_retry_delay=300,
 )
 def execute_scheduled_reports(self) -> Dict[str, Any]:
-    """Fuehrt alle faelligen geplanten Reports aus.
+    """Führt alle fälligen geplanten Reports aus.
 
-    Prueft welche Reports basierend auf ihrem Cron-Schedule
-    ausgefuehrt werden muessen und triggert die Ausfuehrung.
+    Prüft welche Reports basierend auf ihrem Cron-Schedule
+    ausgeführt werden müssen und triggert die Ausführung.
 
     Typisches Schedule: Alle 15 Minuten.
 
     Returns:
-        Dict mit Ausfuehrungs-Statistiken
+        Dict mit Ausführungs-Statistiken
     """
     from app.services.reports import ReportSchedulerService, ReportBuilderService
     from app.db.models import ReportTemplate
@@ -67,7 +67,7 @@ def execute_scheduled_reports(self) -> Dict[str, Any]:
             scheduler = ReportSchedulerService()
             builder = ReportBuilderService()
 
-            # Faellige Reports laden
+            # Fällige Reports laden
             due_reports = await scheduler.get_due_reports(db, limit=50)
             stats["reports_checked"] = len(due_reports)
 
@@ -158,14 +158,14 @@ def generate_report_async(
 ) -> Dict[str, Any]:
     """Generiert einen Report asynchron.
 
-    Wird fuer grosse Reports oder scheduled Reports verwendet.
+    Wird für grosse Reports oder scheduled Reports verwendet.
     Speichert das Ergebnis und sendet optional eine E-Mail.
 
     Args:
         execution_id: UUID der Execution
         template_id: UUID des Templates
         format: Export-Format (pdf, excel, csv, json)
-        recipients: E-Mail-Empfaenger fuer Versand
+        recipients: E-Mail-Empfänger für Versand
 
     Returns:
         Dict mit Generierungs-Ergebnis
@@ -196,13 +196,13 @@ def generate_report_async(
                 template = await template_service.get_template(
                     db=db,
                     template_id=uuid.UUID(template_id),
-                    user_id=None,  # Keine User-Pruefung bei async Tasks
+                    user_id=None,  # Keine User-Prüfung bei async Tasks
                 )
 
                 if not template:
                     raise ValueError(f"Template {template_id} nicht gefunden")
 
-                # Report ausfuehren
+                # Report ausführen
                 result = await builder.execute_report(
                     db=db,
                     template=template,
@@ -260,7 +260,7 @@ def generate_report_async(
                     download_expires_at=download_expires_at,
                 )
 
-                # E-Mail senden wenn Empfaenger angegeben
+                # E-Mail senden wenn Empfänger angegeben
                 if recipients:
                     send_report_email.delay(
                         execution_id=execution_id,
@@ -341,7 +341,7 @@ def send_report_email(
         execution_id: UUID der Execution
         recipients: Liste der E-Mail-Adressen
         file_path: Pfad zur Report-Datei
-        filename: Dateiname fuer Anhang
+        filename: Dateiname für Anhang
         content_type: MIME-Type der Datei
 
     Returns:
@@ -354,7 +354,7 @@ def send_report_email(
             from sqlalchemy import select
             from app.db.models import ReportExecution, ReportTemplate
 
-            # Execution laden fuer Details
+            # Execution laden für Details
             result = await db.execute(
                 select(ReportExecution)
                 .where(ReportExecution.id == uuid.UUID(execution_id))
@@ -459,12 +459,12 @@ Ihr Ablage-System
 
 @celery_app.task(name="app.workers.tasks.report_tasks.cleanup_old_executions")
 def cleanup_old_executions(retention_days: int = 90) -> Dict[str, Any]:
-    """Loescht alte Report-Executions und zugehoerige Dateien.
+    """Löscht alte Report-Executions und zugehoerige Dateien.
 
-    Typisches Schedule: Taeglich um 03:00.
+    Typisches Schedule: Täglich um 03:00.
 
     Args:
-        retention_days: Tage nach denen Executions geloescht werden
+        retention_days: Tage nach denen Executions gelöscht werden
 
     Returns:
         Dict mit Cleanup-Statistiken
@@ -478,7 +478,7 @@ def cleanup_old_executions(retention_days: int = 90) -> Dict[str, Any]:
 
             cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
-            # Zuerst Dateien loeschen
+            # Zuerst Dateien löschen
             result = await db.execute(
                 select(ReportExecution).where(
                     and_(
@@ -503,7 +503,7 @@ def cleanup_old_executions(retention_days: int = 90) -> Dict[str, Any]:
                             **safe_error_log(e),
                         )
 
-            # Dann DB-Eintraege loeschen
+            # Dann DB-Einträge löschen
             scheduler = ReportSchedulerService()
             deleted_count = await scheduler.cleanup_old_executions(
                 db=db,
@@ -528,12 +528,12 @@ def cleanup_old_executions(retention_days: int = 90) -> Dict[str, Any]:
 
 @celery_app.task(name="app.workers.tasks.report_tasks.cleanup_expired_downloads")
 def cleanup_expired_downloads() -> Dict[str, Any]:
-    """Loescht abgelaufene Download-Links.
+    """Löscht abgelaufene Download-Links.
 
     Setzt download_url und download_expires_at auf NULL
-    fuer abgelaufene Executions.
+    für abgelaufene Executions.
 
-    Typisches Schedule: Stuendlich.
+    Typisches Schedule: Stündlich.
 
     Returns:
         Dict mit Cleanup-Statistiken
@@ -581,7 +581,7 @@ def cleanup_expired_downloads() -> Dict[str, Any]:
 
 @celery_app.task(name="app.workers.tasks.report_tasks.cancel_execution")
 def cancel_execution(execution_id: str) -> Dict[str, Any]:
-    """Bricht eine laufende Report-Ausfuehrung ab.
+    """Bricht eine laufende Report-Ausführung ab.
 
     Args:
         execution_id: UUID der Execution

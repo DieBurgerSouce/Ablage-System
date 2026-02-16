@@ -1,7 +1,7 @@
 """
 Document Template Models
 
-Dokumenten-Vorlagen fuer wiederkehrende Dokumente mit:
+Dokumenten-Vorlagen für wiederkehrende Dokumente mit:
 - Variablen-Platzhaltern (Kunde, Datum, Betrag, etc.)
 - Ein-Klick Dokumentenerstellung
 - Vorlagen-Bibliothek nach Kategorien
@@ -36,7 +36,7 @@ if TYPE_CHECKING:
 
 
 class TemplateCategory(str, enum.Enum):
-    """Kategorien fuer Dokumentvorlagen."""
+    """Kategorien für Dokumentvorlagen."""
     INVOICE = "invoice"
     OFFER = "offer"
     CONTRACT = "contract"
@@ -50,7 +50,7 @@ class TemplateCategory(str, enum.Enum):
 
 
 class TemplateOutputFormat(str, enum.Enum):
-    """Ausgabeformate fuer generierte Dokumente."""
+    """Ausgabeformate für generierte Dokumente."""
     PDF = "pdf"
     DOCX = "docx"
     HTML = "html"
@@ -58,7 +58,7 @@ class TemplateOutputFormat(str, enum.Enum):
 
 
 class VariableType(str, enum.Enum):
-    """Typen fuer Template-Variablen."""
+    """Typen für Template-Variablen."""
     TEXT = "text"
     NUMBER = "number"
     CURRENCY = "currency"
@@ -74,8 +74,8 @@ class DocumentTemplate(Base):
     """
     Dokumentvorlage mit Platzhaltern und Metadaten.
 
-    Unterstuetzt:
-    - Jinja2-Syntax fuer Platzhalter: {{ variable_name }}
+    Unterstützt:
+    - Jinja2-Syntax für Platzhalter: {{ variable_name }}
     - Bedingte Bloecke: {% if condition %}...{% endif %}
     - Schleifen: {% for item in items %}...{% endfor %}
     """
@@ -141,7 +141,7 @@ class DocumentTemplate(Base):
 
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    is_default: Mapped[bool] = mapped_column(Boolean, default=False)  # Default fuer Kategorie
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)  # Default für Kategorie
 
     # Nutzungsstatistik
     usage_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -267,7 +267,7 @@ class GeneratedDocument(Base):
     )
 
     # Status
-    is_finalized: Mapped[bool] = mapped_column(Boolean, default=False)  # Unveraenderbar
+    is_finalized: Mapped[bool] = mapped_column(Boolean, default=False)  # Unveränderbar
     is_sent: Mapped[bool] = mapped_column(Boolean, default=False)  # Per Email versendet
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sent_to: Mapped[list[str]] = mapped_column(JSONB, default=list)  # Email-Adressen
@@ -300,7 +300,7 @@ class GeneratedDocument(Base):
 
 class TemplateSnippet(Base):
     """
-    Wiederverwendbare Textbausteine fuer Templates.
+    Wiederverwendbare Textbausteine für Templates.
 
     z.B. Standard-Fusszeilen, AGBs, Grussformeln.
     """

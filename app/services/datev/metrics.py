@@ -2,7 +2,7 @@
 """
 DATEV Prometheus Metriken Service.
 
-Stellt Prometheus-kompatible Metriken fuer DATEV-Operationen bereit:
+Stellt Prometheus-kompatible Metriken für DATEV-Operationen bereit:
 - datev_exports_total: Anzahl der Exports nach Status
 - datev_export_duration_seconds: Export-Dauer
 - datev_export_documents_total: Exportierte Dokumente
@@ -29,8 +29,8 @@ from prometheus_client import (
 # DATEV METRICS REGISTRY
 # =============================================================================
 
-# Separate Registry fuer DATEV-Metriken (optional: kann auch default Registry nutzen)
-# Wir nutzen die globale Default-Registry fuer Integration mit /metrics Endpoint
+# Separate Registry für DATEV-Metriken (optional: kann auch default Registry nutzen)
+# Wir nutzen die globale Default-Registry für Integration mit /metrics Endpoint
 
 # Export Counter
 datev_exports_total = Counter(
@@ -78,7 +78,7 @@ datev_export_errors_total = Counter(
 # Rate Limit Counter
 datev_rate_limit_hits_total = Counter(
     "datev_rate_limit_hits_total",
-    "Anzahl Rate-Limit-Ueberschreitungen fuer DATEV-Exporte",
+    "Anzahl Rate-Limit-Überschreitungen für DATEV-Exporte",
 )
 
 
@@ -88,9 +88,9 @@ datev_rate_limit_hits_total = Counter(
 
 class DATEVMetricsService:
     """
-    Service fuer DATEV-spezifische Prometheus-Metriken.
+    Service für DATEV-spezifische Prometheus-Metriken.
 
-    Singleton-Pattern fuer thread-safe globalen Zugriff.
+    Singleton-Pattern für thread-safe globalen Zugriff.
     """
 
     _instance: Optional["DATEVMetricsService"] = None
@@ -143,7 +143,7 @@ class DATEVMetricsService:
         datev_export_errors_total.labels(error_type=error_type).inc()
 
     def record_rate_limit_hit(self) -> None:
-        """Zeichnet eine Rate-Limit-Ueberschreitung auf."""
+        """Zeichnet eine Rate-Limit-Überschreitung auf."""
         datev_rate_limit_hits_total.inc()
 
     def update_config_count(self, skr03_count: int, skr04_count: int) -> None:
@@ -190,7 +190,7 @@ class DATEVMetricsService:
 
     def get_metrics(self) -> bytes:
         """
-        Gibt alle DATEV-Metriken im Prometheus-Format zurueck.
+        Gibt alle DATEV-Metriken im Prometheus-Format zurück.
 
         Returns:
             Prometheus-formatierte Metriken als Bytes
@@ -199,7 +199,7 @@ class DATEVMetricsService:
 
     def get_content_type(self) -> str:
         """
-        Gibt den Content-Type fuer Prometheus-Metriken zurueck.
+        Gibt den Content-Type für Prometheus-Metriken zurück.
 
         Returns:
             Content-Type String
@@ -208,7 +208,7 @@ class DATEVMetricsService:
 
     def get_summary(self) -> dict:
         """
-        Gibt eine JSON-Zusammenfassung der DATEV-Metriken zurueck.
+        Gibt eine JSON-Zusammenfassung der DATEV-Metriken zurück.
 
         Returns:
             Dictionary mit Metriken-Zusammenfassung
@@ -231,7 +231,7 @@ class DATEVMetricsService:
                 "datev_rate_limit_hits_total": "Counter - Rate-Limit-Treffer",
             },
             "prometheus_endpoint": "/api/v1/metrics/datev",
-            "hinweis": "Nutze Prometheus-Endpoint fuer aktuelle Werte",
+            "hinweis": "Nutze Prometheus-Endpoint für aktuelle Werte",
         }
 
 
@@ -244,7 +244,7 @@ _metrics_service: Optional[DATEVMetricsService] = None
 
 def get_datev_metrics_service() -> DATEVMetricsService:
     """
-    Gibt die Singleton-Instanz des DATEV Metrics Service zurueck.
+    Gibt die Singleton-Instanz des DATEV Metrics Service zurück.
 
     Returns:
         DATEVMetricsService Instanz

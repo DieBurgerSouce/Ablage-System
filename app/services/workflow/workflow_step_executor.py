@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Workflow Step Executor.
 
-Fuehrt einzelne Workflow-Steps aus (20+ Action-Typen).
+Führt einzelne Workflow-Steps aus (20+ Action-Typen).
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ logger = structlog.get_logger(__name__)
 
 @dataclass
 class StepResult:
-    """Ergebnis einer Step-Ausfuehrung."""
+    """Ergebnis einer Step-Ausführung."""
 
     success: bool
     output: Dict[str, Any] = field(default_factory=dict)
@@ -38,9 +38,9 @@ class StepResult:
 
 
 class WorkflowStepExecutor:
-    """Executor fuer Workflow-Steps.
+    """Executor für Workflow-Steps.
 
-    Unterstuetzt 20+ Action-Typen:
+    Unterstützt 20+ Action-Typen:
     - Dokument-Aktionen: move_folder, assign_tags, assign_document_type, update_status
     - Benachrichtigungen: send_notification, send_email
     - Integration: call_webhook, http_request
@@ -56,7 +56,7 @@ class WorkflowStepExecutor:
         """Initialisiert den StepExecutor.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
         """
         self.db = db
         self.condition_evaluator = ConditionEvaluator()
@@ -100,7 +100,7 @@ class WorkflowStepExecutor:
         step: WorkflowStep,
         context: "ExecutionContext",
     ) -> StepResult:
-        """Fuehrt einen Step aus.
+        """Führt einen Step aus.
 
         Args:
             step: WorkflowStep
@@ -152,7 +152,7 @@ class WorkflowStepExecutor:
         step: WorkflowStep,
         context: "ExecutionContext",
     ) -> StepResult:
-        """Fuehrt eine Bedingung aus.
+        """Führt eine Bedingung aus.
 
         Args:
             step: WorkflowStep
@@ -175,7 +175,7 @@ class WorkflowStepExecutor:
         step: WorkflowStep,
         context: "ExecutionContext",
     ) -> StepResult:
-        """Fuehrt eine Verzweigung aus.
+        """Führt eine Verzweigung aus.
 
         Args:
             step: WorkflowStep
@@ -208,7 +208,7 @@ class WorkflowStepExecutor:
         step: WorkflowStep,
         context: "ExecutionContext",
     ) -> StepResult:
-        """Fuehrt eine Verzoegerung aus.
+        """Führt eine Verzögerung aus.
 
         Args:
             step: WorkflowStep
@@ -243,7 +243,7 @@ class WorkflowStepExecutor:
         step: WorkflowStep,
         context: "ExecutionContext",
     ) -> StepResult:
-        """Fuehrt parallele Steps aus.
+        """Führt parallele Steps aus.
 
         Args:
             step: WorkflowStep
@@ -257,9 +257,9 @@ class WorkflowStepExecutor:
         if not parallel_steps:
             return StepResult(success=True, output={"results": []})
 
-        # Parallele Ausfuehrung mit asyncio.gather()
+        # Parallele Ausführung mit asyncio.gather()
         async def execute_parallel_action(action_config: Dict[str, Any]) -> Dict[str, Any]:
-            """Fuehrt eine einzelne Action aus und gibt das Ergebnis zurueck."""
+            """Führt eine einzelne Action aus und gibt das Ergebnis zurück."""
             action_type = action_config.get("action_type")
             action_name = action_config.get("name", action_type)
 
@@ -298,7 +298,7 @@ class WorkflowStepExecutor:
                     "error": safe_error_detail(e, "Vorgang"),
                 }
 
-        # Alle Actions parallel ausfuehren
+        # Alle Actions parallel ausführen
         logger.info(
             "executing_parallel_steps",
             step_id=str(step.id),
@@ -338,7 +338,7 @@ class WorkflowStepExecutor:
         step: WorkflowStep,
         context: "ExecutionContext",
     ) -> StepResult:
-        """Fuehrt eine Schleife aus.
+        """Führt eine Schleife aus.
 
         Args:
             step: WorkflowStep
@@ -379,7 +379,7 @@ class WorkflowStepExecutor:
         step: WorkflowStep,
         context: "ExecutionContext",
     ) -> StepResult:
-        """Fuehrt eine Action aus.
+        """Führt eine Action aus.
 
         Args:
             step: WorkflowStep
@@ -417,7 +417,7 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Verschiebt Dokument in anderen Ordner.
 
-        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
+        SECURITY: Validiert company_id vor Änderung (Multi-Tenant Isolation).
 
         Args:
             config: Action-Konfiguration
@@ -465,7 +465,7 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Weist Dokument Tags zu.
 
-        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
+        SECURITY: Validiert company_id vor Änderung (Multi-Tenant Isolation).
 
         Args:
             config: Action-Konfiguration
@@ -551,7 +551,7 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Weist Dokumenttyp zu.
 
-        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
+        SECURITY: Validiert company_id vor Änderung (Multi-Tenant Isolation).
 
         Args:
             config: Action-Konfiguration
@@ -593,7 +593,7 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Aktualisiert Dokument-Status.
 
-        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
+        SECURITY: Validiert company_id vor Änderung (Multi-Tenant Isolation).
 
         Args:
             config: Action-Konfiguration
@@ -633,10 +633,10 @@ class WorkflowStepExecutor:
         config: Dict[str, Any],
         context: "ExecutionContext",
     ) -> StepResult:
-        """Loescht ein Dokument (Soft-Delete).
+        """Löscht ein Dokument (Soft-Delete).
 
-        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
-        KRITISCH: Ohne Validierung koennte Cross-Tenant Deletion moeglich sein!
+        SECURITY: Validiert company_id vor Änderung (Multi-Tenant Isolation).
+        KRITISCH: Ohne Validierung könnte Cross-Tenant Deletion möglich sein!
 
         Args:
             config: Action-Konfiguration
@@ -822,7 +822,7 @@ class WorkflowStepExecutor:
         config: Dict[str, Any],
         context: "ExecutionContext",
     ) -> StepResult:
-        """Fuehrt einen HTTP-Request aus.
+        """Führt einen HTTP-Request aus.
 
         Args:
             config: Action-Konfiguration
@@ -919,7 +919,7 @@ class WorkflowStepExecutor:
         config: Dict[str, Any],
         context: "ExecutionContext",
     ) -> StepResult:
-        """Fuehrt KI-Kategorisierung durch.
+        """Führt KI-Kategorisierung durch.
 
         SECURITY: Validiert company_id vor Verarbeitung (Multi-Tenant Isolation).
 
@@ -1007,7 +1007,7 @@ class WorkflowStepExecutor:
         config: Dict[str, Any],
         context: "ExecutionContext",
     ) -> StepResult:
-        """Prueft auf Duplikate.
+        """Prüft auf Duplikate.
 
         SECURITY: Validiert company_id vor Check (Multi-Tenant Isolation).
 
@@ -1053,7 +1053,7 @@ class WorkflowStepExecutor:
         config: Dict[str, Any],
         context: "ExecutionContext",
     ) -> StepResult:
-        """Verzoegerungs-Action.
+        """Verzögerungs-Action.
 
         Args:
             config: Action-Konfiguration
@@ -1142,7 +1142,7 @@ class WorkflowStepExecutor:
     ) -> StepResult:
         """Weist Dokument einem User zu.
 
-        SECURITY: Validiert company_id vor Aenderung (Multi-Tenant Isolation).
+        SECURITY: Validiert company_id vor Änderung (Multi-Tenant Isolation).
 
         Args:
             config: Action-Konfiguration
@@ -1280,18 +1280,18 @@ class WorkflowStepExecutor:
 
         Args:
             context: ExecutionContext mit document_id und company_id
-            action_name: Name der Action fuer Logging
+            action_name: Name der Action für Logging
 
         Returns:
             Tuple (is_valid, error_result):
                 - (True, None) wenn valid
-                - (False, StepResult) wenn invalid (StepResult enthaelt Fehler)
+                - (False, StepResult) wenn invalid (StepResult enthält Fehler)
         """
         if not context.document_id:
             return False, StepResult(success=False, error="Kein Dokument im Kontext")
 
         if not context.company_id:
-            # Keine company_id im Context = kein Multi-Tenant Check moeglich
+            # Keine company_id im Context = kein Multi-Tenant Check möglich
             # Dies ist ein Legacy-Fall oder System-Workflow
             return True, None
 

@@ -7,9 +7,9 @@ Erkennt Anomalien in Dokumenten:
 - Unbekannte Lieferanten mit hohen Betraegen
 - Doppelte Rechnungsnummern
 - Unuebliche Zahlungsziele
-- Auffaellige Muster
+- Auffällige Muster
 
-Ziel-Konfidenz: 85%+ fuer Alert.
+Ziel-Konfidenz: 85%+ für Alert.
 
 Feinpoliert und durchdacht - Fraud Prevention & Quality Control.
 """
@@ -83,12 +83,12 @@ class AnomalySeverity(str, Enum):
     LOW = "low"  # Info
     MEDIUM = "medium"  # Warnung
     HIGH = "high"  # Kritisch
-    CRITICAL = "critical"  # Sofortige Pruefung erforderlich
+    CRITICAL = "critical"  # Sofortige Prüfung erforderlich
 
 
 @dataclass
 class AnomalyThresholds:
-    """Schwellenwerte fuer Anomalie-Erkennung."""
+    """Schwellenwerte für Anomalie-Erkennung."""
     high_amount_factor: float = 3.0  # x-faches des Medians
     new_supplier_min_amount: Decimal = Decimal("1000")
     unusual_payment_days_min: int = 60
@@ -110,7 +110,7 @@ class DetectedAnomaly:
 
 @dataclass
 class AnomalyCheckResult:
-    """Ergebnis der Anomalie-Pruefung."""
+    """Ergebnis der Anomalie-Prüfung."""
     anomalies: List[DetectedAnomaly] = field(default_factory=list)
     is_suspicious: bool = False
     overall_risk_score: float = 0.0
@@ -121,7 +121,7 @@ class AnomalyDetectionService:
     """
     Erkennung von Anomalien in Dokumenten.
 
-    Prueft auf verschiedene verdaechtige Muster und
+    Prüft auf verschiedene verdaechtige Muster und
     berechnet einen Risiko-Score.
     """
 
@@ -137,7 +137,7 @@ class AnomalyDetectionService:
         company_id: Optional[uuid.UUID],
         days: int = 365,
     ) -> List[float]:
-        """Laedt historische Betraege fuer Vergleich."""
+        """Laedt historische Betraege für Vergleich."""
         cache_key = company_id or uuid.UUID('00000000-0000-0000-0000-000000000000')
         if cache_key in self._amount_cache:
             return self._amount_cache[cache_key]
@@ -182,7 +182,7 @@ class AnomalyDetectionService:
         data: ExtractedData,
         company_id: Optional[uuid.UUID],
     ) -> Optional[DetectedAnomaly]:
-        """Prueft auf ungewoehnlich hohe Betraege."""
+        """Prüft auf ungewoehnlich hohe Betraege."""
         if not data.total_gross:
             return None
 
@@ -212,14 +212,14 @@ class AnomalyDetectionService:
                 anomaly_type=AnomalyType.HIGH_AMOUNT,
                 severity=severity,
                 confidence=confidence,
-                description=f"Betrag {amount:.2f} EUR ist {factor:.1f}x hoeher als der Median ({median:.2f} EUR)",
+                description=f"Betrag {amount:.2f} EUR ist {factor:.1f}x höher als der Median ({median:.2f} EUR)",
                 details={
                     "amount": amount,
                     "median": median,
                     "factor": round(factor, 2),
                     "threshold": threshold,
                 },
-                recommendation="Betrag manuell pruefen und mit Lieferant abgleichen",
+                recommendation="Betrag manuell prüfen und mit Lieferant abgleichen",
             )
 
         return None
@@ -230,7 +230,7 @@ class AnomalyDetectionService:
         data: ExtractedData,
         company_id: Optional[uuid.UUID],
     ) -> Optional[DetectedAnomaly]:
-        """Prueft auf neue Lieferanten mit hohen Betraegen."""
+        """Prüft auf neue Lieferanten mit hohen Betraegen."""
         if not data.total_gross or not data.supplier_name:
             return None
 
@@ -238,12 +238,12 @@ class AnomalyDetectionService:
         if amount < self._thresholds.new_supplier_min_amount:
             return None
 
-        # Pruefe ob Lieferant bekannt ist
+        # Prüfe ob Lieferant bekannt ist
         if data.supplier_id:
             # Lieferant existiert bereits
             return None
 
-        # Suche nach aehnlichen Namen
+        # Suche nach ähnlichen Namen
         query = select(BusinessEntity).where(
             BusinessEntity.name.ilike(f"%{data.supplier_name[:20]}%")
         )
@@ -283,7 +283,7 @@ class AnomalyDetectionService:
         document_id: uuid.UUID,
         company_id: Optional[uuid.UUID],
     ) -> Optional[DetectedAnomaly]:
-        """Prueft auf doppelte Rechnungsnummern."""
+        """Prüft auf doppelte Rechnungsnummern."""
         if not data.invoice_number:
             return None
 
@@ -314,7 +314,7 @@ class AnomalyDetectionService:
                     "duplicate_count": len(duplicates),
                     "duplicate_document_ids": [str(d.id) for d in duplicates],
                 },
-                recommendation="Moegliche Doppelrechnung - Vor Zahlung pruefen",
+                recommendation="Mögliche Doppelrechnung - Vor Zahlung prüfen",
             )
 
         return None
@@ -323,7 +323,7 @@ class AnomalyDetectionService:
         self,
         data: ExtractedData,
     ) -> Optional[DetectedAnomaly]:
-        """Prueft auf unuebliche Zahlungsziele."""
+        """Prüft auf unuebliche Zahlungsziele."""
         if not data.payment_term_days:
             return None
 
@@ -337,7 +337,7 @@ class AnomalyDetectionService:
                 confidence=0.7,
                 description=f"Ungewoehnlich langes Zahlungsziel: {days} Tage",
                 details={"payment_term_days": days},
-                recommendation="Zahlungsziel pruefen - ggf. Skonto nutzen",
+                recommendation="Zahlungsziel prüfen - ggf. Skonto nutzen",
             )
 
         # Negativ oder 0
@@ -346,7 +346,7 @@ class AnomalyDetectionService:
                 anomaly_type=AnomalyType.UNUSUAL_PAYMENT_TERMS,
                 severity=AnomalySeverity.MEDIUM,
                 confidence=0.8,
-                description=f"Ungueltiges Zahlungsziel: {days} Tage",
+                description=f"Ungültiges Zahlungsziel: {days} Tage",
                 details={"payment_term_days": days},
                 recommendation="Zahlungsziel korrigieren",
             )
@@ -357,7 +357,7 @@ class AnomalyDetectionService:
         self,
         data: ExtractedData,
     ) -> Optional[DetectedAnomaly]:
-        """Prueft auf verdaechtig runde Betraege."""
+        """Prüft auf verdaechtig runde Betraege."""
         if not data.total_gross:
             return None
 
@@ -366,7 +366,7 @@ class AnomalyDetectionService:
         if amount < float(self._thresholds.round_amount_threshold):
             return None
 
-        # Pruefe ob Betrag sehr rund ist (z.B. 10000, 50000)
+        # Prüfe ob Betrag sehr rund ist (z.B. 10000, 50000)
         if amount % 1000 == 0 and amount >= 10000:
             return DetectedAnomaly(
                 anomaly_type=AnomalyType.ROUND_AMOUNT,
@@ -374,7 +374,7 @@ class AnomalyDetectionService:
                 confidence=0.5,
                 description=f"Verdaechtig runder Betrag: {amount:.2f} EUR",
                 details={"amount": amount},
-                recommendation="Betrag gegen Einzelpositionen pruefen",
+                recommendation="Betrag gegen Einzelpositionen prüfen",
             )
 
         return None
@@ -383,7 +383,7 @@ class AnomalyDetectionService:
         self,
         data: ExtractedData,
     ) -> Optional[DetectedAnomaly]:
-        """Prueft auf Rechnungen am Wochenende."""
+        """Prüft auf Rechnungen am Wochenende."""
         if not data.invoice_date:
             return None
 
@@ -408,7 +408,7 @@ class AnomalyDetectionService:
         self,
         data: ExtractedData,
     ) -> Optional[DetectedAnomaly]:
-        """Prueft auf fehlende USt-ID bei hohen Betraegen."""
+        """Prüft auf fehlende USt-ID bei hohen Betraegen."""
         if not data.total_gross:
             return None
 
@@ -421,9 +421,9 @@ class AnomalyDetectionService:
                 anomaly_type=AnomalyType.MISSING_VAT,
                 severity=AnomalySeverity.MEDIUM,
                 confidence=0.6,
-                description=f"Keine USt-ID bei Rechnung ueber {amount:.2f} EUR",
+                description=f"Keine USt-ID bei Rechnung über {amount:.2f} EUR",
                 details={"amount": float(amount)},
-                recommendation="USt-ID des Lieferanten pruefen fuer Vorsteuerabzug",
+                recommendation="USt-ID des Lieferanten prüfen für Vorsteuerabzug",
             )
 
         return None
@@ -432,7 +432,7 @@ class AnomalyDetectionService:
         self,
         data: ExtractedData,
     ) -> Optional[DetectedAnomaly]:
-        """Prueft ob Netto + MwSt = Brutto."""
+        """Prüft ob Netto + MwSt = Brutto."""
         if not data.total_net or not data.total_gross or not data.vat_amount:
             return None
 
@@ -455,7 +455,7 @@ class AnomalyDetectionService:
                     "calculated_gross": calculated_gross,
                     "difference": round(diff, 2),
                 },
-                recommendation="Betraege auf Rechnung pruefen",
+                recommendation="Betraege auf Rechnung prüfen",
             )
 
         return None
@@ -464,7 +464,7 @@ class AnomalyDetectionService:
         self,
         data: ExtractedData,
     ) -> Optional[DetectedAnomaly]:
-        """Prueft auf Datum in der Zukunft."""
+        """Prüft auf Datum in der Zukunft."""
         if not data.invoice_date:
             return None
 
@@ -483,7 +483,7 @@ class AnomalyDetectionService:
                     "today": today.isoformat(),
                     "days_ahead": days_ahead,
                 },
-                recommendation="Rechnungsdatum pruefen",
+                recommendation="Rechnungsdatum prüfen",
             )
 
         return None
@@ -495,7 +495,7 @@ class AnomalyDetectionService:
         company_id: Optional[uuid.UUID] = None,
     ) -> AnomalyCheckResult:
         """
-        Prueft ein Dokument auf Anomalien.
+        Prüft ein Dokument auf Anomalien.
 
         Args:
             db: Database Session
@@ -524,7 +524,7 @@ class AnomalyDetectionService:
 
         # ASYNC PATTERN FIX: Parallel statt Sequential Execution
         # Vorher: Sequential awaits verlangsamen die Verarbeitung
-        # Jetzt: asyncio.gather() fuer parallele Ausfuehrung
+        # Jetzt: asyncio.gather() für parallele Ausführung
         async_results = await asyncio.gather(
             self._check_high_amount(db, data, company_id),
             self._check_new_supplier_high_value(db, data, company_id),
@@ -597,12 +597,12 @@ class AnomalyDetectionService:
         company_id: Optional[uuid.UUID] = None,
     ) -> Optional[AIDecisionResult]:
         """
-        Erstellt eine AI-Entscheidung fuer erkannte Anomalien.
+        Erstellt eine AI-Entscheidung für erkannte Anomalien.
 
         Args:
             db: Database Session
             document_id: Dokument-ID
-            check_result: Ergebnis der Anomalie-Pruefung
+            check_result: Ergebnis der Anomalie-Prüfung
             company_id: Optional Company-ID
 
         Returns:
@@ -641,7 +641,7 @@ class AnomalyDetectionService:
         # Confidence aus Risiko-Score ableiten
         confidence = min(0.5 + check_result.overall_risk_score * 0.5, 0.95)
 
-        # Entscheidung erstellen (niemals Auto-Apply fuer Anomalien)
+        # Entscheidung erstellen (niemals Auto-Apply für Anomalien)
         return await self._decision_service.make_decision(
             db=db,
             decision_type=DecisionType.ANOMALY,
@@ -664,7 +664,7 @@ _service_lock = threading.Lock()
 
 
 def get_anomaly_detection_service() -> AnomalyDetectionService:
-    """Factory fuer AnomalyDetectionService Singleton (Thread-safe)."""
+    """Factory für AnomalyDetectionService Singleton (Thread-safe)."""
     global _anomaly_detection_service
     if _anomaly_detection_service is None:
         with _service_lock:

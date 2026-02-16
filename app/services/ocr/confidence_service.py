@@ -1,13 +1,13 @@
-"""OCR Confidence Service - Extrahiert Wort-Level Confidence-Daten fuer Viewer-Heatmap.
+"""OCR Confidence Service - Extrahiert Wort-Level Confidence-Daten für Viewer-Heatmap.
 
 Dieser Service extrahiert Confidence-Daten aus OCR-Ergebnissen und bereitet sie
-fuer die Heatmap-Visualisierung im Document Viewer auf.
+für die Heatmap-Visualisierung im Document Viewer auf.
 
 Die Daten werden aus mehreren Quellen kombiniert:
-- document.metadata JSONB (primaer)
+- document.metadata JSONB (primär)
 - ocr_results.bounding_boxes JSONB
 - ocr_results.detected_layout JSONB
-- document.ocr_confidence (Fallback fuer Gesamt-Confidence)
+- document.ocr_confidence (Fallback für Gesamt-Confidence)
 
 Created: 2026-02-08
 """
@@ -76,11 +76,11 @@ class OCRConfidenceService:
         page_number: Optional[int] = None
     ) -> DocumentConfidenceData:
         """
-        Extrahiert Confidence-Daten fuer ein Dokument.
+        Extrahiert Confidence-Daten für ein Dokument.
 
         Args:
             document_id: Dokument-ID
-            user_id: Benutzer-ID (fuer Access-Check)
+            user_id: Benutzer-ID (für Access-Check)
             page_number: Optional spezifische Seitennummer (None = alle Seiten)
 
         Returns:
@@ -99,7 +99,7 @@ class OCRConfidenceService:
 
         # Access-Check: User muss Owner sein
         if document.owner_id != user_id:
-            raise ValueError("Keine Berechtigung fuer dieses Dokument")
+            raise ValueError("Keine Berechtigung für dieses Dokument")
 
         # Basis-Daten sammeln
         total_pages = document.page_count or 1
@@ -127,7 +127,7 @@ class OCRConfidenceService:
         pages: List[PageConfidence] = []
 
         if ocr_results_list:
-            # Daten aus OCRResult-Eintraegen extrahieren
+            # Daten aus OCRResult-Einträgen extrahieren
             for ocr_result in ocr_results_list:
                 page_data = self._extract_page_confidence(
                     ocr_result,
@@ -257,7 +257,7 @@ class OCRConfidenceService:
             # Falls bbox absolute Werte sind, versuche zu normalisieren
             # (heuristisch: Werte > 10 sind wahrscheinlich Pixel)
             if max(x, y, width, height) > 10:
-                # Annahme: Standard-Seitengroesse A4 (595 x 842 Punkte)
+                # Annahme: Standard-Seitengröße A4 (595 x 842 Punkte)
                 x = x / 595.0
                 y = y / 842.0
                 width = width / 595.0
@@ -405,7 +405,7 @@ class OCRConfidenceService:
         metadata = document.document_metadata
 
         # Versuche verschiedene Metadata-Keys
-        # (abhaengig davon wie OCR-Agents die Daten speichern)
+        # (abhängig davon wie OCR-Agents die Daten speichern)
         confidence_keys = [
             "ocr_confidence_data",
             "confidence_data",
@@ -534,7 +534,7 @@ class OCRConfidenceService:
         """
         Erstellt Fallback-Seiten wenn keine Detail-Daten vorhanden.
 
-        Nutzt die Gesamt-Confidence fuer alle Seiten.
+        Nutzt die Gesamt-Confidence für alle Seiten.
 
         Args:
             total_pages: Anzahl Seiten
@@ -575,7 +575,7 @@ class OCRConfidenceService:
         """
         Liefert eine Zusammenfassung der Confidence-Daten.
 
-        Schnellere Alternative zu get_confidence_data() fuer Overview.
+        Schnellere Alternative zu get_confidence_data() für Overview.
 
         Args:
             document_id: Dokument-ID
@@ -596,7 +596,7 @@ class OCRConfidenceService:
             raise ValueError("Dokument nicht gefunden")
 
         if document.owner_id != user_id:
-            raise ValueError("Keine Berechtigung fuer dieses Dokument")
+            raise ValueError("Keine Berechtigung für dieses Dokument")
 
         # OCR-Ergebnisse zaehlen
         ocr_query = select(OCRResult).where(OCRResult.document_id == document_id)

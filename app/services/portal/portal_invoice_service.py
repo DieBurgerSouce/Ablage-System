@@ -1,7 +1,7 @@
 """
 Portal-Rechnungsservice.
 
-Read-Only Zugriff auf Rechnungen fuer Kunden.
+Read-Only Zugriff auf Rechnungen für Kunden.
 """
 
 from datetime import datetime, timezone, date
@@ -22,7 +22,7 @@ logger = structlog.get_logger(__name__)
 
 class PortalInvoiceService:
     """
-    Service fuer Rechnungsansicht im Kundenportal.
+    Service für Rechnungsansicht im Kundenportal.
 
     Nur lesender Zugriff - keine Modifikationen.
     """
@@ -41,7 +41,7 @@ class PortalInvoiceService:
         offset: int = 0,
     ) -> tuple[List[dict], int]:
         """
-        Hole alle Rechnungen fuer einen Entity (Kunden/Lieferanten).
+        Hole alle Rechnungen für einen Entity (Kunden/Lieferanten).
 
         Returns:
             Tuple aus Liste von Rechnungsdaten und Gesamtanzahl.
@@ -176,9 +176,9 @@ class PortalInvoiceService:
         company_id: UUID,
     ) -> dict:
         """
-        Hole Zusammenfassung aller Rechnungen fuer Dashboard.
+        Hole Zusammenfassung aller Rechnungen für Dashboard.
         """
-        # Alle Rechnungen fuer Entity
+        # Alle Rechnungen für Entity
         result = await self.db.execute(
             select(InvoiceTracking)
             .where(
@@ -262,5 +262,5 @@ class PortalInvoiceService:
 
 
 def get_portal_invoice_service(db: AsyncSession) -> PortalInvoiceService:
-    """Factory-Funktion fuer PortalInvoiceService."""
+    """Factory-Funktion für PortalInvoiceService."""
     return PortalInvoiceService(db)

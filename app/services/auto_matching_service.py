@@ -10,7 +10,7 @@ Basierend auf:
 - PO-Nummer (exakter Match)
 - Betrag + Lieferant + Datum (Fuzzy Match)
 
-Nutzt models_approval_extended fuer AutoMatchResult.
+Nutzt models_approval_extended für AutoMatchResult.
 """
 
 from __future__ import annotations
@@ -44,8 +44,8 @@ class AutoMatchingService:
     1. Neues Dokument wird verarbeitet
     2. find_matches() extrahiert Schluesselfelder
     3. Sucht nach passenden Dokumenten in der Datenbank
-    4. Erstellt AutoMatchResult-Eintraege mit Konfidenz
-    5. User kann Matches bestaetigen
+    4. Erstellt AutoMatchResult-Einträge mit Konfidenz
+    5. User kann Matches bestätigen
     """
 
     def __init__(self, db: AsyncSession) -> None:
@@ -62,7 +62,7 @@ class AutoMatchingService:
         company_id: UUID,
         document_id: UUID,
     ) -> List[AutoMatchResult]:
-        """Passende Dokumente fuer ein gegebenes Dokument finden.
+        """Passende Dokumente für ein gegebenes Dokument finden.
 
         Args:
             db: Async Database Session
@@ -70,7 +70,7 @@ class AutoMatchingService:
             document_id: ID des Dokuments
 
         Returns:
-            Liste der erstellten AutoMatchResult-Eintraege
+            Liste der erstellten AutoMatchResult-Einträge
         """
         doc_stmt = select(Document).where(
             and_(
@@ -191,12 +191,12 @@ class AutoMatchingService:
         user_id: UUID,
         company_id: UUID,
     ) -> Optional[AutoMatchResult]:
-        """Match manuell bestaetigen.
+        """Match manuell bestätigen.
 
         Args:
             db: Async Database Session
             match_id: ID des AutoMatchResult
-            user_id: ID des bestaetigenden Users
+            user_id: ID des bestätigenden Users
             company_id: ID der Firma (Multi-Tenant Isolation)
 
         Returns:
@@ -232,7 +232,7 @@ class AutoMatchingService:
         company_id: UUID,
         limit: int = 500,
     ) -> Dict[str, object]:
-        """Batch-Matching fuer alle ungematchten Dokumente.
+        """Batch-Matching für alle ungematchten Dokumente.
 
         Args:
             db: Async Database Session
@@ -379,7 +379,7 @@ class AutoMatchingService:
             match_details: Dict[str, object] = {"po_number": True}
             confidence = 0.95
 
-            # Betrags-Vergleich wenn verfuegbar
+            # Betrags-Vergleich wenn verfügbar
             source_doc_stmt = select(Document).where(Document.id == source_doc_id)
             source_doc_result = await db.execute(source_doc_stmt)
             source_doc = source_doc_result.scalar_one_or_none()

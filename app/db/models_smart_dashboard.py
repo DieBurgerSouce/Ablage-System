@@ -2,8 +2,8 @@
 """
 Smart Dashboard database models for Ablage-System.
 
-Modelle fuer Features #2 und #6:
-- Smart Dashboard mit Tab-Struktur (Uebersicht, Finanzen, Dokumente, Workflows, System)
+Modelle für Features #2 und #6:
+- Smart Dashboard mit Tab-Struktur (Übersicht, Finanzen, Dokumente, Workflows, System)
 - Echtzeit-KPIs mit Trend-Berechnung
 - Dokument-Fortschritts-Tracking (DHL-Stil)
 - Batch-Fortschritts-Tracking
@@ -42,7 +42,7 @@ from app.db.models import Base, CrossDBJSON
 
 class DashboardTab(str, Enum):
     """Dashboard-Tab Auswahl."""
-    OVERVIEW = "overview"           # Uebersicht
+    OVERVIEW = "overview"           # Übersicht
     FINANCE = "finance"             # Finanzen
     DOCUMENTS = "documents"         # Dokumente
     WORKFLOWS = "workflows"         # Workflows
@@ -50,7 +50,7 @@ class DashboardTab(str, Enum):
 
 
 class WidgetType(str, Enum):
-    """Widget-Typen fuer Dashboard."""
+    """Widget-Typen für Dashboard."""
     KPI_CARD = "kpi_card"                  # Einzelne KPI-Karte
     CHART_LINE = "chart_line"              # Linien-Diagramm
     CHART_BAR = "chart_bar"               # Balken-Diagramm
@@ -159,7 +159,7 @@ class SmartDashboardConfig(Base):
 
 class DashboardKPI(Base):
     """
-    KPI-Werte fuer das Dashboard.
+    KPI-Werte für das Dashboard.
 
     Speichert berechnete KPI-Werte mit Trend-Informationen
     und historischen Vergleichswerten.
@@ -194,7 +194,7 @@ class DashboardKPI(Base):
         nullable=False,
     )
 
-    # Zusaetzliche Metadaten
+    # Zusätzliche Metadaten
     kpi_metadata = Column(CrossDBJSON, default=dict)
 
     # Relationships
@@ -231,7 +231,7 @@ class DashboardKPI(Base):
 
 class DashboardWidget(Base):
     """
-    Widget-Definitionen fuer das Smart Dashboard.
+    Widget-Definitionen für das Smart Dashboard.
 
     Firmen-weite Widget-Vorlagen mit:
     - Tab-Zuordnung
@@ -282,14 +282,14 @@ class DashboardWidget(Base):
     position_x = Column(Integer, nullable=False, default=0, comment="X-Position im Grid")
     position_y = Column(Integer, nullable=False, default=0, comment="Y-Position im Grid")
     position_w = Column(Integer, nullable=False, default=4, comment="Breite im Grid (Spalten)")
-    position_h = Column(Integer, nullable=False, default=3, comment="Hoehe im Grid (Zeilen)")
+    position_h = Column(Integer, nullable=False, default=3, comment="Höhe im Grid (Zeilen)")
 
     # Rollen-basierte Sichtbarkeit
     min_roles = Column(
         CrossDBJSON,
         nullable=True,
         default=list,
-        comment="Minimale Rollen fuer Sichtbarkeit (leer = alle Rollen)",
+        comment="Minimale Rollen für Sichtbarkeit (leer = alle Rollen)",
     )
 
     # Status-Flags
@@ -316,7 +316,7 @@ class DashboardWidget(Base):
     data_source = Column(
         String(200),
         nullable=True,
-        comment="Service-Methode fuer Daten (z.B. 'get_realtime_kpis', 'get_finance_tab')",
+        comment="Service-Methode für Daten (z.B. 'get_realtime_kpis', 'get_finance_tab')",
     )
 
     # Timestamps
@@ -372,7 +372,7 @@ class DashboardLayout(Base):
     Benutzerspezifisches Dashboard-Layout.
 
     Speichert die individuelle Widget-Anordnung pro User und Tab.
-    Ermoeglicht Drag-and-Drop Personalisierung.
+    Ermöglicht Drag-and-Drop Personalisierung.
     """
     __tablename__ = "smart_dashboard_layouts"
 
@@ -399,7 +399,7 @@ class DashboardLayout(Base):
     tab = Column(
         String(30),
         nullable=False,
-        comment="Dashboard-Tab fuer dieses Layout",
+        comment="Dashboard-Tab für dieses Layout",
     )
     widgets_config = Column(
         CrossDBJSON,
@@ -455,8 +455,8 @@ class DocumentProgressTracker(Base):
     """
     Dokument-Fortschritts-Tracker im DHL-Tracking-Stil.
 
-    Zeigt Echtzeit-Status fuer jedes Dokument:
-    Hochgeladen -> OCR laeuft -> Extraktion -> Validierung -> Fertig
+    Zeigt Echtzeit-Status für jedes Dokument:
+    Hochgeladen -> OCR läuft -> Extraktion -> Validierung -> Fertig
     """
     __tablename__ = "document_progress_trackers"
 
@@ -497,7 +497,7 @@ class DocumentProgressTracker(Base):
     total_steps = Column(Integer, nullable=False, default=5)
     progress_percent = Column(Float, nullable=False, default=0.0)
 
-    # Geschaetzte Fertigstellung
+    # Geschätzte Fertigstellung
     estimated_completion = Column(DateTime(timezone=True), nullable=True)
 
     # Fehlernachricht (falls vorhanden)
@@ -551,11 +551,11 @@ class DocumentProgressTracker(Base):
 
 class BatchProgressTracker(Base):
     """
-    Fortschrittsanzeige fuer Stapelverarbeitungen.
+    Fortschrittsanzeige für Stapelverarbeitungen.
 
     Trackt Gesamtfortschritt eines Batches mit:
     - Anzahl verarbeiteter/fehlgeschlagener Dokumente
-    - Geschaetzte Restzeit
+    - Geschätzte Restzeit
     - Name des aktuellen Dokuments
     """
     __tablename__ = "batch_progress_trackers"
@@ -590,7 +590,7 @@ class BatchProgressTracker(Base):
     # Berechneter Fortschritt
     progress_percent = Column(Float, nullable=False, default=0.0)
 
-    # Zeitschaetzung
+    # Zeitschätzung
     estimated_remaining_seconds = Column(Integer, nullable=True)
 
     # Timing

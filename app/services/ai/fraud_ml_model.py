@@ -63,7 +63,7 @@ FRAUD_FEATURES: Dict[str, FeatureDefinition] = {
     "amount_zscore": FeatureDefinition(
         name="amount_zscore",
         feature_type=FeatureType.NUMERICAL,
-        description="Z-Score des Betrags gegenueber Historik",
+        description="Z-Score des Betrags gegenüber Historik",
         weight=1.5,
     ),
     "amount_deviation_pct": FeatureDefinition(
@@ -89,7 +89,7 @@ FRAUD_FEATURES: Dict[str, FeatureDefinition] = {
     "is_after_hours": FeatureDefinition(
         name="is_after_hours",
         feature_type=FeatureType.BOOLEAN,
-        description="Erstellt ausserhalb Geschaeftszeiten",
+        description="Erstellt ausserhalb Geschäftszeiten",
         weight=0.5,
     ),
     "days_since_last_invoice": FeatureDefinition(
@@ -103,7 +103,7 @@ FRAUD_FEATURES: Dict[str, FeatureDefinition] = {
     "is_new_entity": FeatureDefinition(
         name="is_new_entity",
         feature_type=FeatureType.BOOLEAN,
-        description="Neuer/unbekannter Geschaeftspartner",
+        description="Neuer/unbekannter Geschäftspartner",
         weight=1.3,
     ),
     "entity_invoice_count": FeatureDefinition(
@@ -115,7 +115,7 @@ FRAUD_FEATURES: Dict[str, FeatureDefinition] = {
     "entity_risk_score": FeatureDefinition(
         name="entity_risk_score",
         feature_type=FeatureType.NUMERICAL,
-        description="Risiko-Score des Geschaeftspartners",
+        description="Risiko-Score des Geschäftspartners",
         weight=1.0,
     ),
 
@@ -135,7 +135,7 @@ FRAUD_FEATURES: Dict[str, FeatureDefinition] = {
     "bank_change_mention": FeatureDefinition(
         name="bank_change_mention",
         feature_type=FeatureType.BOOLEAN,
-        description="Bankverbindungsaenderung erwaehnt",
+        description="Bankverbindungsänderung erwaehnt",
         weight=1.5,
     ),
 
@@ -149,7 +149,7 @@ FRAUD_FEATURES: Dict[str, FeatureDefinition] = {
     "similar_invoice_count": FeatureDefinition(
         name="similar_invoice_count",
         feature_type=FeatureType.NUMERICAL,
-        description="Anzahl aehnlicher Rechnungen",
+        description="Anzahl ähnlicher Rechnungen",
         weight=1.0,
     ),
 
@@ -163,13 +163,13 @@ FRAUD_FEATURES: Dict[str, FeatureDefinition] = {
     "iban_country_changed": FeatureDefinition(
         name="iban_country_changed",
         feature_type=FeatureType.BOOLEAN,
-        description="IBAN-Land hat sich geaendert",
+        description="IBAN-Land hat sich geändert",
         weight=1.5,
     ),
     "recent_iban_changes": FeatureDefinition(
         name="recent_iban_changes",
         feature_type=FeatureType.NUMERICAL,
-        description="Anzahl IBAN-Aenderungen in 90 Tagen",
+        description="Anzahl IBAN-Änderungen in 90 Tagen",
         weight=1.2,
     ),
 }
@@ -457,20 +457,20 @@ class FraudFeatureExtractor:
         """Count urgency keywords in text."""
         keywords = [
             "dringend", "sofort", "umgehend", "unverzueglich", "eilig",
-            "schnellstmoeglich", "asap", "dringende", "schnellstens",
+            "schnellstmöglich", "asap", "dringende", "schnellstens",
         ]
         return sum(1 for kw in keywords if kw in text)
 
     def _has_confidentiality_request(self, text: str) -> bool:
         """Check for confidentiality requests."""
-        keywords = ["vertraulich", "geheim", "nur fuer sie", "persoenlich", "diskret"]
+        keywords = ["vertraulich", "geheim", "nur für sie", "persoenlich", "diskret"]
         return any(kw in text for kw in keywords)
 
     def _mentions_bank_change(self, text: str) -> bool:
         """Check if text mentions bank change."""
         patterns = [
-            "neue iban", "neues konto", "bankverbindung geaendert",
-            "iban geaendert", "konto geaendert", "neue bankdaten",
+            "neue iban", "neues konto", "bankverbindung geändert",
+            "iban geändert", "konto geändert", "neue bankdaten",
         ]
         return any(p in text for p in patterns)
 
@@ -711,13 +711,13 @@ class FraudAnomalyScorer:
         if score >= 0.8:
             return "Kritisch - Sofortige Untersuchung erforderlich"
         elif score >= 0.6:
-            return "Hoch - Zeitnahe Ueberpruefung empfohlen"
+            return "Hoch - Zeitnahe Überprüfung empfohlen"
         elif score >= 0.4:
-            return "Mittel - Bei Gelegenheit pruefen"
+            return "Mittel - Bei Gelegenheit prüfen"
         elif score >= 0.2:
             return "Niedrig - Zur Kenntnisnahme"
         else:
-            return "Minimal - Keine Auffaelligkeiten erkannt"
+            return "Minimal - Keine Auffälligkeiten erkannt"
 
 
 # =============================================================================

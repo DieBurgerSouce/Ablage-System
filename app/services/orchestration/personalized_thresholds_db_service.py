@@ -5,7 +5,7 @@ Personalized Thresholds DB Service.
 PHASE 0 CRITICAL FIX: DB-backed Version des PersonalizedThresholdsService.
 
 Diese Version ersetzt das in-memory Storage durch echte DB-Persistenz.
-Der Service ist als Drop-In-Replacement fuer den Original-Service konzipiert.
+Der Service ist als Drop-In-Replacement für den Original-Service konzipiert.
 
 Verwendung:
     # Dependency Injection in FastAPI
@@ -59,7 +59,7 @@ logger = structlog.get_logger(__name__)
 
 class PersonalizedThresholdsDBService:
     """
-    DB-backed Service fuer personalisierte Schwellenwerte.
+    DB-backed Service für personalisierte Schwellenwerte.
 
     Diese Version verwendet PostgreSQL statt In-Memory Storage.
     Alle Daten werden persistent gespeichert.
@@ -68,7 +68,7 @@ class PersonalizedThresholdsDBService:
     - Volle DB-Persistenz
     - Keine Datenverluste bei Restarts
     - Multi-Instance Support
-    - Audit-Trail aller Aenderungen
+    - Audit-Trail aller Änderungen
     """
 
     def __init__(self, db: AsyncSession):
@@ -133,7 +133,7 @@ class PersonalizedThresholdsDBService:
         db_profile = await self._profile_repo.upsert(user_id, profile_data)
         profile = self._db_profile_to_dataclass(db_profile)
 
-        # Initialisiere Thresholds fuer neuen User
+        # Initialisiere Thresholds für neuen User
         await self._initialize_user_thresholds(user_id, profile)
 
         logger.info(
@@ -201,7 +201,7 @@ class PersonalizedThresholdsDBService:
         user_id: UUID,
         profile: UserProfile,
     ) -> None:
-        """Initialisiert Thresholds fuer einen neuen User."""
+        """Initialisiert Thresholds für einen neuen User."""
         thresholds_data = []
 
         for definition in self.registry.get_all_thresholds():
@@ -249,7 +249,7 @@ class PersonalizedThresholdsDBService:
         user_id: UUID,
         profile: UserProfile,
     ) -> None:
-        """Berechnet alle Thresholds nach Profil-Aenderung neu."""
+        """Berechnet alle Thresholds nach Profil-Änderung neu."""
         db_thresholds = await self._threshold_repo.get_by_user_id(user_id)
 
         if not db_thresholds:
@@ -410,7 +410,7 @@ class PersonalizedThresholdsDBService:
         user_id: UUID,
         threshold_type: ThresholdType,
     ) -> UserThreshold:
-        """Setzt einen Schwellenwert auf den profil-basierten Default zurueck."""
+        """Setzt einen Schwellenwert auf den profil-basierten Default zurück."""
         profile = await self.get_or_create_profile(user_id)
 
         definition = self.registry.get_threshold(threshold_type)
@@ -424,11 +424,11 @@ class PersonalizedThresholdsDBService:
             user_id=user_id,
             threshold_type=threshold_type,
             value=default_value,
-            reason="Zurueckgesetzt auf Profil-Default",
+            reason="Zurückgesetzt auf Profil-Default",
         )
 
     async def reset_all_thresholds(self, user_id: UUID) -> List[UserThreshold]:
-        """Setzt alle Schwellenwerte zurueck."""
+        """Setzt alle Schwellenwerte zurück."""
         profile = await self.get_or_create_profile(user_id)
 
         results = []
@@ -498,7 +498,7 @@ class PersonalizedThresholdsDBService:
         user_id: UUID,
         current_kpis: Dict[str, float],
     ) -> List[ThresholdRecommendation]:
-        """Generiert Empfehlungen fuer Schwellenwert-Anpassungen."""
+        """Generiert Empfehlungen für Schwellenwert-Anpassungen."""
         profile = await self.get_or_create_profile(user_id)
         recommendations: List[ThresholdRecommendation] = []
         now = datetime.now(timezone.utc)
@@ -511,7 +511,7 @@ class PersonalizedThresholdsDBService:
             if dti_warning:
                 # User ist chronisch nah am Threshold
                 if dti > dti_warning.current_value * 0.9 and dti < dti_warning.current_value:
-                    # Vielleicht Threshold erhoehen wenn stabil
+                    # Vielleicht Threshold erhöhen wenn stabil
                     if profile.income_stability > 0.8:
                         rec_data = {
                             "user_id": user_id,
@@ -520,8 +520,8 @@ class PersonalizedThresholdsDBService:
                             "recommended_value": Decimal(str(min(dti_warning.current_value + 3, 50))),
                             "reason": (
                                 f"Ihr DTI liegt stabil bei {dti:.1f}%. "
-                                f"Bei Ihrer Einkommensstabilitaet koennte der Warnschwellenwert "
-                                f"leicht erhoeht werden."
+                                f"Bei Ihrer Einkommensstabilität könnte der Warnschwellenwert "
+                                f"leicht erhöht werden."
                             ),
                             "confidence": Decimal("0.7"),
                             "potential_impact": "Weniger Warnungen bei stabilem Einkommen",
@@ -544,12 +544,12 @@ class PersonalizedThresholdsDBService:
                         "current_value": Decimal(str(ef_target.current_value)),
                         "recommended_value": Decimal(str(min(ef_months * 0.8, 12))),
                         "reason": (
-                            f"Ihr Notgroschen ({ef_months:.1f} Monate) ist deutlich ueber "
+                            f"Ihr Notgroschen ({ef_months:.1f} Monate) ist deutlich über "
                             f"dem Ziel ({ef_target.current_value:.1f} Monate). "
-                            f"Ueberschuessige Liquiditaet koennte investiert werden."
+                            f"Überschuessige Liquiditaet könnte investiert werden."
                         ),
                         "confidence": Decimal("0.75"),
-                        "potential_impact": "Mehr Kapital fuer Investments verfuegbar",
+                        "potential_impact": "Mehr Kapital für Investments verfügbar",
                         "expires_at": now + timedelta(days=60),
                     }
                     db_rec = await self._recommendation_repo.create(rec_data)
@@ -730,5 +730,5 @@ class PersonalizedThresholdsDBService:
 def get_personalized_thresholds_db_service(
     db: AsyncSession,
 ) -> PersonalizedThresholdsDBService:
-    """Factory-Funktion fuer Dependency Injection."""
+    """Factory-Funktion für Dependency Injection."""
     return PersonalizedThresholdsDBService(db)

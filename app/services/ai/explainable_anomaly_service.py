@@ -2,16 +2,16 @@
 """
 Explainable Anomaly Detection Service.
 
-Vision 2026 Q3: Erweiterte Anomalie-Erkennung mit detaillierten Erklaerungen.
+Vision 2026 Q3: Erweiterte Anomalie-Erkennung mit detaillierten Erklärungen.
 
 Erweitert den bestehenden AnomalyDetectionService um:
-- Detaillierte Erklaerungen pro Anomalie-Typ
+- Detaillierte Erklärungen pro Anomalie-Typ
 - Kontextuelle Informationen (Vergleichswerte, Trends)
 - Empfehlungen mit Priorisierung
 - Historische Anomalie-Trends
-- Feedback-Integration fuer Verbesserung
+- Feedback-Integration für Verbesserung
 
-Feinpoliert und durchdacht - Deutsche Qualitaet.
+Feinpoliert und durchdacht - Deutsche Qualität.
 """
 
 from __future__ import annotations
@@ -48,13 +48,13 @@ logger = structlog.get_logger(__name__)
 
 EXPLAINABLE_ANOMALY_REQUESTS = Counter(
     "explainable_anomaly_requests_total",
-    "Anzahl der erklaerbaren Anomalie-Analysen",
+    "Anzahl der erklärbaren Anomalie-Analysen",
     ["anomaly_type"]
 )
 
 ANOMALY_FEEDBACK_RECEIVED = Counter(
     "anomaly_feedback_total",
-    "Anzahl erhaltener Feedback-Eintraege",
+    "Anzahl erhaltener Feedback-Einträge",
     ["feedback_type"]  # confirmed, false_positive, unclear
 )
 
@@ -64,15 +64,15 @@ ANOMALY_FEEDBACK_RECEIVED = Counter(
 # =============================================================================
 
 class AnomalyExplanationLevel(str, Enum):
-    """Detail-Level der Erklaerung."""
+    """Detail-Level der Erklärung."""
     BRIEF = "brief"      # Kurze Zusammenfassung
-    DETAILED = "detailed"  # Vollstaendige Analyse
+    DETAILED = "detailed"  # Vollständige Analyse
     EXPERT = "expert"    # Mit technischen Details
 
 
 @dataclass
 class ContextualComparison:
-    """Kontextueller Vergleich fuer eine Anomalie."""
+    """Kontextueller Vergleich für eine Anomalie."""
     metric_name: str
     current_value: str
     comparison_value: str
@@ -84,7 +84,7 @@ class ContextualComparison:
 @dataclass
 class AnomalyRecommendation:
     """Empfehlung zur Behandlung einer Anomalie."""
-    priority: int  # 1=hoechste Prioritaet
+    priority: int  # 1=hoechste Priorität
     action: str
     reason: str
     expected_outcome: str
@@ -93,7 +93,7 @@ class AnomalyRecommendation:
 
 @dataclass
 class AnomalyTrend:
-    """Historischer Trend fuer einen Anomalie-Typ."""
+    """Historischer Trend für einen Anomalie-Typ."""
     anomaly_type: AnomalyType
     occurrences_30d: int
     occurrences_90d: int
@@ -103,7 +103,7 @@ class AnomalyTrend:
 
 @dataclass
 class ExplainedAnomaly:
-    """Vollstaendig erklaerte Anomalie."""
+    """Vollständig erklärte Anomalie."""
     anomaly_type: AnomalyType
     severity: AnomalySeverity
     confidence: float
@@ -121,7 +121,7 @@ class ExplainedAnomaly:
 
 @dataclass
 class ExplainedAnomalyResult:
-    """Ergebnis der erklaerbaren Anomalie-Analyse."""
+    """Ergebnis der erklärbaren Anomalie-Analyse."""
     document_id: uuid.UUID
     anomalies: List[ExplainedAnomaly]
     overall_risk_score: float
@@ -133,17 +133,17 @@ class ExplainedAnomalyResult:
 
 
 # =============================================================================
-# Anomalie-Erklaerungen Templates
+# Anomalie-Erklärungen Templates
 # =============================================================================
 
 ANOMALY_TEMPLATES: Dict[AnomalyType, Dict[str, str]] = {
     AnomalyType.HIGH_AMOUNT: {
         "title": "Ungewoehnlich hoher Betrag erkannt",
-        "summary_template": "Der Betrag von {amount} EUR ist {factor}x hoeher als der historische Median von {median} EUR.",
+        "summary_template": "Der Betrag von {amount} EUR ist {factor}x höher als der historische Median von {median} EUR.",
         "detail_template": (
             "Bei der Analyse wurden ungewoehnlich hohe Betraege festgestellt. "
-            "Der aktuelle Rechnungsbetrag liegt deutlich ueber den historischen Werten. "
-            "Dies kann auf einen Preisanstieg, eine groessere Bestellung oder "
+            "Der aktuelle Rechnungsbetrag liegt deutlich über den historischen Werten. "
+            "Dies kann auf einen Preisanstieg, eine größere Bestellung oder "
             "einen potenziellen Fehler hindeuten. "
             "Vergleichswerte: Median der letzten 12 Monate: {median} EUR, "
             "Maximum: {max} EUR, Durchschnitt: {avg} EUR."
@@ -151,12 +151,12 @@ ANOMALY_TEMPLATES: Dict[AnomalyType, Dict[str, str]] = {
     },
     AnomalyType.NEW_SUPPLIER_HIGH_VALUE: {
         "title": "Neuer Lieferant mit hohem Betrag",
-        "summary_template": "Unbekannter Lieferant '{supplier}' mit Rechnung ueber {amount} EUR.",
+        "summary_template": "Unbekannter Lieferant '{supplier}' mit Rechnung über {amount} EUR.",
         "detail_template": (
             "Eine Rechnung von einem bisher unbekannten Lieferanten wurde erkannt. "
             "Bei Erstbestellungen mit hohen Betraegen ist besondere Vorsicht geboten. "
             "Empfohlen wird die Verifizierung des Lieferanten vor Freigabe der Zahlung. "
-            "Pruefen Sie: Handelsregistereintrag, Website, Referenzen."
+            "Prüfen Sie: Handelsregistereintrag, Website, Referenzen."
         ),
     },
     AnomalyType.DUPLICATE_NUMBER: {
@@ -167,7 +167,7 @@ ANOMALY_TEMPLATES: Dict[AnomalyType, Dict[str, str]] = {
             "Dies kann auf eine Doppelbuchung, eine korrigierte Rechnung (Storno/Gutschrift) "
             "oder einen Betrugsversuch hindeuten. "
             "Gefundene Duplikate: {duplicate_ids}. "
-            "Bitte pruefen Sie die Dokumente manuell auf Unterschiede."
+            "Bitte prüfen Sie die Dokumente manuell auf Unterschiede."
         ),
     },
     AnomalyType.UNUSUAL_PAYMENT_TERMS: {
@@ -175,20 +175,20 @@ ANOMALY_TEMPLATES: Dict[AnomalyType, Dict[str, str]] = {
         "summary_template": "Zahlungsziel von {days} Tagen ist ungewoehnlich.",
         "detail_template": (
             "Das angegebene Zahlungsziel weicht stark von den ueblichen "
-            "Geschaeftsbedingungen ab. Standard-Zahlungsziele liegen typischerweise "
-            "bei 14-30 Tagen. Sehr lange Zahlungsziele koennen ein Hinweis auf "
+            "Geschäftsbedingungen ab. Standard-Zahlungsziele liegen typischerweise "
+            "bei 14-30 Tagen. Sehr lange Zahlungsziele können ein Hinweis auf "
             "besondere Vereinbarungen oder potenzielle Probleme sein. "
-            "Bei sehr kurzen Fristen pruefen Sie auf Skonto-Moeglichkeiten."
+            "Bei sehr kurzen Fristen prüfen Sie auf Skonto-Möglichkeiten."
         ),
     },
     AnomalyType.ROUND_AMOUNT: {
         "title": "Verdaechtig runder Betrag",
         "summary_template": "Betrag von {amount} EUR ist ungewoehnlich rund.",
         "detail_template": (
-            "Exakt runde Betraege ohne Centbetraege sind bei geschaeftlichen "
-            "Transaktionen selten und koennen auf Schaetzwerte, Pauschalen "
+            "Exakt runde Betraege ohne Centbetraege sind bei geschäftlichen "
+            "Transaktionen selten und können auf Schätzwerte, Pauschalen "
             "oder manipulierte Betraege hindeuten. "
-            "Pruefen Sie ob Einzelpositionen auf der Rechnung vorhanden sind "
+            "Prüfen Sie ob Einzelpositionen auf der Rechnung vorhanden sind "
             "und ob diese den Gesamtbetrag rechnerisch ergeben."
         ),
     },
@@ -199,17 +199,17 @@ ANOMALY_TEMPLATES: Dict[AnomalyType, Dict[str, str]] = {
             "Die Rechnung wurde auf ein Wochenende datiert, was bei den meisten "
             "Unternehmen unueblich ist. Dies kann auf eine manuelle Datumseingabe "
             "oder automatisierte Systeme hindeuten. "
-            "Bei Kleinunternehmern oder Freiberuflern ist dies jedoch haeufiger."
+            "Bei Kleinunternehmern oder Freiberuflern ist dies jedoch häufiger."
         ),
     },
     AnomalyType.MISSING_VAT: {
         "title": "Fehlende USt-Identifikationsnummer",
-        "summary_template": "Keine USt-ID bei Rechnung ueber {amount} EUR.",
+        "summary_template": "Keine USt-ID bei Rechnung über {amount} EUR.",
         "detail_template": (
             "Bei dieser Rechnung fehlt die USt-Identifikationsnummer, obwohl der "
-            "Betrag ueber der Pruefgrenze liegt. Fuer den Vorsteuerabzug ist eine "
-            "gueltige USt-ID des Rechnungsstellers erforderlich. "
-            "Pruefen Sie die Rechnung auf Vollstaendigkeit oder fordern Sie eine "
+            "Betrag über der Prüfgrenze liegt. Für den Vorsteuerabzug ist eine "
+            "gültige USt-ID des Rechnungsstellers erforderlich. "
+            "Prüfen Sie die Rechnung auf Vollständigkeit oder fordern Sie eine "
             "korrigierte Version an."
         ),
     },
@@ -219,9 +219,9 @@ ANOMALY_TEMPLATES: Dict[AnomalyType, Dict[str, str]] = {
         "detail_template": (
             "Die Summe aus Nettobetrag und MwSt entspricht nicht dem angegebenen "
             "Bruttobetrag. Differenz: {difference} EUR. "
-            "Moegliche Ursachen: Rundungsfehler, falsche MwSt-Berechnung, "
+            "Mögliche Ursachen: Rundungsfehler, falsche MwSt-Berechnung, "
             "Tippfehler bei der Rechnungserstellung. "
-            "Eine korrekte Rechnung ist fuer den Vorsteuerabzug erforderlich."
+            "Eine korrekte Rechnung ist für den Vorsteuerabzug erforderlich."
         ),
     },
     AnomalyType.FUTURE_DATE: {
@@ -231,7 +231,7 @@ ANOMALY_TEMPLATES: Dict[AnomalyType, Dict[str, str]] = {
             "Das angegebene Rechnungsdatum liegt nach dem heutigen Datum. "
             "Dies kann auf eine Vordatierung, einen Eingabefehler oder "
             "unterschiedliche Zeitzonen hindeuten. "
-            "Pruefen Sie das korrekte Datum beim Lieferanten."
+            "Prüfen Sie das korrekte Datum beim Lieferanten."
         ),
     },
 }
@@ -239,10 +239,10 @@ ANOMALY_TEMPLATES: Dict[AnomalyType, Dict[str, str]] = {
 
 class ExplainableAnomalyService:
     """
-    Erweiterte Anomalie-Erkennung mit detaillierten Erklaerungen.
+    Erweiterte Anomalie-Erkennung mit detaillierten Erklärungen.
 
     Nutzt den bestehenden AnomalyDetectionService und reichert
-    die Ergebnisse mit kontextuellen Erklaerungen an.
+    die Ergebnisse mit kontextuellen Erklärungen an.
     """
 
     def __init__(self) -> None:
@@ -258,26 +258,26 @@ class ExplainableAnomalyService:
         explanation_level: AnomalyExplanationLevel = AnomalyExplanationLevel.DETAILED,
     ) -> ExplainedAnomalyResult:
         """
-        Analysiert ein Dokument auf Anomalien mit vollstaendiger Erklaerung.
+        Analysiert ein Dokument auf Anomalien mit vollständiger Erklärung.
 
         Args:
             db: Database Session
             document_id: Dokument-ID
             company_id: Optional Company-ID
-            explanation_level: Detail-Level der Erklaerung
+            explanation_level: Detail-Level der Erklärung
 
         Returns:
-            ExplainedAnomalyResult mit erklaerten Anomalien
+            ExplainedAnomalyResult mit erklärten Anomalien
         """
         import time
         start_time = time.perf_counter()
 
-        # Basis-Analyse durchfuehren
+        # Basis-Analyse durchführen
         base_result = await self._base_service.check_document(
             db, document_id, company_id
         )
 
-        # Dokument laden fuer Kontext
+        # Dokument laden für Kontext
         result = await db.execute(
             select(Document).where(Document.id == document_id)
         )
@@ -308,7 +308,7 @@ class ExplainableAnomalyService:
             key=lambda r: r.priority
         )[:5]
 
-        # Gesamterklaerung generieren
+        # Gesamterklärung generieren
         overall_explanation = self._generate_overall_explanation(
             explained_anomalies, base_result.overall_risk_score
         )
@@ -344,7 +344,7 @@ class ExplainableAnomalyService:
         comment: Optional[str] = None,
     ) -> bool:
         """
-        Speichert Feedback zu einer Anomalie fuer zukuenftige Verbesserung.
+        Speichert Feedback zu einer Anomalie für zukünftige Verbesserung.
 
         Args:
             document_id: Dokument-ID
@@ -389,7 +389,7 @@ class ExplainableAnomalyService:
         days: int = 90,
     ) -> List[AnomalyTrend]:
         """
-        Gibt historische Anomalie-Trends zurueck.
+        Gibt historische Anomalie-Trends zurück.
 
         Args:
             db: Database Session
@@ -427,7 +427,7 @@ class ExplainableAnomalyService:
         company_id: Optional[uuid.UUID],
         explanation_level: AnomalyExplanationLevel,
     ) -> ExplainedAnomaly:
-        """Erstellt eine vollstaendige Erklaerung fuer eine Anomalie."""
+        """Erstellt eine vollständige Erklärung für eine Anomalie."""
         template = ANOMALY_TEMPLATES.get(anomaly.anomaly_type, {})
 
         # Titel und Summary aus Template
@@ -439,7 +439,7 @@ class ExplainableAnomalyService:
             anomaly.details,
         )
 
-        # Detaillierte Erklaerung
+        # Detaillierte Erklärung
         detailed = self._format_summary(
             template.get("detail_template", ""),
             anomaly.details,
@@ -551,33 +551,33 @@ class ExplainableAnomalyService:
         self,
         anomaly: DetectedAnomaly,
     ) -> List[AnomalyRecommendation]:
-        """Erstellt Empfehlungen fuer eine Anomalie."""
+        """Erstellt Empfehlungen für eine Anomalie."""
         recommendations: List[AnomalyRecommendation] = []
 
-        # Primaere Empfehlung aus der Anomalie
+        # Primäre Empfehlung aus der Anomalie
         if anomaly.recommendation:
             recommendations.append(AnomalyRecommendation(
                 priority=1,
                 action=anomaly.recommendation,
                 reason=f"Basierend auf {anomaly.anomaly_type.value} Erkennung",
-                expected_outcome="Risikominimierung durch manuelle Pruefung",
+                expected_outcome="Risikominimierung durch manuelle Prüfung",
                 effort_level="low",
             ))
 
-        # Anomalie-spezifische zusaetzliche Empfehlungen
+        # Anomalie-spezifische zusätzliche Empfehlungen
         if anomaly.anomaly_type == AnomalyType.NEW_SUPPLIER_HIGH_VALUE:
             recommendations.extend([
                 AnomalyRecommendation(
                     priority=2,
-                    action="Handelsregistereintrag des Lieferanten pruefen",
-                    reason="Verifizierung der Geschaeftslegitimitaet",
+                    action="Handelsregistereintrag des Lieferanten prüfen",
+                    reason="Verifizierung der Geschäftslegitimitaet",
                     expected_outcome="Sicherstellung der Serioesitaet",
                     effort_level="medium",
                 ),
                 AnomalyRecommendation(
                     priority=3,
                     action="Referenzen von anderen Kunden einholen",
-                    reason="Zusaetzliche Vertrauensbildung",
+                    reason="Zusätzliche Vertrauensbildung",
                     expected_outcome="Risikoreduktion bei Erstbestellung",
                     effort_level="high",
                 ),
@@ -605,7 +605,7 @@ class ExplainableAnomalyService:
             recommendations.append(AnomalyRecommendation(
                 priority=2,
                 action="Korrigierte Rechnung mit USt-ID anfordern",
-                reason="Fuer korrekten Vorsteuerabzug erforderlich",
+                reason="Für korrekten Vorsteuerabzug erforderlich",
                 expected_outcome="Steuerrechtlich korrekte Dokumentation",
                 effort_level="low",
             ))
@@ -613,7 +613,7 @@ class ExplainableAnomalyService:
         return recommendations
 
     def _get_affected_fields(self, anomaly_type: AnomalyType) -> List[str]:
-        """Gibt die von einer Anomalie betroffenen Felder zurueck."""
+        """Gibt die von einer Anomalie betroffenen Felder zurück."""
         field_mapping: Dict[AnomalyType, List[str]] = {
             AnomalyType.HIGH_AMOUNT: ["total_gross", "total_net", "vat_amount"],
             AnomalyType.NEW_SUPPLIER_HIGH_VALUE: ["supplier_name", "total_gross"],
@@ -632,9 +632,9 @@ class ExplainableAnomalyService:
         anomalies: List[ExplainedAnomaly],
         risk_score: float,
     ) -> str:
-        """Generiert eine Gesamterklaerung."""
+        """Generiert eine Gesamterklärung."""
         if not anomalies:
-            return "Keine Anomalien erkannt. Das Dokument erscheint unauffaellig."
+            return "Keine Anomalien erkannt. Das Dokument erscheint unauffällig."
 
         count = len(anomalies)
         critical_count = len([
@@ -674,7 +674,7 @@ _explainable_anomaly_service: Optional[ExplainableAnomalyService] = None
 
 
 def get_explainable_anomaly_service() -> ExplainableAnomalyService:
-    """Factory fuer ExplainableAnomalyService Singleton."""
+    """Factory für ExplainableAnomalyService Singleton."""
     global _explainable_anomaly_service
     if _explainable_anomaly_service is None:
         _explainable_anomaly_service = ExplainableAnomalyService()

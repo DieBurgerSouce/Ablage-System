@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """Industry Benchmarks API - Branchen-Vergleiche und KPIs.
 
-Stellt Endpoints bereit fuer:
+Stellt Endpoints bereit für:
 - Vergleich der eigenen KPIs mit Branchendurchschnitt
 - Perzentil-Rankings
-- Trend-Vergleiche ueber Zeit
+- Trend-Vergleiche über Zeit
 
 Vision 2.0 - Feature #10 (Januar 2026)
 """
@@ -53,13 +53,13 @@ class MetricResponse(BaseModel):
     percentile: int = Field(..., description="Perzentil (0-100)")
     performance_level: str = Field(..., description="Leistungsstufe")
     trend_vs_avg: float = Field(..., description="Abweichung vom Durchschnitt in %")
-    is_better_higher: bool = Field(..., description="True wenn hoehere Werte besser")
+    is_better_higher: bool = Field(..., description="True wenn höhere Werte besser")
     unit: str = Field(..., description="Einheit")
     recommendations: List[str] = Field(default_factory=list, description="Empfehlungen")
 
 
 class BenchmarkReportResponse(BaseModel):
-    """Vollstaendiger Benchmark-Report."""
+    """Vollständiger Benchmark-Report."""
 
     company_id: str = Field(..., description="Firmen-ID")
     company_name: str = Field(..., description="Firmenname")
@@ -85,13 +85,13 @@ class IndustryDataResponse(BaseModel):
     skonto_usage_avg: float = Field(..., description="Durchschnittl. Skonto-Nutzung (%)")
     dunning_rate_avg: float = Field(..., description="Durchschnittl. Mahnquote (%)")
     default_rate_avg: float = Field(..., description="Durchschnittl. Ausfallrate (%)")
-    avg_payment_delay_days: float = Field(..., description="Durchschnittl. Zahlungsverzoegerung")
-    sample_size: int = Field(..., description="Stichprobengroesse")
+    avg_payment_delay_days: float = Field(..., description="Durchschnittl. Zahlungsverzögerung")
+    sample_size: int = Field(..., description="Stichprobengröße")
     last_updated: str = Field(..., description="Letzte Aktualisierung (ISO)")
 
 
 class IndustryListResponse(BaseModel):
-    """Liste verfuegbarer Branchen."""
+    """Liste verfügbarer Branchen."""
 
     industries: List[Dict[str, str]]
 
@@ -187,7 +187,7 @@ async def get_company_benchmark(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> BenchmarkReportResponse:
-    """Erstellt Benchmark-Report fuer die eigene Firma."""
+    """Erstellt Benchmark-Report für die eigene Firma."""
     if not current_user.default_company_id:
         raise HTTPException(
             status_code=400,
@@ -202,7 +202,7 @@ async def get_company_benchmark(
         except ValueError:
             raise HTTPException(
                 status_code=400,
-                detail=f"Unbekannte Branche: {industry}. Verfuegbar: {[i.value for i in Industry]}",
+                detail=f"Unbekannte Branche: {industry}. Verfügbar: {[i.value for i in Industry]}",
             )
 
     service = await get_benchmark_service(db)
@@ -245,14 +245,14 @@ async def get_industry_benchmarks(
 @router.get(
     "/industries",
     response_model=IndustryListResponse,
-    summary="Verfuegbare Branchen",
-    description="Listet alle verfuegbaren Branchen mit deutschen Labels.",
+    summary="Verfügbare Branchen",
+    description="Listet alle verfügbaren Branchen mit deutschen Labels.",
 )
 async def list_industries(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> IndustryListResponse:
-    """Listet alle verfuegbaren Branchen."""
+    """Listet alle verfügbaren Branchen."""
     service = await get_benchmark_service(db)
     industries = await service.get_available_industries()
 

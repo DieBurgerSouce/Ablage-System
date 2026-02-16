@@ -1,5 +1,5 @@
 """
-Celery Tasks fuer Stammdaten-Hygiene.
+Celery Tasks für Stammdaten-Hygiene.
 
 Automatische Erkennung und Korrektur von Stammdaten-Problemen.
 """
@@ -35,9 +35,9 @@ def run_full_hygiene_scan(
     notify_admin: bool = True,
 ) -> Dict[str, Any]:
     """
-    Fuehrt vollstaendigen Hygiene-Scan durch.
+    Führt vollständigen Hygiene-Scan durch.
 
-    Wird woechentlich ausgefuehrt (Sonntag 03:00).
+    Wird wöchentlich ausgeführt (Sonntag 03:00).
 
     Args:
         entity_types: Optional - nur bestimmte Entity-Typen
@@ -86,13 +86,13 @@ async def _async_run_full_scan(
         if entity_types:
             types_filter = [EntityType(t) for t in entity_types if t]
 
-        # Scan durchfuehren
+        # Scan durchführen
         report = await service.run_full_scan(entity_types=types_filter)
 
         # Admin benachrichtigen wenn Issues gefunden
         if notify_admin and report.issues_found > 0:
             try:
-                # High/Critical Issues zaehlen
+                # High/Critical Issues zählen
                 critical_count = report.by_severity.get("critical", 0)
                 high_count = report.by_severity.get("high", 0)
 
@@ -106,7 +106,7 @@ async def _async_run_full_scan(
                             f"Hoch: {high_count}\n"
                             f"Mittel: {report.by_severity.get('medium', 0)}\n"
                             f"Niedrig: {report.by_severity.get('low', 0)}\n\n"
-                            f"Bitte pruefen Sie die Stammdaten im Admin-Bereich."
+                            f"Bitte prüfen Sie die Stammdaten im Admin-Bereich."
                         ),
                         notification_type="hygiene_scan",
                     )
@@ -143,10 +143,10 @@ def check_entity_after_document(
     entity_id: str,
 ) -> Dict[str, Any]:
     """
-    Prueft Entity-Daten nach Dokumentenverarbeitung.
+    Prüft Entity-Daten nach Dokumentenverarbeitung.
 
-    Wird nach OCR-Completion ausgefuehrt wenn Dokument
-    mit Entity verknuepft ist.
+    Wird nach OCR-Completion ausgeführt wenn Dokument
+    mit Entity verknüpft ist.
 
     Args:
         document_id: Dokument-ID
@@ -183,7 +183,7 @@ async def _async_check_entity_document(
     document_id: str,
     entity_id: str,
 ) -> Dict[str, Any]:
-    """Async Implementierung der Entity-Pruefung."""
+    """Async Implementierung der Entity-Prüfung."""
     import uuid
     from sqlalchemy import select
     from app.db.models import Document
@@ -247,11 +247,11 @@ def auto_apply_corrections(
     """
     Wendet automatisch Korrekturen mit hoher Confidence an.
 
-    Nur fuer nicht-kritische Felder mit sehr hoher Confidence.
+    Nur für nicht-kritische Felder mit sehr hoher Confidence.
 
     Args:
-        confidence_threshold: Mindest-Confidence fuer Auto-Korrektur
-        dry_run: Nur simulieren, keine Aenderungen
+        confidence_threshold: Mindest-Confidence für Auto-Korrektur
+        dry_run: Nur simulieren, keine Änderungen
 
     Returns:
         Anzahl angewendeter Korrekturen
@@ -293,7 +293,7 @@ async def _async_auto_apply_corrections(
     async with get_async_session() as db:
         service = get_master_data_hygiene_service(db)
 
-        # Erst Scan durchfuehren
+        # Erst Scan durchführen
         report = await service.run_full_scan()
 
         applied_count = 0
@@ -308,7 +308,7 @@ async def _async_auto_apply_corrections(
                 skipped_count += 1
                 continue
 
-            # Kritische Felder nie automatisch aendern
+            # Kritische Felder nie automatisch ändern
             if issue.severity in (HygieneIssueSeverity.CRITICAL, HygieneIssueSeverity.HIGH):
                 skipped_count += 1
                 continue
@@ -369,12 +369,12 @@ def check_inactive_entities(
     inactivity_days: int = 365,
 ) -> Dict[str, Any]:
     """
-    Prueft auf inaktive Entities.
+    Prüft auf inaktive Entities.
 
-    Wird monatlich ausgefuehrt.
+    Wird monatlich ausgeführt.
 
     Args:
-        inactivity_days: Tage ohne Aktivitaet = inaktiv
+        inactivity_days: Tage ohne Aktivität = inaktiv
 
     Returns:
         Gefundene inaktive Entities
@@ -403,7 +403,7 @@ def check_inactive_entities(
 
 
 async def _async_check_inactive(inactivity_days: int) -> Dict[str, Any]:
-    """Async Implementierung der Inaktivitaets-Pruefung."""
+    """Async Implementierung der Inaktivitaets-Prüfung."""
     from app.services.master_data_hygiene_service import (
         MasterDataHygieneService,
         HygieneIssueType,

@@ -11,6 +11,8 @@ import { cn } from '@/lib/utils'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { NotificationBell } from '@/components/NotificationBell'
 import { CompanySwitcher } from '@/components/layout/CompanySwitcher'
+import { GettingStartedChecklist } from '@/features/product-tour'
+import { NewBadge, useFeatureDiscovery, NEW_FEATURES } from '@/features/product-tour'
 
 interface SidebarProps {
     /** Callback when navigation occurs - used to close mobile sidebar */
@@ -88,11 +90,13 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             <nav id="main-navigation" className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenü" tabIndex={-1}>
                 <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" onNavigate={onNavigate} dataTour="nav-dashboard" />
                 <SidebarLink to="/inbox" icon={Sparkles} label="Smart Inbox" onNavigate={onNavigate} />
-                <SidebarLink to="/proactive-assistant" icon={Lightbulb} label="Proaktiver Assistent" onNavigate={onNavigate} />
-                <SidebarLink to="/smart-search" icon={FileSearch} label="Smart Search" onNavigate={onNavigate} dataTour="nav-smart-search" />
+                <SidebarLink to="/proactive-assistant" icon={Lightbulb} label="Proaktiver Assistent" onNavigate={onNavigate} featureId="proactive-assistant" />
+                <SidebarLink to="/smart-search" icon={FileSearch} label="Smart Search" onNavigate={onNavigate} dataTour="nav-smart-search" featureId="smart-search" />
                 <SidebarLink to="/dashboard/ceo" icon={BarChart3} label="CEO Dashboard" onNavigate={onNavigate} />
                 <SidebarLink to="/smart-dashboard" icon={LayoutGrid} label="Smart Dashboard" onNavigate={onNavigate} />
-                <SidebarLink to="/digital-twin" icon={Globe} label="Digitaler Zwilling" onNavigate={onNavigate} dataTour="nav-digital-twin" />
+                <SidebarLink to="/analytics" icon={PieChart} label="Analyse & Berichte" onNavigate={onNavigate} featureId="analytics" />
+                <SidebarLink to="/predictive" icon={BrainCircuit} label="Vorhersagen" onNavigate={onNavigate} featureId="predictive" />
+                <SidebarLink to="/digital-twin" icon={Globe} label="Digitaler Zwilling" onNavigate={onNavigate} dataTour="nav-digital-twin" featureId="digital-twin" />
                 <SidebarLink to="/chat" icon={MessageSquare} label="Chat" onNavigate={onNavigate} />
                 <SidebarLink to="/email-import" icon={Mail} label="E-Mail Import" onNavigate={onNavigate} />
                 <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" onNavigate={onNavigate} dataTour="nav-upload" />
@@ -437,6 +441,11 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 )}
             </nav>
 
+            {/* Getting Started Checklist */}
+            <div className="px-4 py-3 border-t border-sidebar-border">
+                <GettingStartedChecklist />
+            </div>
+
             {/* Settings Modal */}
             <div className="px-4 py-2 border-t border-sidebar-border">
                 <SettingsModal />
@@ -478,19 +487,30 @@ interface SidebarLinkProps {
     label: string;
     onNavigate?: () => void;
     dataTour?: string;
+    featureId?: string;
 }
 
-function SidebarLink({ to, icon: Icon, label, onNavigate, dataTour }: SidebarLinkProps) {
+function SidebarLink({ to, icon: Icon, label, onNavigate, dataTour, featureId }: SidebarLinkProps) {
+    const { markDiscovered } = useFeatureDiscovery();
+
+    const handleClick = () => {
+        if (featureId && NEW_FEATURES.includes(featureId)) {
+            markDiscovered(featureId);
+        }
+        onNavigate?.();
+    };
+
     return (
         <Link
             to={to}
-            onClick={onNavigate}
+            onClick={handleClick}
             className="flex items-center gap-3 px-3 py-2 min-h-[44px] rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground [&.active]:bg-sidebar-accent [&.active]:text-sidebar-accent-foreground"
             aria-label={label}
             {...(dataTour ? { 'data-tour': dataTour } : {})}
         >
             <Icon className="w-4 h-4" aria-hidden="true" />
-            {label}
+            <span className="flex-1">{label}</span>
+            {featureId && <NewBadge featureId={featureId} />}
         </Link>
     )
 }

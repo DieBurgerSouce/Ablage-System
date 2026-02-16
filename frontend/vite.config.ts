@@ -19,7 +19,7 @@ export default defineConfig({
       manifest: false, // We use our own manifest.json
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MiB to accommodate large bundles
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8 MiB to accommodate large bundles
         // Enable navigation preload for faster page loads
         navigationPreload: true,
         runtimeCaching: [
@@ -116,7 +116,8 @@ export default defineConfig({
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],
           'router-vendor': ['@tanstack/react-router', '@tanstack/react-query'],
-          'ui-vendor': ['framer-motion', 'lucide-react', 'recharts'],
+          'chart-vendor': ['recharts'],
+          'ui-vendor': ['framer-motion', 'lucide-react'],
         },
       },
     },

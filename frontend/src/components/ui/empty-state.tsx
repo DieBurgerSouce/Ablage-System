@@ -1,4 +1,6 @@
-import { type LucideIcon, FileX, Search, AlertCircle, Upload, FolderOpen, Inbox } from 'lucide-react'
+import { FileX, Search, AlertCircle, Upload, FolderOpen, Inbox } from 'lucide-react'
+
+type LucideIcon = React.ComponentType<{ className?: string }>
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 

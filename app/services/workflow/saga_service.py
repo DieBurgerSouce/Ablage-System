@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Saga Service fuer Ablage-System.
+"""Saga Service für Ablage-System.
 
-Implementiert das Saga-Pattern fuer verteilte Transaktionen:
+Implementiert das Saga-Pattern für verteilte Transaktionen:
 - Compensation-Aktionen pro Schritt
 - Automatisches Rollback bei Fehler
-- Transaktionslog fuer Debugging
-- State Machine fuer Saga-Ausfuehrung
-- Dead Letter Queue fuer fehlgeschlagene Compensations
+- Transaktionslog für Debugging
+- State Machine für Saga-Ausführung
+- Dead Letter Queue für fehlgeschlagene Compensations
 
 Alle Benutzer-sichtbaren Texte sind auf Deutsch.
 """
@@ -44,9 +44,9 @@ logger = structlog.get_logger(__name__)
 
 
 class StepHandlerRegistry:
-    """Registry fuer Step-Handler und Compensation-Handler.
+    """Registry für Step-Handler und Compensation-Handler.
 
-    Ermoeglicht das Registrieren von Handlern fuer verschiedene
+    Ermöglicht das Registrieren von Handlern für verschiedene
     Action-Types.
     """
 
@@ -110,10 +110,10 @@ class StepHandlerRegistry:
 
 
 class SagaService:
-    """Service fuer Saga-Orchestrierung.
+    """Service für Saga-Orchestrierung.
 
     Implementiert:
-    - Saga-Erstellung und -Ausfuehrung
+    - Saga-Erstellung und -Ausführung
     - Automatische Compensation bei Fehler
     - Dead Letter Queue
     - Transaktionslog
@@ -125,7 +125,7 @@ class SagaService:
                                      -> PARTIALLY_COMPENSATED
                                      -> FAILED
 
-    SECURITY: Alle Operationen validieren company_id fuer Multi-Tenant Isolation.
+    SECURITY: Alle Operationen validieren company_id für Multi-Tenant Isolation.
     """
 
     def __init__(
@@ -136,7 +136,7 @@ class SagaService:
         """Initialisiert den SagaService.
 
         Args:
-            db: AsyncSession fuer Datenbankoperationen
+            db: AsyncSession für Datenbankoperationen
             handler_registry: Optionale Handler-Registry
         """
         self.db = db
@@ -144,7 +144,7 @@ class SagaService:
         self._register_default_handlers()
 
     def _register_default_handlers(self) -> None:
-        """Registriert Standard-Handler fuer gaengige Actions."""
+        """Registriert Standard-Handler für gaengige Actions."""
         from app.services.orchestration.sagas import register_all_saga_handlers
 
         register_all_saga_handlers(self.handler_registry)
@@ -167,7 +167,7 @@ class SagaService:
         """Erstellt eine neue Saga mit Steps.
 
         Args:
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
             user_id: Initiator
             name: Saga-Name
             steps: Liste von Step-Definitionen
@@ -260,14 +260,14 @@ class SagaService:
         saga_id: UUID,
         company_id: UUID,
     ) -> Saga:
-        """Fuehrt eine Saga aus.
+        """Führt eine Saga aus.
 
         Durchlaeuft alle Steps sequentiell. Bei Fehler wird automatisch
         die Compensation gestartet.
 
         Args:
             saga_id: Saga-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
 
         Returns:
             Aktualisierte Saga
@@ -300,7 +300,7 @@ class SagaService:
             total_steps=saga.total_steps,
         )
 
-        # Steps ausfuehren
+        # Steps ausführen
         try:
             await self._execute_forward(saga)
         except Exception as e:
@@ -310,12 +310,12 @@ class SagaService:
                 **safe_error_log(e),
             )
 
-        # Saga neu laden fuer aktuellen Status
+        # Saga neu laden für aktuellen Status
         saga = await self._get_saga_with_steps(saga_id, company_id)
         return saga
 
     async def _execute_forward(self, saga: Saga) -> None:
-        """Fuehrt die Forward-Phase der Saga aus.
+        """Führt die Forward-Phase der Saga aus.
 
         Args:
             saga: Saga mit geladenen Steps
@@ -324,13 +324,13 @@ class SagaService:
 
         for step in steps:
             if step.status != SagaStepStatus.PENDING.value:
-                # Bereits ausgefuehrt (z.B. bei Resume)
+                # Bereits ausgeführt (z.B. bei Resume)
                 continue
 
             saga.current_step_index = step.step_order
             await self.db.commit()
 
-            # Step ausfuehren
+            # Step ausführen
             success = await self._execute_step(saga, step)
 
             if not success:
@@ -354,7 +354,7 @@ class SagaService:
                     failed_step=step.name,
                 )
 
-                # Compensation ausfuehren
+                # Compensation ausführen
                 await self._execute_compensation(saga)
                 return
 
@@ -376,11 +376,11 @@ class SagaService:
         )
 
     async def _execute_step(self, saga: Saga, step: SagaStep) -> bool:
-        """Fuehrt einen einzelnen Step aus.
+        """Führt einen einzelnen Step aus.
 
         Args:
             saga: Parent Saga
-            step: Auszufuehrender Step
+            step: Auszuführender Step
 
         Returns:
             True wenn erfolgreich, False bei Fehler
@@ -402,7 +402,7 @@ class SagaService:
 
         try:
             if handler:
-                # Handler ausfuehren mit Timeout
+                # Handler ausführen mit Timeout
                 result = await asyncio.wait_for(
                     handler(
                         action_params=step.action_params,
@@ -413,7 +413,7 @@ class SagaService:
                 )
                 step.result_data = result if isinstance(result, dict) else {"result": result}
             else:
-                # Kein Handler - Mock-Erfolg (fuer Tests)
+                # Kein Handler - Mock-Erfolg (für Tests)
                 logger.warning(
                     "no_handler_for_action_type",
                     action_type=step.action_type,
@@ -504,10 +504,10 @@ class SagaService:
     # =========================================================================
 
     async def _execute_compensation(self, saga: Saga) -> None:
-        """Fuehrt die Compensation-Phase aus.
+        """Führt die Compensation-Phase aus.
 
-        Geht alle erfolgreich ausgefuehrten Steps in umgekehrter
-        Reihenfolge durch und fuehrt deren Compensation aus.
+        Geht alle erfolgreich ausgeführten Steps in umgekehrter
+        Reihenfolge durch und führt deren Compensation aus.
 
         Args:
             saga: Saga mit geladenen Steps
@@ -515,7 +515,7 @@ class SagaService:
         saga.compensation_started_at = datetime.now(timezone.utc)
         await self.db.commit()
 
-        # Erfolgreich ausgefuehrte Steps in umgekehrter Reihenfolge
+        # Erfolgreich ausgeführte Steps in umgekehrter Reihenfolge
         completed_steps = [
             s for s in saga.steps
             if s.status == SagaStepStatus.COMPLETED.value and s.has_compensation
@@ -598,7 +598,7 @@ class SagaService:
         await self.db.commit()
 
     async def _compensate_step(self, saga: Saga, step: SagaStep) -> bool:
-        """Fuehrt die Compensation fuer einen Step aus.
+        """Führt die Compensation für einen Step aus.
 
         Args:
             saga: Parent Saga
@@ -640,7 +640,7 @@ class SagaService:
                     timeout=step.timeout_seconds,
                 )
             else:
-                # Kein Handler - Mock-Erfolg (fuer Tests)
+                # Kein Handler - Mock-Erfolg (für Tests)
                 logger.warning(
                     "no_handler_for_compensation_type",
                     compensation_type=step.compensation_type,
@@ -726,11 +726,16 @@ class SagaService:
 
         Args:
             saga_id: Saga-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
             include_steps: Steps mit laden
 
         Returns:
             Saga oder None
+
+        Note:
+            company_id is included in the WHERE clause, providing implicit
+            multi-tenant authorization. Returns None for both "saga not found"
+            and "saga belongs to different tenant" (prevents enumeration attacks).
         """
         if include_steps:
             return await self._get_saga_with_steps(saga_id, company_id)
@@ -756,10 +761,10 @@ class SagaService:
         """Listet Sagas mit Filtern.
 
         Args:
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
             status: Optionaler Status-Filter
             execution_id: Optionaler Workflow-Execution-Filter
-            in_dead_letter_queue: Filter fuer Dead Letter Queue
+            in_dead_letter_queue: Filter für Dead Letter Queue
             offset: Pagination Offset
             limit: Pagination Limit
 
@@ -803,7 +808,7 @@ class SagaService:
         """Holt Sagas aus der Dead Letter Queue.
 
         Args:
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
             offset: Pagination Offset
             limit: Pagination Limit
 
@@ -826,10 +831,14 @@ class SagaService:
 
         Args:
             saga_id: Saga-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
 
         Returns:
             Liste der Steps
+
+        Note:
+            Implicit multi-tenant authorization is enforced via the preceding
+            get_saga() call, which filters by company_id.
         """
         # Saga-Zugriff validieren
         saga = await self.get_saga(saga_id, company_id, include_steps=False)
@@ -853,17 +862,21 @@ class SagaService:
         offset: int = 0,
         limit: int = 100,
     ) -> Tuple[List[SagaTransactionLog], int]:
-        """Holt Transaktionslogs fuer eine Saga.
+        """Holt Transaktionslogs für eine Saga.
 
         Args:
             saga_id: Saga-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
             step_id: Optionaler Step-Filter
             offset: Pagination Offset
             limit: Pagination Limit
 
         Returns:
             Tuple aus Log-Liste und Gesamtanzahl
+
+        Note:
+            Implicit multi-tenant authorization is enforced via the preceding
+            get_saga() call, which filters by company_id.
         """
         # Saga-Zugriff validieren
         saga = await self.get_saga(saga_id, company_id, include_steps=False)
@@ -907,8 +920,8 @@ class SagaService:
 
         Args:
             saga_id: Saga-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
-            user_id: Ausfuehrender User
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
+            user_id: Ausführender User
 
         Returns:
             Aktualisierte Saga oder None
@@ -936,7 +949,7 @@ class SagaService:
             )
             return None
 
-        # Retry-Counter erhoehen
+        # Retry-Counter erhöhen
         saga.retry_count += 1
         saga.status = SagaStatus.PENDING.value
         saga.in_dead_letter_queue = False
@@ -945,7 +958,7 @@ class SagaService:
         saga.error_message = None
         saga.error_step_id = None
 
-        # Fehlgeschlagene Steps zuruecksetzen
+        # Fehlgeschlagene Steps zurücksetzen
         for step in saga.steps:
             if step.status in (
                 SagaStepStatus.FAILED.value,
@@ -972,7 +985,7 @@ class SagaService:
             retry_count=saga.retry_count,
         )
 
-        # Saga erneut ausfuehren
+        # Saga erneut ausführen
         return await self.execute_saga(saga_id, company_id)
 
     async def cancel_saga(
@@ -986,8 +999,8 @@ class SagaService:
 
         Args:
             saga_id: Saga-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
-            user_id: Ausfuehrender User
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
+            user_id: Ausführender User
             reason: Optionaler Abbruchgrund
 
         Returns:
@@ -1043,8 +1056,8 @@ class SagaService:
 
         Args:
             saga_id: Saga-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
-            user_id: Ausfuehrender User
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
+            user_id: Ausführender User
 
         Returns:
             Aktualisierte Saga oder None
@@ -1084,11 +1097,11 @@ class SagaService:
         saga_id: UUID,
         company_id: UUID,
     ) -> Optional[Dict[str, Any]]:
-        """Erstellt ein State-Diagramm fuer eine Saga.
+        """Erstellt ein State-Diagramm für eine Saga.
 
         Args:
             saga_id: Saga-ID
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
 
         Returns:
             State-Diagramm als Dict oder None
@@ -1154,7 +1167,7 @@ class SagaService:
             "type": "forward",
         })
 
-        # Compensation-Edges (rueckwaerts)
+        # Compensation-Edges (rückwärts)
         if saga.status in (
             SagaStatus.COMPENSATING.value,
             SagaStatus.COMPENSATED.value,
@@ -1171,7 +1184,7 @@ class SagaService:
 
             for step in compensated_steps:
                 step_node_id = f"step_{step.step_order}"
-                # Rueckwaerts-Kante
+                # Rückwärts-Kante
                 prev_step_order = step.step_order - 1
                 target = f"step_{prev_step_order}" if prev_step_order > 0 else "start"
 
@@ -1203,7 +1216,7 @@ class SagaService:
         """Holt aggregierte Saga-Statistiken.
 
         Args:
-            company_id: Company-ID (PFLICHT fuer Multi-Tenant)
+            company_id: Company-ID (PFLICHT für Multi-Tenant)
 
         Returns:
             Statistik-Dictionary

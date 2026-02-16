@@ -10,8 +10,8 @@ Baut auf AIDecisionService auf und implementiert spezifische autonome Aktionen:
 
 Human-in-the-Loop Pattern:
 - Confidence-basierte Eskalation
-- One-Click Bestaetigung bei Unsicherheit
-- Lernschleife: Bestaetigte Entscheidungen trainieren KI
+- One-Click Bestätigung bei Unsicherheit
+- Lernschleife: Bestätigte Entscheidungen trainieren KI
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ class AutonomousAction(str, Enum):
 
 @dataclass
 class ActionProposal:
-    """Vorschlag fuer eine autonome Aktion."""
+    """Vorschlag für eine autonome Aktion."""
 
     action_type: AutonomousAction
     target_id: uuid.UUID  # Document-ID, Invoice-ID, etc.
@@ -83,7 +83,7 @@ class ActionProposal:
 
 @dataclass
 class ActionResult:
-    """Ergebnis einer ausgefuehrten Aktion."""
+    """Ergebnis einer ausgeführten Aktion."""
 
     success: bool
     action_type: AutonomousAction
@@ -96,9 +96,9 @@ class ActionResult:
 
 @dataclass
 class AutonomyConfig:
-    """Konfiguration fuer autonome Aktionen.
+    """Konfiguration für autonome Aktionen.
 
-    Nutzt Settings aus app.core.config fuer alle Thresholds.
+    Nutzt Settings aus app.core.config für alle Thresholds.
     Kann per create_autonomy_config() mit aktuellen Settings erstellt werden.
     """
 
@@ -116,7 +116,7 @@ class AutonomyConfig:
 
     # Mahnungen
     dunning_auto_send_level: int = 1  # Bis Level 1 automatisch
-    dunning_min_overdue_days: int = 14  # Min Tage ueberfaellig
+    dunning_min_overdue_days: int = 14  # Min Tage überfällig
 
     # Stammdaten
     master_data_auto_update_confidence: float = 0.95
@@ -158,7 +158,7 @@ def create_autonomy_config() -> AutonomyConfig:
     """Erstellt AutonomyConfig aus aktuellen Settings.
 
     Laedt alle Thresholds und Einstellungen aus app.core.config.
-    Fallback auf Defaults wenn Settings nicht verfuegbar.
+    Fallback auf Defaults wenn Settings nicht verfügbar.
 
     Returns:
         AutonomyConfig mit aktuellen Settings
@@ -210,17 +210,17 @@ def create_autonomy_config() -> AutonomyConfig:
 
 
 class AutonomousActionsService:
-    """Service fuer autonome KI-Aktionen mit Human-in-the-Loop.
+    """Service für autonome KI-Aktionen mit Human-in-the-Loop.
 
     Koordiniert spezifische autonome Aktionen und integriert sie
-    mit dem AIDecisionService fuer Audit-Trail und Self-Learning.
+    mit dem AIDecisionService für Audit-Trail und Self-Learning.
 
     Die Thresholds werden aus app.core.config.settings geladen.
 
     Phase 2.1: Integriert Multi-Level Trust System:
-    - Level 1 (ASSISTANCE): Alle Aktionen erfordern Bestaetigung
+    - Level 1 (ASSISTANCE): Alle Aktionen erfordern Bestätigung
     - Level 2 (AUTO_ACCEPT): >90% Confidence, 24h Auto-Accept
-    - Level 3 (CONFIDENCE): >95% sofort, 80-95% verzoegert (4h)
+    - Level 3 (CONFIDENCE): >95% sofort, 80-95% verzögert (4h)
     - Level 4 (AUTONOMOUS): Volle Autonomie, nur Exceptions
     """
 
@@ -236,7 +236,7 @@ class AutonomousActionsService:
             config: Autonomie-Konfiguration (oder aus Settings via create_autonomy_config())
         """
         self.db = db
-        # Nutze uebergebene Config oder lade aus Settings
+        # Nutze übergebene Config oder lade aus Settings
         self.config = config or create_autonomy_config()
         self.decision_service = get_ai_decision_service()
 
@@ -279,9 +279,9 @@ class AutonomousActionsService:
         """Sendet Benachrichtigung nach autonomer Aktion.
 
         Args:
-            action_type: Typ der ausgefuehrten Aktion
+            action_type: Typ der ausgeführten Aktion
             target_id: Ziel-ID (Invoice, Entity, etc.)
-            details: Zusaetzliche Details
+            details: Zusätzliche Details
             company_id: Mandanten-ID
         """
         try:
@@ -300,7 +300,7 @@ class AutonomousActionsService:
             }
             label = action_labels.get(action_type, str(action_type.value))
 
-            # Lade Admin fuer Benachrichtigung
+            # Lade Admin für Benachrichtigung
             from app.db.models import User
             stmt = (
                 select(User)
@@ -325,7 +325,7 @@ class AutonomousActionsService:
                 notification_type="autonomous_action",
                 title=f"KI-Aktion: {label}",
                 message=(
-                    f"Das System hat automatisch eine {label} durchgefuehrt. "
+                    f"Das System hat automatisch eine {label} durchgeführt. "
                     f"Details: {details.get('summary', str(target_id))}"
                 ),
                 category=NotificationCategory.SYSTEM,
@@ -374,19 +374,19 @@ class AutonomousActionsService:
                 company_id, document_type
             )
 
-            # Level 1: Immer Bestaetigung
+            # Level 1: Immer Bestätigung
             if trust_config.level == TrustLevel.LEVEL_1_ASSISTANCE:
                 return {
                     "mode": "confirmation_required",
                     "delay_hours": 0,
                     "requires_confirmation": True,
                     "auto_apply": False,
-                    "reason": "Trust-Level erfordert manuelle Bestaetigung",
+                    "reason": "Trust-Level erfordert manuelle Bestätigung",
                 }
 
-            # Level 2-4: Pruefen ob Confidence ausreicht
+            # Level 2-4: Prüfen ob Confidence ausreicht
             if confidence >= trust_config.immediate_threshold:
-                # Sofortige Ausfuehrung
+                # Sofortige Ausführung
                 return {
                     "mode": "immediate",
                     "delay_hours": 0,
@@ -395,7 +395,7 @@ class AutonomousActionsService:
                     "reason": f"Confidence {confidence:.1%} >= {trust_config.immediate_threshold:.1%}",
                 }
             elif confidence >= trust_config.delayed_threshold:
-                # Verzoegerte Ausfuehrung
+                # Verzögerte Ausführung
                 return {
                     "mode": "delayed",
                     "delay_hours": trust_config.delay_hours,
@@ -404,7 +404,7 @@ class AutonomousActionsService:
                     "reason": f"Confidence {confidence:.1%} in verzoegetrem Bereich, {trust_config.delay_hours}h Wartezeit",
                 }
             else:
-                # Manuelle Bestaetigung
+                # Manuelle Bestätigung
                 return {
                     "mode": "confirmation_required",
                     "delay_hours": 0,
@@ -418,7 +418,7 @@ class AutonomousActionsService:
                 "evaluate_action_mode_error",
                 **safe_error_log(e),
             )
-            # Fallback: Bestaetigung erfordern
+            # Fallback: Bestätigung erfordern
             return {
                 "mode": "confirmation_required",
                 "delay_hours": 0,
@@ -438,7 +438,7 @@ class AutonomousActionsService:
         ai_decision_id: Optional[uuid.UUID] = None,
         reasoning: str = "",
     ) -> uuid.UUID:
-        """Erstellt einen verzoegerten Vorschlag in der Queue.
+        """Erstellt einen verzögerten Vorschlag in der Queue.
 
         Args:
             company_id: Company-ID
@@ -446,7 +446,7 @@ class AutonomousActionsService:
             target_id: Ziel-ID
             proposed_value: Vorgeschlagener Wert
             confidence: Confidence-Score
-            delay_hours: Verzoegerung
+            delay_hours: Verzögerung
             ai_decision_id: Optional AI-Decision Referenz
             reasoning: Begruendung
 
@@ -497,17 +497,17 @@ class AutonomousActionsService:
         document_id: uuid.UUID,
         company_id: Optional[uuid.UUID] = None,
     ) -> ActionProposal:
-        """Schlaegt Ablageort fuer ein Dokument vor.
+        """Schlaegt Ablageort für ein Dokument vor.
 
         NOTE: Diese Funktion ist deaktiviert, da das Folder-Model nicht existiert.
-        Das Feature wird in einer zukuenftigen Version implementiert.
+        Das Feature wird in einer zukünftigen Version implementiert.
 
         Args:
             document_id: ID des Dokuments
             company_id: Optional Company-ID
 
         Returns:
-            ActionProposal mit "Feature nicht verfuegbar" Status
+            ActionProposal mit "Feature nicht verfügbar" Status
         """
         # Folder-basierte Ablage ist nicht implementiert
         logger.info(
@@ -520,7 +520,7 @@ class AutonomousActionsService:
             target_id=document_id,
             proposed_value={},
             confidence=0.0,
-            reasoning="Automatische Ablage ist derzeit nicht verfuegbar (Folder-System nicht implementiert)",
+            reasoning="Automatische Ablage ist derzeit nicht verfügbar (Folder-System nicht implementiert)",
             requires_confirmation=True,
         )
 
@@ -531,18 +531,18 @@ class AutonomousActionsService:
         decision_id: Optional[uuid.UUID] = None,
         company_id: Optional[uuid.UUID] = None,
     ) -> ActionResult:
-        """Fuehrt die Ablage eines Dokuments aus.
+        """Führt die Ablage eines Dokuments aus.
 
         NOTE: Diese Funktion ist deaktiviert, da das Folder-Model nicht existiert.
 
         Args:
             document_id: ID des Dokuments
             folder_id: Ziel-Folder-ID
-            decision_id: Optional AIDecision-ID fuer Tracking
-            company_id: Optional Company-ID fuer Multi-Tenant Filter
+            decision_id: Optional AIDecision-ID für Tracking
+            company_id: Optional Company-ID für Multi-Tenant Filter
 
         Returns:
-            ActionResult mit Fehler (Feature nicht verfuegbar)
+            ActionResult mit Fehler (Feature nicht verfügbar)
         """
         # Folder-basierte Ablage ist nicht implementiert
         logger.info(
@@ -555,7 +555,7 @@ class AutonomousActionsService:
             success=False,
             action_type=AutonomousAction.FILE_DOCUMENT,
             target_id=document_id,
-            error_message="Automatische Ablage ist derzeit nicht verfuegbar (Folder-System nicht implementiert)",
+            error_message="Automatische Ablage ist derzeit nicht verfügbar (Folder-System nicht implementiert)",
         )
 
     # ========================================================================
@@ -601,7 +601,7 @@ class AutonomousActionsService:
         confidence = 0.5  # Basis-Confidence
         reasoning_parts: List[str] = []
 
-        # 1. Betrag pruefen
+        # 1. Betrag prüfen
         amount = Decimal(str(invoice.amount)) if invoice.amount else Decimal("0")
 
         if amount <= self.config.payment_auto_approve_limit:
@@ -611,9 +611,9 @@ class AutonomousActionsService:
             confidence += 0.15
             reasoning_parts.append(f"Betrag {amount} EUR im Suggest-Bereich")
         else:
-            reasoning_parts.append(f"Betrag {amount} EUR ueber Limit")
+            reasoning_parts.append(f"Betrag {amount} EUR über Limit")
 
-        # 2. Entity pruefen
+        # 2. Entity prüfen
         if invoice.entity_id:
             stmt = select(BusinessEntity).where(
                 BusinessEntity.id == invoice.entity_id
@@ -622,7 +622,7 @@ class AutonomousActionsService:
             entity = result.scalar_one_or_none()
 
             if entity:
-                # Pruefen ob Geschaeftsbeziehung etabliert
+                # Prüfen ob Geschäftsbeziehung etabliert
                 # (vereinfacht: Entity existiert und hat Dokumente)
                 stmt = select(func.count(Document.id)).where(
                     Document.business_entity_id == entity.id
@@ -678,12 +678,12 @@ class AutonomousActionsService:
         decision_id: Optional[uuid.UUID] = None,
         company_id: Optional[uuid.UUID] = None,
     ) -> ActionResult:
-        """Fuehrt Zahlungsfreigabe aus.
+        """Führt Zahlungsfreigabe aus.
 
         Args:
             invoice_id: ID der Rechnung
             decision_id: Optional AIDecision-ID
-            company_id: Optional Company-ID fuer Multi-Tenant Filter
+            company_id: Optional Company-ID für Multi-Tenant Filter
 
         Returns:
             ActionResult
@@ -742,12 +742,12 @@ class AutonomousActionsService:
         company_id: Optional[uuid.UUID] = None,
         limit: int = 50,
     ) -> List[ActionProposal]:
-        """Findet Kandidaten fuer automatische Mahnungen.
+        """Findet Kandidaten für automatische Mahnungen.
 
         Kriterien:
-        - Rechnung ueberfaellig > min_overdue_days
+        - Rechnung überfällig > min_overdue_days
         - Dunning-Level <= auto_send_level
-        - Keine kuerzliche Zahlung
+        - Keine kürzliche Zahlung
 
         Args:
             company_id: Optional Company-ID
@@ -763,7 +763,7 @@ class AutonomousActionsService:
         if not company_id:
             logger.warning(
                 "get_dunning_candidates_missing_company_id",
-                message="company_id ist Pflicht fuer Multi-Tenant Isolation",
+                message="company_id ist Pflicht für Multi-Tenant Isolation",
             )
             return []
 
@@ -787,7 +787,7 @@ class AutonomousActionsService:
 
         for invoice in invoices:
             days_overdue = (today - invoice.due_date).days
-            confidence = min(0.95, 0.70 + (days_overdue / 100))  # Mehr Tage = hoehere Confidence
+            confidence = min(0.95, 0.70 + (days_overdue / 100))  # Mehr Tage = höhere Confidence
 
             auto_approved = (
                 confidence >= 0.90
@@ -804,7 +804,7 @@ class AutonomousActionsService:
                         "days_overdue": days_overdue,
                     },
                     confidence=confidence,
-                    reasoning=f"{days_overdue} Tage ueberfaellig, Mahnstufe {invoice.dunning_level}",
+                    reasoning=f"{days_overdue} Tage überfällig, Mahnstufe {invoice.dunning_level}",
                     requires_confirmation=not auto_approved,
                     auto_approved=auto_approved,
                 )
@@ -818,12 +818,12 @@ class AutonomousActionsService:
         decision_id: Optional[uuid.UUID] = None,
         company_id: Optional[uuid.UUID] = None,
     ) -> ActionResult:
-        """Fuehrt Mahnungsstufen-Erhoehung aus.
+        """Führt Mahnungsstufen-Erhöhung aus.
 
         Args:
             invoice_id: ID der Rechnung
             decision_id: Optional AIDecision-ID
-            company_id: Optional Company-ID fuer Multi-Tenant Filter
+            company_id: Optional Company-ID für Multi-Tenant Filter
 
         Returns:
             ActionResult
@@ -901,7 +901,7 @@ class AutonomousActionsService:
             action_type=AutonomousAction.SEND_DUNNING,
             target_id=invoice_id,
             details={
-                "summary": f"Mahnstufe {old_level} -> {new_level} fuer Rechnung {invoice_id}",
+                "summary": f"Mahnstufe {old_level} -> {new_level} für Rechnung {invoice_id}",
             },
             company_id=company_id,
         )
@@ -937,7 +937,7 @@ class AutonomousActionsService:
             entity_id: ID der Entity
             field: Feldname (z.B. "email", "phone")
             new_value: Neuer Wert
-            source: Quelle der Aenderung (z.B. "document_ocr")
+            source: Quelle der Änderung (z.B. "document_ocr")
             confidence: Confidence des neuen Werts
             company_id: Optional Company-ID
 
@@ -960,7 +960,7 @@ class AutonomousActionsService:
 
         current_value = getattr(entity, field, None)
 
-        # Pruefen ob Aenderung sinnvoll
+        # Prüfen ob Änderung sinnvoll
         if current_value == new_value:
             return ActionProposal(
                 action_type=AutonomousAction.UPDATE_MASTER_DATA,
@@ -1028,14 +1028,14 @@ class AutonomousActionsService:
         decision_id: Optional[uuid.UUID] = None,
         company_id: Optional[uuid.UUID] = None,
     ) -> ActionResult:
-        """Fuehrt Stammdaten-Update aus.
+        """Führt Stammdaten-Update aus.
 
         Args:
             entity_id: ID der Entity
             field: Feldname
             new_value: Neuer Wert
             decision_id: Optional AIDecision-ID
-            company_id: Optional Company-ID fuer Multi-Tenant Filter
+            company_id: Optional Company-ID für Multi-Tenant Filter
 
         Returns:
             ActionResult
@@ -1062,7 +1062,7 @@ class AutonomousActionsService:
                 success=False,
                 action_type=AutonomousAction.UPDATE_MASTER_DATA,
                 target_id=entity_id,
-                error_message=f"Feld '{field}' nicht fuer Auto-Update erlaubt",
+                error_message=f"Feld '{field}' nicht für Auto-Update erlaubt",
             )
 
         old_value = getattr(entity, field, None)
@@ -1100,11 +1100,11 @@ class AutonomousActionsService:
         document_type: str,
         company_id: Optional[uuid.UUID],
     ) -> None:
-        """Findet Standard-Folder fuer Dokumenttyp.
+        """Findet Standard-Folder für Dokumenttyp.
 
         NOTE: Deaktiviert - Folder-Model nicht implementiert.
         """
-        # Folder-System nicht verfuegbar
+        # Folder-System nicht verfügbar
         return None
 
     async def _find_folder_by_history(
@@ -1116,7 +1116,7 @@ class AutonomousActionsService:
 
         NOTE: Deaktiviert - Folder-Model nicht implementiert.
         """
-        # Folder-System nicht verfuegbar
+        # Folder-System nicht verfügbar
         return None, 0.0
 
 
@@ -1129,7 +1129,7 @@ async def get_autonomous_actions_service(
     db: AsyncSession,
     config: Optional[AutonomyConfig] = None,
 ) -> AutonomousActionsService:
-    """Factory-Funktion fuer AutonomousActionsService.
+    """Factory-Funktion für AutonomousActionsService.
 
     Args:
         db: Async Database Session

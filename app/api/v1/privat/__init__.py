@@ -2,7 +2,7 @@
 """
 Privat-Modul API Router.
 
-Stellt spezialisierte Endpunkte fuer das Privat-Modul bereit.
+Stellt spezialisierte Endpunkte für das Privat-Modul bereit.
 """
 
 from fastapi import APIRouter

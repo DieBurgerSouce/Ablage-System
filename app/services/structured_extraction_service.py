@@ -2,10 +2,10 @@
 """
 Structured Extraction Service.
 
-Haupt-Orchestrierung fuer strukturierte Datenextraktion:
+Haupt-Orchestrierung für strukturierte Datenextraktion:
 - Klassifizierung
 - Typspezifische Extraktion (Invoice, Order, Contract)
-- Plausibilitaetspruefung
+- Plausibilitaetsprüfung
 
 Performance: < 200ms pro Dokument (ohne OCR)
 
@@ -66,7 +66,7 @@ except ImportError:
     _enhanced_extraction_available = False
     ENABLE_ENHANCED_EXTRACTION = False
 
-# Lazy import fuer LineItem-Extraktion (vermeidet zirkulaere Imports)
+# Lazy import für LineItem-Extraktion (vermeidet zirkuläre Imports)
 _line_item_service_class = None
 _line_item_service_instance = None
 
@@ -86,7 +86,7 @@ def _get_line_item_service():
     return _line_item_service_instance
 
 
-# Singleton fuer Enhanced Extraction Adapter
+# Singleton für Enhanced Extraction Adapter
 _enhanced_extraction_adapter: Optional["EnhancedExtractionAdapter"] = None
 
 
@@ -153,7 +153,7 @@ def sanitize_extracted_text(text: Optional[str]) -> Optional[str]:
 # =============================================================================
 
 class PaymentPatterns:
-    """Patterns fuer Zahlungsbedingungen - KRITISCH fuer Buchhaltung!"""
+    """Patterns für Zahlungsbedingungen - KRITISCH für Buchhaltung!"""
 
     # Zahlungsziel: "Zahlbar innerhalb von 30 Tagen" oder "Zahlungsziel: 14 Tage netto"
     PAYMENT_DAYS = re.compile(
@@ -213,7 +213,7 @@ class PaymentPatterns:
         re.IGNORECASE
     )
 
-    # Skonto-Volltext (fuer early_payment_info)
+    # Skonto-Volltext (für early_payment_info)
     SKONTO_FULLTEXT = re.compile(
         r'(\d{1,2}(?:[,\.]\d)?%?\s*(?:skonto|nachlass|rabatt)'
         r'.*?(?:innerhalb|binnen|bei\s*zahlung).*?\d{1,3}\s*tage\w*)',
@@ -242,7 +242,7 @@ class PaymentPatterns:
 
 
 class AmountPatterns:
-    """Patterns fuer deutsche Geldbetraege."""
+    """Patterns für deutsche Geldbetraege."""
 
     # Deutsches Format: 1.234,56 EUR oder 1234,56 €
     GERMAN_AMOUNT = re.compile(
@@ -251,7 +251,7 @@ class AmountPatterns:
     )
 
     # Nettobetrag mit Label
-    # WICHTIG: Muss Dezimalstellen haben (,XX) um "Netto 10 dagen" auszuschliessen
+    # WICHTIG: Muss Dezimalstellen haben (,XX) um "Netto 10 dagen" auszuschließen
     NET_AMOUNT = re.compile(
         r'(?:netto(?:betrag)?|zwischensumme|summe\s*netto)[\s:]*'
         r'(\d{1,3}(?:\.\d{3})*,\d{2})\s*(?:€|EUR)?',
@@ -269,7 +269,7 @@ class AmountPatterns:
         re.IGNORECASE
     )
 
-    # Total EUR (englisch/niederlaendisch) - Betrag auf gleicher oder naechster Zeile
+    # Total EUR (englisch/niederlaendisch) - Betrag auf gleicher oder nächster Zeile
     # Bei NL-Rechnungen ist dies oft der EINZIGE Betrag (= Nettobetrag ohne MwSt)
     TOTAL_EUR = re.compile(
         r'Total\s+EUR[\s\n:]*(\d{1,3}(?:\.\d{3})*,\d{2})',
@@ -306,11 +306,11 @@ class AmountPatterns:
 
 
 class ReferencePatterns:
-    """Patterns fuer Dokumentreferenzen."""
+    """Patterns für Dokumentreferenzen."""
 
     # ==========================================================================
     # VENDOR-SPECIFIC INVOICE NUMBER FORMATS (Added 2025-12-15)
-    # Diese Patterns haben hoechste Prioritaet, da sie sehr spezifisch sind
+    # Diese Patterns haben hoechste Priorität, da sie sehr spezifisch sind
     # ==========================================================================
 
     # Asal-Format: RG + 8 Ziffern (z.B. RG20012108)
@@ -360,7 +360,7 @@ class ReferencePatterns:
     )
 
     # Rechnungsnummer REVERSE: "F-201401\nInvoice No." (Wert vor Label)
-    # F-xxx Pattern fuer niederlaendische/internationale Rechnungen
+    # F-xxx Pattern für niederlaendische/internationale Rechnungen
     INVOICE_NUMBER_REVERSE = re.compile(
         r'(F-\d{5,8})\s*\n\s*(?:Invoice\s*(?:No\.?|Number)|Rechnungs?-?(?:Nr\.?|nummer)|Factuurnr)',
         re.IGNORECASE
@@ -387,7 +387,7 @@ class ReferencePatterns:
     )
 
     # Bestellnummer REVERSE: "V-210089\nOrder No." (Wert vor Label)
-    # V-xxx Pattern fuer niederlaendische/internationale Bestellungen
+    # V-xxx Pattern für niederlaendische/internationale Bestellungen
     ORDER_NUMBER_REVERSE = re.compile(
         r'(V-\d{5,8})\s*\n\s*(?:Order\s*(?:No\.?|Number)|Bestell?-?(?:Nr\.?|nummer)|Auftragsnr)',
         re.IGNORECASE
@@ -428,7 +428,7 @@ class ReferencePatterns:
         re.IGNORECASE
     )
 
-    # Lieferantennummer (fuer ERP-Integration: SAP, DATEV, etc.)
+    # Lieferantennummer (für ERP-Integration: SAP, DATEV, etc.)
     SUPPLIER_NUMBER = re.compile(
         r'(?:'
         r'lieferant(?:en)?|kreditor(?:en)?|supplier|vendor'
@@ -440,7 +440,7 @@ class ReferencePatterns:
 
 
 class DatePatterns:
-    """Patterns fuer deutsche und internationale Datumsformate."""
+    """Patterns für deutsche und internationale Datumsformate."""
 
     # Deutsches Datum: 15.02.2024 oder 15.02.24 oder 15-02-2024
     DATE_DE = re.compile(
@@ -485,7 +485,7 @@ class DatePatterns:
         re.IGNORECASE
     )
 
-    # Kuendigungsfrist: "3 Monate zum Quartalsende"
+    # Kündigungsfrist: "3 Monate zum Quartalsende"
     NOTICE_PERIOD = re.compile(
         r'(?:k[uü]ndigungs?frist|frist)[\s:]*'
         r'(\d{1,2})\s*'
@@ -496,7 +496,7 @@ class DatePatterns:
 
 
 class DeliveryPatterns:
-    """Patterns fuer Lieferbedingungen und Incoterms."""
+    """Patterns für Lieferbedingungen und Incoterms."""
 
     # Incoterms 2020 (alle 11 Standardterms)
     INCOTERMS = re.compile(
@@ -522,7 +522,7 @@ class DeliveryPatterns:
 
 
 class ReverseChargePatterns:
-    """Patterns fuer Steuerbefreiung bei innergemeinschaftlicher Lieferung."""
+    """Patterns für Steuerbefreiung bei innergemeinschaftlicher Lieferung."""
 
     # Reverse Charge / Innergemeinschaftliche Lieferung
     REVERSE_CHARGE = re.compile(
@@ -535,7 +535,7 @@ class ReverseChargePatterns:
         re.IGNORECASE
     )
 
-    # Volltext-Pattern fuer reverse_charge_note
+    # Volltext-Pattern für reverse_charge_note
     REVERSE_CHARGE_FULLTEXT = re.compile(
         r'((?:steuerbefreit(?:e)?|steuerfrei(?:e)?|vat\s*exempt|reverse\s*charge|'
         r'innergemeinschaftliche\s*lieferung|intra[- ]?community\s*supply)'
@@ -545,15 +545,15 @@ class ReverseChargePatterns:
 
 
 class CurrencyPatterns:
-    """Patterns fuer Waehrungserkennung."""
+    """Patterns für Währungserkennung."""
 
-    # Waehrungssymbole und -codes
+    # Währungssymbole und -codes
     CURRENCY = re.compile(
         r'\b(EUR|USD|GBP|CHF|€|\$|£)\b',
         re.IGNORECASE
     )
 
-    # Waehrung in Kontext (z.B. "Total EUR", "Betrag in EUR")
+    # Währung in Kontext (z.B. "Total EUR", "Betrag in EUR")
     CURRENCY_CONTEXT = re.compile(
         r'(?:total|summe|betrag|amount|preis|price)\s*(EUR|USD|GBP|CHF|€)',
         re.IGNORECASE
@@ -568,7 +568,7 @@ class CurrencyPatterns:
     }
 
 
-# Laender-Mapping fuer VAT-Validierung (mehrsprachig)
+# Länder-Mapping für VAT-Validierung (mehrsprachig)
 COUNTRY_NAME_TO_CODE = {
     # Deutschland
     'deutschland': 'DE', 'germany': 'DE', 'duitsland': 'DE',
@@ -617,8 +617,8 @@ class StructuredExtractionService:
     Workflow:
     1. Klassifizierung (Invoice, Order, Contract, ...)
     2. Typspezifische Extraktion
-    3. Plausibilitaetspruefung
-    4. Zusammenfuehrung zu ExtractedDocumentData
+    3. Plausibilitaetsprüfung
+    4. Zusammenführung zu ExtractedDocumentData
 
     Usage:
         service = StructuredExtractionService()
@@ -664,7 +664,7 @@ class StructuredExtractionService:
                 cleaned = cleaned[:idx] + cleaned[idx + len(pattern):]
                 cleaned = cleaned.strip(' -')
 
-        # 2. Deduplizierung: Wenn erstes Wort spaeter nochmal auftaucht
+        # 2. Deduplizierung: Wenn erstes Wort später nochmal auftaucht
         words = cleaned.split()
         if len(words) >= 4:
             first_word_lower = words[0].lower()
@@ -694,22 +694,22 @@ class StructuredExtractionService:
         """
         Extrahiert strukturierte Daten aus OCR-Text.
 
-        Bei nicht-deutschen/englischen Texten wird automatisch uebersetzt,
-        um einheitliche Keyword-Suche zu ermoeglichen.
+        Bei nicht-deutschen/englischen Texten wird automatisch übersetzt,
+        um einheitliche Keyword-Suche zu ermöglichen.
 
         Args:
             text: OCR-Text
-            document_id: Optionale Dokument-ID fuer Logging
+            document_id: Optionale Dokument-ID für Logging
             tables: Optionale Liste von TableStructure-Objekten (Docling)
             detected_language: Erkannte Sprache (ISO 639-1, z.B. "ru", "pl")
-            db: Optionale DB-Session fuer Eingangs-/Ausgangsrechnung-Erkennung
+            db: Optionale DB-Session für Eingangs-/Ausgangsrechnung-Erkennung
 
         Returns:
             ExtractedDocumentData mit Klassifizierung und typspezifischen Daten
         """
         start_time = datetime.now()
 
-        # Null-Check fuer text
+        # Null-Check für text
         if not text:
             logger.warning("extract_called_with_empty_text", document_id=document_id)
             return ExtractedDocumentData(
@@ -717,7 +717,7 @@ class StructuredExtractionService:
                 extracted_at=datetime.now().isoformat(),
             )
 
-        # 0. Uebersetzung falls noetig (nicht-deutsche/englische Dokumente)
+        # 0. Übersetzung falls noetig (nicht-deutsche/englische Dokumente)
         original_language = detected_language
         was_translated = False
         translation_confidence: Optional[float] = None
@@ -740,10 +740,10 @@ class StructuredExtractionService:
                     translation_confidence=translation_result.confidence,
                 )
 
-        # 1. Klassifizierung (mit uebersetztem Text falls noetig)
+        # 1. Klassifizierung (mit übersetztem Text falls noetig)
         classification = self.classification_service.classify(text_for_extraction)
 
-        # 2. Basis-Entities extrahieren (aus uebersetztem Text)
+        # 2. Basis-Entities extrahieren (aus übersetztem Text)
         entities = await self.entity_service.extract_entities(text_for_extraction)
 
         # 3. Typspezifische Extraktion
@@ -751,7 +751,7 @@ class StructuredExtractionService:
             classification=classification,
             extraction_version="2.0.0",
             extracted_at=datetime.now().isoformat(),
-            # Uebersetzungs-Metadaten
+            # Übersetzungs-Metadaten
             original_language=original_language,
             was_translated=was_translated,
             translation_confidence=translation_confidence,
@@ -762,13 +762,13 @@ class StructuredExtractionService:
         result.ibans = [i.normalized_value for i in entities.identifiers if i.identifier_type == "iban"]
         result.companies = [c.name for c in entities.company_names]
 
-        # Alle Daten extrahieren (aus uebersetztem Text)
+        # Alle Daten extrahieren (aus übersetztem Text)
         result.dates = self._extract_all_dates(text_for_extraction)
 
-        # Alle Betraege extrahieren (aus uebersetztem Text)
+        # Alle Betraege extrahieren (aus übersetztem Text)
         result.amounts = self._extract_all_amounts(text_for_extraction)
 
-        # 4. Typspezifische Extraktion (mit uebersetztem Text)
+        # 4. Typspezifische Extraktion (mit übersetztem Text)
         if classification.document_type == ExtractedDocumentType.INVOICE:
             result.invoice = await self._extract_invoice_data(
                 text_for_extraction, entities, tables, page_count=page_count
@@ -868,21 +868,21 @@ class StructuredExtractionService:
             ReferencePatterns.DELIVERY_NOTE, text
         )
 
-        # Lieferantennummer (optional - fuer ERP-Integration)
+        # Lieferantennummer (optional - für ERP-Integration)
         invoice.supplier_number = self._extract_first_match(
             ReferencePatterns.SUPPLIER_NUMBER, text
         ) or self._extract_fragmented_reference(text, [
             'supplier no', 'vendor no', 'lieferanten-nr', 'kreditor-nr'
         ])
 
-        # Daten (mit Raw-Wert-Erfassung fuer Audit-Trail)
+        # Daten (mit Raw-Wert-Erfassung für Audit-Trail)
         invoice.invoice_date = self._extract_labeled_date(
             DatePatterns.INVOICE_DATE, text
         ) or self._extract_fragmented_date(text, [
             'factuurdatum', 'rechnungsdatum', 'invoice date', 'datum'
         ]) or self._extract_first_date(text)
 
-        # Raw-Wert fuer invoice_date extrahieren (Original-String aus Dokument)
+        # Raw-Wert für invoice_date extrahieren (Original-String aus Dokument)
         if invoice.invoice_date:
             raw_date_match = DatePatterns.INVOICE_DATE.search(text)
             if raw_date_match:
@@ -894,7 +894,7 @@ class StructuredExtractionService:
                 if raw_match:
                     invoice.invoice_date_raw = raw_match.group(0)
 
-        # Faelligkeitsdatum
+        # Fälligkeitsdatum
         due_date_match = PaymentPatterns.DUE_DATE_DIRECT.search(text)
         if due_date_match:
             invoice.due_date = self._parse_date_groups(
@@ -917,7 +917,7 @@ class StructuredExtractionService:
             if days_match:
                 days = int(days_match.group(1))
                 invoice.due_date = invoice.invoice_date + timedelta(days=days)
-                # Due date wurde berechnet - kein Raw-Wert verfuegbar
+                # Due date wurde berechnet - kein Raw-Wert verfügbar
 
         # Leistungszeitraum
         period_match = DatePatterns.SERVICE_PERIOD.search(text)
@@ -944,7 +944,7 @@ class StructuredExtractionService:
             invoice.gross_amount = gross_from_doc
             invoice.gross_amount_source = AmountSource.DOCUMENT
 
-        # Fallback fuer Nettobetrag: Total EUR (englisch/niederlaendisch)
+        # Fallback für Nettobetrag: Total EUR (englisch/niederlaendisch)
         # Bei NL-Rechnungen ohne MwSt ist "Total EUR" der Nettobetrag
         if not invoice.net_amount:
             total_eur_match = AmountPatterns.TOTAL_EUR.search(text)
@@ -984,7 +984,7 @@ class StructuredExtractionService:
                 invoice.vat_rate = Decimal(vat_rate_match.group(1))
 
         # === WAEHRUNGSERKENNUNG (Phase 5) ===
-        # Prioritaet: Kontextbasiert > Allgemein
+        # Priorität: Kontextbasiert > Allgemein
         currency_context_match = CurrencyPatterns.CURRENCY_CONTEXT.search(text)
         if currency_context_match:
             raw_currency = currency_context_match.group(1).upper()
@@ -993,9 +993,9 @@ class StructuredExtractionService:
                 invoice.currency = Currency(currency_code)
                 logger.debug("currency_extracted_from_context", currency=currency_code)
             except ValueError:
-                pass  # Unbekannte Waehrung - Default bleibt EUR
+                pass  # Unbekannte Währung - Default bleibt EUR
 
-        # Fallback: Erste Waehrung im Text
+        # Fallback: Erste Währung im Text
         if invoice.currency == Currency.EUR:
             currency_match = CurrencyPatterns.CURRENCY.search(text)
             if currency_match:
@@ -1029,7 +1029,7 @@ class StructuredExtractionService:
 
         if days:
             invoice.payment_terms = f"{days} Tage netto"
-            invoice.payment_terms_days = int(days)  # Strukturiertes Feld fuer Berechnungen
+            invoice.payment_terms_days = int(days)  # Strukturiertes Feld für Berechnungen
         else:
             # Prüfe auf sofortige Zahlung
             immediate_match = PaymentPatterns.PAYMENT_IMMEDIATE.search(text)
@@ -1070,7 +1070,7 @@ class StructuredExtractionService:
                 invoice.gross_amount * invoice.discount_percent / Decimal("100")
             ).quantize(Decimal("0.01"))
 
-        # Skonto-Faelligkeitsdatum berechnen
+        # Skonto-Fälligkeitsdatum berechnen
         if invoice.discount_days and invoice.invoice_date:
             invoice.discount_due_date = (
                 invoice.invoice_date + timedelta(days=invoice.discount_days)
@@ -1086,7 +1086,7 @@ class StructuredExtractionService:
         if late_interest_match:
             invoice.late_payment_info = late_interest_match.group(1).strip()
 
-        # Absender/Empfaenger aus Entities - INTELLIGENTE Zuordnung
+        # Absender/Empfänger aus Entities - INTELLIGENTE Zuordnung
         if entities.addresses:
             sender_addr = None
             recipient_addr = None
@@ -1173,16 +1173,16 @@ class StructuredExtractionService:
                     company=sanitize_extracted_text(recipient_addr.company_name) if hasattr(recipient_addr, 'company_name') else None,
                 )
 
-        # Firmennamen mit Rechtsform (GmbH, etc.) - ueberschreiben Kontext-Namen
+        # Firmennamen mit Rechtsform (GmbH, etc.) - überschreiben Kontext-Namen
         if entities.company_names:
-            # Erster Firmenname = Absender (ueberschreibt nur wenn vorhanden)
+            # Erster Firmenname = Absender (überschreibt nur wenn vorhanden)
             if invoice.sender and entities.company_names[0].name:
                 company = entities.company_names[0]
                 # Bereinige und kombiniere name + legal_form
                 clean_name = self._clean_company_name(company.name)
                 full_name = f"{clean_name} {company.legal_form}" if company.legal_form else clean_name
                 invoice.sender.company = full_name
-            # Zweiter Firmenname = Empfaenger (falls vorhanden)
+            # Zweiter Firmenname = Empfänger (falls vorhanden)
             if len(entities.company_names) > 1 and invoice.recipient:
                 company = entities.company_names[1]
                 # Bereinige und kombiniere name + legal_form
@@ -1208,7 +1208,7 @@ class StructuredExtractionService:
             )
 
             # === LAENDER-VALIDIERUNG (Phase 3) ===
-            # Pruefe ob VAT-Laender zu Adress-Laendern passen
+            # Prüfe ob VAT-Länder zu Adress-Ländern passen
             if invoice.sender_vat_id and invoice.sender:
                 sender_country = invoice.sender.country
                 if not self._validate_vat_country_match(invoice.sender_vat_id, sender_country):
@@ -1221,7 +1221,7 @@ class StructuredExtractionService:
                 recipient_country = invoice.recipient.country
                 if not self._validate_vat_country_match(invoice.recipient_vat_id, recipient_country):
                     warnings.append(
-                        f"USt-IdNr {invoice.recipient_vat_id} passt nicht zum Empfaenger-Land {recipient_country}"
+                        f"USt-IdNr {invoice.recipient_vat_id} passt nicht zum Empfänger-Land {recipient_country}"
                     )
                     invoice.needs_review = True
 
@@ -1232,7 +1232,7 @@ class StructuredExtractionService:
                 break
 
         # IBAN + BIC (Phase 6: BIC in Bankdaten speichern)
-        # BIC mit hoechster Konfidenz waehlen (gelabelte BICs haben 0.98)
+        # BIC mit hoechster Konfidenz wählen (gelabelte BICs haben 0.98)
         iban_id = None
         bic_id = None
         for identifier in entities.identifiers:
@@ -1335,7 +1335,7 @@ class StructuredExtractionService:
         reverse_charge_match = ReverseChargePatterns.REVERSE_CHARGE.search(text)
         if reverse_charge_match:
             invoice.is_reverse_charge = True
-            # Volltext fuer reverse_charge_note extrahieren
+            # Volltext für reverse_charge_note extrahieren
             fulltext_match = ReverseChargePatterns.REVERSE_CHARGE_FULLTEXT.search(text)
             if fulltext_match:
                 invoice.reverse_charge_note = fulltext_match.group(1).strip()[:200]
@@ -1357,7 +1357,7 @@ class StructuredExtractionService:
                 intra_community=invoice.intra_community_supply,
             )
 
-        # Heuristik: Wenn sender und recipient VAT IDs unterschiedliche Laender haben
+        # Heuristik: Wenn sender und recipient VAT IDs unterschiedliche Länder haben
         # und VAT-Rate 0 ist, dann ist es wahrscheinlich Reverse Charge
         if not invoice.is_reverse_charge:
             sender_country = invoice.sender_vat_id[:2] if invoice.sender_vat_id else None
@@ -1368,7 +1368,7 @@ class StructuredExtractionService:
                 invoice.vat_rate == Decimal("0")
             ):
                 invoice.is_reverse_charge = True
-                # Bei unterschiedlichen EU-Laendern ist es eine innergemeinschaftliche Lieferung
+                # Bei unterschiedlichen EU-Ländern ist es eine innergemeinschaftliche Lieferung
                 invoice.intra_community_supply = True
                 invoice.vat_exemption_reason = "Innergemeinschaftliche Lieferung (inferiert)"
                 logger.debug(
@@ -1385,7 +1385,7 @@ class StructuredExtractionService:
             invoice.vat_amount = Decimal("0")
             invoice.vat_rate = Decimal("0")
             invoice.vat_amount_source = AmountSource.COMPUTED
-            # vat_reason fuer Audit-Trail setzen
+            # vat_reason für Audit-Trail setzen
             if invoice.intra_community_supply:
                 invoice.vat_reason = "intra-community supply / reverse charge"
             else:
@@ -1460,10 +1460,10 @@ class StructuredExtractionService:
                     tables=tables,
                 )
 
-                # Payment Terms uebernehmen wenn besser
+                # Payment Terms übernehmen wenn besser
                 if enhanced_result.payment_terms:
                     pt = enhanced_result.payment_terms
-                    # Nur uebernehmen wenn Confidence hoch oder vorher nichts gefunden
+                    # Nur übernehmen wenn Confidence hoch oder vorher nichts gefunden
                     if pt.payment_days is not None and (
                         not invoice.payment_terms or pt.confidence > 0.7
                     ):
@@ -1483,7 +1483,7 @@ class StructuredExtractionService:
                             list(invoice.extraction_warnings) + pt.extraction_warnings
                         )
 
-                # Amounts uebernehmen wenn besser
+                # Amounts übernehmen wenn besser
                 if enhanced_result.amounts:
                     amt = enhanced_result.amounts
                     if amt.net_amount and (
@@ -1500,11 +1500,11 @@ class StructuredExtractionService:
                     ):
                         invoice.vat_amount = amt.vat_amount
                         invoice.vat_amount_source = AmountSource.DOCUMENT  # Aus Enhanced Extraction
-                    # Note: Decimal("0") ist falsy, also explizit auf None pruefen
+                    # Note: Decimal("0") ist falsy, also explizit auf None prüfen
                     if amt.vat_rate is not None and invoice.vat_rate is None:
                         invoice.vat_rate = amt.vat_rate
 
-                # Line Items uebernehmen wenn BESSER (nicht nur mehr)
+                # Line Items übernehmen wenn BESSER (nicht nur mehr)
                 existing_items = invoice.line_items or []
 
                 # DEBUG: Log existing items
@@ -1533,7 +1533,7 @@ class StructuredExtractionService:
                 )
 
                 if enhanced_result.line_items:
-                    # Qualitaetspruefung der bestehenden Items
+                    # Qualitätsprüfung der bestehenden Items
                     existing_has_issues = self._has_low_quality_line_items(existing_items)
                     enhanced_has_issues = self._has_low_quality_line_items_enhanced(
                         enhanced_result.line_items
@@ -1546,9 +1546,9 @@ class StructuredExtractionService:
                         enhanced_has_issues=enhanced_has_issues,
                     )
 
-                    # Enhanced uebernehmen wenn:
-                    # 1. Bestehende Items haben Qualitaetsprobleme UND Enhanced nicht, ODER
-                    # 2. Enhanced hat mehr Items UND keine Qualitaetsprobleme
+                    # Enhanced übernehmen wenn:
+                    # 1. Bestehende Items haben Qualitätsprobleme UND Enhanced nicht, ODER
+                    # 2. Enhanced hat mehr Items UND keine Qualitätsprobleme
                     should_use_enhanced = (
                         (existing_has_issues and not enhanced_has_issues) or
                         (len(enhanced_result.line_items) > len(existing_items)
@@ -1609,12 +1609,12 @@ class StructuredExtractionService:
                 # Nicht kritisch - regulaere Extraktion bleibt erhalten
 
         # === REVERSE CHARGE HEURISTIK (nach Enhanced Extraction wiederholen) ===
-        # Jetzt ist vat_rate moeglicherweise aus dem AmountExtractor bekannt
+        # Jetzt ist vat_rate möglicherweise aus dem AmountExtractor bekannt
         if not invoice.is_reverse_charge:
             sender_country = invoice.sender_vat_id[:2] if invoice.sender_vat_id else None
             recipient_country = invoice.recipient_vat_id[:2] if invoice.recipient_vat_id else None
 
-            # Fall 1: Unterschiedliche EU-Laender + VAT Rate 0
+            # Fall 1: Unterschiedliche EU-Länder + VAT Rate 0
             if (
                 sender_country and recipient_country and
                 sender_country != recipient_country and
@@ -1630,7 +1630,7 @@ class StructuredExtractionService:
                     vat_rate=str(invoice.vat_rate),
                 )
 
-            # Fall 2: Unterschiedliche EU-Laender ohne MwSt-Betrag (auch bei vat_rate=None)
+            # Fall 2: Unterschiedliche EU-Länder ohne MwSt-Betrag (auch bei vat_rate=None)
             elif (
                 sender_country and recipient_country and
                 sender_country != recipient_country and
@@ -1645,7 +1645,7 @@ class StructuredExtractionService:
                     recipient_country=recipient_country,
                 )
 
-        # Plausibilitaetspruefung
+        # Plausibilitaetsprüfung
         invoice = self._validate_invoice(invoice)
 
         # === REVERSE CHARGE POST-VALIDATION FIX ===
@@ -1654,7 +1654,7 @@ class StructuredExtractionService:
             invoice.vat_amount = Decimal("0")
             invoice.vat_rate = Decimal("0") if invoice.vat_rate is None else invoice.vat_rate
             invoice.vat_amount_source = AmountSource.COMPUTED
-            # vat_reason setzen (wichtig fuer Audit-Trail)
+            # vat_reason setzen (wichtig für Audit-Trail)
             if invoice.intra_community_supply:
                 invoice.vat_reason = "intra-community supply / reverse charge"
             else:
@@ -1707,7 +1707,7 @@ class StructuredExtractionService:
 
     def _has_low_quality_line_items(self, items: List[ExtractedLineItem]) -> bool:
         """
-        Prueft ob Line Items verdaechtig schlecht sind.
+        Prüft ob Line Items verdaechtig schlecht sind.
 
         Erkennt:
         - Header-Text in Beschreibungen (z.B. "Description No.")
@@ -1763,9 +1763,9 @@ class StructuredExtractionService:
 
     def _has_low_quality_line_items_enhanced(self, items: List) -> bool:
         """
-        Prueft Enhanced Line Items (anderes Dataclass-Format).
+        Prüft Enhanced Line Items (anderes Dataclass-Format).
 
-        Gleiche Logik wie _has_low_quality_line_items, aber fuer
+        Gleiche Logik wie _has_low_quality_line_items, aber für
         das ExtractedLineItem-Dataclass aus dem Enhanced Extractor.
         """
         if not items:
@@ -1815,7 +1815,7 @@ class StructuredExtractionService:
         return False
 
     def _validate_invoice(self, invoice: ExtractedInvoiceData) -> ExtractedInvoiceData:
-        """Prueft Plausibilitaet der Rechnungsdaten."""
+        """Prüft Plausibilitaet der Rechnungsdaten."""
         warnings = list(invoice.extraction_warnings)
         confidence = 0.5  # Basis-Konfidenz
 
@@ -1866,7 +1866,7 @@ class StructuredExtractionService:
 
         # Positionen gefunden?
         if invoice.line_items:
-            confidence += 0.05  # Bonus fuer gefundene Positionen
+            confidence += 0.05  # Bonus für gefundene Positionen
 
             # Positionssumme vs. Gesamtbetrag validieren
             line_items_total = sum(
@@ -1877,15 +1877,15 @@ class StructuredExtractionService:
             # Vergleiche mit Netto- oder Bruttobetrag
             reference_amount = invoice.net_amount or invoice.gross_amount
             if line_items_total and reference_amount:
-                tolerance = Decimal("1.00")  # 1 EUR Toleranz fuer Rundungsfehler
+                tolerance = Decimal("1.00")  # 1 EUR Toleranz für Rundungsfehler
                 difference = abs(line_items_total - reference_amount)
 
                 if difference <= tolerance:
-                    # Summen stimmen ueberein - Confidence-Boost
+                    # Summen stimmen überein - Confidence-Boost
                     confidence += 0.15
                 else:
                     # Summen weichen ab - Confidence reduzieren
-                    # Je groesser die Abweichung, desto mehr Reduktion
+                    # Je größer die Abweichung, desto mehr Reduktion
                     deviation_percent = (difference / reference_amount) * 100 if reference_amount else Decimal(0)
 
                     if deviation_percent <= Decimal("5"):
@@ -1949,9 +1949,9 @@ class StructuredExtractionService:
         field_confidence: Optional[Dict[str, float]] = None,
     ) -> ExtractionValidations:
         """
-        Erstellt strukturierte Validierungsergebnisse fuer Audit und Qualitaetssicherung.
+        Erstellt strukturierte Validierungsergebnisse für Audit und Qualitätssicherung.
 
-        Prueft:
+        Prüft:
         - IBAN MOD-97 Checksum
         - IBAN-Land vs. Absender-Land
         - USt-IdNr-Land vs. Absender-Land
@@ -1962,7 +1962,7 @@ class StructuredExtractionService:
             field_confidence: Optional Dict mit Feld-Konfidenz (0.0-1.0)
 
         Returns:
-            ExtractionValidations mit allen Pruefungsergebnissen
+            ExtractionValidations mit allen Prüfungsergebnissen
         """
         validations = ExtractionValidations()
 
@@ -1986,7 +1986,7 @@ class StructuredExtractionService:
                             numeric += char
                         else:
                             numeric += str(ord(char.upper()) - ord('A') + 10)
-                    # MOD-97 Pruefung
+                    # MOD-97 Prüfung
                     try:
                         validations.iban_checksum_valid = int(numeric) % 97 == 1
                     except ValueError:
@@ -2000,7 +2000,7 @@ class StructuredExtractionService:
             if sender_country:
                 validations.iban_country_match = iban_country == sender_country
             else:
-                validations.iban_country_match = None  # Nicht pruefbar
+                validations.iban_country_match = None  # Nicht prüfbar
 
         # === USt-IdNr-Validierung ===
         if invoice.sender_vat_id and invoice.sender:
@@ -2040,7 +2040,7 @@ class StructuredExtractionService:
     ) -> Tuple[Optional[str], Optional[str]]:
         """
         Intelligente USt-IdNr Zuordnung basierend auf:
-        1. Laendercode-Matching (NL VAT -> NL Adresse)
+        1. Ländercode-Matching (NL VAT -> NL Adresse)
         2. Adress-Rolle (sender/recipient)
         3. Position/Proximity im Text
         4. Cross-Border Heuristik (Non-DE = sender, DE = recipient)
@@ -2058,7 +2058,7 @@ class StructuredExtractionService:
         if not vat_ids:
             return None, None
 
-        # Erstelle Lookup fuer Adressen nach Laendercode und Rolle
+        # Erstelle Lookup für Adressen nach Ländercode und Rolle
         sender_countries: set = set()
         recipient_countries: set = set()
 
@@ -2078,11 +2078,11 @@ class StructuredExtractionService:
             recipient_countries=list(recipient_countries),
         )
 
-        # 1. Pass: Laendercode-Matching (hoechste Prioritaet)
+        # 1. Pass: Ländercode-Matching (hoechste Priorität)
         for vat in vat_ids:
             country = getattr(vat, 'country_code', None)
             if not country:
-                # Fallback: Extrahiere Laendercode aus normalized_value
+                # Fallback: Extrahiere Ländercode aus normalized_value
                 normalized = vat.normalized_value
                 if len(normalized) >= 2:
                     country = normalized[:2].upper()
@@ -2111,7 +2111,7 @@ class StructuredExtractionService:
                 if vat.normalized_value in (sender_vat, recipient_vat):
                     continue
 
-                # Finde naechste Adresse
+                # Finde nächste Adresse
                 nearest_addr = self._find_nearest_address(
                     vat.position_start, addresses
                 )
@@ -2156,7 +2156,7 @@ class StructuredExtractionService:
                         reason="de_vat_is_typically_local_customer",
                     )
 
-        # 4. Ultimate Fallback: Erste VAT-ID = sender (Rueckwaertskompatibilitaet)
+        # 4. Ultimate Fallback: Erste VAT-ID = sender (Rückwärtskompatibilität)
         if not sender_vat and vat_ids:
             sender_vat = vat_ids[0].normalized_value
             logger.debug(
@@ -2174,14 +2174,14 @@ class StructuredExtractionService:
         addresses: List[ExtractedAddress],
     ) -> Optional[ExtractedAddress]:
         """
-        Finde die naechste Adresse zu einer Textposition.
+        Finde die nächste Adresse zu einer Textposition.
 
         Args:
             position: Position im Text
             addresses: Liste von ExtractedAddress
 
         Returns:
-            Naechste Adresse oder None
+            Nächste Adresse oder None
         """
         if not addresses:
             return None
@@ -2204,9 +2204,9 @@ class StructuredExtractionService:
         address_country: Optional[str],
     ) -> bool:
         """
-        Prueft ob USt-IdNr zum Adressland passt (Phase 3: Laender-Validierung).
+        Prüft ob USt-IdNr zum Adressland passt (Phase 3: Länder-Validierung).
 
-        Bei Mismatch wird True zurueckgegeben wenn die Validierung fehlschlaegt,
+        Bei Mismatch wird True zurückgegeben wenn die Validierung fehlschlaegt,
         damit eine Warnung generiert werden kann.
 
         Args:
@@ -2219,13 +2219,13 @@ class StructuredExtractionService:
         if not vat_id or not address_country:
             return True  # Kann nicht validieren - kein Fehler
 
-        # VAT-Laendercode extrahieren (erste 2 Zeichen)
+        # VAT-Ländercode extrahieren (erste 2 Zeichen)
         vat_country = vat_id[:2].upper()
 
         # Adress-Land normalisieren
         addr_country = address_country.strip().upper()
 
-        # Mapping anwenden (mehrsprachige Laendernamen -> ISO Code)
+        # Mapping anwenden (mehrsprachige Ländernamen -> ISO Code)
         addr_country_lower = address_country.strip().lower()
         if addr_country_lower in COUNTRY_NAME_TO_CODE:
             addr_country = COUNTRY_NAME_TO_CODE[addr_country_lower]
@@ -2234,8 +2234,8 @@ class StructuredExtractionService:
         if vat_country == addr_country:
             return True
 
-        # Sonderfall: Wenn addr_country zu kurz ist (z.B. nur "D" fuer Deutschland)
-        # und wir keinen Match haben, versuche laengere Varianten
+        # Sonderfall: Wenn addr_country zu kurz ist (z.B. nur "D" für Deutschland)
+        # und wir keinen Match haben, versuche längere Varianten
         if len(addr_country) <= 2 and vat_country != addr_country:
             logger.debug(
                 "vat_country_mismatch",
@@ -2350,7 +2350,7 @@ class StructuredExtractionService:
         if order.total_amount:
             confidence += 0.10
         if order.line_items:
-            confidence += 0.05  # Bonus fuer gefundene Positionen
+            confidence += 0.05  # Bonus für gefundene Positionen
 
         order.extraction_confidence = min(confidence, 0.99)
 
@@ -2403,7 +2403,7 @@ class StructuredExtractionService:
             elif "woche" in unit:
                 contract.duration_months = max(1, duration // 4)
 
-        # Kuendigungsfrist
+        # Kündigungsfrist
         notice_match = DatePatterns.NOTICE_PERIOD.search(text)
         if notice_match:
             notice_value = notice_match.group(1)
@@ -2415,7 +2415,7 @@ class StructuredExtractionService:
                 notice_text += f" zum {notice_deadline}"
             contract.notice_period = notice_text
 
-        # Automatische Verlaengerung suchen
+        # Automatische Verlängerung suchen
         if re.search(r'verl[aä]nger(?:t|ung)|auto(?:matisch)?.*?renew', text, re.IGNORECASE):
             contract.auto_renewal = True
 
@@ -2492,7 +2492,7 @@ class StructuredExtractionService:
     # =========================================================================
 
     def _is_likely_label(self, value: str) -> bool:
-        """Prueft ob ein Wert wahrscheinlich ein Label ist.
+        """Prüft ob ein Wert wahrscheinlich ein Label ist.
 
         FIX 2025-12-15: Verhindert dass Labels wie "Kunden-Nr." oder
         "Rechnungsdatum" als Rechnungsnummern extrahiert werden.
@@ -2505,7 +2505,7 @@ class StructuredExtractionService:
     def _extract_invoice_number_with_validation(self, text: str) -> Optional[str]:
         """Extrahiert Rechnungsnummer mit vendor-spezifischen Patterns und Label-Skip.
 
-        FIX 2025-12-15: Erweiterte Extraktion fuer:
+        FIX 2025-12-15: Erweiterte Extraktion für:
         - Asal: RG20012108
         - Amefa: CD4921000467
         - AUER: VK 1036735, D119925
@@ -2515,7 +2515,7 @@ class StructuredExtractionService:
         Die Label-Skip-Logik verhindert dass Labels wie "Kunden-Nr." oder
         "Rechnungsdatum" faelschlicherweise als Rechnungsnummern extrahiert werden.
         """
-        # 1. Vendor-spezifische Patterns ZUERST (hoechste Prioritaet)
+        # 1. Vendor-spezifische Patterns ZUERST (hoechste Priorität)
         # Diese sind sehr spezifisch und daher zuverlaessig
 
         # Asal: RG + 8 digits
@@ -2556,8 +2556,8 @@ class StructuredExtractionService:
         # a.b.s. Rechenzentrum VERTIKALES Layout:
         # Labels vertikal, dann Werte vertikal
         # FIX 2025-12-15: Behebt das Problem wo "Kunden-Nr." als Rechnungsnummer
-        # extrahiert wurde weil das Standard-Pattern den naechsten Text nach
-        # "Rechnungs-Nr." nahm (was bei vertikalem Layout das naechste Label war)
+        # extrahiert wurde weil das Standard-Pattern den nächsten Text nach
+        # "Rechnungs-Nr." nahm (was bei vertikalem Layout das nächste Label war)
         match = ReferencePatterns.INVOICE_NUMBER_VERTICAL_LAYOUT.search(text)
         if match:
             number = match.group(1).strip()
@@ -2833,9 +2833,9 @@ _extraction_service_lock = threading.Lock()
 
 def get_structured_extraction_service() -> StructuredExtractionService:
     """
-    Gibt die Singleton-Instanz zurueck.
+    Gibt die Singleton-Instanz zurück.
 
-    Thread-safe durch Double-Checked Locking - wichtig fuer
+    Thread-safe durch Double-Checked Locking - wichtig für
     Celery Worker mit mehreren Prozessen/Threads.
     """
     global _structured_extraction_service
@@ -2846,7 +2846,7 @@ def get_structured_extraction_service() -> StructuredExtractionService:
 
     # Slow path: Mit Lock initialisieren
     with _extraction_service_lock:
-        # Nochmal pruefen nach Lock-Erwerb
+        # Nochmal prüfen nach Lock-Erwerb
         if _structured_extraction_service is not None:
             return _structured_extraction_service
 
@@ -2856,7 +2856,7 @@ def get_structured_extraction_service() -> StructuredExtractionService:
 
 
 def reset_structured_extraction_service() -> None:
-    """Setzt die Singleton-Instanz zurueck (fuer Tests)."""
+    """Setzt die Singleton-Instanz zurück (für Tests)."""
     global _structured_extraction_service
     with _extraction_service_lock:
         _structured_extraction_service = None

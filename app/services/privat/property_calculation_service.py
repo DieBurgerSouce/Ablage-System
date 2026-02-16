@@ -68,7 +68,7 @@ class ROIResult:
     """Ergebnis der ROI-Berechnung."""
     property_id: UUID
     total_roi: Decimal  # Gesamt-ROI in %
-    annual_roi: Decimal  # Jaehrlicher ROI in %
+    annual_roi: Decimal  # Jährlicher ROI in %
     value_appreciation: Decimal  # Wertsteigerung absolut
     appreciation_rate: Decimal  # Wertsteigerung in %
     total_rental_income: Decimal  # Gesamte Mieteinnahmen
@@ -84,14 +84,14 @@ class CostTrendResult:
     monthly_costs: List[Dict[str, Any]]  # [{month: "2024-01", amount: 150.00}, ...]
     average_monthly_cost: Decimal
     trend_direction: str  # "increasing", "decreasing", "stable"
-    trend_percentage: Decimal  # Aenderung in %
+    trend_percentage: Decimal  # Änderung in %
     ytd_total: Decimal  # Year-to-date Gesamtkosten
     calculated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 @dataclass
 class PropertyKPIs:
-    """Alle berechneten KPIs fuer eine Immobilie."""
+    """Alle berechneten KPIs für eine Immobilie."""
     property_id: UUID
     rental_yield: Optional[RentalYieldResult] = None
     roi: Optional[ROIResult] = None
@@ -105,7 +105,7 @@ class PropertyKPIs:
 
 class PropertyCalculationService:
     """
-    Service fuer berechnete Immobilien-KPIs.
+    Service für berechnete Immobilien-KPIs.
 
     Berechnet:
     - Mietrendite (Brutto/Netto)
@@ -130,14 +130,14 @@ class PropertyCalculationService:
         Berechnet die Mietrendite einer Immobilie.
 
         Bruttomietrendite = (Jahresmiete / Kaufpreis) * 100
-        Nettomietrendite = ((Jahresmiete - Jaehrliche Kosten) / Kaufpreis) * 100
+        Nettomietrendite = ((Jahresmiete - Jährliche Kosten) / Kaufpreis) * 100
 
         Args:
             db: Datenbank-Session
             property_id: Immobilien-ID
 
         Returns:
-            RentalYieldResult oder None wenn Berechnung nicht moeglich
+            RentalYieldResult oder None wenn Berechnung nicht möglich
         """
         from app.db.models import PrivatProperty, PrivatTenant
 
@@ -158,7 +158,7 @@ class PropertyCalculationService:
             )
             return None
 
-        # Kaufpreis pruefen
+        # Kaufpreis prüfen
         if not prop.purchase_price or prop.purchase_price <= 0:
             logger.debug(
                 "no_purchase_price_for_yield_calculation",
@@ -166,7 +166,7 @@ class PropertyCalculationService:
             )
             return None
 
-        # Jaehrliche Mieteinnahmen berechnen (aktive Mieter)
+        # Jährliche Mieteinnahmen berechnen (aktive Mieter)
         annual_rental_income = Decimal("0")
         for tenant in prop.tenants:
             if tenant.is_active and tenant.monthly_rent:
@@ -175,7 +175,7 @@ class PropertyCalculationService:
         # Bruttomietrendite
         gross_yield = (annual_rental_income / prop.purchase_price) * 100
 
-        # Jaehrliche Kosten berechnen (wenn verfuegbar)
+        # Jährliche Kosten berechnen (wenn verfügbar)
         annual_costs = await self._calculate_annual_costs(db, property_id)
 
         # Nettomietrendite
@@ -214,14 +214,14 @@ class PropertyCalculationService:
         Berechnet den Return on Investment (ROI) einer Immobilie.
 
         ROI = ((Aktueller Wert - Kaufpreis + Mieteinnahmen - Kosten) / Kaufpreis) * 100
-        Jaehrlicher ROI = ROI / Haltedauer in Jahren
+        Jährlicher ROI = ROI / Haltedauer in Jahren
 
         Args:
             db: Datenbank-Session
             property_id: Immobilien-ID
 
         Returns:
-            ROIResult oder None wenn Berechnung nicht moeglich
+            ROIResult oder None wenn Berechnung nicht möglich
         """
         from app.db.models import PrivatProperty
 
@@ -237,7 +237,7 @@ class PropertyCalculationService:
         if not prop:
             return None
 
-        # Pflichtfelder pruefen
+        # Pflichtfelder prüfen
         if not prop.purchase_price or prop.purchase_price <= 0:
             return None
         if not prop.purchase_date:
@@ -256,7 +256,7 @@ class PropertyCalculationService:
         value_appreciation = current_value - prop.purchase_price
         appreciation_rate = (value_appreciation / prop.purchase_price) * 100
 
-        # Gesamte Mieteinnahmen (geschaetzt basierend auf aktuellen Mietern)
+        # Gesamte Mieteinnahmen (geschätzt basierend auf aktuellen Mietern)
         annual_rental_income = Decimal("0")
         for tenant in prop.tenants:
             if tenant.is_active and tenant.monthly_rent:
@@ -274,7 +274,7 @@ class PropertyCalculationService:
         total_gain = value_appreciation + total_rental_income - total_costs - acquisition_costs
         total_roi = (total_gain / prop.purchase_price) * 100
 
-        # Jaehrlicher ROI
+        # Jährlicher ROI
         annual_roi = total_roi / holding_years if holding_years > 0 else Decimal("0")
 
         logger.info(
@@ -312,7 +312,7 @@ class PropertyCalculationService:
         Args:
             db: Datenbank-Session
             property_id: Immobilien-ID
-            months: Anzahl Monate fuer die Analyse
+            months: Anzahl Monate für die Analyse
 
         Returns:
             CostTrendResult oder None wenn keine Daten vorhanden
@@ -321,7 +321,7 @@ class PropertyCalculationService:
 
         PROPERTY_CALCULATIONS.labels(calculation_type="cost_trend").inc()
 
-        # Immobilie pruefen
+        # Immobilie prüfen
         result = await db.execute(
             select(PrivatProperty).where(PrivatProperty.id == property_id)
         )
@@ -336,15 +336,15 @@ class PropertyCalculationService:
 
         # Kosten pro Monat abfragen (via RentalPayments oder Property-spezifische Kosten)
         # Da das System flexible Strukturen hat, nutzen wir hier einen generischen Ansatz
-        # In einer vollstaendigen Implementierung wuerden spezifische Kostentabellen abgefragt
+        # In einer vollständigen Implementierung wuerden spezifische Kostentabellen abgefragt
 
         # Beispiel: Kosten aus Miet-Zahlungsdaten
-        # Hier koennte eine separate Kostentabelle verwendet werden
+        # Hier könnte eine separate Kostentabelle verwendet werden
         monthly_costs: List[Dict[str, Any]] = []
         ytd_total = Decimal("0")
 
-        # Trend berechnen (Placeholder fuer echte Daten)
-        # In einer vollstaendigen Implementierung wuerde hier eine DB-Abfrage stehen
+        # Trend berechnen (Placeholder für echte Daten)
+        # In einer vollständigen Implementierung wuerde hier eine DB-Abfrage stehen
         avg_monthly = Decimal("0")
         trend_direction = "stable"
         trend_percentage = Decimal("0")
@@ -385,7 +385,7 @@ class PropertyCalculationService:
         persist: bool = True,
     ) -> PropertyKPIs:
         """
-        Berechnet alle KPIs fuer eine Immobilie.
+        Berechnet alle KPIs für eine Immobilie.
 
         Args:
             db: Datenbank-Session
@@ -474,7 +474,7 @@ class PropertyCalculationService:
         space_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """
-        Berechnet KPIs fuer alle Immobilien (oder alle in einem Space).
+        Berechnet KPIs für alle Immobilien (oder alle in einem Space).
 
         Args:
             db: Datenbank-Session
@@ -507,7 +507,7 @@ class PropertyCalculationService:
                 kpis = await self.calculate_all_kpis(db, prop.id)
 
                 # In extracted_data speichern (oder separate Felder)
-                # Hier koennte auch ein separates Feld im Model aktualisiert werden
+                # Hier könnte auch ein separates Feld im Model aktualisiert werden
                 stats["calculated"] += 1
 
             except Exception as e:
@@ -537,21 +537,21 @@ class PropertyCalculationService:
         db: AsyncSession,
         property_id: UUID,
     ) -> Optional[Decimal]:
-        """Berechnet die jaehrlichen Kosten einer Immobilie.
+        """Berechnet die jährlichen Kosten einer Immobilie.
 
         Kostenquellen:
         - PrivatUtilityStatement.total_costs (Nebenkostenabrechnungen)
-        - Geschaetzte Grundsteuer (ca. 0.2% des Kaufpreises)
-        - Geschaetzte Versicherung (ca. 0.1% des Kaufpreises)
-        - Instandhaltungsruecklage (ca. 1% des Kaufpreises)
+        - Geschätzte Grundsteuer (ca. 0.2% des Kaufpreises)
+        - Geschätzte Versicherung (ca. 0.1% des Kaufpreises)
+        - Instandhaltungsrücklage (ca. 1% des Kaufpreises)
 
         Returns:
-            Jaehrliche Kosten als Decimal oder None bei Fehler
+            Jährliche Kosten als Decimal oder None bei Fehler
         """
         from app.db.models import PrivatProperty, PrivatUtilityStatement
 
         try:
-            # Property laden fuer Kaufpreis (fuer Schaetzungen)
+            # Property laden für Kaufpreis (für Schätzungen)
             stmt = select(PrivatProperty).where(
                 PrivatProperty.id == property_id,
                 PrivatProperty.deleted_at.is_(None),
@@ -573,7 +573,7 @@ class PropertyCalculationService:
             utility_result = await db.execute(utility_stmt)
             utility_costs = utility_result.scalar_one_or_none() or Decimal("0")
 
-            # 2. Geschaetzte fixe Kosten (wenn Kaufpreis bekannt)
+            # 2. Geschätzte fixe Kosten (wenn Kaufpreis bekannt)
             estimated_fixed = Decimal("0")
             if prop.purchase_price:
                 # Grundsteuer ~0.2%, Versicherung ~0.1%, Instandhaltung ~1%
@@ -609,7 +609,7 @@ class PropertyCalculationService:
         Kostenquellen:
         - Kaufnebenkosten (Notar, Grunderwerbsteuer)
         - Alle historischen Utility Statements
-        - Geschaetzte jaehrliche Kosten seit Kaufdatum
+        - Geschätzte jährliche Kosten seit Kaufdatum
 
         Returns:
             Gesamtkosten als Decimal
@@ -645,7 +645,7 @@ class PropertyCalculationService:
             utility_total = utility_result.scalar_one_or_none() or Decimal("0")
             total_costs += Decimal(str(utility_total))
 
-            # 3. Geschaetzte Kosten fuer Jahre ohne Utility Statements
+            # 3. Geschätzte Kosten für Jahre ohne Utility Statements
             if prop.purchase_date and prop.purchase_price:
                 holding_years = (date.today() - prop.purchase_date).days / Decimal("365.25")
 
@@ -656,7 +656,7 @@ class PropertyCalculationService:
                 years_result = await db.execute(years_with_utils_stmt)
                 years_with_utils = years_result.scalar_one_or_none() or 0
 
-                # Geschaetzte Kosten fuer Jahre ohne Statements (1.3% vom Kaufpreis)
+                # Geschätzte Kosten für Jahre ohne Statements (1.3% vom Kaufpreis)
                 missing_years = max(Decimal("0"), Decimal(str(holding_years)) - Decimal(str(years_with_utils)))
                 if missing_years > 0:
                     estimated_missing = missing_years * prop.purchase_price * Decimal("0.013")
@@ -688,7 +688,7 @@ _service_lock = threading.Lock()
 
 
 def get_property_calculation_service() -> PropertyCalculationService:
-    """Factory fuer PropertyCalculationService Singleton (Thread-safe)."""
+    """Factory für PropertyCalculationService Singleton (Thread-safe)."""
     global _property_calculation_service
     if _property_calculation_service is None:
         with _service_lock:

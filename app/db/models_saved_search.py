@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Saved Search Models fuer Ablage-System.
+Saved Search Models für Ablage-System.
 
-Gespeicherte Suchen fuer schnelle Wiederverwendung:
+Gespeicherte Suchen für schnelle Wiederverwendung:
 - Benutzerspezifische Such-Templates
 - Filter-Persistierung
 - Nutzungsstatistiken
@@ -35,9 +35,9 @@ from app.db.models import Base, CrossDBJSON
 
 class SavedSearch(Base):
     """
-    Gespeicherte Such-Konfigurationen fuer Benutzer.
+    Gespeicherte Such-Konfigurationen für Benutzer.
 
-    Ermoeglicht Speicherung von:
+    Ermöglicht Speicherung von:
     - Suchbegriff
     - Suchtyp (FTS/Semantic/Hybrid)
     - Filter-Zustand (document_type, status, date_range, etc.)
@@ -57,7 +57,7 @@ class SavedSearch(Base):
     name = Column(
         String(200),
         nullable=False,
-        comment="Benutzer-definierter Name fuer die Suche"
+        comment="Benutzer-definierter Name für die Suche"
     )
     query = Column(
         Text,
@@ -95,12 +95,12 @@ class SavedSearch(Base):
         Integer,
         nullable=False,
         default=0,
-        comment="Anzahl der Ausfuehrungen dieser Suche"
+        comment="Anzahl der Ausführungen dieser Suche"
     )
     last_used_at = Column(
         DateTime(timezone=True),
         nullable=True,
-        comment="Zeitpunkt der letzten Ausfuehrung"
+        comment="Zeitpunkt der letzten Ausführung"
     )
     created_at = Column(
         DateTime(timezone=True),
@@ -112,7 +112,20 @@ class SavedSearch(Base):
         DateTime(timezone=True),
         nullable=True,
         onupdate=func.now(),
-        comment="Letzte Aenderung"
+        comment="Letzte Änderung"
+    )
+    is_shared = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="Mit Team geteilt"
+    )
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Firma für Team-Sharing"
     )
 
     # Relationships

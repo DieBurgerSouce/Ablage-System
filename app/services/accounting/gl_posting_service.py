@@ -5,11 +5,11 @@ GL-Posting Service (General Ledger).
 Core service for journal entry management:
 - Create balanced journal entries (debit = credit)
 - Post entries (draft -> posted)
-- Reverse entries (GoBD-konform, keine Loeschung)
+- Reverse entries (GoBD-konform, keine Löschung)
 - Auto-post from OCR documents
 - Trial balance and account ledger reports
 
-GoBD-konform: Keine Loeschungen, nur Stornierungen.
+GoBD-konform: Keine Löschungen, nur Stornierungen.
 """
 
 from dataclasses import dataclass
@@ -457,7 +457,7 @@ class GLPostingService:
     async def _get_datev_config(
         self, company_id: UUID
     ) -> Optional[DATEVConfiguration]:
-        """Lade aktive DATEV-Konfiguration fuer die Firma (via User)."""
+        """Lade aktive DATEV-Konfiguration für die Firma (via User)."""
         from app.db.models import User as UserModel
 
         stmt = (
@@ -569,7 +569,7 @@ class GLPostingService:
             mapper = DATEVInvoiceMapper()
             invoice_data = ExtractedInvoiceData(**extracted)
 
-            # Kontenrahmen dynamisch waehlen
+            # Kontenrahmen dynamisch wählen
             kr_name = getattr(datev_config, "kontenrahmen", "SKR03")
             kontenrahmen = SKR04() if kr_name == "SKR04" else SKR03()
 

@@ -6,15 +6,15 @@ Phase 9.2: Dream Features
 
 Lernt aus historischen Zuweisungen und sagt voraus:
 - Welcher Benutzer sollte ein Dokument bearbeiten?
-- Welche Abteilung ist zustaendig?
-- Welche Prioritaet hat das Dokument?
+- Welche Abteilung ist zuständig?
+- Welche Priorität hat das Dokument?
 - Welche Tags sollten zugewiesen werden?
 
 ML-Ansatz:
 - Feature Extraction aus Dokument-Metadaten
-- RandomForest fuer Klassifikation
+- RandomForest für Klassifikation
 - Online-Learning aus Feedback
-- Confidence-basierte Vorschlaege
+- Confidence-basierte Vorschläge
 """
 
 from __future__ import annotations
@@ -49,13 +49,13 @@ class RoutingTarget(str, Enum):
     """Ziel der Routing-Vorhersage."""
     USER = "user"  # Welcher Benutzer
     DEPARTMENT = "department"  # Welche Abteilung
-    PRIORITY = "priority"  # Prioritaet
+    PRIORITY = "priority"  # Priorität
     WORKFLOW = "workflow"  # Welcher Workflow
     TAGS = "tags"  # Welche Tags
 
 
 class PriorityLevel(str, Enum):
-    """Prioritaetsstufen."""
+    """Prioritätsstufen."""
     URGENT = "urgent"  # Dringend
     HIGH = "high"  # Hoch
     NORMAL = "normal"  # Normal
@@ -69,7 +69,7 @@ class PriorityLevel(str, Enum):
 
 @dataclass
 class RoutingFeatures:
-    """Features fuer Routing-Vorhersage."""
+    """Features für Routing-Vorhersage."""
     # Dokument-Features
     document_type: str
     file_size: int
@@ -96,7 +96,7 @@ class RoutingFeatures:
     detected_language: str = "de"
 
     def to_vector(self) -> List[float]:
-        """Konvertiert Features in numerischen Vektor fuer ML."""
+        """Konvertiert Features in numerischen Vektor für ML."""
         vector: List[float] = []
 
         # Document Type (One-Hot)
@@ -126,7 +126,7 @@ class RoutingFeatures:
 
 @dataclass
 class RoutingHistory:
-    """Historische Routing-Entscheidung fuer Training."""
+    """Historische Routing-Entscheidung für Training."""
     document_id: UUID
     features: RoutingFeatures
     assigned_user_id: Optional[UUID]
@@ -139,7 +139,7 @@ class RoutingHistory:
 
 @dataclass
 class RoutingPrediction:
-    """Vorhersage fuer Dokument-Routing."""
+    """Vorhersage für Dokument-Routing."""
     target_type: RoutingTarget
     prediction: Union[str, UUID, PriorityLevel, List[str]]
     confidence: float
@@ -165,7 +165,7 @@ class TrainingResult:
 
 
 class RoutingFeatureExtractor:
-    """Extrahiert Features aus Dokumenten fuer Routing-Vorhersage."""
+    """Extrahiert Features aus Dokumenten für Routing-Vorhersage."""
 
     # Keywords die auf bestimmte Bearbeitung hindeuten
     KEYWORD_PATTERNS = {
@@ -173,7 +173,7 @@ class RoutingFeatureExtractor:
         "mahnung": ["mahnung", "erinnerung", "zahlungserinnerung", "frist"],
         "rechnung": ["rechnung", "invoice", "faktura"],
         "vertrag": ["vertrag", "contract", "vereinbarung"],
-        "kündigung": ["kündigung", "kuendigung", "beendigung"],
+        "kündigung": ["kündigung", "kündigung", "beendigung"],
     }
 
     # Betragskategorien
@@ -194,11 +194,11 @@ class RoutingFeatureExtractor:
 
         Args:
             document: Das zu analysierende Dokument
-            entity: Optional: Verknuepfte Business-Entity
-            timestamp: Optional: Zeitstempel (fuer Zeit-Features)
+            entity: Optional: Verknüpfte Business-Entity
+            timestamp: Optional: Zeitstempel (für Zeit-Features)
 
         Returns:
-            RoutingFeatures fuer ML-Vorhersage
+            RoutingFeatures für ML-Vorhersage
         """
         if timestamp is None:
             timestamp = datetime.utcnow()
@@ -264,22 +264,22 @@ class RoutingFeatureExtractor:
 
 
 class RoutingPredictor:
-    """ML-basierter Predictor fuer Dokument-Routing.
+    """ML-basierter Predictor für Dokument-Routing.
 
     Verwendet historische Daten um vorherzusagen:
     - Welcher Benutzer sollte ein Dokument bearbeiten
-    - Welche Prioritaet hat das Dokument
+    - Welche Priorität hat das Dokument
     - Welche Tags sind relevant
 
     Features:
     - Regelbasiertes Fallback wenn wenig Trainingsdaten
     - Online-Learning aus Feedback
-    - Confidence-Schwellenwert fuer automatisches Routing
+    - Confidence-Schwellenwert für automatisches Routing
     """
 
-    # Minimum Samples fuer ML-Training
+    # Minimum Samples für ML-Training
     MIN_TRAINING_SAMPLES = 50
-    # Confidence Threshold fuer Auto-Routing
+    # Confidence Threshold für Auto-Routing
     AUTO_ROUTING_THRESHOLD = 0.85
     # Model Version Prefix
     MODEL_VERSION_PREFIX = "routing-v1"
@@ -319,7 +319,7 @@ class RoutingPredictor:
         document: Document,
         target: RoutingTarget = RoutingTarget.USER
     ) -> RoutingPrediction:
-        """Sagt das Routing fuer ein Dokument vorher.
+        """Sagt das Routing für ein Dokument vorher.
 
         Args:
             document: Zu routendes Dokument
@@ -361,7 +361,7 @@ class RoutingPredictor:
         features: RoutingFeatures,
         document: Document
     ) -> RoutingPrediction:
-        """Sagt den zustaendigen Benutzer vorher."""
+        """Sagt den zuständigen Benutzer vorher."""
         explanation_parts: List[str] = []
         features_used: List[str] = []
 
@@ -369,7 +369,7 @@ class RoutingPredictor:
         if features.entity_id and features.entity_id in self._user_rules:
             user_id = self._user_rules[features.entity_id]
             explanation_parts.append(
-                f"Basierend auf vorherigen Zuweisungen fuer '{features.entity_name}'"
+                f"Basierend auf vorherigen Zuweisungen für '{features.entity_name}'"
             )
             features_used.append("entity_history")
 
@@ -400,16 +400,16 @@ class RoutingPredictor:
                 features_used=features_used
             )
 
-        # 3. ML-Modell (wenn genuegend Trainingsdaten)
+        # 3. ML-Modell (wenn genügend Trainingsdaten)
         if self._user_model is not None:
             feature_vector = features.to_vector()
-            # Vorhersage mit scikit-learn wuerde hier erfolgen
+            # Vorhersage mit scikit-learn würde hier erfolgen
             # prediction = self._user_model.predict([feature_vector])[0]
             # probabilities = self._user_model.predict_proba([feature_vector])[0]
 
         # 4. Fallback: Kein User vorschlagen
         explanation_parts.append(
-            "Nicht genuegend Daten fuer eine Vorhersage"
+            "Nicht genügend Daten für eine Vorhersage"
         )
 
         return RoutingPrediction(
@@ -422,7 +422,7 @@ class RoutingPredictor:
         )
 
     def _predict_priority(self, features: RoutingFeatures) -> RoutingPrediction:
-        """Sagt die Prioritaet vorher (regelbasiert)."""
+        """Sagt die Priorität vorher (regelbasiert)."""
         explanation_parts: List[str] = []
         features_used: List[str] = []
 
@@ -439,7 +439,7 @@ class RoutingPredictor:
                 features_used=features_used
             )
 
-        # Regel 2: Mahnungen haben hohe Prioritaet
+        # Regel 2: Mahnungen haben hohe Priorität
         if features.has_keywords.get("mahnung"):
             explanation_parts.append("Mahnung erkannt")
             features_used.append("keyword_mahnung")
@@ -452,7 +452,7 @@ class RoutingPredictor:
                 features_used=features_used
             )
 
-        # Regel 3: Hohe Betraege haben hoehere Prioritaet
+        # Regel 3: Hohe Beträge haben höhere Priorität
         if features.amount_category in ("large", "xlarge"):
             explanation_parts.append(f"Hoher Betrag ({features.amount_category})")
             features_used.append("amount_category")
@@ -468,10 +468,10 @@ class RoutingPredictor:
                 features_used=features_used
             )
 
-        # Regel 4: Kuendigungen haben hohe Prioritaet
+        # Regel 4: Kündigungen haben hohe Priorität
         if features.has_keywords.get("kündigung"):
-            explanation_parts.append("Kuendigung erkannt")
-            features_used.append("keyword_kuendigung")
+            explanation_parts.append("Kündigung erkannt")
+            features_used.append("keyword_kündigung")
             return RoutingPrediction(
                 target_type=RoutingTarget.PRIORITY,
                 prediction=PriorityLevel.HIGH,
@@ -494,7 +494,7 @@ class RoutingPredictor:
                 features_used=features_used
             )
 
-        # Default: Normale Prioritaet
+        # Default: Normale Priorität
         explanation_parts.append("Keine besonderen Merkmale erkannt")
         return RoutingPrediction(
             target_type=RoutingTarget.PRIORITY,
@@ -585,7 +585,7 @@ class RoutingPredictor:
         # Regel-Updates aus Daten extrahieren
         await self._update_rules_from_history(historical_data)
 
-        # ML-Training wuerde hier mit sklearn erfolgen
+        # ML-Training würde hier mit sklearn erfolgen
         # Derzeit nur regel-basiert implementiert
 
         logger.info(
@@ -622,7 +622,7 @@ class RoutingPredictor:
             self._correct_predictions += 1
 
         # Regel-Update bei Korrektur
-        # Dies wuerde in einer echten Implementierung
+        # Dies würde in einer echten Implementierung
         # die Regeln/das Modell inkrementell aktualisieren
 
         logger.info(
@@ -657,7 +657,7 @@ class RoutingPredictor:
 
                 entity_user_count[entity_id][user_id] += 1
 
-        # Haeufigsten User pro Entity als Regel
+        # Häufigsten User pro Entity als Regel
         for entity_id, user_counts in entity_user_count.items():
             if user_counts:
                 most_common_user = max(user_counts, key=user_counts.get)  # type: ignore
@@ -666,13 +666,13 @@ class RoutingPredictor:
 
     async def _get_type_user_mapping(self) -> Dict[str, Tuple[str, float]]:
         """Ermittelt Dokumenttyp -> User Mapping aus historischen Daten."""
-        # Dies wuerde eine DB-Abfrage machen um den haeufigsten
+        # Dies würde eine DB-Abfrage machen um den häufigsten
         # Bearbeiter pro Dokumenttyp zu finden
         # Placeholder: Leeres Dict
         return {}
 
     def get_statistics(self) -> Dict[str, Any]:
-        """Gibt Statistiken zurueck."""
+        """Gibt Statistiken zurück."""
         accuracy = (
             self._correct_predictions / self._predictions_count
             if self._predictions_count > 0
@@ -695,7 +695,7 @@ class RoutingPredictor:
 
 
 async def get_routing_predictor(db: AsyncSession) -> RoutingPredictor:
-    """Factory-Funktion fuer RoutingPredictor.
+    """Factory-Funktion für RoutingPredictor.
 
     Args:
         db: Async Database Session

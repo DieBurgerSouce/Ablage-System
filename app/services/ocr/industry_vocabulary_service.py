@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Industry Vocabulary Service fuer deutsche Fachsprache.
+Industry Vocabulary Service für deutsche Fachsprache.
 
 Phase 8: Deutsche Fachsprache
 
 Dieses Modul bietet:
 - Automatische Branchenerkennung aus Text
 - Branchenspezifische OCR-Korrekturen
-- Abkuerzungsexpansion
+- Abkürzungsexpansion
 - Compound-Word-Erkennung
 """
 
@@ -29,7 +29,7 @@ logger = get_logger(__name__)
 
 
 class IndustryType(str, Enum):
-    """Unterstuetzte Branchentypen."""
+    """Unterstützte Branchentypen."""
 
     BAUGEWERBE = "baugewerbe"
     HANDWERK = "handwerk"
@@ -75,19 +75,19 @@ class IndustryDetectionResult:
 
 class IndustryVocabularyService:
     """
-    Service fuer branchenspezifische Vokabularkorrekturen.
+    Service für branchenspezifische Vokabularkorrekturen.
 
     Features:
     - Automatische Branchenerkennung aus OCR-Text
     - Korrektur von OCR-Fehlern basierend auf Branchenvokabular
-    - Abkuerzungsexpansion (optional)
+    - Abkürzungsexpansion (optional)
     - Compound-Word-Erkennung und -Korrektur
     """
 
-    # Minimum confidence fuer automatische Branchenzuordnung
+    # Minimum confidence für automatische Branchenzuordnung
     MIN_INDUSTRY_CONFIDENCE = 0.3
 
-    # Gewichtung fuer Keyword-Matching
+    # Gewichtung für Keyword-Matching
     KEYWORD_WEIGHT_PRIMARY = 1.0
     KEYWORD_WEIGHT_SECONDARY = 0.5
 
@@ -98,7 +98,7 @@ class IndustryVocabularyService:
         self._initialize_variant_lookups()
 
     def _initialize_variant_lookups(self) -> None:
-        """Baut Lookup-Tabellen fuer schnelle Variantensuche auf."""
+        """Baut Lookup-Tabellen für schnelle Variantensuche auf."""
         for industry in get_available_industries():
             try:
                 vocab = load_vocabulary(industry)
@@ -159,14 +159,14 @@ class IndustryVocabularyService:
             matches: List[str] = []
             score = 0.0
 
-            # Primary keywords pruefen
+            # Primary keywords prüfen
             for keyword in detection_keywords:
                 keyword_lower = keyword.lower()
                 if keyword_lower in words:
                     matches.append(keyword)
                     score += self.KEYWORD_WEIGHT_PRIMARY
 
-            # Zusaetzlich: Terme im Text suchen
+            # Zusätzlich: Terme im Text suchen
             terms = vocab.get("terms", {})
             for term_key, term_data in terms.items():
                 term_canonical = term_data.get("canonical", "").lower()
@@ -227,7 +227,7 @@ class IndustryVocabularyService:
         Args:
             text: Der zu korrigierende Text
             industry: Die Branche (optional, wird sonst erkannt)
-            expand_abbreviations: Abkuerzungen expandieren
+            expand_abbreviations: Abkürzungen expandieren
             auto_detect_industry: Branche automatisch erkennen wenn nicht angegeben
 
         Returns:
@@ -268,7 +268,7 @@ class IndustryVocabularyService:
             )
             corrections.extend(variant_corrections)
 
-            # 2. Abkuerzungen expandieren (optional)
+            # 2. Abkürzungen expandieren (optional)
             if expand_abbreviations:
                 corrected_text, abbrev_expansions = self._expand_abbreviations(
                     corrected_text, industry_key
@@ -279,7 +279,7 @@ class IndustryVocabularyService:
             compounds = self._find_compounds(corrected_text, industry_key)
             compounds_found.extend(compounds)
 
-        # Allgemeine Korrekturen anwenden (fuer alle Branchen)
+        # Allgemeine Korrekturen anwenden (für alle Branchen)
         corrected_text, general_corrections = self._apply_general_corrections(
             corrected_text
         )
@@ -321,7 +321,7 @@ class IndustryVocabularyService:
                     else:
                         replacement = canonical.lower()
 
-                    # Pattern fuer Wortgrenzen
+                    # Pattern für Wortgrenzen
                     pattern = r"\b" + re.escape(word) + r"\b"
                     new_text = re.sub(pattern, replacement, text, count=1)
 
@@ -342,13 +342,13 @@ class IndustryVocabularyService:
     def _expand_abbreviations(
         self, text: str, industry: str
     ) -> Tuple[str, List[Dict[str, str]]]:
-        """Expandiert Abkuerzungen."""
+        """Expandiert Abkürzungen."""
         expansions: List[Dict[str, str]] = []
         vocab = self._vocabulary_cache.get(industry, {})
         abbreviations = vocab.get("abbreviations", {})
 
         for abbrev, full_form in abbreviations.items():
-            # Pattern: Abkuerzung mit Wortgrenzen
+            # Pattern: Abkürzung mit Wortgrenzen
             pattern = r"\b" + re.escape(abbrev) + r"\b"
             if re.search(pattern, text):
                 # Nur expandieren, nicht ersetzen (zur Info)
@@ -380,16 +380,16 @@ class IndustryVocabularyService:
         self, text: str
     ) -> Tuple[str, List[Dict[str, Any]]]:
         """
-        Wendet allgemeine Korrekturen an (branchenuebergreifend).
+        Wendet allgemeine Korrekturen an (branchenübergreifend).
 
-        Korrigiert haeufige OCR-Fehler wie:
+        Korrigiert häufige OCR-Fehler wie:
         - l/1 Verwechslungen
         - O/0 Verwechslungen
         - Fehlende Umlaute
         """
         corrections: List[Dict[str, Any]] = []
 
-        # Haeufige OCR-Fehlermuster
+        # Häufige OCR-Fehlermuster
         ocr_patterns = [
             # l/1 in bekannten Woertern
             (r"\bRechnug\b", "Rechnung", "missing_n"),
@@ -425,11 +425,11 @@ class IndustryVocabularyService:
         self, abbrev: str, industry: Optional[IndustryType] = None
     ) -> Optional[str]:
         """
-        Holt die Expansion einer Abkuerzung.
+        Holt die Expansion einer Abkürzung.
 
         Args:
-            abbrev: Die Abkuerzung
-            industry: Optionale Branche fuer kontextspezifische Expansion
+            abbrev: Die Abkürzung
+            industry: Optionale Branche für kontextspezifische Expansion
 
         Returns:
             Die volle Bezeichnung oder None
@@ -477,7 +477,7 @@ class IndustryVocabularyService:
 
     def get_industry_keywords(self, industry: IndustryType) -> List[str]:
         """
-        Gibt die Detection-Keywords fuer eine Branche zurueck.
+        Gibt die Detection-Keywords für eine Branche zurück.
 
         Args:
             industry: Die Branche
@@ -493,7 +493,7 @@ class IndustryVocabularyService:
 
     def get_statistics(self) -> Dict[str, Any]:
         """
-        Gibt Statistiken ueber geladene Vokabulare zurueck.
+        Gibt Statistiken über geladene Vokabulare zurück.
 
         Returns:
             Dictionary mit Statistiken
@@ -525,7 +525,7 @@ _industry_vocabulary_service: Optional[IndustryVocabularyService] = None
 
 def get_industry_vocabulary_service() -> IndustryVocabularyService:
     """
-    Gibt die Singleton-Instanz des IndustryVocabularyService zurueck.
+    Gibt die Singleton-Instanz des IndustryVocabularyService zurück.
 
     Returns:
         IndustryVocabularyService Instanz

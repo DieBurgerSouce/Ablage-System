@@ -79,7 +79,7 @@ class CashflowTrend(str, Enum):
 
 
 class RiskLevel(str, Enum):
-    """Risiko-Level fuer Liquiditaet."""
+    """Risiko-Level für Liquiditaet."""
     CRITICAL = "critical"   # Negative Balance erwartet
     HIGH = "high"           # < 1 Monat Reserve
     MEDIUM = "medium"       # 1-3 Monate Reserve
@@ -98,7 +98,7 @@ class PredictionConfidence(str, Enum):
 # =============================================================================
 
 class DailyCashflowDict(TypedDict):
-    """Taegliche Cashflow-Prognose."""
+    """Tägliche Cashflow-Prognose."""
     date: str
     predicted_balance: float
     incoming: float
@@ -118,7 +118,7 @@ class CashflowScenarioDict(TypedDict):
 
 
 class CashflowPredictionDict(TypedDict):
-    """Vollstaendige Cashflow-Prognose."""
+    """Vollständige Cashflow-Prognose."""
     id: str
     company_id: str
     generated_at: str
@@ -160,7 +160,7 @@ class PendingInvoice:
     due_date: datetime
     entity_name: str
     payment_probability: float  # Basierend auf Entity-Historie
-    expected_delay_days: int  # Historische Durchschnittsverzoegerung
+    expected_delay_days: int  # Historische Durchschnittsverzögerung
 
 
 @dataclass
@@ -174,7 +174,7 @@ class SeasonalPattern:
 
 @dataclass
 class CashflowDataPoint:
-    """Einzelner Datenpunkt fuer Prognose."""
+    """Einzelner Datenpunkt für Prognose."""
     date: datetime
     predicted_balance: Decimal
     incoming: Decimal
@@ -186,7 +186,7 @@ class CashflowDataPoint:
 
 @dataclass
 class CashflowPrediction:
-    """Vollstaendige Cashflow-Prognose."""
+    """Vollständige Cashflow-Prognose."""
     id: UUID = field(default_factory=uuid4)
     company_id: Optional[UUID] = None
     generated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
@@ -271,7 +271,7 @@ class CashflowPredictor:
     # Defaults
     DEFAULT_HORIZON_DAYS = 30
     MAX_HORIZON_DAYS = 90
-    MIN_HISTORICAL_DAYS = 90  # Mindestens 90 Tage Historie fuer Patterns
+    MIN_HISTORICAL_DAYS = 90  # Mindestens 90 Tage Historie für Patterns
 
     def __init__(self) -> None:
         """Initialisiert den Service."""
@@ -294,7 +294,7 @@ class CashflowPredictor:
             company_id: Company-ID
             horizon_days: Prognose-Horizont in Tagen (max 90)
             include_scenarios: What-If Szenarien generieren
-            scenario_adjustments: Manuelle Anpassungen fuer Szenarien
+            scenario_adjustments: Manuelle Anpassungen für Szenarien
 
         Returns:
             CashflowPrediction mit detaillierten Prognosen
@@ -322,7 +322,7 @@ class CashflowPredictor:
         # 4. Wiederkehrende Zahlungen identifizieren
         recurring = await self._identify_recurring_payments(db, company_id)
 
-        # 5. Taegliche Prognose erstellen
+        # 5. Tägliche Prognose erstellen
         daily_predictions = await self._generate_daily_predictions(
             current_balance=current_balance,
             pending_invoices=pending_invoices,
@@ -440,7 +440,7 @@ class CashflowPredictor:
         avg_daily_incoming = mean(incoming_values) if incoming_values else 0
         avg_daily_outgoing = mean(outgoing_values) if outgoing_values else 0
 
-        # Volatilitaet berechnen
+        # Volatilität berechnen
         incoming_volatility = stdev(incoming_values) / avg_daily_incoming if avg_daily_incoming > 0 and len(incoming_values) > 1 else 0.5
         outgoing_volatility = stdev(outgoing_values) / avg_daily_outgoing if avg_daily_outgoing > 0 and len(outgoing_values) > 1 else 0.5
 
@@ -488,7 +488,7 @@ class CashflowPredictor:
         self,
         transactions: List[BankTransaction],
     ) -> float:
-        """Berechnet Faktor fuer Monatsende (letzte 5 Tage)."""
+        """Berechnet Faktor für Monatsende (letzte 5 Tage)."""
         month_end_amounts = []
         other_amounts = []
 
@@ -542,7 +542,7 @@ class CashflowPredictor:
                 db, inv.entity_id
             ) if inv.entity_id else 0.7
 
-            # Erwartete Verzoegerung
+            # Erwartete Verzögerung
             expected_delay = await self._get_entity_payment_delay(
                 db, inv.entity_id
             ) if inv.entity_id else 0
@@ -568,7 +568,7 @@ class CashflowPredictor:
         if not entity_id:
             return 0.7  # Default
 
-        # Cache pruefen
+        # Cache prüfen
         cache_key = str(entity_id)
         if cache_key in self._entity_payment_stats:
             return self._entity_payment_stats[cache_key].get("payment_probability", 0.7)
@@ -587,7 +587,7 @@ class CashflowPredictor:
         if not invoices:
             return 0.7
 
-        # Bezahlt vs. ueberfaellig Ratio
+        # Bezahlt vs. überfällig Ratio
         paid_count = sum(1 for i in invoices if i.status == "paid")
         total_count = len(invoices)
 
@@ -603,7 +603,7 @@ class CashflowPredictor:
         db: AsyncSession,
         entity_id: Optional[UUID],
     ) -> int:
-        """Berechnet durchschnittliche Zahlungsverzoegerung in Tagen."""
+        """Berechnet durchschnittliche Zahlungsverzögerung in Tagen."""
         if not entity_id:
             return 0
 
@@ -611,7 +611,7 @@ class CashflowPredictor:
         if cache_key in self._entity_payment_stats:
             return int(self._entity_payment_stats[cache_key].get("avg_delay", 0))
 
-        # Historische Verzoegerungen
+        # Historische Verzögerungen
         query = select(InvoiceTracking).where(
             and_(
                 InvoiceTracking.entity_id == entity_id,
@@ -650,9 +650,9 @@ class CashflowPredictor:
         """
         Identifiziert wiederkehrende Zahlungen aus Historie.
 
-        Erkennt monatliche, woechentliche und jaehrliche Muster.
+        Erkennt monatliche, woechentliche und jährliche Muster.
         """
-        # Mindestens 3 Monate Historie fuer Muster-Erkennung
+        # Mindestens 3 Monate Historie für Muster-Erkennung
         cutoff = datetime.now(timezone.utc) - timedelta(days=90)
 
         # Gruppiere nach Verwendungszweck/Partner
@@ -686,7 +686,7 @@ class CashflowPredictor:
             if len(amounts) < 2:
                 continue
 
-            # Pruefen ob Betraege aehnlich sind (Varianz < 10%)
+            # Prüfen ob Betraege ähnlich sind (Varianz < 10%)
             amounts_float = [float(a) for a in amounts]
             if len(amounts_float) > 1:
                 avg_amount = mean(amounts_float)
@@ -712,11 +712,11 @@ class CashflowPredictor:
                 elif 5 <= avg_interval <= 9:
                     frequency = 7   # Woechentlich
                 elif 350 <= avg_interval <= 380:
-                    frequency = 365  # Jaehrlich
+                    frequency = 365  # Jährlich
                 else:
                     continue  # Kein klares Muster
 
-                # Naechstes Datum berechnen
+                # Nächstes Datum berechnen
                 last_date = max(dates)
                 next_date = last_date + timedelta(days=frequency)
 
@@ -740,7 +740,7 @@ class CashflowPredictor:
         patterns: Dict[str, Any],
         horizon_days: int,
     ) -> List[CashflowDataPoint]:
-        """Generiert taegliche Prognosen."""
+        """Generiert tägliche Prognosen."""
         predictions = []
         balance = current_balance
         now = datetime.now(timezone.utc)
@@ -754,7 +754,7 @@ class CashflowPredictor:
             factors = []
             confidence = patterns.get("confidence_factor", 0.5)
 
-            # 1. Ausstehende Rechnungen (Faelligkeit = target_date)
+            # 1. Ausstehende Rechnungen (Fälligkeit = target_date)
             for inv in pending_invoices:
                 expected_date = inv.due_date + timedelta(days=inv.expected_delay_days)
                 if expected_date.date() == target_date.date():
@@ -778,7 +778,7 @@ class CashflowPredictor:
 
             # 2. Wiederkehrende Zahlungen
             for rec in recurring_payments:
-                # Pruefen ob Zahlung in diesem Zeitfenster faellig
+                # Prüfen ob Zahlung in diesem Zeitfenster fällig
                 days_since_last = (target_date - rec.next_date).days
                 if 0 <= days_since_last < rec.frequency_days:
                     occurrences = days_since_last // rec.frequency_days
@@ -861,7 +861,7 @@ class CashflowPredictor:
         daily_predictions: List[CashflowDataPoint],
         horizon_days: int,
     ) -> CashflowPrediction:
-        """Erstellt das Prediction-Objekt aus den taeglichen Prognosen."""
+        """Erstellt das Prediction-Objekt aus den täglichen Prognosen."""
         if not daily_predictions:
             return CashflowPrediction(
                 company_id=company_id,
@@ -920,7 +920,7 @@ class CashflowPredictor:
         # Normalisierte Steigung
         normalized_slope = slope / (abs(y_mean) if y_mean != 0 else 1)
 
-        # Volatilitaet
+        # Volatilität
         if len(values) > 1:
             volatility = stdev(values) / abs(y_mean) if y_mean != 0 else 0
         else:
@@ -960,12 +960,12 @@ class CashflowPredictor:
                 "risk_change": "improved" if new_risk != prediction.overall_risk.value else "neutral",
             })
 
-        # Szenario 2: 50% Verzoegerung bei Einzahlungen
+        # Szenario 2: 50% Verzögerung bei Einzahlungen
         delayed_impact = total_incoming * 0.5
         if delayed_impact > 0:
             scenarios.append({
-                "name": "Zahlungsverzoegerungen",
-                "description": f"Wenn 50% der Forderungen spaeter eingehen.",
+                "name": "Zahlungsverzögerungen",
+                "description": f"Wenn 50% der Forderungen später eingehen.",
                 "adjustments": {"incoming_delay": -delayed_impact},
                 "impact_on_balance": -delayed_impact,
                 "risk_change": "worsened",
@@ -1014,23 +1014,23 @@ class CashflowPredictor:
                 "Liquiditaetsreserve unter einem Monat. Forderungen aktiv einfordern."
             )
             recommendations.append(
-                "Skonto-Moeglichkeiten bei Verbindlichkeiten pruefen."
+                "Skonto-Möglichkeiten bei Verbindlichkeiten prüfen."
             )
 
         if prediction.trend == CashflowTrend.DECLINING:
             recommendations.append(
-                "Abwaertstrend erkannt. Ursachenanalyse empfohlen."
+                "Abwärtstrend erkannt. Ursachenanalyse empfohlen."
             )
 
         if prediction.trend == CashflowTrend.VOLATILE:
             recommendations.append(
-                "Hohe Schwankungen im Cashflow. Automatische Zahlungen pruefen."
+                "Hohe Schwankungen im Cashflow. Automatische Zahlungen prüfen."
             )
 
         # Positive Empfehlungen
         if prediction.overall_risk == RiskLevel.LOW and prediction.trend == CashflowTrend.IMPROVING:
             recommendations.append(
-                "Gute Liquiditaetslage. Optionale Investitionen oder Sondertilgungen moeglich."
+                "Gute Liquiditaetslage. Optionale Investitionen oder Sondertilgungen möglich."
             )
 
         if not recommendations:
@@ -1049,7 +1049,7 @@ _cashflow_predictor: Optional[CashflowPredictor] = None
 
 
 def get_cashflow_predictor() -> CashflowPredictor:
-    """Gibt die Singleton-Instanz zurueck."""
+    """Gibt die Singleton-Instanz zurück."""
     global _cashflow_predictor
     if _cashflow_predictor is None:
         _cashflow_predictor = CashflowPredictor()

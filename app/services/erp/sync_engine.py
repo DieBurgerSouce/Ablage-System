@@ -2,10 +2,10 @@
 ERP Sync Engine.
 
 Enterprise-Level Synchronisations-Engine:
-- Delta-Sync (nur geaenderte Datensaetze)
+- Delta-Sync (nur geänderte Datensätze)
 - Full-Sync (initial oder manuell)
 - Konflikt-Erkennung und -Queue
-- Checksum-basierte Aenderungserkennung
+- Checksum-basierte Änderungserkennung
 
 Feinpoliert und durchdacht - Bidirektionale Sync auf Enterprise-Niveau.
 """
@@ -38,13 +38,13 @@ logger = structlog.get_logger(__name__)
 
 class SyncType(str, Enum):
     """Art der Synchronisation."""
-    FULL = "full"  # Alle Datensaetze
-    DELTA = "delta"  # Nur geaenderte
+    FULL = "full"  # Alle Datensätze
+    DELTA = "delta"  # Nur geänderte
     MANUAL = "manual"  # Manuell getriggert
 
 
 class SyncStrategy(str, Enum):
-    """Strategie fuer Konflikt-Aufloesung."""
+    """Strategie für Konflikt-Aufloesung."""
     LAST_WRITE_WINS = "last_write_wins"
     LOCAL_WINS = "local_wins"
     REMOTE_WINS = "remote_wins"
@@ -83,13 +83,13 @@ class SyncBatch:
 
 
 class SyncEngine:
-    """Sync-Engine fuer bidirektionale ERP-Synchronisation.
+    """Sync-Engine für bidirektionale ERP-Synchronisation.
 
     Orchestriert den Sync-Prozess zwischen lokalem System und ERP:
     1. Fetch: Daten von beiden Seiten holen
-    2. Compare: Aenderungen erkennen
+    2. Compare: Änderungen erkennen
     3. Transform: Feld-Mappings anwenden
-    4. Sync: Aenderungen anwenden
+    4. Sync: Änderungen anwenden
     5. Finalize: Mappings und Checksums aktualisieren
 
     Usage:
@@ -137,8 +137,8 @@ class SyncEngine:
             entity: Zu synchronisierende Entity
             direction: Sync-Richtung
             sync_type: Art der Sync
-            since: Nur Aenderungen seit diesem Zeitpunkt
-            local_records: Lokale Datensaetze (optional, sonst aus DB)
+            since: Nur Änderungen seit diesem Zeitpunkt
+            local_records: Lokale Datensätze (optional, sonst aus DB)
 
         Returns:
             Sync-Ergebnis mit Statistiken
@@ -197,15 +197,15 @@ class SyncEngine:
         sync_type: SyncType,
         since: Optional[datetime] = None,
     ) -> List[Dict[str, Any]]:
-        """Holt Datensaetze aus dem ERP.
+        """Holt Datensätze aus dem ERP.
 
         Args:
             entity: Entity-Typ
             sync_type: Full oder Delta
-            since: Zeitstempel fuer Delta-Sync
+            since: Zeitstempel für Delta-Sync
 
         Returns:
-            Liste der ERP-Datensaetze
+            Liste der ERP-Datensätze
         """
         # Use last_sync_at for delta sync if since not provided
         if sync_type == SyncType.DELTA and since is None:
@@ -260,7 +260,7 @@ class SyncEngine:
     ) -> SyncBatch:
         """Bereitet Sync-Batch vor.
 
-        Vergleicht lokale und Remote-Datensaetze und kategorisiert
+        Vergleicht lokale und Remote-Datensätze und kategorisiert
         sie in create/update/delete/conflict.
         """
         batch = SyncBatch(
@@ -367,10 +367,10 @@ class SyncEngine:
         local: Dict[str, Any],
         remote: Dict[str, Any],
     ) -> bool:
-        """Prueft ob ein Konflikt vorliegt.
+        """Prüft ob ein Konflikt vorliegt.
 
         Ein Konflikt liegt vor, wenn beide Seiten seit dem letzten
-        Sync geaendert wurden.
+        Sync geändert wurden.
         """
         last_sync = self.connector.config.last_sync_at
         if not last_sync:
@@ -402,7 +402,7 @@ class SyncEngine:
         return None
 
     async def _execute_batch(self, batch: SyncBatch) -> None:
-        """Fuehrt Sync-Operationen aus."""
+        """Führt Sync-Operationen aus."""
         entity_name = batch.entity.value
 
         # Create operations
@@ -495,10 +495,10 @@ class SyncEngine:
 
     @staticmethod
     def compute_checksum(data: Dict[str, Any]) -> str:
-        """Berechnet SHA-256 Checksum fuer einen Datensatz.
+        """Berechnet SHA-256 Checksum für einen Datensatz.
 
-        Wird verwendet um Aenderungen zu erkennen ohne
-        alle Felder vergleichen zu muessen.
+        Wird verwendet um Änderungen zu erkennen ohne
+        alle Felder vergleichen zu müssen.
         """
         # Normalize data for consistent hashing
         normalized = json.dumps(data, sort_keys=True, default=str)
@@ -506,7 +506,7 @@ class SyncEngine:
 
     @staticmethod
     def has_changed(old_checksum: Optional[str], new_checksum: str) -> bool:
-        """Prueft ob sich ein Datensatz geaendert hat."""
+        """Prüft ob sich ein Datensatz geändert hat."""
         return old_checksum != new_checksum
 
 

@@ -4,17 +4,17 @@ Document Comparison Service - Vergleich von Dokumenten.
 
 Phase 9.1: Dream Features
 
-Ermoeglicht:
+Ermöglicht:
 - Textbasierte Vergleiche (Diff)
 - Strukturierte Feld-Vergleiche
-- Aehnlichkeitserkennung
+- Ähnlichkeitserkennung
 - Versions-Vergleiche eines Dokuments
 - Visual Diff Reports
 
 Anwendungsfaelle:
 - Zwei Rechnungen vergleichen
-- Aenderungen zwischen Versionen erkennen
-- Aehnliche Dokumente finden
+- Änderungen zwischen Versionen erkennen
+- Ähnliche Dokumente finden
 - Duplikat-Erkennung
 """
 
@@ -57,8 +57,8 @@ class DifferenceType(str, Enum):
     """Art der Abweichung."""
     ADDED = "added"  # Neu hinzugefuegt
     REMOVED = "removed"  # Entfernt
-    CHANGED = "changed"  # Geaendert
-    UNCHANGED = "unchanged"  # Unveraendert
+    CHANGED = "changed"  # Geändert
+    UNCHANGED = "unchanged"  # Unverändert
 
 
 class FieldCategory(str, Enum):
@@ -90,19 +90,19 @@ class TextDifference:
 
 @dataclass
 class FieldChange:
-    """Aenderung in einem strukturierten Feld."""
+    """Änderung in einem strukturierten Feld."""
     field_name: str
     field_category: FieldCategory
     old_value: object
     new_value: object
     diff_type: DifferenceType
     confidence: float = 1.0
-    is_critical: bool = False  # Kritische Aenderung (z.B. Betrag)
+    is_critical: bool = False  # Kritische Änderung (z.B. Betrag)
 
 
 @dataclass
 class SimilarDocument:
-    """Aehnliches Dokument."""
+    """Ähnliches Dokument."""
     document_id: UUID
     filename: str
     document_type: str
@@ -142,7 +142,7 @@ class ComparisonResult:
 
 @dataclass
 class DiffReport:
-    """Vollstaendiger Diff-Report."""
+    """Vollständiger Diff-Report."""
     comparison: ComparisonResult
     document_1_info: Dict[str, object]
     document_2_info: Dict[str, object]
@@ -157,12 +157,12 @@ class DiffReport:
 
 
 class DocumentComparisonService:
-    """Service fuer Dokumenten-Vergleiche.
+    """Service für Dokumenten-Vergleiche.
 
     Vergleicht zwei Dokumente auf verschiedenen Ebenen:
     - Text-Level: Zeilenweiser Vergleich
     - Struktur-Level: Extrahierte Felder vergleichen
-    - Semantik-Level: Aehnlichkeitsberechnung
+    - Semantik-Level: Ähnlichkeitsberechnung
 
     Anwendung:
     - Versions-Vergleiche
@@ -170,13 +170,13 @@ class DocumentComparisonService:
     - Anomalie-Detection
     """
 
-    # Kritische Felder die bei Aenderung markiert werden
+    # Kritische Felder die bei Änderung markiert werden
     CRITICAL_FIELDS: Set[str] = {
         "total_gross", "total_net", "vat_amount", "invoice_number",
         "order_number", "iban", "bic", "vat_id", "customer_number"
     }
 
-    # Felder die fuer Aehnlichkeitsberechnung relevant sind
+    # Felder die für Ähnlichkeitsberechnung relevant sind
     SIMILARITY_FIELDS: List[str] = [
         "invoice_number", "customer_number", "total_gross", "invoice_date",
         "vendor_name", "customer_name", "vat_id"
@@ -207,7 +207,7 @@ class DocumentComparisonService:
             doc_id_1: ID des ersten Dokuments
             doc_id_2: ID des zweiten Dokuments
             comparison_type: Art des Vergleichs
-            include_context: Kontext um Aenderungen anzeigen
+            include_context: Kontext um Änderungen anzeigen
 
         Returns:
             ComparisonResult mit allen Differenzen
@@ -248,7 +248,7 @@ class DocumentComparisonService:
                 doc2.extracted_data or {}
             )
 
-        # Gesamt-Aehnlichkeit berechnen
+        # Gesamt-Ähnlichkeit berechnen
         if comparison_type == ComparisonType.TEXT:
             overall_similarity = text_similarity
         elif comparison_type == ComparisonType.STRUCTURED:
@@ -304,7 +304,7 @@ class DocumentComparisonService:
         doc_id_2: UUID,
         comparison_type: ComparisonType = ComparisonType.HYBRID
     ) -> DiffReport:
-        """Generiert einen vollstaendigen Diff-Report.
+        """Generiert einen vollständigen Diff-Report.
 
         Args:
             doc_id_1: ID des ersten Dokuments
@@ -314,7 +314,7 @@ class DocumentComparisonService:
         Returns:
             DiffReport mit Zusammenfassung und Empfehlungen
         """
-        # Vergleich durchfuehren
+        # Vergleich durchführen
         comparison = await self.compare_documents(
             doc_id_1, doc_id_2, comparison_type
         )
@@ -359,24 +359,24 @@ class DocumentComparisonService:
         company_id: Optional[UUID] = None,
         same_type_only: bool = True
     ) -> List[SimilarDocument]:
-        """Findet aehnliche Dokumente.
+        """Findet ähnliche Dokumente.
 
         Args:
             doc_id: ID des Referenz-Dokuments
-            threshold: Mindest-Aehnlichkeit (0.0-1.0)
+            threshold: Mindest-Ähnlichkeit (0.0-1.0)
             limit: Maximale Anzahl Ergebnisse
             company_id: Optional: Nur Dokumente dieser Company
             same_type_only: Nur gleichen Dokumenttyp vergleichen
 
         Returns:
-            Liste aehnlicher Dokumente mit Scores
+            Liste ähnlicher Dokumente mit Scores
         """
         # Referenz-Dokument laden
         ref_doc = await self._get_document(doc_id)
         if not ref_doc:
             raise ValueError(f"Dokument {doc_id} nicht gefunden")
 
-        # Query fuer Kandidaten
+        # Query für Kandidaten
         stmt = (
             select(Document, BusinessEntity.name.label("entity_name"))
             .outerjoin(BusinessEntity, Document.business_entity_id == BusinessEntity.id)
@@ -390,13 +390,13 @@ class DocumentComparisonService:
         if same_type_only and ref_doc.document_type:
             stmt = stmt.where(Document.document_type == ref_doc.document_type)
 
-        # Limit hoeher setzen da wir nachher filtern
+        # Limit höher setzen da wir nachher filtern
         stmt = stmt.limit(limit * 5)
 
         result = await self.db.execute(stmt)
         candidates = result.all()
 
-        # Aehnlichkeit berechnen
+        # Ähnlichkeit berechnen
         similar_docs: List[SimilarDocument] = []
         ref_data = ref_doc.extracted_data or {}
 
@@ -422,7 +422,7 @@ class DocumentComparisonService:
                     created_at=candidate_doc.created_at
                 ))
 
-        # Nach Aehnlichkeit sortieren
+        # Nach Ähnlichkeit sortieren
         similar_docs.sort(key=lambda x: x.similarity_score, reverse=True)
 
         logger.info(
@@ -469,13 +469,13 @@ class DocumentComparisonService:
             user_id=str(user_id)
         )
 
-        # Dokument laden und Berechtigung pruefen
+        # Dokument laden und Berechtigung prüfen
         document = await self._get_document(document_id)
         if not document:
             raise ValueError("Dokument nicht gefunden")
 
         if document.user_id != user_id:
-            raise ValueError("Keine Berechtigung fuer dieses Dokument")
+            raise ValueError("Keine Berechtigung für dieses Dokument")
 
         # Beide Versionen laden
         stmt = select(DocumentVersion).where(
@@ -562,7 +562,7 @@ class DocumentComparisonService:
             raise ValueError("Dokument nicht gefunden")
 
         if document.user_id != user_id:
-            raise ValueError("Keine Berechtigung fuer dieses Dokument")
+            raise ValueError("Keine Berechtigung für dieses Dokument")
 
         # Original-Version (version_number = 1) laden
         original_stmt = (
@@ -613,7 +613,7 @@ class DocumentComparisonService:
         document_id: UUID,
         user_id: UUID
     ) -> List[Dict[str, object]]:
-        """Listet alle Versionen eines Dokuments fuer Vergleich auf.
+        """Listet alle Versionen eines Dokuments für Vergleich auf.
 
         Args:
             document_id: UUID des Dokuments
@@ -626,18 +626,18 @@ class DocumentComparisonService:
             ValueError: Wenn Dokument nicht gefunden oder keine Berechtigung
         """
         logger.info(
-            "Liste Versionen fuer Vergleich",
+            "Liste Versionen für Vergleich",
             document_id=str(document_id),
             user_id=str(user_id)
         )
 
-        # Dokument laden und Berechtigung pruefen
+        # Dokument laden und Berechtigung prüfen
         document = await self._get_document(document_id)
         if not document:
             raise ValueError("Dokument nicht gefunden")
 
         if document.user_id != user_id:
-            raise ValueError("Keine Berechtigung fuer dieses Dokument")
+            raise ValueError("Keine Berechtigung für dieses Dokument")
 
         # Versionen laden
         versions_stmt = (
@@ -671,20 +671,20 @@ class DocumentComparisonService:
         """Extrahiert den Text einer Version.
 
         HINWEIS: DocumentVersion hat kein extracted_text Feld.
-        Diese Implementierung ist ein Platzhalter. In einer vollstaendigen
-        Implementierung muessten wir:
+        Diese Implementierung ist ein Platzhalter. In einer vollständigen
+        Implementierung müssten wir:
         1. Die tatsaechliche Datei von version.file_path lesen
-        2. OCR erneut ausfuehren (teuer)
+        2. OCR erneut ausführen (teuer)
         3. Einen separaten Text-Snapshot speichern
 
-        Fuer jetzt: Wenn is_current, nutze document.extracted_text,
+        Für jetzt: Wenn is_current, nutze document.extracted_text,
         sonst verwende change_summary als Platzhalter.
         """
         if version.is_current and document.extracted_text:
             return document.extracted_text
 
-        # Platzhalter fuer nicht-aktuelle Versionen
-        return f"[Version {version.version_number}: {version.change_summary or 'Keine Textdaten verfuegbar'}]"
+        # Platzhalter für nicht-aktuelle Versionen
+        return f"[Version {version.version_number}: {version.change_summary or 'Keine Textdaten verfügbar'}]"
 
     # ========================================================================
     # Internal Methods
@@ -710,7 +710,7 @@ class DocumentComparisonService:
             include_context: Kontext-Zeilen einbeziehen
 
         Returns:
-            Tuple aus (Differenzen, Aehnlichkeitsscore)
+            Tuple aus (Differenzen, Ähnlichkeitsscore)
         """
         differences: List[TextDifference] = []
 
@@ -718,7 +718,7 @@ class DocumentComparisonService:
         lines1 = text1.splitlines()
         lines2 = text2.splitlines()
 
-        # Aehnlichkeit berechnen
+        # Ähnlichkeit berechnen
         similarity = difflib.SequenceMatcher(None, text1, text2).ratio()
 
         # Differenzen finden
@@ -772,7 +772,7 @@ class DocumentComparisonService:
             data2: Zweite Daten-Struktur
 
         Returns:
-            Tuple aus (Feld-Aenderungen, Aehnlichkeitsscore)
+            Tuple aus (Feld-Änderungen, Ähnlichkeitsscore)
         """
         changes: List[FieldChange] = []
 
@@ -809,7 +809,7 @@ class DocumentComparisonService:
                     is_critical=is_critical
                 ))
             elif not self._values_equal(val1, val2):
-                # Feld wurde geaendert
+                # Feld wurde geändert
                 changes.append(FieldChange(
                     field_name=key,
                     field_category=category,
@@ -822,7 +822,7 @@ class DocumentComparisonService:
                 # Feld ist gleich
                 matching_fields += 1
 
-        # Aehnlichkeit berechnen
+        # Ähnlichkeit berechnen
         similarity = matching_fields / total_fields if total_fields > 0 else 1.0
 
         return changes, similarity
@@ -845,7 +845,7 @@ class DocumentComparisonService:
         return FieldCategory.TEXT
 
     def _values_equal(self, val1: object, val2: object) -> bool:
-        """Prueft ob zwei Werte gleich sind (mit Toleranz fuer Zahlen)."""
+        """Prüft ob zwei Werte gleich sind (mit Toleranz für Zahlen)."""
         # None-Handling
         if val1 is None and val2 is None:
             return True
@@ -877,20 +877,20 @@ class DocumentComparisonService:
         data1: Dict[str, object],
         data2: Dict[str, object]
     ) -> Tuple[float, List[str]]:
-        """Berechnet schnelle Aehnlichkeit basierend auf wichtigen Feldern.
+        """Berechnet schnelle Ähnlichkeit basierend auf wichtigen Feldern.
 
         Args:
             data1: Erste Daten
             data2: Zweite Daten
 
         Returns:
-            Tuple aus (Aehnlichkeit, Liste der uebereinstimmenden Felder)
+            Tuple aus (Ähnlichkeit, Liste der übereinstimmenden Felder)
         """
         matching_fields: List[str] = []
         total_weight = 0.0
         matched_weight = 0.0
 
-        # Gewichtungen fuer verschiedene Felder
+        # Gewichtungen für verschiedene Felder
         weights = {
             "invoice_number": 3.0,
             "customer_number": 2.5,
@@ -927,11 +927,11 @@ class DocumentComparisonService:
         similarity_pct = int(comparison.overall_similarity * 100)
 
         if comparison.total_changes == 0:
-            return f"Die Dokumente sind identisch (Aehnlichkeit: {similarity_pct}%)."
+            return f"Die Dokumente sind identisch (Ähnlichkeit: {similarity_pct}%)."
 
         summary_parts = [
-            f"Aehnlichkeit: {similarity_pct}%.",
-            f"Insgesamt {comparison.total_changes} Aenderungen gefunden:"
+            f"Ähnlichkeit: {similarity_pct}%.",
+            f"Insgesamt {comparison.total_changes} Änderungen gefunden:"
         ]
 
         if comparison.additions > 0:
@@ -943,7 +943,7 @@ class DocumentComparisonService:
 
         if comparison.critical_changes > 0:
             summary_parts.append(
-                f"\n⚠️ ACHTUNG: {comparison.critical_changes} kritische Aenderungen "
+                f"\n⚠️ ACHTUNG: {comparison.critical_changes} kritische Änderungen "
                 "(Betraege, Rechnungsnummern, etc.)"
             )
 
@@ -955,31 +955,31 @@ class DocumentComparisonService:
 
         if comparison.overall_similarity > 0.95 and comparison.total_changes > 0:
             recommendations.append(
-                "Sehr hohe Aehnlichkeit - Pruefen Sie, ob es sich um ein Duplikat handelt."
+                "Sehr hohe Ähnlichkeit - Prüfen Sie, ob es sich um ein Duplikat handelt."
             )
 
         if comparison.critical_changes > 0:
             recommendations.append(
-                "Kritische Aenderungen erkannt - Bitte manuell verifizieren."
+                "Kritische Änderungen erkannt - Bitte manuell verifizieren."
             )
 
-        # Spezifische Empfehlungen basierend auf Feld-Aenderungen
+        # Spezifische Empfehlungen basierend auf Feld-Änderungen
         for change in comparison.field_changes:
             if change.is_critical and change.diff_type == DifferenceType.CHANGED:
                 if change.field_category == FieldCategory.AMOUNT:
                     recommendations.append(
-                        f"Betrags-Aenderung in '{change.field_name}': "
+                        f"Betrags-Änderung in '{change.field_name}': "
                         f"{change.old_value} → {change.new_value}"
                     )
                 elif change.field_category == FieldCategory.IDENTIFIER:
                     recommendations.append(
-                        f"Identifikator-Aenderung in '{change.field_name}': "
-                        f"Pruefen Sie, ob dies beabsichtigt ist."
+                        f"Identifikator-Änderung in '{change.field_name}': "
+                        f"Prüfen Sie, ob dies beabsichtigt ist."
                     )
 
         if comparison.overall_similarity < 0.5:
             recommendations.append(
-                "Geringe Aehnlichkeit - Die Dokumente unterscheiden sich stark."
+                "Geringe Ähnlichkeit - Die Dokumente unterscheiden sich stark."
             )
 
         if not recommendations:
@@ -994,7 +994,7 @@ class DocumentComparisonService:
 
 
 async def get_document_comparison_service(db: AsyncSession) -> DocumentComparisonService:
-    """Factory-Funktion fuer DocumentComparisonService.
+    """Factory-Funktion für DocumentComparisonService.
 
     Args:
         db: Async Database Session

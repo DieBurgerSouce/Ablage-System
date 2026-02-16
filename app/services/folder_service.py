@@ -1,7 +1,7 @@
-"""Folder Service - Geschaeftliche Ordnerverwaltung.
+"""Folder Service - Geschäftliche Ordnerverwaltung.
 
 Bietet hierarchische Ordnerverwaltung mit:
-- CRUD-Operationen fuer Ordner
+- CRUD-Operationen für Ordner
 - Hierarchie-Navigation (Tree, Breadcrumbs)
 - Dokument-Zuordnung
 - Berechtigungsvererbung
@@ -31,9 +31,9 @@ logger = structlog.get_logger(__name__)
 
 
 class FolderService:
-    """Service fuer die Verwaltung geschaeftlicher Ordner.
+    """Service für die Verwaltung geschäftlicher Ordner.
 
-    Alle Operationen sind company-scoped fuer Multi-Tenancy.
+    Alle Operationen sind company-scoped für Multi-Tenancy.
     """
 
     # ================================================================
@@ -58,10 +58,10 @@ class FolderService:
 
         Args:
             db: Datenbank-Session
-            company_id: Firmen-ID fuer Multi-Tenancy
+            company_id: Firmen-ID für Multi-Tenancy
             name: Ordnername
             created_by_id: ID des erstellenden Users
-            parent_id: ID des uebergeordneten Ordners (None = Root)
+            parent_id: ID des übergeordneten Ordners (None = Root)
             description: Optionale Beschreibung
             icon: Icon-Name (default: Folder)
             color: Hex-Farbcode
@@ -72,7 +72,7 @@ class FolderService:
             Erstellter Ordner
 
         Raises:
-            ValueError: Wenn parent_id ungueltig oder nicht in gleicher Company
+            ValueError: Wenn parent_id ungültig oder nicht in gleicher Company
         """
         # Berechne Pfad und Level
         path = ""
@@ -81,7 +81,7 @@ class FolderService:
         if parent_id:
             parent = await self._get_folder_internal(db, parent_id, company_id)
             if not parent:
-                raise ValueError("Uebergeordneter Ordner nicht gefunden")
+                raise ValueError("Übergeordneter Ordner nicht gefunden")
             path = f"{parent.path}/"
             level = parent.level + 1
 
@@ -101,7 +101,7 @@ class FolderService:
         db.add(folder)
         await db.flush()
 
-        # Materialized Path mit eigener ID vervollstaendigen
+        # Materialized Path mit eigener ID vervollständigen
         if parent_id:
             folder.path = f"{path}{folder.id}"
         else:
@@ -111,7 +111,7 @@ class FolderService:
         if parent_id:
             await self._increment_subfolder_count(db, parent_id, 1)
 
-        # Admin-Berechtigung fuer Ersteller setzen
+        # Admin-Berechtigung für Ersteller setzen
         permission = FolderPermission(
             folder_id=folder.id,
             user_id=created_by_id,
@@ -140,13 +140,13 @@ class FolderService:
         company_id: UUID,
         user_id: UUID,
     ) -> Optional[Folder]:
-        """Einzelnen Ordner abrufen mit Berechtigungspruefung.
+        """Einzelnen Ordner abrufen mit Berechtigungsprüfung.
 
         Args:
             db: Datenbank-Session
             folder_id: Ordner-ID
             company_id: Firmen-ID
-            user_id: User-ID fuer Zugriffspruefung
+            user_id: User-ID für Zugriffsprüfung
 
         Returns:
             Ordner oder None
@@ -176,7 +176,7 @@ class FolderService:
             db: Datenbank-Session
             folder_id: Ordner-ID
             company_id: Firmen-ID
-            user_id: User-ID fuer Zugriffspruefung
+            user_id: User-ID für Zugriffsprüfung
 
         Returns:
             Aktualisierter Ordner oder None
@@ -220,9 +220,9 @@ class FolderService:
         company_id: UUID,
         user_id: UUID,
     ) -> bool:
-        """Ordner weich loeschen (Soft Delete).
+        """Ordner weich löschen (Soft Delete).
 
-        Loescht auch alle Unterordner rekursiv.
+        Löscht auch alle Unterordner rekursiv.
 
         Args:
             db: Datenbank-Session
@@ -231,21 +231,21 @@ class FolderService:
             user_id: User-ID
 
         Returns:
-            True wenn erfolgreich geloescht
+            True wenn erfolgreich gelöscht
         """
         if not await self.check_folder_access(db, folder_id, user_id, "admin"):
-            raise PermissionError("Keine Berechtigung zum Loeschen dieses Ordners")
+            raise PermissionError("Keine Berechtigung zum Löschen dieses Ordners")
 
         folder = await self._get_folder_internal(db, folder_id, company_id)
         if not folder:
             return False
 
         if folder.is_locked:
-            raise ValueError("Gesperrter Ordner kann nicht geloescht werden")
+            raise ValueError("Gesperrter Ordner kann nicht gelöscht werden")
 
         now = datetime.now(timezone.utc)
 
-        # Alle Unterordner per Materialized Path finden und loeschen
+        # Alle Unterordner per Materialized Path finden und löschen
         descendant_query = (
             select(Folder)
             .where(
@@ -316,7 +316,7 @@ class FolderService:
         result = await db.execute(query)
         all_folders = result.scalars().all()
 
-        # Berechtigungen pruefen
+        # Berechtigungen prüfen
         accessible_ids = set()
         for f in all_folders:
             if await self.check_folder_access(db, f.id, user_id, "read"):
@@ -393,7 +393,7 @@ class FolderService:
         result = await db.execute(query)
         folder_map = {str(row.id): {"id": str(row.id), "name": row.name, "icon": row.icon} for row in result}
 
-        # In Pfad-Reihenfolge zurueckgeben
+        # In Pfad-Reihenfolge zurückgeben
         return [folder_map[pid] for pid in path_ids if pid in folder_map]
 
     async def move_folder(
@@ -431,7 +431,7 @@ class FolderService:
         if folder.is_locked:
             raise ValueError("Gesperrter Ordner kann nicht verschoben werden")
 
-        # Zyklus-Pruefung: new_parent darf kein Nachkomme von folder sein
+        # Zyklus-Prüfung: new_parent darf kein Nachkomme von folder sein
         if new_parent_id:
             new_parent = await self._get_folder_internal(db, new_parent_id, company_id)
             if not new_parent:
@@ -519,9 +519,9 @@ class FolderService:
             FolderDocument-Zuordnung
         """
         if not await self.check_folder_access(db, folder_id, user_id, "write"):
-            raise PermissionError("Keine Berechtigung fuer diesen Ordner")
+            raise PermissionError("Keine Berechtigung für diesen Ordner")
 
-        # Pruefen ob Zuordnung bereits existiert
+        # Prüfen ob Zuordnung bereits existiert
         existing = await db.execute(
             select(FolderDocument).where(
                 and_(
@@ -585,7 +585,7 @@ class FolderService:
             True wenn erfolgreich entfernt
         """
         if not await self.check_folder_access(db, folder_id, user_id, "write"):
-            raise PermissionError("Keine Berechtigung fuer diesen Ordner")
+            raise PermissionError("Keine Berechtigung für diesen Ordner")
 
         result = await db.execute(
             delete(FolderDocument).where(
@@ -624,7 +624,7 @@ class FolderService:
             user_id: User-ID
             company_id: Firmen-ID
             page: Seitennummer
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
 
         Returns:
             Tuple aus (Dokument-Liste, Gesamtanzahl)
@@ -676,11 +676,11 @@ class FolderService:
         Returns:
             True wenn erfolgreich
         """
-        # Berechtigungen fuer beide Ordner pruefen
+        # Berechtigungen für beide Ordner prüfen
         if not await self.check_folder_access(db, source_folder_id, user_id, "write"):
-            raise PermissionError("Keine Berechtigung fuer den Quell-Ordner")
+            raise PermissionError("Keine Berechtigung für den Quell-Ordner")
         if not await self.check_folder_access(db, target_folder_id, user_id, "write"):
-            raise PermissionError("Keine Berechtigung fuer den Ziel-Ordner")
+            raise PermissionError("Keine Berechtigung für den Ziel-Ordner")
 
         # Zuordnung aktualisieren
         result = await db.execute(
@@ -718,7 +718,7 @@ class FolderService:
         user_id: UUID,
         required_level: str = "read",
     ) -> bool:
-        """Prueft ob User die erforderliche Berechtigung fuer den Ordner hat.
+        """Prüft ob User die erforderliche Berechtigung für den Ordner hat.
 
         Berechtigungshierarchie: admin > write > read
 
@@ -755,7 +755,7 @@ class FolderService:
         if permission:
             return level_hierarchy.get(permission, 0) >= required_rank
 
-        # Fallback: Ueber Materialized Path des Ordners pruefen
+        # Fallback: Über Materialized Path des Ordners prüfen
         folder_query = select(Folder.path).where(Folder.id == folder_id)
         folder_result = await db.execute(folder_query)
         folder_path = folder_result.scalar_one_or_none()
@@ -763,7 +763,7 @@ class FolderService:
         if not folder_path:
             return False
 
-        # Ancestor-Ordner aus Pfad extrahieren und Berechtigungen pruefen
+        # Ancestor-Ordner aus Pfad extrahieren und Berechtigungen prüfen
         path_parts = folder_path.split("/")
         ancestor_ids = [UUID(p) for p in path_parts if p and p != str(folder_id)]
 
@@ -797,12 +797,12 @@ class FolderService:
         company_id: UUID,
         propagate: bool = True,
     ) -> FolderPermission:
-        """Berechtigung fuer einen Ordner setzen.
+        """Berechtigung für einen Ordner setzen.
 
         Args:
             db: Datenbank-Session
             folder_id: Ordner-ID
-            target_user_id: User der die Berechtigung erhaelt
+            target_user_id: User der die Berechtigung erhält
             permission_level: Berechtigungsstufe
             granted_by_id: User der die Berechtigung erteilt
             company_id: Firmen-ID
@@ -812,7 +812,7 @@ class FolderService:
             Erstellte/Aktualisierte Berechtigung
         """
         if not await self.check_folder_access(db, folder_id, granted_by_id, "admin"):
-            raise PermissionError("Nur Admins koennen Berechtigungen vergeben")
+            raise PermissionError("Nur Admins können Berechtigungen vergeben")
 
         # Upsert: Existierende Berechtigung aktualisieren oder neue erstellen
         existing = await db.execute(
@@ -901,7 +901,7 @@ class FolderService:
             query_text: Suchbegriff
             folder_type: Optionaler Typ-Filter
             page: Seitennummer
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
 
         Returns:
             Tuple (Ergebnisse, Gesamtanzahl)
@@ -947,7 +947,7 @@ class FolderService:
             parent_id: Eltern-Ordner (None = Root)
             company_id: Firmen-ID
             user_id: User-ID
-            folder_order: Liste von Ordner-IDs in gewuenschter Reihenfolge
+            folder_order: Liste von Ordner-IDs in gewünschter Reihenfolge
 
         Returns:
             True wenn erfolgreich
@@ -979,7 +979,7 @@ class FolderService:
         folder_id: UUID,
         company_id: UUID,
     ) -> Dict:
-        """Statistiken fuer einen Ordner abrufen.
+        """Statistiken für einen Ordner abrufen.
 
         Args:
             db: Datenbank-Session
@@ -993,7 +993,7 @@ class FolderService:
         if not folder:
             return {}
 
-        # Rekursive Dokumenten-Anzahl ueber Materialized Path
+        # Rekursive Dokumenten-Anzahl über Materialized Path
         total_docs_query = (
             select(func.count(FolderDocument.id))
             .join(Folder, Folder.id == FolderDocument.folder_id)
@@ -1041,7 +1041,7 @@ class FolderService:
         folder_id: UUID,
         company_id: UUID,
     ) -> Optional[Folder]:
-        """Interner Abruf ohne Berechtigungspruefung."""
+        """Interner Abruf ohne Berechtigungsprüfung."""
         query = (
             select(Folder)
             .where(
@@ -1110,7 +1110,7 @@ class FolderService:
         descendant_ids = [row.id for row in result]
 
         for desc_id in descendant_ids:
-            # Upsert fuer vererbte Berechtigung
+            # Upsert für vererbte Berechtigung
             existing = await db.execute(
                 select(FolderPermission).where(
                     and_(

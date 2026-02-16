@@ -1,19 +1,19 @@
 """
 Bundesanzeiger Service.
 
-Bietet Schnittstelle fuer Bundesanzeiger-Abfragen:
+Bietet Schnittstelle für Bundesanzeiger-Abfragen:
 - Insolvenzbekanntmachungen
 - Jahresabschluesse
 - Handelsregister-Bekanntmachungen
-- Unternehmensregister-Veroeffentlichungen
+- Unternehmensregister-Veröffentlichungen
 
 Features:
 - Echte API-Integration via Web-Scraping
-- Mock-Modus fuer Entwicklung/Tests
+- Mock-Modus für Entwicklung/Tests
 - Input-Validierung und Error-Handling
 - SECURITY: PII-sichere Protokollierung
 
-Fuer Production: BUNDESANZEIGER_MOCK=false setzen.
+Für Production: BUNDESANZEIGER_MOCK=false setzen.
 """
 
 import re
@@ -61,7 +61,7 @@ class InsolvencyPublication:
 
 @dataclass
 class InsolvencyResult:
-    """Ergebnis einer Insolvenz-Pruefung."""
+    """Ergebnis einer Insolvenz-Prüfung."""
 
     company_name: str = ""
     has_insolvency: bool = False
@@ -76,9 +76,9 @@ class InsolvencyResult:
 
 
 class BundesanzeigerService:
-    """Service fuer Bundesanzeiger-Abfragen.
+    """Service für Bundesanzeiger-Abfragen.
 
-    Unterstuetzt echte API-Integration sowie Mock-Modus fuer Tests.
+    Unterstützt echte API-Integration sowie Mock-Modus für Tests.
     """
 
     # API Endpoints
@@ -88,7 +88,7 @@ class BundesanzeigerService:
 
     def __init__(self) -> None:
         """Initialisiert Service."""
-        # Mock-Modus aus Settings (Default: True fuer Entwicklung)
+        # Mock-Modus aus Settings (Default: True für Entwicklung)
         self.mock_enabled = getattr(settings, "BUNDESANZEIGER_MOCK", True)
 
     # ========================================================================
@@ -97,7 +97,7 @@ class BundesanzeigerService:
 
     async def check_insolvency(self, company_name: str) -> InsolvencyResult:
         """
-        Prueft ob Insolvenzbekanntmachungen vorliegen.
+        Prüft ob Insolvenzbekanntmachungen vorliegen.
 
         Args:
             company_name: Firmenname
@@ -149,7 +149,7 @@ class BundesanzeigerService:
         self, company_name: str, limit: int = 10
     ) -> List[Publication]:
         """
-        Ruft alle Bekanntmachungen fuer Firma ab.
+        Ruft alle Bekanntmachungen für Firma ab.
 
         Args:
             company_name: Firmenname
@@ -179,7 +179,7 @@ class BundesanzeigerService:
         self, company_name: str, limit: int = 10
     ) -> List[Dict[str, Any]]:
         """
-        Sucht alle Veroeffentlichungen zu einer Firma.
+        Sucht alle Veröffentlichungen zu einer Firma.
 
         Diese Methode wird von SupplierVerificationService verwendet.
 
@@ -188,7 +188,7 @@ class BundesanzeigerService:
             limit: Maximale Anzahl Ergebnisse
 
         Returns:
-            Liste von Dict mit Veroeffentlichungs-Details
+            Liste von Dict mit Veröffentlichungs-Details
         """
         logger.info(
             "bundesanzeiger_search_publications_requested",
@@ -258,7 +258,7 @@ class BundesanzeigerService:
                 }
 
                 if rubrik:
-                    # SECURITY: Whitelist fuer rubrik-Parameter
+                    # SECURITY: Whitelist für rubrik-Parameter
                     allowed_rubriks = {"insolvenz", "jahresabschluss", "handelsregister", "bekanntmachung"}
                     if rubrik.lower() in allowed_rubriks:
                         params["rubrik"] = rubrik.lower()
@@ -285,7 +285,7 @@ class BundesanzeigerService:
         return publications[:limit]
 
     def _sanitize_company_name(self, name: str) -> str:
-        """Sanitize Firmenname fuer sichere Suche.
+        """Sanitize Firmenname für sichere Suche.
 
         SECURITY: Whitelist-Ansatz gegen Injection (CWE-20).
 
@@ -309,11 +309,11 @@ class BundesanzeigerService:
     def _parse_bundesanzeiger_html(self, html: str, company_name: str) -> List[Publication]:
         """Parse Bundesanzeiger HTML Response.
 
-        Verwendet Regex-basiertes Parsing fuer Robustheit.
+        Verwendet Regex-basiertes Parsing für Robustheit.
 
         Args:
             html: HTML-Response
-            company_name: Firmenname fuer Publication
+            company_name: Firmenname für Publication
 
         Returns:
             Liste von Publication-Objekten
@@ -321,17 +321,17 @@ class BundesanzeigerService:
         publications: List[Publication] = []
 
         try:
-            # Pattern fuer Datum (DD.MM.YYYY)
+            # Pattern für Datum (DD.MM.YYYY)
             datum_pattern = r"(\d{2}\.\d{2}\.\d{4})"
-            # Pattern fuer Rubrik/Typ
+            # Pattern für Rubrik/Typ
             rubrik_patterns = {
-                "insolvency_opening": r"(?:Eroeffnung|Insolvenzverfahren\s+eroeffnet)",
+                "insolvency_opening": r"(?:Eröffnung|Insolvenzverfahren\s+eröffnet)",
                 "insolvency_termination": r"(?:Aufhebung|Verfahren\s+aufgehoben|eingestellt)",
-                "jahresabschluss": r"(?:Jahresabschluss|Bilanz|Geschaeftsbericht)",
+                "jahresabschluss": r"(?:Jahresabschluss|Bilanz|Geschäftsbericht)",
                 "handelsregister": r"(?:Handelsregister|HRB|HRA)",
             }
 
-            # Finde alle Datumseintraege
+            # Finde alle Datumseinträge
             datum_matches = re.findall(datum_pattern, html)
 
             # Bestimme Typ basierend auf HTML-Inhalt
@@ -341,7 +341,7 @@ class BundesanzeigerService:
                     pub_type = type_key
                     break
 
-            # Erstelle Publication fuer jeden Datumstreffer
+            # Erstelle Publication für jeden Datumstreffer
             for i, datum_str in enumerate(datum_matches[:10]):  # Max 10
                 try:
                     pub_date = datetime.strptime(datum_str, "%d.%m.%Y")
@@ -358,7 +358,7 @@ class BundesanzeigerService:
                     details=None,
                 ))
 
-            # Pruefe auf "Keine Ergebnisse"
+            # Prüfe auf "Keine Ergebnisse"
             if "keine ergebnisse" in html.lower() or "keine treffer" in html.lower():
                 return []
 
@@ -372,7 +372,7 @@ class BundesanzeigerService:
     # ========================================================================
 
     def _mock_search_publications(self, company_name: str, limit: int = 10) -> List[Dict[str, Any]]:
-        """Mock-Suche fuer Entwicklung/Tests."""
+        """Mock-Suche für Entwicklung/Tests."""
         result = self._mock_insolvency_check(company_name)
         return [
             {

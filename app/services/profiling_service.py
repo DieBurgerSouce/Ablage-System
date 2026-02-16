@@ -2,10 +2,10 @@
 """
 Performance Profiling Service.
 
-Erfasst detaillierte Performance-Metriken fuer Endpoints:
+Erfasst detaillierte Performance-Metriken für Endpoints:
 - Latenz-Verteilung (min, max, avg, p50, p95, p99)
 - Langsame Requests
-- Hot Paths (haeufig aufgerufene Endpoints)
+- Hot Paths (häufig aufgerufene Endpoints)
 - Ressourcenverbrauch pro Endpoint
 - Memory Snapshots
 
@@ -52,7 +52,7 @@ PROFILING_SLOW_REQUESTS = Counter(
 
 PROFILING_MEMORY_USAGE = Gauge(
     "ablage_profiling_memory_usage_bytes",
-    "Memory-Nutzung waehrend Profiling",
+    "Memory-Nutzung während Profiling",
     ["phase"],
 )
 
@@ -73,7 +73,7 @@ class ProfilingLevel(str, Enum):
 
 @dataclass
 class EndpointStats:
-    """Statistiken fuer einen einzelnen Endpoint."""
+    """Statistiken für einen einzelnen Endpoint."""
 
     endpoint: str
     method: str
@@ -94,7 +94,7 @@ class EndpointStats:
         self.max_time_ms = max(self.max_time_ms, duration_ms)
         self.last_request_time = datetime.now(timezone.utc)
 
-        # Nur letzte 1000 Timings behalten fuer Perzentil-Berechnung
+        # Nur letzte 1000 Timings behalten für Perzentil-Berechnung
         if len(self.times) >= 1000:
             self.times.pop(0)
         self.times.append(duration_ms)
@@ -195,7 +195,7 @@ class MemorySnapshot:
 
 class ProfilingService:
     """
-    Singleton Service fuer Performance Profiling.
+    Singleton Service für Performance Profiling.
 
     Features:
     - Endpoint-Timing-Statistiken
@@ -281,7 +281,7 @@ class ProfilingService:
         if self._profiling_level == ProfilingLevel.OFF:
             return
 
-        # Excluded Paths ueberspringen
+        # Excluded Paths überspringen
         if any(endpoint.startswith(p) for p in self._excluded_paths):
             return
 
@@ -384,7 +384,7 @@ class ProfilingService:
         sort_by: str = "request_count",
     ) -> List[Dict[str, Any]]:
         """
-        Gibt Endpoint-Statistiken zurueck.
+        Gibt Endpoint-Statistiken zurück.
 
         Args:
             endpoint: Optional Filter nach Endpoint
@@ -423,7 +423,7 @@ class ProfilingService:
         limit: int = 20,
     ) -> List[Dict[str, Any]]:
         """
-        Gibt langsame Requests zurueck.
+        Gibt langsame Requests zurück.
 
         Args:
             endpoint: Optional Filter nach Endpoint
@@ -446,7 +446,7 @@ class ProfilingService:
 
     def get_hot_paths(self, limit: int = 10) -> List[Dict[str, Any]]:
         """
-        Gibt die meistgenutzten Endpoints zurueck.
+        Gibt die meistgenutzten Endpoints zurück.
 
         Args:
             limit: Maximale Anzahl Ergebnisse
@@ -469,7 +469,7 @@ class ProfilingService:
 
     def get_memory_snapshots(self, limit: int = 20) -> List[Dict[str, Any]]:
         """
-        Gibt Memory-Snapshots zurueck.
+        Gibt Memory-Snapshots zurück.
 
         Args:
             limit: Maximale Anzahl Ergebnisse
@@ -487,7 +487,7 @@ class ProfilingService:
 
     def get_summary(self) -> Dict[str, Any]:
         """
-        Gibt Profiling-Zusammenfassung zurueck.
+        Gibt Profiling-Zusammenfassung zurück.
 
         Returns:
             Dictionary mit Zusammenfassung
@@ -538,7 +538,7 @@ class ProfilingService:
 
         Args:
             level: Neuer Profiling-Level
-            slow_threshold_ms: Neuer Schwellwert fuer langsame Requests
+            slow_threshold_ms: Neuer Schwellwert für langsame Requests
 
         Returns:
             Aktuelle Konfiguration
@@ -571,10 +571,10 @@ class ProfilingService:
 
     def reset_stats(self) -> Dict[str, Any]:
         """
-        Setzt alle Statistiken zurueck.
+        Setzt alle Statistiken zurück.
 
         Returns:
-            Bestaetigung mit geloeschten Counts
+            Bestätigung mit gelöschten Counts
         """
         with self._stats_lock:
             endpoint_count = len(self._endpoint_stats)
@@ -595,9 +595,9 @@ class ProfilingService:
 
         return {
             "status": "erfolg",
-            "geloeschte_endpoints": endpoint_count,
-            "geloeschte_langsame_requests": slow_count,
-            "geloeschte_snapshots": snapshot_count,
+            "gelöschte_endpoints": endpoint_count,
+            "gelöschte_langsame_requests": slow_count,
+            "gelöschte_snapshots": snapshot_count,
         }
 
     @property
@@ -612,7 +612,7 @@ class ProfilingService:
 
 
 def get_profiling_service() -> ProfilingService:
-    """Gibt Singleton-Instanz des ProfilingService zurueck."""
+    """Gibt Singleton-Instanz des ProfilingService zurück."""
     return ProfilingService()
 
 
@@ -622,7 +622,7 @@ def get_profiling_service() -> ProfilingService:
 
 
 class ProfileBlock:
-    """Context Manager fuer das Profiling von Code-Bloecken."""
+    """Context Manager für das Profiling von Code-Bloecken."""
 
     def __init__(
         self,
@@ -635,7 +635,7 @@ class ProfileBlock:
         Initialisiert Profile-Block.
 
         Args:
-            name: Name des Blocks (fuer Logging)
+            name: Name des Blocks (für Logging)
             endpoint: Virtueller Endpoint
             method: Virtuelle HTTP-Methode
             track_memory: Memory-Nutzung tracken

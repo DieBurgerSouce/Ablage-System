@@ -1,13 +1,13 @@
 """
 Tenant Rate Limits API Endpoints.
 
-API fuer Multi-Tenant Rate Limiting Konfiguration und Metriken.
+API für Multi-Tenant Rate Limiting Konfiguration und Metriken.
 
 Endpoints:
 - GET /tenant-limits - Eigene Limits abrufen
 - GET /tenant-limits/{company_id} - Admin: Limits einer Company
 - PATCH /tenant-limits/{company_id} - Admin: Limits anpassen
-- DELETE /tenant-limits/{company_id}/custom - Admin: Custom Limits loeschen
+- DELETE /tenant-limits/{company_id}/custom - Admin: Custom Limits löschen
 - GET /tenant-limits/{company_id}/usage - Usage Metriken
 - GET /tenant-limits/{company_id}/violations - Rate Limit Violations
 
@@ -61,7 +61,7 @@ class CustomLimitResponse(BaseModel):
 
 
 class CompanyLimitsResponse(BaseModel):
-    """Vollstaendige Rate Limit Konfiguration einer Company."""
+    """Vollständige Rate Limit Konfiguration einer Company."""
     company_id: str
     company_name: str
     subscription_tier: str
@@ -92,7 +92,7 @@ class UsageTimelineItem(BaseModel):
 
 
 class UsageSummaryResponse(BaseModel):
-    """Usage Summary fuer eine Company."""
+    """Usage Summary für eine Company."""
     company_id: str
     period_type: str
     data_points: int
@@ -120,7 +120,7 @@ class ViolationResponse(BaseModel):
 
 
 class RateLimitCheckResponse(BaseModel):
-    """Ergebnis einer Rate-Limit-Pruefung."""
+    """Ergebnis einer Rate-Limit-Prüfung."""
     allowed: bool
     remaining: int
     limit: int
@@ -142,7 +142,7 @@ async def get_own_limits(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Hole Rate Limits fuer die Company des aktuellen Users."""
+    """Hole Rate Limits für die Company des aktuellen Users."""
     if not current_user.current_company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -171,11 +171,11 @@ async def get_company_limits(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Hole Rate Limits fuer eine spezifische Company (Admin only)."""
+    """Hole Rate Limits für eine spezifische Company (Admin only)."""
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen fremde Company-Limits einsehen"
+            detail="Nur Administratoren können fremde Company-Limits einsehen"
         )
 
     service = TenantRateLimitService(db)
@@ -205,7 +205,7 @@ async def update_company_limit(
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Rate Limits anpassen"
+            detail="Nur Administratoren können Rate Limits anpassen"
         )
 
     service = TenantRateLimitService(db)
@@ -240,19 +240,19 @@ async def update_company_limit(
 
 @router.delete(
     "/{company_id}/custom",
-    summary="Custom Limits zuruecksetzen (Admin)",
-    description="Admin: Loescht alle Custom Limits und setzt auf Tier-Defaults zurueck."
+    summary="Custom Limits zurücksetzen (Admin)",
+    description="Admin: Löscht alle Custom Limits und setzt auf Tier-Defaults zurück."
 )
 async def reset_company_limits(
     company_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Setze alle Custom Limits auf Tier-Defaults zurueck (Admin only)."""
+    """Setze alle Custom Limits auf Tier-Defaults zurück (Admin only)."""
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Nur Administratoren koennen Limits zuruecksetzen"
+            detail="Nur Administratoren können Limits zurücksetzen"
         )
 
     service = TenantRateLimitService(db)
@@ -260,7 +260,7 @@ async def reset_company_limits(
     await db.commit()
 
     return {
-        "message": f"{count} Custom-Limits geloescht",
+        "message": f"{count} Custom-Limits gelöscht",
         "company_id": str(company_id),
         "reset_to": "tier_defaults"
     }
@@ -270,7 +270,7 @@ async def reset_company_limits(
     "/{company_id}/usage",
     response_model=UsageSummaryResponse,
     summary="Usage Metriken abrufen",
-    description="Zeigt Nutzungsstatistiken fuer eine Company."
+    description="Zeigt Nutzungsstatistiken für eine Company."
 )
 async def get_usage_metrics(
     company_id: UUID,
@@ -279,7 +279,7 @@ async def get_usage_metrics(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Hole Usage Metriken fuer eine Company."""
+    """Hole Usage Metriken für eine Company."""
     # Permission Check: Eigene Company oder Admin
     if not current_user.is_admin and current_user.current_company_id != company_id:
         raise HTTPException(
@@ -300,7 +300,7 @@ async def get_usage_metrics(
     "/{company_id}/violations",
     response_model=List[ViolationResponse],
     summary="Rate Limit Violations abrufen",
-    description="Zeigt Rate-Limit-Verletzungen fuer eine Company."
+    description="Zeigt Rate-Limit-Verletzungen für eine Company."
 )
 async def get_violations(
     company_id: UUID,
@@ -309,7 +309,7 @@ async def get_violations(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Hole Rate-Limit-Violations fuer eine Company."""
+    """Hole Rate-Limit-Violations für eine Company."""
     # Permission Check: Eigene Company oder Admin
     if not current_user.is_admin and current_user.current_company_id != company_id:
         raise HTTPException(
@@ -329,16 +329,16 @@ async def get_violations(
 @router.post(
     "/check",
     response_model=RateLimitCheckResponse,
-    summary="Rate Limit pruefen",
-    description="Prueft ob ein Request erlaubt waere (ohne Inkrementierung)."
+    summary="Rate Limit prüfen",
+    description="Prüft ob ein Request erlaubt waere (ohne Inkrementierung)."
 )
 async def check_rate_limit(
-    endpoint: str = Query(..., description="Endpoint zu pruefen"),
+    endpoint: str = Query(..., description="Endpoint zu prüfen"),
     method: str = Query("GET", description="HTTP Method"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Pruefe ob ein Request das Rate Limit ueberschreiten wuerde."""
+    """Prüfe ob ein Request das Rate Limit überschreiten wuerde."""
     if not current_user.current_company_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -351,6 +351,6 @@ async def check_rate_limit(
         user_id=current_user.id,
         endpoint=endpoint,
         method=method,
-        ip_address="127.0.0.1",  # Dummy fuer Check
+        ip_address="127.0.0.1",  # Dummy für Check
     )
     return result

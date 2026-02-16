@@ -25,7 +25,7 @@ router = APIRouter(prefix="/jobs", tags=["rag-jobs"])
 
 
 # =============================================================================
-# Pydantic Schemas (lokal, da spezifisch fuer Jobs)
+# Pydantic Schemas (lokal, da spezifisch für Jobs)
 # =============================================================================
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -51,7 +51,7 @@ class JobStatusResponse(BaseModel):
 
 
 class JobCreateRequest(BaseModel):
-    """Request fuer neuen Batch-Job."""
+    """Request für neuen Batch-Job."""
     job_type: str = Field(..., description="Job-Typ: chunk_all, sync_cards, generate_report")
     parameters: Optional[dict] = Field(default=None, description="Job-spezifische Parameter")
 
@@ -78,7 +78,7 @@ async def list_jobs(
     job_type: Optional[str] = Query(None, description="Nach Job-Typ filtern"),
     status_filter: Optional[str] = Query(None, alias="status", description="Nach Status filtern"),
     page: int = Query(1, ge=1, description="Seite"),
-    page_size: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    page_size: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> JobListResponse:
@@ -162,7 +162,7 @@ async def list_jobs(
     "/{job_id}",
     response_model=JobStatusResponse,
     summary="Job-Status abrufen",
-    description="Gibt den Status eines Batch-Jobs zurueck."
+    description="Gibt den Status eines Batch-Jobs zurück."
 )
 async def get_job_status(
     job_id: UUID,
@@ -172,7 +172,7 @@ async def get_job_status(
     """
     Ruft den Status eines spezifischen Batch-Jobs ab.
 
-    Enthaelt:
+    Enthält:
     - Fortschritt in Prozent
     - Anzahl verarbeiteter/fehlgeschlagener Items
     - Fehlermeldung bei Problemen
@@ -220,7 +220,7 @@ async def create_job(
     """
     Startet einen neuen Batch-Job.
 
-    Verfuegbare Job-Typen:
+    Verfügbare Job-Typen:
     - **chunk_all**: Alle Dokumente chunken
     - **sync_cards**: Customer Cards synchronisieren
     - **generate_report**: Report generieren
@@ -234,11 +234,11 @@ async def create_job(
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungueltiger Job-Typ: {request.job_type}. "
+            detail=f"Ungültiger Job-Typ: {request.job_type}. "
                    f"Erlaubt: {[t.value for t in RAGBatchJobType]}"
         )
 
-    # Pruefen ob gleicher Job bereits laeuft
+    # Prüfen ob gleicher Job bereits laeuft
     running_check = await db.execute(
         select(RAGBatchJob).where(
             RAGBatchJob.job_type == job_type,
@@ -304,7 +304,7 @@ async def cancel_job(
     """
     Bricht einen Batch-Job ab.
 
-    Nur Jobs mit Status 'pending' oder 'running' koennen abgebrochen werden.
+    Nur Jobs mit Status 'pending' oder 'running' können abgebrochen werden.
     """
     result = await db.execute(
         select(RAGBatchJob).where(RAGBatchJob.id == job_id)
@@ -354,8 +354,8 @@ async def cancel_job(
 
 @router.delete(
     "/{job_id}",
-    summary="Job loeschen",
-    description="Loescht einen abgeschlossenen Batch-Job.",
+    summary="Job löschen",
+    description="Löscht einen abgeschlossenen Batch-Job.",
     dependencies=[Depends(require_admin)]
 )
 async def delete_job(
@@ -364,9 +364,9 @@ async def delete_job(
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
-    Loescht einen Batch-Job aus der Historie.
+    Löscht einen Batch-Job aus der Historie.
 
-    Nur abgeschlossene, fehlgeschlagene oder abgebrochene Jobs koennen geloescht werden.
+    Nur abgeschlossene, fehlgeschlagene oder abgebrochene Jobs können gelöscht werden.
     """
     result = await db.execute(
         select(RAGBatchJob).where(RAGBatchJob.id == job_id)
@@ -382,7 +382,7 @@ async def delete_job(
     if job.status in [RAGBatchJobStatus.PENDING, RAGBatchJobStatus.RUNNING]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Laufende Jobs koennen nicht geloescht werden. Erst abbrechen."
+            detail="Laufende Jobs können nicht gelöscht werden. Erst abbrechen."
         )
 
     await db.delete(job)
@@ -397,21 +397,21 @@ async def delete_job(
     return {
         "success": True,
         "job_id": str(job_id),
-        "message": "Job geloescht"
+        "message": "Job gelöscht"
     }
 
 
 @router.get(
     "/stats/overview",
     summary="Job-Statistiken abrufen",
-    description="Gibt eine Uebersicht ueber Batch-Job-Statistiken."
+    description="Gibt eine Übersicht über Batch-Job-Statistiken."
 )
 async def get_job_stats(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """
-    Statistiken ueber Batch-Jobs.
+    Statistiken über Batch-Jobs.
 
     - Anzahl nach Status
     - Durchschnittliche Verarbeitungszeit

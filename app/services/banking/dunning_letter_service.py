@@ -3,7 +3,7 @@
 Dunning Letter Service.
 
 Generiert professionelle Mahnbriefe als PDF.
-BGB §286 konform mit korrekten Verzugszinsen und Mahngebuehren.
+BGB §286 konform mit korrekten Verzugszinsen und Mahngebühren.
 """
 
 from __future__ import annotations
@@ -40,14 +40,14 @@ TEMPLATE_DIR = Path(__file__).parent.parent.parent / "templates" / "dunning"
 
 @dataclass
 class DunningLetterData:
-    """Daten fuer einen Mahnbrief."""
+    """Daten für einen Mahnbrief."""
 
     # Absender (Unternehmen) - Pflichtfelder
     company_name: str
     company_address: str
     company_city: str
 
-    # Empfaenger (Schuldner) - Pflichtfelder
+    # Empfänger (Schuldner) - Pflichtfelder
     recipient_name: str
     recipient_address: str
     recipient_city: str
@@ -64,11 +64,11 @@ class DunningLetterData:
     dunning_date: date
     days_overdue: int
 
-    # Gebuehren (BGB §288) - Pflichtfelder
-    interest_rate: Decimal  # z.B. 9.12 fuer B2B
+    # Gebühren (BGB §288) - Pflichtfelder
+    interest_rate: Decimal  # z.B. 9.12 für B2B
     interest_amount: Decimal
     dunning_fee: Decimal
-    total_amount: Decimal  # Ausstehend + Zinsen + Gebuehren
+    total_amount: Decimal  # Ausstehend + Zinsen + Gebühren
 
     # Fristen - Pflichtfelder
     payment_deadline: date
@@ -81,7 +81,7 @@ class DunningLetterData:
     company_iban: Optional[str] = None
     company_bic: Optional[str] = None
 
-    # Optionale Felder (Empfaenger)
+    # Optionale Felder (Empfänger)
     recipient_customer_number: Optional[str] = None
 
     # B2B Pauschale (§288 Abs. 5 BGB)
@@ -90,13 +90,13 @@ class DunningLetterData:
     # Optionale Felder (Mahnung)
     escalation_warning: Optional[str] = None
 
-    # Zusaetzliche optionale Felder
+    # Zusätzliche optionale Felder
     reference: Optional[str] = None
     notes: Optional[str] = None
 
 
 class DunningLetterService:
-    """Service fuer die Generierung von Mahnbriefen."""
+    """Service für die Generierung von Mahnbriefen."""
 
     _instance: Optional["DunningLetterService"] = None
 
@@ -125,7 +125,7 @@ class DunningLetterService:
         # Custom Filter registrieren
         self._register_filters()
 
-        # Pruefe ob ReportLab verfuegbar ist
+        # Prüfe ob ReportLab verfügbar ist
         try:
             from reportlab.lib import colors
             from reportlab.lib.pagesizes import A4
@@ -139,7 +139,7 @@ class DunningLetterService:
         """Registriert Jinja2 Custom Filter."""
 
         def format_currency(value: Decimal | float | None) -> str:
-            """Formatiert als deutsche Waehrung."""
+            """Formatiert als deutsche Währung."""
             if value is None:
                 return "0,00 EUR"
             formatted = f"{float(value):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
@@ -215,7 +215,7 @@ class DunningLetterService:
         """
         Holt den aktuellen Basiszinssatz von der Bundesbank API.
 
-        Der Basiszinssatz wird halbjaehrlich (01.01. und 01.07.) angepasst.
+        Der Basiszinssatz wird halbjährlich (01.01. und 01.07.) angepasst.
         Verwendet den BundesbankRateService mit Caching und Fallback.
 
         Returns:
@@ -230,13 +230,13 @@ class DunningLetterService:
         """
         Holt den aktuellen Basiszinssatz der Bundesbank (synchron).
 
-        Fuer synchrone Kontexte - verwendet Fallback-Wert.
-        Fuer async Kontexte: get_base_interest_rate_async() verwenden.
+        Für synchrone Kontexte - verwendet Fallback-Wert.
+        Für async Kontexte: get_base_interest_rate_async() verwenden.
 
         Returns:
             Aktueller Basiszinssatz (Fallback-Wert)
         """
-        # Synchroner Fallback - fuer async Kontexte get_base_interest_rate_async() nutzen
+        # Synchroner Fallback - für async Kontexte get_base_interest_rate_async() nutzen
         from app.services.bundesbank_rate_service import FALLBACK_BASISZINS
 
         return FALLBACK_BASISZINS
@@ -246,7 +246,7 @@ class DunningLetterService:
         Berechnet den Verzugszinssatz nach BGB §288.
 
         Args:
-            is_b2b: True fuer B2B (Basiszins + 9%), False fuer B2C (Basiszins + 5%)
+            is_b2b: True für B2B (Basiszins + 9%), False für B2C (Basiszins + 5%)
 
         Returns:
             Verzugszinssatz in Prozent
@@ -294,13 +294,13 @@ class DunningLetterService:
         is_b2b: bool = True,
     ) -> DunningLetterData:
         """
-        Sammelt alle Daten fuer einen Mahnbrief.
+        Sammelt alle Daten für einen Mahnbrief.
 
         Args:
             db: Datenbank-Session
             dunning_record_id: ID des DunningRecord
             dunning_level: Mahnstufe (1-4)
-            is_b2b: True fuer B2B-Kunde
+            is_b2b: True für B2B-Kunde
 
         Returns:
             DunningLetterData mit allen Feldern
@@ -326,7 +326,7 @@ class DunningLetterService:
         invoice = invoice_result.scalar_one_or_none()
 
         if not invoice:
-            raise ValueError(f"InvoiceTracking nicht gefunden fuer Document: {dunning.document_id}")
+            raise ValueError(f"InvoiceTracking nicht gefunden für Document: {dunning.document_id}")
 
         # Lade Document
         doc_query = select(Document).where(Document.id == dunning.document_id)
@@ -383,7 +383,7 @@ class DunningLetterService:
             company_bank_name=company.bank_name if company and hasattr(company, 'bank_name') else None,
             company_iban=company.iban if company and hasattr(company, 'iban') else None,
             company_bic=company.bic if company and hasattr(company, 'bic') else None,
-            # Empfaenger
+            # Empfänger
             recipient_name=entity.name if entity else "Unbekannt",
             recipient_address=entity.address if entity and hasattr(entity, 'address') else "",
             recipient_city=entity.city if entity and hasattr(entity, 'city') else "",
@@ -398,7 +398,7 @@ class DunningLetterService:
             dunning_level=dunning_level,
             dunning_date=today,
             days_overdue=days_overdue,
-            # Gebuehren
+            # Gebühren
             interest_rate=interest_rate,
             interest_amount=interest_amount,
             dunning_fee=dunning_fee,
@@ -407,7 +407,7 @@ class DunningLetterService:
             # Fristen
             payment_deadline=payment_deadline,
             escalation_warning=level_config.get("escalation_warning"),
-            # Zusaetzlich
+            # Zusätzlich
             reference=f"RE-{invoice.invoice_number}-M{dunning_level}",
         )
 
@@ -462,7 +462,7 @@ class DunningLetterService:
             PDF als Bytes
         """
         if not self._reportlab_available:
-            raise RuntimeError("ReportLab ist nicht installiert. PDF-Export nicht moeglich.")
+            raise RuntimeError("ReportLab ist nicht installiert. PDF-Export nicht möglich.")
 
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
@@ -537,7 +537,7 @@ class DunningLetterService:
         elements.append(Paragraph(sender_line, styles["CompanyHeader"]))
         elements.append(Spacer(1, 1 * cm))
 
-        # Empfaenger
+        # Empfänger
         recipient = f"""
         {data.recipient_name}<br/>
         {data.recipient_address}<br/>
@@ -571,7 +571,7 @@ class DunningLetterService:
         elif data.dunning_level == 2:
             intro = f"""
             Sehr geehrte Damen und Herren,<br/><br/>
-            trotz unserer Zahlungserinnerung ist der unten aufgefuehrte Betrag immer noch
+            trotz unserer Zahlungserinnerung ist der unten aufgeführte Betrag immer noch
             offen. Wir bitten Sie, die Zahlung umgehend vorzunehmen.
             """
         elif data.dunning_level == 3:
@@ -606,7 +606,7 @@ class DunningLetterService:
 
         if data.dunning_fee > 0:
             table_data.append([
-                "Mahngebuehr",
+                "Mahngebühr",
                 f"{float(data.dunning_fee):,.2f} EUR".replace(",", "X").replace(".", ",").replace("X", "."),
             ])
 
@@ -642,7 +642,7 @@ class DunningLetterService:
 
         # Zahlungsfrist
         payment_text = f"""
-        Bitte ueberweisen Sie den Gesamtbetrag von <b>{float(data.total_amount):,.2f} EUR</b>
+        Bitte überweisen Sie den Gesamtbetrag von <b>{float(data.total_amount):,.2f} EUR</b>
         bis zum <b>{data.payment_deadline.strftime('%d.%m.%Y')}</b> auf unser Konto:
         """.replace(",", "X").replace(".", ",").replace("X", ".")
 
@@ -670,12 +670,12 @@ class DunningLetterService:
         # Schlussformel
         if data.dunning_level == 1:
             closing = """
-            Bei Fragen stehen wir Ihnen gerne zur Verfuegung.<br/><br/>
+            Bei Fragen stehen wir Ihnen gerne zur Verfügung.<br/><br/>
             Mit freundlichen Gruessen
             """
         else:
             closing = """
-            Fuer Rueckfragen stehen wir Ihnen zur Verfuegung.<br/><br/>
+            Für Rückfragen stehen wir Ihnen zur Verfügung.<br/><br/>
             Mit freundlichen Gruessen
             """
 
@@ -728,7 +728,7 @@ class DunningLetterService:
             db: Datenbank-Session
             dunning_record_id: ID des DunningRecord
             dunning_level: Mahnstufe (1-4)
-            is_b2b: True fuer B2B-Kunde
+            is_b2b: True für B2B-Kunde
             output_format: "pdf" oder "html"
 
         Returns:

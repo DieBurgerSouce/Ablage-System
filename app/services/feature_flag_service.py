@@ -1,8 +1,8 @@
 """
-Service fuer Feature-Flag Verwaltung und Evaluation.
+Service für Feature-Flag Verwaltung und Evaluation.
 
 Bietet:
-- CRUD-Operationen fuer Feature-Flags
+- CRUD-Operationen für Feature-Flags
 - Cached Feature-Flag Evaluation
 - Kill-Switch-Funktion
 - Gradual Rollout Support
@@ -27,7 +27,7 @@ FEATURE_FLAG_CACHE_TTL = 60  # 1 minute cache for flag evaluations
 
 
 class FeatureFlagService:
-    """Service fuer Feature-Flag Verwaltung."""
+    """Service für Feature-Flag Verwaltung."""
 
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -171,7 +171,7 @@ class FeatureFlagService:
             raise ValueError("Fehler beim Aktualisieren des Feature-Flags")
 
     async def delete_flag(self, flag_id: UUID) -> bool:
-        """Feature-Flag loeschen."""
+        """Feature-Flag löschen."""
         try:
             flag = await self.get_by_id(flag_id)
             if flag is None:
@@ -219,9 +219,9 @@ class FeatureFlagService:
         user_id: str,
         user_tier: Optional[str] = None,
     ) -> Dict[str, object]:
-        """Feature-Flag fuer einen Benutzer evaluieren.
+        """Feature-Flag für einen Benutzer evaluieren.
 
-        Verwendet Cache fuer schnelle Evaluation.
+        Verwendet Cache für schnelle Evaluation.
 
         Returns:
             Dict mit enabled, variant, flag_key
@@ -270,7 +270,7 @@ class FeatureFlagService:
         user_id: str,
         user_tier: Optional[str] = None,
     ) -> Dict[str, Dict[str, object]]:
-        """Alle aktiven Feature-Flags fuer einen Benutzer evaluieren."""
+        """Alle aktiven Feature-Flags für einen Benutzer evaluieren."""
         flags = await self.get_all(enabled_only=True)
         results: Dict[str, Dict[str, object]] = {}
 
@@ -290,5 +290,5 @@ class FeatureFlagService:
 
 
 def get_feature_flag_service(db: AsyncSession) -> FeatureFlagService:
-    """Factory fuer FeatureFlagService."""
+    """Factory für FeatureFlagService."""
     return FeatureFlagService(db)

@@ -1,14 +1,14 @@
 """
 Auto-Filing Service.
 
-Bestimmt automatisch den Ablageort fuer Dokumente basierend auf:
+Bestimmt automatisch den Ablageort für Dokumente basierend auf:
 - Dokumententyp -> Standard-Ordner-Mapping
-- Geschaeftspartner-Zuordnung -> Entity-Folder
+- Geschäftspartner-Zuordnung -> Entity-Folder
 - Firmenspezifische Regeln -> Custom Folder Assignments
 
-Da im aktuellen System keine Folder-Struktur fuer normale Dokumente existiert
-(nur PrivatFolder fuer Privat-Space), gibt dieser Service derzeit nur
-Empfehlungen zurueck, die in Zukunft implementiert werden koennen.
+Da im aktuellen System keine Folder-Struktur für normale Dokumente existiert
+(nur PrivatFolder für Privat-Space), gibt dieser Service derzeit nur
+Empfehlungen zurück, die in Zukunft implementiert werden können.
 """
 
 from dataclasses import dataclass
@@ -31,14 +31,14 @@ class FilingResult:
     folder_id: Optional[UUID]
     folder_name: Optional[str]
     confidence: float
-    reason: str  # Deutsche Erklaerung
+    reason: str  # Deutsche Erklärung
 
 
-# Standard-Ordner-Mapping fuer Dokumententypen
+# Standard-Ordner-Mapping für Dokumententypen
 # Diese werden in Zukunft verwendet, sobald ein Folder-System implementiert ist
 DEFAULT_FOLDER_MAPPING = {
     "invoice": "Rechnungen",
-    "contract": "Vertraege",
+    "contract": "Verträge",
     "delivery_note": "Lieferscheine",
     "order": "Bestellungen",
     "offer": "Angebote",
@@ -52,8 +52,8 @@ class AutoFilingService:
     """
     Service zur automatischen Bestimmung des Ablageorts.
 
-    Aktuell gibt der Service Empfehlungen zurueck, da das Haupt-Dokumentensystem
-    noch keine Folder-Struktur hat. Die Logik ist vorbereitet fuer zukuenftige
+    Aktuell gibt der Service Empfehlungen zurück, da das Haupt-Dokumentensystem
+    noch keine Folder-Struktur hat. Die Logik ist vorbereitet für zukünftige
     Implementierung.
     """
 
@@ -66,13 +66,13 @@ class AutoFilingService:
         db: AsyncSession,
     ) -> FilingResult:
         """
-        Bestimmt den Ablageort fuer ein Dokument.
+        Bestimmt den Ablageort für ein Dokument.
 
         Args:
             document_id: ID des Dokuments
             classification_type: Dokumententyp (invoice, contract, etc.)
-            entity_id: Optional Geschaeftspartner-ID
-            company_id: Firmen-ID fuer Multi-Tenant
+            entity_id: Optional Geschäftspartner-ID
+            company_id: Firmen-ID für Multi-Tenant
             db: Datenbank-Session
 
         Returns:
@@ -86,7 +86,7 @@ class AutoFilingService:
             company_id=str(company_id),
         )
 
-        # 1. Pruefen ob Entity einen Standard-Ordner hat
+        # 1. Prüfen ob Entity einen Standard-Ordner hat
         if entity_id is not None:
             entity_filing = await self._check_entity_folder(
                 entity_id=entity_id,
@@ -101,7 +101,7 @@ class AutoFilingService:
                 )
                 return entity_filing
 
-        # 2. Pruefen ob Firma Custom-Regeln hat
+        # 2. Prüfen ob Firma Custom-Regeln hat
         company_filing = await self._check_company_rules(
             company_id=company_id,
             classification_type=classification_type,
@@ -133,11 +133,11 @@ class AutoFilingService:
         db: AsyncSession,
     ) -> Optional[FilingResult]:
         """
-        Prueft ob ein Geschaeftspartner einen Standard-Ordner hat.
+        Prüft ob ein Geschäftspartner einen Standard-Ordner hat.
 
         Args:
-            entity_id: Geschaeftspartner-ID
-            company_id: Mandanten-ID fuer Multi-Tenant Isolation
+            entity_id: Geschäftspartner-ID
+            company_id: Mandanten-ID für Multi-Tenant Isolation
             db: Datenbank-Session
 
         Returns:
@@ -165,7 +165,7 @@ class AutoFilingService:
 
         # Phase 11.1: Nutze default_folder_id wenn vorhanden
         if entity.default_folder_id:
-            # Lade zugehoerigen Ordner fuer den Namen
+            # Lade zugehoerigen Ordner für den Namen
             from app.db.models import Folder
 
             folder = await db.get(Folder, entity.default_folder_id)
@@ -189,7 +189,7 @@ class AutoFilingService:
             folder_id=None,
             folder_name=folder_name,
             confidence=0.95,
-            reason=f"Dokument gehoert zu Geschaeftspartner '{entity.name}'",
+            reason=f"Dokument gehoert zu Geschäftspartner '{entity.name}'",
         )
 
     async def _check_company_rules(
@@ -199,7 +199,7 @@ class AutoFilingService:
         db: AsyncSession,
     ) -> Optional[FilingResult]:
         """
-        Prueft firmenspezifische Filing-Regeln.
+        Prüft firmenspezifische Filing-Regeln.
 
         Args:
             company_id: Firmen-ID
@@ -266,7 +266,7 @@ class AutoFilingService:
         classification_type: str,
     ) -> FilingResult:
         """
-        Gibt Standard-Ordner fuer einen Dokumententyp zurueck.
+        Gibt Standard-Ordner für einen Dokumententyp zurück.
 
         Args:
             classification_type: Dokumententyp
@@ -299,7 +299,7 @@ class AutoFilingService:
         db: AsyncSession,
     ) -> list[dict[str, str]]:
         """
-        Gibt verfuegbare Ordner fuer eine Firma zurueck.
+        Gibt verfügbare Ordner für eine Firma zurück.
 
         Args:
             company_id: Firmen-ID
@@ -309,7 +309,7 @@ class AutoFilingService:
             Liste von Ordnern mit {id, name}
         """
         # Aktuell keine Folder-Struktur vorhanden
-        # Gibt Standard-Ordner zurueck
+        # Gibt Standard-Ordner zurück
 
         folders = []
         for doc_type, folder_name in DEFAULT_FOLDER_MAPPING.items():
@@ -338,7 +338,7 @@ class AutoFilingService:
             new_mapping: Neues Mapping von Dokumententyp zu Ordnername
 
         Note:
-            Diese Methode ist fuer zukuenftige Erweiterung vorbereitet.
+            Diese Methode ist für zukünftige Erweiterung vorbereitet.
             Aktuell wird das globale Mapping verwendet.
         """
         logger.info(
@@ -375,7 +375,7 @@ class AutoFilingService:
         Example rules:
             {
                 "invoice": {"folder_id": "uuid...", "folder_name": "Rechnungen/2026", "confidence": 0.95},
-                "contract": {"folder_name": "Vertraege/Aktiv", "confidence": 0.90}
+                "contract": {"folder_name": "Verträge/Aktiv", "confidence": 0.90}
             }
         """
         result = await db.execute(
@@ -441,7 +441,7 @@ class AutoFilingService:
         db: AsyncSession,
     ) -> bool:
         """
-        Loescht eine firmenspezifische Filing-Regel.
+        Löscht eine firmenspezifische Filing-Regel.
 
         Args:
             company_id: Firmen-ID

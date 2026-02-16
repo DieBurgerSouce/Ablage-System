@@ -1,6 +1,6 @@
 """Process Execution Service.
 
-Fuehrt BPMN Prozesse aus:
+Führt BPMN Prozesse aus:
 - Start: Neue Prozess-Instanz starten
 - Execute: Tokens durch den Prozess bewegen
 - Gateway-Evaluation: Exclusive/Parallel/Inclusive
@@ -45,7 +45,7 @@ logger = structlog.get_logger(__name__)
 class ExpressionEvaluator:
     """Evaluiert BPMN Expressions (Bedingungen, Variable Mappings).
 
-    Unterstuetzt:
+    Unterstützt:
     - Variable References: ${variableName}
     - Vergleiche: ${amount > 1000}
     - Logische Operatoren: ${approved && amount < 5000}
@@ -136,10 +136,10 @@ class ExpressionEvaluator:
 
 
 class ProcessExecutionService:
-    """Service fuer Prozess-Ausfuehrung.
+    """Service für Prozess-Ausführung.
 
     Implementiert die BPMN Execution Engine:
-    - Token-basierte Ausfuehrung
+    - Token-basierte Ausführung
     - Gateway-Evaluation
     - Task-Erstellung
     - Timer-Scheduling
@@ -166,7 +166,7 @@ class ProcessExecutionService:
             variables: Initiale Prozess-Variablen
             business_key: Externer Schluessel (z.B. Rechnungsnummer)
             started_by_id: Startender User
-            document_id: Verknuepftes Dokument
+            document_id: Verknüpftes Dokument
 
         Returns:
             Gestartete ProcessInstance
@@ -177,7 +177,7 @@ class ProcessExecutionService:
         # Aktive Definition laden
         definition = await self._get_active_definition(definition_key, company_id)
         if not definition:
-            raise ValueError(f"Keine aktive Prozess-Definition fuer Key '{definition_key}'")
+            raise ValueError(f"Keine aktive Prozess-Definition für Key '{definition_key}'")
 
         # Prozess parsen
         process = BPMNProcess.from_dict(definition.process_data)
@@ -217,7 +217,7 @@ class ProcessExecutionService:
             business_key=business_key
         )
 
-        # Start Events ausfuehren
+        # Start Events ausführen
         for start_event in start_events:
             await self._execute_element(instance, process, start_event, started_by_id)
 
@@ -241,7 +241,7 @@ class ProcessExecutionService:
             instance_id: Instanz ID
             company_id: Mandant
             signal_name: Name des Signals
-            variables: Zusaetzliche Variablen
+            variables: Zusätzliche Variablen
             user_id: Ausloesender User
 
         Returns:
@@ -259,7 +259,7 @@ class ProcessExecutionService:
             await self._update_variables(instance, variables, user_id)
 
         # Signal-Events finden und aktivieren
-        # (Vereinfacht - vollstaendige Implementierung wuerde Event-Subscriptions benoetigen)
+        # (Vereinfacht - vollständige Implementierung wuerde Event-Subscriptions benötigen)
         await self._add_history(
             instance=instance,
             event_type="SIGNAL_RECEIVED",
@@ -317,9 +317,9 @@ class ProcessExecutionService:
             definition_key: Filter nach Prozess-Key
             status: Filter nach Status
             started_by_id: Filter nach Starter
-            document_id: Filter nach verknuepftem Dokument
+            document_id: Filter nach verknüpftem Dokument
             page: Seite
-            per_page: Eintraege pro Seite
+            per_page: Einträge pro Seite
 
         Returns:
             (Liste der Instanzen, Gesamtanzahl)
@@ -381,7 +381,7 @@ class ProcessExecutionService:
         Args:
             instance_id: Instanz ID
             company_id: Mandant
-            reason: Grund fuer Terminierung
+            reason: Grund für Terminierung
             user_id: Terminierender User
 
         Returns:
@@ -407,7 +407,7 @@ class ProcessExecutionService:
         # Offene Tasks abbrechen
         await self._cancel_open_tasks(instance)
 
-        # Timer loeschen
+        # Timer löschen
         await self._cancel_timers(instance)
 
         logger.info(
@@ -424,7 +424,7 @@ class ProcessExecutionService:
         company_id: UUID,
         limit: int = 100
     ) -> List[ProcessHistory]:
-        """Gibt die Historie einer Prozess-Instanz zurueck."""
+        """Gibt die Historie einer Prozess-Instanz zurück."""
         query = (
             select(ProcessHistory)
             .where(
@@ -450,7 +450,7 @@ class ProcessExecutionService:
         element: BPMNElement,
         user_id: Optional[UUID] = None
     ) -> None:
-        """Fuehrt ein BPMN-Element aus.
+        """Führt ein BPMN-Element aus.
 
         Dispatched basierend auf Element-Typ.
         """
@@ -508,7 +508,7 @@ class ProcessExecutionService:
         element: BPMNElement,
         user_id: Optional[UUID]
     ) -> None:
-        """Fuehrt Start-Event aus."""
+        """Führt Start-Event aus."""
         await self._add_history(
             instance=instance,
             event_type="START_EVENT_EXECUTED",
@@ -516,7 +516,7 @@ class ProcessExecutionService:
             element_type=element.type
         )
 
-        # Weiter zum naechsten Element
+        # Weiter zum nächsten Element
         await self._continue_flow(instance, process, element, user_id)
 
     async def _execute_end_event(
@@ -526,11 +526,11 @@ class ProcessExecutionService:
         element: BPMNElement,
         user_id: Optional[UUID]
     ) -> None:
-        """Fuehrt End-Event aus."""
+        """Führt End-Event aus."""
         # Token aus current_elements entfernen
         current = list(instance.current_elements)
 
-        # Pruefen ob noch andere Tokens aktiv
+        # Prüfen ob noch andere Tokens aktiv
         if not current:
             # Prozess beenden
             instance.status = ProcessStatus.COMPLETED
@@ -555,7 +555,7 @@ class ProcessExecutionService:
         element: BPMNElement,
         user_id: Optional[UUID]
     ) -> None:
-        """Fuehrt Catch-Event (Timer, Message, Signal) aus."""
+        """Führt Catch-Event (Timer, Message, Signal) aus."""
         # Timer-Event
         if element.timer_type and element.timer_value:
             await self._schedule_timer(instance, element)
@@ -629,7 +629,7 @@ class ProcessExecutionService:
         element: BPMNElement,
         user_id: Optional[UUID]
     ) -> None:
-        """Fuehrt einen Service Task aus.
+        """Führt einen Service Task aus.
 
         Implementation kann sein:
         - celery:task_name -> Celery Task ausloesen
@@ -665,7 +665,7 @@ class ProcessExecutionService:
                 element_id=element.id
             )
 
-        # Fallback: Weiter zum naechsten Element
+        # Fallback: Weiter zum nächsten Element
         await self._continue_flow(instance, process, element, user_id)
 
     async def _execute_script_task(
@@ -675,19 +675,19 @@ class ProcessExecutionService:
         element: BPMNElement,
         user_id: Optional[UUID]
     ) -> None:
-        """Fuehrt einen Script Task aus (Sandbox!).
+        """Führt einen Script Task aus (Sandbox!).
 
-        WARNUNG: Script-Ausfuehrung ist eingeschraenkt aus Sicherheitsgruenden.
+        WARNUNG: Script-Ausführung ist eingeschraenkt aus Sicherheitsgruenden.
         """
         script = element.script
         if not script:
             await self._continue_flow(instance, process, element, user_id)
             return
 
-        # Sichere Ausfuehrung (sehr eingeschraenkt)
+        # Sichere Ausführung (sehr eingeschraenkt)
         try:
             # Nur Variable-Zuweisungen erlauben
-            # Vollstaendige Sandbox-Implementierung wuerde RestrictedPython benoetigen
+            # Vollständige Sandbox-Implementierung wuerde RestrictedPython benötigen
             logger.info(
                 "script_task_executed",
                 instance_id=str(instance.id),
@@ -709,7 +709,7 @@ class ProcessExecutionService:
         element: BPMNElement,
         user_id: Optional[UUID]
     ) -> None:
-        """Fuehrt Exclusive Gateway (XOR) aus.
+        """Führt Exclusive Gateway (XOR) aus.
 
         Waehlt genau einen ausgehenden Pfad basierend auf Conditions.
         """
@@ -738,7 +738,7 @@ class ProcessExecutionService:
 
         if not selected_flow:
             raise ValueError(
-                f"Kein gueltiger Pfad fuer Exclusive Gateway '{element.id}'"
+                f"Kein gültiger Pfad für Exclusive Gateway '{element.id}'"
             )
 
         await self._add_history(
@@ -761,7 +761,7 @@ class ProcessExecutionService:
         element: BPMNElement,
         user_id: Optional[UUID]
     ) -> None:
-        """Fuehrt Parallel Gateway (AND) aus.
+        """Führt Parallel Gateway (AND) aus.
 
         Fork: Alle ausgehenden Pfade aktivieren
         Join: Warten bis alle eingehenden Tokens da sind
@@ -810,9 +810,9 @@ class ProcessExecutionService:
         element: BPMNElement,
         user_id: Optional[UUID]
     ) -> None:
-        """Fuehrt Inclusive Gateway (OR) aus.
+        """Führt Inclusive Gateway (OR) aus.
 
-        Wie Exclusive, aber mehrere Pfade koennen aktiv werden.
+        Wie Exclusive, aber mehrere Pfade können aktiv werden.
         """
         selected_flows = []
         default_flow = None
@@ -833,7 +833,7 @@ class ProcessExecutionService:
 
         if not selected_flows:
             raise ValueError(
-                f"Kein gueltiger Pfad fuer Inclusive Gateway '{element.id}'"
+                f"Kein gültiger Pfad für Inclusive Gateway '{element.id}'"
             )
 
         await self._add_history(
@@ -857,9 +857,9 @@ class ProcessExecutionService:
         element: BPMNElement,
         user_id: Optional[UUID]
     ) -> None:
-        """Fuehrt einen Subprocess aus (embedded oder Call Activity)."""
-        # Vereinfachte Implementierung - vollstaendig wuerde
-        # eigene Sub-Instanz benoetigen
+        """Führt einen Subprocess aus (embedded oder Call Activity)."""
+        # Vereinfachte Implementierung - vollständig wuerde
+        # eigene Sub-Instanz benötigen
 
         await self._add_history(
             instance=instance,
@@ -868,7 +868,7 @@ class ProcessExecutionService:
             message=f"Subprocess '{element.name or element.id}' gestartet"
         )
 
-        # Bei embedded Subprocess: Innere Elemente ausfuehren
+        # Bei embedded Subprocess: Innere Elemente ausführen
         if element.elements:
             # Start-Event im Subprocess finden
             start_events = [
@@ -929,7 +929,7 @@ class ProcessExecutionService:
 
         elif element.timer_type == "cycle":
             # ISO 8601 Repeating Interval (z.B. R3/PT1H)
-            # Vereinfacht: Nur erste Ausfuehrung planen
+            # Vereinfacht: Nur erste Ausführung planen
             if element.timer_value.startswith("R"):
                 parts = element.timer_value.split("/")
                 if len(parts) >= 2:
@@ -964,7 +964,7 @@ class ProcessExecutionService:
         task_name: str
     ) -> None:
         """Triggert einen Celery Task."""
-        # Import hier um zirkulaere Imports zu vermeiden
+        # Import hier um zirkuläre Imports zu vermeiden
         from app.workers.celery_app import celery_app
 
 
@@ -1098,7 +1098,7 @@ class ProcessExecutionService:
         )
 
     async def _cancel_timers(self, instance: ProcessInstance) -> None:
-        """Loescht alle aktiven Timer."""
+        """Löscht alle aktiven Timer."""
         from sqlalchemy import update
 
         await self.db.execute(
@@ -1141,5 +1141,5 @@ class ProcessExecutionService:
 
 
 def get_process_execution_service(db: AsyncSession) -> ProcessExecutionService:
-    """Factory Function fuer ProcessExecutionService."""
+    """Factory Function für ProcessExecutionService."""
     return ProcessExecutionService(db)

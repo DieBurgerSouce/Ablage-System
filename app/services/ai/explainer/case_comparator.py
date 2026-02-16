@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Case Comparator Service - Aehnliche Faelle finden und vergleichen.
+Case Comparator Service - Ähnliche Faelle finden und vergleichen.
 
-Enterprise Feature: "Basierend auf 47 aehnlichen Faellen..."
+Enterprise Feature: "Basierend auf 47 ähnlichen Faellen..."
 
 Features:
-- Aehnliche historische Faelle finden
+- Ähnliche historische Faelle finden
 - Ergebnisse vergleichen
 - Erfolgswahrscheinlichkeit ableiten
 - Lerneffekte visualisieren
 
-Vision: Zeige dem User wie aehnliche Faelle in der Vergangenheit behandelt wurden.
+Vision: Zeige dem User wie ähnliche Faelle in der Vergangenheit behandelt wurden.
 """
 
 from __future__ import annotations
@@ -55,16 +55,16 @@ SIMILAR_CASES_FOUND = Histogram(
 # =============================================================================
 
 class SimilarityLevel(str, Enum):
-    """Grad der Aehnlichkeit."""
+    """Grad der Ähnlichkeit."""
     EXACT = "exact"           # Praktisch identisch (>95%)
-    VERY_HIGH = "very_high"   # Sehr aehnlich (85-95%)
-    HIGH = "high"             # Aehnlich (70-85%)
-    MODERATE = "moderate"     # Maessig aehnlich (50-70%)
-    LOW = "low"               # Wenig aehnlich (30-50%)
+    VERY_HIGH = "very_high"   # Sehr ähnlich (85-95%)
+    HIGH = "high"             # Ähnlich (70-85%)
+    MODERATE = "moderate"     # Maessig ähnlich (50-70%)
+    LOW = "low"               # Wenig ähnlich (30-50%)
 
 
 class OutcomeType(str, Enum):
-    """Ergebnis des aehnlichen Falls."""
+    """Ergebnis des ähnlichen Falls."""
     AUTO_APPROVED = "auto_approved"     # Automatisch angewendet
     MANUALLY_APPROVED = "manually_approved"  # Manuell genehmigt
     MODIFIED = "modified"               # Modifiziert
@@ -76,7 +76,7 @@ class OutcomeType(str, Enum):
 # =============================================================================
 
 class SimilarityScoreDict(TypedDict):
-    """Aehnlichkeits-Score Aufschluesselung."""
+    """Ähnlichkeits-Score Aufschluesselung."""
     overall: float
     decision_type_match: float
     entity_match: float
@@ -86,7 +86,7 @@ class SimilarityScoreDict(TypedDict):
 
 
 class SimilarCaseDict(TypedDict):
-    """Ein aehnlicher Fall."""
+    """Ein ähnlicher Fall."""
     case_id: str
     decision_id: str
     document_id: Optional[str]
@@ -104,7 +104,7 @@ class SimilarCaseDict(TypedDict):
 
 
 class CaseComparisonDict(TypedDict):
-    """Vergleich mit aehnlichen Faellen."""
+    """Vergleich mit ähnlichen Faellen."""
     id: str
     source_decision_id: str
     total_similar_cases: int
@@ -124,7 +124,7 @@ class CaseComparisonDict(TypedDict):
 
 @dataclass
 class SimilarityScore:
-    """Detaillierter Aehnlichkeits-Score."""
+    """Detaillierter Ähnlichkeits-Score."""
     overall: float = 0.0
     decision_type_match: float = 0.0
     entity_match: float = 0.0
@@ -146,7 +146,7 @@ class SimilarityScore:
 
 @dataclass
 class SimilarCase:
-    """Ein aehnlicher historischer Fall."""
+    """Ein ähnlicher historischer Fall."""
     case_id: UUID = field(default_factory=uuid4)
     decision_id: Optional[UUID] = None
     document_id: Optional[UUID] = None
@@ -184,7 +184,7 @@ class SimilarCase:
 
 @dataclass
 class CaseComparison:
-    """Vollstaendiger Vergleich mit aehnlichen Faellen."""
+    """Vollständiger Vergleich mit ähnlichen Faellen."""
     id: UUID = field(default_factory=uuid4)
     source_decision_id: Optional[UUID] = None
     total_similar_cases: int = 0
@@ -220,13 +220,13 @@ class CaseComparison:
 
 class CaseComparator:
     """
-    Service zum Finden und Vergleichen aehnlicher Faelle.
+    Service zum Finden und Vergleichen ähnlicher Faelle.
 
-    Hilft Benutzern zu verstehen wie aehnliche Faelle
+    Hilft Benutzern zu verstehen wie ähnliche Faelle
     in der Vergangenheit behandelt wurden.
     """
 
-    # Gewichte fuer Aehnlichkeitsberechnung
+    # Gewichte für Ähnlichkeitsberechnung
     SIMILARITY_WEIGHTS = {
         "decision_type": 0.30,
         "entity": 0.20,
@@ -235,10 +235,10 @@ class CaseComparator:
         "features": 0.20,
     }
 
-    # Minimum Aehnlichkeit fuer Einbeziehung
+    # Minimum Ähnlichkeit für Einbeziehung
     MIN_SIMILARITY = 0.30
 
-    # Maximum Faelle zurueckgeben
+    # Maximum Faelle zurückgeben
     MAX_SIMILAR_CASES = 50
 
     def __init__(self) -> None:
@@ -253,16 +253,16 @@ class CaseComparator:
         min_similarity: float = MIN_SIMILARITY,
     ) -> CaseComparison:
         """
-        Vergleicht eine Entscheidung mit aehnlichen historischen Faellen.
+        Vergleicht eine Entscheidung mit ähnlichen historischen Faellen.
 
         Args:
             db: Database Session
             decision_id: ID der zu vergleichenden Entscheidung
-            max_cases: Maximale Anzahl zurueckzugebender Faelle
-            min_similarity: Minimale Aehnlichkeit (0-1)
+            max_cases: Maximale Anzahl zurückzugebender Faelle
+            min_similarity: Minimale Ähnlichkeit (0-1)
 
         Returns:
-            CaseComparison mit allen aehnlichen Faellen
+            CaseComparison mit allen ähnlichen Faellen
         """
         logger.info(
             "comparing_cases",
@@ -275,7 +275,7 @@ class CaseComparator:
         if not source_decision:
             return self._create_empty_comparison(decision_id)
 
-        # Aehnliche Faelle finden
+        # Ähnliche Faelle finden
         similar_cases = await self._find_similar_cases(
             db, source_decision, max_cases, min_similarity
         )
@@ -330,7 +330,7 @@ class CaseComparator:
         max_cases: int = 10,
     ) -> List[SimilarCase]:
         """
-        Findet aehnliche Faelle basierend auf Features (ohne bestehende Entscheidung).
+        Findet ähnliche Faelle basierend auf Features (ohne bestehende Entscheidung).
 
         Args:
             db: Database Session
@@ -340,7 +340,7 @@ class CaseComparator:
             max_cases: Maximale Anzahl Faelle
 
         Returns:
-            Liste aehnlicher Faelle
+            Liste ähnlicher Faelle
         """
         # Kandidaten laden
         cutoff = datetime.now(timezone.utc) - timedelta(days=365)
@@ -357,7 +357,7 @@ class CaseComparator:
         result = await db.execute(query)
         candidates = result.scalars().all()
 
-        # Aehnlichkeit berechnen
+        # Ähnlichkeit berechnen
         similar_cases = []
         for candidate in candidates:
             similarity = self._calculate_feature_similarity(features, candidate.features_used or {})
@@ -384,7 +384,7 @@ class CaseComparator:
                     created_at=candidate.created_at,
                 ))
 
-        # Sortieren nach Aehnlichkeit
+        # Sortieren nach Ähnlichkeit
         similar_cases.sort(key=lambda c: c.similarity_score, reverse=True)
 
         return similar_cases[:max_cases]
@@ -406,8 +406,8 @@ class CaseComparator:
         max_cases: int,
         min_similarity: float,
     ) -> List[SimilarCase]:
-        """Findet aehnliche Faelle fuer eine Entscheidung."""
-        # Zeitfenster fuer Suche
+        """Findet ähnliche Faelle für eine Entscheidung."""
+        # Zeitfenster für Suche
         cutoff = datetime.now(timezone.utc) - timedelta(days=365)
 
         # Kandidaten laden (gleicher Typ, gleiche Company)
@@ -419,7 +419,7 @@ class CaseComparator:
                 AIDecision.is_final == True,
                 AIDecision.created_at >= cutoff,
             )
-        ).limit(self.MAX_SIMILAR_CASES * 10)  # 10x mehr laden fuer Filterung
+        ).limit(self.MAX_SIMILAR_CASES * 10)  # 10x mehr laden für Filterung
 
         result = await db.execute(query)
         candidates = result.scalars().all()
@@ -427,7 +427,7 @@ class CaseComparator:
         similar_cases = []
 
         for candidate in candidates:
-            # Aehnlichkeit berechnen
+            # Ähnlichkeit berechnen
             similarity_breakdown = self._calculate_similarity(source, candidate)
 
             if similarity_breakdown.overall >= min_similarity:
@@ -463,7 +463,7 @@ class CaseComparator:
                     amount=amount,
                 ))
 
-        # Sortieren nach Aehnlichkeit
+        # Sortieren nach Ähnlichkeit
         similar_cases.sort(key=lambda c: c.similarity_score, reverse=True)
 
         return similar_cases[:self.MAX_SIMILAR_CASES]
@@ -473,7 +473,7 @@ class CaseComparator:
         source: AIDecision,
         candidate: AIDecision,
     ) -> SimilarityScore:
-        """Berechnet detaillierte Aehnlichkeit zwischen zwei Entscheidungen."""
+        """Berechnet detaillierte Ähnlichkeit zwischen zwei Entscheidungen."""
         score = SimilarityScore()
 
         # Decision Type (sollte immer 1.0 sein, da wir vorfiltern)
@@ -534,7 +534,7 @@ class CaseComparator:
         features1: Dict[str, Any],
         features2: Dict[str, Any],
     ) -> float:
-        """Berechnet Aehnlichkeit zwischen Feature-Sets."""
+        """Berechnet Ähnlichkeit zwischen Feature-Sets."""
         if not features1 or not features2:
             return 0.5
 
@@ -548,17 +548,17 @@ class CaseComparator:
         if not all_keys:
             return 0.5
 
-        # Jaccard-Aehnlichkeit fuer Keys
+        # Jaccard-Ähnlichkeit für Keys
         key_similarity = len(common_keys) / len(all_keys)
 
-        # Wert-Aehnlichkeit fuer gemeinsame Keys
+        # Wert-Ähnlichkeit für gemeinsame Keys
         if common_keys:
             value_matches = 0
             for key in common_keys:
                 if features1[key] == features2[key]:
                     value_matches += 1
                 elif isinstance(features1[key], (int, float)) and isinstance(features2[key], (int, float)):
-                    # Numerische Werte: Relative Aehnlichkeit
+                    # Numerische Werte: Relative Ähnlichkeit
                     max_val = max(abs(features1[key]), abs(features2[key]), 1)
                     diff_ratio = abs(features1[key] - features2[key]) / max_val
                     if diff_ratio < 0.2:  # < 20% Unterschied
@@ -570,7 +570,7 @@ class CaseComparator:
         else:
             value_similarity = 0
 
-        # Kombinierte Aehnlichkeit
+        # Kombinierte Ähnlichkeit
         return (key_similarity * 0.4) + (value_similarity * 0.6)
 
     def _determine_outcome(self, decision: AIDecision) -> OutcomeType:
@@ -587,7 +587,7 @@ class CaseComparator:
             return OutcomeType.AUTO_APPROVED  # Default
 
     def _similarity_to_level(self, similarity: float) -> SimilarityLevel:
-        """Konvertiert Aehnlichkeits-Score zu Level."""
+        """Konvertiert Ähnlichkeits-Score zu Level."""
         if similarity >= 0.95:
             return SimilarityLevel.EXACT
         elif similarity >= 0.85:
@@ -608,7 +608,7 @@ class CaseComparator:
         return counts
 
     def _calculate_average_similarity(self, cases: List[SimilarCase]) -> float:
-        """Berechnet durchschnittliche Aehnlichkeit."""
+        """Berechnet durchschnittliche Ähnlichkeit."""
         if not cases:
             return 0.0
         return sum(c.similarity_score for c in cases) / len(cases)
@@ -628,11 +628,11 @@ class CaseComparator:
         self,
         cases: List[SimilarCase],
     ) -> Tuple[str, float]:
-        """Sagt Ergebnis basierend auf aehnlichen Faellen vorher."""
+        """Sagt Ergebnis basierend auf ähnlichen Faellen vorher."""
         if not cases:
             return "unknown", 0.0
 
-        # Gewichtete Abstimmung (aehnlichere Faelle zaehlen mehr)
+        # Gewichtete Abstimmung (ähnlichere Faelle zaehlen mehr)
         outcome_scores: Dict[str, float] = {}
 
         for case in cases:
@@ -662,35 +662,35 @@ class CaseComparator:
 
         total_cases = len(cases)
         if total_cases == 0:
-            insights.append("Keine aehnlichen Faelle gefunden. Dies ist ein neuartiger Fall.")
+            insights.append("Keine ähnlichen Faelle gefunden. Dies ist ein neuartiger Fall.")
             return insights
 
-        # Anzahl aehnlicher Faelle
-        insights.append(f"Basierend auf {total_cases} aehnlichen Faellen aus der Vergangenheit.")
+        # Anzahl ähnlicher Faelle
+        insights.append(f"Basierend auf {total_cases} ähnlichen Faellen aus der Vergangenheit.")
 
         # Erfolgsrate
         success_count = outcome_counts.get("auto_approved", 0) + outcome_counts.get("manually_approved", 0)
         success_rate = success_count / total_cases
 
         if success_rate >= 0.9:
-            insights.append(f"{success_rate*100:.0f}% der aehnlichen Faelle wurden genehmigt.")
+            insights.append(f"{success_rate*100:.0f}% der ähnlichen Faelle wurden genehmigt.")
         elif success_rate >= 0.7:
-            insights.append(f"{success_rate*100:.0f}% Genehmigungsrate bei aehnlichen Faellen.")
+            insights.append(f"{success_rate*100:.0f}% Genehmigungsrate bei ähnlichen Faellen.")
         elif success_rate < 0.5:
             rejected = outcome_counts.get("rejected", 0)
-            insights.append(f"Achtung: {rejected} von {total_cases} aehnlichen Faellen wurden abgelehnt.")
+            insights.append(f"Achtung: {rejected} von {total_cases} ähnlichen Faellen wurden abgelehnt.")
 
         # Modifizierungen
         modified = outcome_counts.get("modified", 0)
         if modified > 0:
-            insights.append(f"{modified} aehnliche Faelle wurden modifiziert - manuelle Pruefung empfohlen.")
+            insights.append(f"{modified} ähnliche Faelle wurden modifiziert - manuelle Prüfung empfohlen.")
 
         # Confidence-Vergleich
         avg_confidence = sum(c.confidence for c in cases) / total_cases if cases else 0
         if source.confidence > avg_confidence * 1.1:
-            insights.append("Die aktuelle Konfidenz ist ueberdurchschnittlich hoch.")
+            insights.append("Die aktuelle Konfidenz ist überdurchschnittlich hoch.")
         elif source.confidence < avg_confidence * 0.9:
-            insights.append("Die aktuelle Konfidenz ist unterdurchschnittlich - zusaetzliche Pruefung empfohlen.")
+            insights.append("Die aktuelle Konfidenz ist unterdurchschnittlich - zusätzliche Prüfung empfohlen.")
 
         return insights
 
@@ -710,7 +710,7 @@ _case_comparator: Optional[CaseComparator] = None
 
 
 def get_case_comparator() -> CaseComparator:
-    """Gibt die Singleton-Instanz zurueck."""
+    """Gibt die Singleton-Instanz zurück."""
     global _case_comparator
     if _case_comparator is None:
         _case_comparator = CaseComparator()

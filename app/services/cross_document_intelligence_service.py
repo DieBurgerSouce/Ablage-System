@@ -8,7 +8,7 @@ Cross-Dokument-Intelligenz:
 - Anomalieerkennung bei Preisabweichungen
 - Dokumenten-Ketten-Status
 
-Feinpoliert und durchdacht - Intelligente Dokumentenverknuepfung.
+Feinpoliert und durchdacht - Intelligente Dokumentenverknüpfung.
 """
 
 import structlog
@@ -30,12 +30,12 @@ from app.db.models_ki_pipeline import (
 
 logger = structlog.get_logger(__name__)
 
-# Schwellenwerte fuer Matching
+# Schwellenwerte für Matching
 AMOUNT_TOLERANCE_PERCENT = 0.02  # 2% Toleranz bei Betraegen
 HIGH_MATCH_THRESHOLD = 0.8       # Ab 80% = auto_matched
 REVIEW_MATCH_THRESHOLD = 0.5     # Ab 50% = review_needed
 
-# Mapping Dokumenttyp -> moegliche Verknuepfungstypen
+# Mapping Dokumenttyp -> mögliche Verknüpfungstypen
 MATCH_TYPE_MAP: Dict[str, Dict[str, str]] = {
     "order": {
         "delivery_note": "order_delivery",
@@ -133,7 +133,7 @@ class CrossDocumentIntelligenceService:
         fields_a = await self._load_extracted_fields(db, doc_a_id)
         fields_b = await self._load_extracted_fields(db, doc_b_id)
 
-        # Feld-Vergleiche durchfuehren
+        # Feld-Vergleiche durchführen
         comparisons: List[Dict[str, object]] = []
         discrepancies: List[Dict[str, object]] = []
         match_count = 0
@@ -232,7 +232,7 @@ class CrossDocumentIntelligenceService:
             document_id: Quell-Dokument-ID
 
         Returns:
-            Liste der CrossDocumentMatch-Eintraege
+            Liste der CrossDocumentMatch-Einträge
         """
         # Bereits existierende Matches laden
         result = await db.execute(
@@ -315,7 +315,7 @@ class CrossDocumentIntelligenceService:
         for match in matches:
             matched_types.append(match.match_type)
 
-        # Ketten-Vollstaendigkeit pruefen
+        # Ketten-Vollständigkeit prüfen
         # Standard-Kette: Bestellung -> Lieferschein -> Rechnung
         expected_chain = ["order_delivery", "delivery_invoice"]
         present = [t for t in expected_chain if t in matched_types]
@@ -395,7 +395,7 @@ class CrossDocumentIntelligenceService:
         value_a: str,
         value_b: str,
     ) -> str:
-        """Erzeugt eine deutsche Beschreibung fuer eine Abweichung.
+        """Erzeugt eine deutsche Beschreibung für eine Abweichung.
 
         Args:
             field_name: Feldname
@@ -428,7 +428,7 @@ _service_instance: Optional[CrossDocumentIntelligenceService] = None
 
 
 def get_cross_document_intelligence_service() -> CrossDocumentIntelligenceService:
-    """Gibt die Singleton-Instanz des CrossDocumentIntelligenceService zurueck."""
+    """Gibt die Singleton-Instanz des CrossDocumentIntelligenceService zurück."""
     global _service_instance
     if _service_instance is None:
         _service_instance = CrossDocumentIntelligenceService()

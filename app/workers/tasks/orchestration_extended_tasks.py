@@ -3,9 +3,9 @@
 Extended Orchestration Celery Tasks.
 
 Enterprise Features:
-- Entity Health Degradation Check (taeglich 07:00)
-- Seasonal Pattern Detection (woechentlich)
-- Pending Investigation Processing (stuendlich)
+- Entity Health Degradation Check (täglich 07:00)
+- Seasonal Pattern Detection (wöchentlich)
+- Pending Investigation Processing (stündlich)
 - Overdue Approval Escalation (alle 30 Minuten)
 
 Feinpoliert und durchdacht - Proaktive Orchestrierung.
@@ -34,7 +34,7 @@ logger = structlog.get_logger(__name__)
 
 ORCHESTRATION_EXTENDED_TASKS = Counter(
     "orchestration_extended_tasks_total",
-    "Anzahl ausgefuehrter erweiterter Orchestration Tasks",
+    "Anzahl ausgeführter erweiterter Orchestration Tasks",
     ["task_name", "status"]
 )
 
@@ -51,7 +51,7 @@ ORCHESTRATION_EXTENDED_DURATION = Histogram(
 # =============================================================================
 
 def run_async(coro):
-    """Fuehrt eine Coroutine in einem neuen Event Loop aus."""
+    """Führt eine Coroutine in einem neuen Event Loop aus."""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
@@ -80,17 +80,17 @@ def check_entity_health_degradation(
     limit: int = 500,
 ) -> Dict[str, Any]:
     """
-    Prueft alle Entities auf Gesundheitsverschlechterung.
+    Prüft alle Entities auf Gesundheitsverschlechterung.
 
-    Sollte taeglich um 07:00 Uhr ausgefuehrt werden.
-    Generiert automatisch Empfehlungen und Alerts bei Risiko-Erhoehungen.
+    Sollte täglich um 07:00 Uhr ausgeführt werden.
+    Generiert automatisch Empfehlungen und Alerts bei Risiko-Erhöhungen.
 
     Args:
-        company_id: Optional: Nur fuer diese Company
-        limit: Maximale Anzahl zu pruefender Entities
+        company_id: Optional: Nur für diese Company
+        limit: Maximale Anzahl zu prüfender Entities
 
     Returns:
-        Statistiken ueber die Pruefung
+        Statistiken über die Prüfung
     """
     logger.info(
         "check_entity_health_degradation_started",
@@ -178,7 +178,7 @@ def apply_health_action(
 
     Args:
         recommendation_id: ID der Empfehlung
-        applied_by_id: ID des ausfuehrenden Benutzers
+        applied_by_id: ID des ausführenden Benutzers
 
     Returns:
         Ergebnis der Anwendung
@@ -267,11 +267,11 @@ def detect_seasonal_patterns(
     """
     Erkennt saisonale Muster und generiert Warnungen.
 
-    Sollte woechentlich (z.B. Montags um 06:00) ausgefuehrt werden.
+    Sollte wöchentlich (z.B. Montags um 06:00) ausgeführt werden.
     Analysiert historische Daten und erstellt proaktive Warnungen.
 
     Args:
-        company_id: Optional: Nur fuer diese Company (sonst alle)
+        company_id: Optional: Nur für diese Company (sonst alle)
 
     Returns:
         Analyse-Ergebnisse
@@ -396,11 +396,11 @@ def process_pending_investigations(
     """
     Verarbeitet ausstehende Untersuchungen.
 
-    Sollte stuendlich ausgefuehrt werden.
-    Prueft den Status laufender Untersuchungen und erstellt Benachrichtigungen.
+    Sollte stündlich ausgeführt werden.
+    Prüft den Status laufender Untersuchungen und erstellt Benachrichtigungen.
 
     Args:
-        company_id: Optional: Nur fuer diese Company
+        company_id: Optional: Nur für diese Company
 
     Returns:
         Verarbeitungsstatistiken
@@ -613,13 +613,13 @@ def escalate_overdue_approvals_extended(
     company_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Eskaliert ueberfaellige Genehmigungen mit Smart-Routing.
+    Eskaliert überfällige Genehmigungen mit Smart-Routing.
 
-    Sollte alle 30 Minuten ausgefuehrt werden.
-    Verwendet SmartApprovalRouter fuer intelligente Eskalation.
+    Sollte alle 30 Minuten ausgeführt werden.
+    Verwendet SmartApprovalRouter für intelligente Eskalation.
 
     Args:
-        company_id: Optional: Nur fuer diese Company
+        company_id: Optional: Nur für diese Company
 
     Returns:
         Eskalations-Statistiken
@@ -666,7 +666,7 @@ def escalate_overdue_approvals_extended(
             for request in requests:
                 stats["checked"] += 1
 
-                # Pruefe Eskalationsbedarf
+                # Prüfe Eskalationsbedarf
                 needs_escalation, reason, level = await router.check_escalation_needed(
                     db, request.id
                 )
@@ -759,12 +759,12 @@ def assign_deputy_approvers(
     company_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
-    Weist Stellvertreter fuer abwesende Genehmiger zu.
+    Weist Stellvertreter für abwesende Genehmiger zu.
 
-    Sollte taeglich ausgefuehrt werden.
+    Sollte täglich ausgeführt werden.
 
     Args:
-        company_id: Optional: Nur fuer diese Company
+        company_id: Optional: Nur für diese Company
 
     Returns:
         Zuweisungs-Statistiken
@@ -819,7 +819,7 @@ def assign_deputy_approvers(
             for step in steps:
                 stats["checked"] += 1
 
-                # Verfuegbarkeit pruefen und ggf. Stellvertreter waehlen
+                # Verfügbarkeit prüfen und ggf. Stellvertreter wählen
                 selection = await router.select_deputy(
                     db,
                     step.assigned_user_id,

@@ -7,7 +7,7 @@ Findet automatisch zusammengehoerige Dokumente:
 - Rechnung <-> Bestellung
 - Angebot <-> Bestellung <-> Rechnung
 
-Ziel-Konfidenz: 95%+ fuer Auto-Link.
+Ziel-Konfidenz: 95%+ für Auto-Link.
 
 Feinpoliert und durchdacht - Enterprise Document Linking.
 """
@@ -109,8 +109,8 @@ class SmartMatchingService:
     """
     Intelligentes Matching von zusammengehoerigen Dokumenten.
 
-    Nutzt extrahierte Daten (Nummern, Betraege, Entitaeten) um
-    Dokumente automatisch zu verknuepfen.
+    Nutzt extrahierte Daten (Nummern, Betraege, Entitäten) um
+    Dokumente automatisch zu verknüpfen.
     """
 
     # Konfiguration
@@ -127,7 +127,7 @@ class SmartMatchingService:
         """Normalisiert eine Dokumentnummer."""
         if not number:
             return None
-        # Entferne Leerzeichen, Bindestriche, fuehrende Nullen
+        # Entferne Leerzeichen, Bindestriche, führende Nullen
         normalized = re.sub(r'[\s\-/]', '', str(number).strip())
         normalized = normalized.lstrip('0') or '0'
         return normalized.lower()
@@ -137,7 +137,7 @@ class SmartMatchingService:
         num1: Optional[str],
         num2: Optional[str],
     ) -> float:
-        """Berechnet Aehnlichkeit zwischen zwei Nummern."""
+        """Berechnet Ähnlichkeit zwischen zwei Nummern."""
         if not num1 or not num2:
             return 0.0
 
@@ -152,7 +152,7 @@ class SmartMatchingService:
             if n1 in n2 or n2 in n1:
                 return 0.8
 
-        # Levenshtein-Aehnlichkeit (simplifiziert)
+        # Levenshtein-Ähnlichkeit (simplifiziert)
         if n1 and n2 and len(n1) > 3 and len(n2) > 3:
             # Gemeinsame Ziffern am Ende
             common_suffix = 0
@@ -172,7 +172,7 @@ class SmartMatchingService:
         amount2: Optional[Decimal],
         tolerance: float = 0.02,
     ) -> float:
-        """Berechnet Aehnlichkeit zwischen zwei Betraegen."""
+        """Berechnet Ähnlichkeit zwischen zwei Betraegen."""
         if amount1 is None or amount2 is None:
             return 0.0
 
@@ -230,7 +230,7 @@ class SmartMatchingService:
         entity2_id: Optional[uuid.UUID],
         entity2_name: Optional[str],
     ) -> float:
-        """Berechnet Aehnlichkeit zwischen zwei Entitaeten."""
+        """Berechnet Ähnlichkeit zwischen zwei Entitäten."""
         # ID-Match
         if entity1_id and entity2_id and entity1_id == entity2_id:
             return 1.0
@@ -316,7 +316,7 @@ class SmartMatchingService:
         result = await db.execute(query)
         candidates = result.scalars().all()
 
-        # Erstelle ExtractedData Wrapper fuer Kandidaten
+        # Erstelle ExtractedData Wrapper für Kandidaten
         candidates_with_data: List[Tuple[Document, Optional[ExtractedData]]] = []
         for doc in candidates:
             data = get_extracted_data(doc)
@@ -367,7 +367,7 @@ class SmartMatchingService:
                 target_data.supplier_name,
             )
             if entity_score < 0.5:
-                # Auch Customer pruefen
+                # Auch Customer prüfen
                 entity_score = max(
                     entity_score,
                     self._calculate_entity_similarity(
@@ -436,7 +436,7 @@ class SmartMatchingService:
         max_results: int = 10,
     ) -> SmartMatchResult:
         """
-        Findet Matches fuer ein Dokument.
+        Findet Matches für ein Dokument.
 
         Args:
             db: Database Session
@@ -530,13 +530,13 @@ class SmartMatchingService:
             "reasons": [],
         }
         if feature_scores.get("document_number", 0) > 0.7:
-            explanation["reasons"].append("Dokumentnummer stimmt ueberein")
+            explanation["reasons"].append("Dokumentnummer stimmt überein")
         if feature_scores.get("customer_supplier", 0) > 0.7:
             explanation["reasons"].append("Gleicher Kunde/Lieferant")
         if feature_scores.get("amount", 0) > 0.7:
-            explanation["reasons"].append("Betrag stimmt ueberein")
+            explanation["reasons"].append("Betrag stimmt überein")
 
-        # Callback fuer Auto-Link
+        # Callback für Auto-Link
         async def apply_match(value: Dict[str, Any]) -> None:
             """Erstellt den Match-Eintrag."""
             match = DocumentMatch(
@@ -589,7 +589,7 @@ _service_lock = threading.Lock()
 
 
 def get_smart_matching_service() -> SmartMatchingService:
-    """Factory fuer SmartMatchingService Singleton (Thread-safe)."""
+    """Factory für SmartMatchingService Singleton (Thread-safe)."""
     global _smart_matching_service
     if _smart_matching_service is None:
         with _service_lock:

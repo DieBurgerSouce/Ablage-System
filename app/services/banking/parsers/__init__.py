@@ -28,19 +28,19 @@ try:
     from .mt940_parser import MT940Parser as _MT940Parser
     MT940Parser = _MT940Parser
 except ImportError as e:
-    logger.warning(f"MT940Parser nicht verfuegbar: {e}")
+    logger.warning(f"MT940Parser nicht verfügbar: {e}")
 
 try:
     from .camt053_parser import CAMT053Parser as _CAMT053Parser
     CAMT053Parser = _CAMT053Parser
 except ImportError as e:
-    logger.warning(f"CAMT053Parser nicht verfuegbar: {e}")
+    logger.warning(f"CAMT053Parser nicht verfügbar: {e}")
 
 try:
     from .csv_parser import GenericCSVParser as _GenericCSVParser
     GenericCSVParser = _GenericCSVParser
 except ImportError as e:
-    logger.warning(f"GenericCSVParser nicht verfuegbar: {e}")
+    logger.warning(f"GenericCSVParser nicht verfügbar: {e}")
 
 __all__ = [
     "BaseParser",

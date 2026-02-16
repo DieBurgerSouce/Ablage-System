@@ -1,7 +1,7 @@
 """
 OCR Self-Learning API Endpoints
 
-API fuer das Self-Learning OCR System:
+API für das Self-Learning OCR System:
 - Korrektur-Feedback verarbeiten
 - Confidence-Kalibrierung
 - A/B Test Management
@@ -9,7 +9,7 @@ API fuer das Self-Learning OCR System:
 
 SECURITY:
 - Alle Endpoints erfordern Authentifizierung
-- Admin-only fuer kritische Operationen
+- Admin-only für kritische Operationen
 - Input-Validierung mit Whitelists
 """
 
@@ -59,7 +59,7 @@ def validate_test_id_path_param(test_id: str) -> str:
     """
     Validiere test_id Path-Parameter.
 
-    Wirft HTTPException bei ungueltigem Format.
+    Wirft HTTPException bei ungültigem Format.
     """
     if not ALLOWED_TEST_ID_PATTERN.match(test_id):
         raise HTTPException(
@@ -76,7 +76,7 @@ router = APIRouter(prefix="/ocr-learning", tags=["OCR Self-Learning"])
 
 
 class CorrectionFeedbackRequest(BaseModel):
-    """Request fuer Korrektur-Feedback."""
+    """Request für Korrektur-Feedback."""
     document_id: UUID
     field_name: str = Field(..., description="Name des korrigierten Felds", max_length=64)
     original_value: str = Field(..., description="Urspruenglicher OCR-Wert", max_length=10000)
@@ -88,10 +88,10 @@ class CorrectionFeedbackRequest(BaseModel):
     @field_validator("ocr_backend")
     @classmethod
     def validate_ocr_backend(cls, v: str) -> str:
-        """Whitelist-Validierung fuer OCR-Backend."""
+        """Whitelist-Validierung für OCR-Backend."""
         backend_lower = v.lower().strip()
         if backend_lower not in ALLOWED_OCR_BACKENDS:
-            raise ValueError(f"Ungueltiges OCR-Backend. Erlaubt: {sorted(ALLOWED_OCR_BACKENDS)}")
+            raise ValueError(f"Ungültiges OCR-Backend. Erlaubt: {sorted(ALLOWED_OCR_BACKENDS)}")
         return backend_lower
 
     @field_validator("field_name")
@@ -105,15 +105,15 @@ class CorrectionFeedbackRequest(BaseModel):
     @field_validator("correction_type")
     @classmethod
     def validate_correction_type(cls, v: str) -> str:
-        """Whitelist-Validierung fuer Korrektur-Typ."""
+        """Whitelist-Validierung für Korrektur-Typ."""
         type_lower = v.lower().strip()
         if type_lower not in ALLOWED_CORRECTION_TYPES:
-            raise ValueError(f"Ungueltiger Korrektur-Typ. Erlaubt: {sorted(ALLOWED_CORRECTION_TYPES)}")
+            raise ValueError(f"Ungültiger Korrektur-Typ. Erlaubt: {sorted(ALLOWED_CORRECTION_TYPES)}")
         return type_lower
 
 
 class CorrectionFeedbackResponse(BaseModel):
-    """Response fuer Korrektur-Feedback."""
+    """Response für Korrektur-Feedback."""
     processed: bool
     learning_mode: str
     confidence_adjustment: float
@@ -123,7 +123,7 @@ class CorrectionFeedbackResponse(BaseModel):
 
 
 class CalibratedConfidenceRequest(BaseModel):
-    """Request fuer kalibrierte Confidence."""
+    """Request für kalibrierte Confidence."""
     backend: str
     field: str = Field(..., max_length=64)
     raw_confidence: float = Field(..., ge=0.0, le=1.0)
@@ -131,10 +131,10 @@ class CalibratedConfidenceRequest(BaseModel):
     @field_validator("backend")
     @classmethod
     def validate_backend(cls, v: str) -> str:
-        """Whitelist-Validierung fuer OCR-Backend."""
+        """Whitelist-Validierung für OCR-Backend."""
         backend_lower = v.lower().strip()
         if backend_lower not in ALLOWED_OCR_BACKENDS:
-            raise ValueError(f"Ungueltiges OCR-Backend. Erlaubt: {sorted(ALLOWED_OCR_BACKENDS)}")
+            raise ValueError(f"Ungültiges OCR-Backend. Erlaubt: {sorted(ALLOWED_OCR_BACKENDS)}")
         return backend_lower
 
     @field_validator("field")
@@ -147,7 +147,7 @@ class CalibratedConfidenceRequest(BaseModel):
 
 
 class CalibratedConfidenceResponse(BaseModel):
-    """Response fuer kalibrierte Confidence."""
+    """Response für kalibrierte Confidence."""
     backend: str
     field: str
     raw_confidence: float
@@ -159,14 +159,14 @@ class ABTestStartRequest(BaseModel):
     """Request zum Starten eines A/B Tests."""
     test_id: str = Field(..., description="Eindeutige Test-ID", min_length=3, max_length=64)
     candidate_version: str = Field(..., description="candidate_a oder candidate_b")
-    traffic_split: float = Field(0.1, ge=0.01, le=0.5, description="Anteil Traffic fuer Kandidat")
+    traffic_split: float = Field(0.1, ge=0.01, le=0.5, description="Anteil Traffic für Kandidat")
     min_samples: int = Field(100, ge=10, description="Minimale Samples vor Auswertung")
     max_duration_days: int = Field(7, ge=1, le=30, description="Maximale Test-Dauer")
 
     @field_validator("test_id")
     @classmethod
     def validate_test_id(cls, v: str) -> str:
-        """Pattern-Validierung fuer Test-ID gegen Injection."""
+        """Pattern-Validierung für Test-ID gegen Injection."""
         if not ALLOWED_TEST_ID_PATTERN.match(v):
             raise ValueError(
                 "Test-ID muss mit Buchstabe/Zahl beginnen, "
@@ -176,7 +176,7 @@ class ABTestStartRequest(BaseModel):
 
 
 class ABTestResponse(BaseModel):
-    """Response fuer A/B Test."""
+    """Response für A/B Test."""
     test_id: str
     baseline_version: str
     candidate_version: str
@@ -187,7 +187,7 @@ class ABTestResponse(BaseModel):
 
 
 class ABTestResultResponse(BaseModel):
-    """Response fuer A/B Test Ergebnis."""
+    """Response für A/B Test Ergebnis."""
     test_id: str
     improvement_percent: float
     is_significant: bool
@@ -203,7 +203,7 @@ class ABTestEndRequest(BaseModel):
 
 
 class LearningStatsResponse(BaseModel):
-    """Response fuer Learning-Statistiken."""
+    """Response für Learning-Statistiken."""
     learning_mode: str
     training_samples: int
     total_corrections: int
@@ -223,10 +223,10 @@ async def submit_correction_feedback(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Uebermittle Korrektur-Feedback.
+    Übermittle Korrektur-Feedback.
 
     Im AGGRESSIVE Modus wird das System sofort angepasst.
-    Erstellt automatisch Training Samples fuer spaeteres Batch-Training.
+    Erstellt automatisch Training Samples für späteres Batch-Training.
     """
     service = get_self_learning_service(db)
 
@@ -305,7 +305,7 @@ async def get_confidence_statistics(
         if backend_lower not in ALLOWED_OCR_BACKENDS:
             raise HTTPException(
                 status_code=400,
-                detail=f"Ungueltiges OCR-Backend. Erlaubt: {sorted(ALLOWED_OCR_BACKENDS)}"
+                detail=f"Ungültiges OCR-Backend. Erlaubt: {sorted(ALLOWED_OCR_BACKENDS)}"
             )
         backend = backend_lower
 
@@ -322,10 +322,10 @@ async def start_ab_test(
     """
     Starte neuen A/B Test.
 
-    Nur Admins koennen A/B Tests starten.
+    Nur Admins können A/B Tests starten.
     """
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Nur Admins koennen A/B Tests starten")
+        raise HTTPException(status_code=403, detail="Nur Admins können A/B Tests starten")
 
     # Validiere candidate_version
     try:
@@ -333,7 +333,7 @@ async def start_ab_test(
     except ValueError:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltige Kandidat-Version. Erlaubt: {[v.value for v in ModelVersion]}"
+            detail=f"Ungültige Kandidat-Version. Erlaubt: {[v.value for v in ModelVersion]}"
         )
 
     service = get_self_learning_service(db)
@@ -401,13 +401,13 @@ async def end_ab_test(
 
     Actions:
     - promote: Kandidat wird neue Baseline
-    - rollback: Zurueck zu Baseline
+    - rollback: Zurück zu Baseline
     """
     # Validiere test_id Path-Parameter gegen Injection
     test_id = validate_test_id_path_param(test_id)
 
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Nur Admins koennen A/B Tests beenden")
+        raise HTTPException(status_code=403, detail="Nur Admins können A/B Tests beenden")
 
     if request.action not in ["promote", "rollback"]:
         raise HTTPException(status_code=400, detail="Action muss 'promote' oder 'rollback' sein")
@@ -456,19 +456,19 @@ async def set_learning_mode(
     Modi:
     - aggressive: Jede Korrektur fliesst sofort ein
     - cautious: Nur verifizierte Korrekturen
-    - batch: Batch-Learning (taeglich)
+    - batch: Batch-Learning (täglich)
 
     Wird in der Datenbank persistiert.
     """
     if current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Nur Admins koennen den Modus aendern")
+        raise HTTPException(status_code=403, detail="Nur Admins können den Modus ändern")
 
     try:
         learning_mode = LearningMode(mode)
     except ValueError:
         raise HTTPException(
             status_code=400,
-            detail=f"Ungueltiger Modus. Erlaubt: {[m.value for m in LearningMode]}"
+            detail=f"Ungültiger Modus. Erlaubt: {[m.value for m in LearningMode]}"
         )
 
     service = get_self_learning_service(db)
@@ -494,7 +494,7 @@ async def get_current_model_version(
     """
     Liefere aktuelle Modell-Version.
 
-    Beruecksichtigt aktive A/B Tests und Traffic-Split.
+    Berücksichtigt aktive A/B Tests und Traffic-Split.
     Erfordert Authentifizierung.
     """
     # Validiere test_id Query-Parameter wenn gesetzt

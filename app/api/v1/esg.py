@@ -131,7 +131,7 @@ async def get_esg_dashboard(
 @router.get("/carbon-footprint/emission-factors")
 async def get_emission_factors():
     """
-    Hole verfuegbare Emissionsfaktoren.
+    Hole verfügbare Emissionsfaktoren.
     """
     return {"factors": CarbonCalculator.get_emission_factors()}
 
@@ -272,7 +272,7 @@ async def get_carbon_trend(
 @router.get("/supplier-ratings/criteria")
 async def get_rating_criteria():
     """
-    Hole Bewertungskriterien fuer Lieferanten.
+    Hole Bewertungskriterien für Lieferanten.
     """
     from app.services.compliance.esg.supplier_sustainability import SupplierSustainabilityService
     return {"criteria": SupplierSustainabilityService.get_rating_criteria()}
@@ -366,7 +366,7 @@ async def get_latest_supplier_rating(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Hole neueste Bewertung fuer einen Lieferanten.
+    Hole neueste Bewertung für einen Lieferanten.
     """
     service = get_supplier_sustainability_service(db)
 
@@ -535,7 +535,7 @@ async def get_certification_detail(
 @router.get("/reports/templates")
 async def get_report_templates():
     """
-    Hole verfuegbare Berichtsvorlagen.
+    Hole verfügbare Berichtsvorlagen.
     """
     return {"templates": ESGReportGenerator.get_report_templates()}
 

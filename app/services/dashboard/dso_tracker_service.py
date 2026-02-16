@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """DSO Tracker Service.
 
-Liefert Daten fuer das DSO (Days Sales Outstanding) Widget:
+Liefert Daten für das DSO (Days Sales Outstanding) Widget:
 - Aktueller DSO-Wert
 - 6-Monats-Trend
 - Benchmark-Vergleich (Branchendurchschnitt ~45 Tage)
-- Faelligkeitsverteilung
+- Fälligkeitsverteilung
 
 Enterprise Feature: Februar 2026
 """
@@ -26,7 +26,7 @@ from app.db.models import InvoiceTracking
 logger = structlog.get_logger(__name__)
 
 
-# Branchendurchschnittswerte fuer Benchmark
+# Branchendurchschnittswerte für Benchmark
 INDUSTRY_BENCHMARK_DSO = 45.0  # Tage
 
 
@@ -42,7 +42,7 @@ class DSODataPoint:
 
 @dataclass
 class AgingBucket:
-    """Faelligkeitsklasse fuer ausstehende Rechnungen."""
+    """Fälligkeitsklasse für ausstehende Rechnungen."""
     label: str
     count: int
     amount: float
@@ -66,7 +66,7 @@ class DSOTrackerResult:
 
 
 class DSOTrackerService:
-    """Service fuer DSO-Tracking im Dashboard."""
+    """Service für DSO-Tracking im Dashboard."""
 
     async def get_dso_data(
         self,
@@ -77,13 +77,13 @@ class DSOTrackerService:
         date_to: Optional[date] = None,
         compare_period: Optional[str] = None,
     ) -> DSOTrackerResult:
-        """Erstelle DSO-Analyse fuer Dashboard-Widget.
+        """Erstelle DSO-Analyse für Dashboard-Widget.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            company_id: Firmen-ID fuer Multi-Tenant
-            date_from: Startdatum (Standard: 6 Monate zurueck)
+            company_id: Firmen-ID für Multi-Tenant
+            date_from: Startdatum (Standard: 6 Monate zurück)
             date_to: Enddatum (Standard: heute)
             compare_period: Vergleichszeitraum (previous_period, yoy)
 
@@ -105,12 +105,12 @@ class DSOTrackerService:
                 db, company_id, date_to,
             )
 
-            # DSO-Trend ueber 6 Monate
+            # DSO-Trend über 6 Monate
             dso_trend = await self._calculate_dso_trend(
                 db, company_id, date_from, date_to,
             )
 
-            # Faelligkeitsverteilung
+            # Fälligkeitsverteilung
             aging_buckets = await self._calculate_aging_buckets(
                 db, company_id, date_to,
             )
@@ -277,7 +277,7 @@ class DSOTrackerService:
         company_id: Optional[UUID],
         reference_date: date,
     ) -> List[AgingBucket]:
-        """Berechne Faelligkeitsverteilung."""
+        """Berechne Fälligkeitsverteilung."""
         ref_dt = datetime.combine(
             reference_date, datetime.max.time().replace(tzinfo=timezone.utc)
         )
@@ -293,14 +293,14 @@ class DSOTrackerService:
         stmt = (
             select(
                 case(
-                    (InvoiceTracking.due_date >= ref_dt, 'nicht_faellig'),
+                    (InvoiceTracking.due_date >= ref_dt, 'nicht_fällig'),
                     (func.extract('day', ref_dt - InvoiceTracking.due_date) <= 30,
                      '1_30_tage'),
                     (func.extract('day', ref_dt - InvoiceTracking.due_date) <= 60,
                      '31_60_tage'),
                     (func.extract('day', ref_dt - InvoiceTracking.due_date) <= 90,
                      '61_90_tage'),
-                    else_='ueber_90_tage',
+                    else_='über_90_tage',
                 ).label('bucket'),
                 func.count(InvoiceTracking.id).label('count'),
                 func.coalesce(
@@ -322,11 +322,11 @@ class DSOTrackerService:
         total_amount = sum(float(row[2]) for row in rows) if rows else 0.0
 
         bucket_labels: Dict[str, str] = {
-            "nicht_faellig": "Nicht faellig",
+            "nicht_fällig": "Nicht fällig",
             "1_30_tage": "1-30 Tage",
             "31_60_tage": "31-60 Tage",
             "61_90_tage": "61-90 Tage",
-            "ueber_90_tage": "Ueber 90 Tage",
+            "über_90_tage": "Über 90 Tage",
         }
 
         buckets: List[AgingBucket] = []

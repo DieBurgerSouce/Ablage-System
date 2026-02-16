@@ -2,13 +2,13 @@
 """
 SKR03 Kontenrahmen.
 
-Standardkontenrahmen fuer Industrie und Handel.
+Standardkontenrahmen für Industrie und Handel.
 Verwendung: Kleine und mittlere Unternehmen, Einzelunternehmen, GbR.
 
 Gliederung:
 - Klasse 0: Anlagevermoegen
 - Klasse 1: Umlaufvermoegen, Finanzkonten
-- Klasse 2: Ruecklagen, Verbindlichkeiten
+- Klasse 2: Rücklagen, Verbindlichkeiten
 - Klasse 3: Wareneingang
 - Klasse 4: Aufwendungen
 - Klasse 8: Erloese
@@ -24,8 +24,8 @@ class SKR03(BaseKontenrahmen):
     """
     SKR03 Kontenrahmen Implementierung.
 
-    Der SKR03 ist der am haeufigsten verwendete Kontenrahmen in Deutschland.
-    Er ist prozessorientiert aufgebaut (nach Geschaeftsvorfaellen).
+    Der SKR03 ist der am häufigsten verwendete Kontenrahmen in Deutschland.
+    Er ist prozessorientiert aufgebaut (nach Geschäftsvorfaellen).
     """
 
     @property
@@ -34,7 +34,7 @@ class SKR03(BaseKontenrahmen):
 
     @property
     def beschreibung(self) -> str:
-        return "Standardkontenrahmen fuer Industrie und Handel (prozessorientiert)"
+        return "Standardkontenrahmen für Industrie und Handel (prozessorientiert)"
 
     # =========================================================================
     # AUFWANDSKONTEN (Klasse 3 und 4)
@@ -60,7 +60,7 @@ class SKR03(BaseKontenrahmen):
     TELEFON = "4920"              # Porto, Telefon
     VERSICHERUNGEN = "4360"       # Versicherungen
     RECHTSBERATUNG = "4950"       # Rechts- und Beratungskosten
-    BUCHFUEHRUNG = "4955"         # Buchfuehrungskosten
+    BUCHFUEHRUNG = "4955"         # Buchführungskosten
     REPARATUREN = "4800"          # Reparatur und Instandhaltung
     KFZKOSTEN = "4500"            # Fahrzeugkosten
     KFZBETRIEB = "4510"           # Kfz-Betriebskosten
@@ -89,7 +89,7 @@ class SKR03(BaseKontenrahmen):
             "telefon": self.TELEFON,
             "versicherung": self.VERSICHERUNGEN,
             "rechtsberatung": self.RECHTSBERATUNG,
-            "buchfuehrung": self.BUCHFUEHRUNG,
+            "buchführung": self.BUCHFUEHRUNG,
             "reparatur": self.REPARATUREN,
             "kfz": self.KFZKOSTEN,
             "kfz_betrieb": self.KFZBETRIEB,
@@ -97,7 +97,7 @@ class SKR03(BaseKontenrahmen):
             "abschreibung": self.ABSCHREIBUNGEN,
         }
 
-    # Properties fuer Base-Klassen-Methoden (get_expense_account/get_revenue_account)
+    # Properties für Base-Klassen-Methoden (get_expense_account/get_revenue_account)
     @property
     def _wareneingang_19(self) -> str:
         return self.WARENEINGANG_19
@@ -112,7 +112,7 @@ class SKR03(BaseKontenrahmen):
 
     ERLOESE_19 = "8400"           # Erloese 19% USt
     ERLOESE_7 = "8300"            # Erloese 7% USt
-    ERLOESE_0 = "8100"            # Steuerfreie Umsaetze
+    ERLOESE_0 = "8100"            # Steuerfreie Umsätze
     ERLOESE_EU = "8125"           # Innergemeinschaftliche Lieferungen
     ERLOESE_DRITTLAND = "8120"    # Ausfuhrlieferungen Drittland
     ERLOESE_RC = "8337"           # Erloese Reverse Charge
@@ -143,7 +143,7 @@ class SKR03(BaseKontenrahmen):
         return self.ERLOESE_7
 
     # =========================================================================
-    # PERSONENKONTEN (Defaults aus BaseKontenrahmen uebernommen)
+    # PERSONENKONTEN (Defaults aus BaseKontenrahmen übernommen)
     # =========================================================================
     # Kreditor-/Debitoren-Ranges sind identisch zu SKR04, daher in Base definiert
 

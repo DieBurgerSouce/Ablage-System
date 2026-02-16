@@ -83,7 +83,7 @@ class BudgetConsumption(BaseModel):
 
 @dataclass
 class BudgetConfig:
-    """Konfiguration fuer Privacy Budget."""
+    """Konfiguration für Privacy Budget."""
     daily_budget: float = 10.0
     min_remaining_warning: float = 2.0
     budget_reset_hour: int = 0  # Mitternacht
@@ -110,7 +110,7 @@ class PrivacyBudgetTracker:
         Initialisiert den Budget Tracker.
 
         Args:
-            redis_client: Redis-Client fuer persistenten Storage
+            redis_client: Redis-Client für persistenten Storage
             config: Budget-Konfiguration
         """
         self.redis = redis_client
@@ -124,23 +124,23 @@ class PrivacyBudgetTracker:
         )
 
     def _get_budget_key(self, company_id: UUID) -> str:
-        """Generiert Redis-Key fuer Budget."""
+        """Generiert Redis-Key für Budget."""
         today = date.today().isoformat()
         return f"privacy_budget:{company_id}:{today}"
 
     def _get_history_key(self, company_id: UUID) -> str:
-        """Generiert Redis-Key fuer History."""
+        """Generiert Redis-Key für History."""
         today = date.today().isoformat()
         return f"privacy_budget_history:{company_id}:{today}"
 
     def _get_query_count_key(self, company_id: UUID) -> str:
-        """Generiert Redis-Key fuer Query Count."""
+        """Generiert Redis-Key für Query Count."""
         today = date.today().isoformat()
         return f"privacy_budget_queries:{company_id}:{today}"
 
     async def get_remaining_budget(self, company_id: UUID) -> float:
         """
-        Gibt verbleibendes Budget fuer heute zurueck.
+        Gibt verbleibendes Budget für heute zurück.
 
         Args:
             company_id: Tenant-ID
@@ -188,16 +188,16 @@ class PrivacyBudgetTracker:
         endpoint: Optional[str] = None
     ) -> bool:
         """
-        Verbraucht Budget fuer eine Query.
+        Verbraucht Budget für eine Query.
 
         Args:
             company_id: Tenant-ID
             epsilon: Zu verbrauchendes Epsilon
-            query_type: Typ der Query (fuer Logging)
+            query_type: Typ der Query (für Logging)
             endpoint: API-Endpoint (optional)
 
         Returns:
-            True wenn Budget verfuegbar und verbraucht wurde
+            True wenn Budget verfügbar und verbraucht wurde
 
         Raises:
             BudgetExhaustedError: Wenn Budget erschoepft
@@ -207,10 +207,10 @@ class PrivacyBudgetTracker:
 
         remaining = await self.get_remaining_budget(company_id)
 
-        # Pruefe ob genug Budget
+        # Prüfe ob genug Budget
         if epsilon > remaining:
             if not self.config.allow_overdraft:
-                # SECURITY: Keine Epsilon-Werte in Logs (Geschaeftsgeheimnis)
+                # SECURITY: Keine Epsilon-Werte in Logs (Geschäftsgeheimnis)
                 logger.warning(
                     "privacy_budget_exhausted",
                     company_id=str(company_id),
@@ -218,15 +218,15 @@ class PrivacyBudgetTracker:
                 # SECURITY: Keine konkreten Werte in Error Messages exponieren
                 raise BudgetExhaustedError(
                     "Privacy-Budget erschoepft. "
-                    "Budget wird um Mitternacht zurueckgesetzt."
+                    "Budget wird um Mitternacht zurückgesetzt."
                 )
 
-            # Pruefe Overdraft-Limit
+            # Prüfe Overdraft-Limit
             overdraft_needed = epsilon - remaining
             if overdraft_needed > self.config.overdraft_limit:
                 # SECURITY: Keine konkreten Werte exponieren
                 raise BudgetExhaustedError(
-                    "Overdraft-Limit ueberschritten. "
+                    "Overdraft-Limit überschritten. "
                     "Bitte warten Sie bis zum Budget-Reset."
                 )
 
@@ -255,7 +255,7 @@ class PrivacyBudgetTracker:
         return True
 
     async def _increment_query_count(self, company_id: UUID) -> None:
-        """Inkrementiert Query-Zaehler."""
+        """Inkrementiert Query-Zähler."""
         key = self._get_query_count_key(company_id)
 
         if self.redis:
@@ -266,7 +266,7 @@ class PrivacyBudgetTracker:
                 logger.warning("redis_incr_failed", key=key, **safe_error_log(e))
 
     async def _get_query_count(self, company_id: UUID) -> int:
-        """Liest Query-Zaehler."""
+        """Liest Query-Zähler."""
         key = self._get_query_count_key(company_id)
 
         if self.redis:
@@ -306,7 +306,7 @@ class PrivacyBudgetTracker:
 
     async def get_status(self, company_id: UUID) -> BudgetStatus:
         """
-        Gibt vollstaendigen Budget-Status zurueck.
+        Gibt vollständigen Budget-Status zurück.
 
         Args:
             company_id: Tenant-ID
@@ -318,7 +318,7 @@ class PrivacyBudgetTracker:
         remaining = max(0, self.config.daily_budget - consumed)
         queries = await self._get_query_count(company_id)
 
-        # Berechne naechsten Reset
+        # Berechne nächsten Reset
         today = date.today()
         reset_time = datetime.combine(
             today + timedelta(days=1),
@@ -342,11 +342,11 @@ class PrivacyBudgetTracker:
         epsilon: float
     ) -> bool:
         """
-        Prueft ob genug Budget fuer Query verfuegbar ist.
+        Prüft ob genug Budget für Query verfügbar ist.
 
         Args:
             company_id: Tenant-ID
-            epsilon: Benoetigtes Epsilon
+            epsilon: Benötigtes Epsilon
 
         Returns:
             True wenn Budget ausreicht
@@ -360,11 +360,11 @@ class PrivacyBudgetTracker:
         limit: int = 100
     ) -> List[BudgetConsumption]:
         """
-        Gibt Query-History zurueck.
+        Gibt Query-History zurück.
 
         Args:
             company_id: Tenant-ID
-            limit: Max Anzahl Eintraege
+            limit: Max Anzahl Einträge
 
         Returns:
             Liste von BudgetConsumption
@@ -387,7 +387,7 @@ class PrivacyBudgetTracker:
 
     async def reset_budget(self, company_id: UUID) -> None:
         """
-        Setzt Budget manuell zurueck (Admin-Funktion).
+        Setzt Budget manuell zurück (Admin-Funktion).
 
         Args:
             company_id: Tenant-ID
@@ -413,7 +413,7 @@ _budget_tracker: Optional[PrivacyBudgetTracker] = None
 
 
 async def get_budget_tracker() -> PrivacyBudgetTracker:
-    """Gibt Singleton-Instanz des Budget Trackers zurueck."""
+    """Gibt Singleton-Instanz des Budget Trackers zurück."""
     global _budget_tracker
     if _budget_tracker is None:
         # Versuche Redis-Verbindung

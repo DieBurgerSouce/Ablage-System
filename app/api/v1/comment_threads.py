@@ -1,10 +1,10 @@
 """
 Kommentar-Thread API Endpoints.
 
-Erweiterte Kommentar-Funktionen fuer Google-Docs-Style Collaboration:
-- Thread-Management (Erstellen, Aufloesen, Wieder oeffnen)
+Erweiterte Kommentar-Funktionen für Google-Docs-Style Collaboration:
+- Thread-Management (Erstellen, Aufloesen, Wieder öffnen)
 - PDF-Anker (Positionierung von Kommentaren auf PDF-Seiten)
-- Aenderungsvorschlaege (Vorschlaege fuer Feldwerte mit Annahme/Ablehnung)
+- Änderungsvorschläge (Vorschläge für Feldwerte mit Annahme/Ablehnung)
 
 Feinpoliert und durchdacht - Enterprise Collaboration.
 """
@@ -41,14 +41,14 @@ router = APIRouter(prefix="/comment-threads", tags=["Kommentar-Threads"])
 
 
 class ThreadCreateRequest(BaseModel):
-    """Schema fuer das Erstellen eines Threads."""
+    """Schema für das Erstellen eines Threads."""
     document_id: UUID = Field(..., description="Dokument-ID")
     root_comment_id: UUID = Field(..., description="Root-Kommentar-ID")
     subject: Optional[str] = Field(None, max_length=255, description="Thread-Betreff")
 
 
 class ThreadResponse(BaseModel):
-    """Schema fuer die Thread-Antwort."""
+    """Schema für die Thread-Antwort."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -65,20 +65,20 @@ class ThreadResponse(BaseModel):
 
 
 class AnchorCreateRequest(BaseModel):
-    """Schema fuer das Erstellen eines PDF-Ankers."""
+    """Schema für das Erstellen eines PDF-Ankers."""
     comment_id: UUID = Field(..., description="Kommentar-ID")
     page_number: int = Field(..., ge=1, description="PDF-Seitennummer (1-basiert)")
     x: float = Field(..., ge=0.0, le=1.0, description="X-Position (normalisiert 0-1)")
     y: float = Field(..., ge=0.0, le=1.0, description="Y-Position (normalisiert 0-1)")
     width: Optional[float] = Field(None, ge=0.0, le=1.0, description="Breite (normalisiert)")
-    height: Optional[float] = Field(None, ge=0.0, le=1.0, description="Hoehe (normalisiert)")
+    height: Optional[float] = Field(None, ge=0.0, le=1.0, description="Höhe (normalisiert)")
     anchor_type: str = Field(default="pin", description="Anker-Typ (pin/highlight/rectangle/freeform/field)")
     highlighted_text: Optional[str] = Field(None, description="Markierter Text")
     color: str = Field(default="#FBBF24", max_length=7, description="Farbe (Hex-Format)")
 
 
 class AnchorResponse(BaseModel):
-    """Schema fuer die Anker-Antwort."""
+    """Schema für die Anker-Antwort."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -94,22 +94,22 @@ class AnchorResponse(BaseModel):
 
 
 class SuggestionCreateRequest(BaseModel):
-    """Schema fuer das Erstellen eines Aenderungsvorschlags."""
+    """Schema für das Erstellen eines Änderungsvorschlags."""
     comment_id: UUID = Field(..., description="Kommentar-ID")
     document_id: UUID = Field(..., description="Dokument-ID")
     field_name: Optional[str] = Field(None, max_length=100, description="Betroffenes Extraktionsfeld")
     original_value: Optional[str] = Field(None, description="Aktueller Wert")
     suggested_value: str = Field(..., description="Vorgeschlagener neuer Wert")
-    reason: Optional[str] = Field(None, description="Begruendung fuer die Aenderung")
+    reason: Optional[str] = Field(None, description="Begruendung für die Änderung")
 
 
 class SuggestionDecisionRequest(BaseModel):
-    """Schema fuer die Entscheidung ueber einen Vorschlag."""
+    """Schema für die Entscheidung über einen Vorschlag."""
     decision_comment: Optional[str] = Field(None, description="Kommentar zur Entscheidung")
 
 
 class SuggestionResponse(BaseModel):
-    """Schema fuer die Vorschlags-Antwort."""
+    """Schema für die Vorschlags-Antwort."""
     model_config = ConfigDict(from_attributes=True)
 
     id: UUID
@@ -145,7 +145,7 @@ async def create_thread(
     current_user: User = Depends(get_current_active_user),
 ) -> ThreadResponse:
     """Erstellt einen neuen Kommentar-Thread."""
-    # Dokument pruefen
+    # Dokument prüfen
     result = await db.execute(
         select(Document).where(Document.id == data.document_id)
     )
@@ -159,10 +159,10 @@ async def create_thread(
     if document.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Keine Berechtigung fuer dieses Dokument",
+            detail="Keine Berechtigung für dieses Dokument",
         )
 
-    # Root-Kommentar pruefen
+    # Root-Kommentar prüfen
     result = await db.execute(
         select(DocumentComment).where(
             and_(
@@ -256,14 +256,14 @@ async def resolve_thread(
 @router.put(
     "/{thread_id}/reopen",
     response_model=ThreadResponse,
-    summary="Thread wieder oeffnen",
+    summary="Thread wieder öffnen",
 )
 async def reopen_thread(
     thread_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> ThreadResponse:
-    """Oeffnet einen Thread wieder."""
+    """Öffnet einen Thread wieder."""
     result = await db.execute(
         select(CommentThread).where(
             and_(CommentThread.id == thread_id, CommentThread.company_id == current_user.company_id)
@@ -293,15 +293,15 @@ async def reopen_thread(
     response_model=AnchorResponse,
     status_code=status.HTTP_201_CREATED,
     summary="PDF-Anker setzen",
-    description="Setzt einen PDF-Anker fuer einen Kommentar",
+    description="Setzt einen PDF-Anker für einen Kommentar",
 )
 async def create_anchor(
     data: AnchorCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> AnchorResponse:
-    """Setzt einen PDF-Anker fuer einen Kommentar."""
-    # Pruefen ob Kommentar existiert
+    """Setzt einen PDF-Anker für einen Kommentar."""
+    # Prüfen ob Kommentar existiert
     result = await db.execute(
         select(DocumentComment).where(DocumentComment.id == data.comment_id)
     )
@@ -309,7 +309,7 @@ async def create_anchor(
     if not comment:
         raise HTTPException(status_code=404, detail="Kommentar nicht gefunden")
 
-    # Pruefen ob bereits ein Anker existiert
+    # Prüfen ob bereits ein Anker existiert
     result = await db.execute(
         select(CommentAnchor).where(CommentAnchor.comment_id == data.comment_id)
     )
@@ -368,16 +368,16 @@ async def get_anchor(
     "/suggestions",
     response_model=SuggestionResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Aenderungsvorschlag erstellen",
-    description="Erstellt einen Aenderungsvorschlag fuer ein Dokumentfeld",
+    summary="Änderungsvorschlag erstellen",
+    description="Erstellt einen Änderungsvorschlag für ein Dokumentfeld",
 )
 async def create_suggestion(
     data: SuggestionCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> SuggestionResponse:
-    """Erstellt einen Aenderungsvorschlag."""
-    # Dokument pruefen
+    """Erstellt einen Änderungsvorschlag."""
+    # Dokument prüfen
     result = await db.execute(
         select(Document).where(
             and_(Document.id == data.document_id, Document.company_id == current_user.company_id)
@@ -408,7 +408,7 @@ async def create_suggestion(
 @router.get(
     "/suggestions/document/{document_id}",
     response_model=List[SuggestionResponse],
-    summary="Alle Vorschlaege eines Dokuments",
+    summary="Alle Vorschläge eines Dokuments",
 )
 async def get_document_suggestions(
     document_id: UUID,
@@ -416,7 +416,7 @@ async def get_document_suggestions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[SuggestionResponse]:
-    """Ruft alle Vorschlaege eines Dokuments ab."""
+    """Ruft alle Vorschläge eines Dokuments ab."""
     conditions = [CommentSuggestion.document_id == document_id]
     if status_filter:
         conditions.append(CommentSuggestion.status == status_filter)

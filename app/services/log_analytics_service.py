@@ -2,10 +2,10 @@
 """
 Log Analytics Service.
 
-Aggregiert und analysiert Logs fuer Monitoring und Alerting:
-- Trend-Analyse fuer Error Rates
+Aggregiert und analysiert Logs für Monitoring und Alerting:
+- Trend-Analyse für Error Rates
 - Anomalie-Erkennung bei ungewoehnlichen Mustern
-- Dashboard-Metriken fuer Grafana
+- Dashboard-Metriken für Grafana
 - Retention-Policy-Management
 
 Feinpoliert und durchdacht - Enterprise Log Analytics.
@@ -28,7 +28,7 @@ logger = structlog.get_logger(__name__)
 
 
 class LogLevel(str, Enum):
-    """Log-Level fuer Klassifizierung."""
+    """Log-Level für Klassifizierung."""
 
     DEBUG = "debug"
     INFO = "info"
@@ -38,7 +38,7 @@ class LogLevel(str, Enum):
 
 
 class TrendDirection(str, Enum):
-    """Trend-Richtung fuer Metriken."""
+    """Trend-Richtung für Metriken."""
 
     INCREASING = "increasing"
     DECREASING = "decreasing"
@@ -48,7 +48,7 @@ class TrendDirection(str, Enum):
 
 @dataclass
 class LogEntry:
-    """Einzelner Log-Eintrag fuer Analyse."""
+    """Einzelner Log-Eintrag für Analyse."""
 
     timestamp: datetime
     level: LogLevel
@@ -101,11 +101,11 @@ class LogHealthReport:
 
 class LogAnalyticsService:
     """
-    Service fuer Log-Analyse und Monitoring.
+    Service für Log-Analyse und Monitoring.
 
     Features:
-    - In-Memory Rolling Window fuer schnelle Analysen
-    - Trend-Erkennung fuer Error/Warning Rates
+    - In-Memory Rolling Window für schnelle Analysen
+    - Trend-Erkennung für Error/Warning Rates
     - Anomalie-Erkennung bei Spikes
     - Dashboard-kompatible Metriken
     """
@@ -119,17 +119,17 @@ class LogAnalyticsService:
         Initialisiere Log Analytics Service.
 
         Args:
-            window_size_minutes: Groesse des Analyse-Fensters
-            anomaly_threshold: Schwellwert fuer Anomalie-Erkennung (Standardabweichungen)
+            window_size_minutes: Größe des Analyse-Fensters
+            anomaly_threshold: Schwellwert für Anomalie-Erkennung (Standardabweichungen)
         """
         self.window_size_minutes = window_size_minutes
         self.anomaly_threshold = anomaly_threshold
 
         # In-Memory Rolling Window
         self._entries: List[LogEntry] = []
-        self._max_entries = 100000  # Max Eintraege im Memory
+        self._max_entries = 100000  # Max Einträge im Memory
 
-        # Historische Metriken fuer Trend-Analyse
+        # Historische Metriken für Trend-Analyse
         self._historical_metrics: List[Tuple[datetime, LogMetrics]] = []
         self._max_history = 24 * 60  # 24h bei Minutenaufloesung
 
@@ -152,7 +152,7 @@ class LogAnalyticsService:
             level: Log-Level
             source: Quelle (Modul/Service)
             message: Log-Nachricht
-            metadata: Zusaetzliche Metadaten
+            metadata: Zusätzliche Metadaten
         """
         entry = LogEntry(
             timestamp=datetime.now(timezone.utc),
@@ -170,7 +170,7 @@ class LogAnalyticsService:
 
     def get_metrics(self, last_minutes: Optional[int] = None) -> LogMetrics:
         """
-        Berechnet Log-Metriken fuer den angegebenen Zeitraum.
+        Berechnet Log-Metriken für den angegebenen Zeitraum.
 
         Args:
             last_minutes: Zeitfenster in Minuten (None = alles)
@@ -279,13 +279,13 @@ class LogAnalyticsService:
         else:
             direction = TrendDirection.DECREASING
 
-        # Anomalie pruefen
+        # Anomalie prüfen
         is_anomaly = False
         anomaly_reason = None
 
         if critical_threshold and current > critical_threshold:
             is_anomaly = True
-            anomaly_reason = f"Wert {current:.1f}% ueberschreitet kritischen Schwellwert {critical_threshold:.1f}%"
+            anomaly_reason = f"Wert {current:.1f}% überschreitet kritischen Schwellwert {critical_threshold:.1f}%"
         elif abs(change_percent) > 100 and current > previous:
             is_anomaly = True
             anomaly_reason = f"Starker Anstieg um {change_percent:.0f}% erkannt"
@@ -302,7 +302,7 @@ class LogAnalyticsService:
 
     def get_health_report(self) -> LogHealthReport:
         """
-        Erstellt vollstaendigen Log-Health-Report.
+        Erstellt vollständigen Log-Health-Report.
 
         Returns:
             LogHealthReport mit Metriken, Trends und Empfehlungen
@@ -328,11 +328,11 @@ class LogAnalyticsService:
             alerts.append({
                 "severity": "warning",
                 "type": "elevated_error_rate",
-                "message": f"Erhoehte Error Rate: {metrics.error_rate_percent:.1f}%",
+                "message": f"Erhöhte Error Rate: {metrics.error_rate_percent:.1f}%",
                 "threshold": self._error_rate_warning,
                 "current": metrics.error_rate_percent,
             })
-            recommendations.append("Pruefe Error-Logs auf wiederkehrende Probleme")
+            recommendations.append("Prüfe Error-Logs auf wiederkehrende Probleme")
 
         # Warning Rate Alert
         if metrics.warning_rate_percent >= self._warning_rate_critical:
@@ -359,7 +359,7 @@ class LogAnalyticsService:
         if not recommendations:
             if metrics.error_rate_percent < 1:
                 recommendations.append("System-Logs zeigen gesunde Fehlerraten")
-            recommendations.append("Regelmaessige Log-Ueberpruefung empfohlen")
+            recommendations.append("Regelmäßige Log-Überprüfung empfohlen")
 
         return LogHealthReport(
             timestamp=datetime.now(timezone.utc),
@@ -372,13 +372,13 @@ class LogAnalyticsService:
 
     def get_top_errors(self, limit: int = 10) -> List[Dict[str, Any]]:
         """
-        Gibt die haeufigsten Errors zurueck.
+        Gibt die häufigsten Errors zurück.
 
         Args:
             limit: Anzahl der Top-Errors
 
         Returns:
-            Liste der haeufigsten Errors
+            Liste der häufigsten Errors
         """
         entries = self._get_entries_in_window(self.window_size_minutes)
         error_entries = [
@@ -391,7 +391,7 @@ class LogAnalyticsService:
         error_examples: Dict[str, LogEntry] = {}
 
         for entry in error_entries:
-            # Normalisiere Message fuer Gruppierung
+            # Normalisiere Message für Gruppierung
             key = f"{entry.source}:{entry.message[:100]}"
             error_counts[key] += 1
             if key not in error_examples:
@@ -421,10 +421,10 @@ class LogAnalyticsService:
         periods: int = 12,
     ) -> List[Dict[str, Any]]:
         """
-        Gibt Log-Volumen nach Zeit zurueck (fuer Charts).
+        Gibt Log-Volumen nach Zeit zurück (für Charts).
 
         Args:
-            interval_minutes: Intervall-Groesse
+            interval_minutes: Intervall-Größe
             periods: Anzahl der Perioden
 
         Returns:
@@ -456,7 +456,7 @@ class LogAnalyticsService:
 
     def get_source_statistics(self) -> List[Dict[str, Any]]:
         """
-        Gibt Statistiken nach Log-Quelle zurueck.
+        Gibt Statistiken nach Log-Quelle zurück.
 
         Returns:
             Liste mit Source-Statistiken
@@ -486,7 +486,7 @@ class LogAnalyticsService:
         return result
 
     def _get_entries_in_window(self, minutes: Optional[int] = None) -> List[LogEntry]:
-        """Holt Eintraege im Zeitfenster."""
+        """Holt Einträge im Zeitfenster."""
         if minutes is None:
             return self._entries
 
@@ -500,7 +500,7 @@ class LogAnalyticsService:
         return self._historical_metrics[-2][1]
 
     def store_metrics_snapshot(self) -> None:
-        """Speichert aktuellen Metriken-Snapshot fuer Historie."""
+        """Speichert aktuellen Metriken-Snapshot für Historie."""
         metrics = self.get_metrics(self.window_size_minutes)
         self._historical_metrics.append((datetime.now(timezone.utc), metrics))
 
@@ -510,7 +510,7 @@ class LogAnalyticsService:
 
     def get_dashboard_data(self) -> Dict[str, Any]:
         """
-        Gibt alle Daten fuer Dashboard zurueck.
+        Gibt alle Daten für Dashboard zurück.
 
         Returns:
             Dictionary mit allen Dashboard-relevanten Daten
@@ -555,7 +555,7 @@ _log_analytics_service: Optional[LogAnalyticsService] = None
 
 
 def get_log_analytics_service() -> LogAnalyticsService:
-    """Gibt LogAnalyticsService-Instanz zurueck."""
+    """Gibt LogAnalyticsService-Instanz zurück."""
     global _log_analytics_service
     if _log_analytics_service is None:
         _log_analytics_service = LogAnalyticsService()

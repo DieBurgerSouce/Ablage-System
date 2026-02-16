@@ -2,14 +2,14 @@
 """
 Document Groups API Endpoints.
 
-REST API fuer Dokumentgruppen (zusammengehoerige Dokumente):
+REST API für Dokumentgruppen (zusammengehoerige Dokumente):
 - CRUD Operationen
 - Automatische Erkennung
-- Manuelle Bestaetigung/Ablehnung
-- Gruppen teilen/zusammenfuehren
+- Manuelle Bestätigung/Ablehnung
+- Gruppen teilen/zusammenführen
 - Validation Queue
 
-Feinpoliert und durchdacht - 99%+ Praezision.
+Feinpoliert und durchdacht - 99%+ Präzision.
 """
 
 from typing import Optional, List
@@ -61,7 +61,7 @@ router = APIRouter(prefix="/groups", tags=["Document Groups"])
 )
 async def list_groups(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     search: Optional[str] = Query(
         None, min_length=1, max_length=100,
         description="Suche in Name, Referenznummer"
@@ -73,7 +73,7 @@ async def list_groups(
         None, description="Nur Gruppen in Validation Queue"
     ),
     user_confirmed: Optional[bool] = Query(
-        None, description="Nach Bestaetigung filtern"
+        None, description="Nach Bestätigung filtern"
     ),
     min_confidence: Optional[float] = Query(
         None, ge=0.0, le=1.0, description="Minimale Konfidenz"
@@ -88,8 +88,8 @@ async def list_groups(
 
     **Filter:**
     - **group_type**: stapled, multi_page, transaction, etc.
-    - **needs_review**: Nur Gruppen die Ueberpruefung benoetigen
-    - **user_confirmed**: Manuell bestaetigte Gruppen
+    - **needs_review**: Nur Gruppen die Überprüfung benötigen
+    - **user_confirmed**: Manuell bestätigte Gruppen
     - **min_confidence**: Minimale Erkennungs-Konfidenz
 
     **Sortierung:**
@@ -153,13 +153,13 @@ async def list_groups(
 
 
 # =============================================================================
-# NEXT NUMBER (fuer Vorgang-Benennung)
+# NEXT NUMBER (für Vorgang-Benennung)
 # =============================================================================
 
 @router.get(
     "/next-number",
-    summary="Naechste laufende Nummer fuer Entity",
-    description="Gibt die naechste freie laufende Nummer fuer einen Entity-Namen zurueck (z.B. Alpac -> 3 wenn Alpac_001 und Alpac_002 existieren)"
+    summary="Nächste laufende Nummer für Entity",
+    description="Gibt die nächste freie laufende Nummer für einen Entity-Namen zurück (z.B. Alpac -> 3 wenn Alpac_001 und Alpac_002 existieren)"
 )
 async def get_next_transaction_number(
     entity: str = Query(..., min_length=1, max_length=200, description="Entity-Name (z.B. Lieferantenname)"),
@@ -167,14 +167,14 @@ async def get_next_transaction_number(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Ermittelt die naechste laufende Nummer fuer Vorgaenge eines Entity.
+    Ermittelt die nächste laufende Nummer für Vorgaenge eines Entity.
 
     Durchsucht bestehende Gruppen nach dem Pattern `{entity}_XXX` und
-    gibt die naechste freie Nummer zurueck.
+    gibt die nächste freie Nummer zurück.
 
     **Beispiel:**
     - Existiert: Alpac_001, Alpac_002
-    - Rueckgabe: {"next_number": 3}
+    - Rückgabe: {"next_number": 3}
     """
     # Suche nach bestehenden Gruppen mit diesem Entity-Prefix
     pattern = f"{entity}_%"
@@ -237,7 +237,7 @@ async def get_group(
             detail="Dokumentgruppe nicht gefunden"
         )
 
-    # Zugriffspruefung
+    # Zugriffsprüfung
     if group.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -286,7 +286,7 @@ async def create_group(
 
     Manuell erstellte Gruppen haben immer `user_confirmed=True`.
     """
-    # Dokumente pruefen
+    # Dokumente prüfen
     if not data.document_ids:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -308,7 +308,7 @@ async def create_group(
             detail="Eines oder mehrere Dokumente nicht gefunden"
         )
 
-    # Pruefen ob Dokumente bereits in einer Gruppe
+    # Prüfen ob Dokumente bereits in einer Gruppe
     for doc in documents:
         if doc.group_id:
             raise HTTPException(
@@ -375,7 +375,7 @@ async def update_group(
     """
     Aktualisiert Metadaten einer Dokumentgruppe.
 
-    Aenderbare Felder:
+    Änderbare Felder:
     - name, description
     - reference_number
     - document_date
@@ -423,22 +423,22 @@ async def update_group(
 @router.delete(
     "/{group_id}",
     response_model=MessageResponse,
-    summary="Dokumentgruppe loeschen",
-    description="Loescht eine Dokumentgruppe (Soft-Delete)"
+    summary="Dokumentgruppe löschen",
+    description="Löscht eine Dokumentgruppe (Soft-Delete)"
 )
 async def delete_group(
     group_id: UUID,
     unlink_documents: bool = Query(
-        True, description="Dokumente aus Gruppe entfernen (nicht loeschen)"
+        True, description="Dokumente aus Gruppe entfernen (nicht löschen)"
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> MessageResponse:
     """
-    Loescht eine Dokumentgruppe (Soft-Delete).
+    Löscht eine Dokumentgruppe (Soft-Delete).
 
     Dokumente werden standardmaessig nur aus der Gruppe entfernt,
-    nicht geloescht.
+    nicht gelöscht.
     """
     result = await db.execute(
         select(DocumentGroup)
@@ -480,7 +480,7 @@ async def delete_group(
         user_id=str(current_user.id),
     )
 
-    return MessageResponse(message="Dokumentgruppe erfolgreich geloescht")
+    return MessageResponse(message="Dokumentgruppe erfolgreich gelöscht")
 
 
 # =============================================================================
@@ -507,9 +507,9 @@ async def detect_groups(
     3. **Seitennummerierung**: "Seite X von Y"
     4. **Referenzen**: Bezuege zwischen Dokumenten
 
-    **Konfidenz-Schwellenwerte (99%+ Praezision):**
+    **Konfidenz-Schwellenwerte (99%+ Präzision):**
     - >= 0.99: Automatisch gruppieren
-    - 0.80-0.99: Zur Ueberpruefung markieren
+    - 0.80-0.99: Zur Überprüfung markieren
     - < 0.60: Ignorieren
 
     **Request:**
@@ -573,8 +573,8 @@ async def detect_groups(
 @router.post(
     "/{group_id}/confirm",
     response_model=DocumentGroupResponse,
-    summary="Gruppe bestaetigen",
-    description="Bestaetigt eine automatisch erkannte Gruppe manuell"
+    summary="Gruppe bestätigen",
+    description="Bestätigt eine automatisch erkannte Gruppe manuell"
 )
 async def confirm_group(
     group_id: UUID,
@@ -582,13 +582,13 @@ async def confirm_group(
     db: AsyncSession = Depends(get_db),
 ) -> DocumentGroupResponse:
     """
-    Bestaetigt eine Dokumentgruppe manuell.
+    Bestätigt eine Dokumentgruppe manuell.
 
     Entfernt die Gruppe aus der Validation Queue.
     """
     service = DocumentGroupingService(db)
 
-    # SECURITY: owner_id fuer Multi-Tenant Isolation
+    # SECURITY: owner_id für Multi-Tenant Isolation
     success = await service.confirm_group(
         group_id=group_id,
         user_id=current_user.id,
@@ -601,7 +601,7 @@ async def confirm_group(
             detail="Dokumentgruppe nicht gefunden"
         )
 
-    # SECURITY: owner_id Filter fuer Defense-in-Depth
+    # SECURITY: owner_id Filter für Defense-in-Depth
     result = await db.execute(
         select(DocumentGroup).where(
             DocumentGroup.id == group_id,
@@ -658,7 +658,7 @@ async def reject_group(
             doc.page_number_in_group = None
             doc.is_group_primary = False
 
-    # Gruppe als abgelehnt markieren und loeschen
+    # Gruppe als abgelehnt markieren und löschen
     group.deleted_at = utc_now()
     group.needs_review = False
 
@@ -692,7 +692,7 @@ async def split_group(
     Teilt eine Dokumentgruppe in mehrere neue Gruppen.
 
     **Request:**
-    - new_groups: Liste von Listen mit Dokument-IDs fuer jede neue Gruppe
+    - new_groups: Liste von Listen mit Dokument-IDs für jede neue Gruppe
 
     **Beispiel:**
     ```json
@@ -704,7 +704,7 @@ async def split_group(
     }
     ```
     """
-    # Gruppe pruefen
+    # Gruppe prüfen
     result = await db.execute(
         select(DocumentGroup).where(
             DocumentGroup.id == group_id,
@@ -727,7 +727,7 @@ async def split_group(
 
     service = DocumentGroupingService(db)
 
-    # SECURITY: owner_id fuer Multi-Tenant Isolation (Defense-in-Depth)
+    # SECURITY: owner_id für Multi-Tenant Isolation (Defense-in-Depth)
     new_group_ids = await service.split_group(
         group_id=group_id,
         user_id=current_user.id,
@@ -744,8 +744,8 @@ async def split_group(
 @router.post(
     "/merge",
     response_model=DocumentGroupResponse,
-    summary="Gruppen zusammenfuehren",
-    description="Fuehrt mehrere Gruppen zu einer zusammen"
+    summary="Gruppen zusammenführen",
+    description="Führt mehrere Gruppen zu einer zusammen"
 )
 async def merge_groups(
     data: GroupMergeRequest,
@@ -753,10 +753,10 @@ async def merge_groups(
     db: AsyncSession = Depends(get_db),
 ) -> DocumentGroupResponse:
     """
-    Fuehrt mehrere Dokumentgruppen zu einer zusammen.
+    Führt mehrere Dokumentgruppen zu einer zusammen.
 
     - **target_id**: Gruppe die erhalten bleibt
-    - **source_ids**: Gruppen die zusammengefuehrt werden
+    - **source_ids**: Gruppen die zusammengeführt werden
     """
     # Target laden
     target_result = await db.execute(
@@ -809,7 +809,7 @@ async def merge_groups(
                 doc.is_group_primary = False
                 total_docs += 1
 
-        # Source loeschen
+        # Source löschen
         source.deleted_at = utc_now()
         merged_count += 1
 
@@ -840,7 +840,7 @@ async def merge_groups(
     "/queue/review",
     response_model=ValidationQueueResponse,
     summary="Validation Queue",
-    description="Listet Gruppen auf die manuelle Ueberpruefung benoetigen"
+    description="Listet Gruppen auf die manuelle Überprüfung benötigen"
 )
 async def get_review_queue(
     limit: int = Query(50, ge=1, le=100, description="Maximale Anzahl"),
@@ -848,13 +848,13 @@ async def get_review_queue(
     db: AsyncSession = Depends(get_db),
 ) -> ValidationQueueResponse:
     """
-    Gibt Dokumentgruppen zurueck die auf Ueberpruefung warten.
+    Gibt Dokumentgruppen zurück die auf Überprüfung warten.
 
     Sortiert nach Prioritaet (1=hoechste) und Erstellungsdatum.
 
     Diese Gruppen haben:
     - Konfidenz zwischen 80% und 99%
-    - Wurden automatisch erkannt aber nicht bestaetigt
+    - Wurden automatisch erkannt aber nicht bestätigt
     """
     service = DocumentGroupingService(db)
 
@@ -884,14 +884,14 @@ async def get_review_queue(
 @router.get(
     "/stats",
     summary="Gruppierungsstatistiken",
-    description="Gibt Statistiken ueber Dokumentgruppen zurueck"
+    description="Gibt Statistiken über Dokumentgruppen zurück"
 )
 async def get_group_stats(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Gibt Statistiken ueber Dokumentgruppen zurueck.
+    Gibt Statistiken über Dokumentgruppen zurück.
 
     - Gesamtzahl Gruppen
     - Aufschluesselung nach Typ
@@ -919,7 +919,7 @@ async def get_group_stats(
     type_result = await db.execute(type_query)
     by_type = dict(type_result.all())
 
-    # Bestaetigt vs nicht bestaetigt
+    # Bestätigt vs nicht bestätigt
     confirmed_query = select(func.count()).select_from(
         select(DocumentGroup).where(
             DocumentGroup.owner_id == current_user.id,

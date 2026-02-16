@@ -1,7 +1,7 @@
 """
 Position API Endpoints - Stellen-/Positions-Verwaltung (Enterprise Security).
 
-CRUD-Operationen fuer Positionen/Stellen.
+CRUD-Operationen für Positionen/Stellen.
 Alle Antworten auf Deutsch.
 
 Security Features:
@@ -44,7 +44,7 @@ router = APIRouter(prefix="/positions", tags=["Personal - Positionen"])
 # ==================== F.1 CRITICAL: Safe Error Messages ====================
 
 def _get_safe_error_response(error: ValueError) -> tuple[int, str]:
-    """Klassifiziert Fehler und gibt generische Nachricht zurueck.
+    """Klassifiziert Fehler und gibt generische Nachricht zurück.
 
     F.1 CRITICAL: Verhindert Information Leakage durch Exception-Messages.
     Interne Details werden geloggt, aber nicht an Client gesendet.
@@ -56,13 +56,13 @@ def _get_safe_error_response(error: ValueError) -> tuple[int, str]:
     elif 'nicht gefunden' in error_msg or 'not found' in error_msg:
         return status.HTTP_404_NOT_FOUND, "Die referenzierte Ressource wurde nicht gefunden."
     elif 'zyklisch' in error_msg or 'cycle' in error_msg:
-        return status.HTTP_400_BAD_REQUEST, "Diese Aenderung wuerde eine ungueltige Struktur erzeugen."
+        return status.HTTP_400_BAD_REQUEST, "Diese Änderung wuerde eine ungültige Struktur erzeugen."
     elif 'berechtigung' in error_msg or 'permission' in error_msg or 'zugriff' in error_msg:
-        return status.HTTP_403_FORBIDDEN, "Keine Berechtigung fuer diese Aktion."
-    elif 'ungueltig' in error_msg or 'invalid' in error_msg or 'format' in error_msg:
-        return status.HTTP_400_BAD_REQUEST, "Die Eingabedaten sind ungueltig."
+        return status.HTTP_403_FORBIDDEN, "Keine Berechtigung für diese Aktion."
+    elif 'ungültig' in error_msg or 'invalid' in error_msg or 'format' in error_msg:
+        return status.HTTP_400_BAD_REQUEST, "Die Eingabedaten sind ungültig."
     elif 'mitarbeiter' in error_msg or 'zugeordnet' in error_msg or 'nicht leer' in error_msg:
-        return status.HTTP_409_CONFLICT, "Die Ressource kann nicht geloescht werden, da sie noch verwendet wird."
+        return status.HTTP_409_CONFLICT, "Die Ressource kann nicht gelöscht werden, da sie noch verwendet wird."
     else:
         return status.HTTP_400_BAD_REQUEST, "Die Anfrage konnte nicht verarbeitet werden."
 
@@ -70,7 +70,7 @@ def _get_safe_error_response(error: ValueError) -> tuple[int, str]:
 # ==================== Pydantic Schemas ====================
 
 class PositionBase(BaseModel):
-    """Basis-Schema fuer Position."""
+    """Basis-Schema für Position."""
     title: str = Field(..., min_length=1, max_length=200, description="Stellenbezeichnung")
     description: Optional[str] = Field(None, max_length=2000, description="Stellenbeschreibung")
     department_id: Optional[UUID] = Field(None, description="Zugeordnete Abteilung")
@@ -78,7 +78,7 @@ class PositionBase(BaseModel):
     job_family: Optional[str] = Field(None, max_length=100, description="Job-Familie (z.B. IT, Finance)")
     min_salary: Optional[float] = Field(None, ge=0, description="Mindestgehalt")
     max_salary: Optional[float] = Field(None, ge=0, description="Maximalgehalt")
-    is_management: bool = Field(False, description="Fuehrungsposition")
+    is_management: bool = Field(False, description="Führungsposition")
     is_active: bool = Field(True, description="Aktiv")
     sort_order: int = Field(0, description="Sortierreihenfolge")
     requirements: Optional[str] = Field(None, description="Anforderungen (Markdown)")
@@ -97,12 +97,12 @@ class PositionBase(BaseModel):
 
 
 class PositionCreate(PositionBase):
-    """Schema fuer Positions-Erstellung."""
+    """Schema für Positions-Erstellung."""
     pass
 
 
 class PositionUpdate(BaseModel):
-    """Schema fuer Positions-Update (alle Felder optional)."""
+    """Schema für Positions-Update (alle Felder optional)."""
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = Field(None, max_length=2000)
     department_id: Optional[UUID] = None
@@ -136,7 +136,7 @@ class DepartmentInfo(BaseModel):
 
 
 class PositionResponse(BaseModel):
-    """Response-Schema fuer Position.
+    """Response-Schema für Position.
 
     Hinweis: Gehaltsfelder sind nur mit positions:read_salary sichtbar.
     """
@@ -160,7 +160,7 @@ class PositionResponse(BaseModel):
 
 
 class PositionDetailResponse(PositionResponse):
-    """Detaillierte Response mit zusaetzlichen Infos."""
+    """Detaillierte Response mit zusätzlichen Infos."""
     requirements: Optional[str] = None
     responsibilities: Optional[str] = None
     updated_at: Optional[str] = None
@@ -195,18 +195,18 @@ class MessageResponse(BaseModel):
     "",
     response_model=PositionListResponse,
     summary="Positionen auflisten",
-    description="Gibt alle Positionen mit optionaler Filterung und Paginierung zurueck. "
+    description="Gibt alle Positionen mit optionaler Filterung und Paginierung zurück. "
                 "Erfordert Berechtigung: positions:read. "
                 "Gehaltsfelder nur mit positions:read_salary sichtbar."
 )
 async def list_positions(
     request: Request,
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite (max 100)"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite (max 100)"),
     search: Optional[str] = Query(None, min_length=1, max_length=100, description="Suche (Titel)"),
     department_id: Optional[UUID] = Query(None, description="Filter nach Abteilung"),
     job_family: Optional[str] = Query(None, description="Filter nach Job-Familie"),
-    is_management: Optional[bool] = Query(None, description="Nur Fuehrungspositionen"),
+    is_management: Optional[bool] = Query(None, description="Nur Führungspositionen"),
     include_inactive: bool = Query(False, description="Inaktive einbeziehen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_position_read),
@@ -218,10 +218,10 @@ async def list_positions(
     Erfordert: positions:read
     Gehaltsfelder: Nur mit positions:read_salary sichtbar
     """
-    # IP-Adresse fuer Audit-Log (A.1 CRITICAL: Audit-Logging fuer List-Operationen)
+    # IP-Adresse für Audit-Log (A.1 CRITICAL: Audit-Logging für List-Operationen)
     ip_address = request.client.host if request.client else None
 
-    # Pruefen ob User Gehaelter sehen darf
+    # Prüfen ob User Gehaelter sehen darf
     perm_ctx = PermissionContext(db, current_user)
     can_see_salary = await perm_ctx.can("positions:read_salary")
 
@@ -254,7 +254,7 @@ async def list_positions(
     "/job-families",
     response_model=List[JobFamilyStats],
     summary="Job-Familien auflisten",
-    description="Gibt alle Job-Familien mit Statistiken zurueck. "
+    description="Gibt alle Job-Familien mit Statistiken zurück. "
                 "Erfordert Berechtigung: positions:read"
 )
 async def get_job_families(
@@ -304,14 +304,14 @@ async def create_position(
     Erfordert: positions:write
     Audit-Log: POSITION_CREATED
     """
-    # IP-Adresse fuer Audit-Log
+    # IP-Adresse für Audit-Log
     ip_address = request.client.host if request.client else None
 
-    # Pruefen ob User Gehaelter sehen darf (A.3 CRITICAL: Gehalt-Maskierung in Response)
+    # Prüfen ob User Gehaelter sehen darf (A.3 CRITICAL: Gehalt-Maskierung in Response)
     perm_ctx = PermissionContext(db, current_user)
     can_see_salary = await perm_ctx.can("positions:read_salary")
 
-    # Daten fuer Service vorbereiten (Feldnamen-Mapping)
+    # Daten für Service vorbereiten (Feldnamen-Mapping)
     create_data = data.model_dump(exclude_unset=True)
 
     # min_salary/max_salary -> salary_band_min/salary_band_max
@@ -350,7 +350,7 @@ async def create_position(
     "/{position_id}",
     response_model=PositionDetailResponse,
     summary="Position abrufen",
-    description="Gibt Details einer Position zurueck. "
+    description="Gibt Details einer Position zurück. "
                 "Erfordert Berechtigung: positions:read. "
                 "Gehaltsfelder nur mit positions:read_salary sichtbar."
 )
@@ -362,16 +362,16 @@ async def get_position(
     company: Company = Depends(require_company),
     _rate_limit: User = Depends(check_rate_limit),  # A.2 CRITICAL: Rate Limiting
 ) -> PositionDetailResponse:
-    """Gibt eine Position zurueck.
+    """Gibt eine Position zurück.
 
     Erfordert: positions:read
     Gehaltsfelder: Nur mit positions:read_salary sichtbar
     Audit-Log: POSITION_ACCESSED (+ POSITION_SALARY_ACCESSED bei Gehaltszugriff)
     """
-    # IP-Adresse fuer Audit-Log
+    # IP-Adresse für Audit-Log
     ip_address = request.client.host if request.client else None
 
-    # Pruefen ob User Gehaelter sehen darf
+    # Prüfen ob User Gehaelter sehen darf
     perm_ctx = PermissionContext(db, current_user)
     can_see_salary = await perm_ctx.can("positions:read_salary")
 
@@ -413,16 +413,16 @@ async def update_position(
     """Aktualisiert eine Position.
 
     Erfordert: positions:write
-    Audit-Log: POSITION_UPDATED (Severity: warning bei Gehaltsaenderung)
+    Audit-Log: POSITION_UPDATED (Severity: warning bei Gehaltsänderung)
     """
-    # IP-Adresse fuer Audit-Log
+    # IP-Adresse für Audit-Log
     ip_address = request.client.host if request.client else None
 
-    # Pruefen ob User Gehaelter sehen darf (A.3 CRITICAL: Gehalt-Maskierung in Response)
+    # Prüfen ob User Gehaelter sehen darf (A.3 CRITICAL: Gehalt-Maskierung in Response)
     perm_ctx = PermissionContext(db, current_user)
     can_see_salary = await perm_ctx.can("positions:read_salary")
 
-    # Daten fuer Service vorbereiten (Feldnamen-Mapping)
+    # Daten für Service vorbereiten (Feldnamen-Mapping)
     update_data = data.model_dump(exclude_unset=True)
 
     # min_salary/max_salary -> salary_band_min/salary_band_max
@@ -468,8 +468,8 @@ async def update_position(
 @router.delete(
     "/{position_id}",
     response_model=MessageResponse,
-    summary="Position loeschen",
-    description="Loescht eine Position (Soft-Delete). "
+    summary="Position löschen",
+    description="Löscht eine Position (Soft-Delete). "
                 "Erfordert Berechtigung: positions:delete oder positions:manage"
 )
 async def delete_position(
@@ -480,12 +480,12 @@ async def delete_position(
     company: Company = Depends(require_company),
     _rate_limit: User = Depends(check_rate_limit),  # A.2 CRITICAL: Rate Limiting
 ) -> MessageResponse:
-    """Loescht eine Position (Soft-Delete).
+    """Löscht eine Position (Soft-Delete).
 
     Erfordert: positions:delete ODER positions:manage
     Audit-Log: POSITION_DELETED (Severity: warning)
     """
-    # IP-Adresse fuer Audit-Log
+    # IP-Adresse für Audit-Log
     ip_address = request.client.host if request.client else None
 
     try:
@@ -504,7 +504,7 @@ async def delete_position(
                 detail="Position nicht gefunden."
             )
 
-        return MessageResponse(message="Position erfolgreich geloescht.")
+        return MessageResponse(message="Position erfolgreich gelöscht.")
 
     except ValueError as e:
         # F.1 CRITICAL: Sichere Error-Messages - keine interne Details leaken
@@ -525,7 +525,7 @@ async def delete_position(
 def _dict_to_position_response(data: JSONDict) -> PositionResponse:
     """Konvertiert Service-Dict zu Response.
 
-    Mappt salary_band_min/max -> min_salary/max_salary fuer API-Kompatibilitaet.
+    Mappt salary_band_min/max -> min_salary/max_salary für API-Kompatibilität.
     """
     # Department-Info aufbauen falls vorhanden
     dept_data = data.get('department')
@@ -559,7 +559,7 @@ def _dict_to_position_response(data: JSONDict) -> PositionResponse:
 def _dict_to_detail_response(data: JSONDict) -> PositionDetailResponse:
     """Konvertiert Service-Dict zu Detail-Response.
 
-    Mappt salary_band_min/max -> min_salary/max_salary fuer API-Kompatibilitaet.
+    Mappt salary_band_min/max -> min_salary/max_salary für API-Kompatibilität.
     """
     # Department-Info aufbauen falls vorhanden
     dept_data = data.get('department')

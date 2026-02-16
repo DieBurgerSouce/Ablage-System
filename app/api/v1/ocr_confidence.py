@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-API-Endpunkte fuer OCR-Confidence-Daten.
+API-Endpunkte für OCR-Confidence-Daten.
 
 Stellt Wort-Level und Seiten-Level Confidence-Daten bereit
-fuer Viewer-Heatmap-Visualisierung.
+für Viewer-Heatmap-Visualisierung.
 
 Feinpoliert und durchdacht - Enterprise OCR Confidence API.
 """
@@ -45,7 +45,7 @@ class WordConfidenceResponse(BaseModel):
     x: float = Field(..., ge=0.0, le=1.0, description="X-Position (normalisiert 0-1)")
     y: float = Field(..., ge=0.0, le=1.0, description="Y-Position (normalisiert 0-1)")
     width: float = Field(..., ge=0.0, le=1.0, description="Breite (normalisiert 0-1)")
-    height: float = Field(..., ge=0.0, le=1.0, description="Hoehe (normalisiert 0-1)")
+    height: float = Field(..., ge=0.0, le=1.0, description="Höhe (normalisiert 0-1)")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -81,7 +81,7 @@ class ConfidenceSummaryResponse(BaseModel):
     total_pages: int = Field(..., ge=1, description="Gesamtanzahl Seiten")
     backend: str = Field(..., description="Verwendetes OCR-Backend")
     page_averages: Dict[int, float] = Field(default_factory=dict, description="Durchschnitts-Confidence pro Seite")
-    has_word_level_data: bool = Field(..., description="Sind Wort-Level Daten verfuegbar?")
+    has_word_level_data: bool = Field(..., description="Sind Wort-Level Daten verfügbar?")
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -97,7 +97,7 @@ class ConfidenceSummaryResponse(BaseModel):
     summary="Hole OCR-Confidence-Daten",
     description=(
         "Liefert detaillierte Wort-Level und Seiten-Level Confidence-Daten "
-        "fuer Heatmap-Visualisierung im Document Viewer."
+        "für Heatmap-Visualisierung im Document Viewer."
     )
 )
 async def get_document_confidence(
@@ -111,14 +111,14 @@ async def get_document_confidence(
     db: AsyncSession = Depends(get_db)
 ) -> DocumentConfidenceResponse:
     """
-    Hole OCR-Confidence-Daten fuer ein Dokument.
+    Hole OCR-Confidence-Daten für ein Dokument.
 
     **Zugriffsrechte**: Nur der Dokumenten-Owner kann die Daten abrufen.
 
     **Datenquellen** (in dieser Reihenfolge):
-    1. ocr_results.bounding_boxes (primaer, detaillierteste Daten)
-    2. ocr_results.detected_layout (fallback fuer Layout-Daten)
-    3. document.metadata (fallback fuer gespeicherte Confidence-Daten)
+    1. ocr_results.bounding_boxes (primär, detaillierteste Daten)
+    2. ocr_results.detected_layout (fallback für Layout-Daten)
+    3. document.metadata (fallback für gespeicherte Confidence-Daten)
     4. document.ocr_confidence (minimaler Fallback)
 
     **Anwendungsfall**: Heatmap-Visualisierung im Viewer
@@ -134,7 +134,7 @@ async def get_document_confidence(
 
     Raises:
         404: Dokument nicht gefunden
-        403: Keine Berechtigung fuer dieses Dokument
+        403: Keine Berechtigung für dieses Dokument
         500: Interner Serverfehler
     """
     try:
@@ -165,7 +165,7 @@ async def get_document_confidence(
             elif "Keine Berechtigung" in error_msg:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Keine Berechtigung fuer dieses Dokument"
+                    detail="Keine Berechtigung für dieses Dokument"
                 )
             else:
                 raise
@@ -213,9 +213,9 @@ async def get_confidence_summary(
     db: AsyncSession = Depends(get_db)
 ) -> ConfidenceSummaryResponse:
     """
-    Hole Confidence-Zusammenfassung fuer ein Dokument.
+    Hole Confidence-Zusammenfassung für ein Dokument.
 
-    Schnellere Alternative zu GET /{document_id} fuer Overview-Anzeigen.
+    Schnellere Alternative zu GET /{document_id} für Overview-Anzeigen.
     Liefert nur Seiten-Averages ohne Wort-Level Details.
 
     **Zugriffsrechte**: Nur der Dokumenten-Owner kann die Daten abrufen.
@@ -232,7 +232,7 @@ async def get_confidence_summary(
 
     Raises:
         404: Dokument nicht gefunden
-        403: Keine Berechtigung fuer dieses Dokument
+        403: Keine Berechtigung für dieses Dokument
         500: Interner Serverfehler
     """
     try:
@@ -261,7 +261,7 @@ async def get_confidence_summary(
             elif "Keine Berechtigung" in error_msg:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Keine Berechtigung fuer dieses Dokument"
+                    detail="Keine Berechtigung für dieses Dokument"
                 )
             else:
                 raise
@@ -308,7 +308,7 @@ def _convert_to_response(
         confidence_data: DocumentConfidenceData vom Service
 
     Returns:
-        DocumentConfidenceResponse fuer API
+        DocumentConfidenceResponse für API
     """
     pages_response: List[PageConfidenceResponse] = []
 

@@ -1,6 +1,6 @@
 """Document Access Logging Service - GoBD Compliance.
 
-Service fuer die Protokollierung von Dokumentzugriffen:
+Service für die Protokollierung von Dokumentzugriffen:
 - Automatisches Logging bei jedem Dokumentzugriff
 - Audit-Trail-Abfragen
 - GoBD-Compliance-Reports
@@ -8,8 +8,8 @@ Service fuer die Protokollierung von Dokumentzugriffen:
 
 GoBD-Anforderungen:
 - Nachvollziehbarkeit: Jeder Zugriff wird protokolliert
-- Unveraenderbarkeit: Logs sind immutable (DB-Trigger)
-- Vollstaendigkeit: Keine Luecken in Sequenznummern
+- Unveränderbarkeit: Logs sind immutable (DB-Trigger)
+- Vollständigkeit: Keine Lücken in Sequenznummern
 """
 
 import uuid
@@ -31,7 +31,7 @@ logger = structlog.get_logger(__name__)
 
 
 class DocumentAccessService:
-    """Service fuer GoBD-konformes Dokumenten-Zugriffsprotokoll."""
+    """Service für GoBD-konformes Dokumenten-Zugriffsprotokoll."""
 
     async def log_access(
         self,
@@ -60,11 +60,11 @@ class DocumentAccessService:
             ip_address: Optional IP-Adresse
             user_agent: Optional User-Agent
             request_id: Optional Request-Korrelations-ID
-            access_reason: Optional Grund fuer den Zugriff
+            access_reason: Optional Grund für den Zugriff
             success: War der Zugriff erfolgreich?
             error_message: Optional Fehlermeldung bei Fehlschlag
-            bytes_transferred: Optional Anzahl uebertragener Bytes
-            metadata: Optional zusaetzliche Metadaten
+            bytes_transferred: Optional Anzahl übertragener Bytes
+            metadata: Optional zusätzliche Metadaten
 
         Returns:
             DocumentAccessLog: Der erstellte Log-Eintrag
@@ -108,7 +108,7 @@ class DocumentAccessService:
         user_id: Optional[uuid.UUID] = None,
         **kwargs,
     ) -> DocumentAccessLog:
-        """Shortcut fuer View-Zugriff logging."""
+        """Shortcut für View-Zugriff logging."""
         return await self.log_access(
             db=db,
             document_id=document_id,
@@ -127,7 +127,7 @@ class DocumentAccessService:
         bytes_transferred: Optional[int] = None,
         **kwargs,
     ) -> DocumentAccessLog:
-        """Shortcut fuer Download-Zugriff logging."""
+        """Shortcut für Download-Zugriff logging."""
         return await self.log_access(
             db=db,
             document_id=document_id,
@@ -147,7 +147,7 @@ class DocumentAccessService:
         user_id: Optional[uuid.UUID] = None,
         **kwargs,
     ) -> DocumentAccessLog:
-        """Shortcut fuer Export-Zugriff logging."""
+        """Shortcut für Export-Zugriff logging."""
         metadata = kwargs.pop("metadata", {})
         metadata["export_format"] = export_format
         return await self.log_access(
@@ -180,15 +180,15 @@ class DocumentAccessService:
             db: Datenbank-Session
             document_id: ID des Dokuments
             company_id: Firmen-ID (Zugriffskontrolle)
-            limit: Max. Anzahl Eintraege
-            offset: Offset fuer Pagination
+            limit: Max. Anzahl Einträge
+            offset: Offset für Pagination
             access_type: Optional Filter nach einzelnem Zugriffstyp
             access_types: Optional Filter nach mehreren Zugriffstypen
             start_date/from_date: Optional Filter ab Datum
             end_date/to_date: Optional Filter bis Datum
 
         Returns:
-            Dict mit logs, total_count, has_gaps, gap_count (Lueckenerkennung)
+            Dict mit logs, total_count, has_gaps, gap_count (Lückenerkennung)
         """
         # Support both parameter names for flexibility
         filter_from = start_date or from_date
@@ -278,8 +278,8 @@ class DocumentAccessService:
             db: Datenbank-Session
             user_id: Benutzer-ID
             company_id: Firmen-ID
-            limit: Max. Anzahl Eintraege
-            offset: Offset fuer Pagination
+            limit: Max. Anzahl Einträge
+            offset: Offset für Pagination
             from_date: Optional Filter ab Datum
             to_date: Optional Filter bis Datum
 
@@ -348,7 +348,7 @@ class DocumentAccessService:
         from_date: Optional[datetime] = None,
         to_date: Optional[datetime] = None,
     ) -> Dict[str, Any]:
-        """Ruft Zugriffsstatistiken fuer eine Firma ab.
+        """Ruft Zugriffsstatistiken für eine Firma ab.
 
         Args:
             db: Datenbank-Session
@@ -475,12 +475,12 @@ class DocumentAccessService:
         db: AsyncSession,
         document_id: uuid.UUID,
     ) -> bool:
-        """Prueft auf Luecken in den Sequenznummern.
+        """Prüft auf Lücken in den Sequenznummern.
 
-        GoBD-Anforderung: Vollstaendigkeit - keine Luecken im Protokoll.
+        GoBD-Anforderung: Vollständigkeit - keine Lücken im Protokoll.
 
         Returns:
-            True wenn Luecken existieren
+            True wenn Lücken existieren
         """
         # Get all sequence numbers for this document
         result = await db.execute(
@@ -509,9 +509,9 @@ class DocumentAccessService:
         document_id: uuid.UUID,
         company_id: uuid.UUID,
     ) -> Dict[str, Any]:
-        """Prueft auf Luecken in den Sequenznummern - detailliert.
+        """Prüft auf Lücken in den Sequenznummern - detailliert.
 
-        GoBD-Anforderung: Vollstaendigkeit - keine Luecken im Protokoll.
+        GoBD-Anforderung: Vollständigkeit - keine Lücken im Protokoll.
 
         Returns:
             Dict mit has_gaps und gap_count
@@ -544,11 +544,11 @@ class DocumentAccessService:
         end_date: Optional[datetime] = None,
         from_date: Optional[datetime] = None,
     ) -> Dict[str, Any]:
-        """Verifiziert die Integritaet des Audit-Trails.
+        """Verifiziert die Integrität des Audit-Trails.
 
-        Prueft:
+        Prüft:
         - Keine NULL-Sequenznummern
-        - Keine globalen Luecken
+        - Keine globalen Lücken
         - Keine Duplikate
 
         Args:
@@ -601,7 +601,7 @@ class DocumentAccessService:
         if null_sequences > 0:
             gaps.append({
                 "type": "null_sequence",
-                "description": f"{null_sequences} Eintraege ohne Sequenznummer",
+                "description": f"{null_sequences} Einträge ohne Sequenznummer",
                 "count": null_sequences,
             })
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """Supplier Verification API Endpoints.
 
-API fuer Lieferanten-Verifizierung gegen externe Register.
+API für Lieferanten-Verifizierung gegen externe Register.
 
 Endpoints:
 - POST /entities/{id}/verify - Lieferant verifizieren
@@ -107,7 +107,7 @@ class VerificationResultResponse(BaseModel):
 
     SECURITY NOTE (P0 Fix - CWE-200):
     entity_name wurde entfernt um PII-Leakage zu verhindern.
-    Der Client kann den Entity-Namen ueber die entity_id abrufen.
+    Der Client kann den Entity-Namen über die entity_id abrufen.
     """
 
     entity_id: str
@@ -126,7 +126,7 @@ class VerificationResultResponse(BaseModel):
 
 
 class VerifyRequest(BaseModel):
-    """Anfrage fuer Verifizierung."""
+    """Anfrage für Verifizierung."""
 
     force_refresh: bool = Field(
         default=False,
@@ -134,12 +134,12 @@ class VerifyRequest(BaseModel):
     )
     sources: Optional[List[str]] = Field(
         default=None,
-        description="Optionale Liste der zu pruefenden Quellen",
+        description="Optionale Liste der zu prüfenden Quellen",
     )
 
 
 class BatchVerifyRequest(BaseModel):
-    """Anfrage fuer Batch-Verifizierung."""
+    """Anfrage für Batch-Verifizierung."""
 
     entity_ids: List[UUID] = Field(..., min_length=1, max_length=50)
     force_refresh: bool = False
@@ -177,9 +177,9 @@ async def verify_entity(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> VerificationResultResponse:
-    """Verifiziert einen Geschaeftspartner gegen externe Register.
+    """Verifiziert einen Geschäftspartner gegen externe Register.
 
-    Prueft:
+    Prüft:
     - Handelsregister (Firmenexistenz, Status)
     - Insolvenzregister (Keine Insolvenz)
     - VIES (USt-IdNr Validierung, EU-weit)
@@ -240,7 +240,7 @@ async def get_verification_status(
 ) -> VerificationResultResponse:
     """Ruft den aktuellen Verifizierungsstatus ab.
 
-    Gibt den gecachten Status zurueck falls vorhanden.
+    Gibt den gecachten Status zurück falls vorhanden.
     Startet keine neue Verifizierung.
     """
     company_id = await get_user_company_id(db, current_user)
@@ -326,7 +326,7 @@ async def get_entities_needing_verification(
 ) -> VerificationNeededResponse:
     """Findet Entities die verifiziert werden sollten.
 
-    Gibt Entities zurueck die:
+    Gibt Entities zurück die:
     - Noch nie verifiziert wurden
     - Deren Verifizierung abgelaufen ist (> 30 Tage)
     """

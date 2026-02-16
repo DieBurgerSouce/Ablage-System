@@ -1,4 +1,4 @@
-"""Automatische Buchungsvorschlaege Service.
+"""Automatische Buchungsvorschläge Service.
 
 Phase 5.1: Lernt aus vergangenen Buchungen und schlaegt vor:
 - SKR03/SKR04 Konto
@@ -6,7 +6,7 @@ Phase 5.1: Lernt aus vergangenen Buchungen und schlaegt vor:
 - Steuersatz
 - Konfidenz-Score pro Vorschlag
 
-Feedback-Loop: Korrekturen verbessern zukuenftige Vorschlaege.
+Feedback-Loop: Korrekturen verbessern zukünftige Vorschläge.
 
 Feinpoliert und durchdacht - Enterprise Accounting Automation.
 """
@@ -38,7 +38,7 @@ class BookingSuggestion:
     account_name: str             # Kontobezeichnung
     cost_center: Optional[str]    # Kostenstelle
     tax_rate: Decimal             # Steuersatz (0.00, 0.07, 0.19)
-    tax_key: str                  # Steuerschluessel (z.B. "9" fuer 19% VSt)
+    tax_key: str                  # Steuerschluessel (z.B. "9" für 19% VSt)
     confidence: float             # 0.0 - 1.0
     reason: str                   # Begruendung
     based_on_count: int           # Anzahl historischer Buchungen als Basis
@@ -57,7 +57,7 @@ class BookingResult:
 
 
 # ============================================================================
-# SKR03/SKR04 Kontenrahmen (Auszug der haeufigsten Konten)
+# SKR03/SKR04 Kontenrahmen (Auszug der häufigsten Konten)
 # ============================================================================
 
 
@@ -76,7 +76,7 @@ SKR03_ACCOUNTS: Dict[str, Dict[str, str]] = {
     "4610": {"name": "Werbekosten Anzeigen", "category": "aufwand"},
     "4630": {"name": "Geschenke an Kunden", "category": "aufwand"},
     "4650": {"name": "Bewirtungskosten", "category": "aufwand"},
-    "4654": {"name": "Nicht abzugsfaehige Bewirtungskosten", "category": "aufwand"},
+    "4654": {"name": "Nicht abzugsfähige Bewirtungskosten", "category": "aufwand"},
     "4660": {"name": "Reisekosten AN", "category": "aufwand"},
     "4670": {"name": "Reisekosten Unternehmer", "category": "aufwand"},
     "4700": {"name": "Kosten der Warenabgabe", "category": "aufwand"},
@@ -88,8 +88,8 @@ SKR03_ACCOUNTS: Dict[str, Dict[str, str]] = {
     "4930": {"name": "Buerokosten", "category": "aufwand"},
     "4940": {"name": "Zeitschriften, Buecher", "category": "aufwand"},
     "4950": {"name": "Rechts- und Beratungskosten", "category": "aufwand"},
-    "4955": {"name": "Buchfuehrungskosten", "category": "aufwand"},
-    "4960": {"name": "Mieten fuer Einrichtungen", "category": "aufwand"},
+    "4955": {"name": "Buchführungskosten", "category": "aufwand"},
+    "4960": {"name": "Mieten für Einrichtungen", "category": "aufwand"},
     "4970": {"name": "Nebenkosten des Geldverkehrs", "category": "aufwand"},
     # Wareneingang
     "3300": {"name": "Wareneingang 7% VSt", "category": "wareneinkauf"},
@@ -112,7 +112,7 @@ SKR04_ACCOUNTS: Dict[str, Dict[str, str]] = {
     "6610": {"name": "Werbekosten Anzeigen", "category": "aufwand"},
     "6630": {"name": "Geschenke an Kunden", "category": "aufwand"},
     "6640": {"name": "Bewirtungskosten", "category": "aufwand"},
-    "6644": {"name": "Nicht abzugsfaehige Bewirtungskosten", "category": "aufwand"},
+    "6644": {"name": "Nicht abzugsfähige Bewirtungskosten", "category": "aufwand"},
     "6650": {"name": "Reisekosten AN", "category": "aufwand"},
     "6660": {"name": "Reisekosten Unternehmer", "category": "aufwand"},
     "6740": {"name": "Kosten der Warenabgabe", "category": "aufwand"},
@@ -124,8 +124,8 @@ SKR04_ACCOUNTS: Dict[str, Dict[str, str]] = {
     "6815": {"name": "Buerokosten", "category": "aufwand"},
     "6820": {"name": "Zeitschriften, Buecher", "category": "aufwand"},
     "6825": {"name": "Rechts- und Beratungskosten", "category": "aufwand"},
-    "6827": {"name": "Buchfuehrungskosten", "category": "aufwand"},
-    "6835": {"name": "Mieten fuer Einrichtungen", "category": "aufwand"},
+    "6827": {"name": "Buchführungskosten", "category": "aufwand"},
+    "6835": {"name": "Mieten für Einrichtungen", "category": "aufwand"},
     "6855": {"name": "Nebenkosten des Geldverkehrs", "category": "aufwand"},
     # Wareneingang
     "5300": {"name": "Wareneingang 7% VSt", "category": "wareneinkauf"},
@@ -164,7 +164,7 @@ KEYWORD_ACCOUNT_MAP_SKR04: Dict[str, str] = {
     "anwalt": "6825",
     "steuerberater": "6827",
     "bank": "6855",
-    "kontogebuehr": "6855",
+    "kontogebühr": "6855",
 }
 
 
@@ -197,12 +197,12 @@ KEYWORD_ACCOUNT_MAP: Dict[str, str] = {
     "anwalt": "4950",
     "steuerberater": "4955",
     "bank": "4970",
-    "kontogebuehr": "4970",
+    "kontogebühr": "4970",
 }
 
 
 class BookingSuggestionService:
-    """Service fuer automatische Buchungsvorschlaege.
+    """Service für automatische Buchungsvorschläge.
 
     Analysiert Dokumente und schlaegt passende Buchungskonten vor,
     basierend auf:
@@ -218,7 +218,7 @@ class BookingSuggestionService:
         company_id: UUID,
         chart: str = "SKR03",
     ) -> BookingResult:
-        """Erstellt Buchungsvorschlaege fuer ein Dokument.
+        """Erstellt Buchungsvorschläge für ein Dokument.
 
         Args:
             db: Datenbank-Session
@@ -227,7 +227,7 @@ class BookingSuggestionService:
             chart: Kontenrahmen (SKR03/SKR04)
 
         Returns:
-            BookingResult mit Vorschlaegen
+            BookingResult mit Vorschlägen
         """
         # Dokument laden
         query = select(Document).where(
@@ -257,11 +257,11 @@ class BookingSuggestionService:
 
         suggestions = []
 
-        # 1. Keyword-basierte Vorschlaege
+        # 1. Keyword-basierte Vorschläge
         keyword_suggestions = self._suggest_by_keywords(text, chart)
         suggestions.extend(keyword_suggestions)
 
-        # 2. Dokumenttyp-basierte Vorschlaege
+        # 2. Dokumenttyp-basierte Vorschläge
         type_suggestions = self._suggest_by_document_type(
             doc.document_type, total_amount, chart
         )
@@ -275,7 +275,7 @@ class BookingSuggestionService:
                 seen_accounts.add(s.account_number)
                 unique_suggestions.append(s)
 
-        # Max. 3 Vorschlaege
+        # Max. 3 Vorschläge
         unique_suggestions = unique_suggestions[:3]
 
         logger.info(
@@ -304,9 +304,9 @@ class BookingSuggestionService:
         accepted_cost_center: Optional[str] = None,
         accepted_tax_rate: Optional[Decimal] = None,
     ) -> Dict:
-        """Feedback fuer einen Buchungsvorschlag aufzeichnen.
+        """Feedback für einen Buchungsvorschlag aufzeichnen.
 
-        Verbessert zukuenftige Vorschlaege durch Lernen aus Korrekturen.
+        Verbessert zukünftige Vorschläge durch Lernen aus Korrekturen.
 
         Args:
             db: Datenbank-Session
@@ -317,9 +317,9 @@ class BookingSuggestionService:
             accepted_tax_rate: Steuersatz
 
         Returns:
-            Dict mit Bestaetigung
+            Dict mit Bestätigung
         """
-        # In Dokument-Metadaten speichern fuer zukuenftiges Lernen
+        # In Dokument-Metadaten speichern für zukünftiges Lernen
         query = select(Document).where(
             and_(Document.id == document_id, Document.company_id == company_id)
         )
@@ -348,7 +348,7 @@ class BookingSuggestionService:
         return {
             "nachricht": "Buchungs-Feedback gespeichert",
             "konto": accepted_account,
-            "wird_fuer_zukuenftige_vorschlaege_genutzt": True,
+            "wird_für_zukünftige_vorschläge_genutzt": True,
         }
 
     # ================================================================
@@ -356,7 +356,7 @@ class BookingSuggestionService:
     # ================================================================
 
     def _suggest_by_keywords(self, text: str, chart: str) -> List[BookingSuggestion]:
-        """Vorschlaege basierend auf Keyword-Matching im Text."""
+        """Vorschläge basierend auf Keyword-Matching im Text."""
         accounts = SKR03_ACCOUNTS if chart == "SKR03" else SKR04_ACCOUNTS
         keyword_map = KEYWORD_ACCOUNT_MAP if chart == "SKR03" else KEYWORD_ACCOUNT_MAP_SKR04
 
@@ -383,7 +383,7 @@ class BookingSuggestionService:
         total_amount: Optional[Decimal],
         chart: str,
     ) -> List[BookingSuggestion]:
-        """Vorschlaege basierend auf Dokumenttyp."""
+        """Vorschläge basierend auf Dokumenttyp."""
         accounts = SKR03_ACCOUNTS if chart == "SKR03" else SKR04_ACCOUNTS
 
         suggestions = []
@@ -399,7 +399,7 @@ class BookingSuggestionService:
                 tax_rate=Decimal("0.19"),
                 tax_key="9",
                 confidence=0.5,
-                reason="Standard-Konto fuer Eingangsrechnungen",
+                reason="Standard-Konto für Eingangsrechnungen",
                 based_on_count=0,
             ))
 

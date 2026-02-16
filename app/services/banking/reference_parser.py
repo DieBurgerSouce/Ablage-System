@@ -45,7 +45,7 @@ class ParsedReference:
 
 
 class ReferenceParser:
-    """Parser fuer Verwendungszweck-Texte."""
+    """Parser für Verwendungszweck-Texte."""
 
     # Rechnungsnummer-Muster
     INVOICE_PATTERNS: List[Pattern] = [
@@ -79,7 +79,7 @@ class ReferenceParser:
     ]
 
     # SEPA-Referenzen
-    # Hinweis: _normalize_text wandelt + in Leerzeichen um, daher [\s+]* fuer beide Faelle
+    # Hinweis: _normalize_text wandelt + in Leerzeichen um, daher [\s+]* für beide Faelle
     E2E_PATTERN = re.compile(r"(?:EREF[\s+]*|END[\s-]*TO[\s-]*END[\s-]*ID[\s.:]*|E2E[\s.:]*|KREF[\s+]*)([A-Z0-9+/\-]+)", re.IGNORECASE)
     MANDATE_PATTERN = re.compile(r"(?:MREF[\s+]*|MANDAT[\s-]*(?:ID|REF)?[\s.:]*|MAND[\s.:]*|MANDATSREF[\s.:]*|MNDTID[\s+:]+)([A-Z0-9+/\-]+)", re.IGNORECASE)
     CREDITOR_PATTERN = re.compile(r"(?:CRED[\s+]*|CREDITOR[\s-]*ID[\s.:]*|GLAUB[\s.:]*ID[\s.:]*|CI[\s.:]*|CREDITORID[\s+:]+)([A-Z]{2}\d{2}[A-Z0-9]+)", re.IGNORECASE)
@@ -152,8 +152,8 @@ class ReferenceParser:
         return result
 
     def _normalize_text(self, text: str) -> str:
-        """Normalisiere Text fuer bessere Pattern-Erkennung."""
-        # Uppercase fuer einfacheres Matching
+        """Normalisiere Text für bessere Pattern-Erkennung."""
+        # Uppercase für einfacheres Matching
         text = text.upper()
         # Mehrfache Leerzeichen reduzieren
         text = re.sub(r"\s+", " ", text)
@@ -162,7 +162,7 @@ class ReferenceParser:
         return text.strip()
 
     def _extract_patterns(self, text: str, patterns: List[Pattern]) -> List[str]:
-        """Extrahiere alle Matches fuer gegebene Patterns."""
+        """Extrahiere alle Matches für gegebene Patterns."""
         results = []
         for pattern in patterns:
             for match in pattern.finditer(text):
@@ -172,7 +172,7 @@ class ReferenceParser:
         return results
 
     def _extract_single_pattern(self, text: str, pattern: Pattern) -> Optional[str]:
-        """Extrahiere ersten Match fuer Pattern."""
+        """Extrahiere ersten Match für Pattern."""
         match = pattern.search(text)
         if match:
             return match.group(1).strip()
@@ -277,7 +277,7 @@ reference_parser = ReferenceParser()
 
 
 def parse_reference_text(text: str) -> ParsedReference:
-    """Convenience-Funktion fuer Reference Parsing."""
+    """Convenience-Funktion für Reference Parsing."""
     return reference_parser.parse(text)
 
 

@@ -2,11 +2,11 @@
 """
 Document Lineage database models for Ablage-System.
 
-Datenherkunfts-Tracking fuer Dokumente:
+Datenherkunfts-Tracking für Dokumente:
 - Import-Quelle (Email/Ordner/API/Manuell)
 - Verarbeitungsschritte (OCR -> Klassifikation -> Extraktion)
 - Entity-Linking mit Konfidenz
-- Aenderungen mit Zeitstempel und Benutzer
+- Änderungen mit Zeitstempel und Benutzer
 
 Feinpoliert und durchdacht - Enterprise-grade Document Lineage.
 """
@@ -52,13 +52,13 @@ class LineageEventType(str, Enum):
     EXTRACTION = "extraction"            # Daten extrahiert (Betrag, Datum, etc.)
 
     # Entity-Linking
-    ENTITY_LINK = "entity_link"          # Mit Geschaeftspartner verknuepft
-    ENTITY_UNLINK = "entity_unlink"      # Verknuepfung entfernt
+    ENTITY_LINK = "entity_link"          # Mit Geschäftspartner verknüpft
+    ENTITY_UNLINK = "entity_unlink"      # Verknüpfung entfernt
 
     # Modifikationen
-    MODIFICATION = "modification"        # Manuelle Aenderung
+    MODIFICATION = "modification"        # Manuelle Änderung
     METADATA_UPDATE = "metadata_update"  # Metadaten aktualisiert
-    TAG_CHANGE = "tag_change"            # Tags geaendert
+    TAG_CHANGE = "tag_change"            # Tags geändert
 
     # Workflow-Ereignisse
     APPROVAL = "approval"                # Genehmigung
@@ -72,9 +72,9 @@ class LineageEventType(str, Enum):
     ARCHIVE = "archive"                  # Archiviert
     RESTORE = "restore"                  # Wiederhergestellt
 
-    # Loeschung
+    # Löschung
     SOFT_DELETE = "soft_delete"          # Soft-Delete (GDPR)
-    HARD_DELETE = "hard_delete"          # Endgueltige Loeschung
+    HARD_DELETE = "hard_delete"          # Endgültige Löschung
 
 
 class ImportSourceType(str, Enum):
@@ -90,10 +90,10 @@ class ImportSourceType(str, Enum):
 
 class DocumentLineageEvent(Base):
     """
-    Einzelnes Lineage-Ereignis fuer ein Dokument.
+    Einzelnes Lineage-Ereignis für ein Dokument.
 
     Speichert alle Ereignisse in der Verarbeitungskette eines Dokuments
-    mit vollstaendiger Nachverfolgbarkeit.
+    mit vollständiger Nachverfolgbarkeit.
     """
     __tablename__ = "document_lineage_events"
 
@@ -120,7 +120,7 @@ class DocumentLineageEvent(Base):
     # Verarbeitungsdauer (in Millisekunden)
     duration_ms = Column(Integer, nullable=True)
 
-    # Konfidenz (fuer OCR, Klassifikation, Entity-Linking)
+    # Konfidenz (für OCR, Klassifikation, Entity-Linking)
     confidence = Column(Float, nullable=True)
 
     # Benutzer, der das Ereignis ausgeloest hat (optional)
@@ -142,7 +142,7 @@ class DocumentLineageEvent(Base):
     # Quell-Service/System
     source_service = Column(String(100), nullable=True)
 
-    # Korrelations-ID fuer zusammengehoerende Ereignisse
+    # Korrelations-ID für zusammengehoerende Ereignisse
     correlation_id = Column(UUID(as_uuid=True), nullable=True, index=True)
 
     # Zeitstempel
@@ -157,7 +157,7 @@ class DocumentLineageEvent(Base):
     user = relationship("User", backref="lineage_events")
     company = relationship("Company", backref="lineage_events")
 
-    # Indexes fuer effiziente Abfragen
+    # Indexes für effiziente Abfragen
     __table_args__ = (
         Index("ix_lineage_document_created", "document_id", "created_at"),
         Index("ix_lineage_document_type", "document_id", "event_type"),
@@ -174,7 +174,7 @@ class DocumentLineageEvent(Base):
     )
 
     def to_dict(self) -> dict:
-        """Konvertiert das Ereignis in ein Dictionary fuer API-Responses."""
+        """Konvertiert das Ereignis in ein Dictionary für API-Responses."""
         return {
             "id": str(self.id),
             "document_id": str(self.document_id),
@@ -192,9 +192,9 @@ class DocumentLineageEvent(Base):
 
 class DocumentLineageSummary(Base):
     """
-    Zusammenfassung der Lineage fuer ein Dokument.
+    Zusammenfassung der Lineage für ein Dokument.
 
-    Cache-Tabelle fuer schnelle Abfragen der wichtigsten Lineage-Informationen.
+    Cache-Tabelle für schnelle Abfragen der wichtigsten Lineage-Informationen.
     Wird bei jedem Lineage-Event aktualisiert.
     """
     __tablename__ = "document_lineage_summaries"

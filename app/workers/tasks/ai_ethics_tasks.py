@@ -27,7 +27,7 @@ logger = structlog.get_logger(__name__)
 
 @celery_app.task(name="app.workers.tasks.ai_ethics_tasks.generate_bias_report")
 def generate_bias_report() -> dict:
-    """Generiere woechentlichen Bias-Report.
+    """Generiere wöchentlichen Bias-Report.
 
     Analysiert:
     - Risk-Score Verteilung nach Entity-Typ
@@ -48,7 +48,7 @@ def generate_bias_report() -> dict:
 
 
 async def _generate_bias_report() -> Dict[str, Any]:
-    """Async Implementation fuer Bias Report."""
+    """Async Implementation für Bias Report."""
     biases_detected = 0
     analysis_results: Dict[str, Any] = {}
 
@@ -141,7 +141,7 @@ async def _generate_bias_report() -> Dict[str, Any]:
 
 @celery_app.task(name="app.workers.tasks.ai_ethics_tasks.update_fairness_metrics")
 def update_fairness_metrics() -> dict:
-    """Aktualisiere Fairness-Metriken fuer alle KI-Entscheidungen."""
+    """Aktualisiere Fairness-Metriken für alle KI-Entscheidungen."""
     logger.info("ai_ethics_fairness_metrics_start")
     try:
         result = asyncio.get_event_loop().run_until_complete(_update_fairness_metrics())
@@ -153,7 +153,7 @@ def update_fairness_metrics() -> dict:
 
 
 async def _update_fairness_metrics() -> Dict[str, Any]:
-    """Async Implementation fuer Fairness Metrics."""
+    """Async Implementation für Fairness Metrics."""
     from app.db.models import AppConfig
 
     async with async_session_maker() as db:

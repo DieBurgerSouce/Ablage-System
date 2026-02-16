@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Unified Notification Hub fuer Ablage-System.
+Unified Notification Hub für Ablage-System.
 
-Zentraler Orchestrator fuer alle Benachrichtigungskanaele:
+Zentraler Orchestrator für alle Benachrichtigungskanaele:
 - Email (SMTP)
 - Slack (Webhook/Bot)
 - Microsoft Teams (Webhook/Adaptive Cards)
@@ -20,7 +20,7 @@ Features:
 - Eskalationsketten
 - Audit-Logging
 
-Feinpoliert und durchdacht - Ein Hub fuer alle Benachrichtigungen.
+Feinpoliert und durchdacht - Ein Hub für alle Benachrichtigungen.
 """
 
 import asyncio
@@ -50,7 +50,7 @@ logger = structlog.get_logger(__name__)
 # =============================================================================
 
 class NotificationChannel(str, Enum):
-    """Verfuegbare Benachrichtigungskanaele."""
+    """Verfügbare Benachrichtigungskanaele."""
     EMAIL = "email"
     SLACK = "slack"
     TEAMS = "teams"
@@ -102,7 +102,7 @@ class EscalationLevel(int, Enum):
     LEVEL_5 = 5  # + WhatsApp + Anruf
 
 
-# Kanal-Prioritaet fuer Routing (hoeherer Wert = hoehere Prioritaet)
+# Kanal-Priorität für Routing (höherer Wert = höhere Priorität)
 CHANNEL_PRIORITY = {
     NotificationChannel.EMAIL: 1,
     NotificationChannel.SLACK: 2,
@@ -160,7 +160,7 @@ DEDUP_TTL_BY_SEVERITY = {
 # =============================================================================
 
 class NotificationAction(BaseModel):
-    """Aktions-Button fuer Benachrichtigungen."""
+    """Aktions-Button für Benachrichtigungen."""
 
     action_id: str = Field(..., description="Eindeutige Aktion-ID")
     title: str = Field(..., max_length=50, description="Button-Text")
@@ -169,7 +169,7 @@ class NotificationAction(BaseModel):
 
 
 class NotificationRecipient(BaseModel):
-    """Empfaenger einer Benachrichtigung."""
+    """Empfänger einer Benachrichtigung."""
 
     user_id: UUID = Field(..., description="Benutzer-ID")
     email: Optional[str] = Field(default=None, description="E-Mail-Adresse")
@@ -179,7 +179,7 @@ class NotificationRecipient(BaseModel):
 
 
 class NotificationPayload(BaseModel):
-    """Payload fuer eine Benachrichtigung."""
+    """Payload für eine Benachrichtigung."""
 
     # Identifikation
     notification_id: UUID = Field(
@@ -198,7 +198,7 @@ class NotificationPayload(BaseModel):
     short_message: Optional[str] = Field(
         default=None,
         max_length=160,
-        description="Kurznachricht fuer SMS"
+        description="Kurznachricht für SMS"
     )
 
     # Klassifikation
@@ -215,7 +215,7 @@ class NotificationPayload(BaseModel):
     company_id: Optional[UUID] = Field(default=None, description="Mandanten-ID")
     reference_type: Optional[str] = Field(default=None, description="Referenz-Typ (document, alert, etc.)")
     reference_id: Optional[str] = Field(default=None, description="Referenz-ID")
-    metadata: dict[str, object] = Field(default_factory=dict, description="Zusaetzliche Metadaten")
+    metadata: dict[str, object] = Field(default_factory=dict, description="Zusätzliche Metadaten")
 
     # UI
     icon: Optional[str] = Field(default=None, description="Icon-Name oder URL")
@@ -226,11 +226,11 @@ class NotificationPayload(BaseModel):
     # Optionen
     dedupe_key: Optional[str] = Field(
         default=None,
-        description="Key fuer Deduplizierung (generiert wenn leer)"
+        description="Key für Deduplizierung (generiert wenn leer)"
     )
     ttl_seconds: Optional[int] = Field(
         default=None,
-        description="Time-To-Live fuer Deduplizierung"
+        description="Time-To-Live für Deduplizierung"
     )
     persist: bool = Field(
         default=True,
@@ -248,7 +248,7 @@ class NotificationPayload(BaseModel):
 
 
 class UserNotificationPreferences(BaseModel):
-    """Benutzer-Praeferenzen fuer Benachrichtigungen."""
+    """Benutzer-Praeferenzen für Benachrichtigungen."""
 
     # Globale Einstellungen
     enabled: bool = Field(default=True, description="Benachrichtigungen aktiviert")
@@ -311,7 +311,7 @@ class UserNotificationPreferences(BaseModel):
 
 
 class ChannelDeliveryResult(BaseModel):
-    """Ergebnis der Zustellung ueber einen Kanal."""
+    """Ergebnis der Zustellung über einen Kanal."""
 
     channel: NotificationChannel
     status: DeliveryStatus
@@ -341,7 +341,7 @@ class NotificationDeliveryResult(BaseModel):
 
 class UnifiedNotificationHub:
     """
-    Zentraler Notification Hub fuer alle Kanaele.
+    Zentraler Notification Hub für alle Kanaele.
 
     Orchestriert:
     - Routing basierend auf Schweregrad und Praeferenzen
@@ -372,7 +372,7 @@ class UnifiedNotificationHub:
         Initialisiert den Notification Hub.
 
         Args:
-            session: SQLAlchemy AsyncSession (fuer DB-Operationen)
+            session: SQLAlchemy AsyncSession (für DB-Operationen)
         """
         self.session = session
 
@@ -465,9 +465,9 @@ class UnifiedNotificationHub:
         """
         Laedt Benachrichtigungs-Praeferenzen aus der Datenbank.
 
-        Konsolidiert NotificationPreference-Eintraege pro Typ in ein
-        UserNotificationPreferences-Objekt. Faellt auf Defaults zurueck
-        wenn keine Session vorhanden oder keine Eintraege existieren.
+        Konsolidiert NotificationPreference-Einträge pro Typ in ein
+        UserNotificationPreferences-Objekt. Faellt auf Defaults zurück
+        wenn keine Session vorhanden oder keine Einträge existieren.
         """
         if self.session is None:
             return UserNotificationPreferences()
@@ -484,7 +484,7 @@ class UnifiedNotificationHub:
             if not rows:
                 return UserNotificationPreferences()
 
-            # Kanal-Flags aus allen Typ-Eintraegen aggregieren
+            # Kanal-Flags aus allen Typ-Einträgen aggregieren
             # Ein Kanal gilt als aktiviert, wenn mindestens ein Typ ihn aktiviert hat
             channel_flags: Dict[str, bool] = {
                 "email": False,
@@ -523,7 +523,7 @@ class UnifiedNotificationHub:
         ttl_seconds: int,
     ) -> bool:
         """
-        Prueft ob Benachrichtigung ein Duplikat ist.
+        Prüft ob Benachrichtigung ein Duplikat ist.
 
         Args:
             dedupe_key: Deduplizierungs-Schluessel
@@ -535,7 +535,7 @@ class UnifiedNotificationHub:
         async with self._dedup_lock:
             now = time.time()
 
-            # Alte Eintraege bereinigen
+            # Alte Einträge bereinigen
             expired_keys = [
                 k for k, v in self._dedup_cache.items()
                 if now > v
@@ -543,7 +543,7 @@ class UnifiedNotificationHub:
             for k in expired_keys:
                 del self._dedup_cache[k]
 
-            # Pruefen ob Key existiert
+            # Prüfen ob Key existiert
             if dedupe_key in self._dedup_cache:
                 return True
 
@@ -570,7 +570,7 @@ class UnifiedNotificationHub:
         Returns:
             Liste der zu verwendenden Kanaele
         """
-        # Standard-Kanaele fuer Schweregrad
+        # Standard-Kanaele für Schweregrad
         default_channels = DEFAULT_CHANNELS_BY_SEVERITY.get(
             payload.severity,
             [NotificationChannel.EMAIL, NotificationChannel.IN_APP]
@@ -615,7 +615,7 @@ class UnifiedNotificationHub:
         self,
         preferences: UserNotificationPreferences,
     ) -> bool:
-        """Prueft ob aktuelle Zeit in Ruhezeiten faellt."""
+        """Prüft ob aktuelle Zeit in Ruhezeiten faellt."""
         if not preferences.quiet_hours_enabled:
             return False
 
@@ -1046,18 +1046,18 @@ class UnifiedNotificationHub:
         skip_quiet_hours: bool = False,
     ) -> list[NotificationDeliveryResult]:
         """
-        Sendet Benachrichtigung an mehrere Empfaenger.
+        Sendet Benachrichtigung an mehrere Empfänger.
 
         Args:
-            recipients: Liste der Empfaenger
+            recipients: Liste der Empfänger
             payload: Benachrichtigungs-Payload
-            channels: Optionale Kanal-Liste (ueberschreibt Routing)
+            channels: Optionale Kanal-Liste (überschreibt Routing)
             preferences_override: Praeferenzen-Override
-            skip_dedup: Deduplizierung ueberspringen
+            skip_dedup: Deduplizierung überspringen
             skip_quiet_hours: Ruhezeiten ignorieren
 
         Returns:
-            Liste von Delivery-Ergebnissen pro Empfaenger
+            Liste von Delivery-Ergebnissen pro Empfänger
         """
         results = []
 
@@ -1083,9 +1083,9 @@ class UnifiedNotificationHub:
         skip_dedup: bool,
         skip_quiet_hours: bool,
     ) -> NotificationDeliveryResult:
-        """Sendet Benachrichtigung an einen einzelnen Empfaenger."""
+        """Sendet Benachrichtigung an einen einzelnen Empfänger."""
 
-        # Deduplizierung pruefen
+        # Deduplizierung prüfen
         if not skip_dedup:
             dedupe_key = f"{recipient.user_id}:{payload.generate_dedupe_key()}"
             ttl = payload.ttl_seconds or DEDUP_TTL_BY_SEVERITY.get(
@@ -1114,7 +1114,7 @@ class UnifiedNotificationHub:
         if preferences is None:
             preferences = await self._load_user_preferences(recipient.user_id)
 
-        # Ruhezeiten pruefen
+        # Ruhezeiten prüfen
         if not skip_quiet_hours and self._is_quiet_hours(preferences):
             # Bei kritischen Alerts trotzdem senden
             if payload.severity != NotificationSeverity.CRITICAL:
@@ -1222,7 +1222,7 @@ class UnifiedNotificationHub:
             return ChannelDeliveryResult(
                 channel=channel,
                 status=DeliveryStatus.SKIPPED,
-                error_message=f"Kanal '{channel}' nicht unterstuetzt"
+                error_message=f"Kanal '{channel}' nicht unterstützt"
             )
 
         return await sender(recipient, payload)
@@ -1244,7 +1244,7 @@ class UnifiedNotificationHub:
 
         Args:
             original_notification_id: Urspruengliche Benachrichtigungs-ID
-            recipient: Empfaenger
+            recipient: Empfänger
             payload: Benachrichtigungs-Payload
             escalation_level: Eskalationsstufe
             reason: Grund der Eskalation
@@ -1465,7 +1465,7 @@ def get_unified_notification_hub(
     session: Optional[AsyncSession] = None,
 ) -> UnifiedNotificationHub:
     """
-    Factory-Funktion fuer Unified Notification Hub.
+    Factory-Funktion für Unified Notification Hub.
 
     Args:
         session: SQLAlchemy AsyncSession
@@ -1497,7 +1497,7 @@ async def send_notification(
     session: Optional[AsyncSession] = None,
 ) -> NotificationDeliveryResult:
     """
-    Convenience-Funktion fuer einfaches Senden von Benachrichtigungen.
+    Convenience-Funktion für einfaches Senden von Benachrichtigungen.
 
     Args:
         recipient_user_id: Benutzer-ID
@@ -1511,7 +1511,7 @@ async def send_notification(
         reference_type: Referenz-Typ
         reference_id: Referenz-ID
         url: URL bei Klick
-        phone_number: Telefonnummer fuer SMS
+        phone_number: Telefonnummer für SMS
         session: Datenbank-Session
 
     Returns:

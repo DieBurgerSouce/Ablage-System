@@ -5,13 +5,13 @@ Smart Notification Engine.
 Vision 2026 Q3: Intelligentes Benachrichtigungssystem mit KI-Filterung.
 
 Features:
-- Noise-Filterung (aehnliche Events zusammenfassen)
-- Prioritaets-basierte Benachrichtigung
-- Kontext-Beruecksichtigung (Arbeitszeit, letzte Aktivitaet)
+- Noise-Filterung (ähnliche Events zusammenfassen)
+- Prioritäts-basierte Benachrichtigung
+- Kontext-Berücksichtigung (Arbeitszeit, letzte Aktivität)
 - Multi-Channel Delivery (In-App, Email, Push, Slack)
 - User-Praeferenzen
 
-Feinpoliert und durchdacht - Deutsche Qualitaet.
+Feinpoliert und durchdacht - Deutsche Qualität.
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ NOTIFICATION_FILTERED = Counter(
 # =============================================================================
 
 class NotificationChannel(str, Enum):
-    """Verfuegbare Benachrichtigungskanaele."""
+    """Verfügbare Benachrichtigungskanaele."""
     IN_APP = "in_app"
     EMAIL = "email"
     PUSH = "push"
@@ -64,12 +64,12 @@ class NotificationChannel(str, Enum):
 
 
 class NotificationPriority(str, Enum):
-    """Prioritaet einer Benachrichtigung."""
+    """Priorität einer Benachrichtigung."""
     CRITICAL = "critical"  # Sofort, alle Kanaele
     HIGH = "high"          # Sofort, In-App + Email
     MEDIUM = "medium"      # Normal, In-App
     LOW = "low"            # Gebuendelt, In-App
-    INFO = "info"          # Optional, nur wenn gewuenscht
+    INFO = "info"          # Optional, nur wenn gewünscht
 
 
 class EventCategory(str, Enum):
@@ -85,8 +85,8 @@ class EventCategory(str, Enum):
 
 
 class FilterReason(str, Enum):
-    """Grund fuer das Filtern einer Benachrichtigung."""
-    NOISE = "noise"                    # Aehnliches Event kuerzlich
+    """Grund für das Filtern einer Benachrichtigung."""
+    NOISE = "noise"                    # Ähnliches Event kürzlich
     LOW_IMPORTANCE = "low_importance"  # Unter User-Schwelle
     QUIET_HOURS = "quiet_hours"        # Ruhezeit
     DISABLED_CHANNEL = "disabled"      # Kanal deaktiviert
@@ -130,7 +130,7 @@ class UserNotificationPreferences:
 
 @dataclass
 class UserContext:
-    """Kontext eines Users fuer intelligente Filterung."""
+    """Kontext eines Users für intelligente Filterung."""
     user_id: uuid.UUID
     is_online: bool
     last_activity: Optional[datetime]
@@ -148,7 +148,7 @@ class NotificationDecision:
     reason: str
     explanation: str
     delay_until: Optional[datetime] = None
-    bundle_with: Optional[str] = None  # ID fuer Buendelung
+    bundle_with: Optional[str] = None  # ID für Buendelung
 
 
 @dataclass
@@ -202,11 +202,11 @@ EVENT_TYPE_IMPORTANCE: Dict[str, int] = {
 # Kontext-Modifikatoren
 CONTEXT_MODIFIERS: Dict[str, float] = {
     "user_online": 0.8,           # Weniger dringend wenn online
-    "user_offline_1h": 1.2,       # Dringender wenn laenger offline
+    "user_offline_1h": 1.2,       # Dringender wenn länger offline
     "user_offline_24h": 1.5,      # Noch dringender
     "on_related_page": 0.7,       # Weniger wichtig wenn schon dort
     "many_unread": 0.9,           # Leicht weniger wenn viele ungelesen
-    "recent_similar": 0.5,        # Stark reduziert wenn aehnliches kuerzlich
+    "recent_similar": 0.5,        # Stark reduziert wenn ähnliches kürzlich
 }
 
 # Priority-Schwellenwerte
@@ -298,10 +298,10 @@ class SmartNotificationEngine:
                 explanation=f"Kategorie '{event.category.value}' ist deaktiviert",
             )
 
-        # 5. Prioritaet bestimmen
+        # 5. Priorität bestimmen
         effective_priority = self._determine_priority(modified_importance)
 
-        # 6. Priority-Schwelle pruefen
+        # 6. Priority-Schwelle prüfen
         priority_order = [p for p in NotificationPriority]
         if priority_order.index(effective_priority) > priority_order.index(preferences.min_priority):
             NOTIFICATION_FILTERED.labels(filter_reason=FilterReason.LOW_IMPORTANCE.value).inc()
@@ -322,11 +322,11 @@ class SmartNotificationEngine:
                 delay_until = self._calculate_quiet_hours_end(preferences)
 
                 return NotificationDecision(
-                    should_notify=True,  # Spaeter senden
+                    should_notify=True,  # Später senden
                     channels=[NotificationChannel.IN_APP],  # Nur In-App
                     priority=effective_priority,
                     reason=FilterReason.QUIET_HOURS.value,
-                    explanation="Ruhezeit - Benachrichtigung wird verzoegert",
+                    explanation="Ruhezeit - Benachrichtigung wird verzögert",
                     delay_until=delay_until,
                 )
 
@@ -416,7 +416,7 @@ class SmartNotificationEngine:
         event: NotificationEvent,
     ) -> None:
         """
-        Fuegt ein Event zum Digest hinzu (fuer gebuendelte Zustellung).
+        Fuegt ein Event zum Digest hinzu (für gebuendelte Zustellung).
 
         Args:
             event: Das Event
@@ -439,7 +439,7 @@ class SmartNotificationEngine:
         clear: bool = True,
     ) -> List[NotificationEvent]:
         """
-        Gibt den gesammelten Digest zurueck.
+        Gibt den gesammelten Digest zurück.
 
         Args:
             user_id: User-ID
@@ -504,7 +504,7 @@ class SmartNotificationEngine:
         if context.unread_notifications_count > 10:
             modified *= CONTEXT_MODIFIERS["many_unread"]
 
-        # Aehnliches Event kuerzlich
+        # Ähnliches Event kürzlich
         recent = self._recent_events.get(event.user_id, [])
         similar = [
             e for e in recent
@@ -521,7 +521,7 @@ class SmartNotificationEngine:
         event: NotificationEvent,
         context: UserContext,
     ) -> tuple[bool, str]:
-        """Prueft ob das Event Noise ist."""
+        """Prüft ob das Event Noise ist."""
         recent = self._recent_events.get(event.user_id, [])
         window = datetime.now(timezone.utc) - timedelta(minutes=self._noise_window_minutes)
 
@@ -534,7 +534,7 @@ class SmartNotificationEngine:
                 recent_event.event_type == event.event_type
                 and recent_event.document_id == event.document_id
             ):
-                return True, f"Gleiches Event '{event.event_type}' fuer gleiches Dokument in letzten {self._noise_window_minutes} Minuten"
+                return True, f"Gleiches Event '{event.event_type}' für gleiches Dokument in letzten {self._noise_window_minutes} Minuten"
 
         # Zu viele Events gleichen Typs
         same_type_count = len([
@@ -547,14 +547,14 @@ class SmartNotificationEngine:
         return False, ""
 
     def _determine_priority(self, importance: float) -> NotificationPriority:
-        """Bestimmt die Prioritaet basierend auf Wichtigkeit."""
+        """Bestimmt die Priorität basierend auf Wichtigkeit."""
         for priority, threshold in PRIORITY_THRESHOLDS.items():
             if importance >= threshold:
                 return priority
         return NotificationPriority.INFO
 
     def _is_quiet_hours(self, preferences: UserNotificationPreferences) -> bool:
-        """Prueft ob Ruhezeit ist."""
+        """Prüft ob Ruhezeit ist."""
         if not preferences.quiet_hours_start or not preferences.quiet_hours_end:
             return False
 
@@ -565,7 +565,7 @@ class SmartNotificationEngine:
         if start <= end:
             return start <= now <= end
         else:
-            # Ueber Mitternacht
+            # Über Mitternacht
             return now >= start or now <= end
 
     def _calculate_quiet_hours_end(
@@ -596,7 +596,7 @@ class SmartNotificationEngine:
         if NotificationChannel.IN_APP in preferences.enabled_channels:
             channels.append(NotificationChannel.IN_APP)
 
-        # Email bei hoher Prioritaet oder offline
+        # Email bei hoher Priorität oder offline
         if (
             NotificationChannel.EMAIL in preferences.enabled_channels
             and (
@@ -645,20 +645,20 @@ class SmartNotificationEngine:
         priority: NotificationPriority,
         channels: List[NotificationChannel],
     ) -> str:
-        """Generiert eine Erklaerung fuer die Entscheidung."""
+        """Generiert eine Erklärung für die Entscheidung."""
         channel_names = [c.value for c in channels]
 
         return (
             f"Event '{event.event_type}' mit Wichtigkeit {importance:.1f} "
-            f"wird mit Prioritaet '{priority.value}' "
-            f"ueber {', '.join(channel_names)} zugestellt."
+            f"wird mit Priorität '{priority.value}' "
+            f"über {', '.join(channel_names)} zugestellt."
         )
 
     def _get_default_preferences(
         self,
         user_id: uuid.UUID,
     ) -> UserNotificationPreferences:
-        """Gibt Default-Praeferenzen zurueck."""
+        """Gibt Default-Praeferenzen zurück."""
         if user_id in self._preferences_cache:
             return self._preferences_cache[user_id]
 
@@ -678,7 +678,7 @@ class SmartNotificationEngine:
         self,
         user_id: uuid.UUID,
     ) -> UserContext:
-        """Gibt Default-Kontext zurueck."""
+        """Gibt Default-Kontext zurück."""
         return UserContext(
             user_id=user_id,
             is_online=False,
@@ -697,7 +697,7 @@ _smart_notification_engine: Optional[SmartNotificationEngine] = None
 
 
 def get_smart_notification_engine() -> SmartNotificationEngine:
-    """Factory fuer SmartNotificationEngine Singleton."""
+    """Factory für SmartNotificationEngine Singleton."""
     global _smart_notification_engine
     if _smart_notification_engine is None:
         _smart_notification_engine = SmartNotificationEngine()

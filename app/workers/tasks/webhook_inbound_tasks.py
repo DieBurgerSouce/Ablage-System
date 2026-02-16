@@ -128,7 +128,7 @@ def process_inbound_webhook(
                     result["event_bus_error"] = str(e)
             else:
                 result["event_bus_published"] = False
-                result["note"] = "Kein internes Event-Mapping fuer diesen Event-Typ"
+                result["note"] = "Kein internes Event-Mapping für diesen Event-Typ"
 
             # Update status to success
             await db.execute(

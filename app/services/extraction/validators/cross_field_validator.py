@@ -192,12 +192,12 @@ class CrossFieldValidator:
                 field_name="due_date",
                 validation_type="date_consistency",
                 message=(
-                    f"Faelligkeitsdatum ({data.due_date}) liegt vor "
+                    f"Fälligkeitsdatum ({data.due_date}) liegt vor "
                     f"Rechnungsdatum ({data.invoice_date})"
                 ),
                 severity=Severity.ERROR,
                 suggested_fix=(
-                    f"Faelligkeitsdatum sollte nach {data.invoice_date} liegen"
+                    f"Fälligkeitsdatum sollte nach {data.invoice_date} liegen"
                 ),
             ))
         else:
@@ -236,7 +236,7 @@ class CrossFieldValidator:
                 validation_type="payment_terms_consistency",
                 message=(
                     f"Zahlungsziel ({payment_days} Tage) ergibt "
-                    f"Faelligkeitsdatum {expected_due}, "
+                    f"Fälligkeitsdatum {expected_due}, "
                     f"aber angegeben ist {data.due_date} "
                     f"({diff_days} Tage Abweichung)"
                 ),
@@ -253,7 +253,7 @@ class CrossFieldValidator:
                 is_valid=True,
                 field_name="payment_terms",
                 validation_type="payment_terms_consistency",
-                message="Zahlungsziel und Faelligkeitsdatum stimmen ueberein",
+                message="Zahlungsziel und Fälligkeitsdatum stimmen überein",
                 severity=Severity.INFO,
             ))
 
@@ -298,7 +298,7 @@ class CrossFieldValidator:
                     f"(Differenz: {diff})"
                 ),
                 severity=Severity.WARNING,
-                suggested_fix="Positionen oder Nettobetrag pruefen",
+                suggested_fix="Positionen oder Nettobetrag prüfen",
                 details={
                     "line_sum": float(line_sum),
                     "net_amount": float(data.net_amount),
@@ -340,7 +340,7 @@ class CrossFieldValidator:
                     f"deutscher Standardsatz (0%, 7%, 19%)"
                 ),
                 severity=Severity.WARNING,
-                suggested_fix="MwSt-Satz pruefen",
+                suggested_fix="MwSt-Satz prüfen",
             ))
         else:
             results.append(ValidationResult(
@@ -406,7 +406,7 @@ class CrossFieldValidator:
                     f"Zahlungsziel ({payment_days} Tage)"
                 ),
                 severity=Severity.ERROR,
-                suggested_fix="Skontofrist sollte kuerzer als Zahlungsziel sein",
+                suggested_fix="Skontofrist sollte kürzer als Zahlungsziel sein",
             ))
 
         if not any(not r.is_valid for r in results):

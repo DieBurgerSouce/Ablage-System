@@ -1,10 +1,10 @@
 """
 Inventory API - Lagerverwaltung und Wareneingang
 
-Endpoints fuer:
+Endpoints für:
 - Lager (Warehouses)
 - Artikel (Inventory Items)
-- Bestaende (Stock Levels)
+- Bestände (Stock Levels)
 - Warenbewegungen (Movements)
 - Wareneingang (Goods Receipts)
 """
@@ -83,7 +83,7 @@ class WarehouseResponse(BaseModel):
 class ItemCreate(BaseModel):
     item_number: str = Field(..., min_length=1, max_length=50)
     name: str = Field(..., min_length=1, max_length=200)
-    unit: str = "Stueck"
+    unit: str = "Stück"
     description: Optional[str] = None
     category: Optional[str] = None
     ean: Optional[str] = Field(None, max_length=13)
@@ -267,7 +267,7 @@ async def create_warehouse(
     """Erstellt ein neues Lager"""
     service = WarehouseService(session)
 
-    # Pruefen ob Code bereits existiert
+    # Prüfen ob Code bereits existiert
     existing = await service.get_by_code(data.code, company_id)
     if existing:
         raise HTTPException(
@@ -301,7 +301,7 @@ async def get_default_warehouse(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ):
-    """Gibt das Standardlager zurueck"""
+    """Gibt das Standardlager zurück"""
     service = WarehouseService(session)
     return await service.get_default(company_id)
 
@@ -313,7 +313,7 @@ async def get_warehouse(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ):
-    """Gibt ein einzelnes Lager zurueck"""
+    """Gibt ein einzelnes Lager zurück"""
     service = WarehouseService(session)
     warehouse = await service.get_by_id(warehouse_id, company_id)
     if not warehouse:
@@ -371,7 +371,7 @@ async def create_item(
     """Erstellt einen neuen Artikel"""
     service = InventoryItemService(session)
 
-    # Pruefen ob Artikelnummer bereits existiert
+    # Prüfen ob Artikelnummer bereits existiert
     existing = await service.get_by_item_number(data.item_number, company_id)
     if existing:
         raise HTTPException(
@@ -426,7 +426,7 @@ async def get_low_stock_items(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ):
-    """Gibt Artikel unter Meldebestand zurueck"""
+    """Gibt Artikel unter Meldebestand zurück"""
     service = InventoryItemService(session)
     return await service.get_low_stock_items(company_id, warehouse_id)
 
@@ -438,7 +438,7 @@ async def get_item(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ):
-    """Gibt einen einzelnen Artikel zurueck"""
+    """Gibt einen einzelnen Artikel zurück"""
     service = InventoryItemService(session)
     item = await service.get_by_id(item_id, company_id)
     if not item:
@@ -489,7 +489,7 @@ async def get_item_stock(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ):
-    """Gibt Bestaende eines Artikels nach Lagern zurueck"""
+    """Gibt Bestände eines Artikels nach Lagern zurück"""
     service = StockService(session)
     return await service.get_item_stock_by_warehouse(item_id, company_id)
 
@@ -502,7 +502,7 @@ async def get_warehouse_inventory(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ):
-    """Gibt alle Bestaende in einem Lager zurueck"""
+    """Gibt alle Bestände in einem Lager zurück"""
     service = StockService(session)
     return await service.get_warehouse_inventory(warehouse_id, company_id, include_zero)
 
@@ -645,7 +645,7 @@ async def list_goods_receipts(
     if pending_only:
         return await service.list_pending(company_id, warehouse_id, limit, offset)
 
-    # Wenn alle gewuenscht, separate Methode oder Anpassung noetig
+    # Wenn alle gewünscht, separate Methode oder Anpassung nötig
     return await service.list_pending(company_id, warehouse_id, limit, offset)
 
 
@@ -656,7 +656,7 @@ async def get_unprocessed_delivery_notes(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ):
-    """Gibt Lieferscheine ohne Wareneingang zurueck"""
+    """Gibt Lieferscheine ohne Wareneingang zurück"""
     service = GoodsReceiptService(session)
     documents = await service.get_unprocessed_delivery_notes(company_id, limit)
 
@@ -680,7 +680,7 @@ async def get_goods_receipt_statistics(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ):
-    """Gibt Statistiken zu Wareneingaengen zurueck"""
+    """Gibt Statistiken zu Wareneingaengen zurück"""
     service = GoodsReceiptService(session)
     return await service.get_statistics(company_id, warehouse_id)
 
@@ -692,7 +692,7 @@ async def get_goods_receipt(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ):
-    """Gibt einen einzelnen Wareneingang zurueck"""
+    """Gibt einen einzelnen Wareneingang zurück"""
     service = GoodsReceiptService(session)
     receipt = await service.get_by_id(receipt_id, company_id)
     if not receipt:
@@ -708,7 +708,7 @@ async def auto_match_goods_receipt(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ):
-    """Fuehrt Auto-Matching fuer Wareneingangszeilen durch"""
+    """Führt Auto-Matching für Wareneingangszeilen durch"""
     service = GoodsReceiptService(session)
     try:
         result = await service.auto_match_lines(receipt_id, company_id, min_confidence)
@@ -761,7 +761,7 @@ async def process_goods_receipt(
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
 ):
-    """Verarbeitet Wareneingang und bucht Bestaende"""
+    """Verarbeitet Wareneingang und bucht Bestände"""
     service = GoodsReceiptService(session)
     try:
         result = await service.process_receipt(receipt_id, company_id, current_user.id)

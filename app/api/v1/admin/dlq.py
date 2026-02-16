@@ -46,7 +46,7 @@ class DLQStatsResponse(BaseModel):
     """DLQ-Statistiken."""
     total_tasks: int = Field(0, description="Gesamtzahl Tasks in DLQ")
     poison_pills: int = Field(0, description="Anzahl Poison Pills (>3 Fehler)")
-    oldest_task_age_hours: Optional[float] = Field(None, description="Alter der aeltesten Task (Stunden)")
+    oldest_task_age_hours: Optional[float] = Field(None, description="Alter der ältesten Task (Stunden)")
     tasks_by_exception: dict = Field(default_factory=dict, description="Tasks nach Fehlertyp")
     tasks_by_name: dict = Field(default_factory=dict, description="Tasks nach Task-Name")
     status: str = Field("healthy", description="DLQ-Status: healthy | warning | critical")
@@ -87,7 +87,7 @@ async def get_dlq_stats(
     Zeigt:
     - Gesamtzahl fehlgeschlagener Tasks
     - Poison Pills (Tasks die >3x fehlgeschlagen sind)
-    - Alter der aeltesten Task
+    - Alter der ältesten Task
     - Gruppierung nach Fehlertyp
     - DLQ-Gesundheitsstatus
     """
@@ -162,10 +162,10 @@ async def get_dlq_stats(
             status_message = f"KRITISCH: {total_tasks} Tasks in DLQ - sofortige Aufmerksamkeit erforderlich"
         elif total_tasks > 100:
             dlq_status = "warning"
-            status_message = f"WARNUNG: {total_tasks} Tasks in DLQ - Ueberpruefen empfohlen"
+            status_message = f"WARNUNG: {total_tasks} Tasks in DLQ - Überprüfen empfohlen"
         elif poison_pills > 0:
             dlq_status = "warning"
-            status_message = f"{poison_pills} Poison Pills erkannt - moeglicherweise systematische Fehler"
+            status_message = f"{poison_pills} Poison Pills erkannt - möglicherweise systematische Fehler"
         else:
             dlq_status = "healthy"
             status_message = f"{total_tasks} Tasks in DLQ - im normalen Bereich"
@@ -200,7 +200,7 @@ async def get_dlq_stats(
 )
 async def list_dlq_tasks(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     exception_filter: Optional[str] = Query(None, description="Nach Fehlertyp filtern"),
     task_filter: Optional[str] = Query(None, description="Nach Task-Name filtern"),
     admin: User = Depends(get_current_superuser),
@@ -311,7 +311,7 @@ async def retry_dlq_task(
     """
     Wiederholt eine fehlgeschlagene Task aus der Dead Letter Queue.
 
-    Die Task wird aus der DLQ entfernt und zurueck in die urspruengliche
+    Die Task wird aus der DLQ entfernt und zurück in die ursprüngliche
     Queue eingereiht.
     """
     try:
@@ -408,27 +408,27 @@ async def retry_dlq_task(
     "/purge",
     response_model=DLQActionResponse,
     summary="DLQ leeren",
-    description="Loescht alle Tasks aus der Dead Letter Queue (GEFAEHRLICH)"
+    description="Löscht alle Tasks aus der Dead Letter Queue (GEFÄHRLICH)"
 )
 async def purge_dlq(
     request: Request,
-    confirm: bool = Query(False, description="Bestaetigung erforderlich"),
+    confirm: bool = Query(False, description="Bestätigung erforderlich"),
     admin: User = Depends(get_current_superuser),
 ) -> DLQActionResponse:
     """
-    Loescht ALLE Tasks aus der Dead Letter Queue.
+    Löscht ALLE Tasks aus der Dead Letter Queue.
 
-    **WARNUNG:** Diese Aktion kann NICHT rueckgaengig gemacht werden!
-    Alle fehlgeschlagenen Tasks werden unwiderruflich geloescht.
+    **WARNUNG:** Diese Aktion kann NICHT rückgängig gemacht werden!
+    Alle fehlgeschlagenen Tasks werden unwiderruflich gelöscht.
 
-    Erfordert explizite Bestaetigung via ?confirm=true
+    Erfordert explizite Bestätigung via ?confirm=true
     """
     if not confirm:
         return DLQActionResponse(
             success=False,
-            message="Bestaetigung erforderlich: Bitte ?confirm=true hinzufuegen",
+            message="Bestätigung erforderlich: Bitte ?confirm=true hinzufügen",
             details={
-                "warning": "Diese Aktion loescht ALLE Tasks aus der DLQ unwiderruflich!"
+                "warning": "Diese Aktion löscht ALLE Tasks aus der DLQ unwiderruflich!"
             },
         )
 
@@ -466,7 +466,7 @@ async def purge_dlq(
 
         return DLQActionResponse(
             success=True,
-            message=f"DLQ wurde geleert: {count} Tasks geloescht",
+            message=f"DLQ wurde geleert: {count} Tasks gelöscht",
             details={
                 "deleted_count": count,
                 "admin_id": str(admin.id),
@@ -497,7 +497,7 @@ async def bulk_retry_dlq_tasks(
     """
     Wiederholt mehrere fehlgeschlagene Tasks aus der Dead Letter Queue.
 
-    Gibt eine Zusammenfassung zurueck, welche Tasks erfolgreich
+    Gibt eine Zusammenfassung zurück, welche Tasks erfolgreich
     wiederholt wurden und welche nicht.
     """
     if not task_ids:

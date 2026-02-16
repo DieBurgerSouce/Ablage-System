@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
-"""Chat Action Models - Satellite Model fuer RAG Agent Aktionen.
+"""Chat Action Models - Satellite Model für RAG Agent Aktionen.
 
 Tracking von Tool-Calls aus dem Chat-System.
 Migration: 212_chat_actions.py
 
-Feinpoliert und durchdacht - Deutsche Praezision.
+Feinpoliert und durchdacht - Deutsche Präzision.
 """
 
 import uuid
@@ -31,8 +31,8 @@ class ChatToolAction(Base):
     """
     Tool-Aktionen aus dem RAG Chat Agent Mode.
 
-    Speichert alle Tool-Calls die der LLM im Chat vorschlaegt
-    oder ausfuehrt, mit vollstaendigem Tracking fuer Audit.
+    Speichert alle Tool-Calls die der LLM im Chat vorschlägt
+    oder ausführt, mit vollständigem Tracking für Audit.
     """
     __tablename__ = "chat_tool_actions"
 
@@ -82,7 +82,7 @@ class ChatToolAction(Base):
     result = Column(
         JSONB,
         nullable=True,
-        comment="Ergebnis nach Ausfuehrung"
+        comment="Ergebnis nach Ausführung"
     )
 
     error_message = Column(
@@ -91,26 +91,26 @@ class ChatToolAction(Base):
         comment="Fehlermeldung bei failed status"
     )
 
-    # Bestaetigung
+    # Bestätigung
     requires_confirmation = Column(
         Boolean,
         nullable=False,
         default=False,
-        comment="Muss vom User bestaetigt werden"
+        comment="Muss vom User bestätigt werden"
     )
 
     confirmed_by_id = Column(
         UUID(as_uuid=True),
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
-        comment="User der die Aktion bestaetigt hat"
+        comment="User der die Aktion bestätigt hat"
     )
 
     # Timestamps
     executed_at = Column(
         DateTime(timezone=True),
         nullable=True,
-        comment="Zeitpunkt der Ausfuehrung"
+        comment="Zeitpunkt der Ausführung"
     )
 
     created_at = Column(
@@ -141,7 +141,7 @@ class ChatToolAction(Base):
         )
 
     def to_dict(self) -> Dict[str, object]:
-        """Konvertiert zu Dictionary fuer API.
+        """Konvertiert zu Dictionary für API.
 
         Returns:
             Dictionary mit allen relevanten Feldern

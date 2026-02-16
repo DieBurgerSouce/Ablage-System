@@ -1,15 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Celery Tasks fuer automatisierte Backups.
+Celery Tasks für automatisierte Backups.
 
 Geplante Tasks:
-- backup_full_task: Taegliches vollstaendiges Backup (02:00 Uhr)
-- apply_retention_task: Woechentliche Retention Policy (Sonntag 03:00)
-- sync_to_remote_task: Taegliche Remote-Synchronisation (04:00 Uhr)
+- backup_full_task: Tägliches vollständiges Backup (02:00 Uhr)
+- apply_retention_task: Wöchentliche Retention Policy (Sonntag 03:00)
+- sync_to_remote_task: Tägliche Remote-Synchronisation (04:00 Uhr)
 
 Phase 1.4: Audit Archive Tasks
 - archive_audit_logs_monthly_task: Monatliche Audit-Log-Archivierung (1. des Monats 01:00)
-- verify_audit_archives_task: Woechentliche Archiv-Verifikation (Samstag 04:00)
+- verify_audit_archives_task: Wöchentliche Archiv-Verifikation (Samstag 04:00)
 
 Feinpoliert und durchdacht - Automatisierte Backups in Produktion.
 """
@@ -25,10 +25,10 @@ logger = structlog.get_logger(__name__)
 
 
 def run_async(coro):
-    """Hilfsfunktion um async Code in sync Celery Tasks auszufuehren.
+    """Hilfsfunktion um async Code in sync Celery Tasks auszuführen.
 
     MEMORY FIX: Verwendet asyncio.run() statt new_event_loop() um Memory Leaks
-    zu verhindern. asyncio.run() erstellt einen neuen Event-Loop, fuehrt die
+    zu verhindern. asyncio.run() erstellt einen neuen Event-Loop, führt die
     Coroutine aus und schließt den Loop korrekt inkl. aller pending Tasks.
     """
     return asyncio.run(coro)
@@ -43,9 +43,9 @@ def run_async(coro):
 )
 def backup_full_task(self) -> Dict[str, Any]:
     """
-    Celery Task fuer vollstaendiges Backup.
+    Celery Task für vollständiges Backup.
 
-    Erstellt Backups fuer:
+    Erstellt Backups für:
     - PostgreSQL
     - Redis
     - MinIO
@@ -57,7 +57,7 @@ def backup_full_task(self) -> Dict[str, Any]:
     logger.info("backup_full_task_gestartet", task_id=self.request.id)
 
     try:
-        # Lazy import um zirkulaere Imports zu vermeiden
+        # Lazy import um zirkuläre Imports zu vermeiden
         from app.services.backup_service import get_backup_service
 
         service = get_backup_service()
@@ -77,7 +77,7 @@ def backup_full_task(self) -> Dict[str, Any]:
                     "typ": r.backup_type,
                     "erfolg": r.success,
                     "pfad": str(r.path) if r.path else None,
-                    "groesse_mb": round(r.size_bytes / 1024 / 1024, 2) if r.size_bytes else 0,
+                    "größe_mb": round(r.size_bytes / 1024 / 1024, 2) if r.size_bytes else 0,
                     "fehler": r.error,
                 }
                 for r in results
@@ -105,7 +105,7 @@ def backup_full_task(self) -> Dict[str, Any]:
     name="app.workers.tasks.backup_tasks.backup_postgres_task",
 )
 def backup_postgres_task(self) -> Dict[str, Any]:
-    """Celery Task fuer PostgreSQL-Backup."""
+    """Celery Task für PostgreSQL-Backup."""
     logger.info("backup_postgres_task_gestartet", task_id=self.request.id)
 
     try:
@@ -122,7 +122,7 @@ def backup_postgres_task(self) -> Dict[str, Any]:
             "erfolg": result.success,
             "typ": result.backup_type,
             "pfad": str(result.path) if result.path else None,
-            "groesse_mb": round(result.size_bytes / 1024 / 1024, 2) if result.size_bytes else 0,
+            "größe_mb": round(result.size_bytes / 1024 / 1024, 2) if result.size_bytes else 0,
             "fehler": result.error,
         }
 
@@ -140,7 +140,7 @@ def backup_postgres_task(self) -> Dict[str, Any]:
     name="app.workers.tasks.backup_tasks.backup_redis_task",
 )
 def backup_redis_task(self) -> Dict[str, Any]:
-    """Celery Task fuer Redis-Backup."""
+    """Celery Task für Redis-Backup."""
     logger.info("backup_redis_task_gestartet", task_id=self.request.id)
 
     try:
@@ -157,7 +157,7 @@ def backup_redis_task(self) -> Dict[str, Any]:
             "erfolg": result.success,
             "typ": result.backup_type,
             "pfad": str(result.path) if result.path else None,
-            "groesse_mb": round(result.size_bytes / 1024 / 1024, 2) if result.size_bytes else 0,
+            "größe_mb": round(result.size_bytes / 1024 / 1024, 2) if result.size_bytes else 0,
             "fehler": result.error,
         }
 
@@ -176,12 +176,12 @@ def backup_redis_task(self) -> Dict[str, Any]:
 )
 def apply_retention_task(self) -> Dict[str, Any]:
     """
-    Celery Task fuer Retention Policy.
+    Celery Task für Retention Policy.
 
-    Loescht alte Backups gemaess konfigurierter Aufbewahrungsdauer.
+    Löscht alte Backups gemaess konfigurierter Aufbewahrungsdauer.
 
     Returns:
-        Dict mit Anzahl geloeschter Dateien
+        Dict mit Anzahl gelöschter Dateien
     """
     logger.info("retention_task_gestartet", task_id=self.request.id)
 
@@ -198,7 +198,7 @@ def apply_retention_task(self) -> Dict[str, Any]:
 
         response = {
             "erfolg": True,
-            "geloescht_gesamt": total,
+            "gelöscht_gesamt": total,
             "details": deleted,
         }
 
@@ -224,7 +224,7 @@ def apply_retention_task(self) -> Dict[str, Any]:
 )
 def sync_to_remote_task(self) -> Dict[str, Any]:
     """
-    Celery Task fuer Remote-Synchronisation.
+    Celery Task für Remote-Synchronisation.
 
     Synchronisiert lokale Backups zum konfigurierten Remote-Server.
 
@@ -278,7 +278,7 @@ def sync_to_remote_task(self) -> Dict[str, Any]:
 )
 def update_backup_metrics_task(self) -> Dict[str, Any]:
     """
-    Celery Task fuer Backup-Metriken-Aktualisierung.
+    Celery Task für Backup-Metriken-Aktualisierung.
 
     Aktualisiert Speicherplatz- und Dateizaehl-Metriken.
 
@@ -333,10 +333,10 @@ def archive_audit_logs_monthly_task(
     month: int = None,
 ) -> Dict[str, Any]:
     """
-    Celery Task fuer monatliche Audit-Log-Archivierung.
+    Celery Task für monatliche Audit-Log-Archivierung.
 
     Archiviert Audit-Logs des Vormonats in MinIO WORM-Storage.
-    Wird automatisch am 1. jedes Monats um 01:00 Uhr ausgefuehrt.
+    Wird automatisch am 1. jedes Monats um 01:00 Uhr ausgeführt.
 
     Args:
         year: Jahr (default: Vormonat)
@@ -373,7 +373,7 @@ def archive_audit_logs_monthly_task(
             "erfolg": True,
             "archiv_id": result.archive_id,
             "objekt_key": result.object_key,
-            "eintraege": result.entries_archived,
+            "einträge": result.entries_archived,
             "start_sequenz": result.start_sequence,
             "end_sequenz": result.end_sequence,
             "content_hash": result.content_hash[:16] + "...",
@@ -419,10 +419,10 @@ def verify_audit_archives_task(
     year: int = None,
 ) -> Dict[str, Any]:
     """
-    Celery Task fuer Audit-Archiv-Verifikation.
+    Celery Task für Audit-Archiv-Verifikation.
 
-    Verifiziert alle Archive eines Jahres auf Integritaet.
-    Wird woechentlich am Samstag um 04:00 Uhr ausgefuehrt.
+    Verifiziert alle Archive eines Jahres auf Integrität.
+    Wird wöchentlich am Samstag um 04:00 Uhr ausgeführt.
 
     Args:
         year: Jahr (default: aktuelles Jahr)
@@ -450,8 +450,8 @@ def verify_audit_archives_task(
             "jahr": year,
             "archive_gesamt": results.get("total_archives", 0),
             "verifiziert": results.get("verified", 0),
-            "gueltig": results.get("valid", 0),
-            "ungueltig": results.get("invalid", 0),
+            "gültig": results.get("valid", 0),
+            "ungültig": results.get("invalid", 0),
             "fehler": results.get("errors", [])[:5],  # Erste 5 Fehler
         }
 
@@ -482,9 +482,9 @@ def verify_audit_archives_task(
 )
 def get_audit_archive_statistics_task(self) -> Dict[str, Any]:
     """
-    Celery Task fuer Audit-Archiv-Statistiken.
+    Celery Task für Audit-Archiv-Statistiken.
 
-    Holt aktuelle Statistiken ueber alle archivierten Audit-Logs.
+    Holt aktuelle Statistiken über alle archivierten Audit-Logs.
 
     Returns:
         Dict mit Archiv-Statistiken
@@ -531,20 +531,20 @@ def backup_restore_test_task(
     cleanup_on_failure: bool = False,
 ) -> Dict[str, Any]:
     """
-    Celery Task fuer automatisierte Backup-Restore-Tests.
+    Celery Task für automatisierte Backup-Restore-Tests.
 
     Validiert Backups durch:
-    - Restore in temporaere Datenbank
+    - Restore in temporäre Datenbank
     - Schema-Verifikation
     - Record-Count-Vergleich
     - Daten-Stichproben-Validierung
 
-    Wird woechentlich am Sonntag um 02:00 Uhr ausgefuehrt.
+    Wird wöchentlich am Sonntag um 02:00 Uhr ausgeführt.
 
     Args:
         validation_level: Validierungs-Level (minimal, standard, full)
-        cleanup_on_success: Temp-DB nach erfolgreichem Test loeschen
-        cleanup_on_failure: Temp-DB nach fehlgeschlagenem Test loeschen
+        cleanup_on_success: Temp-DB nach erfolgreichem Test löschen
+        cleanup_on_failure: Temp-DB nach fehlgeschlagenem Test löschen
 
     Returns:
         Dict mit Test-Ergebnis
@@ -567,7 +567,7 @@ def backup_restore_test_task(
         level_map = {
             "minimal": ValidationLevel.MINIMAL,
             "standard": ValidationLevel.STANDARD,
-            "full": ValidationLevel.THOROUGH,  # "full" ist Alias fuer THOROUGH
+            "full": ValidationLevel.THOROUGH,  # "full" ist Alias für THOROUGH
             "thorough": ValidationLevel.THOROUGH,
         }
         level = level_map.get(validation_level, ValidationLevel.STANDARD)
@@ -600,18 +600,18 @@ def backup_restore_test_task(
             "dauer_sekunden": result.duration_seconds,
             "schema_validierung": {
                 "erfolg": schema_passed == len(result.schema_results),
-                "tabellen_geprueft": len(result.schema_results),
+                "tabellen_geprüft": len(result.schema_results),
                 "tabellen_bestanden": schema_passed,
                 "fehlende_tabellen": schema_failed,
             } if result.schema_results else None,
             "record_counts": {
                 "erfolg": record_matched == len(result.record_count_results),
-                "tabellen_geprueft": len(result.record_count_results),
+                "tabellen_geprüft": len(result.record_count_results),
                 "tabellen_match": record_matched,
                 "total_records": record_total,
             } if result.record_count_results else None,
             "zusammenfassung": {
-                "tabellen_geprueft": result.tables_checked,
+                "tabellen_geprüft": result.tables_checked,
                 "tabellen_bestanden": result.tables_passed,
                 "tabellen_fehlgeschlagen": result.tables_failed,
                 "record_match_rate": round(result.record_match_rate, 2),
@@ -667,12 +667,12 @@ def get_restore_test_history_task(
     days: int = 30,
 ) -> Dict[str, Any]:
     """
-    Celery Task fuer Restore-Test-Historie.
+    Celery Task für Restore-Test-Historie.
 
     Holt die letzten Restore-Test-Ergebnisse.
 
     Args:
-        days: Anzahl Tage zurueckblicken
+        days: Anzahl Tage zurückblicken
 
     Returns:
         Dict mit Test-Historie
@@ -702,7 +702,7 @@ def get_restore_test_history_task(
         return {
             "erfolg": True,
             "tage": days,
-            "eintraege": len(history),
+            "einträge": len(history),
             "historie": history,
         }
 

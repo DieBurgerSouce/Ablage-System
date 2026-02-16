@@ -259,9 +259,9 @@ async def list_available_banks(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Liste aller verfuegbaren Banken fuer PSD2/FinTS.
+    Liste aller verfügbaren Banken für PSD2/FinTS.
 
-    Gibt Banken mit deren Faehigkeiten zurueck (PSD2, FinTS, Zahlungen).
+    Gibt Banken mit deren Faehigkeiten zurück (PSD2, FinTS, Zahlungen).
     """
     service = get_account_connection_service()
     banks = await service.get_available_banks(db, country_code)
@@ -280,7 +280,7 @@ async def get_bank_info(
     """
     Detailinformationen zu einer Bank.
 
-    Gibt unterstuetzte TAN-Verfahren und API-Faehigkeiten zurueck.
+    Gibt unterstützte TAN-Verfahren und API-Faehigkeiten zurück.
     """
     service = get_account_connection_service()
     bank = await service.get_bank_info(bank_code)
@@ -308,7 +308,7 @@ async def init_psd2_connection(
     Starte PSD2 Verbindung (OAuth2 Flow).
 
     Nach Erfolg wird der Benutzer zur Bank weitergeleitet.
-    Nach SCA-Bestaetigung wird er zur redirect_uri zurueckgeleitet.
+    Nach SCA-Bestätigung wird er zur redirect_uri zurückgeleitet.
     """
     service = get_account_connection_service()
     result = await service.init_psd2_connection(
@@ -341,7 +341,7 @@ async def psd2_callback(
     """
     PSD2 OAuth2 Callback nach Bank-Redirect.
 
-    Wird aufgerufen wenn Benutzer von der Bank zurueckkehrt.
+    Wird aufgerufen wenn Benutzer von der Bank zurückkehrt.
     """
     if error:
         raise HTTPException(
@@ -376,8 +376,8 @@ async def init_fints_connection(
     """
     Starte FinTS Verbindung.
 
-    Die PIN wird nur fuer diese Session verwendet und NICHT gespeichert.
-    Bei Erfolg wird ein TAN-Challenge zurueckgegeben.
+    Die PIN wird nur für diese Session verwendet und NICHT gespeichert.
+    Bei Erfolg wird ein TAN-Challenge zurückgegeben.
     """
     service = get_account_connection_service()
     result = await service.init_fints_connection(
@@ -546,7 +546,7 @@ async def delete_connection(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Loesche eine Bank-Verbindung.
+    Lösche eine Bank-Verbindung.
 
     Bei PSD2 wird der Consent widerrufen.
     """
@@ -618,10 +618,10 @@ async def initiate_payment(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Initiiere eine SEPA-Ueberweisung.
+    Initiiere eine SEPA-Überweisung.
 
     Bei PSD2-Konten wird SCA (Weiterleitung zur Bank) erforderlich.
-    Bei FinTS wird ein TAN-Challenge zurueckgegeben.
+    Bei FinTS wird ein TAN-Challenge zurückgegeben.
     """
     service = get_payment_initiation_service()
     payment_request = PaymentRequest(
@@ -725,7 +725,7 @@ async def get_reconciliation_suggestions(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Hole Abgleich-Vorschlaege fuer eine Transaktion.
+    Hole Abgleich-Vorschläge für eine Transaktion.
     """
     service = get_auto_reconciliation_service()
     result = await service.reconcile_transaction(

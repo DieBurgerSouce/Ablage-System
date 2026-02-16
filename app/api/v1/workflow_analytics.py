@@ -48,7 +48,7 @@ router = APIRouter(prefix="/workflows", tags=["workflow-analytics"])
 # =============================================================================
 
 class SLADefinitionCreate(BaseModel):
-    """Schema fuer SLA-Definition."""
+    """Schema für SLA-Definition."""
 
     workflow_type: str = Field(..., min_length=1, max_length=100)
     max_duration_hours: int = Field(..., ge=1, le=720)
@@ -57,7 +57,7 @@ class SLADefinitionCreate(BaseModel):
 
 
 class SLADefinitionResponse(BaseModel):
-    """Schema fuer SLA-Definition-Antwort."""
+    """Schema für SLA-Definition-Antwort."""
 
     workflow_type: str
     max_duration_hours: int
@@ -67,7 +67,7 @@ class SLADefinitionResponse(BaseModel):
 
 
 class SLAStatusResponse(BaseModel):
-    """Schema fuer SLA-Status-Antwort."""
+    """Schema für SLA-Status-Antwort."""
 
     instance_id: str
     has_sla: bool
@@ -88,7 +88,7 @@ class SLAStatusResponse(BaseModel):
 
 
 class SLABreachResponse(BaseModel):
-    """Schema fuer SLA-Verletzung."""
+    """Schema für SLA-Verletzung."""
 
     instance_id: str
     business_key: Optional[str] = None
@@ -103,7 +103,7 @@ class SLABreachResponse(BaseModel):
 
 
 class SLAMetricsResponse(BaseModel):
-    """Schema fuer SLA-Metriken."""
+    """Schema für SLA-Metriken."""
 
     time_range_days: int
     total_workflows: int
@@ -115,7 +115,7 @@ class SLAMetricsResponse(BaseModel):
 
 
 class BottleneckAnalysisResponse(BaseModel):
-    """Schema fuer Bottleneck-Analyse."""
+    """Schema für Bottleneck-Analyse."""
 
     time_range_days: int
     slow_tasks: List[JSONDict]
@@ -125,7 +125,7 @@ class BottleneckAnalysisResponse(BaseModel):
 
 
 class ThroughputResponse(BaseModel):
-    """Schema fuer Durchsatz-Metriken."""
+    """Schema für Durchsatz-Metriken."""
 
     time_range_days: int
     group_by: str
@@ -134,7 +134,7 @@ class ThroughputResponse(BaseModel):
 
 
 class UserProductivityResponse(BaseModel):
-    """Schema fuer User-Produktivitaet."""
+    """Schema für User-Produktivitaet."""
 
     user_id: str
     time_range_days: int
@@ -144,7 +144,7 @@ class UserProductivityResponse(BaseModel):
 
 
 class DurationResponse(BaseModel):
-    """Schema fuer Dauern pro Workflow-Typ."""
+    """Schema für Dauern pro Workflow-Typ."""
 
     time_range_days: int
     by_workflow_type: List[JSONDict]
@@ -152,7 +152,7 @@ class DurationResponse(BaseModel):
 
 
 class ParallelApprovalCreate(BaseModel):
-    """Schema fuer parallele Genehmigung erstellen."""
+    """Schema für parallele Genehmigung erstellen."""
 
     approvers: List[UUID] = Field(..., min_length=1)
     consensus_type: str = Field(default="all", pattern="^(all|majority|any|unanimous|quorum)$")
@@ -164,14 +164,14 @@ class ParallelApprovalCreate(BaseModel):
 
 
 class VoteRequest(BaseModel):
-    """Schema fuer Abstimmung."""
+    """Schema für Abstimmung."""
 
     decision: str = Field(..., pattern="^(approved|rejected|abstained)$")
     comment: Optional[str] = Field(None, max_length=1000)
 
 
 class ParallelApprovalResponse(BaseModel):
-    """Schema fuer parallele Genehmigung."""
+    """Schema für parallele Genehmigung."""
 
     approval_id: str
     instance_id: str
@@ -187,7 +187,7 @@ class ParallelApprovalResponse(BaseModel):
 
 
 class VoteResponse(BaseModel):
-    """Schema fuer Abstimmungsergebnis."""
+    """Schema für Abstimmungsergebnis."""
 
     approval_id: str
     vote_recorded: bool
@@ -213,7 +213,7 @@ async def get_all_sla_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[SLAStatusResponse]:
-    """Gibt SLA-Status aller aktiven Workflows zurueck."""
+    """Gibt SLA-Status aller aktiven Workflows zurück."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
@@ -309,7 +309,7 @@ async def define_sla(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SLADefinitionResponse:
-    """Definiert SLA fuer einen Workflow-Typ."""
+    """Definiert SLA für einen Workflow-Typ."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
@@ -347,7 +347,7 @@ async def get_sla_metrics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SLAMetricsResponse:
-    """Gibt SLA-Performance-Metriken zurueck."""
+    """Gibt SLA-Performance-Metriken zurück."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
@@ -375,7 +375,7 @@ async def start_sla_tracking(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SLAStatusResponse:
-    """Startet SLA-Tracking fuer eine Workflow-Instanz."""
+    """Startet SLA-Tracking für eine Workflow-Instanz."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
@@ -445,7 +445,7 @@ async def get_throughput_metrics(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ThroughputResponse:
-    """Gibt Durchsatz-Metriken zurueck."""
+    """Gibt Durchsatz-Metriken zurück."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
@@ -475,7 +475,7 @@ async def get_user_productivity(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> UserProductivityResponse:
-    """Gibt Produktivitaetsmetriken fuer einen User zurueck."""
+    """Gibt Produktivitaetsmetriken für einen User zurück."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
@@ -504,7 +504,7 @@ async def get_average_durations(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DurationResponse:
-    """Gibt durchschnittliche Dauern pro Workflow-Typ zurueck."""
+    """Gibt durchschnittliche Dauern pro Workflow-Typ zurück."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
@@ -538,7 +538,7 @@ async def create_parallel_approval(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ParallelApprovalResponse:
-    """Erstellt eine parallele Genehmigung fuer einen Workflow."""
+    """Erstellt eine parallele Genehmigung für einen Workflow."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
@@ -624,7 +624,7 @@ async def get_approval_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ParallelApprovalResponse:
-    """Gibt den Status einer parallelen Genehmigung zurueck."""
+    """Gibt den Status einer parallelen Genehmigung zurück."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(
@@ -670,7 +670,7 @@ async def list_pending_approvals(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[ParallelApprovalResponse]:
-    """Listet alle ausstehenden Genehmigungen fuer den aktuellen User."""
+    """Listet alle ausstehenden Genehmigungen für den aktuellen User."""
     company_id = await get_user_company_id(db, current_user)
     if not company_id:
         raise HTTPException(

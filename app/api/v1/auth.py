@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
-# Z.7 SECURITY FIX: Rate Limiting fuer Passwort-Endpoints
+# Z.7 SECURITY FIX: Rate Limiting für Passwort-Endpoints
 from app.core.rate_limiting import limiter, RateLimitTier, get_ip_identifier
 
 logger = structlog.get_logger(__name__)
@@ -148,7 +148,7 @@ async def register(
 
 # ==================== Login ====================
 
-# SECURITY FIX 27-1: Rate-Limit fuer Login-Endpoint - KRITISCH!
+# SECURITY FIX 27-1: Rate-Limit für Login-Endpoint - KRITISCH!
 # Verhindert Brute-Force-Angriffe auf Passwörter
 @limiter.limit("10/minute", key_func=get_ip_identifier)
 @router.post(
@@ -221,7 +221,7 @@ async def login(
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Sicherheitsdienst voruebergehend nicht verfuegbar. Bitte spaeter erneut versuchen.",
+            detail="Sicherheitsdienst vorübergehend nicht verfügbar. Bitte später erneut versuchen.",
             headers={"Retry-After": "60"},
         )
 
@@ -266,7 +266,7 @@ async def login(
             )
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="Sicherheitsdienst voruebergehend nicht verfuegbar. Bitte spaeter erneut versuchen.",
+                detail="Sicherheitsdienst vorübergehend nicht verfügbar. Bitte später erneut versuchen.",
                 headers={"Retry-After": "60"},
             )
 
@@ -384,13 +384,13 @@ async def login(
 
 # ==================== 2FA Verification during Login ====================
 
-# SECURITY FIX 27-2: Rate-Limit fuer 2FA-Endpoint - KRITISCH!
+# SECURITY FIX 27-2: Rate-Limit für 2FA-Endpoint - KRITISCH!
 # 6-stellige TOTP-Codes haben nur 1M Kombinationen - Brute-Force verhindern!
 @limiter.limit("5/minute", key_func=get_ip_identifier)
 @router.post(
     "/verify-2fa",
     response_model=Token,
-    summary="2FA-Verifizierung abschliessen",
+    summary="2FA-Verifizierung abschließen",
     description="Verifiziert den 2FA-Code und gibt JWT-Tokens zuruck"
 )
 async def verify_2fa_login_endpoint(
@@ -434,7 +434,7 @@ async def verify_2fa_login_endpoint(
 
     # Verify TOTP code or backup code
     try:
-        # SECURITY FIX: Atomare Replay-Pruefung VOR Verifikation
+        # SECURITY FIX: Atomare Replay-Prüfung VOR Verifikation
         # Verhindert Timing-Attack bei parallelen Requests mit gleichem Code.
         # SETNX stellt sicher, dass nur ein Request pro Code durchkommt.
         if is_totp_code:
@@ -447,7 +447,7 @@ async def verify_2fa_login_endpoint(
                 )
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Dieser Code wurde bereits verwendet. Bitte warten Sie auf den naechsten Code.",
+                    detail="Dieser Code wurde bereits verwendet. Bitte warten Sie auf den nächsten Code.",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
 
@@ -466,7 +466,7 @@ async def verify_2fa_login_endpoint(
             )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Ungueltiger 2FA-Code",
+                detail="Ungültiger 2FA-Code",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
@@ -543,7 +543,7 @@ async def verify_2fa_login_endpoint(
 
 # ==================== Token Refresh ====================
 
-# SECURITY FIX 27-3: Rate-Limit fuer Refresh-Endpoint
+# SECURITY FIX 27-3: Rate-Limit für Refresh-Endpoint
 # Verhindert Token-Exhaustion-Angriffe
 @limiter.limit("30/minute", key_func=get_ip_identifier)
 @router.post(

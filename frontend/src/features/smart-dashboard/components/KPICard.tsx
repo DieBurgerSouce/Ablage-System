@@ -1,7 +1,7 @@
 // KPI Card Component
 // Single KPI with value, trend arrow, and optional sparkline
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/cards/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {

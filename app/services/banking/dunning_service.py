@@ -2,17 +2,17 @@
 """Dunning (Mahnwesen) Service.
 
 Verwaltet das automatische Mahnwesen:
-- Ueberfaellige Rechnungen erkennen
+- Überfällige Rechnungen erkennen
 - Mahnstufen verwalten
-- Mahngebuehren und Verzugszinsen berechnen
+- Mahngebühren und Verzugszinsen berechnen
 - Mahnschreiben generieren
-- Mahnstopp fuer Reklamationen
+- Mahnstopp für Reklamationen
 - Audit-Log (mahnung_history)
 
 Mahnstufen:
 0 - Nicht begonnen
 1 - 1. Mahnung (Zahlungserinnerung)
-2 - 2. Mahnung (+ Mahngebuehr)
+2 - 2. Mahnung (+ Mahngebühr)
 3 - Letzte Mahnung (+ Verzugszinsen, Inkasso-Androhung)
 
 BGB §286 Compliance:
@@ -47,7 +47,7 @@ from app.db.models import DunningRecord, Document, MahnungHistory, User
 
 logger = structlog.get_logger(__name__)
 
-# BGB §286 Zinssaetze (Stand: Januar 2025)
+# BGB §286 Zinssätze (Stand: Januar 2025)
 BASE_INTEREST_RATE = Decimal("2.27")  # Basiszinssatz
 B2B_INTEREST_ADDON = Decimal("9.00")  # B2B: +9%
 B2C_INTEREST_ADDON = Decimal("5.00")  # B2C: +5%
@@ -55,7 +55,7 @@ B2B_PAUSCHALE = Decimal("40.00")  # §288 Abs. 5 BGB
 
 
 class MahnungHistoryAction(str, Enum):
-    """Aktionstypen fuer Mahnung-History."""
+    """Aktionstypen für Mahnung-History."""
     REMINDER_SENT = "reminder_sent"
     ESCALATED = "escalated"
     PHONE_CALL = "phone_call"
@@ -81,28 +81,28 @@ class DunningAction(str, Enum):
 @dataclass
 class DunningConfig:
     """Mahnkonfiguration."""
-    # Fristen nach Faelligkeit (Tage)
+    # Fristen nach Fälligkeit (Tage)
     reminder_after_days: int = 7      # Zahlungserinnerung
     first_dunning_after_days: int = 14  # 1. Mahnung
     second_dunning_after_days: int = 28  # 2. Mahnung
     final_dunning_after_days: int = 42  # Letzte Mahnung
 
-    # Gebuehren
+    # Gebühren
     first_dunning_fee: Decimal = Decimal("5.00")
     second_dunning_fee: Decimal = Decimal("10.00")
     final_dunning_fee: Decimal = Decimal("15.00")
 
     # Verzugszinsen (p.a.)
-    late_interest_rate: Decimal = Decimal("5.00")  # 5% ueber Basiszins
+    late_interest_rate: Decimal = Decimal("5.00")  # 5% über Basiszins
     base_interest_rate: Decimal = Decimal("3.62")  # Aktueller Basiszins
 
-    # Mindestbetrag fuer Mahnung
+    # Mindestbetrag für Mahnung
     min_dunning_amount: Decimal = Decimal("5.00")
 
 
 @dataclass
 class DunningCandidate:
-    """Kandidat fuer Mahnung."""
+    """Kandidat für Mahnung."""
     document_id: UUID
     invoice_number: Optional[str]
     creditor_name: Optional[str]
@@ -117,7 +117,7 @@ class DunningCandidate:
 
 
 class DunningService:
-    """Service fuer Mahnwesen."""
+    """Service für Mahnwesen."""
 
     def __init__(self, config: Optional[DunningConfig] = None):
         """Initialisiere Dunning Service.
@@ -135,13 +135,13 @@ class DunningService:
         max_days_overdue: Optional[int] = None,
         include_in_progress: bool = False,
     ) -> List[DunningCandidate]:
-        """Hole ueberfaellige Rechnungen.
+        """Hole überfällige Rechnungen.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            min_days_overdue: Mindestens so viele Tage ueberfaellig
-            max_days_overdue: Maximal so viele Tage ueberfaellig
+            min_days_overdue: Mindestens so viele Tage überfällig
+            max_days_overdue: Maximal so viele Tage überfällig
             include_in_progress: Auch laufende Mahnverfahren?
 
         Returns:
@@ -150,7 +150,7 @@ class DunningService:
         today = date.today()
         candidates = []
 
-        # Offene Rechnungen mit Faelligkeitsdatum
+        # Offene Rechnungen mit Fälligkeitsdatum
         query = select(Document).where(
             and_(
                 Document.owner_id == user_id,
@@ -165,11 +165,11 @@ class DunningService:
         for doc in documents:
             extracted = doc.extracted_data or {}
 
-            # Pruefen ob bezahlt
+            # Prüfen ob bezahlt
             if extracted.get("payment_status") == "paid":
                 continue
 
-            # Betrag pruefen
+            # Betrag prüfen
             amount = extracted.get("total_amount") or extracted.get("amount")
             if not amount:
                 continue
@@ -182,7 +182,7 @@ class DunningService:
             if amount < self.config.min_dunning_amount:
                 continue
 
-            # Faelligkeitsdatum
+            # Fälligkeitsdatum
             due_date_str = extracted.get("due_date")
             if not due_date_str:
                 continue
@@ -195,14 +195,14 @@ class DunningService:
             except (ValueError, TypeError):
                 continue
 
-            # Ueberfaellig?
+            # Überfällig?
             days_overdue = (today - due_date).days
             if days_overdue < min_days_overdue:
                 continue
             if max_days_overdue and days_overdue > max_days_overdue:
                 continue
 
-            # Existierendes Mahnverfahren pruefen
+            # Existierendes Mahnverfahren prüfen
             dunning_record = await self._get_dunning_record(db, doc.id)
             current_level = DunningLevel.NOT_STARTED
             accumulated_fees = Decimal("0.00")
@@ -241,7 +241,7 @@ class DunningService:
                 total_due=total_due,
             ))
 
-        # Nach Ueberfaelligkeit sortieren
+        # Nach Überfälligkeit sortieren
         candidates.sort(key=lambda c: c.days_overdue, reverse=True)
 
         logger.info(
@@ -289,14 +289,14 @@ class DunningService:
 
         extracted = document.extracted_data or {}
 
-        # Existierendes Mahnverfahren pruefen
+        # Existierendes Mahnverfahren prüfen
         existing = await self._get_dunning_record(db, document_id)
         if existing:
             raise ValueError(
                 f"Mahnverfahren existiert bereits (Stufe {existing.dunning_level})"
             )
 
-        # Betrag und Faelligkeit
+        # Betrag und Fälligkeit
         amount = Decimal(str(extracted.get("total_amount") or extracted.get("amount", 0)))
         due_date_str = extracted.get("due_date")
         due_date = None
@@ -306,7 +306,7 @@ class DunningService:
             else:
                 due_date = due_date_str
 
-        # Gebuehr berechnen
+        # Gebühr berechnen
         fee = self._get_fee_for_level(level)
         late_interest = Decimal("0.00")
         if due_date:
@@ -352,7 +352,7 @@ class DunningService:
         dunning_id: UUID,
         notes: Optional[str] = None,
     ) -> DunningRecordResponse:
-        """Eskaliere Mahnvorgang zur naechsten Stufe.
+        """Eskaliere Mahnvorgang zur nächsten Stufe.
 
         Args:
             db: Datenbank-Session
@@ -374,7 +374,7 @@ class DunningService:
 
         current_level = DunningLevel(dunning.dunning_level)
 
-        # Naechste Stufe bestimmen
+        # Nächste Stufe bestimmen
         level_order = [DunningLevel.NOT_STARTED, DunningLevel.FIRST_REMINDER, DunningLevel.SECOND_REMINDER, DunningLevel.FINAL_REMINDER]
         try:
             current_idx = level_order.index(current_level)
@@ -384,7 +384,7 @@ class DunningService:
         except ValueError:
             new_level = DunningLevel.FIRST_REMINDER
 
-        # Neue Gebuehr hinzufuegen
+        # Neue Gebühr hinzufuegen
         new_fee = self._get_fee_for_level(new_level)
         total_fees = (dunning.reminder_fee or Decimal("0.00")) + new_fee
 
@@ -480,12 +480,12 @@ class DunningService:
             user_id: Benutzer-ID
             status: Optionaler Status-Filter
             level: Optionaler Level-Filter
-            mahnstopp: Filter fuer Mahnstopp-Vorgaenge
-            is_b2b: Filter fuer B2B/B2C
-            business_entity_id: Filter fuer Geschaeftspartner
+            mahnstopp: Filter für Mahnstopp-Vorgaenge
+            is_b2b: Filter für B2B/B2C
+            business_entity_id: Filter für Geschäftspartner
             active_only: Nur aktive (nicht abgeschlossene) Mahnungen
             limit: Max. Ergebnisse
-            offset: Offset fuer Pagination
+            offset: Offset für Pagination
 
         Returns:
             Tuple (Liste, Gesamtanzahl)
@@ -534,9 +534,9 @@ class DunningService:
         Returns:
             Dictionary mit Statistiken im Frontend-kompatiblen Format:
             - total_active: Anzahl aktiver Mahnungen
-            - total_amount_overdue: Gesamtbetrag ueberfaelliger Forderungen
-            - total_fees: Gesamte Mahngebuehren
-            - avg_days_overdue: Durchschnittliche Ueberfaelligkeit in Tagen
+            - total_amount_overdue: Gesamtbetrag überfälliger Forderungen
+            - total_fees: Gesamte Mahngebühren
+            - avg_days_overdue: Durchschnittliche Überfälligkeit in Tagen
             - by_level: Anzahl pro Mahnstufe
             - b2b_count: Anzahl B2B-Mahnungen
             - b2c_count: Anzahl B2C-Mahnungen
@@ -563,7 +563,7 @@ class DunningService:
         total_amount_overdue = float(active_row[1] or 0)
         total_fees = float(active_row[2] or 0)
 
-        # Durchschnittliche Ueberfaelligkeit in Tagen
+        # Durchschnittliche Überfälligkeit in Tagen
         avg_days_result = await db.execute(
             select(
                 func.avg(
@@ -645,15 +645,15 @@ class DunningService:
         user_id: UUID,
         dry_run: bool = True,
     ) -> List[Dict[str, Any]]:
-        """Fuehre automatisches Mahnverfahren durch.
+        """Führe automatisches Mahnverfahren durch.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            dry_run: Nur simulieren, nicht ausfuehren
+            dry_run: Nur simulieren, nicht ausführen
 
         Returns:
-            Liste der durchgefuehrten/geplanten Aktionen
+            Liste der durchgeführten/geplanten Aktionen
         """
         actions = []
         overdue = await self.get_overdue_invoices(
@@ -716,7 +716,7 @@ class DunningService:
         db: AsyncSession,
         document_id: UUID,
     ) -> Optional[DunningRecord]:
-        """Hole Mahnvorgang fuer Dokument."""
+        """Hole Mahnvorgang für Dokument."""
         result = await db.execute(
             select(DunningRecord).where(
                 DunningRecord.document_id == document_id
@@ -746,7 +746,7 @@ class DunningService:
         db: AsyncSession,
         user_id: UUID,
     ) -> float:
-        """Hole eingesammelte Mahngebuehren (letzte 30 Tage)."""
+        """Hole eingesammelte Mahngebühren (letzte 30 Tage)."""
         thirty_days_ago = utc_now() - timedelta(days=30)
 
         result = await db.execute(
@@ -790,7 +790,7 @@ class DunningService:
         return DunningAction.REMINDER
 
     def _get_fee_for_level(self, level: DunningLevel) -> Decimal:
-        """Hole Gebuehr fuer Mahnstufe."""
+        """Hole Gebühr für Mahnstufe."""
         fees = {
             DunningLevel.NOT_STARTED: Decimal("0.00"),
             DunningLevel.FIRST_REMINDER: self.config.first_dunning_fee,
@@ -800,7 +800,7 @@ class DunningService:
         return fees.get(level, Decimal("0.00"))
 
     def _get_fee_for_action(self, action: DunningAction) -> Decimal:
-        """Hole Gebuehr fuer Mahnaktion."""
+        """Hole Gebühr für Mahnaktion."""
         fees = {
             DunningAction.REMINDER: Decimal("0.00"),
             DunningAction.FIRST_DUNNING: self.config.first_dunning_fee,
@@ -819,8 +819,8 @@ class DunningService:
     ) -> Decimal:
         """Berechne Verzugszinsen.
 
-        Verzugszinsen = Basiszins + 5% (fuer Verbraucher)
-        oder Basiszins + 9% (fuer Geschaeftskunden)
+        Verzugszinsen = Basiszins + 5% (für Verbraucher)
+        oder Basiszins + 9% (für Geschäftskunden)
 
         Hier: Basiszins + 5%
         """
@@ -873,7 +873,7 @@ class DunningService:
         )
 
     # =========================================================================
-    # Neue Methoden fuer erweitertes Mahnungswesen (BGB §286)
+    # Neue Methoden für erweitertes Mahnungswesen (BGB §286)
     # =========================================================================
 
     async def log_history_event(
@@ -896,8 +896,8 @@ class DunningService:
             performed_by_id: Benutzer-ID
             notes: Notizen
             outcome: Ergebnis (success, failed, pending)
-            document_id: Optionales verknuepftes Dokument
-            metadata: Zusaetzliche Metadaten (JSON)
+            document_id: Optionales verknüpftes Dokument
+            metadata: Zusätzliche Metadaten (JSON)
 
         Returns:
             Erstellter History-Eintrag
@@ -950,19 +950,19 @@ class DunningService:
         limit: int = 50,
         offset: int = 0,
     ) -> Tuple[List[Dict[str, Any]], int]:
-        """Hole Mahnung-History fuer Mahnvorgang.
+        """Hole Mahnung-History für Mahnvorgang.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID (fuer Zugriffspruefung)
+            user_id: Benutzer-ID (für Zugriffsprüfung)
             dunning_record_id: Mahnvorgang-ID
-            limit: Max. Eintraege
-            offset: Offset fuer Pagination
+            limit: Max. Einträge
+            offset: Offset für Pagination
 
         Returns:
-            Tuple (Liste von History-Eintraegen, Gesamtanzahl)
+            Tuple (Liste von History-Einträgen, Gesamtanzahl)
         """
-        # Zugriffspruefung
+        # Zugriffsprüfung
         dunning = await self._get_dunning_by_id(db, user_id, dunning_record_id)
         if not dunning:
             raise ValueError("Mahnvorgang nicht gefunden")
@@ -1131,7 +1131,7 @@ class DunningService:
             raise ValueError("Mahnvorgang nicht gefunden")
 
         if not dunning.is_b2b:
-            raise ValueError("B2B-Pauschale nur fuer Geschaeftskunden moeglich")
+            raise ValueError("B2B-Pauschale nur für Geschäftskunden möglich")
 
         if dunning.b2b_pauschale_claimed:
             raise ValueError("B2B-Pauschale bereits gefordert")
@@ -1166,10 +1166,10 @@ class DunningService:
         """Hole aktuellen Verzugszinssatz nach BGB §288.
 
         Args:
-            is_b2b: True fuer B2B, False fuer B2C
+            is_b2b: True für B2B, False für B2C
 
         Returns:
-            Jaehrlicher Zinssatz in Prozent
+            Jährlicher Zinssatz in Prozent
         """
         addon = B2B_INTEREST_ADDON if is_b2b else B2C_INTEREST_ADDON
         return BASE_INTEREST_RATE + addon
@@ -1185,7 +1185,7 @@ class DunningService:
 
         Args:
             principal: Hauptforderung
-            due_date: Faelligkeitsdatum
+            due_date: Fälligkeitsdatum
             as_of_date: Berechnungsdatum
             is_b2b: B2B oder B2C
 
@@ -1199,7 +1199,7 @@ class DunningService:
         if days_late <= 0:
             return Decimal("0.00")
 
-        # Jaehrlicher Zinssatz
+        # Jährlicher Zinssatz
         annual_rate = self.get_verzugszinsen_rate(is_b2b) / Decimal("100")
 
         # Tageszins
@@ -1217,13 +1217,13 @@ class DunningService:
         dunning_id: UUID,
         is_b2b: bool,
     ) -> DunningRecordResponse:
-        """Setze B2B/B2C-Status fuer Mahnvorgang.
+        """Setze B2B/B2C-Status für Mahnvorgang.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
             dunning_id: Mahnvorgang-ID
-            is_b2b: True fuer B2B, False fuer B2C
+            is_b2b: True für B2B, False für B2C
 
         Returns:
             Aktualisierter Mahnvorgang
@@ -1339,9 +1339,9 @@ class DunningService:
         self,
         db: AsyncSession,
     ) -> int:
-        """Pruefe und hebe abgelaufene Mahnstopps auf.
+        """Prüfe und hebe abgelaufene Mahnstopps auf.
 
-        Wird vom Celery Beat Task taeglich aufgerufen.
+        Wird vom Celery Beat Task täglich aufgerufen.
 
         Returns:
             Anzahl aufgehobener Mahnstopps

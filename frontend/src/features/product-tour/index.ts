@@ -15,5 +15,9 @@ export { TourProvider, useTourContext } from './components/TourProvider'
 // Hooks
 export { useTour } from './hooks/use-tour'
 
+// Getting Started / Progressive Disclosure
+export { GettingStartedChecklist, GettingStartedMini, useGettingStartedChecklist } from './components/GettingStartedChecklist'
+export { NewBadge, NewDot, useFeatureDiscovery, NEW_FEATURES } from './components/NewBadge'
+
 // Types & Data
 export * from './types'

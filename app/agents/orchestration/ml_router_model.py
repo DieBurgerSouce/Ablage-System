@@ -652,14 +652,14 @@ class OCRRouterModel:
                 "Legacy pickle-Migration ist aus Sicherheitsgründen deaktiviert. "
                 "Setzen Sie ABLAGE_ALLOW_PICKLE_MIGRATION=true wenn Sie der "
                 "Quelle der pickle-Datei vertrauen. WARNUNG: pickle.load kann "
-                "beliebigen Code ausfuehren!"
+                "beliebigen Code ausführen!"
             )
 
         # Audit Log - wer hat wann eine pickle-Migration durchgeführt?
         logger.warning(
             "pickle_migration_started",
             pickle_path=str(path),
-            security_warning="pickle.load kann beliebigen Code ausfuehren!",
+            security_warning="pickle.load kann beliebigen Code ausführen!",
         )
 
         # Import erst NACH Security-Check (Defense in Depth)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-TempFileStorageService - Temporaere Datei-Speicherung fuer OCR-Review-Workflow.
+TempFileStorageService - Temporaere Datei-Speicherung für OCR-Review-Workflow.
 
 Speichert Dateien temporaer in Redis mit 1 Stunde TTL.
 Verwendet im Upload-Workflow:
@@ -8,7 +8,7 @@ Verwendet im Upload-Workflow:
 2. User reviewed OCR-Ergebnis im Frontend
 3. upload-complete holt Datei und speichert permanent in MinIO
 
-Feinpoliert und durchdacht - fuer Enterprise Upload-Flows.
+Feinpoliert und durchdacht - für Enterprise Upload-Flows.
 """
 
 import base64
@@ -23,18 +23,18 @@ from app.core.redis_state import RedisStateManager
 
 logger = structlog.get_logger(__name__)
 
-# TTL fuer temporaere Dateien: 1 Stunde
+# TTL für temporaere Dateien: 1 Stunde
 TEMP_FILE_TTL_SECONDS = 3600
 
-# Maximale Dateigroesse fuer Temp Storage: 50MB
-# (Base64 encoding erhoeht Groesse um ~33%)
+# Maximale Dateigröße für Temp Storage: 50MB
+# (Base64 encoding erhöht Größe um ~33%)
 MAX_TEMP_FILE_SIZE_MB = 50
 MAX_TEMP_FILE_SIZE_BYTES = MAX_TEMP_FILE_SIZE_MB * 1024 * 1024
 
 
 @dataclass
 class TempFileInfo:
-    """Information ueber eine temporaer gespeicherte Datei."""
+    """Information über eine temporaer gespeicherte Datei."""
     temp_file_id: str
     original_filename: str
     mime_type: str
@@ -57,9 +57,9 @@ class TempFile:
 
 class TempFileStorageService:
     """
-    Service fuer temporaere Datei-Speicherung.
+    Service für temporaere Datei-Speicherung.
 
-    Speichert Dateien in Redis mit TTL fuer OCR-Review-Workflow.
+    Speichert Dateien in Redis mit TTL für OCR-Review-Workflow.
     Automatisches Cleanup nach 1 Stunde.
     """
 
@@ -89,7 +89,7 @@ class TempFileStorageService:
             original_filename: Originaler Dateiname
             mime_type: MIME-Type der Datei
             user_id: ID des hochladenden Users
-            metadata: Optionale zusaetzliche Metadaten
+            metadata: Optionale zusätzliche Metadaten
 
         Returns:
             TempFileInfo mit temp_file_id
@@ -97,11 +97,11 @@ class TempFileStorageService:
         Raises:
             ValueError: Wenn Datei zu gross
         """
-        # Groessen-Check
+        # Größen-Check
         file_size = len(file_content)
         if file_size > MAX_TEMP_FILE_SIZE_BYTES:
             raise ValueError(
-                f"Datei zu gross fuer temporaere Speicherung: {file_size / (1024*1024):.1f}MB. "
+                f"Datei zu gross für temporaere Speicherung: {file_size / (1024*1024):.1f}MB. "
                 f"Maximum: {MAX_TEMP_FILE_SIZE_MB}MB"
             )
 
@@ -219,13 +219,13 @@ class TempFileStorageService:
 
     async def delete(self, temp_file_id: str) -> bool:
         """
-        Loescht temporaere Datei aus Redis.
+        Löscht temporaere Datei aus Redis.
 
         Args:
             temp_file_id: ID der temporaeren Datei
 
         Returns:
-            True wenn geloescht, False wenn nicht gefunden
+            True wenn gelöscht, False wenn nicht gefunden
         """
         await self.redis._ensure_connection()
         key = f"temp_file:{temp_file_id}"
@@ -240,13 +240,13 @@ class TempFileStorageService:
 
     async def extend_ttl(self, temp_file_id: str, additional_seconds: int = 1800) -> bool:
         """
-        Verlaengert TTL einer temporaeren Datei.
+        Verlängert TTL einer temporaeren Datei.
 
-        Nuetzlich wenn User laenger im Review-Dialog bleibt.
+        Nützlich wenn User länger im Review-Dialog bleibt.
 
         Args:
             temp_file_id: ID der temporaeren Datei
-            additional_seconds: Zusaetzliche Sekunden (default: 30 Minuten)
+            additional_seconds: Zusätzliche Sekunden (default: 30 Minuten)
 
         Returns:
             True wenn erfolgreich, False wenn nicht gefunden
@@ -277,7 +277,7 @@ _temp_file_storage: Optional[TempFileStorageService] = None
 
 
 def get_temp_file_storage() -> TempFileStorageService:
-    """Gibt Singleton-Instanz des TempFileStorageService zurueck."""
+    """Gibt Singleton-Instanz des TempFileStorageService zurück."""
     global _temp_file_storage
     if _temp_file_storage is None:
         _temp_file_storage = TempFileStorageService()

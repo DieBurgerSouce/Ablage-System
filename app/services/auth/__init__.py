@@ -1,5 +1,5 @@
 """
-Authentication Services fuer Ablage-System.
+Authentication Services für Ablage-System.
 
 Beinhaltet:
 - MFA (Multi-Factor Authentication) mit TOTP

@@ -4,10 +4,10 @@
 Erweiterte Liquiditaetsprognose mit:
 - Rolling-Window Forecasts (30/60/90 Tage)
 - Confidence Intervals und Unsicherheitsquantifizierung
-- ML-basierte Anomalie-Erkennung fuer Zahlungsmuster
+- ML-basierte Anomalie-Erkennung für Zahlungsmuster
 - Engpass-Vorhersage (Liquidity Bottleneck Prediction)
-- Integration mit InvoiceTracking fuer offene Rechnungen
-- Waterfall-Chart Daten fuer Frontend-Visualisierung
+- Integration mit InvoiceTracking für offene Rechnungen
+- Waterfall-Chart Daten für Frontend-Visualisierung
 
 Enterprise Feature: Januar 2026
 """
@@ -72,7 +72,7 @@ class ForecastConfidence(str, Enum):
 
 @dataclass
 class ConfidenceInterval:
-    """Konfidenzintervall fuer eine Prognose."""
+    """Konfidenzintervall für eine Prognose."""
     lower_bound: Decimal
     expected: Decimal
     upper_bound: Decimal
@@ -105,7 +105,7 @@ class PaymentAnomaly:
 
 @dataclass
 class WaterfallChartData:
-    """Daten fuer Wasserfall-Chart."""
+    """Daten für Wasserfall-Chart."""
     label: str
     value: Decimal
     cumulative: Decimal
@@ -171,7 +171,7 @@ class LiquidityForecastResult:
 
 
 class LiquidityForecastService:
-    """Service fuer erweiterte Liquiditaetsprognosen."""
+    """Service für erweiterte Liquiditaetsprognosen."""
 
     # Konfiguration
     CRITICAL_BALANCE_THRESHOLD = Decimal("-1000.00")
@@ -208,7 +208,7 @@ class LiquidityForecastService:
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            bank_account_id: Optional - nur fuer bestimmtes Konto
+            bank_account_id: Optional - nur für bestimmtes Konto
             starting_balance: Anfangssaldo (optional, wird ermittelt)
             company_id: Optional - Multi-Tenant Filter
 
@@ -290,7 +290,7 @@ class LiquidityForecastService:
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            bank_account_id: Optional - nur fuer bestimmtes Konto
+            bank_account_id: Optional - nur für bestimmtes Konto
             days_ahead: Prognosezeitraum
             starting_balance: Anfangssaldo
 
@@ -312,7 +312,7 @@ class LiquidityForecastService:
 
         bottlenecks: List[LiquidityBottleneck] = []
 
-        # Durch taegliche Salden iterieren
+        # Durch tägliche Salden iterieren
         for day_date, balance in projection.daily_balances.items():
             if balance < Decimal("0"):
                 # Engpass identifiziert
@@ -365,12 +365,12 @@ class LiquidityForecastService:
         period_days: int = 30,
         starting_balance: Optional[Decimal] = None,
     ) -> List[WaterfallChartData]:
-        """Erstelle Daten fuer Wasserfall-Chart.
+        """Erstelle Daten für Wasserfall-Chart.
 
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            bank_account_id: Optional - nur fuer bestimmtes Konto
+            bank_account_id: Optional - nur für bestimmtes Konto
             period_days: Zeitraum
             starting_balance: Anfangssaldo
 
@@ -404,9 +404,9 @@ class LiquidityForecastService:
         Args:
             db: Datenbank-Session
             user_id: Benutzer-ID
-            bank_account_id: Optional - nur fuer bestimmtes Konto
+            bank_account_id: Optional - nur für bestimmtes Konto
             company_id: Optional - Multi-Tenant Filter
-            lookback_days: Tage fuer historische Analyse
+            lookback_days: Tage für historische Analyse
 
         Returns:
             Liste erkannter Anomalien
@@ -442,7 +442,7 @@ class LiquidityForecastService:
         total_balance = Decimal("0.00")
 
         for account in accounts:
-            # Neueste Transaktion fuer Saldo
+            # Neueste Transaktion für Saldo
             tx_query = (
                 select(BankTransaction.running_balance)
                 .where(BankTransaction.bank_account_id == account.id)
@@ -470,7 +470,7 @@ class LiquidityForecastService:
         today = date.today()
         end_date = today + timedelta(days=period_days)
 
-        # CashFlow-Projektionen fuer verschiedene Szenarien
+        # CashFlow-Projektionen für verschiedene Szenarien
         optimistic = await self.cash_flow_service.get_cash_flow_forecast(
             db, user_id, bank_account_id,
             days_ahead=period_days,
@@ -559,7 +559,7 @@ class LiquidityForecastService:
             realistic.entries, CashFlowDirection.OUTFLOW, limit=5
         )
 
-        # Datenqualitaet bewerten
+        # Datenqualität bewerten
         data_quality = self._assess_data_quality(realistic.entries)
 
         # Forecast Confidence
@@ -648,7 +648,7 @@ class LiquidityForecastService:
         # 4. Grosse Abfluesse erkennen
         for tx in transactions:
             if tx.amount < -float(self.LARGE_OUTFLOW_THRESHOLD):
-                # Pruefen ob nicht bereits als unusual_amount markiert
+                # Prüfen ob nicht bereits als unusual_amount markiert
                 already_flagged = any(
                     a.date == (tx.booking_date.date() if tx.booking_date else today)
                     and a.amount == Decimal(str(tx.amount))
@@ -839,7 +839,7 @@ class LiquidityForecastService:
         direction: CashFlowDirection,
         limit: int = 5,
     ) -> List[Dict[str, Any]]:
-        """Extrahiere die groessten Zahlungsstroeme."""
+        """Extrahiere die größten Zahlungsstroeme."""
         filtered = [e for e in entries if e.direction == direction]
         sorted_entries = sorted(filtered, key=lambda e: e.amount, reverse=True)
 
@@ -858,12 +858,12 @@ class LiquidityForecastService:
         return result
 
     def _assess_data_quality(self, entries: List[CashFlowEntry]) -> float:
-        """Bewerte Datenqualitaet der Prognose."""
+        """Bewerte Datenqualität der Prognose."""
         if not entries:
             return 0.0
 
         # Faktoren:
-        # 1. Anzahl Eintraege
+        # 1. Anzahl Einträge
         count_score = min(1.0, len(entries) / 50)
 
         # 2. Durchschnittliche Wahrscheinlichkeit
@@ -882,25 +882,25 @@ class LiquidityForecastService:
         bottleneck_date: date,
         outflows: List[CashFlowEntry],
     ) -> List[str]:
-        """Generiere Empfehlungen fuer Engpass."""
+        """Generiere Empfehlungen für Engpass."""
         recommendations = []
 
         if shortfall < Decimal("-10000"):
             recommendations.append("Kritischer Engpass: Sofortige Massnahmen erforderlich")
-            recommendations.append("Pruefen Sie Moeglichkeiten zur Kontokorrent-Nutzung")
+            recommendations.append("Prüfen Sie Möglichkeiten zur Kontokorrent-Nutzung")
 
         if shortfall < Decimal("-5000"):
-            recommendations.append("Kontaktieren Sie Ihre Bank fuer kurzfristige Finanzierung")
+            recommendations.append("Kontaktieren Sie Ihre Bank für kurzfristige Finanzierung")
 
         # Spezifische Empfehlungen basierend auf Ausgaben
         total_outflow = sum(e.amount for e in outflows)
         if total_outflow > Decimal("5000"):
-            recommendations.append("Pruefen Sie, ob Zahlungen verschoben werden koennen")
+            recommendations.append("Prüfen Sie, ob Zahlungen verschoben werden können")
 
         days_until = (bottleneck_date - date.today()).days
         if days_until > 14:
             recommendations.append(
-                f"Sie haben noch {days_until} Tage Zeit - pruefen Sie Skonto-Moeglichkeiten bei offenen Forderungen"
+                f"Sie haben noch {days_until} Tage Zeit - prüfen Sie Skonto-Möglichkeiten bei offenen Forderungen"
             )
 
         return recommendations
@@ -920,11 +920,11 @@ class LiquidityForecastService:
             prev = bottlenecks[i-1]
             curr = bottlenecks[i]
 
-            # Wenn aufeinanderfolgend (max 3 Tage Luecke)
+            # Wenn aufeinanderfolgend (max 3 Tage Lücke)
             if (curr.date - prev.date).days <= 3:
                 current_period.append(curr)
             else:
-                # Periode abschliessen
+                # Periode abschließen
                 if current_period:
                     # Schlimmsten Engpass der Periode nehmen
                     worst = min(current_period, key=lambda b: b.shortfall)
@@ -958,19 +958,19 @@ class LiquidityForecastService:
         # Risiko-basierte Empfehlungen
         if forecast_30.risk_level == LiquidityRiskLevel.CRITICAL:
             recommendations.append(
-                "DRINGEND: Kritische Liquiditaetssituation in den naechsten 30 Tagen erwartet. "
+                "DRINGEND: Kritische Liquiditaetssituation in den nächsten 30 Tagen erwartet. "
                 "Sofortige Massnahmen zur Liquiditaetssicherung erforderlich."
             )
         elif forecast_30.risk_level == LiquidityRiskLevel.WARNING:
             recommendations.append(
-                "WARNUNG: Erhoehtes Liquiditaetsrisiko. Zahlungen priorisieren und "
+                "WARNUNG: Erhöhtes Liquiditaetsrisiko. Zahlungen priorisieren und "
                 "offene Forderungen zeitnah einziehen."
             )
 
         # Skonto-Empfehlung
         if forecast_30.expected_inflow > Decimal("10000"):
             recommendations.append(
-                "Pruefen Sie Skonto-Moeglichkeiten bei Ihren Lieferanten - "
+                "Prüfen Sie Skonto-Möglichkeiten bei Ihren Lieferanten - "
                 "Sie haben genuegend erwartete Eingaenge."
             )
 
@@ -979,7 +979,7 @@ class LiquidityForecastService:
         if high_confidence_anomalies:
             recommendations.append(
                 f"{len(high_confidence_anomalies)} Zahlungsanomalien erkannt. "
-                "Bitte pruefen Sie diese Transaktionen."
+                "Bitte prüfen Sie diese Transaktionen."
             )
 
         # Diversifikations-Empfehlung
@@ -987,7 +987,7 @@ class LiquidityForecastService:
             top_inflow = forecast_90.major_inflows[0]
             if top_inflow.get("amount", 0) > float(forecast_90.expected_inflow) * 0.5:
                 recommendations.append(
-                    "Hohe Abhaengigkeit von einzelnen Einnahmen erkannt. "
+                    "Hohe Abhängigkeit von einzelnen Einnahmen erkannt. "
                     "Diversifikation der Einnahmequellen empfohlen."
                 )
 
@@ -1013,7 +1013,7 @@ class LiquidityForecastService:
                 alerts.append({
                     "type": "liquidity_risk",
                     "level": "critical" if forecast.risk_level == LiquidityRiskLevel.CRITICAL else "warning",
-                    "message": f"Liquiditaetsrisiko in den naechsten {label}: {forecast.risk_level.value}",
+                    "message": f"Liquiditaetsrisiko in den nächsten {label}: {forecast.risk_level.value}",
                     "period": label,
                     "expected_balance": float(forecast.expected_ending_balance),
                     "probability_shortfall": forecast.probability_of_shortfall,

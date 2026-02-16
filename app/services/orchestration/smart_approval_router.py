@@ -3,10 +3,10 @@
 Smart Approval Router Enhancement.
 
 Enterprise Feature: Intelligente Genehmigungsweiterleitung mit:
-- Stellvertreter-Auswahl bei Abwesenheit des primaeren Genehmigers
+- Stellvertreter-Auswahl bei Abwesenheit des primären Genehmigers
 - Automatische Eskalation bei SLA-Timeout
 - Historische Muster-basierte Routing-Optimierung
-- Lastverteilung ueber Genehmiger
+- Lastverteilung über Genehmiger
 
 Feinpoliert und durchdacht - Enterprise-grade Approval Routing.
 """
@@ -44,7 +44,7 @@ logger = structlog.get_logger(__name__)
 
 
 class RoutingStrategy(str, Enum):
-    """Routing-Strategien fuer Genehmigungen."""
+    """Routing-Strategien für Genehmigungen."""
     DIRECT = "direct"  # Direkt zum benannten Genehmiger
     ROUND_ROBIN = "round_robin"  # Gleichmaessig verteilt
     LEAST_LOADED = "least_loaded"  # Zum am wenigsten belasteten
@@ -103,7 +103,7 @@ class RoutingDecision:
 
 @dataclass
 class EscalationConfig:
-    """Konfiguration fuer Eskalationen."""
+    """Konfiguration für Eskalationen."""
     warning_hours: int = 24  # Erste Warnung
     escalation_hours: int = 48  # Eskalation
     final_escalation_hours: int = 72  # Finale Eskalation an Management
@@ -151,7 +151,7 @@ class SmartApprovalRouter:
         self._cache_ttl = timedelta(minutes=15)
         self._last_cache_refresh: Optional[datetime] = None
 
-        # Routing-History (fuer Learning)
+        # Routing-History (für Learning)
         self._routing_history: List[RoutingDecision] = []
         self._max_history_size = 1000
 
@@ -169,18 +169,18 @@ class SmartApprovalRouter:
         request_type: Optional[str] = None,
     ) -> DeputySelection:
         """
-        Waehlt einen Stellvertreter wenn der primaere Genehmiger abwesend ist.
+        Waehlt einen Stellvertreter wenn der primäre Genehmiger abwesend ist.
 
         Args:
             db: Database Session
-            primary_approver_id: ID des primaeren Genehmigers
+            primary_approver_id: ID des primären Genehmigers
             company_id: Company ID
-            request_type: Optional: Typ der Anfrage fuer Expertise-Matching
+            request_type: Optional: Typ der Anfrage für Expertise-Matching
 
         Returns:
             DeputySelection mit Stellvertreter-Informationen
         """
-        # 1. Pruefen ob Primaerer verfuegbar ist
+        # 1. Prüfen ob Primärer verfügbar ist
         absence_status, delegation = await self._check_user_availability(
             db, primary_approver_id
         )
@@ -189,14 +189,14 @@ class SmartApprovalRouter:
             return DeputySelection(
                 primary_approver_id=primary_approver_id,
                 deputy_id=None,
-                reason="Primaerer Genehmiger ist verfuegbar",
+                reason="Primärer Genehmiger ist verfügbar",
                 absence_status=absence_status,
             )
 
         # 2. Aktive Delegation suchen
         if delegation:
             delegate_user_id = delegation.delegate_user_id
-            # Pruefen ob Delegate verfuegbar
+            # Prüfen ob Delegate verfügbar
             delegate_status, _ = await self._check_user_availability(
                 db, delegate_user_id
             )
@@ -219,7 +219,7 @@ class SmartApprovalRouter:
             return DeputySelection(
                 primary_approver_id=primary_approver_id,
                 deputy_id=deputy,
-                reason="Automatisch ausgewaehlt basierend auf Verfuegbarkeit und Expertise",
+                reason="Automatisch ausgewaehlt basierend auf Verfügbarkeit und Expertise",
                 absence_status=absence_status,
                 confidence=0.75,
             )
@@ -228,7 +228,7 @@ class SmartApprovalRouter:
         return DeputySelection(
             primary_approver_id=primary_approver_id,
             deputy_id=None,
-            reason="Kein verfuegbarer Stellvertreter gefunden",
+            reason="Kein verfügbarer Stellvertreter gefunden",
             absence_status=absence_status,
             confidence=0.5,
         )
@@ -238,7 +238,7 @@ class SmartApprovalRouter:
         db: AsyncSession,
         user_id: UUID,
     ) -> Tuple[AbsenceStatus, Optional[ApprovalDelegation]]:
-        """Prueft die Verfuegbarkeit eines Benutzers."""
+        """Prüft die Verfügbarkeit eines Benutzers."""
         now = datetime.now(timezone.utc)
 
         # Aktive Delegation suchen
@@ -263,7 +263,7 @@ class SmartApprovalRouter:
         if delegation:
             return AbsenceStatus.ABSENT, delegation
 
-        # Benutzer aktiv pruefen
+        # Benutzer aktiv prüfen
         user_query = select(User).where(User.id == user_id)
         result = await db.execute(user_query)
         user = result.scalar_one_or_none()
@@ -280,7 +280,7 @@ class SmartApprovalRouter:
         company_id: UUID,
         request_type: Optional[str],
     ) -> Optional[UUID]:
-        """Findet den besten verfuegbaren Stellvertreter."""
+        """Findet den besten verfügbaren Stellvertreter."""
         # Andere Genehmiger in der Company finden (Manager oder Admin)
         query = (
             select(User.id)
@@ -301,7 +301,7 @@ class SmartApprovalRouter:
         if not potential_deputies:
             return None
 
-        # Verfuegbare filtern
+        # Verfügbare filtern
         available_deputies = []
         for deputy_id in potential_deputies:
             status, _ = await self._check_user_availability(db, deputy_id)
@@ -311,7 +311,7 @@ class SmartApprovalRouter:
         if not available_deputies:
             return None
 
-        # Besten waehlen (nach Metriken)
+        # Besten wählen (nach Metriken)
         best_deputy = await self._select_by_metrics(db, available_deputies, company_id)
         return best_deputy
 
@@ -353,7 +353,7 @@ class SmartApprovalRouter:
         request_id: UUID,
     ) -> Tuple[bool, str, int]:
         """
-        Prueft ob eine Eskalation notwendig ist.
+        Prüft ob eine Eskalation notwendig ist.
 
         Returns:
             Tuple[needs_escalation, reason, escalation_level]
@@ -395,7 +395,7 @@ class SmartApprovalRouter:
         company_id: UUID,
     ) -> Optional[UUID]:
         """
-        Eskaliert eine Anfrage zur naechsten Ebene.
+        Eskaliert eine Anfrage zur nächsten Ebene.
 
         Args:
             db: Database Session
@@ -414,7 +414,7 @@ class SmartApprovalRouter:
         else:
             target_roles = ["owner"]
 
-        # Passenden Empfaenger finden
+        # Passenden Empfänger finden
         query = (
             select(User.id)
             .join(UserCompany, User.id == UserCompany.user_id)
@@ -455,12 +455,12 @@ class SmartApprovalRouter:
         request_type: Optional[str] = None,
     ) -> RoutingDecision:
         """
-        Routet eine Anfrage unter Beruecksichtigung der Lastverteilung.
+        Routet eine Anfrage unter Berücksichtigung der Lastverteilung.
 
         Args:
             db: Database Session
             company_id: Company ID
-            candidate_approvers: Liste moeglicher Genehmiger
+            candidate_approvers: Liste möglicher Genehmiger
             strategy: Routing-Strategie
             request_type: Optional: Typ der Anfrage
 
@@ -468,7 +468,7 @@ class SmartApprovalRouter:
             RoutingDecision mit Routing-Details
         """
         if not candidate_approvers:
-            raise ValueError("Keine Kandidaten fuer Routing vorhanden")
+            raise ValueError("Keine Kandidaten für Routing vorhanden")
 
         # Metriken aktualisieren
         await self._refresh_metrics_cache(db, company_id)
@@ -554,7 +554,7 @@ class SmartApprovalRouter:
             if decision.selected_approver_id in recent_assignments:
                 recent_assignments[decision.selected_approver_id] += 1
 
-        # Waehle den mit wenigsten Zuweisungen
+        # Wähle den mit wenigsten Zuweisungen
         min_assignments = float("inf")
         best_candidate = candidates[0]
 
@@ -565,7 +565,7 @@ class SmartApprovalRouter:
 
         return (
             best_candidate,
-            f"Round-Robin: {min_assignments} kuerzliche Zuweisungen",
+            f"Round-Robin: {min_assignments} kürzliche Zuweisungen",
         )
 
     # =========================================================================
@@ -612,7 +612,7 @@ class SmartApprovalRouter:
         db: AsyncSession,
         approver_id: UUID,
     ) -> ApproverMetrics:
-        """Berechnet Metriken fuer einen Genehmiger."""
+        """Berechnet Metriken für einen Genehmiger."""
         # Ausstehende Anfragen zaehlen
         pending_query = (
             select(func.count(ApprovalStep.id))
@@ -675,12 +675,12 @@ class SmartApprovalRouter:
         db: AsyncSession,
         company_id: UUID,
     ) -> Dict[str, ApproverMetrics]:
-        """Gibt Metriken aller Genehmiger zurueck."""
+        """Gibt Metriken aller Genehmiger zurück."""
         await self._refresh_metrics_cache(db, company_id, force=True)
         return {str(k): v for k, v in self._metrics_cache.items()}
 
     def get_routing_history(self, limit: int = 50) -> List[RoutingDecision]:
-        """Gibt die Routing-History zurueck."""
+        """Gibt die Routing-History zurück."""
         return self._routing_history[-limit:]
 
     def update_escalation_config(self, config: EscalationConfig) -> None:
@@ -702,7 +702,7 @@ _router_lock = threading.Lock()
 
 
 def get_smart_approval_router() -> SmartApprovalRouter:
-    """Factory-Funktion fuer SmartApprovalRouter Singleton."""
+    """Factory-Funktion für SmartApprovalRouter Singleton."""
     global _router_instance
     if _router_instance is None:
         with _router_lock:

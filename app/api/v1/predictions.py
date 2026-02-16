@@ -2,8 +2,8 @@
 """
 Predictive Payment AI API Endpoints.
 
-REST API fuer Zahlungsverhaltens-Vorhersagen:
-- Zahlungsverzoegerung-Prognose pro Entity
+REST API für Zahlungsverhaltens-Vorhersagen:
+- Zahlungsverzögerung-Prognose pro Entity
 - Ausfallwahrscheinlichkeit
 - Optimale Zahlungsbedingungen
 - Cash-Flow-Projektion
@@ -37,9 +37,9 @@ router = APIRouter(prefix="/predictions", tags=["Predictive Payment AI"])
 
 
 class PaymentDelayPredictionResponse(BaseModel):
-    """Response fuer Zahlungsverzoegerungs-Vorhersage."""
+    """Response für Zahlungsverzögerungs-Vorhersage."""
     entity_id: str
-    predicted_delay_days: float = Field(..., description="Erwartete Verzoegerung in Tagen")
+    predicted_delay_days: float = Field(..., description="Erwartete Verzögerung in Tagen")
     confidence: float = Field(..., ge=0, le=1, description="Konfidenz der Vorhersage")
     risk_tier: str = Field(..., description="Risiko-Klassifizierung: low/medium/high/critical")
     delay_range_min: float = Field(..., description="Untere Grenze (25. Perzentil)")
@@ -49,7 +49,7 @@ class PaymentDelayPredictionResponse(BaseModel):
 
 
 class DefaultProbabilityResponse(BaseModel):
-    """Response fuer Ausfallwahrscheinlichkeit."""
+    """Response für Ausfallwahrscheinlichkeit."""
     entity_id: str
     default_probability: float = Field(..., ge=0, le=1, description="Ausfallwahrscheinlichkeit")
     confidence: float = Field(..., ge=0, le=1)
@@ -59,7 +59,7 @@ class DefaultProbabilityResponse(BaseModel):
 
 
 class PaymentTermsSuggestionResponse(BaseModel):
-    """Response fuer Zahlungsbedingungen-Empfehlung."""
+    """Response für Zahlungsbedingungen-Empfehlung."""
     entity_id: str
     invoice_amount: float
     suggested_term: str
@@ -72,7 +72,7 @@ class PaymentTermsSuggestionResponse(BaseModel):
 
 
 class CashFlowProjectionResponse(BaseModel):
-    """Response fuer Cash-Flow-Projektion."""
+    """Response für Cash-Flow-Projektion."""
     projection_date: datetime
     days_ahead: int
     expected_inflow: float
@@ -95,7 +95,7 @@ class CashFlowSummaryResponse(BaseModel):
 
 
 class SkontoOptimizationResponse(BaseModel):
-    """Response fuer Skonto-Optimierung."""
+    """Response für Skonto-Optimierung."""
     entity_id: str
     invoice_amount: float
     recommended_percentage: float
@@ -110,7 +110,7 @@ class SkontoOptimizationResponse(BaseModel):
 
 
 class SkontoImpactResponse(BaseModel):
-    """Response fuer Skonto-Impact-Analyse."""
+    """Response für Skonto-Impact-Analyse."""
     analysis_date: datetime
     days_analyzed: int
     total_invoices_analyzed: int
@@ -122,14 +122,14 @@ class SkontoImpactResponse(BaseModel):
 
 
 class PredictionFeedbackRequest(BaseModel):
-    """Request fuer Vorhersage-Feedback."""
+    """Request für Vorhersage-Feedback."""
     prediction_type: str = Field(..., description="delay, default, oder terms")
     predicted_value: float
     actual_value: float
 
 
 class PredictionFeedbackResponse(BaseModel):
-    """Response fuer Feedback-Submission."""
+    """Response für Feedback-Submission."""
     success: bool
     message: str
     was_accurate: bool
@@ -143,8 +143,8 @@ class PredictionFeedbackResponse(BaseModel):
 @router.get(
     "/entity/{entity_id}/payment",
     response_model=PaymentDelayPredictionResponse,
-    summary="Zahlungsverzoegerung vorhersagen",
-    description="Prognostiziert die erwartete Zahlungsverzoegerung fuer einen Geschaeftspartner"
+    summary="Zahlungsverzögerung vorhersagen",
+    description="Prognostiziert die erwartete Zahlungsverzögerung für einen Geschäftspartner"
 )
 async def predict_payment_delay(
     entity_id: UUID,
@@ -152,7 +152,7 @@ async def predict_payment_delay(
     db: AsyncSession = Depends(get_db),
 ) -> PaymentDelayPredictionResponse:
     """
-    Vorhersage der Zahlungsverzoegerung fuer einen Geschaeftspartner.
+    Vorhersage der Zahlungsverzögerung für einen Geschäftspartner.
 
     Basiert auf:
     - Historischem Zahlungsverhalten
@@ -206,12 +206,12 @@ async def predict_default_probability(
     db: AsyncSession = Depends(get_db),
 ) -> DefaultProbabilityResponse:
     """
-    Vorhersage der Ausfallwahrscheinlichkeit fuer einen Geschaeftspartner.
+    Vorhersage der Ausfallwahrscheinlichkeit für einen Geschäftspartner.
 
     Faktoren:
-    - Ueberfaelligkeitsrate
+    - Überfälligkeitsrate
     - Mahnhistorie
-    - Zahlungsverzoegerungen
+    - Zahlungsverzögerungen
     - Beziehungsdauer
     """
     from app.services.ai.predictive_payment_service import (
@@ -261,13 +261,13 @@ async def suggest_payment_terms(
     db: AsyncSession = Depends(get_db),
 ) -> PaymentTermsSuggestionResponse:
     """
-    Empfiehlt optimale Zahlungsbedingungen fuer einen Geschaeftspartner.
+    Empfiehlt optimale Zahlungsbedingungen für einen Geschäftspartner.
 
-    Beruecksichtigt:
+    Berücksichtigt:
     - Historisches Zahlungsverhalten
     - Risikoniveau
     - Rechnungsbetrag
-    - Geschaeftsbeziehung
+    - Geschäftsbeziehung
     """
     from app.services.ai.predictive_payment_service import (
         get_predictive_payment_service,
@@ -322,9 +322,9 @@ async def get_cash_flow_forecast(
     """
     Cash-Flow-Prognose mit ML-basierten Zahlungsvorhersagen.
 
-    Beruecksichtigt:
-    - Offene Rechnungen mit Faelligkeiten
-    - Vorhergesagte Zahlungsverzoegerungen
+    Berücksichtigt:
+    - Offene Rechnungen mit Fälligkeiten
+    - Vorhergesagte Zahlungsverzögerungen
     - Ausfallwahrscheinlichkeiten
     """
     from app.services.ai.predictive_payment_service import (
@@ -413,7 +413,7 @@ async def get_skonto_impact(
     db: AsyncSession = Depends(get_db),
 ) -> SkontoImpactResponse:
     """
-    Skonto-Impact-Analyse fuer Cash-Flow-Optimierung.
+    Skonto-Impact-Analyse für Cash-Flow-Optimierung.
 
     Zeigt:
     - Erwartete Skonto-Nutzung
@@ -470,7 +470,7 @@ async def get_skonto_impact(
     "/entity/{entity_id}/skonto-optimization",
     response_model=SkontoOptimizationResponse,
     summary="Optimale Skonto-Konditionen berechnen",
-    description="Berechnet optimale Skonto-Konditionen fuer einen Geschaeftspartner"
+    description="Berechnet optimale Skonto-Konditionen für einen Geschäftspartner"
 )
 async def optimize_skonto_for_entity(
     entity_id: UUID,
@@ -481,11 +481,11 @@ async def optimize_skonto_for_entity(
     db: AsyncSession = Depends(get_db),
 ) -> SkontoOptimizationResponse:
     """
-    Optimiert Skonto-Konditionen fuer einen Geschaeftspartner.
+    Optimiert Skonto-Konditionen für einen Geschäftspartner.
 
     Optimiert auf:
     - Maximale Wahrscheinlichkeit der Nutzung
-    - Positiver NPV fuer das Unternehmen
+    - Positiver NPV für das Unternehmen
     """
     from app.services.ai.skonto_optimizer_service import (
         get_skonto_optimizer_service,
@@ -526,7 +526,7 @@ async def optimize_skonto_for_entity(
 @router.get(
     "/entity/{entity_id}/skonto-usage",
     summary="Skonto-Nutzungswahrscheinlichkeit",
-    description="Prognostiziert ob ein Geschaeftspartner Skonto nutzen wird"
+    description="Prognostiziert ob ein Geschäftspartner Skonto nutzen wird"
 )
 async def predict_skonto_usage(
     entity_id: UUID,
@@ -539,10 +539,10 @@ async def predict_skonto_usage(
     """
     Prognostiziert die Wahrscheinlichkeit der Skonto-Nutzung.
 
-    Beruecksichtigt:
+    Berücksichtigt:
     - Historische Skonto-Nutzung
     - Zahlungsverhalten
-    - Skonto-Hoehe
+    - Skonto-Höhe
     """
     from app.services.ai.skonto_optimizer_service import (
         get_skonto_optimizer_service,
@@ -584,7 +584,7 @@ async def predict_skonto_usage(
     "/feedback",
     response_model=PredictionFeedbackResponse,
     summary="Vorhersage-Feedback einreichen",
-    description="Meldet tatsaechliche Ergebnisse zurueck fuer kontinuierliches Lernen"
+    description="Meldet tatsaechliche Ergebnisse zurück für kontinuierliches Lernen"
 )
 async def submit_prediction_feedback(
     entity_id: UUID,
@@ -593,9 +593,9 @@ async def submit_prediction_feedback(
     db: AsyncSession = Depends(get_db),
 ) -> PredictionFeedbackResponse:
     """
-    Feedback fuer Vorhersagen einreichen.
+    Feedback für Vorhersagen einreichen.
 
-    Wird fuer das kontinuierliche Lernen der ML-Modelle verwendet.
+    Wird für das kontinuierliche Lernen der ML-Modelle verwendet.
     Vergleicht Vorhersagen mit tatsaechlichen Ergebnissen.
     """
     from app.services.ai.predictive_payment_service import (
@@ -657,8 +657,8 @@ async def submit_prediction_feedback(
 
 @router.get(
     "/batch/high-risk-entities",
-    summary="Hochrisiko-Geschaeftspartner auflisten",
-    description="Listet alle Geschaeftspartner mit hohem Ausfallrisiko"
+    summary="Hochrisiko-Geschäftspartner auflisten",
+    description="Listet alle Geschäftspartner mit hohem Ausfallrisiko"
 )
 async def list_high_risk_entities(
     risk_threshold: float = Query(
@@ -669,12 +669,12 @@ async def list_high_risk_entities(
     db: AsyncSession = Depends(get_db),
 ) -> dict:
     """
-    Listet Geschaeftspartner mit hohem Ausfallrisiko.
+    Listet Geschäftspartner mit hohem Ausfallrisiko.
 
-    Nuetzlich fuer:
+    Nuetzlich für:
     - Proaktives Risikomanagement
     - Fokussierte Kundenbetreuung
-    - Kreditlimit-Ueberpruefung
+    - Kreditlimit-Überprüfung
     """
     from sqlalchemy import select, and_
     from app.db.models import BusinessEntity
@@ -699,7 +699,7 @@ async def list_high_risk_entities(
                     BusinessEntity.deleted_at.is_(None),
                 )
             )
-            .limit(limit * 2)  # Mehr laden fuer Filterung
+            .limit(limit * 2)  # Mehr laden für Filterung
         )
 
         result = await db.execute(query)
@@ -756,7 +756,7 @@ async def list_high_risk_entities(
 @router.get(
     "/summary",
     summary="Vorhersage-Zusammenfassung",
-    description="Aggregierte Statistiken ueber alle Vorhersagen"
+    description="Aggregierte Statistiken über alle Vorhersagen"
 )
 async def get_prediction_summary(
     current_user: User = Depends(get_current_active_user),
