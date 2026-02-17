@@ -92,6 +92,11 @@ from app.workers.tasks.einvoice_tasks import (
     zugferd_batch_convert_task,
     zugferd_embed_task,
     einvoice_validate_task,
+    # H2: ZUGFeRD/XRechnung Enhancement Tasks
+    parse_einvoice_task,
+    generate_zugferd_task,
+    generate_xrechnung_task,
+    batch_validate_einvoices_task,
 )
 from app.workers.tasks.banking_psd2_tasks import (
     sync_all_bank_accounts,
@@ -219,6 +224,481 @@ from app.workers.tasks.german_finance_tasks import (
 from app.workers.tasks.webhook_inbound_tasks import (
     process_inbound_webhook,
 )
+from app.workers.tasks.semantic_search_tasks import (
+    embed_document_task,
+    batch_embed_documents_task,
+    reindex_embeddings_task,
+)
+from app.workers.tasks.approval_tasks import (
+    # M2: Approval Matrix Tasks
+    check_overdue_approvals_task,
+    deactivate_expired_substitutions_task,
+    send_approval_reminder_task,
+)
+from app.workers.tasks.barcode_tasks import (
+    detect_barcodes_task,
+)
+from app.workers.tasks.lifecycle_tasks import (
+    daily_retention_scan_task,
+    monthly_lifecycle_report_task,
+    auto_archive_task,
+    destruction_protocol_task,
+)
+from app.workers.tasks.duplicate_detection_tasks import (
+    batch_scan_duplicates_task,
+    check_document_duplicates_task,
+    cleanup_stale_duplicate_flags_task,
+)
+from app.workers.tasks.folder_import_rule_tasks import (
+    poll_folder_imports_task,
+    apply_rules_to_pending_imports_task,
+    scan_import_folder_task,
+)
+
+# --- Batch 4: Include-only modules (missing from __init__.py) ---
+try:
+    from app.workers.tasks.backup_tasks import (
+        backup_full_task, backup_postgres_task, backup_redis_task, apply_retention_task,
+        sync_to_remote_task, update_backup_metrics_task, archive_audit_logs_monthly_task,
+        verify_audit_archives_task, get_audit_archive_statistics_task, backup_restore_test_task,
+        get_restore_test_history_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.cleanup_tasks import (
+        cleanup_soft_deleted_documents, cleanup_orphaned_files, cleanup_expired_cache,
+        cleanup_search_analytics, cleanup_expired_sessions, cleanup_expired_verification_tokens,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.gdpr_tasks import (
+        process_deletion_requests, check_retention_compliance, send_breach_notification,
+        generate_compliance_report,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.ml_tasks import (
+        run_drift_detection, update_ml_metrics, check_experiment_completion,
+        trigger_model_retrain, generate_ml_report, check_drift_and_respond,
+        generate_monthly_drift_report, apply_ab_test_winners, detect_concept_drift,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.dlq_management_tasks import (
+        check_dlq_health, cleanup_old_dlq_tasks, alert_on_critical_dlq_count,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.document_intelligence_tasks import (
+        detect_document_groups, batch_detect_groups_by_folder, extract_entities_from_document,
+        batch_extract_entities, run_document_intelligence_pipeline, update_intelligence_metrics,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.extraction_tasks import (
+        reprocess_all_documents_structured_extraction, reprocess_single_document,
+        generate_extraction_stats, quick_classify_document, reprocess_quick_classification,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.rag_tasks import (
+        chunk_document, batch_chunk_documents, regenerate_chunk_embeddings,
+        run_rag_batch_job, get_rag_statistics, scheduled_chunk_new_documents,
+        sync_customer_cards_scheduled,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.monitoring_tasks import (
+        worker_health_check_task, cleanup_stuck_tasks, check_queue_backpressure,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.surya_improvement_tasks import (
+        run_surya_benchmark, check_surya_retraining_conditions, export_surya_training_dataset,
+        run_surya_german_finetuning, evaluate_surya_model, deploy_surya_model,
+        evaluate_surya_ab_test, rollback_surya_model, process_surya_corrections,
+        update_surya_metrics, generate_surya_improvement_report,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.export_tasks import (
+        batch_export_task, check_scheduled_exports, run_scheduled_export_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.privat_tasks import (
+        send_deadline_reminders, check_emergency_access_requests, cleanup_expired_access,
+        generate_deadline_report, cleanup_orphaned_privat_files, calculate_property_kpis,
+        calculate_vehicle_tco, analyze_insurance_coverage, generate_loan_amortization,
+        run_finance_analytics, daily_kpi_recalculation, recalculate_property_intelligence,
+        recalculate_all_property_intelligence, recalculate_vehicle_intelligence,
+        recalculate_all_vehicle_intelligence, recalculate_investment_intelligence,
+        calculate_financial_health, generate_smart_recommendations,
+        daily_intelligence_recalculation, orchestrate_all_kpis, recalculate_entity_kpi,
+        update_privat_metrics, create_monthly_portfolio_snapshot, recalculate_financial_goals,
+        check_goals_at_risk, record_kpi_history,
+        generate_predictive_alerts as privat_generate_predictive_alerts,
+        cleanup_old_projections, get_predictive_insights_summary,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.orchestration_tasks import (
+        process_pending_orchestration_actions, emit_system_event,
+        check_and_emit_threshold_events, get_orchestration_metrics, cleanup_old_decisions,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.orchestration_extended_tasks import (
+        check_entity_health_degradation, apply_health_action, detect_seasonal_patterns,
+        process_pending_investigations, start_fraud_investigation,
+        escalate_overdue_approvals_extended, assign_deputy_approvers,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.workflow_tasks import (
+        execute_workflow_async, execute_workflow_step, check_scheduled_workflows,
+        cleanup_old_workflow_executions, process_delayed_step, generate_workflow_report,
+        on_document_created, on_document_processed, on_document_failed,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.collaboration_tasks import (
+        process_hourly_digests, process_daily_digests, process_weekly_digests,
+        check_overdue_tasks, escalate_overdue_tasks, cleanup_old_digest_entries,
+        send_task_due_soon_reminders,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.mlops_tasks import (
+        check_retraining_threshold, run_retraining, evaluate_model,
+        rollback_if_degraded, cleanup_old_versions, get_stats,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.sla_tasks import (
+        check_all_slas, send_sla_warning, escalate_overdue_workflows, generate_sla_report,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.liquidity_tasks import (
+        check_liquidity_alerts_task, detect_large_outflows_task, generate_liquidity_summary_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.push_notification_tasks import (
+        cleanup_expired_push_subscriptions_task, push_subscription_health_check_task,
+        cleanup_notification_history_task, generate_push_statistics_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.escalation_tasks import (
+        advance_pending_escalations_task,
+    )
+except ImportError:
+    pass
+
+# --- Batch 4: Previously orphaned modules ---
+try:
+    from app.workers.tasks.ai_conversation_tasks import (
+        process_ai_message, execute_ai_action,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.ai_ethics_tasks import (
+        generate_bias_report, update_fairness_metrics,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.audit_chain_tasks import (
+        verify_integrity, build_merkle_tree,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.banking_tasks import (
+        process_bank_import, auto_reconcile, parse_transaction_references,
+        update_account_balances, check_overdue_payments, process_automatic_dunning,
+        update_cash_flow_forecasts, send_skonto_alerts, cleanup_tan_challenges,
+        daily_mahnlauf, reactivate_snoozed_tasks, send_pre_due_reminders,
+        check_expired_mahnstopp, generate_dunning_daily_report, fints_sync_all_accounts,
+        fints_refresh_balances, execute_pending_sepa_transfers, update_bundesbank_basiszins,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.calendar_sync_task import (
+        sync_all_calendars, sync_single_calendar,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.cashflow_prediction_tasks import (
+        update_daily_forecast, evaluate_prediction_accuracy, generate_cashflow_alerts,
+        warm_forecast_cache, update_entity_profiles, check_liquidity_alerts,
+        calculate_daily_forecast_v2,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.ceo_dashboard_tasks import (
+        create_daily_snapshot, detect_anomalies,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.chain_intelligence_tasks import (
+        scan_chain_gaps_task, detect_orphan_documents_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.compliance_autopilot_tasks import (
+        run_daily_scan, prepare_audit_report, run_gdpr_check,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.contract_tasks import (
+        send_contract_deadline_reminders_task, check_expiring_contracts_task,
+        auto_renew_contracts_task, generate_contract_report_task,
+        check_renewal_option_expiry_task, check_overdue_milestones_task,
+        check_contract_renewal_deadlines_task, extract_contract_dates_task,
+        send_contract_renewal_reminder_task, schedule_contract_reminders_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.contract_v2_tasks import (
+        extract_contract_dates_v2_task, check_upcoming_deadlines_v2_task,
+        generate_ical_export_task, update_contract_statistics_task,
+        check_expired_contracts_v2_task, complete_contract_deadline_task,
+        check_auto_renewals_task, link_document_to_contract_task,
+        extract_contract_clauses_task, extract_all_contract_clauses_task,
+        compare_contract_to_benchmark_task, update_contract_benchmarks_task,
+        process_scheduled_cancellations_task, check_cancellation_deadlines_task,
+        analyze_contract_costs_task, generate_contract_cost_report_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.customer_detection_tasks import (
+        detect_contacts_task, batch_detect_contacts_task, reprocess_all_documents_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.datev_connect_tasks import (
+        refresh_all_datev_tokens, sync_datev_stammdaten, sync_all_datev_stammdaten,
+        push_datev_buchungsstapel, upload_pending_datev_belege,
+        datev_gobd_compliance_check, datev_auto_festschreibung, sync_datev_kontenplan,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.enrichment_tasks import (
+        enrich_entity,
+        cleanup_expired_cache as enrichment_cleanup_expired_cache,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.erp_sync_tasks import (
+        scheduled_sync_all, test_connection, notify_conflicts,
+        cleanup_old_history,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.event_sourcing_tasks import (
+        create_snapshots, archive_old_events,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.extended_alerts_tasks import (
+        check_cashflow_alerts_task, check_contract_alerts_task, check_compliance_alerts_task,
+        create_supplier_insolvency_alert_task, create_supplier_ownership_change_alert_task,
+        run_all_extended_alerts_checks_task, cleanup_old_extended_alerts_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.gobd_compliance_tasks import (
+        verify_audit_chain_task, batch_integrity_check_task,
+        generate_chain_statistics_task as gobd_generate_chain_statistics_task,
+        check_retention_warnings_task, check_breach_deadlines_task, daily_breach_report_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.hygiene_tasks import (
+        run_full_hygiene_scan, check_entity_after_document, auto_apply_corrections,
+        check_inactive_entities,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.import_tasks import (
+        retry_import_task, cleanup_old_import_logs, reset_daily_folder_stats,
+        check_email_connection_health,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.knowledge_graph_tasks import (
+        build_graph_incremental,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.lexware_sync_tasks import (
+        sync_customers_task, sync_suppliers_task, sync_invoices_task, full_sync_task,
+        process_offline_queue_task, handle_webhook_task, sync_single_customer_task,
+        sync_single_supplier_task, update_payment_status_task, push_entity_to_lexware_task,
+        sync_all_entities, health_check_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.life_event_tasks import (
+        detect_life_events,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.nlq_tasks import (
+        cleanup_old_logs as nlq_cleanup_old_logs,
+        warm_cache as nlq_warm_cache,
+        analyze_query_patterns, retry_failed_queries,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.ocr_template_tasks import (
+        scan_template_candidates_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.odoo_tasks import (
+        push_all_risk_scores, retry_failed_syncs,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.shipment_tasks import (
+        refresh_active_shipments, refresh_single_shipment, check_delayed_shipments,
+        generate_shipment_statistics,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.smart_inbox_tasks import (
+        aggregate_inbox_items, recalculate_priorities, train_behavior_model,
+        cleanup_completed_items,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.tax_package_tasks import (
+        generate_monthly_packages, generate_quarterly_packages, auto_send_ready_packages,
+        send_missing_documents_reminders, cleanup_expired_packages, generate_datev_for_package,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.template_tasks import (
+        render_template_batch, render_template_single, cleanup_temp_files,
+        cleanup_old_template_versions, collect_template_stats,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.thumbnail_tasks import (
+        generate_thumbnail_task, batch_generate_thumbnails_task, regenerate_missing_thumbnails_task,
+    )
+except ImportError:
+    pass
+
+try:
+    from app.workers.tasks.zero_touch_tasks import (
+        process_document_zero_touch, process_pending_documents, recalculate_thresholds,
+        generate_zero_touch_statistics,
+    )
+except ImportError:
+    pass
 
 __all__ = [
     # OCR tasks
@@ -301,6 +781,11 @@ __all__ = [
     "zugferd_batch_convert_task",
     "zugferd_embed_task",
     "einvoice_validate_task",
+    # H2: ZUGFeRD/XRechnung Enhancement Tasks
+    "parse_einvoice_task",
+    "generate_zugferd_task",
+    "generate_xrechnung_task",
+    "batch_validate_einvoices_task",
     # PSD2/FinTS Banking tasks
     "sync_all_bank_accounts",
     "sync_single_connection",
@@ -408,4 +893,378 @@ __all__ = [
     "compare_forecast_accuracy_task",
     # Inbound Webhook tasks
     "process_inbound_webhook",
+    # Semantic Search tasks
+    "embed_document_task",
+    "batch_embed_documents_task",
+    "reindex_embeddings_task",
+    # M2: Approval Matrix Tasks
+    "check_overdue_approvals_task",
+    "deactivate_expired_substitutions_task",
+    "send_approval_reminder_task",
+    # M5: Barcode Detection tasks (Batch 1 gap)
+    "detect_barcodes_task",
+    # M1: Lifecycle tasks (Batch 1 gap)
+    "daily_retention_scan_task",
+    "monthly_lifecycle_report_task",
+    "auto_archive_task",
+    "destruction_protocol_task",
+    # Phase 4.1: Duplicate Detection tasks
+    "batch_scan_duplicates_task",
+    "check_document_duplicates_task",
+    "cleanup_stale_duplicate_flags_task",
+    # Phase 3.1: Folder Import Rule tasks
+    "poll_folder_imports_task",
+    "apply_rules_to_pending_imports_task",
+    "scan_import_folder_task",
+    # Batch 4: Include-only modules (Group B)
+    # Backup tasks
+    "backup_full_task",
+    "backup_postgres_task",
+    "backup_redis_task",
+    "apply_retention_task",
+    "sync_to_remote_task",
+    "update_backup_metrics_task",
+    "archive_audit_logs_monthly_task",
+    "verify_audit_archives_task",
+    "get_audit_archive_statistics_task",
+    "backup_restore_test_task",
+    "get_restore_test_history_task",
+    # Cleanup tasks
+    "cleanup_soft_deleted_documents",
+    "cleanup_orphaned_files",
+    "cleanup_expired_cache",
+    "cleanup_search_analytics",
+    "cleanup_expired_sessions",
+    "cleanup_expired_verification_tokens",
+    # GDPR tasks
+    "process_deletion_requests",
+    "check_retention_compliance",
+    "send_breach_notification",
+    "generate_compliance_report",
+    # ML tasks
+    "run_drift_detection",
+    "update_ml_metrics",
+    "check_experiment_completion",
+    "trigger_model_retrain",
+    "generate_ml_report",
+    "check_drift_and_respond",
+    "generate_monthly_drift_report",
+    "apply_ab_test_winners",
+    "detect_concept_drift",
+    # DLQ Management tasks
+    "check_dlq_health",
+    "cleanup_old_dlq_tasks",
+    "alert_on_critical_dlq_count",
+    # Document Intelligence tasks
+    "detect_document_groups",
+    "batch_detect_groups_by_folder",
+    "extract_entities_from_document",
+    "batch_extract_entities",
+    "run_document_intelligence_pipeline",
+    "update_intelligence_metrics",
+    # Extraction tasks
+    "reprocess_all_documents_structured_extraction",
+    "reprocess_single_document",
+    "generate_extraction_stats",
+    "quick_classify_document",
+    "reprocess_quick_classification",
+    # RAG tasks
+    "chunk_document",
+    "batch_chunk_documents",
+    "regenerate_chunk_embeddings",
+    "run_rag_batch_job",
+    "get_rag_statistics",
+    "scheduled_chunk_new_documents",
+    "sync_customer_cards_scheduled",
+    # Monitoring tasks
+    "worker_health_check_task",
+    "cleanup_stuck_tasks",
+    "check_queue_backpressure",
+    # Surya Improvement tasks
+    "run_surya_benchmark",
+    "check_surya_retraining_conditions",
+    "export_surya_training_dataset",
+    "run_surya_german_finetuning",
+    "evaluate_surya_model",
+    "deploy_surya_model",
+    "evaluate_surya_ab_test",
+    "rollback_surya_model",
+    "process_surya_corrections",
+    "update_surya_metrics",
+    "generate_surya_improvement_report",
+    # Export tasks
+    "batch_export_task",
+    "check_scheduled_exports",
+    "run_scheduled_export_task",
+    # Privat tasks
+    "send_deadline_reminders",
+    "check_emergency_access_requests",
+    "cleanup_expired_access",
+    "generate_deadline_report",
+    "cleanup_orphaned_privat_files",
+    "calculate_property_kpis",
+    "calculate_vehicle_tco",
+    "analyze_insurance_coverage",
+    "generate_loan_amortization",
+    "run_finance_analytics",
+    "daily_kpi_recalculation",
+    "recalculate_property_intelligence",
+    "recalculate_all_property_intelligence",
+    "recalculate_vehicle_intelligence",
+    "recalculate_all_vehicle_intelligence",
+    "recalculate_investment_intelligence",
+    "calculate_financial_health",
+    "generate_smart_recommendations",
+    "daily_intelligence_recalculation",
+    "orchestrate_all_kpis",
+    "recalculate_entity_kpi",
+    "update_privat_metrics",
+    "create_monthly_portfolio_snapshot",
+    "recalculate_financial_goals",
+    "check_goals_at_risk",
+    "record_kpi_history",
+    "privat_generate_predictive_alerts",
+    "cleanup_old_projections",
+    "get_predictive_insights_summary",
+    # Orchestration tasks
+    "process_pending_orchestration_actions",
+    "emit_system_event",
+    "check_and_emit_threshold_events",
+    "get_orchestration_metrics",
+    "cleanup_old_decisions",
+    # Orchestration Extended tasks
+    "check_entity_health_degradation",
+    "apply_health_action",
+    "detect_seasonal_patterns",
+    "process_pending_investigations",
+    "start_fraud_investigation",
+    "escalate_overdue_approvals_extended",
+    "assign_deputy_approvers",
+    # Workflow tasks
+    "execute_workflow_async",
+    "execute_workflow_step",
+    "check_scheduled_workflows",
+    "cleanup_old_workflow_executions",
+    "process_delayed_step",
+    "generate_workflow_report",
+    "on_document_created",
+    "on_document_processed",
+    "on_document_failed",
+    # Collaboration tasks
+    "process_hourly_digests",
+    "process_daily_digests",
+    "process_weekly_digests",
+    "check_overdue_tasks",
+    "escalate_overdue_tasks",
+    "cleanup_old_digest_entries",
+    "send_task_due_soon_reminders",
+    # MLOps tasks
+    "check_retraining_threshold",
+    "run_retraining",
+    "evaluate_model",
+    "rollback_if_degraded",
+    "cleanup_old_versions",
+    "get_stats",
+    # SLA tasks
+    "check_all_slas",
+    "send_sla_warning",
+    "escalate_overdue_workflows",
+    "generate_sla_report",
+    # Liquidity tasks
+    "check_liquidity_alerts_task",
+    "detect_large_outflows_task",
+    "generate_liquidity_summary_task",
+    # Push Notification tasks
+    "cleanup_expired_push_subscriptions_task",
+    "push_subscription_health_check_task",
+    "cleanup_notification_history_task",
+    "generate_push_statistics_task",
+    # Escalation tasks
+    "advance_pending_escalations_task",
+    # Batch 4: Previously orphaned modules (Group A)
+    # AI Conversation tasks
+    "process_ai_message",
+    "execute_ai_action",
+    # AI Ethics tasks
+    "generate_bias_report",
+    "update_fairness_metrics",
+    # Audit Chain tasks
+    "verify_integrity",
+    "build_merkle_tree",
+    # Banking tasks
+    "process_bank_import",
+    "auto_reconcile",
+    "parse_transaction_references",
+    "update_account_balances",
+    "check_overdue_payments",
+    "process_automatic_dunning",
+    "update_cash_flow_forecasts",
+    "send_skonto_alerts",
+    "cleanup_tan_challenges",
+    "daily_mahnlauf",
+    "reactivate_snoozed_tasks",
+    "send_pre_due_reminders",
+    "check_expired_mahnstopp",
+    "generate_dunning_daily_report",
+    "fints_sync_all_accounts",
+    "fints_refresh_balances",
+    "execute_pending_sepa_transfers",
+    "update_bundesbank_basiszins",
+    # Calendar Sync tasks
+    "sync_all_calendars",
+    "sync_single_calendar",
+    # Cashflow Prediction tasks
+    "update_daily_forecast",
+    "evaluate_prediction_accuracy",
+    "generate_cashflow_alerts",
+    "warm_forecast_cache",
+    "update_entity_profiles",
+    "check_liquidity_alerts",
+    "calculate_daily_forecast_v2",
+    # CEO Dashboard tasks
+    "create_daily_snapshot",
+    "detect_anomalies",
+    # Chain Intelligence tasks
+    "scan_chain_gaps_task",
+    "detect_orphan_documents_task",
+    # Compliance Autopilot tasks
+    "run_daily_scan",
+    "prepare_audit_report",
+    "run_gdpr_check",
+    # Contract tasks
+    "send_contract_deadline_reminders_task",
+    "check_expiring_contracts_task",
+    "auto_renew_contracts_task",
+    "generate_contract_report_task",
+    "check_renewal_option_expiry_task",
+    "check_overdue_milestones_task",
+    "check_contract_renewal_deadlines_task",
+    "extract_contract_dates_task",
+    "send_contract_renewal_reminder_task",
+    "schedule_contract_reminders_task",
+    # Contract V2 tasks
+    "extract_contract_dates_v2_task",
+    "check_upcoming_deadlines_v2_task",
+    "generate_ical_export_task",
+    "update_contract_statistics_task",
+    "check_expired_contracts_v2_task",
+    "complete_contract_deadline_task",
+    "check_auto_renewals_task",
+    "link_document_to_contract_task",
+    "extract_contract_clauses_task",
+    "extract_all_contract_clauses_task",
+    "compare_contract_to_benchmark_task",
+    "update_contract_benchmarks_task",
+    "process_scheduled_cancellations_task",
+    "check_cancellation_deadlines_task",
+    "analyze_contract_costs_task",
+    "generate_contract_cost_report_task",
+    # Customer Detection tasks
+    "detect_contacts_task",
+    "batch_detect_contacts_task",
+    "reprocess_all_documents_task",
+    # DATEV Connect tasks
+    "refresh_all_datev_tokens",
+    "sync_datev_stammdaten",
+    "sync_all_datev_stammdaten",
+    "push_datev_buchungsstapel",
+    "upload_pending_datev_belege",
+    "datev_gobd_compliance_check",
+    "datev_auto_festschreibung",
+    "sync_datev_kontenplan",
+    # Enrichment tasks
+    "enrich_entity",
+    "enrichment_cleanup_expired_cache",
+    # ERP Sync tasks
+    "scheduled_sync_all",
+    "test_connection",
+    "notify_conflicts",
+    "cleanup_old_history",
+    # Event Sourcing tasks
+    "create_snapshots",
+    "archive_old_events",
+    # Extended Alerts tasks
+    "check_cashflow_alerts_task",
+    "check_contract_alerts_task",
+    "check_compliance_alerts_task",
+    "create_supplier_insolvency_alert_task",
+    "create_supplier_ownership_change_alert_task",
+    "run_all_extended_alerts_checks_task",
+    "cleanup_old_extended_alerts_task",
+    # GoBD Compliance tasks
+    "verify_audit_chain_task",
+    "batch_integrity_check_task",
+    "gobd_generate_chain_statistics_task",
+    "check_retention_warnings_task",
+    "check_breach_deadlines_task",
+    "daily_breach_report_task",
+    # Hygiene tasks
+    "run_full_hygiene_scan",
+    "check_entity_after_document",
+    "auto_apply_corrections",
+    "check_inactive_entities",
+    # Import tasks
+    "retry_import_task",
+    "cleanup_old_import_logs",
+    "reset_daily_folder_stats",
+    "check_email_connection_health",
+    # Knowledge Graph tasks
+    "build_graph_incremental",
+    # Lexware Sync tasks
+    "sync_customers_task",
+    "sync_suppliers_task",
+    "sync_invoices_task",
+    "full_sync_task",
+    "process_offline_queue_task",
+    "handle_webhook_task",
+    "sync_single_customer_task",
+    "sync_single_supplier_task",
+    "update_payment_status_task",
+    "push_entity_to_lexware_task",
+    "sync_all_entities",
+    "health_check_task",
+    # Life Event tasks
+    "detect_life_events",
+    # NLQ tasks
+    "nlq_cleanup_old_logs",
+    "nlq_warm_cache",
+    "analyze_query_patterns",
+    "retry_failed_queries",
+    # OCR Template tasks
+    "scan_template_candidates_task",
+    # Odoo tasks
+    "push_all_risk_scores",
+    "retry_failed_syncs",
+    # Shipment tasks
+    "refresh_active_shipments",
+    "refresh_single_shipment",
+    "check_delayed_shipments",
+    "generate_shipment_statistics",
+    # Smart Inbox tasks
+    "aggregate_inbox_items",
+    "recalculate_priorities",
+    "train_behavior_model",
+    "cleanup_completed_items",
+    # Tax Package tasks
+    "generate_monthly_packages",
+    "generate_quarterly_packages",
+    "auto_send_ready_packages",
+    "send_missing_documents_reminders",
+    "cleanup_expired_packages",
+    "generate_datev_for_package",
+    # Template tasks
+    "render_template_batch",
+    "render_template_single",
+    "cleanup_temp_files",
+    "cleanup_old_template_versions",
+    "collect_template_stats",
+    # Thumbnail tasks
+    "generate_thumbnail_task",
+    "batch_generate_thumbnails_task",
+    "regenerate_missing_thumbnails_task",
+    # Zero Touch tasks
+    "process_document_zero_touch",
+    "process_pending_documents",
+    "recalculate_thresholds",
+    "generate_zero_touch_statistics",
 ]

@@ -132,14 +132,14 @@ class AccountService:
     async def create_account(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         data: BankAccountCreate,
     ) -> BankAccountResponse:
         """Erstelle neues Bankkonto.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             data: Konto-Daten
 
         Returns:
@@ -155,7 +155,7 @@ class AccountService:
         existing = await db.execute(
             select(BankAccount).where(
                 and_(
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                     BankAccount.iban == data.iban,
                     BankAccount.deleted_at.is_(None),
                 )
@@ -167,7 +167,7 @@ class AccountService:
         # Erstelle Konto
         account = BankAccount(
             id=uuid4(),
-            user_id=user_id,
+            company_id=company_id,
             account_name=data.account_name,
             iban=data.iban,
             bic=data.bic,
@@ -186,7 +186,7 @@ class AccountService:
             account.login_id_encrypted = _encrypt_sensitive_data(data.login_id)
             logger.info(
                 "banking_login_id_encrypted",
-                user_id=str(user_id),
+                company_id=str(company_id),
                 account_name=data.account_name,
             )
 
@@ -199,7 +199,7 @@ class AccountService:
     async def get_account(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         account_id: UUID,
     ) -> Optional[BankAccountResponse]:
         """Hole einzelnes Bankkonto."""
@@ -207,7 +207,7 @@ class AccountService:
 
         account = await db.get(BankAccount, account_id)
 
-        if not account or account.user_id != user_id or account.deleted_at:
+        if not account or account.company_id != company_id or account.deleted_at:
             return None
 
         return self._to_response(account)
@@ -215,15 +215,15 @@ class AccountService:
     async def get_accounts(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         include_inactive: bool = False,
     ) -> List[BankAccountResponse]:
-        """Hole alle Bankkonten eines Benutzers."""
+        """Hole alle Bankkonten einer Firma."""
         from app.db.models import BankAccount
 
         query = select(BankAccount).where(
             and_(
-                BankAccount.user_id == user_id,
+                BankAccount.company_id == company_id,
                 BankAccount.deleted_at.is_(None),
             )
         )
@@ -241,12 +241,12 @@ class AccountService:
     async def get_accounts_with_stats(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
     ) -> List[BankAccountWithStats]:
         """Hole Bankkonten mit Statistiken."""
         from app.db.models import BankAccount, BankTransaction, PaymentOrder
 
-        accounts = await self.get_accounts(db, user_id)
+        accounts = await self.get_accounts(db, company_id)
 
         result = []
         for account in accounts:
@@ -302,7 +302,7 @@ class AccountService:
     async def update_account(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         account_id: UUID,
         data: BankAccountUpdate,
     ) -> Optional[BankAccountResponse]:
@@ -311,7 +311,7 @@ class AccountService:
 
         account = await db.get(BankAccount, account_id)
 
-        if not account or account.user_id != user_id or account.deleted_at:
+        if not account or account.company_id != company_id or account.deleted_at:
             return None
 
         # Update-Felder
@@ -340,7 +340,7 @@ class AccountService:
     async def delete_account(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         account_id: UUID,
     ) -> bool:
         """Lösche Bankkonto (Soft-Delete)."""
@@ -348,7 +348,7 @@ class AccountService:
 
         account = await db.get(BankAccount, account_id)
 
-        if not account or account.user_id != user_id or account.deleted_at:
+        if not account or account.company_id != company_id or account.deleted_at:
             return False
 
         account.deleted_at = utc_now()
@@ -444,7 +444,7 @@ class AccountService:
     async def get_decrypted_login_id(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         account_id: UUID,
     ) -> Optional[str]:
         """Hole entschlüsselte Login-ID für FinTS-Verbindungen.
@@ -454,7 +454,7 @@ class AccountService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID (für Authorization-Check)
+            company_id: Firmen-ID (für Authorization-Check)
             account_id: Konto-ID
 
         Returns:
@@ -466,10 +466,10 @@ class AccountService:
         account = await db.get(BankAccount, account_id)
 
         # Authorization Check
-        if not account or account.user_id != user_id or account.deleted_at:
+        if not account or account.company_id != company_id or account.deleted_at:
             logger.warning(
                 "banking_login_id_access_denied",
-                user_id=str(user_id),
+                company_id=str(company_id),
                 account_id=str(account_id),
             )
             return None
@@ -482,7 +482,7 @@ class AccountService:
         if decrypted:
             logger.info(
                 "banking_login_id_decrypted",
-                user_id=str(user_id),
+                company_id=str(company_id),
                 account_id=str(account_id),
                 purpose="fints_connection",
             )
@@ -493,7 +493,7 @@ class AccountService:
         """Konvertiere DB-Model zu Response."""
         return BankAccountResponse(
             id=account.id,
-            user_id=account.user_id,
+            company_id=account.company_id,
             account_name=account.account_name,
             iban=account.iban,
             bic=account.bic,

@@ -109,7 +109,7 @@ class CashFlowService:
     async def get_cash_flow_forecast(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         days_ahead: int = DEFAULT_FORECAST_DAYS,
         scenario: ForecastScenario = ForecastScenario.REALISTIC,
@@ -120,7 +120,7 @@ class CashFlowService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             bank_account_id: Optional - nur für bestimmtes Konto
             days_ahead: Tage in die Zukunft
             scenario: Prognose-Szenario
@@ -142,17 +142,17 @@ class CashFlowService:
 
         # 1. Offene Forderungen (erwartete Einnahmen)
         receivables = await self._get_open_receivables(
-            db, user_id, bank_account_id, end_date
+            db, company_id, bank_account_id, end_date
         )
 
         # 2. Offene Verbindlichkeiten (erwartete Ausgaben)
         payables = await self._get_open_payables(
-            db, user_id, bank_account_id, end_date
+            db, company_id, bank_account_id, end_date
         )
 
         # 3. Geplante Zahlungen
         scheduled = await self._get_scheduled_payments(
-            db, user_id, bank_account_id, end_date
+            db, company_id, bank_account_id, end_date
         )
 
         # 4. Wahrscheinlichkeiten basierend auf Szenario anpassen
@@ -169,7 +169,7 @@ class CashFlowService:
 
         logger.info(
             "cash_flow_forecast_created",
-            user_id=str(user_id),
+            company_id=str(company_id),
             days_ahead=days_ahead,
             scenario=scenario.value,
             total_inflow=float(projection.total_inflow),
@@ -182,7 +182,7 @@ class CashFlowService:
     async def get_cash_flow_summary(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
     ) -> Dict[str, Any]:
         """Hole Cash-Flow-Zusammenfassung.
@@ -194,17 +194,17 @@ class CashFlowService:
 
         # Kurzfristig (7 Tage)
         short_term = await self.get_cash_flow_forecast(
-            db, user_id, bank_account_id, days_ahead=7
+            db, company_id, bank_account_id, days_ahead=7
         )
 
         # Mittelfristig (30 Tage)
         mid_term = await self.get_cash_flow_forecast(
-            db, user_id, bank_account_id, days_ahead=30
+            db, company_id, bank_account_id, days_ahead=30
         )
 
         # Langfristig (90 Tage)
         long_term = await self.get_cash_flow_forecast(
-            db, user_id, bank_account_id, days_ahead=90
+            db, company_id, bank_account_id, days_ahead=90
         )
 
         return {
@@ -233,7 +233,7 @@ class CashFlowService:
     async def get_daily_forecast(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         days: int = 30,
     ) -> List[Dict[str, Any]]:
@@ -243,7 +243,7 @@ class CashFlowService:
             Liste mit täglichen Werten
         """
         projection = await self.get_cash_flow_forecast(
-            db, user_id, bank_account_id, days_ahead=days
+            db, company_id, bank_account_id, days_ahead=days
         )
 
         daily = []
@@ -279,7 +279,7 @@ class CashFlowService:
     async def compare_scenarios(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         days_ahead: int = 90,
     ) -> Dict[str, Any]:
@@ -292,7 +292,7 @@ class CashFlowService:
 
         for scenario in ForecastScenario:
             projection = await self.get_cash_flow_forecast(
-                db, user_id, bank_account_id,
+                db, company_id, bank_account_id,
                 days_ahead=days_ahead,
                 scenario=scenario
             )
@@ -322,7 +322,7 @@ class CashFlowService:
     async def _get_open_receivables(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID],
         end_date: date,
     ) -> List[CashFlowEntry]:
@@ -332,7 +332,7 @@ class CashFlowService:
         # Dokumente mit offenen Betraegen (Eingangsrechnungen)
         query = select(Document).where(
             and_(
-                Document.owner_id == user_id,
+                Document.owner_id == company_id,
                 Document.document_type == "invoice",
                 Document.deleted_at.is_(None),
             )
@@ -377,7 +377,7 @@ class CashFlowService:
 
             # Wahrscheinlichkeit basierend auf Zahlungsverhalten
             probability = await self._get_payment_probability(
-                db, user_id, extracted.get("creditor_name")
+                db, company_id, extracted.get("creditor_name")
             )
 
             entries.append(CashFlowEntry(
@@ -399,7 +399,7 @@ class CashFlowService:
     async def _get_open_payables(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID],
         end_date: date,
     ) -> List[CashFlowEntry]:
@@ -409,7 +409,7 @@ class CashFlowService:
         # Dokumente mit offenen Betraegen (Ausgangsrechnungen/Lieferantenrechnungen)
         query = select(Document).where(
             and_(
-                Document.owner_id == user_id,
+                Document.owner_id == company_id,
                 Document.document_type.in_(["supplier_invoice", "purchase_order"]),
                 Document.deleted_at.is_(None),
             )
@@ -468,7 +468,7 @@ class CashFlowService:
     async def _get_scheduled_payments(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID],
         end_date: date,
     ) -> List[CashFlowEntry]:
@@ -478,7 +478,7 @@ class CashFlowService:
         # Genehmigte aber noch nicht ausgeführte Zahlungen
         query = select(PaymentOrder).where(
             and_(
-                PaymentOrder.user_id == user_id,
+                PaymentOrder.company_id == company_id,
                 PaymentOrder.status.in_([
                     PaymentStatus.DRAFT.value,
                     PaymentStatus.APPROVED.value,
@@ -525,7 +525,7 @@ class CashFlowService:
     async def _get_payment_probability(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         creditor_name: Optional[str],
     ) -> float:
         """Berechne Zahlungswahrscheinlichkeit basierend auf Historie."""

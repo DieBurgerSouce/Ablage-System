@@ -39,7 +39,7 @@ class TransactionService:
     async def get_transactions(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         filters: Optional[TransactionFilter] = None,
         offset: int = 0,
@@ -51,7 +51,7 @@ class TransactionService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             bank_account_id: Optionaler Filter auf Bankkonto
             filters: Optionale Filter
             offset: Offset für Paginierung
@@ -70,7 +70,7 @@ class TransactionService:
             .join(BankAccount)
             .where(
                 and_(
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                     BankAccount.deleted_at.is_(None),
                 )
             )
@@ -150,7 +150,7 @@ class TransactionService:
     async def get_transaction(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction_id: UUID,
     ) -> Optional[BankTransactionResponse]:
         """Hole einzelne Transaktion."""
@@ -162,7 +162,7 @@ class TransactionService:
             .where(
                 and_(
                     BankTransaction.id == transaction_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                     BankAccount.deleted_at.is_(None),
                 )
             )
@@ -179,7 +179,7 @@ class TransactionService:
     async def get_unmatched_transactions(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         limit: int = 100,
     ) -> List[BankTransactionResponse]:
@@ -191,7 +191,7 @@ class TransactionService:
             .join(BankAccount)
             .where(
                 and_(
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                     BankAccount.deleted_at.is_(None),
                     BankTransaction.reconciliation_status == ReconciliationStatus.UNMATCHED.value,
                 )
@@ -211,7 +211,7 @@ class TransactionService:
     async def update_transaction(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction_id: UUID,
         notes: Optional[str] = None,
         tags: Optional[List[str]] = None,
@@ -227,7 +227,7 @@ class TransactionService:
             .where(
                 and_(
                     BankTransaction.id == transaction_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                     BankAccount.deleted_at.is_(None),
                 )
             )
@@ -257,7 +257,7 @@ class TransactionService:
     async def set_reconciliation_status(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction_id: UUID,
         status: ReconciliationStatus,
         matched_document_id: Optional[UUID] = None,
@@ -272,7 +272,7 @@ class TransactionService:
             .where(
                 and_(
                     BankTransaction.id == transaction_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                 )
             )
         )
@@ -304,7 +304,7 @@ class TransactionService:
     async def get_transaction_stats(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         date_from: Optional[date] = None,
         date_to: Optional[date] = None,
@@ -314,7 +314,7 @@ class TransactionService:
 
         # Basis-Query
         base_conditions = [
-            BankAccount.user_id == user_id,
+            BankAccount.company_id == company_id,
             BankAccount.deleted_at.is_(None),
         ]
 
@@ -367,7 +367,7 @@ class TransactionService:
     async def get_monthly_summary(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         months: int = 12,
     ) -> List[Dict[str, Any]]:
@@ -380,7 +380,7 @@ class TransactionService:
         start_date = start_date.replace(day=1)
 
         base_conditions = [
-            BankAccount.user_id == user_id,
+            BankAccount.company_id == company_id,
             BankAccount.deleted_at.is_(None),
             BankTransaction.booking_date >= start_date,
         ]
@@ -420,7 +420,7 @@ class TransactionService:
     async def get_top_counterparties(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         direction: str = "both",  # "in", "out", "both"
         limit: int = 10,
@@ -429,7 +429,7 @@ class TransactionService:
         from app.db.models import BankTransaction, BankAccount
 
         base_conditions = [
-            BankAccount.user_id == user_id,
+            BankAccount.company_id == company_id,
             BankAccount.deleted_at.is_(None),
             BankTransaction.counterparty_name.isnot(None),
         ]

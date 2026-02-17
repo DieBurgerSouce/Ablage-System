@@ -88,7 +88,7 @@ class MahnTaskService:
     async def list_tasks(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         filters: Optional[MahnTaskFilter] = None,
         limit: int = 50,
         offset: int = 0,
@@ -97,7 +97,7 @@ class MahnTaskService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID (für Zugriffsprüfung)
+            company_id: Firmen-ID (für Zugriffsprüfung)
             filters: Optionale Filter
             limit: Max. Ergebnisse
             offset: Offset für Pagination
@@ -109,7 +109,7 @@ class MahnTaskService:
         query = (
             select(MahnTask)
             .join(DunningRecord, MahnTask.dunning_record_id == DunningRecord.id)
-            .where(DunningRecord.user_id == user_id)
+            .where(DunningRecord.company_id == company_id)
         )
 
         # Filter anwenden
@@ -155,7 +155,7 @@ class MahnTaskService:
     async def get_pending_tasks_summary(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
     ) -> Dict[str, Any]:
         """Hole Zusammenfassung offener Aufgaben.
 
@@ -168,7 +168,7 @@ class MahnTaskService:
         base_query = (
             select(MahnTask)
             .join(DunningRecord, MahnTask.dunning_record_id == DunningRecord.id)
-            .where(DunningRecord.user_id == user_id)
+            .where(DunningRecord.company_id == company_id)
             .where(MahnTask.status.in_([
                 MahnTaskStatus.PENDING.value,
                 MahnTaskStatus.IN_PROGRESS.value
@@ -189,7 +189,7 @@ class MahnTaskService:
         type_query = (
             select(MahnTask.task_type, func.count())
             .join(DunningRecord, MahnTask.dunning_record_id == DunningRecord.id)
-            .where(DunningRecord.user_id == user_id)
+            .where(DunningRecord.company_id == company_id)
             .where(MahnTask.status.in_([
                 MahnTaskStatus.PENDING.value,
                 MahnTaskStatus.IN_PROGRESS.value
@@ -204,7 +204,7 @@ class MahnTaskService:
             select(func.count())
             .select_from(MahnTask)
             .join(DunningRecord, MahnTask.dunning_record_id == DunningRecord.id)
-            .where(DunningRecord.user_id == user_id)
+            .where(DunningRecord.company_id == company_id)
             .where(MahnTask.status == MahnTaskStatus.SNOOZED.value)
         )
         snoozed_result = await db.execute(snoozed_query)
@@ -270,7 +270,7 @@ class MahnTaskService:
     async def assign_task(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         task_id: UUID,
         assigned_user_id: UUID,
     ) -> JSONDict:
@@ -278,14 +278,14 @@ class MahnTaskService:
 
         Args:
             db: Datenbank-Session
-            user_id: Aktueller Benutzer (für Zugriffsprüfung)
+            company_id: Aktuelle Firma (für Zugriffsprüfung)
             task_id: Aufgaben-ID
             assigned_user_id: Ziel-Benutzer
 
         Returns:
             Aktualisierte Aufgabe
         """
-        task = await self._get_task_for_user(db, user_id, task_id)
+        task = await self._get_task_for_user(db, company_id, task_id)
         if not task:
             raise ValueError("Aufgabe nicht gefunden")
 
@@ -307,7 +307,7 @@ class MahnTaskService:
     async def snooze_task(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         task_id: UUID,
         snooze_until: date,
         reason: Optional[str] = None,
@@ -316,7 +316,7 @@ class MahnTaskService:
 
         Args:
             db: Datenbank-Session
-            user_id: Aktueller Benutzer
+            company_id: Aktuelle Firma
             task_id: Aufgaben-ID
             snooze_until: Wiedervorlage-Datum
             reason: Optionaler Grund
@@ -327,7 +327,7 @@ class MahnTaskService:
         Raises:
             ValueError: Wenn max. Zurückstellungen erreicht
         """
-        task = await self._get_task_for_user(db, user_id, task_id)
+        task = await self._get_task_for_user(db, company_id, task_id)
         if not task:
             raise ValueError("Aufgabe nicht gefunden")
 
@@ -360,7 +360,7 @@ class MahnTaskService:
     async def complete_task(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         task_id: UUID,
         notes: Optional[str] = None,
     ) -> JSONDict:
@@ -368,14 +368,14 @@ class MahnTaskService:
 
         Args:
             db: Datenbank-Session
-            user_id: Aktueller Benutzer
+            company_id: Aktuelle Firma
             task_id: Aufgaben-ID
             notes: Optionale Notizen
 
         Returns:
             Aktualisierte Aufgabe
         """
-        task = await self._get_task_for_user(db, user_id, task_id)
+        task = await self._get_task_for_user(db, company_id, task_id)
         if not task:
             raise ValueError("Aufgabe nicht gefunden")
 
@@ -399,7 +399,7 @@ class MahnTaskService:
     async def cancel_task(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         task_id: UUID,
         reason: Optional[str] = None,
     ) -> JSONDict:
@@ -407,14 +407,14 @@ class MahnTaskService:
 
         Args:
             db: Datenbank-Session
-            user_id: Aktueller Benutzer
+            company_id: Aktuelle Firma
             task_id: Aufgaben-ID
             reason: Optionaler Grund
 
         Returns:
             Aktualisierte Aufgabe
         """
-        task = await self._get_task_for_user(db, user_id, task_id)
+        task = await self._get_task_for_user(db, company_id, task_id)
         if not task:
             raise ValueError("Aufgabe nicht gefunden")
 
@@ -436,7 +436,7 @@ class MahnTaskService:
     async def bulk_complete(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         task_ids: List[UUID],
         notes: Optional[str] = None,
     ) -> JSONDict:
@@ -444,7 +444,7 @@ class MahnTaskService:
 
         Args:
             db: Datenbank-Session
-            user_id: Aktueller Benutzer
+            company_id: Aktuelle Firma
             task_ids: Liste von Aufgaben-IDs
             notes: Optionale Notizen
 
@@ -456,7 +456,7 @@ class MahnTaskService:
 
         for task_id in task_ids:
             try:
-                await self.complete_task(db, user_id, task_id, notes)
+                await self.complete_task(db, company_id, task_id, notes)
                 successful.append(str(task_id))
             except Exception as e:
                 failed.append({"id": str(task_id), **safe_error_log(e)})
@@ -476,7 +476,7 @@ class MahnTaskService:
     async def log_phone_call(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dunning_record_id: UUID,
         contact_name: str,
         outcome: PhoneCallOutcome,
@@ -553,7 +553,7 @@ class MahnTaskService:
     async def get_phone_call_history(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dunning_record_id: UUID,
         limit: int = 50,
         offset: int = 0,
@@ -562,7 +562,7 @@ class MahnTaskService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID (für Zugriffsprüfung)
+            company_id: Firmen-ID (für Zugriffsprüfung)
             dunning_record_id: Mahnvorgang-ID
             limit: Maximale Anzahl Einträge
             offset: Offset für Pagination
@@ -574,7 +574,7 @@ class MahnTaskService:
         dunning_query = select(DunningRecord).where(
             and_(
                 DunningRecord.id == dunning_record_id,
-                DunningRecord.user_id == user_id,
+                DunningRecord.company_id == company_id,
             )
         )
         dunning_result = await db.execute(dunning_query)
@@ -651,7 +651,7 @@ class MahnTaskService:
     async def _get_task_for_user(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         task_id: UUID,
     ) -> Optional[MahnTask]:
         """Hole Aufgabe mit Zugriffsprüfung."""
@@ -661,7 +661,7 @@ class MahnTaskService:
             .where(
                 and_(
                     MahnTask.id == task_id,
-                    DunningRecord.user_id == user_id,
+                    DunningRecord.company_id == company_id,
                 )
             )
         )

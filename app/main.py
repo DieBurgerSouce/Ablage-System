@@ -997,6 +997,11 @@ app.add_middleware(
     whitelist={"127.0.0.1", "::1", "localhost"},
 )
 
+# Standardisierte Fehler-Middleware (Phase 1.3: Error Standardization)
+# Faengt Exceptions ab, wandelt in StandardErrorResponse, X-Correlation-ID
+from app.core.error_middleware import ErrorStandardizationMiddleware
+app.add_middleware(ErrorStandardizationMiddleware)
+
 # Add Security Headers middleware (MUSS vor CORS sein!)
 # Fügt X-Content-Type-Options, X-Frame-Options, CSP, HSTS, etc. hinzu
 app.add_middleware(
@@ -1212,6 +1217,10 @@ from app.api.v1.zero_touch import router as zero_touch_router
 from app.api.v1.nlq import router as nlq_router
 from app.api.v1.smart_search import router as smart_search_router  # Feature #1: Smart Search / Natural Language Search
 from app.api.v1.spotlight import router as spotlight_router  # Spotlight Cmd+K Schnellsuche
+from app.api.v1.semantic_search import router as semantic_search_router  # M4: Semantische Suche
+from app.api.v1.barcodes import router as barcodes_router  # M5: Barcode/QR Pipeline
+from app.api.v1.lifecycle_engine import router as lifecycle_engine_router  # M1: Document Lifecycle Engine
+from app.api.v1.custom_fields import router as custom_fields_router  # M3: Custom Field System
 from app.api.v1.smart_inbox import router as smart_inbox_router
 from app.api.v1.ceo_dashboard import router as ceo_dashboard_router
 from app.api.v1.knowledge_graph import router as knowledge_graph_router
@@ -1308,6 +1317,8 @@ from app.api.v1.terminology import router as terminology_router  # Feature #10: 
 from app.api.v1.german_finance import router as german_finance_router  # Feature #11: Deutsche Finanz-Features
 from app.api.v1.adhoc_reports import router as adhoc_reports_router  # Feature #12: Ad-Hoc Reporting
 from app.api.v1.saga_monitoring import router as saga_monitoring_router  # Phase 2.2: Saga Monitoring
+from app.api.v1.approval_matrix import router as approval_matrix_router  # M2: Approval Matrix
+from app.api.v1.duplicate_detection import router as duplicate_detection_router  # Phase 4.1: Duplikat-Erkennung
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -1452,6 +1463,10 @@ app.include_router(zero_touch_router, prefix="/api/v1")  # Vision 2.0: Zero-Touc
 app.include_router(nlq_router, prefix="/api/v1")  # Vision 2.0: NLQ 2.0
 app.include_router(smart_search_router, prefix="/api/v1")  # Feature #1: Smart Search / Natural Language Search
 app.include_router(spotlight_router, prefix="/api/v1")  # Spotlight Cmd+K Schnellsuche
+app.include_router(semantic_search_router, prefix="/api/v1")  # M4: Semantische Suche
+app.include_router(barcodes_router, prefix="/api/v1")  # M5: Barcode/QR Pipeline Integration
+app.include_router(lifecycle_engine_router, prefix="/api/v1")  # M1: Document Lifecycle Engine
+app.include_router(custom_fields_router, prefix="/api/v1")  # M3: Custom Field System
 app.include_router(smart_inbox_router, prefix="/api/v1")  # Vision 2.0: Smart Inbox
 app.include_router(ceo_dashboard_router, prefix="/api/v1")  # Vision 2.0: CEO Dashboard
 app.include_router(knowledge_graph_router, prefix="/api/v1")  # Vision 2.0: Knowledge Graph
@@ -1566,6 +1581,8 @@ app.include_router(terminology_router, prefix="/api/v1")  # Feature #10: Deutsch
 app.include_router(german_finance_router, prefix="/api/v1")  # Feature #11: Deutsche Finanz-Features
 app.include_router(adhoc_reports_router, prefix="/api/v1")  # Feature #12: Ad-Hoc Reporting
 app.include_router(saga_monitoring_router, prefix="/api/v1")  # Phase 2.2: Saga Monitoring
+app.include_router(approval_matrix_router, prefix="/api/v1")  # M2: Approval Matrix
+app.include_router(duplicate_detection_router, prefix="/api/v1")  # Phase 4.1: Duplikat-Erkennung
 
 
 # ==================== Health & Status Endpoints ====================

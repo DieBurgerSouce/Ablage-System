@@ -656,3 +656,207 @@ def process_approval_action(
     logger.info(f"Approval-Aktion abgeschlossen: {result}")
 
     return result
+
+
+# =================================================================
+# M2: Approval Matrix Tasks (Genehmigungsmatrix)
+# =================================================================
+
+
+@celery_app.task(
+    name="app.workers.tasks.approval_tasks.check_overdue_approvals_task",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def check_overdue_approvals_task(
+    self,
+    company_id: Optional[str] = None,
+) -> dict[str, Any]:
+    """Prueft ueberfaellige Genehmigungen und eskaliert via Approval Matrix.
+
+    Verwendet die ApprovalMatrix um die korrekte Eskalationskette zu bestimmen.
+    Laeuft stuendlich via Beat Schedule.
+
+    Args:
+        company_id: Optionale Company-ID (None = alle Companies)
+
+    Returns:
+        Dict mit Ergebnis der Pruefung
+    """
+    logger.info("M2: Starte Pruefung ueberfaelliger Genehmigungen (Matrix-basiert)")
+
+    escalated_count = 0
+    checked_count = 0
+    now = utc_now()
+
+    with get_sync_session() as db:
+        query = select(ApprovalRequest).where(
+            and_(
+                ApprovalRequest.status == ApprovalStatus.PENDING,
+                ApprovalRequest.due_date < now,
+                ApprovalRequest.is_deleted == False,
+            )
+        ).options(joinedload(ApprovalRequest.current_step))
+
+        if company_id:
+            query = query.where(ApprovalRequest.company_id == UUID(company_id))
+
+        result = db.execute(query)
+        overdue_requests = result.scalars().unique().all()
+
+        for request in overdue_requests:
+            checked_count += 1
+            try:
+                # Eskalation: Status auf ESCALATED setzen
+                if request.current_step:
+                    request.current_step.status = "escalated"
+                    request.current_step.escalated_at = now
+                escalated_count += 1
+                logger.info(
+                    f"M2: Anfrage {request.id} eskaliert - "
+                    f"Faellig seit {request.due_date}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"M2: Fehler bei Eskalation von Anfrage {request.id}: {e}"
+                )
+
+        db.commit()
+
+    logger.info(
+        f"M2: Pruefung abgeschlossen - {checked_count} geprueft, "
+        f"{escalated_count} eskaliert"
+    )
+
+    return {
+        "success": True,
+        "checked_count": checked_count,
+        "escalated_count": escalated_count,
+        "timestamp": now.isoformat(),
+    }
+
+
+@celery_app.task(
+    name="app.workers.tasks.approval_tasks.deactivate_expired_substitutions_task",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+)
+def deactivate_expired_substitutions_task(self) -> dict[str, Any]:
+    """Deaktiviert abgelaufene Stellvertretungsregeln.
+
+    Prueft alle aktiven SubstitutionRules und deaktiviert solche,
+    deren end_date in der Vergangenheit liegt.
+    Laeuft taeglich via Beat Schedule (01:45 Uhr).
+
+    Returns:
+        Dict mit Anzahl deaktivierter Regeln
+    """
+    from app.db.models import SubstitutionRule
+
+    logger.info("M2: Starte Deaktivierung abgelaufener Stellvertretungen")
+
+    deactivated_count = 0
+    now = utc_now()
+
+    with get_sync_session() as db:
+        result = db.execute(
+            select(SubstitutionRule).where(
+                and_(
+                    SubstitutionRule.is_active == True,
+                    SubstitutionRule.end_date < now,
+                )
+            )
+        )
+        expired_rules = result.scalars().all()
+
+        for rule in expired_rules:
+            rule.is_active = False
+            deactivated_count += 1
+            logger.info(
+                f"M2: Stellvertretung {rule.id} deaktiviert - "
+                f"Abgelaufen am {rule.end_date}"
+            )
+
+        db.commit()
+
+    logger.info(
+        f"M2: {deactivated_count} abgelaufene Stellvertretungen deaktiviert"
+    )
+
+    return {
+        "success": True,
+        "deactivated_count": deactivated_count,
+        "timestamp": now.isoformat(),
+    }
+
+
+@celery_app.task(
+    name="app.workers.tasks.approval_tasks.send_approval_reminder_task",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=30,
+)
+def send_approval_reminder_task(
+    self,
+    request_id: str,
+    company_id: str,
+) -> dict[str, Any]:
+    """Sendet Erinnerung fuer eine ausstehende Genehmigung.
+
+    Wird on-demand aufgerufen (nicht via Beat Schedule).
+
+    Args:
+        request_id: ID der Genehmigungsanfrage
+        company_id: Company-ID fuer Berechtigungspruefung
+
+    Returns:
+        Dict mit Ergebnis
+    """
+    logger.info(f"M2: Sende Genehmigungserinnerung fuer Anfrage {request_id}")
+
+    with get_sync_session() as db:
+        request = db.execute(
+            select(ApprovalRequest).where(
+                and_(
+                    ApprovalRequest.id == UUID(request_id),
+                    ApprovalRequest.company_id == UUID(company_id),
+                    ApprovalRequest.status == ApprovalStatus.PENDING,
+                )
+            )
+        ).scalar_one_or_none()
+
+        if not request:
+            return {
+                "success": False,
+                "error": "Genehmigungsanfrage nicht gefunden oder nicht ausstehend",
+            }
+
+        # Erinnerung via Notification Service
+        try:
+            notification_service = NotificationService(db)
+            if request.current_step and request.current_step.approver_id:
+                notification_service.create_notification(
+                    user_id=request.current_step.approver_id,
+                    title="Genehmigung ausstehend",
+                    message=(
+                        f"Erinnerung: Genehmigungsanfrage wartet auf Ihre Entscheidung. "
+                        f"Faellig am: {request.due_date.strftime('%d.%m.%Y') if request.due_date else 'kein Datum'}"
+                    ),
+                    notification_type=NotificationType.APPROVAL,
+                    priority=NotificationPriority.HIGH,
+                    reference_id=str(request.id),
+                    reference_type="approval_request",
+                )
+                db.commit()
+                logger.info(
+                    f"M2: Erinnerung gesendet an Genehmiger "
+                    f"{request.current_step.approver_id}"
+                )
+                return {"success": True, "reminder_sent": True}
+        except Exception as e:
+            logger.error(f"M2: Fehler beim Senden der Erinnerung: {e}")
+            return {"success": False, "error": f"Erinnerung fehlgeschlagen: {e}"}
+
+    return {"success": False, "error": "Kein aktueller Genehmigungsschritt gefunden"}

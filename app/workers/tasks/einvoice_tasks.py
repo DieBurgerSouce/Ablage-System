@@ -966,3 +966,596 @@ def einvoice_check_all_transmissions_task(self) -> dict:
     except Exception as e:
         logger.error("einvoice_check_all_failed", **safe_error_log(e))
         return {"success": False, "error": safe_error_detail(e, "Status-Check")}
+
+
+# =============================================================================
+# PARSE EINVOICE TASK (NEW)
+# =============================================================================
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.einvoice_tasks.parse_einvoice_task",
+    queue="default",
+    max_retries=2,
+    soft_time_limit=120,
+    time_limit=180,
+)
+def parse_einvoice_task(self, document_id: str, company_id: str) -> dict:
+    """
+    Parst E-Rechnung aus einem Dokument (async).
+
+    Extrahiert XML aus PDF, erkennt Format (ZUGFeRD/XRechnung/Factur-X).
+
+    Args:
+        document_id: Dokument-UUID
+        company_id: Company-UUID für Berechtigungsprüfung
+
+    Returns:
+        dict mit:
+        - success: bool
+        - einvoice_id: UUID der EInvoiceDocument
+        - format: Erkanntes Format
+        - profile: Erkanntes Profil
+        - error: Optional Fehlermeldung
+    """
+    import asyncio
+
+    async def _do_parse():
+        async with get_async_session_context() as db:
+            from app.services.einvoice import get_parser_service
+            from app.services.storage_service import get_storage_service
+
+            parser = get_parser_service()
+            storage = get_storage_service()
+
+            # Dokument laden mit Company-Check
+            query = select(Document).where(
+                Document.id == UUID(document_id),
+                Document.deleted_at.is_(None)
+            )
+            result = await db.execute(query)
+            doc = result.scalar_one_or_none()
+
+            if not doc:
+                return {
+                    "success": False,
+                    "error": "Dokument nicht gefunden",
+                }
+
+            # Company-Berechtigung prüfen
+            if str(doc.company_id) != company_id:
+                return {
+                    "success": False,
+                    "error": "Keine Berechtigung für dieses Dokument",
+                }
+
+            # PDF/XML Content laden
+            file_content = await storage.get_document(doc.file_path)
+            if not file_content:
+                return {
+                    "success": False,
+                    "error": "Datei nicht im Storage gefunden",
+                }
+
+            # Parsen
+            try:
+                parse_result = await parser.parse_and_store(
+                    file_content=file_content,
+                    filename=doc.original_filename or doc.filename,
+                    document_id=doc.id,
+                    db=db,
+                    user_id=doc.owner_id,
+                )
+
+                await db.commit()
+
+                logger.info(
+                    "einvoice_parsed",
+                    document_id=str(doc.id),
+                    einvoice_id=str(parse_result.einvoice_id),
+                    format=parse_result.format_detected.value if parse_result.format_detected else "unknown",
+                )
+
+                return {
+                    "success": True,
+                    "einvoice_id": str(parse_result.einvoice_id),
+                    "format": parse_result.format_detected.value if parse_result.format_detected else "unknown",
+                    "profile": parse_result.profile.value if parse_result.profile else None,
+                }
+
+            except ValueError as e:
+                return {
+                    "success": False,
+                    "error": safe_error_detail(e, "Parsing"),
+                }
+            except Exception as e:
+                logger.error(
+                    "einvoice_parse_error",
+                    document_id=str(doc.id),
+                    **safe_error_log(e)
+                )
+                return {
+                    "success": False,
+                    "error": safe_error_detail(e, "Parsing"),
+                }
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_do_parse())
+        loop.close()
+        return result
+
+    except Exception as e:
+        logger.error("parse_einvoice_task_failed", **safe_error_log(e))
+        return {
+            "success": False,
+            "error": safe_error_detail(e, "Task-Ausführung"),
+        }
+
+
+# =============================================================================
+# GENERATE ZUGFERD TASK (NEW)
+# =============================================================================
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.einvoice_tasks.generate_zugferd_task",
+    queue="default",
+    max_retries=2,
+    soft_time_limit=120,
+    time_limit=180,
+)
+def generate_zugferd_task(
+    self,
+    document_id: str,
+    profile: str,
+    company_id: str,
+    user_id: Optional[str] = None,
+) -> dict:
+    """
+    Generiert ZUGFeRD-PDF für ein Dokument (async).
+
+    Args:
+        document_id: Dokument-UUID
+        profile: ZUGFeRD-Profil (MINIMUM, BASIC, EN16931, EXTENDED, XRECHNUNG)
+        company_id: Company-UUID für Berechtigungsprüfung
+        user_id: Optional User-UUID für Generierungs-Tracking
+
+    Returns:
+        dict mit:
+        - success: bool
+        - einvoice_id: UUID der generierten EInvoiceDocument
+        - file_path: Pfad zur generierten PDF
+        - error: Optional Fehlermeldung
+    """
+    import asyncio
+
+    async def _do_generate():
+        async with get_async_session_context() as db:
+            from app.services.einvoice import get_generator_service, ZUGFeRDProfile
+            from app.services.storage_service import get_storage_service
+
+            generator = get_generator_service()
+            storage = get_storage_service()
+
+            # Profil validieren
+            try:
+                zugferd_profile = ZUGFeRDProfile(profile.upper())
+            except ValueError:
+                return {
+                    "success": False,
+                    "error": f"Ungültiges Profil: {profile}",
+                }
+
+            # Dokument laden mit Company-Check
+            query = select(Document).where(
+                Document.id == UUID(document_id),
+                Document.deleted_at.is_(None)
+            )
+            result = await db.execute(query)
+            doc = result.scalar_one_or_none()
+
+            if not doc:
+                return {
+                    "success": False,
+                    "error": "Dokument nicht gefunden",
+                }
+
+            # Company-Berechtigung prüfen
+            if str(doc.company_id) != company_id:
+                return {
+                    "success": False,
+                    "error": "Keine Berechtigung für dieses Dokument",
+                }
+
+            # Prüfen ob extracted_data vorhanden
+            if not doc.extracted_data or not doc.extracted_data.get("invoice"):
+                return {
+                    "success": False,
+                    "error": "Keine Rechnungsdaten vorhanden - OCR zuerst durchführen",
+                }
+
+            # ZUGFeRD-PDF generieren
+            try:
+                pdf_bytes, einvoice_id = await generator.generate_zugferd_pdf(
+                    document_id=doc.id,
+                    db=db,
+                    profile=zugferd_profile,
+                    user_id=UUID(user_id) if user_id else None,
+                )
+
+                # Generiertes PDF speichern
+                new_filename = f"zugferd_{document_id}_{profile.lower()}.pdf"
+                file_path = f"einvoice/{company_id}/{new_filename}"
+
+                await storage.upload_document(
+                    file_data=pdf_bytes,
+                    filename=new_filename,
+                    content_type="application/pdf",
+                    user_id=user_id or str(doc.owner_id),
+                    metadata={
+                        "original_document_id": str(doc.id),
+                        "zugferd_profile": profile,
+                        "einvoice_id": str(einvoice_id),
+                    }
+                )
+
+                await db.commit()
+
+                logger.info(
+                    "zugferd_generated",
+                    document_id=str(doc.id),
+                    einvoice_id=str(einvoice_id),
+                    profile=profile,
+                    file_path=file_path,
+                )
+
+                return {
+                    "success": True,
+                    "einvoice_id": str(einvoice_id),
+                    "file_path": file_path,
+                    "profile": profile,
+                }
+
+            except ValueError as e:
+                return {
+                    "success": False,
+                    "error": safe_error_detail(e, "Generierung"),
+                }
+            except Exception as e:
+                logger.error(
+                    "zugferd_generate_error",
+                    document_id=str(doc.id),
+                    **safe_error_log(e)
+                )
+                return {
+                    "success": False,
+                    "error": safe_error_detail(e, "Generierung"),
+                }
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_do_generate())
+        loop.close()
+        return result
+
+    except Exception as e:
+        logger.error("generate_zugferd_task_failed", **safe_error_log(e))
+        return {
+            "success": False,
+            "error": safe_error_detail(e, "Task-Ausführung"),
+        }
+
+
+# =============================================================================
+# GENERATE XRECHNUNG TASK (NEW)
+# =============================================================================
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.einvoice_tasks.generate_xrechnung_task",
+    queue="default",
+    max_retries=2,
+    soft_time_limit=120,
+    time_limit=180,
+)
+def generate_xrechnung_task(
+    self,
+    document_id: str,
+    syntax: str,
+    leitweg_id: str,
+    company_id: str,
+    user_id: Optional[str] = None,
+) -> dict:
+    """
+    Generiert XRechnung XML für ein Dokument (async).
+
+    Args:
+        document_id: Dokument-UUID
+        syntax: XRechnung Syntax (CII oder UBL)
+        leitweg_id: Leitweg-ID (Pflicht für XRechnung)
+        company_id: Company-UUID für Berechtigungsprüfung
+        user_id: Optional User-UUID für Generierungs-Tracking
+
+    Returns:
+        dict mit:
+        - success: bool
+        - einvoice_id: UUID der generierten EInvoiceDocument
+        - xml_path: Pfad zur generierten XML
+        - error: Optional Fehlermeldung
+    """
+    import asyncio
+
+    async def _do_generate():
+        async with get_async_session_context() as db:
+            from app.services.einvoice import get_generator_service
+            from app.services.einvoice.xrechnung_generator import XRechnungSyntax
+            from app.services.storage_service import get_storage_service
+
+            generator = get_generator_service()
+            storage = get_storage_service()
+
+            # Syntax validieren
+            try:
+                xrechnung_syntax = XRechnungSyntax(syntax.upper())
+            except ValueError:
+                return {
+                    "success": False,
+                    "error": f"Ungültige Syntax: {syntax} (muss CII oder UBL sein)",
+                }
+
+            # Leitweg-ID prüfen
+            if not leitweg_id or not leitweg_id.strip():
+                return {
+                    "success": False,
+                    "error": "Leitweg-ID fehlt - Pflichtfeld für XRechnung",
+                }
+
+            # Dokument laden mit Company-Check
+            query = select(Document).where(
+                Document.id == UUID(document_id),
+                Document.deleted_at.is_(None)
+            )
+            result = await db.execute(query)
+            doc = result.scalar_one_or_none()
+
+            if not doc:
+                return {
+                    "success": False,
+                    "error": "Dokument nicht gefunden",
+                }
+
+            # Company-Berechtigung prüfen
+            if str(doc.company_id) != company_id:
+                return {
+                    "success": False,
+                    "error": "Keine Berechtigung für dieses Dokument",
+                }
+
+            # Prüfen ob extracted_data vorhanden
+            if not doc.extracted_data or not doc.extracted_data.get("invoice"):
+                return {
+                    "success": False,
+                    "error": "Keine Rechnungsdaten vorhanden - OCR zuerst durchführen",
+                }
+
+            # XRechnung-XML generieren
+            try:
+                xml_content, einvoice_id = await generator.generate_xrechnung_xml(
+                    document_id=doc.id,
+                    db=db,
+                    syntax=xrechnung_syntax,
+                    user_id=UUID(user_id) if user_id else None,
+                )
+
+                # Generiertes XML speichern
+                new_filename = f"xrechnung_{document_id}_{syntax.lower()}.xml"
+                xml_path = f"einvoice/{company_id}/{new_filename}"
+
+                await storage.upload_document(
+                    file_data=xml_content.encode("utf-8"),
+                    filename=new_filename,
+                    content_type="application/xml",
+                    user_id=user_id or str(doc.owner_id),
+                    metadata={
+                        "original_document_id": str(doc.id),
+                        "xrechnung_syntax": syntax,
+                        "leitweg_id": leitweg_id,
+                        "einvoice_id": str(einvoice_id),
+                    }
+                )
+
+                await db.commit()
+
+                logger.info(
+                    "xrechnung_generated",
+                    document_id=str(doc.id),
+                    einvoice_id=str(einvoice_id),
+                    syntax=syntax,
+                    xml_path=xml_path,
+                )
+
+                return {
+                    "success": True,
+                    "einvoice_id": str(einvoice_id),
+                    "xml_path": xml_path,
+                    "syntax": syntax,
+                    "leitweg_id": leitweg_id,
+                }
+
+            except ValueError as e:
+                return {
+                    "success": False,
+                    "error": safe_error_detail(e, "Generierung"),
+                }
+            except Exception as e:
+                logger.error(
+                    "xrechnung_generate_error",
+                    document_id=str(doc.id),
+                    **safe_error_log(e)
+                )
+                return {
+                    "success": False,
+                    "error": safe_error_detail(e, "Generierung"),
+                }
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_do_generate())
+        loop.close()
+        return result
+
+    except Exception as e:
+        logger.error("generate_xrechnung_task_failed", **safe_error_log(e))
+        return {
+            "success": False,
+            "error": safe_error_detail(e, "Task-Ausführung"),
+        }
+
+
+# =============================================================================
+# BATCH VALIDATE EINVOICES TASK (NEW)
+# =============================================================================
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.einvoice_tasks.batch_validate_einvoices_task",
+    queue="default",
+    max_retries=1,
+    soft_time_limit=600,  # 10 min
+    time_limit=720,  # 12 min
+)
+def batch_validate_einvoices_task(self, company_id: str) -> dict:
+    """
+    Validiert alle ausstehenden E-Rechnungen einer Firma (Batch).
+
+    Validiert alle EInvoiceDocuments:
+    - ohne letzte Validierung (last_validated_at is NULL)
+    - oder mit Validierung älter als 7 Tage
+
+    Args:
+        company_id: Company-UUID (oder "all" für alle Companies)
+
+    Returns:
+        dict mit:
+        - success: bool
+        - validated_count: Anzahl validierter E-Rechnungen
+        - error_count: Anzahl mit Validierungsfehlern
+        - results: Liste mit Details pro E-Rechnung
+    """
+    import asyncio
+
+    async def _do_batch_validate():
+        async with get_async_session_context() as db:
+            from app.services.einvoice import get_validator_service
+            from datetime import timedelta
+
+            validator = get_validator_service()
+
+            # Cutoff-Datum: 7 Tage alt
+            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+
+            # Query: EInvoiceDocuments die validiert werden sollen
+            query = select(EInvoiceDocument).where(
+                (EInvoiceDocument.last_validated_at.is_(None)) |
+                (EInvoiceDocument.last_validated_at < cutoff)
+            )
+
+            # Company-Filter wenn nicht "all"
+            if company_id != "all":
+                # Join mit Document um company_id zu filtern
+                query = query.join(Document).where(
+                    Document.company_id == UUID(company_id)
+                )
+
+            query = query.limit(100)  # Max 100 pro Batch
+
+            result = await db.execute(query)
+            einvoices = result.scalars().all()
+
+            validated_count = 0
+            error_count = 0
+            results = []
+
+            for einvoice in einvoices:
+                einvoice_result = {
+                    "einvoice_id": str(einvoice.id),
+                    "document_id": str(einvoice.document_id),
+                    "format": einvoice.format,
+                    "valid": False,
+                    "error": None,
+                }
+
+                try:
+                    # Validieren
+                    validation_result = await validator.validate_xml(
+                        einvoice.xml_content,
+                        format_hint=einvoice.format
+                    )
+
+                    # Ergebnis speichern
+                    einvoice.is_valid = validation_result.valid
+                    einvoice.validation_errors = [
+                        {
+                            "code": m.code,
+                            "message": m.message,
+                            "location": m.location,
+                            "severity": m.severity.value,
+                        }
+                        for m in validation_result.messages
+                        if m.severity.value in ("fatal", "error")
+                    ]
+                    einvoice.last_validated_at = datetime.now(timezone.utc)
+
+                    einvoice_result["valid"] = validation_result.valid
+                    einvoice_result["error_count_detail"] = validation_result.error_count
+                    einvoice_result["warning_count"] = validation_result.warning_count
+
+                    if validation_result.valid:
+                        validated_count += 1
+                    else:
+                        error_count += 1
+
+                except Exception as e:
+                    einvoice_result["error"] = safe_error_detail(e, "Validierung")
+                    error_count += 1
+                    logger.warning(
+                        "einvoice_validation_failed",
+                        einvoice_id=str(einvoice.id),
+                        **safe_error_log(e)
+                    )
+
+                results.append(einvoice_result)
+
+            await db.commit()
+
+            return {
+                "success": True,
+                "validated_count": validated_count,
+                "error_count": error_count,
+                "total_processed": len(einvoices),
+                "results": results,
+            }
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_do_batch_validate())
+        loop.close()
+        return result
+
+    except Exception as e:
+        logger.error("batch_validate_einvoices_failed", **safe_error_log(e))
+        return {
+            "success": False,
+            "error": safe_error_detail(e, "Batch-Validierung"),
+            "validated_count": 0,
+            "error_count": 0,
+        }

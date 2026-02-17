@@ -176,7 +176,7 @@ class ImportService:
     async def import_file(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         content: Union[str, bytes],
         filename: Optional[str] = None,
         bank_account_id: Optional[UUID] = None,
@@ -186,7 +186,7 @@ class ImportService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             content: Dateiinhalt
             filename: Dateiname
             bank_account_id: Ziel-Bankkonto (optional)
@@ -212,7 +212,7 @@ class ImportService:
             select(BankImport).where(
                 and_(
                     BankImport.file_hash == file_hash,
-                    BankImport.user_id == user_id,
+                    BankImport.company_id == company_id,
                 )
             )
         )
@@ -235,14 +235,14 @@ class ImportService:
         # Bank Account ermitteln/validieren
         if bank_account_id:
             account = await db.get(BankAccount, bank_account_id)
-            if not account or account.user_id != user_id:
+            if not account or account.company_id != company_id:
                 raise ValueError("Bankkonto nicht gefunden")
         elif result.account_iban:
             # Versuche Konto anhand IBAN zu finden
             account_result = await db.execute(
                 select(BankAccount).where(
                     and_(
-                        BankAccount.user_id == user_id,
+                        BankAccount.company_id == company_id,
                         BankAccount.iban == result.account_iban,
                         BankAccount.is_active == True,
                     )
@@ -255,7 +255,7 @@ class ImportService:
         # Import-Record erstellen
         import_record = BankImport(
             id=uuid4(),
-            user_id=user_id,
+            company_id=company_id,
             bank_account_id=bank_account_id,
             filename=filename,
             file_hash=file_hash,
@@ -424,7 +424,7 @@ class ImportService:
     async def get_import_history(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         limit: int = 50,
     ) -> List[BankImportResponse]:
@@ -432,7 +432,7 @@ class ImportService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             bank_account_id: Optionaler Filter auf Bankkonto
             limit: Maximale Anzahl
 
@@ -441,7 +441,7 @@ class ImportService:
         """
         from app.db.models import BankImport
 
-        query = select(BankImport).where(BankImport.user_id == user_id)
+        query = select(BankImport).where(BankImport.company_id == company_id)
 
         if bank_account_id:
             query = query.where(BankImport.bank_account_id == bank_account_id)

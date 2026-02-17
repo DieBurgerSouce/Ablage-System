@@ -211,7 +211,7 @@ async def connect_fints(
     success, tan_challenge, error = await fints_service.connect(
         db=db,
         account_id=request.account_id,
-        user_id=current_user.id,
+        user_id=current_user.company_id,
         pin=request.pin,  # Wird sofort verwendet und verworfen
     )
 
@@ -254,7 +254,7 @@ async def confirm_tan(
         db=db,
         challenge_id=request.challenge_id,
         tan=request.tan,
-        user_id=current_user.id,
+        user_id=current_user.company_id,
     )
 
     if not success:
@@ -285,7 +285,7 @@ async def sync_transactions(
     result = await fints_service.sync_transactions(
         db=db,
         account_id=request.account_id,
-        user_id=current_user.id,
+        user_id=current_user.company_id,
         pin=request.pin,
         date_from=request.date_from,
         date_to=request.date_to,
@@ -312,7 +312,7 @@ async def get_balance(
     balance = await fints_service.get_balance(
         db=db,
         account_id=account_id,
-        user_id=current_user.id,
+        user_id=current_user.company_id,
         pin=pin,
     )
 
@@ -342,7 +342,7 @@ async def get_tan_methods(
     methods = await fints_service.get_available_tan_methods(
         db=db,
         account_id=account_id,
-        user_id=current_user.id,
+        user_id=current_user.company_id,
     )
 
     return [
@@ -367,7 +367,7 @@ async def disconnect_fints(
     success = await fints_service.disconnect(
         db=db,
         account_id=account_id,
-        user_id=current_user.id,
+        user_id=current_user.company_id,
     )
 
     if not success:
@@ -392,7 +392,7 @@ async def initiate_transfer(
     success, tan_challenge, error = await fints_service.initiate_sepa_transfer(
         db=db,
         account_id=request.account_id,
-        user_id=current_user.id,
+        user_id=current_user.company_id,
         pin=request.pin,
         beneficiary_name=request.creditor_name,
         beneficiary_iban=request.creditor_iban,
@@ -445,7 +445,7 @@ async def create_credit_transfer(
     try:
         result = await sepa_credit_transfer_service.create_single_transfer(
             db=db,
-            user_id=current_user.id,
+            user_id=current_user.company_id,
             data=data,
         )
         return result
@@ -470,7 +470,7 @@ async def create_batch_transfer(
     try:
         result = await sepa_credit_transfer_service.create_batch_transfer(
             db=db,
-            user_id=current_user.id,
+            user_id=current_user.company_id,
             data=data,
         )
         await db.commit()
@@ -496,7 +496,7 @@ async def get_payment_suggestions(
     """
     suggestions = await sepa_credit_transfer_service.get_payment_suggestions(
         db=db,
-        user_id=current_user.id,
+        user_id=current_user.company_id,
         bank_account_id=bank_account_id,
         include_with_skonto=include_skonto,
     )
@@ -527,7 +527,7 @@ async def get_multi_account_balances(
     result = await db.execute(
         select(BankAccount).where(
             and_(
-                BankAccount.user_id == current_user.id,
+                BankAccount.user_id == current_user.company_id,
                 BankAccount.is_active == True,
                 BankAccount.deleted_at.is_(None),
             )
@@ -579,7 +579,7 @@ async def get_cashflow_summary(
     balance_result = await db.execute(
         select(func.sum(BankAccount.current_balance)).where(
             and_(
-                BankAccount.user_id == current_user.id,
+                BankAccount.user_id == current_user.company_id,
                 BankAccount.is_active == True,
                 BankAccount.deleted_at.is_(None),
             )
@@ -597,7 +597,7 @@ async def get_cashflow_summary(
             func.sum(PaymentOrder.amount).label("total"),
         ).where(
             and_(
-                PaymentOrder.user_id == current_user.id,
+                PaymentOrder.user_id == current_user.company_id,
                 PaymentOrder.status.in_(["draft", "approved", "pending_approval"]),
                 PaymentOrder.execution_date <= in_30_days,
             )
@@ -614,7 +614,7 @@ async def get_cashflow_summary(
             func.sum(InvoiceTracking.amount).label("total"),
         ).where(
             and_(
-                InvoiceTracking.user_id == current_user.id,
+                InvoiceTracking.user_id == current_user.company_id,
                 InvoiceTracking.status.in_(["pending", "overdue", "partial"]),
                 InvoiceTracking.due_date <= in_30_days,
             )
@@ -658,7 +658,7 @@ async def get_quick_stats(
     account_result = await db.execute(
         select(func.count(BankAccount.id)).where(
             and_(
-                BankAccount.user_id == current_user.id,
+                BankAccount.user_id == current_user.company_id,
                 BankAccount.is_active == True,
                 BankAccount.deleted_at.is_(None),
             )
@@ -674,7 +674,7 @@ async def get_quick_stats(
             func.sum(func.abs(BankTransaction.amount)).filter(BankTransaction.amount < 0).label("outflow"),
         ).join(BankAccount).where(
             and_(
-                BankAccount.user_id == current_user.id,
+                BankAccount.user_id == current_user.company_id,
                 BankTransaction.booking_date >= month_start,
             )
         )
@@ -685,7 +685,7 @@ async def get_quick_stats(
     unmatched_result = await db.execute(
         select(func.count(BankTransaction.id)).join(BankAccount).where(
             and_(
-                BankAccount.user_id == current_user.id,
+                BankAccount.user_id == current_user.company_id,
                 BankTransaction.reconciliation_status == "unmatched",
             )
         )

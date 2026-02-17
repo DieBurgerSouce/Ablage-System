@@ -304,14 +304,14 @@ class SEPACreditTransferService:
     async def create_single_transfer(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         data: CreditTransferCreate,
     ) -> Pain001ExportResult:
         """Erstelle pain.001 für Einzelüberweisung.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             data: Überweisungsdaten
 
         Returns:
@@ -324,7 +324,7 @@ class SEPACreditTransferService:
 
         # Lade Absender-Konto
         account = await db.get(BankAccount, data.bank_account_id)
-        if not account or account.user_id != user_id:
+        if not account or account.company_id != company_id:
             raise ValueError("Bankkonto nicht gefunden oder keine Berechtigung")
 
         # Erstelle Transaktion
@@ -389,14 +389,14 @@ class SEPACreditTransferService:
     async def create_batch_transfer(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         data: BatchTransferCreate,
     ) -> Pain001ExportResult:
         """Erstelle pain.001 für Sammelüberweisung.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             data: Batch-Daten
 
         Returns:
@@ -406,7 +406,7 @@ class SEPACreditTransferService:
 
         # Lade Absender-Konto
         account = await db.get(BankAccount, data.bank_account_id)
-        if not account or account.user_id != user_id:
+        if not account or account.company_id != company_id:
             raise ValueError("Bankkonto nicht gefunden oder keine Berechtigung")
 
         # Lade Payment Orders
@@ -414,7 +414,7 @@ class SEPACreditTransferService:
             select(PaymentOrder).where(
                 and_(
                     PaymentOrder.id.in_(data.transfer_ids),
-                    PaymentOrder.user_id == user_id,
+                    PaymentOrder.company_id == company_id,
                     PaymentOrder.bank_account_id == data.bank_account_id,
                     PaymentOrder.status.in_(["draft", "approved"]),
                 )
@@ -729,7 +729,7 @@ class SEPACreditTransferService:
     async def get_payment_suggestions(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: UUID,
         include_with_skonto: bool = True,
     ) -> List[Dict[str, Any]]:
@@ -737,7 +737,7 @@ class SEPACreditTransferService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             bank_account_id: Bankkonto-ID
             include_with_skonto: Skonto-Rechnungen einschließen
 
@@ -749,7 +749,7 @@ class SEPACreditTransferService:
 
         # Prüfe Bankkonto
         account = await db.get(BankAccount, bank_account_id)
-        if not account or account.user_id != user_id:
+        if not account or account.company_id != company_id:
             return []
 
         # Hole unbezahlte Eingangsrechnungen

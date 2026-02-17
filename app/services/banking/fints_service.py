@@ -305,7 +305,7 @@ class FinTSService:
         self,
         db: AsyncSession,
         account_id: UUID,
-        user_id: UUID,
+        company_id: UUID,
         pin: str,  # Temporaer - wird nicht gespeichert!
     ) -> Tuple[bool, Optional[TANChallenge], Optional[str]]:
         """Verbinde mit FinTS-Server.
@@ -313,7 +313,7 @@ class FinTSService:
         Args:
             db: Datenbank-Session
             account_id: Bankkonto-ID
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             pin: Online-Banking PIN (wird nicht gespeichert!)
 
         Returns:
@@ -326,14 +326,14 @@ class FinTSService:
 
         # Lade Account
         account = await db.get(BankAccount, account_id)
-        if not account or account.user_id != user_id:
+        if not account or account.company_id != company_id:
             return False, None, "Konto nicht gefunden oder keine Berechtigung"
 
         if not account.blz or not account.fints_url:
             return False, None, "FinTS-Konfiguration fehlt (BLZ, URL)"
 
         # Hole verschlüsselte Login-ID
-        login_id = await account_service.get_decrypted_login_id(db, user_id, account_id)
+        login_id = await account_service.get_decrypted_login_id(db, company_id, account_id)
         if not login_id:
             return False, None, "Login-ID nicht konfiguriert"
 
@@ -354,7 +354,7 @@ class FinTSService:
             # Speichere Session
             self._sessions[session_id] = {
                 "account_id": account_id,
-                "user_id": user_id,
+                "company_id": company_id,
                 "status": FinTSConnectionStatus.AWAITING_TAN,
                 "tan_challenge_id": tan_challenge.challenge_id,
                 "created_at": utc_now(),
@@ -387,7 +387,7 @@ class FinTSService:
         db: AsyncSession,
         challenge_id: str,
         tan: str,
-        user_id: UUID,
+        company_id: UUID,
     ) -> Tuple[bool, Optional[str]]:
         """Bestätigt TAN-Challenge.
 
@@ -395,7 +395,7 @@ class FinTSService:
             db: Datenbank-Session
             challenge_id: Challenge-ID
             tan: TAN-Eingabe
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
 
         Returns:
             Tuple aus (success, error_message)
@@ -417,7 +417,7 @@ class FinTSService:
                 session_data = sdata
                 break
 
-        if not session_data or session_data.get("user_id") != user_id:
+        if not session_data or session_data.get("company_id") != company_id:
             return False, "Session nicht gefunden oder keine Berechtigung"
 
         try:
@@ -459,7 +459,7 @@ class FinTSService:
         self,
         db: AsyncSession,
         account_id: UUID,
-        user_id: UUID,
+        company_id: UUID,
         pin: str,
         date_from: Optional[date] = None,
         date_to: Optional[date] = None,
@@ -469,7 +469,7 @@ class FinTSService:
         Args:
             db: Datenbank-Session
             account_id: Bankkonto-ID
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             pin: Online-Banking PIN
             date_from: Start-Datum (default: 90 Tage zurück)
             date_to: End-Datum (default: heute)
@@ -480,7 +480,7 @@ class FinTSService:
         from app.db.models import BankAccount
 
         account = await db.get(BankAccount, account_id)
-        if not account or account.user_id != user_id:
+        if not account or account.company_id != company_id:
             return FinTSSyncResult(
                 success=False,
                 sync_type=FinTSSyncType.STATEMENT,
@@ -546,7 +546,7 @@ class FinTSService:
         self,
         db: AsyncSession,
         account_id: UUID,
-        user_id: UUID,
+        company_id: UUID,
         pin: str,
     ) -> Optional[FinTSBalance]:
         """Ruft aktuellen Kontostand ab.
@@ -554,7 +554,7 @@ class FinTSService:
         Args:
             db: Datenbank-Session
             account_id: Bankkonto-ID
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             pin: Online-Banking PIN
 
         Returns:
@@ -563,7 +563,7 @@ class FinTSService:
         from app.db.models import BankAccount
 
         account = await db.get(BankAccount, account_id)
-        if not account or account.user_id != user_id:
+        if not account or account.company_id != company_id:
             return None
 
         try:
@@ -598,7 +598,7 @@ class FinTSService:
         self,
         db: AsyncSession,
         account_id: UUID,
-        user_id: UUID,
+        company_id: UUID,
         pin: str,
         beneficiary_name: str,
         beneficiary_iban: str,
@@ -612,7 +612,7 @@ class FinTSService:
         Args:
             db: Datenbank-Session
             account_id: Auftraggeber-Konto
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             pin: Online-Banking PIN
             beneficiary_name: Empfängername
             beneficiary_iban: Empfänger-IBAN
@@ -627,7 +627,7 @@ class FinTSService:
         from app.db.models import BankAccount
 
         account = await db.get(BankAccount, account_id)
-        if not account or account.user_id != user_id:
+        if not account or account.company_id != company_id:
             return False, None, "Konto nicht gefunden oder keine Berechtigung"
 
         try:
@@ -661,7 +661,7 @@ class FinTSService:
             self._sessions[session_id] = {
                 "type": "sepa_transfer",
                 "account_id": account_id,
-                "user_id": user_id,
+                "company_id": company_id,
                 "tan_challenge_id": tan_challenge.challenge_id,
                 "transfer_data": {
                     "beneficiary_name": beneficiary_name,
@@ -695,14 +695,14 @@ class FinTSService:
         self,
         db: AsyncSession,
         account_id: UUID,
-        user_id: UUID,
+        company_id: UUID,
     ) -> List[Dict[str, Any]]:
         """Gibt verfügbare TAN-Verfahren zurück.
 
         Args:
             db: Datenbank-Session
             account_id: Bankkonto-ID
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
 
         Returns:
             Liste der TAN-Verfahren
@@ -710,7 +710,7 @@ class FinTSService:
         from app.db.models import BankAccount
 
         account = await db.get(BankAccount, account_id)
-        if not account or account.user_id != user_id:
+        if not account or account.company_id != company_id:
             return []
 
         # In Produktion: Aus BPD der Bank
@@ -751,14 +751,14 @@ class FinTSService:
         self,
         db: AsyncSession,
         account_id: UUID,
-        user_id: UUID,
+        company_id: UUID,
     ) -> bool:
         """Trennt FinTS-Verbindung.
 
         Args:
             db: Datenbank-Session
             account_id: Bankkonto-ID
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
 
         Returns:
             True wenn erfolgreich
@@ -766,7 +766,7 @@ class FinTSService:
         from app.db.models import BankAccount
 
         account = await db.get(BankAccount, account_id)
-        if not account or account.user_id != user_id:
+        if not account or account.company_id != company_id:
             return False
 
         # Entferne Sessions

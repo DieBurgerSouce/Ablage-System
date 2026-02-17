@@ -64,7 +64,7 @@ class ReconciliationService:
     async def find_matches(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction_id: UUID,
         limit: int = 5,
     ) -> List[MatchCandidate]:
@@ -72,7 +72,7 @@ class ReconciliationService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             transaction_id: Transaktions-ID
             limit: Max. Anzahl Vorschläge
 
@@ -88,7 +88,7 @@ class ReconciliationService:
             .where(
                 and_(
                     BankTransaction.id == transaction_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                 )
             )
         )
@@ -147,7 +147,7 @@ class ReconciliationService:
     async def auto_reconcile_transaction(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction_id: UUID,
     ) -> Optional[ReconciliationResult]:
         """Versuche automatischen Abgleich einer Transaktion.
@@ -159,7 +159,7 @@ class ReconciliationService:
         """
         from app.db.models import BankTransaction, BankAccount
 
-        candidates = await self.find_matches(db, user_id, transaction_id)
+        candidates = await self.find_matches(db, company_id, transaction_id)
 
         if not candidates:
             return None
@@ -182,7 +182,7 @@ class ReconciliationService:
             .where(
                 and_(
                     BankTransaction.id == transaction_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                 )
             )
         )
@@ -220,7 +220,7 @@ class ReconciliationService:
     async def batch_reconcile(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         limit: int = 100,
     ) -> BatchReconciliationResult:
@@ -228,7 +228,7 @@ class ReconciliationService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             bank_account_id: Optional Filter auf Bankkonto
             limit: Max. Transaktionen pro Durchlauf
 
@@ -243,7 +243,7 @@ class ReconciliationService:
             .join(BankAccount)
             .where(
                 and_(
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                     BankAccount.deleted_at.is_(None),
                     BankTransaction.reconciliation_status == ReconciliationStatus.UNMATCHED.value,
                 )
@@ -296,7 +296,7 @@ class ReconciliationService:
     async def manual_match(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction_id: UUID,
         document_id: UUID,
         notes: Optional[str] = None,
@@ -305,7 +305,7 @@ class ReconciliationService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             transaction_id: Transaktions-ID
             document_id: Dokument-ID
             notes: Optionale Notizen
@@ -322,7 +322,7 @@ class ReconciliationService:
             .where(
                 and_(
                     BankTransaction.id == transaction_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                 )
             )
         )
@@ -336,7 +336,7 @@ class ReconciliationService:
         doc_query = select(Document).where(
             and_(
                 Document.id == document_id,
-                Document.owner_id == user_id,
+                Document.owner_id == company_id,
                 Document.deleted_at.is_(None),
             )
         )
@@ -362,7 +362,7 @@ class ReconciliationService:
             "manual_match_success",
             transaction_id=str(transaction_id),
             document_id=str(document_id),
-            user_id=str(user_id),
+            company_id=str(company_id),
         )
 
         return ReconciliationResult(
@@ -376,7 +376,7 @@ class ReconciliationService:
     async def unmatch_transaction(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction_id: UUID,
     ) -> bool:
         """Entferne Match von einer Transaktion.
@@ -392,7 +392,7 @@ class ReconciliationService:
             .where(
                 and_(
                     BankTransaction.id == transaction_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                 )
             )
         )
@@ -413,7 +413,7 @@ class ReconciliationService:
         logger.info(
             "unmatch_success",
             transaction_id=str(transaction_id),
-            user_id=str(user_id),
+            company_id=str(company_id),
         )
 
         return True
@@ -421,7 +421,7 @@ class ReconciliationService:
     async def split_transaction(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction_id: UUID,
         splits: List[Dict[str, Any]],
     ) -> List[ReconciliationResult]:
@@ -431,7 +431,7 @@ class ReconciliationService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             transaction_id: Transaktions-ID
             splits: Liste von {document_id, amount, notes}
 
@@ -447,7 +447,7 @@ class ReconciliationService:
             .where(
                 and_(
                     BankTransaction.id == transaction_id,
-                    BankAccount.user_id == user_id,
+                    BankAccount.company_id == company_id,
                 )
             )
         )
@@ -473,7 +473,7 @@ class ReconciliationService:
             doc_query = select(Document).where(
                 and_(
                     Document.id == doc_id,
-                    Document.owner_id == user_id,
+                    Document.owner_id == company_id,
                     Document.deleted_at.is_(None),
                 )
             )
@@ -483,7 +483,7 @@ class ReconciliationService:
                     "split_transaction_unauthorized_document",
                     transaction_id=str(transaction_id),
                     document_id=str(doc_id),
-                    user_id=str(user_id),
+                    company_id=str(company_id),
                 )
                 raise ValueError("Dokument nicht gefunden oder keine Berechtigung")
 
@@ -522,7 +522,7 @@ class ReconciliationService:
     async def _match_by_iban_amount(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction,
         iban: str,
     ) -> List[MatchCandidate]:
@@ -535,7 +535,7 @@ class ReconciliationService:
         # Suche Dokumente mit passender IBAN
         query = select(Document).where(
             and_(
-                Document.owner_id == user_id,
+                Document.owner_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -591,7 +591,7 @@ class ReconciliationService:
     async def _match_by_invoice_number(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction,
         invoice_numbers: List[str],
     ) -> List[MatchCandidate]:
@@ -600,7 +600,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.owner_id == user_id,
+                Document.owner_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -661,7 +661,7 @@ class ReconciliationService:
     async def _match_by_customer_number(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction,
         customer_numbers: List[str],
     ) -> List[MatchCandidate]:
@@ -670,7 +670,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.owner_id == user_id,
+                Document.owner_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -741,7 +741,7 @@ class ReconciliationService:
     async def _match_by_amount_date(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction,
     ) -> List[MatchCandidate]:
         """Match by Betrag + Datum-Naehe."""
@@ -752,7 +752,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.owner_id == user_id,
+                Document.owner_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -810,7 +810,7 @@ class ReconciliationService:
     async def _match_by_fuzzy_name(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         transaction,
     ) -> List[MatchCandidate]:
         """Match by Fuzzy Name-Matching."""
@@ -826,7 +826,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.owner_id == user_id,
+                Document.owner_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )

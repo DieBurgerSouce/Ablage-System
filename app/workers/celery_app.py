@@ -293,6 +293,68 @@ celery_app = Celery(
         "app.workers.tasks.retention_enforcement_tasks",  # Retention Enforcement (daily scan, reviews, compliance report)
         "app.workers.tasks.escalation_tasks",  # Phase 3: Notification Escalation Advancement
         "app.workers.tasks.vault_refresh_task",  # Vault Secret Refresh (periodic via Beat)
+        # --- Batch 4: Previously __init__.py-only modules ---
+        "app.workers.tasks.report_tasks",
+        "app.workers.tasks.risk_scoring_tasks",
+        "app.workers.tasks.chain_tasks",
+        "app.workers.tasks.predictive_tasks",
+        "app.workers.tasks.insights_tasks",
+        "app.workers.tasks.fraud_detection_tasks",
+        "app.workers.tasks.document_tasks",
+        "app.workers.tasks.einvoice_tasks",
+        "app.workers.tasks.banking_psd2_tasks",
+        "app.workers.tasks.proactive_assistant_tasks",
+        "app.workers.tasks.ki_pipeline_tasks",
+        "app.workers.tasks.annotation_tasks",
+        "app.workers.tasks.smart_dashboard_tasks",
+        "app.workers.tasks.adhoc_report_tasks",
+        "app.workers.tasks.approval_enhanced_tasks",
+        "app.workers.tasks.approval_escalation_tasks",
+        "app.workers.tasks.auto_filing_tasks",
+        "app.workers.tasks.german_finance_tasks",
+        "app.workers.tasks.webhook_inbound_tasks",
+        "app.workers.tasks.semantic_search_tasks",
+        "app.workers.tasks.barcode_tasks",
+        "app.workers.tasks.lifecycle_tasks",
+        "app.workers.tasks.duplicate_detection_tasks",
+        "app.workers.tasks.folder_import_rule_tasks",
+        # --- Batch 5: Previously orphaned modules (beat_schedule + event-driven) ---
+        "app.workers.tasks.ai_conversation_tasks",
+        "app.workers.tasks.ai_ethics_tasks",
+        "app.workers.tasks.audit_chain_tasks",
+        "app.workers.tasks.banking_tasks",
+        "app.workers.tasks.calendar_sync_task",
+        "app.workers.tasks.cashflow_prediction_tasks",
+        "app.workers.tasks.ceo_dashboard_tasks",
+        "app.workers.tasks.chain_intelligence_tasks",
+        "app.workers.tasks.compliance_autopilot_tasks",
+        "app.workers.tasks.contract_tasks",
+        "app.workers.tasks.contract_v2_tasks",
+        "app.workers.tasks.customer_detection_tasks",
+        "app.workers.tasks.datev_connect_tasks",
+        "app.workers.tasks.enrichment_tasks",
+        "app.workers.tasks.erp_sync_tasks",
+        "app.workers.tasks.event_sourcing_tasks",
+        "app.workers.tasks.extended_alerts_tasks",
+        "app.workers.tasks.gobd_compliance_tasks",
+        "app.workers.tasks.hygiene_tasks",
+        "app.workers.tasks.import_tasks",
+        "app.workers.tasks.knowledge_graph_tasks",
+        "app.workers.tasks.lexware_sync_tasks",
+        "app.workers.tasks.life_event_tasks",
+        "app.workers.tasks.nlq_tasks",
+        "app.workers.tasks.ocr_template_tasks",
+        "app.workers.tasks.odoo_tasks",
+        "app.workers.tasks.shipment_tasks",
+        "app.workers.tasks.smart_inbox_tasks",
+        "app.workers.tasks.tax_package_tasks",
+        "app.workers.tasks.template_tasks",
+        "app.workers.tasks.thumbnail_tasks",
+        "app.workers.tasks.zero_touch_tasks",
+        # --- Batch 5: Stray task files outside tasks/ directory ---
+        "app.workers.contract_deadline_checker",
+        "app.workers.tasks_lifecycle",
+        "app.workers.tasks_data_quality",
     ]
 )
 
@@ -551,6 +613,11 @@ celery_app.conf.update(
         "refresh-search-analytics": {
             "task": "app.workers.tasks.embedding_tasks.refresh_search_analytics",
             "schedule": crontab(hour=2, minute=5),  # Daily at 2:05 AM (staggered from 02:00)
+        },
+        # Semantic Search: Batch-Embedding fuer Dokumente ohne Vektor
+        "semantic-batch-embed": {
+            "task": "app.workers.tasks.semantic_search_tasks.batch_embed_documents_task",
+            "schedule": crontab(hour=4, minute=15),  # Taeglich um 04:15 Uhr (staggered)
         },
         # Backup Tasks
         "backup-full-daily": {
@@ -2234,6 +2301,78 @@ celery_app.conf.update(
             "task": "app.workers.tasks.adhoc_report_tasks.cleanup_old_report_exports_task",
             "schedule": crontab(hour=4, minute=0),  # Täglich um 04:00 Uhr
             "kwargs": {"retention_days": 7},
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Document Lifecycle Engine Tasks (M1 - GoBD Lebenszyklus)
+        # Aufbewahrungsfristen-Scan, Auto-Archivierung, Vernichtungsprotokolle
+        # =================================================================
+        # Täglich: Scan auf ablaufende Aufbewahrungsfristen um 02:05 Uhr
+        "lifecycle-daily-scan": {
+            "task": "app.workers.tasks.lifecycle_tasks.daily_retention_scan_task",
+            "schedule": crontab(hour=2, minute=5),
+            "kwargs": {"days_ahead": 30},
+            "options": {"queue": "maintenance"},
+        },
+        # Monatlich: Lifecycle-Report am 1. des Monats um 06:10 Uhr
+        "lifecycle-monthly-report": {
+            "task": "app.workers.tasks.lifecycle_tasks.monthly_lifecycle_report_task",
+            "schedule": crontab(day_of_month=1, hour=6, minute=10),
+            "options": {"queue": "maintenance"},
+        },
+        # Täglich: Auto-Archivierung abgelaufener Dokumente um 03:05 Uhr
+        "lifecycle-auto-archive": {
+            "task": "app.workers.tasks.lifecycle_tasks.auto_archive_task",
+            "schedule": crontab(hour=3, minute=5),
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # H2: E-Invoice Batch-Validierung (ZUGFeRD/XRechnung Enhancement)
+        # =================================================================
+        # Wöchentlich: Batch-Validierung aller E-Rechnungen (Sonntag 05:30)
+        "einvoice-batch-validate-weekly": {
+            "task": "app.workers.tasks.einvoice_tasks.batch_validate_einvoices_task",
+            "schedule": crontab(day_of_week=0, hour=5, minute=30),
+            "kwargs": {"company_id": "all"},
+            "options": {"queue": "default"},
+        },
+        # =================================================================
+        # M2: Approval Matrix Tasks (Genehmigungsmatrix)
+        # =================================================================
+        # Stündlich: Überfällige Genehmigungen prüfen und eskalieren
+        "approval-matrix-check-overdue-hourly": {
+            "task": "app.workers.tasks.approval_tasks.check_overdue_approvals_task",
+            "schedule": 3600.0,  # Stündlich
+            "options": {"queue": "maintenance"},
+        },
+        # Täglich: Abgelaufene Stellvertretungen deaktivieren (01:45 Uhr)
+        "approval-matrix-deactivate-expired-substitutions": {
+            "task": "app.workers.tasks.approval_tasks.deactivate_expired_substitutions_task",
+            "schedule": crontab(hour=1, minute=45),
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Phase 4.1: Duplikat-Erkennung Tasks
+        # =================================================================
+        # Wöchentlich: Batch-Scan aller Dokumente auf Duplikate (Sonntag 04:00)
+        "duplicate-batch-scan-weekly": {
+            "task": "app.workers.tasks.duplicate_detection_tasks.batch_scan_duplicates_task",
+            "schedule": crontab(day_of_week=0, hour=4, minute=0),
+            "options": {"queue": "maintenance"},
+        },
+        # Täglich: Veraltete Duplikat-Flags bereinigen (03:00)
+        "duplicate-cleanup-stale-flags-daily": {
+            "task": "app.workers.tasks.duplicate_detection_tasks.cleanup_stale_duplicate_flags_task",
+            "schedule": crontab(hour=3, minute=0),
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Phase 3.1: Folder Import Rule Tasks
+        # =================================================================
+        # Täglich: Import-Regeln auf ausstehende Imports anwenden (06:00)
+        "folder-import-rules-apply-pending-daily": {
+            "task": "folder_import_rules.apply_pending",
+            "schedule": crontab(hour=6, minute=0),
             "options": {"queue": "maintenance"},
         },
     },

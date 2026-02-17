@@ -284,6 +284,14 @@ class Document(Base):
         comment="Ergebnis: {direction, confidence, reason, tag_assigned, user_overridden}"
     )
 
+    # Custom Fields (benutzerdefinierte Felder, JSONB)
+    custom_field_values = Column(
+        CrossDBJSON,
+        nullable=True,
+        default=dict,
+        comment="Benutzerdefinierte Feldwerte (JSONB)"
+    )
+
     # Relationships
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     owner = relationship("User", back_populates="documents", foreign_keys=[owner_id])
@@ -5092,6 +5100,9 @@ class BankAccount(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
+    # Multi-Tenant (Migration 232)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+
     # Konto-Identifikation
     account_name = Column(String(255), nullable=False)
     iban = Column(String(34), nullable=False)
@@ -5133,8 +5144,14 @@ class BankAccount(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Indexes
+    __table_args__ = (
+        Index("ix_bank_accounts_company_active", "company_id", "is_active"),
+    )
+
     # Relationships
     user = relationship("User", backref="bank_accounts")
+    company: Mapped["Company"] = relationship("Company", back_populates="bank_accounts")
     transactions = relationship("BankTransaction", back_populates="bank_account", cascade="all, delete-orphan")
     imports = relationship("BankImport", back_populates="bank_account")
 
@@ -5145,6 +5162,10 @@ class BankImport(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    # Multi-Tenant (Migration 232)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+
     bank_account_id = Column(UUID(as_uuid=True), ForeignKey("bank_accounts.id", ondelete="SET NULL"), nullable=True)
 
     # Import-Details
@@ -5173,6 +5194,7 @@ class BankImport(Base):
 
     # Relationships
     user = relationship("User", backref="bank_imports")
+    company: Mapped["Company"] = relationship("Company", back_populates="bank_imports")
     bank_account = relationship("BankAccount", back_populates="imports")
 
 
@@ -5250,6 +5272,9 @@ class PaymentBatch(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Multi-Tenant (Migration 232)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+
     bank_account_id = Column(UUID(as_uuid=True), ForeignKey("bank_accounts.id", ondelete="CASCADE"), nullable=False)
 
     # Batch-Details
@@ -5293,6 +5318,7 @@ class PaymentBatch(Base):
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id])
+    company: Mapped["Company"] = relationship("Company", back_populates="payment_batches")
     approved_by = relationship("User", foreign_keys=[approved_by_id])
     payments = relationship("PaymentOrder", back_populates="batch")
 
@@ -5303,6 +5329,9 @@ class PaymentOrder(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Multi-Tenant (Migration 232)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+
     bank_account_id = Column(UUID(as_uuid=True), ForeignKey("bank_accounts.id", ondelete="CASCADE"), nullable=False)
 
     # Verknüpfte Rechnung
@@ -5370,6 +5399,7 @@ class PaymentOrder(Base):
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id])
+    company: Mapped["Company"] = relationship("Company", back_populates="payment_orders")
     approved_by = relationship("User", foreign_keys=[approved_by_id])
     document = relationship("Document", backref="payment_orders")
     batch = relationship("PaymentBatch", back_populates="payments")
@@ -5381,6 +5411,9 @@ class DunningRecord(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Multi-Tenant (Migration 232)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True)
+
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False)
 
     # Rechnungsreferenz
@@ -5435,8 +5468,14 @@ class DunningRecord(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    # Indexes
+    __table_args__ = (
+        Index("ix_dunning_records_company_status", "company_id", "status"),
+    )
+
     # Relationships
     user = relationship("User", foreign_keys=[user_id])
+    company: Mapped["Company"] = relationship("Company", back_populates="dunning_records")
     resolved_by = relationship("User", foreign_keys=[resolved_by_id])
     document = relationship("Document", backref="dunning_records")
     business_entity = relationship("BusinessEntity", backref="dunning_records")
@@ -6826,6 +6865,32 @@ class Company(Base):
     # BPMN Process Engine relationships (models in bpmn_models/bpmn.py, same Base)
     bpmn_process_definitions = relationship("ProcessDefinition", back_populates="company", cascade="all, delete-orphan")
     bpmn_process_instances = relationship("ProcessInstance", back_populates="company", cascade="all, delete-orphan")
+    # Banking relationships (Migration 232)
+    bank_accounts: Mapped[List["BankAccount"]] = relationship(
+        "BankAccount",
+        back_populates="company",
+        cascade="all, delete-orphan",
+    )
+    bank_imports: Mapped[List["BankImport"]] = relationship(
+        "BankImport",
+        back_populates="company",
+        cascade="all, delete-orphan",
+    )
+    payment_batches: Mapped[List["PaymentBatch"]] = relationship(
+        "PaymentBatch",
+        back_populates="company",
+        cascade="all, delete-orphan",
+    )
+    payment_orders: Mapped[List["PaymentOrder"]] = relationship(
+        "PaymentOrder",
+        back_populates="company",
+        cascade="all, delete-orphan",
+    )
+    dunning_records: Mapped[List["DunningRecord"]] = relationship(
+        "DunningRecord",
+        back_populates="company",
+        cascade="all, delete-orphan",
+    )
 
     __table_args__ = (
         Index("ix_companies_vat_id", "vat_id"),
@@ -18543,3 +18608,10 @@ from app.db.models_inventory import Warehouse, InventoryItem, StockLevel, Invent
 from app.db.models_contract import Contract  # noqa: F401
 from app.db.models_invoice import Invoice  # noqa: F401
 from app.db.models_delegation import Delegation  # noqa: F401
+# Batch 6: Satellite models from Batches 1-3 features
+from app.db.models_barcode import BarcodeDetection  # noqa: F401
+from app.db.models_custom_fields import CustomFieldDefinition  # noqa: F401
+from app.db.models_approval_matrix import (  # noqa: F401
+    ApprovalMatrix, ApprovalChainTemplate, ApprovalAuditLog,
+    ApprovalGroup, ApprovalGroupMember,
+)

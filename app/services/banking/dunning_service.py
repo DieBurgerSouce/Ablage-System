@@ -130,7 +130,7 @@ class DunningService:
     async def get_overdue_invoices(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         min_days_overdue: int = 1,
         max_days_overdue: Optional[int] = None,
         include_in_progress: bool = False,
@@ -139,7 +139,7 @@ class DunningService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             min_days_overdue: Mindestens so viele Tage überfällig
             max_days_overdue: Maximal so viele Tage überfällig
             include_in_progress: Auch laufende Mahnverfahren?
@@ -153,7 +153,7 @@ class DunningService:
         # Offene Rechnungen mit Fälligkeitsdatum
         query = select(Document).where(
             and_(
-                Document.owner_id == user_id,
+                Document.owner_id == company_id,
                 Document.document_type == "invoice",
                 Document.deleted_at.is_(None),
             )
@@ -246,7 +246,7 @@ class DunningService:
 
         logger.info(
             "overdue_invoices_found",
-            user_id=str(user_id),
+            company_id=str(company_id),
             count=len(candidates),
             total_amount=float(sum(c.total_due for c in candidates)),
         )
@@ -256,7 +256,7 @@ class DunningService:
     async def create_dunning(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         document_id: UUID,
         level: DunningLevel,
         notes: Optional[str] = None,
@@ -265,7 +265,7 @@ class DunningService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             document_id: Dokument-ID (Rechnung)
             level: Mahnstufe
             notes: Optionale Notizen
@@ -278,7 +278,7 @@ class DunningService:
             select(Document).where(
                 and_(
                     Document.id == document_id,
-                    Document.owner_id == user_id,
+                    Document.owner_id == company_id,
                 )
             )
         )
@@ -317,7 +317,7 @@ class DunningService:
         # Mahnvorgang erstellen
         dunning = DunningRecord(
             id=uuid4(),
-            user_id=user_id,
+            company_id=company_id,
             document_id=document_id,
             dunning_level=level.value,
             status=DunningStatus.PENDING.value,
@@ -348,7 +348,7 @@ class DunningService:
     async def escalate_dunning(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dunning_id: UUID,
         notes: Optional[str] = None,
     ) -> DunningRecordResponse:
@@ -356,14 +356,14 @@ class DunningService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             dunning_id: Mahnvorgang-ID
             notes: Optionale Notizen
 
         Returns:
             Aktualisierter DunningRecordResponse
         """
-        dunning = await self._get_dunning_by_id(db, user_id, dunning_id)
+        dunning = await self._get_dunning_by_id(db, company_id, dunning_id)
         if not dunning:
             raise ValueError("Mahnvorgang nicht gefunden")
 
@@ -419,7 +419,7 @@ class DunningService:
     async def close_dunning(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dunning_id: UUID,
         status: DunningStatus,
         notes: Optional[str] = None,
@@ -439,7 +439,7 @@ class DunningService:
         if status == DunningStatus.PENDING:
             raise ValueError("Mahnvorgang kann nicht auf 'in_progress' gesetzt werden")
 
-        dunning = await self._get_dunning_by_id(db, user_id, dunning_id)
+        dunning = await self._get_dunning_by_id(db, company_id, dunning_id)
         if not dunning:
             raise ValueError("Mahnvorgang nicht gefunden")
 
@@ -463,7 +463,7 @@ class DunningService:
     async def list_dunnings(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         status: Optional[DunningStatus] = None,
         level: Optional[DunningLevel] = None,
         mahnstopp: Optional[bool] = None,
@@ -490,7 +490,7 @@ class DunningService:
         Returns:
             Tuple (Liste, Gesamtanzahl)
         """
-        query = select(DunningRecord).where(DunningRecord.user_id == user_id)
+        query = select(DunningRecord).where(DunningRecord.company_id == company_id)
 
         if status:
             query = query.where(DunningRecord.status == status.value)
@@ -527,7 +527,7 @@ class DunningService:
     async def get_dunning_stats(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
     ) -> Dict[str, Any]:
         """Hole Mahnstatistiken.
 
@@ -553,7 +553,7 @@ class DunningService:
                 func.sum(DunningRecord.reminder_fee),
             ).where(
                 and_(
-                    DunningRecord.user_id == user_id,
+                    DunningRecord.company_id == company_id,
                     DunningRecord.status.notin_(closed_statuses),
                 )
             )
@@ -571,7 +571,7 @@ class DunningService:
                 )
             ).where(
                 and_(
-                    DunningRecord.user_id == user_id,
+                    DunningRecord.company_id == company_id,
                     DunningRecord.status.notin_(closed_statuses),
                     DunningRecord.due_date.isnot(None),
                 )
@@ -585,7 +585,7 @@ class DunningService:
             func.count(),
         ).where(
             and_(
-                DunningRecord.user_id == user_id,
+                DunningRecord.company_id == company_id,
                 DunningRecord.status.notin_(closed_statuses),
             )
         ).group_by(DunningRecord.dunning_level)
@@ -597,7 +597,7 @@ class DunningService:
         b2b_result = await db.execute(
             select(func.count()).where(
                 and_(
-                    DunningRecord.user_id == user_id,
+                    DunningRecord.company_id == company_id,
                     DunningRecord.status.notin_(closed_statuses),
                     DunningRecord.is_b2b == True,
                 )
@@ -608,7 +608,7 @@ class DunningService:
         b2c_result = await db.execute(
             select(func.count()).where(
                 and_(
-                    DunningRecord.user_id == user_id,
+                    DunningRecord.company_id == company_id,
                     DunningRecord.status.notin_(closed_statuses),
                     DunningRecord.is_b2b == False,
                 )
@@ -620,7 +620,7 @@ class DunningService:
         mahnstopp_result = await db.execute(
             select(func.count()).where(
                 and_(
-                    DunningRecord.user_id == user_id,
+                    DunningRecord.company_id == company_id,
                     DunningRecord.status.notin_(closed_statuses),
                     DunningRecord.mahnstopp == True,
                 )
@@ -642,7 +642,7 @@ class DunningService:
     async def process_automatic_dunning(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dry_run: bool = True,
     ) -> List[Dict[str, Any]]:
         """Führe automatisches Mahnverfahren durch.
@@ -727,7 +727,7 @@ class DunningService:
     async def _get_dunning_by_id(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dunning_id: UUID,
     ) -> Optional[DunningRecord]:
         """Hole Mahnvorgang nach ID."""
@@ -735,7 +735,7 @@ class DunningService:
             select(DunningRecord).where(
                 and_(
                     DunningRecord.id == dunning_id,
-                    DunningRecord.user_id == user_id,
+                    DunningRecord.company_id == company_id,
                 )
             )
         )
@@ -744,7 +744,7 @@ class DunningService:
     async def _get_collected_fees(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
     ) -> float:
         """Hole eingesammelte Mahngebühren (letzte 30 Tage)."""
         thirty_days_ago = utc_now() - timedelta(days=30)
@@ -752,7 +752,7 @@ class DunningService:
         result = await db.execute(
             select(func.sum(DunningRecord.reminder_fee)).where(
                 and_(
-                    DunningRecord.user_id == user_id,
+                    DunningRecord.company_id == company_id,
                     DunningRecord.status == DunningStatus.PAID.value,
                     DunningRecord.resolved_at >= thirty_days_ago,
                 )
@@ -945,7 +945,7 @@ class DunningService:
     async def get_history(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dunning_record_id: UUID,
         limit: int = 50,
         offset: int = 0,
@@ -1008,7 +1008,7 @@ class DunningService:
     async def set_mahnstopp(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dunning_id: UUID,
         reason: str,
         until_date: Optional[date] = None,
@@ -1025,7 +1025,7 @@ class DunningService:
         Returns:
             Aktualisierter Mahnvorgang
         """
-        dunning = await self._get_dunning_by_id(db, user_id, dunning_id)
+        dunning = await self._get_dunning_by_id(db, company_id, dunning_id)
         if not dunning:
             raise ValueError("Mahnvorgang nicht gefunden")
 
@@ -1059,7 +1059,7 @@ class DunningService:
     async def lift_mahnstopp(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dunning_id: UUID,
         notes: Optional[str] = None,
     ) -> DunningRecordResponse:
@@ -1074,7 +1074,7 @@ class DunningService:
         Returns:
             Aktualisierter Mahnvorgang
         """
-        dunning = await self._get_dunning_by_id(db, user_id, dunning_id)
+        dunning = await self._get_dunning_by_id(db, company_id, dunning_id)
         if not dunning:
             raise ValueError("Mahnvorgang nicht gefunden")
 
@@ -1110,7 +1110,7 @@ class DunningService:
     async def claim_b2b_pauschale(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dunning_id: UUID,
     ) -> DunningRecordResponse:
         """Fordere B2B-Pauschale nach §288 Abs. 5 BGB.
@@ -1126,7 +1126,7 @@ class DunningService:
         Raises:
             ValueError: Wenn nicht B2B oder bereits gefordert
         """
-        dunning = await self._get_dunning_by_id(db, user_id, dunning_id)
+        dunning = await self._get_dunning_by_id(db, company_id, dunning_id)
         if not dunning:
             raise ValueError("Mahnvorgang nicht gefunden")
 
@@ -1213,7 +1213,7 @@ class DunningService:
     async def set_b2b_status(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dunning_id: UUID,
         is_b2b: bool,
     ) -> DunningRecordResponse:
@@ -1228,7 +1228,7 @@ class DunningService:
         Returns:
             Aktualisierter Mahnvorgang
         """
-        dunning = await self._get_dunning_by_id(db, user_id, dunning_id)
+        dunning = await self._get_dunning_by_id(db, company_id, dunning_id)
         if not dunning:
             raise ValueError("Mahnvorgang nicht gefunden")
 
@@ -1262,7 +1262,7 @@ class DunningService:
     async def bulk_escalate(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         dunning_ids: List[UUID],
         notes: Optional[str] = None,
     ) -> Dict[str, Any]:
@@ -1290,7 +1290,7 @@ class DunningService:
                     db=db,
                     dunning_record_id=dunning_id,
                     action_type=MahnungHistoryAction.ESCALATED,
-                    performed_by_id=user_id,
+                    performed_by_id=company_id,
                     notes=notes,
                     outcome="success",
                 )
@@ -1312,7 +1312,7 @@ class DunningService:
     async def get_dunnings_with_mahnstopp(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
     ) -> List[DunningRecordResponse]:
         """Hole alle Mahnvorgaenge mit aktivem Mahnstopp.
 
@@ -1325,7 +1325,7 @@ class DunningService:
         """
         query = select(DunningRecord).where(
             and_(
-                DunningRecord.user_id == user_id,
+                DunningRecord.company_id == company_id,
                 DunningRecord.mahnstopp == True,
             )
         ).order_by(DunningRecord.updated_at.desc())

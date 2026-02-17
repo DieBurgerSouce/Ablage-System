@@ -128,20 +128,20 @@ class DunningStageConfigService:
     async def get_stages(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
     ) -> List[JSONDict]:
         """Hole alle Mahnstufen für Benutzer.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
 
         Returns:
             Liste der Mahnstufen-Konfigurationen
         """
         query = (
             select(DunningStageConfig)
-            .where(DunningStageConfig.user_id == user_id)
+            .where(DunningStageConfig.company_id == company_id)
             .order_by(DunningStageConfig.sort_order.asc())
         )
 
@@ -150,21 +150,21 @@ class DunningStageConfigService:
 
         # Falls keine Stufen vorhanden, Standards erstellen
         if not stages:
-            stages = await self._create_default_stages(db, user_id)
+            stages = await self._create_default_stages(db, company_id)
 
         return [self._stage_to_dict(s) for s in stages]
 
     async def get_stage(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         stage_id: UUID,
     ) -> Optional[JSONDict]:
         """Hole einzelne Mahnstufe.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             stage_id: Stufen-ID
 
         Returns:
@@ -173,7 +173,7 @@ class DunningStageConfigService:
         query = select(DunningStageConfig).where(
             and_(
                 DunningStageConfig.id == stage_id,
-                DunningStageConfig.user_id == user_id,
+                DunningStageConfig.company_id == company_id,
             )
         )
         result = await db.execute(query)
@@ -184,7 +184,7 @@ class DunningStageConfigService:
     async def create_stage(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         stage_name: str,
         trigger_days_after_due: int,
         action_type: DunningActionType,
@@ -195,7 +195,7 @@ class DunningStageConfigService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             stage_name: Name der Stufe
             trigger_days_after_due: Tage nach Fälligkeit
             action_type: Aktionstyp
@@ -209,7 +209,7 @@ class DunningStageConfigService:
         max_query = select(
             func.max(DunningStageConfig.stage_number),
             func.max(DunningStageConfig.sort_order)
-        ).where(DunningStageConfig.user_id == user_id)
+        ).where(DunningStageConfig.company_id == company_id)
 
         max_result = await db.execute(max_query)
         max_values = max_result.one()
@@ -218,7 +218,7 @@ class DunningStageConfigService:
 
         stage = DunningStageConfig(
             id=uuid4(),
-            user_id=user_id,
+            company_id=company_id,
             stage_number=next_stage,
             stage_name=stage_name,
             trigger_days_after_due=trigger_days_after_due,
@@ -239,7 +239,7 @@ class DunningStageConfigService:
             "dunning_stage_created",
             stage_id=str(stage.id),
             stage_name=stage_name,
-            user_id=str(user_id),
+            company_id=str(company_id),
         )
 
         return self._stage_to_dict(stage)
@@ -247,7 +247,7 @@ class DunningStageConfigService:
     async def update_stage(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         stage_id: UUID,
         stage_name: Optional[str] = None,
         trigger_days_after_due: Optional[int] = None,
@@ -260,7 +260,7 @@ class DunningStageConfigService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             stage_id: Stufen-ID
             stage_name: Neuer Name
             trigger_days_after_due: Neue Tage
@@ -272,7 +272,7 @@ class DunningStageConfigService:
         Returns:
             Aktualisierte Mahnstufe
         """
-        stage = await self._get_stage(db, user_id, stage_id)
+        stage = await self._get_stage(db, company_id, stage_id)
         if not stage:
             raise ValueError("Mahnstufe nicht gefunden")
 
@@ -304,20 +304,20 @@ class DunningStageConfigService:
     async def delete_stage(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         stage_id: UUID,
     ) -> bool:
         """Lösche Mahnstufe.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             stage_id: Stufen-ID
 
         Returns:
             True wenn gelöscht
         """
-        stage = await self._get_stage(db, user_id, stage_id)
+        stage = await self._get_stage(db, company_id, stage_id)
         if not stage:
             raise ValueError("Mahnstufe nicht gefunden")
 
@@ -334,14 +334,14 @@ class DunningStageConfigService:
     async def reorder_stages(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         stage_ids: List[UUID],
     ) -> List[JSONDict]:
         """Ordne Mahnstufen neu (Drag-and-Drop).
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             stage_ids: Neue Reihenfolge der IDs
 
         Returns:
@@ -349,7 +349,7 @@ class DunningStageConfigService:
         """
         # Alle Stufen laden
         query = select(DunningStageConfig).where(
-            DunningStageConfig.user_id == user_id
+            DunningStageConfig.company_id == company_id
         )
         result = await db.execute(query)
         stages = {s.id: s for s in result.scalars().all()}
@@ -365,23 +365,23 @@ class DunningStageConfigService:
 
         logger.info(
             "dunning_stages_reordered",
-            user_id=str(user_id),
+            company_id=str(company_id),
             new_order=[str(sid) for sid in stage_ids],
         )
 
         # Aktualisierte Liste zurückgeben
-        return await self.get_stages(db, user_id)
+        return await self.get_stages(db, company_id)
 
     async def reset_to_defaults(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
     ) -> List[JSONDict]:
         """Setze Mahnstufen auf Standard zurück.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
 
         Returns:
             Standard-Stufenliste
@@ -389,16 +389,16 @@ class DunningStageConfigService:
         # Alle bestehenden Stufen löschen
         await db.execute(
             delete(DunningStageConfig).where(
-                DunningStageConfig.user_id == user_id
+                DunningStageConfig.company_id == company_id
             )
         )
 
         # Standards erstellen
-        stages = await self._create_default_stages(db, user_id)
+        stages = await self._create_default_stages(db, company_id)
 
         logger.info(
             "dunning_stages_reset",
-            user_id=str(user_id),
+            company_id=str(company_id),
         )
 
         return [self._stage_to_dict(s) for s in stages]
@@ -546,23 +546,23 @@ class DunningStageConfigService:
     async def get_auto_dunning_settings(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
     ) -> AutoDunningSettingsResponse:
         """Hole Auto-Mahnlauf-Einstellungen für Benutzer.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
 
         Returns:
             Auto-Mahnlauf-Einstellungen mit Standardwerten wenn nicht gesetzt
         """
-        query = select(User).where(User.id == user_id)
+        query = select(User).where(User.id == company_id)
         result = await db.execute(query)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ValueError("Benutzer nicht gefunden")
+            raise ValueError("Firma nicht gefunden")
 
         # Einstellungen aus preferences laden oder Defaults verwenden
         preferences = user.preferences or {}
@@ -592,25 +592,25 @@ class DunningStageConfigService:
     async def update_auto_dunning_settings(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         settings: AutoDunningSettingsUpdate,
     ) -> AutoDunningSettingsResponse:
         """Aktualisiere Auto-Mahnlauf-Einstellungen für Benutzer.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             settings: Zu aktualisierende Einstellungen
 
         Returns:
             Aktualisierte Auto-Mahnlauf-Einstellungen
         """
-        query = select(User).where(User.id == user_id)
+        query = select(User).where(User.id == company_id)
         result = await db.execute(query)
         user = result.scalar_one_or_none()
 
         if not user:
-            raise ValueError("Benutzer nicht gefunden")
+            raise ValueError("Firma nicht gefunden")
 
         # Aktuelle Einstellungen laden
         preferences = dict(user.preferences or {})
@@ -656,11 +656,11 @@ class DunningStageConfigService:
 
         logger.info(
             "auto_dunning_settings_updated",
-            user_id=str(user_id),
+            company_id=str(company_id),
             enabled=current_settings.get("enabled", False),
         )
 
-        return await self.get_auto_dunning_settings(db, user_id)
+        return await self.get_auto_dunning_settings(db, company_id)
 
     # =========================================================================
     # Verzugszinsen-Berechnung (BGB §286)
@@ -693,14 +693,14 @@ class DunningStageConfigService:
     async def _get_stage(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         stage_id: UUID,
     ) -> Optional[DunningStageConfig]:
         """Hole einzelne Mahnstufe."""
         query = select(DunningStageConfig).where(
             and_(
                 DunningStageConfig.id == stage_id,
-                DunningStageConfig.user_id == user_id,
+                DunningStageConfig.company_id == company_id,
             )
         )
         result = await db.execute(query)
@@ -709,7 +709,7 @@ class DunningStageConfigService:
     async def _create_default_stages(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
     ) -> List[DunningStageConfig]:
         """Erstelle Standard-Mahnstufen für Benutzer."""
         stages = []
@@ -717,7 +717,7 @@ class DunningStageConfigService:
         for default in DEFAULT_STAGES:
             stage = DunningStageConfig(
                 id=uuid4(),
-                user_id=user_id,
+                company_id=company_id,
                 stage_number=default.stage_number,
                 stage_name=default.stage_name,
                 trigger_days_after_due=default.trigger_days_after_due,
@@ -739,7 +739,7 @@ class DunningStageConfigService:
 
         logger.info(
             "default_dunning_stages_created",
-            user_id=str(user_id),
+            company_id=str(company_id),
             count=len(stages),
         )
 
@@ -749,7 +749,7 @@ class DunningStageConfigService:
         """Konvertiere Mahnstufe zu Dictionary."""
         return {
             "id": str(stage.id),
-            "user_id": str(stage.user_id),
+            "company_id": str(stage.company_id),
             "stage_number": stage.stage_number,
             "stage_name": stage.stage_name,
             "trigger_days_after_due": stage.trigger_days_after_due,

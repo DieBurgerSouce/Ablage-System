@@ -198,16 +198,16 @@ class LiquidityForecastService:
     async def get_liquidity_forecast(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         starting_balance: Optional[Decimal] = None,
-        company_id: Optional[UUID] = None,
+
     ) -> LiquidityForecastResult:
         """Erstelle umfassende Liquiditaetsprognose.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             bank_account_id: Optional - nur für bestimmtes Konto
             starting_balance: Anfangssaldo (optional, wird ermittelt)
             company_id: Optional - Multi-Tenant Filter
@@ -221,23 +221,23 @@ class LiquidityForecastService:
         # 1. Anfangssaldo ermitteln
         if starting_balance is None:
             starting_balance = await self._get_current_balance(
-                db, user_id, bank_account_id
+                db, company_id, bank_account_id
             )
 
         # 2. Rolling Forecasts erstellen
         forecast_30 = await self._create_rolling_forecast(
-            db, user_id, bank_account_id, 30, starting_balance, company_id
+            db, company_id, bank_account_id, 30, starting_balance, company_id
         )
         forecast_60 = await self._create_rolling_forecast(
-            db, user_id, bank_account_id, 60, starting_balance, company_id
+            db, company_id, bank_account_id, 60, starting_balance, company_id
         )
         forecast_90 = await self._create_rolling_forecast(
-            db, user_id, bank_account_id, 90, starting_balance, company_id
+            db, company_id, bank_account_id, 90, starting_balance, company_id
         )
 
         # 3. Anomalien erkennen
         anomalies = await self._detect_payment_anomalies(
-            db, user_id, bank_account_id, company_id
+            db, company_id, bank_account_id, company_id
         )
 
         # 4. Waterfall-Daten erstellen
@@ -257,7 +257,7 @@ class LiquidityForecastService:
 
         logger.info(
             "liquidity_forecast_created",
-            user_id=str(user_id),
+            company_id=str(company_id),
             starting_balance=float(starting_balance),
             risk_30d=forecast_30.risk_level.value,
             risk_60d=forecast_60.risk_level.value,
@@ -280,7 +280,7 @@ class LiquidityForecastService:
     async def get_bottleneck_prediction(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         days_ahead: int = 90,
         starting_balance: Optional[Decimal] = None,
@@ -289,7 +289,7 @@ class LiquidityForecastService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             bank_account_id: Optional - nur für bestimmtes Konto
             days_ahead: Prognosezeitraum
             starting_balance: Anfangssaldo
@@ -299,12 +299,12 @@ class LiquidityForecastService:
         """
         if starting_balance is None:
             starting_balance = await self._get_current_balance(
-                db, user_id, bank_account_id
+                db, company_id, bank_account_id
             )
 
         # Cash-Flow-Projektion erstellen
         projection = await self.cash_flow_service.get_cash_flow_forecast(
-            db, user_id, bank_account_id,
+            db, company_id, bank_account_id,
             days_ahead=days_ahead,
             scenario=ForecastScenario.PESSIMISTIC,
             starting_balance=starting_balance,
@@ -360,7 +360,7 @@ class LiquidityForecastService:
     async def get_waterfall_chart_data(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         period_days: int = 30,
         starting_balance: Optional[Decimal] = None,
@@ -369,7 +369,7 @@ class LiquidityForecastService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             bank_account_id: Optional - nur für bestimmtes Konto
             period_days: Zeitraum
             starting_balance: Anfangssaldo
@@ -379,11 +379,11 @@ class LiquidityForecastService:
         """
         if starting_balance is None:
             starting_balance = await self._get_current_balance(
-                db, user_id, bank_account_id
+                db, company_id, bank_account_id
             )
 
         projection = await self.cash_flow_service.get_cash_flow_forecast(
-            db, user_id, bank_account_id,
+            db, company_id, bank_account_id,
             days_ahead=period_days,
             scenario=ForecastScenario.REALISTIC,
             starting_balance=starting_balance,
@@ -394,7 +394,7 @@ class LiquidityForecastService:
     async def detect_anomalies(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID] = None,
         company_id: Optional[UUID] = None,
         lookback_days: int = 90,
@@ -403,7 +403,7 @@ class LiquidityForecastService:
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             bank_account_id: Optional - nur für bestimmtes Konto
             company_id: Optional - Multi-Tenant Filter
             lookback_days: Tage für historische Analyse
@@ -412,7 +412,7 @@ class LiquidityForecastService:
             Liste erkannter Anomalien
         """
         return await self._detect_payment_anomalies(
-            db, user_id, bank_account_id, company_id, lookback_days
+            db, company_id, bank_account_id, company_id, lookback_days
         )
 
     # =========================================================================
@@ -422,13 +422,13 @@ class LiquidityForecastService:
     async def _get_current_balance(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID],
     ) -> Decimal:
         """Ermittle aktuellen Kontostand."""
         query = select(BankAccount).where(
             and_(
-                BankAccount.user_id == user_id,
+                BankAccount.company_id == company_id,
                 BankAccount.is_active == True,
             )
         )
@@ -460,7 +460,7 @@ class LiquidityForecastService:
     async def _create_rolling_forecast(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID],
         period_days: int,
         starting_balance: Decimal,
@@ -472,21 +472,21 @@ class LiquidityForecastService:
 
         # CashFlow-Projektionen für verschiedene Szenarien
         optimistic = await self.cash_flow_service.get_cash_flow_forecast(
-            db, user_id, bank_account_id,
+            db, company_id, bank_account_id,
             days_ahead=period_days,
             scenario=ForecastScenario.OPTIMISTIC,
             starting_balance=starting_balance,
         )
 
         realistic = await self.cash_flow_service.get_cash_flow_forecast(
-            db, user_id, bank_account_id,
+            db, company_id, bank_account_id,
             days_ahead=period_days,
             scenario=ForecastScenario.REALISTIC,
             starting_balance=starting_balance,
         )
 
         pessimistic = await self.cash_flow_service.get_cash_flow_forecast(
-            db, user_id, bank_account_id,
+            db, company_id, bank_account_id,
             days_ahead=period_days,
             scenario=ForecastScenario.PESSIMISTIC,
             starting_balance=starting_balance,
@@ -594,7 +594,7 @@ class LiquidityForecastService:
     async def _detect_payment_anomalies(
         self,
         db: AsyncSession,
-        user_id: UUID,
+        company_id: UUID,
         bank_account_id: Optional[UUID],
         company_id: Optional[UUID],
         lookback_days: int = 90,
@@ -607,7 +607,7 @@ class LiquidityForecastService:
         # 1. Historische Transaktionen laden
         query = select(BankTransaction).where(
             and_(
-                BankTransaction.user_id == user_id,
+                BankTransaction.company_id == company_id,
                 BankTransaction.booking_date >= lookback_start,
             )
         )

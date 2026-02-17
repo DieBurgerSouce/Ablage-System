@@ -387,7 +387,7 @@ async def list_transactions(
 
     logger.info(
         "transactions_listed",
-        user_id=str(current_user.id),
+        user_id=str(current_user.company_id),
         total=total,
         page=page,
         filters={
@@ -488,7 +488,7 @@ async def create_transaction(
         business_entity_id=request.entity_id,
         detection_details={
             "folder_id": request.folder_id,
-            "created_by": str(current_user.id),
+            "created_by": str(current_user.company_id),
         },
         detection_method="manual",
         detection_confidence=1.0,
@@ -517,7 +517,7 @@ async def create_transaction(
     logger.info(
         "transaction_created",
         transaction_id=str(group.id),
-        user_id=str(current_user.id),
+        user_id=str(current_user.company_id),
         document_count=len(request.document_ids),
     )
 
@@ -586,7 +586,7 @@ async def update_transaction(
     logger.info(
         "transaction_updated",
         transaction_id=str(transaction_id),
-        user_id=str(current_user.id),
+        user_id=str(current_user.company_id),
     )
 
     # Für Response transformieren
@@ -683,7 +683,7 @@ async def update_transaction_step(
         "transaction_step_updated",
         transaction_id=str(transaction_id),
         step_type=step_type,
-        user_id=str(current_user.id),
+        user_id=str(current_user.company_id),
     )
 
     return await get_transaction(transaction_id, current_user, db)
@@ -725,5 +725,5 @@ async def delete_transaction(
     logger.info(
         "transaction_deleted",
         transaction_id=str(transaction_id),
-        user_id=str(current_user.id),
+        user_id=str(current_user.company_id),
     )
