@@ -7,8 +7,8 @@
 | Service | Hinweis |
 |---------|---------|
 | **EmailSenderMatcherService** | Kein `company_id` Filter - aber BusinessEntity ist absichtlich firmenuebergreifend (`company_presence` JSONB) |
-| **duplicate_detection_service** | `company_id` ist optional, aber bei Verwendung korrekt gefiltert |
-| **Banking System (user_id Design)** | Gesamtes Banking-Modul nutzt `user_id` statt `company_id` - BankAccount, BankTransaction, DunningRecord sind User-spezifisch, NICHT Company-shared. Fuer Szenarien mit geteiltem Buchhaltungsteam waere Migration auf `company_id` noetig. |
+| **duplicate_detection_service** | API-Endpoints leiten `company_id` jetzt aus Auth ab (Multi-Tenant Enforcement). Schema: `BatchScanRequest.company_id` deprecated/Optional. |
+| **Banking System (user_id Design)** | BankAccount-Model hat `user_id` UND `company_id` Spalten. `banking_fints.py` nutzt jetzt korrekt `company_id`. Restkontexte: BankTransaction, DunningRecord noch user_id-spezifisch. Migration bei Bedarf. |
 | **DunningService Document-Zugriff** | Nutzt `Document.owner_id == user_id` statt `company_id` - limitiert Cross-User-Sichtbarkeit innerhalb derselben Company |
 | **ReconciliationService Document-Zugriff** | `manual_match()` und `split_transaction()` nutzen `Document.owner_id` statt `company_id` |
 | **ValidationRule/ValidationSampleConfig** | Beide Models haben KEIN `company_id` - sind absichtlich System-wide Konfigurationen. Fuer echte Multi-Tenant Deployment waere Migration noetig. |

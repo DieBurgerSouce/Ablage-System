@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Security: Duplicate Detection API - company_id wird aus Auth-Context abgeleitet, nicht mehr aus Request-Body (IDOR-Prevention, Multi-Tenant Enforcement)
+- Security: Banking FinTS API - 12 Service-Call-Sites korrigiert von user_id auf company_id Parameter
+- Security: BatchScanRequest.company_id als Optional/Deprecated markiert (company_id kommt jetzt aus Auth)
+- API: Transactions - Pydantic v2 Migration (ConfigDict statt class Config)
+- Workers: Approval Tasks - structlog statt logging, TypedDict Return Types fuer alle Tasks, Celery Zeitlimits (soft 300s, hard 360s)
+- Workers: Folder Import Rule Tasks - safe_error_log fuer alle Error-Handler, Celery Zeitlimits
+
 ### Changed
 - Refactor: Systematische Unicode-Normalisierung über 1168 Dateien (ae→ä, oe→ö, ue→ü, ss→ß, fuer→für) für konsistente deutsche Sprachqualität
 
