@@ -17,7 +17,7 @@ import uuid
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select, and_, or_, func, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -47,8 +47,7 @@ class TransactionStepResponse(BaseModel):
     amount: Optional[float] = None
     currency: str = "EUR"
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TransactionResponse(BaseModel):
@@ -68,8 +67,7 @@ class TransactionResponse(BaseModel):
     completed_at: Optional[str] = None
     last_activity_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TransactionListResponse(BaseModel):
@@ -297,6 +295,9 @@ async def list_transactions(
             and_(
                 DocumentGroup.group_type == DocumentGroupType.TRANSACTION.value,
                 DocumentGroup.deleted_at.is_(None),
+                # TODO: DocumentGroup has no company_id column.
+                # Multi-tenant isolation requires migration to add company_id to document_groups table.
+                DocumentGroup.owner_id == current_user.id,
             )
         )
     )
@@ -387,7 +388,7 @@ async def list_transactions(
 
     logger.info(
         "transactions_listed",
-        user_id=str(current_user.company_id),
+        company_id=str(company.id),
         total=total,
         page=page,
         filters={
