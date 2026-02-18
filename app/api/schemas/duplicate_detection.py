@@ -84,9 +84,9 @@ class BatchScanRequest(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    company_id: UUID = Field(
-        ...,
-        description="Company-ID fuer den Batch-Scan (alle Dokumente dieser Firma)",
+    company_id: Optional[UUID] = Field(
+        None,
+        description="Deprecated - wird aus Auth abgeleitet",
     )
 
 
