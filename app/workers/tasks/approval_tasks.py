@@ -1,4 +1,4 @@
-"""Celery Tasks für das Approval System.
+"""Celery Tasks fuer das Approval System.
 
 Enterprise Feature: Automatisierte Genehmigungsworkflows mit:
 - Eskalation bei Timeout
@@ -9,16 +9,16 @@ Enterprise Feature: Automatisierte Genehmigungsworkflows mit:
 from __future__ import annotations
 
 import asyncio
-import logging
 from datetime import datetime, timedelta
-
-from app.core.datetime_utils import utc_now
-from typing import Any, Optional
+from typing import Dict, List, Optional, TypedDict
 from uuid import UUID
 
+import structlog
 from sqlalchemy import and_, select
 from sqlalchemy.orm import joinedload, Session
 
+from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
 from app.db.session import get_sync_session
 from app.db.models import (
@@ -35,7 +35,73 @@ from app.services.notification_service import (
     NotificationPriority,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
+
+
+# ==================== TypedDict Return Types ====================
+
+
+class EscalationResult(TypedDict):
+    success: bool
+    escalated_count: int
+    notifications_sent: int
+    timestamp: str
+
+
+class ReminderResult(TypedDict):
+    success: bool
+    reminders_sent: int
+    timestamp: str
+
+
+class CompanyStatsDetail(TypedDict):
+    status_distribution: Dict[str, int]
+    avg_resolution_hours: float
+    overdue_count: int
+    total_requests: int
+
+
+class StatsResult(TypedDict):
+    success: bool
+    stats_by_company: Dict[str, CompanyStatsDetail]
+    generated_at: str
+
+
+class ExpiryResult(TypedDict):
+    success: bool
+    expired_count: int
+    days_threshold: int
+    timestamp: str
+
+
+class ApprovalActionResult(TypedDict):
+    success: bool
+    error: str
+    status: str
+    next_step: Optional[str]
+    message: str
+
+
+class OverdueCheckResult(TypedDict):
+    success: bool
+    checked_count: int
+    escalated_count: int
+    timestamp: str
+
+
+class SubstitutionResult(TypedDict):
+    success: bool
+    deactivated_count: int
+    timestamp: str
+
+
+class ReminderSendResult(TypedDict):
+    success: bool
+    reminder_sent: bool
+    error: str
+
+
+# ==================== Tasks ====================
 
 
 @celery_app.task(
@@ -43,23 +109,25 @@ logger = logging.getLogger(__name__)
     bind=True,
     max_retries=3,
     default_retry_delay=60,
+    soft_time_limit=300,
+    time_limit=360,
 )
 def escalate_overdue_approvals(
     self,
     company_id: Optional[str] = None,
-) -> dict[str, Any]:
-    """Eskaliert überfällige Genehmigungsanfragen.
+) -> EscalationResult:
+    """Eskaliert ueberfaellige Genehmigungsanfragen.
 
-    Wird regelmäßig via Celery Beat ausgeführt um alle Anfragen
-    zu finden, die ihr Fälligkeitsdatum überschritten haben.
+    Wird regelmaessig via Celery Beat ausgefuehrt um alle Anfragen
+    zu finden, die ihr Faelligkeitsdatum ueberschritten haben.
 
     Args:
-        company_id: Optional: Nur für diese Firma
+        company_id: Optional: Nur fuer diese Firma
 
     Returns:
         Dict mit Statistiken
     """
-    logger.info("Starte Eskalation überfälliger Genehmigungen...")
+    logger.info("eskalation_start")
 
     with get_sync_session() as db:
         now = utc_now()
@@ -95,11 +163,12 @@ def escalate_overdue_approvals(
             escalated_count += 1
 
             logger.warning(
-                f"Genehmigungsanfrage {request.id} eskaliert - "
-                f"Fällig seit {request.due_date}"
+                "anfrage_eskaliert",
+                request_id=str(request.id),
+                due_date=str(request.due_date),
             )
 
-            # Benachrichtigung an Eskalationsempfänger senden
+            # Benachrichtigung an Eskalationsempfaenger senden
             escalation_recipients = _get_escalation_recipients(db, request)
             for recipient in escalation_recipients:
                 try:
@@ -107,29 +176,32 @@ def escalate_overdue_approvals(
                     notifications_sent += 1
                 except Exception as e:
                     logger.error(
-                        f"Fehler beim Senden der Eskalations-Benachrichtigung: {e}"
+                        "eskalation_benachrichtigung_fehler",
+                        request_id=str(request.id),
+                        **safe_error_log(e),
                     )
 
         db.commit()
 
     logger.info(
-        f"Eskalation abgeschlossen: {escalated_count} Anfragen eskaliert, "
-        f"{notifications_sent} Benachrichtigungen gesendet"
+        "eskalation_abgeschlossen",
+        escalated_count=escalated_count,
+        notifications_sent=notifications_sent,
     )
 
-    return {
-        "success": True,
-        "escalated_count": escalated_count,
-        "notifications_sent": notifications_sent,
-        "timestamp": now.isoformat(),
-    }
+    return EscalationResult(
+        success=True,
+        escalated_count=escalated_count,
+        notifications_sent=notifications_sent,
+        timestamp=now.isoformat(),
+    )
 
 
 def _get_escalation_recipients(
     db: Session,
     request: ApprovalRequest,
-) -> list[User]:
-    """Ermittelt die Eskalationsempfänger für eine Anfrage.
+) -> List[User]:
+    """Ermittelt die Eskalationsempfaenger fuer eine Anfrage.
 
     Args:
         db: Database Session
@@ -138,7 +210,7 @@ def _get_escalation_recipients(
     Returns:
         Liste von User-Objekten
     """
-    recipients = []
+    recipients: List[User] = []
 
     # 1. Eskalations-Rolle aus der Regel holen
     escalation_role = None
@@ -146,7 +218,7 @@ def _get_escalation_recipients(
         escalation_role = request.triggered_by_rule.escalation_to_role
 
     # 2. Wenn Eskalations-Rolle definiert, User mit dieser Rolle finden
-    #    Nutze UserCompany-Tabelle für Multi-Tenant Zuordnung
+    #    Nutze UserCompany-Tabelle fuer Multi-Tenant Zuordnung
     if escalation_role:
         role_users_query = (
             select(User)
@@ -193,7 +265,7 @@ def _send_escalation_notification(
 
     Args:
         request: Die eskalierte Anfrage
-        recipient: Der Empfänger
+        recipient: Der Empfaenger
         escalated_at: Zeitpunkt der Eskalation
     """
     # Antragsteller-Name ermitteln
@@ -202,10 +274,10 @@ def _send_escalation_notification(
         requester_name = (
             request.requested_by.full_name
             if request.requested_by.full_name
-            else request.requested_by.email
+            else str(request.requested_by.id)
         )
 
-    # Fälligkeitsdatum formatieren
+    # Faelligkeitsdatum formatieren
     due_date_str = (
         request.due_date.strftime("%d.%m.%Y %H:%M")
         if request.due_date
@@ -234,19 +306,19 @@ def _send_escalation_notification(
             priority=NotificationPriority.HIGH,
         )
 
-    recipient_identifier = recipient.email or str(recipient.id)
     try:
         asyncio.run(_send())
         logger.info(
-            f"Eskalations-Benachrichtigung gesendet an {recipient_identifier} "
-            f"für Anfrage {request.id}"
+            "eskalation_benachrichtigung_gesendet",
+            recipient_id=str(recipient.id),
+            request_id=str(request.id),
         )
     except Exception as e:
-        # Fehler loggen aber nicht werfen - Notification-Fehler sollten
-        # nicht den gesamten Eskalationsprozess abbrechen
         logger.error(
-            f"Fehler beim Senden der Eskalations-Benachrichtigung "
-            f"an {recipient_identifier}: {e}"
+            "eskalation_benachrichtigung_fehler",
+            recipient_id=str(recipient.id),
+            request_id=str(request.id),
+            **safe_error_log(e),
         )
 
 
@@ -255,26 +327,28 @@ def _send_escalation_notification(
     bind=True,
     max_retries=3,
     default_retry_delay=60,
+    soft_time_limit=300,
+    time_limit=360,
 )
 def send_approval_reminders(
     self,
     hours_before_due: int = 24,
-) -> dict[str, Any]:
-    """Sendet Erinnerungen für bald fällige Genehmigungen.
+) -> ReminderResult:
+    """Sendet Erinnerungen fuer bald faellige Genehmigungen.
 
     Args:
-        hours_before_due: Stunden vor Fälligkeit für Erinnerung
+        hours_before_due: Stunden vor Faelligkeit fuer Erinnerung
 
     Returns:
         Dict mit Statistiken
     """
-    logger.info(f"Starte Erinnerungs-Versand ({hours_before_due}h vor Fälligkeit)...")
+    logger.info("erinnerung_start", hours_before_due=hours_before_due)
 
     with get_sync_session() as db:
         now = utc_now()
         reminder_threshold = now + timedelta(hours=hours_before_due)
 
-        # Finde bald fällige Steps mit allen benötigten Relationen
+        # Finde bald faellige Steps mit allen benoetigten Relationen
         query = (
             select(ApprovalStep)
             .options(
@@ -311,7 +385,9 @@ def send_approval_reminders(
                 reminders_sent += 1
             except Exception as e:
                 logger.error(
-                    f"Fehler beim Senden der Erinnerung für Step {step.id}: {e}"
+                    "erinnerung_fehler",
+                    step_id=str(step.id),
+                    **safe_error_log(e),
                 )
                 continue
 
@@ -319,19 +395,20 @@ def send_approval_reminders(
             step.last_reminder_at = now
 
             logger.info(
-                f"Erinnerung gesendet für Approval-Schritt {step.id} "
-                f"an User {step.assigned_user_id}"
+                "erinnerung_gesendet",
+                step_id=str(step.id),
+                user_id=str(step.assigned_user_id),
             )
 
         db.commit()
 
-    logger.info(f"Erinnerungs-Versand abgeschlossen: {reminders_sent} Erinnerungen")
+    logger.info("erinnerung_abgeschlossen", reminders_sent=reminders_sent)
 
-    return {
-        "success": True,
-        "reminders_sent": reminders_sent,
-        "timestamp": now.isoformat(),
-    }
+    return ReminderResult(
+        success=True,
+        reminders_sent=reminders_sent,
+        timestamp=now.isoformat(),
+    )
 
 
 def _send_reminder_notification(
@@ -345,24 +422,24 @@ def _send_reminder_notification(
         now: Aktueller Zeitpunkt
     """
     if not step.assigned_user:
-        logger.warning(f"Kein zugewiesener User für Step {step.id}")
+        logger.warning("erinnerung_kein_user", step_id=str(step.id))
         return
 
     approval_request = step.approval_request
     if not approval_request:
-        logger.warning(f"Keine ApprovalRequest für Step {step.id}")
+        logger.warning("erinnerung_keine_anfrage", step_id=str(step.id))
         return
 
-    # Antragsteller-Name ermitteln
+    # Antragsteller-Name ermitteln (ohne PII)
     requester_name = "Unbekannt"
     if approval_request.requested_by:
         requester_name = (
             approval_request.requested_by.full_name
             if approval_request.requested_by.full_name
-            else approval_request.requested_by.email
+            else str(approval_request.requested_by.id)
         )
 
-    # Fälligkeitsdatum formatieren
+    # Faelligkeitsdatum formatieren
     due_date_str = (
         approval_request.due_date.strftime("%d.%m.%Y %H:%M")
         if approval_request.due_date
@@ -404,19 +481,18 @@ def _send_reminder_notification(
             priority=NotificationPriority.NORMAL,
         )
 
-    user_identifier = step.assigned_user.email or str(step.assigned_user_id)
     try:
         asyncio.run(_send())
         logger.debug(
-            f"Erinnerungs-Benachrichtigung gesendet an {user_identifier} "
-            f"für Anfrage {approval_request.id}"
+            "erinnerung_benachrichtigung_gesendet",
+            user_id=str(step.assigned_user_id),
+            request_id=str(approval_request.id),
         )
     except Exception as e:
-        # Fehler loggen aber nicht werfen - Notification-Fehler sollten
-        # nicht den gesamten Reminder-Prozess abbrechen
         logger.error(
-            f"Fehler beim Senden der Erinnerungs-Benachrichtigung "
-            f"an {user_identifier}: {e}"
+            "erinnerung_benachrichtigung_fehler",
+            user_id=str(step.assigned_user_id),
+            **safe_error_log(e),
         )
 
 
@@ -425,20 +501,22 @@ def _send_reminder_notification(
     bind=True,
     max_retries=3,
     default_retry_delay=60,
+    soft_time_limit=300,
+    time_limit=360,
 )
 def generate_approval_stats(
     self,
     company_id: Optional[str] = None,
-) -> dict[str, Any]:
-    """Generiert Statistiken für das Approval Dashboard.
+) -> StatsResult:
+    """Generiert Statistiken fuer das Approval Dashboard.
 
     Args:
-        company_id: Optional: Nur für diese Firma
+        company_id: Optional: Nur fuer diese Firma
 
     Returns:
         Dict mit Statistiken
     """
-    logger.info("Generiere Approval-Statistiken...")
+    logger.info("approval_stats_start")
 
     from sqlalchemy import func
 
@@ -454,7 +532,7 @@ def generate_approval_stats(
             result = db.execute(select(Company.id))
             companies = [row[0] for row in result.all()]
 
-        stats_by_company = {}
+        stats_by_company: Dict[str, CompanyStatsDetail] = {}
 
         for comp_id in companies:
             # Status-Verteilung
@@ -466,7 +544,9 @@ def generate_approval_stats(
                 .where(ApprovalRequest.company_id == comp_id)
                 .group_by(ApprovalRequest.status)
             )
-            status_distribution = {row[0].value: row[1] for row in result.all()}
+            status_distribution: Dict[str, int] = {
+                row[0].value: row[1] for row in result.all()
+            }
 
             # Durchschnittliche Bearbeitungszeit
             result = db.execute(
@@ -487,7 +567,7 @@ def generate_approval_stats(
             )
             avg_hours = result.scalar() or 0
 
-            # Überfällige
+            # Ueberfaellige
             now = utc_now()
             result = db.execute(
                 select(func.count(ApprovalRequest.id))
@@ -501,20 +581,20 @@ def generate_approval_stats(
             )
             overdue_count = result.scalar() or 0
 
-            stats_by_company[str(comp_id)] = {
-                "status_distribution": status_distribution,
-                "avg_resolution_hours": float(avg_hours),
-                "overdue_count": overdue_count,
-                "total_requests": sum(status_distribution.values()),
-            }
+            stats_by_company[str(comp_id)] = CompanyStatsDetail(
+                status_distribution=status_distribution,
+                avg_resolution_hours=float(avg_hours),
+                overdue_count=overdue_count,
+                total_requests=sum(status_distribution.values()),
+            )
 
-    logger.info(f"Approval-Statistiken generiert für {len(stats_by_company)} Companies")
+    logger.info("approval_stats_generiert", company_count=len(stats_by_company))
 
-    return {
-        "success": True,
-        "stats_by_company": stats_by_company,
-        "generated_at": utc_now().isoformat(),
-    }
+    return StatsResult(
+        success=True,
+        stats_by_company=stats_by_company,
+        generated_at=utc_now().isoformat(),
+    )
 
 
 @celery_app.task(
@@ -522,20 +602,22 @@ def generate_approval_stats(
     bind=True,
     max_retries=3,
     default_retry_delay=60,
+    soft_time_limit=300,
+    time_limit=360,
 )
 def expire_old_approvals(
     self,
     days_to_expire: int = 30,
-) -> dict[str, Any]:
+) -> ExpiryResult:
     """Markiert sehr alte ausstehende Genehmigungen als abgelaufen.
 
     Args:
-        days_to_expire: Tage nach denen eine Anfrage abläuft
+        days_to_expire: Tage nach denen eine Anfrage ablaeuft
 
     Returns:
         Dict mit Statistiken
     """
-    logger.info(f"Prüfe Genehmigungen älter als {days_to_expire} Tage...")
+    logger.info("ablauf_pruefung_start", days_to_expire=days_to_expire)
 
     with get_sync_session() as db:
         now = utc_now()
@@ -562,20 +644,21 @@ def expire_old_approvals(
             expired_count += 1
 
             logger.info(
-                f"Genehmigungsanfrage {request.id} abgelaufen - "
-                f"Erstellt am {request.created_at}"
+                "anfrage_abgelaufen",
+                request_id=str(request.id),
+                created_at=str(request.created_at),
             )
 
         db.commit()
 
-    logger.info(f"Ablauf-Prüfung abgeschlossen: {expired_count} Anfragen abgelaufen")
+    logger.info("ablauf_pruefung_abgeschlossen", expired_count=expired_count)
 
-    return {
-        "success": True,
-        "expired_count": expired_count,
-        "days_threshold": days_to_expire,
-        "timestamp": now.isoformat(),
-    }
+    return ExpiryResult(
+        success=True,
+        expired_count=expired_count,
+        days_threshold=days_to_expire,
+        timestamp=now.isoformat(),
+    )
 
 
 @celery_app.task(
@@ -583,6 +666,8 @@ def expire_old_approvals(
     bind=True,
     max_retries=3,
     default_retry_delay=30,
+    soft_time_limit=120,
+    time_limit=180,
 )
 def process_approval_action(
     self,
@@ -591,7 +676,7 @@ def process_approval_action(
     action: str,  # "approve", "reject", "delegate"
     notes: Optional[str] = None,
     delegate_to_id: Optional[str] = None,
-) -> dict[str, Any]:
+) -> ApprovalActionResult:
     """Verarbeitet eine Genehmigungsaktion asynchron.
 
     Args:
@@ -599,7 +684,7 @@ def process_approval_action(
         user_id: ID des handelnden Users
         action: Aktion (approve/reject/delegate)
         notes: Optionale Notizen
-        delegate_to_id: ID des Delegationsempfängers
+        delegate_to_id: ID des Delegationsempfaengers
 
     Returns:
         Dict mit Ergebnis
@@ -609,11 +694,13 @@ def process_approval_action(
     from app.services.approval.approval_service import ApprovalService
 
     logger.info(
-        f"Verarbeite Approval-Aktion: {action} für Anfrage {request_id} "
-        f"von User {user_id}"
+        "approval_aktion_start",
+        action=action,
+        request_id=request_id,
+        user_id=user_id,
     )
 
-    async def _process():
+    async def _process() -> ApprovalActionResult:
         async with get_async_session() as db:
             service = ApprovalService(db)
 
@@ -625,7 +712,7 @@ def process_approval_action(
                 )
             elif action == "reject":
                 if not notes:
-                    return {"success": False, "error": "Begruendung erforderlich"}
+                    return ApprovalActionResult(success=False, error="Begruendung erforderlich", status="error", next_step=None, message="")
                 result = await service.reject(
                     request_id=UUID(request_id),
                     user_id=UUID(user_id),
@@ -633,7 +720,7 @@ def process_approval_action(
                 )
             elif action == "delegate":
                 if not delegate_to_id:
-                    return {"success": False, "error": "Delegationsempfänger erforderlich"}
+                    return ApprovalActionResult(success=False, error="Delegationsempfaenger erforderlich", status="error", next_step=None, message="")
                 result = await service.delegate(
                     request_id=UUID(request_id),
                     user_id=UUID(user_id),
@@ -641,19 +728,24 @@ def process_approval_action(
                     reason=notes or "Delegation ohne Begruendung",
                 )
             else:
-                return {"success": False, "error": f"Unbekannte Aktion: {action}"}
+                return ApprovalActionResult(success=False, error=f"Unbekannte Aktion: {action}", status="error", next_step=None, message="")
 
-            return {
-                "success": result.success,
-                "status": result.request_status.value,
-                "next_step": result.next_step,
-                "message": result.message,
-            }
+            return ApprovalActionResult(
+                success=result.success,
+                error="",
+                status=result.request_status.value,
+                next_step=result.next_step,
+                message=result.message,
+            )
 
-    # Async ausführen
+    # Async ausfuehren
     result = asyncio.run(_process())
 
-    logger.info(f"Approval-Aktion abgeschlossen: {result}")
+    logger.info(
+        "approval_aktion_abgeschlossen",
+        action=action,
+        success=result["success"],
+    )
 
     return result
 
@@ -668,11 +760,13 @@ def process_approval_action(
     bind=True,
     max_retries=3,
     default_retry_delay=60,
+    soft_time_limit=300,
+    time_limit=360,
 )
 def check_overdue_approvals_task(
     self,
     company_id: Optional[str] = None,
-) -> dict[str, Any]:
+) -> OverdueCheckResult:
     """Prueft ueberfaellige Genehmigungen und eskaliert via Approval Matrix.
 
     Verwendet die ApprovalMatrix um die korrekte Eskalationskette zu bestimmen.
@@ -684,7 +778,7 @@ def check_overdue_approvals_task(
     Returns:
         Dict mit Ergebnis der Pruefung
     """
-    logger.info("M2: Starte Pruefung ueberfaelliger Genehmigungen (Matrix-basiert)")
+    logger.info("m2_overdue_check_start")
 
     escalated_count = 0
     checked_count = 0
@@ -714,27 +808,31 @@ def check_overdue_approvals_task(
                     request.current_step.escalated_at = now
                 escalated_count += 1
                 logger.info(
-                    f"M2: Anfrage {request.id} eskaliert - "
-                    f"Faellig seit {request.due_date}"
+                    "m2_anfrage_eskaliert",
+                    request_id=str(request.id),
+                    due_date=str(request.due_date),
                 )
             except Exception as e:
                 logger.error(
-                    f"M2: Fehler bei Eskalation von Anfrage {request.id}: {e}"
+                    "m2_eskalation_fehler",
+                    request_id=str(request.id),
+                    **safe_error_log(e),
                 )
 
         db.commit()
 
     logger.info(
-        f"M2: Pruefung abgeschlossen - {checked_count} geprueft, "
-        f"{escalated_count} eskaliert"
+        "m2_overdue_check_abgeschlossen",
+        checked_count=checked_count,
+        escalated_count=escalated_count,
     )
 
-    return {
-        "success": True,
-        "checked_count": checked_count,
-        "escalated_count": escalated_count,
-        "timestamp": now.isoformat(),
-    }
+    return OverdueCheckResult(
+        success=True,
+        checked_count=checked_count,
+        escalated_count=escalated_count,
+        timestamp=now.isoformat(),
+    )
 
 
 @celery_app.task(
@@ -742,8 +840,10 @@ def check_overdue_approvals_task(
     bind=True,
     max_retries=3,
     default_retry_delay=60,
+    soft_time_limit=300,
+    time_limit=360,
 )
-def deactivate_expired_substitutions_task(self) -> dict[str, Any]:
+def deactivate_expired_substitutions_task(self) -> SubstitutionResult:
     """Deaktiviert abgelaufene Stellvertretungsregeln.
 
     Prueft alle aktiven SubstitutionRules und deaktiviert solche,
@@ -755,7 +855,7 @@ def deactivate_expired_substitutions_task(self) -> dict[str, Any]:
     """
     from app.db.models import SubstitutionRule
 
-    logger.info("M2: Starte Deaktivierung abgelaufener Stellvertretungen")
+    logger.info("m2_substitution_deaktivierung_start")
 
     deactivated_count = 0
     now = utc_now()
@@ -775,21 +875,23 @@ def deactivate_expired_substitutions_task(self) -> dict[str, Any]:
             rule.is_active = False
             deactivated_count += 1
             logger.info(
-                f"M2: Stellvertretung {rule.id} deaktiviert - "
-                f"Abgelaufen am {rule.end_date}"
+                "m2_stellvertretung_deaktiviert",
+                rule_id=str(rule.id),
+                end_date=str(rule.end_date),
             )
 
         db.commit()
 
     logger.info(
-        f"M2: {deactivated_count} abgelaufene Stellvertretungen deaktiviert"
+        "m2_substitution_deaktivierung_abgeschlossen",
+        deactivated_count=deactivated_count,
     )
 
-    return {
-        "success": True,
-        "deactivated_count": deactivated_count,
-        "timestamp": now.isoformat(),
-    }
+    return SubstitutionResult(
+        success=True,
+        deactivated_count=deactivated_count,
+        timestamp=now.isoformat(),
+    )
 
 
 @celery_app.task(
@@ -797,12 +899,14 @@ def deactivate_expired_substitutions_task(self) -> dict[str, Any]:
     bind=True,
     max_retries=3,
     default_retry_delay=30,
+    soft_time_limit=120,
+    time_limit=180,
 )
 def send_approval_reminder_task(
     self,
     request_id: str,
     company_id: str,
-) -> dict[str, Any]:
+) -> ReminderSendResult:
     """Sendet Erinnerung fuer eine ausstehende Genehmigung.
 
     Wird on-demand aufgerufen (nicht via Beat Schedule).
@@ -814,7 +918,7 @@ def send_approval_reminder_task(
     Returns:
         Dict mit Ergebnis
     """
-    logger.info(f"M2: Sende Genehmigungserinnerung fuer Anfrage {request_id}")
+    logger.info("m2_erinnerung_start", request_id=request_id)
 
     with get_sync_session() as db:
         request = db.execute(
@@ -828,10 +932,11 @@ def send_approval_reminder_task(
         ).scalar_one_or_none()
 
         if not request:
-            return {
-                "success": False,
-                "error": "Genehmigungsanfrage nicht gefunden oder nicht ausstehend",
-            }
+            return ReminderSendResult(
+                success=False,
+                reminder_sent=False,
+                error="Genehmigungsanfrage nicht gefunden oder nicht ausstehend",
+            )
 
         # Erinnerung via Notification Service
         try:
@@ -851,12 +956,25 @@ def send_approval_reminder_task(
                 )
                 db.commit()
                 logger.info(
-                    f"M2: Erinnerung gesendet an Genehmiger "
-                    f"{request.current_step.approver_id}"
+                    "m2_erinnerung_gesendet",
+                    approver_id=str(request.current_step.approver_id),
+                    request_id=request_id,
                 )
-                return {"success": True, "reminder_sent": True}
+                return ReminderSendResult(success=True, reminder_sent=True, error="")
         except Exception as e:
-            logger.error(f"M2: Fehler beim Senden der Erinnerung: {e}")
-            return {"success": False, "error": f"Erinnerung fehlgeschlagen: {e}"}
+            logger.error(
+                "m2_erinnerung_fehler",
+                request_id=request_id,
+                **safe_error_log(e),
+            )
+            return ReminderSendResult(
+                success=False,
+                reminder_sent=False,
+                error="Erinnerung fehlgeschlagen",
+            )
 
-    return {"success": False, "error": "Kein aktueller Genehmigungsschritt gefunden"}
+    return ReminderSendResult(
+        success=False,
+        reminder_sent=False,
+        error="Kein aktueller Genehmigungsschritt gefunden",
+    )

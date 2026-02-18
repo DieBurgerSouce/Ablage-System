@@ -13,6 +13,7 @@ import uuid
 from typing import Dict, List, Optional
 import structlog
 
+from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
@@ -38,6 +39,8 @@ def _run_async(coro):
     acks_late=True,
     max_retries=3,
     default_retry_delay=60,
+    soft_time_limit=300,
+    time_limit=360,
 )
 def poll_folder_imports_task(self) -> Dict:
     """Pollt alle aktiven Ordner-Import-Konfigurationen mit Regelauswertung.
@@ -86,7 +89,7 @@ def poll_folder_imports_task(self) -> Dict:
                     logger.warning(
                         "folder_poll_config_failed",
                         config_id=str(config.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             return {
@@ -109,7 +112,7 @@ def poll_folder_imports_task(self) -> Dict:
     except Exception as e:
         logger.error(
             "folder_import_rule_poll_failed",
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -125,6 +128,8 @@ def poll_folder_imports_task(self) -> Dict:
     acks_late=True,
     max_retries=2,
     default_retry_delay=120,
+    soft_time_limit=300,
+    time_limit=360,
 )
 def apply_rules_to_pending_imports_task(self, company_id: str) -> Dict:
     """Wendet Import-Regeln auf kueerzlich importierte Dokumente an.
@@ -221,7 +226,7 @@ def apply_rules_to_pending_imports_task(self, company_id: str) -> Dict:
                     logger.warning(
                         "rule_reeval_failed",
                         log_id=str(log.id),
-                        error=str(e),
+                        **safe_error_log(e),
                     )
 
             await db.commit()
@@ -243,7 +248,7 @@ def apply_rules_to_pending_imports_task(self, company_id: str) -> Dict:
         logger.error(
             "apply_pending_rules_failed",
             company_id=company_id,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
 
@@ -259,6 +264,8 @@ def apply_rules_to_pending_imports_task(self, company_id: str) -> Dict:
     acks_late=True,
     max_retries=2,
     default_retry_delay=60,
+    soft_time_limit=300,
+    time_limit=360,
 )
 def scan_import_folder_task(self, folder_path: str, company_id: str) -> Dict:
     """Scannt einen einzelnen Import-Ordner gezielt.
@@ -359,6 +366,6 @@ def scan_import_folder_task(self, folder_path: str, company_id: str) -> Dict:
         logger.error(
             "scan_import_folder_failed",
             folder_path=folder_path,
-            error=str(e),
+            **safe_error_log(e),
         )
         raise self.retry(exc=e)
