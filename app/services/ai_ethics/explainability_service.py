@@ -9,7 +9,7 @@ Feinpoliert und durchdacht - Enterprise AI Explainability.
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 from uuid import UUID
 
 import structlog
@@ -41,7 +41,7 @@ class ExplanationFactor:
     impact: str  # positive, negative, neutral
     description: str  # German Beschreibung
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "name": self.name,
@@ -62,7 +62,7 @@ class Explanation:
     confidence: float  # 0-1
     alternatives_considered: List[str]  # German
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "decision_type": self.decision_type,

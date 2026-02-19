@@ -1,15 +1,51 @@
 """Event Store - Append-Only Event Storage für Event-Sourcing."""
 
+import time
+
 import structlog
 from dataclasses import dataclass
 from typing import List, Optional, Dict, Any
 from uuid import UUID
 from datetime import datetime
 
+from prometheus_client import Counter, Histogram
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 
+from app.db.bpmn_models.gobd import AuditChainEventType
+
 logger = structlog.get_logger(__name__)
+
+# =============================================================================
+# Prometheus Metriken
+# =============================================================================
+
+EVENTS_APPENDED = Counter(
+    "event_store_events_appended_total",
+    "Gesamtzahl gespeicherter Events",
+    ["aggregate_type"],
+)
+EVENT_APPEND_DURATION = Histogram(
+    "event_store_append_duration_seconds",
+    "Dauer des Event-Append-Vorgangs",
+)
+AUDIT_BRIDGE_ERRORS = Counter(
+    "event_store_audit_bridge_errors_total",
+    "Fehler beim Schreiben in die Audit-Chain",
+)
+
+# =============================================================================
+# Compliance Bridge: EventStore -> AuditChain
+# =============================================================================
+
+COMPLIANCE_EVENT_MAP: Dict[str, AuditChainEventType] = {
+    "document_created": AuditChainEventType.DOCUMENT_CREATED,
+    "document_archived": AuditChainEventType.DOCUMENT_ARCHIVED,
+    "document_deleted": AuditChainEventType.DOCUMENT_DELETED,
+    "document_exported": AuditChainEventType.DOCUMENT_EXPORTED,
+    "document_modified": AuditChainEventType.DOCUMENT_MODIFIED,
+    "document_accessed": AuditChainEventType.DOCUMENT_ACCESSED,
+}
 
 
 @dataclass
@@ -47,7 +83,7 @@ class EventStore:
         correlation_id: Optional[UUID] = None,
         causation_id: Optional[UUID] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        db: AsyncSession = None,
+        db: Optional[AsyncSession] = None,
     ) -> StoredEvent:
         """Fuegt ein neues Event zum Store hinzu.
 
@@ -73,6 +109,8 @@ class EventStore:
 
         if not db:
             raise ValueError("Datenbank-Session erforderlich")
+
+        start_time = time.monotonic()
 
         # Validierung der Aggregate-Type Whitelist
         allowed_types = {"document", "invoice", "payment", "entity", "alert", "workflow"}
@@ -112,6 +150,21 @@ class EventStore:
         await db.flush()
         await db.refresh(event)
 
+        # Prometheus Metriken
+        duration = time.monotonic() - start_time
+        EVENTS_APPENDED.labels(aggregate_type=aggregate_type).inc()
+        EVENT_APPEND_DURATION.observe(duration)
+
+        # AuditChain Bridge: Compliance-relevante Events in die Audit-Chain schreiben
+        await self._bridge_to_audit_chain(
+            db=db,
+            company_id=company_id,
+            event_type=event_type,
+            event_data=event_data,
+            user_id=user_id,
+            aggregate_id=aggregate_id,
+        )
+
         logger.info(
             "event_appended",
             aggregate_type=aggregate_type,
@@ -134,13 +187,66 @@ class EventStore:
             created_at=event.created_at,
         )
 
+    async def _bridge_to_audit_chain(
+        self,
+        db: "AsyncSession",
+        company_id: UUID,
+        event_type: str,
+        event_data: Dict[str, Any],
+        user_id: Optional[UUID],
+        aggregate_id: UUID,
+    ) -> None:
+        """Schreibt compliance-relevante Events in die GoBD Audit-Chain.
+
+        Non-blocking: Bei Fehler wird nur gewarnt, das Event bleibt gespeichert.
+        Nur Events aus COMPLIANCE_EVENT_MAP werden weitergeleitet.
+        """
+        chain_event_type = COMPLIANCE_EVENT_MAP.get(event_type)
+        if chain_event_type is None:
+            return
+
+        try:
+            from app.services.compliance.audit_chain_service import (
+                audit_chain_service,
+                ChainEntry,
+            )
+
+            entry = ChainEntry(
+                event_type=chain_event_type,
+                event_data={
+                    "source": "event_store",
+                    "original_event_type": event_type,
+                    **{k: str(v) if isinstance(v, UUID) else v
+                       for k, v in event_data.items()
+                       if k not in ("password", "token", "secret")},
+                },
+                document_id=aggregate_id if event_type.startswith("document_") else None,
+                user_id=user_id,
+            )
+
+            await audit_chain_service.append_entry(db, company_id, entry)
+
+            logger.debug(
+                "audit_chain_bridge_success",
+                event_type=event_type,
+                chain_event_type=chain_event_type.value,
+            )
+        except Exception as e:
+            AUDIT_BRIDGE_ERRORS.inc()
+            logger.warning(
+                "audit_chain_bridge_error",
+                event_type=event_type,
+                error_type=type(e).__name__,
+                error_msg=str(e)[:200],
+            )
+
     async def get_events(
         self,
         aggregate_type: str,
         aggregate_id: UUID,
         company_id: UUID,
         after_sequence: int = 0,
-        db: AsyncSession = None,
+        db: Optional[AsyncSession] = None,
     ) -> List[StoredEvent]:
         """Holt Events für ein Aggregat nach einer Sequenznummer.
 
@@ -198,7 +304,7 @@ class EventStore:
         aggregate_type: str,
         aggregate_id: UUID,
         company_id: UUID,
-        db: AsyncSession = None,
+        db: Optional[AsyncSession] = None,
     ) -> List[StoredEvent]:
         """Holt alle Events für ein Aggregat.
 
@@ -223,7 +329,7 @@ class EventStore:
         self,
         correlation_id: UUID,
         company_id: UUID,
-        db: AsyncSession = None,
+        db: Optional[AsyncSession] = None,
     ) -> List[StoredEvent]:
         """Holt alle Events mit einer bestimmten Korrelations-ID.
 
@@ -279,7 +385,7 @@ class EventStore:
         aggregate_type: str,
         aggregate_id: UUID,
         company_id: UUID,
-        db: AsyncSession = None,
+        db: Optional[AsyncSession] = None,
     ) -> int:
         """Zaehlt Events für ein Aggregat.
 

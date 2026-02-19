@@ -14,11 +14,13 @@ Alle Benutzer-sichtbaren Texte sind auf Deutsch.
 from __future__ import annotations
 
 import asyncio
+import time
 from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple, TYPE_CHECKING
 from uuid import UUID, uuid4
 
 import structlog
+from prometheus_client import Counter, Histogram, Gauge
 from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -36,6 +38,25 @@ if TYPE_CHECKING:
     from app.db.models import User
 
 logger = structlog.get_logger(__name__)
+
+# =============================================================================
+# Prometheus Metriken
+# =============================================================================
+
+SAGA_EXECUTIONS = Counter(
+    "saga_executions_total",
+    "Gesamtzahl Saga-Ausfuehrungen",
+    ["name", "status"],
+)
+SAGA_DURATION = Histogram(
+    "saga_execution_duration_seconds",
+    "Dauer der Saga-Ausfuehrung",
+    ["name"],
+)
+SAGA_DLQ_SIZE = Gauge(
+    "saga_dead_letter_queue_size",
+    "Anzahl Sagas in der Dead Letter Queue",
+)
 
 
 # ============================================================================
@@ -132,15 +153,18 @@ class SagaService:
         self,
         db: AsyncSession,
         handler_registry: Optional[StepHandlerRegistry] = None,
+        event_store: Optional[Any] = None,
     ) -> None:
         """Initialisiert den SagaService.
 
         Args:
             db: AsyncSession für Datenbankoperationen
             handler_registry: Optionale Handler-Registry
+            event_store: Optionaler EventStore fuer Compliance-Events
         """
         self.db = db
         self.handler_registry = handler_registry or StepHandlerRegistry()
+        self._event_store = event_store
         self._register_default_handlers()
 
     def _register_default_handlers(self) -> None:
@@ -241,6 +265,11 @@ class SagaService:
             },
         )
 
+        # Domain Event fuer EventStore
+        await self._emit_domain_event(saga, "saga_created", {
+            "total_steps": len(steps),
+        })
+
         logger.info(
             "saga_created",
             saga_id=str(saga.id),
@@ -287,6 +316,8 @@ class SagaService:
         saga.started_at = datetime.now(timezone.utc)
         await self.db.commit()
 
+        start_time = time.monotonic()
+
         await self._log_event(
             saga_id=saga.id,
             event_type="saga_started",
@@ -310,8 +341,13 @@ class SagaService:
                 **safe_error_log(e),
             )
 
+        # Prometheus Metriken
+        duration = time.monotonic() - start_time
         # Saga neu laden für aktuellen Status
         saga = await self._get_saga_with_steps(saga_id, company_id)
+        SAGA_EXECUTIONS.labels(name=saga.name, status=saga.status).inc()
+        SAGA_DURATION.labels(name=saga.name).observe(duration)
+
         return saga
 
     async def _execute_forward(self, saga: Saga) -> None:
@@ -369,6 +405,10 @@ class SagaService:
             previous_state=SagaStatus.RUNNING.value,
             new_state=SagaStatus.COMPLETED.value,
         )
+
+        await self._emit_domain_event(saga, "saga_completed", {
+            "total_steps": saga.total_steps,
+        })
 
         logger.info(
             "saga_completed_successfully",
@@ -547,6 +587,10 @@ class SagaService:
                 event_data={"steps_compensated": saga.steps_compensated},
             )
 
+            await self._emit_domain_event(saga, "saga_compensated", {
+                "steps_compensated": saga.steps_compensated,
+            })
+
             logger.info(
                 "saga_fully_compensated",
                 saga_id=str(saga.id),
@@ -569,6 +613,11 @@ class SagaService:
                     "failed_compensations": [str(sid) for sid in compensation_errors],
                 },
             )
+
+            await self._emit_domain_event(saga, "saga_failed", {
+                "reason": "partially_compensated",
+                "failed_compensations": len(compensation_errors),
+            })
 
             logger.warning(
                 "saga_partially_compensated",
@@ -979,6 +1028,10 @@ class SagaService:
             event_data={"retry_count": saga.retry_count, "user_id": str(user_id)},
         )
 
+        await self._emit_domain_event(saga, "saga_retried", {
+            "retry_count": saga.retry_count,
+        })
+
         logger.info(
             "saga_retry_scheduled",
             saga_id=str(saga_id),
@@ -1296,6 +1349,41 @@ class SagaService:
 
         result = await self.db.execute(query)
         return result.scalar_one_or_none()
+
+    async def _emit_domain_event(
+        self,
+        saga: Saga,
+        event_type: str,
+        event_data: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Schreibt ein Saga-Lifecycle-Event in den EventStore.
+
+        Non-blocking: Bei Fehler wird nur gewarnt.
+        """
+        if self._event_store is None:
+            return
+
+        try:
+            await self._event_store.append(
+                aggregate_type="workflow",
+                aggregate_id=saga.id,
+                event_type=event_type,
+                event_data={
+                    "saga_name": saga.name,
+                    "saga_status": saga.status,
+                    **(event_data or {}),
+                },
+                company_id=saga.company_id,
+                user_id=saga.initiated_by_id,
+                db=self.db,
+            )
+        except Exception as e:
+            logger.warning(
+                "saga_domain_event_emit_error",
+                saga_id=str(saga.id),
+                event_type=event_type,
+                error_type=type(e).__name__,
+            )
 
     async def _log_event(
         self,

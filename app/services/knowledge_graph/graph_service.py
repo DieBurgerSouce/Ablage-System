@@ -13,7 +13,7 @@ Feinpoliert und durchdacht - Enterprise Knowledge Graph.
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Set, Optional, Tuple
+from typing import Any, List, Dict, Set, Optional, Tuple
 from uuid import UUID
 from collections import defaultdict, deque
 
@@ -46,7 +46,7 @@ class GraphNode:
     type: str  # entity, document, invoice, bank_account, transaction
     properties: Dict[str, str]  # Zusätzliche Metadaten
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "id": self.id,
@@ -65,7 +65,7 @@ class GraphEdge:
     label: str  # Relationship Type
     properties: Dict[str, str]  # Zusätzliche Metadaten
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "source": self.source,
@@ -83,7 +83,7 @@ class GraphData:
     edges: List[GraphEdge]
     stats: Dict[str, int]
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "nodes": [n.to_dict() for n in self.nodes],
@@ -101,7 +101,7 @@ class PathData:
     nodes: List[GraphNode]  # Nodes im Pfad
     edges: List[GraphEdge]  # Edges im Pfad
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "path": self.path,
@@ -122,7 +122,7 @@ class Community:
     central_node: Optional[GraphNode]
     member_ids: List[str]
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "id": self.id,
@@ -969,3 +969,308 @@ class KnowledgeGraphService:
         communities.sort(key=lambda c: c.node_count, reverse=True)
 
         return communities
+
+    # =========================================================================
+    # Phase B: Financial Chain, Risk Network, Document Family
+    # =========================================================================
+
+    async def get_financial_chain(
+        self,
+        entity_id: UUID,
+        company_id: UUID,
+        db: AsyncSession,
+    ) -> Dict[str, object]:
+        """
+        Laedt Finanzketten fuer eine Entity.
+
+        Findet Rechnungen, Zahlungen und berechnet Match-Status.
+        """
+        logger.info("knowledge_graph.get_financial_chain", entity_id=str(entity_id))
+
+        entity = await db.get(BusinessEntity, entity_id)
+        if not entity or entity.company_id != company_id:
+            return {
+                "entityId": str(entity_id),
+                "entityName": "Unbekannt",
+                "stages": [],
+                "matchStatus": "none",
+                "totalAmount": 0,
+            }
+
+        stages: List[Dict[str, object]] = []
+
+        # Stage: Rechnungen
+        invoices_query = select(InvoiceTracking).where(
+            and_(
+                InvoiceTracking.entity_id == entity_id,
+                InvoiceTracking.company_id == company_id,
+                InvoiceTracking.deleted_at.is_(None),
+            )
+        ).limit(50)
+        invoices_result = await db.execute(invoices_query)
+        invoices = invoices_result.scalars().all()
+
+        invoice_nodes: List[Dict[str, object]] = []
+        total_amount = 0.0
+        for inv in invoices:
+            amount = float(inv.total_amount or 0)
+            total_amount += amount
+            invoice_nodes.append({
+                "id": f"invoice_{inv.id}",
+                "type": "invoice",
+                "label": inv.invoice_number or "Rechnung",
+                "data": {
+                    "status": inv.status.value if inv.status else "unknown",
+                    "amount": amount,
+                    "date": inv.invoice_date.isoformat() if inv.invoice_date else None,
+                    "due_date": inv.due_date.isoformat() if inv.due_date else None,
+                },
+            })
+
+        if invoice_nodes:
+            stages.append({
+                "stage": "invoice",
+                "label": "Rechnungen",
+                "documents": invoice_nodes,
+            })
+
+        # Stage: Transaktionen/Zahlungen
+        txns_query = select(BankTransaction).where(
+            and_(
+                BankTransaction.linked_entity_id == entity_id,
+                BankTransaction.company_id == company_id,
+            )
+        ).limit(50)
+        txns_result = await db.execute(txns_query)
+        txns = txns_result.scalars().all()
+
+        payment_nodes: List[Dict[str, object]] = []
+        for txn in txns:
+            payment_nodes.append({
+                "id": f"transaction_{txn.id}",
+                "type": "payment",
+                "label": f"{txn.amount} EUR",
+                "data": {
+                    "amount": float(txn.amount or 0),
+                    "date": txn.value_date.isoformat() if txn.value_date else None,
+                    "purpose": txn.purpose or "",
+                },
+            })
+
+        if payment_nodes:
+            stages.append({
+                "stage": "payment",
+                "label": "Zahlungen",
+                "documents": payment_nodes,
+            })
+
+        # Determine match status
+        match_status = "none"
+        if invoice_nodes and payment_nodes:
+            match_status = "partial"
+            paid_amount = sum(
+                float(p["data"]["amount"])  # type: ignore[index]
+                for p in payment_nodes
+            )
+            if paid_amount >= total_amount * 0.95:
+                match_status = "full"
+
+        return {
+            "entityId": str(entity_id),
+            "entityName": entity.name or "Unbekannt",
+            "stages": stages,
+            "matchStatus": match_status,
+            "totalAmount": round(total_amount, 2),
+        }
+
+    async def get_risk_network(
+        self,
+        company_id: UUID,
+        db: AsyncSession,
+        focus_entity_id: Optional[UUID] = None,
+    ) -> Dict[str, object]:
+        """
+        Laedt Risiko-Netzwerk mit Communities und Risk Scores.
+        """
+        logger.info("knowledge_graph.get_risk_network", company_id=str(company_id))
+
+        # Lade Entities mit Risk Scores
+        entities_query = select(BusinessEntity).where(
+            BusinessEntity.company_id == company_id
+        ).limit(100)
+        entities_result = await db.execute(entities_query)
+        entities = entities_result.scalars().all()
+
+        nodes: List[Dict[str, object]] = []
+        for entity in entities:
+            # Berechne Transaktionsvolumen
+            vol_query = select(BankTransaction.amount).where(
+                and_(
+                    BankTransaction.linked_entity_id == entity.id,
+                    BankTransaction.company_id == company_id,
+                )
+            )
+            vol_result = await db.execute(vol_query)
+            amounts = vol_result.scalars().all()
+            volume = sum(abs(float(a or 0)) for a in amounts)
+
+            nodes.append({
+                "entityId": str(entity.id),
+                "entityName": entity.name or "Unbekannt",
+                "riskScore": float(entity.risk_score or 50),
+                "transactionVolume": round(volume, 2),
+                "communityId": "",
+                "paymentBehaviorScore": 50.0,
+                "industryRisk": 50.0,
+                "lastAnomaly": None,
+            })
+
+        # Communities via Union-Find
+        communities_list = await self.get_communities(company_id, db)
+
+        communities: List[Dict[str, object]] = []
+        for comm in communities_list:
+            communities.append({
+                "id": comm.id,
+                "name": comm.name,
+                "memberIds": comm.member_ids,
+            })
+            # Update community IDs on nodes
+            for node in nodes:
+                entity_key = f"entity_{node['entityId']}"
+                if entity_key in comm.member_ids:
+                    node["communityId"] = comm.id
+
+        # Edges: Entities verbunden ueber gemeinsame Dokumente
+        edges: List[Dict[str, object]] = []
+        entity_docs: Dict[str, Set[str]] = defaultdict(set)
+
+        node_entity_ids = [UUID(str(n["entityId"])) for n in nodes]
+        if node_entity_ids:
+            doc_links_query = select(
+                DocumentEntityLink.entity_id,
+                DocumentEntityLink.document_id,
+            ).where(
+                DocumentEntityLink.entity_id.in_(node_entity_ids)
+            )
+            doc_links_result = await db.execute(doc_links_query)
+
+            for entity_id_val, doc_id_val in doc_links_result.all():
+                entity_docs[str(entity_id_val)].add(str(doc_id_val))
+
+        # Finde Entity-Paare mit gemeinsamen Dokumenten
+        entity_id_keys = list(entity_docs.keys())
+        for i in range(len(entity_id_keys)):
+            for j in range(i + 1, len(entity_id_keys)):
+                common = entity_docs[entity_id_keys[i]] & entity_docs[entity_id_keys[j]]
+                if common:
+                    edges.append({
+                        "source": entity_id_keys[i],
+                        "target": entity_id_keys[j],
+                        "transactionCount": len(common),
+                    })
+
+        return {
+            "nodes": nodes,
+            "edges": edges,
+            "communities": communities,
+        }
+
+    async def get_document_family(
+        self,
+        document_id: UUID,
+        company_id: UUID,
+        db: AsyncSession,
+    ) -> Dict[str, object]:
+        """
+        Laedt verwandte Dokumente gruppiert nach Beziehungstyp.
+        """
+        logger.info("knowledge_graph.get_document_family", document_id=str(document_id))
+
+        root_doc = await db.get(Document, document_id)
+        if not root_doc or root_doc.company_id != company_id:
+            return {
+                "rootDocument": None,
+                "groups": [],
+                "unlinkedCount": 0,
+            }
+
+        root_node: Dict[str, object] = {
+            "id": f"document_{document_id}",
+            "type": "document",
+            "label": root_doc.filename or "Dokument",
+            "data": {
+                "document_type": root_doc.document_type or "unknown",
+                "status": root_doc.status or "unknown",
+                "created_at": root_doc.created_at.isoformat() if root_doc.created_at else None,
+            },
+        }
+
+        # Finde alle Entities die mit diesem Dokument verknuepft sind
+        entity_links_query = select(DocumentEntityLink).where(
+            DocumentEntityLink.document_id == document_id
+        )
+        entity_links_result = await db.execute(entity_links_query)
+        entity_links = entity_links_result.scalars().all()
+
+        related_doc_ids: Set[UUID] = set()
+
+        # Finde alle Dokumente der gleichen Entities
+        for link in entity_links:
+            other_docs_query = select(DocumentEntityLink.document_id).where(
+                and_(
+                    DocumentEntityLink.entity_id == link.entity_id,
+                    DocumentEntityLink.document_id != document_id,
+                )
+            )
+            other_docs_result = await db.execute(other_docs_query)
+            for doc_id_row in other_docs_result.scalars().all():
+                related_doc_ids.add(doc_id_row)
+
+        # Gruppiere nach Dokumenttyp
+        groups_by_type: Dict[str, List[Dict[str, object]]] = defaultdict(list)
+
+        for rel_doc_id in related_doc_ids:
+            doc = await db.get(Document, rel_doc_id)
+            if doc and doc.company_id == company_id:
+                doc_type = doc.document_type or "sonstiges"
+                groups_by_type[doc_type].append({
+                    "id": f"document_{rel_doc_id}",
+                    "type": "document",
+                    "label": doc.filename or "Dokument",
+                    "data": {
+                        "document_type": doc_type,
+                        "status": doc.status or "unknown",
+                        "created_at": doc.created_at.isoformat() if doc.created_at else None,
+                    },
+                })
+
+        # Map document types to rings
+        TYPE_RING_MAP: Dict[str, int] = {
+            "vertrag": 1, "anlage": 1, "nachtrag": 1,
+            "rechnung": 2, "lieferschein": 2, "bestellung": 2,
+            "korrespondenz": 3, "email": 3, "sonstiges": 3,
+        }
+        TYPE_LABELS: Dict[str, str] = {
+            "vertrag": "Vertraege", "anlage": "Anlagen", "nachtrag": "Nachtraege",
+            "rechnung": "Rechnungen", "lieferschein": "Lieferscheine", "bestellung": "Bestellungen",
+            "korrespondenz": "Korrespondenz", "email": "E-Mails", "sonstiges": "Sonstige",
+        }
+
+        groups: List[Dict[str, object]] = []
+        for doc_type, docs in groups_by_type.items():
+            ring = TYPE_RING_MAP.get(doc_type, 3)
+            label = TYPE_LABELS.get(doc_type, doc_type.capitalize())
+            groups.append({
+                "ring": ring,
+                "label": label,
+                "documents": docs,
+            })
+
+        groups.sort(key=lambda g: g["ring"])  # type: ignore[arg-type]
+
+        return {
+            "rootDocument": root_node,
+            "groups": groups,
+            "unlinkedCount": 0,
+        }

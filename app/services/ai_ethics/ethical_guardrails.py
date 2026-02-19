@@ -10,7 +10,7 @@ Feinpoliert und durchdacht - Enterprise AI Safety.
 """
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 import structlog
@@ -35,9 +35,9 @@ class GuardrailResult:
     reason: str  # German Begruendung
     risk_level: str  # low, medium, high
     requires_human_review: bool  # Manuelle Prüfung erforderlich?
-    metadata: Dict[str, any]  # Zusätzliche Infos
+    metadata: Dict[str, Any]  # Zusätzliche Infos
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "allowed": self.allowed,

@@ -10,7 +10,7 @@ Feinpoliert und durchdacht - Enterprise Audit Trail Security.
 import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List, Dict, Optional, Tuple
+from typing import Any, List, Dict, Optional, Tuple
 from uuid import UUID
 import math
 
@@ -38,7 +38,7 @@ class MerkleNode:
     level: int  # Baum-Ebene (0 = Leaf)
     position: int  # Position in Ebene
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "hash": self.hash,
@@ -58,7 +58,7 @@ class MerkleProof:
     proof_path: List[Dict[str, str]]  # Proof-Pfad [{hash, position}]
     verified: bool  # Verifikations-Status
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "entry_hash": self.entry_hash,
@@ -77,7 +77,7 @@ class MerkleTree:
     tree_height: int  # Baum-Höhe
     nodes: List[MerkleNode]  # Alle Nodes
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "root_hash": self.root_hash,
@@ -98,7 +98,7 @@ class IntegrityReport:
     violations: List[str]  # Liste erkannter Verletzungen
     root_hash: str
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "total_entries": self.total_entries,

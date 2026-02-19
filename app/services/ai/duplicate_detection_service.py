@@ -126,6 +126,8 @@ class DuplicateDetectionService:
     MIN_SIMILARITY_SEMANTIC = 0.70  # Min Ähnlichkeit für "semantic"
     MAX_CANDIDATES = 50  # Max Kandidaten pro Check
     MAX_TEXT_LENGTH = 10000  # Max Text-Länge für Vergleich
+    VISUAL_EXACT_THRESHOLD: int = 5    # Hamming-Distanz fuer exakte visuelle Duplikate
+    VISUAL_NEAR_THRESHOLD: int = 10    # Hamming-Distanz fuer nahe visuelle Duplikate
 
     def __init__(self) -> None:
         """Initialisiert den Service."""
@@ -465,8 +467,8 @@ class DuplicateDetectionService:
         if not PHASH_AVAILABLE:
             return []
 
-        # Lade pHash aus document.metadata
-        doc_metadata = document.metadata or {}
+        # Lade pHash aus document.document_metadata
+        doc_metadata = document.document_metadata or {}
         doc_phash_str = doc_metadata.get("perceptual_hash")
         if not doc_phash_str:
             return []
@@ -481,7 +483,7 @@ class DuplicateDetectionService:
             and_(
                 Document.id != document.id,
                 Document.deleted_at.is_(None),
-                Document.metadata.isnot(None),
+                Document.document_metadata.isnot(None),
             )
         )
 
@@ -498,7 +500,7 @@ class DuplicateDetectionService:
 
         candidates: List[DuplicateCandidate] = []
         for cand_doc in candidate_docs:
-            cand_metadata = cand_doc.metadata or {}
+            cand_metadata = cand_doc.document_metadata or {}
             cand_phash_str = cand_metadata.get("perceptual_hash")
             if not cand_phash_str:
                 continue
@@ -509,7 +511,7 @@ class DuplicateDetectionService:
             except Exception:
                 continue
 
-            if distance > 10:
+            if distance > self.VISUAL_NEAR_THRESHOLD:
                 continue
 
             # Ähnlichkeit: 1.0 bei Distanz 0, 0.0 bei Distanz 256
@@ -524,7 +526,7 @@ class DuplicateDetectionService:
                     details={
                         "hamming_distance": distance,
                         "candidate_filename": cand_doc.original_filename,
-                        "visual_match": "exact" if distance <= 5 else "near",
+                        "visual_match": "exact" if distance <= self.VISUAL_EXACT_THRESHOLD else "near",
                     },
                 )
             )
@@ -678,12 +680,12 @@ class DuplicateDetectionService:
             )
             doc = doc_result.scalar_one_or_none()
             if doc:
-                # Setze Flag in metadata
-                metadata = doc.metadata or {}
+                # Setze Flag in document_metadata
+                metadata = doc.document_metadata or {}
                 metadata["potential_duplicate"] = True
                 metadata["duplicate_of"] = value["duplicate_document_id"]
                 metadata["duplicate_similarity"] = value["similarity"]
-                doc.metadata = metadata
+                doc.document_metadata = metadata
                 await db.commit()
 
                 logger.info(

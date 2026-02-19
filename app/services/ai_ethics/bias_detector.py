@@ -9,7 +9,7 @@ Feinpoliert und durchdacht - Enterprise AI Fairness.
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 from uuid import UUID
 from collections import defaultdict
 
@@ -37,7 +37,7 @@ class BiasDimension:
     description: str  # German Beschreibung
     details: Dict[str, float]  # Zusätzliche Details
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "name": self.name,
@@ -57,7 +57,7 @@ class BiasReport:
     recommendations: List[str]  # German Empfehlungen
     generated_at: datetime
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "overall_fairness": round(self.overall_fairness, 3),

@@ -10,7 +10,7 @@ Feinpoliert und durchdacht - Enterprise CEO Dashboard.
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import List, Dict, Optional
+from typing import Any, List, Dict, Optional
 from uuid import UUID
 
 import structlog
@@ -72,7 +72,7 @@ class CompanyOverview:
     critical_alerts: int
     auto_process_rate: float  # 0-1
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "health_score": self.health_score.to_dict(),
@@ -158,7 +158,7 @@ class Anomaly:
     actual_value: float
     deviation_percent: float
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Konvertiert zu Dictionary."""
         return {
             "title": self.title,
