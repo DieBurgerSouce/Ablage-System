@@ -11,6 +11,7 @@ from datetime import datetime
 from prometheus_client import Counter, Histogram
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
+from sqlalchemy.exc import IntegrityError
 
 from app.db.bpmn_models.gobd import AuditChainEventType
 
@@ -122,33 +123,51 @@ class EventStore:
             )
             raise ValueError(f"Ungültiger Aggregat-Typ: {aggregate_type}")
 
-        # Nächste Sequenznummer ermitteln
-        stmt = select(func.coalesce(func.max(DomainEvent.sequence_number), 0)).where(
-            and_(
-                DomainEvent.aggregate_type == aggregate_type,
-                DomainEvent.aggregate_id == aggregate_id
-            )
-        )
-        result = await db.execute(stmt)
-        next_seq = result.scalar() + 1
+        # Nächste Sequenznummer atomar ermitteln (FOR UPDATE verhindert Race Conditions)
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                stmt = select(
+                    func.coalesce(func.max(DomainEvent.sequence_number), 0)
+                ).where(
+                    and_(
+                        DomainEvent.aggregate_type == aggregate_type,
+                        DomainEvent.aggregate_id == aggregate_id
+                    )
+                ).with_for_update()
+                result = await db.execute(stmt)
+                next_seq = result.scalar() + 1
 
-        # Event erstellen
-        event = DomainEvent(
-            company_id=company_id,
-            aggregate_type=aggregate_type,
-            aggregate_id=aggregate_id,
-            sequence_number=next_seq,
-            event_type=event_type,
-            event_data=event_data,
-            metadata=metadata or {},
-            correlation_id=correlation_id,
-            causation_id=causation_id,
-            user_id=user_id,
-        )
+                # Event erstellen
+                event = DomainEvent(
+                    company_id=company_id,
+                    aggregate_type=aggregate_type,
+                    aggregate_id=aggregate_id,
+                    sequence_number=next_seq,
+                    event_type=event_type,
+                    event_data=event_data,
+                    metadata=metadata or {},
+                    correlation_id=correlation_id,
+                    causation_id=causation_id,
+                    user_id=user_id,
+                )
 
-        db.add(event)
-        await db.flush()
-        await db.refresh(event)
+                db.add(event)
+                await db.flush()
+                await db.refresh(event)
+                break  # Erfolg - Schleife verlassen
+
+            except IntegrityError:
+                if attempt < max_retries - 1:
+                    await db.rollback()
+                    logger.warning(
+                        "event_sequence_conflict_retry",
+                        aggregate_type=aggregate_type,
+                        aggregate_id=str(aggregate_id),
+                        attempt=attempt + 1,
+                    )
+                    continue
+                raise
 
         # Prometheus Metriken
         duration = time.monotonic() - start_time

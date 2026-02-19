@@ -9,6 +9,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
+from app.core.safe_errors import safe_error_detail
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -193,7 +194,7 @@ async def portal_login(
     except PortalAccountLockedError as e:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail=str(e),
+            detail=safe_error_detail(e, "Portal-Auth"),
         )
     except InvalidPortalCredentialsError:
         raise HTTPException(
@@ -234,7 +235,7 @@ async def portal_activate(
     except PortalAuthError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Portal-Auth"),
         )
 
 

@@ -130,6 +130,82 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
+# ==================== Multi-Tenant Access Check Helper ====================
+
+async def _get_document_with_company_check(
+    document_id: UUID,
+    current_user: User,
+    company: Company,
+    db: AsyncSession,
+    *,
+    include_shared: bool = False
+) -> "Document":
+    """Zentraler Document-Access-Check mit Multi-Tenant-Isolation.
+
+    Defense-in-Depth: Prueft sowohl owner_id ALS AUCH company_id.
+    Optionale DocumentAccess-Pruefung fuer shared documents.
+
+    Args:
+        document_id: Dokument-ID
+        current_user: Authentifizierter User
+        company: Aktuelle Company (aus require_company)
+        db: Datenbank-Session
+        include_shared: Wenn True, auch via DocumentAccess geteilte Dokumente erlauben
+
+    Returns:
+        Document-Objekt
+
+    Raises:
+        HTTPException 404: Dokument nicht gefunden oder kein Zugriff
+        HTTPException 410: Dokument geloescht
+    """
+    from app.db.models import Document, DocumentAccess
+    from sqlalchemy import select, or_, and_
+
+    conditions = [
+        Document.id == document_id,
+        Document.company_id == company.id,
+    ]
+
+    if include_shared:
+        conditions.append(
+            or_(
+                Document.owner_id == current_user.id,
+                Document.id.in_(
+                    select(DocumentAccess.document_id).where(
+                        and_(
+                            DocumentAccess.user_id == current_user.id,
+                            or_(
+                                DocumentAccess.expires_at.is_(None),
+                                DocumentAccess.expires_at > datetime.now(timezone.utc)
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    else:
+        conditions.append(Document.owner_id == current_user.id)
+
+    access_query = select(Document).where(and_(*conditions))
+    result = await db.execute(access_query)
+    document = result.scalar_one_or_none()
+
+    if not document:
+        raise HTTPException(
+            status_code=404,
+            detail="Dokument nicht gefunden oder keine Berechtigung"
+        )
+
+    if hasattr(document, 'is_deleted') and document.is_deleted:
+        raise HTTPException(
+            status_code=410,
+            detail="Dokument wurde geloescht"
+        )
+
+    return document
+
+
 # ==================== Document Upload Endpoint ====================
 
 @router.post("/", response_model=DocumentCreateResponse, status_code=201)
@@ -846,7 +922,7 @@ async def check_duplicate_pre_upload(
 @router.get("/", response_model=DocumentListResponseExtended)
 async def list_documents(
     page: int = Query(1, ge=1, description="Seitennummer"),
-    per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     document_type: Optional[DocumentType] = Query(None, description="Dokumenttyp filtern"),
     status: Optional[ProcessingStatus] = Query(None, description="Status filtern"),
     date_from: Optional[datetime] = Query(None, description="Erstellt nach"),
@@ -857,12 +933,14 @@ async def list_documents(
     sort_by: SortField = Query(SortField.CREATED_AT, description="Sortierfeld"),
     sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierreihenfolge"),
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Dokumente auflisten mit Filterung und Pagination.
 
-    Gibt eine paginierte Liste der eigenen Dokumente zurück,
+    Gibt eine paginierte Liste der eigenen Dokumente zurueck,
     optional gefiltert nach verschiedenen Kriterien.
+    Multi-Tenant: Filtert nach company_id (Defense-in-Depth).
     """
     filters = SearchFilters(
         document_type=document_type,
@@ -882,7 +960,8 @@ async def list_documents(
         page=page,
         per_page=per_page,
         sort_by=sort_by,
-        sort_order=sort_order
+        sort_order=sort_order,
+        company_id=company.id
     )
 
 
@@ -905,22 +984,19 @@ async def search_documents(
     highlight: bool = Query(True, description="Textausschnitte hervorheben"),
     similarity_threshold: float = Query(0.5, ge=0, le=1, description="Min. Ähnlichkeit für semantische Suche"),
     use_synonyms: bool = Query(False, description="Suche mit Synonymen erweitern (z.B. Rechnung -> Invoice, Faktura)"),
-    session_id: Optional[str] = Query(None, description="Session-ID für Analytics"),
+    session_id: Optional[str] = Query(None, description="Session-ID fuer Analytics"),
     current_user: User = Depends(check_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Dokumente durchsuchen.
 
-    Unterstützt drei Suchmodi:
-    - **fts**: PostgreSQL Volltextsuche mit deutschen Wortstämmen
+    Unterstuetzt drei Suchmodi:
+    - **fts**: PostgreSQL Volltextsuche mit deutschen Wortstaemmen
     - **semantic**: Semantische Suche mit Embeddings (multilingual-e5-large)
     - **hybrid**: Kombination beider Methoden (empfohlen)
 
-    Die Hybrid-Suche kombiniert Volltext- und semantische Ergebnisse
-    mittels Reciprocal Rank Fusion für optimale Relevanz.
-
-    Mit **use_synonyms=true** werden deutsche Geschäftsbegriffe automatisch
-    um Synonyme erweitert (z.B. "Rechnung" findet auch "Invoice", "Faktura").
+    Multi-Tenant: require_company setzt RLS-Context fuer DB-Level Isolation.
     """
     import time
     start_time = time.time()
@@ -1049,12 +1125,14 @@ async def get_category_documents(
     sort_by: str = Query("document_date", description="Sortierfeld"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Dokumente für eine Kategorie-Ansicht abrufen.
 
     Ermöglicht gefilterte, paginierte Dokumentenliste für die Ablage-Ansicht.
     Unterstützt Filterung nach Datum, Betrag, Status, Tags und Volltextsuche.
+    Multi-Tenant: require_company setzt RLS-Context fuer DB-Level Isolation.
 
     **Beispiel:**
     ```
@@ -1157,11 +1235,13 @@ async def get_category_aggregations(
     category: str = Query(..., description="Kategorie"),
     entity_type: str = Query("customer", pattern="^(customer|supplier)$"),
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Aggregierte Statistiken für eine Kategorie abrufen.
 
     Liefert Summen, Anzahlen und Status-Verteilungen für Dashboard-Karten.
+    Multi-Tenant: require_company setzt RLS-Context fuer DB-Level Isolation.
 
     **Beispiel:**
     ```
@@ -1211,29 +1291,23 @@ async def get_category_aggregations(
 async def get_document(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Einzelnes Dokument mit allen Details abrufen.
 
-    Gibt alle Metadaten, OCR-Ergebnisse und Tags für
-    das angeforderte Dokument zurück.
+    Gibt alle Metadaten, OCR-Ergebnisse und Tags fuer
+    das angeforderte Dokument zurueck.
+    Multi-Tenant: Prueft company_id + owner_id (Defense-in-Depth).
     """
     service = get_document_service()
-    document = await service.get_document(db, document_id, current_user.id)
+    document = await service.get_document(db, document_id, current_user.id, company_id=company.id)
 
     if not document:
         raise HTTPException(
             status_code=404,
             detail="Dokument nicht gefunden oder keine Berechtigung"
         )
-
-    # DEBUG: Log quick classification fields
-    logger.info(
-        "document_get_response_qc_debug",
-        document_id=str(document_id),
-        quick_classification_status=document.quick_classification_status,
-        quick_classification_result=document.quick_classification_result
-    )
 
     return document
 
@@ -1244,62 +1318,25 @@ async def get_document(
 async def download_document(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Original-Dokument herunterladen.
 
-    Lädt das originale Dokument aus dem Object Storage herunter.
-    Unterstützt alle gespeicherten Dateiformate (PDF, PNG, JPG, TIFF).
+    Laedt das originale Dokument aus dem Object Storage herunter.
+    Unterstuetzt alle gespeicherten Dateiformate (PDF, PNG, JPG, TIFF).
+    Multi-Tenant: Prueft company_id + owner/shared (Defense-in-Depth).
 
     **Response:**
     - Content-Type: Originaltyp der Datei
     - Content-Disposition: attachment; filename="original_filename"
-
-    **Beispiel:**
-    ```
-    curl -X GET /api/v1/documents/{id}/download \\
-      -H "Authorization: Bearer <token>" \\
-      -o dokument.pdf
-    ```
     """
     from app.services.storage_service import get_storage_service
-    from app.db.models import Document, DocumentAccess
-    from sqlalchemy import select, or_, and_
 
-    # Prüfe Zugriff (Owner oder via DocumentAccess)
-    access_query = select(Document).where(
-        and_(
-            Document.id == document_id,
-            or_(
-                Document.owner_id == current_user.id,
-                Document.id.in_(
-                    select(DocumentAccess.document_id).where(
-                        and_(
-                            DocumentAccess.user_id == current_user.id,
-                            or_(
-                                DocumentAccess.expires_at.is_(None),
-                                DocumentAccess.expires_at > datetime.now(timezone.utc)
-                            )
-                        )
-                    )
-                )
-            )
-        )
+    # Zentraler Access-Check mit company_id + owner/shared
+    document = await _get_document_with_company_check(
+        document_id, current_user, company, db, include_shared=True
     )
-    result = await db.execute(access_query)
-    document = result.scalar_one_or_none()
-
-    if not document:
-        raise HTTPException(
-            status_code=404,
-            detail="Dokument nicht gefunden oder keine Berechtigung"
-        )
-
-    if document.is_deleted:
-        raise HTTPException(
-            status_code=410,
-            detail="Dokument wurde gelöscht"
-        )
 
     # Datei aus Storage laden
     storage = get_storage_service()
@@ -1342,54 +1379,27 @@ async def download_document(
 async def preview_document(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Browser-kompatible Vorschau des Dokuments.
 
-    Konvertiert Bilder (TIFF, BMP, etc.) in PNG für Browser-Anzeige.
-    PDFs werden direkt zurückgegeben.
+    Konvertiert Bilder (TIFF, BMP, etc.) in PNG fuer Browser-Anzeige.
+    PDFs werden direkt zurueckgegeben.
+    Multi-Tenant: Prueft company_id + owner/shared (Defense-in-Depth).
 
     **Response:**
-    - Content-Type: image/png (für konvertierte Bilder) oder application/pdf
+    - Content-Type: image/png (fuer konvertierte Bilder) oder application/pdf
     - Inline-Anzeige (kein Download)
     """
     from app.services.storage_service import get_storage_service
-    from app.db.models import Document, DocumentAccess
-    from sqlalchemy import select, or_, and_
     from PIL import Image
     import io
 
-    # Prüfe Zugriff (Owner oder via DocumentAccess)
-    access_query = select(Document).where(
-        and_(
-            Document.id == document_id,
-            or_(
-                Document.owner_id == current_user.id,
-                Document.id.in_(
-                    select(DocumentAccess.document_id).where(
-                        and_(
-                            DocumentAccess.user_id == current_user.id,
-                            or_(
-                                DocumentAccess.access_level == "view",
-                                DocumentAccess.access_level == "comment",
-                                DocumentAccess.access_level == "edit",
-                                DocumentAccess.access_level == "manage"
-                            )
-                        )
-                    )
-                )
-            )
-        )
+    # Zentraler Access-Check mit company_id + owner/shared
+    document = await _get_document_with_company_check(
+        document_id, current_user, company, db, include_shared=True
     )
-
-    result = await db.execute(access_query)
-    document = result.scalar_one_or_none()
-
-    if not document:
-        raise HTTPException(
-            status_code=404,
-            detail="Dokument nicht gefunden oder keine Zugriffsberechtigung"
-        )
 
     # Datei aus Storage laden
     storage = get_storage_service()
@@ -1466,24 +1476,24 @@ async def get_document_thumbnail(
     width: int = 120,
     height: int = 160,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Generiert ein Thumbnail für das Dokument.
+    """Generiert ein Thumbnail fuer das Dokument.
 
-    Erstellt ein kleines Vorschaubild für schnelle Anzeige in Listen/Chats.
-    Thumbnails werden gecached für Performance.
+    Erstellt ein kleines Vorschaubild fuer schnelle Anzeige in Listen/Chats.
+    Thumbnails werden gecached fuer Performance.
+    Multi-Tenant: Prueft company_id + owner/shared (Defense-in-Depth).
 
     **Query Parameters:**
     - width: Breite in Pixel (default: 120)
-    - height: Höhe in Pixel (default: 160)
+    - height: Hoehe in Pixel (default: 160)
 
     **Response:**
     - Content-Type: image/jpeg
     - Inline-Anzeige
     """
     from app.services.storage_service import get_storage_service
-    from app.db.models import Document, DocumentAccess
-    from sqlalchemy import select, or_, and_
     from PIL import Image
     import io
 
@@ -1491,37 +1501,10 @@ async def get_document_thumbnail(
     width = min(max(width, 50), 400)
     height = min(max(height, 50), 600)
 
-    # Prüfe Zugriff (Owner oder via DocumentAccess)
-    access_query = select(Document).where(
-        and_(
-            Document.id == document_id,
-            or_(
-                Document.owner_id == current_user.id,
-                Document.id.in_(
-                    select(DocumentAccess.document_id).where(
-                        and_(
-                            DocumentAccess.user_id == current_user.id,
-                            or_(
-                                DocumentAccess.access_level == "view",
-                                DocumentAccess.access_level == "comment",
-                                DocumentAccess.access_level == "edit",
-                                DocumentAccess.access_level == "manage"
-                            )
-                        )
-                    )
-                )
-            )
-        )
+    # Zentraler Access-Check mit company_id + owner/shared
+    document = await _get_document_with_company_check(
+        document_id, current_user, company, db, include_shared=True
     )
-
-    result = await db.execute(access_query)
-    document = result.scalar_one_or_none()
-
-    if not document:
-        raise HTTPException(
-            status_code=404,
-            detail="Dokument nicht gefunden oder keine Zugriffsberechtigung"
-        )
 
     storage = get_storage_service()
     mime_type = document.mime_type or "application/octet-stream"
@@ -1630,62 +1613,20 @@ async def get_document_thumbnail(
 async def stream_document_download(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Dokument als Stream herunterladen (für große Dateien).
+    """Dokument als Stream herunterladen (fuer grosse Dateien).
 
-    Speichereffizientes Streaming für Dokumente > 10 MB.
-    Verwendet chunked transfer encoding für minimalen Speicherverbrauch.
-
-    **Response:**
-    - Streaming-Response mit chunked transfer encoding
-    - Content-Type basierend auf Dokumenttyp
-
-    **Vorteile gegenüber regulärem Download:**
-    - Konstanter Speicherverbrauch (~1 MB)
-    - Schnellerer erster Byte (Time to First Byte)
-    - Keine Request-Timeouts bei großen Dateien
-
-    **Beispiel:**
-    ```
-    curl -X GET /api/v1/documents/{id}/stream \\
-      -H "Authorization: Bearer <token>" \\
-      -o grosses_dokument.pdf
-    ```
+    Speichereffizientes Streaming fuer Dokumente > 10 MB.
+    Multi-Tenant: Prueft company_id + owner/shared (Defense-in-Depth).
     """
     from app.services.storage_service import get_storage_service
-    from app.db.models import Document, DocumentAccess
-    from sqlalchemy import select, or_, and_
 
-    # Prüfe Zugriff (Owner oder via DocumentAccess)
-    access_query = select(Document).where(
-        and_(
-            Document.id == document_id,
-            or_(
-                Document.owner_id == current_user.id,
-                Document.id.in_(
-                    select(DocumentAccess.document_id).where(
-                        and_(
-                            DocumentAccess.user_id == current_user.id,
-                            or_(
-                                DocumentAccess.expires_at.is_(None),
-                                DocumentAccess.expires_at > datetime.now(timezone.utc)
-                            )
-                        )
-                    )
-                )
-            )
-        )
+    # Zentraler Access-Check mit company_id + owner/shared
+    document = await _get_document_with_company_check(
+        document_id, current_user, company, db, include_shared=True
     )
-
-    result = await db.execute(access_query)
-    document = result.scalar_one_or_none()
-
-    if not document:
-        raise HTTPException(
-            status_code=404,
-            detail="Dokument nicht gefunden oder kein Zugriff"
-        )
 
     # Dateigröße und Metadaten holen
     storage = get_storage_service()
@@ -1736,12 +1677,14 @@ async def download_document_as_pdf(
     document_id: UUID,
     include_ocr_text: bool = Query(False, description="OCR-Text als Textlayer einbetten"),
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Dokument als PDF exportieren.
 
     Konvertiert das Dokument zu PDF (falls es noch kein PDF ist)
     und gibt es zum Download zurück.
+    Multi-Tenant: Prueft company_id + owner (Defense-in-Depth).
 
     **Parameter:**
     - include_ocr_text: Wenn True, wird der extrahierte OCR-Text
@@ -1758,10 +1701,11 @@ async def download_document_as_pdf(
     from app.db.models import Document, DocumentAccess
     from sqlalchemy import select, or_, and_
 
-    # Prüfe Zugriff
+    # Prüfe Zugriff (Multi-Tenant: company_id + owner/shared)
     access_query = select(Document).where(
         and_(
             Document.id == document_id,
+            Document.company_id == company.id,
             or_(
                 Document.owner_id == current_user.id,
                 Document.id.in_(
@@ -1918,6 +1862,7 @@ async def update_document(
     document_id: UUID,
     update: DocumentUpdateRequest,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Dokumentmetadaten aktualisieren.
@@ -1970,6 +1915,7 @@ async def partial_update_document(
     document_id: UUID,
     updates: DocumentPartialUpdateRequest,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Partielle Dokumentaktualisierung (PATCH).
@@ -2151,6 +2097,7 @@ async def update_extracted_data(
     document_id: UUID,
     request: ExtractedDataUpdateRequest,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ) -> JSONDict:
     """Aktualisiert einzelne Felder in extracted_data (JSONB).
@@ -2196,12 +2143,13 @@ async def update_extracted_data(
             detail=e.user_message_de
         )
 
-    # 2. Dokument laden mit Ownership-Check (Multi-Tenant RLS)
+    # 2. Dokument laden mit Ownership-Check (Multi-Tenant: company_id + owner_id)
     result = await db.execute(
         select(Document).where(
             and_(
                 Document.id == document_id,
                 Document.owner_id == current_user.id,
+                Document.company_id == company.id,
                 Document.deleted_at.is_(None),
             )
         )
@@ -2265,6 +2213,7 @@ async def update_extracted_data(
 async def delete_document(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Dokument löschen.
@@ -2274,6 +2223,7 @@ async def delete_document(
 
     HINWEIS: Archivierte Dokumente (GoBD) können nicht gelöscht werden
     bis die Aufbewahrungsfrist abgelaufen ist.
+    Multi-Tenant: Prueft company_id + owner (Defense-in-Depth).
     """
     # GoBD: Unveränderbarkeit prüfen (archivierte Dokumente dürfen nicht gelöscht werden)
     try:
@@ -2311,20 +2261,12 @@ async def get_document_report(
     include_history: bool = Query(True, description="Verarbeitungshistorie einschließen"),
     include_entities: bool = Query(True, description="Erkannte Entitäten einschließen"),
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Detaillierten PDF-Bericht für ein Dokument generieren.
+    """Detaillierten PDF-Bericht fuer ein Dokument generieren.
 
-    Erstellt einen umfassenden PDF-Bericht mit:
-    - Dokumentinformationen (Dateiname, Typ, Status, Größe)
-    - OCR-Ergebnisse (Backend, Konfidenz, Wortanzahl)
-    - Erkannte Entitäten (Datumsangaben, Geldbeträge, IBAN, USt-IdNr.)
-    - Deutsche Textvalidierung (Umlaute, Sprache)
-    - Extrahierter Text (optional, max. 5000 Zeichen)
-    - Verarbeitungshistorie (optional)
-
-    Der Bericht wird im A4-Format generiert und ist
-    für Archivierung und Nachvollziehbarkeit geeignet.
+    Multi-Tenant: require_company setzt RLS-Context fuer DB-Level Isolation.
     """
     from app.services.document_report_service import get_document_report_service
 
@@ -2370,9 +2312,10 @@ async def get_document_report(
 async def get_similar_documents(
     document_id: UUID,
     limit: int = Query(10, ge=1, le=50, description="Maximale Anzahl Ergebnisse"),
-    similarity_threshold: float = Query(0.6, ge=0, le=1, description="Min. Ähnlichkeit"),
-    exclude_same_type: bool = Query(False, description="Gleichen Dokumenttyp ausschließen"),
+    similarity_threshold: float = Query(0.6, ge=0, le=1, description="Min. Aehnlichkeit"),
+    exclude_same_type: bool = Query(False, description="Gleichen Dokumenttyp ausschliessen"),
     current_user: User = Depends(check_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Ähnliche Dokumente basierend auf Inhalt finden.
@@ -2383,9 +2326,9 @@ async def get_similar_documents(
     - Thematisch verwandte Dokumente
     - Dokumentengruppierung
     """
-    # Prüfen ob Dokument existiert und Zugriff erlaubt
+    # Prüfen ob Dokument existiert und Zugriff erlaubt (mit Multi-Tenant-Isolation)
     doc_service = get_document_service()
-    document = await doc_service.get_document(db, document_id, current_user.id)
+    document = await doc_service.get_document(db, document_id, current_user.id, company_id=company.id)
 
     if not document:
         raise HTTPException(
@@ -2419,6 +2362,7 @@ FORCE_CONFIRM_THRESHOLD = 50  # Ab dieser Anzahl ist X-Force-Confirm erforderlic
 async def batch_fetch_documents(
     request: BatchFetchRequest,
     current_user: User = Depends(check_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Mehrere Dokumente in einem API-Call abrufen.
@@ -2457,10 +2401,11 @@ async def batch_fetch_documents(
         include_text=request.include_text
     )
 
-    # Query documents owned by user
+    # Query documents owned by user (Multi-Tenant: company_id + owner_id)
     query = select(Document).where(
         Document.id.in_(request.document_ids),
         Document.owner_id == current_user.id,
+        Document.company_id == company.id,
         Document.deleted_at.is_(None)  # Nur nicht-gelöschte Dokumente
     )
 
@@ -2521,6 +2466,7 @@ async def batch_delete_documents(
     request_obj: Request,
     request: BatchDeleteRequest,
     current_user: User = Depends(check_batch_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Mehrere Dokumente gleichzeitig löschen.
@@ -2600,6 +2546,7 @@ async def batch_delete_documents(
 async def batch_tag_documents(
     request: BatchTagRequest,
     current_user: User = Depends(check_batch_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Tags für mehrere Dokumente verwalten.
@@ -2633,9 +2580,10 @@ async def batch_tag_documents(
 async def batch_update_documents(
     request: BulkUpdateRequest,
     current_user: User = Depends(check_batch_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Mehrere Dokumente gleichzeitig aktualisieren.
+    """Mehrere Dokumente gleichzeitig aktualisieren. Multi-Tenant: Defense-in-Depth.
 
     Phase 2.2: Bulk-Update basierend auf Filterkriterien.
 
@@ -2677,9 +2625,10 @@ async def batch_update_documents(
 async def batch_export_documents(
     request: BatchExportRequest,
     current_user: User = Depends(check_batch_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Mehrere Dokumente exportieren.
+    """Mehrere Dokumente exportieren. Multi-Tenant: Defense-in-Depth.
 
     Exportformate:
     - **json**: JSON-Array mit Dokumentdaten
@@ -2735,9 +2684,10 @@ async def soft_delete_document(
     document_id: UUID,
     request: SoftDeleteRequest,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Dokument soft-löschen (GDPR-konform).
+    """Dokument soft-löschen (GDPR-konform). Multi-Tenant: Defense-in-Depth.
 
     Phase 2.3: Markiert ein Dokument als gelöscht, ohne es sofort
     permanent zu entfernen. Das Dokument kann innerhalb von 30 Tagen
@@ -2772,9 +2722,10 @@ async def soft_delete_document(
 async def restore_document(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Soft-gelöschtes Dokument wiederherstellen.
+    """Soft-gelöschtes Dokument wiederherstellen. Multi-Tenant: Defense-in-Depth.
 
     Phase 2.3: Stellt ein gelöschtes Dokument wieder her,
     sofern die 30-Tage-Frist noch nicht abgelaufen ist.
@@ -2809,9 +2760,10 @@ async def restore_document(
 @router.get("/deleted/list", response_model=DeletedDocumentsListResponse)
 async def list_deleted_documents(
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Alle soft-gelöschten Dokumente auflisten.
+    """Alle soft-gelöschten Dokumente auflisten. Multi-Tenant: Defense-in-Depth.
 
     Phase 2.3: Zeigt alle gelöschten Dokumente des Benutzers mit
     der verbleibenden Zeit bis zur permanenten Löschung.
@@ -2834,6 +2786,7 @@ async def confirm_document_classification(
     document_id: UUID,
     request: ClassificationConfirmRequest,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """Bestätigt oder ändert die Dokumentklassifizierung (Eingangs-/Ausgangsrechnung).
@@ -2852,13 +2805,14 @@ async def confirm_document_classification(
     from sqlalchemy import select
     from sqlalchemy.orm import selectinload
 
-    # Dokument direkt laden (nicht über Service, da wir das SQLAlchemy-Modell brauchen)
+    # Dokument direkt laden (Multi-Tenant: company_id + owner_id)
     query = (
         select(Document)
         .options(selectinload(Document.tags))
         .where(
             Document.id == document_id,
             Document.owner_id == current_user.id,
+            Document.company_id == company.id,
             Document.deleted_at.is_(None)
         )
     )
@@ -2937,6 +2891,7 @@ async def confirm_document_rename(
     document_id: UUID,
     request: RenameConfirmRequest,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ) -> dict:
     """Bestätigt die Umbenennung eines Dokuments basierend auf dem Vorschlag.
@@ -2956,10 +2911,11 @@ async def confirm_document_rename(
     from pathlib import Path
     import re
 
-    # Dokument laden
+    # Dokument laden (Multi-Tenant: company_id + owner_id)
     query = select(Document).where(
         Document.id == document_id,
         Document.owner_id == current_user.id,
+        Document.company_id == company.id,
         Document.deleted_at.is_(None)
     )
     result = await db.execute(query)
@@ -3067,9 +3023,10 @@ async def cleanup_document_resources(
     clear_temp_files: bool = Query(True, description="Temporäre Dateien löschen"),
     clear_gpu_memory: bool = Query(False, description="GPU-Speicher freigeben (VRAM)"),
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Ressourcen für ein Dokument bereinigen.
+    """Ressourcen für ein Dokument bereinigen. Multi-Tenant: Defense-in-Depth.
 
     Nützlich nach der Verarbeitung um:
     - Temporäre Dateien zu löschen
@@ -3082,9 +3039,9 @@ async def cleanup_document_resources(
     from app.services.storage_service import get_storage_service
     from app.services.ocr_cache_service import get_ocr_cache_service
 
-    # Dokument existiert und gehört dem Benutzer?
+    # Dokument existiert und gehoert dem Benutzer? (mit Multi-Tenant-Isolation)
     service = get_document_service()
-    doc = await service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+    doc = await service.get_document(db=db, document_id=document_id, user_id=current_user.id, company_id=company.id)
 
     if not doc:
         raise HTTPException(
@@ -3171,6 +3128,7 @@ async def cleanup_document_resources(
 async def validate_german_text(
     document_id: UUID,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Validiert den extrahierten Text eines Dokuments auf deutsche Sprachmerkmale.
@@ -3190,9 +3148,9 @@ async def validate_german_text(
     """
     from app.german_validator import GermanValidator
 
-    # Dokument laden
+    # Dokument laden (mit Multi-Tenant-Isolation)
     service = get_document_service()
-    doc = await service.get_document(db=db, document_id=document_id, user_id=current_user.id)
+    doc = await service.get_document(db=db, document_id=document_id, user_id=current_user.id, company_id=company.id)
 
     if not doc:
         raise HTTPException(
@@ -3386,9 +3344,10 @@ async def _fetch_document_stats_uncached(
 @router.get("/stats/summary")
 async def get_document_stats(
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Dokumentstatistiken für den aktuellen Benutzer abrufen.
+    """Dokumentstatistiken für den aktuellen Benutzer abrufen. Multi-Tenant: RLS-Context.
 
     Gibt aggregierte Statistiken über alle Dokumente zurück:
     - Gesamtzahl Dokumente
@@ -3451,9 +3410,10 @@ async def get_document_stats(
 async def get_search_analytics(
     days: int = Query(30, ge=1, le=365, description="Analysezeitraum in Tagen"),
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Such-Statistiken abrufen.
+    """Such-Statistiken abrufen. Multi-Tenant: RLS-Context.
 
     Liefert aggregierte Statistiken über Suchanfragen:
     - Gesamtzahl der Suchen
@@ -3480,9 +3440,10 @@ async def get_search_analytics(
 async def get_daily_search_analytics(
     days: int = Query(30, ge=1, le=365, description="Analysezeitraum in Tagen"),
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Tägliche Such-Statistiken abrufen.
+    """Tägliche Such-Statistiken abrufen. Multi-Tenant: RLS-Context.
 
     Liefert Statistiken pro Tag für Dashboard-Graphen:
     - Suchen pro Tag
@@ -3506,6 +3467,7 @@ async def get_popular_search_terms(
     days: int = Query(7, ge=1, le=90, description="Analysezeitraum in Tagen"),
     limit: int = Query(20, ge=1, le=100, description="Max. Anzahl Ergebnisse"),
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Beliebte Suchbegriffe abrufen.
@@ -3532,6 +3494,7 @@ async def get_zero_result_queries(
     days: int = Query(7, ge=1, le=90, description="Analysezeitraum in Tagen"),
     limit: int = Query(20, ge=1, le=100, description="Max. Anzahl Ergebnisse"),
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Suchanfragen ohne Ergebnisse abrufen.
@@ -3559,6 +3522,7 @@ async def log_search_click(
     position: int = Query(..., ge=1, description="Position des geklickten Ergebnisses"),
     is_download: bool = Query(False, description="Wurde das Dokument heruntergeladen?"),
     current_user: User = Depends(check_rate_limit),  # Rate limiting hinzugefügt
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Klick auf Suchergebnis protokollieren.
@@ -3588,6 +3552,7 @@ async def get_document_access_log(
     offset: int = Query(0, ge=0, description="Offset für Paginierung"),
     action_filter: Optional[str] = Query(None, description="Nach Aktionstyp filtern"),
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
     """Zugriffs-Log für ein Dokument abrufen (Audit Trail).
@@ -3613,8 +3578,13 @@ async def get_document_access_log(
     from sqlalchemy import select, and_, or_
     from app.db.models import Document, AuditLog
 
-    # Dokument laden und Berechtigung prüfen
-    doc_query = select(Document).where(Document.id == document_id)
+    # Dokument laden und Berechtigung pruefen (Multi-Tenant: company_id + owner_id)
+    doc_query = select(Document).where(
+        and_(
+            Document.id == document_id,
+            Document.company_id == company.id,
+        )
+    )
     result = await db.execute(doc_query)
     document = result.scalar_one_or_none()
 
@@ -3624,7 +3594,7 @@ async def get_document_access_log(
             detail="Dokument nicht gefunden"
         )
 
-    # Nur Eigentümer oder Admin darf Access-Log sehen
+    # Nur Eigentuemer oder Admin darf Access-Log sehen
     if document.owner_id != current_user.id and not current_user.is_superuser:
         raise HTTPException(
             status_code=403,
@@ -3715,9 +3685,10 @@ async def get_document_access_log(
 async def bulk_download_zip(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Mehrere Dokumente als ZIP-Archiv herunterladen.
+    """Mehrere Dokumente als ZIP-Archiv herunterladen. Multi-Tenant: Defense-in-Depth.
 
     **Request Body:**
     ```json
@@ -3787,9 +3758,10 @@ async def bulk_download_zip(
 async def bulk_export_csv(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Dokument-Metadaten als CSV exportieren.
+    """Dokument-Metadaten als CSV exportieren. Multi-Tenant: Defense-in-Depth.
 
     **Request Body:**
     ```json
@@ -3866,9 +3838,10 @@ async def update_payment_status(
     document_id: UUID,
     request: Request,
     current_user: User = Depends(get_current_active_user),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Zahlungsstatus eines Dokuments aktualisieren.
+    """Zahlungsstatus eines Dokuments aktualisieren. Multi-Tenant: Defense-in-Depth.
 
     **Request Body:**
     ```json
@@ -3939,9 +3912,10 @@ async def update_payment_status(
 async def bulk_mark_as_paid(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Mehrere Dokumente als bezahlt markieren.
+    """Mehrere Dokumente als bezahlt markieren. Multi-Tenant: Defense-in-Depth.
 
     **Request Body:**
     ```json
@@ -4000,9 +3974,10 @@ async def bulk_mark_as_paid(
 async def bulk_move_category(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Dokumente in andere Kategorie verschieben.
+    """Dokumente in andere Kategorie verschieben. Multi-Tenant: Defense-in-Depth.
 
     **Request Body:**
     ```json
@@ -4064,9 +4039,10 @@ async def bulk_move_category(
 async def bulk_set_tags(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Tags für mehrere Dokumente setzen/entfernen.
+    """Tags für mehrere Dokumente setzen/entfernen. Multi-Tenant: Defense-in-Depth.
 
     **Request Body:**
     ```json
@@ -4133,9 +4109,10 @@ async def bulk_set_tags(
 async def bulk_delete_documents(
     request: Request,
     current_user: User = Depends(check_batch_rate_limit),
+    company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db)
 ):
-    """Mehrere Dokumente soft-löschen (GDPR-konform).
+    """Mehrere Dokumente soft-löschen (GDPR-konform). Multi-Tenant: Defense-in-Depth.
 
     **Request Body:**
     ```json

@@ -244,7 +244,7 @@ async def create_sso_provider(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "SSO"),
         )
 
     logger.info(
@@ -556,7 +556,7 @@ async def start_oidc_authorization(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "SSO"),
         )
 
     return AuthorizationResponse(authorization_url=auth_url, state=state)
@@ -705,7 +705,7 @@ async def start_saml_authentication(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "SSO"),
         )
 
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)

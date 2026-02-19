@@ -16,7 +16,7 @@ from uuid import UUID
 from app.api.dependencies import get_current_superuser, get_db
 from app.db.models import Document, User, UserCompany
 from app.services.tenant import TenantConfigService, get_tenant_config_service
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -230,7 +230,7 @@ async def update_tenant_config(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Mandant"),
         )
     except Exception as e:
         logger.error(

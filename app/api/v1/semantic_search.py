@@ -12,10 +12,11 @@ import uuid
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.rate_limiting import limiter, get_user_identifier
 from app.api.schemas.semantic_search import (
     BatchEmbedRequest,
     BatchEmbedResponse,
@@ -49,7 +50,9 @@ router = APIRouter(
     summary="Semantische Dokumentensuche",
     description="Natuerlichsprachliche Suche ueber alle Dokumente mit Vektor-Aehnlichkeit.",
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def semantic_search(
+    http_request: Request,
     request: SemanticSearchRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -120,7 +123,9 @@ async def semantic_search(
     summary="Aehnliche Dokumente finden",
     description="Findet Dokumente mit aehnlichem Inhalt basierend auf Vektor-Aehnlichkeit.",
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def find_similar_documents(
+    request: Request,
     document_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -226,7 +231,9 @@ async def get_embedding_stats(
     summary="Batch-Embedding starten",
     description="Startet einen Celery-Task fuer die Batch-Embedding-Generierung.",
 )
+@limiter.limit("5/minute", key_func=get_user_identifier)
 async def start_batch_embed(
+    http_request: Request,
     request: BatchEmbedRequest,
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> BatchEmbedResponse:

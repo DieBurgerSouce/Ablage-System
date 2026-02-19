@@ -13,6 +13,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from app.core.safe_errors import safe_error_detail
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -272,7 +273,7 @@ async def create_bounding_box(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Annotation"),
         )
 
 
@@ -335,7 +336,7 @@ async def create_reply(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Annotation"),
         )
 
 
@@ -358,7 +359,7 @@ async def get_thread_tree(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Annotation"),
         )
 
 
@@ -397,7 +398,7 @@ async def create_comment_task(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Annotation"),
         )
 
 
@@ -463,7 +464,7 @@ async def update_task_status(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Annotation"),
         )
 
 

@@ -8,6 +8,7 @@ from typing import Optional, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from app.core.safe_errors import safe_error_detail
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -85,7 +86,7 @@ async def create_complaint(
     except ValueError as e:
         raise HTTPException(
             status_code=400,
-            detail=str(e),
+            detail=safe_error_detail(e, "Reklamation"),
         )
 
 

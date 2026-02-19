@@ -208,7 +208,7 @@ async def create_folder(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Ordner"),
         )
     except Exception as e:
         await db.rollback()
@@ -322,9 +322,9 @@ async def update_folder(
         await db.commit()
         return _folder_to_response(folder)
     except PermissionError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=safe_error_detail(e, "Ordner"))
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=safe_error_detail(e, "Ordner"))
 
 
 @router.delete(
@@ -351,9 +351,9 @@ async def delete_folder(
             )
         await db.commit()
     except PermissionError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=safe_error_detail(e, "Ordner"))
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=safe_error_detail(e, "Ordner"))
 
 
 # ============================================================================
@@ -422,9 +422,9 @@ async def move_folder(
         await db.commit()
         return _folder_to_response(folder)
     except PermissionError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=safe_error_detail(e, "Ordner"))
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=safe_error_detail(e, "Ordner"))
 
 
 # ============================================================================
@@ -460,9 +460,9 @@ async def add_document_to_folder(
             "nachricht": "Dokument erfolgreich zugeordnet",
         }
     except PermissionError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=safe_error_detail(e, "Ordner"))
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=safe_error_detail(e, "Ordner"))
 
 
 @router.delete(
@@ -489,7 +489,7 @@ async def remove_document_from_folder(
             )
         await db.commit()
     except PermissionError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=safe_error_detail(e, "Ordner"))
 
 
 @router.get(
@@ -554,7 +554,7 @@ async def move_document(
         await db.commit()
         return {"nachricht": "Dokument erfolgreich verschoben"}
     except PermissionError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=safe_error_detail(e, "Ordner"))
 
 
 # ============================================================================
@@ -647,7 +647,7 @@ async def set_permission(
             "vererbung": body.propagate,
         }
     except PermissionError as e:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=safe_error_detail(e, "Ordner"))
 
 
 # ============================================================================

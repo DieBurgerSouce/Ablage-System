@@ -10,6 +10,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
+from app.core.safe_errors import safe_error_detail
 
 from app.api.dependencies import get_current_user, get_db, get_current_company_id
 from app.api.schemas.reporting import (
@@ -170,7 +171,7 @@ async def get_trend_endpoint(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Bericht"),
         )
     except Exception as e:
         logger.error(

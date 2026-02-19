@@ -29,7 +29,7 @@ from app.services.custom_field_service import (
     CustomFieldValidationError,
     get_custom_field_service,
 )
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -132,7 +132,7 @@ async def create_definition(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Feld"),
         )
 
 
@@ -263,5 +263,5 @@ async def set_document_field_values(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Feld"),
         )

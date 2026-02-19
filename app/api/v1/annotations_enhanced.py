@@ -14,6 +14,7 @@ from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from app.core.safe_errors import safe_error_detail
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -205,7 +206,7 @@ async def update_annotation(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Annotation"),
         )
 
     return {
@@ -239,7 +240,7 @@ async def resolve_annotation(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Annotation"),
         )
 
     return {
@@ -374,7 +375,7 @@ async def edit_reply(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Annotation"),
         )
 
     return {
@@ -497,7 +498,7 @@ async def update_task_status(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Annotation"),
         )
 
     return {
@@ -568,7 +569,7 @@ async def mark_mention_read(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Annotation"),
         )
 
     return {

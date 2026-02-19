@@ -276,7 +276,7 @@ async def fix_data_quality_issue(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Datenqualitaet"),
         )
     except Exception as e:
         logger.error(

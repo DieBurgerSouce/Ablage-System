@@ -9,6 +9,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import Response
+from app.core.safe_errors import safe_error_detail
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db
@@ -78,7 +79,7 @@ async def upload_document(
     except ValueError as e:
         raise HTTPException(
             status_code=400,
-            detail=str(e),
+            detail=safe_error_detail(e, "Dokument"),
         )
 
 
