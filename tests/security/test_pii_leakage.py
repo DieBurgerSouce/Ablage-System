@@ -363,11 +363,13 @@ class TestWebhookPayloadSanitization:
 class TestNotificationSanitization:
     """Tests dass Notifications keine PII exponieren."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_email_notification_sanitized(self, test_client, auth_headers):
         """Testet dass Email-Benachrichtigungen PII begrenzen."""
         # Emails sollten nur Links enthalten, keine eingebetteten Daten
         pass  # Implementierungsabhaengig
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_slack_notification_sanitized(self, test_client, auth_headers):
         """Testet dass Slack-Benachrichtigungen PII begrenzen."""
         # Slack-Messages sollten keine vollstaendigen Kundendaten enthalten

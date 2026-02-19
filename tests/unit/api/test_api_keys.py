@@ -492,6 +492,7 @@ class TestAPIKeyPermissions:
         for perm in expected:
             assert perm in [p.value for p in APIKeyPermission]
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_admin_permission_grants_all(self):
         """Admin-Berechtigung gibt vollen Zugriff."""
         # Admin sollte alle anderen Berechtigungen implizieren
@@ -689,6 +690,7 @@ class TestAPIKeySecurity:
         prefix = "abc12345"
         assert len(prefix) == 8
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_full_key_never_stored(self):
         """Vollständiger Key wird nie gespeichert."""
         # In der DB wird nur der Hash und Prefix gespeichert

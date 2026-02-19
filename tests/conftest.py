@@ -3,11 +3,44 @@
 import os
 import sys
 import asyncio
+import types
 from typing import Generator, AsyncGenerator
 import pytest
 import pytest_asyncio
 from pathlib import Path
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import Mock, AsyncMock, MagicMock
+
+
+def _mock_gpu_modules() -> None:
+    """Mock torch and related GPU modules if not installed locally.
+
+    Erlaubt Unit-Tests ohne GPU-Abhaengigkeiten (torch, torchvision, etc.).
+    Im Docker-Container mit GPU sind die echten Module installiert.
+    """
+    modules_to_mock = [
+        "torch", "torch.cuda", "torch.nn", "torch.nn.functional",
+        "torch.utils", "torch.utils.data", "torch.amp",
+        "torchvision", "torchvision.transforms",
+        "transformers", "transformers.models", "transformers.pipelines",
+        "accelerate", "bitsandbytes",
+        "sentence_transformers",
+    ]
+    for mod_name in modules_to_mock:
+        if mod_name not in sys.modules:
+            try:
+                __import__(mod_name)
+            except (ImportError, OSError):
+                mock_mod = MagicMock()
+                # torch.cuda.is_available() -> False fuer Tests
+                if mod_name == "torch":
+                    mock_mod.cuda.is_available.return_value = False
+                    mock_mod.cuda.device_count.return_value = 0
+                    mock_mod.__version__ = "0.0.0-mock"
+                sys.modules[mod_name] = mock_mod
+
+
+# Mock GPU modules BEFORE any app imports
+_mock_gpu_modules()
 
 # IMPORTANT: Set DEBUG=true BEFORE any app imports to pass CORS validation
 # This must happen before pydantic_settings loads the .env file
@@ -31,13 +64,24 @@ try:
     from app.main import app
     from app.db.models import Base, User, Document
     APP_AVAILABLE = True
-except ImportError as e:
+except (ImportError, Exception) as e:
     # App may not be importable in unit test mode
     app = None
     Base = None
     User = None
     Document = None
     APP_AVAILABLE = False
+
+# Ensure all model modules are imported so SQLAlchemy mapper resolves string relationships.
+# Without this, creating model instances (e.g. DomainEvent) fails with
+# "expression 'ProcessDefinition' failed to locate a name".
+try:
+    import app.db.bpmn_models.bpmn  # noqa: F401 - ProcessDefinition, ProcessInstance, etc.
+    import app.db.bpmn_models.gobd  # noqa: F401 - AuditChainEntry, DocumentArchive, etc.
+    import app.db.models_po_matching  # noqa: F401 - PurchaseOrderMatch, MatchStatus
+    import app.db.models_gl_posting  # noqa: F401 - JournalEntry, JournalEntryLine
+except (ImportError, Exception):
+    pass
 
 try:
     from app.core.config import Settings

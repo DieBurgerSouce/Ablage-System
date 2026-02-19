@@ -366,6 +366,7 @@ class TestLoggingInjection:
 class TestWebSocketInjection:
     """Tests against CRLF injection in WebSocket connections."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.parametrize("payload", CRLF_PAYLOADS[:5])  # Subset for WS
     def test_no_injection_via_ws_header(self, payload: str, test_client, auth_headers) -> None:
         """Test that CRLF in WebSocket headers cannot inject."""

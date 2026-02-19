@@ -577,6 +577,7 @@ class TestGetAgentConfiguration:
 class TestAgentExecuteRequestValidation:
     """Tests for AgentExecuteRequest validation."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_valid_request(self):
         """Sollte gueltige Requests akzeptieren."""
         # Note: File path validation requires actual file - mock in integration tests
@@ -599,6 +600,7 @@ class TestAgentExecuteRequestValidation:
 class TestBatchProcessRequestValidation:
     """Tests for BatchProcessRequest validation."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_valid_batch_request(self):
         """Sollte gueltige Batch-Requests akzeptieren."""
         # Note: File path validation requires actual files - mock in integration tests

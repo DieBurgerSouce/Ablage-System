@@ -49,6 +49,7 @@ def mock_user() -> MagicMock:
 class TestMultiTenantSecurity:
     """Tests fuer Multi-Tenant Zugriffskontrolle."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_403_when_no_company_selected(self) -> None:
         """Gibt 403 zurueck wenn keine Firma ausgewaehlt."""
         # Diese Tests benoetigen die FastAPI App
@@ -59,6 +60,7 @@ class TestMultiTenantSecurity:
         # Fuer Unit-Tests mocken wir die Dependency
         pass  # Wird in Integration Tests geprueft
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_validates_entity_belongs_to_company(self) -> None:
         """Validiert dass Entity zur Company gehoert."""
         # Service-Ebene prueft via Document.company_id
@@ -74,17 +76,20 @@ class TestMultiTenantSecurity:
 class TestInputValidation:
     """Tests fuer Eingabe-Validierung."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_validates_timeline_limit_range(self) -> None:
         """Validiert timeline_limit Range (1-200)."""
         # FastAPI Query Parameter Validierung
         # timeline_limit: int = Query(default=50, ge=1, le=200)
         pass  # Wird durch FastAPI Query Validation sichergestellt
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_validates_documents_limit_range(self) -> None:
         """Validiert documents_limit Range (1-50)."""
         # FastAPI Query Parameter Validierung
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_validates_sections_format(self) -> None:
         """Validiert sections Format (komma-separiert)."""
         # Wird im Endpoint geparst:
@@ -100,20 +105,24 @@ class TestInputValidation:
 class TestPhoneNoteCRUD:
     """Tests fuer Telefon-Notizen CRUD."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_create_phone_note_validates_call_type(self) -> None:
         """Validiert call_type gegen erlaubte Werte."""
         # valid_call_types = [ct.value for ct in CommunicationType]
         # HTTPException 400 bei ungueltigem Typ
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_create_phone_note_validates_direction(self) -> None:
         """Validiert direction gegen erlaubte Werte."""
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_update_phone_note_requires_ownership(self) -> None:
         """Update erfordert Ownership (company_id Check)."""
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_delete_phone_note_requires_ownership(self) -> None:
         """Delete erfordert Ownership."""
         pass
@@ -127,6 +136,7 @@ class TestPhoneNoteCRUD:
 class TestResponseFormat:
     """Tests fuer Response-Format."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_hub_response_contains_all_sections(self) -> None:
         """Response enthaelt alle Sektionen."""
         # CommunicationHubResponse hat:
@@ -140,12 +150,14 @@ class TestResponseFormat:
         # - phone_notes
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_timeline_items_have_required_fields(self) -> None:
         """Timeline Items haben alle Pflichtfelder."""
         # TimelineItemResponse:
         # - id, timestamp, type, title, icon, color
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_decimal_amounts_serialized_as_float(self) -> None:
         """Decimal-Betraege werden als float serialisiert."""
         # InvoiceSummaryResponse verwendet float statt Decimal
@@ -160,16 +172,19 @@ class TestResponseFormat:
 class TestErrorResponses:
     """Tests fuer Fehler-Antworten."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_entity_not_found_returns_empty_hub(self) -> None:
         """Nicht gefundene Entity gibt Hub mit leerem entity zurueck."""
         # Service gibt {"error": "..."} zurueck
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_partial_failure_still_returns_data(self) -> None:
         """Partieller Fehler gibt trotzdem Daten zurueck."""
         # Andere Sektionen werden trotzdem geladen
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_error_messages_are_german(self) -> None:
         """Fehlermeldungen sind auf Deutsch."""
         # "Keine Firma ausgewaehlt. Bitte waehlen Sie eine Firma aus."

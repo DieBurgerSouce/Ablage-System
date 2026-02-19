@@ -505,6 +505,7 @@ class TestGDPRSecurity:
                 # Route sollte Authentifizierung erfordern
                 pass  # FastAPI handled this via Depends
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_user_can_only_access_own_data(self):
         """Benutzer kann nur eigene Daten abrufen."""
         # Die Endpunkte verwenden current_user.id für alle Abfragen

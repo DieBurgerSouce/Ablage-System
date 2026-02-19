@@ -315,16 +315,19 @@ class TestListConversations:
         assert len(response.conversations) == 1
         assert response.conversations[0].session_id == mock_conversation.session_id
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_filter_by_is_starred(self):
         """Filter nach is_starred funktioniert."""
         # Mock fuer Starred-Filter
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_filter_by_is_active(self):
         """Filter nach is_active funktioniert."""
         # Standard: nur aktive Konversationen
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_search_in_title(self):
         """Suche im Titel funktioniert."""
         pass
@@ -358,6 +361,7 @@ class TestGetConversationBySession:
         assert detail.session_id == mock_conversation.session_id
         assert detail.is_active is True
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_returns_404_if_not_found(self):
         """404 wenn Session-ID nicht existiert."""
         pass

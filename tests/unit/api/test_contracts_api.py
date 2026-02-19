@@ -271,28 +271,33 @@ def sample_contract_create_data() -> Dict[str, Any]:
 class TestMultiTenantSecurity:
     """Tests for Multi-Tenant Row Level Security."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_list_contracts_only_returns_company_contracts(self):
         """List sollte nur Vertraege der eigenen Firma zurueckgeben."""
         # Verified by SQL query structure in code:
         # .where(BusinessContract.company_id == company.company_id)
         pass  # Structural verification - actual test in integration
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_get_contract_checks_company_ownership(self):
         """Get sollte Company Ownership pruefen."""
         # Verified by service method:
         # service.get_contract(db, contract_id, company_id)
         pass  # Structural verification
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_create_contract_sets_company_id(self):
         """Create sollte company_id automatisch setzen."""
         # Verified by code: company_id=company.company_id
         pass  # Structural verification
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_update_requires_company_context(self):
         """Update sollte Company Context erfordern."""
         # Verified by dependency: company: CompanyContext = Depends(require_company)
         pass  # Structural verification
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_delete_requires_company_context(self):
         """Delete sollte Company Context erfordern."""
         # Verified by dependency: company: CompanyContext = Depends(require_company)
@@ -333,18 +338,21 @@ class TestListContracts:
         assert sample_contract.party_a_id is not None
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_list_filters_expiring_within_days(self, sample_contract):
         """List sollte ablaufende Vertraege filtern koennen."""
         # Verified by code: expiring_within_days: Optional[int] parameter
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_list_supports_search(self, sample_contract):
         """List sollte Volltextsuche unterstuetzen."""
         # Verified by code: search: Optional[str] parameter
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_list_supports_ordering(self, sample_contract):
         """List sollte Sortierung unterstuetzen."""
@@ -362,6 +370,7 @@ class TestGetContract:
         assert sample_contract.contract_number == "CONTR-2026-001"
         assert len(sample_contract.milestones) == 1
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_get_not_found_raises_404(self):
         """Get sollte 404 werfen wenn nicht gefunden."""
@@ -392,6 +401,7 @@ class TestGetContract:
 class TestCreateContract:
     """Tests for contract creation."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_create_returns_201(self, sample_contract_create_data):
         """Create sollte 201 zurueckgeben."""
@@ -446,12 +456,14 @@ class TestUpdateContract:
         sample_contract.title = "Neuer Titel"
         assert sample_contract.status == original_status
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_update_recalculates_notice_deadline(self, sample_contract):
         """Update sollte Kuendigungsfrist neu berechnen bei Aenderung."""
         # Verified by service logic
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_update_not_found_raises_404(self):
         """Update sollte 404 werfen wenn nicht gefunden."""
@@ -470,6 +482,7 @@ class TestUpdateContract:
 class TestDeleteContract:
     """Tests for contract deletion (soft-delete)."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_delete_returns_204(self):
         """Delete sollte 204 zurueckgeben."""
@@ -483,6 +496,7 @@ class TestDeleteContract:
         sample_contract.status = DBContractStatus.TERMINATED
         assert sample_contract.status == DBContractStatus.TERMINATED
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_delete_not_found_raises_404(self):
         """Delete sollte 404 werfen wenn nicht gefunden."""
@@ -498,6 +512,7 @@ class TestDeleteContract:
 class TestContractSummary:
     """Tests for contract portfolio summary endpoint."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_summary_returns_totals(self):
         """Summary sollte Gesamtzahlen zurueckgeben."""
@@ -509,6 +524,7 @@ class TestContractSummary:
         """Summary sollte aktive Vertraege zaehlen."""
         assert sample_contract.status == DBContractStatus.ACTIVE
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_summary_counts_expiring_soon(self, sample_contract):
         """Summary sollte bald ablaufende Vertraege zaehlen."""
@@ -529,12 +545,14 @@ class TestContractSummary:
 class TestUpcomingDeadlines:
     """Tests for upcoming deadlines endpoint."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_deadlines_returns_list(self):
         """Deadlines sollte Liste zurueckgeben."""
         # Verified by response: DeadlineListResponse
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_deadlines_filters_by_days_ahead(self):
         """Deadlines sollte nach Tagen filtern."""
@@ -551,6 +569,7 @@ class TestUpcomingDeadlines:
         """Deadlines sollte Vertragsenden enthalten."""
         assert sample_contract.end_date is not None
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_deadlines_sorted_by_urgency(self):
         """Deadlines sollte nach Dringlichkeit sortiert sein."""
@@ -561,12 +580,14 @@ class TestUpcomingDeadlines:
 class TestContractTimeline:
     """Tests for contract timeline endpoint."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_timeline_returns_events(self, sample_contract):
         """Timeline sollte Ereignisse zurueckgeben."""
         # Verified by response: ContractTimelineResponse
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_timeline_not_found_raises_404(self):
         """Timeline sollte 404 werfen wenn Vertrag nicht gefunden."""
@@ -599,6 +620,7 @@ class TestMilestoneEndpoints:
         # Verified by code: status_code=status.HTTP_201_CREATED
         assert sample_milestone.id is not None
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_create_milestone_contract_not_found_raises_404(self):
         """Create Milestone sollte 404 werfen wenn Vertrag nicht gefunden."""
@@ -613,6 +635,7 @@ class TestMilestoneEndpoints:
         sample_milestone.title = "Aktualisierter Titel"
         assert sample_milestone.title == "Aktualisierter Titel"
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_update_milestone_not_found_raises_404(self):
         """Update Milestone sollte 404 werfen wenn nicht gefunden."""
@@ -621,12 +644,14 @@ class TestMilestoneEndpoints:
         #                     detail="Meilenstein nicht gefunden")
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_delete_milestone_returns_204(self):
         """Delete Milestone sollte 204 zurueckgeben."""
         # Verified by code: status_code=status.HTTP_204_NO_CONTENT
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_delete_milestone_not_found_raises_404(self):
         """Delete Milestone sollte 404 werfen wenn nicht gefunden."""
@@ -663,6 +688,7 @@ class TestRenewalOptionEndpoints:
         sample_contract.renewal_options = [sample_renewal_option]
         assert len(sample_contract.renewal_options) == 1
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_list_renewal_options_contract_not_found(self):
         """List Renewal Options sollte 404 werfen wenn Vertrag nicht gefunden."""
@@ -687,6 +713,7 @@ class TestRenewalOptionEndpoints:
         sample_renewal_option.decision_notes = "Nicht mehr benoetigt"
         assert sample_renewal_option.status == RenewalOptionStatus.DECLINED
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_renewal_decision_invalid_raises_400(self):
         """Renewal Decision sollte 400 werfen bei Fehler."""
@@ -720,18 +747,21 @@ class TestAmendmentEndpoints:
         # Verified by code: status_code=status.HTTP_201_CREATED
         assert sample_amendment.id is not None
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_create_amendment_auto_increments_number(self):
         """Create Amendment sollte Nummer automatisch erhoehen."""
         # Verified by code: func.coalesce(func.max(ContractAmendment.amendment_number), 0) + 1
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_create_amendment_sets_draft_status(self):
         """Create Amendment sollte DRAFT Status setzen."""
         # Verified by code: status=DBAmendmentStatus.DRAFT
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_create_amendment_contract_not_found(self):
         """Create Amendment sollte 404 werfen wenn Vertrag nicht gefunden."""
@@ -754,6 +784,7 @@ class TestAmendmentEndpoints:
         sample_amendment.approved_date = date.today()
         assert sample_amendment.approved_by_id == sample_user.id
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_update_amendment_not_found(self):
         """Update Amendment sollte 404 werfen wenn nicht gefunden."""
@@ -762,6 +793,7 @@ class TestAmendmentEndpoints:
         #                     detail="Nachtrag nicht gefunden")
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_delete_amendment_returns_204(self):
         """Delete Amendment sollte 204 zurueckgeben."""
@@ -785,6 +817,7 @@ class TestAmendmentEndpoints:
         # Would raise HTTPException
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_delete_amendment_not_found(self):
         """Delete Amendment sollte 404 werfen wenn nicht gefunden."""
@@ -800,51 +833,61 @@ class TestAmendmentEndpoints:
 class TestValidation:
     """Tests for input validation."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_contract_number_min_length(self):
         """Contract number sollte Mindestlaenge haben."""
         # Verified by schema: min_length=1
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_contract_number_max_length(self):
         """Contract number sollte Maximallaenge haben."""
         # Verified by schema: max_length=100
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_title_min_length(self):
         """Title sollte Mindestlaenge haben."""
         # Verified by schema: min_length=1
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_title_max_length(self):
         """Title sollte Maximallaenge haben."""
         # Verified by schema: max_length=500
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_duration_months_range(self):
         """Duration months sollte im gueltigen Bereich sein."""
         # Verified by schema: ge=1, le=600
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_notice_period_days_range(self):
         """Notice period sollte im gueltigen Bereich sein."""
         # Verified by schema: ge=0, le=365
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_renewal_period_months_range(self):
         """Renewal period sollte im gueltigen Bereich sein."""
         # Verified by schema: ge=1, le=120
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_max_renewals_range(self):
         """Max renewals sollte im gueltigen Bereich sein."""
         # Verified by schema: ge=0, le=99
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_total_value_non_negative(self):
         """Total value sollte nicht-negativ sein."""
         # Verified by schema: ge=0
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_currency_max_length(self):
         """Currency sollte Maximallaenge 3 haben."""
         # Verified by schema: max_length=3
@@ -857,16 +900,19 @@ class TestValidation:
         sorted_days = sorted([d for d in days if 0 < d <= 365], reverse=True)
         assert sorted_days == [90, 60, 30, 14, 7]
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_expiring_within_days_range(self):
         """Expiring within days sollte im gueltigen Bereich sein."""
         # Verified by Query: ge=1, le=365
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_search_max_length(self):
         """Search sollte Maximallaenge haben."""
         # Verified by Query: max_length=200
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_order_dir_pattern(self):
         """Order dir sollte asc oder desc sein."""
         # Verified by Query: pattern="^(asc|desc)$"
@@ -879,6 +925,7 @@ class TestValidation:
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_empty_contract_list(self):
         """Empty list sollte leere Ergebnisse zurueckgeben."""
@@ -971,11 +1018,13 @@ class TestResponseFormats:
         assert hasattr(sample_renewal_option, 'days_until_deadline')
         assert hasattr(sample_renewal_option, 'is_deadline_critical')
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_contract_list_response_includes_pagination(self):
         """ContractListResponse sollte Pagination enthalten."""
         # Verified by schema: items, total, offset, limit
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_deadline_list_response_format(self):
         """DeadlineListResponse sollte korrektes Format haben."""
         # Verified by schema: items, total

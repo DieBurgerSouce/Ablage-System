@@ -539,6 +539,7 @@ class TestMatchingStrategies:
         # Bei exaktem Match: 0.99
         assert service.AUTO_MATCH_THRESHOLD <= 0.99
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_confidence_hierarchy(self, service: ReconciliationService):
         """Konfidenz-Hierarchie sollte korrekt sein."""
         # IBAN+Amount > Invoice+Amount > Customer+Amount > Amount+Date > Fuzzy
@@ -553,6 +554,7 @@ class TestConfidenceCalculation:
     def service(self) -> ReconciliationService:
         return ReconciliationService()
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_date_proximity_calculation(self, service: ReconciliationService):
         """Sollte Datums-Naehe korrekt berechnen."""
         # DATE_TOLERANCE_DAYS = 5

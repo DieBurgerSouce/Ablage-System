@@ -302,6 +302,7 @@ class TestCrossCompanyAccessPrevention:
     These tests should FAIL if isolation is broken.
     """
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_cannot_access_other_company_documents(
         self,
@@ -313,6 +314,7 @@ class TestCrossCompanyAccessPrevention:
         # For now, we verify the service layer enforces company_id
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_cannot_access_other_company_entities(
         self,
@@ -322,6 +324,7 @@ class TestCrossCompanyAccessPrevention:
         """Verify Company B cannot access Company A's business entities."""
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     @pytest.mark.asyncio
     async def test_cannot_access_other_company_invoices(
         self,
@@ -407,6 +410,7 @@ class TestPIIFiltering:
         # The fix was to remove it from responses
         assert "entity_name" not in fields or fields.get("entity_name") is None
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_communication_hub_timeline_filters_sensitive_data(self):
         """
         Verify timeline doesn't expose raw IBAN/VAT-ID in unfiltered form.

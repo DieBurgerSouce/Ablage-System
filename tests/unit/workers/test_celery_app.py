@@ -273,11 +273,13 @@ class TestRedisLockClient:
 class TestGPUMemoryManagement:
     """Tests for GPU memory management in tasks."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_clear_gpu_cache_called_after_task(self):
         """GPU cache should be cleared after task completion."""
         # This tests the cleanup logic that should run after GPU tasks
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_gpu_oom_detection(self):
         """GPU OOM errors should be detected and logged."""
         # This tests the OOM handling logic

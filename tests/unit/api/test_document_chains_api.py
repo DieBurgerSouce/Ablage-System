@@ -213,6 +213,7 @@ def sample_relationship() -> Mock:
 class TestCreateChain:
     """Tests for POST / endpoint."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_create_chain_requires_at_least_one_document(self):
         """POST / sollte mindestens ein Dokument erfordern."""
         # Verified by code:
@@ -251,6 +252,7 @@ class TestCreateChain:
         assert sample_chain.chain_id is not None
         assert sample_chain.document_count >= 1
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_create_chain_document_not_found_raises_404(self):
         """POST / sollte 404 werfen wenn Dokument nicht gefunden."""
         # Verified by code:
@@ -304,6 +306,7 @@ class TestGetChain:
         for field in doc_fields:
             assert field in doc_fields
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_get_chain_not_found_raises_404(self):
         """GET /{chain_id} sollte 404 werfen wenn nicht gefunden."""
         # Verified by code:
@@ -345,6 +348,7 @@ class TestGetChainByDocument:
         # Verified by code: Document.owner_id == current_user.id
         assert sample_quote_document.owner_id == sample_user.id
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_get_chain_by_document_not_found_raises_404(self):
         """GET /by-document sollte 404 werfen wenn Dokument nicht gefunden."""
         # Verified by code:
@@ -425,6 +429,7 @@ class TestLinkDocuments:
         for rel_type in valid_types:
             assert rel_type in valid_types
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_link_documents_invalid_type_raises_400(self):
         """POST /link sollte 400 werfen bei ungueltigem Typ."""
         # Verified by code:
@@ -450,6 +455,7 @@ class TestLinkDocuments:
         #     raise HTTPException(..., detail="Benutzer hat keine Firmenzuordnung")
         assert sample_user.company_id is not None
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_link_documents_document_not_found_raises_404(self):
         """POST /link sollte 404 werfen wenn Dokument nicht gefunden."""
         # Verified by code:
@@ -494,6 +500,7 @@ class TestAutoMatchDocuments:
         # Verified by code: Document.owner_id == current_user.id
         assert sample_quote_document.owner_id == sample_user.id
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_auto_match_document_not_found_raises_404(self):
         """GET /auto-match sollte 404 werfen wenn Dokument nicht gefunden."""
         # Verified by code:
@@ -548,11 +555,13 @@ class TestGetChainDiscrepancies:
         for severity in valid_severities:
             assert severity in valid_severities
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_get_discrepancies_include_resolved_param(self):
         """GET /discrepancies sollte include_resolved Parameter respektieren."""
         # include_resolved: bool = Query(False)
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_get_discrepancies_chain_not_found_raises_404(self):
         """GET /discrepancies sollte 404 werfen wenn Kette nicht gefunden."""
         # Verified by code:
@@ -575,11 +584,13 @@ class TestResolveDiscrepancy:
         notes = "Abweichung geprueft, Rabatt war korrekt"
         assert len(notes) > 0
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_resolve_discrepancy_returns_timestamp(self):
         """resolve sollte resolved_at Timestamp zurueckgeben."""
         # Expected: {"resolved_at": "...", "message": "..."}
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_resolve_discrepancy_not_found_raises_404(self):
         """resolve sollte 404 werfen wenn nicht gefunden."""
         # Verified by code:
@@ -594,6 +605,7 @@ class TestResolveDiscrepancy:
 class TestChainMultiTenantSecurity:
     """Tests for Multi-Tenant Row Level Security in Chain endpoints."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_create_chain_checks_document_owners(self):
         """POST / sollte alle Document Owners pruefen."""
         # Every document must be owned by current user
@@ -608,6 +620,7 @@ class TestChainMultiTenantSecurity:
         # WHERE company_id = :company_id
         assert sample_user.company_id is not None
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_link_documents_checks_both_owners(self):
         """POST /link sollte Owner beider Dokumente pruefen."""
         pass
@@ -670,11 +683,13 @@ class TestChainGermanErrorMessages:
 class TestChainEdgeCases:
     """Tests for Chain edge cases."""
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_chain_with_single_document(self, sample_quote_document):
         """Kette mit nur einem Dokument sollte funktionieren."""
         # Minimum is 1 document
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_chain_with_many_documents(self):
         """Kette mit vielen Dokumenten sollte funktionieren."""
         # No upper limit defined
@@ -686,6 +701,7 @@ class TestChainEdgeCases:
         # Should either add to same chain or raise error
         pass
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_link_documents_same_document(self, sample_quote_document):
         """Verknuepfung mit sich selbst sollte verhindert werden."""
         # source_document_id == target_document_id should fail
@@ -697,6 +713,7 @@ class TestChainEdgeCases:
         assert workflow[0] == "quote"
         assert workflow[-1] == "invoice"
 
+    @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_skip_steps_in_workflow(self):
         """Uebersprungene Schritte sollten erlaubt sein."""
         # e.g., order_to_invoice (skipping delivery_note)
