@@ -151,7 +151,7 @@ export function InvoiceWorkflowPage() {
       </div>
 
       {/* Automation Rate */}
-      <Card>
+      <Card data-tour="workflow-approval">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5" />
@@ -242,7 +242,7 @@ export function InvoiceWorkflowPage() {
       </Card>
 
       {/* Approval Queue */}
-      <Card>
+      <Card data-tour="workflow-review">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
