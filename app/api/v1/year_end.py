@@ -164,7 +164,7 @@ async def run_completeness_check(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Jahresabschluss"),
         )
     except Exception as e:
         logger.error(
@@ -203,7 +203,7 @@ async def update_check_item(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Jahresabschluss"),
         )
     except Exception as e:
         logger.error("Fehler beim Aktualisieren des Prüfpunkts", **safe_error_log(e))
@@ -269,7 +269,7 @@ async def resolve_gap(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Jahresabschluss"),
         )
     except Exception as e:
         logger.error("Fehler beim Beheben der Lücke", **safe_error_log(e))
@@ -322,7 +322,7 @@ async def generate_report(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Jahresabschluss"),
         )
     except HTTPException:
         raise
@@ -357,7 +357,7 @@ async def complete_session(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Jahresabschluss"),
         )
     except Exception as e:
         logger.error("Fehler beim Abschließen", **safe_error_log(e))

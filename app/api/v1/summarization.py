@@ -11,6 +11,7 @@ from typing import Dict, List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from app.core.safe_errors import safe_error_detail
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -164,9 +165,9 @@ async def summarize_document(
 
     except ValueError as e:
         # Dokument nicht gefunden oder keine Berechtigung
-        raise HTTPException(status_code=404, detail=str(e))
+        raise HTTPException(status_code=404, detail=safe_error_detail(e, "Zusammenfassung"))
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=safe_error_detail(e, "Zusammenfassung"))
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -224,10 +225,10 @@ async def compare_documents(
     except ValueError as e:
         # Ungültige Anzahl oder nicht gefunden
         if "mindestens 2" in str(e).lower() or "maximal 5" in str(e).lower():
-            raise HTTPException(status_code=400, detail=str(e))
-        raise HTTPException(status_code=404, detail=str(e))
+            raise HTTPException(status_code=400, detail=safe_error_detail(e, "Zusammenfassung"))
+        raise HTTPException(status_code=404, detail=safe_error_detail(e, "Zusammenfassung"))
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=safe_error_detail(e, "Zusammenfassung"))
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -290,7 +291,7 @@ async def generate_briefing(
         return BriefingResponse(**result)
 
     except PermissionError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+        raise HTTPException(status_code=403, detail=safe_error_detail(e, "Zusammenfassung"))
     except Exception as e:
         raise HTTPException(
             status_code=500,

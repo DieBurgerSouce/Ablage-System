@@ -320,7 +320,7 @@ async def create_report(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e),
+            detail=safe_error_detail(e, "Bericht"),
         )
 
 
@@ -414,7 +414,7 @@ async def update_report(
             )
         return AdHocReportResponse.model_validate(result)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Bericht"))
 
 
 @router.delete(
@@ -476,7 +476,7 @@ async def execute_report(
             execution_id=result.get("execution_id", ""),
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Bericht"))
     except Exception as e:
         logger.exception(
             "adhoc_report_execution_failed",
@@ -543,7 +543,7 @@ async def export_report(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Bericht"))
     except Exception as e:
         logger.exception(
             "adhoc_report_export_failed",
@@ -586,7 +586,7 @@ async def share_report(
             )
         return ShareResponse.model_validate(share)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Bericht"))
 
 
 @router.delete(
@@ -662,7 +662,7 @@ async def create_schedule(
         )
         return ScheduleResponse.model_validate(schedule)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Bericht"))
 
 
 @router.put("/schedules/{schedule_id}", response_model=ScheduleResponse)

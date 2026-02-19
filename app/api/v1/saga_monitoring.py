@@ -19,11 +19,13 @@ from typing import List, Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from app.core.safe_errors import safe_error_detail
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
+from app.core.rate_limiting import limiter, get_user_identifier
 from app.api.v1.workflows import get_user_company_id
 from app.core.types import JSONDict
 from app.db.models import User
@@ -233,7 +235,9 @@ def _log_to_response(log: SagaTransactionLog) -> SagaLogEntryResponse:
     response_model=SagaListResponse,
     summary="Saga-Ausführungen auflisten",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def list_sagas(
+    request: Request,
     saga_status: Optional[str] = Query(
         None,
         alias="status",
@@ -282,7 +286,7 @@ async def list_sagas(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Saga"),
         )
 
     return SagaListResponse(
@@ -298,7 +302,9 @@ async def list_sagas(
     response_model=SagaStatisticsResponse,
     summary="Saga-Statistiken abrufen",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_saga_statistics(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SagaStatisticsResponse:
@@ -329,7 +335,9 @@ async def get_saga_statistics(
     response_model=SagaDetailResponse,
     summary="Saga-Details mit Steps abrufen",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_saga_detail(
+    request: Request,
     saga_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -359,7 +367,7 @@ async def get_saga_detail(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Saga"),
         )
 
     if not saga:
@@ -394,7 +402,9 @@ async def get_saga_detail(
     response_model=SagaLogsResponse,
     summary="Saga-Transaktionslogs abrufen",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_saga_logs(
+    request: Request,
     saga_id: UUID,
     step_id: Optional[UUID] = Query(None, description="Filter nach Step-ID"),
     offset: int = Query(0, ge=0, description="Pagination Offset"),
@@ -447,7 +457,7 @@ async def get_saga_logs(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Saga"),
         )
 
     return SagaLogsResponse(
@@ -463,7 +473,9 @@ async def get_saga_logs(
     response_model=SagaDiagramResponse,
     summary="Saga State-Diagramm abrufen",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_saga_diagram(
+    request: Request,
     saga_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -499,7 +511,9 @@ async def get_saga_diagram(
     response_model=SagaRetryResponse,
     summary="Saga manuell wiederholen",
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def retry_saga(
+    request: Request,
     saga_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -549,7 +563,9 @@ async def retry_saga(
     response_model=SagaRetryResponse,
     summary="Saga aus Dead Letter Queue entfernen",
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def remove_saga_from_dlq(
+    request: Request,
     saga_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

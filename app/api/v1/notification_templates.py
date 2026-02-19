@@ -20,7 +20,7 @@ from app.services.notification.template_engine import (
     NotificationTemplateEngine,
     PRESET_TEMPLATES,
 )
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -273,7 +273,7 @@ async def create_template(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Benachrichtigung"),
         )
     except Exception as e:
         logger.error("create_template_failed", **safe_error_log(e), template_name=template.name)
@@ -362,7 +362,7 @@ async def install_preset_template(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Benachrichtigung"),
         )
     except Exception as e:
         logger.error("install_preset_failed", **safe_error_log(e), preset_key=preset_key)
@@ -468,7 +468,7 @@ async def update_template(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Benachrichtigung"),
         )
     except HTTPException:
         raise
@@ -555,7 +555,7 @@ async def preview_template(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Benachrichtigung"),
         )
     except Exception as e:
         logger.error("preview_template_failed", **safe_error_log(e), template_id=str(template_id))

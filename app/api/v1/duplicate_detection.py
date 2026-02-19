@@ -15,11 +15,13 @@ from typing import Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db
+from app.core.rate_limiting import limiter, get_user_identifier
+from app.core.rbac import require_admin
 from app.api.schemas.duplicate_detection import (
     BatchScanRequest,
     BatchScanResponse,
@@ -61,8 +63,10 @@ def _candidate_to_match(candidate) -> DuplicateMatch:  # type: ignore[no-untyped
     summary="Dokument auf Duplikate pruefen",
     description="Prueft ein einzelnes Dokument auf Duplikate (exakt, near, semantisch, Nummer, visuell).",
 )
+@limiter.limit("20/minute", key_func=get_user_identifier)
 async def check_document_for_duplicates(
-    request: DuplicateCheckRequest,
+    request: Request,
+    check_request: DuplicateCheckRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> DuplicateCheckResponse:
@@ -72,9 +76,9 @@ async def check_document_for_duplicates(
         # SECURITY: company_id aus Auth ableiten, nicht dem Client vertrauen
         result = await service.check_document(
             db=db,
-            document_id=request.document_id,
+            document_id=check_request.document_id,
             company_id=current_user.company_id,
-            include_near=request.include_near,
+            include_near=check_request.include_near,
         )
 
         candidates = [_candidate_to_match(c) for c in result.candidates]
@@ -82,7 +86,7 @@ async def check_document_for_duplicates(
 
         logger.info(
             "duplicate_check_completed",
-            document_id=str(request.document_id),
+            document_id=str(check_request.document_id),
             has_duplicates=result.has_duplicates,
             candidate_count=len(candidates),
             processing_time_ms=result.processing_time_ms,
@@ -98,7 +102,7 @@ async def check_document_for_duplicates(
     except Exception as e:
         logger.error(
             "duplicate_check_error",
-            document_id=str(request.document_id),
+            document_id=str(check_request.document_id),
             **safe_error_log(e),
         )
         raise HTTPException(
@@ -159,8 +163,10 @@ async def get_document_duplicates(
     summary="Asynchronen Batch-Duplikat-Scan starten",
     description="Loest einen asynchronen Batch-Scan fuer alle Dokumente einer Firma aus.",
 )
+@limiter.limit("5/minute", key_func=get_user_identifier)
 async def trigger_batch_scan(
-    request: BatchScanRequest,
+    request: Request,
+    scan_request: BatchScanRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> BatchScanResponse:
@@ -276,10 +282,12 @@ async def get_duplicate_stats(
     summary="Duplikat-Erkennungs-Konfiguration aktualisieren",
     description="Aktualisiert die Aehnlichkeits-Schwellenwerte und Limits (nur Administratoren).",
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def update_duplicate_config(
+    request: Request,
     config_update: DuplicateConfigUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_admin),
 ) -> DuplicateConfigResponse:
     """Konfiguration der Duplikat-Erkennung aktualisieren."""
     try:

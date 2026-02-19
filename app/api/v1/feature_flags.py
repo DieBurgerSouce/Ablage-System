@@ -22,7 +22,7 @@ from app.api.dependencies import get_current_superuser, get_current_user, get_db
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.db.models import User
 from app.services.feature_flag_service import get_feature_flag_service
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail, safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -258,7 +258,7 @@ async def create_feature_flag(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Feature-Flag"),
         )
     except Exception as e:
         logger.error(
@@ -376,7 +376,7 @@ async def update_feature_flag(
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Feature-Flag"),
         )
     except Exception as e:
         logger.error(

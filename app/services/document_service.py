@@ -138,13 +138,24 @@ class DocumentService:
         self,
         db: AsyncSession,
         document_id: UUID,
-        user_id: UUID
+        user_id: UUID,
+        company_id: Optional[UUID] = None
     ) -> Optional[DocumentDetailResponse]:
-        """Einzelnes Dokument mit allen Details abrufen."""
+        """Einzelnes Dokument mit allen Details abrufen.
+
+        Args:
+            db: Datenbank-Session
+            document_id: Dokument-ID
+            user_id: User-ID (Owner-Check)
+            company_id: Company-ID fuer Multi-Tenant-Isolation (Defense-in-Depth)
+        """
+        conditions = [Document.id == document_id, Document.owner_id == user_id]
+        if company_id is not None:
+            conditions.append(Document.company_id == company_id)
         query = (
             select(Document)
             .options(selectinload(Document.tags))
-            .where(and_(Document.id == document_id, Document.owner_id == user_id))
+            .where(and_(*conditions))
         )
 
         result = await db.execute(query)
@@ -163,12 +174,20 @@ class DocumentService:
         page: int = 1,
         per_page: int = 20,
         sort_by: SortField = SortField.CREATED_AT,
-        sort_order: SortOrder = SortOrder.DESC
+        sort_order: SortOrder = SortOrder.DESC,
+        company_id: Optional[UUID] = None
     ) -> DocumentListResponseExtended:
-        """Dokumente mit Filterung und Pagination auflisten."""
-        # Basis-Query
-        query = select(Document).where(Document.owner_id == user_id)
-        count_query = select(func.count(Document.id)).where(Document.owner_id == user_id)
+        """Dokumente mit Filterung und Pagination auflisten.
+
+        Args:
+            company_id: Company-ID fuer Multi-Tenant-Isolation (Defense-in-Depth)
+        """
+        # Basis-Query mit Owner + optionalem Company-Filter
+        conditions = [Document.owner_id == user_id]
+        if company_id is not None:
+            conditions.append(Document.company_id == company_id)
+        query = select(Document).where(and_(*conditions))
+        count_query = select(func.count(Document.id)).where(and_(*conditions))
 
         # Filter anwenden
         if filters:

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
 from app.api.dependencies import get_db, get_current_active_user, validate_company_access
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.services.workflow.kanban_service import (
     KanbanService, get_kanban_service, KanbanBoardData, KanbanItemData, KanbanStageData, StageStatistics
 )
@@ -223,7 +223,7 @@ async def move_item(
         logger.warning("kanban_move_item_invalid", item_id=str(item_id), error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Kanban")
         )
     except Exception as e:
         logger.error("kanban_move_item_failed", item_id=str(item_id), **safe_error_log(e))
@@ -265,7 +265,7 @@ async def add_item(
         logger.warning("kanban_add_item_invalid", document_id=str(request.document_id), error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Kanban")
         )
     except Exception as e:
         logger.error("kanban_add_item_failed", document_id=str(request.document_id), **safe_error_log(e))
@@ -378,7 +378,7 @@ async def update_stages(
         logger.warning("kanban_configure_stages_invalid", workflow_type=workflow_type, error=str(e))
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+            detail=safe_error_detail(e, "Kanban")
         )
     except Exception as e:
         logger.error("kanban_configure_stages_failed", workflow_type=workflow_type, **safe_error_log(e))

@@ -28,7 +28,7 @@ import structlog
 from app.api.dependencies import get_db, get_current_active_user
 from app.core.rate_limiting import limiter, get_user_identifier
 from app.db.models import User, PrivatSpace
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.services.privat.space_service import PrivatSpaceService
 from app.services.privat.tax_optimization_service import (
     get_tax_optimization_service,
@@ -533,7 +533,7 @@ async def get_document_tax_analysis(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Steuer"),
         )
     except Exception as e:
         logger.error(

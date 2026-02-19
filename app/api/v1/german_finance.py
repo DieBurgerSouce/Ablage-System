@@ -230,7 +230,7 @@ async def calculate_ust_voranmeldung(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Finanzbericht"),
         )
     except Exception as e:
         logger.error("ust_va_calculate_failed", **safe_error_log(e))
@@ -312,7 +312,7 @@ async def generate_elster_xml(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Finanzbericht"),
         )
     except Exception as e:
         logger.error("elster_xml_failed", **safe_error_log(e))
@@ -348,7 +348,7 @@ async def validate_ust_voranmeldung(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Finanzbericht"),
         )
 
 
@@ -506,7 +506,7 @@ async def export_bwa_pdf(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Finanzbericht"),
         )
 
 
@@ -561,7 +561,7 @@ async def get_bwa_comparison(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Finanzbericht"),
         )
 
 
@@ -715,7 +715,7 @@ async def what_if_scenario(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Finanzbericht"),
         )
     except Exception as e:
         logger.error("what_if_scenario_failed", **safe_error_log(e))
@@ -786,5 +786,5 @@ async def get_forecast_accuracy(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Finanzbericht"),
         )

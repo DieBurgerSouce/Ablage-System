@@ -12,6 +12,7 @@ from app.db.models import User
 from app.services.calendar.calendar_sync_service import CalendarSyncService, CalendarProvider
 
 import structlog
+from app.core.safe_errors import safe_error_detail
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/calendar-sync", tags=["Calendar Sync"])
@@ -252,7 +253,7 @@ async def oauth_authorize(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Kalender"),
         )
 
 

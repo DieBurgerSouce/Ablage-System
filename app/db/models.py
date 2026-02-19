@@ -3127,6 +3127,14 @@ class OCRTrainingSample(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
+    # Multi-Tenant
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="RESTRICT"),
+        nullable=True,  # nullable for backfill of existing data
+        index=True,
+    )
+
     # Dokumentreferenz
     file_path = Column(String(500), nullable=False)
     file_hash = Column(String(64), nullable=False, index=True)  # SHA-256
@@ -3193,6 +3201,8 @@ class OCRTrainingSample(Base):
 
     # Indexes
     __table_args__ = (
+        Index("ix_ocr_training_samples_company_id", "company_id"),
+        Index("ix_ocr_training_samples_company_status", "company_id", "status"),
         Index("ix_ocr_training_samples_status", "status"),
         Index("ix_ocr_training_samples_language", "language"),
         Index("ix_ocr_training_samples_document_type", "document_type"),
@@ -3384,6 +3394,14 @@ class OCRTrainingBatch(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
+    # Multi-Tenant
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="RESTRICT"),
+        nullable=True,  # nullable for backfill of existing data
+        index=True,
+    )
+
     # Batch Identifikation
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
@@ -3422,6 +3440,8 @@ class OCRTrainingBatch(Base):
 
     # Indexes
     __table_args__ = (
+        Index("ix_ocr_training_batches_company_id", "company_id"),
+        Index("ix_ocr_training_batches_company_status", "company_id", "status"),
         Index("ix_ocr_training_batches_status", "status"),
         Index("ix_ocr_training_batches_type", "batch_type"),
         Index("ix_ocr_training_batches_created", "created_at"),
@@ -3453,6 +3473,14 @@ class OCRTrainingBatchItem(Base):
     __tablename__ = "ocr_training_batch_items"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Multi-Tenant
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="RESTRICT"),
+        nullable=True,  # nullable for backfill of existing data
+        index=True,
+    )
 
     # Referenzen
     batch_id = Column(
@@ -3495,6 +3523,8 @@ class OCRTrainingBatchItem(Base):
 
     # Indexes
     __table_args__ = (
+        Index("ix_ocr_training_batch_items_company_id", "company_id"),
+        Index("ix_ocr_training_batch_items_company_status", "company_id", "status"),
         Index("ix_ocr_training_batch_items_batch", "batch_id"),
         Index("ix_ocr_training_batch_items_sample", "training_sample_id"),
         Index("ix_ocr_training_batch_items_status", "status"),
@@ -3771,6 +3801,14 @@ class OCRModelDeployment(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
+    # Multi-Tenant
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="RESTRICT"),
+        nullable=True,  # nullable for backfill of existing data
+        index=True,
+    )
+
     # Model Identifikation
     model_name = Column(String(100), nullable=False)
     version = Column(String(50), nullable=False)
@@ -3809,6 +3847,7 @@ class OCRModelDeployment(Base):
 
     # Indexes
     __table_args__ = (
+        Index("ix_ocr_model_deployments_company_id", "company_id"),
         Index("ix_ocr_model_deployments_model", "model_name"),
         Index("ix_ocr_model_deployments_active", "is_active"),
         Index("ix_ocr_model_deployments_model_version", "model_name", "version", unique=True),

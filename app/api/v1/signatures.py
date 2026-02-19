@@ -93,7 +93,7 @@ async def create_signature_request(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Signatur"),
         )
     except Exception as e:
         logger.error(
@@ -217,7 +217,7 @@ async def sign_document(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Signatur"),
         )
     except Exception as e:
         logger.error(
@@ -262,7 +262,7 @@ async def reject_signature(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Signatur"),
         )
     except Exception as e:
         logger.error(

@@ -13,12 +13,13 @@ import structlog
 from typing import Any, Dict, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db
+from app.core.rate_limiting import limiter, get_user_identifier
 from app.core.safe_errors import safe_error_log
 from app.db.models import Document, User
 
@@ -69,7 +70,9 @@ class PipelineStatusResponse(BaseModel):
         "Der zurueckgegebene task_id kann zur Statusverfolgung genutzt werden."
     ),
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def trigger_document_pipeline(
+    request: Request,
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),

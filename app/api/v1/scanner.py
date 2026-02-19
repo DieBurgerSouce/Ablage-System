@@ -13,6 +13,7 @@ from app.services.scanner.scanner_service import (
 )
 
 import structlog
+from app.core.safe_errors import safe_error_detail
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/scanner", tags=["Scanner"])
@@ -127,7 +128,7 @@ async def create_scan_job(body: ScanJobRequest, current_user: User = Depends(get
             duplex=body.duplex,
         )
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "Scanner"))
     return _job_to_response(job)
 
 @router.get("/jobs", response_model=List[ScanJobResponse])

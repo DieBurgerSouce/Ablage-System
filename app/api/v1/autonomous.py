@@ -17,6 +17,7 @@ from typing import Dict, List, Optional
 
 from app.core.types import JSONDict
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from app.core.safe_errors import safe_error_detail
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -839,7 +840,7 @@ async def update_amount_tiers(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Automatisierung"),
         )
     except Exception as e:
         raise HTTPException(

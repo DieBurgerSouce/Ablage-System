@@ -178,7 +178,7 @@ async def upload_and_parse_eml(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=str(e),
+            detail=safe_error_detail(e, "Import"),
         )
     except Exception as e:
         logger.error(

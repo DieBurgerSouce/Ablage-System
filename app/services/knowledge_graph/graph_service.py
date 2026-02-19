@@ -457,13 +457,16 @@ class KnowledgeGraphService:
         nodes: Dict[str, GraphNode] = {}
         edges: List[GraphEdge] = []
 
+        # Escape SQL LIKE wildcards to prevent injection
+        safe_query = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
         # Suche Entities
         entities_query = select(BusinessEntity).where(
             and_(
                 BusinessEntity.company_id == company_id,
                 or_(
-                    BusinessEntity.name.ilike(f"%{query}%"),
-                    BusinessEntity.primary_customer_number.ilike(f"%{query}%"),
+                    BusinessEntity.name.ilike(f"%{safe_query}%"),
+                    BusinessEntity.primary_customer_number.ilike(f"%{safe_query}%"),
                 ),
             )
         ).limit(20)

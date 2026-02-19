@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db
 from app.core.rate_limiting import limiter
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.db.models_document_lifecycle import DocumentLifecycleStage
 from app.services.document_lifecycle_service import (
@@ -389,7 +389,7 @@ async def transition_document_stage(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Lebenszyklus"),
         )
     except Exception as e:
         logger.error(

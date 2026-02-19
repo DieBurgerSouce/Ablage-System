@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
 from app.api.dependencies import get_db, get_current_active_user
+from app.core.rate_limiting import limiter, get_user_identifier
 from app.api.schemas.approval_matrix import (
     ApprovalMatrixCreate,
     ApprovalMatrixUpdate,
@@ -61,7 +62,9 @@ router = APIRouter(prefix="/approval-matrix", tags=["Genehmigungsmatrix"])
     summary="Matrix-Eintraege auflisten",
     description="Listet alle Genehmigungsmatrix-Eintraege fuer die Firma auf"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def list_matrices(
+    request: Request,
     department: Optional[str] = Query(None, description="Nach Abteilung filtern"),
     active_only: bool = Query(True, description="Nur aktive Eintraege"),
     current_user: User = Depends(get_current_active_user),
@@ -91,7 +94,9 @@ async def list_matrices(
     summary="Matrix-Eintrag erstellen",
     description="Erstellt einen neuen Matrix-Eintrag"
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def create_matrix(
+    request: Request,
     data: ApprovalMatrixCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -126,7 +131,9 @@ async def create_matrix(
     summary="Matrix-Eintrag aktualisieren",
     description="Aktualisiert einen vorhandenen Matrix-Eintrag"
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def update_matrix(
+    request: Request,
     matrix_id: UUID,
     data: ApprovalMatrixUpdate,
     current_user: User = Depends(get_current_active_user),
@@ -174,7 +181,9 @@ async def update_matrix(
     summary="Matrix-Eintrag loeschen",
     description="Deaktiviert einen Matrix-Eintrag (Soft Delete)"
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def delete_matrix(
+    request: Request,
     matrix_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -222,7 +231,9 @@ async def delete_matrix(
     summary="Chain Templates auflisten",
     description="Listet alle Chain Templates fuer die Firma auf"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def list_chain_templates(
+    request: Request,
     active_only: bool = Query(True, description="Nur aktive Templates"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -250,7 +261,9 @@ async def list_chain_templates(
     summary="Chain Template erstellen",
     description="Erstellt eine neue Chain Template"
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def create_chain_template(
+    request: Request,
     data: ApprovalChainTemplateCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -285,7 +298,9 @@ async def create_chain_template(
     summary="Chain Template aktualisieren",
     description="Aktualisiert eine vorhandene Chain Template"
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def update_chain_template(
+    request: Request,
     template_id: UUID,
     data: ApprovalChainTemplateUpdate,
     current_user: User = Depends(get_current_active_user),
@@ -317,10 +332,6 @@ async def update_chain_template(
     # Apply updates
     updates = data.model_dump(exclude_unset=True)
 
-    # Convert steps_config to dicts if present
-    if "steps_config" in updates and updates["steps_config"] is not None:
-        updates["steps_config"] = [step.model_dump() for step in updates["steps_config"]]
-
     for key, value in updates.items():
         if hasattr(template, key):
             setattr(template, key, value)
@@ -337,7 +348,9 @@ async def update_chain_template(
     summary="Chain Template loeschen",
     description="Deaktiviert eine Chain Template (Soft Delete)"
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def delete_chain_template(
+    request: Request,
     template_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -379,7 +392,9 @@ async def delete_chain_template(
     summary="Audit Trail abrufen",
     description="Ruft den vollstaendigen Audit Trail fuer eine Genehmigung ab"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_audit_trail(
+    request: Request,
     request_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -400,9 +415,9 @@ async def get_audit_trail(
         )
     )
     result = await db.execute(query)
-    request = result.scalar_one_or_none()
+    approval_request = result.scalar_one_or_none()
 
-    if not request:
+    if not approval_request:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Genehmigungsanfrage nicht gefunden"
@@ -440,7 +455,9 @@ async def get_audit_trail(
     summary="Gruppen auflisten",
     description="Listet alle Genehmigungsgruppen fuer die Firma auf"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def list_groups(
+    request: Request,
     active_only: bool = Query(True, description="Nur aktive Gruppen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -475,7 +492,9 @@ async def list_groups(
     summary="Gruppe erstellen",
     description="Erstellt eine neue Genehmigungsgruppe"
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def create_group(
+    request: Request,
     data: ApprovalGroupCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
@@ -507,7 +526,9 @@ async def create_group(
     summary="Gruppenmitglied hinzufuegen",
     description="Fuegt ein Mitglied zur Gruppe hinzu"
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def add_group_member(
+    request: Request,
     group_id: UUID,
     data: ApprovalGroupMemberAdd,
     current_user: User = Depends(get_current_active_user),
@@ -557,7 +578,9 @@ async def add_group_member(
     summary="Gruppenmitglied entfernen",
     description="Entfernt ein Mitglied aus der Gruppe"
 )
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def remove_group_member(
+    request: Request,
     group_id: UUID,
     user_id: UUID,
     current_user: User = Depends(get_current_active_user),
@@ -616,7 +639,9 @@ async def remove_group_member(
     summary="Matrix Lookup",
     description="Findet den passenden Matrix-Eintrag fuer eine Genehmigung"
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def lookup_matrix(
+    request: Request,
     data: MatrixLookupRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),

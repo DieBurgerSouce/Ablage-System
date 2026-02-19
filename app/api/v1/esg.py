@@ -9,6 +9,7 @@ from typing import Optional, List, Dict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from app.core.safe_errors import safe_error_detail
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -153,7 +154,7 @@ async def calculate_emissions(
         )
         return result
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "ESG-Bericht"))
 
 
 @router.post("/carbon-footprint")
@@ -192,7 +193,7 @@ async def record_carbon_emissions(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "ESG-Bericht"))
 
 
 @router.get("/carbon-footprint")
@@ -426,7 +427,7 @@ async def add_certification(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "ESG-Bericht"))
 
 
 @router.get("/certifications")
@@ -569,7 +570,7 @@ async def generate_report(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "ESG-Bericht"))
 
 
 @router.get("/reports")
@@ -658,7 +659,7 @@ async def create_goal(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "ESG-Bericht"))
 
 
 @router.get("/goals")
@@ -708,7 +709,7 @@ async def update_goal_progress(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=safe_error_detail(e, "ESG-Bericht"))
 
 
 @router.get("/sdg-mapping")

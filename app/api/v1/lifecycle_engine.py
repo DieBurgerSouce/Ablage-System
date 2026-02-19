@@ -40,7 +40,7 @@ from app.api.schemas.lifecycle import (
 )
 from app.core.exceptions import ArchiveError, DocumentNotFoundError
 from app.core.rate_limiting import limiter
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.document_lifecycle_engine import document_lifecycle_engine
 
@@ -191,9 +191,23 @@ async def extend_document_retention(
     Die neue Frist wird ab heute berechnet.
     """
     try:
-        # Alten Stand merken
-        from sqlalchemy import select
-        from app.db.models import DocumentArchive
+        # Alten Stand merken (Multi-Tenant: company_id Isolation)
+        from sqlalchemy import select, and_
+        from app.db.models import Document, DocumentArchive
+
+        # Defense-in-Depth: Erst pruefen ob Dokument zur Firma gehoert
+        doc_check = await db.execute(
+            select(Document.id).where(
+                and_(
+                    Document.id == document_id,
+                    Document.company_id == current_user.company_id,
+                )
+            )
+        )
+        if doc_check.scalar_one_or_none() is None:
+            raise ArchiveError(
+                f"Dokument {document_id} nicht gefunden oder keine Berechtigung"
+            )
 
         old_result = await db.execute(
             select(DocumentArchive)
@@ -229,7 +243,7 @@ async def extend_document_retention(
     except ArchiveError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Lebenszyklus"),
         )
     except Exception as e:
         logger.error(
@@ -298,6 +312,23 @@ async def create_destruction_protocol(
     Nur Dokumente mit abgelaufener Frist werden zur Vernichtung freigegeben.
     """
     try:
+        # Multi-Tenant: Nur Dokumente der eigenen Firma zulassen
+        from sqlalchemy import select
+        from app.db.models import Document
+
+        owned_result = await db.execute(
+            select(Document.id).where(
+                Document.id.in_(body.document_ids),
+                Document.company_id == current_user.company_id,
+            )
+        )
+        owned_ids = {row[0] for row in owned_result.all()}
+        unauthorized_ids = set(body.document_ids) - owned_ids
+        if unauthorized_ids:
+            raise ArchiveError(
+                f"{len(unauthorized_ids)} Dokument(e) nicht gefunden oder keine Berechtigung"
+            )
+
         protocol = await document_lifecycle_engine.generate_destruction_protocol(
             db,
             document_ids=body.document_ids,

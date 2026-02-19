@@ -333,7 +333,7 @@ async def define_sla(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Workflow-Analyse"),
         )
 
 
@@ -396,7 +396,7 @@ async def start_sla_tracking(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Workflow-Analyse"),
         )
 
 
@@ -570,7 +570,7 @@ async def create_parallel_approval(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Workflow-Analyse"),
         )
 
 
@@ -610,7 +610,7 @@ async def record_vote(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Workflow-Analyse"),
         )
 
 
@@ -657,7 +657,7 @@ async def get_approval_status(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Workflow-Analyse"),
         )
 
 
@@ -736,7 +736,7 @@ async def cancel_approval(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+            detail=safe_error_detail(e, "Workflow-Analyse"),
         )
 
 
@@ -783,5 +783,5 @@ async def list_workflow_approvals(
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e),
+            detail=safe_error_detail(e, "Workflow-Analyse"),
         )
