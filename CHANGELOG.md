@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Frontend: InvoiceWorkflowPage - data-tour Attribute fuer Onboarding-Tour-Integration (workflow-approval, workflow-review Cards)
+
+### Added
 - Services: Zero-Touch End-to-End Pipeline Chain (OCR -> Klassifizierung -> Entity-Linking -> Kontierung -> 3-Way-Matching -> Ablage) mit Confidence-Scoring und Graceful Degradation
 - Services: Auto-Kontierung Service fuer DATEV SKR03/SKR04 mit GoBD-konformer Buchungslogik (kein PII-Logging)
 - Services: 3-Way-Matching Service (Bestellung <-> Lieferschein <-> Rechnung, Auto-Freigabe >= 95% Confidence)
