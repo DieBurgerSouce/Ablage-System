@@ -337,6 +337,7 @@ celery_app = Celery(
         "app.workers.tasks.event_sourcing_tasks",
         "app.workers.tasks.extended_alerts_tasks",
         "app.workers.tasks.gobd_compliance_tasks",
+        "app.workers.tasks.saga_tasks",
         "app.workers.tasks.hygiene_tasks",
         "app.workers.tasks.import_tasks",
         "app.workers.tasks.knowledge_graph_tasks",
@@ -355,6 +356,10 @@ celery_app = Celery(
         "app.workers.contract_deadline_checker",
         "app.workers.tasks_lifecycle",
         "app.workers.tasks_data_quality",
+        # --- Security Haertung Phase 1.2 ---
+        "app.workers.vault_tasks",
+        # --- Phase 3: Integration Pipeline ---
+        "app.workers.pipeline_tasks",
     ]
 )
 
@@ -705,11 +710,6 @@ celery_app.conf.update(
         "cleanup-expired-verification-tokens-daily": {
             "task": "app.workers.tasks.cleanup_tasks.cleanup_expired_verification_tokens",
             "schedule": crontab(hour=2, minute=30),  # Täglich um 02:30 Uhr
-        },
-        # Vault Secret Refresh (Security)
-        "vault-refresh-secrets": {
-            "task": "vault.refresh_secrets",
-            "schedule": 300.0,  # Alle 5 Minuten (VAULT_SECRET_REFRESH_INTERVAL default)
         },
         # ML/Drift Detection Tasks
         "ml-drift-detection": {
@@ -1165,6 +1165,13 @@ celery_app.conf.update(
             "schedule": 1800.0,  # 30 Minuten
         },
         # =================================================================
+        # Inbound Webhook Retry (Phase 3: stuck FAILED Events)
+        # =================================================================
+        "webhook-inbound-retry-failed": {
+            "task": "app.workers.tasks.webhook_inbound_tasks.retry_failed_inbound_webhooks",
+            "schedule": 1800.0,  # 30 Minuten
+        },
+        # =================================================================
         # Contract Management Tasks (Vertragsmanagement)
         # Automatische Erinnerungen, Status-Updates, Verlängerungen
         # =================================================================
@@ -1326,6 +1333,19 @@ celery_app.conf.update(
         "gobd-retention-warnings-daily": {
             "task": "app.workers.tasks.gobd_compliance_tasks.check_retention_warnings_task",
             "schedule": crontab(hour=9, minute=15),
+        },
+        # Stuendlich: Audit-Chain Integritaet verifizieren (Compliance Phase 2)
+        "gobd-audit-chain-hourly": {
+            "task": "app.workers.tasks.gobd_compliance_tasks.verify_audit_chain_task",
+            "schedule": 3600.0,
+        },
+        # =================================================================
+        # Saga Dead Letter Queue Processing (Compliance Phase 2)
+        # =================================================================
+        # Halbstuendlich: DLQ Sagas verarbeiten
+        "saga-dlq-processing": {
+            "task": "saga.process_dead_letter_queue",
+            "schedule": 1800.0,
         },
         # =================================================================
         # MLOps Pipeline Tasks (Model Lifecycle Management)
@@ -2375,6 +2395,16 @@ celery_app.conf.update(
             "schedule": crontab(hour=6, minute=0),
             "options": {"queue": "maintenance"},
         },
+        # =================================================================
+        # Vault Secret Rotation (Phase 1.2 - Security Haertung)
+        # Periodische Erneuerung der Vault-Secrets
+        # =================================================================
+        # Alle 5 Minuten: Vault-Secrets aktualisieren
+        "vault-secret-refresh": {
+            "task": "vault.refresh_secrets",
+            "schedule": 300.0,  # Alle 5 Minuten (= VAULT_SECRET_REFRESH_INTERVAL)
+            "options": {"queue": "maintenance"},
+        },
     },
 
     # Queue routing
@@ -2616,6 +2646,15 @@ celery_app.conf.update(
         "app.workers.tasks.import_tasks.retry_single_email": {"queue": "default", "priority": 6},
         "app.workers.tasks.import_tasks.retry_single_file": {"queue": "default", "priority": 6},
         # =================================================================
+        # Pipeline Chain Tasks (Phase 3: OCR -> Kontierung -> Matching)
+        # =================================================================
+        "pipeline.process_document": {"queue": "metadata", "priority": 4},
+        "pipeline.retry_step": {"queue": "metadata", "priority": 5},
+        # =================================================================
+        # Inbound Webhook Retry (Phase 3: Stuck FAILED Events)
+        # =================================================================
+        "app.workers.tasks.webhook_inbound_tasks.retry_failed_inbound_webhooks": {"queue": "maintenance", "priority": 3},
+        # =================================================================
         # Collaboration Tasks (Digest, Tasks, Escalation)
         # =================================================================
         # Digest-Verarbeitung (Emails)
@@ -2639,6 +2678,8 @@ celery_app.conf.update(
         "app.workers.tasks.gobd_compliance_tasks.check_retention_warnings_task": {"queue": "maintenance", "priority": 4},
         # Chain-Statistiken (CPU, niedrige Priorität)
         "app.workers.tasks.gobd_compliance_tasks.generate_chain_statistics_task": {"queue": "maintenance", "priority": 2},
+        # Saga DLQ tasks (Compliance Phase 2)
+        "saga.process_dead_letter_queue": {"queue": "maintenance", "priority": 3},
         # =================================================================
         # Contract Management Tasks (Vertragsmanagement)
         # =================================================================
@@ -2971,6 +3012,10 @@ celery_app.conf.update(
         "app.workers.tasks.adhoc_report_tasks.run_scheduled_reports_task": {"queue": "maintenance", "priority": 3},
         "app.workers.tasks.adhoc_report_tasks.send_scheduled_report_email_task": {"queue": "notifications", "priority": 4},
         "app.workers.tasks.adhoc_report_tasks.cleanup_old_report_exports_task": {"queue": "maintenance", "priority": 1},
+        # =================================================================
+        # Vault Secret Rotation (Phase 1.2 - Security Haertung)
+        # =================================================================
+        "vault.refresh_secrets": {"queue": "maintenance", "priority": 2},
     },
 
     # Priority settings

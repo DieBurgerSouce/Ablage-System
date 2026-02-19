@@ -371,24 +371,40 @@ def process_document_task(
                     if dup_result.has_duplicates and dup_result.best_match:
                         best = dup_result.best_match
                         if best.duplicate_type == "exact" and best.similarity >= 0.99:
+                            # OCR-Ergebnisse vom Duplikat kopieren
+                            from sqlalchemy import select as _select
+                            dup_stmt = _select(Document).where(Document.id == best.document_id)
+                            dup_result_row = await session.execute(dup_stmt)
+                            dup_doc = dup_result_row.scalar_one_or_none()
+                            copied_text = dup_doc.extracted_text if dup_doc else None
+                            copied_confidence = dup_doc.ocr_confidence if dup_doc else None
+                            copied_backend = dup_doc.ocr_backend_used if dup_doc else None
+
+                            if copied_text:
+                                document.extracted_text = copied_text
+                                document.ocr_confidence = copied_confidence
+                                document.ocr_backend_used = f"{copied_backend or 'unknown'}_copied"
+
                             logger.warning(
                                 "ocr_skipped_duplicate",
                                 document_id=document_id,
                                 duplicate_of=str(best.document_id),
+                                ocr_text_copied=copied_text is not None,
                             )
-                            metadata = document.metadata or {}
+                            metadata = document.document_metadata or {}
                             metadata["potential_duplicate"] = True
                             metadata["duplicate_of"] = str(best.document_id)
                             metadata["ocr_skipped_reason"] = "exact_duplicate"
-                            document.metadata = metadata
+                            metadata["ocr_copied_from"] = str(best.document_id)
+                            document.document_metadata = metadata
                             document.status = ProcessingStatus.COMPLETED
                             await session.commit()
                             return {
                                 "success": True,
                                 "document_id": document_id,
-                                "text": None,
-                                "confidence": 0.0,
-                                "backend_used": "skipped",
+                                "text": copied_text,
+                                "confidence": copied_confidence or 0.0,
+                                "backend_used": "skipped_duplicate_copy",
                                 "processing_time_ms": 0,
                                 "skipped_reason": "exact_duplicate",
                             }
@@ -541,10 +557,27 @@ def process_document_task(
                         from PIL import Image as _Image
                         img = _Image.open(io.BytesIO(file_content))
                         phash = str(_imagehash.phash(img, hash_size=16))
-                        doc_metadata = document.metadata or {}
+                        doc_metadata = document.document_metadata or {}
                         doc_metadata["perceptual_hash"] = phash
-                        document.metadata = doc_metadata
+                        document.document_metadata = doc_metadata
                         await session.commit()
+                    except Exception:
+                        pass  # pHash-Berechnung ist optional
+                elif document.mime_type == "application/pdf":
+                    try:
+                        import imagehash as _imagehash
+                        from PIL import Image as _Image
+                        import fitz as _fitz
+                        pdf_doc = _fitz.open(stream=file_content, filetype="pdf")
+                        if len(pdf_doc) > 0:
+                            pix = pdf_doc[0].get_pixmap(dpi=72)
+                            img = _Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                            phash = str(_imagehash.phash(img, hash_size=16))
+                            doc_metadata = document.document_metadata or {}
+                            doc_metadata["perceptual_hash"] = phash
+                            document.document_metadata = doc_metadata
+                            await session.commit()
+                        pdf_doc.close()
                     except Exception:
                         pass  # pHash-Berechnung ist optional
 

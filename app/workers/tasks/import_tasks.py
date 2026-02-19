@@ -13,7 +13,7 @@ Feinpoliert und durchdacht - Zuverlässige Import-Automatisierung.
 
 import structlog
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TypedDict
 from uuid import UUID
 
 from celery import shared_task
@@ -33,6 +33,123 @@ logger = structlog.get_logger(__name__)
 
 
 # =============================================================================
+# TypedDict Return Types
+# =============================================================================
+
+
+class _BatchErrorEntry(TypedDict, total=False):
+    """Einzelner Fehler-Eintrag in Batch-Ergebnissen."""
+    config_id: str
+    error: str
+
+
+class EmailSyncBatchResult(TypedDict):
+    """Rueckgabe von sync_all_email_configs."""
+    configs_processed: int
+    emails_processed: int
+    documents_created: int
+    errors: List[Any]
+
+
+class EmailSyncResult(TypedDict):
+    """Rueckgabe von sync_email_config."""
+    emails_processed: int
+    documents_created: int
+    duplicates_skipped: int
+    errors: List[Any]
+
+
+class FolderPollBatchResult(TypedDict):
+    """Rueckgabe von poll_all_folder_configs."""
+    configs_processed: int
+    files_processed: int
+    documents_created: int
+    errors: List[Any]
+
+
+class FolderPollResult(TypedDict):
+    """Rueckgabe von poll_folder_config."""
+    files_processed: int
+    documents_created: int
+    duplicates_skipped: int
+    errors: List[Any]
+
+
+class RetryBatchResult(TypedDict, total=False):
+    """Rueckgabe von retry_failed_imports."""
+    retried: int
+    successful: int
+    failed: int
+    error: str
+
+
+class RetryImportResult(TypedDict, total=False):
+    """Rueckgabe von retry_import_task."""
+    success: bool
+    error: str
+    log_id: str
+    type: str
+
+
+class EmailRetryResult(TypedDict, total=False):
+    """Rueckgabe von retry_single_email."""
+    success: bool
+    error: str
+    documents_created: int
+    error_type: str
+    error_message: str
+    timestamp: str
+
+
+class FileRetryResult(TypedDict, total=False):
+    """Rueckgabe von retry_single_file."""
+    success: bool
+    error: str
+    document_id: str
+    skipped: bool
+    reason: str
+    error_type: str
+    error_message: str
+    timestamp: str
+
+
+class CleanupResult(TypedDict):
+    """Rueckgabe von cleanup_old_import_logs."""
+    deleted: int
+    retention_days: int
+
+
+class ResetStatsResult(TypedDict):
+    """Rueckgabe von reset_daily_folder_stats."""
+    configs_reset: int
+
+
+class ApplyRulesResult(TypedDict):
+    """Rueckgabe von apply_rules_to_pending_imports."""
+    logs_checked: int
+    rules_applied: int
+
+
+class ScanFolderResult(TypedDict, total=False):
+    """Rueckgabe von scan_import_folder."""
+    folder_path: str
+    config_found: bool
+    config_id: str
+    files_processed: int
+    documents_created: int
+    duplicates_skipped: int
+    errors: List[Any]
+
+
+class ConnectionHealthResult(TypedDict):
+    """Rueckgabe von check_email_connection_health."""
+    total: int
+    healthy: int
+    unhealthy: int
+    errors: List[Dict[str, Any]]
+
+
+# =============================================================================
 # Email Sync Tasks
 # =============================================================================
 
@@ -43,7 +160,7 @@ logger = structlog.get_logger(__name__)
     max_retries=2,
     default_retry_delay=300,
 )
-def sync_all_email_configs(self) -> Dict[str, Any]:
+def sync_all_email_configs(self) -> EmailSyncBatchResult:
     """Synchronisiert alle aktiven Email-Konfigurationen.
 
     Wird periodisch via Celery Beat aufgerufen.
@@ -55,7 +172,7 @@ def sync_all_email_configs(self) -> Dict[str, Any]:
     import asyncio
     from app.services.imports import EmailImportService
 
-    async def _sync_all():
+    async def _sync_all() -> EmailSyncBatchResult:
         stats = {
             "configs_processed": 0,
             "emails_processed": 0,
@@ -122,7 +239,7 @@ def sync_all_email_configs(self) -> Dict[str, Any]:
         return stats
 
     try:
-        result = asyncio.get_event_loop().run_until_complete(_sync_all())
+        result = asyncio.run(_sync_all())
         logger.info(
             "email_sync_batch_completed",
             configs=result["configs_processed"],
@@ -141,7 +258,7 @@ def sync_all_email_configs(self) -> Dict[str, Any]:
     max_retries=3,
     default_retry_delay=60,
 )
-def sync_email_config(self, config_id: str, user_id: str, max_emails: int = 100) -> Dict[str, Any]:
+def sync_email_config(self, config_id: str, user_id: str, max_emails: int = 100) -> EmailSyncResult:
     """Synchronisiert eine einzelne Email-Konfiguration.
 
     Kann manuell oder scheduled aufgerufen werden.
@@ -157,7 +274,7 @@ def sync_email_config(self, config_id: str, user_id: str, max_emails: int = 100)
     import asyncio
     from app.services.imports import EmailImportService
 
-    async def _sync():
+    async def _sync() -> EmailSyncResult:
         async with get_async_session_context() as db:
             service = EmailImportService(db)
             result = await service.sync_emails(
@@ -173,7 +290,7 @@ def sync_email_config(self, config_id: str, user_id: str, max_emails: int = 100)
             }
 
     try:
-        return asyncio.get_event_loop().run_until_complete(_sync())
+        return asyncio.run(_sync())
     except Exception as e:
         logger.error(
             "email_sync_task_failed",
@@ -194,7 +311,7 @@ def sync_email_config(self, config_id: str, user_id: str, max_emails: int = 100)
     max_retries=2,
     default_retry_delay=60,
 )
-def poll_all_folder_configs(self) -> Dict[str, Any]:
+def poll_all_folder_configs(self) -> FolderPollBatchResult:
     """Pollt alle aktiven Folder-Konfigurationen.
 
     Dient als Fallback wenn Watchdog nicht läuft
@@ -208,7 +325,7 @@ def poll_all_folder_configs(self) -> Dict[str, Any]:
     import asyncio
     from app.services.imports import FolderImportService
 
-    async def _poll_all():
+    async def _poll_all() -> FolderPollBatchResult:
         stats = {
             "configs_processed": 0,
             "files_processed": 0,
@@ -275,7 +392,7 @@ def poll_all_folder_configs(self) -> Dict[str, Any]:
         return stats
 
     try:
-        result = asyncio.get_event_loop().run_until_complete(_poll_all())
+        result = asyncio.run(_poll_all())
         logger.info(
             "folder_poll_batch_completed",
             configs=result["configs_processed"],
@@ -294,7 +411,7 @@ def poll_all_folder_configs(self) -> Dict[str, Any]:
     max_retries=3,
     default_retry_delay=30,
 )
-def poll_folder_config(self, config_id: str, user_id: str) -> Dict[str, Any]:
+def poll_folder_config(self, config_id: str, user_id: str) -> FolderPollResult:
     """Pollt eine einzelne Folder-Konfiguration.
 
     Args:
@@ -307,7 +424,7 @@ def poll_folder_config(self, config_id: str, user_id: str) -> Dict[str, Any]:
     import asyncio
     from app.services.imports import FolderImportService
 
-    async def _poll():
+    async def _poll() -> FolderPollResult:
         async with get_async_session_context() as db:
             service = FolderImportService(db)
             result = await service.poll_folder(
@@ -322,7 +439,7 @@ def poll_folder_config(self, config_id: str, user_id: str) -> Dict[str, Any]:
             }
 
     try:
-        return asyncio.get_event_loop().run_until_complete(_poll())
+        return asyncio.run(_poll())
     except Exception as e:
         logger.error(
             "folder_poll_task_failed",
@@ -342,7 +459,7 @@ def poll_folder_config(self, config_id: str, user_id: str) -> Dict[str, Any]:
     bind=True,
     max_retries=1,
 )
-def retry_failed_imports(self) -> Dict[str, Any]:
+def retry_failed_imports(self) -> RetryBatchResult:
     """Wiederholt fehlgeschlagene Imports.
 
     Versucht Imports die mit bestimmten Fehlern fehlgeschlagen
@@ -356,7 +473,7 @@ def retry_failed_imports(self) -> Dict[str, Any]:
     import asyncio
     from app.services.imports import EmailImportService, FolderImportService
 
-    async def _retry_all():
+    async def _retry_all() -> RetryBatchResult:
         stats = {
             "retried": 0,
             "successful": 0,
@@ -435,14 +552,14 @@ def retry_failed_imports(self) -> Dict[str, Any]:
         return stats
 
     try:
-        return asyncio.get_event_loop().run_until_complete(_retry_all())
+        return asyncio.run(_retry_all())
     except Exception as e:
         logger.error("retry_failed_imports_error", **safe_error_log(e))
         return {"error": safe_error_detail(e, "Vorgang")}
 
 
 @celery_app.task(name="app.workers.tasks.import_tasks.retry_import_task")
-def retry_import_task(log_id: str) -> Dict[str, Any]:
+def retry_import_task(log_id: str) -> RetryImportResult:
     """Wiederholt einen einzelnen fehlgeschlagenen Import.
 
     Dispatcht automatisch zum richtigen Retry-Task basierend auf source_type.
@@ -455,7 +572,7 @@ def retry_import_task(log_id: str) -> Dict[str, Any]:
     """
     import asyncio
 
-    async def _retry():
+    async def _retry() -> RetryImportResult:
         async with get_async_session_context() as db:
             result = await db.execute(
                 select(ImportLog).where(ImportLog.id == UUID(log_id))
@@ -500,7 +617,7 @@ def retry_import_task(log_id: str) -> Dict[str, Any]:
             else:
                 return {"success": False, "error": "Unbekannter Import-Typ"}
 
-    return asyncio.get_event_loop().run_until_complete(_retry())
+    return asyncio.run(_retry())
 
 
 @celery_app.task(
@@ -514,7 +631,7 @@ def retry_single_email(
     config_id: str,
     email_uid: int,
     log_id: str,
-) -> Dict[str, Any]:
+) -> EmailRetryResult:
     """Wiederholt den Import einer einzelnen E-Mail.
 
     Holt die E-Mail erneut via IMAP und verarbeitet die Anhaenge.
@@ -531,7 +648,7 @@ def retry_single_email(
     from uuid import UUID
     from datetime import datetime, timezone
 
-    async def _retry_email():
+    async def _retry_email() -> EmailRetryResult:
         from app.services.imports.email_import_service import (
             EmailImportService,
             IMAP_AVAILABLE,
@@ -661,7 +778,7 @@ def retry_single_email(
 
                 return {"success": False, **safe_error_log(e)}
 
-    return asyncio.get_event_loop().run_until_complete(_retry_email())
+    return asyncio.run(_retry_email())
 
 
 @celery_app.task(
@@ -675,7 +792,7 @@ def retry_single_file(
     config_id: Optional[str],
     file_path: str,
     log_id: str,
-) -> Dict[str, Any]:
+) -> FileRetryResult:
     """Wiederholt den Import einer einzelnen Datei.
 
     Args:
@@ -692,7 +809,7 @@ def retry_single_file(
     from datetime import datetime, timezone
     from pathlib import Path
 
-    async def _retry_file():
+    async def _retry_file() -> FileRetryResult:
         async with get_async_session_context() as db:
             # Import-Log laden
             log_result = await db.execute(
@@ -811,7 +928,7 @@ def retry_single_file(
 
                 return {"success": False, **safe_error_log(e)}
 
-    return asyncio.get_event_loop().run_until_complete(_retry_file())
+    return asyncio.run(_retry_file())
 
 
 # =============================================================================
@@ -820,7 +937,7 @@ def retry_single_file(
 
 
 @celery_app.task(name="app.workers.tasks.import_tasks.cleanup_old_import_logs")
-def cleanup_old_import_logs(retention_days: int = 90) -> Dict[str, Any]:
+def cleanup_old_import_logs(retention_days: int = 90) -> CleanupResult:
     """Löscht alte Import-Logs.
 
     Typisches Schedule: Täglich um 03:00.
@@ -833,7 +950,7 @@ def cleanup_old_import_logs(retention_days: int = 90) -> Dict[str, Any]:
     """
     import asyncio
 
-    async def _cleanup():
+    async def _cleanup() -> CleanupResult:
         cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
 
         async with get_async_session_context() as db:
@@ -868,11 +985,11 @@ def cleanup_old_import_logs(retention_days: int = 90) -> Dict[str, Any]:
 
             return {"deleted": count, "retention_days": retention_days}
 
-    return asyncio.get_event_loop().run_until_complete(_cleanup())
+    return asyncio.run(_cleanup())
 
 
 @celery_app.task(name="app.workers.tasks.import_tasks.reset_daily_folder_stats")
-def reset_daily_folder_stats() -> Dict[str, Any]:
+def reset_daily_folder_stats() -> ResetStatsResult:
     """Setzt tägliche Folder-Statistiken zurück.
 
     Typisches Schedule: Täglich um 00:00.
@@ -882,7 +999,7 @@ def reset_daily_folder_stats() -> Dict[str, Any]:
     """
     import asyncio
 
-    async def _reset():
+    async def _reset() -> ResetStatsResult:
         async with get_async_session_context() as db:
             result = await db.execute(
                 update(FolderImportConfig)
@@ -900,7 +1017,259 @@ def reset_daily_folder_stats() -> Dict[str, Any]:
 
             return {"configs_reset": affected}
 
-    return asyncio.get_event_loop().run_until_complete(_reset())
+    return asyncio.run(_reset())
+
+
+# =============================================================================
+# Folder Import Rule Tasks (konsolidiert aus folder_import_rule_tasks.py)
+# =============================================================================
+
+
+@celery_app.task(
+    bind=True,
+    name="folder_import_rules.apply_pending",
+    acks_late=True,
+    max_retries=2,
+    default_retry_delay=120,
+    soft_time_limit=300,
+    time_limit=360,
+)
+def apply_rules_to_pending_imports(self, company_id: str) -> ApplyRulesResult:
+    """Wendet Import-Regeln auf kuerzlich importierte Dokumente an.
+
+    Re-evaluiert Regeln auf Dokumente die importiert wurden bevor
+    die Regel erstellt wurde (z.B. neue Regeln die rueckwirkend
+    angewendet werden sollen).
+
+    Durchsucht ImportLog-Eintraege mit status='completed' der
+    letzten 24 Stunden.
+
+    Args:
+        company_id: UUID der Firma (als String) fuer Mandanten-Trennung
+
+    Returns:
+        Dict mit Auswertungs-Statistiken
+    """
+    import asyncio
+    import uuid as _uuid
+
+    async def _apply_rules_pending_async(company_id_str: str) -> ApplyRulesResult:
+        from app.services.imports.import_rule_service import ImportRuleService
+
+        async with get_async_session_context() as db:
+            company_uuid: Optional[_uuid.UUID] = None
+            if company_id_str:
+                try:
+                    company_uuid = _uuid.UUID(company_id_str)
+                except ValueError:
+                    logger.error(
+                        "apply_pending_invalid_company_id",
+                        company_id=company_id_str,
+                    )
+                    raise ValueError(
+                        f"Ungueltige Firmen-ID: {company_id_str}"
+                    )
+
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+
+            query = (
+                select(ImportLog)
+                .where(
+                    and_(
+                        ImportLog.status == "completed",
+                        ImportLog.completed_at >= cutoff,
+                        ImportLog.source_type == "folder",
+                    )
+                )
+                .limit(200)
+            )
+
+            result = await db.execute(query)
+            logs = result.scalars().all()
+
+            rules_applied: int = 0
+
+            for log in logs:
+                if not log.document_id or not log.user_id:
+                    continue
+                try:
+                    rule_service = ImportRuleService(db)
+                    original_filename: str = log.original_filename or ""
+                    file_extension: str = ""
+                    if original_filename and "." in original_filename:
+                        file_extension = "." + original_filename.rsplit(".", 1)[-1].lower()
+
+                    metadata: Dict[str, Any] = {
+                        "filename": original_filename,
+                        "file_extension": file_extension,
+                        "file_size": log.file_size or 0,
+                        "mime_type": log.mime_type or "",
+                        "folder_path": log.original_path or "",
+                    }
+
+                    matches = await rule_service.evaluate_rules(
+                        user_id=log.user_id,
+                        metadata=metadata,
+                        source_type="folder",
+                        config_id=log.folder_config_id,
+                    )
+
+                    if matches:
+                        rules_applied += 1
+                        rule_service.apply_actions(matches)
+                        logger.debug(
+                            "pending_import_rules_applied",
+                            log_id=str(log.id),
+                            document_id=str(log.document_id),
+                            rule_count=len(matches),
+                        )
+
+                except Exception as e:
+                    logger.warning(
+                        "rule_reeval_failed",
+                        log_id=str(log.id),
+                        **safe_error_log(e),
+                    )
+
+            await db.commit()
+            return {
+                "logs_checked": len(logs),
+                "rules_applied": rules_applied,
+            }
+
+    try:
+        result = asyncio.run(
+            _apply_rules_pending_async(company_id)
+        )
+        logger.info(
+            "apply_pending_rules_completed",
+            company_id=company_id,
+            logs_checked=result["logs_checked"],
+            rules_applied=result["rules_applied"],
+        )
+        return result
+    except Exception as e:
+        logger.error(
+            "apply_pending_rules_failed",
+            company_id=company_id,
+            **safe_error_log(e),
+        )
+        raise self.retry(exc=e)
+
+
+@celery_app.task(
+    bind=True,
+    name="folder_import_rules.scan_folder",
+    acks_late=True,
+    max_retries=2,
+    default_retry_delay=60,
+    soft_time_limit=300,
+    time_limit=360,
+)
+def scan_import_folder(self, folder_path: str, company_id: str) -> ScanFolderResult:
+    """Scannt einen einzelnen Import-Ordner gezielt.
+
+    Findet die passende FolderImportConfig fuer den Pfad
+    und fuehrt poll_folder() aus.
+
+    Args:
+        folder_path: Absoluter Pfad des zu scannenden Ordners
+        company_id: UUID der Firma als String
+
+    Returns:
+        Dict mit Scan-Ergebnis
+    """
+    import asyncio
+    from sqlalchemy import or_
+
+    if not folder_path or not folder_path.strip():
+        logger.error("scan_folder_invalid_path", folder_path=folder_path)
+        raise ValueError("Ordnerpfad darf nicht leer sein")
+
+    # Basic security: reject obvious traversal attempts
+    normalized = folder_path.replace("\\", "/")
+    if ".." in normalized.split("/"):
+        logger.error(
+            "scan_folder_path_traversal_blocked",
+            folder_path=folder_path,
+        )
+        raise ValueError(
+            f"Ungultiger Ordnerpfad (Path-Traversal erkannt): {folder_path}"
+        )
+
+    async def _scan_folder_async(path: str) -> ScanFolderResult:
+        from app.services.imports.folder_import_service import FolderImportService
+
+        async with get_async_session_context() as db:
+            # Passende Config anhand watch_path suchen
+            result = await db.execute(
+                select(FolderImportConfig).where(
+                    and_(
+                        FolderImportConfig.is_active == True,
+                        or_(
+                            FolderImportConfig.watch_path == path,
+                            FolderImportConfig.watch_path == path.rstrip("/"),
+                            FolderImportConfig.watch_path == path.rstrip("\\"),
+                        ),
+                    )
+                )
+            )
+            config = result.scalars().first()
+
+            if not config:
+                logger.warning(
+                    "scan_folder_no_config_found",
+                    folder_path=path,
+                )
+                return {
+                    "folder_path": path,
+                    "config_found": False,
+                    "files_processed": 0,
+                    "documents_created": 0,
+                    "errors": [
+                        {
+                            "error": f"Keine aktive Konfiguration fuer Pfad '{path}' gefunden"
+                        }
+                    ],
+                }
+
+            service = FolderImportService(db)
+            poll_result = await service.poll_folder(
+                config_id=config.id,
+                user_id=config.user_id,
+            )
+
+            return {
+                "folder_path": path,
+                "config_found": True,
+                "config_id": str(config.id),
+                "files_processed": poll_result.files_processed,
+                "documents_created": poll_result.documents_created,
+                "duplicates_skipped": poll_result.duplicates_skipped,
+                "errors": poll_result.errors,
+            }
+
+    try:
+        result = asyncio.run(
+            _scan_folder_async(folder_path)
+        )
+        logger.info(
+            "scan_import_folder_completed",
+            folder_path=folder_path,
+            config_found=result["config_found"],
+            files_processed=result.get("files_processed", 0),
+            documents_created=result.get("documents_created", 0),
+        )
+        return result
+    except ValueError:
+        raise
+    except Exception as e:
+        logger.error(
+            "scan_import_folder_failed",
+            folder_path=folder_path,
+            **safe_error_log(e),
+        )
+        raise self.retry(exc=e)
 
 
 # =============================================================================
@@ -909,7 +1278,7 @@ def reset_daily_folder_stats() -> Dict[str, Any]:
 
 
 @celery_app.task(name="app.workers.tasks.import_tasks.check_email_connection_health")
-def check_email_connection_health() -> Dict[str, Any]:
+def check_email_connection_health() -> ConnectionHealthResult:
     """Prüft Gesundheit aller Email-Verbindungen.
 
     Typisches Schedule: Alle 30 Minuten.
@@ -920,7 +1289,7 @@ def check_email_connection_health() -> Dict[str, Any]:
     import asyncio
     from app.services.imports import EmailImportService
 
-    async def _check_all():
+    async def _check_all() -> ConnectionHealthResult:
         stats = {
             "total": 0,
             "healthy": 0,
@@ -966,7 +1335,7 @@ def check_email_connection_health() -> Dict[str, Any]:
 
         return stats
 
-    result = asyncio.get_event_loop().run_until_complete(_check_all())
+    result = asyncio.run(_check_all())
 
     if result["unhealthy"] > 0:
         logger.warning(

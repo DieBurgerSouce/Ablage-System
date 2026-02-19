@@ -12,18 +12,66 @@ GoBD = Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung
 
 import uuid
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Any, Dict, List, Optional, TypedDict
 
 import structlog
 from celery import shared_task
+from prometheus_client import Counter
 
-from app.core.safe_errors import safe_error_log
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.session import async_session_factory
 from app.db.models import Company
 from app.workers.celery_app import celery_app
 from sqlalchemy import select
 
 logger = structlog.get_logger(__name__)
+
+
+class ChainVerificationResult(TypedDict):
+    verified_companies: int
+    failed_companies: int
+    total_entries_verified: int
+    failures: List[Dict[str, Any]]
+
+
+class IntegrityCheckResult(TypedDict):
+    checked: int
+    passed: int
+    failed: int
+    errors: List[Dict[str, Any]]
+    batch_size: int
+
+
+class RetentionWarningResult(TypedDict):
+    companies_checked: int
+    warnings_sent: int
+    critical_warnings: int
+
+
+class BreachDeadlineResult(TypedDict):
+    total_alerts: int
+    overdue_count: int
+    critical_count: int
+    warning_count: int
+    alerts: List[Dict[str, str]]
+
+
+class DailyBreachReport(TypedDict):
+    report_date: str
+    total_breaches: int
+    by_status: Dict[str, int]
+    by_severity: Dict[str, int]
+    pending_deadlines: int
+    overdue: int
+    closed_last_24h: int
+
+
+# Prometheus Metriken
+CHAIN_VERIFICATION_TOTAL = Counter(
+    "gobd_chain_verification_total",
+    "Ergebnis der Audit-Chain Verifikation",
+    ["status"],
+)
 
 
 # =============================================================================
@@ -40,7 +88,7 @@ logger = structlog.get_logger(__name__)
 def verify_audit_chain_task(
     self,
     company_id: Optional[str] = None,
-) -> dict:
+) -> ChainVerificationResult:
     """Verifiziert die Integrität der Audit-Chain.
 
     Prüft ob:
@@ -66,7 +114,7 @@ def verify_audit_chain_task(
             )
 
     try:
-        result = asyncio.get_event_loop().run_until_complete(_verify())
+        result = asyncio.run(_verify())
         logger.info(
             "audit_chain_verification_completed",
             company_id=company_id,
@@ -85,9 +133,12 @@ def verify_audit_chain_task(
 async def _verify_audit_chains(
     db,
     company_id: Optional[uuid.UUID],
-) -> dict:
+) -> ChainVerificationResult:
     """Interne Funktion für Audit-Chain Verifikation."""
-    from app.services.compliance import audit_chain_service
+    from app.services.compliance.audit_chain_service import (
+        audit_chain_service,
+        ChainVerificationStatus,
+    )
 
     results = {
         "verified_companies": 0,
@@ -112,9 +163,13 @@ async def _verify_audit_chains(
                 db, cid
             )
 
-            if verification_result.is_valid:
+            if verification_result.status in (
+                ChainVerificationStatus.VALID,
+                ChainVerificationStatus.EMPTY,
+            ):
                 results["verified_companies"] += 1
                 results["total_entries_verified"] += verification_result.verified_entries
+                CHAIN_VERIFICATION_TOTAL.labels(status="valid").inc()
             else:
                 results["failed_companies"] += 1
                 results["failures"].append({
@@ -122,6 +177,7 @@ async def _verify_audit_chains(
                     "broken_at": verification_result.broken_at_sequence,
                     "error": verification_result.error_message,
                 })
+                CHAIN_VERIFICATION_TOTAL.labels(status="broken").inc()
 
                 # Kritischer Fehler - Manipulationsverdacht!
                 logger.error(
@@ -131,12 +187,17 @@ async def _verify_audit_chains(
                     error=verification_result.error_message,
                     alert_level="critical",
                 )
+
+                # Alert erstellen via Alert Center
+                await _create_chain_broken_alert(db, cid, verification_result)
+
         except Exception as e:
             results["failed_companies"] += 1
             results["failures"].append({
                 "company_id": str(cid),
                 "error": safe_error_detail(e, "Vorgang"),
             })
+            CHAIN_VERIFICATION_TOTAL.labels(status="error").inc()
             logger.error(
                 "audit_chain_verification_error",
                 company_id=str(cid),
@@ -144,6 +205,37 @@ async def _verify_audit_chains(
             )
 
     return results
+
+
+async def _create_chain_broken_alert(db, company_id: uuid.UUID, verification_result) -> None:
+    """Erstellt einen CRITICAL Alert bei gebrochener Audit-Chain."""
+    try:
+        from app.services.alert_center_service import AlertCenterService
+
+        alert_service = AlertCenterService(db)
+        await alert_service.create_alert(
+            company_id=company_id,
+            alert_type="gobd_chain_integrity",
+            severity="critical",
+            title="GoBD Audit-Chain Integritaetsverletzung",
+            message=(
+                f"Die Audit-Chain ist bei Sequenz {verification_result.broken_at_sequence} "
+                f"gebrochen: {verification_result.error_message}. "
+                "SOFORTIGE PRUEFUNG ERFORDERLICH - Moegliche Manipulation!"
+            ),
+            metadata={
+                "broken_at_sequence": verification_result.broken_at_sequence,
+                "broken_entry_id": str(verification_result.broken_entry_id)
+                if verification_result.broken_entry_id else None,
+                "verification_time_ms": verification_result.verification_time_ms,
+            },
+        )
+    except Exception as alert_err:
+        logger.warning(
+            "chain_broken_alert_creation_failed",
+            company_id=str(company_id),
+            error_type=type(alert_err).__name__,
+        )
 
 
 # =============================================================================
@@ -161,7 +253,7 @@ def batch_integrity_check_task(
     self,
     company_id: Optional[str] = None,
     batch_size: int = 50,
-) -> dict:
+) -> IntegrityCheckResult:
     """Batch-Integritätsprüfung mit Audit-Chain-Logging.
 
     Prüft Archive und protokolliert Ergebnisse in der Audit-Chain.
@@ -184,7 +276,7 @@ def batch_integrity_check_task(
             )
 
     try:
-        result = asyncio.get_event_loop().run_until_complete(_check())
+        result = asyncio.run(_check())
         logger.info(
             "batch_integrity_check_completed",
             company_id=company_id,
@@ -204,7 +296,7 @@ async def _batch_integrity_check(
     db,
     company_id: Optional[uuid.UUID],
     batch_size: int
-) -> dict:
+) -> IntegrityCheckResult:
     """Interne Funktion für Batch-Integritätsprüfung."""
     from app.db.models import DocumentArchive
     from app.services.compliance import gobd_archive_service, audit_chain_service
@@ -341,7 +433,7 @@ def generate_chain_statistics_task(self, company_id: str) -> dict:
             )
 
     try:
-        result = asyncio.get_event_loop().run_until_complete(_stats())
+        result = asyncio.run(_stats())
         return result
     except Exception as e:
         logger.error(
@@ -362,7 +454,7 @@ def generate_chain_statistics_task(self, company_id: str) -> dict:
     bind=True,
     max_retries=3,
 )
-def check_retention_warnings_task(self) -> dict:
+def check_retention_warnings_task(self) -> RetentionWarningResult:
     """Prüft auf Archive mit bevorstehenden Aufbewahrungsfristen.
 
     Sendet Warnungen entsprechend der RetentionPolicy-Einstellungen.
@@ -377,7 +469,7 @@ def check_retention_warnings_task(self) -> dict:
             return await _check_retention_warnings(db)
 
     try:
-        result = asyncio.get_event_loop().run_until_complete(_check())
+        result = asyncio.run(_check())
         logger.info("retention_warnings_checked", **result)
         return result
     except Exception as e:
@@ -385,7 +477,7 @@ def check_retention_warnings_task(self) -> dict:
         raise self.retry(exc=e)
 
 
-async def _check_retention_warnings(db) -> dict:
+async def _check_retention_warnings(db) -> RetentionWarningResult:
     """Interne Funktion für Retention-Warnungen."""
     from app.services.compliance import retention_service
 
@@ -463,7 +555,7 @@ async def _check_retention_warnings(db) -> dict:
     max_retries=3,
     default_retry_delay=60,
 )
-def check_breach_deadlines_task(self) -> dict:
+def check_breach_deadlines_task(self) -> BreachDeadlineResult:
     """Prüft alle 72-Stunden-Deadlines für Datenschutzverletzungen.
 
     KRITISCH: Muss regelmäßig laufen um DSGVO-Fristen einzuhalten!
@@ -485,7 +577,7 @@ def check_breach_deadlines_task(self) -> dict:
             return await _check_all_breach_deadlines(db)
 
     try:
-        result = asyncio.get_event_loop().run_until_complete(_check())
+        result = asyncio.run(_check())
 
         # Bei kritischen Alerts explizit loggen
         if result.get("critical_count", 0) > 0:
@@ -504,7 +596,7 @@ def check_breach_deadlines_task(self) -> dict:
         raise self.retry(exc=e)
 
 
-async def _check_all_breach_deadlines(db) -> dict:
+async def _check_all_breach_deadlines(db) -> BreachDeadlineResult:
     """Interne Funktion für Breach-Deadline-Prüfung."""
     from app.services.compliance import get_breach_notification_service
 
@@ -567,7 +659,7 @@ async def _send_breach_deadline_notification(db, alert: dict) -> None:
     max_retries=2,
     default_retry_delay=300,
 )
-def daily_breach_report_task(self) -> dict:
+def daily_breach_report_task(self) -> DailyBreachReport:
     """Erstellt täglichen Bericht über Datenschutzverletzungen.
 
     Enthält:
@@ -588,7 +680,7 @@ def daily_breach_report_task(self) -> dict:
             return await _generate_daily_breach_report(db)
 
     try:
-        result = asyncio.get_event_loop().run_until_complete(_report())
+        result = asyncio.run(_report())
         logger.info("daily_breach_report_generated", **result)
         return result
     except Exception as e:
@@ -596,7 +688,7 @@ def daily_breach_report_task(self) -> dict:
         raise self.retry(exc=e)
 
 
-async def _generate_daily_breach_report(db) -> dict:
+async def _generate_daily_breach_report(db) -> DailyBreachReport:
     """Generiert täglichen Breach-Bericht."""
     from app.services.compliance import get_breach_notification_service, BreachStatus
 

@@ -11,7 +11,7 @@ Feinpoliert und durchdacht - Reliable Inbound Webhook Processing.
 
 import structlog
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, TypedDict
 from uuid import UUID
 
 from sqlalchemy import update
@@ -21,8 +21,48 @@ from app.db.models_webhook_inbound import InboundWebhookEvent
 from app.db.session import get_async_session_context
 from app.schemas.webhook_inbound import InboundWebhookStatus
 from app.workers.celery_app import celery_app
+from prometheus_client import Counter, Histogram
+
+# Prometheus Metriken fuer Webhook-Verarbeitung
+WEBHOOK_PROCESSED = Counter(
+    "webhook_inbound_processed_total",
+    "Verarbeitete Inbound Webhooks",
+    ["provider", "status"],  # status: success, failed
+)
+WEBHOOK_PROCESSING_DURATION = Histogram(
+    "webhook_inbound_processing_seconds",
+    "Webhook Verarbeitungsdauer",
+    ["provider"],
+)
+WEBHOOK_RETRY_TOTAL = Counter(
+    "webhook_inbound_retry_total",
+    "Inbound Webhook Retry-Versuche",
+    ["result"],  # result: retried, skipped, error
+)
 
 logger = structlog.get_logger(__name__)
+
+
+class WebhookProcessResult(TypedDict, total=False):
+    """Ergebnis der Webhook-Verarbeitung."""
+
+    event_db_id: str
+    provider: str
+    event_type: str
+    action: str
+    event_bus_published: bool
+    internal_event_type: str
+    event_bus_error: str
+    note: str
+
+
+class WebhookRetryResult(TypedDict):
+    """Ergebnis des Webhook-Retry-Batches."""
+
+    checked: int
+    retried: int
+    skipped: int
+    errors: int
 
 
 @celery_app.task(
@@ -42,7 +82,7 @@ def process_inbound_webhook(
     data: Dict[str, Any],
     internal_event_type: Optional[str] = None,
     external_ref: Optional[str] = None,
-) -> Dict[str, Any]:
+) -> WebhookProcessResult:
     """
     Verarbeitet ein eingehendes Webhook-Event.
 
@@ -66,7 +106,7 @@ def process_inbound_webhook(
     """
     import asyncio
 
-    async def _process() -> Dict[str, Any]:
+    async def _process() -> WebhookProcessResult:
         async with get_async_session_context() as db:
             # Update status to processing
             await db.execute(
@@ -151,13 +191,12 @@ def process_inbound_webhook(
             return result
 
     try:
-        loop = asyncio.get_event_loop()
-        if loop.is_running():
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                return pool.submit(asyncio.run, _process()).result()
-        return asyncio.run(_process())
+        with WEBHOOK_PROCESSING_DURATION.labels(provider=provider).time():
+            result = asyncio.run(_process())
+        WEBHOOK_PROCESSED.labels(provider=provider, status="success").inc()
+        return result
     except Exception as e:
+        WEBHOOK_PROCESSED.labels(provider=provider, status="failed").inc()
         logger.error(
             "inbound_webhook_processing_failed",
             event_db_id=event_db_id,
@@ -188,3 +227,88 @@ async def _mark_failed(event_db_id: str, error_message: str) -> None:
             )
         )
         await db.commit()
+
+
+@celery_app.task(
+    name="app.workers.tasks.webhook_inbound_tasks.retry_failed_inbound_webhooks",
+    bind=True,
+    max_retries=1,
+    soft_time_limit=60,
+    time_limit=120,
+)
+def retry_failed_inbound_webhooks(self) -> WebhookRetryResult:
+    """Periodischer Retry fehlgeschlagener Inbound Webhook Events.
+
+    Wird alle 30 Minuten via Celery Beat aufgerufen.
+    Laedt alle Events mit status=FAILED und attempts < 5,
+    und queued sie erneut als process_inbound_webhook Tasks.
+
+    Returns:
+        Dict mit Retry-Statistiken
+    """
+    import asyncio
+
+    async def _retry_failed() -> WebhookRetryResult:
+        from sqlalchemy import select, and_
+
+        stats: Dict[str, Any] = {
+            "checked": 0,
+            "retried": 0,
+            "skipped": 0,
+            "errors": 0,
+        }
+
+        async with get_async_session_context() as db:
+            result = await db.execute(
+                select(InboundWebhookEvent).where(
+                    and_(
+                        InboundWebhookEvent.status == InboundWebhookStatus.FAILED.value,
+                        InboundWebhookEvent.attempts < 5,
+                    )
+                ).limit(50)
+            )
+            events = result.scalars().all()
+            stats["checked"] = len(events)
+
+            for event in events:
+                try:
+                    process_inbound_webhook.delay(
+                        event_db_id=str(event.id),
+                        provider=event.provider,
+                        event_type=event.event_type,
+                        action=event.action or "unknown",
+                        data=event.payload_sanitized or {},
+                        internal_event_type=event.internal_event_type,
+                        external_ref=event.external_ref,
+                    )
+                    stats["retried"] += 1
+                    WEBHOOK_RETRY_TOTAL.labels(result="retried").inc()
+
+                    logger.info(
+                        "webhook_inbound_retry_queued",
+                        event_id=str(event.id),
+                        provider=event.provider,
+                        attempts=event.attempts,
+                    )
+
+                except Exception as e:
+                    stats["errors"] += 1
+                    WEBHOOK_RETRY_TOTAL.labels(result="error").inc()
+                    logger.warning(
+                        "webhook_inbound_retry_queue_failed",
+                        event_id=str(event.id),
+                        **safe_error_log(e),
+                    )
+
+        return stats
+
+    try:
+        result = asyncio.run(_retry_failed())
+        logger.info(
+            "webhook_inbound_retry_batch_completed",
+            **{k: v for k, v in result.items() if k != "errors" or v > 0},
+        )
+        return result
+    except Exception as e:
+        logger.error("webhook_inbound_retry_batch_failed", **safe_error_log(e))
+        raise self.retry(exc=e)
