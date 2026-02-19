@@ -243,3 +243,107 @@ async def get_communities(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Fehler bei der Community Detection",
         )
+
+
+@router.get(
+    "/financial-chain/{entity_id}",
+    response_model=JSONDict,
+    summary="Finanzkette",
+    description="Laedt Finanzketten (Bestellung > Lieferschein > Rechnung > Zahlung) fuer Entity",
+)
+async def get_financial_chain(
+    entity_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_current_company_id),
+    db: AsyncSession = Depends(get_db),
+) -> JSONDict:
+    """Laedt Finanzketten fuer eine Entity."""
+    logger.info(
+        "knowledge_graph.get_financial_chain",
+        entity_id=str(entity_id),
+        user_id=str(current_user.id),
+        company_id=str(company_id),
+    )
+    service = KnowledgeGraphService()
+    try:
+        result = await service.get_financial_chain(entity_id, company_id, db)
+        return result
+    except Exception as e:
+        logger.error(
+            "knowledge_graph.financial_chain_failed",
+            entity_id=str(entity_id),
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Laden der Finanzkette",
+        )
+
+
+@router.get(
+    "/risk-network",
+    response_model=JSONDict,
+    summary="Risiko-Netzwerk",
+    description="Laedt Risiko-Netzwerk mit Communities und Risk Scores",
+)
+async def get_risk_network(
+    entity_id: Optional[UUID] = Query(None, description="Optional: Focus-Entity"),
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_current_company_id),
+    db: AsyncSession = Depends(get_db),
+) -> JSONDict:
+    """Laedt Risiko-Netzwerk."""
+    logger.info(
+        "knowledge_graph.get_risk_network",
+        entity_id=str(entity_id) if entity_id else None,
+        user_id=str(current_user.id),
+        company_id=str(company_id),
+    )
+    service = KnowledgeGraphService()
+    try:
+        result = await service.get_risk_network(company_id, db, focus_entity_id=entity_id)
+        return result
+    except Exception as e:
+        logger.error(
+            "knowledge_graph.risk_network_failed",
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Laden des Risiko-Netzwerks",
+        )
+
+
+@router.get(
+    "/document-family/{document_id}",
+    response_model=JSONDict,
+    summary="Dokument-Familie",
+    description="Laedt verwandte Dokumente gruppiert nach Beziehungstyp",
+)
+async def get_document_family(
+    document_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    company_id: UUID = Depends(get_current_company_id),
+    db: AsyncSession = Depends(get_db),
+) -> JSONDict:
+    """Laedt Dokumentenfamilie."""
+    logger.info(
+        "knowledge_graph.get_document_family",
+        document_id=str(document_id),
+        user_id=str(current_user.id),
+        company_id=str(company_id),
+    )
+    service = KnowledgeGraphService()
+    try:
+        result = await service.get_document_family(document_id, company_id, db)
+        return result
+    except Exception as e:
+        logger.error(
+            "knowledge_graph.document_family_failed",
+            document_id=str(document_id),
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Laden der Dokumentenfamilie",
+        )

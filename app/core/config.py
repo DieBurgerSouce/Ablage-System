@@ -156,7 +156,7 @@ class Settings(BaseSettings):
 
     # Database SSL/TLS Configuration
     DB_SSL_MODE: str = Field(
-        default="prefer",
+        default="require",
         description="PostgreSQL SSL-Modus: disable, allow, prefer, require, verify-ca, verify-full"
     )
     DB_SSL_CERT: Optional[str] = Field(
@@ -1299,6 +1299,36 @@ class Settings(BaseSettings):
                     hint="Setze VAULT_ENABLED=true und konfiguriere Vault-Credentials.",
                     action_required=True
                 )
+
+        # ========== DB SSL Mode Validierung ==========
+        if self.ENVIRONMENT != "development" and self.DB_SSL_MODE in ("disable", "allow", "prefer"):
+            logger.warning(
+                "db_ssl_mode_unsicher",
+                ssl_mode=self.DB_SSL_MODE,
+                message=f"DB_SSL_MODE='{self.DB_SSL_MODE}' ist in Production unsicher! "
+                        "Empfohlen: 'require', 'verify-ca' oder 'verify-full'.",
+                action_required=True,
+            )
+
+        # ========== DB SSL Zertifikat-Pfade Validierung ==========
+        ssl_cert_fields = {
+            "DB_SSL_CERT": self.DB_SSL_CERT,
+            "DB_SSL_KEY": self.DB_SSL_KEY,
+            "DB_SSL_ROOT_CERT": self.DB_SSL_ROOT_CERT,
+        }
+        for field_name, cert_path in ssl_cert_fields.items():
+            if cert_path is not None:
+                cert_file = Path(cert_path)
+                if not cert_file.exists():
+                    raise ValueError(
+                        f"{field_name}='{cert_path}' existiert nicht! "
+                        f"Stelle sicher, dass die SSL-Zertifikatsdatei unter dem angegebenen Pfad liegt."
+                    )
+                if not cert_file.is_file():
+                    raise ValueError(
+                        f"{field_name}='{cert_path}' ist keine Datei! "
+                        f"Erwartet wird ein Pfad zu einer SSL-Zertifikatsdatei."
+                    )
 
         # ========== ENCRYPTION_KEY Validierung ==========
         # In Production: ENCRYPTION_KEY sollte explizit gesetzt sein für TOTP-Secrets

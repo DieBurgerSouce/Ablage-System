@@ -4,17 +4,21 @@ Endpoints für Seite-an-Seite Dokumentenvergleich.
 """
 from __future__ import annotations
 
+import base64
 from dataclasses import asdict
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+import structlog
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
 from app.db.session import get_async_session
 from app.services.diff.visual_diff_service import VisualDiffService
+
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/visual-diff", tags=["visual-diff"])
 
@@ -62,6 +66,23 @@ class ChangeSummaryResponse(BaseModel):
     similarity_percentage: float
     key_changes: list[str]
     risk_level: str
+
+
+class ImageDiffRequest(BaseModel):
+    """Schema fuer Bild-Vergleichsanfrage."""
+    document_a_id: UUID = Field(..., description="ID des ersten Dokuments")
+    document_b_id: UUID = Field(..., description="ID des zweiten Dokuments")
+    page: int = Field(1, ge=1, description="Seitennummer (1-basiert)")
+    threshold: int = Field(30, ge=0, le=255, description="Pixel-Differenz-Schwellwert")
+
+
+class ImageDiffResponse(BaseModel):
+    """Schema fuer Bild-Vergleichsergebnis."""
+    similarity_score: float = Field(..., ge=0.0, le=1.0)
+    changed_percentage: float = Field(..., ge=0.0, le=100.0)
+    diff_image_base64: str = Field(..., description="Diff-Bild als Base64-PNG")
+    overlay_image_base64: str = Field(..., description="Overlay-Bild als Base64-PNG")
+    dimensions: list[int] = Field(..., description="Bildgroesse [breite, hoehe]")
 
 
 @router.post("/compare", response_model=DiffResponse)
@@ -136,3 +157,96 @@ async def compute_hash(
     """Berechnet SHA-256 Hash eines Textes."""
     service = VisualDiffService()
     return {"hash": service.compute_text_hash(text)}
+
+
+@router.post("/compare/image", response_model=ImageDiffResponse)
+async def compare_document_images(
+    request: ImageDiffRequest,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: dict = Depends(get_current_user),
+) -> ImageDiffResponse:
+    """Vergleicht zwei Dokumente pixelweise als Bilder.
+
+    Rendert die angegebene Seite beider Dokumente und erstellt
+    einen pixelweisen Vergleich mit Diff- und Overlay-Bildern.
+    """
+    from app.db.models import Document
+    from app.services.diff.image_diff_service import ImageDiffService
+    from app.services.storage_service import StorageService
+    from sqlalchemy import select
+
+    try:
+        # Dokumente laden
+        doc_a_result = await db.execute(
+            select(Document).where(Document.id == request.document_a_id)
+        )
+        doc_a = doc_a_result.scalar_one_or_none()
+        if not doc_a:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Dokument A nicht gefunden: {request.document_a_id}",
+            )
+
+        doc_b_result = await db.execute(
+            select(Document).where(Document.id == request.document_b_id)
+        )
+        doc_b = doc_b_result.scalar_one_or_none()
+        if not doc_b:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Dokument B nicht gefunden: {request.document_b_id}",
+            )
+
+        # Dateien aus MinIO laden
+        storage = StorageService()
+        response_a = storage.client.get_object(
+            bucket_name=storage.config.DOCUMENTS_BUCKET,
+            object_name=doc_a.file_path,
+        )
+        try:
+            file_a_bytes = response_a.read()
+        finally:
+            response_a.close()
+            response_a.release_conn()
+
+        response_b = storage.client.get_object(
+            bucket_name=storage.config.DOCUMENTS_BUCKET,
+            object_name=doc_b.file_path,
+        )
+        try:
+            file_b_bytes = response_b.read()
+        finally:
+            response_b.close()
+            response_b.release_conn()
+
+        # Bildvergleich durchfuehren
+        service = ImageDiffService()
+        result = service.compare_document_pages(
+            doc_a_bytes=file_a_bytes,
+            doc_b_bytes=file_b_bytes,
+            page=request.page,
+            threshold=request.threshold,
+        )
+
+        return ImageDiffResponse(
+            similarity_score=result.similarity_score,
+            changed_percentage=result.changed_percentage,
+            diff_image_base64=base64.b64encode(result.diff_image_bytes).decode("ascii"),
+            overlay_image_base64=base64.b64encode(result.overlay_image_bytes).decode("ascii"),
+            dimensions=list(result.dimensions),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        from app.core.safe_errors import safe_error_detail, safe_error_log
+        logger.error(
+            "image_diff_error",
+            document_a_id=str(request.document_a_id),
+            document_b_id=str(request.document_b_id),
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error_detail(e, "Bild-Vergleich"),
+        )

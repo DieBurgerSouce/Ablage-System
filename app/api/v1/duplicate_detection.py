@@ -221,7 +221,7 @@ async def get_duplicate_stats(
         # Dokumente mit potential_duplicate Flag
         dup_query = select(Document).where(
             Document.deleted_at.is_(None),
-            Document.metadata.isnot(None),
+            Document.document_metadata.isnot(None),
             Document.company_id == company_id,
         )
 
@@ -231,7 +231,7 @@ async def get_duplicate_stats(
         # Filterung und Auswertung in Python (JSONB-Abfrage via Python fuer Portabilitaet)
         duplicates = [
             doc for doc in all_docs
-            if (doc.metadata or {}).get("potential_duplicate") is True
+            if (doc.document_metadata or {}).get("potential_duplicate") is True
         ]
 
         total_duplicates_found = len(duplicates)
@@ -240,7 +240,7 @@ async def get_duplicate_stats(
         by_type: dict = {}
         similarities: list = []
         for doc in duplicates:
-            meta = doc.metadata or {}
+            meta = doc.document_metadata or {}
             dup_type = meta.get("duplicate_type", "unknown")
             by_type[dup_type] = by_type.get(dup_type, 0) + 1
             sim = meta.get("duplicate_similarity")
@@ -298,12 +298,20 @@ async def update_duplicate_config(
         if config_update.max_text_length is not None:
             service.MAX_TEXT_LENGTH = config_update.max_text_length
 
+        if config_update.visual_exact_threshold is not None:
+            service.VISUAL_EXACT_THRESHOLD = config_update.visual_exact_threshold
+
+        if config_update.visual_near_threshold is not None:
+            service.VISUAL_NEAR_THRESHOLD = config_update.visual_near_threshold
+
         logger.info(
             "duplicate_config_updated",
             min_similarity_near=service.MIN_SIMILARITY_NEAR,
             min_similarity_semantic=service.MIN_SIMILARITY_SEMANTIC,
             max_candidates=service.MAX_CANDIDATES,
             max_text_length=service.MAX_TEXT_LENGTH,
+            visual_exact_threshold=service.VISUAL_EXACT_THRESHOLD,
+            visual_near_threshold=service.VISUAL_NEAR_THRESHOLD,
         )
 
         return DuplicateConfigResponse(
@@ -311,6 +319,8 @@ async def update_duplicate_config(
             min_similarity_semantic=service.MIN_SIMILARITY_SEMANTIC,
             max_candidates=service.MAX_CANDIDATES,
             max_text_length=service.MAX_TEXT_LENGTH,
+            visual_exact_threshold=service.VISUAL_EXACT_THRESHOLD,
+            visual_near_threshold=service.VISUAL_NEAR_THRESHOLD,
         )
 
     except Exception as e:

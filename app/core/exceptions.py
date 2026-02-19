@@ -153,7 +153,7 @@ class GPUOutOfMemoryError(GPUException):
     def __init__(self, message: str, required_gb: float, available_gb: float):
         super().__init__(
             message=message,
-            error_code="E001",
+            error_code="GPU_001",
             details={
                 "required_gb": required_gb,
                 "available_gb": available_gb
@@ -168,7 +168,7 @@ class GPUNotAvailableError(GPUException):
     def __init__(self, reason: str):
         super().__init__(
             message=f"GPU not available: {reason}",
-            error_code="E002",
+            error_code="GPU_002",
             details={"reason": reason},
             user_message_de=f"GPU nicht verfügbar: {reason}"
         )
@@ -186,7 +186,7 @@ class OCRProcessingError(OCRException):
     def __init__(self, document_id: str, backend: str, reason: str):
         super().__init__(
             message=f"OCR failed for document {document_id} with {backend}: {reason}",
-            error_code="E004",
+            error_code="OCR_004",
             details={
                 "document_id": document_id,
                 "backend": backend,
@@ -202,7 +202,7 @@ class OCRBackendTimeoutError(OCRException):
     def __init__(self, backend: str, timeout_seconds: int):
         super().__init__(
             message=f"OCR backend {backend} timed out after {timeout_seconds}s",
-            error_code="E004",
+            error_code="OCR_001",
             details={
                 "backend": backend,
                 "timeout_seconds": timeout_seconds
@@ -217,7 +217,7 @@ class InferenceTimeoutError(OCRException):
     def __init__(self, backend: str, timeout_seconds: float, document_id: Optional[str] = None):
         super().__init__(
             message=f"Inference timed out for {backend} after {timeout_seconds}s",
-            error_code="E004",
+            error_code="OCR_001",
             details={
                 "backend": backend,
                 "timeout_seconds": timeout_seconds,
@@ -245,7 +245,7 @@ class OCRGPUOutOfMemoryError(OCRException):
         fallback_backends = fallback_backends or ["surya"]
         super().__init__(
             message=f"GPU OOM in {backend}. Fallback backends available: {fallback_backends}",
-            error_code="E001",
+            error_code="GPU_001",
             details={
                 "backend": backend,
                 "document_id": document_id,
@@ -267,7 +267,7 @@ class BackendSelectionError(OCRException):
     def __init__(self, reason: str):
         super().__init__(
             message=f"Backend selection failed: {reason}",
-            error_code="E010",
+            error_code="OCR_002",
             details={"reason": reason},
             user_message_de="Kein geeignetes OCR-System verfügbar"
         )
@@ -285,7 +285,7 @@ class InvalidGermanEncodingError(GermanTextException):
     def __init__(self, text_sample: str):
         super().__init__(
             message=f"Invalid German encoding detected in: {text_sample[:50]}...",
-            error_code="E003",
+            error_code="OCR_003",
             details={"text_sample": text_sample[:100]},
             user_message_de="Ungültige Textcodierung erkannt (Umlaute fehlerhaft)"
         )
@@ -303,7 +303,7 @@ class DocumentNotFoundError(DocumentException):
     def __init__(self, document_id: str):
         super().__init__(
             message=f"Document not found: {document_id}",
-            error_code="E007",
+            error_code="DOC_003",
             details={"document_id": document_id},
             user_message_de="Dokument nicht gefunden"
         )
@@ -315,7 +315,7 @@ class InvalidDocumentFormatError(DocumentException):
     def __init__(self, filename: str, format_detected: str):
         super().__init__(
             message=f"Invalid document format: {format_detected} in {filename}",
-            error_code="E007",
+            error_code="VAL_001",
             details={
                 "filename": filename,
                 "format_detected": format_detected
@@ -330,7 +330,7 @@ class FileSizeExceededError(DocumentException):
     def __init__(self, size_mb: float, max_size_mb: float):
         super().__init__(
             message=f"File size {size_mb:.1f}MB exceeds limit of {max_size_mb:.1f}MB",
-            error_code="E008",
+            error_code="VAL_002",
             details={
                 "size_mb": size_mb,
                 "max_size_mb": max_size_mb
@@ -351,7 +351,7 @@ class DatabaseConnectionError(DatabaseException):
     def __init__(self, reason: str):
         super().__init__(
             message=f"Database connection failed: {reason}",
-            error_code="E005",
+            error_code="DB_001",
             details={"reason": reason},
             user_message_de="Datenbankverbindung fehlgeschlagen"
         )
@@ -369,7 +369,7 @@ class GDPRViolationError(ComplianceException):
     def __init__(self, violation_type: str, details: str):
         super().__init__(
             message=f"GDPR violation: {violation_type} - {details}",
-            error_code="E009",
+            error_code="GDPR_001",
             details={
                 "violation_type": violation_type,
                 "violation_details": details
@@ -384,7 +384,7 @@ class GDPRError(ComplianceException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E011",
+            error_code="GDPR_002",
             details=details or {},
             user_message_de=message
         )
@@ -396,7 +396,7 @@ class UserNotFoundError(AblageSystemException):
     def __init__(self, user_id: str):
         super().__init__(
             message=f"User not found: {user_id}",
-            error_code="E012",
+            error_code="AUTH_002",
             details={"user_id": user_id},
             user_message_de="Benutzer nicht gefunden"
         )
@@ -408,7 +408,7 @@ class ExportError(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E013",
+            error_code="DOC_002",
             details=details or {},
             user_message_de=message
         )
@@ -420,7 +420,7 @@ class EmailVerificationError(AblageSystemException):
     def __init__(self, message: str, user_message_de: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E014",
+            error_code="AUTH_003",
             details=details or {},
             user_message_de=user_message_de
         )
@@ -434,7 +434,7 @@ class StorageError(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E015",
+            error_code="STOR_001",
             details=details or {},
             user_message_de="Speicherfehler aufgetreten"
         )
@@ -488,7 +488,7 @@ class WebhookError(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E016",
+            error_code="NET_002",
             details=details or {},
             user_message_de="Webhook-Fehler aufgetreten"
         )
@@ -529,7 +529,7 @@ class BackupError(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E017",
+            error_code="ARCH_001",
             details=details or {},
             user_message_de="Backup-Fehler aufgetreten"
         )
@@ -571,7 +571,7 @@ class MLError(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E018",
+            error_code="ML_001",
             details=details or {},
             user_message_de="ML-Verarbeitungsfehler aufgetreten"
         )
@@ -613,7 +613,7 @@ class SearchError(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E019",
+            error_code="ML_002",
             details=details or {},
             user_message_de="Suchfehler aufgetreten"
         )
@@ -656,7 +656,7 @@ class EmbeddingError(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E020",
+            error_code="ML_003",
             details=details or {},
             user_message_de="Embedding-Fehler aufgetreten"
         )
@@ -698,7 +698,7 @@ class NotificationError(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E021",
+            error_code="NOTIF_001",
             details=details or {},
             user_message_de="Benachrichtigungsfehler aufgetreten"
         )
@@ -741,7 +741,7 @@ class AuthenticationError(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E022",
+            error_code="AUTH_001",
             details=details or {},
             user_message_de="Authentifizierungsfehler"
         )
@@ -788,7 +788,7 @@ class ArchiveError(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E024",
+            error_code="ARCH_002",
             details=details or {},
             user_message_de="Archivierungsfehler aufgetreten"
         )
@@ -843,7 +843,7 @@ class ParsingException(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E025",
+            error_code="PARSE_001",
             details=details or {},
             user_message_de="Parsing-Fehler aufgetreten"
         )
@@ -907,7 +907,7 @@ class MetricsRecordingError(AblageSystemException):
     def __init__(self, metric_name: str, reason: str):
         super().__init__(
             message=f"Failed to record metric '{metric_name}': {reason}",
-            error_code="E026",
+            error_code="CACHE_002",
             details={
                 "metric_name": metric_name,
                 "reason": reason
@@ -923,7 +923,7 @@ class CacheOperationError(AblageSystemException):
     def __init__(self, operation: str, key: str, reason: str):
         super().__init__(
             message=f"Cache {operation} failed for key '{key}': {reason}",
-            error_code="E026",
+            error_code="CACHE_001",
             details={
                 "operation": operation,
                 "cache_key": key[:100] if key else "",
@@ -943,11 +943,63 @@ class RateLimitError(AblageSystemException):
     def __init__(self, message: str, retry_after: int, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E023",
+            error_code="AUTH_004",
             details={**(details or {}), "retry_after_seconds": retry_after},
             user_message_de=f"Ratenlimit erreicht. Bitte in {retry_after} Sekunden erneut versuchen."
         )
         self.retry_after = retry_after
+
+
+# ==================== Security Exceptions (SEC) ====================
+
+class VaultException(AblageSystemException):
+    """Vault secret management error"""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="SEC_001",
+            details=details or {},
+            user_message_de="Secrets-Management-Fehler"
+        )
+
+
+class CertificateRotationError(AblageSystemException):
+    """Certificate rotation error"""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="SEC_002",
+            details=details or {},
+            user_message_de="Zertifikat-Rotationsfehler"
+        )
+
+
+# ==================== Pipeline Exceptions (PIPE) ====================
+
+class PipelineException(AblageSystemException):
+    """Zero-Touch Pipeline processing error"""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="PIPE_001",
+            details=details or {},
+            user_message_de="Pipeline-Verarbeitungsfehler"
+        )
+
+
+class MatchingKontierungError(AblageSystemException):
+    """Matching/Kontierung processing error"""
+
+    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="PIPE_002",
+            details=details or {},
+            user_message_de="Matching/Kontierungs-Fehler"
+        )
 
 
 # =============================================================================
@@ -1042,6 +1094,17 @@ ERROR_CODE_REGISTRY: dict[str, str] = {
     "CACHE_001": "Cache Operation Failed",
     "CACHE_002": "Metrics Recording Failed",
     "CACHE_003": "Redis Connection Pool Exhausted",
+
+    # Security Domain
+    "SEC_001": "Vault Secret Management Error",
+    "SEC_002": "Certificate Rotation Error",
+
+    # Pipeline Domain
+    "PIPE_001": "Pipeline Processing Error",
+    "PIPE_002": "Matching/Kontierung Error",
+
+    # Business Logic Domain
+    "BIZ_001": "Business Logic Error",
 }
 
 # ==================== Business Logic Exceptions (E027) ====================
@@ -1052,7 +1115,7 @@ class BusinessLogicError(AblageSystemException):
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
-            error_code="E027",
+            error_code="BIZ_001",
             details=details or {},
             user_message_de=message
         )
@@ -1128,6 +1191,7 @@ LEGACY_ERROR_CODE_MAP: dict[str, str] = {
     "E024": "ARCH_002",
     "E025": "PARSE_001",
     "E026": "CACHE_001",
+    "E027": "BIZ_001",
 }
 
 

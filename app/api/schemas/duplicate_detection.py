@@ -155,6 +155,18 @@ class DuplicateConfigUpdate(BaseModel):
         le=100000,
         description="Maximale Textlaenge fuer Vergleich in Zeichen (Standard: 10000)",
     )
+    visual_exact_threshold: Optional[int] = Field(
+        None,
+        ge=0,
+        le=64,
+        description="Hamming-Distanz-Schwellwert fuer exakte visuelle Duplikate (Standard: 5)",
+    )
+    visual_near_threshold: Optional[int] = Field(
+        None,
+        ge=0,
+        le=128,
+        description="Hamming-Distanz-Schwellwert fuer nahe visuelle Duplikate (Standard: 10)",
+    )
 
 
 class DuplicateConfigResponse(BaseModel):
@@ -177,4 +189,12 @@ class DuplicateConfigResponse(BaseModel):
     max_text_length: int = Field(
         ...,
         description="Maximale Textlaenge fuer Vergleich in Zeichen",
+    )
+    visual_exact_threshold: int = Field(
+        ...,
+        description="Hamming-Distanz-Schwellwert fuer exakte visuelle Duplikate",
+    )
+    visual_near_threshold: int = Field(
+        ...,
+        description="Hamming-Distanz-Schwellwert fuer nahe visuelle Duplikate",
     )

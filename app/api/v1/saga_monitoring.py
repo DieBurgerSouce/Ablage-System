@@ -3,10 +3,14 @@
 Überwachung von Saga-Ausführungen (Rechnungsverarbeitung, Zahlungen).
 Stellt Saga-Status, Step-Details und Statistiken bereit.
 
-3 Endpoints:
+7 Endpoints:
 - GET /sagas/ - Liste aller Saga-Ausführungen
+- GET /sagas/statistics - Saga-Statistiken (Erfolgsrate, DLQ, etc.)
 - GET /sagas/{saga_id} - Saga-Details mit Steps
 - GET /sagas/{saga_id}/logs - Transaktionslogs einer Saga
+- GET /sagas/{saga_id}/diagram - State-Diagramm einer Saga
+- POST /sagas/{saga_id}/retry - Saga manuell wiederholen
+- DELETE /sagas/{saga_id}/dlq - Saga aus DLQ entfernen
 """
 
 from __future__ import annotations
@@ -128,6 +132,39 @@ class SagaLogsResponse(BaseModel):
     total: int
     offset: int
     limit: int
+
+
+class SagaStatisticsResponse(BaseModel):
+    """Schema für Saga-Statistiken."""
+
+    total: int
+    by_status: JSONDict
+    dead_letter_queue: int
+    success_rate: float
+    completed: int
+    failed: int
+    compensated: int
+    partially_compensated: int
+
+
+class SagaRetryResponse(BaseModel):
+    """Schema für Saga-Retry Ergebnis."""
+
+    saga_id: str
+    status: str
+    retry_count: int
+    message: str
+
+
+class SagaDiagramResponse(BaseModel):
+    """Schema für Saga State-Diagramm."""
+
+    saga_id: str
+    name: str
+    status: str
+    nodes: List[JSONDict]
+    edges: List[JSONDict]
+    progress_percent: Optional[float] = None
 
 
 # =============================================================================
@@ -254,6 +291,37 @@ async def list_sagas(
         offset=offset,
         limit=limit,
     )
+
+
+@router.get(
+    "/statistics",
+    response_model=SagaStatisticsResponse,
+    summary="Saga-Statistiken abrufen",
+)
+async def get_saga_statistics(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SagaStatisticsResponse:
+    """Gibt aggregierte Saga-Statistiken zurueck.
+
+    Enthaelt Erfolgsrate, DLQ-Groesse und Status-Verteilung.
+    """
+    company_id = await get_user_company_id(db, current_user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Benutzer muss einer Firma zugeordnet sein",
+        )
+
+    saga_service = SagaService(db)
+
+    logger.info(
+        "get_saga_statistics_requested",
+        company_id=str(company_id),
+    )
+
+    stats = await saga_service.get_saga_statistics(company_id=company_id)
+    return SagaStatisticsResponse(**stats)
 
 
 @router.get(
@@ -387,4 +455,141 @@ async def get_saga_logs(
         total=total,
         offset=offset,
         limit=limit,
+    )
+
+
+@router.get(
+    "/{saga_id}/diagram",
+    response_model=SagaDiagramResponse,
+    summary="Saga State-Diagramm abrufen",
+)
+async def get_saga_diagram(
+    saga_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SagaDiagramResponse:
+    """Gibt ein State-Diagramm fuer eine Saga zurueck.
+
+    Zeigt Nodes (Steps) und Edges (Transitionen) fuer Visualisierung.
+    """
+    company_id = await get_user_company_id(db, current_user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Benutzer muss einer Firma zugeordnet sein",
+        )
+
+    saga_service = SagaService(db)
+    diagram = await saga_service.get_saga_state_diagram(
+        saga_id=saga_id,
+        company_id=company_id,
+    )
+
+    if not diagram:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Saga nicht gefunden",
+        )
+
+    return SagaDiagramResponse(**diagram)
+
+
+@router.post(
+    "/{saga_id}/retry",
+    response_model=SagaRetryResponse,
+    summary="Saga manuell wiederholen",
+)
+async def retry_saga(
+    saga_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SagaRetryResponse:
+    """Wiederholt eine fehlgeschlagene Saga manuell.
+
+    Nur moeglich fuer Sagas im Status FAILED oder PARTIALLY_COMPENSATED.
+    """
+    company_id = await get_user_company_id(db, current_user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Benutzer muss einer Firma zugeordnet sein",
+        )
+
+    saga_service = SagaService(db)
+
+    logger.info(
+        "saga_manual_retry_requested",
+        company_id=str(company_id),
+        saga_id=str(saga_id),
+        user_id=str(current_user.id),
+    )
+
+    saga = await saga_service.retry_saga(
+        saga_id=saga_id,
+        company_id=company_id,
+        user_id=current_user.id,
+    )
+
+    if not saga:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Saga kann nicht wiederholt werden (nicht gefunden, falscher Status oder max. Versuche erreicht)",
+        )
+
+    return SagaRetryResponse(
+        saga_id=str(saga.id),
+        status=saga.status,
+        retry_count=saga.retry_count,
+        message="Saga wird erneut ausgefuehrt",
+    )
+
+
+@router.delete(
+    "/{saga_id}/dlq",
+    response_model=SagaRetryResponse,
+    summary="Saga aus Dead Letter Queue entfernen",
+)
+async def remove_saga_from_dlq(
+    saga_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SagaRetryResponse:
+    """Entfernt eine Saga aus der Dead Letter Queue.
+
+    Die Saga bleibt im aktuellen Status, wird aber nicht mehr
+    automatisch fuer Retry vorgemerkt.
+    """
+    company_id = await get_user_company_id(db, current_user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Benutzer muss einer Firma zugeordnet sein",
+        )
+
+    saga_service = SagaService(db)
+
+    logger.info(
+        "saga_remove_from_dlq_requested",
+        company_id=str(company_id),
+        saga_id=str(saga_id),
+        user_id=str(current_user.id),
+    )
+
+    saga = await saga_service.remove_from_dead_letter_queue(
+        saga_id=saga_id,
+        company_id=company_id,
+        user_id=current_user.id,
+    )
+
+    if not saga:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Saga nicht gefunden oder nicht in der Dead Letter Queue",
+        )
+
+    return SagaRetryResponse(
+        saga_id=str(saga.id),
+        status=saga.status,
+        retry_count=saga.retry_count,
+        message="Saga aus Dead Letter Queue entfernt",
     )
