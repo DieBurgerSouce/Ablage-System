@@ -7,7 +7,7 @@
 | Backend | ✅ OK | Running on :8000, 430+ Endpoints, Type-Safe |
 | Frontend | ✅ OK | Nginx :80, Accessibility E2E Tests OK |
 | Celery | ✅ OK | 414 Tasks, 12+ Beat Schedules, GPU for OCR |
-| PostgreSQL | ✅ OK | :5433, 227 Migrations asyncpg-hardened |
+| PostgreSQL | ✅ OK | :5433, 228 Migrations asyncpg-hardened (151_gobd_insert_only_triggers) |
 | Redis | ✅ OK | :6380, Rate Limiting, Blacklist, L1/L2 Cache |
 | GPU | ✅ OK | RTX 4080 (16GB), shared by backend + worker |
 | Jaeger | ✅ NEW | :16686 UI, :4317 OTLP gRPC, Distributed Tracing |
@@ -87,6 +87,10 @@ Final 3 TODOs resolved:
 
 | Date | Component | Description |
 |------|-----------|-------------|
+| 2026-02-19 | Backend | Zero-Touch Pipeline Chain, Auto-Kontierung, 3-Way-Matching, Saga Monitoring, Knowledge Graph API |
+| 2026-02-19 | Database | Migration 151: GoBD INSERT-only Triggers fuer domain_events + gobd_audit_chain |
+| 2026-02-19 | Security | Vault Client Haertung (TTL-Cache, AppRole, Retry), Vault Tasks fuer Secret-Rotation |
+| 2026-02-19 | Frontend | Knowledge Graph UI, Product Tour (HelpTooltip, UserModeToggle), Visual Diff ImageDiffViewer |
 | 2026-02-14 | Frontend | Phase 1+2: Spotlight, OCR Batch, Smart Upload, Tags, Auto-Learning |
 | 2026-02-14 | Backend | Spotlight API Endpoint (Rate Limited, <200ms) |
 | 2026-02-09 | Infrastructure | Jaeger distributed tracing mit OpenTelemetry (OTLP gRPC) |
@@ -106,6 +110,7 @@ Final 3 TODOs resolved:
 
 | Migration | Description |
 |-----------|-------------|
+| 151 | GoBD INSERT-only Triggers (domain_events, gobd_audit_chain) |
 | 227 | Mention Notifications |
 | 226 | Inbound Webhook Events |
 | 225 | Next Generation Features (Automation, Annotations) |

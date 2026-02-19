@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Services: Zero-Touch End-to-End Pipeline Chain (OCR -> Klassifizierung -> Entity-Linking -> Kontierung -> 3-Way-Matching -> Ablage) mit Confidence-Scoring und Graceful Degradation
+- Services: Auto-Kontierung Service fuer DATEV SKR03/SKR04 mit GoBD-konformer Buchungslogik (kein PII-Logging)
+- Services: 3-Way-Matching Service (Bestellung <-> Lieferschein <-> Rechnung, Auto-Freigabe >= 95% Confidence)
+- Services: Image Diff Service fuer pixelweisen Dokumentenvergleich (Diff-Bild, Overlay, Similarity-Score)
+- API: Knowledge Graph Endpoints (Entity-Graph mit konfigurierbarer Tiefe, Shortest-Path, Community Detection)
+- API: Saga Monitoring API (7 Endpoints: Liste, Statistiken, Details, Logs, Diagram, Retry, DLQ-Management)
+- API: Pipeline API (manueller Trigger und Status-Abfrage fuer Zero-Touch-Pipeline)
+- Workers: Pipeline Celery Tasks (process_document_pipeline, retry_pipeline_step)
+- Workers: Saga Tasks fuer Saga-Pattern-Ausfuehrung via Celery
+- Workers: Vault Tasks fuer periodische Secret-Rotation via HashiCorp Vault (maintenance-Queue)
+- Database: Migration 151 - GoBD INSERT-only Triggers fuer domain_events (vollstaendig immutable) und gobd_audit_chain (Verifikations-Felder ausgenommen)
+- Security: Vault Client Haertung mit TTL-basiertem Caching, AppRole Auth und Retry mit exponentiellem Backoff
+- Frontend: Knowledge Graph UI-Overhaul (GraphCanvas refactored, GraphToolbar, Views-Directory)
+- Frontend: Product Tour Erweiterung (HelpTooltip, UserModeToggle, use-checklist-events, use-user-mode Hooks)
+- Frontend: Visual Diff ImageDiffViewer Komponente
+- Frontend: Workflow Builder BlockNode Komponente (WorkflowBlockNode)
+
 ### Fixed
 - Security: Duplicate Detection API - company_id wird aus Auth-Context abgeleitet, nicht mehr aus Request-Body (IDOR-Prevention, Multi-Tenant Enforcement)
 - Security: Banking FinTS API - 12 Service-Call-Sites korrigiert von user_id auf company_id Parameter

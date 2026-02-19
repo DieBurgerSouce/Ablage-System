@@ -1,5 +1,17 @@
 # Recent Changes
 
+## 2026-02-19
+- **feat(services)**: Zero-Touch Pipeline Chain (OCR->Klassifizierung->Kontierung->3-Way-Matching->Ablage) implementiert
+- **feat(services)**: Auto-Kontierung Service (DATEV SKR03/SKR04, GoBD-konform) und 3-Way-Matching Service
+- **feat(services)**: Image Diff Service fuer pixelweisen Dokumentenvergleich
+- **feat(api)**: Knowledge Graph API (Entity-Graph, Shortest-Path, Community Detection)
+- **feat(api)**: Saga Monitoring API (7 Endpoints: Liste, Details, Logs, Diagram, Retry, DLQ)
+- **feat(api)**: Pipeline API (manueller Trigger und Status-Abfrage)
+- **feat(workers)**: Pipeline Tasks, Saga Tasks und Vault Tasks (Secret-Rotation via HashiCorp)
+- **feat(db)**: Migration 151 - GoBD INSERT-only Triggers fuer domain_events und gobd_audit_chain
+- **feat(security)**: Vault Client Haertung (TTL-Caching, AppRole Auth, Retry mit Backoff)
+- **feat(frontend)**: Knowledge Graph UI-Overhaul (GraphCanvas, GraphToolbar, Views), Product Tour (HelpTooltip, UserModeToggle), Visual Diff (ImageDiffViewer)
+
 ## 2026-02-18
 - **fix(security)**: Multi-Tenant Enforcement - Duplicate Detection API leitet company_id aus Auth ab (IDOR-Prevention)
 - **fix(security)**: Banking FinTS API - user_id Parameter auf company_id korrigiert (12 Call-Sites)
