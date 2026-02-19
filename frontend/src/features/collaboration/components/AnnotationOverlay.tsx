@@ -7,6 +7,7 @@
 
 import { useState, useCallback, useRef, type MouseEvent } from 'react';
 import { MessageSquare, CheckCircle, Highlighter, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { emitChecklistComplete } from '@/features/product-tour';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
@@ -137,6 +138,7 @@ export function AnnotationOverlay({
       mentioned_user_ids: newMentions.length > 0 ? newMentions.map(m => m.userId) : undefined,
     });
 
+    emitChecklistComplete('create_annotation');
     setShowCreateForm(false);
     setNewContent('');
     setNewMentions([]);

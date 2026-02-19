@@ -7,6 +7,7 @@
  * - Freigabe-Warteschlange mit Approve/Reject-Aktionen
  */
 
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ import {
   useApproveInvoice,
   useRejectInvoice,
 } from '../hooks/use-invoice-workflow';
+import { emitChecklistComplete } from '@/features/product-tour';
 import {
   AlertTriangle,
   Clock,
@@ -39,6 +41,10 @@ export function InvoiceWorkflowPage() {
   const { data: stats, isLoading: statsLoading } = useAutomationStats();
   const approveMutation = useApproveInvoice();
   const rejectMutation = useRejectInvoice();
+
+  useEffect(() => {
+    emitChecklistComplete('view_invoices')
+  }, [])
 
   if (pipelineLoading || queueLoading || statsLoading) {
     return <DashboardSkeleton />;
@@ -88,7 +94,7 @@ export function InvoiceWorkflowPage() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid gap-6 md:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-4" data-tour="workflow-stats">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Verarbeitet</CardTitle>
@@ -173,7 +179,7 @@ export function InvoiceWorkflowPage() {
       </Card>
 
       {/* Pipeline Visualization */}
-      <Card>
+      <Card data-tour="workflow-pipeline">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />

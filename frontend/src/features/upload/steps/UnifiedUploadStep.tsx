@@ -55,7 +55,7 @@ export function UnifiedUploadStep({
             <Separator />
 
             {/* Section 3: Upload */}
-            <section className="space-y-4">
+            <section className="space-y-4" data-tour="upload-button">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-bold text-sm">3</div>
                     <h2 className="text-xl font-semibold tracking-tight">Dokumente hochladen</h2>

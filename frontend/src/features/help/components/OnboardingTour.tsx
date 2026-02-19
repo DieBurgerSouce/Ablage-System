@@ -1,5 +1,14 @@
 /**
  * Onboarding Tour - Stepped Tour durch die App
+ *
+ * @deprecated Dieses Komponente ist veraltet und wird durch das neue Product-Tour-System
+ * ersetzt. Verwenden Sie stattdessen `features/product-tour/`.
+ *
+ * Migration:
+ * - Alt: `import { OnboardingTour } from '@/features/help'`
+ * - Neu: `import { ProductTour } from '@/features/product-tour'`
+ *
+ * Dieses Komponente wird in einer zukünftigen Version entfernt.
  */
 
 import { useEffect, useState } from 'react';
@@ -24,6 +33,9 @@ interface OnboardingTourProps {
   autoStart?: boolean;
 }
 
+/**
+ * @deprecated Verwenden Sie `features/product-tour/` statt diesem Komponente.
+ */
 export function OnboardingTour({ autoStart = true }: OnboardingTourProps) {
   const [isActive, setIsActive] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);

@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { emitChecklistComplete } from '@/features/product-tour';
 import {
     DndContext,
     DragOverlay,
@@ -123,6 +124,8 @@ export function UploadWizard() {
                       }
                     : f
             ));
+
+            emitChecklistComplete('upload_document');
 
             if (document.ocrStatus === 'completed') {
                 await fetchClassificationAndUpdate(uploadingFile.id, document.id);

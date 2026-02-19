@@ -42,7 +42,7 @@ export function DocumentList({ results, onUpdateTune, onUpdateBackend, onRemove 
     const parents = results.filter(r => !r.isChild);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-4" data-tour="document-list">
             <div className="grid grid-cols-[1fr_200px_200px_100px_40px] gap-4 text-sm text-muted-foreground px-4">
                 <span>Dokument</span>
                 <span>Kontext (Tune)</span>

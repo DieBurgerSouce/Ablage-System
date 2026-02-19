@@ -52,6 +52,7 @@ export function UploadDropzone({ onFilesAdd }: UploadDropzoneProps) {
             {...getRootProps()}
             variants={dropzoneVariants}
             animate={isDragReject ? 'reject' : isDragActive ? 'active' : 'idle'}
+            data-tour="upload-dropzone"
             className={cn(
                 "border-2 border-dashed rounded-xl p-12 cursor-pointer flex flex-col items-center justify-center text-center transition-colors relative overflow-hidden group",
                 "hover:border-primary/50 hover:bg-muted/30"

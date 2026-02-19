@@ -62,7 +62,7 @@ const MotionButton = motion.button;
 
 export function OCRBackendSelector({ selectedId, onSelect, gpuAvailable }: OCRBackendSelectorProps) {
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-6xl">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-6xl" data-tour="ocr-backend-select">
             {backends.map((backend) => {
                 const Icon = backend.icon;
                 const isSelected = selectedId === backend.id;

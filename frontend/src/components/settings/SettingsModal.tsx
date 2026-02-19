@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import { Settings, Monitor, Cpu, Bell, Shield, Building2, UserCircle, Tag, Lock } from 'lucide-react';
+import { emitChecklistComplete } from '@/features/product-tour';
 import {
     Dialog,
     DialogContent,
@@ -33,11 +34,12 @@ export function SettingsModal() {
     const isAdmin = user?.is_superuser || user?.role === 'admin';
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(isOpen) => { setOpen(isOpen); if (isOpen) emitChecklistComplete('configure_settings'); }}>
             <DialogTrigger asChild>
                 <button
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     aria-label="Einstellungen öffnen"
+                    data-tour="settings-link"
                 >
                     <Settings className="w-4 h-4" aria-hidden="true" />
                     Einstellungen

@@ -12,6 +12,8 @@
 
 import { AxiosError } from 'axios';
 import { toast } from '@/components/ui/use-toast';
+import { toast as sonnerToast } from 'sonner';
+import { apiClient } from '@/lib/api/client';
 
 /**
  * Error-Nachricht-Mapping (Deutsch)
@@ -227,12 +229,37 @@ export function showApiErrorToast(error: AxiosError): void {
         };
     }
 
+    // Prüfen ob der Fehler wiederholbar ist
+    const RETRYABLE_STATUS_CODES = new Set([500, 502, 503, 504, 429]);
+    const isNetworkError = !error.response && (
+        error.code === 'ECONNABORTED' ||
+        error.code === 'ETIMEDOUT' ||
+        error.code === 'ERR_NETWORK'
+    );
+    const isRetryable = isNetworkError || (status !== undefined && RETRYABLE_STATUS_CODES.has(status));
+
     // Toast anzeigen
-    toast({
-        title: errorInfo.title,
-        description: errorInfo.description,
-        variant: 'destructive',
-    });
+    if (isRetryable && error.config) {
+        // Referenz auf die ursprüngliche Konfiguration für den Retry-Handler
+        const originalConfig = error.config;
+
+        // Sonner direkt nutzen für nativen Action-Button-Support
+        sonnerToast.error(errorInfo.title, {
+            description: errorInfo.description,
+            action: {
+                label: 'Erneut versuchen',
+                onClick: () => {
+                    apiClient.request(originalConfig);
+                },
+            },
+        });
+    } else {
+        toast({
+            title: errorInfo.title,
+            description: errorInfo.description,
+            variant: 'destructive',
+        });
+    }
 }
 
 /**

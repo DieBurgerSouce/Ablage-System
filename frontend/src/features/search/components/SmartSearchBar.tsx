@@ -471,7 +471,7 @@ export function SmartSearchBar({ onResultClick, initialFilters, className }: Sma
 
                         {/* Results */}
                         {data?.results && data.results.length > 0 && (
-                            <div className="space-y-3">
+                            <div className="space-y-3" data-tour="search-results">
                                 <div className="flex items-center justify-between">
                                     <p className="text-sm text-muted-foreground">
                                         {data.total} Ergebnisse gefunden in {data.search_time_ms}ms

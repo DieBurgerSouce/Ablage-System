@@ -110,7 +110,7 @@ function FinancialHealthCard({ data }: { data: typeof import('../api/digital-twi
   };
 
   return (
-    <Card>
+    <Card data-tour="twin-financial">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Finanzielle Gesundheit</CardTitle>
         <DollarSign className="h-4 w-4 text-muted-foreground" />
@@ -202,7 +202,7 @@ function RiskOverviewCard({ data }: { data: typeof import('../api/digital-twin-a
   };
 
   return (
-    <Card>
+    <Card data-tour="twin-risk">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Risiko-Übersicht</CardTitle>
         <Shield className="h-4 w-4 text-muted-foreground" />
@@ -352,7 +352,7 @@ function ComplianceStatusCard({ data }: { data: typeof import('../api/digital-tw
   };
 
   return (
-    <Card>
+    <Card data-tour="twin-compliance">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">Compliance-Status</CardTitle>
         <Shield className="h-4 w-4 text-muted-foreground" />

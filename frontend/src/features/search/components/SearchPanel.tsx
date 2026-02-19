@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { emitChecklistComplete } from '@/features/product-tour';
 import {
     Calendar,
     FileType,
@@ -141,6 +142,7 @@ export function SearchPanel({ value, onChange, onReset, resultCount, searchTimeM
             setLocalQuery(query);
             onChange({ query });
             addRecentSearch(query);
+            emitChecklistComplete('search_document');
         },
         [onChange, addRecentSearch]
     );

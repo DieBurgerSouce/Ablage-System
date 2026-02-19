@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useMemo, useState, useRef } from 'react';
+import { emitChecklistComplete } from '@/features/product-tour';
 import ReactFlow, {
   Background,
   Controls,
@@ -346,6 +347,7 @@ export default function WorkflowBuilder({
       label: e.label as string | undefined,
     }));
 
+    emitChecklistComplete('create_workflow');
     onSave?.(workflowNodes, workflowEdges);
   }, [nodes, edges, onSave]);
 

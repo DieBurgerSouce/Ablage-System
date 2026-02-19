@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
@@ -8,6 +9,7 @@ import {
 } from '@/components/dashboard'
 import { CompanySetupWizard } from '@/components/onboarding/CompanySetupWizard'
 import { AnimatedPage } from '@/components/animations'
+import { emitChecklistComplete } from '@/features/product-tour'
 
 export const Route = createFileRoute('/')({
     component: Index,
@@ -28,6 +30,10 @@ export const Route = createFileRoute('/')({
 function Index() {
     const { user } = useAuth()
     const { isAdmin, isEditor } = usePermissions()
+
+    useEffect(() => {
+        emitChecklistComplete('view_dashboard')
+    }, [])
 
     const userName = user?.full_name || user?.username
 

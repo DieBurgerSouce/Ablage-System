@@ -11,6 +11,7 @@ export * from './hooks/useHelp';
 // Components
 export { HelpButton } from './components/HelpButton';
 export { HelpPanel } from './components/HelpPanel';
+// @deprecated Verwenden Sie `features/product-tour/` statt OnboardingTour
 export { OnboardingTour } from './components/OnboardingTour';
 export { ContextualTooltip, InlineTooltipTrigger } from './components/ContextualTooltip';
 export { FeatureHint, QuickHint } from './components/FeatureHint';

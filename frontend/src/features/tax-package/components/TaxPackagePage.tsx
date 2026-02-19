@@ -172,7 +172,7 @@ export function TaxPackagePage() {
             <div className="space-y-2">
               <Label htmlFor="period">Zeitraum</Label>
               <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-                <SelectTrigger id="period">
+                <SelectTrigger id="period" data-tour="tax-period-select">
                   <SelectValue placeholder="Zeitraum auswählen" />
                 </SelectTrigger>
                 <SelectContent>
@@ -213,7 +213,7 @@ export function TaxPackagePage() {
         </Card>
 
         {/* Completeness Check */}
-        <Card>
+        <Card data-tour="tax-completeness">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 className="h-5 w-5" />
@@ -451,7 +451,7 @@ function PackageRow({
         )}
 
         {(pkg.status === 'sent' || pkg.status === 'downloaded') && (
-          <Button size="sm" variant="outline" onClick={() => onDownload(pkg.id)}>
+          <Button size="sm" variant="outline" onClick={() => onDownload(pkg.id)} data-tour="tax-export-button">
             <Download className="h-4 w-4 mr-1" />
             Herunterladen
           </Button>

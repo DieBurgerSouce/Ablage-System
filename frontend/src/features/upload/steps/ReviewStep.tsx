@@ -27,7 +27,7 @@ export function ReviewStep({ results, onUpdateTune, onUpdateBackend, onRemove, o
 
             <ReviewDashboard results={results} />
 
-            <div className="bg-muted/10 rounded-xl border p-6">
+            <div className="bg-muted/10 rounded-xl border p-6" data-tour="ocr-result">
                 <DocumentList
                     results={results}
                     onUpdateTune={onUpdateTune}
@@ -45,6 +45,7 @@ export function ReviewStep({ results, onUpdateTune, onUpdateBackend, onRemove, o
                     onClick={onConfirm}
                     size="lg"
                     className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+                    data-tour="process-button"
                 >
                     <CheckCircle className="w-4 h-4" />
                     Verarbeitung starten
