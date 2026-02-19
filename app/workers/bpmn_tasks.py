@@ -30,7 +30,7 @@ from celery import shared_task
 from sqlalchemy import select, and_
 
 from app.workers.celery_app import celery_app
-from app.db.session import async_session_maker
+from app.db.session import async_session_factory
 from app.db.bpmn_models.bpmn import (
     ProcessTask,
     ProcessInstance,
@@ -60,7 +60,7 @@ def process_due_timers(self, company_id: Optional[str] = None):
     import asyncio
 
     async def _process():
-        async with async_session_maker() as db:
+        async with async_session_factory() as db:
             from app.services.bpmn import get_timer_service
 
             service = get_timer_service(db)
@@ -106,7 +106,7 @@ def escalate_overdue_tasks(self, company_id: Optional[str] = None):
     import asyncio
 
     async def _escalate():
-        async with async_session_maker() as db:
+        async with async_session_factory() as db:
             from app.services.bpmn import get_task_service
 
             service = get_task_service(db)
@@ -178,7 +178,7 @@ def cleanup_old_timers(self, days_old: int = 30):
     import asyncio
 
     async def _cleanup():
-        async with async_session_maker() as db:
+        async with async_session_factory() as db:
             from app.services.bpmn import get_timer_service
 
             service = get_timer_service(db)
@@ -236,7 +236,7 @@ def execute_service_task(
     )
 
     async def _execute():
-        async with async_session_maker() as db:
+        async with async_session_factory() as db:
             from app.services.bpmn import get_process_execution_service
 
             result_variables = {}
@@ -331,7 +331,7 @@ def check_process_timeouts(self, timeout_hours: int = 24):
     import asyncio
 
     async def _check():
-        async with async_session_maker() as db:
+        async with async_session_factory() as db:
             cutoff = datetime.now(timezone.utc) - timedelta(hours=timeout_hours)
 
             # Haengende Prozesse finden
@@ -394,7 +394,7 @@ def send_task_reminder(
     import asyncio
 
     async def _send():
-        async with async_session_maker() as db:
+        async with async_session_factory() as db:
             from app.services.bpmn import get_task_service
 
             service = get_task_service(db)

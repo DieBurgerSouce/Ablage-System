@@ -1,5 +1,9 @@
 """Celery tasks for async processing."""
 
+import logging
+
+_import_logger = logging.getLogger(__name__)
+
 from app.workers.tasks.ocr_tasks import (
     process_document_task,
     batch_process_task,
@@ -263,24 +267,24 @@ try:
         verify_audit_archives_task, get_audit_archive_statistics_task, backup_restore_test_task,
         get_restore_test_history_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.cleanup_tasks import (
         cleanup_soft_deleted_documents, cleanup_orphaned_files, cleanup_expired_cache,
         cleanup_search_analytics, cleanup_expired_sessions, cleanup_expired_verification_tokens,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.gdpr_tasks import (
         process_deletion_requests, check_retention_compliance, send_breach_notification,
         generate_compliance_report,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.ml_tasks import (
@@ -288,31 +292,31 @@ try:
         trigger_model_retrain, generate_ml_report, check_drift_and_respond,
         generate_monthly_drift_report, apply_ab_test_winners, detect_concept_drift,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.dlq_management_tasks import (
         check_dlq_health, cleanup_old_dlq_tasks, alert_on_critical_dlq_count,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.document_intelligence_tasks import (
         detect_document_groups, batch_detect_groups_by_folder, extract_entities_from_document,
         batch_extract_entities, run_document_intelligence_pipeline, update_intelligence_metrics,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.extraction_tasks import (
         reprocess_all_documents_structured_extraction, reprocess_single_document,
         generate_extraction_stats, quick_classify_document, reprocess_quick_classification,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.rag_tasks import (
@@ -320,15 +324,15 @@ try:
         run_rag_batch_job, get_rag_statistics, scheduled_chunk_new_documents,
         sync_customer_cards_scheduled,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.monitoring_tasks import (
         worker_health_check_task, cleanup_stuck_tasks, check_queue_backpressure,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.surya_improvement_tasks import (
@@ -337,15 +341,15 @@ try:
         evaluate_surya_ab_test, rollback_surya_model, process_surya_corrections,
         update_surya_metrics, generate_surya_improvement_report,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.export_tasks import (
         batch_export_task, check_scheduled_exports, run_scheduled_export_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.privat_tasks import (
@@ -362,16 +366,16 @@ try:
         generate_predictive_alerts as privat_generate_predictive_alerts,
         cleanup_old_projections, get_predictive_insights_summary,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.orchestration_tasks import (
         process_pending_orchestration_actions, emit_system_event,
         check_and_emit_threshold_events, get_orchestration_metrics, cleanup_old_decisions,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.orchestration_extended_tasks import (
@@ -379,8 +383,8 @@ try:
         process_pending_investigations, start_fraud_investigation,
         escalate_overdue_approvals_extended, assign_deputy_approvers,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.workflow_tasks import (
@@ -388,8 +392,8 @@ try:
         cleanup_old_workflow_executions, process_delayed_step, generate_workflow_report,
         on_document_created, on_document_processed, on_document_failed,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.collaboration_tasks import (
@@ -397,67 +401,67 @@ try:
         check_overdue_tasks, escalate_overdue_tasks, cleanup_old_digest_entries,
         send_task_due_soon_reminders,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.mlops_tasks import (
         check_retraining_threshold, run_retraining, evaluate_model,
         rollback_if_degraded, cleanup_old_versions, get_stats,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.sla_tasks import (
         check_all_slas, send_sla_warning, escalate_overdue_workflows, generate_sla_report,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.liquidity_tasks import (
         check_liquidity_alerts_task, detect_large_outflows_task, generate_liquidity_summary_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.push_notification_tasks import (
         cleanup_expired_push_subscriptions_task, push_subscription_health_check_task,
         cleanup_notification_history_task, generate_push_statistics_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.escalation_tasks import (
         advance_pending_escalations_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 # --- Batch 4: Previously orphaned modules ---
 try:
     from app.workers.tasks.ai_conversation_tasks import (
         process_ai_message, execute_ai_action,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.ai_ethics_tasks import (
         generate_bias_report, update_fairness_metrics,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.audit_chain_tasks import (
         verify_integrity, build_merkle_tree,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.banking_tasks import (
@@ -468,15 +472,15 @@ try:
         check_expired_mahnstopp, generate_dunning_daily_report, fints_sync_all_accounts,
         fints_refresh_balances, execute_pending_sepa_transfers, update_bundesbank_basiszins,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.calendar_sync_task import (
         sync_all_calendars, sync_single_calendar,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.cashflow_prediction_tasks import (
@@ -484,29 +488,29 @@ try:
         warm_forecast_cache, update_entity_profiles, check_liquidity_alerts,
         calculate_daily_forecast_v2,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.ceo_dashboard_tasks import (
         create_daily_snapshot, detect_anomalies,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.chain_intelligence_tasks import (
         scan_chain_gaps_task, detect_orphan_documents_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.compliance_autopilot_tasks import (
         run_daily_scan, prepare_audit_report, run_gdpr_check,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.contract_tasks import (
@@ -516,8 +520,8 @@ try:
         check_contract_renewal_deadlines_task, extract_contract_dates_task,
         send_contract_renewal_reminder_task, schedule_contract_reminders_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.contract_v2_tasks import (
@@ -530,15 +534,15 @@ try:
         process_scheduled_cancellations_task, check_cancellation_deadlines_task,
         analyze_contract_costs_task, generate_contract_cost_report_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.customer_detection_tasks import (
         detect_contacts_task, batch_detect_contacts_task, reprocess_all_documents_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.datev_connect_tasks import (
@@ -546,31 +550,31 @@ try:
         push_datev_buchungsstapel, upload_pending_datev_belege,
         datev_gobd_compliance_check, datev_auto_festschreibung, sync_datev_kontenplan,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.enrichment_tasks import (
         enrich_entity,
         cleanup_expired_cache as enrichment_cleanup_expired_cache,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.erp_sync_tasks import (
         scheduled_sync_all, test_connection, notify_conflicts,
         cleanup_old_history,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.event_sourcing_tasks import (
         create_snapshots, archive_old_events,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.extended_alerts_tasks import (
@@ -578,8 +582,8 @@ try:
         create_supplier_insolvency_alert_task, create_supplier_ownership_change_alert_task,
         run_all_extended_alerts_checks_task, cleanup_old_extended_alerts_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.gobd_compliance_tasks import (
@@ -587,31 +591,31 @@ try:
         generate_chain_statistics_task as gobd_generate_chain_statistics_task,
         check_retention_warnings_task, check_breach_deadlines_task, daily_breach_report_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.hygiene_tasks import (
         run_full_hygiene_scan, check_entity_after_document, auto_apply_corrections,
         check_inactive_entities,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.import_tasks import (
         retry_import_task, cleanup_old_import_logs, reset_daily_folder_stats,
         check_email_connection_health,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.knowledge_graph_tasks import (
         build_graph_incremental,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.lexware_sync_tasks import (
@@ -620,15 +624,15 @@ try:
         sync_single_supplier_task, update_payment_status_task, push_entity_to_lexware_task,
         sync_all_entities, health_check_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.life_event_tasks import (
         detect_life_events,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.nlq_tasks import (
@@ -636,69 +640,69 @@ try:
         warm_cache as nlq_warm_cache,
         analyze_query_patterns, retry_failed_queries,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.ocr_template_tasks import (
         scan_template_candidates_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.odoo_tasks import (
         push_all_risk_scores, retry_failed_syncs,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.shipment_tasks import (
         refresh_active_shipments, refresh_single_shipment, check_delayed_shipments,
         generate_shipment_statistics,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.smart_inbox_tasks import (
         aggregate_inbox_items, recalculate_priorities, train_behavior_model,
         cleanup_completed_items,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.tax_package_tasks import (
         generate_monthly_packages, generate_quarterly_packages, auto_send_ready_packages,
         send_missing_documents_reminders, cleanup_expired_packages, generate_datev_for_package,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.template_tasks import (
         render_template_batch, render_template_single, cleanup_temp_files,
         cleanup_old_template_versions, collect_template_stats,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.thumbnail_tasks import (
         generate_thumbnail_task, batch_generate_thumbnails_task, regenerate_missing_thumbnails_task,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 try:
     from app.workers.tasks.zero_touch_tasks import (
         process_document_zero_touch, process_pending_documents, recalculate_thresholds,
         generate_zero_touch_statistics,
     )
-except ImportError:
-    pass
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
 
 __all__ = [
     # OCR tasks

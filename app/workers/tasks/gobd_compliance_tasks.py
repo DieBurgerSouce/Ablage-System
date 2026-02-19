@@ -11,7 +11,7 @@ GoBD = Grundsätze zur ordnungsmaessigen Führung und Aufbewahrung
 """
 
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, TypedDict
 
 import structlog
@@ -84,6 +84,8 @@ CHAIN_VERIFICATION_TOTAL = Counter(
     bind=True,
     max_retries=3,
     default_retry_delay=300,
+    time_limit=600,
+    soft_time_limit=540,
 )
 def verify_audit_chain_task(
     self,
@@ -248,6 +250,8 @@ async def _create_chain_broken_alert(db, company_id: uuid.UUID, verification_res
     bind=True,
     max_retries=3,
     default_retry_delay=600,
+    time_limit=900,
+    soft_time_limit=840,
 )
 def batch_integrity_check_task(
     self,
@@ -310,7 +314,7 @@ async def _batch_integrity_check(
         query = query.where(DocumentArchive.company_id == company_id)
 
     # Priorisiere Archive, die länger nicht geprüft wurden
-    stale_threshold = datetime.now() - timedelta(days=7)
+    stale_threshold = datetime.now(timezone.utc) - timedelta(days=7)
     query = query.where(
         (DocumentArchive.last_verification_at == None) |
         (DocumentArchive.last_verification_at < stale_threshold)
@@ -413,6 +417,8 @@ async def _batch_integrity_check(
     name="app.workers.tasks.gobd_compliance_tasks.generate_chain_statistics_task",
     bind=True,
     max_retries=2,
+    time_limit=300,
+    soft_time_limit=270,
 )
 def generate_chain_statistics_task(self, company_id: str) -> dict:
     """Generiert Statistiken für die Audit-Chain.
@@ -453,6 +459,8 @@ def generate_chain_statistics_task(self, company_id: str) -> dict:
     name="app.workers.tasks.gobd_compliance_tasks.check_retention_warnings_task",
     bind=True,
     max_retries=3,
+    time_limit=600,
+    soft_time_limit=540,
 )
 def check_retention_warnings_task(self) -> RetentionWarningResult:
     """Prüft auf Archive mit bevorstehenden Aufbewahrungsfristen.
@@ -554,6 +562,8 @@ async def _check_retention_warnings(db) -> RetentionWarningResult:
     bind=True,
     max_retries=3,
     default_retry_delay=60,
+    time_limit=300,
+    soft_time_limit=270,
 )
 def check_breach_deadlines_task(self) -> BreachDeadlineResult:
     """Prüft alle 72-Stunden-Deadlines für Datenschutzverletzungen.
@@ -658,6 +668,8 @@ async def _send_breach_deadline_notification(db, alert: dict) -> None:
     bind=True,
     max_retries=2,
     default_retry_delay=300,
+    time_limit=600,
+    soft_time_limit=540,
 )
 def daily_breach_report_task(self) -> DailyBreachReport:
     """Erstellt täglichen Bericht über Datenschutzverletzungen.
@@ -698,7 +710,7 @@ async def _generate_daily_breach_report(db) -> DailyBreachReport:
     all_breaches, total = await service.list_breaches(db, limit=500)
 
     report = {
-        "report_date": datetime.now().isoformat(),
+        "report_date": datetime.now(timezone.utc).isoformat(),
         "total_breaches": total,
         "by_status": {},
         "by_severity": {},
@@ -707,7 +719,7 @@ async def _generate_daily_breach_report(db) -> DailyBreachReport:
         "closed_last_24h": 0,
     }
 
-    cutoff = datetime.now() - timedelta(hours=24)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
 
     for breach in all_breaches:
         # Nach Status zählen
@@ -723,7 +735,7 @@ async def _generate_daily_breach_report(db) -> DailyBreachReport:
             report["pending_deadlines"] += 1
 
             # Überfällig?
-            if breach.deadline_72h < datetime.now():
+            if breach.deadline_72h < datetime.now(timezone.utc):
                 report["overdue"] += 1
 
         # In letzten 24h geschlossen

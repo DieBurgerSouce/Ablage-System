@@ -3156,7 +3156,7 @@ class GPUTask(Task):
 class CPUTask(Task):
     """Base task class for CPU-only operations."""
 
-    autoretry_for = (Exception,)
+    autoretry_for = (ConnectionError, TimeoutError, OSError, IOError)
     max_retries = 3
     retry_backoff = True
     retry_backoff_max = 300  # Max 5 minutes
