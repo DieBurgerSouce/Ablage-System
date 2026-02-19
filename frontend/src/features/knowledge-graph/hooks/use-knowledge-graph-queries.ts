@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState, useEffect } from 'react';
 import { knowledgeGraphApi } from '../api';
-import type { GraphData, SearchResult, GraphCommunity } from '../types';
+import type { GraphData, SearchResult, GraphCommunity, FinancialChainData, RiskNetworkData, DocumentFamilyData } from '../types';
 
 /**
  * Hook zum Laden des Entity-Graphs
@@ -62,5 +62,40 @@ export function useCommunities() {
     queryKey: ['knowledge-graph', 'communities'],
     queryFn: () => knowledgeGraphApi.getCommunities(),
     staleTime: 10 * 60 * 1000, // 10 Minuten
+  });
+}
+
+/**
+ * Hook zum Laden der Finanzkette einer Entity
+ */
+export function useFinancialChain(entityId: string | undefined) {
+  return useQuery<FinancialChainData>({
+    queryKey: ['knowledge-graph', 'financial-chain', entityId],
+    queryFn: () => knowledgeGraphApi.getFinancialChain(entityId!),
+    enabled: Boolean(entityId),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook zum Laden des Risiko-Netzwerks
+ */
+export function useRiskNetwork(entityId: string | undefined) {
+  return useQuery<RiskNetworkData>({
+    queryKey: ['knowledge-graph', 'risk-network', entityId],
+    queryFn: () => knowledgeGraphApi.getRiskNetwork(entityId),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook zum Laden der Dokumentenfamilie
+ */
+export function useDocumentFamily(documentId: string | undefined) {
+  return useQuery<DocumentFamilyData>({
+    queryKey: ['knowledge-graph', 'document-family', documentId],
+    queryFn: () => knowledgeGraphApi.getDocumentFamily(documentId!),
+    enabled: Boolean(documentId),
+    staleTime: 5 * 60 * 1000,
   });
 }

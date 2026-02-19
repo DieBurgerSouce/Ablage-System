@@ -92,3 +92,32 @@ export function useCompareDocuments() {
     },
   });
 }
+
+/**
+ * Mutation fuer pixelweisen Bild-Vergleich zweier Dokumente
+ */
+export function useImageDiff() {
+  return useMutation({
+    mutationFn: async (params: {
+      documentAId: string;
+      documentBId: string;
+      page?: number;
+      threshold?: number;
+    }) => {
+      const { compareDocumentImages } = await import('../api/visual-diff-api');
+      return compareDocumentImages({
+        document_a_id: params.documentAId,
+        document_b_id: params.documentBId,
+        page: params.page,
+        threshold: params.threshold,
+      });
+    },
+    onError: (error: Error) => {
+      toast.error('Bild-Vergleich fehlgeschlagen', {
+        description:
+          error.message ||
+          'Der Bild-Vergleich konnte nicht durchgefuehrt werden.',
+      });
+    },
+  });
+}

@@ -30,7 +30,9 @@ import {
   Minus,
   Edit,
   FileSearch,
+  ScanLine,
 } from 'lucide-react';
+import { ImageDiffViewer } from './ImageDiffViewer';
 import { cn } from '@/lib/utils';
 
 /**
@@ -174,6 +176,10 @@ export function VisualDiffPage() {
                   <FileSearch className="h-4 w-4" />
                   Dokumente vergleichen
                 </TabsTrigger>
+                <TabsTrigger value="image-diff" className="gap-1.5">
+                  <ScanLine className="h-4 w-4" />
+                  Bild-Vergleich
+                </TabsTrigger>
               </TabsList>
 
               {/* Tab 1: Text Input (existing behavior) */}
@@ -255,6 +261,11 @@ export function VisualDiffPage() {
                     </AlertDescription>
                   </Alert>
                 )}
+              </TabsContent>
+
+              {/* Tab 3: Image Diff (pixel comparison) */}
+              <TabsContent value="image-diff" className="space-y-6">
+                <ImageDiffViewer />
               </TabsContent>
             </Tabs>
           </CardContent>

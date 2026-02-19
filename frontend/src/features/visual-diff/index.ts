@@ -14,3 +14,4 @@ export * from './hooks/use-visual-diff';
 export { VisualDiffPage } from './components/VisualDiffPage';
 export { DocumentTimeline } from './components/DocumentTimeline';
 export type { TimelineStage } from './components/DocumentTimeline';
+export { ImageDiffViewer } from './components/ImageDiffViewer';

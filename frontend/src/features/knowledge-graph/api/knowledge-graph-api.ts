@@ -4,7 +4,7 @@
  */
 
 import { apiClient } from '@/lib/api/client';
-import type { GraphData, SearchResult, GraphCommunity } from '../types';
+import type { GraphData, SearchResult, GraphCommunity, FinancialChainData, RiskNetworkData, DocumentFamilyData } from '../types';
 
 const BASE_URL = '/knowledge-graph';
 
@@ -58,6 +58,37 @@ export const knowledgeGraphApi = {
    */
   async getCommunities(): Promise<GraphCommunity[]> {
     const response = await apiClient.get<GraphCommunity[]>(`${BASE_URL}/communities`);
+    return response.data;
+  },
+
+  /**
+   * Laedt Finanzketten fuer eine Entity
+   */
+  async getFinancialChain(entityId: string): Promise<FinancialChainData> {
+    const response = await apiClient.get<FinancialChainData>(
+      `${BASE_URL}/financial-chain/${entityId}`
+    );
+    return response.data;
+  },
+
+  /**
+   * Laedt Risiko-Netzwerk mit Communities
+   */
+  async getRiskNetwork(entityId?: string): Promise<RiskNetworkData> {
+    const response = await apiClient.get<RiskNetworkData>(
+      `${BASE_URL}/risk-network`,
+      { params: entityId ? { entity_id: entityId } : undefined }
+    );
+    return response.data;
+  },
+
+  /**
+   * Laedt Dokumentenfamilie
+   */
+  async getDocumentFamily(documentId: string): Promise<DocumentFamilyData> {
+    const response = await apiClient.get<DocumentFamilyData>(
+      `${BASE_URL}/document-family/${documentId}`
+    );
     return response.data;
   },
 };

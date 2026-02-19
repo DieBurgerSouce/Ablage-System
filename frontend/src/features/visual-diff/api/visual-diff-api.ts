@@ -66,6 +66,7 @@ export const visualDiffKeys = {
   compare: () => [...visualDiffKeys.all, 'compare'] as const,
   summary: () => [...visualDiffKeys.all, 'summary'] as const,
   hash: (text: string) => [...visualDiffKeys.all, 'hash', text] as const,
+  imageDiff: () => [...visualDiffKeys.all, 'image-diff'] as const,
 };
 
 // ==================== API Functions ====================
@@ -94,5 +95,37 @@ export async function compareTextsSummary(request: DiffRequest): Promise<ChangeS
  */
 export async function computeTextHash(text: string): Promise<HashResponse> {
   const response = await apiClient.post<HashResponse>('/visual-diff/hash', { text });
+  return response.data;
+}
+
+// ==================== Image Diff Types ====================
+
+export interface ImageDiffRequest {
+  document_a_id: string;
+  document_b_id: string;
+  page?: number;
+  threshold?: number;
+}
+
+export interface ImageDiffResponse {
+  similarity_score: number;
+  changed_percentage: number;
+  diff_image_base64: string;
+  overlay_image_base64: string;
+  dimensions: [number, number];
+}
+
+// ==================== Image Diff API ====================
+
+/**
+ * Vergleicht zwei Dokumente pixelweise als Bilder
+ */
+export async function compareDocumentImages(
+  request: ImageDiffRequest
+): Promise<ImageDiffResponse> {
+  const response = await apiClient.post<ImageDiffResponse>(
+    '/visual-diff/compare/image',
+    request
+  );
   return response.data;
 }

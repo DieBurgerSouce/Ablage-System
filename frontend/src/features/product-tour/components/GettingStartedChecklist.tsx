@@ -19,6 +19,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useChecklistListener } from '../hooks/use-checklist-events';
 
 const CHECKLIST_STORAGE_KEY = 'ablage-getting-started';
 const CHECKLIST_DISMISSED_KEY = 'ablage-getting-started-dismissed';
@@ -61,6 +62,24 @@ const CHECKLIST_ITEMS: ChecklistItem[] = [
     description: 'Passen Sie das System an Ihre Beduerfnisse an',
     route: '/settings',
   },
+  {
+    id: 'create_workflow',
+    label: 'Workflow erstellen',
+    description: 'Erstellen Sie Ihren ersten Workflow',
+    route: '/workflow-builder',
+  },
+  {
+    id: 'explore_knowledge_graph',
+    label: 'Wissens-Graph erkunden',
+    description: 'Visualisieren Sie Dokumenten-Beziehungen',
+    route: '/knowledge-graph',
+  },
+  {
+    id: 'create_annotation',
+    label: 'Annotation erstellen',
+    description: 'Kommentieren Sie ein Dokument',
+    route: '/documents',
+  },
 ];
 
 interface CompletedState {
@@ -90,6 +109,9 @@ export function useGettingStartedChecklist() {
     },
     [setCompleted],
   );
+
+  // Event-driven completion: lauscht auf 'ablage:checklist-complete' Events
+  useChecklistListener(markCompleted);
 
   const dismiss = useCallback(() => {
     setIsDismissed(true);

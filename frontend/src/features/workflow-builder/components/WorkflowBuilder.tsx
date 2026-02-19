@@ -1,4 +1,22 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, type DragEvent } from 'react';
+import ReactFlow, {
+  Background,
+  Controls,
+  MiniMap,
+  Panel,
+  addEdge,
+  useNodesState,
+  useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
+  type Connection,
+  type Edge,
+  type Node,
+  type OnConnect,
+  BackgroundVariant,
+  ConnectionLineType,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
 import {
   Workflow,
   Plus,
@@ -7,7 +25,6 @@ import {
   Trash2,
   Settings,
   Boxes,
-  ChevronRight,
   AlertTriangle,
   CheckCircle,
   Loader2,
@@ -23,6 +40,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
+import { emitChecklistComplete } from '@/features/product-tour/hooks/use-checklist-events';
+import WorkflowBlockNode from './WorkflowBlockNode';
 import {
   useWorkflowBlocks,
   useWorkflowCategories,
@@ -34,23 +53,147 @@ import {
   type VisualEdge,
 } from '../api/workflow-builder-api';
 
-interface CanvasBlock extends VisualBlock {
+/**
+ * Vordefinierte Node-Typen fuer den Visual Workflow Builder.
+ * Diese erweitern die vom Backend geladenen Block-Definitionen
+ * um spezialisierte Konfigurationsfelder.
+ */
+
+/** Konfigurationsfelder pro Node-Typ */
+interface NodeTypeConfig {
+  type: string;
+  label: string;
+  category: string;
+  icon: string;
+  description: string;
+  configFields: Array<{
+    key: string;
+    label: string;
+    type: 'text' | 'number' | 'select' | 'boolean' | 'cron';
+    options?: string[];
+    defaultValue?: string | number | boolean;
+    required?: boolean;
+  }>;
+}
+
+const WORKFLOW_NODE_TYPES: NodeTypeConfig[] = [
+  {
+    type: 'approval',
+    label: 'Genehmigung',
+    category: 'Aktionen',
+    icon: 'CheckCircle',
+    description: 'Genehmigungs-Schritt mit Zuweisung und Eskalation',
+    configFields: [
+      { key: 'assignee_role', label: 'Genehmiger-Rolle', type: 'select', options: ['manager', 'finance', 'admin', 'custom'], required: true },
+      { key: 'assignee_id', label: 'Genehmiger (optional)', type: 'text' },
+      { key: 'deadline_hours', label: 'Frist (Stunden)', type: 'number', defaultValue: 48 },
+      { key: 'escalation_after_hours', label: 'Eskalation nach (Stunden)', type: 'number', defaultValue: 72 },
+      { key: 'auto_approve_below', label: 'Auto-Genehmigung unter Betrag', type: 'number', defaultValue: 0 },
+    ],
+  },
+  {
+    type: 'timer',
+    label: 'Warte-Schritt',
+    category: 'Steuerung',
+    icon: 'Clock',
+    description: 'Wartezeit oder Zeitplan-basierter Trigger',
+    configFields: [
+      { key: 'wait_type', label: 'Warte-Typ', type: 'select', options: ['duration', 'cron', 'date'], defaultValue: 'duration', required: true },
+      { key: 'duration_minutes', label: 'Dauer (Minuten)', type: 'number', defaultValue: 60 },
+      { key: 'cron_expression', label: 'Cron-Ausdruck', type: 'cron' },
+      { key: 'skip_weekends', label: 'Wochenenden ueberspringen', type: 'boolean', defaultValue: false },
+    ],
+  },
+  {
+    type: 'condition',
+    label: 'Bedingung',
+    category: 'Steuerung',
+    icon: 'GitBranch',
+    description: 'If/Else Verzweigung basierend auf Dokumentfeldern',
+    configFields: [
+      { key: 'field', label: 'Feld', type: 'select', options: ['amount', 'document_type', 'category', 'risk_score', 'confidence', 'entity_name'], required: true },
+      { key: 'operator', label: 'Operator', type: 'select', options: ['equals', 'not_equals', 'greater_than', 'less_than', 'contains', 'in_list'], required: true },
+      { key: 'value', label: 'Wert', type: 'text', required: true },
+    ],
+  },
+  {
+    type: 'notification',
+    label: 'Benachrichtigung',
+    category: 'Aktionen',
+    icon: 'Bell',
+    description: 'Benachrichtigung per E-Mail, Slack oder Push',
+    configFields: [
+      { key: 'channel', label: 'Kanal', type: 'select', options: ['email', 'slack', 'push', 'all'], defaultValue: 'email', required: true },
+      { key: 'template', label: 'Vorlage', type: 'select', options: ['approval_request', 'deadline_reminder', 'status_update', 'custom'] },
+      { key: 'recipient_type', label: 'Empfaenger-Typ', type: 'select', options: ['user', 'role', 'group', 'document_owner'], defaultValue: 'document_owner' },
+      { key: 'recipient_id', label: 'Empfaenger-ID (optional)', type: 'text' },
+      { key: 'custom_message', label: 'Nachricht (optional)', type: 'text' },
+    ],
+  },
+  {
+    type: 'pipeline',
+    label: 'Pipeline-Trigger',
+    category: 'Integration',
+    icon: 'Workflow',
+    description: 'Startet die Verarbeitungs-Pipeline (Kontierung + Matching)',
+    configFields: [
+      { key: 'skip_kontierung', label: 'Kontierung ueberspringen', type: 'boolean', defaultValue: false },
+      { key: 'skip_matching', label: 'Matching ueberspringen', type: 'boolean', defaultValue: false },
+      { key: 'document_type_filter', label: 'Nur fuer Dokumenttypen', type: 'select', options: ['all', 'invoice', 'order', 'delivery_note', 'offer'], defaultValue: 'all' },
+    ],
+  },
+];
+
+// ==================== ReactFlow Node Type Registry ====================
+
+const workflowNodeTypes = { workflowBlock: WorkflowBlockNode };
+
+// ==================== Conversion Helpers ====================
+
+interface WorkflowBlockData {
+  label: string;
+  type: string;
+  config: Record<string, unknown>;
   definition: BlockDefinition;
 }
 
-export function WorkflowBuilder() {
+function toRfEdge(edge: VisualEdge): Edge {
+  return {
+    id: edge.id,
+    source: edge.source_id,
+    target: edge.target_id,
+    sourceHandle: edge.source_handle || undefined,
+    targetHandle: edge.target_handle || undefined,
+    type: 'smoothstep',
+    animated: true,
+    label: edge.label,
+  };
+}
+
+function toVisualEdge(edge: Edge): VisualEdge {
+  return {
+    id: edge.id,
+    source_id: edge.source,
+    target_id: edge.target,
+    source_handle: edge.sourceHandle || '',
+    target_handle: edge.targetHandle || '',
+    label: typeof edge.label === 'string' ? edge.label : undefined,
+  };
+}
+
+// ==================== Inner Component (uses useReactFlow) ====================
+
+function WorkflowBuilderInner() {
   const { toast } = useToast();
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const reactFlowInstance = useReactFlow();
+
   const [workflowName, setWorkflowName] = useState('Neuer Workflow');
   const [workflowDescription, setWorkflowDescription] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [canvasBlocks, setCanvasBlocks] = useState<CanvasBlock[]>([]);
-  const [edges, setEdges] = useState<VisualEdge[]>([]);
-  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
-  const [connectingFrom, setConnectingFrom] = useState<{
-    blockId: string;
-    handleId: string;
-  } | null>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowBlockData>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const { data: categories, isLoading: categoriesLoading } = useWorkflowCategories();
   const { data: blocks, isLoading: blocksLoading } = useWorkflowBlocks(
@@ -60,72 +203,137 @@ export function WorkflowBuilder() {
   const createWorkflow = useCreateWorkflow();
   const simulateWorkflow = useSimulateWorkflow();
 
-  const selectedBlock = canvasBlocks.find((b) => b.id === selectedBlockId);
+  const selectedNode = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null;
 
-  const addBlockToCanvas = useCallback((blockDef: BlockDefinition) => {
-    const newBlock: CanvasBlock = {
-      id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type: blockDef.type,
-      label: blockDef.label,
-      config: {},
-      position_x: 100 + canvasBlocks.length * 50,
-      position_y: 100 + canvasBlocks.length * 30,
-      definition: blockDef,
-    };
-    setCanvasBlocks((prev) => [...prev, newBlock]);
-    toast({
-      title: 'Block hinzugefügt',
-      description: `${blockDef.label} wurde zur Canvas hinzugefügt`,
-    });
-  }, [canvasBlocks.length, toast]);
+  // ==================== Drag & Drop from Palette ====================
 
-  const removeBlock = useCallback((blockId: string) => {
-    setCanvasBlocks((prev) => prev.filter((b) => b.id !== blockId));
-    setEdges((prev) =>
-      prev.filter((e) => e.source_id !== blockId && e.target_id !== blockId)
+  const onDragOver = useCallback((event: DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    (event: DragEvent) => {
+      event.preventDefault();
+
+      const blockData = event.dataTransfer.getData('application/reactflow');
+      if (!blockData) return;
+
+      const blockDef: BlockDefinition = JSON.parse(blockData);
+      const bounds = reactFlowWrapper.current?.getBoundingClientRect();
+      if (!bounds) return;
+
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX - bounds.left,
+        y: event.clientY - bounds.top,
+      });
+
+      const newNode: Node<WorkflowBlockData> = {
+        id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'workflowBlock',
+        position,
+        data: {
+          label: blockDef.label,
+          type: blockDef.type,
+          config: {},
+          definition: blockDef,
+        },
+      };
+
+      setNodes((nds) => [...nds, newNode]);
+      toast({
+        title: 'Block hinzugefuegt',
+        description: `${blockDef.label} wurde zur Canvas hinzugefuegt`,
+      });
+    },
+    [reactFlowInstance, setNodes, toast]
+  );
+
+  // ==================== Click to Add (Fallback) ====================
+
+  const addBlockToCanvas = useCallback(
+    (blockDef: BlockDefinition) => {
+      const newNode: Node<WorkflowBlockData> = {
+        id: `block-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        type: 'workflowBlock',
+        position: { x: 100 + nodes.length * 50, y: 100 + nodes.length * 30 },
+        data: {
+          label: blockDef.label,
+          type: blockDef.type,
+          config: {},
+          definition: blockDef,
+        },
+      };
+      setNodes((nds) => [...nds, newNode]);
+      toast({
+        title: 'Block hinzugefuegt',
+        description: `${blockDef.label} wurde zur Canvas hinzugefuegt`,
+      });
+    },
+    [nodes.length, setNodes, toast]
+  );
+
+  // ==================== Connection Handling ====================
+
+  const onConnect: OnConnect = useCallback(
+    (connection: Connection) => {
+      setEdges((eds) =>
+        addEdge(
+          {
+            ...connection,
+            id: `e-${connection.source}-${connection.target}-${Date.now()}`,
+            type: 'smoothstep',
+            animated: true,
+          },
+          eds
+        )
+      );
+    },
+    [setEdges]
+  );
+
+  // ==================== Selection ====================
+
+  const onSelectionChange = useCallback(
+    ({ nodes: selectedNodes }: { nodes: Node[] }) => {
+      if (selectedNodes.length === 1) {
+        setSelectedNodeId(selectedNodes[0].id);
+      } else {
+        setSelectedNodeId(null);
+      }
+    },
+    []
+  );
+
+  // ==================== Block Config Updates ====================
+
+  const updateBlockConfig = useCallback(
+    (nodeId: string, key: string, value: unknown) => {
+      setNodes((nds) =>
+        nds.map((n) =>
+          n.id === nodeId
+            ? { ...n, data: { ...n.data, config: { ...n.data.config, [key]: value } } }
+            : n
+        )
+      );
+    },
+    [setNodes]
+  );
+
+  const removeSelectedBlock = useCallback(() => {
+    if (!selectedNodeId) return;
+    setNodes((nds) => nds.filter((n) => n.id !== selectedNodeId));
+    setEdges((eds) =>
+      eds.filter((e) => e.source !== selectedNodeId && e.target !== selectedNodeId)
     );
-    if (selectedBlockId === blockId) {
-      setSelectedBlockId(null);
-    }
+    setSelectedNodeId(null);
     toast({
       title: 'Block entfernt',
       description: 'Der Block wurde von der Canvas entfernt',
     });
-  }, [selectedBlockId, toast]);
+  }, [selectedNodeId, setNodes, setEdges, toast]);
 
-  const handleOutputClick = useCallback((blockId: string, handleId: string) => {
-    if (connectingFrom) {
-      // Complete connection
-      if (connectingFrom.blockId !== blockId) {
-        const newEdge: VisualEdge = {
-          id: `edge-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          source_id: connectingFrom.blockId,
-          target_id: blockId,
-          source_handle: connectingFrom.handleId,
-          target_handle: handleId,
-        };
-        setEdges((prev) => [...prev, newEdge]);
-        toast({
-          title: 'Verbindung erstellt',
-          description: 'Blocks wurden erfolgreich verbunden',
-        });
-      }
-      setConnectingFrom(null);
-    } else {
-      // Start connection
-      setConnectingFrom({ blockId, handleId });
-    }
-  }, [connectingFrom, toast]);
-
-  const updateBlockConfig = useCallback((blockId: string, key: string, value: unknown) => {
-    setCanvasBlocks((prev) =>
-      prev.map((block) =>
-        block.id === blockId
-          ? { ...block, config: { ...block.config, [key]: value } }
-          : block
-      )
-    );
-  }, []);
+  // ==================== Save ====================
 
   const handleSave = useCallback(async () => {
     if (!workflowName.trim()) {
@@ -137,18 +345,29 @@ export function WorkflowBuilder() {
       return;
     }
 
+    const visualBlocks: VisualBlock[] = nodes.map((n) => ({
+      id: n.id,
+      type: n.data.type,
+      label: n.data.label,
+      config: n.data.config,
+      position_x: n.position.x,
+      position_y: n.position.y,
+    }));
+
     try {
       const result = await createWorkflow.mutateAsync({
         name: workflowName,
         description: workflowDescription,
-        blocks: canvasBlocks.map(({ definition, ...block }) => block),
-        edges,
+        blocks: visualBlocks,
+        edges: edges.map(toVisualEdge),
       });
 
       toast({
         title: 'Workflow gespeichert',
         description: result.message,
       });
+
+      emitChecklistComplete('create_workflow');
 
       if (result.validation_errors && result.validation_errors.length > 0) {
         toast({
@@ -164,27 +383,38 @@ export function WorkflowBuilder() {
         variant: 'destructive',
       });
     }
-  }, [workflowName, workflowDescription, canvasBlocks, edges, createWorkflow, toast]);
+  }, [workflowName, workflowDescription, nodes, edges, createWorkflow, toast]);
+
+  // ==================== Simulate ====================
 
   const handleSimulate = useCallback(async () => {
-    if (canvasBlocks.length === 0) {
+    if (nodes.length === 0) {
       toast({
         title: 'Fehler',
-        description: 'Bitte fügen Sie mindestens einen Block hinzu',
+        description: 'Bitte fuegen Sie mindestens einen Block hinzu',
         variant: 'destructive',
       });
       return;
     }
 
+    const visualBlocks: VisualBlock[] = nodes.map((n) => ({
+      id: n.id,
+      type: n.data.type,
+      label: n.data.label,
+      config: n.data.config,
+      position_x: n.position.x,
+      position_y: n.position.y,
+    }));
+
     try {
       const result = await simulateWorkflow.mutateAsync({
-        blocks: canvasBlocks.map(({ definition, ...block }) => block),
-        edges,
+        blocks: visualBlocks,
+        edges: edges.map(toVisualEdge),
       });
 
       toast({
         title: result.success ? 'Simulation erfolgreich' : 'Simulation fehlgeschlagen',
-        description: `Geschätzte Dauer: ${result.duration_estimate_seconds}s`,
+        description: `Geschaetzte Dauer: ${result.duration_estimate_seconds}s`,
         variant: result.success ? 'default' : 'destructive',
       });
 
@@ -202,30 +432,53 @@ export function WorkflowBuilder() {
         variant: 'destructive',
       });
     }
-  }, [canvasBlocks, edges, simulateWorkflow, toast]);
+  }, [nodes, edges, simulateWorkflow, toast]);
 
-  const loadTemplate = useCallback((templateId: string) => {
-    const template = templates?.find((t) => t.id === templateId);
-    if (!template) return;
+  // ==================== Load Template ====================
 
-    const blocksWithDefs = template.blocks.map((block) => {
-      const definition = blocks?.find((b) => b.type === block.type);
-      if (!definition) {
-        console.warn(`Block definition not found for type: ${block.type}`);
-        return null;
-      }
-      return { ...block, definition };
-    }).filter((b): b is CanvasBlock => b !== null);
+  const loadTemplate = useCallback(
+    (templateId: string) => {
+      const template = templates?.find((t) => t.id === templateId);
+      if (!template) return;
 
-    setCanvasBlocks(blocksWithDefs);
-    setEdges(template.edges);
-    setWorkflowName(template.name);
-    setWorkflowDescription(template.description);
-    toast({
-      title: 'Template geladen',
-      description: `"${template.name}" wurde geladen`,
-    });
-  }, [templates, blocks, toast]);
+      const newNodes: Node<WorkflowBlockData>[] = template.blocks
+        .map((block) => {
+          const definition = blocks?.find((b) => b.type === block.type);
+          if (!definition) {
+            console.warn(`Block definition not found for type: ${block.type}`);
+            return null;
+          }
+          return {
+            id: block.id,
+            type: 'workflowBlock' as const,
+            position: { x: block.position_x, y: block.position_y },
+            data: {
+              label: block.label,
+              type: block.type,
+              config: block.config,
+              definition,
+            },
+          };
+        })
+        .filter((n): n is Node<WorkflowBlockData> => n !== null);
+
+      setNodes(newNodes);
+      setEdges(template.edges.map(toRfEdge));
+      setWorkflowName(template.name);
+      setWorkflowDescription(template.description);
+      setSelectedNodeId(null);
+
+      setTimeout(() => reactFlowInstance.fitView({ padding: 0.2 }), 50);
+
+      toast({
+        title: 'Template geladen',
+        description: `"${template.name}" wurde geladen`,
+      });
+    },
+    [templates, blocks, setNodes, setEdges, reactFlowInstance, toast]
+  );
+
+  // ==================== Render ====================
 
   return (
     <div className="flex h-[calc(100vh-4rem)] flex-col">
@@ -250,7 +503,7 @@ export function WorkflowBuilder() {
             />
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-tour="wf-actions">
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" size="sm" aria-label="Templates laden">
@@ -324,14 +577,14 @@ export function WorkflowBuilder() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Block Palette */}
-        <div className="w-64 border-r bg-muted/30">
+        <div className="w-64 border-r bg-muted/30" data-tour="wf-palette">
           <div className="p-4">
             <Label htmlFor="category-select" className="text-sm font-medium">
               Kategorie
             </Label>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-              <SelectTrigger id="category-select" className="mt-2" aria-label="Kategorie auswählen">
-                <SelectValue placeholder="Kategorie wählen" />
+              <SelectTrigger id="category-select" className="mt-2" aria-label="Kategorie auswaehlen">
+                <SelectValue placeholder="Kategorie waehlen" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Alle Kategorien</SelectItem>
@@ -364,7 +617,15 @@ export function WorkflowBuilder() {
                 blocks.map((block) => (
                   <Card
                     key={block.id}
-                    className="cursor-pointer hover:bg-accent"
+                    className="cursor-grab select-none hover:bg-accent active:cursor-grabbing"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData(
+                        'application/reactflow',
+                        JSON.stringify(block)
+                      );
+                      e.dataTransfer.effectAllowed = 'move';
+                    }}
                     onClick={() => addBlockToCanvas(block)}
                   >
                     <CardContent className="p-3">
@@ -386,179 +647,78 @@ export function WorkflowBuilder() {
           </ScrollArea>
         </div>
 
-        {/* Center - Canvas */}
-        <div className="flex-1 overflow-auto bg-grid-pattern" ref={canvasRef}>
-          <div className="relative min-h-full min-w-full p-8">
-            {canvasBlocks.length === 0 ? (
-              <div className="flex h-96 items-center justify-center">
-                <div className="text-center">
+        {/* Center - ReactFlow Canvas */}
+        <div
+          ref={reactFlowWrapper}
+          className="flex-1"
+          data-tour="wf-canvas"
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+        >
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onSelectionChange={onSelectionChange}
+            nodeTypes={workflowNodeTypes}
+            connectionLineType={ConnectionLineType.SmoothStep}
+            defaultEdgeOptions={{ type: 'smoothstep', animated: true }}
+            fitView
+            snapToGrid
+            snapGrid={[15, 15]}
+            deleteKeyCode="Delete"
+            className="bg-muted/30"
+            aria-label="Workflow-Diagramm"
+          >
+            <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
+            <Controls showZoom showFitView />
+            <MiniMap
+              nodeStrokeWidth={3}
+              zoomable
+              pannable
+              aria-label="Workflow-Minimap"
+            />
+
+            {nodes.length === 0 && (
+              <Panel position="top-center" className="mt-20">
+                <div className="rounded-lg border-2 border-dashed border-muted-foreground/25 bg-background/50 p-8 text-center">
                   <Workflow className="mx-auto h-12 w-12 text-muted-foreground" />
                   <p className="mt-4 text-lg font-medium">Keine Blocks vorhanden</p>
                   <p className="text-sm text-muted-foreground">
-                    Wählen Sie einen Block aus der linken Palette
+                    Ziehen Sie einen Block aus der linken Palette auf die Canvas
                   </p>
                 </div>
-              </div>
-            ) : (
-              <>
-                {/* Render edges as SVG lines */}
-                <svg className="pointer-events-none absolute inset-0 h-full w-full">
-                  {edges.map((edge) => {
-                    const sourceBlock = canvasBlocks.find((b) => b.id === edge.source_id);
-                    const targetBlock = canvasBlocks.find((b) => b.id === edge.target_id);
-                    if (!sourceBlock || !targetBlock) return null;
-
-                    const x1 = sourceBlock.position_x + 200;
-                    const y1 = sourceBlock.position_y + 40;
-                    const x2 = targetBlock.position_x;
-                    const y2 = targetBlock.position_y + 40;
-
-                    return (
-                      <line
-                        key={edge.id}
-                        x1={x1}
-                        y1={y1}
-                        x2={x2}
-                        y2={y2}
-                        stroke="hsl(var(--primary))"
-                        strokeWidth="2"
-                        markerEnd="url(#arrowhead)"
-                      />
-                    );
-                  })}
-                  <defs>
-                    <marker
-                      id="arrowhead"
-                      markerWidth="10"
-                      markerHeight="10"
-                      refX="8"
-                      refY="3"
-                      orient="auto"
-                    >
-                      <polygon
-                        points="0 0, 10 3, 0 6"
-                        fill="hsl(var(--primary))"
-                      />
-                    </marker>
-                  </defs>
-                </svg>
-
-                {/* Render blocks */}
-                {canvasBlocks.map((block) => (
-                  <div
-                    key={block.id}
-                    className="absolute"
-                    style={{
-                      left: `${block.position_x}px`,
-                      top: `${block.position_y}px`,
-                    }}
-                    draggable
-                    onDragEnd={(e) => {
-                      const rect = canvasRef.current?.getBoundingClientRect();
-                      if (rect) {
-                        const newX = e.clientX - rect.left;
-                        const newY = e.clientY - rect.top;
-                        setCanvasBlocks((prev) =>
-                          prev.map((b) =>
-                            b.id === block.id
-                              ? { ...b, position_x: newX, position_y: newY }
-                              : b
-                          )
-                        );
-                      }
-                    }}
-                  >
-                    <Card
-                      className={`w-48 cursor-move ${
-                        selectedBlockId === block.id ? 'ring-2 ring-primary' : ''
-                      }`}
-                      onClick={() => setSelectedBlockId(block.id)}
-                    >
-                      <CardHeader className="p-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">{block.definition.icon}</span>
-                            <CardTitle className="text-sm">{block.label}</CardTitle>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeBlock(block.id);
-                            }}
-                            aria-label="Block entfernen"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="p-3 pt-0">
-                        {/* Input handles */}
-                        {block.definition.inputs.length > 0 && (
-                          <div className="mb-2 space-y-1">
-                            {block.definition.inputs.map((input) => (
-                              <div
-                                key={input.id}
-                                className="flex items-center gap-1 text-xs"
-                              >
-                                <div
-                                  className="h-2 w-2 cursor-pointer rounded-full bg-primary hover:bg-primary/80"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOutputClick(block.id, input.id);
-                                  }}
-                                  aria-label={`Input: ${input.label}`}
-                                />
-                                <span className="text-muted-foreground">{input.label}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {/* Output handles */}
-                        {block.definition.outputs.length > 0 && (
-                          <div className="space-y-1">
-                            {block.definition.outputs.map((output) => (
-                              <div
-                                key={output.id}
-                                className="flex items-center justify-end gap-1 text-xs"
-                              >
-                                <span className="text-muted-foreground">{output.label}</span>
-                                <div
-                                  className="h-2 w-2 cursor-pointer rounded-full bg-primary hover:bg-primary/80"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOutputClick(block.id, output.id);
-                                  }}
-                                  aria-label={`Output: ${output.label}`}
-                                />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                ))}
-              </>
+              </Panel>
             )}
-          </div>
+          </ReactFlow>
         </div>
 
         {/* Right Sidebar - Block Config */}
-        {selectedBlock && (
-          <div className="w-80 border-l bg-muted/30">
+        {selectedNode && (
+          <div className="w-80 border-l bg-muted/30" data-tour="wf-config">
             <div className="p-4">
-              <div className="mb-4 flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                <h3 className="font-semibold">Block-Konfiguration</h3>
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  <h3 className="font-semibold">Block-Konfiguration</h3>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                  onClick={removeSelectedBlock}
+                  aria-label="Block entfernen"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
               <div className="space-y-4">
                 <div>
                   <Label className="text-sm font-medium">Typ</Label>
                   <Badge variant="outline" className="mt-1">
-                    {selectedBlock.type}
+                    {selectedNode.data.type}
                   </Badge>
                 </div>
                 <div>
@@ -567,11 +727,13 @@ export function WorkflowBuilder() {
                   </Label>
                   <Input
                     id="block-label"
-                    value={selectedBlock.label}
+                    value={selectedNode.data.label}
                     onChange={(e) =>
-                      setCanvasBlocks((prev) =>
-                        prev.map((b) =>
-                          b.id === selectedBlock.id ? { ...b, label: e.target.value } : b
+                      setNodes((nds) =>
+                        nds.map((n) =>
+                          n.id === selectedNode.id
+                            ? { ...n, data: { ...n.data, label: e.target.value } }
+                            : n
                         )
                       )
                     }
@@ -584,13 +746,13 @@ export function WorkflowBuilder() {
                   <Label className="text-sm font-medium">Konfiguration</Label>
                   <ScrollArea className="mt-2 h-96">
                     <div className="space-y-3">
-                      {Object.keys(selectedBlock.definition.config_schema).length === 0 ? (
+                      {Object.keys(selectedNode.data.definition.config_schema).length === 0 ? (
                         <p className="text-sm text-muted-foreground">
-                          Keine Konfigurationsoptionen verfügbar
+                          Keine Konfigurationsoptionen verfuegbar
                         </p>
                       ) : (
-                        Object.entries(selectedBlock.definition.config_schema).map(
-                          ([key, schema]) => (
+                        Object.entries(selectedNode.data.definition.config_schema).map(
+                          ([key, _schema]) => (
                             <div key={key}>
                               <Label htmlFor={`config-${key}`} className="text-sm">
                                 {key}
@@ -598,10 +760,10 @@ export function WorkflowBuilder() {
                               <Input
                                 id={`config-${key}`}
                                 value={
-                                  selectedBlock.config[key]?.toString() || ''
+                                  selectedNode.data.config[key]?.toString() || ''
                                 }
                                 onChange={(e) =>
-                                  updateBlockConfig(selectedBlock.id, key, e.target.value)
+                                  updateBlockConfig(selectedNode.id, key, e.target.value)
                                 }
                                 className="mt-1"
                                 placeholder={`${key} eingeben`}
@@ -635,13 +797,23 @@ export function WorkflowBuilder() {
               </span>
             </div>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span>Blocks: {canvasBlocks.length}</span>
+              <span>Blocks: {nodes.length}</span>
               <span>Verbindungen: {edges.length}</span>
-              <span>Geschätzte Dauer: {simulateWorkflow.data.duration_estimate_seconds}s</span>
+              <span>Geschaetzte Dauer: {simulateWorkflow.data.duration_estimate_seconds}s</span>
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+// ==================== Main Component with Provider ====================
+
+export function WorkflowBuilder() {
+  return (
+    <ReactFlowProvider>
+      <WorkflowBuilderInner />
+    </ReactFlowProvider>
   );
 }
