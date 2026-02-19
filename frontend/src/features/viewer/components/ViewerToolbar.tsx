@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCw, Download, Printer, Highlighter, MessageSquare, MousePointer2, FileSearch, SunDim } from 'lucide-react';
+import { ZoomIn, ZoomOut, ChevronLeft, ChevronRight, RotateCw, Download, Printer, Highlighter, MessageSquare, MousePointer2, FileSearch, SunDim, Maximize2, Minimize2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { motionTokens } from '@/lib/motion-tokens';
 import { useAnnotationStore } from '../store/useAnnotationStore';
@@ -13,14 +13,20 @@ interface ViewerToolbarProps {
     currentPage: number;
     numPages: number | null;
     scale: number;
+    rotation: number;
     onPageChange: (page: number) => void;
     onZoomIn: () => void;
     onZoomOut: () => void;
+    onRotate: () => void;
+    onDownload: () => void;
+    onPrint: () => void;
+    isFocusMode?: boolean;
+    onToggleFocusMode?: () => void;
 }
 
 const MotionDiv = motion.div;
 
-export function ViewerToolbar({ documentId, currentPage, numPages, scale, onPageChange, onZoomIn, onZoomOut }: ViewerToolbarProps) {
+export function ViewerToolbar({ documentId, currentPage, numPages, scale, rotation: _rotation, onPageChange, onZoomIn, onZoomOut, onRotate, onDownload, onPrint, isFocusMode, onToggleFocusMode }: ViewerToolbarProps) {
     const { mode, setMode } = useAnnotationStore()
     const [similarDrawerOpen, setSimilarDrawerOpen] = useState(false)
 
@@ -92,7 +98,7 @@ export function ViewerToolbar({ documentId, currentPage, numPages, scale, onPage
 
                 <div className="w-px h-6 bg-border mx-2" />
 
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={onRotate} title="Seite drehen">
                     <RotateCw className="w-4 h-4" />
                 </Button>
             </div>
@@ -144,11 +150,22 @@ export function ViewerToolbar({ documentId, currentPage, numPages, scale, onPage
                         Ähnliche
                     </Button>
                 )}
-                <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-medium">
+                {onToggleFocusMode && (
+                    <Button
+                        variant={isFocusMode ? "secondary" : "ghost"}
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={onToggleFocusMode}
+                        title={isFocusMode ? "Geteilte Ansicht" : "Fokus-Modus"}
+                    >
+                        {isFocusMode ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                    </Button>
+                )}
+                <Button variant="outline" size="sm" className="h-8 gap-2 text-xs font-medium" onClick={onDownload}>
                     <Download className="w-3.5 h-3.5" />
                     Download
                 </Button>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onPrint} title="Drucken">
                     <Printer className="w-4 h-4" />
                 </Button>
             </div>

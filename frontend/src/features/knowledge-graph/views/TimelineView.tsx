@@ -29,7 +29,8 @@ import {
   XCircle,
   TrendingUp,
 } from 'lucide-react';
-import type { GraphNode, NodeType } from '../types';
+import type { GraphNode, NodeType, TimelineEvent as ApiTimelineEvent } from '../types';
+import { useDocumentTimeline } from '../hooks/use-knowledge-graph-queries';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -165,198 +166,83 @@ const ALL_CATEGORIES: ReadonlyArray<EventCategory> = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Seeded Random (deterministic per entity/document)
+// Backend event_type -> EventCategory mapping
 // ---------------------------------------------------------------------------
 
-function seededRandom(seed: number): () => number {
-  let s = seed;
-  return () => {
-    s = (s * 16807) % 2147483647;
-    return (s - 1) / 2147483646;
-  };
+/**
+ * Maps backend event_type strings (from both document_timeline and activity_timeline
+ * APIs) to the frontend EventCategory type used for colour coding and labels.
+ *
+ * Backend document_timeline event_types (see app/api/v1/document_timeline.py):
+ *   upload, ocr_start, ocr_complete, ocr_failed, correction, categorization,
+ *   entity_linked, approval, rejection, export, share, version_create, archive, delete
+ *
+ * Backend activity_timeline activity_types (see app/api/v1/activity_timeline.py):
+ *   e.g. document_view, document_download, document_edit, comment_added, etc.
+ *
+ * Unknown types fall back to STATUS_CHANGED.
+ */
+const EVENT_TYPE_MAP: Record<string, EventCategory> = {
+  // Document Timeline events
+  upload: 'UPLOADED',
+  uploaded: 'UPLOADED',
+  ocr_start: 'OCR_PROCESSED',
+  ocr_complete: 'OCR_PROCESSED',
+  ocr_failed: 'OCR_PROCESSED',
+  correction: 'CORRECTION_ISSUED',
+  categorization: 'CLASSIFIED',
+  classified: 'CLASSIFIED',
+  entity_linked: 'ENTITY_LINKED',
+  approval: 'STATUS_CHANGED',
+  rejection: 'STATUS_CHANGED',
+  export: 'EXPORTED',
+  share: 'STATUS_CHANGED',
+  version_create: 'CREATED',
+  created: 'CREATED',
+  archive: 'ARCHIVED',
+  archived: 'ARCHIVED',
+  delete: 'DELETED',
+  deleted: 'DELETED',
+
+  // Activity Timeline events
+  document_view: 'STATUS_CHANGED',
+  document_download: 'EXPORTED',
+  document_edit: 'STATUS_CHANGED',
+  comment_added: 'STATUS_CHANGED',
+  risk_updated: 'RISK_UPDATED',
+  invoice_matched: 'INVOICE_MATCHED',
+  payment_received: 'PAYMENT_RECEIVED',
+  dunning_created: 'DUNNING_CREATED',
+  skonto_applied: 'SKONTO_APPLIED',
+  partial_payment: 'PARTIAL_PAYMENT',
+  three_way_match: 'THREE_WAY_MATCHED',
+  chain_linked: 'CHAIN_LINKED',
+  family_grouped: 'FAMILY_GROUPED',
+};
+
+function mapEventTypeToCategory(eventType: string): EventCategory {
+  const normalized = eventType.toLowerCase().replace(/-/g, '_');
+  return EVENT_TYPE_MAP[normalized] ?? 'STATUS_CHANGED';
 }
 
-// ---------------------------------------------------------------------------
-// Mock Data Generation
-// ---------------------------------------------------------------------------
-
-function generateMockTimeline(
-  entityId?: string,
-  documentId?: string
-): LocalTimelineEvent[] {
-  const seed = (entityId ?? documentId ?? 'default')
-    .split('')
-    .reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-  const rng = seededRandom(seed || 42);
-
-  const now = new Date();
-  const sixMonthsAgo = new Date(now);
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-  const companyNames = [
-    'Mueller GmbH',
-    'Schmidt & Soehne KG',
-    'Bauer Maschinenbau AG',
-    'Fischer Logistik GmbH',
-    'Weber Consulting',
-    'Schneider IT Services',
-    'Hoffmann Elektrotechnik',
-    'Koch Handelsgesellschaft',
-  ];
-
-  const documentNames = [
-    'Rechnung_2025_001.pdf',
-    'Rechnung_2025_042.pdf',
-    'Lieferschein_LS-2025-187.pdf',
-    'Gutschrift_GS-2025-014.pdf',
-    'Bestellung_BE-2025-099.pdf',
-    'Rechnung_2025_103.pdf',
-    'Mahnung_M-2025-007.pdf',
-    'Rechnung_2025_215.pdf',
-    'Vertrag_V-2025-033.pdf',
-    'Rechnung_2025_301.pdf',
-  ];
-
-  const templates: Record<EventCategory, ReadonlyArray<string>> = {
-    CREATED: [
-      'Dokument erstellt: {doc}',
-      'Neues Dokument angelegt: {doc}',
-    ],
-    UPLOADED: [
-      'Dokument hochgeladen: {doc}',
-      'Upload abgeschlossen: {doc}',
-    ],
-    OCR_PROCESSED: [
-      'OCR-Verarbeitung abgeschlossen (Konfidenz: {conf}%)',
-      'Texterkennung fertig: {doc} (Konfidenz: {conf}%)',
-    ],
-    CLASSIFIED: [
-      'Dokument klassifiziert als Rechnung',
-      'Dokumenttyp erkannt: Lieferschein',
-      'Dokument klassifiziert als Gutschrift',
-    ],
-    ENTITY_LINKED: [
-      'Entitaet verknuepft: {company}',
-      'Zuordnung zu {company} erstellt',
-    ],
-    INVOICE_MATCHED: [
-      'Rechnung {doc} zugeordnet',
-      'Rechnungsabgleich erfolgreich: {doc}',
-    ],
-    PAYMENT_RECEIVED: [
-      'Zahlung eingegangen: {amount} EUR',
-      'Bankeingang verbucht: {amount} EUR',
-    ],
-    STATUS_CHANGED: [
-      'Status geaendert: Offen -> In Bearbeitung',
-      'Status geaendert: In Bearbeitung -> Abgeschlossen',
-      'Status geaendert: Offen -> Ueberfaellig',
-    ],
-    EXPORTED: [
-      'DATEV-Export durchgefuehrt',
-      'Export nach DATEV Connect abgeschlossen',
-    ],
-    DELETED: [
-      'Dokument geloescht: {doc}',
-      'DSGVO-Loeschung durchgefuehrt',
-    ],
-    RISK_UPDATED: [
-      'Risikobewertung aktualisiert: {risk}/100',
-      'Risikowert geaendert auf {risk}/100',
-    ],
-    DUNNING_CREATED: [
-      'Mahnung erstellt: Stufe 1',
-      'Zahlungserinnerung versendet',
-      'Mahnung erstellt: Stufe 2',
-    ],
-    SKONTO_APPLIED: [
-      'Skonto angewendet: 2% ({skonto} EUR)',
-      'Skontoabzug verbucht: 3% ({skonto} EUR)',
-    ],
-    PARTIAL_PAYMENT: [
-      'Teilzahlung eingegangen: {amount} EUR',
-      'Ratenzahlung verbucht: {amount} EUR',
-    ],
-    THREE_WAY_MATCHED: [
-      '3-Way-Match: Vollstaendig abgeglichen',
-      '3-Way-Match: Bestellung, Lieferschein, Rechnung abgeglichen',
-    ],
-    CORRECTION_ISSUED: [
-      'Korrekturbeleg erstellt fuer {doc}',
-      'Stornierung durchgefuehrt: {doc}',
-    ],
-    CHAIN_LINKED: [
-      'Dokumentenkette erstellt: Bestellung -> Lieferschein -> Rechnung',
-      'Zur Dokumentenkette hinzugefuegt',
-    ],
-    FAMILY_GROUPED: [
-      'Dokumentenfamilie gruppiert (3 Dokumente)',
-      'In Dokumentenfamilie aufgenommen',
-    ],
-    ARCHIVED: [
-      'Dokument archiviert',
-      'Automatische Archivierung nach 90 Tagen',
-    ],
+/**
+ * Maps a backend TimelineEvent (from either timeline API) to the local
+ * LocalTimelineEvent format used by the UI components.
+ */
+function mapApiEventToLocal(
+  evt: ApiTimelineEvent,
+  entityId?: string
+): LocalTimelineEvent {
+  return {
+    id: evt.id,
+    timestamp: new Date(evt.timestamp),
+    category: mapEventTypeToCategory(evt.eventType),
+    description: evt.description,
+    relatedDocumentId: evt.documentId ?? null,
+    relatedDocumentName: evt.documentName ?? null,
+    entityId: entityId ?? null,
+    metadata: evt.metadata,
   };
-
-  const eventCount = Math.floor(rng() * 21) + 30; // 30-50 events
-  const events: LocalTimelineEvent[] = [];
-
-  for (let i = 0; i < eventCount; i++) {
-    const timestamp = new Date(
-      sixMonthsAgo.getTime() +
-        rng() * (now.getTime() - sixMonthsAgo.getTime())
-    );
-    const categoryIdx = Math.floor(rng() * ALL_CATEGORIES.length);
-    const category = ALL_CATEGORIES[categoryIdx];
-    const catTemplates = templates[category];
-    const template = catTemplates[Math.floor(rng() * catTemplates.length)];
-
-    const docName = documentNames[Math.floor(rng() * documentNames.length)];
-    const company = companyNames[Math.floor(rng() * companyNames.length)];
-    const conf = Math.floor(rng() * 15) + 85;
-    const amountNum = Math.floor(rng() * 500000) / 100;
-    const amount = amountNum.toLocaleString('de-DE', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    const risk = Math.floor(rng() * 80) + 10;
-    const skontoNum = Math.floor(rng() * 10000) / 100;
-    const skonto = skontoNum.toLocaleString('de-DE', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-
-    const description = template
-      .replace('{doc}', docName)
-      .replace('{company}', company)
-      .replace('{conf}', String(conf))
-      .replace('{amount}', amount)
-      .replace('{risk}', String(risk))
-      .replace('{skonto}', skonto);
-
-    events.push({
-      id: `evt-${i}-${seed}`,
-      timestamp,
-      category,
-      description,
-      relatedDocumentId: `doc-${Math.floor(rng() * 100)}`,
-      relatedDocumentName: docName,
-      entityId: entityId ?? `ent-${Math.floor(rng() * 20)}`,
-      metadata: { confidence: conf, company },
-    });
-  }
-
-  events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  return events;
-}
-
-function useTimelineData(entityId?: string, documentId?: string) {
-  const mockData = useMemo(
-    () => generateMockTimeline(entityId, documentId),
-    [entityId, documentId]
-  );
-  return { data: mockData, isLoading: false, error: null };
 }
 
 // ---------------------------------------------------------------------------
@@ -702,7 +588,19 @@ export function TimelineView({
     Set<EventCategory>
   >(() => new Set(ALL_CATEGORIES));
 
-  const { data: allEvents, isLoading } = useTimelineData(entityId, documentId);
+  // Use real backend data when a documentId is available.
+  // When only entityId is provided, the query is disabled and allEvents stays empty.
+  const {
+    data: timelineData,
+    isLoading,
+    error,
+  } = useDocumentTimeline(documentId);
+
+  // Map API events to local format
+  const allEvents = useMemo<LocalTimelineEvent[]>(() => {
+    if (!timelineData) return [];
+    return timelineData.events.map((evt) => mapApiEventToLocal(evt, entityId));
+  }, [timelineData, entityId]);
 
   // Filter events by time range and selected categories
   const filteredEvents = useMemo(() => {
@@ -735,7 +633,7 @@ export function TimelineView({
     return { uniqueTypes, paymentCount, warningCount };
   }, [filteredEvents]);
 
-  // Empty state when no entity or document selected
+  // Empty state when neither entity nor document is selected
   if (!entityId && !documentId) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -757,6 +655,29 @@ export function TimelineView({
     );
   }
 
+  // Informational state when only an entity is selected but no document
+  // (the document timeline API requires a documentId)
+  if (entityId && !documentId) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Zeitleiste
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Waehlen Sie ein Dokument dieser Entitaet, um die Zeitleiste zu
+              sehen.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -764,6 +685,27 @@ export function TimelineView({
           <div className="mb-2 h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           <p className="text-sm text-muted-foreground">Lade Ereignisse...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Card className="max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <XCircle className="h-5 w-5 text-destructive" />
+              Fehler beim Laden
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Die Zeitleiste konnte nicht geladen werden. Bitte versuchen Sie
+              es spaeter erneut.
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }

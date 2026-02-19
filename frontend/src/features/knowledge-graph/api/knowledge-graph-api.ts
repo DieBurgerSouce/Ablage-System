@@ -4,7 +4,46 @@
  */
 
 import { apiClient } from '@/lib/api/client';
-import type { GraphData, SearchResult, GraphCommunity, FinancialChainData, RiskNetworkData, DocumentFamilyData } from '../types';
+import type { GraphData, SearchResult, GraphCommunity, FinancialChainData, RiskNetworkData, DocumentFamilyData, TimelineData } from '../types';
+
+// ---------------------------------------------------------------------------
+// Internal response types for timeline endpoints
+// ---------------------------------------------------------------------------
+
+interface DocumentTimelineEventRaw {
+  event_type: string;
+  timestamp: string | null;
+  user_id?: string | null;
+  details: Record<string, unknown>;
+  description: string;
+}
+
+interface DocumentTimelineResponseRaw {
+  document_id: string;
+  events: DocumentTimelineEventRaw[];
+  total_events: number;
+}
+
+interface ActivityItemRaw {
+  id: string;
+  activity_type: string;
+  title: string;
+  description?: string | null;
+  target_id?: string | null;
+  target_name?: string | null;
+  related_id?: string | null;
+  related_name?: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+interface ActivityTimelineResponseRaw {
+  items: ActivityItemRaw[];
+  total: number;
+  limit: number;
+  offset: number;
+  has_more: boolean;
+}
 
 const BASE_URL = '/knowledge-graph';
 
@@ -90,5 +129,54 @@ export const knowledgeGraphApi = {
       `${BASE_URL}/document-family/${documentId}`
     );
     return response.data;
+  },
+
+  /**
+   * Laedt Timeline-Ereignisse fuer ein Dokument.
+   * Verwendet /api/v1/documents/{documentId}/timeline (Document Timeline API).
+   * Mappt backend event_type-Strings auf frontend TimelineEvent-Format.
+   */
+  async getDocumentTimeline(documentId: string): Promise<TimelineData> {
+    const response = await apiClient.get<DocumentTimelineResponseRaw>(
+      `/documents/${documentId}/timeline`
+    );
+    const raw = response.data;
+    return {
+      events: raw.events.map((evt, idx) => ({
+        id: `${raw.document_id}-${idx}-${evt.event_type}`,
+        timestamp: evt.timestamp ?? new Date().toISOString(),
+        eventType: evt.event_type,
+        description: evt.description,
+        documentId: raw.document_id,
+        documentName: (evt.details['filename'] as string | undefined) ?? undefined,
+        metadata: evt.details,
+      })),
+      totalCount: raw.total_events,
+    };
+  },
+
+  /**
+   * Laedt Activity-Timeline fuer ein Dokument.
+   * Verwendet /api/v1/activity/document/{documentId} (Activity Timeline API).
+   * Wird als Fallback genutzt wenn die Dokument-Timeline leer ist.
+   */
+  async getActivityTimeline(documentId: string, limit: number = 100): Promise<TimelineData> {
+    const response = await apiClient.get<ActivityTimelineResponseRaw>(
+      `/activity/document/${documentId}`,
+      { params: { limit } }
+    );
+    const raw = response.data;
+    return {
+      events: raw.items.map((item) => ({
+        id: item.id,
+        timestamp: item.created_at,
+        eventType: item.activity_type,
+        description: item.description ?? item.title,
+        documentId: item.target_id ?? undefined,
+        documentName: item.target_name ?? undefined,
+        metadata: item.metadata,
+      })),
+      totalCount: raw.total,
+    };
   },
 };

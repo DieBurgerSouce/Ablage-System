@@ -4,7 +4,7 @@
  * Horizontales Layout mit @xyflow/react
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -34,6 +34,7 @@ import {
   Clock,
 } from 'lucide-react';
 import type { GraphNode } from '../types';
+import { useFinancialChain } from '../hooks/use-knowledge-graph-queries';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -443,7 +444,49 @@ function buildNodesAndEdges(chainData: FinancialChainData): {
 // ---------------------------------------------------------------------------
 
 export function FinancialChainView({ entityId, onNodeSelect }: FinancialChainViewProps) {
-  const { data: chainData, isLoading, error } = useFinancialChainData(entityId);
+  const { data: apiData, isLoading, error } = useFinancialChain(entityId);
+
+  const chainData = useMemo((): FinancialChainData => {
+    if (apiData?.stages?.length) {
+      const STAGE_MAP: Record<string, FinancialStage> = {
+        order: 'bestellung',
+        delivery: 'lieferschein',
+        invoice: 'rechnung',
+        payment: 'zahlung',
+        dunning: 'mahnung',
+      };
+      const documents: FinancialDocument[] = [];
+      for (const stage of apiData.stages) {
+        const mappedStage: FinancialStage = STAGE_MAP[stage.stage] ?? 'bestellung';
+        for (const node of stage.documents) {
+          documents.push({
+            id: node.id,
+            stage: mappedStage,
+            documentNumber: String(node.data?.documentNumber ?? node.id),
+            label: node.label,
+            amount: typeof node.data?.amount === 'number' ? node.data.amount : null,
+            currency: String(node.data?.currency ?? 'EUR'),
+            status: String(node.data?.status ?? ''),
+            matchStatus: (['matched', 'partial', 'unmatched'].includes(String(node.data?.matchStatus))
+              ? node.data?.matchStatus
+              : 'unmatched') as MatchStatus,
+            date: String(node.data?.date ?? ''),
+          });
+        }
+      }
+      const matchStatusMap: Record<string, MatchStatus> = {
+        full: 'matched',
+        partial: 'partial',
+        none: 'unmatched',
+      };
+      return {
+        documents,
+        links: [],
+        overallMatchStatus: matchStatusMap[apiData.matchStatus] ?? 'unmatched',
+      };
+    }
+    return generateMockFinancialChain(entityId);
+  }, [apiData, entityId]);
 
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     if (!chainData || chainData.documents.length === 0) {
@@ -452,8 +495,16 @@ export function FinancialChainView({ entityId, onNodeSelect }: FinancialChainVie
     return buildNodesAndEdges(chainData);
   }, [chainData]);
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => {
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
+
+  useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges, setEdges]);
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {

@@ -4,7 +4,7 @@
  * Radiales Layout mit @xyflow/react
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -35,6 +35,7 @@ import {
   Building2,
 } from 'lucide-react';
 import type { GraphNode } from '../types';
+import { useDocumentFamily } from '../hooks/use-knowledge-graph-queries';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -463,7 +464,52 @@ export function DocumentFamilyView({
   entityId,
   onNodeSelect,
 }: DocumentFamilyViewProps) {
-  const { data: familyData, isLoading, error } = useDocumentFamilyData(documentId, entityId);
+  const { data: apiData, isLoading, error } = useDocumentFamily(documentId);
+
+  const familyData = useMemo((): DocumentFamilyData => {
+    if (apiData?.groups?.length) {
+      const RING_CATEGORY_MAP: Record<number, DocumentCategory> = {
+        0: 'vertrag',
+        1: 'anlage',
+        2: 'rechnung',
+        3: 'korrespondenz',
+      };
+      const documents: FamilyDocument[] = [];
+      const rootDoc = apiData.rootDocument;
+      documents.push({
+        id: rootDoc.id,
+        category: 'vertrag',
+        filename: rootDoc.label,
+        date: String(rootDoc.data?.date ?? ''),
+        ring: 0,
+        isOrphan: false,
+        parentId: null,
+      });
+      for (const group of apiData.groups) {
+        const category: DocumentCategory = RING_CATEGORY_MAP[group.ring] ?? 'sonstiges';
+        for (const node of group.documents) {
+          documents.push({
+            id: node.id,
+            category: node.type === 'invoice' ? 'rechnung' : category,
+            filename: node.label,
+            date: String(node.data?.date ?? ''),
+            ring: group.ring,
+            isOrphan: false,
+            parentId: rootDoc.id,
+          });
+        }
+      }
+      const links = documents
+        .filter((doc) => doc.parentId !== null)
+        .map((doc) => ({
+          sourceId: doc.parentId as string,
+          targetId: doc.id,
+          relationship: doc.ring === 1 ? 'Anlage' : doc.ring === 2 ? 'Beleg' : 'Bezug',
+        }));
+      return { documents, links };
+    }
+    return generateMockDocumentFamily(documentId, entityId);
+  }, [apiData, documentId, entityId]);
 
   const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     if (!familyData || familyData.documents.length === 0) {
@@ -477,8 +523,16 @@ export function DocumentFamilyView({
     return computeStats(familyData.documents);
   }, [familyData]);
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => {
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
+
+  useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges, setEdges]);
 
   const handleNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {

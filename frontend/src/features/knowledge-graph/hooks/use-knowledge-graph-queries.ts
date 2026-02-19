@@ -6,7 +6,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState, useEffect } from 'react';
 import { knowledgeGraphApi } from '../api';
-import type { GraphData, SearchResult, GraphCommunity, FinancialChainData, RiskNetworkData, DocumentFamilyData } from '../types';
+import type { GraphData, SearchResult, GraphCommunity, FinancialChainData, RiskNetworkData, DocumentFamilyData, TimelineData } from '../types';
 
 /**
  * Hook zum Laden des Entity-Graphs
@@ -97,5 +97,21 @@ export function useDocumentFamily(documentId: string | undefined) {
     queryFn: () => knowledgeGraphApi.getDocumentFamily(documentId!),
     enabled: Boolean(documentId),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * Hook zum Laden der Timeline-Ereignisse fuer ein Dokument.
+ *
+ * Wenn eine documentId vorhanden ist, wird die Document-Timeline API
+ * (/api/v1/documents/{id}/timeline) verwendet.
+ * Ist keine documentId gesetzt, wird kein Fetch ausgefuehrt.
+ */
+export function useDocumentTimeline(documentId: string | undefined) {
+  return useQuery<TimelineData>({
+    queryKey: ['knowledge-graph', 'timeline', documentId],
+    queryFn: () => knowledgeGraphApi.getDocumentTimeline(documentId!),
+    enabled: Boolean(documentId),
+    staleTime: 5 * 60 * 1000, // 5 Minuten
   });
 }

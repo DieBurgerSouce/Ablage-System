@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ScrollSync, ScrollSyncPane } from 'react-scroll-sync';
 import SplitPane from 'react-split-pane';
@@ -151,6 +151,8 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
     const [selectedBox, setSelectedBox] = useState<BoundingBox | null>(null);
     const [pageDimensions, setPageDimensions] = useState<{ width: number; height: number } | null>(null);
     const [activeRightTab, setActiveRightTab] = useState('cockpit');
+    const [rotation, setRotation] = useState(0);
+    const [isFocusMode, setIsFocusMode] = useState(false);
 
     const { enabled, autoActivate, getFilterStyle } = usePaperDimming();
     const { displayMode } = useTheme();
@@ -164,6 +166,36 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
     const { blobUrl, isLoading: previewLoading, error: previewError } = useAuthenticatedPreview(documentId);
     const isImage = isImageMimeType(mimeType);
     const fileCategory = categorizeFileType(mimeType);
+
+    const handleRotate = useCallback(() => {
+        setRotation(r => (r + 90) % 360);
+    }, []);
+
+    const handleDownload = useCallback(async () => {
+        if (!blobUrl) return;
+        try {
+            const response = await fetch(blobUrl);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `dokument-${documentId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            logger.error('[Viewer] Download fehlgeschlagen:', err);
+        }
+    }, [blobUrl, documentId]);
+
+    const handlePrint = useCallback(() => {
+        window.print();
+    }, []);
+
+    const handleToggleFocusMode = useCallback(() => {
+        setIsFocusMode(prev => !prev);
+    }, []);
 
     // For images and office docs, we only have 1 "page"
     const effectiveNumPages = isImage || fileCategory === 'docx' || fileCategory === 'xlsx' || fileCategory === 'email'
@@ -245,101 +277,119 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                 currentPage={currentPage}
                 numPages={effectiveNumPages}
                 scale={scale}
+                rotation={rotation}
                 onPageChange={setCurrentPage}
                 onZoomIn={() => setScale(s => Math.min(s + 0.25, 3))}
                 onZoomOut={() => setScale(s => Math.max(s - 0.25, 0.5))}
+                onRotate={handleRotate}
+                onDownload={handleDownload}
+                onPrint={handlePrint}
+                isFocusMode={isFocusMode}
+                onToggleFocusMode={handleToggleFocusMode}
             />
 
-            <ScrollSync>
+            {(() => {
+                const documentPane = previewLoading ? (
+                    <div className="h-full flex items-center justify-center bg-muted/30">
+                        <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                            <Loader2 className="h-8 w-8 animate-spin" />
+                            <span>Lade Vorschau...</span>
+                        </div>
+                    </div>
+                ) : previewError ? (
+                    <div className="h-full flex items-center justify-center bg-muted/30">
+                        <div className="flex flex-col items-center gap-3 text-destructive">
+                            <AlertTriangle className="h-8 w-8" />
+                            <span>Vorschau konnte nicht geladen werden</span>
+                            <span className="text-xs text-muted-foreground">{previewError}</span>
+                        </div>
+                    </div>
+                ) : blobUrl && fileCategory === 'docx' ? (
+                    <ViewerErrorBoundary fileType="docx">
+                        <Suspense fallback={<ViewerLoadingFallback />}>
+                            <DocxViewer fileData={blobUrl} className="h-full" />
+                        </Suspense>
+                    </ViewerErrorBoundary>
+                ) : blobUrl && fileCategory === 'xlsx' ? (
+                    <ViewerErrorBoundary fileType="xlsx">
+                        <Suspense fallback={<ViewerLoadingFallback />}>
+                            <XlsxViewer fileData={blobUrl} className="h-full" />
+                        </Suspense>
+                    </ViewerErrorBoundary>
+                ) : blobUrl && fileCategory === 'email' ? (
+                    <ViewerErrorBoundary fileType="email">
+                        <Suspense fallback={<ViewerLoadingFallback />}>
+                            <EmailViewer fileData={blobUrl} className="h-full" />
+                        </Suspense>
+                    </ViewerErrorBoundary>
+                ) : blobUrl && isImage ? (
+                    <ViewerErrorBoundary fileType="image">
+                        <div style={{ ...dimmingStyle, transform: `rotate(${rotation}deg)` }}>
+                            <ImageViewer
+                                fileUrl={blobUrl}
+                                scale={scale}
+                                boxes={ocrResults?.pages?.[0]?.boxes || []}
+                                selectedBox={selectedBox}
+                                onBoxClick={setSelectedBox}
+                            />
+                        </div>
+                    </ViewerErrorBoundary>
+                ) : blobUrl ? (
+                    <ViewerErrorBoundary fileType="pdf">
+                        <div className="h-full overflow-auto bg-muted/30 flex justify-center p-4">
+                            <div style={dimmingStyle}>
+                                <Document
+                                    file={blobUrl}
+                                    onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+                                    onLoadError={(err) => logger.error('[PDF] Fehler beim Laden:', err)}
+                                    className="shadow-lg"
+                                >
+                                    <div className="relative" style={{ transform: `rotate(${rotation}deg)` }}>
+                                        <Page
+                                            pageNumber={currentPage}
+                                            scale={scale}
+                                            renderTextLayer={true}
+                                            renderAnnotationLayer={true}
+                                            onLoadSuccess={({ width, height }) => setPageDimensions({ width, height })}
+                                        />
+                                        <BoundingBoxOverlay
+                                            boxes={ocrResults?.pages?.[currentPage - 1]?.boxes || []}
+                                            scale={scale}
+                                            selectedBox={selectedBox}
+                                            onBoxClick={setSelectedBox}
+                                        />
+                                        {pageDimensions && (
+                                            <AnnotationLayer
+                                                pageNumber={currentPage}
+                                                scale={scale}
+                                                width={pageDimensions.width}
+                                                height={pageDimensions.height}
+                                            />
+                                        )}
+                                    </div>
+                                </Document>
+                            </div>
+                        </div>
+                    </ViewerErrorBoundary>
+                ) : (
+                    <div className="h-full bg-muted/30" />
+                );
+
+                if (isFocusMode) {
+                    return (
+                        <div className="flex-1 overflow-auto">
+                            {documentPane}
+                        </div>
+                    );
+                }
+
+                return (
+                <ScrollSync>
                 <div className="flex-1 relative overflow-hidden">
                     {/* @ts-expect-error: SplitPane types are not compatible with React 18 children */}
                     <SplitPane split="vertical" minSize={300} defaultSize="50%" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
                         <ScrollSyncPane>
-                            {previewLoading ? (
-                                <div className="h-full flex items-center justify-center bg-muted/30">
-                                    <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                                        <Loader2 className="h-8 w-8 animate-spin" />
-                                        <span>Lade Vorschau...</span>
-                                    </div>
-                                </div>
-                            ) : previewError ? (
-                                <div className="h-full flex items-center justify-center bg-muted/30">
-                                    <div className="flex flex-col items-center gap-3 text-destructive">
-                                        <AlertTriangle className="h-8 w-8" />
-                                        <span>Vorschau konnte nicht geladen werden</span>
-                                        <span className="text-xs text-muted-foreground">{previewError}</span>
-                                    </div>
-                                </div>
-                            ) : blobUrl && fileCategory === 'docx' ? (
-                                <ViewerErrorBoundary fileType="docx">
-                                    <Suspense fallback={<ViewerLoadingFallback />}>
-                                        <DocxViewer fileData={blobUrl} className="h-full" />
-                                    </Suspense>
-                                </ViewerErrorBoundary>
-                            ) : blobUrl && fileCategory === 'xlsx' ? (
-                                <ViewerErrorBoundary fileType="xlsx">
-                                    <Suspense fallback={<ViewerLoadingFallback />}>
-                                        <XlsxViewer fileData={blobUrl} className="h-full" />
-                                    </Suspense>
-                                </ViewerErrorBoundary>
-                            ) : blobUrl && fileCategory === 'email' ? (
-                                <ViewerErrorBoundary fileType="email">
-                                    <Suspense fallback={<ViewerLoadingFallback />}>
-                                        <EmailViewer fileData={blobUrl} className="h-full" />
-                                    </Suspense>
-                                </ViewerErrorBoundary>
-                            ) : blobUrl && isImage ? (
-                                <ViewerErrorBoundary fileType="image">
-                                    <div style={dimmingStyle}>
-                                        <ImageViewer
-                                            fileUrl={blobUrl}
-                                            scale={scale}
-                                            boxes={ocrResults?.pages?.[0]?.boxes || []}
-                                            selectedBox={selectedBox}
-                                            onBoxClick={setSelectedBox}
-                                        />
-                                    </div>
-                                </ViewerErrorBoundary>
-                            ) : blobUrl ? (
-                                <ViewerErrorBoundary fileType="pdf">
-                                    <div className="h-full overflow-auto bg-muted/30 flex justify-center p-4">
-                                        <div style={dimmingStyle}>
-                                            <Document
-                                                file={blobUrl}
-                                                onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-                                                onLoadError={(err) => logger.error('[PDF] Fehler beim Laden:', err)}
-                                                className="shadow-lg"
-                                            >
-                                                <div className="relative">
-                                                    <Page
-                                                        pageNumber={currentPage}
-                                                        scale={scale}
-                                                        renderTextLayer={true}
-                                                        renderAnnotationLayer={true}
-                                                        onLoadSuccess={({ width, height }) => setPageDimensions({ width, height })}
-                                                    />
-                                                    <BoundingBoxOverlay
-                                                        boxes={ocrResults?.pages?.[currentPage - 1]?.boxes || []}
-                                                        scale={scale}
-                                                        selectedBox={selectedBox}
-                                                        onBoxClick={setSelectedBox}
-                                                    />
-                                                    {pageDimensions && (
-                                                        <AnnotationLayer
-                                                            pageNumber={currentPage}
-                                                            scale={scale}
-                                                            width={pageDimensions.width}
-                                                            height={pageDimensions.height}
-                                                        />
-                                                    )}
-                                                </div>
-                                            </Document>
-                                        </div>
-                                    </div>
-                                </ViewerErrorBoundary>
-                            ) : (
-                                <div className="h-full bg-muted/30" />
-                            )}
+                            {documentPane}
                         </ScrollSyncPane>
 
                         <ScrollSyncPane>
@@ -420,7 +470,9 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                         </ScrollSyncPane>
                     </SplitPane>
                 </div>
-            </ScrollSync>
+                </ScrollSync>
+                );
+            })()}
         </div>
     );
 }

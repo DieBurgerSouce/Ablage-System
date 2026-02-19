@@ -3,7 +3,7 @@
  * Risiko-gewichtete Netzwerk-Visualisierung mit @xyflow/react
  */
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import {
   ReactFlow,
   Background,
@@ -37,6 +37,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { GraphNode, NodeType } from '../types';
+import { useRiskNetwork } from '../hooks/use-knowledge-graph-queries';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -668,7 +669,37 @@ export function RiskNetworkView({
   entityId,
   onNodeSelect,
 }: RiskNetworkViewProps) {
-  const { data: mockData, isLoading } = useRiskNetworkData(entityId);
+  const { data: apiData, isLoading, error } = useRiskNetwork(entityId);
+
+  const mockData = useMemo(() => {
+    if (apiData?.nodes?.length) {
+      return {
+        entities: apiData.nodes.map((e) => ({
+          entityId: e.entityId,
+          entityName: e.entityName,
+          riskScore: e.riskScore ?? 0,
+          transactionVolume: e.transactionVolume ?? 0,
+          communityId: e.communityId || 'default',
+          paymentBehaviorScore: e.paymentBehaviorScore ?? 0,
+          industryRisk: e.industryRisk ?? 0,
+          volumeScore: 0,
+          lastAnomaly: e.lastAnomaly ?? null,
+        })),
+        edges: apiData.edges?.map((e) => ({
+          source: e.source,
+          target: e.target,
+          transactionCount: e.transactionCount ?? 1,
+        })) || [],
+        communities: apiData.communities?.map((c) => ({
+          id: c.id,
+          name: c.name,
+          memberIds: c.memberIds || [],
+          color: 'rgba(59, 130, 246, 0.08)',
+        })) || [],
+      };
+    }
+    return generateMockRiskNetwork(entityId);
+  }, [apiData, entityId]);
 
   // Compute volume range for node sizing
   const { minVol, maxVol } = useMemo(() => {
@@ -699,8 +730,16 @@ export function RiskNetworkView({
     return buildFlowEdges(mockData.edges, mockData.entities);
   }, [mockData]);
 
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => {
+    setNodes(initialNodes);
+  }, [initialNodes, setNodes]);
+
+  useEffect(() => {
+    setEdges(initialEdges);
+  }, [initialEdges, setEdges]);
 
   // Empty state
   if (!entityId) {
@@ -732,6 +771,26 @@ export function RiskNetworkView({
             Lade Risiko-Netzwerk...
           </p>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Card className="max-w-md border-destructive">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-destructive" />
+              Fehler beim Laden
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-destructive">
+              {(error as Error).message || 'Fehler beim Laden des Risiko-Netzwerks'}
+            </p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
