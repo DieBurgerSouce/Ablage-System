@@ -1,6 +1,14 @@
 # Recent Changes
 
 ## 2026-02-20
+- **feat(api)**: HTTPException Handler - StandardErrorResponse mit correlation_id und Timestamp
+- **feat(api)**: Search "Meinten Sie?" Funktion via pg_trgm bei 0 Ergebnissen
+- **feat(services)**: GoBD Compliance Service - TypedDict (GoBDFinding, GoBDStatistics), Protocol-Klasse
+- **refactor(api)**: build_content_disposition aus security_auth importiert (alle API-Dateien)
+- **chore(infra)**: Dockerfile Multi-Stage Build (builder + production, uv fuer schnelle Installation)
+- **chore(infra)**: Alertmanager - Email-Routing nach Schweregrad (critical/high/warning), kein null-receiver mehr
+- **feat(api)**: app/core/pagination.py - wiederverwendbare Pagination-Utilities
+- **test**: 4 neue Unit-Tests (crud_service, dunning_service, retention_service, search_suggestions)
 - **feat(frontend)**: InvoiceWorkflowPage - data-tour Attribute fuer Onboarding-Tour (workflow-approval, workflow-review)
 - **chore(config)**: ralph-loop Iteration 81 -> 131 aktualisiert
 
@@ -44,10 +52,3 @@
 - **test**: E2E (10), Integration + Unit Tests + Chaos Engineering Framework
 - **feat(infra)**: Compliance Infrastructure (GDPR, GoBD, ISO27001)
 
-## 2026-02-13
-- **refactor(workers)**: Celery Task Names - Full-Path Migration (87 Dateien)
-- **feat(api)**: 10 neue Enterprise Endpoints (collaboration, data_quality, digital_twin, etc.)
-- **feat(services)**: 9 neue Enterprise Services (Collaboration, Data Quality, Digital Twin, etc.)
-- **feat(frontend)**: CEO Dashboard Components, Collaboration Features, Smart Search
-- **feat(db)**: Migrationen 220-221 (Collaboration Tables, Merge Heads)
-- **fix(db)**: Alembic Migrations 208, 209, 215, 216 asyncpg-hardened

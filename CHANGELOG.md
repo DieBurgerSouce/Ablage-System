@@ -10,7 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- API: HTTPException Handler mit StandardErrorResponse (correlation_id, timestamp, path, German message support)
+- API: Search "Meinten Sie?" Suggestion via pg_trgm bei 0 Suchergebnissen (Dateinamen, Tags, Text)
+- API: app/core/pagination.py - wiederverwendbare Pagination-Helper fuer alle Endpoints
+- Services: GoBD Compliance Service - Protocol-Klasse (_BuchungProtocol), TypedDicts (GoBDFinding, GoBDStatistics)
+- Tests: 4 neue Unit-Tests (test_crud_service, test_dunning_service, test_retention_service, test_search_suggestions)
 - Frontend: InvoiceWorkflowPage - data-tour Attribute fuer Onboarding-Tour-Integration (workflow-approval, workflow-review Cards)
+
+### Changed
+- Infrastructure: Dockerfile auf Multi-Stage Build umgestellt (builder-Stage mit uv, production-Stage ohne Build-Tools)
+- Infrastructure: Alertmanager Email-Routing nach Schweregrad (critical 15min, high 1h, warning konfigurierbar)
+- API: build_content_disposition aus app.core.security_auth importiert (zentralisiert, vorher inline in accounting.py)
+- Services: Viele API-Endpoints - konsistentes Import-Muster fuer build_content_disposition
+
+### Fixed
+- API: .env.example - neue Environment-Variablen dokumentiert
 
 ### Added
 - Services: Zero-Touch End-to-End Pipeline Chain (OCR -> Klassifizierung -> Entity-Linking -> Kontierung -> 3-Way-Matching -> Ablage) mit Confidence-Scoring und Graceful Degradation
