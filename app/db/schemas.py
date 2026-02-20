@@ -940,6 +940,10 @@ class SearchResponse(BaseModel):
         default_factory=list,
         description="List of synonyms used in query expansion"
     )
+    did_you_mean: Optional[str] = Field(
+        None,
+        description="Korrekturvorschlag bei Tippfehlern (pg_trgm-basiert)"
+    )
 
 
 class SimilarDocumentsRequest(BaseModel):
@@ -3292,8 +3296,8 @@ class TrainingSampleResponse(TrainingSampleBase):
 class TrainingSampleListResponse(BaseModel):
     """Liste von Training Samples."""
     total: int
-    limit: int
-    offset: int
+    page: int
+    per_page: int
     samples: List[TrainingSampleResponse]
 
 
@@ -4023,7 +4027,7 @@ class CategoryDocumentFilter(BaseModel):
     tags: Optional[List[str]] = Field(None, max_length=10, description="Filter nach Tags")
 
     # Pagination
-    page: int = Field(0, ge=0, description="Seitennummer (0-basiert)")
+    page: int = Field(1, ge=1, description="Seitennummer (1-basiert)")
     page_size: int = Field(25, ge=1, le=100, description="Einträge pro Seite")
 
     # Sortierung
