@@ -18,7 +18,7 @@ import { SearchResultCard } from '@/features/search/components/SearchResultCard'
 import { FacetSidebar } from '@/features/search/components/FacetSidebar'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useSearch, type SearchType } from '@/features/search/hooks/useSearch'
-import { Loader2, Clock, FileSearch } from 'lucide-react'
+import { Loader2, Clock, FileSearch, Lightbulb } from 'lucide-react'
 import {
     searchParamsSchema,
     type SearchParams,
@@ -197,16 +197,35 @@ function SearchPage() {
                     )}
 
                     {hasSearch && !isLoading && !isFetching && results.length === 0 && (
-                        <EmptyState
-                            variant="search"
-                            title="Keine Ergebnisse gefunden"
-                            description="Keine Dokumente gefunden für Ihre Suche. Versuchen Sie andere Suchbegriffe oder passen Sie die Filter an."
-                            action={{
-                                label: 'Filter zurücksetzen',
-                                onClick: resetFilters,
-                                variant: 'outline',
-                            }}
-                        />
+                        <div className="space-y-4">
+                            {/* "Meinten Sie?" Vorschlag */}
+                            {searchResponse?.didYouMean && (
+                                <div className="flex items-center gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+                                    <Lightbulb className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                                    <span className="text-sm text-muted-foreground">
+                                        Meinten Sie:{' '}
+                                        <button
+                                            type="button"
+                                            className="font-medium text-primary hover:underline cursor-pointer"
+                                            onClick={() => updateSearch({ q: searchResponse.didYouMean! })}
+                                        >
+                                            {searchResponse.didYouMean}
+                                        </button>
+                                        ?
+                                    </span>
+                                </div>
+                            )}
+                            <EmptyState
+                                variant="search"
+                                title="Keine Ergebnisse gefunden"
+                                description="Keine Dokumente gefunden für Ihre Suche. Versuchen Sie andere Suchbegriffe oder passen Sie die Filter an."
+                                action={{
+                                    label: 'Filter zurücksetzen',
+                                    onClick: resetFilters,
+                                    variant: 'outline',
+                                }}
+                            />
+                        </div>
                     )}
                 </div>
             </div>

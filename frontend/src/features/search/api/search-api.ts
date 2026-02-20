@@ -45,6 +45,7 @@ interface SearchResponseBackend {
     search_type: string;
     execution_time_ms: number;
     synonym_expansions?: SynonymExpansionBackend[];
+    did_you_mean?: string | null;
 }
 
 interface MatchedEntityBackend {
@@ -95,6 +96,7 @@ export interface SearchResponse {
     searchType: string;
     executionTimeMs: number;
     synonymExpansions?: SynonymExpansion[];
+    didYouMean?: string | null;
 }
 
 function transformSearchResult(item: SearchResultItemBackend): SearchResultItem {
@@ -138,6 +140,7 @@ function transformSearchResponse(response: SearchResponseBackend): SearchRespons
         searchType: response.search_type,
         executionTimeMs: response.execution_time_ms,
         synonymExpansions: response.synonym_expansions,
+        didYouMean: response.did_you_mean ?? undefined,
     };
 }
 
