@@ -18,7 +18,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import structlog
 from prometheus_client import Counter, Histogram
@@ -492,7 +492,7 @@ class AutoCategorizationService:
         }
 
         # Callback für Auto-Apply
-        async def apply_category(value: Dict[str, Any]) -> None:
+        async def apply_category(value: Dict[str, Union[str, List[Dict[str, Union[str, float]]]]]) -> None:
             """Wendet Kategorie auf Dokument an."""
             if not auto_apply_tags:
                 return
@@ -540,7 +540,7 @@ class AutoCategorizationService:
         self,
         text: str,
         limit: int = 5,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[Dict[str, Union[str, float, bool]]]:
         """
         Gibt Kategorie-Vorschläge ohne Persistenz zurück.
 

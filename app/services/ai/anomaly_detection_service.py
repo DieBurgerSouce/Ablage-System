@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import structlog
 from prometheus_client import Counter, Histogram
@@ -104,7 +104,7 @@ class DetectedAnomaly:
     severity: AnomalySeverity
     confidence: float
     description: str
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: Dict[str, Union[str, int, float, List[str]]] = field(default_factory=dict)
     recommendation: Optional[str] = None
 
 

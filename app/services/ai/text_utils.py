@@ -15,8 +15,10 @@ Vermeidet Code-Duplikation zwischen:
 
 import hashlib
 import re
+from datetime import date
+from decimal import Decimal
 from difflib import SequenceMatcher
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 
 def normalize_german_text(
@@ -112,9 +114,12 @@ def calculate_text_similarity(
     return SequenceMatcher(None, t1, t2).ratio()
 
 
+FieldValue = Union[str, int, float, Decimal, date, None]
+
+
 def calculate_field_similarity(
-    value1: Any,
-    value2: Any,
+    value1: FieldValue,
+    value2: FieldValue,
     field_type: str = "string",
 ) -> float:
     """

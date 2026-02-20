@@ -205,7 +205,7 @@ class AblageService(DocumentServiceBase):
             query = query.order_by(sort_column.asc().nulls_first())
 
         # Pagination
-        offset = filter_params.page * filter_params.page_size
+        offset = (filter_params.page - 1) * filter_params.page_size
         query = query.offset(offset).limit(filter_params.page_size)
 
         # Tags eager-loaden

@@ -531,8 +531,8 @@ def circuit_breaker(
 
         # Return appropriate wrapper
         if asyncio.iscoroutinefunction(func):
-            return async_wrapper  # type: ignore
-        return sync_wrapper  # type: ignore
+            return async_wrapper  # type: ignore[return-value]  # async_wrapper satisfies F
+        return sync_wrapper  # type: ignore[return-value]  # sync_wrapper satisfies F
 
     return decorator
 
@@ -684,8 +684,8 @@ def retry_with_backoff(
 
         # Return appropriate wrapper
         if asyncio.iscoroutinefunction(func):
-            return async_wrapper  # type: ignore
-        return sync_wrapper  # type: ignore
+            return async_wrapper  # type: ignore[return-value]  # async_wrapper satisfies F
+        return sync_wrapper  # type: ignore[return-value]  # sync_wrapper satisfies F
 
     return decorator
 

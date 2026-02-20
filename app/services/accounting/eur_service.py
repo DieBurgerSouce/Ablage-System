@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import structlog
 from sqlalchemy import and_, func, select
@@ -25,6 +25,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Document
 
 logger = structlog.get_logger(__name__)
+
+# JSON-kompatible Werte aus PostgreSQL JSONB-Spalten
+JsonValue = Union[str, int, float, bool, None, List[object], Dict[str, object]]
+JsonDict = Dict[str, JsonValue]
 
 
 # ============================================================================
@@ -144,7 +148,7 @@ class EURReport:
     income_items: List[EURLineItem] = field(default_factory=list)
     expense_items: List[EURLineItem] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> JsonDict:
         """Konvertiert zu Dictionary."""
         return {
             "company_id": str(self.company_id),
@@ -182,7 +186,7 @@ class EURReport:
             "deductible_vat": float(self.deductible_vat),
         }
 
-    def to_anlage_eur(self) -> Dict[str, Any]:
+    def to_anlage_eur(self) -> Dict[str, Union[int, float]]:
         """
         Generiert Daten für Anlage EÜR.
 
@@ -535,7 +539,7 @@ class EURService:
         self,
         company_id: uuid.UUID,
         year: int,
-    ) -> Dict[str, Any]:
+    ) -> JsonDict:
         """
         Holt Year-to-Date Zusammenfassung.
 
@@ -688,7 +692,7 @@ class EURService:
 
         return items
 
-    def _extract_amount(self, data: Dict[str, Any], keys: List[str]) -> Decimal:
+    def _extract_amount(self, data: JsonDict, keys: List[str]) -> Decimal:
         """Extrahiert Betrag aus Daten."""
         for key in keys:
             value = data.get(key)
@@ -709,7 +713,7 @@ class EURService:
     def _categorize_income(
         self,
         doc: Document,
-        extracted: Dict[str, Any],
+        extracted: JsonDict,
     ) -> IncomeCategory:
         """Kategorisiert Einnahme."""
         # Aus expliziter Kategorie
@@ -734,7 +738,7 @@ class EURService:
     def _categorize_expense(
         self,
         doc: Document,
-        extracted: Dict[str, Any],
+        extracted: JsonDict,
     ) -> ExpenseCategory:
         """Kategorisiert Ausgabe."""
         # Aus expliziter Kategorie

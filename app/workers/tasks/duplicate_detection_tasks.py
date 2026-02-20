@@ -11,7 +11,9 @@ Feinpoliert und durchdacht - Async Duplikat-Erkennung.
 
 import asyncio
 import uuid
-from typing import Dict, Optional
+from typing import Any, Coroutine, Dict, Optional, TypeVar
+
+_T = TypeVar("_T")
 
 import structlog
 
@@ -20,7 +22,7 @@ from app.workers.celery_app import celery_app
 logger = structlog.get_logger(__name__)
 
 
-def _run_async(coro):  # type: ignore[no-untyped-def]
+def _run_async(coro: Coroutine[Any, Any, _T]) -> _T:
     """Helper um async Code in Celery auszufuehren."""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -39,7 +41,7 @@ def _run_async(coro):  # type: ignore[no-untyped-def]
     queue="default",
 )
 def batch_scan_duplicates_task(
-    self,  # type: ignore[no-untyped-def]
+    self: Any,
     company_id: str,
 ) -> Dict[str, object]:
     """
@@ -63,7 +65,7 @@ def batch_scan_duplicates_task(
     queue="default",
 )
 def check_document_duplicates_task(
-    self,  # type: ignore[no-untyped-def]
+    self: Any,
     document_id: str,
     company_id: Optional[str] = None,
 ) -> Dict[str, object]:
@@ -94,7 +96,7 @@ def check_document_duplicates_task(
     queue="default",
 )
 def cleanup_stale_duplicate_flags_task(
-    self,  # type: ignore[no-untyped-def]
+    self: Any,
 ) -> Dict[str, object]:
     """
     Bereinigt veraltete Duplikat-Flags in Dokument-Metadaten.

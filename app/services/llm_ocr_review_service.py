@@ -775,7 +775,7 @@ class LLMOCRReviewService:
         if recommendation_match:
             rec = recommendation_match.group(1).lower()
             if rec in ("accept", "reject", "needs_human"):
-                recommendation = rec  # type: ignore
+                recommendation = rec  # type: ignore[assignment]
 
         # Reasoning extrahieren
         reasoning_match = re.search(r'<reasoning>(.*?)</reasoning>', content, re.DOTALL)

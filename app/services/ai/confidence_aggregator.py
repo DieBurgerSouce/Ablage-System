@@ -17,7 +17,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import structlog
 from sqlalchemy import select, and_, func
@@ -62,7 +62,7 @@ class ConfidenceScore:
     value: float
     weight: float = 1.0
     calibrated_value: Optional[float] = None
-    details: Dict[str, Any] = field(default_factory=dict)
+    details: Dict[str, Union[str, int, float, bool]] = field(default_factory=dict)
 
 
 @dataclass

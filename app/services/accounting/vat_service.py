@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP, InvalidOperation
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 
 import structlog
 from sqlalchemy import and_, func, select
@@ -24,6 +24,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Document
 
 logger = structlog.get_logger(__name__)
+
+# JSON-kompatible Werte aus PostgreSQL JSONB-Spalten
+JsonValue = Union[str, int, float, bool, None, List[object], Dict[str, object]]
+JsonDict = Dict[str, JsonValue]
 
 
 # ============================================================================
@@ -142,7 +146,7 @@ class VATReport:
     # Details (optional)
     line_items: List[VATLineItem] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> JsonDict:
         """Konvertiert zu Dictionary für JSON/API."""
         return {
             "company_id": str(self.company_id),
@@ -622,7 +626,7 @@ class VATService:
 
         return items
 
-    def _extract_amount(self, data: Dict[str, Any], keys: List[str]) -> Decimal:
+    def _extract_amount(self, data: JsonDict, keys: List[str]) -> Decimal:
         """Extrahiert einen Betrag aus verschiedenen Feldnamen."""
         for key in keys:
             value = data.get(key)
@@ -640,7 +644,7 @@ class VATService:
 
     def _detect_vat_rate(
         self,
-        data: Dict[str, Any],
+        data: JsonDict,
         net: Decimal,
         gross: Decimal,
         vat: Decimal,
@@ -689,7 +693,7 @@ class VATService:
         self,
         vat_rate: str,
         is_input: bool,
-        data: Dict[str, Any],
+        data: JsonDict,
     ) -> str:
         """Bestimmt die USt-Kennziffer."""
         # Innergemeinschaftlich?

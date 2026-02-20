@@ -339,7 +339,7 @@ class InvestmentIntelligenceService:
 
     def _calculate_single_performance(
         self,
-        investment: "PrivatInvestment",  # type: ignore
+        investment: "PrivatInvestment",  # type: ignore[name-defined]
     ) -> InvestmentPerformance:
         """Interne Berechnung der Performance eines Investments."""
         purchase_value = investment.purchase_value or Decimal("0")

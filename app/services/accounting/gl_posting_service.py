@@ -15,7 +15,7 @@ GoBD-konform: Keine Löschungen, nur Stornierungen.
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Union
 from uuid import UUID
 import uuid
 
@@ -422,10 +422,10 @@ class GLPostingService:
 
     def _simple_expense_lines(
         self,
-        extracted: Dict[str, Any],
-        invoice_total: Any,
-        tax_amount: Any,
-        net_amount: Any,
+        extracted: Dict[str, Union[str, int, float, Decimal, None]],
+        invoice_total: Union[str, int, float, Decimal],
+        tax_amount: Union[str, int, float, Decimal, None],
+        net_amount: Union[str, int, float, Decimal, None],
     ) -> List[JournalEntryLineCreate]:
         """Einfache Expense-Buchung (Fallback ohne DATEV-Config)."""
         return [
@@ -478,7 +478,7 @@ class GLPostingService:
     async def _get_vendor_mapping(
         self,
         config_id: UUID,
-        extracted: Dict[str, Any],
+        extracted: Dict[str, Union[str, int, float, Decimal, None]],
     ) -> Optional[DATEVVendorMapping]:
         """Lade optionales Vendor-Mapping anhand Lieferantenname oder USt-IdNr."""
         supplier_name = extracted.get("supplier_name")
@@ -512,7 +512,7 @@ class GLPostingService:
     def _buchung_to_journal_lines(
         self,
         buchung: DATEVBuchung,
-        extracted: Dict[str, Any],
+        extracted: Dict[str, Union[str, int, float, Decimal, None]],
     ) -> List[JournalEntryLineCreate]:
         """Konvertiert DATEVBuchung -> JournalEntryLineCreate-Liste."""
         lines: List[JournalEntryLineCreate] = []
@@ -559,10 +559,10 @@ class GLPostingService:
     async def _map_via_datev(
         self,
         datev_config: DATEVConfiguration,
-        extracted: Dict[str, Any],
-        invoice_total: Any,
-        tax_amount: Any,
-        net_amount: Any,
+        extracted: Dict[str, Union[str, int, float, Decimal, None]],
+        invoice_total: Union[str, int, float, Decimal],
+        tax_amount: Union[str, int, float, Decimal, None],
+        net_amount: Union[str, int, float, Decimal, None],
     ) -> List[JournalEntryLineCreate]:
         """Mappe Rechnung via DATEVInvoiceMapper, mit Fallback."""
         try:

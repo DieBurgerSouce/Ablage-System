@@ -543,6 +543,14 @@ class SearchService:
             for exp in synonym_expansions
         ] if synonym_expansions else []
 
+        # "Meinten Sie?" - pg_trgm-basierte Korrektur bei 0 Ergebnissen
+        did_you_mean = None
+        if total == 0 and len(query) >= 3:
+            try:
+                did_you_mean = await self._get_did_you_mean(db, query, user_id)
+            except Exception as e:
+                logger.warning("did_you_mean_error", **safe_error_log(e))
+
         response = SearchResponse(
             query=query,
             search_type=search_type,
@@ -553,7 +561,8 @@ class SearchService:
             results=results,
             took_ms=took_ms,
             filters_applied=filters.model_dump(exclude_none=True) if filters else {},
-            synonym_expansions=synonym_expansion_models
+            synonym_expansions=synonym_expansion_models,
+            did_you_mean=did_you_mean
         )
 
         # Ergebnis cachen (wenn aktiviert und Ergebnisse vorhanden)
@@ -576,6 +585,94 @@ class SearchService:
                 logger.warning("search_cache_store_error", **safe_error_log(e))
 
         return response
+
+    async def _get_did_you_mean(
+        self,
+        db: AsyncSession,
+        query: str,
+        user_id: UUID,
+        threshold: float = 0.3,
+        limit: int = 1
+    ) -> Optional[str]:
+        """Findet aehnliche Begriffe via pg_trgm wenn Suche 0 Ergebnisse liefert.
+
+        Sucht in Dokumentnamen, Tags und extrahiertem Text nach
+        aehnlichen Begriffen mittels PostgreSQL pg_trgm similarity().
+
+        Args:
+            db: Datenbank-Session
+            query: Originale Suchanfrage
+            user_id: Benutzer-ID fuer Zugriffsfilter
+            threshold: Minimum similarity score (0-1)
+            limit: Maximale Anzahl Vorschlaege
+
+        Returns:
+            Bester Korrekturvorschlag oder None
+        """
+        # Erstes Wort der Query fuer Einzel-Wort-Korrektur
+        query_word = query.strip().split()[0] if query.strip() else query.strip()
+        if len(query_word) < 3:
+            return None
+
+        # 1. Suche in Dateinamen (haeufigster Anwendungsfall)
+        try:
+            filename_query = text("""
+                SELECT DISTINCT original_filename, similarity(original_filename, :query) AS sim
+                FROM documents
+                WHERE owner_id = :user_id
+                    AND original_filename IS NOT NULL
+                    AND similarity(original_filename, :query) > :threshold
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            result = await db.execute(filename_query, {
+                "query": query_word,
+                "user_id": str(user_id),
+                "threshold": threshold,
+                "limit": limit
+            })
+            row = result.first()
+            if row and row.original_filename:
+                return row.original_filename
+        except Exception:
+            pass  # pg_trgm evtl. nicht auf original_filename
+
+        # 2. Suche in Tags
+        try:
+            tag_query = text("""
+                SELECT t.name, similarity(t.name, :query) AS sim
+                FROM tags t
+                JOIN document_tags dt ON dt.tag_id = t.id
+                JOIN documents d ON d.id = dt.document_id
+                WHERE d.owner_id = :user_id
+                    AND similarity(t.name, :query) > :threshold
+                GROUP BY t.name, sim
+                ORDER BY sim DESC
+                LIMIT :limit
+            """)
+            result = await db.execute(tag_query, {
+                "query": query_word,
+                "user_id": str(user_id),
+                "threshold": threshold,
+                "limit": limit
+            })
+            row = result.first()
+            if row and row.name:
+                return row.name
+        except Exception:
+            pass
+
+        # 3. Fallback: SymSpell Woerterbuch-Korrektur
+        try:
+            from app.services.german_spellchecker import get_german_spellchecker
+            spellchecker = get_german_spellchecker()
+            corrected = spellchecker.correct_word(query_word)
+            if corrected.lower() != query_word.lower():
+                return corrected
+        except Exception:
+            pass
+
+        return None
 
     async def _search_fts(
         self,

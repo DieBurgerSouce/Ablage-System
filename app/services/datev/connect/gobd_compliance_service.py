@@ -19,7 +19,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Protocol, Tuple, TypedDict, Union
 from uuid import UUID
 
 import structlog
@@ -30,6 +30,56 @@ from app.core.datetime_utils import utc_now
 from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
+
+
+class _BuchungProtocol(Protocol):
+    """Strukturelles Protokoll für DATEVBuchung-Modell."""
+
+    buchungs_guid: Optional[str]
+    umsatz: Decimal
+    soll_haben: str
+    konto: str
+    gegenkonto: str
+    bu_schluessel: Optional[str]
+    belegdatum: Optional[date]
+    belegfeld_1: Optional[str]
+    buchungstext: Optional[str]
+    ist_festgeschrieben: bool
+    festschreibung_datum: Optional[datetime]
+    festschreibung_hash: Optional[str]
+    id: UUID
+    document_id: Optional[UUID]
+    sync_status: str
+
+
+# =============================================================================
+# TypedDicts für GoBD-Prüfungsergebnisse
+# =============================================================================
+
+
+class GoBDFinding(TypedDict, total=False):
+    """Ein einzelner GoBD-Befund."""
+
+    type: str
+    severity: str
+    buchung_id: str
+    belegfeld_1: Optional[str]
+    message: str
+    count: int
+    guid: str
+    duplicate_count: int
+
+
+class GoBDStatistics(TypedDict):
+    """Statistiken einer GoBD-Prüfung."""
+
+    total_buchungen: int
+    festgeschrieben: int
+    nicht_festgeschrieben: int
+    mit_beleglink: int
+    ohne_beleglink: int
+    hash_fehler: int
+    alte_nicht_festgeschrieben: int
 
 
 # =============================================================================
@@ -46,7 +96,7 @@ class FestschreibungResult:
     buchungen_ids: List[UUID] = field(default_factory=list)
     fehler: List[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Union[str, int, bool, None, List[str]]]:
         """Konvertiert zu Dictionary."""
         return {
             "success": self.success,
@@ -63,10 +113,18 @@ class GoBDValidationResult:
 
     is_compliant: bool
     pruefung_datum: datetime = field(default_factory=utc_now)
-    findings: List[Dict[str, Any]] = field(default_factory=list)
-    statistics: Dict[str, Any] = field(default_factory=dict)
+    findings: List[GoBDFinding] = field(default_factory=list)
+    statistics: GoBDStatistics = field(default_factory=lambda: GoBDStatistics(
+        total_buchungen=0,
+        festgeschrieben=0,
+        nicht_festgeschrieben=0,
+        mit_beleglink=0,
+        ohne_beleglink=0,
+        hash_fehler=0,
+        alte_nicht_festgeschrieben=0,
+    ))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Union[bool, str, List[GoBDFinding], GoBDStatistics]]:
         """Konvertiert zu Dictionary."""
         return {
             "is_compliant": self.is_compliant,
@@ -266,7 +324,7 @@ class GoBDComplianceService:
         from app.db import models
 
         result = GoBDValidationResult(is_compliant=True)
-        findings: List[Dict[str, Any]] = []
+        findings: List[GoBDFinding] = []
 
         try:
             # Filter aufbauen
@@ -343,15 +401,15 @@ class GoBDComplianceService:
             result.is_compliant = len(critical_findings) == 0
 
             result.findings = findings
-            result.statistics = {
-                "total_buchungen": total,
-                "festgeschrieben": festgeschrieben,
-                "nicht_festgeschrieben": total - festgeschrieben,
-                "mit_beleglink": mit_beleglink,
-                "ohne_beleglink": total - mit_beleglink,
-                "hash_fehler": hash_fehler,
-                "alte_nicht_festgeschrieben": alte_count,
-            }
+            result.statistics = GoBDStatistics(
+                total_buchungen=total,
+                festgeschrieben=festgeschrieben,
+                nicht_festgeschrieben=total - festgeschrieben,
+                mit_beleglink=mit_beleglink,
+                ohne_beleglink=total - mit_beleglink,
+                hash_fehler=hash_fehler,
+                alte_nicht_festgeschrieben=alte_count,
+            )
 
             logger.info(
                 "gobd_validation_completed",
@@ -576,7 +634,7 @@ class GoBDComplianceService:
     # Private Helpers
     # =========================================================================
 
-    def _calculate_buchung_hash(self, buchung: Any) -> str:
+    def _calculate_buchung_hash(self, buchung: _BuchungProtocol) -> str:
         """
         Berechnet SHA-256 Hash einer Buchung.
 
@@ -604,7 +662,7 @@ class GoBDComplianceService:
 
     def _validate_buchung_for_festschreibung(
         self,
-        buchung: Any,
+        buchung: _BuchungProtocol,
     ) -> List[str]:
         """Validiert Buchung vor Festschreibung."""
         errors: List[str] = []

@@ -37,8 +37,8 @@ try:
     SYMSPELL_AVAILABLE = True
 except ImportError:
     SYMSPELL_AVAILABLE = False
-    SymSpell = None  # type: ignore
-    Verbosity = None  # type: ignore
+    SymSpell = None  # type: ignore[assignment]
+    Verbosity = None  # type: ignore[assignment]
     logger.warning("symspell_not_available", message="SymSpell nicht installiert - pip install symspellpy")
 
 
