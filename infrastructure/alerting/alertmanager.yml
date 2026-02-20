@@ -1,58 +1,93 @@
 # Alertmanager Configuration - Ablage-System OCR
-# Minimale funktionierende Konfiguration ohne externe Webhooks
-# Kann spaeter mit SMTP und Teams erweitert werden
+# Produktionskonfiguration mit Email-Routing nach Schweregrad
+# Konfiguration: Platzhalter durch echte Werte in .env ersetzen
 
 global:
   resolve_timeout: 5m
 
-# Routing tree
+# Routing-Baum: Alerts werden nach Schweregrad weitergeleitet
 route:
-  receiver: 'null-receiver'
+  receiver: 'email-receiver'
   group_by: ['alertname', 'cluster', 'service', 'severity']
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 4h
 
-  # Child routes based on severity
+  # Unterrouten nach Schweregrad
   routes:
-    # Critical alerts
+    # Kritische Alerts - sofortige Benachrichtigung, haeufige Wiederholung
     - match:
         severity: critical
-      receiver: 'null-receiver'
+      receiver: 'email-receiver'
       group_wait: 10s
       repeat_interval: 15m
 
-    # High severity alerts
+    # Hohe Prioritaet - kurze Verzoegerung, stuendliche Wiederholung
     - match:
         severity: high
-      receiver: 'null-receiver'
+      receiver: 'email-receiver'
       group_wait: 1m
       repeat_interval: 1h
 
-    # Warning severity
+    # Warnungen - gebuendelt, seltene Wiederholung
     - match:
         severity: warning
-      receiver: 'null-receiver'
+      receiver: 'email-receiver'
       group_wait: 5m
       repeat_interval: 4h
 
-# Alert receivers - Null receiver (no external notifications)
-# Add real receivers when SMTP/Teams is configured
+# Empfaenger-Konfiguration
 receivers:
-  - name: 'null-receiver'
-    # Empty receiver - alerts are received but not forwarded
-    # Configure email_configs or webhook_configs when ready
+  # Email-Empfaenger (Haupt-Benachrichtigungskanal)
+  # SMTP-Konfiguration: Werte in .env anpassen (SMTP_HOST, SMTP_PORT, etc.)
+  - name: 'email-receiver'
+    email_configs:
+      - smarthost: 'localhost:587'
+        # Absender-Adresse (konfigurierbar via SMTP_FROM in .env)
+        from: 'alertmanager@ablage-system.local'
+        # Authentifizierung: SMTP_USERNAME und SMTP_PASSWORD in .env setzen
+        auth_username: ''
+        auth_password: ''
+        # Empfaenger: EMAIL_RECIPIENTS in .env konfigurieren
+        to: 'ops-team@internal.local'
+        # TLS aktivieren (empfohlen fuer Production)
+        require_tls: true
+        # Alert-Zusammenfassung als Betreff
+        headers:
+          subject: '[Ablage-System] {{ .Status | toUpper }} - {{ .CommonLabels.alertname }}'
+        # Deutschsprachiger Email-Text
+        html: |
+          <h2>Ablage-System Alert</h2>
+          <p><strong>Status:</strong> {{ .Status }}</p>
+          <p><strong>Alert:</strong> {{ .CommonLabels.alertname }}</p>
+          <p><strong>Schweregrad:</strong> {{ .CommonLabels.severity }}</p>
+          {{ range .Alerts }}
+          <hr>
+          <p><strong>Zusammenfassung:</strong> {{ .Annotations.summary }}</p>
+          <p><strong>Beschreibung:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Beginn:</strong> {{ .StartsAt }}</p>
+          {{ end }}
 
-# Inhibition rules
+  # Slack-Empfaenger (optional, auskommentiert)
+  # Aktivieren: SLACK_WEBHOOK_URL in .env setzen und Kommentare entfernen
+  # - name: 'slack-receiver'
+  #   slack_configs:
+  #     - api_url: 'https://hooks.slack.com/services/PLACEHOLDER'
+  #       channel: '#alerts-ablage'
+  #       title: '[Ablage-System] {{ .Status | toUpper }} - {{ .CommonLabels.alertname }}'
+  #       text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+  #       send_resolved: true
+
+# Inhibierungsregeln: Verhindern redundante Benachrichtigungen
 inhibit_rules:
-  # Critical alerts suppress warnings
+  # Kritische Alerts unterdruecken Warnungen fuer denselben Service
   - source_match:
       severity: 'critical'
     target_match:
       severity: 'warning'
     equal: ['alertname', 'cluster', 'service']
 
-  # High alerts suppress warnings
+  # Hohe Prioritaet unterdrueckt Warnungen fuer denselben Service
   - source_match:
       severity: 'high'
     target_match:

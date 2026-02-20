@@ -1,5 +1,50 @@
 # GPU-enabled Docker image for Ablage-System OCR
+# Multi-stage build: builder installs/compiles, production keeps only runtime artifacts
 # Security-hardened with non-root user
+
+# ============================================================
+# Stage 1: builder
+# All build tools, compilers, and pip/uv live here only.
+# ============================================================
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TORCH_CUDA_ARCH_LIST="8.6;8.9"
+
+# Install build + runtime-needed system packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    git \
+    wget \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Set Python 3.11 as default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+
+# Install uv for fast dependency resolution (10-100x faster than pip)
+RUN python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel uv
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt requirements-gpu.txt ./
+RUN uv pip install --system -r requirements.txt
+RUN uv pip install --system -r requirements-gpu.txt
+
+# Clone and register DeepSeek Janus
+RUN git clone --depth 1 https://github.com/deepseek-ai/Janus.git /opt/janus && \
+    uv pip install --system attrdict einops sentencepiece timm accelerate && \
+    echo "/opt/janus" > /usr/local/lib/python3.11/dist-packages/janus.pth && \
+    python3.11 -c "from janus.models import MultiModalityCausalLM, VLChatProcessor; print('Janus OK')"
+
+# ============================================================
+# Stage 2: production
+# Only runtime packages; no build tools, no git, no uv/pip.
+# curl is kept for the HEALTHCHECK.
+# ============================================================
 FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
 
 # Set environment variables
@@ -8,13 +53,9 @@ ENV PYTHONUNBUFFERED=1
 ENV TORCH_CUDA_ARCH_LIST="8.6;8.9"
 ENV CUDA_VISIBLE_DEVICES=0
 
-# Install system dependencies
+# Install ONLY runtime system dependencies (+ curl for HEALTHCHECK)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     python3.11 \
-    python3.11-dev \
-    python3-pip \
-    git \
-    wget \
     curl \
     libgl1-mesa-glx \
     libglib2.0-0 \
@@ -30,13 +71,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-# Set Python 3.11 as default and ensure pip uses Python 3.11
+# Set Python 3.11 as default
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1 && \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
-# Install uv for fast dependency resolution (10-100x faster than pip)
-# Use python3.11 -m pip to ensure packages go to Python 3.11
-RUN python3.11 -m pip install --no-cache-dir --upgrade pip setuptools wheel uv
+# Copy installed Python packages from builder
+COPY --from=builder /usr/local/lib/python3.11/dist-packages/ /usr/local/lib/python3.11/dist-packages/
+COPY --from=builder /usr/local/bin/ /usr/local/bin/
+
+# Copy Janus source tree and its .pth registration file
+COPY --from=builder /opt/janus /opt/janus
+# The .pth file is already inside dist-packages (copied above), but copy explicitly to be safe
+COPY --from=builder /usr/local/lib/python3.11/dist-packages/janus.pth /usr/local/lib/python3.11/dist-packages/janus.pth
 
 # Create non-root user BEFORE copying files
 ARG UID=1000
@@ -49,35 +95,12 @@ WORKDIR /app
 RUN mkdir -p /app/uploads /app/outputs /app/logs /app/cache && \
     chown -R ablage:ablage /app
 
-# Copy requirements first for better caching
-COPY --chown=ablage:ablage requirements.txt .
-COPY --chown=ablage:ablage requirements-gpu.txt .
-
-# Install Python dependencies as root (for system packages)
-# Using uv for 10-100x faster dependency resolution (Rust-based pip replacement)
-RUN uv pip install --system -r requirements.txt
-
-# NOTE: PyTorch with CUDA support is now installed via requirements.txt (transformers pulls torch with CUDA bindings)
-# The cu121 index install was removed to avoid version conflicts - torch-2.9.1 from pypi includes nvidia-* packages
-
-# Install additional GPU requirements
-RUN uv pip install --system -r requirements-gpu.txt
-
-# Install DeepSeek Janus library for Janus-Pro multimodal OCR
-# Required for MultiModalityCausalLM and VLChatProcessor classes
-# First install dependencies, then the package in editable mode via PYTHONPATH
-RUN git clone --depth 1 https://github.com/deepseek-ai/Janus.git /opt/janus && \
-    uv pip install --system attrdict einops sentencepiece timm accelerate && \
-    echo "/opt/janus" > /usr/local/lib/python3.11/dist-packages/janus.pth && \
-    python3.11 -c "from janus.models import MultiModalityCausalLM, VLChatProcessor; print('Janus OK')"
-
 # Copy application code with correct ownership
 COPY --chown=ablage:ablage app/ ./app/
 COPY --chown=ablage:ablage test_documents/ ./test_documents/
 COPY --chown=ablage:ablage *.py ./
 
 # Set permissions (SECURITY FIX: 775 statt 777 für write-Verzeichnisse)
-# User ablage und Gruppe ablage haben Schreibrechte, andere nur lesen
 RUN chmod -R 755 /app && \
     chmod -R 775 /app/uploads /app/outputs /app/logs /app/cache
 
