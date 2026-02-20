@@ -406,8 +406,8 @@ async def list_trust_levels(
 @router.get("/pending-approvals", response_model=List[PendingApprovalResponse])
 async def get_pending_approvals(
     proposal_type: Optional[str] = None,
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[PendingApprovalResponse]:
@@ -439,8 +439,8 @@ async def get_pending_approvals(
     proposals = await service.get_pending_proposals(
         company_id=company_id,
         proposal_type=pt,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     from app.core.datetime_utils import utc_now

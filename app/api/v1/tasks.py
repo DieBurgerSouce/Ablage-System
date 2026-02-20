@@ -185,7 +185,11 @@ manager = ConnectionManager()
 
 # ==================== REST API Endpoints ====================
 
-@router.get("/{task_id}")
+@router.get(
+    "/{task_id}",
+    summary="Task-Status abrufen",
+    description="Gibt den aktuellen Status eines Tasks zurück. Nur eigene Tasks (Admins können alle sehen).",
+)
 async def get_task_status(
     task_id: str,
     current_user: User = Depends(get_current_user),
@@ -239,7 +243,11 @@ async def get_task_status(
         )
 
 
-@router.delete("/{task_id}")
+@router.delete(
+    "/{task_id}",
+    summary="Task abbrechen",
+    description="Bricht einen laufenden Task ab. Nur eigene Tasks (Admins können alle abbrechen).",
+)
 async def cancel_task(
     task_id: str,
     current_user: User = Depends(get_current_user),
@@ -302,7 +310,11 @@ async def cancel_task(
         )
 
 
-@router.get("/")
+@router.get(
+    "/",
+    summary="Benutzer-Tasks auflisten",
+    description="Listet die letzten Tasks des aktuellen Benutzers auf.",
+)
 async def list_user_tasks(
     limit: int = Query(10, ge=1, le=100),
     current_user: User = Depends(get_current_user),
@@ -342,7 +354,11 @@ async def list_user_tasks(
         )
 
 
-@router.get("/{task_id}/result")
+@router.get(
+    "/{task_id}/result",
+    summary="Task-Ergebnis abrufen",
+    description="Gibt das Ergebnis eines abgeschlossenen Tasks zurück. Nur eigene Tasks (Admins können alle sehen).",
+)
 async def get_task_result(
     task_id: str,
     timeout: Optional[float] = Query(None, ge=1, le=300),
@@ -511,7 +527,11 @@ async def task_progress_websocket(
         await manager.disconnect(task_id, websocket)
 
 
-@router.get("/ws/status")
+@router.get(
+    "/ws/status",
+    summary="WebSocket-Verbindungsstatus",
+    description="Gibt Statistiken zu aktiven WebSocket-Verbindungen zurück. Nur für Administratoren.",
+)
 async def get_websocket_status(
     current_user: User = Depends(get_current_superuser),  # X.1 SECURITY FIX: Admin required
 ):

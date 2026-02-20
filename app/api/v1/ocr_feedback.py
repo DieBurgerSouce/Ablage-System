@@ -350,8 +350,8 @@ async def submit_batch_corrections(
 async def get_correction_queue(
     priority: Optional[str] = Query(None, regex="^(critical|high|medium|low)$"),
     document_type: Optional[str] = Query(None, max_length=50),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
@@ -380,14 +380,14 @@ async def get_correction_queue(
         company_id=company_id,
         priority=priority_enum,
         document_type=document_type,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return {
         "total": total,
-        "limit": limit,
-        "offset": offset,
+        "page": page,
+        "per_page": per_page,
         "items": [
             QueueItemResponse(
                 id=str(item.id),

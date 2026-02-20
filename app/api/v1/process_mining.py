@@ -88,8 +88,8 @@ class EventListResponse(BaseModel):
     """Paginierte Event-Liste."""
     items: List[EventResponse]
     total: int
-    offset: int
-    limit: int
+    page: int
+    per_page: int
 
 
 class BottleneckResponse(BaseModel):
@@ -319,8 +319,8 @@ async def list_events(
     success: Optional[bool] = Query(None, description="Filter nach Erfolg"),
     date_from: Optional[datetime] = Query(None, description="Startdatum"),
     date_to: Optional[datetime] = Query(None, description="Enddatum"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=500),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=500, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -369,15 +369,15 @@ async def list_events(
     total = count_result.scalar() or 0
 
     # Paginieren und sortieren
-    query = query.order_by(desc(ProcessEvent.timestamp)).offset(offset).limit(limit)
+    query = query.order_by(desc(ProcessEvent.timestamp)).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(query)
     events = list(result.scalars().all())
 
     return EventListResponse(
         items=[_event_to_response(e) for e in events],
         total=total,
-        offset=offset,
-        limit=limit,
+        page=page,
+        per_page=per_page,
     )
 
 

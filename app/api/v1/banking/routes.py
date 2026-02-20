@@ -720,8 +720,8 @@ async def list_transactions(
     transaction_type: Optional[TransactionType] = Query(None, description="Transaktionstyp"),
     reconciliation_status: Optional[ReconciliationStatus] = Query(None, description="Abgleich-Status"),
     search: Optional[str] = Query(None, description="Volltextsuche"),
-    offset: int = Query(0, ge=0, description="Offset"),
-    limit: int = Query(50, ge=1, le=200, description="Limit"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     sort_by: TransactionSortField = Query(TransactionSortField.BOOKING_DATE, description="Sortierfeld"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
     db: AsyncSession = Depends(get_db),
@@ -750,8 +750,8 @@ async def list_transactions(
         user_id=current_user.id,
         bank_account_id=bank_account_id,
         filters=filters,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
         sort_by=sort_by.value,  # SECURITY: Nur Enum-Werte erlaubt
         sort_order=sort_order,
     )
@@ -759,8 +759,8 @@ async def list_transactions(
     return {
         "items": transactions,
         "total": total,
-        "offset": offset,
-        "limit": limit,
+        "page": page,
+        "per_page": per_page,
     }
 
 
@@ -1293,8 +1293,8 @@ async def create_payment(
 async def list_payments(
     bank_account_id: Optional[UUID] = Query(None, description="Filter auf Bankkonto"),
     status_filter: Optional[PaymentStatus] = Query(None, alias="status", description="Filter auf Status"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
@@ -1304,15 +1304,15 @@ async def list_payments(
         user_id=current_user.id,
         bank_account_id=bank_account_id,
         status=status_filter,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
     return {
         "payments": payments,
         "total": total,
-        "offset": offset,
-        "limit": limit,
+        "page": page,
+        "per_page": per_page,
     }
 
 
@@ -1756,8 +1756,8 @@ async def list_dunnings(
     mahnstopp: Optional[bool] = Query(None, description="Nur Mahnstopp-Vorgänge"),
     is_b2b: Optional[bool] = Query(None, description="B2B oder B2C Filter"),
     business_entity_id: Optional[UUID] = Query(None, description="Geschäftspartner-ID"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
@@ -1794,15 +1794,15 @@ async def list_dunnings(
         is_b2b=is_b2b,
         business_entity_id=business_entity_id,
         active_only=active_only,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
     return {
         "items": dunnings,
         "total": total,
-        "offset": offset,
-        "limit": limit,
+        "page": page,
+        "per_page": per_page,
     }
 
 
@@ -1932,8 +1932,8 @@ async def process_automatic_dunning(
 )
 async def get_dunning_history(
     dunning_id: UUID,
-    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset für Pagination"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> MahnungHistoryListResponse:
@@ -1942,8 +1942,8 @@ async def get_dunning_history(
         db=db,
         user_id=current_user.id,
         dunning_record_id=dunning_id,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
     return MahnungHistoryListResponse(items=items, total=total)
 
@@ -2206,8 +2206,8 @@ async def log_phone_call(
 )
 async def get_phone_calls(
     dunning_id: UUID,
-    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset für Pagination"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> PhoneCallLogListResponse:
@@ -2216,8 +2216,8 @@ async def get_phone_calls(
         db=db,
         user_id=current_user.id,
         dunning_record_id=dunning_id,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
     return PhoneCallLogListResponse(items=items, total=total)
 
@@ -2673,8 +2673,8 @@ async def list_mahn_tasks(
     due_date_to: Optional[date] = Query(None, description="Fällig bis"),
     priority: Optional[int] = Query(None, ge=1, le=5, description="Priorität"),
     include_snoozed: bool = Query(False, description="Zurückgestellte einschließen"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
@@ -2693,15 +2693,15 @@ async def list_mahn_tasks(
         db=db,
         user_id=current_user.id,
         filters=filters,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return {
         "items": tasks,
         "total": total,
-        "offset": offset,
-        "limit": limit,
+        "page": page,
+        "per_page": per_page,
     }
 
 
@@ -3518,8 +3518,8 @@ async def get_payment_suggestions(
 )
 async def list_payment_batches(
     status: Optional[PaymentBatchStatus] = Query(None, description="Nach Status filtern"),
-    limit: int = Query(20, ge=1, le=100, description="Anzahl der Ergebnisse"),
-    offset: int = Query(0, ge=0, description="Offset für Pagination"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> List[PaymentBatchResponse]:
@@ -3528,8 +3528,8 @@ async def list_payment_batches(
         db=db,
         company_id=current_user.company_id,
         status=status,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return [

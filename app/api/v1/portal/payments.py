@@ -78,8 +78,8 @@ async def submit_payment_confirmation(
 async def list_payment_confirmations(
     status: Optional[str] = Query(None),
     invoice_tracking_id: Optional[UUID] = Query(None),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     portal_user: PortalUser = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -93,15 +93,15 @@ async def list_payment_confirmations(
         company_id=portal_user.company_id,
         status=status,
         invoice_tracking_id=invoice_tracking_id,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return {
         "items": confirmations,
         "total": total,
-        "limit": limit,
-        "offset": offset,
+        "page": page,
+        "per_page": per_page,
     }
 
 

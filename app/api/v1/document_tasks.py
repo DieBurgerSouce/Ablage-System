@@ -249,8 +249,8 @@ async def list_tasks(
     status_filter: Optional[TaskStatusEnum] = Query(None, alias="status", description="Filter nach Status"),
     priority_filter: Optional[TaskPriorityEnum] = Query(None, alias="priority", description="Filter nach Prioritaet"),
     overdue_only: bool = Query(False, description="Nur überfällige Aufgaben"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TasksListResponse:
@@ -263,6 +263,7 @@ async def list_tasks(
     status_value = status_filter.value if status_filter else None
     priority_value = priority_filter.value if priority_filter else None
 
+    offset = (page - 1) * per_page
     tasks, total = await task_service.list_tasks(
         company_id=current_user.company_id,
         document_id=document_id,
@@ -271,7 +272,7 @@ async def list_tasks(
         status=status_value,
         priority=priority_value,
         overdue_only=overdue_only,
-        limit=limit,
+        limit=per_page,
         offset=offset,
     )
 
@@ -292,8 +293,8 @@ async def list_tasks(
 )
 async def get_my_tasks(
     status_filter: Optional[TaskStatusEnum] = Query(None, alias="status"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TasksListResponse:
@@ -302,11 +303,12 @@ async def get_my_tasks(
 
     status_value = status_filter.value if status_filter else None
 
+    offset = (page - 1) * per_page
     tasks, total = await task_service.get_my_tasks(
         user_id=current_user.id,
         company_id=current_user.company_id,
         status=status_value,
-        limit=limit,
+        limit=per_page,
         offset=offset,
     )
 

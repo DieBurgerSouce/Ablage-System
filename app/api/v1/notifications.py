@@ -194,8 +194,8 @@ def _build_notification_response(
     description="Gibt System-Benachrichtigungen mit erweiterten Filtern zurück."
 )
 async def list_system_notifications(
-    limit: int = Query(50, ge=1, le=100, description="Anzahl Benachrichtigungen"),
-    offset: int = Query(0, ge=0, description="Offset für Pagination"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     unread_only: bool = Query(False, description="Nur ungelesene Benachrichtigungen"),
     notification_type: Optional[str] = Query(None, description="Filter nach Typ"),
     priority: Optional[str] = Query(None, description="Filter nach Prioritaet (critical/warning/info)"),
@@ -276,8 +276,8 @@ async def list_system_notifications(
         select(Notification)
         .where(and_(*filters))
         .order_by(Notification.created_at.desc())
-        .limit(limit)
-        .offset(offset)
+        .limit(per_page)
+        .offset((page - 1) * per_page)
     )
 
     result = await db.execute(query)
@@ -638,8 +638,8 @@ async def update_notification_settings(
     description="Gibt User-zu-User Benachrichtigungen zurück."
 )
 async def list_notifications(
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     unread_only: bool = Query(False, description="Nur ungelesene Benachrichtigungen"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -674,8 +674,8 @@ async def list_notifications(
         .options(selectinload(UserNotification.document))
         .where(base_filter)
         .order_by(UserNotification.created_at.desc())
-        .limit(limit)
-        .offset(offset)
+        .limit(per_page)
+        .offset((page - 1) * per_page)
     )
 
     result = await db.execute(query)

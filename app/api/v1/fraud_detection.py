@@ -207,8 +207,8 @@ async def get_fraud_alerts(
     fraud_type: Optional[FraudType] = Query(None, description="Filter nach Betrugsart"),
     risk_level: Optional[RiskLevel] = Query(None, description="Filter nach Risikostufe"),
     days: int = Query(30, ge=1, le=365),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -241,7 +241,8 @@ async def get_fraud_alerts(
     alerts.sort(key=lambda x: (risk_order.get(x["risk_level"], 99), -x.get("confidence", 0)))
 
     # Paginieren
-    return alerts[offset:offset + limit]
+    offset = (page - 1) * per_page
+    return alerts[offset:offset + per_page]
 
 
 @router.get("/alerts/{alert_id}")

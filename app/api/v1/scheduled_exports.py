@@ -263,8 +263,8 @@ async def create_scheduled_export(
 @router.get("/", response_model=ScheduledExportListResponse)
 async def list_scheduled_exports(
     is_active: Optional[bool] = Query(None, description="Filter nach aktiv/inaktiv"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -272,8 +272,8 @@ async def list_scheduled_exports(
 
     Args:
         is_active: Optional Filter nach aktiv/inaktiv
-        limit: Maximale Anzahl
-        offset: Offset für Pagination
+        page: Seitennummer (1-basiert)
+        per_page: Eintraege pro Seite
 
     Returns:
         ScheduledExportListResponse
@@ -283,7 +283,7 @@ async def list_scheduled_exports(
     if is_active is not None:
         query = query.where(ScheduledExport.is_active == is_active)
 
-    query = query.order_by(ScheduledExport.created_at.desc()).limit(limit).offset(offset)
+    query = query.order_by(ScheduledExport.created_at.desc()).limit(per_page).offset((page - 1) * per_page)
 
     result = await db.execute(query)
     exports = result.scalars().all()

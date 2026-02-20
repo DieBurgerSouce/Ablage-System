@@ -179,8 +179,8 @@ class WorkflowListResponse(BaseModel):
 
     items: List[WorkflowResponse]
     total: int
-    offset: int
-    limit: int
+    page: int
+    per_page: int
 
 
 class StepCreate(BaseModel):
@@ -267,8 +267,8 @@ class ExecutionListResponse(BaseModel):
 
     items: List[ExecutionResponse]
     total: int
-    offset: int
-    limit: int
+    page: int
+    per_page: int
 
 
 class StepExecutionResponse(BaseModel):
@@ -379,8 +379,8 @@ async def list_workflows(
     is_active: Optional[bool] = Query(None, description="Filter nach Aktiv-Status"),
     is_template: Optional[bool] = Query(None, description="Filter nach Template-Status"),
     search: Optional[str] = Query(None, description="Suchbegriff"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> WorkflowListResponse:
@@ -397,15 +397,15 @@ async def list_workflows(
         is_active=is_active,
         is_template=is_template,
         search=search,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
     return WorkflowListResponse(
         items=[WorkflowResponse.model_validate(w) for w in workflows],
         total=total,
-        offset=offset,
-        limit=limit,
+        page=page,
+        per_page=per_page,
     )
 
 
@@ -885,8 +885,8 @@ async def execute_workflow(
 async def get_workflow_executions(
     workflow_id: UUID,
     status_filter: Optional[str] = Query(None, alias="status", description="Filter nach Status"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ExecutionListResponse:
@@ -900,15 +900,15 @@ async def get_workflow_executions(
         workflow_id=workflow_id,
         user_id=current_user.id,
         status=status_filter,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
     return ExecutionListResponse(
         items=[ExecutionResponse.model_validate(e) for e in executions],
         total=total,
-        offset=offset,
-        limit=limit,
+        page=page,
+        per_page=per_page,
     )
 
 

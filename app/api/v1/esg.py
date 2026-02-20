@@ -203,8 +203,8 @@ async def get_carbon_emissions(
     scope: Optional[str] = Query(None),
     source_category: Optional[str] = Query(None),
     verified_only: bool = Query(False),
-    limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -220,15 +220,15 @@ async def get_carbon_emissions(
         scope=scope,
         source_category=source_category,
         verified_only=verified_only,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return {
         "items": entries,
         "total": total,
-        "limit": limit,
-        "offset": offset,
+        "page": page,
+        "per_page": per_page,
     }
 
 
@@ -319,8 +319,8 @@ async def get_supplier_ratings(
     risk_level: Optional[str] = Query(None),
     min_score: Optional[float] = Query(None),
     max_score: Optional[float] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -335,15 +335,15 @@ async def get_supplier_ratings(
         risk_level=risk_level,
         min_score=min_score,
         max_score=max_score,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return {
         "items": ratings,
         "total": total,
-        "limit": limit,
-        "offset": offset,
+        "page": page,
+        "per_page": per_page,
     }
 
 
@@ -435,8 +435,8 @@ async def get_certifications(
     category: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     include_expired: bool = Query(False),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -450,15 +450,15 @@ async def get_certifications(
         category=category,
         status=status,
         include_expired=include_expired,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return {
         "items": certifications,
         "total": total,
-        "limit": limit,
-        "offset": offset,
+        "page": page,
+        "per_page": per_page,
     }
 
 
@@ -577,8 +577,8 @@ async def generate_report(
 async def get_reports(
     report_type: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -591,15 +591,15 @@ async def get_reports(
         company_id=user.company_id,
         report_type=report_type,
         status=status,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return {
         "items": reports,
         "total": total,
-        "limit": limit,
-        "offset": offset,
+        "page": page,
+        "per_page": per_page,
     }
 
 

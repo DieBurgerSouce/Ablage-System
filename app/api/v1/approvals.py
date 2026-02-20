@@ -349,8 +349,8 @@ async def list_approval_rules(
     active_only: bool = Query(True, description="Nur aktive Regeln"),
     rule_type: Optional[ApprovalRuleType] = Query(None, description="Nach Typ filtern"),
     entity_type: Optional[str] = Query(None, description="Nach Entitaetstyp filtern"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ApprovalRulesListResponse:
@@ -371,7 +371,8 @@ async def list_approval_rules(
         filtered_rules = [r for r in filtered_rules if entity_type in (r.entity_types or [])]
 
     total = len(filtered_rules)
-    paginated = filtered_rules[offset:offset + limit]
+    offset = (page - 1) * per_page
+    paginated = filtered_rules[offset:offset + per_page]
 
     logger.info(
         "approval_rules_listed",
@@ -544,8 +545,8 @@ async def list_approval_requests(
     status_filter: Optional[ApprovalStatus] = Query(None, description="Nach Status filtern"),
     entity_type: Optional[str] = Query(None, description="Nach Entitaetstyp filtern"),
     my_pending: bool = Query(False, description="Nur meine ausstehenden Genehmigungen"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ApprovalRequestsListResponse:
@@ -557,8 +558,8 @@ async def list_approval_requests(
         status_filter=status_filter,
         entity_type=entity_type,
         for_user_id=current_user.id if my_pending else None,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
     total = await service.count_requests_for_company(

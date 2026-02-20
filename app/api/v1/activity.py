@@ -58,8 +58,8 @@ def _build_activity_response(activity: DocumentActivity, user: Optional[User]) -
 )
 async def list_activities(
     document_id: UUID,
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     activity_type: Optional[ActivityTypeEnum] = Query(None, description="Nach Typ filtern"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -93,8 +93,8 @@ async def list_activities(
         select(DocumentActivity)
         .where(base_filter)
         .order_by(DocumentActivity.created_at.desc())
-        .limit(limit)
-        .offset(offset)
+        .limit(per_page)
+        .offset((page - 1) * per_page)
     )
 
     result = await db.execute(query)
@@ -115,7 +115,7 @@ async def list_activities(
     return ActivitiesListResponse(
         activities=activities,
         total=total,
-        hasMore=(offset + limit) < total,
+        hasMore=((page - 1) * per_page + per_page) < total,
     )
 
 

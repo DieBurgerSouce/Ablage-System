@@ -169,8 +169,8 @@ async def create_batch_job(
 async def list_batch_jobs(
     status: Optional[str] = Query(None, description="Nach Status filtern"),
     job_type: Optional[str] = Query(None, description="Nach Job-Typ filtern"),
-    limit: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
-    offset: int = Query(0, ge=0, description="Offset für Pagination"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -186,8 +186,8 @@ async def list_batch_jobs(
         user_id=current_user.id,
         status=status,
         job_type=job_type,
-        limit=limit,
-        offset=offset
+        limit=per_page,
+        offset=(page - 1) * per_page
     )
 
     return result

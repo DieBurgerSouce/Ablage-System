@@ -327,8 +327,8 @@ async def create_report(
 @router.get("", response_model=List[AdHocReportResponse])
 async def list_reports(
     include_shared: bool = Query(True, description="Geteilte Reports einschließen?"),
-    limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     company_id: uuid.UUID = Depends(get_current_company_id),
@@ -340,8 +340,8 @@ async def list_reports(
         company_id=company_id,
         user_id=current_user.id,
         include_shared=include_shared,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
     return [AdHocReportResponse.model_validate(r) for r in reports]
 

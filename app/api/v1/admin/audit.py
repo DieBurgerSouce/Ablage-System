@@ -365,8 +365,8 @@ async def get_permission_audit(
     change_type: Optional[PermissionChangeType] = Query(
         None, description="Nach Änderungstyp filtern"
     ),
-    limit: int = Query(500, ge=1, le=5000, description="Maximale Anzahl Einträge"),
-    offset: int = Query(0, ge=0, description="Offset für Pagination"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(500, ge=1, le=5000, description="Eintraege pro Seite"),
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> PermissionAuditExport:
@@ -400,8 +400,8 @@ async def get_permission_audit(
         start_date=start_date,
         end_date=end_date,
         change_types=change_types,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
 
@@ -415,8 +415,8 @@ async def get_user_permission_history(
     user_id: UUID,
     start_date: Optional[datetime] = Query(None, description="Ab Datum"),
     end_date: Optional[datetime] = Query(None, description="Bis Datum"),
-    limit: int = Query(100, ge=1, le=1000, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=1000, description="Eintraege pro Seite"),
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
 ) -> List[PermissionChangeRecord]:
@@ -443,8 +443,8 @@ async def get_user_permission_history(
         company_id=str(admin.company_id),
         start_date=start_date,
         end_date=end_date,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
 

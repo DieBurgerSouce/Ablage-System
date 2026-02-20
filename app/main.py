@@ -15,6 +15,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Tuple
 import sys
+import uuid
 from pathlib import Path
 import structlog
 import os
@@ -1010,6 +1011,33 @@ app.add_middleware(
 # Faengt Exceptions ab, wandelt in StandardErrorResponse, X-Correlation-ID
 from app.core.error_middleware import ErrorStandardizationMiddleware
 app.add_middleware(ErrorStandardizationMiddleware)
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Wandelt HTTPException in StandardErrorResponse um."""
+    correlation_id = getattr(
+        getattr(request, "state", None), "correlation_id", str(uuid.uuid4())
+    )
+
+    detail_str = exc.detail if isinstance(exc.detail, str) else str(exc.detail)
+
+    body = {
+        "error_code": f"ERR-HTTP-{exc.status_code}",
+        "message": detail_str,
+        "message_de": detail_str,  # Already German in our codebase
+        "correlation_id": correlation_id,
+        "details": None,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "path": str(request.url.path),
+    }
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=body,
+        headers={"X-Correlation-ID": correlation_id},
+    )
+
 
 # Add Security Headers middleware (MUSS vor CORS sein!)
 # Fügt X-Content-Type-Options, X-Frame-Options, CSP, HSTS, etc. hinzu

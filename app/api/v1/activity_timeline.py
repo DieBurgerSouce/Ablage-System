@@ -87,8 +87,8 @@ class TimelineResponse(BaseModel):
     """Response für Timeline-Abfragen."""
     items: List[ActivityResponse]
     total: int
-    limit: int
-    offset: int
+    page: int
+    per_page: int
     has_more: bool
 
 
@@ -171,8 +171,8 @@ def _filter_request_to_model(
 
 @router.get("/my", response_model=TimelineResponse)
 async def get_my_activities(
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     source: Optional[ActivitySource] = Query(None, description="Quelle filtern"),
     activity_type: Optional[str] = Query(None, description="Typ filtern"),
     date_from: Optional[datetime] = Query(None, description="Von Datum"),
@@ -203,19 +203,19 @@ async def get_my_activities(
         user_id=current_user.id,
         company_id=current_user.company_id,
         filters=filters,
-        limit=limit + 1,  # +1 für has_more Check
-        offset=offset,
+        limit=per_page + 1,  # +1 für has_more Check
+        offset=(page - 1) * per_page,
     )
 
-    has_more = len(activities) > limit
+    has_more = len(activities) > per_page
     if has_more:
-        activities = activities[:limit]
+        activities = activities[:per_page]
 
     return TimelineResponse(
         items=[_activity_to_response(a) for a in activities],
         total=len(activities),  # Vereinfacht, könnte echte Zaehlung sein
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
         has_more=has_more,
     )
 
@@ -228,8 +228,8 @@ async def get_my_activities(
 @router.get("/team/{team_id}", response_model=TimelineResponse)
 async def get_team_timeline(
     team_id: UUID,
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     activity_type: Optional[str] = Query(None, description="Typ filtern"),
     date_from: Optional[datetime] = Query(None, description="Von Datum"),
     date_until: Optional[datetime] = Query(None, description="Bis Datum"),
@@ -257,11 +257,11 @@ async def get_team_timeline(
         user_id=current_user.id,
         company_id=current_user.company_id,
         filters=filters,
-        limit=limit + 1,
-        offset=offset,
+        limit=per_page + 1,
+        offset=(page - 1) * per_page,
     )
 
-    if not activities and offset == 0:
+    if not activities and page == 1:
         # Könnte bedeuten: Keine Berechtigung oder kein Team
         # Service gibt [] zurück bei fehlender Mitgliedschaft
         raise HTTPException(
@@ -269,15 +269,15 @@ async def get_team_timeline(
             detail="Keine Berechtigung für dieses Team oder Team nicht gefunden",
         )
 
-    has_more = len(activities) > limit
+    has_more = len(activities) > per_page
     if has_more:
-        activities = activities[:limit]
+        activities = activities[:per_page]
 
     return TimelineResponse(
         items=[_activity_to_response(a) for a in activities],
         total=len(activities),
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
         has_more=has_more,
     )
 
@@ -290,8 +290,8 @@ async def get_team_timeline(
 @router.get("/document/{document_id}", response_model=TimelineResponse)
 async def get_document_timeline(
     document_id: UUID,
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     activity_type: Optional[str] = Query(None, description="Typ filtern"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -315,19 +315,19 @@ async def get_document_timeline(
         document_id=document_id,
         company_id=current_user.company_id,
         filters=filters,
-        limit=limit + 1,
-        offset=offset,
+        limit=per_page + 1,
+        offset=(page - 1) * per_page,
     )
 
-    has_more = len(activities) > limit
+    has_more = len(activities) > per_page
     if has_more:
-        activities = activities[:limit]
+        activities = activities[:per_page]
 
     return TimelineResponse(
         items=[_activity_to_response(a) for a in activities],
         total=len(activities),
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
         has_more=has_more,
     )
 
@@ -340,8 +340,8 @@ async def get_document_timeline(
 @router.get("/chain/{chain_id}", response_model=TimelineResponse)
 async def get_chain_timeline(
     chain_id: UUID,
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TimelineResponse:
@@ -358,19 +358,19 @@ async def get_chain_timeline(
     activities = await service.get_chain_timeline(
         chain_id=chain_id,
         company_id=current_user.company_id,
-        limit=limit + 1,
-        offset=offset,
+        limit=per_page + 1,
+        offset=(page - 1) * per_page,
     )
 
-    has_more = len(activities) > limit
+    has_more = len(activities) > per_page
     if has_more:
-        activities = activities[:limit]
+        activities = activities[:per_page]
 
     return TimelineResponse(
         items=[_activity_to_response(a) for a in activities],
         total=len(activities),
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
         has_more=has_more,
     )
 
@@ -382,8 +382,8 @@ async def get_chain_timeline(
 
 @router.get("/company", response_model=TimelineResponse)
 async def get_company_timeline(
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     source: Optional[ActivitySource] = Query(None, description="Quelle filtern"),
     activity_type: Optional[str] = Query(None, description="Typ filtern"),
     actor_id: Optional[UUID] = Query(None, description="User filtern"),
@@ -416,19 +416,19 @@ async def get_company_timeline(
         user_id=current_user.id,
         is_admin=is_admin,
         filters=filters,
-        limit=limit + 1,
-        offset=offset,
+        limit=per_page + 1,
+        offset=(page - 1) * per_page,
     )
 
-    has_more = len(activities) > limit
+    has_more = len(activities) > per_page
     if has_more:
-        activities = activities[:limit]
+        activities = activities[:per_page]
 
     return TimelineResponse(
         items=[_activity_to_response(a) for a in activities],
         total=len(activities),
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
         has_more=has_more,
     )
 
@@ -486,8 +486,8 @@ async def get_activity_statistics(
 @router.post("/filter", response_model=TimelineResponse)
 async def filter_timeline(
     filter_request: TimelineFilterRequest,
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> TimelineResponse:
@@ -504,18 +504,18 @@ async def filter_timeline(
         user_id=current_user.id,
         company_id=current_user.company_id,
         filters=filters,
-        limit=limit + 1,
-        offset=offset,
+        limit=per_page + 1,
+        offset=(page - 1) * per_page,
     )
 
-    has_more = len(activities) > limit
+    has_more = len(activities) > per_page
     if has_more:
-        activities = activities[:limit]
+        activities = activities[:per_page]
 
     return TimelineResponse(
         items=[_activity_to_response(a) for a in activities],
         total=len(activities),
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
         has_more=has_more,
     )

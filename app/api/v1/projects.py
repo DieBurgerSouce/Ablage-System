@@ -120,8 +120,8 @@ class ProjectListResponse(BaseModel):
     """Schema für Projekt-Liste."""
     items: List[ProjectResponse]
     total: int
-    limit: int
-    offset: int
+    page: int
+    per_page: int
 
 
 class MemberCreate(BaseModel):
@@ -336,8 +336,8 @@ async def list_projects(
     include_archived: bool = Query(False, description="Archivierte einbeziehen"),
     sort_by: str = Query("created_at", description="Sortierfeld"),
     sort_order: str = Query("desc", description="Sortierrichtung"),
-    limit: int = Query(50, ge=1, le=100, description="Limit"),
-    offset: int = Query(0, ge=0, description="Offset"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -354,15 +354,15 @@ async def list_projects(
         include_archived=include_archived,
         sort_by=sort_by,
         sort_order=sort_order,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return ProjectListResponse(
         items=[_project_to_response(p) for p in projects],
         total=total,
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
     )
 
 
@@ -595,8 +595,8 @@ async def assign_document(
 async def list_project_documents(
     project_id: UUID,
     assignment_type: Optional[str] = Query(None, description="Zuweisungstyp-Filter"),
-    limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -609,8 +609,8 @@ async def list_project_documents(
     assignments, _ = await project_service.list_project_documents(
         db, project_id,
         assignment_type=assignment_type,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
     return [_assignment_to_response(a) for a in assignments]
 

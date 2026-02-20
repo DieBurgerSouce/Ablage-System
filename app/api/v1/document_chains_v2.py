@@ -2,15 +2,19 @@
 """
 Extended Document Chain API Endpoints V2.
 
-REST API für erweitertes Auftragsketten-Tracking:
+.. deprecated::
+    Dieses Modul ist NICHT in main.py registriert und daher nicht aktiv.
+    Die Basis-Funktionalitaet wird von document_chains.py bereitgestellt.
+    Vor Aktivierung: Pruefen ob V2-Features in V1 integriert werden koennen.
+
+REST API fuer erweitertes Auftragsketten-Tracking:
 - Vertragserfuellung (Vertrag -> Lieferung -> Mahnung)
 - Beschaffungsketten (Bestellung -> Wareneingang -> QC)
 - Projekt-basierte Dokumentengruppierung
 - ML-basiertes Auto-Matching
 - Visualisierungs-API
 
-Phase 6.2: Extended Document Chains für Enterprise-Dokumentenmanagement.
-Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Präzision.
+Phase 6.2: Extended Document Chains fuer Enterprise-Dokumentenmanagement.
 """
 
 from typing import Optional, List

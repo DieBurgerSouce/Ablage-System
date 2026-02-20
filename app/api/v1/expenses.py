@@ -80,8 +80,8 @@ async def list_reports(
     ),
     start_date: Optional[date] = Query(None, description="Filter Periode ab"),
     end_date: Optional[date] = Query(None, description="Filter Periode bis"),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -95,8 +95,8 @@ async def list_reports(
         status=status_filter,
         start_date=start_date,
         end_date=end_date,
-        skip=skip,
-        limit=limit,
+        skip=(page - 1) * per_page,
+        limit=per_page,
     )
 
     return ExpenseReportListResponse(

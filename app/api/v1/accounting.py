@@ -53,11 +53,7 @@ from app.services.accounting.fx_gain_loss_service import (
     get_fx_gain_loss_service,
     FXGainLossResult,
 )
-
-# For build_content_disposition helper
-def build_content_disposition(filename: str, disposition: str = "attachment") -> str:
-    """Builds Content-Disposition header."""
-    return f'{disposition}; filename="{filename}"'
+from app.core.security_auth import build_content_disposition
 
 logger = structlog.get_logger(__name__)
 

@@ -465,8 +465,8 @@ async def get_iban_history(
 @router.get("/iban-requests", response_model=List[IBANChangeRequestSchema])
 async def list_iban_change_requests(
     status_filter: Optional[str] = Query(None, alias="status"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[IBANChangeRequestSchema]:
@@ -483,8 +483,8 @@ async def list_iban_change_requests(
         select(IBANChangeRequest)
         .where(IBANChangeRequest.company_id == current_user.company_id)
         .order_by(IBANChangeRequest.created_at.desc())
-        .offset(offset)
-        .limit(limit)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
 
     if status_filter:
@@ -646,8 +646,8 @@ async def list_fraud_alerts(
     risk_level: Optional[str] = Query(None),
     status_filter: Optional[str] = Query(None, alias="status"),
     days: int = Query(30, ge=1, le=365),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[FraudScanResultSchema]:
@@ -671,8 +671,8 @@ async def list_fraud_alerts(
             )
         )
         .order_by(FraudScanResult.risk_score.desc(), FraudScanResult.created_at.desc())
-        .offset(offset)
-        .limit(limit)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
 
     if scan_type:

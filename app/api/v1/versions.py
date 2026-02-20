@@ -45,8 +45,8 @@ def get_version_service_dep() -> VersionService:
 )
 async def list_document_versions(
     document_id: UUID,
-    limit: int = Query(50, ge=1, le=100, description="Maximale Anzahl der Ergebnisse"),
-    offset: int = Query(0, ge=0, description="Offset fur Paginierung"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     version_service: VersionService = Depends(get_version_service_dep)
@@ -55,8 +55,8 @@ async def list_document_versions(
 
     Args:
         document_id: Dokument-ID
-        limit: Maximale Anzahl der Ergebnisse (1-100)
-        offset: Offset fur Paginierung
+        page: Seitennummer (1-basiert)
+        per_page: Eintraege pro Seite (1-100)
         current_user: Aktueller Benutzer
         db: Datenbank-Session
         version_service: Version-Service
@@ -71,8 +71,8 @@ async def list_document_versions(
         result = await version_service.list_versions(
             db=db,
             document_id=document_id,
-            limit=limit,
-            offset=offset
+            limit=per_page,
+            offset=(page - 1) * per_page
         )
 
         logger.info(

@@ -923,8 +923,8 @@ async def list_entities_by_company(
         pattern="^(customer|supplier)$",
         description="Optional: customer oder supplier"
     ),
-    limit: int = Query(100, ge=1, le=1000),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=1000, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -950,8 +950,8 @@ async def list_entities_by_company(
     entities = await service.find_by_company(
         company=company,
         entity_type=entity_type_enum,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return {

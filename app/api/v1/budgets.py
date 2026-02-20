@@ -484,8 +484,8 @@ async def list_budgets(
     month: Optional[int] = Query(None, ge=1, le=12, description="Monat"),
     period_type: Optional[BudgetPeriodType] = Query(None, description="Perioden-Typ"),
     status: Optional[BudgetStatus] = Query(None, description="Status"),
-    page: int = Query(0, ge=0, description="Seite (0-basiert)"),
-    page_size: int = Query(25, ge=1, le=100, description="Einträge pro Seite"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    page_size: int = Query(25, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> BudgetListResponse:
@@ -502,7 +502,7 @@ async def list_budgets(
             period_type=period_type,
             status=status,
         ),
-        page=page,
+        page=page - 1,
         page_size=page_size,
     )
 
@@ -533,7 +533,7 @@ async def list_budgets(
         for b in budgets
     ]
 
-    return BudgetListResponse(items=items, total=total, page=page, page_size=page_size)
+    return BudgetListResponse(items=items, total=total, page=page, page_size=page_size)  # page is 1-based in response
 
 
 @router.get(
@@ -902,8 +902,8 @@ async def list_allocations(
     budget_line_id: Optional[UUID] = Query(None, description="Budget-Position-Filter"),
     date_from: Optional[date] = Query(None, description="Ab Datum"),
     date_to: Optional[date] = Query(None, description="Bis Datum"),
-    page: int = Query(0, ge=0, description="Seite"),
-    page_size: int = Query(50, ge=1, le=200, description="Einträge pro Seite"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    page_size: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> AllocationListResponse:
@@ -916,7 +916,7 @@ async def list_allocations(
         budget_line_id=budget_line_id,
         date_from=date_from,
         date_to=date_to,
-        page=page,
+        page=page - 1,
         page_size=page_size,
     )
 
@@ -944,7 +944,7 @@ async def list_allocations(
         for a in allocations
     ]
 
-    return AllocationListResponse(items=items, total=total, page=page, page_size=page_size)
+    return AllocationListResponse(items=items, total=total, page=page, page_size=page_size)  # page is 1-based in response
 
 
 # ============================================================================

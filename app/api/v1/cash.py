@@ -86,8 +86,8 @@ cash_service = CashService()
 )
 async def list_registers(
     request: Request,
-    skip: int = 0,
-    limit: int = 50,
+    page: int = 1,
+    per_page: int = 50,
     include_inactive: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -98,8 +98,8 @@ async def list_registers(
     registers, total = await cash_service.get_registers(
         db=db,
         company_id=company.id,
-        skip=skip,
-        limit=limit,
+        skip=(page - 1) * per_page,
+        limit=per_page,
         include_inactive=include_inactive,
     )
 
@@ -260,17 +260,13 @@ async def list_entries(
     start_date: Optional[date] = Query(None, description="Start-Datum (inklusiv)"),
     end_date: Optional[date] = Query(None, description="End-Datum (inklusiv)"),
     entry_type: Optional[CashEntryType] = Query(None, description="Filter nach Typ"),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),  # Max 100 für Performance
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
 ) -> CashEntryListResponse:
     """Liste der Kassenbucheinträge."""
-
-    # Konvertiere skip/limit zu page/page_size für Service
-    page = (skip // limit) + 1 if limit > 0 else 1
-    page_size = limit
 
     entries, total = await cash_service.get_entries(
         db=db,
@@ -280,7 +276,7 @@ async def list_entries(
         end_date=end_date,
         entry_type=entry_type.value if entry_type else None,
         page=page,
-        page_size=page_size,
+        page_size=per_page,
     )
 
     # WICHTIG: 'entries' statt 'items' (Frontend erwartet 'entries')
@@ -637,8 +633,8 @@ async def list_cash_counts(
     register_id: Optional[UUID] = Query(None, description="Filter nach Kasse"),
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=100),  # Max 100 für Performance
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -651,8 +647,8 @@ async def list_cash_counts(
         register_id=register_id,
         start_date=start_date,
         end_date=end_date,
-        skip=skip,
-        limit=limit,
+        skip=(page - 1) * per_page,
+        limit=per_page,
     )
 
     return CashCountListResponse(

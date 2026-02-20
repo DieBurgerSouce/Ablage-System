@@ -234,8 +234,8 @@ class ThresholdAdjustmentSuggestion(BaseModel):
 async def list_decisions(
     decision_type: Optional[str] = None,
     requires_review: Optional[bool] = None,
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[DecisionResponse]:
@@ -263,7 +263,7 @@ async def list_decisions(
     if conditions:
         query = query.where(and_(*conditions))
 
-    query = query.order_by(AIDecision.created_at.desc()).limit(limit).offset(offset)
+    query = query.order_by(AIDecision.created_at.desc()).limit(per_page).offset((page - 1) * per_page)
 
     result = await db.execute(query)
     decisions = result.scalars().all()

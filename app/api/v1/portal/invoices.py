@@ -28,8 +28,8 @@ class PortalInvoiceListResponse(BaseModel):
     """Rechnungsliste-Antwort."""
     items: List[JSONDict]
     total: int
-    limit: int
-    offset: int
+    page: int
+    per_page: int
 
 
 class PortalInvoiceItemsResponse(BaseModel):
@@ -54,8 +54,8 @@ async def list_invoices(
     status: Optional[str] = Query(None, description="Filter nach Status"),
     from_date: Optional[date] = Query(None, description="Ab Datum"),
     to_date: Optional[date] = Query(None, description="Bis Datum"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     portal_user: PortalUser = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -76,15 +76,15 @@ async def list_invoices(
         status=status,
         from_date=from_date,
         to_date=to_date,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return PortalInvoiceListResponse(
         items=invoices,
         total=total,
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
     )
 
 

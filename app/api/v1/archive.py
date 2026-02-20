@@ -1221,8 +1221,8 @@ async def get_document_audit_trail(
     access_type: Optional[str] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
-    limit: int = 100,
-    offset: int = 0,
+    page: int = 1,
+    per_page: int = 100,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     company: Company = Depends(require_company),
@@ -1236,8 +1236,8 @@ async def get_document_audit_trail(
         access_type: Optionaler Filter für Zugriffstyp
         start_date: Optionaler Filter - Startdatum
         end_date: Optionaler Filter - Enddatum
-        limit: Maximale Anzahl Ergebnisse (default: 100)
-        offset: Offset für Paginierung (default: 0)
+        page: Seitennummer (1-basiert, default: 1)
+        per_page: Eintraege pro Seite (default: 100)
         db: Datenbank-Session
         current_user: Aktueller Benutzer
         company: Aktuelle Firma
@@ -1277,8 +1277,8 @@ async def get_document_audit_trail(
         access_type=access_type,
         start_date=start_date,
         end_date=end_date,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return DocumentAuditTrailResponse(

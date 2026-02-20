@@ -315,8 +315,8 @@ async def list_consents(
     consent_type: Optional[str] = Query(None, description="Filter nach Typ"),
     status_filter: Optional[str] = Query(None, alias="status", description="Filter nach Status"),
     only_valid: bool = Query(False, description="Nur gültige Einwilligungen"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -333,15 +333,15 @@ async def list_consents(
         consent_type=consent_type,
         status=status_filter,
         only_valid=only_valid,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
     return ConsentListResponse(
         items=[_consent_to_response(c) for c in consents],
         total=total,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
 
@@ -643,8 +643,8 @@ async def create_dpa(
 async def list_dpas(
     status_filter: Optional[str] = Query(None, alias="status", description="Filter nach Status"),
     only_active: bool = Query(False, description="Nur aktive AVVs"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -658,15 +658,15 @@ async def list_dpas(
         company_id=company.company_id,
         status=status_filter,
         only_active=only_active,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
     return DPAListResponse(
         items=[_dpa_to_response(d) for d in dpas],
         total=total,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
 

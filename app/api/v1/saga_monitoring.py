@@ -107,8 +107,8 @@ class SagaListResponse(BaseModel):
 
     items: List[SagaSummaryResponse]
     total: int
-    offset: int
-    limit: int
+    page: int
+    per_page: int
 
 
 class SagaLogEntryResponse(BaseModel):
@@ -132,8 +132,8 @@ class SagaLogsResponse(BaseModel):
 
     items: List[SagaLogEntryResponse]
     total: int
-    offset: int
-    limit: int
+    page: int
+    per_page: int
 
 
 class SagaStatisticsResponse(BaseModel):
@@ -248,8 +248,8 @@ async def list_sagas(
         None,
         description="Nur Sagas aus der Dead Letter Queue",
     ),
-    offset: int = Query(0, ge=0, description="Pagination Offset"),
-    limit: int = Query(50, ge=1, le=200, description="Pagination Limit"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SagaListResponse:
@@ -271,8 +271,8 @@ async def list_sagas(
         company_id=str(company_id),
         status_filter=saga_status,
         in_dlq=in_dlq,
-        offset=offset,
-        limit=limit,
+        page=page,
+        per_page=per_page,
     )
 
     try:
@@ -280,8 +280,8 @@ async def list_sagas(
             company_id=company_id,
             status=saga_status,
             in_dead_letter_queue=in_dlq,
-            offset=offset,
-            limit=limit,
+            offset=(page - 1) * per_page,
+            limit=per_page,
         )
     except ValueError as e:
         raise HTTPException(
@@ -292,8 +292,8 @@ async def list_sagas(
     return SagaListResponse(
         items=[_saga_to_summary(s) for s in sagas],
         total=total,
-        offset=offset,
-        limit=limit,
+        page=page,
+        per_page=per_page,
     )
 
 
@@ -407,8 +407,8 @@ async def get_saga_logs(
     request: Request,
     saga_id: UUID,
     step_id: Optional[UUID] = Query(None, description="Filter nach Step-ID"),
-    offset: int = Query(0, ge=0, description="Pagination Offset"),
-    limit: int = Query(100, ge=1, le=200, description="Pagination Limit"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SagaLogsResponse:
@@ -430,8 +430,8 @@ async def get_saga_logs(
         company_id=str(company_id),
         saga_id=str(saga_id),
         step_id=str(step_id) if step_id else None,
-        offset=offset,
-        limit=limit,
+        page=page,
+        per_page=per_page,
     )
 
     # Prüfen ob Saga existiert
@@ -451,8 +451,8 @@ async def get_saga_logs(
             saga_id=saga_id,
             company_id=company_id,
             step_id=step_id,
-            offset=offset,
-            limit=limit,
+            offset=(page - 1) * per_page,
+            limit=per_page,
         )
     except ValueError as e:
         raise HTTPException(
@@ -463,8 +463,8 @@ async def get_saga_logs(
     return SagaLogsResponse(
         items=[_log_to_response(log) for log in logs],
         total=total,
-        offset=offset,
-        limit=limit,
+        page=page,
+        per_page=per_page,
     )
 
 

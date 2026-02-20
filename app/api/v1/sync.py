@@ -120,8 +120,8 @@ class SyncStatusResponse(BaseModel):
 async def get_changes(
     entity_type: str = Query(..., description="Entitätstyp (document, entity, invoice, alert)"),
     since: datetime = Query(..., description="Zeitpunkt ab dem Änderungen geholt werden"),
-    limit: int = Query(100, ge=1, le=500, description="Max. Anzahl Änderungen"),
-    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> SyncDeltaResponse:
@@ -134,8 +134,8 @@ async def get_changes(
             since=since,
             company_id=current_user.company_id,
             db=db,
-            limit=limit,
-            offset=offset,
+            limit=per_page,
+            offset=(page - 1) * per_page,
         )
 
         # Konvertierung zu Response-Format

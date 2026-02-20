@@ -245,8 +245,8 @@ async def list_unmatched_transactions(
     days_old: Optional[int] = Query(None, ge=0, le=365, description="Mindestens N Tage alt"),
     sort_by: str = Query("booking_date", description="Sortierung: booking_date, amount, counterparty"),
     sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sortierrichtung"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[UnmatchedTransactionResponse]:
@@ -303,7 +303,7 @@ async def list_unmatched_transactions(
         query = query.order_by(asc(sort_field))
 
     # Pagination
-    query = query.offset(offset).limit(limit)
+    query = query.offset((page - 1) * per_page).limit(per_page)
 
     result = await db.execute(query)
     transactions = result.scalars().all()

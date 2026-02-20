@@ -288,8 +288,8 @@ async def _create_mention_notifications(
 )
 async def list_comments(
     document_id: UUID,
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> CommentsListResponse:
@@ -322,8 +322,8 @@ async def list_comments(
             )
         )
         .order_by(DocumentComment.created_at.asc())
-        .limit(limit)
-        .offset(offset)
+        .limit(per_page)
+        .offset((page - 1) * per_page)
     )
 
     result = await db.execute(query)

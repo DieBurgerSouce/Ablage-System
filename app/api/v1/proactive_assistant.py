@@ -77,8 +77,8 @@ class HintListResponse(BaseModel):
     """Paginierte Hint-Liste."""
     hints: List[HintResponse]
     total: int
-    limit: int
-    offset: int
+    page: int
+    per_page: int
 
 
 class DashboardSummaryResponse(BaseModel):
@@ -199,8 +199,8 @@ async def get_dashboard_summary(
 async def list_hints(
     category: Optional[HintCategory] = Query(None, description="Filter nach Kategorie"),
     hint_status: Optional[HintStatus] = Query(None, alias="status", description="Filter nach Status"),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     company_id: UUID = Depends(get_company_id),
     session: AsyncSession = Depends(get_db),
@@ -218,15 +218,15 @@ async def list_hints(
         user_id=current_user.id,
         category=category,
         status=hint_status,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return HintListResponse(
         hints=[_hint_to_response(h) for h in hints],
         total=total,
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
     )
 
 

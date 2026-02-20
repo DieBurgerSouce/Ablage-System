@@ -711,8 +711,8 @@ async def update_chat_session(
 
 @router.get("/chat/sessions", response_model=List[RAGChatSessionResponse])
 async def list_chat_sessions(
-    limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    page: int = Query(default=1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(default=20, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ) -> List[RAGChatSessionResponse]:
@@ -722,8 +722,8 @@ async def list_chat_sessions(
         .where(RAGChatSession.user_id == current_user.id)
         .where(RAGChatSession.status == "active")
         .order_by(RAGChatSession.updated_at.desc())
-        .offset(offset)
-        .limit(limit)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
     result = await db.execute(query)
     sessions = result.scalars().all()
@@ -805,8 +805,8 @@ async def get_chat_session(
 @router.get("/customer-cards", response_model=List[RAGCustomerCardSummary])
 async def list_customer_cards(
     search: Optional[str] = Query(None, min_length=1, max_length=100),
-    limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    page: int = Query(default=1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(default=20, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
     # S.4 SECURITY FIX: Company Context für Multi-Tenancy IDOR Protection
@@ -824,7 +824,7 @@ async def list_customer_cards(
     if search:
         query = query.where(RAGCustomerCard.customer_name.ilike(f"%{search}%"))
 
-    query = query.offset(offset).limit(limit)
+    query = query.offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(query)
     cards = result.scalars().all()
 

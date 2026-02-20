@@ -91,8 +91,8 @@ async def list_training_samples(
         description="Sortierfeld"
     ),
     sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sortierreihenfolge"),
-    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(require_any_role("admin", "editor")),
     db: AsyncSession = Depends(get_db)
 ):
@@ -115,15 +115,15 @@ async def list_training_samples(
         search=search,
         sort_by=sort_by,
         sort_order=sort_order,
-        limit=limit,
-        offset=offset
+        limit=per_page,
+        offset=(page - 1) * per_page
     )
 
     return TrainingSampleListResponse(
         samples=[TrainingSampleResponse.model_validate(s) for s in samples],
         total=total,
-        limit=limit,
-        offset=offset
+        page=page,
+        per_page=per_page
     )
 
 
@@ -480,8 +480,8 @@ async def list_corrections(
     backend: Optional[str] = Query(None, description="Filter nach Backend"),
     correction_type: Optional[str] = Query(None, description="Filter nach Korrekturtyp"),
     unprocessed_only: bool = Query(False, description="Nur unverarbeitete"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(require_any_role("admin")),
     db: AsyncSession = Depends(get_db)
 ):
@@ -496,15 +496,15 @@ async def list_corrections(
         backend=backend,
         correction_type=correction_type,
         unprocessed_only=unprocessed_only,
-        limit=limit,
-        offset=offset
+        limit=per_page,
+        offset=(page - 1) * per_page
     )
 
     return CorrectionListResponse(
         corrections=[CorrectionResponse.model_validate(c) for c in corrections],
         total=total,
-        limit=limit,
-        offset=offset
+        page=page,
+        per_page=per_page
     )
 
 
@@ -513,8 +513,8 @@ async def list_corrections(
 @router.get("/batches", response_model=BatchListResponse)
 async def list_training_batches(
     status: Optional[str] = Query(None, description="Filter nach Status"),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(require_any_role("admin", "editor")),
     db: AsyncSession = Depends(get_db)
 ):
@@ -525,15 +525,13 @@ async def list_training_batches(
     batches, total = await service.list_training_batches(
         db=db,
         status=status,
-        limit=limit,
-        offset=offset
+        limit=per_page,
+        offset=(page - 1) * per_page
     )
 
     return BatchListResponse(
         batches=[BatchResponse.model_validate(b) for b in batches],
         total=total,
-        limit=limit,
-        offset=offset
     )
 
 
@@ -854,8 +852,8 @@ async def discover_training_files(
 @router.get("/bulk-processing/jobs", response_model=schemas.BulkProcessingJobListResponse)
 async def list_bulk_processing_jobs(
     status: Optional[str] = Query(None, description="Filter nach Status"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(require_any_role("admin")),
     db: AsyncSession = Depends(get_db)
 ):
@@ -867,7 +865,7 @@ async def list_bulk_processing_jobs(
     from app.services.bulk_ocr_processing_service import get_bulk_ocr_processing_service
 
     service = await get_bulk_ocr_processing_service(db)
-    jobs, total = await service.list_jobs(status=status, limit=limit, offset=offset)
+    jobs, total = await service.list_jobs(status=status, limit=per_page, offset=(page - 1) * per_page)
 
     return schemas.BulkProcessingJobListResponse(
         total=total,
@@ -2352,8 +2350,8 @@ async def verify_sample(
 )
 async def get_queue_items_by_type(
     document_type: str = Path(..., description="Dokumenttyp"),
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
+    page: int = Query(default=1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(default=50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any_role("admin", "editor")),
 ):
@@ -2368,8 +2366,8 @@ async def get_queue_items_by_type(
     items = await service.get_items_by_type(
         db=db,
         document_type=document_type,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return {

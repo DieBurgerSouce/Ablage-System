@@ -492,8 +492,8 @@ async def submit_feedback(
     description="Listet alle Chat-Sessions des aktuellen Benutzers auf.",
 )
 async def list_sessions(
-    limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    page: int = Query(default=1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(default=20, ge=1, le=100, description="Eintraege pro Seite"),
     active_only: bool = Query(default=True, description="Nur aktive Sessions"),
     current_user: User = Depends(get_current_user),
     company_id: UUID = Depends(get_company_id),
@@ -524,8 +524,8 @@ async def list_sessions(
     stmt = (
         stmt
         .order_by(desc(AIConversation.last_message_at))
-        .offset(offset)
-        .limit(limit)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
 
     result = await db.execute(stmt)

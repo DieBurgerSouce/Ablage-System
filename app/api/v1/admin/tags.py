@@ -37,8 +37,8 @@ router = APIRouter(prefix="/tags", tags=["Admin - Tags"])
 async def get_tags(
     admin: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
-    skip: int = Query(0, ge=0, description="Anzahl zu überspringender Einträge"),
-    limit: int = Query(100, ge=1, le=200, description="Maximale Anzahl zurückzugebender Einträge"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=200, description="Eintraege pro Seite"),
     active_only: bool = Query(False, description="Nur aktive Tags anzeigen"),
     system_only: bool = Query(False, description="Nur System-Tags anzeigen"),
 ) -> List[TagResponse]:
@@ -59,7 +59,7 @@ async def get_tags(
     if system_only:
         query = query.where(Tag.is_system == True)
 
-    query = query.order_by(Tag.is_system.desc(), Tag.name).offset(skip).limit(limit)
+    query = query.order_by(Tag.is_system.desc(), Tag.name).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(query)
     tags = result.scalars().all()
 

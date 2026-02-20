@@ -720,8 +720,8 @@ async def delete_conversation(
 async def get_messages(
     conversation_id: UUID,
     request: Request,
-    limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ConversationMessagesResponse:
@@ -753,7 +753,7 @@ async def get_messages(
             AIConversationMessage.conversation_id == conversation_id
         ).order_by(
             AIConversationMessage.created_at.asc()
-        ).offset(offset).limit(limit)
+        ).offset((page - 1) * per_page).limit(per_page)
 
         result = await db.execute(query)
         messages = result.scalars().all()

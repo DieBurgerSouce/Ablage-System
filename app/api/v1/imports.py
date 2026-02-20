@@ -856,8 +856,8 @@ async def list_import_logs(
     source_type: Optional[str] = Query(None, pattern="^(email|folder)$"),
     config_id: Optional[UUID] = None,
     status_filter: Optional[str] = Query(None, pattern="^(pending|processing|completed|failed|skipped)$"),
-    limit: int = Query(default=50, ge=1, le=500),
-    offset: int = Query(default=0, ge=0),
+    page: int = Query(default=1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(default=50, ge=1, le=500, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -880,7 +880,7 @@ async def list_import_logs(
         query = query.where(ImportLog.status == status_filter)
 
     query = query.order_by(ImportLog.started_at.desc())
-    query = query.offset(offset).limit(limit)
+    query = query.offset((page - 1) * per_page).limit(per_page)
 
     result = await db.execute(query)
     logs = result.scalars().all()

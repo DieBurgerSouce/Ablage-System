@@ -159,8 +159,8 @@ async def get_trust_dashboard(
 )
 async def get_access_log(
     days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
-    limit: int = Query(100, ge=1, le=500, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Pagination Offset"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[AccessEventResponse]:
@@ -183,8 +183,8 @@ async def get_access_log(
     access_log = await service.get_access_log(
         current_user.company_id,
         days=days,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return [AccessEventResponse(**event) for event in access_log]
@@ -198,8 +198,8 @@ async def get_access_log(
 )
 async def get_export_log(
     days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
-    limit: int = Query(100, ge=1, le=500, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Pagination Offset"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[ExportEventResponse]:
@@ -223,8 +223,8 @@ async def get_export_log(
     export_log = await service.get_export_log(
         current_user.company_id,
         days=days,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return [ExportEventResponse(**event) for event in export_log]

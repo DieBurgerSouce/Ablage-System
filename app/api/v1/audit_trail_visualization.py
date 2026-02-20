@@ -244,8 +244,8 @@ def _map_activity_type(activity_type: str) -> str:
 )
 async def get_document_audit_trail(
     document_id: UUID,
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     event_types: Optional[List[str]] = Query(None, description="Filter nach Event-Typen"),
     actor_id: Optional[UUID] = Query(None, description="Filter nach Benutzer"),
     date_from: Optional[datetime] = Query(None, description="Von Datum"),
@@ -288,7 +288,7 @@ async def get_document_audit_trail(
 
     activity_query = activity_query.order_by(DocumentActivity.created_at.desc())
 
-    activity_result = await db.execute(activity_query.limit(limit * 2))  # Holen mehr für Merge
+    activity_result = await db.execute(activity_query.limit(per_page * 2))  # Holen mehr für Merge
     activities = activity_result.scalars().all()
 
     # 2. Lade AuditLog Einträge für dieses Dokument
@@ -445,8 +445,8 @@ async def get_document_audit_trail(
 )
 async def get_entity_audit_trail(
     entity_id: UUID,
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     event_types: Optional[List[str]] = Query(None),
     date_from: Optional[datetime] = Query(None),
     date_until: Optional[datetime] = Query(None),

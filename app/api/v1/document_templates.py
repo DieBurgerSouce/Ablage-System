@@ -196,8 +196,8 @@ async def list_templates(
     category: Optional[TemplateCategoryEnum] = Query(None, description="Filter nach Kategorie"),
     search: Optional[str] = Query(None, max_length=200, description="Suche in Name, Code, Beschreibung"),
     include_inactive: bool = Query(False, description="Inaktive Vorlagen einschließen"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -217,15 +217,15 @@ async def list_templates(
         category=category,
         search=search,
         include_inactive=include_inactive,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
     return TemplateListResponse(
         items=[_template_to_response(t) for t in templates],
         total=total,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
 
@@ -524,8 +524,8 @@ async def list_generated_documents(
     template_id: Optional[UUID] = Query(None, description="Filter nach Vorlage"),
     entity_id: Optional[UUID] = Query(None, description="Filter nach verknüpfter Entity"),
     search: Optional[str] = Query(None, max_length=200, description="Suche in Titel, Dateiname"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -540,15 +540,15 @@ async def list_generated_documents(
         template_id=template_id,
         entity_id=entity_id,
         search=search,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
     return GeneratedDocumentListResponse(
         items=[_generated_to_response(d) for d in docs],
         total=total,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
 

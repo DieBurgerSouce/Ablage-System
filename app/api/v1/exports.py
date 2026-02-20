@@ -222,8 +222,8 @@ async def get_export_job_status(
 @router.get("/jobs", response_model=ExportJobListResponse)
 async def list_export_jobs(
     status: Optional[str] = Query(None, description="Filter nach Status"),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -231,8 +231,8 @@ async def list_export_jobs(
 
     Args:
         status: Optional Status-Filter
-        limit: Maximale Anzahl
-        offset: Offset für Pagination
+        page: Seitennummer (1-basiert)
+        per_page: Eintraege pro Seite
 
     Returns:
         ExportJobListResponse
@@ -245,7 +245,7 @@ async def list_export_jobs(
     if status:
         query = query.where(BatchJob.status == status)
 
-    query = query.order_by(BatchJob.created_at.desc()).limit(limit).offset(offset)
+    query = query.order_by(BatchJob.created_at.desc()).limit(per_page).offset((page - 1) * per_page)
 
     result = await db.execute(query)
     jobs = result.scalars().all()

@@ -162,8 +162,8 @@ class FeatureFlagListResponse(BaseModel):
 async def list_feature_flags(
     request: Request,
     enabled_only: bool = Query(False, description="Nur aktivierte Flags"),
-    limit: int = Query(100, ge=1, le=500, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_superuser),
 ) -> FeatureFlagListResponse:
@@ -172,8 +172,8 @@ async def list_feature_flags(
         service = get_feature_flag_service(db)
         flags = await service.get_all(
             enabled_only=enabled_only,
-            limit=limit,
-            offset=offset,
+            limit=per_page,
+            offset=(page - 1) * per_page,
         )
         total = await service.count(enabled_only=enabled_only)
 

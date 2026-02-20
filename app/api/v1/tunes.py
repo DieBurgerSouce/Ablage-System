@@ -15,8 +15,8 @@ router = APIRouter()
 async def get_tunes(
     db: AsyncSession = Depends(dependencies.get_db),
     current_user: models.User = Depends(dependencies.get_current_active_user),
-    skip: int = Query(0, ge=0, description="Anzahl zu überspringender Einträge"),
-    limit: int = Query(100, ge=1, le=200, description="Maximale Anzahl zurückzugebender Einträge"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=200, description="Eintraege pro Seite"),
     active_only: bool = False
 ) -> Sequence[models.Tune]:
     """
@@ -28,7 +28,7 @@ async def get_tunes(
     if active_only:
         query = query.where(models.Tune.is_active == True)
 
-    query = query.offset(skip).limit(limit)
+    query = query.offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(query)
     return result.scalars().all()
 

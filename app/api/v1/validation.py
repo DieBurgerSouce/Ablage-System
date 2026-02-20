@@ -97,8 +97,8 @@ async def list_queue_items(
     # Sorting and pagination
     sort_by: Optional[str] = Query("created_at", description="Sortierfeld"),
     sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
-    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     # Auth
     current_user: User = Depends(require_permission("validation:read")),
     db: AsyncSession = Depends(get_db)
@@ -146,10 +146,6 @@ async def list_queue_items(
         ValidationQueueSortOptions.CREATED_DESC  # Default
     )
 
-    # limit/offset zu page/per_page konvertieren
-    page = (offset // limit) + 1 if limit > 0 else 1
-    per_page = limit
-
     # SECURITY: Multi-Tenant Isolation via company_id
     items, total = await service.get_queue_items(
         company_id=current_user.company_id,
@@ -190,8 +186,8 @@ async def get_queue_stats(
 @router.get("/queue/my-items", response_model=ValidationQueueListResponse)
 async def get_my_assigned_items(
     status: Optional[ValidationStatusEnum] = Query(None, description="Filter nach Status"),
-    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl"),
-    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(require_permission("validation:write")),
     db: AsyncSession = Depends(get_db)
 ):
@@ -202,17 +198,13 @@ async def get_my_assigned_items(
     """
     service = get_validation_queue_service(db)
 
-    # limit/offset zu page/per_page konvertieren
-    page = (offset // limit) + 1 if limit > 0 else 1
-    per_page = limit
-
     # SECURITY: Multi-Tenant Isolation via company_id
     items, total = await service.get_my_assigned_items(
         editor_id=current_user.id,
         company_id=current_user.company_id,
         status=status.value if status else None,
-        limit=limit,
-        offset=offset
+        limit=per_page,
+        offset=(page - 1) * per_page
     )
 
     # total_pages berechnen

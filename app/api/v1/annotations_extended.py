@@ -19,6 +19,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
 from app.db.models import User
+from app.db.models_annotations_extended import (
+    BoundingBoxAnnotation,
+    CommentReply,
+    CommentTask,
+)
 from app.db.session import get_async_session
 from app.services.annotations.extended_annotation_service import (
     ExtendedAnnotationService,
@@ -150,85 +155,85 @@ class TaskStatusUpdate(BaseModel):
 # ============================================================================
 
 
-def _bbox_to_response(annotation: object) -> BoundingBoxResponse:
+def _bbox_to_response(annotation: BoundingBoxAnnotation) -> BoundingBoxResponse:
     """Konvertiert BoundingBoxAnnotation zu Response-Schema."""
     return BoundingBoxResponse(
-        id=annotation.id,  # type: ignore[attr-defined]
-        document_id=annotation.document_id,  # type: ignore[attr-defined]
-        page_number=annotation.page_number,  # type: ignore[attr-defined]
-        x=annotation.x,  # type: ignore[attr-defined]
-        y=annotation.y,  # type: ignore[attr-defined]
-        width=annotation.width,  # type: ignore[attr-defined]
-        height=annotation.height,  # type: ignore[attr-defined]
-        annotation_type=annotation.annotation_type,  # type: ignore[attr-defined]
-        label=annotation.label,  # type: ignore[attr-defined]
-        color=annotation.color,  # type: ignore[attr-defined]
-        author_id=annotation.author_id,  # type: ignore[attr-defined]
-        thread_id=annotation.thread_id,  # type: ignore[attr-defined]
+        id=annotation.id,
+        document_id=annotation.document_id,
+        page_number=annotation.page_number,
+        x=annotation.x,
+        y=annotation.y,
+        width=annotation.width,
+        height=annotation.height,
+        annotation_type=annotation.annotation_type,
+        label=annotation.label,
+        color=annotation.color,
+        author_id=annotation.author_id,
+        thread_id=annotation.thread_id,
         created_at=(
-            annotation.created_at.isoformat()  # type: ignore[attr-defined]
-            if annotation.created_at  # type: ignore[attr-defined]
+            annotation.created_at.isoformat()
+            if annotation.created_at
             else None
         ),
         updated_at=(
-            annotation.updated_at.isoformat()  # type: ignore[attr-defined]
-            if annotation.updated_at  # type: ignore[attr-defined]
+            annotation.updated_at.isoformat()
+            if annotation.updated_at
             else None
         ),
     )
 
 
-def _reply_to_response(reply: object) -> ReplyResponse:
+def _reply_to_response(reply: CommentReply) -> ReplyResponse:
     """Konvertiert CommentReply zu Response-Schema."""
     return ReplyResponse(
-        id=reply.id,  # type: ignore[attr-defined]
-        thread_id=reply.thread_id,  # type: ignore[attr-defined]
-        parent_reply_id=reply.parent_reply_id,  # type: ignore[attr-defined]
-        author_id=reply.author_id,  # type: ignore[attr-defined]
-        content=reply.content,  # type: ignore[attr-defined]
-        mentions=reply.mentions or [],  # type: ignore[attr-defined]
-        is_edited=reply.is_edited,  # type: ignore[attr-defined]
+        id=reply.id,
+        thread_id=reply.thread_id,
+        parent_reply_id=reply.parent_reply_id,
+        author_id=reply.author_id,
+        content=reply.content,
+        mentions=reply.mentions or [],
+        is_edited=reply.is_edited,
         edited_at=(
-            reply.edited_at.isoformat()  # type: ignore[attr-defined]
-            if reply.edited_at  # type: ignore[attr-defined]
+            reply.edited_at.isoformat()
+            if reply.edited_at
             else None
         ),
         created_at=(
-            reply.created_at.isoformat()  # type: ignore[attr-defined]
-            if reply.created_at  # type: ignore[attr-defined]
+            reply.created_at.isoformat()
+            if reply.created_at
             else None
         ),
     )
 
 
-def _task_to_response(task: object) -> TaskResponse:
+def _task_to_response(task: CommentTask) -> TaskResponse:
     """Konvertiert CommentTask zu Response-Schema."""
     return TaskResponse(
-        id=task.id,  # type: ignore[attr-defined]
-        thread_id=task.thread_id,  # type: ignore[attr-defined]
-        assigned_to_user_id=task.assigned_to_user_id,  # type: ignore[attr-defined]
-        title=task.title,  # type: ignore[attr-defined]
-        description=task.description,  # type: ignore[attr-defined]
-        status=task.status,  # type: ignore[attr-defined]
+        id=task.id,
+        thread_id=task.thread_id,
+        assigned_to_user_id=task.assigned_to_user_id,
+        title=task.title,
+        description=task.description,
+        status=task.status,
         due_date=(
-            task.due_date.isoformat()  # type: ignore[attr-defined]
-            if task.due_date  # type: ignore[attr-defined]
+            task.due_date.isoformat()
+            if task.due_date
             else None
         ),
         completed_at=(
-            task.completed_at.isoformat()  # type: ignore[attr-defined]
-            if task.completed_at  # type: ignore[attr-defined]
+            task.completed_at.isoformat()
+            if task.completed_at
             else None
         ),
-        created_by_user_id=task.created_by_user_id,  # type: ignore[attr-defined]
+        created_by_user_id=task.created_by_user_id,
         created_at=(
-            task.created_at.isoformat()  # type: ignore[attr-defined]
-            if task.created_at  # type: ignore[attr-defined]
+            task.created_at.isoformat()
+            if task.created_at
             else None
         ),
         updated_at=(
-            task.updated_at.isoformat()  # type: ignore[attr-defined]
-            if task.updated_at  # type: ignore[attr-defined]
+            task.updated_at.isoformat()
+            if task.updated_at
             else None
         ),
     )

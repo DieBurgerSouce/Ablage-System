@@ -317,8 +317,8 @@ async def list_contracts(
     party_id: Optional[UUID] = Query(None, description="Filter nach Vertragspartner"),
     expiring_within_days: Optional[int] = Query(None, ge=1, le=365, description="Ablaufende Verträge innerhalb X Tagen"),
     search: Optional[str] = Query(None, max_length=200, description="Suche in Vertragsnr, Titel, Parteien"),
-    offset: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     order_by: str = Query("end_date", description="Sortierfeld"),
     order_dir: str = Query("asc", pattern="^(asc|desc)$"),
     db: AsyncSession = Depends(get_db),
@@ -345,8 +345,8 @@ async def list_contracts(
         party_id=party_id,
         expiring_within_days=expiring_within_days,
         search=search,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
         order_by=order_by,
         order_dir=order_dir,
     )
@@ -354,8 +354,8 @@ async def list_contracts(
     return ContractListResponse(
         items=[_contract_to_response(c) for c in contracts],
         total=total,
-        offset=offset,
-        limit=limit,
+        offset=(page - 1) * per_page,
+        limit=per_page,
     )
 
 

@@ -58,8 +58,8 @@ async def list_messages(
     complaint_id: Optional[UUID] = Query(None),
     direction: Optional[str] = Query(None, description="inbound oder outbound"),
     unread_only: bool = Query(False),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     portal_user: PortalUser = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -74,15 +74,15 @@ async def list_messages(
         complaint_id=complaint_id,
         direction=direction,
         unread_only=unread_only,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return {
         "items": messages,
         "total": total,
-        "limit": limit,
-        "offset": offset,
+        "page": page,
+        "per_page": per_page,
     }
 
 

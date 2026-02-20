@@ -95,8 +95,8 @@ class AlertListResponse(BaseModel):
     """Response schema for alert list."""
     alerts: List[AlertResponse]
     total: int
-    limit: int
-    offset: int
+    page: int
+    per_page: int
 
 
 class AlertStatsResponse(BaseModel):
@@ -158,8 +158,8 @@ async def list_alerts(
     assigned_to_id: Optional[UUID] = Query(None, description="Filter nach zugewiesenem Benutzer"),
     source_type: Optional[str] = Query(None, description="Filter nach Quellsystem"),
     unread_only: bool = Query(False, description="Nur ungelesene Alerts"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     order_by: str = Query("created_at", description="Sortierfeld"),
     order_desc: bool = Query(True, description="Absteigend sortieren"),
     current_user: User = Depends(get_current_user),
@@ -181,8 +181,8 @@ async def list_alerts(
         assigned_to_id=assigned_to_id,
         source_type=source_type,
         unread_only=unread_only,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
         order_by=order_by,
         order_desc=order_desc,
     )
@@ -216,8 +216,8 @@ async def list_alerts(
             for a in alerts
         ],
         total=total,
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
     )
 
 

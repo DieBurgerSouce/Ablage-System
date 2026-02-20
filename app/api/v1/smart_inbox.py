@@ -121,8 +121,8 @@ class SmartInboxStatsResponse(BaseModel):
 
 @router.get("", response_model=SmartInboxListResponse)
 async def get_smart_inbox(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     status_filter: Optional[str] = Query(None, alias="status"),
     category: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
@@ -135,8 +135,8 @@ async def get_smart_inbox(
     Deadlines, Kategorie und Benutzerverhalten.
 
     Args:
-        limit: Max. Anzahl Items (1-100)
-        offset: Offset für Pagination
+        page: Seitennummer (1-basiert)
+        per_page: Eintraege pro Seite (1-100)
         status_filter: Filter nach Status (pending, in_progress, completed, dismissed)
         category: Filter nach Kategorie
         db: Datenbank-Session
@@ -153,8 +153,8 @@ async def get_smart_inbox(
 
         result = await service.get_prioritized_items(
             company_id=current_user.company_id,
-            limit=limit,
-            offset=offset,
+            limit=per_page,
+            offset=(page - 1) * per_page,
             status=status_filter,
             category=category,
         )

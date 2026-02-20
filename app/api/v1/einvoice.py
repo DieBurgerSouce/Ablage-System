@@ -1373,8 +1373,8 @@ async def receive_einvoice(
 )
 async def list_incoming_einvoices(
     status: Optional[str] = Query(None, description="Filter nach Status"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_async_db),
     current_user: User = Depends(get_current_active_user),
 ) -> dict:
@@ -1391,7 +1391,7 @@ async def list_incoming_einvoices(
     if status:
         query = query.where(IncomingEInvoice.status == status)
 
-    query = query.order_by(IncomingEInvoice.received_at.desc()).offset(offset).limit(limit)
+    query = query.order_by(IncomingEInvoice.received_at.desc()).offset((page - 1) * per_page).limit(per_page)
 
     result = await db.execute(query)
     items = result.scalars().all()
@@ -1416,8 +1416,8 @@ async def list_incoming_einvoices(
             for item in items
         ],
         "total": len(items),
-        "offset": offset,
-        "limit": limit,
+        "page": page,
+        "per_page": per_page,
     }
 
 

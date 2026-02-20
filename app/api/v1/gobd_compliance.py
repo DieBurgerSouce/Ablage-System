@@ -373,8 +373,8 @@ async def get_check_status(
 @router.get("/history", response_model=List[ComplianceHistoryResponse])
 async def get_check_history(
     check_type: Optional[str] = Query(None, description="Filter nach Check-Typ"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -390,7 +390,7 @@ async def get_check_history(
         query = query.where(GoBDComplianceHistory.check_type == check_type)
 
     query = query.order_by(desc(GoBDComplianceHistory.checked_at))
-    query = query.offset(offset).limit(limit)
+    query = query.offset((page - 1) * per_page).limit(per_page)
 
     result = await db.execute(query)
     history = list(result.scalars().all())
@@ -458,8 +458,8 @@ async def generate_report(
 @router.get("/reports", response_model=List[ComplianceReportResponse])
 async def list_reports(
     report_type: Optional[str] = Query(None, description="Filter nach Berichtstyp"),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -475,7 +475,7 @@ async def list_reports(
         query = query.where(GoBDComplianceReport.report_type == report_type)
 
     query = query.order_by(desc(GoBDComplianceReport.generated_at))
-    query = query.offset(offset).limit(limit)
+    query = query.offset((page - 1) * per_page).limit(per_page)
 
     result = await db.execute(query)
     reports = list(result.scalars().all())

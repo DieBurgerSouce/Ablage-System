@@ -87,8 +87,8 @@ async def upload_document(
 async def list_documents(
     complaint_id: Optional[UUID] = Query(None),
     document_type: Optional[str] = Query(None),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     portal_user: PortalUser = Depends(get_current_portal_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -102,15 +102,15 @@ async def list_documents(
         company_id=portal_user.company_id,
         complaint_id=complaint_id,
         document_type=document_type,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return {
         "items": documents,
         "total": total,
-        "limit": limit,
-        "offset": offset,
+        "page": page,
+        "per_page": per_page,
     }
 
 

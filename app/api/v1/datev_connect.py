@@ -833,8 +833,8 @@ async def list_buchungen(
     sync_status: Optional[str] = None,
     von: Optional[date] = None,
     bis: Optional[date] = None,
-    limit: int = Query(default=100, le=500),
-    offset: int = Query(default=0, ge=0),
+    page: int = Query(default=1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(default=100, ge=1, le=500, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ) -> List[BuchungResponse]:
@@ -869,7 +869,7 @@ async def list_buchungen(
         query = query.where(models.DATEVBuchung.belegdatum <= bis)
 
     query = query.order_by(models.DATEVBuchung.belegdatum.desc())
-    query = query.offset(offset).limit(limit)
+    query = query.offset((page - 1) * per_page).limit(per_page)
 
     result = await db.execute(query)
     buchungen = result.scalars().all()

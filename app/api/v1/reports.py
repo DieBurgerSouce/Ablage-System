@@ -529,8 +529,8 @@ async def list_templates(
     report_type: Optional[ReportType] = Query(None, description="Filter nach Report-Typ"),
     include_public: bool = Query(True, description="Öffentliche Templates einschließen?"),
     include_shared: bool = Query(True, description="Geteilte Templates einschließen?"),
-    limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     service: ReportTemplateService = Depends(get_template_service),
@@ -542,8 +542,8 @@ async def list_templates(
         report_type=report_type.value if report_type else None,
         include_public=include_public,
         include_shared=include_shared,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
     return [ReportTemplateResponse.model_validate(t) for t in templates]
 
@@ -1046,8 +1046,8 @@ async def execute_report(
 async def list_executions(
     template_id: Optional[uuid.UUID] = Query(None),
     status: Optional[str] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
     scheduler_service: ReportSchedulerService = Depends(get_scheduler_service),
@@ -1058,8 +1058,8 @@ async def list_executions(
         template_id=template_id,
         user_id=current_user.id,
         status=status,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
     return [ReportExecutionResponse.model_validate(e) for e in executions]
 

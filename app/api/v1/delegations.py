@@ -421,8 +421,8 @@ async def list_delegations(
         None, alias="status", description="Status-Filter"
     ),
     include_expired: bool = Query(False, description="Abgelaufene einbeziehen"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> DelegationListResponse:
@@ -436,8 +436,8 @@ async def list_delegations(
         as_delegate=as_delegate,
         status=status_filter,
         include_expired=include_expired,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     total = await service.count_delegations(
@@ -449,8 +449,8 @@ async def list_delegations(
     return DelegationListResponse(
         items=[_delegation_to_response(d) for d in delegations],
         total=total,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
 
@@ -668,8 +668,8 @@ async def revoke_delegation(
 @router.get("/{delegation_id}/audit-logs", response_model=AuditLogListResponse)
 async def get_delegation_audit_logs(
     delegation_id: UUID,
-    limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> AuditLogListResponse:
@@ -697,8 +697,8 @@ async def get_delegation_audit_logs(
     logs = await service.get_audit_logs(
         delegation_id=delegation_id,
         company_id=current_user.company_id,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return AuditLogListResponse(

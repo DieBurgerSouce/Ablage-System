@@ -376,8 +376,8 @@ async def get_access_logs(
     action: Optional[str] = Query(None, description="Nach Aktion filtern"),
     from_date: Optional[datetime] = Query(None, description="Start-Datum"),
     to_date: Optional[datetime] = Query(None, description="End-Datum"),
-    limit: int = Query(100, ge=1, le=1000, description="Max. Ergebnisse"),
-    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=1000, description="Eintraege pro Seite"),
     company_id: UUID = Depends(require_company),
     current_user: User = Depends(get_current_superuser),
     db: AsyncSession = Depends(get_db),
@@ -395,8 +395,8 @@ async def get_access_logs(
         action=action,
         from_date=from_date,
         to_date=to_date,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
     return [TaxAdvisorAccessLogResponse.model_validate(log) for log in logs]
 

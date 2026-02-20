@@ -189,8 +189,8 @@ class RuleListResponse(BaseModel):
     """Response für Regel-Liste."""
     items: List[RuleResponse]
     total: int
-    limit: int
-    offset: int
+    page: int
+    per_page: int
 
 
 class RuleTestRequest(BaseModel):
@@ -369,8 +369,8 @@ def _db_rule_to_business_rule(model: BusinessRuleModel) -> BusinessRule:
 
 @router.get("", response_model=RuleListResponse)
 async def list_rules(
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     category: Optional[str] = Query(None, description="Nach Kategorie filtern"),
     is_active: Optional[bool] = Query(None, description="Nach Status filtern"),
     search: Optional[str] = Query(None, max_length=100, description="Suche in Name"),
@@ -399,7 +399,7 @@ async def list_rules(
     query = query.order_by(
         BusinessRuleModel.priority.desc(),
         BusinessRuleModel.name,
-    ).offset(offset).limit(limit)
+    ).offset((page - 1) * per_page).limit(per_page)
 
     result = await db.execute(query)
     rules = result.scalars().all()
@@ -407,8 +407,8 @@ async def list_rules(
     return RuleListResponse(
         items=[_model_to_response(r) for r in rules],
         total=total,
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
     )
 
 
@@ -892,8 +892,8 @@ async def list_execution_logs(
     rule_id: Optional[UUID] = Query(None, description="Nach Regel filtern"),
     document_id: Optional[UUID] = Query(None, description="Nach Dokument filtern"),
     matched_only: bool = Query(False, description="Nur Matches"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> List[ExecutionLogResponse]:
@@ -914,7 +914,7 @@ async def list_execution_logs(
     if matched_only:
         query = query.where(RuleExecutionLog.matched == True)
 
-    query = query.order_by(RuleExecutionLog.executed_at.desc()).offset(offset).limit(limit)
+    query = query.order_by(RuleExecutionLog.executed_at.desc()).offset((page - 1) * per_page).limit(per_page)
 
     result = await db.execute(query)
     logs = result.scalars().all()

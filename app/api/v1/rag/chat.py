@@ -681,8 +681,8 @@ async def create_chat_session(
     description="Listet alle Chat-Sessions des Benutzers auf."
 )
 async def list_chat_sessions(
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    per_page: int = Query(20, ge=1, le=100, description="Eintraege pro Seite"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ) -> List[RAGChatSessionResponse]:
@@ -695,8 +695,8 @@ async def list_chat_sessions(
         select(RAGChatSession)
         .where(RAGChatSession.user_id == current_user.id)
         .order_by(RAGChatSession.last_message_at.desc().nullsfirst())
-        .offset(offset)
-        .limit(limit)
+        .offset((page - 1) * per_page)
+        .limit(per_page)
     )
     sessions = result.scalars().all()
 

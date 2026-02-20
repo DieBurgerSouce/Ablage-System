@@ -64,30 +64,7 @@ def sanitize_filename_for_header(filename: str) -> str:
     return safe_name
 
 
-def build_content_disposition(filename: str, disposition: str = "attachment") -> str:
-    """Build a safe Content-Disposition header value.
-
-    Uses RFC 5987 encoding for proper Unicode support while
-    maintaining backwards compatibility with ASCII-only clients.
-
-    Args:
-        filename: Original filename
-        disposition: 'attachment' (download) or 'inline' (display)
-
-    Returns:
-        Safe Content-Disposition header value
-    """
-    safe_name = sanitize_filename_for_header(filename)
-
-    # Create ASCII fallback (replace non-ASCII with underscore)
-    ascii_name = safe_name.encode('ascii', 'replace').decode('ascii').replace('?', '_')
-
-    # RFC 5987 encoding for the full Unicode filename
-    encoded_name = quote(safe_name, safe='')
-
-    # Return header with both fallback and encoded filename
-    return f'{disposition}; filename="{ascii_name}"; filename*=UTF-8\'\'{encoded_name}'
-
+from app.core.security_auth import build_content_disposition
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile, File, Form, Request, status
 from fastapi.responses import StreamingResponse
@@ -1120,7 +1097,7 @@ async def get_category_documents(
     processing_status: Optional[List[str]] = Query(None, description="Verarbeitungsstatus"),
     payment_status: Optional[List[str]] = Query(None, description="Zahlungsstatus"),
     tags: Optional[List[str]] = Query(None, description="Tags"),
-    page: int = Query(0, ge=0, description="Seitennummer (0-basiert)"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     page_size: int = Query(25, ge=1, le=100, description="Einträge pro Seite"),
     sort_by: str = Query("document_date", description="Sortierfeld"),
     sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sortierrichtung"),
@@ -3548,8 +3525,8 @@ async def log_search_click(
 @router.get("/{document_id}/access-log")
 async def get_document_access_log(
     document_id: UUID,
-    limit: int = Query(50, ge=1, le=200, description="Maximale Anzahl Einträge"),
-    offset: int = Query(0, ge=0, description="Offset für Paginierung"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     action_filter: Optional[str] = Query(None, description="Nach Aktionstyp filtern"),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -3618,7 +3595,7 @@ async def get_document_access_log(
 
         # Sortierung und Paginierung
         audit_query = audit_query.order_by(AuditLog.created_at.desc())
-        audit_query = audit_query.offset(offset).limit(limit)
+        audit_query = audit_query.offset((page - 1) * per_page).limit(per_page)
 
         result = await db.execute(audit_query)
         audit_entries = result.scalars().all()
@@ -3663,9 +3640,9 @@ async def get_document_access_log(
             "document_id": str(document_id),
             "access_log": access_log,
             "total": total_count,
-            "limit": limit,
-            "offset": offset,
-            "has_more": offset + len(access_log) < total_count
+            "page": page,
+            "per_page": per_page,
+            "has_more": (page - 1) * per_page + len(access_log) < total_count
         }
 
     except Exception as e:

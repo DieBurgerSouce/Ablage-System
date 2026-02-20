@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, Response
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -62,8 +62,8 @@ router = APIRouter(prefix="/companies", tags=["Firmen"])
 )
 async def list_companies(
     request: Request,
-    skip: int = 0,
-    limit: int = 50,
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     include_inactive: bool = False,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -96,7 +96,7 @@ async def list_companies(
     total = total_result.scalar() or 0
 
     # Fetch companies
-    query = query.order_by(Company.name).offset(skip).limit(limit)
+    query = query.order_by(Company.name).offset((page - 1) * per_page).limit(per_page)
     result = await db.execute(query)
     companies = result.scalars().all()
 

@@ -576,8 +576,8 @@ async def get_failed_verifications(
 @router.get("/audit-chain", response_model=List[AuditChainEntryResponse])
 async def get_audit_chain_entries(
     document_id: Optional[uuid.UUID] = Query(None, description="Filter nach Dokument"),
-    limit: int = Query(100, ge=1, le=500),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(100, ge=1, le=500, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -590,7 +590,7 @@ async def get_audit_chain_entries(
             db=db,
             company_id=current_user.company_id,
             document_id=document_id,
-            limit=limit,
+            limit=per_page,
         )
     else:
         # Hole allgemeine Einträge (neueste zuerst)
@@ -601,8 +601,8 @@ async def get_audit_chain_entries(
             select(AuditChainEntry)
             .where(AuditChainEntry.company_id == current_user.company_id)
             .order_by(desc(AuditChainEntry.sequence_number))
-            .offset(offset)
-            .limit(limit)
+            .offset((page - 1) * per_page)
+            .limit(per_page)
         )
         entries = result.scalars().all()
 
@@ -1331,8 +1331,8 @@ class BreachListResponse(BaseModel):
     """Response für Breach-Liste."""
     breaches: List[dict]
     total: int
-    limit: int
-    offset: int
+    page: int
+    per_page: int
 
 
 @router.post("/breach/report", response_model=BreachReportResponse)
@@ -1433,8 +1433,8 @@ async def report_data_breach(
 async def list_breaches(
     status_filter: Optional[str] = Query(None, description="Status-Filter"),
     severity_filter: Optional[str] = Query(None, description="Schweregrad-Filter"),
-    limit: int = Query(50, ge=1, le=200),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1470,8 +1470,8 @@ async def list_breaches(
         company_id=str(current_user.company_id) if current_user.company_id else None,
         status=status_enum,
         severity=severity_enum,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
     return BreachListResponse(
@@ -1491,8 +1491,8 @@ async def list_breaches(
             for b in breaches
         ],
         total=total,
-        limit=limit,
-        offset=offset,
+        page=page,
+        per_page=per_page,
     )
 
 

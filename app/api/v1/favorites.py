@@ -114,8 +114,8 @@ async def add_favorite(
     description="Gibt alle Favoriten des aktuellen Benutzers zurück."
 )
 async def list_favorites(
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     sort_by: FavoriteSortField = Query(FavoriteSortField.PRIORITY, description="Sortierung"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -142,7 +142,7 @@ async def list_favorites(
     else:
         query = query.order_by(DocumentFavorite.created_at.desc())
 
-    query = query.limit(limit).offset(offset)
+    query = query.limit(per_page).offset((page - 1) * per_page)
     result = await db.execute(query)
     rows = result.all()
 

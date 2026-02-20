@@ -257,8 +257,8 @@ class PendingReviewResponse(BaseModel):
 
     total: int = Field(..., description="Gesamtanzahl pending reviews")
     items: List[ZeroTouchResultResponse]
-    offset: int
-    limit: int
+    page: int
+    per_page: int
     has_more: bool
 
     model_config = ConfigDict(from_attributes=True)
@@ -567,8 +567,8 @@ async def update_thresholds(
     description="Ruft alle Dokumente ab, die eine manuelle Review benötigen."
 )
 async def get_pending_review(
-    limit: int = Query(default=20, ge=1, le=100, description="Anzahl Ergebnisse"),
-    offset: int = Query(default=0, ge=0, description="Offset für Paginierung"),
+    page: int = Query(default=1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(default=20, ge=1, le=100, description="Eintraege pro Seite"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_company_id),
@@ -581,15 +581,15 @@ async def get_pending_review(
 
         result = await orchestrator.get_pending_reviews(
             company_id=company_id,
-            limit=limit,
-            offset=offset,
+            limit=per_page,
+            offset=(page - 1) * per_page,
         )
 
         return PendingReviewResponse(
             total=result["total"],
             items=[ZeroTouchResultResponse.model_validate(r) for r in result["items"]],
-            offset=offset,
-            limit=limit,
+            page=page,
+            per_page=per_page,
             has_more=result["has_more"],
         )
 

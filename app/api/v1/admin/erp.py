@@ -582,8 +582,8 @@ async def trigger_sync(
 )
 async def get_sync_history(
     connection_id: UUID,
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     entity: Optional[str] = None,
     status_filter: Optional[str] = Query(None, alias="status"),
     current_user: User = Depends(require_admin),
@@ -615,7 +615,7 @@ async def get_sync_history(
     if status_filter:
         query = query.where(ERPSyncHistory.status == status_filter)
 
-    query = query.order_by(ERPSyncHistory.started_at.desc()).limit(limit).offset(offset)
+    query = query.order_by(ERPSyncHistory.started_at.desc()).limit(per_page).offset((page - 1) * per_page)
 
     result = await db.execute(query)
     history = result.scalars().all()
@@ -658,8 +658,8 @@ async def get_sync_history(
 async def list_conflicts(
     connection_id: Optional[UUID] = None,
     status_filter: str = Query("pending", alias="status"),
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     current_user: User = Depends(require_admin),
     company: Company = Depends(require_company),
     db: AsyncSession = Depends(get_db),
@@ -684,7 +684,7 @@ async def list_conflicts(
     query = query.order_by(
         ERPConflict.priority.desc(),
         ERPConflict.detected_at.desc(),
-    ).limit(limit).offset(offset)
+    ).limit(per_page).offset((page - 1) * per_page)
 
     result = await db.execute(query)
     conflicts = result.scalars().all()

@@ -139,8 +139,8 @@ EVENT_TYPE_LABELS = {
 @router.get("/{document_id}/lineage", response_model=TimelineResponse)
 async def get_document_lineage(
     document_id: UUID,
-    limit: int = Query(50, ge=1, le=500, description="Maximale Anzahl Ereignisse"),
-    offset: int = Query(0, ge=0, description="Offset für Pagination"),
+    per_page: int = Query(50, ge=1, le=500, description="Eintraege pro Seite"),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
     event_types: Optional[str] = Query(
         None,
         description="Komma-getrennte Event-Typen zum Filtern",
@@ -178,8 +178,8 @@ async def get_document_lineage(
     events, total = await service.get_timeline(
         document_id=document_id,
         company_id=company_id,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
         event_types=filter_types,
     )
 
@@ -199,8 +199,8 @@ async def get_document_lineage(
             for e in events
         ],
         total=total,
-        limit=limit,
-        offset=offset,
+        limit=per_page,
+        offset=(page - 1) * per_page,
     )
 
 

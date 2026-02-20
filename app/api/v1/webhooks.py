@@ -115,8 +115,8 @@ async def create_webhook(
     description="Gibt alle Webhook-Abonnements des aktuellen Benutzers zurück."
 )
 async def list_webhooks(
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     is_active: Optional[bool] = Query(None, description="Nach Aktivstatus filtern"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -140,7 +140,7 @@ async def list_webhooks(
     total = total_result.scalar() or 0
 
     # Fetch webhooks
-    query = query.order_by(WebhookSubscription.created_at.desc()).limit(limit).offset(offset)
+    query = query.order_by(WebhookSubscription.created_at.desc()).limit(per_page).offset((page - 1) * per_page)
     result = await db.execute(query)
     webhooks = result.scalars().all()
 
@@ -450,8 +450,8 @@ async def test_webhook(
 )
 async def list_webhook_deliveries(
     webhook_id: UUID,
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    page: int = Query(1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(50, ge=1, le=100, description="Eintraege pro Seite"),
     status_filter: Optional[str] = Query(None, alias="status", description="Nach Status filtern"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -491,7 +491,7 @@ async def list_webhook_deliveries(
     total = total_result.scalar() or 0
 
     # Fetch deliveries
-    query = query.order_by(WebhookDelivery.created_at.desc()).limit(limit).offset(offset)
+    query = query.order_by(WebhookDelivery.created_at.desc()).limit(per_page).offset((page - 1) * per_page)
     result = await db.execute(query)
     deliveries = result.scalars().all()
 

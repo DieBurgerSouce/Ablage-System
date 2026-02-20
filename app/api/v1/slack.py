@@ -537,8 +537,8 @@ async def list_slack_messages(
     channel_id: Optional[UUID] = Query(default=None, description="Filter nach Kanal"),
     notification_type: Optional[str] = Query(default=None, description="Filter nach Typ"),
     status_filter: Optional[str] = Query(default=None, alias="status", description="Filter nach Status"),
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
+    page: int = Query(default=1, ge=1, description="Seitennummer (1-basiert)"),
+    per_page: int = Query(default=50, ge=1, le=200, description="Eintraege pro Seite"),
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> SlackMessageListResponse:
@@ -559,7 +559,7 @@ async def list_slack_messages(
     total = await db.scalar(count_query)
 
     # Pagination
-    query = query.offset(offset).limit(limit)
+    query = query.offset((page - 1) * per_page).limit(per_page)
 
     result = await db.execute(query)
     messages = result.scalars().all()
