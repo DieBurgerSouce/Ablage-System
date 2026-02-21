@@ -313,11 +313,13 @@ celery_app = Celery(
         "app.workers.tasks.auto_filing_tasks",
         "app.workers.tasks.german_finance_tasks",
         "app.workers.tasks.webhook_inbound_tasks",
+        "app.workers.tasks.webhook_tasks",  # Outbound Webhook Event Platform (Delivery, Retry, DLQ, Cleanup)
         "app.workers.tasks.semantic_search_tasks",
         "app.workers.tasks.barcode_tasks",
         "app.workers.tasks.lifecycle_tasks",
         "app.workers.tasks.duplicate_detection_tasks",
         "app.workers.tasks.folder_import_rule_tasks",
+        "app.workers.tasks.partition_maintenance",
         # --- Batch 5: Previously orphaned modules (beat_schedule + event-driven) ---
         "app.workers.tasks.ai_conversation_tasks",
         "app.workers.tasks.ai_ethics_tasks",
@@ -920,6 +922,19 @@ celery_app.conf.update(
         "retention-process-expired-daily": {
             "task": "app.workers.tasks.retention_tasks.process_expired_archives_task",
             "schedule": crontab(hour=2, minute=45),  # Täglich um 02:45 Uhr
+        },
+        # =================================================================
+        # Outbound Webhook Event Platform (Delivery, Retry, DLQ, Cleanup)
+        # =================================================================
+        # Retry-Worker: Alle 5 Minuten faellige Retries dispatchen
+        "webhook-outbound-process-retries": {
+            "task": "app.workers.tasks.webhook_tasks.process_webhook_retries",
+            "schedule": 300.0,  # Alle 5 Minuten
+        },
+        # Cleanup: Alte Zustelldaten taeglich bereinigen (behaelt DLQ)
+        "webhook-outbound-cleanup-deliveries": {
+            "task": "app.workers.tasks.webhook_tasks.cleanup_old_deliveries",
+            "schedule": crontab(hour=3, minute=30),  # Taeglich um 03:30 Uhr
         },
         # =================================================================
         # Privat-Modul Intelligence Tasks (KPIs, Deadlines, Financial Health)
@@ -2405,6 +2420,29 @@ celery_app.conf.update(
             "schedule": 300.0,  # Alle 5 Minuten (= VAULT_SECRET_REFRESH_INTERVAL)
             "options": {"queue": "maintenance"},
         },
+        # =================================================================
+        # Table Partitioning Maintenance (Phase 1.2)
+        # =================================================================
+        # Taeglich: Fehlende Partitionen fuer die naechsten 3 Monate erstellen (01:30)
+        "partition-ensure-daily": {
+            "task": "partition.ensure_partitions",
+            "schedule": crontab(hour=1, minute=30),
+            "kwargs": {"months_ahead": 3},
+            "options": {"queue": "maintenance"},
+        },
+        # Woechentlich: Alte Partitionen (>2 Jahre) archivieren (Sonntag 02:00)
+        "partition-archive-weekly": {
+            "task": "partition.archive_old",
+            "schedule": crontab(day_of_week=0, hour=2, minute=0),
+            "kwargs": {"older_than_months": 24},
+            "options": {"queue": "maintenance"},
+        },
+        # Taeglich: Row-Counts und Speicherverbrauch aktualisieren (05:15)
+        "partition-update-stats-daily": {
+            "task": "partition.update_stats",
+            "schedule": crontab(hour=5, minute=15),
+            "options": {"queue": "maintenance"},
+        },
     },
 
     # Queue routing
@@ -3016,6 +3054,13 @@ celery_app.conf.update(
         # Vault Secret Rotation (Phase 1.2 - Security Haertung)
         # =================================================================
         "vault.refresh_secrets": {"queue": "maintenance", "priority": 2},
+        # =================================================================
+        # Table Partitioning Maintenance (Phase 1.2)
+        # =================================================================
+        "partition.ensure_partitions": {"queue": "maintenance", "priority": 2},
+        "partition.archive_old": {"queue": "maintenance", "priority": 1},
+        "partition.update_stats": {"queue": "maintenance", "priority": 1},
+        "partition.health_check": {"queue": "maintenance", "priority": 3},
     },
 
     # Priority settings

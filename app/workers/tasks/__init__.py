@@ -259,6 +259,17 @@ from app.workers.tasks.folder_import_rule_tasks import (
     scan_import_folder_task,
 )
 
+# --- Partition Maintenance Tasks (Phase 1.2: Table Partitioning) ---
+try:
+    from app.workers.tasks.partition_maintenance import (
+        ensure_partitions_task,
+        archive_old_partitions_task,
+        update_partition_stats_task,
+        partition_health_check_task,
+    )
+except ImportError as _exc:
+    _import_logger.warning("Optional task module nicht geladen: %s", _exc)
+
 # --- Batch 4: Include-only modules (missing from __init__.py) ---
 try:
     from app.workers.tasks.backup_tasks import (
@@ -920,6 +931,11 @@ __all__ = [
     "poll_folder_imports_task",
     "apply_rules_to_pending_imports_task",
     "scan_import_folder_task",
+    # Phase 1.2: Partition Maintenance tasks
+    "ensure_partitions_task",
+    "archive_old_partitions_task",
+    "update_partition_stats_task",
+    "partition_health_check_task",
     # Batch 4: Include-only modules (Group B)
     # Backup tasks
     "backup_full_task",
