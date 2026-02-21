@@ -107,6 +107,50 @@ if _needs_metadata:
         )
         # Import Inbound Webhook model
         from app.db.models_webhook_inbound import InboundWebhookEvent
+        # Import CDC models
+        from app.db.models_cdc import (
+            ChangeDataCaptureLog,
+            CDCConsumerOffset,
+        )
+        # Import Document Clustering models
+        from app.db.models_clustering import (
+            DocumentCluster,
+            DocumentClusterMembership,
+            ClusterSuggestion,
+        )
+        # Import Partitioning models
+        from app.db.models_partitioning import PartitionManagement
+        # Import Encryption models
+        from app.db.models_encryption import (
+            EncryptedFieldMeta,
+            KeyRotationLog,
+        )
+        # Import Anomaly Detection models
+        from app.db.models_anomaly import (
+            AnomalyRule,
+            Anomaly,
+        )
+        # Import Active Learning models
+        from app.db.models_active_learning import (
+            ActiveLearningQueue,
+            ActiveLearningMetrics,
+        )
+        # Import Webhook Event Platform models
+        from app.db.models_webhooks import (
+            WebhookEndpoint,
+            WebhookDelivery,
+            WebhookEventLog,
+        )
+        # Import Integration Sync models
+        from app.db.models_integration_sync import (
+            IntegrationConfig,
+            IntegrationSyncLog,
+        )
+        # Import Dashboard Builder models
+        from app.db.models_dashboard import (
+            DashboardConfig,
+            DashboardBuilderWidget,
+        )
         target_metadata = Base.metadata
     except ImportError as e:
         import logging

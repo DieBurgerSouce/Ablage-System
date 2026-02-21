@@ -292,6 +292,13 @@ class Document(Base):
         comment="Benutzerdefinierte Feldwerte (JSONB)"
     )
 
+    # Auto-Summary (Phase 2.2: KI-generierte Zusammenfassungen)
+    summary = Column(Text, nullable=True, comment="KI-generierte Zusammenfassung (3-5 Saetze)")
+    keywords = Column(CrossDBJSON, nullable=False, server_default=text("'[]'::jsonb"), comment="Extrahierte Schluesselwoerter")
+    one_liner = Column(String(500), nullable=True, comment="Einzeilige Beschreibung")
+    summary_generated_at = Column(DateTime(timezone=True), nullable=True)
+    summary_model = Column(String(100), nullable=True, comment="LLM-Modell fuer Zusammenfassung")
+
     # Relationships
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     owner = relationship("User", back_populates="documents", foreign_keys=[owner_id])
@@ -359,6 +366,12 @@ class Document(Base):
         Index("ix_documents_chain_id", "chain_id"),
         Index("ix_documents_chain_position", "chain_id", "chain_position"),
         Index("ix_documents_chain_root", "chain_root_document_id"),
+        # Auto-Summary (Phase 2.2): Partial Index fuer Dokumente mit Zusammenfassung
+        Index(
+            "ix_documents_summary_generated",
+            "company_id", "summary_generated_at",
+            postgresql_where=text("summary IS NOT NULL"),
+        ),
     )
 
     @property
@@ -18654,3 +18667,5 @@ from app.db.models_approval_matrix import (  # noqa: F401
     ApprovalMatrix, ApprovalChainTemplate, ApprovalAuditLog,
     ApprovalGroup, ApprovalGroupMember,
 )
+# Phase 1.4: Field-Level Encryption (DSGVO Art. 32)
+from app.db.models_encryption import EncryptedFieldMeta, KeyRotationLog  # noqa: F401
