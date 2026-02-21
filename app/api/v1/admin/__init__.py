@@ -28,6 +28,7 @@ from app.api.v1.admin.queues import router as queues_router
 from app.api.v1.admin.dlq import router as dlq_router
 from app.api.v1.admin.erp import router as erp_router
 from app.api.v1.admin.automation_config import router as automation_config_router
+from app.api.v1.feature_toggles import router as feature_toggles_router
 
 # Main admin router
 router = APIRouter(prefix="/admin", tags=["Administration"])
@@ -47,5 +48,6 @@ router.include_router(queues_router)
 router.include_router(dlq_router)
 router.include_router(erp_router)
 router.include_router(automation_config_router)
+router.include_router(feature_toggles_router)
 
 __all__ = ["router"]

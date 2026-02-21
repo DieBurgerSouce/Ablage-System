@@ -821,6 +821,7 @@ OPENAPI_TAGS = [
     {"name": "transactions", "description": "Transaktionsverwaltung"},
     {"name": "validation", "description": "Datenvalidierung und -prüfung"},
     {"name": "webhooks-inbound", "description": "Eingehende Webhook-Verarbeitung"},
+    {"name": "webhooks-outbound", "description": "Ausgehende Webhook Event Platform (Outbound Webhooks, Replay, DLQ)"},
     # Mismatch Variants (router names differ from existing tags)
     {"name": "Authentication", "description": "Authentifizierung und Anmeldung"},
     {"name": "API Keys", "description": "API-Schlüssel-Verwaltung"},
@@ -1292,6 +1293,7 @@ from app.api.v1.datev_connect import router as datev_connect_router  # DATEV Con
 from app.api.v1.classification import router as classification_router  # Vision 2.0 Phase 3: Multi-Label Classification
 from app.api.v1.document_context import router as document_context_router  # Phase 2: Document Context Aggregation
 from app.api.v1.calendar_sync import router as calendar_sync_router  # Phase 5: Calendar Sync
+from app.api.v1.role_dashboards import router as role_dashboards_router  # Phase 5.3: Rollen-basierte Dashboards
 from app.api.v1.scanner import router as scanner_router  # Phase 5: Scanner Integration
 from app.api.v1.admin.integration_sync import router as integration_sync_router  # Phase 5: DATEV/Lexware Sync
 from app.api.v1.email_file_import import router as email_file_import_router  # Phase 6D: E-Mail-Datei-Import
@@ -1310,6 +1312,7 @@ from app.api.v1.lineage import router as lineage_router  # Phase 1.3: Document L
 from app.api.v1.workflow_analytics import router as workflow_analytics_router  # Phase 4: Workflow Analytics, SLA, Approvals
 from app.api.v1.odoo_webhooks import router as odoo_webhooks_router  # Phase 6: Odoo Integration Deepening
 from app.api.v1.webhooks_receive import router as webhooks_receive_router  # Phase 3.2: Inbound Webhook Receiver
+from app.api.v1.webhooks_outbound import router as webhooks_outbound_platform_router  # Outbound Webhook Event Platform
 from app.api.v1.pipeline import router as pipeline_router  # Phase 3: Integration Pipeline
 from app.api.v1.bpmn_converter import router as bpmn_converter_router  # BPMN 2.0 Import/Export Converter
 from app.api.v1.banking.connections import router as psd2_banking_router  # Phase 6: PSD2/FinTS Banking Integration
@@ -1357,6 +1360,17 @@ from app.api.v1.adhoc_reports import router as adhoc_reports_router  # Feature #
 from app.api.v1.saga_monitoring import router as saga_monitoring_router  # Phase 2.2: Saga Monitoring
 from app.api.v1.approval_matrix import router as approval_matrix_router  # M2: Approval Matrix
 from app.api.v1.duplicate_detection import router as duplicate_detection_router  # Phase 4.1: Duplikat-Erkennung
+from app.api.v1.explainability import router as explainability_router  # Phase 4.3: Erklaerbare AI-Entscheidungen
+from app.api.v1.morning_briefing import router as morning_briefing_router  # Phase 4.1: Morning Briefing Cockpit
+from app.api.v1.ai_chat import router as ai_chat_router  # Phase 4.1: Eingebetteter KI-Assistent
+from app.api.v1.dashboard_builder import router as dashboard_builder_router  # Phase 7.3: Dashboard-Builder
+from app.api.v1.clustering import router as clustering_router  # Phase 2.1: Dokumenten-Clustering
+from app.api.v1.anomalies import router as anomalies_router  # Phase 2.3: Anomalie-Erkennung
+from app.api.v1.active_learning import router as active_learning_router  # Phase 2.4: Active Learning Pipeline
+from app.api.v1.cdc import router as cdc_router  # Phase 1.1: Change Data Capture Admin
+from app.api.v1.encryption import router as encryption_router  # Phase 1.4: Field-Level Encryption Admin
+from app.api.v1.feature_toggles import router as feature_toggles_router  # Phase 7.1: Feature Toggle Admin UI
+from app.api.v1.integration_sync import router as integrations_dashboard_router  # Phase 4.4: Integrations-Sync Dashboard
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -1528,6 +1542,7 @@ app.include_router(enhanced_banking_router, prefix="/api/v1")  # Vision 2026 Q4:
 app.include_router(handelsregister_monitoring_router, prefix="/api/v1")  # Vision 2026 Q4: Handelsregister Monitoring
 app.include_router(smart_tagging_router, prefix="/api/v1")  # Vision 2026+ Q1: Smart Auto-Tagging
 app.include_router(calendar_sync_router, prefix="/api/v1")  # Phase 5: Calendar iCal/CalDAV Sync
+app.include_router(role_dashboards_router, prefix="/api/v1")  # Phase 5.3: Rollen-basierte Dashboard APIs
 app.include_router(email_file_import_router, prefix="/api/v1", tags=["E-Mail-Import"])  # Phase 6D: E-Mail-Datei-Import
 app.include_router(scanner_router, prefix="/api/v1")  # Phase 5: Scanner Device Integration
 app.include_router(integration_sync_router, prefix="/api/v1")  # Phase 5: DATEV/Lexware Bidirectional Sync
@@ -1561,6 +1576,7 @@ app.include_router(document_lifecycle_router, prefix="/api/v1")  # Document Life
 app.include_router(workflow_analytics_router, prefix="/api/v1")  # Phase 4: Workflow Analytics, SLA, Approvals
 app.include_router(odoo_webhooks_router, prefix="/api/v1")  # Phase 6: Odoo Integration Deepening
 app.include_router(webhooks_receive_router, prefix="/api/v1")  # Phase 3.2: Inbound Webhook Receiver
+app.include_router(webhooks_outbound_platform_router, prefix="/api/v1")  # Outbound Webhook Event Platform
 app.include_router(pipeline_router, prefix="/api/v1")  # Phase 3: Integration Pipeline (Kontierung + Matching)
 app.include_router(bpmn_converter_router, prefix="/api/v1")  # BPMN 2.0 Import/Export Converter
 
@@ -1622,6 +1638,17 @@ app.include_router(adhoc_reports_router, prefix="/api/v1")  # Feature #12: Ad-Ho
 app.include_router(saga_monitoring_router, prefix="/api/v1")  # Phase 2.2: Saga Monitoring
 app.include_router(approval_matrix_router, prefix="/api/v1")  # M2: Approval Matrix
 app.include_router(duplicate_detection_router, prefix="/api/v1")  # Phase 4.1: Duplikat-Erkennung
+app.include_router(explainability_router, prefix="/api/v1")  # Phase 4.3: Erklaerbare AI-Entscheidungen
+app.include_router(morning_briefing_router, prefix="/api/v1")  # Phase 4.1: Morning Briefing Cockpit
+app.include_router(ai_chat_router, prefix="/api/v1")  # Phase 4.1: Eingebetteter KI-Assistent
+app.include_router(dashboard_builder_router, prefix="/api/v1")  # Phase 7.3: Dashboard-Builder
+app.include_router(clustering_router, prefix="/api/v1")  # Phase 2.1: Dokumenten-Clustering
+app.include_router(anomalies_router, prefix="/api/v1")  # Phase 2.3: Anomalie-Erkennung
+app.include_router(active_learning_router, prefix="/api/v1")  # Phase 2.4: Active Learning Pipeline
+app.include_router(cdc_router, prefix="/api/v1")  # Phase 1.1: Change Data Capture Admin
+app.include_router(encryption_router, prefix="/api/v1")  # Phase 1.4: Field-Level Encryption Admin
+app.include_router(feature_toggles_router, prefix="/api/v1")  # Phase 7.1: Feature Toggle Admin UI
+app.include_router(integrations_dashboard_router, prefix="/api/v1")  # Phase 4.4: Integrations-Sync Dashboard
 
 
 # ==================== Health & Status Endpoints ====================

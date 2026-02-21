@@ -72,6 +72,12 @@ from app.services.error_tracking_service import (
     ErrorCategory,
     ErrorSeverity,
 )
+from sqlalchemy.orm.exc import StaleDataError
+from app.services.optimistic_lock_service import OptimisticLockError
+from app.api.middleware.optimistic_lock_handler import (
+    stale_data_exception_handler,
+    optimistic_lock_exception_handler,
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -816,6 +822,10 @@ def register_exception_handlers(app) -> None:
     app.add_exception_handler(CSRFError, csrf_error_handler)
     app.add_exception_handler(CircuitOpenError, circuit_breaker_error_handler)
     app.add_exception_handler(EncryptionError, encryption_error_handler)
+
+    # Optimistic Locking (HTTP 409 Conflict)
+    app.add_exception_handler(StaleDataError, stale_data_exception_handler)
+    app.add_exception_handler(OptimisticLockError, optimistic_lock_exception_handler)
 
     # Standard FastAPI/Starlette Exceptions
     app.add_exception_handler(HTTPException, http_exception_handler)
