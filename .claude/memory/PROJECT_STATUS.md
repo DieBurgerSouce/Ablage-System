@@ -7,7 +7,7 @@
 | Backend | ✅ OK | Running on :8000, 430+ Endpoints, Type-Safe |
 | Frontend | ✅ OK | Nginx :80, Accessibility E2E Tests OK |
 | Celery | ✅ OK | 414 Tasks, 12+ Beat Schedules, GPU for OCR |
-| PostgreSQL | ✅ OK | :5433, 228 Migrations asyncpg-hardened (151_gobd_insert_only_triggers) |
+| PostgreSQL | ✅ OK | :5433, 250 Migrations (238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
 | Redis | ✅ OK | :6380, Rate Limiting, Blacklist, L1/L2 Cache |
 | GPU | ✅ OK | RTX 4080 (16GB), shared by backend + worker |
 | Jaeger | ✅ NEW | :16686 UI, :4317 OTLP gRPC, Distributed Tracing |
@@ -87,6 +87,10 @@ Final 3 TODOs resolved:
 
 | Date | Component | Description |
 |------|-----------|-------------|
+| 2026-02-21 | Backend | 13 neue API-Router, Document Timeline Service Erweiterung, 9 Satellite-Models, Field-Level Encryption, Document Auto-Summary |
+| 2026-02-21 | Database | Migrationen 238-250: CDC, Partitioning, Optimistic Locking, Encryption, Anomaly Detection, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle |
+| 2026-02-21 | Workers | Outbound Webhook Delivery/Retry/DLQ-Tasks, Partition Maintenance Tasks (ensure/archive/stats/health) |
+| 2026-02-21 | Frontend | use-auto-save-draft Hook fuer automatisches Speichern von Entwuerfen |
 | 2026-02-19 | Backend | Zero-Touch Pipeline Chain, Auto-Kontierung, 3-Way-Matching, Saga Monitoring, Knowledge Graph API |
 | 2026-02-19 | Database | Migration 151: GoBD INSERT-only Triggers fuer domain_events + gobd_audit_chain |
 | 2026-02-19 | Security | Vault Client Haertung (TTL-Cache, AppRole, Retry), Vault Tasks fuer Secret-Rotation |
@@ -110,6 +114,19 @@ Final 3 TODOs resolved:
 
 | Migration | Description |
 |-----------|-------------|
+| 250 | Feature Toggle History |
+| 249 | Webhook Event Platform (WebhookEndpoint, WebhookDelivery, WebhookEventLog) |
+| 248 | Dashboard Builder (DashboardConfig, DashboardBuilderWidget) |
+| 247 | Integration Sync (IntegrationConfig, IntegrationSyncLog) |
+| 246 | Morning Briefing |
+| 245 | Active Learning (ActiveLearningQueue, ActiveLearningMetrics) |
+| 244 | Document Clustering (DocumentCluster, ClusterMembership, ClusterSuggestion) |
+| 243 | Document Summaries |
+| 242 | Anomaly Detection (AnomalyRule, Anomaly) |
+| 241 | Field-Level Encryption (EncryptedFieldMeta, KeyRotationLog) |
+| 240 | Optimistic Locking |
+| 239 | Table Partitioning (PartitionManagement) |
+| 238 | Change Data Capture (ChangeDataCaptureLog, CDCConsumerOffset) |
 | 151 | GoBD INSERT-only Triggers (domain_events, gobd_audit_chain) |
 | 227 | Mention Notifications |
 | 226 | Inbound Webhook Events |

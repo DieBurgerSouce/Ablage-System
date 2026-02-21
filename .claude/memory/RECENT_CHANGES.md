@@ -1,5 +1,14 @@
 # Recent Changes
 
+## 2026-02-21
+- **feat(db)**: 13 neue Alembic-Migrationen (238-250): CDC, Partitioning, Optimistic Locking, Encryption, Anomalie, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Event Platform, Feature Toggle History
+- **feat(db)**: 9 neue Satellite-Models (models_cdc, models_clustering, models_partitioning, models_encryption, models_anomaly, models_active_learning, models_webhooks, models_integration_sync, models_dashboard)
+- **feat(db)**: Document-Model erweitert (summary, keywords, one_liner, summary_model Felder + Partial Index)
+- **feat(api)**: 13 neue API-Router registriert in main.py (webhooks_outbound, role_dashboards, explainability, morning_briefing, ai_chat, dashboard_builder, clustering, anomalies, active_learning, cdc, encryption, feature_toggles, integration_sync)
+- **feat(services)**: Document Timeline Service umfangreich erweitert (1476 Zeilen Diff)
+- **feat(workers)**: Celery - 2 neue Task-Module (webhook_tasks, partition_maintenance) + Beat-Schedules fuer Webhook-Retry und Partition-Maintenance
+- **feat(frontend)**: use-auto-save-draft Hook fuer automatisches Speichern von Entwuerfen
+
 ## 2026-02-20
 - **feat(api)**: HTTPException Handler - StandardErrorResponse mit correlation_id und Timestamp
 - **feat(api)**: Search "Meinten Sie?" Funktion via pg_trgm bei 0 Ergebnissen

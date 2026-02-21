@@ -10,6 +10,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Database: Migrationen 238-250 (CDC, Table Partitioning, Optimistic Locking, Field-Level Encryption, Anomaly Detection, Document Summaries, Document Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Event Platform, Feature Toggle History)
+- Database: 9 neue Satellite-Models (models_cdc, models_clustering, models_partitioning, models_encryption, models_anomaly, models_active_learning, models_webhooks, models_integration_sync, models_dashboard)
+- Database: Document-Model Auto-Summary Felder (summary, keywords, one_liner, summary_model, summary_generated_at) mit Partial Index
+- Database: alembic/env.py - Imports fuer alle neuen Satellite-Models (CDC, Clustering, Partitioning, Encryption, Anomaly, Active Learning, Webhooks, Integration Sync, Dashboard)
+- API: 13 neue Router in main.py (webhooks_outbound, role_dashboards, explainability, morning_briefing, ai_chat, dashboard_builder, clustering, anomalies, active_learning, cdc, encryption, feature_toggles, integration_sync)
+- Services: Document Timeline Service umfangreich erweitert (Aktivitaets-Tracking, Timeline-Aggregation)
+- Workers: Outbound Webhook Event Platform Tasks (webhook_tasks: delivery, retry, DLQ, cleanup)
+- Workers: Partition Maintenance Tasks (ensure_partitions, archive_old, update_stats, health_check)
+- Workers: Beat-Schedules fuer Webhook-Retry (5min), Webhook-Cleanup (03:30), Partition-Ensure (01:30), Partition-Archive (Sonntag 02:00), Partition-Stats (05:15)
+- Frontend: use-auto-save-draft Hook fuer automatisches Speichern von Entwuerfen
 - API: HTTPException Handler mit StandardErrorResponse (correlation_id, timestamp, path, German message support)
 - API: Search "Meinten Sie?" Suggestion via pg_trgm bei 0 Suchergebnissen (Dateinamen, Tags, Text)
 - API: app/core/pagination.py - wiederverwendbare Pagination-Helper fuer alle Endpoints
