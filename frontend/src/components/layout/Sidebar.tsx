@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart, Sliders, Mail, DollarSign, Activity, ListChecks, Calendar, ScanLine, ArrowLeftRight, Fingerprint, LineChart, FileSearch, Globe, Lightbulb, LayoutGrid, PieChart, Euro, FileBarChart2, Pen } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart, Sliders, Mail, DollarSign, Activity, ListChecks, Calendar, ScanLine, ArrowLeftRight, Fingerprint, LineChart, FileSearch, Globe, Lightbulb, LayoutGrid, PieChart, Euro, FileBarChart2, Pen, Webhook } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
@@ -437,6 +437,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/custom-fields" icon={Sliders} label="Eigene Felder" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/webhooks" icon={Webhook} label="Webhooks" onNavigate={onNavigate} />
                                 )}
                             </div>
                         )}

@@ -165,6 +165,7 @@ import { Route as BankingAutoMahnlaufRouteImport } from './app/routes/banking.au
 import { Route as AdminWorkflowsRouteImport } from './app/routes/admin.workflows'
 import { Route as AdminWorkflowBuilderRouteImport } from './app/routes/admin.workflow-builder'
 import { Route as AdminWidgetsRouteImport } from './app/routes/admin.widgets'
+import { Route as AdminWebhooksRouteImport } from './app/routes/admin.webhooks'
 import { Route as AdminValidationRouteImport } from './app/routes/admin.validation'
 import { Route as AdminUsersRouteImport } from './app/routes/admin.users'
 import { Route as AdminTunesRouteImport } from './app/routes/admin.tunes'
@@ -1089,6 +1090,11 @@ const AdminWidgetsRoute = AdminWidgetsRouteImport.update({
   path: '/widgets',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminWebhooksRoute = AdminWebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminValidationRoute = AdminValidationRouteImport.update({
   id: '/validation',
   path: '/validation',
@@ -1931,6 +1937,7 @@ export interface FileRoutesByFullPath {
   '/admin/tunes': typeof AdminTunesRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/validation': typeof AdminValidationRoute
+  '/admin/webhooks': typeof AdminWebhooksRoute
   '/admin/widgets': typeof AdminWidgetsRoute
   '/admin/workflow-builder': typeof AdminWorkflowBuilderRoute
   '/admin/workflows': typeof AdminWorkflowsRouteWithChildren
@@ -2201,6 +2208,7 @@ export interface FileRoutesByTo {
   '/admin/tunes': typeof AdminTunesRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/validation': typeof AdminValidationRoute
+  '/admin/webhooks': typeof AdminWebhooksRoute
   '/admin/widgets': typeof AdminWidgetsRoute
   '/admin/workflow-builder': typeof AdminWorkflowBuilderRoute
   '/admin/workflows': typeof AdminWorkflowsRouteWithChildren
@@ -2490,6 +2498,7 @@ export interface FileRoutesById {
   '/admin/tunes': typeof AdminTunesRoute
   '/admin/users': typeof AdminUsersRoute
   '/admin/validation': typeof AdminValidationRoute
+  '/admin/webhooks': typeof AdminWebhooksRoute
   '/admin/widgets': typeof AdminWidgetsRoute
   '/admin/workflow-builder': typeof AdminWorkflowBuilderRoute
   '/admin/workflows': typeof AdminWorkflowsRouteWithChildren
@@ -2786,6 +2795,7 @@ export interface FileRouteTypes {
     | '/admin/tunes'
     | '/admin/users'
     | '/admin/validation'
+    | '/admin/webhooks'
     | '/admin/widgets'
     | '/admin/workflow-builder'
     | '/admin/workflows'
@@ -3056,6 +3066,7 @@ export interface FileRouteTypes {
     | '/admin/tunes'
     | '/admin/users'
     | '/admin/validation'
+    | '/admin/webhooks'
     | '/admin/widgets'
     | '/admin/workflow-builder'
     | '/admin/workflows'
@@ -3344,6 +3355,7 @@ export interface FileRouteTypes {
     | '/admin/tunes'
     | '/admin/users'
     | '/admin/validation'
+    | '/admin/webhooks'
     | '/admin/widgets'
     | '/admin/workflow-builder'
     | '/admin/workflows'
@@ -4686,6 +4698,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminWidgetsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/webhooks': {
+      id: '/admin/webhooks'
+      path: '/webhooks'
+      fullPath: '/admin/webhooks'
+      preLoaderRoute: typeof AdminWebhooksRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/validation': {
       id: '/admin/validation'
       path: '/validation'
@@ -5938,6 +5957,7 @@ interface AdminRouteChildren {
   AdminTunesRoute: typeof AdminTunesRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminValidationRoute: typeof AdminValidationRoute
+  AdminWebhooksRoute: typeof AdminWebhooksRoute
   AdminWidgetsRoute: typeof AdminWidgetsRoute
   AdminWorkflowBuilderRoute: typeof AdminWorkflowBuilderRoute
   AdminWorkflowsRoute: typeof AdminWorkflowsRouteWithChildren
@@ -6005,6 +6025,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminTunesRoute: AdminTunesRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminValidationRoute: AdminValidationRoute,
+  AdminWebhooksRoute: AdminWebhooksRoute,
   AdminWidgetsRoute: AdminWidgetsRoute,
   AdminWorkflowBuilderRoute: AdminWorkflowBuilderRoute,
   AdminWorkflowsRoute: AdminWorkflowsRouteWithChildren,
