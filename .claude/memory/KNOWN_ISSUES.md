@@ -16,7 +16,7 @@
 
 | ID | Finding | Schwere | Begruendung |
 |----|---------|---------|-------------|
-| N3 | 5 fehlende Test-Dateien (portal, realtime, job-ws, client, auth) | MITTEL | Separate PR; Code via Grep verifiziert |
+| N3 | 3 fehlende Test-Dateien (realtime, job-ws, auth) | MITTEL | Partial DONE (2026-02-22) - portal-api.test.ts + use-chat-websocket.test.ts hinzugefuegt; 3 weitere stehen noch aus |
 | N4 | Centralized Trim (setItem + getAuthToken) | NIEDRIG | Groesseres Refactoring, Defense-in-Depth funktioniert |
 | ~~T1~~ | ~~`refreshToken()` Return ausserhalb if-Block~~ | ~~MITTEL~~ | DONE (2026-02-22) - Return in if-Block, throw bei Fehler |
 | ~~T2~~ | ~~auth.ts fehlender `\|\| ''` Fallback~~ | ~~NIEDRIG~~ | DONE (2026-02-22) - `\|\| ''` Fallback im if-Block |

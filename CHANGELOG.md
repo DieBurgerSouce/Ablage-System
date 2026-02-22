@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Workers: Prometheus-Metriken fuer gdpr_tasks.py (6 Metriken: gdpr_deletion_requests_pending Gauge, gdpr_deletion_processing_duration_seconds Histogram, gdpr_deletion_completed_total/gdpr_deletion_errors_total Counter mit source-Label, gdpr_breach_notifications_total Counter mit type-Label, gdpr_compliance_score Gauge)
+- Workers: Prometheus-Metriken fuer retention_enforcement_tasks.py (7 Metriken: scanned/marked/deleted/errors Counter mit Labels, scan_duration_seconds Histogram, documents_by_category/pending_reviews Gauge)
+- Infrastructure: Neues Grafana-Dashboard infrastructure/grafana/dashboards/ablage-retention-enforcement.json fuer Retention-Enforcement-Monitoring
+- Tests: frontend/src/features/chat/__tests__/use-chat-websocket.test.ts - Tests fuer Chat-WebSocket-Hook
+- Tests: frontend/src/features/portal/__tests__/portal-api.test.ts - Tests fuer Portal-API
 - Core: ConflictError (E409) und ServiceUnavailableError (E503) Exception-Klassen mit ERROR_CODE_REGISTRY-Eintraegen
 - Core: ConflictError und ServiceUnavailableError in EXCEPTION_STATUS_CODES Handler registriert (409/503)
 
