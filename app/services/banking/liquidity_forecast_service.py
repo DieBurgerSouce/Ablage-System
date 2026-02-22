@@ -226,18 +226,18 @@ class LiquidityForecastService:
 
         # 2. Rolling Forecasts erstellen
         forecast_30 = await self._create_rolling_forecast(
-            db, company_id, bank_account_id, 30, starting_balance, company_id
+            db, company_id, bank_account_id, 30, starting_balance
         )
         forecast_60 = await self._create_rolling_forecast(
-            db, company_id, bank_account_id, 60, starting_balance, company_id
+            db, company_id, bank_account_id, 60, starting_balance
         )
         forecast_90 = await self._create_rolling_forecast(
-            db, company_id, bank_account_id, 90, starting_balance, company_id
+            db, company_id, bank_account_id, 90, starting_balance
         )
 
         # 3. Anomalien erkennen
         anomalies = await self._detect_payment_anomalies(
-            db, company_id, bank_account_id, company_id
+            db, company_id, bank_account_id
         )
 
         # 4. Waterfall-Daten erstellen
@@ -462,7 +462,6 @@ class LiquidityForecastService:
         bank_account_id: Optional[UUID],
         period_days: int,
         starting_balance: Decimal,
-        company_id: Optional[UUID],
     ) -> RollingForecast:
         """Erstelle Rolling-Window Forecast."""
         today = date.today()

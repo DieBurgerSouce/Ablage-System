@@ -21,7 +21,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
-from app.db.models import WebhookSubscription, WebhookDelivery, User
+from app.db.models import WebhookSubscription, WebhookSubscriptionDelivery, User
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.core.webhook_signature import (
     generate_signature,
@@ -460,7 +460,7 @@ class WebhookDispatcher:
                 event_type=payload["event_type"]
             )
             # Erstelle Delivery-Record mit SSRF_BLOCKED Status
-            delivery = WebhookDelivery(
+            delivery = WebhookSubscriptionDelivery(
                 subscription_id=subscription.id,
                 event_id=payload["event_id"],
                 event_type=payload["event_type"],
@@ -482,7 +482,7 @@ class WebhookDispatcher:
                 event_type=payload["event_type"]
             )
             # Erstelle Delivery-Record mit CIRCUIT_OPEN Status
-            delivery = WebhookDelivery(
+            delivery = WebhookSubscriptionDelivery(
                 subscription_id=subscription.id,
                 event_id=payload["event_id"],
                 event_type=payload["event_type"],
@@ -501,7 +501,7 @@ class WebhookDispatcher:
             return False
 
         # Erstelle Delivery-Record
-        delivery = WebhookDelivery(
+        delivery = WebhookSubscriptionDelivery(
             subscription_id=subscription.id,
             event_id=payload["event_id"],
             event_type=payload["event_type"],
