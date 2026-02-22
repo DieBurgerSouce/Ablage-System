@@ -295,9 +295,7 @@ async def list_transactions(
             and_(
                 DocumentGroup.group_type == DocumentGroupType.TRANSACTION.value,
                 DocumentGroup.deleted_at.is_(None),
-                # TODO: DocumentGroup has no company_id column.
-                # Multi-tenant isolation requires migration to add company_id to document_groups table.
-                DocumentGroup.owner_id == current_user.id,
+                DocumentGroup.company_id == company.id,
             )
         )
     )
@@ -412,6 +410,7 @@ async def get_transaction(
     transaction_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> TransactionResponse:
     """
     Ruft eine einzelne Transaktion ab.
@@ -425,6 +424,7 @@ async def get_transaction(
                 DocumentGroup.id == transaction_id,
                 DocumentGroup.group_type == DocumentGroupType.TRANSACTION.value,
                 DocumentGroup.deleted_at.is_(None),
+                DocumentGroup.company_id == company.id,
             )
         )
     )
@@ -487,9 +487,10 @@ async def create_transaction(
         group_type=DocumentGroupType.TRANSACTION.value,
         reference_number=generate_transaction_number(),
         business_entity_id=request.entity_id,
+        company_id=company.id,
         detection_details={
             "folder_id": request.folder_id,
-            "created_by": str(current_user.company_id),
+            "created_by": str(current_user.id),
         },
         detection_method="manual",
         detection_confidence=1.0,
@@ -547,6 +548,7 @@ async def update_transaction(
     request: UpdateTransactionRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> TransactionResponse:
     """
     Aktualisiert eine Transaktion (Name, Status).
@@ -557,6 +559,7 @@ async def update_transaction(
                 DocumentGroup.id == transaction_id,
                 DocumentGroup.group_type == DocumentGroupType.TRANSACTION.value,
                 DocumentGroup.deleted_at.is_(None),
+                DocumentGroup.company_id == company.id,
             )
         )
     )
@@ -591,7 +594,7 @@ async def update_transaction(
     )
 
     # Für Response transformieren
-    return await get_transaction(transaction_id, current_user, db)
+    return await get_transaction(transaction_id, current_user, db, company)
 
 
 @router.post("/{transaction_id}/steps/{step_type}", response_model=TransactionResponse)
@@ -601,6 +604,7 @@ async def update_transaction_step(
     request: UpdateStepRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> TransactionResponse:
     """
     Aktualisiert einen Schritt in der Transaktion.
@@ -620,6 +624,7 @@ async def update_transaction_step(
                 DocumentGroup.id == transaction_id,
                 DocumentGroup.group_type == DocumentGroupType.TRANSACTION.value,
                 DocumentGroup.deleted_at.is_(None),
+                DocumentGroup.company_id == company.id,
             )
         )
     )
@@ -687,7 +692,7 @@ async def update_transaction_step(
         user_id=str(current_user.company_id),
     )
 
-    return await get_transaction(transaction_id, current_user, db)
+    return await get_transaction(transaction_id, current_user, db, company)
 
 
 @router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -695,6 +700,7 @@ async def delete_transaction(
     transaction_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ):
     """
     Löscht eine Transaktion (Soft-Delete).
@@ -707,6 +713,7 @@ async def delete_transaction(
                 DocumentGroup.id == transaction_id,
                 DocumentGroup.group_type == DocumentGroupType.TRANSACTION.value,
                 DocumentGroup.deleted_at.is_(None),
+                DocumentGroup.company_id == company.id,
             )
         )
     )

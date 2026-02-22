@@ -752,6 +752,7 @@ class DocumentGroupingService:
         self,
         candidate: GroupCandidate,
         owner_id: UUID,
+        company_id: Optional[UUID] = None,
         auto_confirm: bool = False
     ) -> Optional[UUID]:
         """
@@ -760,6 +761,7 @@ class DocumentGroupingService:
         Args:
             candidate: GroupCandidate
             owner_id: Owner-ID
+            company_id: Company-ID fuer Multi-Tenant Isolation
             auto_confirm: Automatisch bestätigen wenn Konfidenz >= 99%
 
         Returns:
@@ -790,6 +792,7 @@ class DocumentGroupingService:
             needs_review=candidate.needs_review and not user_confirmed,
             user_confirmed=user_confirmed,
             owner_id=owner_id,
+            company_id=company_id,
         )
 
         self.db.add(group)
@@ -822,17 +825,19 @@ class DocumentGroupingService:
         self,
         group_id: UUID,
         user_id: UUID,
-        owner_id: UUID,
+        company_id: Optional[UUID] = None,
+        owner_id: Optional[UUID] = None,
     ) -> bool:
         """
         Bestätigt eine Gruppe manuell.
 
-        SECURITY: owner_id ist REQUIRED für Multi-Tenant Isolation.
+        SECURITY: company_id ist REQUIRED für Multi-Tenant Isolation.
 
         Args:
             group_id: Gruppen-ID
             user_id: User-ID der bestätigt
-            owner_id: Owner-ID (REQUIRED für Multi-Tenant)
+            company_id: Company-ID (REQUIRED für Multi-Tenant)
+            owner_id: Deprecated, use company_id
 
         Returns:
             True wenn erfolgreich
@@ -842,12 +847,18 @@ class DocumentGroupingService:
 
         from app.db.models import DocumentGroup
 
-        # SECURITY: owner_id Filter für Multi-Tenant Isolation
+        # SECURITY: company_id Filter für Multi-Tenant Isolation
+        tenant_id = company_id or owner_id
+        if company_id:
+            filter_clause = DocumentGroup.company_id == company_id
+        else:
+            filter_clause = DocumentGroup.owner_id == owner_id
+
         result = await self.db.execute(
             select(DocumentGroup).where(
                 and_(
                     DocumentGroup.id == group_id,
-                    DocumentGroup.owner_id == owner_id,
+                    filter_clause,
                 )
             )
         )
@@ -857,8 +868,8 @@ class DocumentGroupingService:
             logger.warning(
                 "confirm_group_failed",
                 group_id=str(group_id),
-                owner_id=str(owner_id),
-                reason="not_found_or_wrong_owner",
+                tenant_id=str(tenant_id),
+                reason="not_found_or_wrong_tenant",
             )
             return False
 
@@ -882,18 +893,20 @@ class DocumentGroupingService:
         group_id: UUID,
         user_id: UUID,
         new_groups: List[List[UUID]],
-        owner_id: UUID,
+        company_id: Optional[UUID] = None,
+        owner_id: Optional[UUID] = None,
     ) -> List[UUID]:
         """
         Teilt eine Gruppe in mehrere neue Gruppen.
 
-        SECURITY: owner_id ist REQUIRED für Multi-Tenant Isolation.
+        SECURITY: company_id ist REQUIRED für Multi-Tenant Isolation.
 
         Args:
             group_id: Urspruengliche Gruppen-ID
             user_id: User-ID
             new_groups: Liste von Dokument-ID-Listen für neue Gruppen
-            owner_id: Owner-ID (REQUIRED für Multi-Tenant)
+            company_id: Company-ID (REQUIRED für Multi-Tenant)
+            owner_id: Deprecated, use company_id
 
         Returns:
             Liste der neuen Gruppen-IDs
@@ -903,12 +916,18 @@ class DocumentGroupingService:
 
         from app.db.models import DocumentGroup, Document
 
-        # Alte Gruppe laden - SECURITY: owner_id Filter für Multi-Tenant Isolation
+        # Alte Gruppe laden - SECURITY: company_id Filter für Multi-Tenant Isolation
+        tenant_id = company_id or owner_id
+        if company_id:
+            filter_clause = DocumentGroup.company_id == company_id
+        else:
+            filter_clause = DocumentGroup.owner_id == owner_id
+
         result = await self.db.execute(
             select(DocumentGroup).where(
                 and_(
                     DocumentGroup.id == group_id,
-                    DocumentGroup.owner_id == owner_id,
+                    filter_clause,
                 )
             )
         )
@@ -918,8 +937,8 @@ class DocumentGroupingService:
             logger.warning(
                 "split_group_failed",
                 group_id=str(group_id),
-                owner_id=str(owner_id),
-                reason="not_found_or_wrong_owner",
+                tenant_id=str(tenant_id),
+                reason="not_found_or_wrong_tenant",
             )
             return []
 
@@ -943,6 +962,7 @@ class DocumentGroupingService:
                 confirmed_by_id=user_id,
                 confirmation_date=utc_now(),
                 owner_id=old_group.owner_id,
+                company_id=old_group.company_id,
             )
 
             self.db.add(new_group)
@@ -981,16 +1001,18 @@ class DocumentGroupingService:
 
     async def get_review_queue(
         self,
-        owner_id: UUID,
+        company_id: Optional[UUID] = None,
+        owner_id: Optional[UUID] = None,
         limit: int = 50
     ) -> List[Any]:
         """
         Gibt Gruppen zurück die auf Überprüfung warten.
 
-        SECURITY: owner_id ist REQUIRED für Multi-Tenant Isolation.
+        SECURITY: company_id ist REQUIRED für Multi-Tenant Isolation.
 
         Args:
-            owner_id: Owner-ID (REQUIRED für Multi-Tenant)
+            company_id: Company-ID (REQUIRED für Multi-Tenant)
+            owner_id: Deprecated, use company_id
             limit: Maximale Anzahl
 
         Returns:
@@ -1001,12 +1023,17 @@ class DocumentGroupingService:
 
         from app.db.models import DocumentGroup
 
-        # SECURITY: IMMER nach owner_id filtern für Multi-Tenant Isolation
+        # SECURITY: IMMER nach company_id filtern für Multi-Tenant Isolation
+        if company_id:
+            tenant_filter = DocumentGroup.company_id == company_id
+        else:
+            tenant_filter = DocumentGroup.owner_id == owner_id
+
         query = select(DocumentGroup).where(
             and_(
                 DocumentGroup.needs_review == True,
                 DocumentGroup.deleted_at.is_(None),
-                DocumentGroup.owner_id == owner_id,
+                tenant_filter,
             )
         )
 

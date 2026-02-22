@@ -23,7 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
 from sqlalchemy.orm import selectinload
 
-from app.db.models import User, DocumentGroup, Document, DocumentRelationship
+from app.db.models import User, DocumentGroup, Document, DocumentRelationship, Company
 from app.db.schemas import (
     DocumentGroupCreate,
     DocumentGroupUpdate,
@@ -41,6 +41,7 @@ from app.db.schemas import (
     SortOrder,
 )
 from app.api.dependencies import get_db, get_current_active_user
+from app.middleware.company_context import require_company
 from app.services.document_grouping_service import DocumentGroupingService
 
 
@@ -82,6 +83,7 @@ async def list_groups(
     sort_order: SortOrder = Query(SortOrder.DESC, description="Sortierrichtung"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> DocumentGroupListResponse:
     """
     Listet alle Dokumentgruppen auf.
@@ -97,7 +99,7 @@ async def list_groups(
     """
     query = select(DocumentGroup).where(
         DocumentGroup.deleted_at.is_(None),
-        DocumentGroup.owner_id == current_user.id
+        DocumentGroup.company_id == company.id
     )
 
     # Filter
@@ -165,6 +167,7 @@ async def get_next_transaction_number(
     entity: str = Query(..., min_length=1, max_length=200, description="Entity-Name (z.B. Lieferantenname)"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> dict:
     """
     Ermittelt die nächste laufende Nummer für Vorgaenge eines Entity.
@@ -180,7 +183,7 @@ async def get_next_transaction_number(
     pattern = f"{entity}_%"
     query = select(func.count()).select_from(DocumentGroup).where(
         DocumentGroup.name.like(pattern),
-        DocumentGroup.owner_id == current_user.id,
+        DocumentGroup.company_id == company.id,
         DocumentGroup.deleted_at.is_(None),
         DocumentGroup.group_type == "transaction"
     )
@@ -214,6 +217,7 @@ async def get_group(
     include_documents: bool = Query(True, description="Dokumente mitladen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> DocumentGroupDetailResponse:
     """
     Ruft eine Dokumentgruppe mit allen Details ab.
@@ -222,7 +226,8 @@ async def get_group(
     """
     query = select(DocumentGroup).where(
         DocumentGroup.id == group_id,
-        DocumentGroup.deleted_at.is_(None)
+        DocumentGroup.deleted_at.is_(None),
+        DocumentGroup.company_id == company.id,
     )
 
     if include_documents:
@@ -235,13 +240,6 @@ async def get_group(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Dokumentgruppe nicht gefunden"
-        )
-
-    # Zugriffsprüfung
-    if group.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Zugriff verweigert"
         )
 
     response = DocumentGroupDetailResponse.model_validate(group)
@@ -276,6 +274,7 @@ async def create_group(
     data: DocumentGroupCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> DocumentGroupResponse:
     """
     Erstellt eine neue Dokumentgruppe manuell.
@@ -327,6 +326,7 @@ async def create_group(
         user_confirmed=True,
         needs_review=False,
         owner_id=current_user.id,
+        company_id=company.id,
         confirmed_by_id=current_user.id,
         confirmation_date=utc_now(),
     )
@@ -371,6 +371,7 @@ async def update_group(
     data: DocumentGroupUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> DocumentGroupResponse:
     """
     Aktualisiert Metadaten einer Dokumentgruppe.
@@ -383,7 +384,8 @@ async def update_group(
     result = await db.execute(
         select(DocumentGroup).where(
             DocumentGroup.id == group_id,
-            DocumentGroup.deleted_at.is_(None)
+            DocumentGroup.deleted_at.is_(None),
+            DocumentGroup.company_id == company.id,
         )
     )
     group = result.scalar_one_or_none()
@@ -397,7 +399,7 @@ async def update_group(
     if group.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Zugriff verweigert"
+            detail="Nur der Ersteller kann die Gruppe bearbeiten"
         )
 
     update_data = data.model_dump(exclude_unset=True)
@@ -433,6 +435,7 @@ async def delete_group(
     ),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> MessageResponse:
     """
     Löscht eine Dokumentgruppe (Soft-Delete).
@@ -444,7 +447,8 @@ async def delete_group(
         select(DocumentGroup)
         .where(
             DocumentGroup.id == group_id,
-            DocumentGroup.deleted_at.is_(None)
+            DocumentGroup.deleted_at.is_(None),
+            DocumentGroup.company_id == company.id,
         )
         .options(selectinload(DocumentGroup.documents))
     )
@@ -459,7 +463,7 @@ async def delete_group(
     if group.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Zugriff verweigert"
+            detail="Nur der Ersteller kann die Gruppe loeschen"
         )
 
     # Dokumente aus Gruppe entfernen
@@ -497,6 +501,7 @@ async def detect_groups(
     data: GroupDetectionRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> GroupDetectionResponse:
     """
     Erkennt automatisch zusammengehoerige Dokumente.
@@ -531,6 +536,7 @@ async def detect_groups(
                 group_id = await service.create_group(
                     candidate=candidate,
                     owner_id=current_user.id,
+                    company_id=company.id,
                     auto_confirm=True
                 )
                 if group_id:
@@ -580,6 +586,7 @@ async def confirm_group(
     group_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> DocumentGroupResponse:
     """
     Bestätigt eine Dokumentgruppe manuell.
@@ -588,11 +595,11 @@ async def confirm_group(
     """
     service = DocumentGroupingService(db)
 
-    # SECURITY: owner_id für Multi-Tenant Isolation
+    # SECURITY: company_id für Multi-Tenant Isolation
     success = await service.confirm_group(
         group_id=group_id,
         user_id=current_user.id,
-        owner_id=current_user.id,
+        company_id=company.id,
     )
 
     if not success:
@@ -601,11 +608,11 @@ async def confirm_group(
             detail="Dokumentgruppe nicht gefunden"
         )
 
-    # SECURITY: owner_id Filter für Defense-in-Depth
+    # SECURITY: company_id Filter für Defense-in-Depth
     result = await db.execute(
         select(DocumentGroup).where(
             DocumentGroup.id == group_id,
-            DocumentGroup.owner_id == current_user.id,
+            DocumentGroup.company_id == company.id,
         )
     )
     group = result.scalar_one()
@@ -623,6 +630,7 @@ async def reject_group(
     group_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> MessageResponse:
     """
     Lehnt eine Dokumentgruppe ab und loest sie auf.
@@ -633,7 +641,8 @@ async def reject_group(
         select(DocumentGroup)
         .where(
             DocumentGroup.id == group_id,
-            DocumentGroup.deleted_at.is_(None)
+            DocumentGroup.deleted_at.is_(None),
+            DocumentGroup.company_id == company.id,
         )
         .options(selectinload(DocumentGroup.documents))
     )
@@ -643,12 +652,6 @@ async def reject_group(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Dokumentgruppe nicht gefunden"
-        )
-
-    if group.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Zugriff verweigert"
         )
 
     # Dokumente aus Gruppe entfernen
@@ -687,6 +690,7 @@ async def split_group(
     data: GroupSplitRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ):
     """
     Teilt eine Dokumentgruppe in mehrere neue Gruppen.
@@ -708,7 +712,8 @@ async def split_group(
     result = await db.execute(
         select(DocumentGroup).where(
             DocumentGroup.id == group_id,
-            DocumentGroup.deleted_at.is_(None)
+            DocumentGroup.deleted_at.is_(None),
+            DocumentGroup.company_id == company.id,
         )
     )
     group = result.scalar_one_or_none()
@@ -722,17 +727,17 @@ async def split_group(
     if group.owner_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Zugriff verweigert"
+            detail="Nur der Ersteller kann die Gruppe teilen"
         )
 
     service = DocumentGroupingService(db)
 
-    # SECURITY: owner_id für Multi-Tenant Isolation (Defense-in-Depth)
+    # SECURITY: company_id für Multi-Tenant Isolation (Defense-in-Depth)
     new_group_ids = await service.split_group(
         group_id=group_id,
         user_id=current_user.id,
         new_groups=data.new_groups,
-        owner_id=current_user.id,
+        company_id=company.id,
     )
 
     return {
@@ -751,6 +756,7 @@ async def merge_groups(
     data: GroupMergeRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> DocumentGroupResponse:
     """
     Führt mehrere Dokumentgruppen zu einer zusammen.
@@ -763,7 +769,8 @@ async def merge_groups(
         select(DocumentGroup)
         .where(
             DocumentGroup.id == data.target_id,
-            DocumentGroup.deleted_at.is_(None)
+            DocumentGroup.deleted_at.is_(None),
+            DocumentGroup.company_id == company.id,
         )
         .options(selectinload(DocumentGroup.documents))
     )
@@ -773,12 +780,6 @@ async def merge_groups(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Ziel-Gruppe nicht gefunden"
-        )
-
-    if target.owner_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Zugriff verweigert"
         )
 
     merged_count = 0
@@ -792,13 +793,14 @@ async def merge_groups(
             select(DocumentGroup)
             .where(
                 DocumentGroup.id == source_id,
-                DocumentGroup.deleted_at.is_(None)
+                DocumentGroup.deleted_at.is_(None),
+                DocumentGroup.company_id == company.id,
             )
             .options(selectinload(DocumentGroup.documents))
         )
         source = source_result.scalar_one_or_none()
 
-        if not source or source.owner_id != current_user.id:
+        if not source:
             continue
 
         # Dokumente umhaengen
@@ -846,6 +848,7 @@ async def get_review_queue(
     limit: int = Query(50, ge=1, le=100, description="Maximale Anzahl"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ) -> ValidationQueueResponse:
     """
     Gibt Dokumentgruppen zurück die auf Überprüfung warten.
@@ -859,7 +862,7 @@ async def get_review_queue(
     service = DocumentGroupingService(db)
 
     groups = await service.get_review_queue(
-        owner_id=current_user.id,
+        company_id=company.id,
         limit=limit
     )
 
@@ -889,6 +892,7 @@ async def get_review_queue(
 async def get_group_stats(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company: Company = Depends(require_company),
 ):
     """
     Gibt Statistiken über Dokumentgruppen zurück.
@@ -901,7 +905,7 @@ async def get_group_stats(
     # Gesamt
     total_query = select(func.count()).select_from(
         select(DocumentGroup).where(
-            DocumentGroup.owner_id == current_user.id,
+            DocumentGroup.company_id == company.id,
             DocumentGroup.deleted_at.is_(None)
         ).subquery()
     )
@@ -911,7 +915,7 @@ async def get_group_stats(
     type_query = (
         select(DocumentGroup.group_type, func.count())
         .where(
-            DocumentGroup.owner_id == current_user.id,
+            DocumentGroup.company_id == company.id,
             DocumentGroup.deleted_at.is_(None)
         )
         .group_by(DocumentGroup.group_type)
@@ -922,7 +926,7 @@ async def get_group_stats(
     # Bestätigt vs nicht bestätigt
     confirmed_query = select(func.count()).select_from(
         select(DocumentGroup).where(
-            DocumentGroup.owner_id == current_user.id,
+            DocumentGroup.company_id == company.id,
             DocumentGroup.deleted_at.is_(None),
             DocumentGroup.user_confirmed == True
         ).subquery()
@@ -932,7 +936,7 @@ async def get_group_stats(
     # In Queue
     queue_query = select(func.count()).select_from(
         select(DocumentGroup).where(
-            DocumentGroup.owner_id == current_user.id,
+            DocumentGroup.company_id == company.id,
             DocumentGroup.deleted_at.is_(None),
             DocumentGroup.needs_review == True
         ).subquery()
@@ -943,7 +947,7 @@ async def get_group_stats(
     avg_conf_query = (
         select(func.avg(DocumentGroup.detection_confidence))
         .where(
-            DocumentGroup.owner_id == current_user.id,
+            DocumentGroup.company_id == company.id,
             DocumentGroup.deleted_at.is_(None)
         )
     )
