@@ -10,6 +10,9 @@
 - **feat(frontend)**: DocumentCustomFields-Komponente in SplitDocumentViewer (Cockpit-Tab) integriert
 - **feat(frontend)**: TanStack Router routeTree.gen.ts mit AdminCustomFieldsRoute aktualisiert
 - **test**: 2 neue Unit-Tests fuer BarcodesPipelineService und DocumentSummaryService
+- **fix(security)**: Migration 251 - company_id zu DocumentGroup (Multi-Tenant Isolation, Backfill via user_companies, FK + Indexes)
+- **fix(api)**: DocumentGroup 11 Endpoints + Transactions 6 Endpoints auf company_id Isolation umgestellt (groups.py, transactions.py, document_grouping_service.py)
+- **fix(frontend)**: auth.ts refreshToken() Return/Fallback Bug behoben (T1+T2 aus Known Issues)
 
 ## 2026-02-21
 - **feat(db)**: 13 neue Alembic-Migrationen (238-250): CDC, Partitioning, Optimistic Locking, Encryption, Anomalie, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Event Platform, Feature Toggle History

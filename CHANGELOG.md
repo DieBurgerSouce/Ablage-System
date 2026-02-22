@@ -41,6 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - API: .env.example - neue Environment-Variablen dokumentiert
+- Security: Migration 251 - company_id zu document_groups hinzugefuegt (Multi-Tenant Isolation statt User-Isolation). Backfill via user_companies, NOT NULL Constraint, FK zu companies, Composite Index (company_id, group_type)
+- API: DocumentGroup 11 Endpoints in groups.py auf company_id Isolation umgestellt (require_company Dependency, owner_id Filter durch company_id Filter ersetzt)
+- API: Transactions 6 Endpoints auf company_id Filter umgestellt (list, get, create, update, update_step, delete)
+- Services: DocumentGroupingService create_group/confirm_group/split_group/get_review_queue migriert auf company_id (Backward-Compatibility via owner_id Fallback)
+- Frontend: auth.ts refreshToken() - Return-Statement in if-Block verschoben, || '' Fallback fuer refresh_token, throw bei fehlendem access_token (Fixes T1 MITTEL + T2 NIEDRIG)
 
 ### Added
 - Services: Zero-Touch End-to-End Pipeline Chain (OCR -> Klassifizierung -> Entity-Linking -> Kontierung -> 3-Way-Matching -> Ablage) mit Confidence-Scoring und Graceful Degradation

@@ -7,7 +7,7 @@
 | Backend | ✅ OK | Running on :8000, 430+ Endpoints, Type-Safe |
 | Frontend | ✅ OK | Nginx :80, Accessibility E2E Tests OK |
 | Celery | ✅ OK | 414 Tasks, 12+ Beat Schedules, GPU for OCR |
-| PostgreSQL | ✅ OK | :5433, 250 Migrations (238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
+| PostgreSQL | ✅ OK | :5433, 251 Migrations (251: DocumentGroup company_id Multi-Tenant Fix; 238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
 | Redis | ✅ OK | :6380, Rate Limiting, Blacklist, L1/L2 Cache |
 | GPU | ✅ OK | RTX 4080 (16GB), shared by backend + worker |
 | Jaeger | ✅ NEW | :16686 UI, :4317 OTLP gRPC, Distributed Tracing |
@@ -87,6 +87,9 @@ Final 3 TODOs resolved:
 
 | Date | Component | Description |
 |------|-----------|-------------|
+| 2026-02-22 | Database | Migration 251: company_id zu document_groups (Multi-Tenant Isolation, Backfill, FK, Indexes) |
+| 2026-02-22 | Backend | DocumentGroup Multi-Tenant Fix: groups.py (11 Endpoints), transactions.py (6 Endpoints), document_grouping_service.py |
+| 2026-02-22 | Frontend | auth.ts refreshToken() Return/Fallback Bug behoben (T1+T2) |
 | 2026-02-21 | Backend | 13 neue API-Router, Document Timeline Service Erweiterung, 9 Satellite-Models, Field-Level Encryption, Document Auto-Summary |
 | 2026-02-21 | Database | Migrationen 238-250: CDC, Partitioning, Optimistic Locking, Encryption, Anomaly Detection, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle |
 | 2026-02-21 | Workers | Outbound Webhook Delivery/Retry/DLQ-Tasks, Partition Maintenance Tasks (ensure/archive/stats/health) |
@@ -114,6 +117,7 @@ Final 3 TODOs resolved:
 
 | Migration | Description |
 |-----------|-------------|
+| 251 | DocumentGroup company_id Multi-Tenant Isolation (company_id NOT NULL, FK companies, Backfill via user_companies, 2 Indexes) |
 | 250 | Feature Toggle History |
 | 249 | Webhook Event Platform (WebhookEndpoint, WebhookDelivery, WebhookEventLog) |
 | 248 | Dashboard Builder (DashboardConfig, DashboardBuilderWidget) |

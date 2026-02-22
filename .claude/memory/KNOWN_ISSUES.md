@@ -20,8 +20,8 @@
 |----|---------|---------|-------------|
 | N3 | 5 fehlende Test-Dateien (portal, realtime, job-ws, client, auth) | MITTEL | Separate PR; Code via Grep verifiziert |
 | N4 | Centralized Trim (setItem + getAuthToken) | NIEDRIG | Groesseres Refactoring, Defense-in-Depth funktioniert |
-| T1 | `refreshToken()` (auth.ts:185) Return `string \| undefined` vs `Promise<string>` - Return auf Z.194 liegt ausserhalb des if-Blocks | MITTEL | Type-Safety Fix, pre-existing, try-catch faengt Runtime-Fehler |
-| T2 | auth.ts:192 fehlender `\|\| ''` Fallback fuer `refresh_token` (inkonsistent mit Z.81 und Z.117) | NIEDRIG | sessionStorage Coercion, pre-existing |
+| ~~T1~~ | ~~`refreshToken()` Return ausserhalb if-Block~~ | ~~MITTEL~~ | DONE (2026-02-22) - Return in if-Block, throw bei Fehler |
+| ~~T2~~ | ~~auth.ts fehlender `\|\| ''` Fallback~~ | ~~NIEDRIG~~ | DONE (2026-02-22) - `\|\| ''` Fallback im if-Block |
 | F1-F3 | WebSocket-Auth Backend-Analyse | NIEDRIG | Backend-Scope |
 | R6 | Whitespace-Varianten (non-.trim()) | NIEDRIG | `.trim()` deckt Standard-Whitespace ab |
 | R7 | `isAuthenticated()` ohne trim | NIEDRIG | Nur UI-Logik |
@@ -94,3 +94,5 @@
 | 2026-02-13 | **HIGH** RAG Chat API falscher Token-Key + Storage | `features/rag/api/chat-api.ts:22` nutzte `localStorage.getItem('access_token')` | Fixed: `sessionStorage.getItem('auth_token')` |
 | 2026-02-13 | **LOW** Lib Chat API falscher Token-Storage | `lib/api/chat-api.ts:319` nutzte `localStorage.getItem('auth_token')` - richtiger Key, falscher Storage | Fixed: `sessionStorage.getItem('auth_token')` |
 | 2026-02-14 | **MEDIUM** Token-Storage Tests waren wertlos | 5 Test-Dateien testeten nur Browser-API (`sessionStorage.setItem/getItem`) ohne Source-Import - kein Regression Guard | Fixed: 23 echte Integrationstests mit Source-Imports, fetch/WebSocket-Mocks, Bearer-Header-Verifikation |
+| 2026-02-22 | **MEDIUM** auth.ts refreshToken() Return/Fallback Bug (T1+T2) | Return ausserhalb if-Block konnte undefined zurueckgeben; fehlender `\|\| ''` Fallback speicherte "undefined" als refresh_token | Fixed: Return in if-Block verschoben, `\|\| ''` Fallback, throw bei fehlendem Token |
+| 2026-02-22 | **CRITICAL** DocumentGroup Multi-Tenant Sicherheitsluecke | DocumentGroup hatte kein `company_id` - nur `owner_id` (User-Isolation statt Company-Isolation). Cross-Company Datenleck: User sah nur eigene Groups, nicht die der Kollegen; Users anderer Companies konnten theoretisch Groups sehen | Fixed: Migration 251 (company_id + Backfill + NOT NULL + FK + Indexes), Model, 11 API-Endpoints in groups.py + 6 in transactions.py, Service-Methoden (create_group, confirm_group, split_group, get_review_queue) |
