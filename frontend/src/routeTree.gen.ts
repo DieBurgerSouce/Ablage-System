@@ -206,6 +206,7 @@ import { Route as AdminDatevConnectRouteImport } from './app/routes/admin.datev-
 import { Route as AdminDatevRouteImport } from './app/routes/admin.datev'
 import { Route as AdminDataQualityRouteImport } from './app/routes/admin.data-quality'
 import { Route as AdminDailyBriefingRouteImport } from './app/routes/admin.daily-briefing'
+import { Route as AdminCustomFieldsRouteImport } from './app/routes/admin.custom-fields'
 import { Route as AdminCrossTenantRouteImport } from './app/routes/admin.cross-tenant'
 import { Route as AdminCorrectionWorkbenchRouteImport } from './app/routes/admin.correction-workbench'
 import { Route as AdminCalendarSyncRouteImport } from './app/routes/admin.calendar-sync'
@@ -1294,6 +1295,11 @@ const AdminDailyBriefingRoute = AdminDailyBriefingRouteImport.update({
   path: '/daily-briefing',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminCustomFieldsRoute = AdminCustomFieldsRouteImport.update({
+  id: '/custom-fields',
+  path: '/custom-fields',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminCrossTenantRoute = AdminCrossTenantRouteImport.update({
   id: '/cross-tenant',
   path: '/cross-tenant',
@@ -1883,6 +1889,7 @@ export interface FileRoutesByFullPath {
   '/admin/calendar-sync': typeof AdminCalendarSyncRoute
   '/admin/correction-workbench': typeof AdminCorrectionWorkbenchRoute
   '/admin/cross-tenant': typeof AdminCrossTenantRoute
+  '/admin/custom-fields': typeof AdminCustomFieldsRoute
   '/admin/daily-briefing': typeof AdminDailyBriefingRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
   '/admin/datev': typeof AdminDatevRouteWithChildren
@@ -2160,6 +2167,7 @@ export interface FileRoutesByTo {
   '/admin/calendar-sync': typeof AdminCalendarSyncRoute
   '/admin/correction-workbench': typeof AdminCorrectionWorkbenchRoute
   '/admin/cross-tenant': typeof AdminCrossTenantRoute
+  '/admin/custom-fields': typeof AdminCustomFieldsRoute
   '/admin/daily-briefing': typeof AdminDailyBriefingRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
   '/admin/digital-twin': typeof AdminDigitalTwinRoute
@@ -2440,6 +2448,7 @@ export interface FileRoutesById {
   '/admin/calendar-sync': typeof AdminCalendarSyncRoute
   '/admin/correction-workbench': typeof AdminCorrectionWorkbenchRoute
   '/admin/cross-tenant': typeof AdminCrossTenantRoute
+  '/admin/custom-fields': typeof AdminCustomFieldsRoute
   '/admin/daily-briefing': typeof AdminDailyBriefingRoute
   '/admin/data-quality': typeof AdminDataQualityRoute
   '/admin/datev': typeof AdminDatevRouteWithChildren
@@ -2735,6 +2744,7 @@ export interface FileRouteTypes {
     | '/admin/calendar-sync'
     | '/admin/correction-workbench'
     | '/admin/cross-tenant'
+    | '/admin/custom-fields'
     | '/admin/daily-briefing'
     | '/admin/data-quality'
     | '/admin/datev'
@@ -3012,6 +3022,7 @@ export interface FileRouteTypes {
     | '/admin/calendar-sync'
     | '/admin/correction-workbench'
     | '/admin/cross-tenant'
+    | '/admin/custom-fields'
     | '/admin/daily-briefing'
     | '/admin/data-quality'
     | '/admin/digital-twin'
@@ -3291,6 +3302,7 @@ export interface FileRouteTypes {
     | '/admin/calendar-sync'
     | '/admin/correction-workbench'
     | '/admin/cross-tenant'
+    | '/admin/custom-fields'
     | '/admin/daily-briefing'
     | '/admin/data-quality'
     | '/admin/datev'
@@ -4961,6 +4973,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDailyBriefingRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/custom-fields': {
+      id: '/admin/custom-fields'
+      path: '/custom-fields'
+      fullPath: '/admin/custom-fields'
+      preLoaderRoute: typeof AdminCustomFieldsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/cross-tenant': {
       id: '/admin/cross-tenant'
       path: '/cross-tenant'
@@ -5877,6 +5896,7 @@ interface AdminRouteChildren {
   AdminCalendarSyncRoute: typeof AdminCalendarSyncRoute
   AdminCorrectionWorkbenchRoute: typeof AdminCorrectionWorkbenchRoute
   AdminCrossTenantRoute: typeof AdminCrossTenantRoute
+  AdminCustomFieldsRoute: typeof AdminCustomFieldsRoute
   AdminDailyBriefingRoute: typeof AdminDailyBriefingRoute
   AdminDataQualityRoute: typeof AdminDataQualityRoute
   AdminDatevRoute: typeof AdminDatevRouteWithChildren
@@ -5943,6 +5963,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCalendarSyncRoute: AdminCalendarSyncRoute,
   AdminCorrectionWorkbenchRoute: AdminCorrectionWorkbenchRoute,
   AdminCrossTenantRoute: AdminCrossTenantRoute,
+  AdminCustomFieldsRoute: AdminCustomFieldsRoute,
   AdminDailyBriefingRoute: AdminDailyBriefingRoute,
   AdminDataQualityRoute: AdminDataQualityRoute,
   AdminDatevRoute: AdminDatevRouteWithChildren,

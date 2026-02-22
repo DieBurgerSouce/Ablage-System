@@ -16,6 +16,7 @@ import { DocumentTasksPanel } from '@/features/collaboration/components/Document
 import { OCRDiffViewer } from '@/features/ocr-review/components/OCRDiffViewer';
 import { DocumentContextPanel } from './DocumentContextPanel';
 import { DocumentLifecycleTab } from './DocumentLifecycleTab';
+import { DocumentCustomFields } from '@/features/admin/custom-fields';
 import { apiClient } from '@/lib/api/client';
 import { AnnotationLayer } from './AnnotationLayer';
 import { ViewerErrorBoundary } from '@/components/errors';
@@ -437,6 +438,7 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                     </div>
                                     <TabsContent value="cockpit" className="flex-1 overflow-auto mt-0">
                                         <InlineMetadataEditor documentId={documentId} />
+                                        <DocumentCustomFields documentId={documentId} />
                                     </TabsContent>
                                     <TabsContent value="extracted" className="flex-1 p-4 overflow-auto mt-0">
                                         <ExtractedDataPanel documentId={documentId} />

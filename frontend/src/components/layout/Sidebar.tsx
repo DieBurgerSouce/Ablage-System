@@ -435,6 +435,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/annotation-tasks" icon={Pen} label="Annotations-Aufgaben" onNavigate={onNavigate} />
                                 )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/custom-fields" icon={Sliders} label="Eigene Felder" onNavigate={onNavigate} />
+                                )}
                             </div>
                         )}
                     </div>
