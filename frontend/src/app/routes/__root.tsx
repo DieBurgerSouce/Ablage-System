@@ -9,6 +9,8 @@ import { Toaster } from '@/components/ui/toaster'
 import { OfflineIndicator } from '@/components/OfflineIndicator'
 import { OfflineSyncStatusBar } from '@/components/layout/OfflineSyncStatusBar'
 import { WelcomeModal } from '@/components/onboarding/WelcomeModal'
+// P4.1: Enhanced Onboarding Wizard (5-step first-login experience)
+import { OnboardingWizard } from '@/features/onboarding'
 // Feature 12: Guided Product Tours
 import { TourProvider } from '@/features/product-tour'
 import { GlobalShortcutsProvider } from '@/components/GlobalShortcutsProvider'
@@ -97,6 +99,7 @@ function RootComponent() {
                             </AnimatePresence>
                             {import.meta.env.DEV && <TanStackRouterDevtools />}
                         </AppLayout>
+                        <OnboardingWizard />
                         <WelcomeModal />
                         <SessionExpiredModal />
                         <Toaster />

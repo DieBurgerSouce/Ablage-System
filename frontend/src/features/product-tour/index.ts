@@ -24,5 +24,26 @@ export { NewBadge, NewDot, useFeatureDiscovery, NEW_FEATURES } from './component
 export { UserModeToggle } from './components/UserModeToggle'
 export { HelpTooltip } from './components/HelpTooltip'
 
+// Tour Definitions (modular)
+export {
+  documentUploadTour,
+  ocrResultsTour,
+  searchTour,
+  invoiceWorkflowTour,
+} from './tours'
+
+// Getting Started Config
+export {
+  GETTING_STARTED_ITEMS,
+  markGettingStartedComplete,
+  isGettingStartedComplete,
+  getGettingStartedProgress,
+} from './getting-started-config'
+export type { GettingStartedItem } from './getting-started-config'
+
+// Help Tooltip Definitions
+export { HELP_TOOLTIPS } from './help-tooltips'
+export type { HelpTooltipKey } from './help-tooltips'
+
 // Types & Data
 export * from './types'
