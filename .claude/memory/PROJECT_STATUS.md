@@ -7,7 +7,7 @@
 | Backend | ✅ OK | Running on :8000, 430+ Endpoints, Type-Safe |
 | Frontend | ✅ OK | Nginx :80, Accessibility E2E Tests OK |
 | Celery | ✅ OK | 414 Tasks, 12+ Beat Schedules, GPU for OCR |
-| PostgreSQL | ✅ OK | :5433, 251 Migrations (251: DocumentGroup company_id Multi-Tenant Fix; 238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
+| PostgreSQL | ✅ OK | :5433, 252 Migrations (252: GoBD Audit-Felder PaymentBatch+DunningRecord; 251: DocumentGroup company_id Multi-Tenant Fix; 238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
 | Redis | ✅ OK | :6380, Rate Limiting, Blacklist, L1/L2 Cache |
 | GPU | ✅ OK | RTX 4080 (16GB), shared by backend + worker |
 | Jaeger | ✅ NEW | :16686 UI, :4317 OTLP gRPC, Distributed Tracing |
@@ -87,6 +87,10 @@ Final 3 TODOs resolved:
 
 | Date | Component | Description |
 |------|-----------|-------------|
+| 2026-02-22 | Database | Migration 252: GoBD Audit-Felder created_by_id + updated_by_id fuer payment_batches und dunning_records |
+| 2026-02-22 | Backend | DunningService GoBD-Audit Integration: user_id Parameter fuer Nachvollziehbarkeit in create/escalate/close |
+| 2026-02-22 | API | Visual Diff - POST /compare/documents Endpunkt fuer zeilenweisen Text-Diff per Dokument-ID mit Multi-Tenant-Isolation |
+| 2026-02-22 | Tests | Webhook Unit-Tests: test_inbound_webhook_service.py + test_webhooks_receive_api.py vollstaendig neu erstellt |
 | 2026-02-22 | Backend | DunningService + ReconciliationService Multi-Tenant Fix: owner_id -> company_id in Banking-Services (11+8 Stellen) |
 | 2026-02-22 | Security | CWE-113 CRLF Prevention: X-Company-ID Header sanitisiert in personal-api.ts + client.ts |
 | 2026-02-22 | Frontend | auth.ts Token-Refresh Mutex (RC1 Fix) + refreshToken() Return/Fallback Bug (T1+T2) |
@@ -119,6 +123,7 @@ Final 3 TODOs resolved:
 
 | Migration | Description |
 |-----------|-------------|
+| 252 | GoBD Audit-Felder (created_by_id, updated_by_id) fuer payment_batches und dunning_records (FK users, SET NULL) |
 | 251 | DocumentGroup company_id Multi-Tenant Isolation (company_id NOT NULL, FK companies, Backfill via user_companies, 2 Indexes) |
 | 250 | Feature Toggle History |
 | 249 | Webhook Event Platform (WebhookEndpoint, WebhookDelivery, WebhookEventLog) |

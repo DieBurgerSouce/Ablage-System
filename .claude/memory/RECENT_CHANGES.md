@@ -9,6 +9,10 @@
 - **fix(security)**: DunningService + ReconciliationService - owner_id -> company_id Multi-Tenant Fix (Banking-Services)
 - **fix(security)**: CWE-113 CRLF-Sanitisierung in HTTP-Headern (X-Company-ID in personal-api.ts + client.ts)
 - **fix(frontend)**: auth.ts Token-Refresh Mutex (RC1) + refreshToken() Return/Fallback Bug (T1+T2) behoben
+- **feat(db)**: Migration 252 - GoBD Audit-Felder (created_by_id, updated_by_id) fuer PaymentBatch und DunningRecord
+- **feat(services)**: DunningService GoBD-Audit Integration - user_id Parameter fuer create/escalate/close
+- **feat(api)**: Visual Diff - neuer POST /compare/documents Endpunkt fuer Text-Diff per Dokument-ID
+- **test**: Webhook Unit-Tests (InboundWebhookService + API) vollstaendig neu erstellt
 
 ## 2026-02-21
 - **feat(db)**: 13 neue Alembic-Migrationen (238-250): CDC, Partitioning, Optimistic Locking, Encryption, Anomalie, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Event Platform, Feature Toggle History

@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Database: Migration 252 - GoBD Audit-Felder (created_by_id, updated_by_id) fuer payment_batches und dunning_records mit FK auf users (SET NULL)
+- Services: DunningService - user_id Parameter fuer GoBD-Audit in create_dunning_record(), escalate_dunning(), close_dunning() und _map_to_response()
+- API: Visual Diff - POST /api/v1/visual-diff/compare/documents Endpunkt fuer zeilenweisen Text-Diff per Dokument-ID mit Multi-Tenant-Isolation
+- Tests: test_inbound_webhook_service.py (InboundWebhookService vollstaendig mit Mocks) und test_webhooks_receive_api.py (3 API-Endpunkte)
 - Database: models.py refactored - Basistypen (Base, CrossDBJSON, CrossDBTSVector, CrossDBVector) in models_base.py ausgelagert (Circular Import Prevention)
 - Database: 20 neue Satellite-Model-Dateien fuer alle Domaenen (ai_ml, auth_access, banking, cash_company, datev, dropship_tax, entity_business, erp_import, gdpr_compliance, hr, integration, misc, notification, ocr_validation, privat_enterprise, privat_space, rag, report, surya_training, template_knowledge, workflow)
 - Frontend: Custom Fields Admin-Feature (/admin/custom-fields Route, CRUD-UI, API-Layer, TypeScript-Typen)
