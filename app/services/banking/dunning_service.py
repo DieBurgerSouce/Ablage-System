@@ -153,7 +153,7 @@ class DunningService:
         # Offene Rechnungen mit Fälligkeitsdatum
         query = select(Document).where(
             and_(
-                Document.owner_id == company_id,
+                Document.company_id == company_id,
                 Document.document_type == "invoice",
                 Document.deleted_at.is_(None),
             )
@@ -278,7 +278,7 @@ class DunningService:
             select(Document).where(
                 and_(
                     Document.id == document_id,
-                    Document.owner_id == company_id,
+                    Document.company_id == company_id,
                 )
             )
         )
@@ -657,7 +657,7 @@ class DunningService:
         """
         actions = []
         overdue = await self.get_overdue_invoices(
-            db, user_id, include_in_progress=True
+            db, company_id, include_in_progress=True
         )
 
         for candidate in overdue:
@@ -675,7 +675,7 @@ class DunningService:
                 try:
                     if candidate.recommended_action == DunningAction.FIRST_DUNNING:
                         await self.create_dunning(
-                            db, user_id, candidate.document_id,
+                            db, company_id, candidate.document_id,
                             DunningLevel.FIRST_REMINDER
                         )
                         action_info["executed"] = True
@@ -689,7 +689,7 @@ class DunningService:
                         )
                         if dunning:
                             await self.escalate_dunning(
-                                db, user_id, dunning.id
+                                db, company_id, dunning.id
                             )
                             action_info["executed"] = True
                 except Exception as e:
@@ -699,7 +699,7 @@ class DunningService:
 
         logger.info(
             "automatic_dunning_processed",
-            user_id=str(user_id),
+            company_id=str(company_id),
             dry_run=dry_run,
             actions_count=len(actions),
             executed_count=sum(1 for a in actions if a.get("executed")),
@@ -963,7 +963,7 @@ class DunningService:
             Tuple (Liste von History-Einträgen, Gesamtanzahl)
         """
         # Zugriffsprüfung
-        dunning = await self._get_dunning_by_id(db, user_id, dunning_record_id)
+        dunning = await self._get_dunning_by_id(db, company_id, dunning_record_id)
         if not dunning:
             raise ValueError("Mahnvorgang nicht gefunden")
 
@@ -1039,7 +1039,7 @@ class DunningService:
             db=db,
             dunning_record_id=dunning.id,
             action_type=MahnungHistoryAction.MAHNSTOPP_SET,
-            performed_by_id=user_id,
+            performed_by_id=company_id,
             notes=f"Mahnstopp: {reason}",
             outcome="success",
             metadata={"until_date": until_date.isoformat() if until_date else None},
@@ -1092,7 +1092,7 @@ class DunningService:
             db=db,
             dunning_record_id=dunning.id,
             action_type=MahnungHistoryAction.MAHNSTOPP_LIFTED,
-            performed_by_id=user_id,
+            performed_by_id=company_id,
             notes=notes or f"Mahnstopp aufgehoben (vorher: {old_reason})",
             outcome="success",
         )
@@ -1145,7 +1145,7 @@ class DunningService:
             db=db,
             dunning_record_id=dunning.id,
             action_type=MahnungHistoryAction.B2B_PAUSCHALE_CLAIMED,
-            performed_by_id=user_id,
+            performed_by_id=company_id,
             notes=f"B2B-Pauschale EUR {B2B_PAUSCHALE} nach §288 Abs. 5 BGB",
             outcome="success",
             metadata={"pauschale_amount": float(B2B_PAUSCHALE)},
@@ -1282,7 +1282,7 @@ class DunningService:
 
         for dunning_id in dunning_ids:
             try:
-                result = await self.escalate_dunning(db, user_id, dunning_id, notes)
+                result = await self.escalate_dunning(db, company_id, dunning_id, notes)
                 successful.append(str(dunning_id))
 
                 # Audit-Log

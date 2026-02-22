@@ -107,34 +107,34 @@ class ReconciliationService:
         # Strategie 1: IBAN + Betrag exakt
         if transaction.counterparty_iban:
             iban_matches = await self._match_by_iban_amount(
-                db, user_id, transaction, transaction.counterparty_iban
+                db, company_id, transaction, transaction.counterparty_iban
             )
             candidates.extend(iban_matches)
 
         # Strategie 2: Rechnungsnummer + Betrag
         if parsed_ref.invoice_numbers:
             invoice_matches = await self._match_by_invoice_number(
-                db, user_id, transaction, parsed_ref.invoice_numbers
+                db, company_id, transaction, parsed_ref.invoice_numbers
             )
             candidates.extend(invoice_matches)
 
         # Strategie 3: Kundennummer + Betrag + Datum
         if parsed_ref.customer_numbers:
             customer_matches = await self._match_by_customer_number(
-                db, user_id, transaction, parsed_ref.customer_numbers
+                db, company_id, transaction, parsed_ref.customer_numbers
             )
             candidates.extend(customer_matches)
 
         # Strategie 4: Betrag + Datum-Naehe
         amount_date_matches = await self._match_by_amount_date(
-            db, user_id, transaction
+            db, company_id, transaction
         )
         candidates.extend(amount_date_matches)
 
         # Strategie 5: Fuzzy Name-Matching
         if transaction.counterparty_name:
             fuzzy_matches = await self._match_by_fuzzy_name(
-                db, user_id, transaction
+                db, company_id, transaction
             )
             candidates.extend(fuzzy_matches)
 
@@ -265,7 +265,7 @@ class ReconciliationService:
         for tx in transactions:
             try:
                 match_result = await self.auto_reconcile_transaction(
-                    db, user_id, tx.id
+                    db, company_id, tx.id
                 )
 
                 if match_result:
@@ -336,7 +336,7 @@ class ReconciliationService:
         doc_query = select(Document).where(
             and_(
                 Document.id == document_id,
-                Document.owner_id == company_id,
+                Document.company_id == company_id,
                 Document.deleted_at.is_(None),
             )
         )
@@ -473,7 +473,7 @@ class ReconciliationService:
             doc_query = select(Document).where(
                 and_(
                     Document.id == doc_id,
-                    Document.owner_id == company_id,
+                    Document.company_id == company_id,
                     Document.deleted_at.is_(None),
                 )
             )
@@ -535,7 +535,7 @@ class ReconciliationService:
         # Suche Dokumente mit passender IBAN
         query = select(Document).where(
             and_(
-                Document.owner_id == company_id,
+                Document.company_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -600,7 +600,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.owner_id == company_id,
+                Document.company_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -670,7 +670,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.owner_id == company_id,
+                Document.company_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -752,7 +752,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.owner_id == company_id,
+                Document.company_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
@@ -826,7 +826,7 @@ class ReconciliationService:
 
         query = select(Document).where(
             and_(
-                Document.owner_id == company_id,
+                Document.company_id == company_id,
                 Document.deleted_at.is_(None),
                 Document.document_type == "invoice",
             )
