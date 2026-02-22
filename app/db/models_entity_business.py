@@ -832,12 +832,20 @@ class DocumentGroup(Base):
 
     # Audit
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=True)
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+        comment="Mandanten-Zuordnung fuer Multi-Company Isolation"
+    )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     owner = relationship("User", foreign_keys=[owner_id], backref="document_groups")
+    company = relationship("Company", backref="document_groups")
     confirmed_by = relationship("User", foreign_keys=[confirmed_by_id])
     business_entity = relationship("BusinessEntity", backref="document_groups")
     documents = relationship("Document", back_populates="document_group", foreign_keys="Document.group_id")
@@ -849,6 +857,8 @@ class DocumentGroup(Base):
         Index("ix_document_groups_detection_confidence", "detection_confidence"),
         Index("ix_document_groups_business_entity_id", "business_entity_id"),
         Index("ix_document_groups_owner_id", "owner_id"),
+        Index("ix_document_groups_company_id", "company_id"),
+        Index("ix_document_groups_company_group_type", "company_id", "group_type"),
         Index("ix_document_groups_needs_review", "needs_review"),
         Index("ix_document_groups_user_confirmed", "user_confirmed"),
         Index("ix_document_groups_created_at", "created_at"),
