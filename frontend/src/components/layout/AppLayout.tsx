@@ -47,7 +47,7 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
 
     return (
         <SmartUploadOverlay>
-            <div id={id} className="flex h-screen bg-background overflow-hidden">
+            <div className="flex h-screen bg-background overflow-hidden">
                 {/* Mobile Overlay */}
                 {isOpen && (
                     <div
@@ -73,6 +73,7 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
 
                 {/* Main Content */}
                 <main
+                    id={id}
                     className="flex-1 flex flex-col overflow-hidden relative w-full"
                     tabIndex={-1}
                     role="main"
