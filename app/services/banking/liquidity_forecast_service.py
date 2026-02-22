@@ -396,7 +396,6 @@ class LiquidityForecastService:
         db: AsyncSession,
         company_id: UUID,
         bank_account_id: Optional[UUID] = None,
-        company_id: Optional[UUID] = None,
         lookback_days: int = 90,
     ) -> List[PaymentAnomaly]:
         """Erkenne Zahlungsanomalien.
@@ -405,14 +404,13 @@ class LiquidityForecastService:
             db: Datenbank-Session
             company_id: Firmen-ID
             bank_account_id: Optional - nur für bestimmtes Konto
-            company_id: Optional - Multi-Tenant Filter
             lookback_days: Tage für historische Analyse
 
         Returns:
             Liste erkannter Anomalien
         """
         return await self._detect_payment_anomalies(
-            db, company_id, bank_account_id, company_id, lookback_days
+            db, company_id, bank_account_id, lookback_days
         )
 
     # =========================================================================
@@ -596,7 +594,6 @@ class LiquidityForecastService:
         db: AsyncSession,
         company_id: UUID,
         bank_account_id: Optional[UUID],
-        company_id: Optional[UUID],
         lookback_days: int = 90,
     ) -> List[PaymentAnomaly]:
         """Erkenne Anomalien in Zahlungsmustern."""

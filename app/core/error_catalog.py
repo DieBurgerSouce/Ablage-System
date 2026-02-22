@@ -93,6 +93,20 @@ ERR_DB_002 = ErrorDefinition("ERR-DB-002", "Datenbankabfrage fehlgeschlagen", "D
 ERR_SYS_001 = ErrorDefinition("ERR-SYS-001", "Interner Systemfehler", "Internal system error", 500)
 ERR_SYS_002 = ErrorDefinition("ERR-SYS-002", "Konfigurationsfehler", "Configuration error", 500)
 
+# Finance Errors
+ERR_FIN_001 = ErrorDefinition("ERR-FIN-001", "Rechnung nicht gefunden", "Invoice not found", 404)
+ERR_FIN_002 = ErrorDefinition("ERR-FIN-002", "Zahlungszuordnung fehlgeschlagen", "Payment matching failed", 400)
+ERR_FIN_003 = ErrorDefinition("ERR-FIN-003", "Skonto-Frist abgelaufen", "Discount deadline expired", 409)
+ERR_FIN_004 = ErrorDefinition("ERR-FIN-004", "Offener Posten nicht gefunden", "Open item not found", 404)
+ERR_FIN_005 = ErrorDefinition("ERR-FIN-005", "Finanzdaten nicht verfuegbar", "Financial data unavailable", 503)
+
+# Integration Errors
+ERR_INT_001 = ErrorDefinition("ERR-INT-001", "DATEV-Verbindung fehlgeschlagen", "DATEV connection failed", 502)
+ERR_INT_002 = ErrorDefinition("ERR-INT-002", "Lexware-Import fehlgeschlagen", "Lexware import failed", 500)
+ERR_INT_003 = ErrorDefinition("ERR-INT-003", "Slack-Benachrichtigung fehlgeschlagen", "Slack notification failed", 502)
+ERR_INT_004 = ErrorDefinition("ERR-INT-004", "E-Mail-Verbindung fehlgeschlagen", "Email connection failed", 502)
+ERR_INT_005 = ErrorDefinition("ERR-INT-005", "Externe API nicht erreichbar", "External API unreachable", 502)
+
 
 # Registry: code -> ErrorDefinition
 ERROR_CATALOG: Dict[str, ErrorDefinition] = {}
@@ -142,4 +156,10 @@ EXCEPTION_TO_ERROR_CODE: Dict[str, str] = {
     "ExportError": "ERR-DOC-007",
     "StorageError": "ERR-SYS-001",
     "BusinessLogicError": "ERR-API-001",
+    "InvoiceNotFoundError": "ERR-FIN-001",
+    "PaymentMatchingError": "ERR-FIN-002",
+    "SkontoExpiredError": "ERR-FIN-003",
+    "DATEVConnectionError": "ERR-INT-001",
+    "LexwareImportError": "ERR-INT-002",
+    "SlackNotificationError": "ERR-INT-003",
 }
