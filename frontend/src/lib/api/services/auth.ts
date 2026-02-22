@@ -189,9 +189,10 @@ export const authService = {
         const response = await apiClient.post<LoginResponse>('/auth/refresh', { refresh_token: refreshToken });
         if (response.data.access_token) {
             sessionStorage.setItem('auth_token', response.data.access_token);
-            sessionStorage.setItem('refresh_token', response.data.refresh_token);
+            sessionStorage.setItem('refresh_token', response.data.refresh_token || '');
+            return response.data.access_token;
         }
-        return response.data.access_token;
+        throw new Error('Token-Refresh fehlgeschlagen');
     },
 
     getCurrentUser: (): User | null => {
