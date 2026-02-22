@@ -14,8 +14,9 @@ from datetime import date, datetime, timezone
 from typing import Any, Dict, Optional
 
 import structlog
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from prometheus_client import Counter, Gauge, Histogram
 
 from app.core.safe_errors import safe_error_log
 from app.db.session import async_session_factory
@@ -26,6 +27,52 @@ from app.services.compliance.retention_enforcement_service import (
 from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# Prometheus Metriken
+# =============================================================================
+
+retention_enforcement_documents_scanned_total = Counter(
+    "retention_enforcement_documents_scanned_total",
+    "Gesamtzahl gescannter Archive im Enforcement-Scan",
+    ["company"],
+)
+
+retention_enforcement_marked_for_deletion_total = Counter(
+    "retention_enforcement_marked_for_deletion_total",
+    "Archive die zum Loeschen markiert wurden",
+    ["company"],
+)
+
+retention_enforcement_deleted_total = Counter(
+    "retention_enforcement_deleted_total",
+    "Erfolgreich geloeschte Archive",
+    ["status"],
+)
+
+retention_enforcement_errors_total = Counter(
+    "retention_enforcement_errors_total",
+    "Fehler bei Retention Enforcement Tasks",
+    ["task"],
+)
+
+retention_enforcement_scan_duration_seconds = Histogram(
+    "retention_enforcement_scan_duration_seconds",
+    "Dauer des taeglichen Enforcement-Scans in Sekunden",
+    buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0],
+)
+
+retention_enforcement_documents_by_category = Gauge(
+    "retention_enforcement_documents_by_category",
+    "Anzahl archivierter Dokumente nach Kategorie",
+    ["category"],
+)
+
+retention_enforcement_pending_reviews = Gauge(
+    "retention_enforcement_pending_reviews",
+    "Anzahl ausstehender Post-Retention Reviews",
+)
 
 
 # =============================================================================
@@ -58,13 +105,18 @@ def enforce_retention_daily_scan(self) -> Dict[str, Any]:
             return await _daily_enforcement_scan(db)
 
     try:
+        import time as _time
+        start = _time.monotonic()
         result = asyncio.get_event_loop().run_until_complete(_scan())
+        duration = _time.monotonic() - start
+        retention_enforcement_scan_duration_seconds.observe(duration)
         logger.info(
             "retention_enforcement_daily_scan_completed",
             **result
         )
         return result
     except Exception as e:
+        retention_enforcement_errors_total.labels(task="daily_scan").inc()
         logger.error(
             "retention_enforcement_daily_scan_failed",
             **safe_error_log(e)
@@ -136,7 +188,24 @@ async def _daily_enforcement_scan(db: AsyncSession) -> Dict[str, Any]:
             # else:
             #     archive.enforcement_status = EnforcementStatus.ACTIVE.value
 
+        # Prometheus Metriken pro Company
+        retention_enforcement_documents_scanned_total.labels(
+            company=company.short_name or str(company.id)[:8]
+        ).inc(len(archives))
+
     await db.commit()
+
+    # Globale Gauges aktualisieren
+    if violations_found > 0:
+        retention_enforcement_marked_for_deletion_total.labels(company="all").inc(violations_found)
+
+    # Pending Reviews Gauge
+    async with async_session_factory() as count_db:
+        pending_reviews_result = await count_db.execute(
+            select(func.count(DocumentArchive.id))
+            .where(DocumentArchive.retention_expires_at < date.today())
+        )
+        retention_enforcement_pending_reviews.set(pending_reviews_result.scalar() or 0)
 
     return {
         "archives_checked": archives_checked,
@@ -182,6 +251,7 @@ def process_post_retention_reviews(self) -> Dict[str, Any]:
         )
         return result
     except Exception as e:
+        retention_enforcement_errors_total.labels(task="post_retention_reviews").inc()
         logger.error(
             "post_retention_reviews_processing_failed",
             **safe_error_log(e)
@@ -311,6 +381,7 @@ def generate_retention_compliance_report(
         )
         return result
     except Exception as e:
+        retention_enforcement_errors_total.labels(task="compliance_report").inc()
         logger.error(
             "compliance_report_generation_failed",
             **safe_error_log(e),

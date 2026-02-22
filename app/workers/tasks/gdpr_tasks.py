@@ -18,6 +18,7 @@ import hashlib
 import structlog
 from sqlalchemy import select, delete, update, and_, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from prometheus_client import Counter, Gauge, Histogram
 
 from app.core.config import settings
 from app.core.cache import invalidate_user_cache, invalidate_all_caches
@@ -25,6 +26,46 @@ from app.core.safe_errors import safe_error_log
 from app.workers.celery_app import celery_app, CPUTask
 
 logger = structlog.get_logger(__name__)
+
+
+# =============================================================================
+# Prometheus Metriken
+# =============================================================================
+
+gdpr_deletion_requests_pending = Gauge(
+    "gdpr_deletion_requests_pending",
+    "Anzahl ausstehender GDPR-Loeschanfragen",
+)
+
+gdpr_deletion_processing_duration_seconds = Histogram(
+    "gdpr_deletion_processing_duration_seconds",
+    "Dauer der GDPR-Loeschanfrage-Verarbeitung in Sekunden",
+    buckets=[1.0, 5.0, 10.0, 30.0, 60.0, 120.0, 300.0, 600.0, 1800.0],
+)
+
+gdpr_deletion_completed_total = Counter(
+    "gdpr_deletion_completed_total",
+    "Erfolgreich verarbeitete GDPR-Loeschanfragen",
+    ["source"],
+)
+
+gdpr_deletion_errors_total = Counter(
+    "gdpr_deletion_errors_total",
+    "Fehler bei GDPR-Loeschverarbeitung",
+    ["source"],
+)
+
+gdpr_breach_notifications_total = Counter(
+    "gdpr_breach_notifications_total",
+    "Gesendete Breach-Benachrichtigungen",
+    ["type"],
+)
+
+gdpr_compliance_score = Gauge(
+    "gdpr_compliance_score",
+    "GDPR Compliance Score (0-100)",
+)
+
 
 # Konstanten
 GDPR_DELETION_DEADLINE_DAYS = 30  # Art. 17: 30 Tage für Löschanfragen
@@ -53,8 +94,13 @@ def process_deletion_requests(self) -> Dict[str, Any]:
         Dict mit Statistiken über verarbeitete Anfragen
     """
     import asyncio
+    import time as _time
     # asyncio.run() für sauberes Event-Loop Cleanup
-    return asyncio.run(_process_deletion_requests_async())
+    start = _time.monotonic()
+    result = asyncio.run(_process_deletion_requests_async())
+    duration = _time.monotonic() - start
+    gdpr_deletion_processing_duration_seconds.observe(duration)
+    return result
 
 
 async def _process_deletion_requests_async() -> Dict[str, Any]:
@@ -100,6 +146,7 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
                     stats["documents_deleted"] += user_stats.get("documents", 0)
                     stats["audit_entries_anonymized"] += user_stats.get("audit_entries", 0)
                     stats["requests_processed"] += 1
+                    gdpr_deletion_completed_total.labels(source="user_field").inc()
 
                     logger.info(
                         "gdpr_deletion_completed",
@@ -111,6 +158,7 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
                         "user_id": str(user.id)[:8] + "...",
                         "error": safe_error_detail(e, "Vorgang"),
                     })
+                    gdpr_deletion_errors_total.labels(source="user_field").inc()
                     logger.error(
                         "gdpr_deletion_failed",
                         user_id=str(user.id)[:8] + "...",
@@ -143,6 +191,7 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
                         request.status = "completed"
                         request.completed_at = now
                         stats["requests_processed"] += 1
+                        gdpr_deletion_completed_total.labels(source="request_table").inc()
 
                         logger.info(
                             "gdpr_deletion_completed",
@@ -156,6 +205,7 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
                             "request_id": str(request.id),
                             "error": safe_error_detail(e, "Vorgang"),
                         })
+                        gdpr_deletion_errors_total.labels(source="request_table").inc()
                         logger.error(
                             "gdpr_deletion_failed",
                             request_id=str(request.id),
@@ -179,6 +229,9 @@ async def _process_deletion_requests_async() -> Dict[str, Any]:
         requests_processed=stats["requests_processed"],
         errors=len(stats["errors"]),
     )
+
+    # Pending Gauge aktualisieren
+    gdpr_deletion_requests_pending.dec(stats["requests_processed"])
 
     return stats
 
@@ -469,6 +522,7 @@ Sofortmaßnahmen erforderlich!
             priority="critical",
         )
         stats["admin_notified"] = True
+        gdpr_breach_notifications_total.labels(type="admin").inc()
     except Exception as e:
         stats["errors"].append({"type": "admin_notification", **safe_error_log(e)})
         logger.error("breach_admin_notification_failed", **safe_error_log(e))
@@ -510,6 +564,7 @@ Frist: 72 Stunden ab Erkennung
                 priority="critical",
             )
             stats["authority_notified"] = True
+            gdpr_breach_notifications_total.labels(type="authority").inc()
 
         except Exception as e:
             stats["errors"].append({"type": "authority_notification", **safe_error_log(e)})
@@ -555,6 +610,9 @@ Mit freundlichen Grüßen,
                             user_id=str(user.id),
                             **safe_error_log(e),
                         )
+
+                if stats["users_notified"] > 0:
+                    gdpr_breach_notifications_total.labels(type="user").inc(stats["users_notified"])
 
         except Exception as e:
             stats["errors"].append({"type": "user_notification", **safe_error_log(e)})
