@@ -1262,6 +1262,12 @@ from app.db.models_privat_enterprise import (  # noqa: E402, F401
     PrivatThresholdAdjustment, PrivatThresholdRecommendation,
 )
 
+# --- Privat Contracts (Vertragsmanagement) ---
+from app.db.models_privat_contracts import (  # noqa: E402, F401
+    PrivatContractCategory, PrivatContractStatus,
+    PrivatContract, PrivatContractReminder,
+)
+
 
 # --- Templates & Knowledge Base ---
 from app.db.models_template_knowledge import (  # noqa: E402, F401
