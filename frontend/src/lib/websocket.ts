@@ -76,7 +76,13 @@ export type RealtimeEventType =
   | 'import.started'
   | 'import.progress'
   | 'import.completed'
-  | 'import.error';
+  | 'import.error'
+  // Pipeline Auto-Filing Events (Stille Magie)
+  | 'document.pipeline_started'
+  | 'document.pipeline_step'
+  | 'document.pipeline_completed'
+  | 'document.auto_filed'
+  | 'document.review_needed';
 
 export interface RealtimeEvent {
   event_type: RealtimeEventType;
@@ -538,6 +544,10 @@ export function useRealtimeDashboard(): void {
       'comment.replied': [['comments']],
       'comment.reaction_added': [['comments']],
       'comment.reaction_removed': [['comments']],
+      // Pipeline Events (Auto-Filing)
+      'document.pipeline_completed': [['documents'], ['dashboard'], ['review-queue']],
+      'document.auto_filed': [['documents'], ['dashboard']],
+      'document.review_needed': [['documents'], ['review-queue']],
     };
 
     const queryKeysToInvalidate = invalidationMap[event.event_type];
