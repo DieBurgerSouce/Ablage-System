@@ -88,9 +88,10 @@ apiClient.interceptors.request.use(
         }
 
         // Multi-Company Support: X-Company-ID Header setzen
+        // CWE-113: CRLF-Zeichen aus Header-Werten entfernen
         const companyId = sessionStorage.getItem('current_company_id');
         if (companyId) {
-            config.headers['X-Company-ID'] = companyId;
+            config.headers['X-Company-ID'] = companyId.replace(/[\r\n]/g, '');
         }
 
         return config;

@@ -61,6 +61,9 @@ export interface AuthResponse {
 
 export type LoginResult = AuthResponse | TwoFactorRequiredResponse;
 
+// Token-Refresh Mutex: Verhindert Race Condition bei parallelen 401-Responses
+let refreshPromise: Promise<string> | null = null;
+
 export const authService = {
     login: async (email: string, password: string): Promise<LoginResult> => {
         // Login to get tokens or 2FA requirement
@@ -183,16 +186,29 @@ export const authService = {
     },
 
     refreshToken: async (): Promise<string> => {
-        const refreshToken = sessionStorage.getItem('refresh_token');
-        if (!refreshToken) throw new Error('No refresh token available');
-
-        const response = await apiClient.post<LoginResponse>('/auth/refresh', { refresh_token: refreshToken });
-        if (response.data.access_token) {
-            sessionStorage.setItem('auth_token', response.data.access_token);
-            sessionStorage.setItem('refresh_token', response.data.refresh_token || '');
-            return response.data.access_token;
+        // Mutex: Wenn bereits ein Refresh laeuft, auf dasselbe Promise warten
+        if (refreshPromise) {
+            return refreshPromise;
         }
-        throw new Error('Token-Refresh fehlgeschlagen');
+
+        const doRefresh = async (): Promise<string> => {
+            const storedRefreshToken = sessionStorage.getItem('refresh_token');
+            if (!storedRefreshToken) throw new Error('No refresh token available');
+
+            const response = await apiClient.post<LoginResponse>('/auth/refresh', { refresh_token: storedRefreshToken });
+            if (response.data.access_token) {
+                sessionStorage.setItem('auth_token', response.data.access_token);
+                sessionStorage.setItem('refresh_token', response.data.refresh_token || '');
+                return response.data.access_token;
+            }
+            throw new Error('Token-Refresh fehlgeschlagen');
+        };
+
+        refreshPromise = doRefresh().finally(() => {
+            refreshPromise = null;
+        });
+
+        return refreshPromise;
     },
 
     getCurrentUser: (): User | null => {

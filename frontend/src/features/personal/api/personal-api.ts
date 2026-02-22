@@ -62,8 +62,9 @@ async function apiRequest<T>(
   headers['Authorization'] = `Bearer ${token.trim()}`;
 
   // Add company context
+  // CWE-113: CRLF-Zeichen aus Header-Werten entfernen
   if (companyId) {
-    headers['X-Company-ID'] = companyId;
+    headers['X-Company-ID'] = companyId.replace(/[\r\n]/g, '');
   }
 
   const response = await fetch(url, {
