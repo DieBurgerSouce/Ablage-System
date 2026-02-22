@@ -1,5 +1,15 @@
 # Recent Changes
 
+## 2026-02-22 (Session 4)
+- **feat(ocr)**: Document DNA + Cross-Validation Services - Layout-Fingerprinting und Feld-Plausibilitaetspruefung in OCR-Pipeline
+- **feat(ocr)**: OCR Learning Tasks + Celery Beat (Correction-Queue alle 30min, Pattern-Apply 03:00)
+- **feat(api)**: DATEV Zero-Touch-Stats + Steuer-Assistent Endpoints (Kategorisierung, Elster-Export)
+- **feat(services)**: Scan-to-Booking Orchestrator + DATEV Plausibility Service (Zero-Touch Pipeline)
+- **feat(services)**: Privat P5.1 Contract Management + P5.2 Tax Assistant Service
+- **feat(db)**: models_privat_contracts.py (PrivatContract, PrivatContractReminder) + Re-Export in models.py
+- **feat(workers)**: booking_tasks.py + send_contract_reminders + datev-batch-auto-booking (15min Beat)
+- **feat(frontend)**: OnboardingWizard integriert (P4.1) + Product Tour modularisiert; Backup-Skripte + DR-Runbook
+
 ## 2026-02-22 (Session 3)
 - **feat(workers)**: Prometheus-Metriken fuer GDPR-Tasks (6 Metriken: gdpr_deletion_requests_pending, gdpr_deletion_processing_duration_seconds, gdpr_deletion_completed_total, gdpr_deletion_errors_total, gdpr_breach_notifications_total, gdpr_compliance_score)
 - **feat(workers)**: Prometheus-Metriken fuer Retention-Enforcement-Tasks (7 Metriken: scanned, marked, deleted, errors, scan_duration, documents_by_category, pending_reviews)

@@ -10,6 +10,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- OCR: Document DNA Service (document_dna_service.py) - Layout-Fingerprinting und adaptives Matching fuer Dokument-Wiedererkennung
+- OCR: Cross-Validation Service (cross_validation_service.py) - Feld-Plausibilitaetspruefung fuer OCR-extrahierte Felder
+- OCR: OCR Pipeline - Document DNA und Cross-Validation als neue Pipeline-Stufen (5.5 und 6.5)
+- OCR: OCR Feedback Service - Auto-Template-Update bei Benutzer-Korrekturen mit Bounding-Box-Daten
+- OCR: ocr_learning_tasks.py - Celery-Tasks fuer Correction-Queue-Consumer und Pattern-Apply
+- OCR: Celery Beat - ocr-learning-consume-correction-queue (alle 30min) und ocr-learning-apply-patterns (03:00 daily)
+- API: DATEV Zero-Touch-Stats Endpoint (GET /datev/zero-touch-stats) - Buchungsquoten-Dashboard
+- API: Scan-to-Buchung ProcessBookingResponse - manuelle Buchungsausloesung per API
+- API: Steuer-Assistent Endpoints in tax.py (Kategorisierung, Elster-Export, StreamingResponse)
+- Services: DATEV Plausibility Service (plausibility_service.py) - Plausibilitaetspruefung vor DATEV-Buchung
+- Services: Scan-to-Booking Orchestrator (scan_to_booking_orchestrator.py) - Zero-Touch-Pipeline-Koordination
+- Services: Privat Contract Management Service (contract_management_service.py) - P5.1 Vertragsmanagement
+- Services: Tax Assistant Service (tax_assistant_service.py) - P5.2 Steuer-Assistent mit Elster-Export
+- Services: Monitoring Prometheus Metrics (app/services/monitoring/prometheus_metrics.py)
+- Database: models_privat_contracts.py - PrivatContract, PrivatContractReminder, PrivatContractCategory, PrivatContractStatus
+- Database: models.py - Re-Export fuer Privat-Contract-Models
+- Workers: booking_tasks.py - Scan-to-Buchung Auto-Booking Tasks (process_auto_booking, batch_process_all_companies)
+- Workers: celery_app.py - datev-batch-auto-booking Beat-Schedule (alle 15min)
+- Workers: privat_tasks.py - send_contract_reminders Task (idempotent, taeglich 08:00)
+- Frontend: OnboardingWizard in __root.tsx integriert (P4.1 - 5-step First-Login-Experience)
+- Frontend: Product-Tour modularisiert - Tours-Exports, GettingStartedConfig, HelpTooltips
+- Frontend: API v1 contracts_private.py - Vertragsmanagement-API registriert in main.py
+- Infrastructure: ocr-self-learning.json Grafana-Dashboard fuer OCR-Lernfortschritt
+- Infrastructure: ablage-backup-monitoring.json Grafana-Dashboard erweitert
+- Operations: disaster-recovery.md Runbook + 8 Backup-Skripte (pg_backup, minio_backup, redis_backup, volume_backup, pg_restore, pg_verify, restore_test, backup_all, backup_metrics)
 - Workers: Prometheus-Metriken fuer gdpr_tasks.py (6 Metriken: gdpr_deletion_requests_pending Gauge, gdpr_deletion_processing_duration_seconds Histogram, gdpr_deletion_completed_total/gdpr_deletion_errors_total Counter mit source-Label, gdpr_breach_notifications_total Counter mit type-Label, gdpr_compliance_score Gauge)
 - Workers: Prometheus-Metriken fuer retention_enforcement_tasks.py (7 Metriken: scanned/marked/deleted/errors Counter mit Labels, scan_duration_seconds Histogram, documents_by_category/pending_reviews Gauge)
 - Infrastructure: Neues Grafana-Dashboard infrastructure/grafana/dashboards/ablage-retention-enforcement.json fuer Retention-Enforcement-Monitoring

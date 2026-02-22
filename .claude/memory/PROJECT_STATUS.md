@@ -36,6 +36,16 @@
 - **Phase 2 - Smart Tags**: ✅ COMMITTED - AI-powered tag suggestions, Tag management
 - **Phase 2 - Auto-Learning**: ✅ COMMITTED - Daily review batches, Learning stats dashboard
 
+### OCR Self-Learning & Scan-to-Buchung (2026-02-22 Session 4)
+- **Document DNA**: ✅ COMMITTED - Layout-Fingerprinting, Similarity-Matching (document_dna_service.py)
+- **Cross-Validation**: ✅ COMMITTED - Feld-Plausibilitaetspruefung fuer OCR-Felder (cross_validation_service.py)
+- **OCR Learning Tasks**: ✅ COMMITTED - Correction-Queue-Consumer (30min Beat), Pattern-Apply (03:00 daily)
+- **Scan-to-Buchung**: ✅ COMMITTED - Zero-Touch-Pipeline, Plausibility-Service, Orchestrator, booking_tasks
+- **Privat P5.1**: ✅ COMMITTED - Contract Management (PrivatContract DB Model, CRUD API, Reminder Tasks)
+- **Privat P5.2**: ✅ COMMITTED - Tax Assistant Service (Kategorisierung, Elster-Export, Streaming)
+- **Onboarding Wizard**: ✅ COMMITTED - 5-step First-Login Experience integriert in Root (P4.1)
+- **Backup Scripts**: ✅ COMMITTED - 8 Backup-Skripte (pg, minio, redis, volume) + DR-Runbook
+
 ## Vision 2026+ Status
 
 | Phase | Features | Status |
