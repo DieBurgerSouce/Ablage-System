@@ -1074,7 +1074,7 @@ from app.db.models_auth_access import (  # noqa: E402, F401
     PermissionAction, ResourceType, role_permissions, user_roles,
     Permission, Role, UserSession, EmailVerificationToken,
     WebhookEventType, WebhookDeliveryStatus, WebhookSubscription,
-    WebhookDelivery,
+    WebhookSubscriptionDelivery,
     DocumentFavorite, AccessLevel, DocumentAccess,
     ChatSessionAccessLevel, ChatSessionAccess,
     BackupType, BackupStatus, BackupRecord,
@@ -1210,6 +1210,8 @@ from app.db.models_notification import (  # noqa: E402, F401
 # overwrites core version (INFO, SUCCESS, WARNING) - matches original models.py behavior
 NotificationType = ActivityNotificationType
 
+# --- Approval Extended (EscalationRule re-export) ---
+from app.db.models_approval_extended import EscalationRule  # noqa: E402, F401
 
 # --- ERP & Import ---
 from app.db.models_erp_import import (  # noqa: E402, F401

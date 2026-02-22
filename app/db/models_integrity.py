@@ -32,6 +32,9 @@ from sqlalchemy.sql import func
 
 from app.db.models import Base, CrossDBJSON
 
+# Import canonical MerkleTreeNode to avoid duplicate __tablename__
+from app.db.models_misc import MerkleTreeNode  # noqa: F401
+
 
 class VerificationStatus(str, Enum):
     """Status der Dokumenten-Verifizierung."""
@@ -125,74 +128,9 @@ class DocumentHash(Base):
         }
 
 
-class MerkleTreeNode(Base):
-    """
-    Knoten eines täglichen Merkle-Baums.
-
-    Merkle-Baeume ermöglichen effiziente kryptographische Verifizierung
-    aller Dokumente eines Tages. Blatt-Knoten (level=0) referenzieren
-    DocumentHash-Einträge, innere Knoten bilden die Baumstruktur.
-    """
-    __tablename__ = "merkle_tree_nodes"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-
-    # Multi-Tenant
-    company_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("companies.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-
-    # Baum-Identifikation
-    tree_date = Column(Date, nullable=False)  # Tag des Merkle-Baums
-
-    # Knoten-Daten
-    node_hash = Column(String(64), nullable=False)
-    parent_hash = Column(String(64), nullable=True)  # null für Root
-    level = Column(Integer, nullable=False)  # 0 = Blatt
-    position = Column(Integer, nullable=False)  # Position in der Ebene
-
-    # Blatt-Referenz (nur für level=0)
-    document_hash_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("document_hashes.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
-    # Root-Hash (nur auf Root-Knoten gesetzt)
-    merkle_root = Column(String(64), nullable=True)
-
-    # Zeitstempel
-    created_at = Column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-    )
-
-    # Relationships
-    # Relationships defined in models.py main model
-
-    __table_args__ = (
-        Index("ix_merkle_tree_nodes_tree_date", "tree_date"),
-        Index("ix_merkle_tree_nodes_company_date", "company_id", "tree_date"),
-        Index("ix_merkle_tree_nodes_document_hash_id", "document_hash_id"),
-        {"extend_existing": True},
-    )
-
-    def to_dict(self) -> dict:
-        """Konvertiert in ein Dictionary."""
-        return {
-            "id": str(self.id),
-            "company_id": str(self.company_id),
-            "tree_date": self.tree_date.isoformat() if self.tree_date else None,
-            "node_hash": self.node_hash,
-            "parent_hash": self.parent_hash,
-            "level": self.level,
-            "position": self.position,
-            "document_hash_id": str(self.document_hash_id) if self.document_hash_id else None,
-            "merkle_root": self.merkle_root,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-        }
+# NOTE: MerkleTreeNode was previously defined here but has been moved to an
+# import from app.db.models_misc (see top of file) to avoid
+# duplicate __tablename__ "merkle_tree_nodes" that crashes SQLAlchemy at startup.
 
 
 class IntegrityReport(Base):

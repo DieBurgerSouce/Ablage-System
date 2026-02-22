@@ -37,6 +37,9 @@ from sqlalchemy.sql import func
 
 from app.db.models import Base, CrossDBJSON
 
+# Import canonical SignatureRequest to avoid duplicate __tablename__
+from app.db.models_versioning import SignatureRequest  # noqa: F401
+
 
 # ============================================================================
 # Enums
@@ -72,94 +75,22 @@ class SignatureProvider(str, Enum):
 # Models
 # ============================================================================
 
-
-class SignatureRequest(Base):
-    """Signaturanfrage für ein Dokument.
-
-    Repraesentiert eine Anfrage zur Signierung eines Dokuments
-    durch einen oder mehrere Unterzeichner.
-    """
-    __tablename__ = "signature_requests"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    document_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("documents.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    company_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("companies.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    title = Column(String(255), nullable=False)
-    description = Column(Text, nullable=True)
-    signature_level = Column(
-        String(20),
-        nullable=False,
-        default=SignatureLevel.ADVANCED.value,
-    )
-    provider = Column(
-        String(20),
-        nullable=False,
-        default=SignatureProvider.INTERNAL.value,
-    )
-    status = Column(
-        String(20),
-        nullable=False,
-        default=SignatureStatus.PENDING.value,
-    )
-    requested_by = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-    requested_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-    )
-    completed_at = Column(DateTime(timezone=True), nullable=True)
-    expires_at = Column(DateTime(timezone=True), nullable=True)
-    signing_order_required = Column(Boolean, default=False, nullable=False)
-    metadata_json = Column(CrossDBJSON, nullable=True)
-
-    created_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-    )
-    updated_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Relationships
-    entries = relationship(
+# Add relationships to the imported SignatureRequest that reference
+# the models defined below in this file.
+if not hasattr(SignatureRequest, 'entries'):
+    SignatureRequest.entries = relationship(
         "SignatureEntry",
         back_populates="signature_request",
         lazy="selectin",
         order_by="SignatureEntry.signing_order",
     )
-    audit_logs = relationship(
+if not hasattr(SignatureRequest, 'audit_logs'):
+    SignatureRequest.audit_logs = relationship(
         "SignatureAuditLog",
         back_populates="signature_request",
         lazy="selectin",
         order_by="SignatureAuditLog.performed_at.desc()",
     )
-
-    __table_args__ = (
-        Index("ix_signature_requests_document_id", "document_id"),
-        Index("ix_signature_requests_status", "status"),
-        Index("ix_signature_requests_company_id", "company_id"),
-        {"extend_existing": True},
-    )
-
-    def __repr__(self) -> str:
-        return f"<SignatureRequest(id={self.id}, title='{self.title}', status='{self.status}')>"
 
 
 class SignatureEntry(Base):

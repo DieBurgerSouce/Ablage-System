@@ -35,6 +35,9 @@ from sqlalchemy.sql import func
 
 from app.db.models import Base, CrossDBJSON
 
+# Import canonical AutonomyDecisionLog to avoid duplicate __tablename__
+from app.db.models_autonomy import AutonomyDecisionLog  # noqa: F401
+
 
 # ============================================================================
 # Enums
@@ -157,80 +160,6 @@ class UserActionAutonomy(Base):
         Index("ix_user_action_autonomy_company_id", "company_id"),
         Index("ix_user_action_autonomy_action_type", "action_type"),
         Index("ix_user_action_autonomy_level", "current_level"),
-    )
-
-
-# ============================================================================
-# Autonomy Decision Log (Einzelne Entscheidung)
-# ============================================================================
-
-
-class AutonomyDecisionLog(Base):
-    """Log für jede einzelne Autonomie-Entscheidung.
-
-    Speichert was vorgeschlagen wurde, was der User getan hat,
-    und wie die Confidence war. Basis für das Lernen.
-    """
-    __tablename__ = "autonomy_decision_logs"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    company_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("companies.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-
-    # Aktion
-    action_type = Column(String(50), nullable=False)
-    autonomy_level_at_time = Column(
-        String(30),
-        nullable=False,
-        comment="Autonomie-Level zum Zeitpunkt der Entscheidung",
-    )
-
-    # Kontext
-    document_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("documents.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-    context_data = Column(
-        CrossDBJSON,
-        default=dict,
-        comment="Kontext der Entscheidung (Dokumenttyp, Entity, etc.)",
-    )
-
-    # Vorschlag
-    suggested_value = Column(Text, nullable=True, comment="Vorgeschlagener Wert")
-    suggested_confidence = Column(Float, nullable=True)
-
-    # User-Reaktion
-    user_action = Column(
-        String(30),
-        nullable=False,
-        comment="confirmed, rejected, corrected, auto_executed, undone",
-    )
-    corrected_value = Column(Text, nullable=True, comment="Korrigierter Wert (bei correction)")
-
-    # Timing
-    suggestion_at = Column(DateTime(timezone=True), server_default=func.now())
-    decision_at = Column(DateTime(timezone=True), nullable=True)
-    decision_duration_ms = Column(Integer, nullable=True, comment="Zeit bis zur Entscheidung")
-
-    # Relationships
-    document = relationship("Document", foreign_keys=[document_id])
-
-    __table_args__ = (
-        Index("ix_autonomy_decision_user", "user_id", "action_type"),
-        Index("ix_autonomy_decision_company", "company_id"),
-        Index("ix_autonomy_decision_document", "document_id"),
-        Index("ix_autonomy_decision_action", "user_action"),
-        Index("ix_autonomy_decision_time", "suggestion_at"),
     )
 
 

@@ -16,6 +16,9 @@ from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from app.core.datetime_utils import utc_now
 from app.db.base import Base
 
+# Import canonical DocumentActivity to avoid duplicate __tablename__
+from app.db.models_notification import DocumentActivity  # noqa: F401
+
 
 class DocumentMention(Base):
     """
@@ -90,72 +93,6 @@ class DocumentMention(Base):
     )
 
 
-class DocumentActivity(Base):
-    """
-    Document Activity Table.
-
-    Speichert Aktivitäten für den Activity Feed.
-    """
-
-    __tablename__ = "document_activities"
-
-    id = Column(
-        PG_UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        index=True,
-    )
-
-    document_id = Column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("documents.id", ondelete="CASCADE"),
-        nullable=True,  # Nullable für System-Aktivitäten ohne Dokument
-        index=True,
-    )
-
-    user_id = Column(
-        PG_UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True,
-    )
-
-    action = Column(
-        String(50),
-        nullable=False,
-        index=True,
-        comment="Activity Action (viewed, edited, commented, etc.)",
-    )
-
-    details = Column(
-        Text,
-        nullable=False,
-        comment="Deutsche Beschreibung der Aktivität",
-    )
-
-    created_at = Column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=utc_now,
-        index=True,
-    )
-
-    # Indexes für Performance
-    __table_args__ = (
-        Index(
-            "ix_document_activities_document_created",
-            "document_id",
-            "created_at",
-        ),
-        Index(
-            "ix_document_activities_user_created",
-            "user_id",
-            "created_at",
-        ),
-        Index(
-            "ix_document_activities_action_created",
-            "action",
-            "created_at",
-        ),
-        {"extend_existing": True},
-    )
+# NOTE: DocumentActivity was previously defined here but has been moved to an
+# import from app.db.models_notification (see top of file) to avoid
+# duplicate __tablename__ "document_activities" that crashes SQLAlchemy at startup.

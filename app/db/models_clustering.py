@@ -110,7 +110,8 @@ class DocumentCluster(Base):
         comment="Uebergeordneter Cluster fuer hierarchische Struktur",
     )
 
-    metadata = Column(
+    cluster_metadata = Column(
+        "metadata",
         CrossDBJSON,
         nullable=True,
         default=dict,

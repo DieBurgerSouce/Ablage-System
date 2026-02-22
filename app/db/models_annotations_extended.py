@@ -32,6 +32,13 @@ from sqlalchemy.sql import func
 
 from app.db.models import Base, CrossDBJSON
 
+# Import canonical model classes to avoid duplicate __tablename__ definitions.
+# These are defined in models_annotations.py (primary) and re-exported here
+# so that existing imports from this module continue to work.
+from app.db.models_annotations import CommentReply  # noqa: F401
+from app.db.models_annotations import CommentTask  # noqa: F401
+from app.db.models_annotations import MentionNotification  # noqa: F401
+
 
 # ============================================================================
 # Enums
@@ -54,90 +61,6 @@ class CommentTaskStatus(str, Enum):
     OFFEN = "offen"
     IN_BEARBEITUNG = "in_bearbeitung"
     ERLEDIGT = "erledigt"
-
-
-# ============================================================================
-# CommentReply (Verschachtelte Antworten)
-# ============================================================================
-
-
-class CommentReply(Base):
-    """Verschachtelte Antwort auf einen Kommentar-Thread.
-
-    Unterstützt beliebig tiefe Verschachtelung über parent_reply_id.
-    @Mentions werden als UUID-Liste in mentions gespeichert.
-    """
-
-    __tablename__ = "comment_replies"
-
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-    thread_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("comment_threads.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    parent_reply_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("comment_replies.id", ondelete="CASCADE"),
-        nullable=True,
-        comment="Eltern-Antwort für verschachtelte Antworten",
-    )
-    author_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-
-    # Inhalt
-    content = Column(Text, nullable=False)
-    mentions = Column(
-        CrossDBJSON,
-        default=list,
-        comment="Liste der erwaehnten User-UUIDs",
-    )
-
-    # Bearbeitungsstatus
-    is_edited = Column(Boolean, default=False, nullable=False)
-    edited_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Soft-Delete
-    is_deleted = Column(Boolean, default=False, nullable=False)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Audit
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
-
-    # Relationships
-    thread = relationship("CommentThread", backref="replies")
-    author = relationship("User", foreign_keys=[author_id])
-    parent_reply = relationship(
-        "CommentReply",
-        remote_side=[id],
-        backref="child_replies",
-    )
-
-    __table_args__ = (
-        Index("ix_comment_replies_thread_id", "thread_id"),
-        Index("ix_comment_replies_parent_reply_id", "parent_reply_id"),
-        Index("ix_comment_replies_author_id", "author_id"),
-        Index(
-            "ix_comment_replies_thread_created",
-            "thread_id",
-            "created_at",
-        ),
-    )
-
-    def __repr__(self) -> str:
-        return f"<CommentReply {self.id} thread={self.thread_id}>"
 
 
 # ============================================================================
@@ -265,169 +188,7 @@ class BoundingBoxAnnotation(Base):
         )
 
 
-# ============================================================================
-# CommentTask (Aufgaben aus Kommentaren)
-# ============================================================================
 
-
-class CommentTask(Base):
-    """Aufgabe erstellt aus einem Kommentar-Thread.
-
-    Ermöglicht es, direkt aus Kommentaren Aufgaben zu erstellen
-    und diese Benutzern zuzuweisen mit Fälligkeitsdatum.
-    """
-
-    __tablename__ = "comment_tasks"
-
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-    thread_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("comment_threads.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    assigned_to_user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-
-    # Aufgabendetails
-    title = Column(String(500), nullable=False)
-    description = Column(Text, nullable=True)
-    status = Column(
-        String(50),
-        default=CommentTaskStatus.OFFEN.value,
-        nullable=False,
-    )
-
-    # Zeitverwaltung
-    due_date = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Fälligkeitsdatum der Aufgabe",
-    )
-    completed_at = Column(
-        DateTime(timezone=True),
-        nullable=True,
-        comment="Zeitpunkt der Erledigung",
-    )
-
-    # Ersteller
-    created_by_user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="SET NULL"),
-        nullable=True,
-    )
-
-    # Audit
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(
-        DateTime(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
-
-    # Relationships
-    thread = relationship("CommentThread", backref="tasks")
-    assigned_to = relationship("User", foreign_keys=[assigned_to_user_id])
-    created_by = relationship("User", foreign_keys=[created_by_user_id])
-
-    __table_args__ = (
-        Index("ix_comment_tasks_thread_id", "thread_id"),
-        Index(
-            "ix_comment_tasks_assigned_status",
-            "assigned_to_user_id",
-            "status",
-        ),
-        Index("ix_comment_tasks_due_date", "due_date"),
-        Index("ix_comment_tasks_created_by", "created_by_user_id"),
-    )
-
-    def __repr__(self) -> str:
-        return f"<CommentTask {self.id} status={self.status}>"
-
-
-# ============================================================================
-# MentionNotification (Erwaehnungs-Benachrichtigung)
-# ============================================================================
-
-
-class MentionNotification(Base):
-    """Benachrichtigung bei @mention in Kommentaren oder Antworten.
-
-    Speichert Erwaehnungen mit Quell-Referenz (Kommentar, Antwort, Annotation)
-    und Gelesen-Status.
-    """
-
-    __tablename__ = "mention_notifications"
-
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-    company_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("companies.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-
-    # Beteiligte Benutzer
-    mentioned_user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    mentioning_user_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-
-    # Quelle der Erwaehnung
-    source_type = Column(
-        String(50),
-        nullable=False,
-        comment="Quell-Typ: comment, reply, annotation",
-    )
-    source_id = Column(
-        UUID(as_uuid=True),
-        nullable=False,
-        comment="ID des Quell-Objekts",
-    )
-    document_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("documents.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-
-    # Gelesen-Status
-    is_read = Column(Boolean, default=False)
-    read_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Timestamp
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # Relationships
-    mentioned_user = relationship(
-        "User",
-        foreign_keys=[mentioned_user_id],
-        backref="received_mentions",
-    )
-    mentioning_user = relationship(
-        "User",
-        foreign_keys=[mentioning_user_id],
-        backref="sent_mentions",
-    )
-    document = relationship("Document", backref="mention_notifications")
-
-    __table_args__ = (
-        Index("ix_mention_notif_company_id", "company_id"),
-        Index("ix_mention_notif_mentioned_user", "mentioned_user_id", "is_read"),
-        Index("ix_mention_notif_document_id", "document_id"),
-        Index("ix_mention_notif_created_at", "created_at"),
-    )
+# NOTE: CommentTask and MentionNotification were previously defined here but have been
+# moved to imports from app.db.models_annotations (see top of file) to avoid
+# duplicate __tablename__ definitions that crash SQLAlchemy at startup.

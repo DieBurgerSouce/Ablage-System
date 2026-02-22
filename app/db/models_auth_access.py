@@ -422,7 +422,7 @@ class WebhookSubscription(Base):
 
     # Relationships
     user = relationship("User", backref="webhook_subscriptions")
-    deliveries = relationship("WebhookDelivery", back_populates="subscription", cascade="all, delete-orphan")
+    deliveries = relationship("WebhookSubscriptionDelivery", back_populates="subscription", cascade="all, delete-orphan")
 
     # Indexes
     __table_args__ = (
@@ -432,14 +432,14 @@ class WebhookSubscription(Base):
     )
 
 
-class WebhookDelivery(Base):
+class WebhookSubscriptionDelivery(Base):
     """
-    Webhook-Zustellungsprotokoll.
+    Webhook-Zustellungsprotokoll fuer Subscriptions.
 
     Dokumentiert jeden Zustellungsversuch mit Response-Details.
-    Ermöglicht Debugging und Retry-Tracking.
+    Ermoeglicht Debugging und Retry-Tracking.
     """
-    __tablename__ = "webhook_deliveries"
+    __tablename__ = "webhook_subscription_deliveries"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     subscription_id = Column(
@@ -477,11 +477,11 @@ class WebhookDelivery(Base):
 
     # Indexes
     __table_args__ = (
-        Index("ix_webhook_deliveries_subscription_id", "subscription_id"),
-        Index("ix_webhook_deliveries_event_id", "event_id"),
-        Index("ix_webhook_deliveries_status", "status"),
-        Index("ix_webhook_deliveries_created_at", "created_at"),
-        Index("ix_webhook_deliveries_next_retry_at", "next_retry_at"),
+        Index("ix_webhook_sub_deliveries_subscription_id", "subscription_id"),
+        Index("ix_webhook_sub_deliveries_event_id", "event_id"),
+        Index("ix_webhook_sub_deliveries_status", "status"),
+        Index("ix_webhook_sub_deliveries_created_at", "created_at"),
+        Index("ix_webhook_sub_deliveries_next_retry_at", "next_retry_at"),
     )
 
 
