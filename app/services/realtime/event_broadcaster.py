@@ -113,6 +113,22 @@ class RealtimeEventType(str, Enum):
     # Notification Events (Phase C)
     NOTIFICATION_RECEIVED = "notification.received"
 
+    # Pipeline Auto-Assignment Events (Phase 1 - Stille Magie)
+    PIPELINE_STARTED = "pipeline.started"
+    PIPELINE_STEP_STARTED = "pipeline.step_started"
+    PIPELINE_STEP_COMPLETED = "pipeline.step_completed"
+    PIPELINE_AUTO_ASSIGNED = "pipeline.auto_assigned"
+    PIPELINE_REVIEW_NEEDED = "pipeline.review_needed"
+    PIPELINE_MANUAL_NEEDED = "pipeline.manual_needed"
+    PIPELINE_FAILED = "pipeline.failed"
+
+    # Pipeline Events (Auto-Zuordnung)
+    DOCUMENT_PIPELINE_STARTED = "document.pipeline_started"
+    DOCUMENT_PIPELINE_STEP = "document.pipeline_step"
+    DOCUMENT_PIPELINE_COMPLETED = "document.pipeline_completed"
+    DOCUMENT_AUTO_FILED = "document.auto_filed"
+    DOCUMENT_REVIEW_NEEDED = "document.review_needed"
+
 
 @dataclass
 class RealtimeEvent:
@@ -1081,6 +1097,49 @@ class EventBroadcaster:
             company_id=company_id,
             priority=priority,
         )
+
+
+async def broadcast_pipeline_progress(
+    document_id: str,
+    company_id: str,
+    user_id: Optional[str],
+    event_type: RealtimeEventType,
+    step_name: Optional[str] = None,
+    confidence: Optional[float] = None,
+    result_data: Optional[Dict[str, object]] = None,
+) -> None:
+    """
+    Broadcastet Pipeline-Fortschritt an verbundene Clients.
+
+    Wird von Auto-Zuordnungs-Pipelines aufgerufen, um den Fortschritt
+    der Dokumentenverarbeitung in Echtzeit zu melden.
+
+    Args:
+        document_id: ID des verarbeiteten Dokuments
+        company_id: Company-ID für Multi-Tenant-Isolation
+        user_id: Optional User-ID (None = an alle Company-User)
+        event_type: Typ des Pipeline-Events (PIPELINE_STARTED, PIPELINE_STEP, etc.)
+        step_name: Optional Name des aktuellen Pipeline-Schritts
+        confidence: Optional Konfidenzwert des Schritts (0.0 - 1.0)
+        result_data: Optional Ergebnis-Daten des Schritts
+    """
+    broadcaster = get_event_broadcaster()
+    payload: Dict[str, object] = {
+        "document_id": document_id,
+        "step": step_name,
+        "confidence": confidence,
+        "status": event_type.value,
+        "data": result_data or {},
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    await broadcaster._broadcast_event(
+        event_type=event_type,
+        payload=payload,
+        event_id=f"pipeline-{event_type.value}-{document_id}",
+        user_id=user_id,
+        company_id=company_id,
+        priority="high" if event_type == RealtimeEventType.DOCUMENT_REVIEW_NEEDED else "normal",
+    )
 
 
 # Singleton Instance

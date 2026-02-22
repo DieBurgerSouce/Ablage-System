@@ -323,6 +323,12 @@ class DocumentPipelineOrchestrator:
                 result.linked_entity_name = entity_decision.result.get("entity_name")
                 result.entity_link_confidence = entity_decision.confidence
 
+            # 2b. Smart Document Matching
+            smart_match_decision = await self._smart_match_document(
+                document_id, company_id
+            )
+            result.decisions.append(smart_match_decision)
+
             # 3. Projekt-Zuweisung
             project_decision = await self._assign_project(
                 document_id,
@@ -342,6 +348,7 @@ class DocumentPipelineOrchestrator:
                 result.document_type,
                 result.linked_entity_id,
                 metadata,
+                ocr_text=ocr_text,
             )
             result.decisions.append(category_decision)
             if category_decision.result:
@@ -591,6 +598,92 @@ class DocumentPipelineOrchestrator:
         return decision
 
     # =========================================================================
+    # Step 2b: Smart Document Matching
+    # =========================================================================
+
+    async def _smart_match_document(
+        self,
+        document_id: UUID,
+        company_id: UUID,
+    ) -> PipelineDecision:
+        """Sucht automatisch zusammengehoerige Dokumente via SmartMatching."""
+        start_time = datetime.now(timezone.utc)
+
+        decision = PipelineDecision(
+            step=PipelineStep.EXTRACT_ENTITIES,  # Reuse closest step
+            action="smart_match_documents",
+        )
+
+        try:
+            from app.services.ai.smart_matching_service import (
+                SmartMatchingService,
+            )
+
+            matcher = SmartMatchingService()
+            match_result = await matcher.find_matches(
+                db=self.db,
+                document_id=document_id,
+                company_id=company_id,
+                max_results=5,
+            )
+
+            if match_result.matches:
+                best_match = match_result.matches[0]
+                decision.result = {
+                    "matches_found": len(match_result.matches),
+                    "best_match_id": str(best_match.target_document_id),
+                    "best_match_type": best_match.match_type,
+                    "best_match_confidence": best_match.confidence,
+                    "all_matches": [
+                        {
+                            "document_id": str(m.target_document_id),
+                            "match_type": m.match_type,
+                            "confidence": m.confidence,
+                        }
+                        for m in match_result.matches[:5]
+                    ],
+                }
+                decision.confidence = best_match.confidence
+                decision.confidence_level = self._get_confidence_level(best_match.confidence)
+                decision.explanation = (
+                    f"{len(match_result.matches)} passende Dokumente gefunden. "
+                    f"Bester Match: {best_match.match_type} "
+                    f"(Konfidenz: {best_match.confidence:.0%})"
+                )
+
+                # Faktoren
+                decision.factors = [
+                    {"name": feature, "value": str(score)}
+                    for feature, score in best_match.feature_scores.items()
+                ]
+            else:
+                decision.result = {"matches_found": 0}
+                decision.confidence = 1.0  # No match is also a valid result
+                decision.confidence_level = DecisionConfidence.AUTO
+                decision.explanation = (
+                    f"Keine passenden Dokumente gefunden "
+                    f"({match_result.total_candidates_checked} Kandidaten geprueft)"
+                )
+
+        except Exception as e:
+            decision.result = {"matches_found": 0, "error": True}
+            decision.confidence = 1.0  # Don't block pipeline for matching errors
+            decision.confidence_level = DecisionConfidence.AUTO
+            decision.explanation = f"Smart Matching nicht verfuegbar: {type(e).__name__}"
+            logger.warning("pipeline_smart_match_error", **safe_error_log(e))
+
+        # Timing
+        end_time = datetime.now(timezone.utc)
+        decision.processing_time_ms = int(
+            (end_time - start_time).total_seconds() * 1000
+        )
+        PIPELINE_STEP_LATENCY.labels(step="smart_match").observe(
+            decision.processing_time_ms / 1000
+        )
+
+        return decision
+
+    # =========================================================================
     # Step 3: Project Assignment
     # =========================================================================
 
@@ -680,6 +773,7 @@ class DocumentPipelineOrchestrator:
         document_type: Optional[str],
         entity_id: Optional[UUID],
         metadata: Optional[Dict[str, Any]],
+        ocr_text: str = "",
     ) -> PipelineDecision:
         """Kategorisiert das Dokument für die Ablage."""
         start_time = datetime.now(timezone.utc)
@@ -690,40 +784,95 @@ class DocumentPipelineOrchestrator:
         )
 
         try:
-            # Kategorisierung basierend auf Dokumenttyp
-            category_mapping = {
-                "invoice": ("Rechnungen", 0.95),
-                "order": ("Bestellungen", 0.95),
-                "contract": ("Verträge", 0.95),
-                "delivery_note": ("Lieferscheine", 0.90),
-                "receipt": ("Quittungen", 0.90),
-                "bank_statement": ("Kontoauszüge", 0.95),
-                "tax_document": ("Steuer", 0.95),
-                "letter": ("Korrespondenz", 0.80),
-            }
+            # AI-basierte Kategorisierung via AutoCategorizationV2Service
+            from app.services.ai.auto_categorization_v2_service import (
+                get_auto_categorization_v2_service,
+                DOCUMENT_TYPE_LABELS_DE,
+            )
 
-            if document_type and document_type.lower() in category_mapping:
-                category_name, confidence = category_mapping[document_type.lower()]
+            categorization_service = get_auto_categorization_v2_service()
+
+            # Versuche AI-Kategorisierung
+            try:
+                cat_result = await categorization_service.categorize_text(
+                    ocr_text if ocr_text else "",
+                    use_llm=True,
+                    use_cache=True,
+                )
+
+                category_name = DOCUMENT_TYPE_LABELS_DE.get(
+                    cat_result.primary_type,
+                    cat_result.primary_type.value,
+                )
+                confidence = cat_result.calibrated_confidence or cat_result.primary_confidence
 
                 decision.result = {
                     "category_name": category_name,
+                    "document_type": cat_result.primary_type.value,
+                    "method": cat_result.method.value,
                 }
                 decision.confidence = confidence
                 decision.confidence_level = self._get_confidence_level(confidence)
                 decision.explanation = (
                     f"Kategorisiert als '{category_name}' "
-                    f"basierend auf Dokumenttyp '{document_type}'"
+                    f"via {cat_result.method.value} "
+                    f"(Konfidenz: {confidence:.0%}). "
+                    f"{cat_result.explanation.summary}"
                 )
-            else:
-                decision.result = {
-                    "category_name": "Sonstige",
+
+                # Faktoren aus AI-Ergebnis
+                if cat_result.explanation.key_indicators:
+                    decision.factors = [
+                        {"name": "Schluesselwort", "value": kw}
+                        for kw in cat_result.explanation.key_indicators[:5]
+                    ]
+
+                # Alternativen
+                for label in cat_result.labels:
+                    if not label.is_primary:
+                        decision.alternatives.append({
+                            "category": DOCUMENT_TYPE_LABELS_DE.get(
+                                label.document_type, label.document_type.value
+                            ),
+                            "confidence": label.confidence,
+                        })
+
+            except Exception as ai_err:
+                # Fallback auf statisches Mapping wenn AI-Service fehlschlaegt
+                logger.warning(
+                    "pipeline_ai_categorization_fallback",
+                    **safe_error_log(ai_err),
+                )
+
+                category_mapping = {
+                    "invoice": ("Rechnungen", 0.95),
+                    "order": ("Bestellungen", 0.95),
+                    "contract": ("Vertraege", 0.95),
+                    "delivery_note": ("Lieferscheine", 0.90),
+                    "receipt": ("Quittungen", 0.90),
+                    "bank_statement": ("Kontoauszuege", 0.95),
+                    "tax_document": ("Steuer", 0.95),
+                    "letter": ("Korrespondenz", 0.80),
                 }
-                decision.confidence = 0.5
-                decision.confidence_level = DecisionConfidence.MANUAL
-                decision.explanation = (
-                    "Keine automatische Kategorie zuweisbar, "
-                    "Standardkategorie 'Sonstige' verwendet"
-                )
+
+                if document_type and document_type.lower() in category_mapping:
+                    category_name, confidence = category_mapping[document_type.lower()]
+                    decision.result = {"category_name": category_name}
+                    decision.confidence = confidence
+                    decision.confidence_level = self._get_confidence_level(confidence)
+                    decision.explanation = (
+                        f"Kategorisiert als '{category_name}' "
+                        f"basierend auf Dokumenttyp '{document_type}' "
+                        f"(Fallback: AI-Service nicht verfuegbar)"
+                    )
+                else:
+                    decision.result = {"category_name": "Sonstige"}
+                    decision.confidence = 0.5
+                    decision.confidence_level = DecisionConfidence.MANUAL
+                    decision.explanation = (
+                        "Keine automatische Kategorie zuweisbar, "
+                        "Standardkategorie 'Sonstige' verwendet"
+                    )
 
             PIPELINE_CONFIDENCE_SCORES.labels(step="categorize").observe(
                 decision.confidence
@@ -938,14 +1087,14 @@ class DocumentPipelineOrchestrator:
     def _evaluate_pipeline_result(self, result: PipelineResult) -> PipelineResult:
         """Evaluiert das Gesamtergebnis der Pipeline."""
         # Prüfen ob alle Schritte automatisch verarbeitet werden können
-        auto_decisions = [
-            d for d in result.decisions
-            if d.confidence_level == DecisionConfidence.AUTO
-        ]
-
         manual_decisions = [
             d for d in result.decisions
             if d.confidence_level == DecisionConfidence.MANUAL
+        ]
+
+        suggest_decisions = [
+            d for d in result.decisions
+            if d.confidence_level == DecisionConfidence.SUGGEST
         ]
 
         critical_anomalies = [
@@ -954,19 +1103,22 @@ class DocumentPipelineOrchestrator:
         ]
 
         # Auto-Verarbeitung nur wenn:
-        # - Alle Entscheidungen AUTO-Level haben
+        # - Keine MANUAL- oder SUGGEST-Entscheidungen
         # - Keine kritischen Anomalien
         result.auto_processed = (
             len(manual_decisions) == 0
+            and len(suggest_decisions) == 0
             and len(critical_anomalies) == 0
             and result.document_type_confidence >= self.AUTO_THRESHOLD
         )
 
         # Review erforderlich wenn:
         # - Mindestens eine MANUAL-Entscheidung
+        # - Oder SUGGEST-Entscheidung (Vorschlag zur Bestaetigung)
         # - Oder kritische Anomalien
         result.requires_review = (
             len(manual_decisions) > 0
+            or len(suggest_decisions) > 0
             or len(critical_anomalies) > 0
         )
 
@@ -974,6 +1126,11 @@ class DocumentPipelineOrchestrator:
         for decision in manual_decisions:
             result.review_reasons.append(
                 f"{decision.step.value}: {decision.explanation}"
+            )
+
+        for decision in suggest_decisions:
+            result.review_reasons.append(
+                f"{decision.step.value}: Vorschlag - {decision.explanation}"
             )
 
         for anomaly in critical_anomalies:
