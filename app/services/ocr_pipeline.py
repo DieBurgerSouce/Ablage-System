@@ -1,12 +1,14 @@
 """
-OCR Pipeline Service für Ablage-System.
+OCR Pipeline Service fuer Ablage-System.
 
 Integriert alle OCR-Komponenten zu einer einheitlichen Pipeline:
-- Fallback Chain für Backend-Auswahl
-- Confidence-basierte Qualitätsprüfung
-- Circuit Breaker für Fehlertoleranz
-- GPU Memory Guard für Ressourcenkontrolle
-- German Correction Agent für Textkorrektur
+- Fallback Chain fuer Backend-Auswahl
+- Confidence-basierte Qualitaetspruefung
+- Circuit Breaker fuer Fehlertoleranz
+- GPU Memory Guard fuer Ressourcenkontrolle
+- German Correction Agent fuer Textkorrektur
+- Document DNA fuer Layout-Fingerprinting und adaptives Matching
+- Cross-Validation fuer Feld-Plausibilitaetspruefung
 
 Feinpoliert und durchdacht - Enterprise-grade OCR Pipeline.
 """
@@ -96,6 +98,15 @@ class OCRPipelineResult:
     structured_extraction_applied: bool = False
     structured_data: Optional[Dict[str, Any]] = None
     document_type: Optional[str] = None  # Klassifizierter Dokumenttyp
+    # Document DNA (Layout-Fingerprinting)
+    document_dna_applied: bool = False
+    document_dna_match_type: Optional[str] = None
+    document_dna_similarity: Optional[float] = None
+    # Cross-Validation (Feld-Plausibilitaetspruefung)
+    cross_validation_applied: bool = False
+    cross_validation_has_errors: bool = False
+    cross_validation_adjustment: float = 0.0
+    document_direction: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -125,6 +136,13 @@ class OCRPipelineResult:
             "structured_extraction_applied": self.structured_extraction_applied,
             "structured_data": self.structured_data,
             "document_type": self.document_type,
+            "document_dna_applied": self.document_dna_applied,
+            "document_dna_match_type": self.document_dna_match_type,
+            "document_dna_similarity": self.document_dna_similarity,
+            "cross_validation_applied": self.cross_validation_applied,
+            "cross_validation_has_errors": self.cross_validation_has_errors,
+            "cross_validation_adjustment": self.cross_validation_adjustment,
+            "document_direction": self.document_direction,
         }
 
 
@@ -134,11 +152,16 @@ class OCRPipeline:
 
     Verarbeitet Dokumente durch:
     1. GPU Memory Check
+    1.5. Image Preprocessing
     2. Backend-Auswahl via Fallback Chain
-    3. OCR-Verarbeitung mit Circuit Breaker
-    4. Confidence-Analyse
-    5. German Correction Agent
-    6. Qualitätsvalidierung
+    2.5. Confidence Thresholding
+    3. German Correction Agent
+    4. Historical German Normalization
+    5. Entity Extraction (Geschaeftspartner)
+    5.5. Document DNA (Layout-Fingerprinting & Matching)
+    6. Structured Extraction (Rechnungen, Bestellungen, Vertraege)
+    6.5. Cross-Validation (Feld-Plausibilitaetspruefung)
+    7. Finale Confidence-Analyse
     """
 
     def __init__(
@@ -150,6 +173,8 @@ class OCRPipeline:
         enable_entity_extraction: bool = True,
         enable_structured_extraction: bool = True,
         enable_preprocessing: bool = True,
+        enable_document_dna: bool = True,
+        enable_cross_validation: bool = True,
         min_confidence_threshold: float = 0.65,
         confidence_thresholds: Optional[ConfidenceThresholds] = None,
         enable_confidence_fallback: bool = True
@@ -165,6 +190,8 @@ class OCRPipeline:
             enable_entity_extraction: Entity Extraction (Business Partner) aktivieren
             enable_structured_extraction: Strukturierte Extraktion (Invoice, Order, Contract) aktivieren
             enable_preprocessing: Image Preprocessing aktivieren
+            enable_document_dna: Document DNA Layout-Fingerprinting aktivieren
+            enable_cross_validation: Cross-Validation der extrahierten Felder aktivieren
             min_confidence_threshold: Minimale Confidence für Akzeptanz (legacy)
             confidence_thresholds: Konfigurierbare Schwellenwerte für Confidence
             enable_confidence_fallback: Fallback bei niedriger Confidence aktivieren
@@ -179,6 +206,8 @@ class OCRPipeline:
         self.enable_entity_extraction = enable_entity_extraction
         self.enable_structured_extraction = enable_structured_extraction
         self.enable_preprocessing = enable_preprocessing
+        self.enable_document_dna = enable_document_dna
+        self.enable_cross_validation = enable_cross_validation
         self.min_confidence_threshold = min_confidence_threshold
         self.confidence_thresholds = confidence_thresholds or ConfidenceThresholds()
         self.enable_confidence_fallback = enable_confidence_fallback
@@ -217,6 +246,8 @@ class OCRPipeline:
             entity_extraction=enable_entity_extraction,
             structured_extraction=enable_structured_extraction,
             preprocessing=enable_preprocessing,
+            document_dna=enable_document_dna,
+            cross_validation=enable_cross_validation,
             min_confidence=min_confidence_threshold,
             confidence_thresholds={
                 "low": self.confidence_thresholds.low,
@@ -830,6 +861,80 @@ class OCRPipeline:
                     )
                     # Fortfahren ohne Entity Extraction bei Fehler
 
+        # Step 5.5: Document DNA - Layout-Fingerprinting & adaptives Matching
+        document_dna_applied = False
+        document_dna_match_type: Optional[str] = None
+        document_dna_similarity: Optional[float] = None
+        extraction_hints: Optional[Dict[str, object]] = None
+
+        if self.enable_document_dna and corrected_text:
+            try:
+                from app.services.ocr.document_dna_service import get_document_dna_service
+                dna_service = get_document_dna_service()
+
+                # DNA aus aktuellem Dokument extrahieren
+                document_dna = dna_service.extract_dna(
+                    ocr_text=corrected_text,
+                    extracted_fields=extracted_entities or {},
+                    page_width=options.get("page_width", 595.0),
+                    page_height=options.get("page_height", 842.0),
+                )
+
+                # Passendes DNA-Template suchen (wenn Entity bekannt)
+                entity_id_for_dna = options.get("entity_id") or options.get("business_entity_id")
+                company_id_for_dna = options.get("company_id")
+
+                if entity_id_for_dna and company_id_for_dna:
+                    from uuid import UUID as UUIDType
+                    from app.db.session import async_session_factory
+
+                    entity_uuid = UUIDType(str(entity_id_for_dna)) if not isinstance(entity_id_for_dna, UUIDType) else entity_id_for_dna
+                    company_uuid = UUIDType(str(company_id_for_dna)) if not isinstance(company_id_for_dna, UUIDType) else company_id_for_dna
+
+                    async with async_session_factory() as db:
+                        match = await dna_service.find_matching_dna(
+                            dna=document_dna,
+                            entity_id=entity_uuid,
+                            company_id=company_uuid,
+                            db=db,
+                        )
+                        if match:
+                            hints = dna_service.apply_dna(
+                                matched_dna=match.dna,
+                                match_type=match.match_type,
+                                similarity_score=match.similarity_score,
+                            )
+                            extraction_hints = {
+                                k: v.to_dict() for k, v in hints.items()
+                            }
+                            document_dna_match_type = match.match_type
+                            document_dna_similarity = match.similarity_score
+
+                        # DNA fuer zukuenftige Dokumente speichern
+                        await dna_service.store_dna(
+                            entity_id=entity_uuid,
+                            company_id=company_uuid,
+                            dna=document_dna,
+                            db=db,
+                        )
+
+                document_dna_applied = True
+
+                logger.info(
+                    "ocr_pipeline_document_dna_applied",
+                    document_id=document_id,
+                    dna_match_type=document_dna_match_type,
+                    dna_similarity=round(document_dna_similarity, 3) if document_dna_similarity else None,
+                    hints_count=len(extraction_hints) if extraction_hints else 0,
+                )
+
+            except Exception as e:
+                logger.warning(
+                    "ocr_pipeline_document_dna_error",
+                    document_id=document_id,
+                    **safe_error_log(e)
+                )
+
         # Step 6: Structured Extraction (Rechnungen, Bestellungen, Verträge)
         # NEU: Unterstützt jetzt ALLE Sprachen durch automatische Übersetzung nach Deutsch
         structured_extraction_applied = False
@@ -894,6 +999,10 @@ class OCRPipeline:
                         if extraction_result.companies:
                             structured_data["companies"] = extraction_result.companies
 
+                        # Document DNA Extraktionshinweise anfuegen
+                        if extraction_hints:
+                            structured_data["extraction_hints"] = extraction_hints
+
                         logger.info(
                             "ocr_pipeline_structured_extraction_applied",
                             document_id=document_id,
@@ -911,6 +1020,128 @@ class OCRPipeline:
                         **safe_error_log(e)
                     )
                     # Fortfahren ohne Structured Extraction bei Fehler
+
+        # Step 6.5: Cross-Validation (Feld-Plausibilitaetspruefung)
+        cross_validation_applied = False
+        cross_validation_has_errors = False
+        cross_validation_adjustment = 0.0
+        document_direction: Optional[str] = None
+
+        if (self.enable_cross_validation and
+            structured_extraction_applied and
+            structured_data):
+
+            try:
+                from app.services.ocr.cross_validation_service import get_cross_validation_service
+                cv_service = get_cross_validation_service()
+
+                company_id_for_cv = options.get("company_id")
+                entity_id_for_cv = options.get("entity_id") or options.get("business_entity_id")
+
+                if company_id_for_cv:
+                    from uuid import UUID as UUIDType
+                    from app.db.session import async_session_factory
+
+                    cv_company_uuid = UUIDType(str(company_id_for_cv)) if not isinstance(company_id_for_cv, UUIDType) else company_id_for_cv
+                    cv_entity_uuid = None
+                    if entity_id_for_cv:
+                        cv_entity_uuid = UUIDType(str(entity_id_for_cv)) if not isinstance(entity_id_for_cv, UUIDType) else entity_id_for_cv
+
+                    # Validierungsdaten aus strukturierter Extraktion zusammenstellen
+                    cv_data: Dict[str, object] = {}
+                    invoice_data = structured_data.get("invoice", {})
+                    if isinstance(invoice_data, dict):
+                        cv_data.update({
+                            "net_amount": invoice_data.get("net_amount"),
+                            "vat_amount": invoice_data.get("vat_amount"),
+                            "gross_amount": invoice_data.get("gross_amount") or invoice_data.get("total_amount"),
+                            "vat_rate": invoice_data.get("vat_rate"),
+                            "invoice_number": invoice_data.get("invoice_number"),
+                            "invoice_date": invoice_data.get("invoice_date"),
+                            "due_date": invoice_data.get("due_date"),
+                            "delivery_date": invoice_data.get("delivery_date"),
+                        })
+
+                    # IBANs und USt-IDs aus Top-Level-Daten
+                    ibans = structured_data.get("ibans", [])
+                    if ibans and isinstance(ibans, list) and len(ibans) > 0:
+                        cv_data["iban"] = ibans[0] if isinstance(ibans[0], str) else str(ibans[0])
+                    vat_ids = structured_data.get("vat_ids", [])
+                    if vat_ids and isinstance(vat_ids, list) and len(vat_ids) > 0:
+                        cv_data["vat_id"] = vat_ids[0] if isinstance(vat_ids[0], str) else str(vat_ids[0])
+
+                    # Absender/Empfaenger fuer Richtungsklassifikation
+                    companies = structured_data.get("companies", [])
+                    if companies and isinstance(companies, list):
+                        if len(companies) >= 1:
+                            cv_data["sender_name"] = companies[0] if isinstance(companies[0], str) else str(companies[0])
+                        if len(companies) >= 2:
+                            cv_data["recipient_name"] = companies[1] if isinstance(companies[1], str) else str(companies[1])
+
+                    async with async_session_factory() as db:
+                        validation_result = await cv_service.validate_all(
+                            extracted_data=cv_data,
+                            company_id=cv_company_uuid,
+                            db=db,
+                            entity_id=cv_entity_uuid,
+                        )
+
+                    cross_validation_applied = True
+                    cross_validation_adjustment = validation_result.overall_confidence_adjustment
+                    cross_validation_has_errors = validation_result.has_errors
+
+                    # Confidence anpassen
+                    if validation_result.overall_confidence_adjustment != 0:
+                        current_confidence = max(0.0, min(1.0,
+                            current_confidence + validation_result.overall_confidence_adjustment
+                        ))
+
+                    # Dokumentrichtung setzen
+                    if validation_result.document_direction:
+                        document_direction = validation_result.document_direction
+
+                    # Fuer Nachpruefung markieren wenn Fehler gefunden
+                    if validation_result.has_errors:
+                        needs_review = True
+
+                    # Validierungsergebnisse in structured_data speichern
+                    structured_data["cross_validation"] = {
+                        "checks": [
+                            {
+                                "check_name": check.check_name,
+                                "passed": check.passed,
+                                "confidence_adjustment": check.confidence_adjustment,
+                                "severity": check.severity,
+                                "message": check.message,
+                            }
+                            for check in validation_result.checks
+                        ],
+                        "overall_adjustment": validation_result.overall_confidence_adjustment,
+                        "document_direction": validation_result.document_direction,
+                        "duplicate_candidate": (
+                            str(validation_result.duplicate_candidate_id)
+                            if validation_result.duplicate_candidate_id
+                            else None
+                        ),
+                    }
+
+                    logger.info(
+                        "ocr_pipeline_cross_validation_applied",
+                        document_id=document_id,
+                        checks_count=len(validation_result.checks),
+                        has_errors=validation_result.has_errors,
+                        has_warnings=validation_result.has_warnings,
+                        confidence_adjustment=round(validation_result.overall_confidence_adjustment, 3),
+                        document_direction=validation_result.document_direction,
+                        duplicate_found=validation_result.duplicate_candidate_id is not None,
+                    )
+
+            except Exception as e:
+                logger.warning(
+                    "ocr_pipeline_cross_validation_error",
+                    document_id=document_id,
+                    **safe_error_log(e)
+                )
 
         # Step 7: Finale Confidence-Analyse
         confidence_details = None
@@ -945,6 +1176,13 @@ class OCRPipeline:
             structured_extraction_applied=structured_extraction_applied,
             structured_data=structured_data,
             document_type=classified_document_type,
+            document_dna_applied=document_dna_applied,
+            document_dna_match_type=document_dna_match_type,
+            document_dna_similarity=document_dna_similarity,
+            cross_validation_applied=cross_validation_applied,
+            cross_validation_has_errors=cross_validation_has_errors,
+            cross_validation_adjustment=cross_validation_adjustment,
+            document_direction=document_direction,
         )
 
         logger.info(
@@ -959,6 +1197,11 @@ class OCRPipeline:
             entities_found=len(extracted_entities.get("identifiers", [])) if extracted_entities else 0,
             structured_extraction=structured_extraction_applied,
             document_type=classified_document_type,
+            document_dna=document_dna_applied,
+            document_dna_match=document_dna_match_type,
+            cross_validation=cross_validation_applied,
+            cross_validation_errors=cross_validation_has_errors,
+            document_direction=document_direction,
             preprocessing=preprocessing_applied,
             preprocessing_steps_count=len(preprocessing_steps),
             time_ms=total_time,
@@ -1096,6 +1339,12 @@ class OCRPipeline:
             }
         else:
             status["structured_extraction"] = {"loaded": False}
+
+        # Document DNA Status
+        status["document_dna"] = {"enabled": self.enable_document_dna}
+
+        # Cross-Validation Status
+        status["cross_validation"] = {"enabled": self.enable_cross_validation}
 
         return status
 

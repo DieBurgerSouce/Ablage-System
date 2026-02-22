@@ -339,6 +339,33 @@ class EnhancedOCRFeedbackService:
                 **safe_error_log(e),
             )
 
+        # 7. Auto-Template Update (wenn Entity bekannt und Bounding Box vorhanden)
+        try:
+            from app.db.models import Document
+            from app.services.ocr.auto_template_service import get_auto_template_service
+
+            doc_result = await self._db.execute(
+                select(Document).where(Document.id == feedback.document_id)
+            )
+            doc = doc_result.scalar_one_or_none()
+
+            if doc and doc.business_entity_id and feedback.bounding_box:
+                template_service = get_auto_template_service()
+                await template_service.update_template_from_correction(
+                    db=self._db,
+                    entity_id=doc.business_entity_id,
+                    company_id=company_id,
+                    field_name=feedback.field_name,
+                    corrected_bounding_box=feedback.bounding_box,
+                    corrected_value=feedback.corrected_value,
+                )
+        except Exception as e:
+            logger.warning(
+                "auto_template_update_failed",
+                correction_id=str(correction_id),
+                **safe_error_log(e),
+            )
+
         await self._db.flush()
 
         # Feedback-Nachricht generieren
