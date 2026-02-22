@@ -1315,6 +1315,7 @@ from app.api.v1.odoo_webhooks import router as odoo_webhooks_router  # Phase 6: 
 from app.api.v1.webhooks_receive import router as webhooks_receive_router  # Phase 3.2: Inbound Webhook Receiver
 from app.api.v1.webhooks_outbound import router as webhooks_outbound_platform_router  # Outbound Webhook Event Platform
 from app.api.v1.pipeline import router as pipeline_router  # Phase 3: Integration Pipeline
+from app.api.v1.review_queue import router as review_queue_router  # Review Queue & Confirm-Filing
 from app.api.v1.bpmn_converter import router as bpmn_converter_router  # BPMN 2.0 Import/Export Converter
 from app.api.v1.banking.connections import router as psd2_banking_router  # Phase 6: PSD2/FinTS Banking Integration
 from app.api.v1.documents_bulk import router as documents_bulk_router  # Phase 2.3: Bulk Actions
@@ -1580,6 +1581,7 @@ app.include_router(odoo_webhooks_router, prefix="/api/v1")  # Phase 6: Odoo Inte
 app.include_router(webhooks_receive_router, prefix="/api/v1")  # Phase 3.2: Inbound Webhook Receiver
 app.include_router(webhooks_outbound_platform_router, prefix="/api/v1")  # Outbound Webhook Event Platform
 app.include_router(pipeline_router, prefix="/api/v1")  # Phase 3: Integration Pipeline (Kontierung + Matching)
+app.include_router(review_queue_router, prefix="/api/v1")  # Review Queue & Confirm-Filing
 app.include_router(bpmn_converter_router, prefix="/api/v1")  # BPMN 2.0 Import/Export Converter
 
 # Phase 5.2: Kundenportal Self-Service
