@@ -1,5 +1,14 @@
 # Recent Changes
 
+## 2026-02-22 (Session 2)
+- **refactor(db)**: Model-Refactoring - 8 Satellite-Models nutzen Re-Exporte statt Duplikat-Definitionen (bpmn_models, annotations, collaboration, clustering, integrity, learning_autonomy, signature)
+- **fix(db)**: WebhookDelivery umbenannt in WebhookSubscriptionDelivery (Tablename + Indexes + Relationships)
+- **feat(security)**: ConflictError (E409) und ServiceUnavailableError (E503) Exception-Klassen hinzugefuegt
+- **fix(api)**: webhooks.py + webhook_dispatcher.py auf WebhookSubscriptionDelivery aktualisiert
+- **fix(services)**: PaymentService company_id Fix - 9 Methoden von company_id auf user_id umgestellt (BankAccount.user_id statt company_id)
+- **fix(services)**: LiquidityForecastService - ueberfluessiger company_id Parameter in _create_rolling_forecast() und _detect_payment_anomalies() entfernt
+- **fix(orchestration)**: team_router_hook.py - Trivial-Pattern-Filter vereinfacht (keine Fragen/Exploration mehr als trivial blockiert)
+
 ## 2026-02-22
 - **feat(db)**: Migration 253 - GoBD/DSGVO Compliance SQL Views (gobd_audit_summary, gdpr_deletion_status)
 - **fix(frontend)**: AppLayout.tsx - id-Prop auf semantisch korrektes main-Element verschoben (statt div)

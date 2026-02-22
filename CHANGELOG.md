@@ -10,6 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Core: ConflictError (E409) und ServiceUnavailableError (E503) Exception-Klassen mit ERROR_CODE_REGISTRY-Eintraegen
+- Core: ConflictError und ServiceUnavailableError in EXCEPTION_STATUS_CODES Handler registriert (409/503)
+
+### Fixed
+- DB: WebhookDelivery umbenannt zu WebhookSubscriptionDelivery (Tablename webhook_subscription_deliveries, neue Index-Namen)
+- DB: models.py und webhook_dispatcher.py + webhooks.py auf WebhookSubscriptionDelivery aktualisiert
+- Services: PaymentService - company_id durch user_id ersetzt in 9 Methoden (create, get, list, approve, cancel, submit, confirm_with_tan, get_pending, create_batch, get_skonto_opportunities)
+- Services: LiquidityForecastService - duplizierten company_id Parameter aus _create_rolling_forecast() und _detect_payment_anomalies() entfernt
+- API: annotations_enhanced.py - response_model=None fuer 204 No Content DELETE-Endpoint
+- Orchestration: team_router_hook.py - Trivial-Prompt-Filter vereinfacht (Fragen/Exploration-Keywords nicht mehr blockiert)
+
+### Refactored
+- DB: 8 Satellite-Model-Dateien nutzen Re-Exporte statt Duplikat-__tablename__-Definitionen (contract, document_template, models_annotations_extended, models_clustering, models_collaboration, models_integrity, models_learning_autonomy, models_signature)
+
+### Added
 - Database: Migration 253 - GoBD/DSGVO Compliance SQL Views (gobd_audit_summary: monatliche Audit-Statistiken pro Company aus audit_logs; gdpr_deletion_status: Uebersicht DSGVO-Loeschanfragen mit Status, Frist und verbleibenden Tagen)
 - Database: Migration 252 - GoBD Audit-Felder (created_by_id, updated_by_id) fuer payment_batches und dunning_records mit FK auf users (SET NULL)
 - Services: DunningService - user_id Parameter fuer GoBD-Audit in create_dunning_record(), escalate_dunning(), close_dunning() und _map_to_response()
