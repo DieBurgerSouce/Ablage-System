@@ -3156,3 +3156,68 @@ def get_predictive_insights_summary(
             **safe_error_log(e),
         )
         raise self.retry(exc=e)
+
+
+# =============================================================================
+# P5.1: Private Contract Reminder Task
+# =============================================================================
+
+
+@celery_app.task(
+    bind=True,
+    base=CPUTask,
+    name="app.workers.tasks.privat_tasks.send_contract_reminders",
+    max_retries=3,
+    default_retry_delay=300,
+)
+@idempotent_task(date_scoped=True, ttl=86400)
+def send_contract_reminders(self) -> Dict[str, Any]:
+    """
+    Sende Erinnerungen fuer private Vertragskuendigungsfristen.
+
+    IDEMPOTENT: Wird nur einmal pro Tag ausgefuehrt.
+    Taeglich um 08:00 via Celery Beat geplant.
+
+    Prueft alle ungesendeten Erinnerungen mit faelligem Datum
+    und erstellt Alerts ueber den Alert Center Service.
+
+    Returns:
+        Statistik ueber gesendete Erinnerungen
+    """
+    logger.info(
+        "contract_reminders_task_started",
+        task_id=self.request.id,
+    )
+
+    try:
+        async def do_send_contract_reminders():
+            from app.db.session import get_async_session
+            from app.services.privat.contract_management_service import (
+                get_contract_management_service,
+            )
+
+            async with get_async_session() as db:
+                service = get_contract_management_service()
+                sent_count = await service.check_and_send_reminders(db)
+                return sent_count
+
+        sent_count = run_async(do_send_contract_reminders())
+
+        logger.info(
+            "contract_reminders_task_completed",
+            task_id=self.request.id,
+            reminders_sent=sent_count,
+        )
+
+        return {
+            "status": "success",
+            "reminders_sent": sent_count,
+        }
+
+    except Exception as e:
+        logger.error(
+            "contract_reminders_task_failed",
+            task_id=self.request.id,
+            **safe_error_log(e),
+        )
+        raise self.retry(exc=e)

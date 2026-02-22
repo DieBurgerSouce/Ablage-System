@@ -333,6 +333,7 @@ celery_app = Celery(
         "app.workers.tasks.contract_tasks",
         "app.workers.tasks.contract_v2_tasks",
         "app.workers.tasks.customer_detection_tasks",
+        "app.workers.tasks.booking_tasks",
         "app.workers.tasks.datev_connect_tasks",
         "app.workers.tasks.enrichment_tasks",
         "app.workers.tasks.erp_sync_tasks",
@@ -347,6 +348,7 @@ celery_app = Celery(
         "app.workers.tasks.life_event_tasks",
         "app.workers.tasks.nlq_tasks",
         "app.workers.tasks.ocr_template_tasks",
+        "app.workers.tasks.ocr_learning_tasks",
         "app.workers.tasks.odoo_tasks",
         "app.workers.tasks.shipment_tasks",
         "app.workers.tasks.smart_inbox_tasks",
@@ -813,6 +815,17 @@ celery_app.conf.update(
             "task": "app.workers.tasks.ocr_tasks.process_pending_ocr_feedbacks",
             "schedule": crontab(hour="*/4"),  # Alle 4 Stunden
             "kwargs": {"batch_size": 100},
+        },
+        # OCR Self-Learning Feedback Loop (Correction Queue -> Template/Weight Updates)
+        "ocr-learning-consume-correction-queue": {
+            "task": "ocr_learning.consume_correction_queue",
+            "schedule": crontab(minute="*/30"),  # Alle 30 Minuten
+            "kwargs": {"max_items": 200},
+        },
+        "ocr-learning-apply-patterns": {
+            "task": "ocr_learning.apply_learned_patterns",
+            "schedule": crontab(hour=3, minute=0),  # Taeglich um 03:00 Uhr
+            "kwargs": {"period_days": 30},
         },
         # =================================================================
         # Export Tasks (Scheduled Exports)
@@ -1691,6 +1704,15 @@ celery_app.conf.update(
         "datev-auto-festschreibung-monthly": {
             "task": "app.workers.tasks.datev_connect_tasks.datev_auto_festschreibung",
             "schedule": crontab(day_of_month=5, hour=3, minute=0),  # Am 5. jeden Monats um 03:00 Uhr
+        },
+        # =================================================================
+        # Scan-to-Buchung Auto-Booking Tasks
+        # Automatische Buchungsverarbeitung fuer OCR-fertige Rechnungen
+        # =================================================================
+        "datev-batch-auto-booking": {
+            "task": "app.workers.tasks.booking_tasks.batch_process_all_companies",
+            "schedule": crontab(minute="*/15"),  # Alle 15 Minuten
+            "kwargs": {"batch_size": 50},
         },
         # =================================================================
         # SLA Monitoring Tasks (Phase 4: Workflow Extensions)
@@ -2834,6 +2856,10 @@ celery_app.conf.update(
         # GoBD Compliance (hohe Priorität - Compliance-kritisch)
         "app.workers.tasks.datev_connect_tasks.datev_gobd_compliance_check": {"queue": "maintenance", "priority": 6},
         "app.workers.tasks.datev_connect_tasks.datev_auto_festschreibung": {"queue": "maintenance", "priority": 7},
+        # Scan-to-Buchung Auto-Booking
+        "app.workers.tasks.booking_tasks.process_auto_booking": {"queue": "datev", "priority": 5},
+        "app.workers.tasks.booking_tasks.batch_process_bookings": {"queue": "datev", "priority": 4},
+        "app.workers.tasks.booking_tasks.batch_process_all_companies": {"queue": "datev", "priority": 3},
         # =================================================================
         # SLA Monitoring Tasks (Phase 4: Workflow Extensions)
         # =================================================================

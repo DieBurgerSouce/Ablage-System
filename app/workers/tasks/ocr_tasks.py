@@ -1857,6 +1857,23 @@ def process_pending_ocr_feedbacks(
                 processed_count=processed_count,
             )
 
+            # Trigger Korrektur-Queue-Consumer fuer Template-Updates
+            try:
+                from app.workers.tasks.ocr_learning_tasks import consume_correction_queue
+                consume_correction_queue.apply_async()
+                logger.info(
+                    "ocr_correction_queue_consumer_triggered",
+                    task_id=task_id,
+                    processed_count=processed_count,
+                )
+            except Exception as trigger_err:
+                # Consumer-Trigger sollte Feedback-Verarbeitung nicht blockieren
+                logger.warning(
+                    "ocr_correction_queue_consumer_trigger_failed",
+                    task_id=task_id,
+                    error=str(trigger_err),
+                )
+
             return {
                 "success": True,
                 "task_id": task_id,
