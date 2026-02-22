@@ -14,7 +14,7 @@ Feinpoliert und durchdacht.
 import logging
 from datetime import date
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
@@ -30,6 +30,9 @@ from app.services.datev.booking_suggestion_service import (
     BookingSuggestion,
     Kontenrahmen,
     Belegart,
+)
+from app.services.datev.scan_to_booking_orchestrator import (
+    get_scan_to_booking_orchestrator,
 )
 
 logger = logging.getLogger(__name__)
@@ -570,3 +573,106 @@ async def get_steuercodes(
         {"code": "94", "satz": 0, "beschreibung": "Reverse Charge"},
         {"code": "41", "satz": 0, "beschreibung": "Innergemeinschaftliche Lieferung"},
     ]
+
+
+# ============================================================================
+# Zero-Touch Stats & Auto-Booking API (Scan-to-Buchung)
+# ============================================================================
+
+
+class ZeroTouchStatsResponse(BaseModel):
+    """Response fuer Zero-Touch-Buchungsquote."""
+
+    total_processed: int
+    auto_booked: int
+    review_queue: int
+    manual: int
+    zero_touch_quote: float
+    top_failure_reasons: List[Tuple[str, int]]
+    trend_7d: Optional[float] = None
+
+
+class ProcessBookingResponse(BaseModel):
+    """Response fuer manuelle Buchungsausloesung."""
+
+    document_id: str
+    routing: str
+    success: bool
+    datev_booking_id: Optional[str] = None
+    plausibility_score: float
+    reason: str
+    processing_time_ms: int
+
+
+@router.get(
+    "/zero-touch-stats",
+    response_model=ZeroTouchStatsResponse,
+    summary="Zero-Touch-Quote abrufen",
+    description="Dashboard-Daten fuer die automatische Buchungsquote.",
+)
+async def get_zero_touch_stats(
+    period_days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ZeroTouchStatsResponse:
+    """
+    Gibt Zero-Touch-Buchungsstatistiken zurueck.
+
+    Zeigt wie viele Rechnungen automatisch gebucht, zur Pruefung
+    vorgelegt oder manuell verarbeitet wurden.
+    """
+    orchestrator = get_scan_to_booking_orchestrator()
+
+    stats = await orchestrator.get_zero_touch_stats(
+        company_id=current_user.company_id,
+        period_days=period_days,
+        db=db,
+    )
+
+    return ZeroTouchStatsResponse(
+        total_processed=stats.total_processed,
+        auto_booked=stats.auto_booked,
+        review_queue=stats.review_queue,
+        manual=stats.manual,
+        zero_touch_quote=stats.zero_touch_quote,
+        top_failure_reasons=stats.top_failure_reasons,
+        trend_7d=stats.trend_7d,
+    )
+
+
+@router.post(
+    "/process-booking/{document_id}",
+    response_model=ProcessBookingResponse,
+    summary="Buchung manuell ausloesen",
+    description="Startet den Scan-to-Buchung Workflow fuer ein einzelnes Dokument.",
+)
+async def process_booking(
+    document_id: UUID = Path(..., description="Dokument-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> ProcessBookingResponse:
+    """
+    Loest den Buchungsworkflow fuer ein Dokument manuell aus.
+
+    Fuehrt das Dokument durch die Plausibilitaetspruefung und
+    erstellt bei Erfolg eine DATEV-Buchung.
+    """
+    orchestrator = get_scan_to_booking_orchestrator()
+
+    result = await orchestrator.process_document_for_booking(
+        document_id=document_id,
+        company_id=current_user.company_id,
+        db=db,
+    )
+
+    await db.commit()
+
+    return ProcessBookingResponse(
+        document_id=str(result.document_id),
+        routing=result.routing,
+        success=result.success,
+        datev_booking_id=result.datev_booking_id,
+        plausibility_score=result.plausibility_score,
+        reason=result.reason,
+        processing_time_ms=result.processing_time_ms,
+    )

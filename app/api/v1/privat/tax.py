@@ -20,13 +20,15 @@ from typing import Optional, List, Dict
 from app.core.types import JSONDict
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, status, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.api.dependencies import get_db, get_current_active_user
 from app.core.rate_limiting import limiter, get_user_identifier
+from app.core.security import build_content_disposition
 from app.db.models import User, PrivatSpace
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.services.privat.space_service import PrivatSpaceService
@@ -42,6 +44,14 @@ from app.services.privat.tax_optimization_service import (
     DocumentTaxAnalysis,
     AfACalculation,
     TaxAdvancedPayment,
+)
+from app.services.privat.tax_assistant_service import (
+    get_tax_assistant_service,
+    TaxCategorization,
+    CategorySummary,
+    TaxSummary,
+    ElsterExportResult,
+    ElsterFieldData,
 )
 
 logger = structlog.get_logger(__name__)
@@ -1081,3 +1091,480 @@ async def get_advance_payments(
         )
         for p in payments
     ]
+
+
+# =============================================================================
+# Steuer-Assistent Schemas (Tax Assistant)
+# =============================================================================
+
+
+class TaxCategoryInfoSchema(BaseModel):
+    """Schema fuer eine verfuegbare Steuer-Kategorie."""
+
+    key: str
+    label: str
+    description: str
+    elster_anlage: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TaxCategorizationResponse(BaseModel):
+    """Response fuer Dokument-Kategorisierung."""
+
+    category: str
+    label: str
+    confidence: float
+    matched_keywords: List[str]
+    amount: Optional[str] = None
+    elster_anlage: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CategorySummarySchema(BaseModel):
+    """Schema fuer Kategorie-Zusammenfassung."""
+
+    category: str
+    label: str
+    document_count: int
+    total_amount: str
+    deductible_amount: str
+    elster_anlage: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TaxAssistantSummaryResponse(BaseModel):
+    """Response fuer Jahres-Steuerzusammenfassung des Assistenten."""
+
+    year: int
+    categories: List[CategorySummarySchema]
+    total_amount: str
+    total_deductible: str
+    uncategorized_count: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SetCategoryRequest(BaseModel):
+    """Request fuer manuelle Kategorie-Zuweisung."""
+
+    category: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        description="Steuer-Kategorie (z.B. 'werbungskosten', 'handwerkerleistungen')",
+    )
+
+
+class ElsterFieldSchema(BaseModel):
+    """Schema fuer ein ELSTER-Feld."""
+
+    anlage: str
+    field_name: str
+    value: str
+    description: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ElsterAssistantResponse(BaseModel):
+    """Response fuer ELSTER-Daten des Assistenten."""
+
+    year: int
+    anlagen: Dict[str, List[ElsterFieldSchema]]
+    total_deductible: str
+    is_complete: bool
+    missing_fields: List[str]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# =============================================================================
+# Steuer-Assistent Endpoints
+# =============================================================================
+
+
+@router.get(
+    "/assistant/categories",
+    response_model=List[TaxCategoryInfoSchema],
+    summary="Verfuegbare Steuer-Kategorien auflisten",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def list_tax_categories(
+    request: Request,
+    current_user: User = Depends(get_current_active_user),
+) -> List[TaxCategoryInfoSchema]:
+    """
+    Listet alle verfuegbaren Steuer-Kategorien auf.
+
+    Jede Kategorie enthaelt:
+    - key: Interner Schluessel
+    - label: Deutsche Bezeichnung
+    - description: Beschreibung mit Beispielen
+    - elster_anlage: Zugehoerige ELSTER-Anlage
+    """
+    service = get_tax_assistant_service()
+    categories = service.get_available_categories()
+    return [TaxCategoryInfoSchema(**cat) for cat in categories]
+
+
+@router.post(
+    "/assistant/categorize/{document_id}",
+    response_model=TaxCategorizationResponse,
+    summary="Dokument automatisch kategorisieren",
+)
+@limiter.limit("60/minute", key_func=get_user_identifier)
+async def auto_categorize_document(
+    request: Request,
+    document_id: UUID = Path(..., description="Dokument-ID"),
+    space_id: UUID = Query(..., description="Space-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TaxCategorizationResponse:
+    """
+    Kategorisiert ein Dokument automatisch nach Steuer-Kategorien.
+
+    Analysiert Titel, Beschreibung und OCR-Text des Dokuments
+    und ordnet die passendste Steuer-Kategorie zu.
+
+    Args:
+        document_id: ID des Dokuments
+        space_id: ID des Privat-Space
+
+    Returns:
+        TaxCategorizationResponse mit Kategorie und Confidence
+    """
+    await get_user_space_or_403(db, space_id, current_user)
+
+    try:
+        service = get_tax_assistant_service()
+        result = await service.auto_categorize(
+            document_id=document_id,
+            db=db,
+            space_id=space_id,
+        )
+
+        return TaxCategorizationResponse(
+            category=result.category,
+            label=result.label,
+            confidence=result.confidence,
+            matched_keywords=result.matched_keywords,
+            amount=_decimal_to_str(result.amount) if result.amount is not None else None,
+            elster_anlage=result.elster_anlage,
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=safe_error_detail(e, "Kategorisierung"),
+        )
+    except Exception as e:
+        logger.error(
+            "tax_auto_categorize_error",
+            document_id=str(document_id),
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler bei der Kategorisierung",
+        )
+
+
+@router.put(
+    "/assistant/categorize/{document_id}",
+    response_model=TaxCategorizationResponse,
+    summary="Steuer-Kategorie manuell zuweisen",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def set_document_tax_category(
+    request: Request,
+    data: SetCategoryRequest,
+    document_id: UUID = Path(..., description="Dokument-ID"),
+    space_id: UUID = Query(..., description="Space-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TaxCategorizationResponse:
+    """
+    Setzt die Steuer-Kategorie eines Dokuments manuell.
+
+    Ueberschreibt eine automatische Kategorisierung.
+    Gueltige Kategorien koennen ueber GET /assistant/categories abgerufen werden.
+
+    Args:
+        document_id: ID des Dokuments
+        data: Kategorie-Zuweisung
+        space_id: ID des Privat-Space
+
+    Returns:
+        TaxCategorizationResponse mit gesetzter Kategorie
+    """
+    await get_user_space_or_403(db, space_id, current_user)
+
+    try:
+        service = get_tax_assistant_service()
+        result = await service.set_document_category(
+            document_id=document_id,
+            category=data.category,
+            space_id=space_id,
+            db=db,
+        )
+
+        await db.commit()
+
+        logger.info(
+            "tax_category_set_manually",
+            document_id=str(document_id),
+            category=data.category,
+            user_id=str(current_user.id),
+        )
+
+        return TaxCategorizationResponse(
+            category=result.category,
+            label=result.label,
+            confidence=result.confidence,
+            matched_keywords=result.matched_keywords,
+            amount=_decimal_to_str(result.amount) if result.amount is not None else None,
+            elster_anlage=result.elster_anlage,
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=safe_error_detail(e, "Kategorisierung"),
+        )
+    except Exception as e:
+        logger.error(
+            "tax_set_category_error",
+            document_id=str(document_id),
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Setzen der Kategorie",
+        )
+
+
+@router.get(
+    "/assistant/summary/{year}",
+    response_model=TaxAssistantSummaryResponse,
+    summary="Steuer-Assistenten Jahres-Zusammenfassung",
+)
+@limiter.limit("30/minute", key_func=get_user_identifier)
+async def get_tax_assistant_summary(
+    request: Request,
+    year: int,
+    space_id: UUID = Query(..., description="Space-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> TaxAssistantSummaryResponse:
+    """
+    Jahres-Zusammenfassung mit Summen pro Steuer-Kategorie.
+
+    Aggregiert alle Dokumente des Steuerjahres und berechnet:
+    - Anzahl und Summen pro Kategorie
+    - Abzugsfaehige Betraege (mit Hoechstgrenzen)
+    - Anzahl unkategorisierter Dokumente
+
+    Args:
+        year: Steuerjahr (z.B. 2025, 2026)
+        space_id: ID des Privat-Space
+
+    Returns:
+        TaxAssistantSummaryResponse mit Kategorien und Summen
+    """
+    await get_user_space_or_403(db, space_id, current_user)
+
+    current_year = datetime.now(timezone.utc).year
+    if year < 2020 or year > current_year + 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Steuerjahr muss zwischen 2020 und {current_year + 1} liegen",
+        )
+
+    try:
+        service = get_tax_assistant_service()
+        summary = await service.get_tax_summary(
+            space_id=space_id,
+            year=year,
+            db=db,
+        )
+
+        return TaxAssistantSummaryResponse(
+            year=summary.year,
+            categories=[
+                CategorySummarySchema(
+                    category=cat.category,
+                    label=cat.label,
+                    document_count=cat.document_count,
+                    total_amount=_decimal_to_str(cat.total_amount),
+                    deductible_amount=_decimal_to_str(cat.deductible_amount),
+                    elster_anlage=cat.elster_anlage,
+                )
+                for cat in summary.categories
+            ],
+            total_amount=_decimal_to_str(summary.total_amount),
+            total_deductible=_decimal_to_str(summary.total_deductible),
+            uncategorized_count=summary.uncategorized_count,
+        )
+
+    except Exception as e:
+        logger.error(
+            "tax_assistant_summary_error",
+            space_id=str(space_id),
+            year=year,
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler bei der Steuer-Zusammenfassung",
+        )
+
+
+@router.post(
+    "/assistant/package/{year}",
+    summary="Steuerberater-Paket generieren",
+)
+@limiter.limit("5/minute", key_func=get_user_identifier)
+async def generate_tax_package(
+    request: Request,
+    year: int,
+    space_id: UUID = Query(..., description="Space-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> StreamingResponse:
+    """
+    Generiert ein Steuerberater-Paket als ZIP-Datei.
+
+    Das ZIP enthaelt:
+    - Pro Steuer-Kategorie einen Ordner mit Dokumenten
+    - Zusammenfassung.csv mit Kategorien, Summen, Abzuegen
+    - Deckblatt.txt mit Gesamtuebersicht
+
+    Args:
+        year: Steuerjahr
+        space_id: ID des Privat-Space
+
+    Returns:
+        ZIP-Datei als StreamingResponse
+    """
+    await get_user_space_or_403(db, space_id, current_user)
+
+    current_year = datetime.now(timezone.utc).year
+    if year < 2020 or year > current_year + 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Steuerjahr muss zwischen 2020 und {current_year + 1} liegen",
+        )
+
+    try:
+        service = get_tax_assistant_service()
+        zip_bytes, filename = await service.generate_steuerberater_package(
+            space_id=space_id,
+            year=year,
+            db=db,
+        )
+
+        logger.info(
+            "tax_package_generated",
+            space_id=str(space_id),
+            year=year,
+            user_id=str(current_user.id),
+        )
+
+        return StreamingResponse(
+            iter([zip_bytes]),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": build_content_disposition(filename, "attachment"),
+            },
+        )
+
+    except Exception as e:
+        logger.error(
+            "tax_package_error",
+            space_id=str(space_id),
+            year=year,
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Generieren des Steuerberater-Pakets",
+        )
+
+
+@router.get(
+    "/assistant/elster/{year}",
+    response_model=ElsterAssistantResponse,
+    summary="ELSTER-Daten des Assistenten abrufen",
+)
+@limiter.limit("10/minute", key_func=get_user_identifier)
+async def get_assistant_elster_data(
+    request: Request,
+    year: int,
+    space_id: UUID = Query(..., description="Space-ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> ElsterAssistantResponse:
+    """
+    Bereitet ELSTER-Daten fuer den Steuer-Assistenten auf.
+
+    Ordnet alle kategorisierten Dokumente den ELSTER-Anlagen zu
+    und prueft die Vollstaendigkeit.
+
+    Args:
+        year: Steuerjahr
+        space_id: ID des Privat-Space
+
+    Returns:
+        ElsterAssistantResponse mit Anlagen-Feldern
+    """
+    await get_user_space_or_403(db, space_id, current_user)
+
+    current_year = datetime.now(timezone.utc).year
+    if year < 2020 or year > current_year + 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Steuerjahr muss zwischen 2020 und {current_year + 1} liegen",
+        )
+
+    try:
+        service = get_tax_assistant_service()
+        result = await service.get_elster_data(
+            space_id=space_id,
+            year=year,
+            db=db,
+        )
+
+        anlagen_response: Dict[str, List[ElsterFieldSchema]] = {}
+        for anlage_key, fields in result.anlagen.items():
+            anlagen_response[anlage_key] = [
+                ElsterFieldSchema(
+                    anlage=f.anlage,
+                    field_name=f.field_name,
+                    value=f.value,
+                    description=f.description,
+                )
+                for f in fields
+            ]
+
+        return ElsterAssistantResponse(
+            year=result.year,
+            anlagen=anlagen_response,
+            total_deductible=_decimal_to_str(result.total_deductible),
+            is_complete=result.is_complete,
+            missing_fields=result.missing_fields,
+        )
+
+    except Exception as e:
+        logger.error(
+            "tax_assistant_elster_error",
+            space_id=str(space_id),
+            year=year,
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Fehler beim Abrufen der ELSTER-Daten",
+        )

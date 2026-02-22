@@ -1165,6 +1165,7 @@ from app.api.v1.streckengeschaeft import router as streckengeschaeft_router
 from app.api.v1.privat import router as privat_router
 from app.api.v1.privat_analytics import router as privat_analytics_router
 from app.api.v1.privat.tax import router as privat_tax_router  # Phase 3.1: Tax Optimization
+from app.api.v1.contracts_private import router as contracts_private_router  # P5.1: Vertragsmanagement
 from app.api.v1.personal import router as personal_router
 from app.api.v1.validation import router as validation_router
 from app.api.v1.comments import router as comments_router
@@ -1429,6 +1430,7 @@ app.include_router(streckengeschaeft_router, prefix="/api/v1")
 app.include_router(privat_router, prefix="/api/v1")
 app.include_router(privat_analytics_router, prefix="/api/v1")
 app.include_router(privat_tax_router, prefix="/api/v1/privat")  # Phase 3.1: Tax Optimization
+app.include_router(contracts_private_router, prefix="/api/v1/privat")  # P5.1: Vertragsmanagement
 app.include_router(personal_router, prefix="/api/v1")
 app.include_router(validation_router, prefix="/api/v1")
 app.include_router(comments_router, prefix="/api/v1")
