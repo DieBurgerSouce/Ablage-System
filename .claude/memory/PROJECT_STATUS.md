@@ -7,7 +7,7 @@
 | Backend | ✅ OK | Running on :8000, 430+ Endpoints, Type-Safe |
 | Frontend | ✅ OK | Nginx :80, Accessibility E2E Tests OK |
 | Celery | ✅ OK | 414 Tasks, 12+ Beat Schedules, GPU for OCR |
-| PostgreSQL | ✅ OK | :5433, 252 Migrations (252: GoBD Audit-Felder PaymentBatch+DunningRecord; 251: DocumentGroup company_id Multi-Tenant Fix; 238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
+| PostgreSQL | ✅ OK | :5433, 253 Migrations (253: GoBD/DSGVO Compliance Views gobd_audit_summary+gdpr_deletion_status; 252: GoBD Audit-Felder PaymentBatch+DunningRecord; 251: DocumentGroup company_id Multi-Tenant Fix; 238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
 | Redis | ✅ OK | :6380, Rate Limiting, Blacklist, L1/L2 Cache |
 | GPU | ✅ OK | RTX 4080 (16GB), shared by backend + worker |
 | Jaeger | ✅ NEW | :16686 UI, :4317 OTLP gRPC, Distributed Tracing |
@@ -87,6 +87,8 @@ Final 3 TODOs resolved:
 
 | Date | Component | Description |
 |------|-----------|-------------|
+| 2026-02-22 | Database | Migration 253: GoBD/DSGVO Compliance SQL Views (gobd_audit_summary monatliche Statistiken, gdpr_deletion_status Loeschanfragen-Uebersicht) |
+| 2026-02-22 | Frontend | AppLayout.tsx - id-Prop auf semantisch korrektes main-Element verschoben (Accessibility Fix) |
 | 2026-02-22 | Database | Migration 252: GoBD Audit-Felder created_by_id + updated_by_id fuer payment_batches und dunning_records |
 | 2026-02-22 | Backend | DunningService GoBD-Audit Integration: user_id Parameter fuer Nachvollziehbarkeit in create/escalate/close |
 | 2026-02-22 | API | Visual Diff - POST /compare/documents Endpunkt fuer zeilenweisen Text-Diff per Dokument-ID mit Multi-Tenant-Isolation |
@@ -123,6 +125,7 @@ Final 3 TODOs resolved:
 
 | Migration | Description |
 |-----------|-------------|
+| 253 | GoBD/DSGVO Compliance SQL Views: gobd_audit_summary (monatliche Audit-Statistiken pro Company) und gdpr_deletion_status (Uebersicht DSGVO-Loeschanfragen mit Status und Frist) |
 | 252 | GoBD Audit-Felder (created_by_id, updated_by_id) fuer payment_batches und dunning_records (FK users, SET NULL) |
 | 251 | DocumentGroup company_id Multi-Tenant Isolation (company_id NOT NULL, FK companies, Backfill via user_companies, 2 Indexes) |
 | 250 | Feature Toggle History |

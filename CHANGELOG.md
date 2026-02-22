@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Database: Migration 253 - GoBD/DSGVO Compliance SQL Views (gobd_audit_summary: monatliche Audit-Statistiken pro Company aus audit_logs; gdpr_deletion_status: Uebersicht DSGVO-Loeschanfragen mit Status, Frist und verbleibenden Tagen)
 - Database: Migration 252 - GoBD Audit-Felder (created_by_id, updated_by_id) fuer payment_batches und dunning_records mit FK auf users (SET NULL)
 - Services: DunningService - user_id Parameter fuer GoBD-Audit in create_dunning_record(), escalate_dunning(), close_dunning() und _map_to_response()
 - API: Visual Diff - POST /api/v1/visual-diff/compare/documents Endpunkt fuer zeilenweisen Text-Diff per Dokument-ID mit Multi-Tenant-Isolation
@@ -44,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Services: Viele API-Endpoints - konsistentes Import-Muster fuer build_content_disposition
 
 ### Fixed
+- Frontend: AppLayout.tsx - id-Prop auf semantisch korrektes main-Element verschoben (Accessibility, WCAG 2.1 AA)
 - API: .env.example - neue Environment-Variablen dokumentiert
 - Security: Migration 251 - company_id zu document_groups hinzugefuegt (Multi-Tenant Isolation statt User-Isolation). Backfill via user_companies, NOT NULL Constraint, FK zu companies, Composite Index (company_id, group_type)
 - API: DocumentGroup 11 Endpoints in groups.py auf company_id Isolation umgestellt (require_company Dependency, owner_id Filter durch company_id Filter ersetzt)
