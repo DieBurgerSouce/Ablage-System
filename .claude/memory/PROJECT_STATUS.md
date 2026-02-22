@@ -36,6 +36,14 @@
 - **Phase 2 - Smart Tags**: ✅ COMMITTED - AI-powered tag suggestions, Tag management
 - **Phase 2 - Auto-Learning**: ✅ COMMITTED - Daily review batches, Learning stats dashboard
 
+### Auto-Filing Pipeline (2026-02-22 Session 5)
+- **Auto-Filing Pipeline Task**: COMMITTED - trigger_auto_filing_pipeline_task (Celery, Redis Pub/Sub, DSGVO-konform, max_retries=2)
+- **Review Queue API**: COMMITTED - GET /review-queue + POST /documents/{id}/confirm-filing (review_queue.py)
+- **Smart Document Matching**: COMMITTED - Step 2b in DocumentPipelineOrchestrator (SmartMatchingService, 5 Matches)
+- **Pipeline Realtime Events**: COMMITTED - 10 neue EventTypes in event_broadcaster.py + broadcast_pipeline_progress() Helper
+- **Frontend WebSocket Pipeline**: COMMITTED - 5 neue RealtimeEventType + Invalidation-Mapping (review-queue)
+- **Auto-Filing Progress Hook**: COMMITTED - use-auto-filing-progress.ts (Echtzeit Pipeline-Fortschritt)
+
 ### OCR Self-Learning & Scan-to-Buchung (2026-02-22 Session 4)
 - **Document DNA**: ✅ COMMITTED - Layout-Fingerprinting, Similarity-Matching (document_dna_service.py)
 - **Cross-Validation**: ✅ COMMITTED - Feld-Plausibilitaetspruefung fuer OCR-Felder (cross_validation_service.py)

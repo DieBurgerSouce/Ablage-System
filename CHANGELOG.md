@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Workers: trigger_auto_filing_pipeline_task - vollautomatische Dokumenten-Ablage-Pipeline nach OCR-Abschluss (Redis Pub/Sub Progress, DSGVO-konform, PII wird NIEMALS geloggt)
+- Workers: ocr_tasks.py - Auto-Filing Pipeline wird nach OCR-Erfolg automatisch getriggert (filing_pipeline_task_id im Task-Result)
+- API: review_queue.py - Review Queue Endpoints (GET /review-queue, POST /documents/{id}/confirm-filing) fuer Dokumente mit unsicherer Auto-Zuordnung
+- Services: DocumentPipelineOrchestrator Step 2b - Smart Document Matching via SmartMatchingService (max 5 Matches, Konfidenz-Scoring, Feature-Erklaerung)
+- Services: event_broadcaster.py - 10 neue Pipeline-EventTypes (PIPELINE_STARTED, PIPELINE_STEP_*, PIPELINE_AUTO_ASSIGNED, PIPELINE_REVIEW_NEEDED, DOCUMENT_PIPELINE_*, DOCUMENT_AUTO_FILED) + broadcast_pipeline_progress() Hilfsfunktion
+- Frontend: websocket.ts - 5 neue RealtimeEventType-Werte fuer Pipeline-Events + Invalidation-Mapping fuer review-queue TanStack Query Cache
+- Frontend: use-auto-filing-progress.ts - React Hook fuer Echtzeit-Verfolgung des Pipeline-Fortschritts (Schritte, Konfidenz, Status)
 - OCR: Document DNA Service (document_dna_service.py) - Layout-Fingerprinting und adaptives Matching fuer Dokument-Wiedererkennung
 - OCR: Cross-Validation Service (cross_validation_service.py) - Feld-Plausibilitaetspruefung fuer OCR-extrahierte Felder
 - OCR: OCR Pipeline - Document DNA und Cross-Validation als neue Pipeline-Stufen (5.5 und 6.5)

@@ -1,5 +1,15 @@
 # Recent Changes
 
+## 2026-02-22 (Session 5)
+- **feat(workers)**: trigger_auto_filing_pipeline_task - vollautomatische Ablage-Pipeline nach OCR-Abschluss (Redis Pub/Sub Progress, DSGVO-konform)
+- **feat(workers)**: ocr_tasks.py - Auto-Filing Pipeline nach OCR success getriggert (filing_pipeline_task_id im Result)
+- **feat(api)**: review_queue.py - GET /review-queue + POST /documents/{id}/confirm-filing (Pipeline-Ergebnisse bestaetigen)
+- **feat(api)**: main.py - review_queue_router registriert
+- **feat(services)**: DocumentPipelineOrchestrator - Smart Document Matching (Step 2b) via SmartMatchingService
+- **feat(services)**: event_broadcaster.py - 10 neue Pipeline-Event-Typen + broadcast_pipeline_progress() Helper
+- **feat(frontend)**: websocket.ts - 5 neue Pipeline-EventTypes + Invalidation-Mapping fuer review-queue
+- **feat(frontend)**: use-auto-filing-progress.ts - Hook fuer Echtzeit-Pipeline-Fortschritt
+
 ## 2026-02-22 (Session 4)
 - **feat(ocr)**: Document DNA + Cross-Validation Services - Layout-Fingerprinting und Feld-Plausibilitaetspruefung in OCR-Pipeline
 - **feat(ocr)**: OCR Learning Tasks + Celery Beat (Correction-Queue alle 30min, Pattern-Apply 03:00)
@@ -36,23 +46,4 @@
 - **fix(security)**: CWE-113 CRLF-Sanitisierung X-Company-ID Header + Migration 251 DocumentGroup Multi-Tenant Fix
 - **test**: Webhook Unit-Tests (InboundWebhookService + API) vollstaendig erstellt
 
-## 2026-02-21
-- **feat(db)**: 13 neue Alembic-Migrationen (238-250): CDC, Partitioning, Encryption, Anomalie, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle
-- **feat(api)**: 13 neue API-Router registriert in main.py
-- **feat(services)**: Document Timeline Service umfangreich erweitert (1476 Zeilen Diff)
-- **feat(workers)**: Celery - 2 neue Task-Module (webhook_tasks, partition_maintenance) + Beat-Schedules
-- **feat(frontend)**: use-auto-save-draft Hook fuer automatisches Speichern von Entwuerfen
 
-## 2026-02-20
-- **feat(api)**: HTTPException Handler - StandardErrorResponse mit correlation_id und Timestamp
-- **feat(api)**: Search "Meinten Sie?" Funktion via pg_trgm bei 0 Ergebnissen
-- **feat(services)**: GoBD Compliance Service - TypedDict, Protocol-Klasse
-- **chore(infra)**: Dockerfile Multi-Stage Build + Alertmanager Email-Routing nach Schweregrad
-- **test**: 4 neue Unit-Tests (crud_service, dunning_service, retention_service, search_suggestions)
-
-## 2026-02-19
-- **feat(services)**: Zero-Touch Pipeline Chain (OCR->Klassifizierung->Kontierung->3-Way-Matching->Ablage)
-- **feat(api)**: Knowledge Graph API + Saga Monitoring API (7 Endpoints) + Pipeline API
-- **feat(workers)**: Pipeline Tasks, Saga Tasks und Vault Tasks (Secret-Rotation via HashiCorp)
-- **feat(frontend)**: Knowledge Graph UI-Overhaul, Product Tour, Visual Diff (ImageDiffViewer)
-- **feat(security)**: Vault Client Haertung (TTL-Caching, AppRole Auth, Retry mit Backoff)
