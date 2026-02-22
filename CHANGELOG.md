@@ -45,7 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - API: DocumentGroup 11 Endpoints in groups.py auf company_id Isolation umgestellt (require_company Dependency, owner_id Filter durch company_id Filter ersetzt)
 - API: Transactions 6 Endpoints auf company_id Filter umgestellt (list, get, create, update, update_step, delete)
 - Services: DocumentGroupingService create_group/confirm_group/split_group/get_review_queue migriert auf company_id (Backward-Compatibility via owner_id Fallback)
+- Security: DunningService - 11 Stellen von owner_id/user_id auf company_id umgestellt (Multi-Tenant Isolation in Banking-Services)
+- Security: ReconciliationService - 8 Stellen von Document.owner_id auf Document.company_id umgestellt (5 Match-Strategien + 3 Service-Methoden)
+- Security: CWE-113 CRLF-Injection Prevention - X-Company-ID Header in personal-api.ts + client.ts sanitisiert (`.replace(/[\r\n]/g, '')`)
 - Frontend: auth.ts refreshToken() - Return-Statement in if-Block verschoben, || '' Fallback fuer refresh_token, throw bei fehlendem access_token (Fixes T1 MITTEL + T2 NIEDRIG)
+- Frontend: auth.ts Token-Refresh Mutex via refreshPromise - verhindert parallele 401-Race-Condition (Fix RC1)
 
 ### Added
 - Services: Zero-Touch End-to-End Pipeline Chain (OCR -> Klassifizierung -> Entity-Linking -> Kontierung -> 3-Way-Matching -> Ablage) mit Confidence-Scoring und Graceful Degradation

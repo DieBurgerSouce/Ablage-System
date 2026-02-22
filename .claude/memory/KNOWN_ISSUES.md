@@ -9,8 +9,6 @@
 | **EmailSenderMatcherService** | Kein `company_id` Filter - aber BusinessEntity ist absichtlich firmenuebergreifend (`company_presence` JSONB) |
 | **duplicate_detection_service** | API-Endpoints leiten `company_id` jetzt aus Auth ab (Multi-Tenant Enforcement). Schema: `BatchScanRequest.company_id` deprecated/Optional. |
 | **Banking System (user_id Design)** | BankAccount-Model hat `user_id` UND `company_id` Spalten. `banking_fints.py` nutzt jetzt korrekt `company_id`. Restkontexte: BankTransaction, DunningRecord noch user_id-spezifisch. Migration bei Bedarf. |
-| **DunningService Document-Zugriff** | Nutzt `Document.owner_id == user_id` statt `company_id` - limitiert Cross-User-Sichtbarkeit innerhalb derselben Company |
-| **ReconciliationService Document-Zugriff** | `manual_match()` und `split_transaction()` nutzen `Document.owner_id` statt `company_id` |
 | **ValidationRule/ValidationSampleConfig** | Beide Models haben KEIN `company_id` - sind absichtlich System-wide Konfigurationen. Fuer echte Multi-Tenant Deployment waere Migration noetig. |
 | **CustomerDetection Celery Tasks** | `detect_contacts_task` laedt Document ohne `company_id` Filter - aber Tasks sind nur fuer Admin-Operationen, keine externe API. Service nutzt `document.company_id` Fallback. |
 
@@ -25,9 +23,9 @@
 | F1-F3 | WebSocket-Auth Backend-Analyse | NIEDRIG | Backend-Scope |
 | R6 | Whitespace-Varianten (non-.trim()) | NIEDRIG | `.trim()` deckt Standard-Whitespace ab |
 | R7 | `isAuthenticated()` ohne trim | NIEDRIG | Nur UI-Logik |
-| S4+S5 | CWE-113 Bundle (privat-api + companyId CRLF) | MITTEL | Separates Security-Issue |
+| ~~S4+S5~~ | ~~CWE-113 Bundle (privat-api + companyId CRLF)~~ | ~~MITTEL~~ | DONE (2026-02-22) - CRLF-Sanitisierung in personal-api.ts + client.ts via `.replace(/[\r\n]/g, '')` |
 | S2 | Raw Token in sessionStorage | NIEDRIG | Teil von N4 |
-| RC1 | Concurrent 401 Refresh Race Condition | MITTEL | Pre-existing, architekturell |
+| ~~RC1~~ | ~~Concurrent 401 Refresh Race Condition~~ | ~~MITTEL~~ | DONE (2026-02-22) - Token-Refresh Mutex in auth.ts via `refreshPromise` |
 
 ### Out of Scope (Documented for Future Work)
 
@@ -96,3 +94,7 @@
 | 2026-02-14 | **MEDIUM** Token-Storage Tests waren wertlos | 5 Test-Dateien testeten nur Browser-API (`sessionStorage.setItem/getItem`) ohne Source-Import - kein Regression Guard | Fixed: 23 echte Integrationstests mit Source-Imports, fetch/WebSocket-Mocks, Bearer-Header-Verifikation |
 | 2026-02-22 | **MEDIUM** auth.ts refreshToken() Return/Fallback Bug (T1+T2) | Return ausserhalb if-Block konnte undefined zurueckgeben; fehlender `\|\| ''` Fallback speicherte "undefined" als refresh_token | Fixed: Return in if-Block verschoben, `\|\| ''` Fallback, throw bei fehlendem Token |
 | 2026-02-22 | **CRITICAL** DocumentGroup Multi-Tenant Sicherheitsluecke | DocumentGroup hatte kein `company_id` - nur `owner_id` (User-Isolation statt Company-Isolation). Cross-Company Datenleck: User sah nur eigene Groups, nicht die der Kollegen; Users anderer Companies konnten theoretisch Groups sehen | Fixed: Migration 251 (company_id + Backfill + NOT NULL + FK + Indexes), Model, 11 API-Endpoints in groups.py + 6 in transactions.py, Service-Methoden (create_group, confirm_group, split_group, get_review_queue) |
+| 2026-02-22 | **CRITICAL** DunningService Multi-Tenant Bug | `get_overdue_invoices()`, `_get_dunning_by_id()`, `set_dunning_hold()` etc. nutzten `Document.owner_id == user_id` statt `company_id` - Cross-Company Datenleck in Banking-Services | Fixed: 11 Stellen in dunning_service.py von owner_id/user_id auf company_id umgestellt |
+| 2026-02-22 | **CRITICAL** ReconciliationService Multi-Tenant Bug | `_match_by_iban_amount()`, `_match_by_invoice_number()` etc. nutzten `Document.owner_id` statt `company_id` - Cross-Company Reconciliation-Ergebnisse moeglich | Fixed: 8 Stellen in reconciliation_service.py von owner_id auf company_id umgestellt |
+| 2026-02-22 | **MITTEL** CWE-113 CRLF-Injection in X-Company-ID Header | `personal-api.ts` und `client.ts` setzten `X-Company-ID` Header ohne CRLF-Sanitisierung - HTTP Header Injection moeglich | Fixed: `.replace(/[\r\n]/g, '')` in beiden Dateien hinzugefuegt |
+| 2026-02-22 | **MITTEL** Token-Refresh Race Condition (RC1) | Parallele 401-Antworten konnten mehrere concurrent Token-Refresh-Anfragen ausloesen - Token-Race und Auth-Loop | Fixed: Mutex-Pattern via `refreshPromise` in auth.ts - laufendes Refresh wird wiederverwendet |

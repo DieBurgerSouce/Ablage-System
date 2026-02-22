@@ -87,9 +87,11 @@ Final 3 TODOs resolved:
 
 | Date | Component | Description |
 |------|-----------|-------------|
+| 2026-02-22 | Backend | DunningService + ReconciliationService Multi-Tenant Fix: owner_id -> company_id in Banking-Services (11+8 Stellen) |
+| 2026-02-22 | Security | CWE-113 CRLF Prevention: X-Company-ID Header sanitisiert in personal-api.ts + client.ts |
+| 2026-02-22 | Frontend | auth.ts Token-Refresh Mutex (RC1 Fix) + refreshToken() Return/Fallback Bug (T1+T2) |
 | 2026-02-22 | Database | Migration 251: company_id zu document_groups (Multi-Tenant Isolation, Backfill, FK, Indexes) |
 | 2026-02-22 | Backend | DocumentGroup Multi-Tenant Fix: groups.py (11 Endpoints), transactions.py (6 Endpoints), document_grouping_service.py |
-| 2026-02-22 | Frontend | auth.ts refreshToken() Return/Fallback Bug behoben (T1+T2) |
 | 2026-02-21 | Backend | 13 neue API-Router, Document Timeline Service Erweiterung, 9 Satellite-Models, Field-Level Encryption, Document Auto-Summary |
 | 2026-02-21 | Database | Migrationen 238-250: CDC, Partitioning, Optimistic Locking, Encryption, Anomaly Detection, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle |
 | 2026-02-21 | Workers | Outbound Webhook Delivery/Retry/DLQ-Tasks, Partition Maintenance Tasks (ensure/archive/stats/health) |

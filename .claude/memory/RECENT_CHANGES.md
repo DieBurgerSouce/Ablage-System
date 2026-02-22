@@ -2,17 +2,13 @@
 
 ## 2026-02-22
 - **feat(frontend)**: Webhook Admin Frontend (3 Tabs: Endpoints/DLQ/Event-Protokoll, 7 Komponenten, 11 Query Hooks)
-- **feat(frontend)**: Sidebar-Link "Webhooks" fuer Admin-Benutzer
-- **refactor(db)**: models.py auf Satellite-Architektur umgestellt - Basistypen (Base, CrossDBJSON, CrossDBTSVector, CrossDBVector) in models_base.py ausgelagert
-- **feat(db)**: 20 neue Satellite-Model-Dateien (models_ai_ml, models_auth_access, models_banking, models_base, models_cash_company, models_datev, models_dropship_tax, models_entity_business, models_erp_import, models_gdpr_compliance, models_hr, models_integration, models_misc, models_notification, models_ocr_validation, models_privat_enterprise, models_privat_space, models_rag, models_report, models_surya_training, models_template_knowledge, models_workflow)
 - **feat(frontend)**: Custom Fields Admin-Feature implementiert (Admin-Route /admin/custom-fields, CRUD-UI, API-Layer, TypeScript-Typen)
-- **feat(frontend)**: Sidebar-Link "Eigene Felder" fuer Admin-Benutzer ergaenzt
-- **feat(frontend)**: DocumentCustomFields-Komponente in SplitDocumentViewer (Cockpit-Tab) integriert
-- **feat(frontend)**: TanStack Router routeTree.gen.ts mit AdminCustomFieldsRoute aktualisiert
-- **test**: 2 neue Unit-Tests fuer BarcodesPipelineService und DocumentSummaryService
+- **feat(db)**: 20 neue Satellite-Model-Dateien fuer alle Domaenen
 - **fix(security)**: Migration 251 - company_id zu DocumentGroup (Multi-Tenant Isolation, Backfill via user_companies, FK + Indexes)
-- **fix(api)**: DocumentGroup 11 Endpoints + Transactions 6 Endpoints auf company_id Isolation umgestellt (groups.py, transactions.py, document_grouping_service.py)
-- **fix(frontend)**: auth.ts refreshToken() Return/Fallback Bug behoben (T1+T2 aus Known Issues)
+- **fix(api)**: DocumentGroup 11 Endpoints + Transactions 6 Endpoints auf company_id Isolation umgestellt
+- **fix(security)**: DunningService + ReconciliationService - owner_id -> company_id Multi-Tenant Fix (Banking-Services)
+- **fix(security)**: CWE-113 CRLF-Sanitisierung in HTTP-Headern (X-Company-ID in personal-api.ts + client.ts)
+- **fix(frontend)**: auth.ts Token-Refresh Mutex (RC1) + refreshToken() Return/Fallback Bug (T1+T2) behoben
 
 ## 2026-02-21
 - **feat(db)**: 13 neue Alembic-Migrationen (238-250): CDC, Partitioning, Optimistic Locking, Encryption, Anomalie, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Event Platform, Feature Toggle History
