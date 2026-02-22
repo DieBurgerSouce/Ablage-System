@@ -710,6 +710,33 @@ def process_document_task(
                             **safe_error_log(e)
                         )
 
+                # Auto-Filing Pipeline nach OCR auslösen
+                filing_pipeline_task_id = None
+                if document.extracted_text and getattr(document, "company_id", None):
+                    try:
+                        from app.workers.tasks.auto_filing_tasks import trigger_auto_filing_pipeline_task
+                        filing_result = trigger_auto_filing_pipeline_task.delay(
+                            document_id=str(document_id),
+                            company_id=str(document.company_id),
+                            ocr_text=document.extracted_text,
+                            user_id=str(document.owner_id) if document.owner_id else None,
+                        )
+                        filing_pipeline_task_id = filing_result.id
+                        logger.info(
+                            "auto_filing_pipeline_task_queued",
+                            task_id=task_id,
+                            document_id=document_id,
+                            filing_pipeline_task_id=filing_pipeline_task_id,
+                        )
+                    except Exception as e:
+                        # Filing-Pipeline darf OCR-Erfolg nicht blockieren
+                        logger.warning(
+                            "auto_filing_pipeline_task_queue_failed",
+                            task_id=task_id,
+                            document_id=document_id,
+                            **safe_error_log(e)
+                        )
+
                 # Queue RAG chunking as background task (für Chat/Suche)
                 rag_chunking_task_id = None
                 if settings.AUTO_RAG_CHUNKING_ENABLED and document.extracted_text:
@@ -822,6 +849,7 @@ def process_document_task(
                     "embedding_task_id": embedding_task_id,
                     "extraction_task_id": extraction_task_id,
                     "rag_chunking_task_id": rag_chunking_task_id,
+                    "filing_pipeline_task_id": filing_pipeline_task_id,
                 }
 
             except SoftTimeLimitExceeded:

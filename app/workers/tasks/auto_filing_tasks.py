@@ -7,24 +7,30 @@ Feature #7: Automation 2.0
 - train_filing_model_task: Wöchentlich Filing-Modelle trainieren
 - auto_match_documents_task: Einzelnes Dokument matchen
 - batch_match_documents_task: Täglich Batch-Matching durchführen
+- trigger_auto_filing_pipeline_task: Pipeline nach OCR-Abschluss auslösen
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy import and_, select
+import structlog
+from sqlalchemy import and_, select, update
 
+from app.core.config import settings
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.models import Company, Document
 from app.db.models_approval_extended import AutoFilingRule
 from app.db.session import get_sync_session
 from app.workers.celery_app import celery_app
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
+_std_logger = logging.getLogger(__name__)
 
 
 @celery_app.task(
@@ -405,3 +411,254 @@ def batch_match_documents_task(
     )
 
     return result
+
+
+@celery_app.task(
+    name="app.workers.tasks.auto_filing_tasks.trigger_auto_filing_pipeline_task",
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+    queue="default",
+)
+def trigger_auto_filing_pipeline_task(
+    self,
+    document_id: str,
+    company_id: str,
+    ocr_text: str,
+    user_id: Optional[str] = None,
+    metadata: Optional[Dict[str, object]] = None,
+) -> Dict[str, object]:
+    """Löst die automatische Ablage-Pipeline nach OCR-Abschluss aus.
+
+    Wird von ocr_tasks.py aufgerufen sobald OCR-Text verfügbar ist.
+    Koordiniert Klassifizierung, Entity-Linking, Projekt-Zuweisung und
+    Kategorisierung in einer vollautomatischen Pipeline.
+
+    Kein Logging von OCR-Text oder PII (DSGVO-konform).
+
+    Args:
+        document_id: UUID des Dokuments als String
+        company_id: Mandant-UUID als String
+        ocr_text: Extrahierter OCR-Text (wird NICHT geloggt)
+        user_id: Optional - UUID des auslösenden Benutzers
+        metadata: Optional - Zusätzliche Metadaten (Dateiname etc.)
+
+    Returns:
+        Dict mit Pipeline-Ergebnis und Status-Informationen
+    """
+    task_id = self.request.id
+
+    # SECURITY: OCR-Text und andere PII werden NIEMALS geloggt
+    logger.info(
+        "pipeline_task_starting",
+        task_id=task_id,
+        document_id=document_id,
+        company_id=company_id,
+        has_user_id=user_id is not None,
+        has_metadata=metadata is not None,
+    )
+
+    def _publish_progress(step_name: str, status: str, extra: Optional[Dict[str, object]] = None) -> None:
+        """Sendet Pipeline-Fortschritt via Redis Pub/Sub."""
+        try:
+            import redis as _redis
+            redis_client = _redis.Redis.from_url(settings.REDIS_URL)
+            payload: Dict[str, object] = {
+                "step": step_name,
+                "status": status,
+                "document_id": document_id,
+                "task_id": task_id,
+            }
+            if extra:
+                payload.update(extra)
+            redis_client.publish(
+                f"pipeline:progress:{document_id}",
+                json.dumps(payload),
+            )
+        except Exception as pub_err:
+            # Pub/Sub-Fehler darf Pipeline nicht blockieren
+            logger.warning(
+                "pipeline_progress_publish_failed",
+                task_id=task_id,
+                document_id=document_id,
+                step=step_name,
+                error_type=type(pub_err).__name__,
+            )
+
+    async def _run_pipeline() -> Dict[str, object]:
+        from app.db.session import get_async_session_context
+        from app.services.pipeline.document_pipeline_orchestrator import (
+            DocumentPipelineOrchestrator,
+        )
+
+        _publish_progress("pipeline_start", "running")
+
+        async with get_async_session_context() as db:
+            orchestrator = DocumentPipelineOrchestrator(db)
+
+            # Pipeline ausführen
+            pipeline_result = await orchestrator.process_document(
+                document_id=UUID(document_id),
+                ocr_text=ocr_text,
+                company_id=UUID(company_id),
+                user_id=UUID(user_id) if user_id else None,
+                metadata=metadata,
+            )
+
+            _publish_progress(
+                "pipeline_complete",
+                "done",
+                {
+                    "auto_processed": pipeline_result.auto_processed,
+                    "requires_review": pipeline_result.requires_review,
+                    "status": pipeline_result.status.value,
+                },
+            )
+
+            # Dokument-Record mit Pipeline-Ergebnissen aktualisieren
+            result_dict = pipeline_result.to_dict()
+
+            doc_stmt = select(Document).where(
+                and_(
+                    Document.id == UUID(document_id),
+                    Document.company_id == UUID(company_id),
+                )
+            )
+            doc_result = await db.execute(doc_stmt)
+            document = doc_result.scalar_one_or_none()
+
+            if document is None:
+                logger.error(
+                    "pipeline_document_not_found",
+                    task_id=task_id,
+                    document_id=document_id,
+                    company_id=company_id,
+                )
+                return {
+                    "success": False,
+                    "document_id": document_id,
+                    "error": "Dokument nicht gefunden",
+                }
+
+            # Automatisch abgelegte Felder setzen
+            if pipeline_result.auto_processed:
+                if pipeline_result.category_id:
+                    if hasattr(document, "category_id"):
+                        document.category_id = pipeline_result.category_id
+                    elif hasattr(document, "category"):
+                        document.category = pipeline_result.category_name
+
+                if pipeline_result.linked_entity_id and hasattr(document, "entity_id"):
+                    document.entity_id = pipeline_result.linked_entity_id
+
+                if pipeline_result.assigned_project_id and hasattr(document, "project_id"):
+                    document.project_id = pipeline_result.assigned_project_id
+
+            # Pipeline-Ergebnis in ai_metadata speichern
+            existing_meta: Dict[str, object] = document.ai_metadata or {}
+            existing_meta["pipeline_result"] = result_dict
+            document.ai_metadata = existing_meta
+
+            await db.commit()
+
+            # Redis-Events senden
+            try:
+                import redis as _redis
+                redis_client = _redis.Redis.from_url(settings.REDIS_URL)
+
+                if pipeline_result.auto_processed:
+                    redis_client.publish(
+                        f"document:events:{company_id}",
+                        json.dumps({
+                            "event": "document.auto_filed",
+                            "document_id": document_id,
+                            "company_id": company_id,
+                            "category": pipeline_result.category_name,
+                            "entity": pipeline_result.linked_entity_name,
+                            "project": pipeline_result.assigned_project_name,
+                        }),
+                    )
+                    logger.info(
+                        "pipeline_document_auto_filed",
+                        task_id=task_id,
+                        document_id=document_id,
+                        category=pipeline_result.category_name,
+                        has_entity=pipeline_result.linked_entity_id is not None,
+                        has_project=pipeline_result.assigned_project_id is not None,
+                    )
+
+                elif pipeline_result.requires_review:
+                    redis_client.publish(
+                        f"document:events:{company_id}",
+                        json.dumps({
+                            "event": "document.review_needed",
+                            "document_id": document_id,
+                            "company_id": company_id,
+                            "review_reasons": pipeline_result.review_reasons,
+                        }),
+                    )
+                    logger.info(
+                        "pipeline_document_requires_review",
+                        task_id=task_id,
+                        document_id=document_id,
+                        review_reasons=pipeline_result.review_reasons,
+                    )
+
+            except Exception as event_err:
+                # Event-Fehler darf Ergebnis nicht blockieren
+                logger.warning(
+                    "pipeline_event_publish_failed",
+                    task_id=task_id,
+                    document_id=document_id,
+                    **safe_error_log(event_err),
+                )
+
+            return {
+                "success": True,
+                "document_id": document_id,
+                "auto_processed": pipeline_result.auto_processed,
+                "requires_review": pipeline_result.requires_review,
+                "status": pipeline_result.status.value,
+                "category": pipeline_result.category_name,
+                "entity": pipeline_result.linked_entity_name,
+                "project": pipeline_result.assigned_project_name,
+                "total_processing_time_ms": pipeline_result.total_processing_time_ms,
+                "decisions_count": len(pipeline_result.decisions),
+                "anomalies_count": len(pipeline_result.anomalies),
+            }
+
+    try:
+        result = asyncio.run(_run_pipeline())
+
+        logger.info(
+            "pipeline_task_completed",
+            task_id=task_id,
+            document_id=document_id,
+            auto_processed=result.get("auto_processed"),
+            requires_review=result.get("requires_review"),
+            status=result.get("status"),
+        )
+
+        return result
+
+    except Exception as exc:
+        _publish_progress("pipeline_error", "failed", {"error_type": type(exc).__name__})
+
+        logger.error(
+            "pipeline_task_failed",
+            task_id=task_id,
+            document_id=document_id,
+            **safe_error_log(exc),
+        )
+
+        retry_count = self.request.retries
+        max_retries = getattr(self, "max_retries", 2)
+
+        if retry_count < max_retries:
+            raise self.retry(exc=exc)
+
+        return {
+            "success": False,
+            "document_id": document_id,
+            "error": safe_error_detail(exc, "Pipeline"),
+        }
