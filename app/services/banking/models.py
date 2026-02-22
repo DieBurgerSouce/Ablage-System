@@ -577,6 +577,10 @@ class PaymentBatchResponse(BaseModel):
     failed_count: int
     created_at: datetime
 
+    # GoBD Audit
+    created_by_id: Optional[UUID] = None
+    updated_by_id: Optional[UUID] = None
+
 
 # =============================================================================
 # DUNNING SCHEMAS
@@ -626,6 +630,10 @@ class DunningRecordResponse(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+
+    # GoBD Audit
+    created_by_id: Optional[UUID] = None
+    updated_by_id: Optional[UUID] = None
 
 
 class DunningEscalateRequest(BaseModel):

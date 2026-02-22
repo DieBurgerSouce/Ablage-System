@@ -260,6 +260,7 @@ class DunningService:
         document_id: UUID,
         level: DunningLevel,
         notes: Optional[str] = None,
+        user_id: Optional[UUID] = None,
     ) -> DunningRecordResponse:
         """Erstelle neuen Mahnvorgang.
 
@@ -269,6 +270,7 @@ class DunningService:
             document_id: Dokument-ID (Rechnung)
             level: Mahnstufe
             notes: Optionale Notizen
+            user_id: Benutzer-ID fuer GoBD-Audit (None bei automatischem Lauf)
 
         Returns:
             DunningRecordResponse
@@ -326,6 +328,8 @@ class DunningService:
             accrued_interest=late_interest,
             due_date=due_date,
             resolution_notes=notes,
+            created_by_id=user_id,
+            updated_by_id=user_id,
             created_at=utc_now(),
             updated_at=utc_now(),
         )
@@ -351,6 +355,7 @@ class DunningService:
         company_id: UUID,
         dunning_id: UUID,
         notes: Optional[str] = None,
+        user_id: Optional[UUID] = None,
     ) -> DunningRecordResponse:
         """Eskaliere Mahnvorgang zur nächsten Stufe.
 
@@ -359,6 +364,7 @@ class DunningService:
             company_id: Firmen-ID
             dunning_id: Mahnvorgang-ID
             notes: Optionale Notizen
+            user_id: Benutzer-ID fuer GoBD-Audit (None bei automatischem Lauf)
 
         Returns:
             Aktualisierter DunningRecordResponse
@@ -400,6 +406,8 @@ class DunningService:
         dunning.reminder_fee = total_fees
         dunning.accrued_interest = late_interest
         dunning.updated_at = utc_now()
+        if user_id is not None:
+            dunning.updated_by_id = user_id
         if notes:
             dunning.resolution_notes = (dunning.resolution_notes or "") + f"\n[{datetime.now().isoformat()}] {notes}"
 
@@ -423,15 +431,17 @@ class DunningService:
         dunning_id: UUID,
         status: DunningStatus,
         notes: Optional[str] = None,
+        user_id: Optional[UUID] = None,
     ) -> DunningRecordResponse:
         """Schliesse Mahnvorgang ab.
 
         Args:
             db: Datenbank-Session
-            user_id: Benutzer-ID
+            company_id: Firmen-ID
             dunning_id: Mahnvorgang-ID
             status: Neuer Status (PAID, CANCELLED, WRITTEN_OFF)
             notes: Optionale Notizen
+            user_id: Benutzer-ID fuer GoBD-Audit (None bei automatischem Lauf)
 
         Returns:
             Aktualisierter DunningRecordResponse
@@ -446,6 +456,8 @@ class DunningService:
         dunning.status = status.value
         dunning.resolved_at = utc_now()
         dunning.updated_at = utc_now()
+        if user_id is not None:
+            dunning.updated_by_id = user_id
         if notes:
             dunning.resolution_notes = (dunning.resolution_notes or "") + f"\n[{datetime.now().isoformat()}] {notes}"
 
@@ -870,6 +882,8 @@ class DunningService:
             next_action_at=dunning.next_action_at,
             created_at=dunning.created_at,
             updated_at=dunning.updated_at,
+            created_by_id=dunning.created_by_id,
+            updated_by_id=dunning.updated_by_id,
         )
 
     # =========================================================================
