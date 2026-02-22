@@ -384,6 +384,10 @@ class PaymentBatch(Base):
     # Fehler
     last_error = Column(Text, nullable=True)
 
+    # GoBD Audit (wer hat erstellt/zuletzt bearbeitet)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -392,6 +396,8 @@ class PaymentBatch(Base):
     user = relationship("User", foreign_keys=[user_id])
     company: Mapped["Company"] = relationship("Company", back_populates="payment_batches")
     approved_by = relationship("User", foreign_keys=[approved_by_id])
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    updated_by = relationship("User", foreign_keys=[updated_by_id])
     payments = relationship("PaymentOrder", back_populates="batch")
 
 
@@ -536,6 +542,10 @@ class DunningRecord(Base):
     # Teilzahlungen
     partial_payment_ids = Column(CrossDBJSON, default=list)
 
+    # GoBD Audit (wer hat erstellt/zuletzt bearbeitet)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    updated_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -549,6 +559,8 @@ class DunningRecord(Base):
     user = relationship("User", foreign_keys=[user_id])
     company: Mapped["Company"] = relationship("Company", back_populates="dunning_records")
     resolved_by = relationship("User", foreign_keys=[resolved_by_id])
+    created_by = relationship("User", foreign_keys=[created_by_id])
+    updated_by = relationship("User", foreign_keys=[updated_by_id])
     document = relationship("Document", backref="dunning_records")
     business_entity = relationship("BusinessEntity", backref="dunning_records")
     history_entries = relationship("MahnungHistory", back_populates="dunning_record", cascade="all, delete-orphan")
