@@ -67,23 +67,18 @@ def _get_changed_files() -> List[str]:
 def _is_trivial_prompt(prompt: str) -> bool:
     """Detect prompts that should never trigger team workflow.
 
-    Filters out:
+    Only filters truly trivial prompts:
     - Greetings (hi, hello, hallo)
     - Slash commands (/commit, /review, etc.)
-    - Questions (what, how, where, etc. in EN and DE)
-    - Exploration commands (explain, show, find, search)
-    - Simple confirmations (yes, no, ok)
-    - Git/npm/docker/pytest direct commands
-    - Commit requests
+    - Simple confirmations (yes, no, ok, danke)
+    - Bare CLI commands (git ..., npm ..., docker ..., pytest ...)
+    - Bare commit requests
     """
     trivial_patterns: List[str] = [
-        r"^(hi|hello|hey|hallo)\b",
+        r"^(hi|hello|hey|hallo|guten\s*(tag|morgen|abend))$",
         r"^/",  # Slash commands
-        r"^(what|how|where|why|when|wer|was|wie|wo|warum|wann)\s+(is|are|does|do|ist|sind|macht)\b",
-        r"^(show|list|find|search|zeige|finde|suche)\s",
-        r"^(read|lies|cat|open|oeffne)\s",
-        r"^(help|hilfe)$",
         r"^(yes|no|ja|nein|ok|okay|mach das|go ahead|weiter|fertig|done|danke|thanks)$",
+        r"^(help|hilfe)$",
         r"^commit\s*(message|msg)?$",
         r"^(git|npm|docker|pytest)\s",
     ]
