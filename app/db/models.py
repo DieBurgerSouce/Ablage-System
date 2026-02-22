@@ -1202,7 +1202,7 @@ from app.db.models_notification import (  # noqa: E402, F401
     ActivityNotificationType, UserNotification,
     TaskStatus, TaskPriority, DocumentTask,
     NotificationChannel, DigestFrequency, NotificationPreference,
-    NotificationDigestQueue, EscalationRule,
+    NotificationDigestQueue,
     PushSubscription, NotificationTemplate, NotificationHistory,
     NotificationRulePriority, NotificationRuleActionType, NotificationRule,
 )

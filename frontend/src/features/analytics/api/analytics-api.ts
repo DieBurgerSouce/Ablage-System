@@ -46,42 +46,15 @@ function buildDateParams(
 
 export const analyticsApi = {
   /**
-   * Aggregates CEO Dashboard + Smart Dashboard data for operations metrics
+   * Fetches operations metrics from dedicated analytics endpoint
    */
   async getOperationsData(period: string, customRange?: CustomDateRange): Promise<BackendOperationsData> {
     try {
       const params = buildDateParams(period, customRange);
-      // Fetch from CEO dashboard overview + smart dashboard KPIs in parallel
-      const [overviewRes, kpisRes] = await Promise.all([
-        apiClient.get('/ceo-dashboard/overview', { params }),
-        apiClient.get('/smart-dashboard/kpis', { params }),
-      ]);
-
-      const overview = overviewRes.data;
-      const kpis = kpisRes.data;
-
-      // Find specific KPIs from smart-dashboard
-      const findKpi = (key: string) => {
-        const kpi = Array.isArray(kpis) ? kpis.find((k: { key: string }) => k.key === key) : null;
-        return kpi?.value ?? 0;
-      };
-
-      return {
-        documents_processed: {
-          today: overview.document_stats?.today ?? findKpi('documents_today') ?? 0,
-          week: overview.document_stats?.week ?? 0,
-          month: overview.document_stats?.month ?? 0,
-        },
-        ocr_accuracy_percent: overview.ocr_accuracy ?? 0,
-        ocr_accuracy_trend: overview.ocr_accuracy_trend ?? 'neutral',
-        pending_approvals: findKpi('pending_approvals'),
-        oldest_approval_days: overview.oldest_approval_days ?? 0,
-        error_rate_percent: overview.error_rate ?? 0,
-        top_errors: overview.top_errors ?? [],
-        avg_processing_time_ms: overview.avg_processing_time_ms ?? 0,
-        p95_processing_time_ms: overview.p95_processing_time_ms ?? 0,
-        auto_process_rate: overview.auto_process_rate ?? 0,
-      };
+      const response = await apiClient.get<BackendOperationsData>('/analytics/operations', {
+        params,
+      });
+      return response.data;
     } catch (error) {
       console.error('Failed to fetch operations data:', error);
       throw new Error(ERROR_MESSAGES.FETCH_OPERATIONS_FAILED);
@@ -89,54 +62,15 @@ export const analyticsApi = {
   },
 
   /**
-   * Aggregates cashflow-prediction + payment-behavior + smart-dashboard finance KPIs
+   * Fetches finance metrics from dedicated analytics endpoint
    */
   async getFinanceData(period: string, customRange?: CustomDateRange): Promise<BackendFinanceData> {
     try {
       const params = buildDateParams(period, customRange);
-      const [kpisRes] = await Promise.all([
-        apiClient.get('/smart-dashboard/kpis', { params }),
-      ]);
-
-      const kpis = kpisRes.data;
-      const findKpi = (key: string) => {
-        const kpi = Array.isArray(kpis) ? kpis.find((k: { key: string }) => k.key === key) : null;
-        return kpi?.value ?? 0;
-      };
-
-      // Try to fetch cashflow data (may not be available)
-      let cashflowTrend: Array<{ date: string; amount: number }> = [];
-      try {
-        const cashflowRes = await apiClient.get('/cashflow-prediction/forecast', {
-          params: { days: period === 'quarter' ? 90 : 30, ...params },
-        });
-        cashflowTrend = cashflowRes.data?.forecast ?? [];
-      } catch {
-        // Cashflow endpoint may not be available
-      }
-
-      // Fetch finance tab data for aging buckets and dunning stages
-      let agingBuckets: Array<{ bucket: string; count: number; amount: number }> = [];
-      let dunningStages: Array<{ stage: number; count: number }> = [];
-      try {
-        const financeRes = await apiClient.get('/smart-dashboard/tabs/finance', { params });
-        agingBuckets = financeRes.data?.aging_buckets ?? [];
-        dunningStages = financeRes.data?.dunning_stages ?? [];
-      } catch {
-        // Finance tab endpoint may not be available
-      }
-
-      return {
-        open_items_count: findKpi('open_invoices'),
-        open_items_amount: findKpi('open_invoices_amount'),
-        cashflow_trend: cashflowTrend,
-        skonto_realized: findKpi('skonto_realized'),
-        skonto_missed: findKpi('skonto_missed'),
-        overdue_count: findKpi('overdue'),
-        overdue_amount: findKpi('overdue_amount'),
-        aging_buckets: agingBuckets,
-        dunning_stages: dunningStages,
-      };
+      const response = await apiClient.get<BackendFinanceData>('/analytics/finance', {
+        params,
+      });
+      return response.data;
     } catch (error) {
       console.error('Failed to fetch finance data:', error);
       throw new Error(ERROR_MESSAGES.FETCH_FINANCE_FAILED);
