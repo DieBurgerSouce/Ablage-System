@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Database: models.py refactored - Basistypen (Base, CrossDBJSON, CrossDBTSVector, CrossDBVector) in models_base.py ausgelagert (Circular Import Prevention)
+- Database: 20 neue Satellite-Model-Dateien fuer alle Domaenen (ai_ml, auth_access, banking, cash_company, datev, dropship_tax, entity_business, erp_import, gdpr_compliance, hr, integration, misc, notification, ocr_validation, privat_enterprise, privat_space, rag, report, surya_training, template_knowledge, workflow)
+- Frontend: Custom Fields Admin-Feature (/admin/custom-fields Route, CRUD-UI, API-Layer, TypeScript-Typen)
+- Frontend: Sidebar-Link "Eigene Felder" fuer Admin-Benutzer
+- Frontend: DocumentCustomFields-Komponente in SplitDocumentViewer Cockpit-Tab integriert
+- Tests: Unit-Tests fuer BarcodesPipelineService und DocumentSummaryService
 - Database: Migrationen 238-250 (CDC, Table Partitioning, Optimistic Locking, Field-Level Encryption, Anomaly Detection, Document Summaries, Document Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Event Platform, Feature Toggle History)
 - Database: 9 neue Satellite-Models (models_cdc, models_clustering, models_partitioning, models_encryption, models_anomaly, models_active_learning, models_webhooks, models_integration_sync, models_dashboard)
 - Database: Document-Model Auto-Summary Felder (summary, keywords, one_liner, summary_model, summary_generated_at) mit Partial Index
