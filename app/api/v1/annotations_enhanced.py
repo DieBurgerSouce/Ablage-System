@@ -253,6 +253,7 @@ async def resolve_annotation(
 @router.delete(
     "/{annotation_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
     summary="Annotation löschen",
 )
 async def delete_annotation(

@@ -42,6 +42,8 @@ from app.core.exceptions import (
     UserNotFoundError,
     ExportError,
     EmailVerificationError,
+    ConflictError,
+    ServiceUnavailableError,
 )
 from app.core.file_validation import (
     FileValidationError,
@@ -113,6 +115,7 @@ EXCEPTION_STATUS_CODES: Dict[Type[Exception], int] = {
     OCRBackendTimeoutError: 408,
 
     # 409 Conflict
+    ConflictError: 409,
     SessionLimitReachedError: 409,
 
     # 413 Payload Too Large
@@ -136,6 +139,7 @@ EXCEPTION_STATUS_CODES: Dict[Type[Exception], int] = {
     GPURecoveryError: 502,
 
     # 503 Service Unavailable
+    ServiceUnavailableError: 503,
     GPUOutOfMemoryError: 503,
     GPUNotAvailableError: 503,
     RateLimitStorageError: 503,

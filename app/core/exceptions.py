@@ -950,6 +950,31 @@ class RateLimitError(AblageSystemException):
         self.retry_after = retry_after
 
 
+class ConflictError(AblageSystemException):
+    """Resource conflict (duplicate) error"""
+
+    def __init__(self, message: str = "Ressource existiert bereits", details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="E409",
+            details=details,
+            user_message_de=message
+        )
+
+
+class ServiceUnavailableError(AblageSystemException):
+    """Backend service unavailable error"""
+
+    def __init__(self, message: str = "Service nicht verfuegbar", retry_after: Optional[int] = None, details: Optional[Dict[str, Any]] = None):
+        super().__init__(
+            message=message,
+            error_code="E503",
+            details={**(details or {}), **({"retry_after_seconds": retry_after} if retry_after else {})},
+            user_message_de=message
+        )
+        self.retry_after = retry_after
+
+
 # ==================== Security Exceptions (SEC) ====================
 
 class VaultException(AblageSystemException):
@@ -1105,6 +1130,10 @@ ERROR_CODE_REGISTRY: dict[str, str] = {
 
     # Business Logic Domain
     "BIZ_001": "Business Logic Error",
+
+    # HTTP Conflict/Unavailable
+    "E409": "Resource Conflict (Duplicate)",
+    "E503": "Service Unavailable",
 }
 
 # ==================== Business Logic Exceptions (E027) ====================

@@ -24,7 +24,7 @@ from sqlalchemy import select, func, update
 # SECURITY FIX 27-8: Rate Limiting für Webhook Endpoints
 from app.core.rate_limiting import limiter, get_user_identifier
 
-from app.db.models import User, WebhookSubscription, WebhookDelivery
+from app.db.models import User, WebhookSubscription, WebhookSubscriptionDelivery
 from app.api.dependencies import get_current_user, get_db
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.core.webhook_signature import (
@@ -473,25 +473,25 @@ async def list_webhook_deliveries(
         )
 
     # Query deliveries
-    query = select(WebhookDelivery).where(
-        WebhookDelivery.subscription_id == webhook_id
+    query = select(WebhookSubscriptionDelivery).where(
+        WebhookSubscriptionDelivery.subscription_id == webhook_id
     )
 
     if status_filter:
-        query = query.where(WebhookDelivery.status == status_filter)
+        query = query.where(WebhookSubscriptionDelivery.status == status_filter)
 
     # Total count
-    count_query = select(func.count(WebhookDelivery.id)).where(
-        WebhookDelivery.subscription_id == webhook_id
+    count_query = select(func.count(WebhookSubscriptionDelivery.id)).where(
+        WebhookSubscriptionDelivery.subscription_id == webhook_id
     )
     if status_filter:
-        count_query = count_query.where(WebhookDelivery.status == status_filter)
+        count_query = count_query.where(WebhookSubscriptionDelivery.status == status_filter)
 
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
 
     # Fetch deliveries
-    query = query.order_by(WebhookDelivery.created_at.desc()).limit(per_page).offset((page - 1) * per_page)
+    query = query.order_by(WebhookSubscriptionDelivery.created_at.desc()).limit(per_page).offset((page - 1) * per_page)
     result = await db.execute(query)
     deliveries = result.scalars().all()
 
