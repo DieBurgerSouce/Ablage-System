@@ -76,6 +76,13 @@ class ImageDiffRequest(BaseModel):
     threshold: int = Field(30, ge=0, le=255, description="Pixel-Differenz-Schwellwert")
 
 
+class DocumentDiffRequest(BaseModel):
+    """Schema fuer Dokumenten-Vergleichsanfrage per ID."""
+    document_a_id: UUID = Field(..., description="ID des ersten Dokuments")
+    document_b_id: UUID = Field(..., description="ID des zweiten Dokuments")
+    context_lines: int = Field(default=3, ge=0, le=10, description="Kontext-Zeilen um Aenderungen")
+
+
 class ImageDiffResponse(BaseModel):
     """Schema fuer Bild-Vergleichsergebnis."""
     similarity_score: float = Field(..., ge=0.0, le=1.0)
@@ -249,4 +256,117 @@ async def compare_document_images(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=safe_error_detail(e, "Bild-Vergleich"),
+        )
+
+
+@router.post("/compare/documents", response_model=DiffResponse)
+async def compare_documents_by_id(
+    request: DocumentDiffRequest,
+    db: AsyncSession = Depends(get_async_session),
+    current_user: "User" = Depends(get_current_user),
+) -> DiffResponse:
+    """Vergleicht zwei Dokumente anhand ihrer IDs per Text-Diff.
+
+    Laedt den extrahierten Text beider Dokumente aus der Datenbank
+    und fuehrt einen zeilenweisen Textvergleich durch.
+    """
+    from app.db.models import Document
+    from app.core.safe_errors import safe_error_detail, safe_error_log
+    from sqlalchemy import select
+
+    try:
+        # Dokument A laden
+        doc_a_result = await db.execute(
+            select(Document).where(Document.id == request.document_a_id)
+        )
+        doc_a = doc_a_result.scalar_one_or_none()
+        if not doc_a:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Dokument A nicht gefunden: {request.document_a_id}",
+            )
+
+        # Multi-Tenant-Isolation fuer Dokument A pruefen
+        if doc_a.company_id != current_user.company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Kein Zugriff auf dieses Dokument",
+            )
+
+        # Dokument B laden
+        doc_b_result = await db.execute(
+            select(Document).where(Document.id == request.document_b_id)
+        )
+        doc_b = doc_b_result.scalar_one_or_none()
+        if not doc_b:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Dokument B nicht gefunden: {request.document_b_id}",
+            )
+
+        # Multi-Tenant-Isolation fuer Dokument B pruefen
+        if doc_b.company_id != current_user.company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Kein Zugriff auf dieses Dokument",
+            )
+
+        # Extrahierten Text validieren
+        if not doc_a.extracted_text:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Dokument {request.document_a_id} hat keinen extrahierten Text",
+            )
+        if not doc_b.extracted_text:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Dokument {request.document_b_id} hat keinen extrahierten Text",
+            )
+
+        # Text-Diff durchfuehren
+        service = VisualDiffService()
+        result = service.compare_texts(
+            text_a=doc_a.extracted_text,
+            text_b=doc_b.extracted_text,
+            document_a_id=str(request.document_a_id),
+            document_b_id=str(request.document_b_id),
+            context_lines=request.context_lines,
+        )
+
+        return DiffResponse(
+            document_a_id=result.document_a_id,
+            document_b_id=result.document_b_id,
+            total_changes=result.total_changes,
+            additions=result.additions,
+            deletions=result.deletions,
+            modifications=result.modifications,
+            similarity_ratio=result.similarity_ratio,
+            blocks=[
+                DiffBlockResponse(
+                    diff_type=b.diff_type.value,
+                    old_text=b.old_text,
+                    new_text=b.new_text,
+                    old_line_start=b.old_line_start,
+                    old_line_end=b.old_line_end,
+                    new_line_start=b.new_line_start,
+                    new_line_end=b.new_line_end,
+                    page_number=b.page_number,
+                )
+                for b in result.blocks
+            ],
+            summary=result.summary,
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "document_diff_error",
+            document_a_id=str(request.document_a_id),
+            document_b_id=str(request.document_b_id),
+            **safe_error_log(e),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=safe_error_detail(e, "Dokument-Vergleich"),
         )
