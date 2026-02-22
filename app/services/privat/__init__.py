@@ -107,6 +107,13 @@ from app.services.privat.ki_prompt_service import (
     FinancialQAResponse,
 )
 
+# Contract Management (P5.1)
+from app.services.privat.contract_management_service import (
+    PrivatContractManagementService,
+    get_contract_management_service,
+    ContractInfo,
+)
+
 # Predictive Intelligence
 from app.services.privat.predictive_intelligence_service import (
     PredictiveIntelligenceService,
@@ -147,6 +154,17 @@ from app.services.privat.retirement_service import (
     WithdrawalPlan,
     MonteCarloResult,
     RetirementSummary,
+)
+
+# Tax Assistant (P5.2)
+from app.services.privat.tax_assistant_service import (
+    TaxAssistantService,
+    get_tax_assistant_service,
+    TaxCategorization,
+    CategorySummary,
+    TaxSummary,
+    ElsterExportResult,
+    ElsterFieldData,
 )
 
 __all__ = [
@@ -235,4 +253,16 @@ __all__ = [
     "WithdrawalPlan",
     "MonteCarloResult",
     "RetirementSummary",
+    # Tax Assistant (P5.2)
+    "TaxAssistantService",
+    "get_tax_assistant_service",
+    "TaxCategorization",
+    "CategorySummary",
+    "TaxSummary",
+    "ElsterExportResult",
+    "ElsterFieldData",
+    # Contract Management (P5.1)
+    "PrivatContractManagementService",
+    "get_contract_management_service",
+    "ContractInfo",
 ]
