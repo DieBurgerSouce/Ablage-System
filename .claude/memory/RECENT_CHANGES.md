@@ -1,6 +1,8 @@
 # Recent Changes
 
 ## 2026-02-22
+- **feat(frontend)**: Webhook Admin Frontend (3 Tabs: Endpoints/DLQ/Event-Protokoll, 7 Komponenten, 11 Query Hooks)
+- **feat(frontend)**: Sidebar-Link "Webhooks" fuer Admin-Benutzer
 - **refactor(db)**: models.py auf Satellite-Architektur umgestellt - Basistypen (Base, CrossDBJSON, CrossDBTSVector, CrossDBVector) in models_base.py ausgelagert
 - **feat(db)**: 20 neue Satellite-Model-Dateien (models_ai_ml, models_auth_access, models_banking, models_base, models_cash_company, models_datev, models_dropship_tax, models_entity_business, models_erp_import, models_gdpr_compliance, models_hr, models_integration, models_misc, models_notification, models_ocr_validation, models_privat_enterprise, models_privat_space, models_rag, models_report, models_surya_training, models_template_knowledge, models_workflow)
 - **feat(frontend)**: Custom Fields Admin-Feature implementiert (Admin-Route /admin/custom-fields, CRUD-UI, API-Layer, TypeScript-Typen)
