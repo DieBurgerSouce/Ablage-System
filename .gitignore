@@ -139,6 +139,11 @@ run-*.js
 /node_modules/
 /package-lock.json
 
+# Claude Flow (runtime state)
+.claude-flow/daemon-state.json
+.claude-flow/daemon.pid
+.claude-flow/metrics/
+
 # Playwright MCP
 .playwright-mcp/
 .mcp.json
