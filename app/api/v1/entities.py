@@ -1388,6 +1388,19 @@ async def update_entity(
         user_id=str(current_user.id),
     )
 
+    # Domain Event: entity_modified
+    if update_data and current_user.company_id:
+        from app.services.event_sourcing.event_emitter import emit_domain_event
+        await emit_domain_event(
+            db=db,
+            aggregate_type="entity",
+            aggregate_id=entity_id,
+            event_type="entity_modified",
+            event_data={"modified_fields": list(update_data.keys())},
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+        )
+
     return BusinessEntityResponse.model_validate(entity)
 
 

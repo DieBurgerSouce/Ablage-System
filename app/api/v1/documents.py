@@ -511,6 +511,23 @@ async def upload_document(
             **safe_error_log(e)
         )
 
+    # 12. Domain Event: document_created
+    from app.services.event_sourcing.event_emitter import emit_domain_event
+    await emit_domain_event(
+        db=db,
+        aggregate_type="document",
+        aggregate_id=doc_id,
+        event_type="document_created",
+        event_data={
+            "mime_type": detected_mime,
+            "source": "upload",
+            "file_size": file_size,
+            "document_type": document_type.value if hasattr(document_type, "value") else str(document_type),
+        },
+        company_id=company.id,
+        user_id=current_user.id,
+    )
+
     return DocumentCreateResponse(
         id=doc_id,
         filename=new_document.filename,
@@ -754,6 +771,23 @@ async def upload_complete(
             document_id=str(doc_id),
             **safe_error_log(e)
         )
+
+    # 10. Domain Event: document_created (upload-complete)
+    from app.services.event_sourcing.event_emitter import emit_domain_event
+    await emit_domain_event(
+        db=db,
+        aggregate_type="document",
+        aggregate_id=doc_id,
+        event_type="document_created",
+        event_data={
+            "mime_type": temp_file.mime_type,
+            "source": "upload_complete",
+            "category": request.category,
+            "document_type": final_document_type,
+        },
+        company_id=company.id,
+        user_id=current_user.id,
+    )
 
     return UploadCompleteResponse(
         success=True,
@@ -2630,6 +2664,23 @@ async def batch_export_documents(
         include_text=request.include_text,
         include_metadata=request.include_metadata
     )
+
+    # Domain Events: document_exported (fuer jedes erfolgreich exportierte Dokument)
+    from app.services.event_sourcing.event_emitter import emit_domain_event
+    failed_ids = {err.document_id for err in result.errors} if result.errors else set()
+    for exported_doc_id in request.document_ids:
+        if exported_doc_id not in failed_ids:
+            await emit_domain_event(
+                db=db,
+                aggregate_type="document",
+                aggregate_id=exported_doc_id,
+                event_type="document_exported",
+                event_data={
+                    "export_format": request.format.value,
+                },
+                company_id=company.id,
+                user_id=current_user.id,
+            )
 
     # Filename basierend auf Format
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")

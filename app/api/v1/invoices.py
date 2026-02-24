@@ -386,6 +386,7 @@ async def update_invoice(
 
     # Track if risk-relevant fields changed
     risk_relevant_changed = False
+    old_status = invoice.status
     update_data = invoice_data.model_dump(exclude_unset=True)
 
     for field, value in update_data.items():
@@ -414,6 +415,23 @@ async def update_invoice(
         invoice_id=str(invoice.id),
         updated_fields=list(update_data.keys()),
     )
+
+    # Domain Event: invoice_status_changed (wenn Status sich geaendert hat)
+    if "status" in update_data and invoice.status != old_status:
+        from app.services.event_sourcing.event_emitter import emit_domain_event
+        await emit_domain_event(
+            db=db,
+            aggregate_type="invoice",
+            aggregate_id=invoice.id,
+            event_type="invoice_status_changed",
+            event_data={
+                "old_status": old_status,
+                "new_status": invoice.status,
+                "updated_fields": list(update_data.keys()),
+            },
+            company_id=current_user.company_id,
+            user_id=current_user.id,
+        )
 
     return InvoiceTrackingResponse.model_validate(invoice)
 
@@ -468,6 +486,7 @@ async def mark_invoice_paid(
             detail="Rechnung ist bereits als bezahlt markiert"
         )
 
+    old_status = invoice.status
     invoice.status = InvoiceStatus.PAID.value
     invoice.paid_at = paid_at or datetime.now(timezone.utc)
     invoice.paid_amount = paid_amount if paid_amount is not None else invoice.amount
@@ -484,6 +503,22 @@ async def mark_invoice_paid(
         invoice_id=str(invoice.id),
         document_id=str(invoice.document_id),
         paid_amount=invoice.paid_amount,
+    )
+
+    # Domain Event: invoice_status_changed (mark-paid)
+    from app.services.event_sourcing.event_emitter import emit_domain_event
+    await emit_domain_event(
+        db=db,
+        aggregate_type="invoice",
+        aggregate_id=invoice.id,
+        event_type="invoice_status_changed",
+        event_data={
+            "old_status": old_status,
+            "new_status": InvoiceStatus.PAID.value,
+            "paid_amount": str(invoice.paid_amount) if invoice.paid_amount else None,
+        },
+        company_id=current_user.company_id,
+        user_id=current_user.id,
     )
 
     return InvoiceTrackingResponse.model_validate(invoice)
