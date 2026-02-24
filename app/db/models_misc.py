@@ -827,6 +827,11 @@ class DomainEvent(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Hash-Chain (SHA-256 Integrity)
+    event_hash = Column(String(64), nullable=True)  # SHA-256 of canonical event content
+    previous_hash = Column(String(64), nullable=True)  # Previous event's chain_hash
+    chain_hash = Column(String(64), nullable=True, index=True)  # SHA-256(previous_hash + event_hash)
+
     # Relationships
     company = relationship("Company", backref="domain_events")
 
