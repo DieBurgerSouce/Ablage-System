@@ -323,6 +323,9 @@ class DocumentCRUDService(DocumentServiceBase):
         if not doc:
             return False
 
+        # company_id vor dem Loeschen sichern (fuer Event)
+        doc_company_id = doc.company_id
+
         # Dokument löschen (CASCADE löscht Tags-Verknüpfungen)
         await db.delete(doc)
         await db.commit()
@@ -332,6 +335,19 @@ class DocumentCRUDService(DocumentServiceBase):
             document_id=str(document_id),
             user_id=str(user_id)
         )
+
+        # Domain Event: document_deleted
+        if doc_company_id:
+            from app.services.event_sourcing.event_emitter import emit_domain_event
+            await emit_domain_event(
+                db=db,
+                aggregate_type="document",
+                aggregate_id=document_id,
+                event_type="document_deleted",
+                event_data={"reason": "user_action"},
+                company_id=doc_company_id,
+                user_id=user_id,
+            )
 
         # Caches invalidieren
         await self._invalidate_document_cache(document_id, user_id, reason="document_delete")

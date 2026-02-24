@@ -46,6 +46,7 @@ from app.db.models import (
     Document,
     InvoiceTracking,
 )
+from app.services.ai.predictive_payment_service import SEASONAL_DELAY_FACTORS
 
 logger = structlog.get_logger(__name__)
 
@@ -991,6 +992,10 @@ class CashflowPredictionService:
 
                     # Simuliertes Zahlungsdatum mit Normalverteilung
                     simulated_delay = max(0, random.gauss(mean_delay, std_delay))
+                    # Saisonale Verzoegerung einbeziehen
+                    projected_month = (due_date + timedelta(days=int(simulated_delay))).month
+                    seasonal_factor = SEASONAL_DELAY_FACTORS.get(projected_month, 1.0)
+                    simulated_delay *= seasonal_factor
                     simulated_payment_date = due_date + timedelta(days=int(simulated_delay))
 
                     if simulated_payment_date == current_date:

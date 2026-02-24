@@ -1,5 +1,7 @@
 """Event Store - Append-Only Event Storage für Event-Sourcing."""
 
+import hashlib
+import json
 import time
 
 import structlog
@@ -36,6 +38,12 @@ AUDIT_BRIDGE_ERRORS = Counter(
 )
 
 # =============================================================================
+# SHA-256 Hash-Chain Konstanten
+# =============================================================================
+
+GENESIS_PREVIOUS_HASH = "0" * 64  # 64 Nullen als Anfangs-Hash der Kette
+
+# =============================================================================
 # Compliance Bridge: EventStore -> AuditChain
 # =============================================================================
 
@@ -64,6 +72,9 @@ class StoredEvent:
     causation_id: Optional[UUID]
     user_id: Optional[UUID]
     created_at: datetime
+    event_hash: Optional[str] = None
+    previous_hash: Optional[str] = None
+    chain_hash: Optional[str] = None
 
 
 class EventStore:
@@ -152,6 +163,26 @@ class EventStore:
                     user_id=user_id,
                 )
 
+                # SHA-256 Hash-Chain berechnen
+                event_hash = self._calculate_event_hash(
+                    event_type=event_type,
+                    event_data=event_data,
+                    aggregate_type=aggregate_type,
+                    aggregate_id=aggregate_id,
+                    sequence_number=next_seq,
+                )
+                previous_chain_hash = await self._get_previous_chain_hash(
+                    db=db,
+                    aggregate_type=aggregate_type,
+                    aggregate_id=aggregate_id,
+                    sequence_number=next_seq,
+                )
+                chain_hash = self._calculate_chain_hash(previous_chain_hash, event_hash)
+
+                event.event_hash = event_hash
+                event.previous_hash = previous_chain_hash
+                event.chain_hash = chain_hash
+
                 db.add(event)
                 await db.flush()
                 await db.refresh(event)
@@ -204,6 +235,9 @@ class EventStore:
             causation_id=causation_id,
             user_id=user_id,
             created_at=event.created_at,
+            event_hash=event_hash,
+            previous_hash=previous_chain_hash,
+            chain_hash=chain_hash,
         )
 
     async def _bridge_to_audit_chain(
@@ -314,6 +348,9 @@ class EventStore:
                 causation_id=event.causation_id,
                 user_id=event.user_id,
                 created_at=event.created_at,
+                event_hash=event.event_hash,
+                previous_hash=event.previous_hash,
+                chain_hash=event.chain_hash,
             )
             for event in events
         ]
@@ -395,6 +432,9 @@ class EventStore:
                 causation_id=event.causation_id,
                 user_id=event.user_id,
                 created_at=event.created_at,
+                event_hash=event.event_hash,
+                previous_hash=event.previous_hash,
+                chain_hash=event.chain_hash,
             )
             for event in events
         ]
@@ -433,3 +473,138 @@ class EventStore:
 
         result = await db.execute(stmt)
         return result.scalar() or 0
+
+    # =========================================================================
+    # SHA-256 Hash-Chain Methoden
+    # =========================================================================
+
+    @staticmethod
+    def _calculate_event_hash(
+        event_type: str,
+        event_data: Dict[str, Any],
+        aggregate_type: str,
+        aggregate_id: UUID,
+        sequence_number: int,
+    ) -> str:
+        """Berechnet SHA-256 Hash des Event-Inhalts (kanonisches JSON)."""
+        canonical_data = {
+            "aggregate_type": aggregate_type,
+            "aggregate_id": str(aggregate_id),
+            "sequence_number": sequence_number,
+            "event_type": event_type,
+            "event_data": event_data,
+        }
+        canonical_json = json.dumps(
+            canonical_data,
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            default=str,
+        )
+        return hashlib.sha256(canonical_json.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _calculate_chain_hash(
+        previous_hash: str,
+        event_hash: str,
+    ) -> str:
+        """Berechnet den verketteten Hash: SHA-256(previous_hash + event_hash)."""
+        combined = previous_hash + event_hash
+        return hashlib.sha256(combined.encode("utf-8")).hexdigest()
+
+    async def _get_previous_chain_hash(
+        self,
+        db: AsyncSession,
+        aggregate_type: str,
+        aggregate_id: UUID,
+        sequence_number: int,
+    ) -> str:
+        """Holt den chain_hash des vorherigen Events (oder Genesis-Hash)."""
+        from app.db.models import DomainEvent
+
+        if sequence_number <= 1:
+            return GENESIS_PREVIOUS_HASH
+
+        stmt = select(DomainEvent.chain_hash).where(
+            and_(
+                DomainEvent.aggregate_type == aggregate_type,
+                DomainEvent.aggregate_id == aggregate_id,
+                DomainEvent.sequence_number == sequence_number - 1,
+            )
+        )
+        result = await db.execute(stmt)
+        prev_hash = result.scalar()
+        return prev_hash if prev_hash else GENESIS_PREVIOUS_HASH
+
+    async def verify_chain(
+        self,
+        aggregate_type: str,
+        aggregate_id: UUID,
+        company_id: UUID,
+        db: AsyncSession,
+    ) -> Dict[str, Any]:
+        """Verifiziert die Integritaet der Hash-Chain fuer ein Aggregat.
+
+        Returns:
+            Dict mit status ("valid"/"broken"/"empty"), total_events,
+            verified_events, und optional broken_at_sequence + error_message.
+        """
+        events = await self.get_all_events(
+            aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id,
+            company_id=company_id,
+            db=db,
+        )
+
+        if not events:
+            return {"status": "empty", "total_events": 0, "verified_events": 0}
+
+        verified = 0
+        expected_previous = GENESIS_PREVIOUS_HASH
+
+        for event in events:
+            if not event.event_hash or not event.chain_hash:
+                # Legacy Events ohne Hash-Chain ueberspringen
+                verified += 1
+                if event.chain_hash:
+                    expected_previous = event.chain_hash
+                continue
+
+            # event_hash verifizieren
+            computed_event_hash = self._calculate_event_hash(
+                event_type=event.event_type,
+                event_data=event.event_data,
+                aggregate_type=event.aggregate_type,
+                aggregate_id=event.aggregate_id,
+                sequence_number=event.sequence_number,
+            )
+            if computed_event_hash != event.event_hash:
+                return {
+                    "status": "broken",
+                    "total_events": len(events),
+                    "verified_events": verified,
+                    "broken_at_sequence": event.sequence_number,
+                    "error_message": f"Event-Hash stimmt nicht bei Sequenz {event.sequence_number}",
+                }
+
+            # chain_hash verifizieren
+            computed_chain_hash = self._calculate_chain_hash(
+                expected_previous, computed_event_hash
+            )
+            if computed_chain_hash != event.chain_hash:
+                return {
+                    "status": "broken",
+                    "total_events": len(events),
+                    "verified_events": verified,
+                    "broken_at_sequence": event.sequence_number,
+                    "error_message": f"Chain-Hash stimmt nicht bei Sequenz {event.sequence_number}",
+                }
+
+            verified += 1
+            expected_previous = event.chain_hash
+
+        return {
+            "status": "valid",
+            "total_events": len(events),
+            "verified_events": verified,
+        }
