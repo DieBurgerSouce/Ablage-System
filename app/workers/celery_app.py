@@ -364,6 +364,8 @@ celery_app = Celery(
         "app.workers.vault_tasks",
         # --- Phase 3: Integration Pipeline ---
         "app.workers.pipeline_tasks",
+        # --- Seasonal Pattern Recomputation ---
+        "app.workers.tasks.recompute_seasonal_patterns",
     ]
 )
 
@@ -2463,6 +2465,15 @@ celery_app.conf.update(
         "partition-update-stats-daily": {
             "task": "partition.update_stats",
             "schedule": crontab(hour=5, minute=15),
+            "options": {"queue": "maintenance"},
+        },
+        # =================================================================
+        # Seasonal Pattern Recomputation (Cashflow Monte Carlo Integration)
+        # Woechentliche Berechnung saisonaler Zahlungsmuster pro Entity
+        # =================================================================
+        "recompute-seasonal-patterns": {
+            "task": "recompute_seasonal_patterns",
+            "schedule": crontab(hour=3, minute=0, day_of_week="sunday"),  # Woechentlich Sonntag 03:00 Uhr
             "options": {"queue": "maintenance"},
         },
     },
