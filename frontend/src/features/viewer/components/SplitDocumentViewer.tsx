@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { ScrollSync, ScrollSyncPane } from 'react-scroll-sync';
 import SplitPane from 'react-split-pane';
-import { FileText, ScanLine, FileCode, Loader2, AlertTriangle, Edit, MessageSquare, Diff, Link2, History, ClipboardList } from 'lucide-react';
+import { FileText, ScanLine, FileCode, Loader2, AlertTriangle, Edit, MessageSquare, Diff, Link2, History, ClipboardList, Pencil } from 'lucide-react';
 import { ViewerToolbar } from './ViewerToolbar';
 import { BoundingBoxOverlay, type BoundingBox } from './BoundingBoxOverlay';
 import { ImageViewer } from './ImageViewer';
@@ -12,6 +12,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ExtractedDataPanel } from '@/features/extracted-data';
 import { EInvoicePanel } from '@/features/einvoice';
 import { CommentsPanel, ActivityStream } from '@/features/collaboration';
+import { TypingIndicator } from '@/features/collaboration/components/TypingIndicator';
+import { useTypingIndicator } from '@/features/collaboration/hooks/useTypingIndicator';
+import { AnnotationOverlay } from '@/features/collaboration/components/AnnotationOverlay';
+import { AnnotationSidebar } from '@/features/collaboration/components/AnnotationSidebar';
+import { useAnnotations } from '@/features/collaboration/hooks/use-annotations';
+import { Button } from '@/components/ui/button';
 import { DocumentTasksPanel } from '@/features/collaboration/components/DocumentTasksPanel';
 import { OCRDiffViewer } from '@/features/ocr-review/components/OCRDiffViewer';
 import { DocumentContextPanel } from './DocumentContextPanel';
@@ -154,6 +160,10 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
     const [activeRightTab, setActiveRightTab] = useState('cockpit');
     const [rotation, setRotation] = useState(0);
     const [isFocusMode, setIsFocusMode] = useState(false);
+    const [annotationMode, setAnnotationMode] = useState(false);
+    const { data: annotationsData } = useAnnotations(documentId);
+    const annotations = annotationsData ?? [];
+    const { typingUsers } = useTypingIndicator({ documentId });
 
     const { enabled, autoActivate, getFilterStyle } = usePaperDimming();
     const { displayMode } = useTheme();
@@ -273,21 +283,35 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
 
     return (
         <div className="h-full flex flex-col">
-            <ViewerToolbar
-                documentId={documentId}
-                currentPage={currentPage}
-                numPages={effectiveNumPages}
-                scale={scale}
-                rotation={rotation}
-                onPageChange={setCurrentPage}
-                onZoomIn={() => setScale(s => Math.min(s + 0.25, 3))}
-                onZoomOut={() => setScale(s => Math.max(s - 0.25, 0.5))}
-                onRotate={handleRotate}
-                onDownload={handleDownload}
-                onPrint={handlePrint}
-                isFocusMode={isFocusMode}
-                onToggleFocusMode={handleToggleFocusMode}
-            />
+            <div className="relative">
+                <ViewerToolbar
+                    documentId={documentId}
+                    currentPage={currentPage}
+                    numPages={effectiveNumPages}
+                    scale={scale}
+                    rotation={rotation}
+                    onPageChange={setCurrentPage}
+                    onZoomIn={() => setScale(s => Math.min(s + 0.25, 3))}
+                    onZoomOut={() => setScale(s => Math.max(s - 0.25, 0.5))}
+                    onRotate={handleRotate}
+                    onDownload={handleDownload}
+                    onPrint={handlePrint}
+                    isFocusMode={isFocusMode}
+                    onToggleFocusMode={handleToggleFocusMode}
+                />
+                <div className="absolute top-2 right-4 z-20">
+                    <Button
+                        variant={annotationMode ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setAnnotationMode(!annotationMode)}
+                        title={annotationMode ? 'Annotationsmodus deaktivieren' : 'Annotationsmodus aktivieren'}
+                        className="gap-1.5"
+                    >
+                        <Pencil className="h-4 w-4" />
+                        Annotieren
+                    </Button>
+                </div>
+            </div>
 
             {(() => {
                 const documentPane = previewLoading ? (
@@ -325,13 +349,22 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                     </ViewerErrorBoundary>
                 ) : blobUrl && isImage ? (
                     <ViewerErrorBoundary fileType="image">
-                        <div style={{ ...dimmingStyle, transform: `rotate(${rotation}deg)` }}>
+                        <div className="relative" style={{ ...dimmingStyle, transform: `rotate(${rotation}deg)` }}>
                             <ImageViewer
                                 fileUrl={blobUrl}
                                 scale={scale}
                                 boxes={ocrResults?.pages?.[0]?.boxes || []}
                                 selectedBox={selectedBox}
                                 onBoxClick={setSelectedBox}
+                            />
+                            <AnnotationOverlay
+                                documentId={documentId}
+                                page={1}
+                                annotations={annotations}
+                                annotationMode={annotationMode}
+                                onAnnotationClick={() => {
+                                    setActiveRightTab('collaboration');
+                                }}
                             />
                         </div>
                     </ViewerErrorBoundary>
@@ -367,6 +400,15 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                                 height={pageDimensions.height}
                                             />
                                         )}
+                                        <AnnotationOverlay
+                                            documentId={documentId}
+                                            page={currentPage}
+                                            annotations={annotations}
+                                            annotationMode={annotationMode}
+                                            onAnnotationClick={() => {
+                                                setActiveRightTab('collaboration');
+                                            }}
+                                        />
                                     </div>
                                 </Document>
                             </div>
@@ -454,6 +496,15 @@ export function SplitDocumentViewer({ documentId, ocrResults, mimeType, extracte
                                         <EInvoicePanel documentId={documentId} />
                                     </TabsContent>
                                     <TabsContent value="collaboration" className="flex-1 p-4 overflow-auto mt-0 space-y-6">
+                                        <AnnotationSidebar
+                                            documentId={documentId}
+                                            onAnnotationClick={(annotation) => {
+                                                if (annotation.page) {
+                                                    setCurrentPage(annotation.page);
+                                                }
+                                            }}
+                                        />
+                                        <TypingIndicator typingUsers={typingUsers} className="mb-2" />
                                         <CommentsPanel documentId={documentId} />
                                         <ActivityStream documentId={documentId} />
                                     </TabsContent>

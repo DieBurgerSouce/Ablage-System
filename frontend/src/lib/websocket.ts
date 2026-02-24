@@ -121,6 +121,7 @@ class RealtimeWebSocketClient {
   // Event handlers
   private eventHandlers: Map<RealtimeEventType | '*', Set<EventHandler>> = new Map();
   private stateChangeHandlers: Set<(state: ConnectionState) => void> = new Set();
+  private rawMessageHandlers: Set<(message: WSMessage) => void> = new Set();
 
   constructor(baseUrl?: string) {
     // Determine WebSocket URL
@@ -184,6 +185,24 @@ class RealtimeWebSocketClient {
     return () => {
       this.stateChangeHandlers.delete(handler);
     };
+  }
+
+  /**
+   * Registriert Handler fuer alle eingehenden Raw-Messages (vor Event-Filterung).
+   * Gibt Unsubscribe-Funktion zurueck.
+   */
+  onRawMessage(handler: (message: WSMessage) => void): () => void {
+    this.rawMessageHandlers.add(handler);
+    return () => {
+      this.rawMessageHandlers.delete(handler);
+    };
+  }
+
+  /**
+   * Sendet eine JSON-Nachricht ueber die WebSocket-Verbindung.
+   */
+  sendMessage(data: Record<string, unknown>): void {
+    this.send(data);
   }
 
   getState(): ConnectionState {
@@ -270,6 +289,15 @@ class RealtimeWebSocketClient {
   }
 
   private handleMessage(message: WSMessage): void {
+    // Dispatch to raw message handlers first
+    this.rawMessageHandlers.forEach((handler) => {
+      try {
+        handler(message);
+      } catch (error) {
+        wsLogger.error('Raw message handler error', error);
+      }
+    });
+
     switch (message.type) {
       case 'connected':
         wsLogger.debug('WebSocket authenticated', message.payload);
@@ -475,6 +503,57 @@ export function useRealtimeEvent(
     const unsubscribe = client.current.subscribe(eventType, wrappedHandler);
     return unsubscribe;
   }, [eventType]);
+}
+
+/**
+ * Hook fuer Raw-Message-Subscriptions (fuer beliebige Message-Typen wie typing_indicator).
+ *
+ * @param messageType - Der Message-Typ auf den gefiltert wird
+ * @param handler - Handler-Funktion die bei passendem Typ aufgerufen wird
+ *
+ * @example
+ * useRawMessage('typing_indicator', (message) => {
+ *   console.log('Typing:', message.payload);
+ * });
+ */
+export function useRawMessage(
+  messageType: string,
+  handler: (message: WSMessage) => void
+): void {
+  const client = useRef(getWebSocketClient());
+  const handlerRef = useRef(handler);
+
+  useEffect(() => {
+    handlerRef.current = handler;
+  }, [handler]);
+
+  useEffect(() => {
+    const wrappedHandler = (message: WSMessage) => {
+      if (message.type === messageType) {
+        handlerRef.current(message);
+      }
+    };
+
+    const unsubscribe = client.current.onRawMessage(wrappedHandler);
+    return unsubscribe;
+  }, [messageType]);
+}
+
+/**
+ * Hook zum Senden von WebSocket-Nachrichten.
+ *
+ * @returns sendMessage Funktion
+ *
+ * @example
+ * const sendMessage = useWebSocketSend();
+ * sendMessage({ type: 'typing_start', document_id: '123' });
+ */
+export function useWebSocketSend(): (data: Record<string, unknown>) => void {
+  const client = useRef(getWebSocketClient());
+
+  return useCallback((data: Record<string, unknown>) => {
+    client.current.sendMessage(data);
+  }, []);
 }
 
 /**

@@ -162,6 +162,10 @@ export { DocumentLockBanner } from './components/DocumentLockBanner';
 export { ActivityTimeline } from './components/ActivityTimeline';
 export { MentionsBadge } from './components/MentionsBadge';
 
+// Typing Indicator (Feature 17 - Real-time Typing)
+export { TypingIndicator } from './components/TypingIndicator';
+export { useTypingIndicator } from './hooks/useTypingIndicator';
+
 // Annotations (Feature 6.1 - Dokument-Annotationen)
 export { AnnotationOverlay } from './components/AnnotationOverlay';
 export { AnnotationSidebar } from './components/AnnotationSidebar';

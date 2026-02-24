@@ -3,6 +3,8 @@ import { SplitDocumentViewer } from '@/features/viewer/components/SplitDocumentV
 import { useQuery } from '@tanstack/react-query'
 import { documentsService } from '@/lib/api/services/documents'
 import { Loader2 } from 'lucide-react'
+import { PresenceIndicator } from '@/features/collaboration/components/PresenceIndicator'
+import { usePresence } from '@/features/collaboration/hooks/usePresence'
 
 export const Route = createFileRoute('/documents/$documentId')({
     component: DocumentViewerPage,
@@ -15,6 +17,8 @@ function DocumentViewerPage() {
         queryKey: ['document', documentId],
         queryFn: () => documentsService.getById(documentId)
     });
+
+    const { viewers } = usePresence(documentId);
 
     if (isLoading) {
         return (
@@ -68,6 +72,7 @@ function DocumentViewerPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <PresenceIndicator viewers={viewers} size="sm" />
                     <span className="px-2 py-1 rounded-full bg-accent/10 text-accent-foreground text-xs font-medium border border-accent/20">
                         {document.mimeType}
                     </span>

@@ -349,6 +349,10 @@ class RealtimeWebSocketManager:
                 await self._handle_join_room(user_id, message.get("room_id"))
             elif msg_type == "leave_room":
                 await self._handle_leave_room(user_id, message.get("room_id"))
+            elif msg_type == "typing_start":
+                await self._handle_typing_start(user_id, message)
+            elif msg_type == "typing_stop":
+                await self._handle_typing_stop(user_id, message)
             else:
                 logger.warning(
                     "unknown_message_type",
@@ -866,6 +870,44 @@ class RealtimeWebSocketManager:
                     "user_id": user_id,
                     "document_id": document_id,
                     "cursor_position": cursor_position,
+                },
+            ),
+            exclude_sender=user_id,
+        )
+
+    async def _handle_typing_start(self, user_id: str, message: Dict[str, Any]) -> None:
+        """Verarbeitet Typing-Start-Nachricht und broadcastet an Room."""
+        document_id = message.get("document_id")
+        if not document_id:
+            return
+
+        await self.broadcast_to_room(
+            room_id=f"doc:{document_id}",
+            message=WSMessage(
+                type="typing_indicator",
+                payload={
+                    "user_id": user_id,
+                    "document_id": document_id,
+                    "is_typing": True,
+                },
+            ),
+            exclude_sender=user_id,
+        )
+
+    async def _handle_typing_stop(self, user_id: str, message: Dict[str, Any]) -> None:
+        """Verarbeitet Typing-Stop-Nachricht und broadcastet an Room."""
+        document_id = message.get("document_id")
+        if not document_id:
+            return
+
+        await self.broadcast_to_room(
+            room_id=f"doc:{document_id}",
+            message=WSMessage(
+                type="typing_indicator",
+                payload={
+                    "user_id": user_id,
+                    "document_id": document_id,
+                    "is_typing": False,
                 },
             ),
             exclude_sender=user_id,

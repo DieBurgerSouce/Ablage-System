@@ -21,6 +21,7 @@ interface AnnotationOverlayProps {
   page: number;
   annotations: Annotation[];
   onAnnotationClick?: (annotation: Annotation) => void;
+  annotationMode?: boolean;
   className?: string;
 }
 
@@ -60,6 +61,7 @@ export function AnnotationOverlay({
   page,
   annotations,
   onAnnotationClick,
+  annotationMode = true,
   className,
 }: AnnotationOverlayProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -164,17 +166,21 @@ export function AnnotationOverlay({
   return (
     <div
       ref={overlayRef}
-      className={cn('absolute inset-0 cursor-crosshair', className)}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
+      className={cn(
+        'absolute inset-0',
+        annotationMode ? 'cursor-crosshair' : 'pointer-events-none',
+        className
+      )}
+      onMouseDown={annotationMode ? handleMouseDown : undefined}
+      onMouseMove={annotationMode ? handleMouseMove : undefined}
+      onMouseUp={annotationMode ? handleMouseUp : undefined}
     >
       {/* Bestehende Annotationen */}
       {pageAnnotations.map((annotation) => (
         <div
           key={annotation.id}
           className={cn(
-            'absolute border-2 rounded-sm cursor-pointer transition-all hover:shadow-md',
+            'absolute border-2 rounded-sm cursor-pointer transition-all hover:shadow-md pointer-events-auto',
             typeColors[annotation.annotation_type],
             annotation.is_resolved && 'opacity-40'
           )}
