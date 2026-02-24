@@ -1,5 +1,15 @@
 # Recent Changes
 
+## 2026-02-24
+- **feat(db)**: DomainEvent SHA-256 Hash-Chain (event_hash, previous_hash, chain_hash) - Migration 254 + models_misc.py + models_predictions.py
+- **feat(db)**: Migration 255 - EntitySeasonalPattern fuer saisonale Zahlungsmuster (Cashflow Monte Carlo)
+- **feat(services)**: EventStore SHA-256 Hash-Chain-Berechnung bei jedem append() - event_emitter.py + __init__.py Export
+- **feat(services)**: CashflowPredictionService - saisonale Verzoegerungsfaktoren (SEASONAL_DELAY_FACTORS) in Monte Carlo Simulation
+- **feat(workers)**: recompute_seasonal_patterns Task + Celery Beat (woechentlich Sonntag 03:00)
+- **feat(api)**: Domain Events in documents.py (document_created, document_deleted, document_exported), entities.py (entity_modified), invoices.py (invoice_status_changed)
+- **feat(frontend)**: WebSocket onRawMessage() Handler + sendMessage() Methode + useRawMessage() Hook
+- **feat(frontend)**: TypingIndicator Komponente + useTypingIndicator Hook + SplitDocumentViewer Integration
+
 ## 2026-02-22 (Session 5)
 - **feat(workers)**: trigger_auto_filing_pipeline_task - vollautomatische Ablage-Pipeline nach OCR-Abschluss (Redis Pub/Sub Progress, DSGVO-konform)
 - **feat(workers)**: ocr_tasks.py - Auto-Filing Pipeline nach OCR success getriggert (filing_pipeline_task_id im Result)
@@ -35,15 +45,5 @@
 - **fix(services)**: PaymentService company_id Fix - 9 Methoden von company_id auf user_id umgestellt (BankAccount.user_id statt company_id)
 - **fix(services)**: LiquidityForecastService - ueberfluessiger company_id Parameter in _create_rolling_forecast() und _detect_payment_anomalies() entfernt
 - **fix(orchestration)**: team_router_hook.py - Trivial-Pattern-Filter vereinfacht (keine Fragen/Exploration mehr als trivial blockiert)
-
-## 2026-02-22
-- **feat(db)**: Migration 253 - GoBD/DSGVO Compliance SQL Views (gobd_audit_summary, gdpr_deletion_status)
-- **fix(frontend)**: AppLayout.tsx - id-Prop auf semantisch korrektes main-Element verschoben (statt div)
-- **feat(frontend)**: Webhook Admin Frontend (3 Tabs: Endpoints/DLQ/Event-Protokoll, 7 Komponenten, 11 Query Hooks)
-- **feat(db)**: Migration 252 - GoBD Audit-Felder (created_by_id, updated_by_id) fuer PaymentBatch und DunningRecord
-- **feat(services)**: DunningService GoBD-Audit Integration - user_id Parameter fuer Nachvollziehbarkeit
-- **feat(api)**: Visual Diff - neuer POST /compare/documents Endpunkt fuer Text-Diff per Dokument-ID
-- **fix(security)**: CWE-113 CRLF-Sanitisierung X-Company-ID Header + Migration 251 DocumentGroup Multi-Tenant Fix
-- **test**: Webhook Unit-Tests (InboundWebhookService + API) vollstaendig erstellt
 
 

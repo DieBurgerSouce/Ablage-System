@@ -10,6 +10,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Database: DomainEvent SHA-256 Hash-Chain (event_hash, previous_hash, chain_hash Spalten) in models_misc.py fuer kryptografische Event-Integritaet
+- Database: Migration 254 - DomainEvent Hash-Chain Spalten (event_hash, previous_hash, chain_hash mit Index)
+- Database: Migration 255 - EntitySeasonalPattern Tabelle fuer saisonale Zahlungsmuster pro Entity/Monat
+- Database: models_predictions.py - EntitySeasonalPattern SQLAlchemy Model
+- Services: EventStore SHA-256 Hash-Chain-Berechnung bei jedem append() (GENESIS_PREVIOUS_HASH, _calculate_event_hash, _calculate_chain_hash)
+- Services: event_emitter.py - emit_domain_event() Hilfsfunktion fuer Domain-Event-Emission aus API-Endpoints
+- Services: event_sourcing/__init__.py - emit_domain_event Export hinzugefuegt
+- Services: CashflowPredictionService - SEASONAL_DELAY_FACTORS in Monte Carlo Simulation eingebunden (saisonale Gewichtung)
+- Workers: recompute_seasonal_patterns Celery-Task (woechentlich Sonntag 03:00 via Beat-Schedule)
+- Workers: celery_app.py - recompute-seasonal-patterns Beat-Schedule (Maintenance Queue)
+- API: Domain Events in documents.py (document_created bei upload + upload_complete, document_deleted, document_exported)
+- API: Domain Events in entities.py (entity_modified bei update_entity)
+- API: Domain Events in invoices.py (invoice_status_changed bei update_invoice + mark_invoice_paid)
+- Frontend: WebSocket RealtimeWebSocketClient - onRawMessage() Handler fuer ungefiltertes Message-Listening
+- Frontend: WebSocket RealtimeWebSocketClient - sendMessage() public Methode fuer JSON-Versand
+- Frontend: useRawMessage() React Hook fuer typ-gefilterte Raw-Message-Subscriptions
+- Frontend: TypingIndicator Komponente (collaboration/components/TypingIndicator.tsx)
+- Frontend: useTypingIndicator Hook (collaboration/hooks/useTypingIndicator.ts)
+- Frontend: SplitDocumentViewer - TypingIndicator, AnnotationOverlay, AnnotationSidebar, useAnnotations integriert
+- Frontend: collaboration/index.ts - TypingIndicator und useTypingIndicator Exports
+- Backend: RealtimeWebSocketManager - typing_start + typing_stop Message-Handler mit Room-Broadcast
 - Workers: trigger_auto_filing_pipeline_task - vollautomatische Dokumenten-Ablage-Pipeline nach OCR-Abschluss (Redis Pub/Sub Progress, DSGVO-konform, PII wird NIEMALS geloggt)
 - Workers: ocr_tasks.py - Auto-Filing Pipeline wird nach OCR-Erfolg automatisch getriggert (filing_pipeline_task_id im Task-Result)
 - API: review_queue.py - Review Queue Endpoints (GET /review-queue, POST /documents/{id}/confirm-filing) fuer Dokumente mit unsicherer Auto-Zuordnung
