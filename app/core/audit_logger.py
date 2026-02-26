@@ -20,25 +20,26 @@ Phase 1.4: Audit-Log Encryption (Januar 2026)
 Feinpoliert und durchdacht - Enterprise-grade Audit Logging.
 """
 
-from datetime import datetime, timezone
-from typing import Optional, Dict, Any, List, Tuple
-from enum import Enum
-import uuid
+import base64
 import hashlib
 import json
-import base64
+import uuid
+from datetime import datetime, timezone
+from enum import Enum
+from typing import List, Optional, Tuple
 
 import structlog
-from sqlalchemy import select, func, desc
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.encryption import (
-    encrypt_data,
-    decrypt_data,
-    is_encrypted,
-    EncryptionError,
     DecryptionError,
+    EncryptionError,
+    decrypt_data,
+    encrypt_data,
+    is_encrypted,
 )
+from app.core.types import JSONDict
 
 logger = structlog.get_logger(__name__)
 
@@ -176,9 +177,9 @@ class SecurityEventType(str, Enum):
 # ==================== Encryption Functions (Phase 1.4) ====================
 
 def encrypt_audit_metadata(
-    metadata: Dict[str, Any],
+    metadata: JSONDict,
     entry_id: str,
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Verschlüsselt sensitive Felder in Audit-Metadaten.
 
@@ -223,9 +224,9 @@ def encrypt_audit_metadata(
 
 
 def decrypt_audit_metadata(
-    metadata: Dict[str, Any],
+    metadata: JSONDict,
     entry_id: str,
-) -> Dict[str, Any]:
+) -> JSONDict:
     """
     Entschlüsselt sensitive Felder in Audit-Metadaten.
 
@@ -259,7 +260,7 @@ def decrypt_audit_metadata(
     return decrypted
 
 
-def is_audit_metadata_encrypted(metadata: Dict[str, Any]) -> bool:
+def is_audit_metadata_encrypted(metadata: JSONDict) -> bool:
     """
     Prüft ob Audit-Metadaten verschlüsselte Felder enthalten.
 
@@ -289,7 +290,7 @@ def calculate_entry_hash(
     resource_id: Optional[str],
     ip_address: Optional[str],
     created_at: datetime,
-    metadata: Dict[str, Any],
+    metadata: JSONDict,
     previous_hash: str,
 ) -> str:
     """
@@ -378,7 +379,7 @@ async def verify_audit_chain(
     start_sequence: Optional[int] = None,
     end_sequence: Optional[int] = None,
     batch_size: int = 1000,
-) -> Tuple[bool, List[Dict[str, Any]]]:
+) -> Tuple[bool, List[JSONDict]]:
     """
     Verifiziert die Integrität der gesamten Audit-Log-Kette.
 
@@ -400,7 +401,7 @@ async def verify_audit_chain(
     """
     from app.db.models import AuditLog
 
-    errors: List[Dict[str, Any]] = []
+    errors: List[JSONDict] = []
 
     # Query vorbereiten
     query = select(AuditLog).order_by(AuditLog.sequence_number)
@@ -505,6 +506,7 @@ async def get_next_sequence_number(db: AsyncSession) -> int:
         Nächste Sequenznummer
     """
     from sqlalchemy import text
+
     from app.core.config import settings
 
     # PostgreSQL: Verwende SEQUENCE (atomar, keine Race Condition)
@@ -559,7 +561,7 @@ class SecurityAuditLogger:
         user_agent: Optional[str] = None,
         resource_type: Optional[str] = None,
         resource_id: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[JSONDict] = None,
         severity: str = "info",
     ) -> Optional[str]:
         """
@@ -631,7 +633,7 @@ class SecurityAuditLogger:
         user_agent: Optional[str],
         resource_type: Optional[str],
         resource_id: Optional[str],
-        details: Dict[str, Any],
+        details: JSONDict,
     ) -> str:
         """
         Speichert Event in AuditLog-Tabelle mit Immutabilitäts-Features.
@@ -645,9 +647,10 @@ class SecurityAuditLogger:
         - Verwendet FOR UPDATE SKIP LOCKED für atomare Verkettung
         - Retry-Logik bei Konflikten
         """
-        from app.db.models import AuditLog
         from sqlalchemy import text
+
         from app.core.config import settings
+        from app.db.models import AuditLog
 
         max_retries = 3
         retry_count = 0
@@ -747,7 +750,7 @@ class SecurityAuditLogger:
         # Sollte nie erreicht werden
         raise RuntimeError("Audit log save failed unexpectedly")
 
-    def _filter_sensitive_data(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _filter_sensitive_data(self, data: JSONDict) -> JSONDict:
         """
         Filtert sensitive Daten aus dem Details-Dict.
 
@@ -788,7 +791,7 @@ class SecurityAuditLogger:
         user_id: str,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[JSONDict] = None,
     ) -> Optional[str]:
         """Protokolliert erfolgreichen Login."""
         return await self.log_event(
@@ -938,7 +941,7 @@ class SecurityAuditLogger:
 async def get_audit_log_decrypted(
     db: AsyncSession,
     log_id: uuid.UUID,
-) -> Optional[Dict[str, Any]]:
+) -> Optional[JSONDict]:
     """
     Holt einen Audit-Log-Eintrag und entschlüsselt die Metadaten.
 
@@ -987,7 +990,7 @@ async def get_audit_logs_for_export(
     end_date: datetime,
     decrypt: bool = True,
     limit: int = 10000,
-) -> List[Dict[str, Any]]:
+) -> List[JSONDict]:
     """
     Holt Audit-Logs für Export mit optionaler Entschlüsselung.
 

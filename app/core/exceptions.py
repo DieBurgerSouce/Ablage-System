@@ -4,7 +4,7 @@ Structured error handling for production reliability
 Created: 2024-11-22
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -85,7 +85,7 @@ class AblageSystemException(Exception):
         self,
         message: str,
         error_code: str,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[JSONDict] = None,
         user_message_de: Optional[str] = None
     ):
         super().__init__(message)
@@ -94,7 +94,7 @@ class AblageSystemException(Exception):
         self.details = details or {}
         self.user_message_de = user_message_de or message
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> JSONDict:
         """Convert exception to dictionary for API responses"""
         return {
             "error_code": self.error_code,
@@ -108,7 +108,7 @@ class AblageSystemException(Exception):
 class NotFoundError(AblageSystemException):
     """Resource not found error"""
 
-    def __init__(self, message: str = "Ressource nicht gefunden", details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str = "Ressource nicht gefunden", details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="E404",
@@ -120,7 +120,7 @@ class NotFoundError(AblageSystemException):
 class ForbiddenError(AblageSystemException):
     """Access forbidden error"""
 
-    def __init__(self, message: str = "Zugriff verweigert", details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str = "Zugriff verweigert", details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="E403",
@@ -132,7 +132,7 @@ class ForbiddenError(AblageSystemException):
 class ValidationError(AblageSystemException):
     """Input validation error"""
 
-    def __init__(self, message: str = "Validierungsfehler", details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str = "Validierungsfehler", details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="E400",
@@ -381,7 +381,7 @@ class GDPRViolationError(ComplianceException):
 class GDPRError(ComplianceException):
     """General GDPR operation error"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="GDPR_002",
@@ -405,7 +405,7 @@ class UserNotFoundError(AblageSystemException):
 class ExportError(AblageSystemException):
     """Data export operation error"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="DOC_002",
@@ -417,7 +417,7 @@ class ExportError(AblageSystemException):
 class EmailVerificationError(AblageSystemException):
     """Email verification operation error"""
 
-    def __init__(self, message: str, user_message_de: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, user_message_de: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="AUTH_003",
@@ -431,7 +431,7 @@ class EmailVerificationError(AblageSystemException):
 class StorageError(AblageSystemException):
     """Base class for storage-related errors (MinIO/S3)"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="STOR_001",
@@ -485,7 +485,7 @@ class StorageQuotaExceededError(StorageError):
 class WebhookError(AblageSystemException):
     """Base class for webhook-related errors"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="NET_002",
@@ -526,7 +526,7 @@ class WebhookValidationError(WebhookError):
 class BackupError(AblageSystemException):
     """Base class for backup-related errors"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="ARCH_001",
@@ -568,7 +568,7 @@ class BackupRestoreError(BackupError):
 class MLError(AblageSystemException):
     """Base class for ML/AI-related errors"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="ML_001",
@@ -610,7 +610,7 @@ class ModelLoadError(MLError):
 class SearchError(AblageSystemException):
     """Base class for search-related errors"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="ML_002",
@@ -653,7 +653,7 @@ class SearchQueryError(SearchError):
 class EmbeddingError(AblageSystemException):
     """Base class for embedding-related errors"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="ML_003",
@@ -695,7 +695,7 @@ class EmbeddingDimensionMismatchError(EmbeddingError):
 class NotificationError(AblageSystemException):
     """Base class for notification-related errors"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="NOTIF_001",
@@ -738,7 +738,7 @@ class NotificationConfigError(NotificationError):
 class AuthenticationError(AblageSystemException):
     """Base class for authentication-related errors"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="AUTH_001",
@@ -785,7 +785,7 @@ class InsufficientPermissionsError(AuthenticationError):
 class ArchiveError(AblageSystemException):
     """Base class for archive-related errors"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="ARCH_002",
@@ -840,7 +840,7 @@ class RetentionPolicyError(ArchiveError):
 class ParsingException(AblageSystemException):
     """Base class for parsing-related errors (amounts, dates, VAT rates)"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="PARSE_001",
@@ -940,7 +940,7 @@ class CacheOperationError(AblageSystemException):
 class RateLimitError(AblageSystemException):
     """Base class for rate limiting errors"""
 
-    def __init__(self, message: str, retry_after: int, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, retry_after: int, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="AUTH_004",
@@ -953,7 +953,7 @@ class RateLimitError(AblageSystemException):
 class ConflictError(AblageSystemException):
     """Resource conflict (duplicate) error"""
 
-    def __init__(self, message: str = "Ressource existiert bereits", details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str = "Ressource existiert bereits", details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="E409",
@@ -965,7 +965,7 @@ class ConflictError(AblageSystemException):
 class ServiceUnavailableError(AblageSystemException):
     """Backend service unavailable error"""
 
-    def __init__(self, message: str = "Service nicht verfuegbar", retry_after: Optional[int] = None, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str = "Service nicht verfuegbar", retry_after: Optional[int] = None, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="E503",
@@ -980,7 +980,7 @@ class ServiceUnavailableError(AblageSystemException):
 class VaultException(AblageSystemException):
     """Vault secret management error"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="SEC_001",
@@ -992,7 +992,7 @@ class VaultException(AblageSystemException):
 class CertificateRotationError(AblageSystemException):
     """Certificate rotation error"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="SEC_002",
@@ -1006,7 +1006,7 @@ class CertificateRotationError(AblageSystemException):
 class PipelineException(AblageSystemException):
     """Zero-Touch Pipeline processing error"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="PIPE_001",
@@ -1018,7 +1018,7 @@ class PipelineException(AblageSystemException):
 class MatchingKontierungError(AblageSystemException):
     """Matching/Kontierung processing error"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="PIPE_002",
@@ -1141,7 +1141,7 @@ ERROR_CODE_REGISTRY: dict[str, str] = {
 class BusinessLogicError(AblageSystemException):
     """Business logic validation or processing error"""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: Optional[JSONDict] = None):
         super().__init__(
             message=message,
             error_code="BIZ_001",
