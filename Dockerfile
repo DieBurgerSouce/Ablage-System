@@ -6,7 +6,9 @@
 # Stage 1: builder
 # All build tools, compilers, and pip/uv live here only.
 # ============================================================
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04 AS builder
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:309fb03c970e7938385a1c4c888a3b2f6dbb4639f8c316ff2d8b722ecf2b56f1 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TORCH_CUDA_ARCH_LIST="8.6;8.9"
@@ -47,7 +49,8 @@ RUN git clone --depth 1 https://github.com/deepseek-ai/Janus.git /opt/janus && \
 # Only runtime packages; no build tools, no git, no uv/pip.
 # curl is kept for the HEALTHCHECK.
 # ============================================================
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+# Pin base image digest for reproducible builds (same image as builder)
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:309fb03c970e7938385a1c4c888a3b2f6dbb4639f8c316ff2d8b722ecf2b56f1
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive

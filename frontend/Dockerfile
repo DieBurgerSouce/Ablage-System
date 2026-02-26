@@ -1,5 +1,7 @@
 # Stage 1: Build
-FROM node:22.12-alpine3.21 AS builder
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect node:22.12-alpine3.21
+FROM node:22.12-alpine3.21@sha256:513c40ed37f6a5b7200de0a9a18e963d8c049c0427bbc9e4fc5cd16ef8881114 AS builder
 
 WORKDIR /app
 
@@ -12,7 +14,9 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Production
-FROM nginx:1.27-alpine3.20 AS production
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect nginx:1.27-alpine3.20
+FROM nginx:1.27-alpine3.20@sha256:679a5fd058f6ca754a561846fe27927e408074431d63556e8fc588fc38be6901 AS production
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf

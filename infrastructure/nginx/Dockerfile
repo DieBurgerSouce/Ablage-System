@@ -1,7 +1,9 @@
 # Nginx Dockerfile for Ablage-System OCR
 # Production-ready reverse proxy
 
-FROM nginx:1.25-alpine
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect nginx:1.25-alpine
+FROM nginx:1.25-alpine@sha256:721fa00bc549df26b3e67cc558ff176112d4ba69847537766f3c28e171d180e7
 
 # Install dependencies
 RUN apk add --no-cache \
