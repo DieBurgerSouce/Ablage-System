@@ -366,7 +366,7 @@ export function FieldDefinitionDialog({
                 </h3>
 
                 {dropdownOptions.map((option, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={option.value || index} className="flex items-center gap-2">
                     <Input
                       value={option.value}
                       onChange={(e) =>

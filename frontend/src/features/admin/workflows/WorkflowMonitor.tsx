@@ -264,7 +264,7 @@ export function WorkflowMonitor() {
                           <div className="flex gap-1 flex-wrap">
                             {approval.approval_chain.slice(0, 3).map((step, idx) => (
                               <Badge
-                                key={idx}
+                                key={step.step_number || idx}
                                 variant={
                                   step.decision === 'approved'
                                     ? 'default'
@@ -361,7 +361,7 @@ function ApprovalTimeline({ chain }: ApprovalTimelineProps) {
       <h4 className="font-semibold">Genehmigungsverlauf</h4>
       <div className="space-y-3">
         {chain.map((step, idx) => (
-          <div key={idx} className="flex items-start gap-4">
+          <div key={step.step_number || idx} className="flex items-start gap-4">
             <div className="flex flex-col items-center">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center ${

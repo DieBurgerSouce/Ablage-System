@@ -315,7 +315,7 @@ function FinanceChatMessage({ message, onDetailedFeedback }: FinanceChatMessageP
             <div className="flex flex-wrap gap-1 mt-2">
               {message.response.follow_up_suggestions.slice(0, 3).map((suggestion, index) => (
                 <Badge
-                  key={index}
+                  key={suggestion}
                   variant="secondary"
                   className="cursor-pointer hover:bg-secondary/80 text-xs"
                 >
@@ -949,7 +949,7 @@ function ChatArea({
               <div className="grid grid-cols-2 gap-2 mb-4 px-4">
                 {capabilities.slice(0, 4).map((cap, index) => (
                   <button
-                    key={index}
+                    key={cap.name}
                     className="rounded-lg border p-2 text-left hover:bg-muted/50 transition-colors"
                     onClick={() => cap.examples[0] && onSuggestionClick(cap.examples[0])}
                   >
@@ -966,7 +966,7 @@ function ChatArea({
             <div className="flex flex-wrap justify-center gap-2">
               {suggestions.slice(0, 4).map((suggestion, i) => (
                 <QuickSuggestion
-                  key={i}
+                  key={suggestion}
                   suggestion={suggestion}
                   onClick={() => onSuggestionClick(suggestion)}
                 />
@@ -1099,7 +1099,7 @@ function RAGChatArea({
             <div className="flex flex-wrap justify-center gap-2">
               {suggestions.slice(0, 4).map((suggestion, i) => (
                 <QuickSuggestion
-                  key={i}
+                  key={suggestion}
                   suggestion={suggestion}
                   onClick={() => onSuggestionClick(suggestion)}
                 />

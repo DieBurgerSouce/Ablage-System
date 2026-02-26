@@ -310,7 +310,7 @@ export function RecoveryPlaybook() {
                               <div className="font-medium mb-1">Voraussetzungen:</div>
                               <ul className="space-y-1 ml-4">
                                 {step.prerequisites.map((pre, i) => (
-                                  <li key={i} className="flex items-start gap-2">
+                                  <li key={pre} className="flex items-start gap-2">
                                     <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                                     <span className="text-muted-foreground">{pre}</span>
                                   </li>
@@ -325,7 +325,7 @@ export function RecoveryPlaybook() {
                               <div className="space-y-1">
                                 {step.commands.map((cmd, i) => (
                                   <code
-                                    key={i}
+                                    key={cmd}
                                     className="block bg-muted px-3 py-2 rounded text-xs font-mono"
                                   >
                                     $ {cmd}
@@ -339,7 +339,7 @@ export function RecoveryPlaybook() {
                             <div className="font-medium mb-1">Validierung:</div>
                             <div className="space-y-1">
                               {step.validation_criteria.map((criteria, i) => (
-                                <div key={i} className="flex items-start gap-2">
+                                <div key={criteria} className="flex items-start gap-2">
                                   <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0 mt-0.5" />
                                   <span className="text-muted-foreground">{criteria}</span>
                                 </div>
@@ -361,7 +361,7 @@ export function RecoveryPlaybook() {
               <AlertDescription>
                 <div className="mt-2 space-y-2">
                   {playbook.emergency_contacts.map((contact, i) => (
-                    <div key={i} className="flex items-center justify-between text-sm">
+                    <div key={contact.role} className="flex items-center justify-between text-sm">
                       <span className="font-medium">{contact.role}</span>
                       <div className="flex items-center gap-4 text-muted-foreground">
                         {contact.phone && (
@@ -389,7 +389,7 @@ export function RecoveryPlaybook() {
                 <h4 className="font-semibold mb-2">Zusätzliche Ressourcen</h4>
                 <ul className="space-y-1 text-sm text-muted-foreground">
                   {playbook.additional_resources.map((resource, i) => (
-                    <li key={i} className="flex items-start gap-2">
+                    <li key={resource} className="flex items-start gap-2">
                       <ChevronRight className="h-4 w-4 shrink-0 mt-0.5" />
                       {resource}
                     </li>
