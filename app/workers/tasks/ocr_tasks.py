@@ -58,6 +58,7 @@ from app.workers.tasks.ml_tasks import ml_tracker
 
 # Import Cache Invalidation für Document/Search Caches
 from app.core.cache import invalidate_on_document_change
+from app.workers.error_handling import celery_error_handler
 
 logger = structlog.get_logger(__name__)
 
@@ -292,6 +293,7 @@ def update_task_progress(task_id: str, current: int, total: int, message: str) -
 # ==================== OCR Processing Tasks ====================
 
 @celery_app.task(bind=True, base=GPUTask, name="app.workers.tasks.ocr_tasks.process_document_task")
+@celery_error_handler()
 def process_document_task(
     self,
     document_id: str,
@@ -1075,6 +1077,7 @@ def process_document_task(
 
 
 @celery_app.task(bind=True, base=GPUTask, name="app.workers.tasks.ocr_tasks.batch_process_task")
+@celery_error_handler()
 def batch_process_task(
     self,
     document_ids: List[str],
@@ -1339,6 +1342,7 @@ def batch_process_task(
 
 
 @celery_app.task(bind=True, base=CPUTask, name="app.workers.tasks.ocr_tasks.validate_german_text_task")
+@celery_error_handler()
 def validate_german_text_task(
     self,
     text: str,
@@ -1431,6 +1435,7 @@ def validate_german_text_task(
 
 
 @celery_app.task(bind=True, base=CPUTask, name="app.workers.tasks.ocr_tasks.extract_metadata_task")
+@celery_error_handler()
 def extract_metadata_task(
     self,
     document_id: str
@@ -1509,6 +1514,7 @@ def extract_metadata_task(
 # ==================== Maintenance Tasks ====================
 
 @celery_app.task(bind=True, base=CPUTask, name="app.workers.tasks.ocr_tasks.cleanup_task")
+@celery_error_handler()
 def cleanup_task(self, hours_old: int = 24) -> Dict[str, Any]:
     """Clean up old task results and temporary files.
 
@@ -1588,6 +1594,7 @@ def cleanup_task(self, hours_old: int = 24) -> Dict[str, Any]:
 
 
 @celery_app.task(bind=True, base=GPUTask, name="app.workers.tasks.ocr_tasks.process_document_workflow")
+@celery_error_handler()
 def process_document_workflow(
     self,
     document_id: str,
@@ -1677,6 +1684,7 @@ batch_process_documents = batch_process_task
 
 
 @celery_app.task(bind=True, base=CPUTask, name="app.workers.tasks.ocr_tasks.update_system_metrics")
+@celery_error_handler()
 def update_system_metrics(self) -> Dict[str, Any]:
     """Collect and store system performance metrics.
 
@@ -1762,6 +1770,7 @@ def update_system_metrics(self) -> Dict[str, Any]:
     base=CPUTask,
     name="app.workers.tasks.ocr_tasks.calculate_ocr_backend_performance"
 )
+@celery_error_handler()
 def calculate_ocr_backend_performance(
     self,
     backend: Optional[str] = None,
@@ -1822,6 +1831,7 @@ def calculate_ocr_backend_performance(
     base=CPUTask,
     name="app.workers.tasks.ocr_tasks.process_pending_ocr_feedbacks"
 )
+@celery_error_handler()
 def process_pending_ocr_feedbacks(
     self,
     batch_size: int = 100,

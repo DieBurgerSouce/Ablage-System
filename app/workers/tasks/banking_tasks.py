@@ -24,6 +24,7 @@ import structlog
 
 from app.workers.celery_app import celery_app, CPUTask
 from app.core.safe_errors import safe_error_log
+from app.workers.error_handling import celery_error_handler
 
 logger = structlog.get_logger(__name__)
 
@@ -233,6 +234,7 @@ async def _match_transaction_to_document(
     max_retries=3,
     default_retry_delay=60,
 )
+@celery_error_handler()
 def process_bank_import(
     self,
     user_id: str,
@@ -323,6 +325,7 @@ def process_bank_import(
     max_retries=2,
     default_retry_delay=120,
 )
+@celery_error_handler()
 def auto_reconcile(
     self,
     user_id: Optional[str] = None,
@@ -459,6 +462,7 @@ def auto_reconcile(
     name="app.workers.tasks.banking_tasks.parse_transaction_references",
     max_retries=2,
 )
+@celery_error_handler()
 def parse_transaction_references(
     self,
     transaction_ids: Optional[List[str]] = None,
@@ -567,6 +571,7 @@ def parse_transaction_references(
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.update_account_balances",
 )
+@celery_error_handler()
 def update_account_balances(self, bank_account_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Aktualisiere Kontosalden basierend auf Transaktionen.
@@ -656,6 +661,7 @@ def update_account_balances(self, bank_account_id: Optional[str] = None) -> Dict
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.check_overdue_payments",
 )
+@celery_error_handler()
 def check_overdue_payments(self) -> Dict[str, Any]:
     """
     Prüfe auf überfällige Zahlungen.
@@ -734,6 +740,7 @@ def check_overdue_payments(self) -> Dict[str, Any]:
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.process_automatic_dunning",
 )
+@celery_error_handler()
 def process_automatic_dunning(
     self,
     user_id: Optional[str] = None,
@@ -832,6 +839,7 @@ def process_automatic_dunning(
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.update_cash_flow_forecasts",
 )
+@celery_error_handler()
 def update_cash_flow_forecasts(self) -> Dict[str, Any]:
     """
     Aktualisiere Cash-Flow-Prognosen für alle User.
@@ -916,6 +924,7 @@ def update_cash_flow_forecasts(self) -> Dict[str, Any]:
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.send_skonto_alerts",
 )
+@celery_error_handler()
 def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
     """
     Sende Alerts für ablaufende Skonto-Fristen.
@@ -1070,6 +1079,7 @@ def send_skonto_alerts(self, days_ahead: int = 7) -> Dict[str, Any]:
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.cleanup_tan_challenges",
 )
+@celery_error_handler()
 def cleanup_tan_challenges(self) -> Dict[str, Any]:
     """
     Bereinige abgelaufene TAN-Challenges.
@@ -1143,6 +1153,7 @@ def is_german_business_day(check_date: Optional[date] = None) -> bool:
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.daily_mahnlauf",
 )
+@celery_error_handler()
 def daily_mahnlauf(self) -> Dict[str, Any]:
     """
     Täglicher Mahnlauf um 9:00 Uhr (Mo-Fr, keine deutschen Feiertage).
@@ -1359,6 +1370,7 @@ def daily_mahnlauf(self) -> Dict[str, Any]:
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.reactivate_snoozed_tasks",
 )
+@celery_error_handler()
 def reactivate_snoozed_tasks(self) -> Dict[str, Any]:
     """
     Reaktiviere zurückgestellte Mahn-Aufgaben.
@@ -1408,6 +1420,7 @@ def reactivate_snoozed_tasks(self) -> Dict[str, Any]:
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.send_pre_due_reminders",
 )
+@celery_error_handler()
 def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
     """
     Sende Zahlungserinnerungen VOR Fälligkeit.
@@ -1598,6 +1611,7 @@ def send_pre_due_reminders(self, days_before: int = 3) -> Dict[str, Any]:
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.check_expired_mahnstopp",
 )
+@celery_error_handler()
 def check_expired_mahnstopp(self) -> Dict[str, Any]:
     """
     Prüfe und hebe abgelaufene Mahnstopps auf.
@@ -1647,6 +1661,7 @@ def check_expired_mahnstopp(self) -> Dict[str, Any]:
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.generate_dunning_daily_report",
 )
+@celery_error_handler()
 def generate_dunning_daily_report(self) -> Dict[str, Any]:
     """
     Generiere täglichen Mahnlauf-Bericht.
@@ -1823,6 +1838,7 @@ def generate_dunning_daily_report(self) -> Dict[str, Any]:
     max_retries=3,
     default_retry_delay=300,
 )
+@celery_error_handler()
 def fints_sync_all_accounts(
     self,
     company_id: Optional[str] = None,
@@ -1934,6 +1950,7 @@ def fints_sync_all_accounts(
     base=CPUTask,
     name="app.workers.tasks.banking_tasks.fints_refresh_balances",
 )
+@celery_error_handler()
 def fints_refresh_balances(self, company_id: Optional[str] = None) -> Dict[str, Any]:
     """
     Aktualisiere Kontosalden via FinTS.
@@ -2022,6 +2039,7 @@ def fints_refresh_balances(self, company_id: Optional[str] = None) -> Dict[str, 
     name="app.workers.tasks.banking_tasks.execute_pending_sepa_transfers",
     max_retries=2,
 )
+@celery_error_handler()
 def execute_pending_sepa_transfers(self) -> Dict[str, Any]:
     """
     Führe ausstehende SEPA-Überweisungen aus.
@@ -2099,6 +2117,7 @@ def execute_pending_sepa_transfers(self) -> Dict[str, Any]:
     name="app.workers.tasks.banking_tasks.update_bundesbank_basiszins",
     max_retries=3,
 )
+@celery_error_handler()
 def update_bundesbank_basiszins(self) -> Dict[str, Any]:
     """
     Aktualisiere Bundesbank Basiszins Daten.

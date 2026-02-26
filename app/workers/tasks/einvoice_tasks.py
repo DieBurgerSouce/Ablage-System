@@ -25,6 +25,7 @@ from app.core.config import settings
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.session import get_async_session_context
 from app.db.models import Document, EInvoiceDocument
+from app.workers.error_handling import celery_error_handler
 
 logger = structlog.get_logger(__name__)
 
@@ -43,6 +44,7 @@ logger = structlog.get_logger(__name__)
     time_limit=2100,  # 35 min
     acks_late=True,
 )
+@celery_error_handler()
 def zugferd_batch_convert_task(
     self,
     document_ids: List[str],
@@ -428,6 +430,7 @@ def _generate_zugferd_xml(doc: Document, profile) -> Optional[str]:
     queue="default",
     max_retries=2,
 )
+@celery_error_handler()
 def zugferd_embed_task(
     self,
     document_id: str,
@@ -541,6 +544,7 @@ def zugferd_embed_task(
     queue="default",
     max_retries=1,
 )
+@celery_error_handler()
 def einvoice_validate_task(
     self,
     document_id: str,
@@ -632,6 +636,7 @@ def einvoice_validate_task(
     soft_time_limit=120,
     time_limit=180,
 )
+@celery_error_handler()
 def einvoice_send_peppol_task(
     self,
     einvoice_id: str,
@@ -693,6 +698,7 @@ def einvoice_send_peppol_task(
     queue="default",
     max_retries=1,
 )
+@celery_error_handler()
 def einvoice_check_transmission_status_task(
     self,
     transmission_id: str,
@@ -765,6 +771,7 @@ def einvoice_check_transmission_status_task(
     name="app.workers.tasks.einvoice_tasks.einvoice_send_pending_task",
     queue="default",
 )
+@celery_error_handler()
 def einvoice_send_pending_task(self) -> dict:
     """
     Sendet alle ausstehenden E-Rechnungen (Status: queued).
@@ -831,6 +838,7 @@ def einvoice_send_pending_task(self) -> dict:
     name="app.workers.tasks.einvoice_tasks.einvoice_validate_incoming_task",
     queue="default",
 )
+@celery_error_handler()
 def einvoice_validate_incoming_task(
     self,
     incoming_id: str,
@@ -917,6 +925,7 @@ def einvoice_validate_incoming_task(
     name="app.workers.tasks.einvoice_tasks.einvoice_check_all_transmissions_task",
     queue="default",
 )
+@celery_error_handler()
 def einvoice_check_all_transmissions_task(self) -> dict:
     """
     Prüft Status aller aktiven Transmissions (Status: sent).
@@ -981,6 +990,7 @@ def einvoice_check_all_transmissions_task(self) -> dict:
     soft_time_limit=120,
     time_limit=180,
 )
+@celery_error_handler()
 def parse_einvoice_task(self, document_id: str, company_id: str) -> dict:
     """
     Parst E-Rechnung aus einem Dokument (async).
@@ -1108,6 +1118,7 @@ def parse_einvoice_task(self, document_id: str, company_id: str) -> dict:
     soft_time_limit=120,
     time_limit=180,
 )
+@celery_error_handler()
 def generate_zugferd_task(
     self,
     document_id: str,
@@ -1264,6 +1275,7 @@ def generate_zugferd_task(
     soft_time_limit=120,
     time_limit=180,
 )
+@celery_error_handler()
 def generate_xrechnung_task(
     self,
     document_id: str,
@@ -1432,6 +1444,7 @@ def generate_xrechnung_task(
     soft_time_limit=600,  # 10 min
     time_limit=720,  # 12 min
 )
+@celery_error_handler()
 def batch_validate_einvoices_task(self, company_id: str) -> dict:
     """
     Validiert alle ausstehenden E-Rechnungen einer Firma (Batch).

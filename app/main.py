@@ -217,6 +217,20 @@ async def lifespan(app: FastAPI):
                 "Setze DEBUG=False oder entferne ENVIRONMENT=production."
             )
 
+    # STARTUP HEALTH GATE: Verify DB connectivity before accepting requests
+    try:
+        from app.api.dependencies import engine
+        from sqlalchemy import text
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        logger.info("db_connectivity_check_passed")
+    except Exception as e:
+        logger.critical("db_connectivity_check_failed", **safe_error_log(e))
+        raise RuntimeError(
+            "STARTUP FEHLGESCHLAGEN: Datenbankverbindung konnte nicht hergestellt werden. "
+            "Bitte PostgreSQL-Status pruefen."
+        )
+
     # Initialize managers
     gpu_manager = GPUManager()
     german_validator = GermanValidator()
@@ -295,6 +309,22 @@ async def lifespan(app: FastAPI):
             )
         except Exception as e:
             logger.warning("model_preload_startup_error", **safe_error_log(e))
+        # Optional: Block startup until models are loaded (for OCR-heavy deployments)
+        if getattr(settings, "WAIT_FOR_MODEL_PRELOAD", False):
+            import asyncio
+            timeout = getattr(settings, "WAIT_FOR_MODEL_PRELOAD_TIMEOUT", 120)
+            logger.info("model_preload_blocking_wait", timeout_seconds=timeout)
+            try:
+                deadline = asyncio.get_event_loop().time() + timeout
+                while not model_preloader.is_ready():
+                    if asyncio.get_event_loop().time() > deadline:
+                        logger.warning("model_preload_blocking_timeout", timeout_seconds=timeout)
+                        break
+                    await asyncio.sleep(1)
+                if model_preloader.is_ready():
+                    logger.info("model_preload_blocking_complete")
+            except Exception as e:
+                logger.warning("model_preload_blocking_wait_error", **safe_error_log(e))
     else:
         logger.info("model_preload_disabled_by_config")
 
@@ -1373,6 +1403,9 @@ from app.api.v1.cdc import router as cdc_router  # Phase 1.1: Change Data Captur
 from app.api.v1.encryption import router as encryption_router  # Phase 1.4: Field-Level Encryption Admin
 from app.api.v1.feature_toggles import router as feature_toggles_router  # Phase 7.1: Feature Toggle Admin UI
 from app.api.v1.integration_sync import router as integrations_dashboard_router  # Phase 4.4: Integrations-Sync Dashboard
+from app.api.v1.access_analytics import router as access_analytics_router  # Priority 4: Zugriffs-Analytik Dashboard
+from app.api.v1.agent_orchestrator import router as agent_orchestrator_router  # Multi-Agent KI-Orchestrator mit CoT
+from app.api.v1.command_center import router as command_center_router  # Command Center Startseite
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(tasks.router, prefix="/api/v1")
@@ -1653,6 +1686,9 @@ app.include_router(cdc_router, prefix="/api/v1")  # Phase 1.1: Change Data Captu
 app.include_router(encryption_router, prefix="/api/v1")  # Phase 1.4: Field-Level Encryption Admin
 app.include_router(feature_toggles_router, prefix="/api/v1")  # Phase 7.1: Feature Toggle Admin UI
 app.include_router(integrations_dashboard_router, prefix="/api/v1")  # Phase 4.4: Integrations-Sync Dashboard
+app.include_router(access_analytics_router, prefix="/api/v1")  # Priority 4: Zugriffs-Analytik Dashboard
+app.include_router(agent_orchestrator_router, prefix="/api/v1")  # Multi-Agent KI-Orchestrator mit CoT
+app.include_router(command_center_router, prefix="/api/v1")  # Command Center Startseite
 
 
 # ==================== Health & Status Endpoints ====================

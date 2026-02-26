@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.safe_errors import safe_error_log
 from app.db.session import async_session_factory
 from app.workers.celery_app import celery_app, CPUTask
+from app.workers.error_handling import celery_error_handler
 
 logger = structlog.get_logger(__name__)
 
@@ -57,6 +58,7 @@ def run_async(coro):
     default_retry_delay=300,
     queue="banking",
 )
+@celery_error_handler()
 def sync_all_bank_accounts(
     self,
     company_id: Optional[str] = None,
@@ -206,6 +208,7 @@ async def _sync_all_bank_accounts(
     default_retry_delay=60,
     queue="banking",
 )
+@celery_error_handler()
 def sync_single_connection(
     self,
     connection_id: str,
@@ -281,6 +284,7 @@ async def _sync_single_connection(
     default_retry_delay=3600,
     queue="banking",
 )
+@celery_error_handler()
 def refresh_psd2_consents(self, days_before_expiry: int = 7) -> Dict[str, Any]:
     """
     Erneuere PSD2 Consent-Tokens vor Ablauf.
@@ -395,6 +399,7 @@ async def _refresh_psd2_consents(days_before_expiry: int = 7) -> Dict[str, Any]:
     name="app.workers.tasks.banking_psd2_tasks.check_expired_connections",
     queue="banking",
 )
+@celery_error_handler()
 def check_expired_connections(self) -> Dict[str, Any]:
     """
     Prüfe und markiere abgelaufene Verbindungen.
@@ -524,6 +529,7 @@ async def _check_expired_connections() -> Dict[str, Any]:
     default_retry_delay=60,
     queue="banking",
 )
+@celery_error_handler()
 def auto_reconcile_transactions(
     self,
     connection_id: Optional[str] = None,
