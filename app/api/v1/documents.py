@@ -236,7 +236,10 @@ async def upload_document(
             detail="Dateiname fehlt"
         )
 
-    file_ext = Path(file.filename).suffix.lower()
+    # SECURITY: Sanitize filename before extension extraction to prevent path traversal
+    from app.core.file_validation import sanitize_filename
+    safe_filename = sanitize_filename(file.filename)
+    file_ext = Path(safe_filename).suffix.lower()
     allowed_extensions = settings.ALLOWED_EXTENSIONS
 
     if file_ext not in allowed_extensions:

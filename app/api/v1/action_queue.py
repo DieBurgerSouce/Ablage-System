@@ -4,7 +4,7 @@ Action Approval Queue API Endpoints.
 
 Enterprise Feature: API für Aktions-Genehmigungsqueue.
 
-Endpoints:
+Endpoints (bestehend):
 - GET /action-queue/levels - Alle Autonomie-Levels
 - GET /action-queue/pending - Ausstehende Aktionen
 - POST /action-queue/{id}/approve - Aktion genehmigen
@@ -13,10 +13,17 @@ Endpoints:
 - GET /action-queue/stats - Queue-Statistiken
 - GET /action-queue/categories - Aktions-Kategorien
 
+Endpoints (proaktiv):
+- GET /action-queue/today - Priorisierte Tages-Todo-Liste
+- POST /action-queue/{action_id}/complete - Aufgabe erledigen
+- POST /action-queue/{action_id}/snooze - Aufgabe verschieben
+- GET /action-queue/progress - Heutiger Fortschritt
+
 ENTERPRISE-GRADE: Verwendet AutonomySettings DB-Modell für Persistenz.
 """
 
 import structlog
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -40,6 +47,13 @@ from app.services.autonomy import (
     QueueStats,
     get_action_queue,
     get_confidence_router,
+)
+from app.services.action_queue_service import (
+    ActionQueueResponse,
+    ActionQueueProgress,
+    ProactiveActionItem,
+    SnoozeRequest,
+    get_proactive_action_queue_service,
 )
 
 logger = structlog.get_logger(__name__)

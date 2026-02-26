@@ -683,3 +683,91 @@ class AutonomyMetrics(Base):
             "auto_execute_success_rate": self.auto_execute_success_rate,
             "by_category": self.by_category,
         }
+
+
+# =============================================================================
+# PROACTIVE ACTION STATE
+# =============================================================================
+
+
+class ProactiveActionState(Base):
+    """
+    Persistierter Zustand für proaktive Aufgaben.
+
+    Speichert ob eine proaktive Aufgabe erledigt oder verschoben wurde.
+    Aufgaben werden über eine zusammengesetzte action_id identifiziert
+    (Format: '{action_type}:{source_id}').
+    """
+    __tablename__ = "proactive_action_states"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Multi-Tenant
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+
+    # Aufgaben-Identifikation
+    action_id = Column(
+        String(300),
+        nullable=False,
+        index=True,
+        comment="Zusammengesetzte ID: '{action_type}:{source_id}'"
+    )
+
+    # Status
+    is_completed = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        comment="Aufgabe wurde als erledigt markiert"
+    )
+    completed_at = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Zeitpunkt der Erledigung"
+    )
+
+    # Snooze
+    snoozed_until = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Aufgabe bis zu diesem Zeitpunkt unterdrücken"
+    )
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    # Relationships
+    company = relationship("Company", backref="proactive_action_states")
+
+    __table_args__ = (
+        Index(
+            "ix_proactive_state_company_action",
+            "company_id",
+            "action_id",
+            unique=True,
+        ),
+        Index("ix_proactive_state_snoozed", "snoozed_until"),
+        {"comment": "Zustand proaktiver Aufgaben (erledigt/verschoben)"}
+    )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Konvertiere zu Dictionary für API."""
+        return {
+            "id": str(self.id),
+            "company_id": str(self.company_id),
+            "action_id": self.action_id,
+            "is_completed": self.is_completed,
+            "completed_at": self.completed_at.isoformat() if self.completed_at else None,
+            "snoozed_until": self.snoozed_until.isoformat() if self.snoozed_until else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }

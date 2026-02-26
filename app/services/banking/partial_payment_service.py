@@ -20,6 +20,7 @@ from sqlalchemy import select, func, and_, or_, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.datetime_utils import utc_now
+from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
 
@@ -145,45 +146,56 @@ class PartialPaymentService:
                 outstanding=str(outstanding),
             )
 
-        # Transaktion erstellen
-        transaction = PaymentTransaction(
-            id=uuid4(),
-            invoice_tracking_id=invoice_tracking_id,
-            transaction_date=payment_data.transaction_date or utc_now(),
-            amount=float(payment_data.amount),
-            payment_reference=payment_data.payment_reference,
-            payment_method=payment_data.payment_method,
-            bank_transaction_id=payment_data.bank_transaction_id,
-            skonto_deducted=float(payment_data.skonto_deducted) if payment_data.skonto_deducted else None,
-            reconciliation_status="matched" if payment_data.bank_transaction_id else "pending",
-            reconciled_at=utc_now() if payment_data.bank_transaction_id else None,
-            notes=payment_data.notes,
-            created_at=utc_now(),
-            created_by_id=user_id,
-            company_id=company_id,
-        )
-
-        db.add(transaction)
-
-        # Invoice aktualisieren
+        # Transaktion erstellen und Invoice atomar aktualisieren via Savepoint
+        # (Zwei verschiedene Datensätze müssen konsistent sein: PaymentTransaction + InvoiceTracking)
         new_paid = current_paid + payment_data.amount
         skonto_total = payment_data.skonto_deducted or Decimal("0")
 
-        invoice.paid_amount = float(new_paid)
-        invoice.outstanding_amount = float(max(Decimal("0"), total_amount - new_paid))
-        invoice.is_partial_payment = True
-        invoice.updated_at = utc_now()
+        try:
+            async with db.begin_nested():
+                transaction = PaymentTransaction(
+                    id=uuid4(),
+                    invoice_tracking_id=invoice_tracking_id,
+                    transaction_date=payment_data.transaction_date or utc_now(),
+                    amount=float(payment_data.amount),
+                    payment_reference=payment_data.payment_reference,
+                    payment_method=payment_data.payment_method,
+                    bank_transaction_id=payment_data.bank_transaction_id,
+                    skonto_deducted=float(payment_data.skonto_deducted) if payment_data.skonto_deducted else None,
+                    reconciliation_status="matched" if payment_data.bank_transaction_id else "pending",
+                    reconciled_at=utc_now() if payment_data.bank_transaction_id else None,
+                    notes=payment_data.notes,
+                    created_at=utc_now(),
+                    created_by_id=user_id,
+                    company_id=company_id,
+                )
 
-        # Status aktualisieren
-        if new_paid >= total_amount - self.PAYMENT_TOLERANCE:
-            invoice.status = "paid"
-            invoice.paid_at = utc_now()
-            if not message:
-                message = "Rechnung vollständig bezahlt"
-        else:
-            invoice.status = "partial"
-            remaining = total_amount - new_paid
-            message = message or f"Teilzahlung erfasst - noch {remaining}EUR ausstehend"
+                db.add(transaction)
+
+                # Invoice aktualisieren
+                invoice.paid_amount = float(new_paid)
+                invoice.outstanding_amount = float(max(Decimal("0"), total_amount - new_paid))
+                invoice.is_partial_payment = True
+                invoice.updated_at = utc_now()
+
+                # Status aktualisieren
+                if new_paid >= total_amount - self.PAYMENT_TOLERANCE:
+                    invoice.status = "paid"
+                    invoice.paid_at = utc_now()
+                    if not message:
+                        message = "Rechnung vollständig bezahlt"
+                else:
+                    invoice.status = "partial"
+                    remaining = total_amount - new_paid
+                    message = message or f"Teilzahlung erfasst - noch {remaining}EUR ausstehend"
+        except Exception as e:
+            logger.error(
+                "teilzahlung_savepoint_fehler",
+                invoice_id=str(invoice_tracking_id),
+                payment_amount=str(payment_data.amount),
+                **safe_error_log(e),
+            )
+            raise
 
         await db.flush()
 
@@ -347,37 +359,50 @@ class PartialPaymentService:
         invoice_tracking_id = transaction.invoice_tracking_id
         deleted_amount = Decimal(str(transaction.amount))
 
-        # Transaktion löschen
-        await db.delete(transaction)
+        # Transaktion löschen und Invoice atomar aktualisieren via Savepoint
+        # (Zwei verschiedene Datensätze müssen konsistent sein: PaymentTransaction + InvoiceTracking)
+        try:
+            async with db.begin_nested():
+                # Transaktion löschen
+                await db.delete(transaction)
 
-        # Invoice aktualisieren - SECURITY: company_id Filter für Defense-in-Depth
-        invoice_stmt = select(InvoiceTracking).where(
-            and_(
-                InvoiceTracking.id == invoice_tracking_id,
-                InvoiceTracking.company_id == company_id,
+                # Invoice aktualisieren - SECURITY: company_id Filter für Defense-in-Depth
+                invoice_stmt = select(InvoiceTracking).where(
+                    and_(
+                        InvoiceTracking.id == invoice_tracking_id,
+                        InvoiceTracking.company_id == company_id,
+                    )
+                )
+                invoice_result = await db.execute(invoice_stmt)
+                invoice = invoice_result.scalar_one_or_none()
+
+                if invoice:
+                    # Neuen Stand berechnen - SECURITY: company_id durchreichen
+                    new_paid = await self._get_total_paid(db, invoice_tracking_id, company_id)
+                    total_amount = Decimal(str(invoice.amount))
+
+                    invoice.paid_amount = float(new_paid)
+                    invoice.outstanding_amount = float(total_amount - new_paid)
+                    invoice.updated_at = utc_now()
+
+                    # Status anpassen
+                    if new_paid <= self.PAYMENT_TOLERANCE:
+                        invoice.status = "open" if not invoice.due_date or invoice.due_date > utc_now() else "overdue"
+                        invoice.is_partial_payment = False
+                    elif new_paid < total_amount - self.PAYMENT_TOLERANCE:
+                        invoice.status = "partial"
+                        invoice.is_partial_payment = True
+                    else:
+                        invoice.status = "paid"
+        except Exception as e:
+            logger.error(
+                "zahlung_loeschen_savepoint_fehler",
+                payment_id=str(payment_transaction_id),
+                invoice_id=str(invoice_tracking_id),
+                deleted_amount=str(deleted_amount),
+                **safe_error_log(e),
             )
-        )
-        invoice_result = await db.execute(invoice_stmt)
-        invoice = invoice_result.scalar_one_or_none()
-
-        if invoice:
-            # Neuen Stand berechnen - SECURITY: company_id durchreichen
-            new_paid = await self._get_total_paid(db, invoice_tracking_id, company_id)
-            total_amount = Decimal(str(invoice.amount))
-
-            invoice.paid_amount = float(new_paid)
-            invoice.outstanding_amount = float(total_amount - new_paid)
-            invoice.updated_at = utc_now()
-
-            # Status anpassen
-            if new_paid <= self.PAYMENT_TOLERANCE:
-                invoice.status = "open" if not invoice.due_date or invoice.due_date > utc_now() else "overdue"
-                invoice.is_partial_payment = False
-            elif new_paid < total_amount - self.PAYMENT_TOLERANCE:
-                invoice.status = "partial"
-                invoice.is_partial_payment = True
-            else:
-                invoice.status = "paid"
+            raise
 
         await db.flush()
 

@@ -718,47 +718,58 @@ class PaymentService:
                 f"Batch-Gesamtbetrag ({total_amount}) überschreitet Maximum ({self.MAX_BATCH_TOTAL})"
             )
 
-        # Erstelle Batch
-        batch = PaymentBatch(
-            id=uuid4(),
-            user_id=user_id,
-            company_id=account.company_id,
-            bank_account_id=bank_account_id,
-            batch_name=name,
-            batch_type="SEPA_CT",  # SEPA Credit Transfer als Default
-            status=PaymentStatus.DRAFT.value,
-            payment_count=len(payments),
-            total_amount=total_amount,
-            created_at=utc_now(),
-            created_by_id=user_id,
-            updated_by_id=user_id,
-        )
-
-        db.add(batch)
-
-        # Erstelle Einzelzahlungen
+        # Erstelle Batch und Einzelzahlungen atomar via Savepoint
+        # (Batch-Header + N Zahlungsaufträge müssen konsistent sein)
         created_payments = []
-        for payment_data in payments:
-            payment = PaymentOrder(
-                id=uuid4(),
-                user_id=user_id,
-                company_id=account.company_id,
-                bank_account_id=bank_account_id,
-                batch_id=batch.id,
-                payment_type=payment_data.payment_type.value if payment_data.payment_type else PaymentType.TRANSFER.value,
-                status=PaymentStatus.DRAFT.value,
-                beneficiary_name=payment_data.beneficiary_name,
-                beneficiary_iban=self._normalize_iban(payment_data.beneficiary_iban),
-                beneficiary_bic=payment_data.beneficiary_bic,
-                amount=payment_data.amount,
-                currency=payment_data.currency or "EUR",
-                reference=payment_data.reference,
-                end_to_end_id=self._generate_end_to_end_id(),
-                execution_date=payment_data.execution_date or date.today(),
-                created_at=utc_now(),
+        try:
+            async with db.begin_nested():
+                batch = PaymentBatch(
+                    id=uuid4(),
+                    user_id=user_id,
+                    company_id=account.company_id,
+                    bank_account_id=bank_account_id,
+                    batch_name=name,
+                    batch_type="SEPA_CT",  # SEPA Credit Transfer als Default
+                    status=PaymentStatus.DRAFT.value,
+                    payment_count=len(payments),
+                    total_amount=total_amount,
+                    created_at=utc_now(),
+                    created_by_id=user_id,
+                    updated_by_id=user_id,
+                )
+
+                db.add(batch)
+
+                # Erstelle Einzelzahlungen
+                for payment_data in payments:
+                    payment = PaymentOrder(
+                        id=uuid4(),
+                        user_id=user_id,
+                        company_id=account.company_id,
+                        bank_account_id=bank_account_id,
+                        batch_id=batch.id,
+                        payment_type=payment_data.payment_type.value if payment_data.payment_type else PaymentType.TRANSFER.value,
+                        status=PaymentStatus.DRAFT.value,
+                        beneficiary_name=payment_data.beneficiary_name,
+                        beneficiary_iban=self._normalize_iban(payment_data.beneficiary_iban),
+                        beneficiary_bic=payment_data.beneficiary_bic,
+                        amount=payment_data.amount,
+                        currency=payment_data.currency or "EUR",
+                        reference=payment_data.reference,
+                        end_to_end_id=self._generate_end_to_end_id(),
+                        execution_date=payment_data.execution_date or date.today(),
+                        created_at=utc_now(),
+                    )
+                    db.add(payment)
+                    created_payments.append(payment)
+        except Exception as e:
+            logger.error(
+                "batch_create_savepoint_fehler",
+                batch_name=name,
+                payment_count=len(payments),
+                error_type=type(e).__name__,
             )
-            db.add(payment)
-            created_payments.append(payment)
+            raise
 
         await db.commit()
 

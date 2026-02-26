@@ -307,6 +307,8 @@ class Settings(BaseSettings):
     MODEL_PRELOAD_ENABLED: bool = True
     MODEL_PRELOAD_GPU_MODELS: bool = True  # Ob GPU-Modelle vorgeladen werden
     MODEL_PRELOAD_TIMEOUT_SECONDS: int = 600  # Timeout pro Model (10 Min)
+    WAIT_FOR_MODEL_PRELOAD: bool = False  # Block startup until models are loaded
+    WAIT_FOR_MODEL_PRELOAD_TIMEOUT: int = 120  # Timeout in seconds for blocking preload
 
     # Load Balancing Settings
     LOAD_BALANCING_ENABLED: bool = True

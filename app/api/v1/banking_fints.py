@@ -93,6 +93,12 @@ class FinTSSyncResponse(BaseModel):
     error_message: Optional[str] = None
 
 
+class FinTSBalanceRequest(BaseModel):
+    """Request fuer Kontostand-Abfrage via FinTS."""
+    account_id: UUID
+    pin: str = Field(..., min_length=5, max_length=50)
+
+
 class FinTSBalanceResponse(BaseModel):
     """Response für Kontostand-Abfrage."""
     success: bool
@@ -303,17 +309,16 @@ async def sync_transactions(
 
 @fints_router.post("/balance", response_model=FinTSBalanceResponse)
 async def get_balance(
-    account_id: UUID,
-    pin: str = Query(..., min_length=5, max_length=50),  # TODO: CWE-598 - PIN in query param. Move to POST body (breaking API change, separate PR).
+    request: FinTSBalanceRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Ruft aktuellen Kontostand via FinTS ab."""
     balance = await fints_service.get_balance(
         db=db,
-        account_id=account_id,
+        account_id=request.account_id,
         company_id=current_user.company_id,
-        pin=pin,
+        pin=request.pin,
     )
 
     if not balance:
