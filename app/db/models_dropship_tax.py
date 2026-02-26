@@ -8,19 +8,27 @@ Enthält:
   DatevStreckengeschaeftAccount, ClassificationIndicator, ZmSubmission (SQLAlchemy Models)
 """
 
-from enum import Enum
 import uuid
+from enum import Enum
 
 from sqlalchemy import (
-    Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey,
-    Index, Integer, Numeric, String, Text,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from app.db.models_base import Base, CrossDBJSON
-
+from app.db.models_base import Base, CrossDBJSON, SoftDeleteMixin
 
 # =============================================================================
 # STRECKENGESCHÄFT / DREIECKSGESCHÄFT MODELS
@@ -70,7 +78,7 @@ class VatCategoryType(str, Enum):
     TRIANGULAR_FINAL = "triangular_final"    # §25b Endabnehmer
 
 
-class DropShipmentClassification(Base):
+class DropShipmentClassification(SoftDeleteMixin, Base):
     """
     Drop shipment classification at document level.
     Implements detection of Streckengeschäft, Dreiecksgeschäft (§25b UStG),
@@ -116,7 +124,6 @@ class DropShipmentClassification(Base):
 
     # Soft-Delete (GDPR/GoBD compliance)
     is_deleted = Column(Boolean, nullable=False, default=False, server_default="false")
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
     deleted_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
 
     # Relationships

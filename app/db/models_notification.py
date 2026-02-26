@@ -2,13 +2,29 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, String, Integer, BigInteger, Boolean, DateTime, Text, Float, ForeignKey, Index, UniqueConstraint, Time, func
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    Time,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import relationship
-from app.db.models_base import Base, CrossDBJSON
+
+from app.db.models_base import Base, CrossDBJSON, SoftDeleteMixin
 
 
-class DocumentComment(Base):
+class DocumentComment(SoftDeleteMixin, Base):
     """Kommentare zu Dokumenten für Collaboration.
 
     Multi-Tenant Support:
@@ -44,7 +60,6 @@ class DocumentComment(Base):
     is_deleted = Column(Boolean, default=False)  # Legacy-Flag
 
     # Soft Delete mit Timestamp (Migration 103)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
     deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -35,10 +35,12 @@ from app.db.models import Base, CrossDBJSON
 # Import canonical model classes to avoid duplicate __tablename__ definitions.
 # These are defined in models_annotations.py (primary) and re-exported here
 # so that existing imports from this module continue to work.
-from app.db.models_annotations import CommentReply  # noqa: F401
-from app.db.models_annotations import CommentTask  # noqa: F401
-from app.db.models_annotations import MentionNotification  # noqa: F401
-
+from app.db.models_annotations import (
+    CommentReply,  # noqa: F401
+    CommentTask,  # noqa: F401
+    MentionNotification,  # noqa: F401
+)
+from app.db.models_base import SoftDeleteMixin
 
 # ============================================================================
 # Enums
@@ -68,7 +70,7 @@ class CommentTaskStatus(str, Enum):
 # ============================================================================
 
 
-class BoundingBoxAnnotation(Base):
+class BoundingBoxAnnotation(SoftDeleteMixin, Base):
     """Bounding-Box-Annotation auf einer PDF-Seite.
 
     Speichert praezise Positionsdaten für Markierungen:
@@ -150,7 +152,6 @@ class BoundingBoxAnnotation(Base):
 
     # Soft-Delete
     is_deleted = Column(Boolean, default=False, nullable=False)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -16,22 +16,23 @@ from enum import Enum
 from typing import Optional
 
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    DateTime,
-    Date,
     Boolean,
-    Text,
-    Numeric,
+    Column,
+    Date,
+    DateTime,
     ForeignKey,
     Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.models import Base, CrossDBJSON
+from app.db.models_base import SoftDeleteMixin
 
 
 class PrivatContractCategory(str, Enum):
@@ -62,7 +63,7 @@ class PrivatContractStatus(str, Enum):
     ENTWURF = "entwurf"
 
 
-class PrivatContract(Base):
+class PrivatContract(SoftDeleteMixin, Base):
     """
     Private Vertraege im Privat-Modul.
 
@@ -129,7 +130,6 @@ class PrivatContract(Base):
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     space = relationship("PrivatSpace", backref="contracts")

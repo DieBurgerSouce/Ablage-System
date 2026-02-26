@@ -30,7 +30,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.models import Base, CrossDBJSON
-
+from app.db.models_base import SoftDeleteMixin
 
 # ============================================================================
 # Enums
@@ -78,7 +78,7 @@ class GraphNodeType(str, Enum):
 # ============================================================================
 
 
-class KnowledgeGraphRelation(Base):
+class KnowledgeGraphRelation(SoftDeleteMixin, Base):
     """Explizite Beziehung zwischen zwei Knoten im Knowledge Graph.
 
     Speichert gerichtete Beziehungen mit Typ, Stärke und Metadaten.
@@ -160,7 +160,6 @@ class KnowledgeGraphRelation(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     source_document = relationship("Document", foreign_keys=[source_document_id])

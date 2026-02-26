@@ -9,21 +9,30 @@ Enthält alle Banking-, Mahnwesen- und E-Rechnungs-Modelle:
 - CashFlowEntry
 """
 
-from datetime import datetime
-from typing import Optional, List, Dict, Any
-from enum import Enum
 import uuid
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
-    Column, String, Integer, DateTime, Date, Boolean, Float,
-    Numeric, Text, ForeignKey, Index, UniqueConstraint,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship, Mapped
+from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.sql import func
 
-from app.db.models_base import Base, CrossDBJSON
-
+from app.db.models_base import Base, CrossDBJSON, SoftDeleteMixin
 
 # =============================================================================
 # E-INVOICING (ZUGFeRD / XRechnung)
@@ -165,7 +174,7 @@ class EInvoiceDocument(Base):
 # BANKING INTEGRATION MODELS
 # =============================================================================
 
-class BankAccount(Base):
+class BankAccount(SoftDeleteMixin, Base):
     """Bankkonto für Transaktions-Import und Zahlungen."""
     __tablename__ = "bank_accounts"
 
@@ -214,7 +223,6 @@ class BankAccount(Base):
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Indexes
     __table_args__ = (

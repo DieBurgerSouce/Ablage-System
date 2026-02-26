@@ -28,7 +28,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.models import Base, CrossDBJSON
-
+from app.db.models_base import SoftDeleteMixin
 
 # ============================================================================
 # Enums
@@ -57,7 +57,7 @@ class FolderPermissionLevel(str, Enum):
 # ============================================================================
 
 
-class Folder(Base):
+class Folder(SoftDeleteMixin, Base):
     """Geschäftliche Ordnerstruktur mit Materialized Path.
 
     Bietet hierarchische Ordner für die Dokumentenablage mit:
@@ -127,8 +127,6 @@ class Folder(Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    deleted_at = Column(DateTime(timezone=True), nullable=True, comment="Soft Delete")
-
     # Relationships
     parent = relationship(
         "Folder",

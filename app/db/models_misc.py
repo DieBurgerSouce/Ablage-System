@@ -1,13 +1,30 @@
 """Diverse System-Modelle - extrahiert aus models.py (Modularisierung Phase 1.1)."""
 import uuid
-from datetime import datetime, date
+from datetime import date, datetime
 from enum import Enum
-from typing import Dict, Any
-from sqlalchemy import Column, String, Integer, BigInteger, Boolean, DateTime, Text, Float, ForeignKey, Index, Date, Numeric, UniqueConstraint, func, text
+from typing import Any, Dict
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from app.db.models_base import Base, CrossDBJSON, CrossDBVector
 
+from app.db.models_base import Base, CrossDBJSON, CrossDBVector, SoftDeleteMixin
 
 # =============================================================================
 # COMPANY SETTINGS
@@ -84,7 +101,7 @@ class CompanySettings(Base):
 # SAVED FILTERS & APP CONFIG
 # =============================================================================
 
-class SavedFilter(Base):
+class SavedFilter(SoftDeleteMixin, Base):
     """Gespeicherte Filter für Server-seitige Persistenz mit Sharing.
 
     Ersetzt die LocalStorage-basierte Implementierung durch eine
@@ -164,9 +181,6 @@ class SavedFilter(Base):
     # Usage tracking for sorting by popularity/recency
     use_count = Column(Integer, nullable=False, default=0)
     last_used_at = Column(DateTime(timezone=True), nullable=True)
-
-    # Soft delete
-    deleted_at = Column(DateTime(timezone=True), nullable=True, index=True)
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())

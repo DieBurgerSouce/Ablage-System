@@ -13,24 +13,25 @@ Feinpoliert und durchdacht - Enterprise-grade Jahresabschluss.
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, List
+from typing import List, Optional
 
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
-    DateTime,
     Boolean,
-    Numeric,
-    Text,
+    Column,
+    DateTime,
     ForeignKey,
     Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.models import Base, CrossDBJSON
+from app.db.models_base import SoftDeleteMixin
 
 
 class YearEndStatus(str, Enum):
@@ -60,7 +61,7 @@ class GapCategory(str, Enum):
     AMOUNT_DISCREPANCY = "amount_discrepancy"            # Betragsdifferenz
 
 
-class YearEndSession(Base):
+class YearEndSession(SoftDeleteMixin, Base):
     """
     Jahresabschluss-Session.
 
@@ -120,7 +121,6 @@ class YearEndSession(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     company = relationship("Company", backref="year_end_sessions")

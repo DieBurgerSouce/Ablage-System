@@ -6,23 +6,30 @@ Enthält:
   CashCount, ExpenseReport, ExpenseItem (SQLAlchemy Models)
 """
 
+import uuid
 from datetime import date
 from enum import Enum
 from typing import List
 
-from sqlalchemy.orm import Mapped
-import uuid
-
 from sqlalchemy import (
-    Boolean, CheckConstraint, Column, Date, DateTime, ForeignKey,
-    Index, Integer, Numeric, String, Text, Time,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    Time,
 )
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import Mapped, relationship
 from sqlalchemy.sql import func
 
-from app.db.models_base import Base, CrossDBJSON
-
+from app.db.models_base import Base, CrossDBJSON, SoftDeleteMixin
 
 # =============================================================================
 # KASSE-MODUL: ENUMS
@@ -81,7 +88,7 @@ class ExpenseType(str, Enum):
 # =============================================================================
 
 
-class Company(Base):
+class Company(SoftDeleteMixin, Base):
     """Firma/Mandant für Multi-Company Support.
 
     Ersetzt das bisherige CompanySettings-Singleton und ermöglicht
@@ -168,7 +175,6 @@ class Company(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     user_associations = relationship("UserCompany", back_populates="company", cascade="all, delete-orphan")
@@ -272,7 +278,7 @@ class UserCompany(Base):
 # =============================================================================
 
 
-class CashRegister(Base):
+class CashRegister(SoftDeleteMixin, Base):
     """Kasse/Bargeldbestand.
 
     Eine Firma kann mehrere Kassen haben (Hauptkasse, Portokasse, Nebenkasse).
@@ -314,7 +320,6 @@ class CashRegister(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     company = relationship("Company", back_populates="cash_registers")
@@ -379,7 +384,7 @@ class CashEntry(Base):
 
     # Kategorisierung
     entry_type = Column(String(50), nullable=False)  # CashEntryType
-    category_id = Column(UUID(as_uuid=True), ForeignKey("cash_categories.id"), nullable=True)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("cash_categories.id", ondelete="SET NULL"), nullable=True)
 
     # Steuer
     tax_rate = Column(Numeric(5, 2), nullable=True)      # 0, 7, 19
@@ -394,16 +399,16 @@ class CashEntry(Base):
 
     # Geschäftspartner
     counterparty_name = Column(String(255), nullable=True)
-    counterparty_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True)
+    counterparty_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id", ondelete="SET NULL"), nullable=True)
 
     # Verknüpfungen
-    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)
-    bank_transaction_id = Column(UUID(as_uuid=True), ForeignKey("bank_transactions.id"), nullable=True)
-    expense_report_id = Column(UUID(as_uuid=True), ForeignKey("expense_reports.id"), nullable=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
+    bank_transaction_id = Column(UUID(as_uuid=True), ForeignKey("bank_transactions.id", ondelete="SET NULL"), nullable=True)
+    expense_report_id = Column(UUID(as_uuid=True), ForeignKey("expense_reports.id", ondelete="SET NULL"), nullable=True)
 
     # Storno-Handling (Gegenbuchung statt Löschung!)
     is_cancelled = Column(Boolean, default=False)
-    cancelled_by_entry_id = Column(UUID(as_uuid=True), ForeignKey("cash_entries.id"), nullable=True)
+    cancelled_by_entry_id = Column(UUID(as_uuid=True), ForeignKey("cash_entries.id", ondelete="SET NULL"), nullable=True)
     cancellation_reason = Column(Text, nullable=True)
 
     # GoBD Audit Trail für Stornierungen
@@ -434,7 +439,7 @@ class CashEntry(Base):
 
     # Audit (UNVERAENDERBAR!)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
 
     # Relationships
     cash_register = relationship("CashRegister", back_populates="entries")
@@ -488,7 +493,7 @@ class CashCategory(Base):
     color = Column(String(7), nullable=True)   # Hex-Farbe
 
     # Hierarchie
-    parent_id = Column(UUID(as_uuid=True), ForeignKey("cash_categories.id"), nullable=True)
+    parent_id = Column(UUID(as_uuid=True), ForeignKey("cash_categories.id", ondelete="SET NULL"), nullable=True)
     level = Column(Integer, default=0)
     path = Column(String(500), nullable=True)  # Materialisierter Pfad
 
@@ -579,12 +584,12 @@ class CashCount(Base):
     expected_total = Column(Numeric(15, 2), nullable=False)
 
     # Bei Differenz automatisch erstellte Buchung
-    difference_entry_id = Column(UUID(as_uuid=True), ForeignKey("cash_entries.id"), nullable=True)
+    difference_entry_id = Column(UUID(as_uuid=True), ForeignKey("cash_entries.id", ondelete="SET NULL"), nullable=True)
     difference_explanation = Column(Text, nullable=True)
 
     # Signatur
-    counted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    verified_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    counted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
+    verified_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     verified_at = Column(DateTime(timezone=True), nullable=True)
 
     notes = Column(Text, nullable=True)
@@ -650,7 +655,7 @@ class CashCount(Base):
 # =============================================================================
 
 
-class ExpenseReport(Base):
+class ExpenseReport(SoftDeleteMixin, Base):
     """Spesenabrechnung eines Mitarbeiters.
 
     Sammelt alle Spesenpositionen eines Zeitraums mit Workflow:
@@ -676,7 +681,7 @@ class ExpenseReport(Base):
     period_end = Column(Date, nullable=False)
 
     # Mitarbeiter
-    employee_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    employee_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     employee_name = Column(String(255), nullable=True)  # Denormalisiert
 
     # Betraege (berechnet aus Positionen)
@@ -697,26 +702,26 @@ class ExpenseReport(Base):
 
     # Workflow-Timestamps
     submitted_at = Column(DateTime(timezone=True), nullable=True)
-    submitted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    submitted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
-    reviewed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    reviewed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     review_notes = Column(Text, nullable=True)
 
     approved_at = Column(DateTime(timezone=True), nullable=True)
-    approved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    approved_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     rejected_at = Column(DateTime(timezone=True), nullable=True)
-    rejected_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    rejected_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     rejection_reason = Column(Text, nullable=True)
 
     paid_at = Column(DateTime(timezone=True), nullable=True)
-    paid_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    paid_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     payment_method = Column(String(50), nullable=True)
     payment_reference = Column(String(100), nullable=True)
 
     # Verknüpfung zu Kassenbuch
-    cash_entry_id = Column(UUID(as_uuid=True), ForeignKey("cash_entries.id"), nullable=True)
+    cash_entry_id = Column(UUID(as_uuid=True), ForeignKey("cash_entries.id", ondelete="SET NULL"), nullable=True)
 
     # DATEV
     datev_exported_at = Column(DateTime(timezone=True), nullable=True)
@@ -724,11 +729,10 @@ class ExpenseReport(Base):
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Soft-Delete
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
-    deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     company = relationship("Company", back_populates="expense_reports")
@@ -773,7 +777,7 @@ class ExpenseItem(Base):
     )
 
     # Kategorisierung
-    category_id = Column(UUID(as_uuid=True), ForeignKey("cash_categories.id"), nullable=True)
+    category_id = Column(UUID(as_uuid=True), ForeignKey("cash_categories.id", ondelete="SET NULL"), nullable=True)
     expense_type = Column(String(50), nullable=False)  # ExpenseType
 
     # Datum
@@ -797,12 +801,12 @@ class ExpenseItem(Base):
     description = Column(Text, nullable=False)
 
     # Beleg
-    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)
+    document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
     receipt_number = Column(String(100), nullable=True)
 
     # Geschäftspartner
     vendor_name = Column(String(255), nullable=True)
-    vendor_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True)
+    vendor_id = Column(UUID(as_uuid=True), ForeignKey("business_entities.id", ondelete="SET NULL"), nullable=True)
 
     # Bewirtung (wenn expense_type = receipt & category = entertainment)
     entertainment_participants = Column(CrossDBJSON, nullable=True)  # ["Name1", "Name2"]

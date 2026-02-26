@@ -16,14 +16,14 @@ from enum import Enum
 from typing import Optional
 
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
     BigInteger,
-    DateTime,
+    Column,
     Date,
+    DateTime,
     ForeignKey,
     Index,
+    Integer,
+    String,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -31,6 +31,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.models import Base, CrossDBJSON
+from app.db.models_base import SoftDeleteMixin
 
 # Import canonical MerkleTreeNode to avoid duplicate __tablename__
 from app.db.models_misc import MerkleTreeNode  # noqa: F401
@@ -44,7 +45,7 @@ class VerificationStatus(str, Enum):
     TAMPERED = "tampered"        # Hash weicht ab - Manipulation erkannt
 
 
-class DocumentHash(Base):
+class DocumentHash(SoftDeleteMixin, Base):
     """
     SHA-256 Hash eines Dokuments.
 
@@ -100,7 +101,6 @@ class DocumentHash(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     document = relationship("Document", backref="integrity_hash")

@@ -7,15 +7,23 @@ import uuid
 from enum import Enum
 
 from sqlalchemy import (
-    BigInteger, Boolean, Column, Date, DateTime, ForeignKey,
-    Index, Integer, Numeric, String, Text,
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from app.db.models_base import Base, CrossDBJSON
-
+from app.db.models_base import Base, CrossDBJSON, SoftDeleteMixin
 
 # =============================================================================
 # PRIVAT-MODUL: Persoenliches Dokumentenmanagement
@@ -82,7 +90,7 @@ class PrivatEmergencyAccessStatus(str, Enum):
     EXPIRED = "expired"
 
 
-class PrivatSpace(Base):
+class PrivatSpace(SoftDeleteMixin, Base):
     """Privater Bereich - Container für private Dokumente."""
     __tablename__ = "privat_spaces"
 
@@ -111,7 +119,6 @@ class PrivatSpace(Base):
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     owner = relationship("User", foreign_keys=[owner_id], backref="privat_spaces")
@@ -194,7 +201,7 @@ class PrivatSpaceAccess(Base):
         return self.expires_at < datetime.now(timezone.utc)
 
 
-class PrivatFolder(Base):
+class PrivatFolder(SoftDeleteMixin, Base):
     """Flexible Ordnerstruktur für private Dokumente."""
     __tablename__ = "privat_folders"
 
@@ -226,7 +233,6 @@ class PrivatFolder(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     space = relationship("PrivatSpace", back_populates="folders")
@@ -243,7 +249,7 @@ class PrivatFolder(Base):
     )
 
 
-class PrivatDocument(Base):
+class PrivatDocument(SoftDeleteMixin, Base):
     """Privates Dokument mit optionaler zusätzlicher Verschluesselung."""
     __tablename__ = "privat_documents"
 
@@ -284,7 +290,6 @@ class PrivatDocument(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
     deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Status - konsistent mit anderen Privat-Entitäten
@@ -308,7 +313,7 @@ class PrivatDocument(Base):
     )
 
 
-class PrivatProperty(Base):
+class PrivatProperty(SoftDeleteMixin, Base):
     """Immobilien-Stammdaten."""
     __tablename__ = "privat_properties"
 
@@ -368,7 +373,6 @@ class PrivatProperty(Base):
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     space = relationship("PrivatSpace", back_populates="properties")
@@ -474,7 +478,7 @@ class PrivatUtilityStatement(Base):
     document = relationship("PrivatDocument")
 
 
-class PrivatVehicle(Base):
+class PrivatVehicle(SoftDeleteMixin, Base):
     """Fahrzeug-Stammdaten."""
     __tablename__ = "privat_vehicles"
 
@@ -532,7 +536,6 @@ class PrivatVehicle(Base):
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     space = relationship("PrivatSpace", back_populates="vehicles")
@@ -575,7 +578,7 @@ class PrivatFuelLog(Base):
     receipt_document = relationship("PrivatDocument")
 
 
-class PrivatInsurance(Base):
+class PrivatInsurance(SoftDeleteMixin, Base):
     """Versicherungspolicen."""
     __tablename__ = "privat_insurances"
 
@@ -624,7 +627,6 @@ class PrivatInsurance(Base):
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     space = relationship("PrivatSpace", back_populates="insurances")

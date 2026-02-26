@@ -1,21 +1,33 @@
 """Entity, Business, Contract und Multi-Tenancy Modelle - extrahiert aus models.py (Modularisierung Phase 1.1)."""
 import uuid
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from enum import Enum
-from typing import Optional, List
+from typing import List, Optional
 
 from sqlalchemy import (
-    Column, String, Integer, BigInteger, Boolean, DateTime, Text, Float,
-    ForeignKey, Index, Date, func, UniqueConstraint, Numeric,
-    Enum as SQLAlchemyEnum, event
+    BigInteger,
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    event,
+    func,
 )
-from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
-from sqlalchemy.orm import relationship, backref, Mapped, mapped_column
+from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import Mapped, backref, mapped_column, relationship
 
-from app.db.models_base import Base, CrossDBJSON
-
+from app.db.models_base import Base, CrossDBJSON, SoftDeleteMixin
 
 # ============================================================================
 # NOTIFICATIONS + FEATURE FLAGS (core system models)
@@ -234,7 +246,7 @@ class EntityType(str, Enum):
     INTERNAL = "internal"      # Interne Entität
 
 
-class BusinessEntity(Base):
+class BusinessEntity(SoftDeleteMixin, Base):
     """
     Geschäftspartner (Kunde/Lieferant).
 
@@ -351,9 +363,6 @@ class BusinessEntity(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
-    # Soft delete
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
-
     # Relationships
     created_by = relationship("User", foreign_keys=[created_by_id])
     documents = relationship("Document", back_populates="business_entity")
@@ -410,7 +419,7 @@ class InvoiceStatus(str, Enum):
     PARTIAL = "partial"     # Teilweise bezahlt
 
 
-class InvoiceTracking(Base):
+class InvoiceTracking(SoftDeleteMixin, Base):
     """
     Rechnungsverfolgung für Risk Scoring, Skonto und Teilzahlungen.
 
@@ -525,7 +534,6 @@ class InvoiceTracking(Base):
     # Audit fields
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     document = relationship(
@@ -778,7 +786,7 @@ class DocumentGroupType(str, Enum):
     MANUAL = "manual"                # Manuell vom Benutzer erstellt
 
 
-class DocumentGroup(Base):
+class DocumentGroup(SoftDeleteMixin, Base):
     """
     Dokumentgruppe für zusammengehoerige Dokumente.
 
@@ -841,7 +849,6 @@ class DocumentGroup(Base):
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     owner = relationship("User", foreign_keys=[owner_id], backref="document_groups")
@@ -1084,7 +1091,7 @@ class BusinessContract(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     company_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
     )
 
     # Contract identification
@@ -1097,13 +1104,13 @@ class BusinessContract(Base):
 
     # Contract parties
     party_a_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("business_entities.id", ondelete="SET NULL"), nullable=True
     )
     party_a_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     party_a_signatory: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     party_b_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("business_entities.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("business_entities.id", ondelete="SET NULL"), nullable=True
     )
     party_b_name: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     party_b_signatory: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
@@ -1149,7 +1156,7 @@ class BusinessContract(Base):
 
     # Document references
     document_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True
     )
 
     # Status and workflow
@@ -1183,7 +1190,7 @@ class BusinessContract(Base):
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
     created_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     # Relationships
@@ -1265,7 +1272,7 @@ class ContractMilestone(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     contract_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("business_contracts.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("business_contracts.id", ondelete="CASCADE"), nullable=False
     )
 
     milestone_type: Mapped[MilestoneType] = mapped_column(
@@ -1330,7 +1337,7 @@ class ContractRenewalOption(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     contract_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("business_contracts.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("business_contracts.id", ondelete="CASCADE"), nullable=False
     )
 
     # Option details
@@ -1359,7 +1366,7 @@ class ContractRenewalOption(Base):
     )
     exercised_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     exercised_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     decision_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
@@ -1408,7 +1415,7 @@ class ContractAmendment(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     contract_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("business_contracts.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("business_contracts.id", ondelete="CASCADE"), nullable=False
     )
 
     # Amendment identification
@@ -1432,7 +1439,7 @@ class ContractAmendment(Base):
 
     # Document
     document_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True
     )
 
     # Status
@@ -1440,7 +1447,7 @@ class ContractAmendment(Base):
         SQLAlchemyEnum(AmendmentStatus), default=AmendmentStatus.DRAFT
     )
     approved_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     approved_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
 
@@ -1452,7 +1459,7 @@ class ContractAmendment(Base):
         DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
     )
     created_by_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
 
     # Relationships
@@ -1775,7 +1782,7 @@ class DocumentContact(Base):
 
     # Metadata
     detected_at = Column(DateTime(timezone=True), server_default=func.now())
-    confirmed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    confirmed_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     confirmed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Audit
@@ -1844,23 +1851,23 @@ class BusinessContact(Base):
 
     # Additional data
     contact_persons = Column(CrossDBJSON, default=list)  # [{"name": "...", "role": "...", "email": "..."}]
-    parent_company_id = Column(UUID(as_uuid=True), ForeignKey("business_contacts.id"), nullable=True)
+    parent_company_id = Column(UUID(as_uuid=True), ForeignKey("business_contacts.id", ondelete="SET NULL"), nullable=True)
     notes = Column(Text, nullable=True)
     tags = Column(CrossDBJSON, default=list)
     custom_fields = Column(CrossDBJSON, default=dict)
 
     # Ownership and source
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
-    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=True, index=True)
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id", ondelete="SET NULL"), nullable=True, index=True)
     source = Column(String(50), default="manual")  # manual, ocr, import, api
     auto_detected = Column(Boolean, default=False)
     auto_detection_confidence = Column(Float, nullable=True)
-    first_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id"), nullable=True)
+    first_document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="SET NULL"), nullable=True)
 
     # Status
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
-    merged_into_id = Column(UUID(as_uuid=True), ForeignKey("business_contacts.id"), nullable=True)
+    merged_into_id = Column(UUID(as_uuid=True), ForeignKey("business_contacts.id", ondelete="SET NULL"), nullable=True)
 
     # Statistics (denormalized for performance)
     document_count = Column(Integer, default=0)

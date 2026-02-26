@@ -24,7 +24,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.db.models import Base, CrossDBJSON
-
+from app.db.models_base import SoftDeleteMixin
 
 # =============================================================================
 # ENUMS
@@ -72,7 +72,7 @@ class ScheduleFrequency(str, Enum):
 # =============================================================================
 
 
-class AdHocReport(Base):
+class AdHocReport(SoftDeleteMixin, Base):
     """Ad-Hoc Report Definition.
 
     Speichert die vollständige Konfiguration eines benutzerdefinierten
@@ -171,9 +171,6 @@ class AdHocReport(Base):
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-
-    # Soft-Delete
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     company = relationship("Company", backref="adhoc_reports")

@@ -2,11 +2,25 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, Float, ForeignKey, Index, func, UniqueConstraint, Numeric
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
-from sqlalchemy.orm import relationship
-from app.db.models_base import Base, CrossDBJSON
 
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.orm import relationship
+
+from app.db.models_base import Base, CrossDBJSON, SoftDeleteMixin
 
 # ============================================================================
 # SLACK INTEGRATION MODELS
@@ -269,7 +283,7 @@ class ShipmentStatusEnum(str, Enum):
     CUSTOMS = "customs"                      # Im Zoll
 
 
-class Shipment(Base):
+class Shipment(SoftDeleteMixin, Base):
     """
     Sendungsverfolgung für Paketdienste.
 
@@ -339,9 +353,6 @@ class Shipment(Base):
 
     # Raw API Response (für Debugging)
     raw_tracking_data = Column(CrossDBJSON, default={})
-
-    # Soft Delete
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -2,11 +2,25 @@
 import uuid
 from datetime import datetime
 from enum import Enum
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, Float, ForeignKey, Index, func, UniqueConstraint, Enum as SQLAlchemyEnum
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
-from sqlalchemy.orm import relationship, backref
-from app.db.models_base import Base, CrossDBJSON
 
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
+from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
+from sqlalchemy.orm import backref, relationship
+
+from app.db.models_base import Base, CrossDBJSON, SoftDeleteMixin
 
 # =============================================================================
 # Document Template Models
@@ -279,7 +293,7 @@ class LinkableType(str, Enum):
     CHECKLIST = "checklist"
 
 
-class KnowledgeNote(Base):
+class KnowledgeNote(SoftDeleteMixin, Base):
     """
     Wiki-artige Notiz im Knowledge Management System.
 
@@ -347,7 +361,6 @@ class KnowledgeNote(Base):
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     linked_document = relationship("Document", foreign_keys=[linked_document_id])
@@ -388,7 +401,7 @@ class KnowledgeNote(Base):
         return f"<KnowledgeNote {self.title[:50]} ({self.id})>"
 
 
-class KnowledgeChecklist(Base):
+class KnowledgeChecklist(SoftDeleteMixin, Base):
     """
     Checkliste im Knowledge Management System.
 
@@ -440,7 +453,6 @@ class KnowledgeChecklist(Base):
     )
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     items = relationship(

@@ -20,24 +20,50 @@ Beispiel:
         owner = relationship("User", back_populates="documents")
 """
 
-from datetime import datetime, timezone, date, timedelta
-from typing import Optional, List, Dict, Any
-from enum import Enum
-from decimal import Decimal
 import uuid
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Column, String, Integer, BigInteger, DateTime, Date, Time, Boolean, Float, Numeric, Text, JSON, ForeignKey, Index, Table, CheckConstraint, UniqueConstraint, text, Enum as SQLAlchemyEnum, event
-from sqlalchemy.dialects.postgresql import UUID, JSONB, TSVECTOR
-from sqlalchemy.types import TypeDecorator
 from pgvector.sqlalchemy import Vector
-from sqlalchemy.orm import relationship, declarative_base, backref, Mapped, mapped_column
+from sqlalchemy import (
+    JSON,
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Table,
+    Text,
+    Time,
+    UniqueConstraint,
+    event,
+    text,
+)
+from sqlalchemy import Enum as SQLAlchemyEnum
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import Mapped, backref, declarative_base, mapped_column, relationship
 from sqlalchemy.sql import func
-
+from sqlalchemy.types import TypeDecorator
 
 # Base, CrossDBJSON, CrossDBTSVector, CrossDBVector are defined in models_base.py
 # to avoid circular imports with domain model files (models_*.py).
-from app.db.models_base import Base, CrossDBJSON, CrossDBTSVector, CrossDBVector  # noqa: F401
+from app.db.models_base import (  # noqa: F401
+    Base,
+    CrossDBJSON,
+    CrossDBTSVector,
+    CrossDBVector,
+    SoftDeleteMixin,
+)
 
 # Association table for document tags
 document_tags = Table(
@@ -109,7 +135,7 @@ class UserTier(str, Enum):
     ADMIN = "admin"
 
 
-class Document(Base):
+class Document(SoftDeleteMixin, Base):
     """Document model for storing uploaded documents."""
     __tablename__ = "documents"
 
@@ -155,7 +181,6 @@ class Document(Base):
     total_versions = Column(Integer, default=0)
 
     # Soft-Delete for GDPR (Phase 2.3)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
     deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # GoBD Archivierung (Feature 02)
@@ -265,7 +290,7 @@ class Document(Base):
     summary_model = Column(String(100), nullable=True, comment="LLM-Modell fuer Zusammenfassung")
 
     # Relationships
-    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     owner = relationship("User", back_populates="documents", foreign_keys=[owner_id])
     company = relationship("Company", back_populates="documents")
     business_entity = relationship("BusinessEntity", back_populates="documents")
@@ -541,7 +566,7 @@ class BatchJob(Base):
     # Cancellation support (Export Improvements Task 3)
     is_cancelled = Column(Boolean, default=False)
     cancelled_at = Column(DateTime(timezone=True), nullable=True)
-    cancelled_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    cancelled_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
     user = relationship("User", foreign_keys=[user_id], backref="batch_jobs")
@@ -584,7 +609,7 @@ class ScheduledExport(Base):
     last_run_at = Column(DateTime(timezone=True), nullable=True)
     next_run_at = Column(DateTime(timezone=True), nullable=True)
     last_run_status = Column(String(20), nullable=True)  # success, failed, partial
-    last_run_job_id = Column(UUID(as_uuid=True), ForeignKey("batch_jobs.id"), nullable=True)
+    last_run_job_id = Column(UUID(as_uuid=True), ForeignKey("batch_jobs.id", ondelete="SET NULL"), nullable=True)
 
     # Notification
     notify_email = Column(Boolean, default=True)
@@ -1052,309 +1077,571 @@ class RateLimitOverride(Base):
 
 
 # --- GDPR, DPIA & Compliance ---
-from app.db.models_gdpr_compliance import (  # noqa: E402, F401
-    GDPRDeletionRequestStatus, GDPRDeletionRequest, GDPRBreachLog,
-    GDPRConsentLog, GDPRProcessingActivity,
-    RetentionCategory, HashAlgorithm, DocumentAccessType,
-    DocumentAccessLog, DocumentArchive, ProcedureDocumentationVersion,
-    RetentionSetting, TaxAdvisorInviteStatus, TaxAdvisorInvite,
-    TaxAdvisorAccessLog,
-    GDPRConsentVersion, GDPRConsentScope, GDPRDataSubjectRequest,
-    GDPRDataExport, GDPRConsentHistory,
-    DPIAStatus, DPIARiskLevel, DPIALegalBasis, DPIAMeasureType,
-    DPIAImplementationStatus, DPIA, DPIAProcessingOperation,
-    DPIADataSubjectGroup, DPIARisk, DPIAMitigationMeasure,
-    DPIAConsultation, DPIAAuditLog,
-)
-
-
 # --- Auth, Security, Webhooks, Access ---
 from app.db.models_auth_access import (  # noqa: E402, F401
-    PasswordResetToken, ExportStatus, ExportFormat, DataExport,
-    PermissionAction, ResourceType, role_permissions, user_roles,
-    Permission, Role, UserSession, EmailVerificationToken,
-    WebhookEventType, WebhookDeliveryStatus, WebhookSubscription,
+    AccessLevel,
+    BackupRecord,
+    BackupStatus,
+    BackupType,
+    ChatSessionAccess,
+    ChatSessionAccessLevel,
+    DataExport,
+    DocumentAccess,
+    DocumentFavorite,
+    EmailVerificationToken,
+    ExportFormat,
+    ExportStatus,
+    PasswordResetToken,
+    Permission,
+    PermissionAction,
+    ResourceType,
+    Role,
+    UserSession,
+    WebhookDeliveryStatus,
+    WebhookEventType,
+    WebhookSubscription,
     WebhookSubscriptionDelivery,
-    DocumentFavorite, AccessLevel, DocumentAccess,
-    ChatSessionAccessLevel, ChatSessionAccess,
-    BackupType, BackupStatus, BackupRecord,
+    role_permissions,
+    user_roles,
 )
 
+# --- Banking ---
+from app.db.models_banking import (  # noqa: E402, F401
+    BankAccount,
+    BankImport,
+    BankTransaction,
+    CashFlowEntry,
+    CustomerDunningOverride,
+    DunningRecord,
+    DunningStageConfig,
+    EInvoiceDocument,
+    EInvoiceFormat,
+    EInvoiceProfile,
+    MahnTask,
+    MahnungHistory,
+    PaymentBatch,
+    PaymentOrder,
+    PhoneCallLog,
+)
+
+# --- Cash/Company ---
+from app.db.models_cash_company import (  # noqa: E402, F401
+    CashCategory,
+    CashCount,
+    CashEntry,
+    CashEntryType,
+    CashRegister,
+    Company,
+    ExpenseItem,
+    ExpenseReport,
+    ExpenseReportStatus,
+    ExpenseType,
+    UserCompany,
+)
+
+# --- DATEV ---
+from app.db.models_datev import (  # noqa: E402, F401
+    DATEVBeleglink,
+    DATEVBuchung,
+    DATEVConfiguration,
+    DATEVConnection,
+    DATEVConnectionStatus,
+    DATEVExport,
+    DATEVKontenplan,
+    DATEVKontierungPattern,
+    DATEVKontierungStatus,
+    DATEVSyncHistory,
+    DATEVSyncType,
+    DATEVVendorMapping,
+    FinanceDocumentHistory,
+)
+
+# --- DropShipment/Tax ---
+from app.db.models_dropship_tax import (  # noqa: E402, F401
+    ClassificationAuditLog,
+    ClassificationIndicator,
+    ConfidenceLevel,
+    DatevStreckengeschaeftAccount,
+    DropShipmentClassification,
+    DropShipmentCompanyRole,
+    DropShipmentPosition,
+    MovingDelivery,
+    ProofDocument,
+    TransactionParty,
+    TransactionType,
+    VatCategoryType,
+    VatIdRegistry,
+    ZmSubmission,
+    ZmSubmissionStatus,
+)
 
 # --- Entity, Business, Contracts, Multi-Tenancy, DLP, BPMN ---
 from app.db.models_entity_business import (  # noqa: E402, F401
-    Notification, FeatureFlag,
-    EntityType, BusinessEntity, InvoiceStatus, InvoiceTracking,
-    PaymentTransaction, DocumentChainDiscrepancy,
-    DocumentGroupType, DocumentGroup, RelationshipType, DocumentRelationship,
-    ContractType, ContractStatus, RenewalOptionStatus, MilestoneType,
-    AmendmentStatus, BusinessContract, ContractMilestone,
-    ContractRenewalOption, ContractAmendment,
-    SubscriptionTier, TenantRateLimit, TenantUsageMetrics,
-    RateLimitViolation, SubscriptionTierDefaults,
-    ContactType, ContactRole, DocumentContact, BusinessContact,
-    DLPActionType, SensitiveDataTypeEnum, DLPPolicyModel, DLPAuditLog,
-    ProcessStatus, BpmnTaskStatus, TaskType,
-    GatewayType, EventType, EventTrigger,
+    AmendmentStatus,
+    BpmnTaskStatus,
+    BusinessContact,
+    BusinessContract,
+    BusinessEntity,
+    ContactRole,
+    ContactType,
+    ContractAmendment,
+    ContractMilestone,
+    ContractRenewalOption,
+    ContractStatus,
+    ContractType,
+    DLPActionType,
+    DLPAuditLog,
+    DLPPolicyModel,
+    DocumentChainDiscrepancy,
+    DocumentContact,
+    DocumentGroup,
+    DocumentGroupType,
+    DocumentRelationship,
+    EntityType,
+    EventTrigger,
+    EventType,
+    FeatureFlag,
+    GatewayType,
+    InvoiceStatus,
+    InvoiceTracking,
+    MilestoneType,
+    Notification,
     NotificationType,  # INFO/SUCCESS/WARNING version - overridden by notification module below
+    PaymentTransaction,
+    ProcessStatus,
+    RateLimitViolation,
+    RelationshipType,
+    RenewalOptionStatus,
+    SensitiveDataTypeEnum,
+    SubscriptionTier,
+    SubscriptionTierDefaults,
+    TaskType,
+    TenantRateLimit,
+    TenantUsageMetrics,
 )
+from app.db.models_gdpr_compliance import (  # noqa: E402, F401
+    DPIA,
+    DocumentAccessLog,
+    DocumentAccessType,
+    DocumentArchive,
+    DPIAAuditLog,
+    DPIAConsultation,
+    DPIADataSubjectGroup,
+    DPIAImplementationStatus,
+    DPIALegalBasis,
+    DPIAMeasureType,
+    DPIAMitigationMeasure,
+    DPIAProcessingOperation,
+    DPIARisk,
+    DPIARiskLevel,
+    DPIAStatus,
+    GDPRBreachLog,
+    GDPRConsentHistory,
+    GDPRConsentLog,
+    GDPRConsentScope,
+    GDPRConsentVersion,
+    GDPRDataExport,
+    GDPRDataSubjectRequest,
+    GDPRDeletionRequest,
+    GDPRDeletionRequestStatus,
+    GDPRProcessingActivity,
+    HashAlgorithm,
+    ProcedureDocumentationVersion,
+    RetentionCategory,
+    RetentionSetting,
+    TaxAdvisorAccessLog,
+    TaxAdvisorInvite,
+    TaxAdvisorInviteStatus,
+)
+
+# --- HR ---
+from app.db.models_hr import (  # noqa: E402, F401
+    Absence,
+    Department,
+    Employee,
+    EmployeeStatus,
+    EmploymentContract,
+    EmploymentType,
+    HRContractStatus,
+    HRDocument,
+    HRDocumentCategory,
+    LeaveRequest,
+    LeaveRequestStatus,
+    LeaveType,
+    OnboardingTask,
+    OnboardingTaskStatus,
+    PerformanceReview,
+    Position,
+    ReviewStatus,
+    TimeEntry,
+    Training,
+    TrainingStatus,
+)
+
+# --- Notifications, Activities, Tasks ---
+from app.db.models_notification import (  # noqa: E402, F401
+    ActivityNotificationType,
+    ActivityType,
+    DigestFrequency,
+    DocumentActivity,
+    DocumentComment,
+    DocumentTask,
+    NotificationChannel,
+    NotificationDigestQueue,
+    NotificationHistory,
+    NotificationPreference,
+    NotificationRule,
+    NotificationRuleActionType,
+    NotificationRulePriority,
+    NotificationTemplate,
+    PushSubscription,
+    TaskPriority,
+    TaskStatus,
+    UserNotification,
+)
+
 # NOTE: NotificationType from entity_business (INFO/SUCCESS/WARNING) is overridden
 # by ActivityNotificationType from notification module below (MENTION/COMMENT_REPLY).
 # This matches original models.py behavior where the 2nd definition overwrites the 1st.
 # notification's TaskType-like enums.
-
-
 # --- OCR Training & Validation ---
 from app.db.models_ocr_validation import (  # noqa: E402, F401
-    TrainingSampleStatus, OCRTrainingSample, OCRBackendBenchmark,
-    CorrectionType, OCRValidationCorrection,
-    BatchType, BatchStatus, OCRTrainingBatch,
-    ItemStatus, OCRTrainingBatchItem, OCRBackendStatsDaily,
-    BulkJobStatus, OCRBulkProcessingJob, OCRDocumentOutput,
-    OCRQualitySnapshot, ModelType, OCRModelDeployment,
-    ValidationStatus, SampleSource, ValidationRuleType,
-    ValidationSampleConfig, ValidationRule, ValidationQueueItem,
-    ValidationFieldReview, ValidationAnalytics,
+    BatchStatus,
+    BatchType,
+    BulkJobStatus,
+    CorrectionType,
+    ItemStatus,
+    ModelType,
+    OCRBackendBenchmark,
+    OCRBackendStatsDaily,
+    OCRBulkProcessingJob,
+    OCRDocumentOutput,
+    OCRModelDeployment,
+    OCRQualitySnapshot,
+    OCRTrainingBatch,
+    OCRTrainingBatchItem,
+    OCRTrainingSample,
+    OCRValidationCorrection,
+    SampleSource,
+    TrainingSampleStatus,
+    ValidationAnalytics,
+    ValidationFieldReview,
+    ValidationQueueItem,
+    ValidationRule,
+    ValidationRuleType,
+    ValidationSampleConfig,
+    ValidationStatus,
 )
-
-
-# --- RAG Intelligence Layer ---
-from app.db.models_rag import (  # noqa: E402, F401
-    RAGSectionType, RAGSyncStatus, RAGChatRole, RAGLLMModelType,
-    RAGJobType, RAGJobStatus, RAGCardPriorityLevel, RAGContextType,
-    RAGDocumentChunk, RAGCustomerCard, RAGChatSession, RAGChatMessage,
-    RAGLLMModel, RAGBatchJob, RAGAnalytics,
-    RAGBatchJobType, RAGBatchJobStatus, RAGCardSyncStatus,
-)
-
-
-# --- Surya Training ---
-from app.db.models_surya_training import (  # noqa: E402, F401
-    SuryaModelStatus, SuryaTrainingRunStatus, SuryaABTestStatus,
-    SuryaModelVersion, SuryaTrainingRun, SuryaABTest, SuryaBenchmarkHistory,
-    BusinessDocumentProfile, CoverageSnapshot,
-)
-
-
-# --- Banking ---
-from app.db.models_banking import (  # noqa: E402, F401
-    EInvoiceFormat, EInvoiceProfile, EInvoiceDocument,
-    BankAccount, BankImport, BankTransaction, PaymentBatch,
-    PaymentOrder, DunningRecord, MahnungHistory, MahnTask,
-    PhoneCallLog, DunningStageConfig, CustomerDunningOverride, CashFlowEntry,
-)
-
-
-# --- DATEV ---
-from app.db.models_datev import (  # noqa: E402, F401
-    DATEVConfiguration, DATEVVendorMapping, DATEVExport,
-    DATEVConnectionStatus, DATEVSyncType, DATEVKontierungStatus,
-    DATEVConnection, DATEVKontenplan, DATEVBuchung, DATEVBeleglink,
-    DATEVKontierungPattern, DATEVSyncHistory, FinanceDocumentHistory,
-)
-
-
-# --- Cash/Company ---
-from app.db.models_cash_company import (  # noqa: E402, F401
-    CashEntryType, ExpenseReportStatus, ExpenseType,
-    Company, UserCompany, CashRegister, CashEntry,
-    CashCategory, CashCount, ExpenseReport, ExpenseItem,
-)
-
-
-# --- DropShipment/Tax ---
-from app.db.models_dropship_tax import (  # noqa: E402, F401
-    TransactionType, DropShipmentCompanyRole, MovingDelivery,
-    ConfidenceLevel, VatCategoryType,
-    DropShipmentClassification, DropShipmentPosition,
-    VatIdRegistry, TransactionParty, ProofDocument,
-    ClassificationAuditLog, DatevStreckengeschaeftAccount,
-    ClassificationIndicator, ZmSubmissionStatus, ZmSubmission,
-)
-
-
-# --- HR ---
-from app.db.models_hr import (  # noqa: E402, F401
-    EmploymentType, EmployeeStatus, LeaveType, LeaveRequestStatus,
-    HRContractStatus, TrainingStatus, ReviewStatus, OnboardingTaskStatus,
-    HRDocumentCategory,
-    Department, Position, Employee, EmploymentContract,
-    LeaveRequest, Absence, TimeEntry, Training,
-    PerformanceReview, OnboardingTask, HRDocument,
-)
-
 
 # --- Privat Space ---
 from app.db.models_privat_space import (  # noqa: E402, F401
-    PrivatSpaceType, PrivatAccessLevel, PrivatDocumentType, PrivatDeadlineType,
+    PrivatAccessLevel,
+    PrivatDeadline,
+    PrivatDeadlineNotification,
+    PrivatDeadlineType,
+    PrivatDocument,
+    PrivatDocumentType,
+    PrivatEmergencyAccessRequest,
     PrivatEmergencyAccessStatus,
-    PrivatSpace, PrivatSpaceAccess, PrivatFolder, PrivatDocument,
-    PrivatProperty, PrivatTenant, PrivatRentalIncome, PrivatUtilityStatement,
-    PrivatVehicle, PrivatFuelLog, PrivatInsurance, PrivatLoan,
-    PrivatInvestment, PrivatDeadline, PrivatDeadlineNotification,
-    PrivatEmergencyContact, PrivatEmergencyAccessRequest,
+    PrivatEmergencyContact,
+    PrivatFolder,
+    PrivatFuelLog,
+    PrivatInsurance,
+    PrivatInvestment,
+    PrivatLoan,
+    PrivatProperty,
+    PrivatRentalIncome,
+    PrivatSpace,
+    PrivatSpaceAccess,
+    PrivatSpaceType,
+    PrivatTenant,
+    PrivatUtilityStatement,
+    PrivatVehicle,
 )
 
-
-# --- Notifications, Activities, Tasks ---
-from app.db.models_notification import (  # noqa: E402, F401
-    DocumentComment, ActivityType, DocumentActivity,
-    ActivityNotificationType, UserNotification,
-    TaskStatus, TaskPriority, DocumentTask,
-    NotificationChannel, DigestFrequency, NotificationPreference,
-    NotificationDigestQueue,
-    PushSubscription, NotificationTemplate, NotificationHistory,
-    NotificationRulePriority, NotificationRuleActionType, NotificationRule,
+# --- RAG Intelligence Layer ---
+from app.db.models_rag import (  # noqa: E402, F401
+    RAGAnalytics,
+    RAGBatchJob,
+    RAGBatchJobStatus,
+    RAGBatchJobType,
+    RAGCardPriorityLevel,
+    RAGCardSyncStatus,
+    RAGChatMessage,
+    RAGChatRole,
+    RAGChatSession,
+    RAGContextType,
+    RAGCustomerCard,
+    RAGDocumentChunk,
+    RAGJobStatus,
+    RAGJobType,
+    RAGLLMModel,
+    RAGLLMModelType,
+    RAGSectionType,
+    RAGSyncStatus,
 )
+
+# --- Surya Training ---
+from app.db.models_surya_training import (  # noqa: E402, F401
+    BusinessDocumentProfile,
+    CoverageSnapshot,
+    SuryaABTest,
+    SuryaABTestStatus,
+    SuryaBenchmarkHistory,
+    SuryaModelStatus,
+    SuryaModelVersion,
+    SuryaTrainingRun,
+    SuryaTrainingRunStatus,
+)
+
 # Backward compatibility: Activity notification version (MENTION, COMMENT_REPLY, etc.)
 # overwrites core version (INFO, SUCCESS, WARNING) - matches original models.py behavior
 NotificationType = ActivityNotificationType
 
 # --- Approval Extended (EscalationRule re-export) ---
+# --- AI/ML Intelligence ---
+from app.db.models_ai_ml import (  # noqa: E402, F401
+    AIConfidenceThreshold,
+    AIDecision,
+    AILearningFeedback,
+    AutonomousProposalQueue,
+    AutonomousTrustConfig,
+    DocumentMatch,
+    PaymentPrediction,
+)
 from app.db.models_approval_extended import EscalationRule  # noqa: E402, F401
 
 # --- ERP & Import ---
 from app.db.models_erp_import import (  # noqa: E402, F401
-    ERPType, ERPSyncDirection, ERPConnectionStatus, ERPSyncStatus,
-    ERPConflictStatus, ERPConflictResolution, ERPEntityType,
-    ERPConnection, ERPSyncHistory, ERPFieldMapping, ERPConflict,
-    ERPEntityMapping, OdooWebhookEvent, OdooSyncStatus, OdooAIFeedback,
-    EmailImportConfig, FolderImportConfig, ImportRule, ImportLog,
+    EmailImportConfig,
+    ERPConflict,
+    ERPConflictResolution,
+    ERPConflictStatus,
+    ERPConnection,
+    ERPConnectionStatus,
+    ERPEntityMapping,
+    ERPEntityType,
+    ERPFieldMapping,
+    ERPSyncDirection,
+    ERPSyncHistory,
+    ERPSyncStatus,
+    ERPType,
+    FolderImportConfig,
+    ImportLog,
+    ImportRule,
+    OdooAIFeedback,
+    OdooSyncStatus,
+    OdooWebhookEvent,
 )
 
-
-# --- AI/ML Intelligence ---
-from app.db.models_ai_ml import (  # noqa: E402, F401
-    AIConfidenceThreshold, AIDecision, AILearningFeedback,
-    DocumentMatch, PaymentPrediction,
-    AutonomousTrustConfig, AutonomousProposalQueue,
+# --- Slack & Shipment Integration ---
+from app.db.models_integration import (  # noqa: E402, F401
+    Shipment,
+    ShipmentCarrier,
+    ShipmentDirection,
+    ShipmentEvent,
+    ShipmentStatusEnum,
+    SlackChannel,
+    SlackChannelType,
+    SlackMessageLog,
+    SlackMessageStatus,
+    SlackUserMapping,
 )
 
-
-# --- Reports ---
-from app.db.models_report import (  # noqa: E402, F401
-    ReportTemplate, ReportColumn, ReportFilter, ReportChart,
-    ReportExecution, ReportShare,
-)
-
-
-# --- Workflows ---
-from app.db.models_workflow import (  # noqa: E402, F401
-    Workflow, WorkflowStep, WorkflowExecution, WorkflowStepExecution,
-)
-
-
-# --- Privat Enterprise (KPI, Goals, Approvals) ---
-from app.db.models_privat_enterprise import (  # noqa: E402, F401
-    RecurringPaymentFrequency, RecurringPaymentCategory,
-    CoverageGapType, CoverageGapSeverity,
-    LLMCache, EventLog,
-    PrivatRecurringPayment, PrivatCoverageGap,
-    KPIUnit, ProjectionMethod, TrendDirection,
-    WarningSeverity, WarningType, ProfessionType, RiskProfile,
-    PrivatKPIHistory, PrivatProjection, PrivatEarlyWarning,
-    PrivatTask, PortfolioSnapshot,
-    FinancialGoalType, FinancialGoalStatus, FinancialGoal,
-    FinancialGoalContribution,
-    ApprovalRuleType, ApprovalStatus, ApprovalPriority,
-    ApprovalRule, ApprovalRequest, ApprovalStep, ApprovalDelegation,
-    PrivatUserProfile, PrivatUserThreshold,
-    PrivatThresholdAdjustment, PrivatThresholdRecommendation,
+# --- Diverse System-Modelle ---
+from app.db.models_misc import (  # noqa: E402, F401
+    AIEthicsAudit,
+    AnnotationType,
+    AppConfig,
+    BiasReport,
+    CompanyHealthSnapshot,
+    CompanySettings,
+    DocumentAnnotation,
+    DocumentEntityLink,
+    DomainEvent,
+    EventSnapshot,
+    ExternalEnrichmentResult,
+    GraphEdge,
+    LifeEvent,
+    LifeEventStatus,
+    LifeEventType,
+    MerkleTreeNode,
+    NLQQueryLog,
+    RiskScoreHistory,
+    SavedFilter,
+    SmartInboxItem,
+    SmartInboxItemSource,
+    SmartInboxItemStatus,
+    UserBehaviorLog,
+    ZeroTouchResult,
 )
 
 # --- Privat Contracts (Vertragsmanagement) ---
 from app.db.models_privat_contracts import (  # noqa: E402, F401
-    PrivatContractCategory, PrivatContractStatus,
-    PrivatContract, PrivatContractReminder,
+    PrivatContract,
+    PrivatContractCategory,
+    PrivatContractReminder,
+    PrivatContractStatus,
 )
 
+# --- Privat Enterprise (KPI, Goals, Approvals) ---
+from app.db.models_privat_enterprise import (  # noqa: E402, F401
+    ApprovalDelegation,
+    ApprovalPriority,
+    ApprovalRequest,
+    ApprovalRule,
+    ApprovalRuleType,
+    ApprovalStatus,
+    ApprovalStep,
+    CoverageGapSeverity,
+    CoverageGapType,
+    EventLog,
+    FinancialGoal,
+    FinancialGoalContribution,
+    FinancialGoalStatus,
+    FinancialGoalType,
+    KPIUnit,
+    LLMCache,
+    PortfolioSnapshot,
+    PrivatCoverageGap,
+    PrivatEarlyWarning,
+    PrivatKPIHistory,
+    PrivatProjection,
+    PrivatRecurringPayment,
+    PrivatTask,
+    PrivatThresholdAdjustment,
+    PrivatThresholdRecommendation,
+    PrivatUserProfile,
+    PrivatUserThreshold,
+    ProfessionType,
+    ProjectionMethod,
+    RecurringPaymentCategory,
+    RecurringPaymentFrequency,
+    RiskProfile,
+    TrendDirection,
+    WarningSeverity,
+    WarningType,
+)
+
+# --- Reports ---
+from app.db.models_report import (  # noqa: E402, F401
+    ReportChart,
+    ReportColumn,
+    ReportExecution,
+    ReportFilter,
+    ReportShare,
+    ReportTemplate,
+)
 
 # --- Templates & Knowledge Base ---
 from app.db.models_template_knowledge import (  # noqa: E402, F401
-    TemplateCategory, TemplateOutputFormat, VariableType,
-    DocumentTemplate, GeneratedDocument, TemplateSnippet,
-    NoteType, ContentFormat, KnowledgeLinkType, LinkableType,
-    KnowledgeNote, KnowledgeChecklist, KnowledgeChecklistItem,
-    KnowledgeLink, KnowledgeTag,
+    ContentFormat,
+    DocumentTemplate,
+    GeneratedDocument,
+    KnowledgeChecklist,
+    KnowledgeChecklistItem,
+    KnowledgeLink,
+    KnowledgeLinkType,
+    KnowledgeNote,
+    KnowledgeTag,
+    LinkableType,
+    NoteType,
+    TemplateCategory,
+    TemplateOutputFormat,
+    TemplateSnippet,
+    VariableType,
 )
 
-
-# --- Slack & Shipment Integration ---
-from app.db.models_integration import (  # noqa: E402, F401
-    SlackChannelType, SlackChannel, SlackMessageStatus,
-    SlackMessageLog, SlackUserMapping,
-    ShipmentCarrier, ShipmentDirection, ShipmentStatusEnum,
-    Shipment, ShipmentEvent,
-)
-
-
-# --- Diverse System-Modelle ---
-from app.db.models_misc import (  # noqa: E402, F401
-    CompanySettings, SavedFilter, AppConfig,
-    ZeroTouchResult, NLQQueryLog,
-    SmartInboxItemSource, SmartInboxItemStatus, SmartInboxItem,
-    UserBehaviorLog, CompanyHealthSnapshot,
-    GraphEdge, MerkleTreeNode,
-    AIEthicsAudit, BiasReport,
-    DomainEvent, EventSnapshot,
-    ExternalEnrichmentResult,
-    AnnotationType, DocumentAnnotation,
-    LifeEventType, LifeEventStatus, LifeEvent,
-    DocumentEntityLink, RiskScoreHistory,
+# --- Workflows ---
+from app.db.models_workflow import (  # noqa: E402, F401
+    Workflow,
+    WorkflowExecution,
+    WorkflowStep,
+    WorkflowStepExecution,
 )
 
 # Aliases for backward compatibility
 Comment = DocumentComment
 # Import additional model modules to ensure they are discovered by SQLAlchemy/Alembic
 # Phase 6: PSD2/FinTS Banking Integration
+# Ensure cross-referencing satellite models are all loaded before configure_mappers()
+from app.db.models_alert import Alert, AlertCategory, AlertRule, AlertSeverity  # noqa: F401
+from app.db.models_approval_matrix import (  # noqa: F401
+    ApprovalAuditLog,
+    ApprovalChainTemplate,
+    ApprovalGroup,
+    ApprovalGroupMember,
+    ApprovalMatrix,
+)
+from app.db.models_autonomy import (
+    AutonomyDecisionLog,
+    AutonomyMetrics,
+    AutonomySettings,
+    PendingAction,
+)
 from app.db.models_banking_connection import (
     BankConnection,
+    BankSyncLog,
     ConnectedBankAccount,
     ImportedTransaction,
-    TransactionSplitAllocation,
-    BankSyncLog,
     PaymentInitiation,
     ReconciliationRule,
     SupportedBank,
+    TransactionSplitAllocation,
 )
+
+# Batch 6: Satellite models from Batches 1-3 features
+from app.db.models_barcode import BarcodeDetection  # noqa: F401
+from app.db.models_contract import Contract  # noqa: F401
+from app.db.models_custom_fields import CustomFieldDefinition  # noqa: F401
+from app.db.models_delegation import Delegation  # noqa: F401
+
 # Phase 7: Enterprise Features (Feb 2026)
 from app.db.models_einvoice import (
-    EInvoiceTransmission, PeppolParticipant, IncomingEInvoice,
+    EInvoiceTransmission,
+    IncomingEInvoice,
+    PeppolParticipant,
 )
-from app.db.models_autonomy import (
-    AutonomySettings, PendingAction, AutonomyDecisionLog, AutonomyMetrics,
-)
+
+# Phase 1.4: Field-Level Encryption (DSGVO Art. 32)
+from app.db.models_encryption import EncryptedFieldMeta, KeyRotationLog  # noqa: F401
 from app.db.models_esg import (
-    ESGCarbonFootprint, ESGSupplierRating, ESGCertification, ESGReport, ESGGoal,
+    ESGCarbonFootprint,
+    ESGCertification,
+    ESGGoal,
+    ESGReport,
+    ESGSupplierRating,
 )
+from app.db.models_fraud import FraudScanResult, IBANBaseline, IBANChangeRequest  # noqa: F401
 from app.db.models_fx import (
-    ExchangeRate, FXGainLossEntry,
+    ExchangeRate,
+    FXGainLossEntry,
 )
 from app.db.models_gl_posting import (
-    GLAccount, JournalEntry, JournalEntryLine, TaxPeriod,
+    GLAccount,
+    JournalEntry,
+    JournalEntryLine,
+    TaxPeriod,
 )
-from app.db.models_portal import (
-    PortalUser, PortalSession, PortalComplaint, PortalMessage, PortalDocument, PortalPaymentConfirmation,
+from app.db.models_inventory import (  # noqa: F401
+    InventoryItem,
+    InventoryMovement,
+    StockLevel,
+    Warehouse,
 )
-from app.db.models_workflow_stage import (
-    WorkflowStage, DocumentWorkflowItem,
-)
+from app.db.models_invoice import Invoice  # noqa: F401
 from app.db.models_notification_template import (
     NotificationMessageTemplate,
 )
-# Ensure cross-referencing satellite models are all loaded before configure_mappers()
-from app.db.models_alert import Alert, AlertRule, AlertCategory, AlertSeverity  # noqa: F401
-from app.db.models_fraud import FraudScanResult, IBANBaseline, IBANChangeRequest  # noqa: F401
-from app.db.models_inventory import Warehouse, InventoryItem, StockLevel, InventoryMovement  # noqa: F401
-from app.db.models_contract import Contract  # noqa: F401
-from app.db.models_invoice import Invoice  # noqa: F401
-from app.db.models_delegation import Delegation  # noqa: F401
-# Batch 6: Satellite models from Batches 1-3 features
-from app.db.models_barcode import BarcodeDetection  # noqa: F401
-from app.db.models_custom_fields import CustomFieldDefinition  # noqa: F401
-from app.db.models_approval_matrix import (  # noqa: F401
-    ApprovalMatrix, ApprovalChainTemplate, ApprovalAuditLog,
-    ApprovalGroup, ApprovalGroupMember,
+from app.db.models_portal import (
+    PortalComplaint,
+    PortalDocument,
+    PortalMessage,
+    PortalPaymentConfirmation,
+    PortalSession,
+    PortalUser,
 )
-# Phase 1.4: Field-Level Encryption (DSGVO Art. 32)
-from app.db.models_encryption import EncryptedFieldMeta, KeyRotationLog  # noqa: F401
+from app.db.models_workflow_stage import (
+    DocumentWorkflowItem,
+    WorkflowStage,
+)

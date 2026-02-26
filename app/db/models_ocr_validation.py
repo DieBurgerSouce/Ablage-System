@@ -1,11 +1,26 @@
 """OCR Training und Validation Modelle - extrahiert aus models.py (Modularisierung Phase 1.1)."""
 import uuid
-from datetime import datetime, date
+from datetime import date, datetime
 from enum import Enum
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, Float, ForeignKey, Index, Date, func, UniqueConstraint
+
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from app.db.models_base import Base, CrossDBJSON
+
+from app.db.models_base import Base, CrossDBJSON, SoftDeleteMixin
 
 
 class TrainingSampleStatus(str, Enum):
@@ -17,7 +32,7 @@ class TrainingSampleStatus(str, Enum):
     REJECTED = "rejected"         # Abgelehnt (schlechte Qualitaet)
 
 
-class OCRTrainingSample(Base):
+class OCRTrainingSample(SoftDeleteMixin, Base):
     """
     Ground Truth Training Sample für OCR-Benchmarking.
 
@@ -98,8 +113,6 @@ class OCRTrainingSample(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     annotated_at = Column(DateTime(timezone=True), nullable=True)
     verified_at = Column(DateTime(timezone=True), nullable=True)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)  # GDPR Soft-Delete
-
     # Relationships
     annotated_by = relationship("User", foreign_keys=[annotated_by_id])
     verified_by = relationship("User", foreign_keys=[verified_by_id])

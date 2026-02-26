@@ -5,12 +5,11 @@ CrossDBTSVector, and CrossDBVector independently of models.py.
 All domain model files (models_*.py) import from here instead of models.py.
 """
 
-from sqlalchemy import JSON, Text
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import JSON, Column, DateTime, Text
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.types import TypeDecorator
-
-from pgvector.sqlalchemy import Vector
 
 
 class CrossDBJSON(TypeDecorator):
@@ -48,6 +47,21 @@ class CrossDBVector(TypeDecorator):
         if dialect.name == "postgresql":
             return dialect.type_descriptor(Vector(self.dim))
         return dialect.type_descriptor(Text())
+
+
+class SoftDeleteMixin:
+    """Mixin providing soft-delete functionality via deleted_at column.
+
+    Usage:
+        class MyModel(SoftDeleteMixin, Base):
+            __tablename__ = "my_table"
+            ...
+
+    Note: Does NOT automatically filter deleted records in queries.
+    Filter manually with: query.where(Model.deleted_at.is_(None))
+    """
+
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
 
 Base = declarative_base()

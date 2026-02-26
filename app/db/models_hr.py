@@ -4,22 +4,33 @@ Extrahiert aus models.py als Teil der Modularisierung (Phase 1.1).
 Enthaelt alle Mitarbeiter-bezogenen Modelle fuer das HR-Modul.
 """
 
-from datetime import datetime, date
-from typing import Optional, List
-from enum import Enum
-from decimal import Decimal
 import uuid
+from datetime import date, datetime
+from decimal import Decimal
+from enum import Enum
+from typing import List, Optional
 
 from sqlalchemy import (
-    Column, String, Integer, DateTime, Date, Time, Boolean, Float,
-    Numeric, Text, ForeignKey, Index, CheckConstraint, UniqueConstraint
+    Boolean,
+    CheckConstraint,
+    Column,
+    Date,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    Time,
+    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
-from app.db.models_base import Base, CrossDBJSON
-
+from app.db.models_base import Base, CrossDBJSON, SoftDeleteMixin
 
 # =============================================================================
 # HR ENUMS
@@ -121,7 +132,7 @@ ContractStatus = HRContractStatus
 # HR MODELS
 # =============================================================================
 
-class Department(Base):
+class Department(SoftDeleteMixin, Base):
     """Abteilung mit hierarchischer Struktur.
 
     Ermoeglicht die Abbildung einer Organisationsstruktur mit
@@ -161,7 +172,6 @@ class Department(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     company = relationship("Company")
@@ -179,7 +189,7 @@ class Department(Base):
         return f"<Department {self.name}>"
 
 
-class Position(Base):
+class Position(SoftDeleteMixin, Base):
     """Stelle/Rolle innerhalb einer Firma.
 
     Definiert Stellenbezeichnungen mit optionalem Gehaltsrahmen
@@ -219,7 +229,6 @@ class Position(Base):
     # Audit
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relationships
     company = relationship("Company")
@@ -236,7 +245,7 @@ class Position(Base):
         return f"<Position {self.title}>"
 
 
-class Employee(Base):
+class Employee(SoftDeleteMixin, Base):
     """Mitarbeiter-Stammdaten.
 
     Zentrale Entitaet fuer alle HR-Daten eines Mitarbeiters.
@@ -346,7 +355,6 @@ class Employee(Base):
     created_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Soft-Delete (GDPR/GoBD)
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
     deleted_by_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     # Relationships
