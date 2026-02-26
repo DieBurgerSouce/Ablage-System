@@ -1,5 +1,14 @@
 # Recent Changes
 
+## 2026-02-26 (Enterprise Quality Audit - Phase 4 P2 Hardening)
+- **refactor(db)**: SoftDeleteMixin in models_base.py - 27 Klassen in 20 Model-Dateien refactored (manuelle deleted_at Definition ersetzt durch Mixin)
+- **refactor(db)**: FK ondelete Cascade Audit - 44 ForeignKey-Deklarationen mit ondelete ergaenzt (CASCADE/SET NULL/RESTRICT je nach FK-Typ) + Migration 256
+- **refactor(core)**: Dict[str, Any] → JSONDict in exceptions.py (16x) und audit_logger.py (10x) fuer Type Safety
+- **fix(frontend)**: React index-as-key Anti-Pattern behoben - 12 Instanzen in 5 Komponenten (FieldDefinitionDialog, GlobalAIAssistantV2, WorkflowMonitor, RecoveryPlaybook)
+- **feat(api+services)**: Action Queue, Access Analytics, Banking PSD2, AI Financial Orchestrator Endpoints
+- **feat(workers)**: Task Error Handling (45 Tasks) + Transaction Savepoints + Startup Health Gate
+- **chore(infra)**: Nginx Security Headers + Docker Digest Pinning + Rate Limits
+
 ## 2026-02-24
 - **feat(db)**: DomainEvent SHA-256 Hash-Chain (event_hash, previous_hash, chain_hash) - Migration 254 + models_misc.py + models_predictions.py
 - **feat(db)**: Migration 255 - EntitySeasonalPattern fuer saisonale Zahlungsmuster (Cashflow Monte Carlo)
@@ -29,21 +38,5 @@
 - **feat(db)**: models_privat_contracts.py (PrivatContract, PrivatContractReminder) + Re-Export in models.py
 - **feat(workers)**: booking_tasks.py + send_contract_reminders + datev-batch-auto-booking (15min Beat)
 - **feat(frontend)**: OnboardingWizard integriert (P4.1) + Product Tour modularisiert; Backup-Skripte + DR-Runbook
-
-## 2026-02-22 (Session 3)
-- **feat(workers)**: Prometheus-Metriken fuer GDPR-Tasks (6 Metriken: gdpr_deletion_requests_pending, gdpr_deletion_processing_duration_seconds, gdpr_deletion_completed_total, gdpr_deletion_errors_total, gdpr_breach_notifications_total, gdpr_compliance_score)
-- **feat(workers)**: Prometheus-Metriken fuer Retention-Enforcement-Tasks (7 Metriken: scanned, marked, deleted, errors, scan_duration, documents_by_category, pending_reviews)
-- **feat(infra)**: Neues Grafana-Dashboard ablage-retention-enforcement.json fuer Retention-Enforcement-Monitoring
-- **test(frontend)**: use-chat-websocket.test.ts - neue Frontend-Tests fuer Chat-WebSocket-Hook
-- **test(frontend)**: portal-api.test.ts - neue Frontend-Tests fuer Portal-API
-
-## 2026-02-22 (Session 2)
-- **refactor(db)**: Model-Refactoring - 8 Satellite-Models nutzen Re-Exporte statt Duplikat-Definitionen (bpmn_models, annotations, collaboration, clustering, integrity, learning_autonomy, signature)
-- **fix(db)**: WebhookDelivery umbenannt in WebhookSubscriptionDelivery (Tablename + Indexes + Relationships)
-- **feat(security)**: ConflictError (E409) und ServiceUnavailableError (E503) Exception-Klassen hinzugefuegt
-- **fix(api)**: webhooks.py + webhook_dispatcher.py auf WebhookSubscriptionDelivery aktualisiert
-- **fix(services)**: PaymentService company_id Fix - 9 Methoden von company_id auf user_id umgestellt (BankAccount.user_id statt company_id)
-- **fix(services)**: LiquidityForecastService - ueberfluessiger company_id Parameter in _create_rolling_forecast() und _detect_payment_anomalies() entfernt
-- **fix(orchestration)**: team_router_hook.py - Trivial-Pattern-Filter vereinfacht (keine Fragen/Exploration mehr als trivial blockiert)
 
 
