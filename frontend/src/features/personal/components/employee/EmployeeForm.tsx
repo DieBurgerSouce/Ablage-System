@@ -324,7 +324,7 @@ export function EmployeeForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Anrede</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Wählen..." />
@@ -359,7 +359,7 @@ export function EmployeeForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Geschlecht</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Wählen..." />
@@ -622,7 +622,7 @@ export function EmployeeForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Abteilung</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Wählen..." />
@@ -646,7 +646,7 @@ export function EmployeeForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Position</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Wählen..." />
@@ -670,7 +670,7 @@ export function EmployeeForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Beschäftigungsart</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Wählen..." />
@@ -697,7 +697,7 @@ export function EmployeeForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Wählen..." />
@@ -852,7 +852,7 @@ export function EmployeeForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Steuerklasse</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Wählen..." />
@@ -951,7 +951,7 @@ export function EmployeeForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Beziehung</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value || ''}>
+                        <Select onValueChange={field.onChange} value={field.value || undefined}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Wählen..." />

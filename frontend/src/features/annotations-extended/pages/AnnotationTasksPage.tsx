@@ -112,8 +112,8 @@ export function AnnotationTasksPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Alle Benutzer</SelectItem>
-                  {uniqueAssignees.map((assignee) => (
-                    <SelectItem key={assignee} value={assignee || ""}>
+                  {uniqueAssignees.filter(Boolean).map((assignee) => (
+                    <SelectItem key={assignee} value={assignee}>
                       {assignee}
                     </SelectItem>
                   ))}
