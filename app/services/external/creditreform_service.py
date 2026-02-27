@@ -12,7 +12,7 @@ Vision 2.0 Feature: Erweiterte Integrationen
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 import hashlib
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -26,7 +26,7 @@ from redis.asyncio import Redis
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class CreditRating(str, Enum):

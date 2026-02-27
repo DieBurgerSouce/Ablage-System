@@ -11,7 +11,7 @@ Service für Dokumenten-Vorlagen mit:
 from __future__ import annotations
 
 import io
-import logging
+import structlog
 import re
 import uuid
 from datetime import datetime
@@ -29,7 +29,7 @@ from app.db.models import (
     VariableType,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class TemplateValidationError(Exception):

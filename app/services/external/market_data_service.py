@@ -22,7 +22,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import logging
+import structlog
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
@@ -34,7 +34,7 @@ import httpx
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class DataSource(str, Enum):
@@ -369,8 +369,10 @@ class MarketDataService:
         self._set_cache(cache_key, result)
 
         logger.info(
-            f"Immobilienwert geschätzt: {estimated_value:.0f} EUR "
-            f"(PLZ: {postal_code}, {living_space_sqm} qm)"
+            "property_value_estimated",
+            estimated_value_eur=f"{estimated_value:.0f}",
+            postal_code=postal_code,
+            living_space_sqm=str(living_space_sqm),
         )
 
         return result
@@ -511,8 +513,12 @@ class MarketDataService:
         self._set_cache(cache_key, result)
 
         logger.info(
-            f"Fahrzeugwert geschätzt: {estimated_value:.0f} EUR "
-            f"({brand} {model}, {year}, {mileage_km} km)"
+            "vehicle_value_estimated",
+            estimated_value_eur=f"{estimated_value:.0f}",
+            brand=brand,
+            model=model,
+            year=year,
+            mileage_km=mileage_km,
         )
 
         return result

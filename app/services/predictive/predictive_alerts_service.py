@@ -11,7 +11,7 @@ Vision 2.0 Feature: Predictive Maintenance (Phase 5)
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -31,7 +31,7 @@ from app.services.predictive.ocr_quality_forecaster import (
     get_quality_forecaster,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Type definitions for mypy strict mode
 MetadataValue = Union[str, int, float, bool, None]

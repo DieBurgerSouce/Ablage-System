@@ -9,7 +9,7 @@ Mustang-Service laeuft als Docker Container auf Port 8091.
 """
 
 import asyncio
-import logging
+import structlog
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
@@ -19,7 +19,7 @@ import httpx
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class MustangError(Exception):

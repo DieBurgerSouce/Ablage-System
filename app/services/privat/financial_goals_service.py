@@ -9,7 +9,7 @@ Enterprise Feature: Finanzielle Ziele mit:
 
 from __future__ import annotations
 
-import logging
+import structlog
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
@@ -29,7 +29,7 @@ from app.db.models import (
     PrivatSpace,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

@@ -12,7 +12,7 @@ Created: 2024-12
 """
 
 import json
-import logging
+import structlog
 import os
 import shutil
 from dataclasses import dataclass, field
@@ -20,7 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

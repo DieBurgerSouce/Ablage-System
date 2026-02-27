@@ -11,7 +11,7 @@ Features:
 - Training data export for external training
 """
 
-import logging
+import structlog
 from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Optional
@@ -30,7 +30,7 @@ from app.db.models_ocr_feedback import (
 )
 from app.services.mlops.model_registry import ModelRegistry, ModelType, ModelStatus
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class RetrainingTrigger(str, Enum):

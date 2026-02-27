@@ -17,7 +17,7 @@ from uuid import UUID
 from enum import Enum
 from decimal import Decimal
 import re
-import logging
+import structlog
 from collections import Counter, defaultdict
 
 from pydantic import BaseModel, Field
@@ -27,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Document, User
 from app.services.datev.kontenrahmen import SKR03, SKR04, BaseKontenrahmen
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # =============================================================================

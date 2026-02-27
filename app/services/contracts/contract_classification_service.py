@@ -11,7 +11,7 @@ Verwendet ein Ensemble aus:
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from collections import Counter
 from typing import Dict, List, Optional, Tuple
 from uuid import UUID
@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models_contract import ContractType
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ContractClassificationService:
@@ -298,7 +298,11 @@ class ContractClassificationService:
             # Normalisiere Confidence auf 0-1
             confidence = min(best_score / 2.0, 1.0)  # Score 2.0 = 100% Confidence
 
-            logger.info(f"Vertragsklassifikation: {best_type.value}, Confidence: {confidence:.2%}")
+            logger.info(
+                "contract_classification_result",
+                contract_type=best_type.value,
+                confidence=round(confidence, 4),
+            )
 
             if return_scores:
                 return best_type, confidence, scores

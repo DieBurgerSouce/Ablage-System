@@ -20,7 +20,7 @@ Created: 2024-12
 
 import gc
 import json
-import logging
+import structlog
 import os
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass

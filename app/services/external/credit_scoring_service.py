@@ -12,7 +12,7 @@ Vision 2.0 Feature: Erweiterte Integrationen
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional, Dict, Any, List
@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.external.creditreform_service import CreditreformService, CreditCheckResult
 from app.core.safe_errors import safe_error_detail
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class RiskLevel(str, Enum):
@@ -203,7 +203,7 @@ class CreditScoringService:
             }
 
         except Exception as e:
-            logger.warning(f"External credit check failed: {e}")
+            logger.warning("external_credit_check_failed", error=str(e))
             return {
                 "score": 50,  # Neutral bei Fehler
                 "source": "error",
@@ -505,7 +505,7 @@ class CreditScoringService:
                 )
                 results.append(result)
             except Exception as e:
-                logger.error(f"Score calculation failed for {entity_id}: {e}")
+                logger.error("score_calculation_failed", entity_id=str(entity_id), error=str(e))
                 results.append({
                     "entity_id": str(entity_id),
                     "error": safe_error_detail(e, "Vorgang"),

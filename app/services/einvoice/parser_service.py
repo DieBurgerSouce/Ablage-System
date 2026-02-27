@@ -13,7 +13,7 @@ Unterstützt:
 """
 
 import hashlib
-import logging
+import structlog
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
@@ -33,7 +33,7 @@ from app.db import models
 
 from .mapping.zugferd_mapper import ZUGFeRDMapper
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class EInvoiceParserService:
@@ -105,7 +105,8 @@ class EInvoiceParserService:
 
         logger.info(
             "einvoice_parse_pdf_start",
-            extra={"filename": filename, "size_bytes": len(pdf_content)}
+            filename=filename,
+            size_bytes=len(pdf_content),
         )
 
         try:
@@ -126,12 +127,10 @@ class EInvoiceParserService:
 
             logger.info(
                 "einvoice_parse_pdf_success",
-                extra={
-                    "filename": filename,
-                    "format": format_detected.value,
-                    "profile": profile.value if profile else None,
-                    "invoice_number": invoice_data.invoice_number,
-                }
+                filename=filename,
+                format=format_detected.value,
+                profile=profile.value if profile else None,
+                invoice_number=invoice_data.invoice_number,
             )
 
             return EInvoiceParseResponse(
@@ -145,10 +144,10 @@ class EInvoiceParserService:
             )
 
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "einvoice_parse_pdf_error",
-                extra={"filename": filename, **safe_error_log(e)},
-                exc_info=True
+                filename=filename,
+                **safe_error_log(e),
             )
             raise
 
@@ -169,7 +168,7 @@ class EInvoiceParserService:
         """
         logger.info(
             "einvoice_parse_xml_start",
-            extra={"filename": filename}
+            filename=filename,
         )
 
         try:
@@ -180,11 +179,9 @@ class EInvoiceParserService:
 
             logger.info(
                 "einvoice_parse_xml_success",
-                extra={
-                    "filename": filename,
-                    "format": format_detected.value,
-                    "invoice_number": invoice_data.invoice_number,
-                }
+                filename=filename,
+                format=format_detected.value,
+                invoice_number=invoice_data.invoice_number,
             )
 
             return EInvoiceParseResponse(
@@ -198,10 +195,10 @@ class EInvoiceParserService:
             )
 
         except Exception as e:
-            logger.error(
+            logger.exception(
                 "einvoice_parse_xml_error",
-                extra={"filename": filename, **safe_error_log(e)},
-                exc_info=True
+                filename=filename,
+                **safe_error_log(e),
             )
             raise
 
@@ -293,11 +290,9 @@ class EInvoiceParserService:
 
         logger.info(
             "einvoice_stored",
-            extra={
-                "einvoice_id": str(einvoice_doc.id),
-                "document_id": str(document_id),
-                "format": result.format_detected.value,
-            }
+            einvoice_id=str(einvoice_doc.id),
+            document_id=str(document_id),
+            format=result.format_detected.value,
         )
 
         return result

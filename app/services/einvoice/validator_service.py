@@ -15,7 +15,7 @@ Der KoSIT-Validator ist der offizielle Validator der Koordinierungsstelle
 für IT-Standards (KoSIT) und prüft gegen die aktuellen XRechnung-Spezifikationen.
 """
 
-import logging
+import structlog
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
@@ -44,7 +44,7 @@ from app.services.einvoice.mustang_client import (
     get_mustang_client,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ValidatorType(str, Enum):
@@ -253,13 +253,11 @@ class EInvoiceValidatorService:
 
         logger.info(
             "einvoice_validation_completed",
-            extra={
-                "valid": result.valid,
-                "validator": result.validator_used,
-                "format": result.format_detected,
-                "errors": result.error_count,
-                "warnings": result.warning_count,
-            }
+            valid=result.valid,
+            validator=result.validator_used,
+            format=result.format_detected,
+            errors=result.error_count,
+            warnings=result.warning_count,
         )
 
         return result

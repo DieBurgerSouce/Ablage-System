@@ -11,7 +11,7 @@ Vergleicht Vertragsversionen und identifiziert:
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from datetime import datetime
 from decimal import Decimal
 from difflib import SequenceMatcher
@@ -26,7 +26,7 @@ from app.db.models_contract import (
     ContractComparison,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ContractComparisonService:

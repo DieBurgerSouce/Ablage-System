@@ -19,7 +19,6 @@ SECURITY: Eingehende XMLs werden gegen XXE-Angriffe geschuetzt.
 """
 
 import hashlib
-import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone, date

@@ -11,7 +11,7 @@ Features:
 - Kreditlimit-Empfehlungen
 """
 
-import logging
+import structlog
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -22,7 +22,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class InsolvencyStatus(str, Enum):
@@ -264,8 +264,11 @@ class InsolvencyWarningService:
         )
 
         logger.info(
-            f"Insolvenz-Prüfung abgeschlossen für Entity {entity_id}: "
-            f"Score={risk_score}, Status={status.value}, Signale={len(signals)}"
+            "insolvency_check_completed",
+            entity_id=str(entity_id),
+            risk_score=risk_score,
+            status=status.value,
+            signal_count=len(signals),
         )
 
         return InsolvencyCheck(
@@ -470,7 +473,11 @@ class InsolvencyWarningService:
         - Creditreform API
         """
         # Stub-Implementierung - in Production durch echte API-Calls ersetzen
-        logger.info(f"Externe Prüfung für {entity_name} (ID: {entity_id}) - STUB")
+        logger.info(
+            "external_insolvency_check_stub",
+            entity_name=entity_name,
+            entity_id=str(entity_id),
+        )
 
         return {
             "signals": [],
@@ -699,7 +706,11 @@ class InsolvencyWarningService:
                 if summary.risk_score >= min_risk_score:
                     high_risk_summaries.append(summary)
             except Exception as e:
-                logger.warning(f"Fehler bei Risiko-Prüfung für Entity {entity.id}: {e}")
+                logger.warning(
+                    "entity_risk_check_failed",
+                    entity_id=str(entity.id),
+                    error=str(e),
+                )
                 continue
 
             if len(high_risk_summaries) >= limit:
@@ -723,7 +734,10 @@ class InsolvencyWarningService:
         Hier nur Stub-Implementierung.
         """
         logger.info(
-            f"Signal {signal_id} von User {user_id} bestätigt. Notes: {notes}"
+            "signal_acknowledged",
+            signal_id=str(signal_id),
+            user_id=str(user_id),
+            notes=notes,
         )
         return True
 

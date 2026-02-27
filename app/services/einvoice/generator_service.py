@@ -11,7 +11,7 @@ Unterstützt Profile:
 """
 
 import hashlib
-import logging
+import structlog
 from datetime import datetime, timezone
 from io import BytesIO
 from pathlib import Path
@@ -33,7 +33,7 @@ from app.db import models
 
 from .mapping.zugferd_mapper import ZUGFeRDMapper
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class EInvoiceGeneratorService:
@@ -113,7 +113,8 @@ class EInvoiceGeneratorService:
 
         logger.info(
             "einvoice_generate_zugferd_start",
-            extra={"document_id": str(document_id), "profile": profile.value}
+            document_id=str(document_id),
+            profile=profile.value,
         )
 
         # Dokument laden
@@ -170,7 +171,8 @@ class EInvoiceGeneratorService:
             einvoice_doc = existing_einvoice
             logger.info(
                 "einvoice_update_existing",
-                extra={"document_id": str(document_id), "einvoice_id": str(einvoice_doc.id)}
+                document_id=str(document_id),
+                einvoice_id=str(einvoice_doc.id),
             )
         else:
             # Neuen Record erstellen
@@ -193,12 +195,10 @@ class EInvoiceGeneratorService:
 
         logger.info(
             "einvoice_generate_zugferd_success",
-            extra={
-                "document_id": str(document_id),
-                "einvoice_id": str(einvoice_doc.id),
-                "profile": profile.value,
-                "pdf_size_bytes": len(pdf_bytes),
-            }
+            document_id=str(document_id),
+            einvoice_id=str(einvoice_doc.id),
+            profile=profile.value,
+            pdf_size_bytes=len(pdf_bytes),
         )
 
         return pdf_bytes, einvoice_doc.id
@@ -229,7 +229,8 @@ class EInvoiceGeneratorService:
         """
         logger.info(
             "einvoice_generate_xrechnung_start",
-            extra={"document_id": str(document_id), "syntax": syntax.value}
+            document_id=str(document_id),
+            syntax=syntax.value,
         )
 
         # Dokument laden
@@ -290,11 +291,9 @@ class EInvoiceGeneratorService:
 
         logger.info(
             "einvoice_generate_xrechnung_success",
-            extra={
-                "document_id": str(document_id),
-                "einvoice_id": str(einvoice_doc.id),
-                "syntax": syntax.value,
-            }
+            document_id=str(document_id),
+            einvoice_id=str(einvoice_doc.id),
+            syntax=syntax.value,
         )
 
         return xml_content, einvoice_doc.id
@@ -346,7 +345,8 @@ class EInvoiceGeneratorService:
                 except Exception as e:
                     logger.warning(
                         "invoice_data_parse_error",
-                        extra={"document_id": str(document.id), **safe_error_log(e)}
+                        document_id=str(document.id),
+                        **safe_error_log(e),
                     )
 
         return None

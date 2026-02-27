@@ -14,7 +14,7 @@ Vision 2.0 Feature: Predictive Maintenance (Phase 5)
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 import math
 from collections import deque
 from dataclasses import dataclass, field
@@ -26,7 +26,7 @@ from uuid import UUID
 
 import numpy as np
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Type definitions for mypy strict mode
 MetadataValue = Union[str, int, float, bool, None]

@@ -8,7 +8,7 @@ Automated tasks for model lifecycle management:
 - Automatic rollback on degradation
 """
 
-import logging
+import structlog
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
@@ -20,7 +20,7 @@ from app.core.safe_errors import safe_error_detail
 from app.db.database import get_async_session_context
 from app.workers.celery_app import celery_app
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(

@@ -4,7 +4,6 @@ Verwaltet PDF/Bild-Annotationen mit Threading, @-Mentions und Approval-Markierun
 """
 from __future__ import annotations
 
-import logging
 from datetime import datetime
 from typing import Optional, Sequence
 from uuid import UUID

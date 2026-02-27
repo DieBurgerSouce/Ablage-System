@@ -10,7 +10,6 @@ Tasks:
 
 import io
 import json
-import logging
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path

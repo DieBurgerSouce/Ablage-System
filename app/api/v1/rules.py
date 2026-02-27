@@ -11,7 +11,7 @@ REST API für Geschäftsregeln:
 Phase 4 der Strategischen Roadmap (Januar 2026).
 """
 
-import logging
+import structlog
 from datetime import datetime
 from typing import Optional, List, Dict, Union
 
@@ -28,7 +28,7 @@ from app.core.safe_errors import safe_error_detail
 from app.core.jsonb_validators import validate_jsonb_payload
 from app.db.models import User
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 from app.db.models_rules import BusinessRuleModel, RuleExecutionLog, RuleSet
 from app.services.rules import (
     BusinessRulesEngine,

@@ -12,7 +12,7 @@ Vision 2.0 Feature: Erweiterte Integrationen
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 import re
 from datetime import datetime, date
 from decimal import Decimal, InvalidOperation
@@ -22,7 +22,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class Kontenrahmen(str, Enum):

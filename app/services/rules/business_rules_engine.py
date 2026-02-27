@@ -17,7 +17,7 @@ from typing import Optional, List, Dict, Union, Callable
 from uuid import UUID, uuid4
 from enum import Enum
 import re
-import logging
+import structlog
 import operator
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from decimal import Decimal
@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.models import Document, User
 from app.core.types import NestedValue, RuleContextDict, ConditionEvaluationDetails
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # =============================================================================
 # Security: ReDoS Prevention Constants (CWE-95)

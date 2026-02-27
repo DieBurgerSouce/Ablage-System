@@ -18,7 +18,7 @@ SECURITY:
 import re
 import hashlib
 import io
-import logging
+import structlog
 from datetime import datetime, time
 from enum import Enum
 from typing import Optional, Any
@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.db.models import Document, User, Company, DLPPolicyModel, DLPAuditLog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # ==================== Enums ====================

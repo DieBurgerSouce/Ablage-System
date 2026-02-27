@@ -13,7 +13,7 @@ Feinpoliert und durchdacht.
 
 import hashlib
 import hmac
-import logging
+import structlog
 import secrets
 from dataclasses import dataclass
 from enum import Enum
@@ -42,7 +42,7 @@ from app.services.privacy.pii_detection_service import (
     PIISensitivity,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class MaskingStrategy(str, Enum):

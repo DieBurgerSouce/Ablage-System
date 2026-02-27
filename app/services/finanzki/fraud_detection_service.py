@@ -10,7 +10,7 @@ KI-gestuetzte Betrugserkennung mit mehreren Erkennungsmethoden:
 """
 
 import hashlib
-import logging
+import structlog
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -27,7 +27,7 @@ from app.db.models import (
     BankTransaction,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class FraudType(str, Enum):
@@ -126,7 +126,7 @@ class FraudDetectionService:
                 alerts = await analysis_coro
                 results["alerts"].extend(alerts)
             except Exception as e:
-                logger.error(f"Fraud analysis error: {e}")
+                logger.error("fraud_analysis_error", error=str(e))
 
         # Summary berechnen
         for alert in results["alerts"]:

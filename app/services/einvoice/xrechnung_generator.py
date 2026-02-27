@@ -24,7 +24,6 @@ HINWEIS: Dieser Generator erzeugt vollständig konforme XRechnung-XMLs
          im Gegensatz zum vereinfachten Template im einvoice_tasks.py
 """
 
-import logging
 from datetime import date, datetime
 from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum

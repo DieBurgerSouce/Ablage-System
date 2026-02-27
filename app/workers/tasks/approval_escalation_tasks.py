@@ -12,7 +12,7 @@ Feature #3: Approval Workflow Depth
 from __future__ import annotations
 
 import asyncio
-import logging
+import structlog
 from typing import Dict, List, Optional
 from uuid import UUID
 
@@ -30,7 +30,7 @@ from app.db.models_approval_extended import EscalationRule
 from app.db.session import get_sync_session
 from app.workers.celery_app import celery_app
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @celery_app.task(

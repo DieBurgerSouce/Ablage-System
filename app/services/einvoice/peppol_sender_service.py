@@ -18,7 +18,6 @@ SECURITY: Credentials werden aus Environment-Variablen geladen.
 """
 
 import hashlib
-import logging
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone

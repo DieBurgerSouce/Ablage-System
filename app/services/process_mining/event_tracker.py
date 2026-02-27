@@ -12,7 +12,7 @@ Unterstützt:
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 import time
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from datetime import datetime, timedelta
@@ -29,7 +29,7 @@ from app.db.models_process_mining import (
     ActorType,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ProcessEventTracker:

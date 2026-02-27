@@ -11,7 +11,7 @@ Verwaltung von Einwilligungen nach DSGVO:
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from uuid import UUID
@@ -31,7 +31,7 @@ from app.db.models_consent import (
     AuditAction,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ConsentService:

@@ -11,7 +11,7 @@ Erkennt Engpaesse im Dokumenten-Verarbeitungsprozess:
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional
@@ -28,7 +28,7 @@ from app.db.models_process_mining import (
     ActorType,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class BottleneckDetector:

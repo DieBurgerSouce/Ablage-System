@@ -9,7 +9,7 @@ Phase 2.1: Multi-Level Trust für autonome KI-Aktionen:
 
 from __future__ import annotations
 
-import logging
+import structlog
 from datetime import timedelta
 from typing import Any, Dict, Optional
 from uuid import UUID
@@ -25,7 +25,7 @@ from app.db.models import (
     Company,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # ============================================================================
@@ -119,7 +119,7 @@ def process_due_proposals(
                 """Generische Ausführung (Logging)."""
                 logger.info(
                     f"Generische Ausführung für {target_id}",
-                    extra={"value": value},
+                    value=value,
                 )
                 return True
 

@@ -13,7 +13,6 @@ import asyncio
 import base64
 import hashlib
 import json
-import logging
 import os
 import shutil
 from app.core.safe_errors import safe_error_detail, safe_error_log
@@ -169,11 +168,12 @@ class TrainingDatasetExportService:
         export_id = f"export_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid4().hex[:8]}"
         start_time = datetime.now()
 
-        logger.info(f"Starte Dataset-Export: {export_id}", extra={
-            "export_id": export_id,
-            "format": config.format,
-            "filter_verified_only": config.filter_verified_only
-        })
+        logger.info(
+            f"Starte Dataset-Export: {export_id}",
+            export_id=export_id,
+            format=config.format,
+            filter_verified_only=config.filter_verified_only,
+        )
 
         try:
             # 1. Samples laden und filtern
@@ -242,11 +242,12 @@ class TrainingDatasetExportService:
             )
             files_created.append(metadata_file)
 
-            logger.info(f"Dataset-Export abgeschlossen: {export_id}", extra={
-                "export_id": export_id,
-                "total_samples": stats.total_samples,
-                "files_created": len(files_created)
-            })
+            logger.info(
+                f"Dataset-Export abgeschlossen: {export_id}",
+                export_id=export_id,
+                total_samples=stats.total_samples,
+                files_created=len(files_created),
+            )
 
             return ExportResult(
                 success=True,
@@ -1077,10 +1078,11 @@ class SuryaDatasetExporter:
         self.config = config or SuryaExportConfig()
         self.config.validate()
 
-        logger.info("surya_dataset_exporter_initialized", extra={
-            "output_dir": self.config.output_dir,
-            "umlaut_weight": self.config.umlaut_weight_multiplier
-        })
+        logger.info(
+            "surya_dataset_exporter_initialized",
+            output_dir=self.config.output_dir,
+            umlaut_weight=self.config.umlaut_weight_multiplier,
+        )
 
     async def export_for_surya_training(
         self,
@@ -1103,7 +1105,7 @@ class SuryaDatasetExporter:
         start_time = datetime.now()
         version = f"v{start_time.strftime('%Y%m%d_%H%M%S')}"
 
-        logger.info("surya_export_started", extra={"version": version})
+        logger.info("surya_export_started", version=version)
 
         # 1. Hole verifizierte Training Samples
         samples = await self._fetch_verified_samples()
@@ -1205,13 +1207,14 @@ class SuryaDatasetExporter:
             version=version,
         )
 
-        logger.info("surya_export_completed", extra={
-            "version": version,
-            "total": result.total_samples,
-            "train": result.train_samples,
-            "umlaut_samples": result.samples_with_umlauts,
-            "duration_s": result.duration_seconds
-        })
+        logger.info(
+            "surya_export_completed",
+            version=version,
+            total=result.total_samples,
+            train=result.train_samples,
+            umlaut_samples=result.samples_with_umlauts,
+            duration_s=result.duration_seconds,
+        )
 
         return result
 
@@ -1242,7 +1245,7 @@ class SuryaDatasetExporter:
         ]
 
         if not umlaut_samples:
-            logger.warning("no_umlaut_samples_found", extra={"min_words": min_umlaut_words})
+            logger.warning("no_umlaut_samples_found", min_words=min_umlaut_words)
             return SuryaExportResult(
                 output_dir=self.config.output_dir,
                 train_samples=0,
@@ -1314,7 +1317,7 @@ class SuryaDatasetExporter:
         result = await self.db.execute(query)
         samples = list(result.scalars().all())
 
-        logger.debug("verified_samples_fetched", extra={"count": len(samples)})
+        logger.debug("verified_samples_fetched", count=len(samples))
         return samples
 
     async def _fetch_surya_corrections(self, days: int) -> List[OCRTrainingSample]:
@@ -1370,10 +1373,11 @@ class SuryaDatasetExporter:
             })()
             pseudo_samples.append(pseudo)
 
-        logger.debug("surya_corrections_fetched", extra={
-            "count": len(pseudo_samples),
-            "days": days
-        })
+        logger.debug(
+            "surya_corrections_fetched",
+            count=len(pseudo_samples),
+            days=days,
+        )
 
         return pseudo_samples
 
@@ -1547,10 +1551,11 @@ class SuryaDatasetExporter:
         start_time = dt.now()
         version = f"business_weighted_{start_time.strftime('%Y%m%d_%H%M%S')}"
 
-        logger.info("surya_business_weighted_export_started", extra={
-            "version": version,
-            "oversampling_factor": oversampling_factor
-        })
+        logger.info(
+            "surya_business_weighted_export_started",
+            version=version,
+            oversampling_factor=oversampling_factor,
+        )
 
         # 1. Hole Business Document Profiles für Gewichtung
         from app.db.models import BusinessDocumentProfile
@@ -1703,13 +1708,14 @@ class SuryaDatasetExporter:
             version=version,
         )
 
-        logger.info("surya_business_weighted_export_completed", extra={
-            "version": version,
-            "unique_samples": len(unique_samples),
-            "total_exported": len(all_exported),
-            "umlaut_samples": result.samples_with_umlauts,
-            "duration_s": result.duration_seconds
-        })
+        logger.info(
+            "surya_business_weighted_export_completed",
+            version=version,
+            unique_samples=len(unique_samples),
+            total_exported=len(all_exported),
+            umlaut_samples=result.samples_with_umlauts,
+            duration_s=result.duration_seconds,
+        )
 
         return result
 

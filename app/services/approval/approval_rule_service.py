@@ -9,7 +9,7 @@ Enterprise Feature: Verwaltet Regeln für automatisches Approval-Routing mit:
 
 from __future__ import annotations
 
-import logging
+import structlog
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Dict, List, Optional, Sequence, Union
@@ -23,7 +23,7 @@ from app.db.models import (
     ApprovalRuleType,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -115,8 +115,10 @@ class ApprovalRuleService:
         await self.db.refresh(rule)
 
         logger.info(
-            f"Approval-Regel erstellt: {name} (ID: {rule.id}) "
-            f"für Company {company_id}"
+            "approval_rule_created",
+            name=name,
+            rule_id=str(rule.id),
+            company_id=str(company_id),
         )
 
         return rule
@@ -204,7 +206,11 @@ class ApprovalRuleService:
         await self.db.commit()
         await self.db.refresh(rule)
 
-        logger.info(f"Approval-Regel aktualisiert: {rule.name} (ID: {rule_id})")
+        logger.info(
+            "approval_rule_updated",
+            rule_name=rule.name,
+            rule_id=str(rule_id),
+        )
 
         return rule
 
@@ -237,7 +243,11 @@ class ApprovalRuleService:
         await self.db.delete(rule)
         await self.db.commit()
 
-        logger.info(f"Approval-Regel gelöscht: {rule.name} (ID: {rule_id})")
+        logger.info(
+            "approval_rule_deleted",
+            rule_name=rule.name,
+            rule_id=str(rule_id),
+        )
 
         return True
 
@@ -454,8 +464,9 @@ class ApprovalRuleService:
             created_rules.append(rule)
 
         logger.info(
-            f"Standard-Genehmigungsregeln erstellt für Company {company_id}: "
-            f"{len(created_rules)} Regeln"
+            "default_approval_rules_created",
+            company_id=str(company_id),
+            count=len(created_rules),
         )
 
         return created_rules

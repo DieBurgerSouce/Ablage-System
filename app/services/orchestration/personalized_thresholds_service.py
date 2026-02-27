@@ -20,7 +20,6 @@ TRUE Enterprise: Das System passt sich dem User an, nicht umgekehrt.
 
 from __future__ import annotations
 
-import logging
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone

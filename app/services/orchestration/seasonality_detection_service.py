@@ -21,7 +21,6 @@ TRUE Enterprise: Das System versteht KONTEXT, nicht nur Zahlen.
 
 from __future__ import annotations
 
-import logging
 import math
 import statistics
 import threading

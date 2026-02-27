@@ -11,7 +11,7 @@ Generiert Automatisierungsvorschläge basierend auf Process Mining:
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from collections import defaultdict
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -30,7 +30,7 @@ from app.db.models_process_mining import (
     SuggestionType,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class AutomationSuggester:

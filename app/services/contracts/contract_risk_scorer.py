@@ -13,7 +13,7 @@ Bewertet Vertragsrisiken basierend auf:
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from datetime import date
 from decimal import Decimal
 from typing import Optional, List, Dict, Any
@@ -28,7 +28,7 @@ from app.db.models_contract import (
     ContractStatus,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ContractRiskScorer:
@@ -128,7 +128,12 @@ class ContractRiskScorer:
             "recommendations": self._generate_recommendations(factors, final_score),
         }
 
-        logger.info(f"Risiko-Score berechnet: {final_score} ({risk_category}) für Vertrag {contract.id}")
+        logger.info(
+            "contract_risk_score_calculated",
+            score=final_score,
+            category=risk_category,
+            contract_id=str(contract.id),
+        )
 
         return result
 

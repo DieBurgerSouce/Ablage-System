@@ -1,8 +1,8 @@
 """Celery tasks for async processing."""
 
-import logging
+import structlog
 
-_import_logger = logging.getLogger(__name__)
+_import_logger = structlog.get_logger(__name__)
 
 from app.workers.tasks.ocr_tasks import (
     process_document_task,

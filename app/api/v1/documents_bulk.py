@@ -12,7 +12,7 @@ Endpunkte für:
 Alle Operationen sind transaktionssicher und unterstützen dry_run Modus.
 """
 
-import logging
+import structlog
 from typing import List, Optional
 from uuid import UUID
 
@@ -33,7 +33,7 @@ from app.db.schemas import (
 from app.services.document_services.batch_service import get_batch_service
 from app.core.safe_errors import safe_error_log
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/documents/bulk", tags=["Bulk Operations"])
 

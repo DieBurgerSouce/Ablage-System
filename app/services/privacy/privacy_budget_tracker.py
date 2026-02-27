@@ -9,7 +9,7 @@ Vision 2.0 Feature: Anonymized Analytics (Phase 5)
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List, Optional, Union
@@ -22,7 +22,7 @@ from pydantic import BaseModel
 from app.core.config import settings
 from app.core.safe_errors import safe_error_log
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Type definitions for mypy strict mode
 MetadataValue = Union[str, int, float, bool, None]

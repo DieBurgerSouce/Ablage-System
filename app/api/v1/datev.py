@@ -12,7 +12,7 @@ Endpunkte für:
 Standards: DATEV Buchungsstapel CSV Format (Version 700)
 """
 
-import logging
+import structlog
 import urllib.parse
 import uuid as uuid_module
 from datetime import date, datetime
@@ -45,7 +45,7 @@ from app.db import models
 from app.db.database import get_async_db
 from app.services.datev import get_datev_export_service, SKR03, SKR04
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/datev", tags=["DATEV Export"])
 

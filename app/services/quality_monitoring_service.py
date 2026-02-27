@@ -14,7 +14,7 @@ Author: Claude Code
 Created: 2024-12
 """
 
-import logging
+import structlog
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class AlertSeverity(str, Enum):

@@ -12,7 +12,6 @@ Referenz: ZUGFeRD 2.3.3 / Factur-X 1.0 / PDF/A-3 (ISO 19005-3)
 
 import hashlib
 import io
-import logging
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path

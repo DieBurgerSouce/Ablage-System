@@ -10,7 +10,6 @@ Tasks:
 """
 
 import io
-import logging
 from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID

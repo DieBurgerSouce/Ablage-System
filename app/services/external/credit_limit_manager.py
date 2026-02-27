@@ -12,7 +12,7 @@ Vision 2.0 Feature: Erweiterte Integrationen
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Optional, Dict, Any, List
@@ -25,7 +25,7 @@ from pydantic import BaseModel, Field
 
 from app.services.external.credit_scoring_service import CreditScoringService, RiskLevel
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class LimitChangeReason(str, Enum):
@@ -259,7 +259,11 @@ class CreditLimitManager:
         await self.db.flush()
 
         logger.info(
-            f"Credit limit updated for {entity_id}: {old_limit} -> {new_limit} ({change_percent:+.1%})"
+            "credit_limit_updated",
+            entity_id=str(entity_id),
+            old_limit=float(old_limit),
+            new_limit=float(new_limit),
+            change_percent=f"{change_percent:+.1%}",
         )
 
         return {
@@ -352,7 +356,11 @@ class CreditLimitManager:
         await self.db.flush()
 
         logger.info(
-            f"Manual credit limit adjustment for {entity_id}: {old_limit} -> {new_limit} by {user_id}"
+            "manual_credit_limit_adjusted",
+            entity_id=str(entity_id),
+            old_limit=float(old_limit),
+            new_limit=float(new_limit),
+            adjusted_by=str(user_id),
         )
 
         return {
@@ -538,7 +546,7 @@ class CreditLimitManager:
                 changes.append(change)
                 updated += 1
             except Exception as e:
-                logger.error(f"Batch limit update failed for {entity_id}: {e}")
+                logger.error("batch_limit_update_failed", entity_id=str(entity_id), error=str(e))
                 errors += 1
 
         await self.db.commit()

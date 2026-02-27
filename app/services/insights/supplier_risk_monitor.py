@@ -13,7 +13,7 @@ Vision 2.0 Phase 2 - Proaktive Insights
 Feinpoliert und durchdacht - Deutsche Praezision.
 """
 
-import logging
+import structlog
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from enum import Enum
@@ -24,7 +24,7 @@ from prometheus_client import Counter, Histogram
 
 from app.core.safe_errors import safe_error_log
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # =============================================================================
@@ -460,7 +460,8 @@ class SupplierRiskMonitor:
             handelsregister_queries.labels(status="error").inc()
             logger.warning(
                 "handelsregister_check_failed",
-                extra={"registry_number": registry_number, **safe_error_log(e)},
+                registry_number=registry_number,
+                **safe_error_log(e),
             )
 
         return factors

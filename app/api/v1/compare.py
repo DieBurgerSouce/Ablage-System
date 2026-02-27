@@ -10,7 +10,7 @@ Ermöglicht:
 - Ähnliche Dokumente finden
 """
 
-import logging
+import structlog
 from typing import Dict, List, Optional
 
 from app.core.types import JSONDict, JSONValue
@@ -28,7 +28,7 @@ from app.services.document_comparison_service import (
     DocumentComparisonService,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/compare", tags=["Document Comparison"])
 

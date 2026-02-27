@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
+import structlog
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timezone
 from enum import Enum
@@ -41,7 +41,7 @@ import redis.asyncio as redis
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class EventType(str, Enum):
@@ -426,13 +426,12 @@ class EventBus:
                     self._metrics["handlers_executed"] += 1
                 except Exception as e:
                     self._metrics["handler_errors"] += 1
-                    logger.error(
-                        f"Fehler bei Handler für {event_type}: {e}",
-                        exc_info=True
+                    logger.exception(
+                        f"Fehler bei Handler für {event_type}: {e}"
                     )
 
         except Exception as e:
-            logger.error(f"Fehler beim Verarbeiten der Nachricht: {e}", exc_info=True)
+            logger.exception(f"Fehler beim Verarbeiten der Nachricht: {e}")
 
     def _match_pattern(self, pattern: str, event_type: str) -> bool:
         """

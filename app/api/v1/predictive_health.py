@@ -12,7 +12,7 @@ Vision 2.0 Feature: Predictive Maintenance (Phase 5)
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from typing import Dict, List, Optional, Union
 from uuid import UUID
 
@@ -42,7 +42,7 @@ from app.services.predictive.predictive_alerts_service import (
     get_predictive_alerts_service,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/health/predictions", tags=["Predictive Health"])
 

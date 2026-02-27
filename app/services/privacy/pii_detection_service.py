@@ -18,7 +18,7 @@ Feinpoliert und durchdacht.
 """
 
 import re
-import logging
+import structlog
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Dict, Optional, Set, Tuple, Union
@@ -32,7 +32,7 @@ MetadataDict = Dict[str, MetadataValue]
 # Type alias for JSON-like structures
 JSONValue = Union[str, int, float, bool, None, List["JSONValue"], Dict[str, "JSONValue"]]
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class PIIType(str, Enum):

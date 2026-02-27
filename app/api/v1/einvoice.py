@@ -13,7 +13,7 @@ Standards: ZUGFeRD 2.x, XRechnung 3.0.2
 """
 
 import hashlib
-import logging
+import structlog
 from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID, uuid4
@@ -51,7 +51,7 @@ from app.services.einvoice.generator_service import get_generator_service
 from app.services.einvoice.parser_service import get_parser_service
 from app.core.safe_errors import safe_error_log
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/einvoice", tags=["E-Invoice"])
 

@@ -14,7 +14,7 @@ Phase 3.2 der Strategischen Roadmap (Januar 2026).
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 from uuid import UUID
-import logging
+import structlog
 
 from sqlalchemy import select, and_, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +30,7 @@ from app.db.models_delegation import (
 )
 from app.db.models import User
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class DelegationService:

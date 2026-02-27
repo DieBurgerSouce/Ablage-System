@@ -17,12 +17,11 @@ Feinpoliert und durchdacht - Enterprise-grade PII protection.
 from __future__ import annotations
 
 import re
-import logging
+import structlog
 import functools
 from typing import Callable, Dict, List, Optional, Set, Union
-import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # =============================================================================

@@ -8,7 +8,7 @@ Erweiterte Risikoanalyse mit:
 - Externe Datenquellen
 """
 
-import logging
+import structlog
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
@@ -24,7 +24,7 @@ from app.db.models import (
     InvoiceTracking,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class TrendDirection(str, Enum):

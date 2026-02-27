@@ -9,7 +9,7 @@ Vision 2.0 Feature: Anonymized Analytics (Phase 5)
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from typing import Dict, List, Optional, Union
 from uuid import UUID
 
@@ -35,7 +35,7 @@ from app.services.privacy.privacy_budget_tracker import (
     get_budget_tracker,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/privacy", tags=["Privacy Analytics"])
 

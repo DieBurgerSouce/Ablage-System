@@ -12,7 +12,7 @@ Integriert mit Prometheus für Metriken-Export.
 """
 
 import asyncio
-import logging
+import structlog
 import os
 import platform
 import time
@@ -24,7 +24,7 @@ from typing import Any, Optional
 import psutil
 from prometheus_client import Counter, Gauge, Histogram
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # =============================================================================

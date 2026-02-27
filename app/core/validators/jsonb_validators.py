@@ -12,10 +12,10 @@ Feinpoliert und durchdacht - Enterprise-grade JSONB validation.
 from __future__ import annotations
 
 import re
-import logging
+import structlog
 from typing import Any, Dict, List, Optional, Set
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class JSONBValidationError(ValueError):

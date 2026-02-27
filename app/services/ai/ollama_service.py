@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
+import structlog
 from dataclasses import dataclass
 from typing import Optional, Union
 
@@ -19,7 +19,7 @@ import httpx
 
 from app.core.config import settings
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -127,7 +127,7 @@ class OllamaService:
             response = await client.get("/api/tags")
             return response.status_code == 200
         except Exception as e:
-            logger.warning(f"Ollama nicht verfügbar: {e}")
+            logger.warning("ollama_not_available", error=str(e))
             return False
 
     async def list_models(self) -> list[str]:
@@ -144,7 +144,7 @@ class OllamaService:
             data = response.json()
             return [model["name"] for model in data.get("models", [])]
         except Exception as e:
-            logger.error(f"Fehler beim Abrufen der Modelle: {e}")
+            logger.error("ollama_list_models_failed", error=str(e))
             return []
 
     async def generate(
@@ -199,13 +199,13 @@ class OllamaService:
                 return data.get("message", {}).get("content", "")
 
             except httpx.HTTPStatusError as e:
-                logger.error(f"HTTP-Fehler bei Ollama (Versuch {attempt + 1}): {e}")
+                logger.error("ollama_http_error", attempt=attempt + 1, error=str(e))
                 if attempt == self.config.max_retries - 1:
                     raise
                 await asyncio.sleep(2 ** attempt)
 
             except httpx.RequestError as e:
-                logger.error(f"Verbindungsfehler zu Ollama (Versuch {attempt + 1}): {e}")
+                logger.error("ollama_connection_error", attempt=attempt + 1, error=str(e))
                 if attempt == self.config.max_retries - 1:
                     raise
                 await asyncio.sleep(2 ** attempt)
@@ -274,7 +274,7 @@ Antworte NUR mit dem JSON-Objekt, keine Erklärungen."""
             )
 
         except Exception as e:
-            logger.error(f"Fehler bei NER-Extraktion: {e}")
+            logger.error("ollama_ner_extraction_failed", error=str(e))
             return ExtractedEntities(
                 persons=[],
                 organizations=[],
@@ -353,7 +353,7 @@ Antworte NUR mit dem JSON-Objekt."""
             )
 
         except Exception as e:
-            logger.error(f"Fehler bei Vertragsanalyse: {e}")
+            logger.error("ollama_contract_analysis_failed", error=str(e))
             return ContractAnalysis()
 
     async def categorize_document(
@@ -432,7 +432,7 @@ Antworte NUR mit dem JSON-Objekt."""
             return (category, min(max(confidence, 0.0), 1.0))
 
         except Exception as e:
-            logger.error(f"Fehler bei Dokumentenkategorisierung: {e}")
+            logger.error("ollama_categorization_failed", error=str(e))
             return (available_categories[0], 0.3)
 
     async def summarize(
@@ -474,7 +474,7 @@ Antworte NUR mit der Zusammenfassung, keine Einleitung."""
             return response.strip()
 
         except Exception as e:
-            logger.error(f"Fehler bei Textzusammenfassung: {e}")
+            logger.error("ollama_summarization_failed", error=str(e))
             # Fallback: Erste X Zeichen
             return text[:200] + "..." if len(text) > 200 else text
 
@@ -537,7 +537,7 @@ Antworte NUR mit dem JSON-Objekt."""
                 return {}
 
         except Exception as e:
-            logger.error(f"Fehler bei Key-Value-Extraktion: {e}")
+            logger.error("ollama_kv_extraction_failed", error=str(e))
             return {}
 
     async def answer_question(
@@ -582,7 +582,7 @@ Antwort:"""
             return response.strip()
 
         except Exception as e:
-            logger.error(f"Fehler bei Fragebeantwortung: {e}")
+            logger.error("ollama_qa_failed", error=str(e))
             return "Entschuldigung, die Frage konnte nicht beantwortet werden."
 
 

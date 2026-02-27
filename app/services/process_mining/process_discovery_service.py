@@ -11,7 +11,7 @@ Erkennt Prozessflüsse aus Event-Logs:
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Tuple
@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models_process_mining import ProcessEvent, EventType, ActorType
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ProcessDiscoveryService:

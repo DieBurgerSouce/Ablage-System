@@ -20,8 +20,8 @@ try:
     __all__.append("SuryaDoclingAgent")
 except ImportError as e:
     # surya-ocr not installed or incompatible version
-    import logging
-    logging.getLogger(__name__).warning(f"SuryaDoclingAgent nicht verfügbar: {e}")
+    import structlog
+    structlog.get_logger(__name__).warning("SuryaDoclingAgent nicht verfügbar", error=str(e))
 
 # SuryaDocling Enhanced - CPU-based, requires surya-ocr>=0.17.0 and docling
 try:
@@ -29,8 +29,8 @@ try:
     __all__.append("SuryaDoclingEnhancedAgent")
 except ImportError as e:
     # surya-ocr>=0.17.0 not installed (new API required)
-    import logging
-    logging.getLogger(__name__).warning(f"SuryaDoclingEnhancedAgent nicht verfügbar: {e}")
+    import structlog
+    structlog.get_logger(__name__).warning("SuryaDoclingEnhancedAgent nicht verfügbar", error=str(e))
 
 # DoclingLayoutAnalyzer - CPU-based, requires docling
 try:
@@ -38,8 +38,8 @@ try:
     __all__.append("DoclingLayoutAnalyzer")
 except ImportError as e:
     # docling not installed
-    import logging
-    logging.getLogger(__name__).warning(f"DoclingLayoutAnalyzer nicht verfügbar: {e}")
+    import structlog
+    structlog.get_logger(__name__).warning("DoclingLayoutAnalyzer nicht verfügbar", error=str(e))
 
 # Conditionally import GPU-based agents
 

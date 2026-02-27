@@ -14,7 +14,7 @@ Feinpoliert und durchdacht - Deutsche Dokumente mit hoechster Genauigkeit.
 
 from __future__ import annotations
 
-import logging
+import structlog
 import re
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
@@ -23,7 +23,7 @@ from typing import Dict, List, Optional, Set, Tuple
 from app.agents.ocr.models.layout_models import TableCell, TableStructure
 from app.api.schemas.extracted_data import ExtractedDocumentType, ExtractedLineItem
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # =============================================================================

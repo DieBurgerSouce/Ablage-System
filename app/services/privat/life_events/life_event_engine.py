@@ -5,7 +5,6 @@ Proaktiver Lebensberater: Umzug, Heirat, Kind, Jobwechsel
 """
 from __future__ import annotations
 
-import logging
 from datetime import datetime
 from typing import Optional, Sequence
 from uuid import UUID

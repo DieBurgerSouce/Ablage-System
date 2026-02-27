@@ -14,7 +14,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import logging
 from typing import Dict, List, Optional
 from uuid import UUID
 
@@ -30,7 +29,6 @@ from app.db.session import get_sync_session
 from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
-_std_logger = logging.getLogger(__name__)
 
 
 @celery_app.task(

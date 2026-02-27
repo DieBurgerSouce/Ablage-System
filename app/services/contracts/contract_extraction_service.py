@@ -18,7 +18,7 @@ Feinpoliert und durchdacht.
 """
 
 import re
-import logging
+import structlog
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Optional, Dict, List, Any, Tuple
@@ -37,7 +37,7 @@ from app.db.models_contract import (
     ObligationStatus,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ContractExtractionService:
@@ -215,8 +215,9 @@ class ContractExtractionService:
         extraction_result["confidence"] = self._calculate_confidence(extraction_result)
 
         logger.info(
-            f"Vertragsextraktion abgeschlossen: Typ={extraction_result['contract_type']}, "
-            f"Confidence={extraction_result['confidence']:.2%}"
+            "contract_extraction_completed",
+            contract_type=str(extraction_result["contract_type"]),
+            confidence=round(extraction_result["confidence"], 4),
         )
 
         return extraction_result
@@ -290,7 +291,11 @@ class ContractExtractionService:
         await self.db.commit()
         await self.db.refresh(contract)
 
-        logger.info(f"Contract erstellt: {contract.id}, Titel: {contract.title}")
+        logger.info(
+            "contract_created",
+            contract_id=str(contract.id),
+            title=contract.title,
+        )
         return contract
 
     def _normalize_text(self, text: str) -> str:

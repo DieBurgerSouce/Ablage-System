@@ -20,7 +20,6 @@ TRUE Enterprise-Level: Der User sieht die Zukunft BEVOR er handelt.
 from __future__ import annotations
 
 import asyncio
-import logging
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone

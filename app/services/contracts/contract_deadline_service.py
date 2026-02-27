@@ -13,7 +13,7 @@ Verwaltet Vertragsfristen und wichtige Termine:
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from datetime import date, datetime, timedelta
 from typing import Optional, List, Dict, Any
 from uuid import UUID
@@ -27,7 +27,7 @@ from app.db.models_contract import (
     ContractStatus,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ContractDeadlineService:
@@ -117,7 +117,11 @@ class ContractDeadlineService:
         await self.db.commit()
         await self.db.refresh(deadline)
 
-        logger.info(f"Deadline erstellt: {deadline.id}, Typ: {deadline_type}")
+        logger.info(
+            "deadline_created",
+            deadline_id=str(deadline.id),
+            deadline_type=deadline_type,
+        )
         return deadline
 
     async def get_deadline(self, deadline_id: UUID) -> Optional[ContractDeadline]:
@@ -285,7 +289,7 @@ class ContractDeadlineService:
         await self.db.commit()
         await self.db.refresh(deadline)
 
-        logger.info(f"Deadline erledigt: {deadline_id}")
+        logger.info("deadline_completed", deadline_id=str(deadline_id))
         return deadline
 
     async def update_deadline(
@@ -319,7 +323,7 @@ class ContractDeadlineService:
         await self.db.commit()
         await self.db.refresh(deadline)
 
-        logger.info(f"Deadline aktualisiert: {deadline_id}")
+        logger.info("deadline_updated", deadline_id=str(deadline_id))
         return deadline
 
     async def delete_deadline(self, deadline_id: UUID) -> bool:
@@ -339,7 +343,7 @@ class ContractDeadlineService:
         await self.db.delete(deadline)
         await self.db.commit()
 
-        logger.info(f"Deadline gelöscht: {deadline_id}")
+        logger.info("deadline_deleted", deadline_id=str(deadline_id))
         return True
 
     async def get_deadlines_needing_reminder(
@@ -520,7 +524,11 @@ class ContractDeadlineService:
             )
             deadlines.append(deadline)
 
-        logger.info(f"{len(deadlines)} Deadlines für Vertrag {contract.id} erstellt")
+        logger.info(
+            "contract_deadlines_created",
+            count=len(deadlines),
+            contract_id=str(contract.id),
+        )
         return deadlines
 
     async def get_statistics(

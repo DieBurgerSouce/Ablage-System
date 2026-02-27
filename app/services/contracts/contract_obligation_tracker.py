@@ -12,7 +12,7 @@ Verwaltet Vertragspflichten und -verpflichtungen:
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from datetime import date, datetime, timedelta
 from typing import Optional, List, Dict, Any
 from uuid import UUID
@@ -29,7 +29,7 @@ from app.db.models_contract import (
     RecurrencePattern,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ContractObligationTracker:
@@ -125,7 +125,11 @@ class ContractObligationTracker:
         await self.db.commit()
         await self.db.refresh(obligation)
 
-        logger.info(f"Obligation erstellt: {obligation.id}, Vertrag: {contract_id}")
+        logger.info(
+            "obligation_created",
+            obligation_id=str(obligation.id),
+            contract_id=str(contract_id),
+        )
         return obligation
 
     async def get_obligation(self, obligation_id: UUID) -> Optional[ContractObligation]:
@@ -321,12 +325,12 @@ class ContractObligationTracker:
                     company_id=obligation.company_id,
                 )
                 self.db.add(new_obligation)
-                logger.info(f"Nächste Occurrence erstellt für: {next_date}")
+                logger.info("obligation_next_occurrence_created", next_date=str(next_date))
 
         await self.db.commit()
         await self.db.refresh(obligation)
 
-        logger.info(f"Obligation erfuellt: {obligation_id}")
+        logger.info("obligation_fulfilled", obligation_id=str(obligation_id))
         return obligation
 
     async def mark_as_overdue(self, obligation_id: UUID) -> ContractObligation:
@@ -348,7 +352,7 @@ class ContractObligationTracker:
         await self.db.commit()
         await self.db.refresh(obligation)
 
-        logger.info(f"Obligation als überfällig markiert: {obligation_id}")
+        logger.info("obligation_marked_overdue", obligation_id=str(obligation_id))
         return obligation
 
     async def assign_to_user(
@@ -375,7 +379,11 @@ class ContractObligationTracker:
         await self.db.commit()
         await self.db.refresh(obligation)
 
-        logger.info(f"Obligation {obligation_id} zugewiesen an: {assignee_id}")
+        logger.info(
+            "obligation_assigned",
+            obligation_id=str(obligation_id),
+            assignee_id=str(assignee_id),
+        )
         return obligation
 
     async def update_obligation(
@@ -410,7 +418,7 @@ class ContractObligationTracker:
         await self.db.commit()
         await self.db.refresh(obligation)
 
-        logger.info(f"Obligation aktualisiert: {obligation_id}")
+        logger.info("obligation_updated", obligation_id=str(obligation_id))
         return obligation
 
     async def delete_obligation(self, obligation_id: UUID) -> bool:
@@ -430,7 +438,7 @@ class ContractObligationTracker:
         await self.db.delete(obligation)
         await self.db.commit()
 
-        logger.info(f"Obligation gelöscht: {obligation_id}")
+        logger.info("obligation_deleted", obligation_id=str(obligation_id))
         return True
 
     async def get_obligations_needing_reminder(
@@ -536,7 +544,7 @@ class ContractObligationTracker:
 
         if marked:
             await self.db.commit()
-            logger.info(f"{len(marked)} Obligations als überfällig markiert")
+            logger.info("obligations_marked_overdue", count=len(marked))
 
         return marked
 

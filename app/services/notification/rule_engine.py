@@ -14,7 +14,6 @@ Features:
 from __future__ import annotations
 
 import asyncio
-import logging
 import operator
 import re
 import threading

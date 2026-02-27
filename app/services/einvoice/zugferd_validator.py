@@ -13,7 +13,6 @@ Referenz: ZUGFeRD 2.3.3 / EN16931 / XRechnung 3.0.2
 """
 
 import hashlib
-import logging
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone

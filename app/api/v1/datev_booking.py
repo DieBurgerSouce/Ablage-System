@@ -11,7 +11,7 @@ Vision 2.0 Feature: Erweiterte Integrationen
 Feinpoliert und durchdacht.
 """
 
-import logging
+import structlog
 from datetime import date
 from decimal import Decimal
 from typing import Optional, List, Tuple
@@ -35,7 +35,7 @@ from app.services.datev.scan_to_booking_orchestrator import (
     get_scan_to_booking_orchestrator,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/datev/bookings", tags=["DATEV Buchungsvorschläge"])
 

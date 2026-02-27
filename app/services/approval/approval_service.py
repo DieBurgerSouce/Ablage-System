@@ -9,7 +9,6 @@ Enterprise Feature: Verwaltet Genehmigungsanfragen mit:
 
 from __future__ import annotations
 
-import logging
 import structlog
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -165,8 +164,12 @@ class ApprovalService:
         await self.db.refresh(request)
 
         logger.info(
-            f"Genehmigungsanfrage erstellt: {title} (ID: {request.id}) "
-            f"für {entity_type}/{entity_id}, {len(approval_chain)} Schritte"
+            "approval_request_created",
+            title=title,
+            request_id=str(request.id),
+            entity_type=entity_type,
+            entity_id=str(entity_id),
+            steps=len(approval_chain),
         )
 
         return request
@@ -200,7 +203,9 @@ class ApprovalService:
 
         if not matched_rules:
             logger.debug(
-                f"Keine Genehmigungsregel für {entity_type}/{entity_id}"
+                "no_approval_rule_found",
+                entity_type=entity_type,
+                entity_id=str(entity_id),
             )
             return None
 
@@ -235,7 +240,9 @@ class ApprovalService:
         )
 
         logger.info(
-            f"Genehmigungsanfrage aus Regel '{rule.name}' erstellt: {request.id}"
+            "approval_request_created_from_rule",
+            rule_name=rule.name,
+            request_id=str(request.id),
         )
 
         return request
@@ -424,8 +431,10 @@ class ApprovalService:
         await self.db.refresh(request)
 
         logger.info(
-            f"Genehmigung erteilt für Anfrage {request_id} "
-            f"von User {user_id}: {message}"
+            "approval_granted",
+            request_id=str(request_id),
+            user_id=str(user_id),
+            message=message,
         )
 
         return ApprovalDecision(
@@ -511,7 +520,10 @@ class ApprovalService:
         await self.db.refresh(request)
 
         logger.info(
-            f"Anfrage {request_id} abgelehnt von User {user_id}: {notes}"
+            "approval_rejected",
+            request_id=str(request_id),
+            user_id=str(user_id),
+            notes=notes,
         )
 
         return ApprovalDecision(
@@ -573,7 +585,10 @@ class ApprovalService:
         await self.db.refresh(request)
 
         logger.info(
-            f"Genehmigung {request_id} delegiert von {user_id} an {delegate_to_id}"
+            "approval_delegated",
+            request_id=str(request_id),
+            from_user_id=str(user_id),
+            to_user_id=str(delegate_to_id),
         )
 
         return ApprovalDecision(
@@ -619,8 +634,9 @@ class ApprovalService:
         # Log each escalation
         for request_id, due_date in overdue_info:
             logger.warning(
-                f"Genehmigungsanfrage {request_id} eskaliert - "
-                f"Fällig seit {due_date}"
+                "approval_request_escalated",
+                request_id=str(request_id),
+                due_date=str(due_date),
             )
 
         # Bulk UPDATE instead of fetch-and-loop pattern
@@ -640,7 +656,7 @@ class ApprovalService:
         await self.db.commit()
 
         if count > 0:
-            logger.info(f"{count} überfällige Genehmigungen eskaliert")
+            logger.info("overdue_approvals_escalated", count=count)
 
         return count
 
@@ -837,7 +853,12 @@ class ApprovalService:
         await self.db.commit()
         await self.db.refresh(request)
 
-        logger.info(f"Anfrage {request_id} storniert von User {user_id}: {reason}")
+        logger.info(
+            "approval_cancelled",
+            request_id=str(request_id),
+            user_id=str(user_id),
+            reason=reason,
+        )
 
         return ApprovalDecision(
             success=True,
@@ -1054,7 +1075,7 @@ class ApprovalService:
         request = await self.get_request(request_id, company_id=company_id)
 
         if not request:
-            logger.warning(f"Anfrage {request_id} nicht gefunden für Eskalation")
+            logger.warning("approval_request_not_found_for_escalation", request_id=str(request_id))
             return False
 
         if request.status != ApprovalStatus.PENDING:
@@ -1161,7 +1182,7 @@ class ApprovalService:
         step = await self.get_step(step_id, company_id=company_id)
 
         if not step:
-            logger.warning(f"Step {step_id} nicht gefunden für Delegation")
+            logger.warning("approval_step_not_found_for_delegation", step_id=str(step_id))
             return None
 
         step.delegated_to_id = delegate_to_id

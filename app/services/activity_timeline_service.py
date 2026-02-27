@@ -17,7 +17,7 @@ from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any, Union
 from uuid import UUID
 from enum import Enum
-import logging
+import structlog
 
 from sqlalchemy import select, and_, or_, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -32,7 +32,7 @@ from app.db.models import (
 )
 from app.db.models_team import Team, TeamMembership, TeamActivity
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 # =============================================================================

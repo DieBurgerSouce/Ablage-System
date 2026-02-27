@@ -9,7 +9,7 @@ Enterprise Feature: Automatisierte Vermoegensverwaltung mit:
 
 from __future__ import annotations
 
-import logging
+import structlog
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -28,7 +28,7 @@ from app.db.models import (
     PrivatVehicle,
 )
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class NetWorthTrendItem(TypedDict):

@@ -17,7 +17,7 @@ Standards:
 - BR-DE: Deutsche Business Rules
 """
 
-import logging
+import structlog
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
@@ -27,7 +27,7 @@ from lxml import etree
 
 from app.api.schemas.extracted_data import ExtractedInvoiceData, TaxBreakdownItem
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # UBL 2.1 Namespaces
 UBL_NAMESPACES = {
@@ -198,11 +198,9 @@ class XRechnungUBLMapper:
 
         logger.info(
             "xrechnung_ubl_generated",
-            extra={
-                "invoice_id": invoice_id,
-                "leitweg_id": leitweg_id,
-                "line_count": len(invoice.line_items) if invoice.line_items else 0,
-            }
+            invoice_id=invoice_id,
+            leitweg_id=leitweg_id,
+            line_count=len(invoice.line_items) if invoice.line_items else 0,
         )
 
         return xml_str

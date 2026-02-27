@@ -12,7 +12,7 @@ Created: 2024-12
 """
 
 import json
-import logging
+import structlog
 import os
 import shutil
 import uuid as uuid_module
@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
