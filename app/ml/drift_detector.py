@@ -215,11 +215,9 @@ class DriftDetector:
 
         logger.info(
             "DriftDetector initialisiert",
-            extra={
-                "reference_window_days": reference_window_days,
-                "drift_threshold": drift_threshold,
-                "min_samples": min_samples,
-            }
+            reference_window_days=reference_window_days,
+            drift_threshold=drift_threshold,
+            min_samples=min_samples,
         )
 
     def add_sample(
@@ -348,12 +346,10 @@ class DriftDetector:
 
         logger.info(
             "Drift-Detection abgeschlossen",
-            extra={
-                "report_id": report_id,
-                "severity": severity.value,
-                "overall_score": overall_score,
-                "drifted_features": len(drifted_features),
-            }
+            report_id=report_id,
+            severity=severity.value,
+            overall_score=overall_score,
+            drifted_features=len(drifted_features),
         )
 
         return report

@@ -451,10 +451,8 @@ class OCRRouterModel:
 
         logger.info(
             "Starte Modelltraining",
-            extra={
-                "train_samples": len(X_train),
-                "val_samples": len(X_val),
-            },
+            train_samples=len(X_train),
+            val_samples=len(X_val),
         )
 
         # Train model
@@ -475,10 +473,8 @@ class OCRRouterModel:
 
         logger.info(
             "Modelltraining abgeschlossen",
-            extra={
-                "train_accuracy": train_accuracy,
-                "val_accuracy": val_accuracy,
-            },
+            train_accuracy=train_accuracy,
+            val_accuracy=val_accuracy,
         )
 
         return {

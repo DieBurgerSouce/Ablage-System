@@ -200,7 +200,7 @@ WICHTIG:
             return generated
 
         except Exception as e:
-            logger.error(f"Fehler bei Regel-Generierung: {e}", exc_info=True)
+            logger.exception("Fehler bei Regel-Generierung", error=str(e))
             raise
 
     def _extract_json(self, text: str) -> Dict[str, Any]:

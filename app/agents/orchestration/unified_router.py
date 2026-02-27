@@ -373,11 +373,9 @@ class UnifiedOCRRouter(OrchestrationAgent):
 
         logger.info(
             "Unified OCR Router initialisiert",
-            extra={
-                "use_ml": self.use_ml_routing,
-                "ml_available": self._ml_model is not None,
-                "ab_test_active": self._ab_test_active,
-            },
+            use_ml=self.use_ml_routing,
+            ml_available=self._ml_model is not None,
+            ab_test_active=self._ab_test_active,
         )
 
     def _init_ml_routing(self) -> None:

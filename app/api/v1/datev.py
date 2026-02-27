@@ -114,7 +114,8 @@ async def create_config(
 
     logger.info(
         "datev_config_created",
-        extra={"config_id": str(config.id), "user_id": str(current_user.id)}
+        config_id=str(config.id),
+        user_id=str(current_user.id),
     )
 
     return DATEVConfigurationResponse.model_validate(config)
@@ -238,11 +239,9 @@ async def update_config(
     # Audit Logging
     logger.info(
         "datev_config_updated",
-        extra={
-            "config_id": str(config_id),
-            "user_id": str(current_user.id),
-            "updated_fields": list(update_data.keys()),
-        }
+        config_id=str(config_id),
+        user_id=str(current_user.id),
+        updated_fields=list(update_data.keys()),
     )
 
     return DATEVConfigurationResponse.model_validate(config)
@@ -281,11 +280,9 @@ async def delete_config(
     # Audit Logging
     logger.info(
         "datev_config_deleted",
-        extra={
-            "config_id": str(config_id),
-            "user_id": str(current_user.id),
-            "action": "soft_delete",
-        }
+        config_id=str(config_id),
+        user_id=str(current_user.id),
+        action="soft_delete",
     )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -357,10 +354,8 @@ async def create_vendor_mapping(
             # Bei Service-Fehlern nur warnen, nicht blockieren
             logger.warning(
                 "vies_validation_error",
-                extra={
-                    "vat_id": mapping_data.vendor_vat_id,
-                    "error": vies_validation_result.error_message,
-                }
+                vat_id=mapping_data.vendor_vat_id,
+                error=vies_validation_result.error_message,
             )
 
     # verify_vat_with_vies aus dem Mapping entfernen (nicht in DB speichern)
@@ -379,14 +374,12 @@ async def create_vendor_mapping(
     # Audit Logging
     logger.info(
         "datev_vendor_mapping_created",
-        extra={
-            "mapping_id": str(mapping.id),
-            "config_id": str(config_id),
-            "user_id": str(current_user.id),
-            "vendor_name": mapping_data.vendor_name,
-            "vies_validated": vies_validation_result is not None,
-            "vies_status": vies_validation_result.status.value if vies_validation_result else None,
-        }
+        mapping_id=str(mapping.id),
+        config_id=str(config_id),
+        user_id=str(current_user.id),
+        vendor_name=mapping_data.vendor_name,
+        vies_validated=vies_validation_result is not None,
+        vies_status=vies_validation_result.status.value if vies_validation_result else None,
     )
 
     return DATEVVendorMappingResponse.model_validate(mapping)
@@ -484,12 +477,10 @@ async def update_vendor_mapping(
     # Audit Logging
     logger.info(
         "datev_vendor_mapping_updated",
-        extra={
-            "mapping_id": str(mapping_id),
-            "config_id": str(config_id),
-            "user_id": str(current_user.id),
-            "updated_fields": list(update_data.keys()),
-        }
+        mapping_id=str(mapping_id),
+        config_id=str(config_id),
+        user_id=str(current_user.id),
+        updated_fields=list(update_data.keys()),
     )
 
     return DATEVVendorMappingResponse.model_validate(mapping)
@@ -542,11 +533,9 @@ async def delete_vendor_mapping(
     # Audit Logging
     logger.info(
         "datev_vendor_mapping_deleted",
-        extra={
-            "mapping_id": str(mapping_id),
-            "config_id": str(config_id),
-            "user_id": str(current_user.id),
-        }
+        mapping_id=str(mapping_id),
+        config_id=str(config_id),
+        user_id=str(current_user.id),
     )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT)
@@ -592,10 +581,8 @@ async def preview_export(
         # SECURITY FIX: Keine internen Details an Client senden
         logger.warning(
             "datev_preview_validation_error",
-            extra={
-                "user_id": str(current_user.id),
-                "error": safe_error_detail(e, "Vorgang"),
-            }
+            user_id=str(current_user.id),
+            error=safe_error_detail(e, "Vorgang"),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -661,10 +648,8 @@ async def export_buchungsstapel(
         # SECURITY FIX: Keine internen Details an Client senden
         logger.warning(
             "datev_export_validation_error",
-            extra={
-                "user_id": str(current_user.id),
-                "error": safe_error_detail(e, "Vorgang"),
-            }
+            user_id=str(current_user.id),
+            error=safe_error_detail(e, "Vorgang"),
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -674,10 +659,8 @@ async def export_buchungsstapel(
         # SECURITY FIX: Keine Exception-Details an Client senden (Information Disclosure)
         logger.exception(
             "datev_export_error",
-            extra={
-                "user_id": str(current_user.id),
-                "error_type": type(e).__name__,
-            }
+            user_id=str(current_user.id),
+            error_type=type(e).__name__,
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

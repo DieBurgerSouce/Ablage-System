@@ -1,5 +1,10 @@
 # Recent Changes
 
+## 2026-02-27 (Enterprise Quality Audit - Phase 5 P2 Langfristig)
+- **refactor(logging)**: Migrate 89 files from stdlib `logging` to `structlog` (Phase 5.3 Logging-Konsistenz) - workers, services, API, ML, core, agents
+- Transformations: `import logging` -> `import structlog`, `logging.getLogger(__name__)` -> `structlog.get_logger(__name__)`, `extra={}` -> keyword args, `exc_info=True` -> `logger.exception()`
+- Only `logging_config.py` retains stdlib logging (bridge config). 100% structlog coverage across app/
+
 ## 2026-02-26 (Enterprise Quality Audit - Phase 4 P2 Hardening)
 - **refactor(db)**: SoftDeleteMixin in models_base.py - 27 Klassen in 20 Model-Dateien refactored (manuelle deleted_at Definition ersetzt durch Mixin)
 - **refactor(db)**: FK ondelete Cascade Audit - 44 ForeignKey-Deklarationen mit ondelete ergaenzt (CASCADE/SET NULL/RESTRICT je nach FK-Typ) + Migration 256

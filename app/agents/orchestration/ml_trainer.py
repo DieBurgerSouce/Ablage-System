@@ -443,11 +443,9 @@ class MLRouterTrainer:
 
         logger.debug(
             "Trainingssample gesammelt",
-            extra={
-                "document_id": document_id,
-                "backend": selected_backend,
-                "accuracy": sample.accuracy_score,
-            },
+            document_id=document_id,
+            backend=selected_backend,
+            accuracy=sample.accuracy_score,
         )
 
     def prepare_training_data(
@@ -596,10 +594,8 @@ class MLRouterTrainer:
 
             logger.info(
                 "Modelltraining erfolgreich",
-                extra={
-                    "accuracy": training_result["val_accuracy"],
-                    "model_path": str(model_path),
-                },
+                accuracy=training_result["val_accuracy"],
+                model_path=str(model_path),
             )
 
             return {
@@ -753,7 +749,7 @@ class MLRouterTrainer:
                     if result["status"] == "success":
                         logger.info(
                             "Hintergrund-Training abgeschlossen",
-                            extra={"accuracy": result["validation_accuracy"]},
+                            accuracy=result["validation_accuracy"],
                         )
 
             except Exception as e:
@@ -839,6 +835,6 @@ class MLRouterTrainer:
             self.data_buffer.add_sample(sample)
 
         logger.info(
-            f"Synthetische Daten generiert",
-            extra={"total_samples": self.data_buffer.get_stats()["total_samples"]},
+            "Synthetische Daten generiert",
+            total_samples=self.data_buffer.get_stats()["total_samples"],
         )

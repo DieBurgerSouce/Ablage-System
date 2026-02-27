@@ -1070,7 +1070,7 @@ async def generate_rule_from_prompt(
             detail=safe_error_detail(e, "Vorgang")
         )
     except Exception as e:
-        logger.error(f"Fehler bei Regelgenerierung: {e}", exc_info=True)
+        logger.exception("Fehler bei Regelgenerierung", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=safe_error_detail(e, "Vorgang")

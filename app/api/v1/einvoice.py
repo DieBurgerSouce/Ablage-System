@@ -189,7 +189,8 @@ async def parse_einvoice(
         # SECURITY FIX 28-19: Generische Fehlermeldung - keine internen Details
         logger.warning(
             "einvoice_parse_validation_error",
-            extra={"filename": file.filename, **safe_error_log(e)}
+            filename=file.filename,
+            **safe_error_log(e),
         )
         raise HTTPException(status_code=400, detail="Ungültige E-Rechnung. Bitte Format prüfen.")
 
@@ -267,7 +268,8 @@ async def generate_zugferd(
         # SECURITY FIX 28-19: Generische Fehlermeldung
         logger.warning(
             "einvoice_generate_zugferd_validation_error",
-            extra={"document_id": str(document_id), **safe_error_log(e)}
+            document_id=str(document_id),
+            **safe_error_log(e),
         )
         raise HTTPException(status_code=400, detail="Ungültige Daten für ZUGFeRD-Generierung.")
 
@@ -347,7 +349,8 @@ async def generate_xrechnung(
         # SECURITY FIX 28-19: Generische Fehlermeldung
         logger.warning(
             "einvoice_generate_xrechnung_validation_error",
-            extra={"document_id": str(document_id), **safe_error_log(e)}
+            document_id=str(document_id),
+            **safe_error_log(e),
         )
         raise HTTPException(status_code=400, detail="Ungültige Daten für XRechnung-Generierung.")
 
@@ -655,11 +658,9 @@ async def get_einvoice_status(
     if document.owner_id != current_user.id and not current_user.is_superuser:
         logger.warning(
             "einvoice_access_denied",
-            extra={
-                "document_id": str(document_id),
-                "user_id": str(current_user.id),
-                "owner_id": str(document.owner_id) if document.owner_id else None
-            }
+            document_id=str(document_id),
+            user_id=str(current_user.id),
+            owner_id=str(document.owner_id) if document.owner_id else None,
         )
         raise HTTPException(
             status_code=403,
@@ -731,11 +732,9 @@ async def download_xml(
     if document.owner_id != current_user.id and not current_user.is_superuser:
         logger.warning(
             "einvoice_xml_download_denied",
-            extra={
-                "document_id": str(document_id),
-                "user_id": str(current_user.id),
-                "owner_id": str(document.owner_id) if document.owner_id else None
-            }
+            document_id=str(document_id),
+            user_id=str(current_user.id),
+            owner_id=str(document.owner_id) if document.owner_id else None,
         )
         raise HTTPException(
             status_code=403,
