@@ -15,6 +15,7 @@ import type { ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { companyService } from '@/lib/api/services/companies';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 import type { Company, CompanyListResponse } from '@/types/models/company';
 
 // ==================== Types ====================
@@ -70,7 +71,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
         queryKey: companyQueryKeys.list(),
         queryFn: () => companyService.list({ include_inactive: false }),
         enabled: isAuthenticated,
-        staleTime: 5 * 60 * 1000, // 5 Minuten
+        staleTime: QUERY_SEMI_STATIC.staleTime, // 5min
         refetchOnWindowFocus: false,
     });
 
@@ -84,7 +85,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
         queryKey: companyQueryKeys.current(),
         queryFn: () => companyService.getCurrent(),
         enabled: isAuthenticated,
-        staleTime: 5 * 60 * 1000, // 5 Minuten
+        staleTime: QUERY_SEMI_STATIC.staleTime, // 5min
         refetchOnWindowFocus: false,
     });
 

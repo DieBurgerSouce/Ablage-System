@@ -47,7 +47,8 @@ const CATEGORY_LABELS: Record<RuleCategory, string> = {
   fraud: 'Fraud',
   workflow: 'Workflow',
   notification: 'Benachrichtigung',
-  data_quality: 'Datenqualität',
+  assignment: 'Zuweisung',
+  data_quality: 'Datenqualitaet',
   custom: 'Benutzerdefiniert',
 }
 
@@ -57,6 +58,7 @@ const CATEGORY_COLORS: Record<RuleCategory, string> = {
   fraud: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
   workflow: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
   notification: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300',
+  assignment: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300',
   data_quality: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300',
   custom: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300',
 }

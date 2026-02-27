@@ -29,8 +29,10 @@ import {
   CheckCircle,
   XCircle,
   Sparkles,
+  LayoutTemplate,
+  UserCheck,
 } from 'lucide-react'
-import { RuleTable, RuleFormDialog, AIRuleGenerator } from './components'
+import { RuleTable, RuleFormDialog, AIRuleGenerator, RuleTemplateGallery } from './components'
 import { useRulesList, useExecutionLogs } from './api'
 import type { BusinessRule, RuleCategory, RuleCreateRequest } from './types'
 import { formatDistanceToNow } from 'date-fns'
@@ -45,6 +47,7 @@ const CATEGORY_OPTIONS: { value: RuleCategory | 'all'; label: string; icon: Reac
   { value: 'fraud', label: 'Betrugs-Erkennung', icon: <AlertTriangle className="h-4 w-4" /> },
   { value: 'workflow', label: 'Workflow', icon: <Workflow className="h-4 w-4" /> },
   { value: 'notification', label: 'Benachrichtigung', icon: <Bell className="h-4 w-4" /> },
+  { value: 'assignment', label: 'Zuweisung', icon: <UserCheck className="h-4 w-4" /> },
 ]
 
 export function RulesAdminPage() {
@@ -117,6 +120,21 @@ export function RulesAdminPage() {
     setDialogOpen(true)
   }
 
+  const handleTemplateSelect = (ruleData: RuleCreateRequest) => {
+    setEditingRule({
+      ...ruleData,
+      id: '',
+      execution_count: 0,
+      match_count: 0,
+      last_executed_at: null,
+      last_matched_at: null,
+      created_by_id: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    } as BusinessRule)
+    setDialogOpen(true)
+  }
+
   // Stats
   const rules = data?.items ?? []
   const activeCount = rules.filter((r) => r.is_active).length
@@ -131,7 +149,7 @@ export function RulesAdminPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
             <Scale className="h-6 w-6" />
-            Business Rules
+            Regelwerk
           </h1>
           <p className="text-muted-foreground">
             Automatisieren Sie Entscheidungen mit konfigurierbaren Regeln.
@@ -218,9 +236,13 @@ export function RulesAdminPage() {
             <Scale className="h-4 w-4" />
             Regeln
           </TabsTrigger>
+          <TabsTrigger value="templates" className="gap-2">
+            <LayoutTemplate className="h-4 w-4" />
+            Vorlagen
+          </TabsTrigger>
           <TabsTrigger value="logs" className="gap-2">
             <History className="h-4 w-4" />
-            Ausführungslog
+            Ausfuehrungslog
           </TabsTrigger>
         </TabsList>
 
@@ -275,6 +297,15 @@ export function RulesAdminPage() {
                 onEdit={handleEdit}
                 onDuplicate={handleDuplicate}
               />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates">
+          <Card>
+            <CardContent className="pt-6">
+              <RuleTemplateGallery onSelect={handleTemplateSelect} />
             </CardContent>
           </Card>
         </TabsContent>

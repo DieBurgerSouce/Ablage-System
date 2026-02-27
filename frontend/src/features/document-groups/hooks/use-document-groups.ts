@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { groupsService, type DocumentGroupType } from '@/lib/api/services/groups'
+import { QUERY_VOLATILE, QUERY_STANDARD } from '@/lib/api/query-config'
 
 // ==================== QUERY KEYS ====================
 
@@ -14,8 +15,8 @@ export const documentGroupQueryKeys = {
 // ==================== STALE TIMES ====================
 
 const STALE_TIMES = {
-  list: 60 * 1000,      // 1 Minute
-  detail: 30 * 1000,    // 30 Sekunden
+  list: QUERY_STANDARD.staleTime,     // 60s
+  detail: QUERY_VOLATILE.staleTime,   // 30s
 }
 
 // ==================== QUERIES ====================

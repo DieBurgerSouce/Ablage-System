@@ -5,8 +5,9 @@
  * mit Filter, Pagination und Muster-Erkennung.
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Search,
   RefreshCw,
@@ -112,6 +113,23 @@ export default function RecurringInvoiceList() {
   };
 
   const totalPages = data ? Math.ceil(data.total / pageSize) : 0;
+  const invoiceItems = data?.items ?? [];
+
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: invoiceItems.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 48,
+    overscan: 5,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalVirtualSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalVirtualSize - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
 
   return (
     <Card>
@@ -170,10 +188,14 @@ export default function RecurringInvoiceList() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
-        ) : data && data.items.length > 0 ? (
+        ) : invoiceItems.length > 0 ? (
           <>
+            <div
+              ref={tableContainerRef}
+              className="overflow-auto max-h-[600px]"
+            >
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                 <TableRow>
                   <TableHead>Lieferant</TableHead>
                   <TableHead>Intervall</TableHead>
@@ -184,11 +206,20 @@ export default function RecurringInvoiceList() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.items.map((invoice) => (
+                {paddingTop > 0 && (
+                  <tr>
+                    <td style={{ height: paddingTop }} colSpan={6} />
+                  </tr>
+                )}
+                {virtualRows.map((virtualRow) => {
+                  const invoice = invoiceItems[virtualRow.index];
+                  return (
                   <TableRow
                     key={invoice.id}
+                    data-index={virtualRow.index}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => handleRowClick(invoice)}
+                    style={{ height: 48 }}
                   >
                     <TableCell className="font-medium">
                       {invoice.vendor_name}
@@ -213,9 +244,16 @@ export default function RecurringInvoiceList() {
                       {formatPercent(invoice.detection_confidence)}
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
+                {paddingBottom > 0 && (
+                  <tr>
+                    <td style={{ height: paddingBottom }} colSpan={6} />
+                  </tr>
+                )}
               </TableBody>
             </Table>
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (

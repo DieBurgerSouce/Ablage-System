@@ -1,7 +1,10 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { JobQueueDashboard } from '@/features/job-queue/components/JobQueueDashboard';
+import { lazy, Suspense } from 'react';
+import { LazyLoadFallback } from '@/components/LazyLoadFallback';
 import { canAccessJobQueue } from '@/features/job-queue/hooks/use-job-permissions';
 import { authService } from '@/lib/api/services/auth';
+
+const JobQueueDashboard = lazy(() => import('@/features/job-queue/components/JobQueueDashboard').then(m => ({ default: m.JobQueueDashboard })));
 
 export const Route = createFileRoute('/admin/job-queue')({
   beforeLoad: async () => {
@@ -18,5 +21,9 @@ export const Route = createFileRoute('/admin/job-queue')({
 });
 
 function JobQueuePage() {
-  return <JobQueueDashboard />;
+  return (
+    <Suspense fallback={<LazyLoadFallback />}>
+      <JobQueueDashboard />
+    </Suspense>
+  );
 }

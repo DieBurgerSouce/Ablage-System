@@ -1,5 +1,5 @@
 import { Link, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart, Sliders, Mail, DollarSign, Activity, ListChecks, Calendar, ScanLine, ArrowLeftRight, Fingerprint, LineChart, FileSearch, Globe, Lightbulb, LayoutGrid, PieChart, Euro, FileBarChart2, Pen, Webhook } from 'lucide-react'
+import { LayoutDashboard, Upload, ListTodo, FileText, CheckCircle, Layers, GraduationCap, Cpu, ChevronDown, MessageSquare, ClipboardCheck, FileSpreadsheet, Users, Package, Landmark, AlertTriangle, Wallet, Receipt, GitBranch, UserCircle, Shield, Lock, Bookmark, Search, Pin, Database, FileSignature, FilePlus, Building2, BookOpen, BarChart3, MessageCircle, FolderInput, Truck, Gauge, Award, CreditCard, TrendingUp, ShieldAlert, BrainCircuit, Brain, ScrollText, Link2, Trash2, Bell, Users2, HardDrive, Play, ListOrdered, Banknote, Code2, Warehouse, HeartPulse, Sparkles, FileOutput, Calculator, Heart, Sliders, Mail, DollarSign, Activity, ListChecks, Calendar, ScanLine, ArrowLeftRight, Fingerprint, LineChart, FileSearch, Globe, Lightbulb, LayoutGrid, PieChart, Euro, FileBarChart2, Pen, Webhook, Command, Bot, GitCompareArrows, Blocks, FileCode } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { usePermissions } from '@/lib/auth/hooks/use-permissions'
@@ -89,6 +89,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
 
             <nav id="main-navigation" className="flex-1 px-4 space-y-2 overflow-y-auto" role="navigation" aria-label="Hauptmenü" tabIndex={-1}>
                 <SidebarLink to="/" icon={LayoutDashboard} label="Dashboard" onNavigate={onNavigate} dataTour="nav-dashboard" />
+                <SidebarLink to="/command-center" icon={Command} label="Steuerungszentrale" onNavigate={onNavigate} featureId="command-center" />
                 <SidebarLink to="/inbox" icon={Sparkles} label="Smart Inbox" onNavigate={onNavigate} />
                 <SidebarLink to="/proactive-assistant" icon={Lightbulb} label="Proaktiver Assistent" onNavigate={onNavigate} featureId="proactive-assistant" />
                 <SidebarLink to="/smart-search" icon={FileSearch} label="Smart Search" onNavigate={onNavigate} dataTour="nav-smart-search" featureId="smart-search" />
@@ -97,6 +98,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 <SidebarLink to="/analytics" icon={PieChart} label="Analyse & Berichte" onNavigate={onNavigate} featureId="analytics" />
                 <SidebarLink to="/predictive" icon={BrainCircuit} label="Vorhersagen" onNavigate={onNavigate} featureId="predictive" />
                 <SidebarLink to="/digital-twin" icon={Globe} label="Digitaler Zwilling" onNavigate={onNavigate} dataTour="nav-digital-twin" featureId="digital-twin" />
+                <SidebarLink to="/agent-chat" icon={Bot} label="KI-Assistent" onNavigate={onNavigate} featureId="agent-chat" />
                 <SidebarLink to="/chat" icon={MessageSquare} label="Chat" onNavigate={onNavigate} />
                 <SidebarLink to="/email-import" icon={Mail} label="E-Mail Import" onNavigate={onNavigate} />
                 <SidebarLink to="/upload" icon={Upload} label="Upload Wizard" onNavigate={onNavigate} dataTour="nav-upload" />
@@ -109,6 +111,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 <SidebarLink to="/knowledge-graph" icon={GitBranch} label="Wissens-Graph" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev" icon={FileSpreadsheet} label="DATEV Export" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev-connect" icon={Link2} label="DATEVconnect" onNavigate={onNavigate} />
+                <SidebarLink to="/admin/einvoice" icon={FileCode} label="E-Rechnungen" onNavigate={onNavigate} featureId="einvoice" />
 
                 {/* Berichte Submenu */}
                 <button
@@ -177,6 +180,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     <SidebarLink to="/finanzen/zahlungsverhalten" icon={CreditCard} label="Zahlungsverhalten" onNavigate={onNavigate} />
                     <SidebarLink to="/banking/payment-automation" icon={Banknote} label="Auto-Zahlungen" onNavigate={onNavigate} />
                     <SidebarLink to="/po-matching" icon={ClipboardCheck} label="PO-Matching" onNavigate={onNavigate} />
+                    <SidebarLink to="/matching" icon={GitCompareArrows} label="3-Way-Matching" onNavigate={onNavigate} featureId="three-way-match" />
                     <SidebarLink to="/recurring-invoices" icon={ListOrdered} label="Abo-Rechnungen" onNavigate={onNavigate} />
                     <SidebarLink to="/kasse" icon={Wallet} label="Kassenbuch" onNavigate={onNavigate} />
                     <SidebarLink to="/spesen" icon={Receipt} label="Spesen" onNavigate={onNavigate} />
@@ -437,6 +441,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/custom-fields" icon={Sliders} label="Eigene Felder" onNavigate={onNavigate} />
+                                )}
+                                {permissions.isAdmin && (
+                                    <SidebarLink to="/admin/rules" icon={Blocks} label="Regelwerk" onNavigate={onNavigate} featureId="rule-builder" />
                                 )}
                                 {permissions.isAdmin && (
                                     <SidebarLink to="/admin/webhooks" icon={Webhook} label="Webhooks" onNavigate={onNavigate} />

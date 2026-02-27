@@ -5,16 +5,17 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { bankingService } from '@/lib/api/services/banking';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 
 // ==================== Stale Time Konfiguration ====================
 // Definiert wie lange Daten als "frisch" gelten bevor sie refetched werden
 
 const STALE_TIMES = {
-    stats: 5 * 60 * 1000,      // 5 Minuten - Stats ändern sich selten
-    aging: 2 * 60 * 1000,      // 2 Minuten - Aging kann sich durch Zahlungen ändern
-    cashflow: 5 * 60 * 1000,   // 5 Minuten - Prognosen ändern sich selten
-    dunning: 1 * 60 * 1000,    // 1 Minute - Mahnstatus kann sich schnell ändern
-    transactions: 30 * 1000,   // 30 Sekunden - Transaktionen können schnell kommen
+    stats: QUERY_SEMI_STATIC.staleTime,    // 5min - Stats ändern sich selten
+    aging: QUERY_STANDARD.staleTime,       // 60s - Aging kann sich durch Zahlungen ändern
+    cashflow: QUERY_SEMI_STATIC.staleTime, // 5min - Prognosen ändern sich selten
+    dunning: QUERY_STANDARD.staleTime,     // 60s - Mahnstatus kann sich schnell ändern
+    transactions: QUERY_VOLATILE.staleTime, // 30s - Transaktionen können schnell kommen
 } as const;
 
 // ==================== Query Keys ====================

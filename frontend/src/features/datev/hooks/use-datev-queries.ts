@@ -16,16 +16,17 @@ import {
     type DATEVVendorMappingUpdate,
     type DATEVExportRequest,
 } from '@/lib/api/services/datev';
+import { QUERY_VOLATILE, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 
 // =============================================================================
 // STALE TIME KONFIGURATION
 // =============================================================================
 
 const STALE_TIMES = {
-    configs: 5 * 60 * 1000,      // 5 Minuten
-    vendors: 5 * 60 * 1000,      // 5 Minuten
-    kontenrahmen: 30 * 60 * 1000, // 30 Minuten (nicht Infinity - kann sich bei Updates ändern)
-    history: 30 * 1000,          // 30 Sekunden (häufiger aktualisiert nach Exports)
+    configs: QUERY_SEMI_STATIC.staleTime,     // 5min
+    vendors: QUERY_SEMI_STATIC.staleTime,     // 5min
+    kontenrahmen: QUERY_SEMI_STATIC.gcTime,   // 30min (nicht Infinity - kann sich bei Updates ändern)
+    history: QUERY_VOLATILE.staleTime,        // 30s (häufiger aktualisiert nach Exports)
 } as const;
 
 // =============================================================================

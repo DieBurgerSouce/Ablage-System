@@ -1,7 +1,7 @@
 /**
  * Business Rules Feature
  *
- * Admin-Modul für die Verwaltung von Business Rules.
+ * Admin-Modul fuer die Verwaltung von Business Rules.
  */
 
 export { RulesAdminPage } from './RulesAdminPage'
@@ -10,6 +10,9 @@ export {
   RuleFormDialog,
   ConditionBuilder,
   ActionBuilder,
+  AIRuleGenerator,
+  RuleTestPanel,
+  RuleTemplateGallery,
 } from './components'
 export * from './types'
 export * from './api'

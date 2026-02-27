@@ -1,5 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { ReviewDashboard } from '@/features/ocr-review/components/ReviewDashboard'
+import { lazy, Suspense } from 'react'
+import { LazyLoadFallback } from '@/components/LazyLoadFallback'
+
+const ReviewDashboard = lazy(() => import('@/features/ocr-review/components/ReviewDashboard').then(m => ({ default: m.ReviewDashboard })))
 
 export const Route = createFileRoute('/admin/ocr-review')({
     component: OCRReviewPage,
@@ -7,8 +10,10 @@ export const Route = createFileRoute('/admin/ocr-review')({
 
 function OCRReviewPage() {
     return (
-        <div>
-            <ReviewDashboard />
-        </div>
+        <Suspense fallback={<LazyLoadFallback />}>
+            <div>
+                <ReviewDashboard />
+            </div>
+        </Suspense>
     )
 }

@@ -7,6 +7,7 @@
 import * as React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { companyService } from '@/lib/api/services/companies';
+import { QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 import type { Company, CompanyListResponse } from '@/types/models/company';
 
 // ==================== Query Keys ====================
@@ -51,7 +52,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
   } = useQuery({
     queryKey: companyQueryKeys.list(),
     queryFn: () => companyService.list(),
-    staleTime: 5 * 60 * 1000, // 5 Minuten
+    staleTime: QUERY_SEMI_STATIC.staleTime, // 5min
   });
 
   // Lade aktuelle Firma
@@ -62,7 +63,7 @@ export function CompanyProvider({ children }: CompanyProviderProps) {
   } = useQuery({
     queryKey: companyQueryKeys.current(),
     queryFn: () => companyService.getCurrent(),
-    staleTime: 5 * 60 * 1000,
+    staleTime: QUERY_SEMI_STATIC.staleTime, // 5min
   });
 
   // Firma wechseln

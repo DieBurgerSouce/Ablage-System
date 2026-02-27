@@ -5,6 +5,7 @@
  */
 
 import * as React from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -91,6 +92,22 @@ export function CashEntryList({
   const entries = response?.entries ?? [];
   const totalCount = response?.total ?? 0;
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const tableContainerRef = React.useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: entries.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 48,
+    overscan: 5,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalVirtualSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalVirtualSize - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
 
   const handlePrevPage = () => setPage((p) => Math.max(0, p - 1));
   const handleNextPage = () => setPage((p) => Math.min(totalPages - 1, p + 1));
@@ -195,8 +212,12 @@ export function CashEntryList({
           </div>
         ) : (
           <>
+            <div
+              ref={tableContainerRef}
+              className="overflow-auto max-h-[600px]"
+            >
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                 <TableRow>
                   <TableHead className="w-[60px]">Nr.</TableHead>
                   <TableHead>Datum</TableHead>
@@ -208,16 +229,27 @@ export function CashEntryList({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {entries.map((entry) => (
+                {paddingTop > 0 && (
+                  <tr>
+                    <td style={{ height: paddingTop }} colSpan={7} />
+                  </tr>
+                )}
+                {virtualRows.map((virtualRow) => (
                   <CashEntryRow
-                    key={entry.id}
-                    entry={entry}
+                    key={entries[virtualRow.index].id}
+                    entry={entries[virtualRow.index]}
                     onCancel={onCancelEntry}
                     onView={onViewEntry}
                   />
                 ))}
+                {paddingBottom > 0 && (
+                  <tr>
+                    <td style={{ height: paddingBottom }} colSpan={7} />
+                  </tr>
+                )}
               </TableBody>
             </Table>
+            </div>
 
             {/* Pagination */}
             {totalPages > 1 && (

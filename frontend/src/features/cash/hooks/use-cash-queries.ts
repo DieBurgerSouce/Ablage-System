@@ -8,6 +8,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/components/ui/use-toast';
 import { cashService } from '@/lib/api/services/cash';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 import type {
   CashRegisterCreate,
   CashRegisterUpdate,
@@ -21,11 +22,11 @@ import type {
 // ==================== Stale Time Konfiguration ====================
 
 const STALE_TIMES = {
-  registers: 5 * 60 * 1000,    // 5 Minuten
-  entries: 30 * 1000,          // 30 Sekunden - Einträge können schnell kommen
-  categories: 10 * 60 * 1000,  // 10 Minuten - Kategorien ändern sich selten
-  counts: 5 * 60 * 1000,       // 5 Minuten
-  summary: 2 * 60 * 1000,      // 2 Minuten
+  registers: QUERY_SEMI_STATIC.staleTime,  // 5min
+  entries: QUERY_VOLATILE.staleTime,       // 30s - Einträge können schnell kommen
+  categories: QUERY_SEMI_STATIC.staleTime, // 5min - Kategorien ändern sich selten
+  counts: QUERY_SEMI_STATIC.staleTime,    // 5min
+  summary: QUERY_STANDARD.staleTime,       // 60s
 } as const;
 
 // ==================== Query Keys ====================

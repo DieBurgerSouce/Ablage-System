@@ -13,6 +13,7 @@
 import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { ablageService, AblageApiError } from '@/lib/api/services/ablage';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 import type {
   CategoryDocumentFilter,
   CategoryDocumentListResponse,
@@ -25,15 +26,15 @@ import type {
 // ==================== Konfiguration ====================
 
 const STALE_TIMES = {
-  documents: 30 * 1000,       // 30 Sekunden - Dokumente können sich schnell ändern
-  aggregations: 60 * 1000,    // 1 Minute - Aggregationen ändern sich seltener
-  detail: 5 * 60 * 1000,      // 5 Minuten - Einzelnes Dokument ändert sich selten
+  documents: QUERY_VOLATILE.staleTime,     // 30s - Dokumente können sich schnell ändern
+  aggregations: QUERY_STANDARD.staleTime,  // 60s - Aggregationen ändern sich seltener
+  detail: QUERY_SEMI_STATIC.staleTime,     // 5min - Einzelnes Dokument ändert sich selten
 } as const;
 
 const GC_TIMES = {
-  documents: 5 * 60 * 1000,   // 5 Minuten - Listen aus Cache entfernen
-  aggregations: 10 * 60 * 1000, // 10 Minuten - Aggregationen länger halten
-  detail: 30 * 60 * 1000,     // 30 Minuten - Details lange halten
+  documents: QUERY_VOLATILE.gcTime,        // 5min - Listen aus Cache entfernen
+  aggregations: QUERY_STANDARD.gcTime,     // 10min - Aggregationen länger halten
+  detail: QUERY_SEMI_STATIC.gcTime,        // 30min - Details lange halten
 } as const;
 
 const RETRY_CONFIG = {

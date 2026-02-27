@@ -9,8 +9,9 @@
  * - Paginierung
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Table,
   TableBody,
@@ -100,6 +101,22 @@ export function POMatchList() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: matches.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 48,
+    overscan: 5,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalSize - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
+
   function handleRowClick(matchId: string) {
     navigate({
       to: '/po-matching',
@@ -155,9 +172,12 @@ export function POMatchList() {
           </div>
         ) : (
           <>
-            <div className="rounded-md border">
+            <div
+              ref={tableContainerRef}
+              className="rounded-md border overflow-auto max-h-[600px]"
+            >
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                   <TableRow>
                     <TableHead>Bestellung</TableHead>
                     <TableHead>Lieferant</TableHead>
@@ -171,14 +191,22 @@ export function POMatchList() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {matches.map((match) => {
+                  {paddingTop > 0 && (
+                    <tr>
+                      <td style={{ height: paddingTop }} colSpan={9} />
+                    </tr>
+                  )}
+                  {virtualRows.map((virtualRow) => {
+                    const match = matches[virtualRow.index];
                     const statusCfg = STATUS_CONFIG[match.match_status];
 
                     return (
                       <TableRow
                         key={match.id}
+                        data-index={virtualRow.index}
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleRowClick(match.id)}
+                        style={{ height: 48 }}
                       >
                         <TableCell className="font-medium">
                           {match.order_number || '-'}
@@ -217,6 +245,11 @@ export function POMatchList() {
                       </TableRow>
                     );
                   })}
+                  {paddingBottom > 0 && (
+                    <tr>
+                      <td style={{ height: paddingBottom }} colSpan={9} />
+                    </tr>
+                  )}
                 </TableBody>
               </Table>
             </div>

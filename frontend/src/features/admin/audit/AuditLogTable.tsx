@@ -4,7 +4,8 @@
  * Enterprise Audit-Log Viewer mit Filter, Pagination und Export.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
@@ -480,6 +481,67 @@ function FilterPopover({ filters, onFiltersChange }: FilterPopoverProps) {
   );
 }
 
+// ==================== Virtualized Table ====================
+
+function AuditLogVirtualizedTable({
+  logs,
+  containerRef,
+}: {
+  logs: AuditLogView[];
+  containerRef: React.RefObject<HTMLDivElement>;
+}) {
+  const rowVirtualizer = useVirtualizer({
+    count: logs.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => 48,
+    overscan: 10,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalSize - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
+
+  return (
+    <div
+      ref={containerRef}
+      className="overflow-auto max-h-[600px]"
+    >
+      <Table>
+        <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
+          <TableRow>
+            <TableHead className="w-[40px]" />
+            <TableHead className="w-[110px]">Zeit</TableHead>
+            <TableHead className="w-[180px]">Benutzer</TableHead>
+            <TableHead className="w-[150px]">Aktion</TableHead>
+            <TableHead className="w-[120px]">Ressource</TableHead>
+            <TableHead className="w-[120px]">Status</TableHead>
+            <TableHead className="w-[100px]">IP</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {paddingTop > 0 && (
+            <tr>
+              <td style={{ height: paddingTop }} colSpan={7} />
+            </tr>
+          )}
+          {virtualRows.map((virtualRow) => (
+            <LogRow key={logs[virtualRow.index].id} log={logs[virtualRow.index]} />
+          ))}
+          {paddingBottom > 0 && (
+            <tr>
+              <td style={{ height: paddingBottom }} colSpan={7} />
+            </tr>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 // ==================== Main Component ====================
 
 interface AuditLogTableProps {
@@ -489,6 +551,7 @@ interface AuditLogTableProps {
 
 export function AuditLogTable({ userId, maxItems = 50 }: AuditLogTableProps) {
   const { toast } = useToast();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
   const [params, setParams] = useState<AuditQueryParams>({
     page: 1,
     per_page: maxItems,
@@ -642,25 +705,10 @@ export function AuditLogTable({ userId, maxItems = 50 }: AuditLogTableProps) {
             <p>Keine Audit-Einträge gefunden</p>
           </div>
         ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40px]" />
-                  <TableHead className="w-[110px]">Zeit</TableHead>
-                  <TableHead className="w-[180px]">Benutzer</TableHead>
-                  <TableHead className="w-[150px]">Aktion</TableHead>
-                  <TableHead className="w-[120px]">Ressource</TableHead>
-                  <TableHead className="w-[120px]">Status</TableHead>
-                  <TableHead className="w-[100px]">IP</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.logs.map((log) => (
-                  <LogRow key={log.id} log={log} />
-                ))}
-              </TableBody>
-            </Table>
+          <AuditLogVirtualizedTable
+            logs={data.logs}
+            containerRef={tableContainerRef}
+          />
 
             {/* Pagination */}
             {data.total_pages > 1 && (

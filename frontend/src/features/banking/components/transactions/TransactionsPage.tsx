@@ -3,7 +3,8 @@
  * Transaktionen anzeigen, filtern und verwalten
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { ArrowLeftRight, Search, Filter, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,23 @@ export function TransactionsPage() {
     );
 
     const { data, isLoading, error } = useTransactions(currentFilters);
+
+    const tableContainerRef = useRef<HTMLDivElement>(null);
+    const items = data?.items ?? [];
+    const rowVirtualizer = useVirtualizer({
+        count: items.length,
+        getScrollElement: () => tableContainerRef.current,
+        estimateSize: () => 48,
+        overscan: 5,
+    });
+
+    const virtualRows = rowVirtualizer.getVirtualItems();
+    const totalVirtualSize = rowVirtualizer.getTotalSize();
+    const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+    const paddingBottom =
+        virtualRows.length > 0
+            ? totalVirtualSize - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+            : 0;
 
     const handleFilterChange = (key: keyof TransactionFilter, value: string | undefined) => {
         setPage(0); // Reset page when filter changes
@@ -196,7 +214,7 @@ export function TransactionsPage() {
                                 <Skeleton key={i} className="h-16 w-full" />
                             ))}
                         </div>
-                    ) : !data?.items.length ? (
+                    ) : !items.length ? (
                         <div className="py-8 text-center">
                             <ArrowLeftRight className="mx-auto h-12 w-12 text-muted-foreground/50" />
                             <h3 className="mt-4 text-lg font-semibold">Keine Transaktionen</h3>
@@ -209,8 +227,12 @@ export function TransactionsPage() {
                         </div>
                     ) : (
                         <>
+                            <div
+                                ref={tableContainerRef}
+                                className="overflow-auto max-h-[600px]"
+                            >
                             <Table>
-                                <TableHeader>
+                                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                                     <TableRow>
                                         <TableHead>Datum</TableHead>
                                         <TableHead>Gegenpartei</TableHead>
@@ -221,8 +243,15 @@ export function TransactionsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {data.items.map((tx) => (
-                                        <TableRow key={tx.id}>
+                                    {paddingTop > 0 && (
+                                        <tr>
+                                            <td style={{ height: paddingTop }} colSpan={6} />
+                                        </tr>
+                                    )}
+                                    {virtualRows.map((virtualRow) => {
+                                        const tx = items[virtualRow.index];
+                                        return (
+                                        <TableRow key={tx.id} data-index={virtualRow.index} style={{ height: 48 }}>
                                             <TableCell className="whitespace-nowrap">
                                                 {formatDate(tx.booking_date)}
                                             </TableCell>
@@ -256,9 +285,16 @@ export function TransactionsPage() {
                                                 )}
                                             </TableCell>
                                         </TableRow>
-                                    ))}
+                                        );
+                                    })}
+                                    {paddingBottom > 0 && (
+                                        <tr>
+                                            <td style={{ height: paddingBottom }} colSpan={6} />
+                                        </tr>
+                                    )}
                                 </TableBody>
                             </Table>
+                            </div>
 
                             {/* Pagination */}
                             {totalPages > 1 && (

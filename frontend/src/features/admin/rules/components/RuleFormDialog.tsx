@@ -47,7 +47,8 @@ const CATEGORIES: { value: RuleCategory; label: string }[] = [
   { value: 'fraud', label: 'Betrugs-Erkennung' },
   { value: 'workflow', label: 'Workflow' },
   { value: 'notification', label: 'Benachrichtigung' },
-  { value: 'data_quality', label: 'Datenqualität' },
+  { value: 'assignment', label: 'Zuweisung' },
+  { value: 'data_quality', label: 'Datenqualitaet' },
   { value: 'custom', label: 'Benutzerdefiniert' },
 ]
 

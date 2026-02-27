@@ -6,6 +6,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 
 import {
   getDefaultDashboard,
@@ -41,7 +42,7 @@ export function useDefaultDashboard() {
   return useQuery({
     queryKey: dashboardKeys.default(),
     queryFn: getDefaultDashboard,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: QUERY_SEMI_STATIC.staleTime, // 5min
   });
 }
 
@@ -52,7 +53,7 @@ export function useDashboardList() {
   return useQuery({
     queryKey: dashboardKeys.list(),
     queryFn: listDashboards,
-    staleTime: 1000 * 60 * 5,
+    staleTime: QUERY_SEMI_STATIC.staleTime, // 5min
   });
 }
 
@@ -64,7 +65,7 @@ export function useDashboard(dashboardId: string | undefined) {
     queryKey: dashboardKeys.detail(dashboardId ?? ''),
     queryFn: () => getDashboard(dashboardId!),
     enabled: !!dashboardId,
-    staleTime: 1000 * 60 * 5,
+    staleTime: QUERY_SEMI_STATIC.staleTime, // 5min
   });
 }
 
@@ -75,7 +76,7 @@ export function useAvailableWidgets() {
   return useQuery({
     queryKey: dashboardKeys.availableWidgets(),
     queryFn: getAvailableWidgets,
-    staleTime: 1000 * 60 * 30, // 30 minutes (permissions don't change often)
+    staleTime: QUERY_SEMI_STATIC.gcTime, // 30min (Berechtigungen ändern sich selten)
   });
 }
 
@@ -86,7 +87,7 @@ export function useTemplates(category?: string) {
   return useQuery({
     queryKey: dashboardKeys.templates(category),
     queryFn: () => getTemplates(category),
-    staleTime: 1000 * 60 * 30,
+    staleTime: QUERY_SEMI_STATIC.gcTime, // 30min
   });
 }
 

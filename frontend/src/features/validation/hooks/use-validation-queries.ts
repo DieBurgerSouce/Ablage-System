@@ -7,6 +7,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 import {
   listTrainingSamples,
   getTrainingSample,
@@ -61,7 +62,7 @@ export function useTrainingSamples(params: ListSamplesParams = {}) {
   return useQuery({
     queryKey: validationKeys.sampleList(params),
     queryFn: () => listTrainingSamples(params),
-    staleTime: 30 * 1000, // 30 Sekunden
+    staleTime: QUERY_VOLATILE.staleTime, // 30s - Volatile
   });
 }
 
@@ -73,7 +74,7 @@ export function useTrainingSample(sampleId: string | undefined) {
     queryKey: validationKeys.sampleDetail(sampleId!),
     queryFn: () => getTrainingSample(sampleId!),
     enabled: !!sampleId,
-    staleTime: 60 * 1000, // 1 Minute
+    staleTime: QUERY_STANDARD.staleTime, // 60s - Standard
   });
 }
 
@@ -144,7 +145,7 @@ export function useCorrections(params: ListCorrectionsParams = {}) {
   return useQuery({
     queryKey: validationKeys.correctionList(params),
     queryFn: () => listCorrections(params),
-    staleTime: 60 * 1000, // 1 Minute
+    staleTime: QUERY_STANDARD.staleTime, // 60s - Standard
   });
 }
 
@@ -176,7 +177,7 @@ export function useBatches(params: ListBatchesParams = {}) {
   return useQuery({
     queryKey: validationKeys.batchList(params),
     queryFn: () => listBatches(params),
-    staleTime: 30 * 1000, // 30 Sekunden
+    staleTime: QUERY_VOLATILE.staleTime, // 30s - Volatile
   });
 }
 
@@ -188,7 +189,7 @@ export function useBatch(batchId: string | undefined) {
     queryKey: validationKeys.batchDetail(batchId!),
     queryFn: () => getBatch(batchId!),
     enabled: !!batchId,
-    staleTime: 30 * 1000,
+    staleTime: QUERY_VOLATILE.staleTime, // 30s
   });
 }
 
@@ -297,7 +298,7 @@ export function useTrainingStats() {
   return useQuery({
     queryKey: validationKeys.stats(),
     queryFn: getTrainingStats,
-    staleTime: 60 * 1000, // 1 Minute
+    staleTime: QUERY_STANDARD.staleTime, // 60s - Standard
     refetchInterval: 5 * 60 * 1000, // Alle 5 Minuten aktualisieren
   });
 }
@@ -309,7 +310,7 @@ export function useBackendComparison() {
   return useQuery({
     queryKey: validationKeys.backendComparison(),
     queryFn: getBackendComparison,
-    staleTime: 5 * 60 * 1000, // 5 Minuten
+    staleTime: QUERY_SEMI_STATIC.staleTime, // 5min - Semi-statisch
   });
 }
 

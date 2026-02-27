@@ -22,18 +22,19 @@ import {
   type GoalCreate,
   type GoalProgressUpdate,
 } from '@/lib/api/services/esg';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC, QUERY_STATIC } from '@/lib/api/query-config';
 
 // ==================== Stale Time Konfiguration ====================
 
 const STALE_TIMES = {
-  dashboard: 2 * 60 * 1000,       // 2 Minuten - Dashboard ändert sich moderat
-  emissions: 30 * 1000,           // 30 Sekunden - Emissionen können häufig kommen
-  emissionFactors: 60 * 60 * 1000, // 1 Stunde - Faktoren ändern sich selten
-  suppliers: 5 * 60 * 1000,       // 5 Minuten
-  certifications: 5 * 60 * 1000,  // 5 Minuten - Zertifizierungen ändern sich selten
-  reports: 5 * 60 * 1000,         // 5 Minuten
-  goals: 2 * 60 * 1000,           // 2 Minuten
-  sdg: 60 * 60 * 1000,            // 1 Stunde - SDG-Mapping ändert sich selten
+  dashboard: QUERY_STANDARD.staleTime,       // 60s - Dashboard ändert sich moderat
+  emissions: QUERY_VOLATILE.staleTime,       // 30s - Emissionen können häufig kommen
+  emissionFactors: QUERY_STATIC.staleTime,   // 1h - Faktoren ändern sich selten
+  suppliers: QUERY_SEMI_STATIC.staleTime,    // 5min
+  certifications: QUERY_SEMI_STATIC.staleTime, // 5min - Zertifizierungen ändern sich selten
+  reports: QUERY_SEMI_STATIC.staleTime,      // 5min
+  goals: QUERY_STANDARD.staleTime,           // 60s
+  sdg: QUERY_STATIC.staleTime,              // 1h - SDG-Mapping ändert sich selten
 } as const;
 
 // ==================== Query Keys ====================

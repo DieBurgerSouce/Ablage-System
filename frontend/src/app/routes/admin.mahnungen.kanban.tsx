@@ -5,12 +5,19 @@
  */
 
 import { createFileRoute } from '@tanstack/react-router';
-import { MahnKanbanBoard } from '@/features/banking/components/MahnKanbanBoard';
+import { lazy, Suspense } from 'react';
+import { LazyLoadFallback } from '@/components/LazyLoadFallback';
+
+const MahnKanbanBoard = lazy(() => import('@/features/banking/components/MahnKanbanBoard').then(m => ({ default: m.MahnKanbanBoard })));
 
 export const Route = createFileRoute('/admin/mahnungen/kanban')({
     component: KanbanPage,
 });
 
 function KanbanPage() {
-    return <MahnKanbanBoard />;
+    return (
+        <Suspense fallback={<LazyLoadFallback />}>
+            <MahnKanbanBoard />
+        </Suspense>
+    );
 }

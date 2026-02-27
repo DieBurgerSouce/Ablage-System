@@ -17,19 +17,20 @@ import {
     type DATEVKontierungLearnRequest,
     type FestschreibungRequest,
 } from '@/lib/api/services/datev-connect';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 
 // =============================================================================
 // STALE TIME KONFIGURATION
 // =============================================================================
 
 const STALE_TIMES = {
-    connections: 5 * 60 * 1000,     // 5 Minuten
-    syncStatus: 30 * 1000,          // 30 Sekunden (häufig aktualisiert)
-    syncHistory: 60 * 1000,         // 1 Minute
-    kontenplan: 30 * 60 * 1000,     // 30 Minuten
-    buchungen: 60 * 1000,           // 1 Minute
-    kontierung: 60 * 1000,          // 1 Minute
-    compliance: 5 * 60 * 1000,      // 5 Minuten
+    connections: QUERY_SEMI_STATIC.staleTime,  // 5min
+    syncStatus: QUERY_VOLATILE.staleTime,      // 30s (häufig aktualisiert)
+    syncHistory: QUERY_STANDARD.staleTime,     // 60s
+    kontenplan: QUERY_SEMI_STATIC.gcTime,      // 30min
+    buchungen: QUERY_STANDARD.staleTime,       // 60s
+    kontierung: QUERY_STANDARD.staleTime,      // 60s
+    compliance: QUERY_SEMI_STATIC.staleTime,   // 5min
 } as const;
 
 // =============================================================================

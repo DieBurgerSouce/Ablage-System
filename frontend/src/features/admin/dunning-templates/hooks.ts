@@ -12,6 +12,7 @@ import {
   downloadLetterPdf,
   downloadBatchLetters,
 } from './api';
+import { QUERY_SEMI_STATIC, QUERY_STATIC } from '@/lib/api/query-config';
 import type { LetterPreviewParams, BatchGenerateParams } from './types';
 
 // Query Keys
@@ -27,9 +28,9 @@ export const dunningTemplateKeys = {
 
 // Stale Times
 const STALE_TIMES = {
-  records: 5 * 60 * 1000, // 5 Minuten
-  templates: 30 * 60 * 1000, // 30 Minuten (ändert sich selten)
-  interestRates: 60 * 60 * 1000, // 1 Stunde (halbjährliche Updates)
+  records: QUERY_SEMI_STATIC.staleTime,    // 5min
+  templates: QUERY_SEMI_STATIC.gcTime,     // 30min (ändert sich selten)
+  interestRates: QUERY_STATIC.staleTime,   // 1h (halbjährliche Updates)
 };
 
 /**

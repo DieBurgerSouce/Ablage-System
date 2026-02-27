@@ -10,6 +10,7 @@ import {
   getMonthlySkontoSummary,
   exportMissedSkonto,
 } from './api';
+import { QUERY_STANDARD, QUERY_SEMI_STATIC, QUERY_KPIS } from '@/lib/api/query-config';
 import type { MissedSkontoFilters } from './types';
 
 // Query Keys
@@ -25,9 +26,9 @@ export const missedSkontoKeys = {
 
 // Stale times
 const STALE_TIMES = {
-  list: 2 * 60 * 1000, // 2 Minuten
-  statistics: 5 * 60 * 1000, // 5 Minuten
-  monthly: 10 * 60 * 1000, // 10 Minuten
+  list: QUERY_STANDARD.staleTime,           // 60s
+  statistics: QUERY_SEMI_STATIC.staleTime,  // 5min
+  monthly: QUERY_KPIS.staleTime,            // 60s
 };
 
 /**

@@ -45,6 +45,7 @@ import { Route as OpenFileRouteImport } from './app/routes/open-file'
 import { Route as OcrSuiteRouteImport } from './app/routes/ocr-suite'
 import { Route as MonitoringRouteImport } from './app/routes/monitoring'
 import { Route as MlDashboardRouteImport } from './app/routes/ml-dashboard'
+import { Route as MatchingRouteImport } from './app/routes/matching'
 import { Route as LoginRouteImport } from './app/routes/login'
 import { Route as LieferantenRouteImport } from './app/routes/lieferanten'
 import { Route as KundenRouteImport } from './app/routes/kunden'
@@ -70,6 +71,7 @@ import { Route as DeveloperRouteImport } from './app/routes/developer'
 import { Route as DataQualityRouteImport } from './app/routes/data-quality'
 import { Route as ContractsRouteImport } from './app/routes/contracts'
 import { Route as ComplianceRouteImport } from './app/routes/compliance'
+import { Route as CommandCenterRouteImport } from './app/routes/command-center'
 import { Route as ChatRouteImport } from './app/routes/chat'
 import { Route as CashflowRouteImport } from './app/routes/cashflow'
 import { Route as BerichteRouteImport } from './app/routes/berichte'
@@ -77,6 +79,7 @@ import { Route as AutomationRouteImport } from './app/routes/automation'
 import { Route as ApprovalsRouteImport } from './app/routes/approvals'
 import { Route as AnalyticsRouteImport } from './app/routes/analytics'
 import { Route as AlertsRouteImport } from './app/routes/alerts'
+import { Route as AgentChatRouteImport } from './app/routes/agent-chat'
 import { Route as AdminRouteImport } from './app/routes/admin'
 import { Route as AdhocReportingRouteImport } from './app/routes/adhoc-reporting'
 import { Route as ActivityRouteImport } from './app/routes/activity'
@@ -198,6 +201,7 @@ import { Route as AdminEuerExportRouteImport } from './app/routes/admin.euer-exp
 import { Route as AdminEsgRouteImport } from './app/routes/admin.esg'
 import { Route as AdminErpRouteImport } from './app/routes/admin.erp'
 import { Route as AdminElsterExportRouteImport } from './app/routes/admin.elster-export'
+import { Route as AdminEinvoiceRouteImport } from './app/routes/admin.einvoice'
 import { Route as AdminDunningTemplatesRouteImport } from './app/routes/admin.dunning-templates'
 import { Route as AdminDocumentQualityRouteImport } from './app/routes/admin.document-quality'
 import { Route as AdminDlpRouteImport } from './app/routes/admin.dlp'
@@ -483,6 +487,11 @@ const MlDashboardRoute = MlDashboardRouteImport.update({
   path: '/ml-dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MatchingRoute = MatchingRouteImport.update({
+  id: '/matching',
+  path: '/matching',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -608,6 +617,11 @@ const ComplianceRoute = ComplianceRouteImport.update({
   path: '/compliance',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CommandCenterRoute = CommandCenterRouteImport.update({
+  id: '/command-center',
+  path: '/command-center',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatRoute = ChatRouteImport.update({
   id: '/chat',
   path: '/chat',
@@ -641,6 +655,11 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
 const AlertsRoute = AlertsRouteImport.update({
   id: '/alerts',
   path: '/alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentChatRoute = AgentChatRouteImport.update({
+  id: '/agent-chat',
+  path: '/agent-chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -1256,6 +1275,11 @@ const AdminElsterExportRoute = AdminElsterExportRouteImport.update({
   path: '/elster-export',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminEinvoiceRoute = AdminEinvoiceRouteImport.update({
+  id: '/einvoice',
+  path: '/einvoice',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminDunningTemplatesRoute = AdminDunningTemplatesRouteImport.update({
   id: '/dunning-templates',
   path: '/dunning-templates',
@@ -1810,6 +1834,7 @@ export interface FileRoutesByFullPath {
   '/activity': typeof ActivityRoute
   '/adhoc-reporting': typeof AdhocReportingRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
+  '/agent-chat': typeof AgentChatRoute
   '/alerts': typeof AlertsRoute
   '/analytics': typeof AnalyticsRoute
   '/approvals': typeof ApprovalsRoute
@@ -1817,6 +1842,7 @@ export interface FileRoutesByFullPath {
   '/berichte': typeof BerichteRouteWithChildren
   '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/command-center': typeof CommandCenterRoute
   '/compliance': typeof ComplianceRoute
   '/contracts': typeof ContractsRouteWithChildren
   '/data-quality': typeof DataQualityRoute
@@ -1842,6 +1868,7 @@ export interface FileRoutesByFullPath {
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
+  '/matching': typeof MatchingRoute
   '/ml-dashboard': typeof MlDashboardRoute
   '/monitoring': typeof MonitoringRoute
   '/ocr-suite': typeof OcrSuiteRoute
@@ -1905,6 +1932,7 @@ export interface FileRoutesByFullPath {
   '/admin/dlp': typeof AdminDlpRoute
   '/admin/document-quality': typeof AdminDocumentQualityRoute
   '/admin/dunning-templates': typeof AdminDunningTemplatesRoute
+  '/admin/einvoice': typeof AdminEinvoiceRoute
   '/admin/elster-export': typeof AdminElsterExportRoute
   '/admin/erp': typeof AdminErpRouteWithChildren
   '/admin/esg': typeof AdminEsgRouteWithChildren
@@ -2104,12 +2132,14 @@ export interface FileRoutesByTo {
   '/$': typeof SplatRoute
   '/activity': typeof ActivityRoute
   '/adhoc-reporting': typeof AdhocReportingRouteWithChildren
+  '/agent-chat': typeof AgentChatRoute
   '/alerts': typeof AlertsRoute
   '/analytics': typeof AnalyticsRoute
   '/approvals': typeof ApprovalsRoute
   '/automation': typeof AutomationRoute
   '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/command-center': typeof CommandCenterRoute
   '/compliance': typeof ComplianceRoute
   '/contracts': typeof ContractsRouteWithChildren
   '/data-quality': typeof DataQualityRoute
@@ -2131,6 +2161,7 @@ export interface FileRoutesByTo {
   '/ki-pipeline': typeof KiPipelineRouteWithChildren
   '/knowledge-graph': typeof KnowledgeGraphRoute
   '/login': typeof LoginRoute
+  '/matching': typeof MatchingRoute
   '/ml-dashboard': typeof MlDashboardRoute
   '/monitoring': typeof MonitoringRoute
   '/ocr-suite': typeof OcrSuiteRoute
@@ -2182,6 +2213,7 @@ export interface FileRoutesByTo {
   '/admin/dlp': typeof AdminDlpRoute
   '/admin/document-quality': typeof AdminDocumentQualityRoute
   '/admin/dunning-templates': typeof AdminDunningTemplatesRoute
+  '/admin/einvoice': typeof AdminEinvoiceRoute
   '/admin/elster-export': typeof AdminElsterExportRoute
   '/admin/euer-export': typeof AdminEuerExportRoute
   '/admin/firmen': typeof AdminFirmenRouteWithChildren
@@ -2371,6 +2403,7 @@ export interface FileRoutesById {
   '/activity': typeof ActivityRoute
   '/adhoc-reporting': typeof AdhocReportingRouteWithChildren
   '/admin': typeof AdminRouteWithChildren
+  '/agent-chat': typeof AgentChatRoute
   '/alerts': typeof AlertsRoute
   '/analytics': typeof AnalyticsRoute
   '/approvals': typeof ApprovalsRoute
@@ -2378,6 +2411,7 @@ export interface FileRoutesById {
   '/berichte': typeof BerichteRouteWithChildren
   '/cashflow': typeof CashflowRoute
   '/chat': typeof ChatRoute
+  '/command-center': typeof CommandCenterRoute
   '/compliance': typeof ComplianceRoute
   '/contracts': typeof ContractsRouteWithChildren
   '/data-quality': typeof DataQualityRoute
@@ -2403,6 +2437,7 @@ export interface FileRoutesById {
   '/kunden': typeof KundenRouteWithChildren
   '/lieferanten': typeof LieferantenRouteWithChildren
   '/login': typeof LoginRoute
+  '/matching': typeof MatchingRoute
   '/ml-dashboard': typeof MlDashboardRoute
   '/monitoring': typeof MonitoringRoute
   '/ocr-suite': typeof OcrSuiteRoute
@@ -2466,6 +2501,7 @@ export interface FileRoutesById {
   '/admin/dlp': typeof AdminDlpRoute
   '/admin/document-quality': typeof AdminDocumentQualityRoute
   '/admin/dunning-templates': typeof AdminDunningTemplatesRoute
+  '/admin/einvoice': typeof AdminEinvoiceRoute
   '/admin/elster-export': typeof AdminElsterExportRoute
   '/admin/erp': typeof AdminErpRouteWithChildren
   '/admin/esg': typeof AdminEsgRouteWithChildren
@@ -2668,6 +2704,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/adhoc-reporting'
     | '/admin'
+    | '/agent-chat'
     | '/alerts'
     | '/analytics'
     | '/approvals'
@@ -2675,6 +2712,7 @@ export interface FileRouteTypes {
     | '/berichte'
     | '/cashflow'
     | '/chat'
+    | '/command-center'
     | '/compliance'
     | '/contracts'
     | '/data-quality'
@@ -2700,6 +2738,7 @@ export interface FileRouteTypes {
     | '/kunden'
     | '/lieferanten'
     | '/login'
+    | '/matching'
     | '/ml-dashboard'
     | '/monitoring'
     | '/ocr-suite'
@@ -2763,6 +2802,7 @@ export interface FileRouteTypes {
     | '/admin/dlp'
     | '/admin/document-quality'
     | '/admin/dunning-templates'
+    | '/admin/einvoice'
     | '/admin/elster-export'
     | '/admin/erp'
     | '/admin/esg'
@@ -2962,12 +3002,14 @@ export interface FileRouteTypes {
     | '/$'
     | '/activity'
     | '/adhoc-reporting'
+    | '/agent-chat'
     | '/alerts'
     | '/analytics'
     | '/approvals'
     | '/automation'
     | '/cashflow'
     | '/chat'
+    | '/command-center'
     | '/compliance'
     | '/contracts'
     | '/data-quality'
@@ -2989,6 +3031,7 @@ export interface FileRouteTypes {
     | '/ki-pipeline'
     | '/knowledge-graph'
     | '/login'
+    | '/matching'
     | '/ml-dashboard'
     | '/monitoring'
     | '/ocr-suite'
@@ -3040,6 +3083,7 @@ export interface FileRouteTypes {
     | '/admin/dlp'
     | '/admin/document-quality'
     | '/admin/dunning-templates'
+    | '/admin/einvoice'
     | '/admin/elster-export'
     | '/admin/euer-export'
     | '/admin/firmen'
@@ -3228,6 +3272,7 @@ export interface FileRouteTypes {
     | '/activity'
     | '/adhoc-reporting'
     | '/admin'
+    | '/agent-chat'
     | '/alerts'
     | '/analytics'
     | '/approvals'
@@ -3235,6 +3280,7 @@ export interface FileRouteTypes {
     | '/berichte'
     | '/cashflow'
     | '/chat'
+    | '/command-center'
     | '/compliance'
     | '/contracts'
     | '/data-quality'
@@ -3260,6 +3306,7 @@ export interface FileRouteTypes {
     | '/kunden'
     | '/lieferanten'
     | '/login'
+    | '/matching'
     | '/ml-dashboard'
     | '/monitoring'
     | '/ocr-suite'
@@ -3323,6 +3370,7 @@ export interface FileRouteTypes {
     | '/admin/dlp'
     | '/admin/document-quality'
     | '/admin/dunning-templates'
+    | '/admin/einvoice'
     | '/admin/elster-export'
     | '/admin/erp'
     | '/admin/esg'
@@ -3524,6 +3572,7 @@ export interface RootRouteChildren {
   ActivityRoute: typeof ActivityRoute
   AdhocReportingRoute: typeof AdhocReportingRouteWithChildren
   AdminRoute: typeof AdminRouteWithChildren
+  AgentChatRoute: typeof AgentChatRoute
   AlertsRoute: typeof AlertsRoute
   AnalyticsRoute: typeof AnalyticsRoute
   ApprovalsRoute: typeof ApprovalsRoute
@@ -3531,6 +3580,7 @@ export interface RootRouteChildren {
   BerichteRoute: typeof BerichteRouteWithChildren
   CashflowRoute: typeof CashflowRoute
   ChatRoute: typeof ChatRoute
+  CommandCenterRoute: typeof CommandCenterRoute
   ComplianceRoute: typeof ComplianceRoute
   ContractsRoute: typeof ContractsRouteWithChildren
   DataQualityRoute: typeof DataQualityRoute
@@ -3556,6 +3606,7 @@ export interface RootRouteChildren {
   KundenRoute: typeof KundenRouteWithChildren
   LieferantenRoute: typeof LieferantenRouteWithChildren
   LoginRoute: typeof LoginRoute
+  MatchingRoute: typeof MatchingRoute
   MlDashboardRoute: typeof MlDashboardRoute
   MonitoringRoute: typeof MonitoringRoute
   OcrSuiteRoute: typeof OcrSuiteRoute
@@ -3858,6 +3909,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MlDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/matching': {
+      id: '/matching'
+      path: '/matching'
+      fullPath: '/matching'
+      preLoaderRoute: typeof MatchingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -4033,6 +4091,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComplianceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/command-center': {
+      id: '/command-center'
+      path: '/command-center'
+      fullPath: '/command-center'
+      preLoaderRoute: typeof CommandCenterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat': {
       id: '/chat'
       path: '/chat'
@@ -4080,6 +4145,13 @@ declare module '@tanstack/react-router' {
       path: '/alerts'
       fullPath: '/alerts'
       preLoaderRoute: typeof AlertsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent-chat': {
+      id: '/agent-chat'
+      path: '/agent-chat'
+      fullPath: '/agent-chat'
+      preLoaderRoute: typeof AgentChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -4927,6 +4999,13 @@ declare module '@tanstack/react-router' {
       path: '/elster-export'
       fullPath: '/admin/elster-export'
       preLoaderRoute: typeof AdminElsterExportRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/einvoice': {
+      id: '/admin/einvoice'
+      path: '/einvoice'
+      fullPath: '/admin/einvoice'
+      preLoaderRoute: typeof AdminEinvoiceRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/dunning-templates': {
@@ -5925,6 +6004,7 @@ interface AdminRouteChildren {
   AdminDlpRoute: typeof AdminDlpRoute
   AdminDocumentQualityRoute: typeof AdminDocumentQualityRoute
   AdminDunningTemplatesRoute: typeof AdminDunningTemplatesRoute
+  AdminEinvoiceRoute: typeof AdminEinvoiceRoute
   AdminElsterExportRoute: typeof AdminElsterExportRoute
   AdminErpRoute: typeof AdminErpRouteWithChildren
   AdminEsgRoute: typeof AdminEsgRouteWithChildren
@@ -5993,6 +6073,7 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminDlpRoute: AdminDlpRoute,
   AdminDocumentQualityRoute: AdminDocumentQualityRoute,
   AdminDunningTemplatesRoute: AdminDunningTemplatesRoute,
+  AdminEinvoiceRoute: AdminEinvoiceRoute,
   AdminElsterExportRoute: AdminElsterExportRoute,
   AdminErpRoute: AdminErpRouteWithChildren,
   AdminEsgRoute: AdminEsgRouteWithChildren,
@@ -6588,6 +6669,7 @@ const rootRouteChildren: RootRouteChildren = {
   ActivityRoute: ActivityRoute,
   AdhocReportingRoute: AdhocReportingRouteWithChildren,
   AdminRoute: AdminRouteWithChildren,
+  AgentChatRoute: AgentChatRoute,
   AlertsRoute: AlertsRoute,
   AnalyticsRoute: AnalyticsRoute,
   ApprovalsRoute: ApprovalsRoute,
@@ -6595,6 +6677,7 @@ const rootRouteChildren: RootRouteChildren = {
   BerichteRoute: BerichteRouteWithChildren,
   CashflowRoute: CashflowRoute,
   ChatRoute: ChatRoute,
+  CommandCenterRoute: CommandCenterRoute,
   ComplianceRoute: ComplianceRoute,
   ContractsRoute: ContractsRouteWithChildren,
   DataQualityRoute: DataQualityRoute,
@@ -6620,6 +6703,7 @@ const rootRouteChildren: RootRouteChildren = {
   KundenRoute: KundenRouteWithChildren,
   LieferantenRoute: LieferantenRouteWithChildren,
   LoginRoute: LoginRoute,
+  MatchingRoute: MatchingRoute,
   MlDashboardRoute: MlDashboardRoute,
   MonitoringRoute: MonitoringRoute,
   OcrSuiteRoute: OcrSuiteRoute,

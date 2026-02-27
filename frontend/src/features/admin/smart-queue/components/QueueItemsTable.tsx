@@ -4,7 +4,8 @@
  * Tabelle mit Warteschlangen-Items und Prioritäts-Anzeige.
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   FileText,
   Clock,
@@ -282,11 +283,29 @@ function QueueItemRow({ item }: { item: QueueItem }) {
 
 export function QueueItemsTable() {
   const [statusFilter, setStatusFilter] = useState<QueueStatus | 'all'>('all');
+  const tableContainerRef = useRef<HTMLDivElement>(null);
 
   const { data, isLoading } = useQueueItems(
     statusFilter === 'all' ? undefined : statusFilter,
     100
   );
+
+  const queueItems = data?.items ?? [];
+
+  const rowVirtualizer = useVirtualizer({
+    count: queueItems.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 64,
+    overscan: 5,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalVirtualSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalVirtualSize - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
 
   return (
     <Card>
@@ -324,9 +343,13 @@ export function QueueItemsTable() {
               <Skeleton key={i} className="h-16 w-full" />
             ))}
           </div>
-        ) : data?.items && data.items.length > 0 ? (
+        ) : queueItems.length > 0 ? (
+          <div
+            ref={tableContainerRef}
+            className="overflow-auto max-h-[600px]"
+          >
           <Table>
-            <TableHeader>
+            <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
               <TableRow>
                 <TableHead>Dokument</TableHead>
                 <TableHead>Priorität</TableHead>
@@ -337,11 +360,22 @@ export function QueueItemsTable() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.items.map((item) => (
-                <QueueItemRow key={item.id} item={item} />
+              {paddingTop > 0 && (
+                <tr>
+                  <td style={{ height: paddingTop }} colSpan={6} />
+                </tr>
+              )}
+              {virtualRows.map((virtualRow) => (
+                <QueueItemRow key={queueItems[virtualRow.index].id} item={queueItems[virtualRow.index]} />
               ))}
+              {paddingBottom > 0 && (
+                <tr>
+                  <td style={{ height: paddingBottom }} colSpan={6} />
+                </tr>
+              )}
             </TableBody>
           </Table>
+          </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <Clock className="h-12 w-12 mx-auto mb-4 opacity-20" />
@@ -349,7 +383,7 @@ export function QueueItemsTable() {
           </div>
         )}
 
-        {data && data.total > data.items.length && (
+        {data && data.total > queueItems.length && (
           <p className="text-sm text-muted-foreground mt-4 text-center">
             Zeige {data.items.length} von {data.total} Dokumenten
           </p>

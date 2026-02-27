@@ -5,6 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { expenseService } from '@/lib/api/services/expenses';
+import { QUERY_STANDARD, QUERY_STATIC } from '@/lib/api/query-config';
 import type {
   ExpenseReportCreate,
   ExpenseReportUpdate,
@@ -21,8 +22,8 @@ import type {
 // ==================== Stale Time Konfiguration ====================
 
 const STALE_TIMES = {
-  reports: 2 * 60 * 1000,      // 2 Minuten - Reports können sich ändern
-  calculations: 60 * 60 * 1000, // 1 Stunde - Berechnungen ändern sich selten
+  reports: QUERY_STANDARD.staleTime,        // 60s - Reports können sich ändern
+  calculations: QUERY_STATIC.staleTime,     // 1h - Berechnungen ändern sich selten
 } as const;
 
 // ==================== Query Keys ====================

@@ -11,6 +11,7 @@ import {
   smartInboxService,
   SmartInboxApiError,
 } from '../api/smart-inbox-api';
+import { QUERY_VOLATILE, QUERY_STANDARD } from '@/lib/api/query-config';
 import type {
   InboxFilter,
   InboxActionType,
@@ -32,15 +33,15 @@ export function useSmartInboxRealtime(): void {
 // ==================== Konfiguration ====================
 
 const STALE_TIMES = {
-  items: 30 * 1000,          // 30 Sekunden
-  insights: 60 * 1000,       // 1 Minute
-  stats: 30 * 1000,          // 30 Sekunden
+  items: QUERY_VOLATILE.staleTime,         // 30s
+  insights: QUERY_STANDARD.staleTime,      // 60s
+  stats: QUERY_VOLATILE.staleTime,         // 30s
 } as const;
 
 const GC_TIMES = {
-  items: 5 * 60 * 1000,
-  insights: 10 * 60 * 1000,
-  stats: 5 * 60 * 1000,
+  items: QUERY_VOLATILE.gcTime,            // 5min
+  insights: QUERY_STANDARD.gcTime,         // 10min
+  stats: QUERY_VOLATILE.gcTime,            // 5min
 } as const;
 
 const RETRY_CONFIG = {

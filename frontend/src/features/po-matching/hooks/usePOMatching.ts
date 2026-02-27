@@ -19,20 +19,21 @@ import {
   approvePOMatch,
   evaluatePOMatch,
 } from '../api/po-matching-api';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_KPIS } from '@/lib/api/query-config';
 import type { POMatchFilter } from '../types/po-matching-types';
 
 // ==================== Konfiguration ====================
 
 const STALE_TIMES = {
-  list: 30 * 1000,        // 30 Sekunden - Liste kann sich schnell ändern
-  detail: 60 * 1000,      // 1 Minute - Detail ändert sich seltener
-  stats: 2 * 60 * 1000,   // 2 Minuten - Statistiken ändern sich selten
+  list: QUERY_VOLATILE.staleTime,    // 30s - Liste kann sich schnell ändern
+  detail: QUERY_STANDARD.staleTime,  // 60s - Detail ändert sich seltener
+  stats: QUERY_KPIS.staleTime,       // 60s - Statistiken
 } as const;
 
 const GC_TIMES = {
-  list: 5 * 60 * 1000,     // 5 Minuten
-  detail: 15 * 60 * 1000,  // 15 Minuten
-  stats: 10 * 60 * 1000,   // 10 Minuten
+  list: QUERY_VOLATILE.gcTime,       // 5min
+  detail: QUERY_STANDARD.gcTime,     // 10min
+  stats: QUERY_KPIS.gcTime,          // 10min
 } as const;
 
 // ==================== Query Keys ====================

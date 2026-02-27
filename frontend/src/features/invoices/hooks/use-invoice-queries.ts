@@ -13,6 +13,7 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { invoiceService, InvoiceApiError } from '../api/invoice-api';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 import type {
   InvoiceFilter,
   InvoiceTrackingCreate,
@@ -25,15 +26,15 @@ import type {
 // ==================== Konfiguration ====================
 
 const STALE_TIMES = {
-  invoices: 30 * 1000,       // 30 Sekunden - Rechnungen können sich schnell ändern
-  statistics: 60 * 1000,      // 1 Minute - Statistiken ändern sich seltener
-  detail: 5 * 60 * 1000,      // 5 Minuten - Einzelne Rechnung ändert sich selten
+  invoices: QUERY_VOLATILE.staleTime,      // 30s - Rechnungen können sich schnell ändern
+  statistics: QUERY_STANDARD.staleTime,    // 60s - Statistiken ändern sich seltener
+  detail: QUERY_SEMI_STATIC.staleTime,     // 5min - Einzelne Rechnung ändert sich selten
 } as const;
 
 const GC_TIMES = {
-  invoices: 5 * 60 * 1000,    // 5 Minuten - Listen aus Cache entfernen
-  statistics: 10 * 60 * 1000, // 10 Minuten - Statistiken länger halten
-  detail: 30 * 60 * 1000,     // 30 Minuten - Details lange halten
+  invoices: QUERY_VOLATILE.gcTime,         // 5min - Listen aus Cache entfernen
+  statistics: QUERY_STANDARD.gcTime,       // 10min - Statistiken länger halten
+  detail: QUERY_SEMI_STATIC.gcTime,        // 30min - Details lange halten
 } as const;
 
 const RETRY_CONFIG = {

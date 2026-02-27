@@ -14,6 +14,7 @@ import {
   deleteExport,
   getAvailableBackends,
 } from './api';
+import { QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 import type {
   QueueFilters,
   CorrectionSubmission,
@@ -32,10 +33,10 @@ export const correctionWorkbenchKeys = {
 
 // Stale Times
 const STALE_TIMES = {
-  queue: 60 * 1000, // 1 Minute
-  stats: 5 * 60 * 1000, // 5 Minuten
-  exports: 10 * 60 * 1000, // 10 Minuten
-  backends: 30 * 60 * 1000, // 30 Minuten
+  queue: QUERY_STANDARD.staleTime,          // 60s
+  stats: QUERY_SEMI_STATIC.staleTime,      // 5min
+  exports: QUERY_STANDARD.gcTime,           // 10min
+  backends: QUERY_SEMI_STATIC.gcTime,      // 30min
 };
 
 /**

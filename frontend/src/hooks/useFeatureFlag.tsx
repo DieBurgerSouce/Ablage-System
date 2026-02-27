@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
+import { QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 
 interface FeatureFlagResult {
   flag_key: string;
@@ -32,8 +33,7 @@ export function useFeatureFlag(key: string) {
       const response = await apiClient.get(`/feature-flags/evaluate/${key}`);
       return response.data;
     },
-    staleTime: 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    ...QUERY_SEMI_STATIC, // 5min staleTime, 30min gcTime
     retry: 1,
   });
 
@@ -55,8 +55,7 @@ export function useAllFeatureFlags() {
       const response = await apiClient.get('/feature-flags/evaluate-all');
       return response.data;
     },
-    staleTime: 60 * 1000,
-    gcTime: 5 * 60 * 1000,
+    ...QUERY_SEMI_STATIC, // 5min staleTime, 30min gcTime
     retry: 1,
   });
 

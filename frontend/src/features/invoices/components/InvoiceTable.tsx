@@ -12,6 +12,8 @@
  * - Actions Dropdown
  */
 
+import { useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Table,
   TableBody,
@@ -65,6 +67,23 @@ export function InvoiceTable({
   onMarkPaid,
   onIncreaseDunning,
 }: InvoiceTableProps) {
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  const rowVirtualizer = useVirtualizer({
+    count: invoices.length,
+    getScrollElement: () => tableContainerRef.current,
+    estimateSize: () => 48,
+    overscan: 5,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalSize - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
+
   if (isLoading) {
     return <InvoiceTableSkeleton />;
   }
@@ -78,9 +97,9 @@ export function InvoiceTable({
   }
 
   return (
-    <div className="rounded-md border">
+    <div ref={tableContainerRef} className="rounded-md border overflow-auto max-h-[600px]">
       <Table>
-        <TableHeader>
+        <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
           <TableRow>
             <TableHead>{UI_LABELS.tableInvoiceNumber}</TableHead>
             <TableHead className="text-right">{UI_LABELS.tableAmount}</TableHead>
@@ -92,15 +111,25 @@ export function InvoiceTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {invoices.map((invoice) => (
+          {paddingTop > 0 && (
+            <tr>
+              <td style={{ height: paddingTop }} colSpan={7} />
+            </tr>
+          )}
+          {virtualRows.map((virtualRow) => (
             <InvoiceTableRow
-              key={invoice.id}
-              invoice={invoice}
+              key={invoices[virtualRow.index].id}
+              invoice={invoices[virtualRow.index]}
               onClick={onRowClick}
               onMarkPaid={onMarkPaid}
               onIncreaseDunning={onIncreaseDunning}
             />
           ))}
+          {paddingBottom > 0 && (
+            <tr>
+              <td style={{ height: paddingBottom }} colSpan={7} />
+            </tr>
+          )}
         </TableBody>
       </Table>
     </div>

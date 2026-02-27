@@ -13,6 +13,7 @@ import {
   importLogsService,
   ImportApiError,
 } from '../api/imports-api';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC, QUERY_STATIC } from '@/lib/api/query-config';
 import type {
   EmailConfigCreate,
   EmailConfigUpdate,
@@ -26,19 +27,19 @@ import type {
 // ==================== Konfiguration ====================
 
 const STALE_TIMES = {
-  configs: 60 * 1000,        // 1 Minute
-  rules: 60 * 1000,          // 1 Minute
-  logs: 30 * 1000,           // 30 Sekunden
-  stats: 5 * 60 * 1000,      // 5 Minuten
-  schema: 30 * 60 * 1000,    // 30 Minuten - Schema ändert sich selten
+  configs: QUERY_STANDARD.staleTime,       // 60s
+  rules: QUERY_STANDARD.staleTime,         // 60s
+  logs: QUERY_VOLATILE.staleTime,          // 30s
+  stats: QUERY_SEMI_STATIC.staleTime,     // 5min
+  schema: QUERY_SEMI_STATIC.gcTime,       // 30min - Schema ändert sich selten
 } as const;
 
 const GC_TIMES = {
-  configs: 10 * 60 * 1000,
-  rules: 10 * 60 * 1000,
-  logs: 5 * 60 * 1000,
-  stats: 30 * 60 * 1000,
-  schema: 60 * 60 * 1000,
+  configs: QUERY_STANDARD.gcTime,          // 10min
+  rules: QUERY_STANDARD.gcTime,            // 10min
+  logs: QUERY_VOLATILE.gcTime,             // 5min
+  stats: QUERY_SEMI_STATIC.gcTime,        // 30min
+  schema: QUERY_STATIC.staleTime,          // 1h
 } as const;
 
 const RETRY_CONFIG = {

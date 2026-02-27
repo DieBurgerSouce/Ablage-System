@@ -1,10 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { UploadWizard } from '@/features/upload/components/UploadWizard'
+import { lazy, Suspense } from 'react'
+import { LazyLoadFallback } from '@/components/LazyLoadFallback'
+
+const UploadWizard = lazy(() => import('@/features/upload/components/UploadWizard').then(m => ({ default: m.UploadWizard })))
 
 export const Route = createFileRoute('/upload')({
     component: UploadPage,
 })
 
 function UploadPage() {
-    return <UploadWizard />
+    return (
+        <Suspense fallback={<LazyLoadFallback />}>
+            <UploadWizard />
+        </Suspense>
+    )
 }

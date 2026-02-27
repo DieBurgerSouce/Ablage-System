@@ -22,6 +22,7 @@ import {
   fetchSollIstReport,
   manualMatchDocument,
 } from '../api/recurring-api';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC, QUERY_KPIS } from '@/lib/api/query-config';
 import type {
   RecurringInvoiceFilter,
   RecurringInvoiceCreate,
@@ -32,17 +33,17 @@ import type {
 // ==================== Konfiguration ====================
 
 const STALE_TIMES = {
-  list: 30 * 1000,         // 30 Sekunden
-  detail: 5 * 60 * 1000,   // 5 Minuten
-  alerts: 60 * 1000,        // 1 Minute
-  report: 2 * 60 * 1000,    // 2 Minuten
+  list: QUERY_VOLATILE.staleTime,          // 30s
+  detail: QUERY_SEMI_STATIC.staleTime,    // 5min
+  alerts: QUERY_STANDARD.staleTime,        // 60s
+  report: QUERY_KPIS.staleTime,            // 60s
 } as const;
 
 const GC_TIMES = {
-  list: 5 * 60 * 1000,      // 5 Minuten
-  detail: 30 * 60 * 1000,   // 30 Minuten
-  alerts: 10 * 60 * 1000,   // 10 Minuten
-  report: 15 * 60 * 1000,   // 15 Minuten
+  list: QUERY_VOLATILE.gcTime,             // 5min
+  detail: QUERY_SEMI_STATIC.gcTime,       // 30min
+  alerts: QUERY_STANDARD.gcTime,           // 10min
+  report: QUERY_KPIS.gcTime,              // 10min
 } as const;
 
 // ==================== Query Keys ====================

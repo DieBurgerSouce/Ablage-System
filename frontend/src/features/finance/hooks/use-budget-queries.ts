@@ -18,18 +18,19 @@ import {
   type AllocationSource,
   type AlertSeverity,
 } from '@/lib/api/services/budgets';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 
 // ==================== Stale Time Konfiguration ====================
 
 const STALE_TIMES = {
-  kostenstellen: 10 * 60 * 1000, // 10 Minuten - Kostenstellen ändern sich selten
-  budgets: 2 * 60 * 1000,       // 2 Minuten - Budgets können sich durch Buchungen ändern
-  budgetList: 1 * 60 * 1000,    // 1 Minute - Liste kann sich durch neue Budgets ändern
-  summary: 30 * 1000,           // 30 Sekunden - Summary ändert sich mit Buchungen
-  lines: 1 * 60 * 1000,         // 1 Minute - Positionen ändern sich selten
-  allocations: 30 * 1000,       // 30 Sekunden - Zuweisungen können schnell kommen
-  variance: 2 * 60 * 1000,      // 2 Minuten - Report muss nicht realtime sein
-  alerts: 30 * 1000,            // 30 Sekunden - Alerts sollten schnell angezeigt werden
+  kostenstellen: QUERY_SEMI_STATIC.staleTime, // 5min - Kostenstellen ändern sich selten
+  budgets: QUERY_STANDARD.staleTime,          // 60s - Budgets können sich durch Buchungen ändern
+  budgetList: QUERY_STANDARD.staleTime,       // 60s - Liste kann sich durch neue Budgets ändern
+  summary: QUERY_VOLATILE.staleTime,          // 30s - Summary ändert sich mit Buchungen
+  lines: QUERY_STANDARD.staleTime,            // 60s - Positionen ändern sich selten
+  allocations: QUERY_VOLATILE.staleTime,      // 30s - Zuweisungen können schnell kommen
+  variance: QUERY_STANDARD.staleTime,         // 60s - Report muss nicht realtime sein
+  alerts: QUERY_VOLATILE.staleTime,           // 30s - Alerts sollten schnell angezeigt werden
 } as const;
 
 // ==================== Query Keys ====================

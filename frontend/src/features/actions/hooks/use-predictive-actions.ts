@@ -23,6 +23,7 @@ import {
   type ActionStatistics,
   type ActionTypesResponse,
 } from '@/lib/api/services/predictive-actions';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 
 // ==================== Query Keys ====================
 
@@ -52,10 +53,10 @@ export const predictiveActionsQueryKeys = {
 // ==================== Stale Times ====================
 
 const STALE_TIMES = {
-  actions: 1000 * 60 * 2, // 2 Minuten
-  critical: 1000 * 30, // 30 Sekunden (häufiger aktualisieren)
-  statistics: 1000 * 60 * 5, // 5 Minuten
-  types: 1000 * 60 * 30, // 30 Minuten (selten ändernd)
+  actions: QUERY_STANDARD.staleTime,            // 60s
+  critical: QUERY_VOLATILE.staleTime,           // 30s (häufiger aktualisieren)
+  statistics: QUERY_SEMI_STATIC.staleTime,      // 5min
+  types: QUERY_SEMI_STATIC.gcTime,              // 30min (selten ändernd)
 };
 
 // ==================== Query Hooks ====================

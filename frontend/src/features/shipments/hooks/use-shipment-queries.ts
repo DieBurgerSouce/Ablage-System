@@ -13,6 +13,7 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { shipmentService, ShipmentApiError } from '../api/shipment-api';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC, QUERY_STATIC } from '@/lib/api/query-config';
 import type {
   ShipmentFilter,
   ShipmentCreate,
@@ -23,19 +24,19 @@ import type {
 // ==================== Konfiguration ====================
 
 const STALE_TIMES = {
-  shipments: 60 * 1000,         // 1 Minute - Tracking-Status kann sich ändern
-  summary: 2 * 60 * 1000,       // 2 Minuten - Zusammenfassung
-  statistics: 5 * 60 * 1000,    // 5 Minuten - Statistiken ändern sich selten
-  detail: 30 * 1000,            // 30 Sekunden - Detail soll aktuell sein
-  carriers: 60 * 60 * 1000,     // 1 Stunde - Carrier-Liste ändert sich nie
+  shipments: QUERY_STANDARD.staleTime,     // 60s - Tracking-Status kann sich ändern
+  summary: QUERY_STANDARD.staleTime,       // 60s - Zusammenfassung
+  statistics: QUERY_SEMI_STATIC.staleTime, // 5min - Statistiken ändern sich selten
+  detail: QUERY_VOLATILE.staleTime,        // 30s - Detail soll aktuell sein
+  carriers: QUERY_STATIC.staleTime,        // 1h - Carrier-Liste ändert sich nie
 } as const;
 
 const GC_TIMES = {
-  shipments: 10 * 60 * 1000,    // 10 Minuten
-  summary: 15 * 60 * 1000,      // 15 Minuten
-  statistics: 30 * 60 * 1000,   // 30 Minuten
-  detail: 5 * 60 * 1000,        // 5 Minuten
-  carriers: 24 * 60 * 60 * 1000, // 24 Stunden
+  shipments: QUERY_STANDARD.gcTime,        // 10min
+  summary: QUERY_STANDARD.gcTime,          // 10min
+  statistics: QUERY_SEMI_STATIC.gcTime,    // 30min
+  detail: QUERY_VOLATILE.gcTime,           // 5min
+  carriers: QUERY_STATIC.gcTime,           // 2h
 } as const;
 
 const RETRY_CONFIG = {

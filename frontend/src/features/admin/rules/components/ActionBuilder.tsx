@@ -176,11 +176,51 @@ const ACTION_OPTIONS: {
   { value: 'flag_for_review', label: 'Zur Prüfung markieren', group: 'Verarbeitung' },
   { value: 'manual_review_required', label: 'Manuelle Prüfung', group: 'Verarbeitung' },
   { value: 'block_processing', label: 'Verarbeitung blockieren', group: 'Verarbeitung' },
+  // Erweitert
+  {
+    value: 'send_notification',
+    label: 'Benachrichtigung senden',
+    group: 'Benachrichtigung',
+    params: [{ key: 'message', label: 'Nachricht', type: 'text' }],
+  },
+  {
+    value: 'assign_category',
+    label: 'Kategorie zuweisen',
+    group: 'Daten',
+    params: [{ key: 'category', label: 'Kategorie', type: 'text' }],
+  },
+  {
+    value: 'assign_workflow',
+    label: 'Workflow zuweisen',
+    group: 'Workflow',
+    params: [{ key: 'workflow_id', label: 'Workflow-ID', type: 'text' }],
+  },
+  {
+    value: 'trigger_webhook',
+    label: 'Webhook ausloesen',
+    group: 'Verarbeitung',
+    params: [
+      { key: 'url', label: 'Webhook-URL', type: 'text' },
+    ],
+  },
+  { value: 'log_event', label: 'Ereignis protokollieren', group: 'Verarbeitung' },
+  {
+    value: 'set_metadata',
+    label: 'Metadaten setzen',
+    group: 'Daten',
+    params: [
+      { key: 'key', label: 'Schluessel', type: 'text' },
+      { key: 'value', label: 'Wert', type: 'text' },
+    ],
+  },
+  { value: 'require_review', label: 'Pruefung erforderlich', group: 'Genehmigung' },
+  { value: 'auto_approve', label: 'Automatisch genehmigen', group: 'Genehmigung' },
+  { value: 'escalate', label: 'Eskalieren', group: 'Workflow' },
   // Archivierung
   { value: 'flag_for_archive', label: 'Zur Archivierung markieren', group: 'Archivierung' },
   {
     value: 'flag_for_period_close',
-    label: 'Für Periodenabschluss',
+    label: 'Fuer Periodenabschluss',
     group: 'Archivierung',
   },
 ]

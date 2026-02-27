@@ -12,6 +12,7 @@ import {
   validationQueryKeys,
   type ListQueueParams,
 } from '../api/validation-queue-api';
+import { QUERY_VOLATILE, QUERY_STANDARD } from '@/lib/api/query-config';
 import type {
   ValidationQueueItem,
   ValidationQueueItemDetail,
@@ -42,7 +43,7 @@ export function useValidationQueue(params: ListQueueParams = {}) {
   return useQuery({
     queryKey: validationQueryKeys.queue(params),
     queryFn: () => validationQueueApi.listQueue(params),
-    staleTime: 30_000, // 30 Sekunden
+    staleTime: QUERY_VOLATILE.staleTime, // 30s - Volatile
   });
 }
 
@@ -53,7 +54,7 @@ export function useQueueStats() {
   return useQuery({
     queryKey: validationQueryKeys.queueStats(),
     queryFn: validationQueueApi.getQueueStats,
-    staleTime: 60_000, // 1 Minute
+    staleTime: QUERY_STANDARD.staleTime, // 60s - Standard
     refetchInterval: 60_000, // Auto-refresh jede Minute
     refetchIntervalInBackground: false, // Nur im Vordergrund aktualisieren
   });
@@ -72,7 +73,7 @@ export function useMyAssignedItems(
   return useQuery({
     queryKey: [...validationQueryKeys.myItems(), status, limit, offset],
     queryFn: () => validationQueueApi.getMyItems(status, limit, offset),
-    staleTime: 30_000,
+    staleTime: QUERY_VOLATILE.staleTime, // 30s
     enabled, // Lazy Loading: Nur laden wenn Tab aktiv
   });
 }
@@ -85,7 +86,7 @@ export function useQueueItem(itemId: string | undefined) {
     queryKey: validationQueryKeys.queueItem(itemId!),
     queryFn: () => validationQueueApi.getQueueItem(itemId!),
     enabled: !!itemId,
-    staleTime: 30_000,
+    staleTime: QUERY_VOLATILE.staleTime, // 30s
   });
 }
 
@@ -97,7 +98,7 @@ export function useQueueItemFields(itemId: string | undefined) {
     queryKey: validationQueryKeys.fields(itemId!),
     queryFn: () => validationQueueApi.getFields(itemId!),
     enabled: !!itemId,
-    staleTime: 30_000,
+    staleTime: QUERY_VOLATILE.staleTime, // 30s
   });
 }
 
@@ -109,7 +110,7 @@ export function useFieldStats(itemId: string | undefined) {
     queryKey: validationQueryKeys.fieldStats(itemId!),
     queryFn: () => validationQueueApi.getFieldStats(itemId!),
     enabled: !!itemId,
-    staleTime: 60_000,
+    staleTime: QUERY_STANDARD.staleTime, // 60s
   });
 }
 
@@ -503,7 +504,7 @@ export function useValidationRules(includeInactive = false) {
   return useQuery({
     queryKey: [...validationQueryKeys.rules(), includeInactive],
     queryFn: () => validationQueueApi.listRules(includeInactive),
-    staleTime: 60_000,
+    staleTime: QUERY_STANDARD.staleTime, // 60s
   });
 }
 
@@ -515,7 +516,7 @@ export function useValidationRule(ruleId: string | undefined) {
     queryKey: validationQueryKeys.rule(ruleId!),
     queryFn: () => validationQueueApi.getRule(ruleId!),
     enabled: !!ruleId,
-    staleTime: 60_000,
+    staleTime: QUERY_STANDARD.staleTime, // 60s
   });
 }
 
@@ -584,7 +585,7 @@ export function useSampleConfig() {
   return useQuery({
     queryKey: validationQueryKeys.sampleConfig(),
     queryFn: validationQueueApi.getSampleConfig,
-    staleTime: 60_000,
+    staleTime: QUERY_STANDARD.staleTime, // 60s
   });
 }
 
@@ -615,7 +616,7 @@ export function useAnalyticsOverview(dateFrom?: string, dateTo?: string) {
   return useQuery({
     queryKey: validationQueryKeys.analyticsOverview(dateFrom, dateTo),
     queryFn: () => validationQueueApi.getOverview(dateFrom, dateTo),
-    staleTime: 60_000,
+    staleTime: QUERY_STANDARD.staleTime, // 60s
   });
 }
 
@@ -626,7 +627,7 @@ export function useEditorStats(dateFrom?: string, dateTo?: string) {
   return useQuery({
     queryKey: validationQueryKeys.editorStats(dateFrom, dateTo),
     queryFn: () => validationQueueApi.getEditorStats(dateFrom, dateTo),
-    staleTime: 60_000,
+    staleTime: QUERY_STANDARD.staleTime, // 60s
   });
 }
 
@@ -637,7 +638,7 @@ export function useTrends(days = 30, groupBy: 'day' | 'week' | 'month' = 'day') 
   return useQuery({
     queryKey: validationQueryKeys.trends(days, groupBy),
     queryFn: () => validationQueueApi.getTrends(days, groupBy),
-    staleTime: 60_000,
+    staleTime: QUERY_STANDARD.staleTime, // 60s
   });
 }
 
@@ -648,7 +649,7 @@ export function useDocumentTypeStats() {
   return useQuery({
     queryKey: validationQueryKeys.documentTypes(),
     queryFn: validationQueueApi.getDocumentTypeStats,
-    staleTime: 60_000,
+    staleTime: QUERY_STANDARD.staleTime, // 60s
   });
 }
 
@@ -659,7 +660,7 @@ export function useConfidenceDistribution() {
   return useQuery({
     queryKey: validationQueryKeys.confidenceDistribution(),
     queryFn: validationQueueApi.getConfidenceDistribution,
-    staleTime: 60_000,
+    staleTime: QUERY_STANDARD.staleTime, // 60s
   });
 }
 

@@ -32,36 +32,50 @@ const COMMON_FIELDS = [
   { value: 'confidence', label: 'OCR-Confidence' },
   { value: 'created_at', label: 'Erstellt am' },
   { value: 'invoice_date', label: 'Rechnungsdatum' },
-  { value: 'due_date', label: 'Fälligkeitsdatum' },
+  { value: 'invoice_number', label: 'Rechnungsnummer' },
+  { value: 'due_date', label: 'Faelligkeitsdatum' },
+  { value: 'tax_id', label: 'Steuernummer' },
+  { value: 'is_duplicate', label: 'Ist Duplikat' },
+  { value: 'category', label: 'Kategorie' },
+  { value: 'source', label: 'Quelle' },
 ]
 
 const OPERATOR_OPTIONS: { value: ConditionOperator; label: string; group: string }[] = [
   // Vergleich
   { value: '==', label: 'ist gleich', group: 'Vergleich' },
   { value: '!=', label: 'ist ungleich', group: 'Vergleich' },
-  { value: '>', label: 'größer als', group: 'Vergleich' },
-  { value: '>=', label: 'größer oder gleich', group: 'Vergleich' },
+  { value: '>', label: 'groesser als', group: 'Vergleich' },
+  { value: '>=', label: 'groesser oder gleich', group: 'Vergleich' },
   { value: '<', label: 'kleiner als', group: 'Vergleich' },
   { value: '<=', label: 'kleiner oder gleich', group: 'Vergleich' },
-  // String
-  { value: 'contains', label: 'enthält', group: 'Text' },
-  { value: 'not_contains', label: 'enthält nicht', group: 'Text' },
+  // Text
+  { value: 'contains', label: 'enthaelt', group: 'Text' },
+  { value: 'not_contains', label: 'enthaelt nicht', group: 'Text' },
   { value: 'starts_with', label: 'beginnt mit', group: 'Text' },
   { value: 'ends_with', label: 'endet mit', group: 'Text' },
   { value: 'matches', label: 'Regex-Match', group: 'Text' },
-  // Collection
+  { value: 'regex', label: 'Regex-Muster', group: 'Text' },
+  // Liste
   { value: 'in', label: 'in Liste', group: 'Liste' },
   { value: 'not_in', label: 'nicht in Liste', group: 'Liste' },
   { value: 'is_empty', label: 'ist leer', group: 'Liste' },
   { value: 'is_not_empty', label: 'ist nicht leer', group: 'Liste' },
-  // Existence
+  // Existenz / Boolean
   { value: 'is_null', label: 'ist null', group: 'Existenz' },
   { value: 'is_not_null', label: 'existiert', group: 'Existenz' },
+  { value: 'is_true', label: 'ist wahr', group: 'Existenz' },
+  { value: 'is_false', label: 'ist falsch', group: 'Existenz' },
   // Zeit
   { value: 'in_period', label: 'in Periode', group: 'Zeit' },
   { value: 'before', label: 'vor Datum', group: 'Zeit' },
   { value: 'after', label: 'nach Datum', group: 'Zeit' },
+  { value: 'before_date', label: 'vor Datum (ISO)', group: 'Zeit' },
+  { value: 'after_date', label: 'nach Datum (ISO)', group: 'Zeit' },
   { value: 'between', label: 'zwischen', group: 'Zeit' },
+  { value: 'is_weekend', label: 'ist Wochenende', group: 'Zeit' },
+  { value: 'is_month_end', label: 'ist Monatsende', group: 'Zeit' },
+  { value: 'is_quarter_end', label: 'ist Quartalsende', group: 'Zeit' },
+  { value: 'is_year_end', label: 'ist Jahresende', group: 'Zeit' },
   // Tags
   { value: 'has_tag', label: 'hat Tag', group: 'Tags' },
   { value: 'has_any_tag', label: 'hat einen der Tags', group: 'Tags' },
@@ -69,7 +83,11 @@ const OPERATOR_OPTIONS: { value: ConditionOperator; label: string; group: string
 ]
 
 // Operatoren die keinen Wert brauchen
-const NO_VALUE_OPERATORS: ConditionOperator[] = ['is_empty', 'is_not_empty', 'is_null', 'is_not_null']
+const NO_VALUE_OPERATORS: ConditionOperator[] = [
+  'is_empty', 'is_not_empty', 'is_null', 'is_not_null',
+  'is_true', 'is_false', 'is_weekend', 'is_month_end',
+  'is_quarter_end', 'is_year_end',
+]
 
 interface SimpleConditionEditorProps {
   condition: SimpleCondition

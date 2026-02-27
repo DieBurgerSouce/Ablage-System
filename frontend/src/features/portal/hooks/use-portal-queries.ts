@@ -15,6 +15,7 @@ import {
   getPortalUser,
   clearPortalAuth,
 } from '../api/portal-api';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 import type {
   PortalLoginRequest,
   PortalActivateRequest,
@@ -35,16 +36,16 @@ import type {
 // ============================================================================
 
 const STALE_TIMES = {
-  user: 5 * 60 * 1000, // 5 Minuten
-  invoices: 2 * 60 * 1000, // 2 Minuten - Rechnungen können sich ändern
-  invoiceSummary: 2 * 60 * 1000, // 2 Minuten
-  payments: 30 * 1000, // 30 Sekunden - Zahlungen können schnell kommen
-  complaints: 60 * 1000, // 1 Minute
-  complaintTypes: 30 * 60 * 1000, // 30 Minuten - ändert sich selten
-  documents: 60 * 1000, // 1 Minute
-  documentTypes: 30 * 60 * 1000, // 30 Minuten
-  messages: 30 * 1000, // 30 Sekunden - Nachrichten kommen schnell
-  unreadCount: 30 * 1000, // 30 Sekunden
+  user: QUERY_SEMI_STATIC.staleTime,        // 5min
+  invoices: QUERY_STANDARD.staleTime,        // 60s - Rechnungen können sich ändern
+  invoiceSummary: QUERY_STANDARD.staleTime,  // 60s
+  payments: QUERY_VOLATILE.staleTime,        // 30s - Zahlungen können schnell kommen
+  complaints: QUERY_STANDARD.staleTime,      // 60s
+  complaintTypes: QUERY_SEMI_STATIC.gcTime,  // 30min - ändert sich selten
+  documents: QUERY_STANDARD.staleTime,       // 60s
+  documentTypes: QUERY_SEMI_STATIC.gcTime,   // 30min
+  messages: QUERY_VOLATILE.staleTime,        // 30s - Nachrichten kommen schnell
+  unreadCount: QUERY_VOLATILE.staleTime,     // 30s
 } as const;
 
 // ============================================================================

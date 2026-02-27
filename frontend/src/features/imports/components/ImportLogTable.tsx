@@ -4,7 +4,8 @@
  * Zeigt Import-Logs mit Filter- und Retry-Funktionalitaet.
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { formatDistanceToNow, format } from 'date-fns';
 import { de } from 'date-fns/locale';
 import {
@@ -314,6 +315,76 @@ function LogRow({ log, onRetry, isRetrying }: LogRowProps) {
   );
 }
 
+// ==================== Virtualized Table ====================
+
+function ImportLogVirtualizedTable({
+  logs,
+  containerRef,
+  onRetry,
+  isRetrying,
+}: {
+  logs: ImportLogResponse[];
+  containerRef: React.RefObject<HTMLDivElement>;
+  onRetry: (logId: string) => void;
+  isRetrying: boolean;
+}) {
+  const rowVirtualizer = useVirtualizer({
+    count: logs.length,
+    getScrollElement: () => containerRef.current,
+    estimateSize: () => 48,
+    overscan: 10,
+  });
+
+  const virtualRows = rowVirtualizer.getVirtualItems();
+  const totalSize = rowVirtualizer.getTotalSize();
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0]?.start ?? 0 : 0;
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalSize - (virtualRows[virtualRows.length - 1]?.end ?? 0)
+      : 0;
+
+  return (
+    <div
+      ref={containerRef}
+      className="overflow-auto max-h-[600px]"
+    >
+      <Table>
+        <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
+          <TableRow>
+            <TableHead className="w-[40px]" />
+            <TableHead className="w-[100px]">Quelle</TableHead>
+            <TableHead>Datei / Betreff</TableHead>
+            <TableHead className="w-[130px]">Status</TableHead>
+            <TableHead className="w-[150px]">Zeit</TableHead>
+            <TableHead className="w-[100px] text-right">Dauer</TableHead>
+            <TableHead className="w-[80px]" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {paddingTop > 0 && (
+            <tr>
+              <td style={{ height: paddingTop }} colSpan={7} />
+            </tr>
+          )}
+          {virtualRows.map((virtualRow) => (
+            <LogRow
+              key={logs[virtualRow.index].id}
+              log={logs[virtualRow.index]}
+              onRetry={onRetry}
+              isRetrying={isRetrying}
+            />
+          ))}
+          {paddingBottom > 0 && (
+            <tr>
+              <td style={{ height: paddingBottom }} colSpan={7} />
+            </tr>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 // ==================== Main Component ====================
 
 interface ImportLogTableProps {
@@ -328,6 +399,7 @@ export function ImportLogTable({
   maxItems = 50,
 }: ImportLogTableProps) {
   const { toast } = useToast();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
   const [filter, setFilter] = useState<ImportLogFilter>({
     emailConfigId,
     folderConfigId,
@@ -455,29 +527,12 @@ export function ImportLogTable({
             <p>Keine Import-Einträge gefunden</p>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px]" />
-                <TableHead className="w-[100px]">Quelle</TableHead>
-                <TableHead>Datei / Betreff</TableHead>
-                <TableHead className="w-[130px]">Status</TableHead>
-                <TableHead className="w-[150px]">Zeit</TableHead>
-                <TableHead className="w-[100px] text-right">Dauer</TableHead>
-                <TableHead className="w-[80px]" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {logs.map((log) => (
-                <LogRow
-                  key={log.id}
-                  log={log}
-                  onRetry={handleRetry}
-                  isRetrying={retryImport.isPending}
-                />
-              ))}
-            </TableBody>
-          </Table>
+          <ImportLogVirtualizedTable
+            logs={logs}
+            containerRef={tableContainerRef}
+            onRetry={handleRetry}
+            isRetrying={retryImport.isPending}
+          />
         )}
       </CardContent>
     </Card>

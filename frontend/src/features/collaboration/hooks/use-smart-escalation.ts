@@ -18,6 +18,7 @@ import {
   type AssignmentRequest,
   type UserScoresFilter,
 } from '@/lib/api/services/smart-escalation';
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config';
 
 // ==================== Query Keys ====================
 
@@ -44,10 +45,10 @@ export const smartEscalationQueryKeys = {
 // ==================== Stale Times ====================
 
 const STALE_TIMES = {
-  recommendation: 1000 * 60, // 1 Minute
-  teamWorkload: 1000 * 30, // 30 Sekunden (häufiger aktualisieren)
-  userScores: 1000 * 60 * 2, // 2 Minuten
-  factors: 1000 * 60 * 30, // 30 Minuten (selten ändernd)
+  recommendation: QUERY_STANDARD.staleTime,      // 60s
+  teamWorkload: QUERY_VOLATILE.staleTime,         // 30s (häufiger aktualisieren)
+  userScores: QUERY_STANDARD.staleTime,            // 60s
+  factors: QUERY_SEMI_STATIC.gcTime,               // 30min (selten ändernd)
 };
 
 // ==================== Query Hooks ====================

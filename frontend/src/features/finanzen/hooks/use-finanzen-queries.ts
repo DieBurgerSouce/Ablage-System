@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { QUERY_VOLATILE, QUERY_STANDARD, QUERY_SEMI_STATIC } from '@/lib/api/query-config'
 import type { FinanceYear, FinanceAggregations } from '../types'
 import {
   financeService,
@@ -60,15 +61,15 @@ export interface FinanceCategoryFilter {
 // ==================== STALE TIMES ====================
 
 const STALE_TIMES = {
-  years: 5 * 60 * 1000,           // 5 Minuten - Jahre ändern sich selten
-  aggregations: 60 * 1000,        // 1 Minute
-  documents: 30 * 1000,           // 30 Sekunden
+  years: QUERY_SEMI_STATIC.staleTime,        // 5min - Jahre ändern sich selten
+  aggregations: QUERY_STANDARD.staleTime,    // 60s
+  documents: QUERY_VOLATILE.staleTime,       // 30s
 }
 
 const GC_TIMES = {
-  years: 30 * 60 * 1000,          // 30 Minuten
-  aggregations: 10 * 60 * 1000,   // 10 Minuten
-  documents: 5 * 60 * 1000,       // 5 Minuten
+  years: QUERY_SEMI_STATIC.gcTime,           // 30min
+  aggregations: QUERY_STANDARD.gcTime,       // 10min
+  documents: QUERY_VOLATILE.gcTime,          // 5min
 }
 
 // ==================== RETRY CONFIG ====================

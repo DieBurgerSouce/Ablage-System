@@ -8,6 +8,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { jobQueueKeys } from '../api/query-keys';
 import { jobQueueApi } from '../api/job-queue-api';
+import { QUERY_REALTIME } from '@/lib/api/query-config';
 import type {
   JobListFilters,
   SortDirection,
@@ -41,7 +42,7 @@ export function useJobsList(params?: {
     queryFn: () => jobQueueApi.listJobs(queryParams),
     enabled,
     refetchInterval: 10000, // Alle 10 Sekunden refreshen
-    staleTime: 5000, // Daten sind 5 Sekunden frisch
+    staleTime: QUERY_REALTIME.staleTime, // 5s - Echtzeit
   });
 }
 
