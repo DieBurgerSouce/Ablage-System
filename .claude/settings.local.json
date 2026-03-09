@@ -3,5 +3,9 @@
     "allow": [
       "Bash(docker logs:*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "claude-flow"
+  ]
 }

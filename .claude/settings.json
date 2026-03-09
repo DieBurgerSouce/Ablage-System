@@ -75,6 +75,12 @@
         "hooks": [
           {
             "type": "command",
+            "command": "[ -n \"$PROMPT\" ] && PROMPT_TEXT=\"$PROMPT\" python .claude/hooks/prompt_guard_hook.py 2>/dev/null || true",
+            "timeout": 3000,
+            "continueOnError": true
+          },
+          {
+            "type": "command",
             "command": "[ -n \"$PROMPT\" ] && npx @claude-flow/cli@latest hooks route --task \"$PROMPT\" || true",
             "timeout": 5000,
             "continueOnError": true

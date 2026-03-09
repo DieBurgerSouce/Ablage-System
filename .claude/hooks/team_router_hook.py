@@ -81,6 +81,17 @@ def _is_trivial_prompt(prompt: str) -> bool:
         r"^(help|hilfe)$",
         r"^commit\s*(message|msg)?$",
         r"^(git|npm|docker|pytest)\s",
+        # Shell commands (cross-instance interference guard)
+        r"^&\s",                         # PowerShell call operator
+        r"^\.\\\S",                      # PowerShell relative path
+        r"\.ps1\b",                      # PowerShell scripts
+        r"^source\s",                    # Bash source command
+        r"venv[/\\](Scripts|bin)",       # Venv activation paths
+        r"^(cd|ls|dir|cat|echo)\s",      # Basic shell commands
+        r"^export\s+\w+=",              # Env var exports
+        r"^chmod\s",                     # File permissions
+        r"^sudo\s",                      # Sudo commands
+        r"^[A-Za-z]:\\[\w\\.\-]+$",      # Bare Windows paths
     ]
     prompt_lower = prompt.strip().lower()
     if not prompt_lower:

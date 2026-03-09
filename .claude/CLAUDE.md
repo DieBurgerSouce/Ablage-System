@@ -479,5 +479,26 @@ Inhalt...
 
 ---
 
+## ROADMAP TRACKING PROTOCOL (Cross-Instance)
+
+**Planfile**: `.claude/plans/breezy-napping-hare.md`
+
+### PFLICHT fuer JEDE Claude-Instanz:
+
+1. **VOR Arbeitsbeginn**: Plan lesen, pruefen welche Features/Sub-Features bereits als DONE markiert sind
+2. **NACH Abschluss eines Features/Sub-Features**: Im Plan den Status updaten:
+   - `[ ]` -> `[x]` fuer abgeschlossene Items
+   - Datum + kurze Notiz anhaengen: `[x] Smart Inbox Frontend (2026-03-10, Tests passing)`
+3. **BEI TEILARBEIT**: Notiz hinterlassen was gemacht wurde und was noch fehlt
+4. **NIEMALS** ein bereits als `[x]` markiertes Feature nochmal anfassen (ausser Bug-Fix)
+
+### Status-Format im Plan:
+- `[ ]` = Noch nicht begonnen
+- `[~]` = In Arbeit (Instanz hat angefangen aber nicht fertig)
+- `[x]` = DONE (Enterprise-Level abgeschlossen, Tests passing)
+- `[!]` = Blockiert (mit Erklaerung warum)
+
+---
+
 **Version**: 1.1
-**Last Updated**: 2026-01-10
+**Last Updated**: 2026-03-09
