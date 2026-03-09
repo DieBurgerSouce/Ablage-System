@@ -13,6 +13,7 @@ import { SmartUploadOverlay } from '@/features/upload/components/SmartUploadOver
 import { Menu, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RecentActionsPanel, usePendingReviewCount } from '@/features/auto-learning'
+import { NotificationBell } from '@/features/notifications'
 
 function RecentActionsButton() {
     const [panelOpen, setPanelOpen] = useState(false)
@@ -98,6 +99,7 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
                             </div>
                             {/* KI-Aktionen, Tour Launcher & WebSocket Status Indicator */}
                             <div className="flex items-center gap-1 flex-shrink-0">
+                                <NotificationBell />
                                 <RecentActionsButton />
                                 <TourLauncher variant="icon" />
                                 <WebSocketStatusIndicator />

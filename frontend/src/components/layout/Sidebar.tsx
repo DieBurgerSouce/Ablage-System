@@ -108,6 +108,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 )}
                 <SidebarLink to="/document-groups" icon={Layers} label="Dokumentgruppen" onNavigate={onNavigate} />
                 <SidebarLink to="/document-chains" icon={Link2} label="Auftragsketten" onNavigate={onNavigate} />
+                <SidebarLink to="/document-graph" icon={GitCompareArrows} label="Dokumenten-Graph" onNavigate={onNavigate} />
                 <SidebarLink to="/knowledge-graph" icon={GitBranch} label="Wissens-Graph" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev" icon={FileSpreadsheet} label="DATEV Export" onNavigate={onNavigate} />
                 <SidebarLink to="/admin/datev-connect" icon={Link2} label="DATEVconnect" onNavigate={onNavigate} />

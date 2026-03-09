@@ -45,6 +45,20 @@ export function SmartInboxPage() {
   const [showInsights, setShowInsights] = useState(true);
   const [offset, setOffset] = useState(0);
 
+  // Pagination-Reset bei Filterwechsel
+  const handleStatusChange = (value: InboxStatus | 'all') => {
+    setStatusFilter(value);
+    setOffset(0);
+  };
+  const handleCategoryChange = (value: InboxCategory | 'all') => {
+    setCategoryFilter(value);
+    setOffset(0);
+  };
+  const handleSortChange = (value: InboxSortBy) => {
+    setSortBy(value);
+    setOffset(0);
+  };
+
   // Queries
   const {
     data: itemsData,
@@ -225,9 +239,9 @@ export function SmartInboxPage() {
           categoryFilter={categoryFilter}
           sortBy={sortBy}
           availableCategories={availableCategories}
-          onStatusChange={setStatusFilter}
-          onCategoryChange={setCategoryFilter}
-          onSortChange={setSortBy}
+          onStatusChange={handleStatusChange}
+          onCategoryChange={handleCategoryChange}
+          onSortChange={handleSortChange}
           onRefresh={handleRefresh}
           isRefreshing={itemsLoading}
         />
