@@ -132,6 +132,99 @@ async def internal_prometheus_metrics(
     )
 
 
+@router.get("/internal/backup", response_class=Response)
+async def internal_backup_metrics(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+):
+    """
+    Internal Prometheus metrics endpoint for backup scraping.
+
+    Uses the same token-based auth as /internal endpoint.
+    Designed for Prometheus scraping without user authentication.
+
+    **Authentication:**
+    - If METRICS_SCRAPE_TOKEN is set: Requires Bearer token
+    - If METRICS_SCRAPE_TOKEN is not set: Allows unauthenticated access (dev mode)
+    """
+    verify_metrics_token(authorization)
+
+    metrics = get_backup_metrics()
+    return Response(
+        content=metrics.get_metrics(),
+        media_type=metrics.get_content_type(),
+    )
+
+
+@router.get("/internal/ab-testing", response_class=Response)
+async def internal_ab_testing_metrics(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+):
+    """
+    Internal Prometheus metrics endpoint for A/B testing scraping.
+
+    Converts A/B testing metrics to Prometheus text format.
+    Uses token-based auth for Prometheus scraping.
+
+    **Authentication:**
+    - If METRICS_SCRAPE_TOKEN is set: Requires Bearer token
+    - If METRICS_SCRAPE_TOKEN is not set: Allows unauthenticated access (dev mode)
+    """
+    verify_metrics_token(authorization)
+
+    lines = []
+    try:
+        from app.services.rag.ab_testing_router import get_ab_testing_router
+
+        ab_router = get_ab_testing_router()
+        ab_status = ab_router.get_status()
+
+        # Export config as gauge
+        enabled_val = 1 if ab_status.get("enabled") else 0
+        lines.append(f"# HELP ablage_ab_testing_enabled Whether A/B testing is enabled")
+        lines.append(f"# TYPE ablage_ab_testing_enabled gauge")
+        lines.append(f"ablage_ab_testing_enabled {enabled_val}")
+
+        traffic_split = ab_status.get("traffic_split", 0)
+        lines.append(f"# HELP ablage_ab_testing_traffic_split_percent Traffic split percentage for treatment")
+        lines.append(f"# TYPE ablage_ab_testing_traffic_split_percent gauge")
+        lines.append(f"ablage_ab_testing_traffic_split_percent {traffic_split}")
+
+        # Export per-variant metrics
+        ab_metrics = ab_status.get("metrics", {})
+        for variant_name, variant_data in ab_metrics.items():
+            if not isinstance(variant_data, dict):
+                continue
+            labels = f'variant="{variant_name}"'
+
+            total_req = variant_data.get("total_requests", 0)
+            lines.append(f"# HELP ablage_ab_testing_requests_total Total requests per variant")
+            lines.append(f"# TYPE ablage_ab_testing_requests_total counter")
+            lines.append(f'ablage_ab_testing_requests_total{{{labels}}} {total_req}')
+
+            avg_latency = variant_data.get("avg_latency_ms", 0)
+            lines.append(f"# HELP ablage_ab_testing_avg_latency_ms Average latency per variant")
+            lines.append(f"# TYPE ablage_ab_testing_avg_latency_ms gauge")
+            lines.append(f'ablage_ab_testing_avg_latency_ms{{{labels}}} {avg_latency}')
+
+            errors = variant_data.get("errors", 0)
+            lines.append(f"# HELP ablage_ab_testing_errors_total Total errors per variant")
+            lines.append(f"# TYPE ablage_ab_testing_errors_total counter")
+            lines.append(f'ablage_ab_testing_errors_total{{{labels}}} {errors}')
+
+    except ImportError:
+        lines.append("# A/B Testing module not available")
+    except RuntimeError:
+        lines.append("# A/B Testing router not initialized")
+    except Exception:
+        lines.append("# A/B Testing metrics temporarily unavailable")
+
+    content = "\n".join(lines) + "\n"
+    return Response(
+        content=content,
+        media_type="text/plain; version=0.0.4; charset=utf-8",
+    )
+
+
 @router.get("", response_class=Response)
 @router.get("/prometheus", response_class=Response)
 async def prometheus_metrics(
