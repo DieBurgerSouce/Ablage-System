@@ -98,12 +98,15 @@ def upgrade() -> None:
         )
 
     # Invoices: only unpaid (dashboard KPIs, overdue checks)
+    # Column is 'status' (not 'payment_status')
     if (_table_exists(conn, "invoices")
+            and _column_exists(conn, "invoices", "status")
+            and _column_exists(conn, "invoices", "due_date")
             and not _index_exists(conn, "ix_invoices_unpaid")):
         op.execute(
             """CREATE INDEX ix_invoices_unpaid
                ON invoices (due_date, total_amount)
-               WHERE payment_status NOT IN ('paid', 'cancelled')"""
+               WHERE status NOT IN ('paid', 'cancelled')"""
         )
 
 
