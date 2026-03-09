@@ -1,5 +1,16 @@
 # Recent Changes
 
+## 2026-03-10
+- **chore(infra)**: GitHub Actions Digest-Pinning fuer alle Workflows (Supply Chain Security)
+- **chore(infra)**: Docker Multi-Stage Builds (worker, backend) - Build-Tools aus Produktions-Images entfernt
+- **chore(infra)**: Docker-Compose Resource-Limits (cpus/memory) + Logging + stop_grace_period fuer alle Services
+- **fix(db)**: Migration 232 Banking Multi-Tenant Backfill via user_companies (statt users.company_id)
+- **fix(db)**: CheckConstraints fuer chain_integrity, processing_jobs_priority, batch_jobs_progress in models.py
+- **feat(db)**: Migrationen 257-261 (Missing Constraints, Indexes, Default Roles, Domain Constraints, Query Performance)
+- **feat(frontend)**: Dokumenten-Graph Sidebar-Link + Route + Feature-Modul (document-graph)
+- **chore(config)**: CLAUDE.md Roadmap Tracking Protocol + prompt_guard_hook + settings-Updates
+- **test(services)**: 30+ neue Unit-Tests (OCR, Banking, API, Security, DATEV, Services)
+
 ## 2026-02-27 (Enterprise Quality Audit - Phase 5 P2 Langfristig)
 - **refactor(logging)**: Migrate 89 files from stdlib `logging` to `structlog` (Phase 5.3 Logging-Konsistenz) - workers, services, API, ML, core, agents
 - Transformations: `import logging` -> `import structlog`, `logging.getLogger(__name__)` -> `structlog.get_logger(__name__)`, `extra={}` -> keyword args, `exc_info=True` -> `logger.exception()`

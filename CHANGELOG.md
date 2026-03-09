@@ -10,6 +10,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Database: Migration 257 - Missing Constraints (document_tags UniqueConstraint, chain_integrity CheckConstraint, priority/progress CheckConstraints)
+- Database: Migration 258 - Missing Query Performance Indexes
+- Database: Migration 259 - Seed Default Roles
+- Database: Migration 260 - Domain Constraints
+- Database: Migration 261 - Additional Query Performance Indexes
+- Frontend: Dokumenten-Graph Feature-Modul (document-graph/) mit Route, API-Layer, Komponenten und Hooks
+- Frontend: Sidebar-Link "Dokumenten-Graph" (GitCompareArrows Icon)
+- Infrastructure: Docker Multi-Stage Builds fuer worker + backend Dockerfiles (Build-Tools aus Produktions-Images entfernt, Digest-Pinning)
+- Infrastructure: Resource-Limits (cpus/memory), Logging-Config und stop_grace_period fuer alle Docker-Compose Services
+- Infrastructure: cluster/docker-compose.cluster.yml - Netzwerk-Segmentierung (cluster-backend, cluster-storage), Port-Binding auf 127.0.0.1
+- Orchestration: prompt_guard_hook.py - Shell-Command-Detection (PowerShell, Bash, venv Aktivierung) als Cross-Instance Interference Guard
+- Orchestration: ralph-loop.md Slash-Command
+- Config: CLAUDE.md Roadmap Tracking Protocol (Cross-Instance Status-Tracking via breezy-napping-hare.md)
+- Tests: 30+ neue Unit-Tests fuer OCR (cross-backend, cross-validation, DNA, formula, semantic, supplier-template, table), Banking (auto-reconciliation, CSV-Parser, CAMT053, dunning, MT940, SEPA, payment-initiation, smart-reconciliation), API (clustering, contracts, review-queue, websocket), Security (threat-detection), Services (incident-response, inkasso, lexware, permission-audit), DATEV (auth)
+- Tests: Integration-Test test_index_verification.py fuer Datenbank-Index-Verifikation
+
+### Fixed
+- Database: Migration 232 Banking Multi-Tenant Backfill - nutzt jetzt user_companies (Many-to-Many) statt veraltetes users.company_id
+- Database: Migration 235 EventStore Unique-Sequence - korrigierte Constraint-Logik
+- Infrastructure: GitHub Actions Digest-Pinning fuer alle Workflows (Supply Chain Security, CIS-Supply-Chain-L1)
+- Infrastructure: GitHub Actions artifact retention-days auf 30 gesetzt
+
+### Changed
+- Infrastructure: GitHub Actions von Mutable-Tag-Referenzen (v4, v5) auf unveraenderliche SHA-Digest-Referenzen umgestellt
+- Orchestration: team_router_hook.py Trivial-Prompt-Filter um Shell-Command-Patterns erweitert (Backup fuer prompt_guard_hook)
+
+### Added
 - Database: DomainEvent SHA-256 Hash-Chain (event_hash, previous_hash, chain_hash Spalten) in models_misc.py fuer kryptografische Event-Integritaet
 - Database: Migration 254 - DomainEvent Hash-Chain Spalten (event_hash, previous_hash, chain_hash mit Index)
 - Database: Migration 255 - EntitySeasonalPattern Tabelle fuer saisonale Zahlungsmuster pro Entity/Monat

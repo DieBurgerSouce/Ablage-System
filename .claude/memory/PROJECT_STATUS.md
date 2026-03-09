@@ -7,7 +7,7 @@
 | Backend | ✅ OK | Running on :8000, 430+ Endpoints, Type-Safe |
 | Frontend | ✅ OK | Nginx :80, Accessibility E2E Tests OK |
 | Celery | ✅ OK | 414 Tasks, 12+ Beat Schedules, GPU for OCR |
-| PostgreSQL | ✅ OK | :5433, 255 Migrations (255: EntitySeasonalPattern fuer Cashflow Monte Carlo; 254: DomainEvent SHA-256 Hash-Chain; 253: GoBD/DSGVO Compliance Views; 252: GoBD Audit-Felder PaymentBatch+DunningRecord; 251: DocumentGroup company_id Multi-Tenant Fix; 238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
+| PostgreSQL | ✅ OK | :5433, 261 Migrationen (261: Query Performance Indexes; 260: Domain Constraints; 259: Seed Default Roles; 258: Missing Indexes; 257: Missing Constraints; 255: EntitySeasonalPattern; 254: DomainEvent SHA-256 Hash-Chain; 253: GoBD/DSGVO Compliance Views; 252: GoBD Audit-Felder; 251: DocumentGroup company_id; 238-250: CDC, Partitioning, Encryption, Anomaly, Summaries, Clustering, Active Learning, Morning Briefing, Integration Sync, Dashboard Builder, Webhook Platform, Feature Toggle) |
 | Redis | ✅ OK | :6380, Rate Limiting, Blacklist, L1/L2 Cache |
 | GPU | ✅ OK | RTX 4080 (16GB), shared by backend + worker |
 | Jaeger | ✅ NEW | :16686 UI, :4317 OTLP gRPC, Distributed Tracing |
