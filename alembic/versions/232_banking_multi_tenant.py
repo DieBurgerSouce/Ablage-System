@@ -32,15 +32,26 @@ def upgrade() -> None:
     for table in tables:
         op.add_column(table, sa.Column("company_id", UUID(as_uuid=True), nullable=True))
 
-    # Step 2: Backfill company_id from user.company_id
+    # Step 2: Backfill company_id from user_companies (many-to-many, use current company)
     for table in tables:
         op.execute(f"""
             UPDATE {table} SET company_id = (
-                SELECT u.company_id FROM users u WHERE u.id = {table}.user_id
+                SELECT uc.company_id FROM user_companies uc
+                WHERE uc.user_id = {table}.user_id
+                ORDER BY uc.is_current DESC NULLS LAST, uc.created_at DESC
+                LIMIT 1
             ) WHERE company_id IS NULL
         """)
 
-    # Step 3: Make company_id NOT NULL after backfill
+    # Step 2b: For any remaining NULL company_id (users without company), use first company
+    for table in tables:
+        op.execute(f"""
+            UPDATE {table} SET company_id = (
+                SELECT id FROM companies ORDER BY created_at LIMIT 1
+            ) WHERE company_id IS NULL
+        """)
+
+    # Step 3: Make company_id NOT NULL after backfill (only if rows exist)
     for table in tables:
         op.alter_column(table, "company_id", nullable=False)
 

@@ -72,7 +72,8 @@ document_tags = Table(
     Column("document_id", UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE")),
     Column("tag_id", UUID(as_uuid=True), ForeignKey("tags.id", ondelete="CASCADE")),
     Index("ix_document_tags_document_id", "document_id"),
-    Index("ix_document_tags_tag_id", "tag_id")
+    Index("ix_document_tags_tag_id", "tag_id"),
+    UniqueConstraint("document_id", "tag_id", name="ix_document_tags_unique"),
 )
 
 
@@ -362,6 +363,11 @@ class Document(SoftDeleteMixin, Base):
             "company_id", "summary_generated_at",
             postgresql_where=text("summary IS NOT NULL"),
         ),
+        # Chain integrity: chain_position und chain_root_document_id muessen beide gesetzt oder beide NULL sein
+        CheckConstraint(
+            "(chain_root_document_id IS NULL) = (chain_position IS NULL)",
+            name="ck_documents_chain_integrity",
+        ),
     )
 
     @property
@@ -507,11 +513,12 @@ class ProcessingJob(Base):
     # Relationships
     document = relationship("Document", back_populates="processing_jobs")
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index("ix_processing_jobs_status", "status"),
         Index("ix_processing_jobs_created_at", "created_at"),
         Index("ix_processing_jobs_document_id", "document_id"),
+        CheckConstraint("priority >= 1 AND priority <= 10", name="ck_processing_jobs_priority"),
     )
 
 
@@ -572,11 +579,12 @@ class BatchJob(Base):
     user = relationship("User", foreign_keys=[user_id], backref="batch_jobs")
     cancelled_by = relationship("User", foreign_keys=[cancelled_by_id])
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index("ix_batch_jobs_status", "status"),
         Index("ix_batch_jobs_user_id", "user_id"),
         Index("ix_batch_jobs_created_at", "created_at"),
+        CheckConstraint("progress >= 0 AND progress <= 100", name="ck_batch_jobs_progress"),
     )
 
 

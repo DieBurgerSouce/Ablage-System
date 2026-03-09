@@ -8,6 +8,7 @@ Prevents duplicate sequence numbers for the same aggregate,
 fixing the race condition in event_store.py.
 """
 from alembic import op
+import sqlalchemy as sa
 
 revision = "235"
 down_revision = "234"
@@ -16,11 +17,21 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_unique_constraint(
-        "uq_domain_events_aggregate_sequence",
-        "domain_events",
-        ["aggregate_type", "aggregate_id", "sequence_number"],
-    )
+    # Idempotent: skip if constraint or backing index already exists
+    conn = op.get_bind()
+    exists = conn.execute(
+        sa.text(
+            """SELECT 1 FROM pg_constraint WHERE conname = 'uq_domain_events_aggregate_sequence'
+               UNION ALL
+               SELECT 1 FROM pg_indexes WHERE indexname = 'uq_domain_events_aggregate_sequence'"""
+        )
+    ).fetchone()
+    if not exists:
+        op.create_unique_constraint(
+            "uq_domain_events_aggregate_sequence",
+            "domain_events",
+            ["aggregate_type", "aggregate_id", "sequence_number"],
+        )
 
 
 def downgrade() -> None:

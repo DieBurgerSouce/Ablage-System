@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
     Column,
     Date,
     DateTime,
@@ -127,13 +128,18 @@ class EInvoiceDocument(Base):
     generated_by = relationship("User", foreign_keys=[generated_by_id])
     transmissions = relationship("EInvoiceTransmission", back_populates="einvoice", cascade="all, delete-orphan")
 
-    # Indexes
+    # Indexes and constraints
     __table_args__ = (
         Index("ix_einvoice_docs_document_id", "document_id"),
         Index("ix_einvoice_docs_format", "format"),
         Index("ix_einvoice_docs_leitweg_id", "leitweg_id"),
         Index("ix_einvoice_docs_is_valid", "is_valid"),
         Index("ix_einvoice_docs_was_generated", "was_generated"),
+        # Mutually exclusive: ein Dokument kann nicht gleichzeitig generiert UND extrahiert sein
+        CheckConstraint(
+            "NOT (was_generated = true AND was_extracted = true)",
+            name="ck_einvoice_source_exclusive",
+        ),
     )
 
     def mark_validated(
