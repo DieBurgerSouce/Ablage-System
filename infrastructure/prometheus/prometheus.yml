@@ -101,17 +101,17 @@ scrape_configs:
         replacement: 'rtx4080'
 
   # Ablage-System Backup Metrics (separate registry)
-  # ENTERPRISE FIX: Endpoint erfordert Superuser-Auth
-  # TODO: Token-basierte Auth implementieren oder /internal Endpoint erstellen
-  # - job_name: 'ablage-backup'
-  #   metrics_path: '/api/v1/metrics/backup'
-  #   scrape_interval: 60s
-  #   static_configs:
-  #     - targets: ['backend:8000']
-  #   relabel_configs:
-  #     - source_labels: [__address__]
-  #       target_label: instance
-  #       replacement: 'ablage-backup'
+  # Verwendet /internal/backup Endpoint mit Token-Auth (kein Superuser noetig)
+  # Bei gesetztem METRICS_SCRAPE_TOKEN: bearer_token hinzufuegen
+  - job_name: 'ablage-backup'
+    metrics_path: '/api/v1/metrics/internal/backup'
+    scrape_interval: 60s
+    static_configs:
+      - targets: ['backend:8000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'ablage-backup'
 
   # Qdrant Vector Database Metrics
   # ENTERPRISE FIX: Qdrant /metrics Endpoint erfordert API-Key Header
@@ -127,17 +127,17 @@ scrape_configs:
         replacement: 'qdrant-vector-db'
 
   # A/B Testing Metrics (Vector Search)
-  # ENTERPRISE FIX: Endpoint erfordert Superuser-Auth
-  # TODO: Token-basierte Auth implementieren oder /internal Endpoint erstellen
-  # - job_name: 'ab-testing'
-  #   metrics_path: '/api/v1/metrics/ab-testing'
-  #   scrape_interval: 30s
-  #   static_configs:
-  #     - targets: ['backend:8000']
-  #   relabel_configs:
-  #     - source_labels: [__address__]
-  #       target_label: instance
-  #       replacement: 'vector-ab-testing'
+  # Verwendet /internal/ab-testing Endpoint mit Token-Auth (kein Superuser noetig)
+  # Bei gesetztem METRICS_SCRAPE_TOKEN: bearer_token hinzufuegen
+  - job_name: 'ab-testing'
+    metrics_path: '/api/v1/metrics/internal/ab-testing'
+    scrape_interval: 30s
+    static_configs:
+      - targets: ['backend:8000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'vector-ab-testing'
 
   # Loki Log Aggregation Metrics
   # Wichtig fuer Retention-Monitoring und Disk-Usage-Alerts
