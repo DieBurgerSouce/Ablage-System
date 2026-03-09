@@ -1,14 +1,15 @@
 # Recent Changes
 
 ## 2026-03-10
+- **chore(infra)**: Prometheus Backup + A/B-Testing Scrape-Jobs aktiviert (Token-Auth, kein Superuser noetig)
+- **fix(db)**: Migration 260 Domain Constraints - required_columns Idempotenz, confidence_score Spaltenname korrigiert
+- **feat(api)**: Prometheus /internal/backup + /internal/ab-testing Endpoints (Token-Auth, graceful degradation)
+- **feat(frontend)**: SpotlightDialog in AppLayout integriert + vollstaendiges Spotlight Feature-Modul
+- **test(services)**: 5 neue Unit-Tests (Security, Shipping, Signature, Tenant, Webhooks)
 - **chore(infra)**: GitHub Actions Digest-Pinning fuer alle Workflows (Supply Chain Security)
 - **chore(infra)**: Docker Multi-Stage Builds (worker, backend) - Build-Tools aus Produktions-Images entfernt
-- **chore(infra)**: Docker-Compose Resource-Limits (cpus/memory) + Logging + stop_grace_period fuer alle Services
-- **fix(db)**: Migration 232 Banking Multi-Tenant Backfill via user_companies (statt users.company_id)
-- **fix(db)**: CheckConstraints fuer chain_integrity, processing_jobs_priority, batch_jobs_progress in models.py
 - **feat(db)**: Migrationen 257-261 (Missing Constraints, Indexes, Default Roles, Domain Constraints, Query Performance)
 - **feat(frontend)**: Dokumenten-Graph Sidebar-Link + Route + Feature-Modul (document-graph)
-- **chore(config)**: CLAUDE.md Roadmap Tracking Protocol + prompt_guard_hook + settings-Updates
 - **test(services)**: 30+ neue Unit-Tests (OCR, Banking, API, Security, DATEV, Services)
 
 ## 2026-02-27 (Enterprise Quality Audit - Phase 5 P2 Langfristig)

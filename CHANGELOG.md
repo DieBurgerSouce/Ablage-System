@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- API: GET /api/v1/metrics/internal/backup - Prometheus-scrape fuer Backup-Registry mit Token-Auth (kein Superuser erforderlich)
+- API: GET /api/v1/metrics/internal/ab-testing - A/B-Testing-Metriken als Prometheus-Format (enabled, traffic_split, requests, latency, errors per Variant)
+- Frontend: SpotlightDialog als globale Komponente in AppLayout (verfuegbar auf jeder Seite)
+- Frontend: features/spotlight Feature-Modul (SpotlightDialog, SpotlightResults, RecentSearches, use-spotlight, use-recent-searches, spotlight-api, spotlight-types)
+- Tests: test_threat_detection_service.py, test_carrier_detection.py, test_signature_verification.py, test_tenant_config_service.py, test_webhook_verification.py
+
+### Fixed
+- Database: Migration 260 Domain Constraints - required_columns Idempotenz-Verbesserung, confidence_score Spaltenname korrigiert (ocr_results), redundante Constraints entfernt
+- Infrastructure: Prometheus ablage-backup + ab-testing Scrape-Jobs aktiviert (waren als TODO-Kommentar deaktiviert)
+
+### Added
 - Database: Migration 257 - Missing Constraints (document_tags UniqueConstraint, chain_integrity CheckConstraint, priority/progress CheckConstraints)
 - Database: Migration 258 - Missing Query Performance Indexes
 - Database: Migration 259 - Seed Default Roles
