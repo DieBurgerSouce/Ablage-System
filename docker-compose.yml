@@ -313,6 +313,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER muss gesetzt sein}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MINIO_ROOT_PASSWORD muss gesetzt sein}
       MINIO_DEFAULT_BUCKETS: documents,processed,backups
+      # Prometheus Metrics ohne Bearer Token erreichbar (internes Netz)
+      MINIO_PROMETHEUS_AUTH_TYPE: public
     volumes:
       - minio_data:/data
     ports:
@@ -1390,7 +1392,7 @@ services:
     # Entrypoint fügt automatisch -config=/vault/config hinzu, daher kein command nötig
     entrypoint: ["vault", "server", "-config=/vault/config/vault.hcl"]
     ports:
-      - "8200:8200"
+      - "127.0.0.1:8200:8200"  # Nur localhost - Vault API
     volumes:
       - ./infrastructure/vault/config:/vault/config
       - vault_data:/vault/data

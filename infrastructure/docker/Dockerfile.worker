@@ -2,13 +2,20 @@
 # Optimized for OCR processing with NVIDIA GPU
 # Created: 2024-11-22
 # Updated: 2025-12-09 - CUDA 12.1 for consistency
+# Updated: Multi-stage build to remove build tools from production image
 
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+# =============================================================================
+# STAGE 1: BUILDER - Compile wheels and install dependencies
+# =============================================================================
+
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:309fb03c970e7938385a1c4c888a3b2f6dbb4639f8c316ff2d8b722ecf2b56f1 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TZ=Europe/Berlin
 
-# System dependencies
+# System dependencies including build tools
 RUN apt-get update && apt-get install -y \
     python3.11 \
     python3.11-dev \
@@ -31,6 +38,33 @@ COPY requirements.txt .
 # Install Python dependencies (uv is 10-100x faster than pip)
 RUN uv pip install --system -r requirements.txt
 
+# =============================================================================
+# STAGE 2: RUNTIME - Production image without build tools
+# =============================================================================
+
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:309fb03c970e7938385a1c4c888a3b2f6dbb4639f8c316ff2d8b722ecf2b56f1
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Berlin
+
+# Install only runtime dependencies (NO build-essential, git)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3-pip \
+    libpq5 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python 3.11
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
+
+# Copy installed Python packages from builder
+COPY --from=builder /usr/lib/python3/dist-packages /usr/lib/python3/dist-packages
+COPY --from=builder /usr/local/lib/python3.11/dist-packages /usr/local/lib/python3.11/dist-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+WORKDIR /app
+
 # Copy application
 COPY app/ ./app/
 COPY Static_Knowledge/ ./Static_Knowledge/
@@ -38,5 +72,12 @@ COPY Static_Knowledge/ ./Static_Knowledge/
 # Create directories
 RUN mkdir -p Dynamic_Knowledge/Logs /tmp/celery
 
-# Celery worker
+# Create non-root user for security
+RUN useradd -m -u 1000 celery && \
+    chown -R celery:celery /app
+USER celery
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD celery -A app.workers.celery_app inspect ping || exit 1
+
 CMD ["celery", "-A", "app.workers.celery_app", "worker", "--loglevel=info", "--concurrency=1", "--pool=solo"]

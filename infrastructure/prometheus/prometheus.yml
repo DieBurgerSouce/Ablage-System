@@ -69,16 +69,16 @@ scrape_configs:
         replacement: 'redis'
 
   # MinIO Metrics
-  # ENTERPRISE FIX: MinIO 2023+ erfordert Bearer Token fuer /metrics
-  # Deaktiviert bis MINIO_PROMETHEUS_AUTH_TYPE=public gesetzt wird
-  # - job_name: 'minio'
-  #   metrics_path: '/minio/v2/metrics/cluster'
-  #   static_configs:
-  #     - targets: ['minio:9000']
-  #   relabel_configs:
-  #     - source_labels: [__address__]
-  #       target_label: instance
-  #       replacement: 'minio'
+  # ENTERPRISE FIX: MinIO 2023+ erfordert MINIO_PROMETHEUS_AUTH_TYPE=public
+  # Aktiviert: Env-Variable in docker-compose.yml gesetzt
+  - job_name: 'minio'
+    metrics_path: '/minio/v2/metrics/cluster'
+    static_configs:
+      - targets: ['minio:9000']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'minio'
 
   # Node Exporter (Docker Container)
   - job_name: 'node'
@@ -92,13 +92,13 @@ scrape_configs:
   # NVIDIA GPU Metrics (via dcgm-exporter Container)
   # ENTERPRISE FIX: dcgm-exporter erfordert --profile gpu
   # Aktiviere mit: docker-compose --profile gpu up -d
-  # - job_name: 'nvidia-gpu'
-  #   static_configs:
-  #     - targets: ['dcgm-exporter:9400']
-  #   relabel_configs:
-  #     - source_labels: [__address__]
-  #       target_label: instance
-  #       replacement: 'rtx4080'
+  - job_name: 'nvidia-gpu'
+    static_configs:
+      - targets: ['dcgm-exporter:9400']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'rtx4080'
 
   # Ablage-System Backup Metrics (separate registry)
   # ENTERPRISE FIX: Endpoint erfordert Superuser-Auth
@@ -114,17 +114,17 @@ scrape_configs:
   #       replacement: 'ablage-backup'
 
   # Qdrant Vector Database Metrics
-  # ENTERPRISE FIX: Qdrant Metrics-Endpoint kann API-Key erfordern
-  # Pruefen: curl http://localhost:6333/metrics
-  # Falls 403: QDRANT__SERVICE__API_KEY pruefen
-  # - job_name: 'qdrant'
-  #   metrics_path: '/metrics'
-  #   static_configs:
-  #     - targets: ['qdrant:6333']
-  #   relabel_configs:
-  #     - source_labels: [__address__]
-  #       target_label: instance
-  #       replacement: 'qdrant-vector-db'
+  # ENTERPRISE FIX: Qdrant /metrics Endpoint erfordert API-Key Header
+  # API-Key wird via bearer_token_file injiziert (mounted in docker-compose.yml)
+  # Fallback: Wenn kein API-Key gesetzt, funktioniert /metrics ohne Auth
+  - job_name: 'qdrant'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['qdrant:6333']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'qdrant-vector-db'
 
   # A/B Testing Metrics (Vector Search)
   # ENTERPRISE FIX: Endpoint erfordert Superuser-Auth

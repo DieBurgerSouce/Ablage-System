@@ -45,7 +45,7 @@ services:
 
     ports:
       # Jaeger UI
-      - "16686:16686"
+      - "127.0.0.1:16686:16686"
       # OTLP gRPC
       - "4317:4317"
       # OTLP HTTP
@@ -71,6 +71,18 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
 
     networks:
       - ablage-network
@@ -104,6 +116,18 @@ services:
 
     depends_on:
       - jaeger
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
 
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:13133/"]

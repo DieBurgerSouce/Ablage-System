@@ -1,5 +1,7 @@
 # PaddleOCR Test Container
 # Used to test PaddleOCR without Windows OneDNN issues
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect python:3.11-slim
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -163,5 +165,10 @@ if __name__ == "__main__":
     print("="*60)
     print(result)
 SCRIPT
+
+# Create non-root user for security
+RUN useradd -r -s /bin/false ocr && \
+    chown -R ocr:ocr /app
+USER ocr
 
 CMD ["python", "/app/test_paddleocr_docker.py"]

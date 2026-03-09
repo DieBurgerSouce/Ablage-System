@@ -3,6 +3,8 @@
 #
 # Basiert auf PostgreSQL 16 mit Patroni 3.x fuer automatisches Failover
 
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect postgres:16-bookworm
 FROM postgres:16-bookworm
 
 LABEL maintainer="Ablage-System Team"

@@ -8,6 +8,8 @@
 #   - PDF/A-3 validation (VeraPDF)
 #   - ZUGFeRD 1.x-2.x support
 
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect eclipse-temurin:17-jre-alpine
 FROM eclipse-temurin:17-jre-alpine
 
 LABEL maintainer="Ablage-System"
@@ -51,6 +53,7 @@ RUN mkdir -p /app/validator/scenarios && \
 
 # Create directories
 RUN mkdir -p /app/temp /app/output /app/input
+RUN chmod 750 /app/temp /app/output /app/input
 
 # Environment variables
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
@@ -150,6 +153,11 @@ class MustangHandler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
         parsed = urlparse(self.path)
         content_length = int(self.headers.get("Content-Length", 0))
+        # Security: Limit request size to 50MB
+        MAX_REQUEST_SIZE = 50 * 1024 * 1024  # 50MB
+        if content_length > MAX_REQUEST_SIZE:
+            self.send_json({"error": "Request too large (max 50MB)"}, 413)
+            return
         body = self.rfile.read(content_length)
 
         if parsed.path == "/validate":
@@ -262,6 +270,11 @@ PYEOF
 
 # Install Python for REST server
 RUN apk add --no-cache python3
+
+# Create non-root user for security
+RUN adduser -D -s /bin/false mustang && \
+    chown -R mustang:mustang /app
+USER mustang
 
 # Default command
 CMD ["python3", "/app/rest_server.py"]

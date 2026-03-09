@@ -1,7 +1,9 @@
 # PaddleOCR-VL 0.9B Test Container
 # Isolated test environment for PaddleOCR-VL 0.9B evaluation
 # GPU required (CUDA 12.x)
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:309fb03c970e7938385a1c4c888a3b2f6dbb4639f8c316ff2d8b722ecf2b56f1
 
 WORKDIR /app
 
@@ -395,6 +397,11 @@ RUN chmod +x /app/verify_gpu.sh
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV CUDA_VISIBLE_DEVICES=0
+
+# Create non-root user for security
+RUN useradd -r -s /bin/false ocr && \
+    chown -R ocr:ocr /app
+USER ocr
 
 # Default command - verify GPU first, then run tests
 CMD ["/bin/bash", "-c", "/app/verify_gpu.sh && python /app/test_paddleocr_vl_isolated.py"]

@@ -14,7 +14,11 @@ services:
       - '--cluster.listen-address='  # Disable clustering for single instance
 
     ports:
-      - "9093:9093"
+      - "127.0.0.1:9093:9093"
+
+    read_only: true
+    tmpfs:
+      - /tmp
 
     volumes:
       - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
@@ -34,6 +38,18 @@ services:
       retries: 3
       start_period: 10s
 
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 15s
+
     labels:
       - "com.ablage-system.component=alertmanager"
       - "com.ablage-system.version=0.27.0"
@@ -46,15 +62,20 @@ services:
 
     working_dir: /app
 
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /root/.cache
+
     volumes:
-      - ./webhook-receiver:/app
+      - ./webhook-receiver:/app:ro
 
     command: >
       sh -c "pip install --no-cache-dir flask requests &&
              python webhook_receiver.py"
 
     ports:
-      - "5001:5001"
+      - "127.0.0.1:5001:5001"
 
     environment:
       - FLASK_ENV=production
@@ -69,6 +90,18 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 10s
 
     labels:
       - "com.ablage-system.component=webhook-receiver"

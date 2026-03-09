@@ -64,13 +64,25 @@ services:
       - "max_connections=200"
     ports:
       - "5432:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 60s
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ablage} -d ${POSTGRES_DB:-ablage}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - cluster
+      - cluster-backend
+      - cluster-storage
 
   # Patroni fuer PostgreSQL HA (Node 1)
   patroni-node1:
@@ -95,9 +107,20 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./patroni.yml:/etc/patroni/config.yml:ro
     ports:
-      - "8008:8008"
+      - "127.0.0.1:8008:8008"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     networks:
-      - cluster
+      - cluster-backend
 
   # Redis Master (Node 1)
   redis-master:
@@ -116,13 +139,24 @@ services:
       - redis_data:/data
     ports:
       - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 5G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - cluster
+      - cluster-backend
 
   # Redis Sentinel (Node 1)
   redis-sentinel-node1:
@@ -135,11 +169,22 @@ services:
       - ./sentinel.conf:/etc/redis/sentinel.conf:ro
     ports:
       - "26379:26379"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 10s
     depends_on:
       redis-master:
         condition: service_healthy
     networks:
-      - cluster
+      - cluster-backend
 
   # etcd (Node 1)
   etcd-node1:
@@ -160,10 +205,21 @@ services:
     volumes:
       - etcd_data:/etcd-data
     ports:
-      - "2379:2379"
-      - "2380:2380"
+      - "127.0.0.1:2379:2379"
+      - "127.0.0.1:2380:2380"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     networks:
-      - cluster
+      - cluster-backend
 
   # API Backend (Node 1)
   backend-node1:
@@ -186,13 +242,25 @@ services:
         condition: service_healthy
       redis-master:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     networks:
-      - cluster
+      - cluster-frontend
+      - cluster-backend
 
   # Celery Beat (nur auf Node 1)
   beat-node1:
@@ -204,11 +272,22 @@ services:
     environment:
       <<: *common-env
       CELERY_BROKER_URL: sentinel://node1:26379,node2:26379,node3:26379/0
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 10s
     depends_on:
       redis-master:
         condition: service_healthy
     networks:
-      - cluster
+      - cluster-backend
 
   # Celery Worker (Node 1, CPU)
   worker-node1:
@@ -224,11 +303,22 @@ services:
     volumes:
       - shared_uploads:/app/uploads
       - ./logs/worker:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     depends_on:
       redis-master:
         condition: service_healthy
     networks:
-      - cluster
+      - cluster-backend
 
   # ===========================================================================
   # Node 2: Replica Database + Redis Slave + API
@@ -263,13 +353,25 @@ services:
       - "max_connections=200"
     ports:
       - "5432:5432"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 60s
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ablage} -d ${POSTGRES_DB:-ablage}"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - cluster
+      - cluster-backend
+      - cluster-storage
 
   # Patroni fuer PostgreSQL HA (Node 2)
   patroni-node2:
@@ -294,9 +396,20 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./patroni.yml:/etc/patroni/config.yml:ro
     ports:
-      - "8008:8008"
+      - "127.0.0.1:8008:8008"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     networks:
-      - cluster
+      - cluster-backend
 
   # Redis Slave (Node 2)
   redis-slave-node2:
@@ -316,13 +429,24 @@ services:
       - redis_data:/data
     ports:
       - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 5G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - cluster
+      - cluster-backend
 
   # Redis Sentinel (Node 2)
   redis-sentinel-node2:
@@ -335,8 +459,19 @@ services:
       - ./sentinel.conf:/etc/redis/sentinel.conf:ro
     ports:
       - "26379:26379"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 10s
     networks:
-      - cluster
+      - cluster-backend
 
   # etcd (Node 2)
   etcd-node2:
@@ -357,10 +492,21 @@ services:
     volumes:
       - etcd_data:/etcd-data
     ports:
-      - "2379:2379"
-      - "2380:2380"
+      - "127.0.0.1:2379:2379"
+      - "127.0.0.1:2380:2380"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     networks:
-      - cluster
+      - cluster-backend
 
   # API Backend (Node 2)
   backend-node2:
@@ -378,13 +524,25 @@ services:
       - ./logs/backend:/app/logs
     ports:
       - "8000:8000"
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     networks:
-      - cluster
+      - cluster-frontend
+      - cluster-backend
 
   # Celery Worker (Node 2, CPU)
   worker-node2:
@@ -400,8 +558,19 @@ services:
     volumes:
       - shared_uploads:/app/uploads
       - ./logs/worker:/app/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 4G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     networks:
-      - cluster
+      - cluster-backend
 
   # ===========================================================================
   # Node 3: GPU Worker + MinIO + Redis Slave
@@ -425,13 +594,24 @@ services:
       - redis_data:/data
     ports:
       - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 3G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - cluster
+      - cluster-backend
 
   # Redis Sentinel (Node 3)
   redis-sentinel-node3:
@@ -444,8 +624,19 @@ services:
       - ./sentinel.conf:/etc/redis/sentinel.conf:ro
     ports:
       - "26379:26379"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 10s
     networks:
-      - cluster
+      - cluster-backend
 
   # etcd (Node 3)
   etcd-node3:
@@ -466,10 +657,21 @@ services:
     volumes:
       - etcd_data:/etcd-data
     ports:
-      - "2379:2379"
-      - "2380:2380"
+      - "127.0.0.1:2379:2379"
+      - "127.0.0.1:2380:2380"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     networks:
-      - cluster
+      - cluster-backend
 
   # MinIO Object Storage (Node 3)
   minio:
@@ -486,13 +688,24 @@ services:
     ports:
       - "9000:9000"
       - "9001:9001"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 10s
       retries: 3
     networks:
-      - cluster
+      - cluster-storage
 
   # GPU Worker (Node 3)
   worker-gpu:
@@ -502,6 +715,9 @@ services:
     restart: unless-stopped
     deploy:
       resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
         reservations:
           devices:
             - driver: nvidia
@@ -521,8 +737,15 @@ services:
       - shared_uploads:/app/uploads
       - shared_models:/opt/models:ro
       - ./logs/worker-gpu:/app/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 120s
     networks:
-      - cluster
+      - cluster-backend
+      - cluster-storage
 
   # ===========================================================================
   # Frontend (kann auf jedem Node laufen)
@@ -532,19 +755,35 @@ services:
     container_name: ablage-frontend
     profiles: ["node1", "node2"]
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
+      - /var/cache/nginx
     volumes:
       - ./nginx/nginx-cluster.conf:/etc/nginx/nginx.conf:ro
       - ./ssl:/etc/nginx/ssl:ro
     ports:
       - "80:80"
       - "443:443"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 10s
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
       interval: 30s
       timeout: 10s
       retries: 3
     networks:
-      - cluster
+      - cluster-frontend
 
   # ===========================================================================
   # Monitoring Stack (optional, auf Node 1)
@@ -562,9 +801,20 @@ services:
       - prometheus_data:/prometheus
       - ./prometheus-cluster.yml:/etc/prometheus/prometheus.yml:ro
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     networks:
-      - cluster
+      - cluster-monitoring
 
   grafana:
     image: grafana/grafana:latest
@@ -578,19 +828,48 @@ services:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
     ports:
-      - "3002:3000"
+      - "127.0.0.1:3002:3000"
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
     networks:
-      - cluster
+      - cluster-monitoring
 
 # =============================================================================
 # Netzwerke
 # =============================================================================
 networks:
-  cluster:
+  cluster-frontend:
     driver: bridge
     ipam:
       config:
-        - subnet: 172.30.0.0/16
+        - subnet: 172.30.0.0/20
+  cluster-backend:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.16.0/20
+  cluster-storage:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.32.0/20
+  cluster-monitoring:
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.48.0/20
 
 # =============================================================================
 # Volumes

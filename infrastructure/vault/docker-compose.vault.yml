@@ -9,7 +9,7 @@ services:
     command: server
 
     ports:
-      - "8200:8200"
+      - "127.0.0.1:8200:8200"
 
     volumes:
       - ./config:/vault/config
@@ -34,6 +34,18 @@ services:
       retries: 3
       start_period: 10s
 
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 30s
+
     labels:
       - "com.ablage-system.component=vault"
       - "com.ablage-system.version=1.15.4"
@@ -46,7 +58,7 @@ services:
     restart: unless-stopped
 
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
 
     environment:
       VAULT_URL_DEFAULT: http://vault:8200
@@ -57,6 +69,18 @@ services:
 
     networks:
       - ablage_network
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    stop_grace_period: 10s
 
     labels:
       - "com.ablage-system.component=vault-ui"

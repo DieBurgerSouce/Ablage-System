@@ -41,6 +41,12 @@ services:
         reservations:
           cpus: '0.5'
           memory: 1G
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       - "traefik.enable=false"  # Managed by nginx canary config
       - "prometheus.scrape=true"

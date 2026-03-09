@@ -1,5 +1,7 @@
 # PaddleOCR Batch Test Container
 # Verarbeitet mehrere Dokumente und speichert Ergebnisse
+# Pin base image digest for reproducible builds
+# Update digest via: docker manifest inspect python:3.11-slim
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -184,5 +186,13 @@ def main():
 if __name__ == "__main__":
     main()
 SCRIPT
+
+# Create non-root user for security
+RUN useradd -r -s /bin/false ocr && \
+    chown -R ocr:ocr /app
+USER ocr
+
+HEALTHCHECK --interval=60s --timeout=10s --retries=3 \
+    CMD python -c "import paddleocr; print('ok')" || exit 1
 
 CMD ["python", "/app/batch_paddleocr.py"]

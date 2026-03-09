@@ -32,6 +32,10 @@ on:
         required: false
         type: string
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # Pre-deployment checks
   pre-deploy-checks:
@@ -40,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Verify VERSION file
         run: |
@@ -82,7 +86,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Configure SSH
         run: |
@@ -136,6 +140,12 @@ jobs:
           # Basic health verification
           curl -f https://staging.ablage-system.local/health
           curl -f https://staging.ablage-system.local/api/v1/health
+
+      - name: Cleanup SSH Keys
+        if: always()
+        run: |
+          rm -f ~/.ssh/staging_key
+          rm -rf ~/.ssh/known_hosts
 
       - name: Notify Deployment
         if: always()
@@ -192,7 +202,7 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event.inputs.version || github.ref }}
 
@@ -317,6 +327,12 @@ jobs:
               exit 1
             fi
           EOF
+
+      - name: Cleanup SSH Keys
+        if: always()
+        run: |
+          rm -f ~/.ssh/prod_key
+          rm -rf ~/.ssh/known_hosts
 
       - name: Notify Production Deployment
         if: always()

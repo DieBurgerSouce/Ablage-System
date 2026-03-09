@@ -48,7 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Helm
         uses: azure/setup-helm@v3
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Run Kubesec
         uses: controlplaneio/kubesec-action@v0.0.2
@@ -90,7 +90,7 @@ jobs:
           input: infrastructure/kubernetes/base/
 
       - name: Run Polaris
-        uses: fairwindsops/polaris@master
+        uses: fairwindsops/polaris@6d855a0b8222e8b0c465328640a778d9cbfa1e06 # v9.5.0
         with:
           config: infrastructure/.polaris.yaml
           only-show-failed-tests: true
@@ -107,7 +107,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Helm
         uses: azure/setup-helm@v3
