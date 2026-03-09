@@ -10,6 +10,7 @@ import { WebSocketStatusIndicator } from './WebSocketStatusIndicator'
 import { TourLauncher } from '@/features/product-tour'
 import { OfflineIndicator } from './OfflineIndicator'
 import { SmartUploadOverlay } from '@/features/upload/components/SmartUploadOverlay'
+import { SpotlightDialog } from '@/features/spotlight'
 import { Menu, Bell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RecentActionsPanel, usePendingReviewCount } from '@/features/auto-learning'
@@ -117,6 +118,7 @@ function AppLayoutInner({ children, id }: { children: React.ReactNode; id?: stri
                 {/* Global AI Assistant - Floating Widget auf jeder Seite */}
                 <GlobalAIAssistant />
             </div>
+            <SpotlightDialog />
         </SmartUploadOverlay>
     )
 }
