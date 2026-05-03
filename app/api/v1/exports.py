@@ -15,7 +15,9 @@ from uuid import UUID, uuid4
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect, Request
-from jose import JWTError, jwt
+# Sprint 0 / G02: PyJWT statt python-jose (CVE-2024-33664).
+import jwt
+from jwt.exceptions import InvalidTokenError as JWTError
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession

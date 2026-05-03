@@ -875,7 +875,8 @@ class AdHocReportService:
                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
         elif export_format == AdHocExportFormat.PDF:
-            return self._export_pdf(columns, rows), "application/pdf"
+            # Sprint 0 / G04: _export_pdf jetzt async (statt asyncio.run-Wrapping)
+            return await self._export_pdf(columns, rows), "application/pdf"
         else:
             raise ValueError(f"Unbekanntes Export-Format: {export_format}")
 
@@ -951,12 +952,18 @@ class AdHocReportService:
         wb.save(output)
         return output.getvalue()
 
-    def _export_pdf(
+    async def _export_pdf(
         self,
         columns: List[Dict[str, str]],
         rows: List[Dict[str, object]],
     ) -> bytes:
-        """PDF-Export (Fallback auf CSV wenn reportlab nicht verfügbar)."""
+        """PDF-Export (Fallback auf CSV wenn reportlab nicht verfügbar).
+
+        Sprint 0 / G04: async refactor (frueher: asyncio.run-Wrapping mit
+        loop.is_running()-Branching - das war zerbrechlich und unter Python 3.10+
+        gibt asyncio.get_event_loop() DeprecationWarnings/RuntimeError ohne aktiven Loop).
+        Jetzt direkt await - keine Loop-Detection mehr noetig.
+        """
         try:
             from app.services.reports.pdf_export_service import PdfExportService
             from app.services.reports.report_templates import ReportColumn
@@ -971,32 +978,13 @@ class AdHocReportService:
                 for col in columns
             ]
 
-            import asyncio
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                # Synchron aufrufen innerhalb laufendem Loop
-                import concurrent.futures
-                with concurrent.futures.ThreadPoolExecutor() as pool:
-                    pdf_bytes = pool.submit(
-                        asyncio.run,
-                        pdf_service.generate_report_pdf(
-                            title="Ad-Hoc Report",
-                            subtitle=f"Erstellt am {datetime.now(timezone.utc).strftime('%d.%m.%Y %H:%M')} UTC",
-                            columns=pdf_columns,
-                            data=[dict(r) for r in rows],
-                            company_name="Ablage-System",
-                        )
-                    ).result()
-            else:
-                pdf_bytes = asyncio.run(
-                    pdf_service.generate_report_pdf(
-                        title="Ad-Hoc Report",
-                        subtitle=f"Erstellt am {datetime.now(timezone.utc).strftime('%d.%m.%Y %H:%M')} UTC",
-                        columns=pdf_columns,
-                        data=[dict(r) for r in rows],
-                        company_name="Ablage-System",
-                    )
-                )
+            pdf_bytes = await pdf_service.generate_report_pdf(
+                title="Ad-Hoc Report",
+                subtitle=f"Erstellt am {datetime.now(timezone.utc).strftime('%d.%m.%Y %H:%M')} UTC",
+                columns=pdf_columns,
+                data=[dict(r) for r in rows],
+                company_name="Ablage-System",
+            )
             return pdf_bytes
         except Exception as e:
             logger.warning(

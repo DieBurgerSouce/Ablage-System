@@ -21,7 +21,11 @@ import re
 from urllib.parse import quote
 
 import bcrypt
-from jose import JWTError, jwt
+# Sprint 0 / G02: Migration von python-jose zu PyJWT (CVE-2024-33664).
+# Alias-Strategie: JWTError als Alias auf InvalidTokenError (Basisklasse aller PyJWT-Errors).
+# Dadurch bleibt Bestandscode (`except JWTError as e`) unverändert wirksam.
+import jwt
+from jwt.exceptions import InvalidTokenError as JWTError
 from fastapi import HTTPException, status
 import structlog
 

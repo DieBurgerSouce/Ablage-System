@@ -186,7 +186,7 @@ class TestBlacklistedTokenRejection:
         token = create_access_token({"sub": "user123", "email": "test@example.com"})
 
         # Decode um JTI zu bekommen
-        from jose import jwt
+        import jwt  # Sprint 0 / G02: PyJWT statt python-jose
         from app.core.config import settings
         secret_key = settings.SECRET_KEY.get_secret_value()
         payload = jwt.decode(token, secret_key, algorithms=[settings.ALGORITHM])
@@ -406,7 +406,7 @@ class TestTokenTypeValidation:
     async def test_access_token_has_correct_type_in_payload(self):
         """Access Token muss type='access' haben."""
         from app.core.security import create_access_token
-        from jose import jwt
+        import jwt  # Sprint 0 / G02: PyJWT statt python-jose
         from app.core.config import settings
 
         token = create_access_token({"sub": "user123"})
@@ -420,7 +420,7 @@ class TestTokenTypeValidation:
     async def test_refresh_token_has_correct_type_in_payload(self):
         """Refresh Token muss type='refresh' haben."""
         from app.core.security import create_refresh_token
-        from jose import jwt
+        import jwt  # Sprint 0 / G02: PyJWT statt python-jose
         from app.core.config import settings
 
         token = create_refresh_token({"sub": "user123"})

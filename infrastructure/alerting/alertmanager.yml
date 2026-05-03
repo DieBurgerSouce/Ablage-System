@@ -6,6 +6,7 @@ global:
   resolve_timeout: 5m
 
 # Routing-Baum: Alerts werden nach Schweregrad weitergeleitet
+# Sprint 0 / G01: Critical+High gehen ZUSAETZLICH an Slack (Out-of-Hours-Pager)
 route:
   receiver: 'email-receiver'
   group_by: ['alertname', 'cluster', 'service', 'severity']
@@ -15,21 +16,23 @@ route:
 
   # Unterrouten nach Schweregrad
   routes:
-    # Kritische Alerts - sofortige Benachrichtigung, haeufige Wiederholung
+    # Kritische Alerts - sofortige Benachrichtigung an Email + Slack
     - match:
         severity: critical
-      receiver: 'email-receiver'
+      receiver: 'critical-multi'
       group_wait: 10s
       repeat_interval: 15m
+      continue: false
 
-    # Hohe Prioritaet - kurze Verzoegerung, stuendliche Wiederholung
+    # Hohe Prioritaet - Email + Slack, kurze Verzoegerung
     - match:
         severity: high
-      receiver: 'email-receiver'
+      receiver: 'high-multi'
       group_wait: 1m
       repeat_interval: 1h
+      continue: false
 
-    # Warnungen - gebuendelt, seltene Wiederholung
+    # Warnungen - nur Email, gebuendelt
     - match:
         severity: warning
       receiver: 'email-receiver'
@@ -68,15 +71,82 @@ receivers:
           <p><strong>Beginn:</strong> {{ .StartsAt }}</p>
           {{ end }}
 
-  # Slack-Empfaenger (optional, auskommentiert)
-  # Aktivieren: SLACK_WEBHOOK_URL in .env setzen und Kommentare entfernen
-  # - name: 'slack-receiver'
-  #   slack_configs:
-  #     - api_url: 'https://hooks.slack.com/services/PLACEHOLDER'
-  #       channel: '#alerts-ablage'
-  #       title: '[Ablage-System] {{ .Status | toUpper }} - {{ .CommonLabels.alertname }}'
-  #       text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
-  #       send_resolved: true
+  # Slack-Empfaenger (Sprint 0 / G01)
+  # Webhook-URL liegt als Datei: /etc/alertmanager/slack-webhook.url
+  # Lokal: infrastructure/alerting/slack-webhook.url (in .gitignore!)
+  # Erstellung: https://api.slack.com/apps -> Incoming Webhooks -> Channel #ablage-alerts
+  - name: 'slack-receiver'
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/slack-webhook.url'
+        channel: '#ablage-alerts'
+        send_resolved: true
+        title: '[Ablage-System] {{ .Status | toUpper }} - {{ .CommonLabels.alertname }}'
+        title_link: '{{ .ExternalURL }}'
+        text: |
+          *Severity:* `{{ .CommonLabels.severity }}`
+          *Service:* `{{ .CommonLabels.service }}`
+          {{ range .Alerts }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}
+
+  # Multi-Receiver: Critical -> Email + Slack
+  - name: 'critical-multi'
+    email_configs:
+      - smarthost: 'localhost:587'
+        from: 'alertmanager@ablage-system.local'
+        auth_username: ''
+        auth_password: ''
+        to: 'ops-team@internal.local'
+        require_tls: true
+        headers:
+          subject: '[CRITICAL][Ablage-System] {{ .CommonLabels.alertname }}'
+        html: |
+          <h2>KRITISCH: Ablage-System Alert</h2>
+          <p><strong>Status:</strong> {{ .Status }}</p>
+          <p><strong>Alert:</strong> {{ .CommonLabels.alertname }}</p>
+          {{ range .Alerts }}<hr>
+          <p><strong>Beschreibung:</strong> {{ .Annotations.description }}</p>
+          <p><strong>Beginn:</strong> {{ .StartsAt }}</p>
+          {{ end }}
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/slack-webhook.url'
+        channel: '#ablage-alerts'
+        send_resolved: true
+        color: 'danger'
+        title: ':rotating_light: [CRITICAL] {{ .CommonLabels.alertname }}'
+        title_link: '{{ .ExternalURL }}'
+        text: |
+          *Service:* `{{ .CommonLabels.service }}`
+          {{ range .Alerts }}*Description:* {{ .Annotations.description }}
+          *Started:* {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+          {{ end }}
+
+  # Multi-Receiver: High -> Email + Slack
+  - name: 'high-multi'
+    email_configs:
+      - smarthost: 'localhost:587'
+        from: 'alertmanager@ablage-system.local'
+        auth_username: ''
+        auth_password: ''
+        to: 'ops-team@internal.local'
+        require_tls: true
+        headers:
+          subject: '[HIGH][Ablage-System] {{ .CommonLabels.alertname }}'
+        html: |
+          <h2>Hoch: Ablage-System Alert</h2>
+          <p><strong>Alert:</strong> {{ .CommonLabels.alertname }}</p>
+          {{ range .Alerts }}<p>{{ .Annotations.description }}</p>{{ end }}
+    slack_configs:
+      - api_url_file: '/etc/alertmanager/slack-webhook.url'
+        channel: '#ablage-alerts'
+        send_resolved: true
+        color: 'warning'
+        title: ':warning: [HIGH] {{ .CommonLabels.alertname }}'
+        text: |
+          *Service:* `{{ .CommonLabels.service }}`
+          {{ range .Alerts }}{{ .Annotations.description }}{{ end }}
 
 # Inhibierungsregeln: Verhindern redundante Benachrichtigungen
 inhibit_rules:

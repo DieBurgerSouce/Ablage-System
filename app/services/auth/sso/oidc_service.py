@@ -32,7 +32,11 @@ from urllib.parse import urlencode, urlparse, parse_qs
 from uuid import UUID
 
 import httpx
-from jose import jwt, jwk, JWTError
+# Sprint 0 / G02: PyJWT statt python-jose (CVE-2024-33664).
+# OIDC nutzt JWK-Keys aus JWKS-Endpoint, daher RSA/EC-Algorithm-Konversion notwendig.
+import jwt
+from jwt.exceptions import InvalidTokenError as JWTError
+from jwt.algorithms import RSAAlgorithm, ECAlgorithm
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -348,10 +352,20 @@ class OIDCService:
                     key = jwks["keys"][0]
 
             if key:
+                # Sprint 0 / G02: PyJWT erwartet RSAPublicKey/ECPublicKey, nicht JWK-Dict.
+                # JWK-zu-Key-Konversion via PyJWT-Algorithms.
+                kty = key.get("kty")
+                if kty == "RSA":
+                    public_key = RSAAlgorithm.from_jwk(key)
+                elif kty == "EC":
+                    public_key = ECAlgorithm.from_jwk(key)
+                else:
+                    raise ValueError(f"Nicht unterstuetzter JWK-Key-Type: {kty}")
+
                 # Validate with key
                 claims = jwt.decode(
                     id_token,
-                    key,
+                    public_key,
                     algorithms=["RS256", "ES256"],
                     audience=config.client_id,
                     issuer=config.issuer,

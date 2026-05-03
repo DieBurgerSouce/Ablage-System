@@ -14,7 +14,9 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
 from fastapi.responses import JSONResponse
-from jose import JWTError, jwt
+# Sprint 0 / G02: PyJWT statt python-jose (CVE-2024-33664).
+import jwt
+from jwt.exceptions import InvalidTokenError as JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings

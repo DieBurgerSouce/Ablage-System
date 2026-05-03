@@ -465,7 +465,7 @@ class TestTokenCreation:
     def test_access_token_contains_jti(self):
         """Access Token muss JTI (unique ID) enthalten."""
         from app.core.security import create_access_token
-        from jose import jwt
+        import jwt  # Sprint 0 / G02: PyJWT statt python-jose
         from app.core.config import settings
 
         token = create_access_token({"sub": "user123"})
@@ -479,7 +479,7 @@ class TestTokenCreation:
     def test_refresh_token_contains_jti(self):
         """Refresh Token muss JTI enthalten."""
         from app.core.security import create_refresh_token
-        from jose import jwt
+        import jwt  # Sprint 0 / G02: PyJWT statt python-jose
         from app.core.config import settings
 
         token = create_refresh_token({"sub": "user123"})
@@ -493,7 +493,7 @@ class TestTokenCreation:
     def test_access_token_has_correct_type(self):
         """Access Token muss type='access' haben."""
         from app.core.security import create_access_token
-        from jose import jwt
+        import jwt  # Sprint 0 / G02: PyJWT statt python-jose
         from app.core.config import settings
 
         token = create_access_token({"sub": "user123"})
@@ -506,7 +506,7 @@ class TestTokenCreation:
     def test_refresh_token_has_correct_type(self):
         """Refresh Token muss type='refresh' haben."""
         from app.core.security import create_refresh_token
-        from jose import jwt
+        import jwt  # Sprint 0 / G02: PyJWT statt python-jose
         from app.core.config import settings
 
         token = create_refresh_token({"sub": "user123"})

@@ -548,7 +548,11 @@ services:
       VAULT_CACERT: /app/certs/ca.crt
       # Database (Secrets aus .env)
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
+      # Sprint 0 Fix (2026-05-04): ?sslmode=... entfernt - asyncpg-Driver kennt
+      # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
+      # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
+      # mit ssl-Object setzen statt URL-Parameter.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis (SECURITY: Passwort ist erforderlich!)
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -640,8 +644,8 @@ services:
       test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=30).raise_for_status()"]
       interval: 30s
       timeout: 35s  # ENTERPRISE FIX: Erhöht für GPU-Inference + Netzwerk-Latenz
-      retries: 3
-      start_period: 180s  # ENTERPRISE FIX: 3 Minuten für GPU Model-Loading
+      retries: 5  # Sprint 0 / G05-vorbereitend: mehr Retries fuer langsames Init
+      start_period: 600s  # Sprint 0 / G05-vorbereitend: 10 Min - 797 Services brauchen lange beim Init (statt 180s)
     restart: unless-stopped
     stop_grace_period: 30s
     logging:
@@ -674,7 +678,11 @@ services:
       VAULT_CACERT: /app/certs/ca.crt
       # Database (Secrets aus .env)
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
+      # Sprint 0 Fix (2026-05-04): ?sslmode=... entfernt - asyncpg-Driver kennt
+      # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
+      # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
+      # mit ssl-Object setzen statt URL-Parameter.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis (mit optionalem Passwort)
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -805,7 +813,11 @@ services:
       VAULT_CACERT: /app/certs/ca.crt
       # Database
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
+      # Sprint 0 Fix (2026-05-04): ?sslmode=... entfernt - asyncpg-Driver kennt
+      # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
+      # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
+      # mit ssl-Object setzen statt URL-Parameter.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
       # Redis
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
@@ -918,7 +930,11 @@ services:
     command: celery -A app.workers.celery_app beat --loglevel=info
     environment:
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
+      # Sprint 0 Fix (2026-05-04): ?sslmode=... entfernt - asyncpg-Driver kennt
+      # diesen Parameter nicht (nur libpq/psycopg2 tut das). Interne Container-zu-
+      # Container-Connection braucht kein SSL. Bei externem PG-Cluster: connect_args
+      # mit ssl-Object setzen statt URL-Parameter.
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}
       REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD muss gesetzt sein}@redis:6379/0
       MINIO_ENDPOINT: minio:9000
@@ -1185,6 +1201,9 @@ services:
     volumes:
       - ./infrastructure/alerting/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - ./infrastructure/alerting/templates:/etc/alertmanager/templates:ro
+      # Sprint 0 / G01: Slack-Webhook-URL als Datei (in .gitignore!)
+      # Erstelle: infrastructure/alerting/slack-webhook.url (eine Zeile, kein Newline)
+      - ./infrastructure/alerting/slack-webhook.url:/etc/alertmanager/slack-webhook.url:ro
       - alertmanager_data:/alertmanager
     ports:
       - "127.0.0.1:9093:9093"  # Nur localhost
@@ -1522,6 +1541,61 @@ services:
     networks:
       - monitoring-network
 
+  # =========================================================================
+  # Backend Watchdog (Sprint 0 / G05)
+  # =========================================================================
+  # Sidecar-Container der periodisch /health pollt und bei N Failures
+  # automatisch `docker restart ablage-backend` ausfuehrt + Slack-Alert.
+  # Doku: scripts/backup/DR_RUNBOOK.md "Backend-Watchdog"
+  watchdog:
+    build:
+      context: ./scripts/watchdog
+      dockerfile: Dockerfile
+    image: ablage-watchdog:latest
+    container_name: ablage-watchdog
+    restart: unless-stopped
+    user: "0:0"  # root - braucht Zugriff auf docker.sock
+    environment:
+      CONTAINER: ablage-backend
+      HEALTH_URL: http://backend:8000/health  # Internes Docker-DNS
+      HEALTH_TIMEOUT: 15
+      RESTART_THRESHOLD: 3
+      ESCALATE_THRESHOLD: 5
+      LOOP_INTERVAL: 60
+      SIDECAR_MODE: "true"
+      STATE_FILE: /state/watchdog.state
+      LOG_DIR: /state/logs
+      SLACK_WEBHOOK_FILE: /app/slack-webhook.url
+    volumes:
+      # Watchdog-Script (read-only)
+      - ./scripts/watchdog/backend_watchdog.sh:/app/backend_watchdog.sh:ro
+      # Slack-Webhook-File (read-only) - Sprint 0 / G01
+      - ./infrastructure/alerting/slack-webhook.url:/app/slack-webhook.url:ro
+      # Docker-Socket fuer `docker restart` (root-Privileg!)
+      - /var/run/docker.sock:/var/run/docker.sock
+      # State + Logs persistent
+      - watchdog_state:/state
+    depends_on:
+      backend:
+        condition: service_started  # NICHT service_healthy - Watchdog soll auch bei start-failures helfen
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+          cpus: "0.1"
+        reservations:
+          memory: 16M
+          cpus: "0.01"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=watchdog"
+    networks:
+      # Sprint 0 / G05: Backend-Network damit `http://backend:8000` aufloesbar
+      - backend-network
+
 volumes:
   postgres_data:
   redis_data:
@@ -1543,6 +1617,7 @@ volumes:
   jaeger_data:  # Jaeger Distributed Tracing Storage
   vault_data:
   vault_logs:
+  watchdog_state:  # Sprint 0 / G05 - Watchdog State + Logs persistent
   model_cache:  # OCR model cache (Surya, HuggingFace, DeepSeek)
 
 networks:

@@ -14,7 +14,9 @@ from uuid import UUID
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
-from jose import JWTError, jwt
+# Sprint 0 / G02: PyJWT statt python-jose (CVE-2024-33664).
+import jwt
+from jwt.exceptions import InvalidTokenError as JWTError
 
 from app.db.session import get_async_session_context
 from app.db.models import User, ChatSessionAccessLevel

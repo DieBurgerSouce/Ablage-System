@@ -82,8 +82,15 @@ prometheus-client==0.19.0
 structlog==24.1.0
 
 # Authentication & Security
-python-jose[cryptography]==3.3.0
-PyJWT>=2.8.0  # WebSocket JWT-Authentication
+# Sprint 0 / G02 (2026-05-04): python-jose entfernt (CVE-2024-33664 algorithm confusion).
+# Migration zu PyJWT abgeschlossen in: app/core/security_auth.py, app/api/v1/{auth,exports,tasks}.py,
+# app/api/v1/rag/chat_ws.py, app/services/auth/sso/oidc_service.py.
+# python-jose[cryptography]==3.3.0  # REMOVED
+PyJWT[crypto]>=2.8.0  # JWT inkl. RSA/EC-Algorithms (statt python-jose)
+
+# Sprint 0 / G10 (2026-05-04): Sentry-SDK ins Hauptbackend gezogen (war nur in
+# infrastructure/sentry/requirements.txt - daher ModuleNotFoundError beim Startup).
+sentry-sdk[fastapi,sqlalchemy,celery,redis]==1.40.6
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.9
 bcrypt==4.1.2

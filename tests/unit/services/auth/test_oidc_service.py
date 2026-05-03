@@ -32,7 +32,8 @@ from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from uuid import uuid4, UUID
 
 import httpx
-from jose import jwt, jwk
+# Sprint 0 / G02: PyJWT statt python-jose. jwt-Module wird in Tests nicht direkt verwendet
+# (Mocks via patch.object()), jwk wurde nirgends benutzt - entfernt.
 from pydantic import SecretStr
 
 from app.services.auth.sso.oidc_service import (
@@ -977,7 +978,7 @@ class TestIDTokenValidation:
         with patch.object(
             oidc_service, "_get_jwks", new_callable=AsyncMock
         ) as mock_get_jwks, patch(
-            "jose.jwt.decode"
+            "app.services.auth.sso.oidc_service.jwt.decode"
         ) as mock_decode:
             mock_get_jwks.return_value = sample_jwks
             mock_decode.return_value = {
@@ -1096,7 +1097,7 @@ class TestIDTokenValidation:
         with patch.object(
             oidc_service, "_get_jwks", new_callable=AsyncMock
         ) as mock_get_jwks, patch(
-            "jose.jwt.decode"
+            "app.services.auth.sso.oidc_service.jwt.decode"
         ) as mock_decode:
             mock_get_jwks.return_value = sample_jwks
             mock_decode.return_value = {
@@ -1121,12 +1122,13 @@ class TestIDTokenValidation:
         sample_jwks,
     ):
         """Test: JWT-Validierungsfehler wird korrekt behandelt."""
-        from jose import JWTError
+        # Sprint 0 / G02: PyJWT statt python-jose
+        from jwt.exceptions import InvalidTokenError as JWTError
 
         with patch.object(
             oidc_service, "_get_jwks", new_callable=AsyncMock
         ) as mock_get_jwks, patch(
-            "jose.jwt.decode"
+            "app.services.auth.sso.oidc_service.jwt.decode"
         ) as mock_decode:
             mock_get_jwks.return_value = sample_jwks
             mock_decode.side_effect = JWTError("Signature verification failed")
@@ -1153,7 +1155,7 @@ class TestIDTokenValidation:
         with patch.object(
             oidc_service, "_get_jwks", new_callable=AsyncMock
         ) as mock_get_jwks, patch(
-            "jose.jwt.decode"
+            "app.services.auth.sso.oidc_service.jwt.decode"
         ) as mock_decode:
             mock_get_jwks.return_value = sample_jwks  # Has keys, but different kid
             mock_decode.return_value = {
@@ -1705,7 +1707,7 @@ class TestFullAuthorizationFlow:
         ) as mock_decrypt, patch.object(
             oidc_service.config_service, "record_login", new_callable=AsyncMock
         ) as mock_record, patch(
-            "jose.jwt.decode"
+            "app.services.auth.sso.oidc_service.jwt.decode"
         ) as mock_jwt_decode:
             mock_get_provider.return_value = sample_provider_config
             mock_get_client.return_value = mock_client

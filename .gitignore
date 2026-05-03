@@ -143,5 +143,12 @@ run-*.js
 .playwright-mcp/
 .mcp.json
 
+# Alerting secrets (Sprint 0 / G01)
+infrastructure/alerting/slack-webhook.url
+infrastructure/alerting/teams-webhook.url
+
+# Watchdog runtime logs (Sprint 0 / G05) - State liegt im Docker-Volume
+scripts/watchdog/logs/
+
 # Python scripts in root
 /reset_password.py

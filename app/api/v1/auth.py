@@ -149,8 +149,12 @@ async def register(
 # ==================== Login ====================
 
 # SECURITY FIX 27-1: Rate-Limit für Login-Endpoint - KRITISCH!
-# Verhindert Brute-Force-Angriffe auf Passwörter
-@limiter.limit("10/minute", key_func=get_ip_identifier)
+# Verhindert Brute-Force-Angriffe auf Passwörter.
+# Sprint 0 / G07: Verschaerft von "10/minute" auf "5/minute" - konsistent mit
+# MAX_FAILED_ATTEMPTS=5 in app/core/account_lockout.py. Per-IP-Limit greift VOR
+# dem Per-Account-Lockout. Defense in Depth: 5/min IP-Limit + Account-Lockout
+# (5x falsch -> 60s Lock; 7x -> 15min; 8x -> 1h, exponentiell).
+@limiter.limit("5/minute", key_func=get_ip_identifier)
 @router.post(
     "/login",
     summary="Benutzer-Login",
