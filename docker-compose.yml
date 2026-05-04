@@ -546,6 +546,13 @@ services:
       VAULT_SECRET_PATH: ablage-system
       VAULT_MOUNT_POINT: secret
       VAULT_CACERT: /app/certs/ca.crt
+      # Sentry (Sprint 0 / G10) - 2026-05-04
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
+      SENTRY_PROFILES_SAMPLE_RATE: ${SENTRY_PROFILES_SAMPLE_RATE:-0.1}
+      SENTRY_ENABLE_TRACING: ${SENTRY_ENABLE_TRACING:-true}
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      VERSION: ${VERSION:-0.1.0}
       # Database (Secrets aus .env)
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}
       # Sprint 0 Fix (2026-05-04): ?sslmode=... entfernt - asyncpg-Driver kennt
@@ -599,6 +606,11 @@ services:
       - ./alembic:/app/alembic:ro
       - ./alembic.ini:/app/alembic.ini:ro
       - ./infrastructure/vault/config/certs:/app/certs:ro
+      # Sprint 0 / G10 (2026-05-05): infrastructure-Package mounten damit
+      # `from infrastructure.sentry.init_sentry import ...` in app/main.py:73 funktioniert.
+      # Das Package war nicht ins Image kopiert -> sentry_not_configured: ModuleNotFoundError
+      # Ganzes Verzeichnis mounten, damit __init__.py-Hierarchie greift (sentry, vault, etc).
+      - ./infrastructure:/app/infrastructure:ro
       - ./Trainings_Data:/app/Trainings_Data:ro
       - uploads:/app/uploads
       - outputs:/app/outputs

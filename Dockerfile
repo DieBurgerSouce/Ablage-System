@@ -8,7 +8,7 @@
 # ============================================================
 # Pin base image digest for reproducible builds
 # Update digest via: docker manifest inspect nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:309fb03c970e7938385a1c4c888a3b2f6dbb4639f8c316ff2d8b722ecf2b56f1 AS builder
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:f3a7fb39fa3ffbe54da713dd2e93063885e5be2f4586a705c39031b8284d379a AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV TORCH_CUDA_ARCH_LIST="8.6;8.9"
@@ -38,11 +38,23 @@ COPY requirements.txt requirements-gpu.txt ./
 RUN uv pip install --system -r requirements.txt
 RUN uv pip install --system -r requirements-gpu.txt
 
-# Clone and register DeepSeek Janus
-RUN git clone --depth 1 https://github.com/deepseek-ai/Janus.git /opt/janus && \
-    uv pip install --system attrdict einops sentencepiece timm accelerate && \
-    echo "/opt/janus" > /usr/local/lib/python3.11/dist-packages/janus.pth && \
-    python3.11 -c "from janus.models import MultiModalityCausalLM, VLChatProcessor; print('Janus OK')"
+# Sprint 0 / G02: Janus optional via Build-Arg (Skip bei RAM-Pressure oder Image-Failure)
+# Default: SKIP_JANUS=0 (Janus wird gebaut, gleich wie vorher)
+# Skip:    docker-compose build backend --build-arg SKIP_JANUS=1
+#          (DeepSeek-Janus-OCR-Backend nicht verfuegbar - 6 andere Backends bleiben)
+ARG SKIP_JANUS=0
+# Clone and register DeepSeek Janus (oder skip wenn SKIP_JANUS=1)
+RUN if [ "${SKIP_JANUS}" = "1" ]; then \
+        echo "SKIP_JANUS=1 - DeepSeek-Janus wird NICHT installiert (Sprint 0 / G02-Workaround)" && \
+        mkdir -p /opt/janus && \
+        echo "# Janus skipped (SKIP_JANUS=1)" > /opt/janus/SKIPPED.txt && \
+        echo "# Janus skipped" > /usr/local/lib/python3.11/dist-packages/janus.pth; \
+    else \
+        git clone --depth 1 https://github.com/deepseek-ai/Janus.git /opt/janus && \
+        uv pip install --system attrdict einops sentencepiece timm accelerate && \
+        echo "/opt/janus" > /usr/local/lib/python3.11/dist-packages/janus.pth && \
+        python3.11 -c "from janus.models import MultiModalityCausalLM, VLChatProcessor; print('Janus OK')"; \
+    fi
 
 # ============================================================
 # Stage 2: production
@@ -50,7 +62,7 @@ RUN git clone --depth 1 https://github.com/deepseek-ai/Janus.git /opt/janus && \
 # curl is kept for the HEALTHCHECK.
 # ============================================================
 # Pin base image digest for reproducible builds (same image as builder)
-FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:309fb03c970e7938385a1c4c888a3b2f6dbb4639f8c316ff2d8b722ecf2b56f1
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04@sha256:f3a7fb39fa3ffbe54da713dd2e93063885e5be2f4586a705c39031b8284d379a
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
