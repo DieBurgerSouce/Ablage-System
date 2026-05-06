@@ -155,9 +155,11 @@ async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-# Alias for backwards compatibility with Celery tasks
-# Many tasks use `async with async_session_factory() as db:` pattern
+# Aliases for backwards compatibility with Celery tasks
+# Many tasks use `async with async_session_factory() as db:` or
+# `async with async_session_maker() as db:` pattern
 async_session_factory = get_async_session_context
+async_session_maker = get_async_session_context
 
 
 @contextmanager

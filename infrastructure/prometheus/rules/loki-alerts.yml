@@ -68,8 +68,8 @@ groups:
       # Kritisch: Retention/Compaction nicht aktiv
       - alert: LokiCompactorNotRunning
         expr: |
-          absent(loki_compactor_running) == 1
-          or loki_compactor_running == 0
+          absent(loki_boltdb_shipper_compactor_running) == 1
+          or loki_boltdb_shipper_compactor_running == 0
         for: 30m
         labels:
           severity: critical

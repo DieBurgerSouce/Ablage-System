@@ -26,7 +26,7 @@ from app.workers.celery_metrics import (
     record_task_failed,
 )
 from app.db.session import get_async_session_context
-from app.db.models import NLQLog, AppConfig
+from app.db.models import NLQQueryLog, AppConfig
 from app.core.safe_errors import safe_error_log
 
 logger = structlog.get_logger(__name__)
@@ -72,19 +72,19 @@ def cleanup_old_logs(
 
             # 1. Aggregiere Statistiken vor dem Löschen
             stats_query = select(
-                func.count(NLQLog.id).label("total_logs"),
+                func.count(NLQQueryLog.id).label("total_logs"),
                 func.count(
-                    func.distinct(NLQLog.query_text)
+                    func.distinct(NLQQueryLog.query_text)
                 ).label("unique_queries"),
-                func.avg(NLQLog.processing_time_ms).label("avg_processing_time"),
+                func.avg(NLQQueryLog.processing_time_ms).label("avg_processing_time"),
                 func.count(
                     func.case(
-                        (NLQLog.success == True, 1),
+                        (NLQQueryLog.success == True, 1),
                         else_=None
                     )
                 ).label("successful_queries"),
             ).where(
-                NLQLog.created_at < cutoff_date
+                NLQQueryLog.created_at < cutoff_date
             )
 
             stats_result = await db.execute(stats_query)
@@ -132,8 +132,8 @@ def cleanup_old_logs(
             while True:
                 # Finde IDs zum Löschen
                 id_query = (
-                    select(NLQLog.id)
-                    .where(NLQLog.created_at < cutoff_date)
+                    select(NLQQueryLog.id)
+                    .where(NLQQueryLog.created_at < cutoff_date)
                     .limit(batch_size)
                 )
                 id_result = await db.execute(id_query)
@@ -143,8 +143,8 @@ def cleanup_old_logs(
                     break
 
                 # Lösche Batch
-                delete_stmt = delete(NLQLog).where(
-                    NLQLog.id.in_(ids_to_delete)
+                delete_stmt = delete(NLQQueryLog).where(
+                    NLQQueryLog.id.in_(ids_to_delete)
                 )
                 result = await db.execute(delete_stmt)
                 await db.commit()
@@ -225,19 +225,19 @@ def warm_cache(
             # Finde Top N häufigste Queries
             query = (
                 select(
-                    NLQLog.query_text,
-                    NLQLog.company_id,
-                    func.count(NLQLog.id).label("frequency"),
-                    func.avg(NLQLog.processing_time_ms).label("avg_time"),
+                    NLQQueryLog.query_text,
+                    NLQQueryLog.company_id,
+                    func.count(NLQQueryLog.id).label("frequency"),
+                    func.avg(NLQQueryLog.processing_time_ms).label("avg_time"),
                 )
                 .where(
                     and_(
-                        NLQLog.created_at >= cutoff_date,
-                        NLQLog.success == True,
+                        NLQQueryLog.created_at >= cutoff_date,
+                        NLQQueryLog.success == True,
                     )
                 )
-                .group_by(NLQLog.query_text, NLQLog.company_id)
-                .order_by(func.count(NLQLog.id).desc())
+                .group_by(NLQQueryLog.query_text, NLQQueryLog.company_id)
+                .order_by(func.count(NLQQueryLog.id).desc())
                 .limit(top_n)
             )
 
@@ -354,8 +354,8 @@ def analyze_query_patterns(
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=lookback_days)
 
             # Lade alle Logs im Zeitraum
-            query = select(NLQLog).where(
-                NLQLog.created_at >= cutoff_date
+            query = select(NLQQueryLog).where(
+                NLQQueryLog.created_at >= cutoff_date
             )
             result = await db.execute(query)
             logs = result.scalars().all()
@@ -493,11 +493,11 @@ def retry_failed_queries(
 
             # Finde fehlgeschlagene Queries
             query = (
-                select(NLQLog)
+                select(NLQQueryLog)
                 .where(
                     and_(
-                        NLQLog.success == False,
-                        NLQLog.created_at >= cutoff_date,
+                        NLQQueryLog.success == False,
+                        NLQQueryLog.created_at >= cutoff_date,
                     )
                 )
                 .limit(50)  # Max 50 Retries pro Run

@@ -17,7 +17,7 @@ from celery import shared_task
 
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.db.session import get_async_session_context
-from app.workers.celery_app import celery
+from app.workers.celery_app import celery_app as celery
 
 logger = structlog.get_logger(__name__)
 

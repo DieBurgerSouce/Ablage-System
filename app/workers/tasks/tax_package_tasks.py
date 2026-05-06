@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 import structlog
 from celery import shared_task
 
-from app.core.database import get_async_session
+from app.db.session import get_async_session
 from app.core.safe_errors import safe_error_log, safe_error_detail
 
 logger = structlog.get_logger(__name__)

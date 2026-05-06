@@ -97,3 +97,42 @@ TaskStatusNotesG01 Slack-Webhook Setup✅ CodeRouting-Test bestandenG01 echte UR
 - 2 wartet auf Ben: echte Slack-URL + echte Sentry-DSN
 - 1 Tech-Debt entdeckt: Janus-Repo-Build-Failure (G02-Image-Rebuild blockiert)
 - **Tempo:** \~3.5h real vs. 14h geplant (\~4× schneller)
+
+---
+
+## 🛠️ Stabilisierungs-Patch — 2026-05-06 22:30 lokal
+
+**Trigger:** 48h Slack-Alert-Spam (siehe Slack `#ablage-alerts`). Realität: Backend war seit 04.05. 23:54 wieder up & healthy (44h). Aber Worker dauerhaft im Crash-Loop wegen Code-Bugs + Alertmanager `repeat_interval` zu kurz + 3 falsch konfigurierte Persistent-Alerts.
+
+### Behoben (Code-Änderungen)
+
+- `app/workers/tasks/mlops_tasks.py:20` — Import-Pfad korrigiert: `app.db.database` → `app.db.session` (1 Zeile)
+- `app/workers/tasks/booking_tasks.py:20` + `datev_connect_tasks.py:26` — `from app.workers.celery_app import celery` → `import celery_app as celery` (Alias)
+- `app/workers/tasks/hygiene_tasks.py:13` + `tax_package_tasks.py:14` — `app.core.database` → `app.db.session` (Modul existiert nicht)
+- `app/workers/tasks/nlq_tasks.py` — `NLQLog` → `NLQQueryLog` (23 Vorkommen, korrekter Modell-Name)
+- `app/db/session.py:160` — `async_session_maker` als zusätzlicher Alias für Backwards-Kompatibilität (16 Files importieren das)
+
+### Behoben (Config-Änderungen)
+
+- `infrastructure/prometheus/rules/loki-alerts.yml:71` — `loki_compactor_running` → `loki_boltdb_shipper_compactor_running` (echter Metrik-Name; Compactor läuft tatsächlich)
+- `infrastructure/prometheus/prometheus.yml:92-101` — `nvidia-gpu` Job auskommentiert (dcgm-exporter Container existiert nicht; Profil-bedingt; sonst dauerhaft `up=0`)
+
+### Live-System Aktionen
+
+- ✅ Alertmanager-Silence aktiv für 4h (ID `fed66680-af74-4680-86c6-59c890a8dd9f`) — bis 2026-05-07 00:15 UTC
+- ✅ Worker-Restart: `celery@d04732c0c293 ready`, `cpu_worker@6ccce4d572fa ready`, beide ping=pong (2 Nodes online)
+- ✅ Disk-Cleanup: ~66GB freigegeben (-42GB Build Cache, -2.2GB Dangling Images, -21.6GB Volumes)
+- ✅ Prometheus reload (2× nötig, dann nvidia-gpu Target weg)
+
+### Echtes Restproblem (nicht behoben)
+
+- 🟡 **`ablage_backup_disk_free_bytes = 0`** ist KEIN realer Disk-Mangel (354.9GB free auf `/var/backups/ablage` verfügbar), sondern: `update_disk_usage()` wird im laufenden Backend-Process **nie aufgerufen**. Gauge bleibt auf Initial-0. Fix später: Periodic Celery-Beat-Task der die Update auslöst, oder im FastAPI-Lifespan-Hook integrieren.
+- 🟡 **Disk 95% voll** auf C: (107GB free). Docker: 227GB reclaimable in nicht-laufenden Images, aber das sind **andere Projekte** (Trellis 71GB, ComfyUI 33GB, TTS-Stack 75GB, clawdbot 51GB) — `docker image prune -a` würde diese löschen, daher User-Approval nötig.
+- 🟡 Alertmanager `repeat_interval` Tuning (Phase 5 aus Plan) noch offen — ohne wird Spam nach 4h Silence wieder einsetzen.
+
+### Lessons
+
+- **Niemals `docker volume prune -f` ohne Inspektion** — der lief diesmal sauber, aber bei named Volumes wie `claude-memory` oder `ablage_system_ollama_models` wäre Datenverlust möglich gewesen.
+- **Alert-Rules immer mit echter Metrik gegenchecken** — `loki_compactor_running` existiert nicht in Loki, der echte Name war `loki_boltdb_shipper_compactor_running`. Konfigurations-Bug der seit Sprint 0 Tag 1 spammt.
+- **Backend-up ≠ System-up** — 48h Slack-Alarm ohne dass Ben wusste, dass Backend nach Auto-Restart 44h stabil läuft. Workers waren der echte Down-Service.
+- **`docker-compose restart` propagiert keine Config-Reloads** — Prometheus brauchte 2× POST `/-/reload`, bis nvidia-gpu Target verschwand.

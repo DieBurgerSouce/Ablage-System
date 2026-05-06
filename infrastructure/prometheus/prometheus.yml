@@ -92,13 +92,16 @@ scrape_configs:
   # NVIDIA GPU Metrics (via dcgm-exporter Container)
   # ENTERPRISE FIX: dcgm-exporter erfordert --profile gpu
   # Aktiviere mit: docker-compose --profile gpu up -d
-  - job_name: 'nvidia-gpu'
-    static_configs:
-      - targets: ['dcgm-exporter:9400']
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-        replacement: 'rtx4080'
+  # 2026-05-06: Job auskommentiert, weil dcgm-exporter Container nicht laeuft
+  # und Job sonst dauerhaft up=0 -> ServiceDown-Alert. Bei GPU-Bedarf
+  # wieder einkommentieren UND `docker-compose --profile gpu up -d dcgm-exporter`.
+  # - job_name: 'nvidia-gpu'
+  #   static_configs:
+  #     - targets: ['dcgm-exporter:9400']
+  #   relabel_configs:
+  #     - source_labels: [__address__]
+  #       target_label: instance
+  #       replacement: 'rtx4080'
 
   # Ablage-System Backup Metrics (separate registry)
   # Verwendet /internal/backup Endpoint mit Token-Auth (kein Superuser noetig)

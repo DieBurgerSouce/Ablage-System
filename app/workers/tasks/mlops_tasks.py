@@ -17,7 +17,7 @@ from sqlalchemy import select
 
 from app.core.celery_idempotency import idempotent_task
 from app.core.safe_errors import safe_error_detail
-from app.db.database import get_async_session_context
+from app.db.session import get_async_session_context
 from app.workers.celery_app import celery_app
 
 logger = structlog.get_logger(__name__)
