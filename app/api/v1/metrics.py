@@ -149,6 +149,22 @@ async def internal_backup_metrics(
     verify_metrics_token(authorization)
 
     metrics = get_backup_metrics()
+
+    # 2026-05-06: Bei jedem Prometheus-Scrape Disk-Usage neu berechnen.
+    # Vorher: Gauge wurde nur via Celery-Beat-Task alle 15min im Worker-Prozess
+    # aktualisiert -> Multi-Process-Bug, Backend-Prozess sah immer 0.
+    # Jetzt: Backend-Prozess aktualisiert seine eigene Gauge-Instanz beim Scrape.
+    # Performance: shutil.disk_usage ist O(1) syscall, ~0.1ms.
+    try:
+        metrics.update_disk_usage()
+    except Exception as e:  # noqa: BLE001
+        # Niemals Scrape failen lassen wegen Disk-Update-Error
+        import structlog
+        structlog.get_logger(__name__).warning(
+            "backup_disk_usage_update_failed_at_scrape",
+            error=str(e)[:200],
+        )
+
     return Response(
         content=metrics.get_metrics(),
         media_type=metrics.get_content_type(),

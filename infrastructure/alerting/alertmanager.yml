@@ -3,7 +3,9 @@
 # Konfiguration: Platzhalter durch echte Werte in .env ersetzen
 
 global:
-  resolve_timeout: 5m
+  # 2026-05-06: 5m -> 1m, damit "Resolved"-State schneller propagiert
+  # und die Slack-Spam-Loop bei flapping Alerts kuerzer ist.
+  resolve_timeout: 1m
 
 # Routing-Baum: Alerts werden nach Schweregrad weitergeleitet
 # Sprint 0 / G01: Critical+High gehen ZUSAETZLICH an Slack (Out-of-Hours-Pager)
@@ -17,11 +19,14 @@ route:
   # Unterrouten nach Schweregrad
   routes:
     # Kritische Alerts - sofortige Benachrichtigung an Email + Slack
+    # 2026-05-06: repeat_interval 15m -> 1h. 15 Min war Ursache fuer
+    # 96 Slack-Notifications/Tag bei persistenten Alerts (48h Spam-Loop).
+    # 1h ist noch haeufig genug fuer echte Outages, aber nicht spammy.
     - match:
         severity: critical
       receiver: 'critical-multi'
       group_wait: 10s
-      repeat_interval: 15m
+      repeat_interval: 1h
       continue: false
 
     # Hohe Prioritaet - Email + Slack, kurze Verzoegerung
@@ -163,3 +168,16 @@ inhibit_rules:
     target_match:
       severity: 'warning'
     equal: ['alertname', 'cluster', 'service']
+
+  # 2026-05-06: BackupDisk voll -> Loki-Compactor kann nicht arbeiten
+  # (Alert-Loop verhindern: erst BackupDisk fixen, dann verschwindet Loki-Alert eh)
+  - source_match:
+      alertname: 'BackupDiskCritical'
+    target_match:
+      alertname: 'LokiCompactorNotRunning'
+
+  # 2026-05-06: HostDiskSpaceLow unterdrueckt BackupDisk-Alerts (selbe Wurzel)
+  - source_match:
+      alertname: 'HostDiskSpaceLow'
+    target_match_re:
+      alertname: 'BackupDisk(Critical|Low)'

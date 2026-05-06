@@ -935,9 +935,10 @@ services:
   # RedBeat speichert Schedule in Redis - nur eine Beat-Instanz haelt den Lock.
   # Bei Multi-Node: Mehrere Beat-Instanzen starten, nur eine ist aktiv.
   beat:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # 2026-05-06: image statt build - nutzt fertig gebautes Backend-Image
+    # (verhindert Rebuild-Loop wegen Janus/dataclass-Bug; Backend-Image hat
+    # bereits alle benoetigten celery-Module, Beat braucht nur celery + app/).
+    image: ablage_system-backend:latest
     container_name: ablage-beat
     command: celery -A app.workers.celery_app beat --loglevel=info
     environment:

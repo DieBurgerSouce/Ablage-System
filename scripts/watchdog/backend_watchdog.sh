@@ -32,8 +32,12 @@ readonly HEALTH_URL="${HEALTH_URL:-http://localhost:8000/health}"
 readonly HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-15}"
 readonly RESTART_THRESHOLD="${RESTART_THRESHOLD:-3}"
 readonly ESCALATE_THRESHOLD="${ESCALATE_THRESHOLD:-5}"
+# 2026-05-06: Cooldown zwischen Eskalations-Slack-Notifications. Vorher: 1×/Min
+# Spam (130 Notifications pro Down-Phase). Default 1800s = 30min.
+readonly ESCALATE_COOLDOWN_SECONDS="${ESCALATE_COOLDOWN_SECONDS:-1800}"
 readonly LOG_DIR="${LOG_DIR:-${REPO_ROOT}/scripts/watchdog/logs}"
 readonly STATE_FILE="${STATE_FILE:-/tmp/ablage-backend-watchdog.state}"
+readonly ESCALATE_STATE_FILE="${ESCALATE_STATE_FILE:-/tmp/ablage-backend-watchdog.escalate}"
 readonly LOG_FILE="${LOG_DIR}/backend_watchdog.log"
 # Sprint 0 / G05: SLACK_WEBHOOK_FILE ueber ENV ueberschreibbar (Sidecar nutzt /app/slack-webhook.url)
 readonly SLACK_WEBHOOK_FILE="${SLACK_WEBHOOK_FILE:-${REPO_ROOT}/infrastructure/alerting/slack-webhook.url}"
@@ -136,6 +140,23 @@ set_failure_count() {
     echo "$1" > "${STATE_FILE}"
 }
 
+# 2026-05-06: Eskalations-Cooldown. Verhindert Slack-Spam bei persistentem Down.
+get_last_escalation_ts() {
+    if [ -f "${ESCALATE_STATE_FILE}" ]; then
+        cat "${ESCALATE_STATE_FILE}" 2>/dev/null || echo "0"
+    else
+        echo "0"
+    fi
+}
+
+set_last_escalation_ts() {
+    echo "$1" > "${ESCALATE_STATE_FILE}"
+}
+
+reset_escalation_state() {
+    rm -f "${ESCALATE_STATE_FILE}" 2>/dev/null || true
+}
+
 # -- Container Restart --------------------------------------------------------
 # Strategie:
 #   1) Sidecar-Mode (SIDECAR_MODE=true): nutze `docker restart` via docker.sock
@@ -182,6 +203,7 @@ run_iteration() {
             send_slack "info" "Backend Recovered" \
                 "Backend ist wieder erreichbar nach ${failure_count} Failed Health-Checks."
             set_failure_count 0
+            reset_escalation_state
         fi
         return 0
     fi
@@ -206,9 +228,22 @@ run_iteration() {
     fi
 
     if [ "${failure_count}" -ge "${ESCALATE_THRESHOLD}" ]; then
-        log ERROR "Eskalation: ${failure_count} Failures - manueller Eingriff noetig"
-        send_slack "critical" "Backend Down - MANUELLER EINGRIFF NOETIG" \
-            "Backend ist seit ${failure_count} Iterationen down trotz Auto-Restart. Pruefe Logs: docker logs ${CONTAINER} | tail -50"
+        # 2026-05-06: Cooldown-Logik gegen Slack-Spam.
+        # Vorher: 1× Notification pro Minute -> 130 Spam-Messages bei 130 Failures.
+        # Jetzt: nur alle ESCALATE_COOLDOWN_SECONDS (default 30min).
+        local now last_ts elapsed
+        now="$(date +%s)"
+        last_ts="$(get_last_escalation_ts)"
+        elapsed=$((now - last_ts))
+
+        if [ "${elapsed}" -ge "${ESCALATE_COOLDOWN_SECONDS}" ]; then
+            log ERROR "Eskalation: ${failure_count} Failures - manueller Eingriff noetig"
+            send_slack "critical" "Backend Down - MANUELLER EINGRIFF NOETIG" \
+                "Backend ist seit ${failure_count} Iterationen down trotz Auto-Restart. Pruefe Logs: docker logs ${CONTAINER} | tail -50"
+            set_last_escalation_ts "${now}"
+        else
+            log WARN "Eskalation unterdrueckt (Cooldown: ${elapsed}s/${ESCALATE_COOLDOWN_SECONDS}s) - Failure ${failure_count}"
+        fi
         return 1
     fi
 
