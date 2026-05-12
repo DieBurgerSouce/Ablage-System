@@ -117,11 +117,12 @@ scrape_configs:
         replacement: 'ablage-backup'
 
   # Qdrant Vector Database Metrics
-  # ENTERPRISE FIX: Qdrant /metrics Endpoint erfordert API-Key Header
-  # API-Key wird via bearer_token_file injiziert (mounted in docker-compose.yml)
-  # Fallback: Wenn kein API-Key gesetzt, funktioniert /metrics ohne Auth
+  # Qdrant /metrics ist durch QDRANT__SERVICE__API_KEY abgesichert.
+  # Token-Datei wird ueber docker-compose ins Prometheus-Image gemountet.
+  # Datei NICHT in Git committen (siehe .gitignore).
   - job_name: 'qdrant'
     metrics_path: '/metrics'
+    bearer_token_file: /etc/prometheus/qdrant_metrics_token
     static_configs:
       - targets: ['qdrant:6333']
     relabel_configs:

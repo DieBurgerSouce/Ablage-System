@@ -789,10 +789,16 @@ services:
               count: 1
               capabilities: [gpu]
     # SECURITY FIX: Healthcheck für Worker
+    # 2026-05-12: `celery inspect ping` schlaegt mit --pool=solo waehrend
+    # laufender Task fehl (broadcast bekommt keine Antwort). Stattdessen
+    # pruefen wir den Celery-Metrics-Server auf Port 8001 — der laeuft im
+    # eigenen Thread und antwortet auch waehrend der Worker einen Task
+    # ausfuehrt. Wenn /metrics liefert + ein "celery worker" Prozess existiert,
+    # ist der Worker gesund.
     healthcheck:
-      test: ["CMD", "celery", "-A", "app.workers.celery_app", "inspect", "ping", "--timeout", "10"]
+      test: ["CMD-SHELL", "curl -fsS --max-time 5 http://localhost:8001/metrics >/dev/null && pgrep -f 'celery.*worker' >/dev/null"]
       interval: 60s
-      timeout: 30s
+      timeout: 15s
       retries: 3
       start_period: 600s  # 10 Minuten für Modell-Download (Surya ~1.34GB)
     restart: unless-stopped
@@ -1058,6 +1064,7 @@ services:
     volumes:
       - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./infrastructure/prometheus/rules:/etc/prometheus/rules:ro
+      - ./infrastructure/prometheus/qdrant_metrics_token:/etc/prometheus/qdrant_metrics_token:ro
       - prometheus_data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"  # Nur localhost - Zugriff über Nginx Proxy

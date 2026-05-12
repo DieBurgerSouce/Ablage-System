@@ -271,14 +271,19 @@ groups:
       # ============================================================================
 
       # Warnung: Keine A/B Testing Metriken (Backend nicht instrumentiert)
+      # 2026-05-12: `absent()` feuerte permanent waehrend Pilot ohne A/B-Traffic.
+      # Stattdessen: nur warnen wenn Traffic existiert haben sollte (rate>0 vorher)
+      # und ploetzlich stoppt — also "rate war >0 in letzten 24h und ist jetzt 0".
       - alert: ABTestingNoMetrics
-        expr: absent(vector_search_total)
+        expr: |
+          rate(vector_search_total[15m]) == 0
+          and rate(vector_search_total[24h] offset 15m) > 0
         for: 15m
         labels:
           severity: warning
           component: ab-testing
           service: vector-search
         annotations:
-          summary: "A/B Testing Metriken fehlen"
-          description: "Prometheus erhaelt keine vector_search_total Metriken. Backend-Instrumentierung pruefen."
+          summary: "A/B Testing Metriken weggebrochen"
+          description: "vector_search_total Rate ist 0 — Backend-Instrumentierung oder Traffic pruefen."
           runbook_url: "https://wiki.ablage-system.local/runbooks/ab-testing-metrics"

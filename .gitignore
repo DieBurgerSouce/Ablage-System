@@ -147,6 +147,9 @@ run-*.js
 infrastructure/alerting/slack-webhook.url
 infrastructure/alerting/teams-webhook.url
 
+# Prometheus scrape tokens (mounted into prometheus container)
+infrastructure/prometheus/qdrant_metrics_token
+
 # Watchdog runtime logs (Sprint 0 / G05) - State liegt im Docker-Volume
 scripts/watchdog/logs/
 

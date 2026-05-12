@@ -77,10 +77,14 @@ groups:
           runbook_url: "https://wiki.ablage-system.local/runbooks/redis-blocked"
 
       # Warnung: Niedrige Cache Hit Rate
+      # 2026-05-12: Min-Sample-Filter ergaenzt, Schwellwert 0.9 -> 0.7.
+      # 0.9 war zu strikt fuer Pilot mit hauptsaechlich Datei-Operations (wenig
+      # Cache-Treffer). Bei <0.7 ist die Cache-Konfiguration wirklich kaputt.
       - alert: RedisLowCacheHitRate
         expr: |
           redis_keyspace_hits_total
-          / (redis_keyspace_hits_total + redis_keyspace_misses_total) < 0.9
+          / (redis_keyspace_hits_total + redis_keyspace_misses_total) < 0.7
+          and (redis_keyspace_hits_total + redis_keyspace_misses_total) > 1000
         for: 15m
         labels:
           severity: warning
@@ -139,13 +143,15 @@ groups:
           runbook_url: "https://wiki.ablage-system.local/runbooks/redis-fragmentation"
 
       # Kritisch: Redis Master-Slave Disconnect (falls Replikation)
-      - alert: RedisReplicationBroken
-        expr: redis_connected_slaves < 1
-        for: 5m
-        labels:
-          severity: critical
-          component: redis
-        annotations:
-          summary: "Redis Replikation unterbrochen"
-          description: "Keine Slave-Instanzen mit Redis Master verbunden. Replikation pruefen."
-          runbook_url: "https://wiki.ablage-system.local/runbooks/redis-replication"
+      # 2026-05-12: Deaktiviert — wir laufen Single-Node, es gibt keinen Replica
+      # in docker-compose.yml. Rule wieder aktivieren wenn HA-Setup eingefuehrt wird.
+      # - alert: RedisReplicationBroken
+      #   expr: redis_connected_slaves < 1
+      #   for: 5m
+      #   labels:
+      #     severity: critical
+      #     component: redis
+      #   annotations:
+      #     summary: "Redis Replikation unterbrochen"
+      #     description: "Keine Slave-Instanzen mit Redis Master verbunden. Replikation pruefen."
+      #     runbook_url: "https://wiki.ablage-system.local/runbooks/redis-replication"
