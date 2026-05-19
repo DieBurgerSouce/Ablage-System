@@ -193,63 +193,61 @@ groups:
           runbook_url: "https://wiki.ablage-system.local/runbooks/ocr-cpu-fallback"
 
       # ===================================================================
-      # GPU THERMAL ALERTS
+      # GPU THERMAL ALERTS (B6: Reaktiviert 2026-05-19)
       # ===================================================================
-      # HINWEIS: Die folgenden Alerts erfordern nvidia-dcgm-exporter fuer DCGM-Metriken.
+      # Erfordert nvidia-dcgm-exporter fuer DCGM-Metriken.
       # Installation: https://github.com/NVIDIA/dcgm-exporter
       #
-      # Fuer lokale Entwicklung ohne DCGM sind diese Alerts deaktiviert (auskommentiert).
-      # In Produktion mit dcgm-exporter die Kommentare entfernen.
-      #
-      # Alternativ kann nvidia-smi-exporter verwendet werden, der die Metriken
-      # nvidia_smi_temperature_gpu und nvidia_smi_power_draw_watts bereitstellt.
+      # B6 (2026-05-19): Bis 2026-05-19 waren diese vier Alerts auskommentiert
+      # mit dem Hinweis "fuer lokale Entwicklung ohne DCGM". DCGM-Exporter
+      # laeuft jedoch seit `docker-compose.yml:1482` als
+      # nvidia/dcgm-exporter:3.3.0-3.2.0-ubuntu22.04 - der Disable-Grund war
+      # stale. Auf einem GPU-only-OCR-System (RTX 4080) ist Thermal-Monitoring
+      # nicht optional. Quelle: MASTER_REVIEW_2026-05-19.md B6.
 
-      # GPU Temperatur Alerts (erfordern DCGM oder nvidia-smi-exporter)
-      # Auskommentiert - aktivieren wenn dcgm-exporter installiert ist:
-      #
-      # - alert: GPUTemperatureHigh
-      #   expr: DCGM_FI_DEV_GPU_TEMP > 75
-      #   for: 5m
-      #   labels:
-      #     severity: warning
-      #     component: gpu
-      #   annotations:
-      #     summary: "GPU Temperatur hoch (>75°C)"
-      #     description: "GPU Temperatur bei {{ $value }}°C. Kuehlung pruefen."
-      #     runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-temperature-high"
-      #
-      # - alert: GPUThermalThrottling
-      #   expr: DCGM_FI_DEV_GPU_TEMP > 80
-      #   for: 2m
-      #   labels:
-      #     severity: critical
-      #     component: gpu
-      #   annotations:
-      #     summary: "KRITISCH: GPU Thermal Throttling (>80°C)"
-      #     description: "GPU bei {{ $value }}°C - Thermal Throttling aktiv."
-      #     runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-thermal-throttling"
-      #
-      # - alert: GPUTemperatureCritical
-      #   expr: DCGM_FI_DEV_GPU_TEMP > 85
-      #   for: 1m
-      #   labels:
-      #     severity: critical
-      #     component: gpu
-      #   annotations:
-      #     summary: "KRITISCH: GPU Temperatur gefaehrlich hoch (>85°C)"
-      #     description: "GPU bei {{ $value }}°C - Ueberhitzungsgefahr!"
-      #     runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-temperature-critical"
-      #
-      # - alert: GPUPowerLimitReached
-      #   expr: DCGM_FI_DEV_POWER_USAGE / DCGM_FI_DEV_POWER_LIMIT > 0.95
-      #   for: 5m
-      #   labels:
-      #     severity: info
-      #     component: gpu
-      #   annotations:
-      #     summary: "GPU Power Limit erreicht"
-      #     description: "GPU Power bei {{ $value | humanizePercentage }} des Limits."
-      #     runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-power-limit"
+      - alert: GPUTemperatureHigh
+        expr: DCGM_FI_DEV_GPU_TEMP > 75
+        for: 5m
+        labels:
+          severity: warning
+          component: gpu
+        annotations:
+          summary: "GPU Temperatur hoch (>75°C)"
+          description: "GPU Temperatur bei {{ $value }}°C. Kuehlung pruefen."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-temperature-high"
+
+      - alert: GPUThermalThrottling
+        expr: DCGM_FI_DEV_GPU_TEMP > 80
+        for: 2m
+        labels:
+          severity: critical
+          component: gpu
+        annotations:
+          summary: "KRITISCH: GPU Thermal Throttling (>80°C)"
+          description: "GPU bei {{ $value }}°C - Thermal Throttling aktiv."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-thermal-throttling"
+
+      - alert: GPUTemperatureCritical
+        expr: DCGM_FI_DEV_GPU_TEMP > 85
+        for: 1m
+        labels:
+          severity: critical
+          component: gpu
+        annotations:
+          summary: "KRITISCH: GPU Temperatur gefaehrlich hoch (>85°C)"
+          description: "GPU bei {{ $value }}°C - Ueberhitzungsgefahr!"
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-temperature-critical"
+
+      - alert: GPUPowerLimitReached
+        expr: DCGM_FI_DEV_POWER_USAGE / DCGM_FI_DEV_POWER_LIMIT > 0.95
+        for: 5m
+        labels:
+          severity: info
+          component: gpu
+        annotations:
+          summary: "GPU Power Limit erreicht"
+          description: "GPU Power bei {{ $value | humanizePercentage }} des Limits."
+          runbook_url: "https://wiki.ablage-system.local/runbooks/gpu-power-limit"
 
       # Alternative: GPU OOM Events Counter (immer verfuegbar)
       - alert: GPUOOMEventsHigh
