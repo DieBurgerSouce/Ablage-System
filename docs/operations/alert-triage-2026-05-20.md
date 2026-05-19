@@ -6,6 +6,20 @@
 
 ## Snapshot-Befehle (nach Docker-Up ausfuehren)
 
+**Vereinfacht via Skript**: `bash scripts/operations/pilot-start-block.sh <command>` (siehe `--help`).
+
+```bash
+# Empfohlener Workflow nach Docker-Up + Sentry-DSN in .env:
+bash scripts/operations/pilot-start-block.sh status     # Snapshot
+bash scripts/operations/pilot-start-block.sh reload     # Prometheus reload (2x)
+bash scripts/operations/pilot-start-block.sh status     # Erneut pruefen
+bash scripts/operations/pilot-start-block.sh sentry     # Sentry verify
+bash scripts/operations/pilot-start-block.sh silences   # Copy-Paste Silences fuer NEEDS_VERIFY
+bash scripts/operations/pilot-start-block.sh tbd        # Daten fuer die 4 echten TBDs
+```
+
+Manuell aequivalent (falls Skript nicht laeuft):
+
 ```bash
 # 1. Aktuell feuernde Alerts
 curl -s http://localhost:9090/api/v1/alerts | jq '.data.alerts[] | select(.state=="firing") | {alertname, severity:.labels.severity, activeAt, summary:.annotations.summary}' | tee firing-alerts.json
