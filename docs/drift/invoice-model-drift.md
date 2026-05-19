@@ -110,6 +110,16 @@ Beziehungen im Model:
     DB-Spalte via Migration 094 existiert (separater Cleanup-Kandidat F4).
 - **F3** ✅ **DONE** (Commit `e1e99825`): Invoice-API von `Document.owner_id`
   auf `Document.company_id` umgestellt (19 Endpoints, FastAPI-Dependency-Pattern).
+- **F4** ✅ **DONE** (2026-05-20, Sprint-1 S1.5): `InvoiceTracking.entity_id`
+  Column nachgezogen in `app/db/models_entity_business.py:534`. DB-Spalte
+  existierte seit Migration 094 (FK business_entities, ondelete SET NULL,
+  nullable, indexed). 50+ Service-Stellen nutzten `InvoiceTracking.entity_id`
+  ohne dass das Model die Spalte deklarierte — Drift-Pattern analog zu Task B
+  (`Invoice.company_id`). Fix: Column + relationship `entity` + Index
+  `ix_invoice_tracking_entity_id` in `__table_args__` ergaenzt. Migration: KEINE
+  noetig — DB-Spalte besteht bereits. Tests: bestehende Tests die
+  `InvoiceTracking.entity_id` nutzen (z.B. Fraud-Detection, Cashflow-Predictor)
+  laufen jetzt mit deklarierter Column.
 
 ## Verifikation
 

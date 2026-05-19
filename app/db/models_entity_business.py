@@ -531,6 +531,18 @@ class InvoiceTracking(SoftDeleteMixin, Base):
         comment="Mandanten-Zuordnung"
     )
 
+    # Direkter Entity-Link (Migration 094) - F4 (2026-05-20):
+    # DB-Spalte existiert seit Migration 094, Model deklarierte sie nicht.
+    # 50+ Service-Stellen nutzen InvoiceTracking.entity_id - Drift-Pattern
+    # analog zu Task B (Invoice.company_id). Nachgezogen analog zu F1/F2/F3.
+    entity_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("business_entities.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        comment="Verknuepfung mit BusinessEntity (Kunde/Lieferant), Migration 094"
+    )
+
     # Audit fields
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
@@ -541,6 +553,7 @@ class InvoiceTracking(SoftDeleteMixin, Base):
         backref=backref("invoice_tracking", uselist=False, cascade="all, delete-orphan")
     )
     company = relationship("Company", backref="invoice_trackings")
+    entity = relationship("BusinessEntity", backref="invoice_trackings")
     payment_transactions = relationship(
         "PaymentTransaction",
         back_populates="invoice_tracking",
@@ -556,6 +569,7 @@ class InvoiceTracking(SoftDeleteMixin, Base):
         Index("ix_invoice_tracking_invoice_number", "invoice_number"),
         Index("ix_invoice_tracking_skonto_deadline", "skonto_deadline"),
         Index("ix_invoice_tracking_company_id", "company_id"),
+        Index("ix_invoice_tracking_entity_id", "entity_id"),
         Index("ix_invoice_tracking_partial", "is_partial_payment", "status"),
     )
 
