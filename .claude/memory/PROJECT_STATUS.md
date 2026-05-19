@@ -105,6 +105,11 @@ Final 3 TODOs resolved:
 
 | Date | Component | Description |
 |------|-----------|-------------|
+| 2026-05-19 | API | Invoice-API Multi-Tenant-Fix: 19 Endpoints von Document.owner_id auf Document.company_id (F3). FastAPI-Dependency get_user_company_id_dep. Kollegen sehen jetzt Rechnungen gegenseitig in derselben Firma. Commit `e1e99825` |
+| 2026-05-19 | Services | business_intelligence_service.py Runtime-Bomben aufgeloest (F2): 7 Stellen Invoice.entity_id / Document.entity_id auf Document.business_entity_id via JOIN. Commit `7badff26` |
+| 2026-05-19 | DB-Model | Invoice-Model an DB-Schema angeglichen: company_id Column nachgezogen (Migration 022), business_contact_id Phantom-Column entfernt (F1). Commits `37baeb94`, `81ff78c1` |
+| 2026-05-19 | Alerting | Alertmanager SMTP-Auth via file-mount (analog Slack-Pattern). 3x leere auth_password='' fixed. Setup-Anleitung in .env.example + alertmanager.yml. Commit `1b0c76d3` |
+| 2026-05-19 | Docs | .env.example um 37 undokumentierte Vars ergaenzt (Infrastructure, MinIO, Qdrant, Vector-AB, OCR/GPU, Security, Monitoring). Commit `74210d8e` |
 | 2026-02-24 | Database | Migration 254: DomainEvent SHA-256 Hash-Chain (event_hash, previous_hash, chain_hash) fuer kryptografische Event-Integritaet |
 | 2026-02-24 | Database | Migration 255: EntitySeasonalPattern Tabelle fuer saisonale Zahlungsmuster (Cashflow Monte Carlo Integration) |
 | 2026-02-24 | Backend | EventStore SHA-256 Hash-Chain + emit_domain_event() + Domain Events in documents/entities/invoices APIs |

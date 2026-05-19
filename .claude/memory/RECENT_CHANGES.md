@@ -1,5 +1,18 @@
 # Recent Changes
 
+## 2026-05-19 (Multi-Agent Review Follow-Through - Tasks A, B, C, D, F1, F2)
+
+Branch: `sprint-0-pilot-hardening`, 6 saubere Commits zur Pilot-Reife.
+
+- **docs(env)** `74210d8e`: .env.example um 37 undokumentierte Vars ergaenzt (Pilot-Onboarding) - Drift zwischen .env und .env.example geschlossen, 5 neue Sektionen (Infrastructure, MinIO, Qdrant, Vector-AB, OCR/GPU, Security, Monitoring)
+- **fix(db)** `37baeb94`: Invoice-Model `company_id` Column nachgezogen - DB-Spalte existiert seit Migration 022, Model deklarierte sie nicht. + Drift-Report `docs/drift/invoice-model-drift.md`
+- **fix(api)** `e1e99825`: Invoice-API von `Document.owner_id` (User-Scope) auf `Document.company_id` (Tenant-Scope) - 19 Endpoints via neuem FastAPI-Dependency `get_user_company_id_dep`, 16 Filter + 12 current_user.company_id-Referenzen aufgeloest, 5 dead checks entfernt. Pattern analog zu 2026-01-18 Workflow/Banking-Fixes (F3)
+- **fix(alerting)** `1b0c76d3`: Alertmanager SMTP-Auth via file-mount (analog Slack) - 3x leere auth_password='' durch `auth_password_file:/etc/alertmanager/smtp-password` ersetzt, Mount + .gitignore + Setup-Doku
+- **fix(db)** `81ff78c1`: business_contact_id Phantom-Column aus Invoice-Model entfernt (F1) - DB hatte die Spalte nie, dead code in Model + relationship + Index. 0 Code-Usage ausserhalb Model.
+- **fix(bi)** `7badff26`: business_intelligence_service.py Invoice.entity_id Runtime-Bomben aufgeloest (F2 Option B) - 7 Stellen (5x Invoice.entity_id, 2x Document.entity_id), JOIN Document + business_entity_id genutzt. Code-Path lebt (8 rag-API-Aufrufer), F4 (InvoiceTracking-Drift) als Folge dokumentiert.
+
+Out-of-Scope: Sentry-DSN (user-action, G10), Disk-Cleanup, 9 Live-Alerts triage, Vault aktivieren - alle in SPRINT_0_OPEN.md / Pilot-Log dokumentiert.
+
 ## 2026-03-10
 - **chore(infra)**: Prometheus Backup + A/B-Testing Scrape-Jobs aktiviert (Token-Auth, kein Superuser noetig)
 - **fix(db)**: Migration 260 Domain Constraints - required_columns Idempotenz, confidence_score Spaltenname korrigiert

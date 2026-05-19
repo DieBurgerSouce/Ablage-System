@@ -44,6 +44,12 @@
 
 | Date | Issue | Fix |
 |------|-------|-----|
+| 2026-05-19 | **CRITICAL** Invoice-API Multi-Tenant User-Lock-In (F3) | 19 Endpoints in `app/api/v1/invoices.py` filterten ueber `Document.owner_id == current_user.id` (User-Scope). Kollegen sahen ihre Rechnungen gegenseitig NICHT. Fixed: FastAPI-Dependency `get_user_company_id_dep` + `Document.company_id == company_id`. Commit `e1e99825` |
+| 2026-05-19 | **CRITICAL** Invoice-Model fehlt company_id (Drift Migration 022) | `app/db/models_invoice.py` deklarierte company_id nicht obwohl DB-Spalte seit Migration 022 existiert. business_intelligence_service.py:362,547,788 nutzten Invoice.company_id - haette zur Laufzeit AttributeError geworfen. Fixed: Column + Index + Docstring. Commit `37baeb94` |
+| 2026-05-19 | **HIGH** BI-Service Invoice.entity_id Runtime-Bombe (F2) | 7 Stellen (Invoice.entity_id 5x, Document.entity_id 2x) auf nicht-existierende Spalten. Code-Path live via 8 rag-API-Aufrufer. Fixed: JOIN Document via Invoice.document_id, business_entity_id genutzt. Commit `7badff26` |
+| 2026-05-19 | **HIGH** Alertmanager SMTP-Auth leer hardcoded | 3x `auth_password: ''` in alertmanager.yml - Mail-Alerts erreichten niemanden. Fixed: file-mount pattern analog Slack (`auth_password_file: /etc/alertmanager/smtp-password`). Commit `1b0c76d3` |
+| 2026-05-19 | **MEDIUM** business_contact_id Phantom-Column im Invoice-Model (F1) | Dead code: Column + relationship + Index existierten im Model, aber DB-Tabelle invoices hat die Spalte nie gehabt. 0 Usage ausserhalb des Models. Fixed: entfernt. Commit `81ff78c1` |
+| 2026-05-19 | **MEDIUM** .env.example vs .env Drift (37 Vars undokumentiert) | DATABASE_URL, REDIS_URL, MINIO_*, QDRANT_*, VECTOR_AB_*, GPU/OCR-Limits, RATE_LIMIT_FAIL_CLOSED, PROMETHEUS_*, SLACK_WEBHOOK_URL undokumentiert in .env.example. Fixed: 5 neue Sektionen + Platzhalter. Commit `74210d8e` |
 | 2026-01-19 | BusinessContact Model fehlt in models.py | Added complete BusinessContact, DocumentContact models and all related Pydantic schemas. Created migration 105 for company_id. |
 | 2026-01-10 | MultiStepForm SessionStorage QuotaExceededError in privacy mode | Added 500KB limit check, auto-cleanup, and synchronous persistKey tracking in MultiStepForm.tsx |
 | 2026-01-10 | N+1 queries in entity list endpoints causing slow page loads | Removed folder stats calculation from list endpoints, load on-demand via `/{entity_id}/folders` |
