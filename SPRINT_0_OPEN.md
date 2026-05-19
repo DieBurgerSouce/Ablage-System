@@ -15,9 +15,11 @@ URL gesetzt, alertmanager force-recreated (Volume-Mount greift nicht bei `restar
 
 ---
 
-## 🔴 OFFEN — Sentry-DSN (G10)
+## 🟠 VORBEREITET — Sentry-DSN (G10) — wartet auf User-Action
 
-**Was fehlt:** Echte Sentry-DSN in `.env`. Code-Integration ist fertig, `sentry-sdk` wird beim nächsten Container-Rebuild installiert. **DSN muss du selbst erstellen.**
+**Stand 2026-05-20**: Code-Integration verifiziert (`app/main.py:71-77` ruft `initialize_sentry_for_backend()` auf, `infrastructure/sentry/sentry.py:41` liest `SENTRY_DSN` aus env). `sentry-sdk` ist in `requirements.txt`. Smoke-Test-Skript verfügbar: `bash scripts/operations/pilot-start-block.sh sentry`.
+
+**Was fehlt:** Echte Sentry-DSN in `.env`. **DSN muss du selbst erstellen.**
 
 **Was du tun musst (\~5 Min):**
 
@@ -52,37 +54,40 @@ URL gesetzt, alertmanager force-recreated (Volume-Mount greift nicht bei `restar
 
 ---
 
-## 🟡 BEOBACHTEN — Aktive kritische Alerts (Sprint 0 Tag 1 Side-Discovery)
+## 🟠 VORBEREITET — Aktive kritische Alerts (Sprint 0 Tag 1 Side-Discovery, P0b)
 
 Beim Sprint-0-Setup wurden folgende kritische Alerts entdeckt, die **seit 31h aktiv waren** ohne Notification (R01 live bestätigt):
 
 ```
-OCRBackendDown          critical
-APIDown                 critical
-QdrantDown              critical
-ServiceDown             critical
-CeleryWorkerDownLong    critical
-RedisReplicationBroken  critical
-LokiCompactorNotRunning critical
-HostHighSwapUsage       warning
-HostDiskSpaceLow        warning
+OCRBackendDown          critical    [TBD - braucht Container+GPU-Check]
+APIDown                 critical    [NEEDS_VERIFY - start_period 600s in docker-compose.yml]
+QdrantDown              critical    [NEEDS_VERIFY - bearer_token_file in prometheus.yml:125]
+ServiceDown             critical    [TBD - vermutlich Aggregat]
+CeleryWorkerDownLong    critical    [NEEDS_VERIFY - Healthcheck umgestellt, docker-compose.yml:801]
+RedisReplicationBroken  critical    [NEEDS_VERIFY - Rule auskommentiert, redis-alerts.yml:148-153]
+LokiCompactorNotRunning critical    [NEEDS_VERIFY - Metric-Name gefixt, loki-alerts.yml:71-72]
+HostHighSwapUsage       warning     [TBD - braucht free -h]
+HostDiskSpaceLow        warning     [TBD - braucht df -h + Approval fuer docker prune]
 ```
 
-**Frage zu klären:** Echte Probleme oder False Positives (z.B. weil Backend gerade hochgefahren ist)?
+**Pre-Analyse 2026-05-20**: 5 von 9 Alerts sind im Code bereits gefixt (Status NEEDS_VERIFY) - benoetigen nur Prometheus-Reload (2x, Lesson aus Commit `438f2486`) oder Container-Restart. 4 echte TBDs uebrig. Detail-Tabelle: `docs/operations/alert-triage-2026-05-20.md`.
 
-**Diagnose-Befehle:**
+**Triage-Workflow** (nach Docker-Up + Sentry-DSN):
 
 ```bash
-docker ps --filter "name=ablage" --format "table {{.Names}}\t{{.Status}}"
-curl http://localhost:8000/health
-curl http://localhost:9090/api/v1/alerts | python -m json.tool | grep -E '"alertname"|"state"' | head -40
+bash scripts/operations/pilot-start-block.sh status     # Snapshot
+bash scripts/operations/pilot-start-block.sh reload     # Prometheus reload (2x)
+bash scripts/operations/pilot-start-block.sh status     # Erneut pruefen
+bash scripts/operations/pilot-start-block.sh silences   # Copy-Paste fuer NEEDS_VERIFY
+bash scripts/operations/pilot-start-block.sh tbd        # Daten fuer echte Probleme sammeln
 ```
 
-**Verifikation-Datei (zum Abhaken):**
+**Verifikation-Datei (zum Abhaken)**:
 
-- \[ \] Pro Alert: echtes Problem oder False Positive identifiziert
-- \[ \] Echte Probleme behoben oder Ticket erstellt
-- \[ \] False Positives: Alert-Rule-Schwellen angepasst
+- \[ \] Pro Alert: echtes Problem oder False Positive identifiziert (Tabelle in `docs/operations/alert-triage-2026-05-20.md` befuellen)
+- \[ \] Echte Probleme behoben oder GitHub-Issue erstellt
+- \[ \] False Positives: Prometheus-Reload + ggf. Silence fuer 24h
+- \[ \] `curl :9090/api/v1/alerts | jq '[.data.alerts[]|select(.state=="firing")]|length'` = 0 (oder nur dokumentierte Silences)
 
 ---
 
