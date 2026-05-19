@@ -8,7 +8,7 @@ from app.core.types import JSONDict
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_user
@@ -42,7 +42,8 @@ class SyncChangeRequest(BaseModel):
     client_timestamp: datetime
     version: Optional[int] = None
 
-    @validator("operation")
+    @field_validator("operation")
+    @classmethod
     def validate_operation(cls, v: str) -> str:
         """Validiert Operation."""
         allowed = {"create", "update", "delete"}

@@ -48,8 +48,8 @@ class SmartTagSchema(BaseModel):
     color: str = Field(default="gray", description="Tailwind Farbklasse")
     priority: int = Field(default=0, description="Anzeigepriorität (höher = wichtiger)")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "name": "dringend",
                 "display_name": "Dringend",
@@ -60,7 +60,8 @@ class SmartTagSchema(BaseModel):
                 "color": "red",
                 "priority": 100,
             }
-        }
+        },
+    )
 
 
 class SmartTaggingResultSchema(BaseModel):

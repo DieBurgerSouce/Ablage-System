@@ -23,7 +23,7 @@ from datetime import datetime
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -100,8 +100,7 @@ class ChainDocumentResponse(BaseModel):
     ml_confidence: Optional[float]
     entity_name: Optional[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ExtendedChainResponse(BaseModel):

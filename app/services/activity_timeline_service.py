@@ -22,7 +22,7 @@ import structlog
 from sqlalchemy import select, and_, or_, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.db.models import (
     User,
@@ -90,8 +90,7 @@ class UnifiedActivity(BaseModel):
     color: Optional[str] = None
     is_important: bool = False
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TimelineFilter(BaseModel):

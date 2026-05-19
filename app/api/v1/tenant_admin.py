@@ -7,7 +7,7 @@ Nur für System-Administratoren zugaenglich.
 import structlog
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Optional
@@ -81,10 +81,7 @@ class TenantConfigResponse(BaseModel):
     branding: Optional[Dict[str, object]] = Field(default_factory=dict)
     is_active: bool
 
-    class Config:
-        """Pydantic Config."""
-
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TenantConfigUpdate(BaseModel):

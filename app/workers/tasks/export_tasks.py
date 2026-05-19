@@ -261,7 +261,7 @@ def batch_export_task(
 
                     processed += result.processed
                     if result.errors:
-                        errors.extend([e.dict() for e in result.errors])
+                        errors.extend([e.model_dump() for e in result.errors])
 
                     # Collect export data
                     all_export_data.append({

@@ -18,7 +18,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.safe_errors import safe_error_detail, safe_error_log
@@ -79,8 +79,7 @@ class KostenstelleResponse(BaseModel):
     tags: List[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class KostenstelleTreeNode(BaseModel):
@@ -135,8 +134,7 @@ class BudgetResponse(BaseModel):
     created_at: datetime
     approved_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BudgetSummaryResponse(BaseModel):
@@ -201,8 +199,7 @@ class BudgetLineResponse(BaseModel):
     status: BudgetLineStatus
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AllocationCreateSchema(BaseModel):
@@ -242,8 +239,7 @@ class AllocationResponse(BaseModel):
     ocr_extracted_category: Optional[str]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AllocationListResponse(BaseModel):
@@ -270,8 +266,7 @@ class BudgetAlertResponse(BaseModel):
     notification_sent: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VarianceReportLineSchema(BaseModel):

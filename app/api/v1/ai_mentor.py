@@ -15,7 +15,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
@@ -54,8 +54,7 @@ class TipResponse(BaseModel):
     shortcut: Optional[str] = Field(None, description="Keyboard-Shortcut")
     experience_level: str = Field(..., description="Erfahrungsstufe: beginner, intermediate, advanced")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TipsListResponse(BaseModel):

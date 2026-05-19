@@ -12,7 +12,7 @@ from app.core.types import JSONDict
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
@@ -56,8 +56,7 @@ class TemplateInfoResponse(BaseModel):
     variables: List[str]
     formats: List[str]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TemplateVariableResponse(BaseModel):
@@ -69,8 +68,7 @@ class TemplateVariableResponse(BaseModel):
     required: bool
     default: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================

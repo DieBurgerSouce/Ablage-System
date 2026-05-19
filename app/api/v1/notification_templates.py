@@ -10,7 +10,7 @@ from datetime import datetime
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, validator, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db
@@ -47,7 +47,8 @@ class NotificationTemplateCreate(BaseModel):
     variables: Optional[TemplateVariables] = None
     channels: Optional[List[str]] = None
 
-    @validator("category")
+    @field_validator("category")
+    @classmethod
     def validate_category(cls, v: str) -> str:
         """Validiert Kategorie."""
         allowed = ["document", "alert", "workflow", "system", "security", "finance", "compliance", "reminder"]
@@ -55,9 +56,10 @@ class NotificationTemplateCreate(BaseModel):
             raise ValueError(f"Kategorie muss eine von {allowed} sein")
         return v
 
-    @validator("channels", each_item=True)
-    def validate_channels(cls, v: str) -> str:
-        """Validiert Channels."""
+    @field_validator("channels")
+    @classmethod
+    def validate_channels(cls, v):
+        """Validiert jeden Channel in der Liste (Pydantic-v2-Aequivalent zu each_item=True)."""
         allowed = [
             "email",
             "slack",
@@ -68,8 +70,11 @@ class NotificationTemplateCreate(BaseModel):
             "in_app",
             "websocket",
         ]
-        if v not in allowed:
-            raise ValueError(f"Channel muss einer von {allowed} sein")
+        if v is None:
+            return v
+        for item in v:
+            if item not in allowed:
+                raise ValueError(f"Channel muss einer von {allowed} sein")
         return v
 
 
@@ -84,7 +89,8 @@ class NotificationTemplateUpdate(BaseModel):
     channels: Optional[List[str]] = None
     is_active: Optional[bool] = None
 
-    @validator("category")
+    @field_validator("category")
+    @classmethod
     def validate_category(cls, v: Optional[str]) -> Optional[str]:
         """Validiert Kategorie."""
         if v is None:
@@ -94,9 +100,10 @@ class NotificationTemplateUpdate(BaseModel):
             raise ValueError(f"Kategorie muss eine von {allowed} sein")
         return v
 
-    @validator("channels", each_item=True)
-    def validate_channels(cls, v: str) -> str:
-        """Validiert Channels."""
+    @field_validator("channels")
+    @classmethod
+    def validate_channels(cls, v):
+        """Validiert jeden Channel in der Liste (Pydantic-v2-Aequivalent zu each_item=True)."""
         allowed = [
             "email",
             "slack",
@@ -107,8 +114,11 @@ class NotificationTemplateUpdate(BaseModel):
             "in_app",
             "websocket",
         ]
-        if v not in allowed:
-            raise ValueError(f"Channel muss einer von {allowed} sein")
+        if v is None:
+            return v
+        for item in v:
+            if item not in allowed:
+                raise ValueError(f"Channel muss einer von {allowed} sein")
         return v
 
 
@@ -127,8 +137,7 @@ class NotificationTemplateResponse(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TemplatePreviewRequest(BaseModel):
@@ -152,7 +161,8 @@ class TemplateSendRequest(BaseModel):
     channels: Optional[List[str]] = None
     severity: str = Field(default="info")
 
-    @validator("severity")
+    @field_validator("severity")
+    @classmethod
     def validate_severity(cls, v: str) -> str:
         """Validiert Severity."""
         allowed = ["info", "low", "medium", "high", "critical"]

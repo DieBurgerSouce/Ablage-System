@@ -13,7 +13,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
@@ -49,8 +49,7 @@ class ComplianceItemResponse(BaseModel):
     recommendation: Optional[str] = None
     details: Optional[JSONDict] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ComplianceScanResponse(BaseModel):
@@ -63,8 +62,7 @@ class ComplianceScanResponse(BaseModel):
     score: float
     items: List[ComplianceItemResponse]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RetentionReportResponse(BaseModel):
@@ -77,8 +75,7 @@ class RetentionReportResponse(BaseModel):
     expiring_soon_ids: List[UUID]
     retention_by_type: Dict[str, Dict[str, int]]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GDPRCheckResponse(BaseModel):
@@ -90,8 +87,7 @@ class GDPRCheckResponse(BaseModel):
     personal_data_count: int
     deletion_candidates: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AuditPreparationRequest(BaseModel):

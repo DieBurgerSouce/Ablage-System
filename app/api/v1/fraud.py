@@ -22,7 +22,7 @@ from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, HTTPException, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -107,8 +107,7 @@ class FraudScanResultSchema(BaseModel):
     created_at: str
     reviewed_at: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class IBANHistorySchema(BaseModel):

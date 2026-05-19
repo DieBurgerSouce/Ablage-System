@@ -18,7 +18,7 @@ from uuid import UUID
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Path
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -202,7 +202,8 @@ class UpdateStepRequest(BaseModel):
         max_length=50,  # SECURITY: Max 50 Keys im Dict
     )
 
-    @validator("step_data")
+    @field_validator("step_data")
+    @classmethod
     def validate_step_data(cls, v: Optional[JSONDict]) -> Optional[JSONDict]:
         """SECURITY: Validiere JSONB-Payload gegen DoS und Injection."""
         if v is None:

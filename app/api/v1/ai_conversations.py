@@ -42,7 +42,7 @@ from uuid import UUID
 from app.core.types import JSONDict
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy import select, func, and_, cast, Date
@@ -908,8 +908,7 @@ class MessageFeedbackRequest(BaseModel):
     correction: Optional[str] = Field(None, max_length=10000, description="Korrigierte Antwort")
     expected_intent: Optional[str] = Field(None, alias="expectedIntent", description="Erwartete Absicht")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 @router.post("/messages/{message_id}/feedback", response_model=FeedbackResponse, status_code=status.HTTP_201_CREATED)

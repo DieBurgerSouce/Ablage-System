@@ -6,7 +6,7 @@ from typing import List, Optional, Dict, Set, Tuple, Type, Union
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc, asc
 from sqlalchemy.orm import DeclarativeBase
@@ -38,7 +38,8 @@ class GraphQLQueryRequest(BaseModel):
     order_by: Optional[str] = Field(None, description="Sortierfeld")
     order_desc: bool = Field(False, description="Absteigend sortieren")
 
-    @validator("entity_type")
+    @field_validator("entity_type")
+    @classmethod
     def validate_entity_type(cls, v: str) -> str:
         """Validiert Entity-Type gegen Whitelist."""
         allowed = {"document", "entity", "invoice", "alert", "workflow", "payment"}
@@ -46,7 +47,8 @@ class GraphQLQueryRequest(BaseModel):
             raise ValueError(f"Ungültiger Entity-Typ. Erlaubt: {allowed}")
         return v
 
-    @validator("fields")
+    @field_validator("fields")
+    @classmethod
     def validate_fields(cls, v: List[str]) -> List[str]:
         """Validiert Feldnamen."""
         pattern = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{0,63}$")
@@ -55,7 +57,8 @@ class GraphQLQueryRequest(BaseModel):
                 raise ValueError(f"Ungültiger Feldname: {field}")
         return v
 
-    @validator("order_by")
+    @field_validator("order_by")
+    @classmethod
     def validate_order_by(cls, v: Optional[str]) -> Optional[str]:
         """Validiert Order-By Feld."""
         if v is None:

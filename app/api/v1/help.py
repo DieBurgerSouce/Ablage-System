@@ -18,7 +18,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 from app.db.models import User
 from app.db.database import get_db
@@ -44,8 +44,7 @@ class HelpArticle(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     order: int = Field(0, description="Sortierreihenfolge innerhalb Kategorie")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HelpArticleList(BaseModel):
@@ -64,8 +63,7 @@ class Tooltip(BaseModel):
     position: str = Field("bottom", description="Position: top, bottom, left, right")
     icon: Optional[str] = Field(None, description="Icon-Name (z.B. 'info', 'lightbulb')")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OnboardingStep(BaseModel):
@@ -79,8 +77,7 @@ class OnboardingStep(BaseModel):
     completed: bool = Field(False, description="Wurde erledigt")
     icon: Optional[str] = Field(None, description="Icon für Schritt")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OnboardingStatus(BaseModel):
@@ -92,8 +89,7 @@ class OnboardingStatus(BaseModel):
     skipped: bool = Field(False, description="Onboarding übersprungen")
     steps: List[OnboardingStep] = Field(default_factory=list)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VideoTutorial(BaseModel):
@@ -108,8 +104,7 @@ class VideoTutorial(BaseModel):
     tags: List[str] = Field(default_factory=list)
     order: int = Field(0, description="Sortierreihenfolge")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserHelpPreferences(BaseModel):
@@ -121,8 +116,7 @@ class UserHelpPreferences(BaseModel):
     completed_steps: List[str] = Field(default_factory=list, description="Erledigte Onboarding-Schritte")
     last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UpdatePreferencesRequest(BaseModel):

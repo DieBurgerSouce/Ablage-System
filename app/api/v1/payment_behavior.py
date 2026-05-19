@@ -80,8 +80,8 @@ class PaymentMetricsResponse(BaseModel):
     last_invoice_date: Optional[str] = Field(None, description="Letztes Rechnungsdatum")
     analysis_period_days: int = Field(..., description="Auswertungszeitraum in Tagen")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "entity_id": "123e4567-e89b-12d3-a456-426614174000",
                 "entity_name": "Mustermann GmbH",
@@ -112,7 +112,8 @@ class PaymentMetricsResponse(BaseModel):
                 "last_invoice_date": "2026-01-10",
                 "analysis_period_days": 365
             }
-        }
+        },
+    )
 
 
 class PaymentBehaviorSummaryResponse(BaseModel):

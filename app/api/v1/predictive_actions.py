@@ -17,7 +17,7 @@ from app.core.types import JSONDict
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, get_db
@@ -59,8 +59,7 @@ class ActionMetadata(BaseModel):
     budget_name: Optional[str] = None
     utilization_percent: Optional[float] = None
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class PredictiveActionResponse(BaseModel):
@@ -87,8 +86,7 @@ class PredictiveActionResponse(BaseModel):
 
     metadata: JSONDict = Field(default_factory=dict)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
     @classmethod
     def from_domain(cls, action: PredictiveAction) -> "PredictiveActionResponse":

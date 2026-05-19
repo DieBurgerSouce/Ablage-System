@@ -15,7 +15,7 @@ from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_current_company_id, get_db
@@ -75,8 +75,7 @@ class WarehouseResponse(BaseModel):
     is_default: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # Item Schemas
@@ -132,8 +131,7 @@ class ItemResponse(BaseModel):
     is_active: bool
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ItemListResponse(BaseModel):
@@ -191,8 +189,7 @@ class MovementResponse(BaseModel):
     movement_date: datetime
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InventoryCountRequest(BaseModel):
@@ -221,8 +218,7 @@ class GoodsReceiptLineResponse(BaseModel):
     is_matched: bool
     match_confidence: Optional[Decimal]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class GoodsReceiptResponse(BaseModel):
@@ -239,8 +235,7 @@ class GoodsReceiptResponse(BaseModel):
     lines: list[GoodsReceiptLineResponse]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LineMatchRequest(BaseModel):

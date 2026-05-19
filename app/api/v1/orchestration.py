@@ -86,8 +86,8 @@ class DecisionResponse(BaseModel):
     processed_at: Optional[str] = Field(None, description="Verarbeitungszeitpunkt")
     source_actions_count: int = Field(..., description="Anzahl zugrunde liegender Aktionen")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "550e8400-e29b-41d4-a716-446655440000",
                 "title": "Versicherungslücke schließen",
@@ -111,7 +111,8 @@ class DecisionResponse(BaseModel):
                 "processed_at": None,
                 "source_actions_count": 2,
             }
-        }
+        },
+    )
 
 
 class DecisionSummaryResponse(BaseModel):
@@ -518,8 +519,8 @@ class DecisionExplanationResponse(BaseModel):
     confidence_percentage: float = Field(..., description="Konfidenz in Prozent")
     data_basis: str = Field(..., description="Datenbasis der Erklärung")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "headline": "Kredit-Refinanzierung spart 15.600 EUR",
                 "summary": "Bei aktuellem Marktzins von 3.1% lohnt sich eine Refinanzierung.",
@@ -548,7 +549,8 @@ class DecisionExplanationResponse(BaseModel):
                 "confidence_percentage": 89.5,
                 "data_basis": "24 Monate historische Daten",
             }
-        }
+        },
+    )
 
 
 class HealthScoreBreakdownRequest(BaseModel):
@@ -939,8 +941,8 @@ class ScenarioResultResponse(BaseModel):
     confidence_percentage: float = Field(..., description="Konfidenz in Prozent")
     data_basis: str = Field(..., description="Datenbasis")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "scenario_id": "550e8400-e29b-41d4-a716-446655440000",
                 "scenario_type": "extra_savings",
@@ -964,7 +966,8 @@ class ScenarioResultResponse(BaseModel):
                 "confidence_percentage": 85.0,
                 "data_basis": "Vollständige Finanzdaten",
             }
-        }
+        },
+    )
 
 
 class ComparisonResultResponse(BaseModel):
@@ -1055,14 +1058,15 @@ class SimulateScenarioRequest(BaseModel):
             raise ValueError(f"additional_params muss JSON-serialisierbar sein: {e}")
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "scenario_type": "extra_savings",
                 "amount": 300,
                 "duration_months": 12,
             }
-        }
+        },
+    )
 
 
 class CurrentKPIsRequest(BaseModel):
@@ -1452,8 +1456,8 @@ class ProactiveInsightResponse(BaseModel):
     source_rule: Optional[str] = Field(None, description="Auslösende Regel")
     expires_at: Optional[str] = Field(None, description="Ablaufzeitpunkt")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "550e8400-e29b-41d4-a716-446655440000",
                 "insight_type": "optimization",
@@ -1470,7 +1474,8 @@ class ProactiveInsightResponse(BaseModel):
                 "source_rule": "supplier_pricing_check",
                 "expires_at": None,
             }
-        }
+        },
+    )
 
 
 class ExtractedEntityResponse(BaseModel):
@@ -1880,8 +1885,8 @@ class ThresholdDefinitionResponse(BaseModel):
     min_allowed: float = Field(..., description="Minimum erlaubt")
     max_allowed: float = Field(..., description="Maximum erlaubt")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "threshold_type": "dti_warning",
                 "category": "debt",
@@ -1892,7 +1897,8 @@ class ThresholdDefinitionResponse(BaseModel):
                 "min_allowed": 20.0,
                 "max_allowed": 60.0,
             }
-        }
+        },
+    )
 
 
 class UserThresholdResponse(BaseModel):
@@ -1910,8 +1916,8 @@ class UserThresholdResponse(BaseModel):
     created_at: str = Field(..., description="Erstellt am")
     updated_at: str = Field(..., description="Aktualisiert am")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "550e8400-e29b-41d4-a716-446655440000",
                 "threshold_type": "dti_warning",
@@ -1926,7 +1932,8 @@ class UserThresholdResponse(BaseModel):
                 "created_at": "2025-12-01T10:00:00Z",
                 "updated_at": "2026-01-05T14:30:00Z",
             }
-        }
+        },
+    )
 
 
 class UserProfileResponse(BaseModel):

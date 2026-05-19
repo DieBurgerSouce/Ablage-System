@@ -2092,8 +2092,7 @@ class ExtractedDataUpdateRequest(BaseModel):
         }
     )
 
-    class Config:
-        extra = "forbid"  # Keine zusätzlichen Felder erlaubt
+    model_config = ConfigDict(extra='forbid')
 
 
 @router.patch(

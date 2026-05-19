@@ -20,7 +20,7 @@ import re
 import structlog
 from collections import Counter, defaultdict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, func, and_, or_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -161,8 +161,7 @@ class BookingSuggestion(BaseModel):
     )
     warnings: List[str] = Field(default_factory=list, description="Warnungen")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BookingPattern(BaseModel):

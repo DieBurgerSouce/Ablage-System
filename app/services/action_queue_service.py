@@ -22,7 +22,7 @@ from typing import Dict, List, Optional
 
 import structlog
 from prometheus_client import Counter, Gauge, Histogram
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -100,9 +100,7 @@ class ProactiveActionItem(BaseModel):
     )
     metadata: Dict = Field(default_factory=dict, description="Zusätzliche Metadaten")
 
-    class Config:
-        """Pydantic-Konfiguration."""
-        str_strip_whitespace = True
+    model_config = ConfigDict(str_strip_whitespace=True)
 
 
 class ActionQueueProgress(BaseModel):

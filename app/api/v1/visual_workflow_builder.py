@@ -21,7 +21,7 @@ from app.core.types import JSONDict, JSONValue
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, model_validator, validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db
@@ -86,7 +86,8 @@ class VisualBlockCreate(BaseModel):
     position_x: float = 0.0
     position_y: float = 0.0
 
-    @validator("config")
+    @field_validator("config")
+    @classmethod
     def validate_config(cls, v: JSONDict) -> JSONDict:
         """SECURITY: Validiere Block-Config gegen DoS und Injection (CWE-20)."""
         if not v:

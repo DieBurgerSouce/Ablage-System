@@ -16,7 +16,7 @@ from typing import Dict, List, Optional
 from app.core.types import JSONDict
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user, get_db, get_current_company_id
@@ -53,8 +53,7 @@ class TimelineItemResponse(BaseModel):
     actor_name: Optional[str] = None
     metadata: JSONDict = Field(default_factory=dict)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InvoiceSummaryResponse(BaseModel):
@@ -158,8 +157,7 @@ class PhoneNoteResponse(BaseModel):
     created_by_id: Optional[str] = None
     assigned_to_id: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =============================================================================

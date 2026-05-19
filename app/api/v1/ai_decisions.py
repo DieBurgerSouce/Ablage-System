@@ -19,7 +19,7 @@ from uuid import UUID
 from app.core.types import JSONDict
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, and_, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,8 +71,7 @@ class AIDecisionSchema(BaseModel):
     created_at: datetime
     updated_at: Optional[datetime]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class AIDecisionDetailSchema(AIDecisionSchema):

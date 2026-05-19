@@ -62,8 +62,8 @@ class CashflowForecastItem(BaseModel):
     incoming_count: int = Field(0, description="Anzahl erwarteter Eingaenge")
     outgoing_count: int = Field(0, description="Anzahl erwarteter Ausgaenge")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "date": "2026-02-15",
                 "predicted_balance": 25430.50,
@@ -75,7 +75,8 @@ class CashflowForecastItem(BaseModel):
                 "incoming_count": 2,
                 "outgoing_count": 1,
             }
-        }
+        },
+    )
 
 
 class CashflowForecastResponse(BaseModel):
@@ -107,8 +108,8 @@ class CashflowWarningItem(BaseModel):
     days_until_trigger: int = Field(0, description="Tage bis zum Problem")
     affected_amount: Optional[float] = Field(None, description="Betroffener Betrag in EUR")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "type": "shortfall",
                 "severity": "critical",
@@ -122,7 +123,8 @@ class CashflowWarningItem(BaseModel):
                 "days_until_trigger": 19,
                 "affected_amount": 2500.00,
             }
-        }
+        },
+    )
 
 
 class CashflowWarningsResponse(BaseModel):
@@ -155,8 +157,8 @@ class ScenarioRequest(BaseModel):
             raise ValueError(f"Ungültiger Szenario-Typ. Erlaubt: {valid_types}")
         return v
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "scenario_type": "customer_late_payment",
                 "parameters": {
@@ -164,7 +166,8 @@ class ScenarioRequest(BaseModel):
                     "delay_days": 14
                 }
             }
-        }
+        },
+    )
 
 
 class ScenarioResponse(BaseModel):

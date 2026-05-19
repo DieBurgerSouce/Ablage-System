@@ -79,8 +79,8 @@ class AuditTrailEventSchema(BaseModel):
     color: str = Field(default="gray", description="Tailwind Farbe")
     is_important: bool = Field(default=False, description="Wichtiges Event")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "id": "550e8400-e29b-41d4-a716-446655440000",
                 "event_type": "document_edit",
@@ -97,7 +97,8 @@ class AuditTrailEventSchema(BaseModel):
                 "color": "blue",
                 "is_important": False,
             }
-        }
+        },
+    )
 
 
 class AuditTrailResponse(BaseModel):

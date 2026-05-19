@@ -19,7 +19,7 @@ from app.core.types import JSONDict, RuleConditionDict, RuleActionDict, RuleCont
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Body
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, ConfigDict
 from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -67,8 +67,7 @@ class CompositeConditionSchema(BaseModel):
     or_: Optional[List["ConditionOrComposite"]] = Field(default=None, alias="or")
     not_: Optional["ConditionOrComposite"] = Field(default=None, alias="not")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 # Union type für verschachtelte Bedingungen
@@ -181,8 +180,7 @@ class RuleResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RuleListResponse(BaseModel):
@@ -261,8 +259,7 @@ class RuleSetResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ExecutionLogResponse(BaseModel):
@@ -278,8 +275,7 @@ class ExecutionLogResponse(BaseModel):
     executed_at: datetime
     execution_time_ms: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OperatorsResponse(BaseModel):

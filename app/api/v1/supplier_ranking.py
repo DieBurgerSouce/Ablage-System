@@ -43,8 +43,8 @@ class CategoryScoreResponse(BaseModel):
     trend: str = Field(..., description="Trend (up, down, stable)")
     details: dict = Field(default_factory=dict, description="Zusätzliche Details")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "category": "punctuality",
                 "category_label": "Puenktlichkeit",
@@ -54,7 +54,8 @@ class CategoryScoreResponse(BaseModel):
                 "trend": "up",
                 "details": {"delivery_scores": 10, "avg_delivery_score": 88.0}
             }
-        }
+        },
+    )
 
 
 class SupplierRankingResponse(BaseModel):
@@ -75,8 +76,8 @@ class SupplierRankingResponse(BaseModel):
     recommendations: List[str] = Field(default_factory=list, description="Empfehlungen")
     calculated_at: str = Field(..., description="Berechnungszeitpunkt")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "entity_id": "123e4567-e89b-12d3-a456-426614174000",
                 "entity_name": "Mustermann GmbH",
@@ -94,7 +95,8 @@ class SupplierRankingResponse(BaseModel):
                 "recommendations": ["Guter Lieferant - bevorzugt behandeln"],
                 "calculated_at": "2026-01-17T10:30:00Z"
             }
-        }
+        },
+    )
 
 
 class TierDistributionResponse(BaseModel):

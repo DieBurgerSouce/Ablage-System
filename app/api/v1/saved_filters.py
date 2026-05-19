@@ -38,8 +38,7 @@ router = APIRouter(prefix="/saved-filters", tags=["Saved Filters"])
 class FilterConfigSchema(BaseModel):
     """Schema für Filter-Konfiguration (flexibel)."""
 
-    class Config:
-        extra = "allow"  # Erlaube beliebige zusätzliche Felder
+    model_config = ConfigDict(extra='allow')
 
 
 class SavedFilterCreate(BaseModel):
@@ -76,8 +75,7 @@ class SavedFilterResponse(BaseModel):
     updated_at: str
     is_own: bool = Field(description="True wenn eigener Filter, False wenn geteilt")
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SavedFilterListResponse(BaseModel):

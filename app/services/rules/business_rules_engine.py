@@ -23,7 +23,7 @@ from app.core.safe_errors import safe_error_detail, safe_error_log
 from decimal import Decimal
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -264,8 +264,7 @@ class CompositeCondition(BaseModel):
         default=None, alias="not"
     )
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class RuleAction(BaseModel):
