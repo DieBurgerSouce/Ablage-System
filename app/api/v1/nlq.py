@@ -42,7 +42,9 @@ class NLQQueryResponse(BaseModel):
 
     query_log_id: UUID
     natural_query: str
-    generated_sql: str
+    # SECURITY: generated_sql wird nur für Superuser zurueckgegeben (Injection-
+    # Iteration durch Non-Admins verhindern). Non-Admin sieht ``None``.
+    generated_sql: Optional[str] = None
     text_summary: str
     data: List[JSONDict]
     visualization_type: str
@@ -118,7 +120,12 @@ async def execute_nlq_query(
         return NLQQueryResponse(
             query_log_id=result.query_log_id,
             natural_query=result.natural_query,
-            generated_sql=result.generated_sql,
+            # SECURITY: SQL nur für Admins exposen - Non-Admin sieht None.
+            # Verhindert dass Angreifer durch iterierte Queries den
+            # SQL-Sanitizer/Generator profilen koennen.
+            generated_sql=(
+                result.generated_sql if current_user.is_superuser else None
+            ),
             text_summary=result.result.text_summary,
             data=result.result.data,
             visualization_type=result.visualization_type,
