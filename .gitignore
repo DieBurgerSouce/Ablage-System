@@ -153,5 +153,23 @@ infrastructure/prometheus/qdrant_metrics_token
 # Watchdog runtime logs (Sprint 0 / G05) - State liegt im Docker-Volume
 scripts/watchdog/logs/
 
+# Claude-Flow Runtime in beliebigen Subdirectories (Phase B 2026-05-19)
+# Im Root-Repo werden `.claude-flow/metrics/*.json` als Audit-Baseline
+# committet; in Sub-Workdirs (z.B. frontend/.claude-flow/) ist alles
+# nur Runtime-Cruft.
+**/.claude-flow/daemon-state.json
+**/.claude-flow/daemon-children.json
+**/.claude-flow/daemon.pid
+**/.claude-flow/.trend-cache.json
+**/.claude-flow/data/
+**/.claude-flow/logs/
+**/.claude-flow/sessions/
+**/.claude-flow/tasks/
+**/.claude-flow/workflows/
+**/.claude-flow/learning/
+**/.claude-flow/neural/
+# Subdir-Daemon-Instanzen komplett ignorieren (nur das Root .claude-flow/ ist relevant)
+/frontend/.claude-flow/
+
 # Python scripts in root
 /reset_password.py
