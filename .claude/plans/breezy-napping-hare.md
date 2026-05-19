@@ -76,6 +76,17 @@
 - [x] **8b**: pg_dump Restore-Test Script (BEREITS IMPLEMENTIERT: scripts/backup/restore_test.sh + monatlicher Drill-Checklist)
 - [x] **8c**: MinIO Backup verifizieren (BEREITS IMPLEMENTIERT: minio-failure-recovery.md + backup-integrity-verification.md)
 
+## Step 9: Test-Sprint Phase 2 (Coverage-Luecken schliessen)
+- [x] **9a**: Spotlight Service Tests (2026-03-10, 19 Tests: Short/Normal Queries, Error Handling, Navigation Filter, Response Structure)
+- [x] **9b**: Spotlight API Tests (2026-03-10, 11 Tests: Schema Validation, Endpoint Logic, Error Propagation)
+- [x] **9c**: Smart Inbox API Tests (2026-03-10, 17 Tests: GET/POST/snooze/dismiss/insights/stats/aggregate, Error Handling)
+- [x] **9d**: Push Notification Service Tests (2026-03-10, 12 Tests: Subscription Management, Sending, Templates, Preferences)
+- [x] **9e**: Document Export Service Tests (2026-03-10, 14 Tests: JSON/CSV/ZIP Export, Batch Export, Flags)
+- [x] **9f**: Document Lifecycle Service Tests (2026-03-10, 15 Tests: Stage Transitions, SLA Violations, Kanban, Metrics, History)
+- [x] **9g**: Embedding Service Tests (2026-03-10, 11 Tests: Enums, Cache Keys, Batch, Provider, Jina)
+- [x] **9h**: Umlaut Validation Service Tests (2026-03-10, 22 Tests: Detection, Auto-Correction, Consistency, CER, Levenshtein, Dictionaries)
+- Hinweis: 121 neue Tests fuer 7 bisher ungetestete Services/APIs, hoechste Business-Impact-Prioritaet
+
 ---
 
 ## Bewusst OUTSCOPED

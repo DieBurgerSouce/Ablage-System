@@ -1,0 +1,34 @@
+# Markdown auto-formatting deaktiviert.
+#
+# Hintergrund: Am 2026-05-19 hat ein Prettier-/remark-Lauf 20 Markdown-Files
+# beschaedigt (Pipe-Tabellen flachgelegt, HTML-Entities escaped, stray
+# Code-Fences in ASCII-Art, semantische Joins von Listen-Items).
+# 343 Zeilen Content in ANALYSIS_*.md verloren.
+#
+# Quelle: .claude/reviews/2026-05-19/doc_drift.md
+#
+# Bis ein Prettier-Setup mit `proseWrap: preserve` + GFM-Tables-Erhaltung
+# konfiguriert ist, sind alle .md-Files exempt von Auto-Format.
+*.md
+
+# Lock-Files immer ignorieren
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build / Dependencies / Runtime
+node_modules/
+dist/
+build/
+.next/
+__pycache__/
+*.pyc
+
+# Repo-Artefakte die nicht formatiert werden duerfen
+.claude-flow/
+.claude/cache/
+alembic/versions/
+
+# Generierte Files
+*.generated.*
+*.min.*
