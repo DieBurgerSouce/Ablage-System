@@ -203,8 +203,8 @@ class QueryBuilder:
         # Base Query mit company_id Filter
         stmt = select(model_class).where(model_class.company_id == company_id)
 
-        # Filter anwenden
-        stmt = QueryBuilder._apply_filters(stmt, model_class, body.filters)
+        # Filter anwenden (Allow-List via entity_type)
+        stmt = QueryBuilder._apply_filters(stmt, model_class, body.filters, body.entity_type)
 
         # Gesamt-Anzahl ermitteln (vor Limit/Offset)
         from sqlalchemy import func
@@ -266,10 +266,64 @@ class QueryBuilder:
         mapper = inspect(model_class)
         return {col.key for col in mapper.columns}
 
+    # SECURITY: Whitelist fuer Filter-Felder pro Entity-Typ (CWE-89).
+    # Verhindert Boolean-based Field-Oracle-Attacks auf PII (iban, vat_id,
+    # tax_id) und Auth-Daten (password_hash, totp_secret).
+    # Analog zu ALLOWED_ORDER_FIELDS. Bewusst konservativ - bei Bedarf
+    # erweitern, niemals iban/vat_id/tax_id/password_hash/totp_secret aufnehmen.
+    ALLOWED_FILTER_FIELDS: Dict[str, Set[str]] = {
+        "document": {
+            "id", "filename", "status", "created_at", "updated_at",
+            "deleted_at", "ocr_confidence", "document_type", "mime_type",
+            "language", "category", "business_entity_id", "company_id",
+            "owner_id", "folder_id", "is_starred",
+        },
+        "entity": {
+            "id", "name", "entity_type", "risk_score", "created_at",
+            "updated_at", "payment_delay_days", "country_code", "company_id",
+            "deleted_at", "is_active",
+        },
+        "invoice": {
+            "id", "invoice_number", "amount", "status", "due_date",
+            "paid_date", "dunning_level", "document_id", "business_entity_id",
+            "company_id", "created_at", "updated_at", "deleted_at", "currency",
+        },
+        "alert": {
+            "id", "alert_code", "title", "category", "severity", "status",
+            "created_at", "updated_at", "business_entity_id", "company_id",
+            "document_id", "resolved_at", "acknowledged_at",
+        },
+        "workflow": {
+            "id", "name", "status", "created_at", "updated_at",
+            "owner_id", "company_id", "is_active",
+        },
+        "payment": {
+            "id", "amount", "status", "created_at", "due_date",
+            "company_id", "currency", "document_id",
+        },
+    }
+
     @staticmethod
-    def _apply_filters(stmt: Select, model_class: Type[DeclarativeBase], filters: Dict[str, object]) -> Select:
-        """Wendet Filter auf Query an."""
+    def _apply_filters(
+        stmt: Select,
+        model_class: Type[DeclarativeBase],
+        filters: Dict[str, object],
+        entity_type: Optional[str] = None,
+    ) -> Select:
+        """Wendet Filter auf Query an - nur Felder aus der Allow-List.
+
+        SECURITY: Ohne ``entity_type``-Allow-List werden alle Filter abgelehnt
+        (fail-closed), damit Aufrufer mit einer expliziten Liste arbeiten muss.
+        """
+        allowed = QueryBuilder.ALLOWED_FILTER_FIELDS.get(entity_type or "", set())
         for field_name, field_value in filters.items():
+            if field_name not in allowed:
+                logger.warning(
+                    "graphql_filter_field_rejected",
+                    entity_type=entity_type,
+                    field=field_name,
+                )
+                continue
             field = getattr(model_class, field_name, None)
             if field is None:
                 continue
