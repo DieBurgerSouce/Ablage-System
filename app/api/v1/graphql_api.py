@@ -5,7 +5,7 @@ import re
 from typing import List, Optional, Dict, Set, Tuple, Type, Union
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field, validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, desc, asc
@@ -15,6 +15,7 @@ from sqlalchemy.sql import Select
 from app.api.dependencies import get_db, get_current_user
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -173,14 +174,14 @@ class QueryBuilder:
 
     @staticmethod
     async def build_query(
-        request: GraphQLQueryRequest,
+        body: GraphQLQueryRequest,
         company_id: UUID,
         db: AsyncSession,
     ) -> Tuple[object, int]:
         """Baut Query und führt sie aus.
 
         Args:
-            request: Query-Anfrage
+            body: Query-Anfrage
             company_id: Mandanten-ID
             db: Datenbank-Session
 
@@ -188,11 +189,11 @@ class QueryBuilder:
             Tuple aus (Ergebnisse, Gesamt-Anzahl)
         """
         # Model ermitteln
-        model_class = QueryBuilder._get_model_class(request.entity_type)
+        model_class = QueryBuilder._get_model_class(body.entity_type)
 
         # Verfügbare Felder prüfen
         available_fields = QueryBuilder._get_available_fields(model_class)
-        for field in request.fields:
+        for field in body.fields:
             if field not in available_fields:
                 raise ValueError(f"Feld nicht verfügbar: {field}")
 
@@ -200,7 +201,7 @@ class QueryBuilder:
         stmt = select(model_class).where(model_class.company_id == company_id)
 
         # Filter anwenden
-        stmt = QueryBuilder._apply_filters(stmt, model_class, request.filters)
+        stmt = QueryBuilder._apply_filters(stmt, model_class, body.filters)
 
         # Gesamt-Anzahl ermitteln (vor Limit/Offset)
         from sqlalchemy import func
@@ -218,12 +219,12 @@ class QueryBuilder:
             "payment": {"id", "amount", "status", "created_at"},
         }
         # Sortierung mit Whitelist-Validierung
-        if request.order_by:
-            entity_fields = ALLOWED_ORDER_FIELDS.get(request.entity_type, set())
-            if request.order_by in entity_fields:
-                order_field = getattr(model_class, request.order_by, None)
+        if body.order_by:
+            entity_fields = ALLOWED_ORDER_FIELDS.get(body.entity_type, set())
+            if body.order_by in entity_fields:
+                order_field = getattr(model_class, body.order_by, None)
                 if order_field is not None:
-                    stmt = stmt.order_by(desc(order_field) if request.order_desc else asc(order_field))
+                    stmt = stmt.order_by(desc(order_field) if body.order_desc else asc(order_field))
             # Ungültige Felder werden ignoriert (Silent Fallback auf Default)
         else:
             # Standard: Nach created_at absteigend
@@ -231,7 +232,7 @@ class QueryBuilder:
                 stmt = stmt.order_by(desc(model_class.created_at))
 
         # Paginierung
-        stmt = stmt.limit(request.limit).offset(request.offset)
+        stmt = stmt.limit(body.limit).offset(body.offset)
 
         # Query ausführen
         result = await db.execute(stmt)
@@ -324,8 +325,10 @@ class QueryBuilder:
     summary="GraphQL-ähnliche Query",
     description="Flexible Query mit Field Selection und Filterung."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def execute_query(
-    request: GraphQLQueryRequest,
+    request: Request,
+    body: GraphQLQueryRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> GraphQLQueryResponse:
@@ -333,34 +336,34 @@ async def execute_query(
     try:
         # Query ausführen
         items, total_count = await QueryBuilder.build_query(
-            request=request,
+            body=body,
             company_id=current_user.company_id,
             db=db,
         )
 
         # Felder projizieren
         projected_items = [
-            QueryBuilder._project_fields(item, request.fields)
+            QueryBuilder._project_fields(item, body.fields)
             for item in items
         ]
 
-        has_more = (request.offset + request.limit) < total_count
+        has_more = (body.offset + body.limit) < total_count
 
         logger.info(
             "graphql_query_executed",
-            entity_type=request.entity_type,
-            fields=len(request.fields),
+            entity_type=body.entity_type,
+            fields=len(body.fields),
             results=len(projected_items),
             total=total_count,
         )
 
         return GraphQLQueryResponse(
-            entity_type=request.entity_type,
+            entity_type=body.entity_type,
             total_count=total_count,
             items=projected_items,
             has_more=has_more,
-            offset=request.offset,
-            limit=request.limit,
+            offset=body.offset,
+            limit=body.limit,
         )
 
     except ValueError as e:
@@ -377,7 +380,9 @@ async def execute_query(
     summary="GraphQL-Schema",
     description="Holt verfügbare Typen und Felder."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_schema(
+    request: Request,
     entity_type: Optional[str] = Query(None, description="Spezifischer Entity-Typ"),
     current_user: User = Depends(get_current_user),
 ) -> GraphQLSchemaResponse:

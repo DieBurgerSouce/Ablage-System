@@ -9,7 +9,7 @@ from typing import AsyncGenerator, List, Optional
 from app.core.types import JSONDict
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +19,7 @@ from app.core.safe_errors import safe_error_detail
 from app.core.redis_state import get_redis
 from app.db.models import User
 from app.services.ai.nlq.nlq_orchestrator import NLQOrchestrator
+from app.core.rate_limiting import limiter, get_user_identifier
 
 router = APIRouter(prefix="/nlq", tags=["nlq"])
 
@@ -78,8 +79,10 @@ class NLQSuggestionsResponse(BaseModel):
 
 
 @router.post("/query", response_model=NLQQueryResponse)
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def execute_nlq_query(
-    request: NLQQueryRequest,
+    request: Request,
+    body: NLQQueryRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> NLQQueryResponse:
@@ -90,7 +93,7 @@ async def execute_nlq_query(
     generiert eine Zusammenfassung mit Visualisierungsvorschlägen.
 
     Args:
-        request: Query-Request mit natürlichsprachiger Frage
+        body: Query-Request mit natürlichsprachiger Frage
         db: Datenbank-Session
         current_user: Aktuell angemeldeter Benutzer
 
@@ -106,7 +109,7 @@ async def execute_nlq_query(
         orchestrator = NLQOrchestrator(engine=engine, redis=redis_client)
 
         result = await orchestrator.query(
-            natural_query=request.query,
+            natural_query=body.query,
             user_id=current_user.id,
             company_id=current_user.company_id,
             db=db,
@@ -144,8 +147,10 @@ async def execute_nlq_query(
 
 
 @router.post("/query/stream")
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def execute_nlq_query_stream(
-    request: NLQQueryRequest,
+    request: Request,
+    body: NLQQueryRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> StreamingResponse:
@@ -155,7 +160,7 @@ async def execute_nlq_query_stream(
     Streamt den Fortschritt der Query-Ausführung in Echtzeit.
 
     Args:
-        request: Query-Request mit natürlichsprachiger Frage
+        body: Query-Request mit natürlichsprachiger Frage
         db: Datenbank-Session
         current_user: Aktuell angemeldeter Benutzer
 
@@ -175,7 +180,7 @@ async def execute_nlq_query_stream(
 
             # Streaming nicht nativ unterstützt - fallback auf regulaere Query
             result = await orchestrator.query(
-                natural_query=request.query,
+                natural_query=body.query,
                 user_id=current_user.id,
                 company_id=current_user.company_id,
                 db=db,
@@ -196,7 +201,9 @@ async def execute_nlq_query_stream(
 
 
 @router.get("/suggestions", response_model=NLQSuggestionsResponse)
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def get_query_suggestions(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> NLQSuggestionsResponse:
@@ -236,8 +243,10 @@ async def get_query_suggestions(
 
 
 @router.post("/feedback", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute", key_func=get_user_identifier)
 async def submit_query_feedback(
-    request: NLQFeedbackRequest,
+    request: Request,
+    body: NLQFeedbackRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> None:
@@ -248,7 +257,7 @@ async def submit_query_feedback(
     der NLQ-Engine.
 
     Args:
-        request: Feedback-Request mit Bewertung und Kommentar
+        body: Feedback-Request mit Bewertung und Kommentar
         db: Datenbank-Session
         current_user: Aktuell angemeldeter Benutzer
 
@@ -261,9 +270,9 @@ async def submit_query_feedback(
         orchestrator = NLQOrchestrator(engine=engine, redis=redis_client)
 
         await orchestrator.submit_feedback(
-            query_log_id=request.query_log_id,
-            rating=request.rating,
-            comment=request.comment,
+            query_log_id=body.query_log_id,
+            rating=body.rating,
+            comment=body.comment,
             db=db,
         )
 

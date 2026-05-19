@@ -37,6 +37,7 @@ from app.services.dlp import (
     SensitiveDataType,
     get_dlp_service,
 )
+from app.core.rate_limiting import limiter, get_user_identifier
 
 router = APIRouter(prefix="/dlp", tags=["DLP"])
 
@@ -137,7 +138,9 @@ class SuccessResponse(BaseModel):
     summary="Alle DLP-Policies auflisten",
     description="Gibt alle konfigurierten DLP-Policies zurück. Erfordert Admin-Rolle."
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def list_policies(
+    request: Request,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> PolicyListResponse:
@@ -156,8 +159,10 @@ async def list_policies(
     summary="Neue DLP-Policy erstellen",
     description="Erstellt eine neue DLP-Policy. Erfordert Admin-Rolle."
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def create_policy(
-    request: PolicyCreateRequest,
+    request: Request,
+    body: PolicyCreateRequest,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> DLPPolicy:
@@ -173,7 +178,7 @@ async def create_policy(
     dlp_service = get_dlp_service(db, company_id)
 
     try:
-        policy = DLPPolicy(**request.model_dump())
+        policy = DLPPolicy(**body.model_dump())
         await dlp_service.add_policy(policy)
         return policy
     except DLPServiceError as e:
@@ -189,7 +194,9 @@ async def create_policy(
     summary="DLP-Policy abrufen",
     description="Gibt eine spezifische DLP-Policy zurück. Erfordert Admin-Rolle."
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_policy(
+    request: Request,
     policy_id: str,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
@@ -215,9 +222,11 @@ async def get_policy(
     summary="DLP-Policy aktualisieren",
     description="Aktualisiert eine bestehende DLP-Policy. Erfordert Admin-Rolle."
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def update_policy(
+    request: Request,
     policy_id: str,
-    request: PolicyUpdateRequest,
+    body: PolicyUpdateRequest,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> DLPPolicy:
@@ -232,7 +241,7 @@ async def update_policy(
     dlp_service = get_dlp_service(db, company_id)
 
     try:
-        updates = {k: v for k, v in request.model_dump().items() if v is not None}
+        updates = {k: v for k, v in body.model_dump().items() if v is not None}
         return await dlp_service.update_policy(policy_id, updates)
     except DLPServiceError as e:
         raise HTTPException(
@@ -247,7 +256,9 @@ async def update_policy(
     summary="DLP-Policy löschen",
     description="Löscht eine DLP-Policy. Erfordert Admin-Rolle."
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def delete_policy(
+    request: Request,
     policy_id: str,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
@@ -280,6 +291,7 @@ async def delete_policy(
     summary="Zugriffsprüfung durchführen",
     description="Prüft ob eine Aktion auf einem Dokument erlaubt ist."
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def check_access(
     body: AccessCheckRequest,
     request: Request,
@@ -351,8 +363,10 @@ async def check_access(
         "WICHTIG: Der Text wird nicht gespeichert oder geloggt."
     )
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def scan_sensitive_data(
-    request: ScanRequest,
+    request: Request,
+    body: ScanRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ScanResponse:
@@ -361,8 +375,8 @@ async def scan_sensitive_data(
     dlp_service = get_dlp_service(db, company_id)
 
     findings = dlp_service.detect_sensitive_data(
-        text=request.text,
-        types=request.types,
+        text=body.text,
+        types=body.types,
     )
 
     has_sensitive = len(findings) > 0
@@ -388,7 +402,9 @@ async def scan_sensitive_data(
     summary="Verfügbare Typen sensibler Daten",
     description="Gibt alle Typen sensibler Daten zurück, die erkannt werden können."
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_sensitive_data_types(
+    request: Request,
     current_user: User = Depends(get_current_user),
 ) -> list[str]:
     """Gibt verfügbare Typen sensibler Daten zurück."""
@@ -401,7 +417,9 @@ async def get_sensitive_data_types(
     summary="Standard-Policies erstellen",
     description="Erstellt Standard-DLP-Policies falls noch keine existieren. Erfordert Admin-Rolle."
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def seed_default_policies(
+    request: Request,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ) -> SuccessResponse:

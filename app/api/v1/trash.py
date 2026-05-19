@@ -13,7 +13,7 @@ from typing import Optional
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,6 +26,7 @@ from app.db.schemas import (
     DeletedDocumentsListResponse,
 )
 from app.services.document_services.gdpr_service import get_gdpr_service
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -77,7 +78,9 @@ class EmptyTrashResponse(BaseModel):
     summary="Papierkorb auflisten",
     description="Listet alle soft-gelöschten Dokumente des aktuellen Benutzers auf.",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def list_trash(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DeletedDocumentsListResponse:
@@ -109,7 +112,9 @@ async def list_trash(
     summary="Papierkorb-Statistiken",
     description="Gibt Statistiken über den Papierkorb zurück.",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_trash_stats(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> TrashStatsResponse:
@@ -152,7 +157,9 @@ async def get_trash_stats(
     summary="Dokument-Details im Papierkorb",
     description="Gibt Details zu einem gelöschten Dokument zurück.",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_trash_item(
+    request: Request,
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -194,7 +201,9 @@ async def get_trash_item(
     summary="Dokument wiederherstellen",
     description="Stellt ein soft-gelöschtes Dokument wieder her.",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def restore_document(
+    request: Request,
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -247,7 +256,9 @@ async def restore_document(
     summary="Dokument permanent löschen",
     description="Löscht ein Dokument permanent aus dem Papierkorb.",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def permanently_delete_document(
+    request: Request,
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -303,7 +314,9 @@ async def permanently_delete_document(
     summary="Papierkorb leeren",
     description="Löscht alle Dokumente im Papierkorb permanent.",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def empty_trash(
+    request: Request,
     only_expired: bool = Query(
         False,
         description="Nur abgelaufene Dokumente löschen (>30 Tage)",

@@ -291,7 +291,9 @@ def _parse_time(time_str: Optional[str]) -> Optional[time]:
     summary="Regeln auflisten",
     description="Gibt alle Notification Rules des aktuellen Benutzers zurück."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def list_rules(
+    request: Request,
     enabled_only: bool = Query(False, description="Nur aktive Regeln"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -316,7 +318,9 @@ async def list_rules(
     summary="Verfügbare Event-Typen",
     description="Gibt alle verfügbaren Event-Typen für Regeln zurück."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def list_event_types(
+    request: Request,
     current_user: User = Depends(get_current_user),
 ) -> EventTypesResponse:
     """Liste aller Event-Typen für Trigger."""
@@ -342,8 +346,10 @@ async def list_event_types(
     summary="Regel erstellen",
     description="Erstellt eine neue Notification Rule."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def create_rule(
-    request: NotificationRuleCreateRequest,
+    request: Request,
+    body: NotificationRuleCreateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> NotificationRuleResponse:
@@ -351,31 +357,31 @@ async def create_rule(
     engine = get_notification_rule_engine()
 
     # Actions zu Dict-Liste konvertieren
-    actions_list = [action.model_dump(exclude_none=True) for action in request.actions]
+    actions_list = [action.model_dump(exclude_none=True) for action in body.actions]
 
     rule = await engine.create_rule(
         db=db,
         user_id=current_user.id,
-        name=request.name,
-        event_type=request.event_type,
-        conditions=request.conditions or {},
+        name=body.name,
+        event_type=body.event_type,
+        conditions=body.conditions or {},
         actions=actions_list,
-        description=request.description,
-        event_source=request.event_source,
-        enabled=request.enabled,
-        quiet_hours_start=_parse_time(request.quiet_hours_start),
-        quiet_hours_end=_parse_time(request.quiet_hours_end),
-        timezone=request.timezone,
-        cooldown_minutes=request.cooldown_minutes,
-        max_per_day=request.max_per_day,
-        priority=request.priority,
+        description=body.description,
+        event_source=body.event_source,
+        enabled=body.enabled,
+        quiet_hours_start=_parse_time(body.quiet_hours_start),
+        quiet_hours_end=_parse_time(body.quiet_hours_end),
+        timezone=body.timezone,
+        cooldown_minutes=body.cooldown_minutes,
+        max_per_day=body.max_per_day,
+        priority=body.priority,
     )
 
     logger.info(
         "notification_rule_created_via_api",
         rule_id=str(rule.id),
         user_id=str(current_user.id),
-        event_type=request.event_type
+        event_type=body.event_type
     )
 
     return _build_rule_response(rule)
@@ -387,7 +393,9 @@ async def create_rule(
     summary="Regel abrufen",
     description="Gibt eine spezifische Regel zurück."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_rule(
+    request: Request,
     rule_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -416,9 +424,11 @@ async def get_rule(
     summary="Regel aktualisieren",
     description="Aktualisiert eine bestehende Regel."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def update_rule(
+    request: Request,
     rule_id: UUID,
-    request: NotificationRuleUpdateRequest,
+    body: NotificationRuleUpdateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> NotificationRuleResponse:
@@ -427,7 +437,7 @@ async def update_rule(
 
     # Nur nicht-None Werte sammeln
     updates = {}
-    for key, value in request.model_dump().items():
+    for key, value in body.model_dump().items():
         if value is not None:
             if key == "actions":
                 updates[key] = [a.model_dump(exclude_none=True) if hasattr(a, 'model_dump') else a for a in value]
@@ -465,7 +475,9 @@ async def update_rule(
     summary="Regel löschen",
     description="Löscht eine Regel."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def delete_rule(
+    request: Request,
     rule_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -498,7 +510,9 @@ async def delete_rule(
     summary="Regel aktivieren/deaktivieren",
     description="Schaltet eine Regel ein oder aus."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def toggle_rule(
+    request: Request,
     rule_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -538,7 +552,9 @@ async def toggle_rule(
     summary="Regel-Statistiken",
     description="Gibt Statistiken für eine Regel zurück."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_rule_statistics(
+    request: Request,
     rule_id: UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

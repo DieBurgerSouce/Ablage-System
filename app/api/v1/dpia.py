@@ -21,7 +21,7 @@ from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,6 +37,7 @@ from app.services.compliance.dpia_service import (
     DataSubjectGroup,
     get_dpia_service,
 )
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -139,8 +140,10 @@ class DPIASummary(BaseModel):
 
 
 @router.post("/check-required", response_model=CheckRequiredResponse)
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def check_dpia_required(
-    request: CheckRequiredRequest,
+    request: Request,
+    body: CheckRequiredRequest,
     current_user: User = Depends(get_current_user),
 ) -> CheckRequiredResponse:
     """
@@ -152,7 +155,7 @@ async def check_dpia_required(
 
     # Konvertiere Schemas zu Domain Objects
     operations = []
-    for op in request.processing_operations:
+    for op in body.processing_operations:
         try:
             legal_basis = ProcessingBasis(op.legal_basis)
         except ValueError:
@@ -186,7 +189,7 @@ async def check_dpia_required(
             includes_vulnerable=g.includes_vulnerable,
             includes_children=g.includes_children,
         )
-        for g in request.data_subject_groups
+        for g in body.data_subject_groups
     ]
 
     # needs_dpia is synchronous - doesn't need DB
@@ -203,7 +206,9 @@ async def check_dpia_required(
 
 
 @router.get("/templates", response_model=List[TemplateInfo])
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def list_templates(
+    request: Request,
     current_user: User = Depends(get_current_user),
 ) -> List[TemplateInfo]:
     """Liste verfügbarer DPIA-Templates."""
@@ -213,8 +218,10 @@ async def list_templates(
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def create_dpia_from_template(
-    request: CreateFromTemplateRequest,
+    request: Request,
+    body: CreateFromTemplateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
@@ -231,11 +238,11 @@ async def create_dpia_from_template(
     try:
         dpia = await service.create_from_template(
             db=db,
-            template_name=request.template_name,
-            controller_name=request.controller_name,
-            controller_contact=request.controller_contact,
-            dpo_name=request.dpo_name,
-            dpo_contact=request.dpo_contact,
+            template_name=body.template_name,
+            controller_name=body.controller_name,
+            controller_contact=body.controller_contact,
+            dpo_name=body.dpo_name,
+            dpo_contact=body.dpo_contact,
             assessor_name=current_user.full_name or current_user.email,
             company_id=current_user.company_id,
             created_by_id=current_user.id,
@@ -250,14 +257,16 @@ async def create_dpia_from_template(
         "dpia_created_from_template",
         user_id=str(current_user.id),
         dpia_id=str(dpia.id),
-        template=request.template_name,
+        template=body.template_name,
     )
 
     return dpia.to_dict()
 
 
 @router.get("", response_model=List[DPIASummary])
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def list_dpias(
+    request: Request,
     status_filter: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -292,7 +301,9 @@ async def list_dpias(
 
 
 @router.get("/{dpia_id}")
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_dpia(
+    request: Request,
     dpia_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -318,9 +329,11 @@ async def get_dpia(
 
 
 @router.patch("/{dpia_id}/status")
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def update_dpia_status(
+    request: Request,
     dpia_id: UUID,
-    request: UpdateStatusRequest,
+    body: UpdateStatusRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
@@ -329,11 +342,11 @@ async def update_dpia_status(
 
     # Validiere Status
     try:
-        new_status = DPIAStatus(request.status)
+        new_status = DPIAStatus(body.status)
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Ungültiger Status: {request.status}",
+            detail=f"Ungültiger Status: {body.status}",
         )
 
     try:
@@ -342,7 +355,7 @@ async def update_dpia_status(
             dpia_id=dpia_id,
             new_status=new_status,
             user_name=current_user.full_name or current_user.email,
-            comment=request.comment,
+            comment=body.comment,
             company_id=current_user.company_id,
         )
     except ValueError as e:
@@ -355,16 +368,18 @@ async def update_dpia_status(
         "dpia_status_updated",
         user_id=str(current_user.id),
         dpia_id=str(dpia_id),
-        new_status=request.status,
+        new_status=body.status,
     )
 
     return dpia.to_dict()
 
 
 @router.post("/{dpia_id}/consultation")
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def add_dpo_consultation(
+    request: Request,
     dpia_id: UUID,
-    request: DPOConsultationRequest,
+    body: DPOConsultationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
@@ -380,10 +395,10 @@ async def add_dpo_consultation(
             db=db,
             dpia_id=dpia_id,
             dpo_name=current_user.full_name or current_user.email,
-            opinion=request.opinion,
-            recommendations=request.recommendations,
-            approval=request.approval,
-            conditions=request.conditions,
+            opinion=body.opinion,
+            recommendations=body.recommendations,
+            approval=body.approval,
+            conditions=body.conditions,
             company_id=current_user.company_id,
         )
     except ValueError as e:
@@ -396,14 +411,16 @@ async def add_dpo_consultation(
         "dpia_consultation_added",
         user_id=str(current_user.id),
         dpia_id=str(dpia_id),
-        approval=request.approval,
+        approval=body.approval,
     )
 
     return dpia.to_dict()
 
 
 @router.get("/{dpia_id}/recommendations", response_model=List[RecommendationResponse])
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_recommendations(
+    request: Request,
     dpia_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -424,7 +441,9 @@ async def get_recommendations(
 
 
 @router.get("/{dpia_id}/audit-trail")
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_audit_trail(
+    request: Request,
     dpia_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

@@ -46,6 +46,16 @@ _mock_gpu_modules()
 # This must happen before pydantic_settings loads the .env file
 os.environ.setdefault("DEBUG", "true")
 
+# B4 (2026-05-19): Rate-Limiter (slowapi) im Unit-Test-Pfad deaktivieren.
+# Ohne diesen Switch versucht slowapi sich an Redis (localhost:6380) zu binden
+# und schlaegt mit ConnectionError fehl, sobald ein Endpoint mit
+# @limiter.limit-Decorator direkt aus Tests aufgerufen wird.
+try:
+    from app.core.rate_limiting import limiter as _ratelimit_limiter
+    _ratelimit_limiter.enabled = False
+except Exception:
+    pass
+
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

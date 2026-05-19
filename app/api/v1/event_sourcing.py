@@ -7,7 +7,7 @@ from app.core.types import JSONDict
 from uuid import UUID
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +15,7 @@ from app.api.dependencies import get_db, get_current_user
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.db.models import User
 from app.services.event_sourcing import EventStore, ProjectionService, SnapshotService
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -129,7 +130,9 @@ class EventStatsResponse(BaseModel):
     summary="Events abrufen",
     description="Holt alle Events für ein Aggregat in zeitlicher Reihenfolge."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_events(
+    request: Request,
     aggregate_type: str,
     aggregate_id: UUID,
     after_sequence: int = Query(0, description="Nur Events nach dieser Sequenznummer"),
@@ -180,7 +183,9 @@ async def get_events(
     summary="Snapshot abrufen",
     description="Holt den neuesten Snapshot für ein Aggregat."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_snapshot(
+    request: Request,
     aggregate_type: str,
     aggregate_id: UUID,
     current_user: User = Depends(get_current_user),
@@ -222,7 +227,9 @@ async def get_snapshot(
     summary="Projektion abrufen",
     description="Rekonstruiert den aktuellen Zustand durch Event-Replay."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_projection(
+    request: Request,
     aggregate_type: str,
     aggregate_id: UUID,
     at_sequence: Optional[int] = Query(None, description="Zustand bei Sequenznummer (Zeitreise)"),
@@ -292,7 +299,9 @@ async def get_projection(
     summary="Event-Statistiken",
     description="Holt Statistiken über Events und Snapshots."
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_event_stats(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> EventStatsResponse:

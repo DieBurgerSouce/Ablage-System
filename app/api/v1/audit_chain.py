@@ -17,7 +17,7 @@ from uuid import UUID
 
 from app.core.types import JSONDict
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
 
@@ -26,6 +26,7 @@ from app.api.dependencies import get_db, get_current_active_user, get_current_co
 from app.services.compliance.merkle_tree_service import MerkleTreeService
 from app.core.safe_errors import safe_error_detail, safe_error_log
 from app.core.security_auth import build_content_disposition
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -56,7 +57,9 @@ class VerifyProofRequest(BaseModel):
     summary="Audit-Chain Status",
     description="Allgemeine Statistiken zur Audit-Chain"
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_status(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
@@ -110,7 +113,9 @@ async def get_status(
     summary="Merkle Proof",
     description="Generiert Merkle Proof für einzelnen Eintrag"
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_merkle_proof(
+    request: Request,
     entry_hash: str,
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
@@ -174,8 +179,10 @@ async def get_merkle_proof(
     summary="Proof verifizieren",
     description="Verifiziert Merkle Proof"
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def verify_proof(
-    request: VerifyProofRequest,
+    request: Request,
+    body: VerifyProofRequest,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ) -> JSONDict:
@@ -202,7 +209,7 @@ async def verify_proof(
     """
     logger.info(
         "audit_chain.verify_proof",
-        entry_hash=request.entry_hash[:16] + "...",
+        entry_hash=body.entry_hash[:16] + "...",
         user_id=str(current_user.id),
     )
 
@@ -212,9 +219,9 @@ async def verify_proof(
         from app.services.compliance.merkle_tree_service import MerkleProof
 
         proof = MerkleProof(
-            entry_hash=request.entry_hash,
-            root_hash=request.root_hash,
-            proof_path=request.proof_path,
+            entry_hash=body.entry_hash,
+            root_hash=body.root_hash,
+            proof_path=body.proof_path,
             verified=False,
         )
 
@@ -222,14 +229,14 @@ async def verify_proof(
 
         return {
             "verified": verified,
-            "entry_hash": request.entry_hash,
-            "root_hash": request.root_hash,
+            "entry_hash": body.entry_hash,
+            "root_hash": body.root_hash,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
         logger.error(
             "audit_chain.verify_proof_failed",
-            entry_hash=request.entry_hash[:16] + "...",
+            entry_hash=body.entry_hash[:16] + "...",
             **safe_error_log(e),
         )
         raise HTTPException(
@@ -244,7 +251,9 @@ async def verify_proof(
     summary="Integritaets-Report",
     description="Detaillierter Integritaets-Report der Audit-Chain"
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_integrity_report(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     company_id: UUID = Depends(get_current_company_id),
     db: AsyncSession = Depends(get_db),
@@ -291,7 +300,9 @@ async def get_integrity_report(
     description="Exportiert Audit-Chain mit Merkle Tree (JSON)",
     response_class=Response,
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def export_chain(
+    request: Request,
     from_date: datetime = Query(
         default=None,
         description="Start-Datum (ISO 8601)",

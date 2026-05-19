@@ -18,7 +18,7 @@ from uuid import UUID
 from app.core.types import JSONDict
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,13 +27,13 @@ from app.api.v1.workflows import get_user_company_id
 from app.db.models import User
 from app.core.safe_errors import safe_error_log, safe_error_detail
 from app.services.external.supplier_verification_service import (
-
     SupplierVerificationService,
     VerificationResult,
     VerificationSource,
     VerificationStatus,
     VerificationSeverity,
 )
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -171,9 +171,11 @@ class VerificationNeededResponse(BaseModel):
     response_model=VerificationResultResponse,
     summary="Entity verifizieren",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def verify_entity(
+    request: Request,
     entity_id: UUID,
-    request: VerifyRequest,
+    body: VerifyRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> VerificationResultResponse:
@@ -198,9 +200,9 @@ async def verify_entity(
 
     # Sources parsen
     sources = None
-    if request.sources:
+    if body.sources:
         try:
-            sources = [VerificationSource(s) for s in request.sources]
+            sources = [VerificationSource(s) for s in body.sources]
         except ValueError as e:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -211,7 +213,7 @@ async def verify_entity(
         result = await service.verify_entity(
             entity_id=entity_id,
             company_id=company_id,
-            force_refresh=request.force_refresh,
+            force_refresh=body.force_refresh,
             sources=sources,
         )
     except Exception as e:
@@ -233,7 +235,9 @@ async def verify_entity(
     response_model=VerificationResultResponse,
     summary="Verifizierungsstatus abrufen",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_verification_status(
+    request: Request,
     entity_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -271,8 +275,10 @@ async def get_verification_status(
     response_model=BatchVerifyResponse,
     summary="Batch-Verifizierung",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def batch_verify_entities(
-    request: BatchVerifyRequest,
+    request: Request,
+    body: BatchVerifyRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> BatchVerifyResponse:
@@ -290,9 +296,9 @@ async def batch_verify_entities(
     service = SupplierVerificationService(db)
 
     results = await service.batch_verify(
-        entity_ids=request.entity_ids,
+        entity_ids=body.entity_ids,
         company_id=company_id,
-        force_refresh=request.force_refresh,
+        force_refresh=body.force_refresh,
     )
 
     response_results: Dict[str, VerificationResultResponse] = {}
@@ -319,7 +325,9 @@ async def batch_verify_entities(
     response_model=VerificationNeededResponse,
     summary="Entities die verifiziert werden sollten",
 )
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_entities_needing_verification(
+    request: Request,
     limit: int = Query(default=50, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),

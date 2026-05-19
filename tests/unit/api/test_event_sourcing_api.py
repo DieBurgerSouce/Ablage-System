@@ -27,6 +27,15 @@ from app.api.v1.event_sourcing import (
 pytestmark = [pytest.mark.unit, pytest.mark.api]
 
 
+@pytest.fixture
+def mock_request():
+    """slowapi @limiter requires a Request instance - mock with starlette."""
+    from starlette.requests import Request
+    scope = {"type": "http", "method": "GET", "path": "/", "headers": [], "client": ("test", 0)}
+    return Request(scope)
+
+
+
 # ========================= Fixtures =========================
 
 
@@ -109,7 +118,7 @@ class TestGetEventsValidation:
 
             with pytest.raises(HTTPException) as exc:
                 await get_events(
-                    aggregate_type="evil_type",
+                    request=mock_request, aggregate_type="evil_type",
                     aggregate_id=uuid4(),
                     after_sequence=0,
                     current_user=user,
@@ -119,7 +128,7 @@ class TestGetEventsValidation:
         # EventStore.get_events darf NICHT aufgerufen worden sein
         assert called == [], "EventStore wurde trotz invalid aggregate_type aufgerufen"
 
-    async def test_valid_aggregate_type_reaches_service(self, user, mock_db):
+    async def test_valid_aggregate_type_reaches_service(self, user, mock_db, mock_request):
         called = []
 
         class FakeStore:
@@ -131,7 +140,7 @@ class TestGetEventsValidation:
             from app.api.v1.event_sourcing import get_events
 
             result = await get_events(
-                aggregate_type="document",
+                request=mock_request, aggregate_type="document",
                 aggregate_id=uuid4(),
                 after_sequence=0,
                 current_user=user,
@@ -158,7 +167,7 @@ class TestGetSnapshotValidation:
 
             with pytest.raises(HTTPException) as exc:
                 await get_snapshot(
-                    aggregate_type="'; DROP TABLE snapshots --",
+                    request=mock_request, aggregate_type="'; DROP TABLE snapshots --",
                     aggregate_id=uuid4(),
                     current_user=user,
                     db=mock_db,
@@ -198,7 +207,7 @@ class TestGetProjectionValidation:
 
             with pytest.raises(HTTPException) as exc:
                 await get_projection(
-                    aggregate_type="../etc/passwd",
+                    request=mock_request, aggregate_type="../etc/passwd",
                     aggregate_id=uuid4(),
                     at_sequence=None,
                     current_user=user,

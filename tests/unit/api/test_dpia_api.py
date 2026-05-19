@@ -19,6 +19,15 @@ from fastapi import HTTPException, status
 pytestmark = [pytest.mark.unit, pytest.mark.api, pytest.mark.security]
 
 
+@pytest.fixture
+def mock_request():
+    """slowapi @limiter requires a Request instance - mock with starlette."""
+    from starlette.requests import Request
+    scope = {"type": "http", "method": "GET", "path": "/", "headers": [], "client": ("test", 0)}
+    return Request(scope)
+
+
+
 # ========================= Fixtures =========================
 
 
@@ -67,7 +76,7 @@ def _make_dpia(company_id):
 class TestGetDpiaMultiTenant:
     """K4: GET /{dpia_id} darf nur eigene Company sehen."""
 
-    async def test_own_company_dpia_is_returned(self, user_company_a, mock_db):
+    async def test_own_company_dpia_is_returned(self, user_company_a, mock_db, mock_request):
         dpia = _make_dpia(user_company_a.company_id)
         mock_svc = Mock()
         mock_svc.get_by_id = AsyncMock(return_value=dpia)
@@ -76,7 +85,7 @@ class TestGetDpiaMultiTenant:
             from app.api.v1.dpia import get_dpia
 
             result = await get_dpia(
-                dpia_id=dpia.id, db=mock_db, current_user=user_company_a
+                request=mock_request, dpia_id=dpia.id, db=mock_db, current_user=user_company_a
             )
 
         # Service wurde mit company_id-Filter aufgerufen
@@ -85,7 +94,7 @@ class TestGetDpiaMultiTenant:
         )
         assert result == dpia.to_dict.return_value
 
-    async def test_cross_tenant_returns_404(self, user_company_a, mock_db):
+    async def test_cross_tenant_returns_404(self, user_company_a, mock_db, mock_request):
         """Service liefert None weil WHERE company_id=A nicht matched -> 404."""
         mock_svc = Mock()
         mock_svc.get_by_id = AsyncMock(return_value=None)
@@ -95,7 +104,7 @@ class TestGetDpiaMultiTenant:
 
             with pytest.raises(HTTPException) as exc:
                 await get_dpia(
-                    dpia_id=uuid4(), db=mock_db, current_user=user_company_a
+                    request=mock_request, dpia_id=uuid4(), db=mock_db, current_user=user_company_a
                 )
         assert exc.value.status_code == status.HTTP_404_NOT_FOUND
 
@@ -113,7 +122,7 @@ class TestGetDpiaMultiTenant:
 
             with pytest.raises(HTTPException) as exc:
                 await get_dpia(
-                    dpia_id=legacy_dpia.id, db=mock_db, current_user=user_company_a
+                    request=mock_request, dpia_id=legacy_dpia.id, db=mock_db, current_user=user_company_a
                 )
         # 404 statt 403 -> kein Info-Leak ueber Existenz
         assert exc.value.status_code == status.HTTP_404_NOT_FOUND
@@ -132,7 +141,7 @@ class TestGetDpiaMultiTenant:
 
             with pytest.raises(HTTPException) as exc:
                 await get_dpia(
-                    dpia_id=foreign_dpia.id,
+                    request=mock_request, dpia_id=foreign_dpia.id,
                     db=mock_db,
                     current_user=user_company_a,
                 )
@@ -157,8 +166,8 @@ class TestUpdateDpiaStatusMultiTenant:
 
             req = UpdateStatusRequest(status="review", comment="ok")
             await update_dpia_status(
-                dpia_id=dpia.id,
-                request=req,
+                request=mock_request, dpia_id=dpia.id,
+                body=req,
                 db=mock_db,
                 current_user=user_company_a,
             )
@@ -166,7 +175,7 @@ class TestUpdateDpiaStatusMultiTenant:
         kwargs = mock_svc.update_status.await_args.kwargs
         assert kwargs["company_id"] == user_company_a.company_id
 
-    async def test_cross_tenant_update_raises_404(self, user_company_a, mock_db):
+    async def test_cross_tenant_update_raises_404(self, user_company_a, mock_db, mock_request):
         """Service wirft ValueError (nicht gefunden) bei Cross-Tenant -> 404."""
         mock_svc = Mock()
         mock_svc.update_status = AsyncMock(
@@ -179,8 +188,8 @@ class TestUpdateDpiaStatusMultiTenant:
             req = UpdateStatusRequest(status="review", comment="x")
             with pytest.raises(HTTPException) as exc:
                 await update_dpia_status(
-                    dpia_id=uuid4(),
-                    request=req,
+                    request=mock_request, dpia_id=uuid4(),
+                    body=req,
                     db=mock_db,
                     current_user=user_company_a,
                 )
@@ -191,7 +200,7 @@ class TestUpdateDpiaStatusMultiTenant:
 
 
 class TestAddDpoConsultationMultiTenant:
-    async def test_passes_company_id(self, user_company_a, mock_db):
+    async def test_passes_company_id(self, user_company_a, mock_db, mock_request):
         dpia = _make_dpia(user_company_a.company_id)
         mock_svc = Mock()
         mock_svc.add_dpo_consultation = AsyncMock(return_value=dpia)
@@ -209,8 +218,8 @@ class TestAddDpoConsultationMultiTenant:
                 conditions=[],
             )
             await add_dpo_consultation(
-                dpia_id=dpia.id,
-                request=req,
+                request=mock_request, dpia_id=dpia.id,
+                body=req,
                 db=mock_db,
                 current_user=user_company_a,
             )
@@ -234,7 +243,7 @@ class TestRecommendationsAndAuditMultiTenant:
 
             with pytest.raises(HTTPException) as exc:
                 await get_recommendations(
-                    dpia_id=uuid4(),
+                    request=mock_request, dpia_id=uuid4(),
                     db=mock_db,
                     current_user=user_company_a,
                 )
@@ -252,7 +261,7 @@ class TestRecommendationsAndAuditMultiTenant:
 
             with pytest.raises(HTTPException) as exc:
                 await get_recommendations(
-                    dpia_id=legacy.id,
+                    request=mock_request, dpia_id=legacy.id,
                     db=mock_db,
                     current_user=user_company_a,
                 )
@@ -270,13 +279,13 @@ class TestRecommendationsAndAuditMultiTenant:
 
             with pytest.raises(HTTPException) as exc:
                 await get_audit_trail(
-                    dpia_id=foreign.id,
+                    request=mock_request, dpia_id=foreign.id,
                     db=mock_db,
                     current_user=user_company_a,
                 )
         assert exc.value.status_code == status.HTTP_404_NOT_FOUND
 
-    async def test_audit_trail_passes_company_id(self, user_company_a, mock_db):
+    async def test_audit_trail_passes_company_id(self, user_company_a, mock_db, mock_request):
         dpia = _make_dpia(user_company_a.company_id)
         mock_svc = Mock()
         mock_svc.get_by_id = AsyncMock(return_value=dpia)
@@ -285,7 +294,7 @@ class TestRecommendationsAndAuditMultiTenant:
             from app.api.v1.dpia import get_audit_trail
 
             result = await get_audit_trail(
-                dpia_id=dpia.id, db=mock_db, current_user=user_company_a
+                request=mock_request, dpia_id=dpia.id, db=mock_db, current_user=user_company_a
             )
         mock_svc.get_by_id.assert_awaited_once_with(
             mock_db, dpia.id, company_id=user_company_a.company_id

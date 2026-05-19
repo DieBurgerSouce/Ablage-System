@@ -11,7 +11,7 @@ from app.core.types import JSONDict
 from uuid import UUID
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,7 @@ from app.services.compliance.autopilot_service import (
     RetentionReport,
     GDPRCheckResult,
 )
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -106,7 +107,9 @@ class AuditPreparationRequest(BaseModel):
 
 
 @router.post("/scan", response_model=ComplianceScanResponse)
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def run_compliance_scan(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ComplianceScanResponse:
@@ -167,7 +170,9 @@ async def run_compliance_scan(
 
 
 @router.get("/retention", response_model=RetentionReportResponse)
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_retention_report(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> RetentionReportResponse:
@@ -216,8 +221,10 @@ async def get_retention_report(
 
 
 @router.post("/audit-preparation")
+@limiter.limit("2/hour", key_func=get_user_identifier)
 async def prepare_audit_package(
-    request: AuditPreparationRequest,
+    request: Request,
+    body: AuditPreparationRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> StreamingResponse:
@@ -230,7 +237,7 @@ async def prepare_audit_package(
     - Dokumenten nach Typ sortiert
 
     Args:
-        request: Audit-Request mit Zeitraum
+        body: Audit-Request mit Zeitraum
         current_user: Aktueller Benutzer
         db: Datenbank-Session
 
@@ -240,14 +247,14 @@ async def prepare_audit_package(
     logger.info(
         "audit_preparation_requested",
         user_id=str(current_user.id),
-        date_range=(request.start_date, request.end_date),
+        date_range=(body.start_date, body.end_date),
     )
 
     try:
         service = ComplianceAutopilotService()
         package = await service.prepare_audit(
             company_id=current_user.company_id,
-            date_range=(request.start_date, request.end_date),
+            date_range=(body.start_date, body.end_date),
             db=db,
         )
 
@@ -269,7 +276,9 @@ async def prepare_audit_package(
 
 
 @router.post("/gdpr-check", response_model=GDPRCheckResponse)
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def run_gdpr_check(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> GDPRCheckResponse:
@@ -317,7 +326,9 @@ async def run_gdpr_check(
 
 
 @router.get("/status", response_model=ComplianceScanResponse)
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_last_scan_status(
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> ComplianceScanResponse:

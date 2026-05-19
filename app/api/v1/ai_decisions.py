@@ -18,7 +18,7 @@ from uuid import UUID
 
 from app.core.types import JSONDict
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select, and_, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,7 @@ from app.api.dependencies import get_current_active_user, get_db
 from app.db.models import User, AIDecision, Document
 from app.core.german_messages import HTTPErrors
 from app.core.safe_errors import safe_error_detail, safe_error_log
+from app.core.rate_limiting import limiter, get_user_identifier
 
 logger = structlog.get_logger(__name__)
 
@@ -142,7 +143,9 @@ class DecisionExplanationResponse(BaseModel):
 # =============================================================================
 
 @router.get("/", response_model=AIDecisionListResponse)
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def list_ai_decisions(
+    request: Request,
     page: int = Query(1, ge=1, description="Seitennummer"),
     page_size: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     document_id: Optional[UUID] = Query(None, description="Filter nach Dokument"),
@@ -201,7 +204,9 @@ async def list_ai_decisions(
 
 
 @router.get("/stats", response_model=DecisionStatsSchema)
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_decision_stats(
+    request: Request,
     days: int = Query(30, ge=1, le=365, description="Zeitraum in Tagen"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -292,7 +297,9 @@ async def get_decision_stats(
 
 
 @router.get("/{decision_id}", response_model=AIDecisionDetailSchema)
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_ai_decision(
+    request: Request,
     decision_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -356,7 +363,9 @@ async def get_ai_decision(
 
 
 @router.post("/{decision_id}/feedback")
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def submit_feedback(
+    request: Request,
     decision_id: UUID,
     feedback: FeedbackRequest,
     db: AsyncSession = Depends(get_db),
@@ -418,7 +427,9 @@ async def submit_feedback(
 
 
 @router.post("/{decision_id}/accept")
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def accept_decision(
+    request: Request,
     decision_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -468,7 +479,9 @@ async def accept_decision(
 
 
 @router.post("/{decision_id}/reject")
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def reject_decision(
+    request: Request,
     decision_id: UUID,
     correction: Optional[JSONDict] = None,
     db: AsyncSession = Depends(get_db),
@@ -520,8 +533,10 @@ async def reject_decision(
 
 
 @router.post("/explain", response_model=DecisionExplanationResponse)
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def explain_decision(
-    request: DecisionExplanationRequest,
+    request: Request,
+    body: DecisionExplanationRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ) -> DecisionExplanationResponse:
@@ -538,18 +553,18 @@ async def explain_decision(
     explainability = get_explainability_service()
 
     try:
-        if request.decision_type == "health_score":
-            explanation = await explainability.explain_health_score(request.context)
-        elif request.decision_type == "early_warning":
-            explanation = await explainability.explain_early_warning(request.context)
-        elif request.decision_type == "recommendation":
+        if body.decision_type == "health_score":
+            explanation = await explainability.explain_health_score(body.context)
+        elif body.decision_type == "early_warning":
+            explanation = await explainability.explain_early_warning(body.context)
+        elif body.decision_type == "recommendation":
             explanation = await explainability.explain_recommendation(
-                request.context.get("id") or UUID("00000000-0000-0000-0000-000000000000"),
-                request.context,
+                body.context.get("id") or UUID("00000000-0000-0000-0000-000000000000"),
+                body.context,
             )
         else:
             # Generische Erklärung
-            explanation = await explainability._explain_generic(request.context)
+            explanation = await explainability._explain_generic(body.context)
 
         return DecisionExplanationResponse(
             headline=explanation.headline,
@@ -588,7 +603,9 @@ async def explain_decision(
 
 
 @router.get("/document/{document_id}", response_model=List[AIDecisionSchema])
+@limiter.limit("60/minute", key_func=get_user_identifier)
 async def get_document_decisions(
+    request: Request,
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),

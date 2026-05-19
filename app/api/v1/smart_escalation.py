@@ -15,7 +15,7 @@ from uuid import UUID
 
 from app.core.types import JSONDict
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,6 +30,7 @@ from app.services.collaboration.smart_escalation_service import (
     FactorWeights,
     get_smart_escalation_service,
 )
+from app.core.rate_limiting import limiter, get_user_identifier
 
 import structlog
 
@@ -230,8 +231,10 @@ class AssignmentRequest(BaseModel):
     summary="Zuweisungsempfehlung holen",
     description="Ermittelt die beste Zuweisung für eine Aufgabe basierend auf KI-Faktoren.",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_assignment_recommendation(
-    request: AssignmentRequest,
+    request: Request,
+    body: AssignmentRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -241,32 +244,32 @@ async def get_assignment_recommendation(
 
     # Gewichtung validieren falls angegeben
     weights = None
-    if request.weights:
-        if not request.weights.validate_sum():
+    if body.weights:
+        if not body.weights.validate_sum():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Gewichtungen müssen sich zu 1.0 summieren",
             )
-        weights = request.weights.to_factor_weights()
+        weights = body.weights.to_factor_weights()
 
     # Parse UUIDs
-    document_id = UUID(request.document_id) if request.document_id else None
-    entity_id = UUID(request.entity_id) if request.entity_id else None
+    document_id = UUID(body.document_id) if body.document_id else None
+    entity_id = UUID(body.entity_id) if body.entity_id else None
     exclude_ids = (
-        [UUID(uid) for uid in request.exclude_user_ids]
-        if request.exclude_user_ids
+        [UUID(uid) for uid in body.exclude_user_ids]
+        if body.exclude_user_ids
         else None
     )
 
     recommendation = await service.get_assignment_recommendation(
         company_id=company.id,
         document_id=document_id,
-        document_type=request.document_type,
+        document_type=body.document_type,
         entity_id=entity_id,
-        task_type=request.task_type,
+        task_type=body.task_type,
         exclude_user_ids=exclude_ids,
         weights=weights,
-        max_candidates=request.max_candidates,
+        max_candidates=body.max_candidates,
     )
 
     if not recommendation:
@@ -292,7 +295,9 @@ async def get_assignment_recommendation(
     summary="Zuweisungsempfehlung holen (GET)",
     description="Ermittelt die beste Zuweisung mit Query-Parametern.",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_assignment_recommendation_query(
+    request: Request,
     document_id: Optional[str] = Query(default=None, description="Dokument-ID"),
     document_type: Optional[str] = Query(default=None, description="Dokumenttyp"),
     entity_id: Optional[str] = Query(default=None, description="Entity-ID"),
@@ -333,7 +338,9 @@ async def get_assignment_recommendation_query(
     summary="Team-Auslastung anzeigen",
     description="Zeigt Auslastungsübersicht für alle Team-Mitglieder.",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_team_workload(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
     company: Company = Depends(require_company),
@@ -370,7 +377,9 @@ async def get_team_workload(
     summary="User-Scores anzeigen",
     description="Zeigt alle Scores eines bestimmten Users (für Debugging/Analyse).",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_user_scores(
+    request: Request,
     user_id: str,
     document_type: Optional[str] = Query(default=None, description="Dokumenttyp"),
     entity_id: Optional[str] = Query(default=None, description="Entity-ID"),
@@ -413,7 +422,9 @@ async def get_user_scores(
     summary="Verfügbare Faktoren anzeigen",
     description="Listet alle verfügbaren Zuweisungsfaktoren und Standardgewichtungen auf.",
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def get_available_factors(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
 ) -> JSONDict:
     """Hole verfügbare Faktoren und Konfiguration."""
