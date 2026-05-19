@@ -855,8 +855,22 @@ class DPIAService:
         # Konvertiere zu Dataclass
         return await self._model_to_dataclass(dpia_model)
 
-    async def get_by_id(self, db: AsyncSession, dpia_id: UUID) -> Optional[DPIA]:
-        """Hole DPIA nach ID."""
+    async def get_by_id(
+        self,
+        db: AsyncSession,
+        dpia_id: UUID,
+        company_id: Optional[UUID] = None,
+    ) -> Optional[DPIA]:
+        """Hole DPIA nach ID.
+
+        Multi-Tenant: Wenn company_id uebergeben wird, MUSS die DPIA zu
+        dieser Company gehoeren. NULL-company_id auf der Row laesst keinen
+        Zugriff durch (defense-in-depth gegen Legacy-Rows ohne Tenant).
+        """
+        conditions = [DPIAModel.id == dpia_id]
+        if company_id is not None:
+            conditions.append(DPIAModel.company_id == company_id)
+
         stmt = (
             select(DPIAModel)
             .options(
@@ -867,7 +881,7 @@ class DPIAService:
                 selectinload(DPIAModel.consultation),
                 selectinload(DPIAModel.audit_logs),
             )
-            .where(DPIAModel.id == dpia_id)
+            .where(and_(*conditions))
         )
         result = await db.execute(stmt)
         dpia_model = result.scalar_one_or_none()
@@ -917,21 +931,18 @@ class DPIAService:
         new_status: DPIAStatus,
         user_name: str,
         comment: str = "",
+        company_id: Optional[UUID] = None,
     ) -> DPIA:
         """
         Aktualisiere DPIA Status.
 
-        Args:
-            db: Database session
-            dpia_id: DPIA ID
-            new_status: Neuer Status
-            user_name: Name des Benutzers
-            comment: Optionaler Kommentar
-
-        Returns:
-            Aktualisierte DPIA
+        Multi-Tenant: Wenn company_id uebergeben wird, MUSS die DPIA zu
+        dieser Company gehoeren. Cross-Tenant-Zugriff = ValueError (404).
         """
-        stmt = select(DPIAModel).where(DPIAModel.id == dpia_id)
+        conditions = [DPIAModel.id == dpia_id]
+        if company_id is not None:
+            conditions.append(DPIAModel.company_id == company_id)
+        stmt = select(DPIAModel).where(and_(*conditions))
         result = await db.execute(stmt)
         dpia_model = result.scalar_one_or_none()
 
@@ -971,23 +982,18 @@ class DPIAService:
         recommendations: List[str],
         approval: bool,
         conditions: List[str] = None,
+        company_id: Optional[UUID] = None,
     ) -> DPIA:
         """
         Fuege DPO-Konsultation hinzu.
 
-        Args:
-            db: Database session
-            dpia_id: DPIA ID
-            dpo_name: Name des DPO
-            opinion: Stellungnahme
-            recommendations: Empfehlungen
-            approval: Genehmigt (True/False)
-            conditions: Optionale Bedingungen
-
-        Returns:
-            Aktualisierte DPIA
+        Multi-Tenant: Wenn company_id uebergeben wird, MUSS die DPIA zu
+        dieser Company gehoeren. Cross-Tenant-Zugriff = ValueError (404).
         """
-        stmt = select(DPIAModel).where(DPIAModel.id == dpia_id)
+        where_conditions = [DPIAModel.id == dpia_id]
+        if company_id is not None:
+            where_conditions.append(DPIAModel.company_id == company_id)
+        stmt = select(DPIAModel).where(and_(*where_conditions))
         result = await db.execute(stmt)
         dpia_model = result.scalar_one_or_none()
 

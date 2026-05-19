@@ -299,7 +299,7 @@ async def get_dpia(
 ) -> JSONDict:
     """Hole DPIA nach ID."""
     service = get_dpia_service()
-    dpia = await service.get_by_id(db, dpia_id)
+    dpia = await service.get_by_id(db, dpia_id, company_id=current_user.company_id)
 
     if not dpia:
         raise HTTPException(
@@ -307,11 +307,11 @@ async def get_dpia(
             detail="DPIA nicht gefunden",
         )
 
-    # Prüfe Zugriff
-    if dpia.company_id and dpia.company_id != current_user.company_id:
+    # Defense-in-depth: NULL company_id wird ebenfalls abgelehnt
+    if dpia.company_id != current_user.company_id:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Kein Zugriff auf diese DPIA",
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="DPIA nicht gefunden",
         )
 
     return dpia.to_dict()
@@ -343,6 +343,7 @@ async def update_dpia_status(
             new_status=new_status,
             user_name=current_user.full_name or current_user.email,
             comment=request.comment,
+            company_id=current_user.company_id,
         )
     except ValueError as e:
         raise HTTPException(
@@ -383,6 +384,7 @@ async def add_dpo_consultation(
             recommendations=request.recommendations,
             approval=request.approval,
             conditions=request.conditions,
+            company_id=current_user.company_id,
         )
     except ValueError as e:
         raise HTTPException(
@@ -408,9 +410,9 @@ async def get_recommendations(
 ) -> List[RecommendationResponse]:
     """Generiere Empfehlungen basierend auf Risikoprofil."""
     service = get_dpia_service()
-    dpia = await service.get_by_id(db, dpia_id)
+    dpia = await service.get_by_id(db, dpia_id, company_id=current_user.company_id)
 
-    if not dpia:
+    if not dpia or dpia.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="DPIA nicht gefunden",
@@ -429,9 +431,9 @@ async def get_audit_trail(
 ) -> List[JSONDict]:
     """Hole Audit-Trail der DPIA."""
     service = get_dpia_service()
-    dpia = await service.get_by_id(db, dpia_id)
+    dpia = await service.get_by_id(db, dpia_id, company_id=current_user.company_id)
 
-    if not dpia:
+    if not dpia or dpia.company_id != current_user.company_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="DPIA nicht gefunden",
