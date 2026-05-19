@@ -143,9 +143,10 @@ run-*.js
 .playwright-mcp/
 .mcp.json
 
-# Alerting secrets (Sprint 0 / G01)
+# Alerting secrets (Sprint 0 / G01, Task D)
 infrastructure/alerting/slack-webhook.url
 infrastructure/alerting/teams-webhook.url
+infrastructure/alerting/smtp-password
 
 # Prometheus scrape tokens (mounted into prometheus container)
 infrastructure/prometheus/qdrant_metrics_token

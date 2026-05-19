@@ -1226,6 +1226,9 @@ services:
       # Sprint 0 / G01: Slack-Webhook-URL als Datei (in .gitignore!)
       # Erstelle: infrastructure/alerting/slack-webhook.url (eine Zeile, kein Newline)
       - ./infrastructure/alerting/slack-webhook.url:/etc/alertmanager/slack-webhook.url:ro
+      # Task D (2026-05-19): SMTP-Passwort als Datei (in .gitignore!)
+      # Erstelle: echo 'DEIN_PASSWORD' > infrastructure/alerting/smtp-password && chmod 600 ...
+      - ./infrastructure/alerting/smtp-password:/etc/alertmanager/smtp-password:ro
       - alertmanager_data:/alertmanager
     ports:
       - "127.0.0.1:9093:9093"  # Nur localhost

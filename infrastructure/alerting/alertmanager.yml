@@ -1,6 +1,17 @@
 # Alertmanager Configuration - Ablage-System OCR
 # Produktionskonfiguration mit Email-Routing nach Schweregrad
 # Konfiguration: Platzhalter durch echte Werte in .env ersetzen
+#
+# SMTP-Setup (Task D, 2026-05-19):
+#   SMTP-Passwort liegt als Datei: /etc/alertmanager/smtp-password
+#   Lokal: infrastructure/alerting/smtp-password (in .gitignore!)
+#   Setup-Befehl:
+#     echo 'DEIN_SMTP_PASSWORD' > infrastructure/alerting/smtp-password
+#     chmod 600 infrastructure/alerting/smtp-password
+#     docker-compose restart alertmanager
+#   Pattern analog zu slack-webhook.url (G01).
+#   auth_username sollte i.d.R. mit "from" identisch sein - bei abweichender
+#   Provider-Konvention hier anpassen.
 
 global:
   # 2026-05-06: 5m -> 1m, damit "Resolved"-State schneller propagiert
@@ -54,8 +65,8 @@ receivers:
         # Absender-Adresse (konfigurierbar via SMTP_FROM in .env)
         from: 'alertmanager@ablage-system.local'
         # Authentifizierung: SMTP_USERNAME und SMTP_PASSWORD in .env setzen
-        auth_username: ''
-        auth_password: ''
+        auth_username: 'alertmanager@ablage-system.local'
+        auth_password_file: '/etc/alertmanager/smtp-password'
         # Empfaenger: EMAIL_RECIPIENTS in .env konfigurieren
         to: 'ops-team@internal.local'
         # TLS aktivieren (empfohlen fuer Production)
@@ -101,8 +112,8 @@ receivers:
     email_configs:
       - smarthost: 'localhost:587'
         from: 'alertmanager@ablage-system.local'
-        auth_username: ''
-        auth_password: ''
+        auth_username: 'alertmanager@ablage-system.local'
+        auth_password_file: '/etc/alertmanager/smtp-password'
         to: 'ops-team@internal.local'
         require_tls: true
         headers:
@@ -133,8 +144,8 @@ receivers:
     email_configs:
       - smarthost: 'localhost:587'
         from: 'alertmanager@ablage-system.local'
-        auth_username: ''
-        auth_password: ''
+        auth_username: 'alertmanager@ablage-system.local'
+        auth_password_file: '/etc/alertmanager/smtp-password'
         to: 'ops-team@internal.local'
         require_tls: true
         headers:
