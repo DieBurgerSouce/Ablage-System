@@ -14,21 +14,100 @@ Feinpoliert und durchdacht - Benutzerdefinierte Benachrichtigungsregeln.
 
 import structlog
 from typing import Dict, List, Optional, Union
+from enum import Enum
 
 from app.core.types import JSONDict
 from uuid import UUID
 from datetime import time
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel, Field, ConfigDict
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User, NotificationRule
 from app.api.dependencies import get_current_user, get_db
+from app.core.rate_limiting import limiter, get_user_identifier
 from app.services.notification.rule_engine import (
     get_notification_rule_engine,
     NotificationRuleEngine,
 )
+
+
+# =============================================================================
+# K5 (CRITICAL): Constraints fuer /test Endpoint (DoS-Schutz)
+# =============================================================================
+
+# Whitelist erlaubter Operatoren - alles andere fuehrt zu 422
+_ALLOWED_OPERATORS = frozenset({
+    "eq", "ne", "gt", "gte", "lt", "lte",
+    "contains", "starts_with", "ends_with",
+    "in", "not_in",
+    "and", "or", "not", "AND", "OR", "NOT",
+})
+
+# Max-Limits fuer rekursiv-nested JSON-Payloads
+_TEST_MAX_DEPTH = 5
+_TEST_MAX_TOTAL_NODES = 200
+_TEST_MAX_STRING_LEN = 10_000
+
+
+def _validate_test_payload(payload: object, depth: int = 0, counter: List[int] = None) -> None:
+    """Validiert dict/list/string Tiefe + Groesse + Operatoren rekursiv.
+
+    Raises HTTPException(422) bei Verstoss. Zaehler ist eine 1-Element-Liste
+    (Python-Closure-Workaround), damit der Knoten-Counter ueber Rekursionen
+    hinweg konsistent bleibt.
+    """
+    if counter is None:
+        counter = [0]
+
+    if depth > _TEST_MAX_DEPTH:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Payload zu tief verschachtelt (max {_TEST_MAX_DEPTH})",
+        )
+
+    counter[0] += 1
+    if counter[0] > _TEST_MAX_TOTAL_NODES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Payload hat zu viele Knoten (max {_TEST_MAX_TOTAL_NODES})",
+        )
+
+    if isinstance(payload, dict):
+        if len(payload) > 100:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Dict zu gross (max 100 Keys)",
+            )
+        for key, value in payload.items():
+            if not isinstance(key, str) or len(key) > 200:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Dict-Key ungueltig oder zu lang",
+                )
+            # Operator-Felder gegen Whitelist pruefen
+            if key in ("op", "operator") and isinstance(value, str):
+                if value not in _ALLOWED_OPERATORS:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail=f"Operator '{value}' nicht erlaubt",
+                    )
+            _validate_test_payload(value, depth + 1, counter)
+    elif isinstance(payload, list):
+        if len(payload) > 100:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Liste zu gross (max 100 Items)",
+            )
+        for item in payload:
+            _validate_test_payload(item, depth + 1, counter)
+    elif isinstance(payload, str):
+        if len(payload) > _TEST_MAX_STRING_LEN:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"String zu lang (max {_TEST_MAX_STRING_LEN})",
+            )
 
 logger = structlog.get_logger(__name__)
 
@@ -495,12 +574,22 @@ async def get_rule_statistics(
     summary="Regel testen",
     description="Testet eine Regel gegen simulierte Event-Daten."
 )
+@limiter.limit("30/minute", key_func=get_user_identifier)
 async def test_rule(
+    request: Request,
     conditions: JSONDict,
     event_data: JSONDict,
     current_user: User = Depends(get_current_user),
 ) -> JSONDict:
-    """Testet Bedingungen gegen Event-Daten (ohne Ausführung)."""
+    """Testet Bedingungen gegen Event-Daten (ohne Ausführung).
+
+    K5 (CRITICAL): DoS-Schutz - Payload-Validierung gegen
+    deeply-nested JSON, ueber-grosse Listen/Dicts und unbekannte Operatoren.
+    Rate-Limit: 30/Minute pro User.
+    """
+    _validate_test_payload(conditions)
+    _validate_test_payload(event_data)
+
     from app.services.notification.rule_engine import RuleConditionMatcher
 
     matcher = RuleConditionMatcher()
