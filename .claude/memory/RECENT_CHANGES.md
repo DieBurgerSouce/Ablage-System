@@ -1,5 +1,37 @@
 # Recent Changes
 
+## 2026-05-20 (Sprint-1 — Sec-Reste aus MASTER_REVIEW)
+
+Branch: `sprint-0-pilot-hardening`, 5 saubere Commits zur Pilot-Reife. Aus
+`.claude/reviews/2026-05-19/MASTER_REVIEW_2026-05-19.md` HIGH-Sec Phase B+. Plan
+unter `C:\Users\benfi\.claude\plans\guck-dir-bitte-nochmal-recursive-lollipop.md`.
+
+- **S1.2** `59a5702f`: `app/api/v1/retention_admin.py` 3x `safe_error_detail` Args
+  geswapped — Signatur ist `(e, context)`, nicht `(context, e)`. Sanity-Grep
+  ueber `app/api/v1/` clean; `collaboration.py` hat 12 separate Misuses (kein
+  PII-Leak, nur UX-Bug) als Backlog-Task notiert.
+- **S1.3** `cf062e80`: `app/api/v1/graphql_api.py` `ALLOWED_FILTER_FIELDS`
+  Whitelist pro Entity ergaenzt (CWE-89 Field-Oracle-Schutz). Whitelist
+  enthaelt bewusst kein iban/vat_id/tax_id/password_hash/totp_secret.
+- **S1.4** `dd693f14`: `app/api/v1/nlq.py` `NLQQueryResponse.generated_sql`
+  auf `Optional[str]` und nur fuer `is_superuser` exposed.
+- **S1.5** `d56cd145`: `InvoiceTracking.entity_id` Column nachgezogen
+  (Migration 094 hatte die DB-Spalte, Model deklarierte sie nicht trotz
+  50+ Service-Usages). Drift-Pattern analog Task B. F4-DONE-Block in
+  `docs/drift/invoice-model-drift.md`.
+- **S1.1** `e8f6badb`: `app/api/v1/trash.py` `permanently_delete_document` und
+  `empty_trash` brauchten `company_id`-Filter; `empty_trash` Bulk-DELETE
+  statt N+1 `await db.delete(doc)` in Schleife. Audit-Event
+  `document_permanently_deleted` VOR Hard-Delete via `emit_domain_event`.
+  Defense-in-Depth: `owner_id` bleibt als zweiter Filter.
+
+Tests fuer alle 4 API-Endpoints (test_trash_api.py, test_retention_admin_api.py,
+test_graphql_api.py, test_nlq_api.py) als Phase-D-Backlog-Tasks angelegt
+(Sprint-1 Scope war NUR die Sec-Fixes, Tests sind Phase D).
+
+Out-of-Scope: Sentry-DSN (G10 User-Action), 9 aktive Critical Alerts (P0b
+vor Pilot), Backup-Encryption (G06).
+
 ## 2026-05-19 (Multi-Agent Review Follow-Through - Tasks A, B, C, D, F1, F2)
 
 Branch: `sprint-0-pilot-hardening`, 6 saubere Commits zur Pilot-Reife.

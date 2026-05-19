@@ -105,6 +105,7 @@ Final 3 TODOs resolved:
 
 | Date | Component | Description |
 |------|-----------|-------------|
+| 2026-05-20 | API | Sprint-1 Sec-Reste (5 Commits, HIGH-Sec aus MASTER_REVIEW_2026-05-19): S1.1 trash.py company_id-Filter + Bulk-Delete + Audit (`e8f6badb`), S1.2 retention_admin.py safe_error_detail Args swap (`59a5702f`), S1.3 graphql_api.py Filter-Allow-List pro Entity (CWE-89, `cf062e80`), S1.4 nlq.py generated_sql Admin-Gate (`dd693f14`), S1.5 F4 InvoiceTracking.entity_id Column nachgezogen (`d56cd145`). |
 | 2026-05-19 | API | Invoice-API Multi-Tenant-Fix: 19 Endpoints von Document.owner_id auf Document.company_id (F3). FastAPI-Dependency get_user_company_id_dep. Kollegen sehen jetzt Rechnungen gegenseitig in derselben Firma. Commit `e1e99825` |
 | 2026-05-19 | Services | business_intelligence_service.py Runtime-Bomben aufgeloest (F2): 7 Stellen Invoice.entity_id / Document.entity_id auf Document.business_entity_id via JOIN. Commit `7badff26` |
 | 2026-05-19 | DB-Model | Invoice-Model an DB-Schema angeglichen: company_id Column nachgezogen (Migration 022), business_contact_id Phantom-Column entfernt (F1). Commits `37baeb94`, `81ff78c1` |
