@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 
-from app.db.models import User, InvoiceTracking, Document, InvoiceStatus
+from app.db.models import User, InvoiceTracking, Document, InvoiceStatus, UserCompany, Company
 from app.db.schemas import (
     InvoiceTrackingCreate,
     InvoiceTrackingUpdate,
@@ -36,6 +36,71 @@ from app.core.security_auth import build_content_disposition
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/invoices", tags=["Invoice Tracking"])
+
+
+# =============================================================================
+# Helper Functions - Multi-Tenant Security
+# =============================================================================
+
+async def get_user_company_id(db: AsyncSession, user: User) -> Optional[UUID]:
+    """Ermittelt die Company-ID des Users via UserCompany-Tabelle.
+
+    SECURITY FIX (F3): User-Model hat kein company_id Feld - muss ueber
+    UserCompany geholt werden. Ersetzt das vorher genutzte (latent broken)
+    ``current_user.company_id``-Pattern, das auf einer nicht existierenden
+    Spalte basiert.
+
+    Returns:
+        Company-ID oder None wenn keine Zuordnung existiert.
+    """
+    # 1. Hole aktuelle Firma (is_current=True)
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(UserCompany.is_current == True)  # noqa: E712
+        .where(Company.is_active == True)  # noqa: E712
+        .where(Company.deleted_at.is_(None))
+    )
+    current_company_id = result.scalar_one_or_none()
+
+    if current_company_id:
+        return current_company_id
+
+    # 2. Fallback: Erste verfuegbare Firma
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(Company.is_active == True)  # noqa: E712
+        .where(Company.deleted_at.is_(None))
+        .order_by(UserCompany.created_at)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _require_user_company_id(db: AsyncSession, user: User) -> UUID:
+    """Wie ``get_user_company_id``, aber wirft 403 wenn keine Firma zugeordnet."""
+    company_id = await get_user_company_id(db, user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Kein Unternehmen zugeordnet",
+        )
+    return company_id
+
+
+async def get_user_company_id_dep(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> UUID:
+    """FastAPI-Dependency: liefert die aktive Firmen-ID des Users.
+
+    Wirft 403 wenn keine Firmenzuordnung existiert. Nutzung als Endpoint-
+    Parameter: ``company_id: UUID = Depends(get_user_company_id_dep)``.
+    """
+    return await _require_user_company_id(db, current_user)
 
 
 # =============================================================================
@@ -59,6 +124,7 @@ async def list_invoices(
     document_id: Optional[UUID] = Query(None, description="Nach Dokument filtern"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> List[InvoiceTrackingResponse]:
     """
     Listet alle Rechnungsverfolgungen auf.
@@ -75,7 +141,7 @@ async def list_invoices(
         .where(
             and_(
                 InvoiceTracking.deleted_at.is_(None),
-                Document.owner_id == current_user.id,
+                Document.company_id == company_id,
             )
         )
     )
@@ -133,6 +199,7 @@ async def list_invoices(
 async def get_invoice_statistics(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InvoiceStatisticsResponse:
     """
     Liefert aggregierte Rechnungsstatistiken.
@@ -153,7 +220,7 @@ async def get_invoice_statistics(
         .where(
             and_(
                 InvoiceTracking.deleted_at.is_(None),
-                Document.owner_id == current_user.id,
+                Document.company_id == company_id,
             )
         )
     )
@@ -173,7 +240,7 @@ async def get_invoice_statistics(
         .where(
             and_(
                 InvoiceTracking.deleted_at.is_(None),
-                Document.owner_id == current_user.id,
+                Document.company_id == company_id,
             )
         )
         .group_by(InvoiceTracking.status)
@@ -197,7 +264,7 @@ async def get_invoice_statistics(
         .where(
             and_(
                 InvoiceTracking.deleted_at.is_(None),
-                Document.owner_id == current_user.id,
+                Document.company_id == company_id,
                 InvoiceTracking.status.notin_(["paid", "cancelled"]),
                 InvoiceTracking.due_date < now,
             )
@@ -234,6 +301,7 @@ async def get_invoice(
     invoice_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InvoiceTrackingResponse:
     """Ruft eine Rechnungsverfolgung anhand der ID ab."""
     # SECURITY: Multi-Tenant RLS
@@ -243,7 +311,7 @@ async def get_invoice(
         .where(
             InvoiceTracking.id == invoice_id,
             InvoiceTracking.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
+            Document.company_id == company_id,
         )
     )
     invoice = result.scalar_one_or_none()
@@ -283,6 +351,7 @@ async def create_invoice(
     invoice_data: InvoiceTrackingCreate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InvoiceTrackingResponse:
     """
     Erstellt eine neue Rechnungsverfolgung.
@@ -294,7 +363,7 @@ async def create_invoice(
         select(Document).where(
             Document.id == invoice_data.document_id,
             Document.deleted_at.is_(None),
-            Document.owner_id == current_user.id,  # Multi-Tenant RLS
+            Document.company_id == company_id,  # Multi-Tenant RLS
         )
     )
     document = doc_result.scalar_one_or_none()
@@ -359,6 +428,7 @@ async def update_invoice(
     invoice_data: InvoiceTrackingUpdate,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InvoiceTrackingResponse:
     """
     Aktualisiert eine Rechnungsverfolgung.
@@ -373,7 +443,7 @@ async def update_invoice(
         .where(
             InvoiceTracking.id == invoice_id,
             InvoiceTracking.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
+            Document.company_id == company_id,
         )
     )
     invoice = result.scalar_one_or_none()
@@ -429,7 +499,7 @@ async def update_invoice(
                 "new_status": invoice.status,
                 "updated_fields": list(update_data.keys()),
             },
-            company_id=current_user.company_id,
+            company_id=company_id,
             user_id=current_user.id,
         )
 
@@ -453,6 +523,7 @@ async def mark_invoice_paid(
     paid_at: Optional[datetime] = Query(None, description="Zahlungsdatum (optional, default: jetzt)"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InvoiceTrackingResponse:
     """
     Markiert eine Rechnung als bezahlt.
@@ -469,7 +540,7 @@ async def mark_invoice_paid(
         .where(
             InvoiceTracking.id == invoice_id,
             InvoiceTracking.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
+            Document.company_id == company_id,
         )
     )
     invoice = result.scalar_one_or_none()
@@ -517,7 +588,7 @@ async def mark_invoice_paid(
             "new_status": InvoiceStatus.PAID.value,
             "paid_amount": str(invoice.paid_amount) if invoice.paid_amount else None,
         },
-        company_id=current_user.company_id,
+        company_id=company_id,
         user_id=current_user.id,
     )
 
@@ -539,6 +610,7 @@ async def increase_dunning_level(
     invoice_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InvoiceTrackingResponse:
     """
     Erhöht die Mahnstufe einer Rechnung.
@@ -559,7 +631,7 @@ async def increase_dunning_level(
         .where(
             InvoiceTracking.id == invoice_id,
             InvoiceTracking.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
+            Document.company_id == company_id,
         )
     )
     invoice = result.scalar_one_or_none()
@@ -618,6 +690,7 @@ async def delete_invoice(
     invoice_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """
     Löscht eine Rechnungsverfolgung (Soft Delete).
@@ -632,7 +705,7 @@ async def delete_invoice(
         .where(
             InvoiceTracking.id == invoice_id,
             InvoiceTracking.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
+            Document.company_id == company_id,
         )
     )
     invoice = result.scalar_one_or_none()
@@ -674,6 +747,7 @@ async def get_invoice_skonto(
     invoice_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Liefert Skonto-Informationen für eine Rechnung.
@@ -696,7 +770,7 @@ async def get_invoice_skonto(
         .where(
             InvoiceTracking.id == invoice_id,
             InvoiceTracking.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
+            Document.company_id == company_id,
         )
     )
     invoice = result.scalar_one_or_none()
@@ -753,6 +827,7 @@ async def set_invoice_skonto(
     net_days: int = Query(30, ge=1, le=120, description="Zahlungsziel netto"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InvoiceTrackingResponse:
     """
     Setzt Skonto-Konditionen für eine Rechnung.
@@ -771,7 +846,7 @@ async def set_invoice_skonto(
         .where(
             InvoiceTracking.id == invoice_id,
             InvoiceTracking.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
+            Document.company_id == company_id,
         )
     )
     invoice = result.scalar_one_or_none()
@@ -787,7 +862,7 @@ async def set_invoice_skonto(
     success = await skonto_service.update_invoice_skonto_fields(
         db=db,
         invoice_tracking_id=invoice_id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         skonto_percentage=skonto_percentage,
         skonto_days=skonto_days,
         net_days=net_days,
@@ -825,6 +900,7 @@ async def apply_invoice_skonto(
     force_apply: bool = Query(False, description="Skonto auch nach Fristablauf anwenden"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> InvoiceTrackingResponse:
     """
     Wendet Skonto bei einer Zahlung an.
@@ -846,7 +922,7 @@ async def apply_invoice_skonto(
         .where(
             InvoiceTracking.id == invoice_id,
             InvoiceTracking.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
+            Document.company_id == company_id,
         )
     )
     invoice = result.scalar_one_or_none()
@@ -865,7 +941,7 @@ async def apply_invoice_skonto(
         payment_amount=Decimal(str(payment_amount)),
         payment_date=payment_date or datetime.now(timezone.utc),
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
         force_apply=force_apply,
     )
 
@@ -901,6 +977,7 @@ async def get_upcoming_skonto_deadlines(
     limit: int = Query(20, ge=1, le=100, description="Maximale Anzahl"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> list:
     """
     Listet Rechnungen mit anstehenden Skonto-Fristen.
@@ -910,11 +987,6 @@ async def get_upcoming_skonto_deadlines(
     - Zeigt potenzielle Ersparnis
     """
     from app.services.banking.skonto_service import SkontoService
-
-    # Hole company_id vom User
-    company_id = current_user.company_id
-    if not company_id:
-        return []
 
     skonto_service = SkontoService()
     alerts = await skonto_service.get_upcoming_skonto_deadlines(
@@ -950,6 +1022,7 @@ async def get_missed_skonto(
     per_page: int = Query(20, ge=1, le=100, description="Einträge pro Seite"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Listet alle Rechnungen mit verpassten Skonto-Möglichkeiten.
@@ -962,10 +1035,6 @@ async def get_missed_skonto(
     from app.db.models import BusinessEntity
     from app.core.datetime_utils import utc_now
     from decimal import Decimal
-
-    company_id = current_user.company_id
-    if not company_id:
-        return {"items": [], "total": 0, "total_missed_amount": 0.0}
 
     now = utc_now()
 
@@ -1056,6 +1125,7 @@ async def get_skonto_statistics(
     end_date: datetime = Query(..., description="Enddatum (ISO 8601)"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Berechnet Skonto-Statistiken für einen Zeitraum.
@@ -1073,22 +1143,6 @@ async def get_skonto_statistics(
     - usage_rate: Nutzungsrate in Prozent
     """
     from app.services.banking.skonto_service import SkontoService
-
-    company_id = current_user.company_id
-    if not company_id:
-        return {
-            "period_start": start_date.isoformat(),
-            "period_end": end_date.isoformat(),
-            "total_invoices": 0,
-            "invoices_with_skonto": 0,
-            "skonto_used_count": 0,
-            "skonto_missed_count": 0,
-            "skonto_pending_count": 0,
-            "total_savings": 0.0,
-            "missed_savings": 0.0,
-            "potential_savings": 0.0,
-            "usage_rate": 0.0,
-        }
 
     skonto_service = SkontoService()
     stats = await skonto_service.get_skonto_statistics(
@@ -1122,6 +1176,7 @@ async def get_monthly_skonto_summary(
     months: int = Query(12, ge=1, le=24, description="Anzahl Monate"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> list:
     """
     Liefert monatliche Skonto-Zusammenfassung.
@@ -1137,10 +1192,6 @@ async def get_monthly_skonto_summary(
     from datetime import timedelta
     from decimal import Decimal
     from calendar import monthrange
-
-    company_id = current_user.company_id
-    if not company_id:
-        return []
 
     now = utc_now()
     results = []
@@ -1215,6 +1266,7 @@ async def export_missed_skonto(
     end_date: Optional[datetime] = Query(None, description="Enddatum"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ):
     """
     Exportiert verpasste Skonto-Daten.
@@ -1228,13 +1280,6 @@ async def export_missed_skonto(
     from app.core.datetime_utils import utc_now
     from decimal import Decimal
     import io
-
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Keine Firmenzuordnung vorhanden"
-        )
 
     now = utc_now()
 
@@ -1386,6 +1431,7 @@ async def record_partial_payment(
     notes: Optional[str] = Query(None, description="Interne Notizen"),
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Erfasst eine Teilzahlung.
@@ -1415,7 +1461,7 @@ async def record_partial_payment(
         .where(
             InvoiceTracking.id == invoice_id,
             InvoiceTracking.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
+            Document.company_id == company_id,
         )
     )
     invoice = result.scalar_one_or_none()
@@ -1424,13 +1470,6 @@ async def record_partial_payment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Rechnungsverfolgung nicht gefunden"
-        )
-
-    company_id = current_user.company_id
-    if not company_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Benutzer hat keine Firmenzuordnung"
         )
 
     payment_service = PartialPaymentService()
@@ -1489,6 +1528,7 @@ async def get_invoice_payments(
     invoice_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> dict:
     """
     Liefert Zahlungsübersicht für eine Rechnung.
@@ -1510,7 +1550,7 @@ async def get_invoice_payments(
         .where(
             InvoiceTracking.id == invoice_id,
             InvoiceTracking.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
+            Document.company_id == company_id,
         )
     )
     invoice = result.scalar_one_or_none()
@@ -1528,7 +1568,7 @@ async def get_invoice_payments(
         summary = await payment_service.get_payment_summary(
             db=db,
             invoice_tracking_id=invoice_id,
-            company_id=current_user.company_id,
+            company_id=company_id,
         )
     except ValueError as e:
         logger.error("payment_summary_failed", **safe_error_log(e, context="Zahlungsübersicht abrufen"))
@@ -1574,6 +1614,7 @@ async def delete_partial_payment(
     payment_id: UUID,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
+    company_id: UUID = Depends(get_user_company_id_dep),
 ) -> None:
     """
     Löscht eine Teilzahlung.
@@ -1591,7 +1632,7 @@ async def delete_partial_payment(
         .where(
             InvoiceTracking.id == invoice_id,
             InvoiceTracking.deleted_at.is_(None),
-            Document.owner_id == current_user.id,
+            Document.company_id == company_id,
         )
     )
     invoice = result.scalar_one_or_none()
@@ -1608,7 +1649,7 @@ async def delete_partial_payment(
         db=db,
         payment_transaction_id=payment_id,
         user_id=current_user.id,
-        company_id=current_user.company_id,
+        company_id=company_id,
     )
 
     if not success:

@@ -48,6 +48,8 @@ def sample_document(sample_user) -> Mock:
     doc = Mock()
     doc.id = uuid4()
     doc.owner_id = sample_user.id
+    # Multi-Tenant Isolation: Document gehoert zu einer Firma (Task C F3, 2026-05-19)
+    doc.company_id = uuid4()
     doc.deleted_at = None
     doc.business_entity_id = uuid4()
     return doc
@@ -105,28 +107,28 @@ class TestMultiTenantSecurity:
     def test_list_invoices_only_returns_own_documents(self):
         """List sollte nur Rechnungen des eigenen Dokuments zurueckgeben."""
         # Verified by SQL query structure in code:
-        # .where(Document.owner_id == current_user.id)
+        # .where(Document.company_id == company_id)  # Task C F3 (2026-05-19)
         pass  # Structural verification - actual test in integration
 
     @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_get_invoice_checks_document_owner(self):
         """Get sollte Document Owner pruefen."""
         # Verified by SQL query structure in code:
-        # Document.owner_id == current_user.id
+        # Document.company_id == company_id  # Task C F3 (2026-05-19)
         pass  # Structural verification - actual test in integration
 
     @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_create_invoice_verifies_document_ownership(self):
         """Create sollte Document Ownership pruefen."""
         # Verified by SQL query structure in code:
-        # Document.owner_id == current_user.id
+        # Document.company_id == company_id  # Task C F3 (2026-05-19)
         pass  # Structural verification - actual test in integration
 
     @pytest.mark.skip(reason="stub - nicht implementiert")
     def test_statistics_only_count_own_invoices(self):
         """Statistiken sollten nur eigene Rechnungen zaehlen."""
         # Verified by SQL query structure in code:
-        # Document.owner_id == current_user.id
+        # Document.company_id == company_id  # Task C F3 (2026-05-19)
         pass  # Structural verification - actual test in integration
 
 
