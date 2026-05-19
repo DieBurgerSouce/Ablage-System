@@ -90,18 +90,17 @@ Beziehungen im Model:
 2. ✅ Index `ix_invoices_company_id` zu `__table_args__` ergaenzen (DB hat bereits `ix_invoices_company_date` aus Migration 022, der erste Spalte ist company_id — abdecked Standard-Lookups)
 3. ❌ `entity_id` NICHT hinzufuegen (DB hat sie nicht)
 
-**Bewusst ausgelassen (separate Follow-ups, NICHT Teil dieses Commits)**:
+**Follow-up Status (Update 2026-05-19 spaeter Tag)**:
 
-- **Follow-up F1** (P3): `business_contact_id` Column + relationship aus Model entfernen
-  - Dead code: weder Service noch API noch Schema nutzt sie
-  - Begruendung fuer separates Ticket: Cleanup, kein Pilot-Blocker
-- **Follow-up F2** (P2): BI-Service `Invoice.entity_id`-Referenzen klaeren
-  - Entweder Code entfernen (toter Pfad) oder Logik auf `Invoice.business_contact_id`/JOIN umstellen
-  - Pruefen: Hat die Methode jemals erfolgreich gelaufen? (Audit Logs/Tests)
-- **Follow-up F3** (P1): Invoice-API von `Document.owner_id == current_user.id` auf `Document.company_id == current_user.company_id` umstellen
-  - 19+ Endpoints in `app/api/v1/invoices.py`
-  - Pattern-Fix analog zu Workflow/Banking-Migrationen aus 2026-01-18
-  - Verlangt eigenen Plan + Test-Sweep
+- **F1** ✅ **DONE** (Commit nach Task D): `business_contact_id` Column + relationship +
+  `ix_invoices_contact_date` Index aus `app/db/models_invoice.py` entfernt.
+  Verifikation: 0 Code-Stellen ausserhalb des Models nutzten das Feld, keine Migration
+  hatte die DB-Spalte je angelegt. Tests gruen (14 passed).
+- **F2** (in Arbeit, P2): BI-Service `Invoice.entity_id`-Referenzen klaeren
+  - Entweder Code entfernen (toter Pfad) oder Query auf JOIN(InvoiceTracking) umstellen
+  - InvoiceTracking hat `entity_id` (Migration 094), Invoice <-> InvoiceTracking via `document_id`
+- **F3** ✅ **DONE** (Commit `e1e99825`): Invoice-API von `Document.owner_id`
+  auf `Document.company_id` umgestellt (19 Endpoints, FastAPI-Dependency-Pattern).
 
 ## Verifikation
 
