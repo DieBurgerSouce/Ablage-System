@@ -284,7 +284,8 @@ services:
   # MinIO (S3-kompatibler Storage)
   # ===========================================================================
   minio:
-    image: minio/minio:latest
+    # B7 (2026-05-19): :latest -> pinned auf docker-compose.yml-Version
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
     container_name: ablage-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -316,7 +317,8 @@ services:
   # Ollama (Lokaler LLM fuer Air-Gapped)
   # ===========================================================================
   ollama:
-    image: ollama/ollama:latest
+    # B7 (2026-05-19): :latest -> 0.5.4 (Dec 2024, GPU-faehig)
+    image: ollama/ollama:0.5.4
     container_name: ablage-ollama
     restart: unless-stopped
     deploy:
@@ -349,7 +351,8 @@ services:
   # Grafana (Monitoring Dashboard)
   # ===========================================================================
   grafana:
-    image: grafana/grafana:latest
+    # B7 (2026-05-19): :latest -> pinned auf docker-compose.yml-Version
+    image: grafana/grafana:11.3.0
     container_name: ablage-grafana
     restart: unless-stopped
     environment:
@@ -382,7 +385,8 @@ services:
   # Prometheus (Metrics)
   # ===========================================================================
   prometheus:
-    image: prom/prometheus:latest
+    # B7 (2026-05-19): :latest -> pinned auf docker-compose.yml-Version
+    image: prom/prometheus:v2.54.0
     container_name: ablage-prometheus
     restart: unless-stopped
     command:

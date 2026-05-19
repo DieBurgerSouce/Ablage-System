@@ -79,7 +79,9 @@ services:
   # PgBouncer Connection Pooling für PostgreSQL
   # Verhindert Connection Exhaustion bei hoher Last
   pgbouncer:
-    image: edoburu/pgbouncer:latest
+    # B7 (2026-05-19): edoburu/pgbouncer:latest war Mutable-Tag in prod.
+    # Pin auf v1.25.1-p0 (2025-12-20) + SHA256 digest fuer Reproduzierbarkeit.
+    image: edoburu/pgbouncer:v1.25.1-p0@sha256:85d1e38593617af1b5f7f285e97d407e56c29939683cc7cfe4c8f6dc19f1268b
     container_name: ablage-pgbouncer
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-ablage_admin}:${DB_PASSWORD:?DB_PASSWORD muss gesetzt sein}@postgres:5432/${POSTGRES_DB:-ablage_system}?sslmode=${DB_SSL_MODE:-prefer}
