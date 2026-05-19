@@ -20,8 +20,10 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
-      // Verbiete direkte console.* Aufrufe - nutze stattdessen @/lib/logger
-      'no-console': ['error', { allow: ['warn', 'error'] }],
+      // B2 (2026-05-19): Verbiete ALLE direkten console.* Aufrufe - auch
+      // console.warn/error koennen PII leaken (CLAUDE.md Rule 1).
+      // Nutze stattdessen `import { logger } from '@/lib/logger'`.
+      'no-console': 'error',
       // Erlaube _-prefixed Variablen (bewusst ungenutzt)
       '@typescript-eslint/no-unused-vars': ['error', {
         argsIgnorePattern: '^_',

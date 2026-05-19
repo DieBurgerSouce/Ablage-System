@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 /**
  * Report Data API Client
  *
@@ -114,7 +115,7 @@ export async function fetchReportData(
     } catch {
       // Fallback: Generierte Daten verwenden, bis Backend-Endpunkte verfuegbar sind
       // WARN: Fallback auf lokale Daten - Backend-Endpunkte noch nicht implementiert
-      console.warn(
+      logger.warn(
         `[Reports] Backend-Endpunkt fuer "${templateId}" nicht erreichbar, verwende Fallback-Daten.`
       )
       return _getFallbackData(templateId, params)

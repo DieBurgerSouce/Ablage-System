@@ -12,6 +12,7 @@
  */
 
 import i18n from 'i18next';
+import { logger } from '@/lib/logger';
 import { initReactI18next } from 'react-i18next';
 
 // Import translation namespaces - German (source of truth)
@@ -193,7 +194,7 @@ i18n
     saveMissing: import.meta.env.DEV,
     missingKeyHandler: (lng, ns, key, fallbackValue) => {
       if (import.meta.env.DEV) {
-        console.warn(`[i18n] Missing translation: ${lng}/${ns}/${key} (fallback: ${fallbackValue})`);
+        logger.warn(`[i18n] Missing translation: ${lng}/${ns}/${key} (fallback: ${fallbackValue})`);
       }
     },
   });

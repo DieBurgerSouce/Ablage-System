@@ -13,6 +13,7 @@
  */
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 import {
   ReactFlow,
   Background,
@@ -323,7 +324,7 @@ function LineageFlowchartInner({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Export fehlgeschlagen:', error);
+      logger.error('Export fehlgeschlagen:', error);
     }
   }, [documentId]);
 

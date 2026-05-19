@@ -6,6 +6,7 @@
  */
 
 import { useMemo } from 'react';
+import { logger } from '@/lib/logger';
 import { cn } from '@/lib/utils';
 import { formatDateDE } from '@/lib/format';
 import { Button } from '@/components/ui/button';
@@ -91,7 +92,7 @@ export function DocumentLineagePage({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Export fehlgeschlagen:', error);
+      logger.error('Export fehlgeschlagen:', error);
     }
   };
 

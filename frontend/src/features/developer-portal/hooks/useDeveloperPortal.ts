@@ -8,6 +8,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 import { api } from '@/lib/api';
 
 // ============================================================================
@@ -432,11 +433,11 @@ const client = new AblageClient({ apiKey: 'your-api-key' });
 
 // Dokument hochladen
 const doc = await client.documents.upload(file);
-console.log('Dokument-ID:', doc.id);
+logger.info('Dokument-ID:', doc.id);
 
 // OCR starten
 const result = await client.ocr.process(doc.id);
-console.log('Extrahierter Text:', result.text);`,
+logger.info('Extrahierter Text:', result.text);`,
         },
       ];
     },

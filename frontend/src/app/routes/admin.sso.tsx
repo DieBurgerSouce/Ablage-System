@@ -14,6 +14,7 @@
  */
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { createFileRoute } from '@tanstack/react-router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -107,7 +108,7 @@ function useProviderDetails(providerId: string | null) {
             // Runtime validation of API response with detailed errors
             const result = validateProviderResponse(response.data);
             if (!result.success) {
-                console.error('[SSO] Invalid provider response from API:', result.error);
+                logger.error('[SSO] Invalid provider response from API:', result.error);
                 return null;
             }
             // Return validated SSOProviderResponse (type-safe, no unsafe cast needed)
@@ -128,7 +129,7 @@ function usePresets() {
             // Runtime validation of API response
             const result = presetsResponseSchema.safeParse(response.data);
             if (!result.success) {
-                console.error('[SSO] Invalid presets response from API:', result.error);
+                logger.error('[SSO] Invalid presets response from API:', result.error);
                 return [];
             }
             return result.data;
@@ -446,7 +447,7 @@ function SSOAdminPage() {
             // Runtime validation of API response with detailed errors
             const result = validateProviderResponse(response.data);
             if (!result.success) {
-                console.error('[SSO] Invalid create response:', result.error);
+                logger.error('[SSO] Invalid create response:', result.error);
                 throw new Error(`Ungültige Server-Antwort: ${result.error}`);
             }
             return result.data;
@@ -466,7 +467,7 @@ function SSOAdminPage() {
             // Runtime validation of API response with detailed errors
             const result = validateProviderResponse(response.data);
             if (!result.success) {
-                console.error('[SSO] Invalid update response:', result.error);
+                logger.error('[SSO] Invalid update response:', result.error);
                 throw new Error(`Ungültige Server-Antwort: ${result.error}`);
             }
             return result.data;
@@ -493,7 +494,7 @@ function SSOAdminPage() {
             // Runtime validation of API response with detailed errors
             const result = validateProviderResponse(response.data);
             if (!result.success) {
-                console.error('[SSO] Invalid setPrimary response:', result.error);
+                logger.error('[SSO] Invalid setPrimary response:', result.error);
                 throw new Error(`Ungültige Server-Antwort: ${result.error}`);
             }
             return result.data;

@@ -11,6 +11,7 @@
  */
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 import { privatIntelligenceService } from '@/lib/api/services/privat-intelligence';
 import * as privatApi from '../api/privat-api';
 import type {
@@ -476,7 +477,7 @@ export function useRefreshNetWorth() {
       await privatApi.createPortfolioSnapshot(spaceId);
     } catch (error) {
       // Snapshot creation failed, but data is still refreshed
-      console.error('Fehler beim Erstellen des Snapshots:', error);
+      logger.error('Fehler beim Erstellen des Snapshots:', error);
     }
   };
 }

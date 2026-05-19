@@ -10,6 +10,7 @@
  */
 
 import * as React from 'react';
+import { logger } from '@/lib/logger';
 import { Link } from '@tanstack/react-router';
 import {
   Wallet,
@@ -345,7 +346,7 @@ export function NetWorthDashboard() {
       await createSnapshotMutation.mutateAsync(selectedSpaceId);
       await refetch();
     } catch (err) {
-      console.error('Fehler beim Aktualisieren:', err);
+      logger.error('Fehler beim Aktualisieren:', err);
     }
   }, [selectedSpaceId, createSnapshotMutation, refetch]);
 

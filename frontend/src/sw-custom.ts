@@ -25,17 +25,18 @@ const SW_DEBUG = typeof location !== 'undefined' && (
 const swLog = {
   debug: (message: string, ...args: unknown[]) => {
     if (SW_DEBUG) {
-      console.log(`[SW] ${message}`, ...args);
+      logger.info(`[SW] ${message}`, ...args);
     }
   },
   error: (message: string, ...args: unknown[]) => {
     // Errors always logged (but still prefixed)
-    console.error(`[SW] ${message}`, ...args);
+    logger.error(`[SW] ${message}`, ...args);
   },
 };
 
 // Import workbox modules (these are available in the SW context)
 import { clientsClaim } from 'workbox-core';
+import { logger } from '@/lib/logger';
 import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
 import { NetworkFirst, CacheFirst, StaleWhileRevalidate } from 'workbox-strategies';

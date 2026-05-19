@@ -2,6 +2,7 @@
 // All backend calls with German error messages
 
 import { apiClient } from '@/lib/api/client';
+import { logger } from '@/lib/logger';
 import {
   BackendKPIData,
   BackendTabData,
@@ -40,7 +41,7 @@ export const smartDashboardApi = {
       const response = await apiClient.get<BackendKPIData[]>('/smart-dashboard/kpis');
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch KPIs:', error);
+      logger.error('Failed to fetch KPIs:', error);
       throw new Error(ERROR_MESSAGES.FETCH_KPIS_FAILED);
     }
   },
@@ -56,7 +57,7 @@ export const smartDashboardApi = {
       const response = await apiClient.get<BackendTabData>(`/smart-dashboard/tabs/${tab}`, { params });
       return response.data;
     } catch (error) {
-      console.error(`Failed to fetch tab data for ${tab}:`, error);
+      logger.error(`Failed to fetch tab data for ${tab}:`, error);
       throw new Error(ERROR_MESSAGES.FETCH_TAB_FAILED);
     }
   },
@@ -71,7 +72,7 @@ export const smartDashboardApi = {
       const response = await apiClient.get<BackendWidgetData[]>('/smart-dashboard/widgets', { params });
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch widgets:', error);
+      logger.error('Failed to fetch widgets:', error);
       throw new Error(ERROR_MESSAGES.FETCH_WIDGETS_FAILED);
     }
   },
@@ -84,7 +85,7 @@ export const smartDashboardApi = {
     try {
       await apiClient.put('/smart-dashboard/layout', { layout });
     } catch (error) {
-      console.error('Failed to save layout:', error);
+      logger.error('Failed to save layout:', error);
       throw new Error(ERROR_MESSAGES.SAVE_LAYOUT_FAILED);
     }
   },
@@ -99,7 +100,7 @@ export const smartDashboardApi = {
       const response = await apiClient.get<BackendTrendData[]>('/smart-dashboard/trends', { params });
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch trends:', error);
+      logger.error('Failed to fetch trends:', error);
       throw new Error(ERROR_MESSAGES.FETCH_TRENDS_FAILED);
     }
   },
@@ -115,7 +116,7 @@ export const smartDashboardApi = {
       );
       return response.data;
     } catch (error) {
-      console.error(`Failed to fetch progress for document ${documentId}:`, error);
+      logger.error(`Failed to fetch progress for document ${documentId}:`, error);
       throw new Error(ERROR_MESSAGES.FETCH_PROGRESS_FAILED);
     }
   },
@@ -132,7 +133,7 @@ export const smartDashboardApi = {
       );
       return response.data;
     } catch (error) {
-      console.error(`Failed to fetch batch progress for ${batchId}:`, error);
+      logger.error(`Failed to fetch batch progress for ${batchId}:`, error);
       throw new Error(ERROR_MESSAGES.FETCH_BATCH_PROGRESS_FAILED);
     }
   },

@@ -7,6 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback, type KeyboardEvent } from 'react';
+import { logger } from '@/lib/logger';
 import { useMutation } from '@tanstack/react-query';
 import {
   Collapsible,
@@ -354,7 +355,7 @@ function AssistantMessageBubble({ message }: AssistantMessageProps) {
                   className="h-7 text-xs"
                   onClick={() => {
                     // Aktion-Handler: Params koennen fuer Navigation oder API-Aufrufe genutzt werden
-                    console.debug('Aktion ausgefuehrt:', action.action_type, action.params);
+                    logger.debug('Aktion ausgefuehrt:', action.action_type, action.params);
                   }}
                 >
                   {action.label}

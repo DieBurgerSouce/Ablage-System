@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -20,7 +21,7 @@ export function BasicSmartSearchExample() {
         <div className="space-y-4">
             <h2 className="text-lg font-semibold">Basis-Verwendung</h2>
             <SmartSearchBar
-                onResultClick={(docId) => console.log('Document clicked:', docId)}
+                onResultClick={(docId) => logger.info('Document clicked:', docId)}
             />
         </div>
     );
@@ -39,7 +40,7 @@ export function FilteredSmartSearchExample() {
             <h2 className="text-lg font-semibold">Mit Initial-Filtern</h2>
             <SmartSearchBar
                 initialFilters={initialFilters}
-                onResultClick={(docId) => console.log('Document clicked:', docId)}
+                onResultClick={(docId) => logger.info('Document clicked:', docId)}
             />
         </div>
     );
@@ -175,7 +176,7 @@ const basicUsageCode = `import { SmartSearchBar } from '@/features/search/compon
 function MyComponent() {
   return (
     <SmartSearchBar
-      onResultClick={(docId) => console.log('Document clicked:', docId)}
+      onResultClick={(docId) => logger.info('Document clicked:', docId)}
     />
   );
 }`;

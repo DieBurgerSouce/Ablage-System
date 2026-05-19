@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -124,7 +125,7 @@ export function OcrTemplateEditor({ documentType }: OcrTemplateEditorProps) {
     }
 
     // In production, this would call the API to save the template
-    console.log('Saving template:', { templateName, documentType, zones });
+    logger.info('Saving template:', { templateName, documentType, zones });
 
     toast({
       title: 'Vorlage gespeichert',

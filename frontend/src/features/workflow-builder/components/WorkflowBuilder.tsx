@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, type DragEvent } from 'react';
+import { logger } from '@/lib/logger';
 import ReactFlow, {
   Background,
   Controls,
@@ -419,11 +420,11 @@ function WorkflowBuilderInner() {
       });
 
       if (result.warnings && result.warnings.length > 0) {
-        console.warn('Simulation warnings:', result.warnings);
+        logger.warn('Simulation warnings:', result.warnings);
       }
 
       if (result.errors && result.errors.length > 0) {
-        console.error('Simulation errors:', result.errors);
+        logger.error('Simulation errors:', result.errors);
       }
     } catch (error) {
       toast({
@@ -445,7 +446,7 @@ function WorkflowBuilderInner() {
         .map((block) => {
           const definition = blocks?.find((b) => b.type === block.type);
           if (!definition) {
-            console.warn(`Block definition not found for type: ${block.type}`);
+            logger.warn(`Block definition not found for type: ${block.type}`);
             return null;
           }
           return {

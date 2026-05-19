@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import {
   Download,
   Copy,
@@ -239,8 +240,8 @@ const doc = await client.documents.upload(file);
 const result = await client.ocr.process(doc.id, { backend: 'auto' });
 
 // Extrahierte Daten abrufen
-console.log('Lieferant:', result.extractedData.supplier);
-console.log('Betrag:', result.extractedData.amount, 'EUR');`}
+logger.info('Lieferant:', result.extractedData.supplier);
+logger.info('Betrag:', result.extractedData.amount, 'EUR');`}
               </pre>
             </TabsContent>
 

@@ -37,6 +37,7 @@ import {
   PROTECTED_SHORTCUTS,
 } from '../types/shortcut-types';
 import { matchesShortcut, normalizeKeys, isInputElement } from '../hooks/useHotkeys';
+import { logger } from '@/lib/logger';
 
 // ==================== Default Preferences ====================
 
@@ -55,7 +56,7 @@ function loadPreferences(): ShortcutsUserPreferences {
       return { ...defaultPreferences, ...JSON.parse(stored) };
     }
   } catch (e) {
-    console.warn('[Shortcuts] Fehler beim Laden der Einstellungen:', e);
+    logger.warn('[Shortcuts] Fehler beim Laden der Einstellungen:', e);
   }
   return defaultPreferences;
 }
@@ -64,7 +65,7 @@ function savePreferences(preferences: ShortcutsUserPreferences): void {
   try {
     localStorage.setItem(SHORTCUTS_STORAGE_KEY, JSON.stringify(preferences));
   } catch (e) {
-    console.warn('[Shortcuts] Fehler beim Speichern der Einstellungen:', e);
+    logger.warn('[Shortcuts] Fehler beim Speichern der Einstellungen:', e);
   }
 }
 
@@ -128,11 +129,11 @@ export function ShortcutsContextProvider({
         const newPriority = shortcut.priority ?? 0;
 
         if (newPriority <= conflictPriority) {
-          console.warn(`[Shortcuts] Konflikt: ${shortcut.id} vs ${conflict.id}. Behalte ${conflict.id}`);
+          logger.warn(`[Shortcuts] Konflikt: ${shortcut.id} vs ${conflict.id}. Behalte ${conflict.id}`);
           return prev;
         }
 
-        console.warn(`[Shortcuts] Konflikt: ${shortcut.id} vs ${conflict.id}. Ersetze mit ${shortcut.id}`);
+        logger.warn(`[Shortcuts] Konflikt: ${shortcut.id} vs ${conflict.id}. Ersetze mit ${shortcut.id}`);
         return [...prev.filter(s => s.id !== conflict.id), shortcut];
       }
 

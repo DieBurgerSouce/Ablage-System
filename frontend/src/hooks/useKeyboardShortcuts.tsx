@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState, useCallback, useRef, createContext, useContext, type ReactNode } from 'react';
+import { logger } from '@/lib/logger';
 import { useNavigate } from '@tanstack/react-router';
 
 // ==================== Types ====================
@@ -361,12 +362,12 @@ export function GlobalShortcutsProvider({
         const newPriority = shortcut.priority ?? 0;
 
         if (newPriority <= conflictPriority) {
-          console.warn(`[Shortcuts] Conflict: ${shortcut.id} vs ${conflict.id} for keys ${shortcut.keys}. Keeping ${conflict.id}`);
+          logger.warn(`[Shortcuts] Conflict: ${shortcut.id} vs ${conflict.id} for keys ${shortcut.keys}. Keeping ${conflict.id}`);
           return prev;
         }
 
         // Remove the old one
-        console.warn(`[Shortcuts] Conflict: ${shortcut.id} vs ${conflict.id} for keys ${shortcut.keys}. Replacing with ${shortcut.id}`);
+        logger.warn(`[Shortcuts] Conflict: ${shortcut.id} vs ${conflict.id} for keys ${shortcut.keys}. Replacing with ${shortcut.id}`);
         return [...prev.filter(s => s.id !== conflict.id), shortcut];
       }
 

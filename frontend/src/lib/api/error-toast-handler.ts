@@ -11,6 +11,7 @@
  */
 
 import { AxiosError } from 'axios';
+import { logger } from '@/lib/logger';
 import { toast } from '@/components/ui/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import { apiClient } from '@/lib/api/client';
@@ -302,11 +303,11 @@ export function handleApiError(error: unknown): never {
     } else if (error instanceof Error) {
         // Normaler Error (z.B. TypeError, ReferenceError) - nur loggen
         // KEIN Toast, da diese Fehler nicht vom API kommen
-        console.error('[handleApiError] Non-Axios error:', error.message);
+        logger.error('[handleApiError] Non-Axios error:', error.message);
     } else {
         // P0 Fix: Catch-all für null, undefined, primitive (string, number, etc.)
         // Verhindert silent throws ohne jegliches Logging
-        console.error(
+        logger.error(
             '[handleApiError] Unknown error type:',
             error === null ? 'null' : error === undefined ? 'undefined' : String(error)
         );

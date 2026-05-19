@@ -2,6 +2,7 @@
 // Query key factory + hooks with optimistic updates
 
 import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
+import { logger } from '@/lib/logger';
 import { toast } from 'sonner';
 import { smartDashboardApi } from '../api/smart-dashboard-api';
 import {
@@ -112,7 +113,7 @@ export function useSaveLayout(): UseMutationResult<void, Error, WidgetLayout[], 
         queryClient.setQueryData(smartDashboardKeys.all, context.previousLayout);
       }
       toast.error('Fehler beim Speichern des Layouts');
-      console.error('Layout save failed:', error);
+      logger.error('Layout save failed:', error);
     },
     onSuccess: () => {
       toast.success('Layout erfolgreich gespeichert');

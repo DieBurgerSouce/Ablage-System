@@ -4,6 +4,7 @@
  */
 
 import { useNavigate } from '@tanstack/react-router';
+import { logger } from '@/lib/logger';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ReportBuilder } from '../components/ReportBuilder';
@@ -21,7 +22,7 @@ export function ReportBuilderPage() {
       // Navigate to the created report
       navigate({ to: `/adhoc-reporting/${report.id}` });
     } catch (error) {
-      console.error('Failed to create report:', error);
+      logger.error('Failed to create report:', error);
     }
   };
 

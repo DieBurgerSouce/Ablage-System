@@ -13,6 +13,7 @@
  */
 
 import { z } from 'zod';
+import { logger } from '@/lib/logger';
 
 // =============================================================================
 // Preset Enums
@@ -376,7 +377,7 @@ export function validateProviderResponse(data: unknown): ValidateProviderRespons
     ? `${errorPath}: ${firstError.message}`
     : firstError.message;
 
-  console.error('[SSO] Validation failed:', errorMessage, result.error.errors);
+  logger.error('[SSO] Validation failed:', errorMessage, result.error.errors);
   return { success: false, error: errorMessage, data: null };
 }
 

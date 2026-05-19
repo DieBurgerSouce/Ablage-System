@@ -2,6 +2,7 @@
 // Aggregates data from multiple existing endpoints + new team stats endpoint
 
 import { apiClient } from '@/lib/api/client';
+import { logger } from '@/lib/logger';
 import type {
   BackendOperationsData,
   BackendFinanceData,
@@ -56,7 +57,7 @@ export const analyticsApi = {
       });
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch operations data:', error);
+      logger.error('Failed to fetch operations data:', error);
       throw new Error(ERROR_MESSAGES.FETCH_OPERATIONS_FAILED);
     }
   },
@@ -72,7 +73,7 @@ export const analyticsApi = {
       });
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch finance data:', error);
+      logger.error('Failed to fetch finance data:', error);
       throw new Error(ERROR_MESSAGES.FETCH_FINANCE_FAILED);
     }
   },
@@ -88,7 +89,7 @@ export const analyticsApi = {
       });
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch team stats:', error);
+      logger.error('Failed to fetch team stats:', error);
       throw new Error(ERROR_MESSAGES.FETCH_TEAM_FAILED);
     }
   },
@@ -104,7 +105,7 @@ export const analyticsApi = {
       });
       return response.data;
     } catch (error) {
-      console.error('Failed to fetch workload data:', error);
+      logger.error('Failed to fetch workload data:', error);
       throw new Error(ERROR_MESSAGES.FETCH_WORKLOAD_FAILED);
     }
   },
@@ -143,7 +144,7 @@ export const analyticsApi = {
 
       return new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     } catch (error) {
-      console.error('Failed to generate CSV export:', error);
+      logger.error('Failed to generate CSV export:', error);
       throw new Error(ERROR_MESSAGES.EXPORT_FAILED);
     }
   },
@@ -229,7 +230,7 @@ export const analyticsApi = {
 
       return doc.output('blob');
     } catch (error) {
-      console.error('Failed to generate PDF export:', error);
+      logger.error('Failed to generate PDF export:', error);
       throw new Error(ERROR_MESSAGES.EXPORT_FAILED);
     }
   },

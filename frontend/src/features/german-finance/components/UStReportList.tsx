@@ -5,6 +5,7 @@
  */
 
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -86,7 +87,7 @@ export function UStReportList({ onViewReport }: UStReportListProps) {
       });
       setShowGenerateForm(false);
     } catch (error) {
-      console.error('Failed to generate USt report:', error);
+      logger.error('Failed to generate USt report:', error);
     }
   };
 

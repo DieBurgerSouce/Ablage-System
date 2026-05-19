@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { logger } from '@/lib/logger';
 import {
     AlertCircle,
     AlertTriangle,
@@ -157,7 +158,7 @@ export function DocumentHintsPanel({ documentId }: DocumentHintsPanelProps) {
                 }
                 break;
             default:
-                console.log('Action type not handled:', hint.action_type, hint.action_data);
+                logger.info('Action type not handled:', hint.action_type, hint.action_data);
         }
     };
 
