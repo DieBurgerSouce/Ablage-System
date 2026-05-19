@@ -28,20 +28,22 @@ Bereits in fruheren Commits adressiert - bei Triage zuerst Rule-Reload pruefen:
 |-------|--------------------|------------|----------------|
 | RedisReplicationBroken | ✅ Auskommentiert in `redis-alerts.yml:148-153` | 438f2486 | Ja, falls Prometheus alte Rule cached |
 | LokiCompactorNotRunning | ✅ Metric umgestellt auf `loki_boltdb_shipper_compactor_running` in `loki-alerts.yml:71-72` | 6de2d89e | Ja, falls Prometheus alte Rule cached |
-| QdrantDown | ✅ Bearer-Token-File-Mount + Job-Config in `prometheus.yml` | 438f2486 | Nein, sollte direkt funktionieren |
-| CeleryWorkerDownLong | ✅ Healthcheck umgestellt auf HTTP/pgrep in `docker-compose.yml` | 438f2486 | Nein, Container-Restart noetig |
+| QdrantDown | ✅ `bearer_token_file: /etc/prometheus/qdrant_metrics_token` in `prometheus.yml:125`. Token-File `infrastructure/prometheus/qdrant_metrics_token` lokal vorhanden + gitignored | 438f2486 | Nein, sollte direkt funktionieren |
+| CeleryWorkerDownLong | ✅ Healthcheck umgestellt auf `curl /metrics + pgrep` in `docker-compose.yml:801`. Lesson aus 438f2486: `celery inspect ping` inkompatibel mit `--pool=solo` waehrend laufender Task | 438f2486 | Nein, Container-Restart noetig |
+| APIDown | ✅ Backend-Healthcheck `start_period: 600s` (von 180s erhoeht) in `docker-compose.yml`. Sprint-0/G05. 10 Min Init-Zeit fuer 797 Services | (Sprint-0) | Nein, container restart noetig |
+| BackendSentry | ✅ Backend hat `SENTRY_DSN: ${SENTRY_DSN:-}` env-var in `docker-compose.yml:552` (Sprint-0/G10). Initialisierung wartet auf DSN aus `.env` | (Sprint-0) | Nein, nur DSN in .env setzen |
 
 ## Klassifikations-Tabelle (zu befuellen)
 
 | # | Alertname | echtes Problem? | Wurzelursache | Fix-Pfad | Status |
 |---|-----------|-----------------|---------------|----------|--------|
 | 1 | OCRBackendDown | TBD | Container-Status + nvidia-smi | TBD | OPEN |
-| 2 | APIDown | TBD | curl :8000/health + start_period 180→600s | TBD | OPEN |
-| 3 | QdrantDown | TBD | Bearer-Token-File gemountet? | Verify 438f2486 scharf | OPEN |
+| 2 | APIDown | False-Positive (Code) | start_period bereits auf 600s in docker-compose.yml | Container-Restart + 10min warten | NEEDS_VERIFY |
+| 3 | QdrantDown | False-Positive (Code) | bearer_token_file + Token-File vorhanden | Container-Restart Prometheus | NEEDS_VERIFY |
 | 4 | ServiceDown | TBD | Aggregat - Folge der anderen? | Nach 1-3 nochmal pruefen | OPEN |
-| 5 | CeleryWorkerDownLong | TBD | HTTP-Check via pgrep + /metrics? | Verify 438f2486 scharf | OPEN |
-| 6 | RedisReplicationBroken | False-Positive (Code) | Single-Node, Rule auskommentiert | Reload Prometheus | OPEN |
-| 7 | LokiCompactorNotRunning | False-Positive (Code) | Metric-Name gefixt | Reload Prometheus | OPEN |
+| 5 | CeleryWorkerDownLong | False-Positive (Code) | Healthcheck umgestellt auf curl/pgrep | Container-Restart Worker | NEEDS_VERIFY |
+| 6 | RedisReplicationBroken | False-Positive (Code) | Single-Node, Rule auskommentiert | Reload Prometheus | NEEDS_VERIFY |
+| 7 | LokiCompactorNotRunning | False-Positive (Code) | Metric-Name gefixt | Reload Prometheus | NEEDS_VERIFY |
 | 8 | HostHighSwapUsage | TBD | `free -h` lokal | RAM erhoehen / Worker-Concurrency runter | OPEN |
 | 9 | HostDiskSpaceLow | TBD | `df -h` - 107GB frei auf C: | `docker system prune -a` (USER-APPROVAL!) | OPEN |
 
