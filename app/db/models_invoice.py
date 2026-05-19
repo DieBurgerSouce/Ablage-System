@@ -2,6 +2,12 @@
 Invoice satellite model.
 
 Separates Invoice-Modell als Satellit (nicht in models.py).
+
+Drift-Hinweis (2026-05-19):
+- ``company_id`` wurde Model-seitig nachgezogen, existiert in DB seit Migration 022.
+- ``business_contact_id`` und die ``business_contact``-Beziehung sind
+  Phantom-Spalten (kein DB-Pendant). Cleanup in Follow-up F1 vorgesehen, siehe
+  ``docs/drift/invoice-model-drift.md``.
 """
 
 import uuid
@@ -36,14 +42,26 @@ class InvoiceStatus(str, Enum):
 
 # Invoice Model
 class Invoice(Base):
-    """Rechnungsverwaltung für Finanzen.
+    """Rechnungsverwaltung fuer Finanzen.
 
-    Verknüpft Dokumente mit Geschäftskontakten und verfolgt Zahlungsstatus.
+    Verknuepft Dokumente mit Geschaeftskontakten und verfolgt Zahlungsstatus.
+    Multi-Tenant-Isolation ueber ``company_id`` (Defense-in-Depth, RLS aktiv
+    seit Migrationen 110/210/211).
     """
     __tablename__ = "invoices"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, unique=True)
+
+    # Multi-Tenant-Isolation. Nullable=True wegen historischer Rows ohne
+    # Backfill; neue Eintraege sollten company_id immer setzen.
+    company_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("companies.id", ondelete="RESTRICT"),
+        nullable=True,
+        index=True,
+    )
+
     business_contact_id = Column(UUID(as_uuid=True), ForeignKey("business_contacts.id"), nullable=False)
 
     # Invoice details
@@ -75,4 +93,7 @@ class Invoice(Base):
         Index("ix_invoices_status", "status"),
         Index("ix_invoices_due_date", "due_date"),
         Index("ix_invoices_contact_date", "business_contact_id", "invoice_date"),
+        # Multi-Tenant-Lookups (DB-Index existiert bereits als ix_invoices_company_date
+        # aus Migration 022, leading column company_id deckt Standard-Filter ab).
+        Index("ix_invoices_company_id", "company_id"),
     )
