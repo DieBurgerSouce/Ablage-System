@@ -161,7 +161,7 @@ async def get_retention_config(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail("Fehler beim Abrufen der Retention-Einstellungen", e)
+            detail=safe_error_detail(e, "Fehler beim Abrufen der Retention-Einstellungen")
         )
 
 
@@ -260,7 +260,7 @@ async def update_retention_config(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail("Fehler beim Aktualisieren der Retention-Einstellung", e)
+            detail=safe_error_detail(e, "Fehler beim Aktualisieren der Retention-Einstellung")
         )
 
 
@@ -363,5 +363,5 @@ async def get_upcoming_deletions(
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=safe_error_detail("Fehler beim Abrufen anstehender Löschungen", e)
+            detail=safe_error_detail(e, "Fehler beim Abrufen anstehender Löschungen")
         )
