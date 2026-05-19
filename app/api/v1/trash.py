@@ -15,11 +15,12 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
 from pydantic import BaseModel, Field
+from sqlalchemy import and_, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_db, get_current_user
 from app.core.safe_errors import safe_error_detail, safe_error_log
-from app.db.models import User
+from app.db.models import Company, Document, User, UserCompany
 from app.db.schemas import (
     SoftDeleteResponse,
     RestoreDocumentResponse,
@@ -31,6 +32,51 @@ from app.core.rate_limiting import limiter, get_user_identifier
 logger = structlog.get_logger(__name__)
 
 router = APIRouter(prefix="/trash", tags=["Papierkorb"])
+
+
+# =============================================================================
+# Multi-Tenant Helpers (Pattern analog F3 / app/api/v1/invoices.py)
+# =============================================================================
+
+
+async def _get_user_company_id(db: AsyncSession, user: User) -> Optional[UUID]:
+    """Aktive Company-ID des Users via UserCompany ermitteln."""
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(UserCompany.is_current.is_(True))
+        .where(Company.is_active.is_(True))
+        .where(Company.deleted_at.is_(None))
+    )
+    current_company_id = result.scalar_one_or_none()
+    if current_company_id:
+        return current_company_id
+    # Fallback: erste verfügbare Firma
+    result = await db.execute(
+        select(UserCompany.company_id)
+        .join(Company, Company.id == UserCompany.company_id)
+        .where(UserCompany.user_id == user.id)
+        .where(Company.is_active.is_(True))
+        .where(Company.deleted_at.is_(None))
+        .order_by(UserCompany.created_at)
+        .limit(1)
+    )
+    return result.scalar_one_or_none()
+
+
+async def _require_user_company_id_dep(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UUID:
+    """FastAPI-Dependency: liefert die aktive Firmen-ID, 403 wenn keine Zuordnung."""
+    company_id = await _get_user_company_id(db, current_user)
+    if not company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Kein Unternehmen zugeordnet",
+        )
+    return company_id
 
 
 # =============================================================================
@@ -262,10 +308,14 @@ async def permanently_delete_document(
     document_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(_require_user_company_id_dep),
 ) -> PermanentDeleteResponse:
     """Dokument permanent aus dem Papierkorb löschen.
 
     ACHTUNG: Diese Aktion kann nicht rückgängig gemacht werden!
+
+    SECURITY: Multi-Tenant-Isolation via Document.company_id - User die zwischen
+    Companies wechseln können fremde Dokumente nicht hart löschen.
 
     Args:
         document_id: ID des zu löschenden Dokuments
@@ -276,13 +326,12 @@ async def permanently_delete_document(
     Raises:
         HTTPException 404: Dokument nicht gefunden
     """
-    from app.db.models import Document
-    from sqlalchemy import select, and_
-
-    # Nur gelöschte Dokumente des Benutzers finden
+    # Nur gelöschte Dokumente der aktuellen Company finden (Defense-in-Depth:
+    # owner_id zusätzlich, damit auch ohne company_id-Backfill kein Bypass).
     query = select(Document).where(
         and_(
             Document.id == document_id,
+            Document.company_id == company_id,
             Document.owner_id == current_user.id,
             Document.deleted_at.isnot(None),
         )
@@ -296,13 +345,43 @@ async def permanently_delete_document(
             detail="Dokument nicht gefunden oder nicht im Papierkorb",
         )
 
-    await db.delete(doc)
-    await db.commit()
+    # Audit-Event VOR der Hard-Delete-Kaskade emittieren (sonst geht der
+    # Eintrag im FK-Cascade verloren).
+    from app.services.event_sourcing.event_emitter import emit_domain_event
+
+    try:
+        await emit_domain_event(
+            db=db,
+            aggregate_type="document",
+            aggregate_id=document_id,
+            event_type="document_permanently_deleted",
+            event_data={
+                "title": doc.title,
+                "source": "trash.permanently_delete_document",
+            },
+            company_id=company_id,
+            user_id=current_user.id,
+        )
+    except Exception as e:  # noqa: BLE001 - Audit darf Delete nicht blocken
+        logger.error(
+            "document_permanently_delete_audit_failed",
+            document_id=str(document_id),
+            user_id=str(current_user.id),
+            **safe_error_log(e),
+        )
+
+    try:
+        await db.delete(doc)
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
 
     logger.warning(
         "document_permanently_deleted",
         document_id=str(document_id),
         user_id=str(current_user.id),
+        company_id=str(company_id),
     )
 
     return PermanentDeleteResponse(document_id=document_id)
@@ -323,10 +402,15 @@ async def empty_trash(
     ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    company_id: UUID = Depends(_require_user_company_id_dep),
 ) -> EmptyTrashResponse:
     """Papierkorb leeren.
 
     ACHTUNG: Diese Aktion kann nicht rückgängig gemacht werden!
+
+    SECURITY: Multi-Tenant-Isolation via Document.company_id - es werden nur
+    Dokumente der aktuellen Company gelöscht. Defense-in-Depth: owner_id
+    bleibt als zusätzlicher Filter.
 
     Args:
         only_expired: Wenn True, nur >30 Tage alte Dokumente löschen
@@ -335,10 +419,9 @@ async def empty_trash(
         EmptyTrashResponse mit Anzahl gelöschter Dokumente
     """
     from datetime import datetime, timezone, timedelta
-    from app.db.models import Document
-    from sqlalchemy import select, and_, delete
 
     conditions = [
+        Document.company_id == company_id,
         Document.owner_id == current_user.id,
         Document.deleted_at.isnot(None),
     ]
@@ -347,22 +430,57 @@ async def empty_trash(
         cutoff = datetime.now(timezone.utc) - timedelta(days=30)
         conditions.append(Document.deleted_at < cutoff)
 
-    # Zaehlen vor dem Löschen
-    count_query = select(Document).where(and_(*conditions))
-    result = await db.execute(count_query)
-    docs = result.scalars().all()
-    count = len(docs)
+    # IDs vor Bulk-Delete sammeln (für Audit-Events).
+    id_query = select(Document.id).where(and_(*conditions))
+    id_result = await db.execute(id_query)
+    doc_ids = list(id_result.scalars().all())
+    count = len(doc_ids)
 
-    # Löschen
-    for doc in docs:
-        await db.delete(doc)
+    if count == 0:
+        return EmptyTrashResponse(
+            deleted_count=0,
+            message="Papierkorb ist bereits leer",
+        )
 
-    await db.commit()
+    # Audit-Events VOR Hard-Delete emittieren (gleicher Pattern wie
+    # permanently_delete_document - sonst geht der Eintrag im FK-Cascade verloren).
+    from app.services.event_sourcing.event_emitter import emit_domain_event
+
+    for doc_id in doc_ids:
+        try:
+            await emit_domain_event(
+                db=db,
+                aggregate_type="document",
+                aggregate_id=doc_id,
+                event_type="document_permanently_deleted",
+                event_data={
+                    "source": "trash.empty_trash",
+                    "only_expired": only_expired,
+                },
+                company_id=company_id,
+                user_id=current_user.id,
+            )
+        except Exception as e:  # noqa: BLE001 - Audit darf Delete nicht blocken
+            logger.error(
+                "empty_trash_audit_failed",
+                document_id=str(doc_id),
+                user_id=str(current_user.id),
+                **safe_error_log(e),
+            )
+
+    # Bulk-Delete in einem Statement (statt N+1 await db.delete(doc) in Schleife).
+    try:
+        await db.execute(delete(Document).where(and_(*conditions)))
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        raise
 
     action = "abgelaufene Dokumente" if only_expired else "alle Dokumente"
     logger.warning(
         "trash_emptied",
         user_id=str(current_user.id),
+        company_id=str(company_id),
         count=count,
         only_expired=only_expired,
     )
