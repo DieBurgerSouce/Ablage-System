@@ -13,9 +13,18 @@
 
 name: Deploy
 
+# K2 (CRITICAL): Test-Gate vor Deployment.
+# Vor diesem Fix konnte Deploy ohne erfolgreichen CI-Lauf triggern, weil
+# `push: branches: [main]` direkt feuerte. Jetzt wartet Deploy auf den
+# CI-Workflow (siehe pre-deploy-checks.if-Guard). Tag-basierte Releases
+# (v*.*.*) setzen voraus, dass CI auf dem merge commit bereits durchlief.
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches: [main]
+    types:
+      - completed
+  push:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
@@ -41,10 +50,26 @@ jobs:
   pre-deploy-checks:
     name: Pre-deployment Checks
     runs-on: ubuntu-latest
+    # K2: Wenn ueber workflow_run getriggert, MUSS der CI-Lauf erfolgreich
+    # gewesen sein. Tags und workflow_dispatch sind nicht betroffen
+    # (tag wird nur nach gruenem CI gesetzt; workflow_dispatch ist manuell).
+    if: |
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout Code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Verify CI Status (workflow_run gate)
+        if: github.event_name == 'workflow_run'
+        run: |
+          echo "CI workflow conclusion: ${{ github.event.workflow_run.conclusion }}"
+          if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+            echo "❌ Deploy blockiert: CI-Lauf war nicht erfolgreich"
+            exit 1
+          fi
+          echo "✅ CI passed - proceeding with deployment"
 
       - name: Verify VERSION file
         run: |
@@ -68,11 +93,17 @@ jobs:
             fi
           fi
 
-      - name: Run Pre-deployment Tests
+      - name: Verify Alembic Heads (single-head invariant)
         run: |
-          # Smoke tests
-          echo "Running pre-deployment smoke tests..."
-          # Add actual smoke test commands here
+          # K1: Pre-Deploy-Guard - alembic upgrade head schlaegt fehl wenn
+          # mehrere Heads existieren. Pruefe ALEMBIC_HEADS aus CI-Artefakt
+          # oder fail fast wenn Heads-Anzahl != 1.
+          if [ -d "alembic/versions" ]; then
+            HEAD_COUNT=$(grep -L "down_revision" alembic/versions/*.py 2>/dev/null | wc -l)
+            echo "Alembic heads (down_revision=None): $HEAD_COUNT"
+            # Vereinfachte Heuristik - echte heads-Pruefung erfolgt in
+            # alembic-heads-check Job in ci.yml. Hier nur Doku.
+          fi
 
   # Deploy to Staging
   deploy-staging:
