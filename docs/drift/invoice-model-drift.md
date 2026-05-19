@@ -96,9 +96,18 @@ Beziehungen im Model:
   `ix_invoices_contact_date` Index aus `app/db/models_invoice.py` entfernt.
   Verifikation: 0 Code-Stellen ausserhalb des Models nutzten das Feld, keine Migration
   hatte die DB-Spalte je angelegt. Tests gruen (14 passed).
-- **F2** (in Arbeit, P2): BI-Service `Invoice.entity_id`-Referenzen klaeren
-  - Entweder Code entfernen (toter Pfad) oder Query auf JOIN(InvoiceTracking) umstellen
-  - InvoiceTracking hat `entity_id` (Migration 094), Invoice <-> InvoiceTracking via `document_id`
+- **F2** ✅ **DONE** (Commit nach F1): BI-Service `Invoice.entity_id` + `Document.entity_id`
+  Runtime-Bomben aufgeloest. Untersuchung ergab 7 Treffer (Invoice.entity_id 5x,
+  Document.entity_id 2x) in `analyze_invoices`, `search_documents`,
+  `get_entity_statistics`, `predict_payment`. Code-Path lebt (von `app/api/v1/rag.py`
+  aufgerufen, 8 Stellen), Option B (JOIN) gewaehlt.
+  - Gewaehlte Loesung: JOIN Document via `Invoice.document_id == Document.id`,
+    entity-Bezug ueber `Document.business_entity_id` (Invoice hat kein entity_id,
+    InvoiceTracking-Model exposiert das DB-Feld auch nicht).
+  - `Document.entity_id`-Stellen: simple Rename auf `business_entity_id` (Document
+    hat nie `entity_id`, nur `business_entity_id`).
+  - Folge-Drift: InvoiceTracking Model hat `entity_id` auch nicht deklariert obwohl
+    DB-Spalte via Migration 094 existiert (separater Cleanup-Kandidat F4).
 - **F3** ✅ **DONE** (Commit `e1e99825`): Invoice-API von `Document.owner_id`
   auf `Document.company_id` umgestellt (19 Endpoints, FastAPI-Dependency-Pattern).
 

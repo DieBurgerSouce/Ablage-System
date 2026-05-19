@@ -270,9 +270,11 @@ class BusinessIntelligenceService:
 
         # Add entity filter if specified
         if entity_name:
+            # F2 (2026-05-19): Document.entity_id existiert nicht - korrekte Spalte
+            # ist business_entity_id (Multi-Tenant-Standard, vgl. Document-Model).
             query_stmt = query_stmt.outerjoin(
                 BusinessEntity,
-                Document.entity_id == BusinessEntity.id
+                Document.business_entity_id == BusinessEntity.id
             ).where(
                 BusinessEntity.name.ilike(f"%{entity_name}%")
             )
@@ -365,7 +367,14 @@ class BusinessIntelligenceService:
         )
 
         if entity_id:
-            base_filter = and_(base_filter, Invoice.entity_id == entity_id)
+            # F2 (2026-05-19): Invoice hat kein entity_id - Filter via Document
+            # (Invoice <-> Document via document_id, Document.business_entity_id).
+            base_filter = and_(
+                base_filter,
+                Invoice.document_id.in_(
+                    select(Document.id).where(Document.business_entity_id == entity_id)
+                ),
+            )
 
         # Get aggregates
         agg_query = select(
@@ -417,14 +426,20 @@ class BusinessIntelligenceService:
             for row in monthly_result.fetchall()
         ]
 
-        # Top entities
-        entity_query = select(
-            Invoice.entity_id,
-            func.count(Invoice.id).label("count"),
-            func.coalesce(func.sum(Invoice.total_amount), 0).label("amount"),
-        ).where(base_filter).group_by(
-            Invoice.entity_id
-        ).order_by(text("amount DESC")).limit(10)
+        # Top entities (F2 2026-05-19: entity-Spalte via Document JOIN, da Invoice
+        # kein entity_id hat; Document.business_entity_id ist die korrekte Quelle).
+        entity_query = (
+            select(
+                Document.business_entity_id.label("entity_id"),
+                func.count(Invoice.id).label("count"),
+                func.coalesce(func.sum(Invoice.total_amount), 0).label("amount"),
+            )
+            .join(Document, Invoice.document_id == Document.id)
+            .where(base_filter)
+            .group_by(Document.business_entity_id)
+            .order_by(text("amount DESC"))
+            .limit(10)
+        )
 
         entity_result = await db.execute(entity_query)
         by_entity = [
@@ -533,7 +548,8 @@ class BusinessIntelligenceService:
 
         stats_list = []
         for entity in entities:
-            # Get invoice statistics for this entity
+            # Get invoice statistics for this entity (F2 2026-05-19: JOIN Document,
+            # entity-Bezug ueber Document.business_entity_id - Invoice hat kein entity_id).
             invoice_stats = await db.execute(
                 select(
                     func.count(Invoice.id).label("invoice_count"),
@@ -541,19 +557,21 @@ class BusinessIntelligenceService:
                     func.coalesce(func.sum(case(
                         (Invoice.status != "paid", Invoice.total_amount)
                     )), 0).label("total_open"),
-                ).where(
+                )
+                .join(Document, Invoice.document_id == Document.id)
+                .where(
                     and_(
-                        Invoice.entity_id == entity.id,
+                        Document.business_entity_id == entity.id,
                         Invoice.company_id == company_id,
                     )
                 )
             )
             inv_row = invoice_stats.fetchone()
 
-            # Get document count
+            # Get document count (F2 2026-05-19: Document.business_entity_id statt entity_id).
             doc_count = await db.execute(
                 select(func.count(Document.id)).where(
-                    Document.entity_id == entity.id
+                    Document.business_entity_id == entity.id
                 )
             )
             doc_count_val = doc_count.scalar() or 0
@@ -651,15 +669,18 @@ class BusinessIntelligenceService:
             )
 
         # Calculate historical payment behavior
-        # Get paid invoices with payment date
+        # Get paid invoices with payment date (F2 2026-05-19: JOIN Document,
+        # entity-Bezug ueber Document.business_entity_id - Invoice hat kein entity_id).
         paid_invoices = await db.execute(
             select(
                 Invoice.invoice_date,
                 Invoice.due_date,
                 Invoice.paid_at,
-            ).where(
+            )
+            .join(Document, Invoice.document_id == Document.id)
+            .where(
                 and_(
-                    Invoice.entity_id == entity.id,
+                    Document.business_entity_id == entity.id,
                     Invoice.status == "paid",
                     Invoice.paid_at.isnot(None),
                 )
