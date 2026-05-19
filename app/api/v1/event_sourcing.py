@@ -21,6 +21,45 @@ logger = structlog.get_logger(__name__)
 router = APIRouter(prefix="/event-sourcing", tags=["event-sourcing"])
 
 
+# =============================================================================
+# K6 (CRITICAL): Whitelist fuer aggregate_type-Pfadparameter
+# =============================================================================
+# Ohne Whitelist wird ein beliebiger String an den EventStore weitergereicht.
+# Das ermoeglicht Injection-Vektoren (SQL/Redis-Keys downstream) und
+# IDOR-Enumeration ueber alle Aggregate-Typen hinweg. Wir validieren vor dem
+# Service-Call gegen die zentrale Whitelist, die mit
+# app/services/event_sourcing/snapshot_service.py:66 abgestimmt ist.
+ALLOWED_AGGREGATE_TYPES = frozenset({
+    "document",
+    "invoice",
+    "payment",
+    "entity",
+    "alert",
+    "workflow",
+})
+
+
+def _validate_aggregate_type(aggregate_type: str) -> None:
+    """Werfe 400 wenn aggregate_type nicht in Whitelist ist.
+
+    Wird VOR jedem Service-Call aufgerufen, sodass kein Reach-Through
+    zum EventStore moeglich ist.
+    """
+    if aggregate_type not in ALLOWED_AGGREGATE_TYPES:
+        logger.warning(
+            "event_sourcing_invalid_aggregate_type",
+            aggregate_type=aggregate_type,
+            allowed=sorted(ALLOWED_AGGREGATE_TYPES),
+        )
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Ungueltiger aggregate_type. Erlaubt: "
+                f"{', '.join(sorted(ALLOWED_AGGREGATE_TYPES))}"
+            ),
+        )
+
+
 # ============================================================================
 # Pydantic Models
 # ============================================================================
@@ -98,6 +137,7 @@ async def get_events(
     db: AsyncSession = Depends(get_db),
 ) -> List[EventResponse]:
     """Holt Events für ein Aggregat."""
+    _validate_aggregate_type(aggregate_type)
     try:
         event_store = EventStore()
 
@@ -147,6 +187,7 @@ async def get_snapshot(
     db: AsyncSession = Depends(get_db),
 ) -> Optional[SnapshotResponse]:
     """Holt den neuesten Snapshot."""
+    _validate_aggregate_type(aggregate_type)
     try:
         snapshot_service = SnapshotService()
 
@@ -189,6 +230,7 @@ async def get_projection(
     db: AsyncSession = Depends(get_db),
 ) -> ProjectionResponse:
     """Projiziert den aktuellen Zustand."""
+    _validate_aggregate_type(aggregate_type)
     try:
         projection_service = ProjectionService()
         event_store = EventStore()
