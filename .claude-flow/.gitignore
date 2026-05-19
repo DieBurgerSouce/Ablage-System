@@ -3,5 +3,12 @@ data/
 logs/
 sessions/
 neural/
+tasks/
+workflows/
+learning/
 *.log
 *.tmp
+*.pid
+daemon-state.json
+daemon-children.json
+.trend-cache.json
