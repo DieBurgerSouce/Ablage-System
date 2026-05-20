@@ -10,7 +10,7 @@
 
 # Pin base image digest for reproducible builds
 # Update digest via: docker manifest inspect eclipse-temurin:17-jre-alpine
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 
 LABEL maintainer="Ablage-System"
 LABEL description="Mustang E-Invoice REST Service for ZUGFeRD/XRechnung"
