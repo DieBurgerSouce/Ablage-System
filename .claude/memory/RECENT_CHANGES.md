@@ -1,5 +1,28 @@
 # Recent Changes
 
+## 2026-05-20 (Pilot-Ship v0.1.0 — PR #9 Squash-Merge)
+
+PR #9 (`option-b-cherry-pick-identity`) squash-gemerged nach master:
+Squash-Commit `7e6bd9e7`, Tag `pilot-v0.1.0`. Erste produktive Pilot-Version.
+
+Vorgeschichte: PR #8 (`sprint-0-pilot-hardening`) war `mergeable=CONFLICTING`
+— master hatte seit 2026-01-04 eine ungemergte Tier-1-Transformation
+(Identity-Rebrand `ablage-system` → `DieBurgerSouce`, Doku-Reorg). Aufgelöst
+via Option B (`MERGE_CONFLICT_ANALYSIS.md`): Cherry-Pick der 2 Tier-1-Commits
++ Master-Merge `2d68f1c4`, 109 Konflikte mit Branch-Bias gelöst (Pilot-Doku-
+Struktur behalten, Identity von master übernommen). PR #8 geschlossen, PR #9
+als master-Nachfahre neu erstellt → trivial mergebar.
+
+Konsolidiert: Sprint-0 (G01-G10), Phase A (K1-K6), Phase B (B1-B7),
+Multi-Agent-Review (A-D, F1-F4), Sprint-1 Sec-Reste (S1.1-S1.5).
+Severity: 5 CRITICAL + 11 HIGH-Sec gefixt.
+
+Offen (Pilot-Backlog): Sentry-DSN (vertagt), 9 Critical Alerts triagieren
+(Skript `scripts/operations/pilot-start-block.sh` bereit, wartet auf Docker),
+Strict-Root-Policy `.gitignore` integrieren, Phase C/D/E. Alte Branches
+`sprint-0-pilot-hardening` + `option-b-cherry-pick-identity` remote noch da
+(Cleanup ausstehend). Safety-Tag `pre-merge-master-backup-2026-05-20`.
+
 ## 2026-05-20 (Sprint-1 — Sec-Reste aus MASTER_REVIEW)
 
 Branch: `sprint-0-pilot-hardening`, 5 saubere Commits zur Pilot-Reife. Aus

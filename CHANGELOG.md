@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## \[Unreleased\]
 
+## \[0.1.0\] - 2026-05-20 (Pilot-Ship)
+
+Erste produktive Pilot-Version. PR #9 squash-gemerged (`7e6bd9e7`), Tag `pilot-v0.1.0`. Konsolidiert Sprint-0 Pilot-Hardening (G01-G10), Phase A (K1-K6), Phase B (B1-B7), Multi-Agent-Review Follow-Through (Tasks A-D, F1-F4), Sprint-1 Sec-Reste (S1.1-S1.5) und den Merge von master's Tier-1-Transformation. Severity gegen den alten master: 5 CRITICAL + 11 HIGH-Security gefixt.
+
 ### Security
 
 - **S1.1 (HIGH, 2026-05-20)** `app/api/v1/trash.py` Multi-Tenant-Filter und Audit-Lueckenfix: `permanently_delete_document` und `empty_trash` filterten nur `Document.owner_id`, nicht `company_id` — User die zwischen Companies wechseln konnten fremde Dokumente PERMANENT hart loeschen. Hard-Delete-Kaskade ohne Audit-Eintrag. Plus: `empty_trash` machte N+1 `await db.delete(doc)` in Schleife. Fix: lokale Helper `_get_user_company_id` + `_require_user_company_id_dep` (Pattern analog F3), `Document.company_id == company_id` zum WHERE, Audit-Event `document_permanently_deleted` via `emit_domain_event` VOR der Delete-Kaskade, Bulk-`delete(Document).where(and_(*conditions))` statt Schleife, try/except mit `await db.rollback()`. Defense-in-Depth: `owner_id` bleibt als zweiter Filter. Commit `e8f6badb`.
