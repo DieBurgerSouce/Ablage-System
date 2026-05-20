@@ -54,7 +54,29 @@ URL gesetzt, alertmanager force-recreated (Volume-Mount greift nicht bei `restar
 
 ---
 
-## 🟠 VORBEREITET — Aktive kritische Alerts (Sprint 0 Tag 1 Side-Discovery, P0b)
+## ✅ ERLEDIGT — Aktive kritische Alerts triagiert (P0b) — 2026-05-20 16:00
+
+**Endstand: 0 firing Alerts.** Triage durchgefuehrt nach Docker-Stack-Neustart.
+
+**Kern-Erkenntnis**: Die "spammenden Alerts" waren grossteils Folge eines
+**echten Backend-Crash-Loops** — `NameError: ConfigDict` in 4 Files
+(cashflow_prediction, audit_trail_visualization, saved_filters, smart_tagging),
+Restbestand der unvollstaendigen B3-Pydantic-v2-Codemod. Backend RestartCount=10.
+Fix: ConfigDict-Imports nachgezogen (Commit `0b1b391e`), Backend force-recreated
+-> healthy. Danach: APIDown/ServiceDown/OCRBackendDown selbst-aufgeloest.
+Die 5 NEEDS_VERIFY-Alerts (Redis/Loki/Qdrant/Celery/API-start_period) waren
+code-seitig bereits gefixt, brauchten nur Prometheus-Reload (2x).
+
+Volle Klassifikations-Tabelle: `docs/operations/alert-triage-2026-05-20.md`.
+
+- [x] Pro Alert: echtes Problem vs False-Positive identifiziert (9 + HostRebooted)
+- [x] Echtes Problem (Backend-Crash) behoben — Commit `0b1b391e`
+- [x] False-Positives: Prometheus-Reload, selbst-aufgeloest
+- [x] `curl :9090/api/v1/alerts` firing-count = **0**
+
+---
+
+<details><summary>Historie: Pre-Analyse-Stand (vor Triage)</summary>
 
 Beim Sprint-0-Setup wurden folgende kritische Alerts entdeckt, die **seit 31h aktiv waren** ohne Notification (R01 live bestätigt):
 
@@ -82,12 +104,9 @@ bash scripts/operations/pilot-start-block.sh silences   # Copy-Paste fuer NEEDS_
 bash scripts/operations/pilot-start-block.sh tbd        # Daten fuer echte Probleme sammeln
 ```
 
-**Verifikation-Datei (zum Abhaken)**:
+(Triage-Workflow + Verifikation siehe oben — alles erledigt.)
 
-- \[ \] Pro Alert: echtes Problem oder False Positive identifiziert (Tabelle in `docs/operations/alert-triage-2026-05-20.md` befuellen)
-- \[ \] Echte Probleme behoben oder GitHub-Issue erstellt
-- \[ \] False Positives: Prometheus-Reload + ggf. Silence fuer 24h
-- \[ \] `curl :9090/api/v1/alerts | jq '[.data.alerts[]|select(.state=="firing")]|length'` = 0 (oder nur dokumentierte Silences)
+</details>
 
 ---
 
